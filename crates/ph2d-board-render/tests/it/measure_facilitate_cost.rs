@@ -115,7 +115,11 @@ fn measure_cluster_cost() {
     println!("| N notas | por | mín ms | mediana |");
     for (i, v) in ms.iter().enumerate() {
         let (m, d) = min_med(v);
-        println!("| {} | {} | {m:.2} | {d:.2} |", NS[i / bys.len()], bys[i % bys.len()].0);
+        println!(
+            "| {} | {} | {m:.2} | {d:.2} |",
+            NS[i / bys.len()],
+            bys[i % bys.len()].0
+        );
     }
 }
 
@@ -183,7 +187,13 @@ fn measure_marks_paint_cost() {
             let i = (k + round) % n;
             let t = Instant::now();
             for _ in 0..FRAMES {
-                one_frame(&variants[i].1, &mut scene, &mut ts, &mut caches[i], &routes[i]);
+                one_frame(
+                    &variants[i].1,
+                    &mut scene,
+                    &mut ts,
+                    &mut caches[i],
+                    &routes[i],
+                );
             }
             cpu[i].push(t.elapsed().as_secs_f64() * 1e3 / FRAMES as f64);
             if let (Some(g), Some(p)) = (gpu.as_ref(), pass.as_mut()) {
@@ -197,7 +207,11 @@ fn measure_marks_paint_cost() {
     println!("| 10 mil notas | CPU mín ms | CPU mediana | placa mín | mediana |");
     for (k, (name, _)) in variants.iter().enumerate() {
         let (cm, cd) = min_med(&cpu[k]);
-        let (wm, wd) = if wall[k].is_empty() { (f64::NAN, f64::NAN) } else { min_med(&wall[k]) };
+        let (wm, wd) = if wall[k].is_empty() {
+            (f64::NAN, f64::NAN)
+        } else {
+            min_med(&wall[k])
+        };
         println!("| {name} | {cm:.3} | {cd:.3} | {wm:.3} | {wd:.3} |");
     }
 }

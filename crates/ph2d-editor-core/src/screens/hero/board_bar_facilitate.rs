@@ -68,12 +68,13 @@ pub(super) fn frame_group() -> Vec<Item> {
     vec![CLUSTER]
 }
 
-/// As notas seleccionadas.
+/// As notas seleccionadas que um carimbo mudaria (as travadas não — a mesma pergunta do
+/// `Editor::stamp`, auditoria W7).
 fn notes(ed: &Editor, doc: &BoardDoc) -> usize {
     ed.selection()
         .iter()
         .filter_map(|id| doc.get(*id))
-        .filter(|e| e.shape().is_some_and(|s| s.kind.is_note()))
+        .filter(|e| e.shape().is_some_and(|s| s.kind.is_note()) && !e.locked())
         .count()
 }
 

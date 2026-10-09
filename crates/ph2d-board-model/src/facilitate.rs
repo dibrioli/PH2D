@@ -95,17 +95,19 @@ pub fn digits(n: u32) -> usize {
     n.checked_ilog10().map_or(1, |l| l as usize + 1)
 }
 
-/// S3 — as fichas dos carimbos de `el`, por baixo dela, da esquerda, em filas da largura dela:
+/// S3 — as fichas dos carimbos de `el`, por baixo dela, da esquerda, em filas que param antes do selo
+/// do voto (o maior) e do `+` (que tapavam a 4.ª ficha e lhe roubavam o clique — auditoria W7):
 /// `(carimbo, [x0, y0, x1, y1])` no referencial da caixa.
 #[must_use]
 pub fn stamp_chips(el: &Element) -> Vec<(StampCount, [f64; 4])> {
     let s = mark_side(el);
     let (h, gap) = (s * STAMP_CHIP_H, s * STAMP_CHIP_GAP);
+    let reach = el.w - s * (VOTE_BADGE[1] / 2.0 - VOTE_BADGE_OUT) - gap;
     let (mut x, mut y) = (0.0, el.h + gap);
     let mut out = Vec::new();
     for c in el.stamps() {
         let w = h * (STAMP_CHIP_BASE + STAMP_CHIP_DIGIT * digits(c.count) as f64);
-        if x > 0.0 && x + w > el.w {
+        if x > 0.0 && x + w > reach {
             (x, y) = (0.0, y + h + gap);
         }
         out.push((*c, [x, y, x + w, y + h]));

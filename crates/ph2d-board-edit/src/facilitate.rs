@@ -41,7 +41,13 @@ impl Editor {
         let Some(s) = &self.vote else {
             return Vec::new();
         };
-        let mut els: Vec<&Element> = s.targets().iter().filter_map(|id| doc.get(*id)).collect();
+        // Um nó escondido por um ramo recolhido não mostra o `+` (nem o aceita): volta ao expandir.
+        let mut els: Vec<&Element> = s
+            .targets()
+            .iter()
+            .filter_map(|id| doc.get(*id))
+            .filter(|e| !e.is_hidden())
+            .collect();
         els.sort_by(|a, b| a.z.cmp(&b.z));
         els.into_iter()
             .map(|el| {

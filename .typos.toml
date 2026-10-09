@@ -1031,6 +1031,13 @@ extend-exclude = [
     # byte a byte como fixture — os ids aleatórios dele (`…8IZFwDZa…`) não são palavras nossas, e
     # corrigi-los partiria a fixture que os gates leem.
     "docs/MiroClone/ferramentas/excalidraw_oracle/saidas/**",
+    # W7 — o oráculo da RAIZ: a `libstemmer` gravou as raízes que o Snowball corta (`abjects` →
+    # `abject`, `absolut`…) — não são palavras nossas, e corrigi-las partiria o gate
+    # `stems_match_libstemmer`. E o Snowball 3.1.1 vendorizado (código gerado pelo compilador
+    # dele, nunca editado) e as listas de palavras vazias dele (BSD-3, verbatim).
+    "crates/ph2d-board-words/tests/fixtures/**",
+    "crates/ph2d-board-words/vendor/**",
+    "crates/ph2d-board-words/src/stop_*.txt",
     # E as do oráculo tldraw (W5b), pela mesma razão: ids aleatórios dele (`…7DFot…`, `…piCJ2…`).
     "docs/MiroClone/ferramentas/tldraw_oracle/saidas/**",
     # E as dos oráculos de mapa mental (W6): textos e ids gerados por eles.

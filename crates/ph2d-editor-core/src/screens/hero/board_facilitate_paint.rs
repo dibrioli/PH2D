@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use super::super::super::HeroScreen;
-use super::{FacButton, btn, column, fac_node, sync};
+use super::{FacButton, btn, column, fac_node};
 use crate::documents::fac::VotePanel;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
@@ -12,7 +12,7 @@ use crate::paint::{
 };
 use crate::widget::ButtonState;
 use crate::zones::Rect;
-use ph2d_board_edit::{Timer, TimerRun, VoteSetup};
+use ph2d_board_edit::{TIMER_MAX, Timer, TimerRun, VOTES_MAX, VoteSetup};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
@@ -36,10 +36,12 @@ enum VoteView {
         voted: u32,
         clock: bool,
     },
+    /// `hidden` = as linhas que «See all» não mostra (não cabem na área: o painel não sai do ecrã).
     Results {
         rows: Vec<(String, u32)>,
         all: bool,
         more: bool,
+        hidden: usize,
     },
 }
 
@@ -65,12 +67,12 @@ fn clock(t: &Timer, now: Instant) -> String {
     format!("{m:02}:{s:02}")
 }
 
-/// ⭐ Pinta o cartão e o painel do quadro activo (e anda os relógios: [`sync`]).
+/// ⭐ Pinta o cartão e o painel do quadro activo (os relógios andam em [`super::tick`]).
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let now = Instant::now();
-    sync(hero, now);
     let theme = hero.theme;
-    let (x, mut y, w) = column(area, hero.documents.live.nav.frames_open);
+    let nav = &hero.documents.live.nav;
+    let (x, mut y, w) = column(area, nav.frames_open, nav.search_open);
     let Some(board) = hero.documents.active_board() else {
         return;
     };
@@ -87,11 +89,29 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             .map(|s| VoteView::Session {
                 left: s.left(),
                 voted: s.voters(),
-                clock: hero.documents.live.fac.vote_clock.contains_key(&id),
+                // O relógio da votação só se mostra (e o «+1 min» só se pinta) a andar.
+                clock: hero.documents.live.fac.vote_clock.contains_key(&id)
+                    && hero.documents.live.fac.timers.get(&id).is_some_and(|t| {
+                        matches!(t.run(), TimerRun::Running { .. } | TimerRun::Paused { .. })
+                    }),
             }),
         Some(VotePanel::Results { all }) => {
             let res = ph2d_board_edit::vote_results(&board.doc);
-            let n = if all { res.len() } else { res.len().min(3) };
+            // As linhas que cabem: a área por baixo da coluna, menos o título e a fila dos botões
+            // (e o cartão do cronómetro, se está aberto).
+            let card = if hero.documents.live.fac.timers.contains_key(&id) {
+                timer_height() + Spacing::Md.px()
+            } else {
+                0.0
+            };
+            let room = area.y + area.h - y - card - Spacing::Md.px();
+            let step = btn() + ph2d_tokens::control_gap_px();
+            let fit = ((room / step).floor() as usize).saturating_sub(3).max(3);
+            let n = if all {
+                res.len().min(fit)
+            } else {
+                res.len().min(3)
+            };
             let rows = res
                 .iter()
                 .take(n)
@@ -101,6 +121,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
                 rows,
                 all,
                 more: res.len() > 3,
+                hidden: if all { res.len() - n } else { 0 },
             })
         }
     };
@@ -213,7 +234,7 @@ fn paint_timer(
     let blink = t.blink_off(now);
     // F6 — no zero o cartão treme e acende-se; F4 — pausado, o mostrador pisca.
     let shake = if done && blink { pad } else { 0.0 };
-    let h = pad + 2.0 * s + g + s + pad;
+    let h = timer_height();
     let r = Rect::new(at.x + shake, at.y, at.w, h);
     card(
         scene,
@@ -225,6 +246,8 @@ fn paint_timer(
             ColorToken::BgElev
         },
     );
+    // O fundo toma o clique (registado ANTES dos botões, que ganham por cima dele).
+    hit.register(fac_node(FacButton::Surface), r);
     let ink = if matches!(t.run(), TimerRun::Paused { .. }) && blink {
         ColorToken::Text3
     } else if done {
@@ -276,14 +299,19 @@ fn paint_timer(
         push(
             FacButton::TimerCancelStop,
             Face::Text(tr("board.timer.cancel").into()),
-            wide * 1.5,
+            wide * 1.5, // LITERAL-PX-OK: «Cancel» em três botões de largo
             false,
         );
     } else {
         match t.run() {
             TimerRun::Set => {
-                push(FacButton::TimerMinus, Face::Icon(IconId::Minus), s, false);
-                push(FacButton::TimerPlus, Face::Icon(IconId::Plus), s, false);
+                // Nos limites (1 e 99 minutos) o botão que não mexeria não se pinta.
+                if t.minutes() > 1 {
+                    push(FacButton::TimerMinus, Face::Icon(IconId::Minus), s, false);
+                }
+                if u64::from(t.minutes()) < TIMER_MAX.as_secs() / 60 {
+                    push(FacButton::TimerPlus, Face::Icon(IconId::Plus), s, false);
+                }
                 push(FacButton::TimerPlay, Face::Icon(IconId::Play), s, true);
             }
             TimerRun::Running { .. } | TimerRun::Paused { .. } => {
@@ -332,12 +360,13 @@ fn paint_vote(
     let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
     let rows = match v {
         VoteView::Setup(_) => 5,
-        VoteView::Session { .. } => 4,
-        VoteView::Results { rows, .. } => rows.len() + 2,
+        VoteView::Session { clock, .. } => 4 + usize::from(*clock),
+        VoteView::Results { rows, hidden, .. } => rows.len() + 2 + usize::from(*hidden > 0),
     };
     let h = pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g;
     let r = Rect::new(at.x, at.y, at.w, h);
     card(scene, r, theme, ColorToken::BgElev);
+    hit.register(fac_node(FacButton::Surface), r);
     let (text1, text2) = (
         resolve(ColorToken::Text1, theme),
         resolve(ColorToken::Text2, theme),
@@ -372,7 +401,7 @@ fn paint_vote(
     };
     match v {
         VoteView::Setup(setup) => {
-            let label_w = r.w - 4.0 * s;
+            let label_w = r.w - 4.0 * s; // LITERAL-PX-OK: a coluna do `[−] n [+]`, em botões
             paint_text_elided(
                 ts,
                 scene,
@@ -384,6 +413,8 @@ fn paint_vote(
                 text2,
             );
             let steps = (FacButton::VotesMinus, FacButton::VotesPlus);
+            let ends = (setup.votes > 1, setup.votes < VOTES_MAX);
+            let value = setup.votes.to_string();
             stepper(
                 scene,
                 ts,
@@ -391,7 +422,8 @@ fn paint_vote(
                 right,
                 row(1),
                 steps,
-                &setup.votes.to_string(),
+                ends,
+                &value,
                 text1,
             );
             paint_text_elided(
@@ -401,7 +433,7 @@ fn paint_vote(
                 x0,
                 label_y(2),
                 TypeToken::Sm.px(),
-                label_w,
+                r.w - 2.0 * s,
                 text2,
             );
             let icon = if setup.one_per_object {
@@ -431,7 +463,11 @@ fn paint_vote(
                 setup.minutes.to_string()
             };
             let steps = (FacButton::MinutesMinus, FacButton::MinutesPlus);
-            stepper(scene, ts, &mut list, right, row(3), steps, &m, text1);
+            let ends = (
+                setup.minutes > 0,
+                u64::from(setup.minutes) < TIMER_MAX.as_secs() / 60,
+            );
+            stepper(scene, ts, &mut list, right, row(3), steps, ends, &m, text1);
             list.push((
                 FacButton::VoteStart,
                 wide(4, 0, 1),
@@ -466,29 +502,33 @@ fn paint_vote(
                 let cr = Rect::new(right - 2.0 * s, row(2), 2.0 * s, s);
                 paint_text_centered(ts, scene, &c, cr, TypeToken::Sm.px(), text1);
             }
-            let n = if *clock { 3 } else { 2 };
             list.push((
                 FacButton::VoteDone,
-                wide(3, 0, n),
+                wide(3, 0, 2),
                 Face::Text(tr("board.vote.done").into()),
                 false,
             ));
             list.push((
                 FacButton::VoteEnd,
-                wide(3, 1, n),
+                wide(3, 1, 2),
                 Face::Text(tr("board.vote.end").into()),
                 true,
             ));
             if *clock {
                 list.push((
                     FacButton::VoteAdd1,
-                    wide(3, 2, n),
+                    wide(4, 0, 1),
                     Face::Text(tr("board.vote.add1").into()),
                     false,
                 ));
             }
         }
-        VoteView::Results { rows, all, more } => {
+        VoteView::Results {
+            rows,
+            all,
+            more,
+            hidden,
+        } => {
             for (i, (text, n)) in rows.iter().enumerate() {
                 let count = if *n == 1 {
                     tr("board.vote.one_vote").to_owned()
@@ -510,8 +550,29 @@ fn paint_vote(
                 let cr = Rect::new(right - cw, row(i + 1), cw, s);
                 paint_text_centered(ts, scene, &count, cr, TypeToken::Sm.px(), text2);
             }
-            let last = rows.len() + 1;
-            let n = if *more { 2 } else { 1 };
+            if *hidden > 0 {
+                let line = tr_with("board.vote.more_rows", &[("n", hidden)]);
+                let y = label_y(rows.len() + 1);
+                paint_text(
+                    ts,
+                    scene,
+                    &line,
+                    x0,
+                    y,
+                    TypeToken::Sm.px(),
+                    f32::INFINITY,
+                    text2,
+                );
+            }
+            let last = rows.len() + 1 + usize::from(*hidden > 0);
+            let n = 2 + usize::from(*more);
+            // V4 — «New vote» abre uma votação nova (o fim dela tira este resultado do quadro).
+            list.push((
+                FacButton::VoteNew,
+                wide(last, 0, n),
+                Face::Text(tr("board.vote.new_short").into()),
+                true,
+            ));
             if *more {
                 let key = if *all {
                     "board.vote.top3"
@@ -520,7 +581,7 @@ fn paint_vote(
                 };
                 list.push((
                     FacButton::VoteSeeAll,
-                    wide(last, 0, n),
+                    wide(last, 1, n),
                     Face::Text(tr(key).into()),
                     false,
                 ));
@@ -545,22 +606,35 @@ fn stepper(
     right: f32,
     y: f32,
     (minus, plus): (FacButton, FacButton),
+    (can_down, can_up): (bool, bool),
     value: &str,
     ink: ph2d_vector::Color,
 ) {
     let (s, g) = (btn(), ph2d_tokens::control_gap_px());
-    list.push((
-        minus,
-        Rect::new(right - 3.0 * s - 2.0 * g, y, s, s),
-        Face::Icon(IconId::Minus),
-        false,
-    ));
-    list.push((
-        plus,
-        Rect::new(right - s, y, s, s),
-        Face::Icon(IconId::Plus),
-        false,
-    ));
+    // Nos limites o botão que não mexeria não se pinta (controlo morto).
+    if can_down {
+        let x = right - 3.0 * s - 2.0 * g; // LITERAL-PX-OK: o `−` a três botões da borda
+        list.push((
+            minus,
+            Rect::new(x, y, s, s),
+            Face::Icon(IconId::Minus),
+            false,
+        ));
+    }
+    if can_up {
+        list.push((
+            plus,
+            Rect::new(right - s, y, s, s),
+            Face::Icon(IconId::Plus),
+            false,
+        ));
+    }
     let mid = Rect::new(right - 2.0 * s - g, y, s, s);
     paint_text_centered(ts, scene, value, mid, TypeToken::Sm.px(), ink);
+}
+
+/// A altura do cartão do cronómetro aberto: o mostrador (dois botões) e a fila dos botões.
+pub(super) fn timer_height() -> f32 {
+    let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
+    pad + 2.0 * s + g + s + pad
 }

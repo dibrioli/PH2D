@@ -229,7 +229,11 @@ pub fn paint_hero_screen(
     hero.last_layout = Some(layout);
     // ⭐⭐ **Um QUADRO activo é dono da área de desenho** (MiroClone): pinta-se por cima da cena e
     //    nada do que é da cena (réguas, gizmos, selecção) chega a ser pintado ou clicável.
+    // W7 — os cronómetros dos quadros andam com QUALQUER aba activa (a Cena incluída: F1).
+    super::board_nav::facilitate::tick(hero, std::time::Instant::now());
     if hero.documents.active().is_some() {
+        // E a sessão de voto segue o quadro activo ANTES de ele se desenhar.
+        super::board_nav::facilitate::follow(hero);
         let r = super::board_view::area(&layout);
         let area = super::board_view::area_of(r);
         let theme = hero.theme;

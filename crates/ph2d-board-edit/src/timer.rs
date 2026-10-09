@@ -201,14 +201,15 @@ fn max_minutes() -> u32 {
 /// ⭐ F2 — o `±` sobre `m` minutos: de 1 em 1 até 10, de 5 em 5 acima; entre 1 e 99.
 #[must_use]
 pub fn step_minutes(m: u32, up: bool) -> u32 {
+    // Acima de 10 o passo cai na GRELHA de 5 (do tecto 99 o `−` vai a 95, nunca a 94 — auditoria W7).
     let next = if up {
         if m < TIMER_FINE_UNTIL {
             m + 1
         } else {
-            m + TIMER_COARSE_STEP
+            (m / TIMER_COARSE_STEP + 1) * TIMER_COARSE_STEP
         }
     } else if m > TIMER_FINE_UNTIL {
-        (m - TIMER_COARSE_STEP).max(TIMER_FINE_UNTIL)
+        ((m - 1) / TIMER_COARSE_STEP * TIMER_COARSE_STEP).max(TIMER_FINE_UNTIL)
     } else {
         m.saturating_sub(1)
     };

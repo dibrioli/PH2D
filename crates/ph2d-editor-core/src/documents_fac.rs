@@ -37,3 +37,19 @@ pub(crate) struct Fac {
     /// F6 — a campainha à espera de quem a toca (a shell, uma vez por quadro).
     pub(crate) chime: bool,
 }
+
+impl Fac {
+    /// Esquece tudo do quadro `id` (apagado). `true` = a sessão dele estava no editor (quem chama
+    /// tira-a de lá).
+    pub(crate) fn forget(&mut self, id: BoardId) -> bool {
+        self.timers.remove(&id);
+        self.panels.remove(&id);
+        self.parked.remove(&id);
+        self.vote_clock.remove(&id);
+        let in_editor = self.in_editor == Some(id);
+        if in_editor {
+            self.in_editor = None;
+        }
+        in_editor
+    }
+}

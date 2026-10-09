@@ -13,6 +13,9 @@
 - `src/snowball/algorithms/mod.rs` and `src/lib.rs` — hand-written (upstream builds the module list in a
   `build.rs`; here it is two lines, plus the `stem()` entry point).
 - `edition = "2015"`: the generated code says `use snowball::SnowballEnv;` from the crate root.
+- `[workspace]` (empty) in `Cargo.toml`: it is its own workspace root, like the vendored `deep_filter`.
+- `rustfmt.toml` with `disable_all_formatting = true`: `cargo fmt --all` reaches path dependencies, and the
+  generated code must stay exactly what the compiler emitted.
 
 ## Why vendored (and why this version)
 

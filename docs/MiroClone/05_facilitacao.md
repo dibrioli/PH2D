@@ -146,7 +146,7 @@ Os três achados do oráculo da palavra (entradas nossas, `notas_w7.json`):
 | F4 | A correr: ⏸ pausa (o relógio PISCA enquanto pausado), ▶ retoma; **+1m**/**+5m** a correr ou pausado; nunca se tira tempo | Miro TM; FigJam FT | `adding_time_works_running_or_paused` |
 | F5 | ■ pede confirmação («Stop timer» / «Cancel») e repõe a duração armada | Miro TM + GIF c4273 | `stop_asks_then_resets` |
 | F6 | No zero: o cartão fica em `00:00` realçado e treme, e soa a **campainha** (a menos que o altifalante do cartão esteja desligado); fica assim até ■ ou ▶ | Miro TM (visual + campainha); FigJam FT (treme e anuncia 00:00) | `at_zero_it_rings_once_and_stays_at_zero` |
-| F7 | O cartão vive no canto de cima À ESQUERDA da área do quadro (não se arrasta); `−` minimiza-o numa pílula com o resto | Miro TM («No»); o canto direito é do painel de Frames | `the_timer_card_never_covers_the_frames_panel` |
+| F7 | O cartão (e o painel da votação por baixo dele) vive no canto de cima À DIREITA da área — o do Miro —, à esquerda do painel de Frames quando ele está aberto e por baixo da busca quando ela está aberta; não se arrasta; o fundo toma o clique; `−` minimiza-o numa pílula com o resto | Miro TM («No») | `the_timer_card_never_covers_the_frames_panel` · `the_card_avoids_the_search_and_hides_dead_steps` · `a_click_on_the_card_never_reaches_the_board` |
 
 ### Votação (sessão) e o resultado (documento)
 
@@ -155,7 +155,7 @@ Os três achados do oráculo da palavra (entradas nossas, `notas_w7.json`):
 | V1 | Abrir: votos por pessoa **1–99**, nasce **3**; «One vote per object» desligado; minutos (0 = sem relógio) que ARMAM o cronómetro do quadro; o que se vota = a selecção (se houver) ou o quadro inteiro, e só notas e formas (não setas, traços, frames) | Miro VO (99, o interruptor, a área e o filtro por tipo; a imagem `vote_02`: 3 votos, 2 min) | `a_session_votes_on_the_selection_or_the_board` |
 | V2 | Em sessão, cada objecto votável mostra o `+` cinzento Ø **0,21 s** com o centro no canto inferior direito; clicar dá um voto (se há votos e, com o interruptor, se ainda não votou nele); o `+` passa a mostrar os SEUS votos e ganha o `−` | Miro VO + `vote_03` | `a_click_on_the_plus_casts_one_vote` · `one_vote_per_object_refuses_the_second` |
 | V3 | «N votes left»; **I'm done** passa o ecrã à pessoa seguinte (os votos dela escondem-se, os dela começam do zero); **End for all** fecha | Miro VO (o painel); o turno é a forma de um ecrã só | `the_next_voter_sees_none_of_the_previous` |
-| V4 | O fim dá o resultado: o total de cada objecto (`Org::votes`, formato 7), num passo de desfazer que tira o resultado anterior do quadro; o painel mostra o **top 3** e «See all results» (a lista por ordem, com barra) | Miro VO | `ending_writes_the_totals_in_one_step` |
+| V4 | O fim dá o resultado: o total de cada objecto (`Org::votes`, formato 7), num passo de desfazer que tira o resultado anterior do quadro; o painel mostra o **top 3**, «See all results» (a lista por ordem, até onde a área chega — «…and N more») e «New vote» (a votação seguinte) | Miro VO | `ending_writes_the_totals_in_one_step` · `the_result_panel_starts_a_new_vote_and_fits_the_area` |
 | V5 | O selo: círculo `#4262FF`, número branco, centro a **0,03 s** do canto inferior direito para fora; Ø de **0,22 s** (o menor total) a **0,34 s** (o maior), linear entre os dois | `vote_05` medido (dois pontos: a lei entre eles é escolha); a cor é do produto | `the_badge_grows_with_the_count` |
 | V6 | O cronómetro da sessão a chegar a zero acaba a votação | Miro VO (duração da sessão) | `the_clock_ends_the_vote` |
 | V7 | Copiar um objecto NÃO leva os votos dele; «Clear results» tira-os (um passo) | Miro VO (o duplicado não leva) | `a_copy_carries_no_votes` |
@@ -175,13 +175,36 @@ Os três achados do oráculo da palavra (entradas nossas, `notas_w7.json`):
 |---|---|---|---|
 | C1 | **Cluster** › By color · By tag · By keyword, na barra de contexto de 2+ notas — e na de um FRAME com 2+ notas dentro (agrupa as de dentro) | Miro CL (Author e Sentiment fora, §3); o frame: achado do gate da cena 9 (dentro de um frame o vazio é do frame — W5, ordem do dono —, uma caixa à volta das ideias movia o frame) | `cluster_needs_two_notes` · `a_selected_frame_clusters_its_notes_and_grows_to_hold_them` |
 | C2 | Cada grupo é um FRAME com as notas dentro (a casa delas passa a ser ele), lado a lado numa FILA alinhada em cima, a começar no canto superior esquerdo da caixa das notas; os grupos moram na casa comum das notas, que CRESCE (e as de fora dela) para os conter; o resultado fica seleccionado; UM passo | `cluster_01`/`_02`; o lugar é calado ⇒ escolha; crescer: um filho mora dentro dos limites do pai (SDK do Miro, DEV-F) | `the_cluster_grid_is_the_measured_one` · `a_selected_frame_clusters_its_notes_and_grows_to_hold_them` |
-| C3 | Dentro: ⌈√n⌉ colunas; folga horizontal **0,17 s**, passo vertical com a folga **0,27 s**; margem **0,30 s** dos lados, **0,32 s** em cima, **0,43 s** em baixo; entre frames **0,40 s** (médias das duas imagens) | §1.2 | `the_cluster_grid_is_the_measured_one` |
+| C3 | Dentro: ⌈√n⌉ colunas, as notas DIREITAS (uma rodada sairia da célula); folga horizontal **0,17 s**, passo vertical com a folga **0,27 s**; margem **0,30 s** dos lados, **0,32 s** em cima, **0,43 s** em baixo; entre frames **0,40 s** (médias das duas imagens) | §1.2 | `the_cluster_grid_is_the_measured_one` |
 | C4 | Ordem dos grupos e das notas: a primeira aparição na ORDEM DE LEITURA da selecção | §1.2 (a do Miro não se vê; nenhuma das óbvias bate) ⇒ escolha, a do `reading_order` | `clusters_keep_reading_order` |
 | C5 | Por cor: um grupo por cor, SEM título (o artista dá-lho) | Miro CL | `color_clusters_have_no_title` |
 | C6 | Por etiqueta: título = a etiqueta; nota com várias etiquetas é DUPLICADA em cada grupo; as sem etiqueta num grupo «no tag» | Miro CL | `a_note_with_two_tags_is_in_two_clusters` |
 | C7 | Por palavra: palavras UAX#29 com letras; `’`→`'`; *case folding*; fora as palavras vazias do Snowball; raiz Snowball 3.1.1; a chave é a raiz sem acentos. Língua = a que tiver mais palavras vazias nas notas (inglês ou português; empate = inglês). Grupo = a raiz partilhada pelo MAIOR número de notas ainda soltas (≥ 2; empate pela primeira aparição), com todas elas; repete; o resto em «#uncategorized». Cada nota num grupo só | Miro CL (títulos, #uncategorized); oráculo §1.3 | `notes_sharing_a_root_cluster_together` · `stems_match_libstemmer` |
 | C8 | Título de um grupo por palavra: as **três** raízes mais frequentes nele (empate pela primeira aparição), cada uma escrita na forma mais frequente, com `#` | `cluster_02` | `a_keyword_title_has_three_words` |
 | C9 | Notas travadas ficam onde estão | W5 (travado não se move) | `a_locked_note_is_left_alone` |
+
+## §2.1 — A auditoria de duas lentes (09/10): o que ela apanhou e ficou curado
+
+26 achados (12 da lente das leis, 14 da costura/desenho/cena), cada cura presa a um teste:
+o projecto carregado (ids de quadro recomeçam) e o quadro apagado levam a facilitação (relógio, painel,
+sessão) — `loading_or_deleting_a_board_takes_its_facilitation`; os relógios andam com a aba Cena —
+`the_chime_rings_with_the_scene_tab_open`; o zero do relógio da votação espera o fim de um gesto (o
+desfazer do arrasto guardaria o antes) — `the_clock_waits_for_the_gesture_to_end`; o ■ larga o relógio
+da votação — `stopping_the_timer_releases_the_vote`; a sessão segue o quadro ANTES de ele se desenhar
+(um quadro mostrava os `+` do anterior); um alvo apagado devolve os votos, um escondido não mostra o
+`+` — `a_deleted_target_gives_its_votes_back` · `a_hidden_node_shows_no_plus`; a casa do agrupar é o
+antepassado comum, não cresce se travada, e não recebe a grelha se rodada —
+`the_home_is_the_common_ancestor_frame` · `a_locked_home_does_not_grow` ·
+`a_rotated_home_passes_the_groups_out_and_notes_straighten`; as fichas param antes do selo —
+`stamp_chips_stop_before_the_vote_badge`; o `−` do tecto volta à grelha de 5; o Stamp só com notas
+editáveis; os ± dos limites não se pintam; e ⛔ a **lição 2 da cena 9 era falsa** (a cena nasce com um
+resultado e o painel dele não tinha como abrir uma votação nova; o gate da cena chamava o editor e não
+o painel) — «New vote» e `the_vote_lesson_runs_from_the_panel`.
+
+Ficam ABERTOS (baixos, no handoff): os `+` de uma sessão continuam clicáveis numa nota dentro de um frame
+visto de longe (só o título se pinta) — o editor não conhece o limiar do nível de detalhe; o título do
+frame de fora da cena 9 fica debaixo da barra (o idioma da cena 8); o título de um grupo por palavra
+mostra a forma em *case folding* («API» → «#api»).
 
 ## §3 — ⛔ Recusas MEDIDAS
 

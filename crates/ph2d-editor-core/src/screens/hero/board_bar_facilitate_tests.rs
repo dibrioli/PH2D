@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::screens::hero::board_bar::fac::{FacItem, TIMER, VOTE};
+use crate::screens::hero::board_nav;
 use crate::screens::hero::board_nav::facilitate::{FacButton, column, fac_node};
 use ph2d_board_edit::{Timer, TimerRun};
 use ph2d_board_model::{BoardOp, ElementId, Rgba, RichText, STICKY_COLORS, Shape, Stamp, Style};
@@ -154,7 +155,7 @@ fn the_timer_card_never_covers_the_frames_panel() {
     for frames in [false, true] {
         t.hero.documents.live.nav.frames_open = frames;
         t.paint();
-        let (x, _, w) = column(t.hero.last_canvas, frames);
+        let (x, _, w) = column(t.hero.last_canvas, frames, false);
         let c = t.hero.last_canvas;
         let edge = c.x + c.w - ph2d_tokens::Spacing::Md.px();
         let frames_x = edge
@@ -347,4 +348,198 @@ fn no_shell_gesture_zone_sits_on_a_facilitation_button() {
         let band = t.hero.rulers_live() && crate::ruler::hit(t.hero.last_canvas, p).is_some();
         assert!(!band, "{what}: a faixa da régua rouba-o");
     }
+}
+
+// ─── Curas da auditoria W7 ──────────────────────────────────────────────────────────────────────
+
+/// Carregar outro projecto (os ids de quadro recomeçam) e apagar um quadro levam a facilitação dele:
+/// nada cai sobre o quadro novo com o mesmo id, e a campainha não toca por um quadro que já não existe.
+#[test]
+fn loading_or_deleting_a_board_takes_its_facilitation() {
+    let mut t = T::new();
+    t.put_note([-400.0, -100.0], "idea", 1);
+    t.shell_click_bar(TIMER);
+    t.shell_click_bar(VOTE);
+    t.fac(FacButton::VoteStart);
+    let mut set = ph2d_board_model::BoardSet::default();
+    let id = set.create("other".into());
+    crate::screens::hero::document_tabs::load(&mut t.hero, set);
+    t.hero.documents.activate(Some(id));
+    t.paint();
+    assert!(t.timer().is_none() && !board_nav::facilitate::vote_in_session(&t.hero));
+    t.shell_click_bar(TIMER);
+    t.timer_mut()
+        .play(Instant::now() - Duration::from_secs(301));
+    t.hero.documents.remove(id);
+    t.paint();
+    assert!(!t.hero.documents.take_chime(), "o quadro apagado não toca");
+}
+
+/// F1/F6: com a aba Cena activa, o cronómetro de um quadro chega a zero e TOCA.
+#[test]
+fn the_chime_rings_with_the_scene_tab_open() {
+    let mut t = T::new();
+    t.shell_click_bar(TIMER);
+    t.timer_mut()
+        .play(Instant::now() - Duration::from_secs(301));
+    t.hero.documents.activate(None);
+    t.paint();
+    assert!(t.hero.documents.take_chime());
+}
+
+/// V6 + desfazer: o zero do relógio NÃO acaba a votação a meio de um arrasto (o desfazer dele
+/// guardaria o antes); acaba logo a seguir.
+#[test]
+fn the_clock_waits_for_the_gesture_to_end() {
+    let mut t = T::new();
+    let a = t.put_note([-400.0, -100.0], "idea", 1);
+    t.shell_click_bar(VOTE);
+    t.fac(FacButton::MinutesPlus);
+    t.fac(FacButton::VoteStart);
+    let pa = {
+        let e = t.elem(a);
+        [e.x + e.w, e.y + e.h]
+    };
+    t.click_world(pa);
+    *t.timer_mut() = Timer::with_minutes(1);
+    t.timer_mut().play(Instant::now() - Duration::from_secs(61));
+    let b = t.hero.documents.active_board().unwrap();
+    let area = board_view::area_of(t.hero.last_canvas);
+    let s = b.camera.to_screen(area, [-300.0, 0.0]);
+    let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+    let p = PointerButton::Primary;
+    board_view::pointer(
+        h,
+        inp(ts, c),
+        PointerKind::Down,
+        p,
+        s[0] as f32,
+        s[1] as f32,
+        true,
+    );
+    board_view::pointer_move(h, inp(ts, c), s[0] as f32 + 40.0, s[1] as f32);
+    t.paint();
+    assert!(
+        board_nav::facilitate::vote_in_session(&t.hero),
+        "a meio do gesto, ainda aberta"
+    );
+    let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+    board_view::pointer(
+        h,
+        inp(ts, c),
+        PointerKind::Up,
+        p,
+        s[0] as f32 + 40.0,
+        s[1] as f32,
+        true,
+    );
+    t.paint();
+    assert!(!board_nav::facilitate::vote_in_session(&t.hero));
+    assert_eq!(t.elem(a).votes(), 1);
+}
+
+/// V6: o ■ confirmado larga o relógio da votação (o cartão volta a ser só um cronómetro).
+#[test]
+fn stopping_the_timer_releases_the_vote() {
+    let mut t = T::new();
+    t.put_note([-400.0, -100.0], "idea", 1);
+    t.shell_click_bar(VOTE);
+    t.fac(FacButton::MinutesPlus);
+    t.fac(FacButton::VoteStart);
+    assert!(t.find(fac_node(FacButton::VoteAdd1)).is_some());
+    t.fac(FacButton::TimerStop);
+    t.fac(FacButton::TimerConfirmStop);
+    assert!(
+        t.find(fac_node(FacButton::VoteAdd1)).is_none(),
+        "sem relógio, sem «+1 min»"
+    );
+    t.timer_mut()
+        .play(Instant::now() - Duration::from_secs(400));
+    t.paint();
+    assert!(
+        board_nav::facilitate::vote_in_session(&t.hero),
+        "o zero já não a acaba"
+    );
+}
+
+/// V4: o resultado oferece «New vote»; «See all results» nunca sai da área do quadro.
+#[test]
+fn the_result_panel_starts_a_new_vote_and_fits_the_area() {
+    let mut t = T::new();
+    let ids: Vec<ElementId> = (0..60)
+        .map(|i| {
+            t.put_note(
+                [
+                    f64::from(i % 10) * 220.0 - 1200.0,
+                    f64::from(i / 10) * 220.0,
+                ],
+                "x",
+                1,
+            )
+        })
+        .collect();
+    for (i, id) in ids.iter().enumerate() {
+        let (board, live) = t.hero.documents.active_parts().unwrap();
+        let mut el = board.doc.get(*id).unwrap().clone();
+        el.set_votes(1 + i as u32);
+        let h = live.histories.entry(board.id).or_default();
+        h.apply(&mut board.doc, vec![BoardOp::Put(el)]);
+    }
+    t.shell_click_bar(VOTE);
+    t.fac(FacButton::VoteSeeAll);
+    let c = t.hero.last_canvas;
+    for b in [
+        FacButton::VoteSeeAll,
+        FacButton::VoteClear,
+        FacButton::VoteNew,
+    ] {
+        let (_, y) = t.find(fac_node(b)).unwrap_or_else(|| panic!("{b:?}"));
+        assert!(y < c.y + c.h, "{b:?} fora da área");
+    }
+    t.fac(FacButton::VoteNew);
+    assert!(t.find(fac_node(FacButton::VoteStart)).is_some());
+}
+
+/// O fundo do cartão toma o clique: com a ferramenta Nota, clicar no mostrador não faz uma nota.
+#[test]
+fn a_click_on_the_card_never_reaches_the_board() {
+    let mut t = T::new();
+    t.shell_click_bar(TIMER);
+    t.shell_click_bar(Item::Tool(Tool::Shape(ShapeType::Sticky)));
+    let (x, y) = t
+        .find(fac_node(FacButton::Surface))
+        .expect("o fundo está registado");
+    let before = t.elements().len();
+    let arena = Bump::new();
+    let on_canvas = t.hero.chrome_panel_at(x, y).is_none() && t.hero.chrome_hit(x, y).is_none();
+    assert!(!on_canvas, "o cartão não é quadro");
+    for kind in [PointerKind::Down, PointerKind::Up] {
+        for e in t.hero.handle_pointer(ptr(kind, x, y), &arena).to_vec() {
+            t.hero.apply_event(e);
+        }
+    }
+    t.paint();
+    assert_eq!(t.elements().len(), before);
+}
+
+/// F7: com a busca aberta, a coluna desce para baixo dela; nos limites, o ± que não mexeria não se
+/// pinta (controlo morto).
+#[test]
+fn the_card_avoids_the_search_and_hides_dead_steps() {
+    let mut t = T::new();
+    t.shell_click_bar(TIMER);
+    let (_, y0) = t.find(fac_node(FacButton::TimerPlay)).unwrap();
+    t.hero.documents.live.nav.search_open = true;
+    t.paint();
+    let (_, y1) = t.find(fac_node(FacButton::TimerPlay)).unwrap();
+    assert!(y1 > y0 + btn_px() * 2.0, "{y0} → {y1}");
+    t.hero.documents.live.nav.search_open = false;
+    for _ in 0..4 {
+        t.fac(FacButton::TimerMinus);
+    }
+    assert_eq!(t.timer().unwrap().minutes(), 1);
+    assert!(
+        t.find(fac_node(FacButton::TimerMinus)).is_none(),
+        "a 1 minuto, sem −"
+    );
 }

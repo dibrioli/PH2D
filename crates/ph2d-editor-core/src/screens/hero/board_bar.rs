@@ -395,7 +395,10 @@ pub fn paint(
     if let Some((key, _)) = notice {
         organize::paint_notice(scene, text_system, theme, area, key);
     }
-    fac::sync_flyouts(&mut live.fac, matches!(what, Some(Selected::Notes | Selected::Frames)));
+    fac::sync_flyouts(
+        &mut live.fac,
+        matches!(what, Some(Selected::Notes | Selected::Frames)),
+    );
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };

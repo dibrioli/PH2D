@@ -59,6 +59,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.top3" => "Top 3",
         "board.vote.clear" => "Clear results",
         "board.vote.close" => "Close",
+        "board.vote.new" => "New vote — when it ends, its result replaces this one",
+        "board.vote.new_short" => "New vote",
+        "board.vote.surface" => "Facilitation",
+        "board.vote.more_rows" => "…and {n} more",
         "board.notice.no_votes_left" => "No votes left — take one back with − or press I'm done",
         "board.notice.one_vote_per_object" => "One vote per object — this one already has yours",
         "board.notice.nothing_to_vote" => "Nothing to vote on — votes go on notes and shapes",
@@ -78,7 +82,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "1. Timer — the card at the top right. Set the minutes with − and +, then Play. +1m and +5m add time; at zero it chimes."
         }
         "board.smoke.fac.l2" => {
-            "2. Vote — press Voting in the left bar, choose the votes per person, then Start voting. Click the grey + at a note's corner; − takes one back."
+            "2. Vote — press Voting in the left bar (it shows the last result), then New vote, the votes per person and Start voting. Click the grey + at a note's corner; − takes one back."
         }
         "board.smoke.fac.l3" => {
             "3. Turns — I'm done hands the screen to the next person (their votes start at zero). End for all puts the totals on the notes."

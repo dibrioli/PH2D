@@ -7,6 +7,10 @@ edition = "2015"
 license = "BSD-3-Clause"
 publish = false
 
+# A raiz do seu PRÓPRIO workspace (o idioma do `deep_filter`): sem isto, um worktree dentro do
+# checkout principal subia até ao `Cargo.toml` dele e o `cargo fmt --all` recusava-se a correr.
+[workspace]
+
 [lib]
 path = "src/lib.rs"
 

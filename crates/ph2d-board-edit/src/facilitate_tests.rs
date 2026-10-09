@@ -7,6 +7,7 @@
 use std::time::{Duration, Instant};
 
 use super::*;
+use crate::step_minutes;
 use ph2d_board_model::{Rgba, STICKY_COLORS, Stamp};
 
 impl World {
@@ -368,4 +369,86 @@ fn shift_click_takes_one_back() {
     w.click(c, SHIFT);
     w.click(c, SHIFT);
     assert!(w.doc.get(a).unwrap().stamps().is_empty(), "a 0 sai");
+}
+
+// ─── Curas da auditoria W7 ──────────────────────────────────────────────────────────────────────
+
+/// F2: do tecto o `−` volta à grelha de 5 (99 → 95, nunca 94).
+#[test]
+fn the_step_down_from_the_cap_lands_on_the_grid() {
+    assert_eq!(step_minutes(99, false), 95);
+    assert_eq!(step_minutes(95, true), 99);
+    assert_eq!(step_minutes(12, false), 10);
+    assert_eq!(step_minutes(10, true), 15);
+}
+
+/// V2: um alvo apagado a meio da sessão sai dela e devolve os votos postos nele.
+#[test]
+fn a_deleted_target_gives_its_votes_back() {
+    let mut w = world();
+    let a = w.sticky([0.0, 0.0], "a", 1, &[]);
+    w.sticky([300.0, 0.0], "b", 1, &[]);
+    w.ed.start_vote(&w.doc, VoteSetup::default());
+    let p = w.plus(a);
+    w.click(p, NONE);
+    assert_eq!(w.ed.vote().unwrap().left(), 2);
+    w.h.apply(&mut w.doc, vec![BoardOp::Delete(a)]);
+    assert!(w.ed.prune_vote(&w.doc));
+    let s = w.ed.vote().unwrap();
+    assert_eq!((s.left(), s.targets().len()), (3, 1));
+}
+
+/// V2: um nó escondido por um ramo recolhido não mostra o `+` (e volta ao expandir).
+#[test]
+fn a_hidden_node_shows_no_plus() {
+    use ph2d_board_model::{FracKey, Mind, Side};
+    let mut w = world();
+    let root = w.sticky([0.0, 0.0], "root", 1, &[]);
+    let a = w.sticky([300.0, 0.0], "a", 1, &[]);
+    let ink = Rgba([1, 2, 3, 255]);
+    let mut r = w.el(root).clone();
+    r.set_mind(Some(Mind::new(
+        None,
+        FracKey::between(None, None),
+        Side::After,
+        ink,
+    )));
+    let mut c = w.el(a).clone();
+    c.set_mind(Some(Mind::new(
+        Some(root),
+        FracKey::between(None, None),
+        Side::After,
+        ink,
+    )));
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(r), BoardOp::Put(c)]);
+    w.ed.start_vote(&w.doc, VoteSetup::default());
+    assert!(w.ed.vote_marks(&w.doc).iter().any(|m| m.id == a));
+    let mut r = w.el(root).clone();
+    r.mind_mut().unwrap().collapsed = true;
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(r)]);
+    assert!(w.doc.get(a).is_some_and(|e| e.is_hidden()));
+    assert!(
+        w.ed.vote_marks(&w.doc).iter().all(|m| m.id != a),
+        "escondido: sem `+`"
+    );
+    assert!(
+        !w.ed.prune_vote(&w.doc),
+        "mas continua alvo (volta ao expandir)"
+    );
+}
+
+/// S3: as fichas param antes do selo do voto e do `+` (que tapavam a 4.ª e lhe roubavam o clique).
+#[test]
+fn stamp_chips_stop_before_the_vote_badge() {
+    let mut w = world();
+    let a = w.sticky([0.0, 0.0], "a", 1, &[]);
+    let mut el = w.el(a).clone();
+    for s in [Stamp::Heart, Stamp::Star, Stamp::Flame, Stamp::Party] {
+        el.add_stamp(s, 1);
+    }
+    el.set_votes(2);
+    let (c, d) = ph2d_board_model::vote_badge(&el, 2, [1, 2]);
+    for (_, r) in ph2d_board_model::stamp_chips(&el) {
+        assert!(r[2] < c[0] - d / 2.0, "a ficha {r:?} entra no selo");
+    }
 }

@@ -141,6 +141,23 @@ impl VoteSession {
         self.voters += 1;
     }
 
+    /// V2 — os alvos apagados saem (e os votos postos neles voltam a quem os pôs: «N votes left» não
+    /// conta votos num objecto que já não existe — auditoria W7). `true` = mudou.
+    fn prune(&mut self, doc: &BoardDoc) -> bool {
+        let gone: Vec<ElementId> = self
+            .targets
+            .iter()
+            .copied()
+            .filter(|id| doc.get(*id).is_none())
+            .collect();
+        for id in &gone {
+            self.targets.remove(id);
+            self.mine.remove(id);
+            self.totals.remove(id);
+        }
+        !gone.is_empty()
+    }
+
     /// V4 — os totais, com os da pessoa ao ecrã.
     fn finish(mut self) -> BTreeMap<ElementId, u32> {
         if !self.mine.is_empty() {
@@ -207,6 +224,11 @@ impl Editor {
     /// Devolve ao editor a sessão do quadro que voltou a ser o activo.
     pub fn put_vote(&mut self, s: Option<VoteSession>) {
         self.vote = s;
+    }
+
+    /// V2 — larga da sessão os alvos que foram apagados (chamado antes de cada desenho).
+    pub fn prune_vote(&mut self, doc: &BoardDoc) -> bool {
+        self.vote.as_mut().is_some_and(|s| s.prune(doc))
     }
 
     /// V3 — «I'm done». `false` = não há sessão.

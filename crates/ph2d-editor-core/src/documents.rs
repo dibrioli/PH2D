@@ -155,6 +155,12 @@ impl Documents {
         self.live.histories.clear();
         self.active = None;
         self.pan_from = None;
+        // W7 — os ids de quadro recomeçam em cada projecto: nada da facilitação do anterior (um
+        // relógio, uma sessão de voto) pode cair sobre o quadro novo com o mesmo id (auditoria W7).
+        self.live.fac = fac::Fac::default();
+        if let Some(ed) = self.live.editor.as_mut() {
+            ed.put_vote(None);
+        }
     }
 
     /// Muda o nome. `false` se `id` não existe.
@@ -183,6 +189,13 @@ impl Documents {
         }
         let gone = self.boards.remove(id)?;
         self.live.histories.remove(&id);
+        // W7 — o relógio, o painel e a sessão do quadro apagado vão com ele (a campainha não toca
+        // por um quadro que já não existe — auditoria W7).
+        if self.live.fac.forget(id)
+            && let Some(ed) = self.live.editor.as_mut()
+        {
+            ed.put_vote(None);
+        }
         if self.renaming == Some(id) {
             self.renaming = None;
         }

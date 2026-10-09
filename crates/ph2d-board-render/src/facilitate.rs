@@ -28,7 +28,7 @@ const LUCIDE_STROKE: f64 = 2.0;
 const LUCIDE_BOX: f64 = 24.0;
 /// A ponta descolada do selo: o arco de cima à esquerda, a esta transparência de branco.
 const PEEL_ALPHA: u8 = 70;
-/// Os sais das chaves de texto na cache (o texto da nota usa o id cru).
+/// O XOR das chaves de texto na cache, um por desenho (o texto da nota usa o id cru).
 const BADGE_SALT: u64 = 0x766f_0000_0000_0000;
 const CHIP_SALT: u64 = 0x7374_0000_0000_0000;
 
@@ -119,7 +119,10 @@ pub fn stamp_path(s: Stamp) -> &'static BezPath {
             })
             .collect()
     });
-    &all.iter().find(|(k, _)| *k == s).expect("os oito carimbos").1
+    &all.iter()
+        .find(|(k, _)| *k == s)
+        .expect("os oito carimbos")
+        .1
 }
 
 /// A cor de um carimbo (a do emoji que ele substitui) — DADO do documento, a mesma em qualquer tema.

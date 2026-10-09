@@ -42,8 +42,20 @@ type Idea = (
     &'static [(Stamp, i64)],
 );
 const IDEAS: [Idea; 7] = [
-    ("board.smoke.fac.i1", 1, &["board.smoke.fac.tag_speed"], 3, &[]),
-    ("board.smoke.fac.i2", 1, &["board.smoke.fac.tag_speed"], 0, &[]),
+    (
+        "board.smoke.fac.i1",
+        1,
+        &["board.smoke.fac.tag_speed"],
+        3,
+        &[],
+    ),
+    (
+        "board.smoke.fac.i2",
+        1,
+        &["board.smoke.fac.tag_speed"],
+        0,
+        &[],
+    ),
     (
         "board.smoke.fac.i3",
         8,
@@ -51,8 +63,20 @@ const IDEAS: [Idea; 7] = [
         0,
         &[(Stamp::Heart, 2)],
     ),
-    ("board.smoke.fac.i4", 4, &["board.smoke.fac.tag_team"], 1, &[]),
-    ("board.smoke.fac.i5", 4, &["board.smoke.fac.tag_team"], 0, &[]),
+    (
+        "board.smoke.fac.i4",
+        4,
+        &["board.smoke.fac.tag_team"],
+        1,
+        &[],
+    ),
+    (
+        "board.smoke.fac.i5",
+        4,
+        &["board.smoke.fac.tag_team"],
+        0,
+        &[],
+    ),
     ("board.smoke.fac.i6", 8, &[], 0, &[(Stamp::Party, 1)]),
     ("board.smoke.fac.i7", 12, &[], 0, &[]),
 ];
@@ -73,8 +97,15 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
         let at = [PAD + (i % 4) as f64 * step, PAD + (i / 4) as f64 * step];
         let mut el = note_el(doc, &tr(key), color, at);
         for t in tags {
-            let c = if *t == "board.smoke.fac.tag_speed" { TAG_RED } else { TAG_BLUE };
-            el.tags_mut().push(Tag { name: tr(t), color: c });
+            let c = if *t == "board.smoke.fac.tag_speed" {
+                TAG_RED
+            } else {
+                TAG_BLUE
+            };
+            el.tags_mut().push(Tag {
+                name: tr(t),
+                color: c,
+            });
         }
         el.set_votes(votes);
         for (s, n) in stamps {
@@ -85,7 +116,12 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
         id
     });
     // O frame das ideias: o que se arrasta à volta delas para agrupar.
-    let inner = [0.0, 0.0, 2.0 * PAD + cols * step - NOTE_GAP, 2.0 * PAD + 2.0 * step];
+    let inner = [
+        0.0,
+        0.0,
+        2.0 * PAD + cols * step - NOTE_GAP,
+        2.0 * PAD + 2.0 * step,
+    ];
     let ideas_frame = super::organize::frame(doc, &tr("board.smoke.fac.ideas_frame"), inner, None);
     for id in ideas {
         if let Some(mut el) = doc.get(id).cloned() {
@@ -97,7 +133,12 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
     let notes: [ElementId; 5] = std::array::from_fn(|i| {
         let key = ["l1", "l2", "l3", "l4", "l5"][i];
         let at = [i as f64 * (STICKY_SIDE + NOTE_GAP / 2.0), y];
-        let el = note_el(doc, &tr(&format!("board.smoke.fac.{key}")), STICKY_DEFAULT_COLOR, at);
+        let el = note_el(
+            doc,
+            &tr(&format!("board.smoke.fac.{key}")),
+            STICKY_DEFAULT_COLOR,
+            at,
+        );
         let id = el.id;
         BoardOp::Put(el).apply(doc);
         id
@@ -108,9 +149,22 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
         .iter()
         .filter_map(|id| doc.get(*id))
         .map(Element::aabb)
-        .fold([f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY], |a, b| {
-            [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])]
-        });
+        .fold(
+            [
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ],
+            |a, b| {
+                [
+                    a[0].min(b[0]),
+                    a[1].min(b[1]),
+                    a[2].max(b[2]),
+                    a[3].max(b[3]),
+                ]
+            },
+        );
     let bx = [
         all[0] - MARGIN_X,
         all[1] - MARGIN_Y,
@@ -139,7 +193,12 @@ fn note_el(doc: &mut BoardDoc, text: &str, color: usize, at: [f64; 2]) -> Elemen
         style: Style::new(Some(c), None, c.readable_ink()),
         text: text.into(),
     };
-    Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [at[0], at[1], STICKY_SIDE, STICKY_SIDE])
+    Element::new_shape(
+        doc.mint_id(),
+        doc.z_on_top(),
+        shape,
+        [at[0], at[1], STICKY_SIDE, STICKY_SIDE],
+    )
 }
 
 pub(super) fn scene_facilitate(hero: &mut HeroScreen) {

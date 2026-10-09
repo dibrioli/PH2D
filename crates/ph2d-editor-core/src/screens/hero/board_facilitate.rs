@@ -49,9 +49,13 @@ pub enum FacButton {
     VoteSeeAll,
     VoteClear,
     VoteClose,
+    /// V4 — no resultado: abrir uma votação NOVA (que, no fim, tira este do quadro).
+    VoteNew,
+    /// O fundo do cartão e do painel: toma o clique (um clique no mostrador não cai no quadro).
+    Surface,
 }
 
-const ALL: [FacButton; 25] = [
+const ALL: [FacButton; 27] = [
     FacButton::TimerMinus,
     FacButton::TimerPlus,
     FacButton::TimerPlay,
@@ -77,6 +81,8 @@ const ALL: [FacButton; 25] = [
     FacButton::VoteSeeAll,
     FacButton::VoteClear,
     FacButton::VoteClose,
+    FacButton::VoteNew,
+    FacButton::Surface,
 ];
 
 /// ⛔ Bits 40–47 diferentes dos saltos da navegação (`0x4e61_1…`–`0x4e61_4…`): o idioma dela.
@@ -119,6 +125,8 @@ fn tooltip_key(b: FacButton) -> &'static str {
         FacButton::VoteSeeAll => "board.vote.see_all",
         FacButton::VoteClear => "board.vote.clear",
         FacButton::VoteClose => "board.vote.close",
+        FacButton::VoteNew => "board.vote.new",
+        FacButton::Surface => "board.vote.surface",
     }
 }
 
@@ -146,16 +154,24 @@ pub(crate) fn btn() -> f32 {
 /// A largura do cartão e do painel, em botões.
 const CARD_BTNS: f32 = 8.0; // LITERAL-PX-OK: largura em botões (cabem −, +, ▶ e os três do canto)
 
+/// As filas que a busca ocupa no topo da área (o campo, as etiquetas e «n found»).
+const SEARCH_ROWS: f32 = 3.0; // LITERAL-PX-OK: filas da busca, em botões
+
 /// ⭐ F7 — a coluna da facilitação: o canto de cima à direita da área, à esquerda do painel de Frames
-/// quando ele está aberto (nunca por cima dele). `(x, y, largura)`.
+/// quando ele está aberto (nunca por cima dele), e por baixo da busca quando ela está aberta (a
+/// auditoria W7 viu o × da busca por cima do cartão). `(x, y, largura)`.
 #[must_use]
-pub fn column(area: Rect, frames_open: bool) -> (f32, f32, f32) {
+pub fn column(area: Rect, frames_open: bool, search_open: bool) -> (f32, f32, f32) {
     let w = btn() * CARD_BTNS;
     let mut right = area.x + area.w - Spacing::Md.px();
     if frames_open {
         right -= super::frames_panel_width() + Spacing::Md.px();
     }
-    (right - w, area.y + Spacing::Md.px(), w)
+    let mut top = area.y + Spacing::Md.px();
+    if search_open {
+        top += SEARCH_ROWS * (btn() + Spacing::Xs.px());
+    }
+    (right - w, top, w)
 }
 
 /// O quadro activo e a facilitação dele.
@@ -178,6 +194,18 @@ pub fn vote_open(hero: &HeroScreen) -> bool {
     hero.documents
         .active_board()
         .is_some_and(|b| hero.documents.live.fac.panels.contains_key(&b.id))
+}
+
+/// Há uma votação aberta no quadro activo?
+#[must_use]
+pub fn vote_in_session(hero: &HeroScreen) -> bool {
+    hero.documents.active_board().is_some()
+        && hero
+            .documents
+            .live
+            .editor
+            .as_ref()
+            .is_some_and(|e| e.vote().is_some())
 }
 
 /// O botão «Timer» da barra curta: abre o cartão (armado) ou fecha-o (e com ele o relógio).
@@ -203,23 +231,45 @@ pub fn toggle_vote(hero: &mut HeroScreen) {
         .documents
         .active_board()
         .is_some_and(|b| !ph2d_board_edit::vote_results(&b.doc).is_empty());
-    if let Some((id, f)) = active(hero) {
-        if f.panels.remove(&id).is_none() {
-            let p = if has_session {
-                VotePanel::Session
-            } else if has_results {
-                VotePanel::Results { all: false }
-            } else {
-                VotePanel::Setup(VoteSetup::default())
-            };
-            f.panels.insert(id, p);
+    if let Some((id, f)) = active(hero)
+        && f.panels.remove(&id).is_none()
+    {
+        let p = if has_session {
+            VotePanel::Session
+        } else if has_results {
+            VotePanel::Results { all: false }
+        } else {
+            VotePanel::Setup(VoteSetup::default())
+        };
+        f.panels.insert(id, p);
+    }
+}
+
+/// ⭐ Uma vez por pintura, com QUALQUER aba activa (a Cena incluída — F1: trocar de aba não pára um
+/// relógio): os cronómetros andam e o zero pede a campainha (F6). Os de quadros que já não existem
+/// saem (auditoria W7: a campainha tocava por um quadro apagado).
+pub fn tick(hero: &mut HeroScreen, now: Instant) {
+    let alive: std::collections::BTreeSet<BoardId> = hero
+        .documents
+        .boards()
+        .boards()
+        .iter()
+        .map(|b| b.id)
+        .collect();
+    let f = &mut hero.documents.live.fac;
+    f.timers.retain(|id, _| alive.contains(id));
+    for t in f.timers.values_mut() {
+        if t.tick(now) {
+            f.chime = true;
         }
     }
 }
 
-/// ⭐ Uma vez por pintura: a sessão de voto segue o SEU quadro (a aba mudou ⇒ estaciona-se e volta a
-/// do activo); os relógios andam (F6: a campainha; V6: o relógio da votação acaba-a).
-pub(crate) fn sync(hero: &mut HeroScreen, now: Instant) {
+/// ⭐ Antes de desenhar o quadro activo (os `+` e o esconder do resultado leem a sessão DELE — a
+/// auditoria W7 viu um quadro com a sessão do anterior): a sessão de voto segue o SEU quadro (a aba
+/// mudou ⇒ estaciona-se e volta a do activo), larga os alvos apagados ou escondidos (V2), e o zero do
+/// relógio da votação acaba-a (V6) — nunca a meio de um gesto (o desfazer dele guardaria o antes).
+pub fn follow(hero: &mut HeroScreen) {
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
@@ -233,16 +283,12 @@ pub(crate) fn sync(hero: &mut HeroScreen, now: Instant) {
         ed.put_vote(f.parked.remove(&board.id));
         f.in_editor = Some(board.id);
     }
-    for t in f.timers.values_mut() {
-        if t.tick(now) {
-            f.chime = true;
-        }
-    }
+    ed.prune_vote(&board.doc);
     let done = f
         .timers
         .get(&board.id)
         .is_some_and(|t| matches!(t.run(), TimerRun::Done { .. }));
-    if done && f.vote_clock.remove(&board.id).is_some() && ed.vote().is_some() {
+    if done && !ed.is_busy() && f.vote_clock.remove(&board.id).is_some() && ed.vote().is_some() {
         let history = live.histories.entry(board.id).or_default();
         ed.end_vote(&mut board.doc, history);
         f.panels.insert(board.id, VotePanel::Results { all: false });
@@ -270,7 +316,11 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             FacButton::TimerPlay => t.play(now),
             FacButton::TimerPause => t.pause(now),
             FacButton::TimerStop => t.confirm_stop = true,
-            FacButton::TimerConfirmStop => t.stop(),
+            FacButton::TimerConfirmStop => {
+                t.stop();
+                // O ■ larga o relógio da votação: a sessão segue sem relógio (auditoria W7).
+                f.vote_clock.remove(&board.id);
+            }
             FacButton::TimerCancelStop => t.confirm_stop = false,
             FacButton::TimerAdd1 | FacButton::VoteAdd1 => _ = t.add(now, Duration::from_secs(60)),
             FacButton::TimerAdd5 => _ = t.add(now, Duration::from_secs(300)),
@@ -291,6 +341,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     match (b, panel) {
         (FacButton::VotesMinus | FacButton::VotesPlus, Some(VotePanel::Setup(mut s))) => {
             let up = b == FacButton::VotesPlus;
+            // CLAMP-OK: 1 ≤ VOTES_MAX (99) — constantes, o mínimo nunca passa o máximo.
             s.votes = if up { s.votes + 1 } else { s.votes - 1 }.clamp(1, VOTES_MAX);
             f.panels.insert(board.id, VotePanel::Setup(s));
         }
@@ -334,6 +385,10 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 .insert(board.id, VotePanel::Setup(VoteSetup::default()));
         }
         (FacButton::VoteClose, _) => _ = f.panels.remove(&board.id),
+        (FacButton::VoteNew, Some(VotePanel::Results { .. })) => {
+            f.panels
+                .insert(board.id, VotePanel::Setup(VoteSetup::default()));
+        }
         _ => {}
     }
     if let Some(n) = ed.take_notice() {

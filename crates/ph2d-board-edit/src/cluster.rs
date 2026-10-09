@@ -107,10 +107,7 @@ impl Editor {
             .iter()
             .map(|e| e.aabb()[1])
             .fold(f64::INFINITY, f64::min);
-        // Todas na mesma casa ⇒ os frames novos moram nela.
-        let home = notes[0]
-            .frame
-            .filter(|f| notes.iter().all(|e| e.frame == Some(*f)));
+        let home = common_home(doc, notes);
         let mut z = doc.z_on_top();
         let mut next_z = || {
             let k = z.clone();
@@ -150,6 +147,9 @@ impl Editor {
                     }
                     let to = [x + px + c as f64 * (col_w + gx), y];
                     el.translate([to[0] - el.x, to[1] - el.y]);
+                    // A grelha é direita: a nota também (rodada, a caixa dela sairia da célula —
+                    // auditoria W7).
+                    el.angle = 0.0;
                     el.frame = Some(fid);
                     // Um grupo não atravessa frames (o Miro, W5): a nota sai dos grupos dela.
                     el.groups_mut().clear();
@@ -169,9 +169,18 @@ impl Editor {
                 need[3] = need[3].max(e.y + e.h);
             }
         }
-        let chain = home.map(|h| std::iter::once(h).chain(doc.frame_chain(h)).collect::<Vec<_>>());
+        let chain = home.map(|h| {
+            std::iter::once(h)
+                .chain(doc.frame_chain(h))
+                .collect::<Vec<_>>()
+        });
         for f in chain.unwrap_or_default() {
-            let Some(mut fe) = doc.get(f).cloned() else {
+            // Um frame travado não muda (W5), e um rodado não se alarga pelos eixos do mundo.
+            let Some(mut fe) = doc
+                .get(f)
+                .cloned()
+                .filter(|e| !e.locked() && e.angle == 0.0)
+            else {
                 break;
             };
             let [x1, y1] = [fe.x + fe.w, fe.y + fe.h];
@@ -184,12 +193,25 @@ impl Editor {
             if grown == [fe.x, fe.y, x1, y1] {
                 break;
             }
-            (fe.x, fe.y, fe.w, fe.h) = (grown[0], grown[1], grown[2] - grown[0], grown[3] - grown[1]);
+            (fe.x, fe.y, fe.w, fe.h) =
+                (grown[0], grown[1], grown[2] - grown[0], grown[3] - grown[1]);
             need = grown;
             ops.push(BoardOp::Put(fe));
         }
         (ops, frames)
     }
+}
+
+/// C2 — a casa dos grupos: o frame mais interior que contém TODAS as notas (o antepassado comum, a
+/// qualquer profundidade — auditoria W7) e que não está rodado (a grelha é direita; um rodado passa a
+/// casa ao de fora dele). `None` = o quadro.
+fn common_home(doc: &BoardDoc, notes: &[Element]) -> Option<ElementId> {
+    let chains: Vec<Vec<ElementId>> = notes.iter().map(|e| doc.frame_chain(e.id)).collect();
+    chains[0]
+        .iter()
+        .copied()
+        .filter(|f| doc.get(*f).is_some_and(|e| e.angle == 0.0))
+        .find(|f| chains.iter().all(|c| c.contains(f)))
 }
 
 /// C5 — um grupo por cor, sem título.

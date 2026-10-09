@@ -270,3 +270,79 @@ fn a_selected_frame_clusters_its_notes_and_grows_to_hold_them() {
     }
     assert!(home.w > 700.0, "o frame cresceu: {}", home.w);
 }
+
+// ─── Curas da auditoria W7 ──────────────────────────────────────────────────────────────────────
+
+impl World {
+    fn frame_with(
+        &mut self,
+        bx: [f64; 4],
+        kids: &[ElementId],
+        parent: Option<ElementId>,
+    ) -> ElementId {
+        let mut f = self.ed.new_frame(&mut self.doc, bx);
+        f.z = self.doc.z_on_top();
+        f.frame = parent;
+        let id = f.id;
+        self.h.apply(&mut self.doc, vec![BoardOp::Put(f)]);
+        for k in kids {
+            let mut el = self.el(*k).clone();
+            el.frame = Some(id);
+            self.h.apply(&mut self.doc, vec![BoardOp::Put(el)]);
+        }
+        id
+    }
+}
+
+/// C2: a casa é o antepassado COMUM (notas em F e no subframe G ⇒ os grupos moram em F).
+#[test]
+fn the_home_is_the_common_ancestor_frame() {
+    let mut w = world();
+    let a = w.sticky([20.0, 20.0], "a", 1, &[]);
+    let b = w.sticky([240.0, 20.0], "b", 4, &[]);
+    let c = w.sticky([520.0, 20.0], "c", 8, &[]);
+    let f = w.frame_with([0.0, 0.0, 900.0, 300.0], &[a, b], None);
+    w.frame_with([500.0, 0.0, 300.0, 260.0], &[c], Some(f));
+    w.ed.select(&w.doc, [f]);
+    assert!(w.ed.cluster(&mut w.doc, &mut w.h, ClusterBy::Color, &names()));
+    for g in w.ed.selection().clone() {
+        assert_eq!(w.el(g).frame, Some(f));
+    }
+}
+
+/// C2 + W5: um frame TRAVADO não cresce.
+#[test]
+fn a_locked_home_does_not_grow() {
+    let mut w = world();
+    let a = w.sticky([20.0, 20.0], "a", 1, &[]);
+    let b = w.sticky([240.0, 20.0], "b", 4, &[]);
+    let f = w.frame_with([0.0, 0.0, 500.0, 260.0], &[a, b], None);
+    let mut fe = w.el(f).clone();
+    fe.set_locked(true);
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(fe)]);
+    w.ed.select(&w.doc, [a, b]);
+    assert!(w.ed.cluster(&mut w.doc, &mut w.h, ClusterBy::Color, &names()));
+    assert!(close(w.el(f).w, 500.0) && close(w.el(f).h, 260.0));
+}
+
+/// C2: num frame RODADO a grelha direita não mora — passa à casa de fora (aqui, o quadro); C3: as
+/// notas rodadas ficam direitas na grelha.
+#[test]
+fn a_rotated_home_passes_the_groups_out_and_notes_straighten() {
+    let mut w = world();
+    let a = w.sticky([20.0, 20.0], "a", 1, &[]);
+    let b = w.sticky([240.0, 20.0], "b", 4, &[]);
+    let f = w.frame_with([0.0, 0.0, 500.0, 260.0], &[a, b], None);
+    for id in [f, a, b] {
+        let mut e = w.el(id).clone();
+        e.angle = 0.3;
+        w.h.apply(&mut w.doc, vec![BoardOp::Put(e)]);
+    }
+    w.ed.select(&w.doc, [a, b]);
+    assert!(w.ed.cluster(&mut w.doc, &mut w.h, ClusterBy::Color, &names()));
+    for g in w.ed.selection().clone() {
+        assert_eq!(w.el(g).frame, None);
+    }
+    assert!(w.el(a).angle == 0.0 && w.el(b).angle == 0.0);
+    assert!(close(w.el(f).angle, 0.3), "o frame rodado não mexe");
+}

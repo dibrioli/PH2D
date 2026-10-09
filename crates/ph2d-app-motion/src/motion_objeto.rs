@@ -28,6 +28,9 @@ pub mod origem;
 /// ⭐ Add ▸ Motion.
 #[path = "motion_object_add.rs"]
 pub mod object_add;
+/// `PH2D_MOTION_OBJETO_SMOKE=1|2` — a cena do smoke do dono.
+#[path = "motion_objeto_smoke.rs"]
+pub mod smoke;
 /// ⭐ Motion ▸ Edit — a família de modos.
 #[path = "motion_objeto_modo.rs"]
 pub mod modo;

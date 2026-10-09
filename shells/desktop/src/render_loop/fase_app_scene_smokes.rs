@@ -18,6 +18,7 @@ impl crate::App {
         self.stack_smoke();
         self.animacao_smoke();
         self.with_motion_scene(ph2d_app_motion::motion_path_smoke::motion_path_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_objeto::smoke::motion_objeto_smoke);
         self.harmony_smoke();
         self.timeline_onion_smoke();
         self.signal_smoke();

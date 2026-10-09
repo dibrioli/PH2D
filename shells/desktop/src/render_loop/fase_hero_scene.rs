@@ -102,8 +102,15 @@ impl crate::App {
             self.fase_vector_layout_recook(vec_view, vec_xf, vec_live)?;
         let (vec_view, vec_xf, cam_affine, vec_live) =
             self.fase_vector_fx_recook(vec_view, vec_xf, cam_affine, vec_live)?;
+        // ⭐ As formas do Motion desenham com a ferramenta OU com um objecto Motion visível (doc
+        // ObjectsAndComponents 01 §13) — a mesma lei do passe de sprites.
+        let motion_draws = motion_tool_active
+            || self
+                .gfx
+                .as_ref()
+                .is_some_and(|g| g.motion.objeto.desenha());
         let (vec_view, vec_xf, cam_affine) = self.fase_vector_bands(
-            motion_tool_active,
+            motion_draws,
             vec_view,
             vec_xf,
             cam_affine,
@@ -111,7 +118,7 @@ impl crate::App {
             viewport,
         )?;
         let (overlay, vec_xf, cam_affine) =
-            self.fase_vector_overlays(motion_tool_active, vector_active, vec_xf, cam_affine)?;
+            self.fase_vector_overlays(motion_draws, vector_active, vec_xf, cam_affine)?;
         let (vec_xf, cam_affine) =
             self.fase_vector_edit_overlay(vec_view, vec_xf, cam_affine, overlay)?;
         let cam_affine = self.fase_vector_bone_overlay(vec_px_to_world, cam_affine)?;

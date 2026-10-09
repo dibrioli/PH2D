@@ -150,6 +150,44 @@ for _ in range(120):
     rab.append((min(1300, max(500, x + rng.uniform(-40, 40))), min(850, max(200, y + rng.uniform(-40, 40)))))
 entrada("rabisco", "rabisco aleatório (semente fixa)", resample(rab))
 
+# ── 2.ª LEVA (F7, 08/10): o que a 1.ª não perguntava. Acrescentada DEPOIS do rabisco e sem `rng`:
+# as 43 de cima continuam byte a byte iguais. ─────────────────────────────────────────────────────
+
+
+def skew(cx, cy, w, h, deg):
+    """Paralelogramo w×h cujos lados verticais se inclinam `deg` graus (ângulos 90±deg)."""
+    dx = h * math.tan(math.radians(deg)) / 2
+    return resample([(cx - w / 2 - dx, cy - h / 2), (cx + w / 2 - dx, cy - h / 2), (cx + w / 2 + dx, cy + h / 2),
+                     (cx - w / 2 + dx, cy + h / 2), (cx - w / 2 - dx, cy - h / 2)])
+
+
+def rounded(cx, cy, w, h, r):
+    """Rectângulo com cantos arredondados de raio r (a quina de uma mão), a começar no lado de cima."""
+    pts = []
+    for (ox, oy, a0) in ((w / 2 - r, -h / 2 + r, -90), (w / 2 - r, h / 2 - r, 0), (-w / 2 + r, h / 2 - r, 90), (-w / 2 + r, -h / 2 + r, 180)):
+        for k in range(10):
+            a = math.radians(a0 + 9 * k)
+            pts.append((cx + ox + r * math.cos(a), cy + oy + r * math.sin(a)))
+    return resample([(cx, cy - h / 2)] + pts + [(cx, cy - h / 2)])
+
+
+for deg in (3, 6, 10, 15, 20, 30):
+    entrada(f"paralelogramo_{deg:02d}", f"400×250 com os lados inclinados {deg}° (ângulos 90±{deg})", skew(800, 500, 400, 250, deg))
+entrada("trapezio", "trapézio: base 400, topo 200, altura 250", resample([(600, 625), (1000, 625), (900, 375), (700, 375), (600, 625)]))
+for r in (20, 40):
+    entrada(f"rect_cantos_r{r}", f"400×250 com cantos arredondados de raio {r} px", rounded(800, 500, 400, 250, r))
+entrada("rect_comeca_no_meio", "400×250 começado no MEIO do lado de cima", resample([(800, 375), (1000, 375), (1000, 625), (600, 625), (600, 375), (800, 375)]))
+entrada("rect_passa_do_inicio", "400×250 que passa 60 px do ponto de partida", resample([(600, 375), (1000, 375), (1000, 625), (600, 625), (600, 375), (660, 375)]))
+entrada("circulo_passa_10", "círculo raio 150 que passa 10 % da volta", ellipse(800, 500, 150, 150, 0.0, 2.2 * math.pi))
+entrada("elipse_3para2", "elipse 300×200, alinhada", ellipse(800, 500, 300, 200))
+entrada("linha_com_gancho", "linha de 500 px com um gancho de 30 px no fim", resample([(550, 500), (1050, 500), (1060, 530)]))
+# o ENDIREITAR aos eixos: a linha com tremor (0,16°) e com gancho (0,6°) saíram horizontais, o
+# rectângulo rodado 10° ficou rodado — onde fica a fronteira?
+for deg in (2, 4, 6, 8):
+    a = math.radians(deg)
+    entrada(f"linha_rodada_{deg:02d}", f"linha de 500 px inclinada {deg}°", line(550, 500, 550 + 500 * math.cos(a), 500 + 500 * math.sin(a)))
+    entrada(f"rect_rodado_{deg:02d}", f"400×250 rodado {deg}°", rect(800, 500, 400, 250, a))
+
 for nome, varia, pts in ENTRADAS:
     with open(os.path.join(OUT, nome + ".txt"), "w", encoding="utf-8") as f:
         f.write(f"# entrada: {nome}\n# varia: {varia}\n# unidade: px da tela virtual 1600x1000\n# pontos: {len(pts)}\n")

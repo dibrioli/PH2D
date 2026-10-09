@@ -88,6 +88,8 @@ pub struct Pencil {
     px_to_world: f64,
     /// Tolerância do decimador em pixels de tela (o *Fidelity*).
     fidelity_px: f64,
+    /// O QuickShape do gesto em curso ([`crate::quickshape_hold`]).
+    hold: crate::quickshape_hold::Hold,
 }
 
 impl Pencil {
@@ -140,6 +142,7 @@ impl Pencil {
         }
         self.samples.clear();
         self.dyns.clear();
+        self.hold.reset();
         self.samples.push(p);
         self.dyns.push(dyn_in);
         self.px_to_world = px_to_world.max(f64::MIN_POSITIVE);
@@ -156,6 +159,10 @@ impl Pencil {
     pub fn on_drag(&mut self, scene: &mut VecScene, p: [f64; 2], dyn_in: PenDynamics) -> bool {
         if self.active.is_none() {
             return false;
+        }
+        // Com a forma reconhecida, o arrasto ESCALA e RODA (não desenha).
+        if self.hold.drag(p) {
+            return self.rebuild(scene);
         }
         let Some(&last) = self.samples.last() else {
             return false;
@@ -183,6 +190,7 @@ impl Pencil {
         self.committed = Some(id);
         self.samples.clear();
         self.dyns.clear();
+        self.hold.reset();
         true
     }
 
@@ -193,6 +201,44 @@ impl Pencil {
         }
         self.samples.clear();
         self.dyns.clear();
+        self.hold.reset();
+    }
+
+    /// **O quadro do QuickShape** — a shell chama a cada quadro com o traço aberto, com o relógio
+    /// dos carimbos das amostras. Parado [`crate::quickshape_hold::HOLD_NS`] e `enabled` ⇒ o
+    /// traço vira a forma perfeita (o caminho vivo é reescrito); `regular` = o `Shift`.
+    pub fn hold_tick(
+        &mut self,
+        scene: &mut VecScene,
+        now_ns: u128,
+        regular: bool,
+        enabled: bool,
+    ) -> crate::quickshape_hold::HoldTick {
+        use crate::quickshape_hold::HoldTick;
+        let (Some(_), Some(last)) = (self.active, self.dyns.last()) else {
+            return HoldTick::Idle;
+        };
+        let t = self.hold.tick(&self.samples, last.t_ns, now_ns, self.px_to_world, regular, enabled);
+        if t != HoldTick::Idle {
+            self.rebuild(scene);
+        }
+        t
+    }
+
+    /// Há uma forma reconhecida no gesto em curso?
+    #[must_use]
+    pub fn is_quick(&self) -> bool {
+        self.hold.is_live()
+    }
+
+    /// **`Esc` com a forma reconhecida** devolve o traço livre (e este gesto não reconhece mais).
+    /// `false` = não havia forma (quem chamou faz o `Esc` de sempre).
+    pub fn quick_dismiss(&mut self, scene: &mut VecScene) -> bool {
+        let had = self.hold.dismiss();
+        if had {
+            self.rebuild(scene);
+        }
+        had
     }
 
     /// **O perfil de largura que este gesto pede**, na fonte dada (W1d).
@@ -206,6 +252,10 @@ impl Pencil {
     /// caminho autorado — exatamente o que o preview vivo existe para não fazer.
     #[must_use]
     pub fn width_stops(&self, source: WidthSource) -> WidthStops {
+        // A forma perfeita tem a largura do estilo: o perfil da mão descrevia o traço que saiu.
+        if self.hold.is_live() {
+            return WidthStops::default();
+        }
         width_stops(source, &self.samples, &self.dyns)
     }
 
@@ -228,11 +278,18 @@ impl Pencil {
         let Some(id) = self.active else {
             return false;
         };
-        let path = self.build();
+        let (verts, closed) = match self.hold.shape() {
+            Some(s) => {
+                let p = s.to_path();
+                (p.verts, p.closed)
+            }
+            None => (self.fit(), false),
+        };
         let Some(live) = scene.path_mut(id) else {
             return false;
         };
-        live.verts = path.verts;
+        live.verts = verts;
+        live.closed = closed;
         true
     }
 

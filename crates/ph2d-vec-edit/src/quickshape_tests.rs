@@ -1,0 +1,407 @@
+//! Gates do QuickShape — irmão de `quickshape.rs`.
+//!
+//! ⭐ O gate principal lê TODAS as fixtures do oráculo (`oraculo_quickshape/fixtures/`): as `in` são
+//! a entrada, as `out` a resposta do Xournal++. Tipo igual e geometria a ≤ 1 unidade de página
+//! (cantos, pontas, centro) e ≤ 1 % do raio; o «cru» dá `None`. As excepções são a lei do
+//! PRODUTO do dono (o Procreate) ou um defeito MEDIDO do oráculo, cada uma com o motivo no nome e um
+//! gate de auto-consistência contra a geometria que gerou o traço (`gera_entradas.py`).
+
+use super::*;
+
+const FIXTURES: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../docs/UI_New_and_Simple/vetor_nova_ui/oraculo_quickshape/fixtures"
+);
+
+/// Unidades de página (a régua do oráculo).
+const TOL: f64 = 1.0;
+
+struct Fixture {
+    name: String,
+    scale: [f64; 2],
+    offset: [f64; 2],
+    input: Vec<P2>,
+    out: Vec<P2>,
+    recognised: bool,
+}
+
+impl Fixture {
+    /// Um ponto da tela virtual do gerador, em unidades de página (a calibração do cabeçalho).
+    fn page(&self, p: P2) -> P2 {
+        [p[0] * self.scale[0] + self.offset[0], p[1] * self.scale[1] + self.offset[1]]
+    }
+    fn ours(&self) -> Option<QuickShape> {
+        recognise(&self.input, self.scale[0], false)
+    }
+}
+
+fn nums(s: &str) -> Vec<f64> {
+    s.split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
+        .filter_map(|t| t.parse().ok())
+        .collect()
+}
+
+fn load() -> Vec<Fixture> {
+    let mut v: Vec<Fixture> = std::fs::read_dir(FIXTURES)
+        .expect("a pasta das fixtures do oráculo")
+        .filter_map(|e| {
+            let path = e.ok()?.path();
+            (path.extension()? == "txt").then_some(path)
+        })
+        .map(|path| {
+            let text = std::fs::read_to_string(&path).expect("fixture legível");
+            let (mut f, mut cal) = (
+                Fixture {
+                    name: path.file_stem().unwrap().to_string_lossy().into_owned(),
+                    scale: [0.0; 2],
+                    offset: [0.0; 2],
+                    input: Vec::new(),
+                    out: Vec::new(),
+                    recognised: false,
+                },
+                Vec::new(),
+            );
+            for l in text.lines() {
+                if let Some(c) = l.strip_prefix("# calibracao:") {
+                    cal = nums(c);
+                } else if l.starts_with("# reconhecido: sim") {
+                    f.recognised = true;
+                } else if let Some(p) = l.strip_prefix("in ") {
+                    let n = nums(p);
+                    f.input.push([n[0], n[1]]);
+                } else if let Some(p) = l.strip_prefix("out ") {
+                    let n = nums(p);
+                    f.out.push([n[0], n[1]]);
+                }
+            }
+            assert_eq!(cal.len(), 4, "{}: a calibração do cabeçalho", f.name);
+            (f.scale, f.offset) = ([cal[0], cal[1]], [cal[2], cal[3]]);
+            f
+        })
+        .collect();
+    v.sort_by(|a, b| a.name.cmp(&b.name));
+    v
+}
+
+/// A pior distância de um ponto de `want` ao ponto mais perto de `got` (e as contagens iguais).
+fn worst(got: &[P2], want: &[P2]) -> f64 {
+    assert_eq!(got.len(), want.len(), "contagem de cantos {got:?} vs {want:?}");
+    want.iter()
+        .map(|&w| got.iter().map(|&g| dist(g, w)).fold(f64::MAX, f64::min))
+        .fold(0.0, f64::max)
+}
+
+fn circle_of(out: &[P2]) -> (P2, f64) {
+    let pts = if out.first() == out.last() { &out[..out.len() - 1] } else { out };
+    let c = centroid(pts);
+    (c, pts.iter().map(|&p| dist(p, c)).sum::<f64>() / pts.len() as f64)
+}
+
+/// O resíduo rms do traço contra um círculo — quem o desenha MELHOR.
+fn circle_rms(input: &[P2], c: P2, r: f64) -> f64 {
+    (input.iter().map(|&p| (dist(p, c) - r).powi(2)).sum::<f64>() / input.len() as f64).sqrt()
+}
+
+/// O que a nossa lei responde onde o oráculo NÃO manda, e porquê. A geometria esperada vem do
+/// gerador (px da tela virtual), passada à página pela calibração da própria fixture.
+enum Own {
+    /// O Procreate faz polígonos de N lados onde o Xournal++ faz um círculo; e quadriláteros e
+    /// rectângulos «de mão» (arredondados, começados a meio, que passam do início) onde ele é cru.
+    Closed(Vec<P2>),
+    /// A polilinha aberta do Procreate (o Xournal++ deixa-a crua).
+    Open(Vec<P2>),
+    /// A elipse do Procreate: centro, semi-eixos, rotação (graus).
+    Ellipse(P2, f64, f64, f64),
+    /// O centróide do oráculo FOGE do traço (do buraco de um círculo aberto, para a sobreposição
+    /// de um que passa): o nosso círculo tem de desenhar o traço MELHOR que o dele.
+    CircleFitsBetter,
+}
+
+fn rect_400x250() -> Vec<P2> {
+    vec![[600.0, 375.0], [1000.0, 375.0], [1000.0, 625.0], [600.0, 625.0]]
+}
+
+fn regular(n: usize) -> Vec<P2> {
+    (0..n)
+        .map(|k| {
+            let a = -FRAC_PI_2 + TAU * k as f64 / n as f64;
+            [800.0 + 200.0 * a.cos(), 500.0 + 200.0 * a.sin()]
+        })
+        .collect()
+}
+
+fn own(name: &str) -> Option<Own> {
+    let skew = |deg: f64| {
+        let dx = 250.0 * deg.to_radians().tan() / 2.0;
+        Own::Closed(vec![[600.0 - dx, 375.0], [1000.0 - dx, 375.0], [1000.0 + dx, 625.0], [600.0 + dx, 625.0]])
+    };
+    Some(match name {
+        "poligono_5_lados" => Own::Closed(regular(5)),
+        "poligono_6_lados" => Own::Closed(regular(6)),
+        "poligono_8_lados" => Own::Closed(regular(8)),
+        // O único rectângulo PERFEITO do corpus — o oráculo recusa-o e aceita o mesmo com tremor ±3.
+        "rect_alinhado_400x250" | "rect_cantos_r20" | "rect_cantos_r40" | "rect_comeca_no_meio" | "rect_passa_do_inicio" => {
+            Own::Closed(rect_400x250())
+        }
+        "paralelogramo_10" => skew(10.0),
+        "paralelogramo_15" => skew(15.0),
+        "paralelogramo_20" => skew(20.0),
+        "paralelogramo_30" => skew(30.0),
+        "trapezio" => Own::Closed(vec![[600.0, 625.0], [1000.0, 625.0], [900.0, 375.0], [700.0, 375.0]]),
+        "forma_L" => Own::Open(vec![[600.0, 300.0], [600.0, 700.0], [1000.0, 700.0]]),
+        "forma_V" => Own::Open(vec![[600.0, 300.0], [800.0, 700.0], [1000.0, 300.0]]),
+        "zigzag_4" => Own::Open(vec![[500.0, 400.0], [650.0, 650.0], [800.0, 400.0], [950.0, 650.0], [1100.0, 400.0]]),
+        // O rectângulo aberto 90 px é uma polilinha de 4 lados: a ponta é onde a mão parou.
+        "rect_aberto_90" => {
+            let mut v = rect_400x250();
+            v.push([600.0, 465.0]);
+            Own::Open(v)
+        }
+        "elipse_2para1" => Own::Ellipse([800.0, 500.0], 300.0, 150.0, 0.0),
+        "elipse_2para1_rodada_30" => Own::Ellipse([800.0, 500.0], 300.0, 150.0, 30.0),
+        "elipse_3para2" => Own::Ellipse([800.0, 500.0], 300.0, 200.0, 0.0),
+        "circulo_aberto_40" | "circulo_passa_10" => Own::CircleFitsBetter,
+        _ => return None,
+    })
+}
+
+#[test]
+fn the_oracle_fixtures_all_agree_with_the_law_or_with_the_owners_product() {
+    let all = load();
+    // Controlos: a pasta inteira foi lida, e o oráculo reconheceu o bastante para medir algo.
+    assert!(all.len() >= 65, "só {} fixtures lidas", all.len());
+    let rec = all.iter().filter(|f| f.recognised).count();
+    assert!(rec >= 26, "controlo positivo: só {rec} fixtures reconhecidas pelo oráculo");
+    let mut failures = Vec::new();
+    for f in &all {
+        let got = f.ours();
+        let verdict = match (own(&f.name), &got) {
+            (Some(Own::Closed(want)), Some(QuickShape::Polygon { corners, closed: true })) => {
+                let want: Vec<P2> = want.iter().map(|&p| f.page(p)).collect();
+                (worst(corners, &want) <= TOL).then_some(()).ok_or(format!("cantos {corners:?} vs {want:?}"))
+            }
+            (Some(Own::Open(mut want)), Some(QuickShape::Polygon { corners, closed: false })) => {
+                if f.name == "rect_aberto_90" {
+                    // A ponta solta é a última amostra da mão (já em página).
+                    want.pop();
+                }
+                let mut want: Vec<P2> = want.iter().map(|&p| f.page(p)).collect();
+                if f.name == "rect_aberto_90" {
+                    want.push(f.input[f.input.len() - 1]);
+                }
+                (worst(corners, &want) <= TOL).then_some(()).ok_or(format!("cantos {corners:?} vs {want:?}"))
+            }
+            (Some(Own::Ellipse(c, rx, ry, deg)), Some(QuickShape::Ellipse { centre, rx: a, ry: b, rot })) => {
+                let (want_a, want_b) = (rx * f.scale[0], ry * f.scale[0]);
+                let drot = wrap_pi(2.0 * (rot - deg.to_radians())).abs() / 2.0;
+                (dist(*centre, f.page(c)) <= TOL
+                    && (a - want_a).abs() <= 0.01 * want_a
+                    && (b - want_b).abs() <= 0.01 * want_b
+                    && drot <= 1f64.to_radians())
+                .then_some(())
+                .ok_or(format!("elipse {centre:?} {a} {b} {rot} vs {:?} {want_a} {want_b} {deg}°", f.page(c)))
+            }
+            (Some(Own::CircleFitsBetter), Some(QuickShape::Ellipse { centre, rx, ry, .. })) if rx == ry => {
+                let (oc, or) = circle_of(&f.out);
+                let (ours, theirs) = (circle_rms(&f.input, *centre, *rx), circle_rms(&f.input, oc, or));
+                ((rx - or).abs() <= 0.01 * or && ours < theirs)
+                    .then_some(())
+                    .ok_or(format!("o nosso desenha o traço a {ours:.3}, o do oráculo a {theirs:.3}"))
+            }
+            (Some(_), other) => Err(format!("a lei própria pedia outra forma, saiu {other:?}")),
+            (None, ours) if !f.recognised => ours.is_none().then_some(()).ok_or(format!("o oráculo é cru, saiu {ours:?}")),
+            (None, Some(QuickShape::Line { a, b })) if f.out.len() == 2 => {
+                let e = (dist(*a, f.out[0]).max(dist(*b, f.out[1]))).min(dist(*a, f.out[1]).max(dist(*b, f.out[0])));
+                (e <= TOL).then_some(()).ok_or(format!("pontas a {e:.2}"))
+            }
+            (None, Some(QuickShape::Polygon { corners, closed: true })) if f.out.len() <= 6 => {
+                let want = &f.out[..f.out.len() - 1];
+                (worst(corners, want) <= TOL).then_some(()).ok_or(format!("cantos {corners:?} vs {want:?}"))
+            }
+            (None, Some(QuickShape::Ellipse { centre, rx, ry, .. })) if rx == ry && f.out.len() > 6 => {
+                let (oc, or) = circle_of(&f.out);
+                (dist(*centre, oc) <= TOL && (rx - or).abs() <= 0.01 * or)
+                    .then_some(())
+                    .ok_or(format!("círculo {centre:?} r {rx} vs {oc:?} r {or}"))
+            }
+            (None, ours) => Err(format!("o oráculo reconheceu {} pontos, saiu {ours:?}", f.out.len())),
+        };
+        if let Err(e) = verdict {
+            failures.push(format!("{}: {e}", f.name));
+        }
+    }
+    assert!(failures.is_empty(), "{} de {} fixtures divergem:\n{}", failures.len(), all.len(), failures.join("\n"));
+}
+
+#[test]
+fn every_own_law_exception_names_a_fixture_that_exists() {
+    let names: Vec<String> = load().into_iter().map(|f| f.name).collect();
+    let used = names.iter().filter(|n| own(n).is_some()).count();
+    // 3 polígonos + 5 rectângulos de mão + 5 quadriláteros + 4 polilinhas + 3 elipses + 2 círculos.
+    assert_eq!(used, 22, "uma excepção ficou órfã (a fixture mudou de nome?)");
+}
+
+// ── o `regular` (Shift / o 2.º dedo) ────────────────────────────────────────────────────────────
+
+/// Um traço de mão em mundo 1:1 (px), amostrado a 4 px, com um tremor determinístico.
+fn hand(poly: &[P2], amp: f64) -> Vec<P2> {
+    let mut out = vec![poly[0]];
+    for w in poly.windows(2) {
+        let n = (dist(w[0], w[1]) / 4.0).ceil() as usize;
+        out.extend((1..=n).map(|i| add(w[0], mul(sub(w[1], w[0]), i as f64 / n as f64))));
+    }
+    out.iter()
+        .enumerate()
+        .map(|(i, &p)| add(p, [amp * (i as f64 * 1.9).sin(), amp * (i as f64 * 2.7).cos()]))
+        .collect()
+}
+
+fn sides(c: &[P2]) -> Vec<f64> {
+    (0..c.len()).map(|i| dist(c[i], c[(i + 1) % c.len()])).collect()
+}
+
+#[test]
+fn regular_turns_a_rectangle_into_a_square_and_a_triangle_into_an_equilateral() {
+    let rect = hand(&[[0.0, 0.0], [400.0, 10.0], [395.0, 260.0], [-5.0, 250.0], [0.0, 0.0]], 1.0);
+    let Some(QuickShape::Polygon { corners, closed: true }) = recognise(&rect, 1.0, true) else { panic!("rect") };
+    let s = sides(&corners);
+    assert_eq!(s.len(), 4);
+    assert!(s.iter().all(|x| (x - s[0]).abs() < 1e-6), "lados iguais: {s:?}");
+    let tri = hand(&[[0.0, 0.0], [400.0, 30.0], [150.0, 300.0], [0.0, 0.0]], 1.0);
+    let Some(QuickShape::Polygon { corners, closed: true }) = recognise(&tri, 1.0, true) else { panic!("tri") };
+    let s = sides(&corners);
+    assert!(s.len() == 3 && s.iter().all(|x| (x - s[0]).abs() < 1e-6), "equilátero: {s:?}");
+    // Controlo: sem `regular` o mesmo triângulo fica COMO DESENHADO.
+    let Some(QuickShape::Polygon { corners, .. }) = recognise(&tri, 1.0, false) else { panic!("tri") };
+    let s = sides(&corners);
+    assert!((s[0] - s[2]).abs() > 50.0, "o triângulo cru não se regulariza: {s:?}");
+}
+
+#[test]
+fn regular_rounds_an_ellipse_and_snaps_a_line_to_fifteen_degrees() {
+    let e: Vec<P2> = (0..=300).map(|i| {
+        let a = TAU * i as f64 / 300.0;
+        [300.0 * a.cos(), 150.0 * a.sin()]
+    }).collect();
+    assert!(matches!(recognise(&e, 1.0, false), Some(QuickShape::Ellipse { rx, ry, .. }) if (rx / ry - 2.0).abs() < 0.02));
+    assert!(matches!(recognise(&e, 1.0, true), Some(QuickShape::Ellipse { rx, ry, .. }) if rx == ry));
+    let l = hand(&[[0.0, 0.0], [400.0 * 22f64.to_radians().cos(), 400.0 * 22f64.to_radians().sin()]], 0.5);
+    let Some(QuickShape::Line { a, b }) = recognise(&l, 1.0, true) else { panic!("linha") };
+    assert!((angle(sub(b, a)).to_degrees() - 15.0).abs() < 1e-9, "22° vira 15°");
+    let Some(QuickShape::Line { a, b }) = recognise(&l, 1.0, false) else { panic!("linha") };
+    assert!((angle(sub(b, a)).to_degrees() - 22.0).abs() < 0.5, "sem regular fica a 22°");
+}
+
+#[test]
+fn the_minimum_size_is_in_screen_pixels() {
+    let l = hand(&[[0.0, 0.0], [80.0, 0.0]], 0.0);
+    assert!(recognise(&l, 1.0, false).is_none(), "80 px < 94 px");
+    // O MESMO traço em mundo, visto com zoom 2× (meio mundo por px): 160 px na tela.
+    assert!(recognise(&l, 0.5, false).is_some(), "160 px de tela é uma linha");
+}
+
+#[test]
+fn transformed_scales_and_turns_about_the_pivot_and_to_path_keeps_the_nodes() {
+    let sq = QuickShape::Polygon { corners: vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]], closed: true };
+    assert_eq!(sq.pivot(), [1.0, 1.0]);
+    let QuickShape::Polygon { corners, .. } = sq.transformed([1.0, 1.0], 2.0, FRAC_PI_2) else { panic!() };
+    assert!(dist(corners[0], [3.0, -1.0]) < 1e-12, "{corners:?}");
+    let p = sq.to_path();
+    assert!(p.closed && p.verts.len() == 4);
+    let e = QuickShape::Ellipse { centre: [0.0, 0.0], rx: 2.0, ry: 1.0, rot: FRAC_PI_2 };
+    let p = e.to_path();
+    assert!(p.closed && p.verts.len() == 4);
+    assert!(dist(p.verts[0].anchor, [0.0, 2.0]) < 1e-12, "o semi-eixo rx rodado 90°: {:?}", p.verts[0].anchor);
+    let l = QuickShape::Line { a: [1.0, 1.0], b: [3.0, 1.0] };
+    assert_eq!(l.pivot(), [1.0, 1.0]);
+    assert!(!l.to_path().closed);
+}
+
+// ── o gatilho, pelo Pencil ──────────────────────────────────────────────────────────────────────
+
+use crate::quickshape_hold::{HOLD_NS, HoldTick};
+
+fn rect_stroke() -> Vec<P2> {
+    hand(&[[0.0, 0.0], [400.0, 0.0], [400.0, 250.0], [0.0, 250.0], [0.0, 0.0]], 1.0)
+}
+
+/// Desenha `pts` a 4 ms por amostra; devolve o carimbo da última.
+fn draw(pencil: &mut crate::Pencil, scene: &mut ph2d_vec_scene::VecScene, pts: &[P2]) -> u128 {
+    let dy = |i: usize| crate::pencil_width::PenDynamics { pressure: 1.0, t_ns: i as u128 * 4_000_000 };
+    pencil.on_press(scene, pts[0], 1.0, dy(0));
+    for (i, &p) in pts.iter().enumerate().skip(1) {
+        pencil.on_drag(scene, p, dy(i));
+    }
+    (pts.len() as u128 - 1) * 4_000_000
+}
+
+#[test]
+fn holding_still_for_half_a_second_turns_the_stroke_into_the_shape_and_release_commits_it() {
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    let id = pencil.active_path().unwrap();
+    assert_eq!(pencil.hold_tick(&mut scene, t + HOLD_NS - 1, false, true), HoldTick::Idle, "antes da hora");
+    assert!(!scene.path(id).unwrap().closed);
+    assert_eq!(pencil.hold_tick(&mut scene, t + HOLD_NS, false, true), HoldTick::Recognised);
+    assert_eq!(pencil.hold_tick(&mut scene, t + 2 * HOLD_NS, false, true), HoldTick::Idle, "nasce uma vez");
+    let p = scene.path(id).unwrap();
+    assert!(p.closed && p.verts.len() == 4, "o caminho vivo É o rectângulo");
+    assert!(pencil.width_stops(crate::pencil_width::WidthSource::Speed).is_uniform(), "a forma tem a largura do estilo");
+    // Arrastar sem soltar: o fim do traço afasta-se do centro para o DOBRO ⇒ a forma dobra.
+    let width = |p: &VecPath| {
+        let xs = p.verts.iter().map(|v| v.anchor[0]);
+        xs.clone().fold(f64::MIN, f64::max) - xs.fold(f64::MAX, f64::min)
+    };
+    let (w0, centre) = (width(p), centroid(&p.verts.iter().map(|v| v.anchor).collect::<Vec<_>>()));
+    let end = rect_stroke()[rect_stroke().len() - 1];
+    let far = add(centre, mul(sub(end, centre), 2.0));
+    pencil.on_drag(&mut scene, far, crate::pencil_width::PenDynamics { pressure: 1.0, t_ns: t });
+    let w = width(scene.path(id).unwrap());
+    assert!((w - 2.0 * w0).abs() < 1e-6, "escala 2× à volta do centro: {w0} → {w}");
+    assert!(pencil.on_release(&mut scene));
+    let p = scene.path(id).unwrap();
+    assert!(p.closed && p.verts.len() == 4, "soltar comete a FORMA, não o Hobby");
+    assert!(p.verts.iter().all(|v| v.kind == ph2d_vec_scene::VertexKind::Corner), "nós de quina editáveis");
+}
+
+#[test]
+fn moving_esc_and_the_switch_keep_the_free_stroke() {
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    // Desligado: nunca.
+    assert_eq!(pencil.hold_tick(&mut scene, t + 10 * HOLD_NS, false, false), HoldTick::Idle);
+    // A mão andou há pouco (o carimbo da última amostra): ainda não.
+    pencil.on_drag(&mut scene, [10.0, 10.0], crate::pencil_width::PenDynamics { pressure: 1.0, t_ns: t + HOLD_NS });
+    assert_eq!(pencil.hold_tick(&mut scene, t + HOLD_NS + 1, false, true), HoldTick::Idle, "mexer reinicia");
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    assert_eq!(pencil.hold_tick(&mut scene, t + HOLD_NS, false, true), HoldTick::Recognised);
+    let id = pencil.active_path().unwrap();
+    assert!(pencil.quick_dismiss(&mut scene), "o Esc devolve o traço livre");
+    assert!(!scene.path(id).unwrap().closed && !pencil.is_quick());
+    assert_eq!(pencil.hold_tick(&mut scene, t + 5 * HOLD_NS, false, true), HoldTick::Idle, "e não volta");
+    assert!(!pencil.quick_dismiss(&mut scene), "sem forma o Esc é o de sempre");
+}
+
+#[test]
+fn the_shift_regularises_live_and_turns_in_fifteen_degree_steps() {
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    assert_eq!(pencil.hold_tick(&mut scene, t + HOLD_NS, false, true), HoldTick::Recognised);
+    assert_eq!(pencil.hold_tick(&mut scene, t + HOLD_NS + 1, true, true), HoldTick::Reshaped);
+    let id = pencil.active_path().unwrap();
+    let c: Vec<P2> = scene.path(id).unwrap().verts.iter().map(|v| v.anchor).collect();
+    let s = sides(&c);
+    assert!(s.iter().all(|x| (x - s[0]).abs() < 1e-6), "o quadrado: {s:?}");
+    // Rodar 20° à volta do centro com o Shift ⇒ 15° (o degrau).
+    let centre = centroid(&c);
+    let end = sub([0.0, 0.0], centre);
+    let p = add(centre, rotate(end, 20f64.to_radians()));
+    pencil.on_drag(&mut scene, p, crate::pencil_width::PenDynamics { pressure: 1.0, t_ns: t });
+    let c2: Vec<P2> = scene.path(id).unwrap().verts.iter().map(|v| v.anchor).collect();
+    let turned = wrap_pi(angle(sub(c2[1], c2[0])) - angle(sub(c[1], c[0])));
+    assert!((turned.to_degrees() - 15.0).abs() < 1e-6, "rodou {}°", turned.to_degrees());
+}

@@ -60,6 +60,34 @@ roteiro tenta 3× e, se falhar, DESFAZ o traço na mesma (sem isto o seguinte li
 | arco | meio e quarto de circunferência | cru |
 | rabisco · zigzag · S | — | cru |
 
+### §3b — 2.ª leva (F7, 08/10): 22 traços que a 1.ª não perguntava
+
+Acrescentados ao FIM do `gera_entradas.py` e sem `rng`: as 43 de cima ficaram byte a byte iguais.
+
+| pergunta | entrada | saída do oráculo ⇒ fronteira |
+|---|---|---|
+| até onde um quadrilátero é rectângulo? | paralelogramos 3°, 6°, 10°, 15°, 20°, 30°; trapézio | 3° e 6° ⇒ **rectângulo**; 10°+ e o trapézio ⇒ cru ⇒ **ângulo de quina 90 ± (6, 10)°** |
+| endireita aos eixos? | linha e rectângulo rodados 2°, 4°, 6°, 8° | 2° e 4° saem **a 0°**; 6° e 8° ficam rodados ⇒ **(4, 6)°** (e a linha com gancho, 0,6°, sai horizontal) |
+| mão real | cantos arredondados r 20 e 40 px; começado a MEIO de um lado; que PASSA 60 px do início | **todos crus** — o reconhecedor do Xournal++ só aceita quinas vivas a começar numa quina |
+| idem | círculo que passa 10 % da volta | círculo, com o centro puxado 5 un. para a sobreposição |
+| idem | linha de 500 px com gancho de 30 px | linha (o gancho não a inclina) |
+| idem | elipse 3:2 | cru |
+
+## §3c — A nossa lei ([`ph2d-vec-edit/src/quickshape.rs`](../../../../crates/ph2d-vec-edit/src/quickshape.rs))
+
+Protótipo em Python sobre as fixtures, depois Rust; o gate `the_oracle_fixtures_all_agree_with_the_law_or_with_the_owners_product`
+lê as **65** fixtures: onde o oráculo reconhece, tipo igual e geometria a ≤ 1 un. (pior caso medido: 0,89
+no triângulo com tremor) e o raio a ≤ 1 %; onde é cru, `None`. **22 excepções**, cada uma com a geometria
+do gerador como verdade (auto-consistência): 5, 6 e 8 lados ⇒ **polígono** (Procreate; o oráculo faz
+círculo) · elipses ⇒ **elipse** · L, V, zigzag, rectângulo aberto 90 ⇒ **polilinha aberta** (o *polyline*
+do Procreate) · paralelogramos ≥ 10° e trapézio ⇒ **quadrilátero como desenhado** · rectângulo perfeito,
+cantos arredondados, começado a meio, que passa do início ⇒ **rectângulo** (a mão; o oráculo recusa) ·
+círculo aberto e que passa ⇒ **círculo** cujo centro desenha o traço MELHOR que o do oráculo (o dele é o
+centróide, que foge do buraco/para a sobreposição; o nosso são os momentos de área da região).
+
+Cada constante foi varrida sozinha sobre as 65 + 12 traços sintéticos de mão: a faixa em que tudo
+continua certo vai no doc-comment dela (ex.: fecho `0,05..0,07`, recta `0,04..0,075` de flecha).
+
 ## §4 — O que isto decide para o PH2D (e o que NÃO decide)
 
 - **Copia-se a lei:** linha ⇒ 2 pontos; rectângulo ⇒ 4 cantos a 90° com a rotação do traço;
@@ -88,3 +116,9 @@ anterior (`forma_V`), não variância — na 2.ª passagem, com o diálogo a abr
 gravaram (**cru**, polilinhas abertas) e a flecha de 20 px virou **LINHA** (2 pontos): o oráculo
 endireita um arco leve. As fixtures destes três são as da 2.ª passagem; as outras 40 são idênticas
 nas duas. ⇒ 43 fixtures, **27 reconhecidas**.
+
+**2.ª leva (22):** 2.ª passagem completa — **19 de 20** comparáveis iguais byte a byte (uma gravação
+falhou). A diferente, `rect_rodado_08`, veio logo a seguir a essa gravação falhada (a contaminação de
+cima); uma **3.ª leitura isolada** deu-a igual à 1.ª, e o `trapezio` igual nas duas em que gravou. ⇒ **65
+fixtures, 39 reconhecidas.** Duas lições do instrumento, já no roteiro: o caminho temporário tem de ser
+CURTO (é digitado no diálogo do GTK) e um `timeout` à volta do roteiro deixava o Xvfb `:99` órfão.

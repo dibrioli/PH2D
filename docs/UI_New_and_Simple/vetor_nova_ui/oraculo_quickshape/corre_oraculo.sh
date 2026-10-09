@@ -17,7 +17,10 @@ set -u
 AQUI="$(cd "$(dirname "$0")" && pwd)"
 ENT="${1:-$AQUI/entradas}"
 FIX="${2:-$AQUI/fixtures}"
-TMP="${TMPDIR:-/tmp}/oraculo_quickshape.$$"
+# ⚠️ MEDIDO (08/10, 2.ª leva): o caminho de gravação é DIGITADO no diálogo do GTK, e com um
+# `TMPDIR` comprido (~120 caracteres) o autocompletar come teclas e a gravação falha. Curto, sempre.
+TMP="$( [ -d /dev/shm ] && echo /dev/shm || echo /tmp )/oraculo_qs.$$"
+[ -e /tmp/.X99-lock ] && { echo "✗ já há um ecrã :99 (um Xvfb órfão de outra corrida?) — pare-o pelo PID"; exit 1; }
 mkdir -p "$FIX" "$TMP/home" "$TMP/out"
 export DISPLAY=:99
 
@@ -25,7 +28,10 @@ export DISPLAY=:99
 # memória, 05/10) — a 1.ª corrida deste roteiro matou-se a si própria assim.
 XPID=""; APID=""
 limpa() { [ -n "$APID" ] && kill "$APID" 2>/dev/null; [ -n "$XPID" ] && kill "$XPID" 2>/dev/null; rm -rf "$TMP"; }
+# TERM/INT também: um `timeout` à volta do roteiro deixava o Xvfb :99 órfão, e a corrida
+# seguinte falhava a calibração sem dizer porquê (08/10).
 trap limpa EXIT
+trap 'exit 1' INT TERM
 
 Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp >/dev/null 2>&1 &
 XPID=$!

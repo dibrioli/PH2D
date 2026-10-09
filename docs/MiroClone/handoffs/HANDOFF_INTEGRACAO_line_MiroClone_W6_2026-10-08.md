@@ -148,3 +148,10 @@ lições, num frame. O gate `every_mind_lesson_does_what_it_says` conduz cada li
 test:check 1,7× (alvo ≤ 1) · edições pelo `Edit` 38 % (alvo ≥ 80 %: os cortes e as curas em bloco foram
 por script com `assert` de contagem) · contexto relido 398 mil (alvo ≤ 250 mil) · início 63 mil ✓.
 `target/*/incremental` reclamado e o binário `smoke` compilado 2× — a 2.ª saída em §11-bis.
+
+## 11-bis. O binário do smoke
+
+`target/*/incremental` reclamado (35 G de `debug` + 4 G de `smoke`). `bash scripts/ph2d-run.sh cargo
+build -p ph2d-host-desktop --profile smoke`, 2.ª corrida: `Finished \`smoke\` profile [optimized]
+target(s) in 0.20s` (zero «Compiling»). Nenhum processo da linha a correr; os agentes de pesquisa,
+oráculo, auditoria, mutação e portão terminaram.

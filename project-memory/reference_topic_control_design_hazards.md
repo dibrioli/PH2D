@@ -233,3 +233,4 @@ função (`reparte(segments)` escrevia `segments` **e** as alças). Sem as separ
 `155° → 62°`, escrito *«suba o Segments»*, e prometido ao dono um resultado que só a outra metade
 produz. *Uma porta de bancada que junta dois knobs do produto num só argumento fabrica um passo de
 smoke que não funciona.* Ver [[reference_topic_measurement_discipline]].
+- ⛔⛔ **A DICA DO RODAPÉ TAMBÉM É UM CONTROLO, e mentia** — a do Lápis dizia «Right-click or Esc: cancel» desde a F1 e só o botão direito existia (o `Esc` não tinha braço para o lápis em `keyboard_escapes.rs`). Achado ao ligar o `Esc` do QuickShape (F7, 08/10); curado no mesmo bloco, e a dica nova do QuickShape só aparece com o interruptor ligado (`hint_key_for`). **How to apply:** toda oração de uma dica é uma afirmação sobre o DESPACHO — prove-a com um `grep` do braço (ou um gate que o leia) antes de a escrever ou de a herdar.

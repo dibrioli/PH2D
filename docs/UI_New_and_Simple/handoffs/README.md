@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**43 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **43** são handoffs (registro **morto**).
+**44 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **44** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -57,7 +57,8 @@
 | 2026-10-07 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-07 — A NOVA UI DO VECTOR (D10, F1–F3) |
 | 2026-10-07 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_PARA_O_MAIN.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_PARA_O_MAIN.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-07 — PARA O `main` (o ponto de entrada único) |
 | 2026-10-08 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 — F4 (o alcance) e F5 (o toque) da NOVA UI DO VECTOR |
-| 2026-10-08 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 (3.ª volta) — F6: NAVEGAR COM OS DEDOS |
+| 2026-10-08 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 (3.ª volta) — F6: NAVEGAR COM OS DEDOS |
+| 2026-10-08 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 (4.ª volta) — F7: O QUICKSHAPE |
 
 ---
 

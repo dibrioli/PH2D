@@ -170,3 +170,100 @@ fn an_empty_object_has_no_paint_mode() {
     assert!(!c.painter_na_mao());
     assert_eq!(c.hero.gizmo.mode.active(), None);
 }
+
+/// Duas camadas na imagem `a`, guardada no `doc_cache` porque `b` foi ligada depois. Devolve a
+/// camada de baixo (a que se vai pedir) e a de cima (a activa ao guardar).
+fn a_guardada_com_duas_camadas(c: &mut Cena, a: u64, b: u64) -> (u64, u64) {
+    let px = || vec![255u8; 4 * 4 * 4];
+    let p = painter(&mut c.tools).expect("painter");
+    p.bind_document(a, px(), 4, 4);
+    let cima = p.add_raster_layer("Tinta").expect("camada").0;
+    p.bind_document(b, px(), 4, 4);
+    let baixo = p
+        .layer_outline_of(a)
+        .expect("a ficou guardada")
+        .iter()
+        .map(|i| i.key)
+        .find(|k| *k != cima)
+        .expect("a camada de baixo");
+    (baixo, cima)
+}
+
+fn activa(c: &mut Cena, e: u64) -> Option<u64> {
+    painter(&mut c.tools)?
+        .layer_outline_of(e)?
+        .iter()
+        .find(|i| i.active)
+        .map(|i| i.key)
+}
+
+/// ⭐⭐ RED-FIRST (onda 4, item 10b) — a camada pedida a uma imagem cujo Paint CAIU antes de o
+/// documento ligar não pode ser aberta quando a imagem se liga depois por outro caminho.
+#[test]
+fn a_layer_asked_before_the_paint_left_is_not_opened_later() {
+    let mut c = cena();
+    let (a, b) = (c.imagem(), c.imagem());
+    let (baixo, cima) = a_guardada_com_duas_camadas(&mut c, a, b);
+    c.quadro(Some(ModeRequest::OpenContent {
+        entity: a,
+        mode: ObjectMode::Paint,
+        key: baixo,
+    }));
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Paint);
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Object,
+        "o Paint não saiu"
+    );
+    let px = vec![255u8; 4 * 4 * 4];
+    painter(&mut c.tools)
+        .expect("painter")
+        .bind_document(a, px, 4, 4);
+    assert_eq!(
+        activa(&mut c, a),
+        Some(cima),
+        "a camada pedida ANTES da saída do Paint foi aberta numa ligação posterior"
+    );
+}
+
+/// ⭐⭐ RED-FIRST (onda 4, item 10b) — ligar OUTRA imagem larga o pedido: voltar à primeira mais
+/// tarde não abre a camada antiga.
+#[test]
+fn binding_another_image_drops_the_layer_asked_of_the_first() {
+    let mut c = cena();
+    let (a, b, d) = (c.imagem(), c.imagem(), c.imagem());
+    let (baixo, cima) = a_guardada_com_duas_camadas(&mut c, a, b);
+    c.quadro(Some(ModeRequest::OpenContent {
+        entity: a,
+        mode: ObjectMode::Paint,
+        key: baixo,
+    }));
+    let px = || vec![255u8; 4 * 4 * 4];
+    let p = painter(&mut c.tools).expect("painter");
+    p.bind_document(d, px(), 4, 4);
+    p.bind_document(a, px(), 4, 4);
+    assert_eq!(
+        activa(&mut c, a),
+        Some(cima),
+        "o pedido de `a` sobreviveu à ligação de outra imagem"
+    );
+}
+
+/// CONTROLO — o caminho feliz: a ligação de `a` no mesmo fio cumpre o pedido.
+#[test]
+fn the_layer_asked_is_opened_when_its_image_binds() {
+    let mut c = cena();
+    let (a, b) = (c.imagem(), c.imagem());
+    let (baixo, _) = a_guardada_com_duas_camadas(&mut c, a, b);
+    c.quadro(Some(ModeRequest::OpenContent {
+        entity: a,
+        mode: ObjectMode::Paint,
+        key: baixo,
+    }));
+    let px = vec![255u8; 4 * 4 * 4];
+    painter(&mut c.tools)
+        .expect("painter")
+        .bind_document(a, px, 4, 4);
+    assert_eq!(activa(&mut c, a), Some(baixo));
+}

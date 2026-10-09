@@ -91,8 +91,12 @@ pub fn enter(tools: &mut ToolRegistry) -> bool {
     holds_an_image(tools) || tools.set_active(&ToolId::new(PAINTER))
 }
 
-/// **Larga**: devolve o canvas à ferramenta de omissão, se o Painter ainda o tem.
+/// **Larga**: devolve o canvas à ferramenta de omissão, se o Painter ainda o tem — e larga a camada
+/// que a Hierarquia pediu e o documento ainda não cumpriu (ela era deste Paint, não do próximo).
 pub fn leave(tools: &mut ToolRegistry) {
+    if let Some(p) = painter(tools) {
+        p.forget_pending_layer();
+    }
     if tools
         .active()
         .is_some_and(|t| t.id() == ToolId::new(PAINTER))

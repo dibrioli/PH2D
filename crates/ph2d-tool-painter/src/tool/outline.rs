@@ -48,14 +48,19 @@ impl PainterTool {
         there
     }
 
-    /// O pedido do [`Self::open_layer_of`], cumprido quando `entity` ficou ligado.
+    /// O pedido do [`Self::open_layer_of`], cumprido quando `entity` ficou ligado — e LARGADO quando
+    /// é outra a que liga: voltar mais tarde à primeira por outro caminho não abre a camada antiga.
     pub(crate) fn serve_pending_layer(&mut self, entity: u64) {
-        if let Some((e, id)) = self.pending_layer
+        if let Some((e, id)) = self.pending_layer.take()
             && e == entity
         {
-            self.pending_layer = None;
             self.select_layer(id);
         }
+    }
+
+    /// ⭐ **Larga o pedido** — o Paint que o fez saiu antes de o documento ligar (`paint_mode::leave`).
+    pub fn forget_pending_layer(&mut self) {
+        self.pending_layer = None;
     }
 }
 

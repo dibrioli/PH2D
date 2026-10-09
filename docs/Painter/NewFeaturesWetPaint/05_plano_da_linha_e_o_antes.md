@@ -450,6 +450,41 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     ⇒ cura o PIXEL da orla (A1) e apaga boa parte dos pontinhos (A4), mas NÃO a faixa de cor pura (A3) nem o
     rectângulo da raiz (B2) — [prancha a 8×](prancha_smooth_edges.png): a escada fica de cantos macios, a faixa
     fica. Aplicado em toda a mancha muda as cercas «ao byte» (tela direita: 4 204 px; Create Drips off: 6 532).
+- ✅ **Smooth Edges no Wet Paint** (dono 09/10: *«opção B - vamos tentar»* — em todos os traços, ligado de
+  fábrica). Onde vive: `wetpaint/smooth_edges.rs` (a lei é a do Watercolor, `aa_coverage`, chamada — não
+  copiada; o campo é a mancha `pa ≥ SS0`, o pé 3×3 lido do plano de pigmento; a fração entra na COBERTURA do
+  pigmento antes do `over`, como o Watercolor escala o alfa acrescentado — misturar a cor straight com a
+  base escurecia a orla numa camada transparente, apanhado por `papel_nasce`/`vidro_por_cima`); o
+  checkbox **Smooth Edges** abaixo de Paper (`PAINTER_WETPAINT_SMOOTH_EDGES`, `WetPaintState::smooth_edges`,
+  o Reset volta a ligá-lo, o preview vivo segue-o); o rectângulo do composite cresce 1 px (o papel ao lado
+  da orla). Nada de água nem pigmento se move: o motor fica ao byte.
+  - **Cercas:** `com_a_tela_direita…` e `sem_create_drips…` correm com o Smooth Edges DESLIGADO e dão as
+    MESMAS impressões de antes (o motor não mudou); gate novo
+    `smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes` (só pixels de pé misto mudam; o clique
+    desliga e volta ao `over` de antes, 0 bytes). `os_outros_meios_nao_mudam` e `cerca.sh` verdes.
+  - **Medido** (sonda `sonda_auditoria_w1c`, S na tela no máximo; antes → agora):
+
+    | | binária % | meio-tom % | salto/B0 | pontinhos /100 col. | faixa pura (12 px acima) |
+    |---|---|---|---|---|---|
+    | bancada | 72,5 → **10,9** | 9,8 → **72,0** | 1,04 → **0,44** | 83 → 35 | 4 → 4 |
+    | azul do dono 100 px | 72,5 → 10,4 | 9,8 → 72,0 | 1,04 → 0,44 | 94 → 49 | 5 → 4 |
+    | azul do dono 60 px | 57,0 → 22,3 | 23,8 → 58,5 | 0,97 → 0,41 | 18 → 4 | 3 → 3 |
+    | Rebelle | 5,7–19,7 | 67–89 | 0,32–0,44 | 2–57 | 0 |
+
+    `a_orla_do_s_tem_meio_tom_como_a_do_rebelle` saiu do `#[ignore]` (verde; vermelho antes). Continuam
+    vermelhos e ignorados, para a W1d: a faixa de cor pura (4 px) e o funil. ⚠️ A régua `faixa_pura` contava
+    a corrida que COMEÇA na orla e leu «0» com o Smooth Edges (o último pixel fica com meio-tom) — passou a
+    maior corrida nos 12 px acima; a «faixa ≥ B0» da W1c (`mede_borda`) tem o MESMO defeito e lê agora 0
+    em todas as cenas: não a use para a faixa.
+  - **Réguas ajustadas, com o porquê no código:** o fio da bancada mede-se a MEIA ALTURA
+    (`fios_a_meia_altura`; tudo > 25 contava a franja de ~⅓ de tom: 5 px); o piso do papel branco do Wet
+    Paint é 1 nível (arredondamento do alfa da fração numa camada transparente: pior 1, 0 bytes > 1).
+    Miniaturas de fábrica regeradas (`PH2D_REGERA_PRESETS=1`).
+  - **Custo** (`medida_do_smooth_edges`, 4096², desligado/ligado intercalados, o mínimo de 7; load 6–13,
+    inflado): 1.ª forma (máscara da região em série) tela inteira 10 → **106 ms** ✗; pé 3×3 local 9 → 39;
+    máscara por linha 10 → 15; máscara da região em PARALELO + linhas sem borda saltadas **11,3 → 15,3 ms**
+    (a recomposição inteira: o clique, a tela toda molhada) e **0,14 → 0,31 ms** no rectângulo de um traço.
+  - [prancha a 8×: Rebelle · antes · agora](prancha_smooth_edges_wet.png).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

@@ -205,6 +205,17 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_layers.wetpaint.paper",
             brush.wet_paper_visual,
         );
+        // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; ligado de fábrica).
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+            "panel.painter_layers.wetpaint.smooth_edges",
+            brush.wet_smooth_edges,
+        );
         // Tuning — opens the side panel with the engine's full knob table.
         y = crate::paint_brush_top::paint_checkbox_row(
             ctx,

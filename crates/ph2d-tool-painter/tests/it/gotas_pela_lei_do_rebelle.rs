@@ -118,6 +118,30 @@ pub fn fios(px: &[u8], c: usize, y: usize) -> Vec<u32> {
     out
 }
 
+/// A largura A MEIA ALTURA de cada fio que cruza `y` abaixo do traço `c` (px ≥ metade do pico da corrida).
+/// ⚠️ A largura de [`fios`] (tudo > `TINTA`) conta a franja do Smooth Edges (dono 09/10): o fio pálido
+/// (~93 de escuro) ganha de cada lado um pixel a ~⅓ do tom (~31 > 25) — meio-tom, não largura.
+pub fn fios_a_meia_altura(px: &[u8], c: usize, y: usize) -> Vec<u32> {
+    let mut out = Vec::new();
+    let mut corrida: Vec<u8> = Vec::new();
+    for x in colunas(c).chain(std::iter::once(usize::MAX)) {
+        let e = if x == usize::MAX { 0 } else { escuro(px, x, y) };
+        if e > TINTA {
+            corrida.push(e);
+        } else if !corrida.is_empty() {
+            let topo = corrida.iter().copied().max().unwrap_or(0);
+            out.push(
+                corrida
+                    .iter()
+                    .filter(|&&v| 2 * u32::from(v) >= u32::from(topo))
+                    .count() as u32,
+            );
+            corrida.clear();
+        }
+    }
+    out
+}
+
 /// A orla de cima e a de baixo do traço `c` — a MESMA régua com que se mediram as fotos do Rebelle
 /// (doc 06 §2): o perfil vertical do miolo da largura (longe das pontas), as linhas com tinta, e o escuro
 /// médio das 3 primeiras e das 3 últimas.
@@ -181,10 +205,15 @@ fn relata(nome: &str, px: &[u8]) -> [u32; 4] {
     g
 }
 
-/// ⛔ O CONTROLO: inclinação desligada (e as gotas no neutro) ⇒ o traço de antes da W1b, AO BYTE.
+/// ⛔ O CONTROLO: inclinação desligada (e as gotas no neutro) ⇒ o traço de antes da W1b, AO BYTE. Com o
+/// Smooth Edges DESLIGADO (dono 09/10: ligado de fábrica, é aparência — desligado o composite é o de antes):
+/// a cerca prova que o MOTOR não mudou.
 #[test]
 fn com_a_tela_direita_o_traco_e_o_de_antes_ao_byte() {
-    let px = bancada(30, &|t| inclina(t, None));
+    let px = bancada(30, &|t| {
+        t.set_wet_smooth_edges(false);
+        inclina(t, None);
+    });
     let g = relata("direita", &px);
     assert_eq!(g, [0; 4], "tela direita: nada corre");
     assert_eq!(
@@ -221,9 +250,10 @@ fn a_inclinacao_maxima_solta_um_fio_longo_e_fino_nos_tracos_molhados() {
             AGUAS[c],
             f.len()
         );
+        let m = fios_a_meia_altura(&px, c, BASE + 60);
         assert!(
-            f.iter().all(|&w| w <= 4),
-            "água {}: fios {f:?} (≤ 4 px)",
+            m.iter().all(|&w| w <= 4),
+            "água {}: fios {m:?} a meia altura (≤ 4 px; com tudo > {TINTA}: {f:?})",
             AGUAS[c]
         );
     }
@@ -264,11 +294,13 @@ fn papel(t: &mut PainterTool, create: bool, size: u8, length: u8) {
 /// aquele escorrimento bonito e natural de todos os traços com essa barreira??»*). Sem a caixa não há linha
 /// de contacto, nem gotas, nem a força da lei: o motor de antes da W1b. As impressões são as que a bancada
 /// mediu no início da W1b, com o código de antes (tela a meio = o boot de antes; no máximo). Reescrito de
-/// propósito: a 1.ª forma afirmava a orla escura do Rebelle sem fios.
+/// propósito: a 1.ª forma afirmava a orla escura do Rebelle sem fios. Com o Smooth Edges DESLIGADO (o motor
+/// ao byte; ligado, só a silhueta ganha meio-tom).
 #[test]
 fn sem_create_drips_e_o_escorrimento_natural_de_antes_ao_byte() {
     for (anel, antes) in [(4u8, 0x7cc9_cb10_e563_6d0e_u64), (8, 0x0747_7714_36bc_3d4e)] {
         let px = bancada(30, &|t| {
+            t.set_wet_smooth_edges(false);
             papel(t, false, 5, 5);
             inclina(t, Some(anel));
         });

@@ -13,7 +13,7 @@ faixa de cor pura, e a raiz do fio em FUNIL — pela auditoria de 09/10.
 FASE 0 — ONDE VOCÊ ESTÁ (antes de ler QUALQUER ficheiro):
 1. cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && pwd && git branch --show-current
    → .../line-PainterWatercolor e line/PainterWatercolor. Outra coisa: PARE e reporte.
-2. git log --oneline -4 && git status --short → a ponta é «audit(Painter 09/10): a orla e a raiz da W1c…»;
+2. git log --oneline -4 && git status --short → a ponta é «feat(Painter 09/10): Smooth Edges no Wet Paint…»;
    árvore limpa.
 3. git fetch -q origin; se o main andou: git rebase main (conflito fora dos seus ficheiros: PARE e reporte).
    ⚠️ O degrau do schema da linha é 187 → 188 com migração (ProjectFileV187, braço `187 =>` em
@@ -111,7 +111,10 @@ C (as réguas que não viram) a_borda_do_s_e_a_do_rebelle mede a POSIÇÃO da or
    dono olha a 8,5× com o azul puro dele.
 
 A CURA (direcções — meça antes de escolher; todas SÓ onde há linha de contacto)
-- A1: ⭐ meio-tom SEM deixar passar água (a faixa de transição que deixa passar fluxo está RECUSADA: inunda).
+- A1: ✅ FEITO (09/10, decisão do dono: opção B) — o Smooth Edges do Wet Paint, ligado de fábrica em todos os
+  traços (05 §4b «✅ Smooth Edges no Wet Paint»); o portão do meio-tom já está verde e sem `ignore`. O que
+  segue abaixo sobre A1 é história. ⚠️ As cercas c)/d) correm agora com o Smooth Edges DESLIGADO.
+- A1 (histórico): meio-tom SEM deixar passar água (a faixa de transição que deixa passar fluxo está RECUSADA: inunda).
   ⭐ PRIMEIRO CANDIDATO (dono, 09/10): o NOSSO «Smooth Edges» do Watercolor (`watercolor_aa.rs::aa_coverage`)
   — avaliado em emulação (05 §4b, `ferramentas/smooth_edges_no_wet.py`): binária 72,5 → 14 %, meio-tom 9,8 →
   62 %, salto 1,04 → 0,47·B0, pontinhos 94 → 38; NÃO tira a faixa pura (5 → 4 px) nem o rectângulo da raiz.

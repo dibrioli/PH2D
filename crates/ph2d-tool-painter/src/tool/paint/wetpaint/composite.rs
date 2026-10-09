@@ -47,6 +47,7 @@ impl PainterTool {
             paper: self.paint.wetpaint.paper_visual,
             km_glaze: self.paint.wetpaint.km_glaze,
         };
+        let suave = self.paint.wetpaint.smooth_edges;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -74,6 +75,17 @@ impl PainterTool {
         if px1 <= px0 || py1 <= py0 {
             return;
         }
+        // Smooth Edges: o pixel de papel ao lado da orla também muda, logo o retângulo cresce 1 px.
+        let (px0, py0, px1, py1) = if suave {
+            (
+                px0.saturating_sub(1),
+                py0.saturating_sub(1),
+                (px1 + 1).min(w),
+                (py1 + 1).min(h),
+            )
+        } else {
+            (px0, py0, px1, py1)
+        };
         let layers: Vec<RenderLayer<'_>> = sess
             .engine
             .layers
@@ -200,6 +212,14 @@ impl PainterTool {
         // sorte numérica, por ser literalmente a mesma expressão.
         let sampler = grid_map::SampleU::new(ratio, gw, gh);
         let one_cell_per_pixel = sampler.is_identity();
+        let silhueta = suave.then_some(super::smooth_edges::Silhueta {
+            sampler,
+            pigment,
+            stride,
+            w,
+            h,
+        });
+        let mascara = silhueta.map(|s| s.mascara((px0, py0, px1, py1)));
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .zip(vlinhas.into_par_iter())
@@ -209,35 +229,26 @@ impl PainterTool {
                 let gb = py * stride;
                 // A metade-`y` do amostrador, resolvida UMA vez por linha.
                 let srow = sampler.row(py);
+                let pode_misturar = mascara.as_ref().is_some_and(|m| m.linha_pode_misturar(py));
                 for px in px0..px1 {
                     let lo = px * 4; // dentro da linha
                     let o = gb + lo; // global, para os planos e os gates
                     // O pigmento, em premultiplicado normalizado (`pc * pa`) —
                     // a forma em que o `over` abaixo já o consumia.
-                    let (premul, pa) = if one_cell_per_pixel {
-                        let a = pigment[o + 3] as f32 / 255.0;
-                        (
-                            [
-                                pigment[o] as f32 * a,
-                                pigment[o + 1] as f32 * a,
-                                pigment[o + 2] as f32 * a,
-                            ],
-                            a,
-                        )
+                    let dele = if one_cell_per_pixel {
+                        super::smooth_edges::premul_da_celula(pigment, o)
                     } else {
-                        // O amostrador devolve `Σ c·a·w` e `Σ a·w` em 0..255;
-                        // dividir por 255 dá exatamente `pc · pa`, sem passar
-                        // pela cor straight (que precisaria dividir pelo alpha
-                        // e multiplicar de volta).
-                        let s = srow.at(pigment, px);
-                        (
-                            [
-                                (s[0] / 255.0) as f32,
-                                (s[1] / 255.0) as f32,
-                                (s[2] / 255.0) as f32,
-                            ],
-                            (s[3] / 255.0) as f32,
-                        )
+                        super::smooth_edges::premul_amostrado(srow.at(pigment, px))
+                    };
+                    // Smooth Edges: o pigmento que o pixel mostra, com a fração da silhueta na COBERTURA
+                    // (a lei do Watercolor: o alfa acrescentado escala por ela — exacto também sobre uma
+                    // camada transparente, onde misturar a cor straight com a base escurecia a orla).
+                    let (premul, pa) = match (&silhueta, &mascara) {
+                        (Some(s), Some(m)) if pode_misturar && m.mista(px, py) => {
+                            let (p, a, f) = s.aplica(px, py, dele);
+                            ([p[0] * f, p[1] * f, p[2] * f], a * f)
+                        }
+                        _ => dele,
                     };
                     if pa <= 0.0 {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so

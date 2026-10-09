@@ -115,6 +115,8 @@ fn over_as_it_shipped(pigment: &[u8], base: &[u8], px: usize, py: usize) -> [u8;
 #[test]
 fn ratio_one_composites_exactly_what_the_old_over_produced() {
     let mut t = wet_tool(1);
+    // A lei do `over` da razão 1, sem o Smooth Edges (que só mexe na silhueta — o gate abaixo).
+    t.paint.wetpaint.smooth_edges = false;
     stroke(&mut t);
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
@@ -476,5 +478,68 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
         partial >= 2,
         "so {partial} celula(s) de cobertura parcial na borda de um dab isolado — \
          o AA de entrada esta inerte (esperado >= 2 com MAX_AA = 4)"
+    );
+}
+
+/// **O Smooth Edges do Wet Paint (dono 09/10) só toca a SILHUETA, e desligado pelo checkbox é o `over` de
+/// antes ao byte.** Ligado (de fábrica): os bytes que divergem do oráculo estão todos num pixel cuja
+/// vizinhança 3×3 tem mancha e papel (`pa ≥ SS0` e `< SS0`) — o miolo e o papel aberto ficam iguais; e há
+/// divergência (o meio-tom existe). O clique desliga-o e recompõe: 0 bytes contra o oráculo.
+#[test]
+fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
+    use crate::tool::paint::watercolor_render::SS0;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = wet_tool(1);
+    assert!(t.paint.wetpaint.smooth_edges, "ligado de fábrica");
+    stroke(&mut t);
+    composite_all(&mut t);
+    let (mut fora_da_silhueta, mut na_silhueta) = (0usize, 0usize);
+    {
+        let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
+        let (pig, base) = (&sess.pigment, &sess.base);
+        let dentro = |x: usize, y: usize| f32::from(pig[(y * W + x) * 4 + 3]) / 255.0 >= SS0;
+        for py in 1..H - 1 {
+            for px in 1..W - 1 {
+                let o = (py * W + px) * 4;
+                if t.canvas_rgba[o..o + 4] == over_as_it_shipped(pig, base, px, py) {
+                    continue;
+                }
+                let viz: Vec<bool> = (py - 1..=py + 1)
+                    .flat_map(|y| (px - 1..=px + 1).map(move |x| (x, y)))
+                    .map(|(x, y)| dentro(x, y))
+                    .collect();
+                if viz.iter().any(|&d| d) && viz.iter().any(|&d| !d) {
+                    na_silhueta += 1;
+                } else {
+                    fora_da_silhueta += 1;
+                }
+            }
+        }
+    }
+    assert!(
+        na_silhueta > 0,
+        "o Smooth Edges não deu meio-tom a nenhum pixel"
+    );
+    assert_eq!(
+        fora_da_silhueta, 0,
+        "o Smooth Edges mexeu em {fora_da_silhueta} pixels longe da silhueta ({na_silhueta} nela)"
+    );
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(
+        crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES
+    )));
+    assert!(!t.paint.wetpaint.smooth_edges, "o clique desliga");
+    composite_all(&mut t);
+    let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
+    let (pig, base) = (&sess.pigment, &sess.base);
+    let diff = (0..H)
+        .flat_map(|py| (0..W).map(move |px| (px, py)))
+        .filter(|&(px, py)| {
+            let o = (py * W + px) * 4;
+            t.canvas_rgba[o..o + 4] != over_as_it_shipped(pig, base, px, py)
+        })
+        .count();
+    assert_eq!(
+        diff, 0,
+        "desligado: {diff} pixels divergem do over de antes"
     );
 }

@@ -573,6 +573,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.fast_dry" => "Fast dry",
         "panel.painter_layers.wetpaint.show_wet" => "Show Wet",
         "panel.painter_layers.wetpaint.paper" => "Paper",
+        "panel.painter_layers.wetpaint.smooth_edges" => "Smooth Edges",
         "panel.painter_layers.wetpaint.tuning" => "Tuning",
         "panel.painter_layers.wetpaint.grid_size_px" => "Grid Size (px)",
         "panel.painter_layers.wetpaint.flow_grid_x" => "Flow Grid (x)",

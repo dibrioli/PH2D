@@ -206,14 +206,29 @@ impl PainterTool {
         w.tilt_ring = 4;
         w.tilt_spoke = 3;
         w.km_mixing = false;
-        let need_recomposite = w.show_wet || w.paper_visual || w.km_glaze;
+        let need_recomposite = w.show_wet || w.paper_visual || w.km_glaze || !w.smooth_edges;
         w.show_wet = false;
         w.paper_visual = false;
+        w.smooth_edges = true;
         w.km_glaze = false;
         w.tuning_open = false;
         if need_recomposite {
             self.wet_recomposite_full();
         }
+    }
+
+    /// O **Smooth Edges** do Wet Paint (o mesmo facto do checkbox): ligar/desligar recompõe a tela inteira.
+    pub fn set_wet_smooth_edges(&mut self, ligado: bool) {
+        if self.paint.wetpaint.smooth_edges != ligado {
+            self.paint.wetpaint.smooth_edges = ligado;
+            self.wet_recomposite_full();
+        }
+    }
+
+    /// O **Smooth Edges** do Wet Paint está ligado?
+    #[must_use]
+    pub fn wet_smooth_edges(&self) -> bool {
+        self.paint.wetpaint.smooth_edges
     }
 
     /// A gravidade da tela no anel `anel`, sem a força da lei — a de `Sim::gravity` (knob × anel/4).
@@ -448,6 +463,11 @@ impl PainterTool {
                 // One fact, two views: the basic checkbox and the Tuning
                 // panel's PAPER eye.
                 self.paint.wetpaint.paper_visual = !self.paint.wetpaint.paper_visual;
+                self.wet_recomposite_full();
+                true
+            }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES => {
+                self.paint.wetpaint.smooth_edges = !self.paint.wetpaint.smooth_edges;
                 self.wet_recomposite_full();
                 true
             }

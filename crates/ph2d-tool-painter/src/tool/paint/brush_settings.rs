@@ -467,6 +467,8 @@ pub struct BrushSettings {
     pub wet_show_wet: bool,
     /// Paper checkbox — the tooth is visually part of the painting.
     pub wet_paper_visual: bool,
+    /// Smooth Edges do Wet Paint — a silhueta da mancha com meio-tom (a lei do Watercolor).
+    pub wet_smooth_edges: bool,
     /// Experimental K-M flags (mixing = sim-side, glaze = composite-side).
     pub wet_km_mixing: bool,
     pub wet_km_glaze: bool,

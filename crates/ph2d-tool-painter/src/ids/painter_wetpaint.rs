@@ -69,13 +69,18 @@ pub const PAINTER_WETPAINT_SHOWWET: NodeId = hash_node_id("painter_brush.wetpain
 pub const PAINTER_WETPAINT_PAPER_VISUAL: NodeId =
     hash_node_id("painter_brush.wetpaint_paper_visual");
 
+/// **Smooth Edges** checkbox (dono 09/10) — a silhueta da mancha com meio-tom, pela lei do Watercolor
+/// (render-only; ligado de fábrica).
+pub const PAINTER_WETPAINT_SMOOTH_EDGES: NodeId =
+    hash_node_id("painter_brush.wetpaint_smooth_edges");
+
 /// **Tuning** checkbox — shows/hides the side panel with the full knob table.
 pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint_tuning");
 
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 21] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 22] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],
@@ -90,6 +95,7 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 21] = [
     PAINTER_WETPAINT_FASTDRY,
     PAINTER_WETPAINT_SHOWWET,
     PAINTER_WETPAINT_PAPER_VISUAL,
+    PAINTER_WETPAINT_SMOOTH_EDGES,
     PAINTER_WETPAINT_TUNING,
     PAINTER_WETPAINT_DRIPS_CREATE,
     PAINTER_WETPAINT_DRIPS_EASY,

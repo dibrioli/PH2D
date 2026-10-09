@@ -45,6 +45,7 @@ pub struct CenaDoPreview {
     substrate_depth: f32,
     substrate_rough: f32,
     paper_visual: bool,
+    smooth_edges: bool,
     km_mixing: bool,
     km_glaze: bool,
     show_wet: bool,
@@ -62,7 +63,7 @@ pub struct ChaveDoPreview {
     versoes: (u64, u64, u64),
     papel: Option<[u8; 3]>,
     substrato: (f32, f32),
-    flags: (bool, bool, bool, bool),
+    flags: (bool, bool, bool, bool, bool),
     tilt: (bool, u8, u8),
     gotas: ph2d_wet_paint::drips::DripPaper,
     grids: (u8, u8),
@@ -83,6 +84,7 @@ impl PainterTool {
             substrate_depth: self.paint.substrate_depth,
             substrate_rough: self.paint.substrate_rough,
             paper_visual: w.paper_visual,
+            smooth_edges: w.smooth_edges,
             km_mixing: w.km_mixing,
             km_glaze: w.km_glaze,
             show_wet: w.show_wet,
@@ -106,7 +108,13 @@ impl PainterTool {
             ),
             papel: self.papel,
             substrato: (self.paint.substrate_depth, self.paint.substrate_rough),
-            flags: (w.paper_visual, w.km_mixing, w.km_glaze, w.show_wet),
+            flags: (
+                w.paper_visual,
+                w.km_mixing,
+                w.km_glaze,
+                w.show_wet,
+                w.smooth_edges,
+            ),
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             gotas: self.gotas,
             grids: (w.grid_ratio, w.flow_ratio),
@@ -138,6 +146,7 @@ impl PainterTool {
         let w = &mut self.paint.wetpaint;
         w.knobs = c.knobs;
         w.paper_visual = c.paper_visual;
+        w.smooth_edges = c.smooth_edges;
         w.km_mixing = c.km_mixing;
         w.km_glaze = c.km_glaze;
         w.show_wet = c.show_wet;

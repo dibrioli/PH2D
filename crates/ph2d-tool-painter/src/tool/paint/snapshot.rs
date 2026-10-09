@@ -400,6 +400,7 @@ impl PainterTool {
             wet_gotas: self.gotas,
             wet_show_wet: self.paint.wetpaint.show_wet,
             wet_paper_visual: self.paint.wetpaint.paper_visual,
+            wet_smooth_edges: self.paint.wetpaint.smooth_edges,
             wet_km_mixing: self.paint.wetpaint.km_mixing,
             wet_km_glaze: self.paint.wetpaint.km_glaze,
             wet_tuning_open: self.paint.wetpaint.tuning_open,

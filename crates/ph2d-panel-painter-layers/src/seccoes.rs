@@ -385,6 +385,7 @@ pub(crate) const WATERCOLOR_CARTAO: &[&str] = &[
 pub(crate) const WETPAINT: &[&str] = &[
     "panel.painter_layers.wetpaint.show_wet",
     "panel.painter_layers.wetpaint.paper",
+    "panel.painter_layers.wetpaint.smooth_edges",
     "panel.painter_layers.wetpaint.tuning",
     "panel.painter_layers.wetpaint.tilt",
 ];

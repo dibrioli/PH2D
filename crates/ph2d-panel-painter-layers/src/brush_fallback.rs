@@ -274,6 +274,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_gotas: ph2d_tool_painter::DripPaper::DEFAULT,
     wet_show_wet: false,
     wet_paper_visual: false,
+    wet_smooth_edges: true,
     wet_km_mixing: false,
     wet_km_glaze: false,
     wet_tuning_open: false,

@@ -120,6 +120,9 @@ pub(crate) struct WetPaintState {
     /// painting (granulation + emboss into the pigment colours). Baked on
     /// purpose — it is part of the painting, unlike the show-wet veil.
     pub(super) paper_visual: bool,
+    /// **Smooth Edges** (dono 09/10): a silhueta da mancha com meio-tom, pela lei do Watercolor
+    /// ([`smooth_edges`]). Ligado de fábrica; desligado = o composite de antes, ao byte.
+    pub(super) smooth_edges: bool,
     /// Experimental: K–M pigment mixing (`sim.km_mixing`).
     pub(super) km_mixing: bool,
     /// Experimental: K–M glaze stacking in the composite.
@@ -166,6 +169,7 @@ impl Default for WetPaintState {
             tilt_spoke: 3,
             show_wet: false,
             paper_visual: false,
+            smooth_edges: true,
             km_mixing: false,
             km_glaze: false,
             tuning_open: false,
@@ -374,6 +378,7 @@ mod authoring; // o rascunho é a PRÓPRIA água (o preview de autoria) — filh
 mod composite;
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).
 mod mascara;
+mod smooth_edges; // o Smooth Edges do Watercolor sobre a mancha do Wet Paint (dono 09/10)
 #[cfg(test)]
 pub(in crate::tool::paint) use composite::split as composite_split;
 mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)

@@ -242,6 +242,7 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
         ph2d_tool_painter::ids::PAINTER_WETPAINT_FASTDRY,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
     ]);
     for id in ids {

@@ -383,8 +383,9 @@ fn par(c: Cena) -> (Vec<u8>, f64) {
 /// A orla de baixo do S tem MEIO-TOM como a do Rebelle. Oráculo (`s_inclinado.png`, `_1`, `s_sem_gotas`,
 /// `s_plano`): binária 5,7 · 19,7 · 21,8 · 0 % e meio-tom 89 · 67 · 59 · 98 %. Barras: binária ≤ 25 %,
 /// meio-tom ≥ 55 %, na bancada e na cena do dono.
+///
+/// VERDE desde o Smooth Edges do Wet Paint (dono 09/10, ligado de fábrica); vermelho antes (72,5 / 9,8).
 #[test]
-#[ignore = "portão VERMELHO da auditoria da W1c — a janela de cura (10_PROMPT) tira o ignore"]
 fn a_orla_do_s_tem_meio_tom_como_a_do_rebelle() {
     for (nome, c) in [("bancada", Cena::BANCADA), ("dono", DONO)] {
         let (px, b0) = par(c);
@@ -422,16 +423,24 @@ fn a_orla_nao_e_um_degrau_de_cor_pura() {
     }
 }
 
-/// A faixa de ≥ 88 % da cor pura (`pura` = `255 − min(cor)`) desde a orla para cima, mediana na descida.
+/// A faixa de ≥ 88 % da cor pura (`pura` = `255 − min(cor)`): a maior corrida nos 12 px acima da orla,
+/// mediana na descida. ⚠️ Não a corrida que COMEÇA na orla: com o Smooth Edges o último pixel fica com
+/// meio-tom e essa régua lia 0 com a faixa inteira um pixel acima (medido 09/10: 4 px → «0»).
 pub fn faixa_pura(px: &[u8], b0: f64, pura: f64) -> f64 {
     mediana(
         DESCIDA
             .map(|x| {
                 let yb = orla(px, x, 0.12 * b0);
-                (0..=yb)
-                    .rev()
-                    .take_while(|&y| escuro(px, x, y) >= 0.88 * pura)
-                    .count() as f64
+                let (mut maior, mut corre) = (0usize, 0usize);
+                for y in yb.saturating_sub(12)..=yb {
+                    corre = if escuro(px, x, y) >= 0.88 * pura {
+                        corre + 1
+                    } else {
+                        0
+                    };
+                    maior = maior.max(corre);
+                }
+                maior as f64
             })
             .collect(),
     )

@@ -26,6 +26,17 @@ UI/UX: «Último:» → este ficheiro (a frase e as cenas não mudam).
 | **cena 12** | ganha um 4.º traço: um círculo PEQUENO (raio 15 px) | `vector_mode_quick.rs` |
 | organização | `quickshape_geom.rs` (a geometria pura) e `quickshape_hand_tests.rs` — irmãos pelo tecto de 700 LOC | `ph2d-vec-edit/src/` |
 
+### §1b — «Deixe um pouco mais sensível para todas as formas» (2.º pedido do dono, 09/10)
+
+Quatro constantes da lei, cada uma dentro da sua faixa re-medida: `bow_max 0,055 → 0,06`, `bow_trim
+0,10 → 0`, `ellipse_rms_max 0,065 → 0,075`, `turn_tol_deg 90 → 150`. Com tremor ±2 px o rectângulo
+passa de 87,5 % a 93,8 %, a elipse de 67 % a 74 %, o zigue-zague de 84 % a 90 %; o S passa por forma
+em ~2 % das mãos (era 0,6 %). Tabela e escolha (de três candidatas, A × B no mesmo processo) em
+[`00_resultados.md`](../vetor_nova_ui/oraculo_quickshape/00_resultados.md) §3e; sondas novas
+`measure_sensitivity`, `measure_sensitivity_of_each_constant`, `measure_sensitivity_ab`. Só valores
+mudaram (nenhuma regra nova): clippy e os testes das crates re-corridos verdes; o gate batched NÃO foi
+re-corrido para esta parte.
+
 ## §2 — Medido e decidido (técnico, delegado)
 
 As três sondas (`cargo test --release -p ph2d-vec-edit --lib measure_ -- --ignored --nocapture

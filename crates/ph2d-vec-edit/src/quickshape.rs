@@ -71,9 +71,9 @@ impl Law {
         corner_of_diag: CORNER_OF_DIAG,
         rdp_of_diag: 0.04,
         merge_turn_deg: 29.0,
-        bow_max: 0.055,
+        bow_max: 0.06,
         open_corner_of_side: OPEN_CORNER_OF_SIDE,
-        bow_trim: 0.10,
+        bow_trim: 0.0,
         fit_trim: 0.175,
         close_of_length: 0.06,
         close_window: 0.10,
@@ -81,7 +81,7 @@ impl Law {
         axis_snap_deg: 5.0,
         ellipse_rms_max: ELLIPSE_RMS_MAX,
         round_ratio: 1.10,
-        turn_tol_deg: 90.0,
+        turn_tol_deg: 150.0,
     };
 }
 
@@ -93,7 +93,7 @@ const CORNER_OF_DIAG: f64 = 0.2;
 /// zigue-zague de quinas arredondadas cai (88 %), a 0,4 o S passa por zigue-zague (2–5 %).
 const OPEN_CORNER_OF_SIDE: f64 = 0.3;
 /// Resíduo da elipse — MEDIDO (sonda `measure_the_law_ranges`).
-const ELLIPSE_RMS_MAX: f64 = 0.065;
+const ELLIPSE_RMS_MAX: f64 = 0.075;
 /// Amostras da reamostragem por comprimento (o desenho não depende da cadência do rato).
 const RESAMPLE: usize = 256;
 /// O degrau do `regular` (o 2.º dedo do Procreate = `Shift`): ângulos em múltiplos de 15°.

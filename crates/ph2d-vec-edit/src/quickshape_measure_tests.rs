@@ -451,3 +451,200 @@ fn measure_what_small_failures_become() {
         }
     }
 }
+
+/// **A sensibilidade** (o dono, 09/10: *«um pouco mais sensível para todas as formas»*): as três
+/// tolerâncias que decidem «isto é forma» — a flecha de um lado recto, o resíduo da elipse e a folga
+/// de fecho — varridas JUNTAS. Por combinação: as fixtures que falham, o acerto médio das formas sob
+/// tremor forte (±2 e ±4 px, 24–400 px) e o pior «não é forma» (S, meio arco).
+#[test]
+#[ignore = "sonda"]
+fn measure_sensitivity() {
+    let all = load();
+    println!(
+        "\n| bow_max | ellipse_rms_max | close_of_length | fixtures | acerto médio ±2 | acerto médio ±4 | pior «não é forma» |"
+    );
+    for bow in [0.055, 0.06, 0.065, 0.07] {
+        for rms in [0.065, 0.075, 0.085, 0.095, 0.105] {
+            for close in [0.06, 0.065, 0.07] {
+                let base = Law {
+                    bow_max: bow,
+                    ellipse_rms_max: rms,
+                    close_of_length: close,
+                    ..Law::MEASURED
+                };
+                let f = failures(&all, &base).len();
+                let mut mean = [0.0_f64; 2];
+                let mut n = [0usize; 2];
+                let mut worst_not = 1.0_f64;
+                for s in [24.0, 48.0, 160.0, 400.0] {
+                    for (k, amp) in [(0usize, 2.0), (1, 4.0)] {
+                        for (name, r) in hit_rate(&base, s, amp, 24) {
+                            if name.contains("não é forma") {
+                                worst_not = worst_not.min(r);
+                            } else {
+                                mean[k] += r;
+                                n[k] += 1;
+                            }
+                        }
+                    }
+                    for (name, r) in hit_rate(&base, s, 1.0, 24) {
+                        if name.contains("não é forma") {
+                            worst_not = worst_not.min(r);
+                        }
+                    }
+                }
+                println!(
+                    "| {bow} | {rms} | {close} | {f} | {:.1} % | {:.1} % | {:.0} % |",
+                    100.0 * mean[0] / n[0] as f64,
+                    100.0 * mean[1] / n[1] as f64,
+                    100.0 * worst_not
+                );
+            }
+        }
+    }
+}
+
+/// Quanto cada constante mexe no acerto sob tremor forte, dentro da sua faixa válida (§3d).
+#[test]
+#[ignore = "sonda"]
+fn measure_sensitivity_of_each_constant() {
+    let all = load();
+    type Set = fn(&mut Law, f64);
+    let fields: Vec<(&str, Set, Vec<f64>)> = vec![
+        (
+            "rdp_of_diag",
+            |l, v| l.rdp_of_diag = v,
+            vec![0.025, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.1],
+        ),
+        (
+            "corner_of_diag",
+            |l, v| l.corner_of_diag = v,
+            vec![0.12, 0.16, 0.2, 0.24, 0.28, 0.32],
+        ),
+        (
+            "merge_turn_deg",
+            |l, v| l.merge_turn_deg = v,
+            vec![24.0, 29.0, 34.0, 39.0, 44.0],
+        ),
+        (
+            "bow_trim",
+            |l, v| l.bow_trim = v,
+            vec![0.0, 0.05, 0.1, 0.15, 0.2],
+        ),
+        ("fit_trim", |l, v| l.fit_trim = v, vec![0.15, 0.175, 0.2]),
+        (
+            "open_corner_of_side",
+            |l, v| l.open_corner_of_side = v,
+            vec![0.2, 0.3, 0.4, 0.5],
+        ),
+        (
+            "turn_tol_deg",
+            |l, v| l.turn_tol_deg = v,
+            vec![50.0, 90.0, 150.0, 300.0],
+        ),
+        (
+            "round_ratio",
+            |l, v| l.round_ratio = v,
+            vec![1.05, 1.1, 1.2, 1.3],
+        ),
+        ("bow_max", |l, v| l.bow_max = v, vec![0.055, 0.06, 0.065]),
+    ];
+    println!("\n| constante | valor | fixtures | acerto médio ±1 | ±2 | ±4 | pior «não é forma» |");
+    for (name, set, values) in fields {
+        for v in values {
+            let mut law = Law::MEASURED;
+            set(&mut law, v);
+            let f = failures(&all, &law).len();
+            let (mut mean, mut n) = ([0.0_f64; 3], 0usize);
+            let mut worst_not = 1.0_f64;
+            for s in [24.0, 48.0, 160.0, 400.0] {
+                for (k, amp) in [(0usize, 1.0), (1, 2.0), (2, 4.0)] {
+                    for (case, r) in hit_rate(&law, s, amp, 24) {
+                        if case.contains("não é forma") {
+                            worst_not = worst_not.min(r);
+                        } else {
+                            mean[k] += r;
+                            if k == 0 {
+                                n += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            println!(
+                "| `{name}` | {v} | {f} | {:.1} % | {:.1} % | {:.1} % | {:.0} % |",
+                100.0 * mean[0] / n as f64,
+                100.0 * mean[1] / n as f64,
+                100.0 * mean[2] / n as f64,
+                100.0 * worst_not
+            );
+        }
+    }
+}
+
+/// A × B, forma a forma, 80 mãos por célula: a lei medida contra uma candidata mais sensível.
+#[test]
+#[ignore = "sonda"]
+fn measure_sensitivity_ab() {
+    let all = load();
+    let candidates = [
+        ("A medida", Law::MEASURED),
+        (
+            "B",
+            Law {
+                bow_max: 0.06,
+                bow_trim: 0.05,
+                ellipse_rms_max: 0.075,
+                turn_tol_deg: 150.0,
+                ..Law::MEASURED
+            },
+        ),
+        (
+            "C",
+            Law {
+                bow_max: 0.06,
+                bow_trim: 0.0,
+                ellipse_rms_max: 0.075,
+                turn_tol_deg: 150.0,
+                ..Law::MEASURED
+            },
+        ),
+        (
+            "D",
+            Law {
+                bow_max: 0.065,
+                bow_trim: 0.05,
+                ellipse_rms_max: 0.075,
+                turn_tol_deg: 150.0,
+                ..Law::MEASURED
+            },
+        ),
+    ];
+    for (name, law) in &candidates {
+        println!(
+            "\n## {name}: fixtures a falhar = {}",
+            failures(&all, law).len()
+        );
+        print!("| tremor |");
+        for (n, _, _) in cases(1.0) {
+            print!(" {n} |");
+        }
+        println!();
+        for amp in [1.0, 2.0, 4.0] {
+            let mut acc: Vec<(&str, f64)> = Vec::new();
+            for s in [24.0, 48.0, 160.0, 400.0] {
+                for (i, (n, r)) in hit_rate(law, s, amp, 80).into_iter().enumerate() {
+                    if acc.len() <= i {
+                        acc.push((n, 0.0));
+                    }
+                    acc[i].1 += r / 4.0;
+                }
+            }
+            print!("| ±{amp} |");
+            for (_, r) in acc {
+                print!(" {:.1} % |", 100.0 * r);
+            }
+            println!();
+        }
+    }
+}

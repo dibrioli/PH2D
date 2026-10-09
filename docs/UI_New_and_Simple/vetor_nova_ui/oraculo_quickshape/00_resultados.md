@@ -158,6 +158,26 @@ uma constante de cada vez). Três estavam na BORDA e foram ao meio: elipse `0,04
 não desde a última amostra — o tremor de uma mão em repouso passava o passo de 1,5 px do lápis e
 reiniciava a contagem.
 
+## §3e — Mais sensível para todas as formas (09/10, 2.º pedido do dono)
+
+As três tolerâncias de «isto é forma» varridas juntas (`measure_sensitivity`) já quase não seguravam:
+a folga de fecho não mexe, a da elipse satura em `0,075`. A sonda por constante
+(`measure_sensitivity_of_each_constant`) achou quem segura as formas TREMIDAS: a régua do lado recto
+(`bow_max`, e o recorte `bow_trim` dela), a da volta inteira do círculo (`turn_tol_deg`). A × B forma a
+forma, 80 mãos por célula, média de 24–400 px (`measure_sensitivity_ab`):
+
+| | rectângulo | triângulo | círculo | elipse 2:1 | linha | zigue-zague | L | S lido como forma |
+|---|---|---|---|---|---|---|---|---|
+| antes, ±2 px | 87,5 % | 93,4 % | 85,6 % | 66,6 % | 97,5 % | 84,4 % | 93,1 % | 0,6 % |
+| **depois, ±2 px** | **93,8 %** | **97,5 %** | **87,5 %** | **74,4 %** | **98,8 %** | **90,3 %** | **97,2 %** | 1,9 % |
+| antes, ±4 px | 62,2 % | 65,0 % | 60,6 % | 51,2 % | 83,4 % | 58,4 % | 71,9 % | 0,3 % |
+| **depois, ±4 px** | **71,2 %** | **71,9 %** | **62,5 %** | **56,2 %** | **90,3 %** | **63,1 %** | **76,6 %** | 1,9 % |
+
+Escolhidos: `bow_max 0,055 → 0,06` (faixa re-medida `0,035–0,085`), `bow_trim 0,10 → 0` (`0–0,175`),
+`ellipse_rms_max 0,065 → 0,075` (`0,02–0,11`), `turn_tol_deg 90 → 150` (`50–300`); as 65 fixtures
+continuam certas. O preço medido: o S passa por forma em ~2 % das mãos (era 0,6 %) e o zigue-zague de
+quinas arredondadas PEQUENO (≤ 48 px) cai a 92 % no pior caso.
+
 ## §4 — O que isto decide para o PH2D (e o que NÃO decide)
 
 - **Copia-se a lei:** linha ⇒ 2 pontos; rectângulo ⇒ 4 cantos a 90° com a rotação do traço;

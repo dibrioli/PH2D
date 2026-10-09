@@ -73,6 +73,8 @@ pub(crate) fn coze_o_quadro(
     if motion.doc.bypassed_subgraphs.is_empty()
         && let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes)
     {
+        // ⭐ A origem de cada objecto Motion, na placa (doc ObjectsAndComponents 01 §13).
+        crate::motion_objeto::origem::aplica_gpu(motion, gpu);
         return;
     }
 

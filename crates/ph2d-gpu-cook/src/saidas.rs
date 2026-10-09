@@ -107,6 +107,13 @@ impl GpuCook {
         }
 
         let uma_so = saidas.len() == 1;
+        // ⭐ As faixas de cada sink (a origem do dono, doc ObjectsAndComponents 01 §13).
+        if let Some(i) = self.instances.as_mut() {
+            i.faixas.clear();
+        }
+        if let Some(f) = self.formas.as_mut() {
+            f.faixas.clear();
+        }
         let mut partes: Vec<(u32, u32, Vec<GpuTexRun>)> = Vec::with_capacity(saidas.len());
         for (k, (stream, &style)) in saidas.iter().zip(styles).enumerate() {
             let primeiro = if k == 0 {
@@ -136,6 +143,7 @@ impl GpuCook {
                 escreveu,
                 "a reserva do total vem antes da 1.a escrita, logo nenhuma baixa recusa"
             );
+            let forma0 = self.formas.as_ref().map_or(0, |f| f.len);
             if com_forma[k] {
                 // A vaga das formas vive PARA LÁ das das sprites (`2·stages + k`, `k < saídas`):
                 // duas escritas na mesma vaga chegariam ambas à última.
@@ -146,6 +154,14 @@ impl GpuCook {
                 .instances
                 .as_ref()
                 .map_or(0, |i| i.len.saturating_sub(primeiro));
+            if let Some(&sink) = plan.sinks.get(k) {
+                if let Some(i) = self.instances.as_mut() {
+                    i.faixas.push((sink, primeiro..primeiro + escrito));
+                }
+                if let Some(f) = self.formas.as_mut() {
+                    f.faixas.push((sink, forma0..f.len));
+                }
+            }
             // A partição DESTA saída. Com uma saída, a lei de sempre (a fronteira acha-se pelo
             // comprimento, e a contagem é a da corrente); com várias, só a fronteira da linhagem
             // dela — duas do mesmo comprimento seriam indistinguíveis — e só o que foi escrito.

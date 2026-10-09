@@ -25,9 +25,11 @@ use ph2d_render::RenderInstance;
 use super::{Afim, IDENTIDADE};
 use crate::motion_state::MotionState;
 
-/// O que a origem guarda entre quadros (CPU).
+/// O que a origem guarda entre quadros.
 #[derive(Debug, Default)]
 pub struct Origem {
+    /// O passe da placa, compilado no 1.º quadro que o pede.
+    passe: Option<ph2d_gpu_cook::instances::dono::PasseDoDono>,
     /// As listas como a bomba as compôs (espaço LOCAL), desde que alguma afim não é identidade.
     local: Option<(Vec<RenderInstance>, Vec<VectorInstance>)>,
     /// A composição da bomba a que [`Self::local`] corresponde.
@@ -130,4 +132,31 @@ pub fn aplica_cpu(motion: &mut MotionState) {
         }
     }
     motion.objeto.origem.aplicada = afins;
+}
+
+/// ⭐ **A origem na placa** — depois do cozido na placa, que reescreve os buffers a cada quadro (por
+/// isso no sítio, sem cópia local). Sem objecto deslocado, nada.
+pub fn aplica_gpu(motion: &mut MotionState, gpu: &ph2d_gpu::GpuContext) {
+    if motion.objeto.donos.values().all(|d| d.afim == IDENTIDADE) {
+        return;
+    }
+    let (sprites, formas) = motion.gpu_cook.faixas_dos_sinks();
+    let afins: BTreeMap<NodeId, Afim> = sprites
+        .iter()
+        .chain(formas)
+        .filter_map(|(sink, _)| {
+            let dono = motion.doc.owner_of(*sink)?;
+            let a = motion.objeto.donos.get(&dono)?.afim;
+            (a != IDENTIDADE).then_some((*sink, a))
+        })
+        .collect();
+    if afins.is_empty() {
+        return;
+    }
+    let passe = motion
+        .objeto
+        .origem
+        .passe
+        .get_or_insert_with(|| ph2d_gpu_cook::instances::dono::PasseDoDono::new(gpu));
+    motion.gpu_cook.aplica_donos(gpu, passe, &afins);
 }

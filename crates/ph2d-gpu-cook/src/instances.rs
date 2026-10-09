@@ -57,6 +57,8 @@ pub struct GpuInstances {
     pub(crate) buffer: wgpu::Buffer,
     pub(crate) len: u32,
     pub(crate) capacity: u32,
+    /// ⭐ A faixa de cada sink no último cozido (doc ObjectsAndComponents 01 §13: a origem do dono).
+    pub(crate) faixas: Vec<(ph2d_nodegraph::graph::NodeId, std::ops::Range<u32>)>,
 }
 
 impl GpuInstances {
@@ -268,6 +270,7 @@ impl GpuCook {
             buffer,
             len: 0,
             capacity,
+            faixas: Vec::new(),
         });
     }
 }
@@ -282,3 +285,7 @@ fn expected_lower_dim(i: usize) -> ph2d_nodegraph::port::Dim {
         _ => Dim::Vec4,               // tint, uv_rect, uv_cell
     }
 }
+
+/// ⭐ A origem de um objecto Motion na placa (doc ObjectsAndComponents 01 §13, F5).
+#[path = "dono.rs"]
+pub mod dono;

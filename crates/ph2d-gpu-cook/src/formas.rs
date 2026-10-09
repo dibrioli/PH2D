@@ -24,6 +24,8 @@ pub struct GpuFormas {
     pub(crate) buffer: wgpu::Buffer,
     pub(crate) len: u32,
     pub(crate) capacity: u32,
+    /// ⭐ A faixa de cada sink no último cozido (doc ObjectsAndComponents 01 §13: a origem do dono).
+    pub(crate) faixas: Vec<(ph2d_nodegraph::graph::NodeId, std::ops::Range<u32>)>,
 }
 
 impl GpuFormas {
@@ -91,6 +93,7 @@ impl GpuCook {
                 buffer,
                 len: 0,
                 capacity,
+                faixas: Vec::new(),
             });
         }
         if let Some(f) = self.formas.as_mut() {

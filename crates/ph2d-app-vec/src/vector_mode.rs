@@ -352,7 +352,7 @@ impl ModeFamily for Family<'_> {
 /// ações por cima das duas formas e a dica da caneta no rodapé. Corre uma vez.
 /// `PH2D_OBJECT_MODE_SMOKE=10` (F4, 08/10): a 9, e depois a PALETA a fazer piscar o pulldown Snap —
 /// ver [`crate::vector_mode_reach`]. `=11` (F6): dois dedos navegam — [`crate::vector_mode_nav`].
-/// `=12` (F7): o QuickShape — três traços SEGUROS viram formas perfeitas — `vector_mode_quick`.
+/// `=12` (F7): o QuickShape — quatro traços SEGUROS (um pequeno) viram formas — `vector_mode_quick`.
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -487,7 +487,7 @@ pub fn smoke_step(
                 go(next);
             }
         }
-        // A cena 12 (F7): três traços seguros viram formas perfeitas — `vector_mode_quick`.
+        // A cena 12 (F7): quatro traços seguros viram formas perfeitas — `vector_mode_quick`.
         s @ 50..=54 => {
             if let Some(next) = crate::vector_mode_quick::step(s, vec, scene, hero) {
                 go(next);

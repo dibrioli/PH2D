@@ -1,8 +1,8 @@
 //! ⭐ **A cena 12** (`PH2D_OBJECT_MODE_SMOKE=12`, D10 F7 — 08/10): o QUICKSHAPE. No layout *Vetor*,
-//! o Lápis pelo botão dele na coluna ① e três traços de mão SINTÉTICOS — um rectângulo tosco, um
-//! círculo tosco, uma linha trémula —, cada um SEGURADO no fim. Quem mede o segurar é a SHELL, a cada
+//! o Lápis pelo botão dele na coluna ① e quatro traços de mão SINTÉTICOS — um rectângulo tosco, um
+//! círculo tosco, uma linha trémula e um círculo PEQUENO (F7b) —, cada um SEGURADO no fim. Quem mede o segurar é a SHELL, a cada
 //! quadro, com o relógio do ponteiro (o `clock_ns` do chrome é esse relógio): a cena só carimba as
-//! amostras e espera, e cada traço vira a forma perfeita pela mesma porta da mão. No fim as três
+//! amostras e espera, e cada traço vira a forma perfeita pela mesma porta da mão. No fim as quatro
 //! ficam seleccionadas com o Lápis ainda na mão: os nós à vista, o QuickShape aceso, a dica no ⑤.
 
 use crate::state::VecState;
@@ -18,7 +18,7 @@ const STEP_NS: u128 = 8_000_000;
 const STEP_WORLD: f64 = 4.0 * PX_TO_WORLD;
 /// Se a forma não nascer em 3 s (o segurar é 0,5 s), a cena solta na mesma: a foto mostra a falha.
 const GIVE_UP_NS: u128 = 3_000_000_000;
-const STROKES: usize = 3;
+const STROKES: usize = 4;
 
 thread_local! {
     static STROKE: Cell<usize> = const { Cell::new(0) };
@@ -49,7 +49,7 @@ fn hand(poly: &[[f64; 2]], amp: f64) -> Vec<[f64; 2]> {
         .collect()
 }
 
-/// Os três traços (mundo, y para cima).
+/// Os quatro traços (mundo, y para cima).
 fn stroke(k: usize) -> Vec<[f64; 2]> {
     match k {
         // Um rectângulo tosco: os cantos fora do sítio e o fim a 20 px do início.
@@ -75,13 +75,25 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
             hand(&ring, 0.004)
         }
         // Uma linha trémula, inclinada.
-        _ => hand(&[[-1.8, -0.85], [1.6, -0.55]], 0.012),
+        2 => hand(&[[-1.8, -0.85], [1.6, -0.55]], 0.012),
+        // Um círculo PEQUENO — raio 15 px, amostras a ~2 px como a mão devagar (F7b, o dono 09/10:
+        // «formas pequenas devem funcionar»).
+        _ => {
+            let r = 15.0 * PX_TO_WORLD;
+            (0..=48)
+                .map(|i| {
+                    let a = std::f64::consts::TAU * 0.97 * f64::from(i) / 48.0;
+                    let wobble = 0.4 * PX_TO_WORLD * (f64::from(i) * 1.7).sin();
+                    [2.0 + (r + wobble) * a.cos(), 0.65 + (r + wobble) * a.sin()]
+                })
+                .collect()
+        }
     }
 }
 
 /// Um passo da cena 12; devolve o próximo estágio, se mudou. `50` = o Lápis pelo botão · `51` =
 /// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` =
-/// as três seleccionadas, com o Lápis ainda na mão · `9` = feito.
+/// as quatro seleccionadas, com o Lápis ainda na mão · `9` = feito.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
@@ -133,7 +145,7 @@ pub fn step(
             });
             Some(if k < STROKES { 52 } else { 54 })
         }
-        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); as três
+        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); as quatro
         // seleccionadas mostram os nós.
         54 => {
             let all: Vec<ph2d_vec_scene::VecPathId> = vec.entities.keys().copied().collect();
@@ -147,7 +159,7 @@ pub fn step(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn the_three_synthetic_strokes_are_the_shapes_the_scene_promises() {
+    fn the_synthetic_strokes_are_the_shapes_the_scene_promises() {
         use ph2d_vec_edit::quickshape::{QuickShape, recognise};
         let got: Vec<_> = (0..super::STROKES)
             .map(|k| recognise(&super::stroke(k), super::PX_TO_WORLD, false))
@@ -166,6 +178,11 @@ mod tests {
             matches!(&got[2], Some(QuickShape::Line { .. })),
             "{:?}",
             got[2]
+        );
+        assert!(
+            matches!(&got[3], Some(QuickShape::Ellipse { rx, ry, .. }) if rx == ry),
+            "o círculo pequeno: {:?}",
+            got[3]
         );
     }
 }

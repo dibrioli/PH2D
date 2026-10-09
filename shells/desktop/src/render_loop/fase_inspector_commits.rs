@@ -71,6 +71,7 @@ pub(super) struct InspectorIntents {
     pub(super) vida_edits: Vec<(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)>,
     /// ⭐⭐⭐ As edições das secções NAV REGION e NAV AGENT (plano 30, W4).
     pub(super) nav_edits: Vec<(u64, ph2d_editor_core::nav_edits::NavFieldEdit)>,
+    pub(super) luz_edits: Vec<(u64, ph2d_editor_core::luz_edits::LuzFieldEdit)>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(super) tween_edits: Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,
     /// ⭐⭐⭐ O SEGUIDOR DE CAMINHO (suplente #23).
@@ -165,6 +166,7 @@ impl crate::App {
             weapon_edits,
             vida_edits,
             nav_edits,
+            luz_edits,
             tween_edits,
             path_follow_edits,
             statemachine_edits,
@@ -273,6 +275,7 @@ impl crate::App {
             &weapon_edits,
             &vida_edits,
             &nav_edits,
+            &luz_edits,
             &tween_edits,
             &path_follow_edits,
             &statemachine_edits,

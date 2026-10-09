@@ -99,6 +99,8 @@ fn the_menu_offers_every_compiled_family() {
         ph2d_app_vec::object_add::VECTOR,
         ph2d_app_flip::object_add::FLIP,
         ph2d_app_components::object_add::CAMERA,
+        ph2d_app_light2d::object_add::LUZ,
+        ph2d_app_light2d::object_add::LUZ_AMBIENTE,
     ];
     for e in wanted {
         assert!(ids.contains(&e.id()), "{} fora do menu", e.key.key());
@@ -134,7 +136,7 @@ fn capture(
 #[test]
 fn creating_then_undoing_returns_the_project_to_the_bit() {
     let reg = ph2d_app_components::test_support::registo();
-    for which in ["empty", "camera", "flip"] {
+    for which in ["empty", "camera", "flip", "luz"] {
         let mut sim = ph2d_ecs::SimWorld::new();
         let mut vec_scene = ph2d_vec_scene::VecScene::new();
         let mut flip = ph2d_flip::FlipDoc::new();
@@ -156,6 +158,11 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
                 &[],
             )
             .expect("é de jogo"),
+            "luz" => Ok(ph2d_app_light2d::object_add::add(
+                ph2d_app_light2d::object_add::LUZ,
+                &mut sim,
+            )
+            .expect("é da luz")),
             _ => ph2d_app_flip::object_add::add(
                 ph2d_app_flip::object_add::FLIP,
                 &mut sim,
@@ -178,4 +185,34 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
             "{which}: o Ctrl+Z não devolveu o projecto ao bit"
         );
     }
+}
+
+/// ⭐⭐ **G8 — mexer na Intensidade e desfazer devolve o projecto ao BIT** (Luz 2D, W4): a edição
+/// do Inspector pela porta que a shell drena, e o `ProjectState` que o `post_frame_undo` usa.
+#[test]
+fn editing_a_light_then_undoing_returns_the_project_to_the_bit() {
+    use ph2d_editor_core::luz_edits::LuzFieldEdit;
+    let reg = ph2d_app_components::test_support::registo();
+    let (vec_scene, flip) = (ph2d_vec_scene::VecScene::new(), ph2d_flip::FlipDoc::new());
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let bits = ph2d_app_light2d::object_add::add(ph2d_app_light2d::object_add::LUZ, &mut sim)
+        .expect("é da luz");
+    let before = capture(&mut sim, &vec_scene, &flip, &reg);
+    let edit = [(bits, LuzFieldEdit::Intensidade(1.5))];
+    assert!(ph2d_app_light2d::inspector::apply_all(&mut sim, &edit));
+    let after = capture(&mut sim, &vec_scene, &flip, &reg);
+    assert_ne!(
+        after, before,
+        "a edição não chegou ao projecto que o undo vê"
+    );
+    let (rvec, _vmap, rflip, _fmap) = before.restore(&mut sim, &reg);
+    assert_eq!(
+        capture(&mut sim, &rvec, &rflip, &reg),
+        before,
+        "o Ctrl+Z não voltou ao bit"
+    );
+    let w = sim.world_mut();
+    let mut q = w.query::<&ph2d_light2d_ecs::Luz>();
+    let luz = *q.single(w).expect("uma luz depois do undo");
+    assert_eq!(luz.intensidade, std::f32::consts::TAU);
 }

@@ -121,3 +121,41 @@ fn the_palette_census() {
     }
     println!("  total: {}\n", without.len());
 }
+
+/// ⭐ **Luz 2D (W4): a paleta de uma IMAGEM oferece «Light Occluder» e «Unlit», e o PICK anexa-os**
+/// (plano Luz2D §4, item 3 — já estava no catálogo: conferido no código, não reconstruído). A
+/// `Luz` não: ela nasce pelo menu Add (`intrinsic`).
+#[test]
+fn a_paleta_da_imagem_oferece_e_anexa_os_dois_da_luz() {
+    let offered = offered_to(ObjectKind::Image);
+    assert!(
+        !offered.contains(&"ph2d::light2d::Luz"),
+        "a Luz nasce pelo menu Add"
+    );
+    let reg = crate::component_registry_for_tests::registo();
+    for nome in ["ph2d::light2d::BloqueiaLuz", "ph2d::light2d::NaoRecebeLuz"] {
+        assert!(offered.contains(&nome), "{nome} fora da paleta da imagem");
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let bits = crate::test_support::image(&mut sim);
+        let mut toasts = ph2d_editor_core::ToastQueue::default();
+        crate::component_attach::attach_picked(
+            Some(&(bits, nome.to_string())),
+            &mut sim,
+            &reg,
+            &[],
+            &mut toasts,
+        );
+        let e = ph2d_ecs::Entity::from_bits(bits);
+        let tem = match nome {
+            "ph2d::light2d::BloqueiaLuz" => sim
+                .world()
+                .get::<ph2d_light2d_ecs::BloqueiaLuz>(e)
+                .is_some_and(|b| b.opacidade == 1.0),
+            _ => sim
+                .world()
+                .get::<ph2d_light2d_ecs::NaoRecebeLuz>(e)
+                .is_some(),
+        };
+        assert!(tem, "o pick de {nome} não anexou o componente");
+    }
+}

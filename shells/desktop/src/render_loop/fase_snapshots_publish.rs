@@ -74,6 +74,8 @@ impl crate::App {
             tags_problem,
             script,
             particles,
+            luz2d,
+            toasts,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -217,6 +219,17 @@ impl crate::App {
                 mapa: &hero.input_map,
             },
         );
+        // ⭐ **A LUZ** (Luz 2D, W4): a secção e a recusa do solver, que sobe como aviso na
+        // transição (recusa que só o terminal vê é botão mudo).
+        ph2d_panel_inspector::set_current_inspector_luz(ph2d_app_light2d::inspector::build_info(
+            sim.world(),
+            hero.gizmo.selection,
+            hero.gizmo.selected_len(),
+            luz2d,
+        ));
+        if let Some(m) = luz2d.recusa_nova() {
+            toasts.push(Toast::warning(m));
+        }
         // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — fase-filha própria; ver o `mod sequencia`.
         sequencia::publica(
             sim,

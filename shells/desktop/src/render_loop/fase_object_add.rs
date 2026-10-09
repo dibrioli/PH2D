@@ -16,6 +16,7 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     ph2d_app_skeleton::object_add::ENTRIES,
     ph2d_app_motion::motion_objeto::object_add::ENTRIES,
     ph2d_app_components::object_add::ENTRIES,
+    ph2d_app_light2d::object_add::ENTRIES,
 ];
 
 /// O que o pick deu: um objecto já na cena, ou nada ainda (a imagem abre o diálogo de tamanho; o
@@ -85,6 +86,8 @@ impl crate::App {
             ph2d_app_components::object_add::spawn_empty_root,
         ) {
             r.map(Born::Entity).map_err(String::from)
+        } else if let Some(bits) = ph2d_app_light2d::object_add::add(entry, sim) {
+            Ok(Born::Entity(bits))
         } else {
             return;
         };

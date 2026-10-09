@@ -532,7 +532,7 @@ fn the_card_avoids_the_search_and_hides_dead_steps() {
     t.hero.documents.live.nav.search_open = true;
     t.paint();
     let (_, y1) = t.find(fac_node(FacButton::TimerPlay)).unwrap();
-    assert!(y1 > y0 + btn_px() * 2.0, "{y0} → {y1}");
+    assert!(y1 > y0 + btn_px() * 2.0, "{y0} -> {y1}");
     t.hero.documents.live.nav.search_open = false;
     for _ in 0..4 {
         t.fac(FacButton::TimerMinus);

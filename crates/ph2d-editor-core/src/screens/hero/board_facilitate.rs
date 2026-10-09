@@ -341,8 +341,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     match (b, panel) {
         (FacButton::VotesMinus | FacButton::VotesPlus, Some(VotePanel::Setup(mut s))) => {
             let up = b == FacButton::VotesPlus;
-            // CLAMP-OK: 1 ≤ VOTES_MAX (99) — constantes, o mínimo nunca passa o máximo.
-            s.votes = if up { s.votes + 1 } else { s.votes - 1 }.clamp(1, VOTES_MAX);
+            let next = if up { s.votes + 1 } else { s.votes - 1 };
+            s.votes = next.clamp(1, VOTES_MAX); // CLAMP-OK: constantes, 1 ≤ VOTES_MAX (99)
             f.panels.insert(board.id, VotePanel::Setup(s));
         }
         (FacButton::OnePerObject, Some(VotePanel::Setup(mut s))) => {

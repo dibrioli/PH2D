@@ -5109,6 +5109,54 @@ fn value_time_kernel_matches_the_cpu_on_the_device() {
     );
 }
 
+/// ⭐ **CICLO 17: o ATRASO do `value.time` no dispositivo** — as cinco ordens (a de `From Point`
+/// lê o `P` da grelha) com famílias que têm saltos (`Steps`) e ultrapassagens (`Spring`,
+/// `Elastic`): é onde um ULP de diferença no `raw` viraria um degrau de diferença no relógio.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_time_delay_matches_the_cpu_in_every_order() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for order in 0..=4 {
+        for curve in [0.0_f32, 9.0, 11.0, 12.0, 13.0, 14.0] {
+            let mut g = Graph::new();
+            let grid = grid_node(&mut g, 24.0);
+            let time = g.add_node("value.time");
+            g.set_param(time, "rate", 1.3);
+            g.set_param(time, "delay", 0.9);
+            g.set_param(time, "order", order as f32);
+            g.set_param(time, "seed", 7.0);
+            g.set_param(time, "ease_curve", curve);
+            g.set_param(time, "ease_dir", 1.0);
+            g.set_param(time, "steps", 6.0);
+            g.set_param(time, "grid_cols", 24.0);
+            g.set_param(time, "grid_from", 1.0);
+            g.set_param(time, "origin_x", 1.7);
+            g.set_param(time, "origin_y", -0.6);
+            g.set_param(time, "reach", 4.0);
+            connect(&mut g, grid, time);
+            let drive = g.add_node("motion.drive");
+            g.set_param(drive, "channel", 1.0);
+            g.set_param(drive, "mode", 0.0);
+            g.set_param(drive, "scale", 2.0);
+            connect(&mut g, grid, drive);
+            g.connect(Edge {
+                from: (time, 0),
+                to: (drive, 1),
+                delayed: false,
+            })
+            .expect("clock value into drive");
+            let (cpu, gc) = cook_both(&gpu, &reg, &g, drive);
+            let worst = compare_column(&gpu, &gc, drive, &cpu, "P");
+            eprintln!("ciclo 17 value.time ordem {order} família {curve}: max |d| = {worst:e}");
+            assert!(worst < 1e-4, "ordem {order} família {curve}: max |d| = {worst:e}");
+        }
+    }
+}
+
 /// **`value.slope` runs fully on the GPU and matches the CPU.** The derivative
 /// reads NEIGHBOURS off `in_v` (the `value.smooth` pattern, `ReadWrite`). The input
 /// is **`value.noise`, not a ramp** — a ramp's slope is a flat CONSTANT that a

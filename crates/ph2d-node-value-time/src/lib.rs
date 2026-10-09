@@ -25,7 +25,13 @@
 //! Reads the playhead, holds no state → `Effect::Temporal` (pull-side, like the
 //! LFO). Transcendental-free (HR-5): a multiply-add, bit-exact on the device.
 //!
-//! `value_i = playhead · rate + offset + i · stagger`.
+//! `value_i = playhead · rate + offset + i · stagger − delay · ease(raw_i)`.
+//!
+//! ⭐ **O ATRASO NO TEMPO** (ciclo 17, doc 126 §3.3): `delay` é o atraso TOTAL distribuído pela
+//! ORDEM da casa (`ph2d_ease::order` — índice, centro, aleatório, grelha, ponto) e moldado pela
+//! curva da casa (`ph2d_ease::ease`). É o `stagger: {amount, from, grid, ease}` do GSAP/anime.js:
+//! cada linha começa a sua animação mais tarde, a partir do centro, do canto ou de um ponto. Com
+//! `delay = 0` o termo nem corre — o relógio de sempre, ao bit.
 
 #![forbid(unsafe_code)]
 
@@ -33,7 +39,9 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
+use ph2d_nodegraph::gpu::{
+    ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, LutSpec, SourceWindow,
+};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -83,9 +91,94 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "stagger",
             default: 0.0,
         },
+        // ⭐ CICLO 17 — o atraso pela ordem e pela curva da casa (apendados; defaults = o de sempre).
+        ParamSpec {
+            name: "delay",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "order",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "seed",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "ease_curve",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "ease_dir",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "overshoot",
+            default: ph2d_ease::Shape::DEFAULT.overshoot,
+        },
+        ParamSpec {
+            name: "period",
+            default: ph2d_ease::Shape::DEFAULT.period,
+        },
+        ParamSpec {
+            name: "steps",
+            default: ph2d_ease::Shape::DEFAULT.steps,
+        },
+        ParamSpec {
+            name: "damping",
+            default: ph2d_ease::Shape::DEFAULT.damping,
+        },
+        ParamSpec {
+            name: "bez_x1",
+            default: ph2d_ease::Shape::DEFAULT.bezier[0],
+        },
+        ParamSpec {
+            name: "bez_y1",
+            default: ph2d_ease::Shape::DEFAULT.bezier[1],
+        },
+        ParamSpec {
+            name: "bez_x2",
+            default: ph2d_ease::Shape::DEFAULT.bezier[2],
+        },
+        ParamSpec {
+            name: "bez_y2",
+            default: ph2d_ease::Shape::DEFAULT.bezier[3],
+        },
+        ParamSpec {
+            name: "grid_cols",
+            default: 10.0,
+        },
+        ParamSpec {
+            name: "grid_from",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "grid_cell",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "axis",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "origin_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "origin_y",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "reach",
+            default: 5.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// A chave do text param da curva DESENHADA (`ease_curve = Custom`) — o mesmo canal do
+/// `motion.stagger`.
+pub const CURVE_KEY: &str = "curve";
 
 /// GPU compute kernel (ADR-0126) — the WGSL port of [`ValueTime::eval`], **fully
 /// device-resident**. VALUE out (mints a fresh `v`, does NOT ride the input
@@ -96,22 +189,102 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// driver may fuse, ε below the parity budget). No `applicable` — no CPU fallback.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let vt_v = params.playhead * params.rate + params.offset\n\
+        var vt_v = params.playhead * params.rate + params.offset\n\
         \x20   + f32(i) * params.stagger;\n\
+        if (params.delay != 0.0) {\n\
+        \x20   vt_v = vt_v - params.delay * vt_ease(vt_raw_at(i));\n\
+        }\n\
         write_v(i, vt_v);\n",
-    wgsl_lib: "",
-    bindings: &[ColumnBinding {
-        column: VALUE_COL,
-        dim: Dim::Scalar,
-        access: ColumnAccess::Write,
-        identity: [0.0; 4],
-        port: 0,
-    }],
-    params: &["rate", "offset", "stagger"],
+    wgsl_lib: VT_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // A posição, LIDA pelo `From Point` (ausente ⇒ a origem, como a CPU).
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[
+        "rate",
+        "offset",
+        "stagger",
+        "delay",
+        "order",
+        "seed",
+        "ease_curve",
+        "ease_dir",
+        "overshoot",
+        "period",
+        "steps",
+        "damping",
+        "bez_x1",
+        "bez_y1",
+        "bez_x2",
+        "bez_y2",
+        "grid_cols",
+        "grid_from",
+        "grid_cell",
+        "axis",
+        "origin_x",
+        "origin_y",
+        "reach",
+    ],
     count_law: Some(time_count),
     variant_by_param: None,
     applicable: None,
 };
+
+/// A tabela e a ordem da casa (`ph2d_ease::wgsl_lib!`) e a leitura dos params deste nó.
+const VT_LIB: &str = concat!(
+    ph2d_ease::wgsl_lib!(),
+    "\
+    fn vt_ease(t: f32) -> f32 {\n\
+        let curve = i32(pe_round(params.ease_curve));\n\
+        if (curve == 8) { return vt_curve_sample(t); }\n\
+        let s0 = vec4<f32>(params.overshoot, params.period, params.steps, params.damping);\n\
+        let s1 = vec4<f32>(params.bez_x1, params.bez_y1, params.bez_x2, params.bez_y2);\n\
+        return pe_ease(curve, i32(pe_round(params.ease_dir)), t, s0, s1);\n\
+    }\n\
+    fn vt_raw_at(i: u32) -> f32 {\n\
+        return pe_raw_at(i32(pe_round(params.order)),\n\
+        \x20   u32(max(pe_round(params.seed), 0.0)),\n\
+        \x20   u32(max(pe_round(params.grid_cols), 1.0)),\n\
+        \x20   i32(pe_round(params.grid_from)),\n\
+        \x20   u32(max(pe_round(params.grid_cell), 0.0)),\n\
+        \x20   i32(pe_round(params.axis)),\n\
+        \x20   vec2<f32>(params.origin_x, params.origin_y), params.reach,\n\
+        \x20   i, params.count, read_P(i));\n\
+    }\n"
+);
+
+/// A LUT da curva desenhada (`Custom`) — a mesma resolução do `motion.stagger` e pela mesma
+/// razão (doc do kernel dele).
+static LUTS: &[LutSpec] = &[LutSpec {
+    name: "vt_curve",
+    text_key: CURVE_KEY,
+    resolution: 512,
+    fill: fill_curve_lut,
+}];
+
+/// Amostra a curva em `t = k/(n−1)`; ausente/malformada ⇒ a identidade (o `Linear`).
+fn fill_curve_lut(text: &str, out: &mut [f32]) {
+    let curve = ph2d_curve::parse(text).unwrap_or_else(ph2d_curve::Curve::identity);
+    let n = out.len();
+    for (k, slot) in out.iter_mut().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "k < 512")]
+        let t = if n <= 1 { 0.0 } else { k as f32 / (n - 1) as f32 };
+        *slot = curve.eval(t);
+    }
+}
 
 /// **How wide is the field?** — the same expression `eval` uses. Connected, it is
 /// one clock per instance (a travelling ramp with `stagger`); **unconnected it is
@@ -126,6 +299,59 @@ fn time_count(c: &CountLawCtx<'_>) -> SourceWindow {
 
 struct ValueTime;
 
+/// O que o atraso lê: a ordem, a família e a curva desenhada — uma vez por cozimento.
+struct Atraso {
+    ordem: ph2d_ease::order::Order,
+    curve: i32,
+    dir: i32,
+    shape: ph2d_ease::Shape,
+    custom: Option<ph2d_curve::Curve>,
+}
+
+impl Atraso {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "índices de enum e contagens, arredondados como o WGSL"
+    )]
+    fn of(ctx: &EvalCtx<'_>) -> Self {
+        Self {
+            ordem: ph2d_ease::order::Order {
+                kind: ctx.param("order").round() as i32,
+                seed: ctx.param("seed").max(0.0).round() as u32,
+                cols: ctx.param("grid_cols").round().max(1.0) as u32,
+                from: ctx.param("grid_from").round() as i32,
+                cell: ctx.param("grid_cell").round().max(0.0) as u32,
+                axis: ctx.param("axis").round() as i32,
+                origin: [ctx.param("origin_x"), ctx.param("origin_y")],
+                reach: ctx.param("reach"),
+            },
+            curve: ctx.param("ease_curve").round() as i32,
+            dir: ctx.param("ease_dir").round() as i32,
+            shape: ph2d_ease::Shape {
+                overshoot: ctx.param("overshoot"),
+                period: ctx.param("period"),
+                steps: ctx.param("steps"),
+                damping: ctx.param("damping"),
+                bezier: [
+                    ctx.param("bez_x1"),
+                    ctx.param("bez_y1"),
+                    ctx.param("bez_x2"),
+                    ctx.param("bez_y2"),
+                ],
+            },
+            custom: ctx.text_param(CURVE_KEY).and_then(ph2d_curve::parse),
+        }
+    }
+
+    fn ease(&self, raw: f32) -> f32 {
+        if self.curve == ph2d_ease::CUSTOM {
+            return self.custom.as_ref().map_or(raw, |c| c.eval(raw));
+        }
+        ph2d_ease::ease(self.curve, self.dir, raw, &self.shape)
+    }
+}
+
 impl NodeOp for ValueTime {
     fn manifest(&self) -> &'static NodeManifest {
         &MANIFEST
@@ -135,12 +361,31 @@ impl NodeOp for ValueTime {
         let rate = ctx.param("rate");
         let offset = ctx.param("offset");
         let stagger = ctx.param("stagger");
+        let delay = ctx.param("delay");
         let t = ctx.playhead() as f32;
         // Cardinality follows the geometry: N from the (optional) input, else the
         // length-1 global clock (broadcast by `motion.drive`).
         let n = ctx.input(0).count().max(1);
+        let atraso = (delay != 0.0).then(|| Atraso::of(ctx));
+        let input = ctx.input(0);
+        let posicoes: &[[f32; 2]] = match input.get("P") {
+            Some(Column::Vec2(v)) => v,
+            _ => &[],
+        };
         let value: Vec<f32> = (0..n)
-            .map(|i| t * rate + offset + i as f32 * stagger)
+            .map(|i| {
+                let base = t * rate + offset + i as f32 * stagger;
+                match &atraso {
+                    // ⚠️ Só com o knob armado: o neutro é o relógio de sempre, ao bit.
+                    Some(a) => {
+                        let p = posicoes.get(i).copied().unwrap_or([0.0, 0.0]);
+                        #[expect(clippy::cast_possible_truncation, reason = "a contagem cabe num u32")]
+                        let raw = ph2d_ease::order::raw_at(&a.ordem, i as u32, n as u32, p);
+                        base - delay * a.ease(raw)
+                    }
+                    None => base,
+                }
+            })
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(value)));
     }
@@ -151,6 +396,7 @@ impl NodeOp for ValueTime {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueTime))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_luts(MANIFEST.id, LUTS);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -161,6 +407,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates_above(MANIFEST.id, WAVE_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
@@ -192,6 +441,449 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 0.02,
         widget: ParamWidget::Slider,
+    },
+    // ⭐ CICLO 17 — o ATRASO pela ordem e pela curva da casa (doc 126 §3.3).
+    ParamUiHint {
+        param: "delay",
+        label: "node.value.time.param.delay",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "order",
+        label: "node.value.time.param.order",
+        min: 0.0,
+        max: 4.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.value.time.param.order.0",
+                "node.value.time.param.order.1",
+                "node.value.time.param.order.2",
+                "node.value.time.param.order.3",
+                "node.value.time.param.order.4",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "node.value.time.param.seed",
+        min: 0.0,
+        max: 999.0,
+        step: 1.0,
+        widget: ParamWidget::Seed,
+    },
+    ParamUiHint {
+        param: "ease_curve",
+        label: "node.value.time.param.ease_curve",
+        min: 0.0,
+        max: 14.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.value.time.param.ease_curve.0",
+                "node.value.time.param.ease_curve.1",
+                "node.value.time.param.ease_curve.2",
+                "node.value.time.param.ease_curve.3",
+                "node.value.time.param.ease_curve.4",
+                "node.value.time.param.ease_curve.5",
+                "node.value.time.param.ease_curve.6",
+                "node.value.time.param.ease_curve.7",
+                "node.value.time.param.ease_curve.8",
+                "node.value.time.param.ease_curve.9",
+                "node.value.time.param.ease_curve.10",
+                "node.value.time.param.ease_curve.11",
+                "node.value.time.param.ease_curve.12",
+                "node.value.time.param.ease_curve.13",
+                "node.value.time.param.ease_curve.14",
+            ],
+        },
+    },
+    // A curva DESENHADA da `Custom` — um TEXT param, não um `ParamSpec`.
+    ParamUiHint {
+        param: CURVE_KEY,
+        label: "node.value.time.param.curve",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Curve,
+    },
+    ParamUiHint {
+        param: "ease_dir",
+        label: "node.value.time.param.ease_dir",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.value.time.param.ease_dir.0",
+                "node.value.time.param.ease_dir.1",
+                "node.value.time.param.ease_dir.2",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "overshoot",
+        label: "node.value.time.param.overshoot",
+        min: 0.0,
+        max: 5.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "period",
+        label: "node.value.time.param.period",
+        min: 0.05,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "steps",
+        label: "node.value.time.param.steps",
+        min: 1.0,
+        max: 64.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "damping",
+        label: "node.value.time.param.damping",
+        min: 0.05,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_x1",
+        label: "node.value.time.param.bez_x1",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_y1",
+        label: "node.value.time.param.bez_y1",
+        min: -1.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_x2",
+        label: "node.value.time.param.bez_x2",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_y2",
+        label: "node.value.time.param.bez_y2",
+        min: -1.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "grid_cols",
+        label: "node.value.time.param.grid_cols",
+        min: 1.0,
+        max: 1000.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "grid_from",
+        label: "node.value.time.param.grid_from",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.value.time.param.grid_from.0",
+                "node.value.time.param.grid_from.1",
+                "node.value.time.param.grid_from.2",
+                "node.value.time.param.grid_from.3",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "grid_cell",
+        label: "node.value.time.param.grid_cell",
+        min: 0.0,
+        max: 10000.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "axis",
+        label: "node.value.time.param.axis",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.value.time.param.axis.0",
+                "node.value.time.param.axis.1",
+                "node.value.time.param.axis.2",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "origin_x",
+        label: "node.value.time.param.origin_x",
+        min: -50.0,
+        max: 50.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "origin_y",
+        label: "node.value.time.param.origin_y",
+        min: -50.0,
+        max: 50.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "reach",
+        label: "node.value.time.param.reach",
+        min: 0.0,
+        max: 50.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
+
+use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamUnit, ParamUnitDecl};
+
+/// **Um controlo que o cozimento não abre não é pintado.** A ordem e a curva escolhem-se como no
+/// `motion.stagger`; e TODOS os números da onda só existem com o `delay` armado ([`WAVE_GATES`]).
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: CURVE_KEY,
+        when: "ease_curve",
+        values: &[ph2d_ease::CUSTOM],
+    },
+    ParamGate {
+        param: "ease_dir",
+        when: "ease_curve",
+        values: ph2d_ease::USES_DIRECTION,
+    },
+    ParamGate {
+        param: "overshoot",
+        when: "ease_curve",
+        values: &[ph2d_ease::BACK],
+    },
+    ParamGate {
+        param: "period",
+        when: "ease_curve",
+        values: &[ph2d_ease::ELASTIC],
+    },
+    ParamGate {
+        param: "steps",
+        when: "ease_curve",
+        values: &[ph2d_ease::STEPS],
+    },
+    ParamGate {
+        param: "damping",
+        when: "ease_curve",
+        values: &[ph2d_ease::SPRING],
+    },
+    ParamGate {
+        param: "bez_x1",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "bez_y1",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "bez_x2",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "bez_y2",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "seed",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_RANDOM],
+    },
+    ParamGate {
+        param: "grid_cols",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_GRID],
+    },
+    ParamGate {
+        param: "grid_from",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_GRID],
+    },
+    ParamGate {
+        param: "grid_cell",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_GRID],
+    },
+    ParamGate {
+        param: "grid_cell",
+        when: "grid_from",
+        values: &[ph2d_ease::order::FROM_CELL],
+    },
+    ParamGate {
+        param: "axis",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_GRID, ph2d_ease::order::ORDER_FROM_POINT],
+    },
+    ParamGate {
+        param: "origin_x",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_FROM_POINT],
+    },
+    ParamGate {
+        param: "origin_y",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_FROM_POINT],
+    },
+    ParamGate {
+        param: "reach",
+        when: "order",
+        values: &[ph2d_ease::order::ORDER_FROM_POINT],
+    },
+];
+
+/// ⭐ **A onda só aparece com o `delay` armado** (`delay > 0`, a faixa do slider começa em `0`):
+/// com o atraso a zero o termo nem corre, e vinte controlos inertes no cartão seriam o knob morto
+/// que o doc 90 caçou. Os gates SOMAM-SE aos de [`PARAM_GATES`].
+static WAVE_GATES: &[ParamGateAbove] = &[
+    ParamGateAbove {
+        param: "order",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "seed",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "ease_curve",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: CURVE_KEY,
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "ease_dir",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "overshoot",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "period",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "steps",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "damping",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "bez_x1",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "bez_y1",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "bez_x2",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "bez_y2",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "grid_cols",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "grid_from",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "grid_cell",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "axis",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "origin_x",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "origin_y",
+        when: "delay",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "reach",
+        when: "delay",
+        above: 0.0,
+    },
+];
+
+/// O atraso é TEMPO; o ponto e o alcance são lugares do mundo.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "delay",
+        unit: ParamUnit::Seconds,
+    },
+    ParamUnitDecl {
+        param: "origin_x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "origin_y",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "reach",
+        unit: ParamUnit::Length,
     },
 ];
 
@@ -313,6 +1005,39 @@ mod tests {
     fn a_negative_rate_runs_backwards() {
         let v = time_at(3.0, false, |g, t| g.set_param(t, "rate", -2.0));
         assert_eq!(v, vec![-6.0], "3*(-2) = -6");
+    }
+
+    /// ⭐ **O ATRASO NO TEMPO** (ciclo 17): `delay` distribui-se pela ordem e pela curva — a
+    /// primeira linha não espera, a última espera o `delay` inteiro; com `Quad In` o meio espera
+    /// só um quarto.
+    #[test]
+    fn the_delay_spreads_over_the_order_and_the_curve() {
+        let v = time_at(2.0, true, |g, t| g.set_param(t, "delay", 1.0));
+        assert_eq!(v, vec![2.0, 1.5, 1.0], "linear: a cauda espera 1 s");
+        let v = time_at(2.0, true, |g, t| {
+            g.set_param(t, "delay", 1.0);
+            g.set_param(t, "ease_curve", ph2d_ease::QUAD as f32);
+        });
+        assert_eq!(v, vec![2.0, 1.75, 1.0], "Quad In: o meio espera 0,25");
+        // Do centro para fora: o do meio arranca primeiro.
+        let v = time_at(2.0, true, |g, t| {
+            g.set_param(t, "delay", 1.0);
+            g.set_param(t, "order", ph2d_ease::order::ORDER_FROM_CENTER as f32);
+        });
+        assert_eq!(v, vec![1.0, 2.0, 1.0], "o centro não espera");
+    }
+
+    /// Com o `delay` a zero o relógio é o de sempre AO BIT, mesmo com a onda toda configurada.
+    #[test]
+    fn a_zero_delay_is_the_old_clock_bit_for_bit() {
+        let antes = time_at(1.37, true, |g, t| g.set_param(t, "stagger", 0.13));
+        let depois = time_at(1.37, true, |g, t| {
+            g.set_param(t, "stagger", 0.13);
+            g.set_param(t, "order", 3.0);
+            g.set_param(t, "ease_curve", 11.0);
+        });
+        let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        assert_eq!(bits(&antes), bits(&depois));
     }
 
     #[test]

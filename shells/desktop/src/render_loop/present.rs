@@ -55,6 +55,7 @@ impl crate::App {
             // its sub-rect (set by the bridge earlier this frame).
             hero_screen,
             frosting,
+            motion,
             ..
         } = gfx;
         let frosting = *frosting;
@@ -62,6 +63,9 @@ impl crate::App {
         let motion_active = tools
             .active()
             .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
+        // ⭐ O Motion DESENHA com a ferramenta na mão OU com um objecto Motion visível (doc
+        // ObjectsAndComponents 01 §13); o split do centro continua a ser só da ferramenta.
+        let motion_draws = motion_active || motion.objeto.desenha();
 
         // Motion Nodes M0.T13 — Fase B: when the center is split (Motion mode),
         // frame the scene into its sub-rect (top for a horizontal Cavalry split,
@@ -116,14 +120,14 @@ impl crate::App {
                     b,
                     window_size,
                     scene_viewport,
-                    motion_active,
+                    motion_draws,
                     frosting,
                     &onion_ghosts,
                     &bgremoval_tint,
                 ) else {
                     return;
                 };
-                self.present_flip_fx(window_size, scene_viewport, motion_active, &flip_preview);
+                self.present_flip_fx(window_size, scene_viewport, motion_draws, &flip_preview);
                 self.present_chrome_and_composite(
                     &frame,
                     window_size,

@@ -106,6 +106,8 @@ pub(crate) fn coze_o_quadro(
     }
 
     relogio::regista(relogio, playhead.time());
+    // ⭐ A origem de cada objecto Motion, ANTES do LOD (doc ObjectsAndComponents 01 §13).
+    crate::motion_objeto::origem::aplica_cpu(motion);
     // LOD — the freeze fix (ADR-0154 follow-up). The cook just filled
     // `vector_instances` with one crisp `VectorInstance` per stamped live vector; a
     // grid of 160k is a per-frame freeze (~one Vello fill each). This moves any

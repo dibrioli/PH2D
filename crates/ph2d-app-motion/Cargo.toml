@@ -19,6 +19,8 @@ ph2d-audio = { path = "../ph2d-audio" }
 ph2d-audio-decode = { path = "../ph2d-audio-decode" }
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
 ph2d-color = { path = "../ph2d-color" }
+# ⭐ O tipo de objecto `Motion` (doc ObjectsAndComponents 01 §13) — a família de modos declara-o.
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-curve = { path = "../ph2d-curve" }
 ph2d-ecs = { path = "../ph2d-ecs" }

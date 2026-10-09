@@ -14,6 +14,7 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     ph2d_app_vec::object_add::ENTRIES,
     ph2d_app_flip::object_add::ENTRIES,
     ph2d_app_skeleton::object_add::ENTRIES,
+    ph2d_app_motion::motion_objeto::object_add::ENTRIES,
     ph2d_app_components::object_add::ENTRIES,
 ];
 
@@ -77,6 +78,12 @@ impl crate::App {
         {
             r.map(Born::Entity).map_err(String::from)
         } else if let Some(r) = ph2d_app_skeleton::object_add::add(entry, sim, &mut self.skeleton) {
+            r.map(Born::Entity).map_err(String::from)
+        } else if let Some(r) = ph2d_app_motion::motion_objeto::object_add::add(
+            entry,
+            sim,
+            ph2d_app_components::object_add::spawn_empty_root,
+        ) {
             r.map(Born::Entity).map_err(String::from)
         } else {
             return;

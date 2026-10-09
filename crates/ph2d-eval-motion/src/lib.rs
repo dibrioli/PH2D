@@ -84,6 +84,12 @@ pub struct MotionCookPump {
     fans: ph2d_nodegraph::cook::TimeFans,
     /// Reused per-frame lowering buffer — zero-alloc in steady state.
     pub instances: Vec<RenderInstance>,
+    /// ⭐ **Onde cada sink caiu** na última composição — a faixa dele em [`Self::instances`] e em
+    /// [`Self::vector_instances`], pela ordem dos sinks (doc ObjectsAndComponents 01 §13, F5: a
+    /// origem de um objecto Motion aplica-se à faixa dos sinks dele).
+    pub faixas: Vec<FaixaDoSink>,
+    /// Quantas composições a bomba já fez — quem transforma as faixas pergunta se são novas.
+    pub composicoes: u64,
     /// The cooked VECTOR shape instances this frame (ADR-0154) — the other side
     /// of the `geometry_id` convention, drawn by the shell through
     /// `ph2d-vec-render` into the Vello scene. Reused per-frame like `instances`
@@ -189,6 +195,17 @@ mod scrub;
 mod taps;
 use cook_target::CookTarget;
 
+/// ⭐ A faixa de um sink nas duas listas da bomba (ver [`MotionCookPump::faixas`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FaixaDoSink {
+    /// O nó `motion.output`.
+    pub sink: NodeId,
+    /// As cópias de sprite dele.
+    pub instancias: std::ops::Range<usize>,
+    /// As cópias vectoriais dele.
+    pub vetores: std::ops::Range<usize>,
+}
+
 impl Default for MotionCookPump {
     fn default() -> Self {
         Self::new()
@@ -203,6 +220,8 @@ impl MotionCookPump {
             cook: Cook::new(),
             fans: ph2d_nodegraph::cook::TimeFans::new(),
             instances: Vec::new(),
+            faixas: Vec::new(),
+            composicoes: 0,
             vector_instances: Vec::new(),
             last_cooked_tick: None,
             dirty: true,
@@ -418,7 +437,10 @@ impl MotionCookPump {
                 // ⇒ quem desenha PUBLICA o que separou, e o laço das tomadas salta-o pela cerca de
                 // duplicado que ele já tinha. A corrente é a mesma; o que desaparece é a 2.ª conta.
                 self.tap_streams.clear();
+                self.faixas.clear();
+                self.composicoes = self.composicoes.wrapping_add(1);
                 for (indice_do_sink, &sink) in sinks.iter().enumerate() {
+                    let (i0, v0) = (self.instances.len(), self.vector_instances.len());
                     // A sink that fails to cook (an unknown type mid-edit, or a
                     // sequential node caught inside a remapped time scope)
                     // contributes nothing; the others still draw. The error is
@@ -511,6 +533,11 @@ impl MotionCookPump {
                         }
                         Err(e) => self.last_error = Some(e),
                     }
+                    self.faixas.push(FaixaDoSink {
+                        sink,
+                        instancias: i0..self.instances.len(),
+                        vetores: v0..self.vector_instances.len(),
+                    });
                 }
             }
             CookTarget::Boundaries(nodes) => {

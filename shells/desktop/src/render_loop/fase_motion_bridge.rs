@@ -26,6 +26,14 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
+        // ⭐ O Motion como OBJECTO (doc ObjectsAndComponents 01 §13): donos, migração, purga, cópias.
+        let feito = ph2d_app_motion::motion_objeto::upkeep(
+            motion,
+            sim.world_mut(),
+            hero.gizmo.selection,
+            self.playhead.is_playing(),
+        );
+        self.title_dirty |= feito != Default::default();
         // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
         // ActivateTool drain, so a freshly-activated tool is seen this frame;
         // BEFORE paint + present, so the split/panel visibility it sets and

@@ -48,7 +48,7 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// `ParamSpec` is f32-only and the manifest is frozen, so a string param lives
 /// in the `Graph` beside the manifest, not in it; the same slot `motion.path`
 /// uses for its `path` name).
-const OBJECT_PARAM: &str = "object";
+pub const OBJECT_PARAM: &str = "object";
 
 /// **Quando** este nó olha para o objeto — segundos à frente (ou atrás) do playhead.
 ///

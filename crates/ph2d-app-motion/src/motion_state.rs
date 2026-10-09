@@ -463,6 +463,9 @@ pub struct MotionState {
     pub ui_now: f32,
     /// ⭐⭐⭐ **O eco da última largada** — ver [`PiscadaPendente`].
     pub piscada: Option<PiscadaPendente>,
+    /// ⭐⭐ **O Motion como OBJECTO** (doc ObjectsAndComponents 01 §13, F5) — os objectos Motion
+    /// vivos, o dono em edição e a origem aplicada. Ver [`crate::motion_objeto`].
+    pub objeto: crate::motion_objeto::ObjetoState,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the

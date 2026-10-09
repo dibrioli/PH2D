@@ -99,6 +99,10 @@ pub struct MotionDoc {
     /// transform is the origin of what its sinks make, its eye hides them), serialized as the
     /// `[owner]` section, written LAST and only when non-empty.
     pub owners: Owners,
+    /// ⭐ backdrop → the `StableId` of the Motion object it decorates (`ob` records in `[owner]`).
+    /// Decoration has an owner for the reason it has a level: drawn while editing one object, it
+    /// belongs to that object's graph and nowhere else.
+    pub backdrop_owners: BTreeMap<u32, u64>,
 }
 
 impl MotionDoc {
@@ -136,7 +140,7 @@ impl MotionDoc {
             &self.backdrop_members,
             &self.bypassed_subgraphs,
         );
-        owner::write_section(&mut out, &self.owners);
+        owner::write_section(&mut out, &self.owners, &self.backdrop_owners);
         out
     }
 
@@ -235,8 +239,8 @@ impl MotionDoc {
             &backdrops.iter().map(|b| b.id).collect(),
             &bypassed_subgraphs,
         )?;
-        let owners = owner::parse_section(owner_part)?;
-        owner::validate(&graph, &owners)?;
+        let (owners, backdrop_owners) = owner::parse_section(owner_part)?;
+        owner::validate(&graph, &owners, &backdrops, &backdrop_owners)?;
         Ok(Self {
             graph,
             backdrops,
@@ -246,6 +250,7 @@ impl MotionDoc {
             backdrop_members,
             bypassed_subgraphs,
             owners,
+            backdrop_owners,
         })
     }
 

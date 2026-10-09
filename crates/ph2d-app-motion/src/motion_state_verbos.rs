@@ -104,6 +104,7 @@ impl MotionState {
             node_help_enabled: true,
             ui_now: 0.0,
             piscada: None,
+            objeto: Default::default(),
         }
     }
 

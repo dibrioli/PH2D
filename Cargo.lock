@@ -4719,6 +4719,7 @@ dependencies = [
  "ph2d-audio-decode",
  "ph2d-audio-spectral",
  "ph2d-color",
+ "ph2d-component-desc",
  "ph2d-contact",
  "ph2d-core",
  "ph2d-curve",

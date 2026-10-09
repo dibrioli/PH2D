@@ -28,13 +28,17 @@ fn shell(rel: &str) -> std::path::PathBuf {
 /// do Model deixam o quadro.
 ///
 /// ⚠️ **2026-10-05: `3` -> `4`, delta +1** — o esqueleto é um objecto (A14, `line/Vector`).
-const FAMILIAS: [(&str, &str); 4] = [
+const FAMILIAS: [(&str, &str); 5] = [
     ("ph2d_app_painter::paint_mode::Family", "&mut paint"),
     ("ph2d_app_flip::flip_mode::Family::new", "&mut flip"),
     ("ph2d_app_vec::vector_mode::Family::new", "&mut vector"),
     (
         "ph2d_app_skeleton::skeleton_mode::Family::new",
         "&mut skeleton",
+    ),
+    (
+        "ph2d_app_motion::motion_objeto::modo::Family::new",
+        "&mut motion_edit",
     ),
 ];
 

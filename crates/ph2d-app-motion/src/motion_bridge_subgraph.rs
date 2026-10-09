@@ -482,9 +482,6 @@ pub(super) fn clamp_level(motion: &mut MotionState) {
 /// new add / smart-connect / spliced reroute / duplicate cannot land at the root and
 /// vanish the moment it is created.
 pub(super) fn adopt_new(motion: &mut MotionState, before: &Graph) {
-    let Some(level) = motion.level else {
-        return; // at the root, membership is the absence of an entry
-    };
     let old: BTreeSet<NodeId> = before.nodes().iter().map(|n| n.id).collect();
     let fresh: Vec<NodeId> = motion
         .doc
@@ -494,6 +491,15 @@ pub(super) fn adopt_new(motion: &mut MotionState, before: &Graph) {
         .map(|n| n.id)
         .filter(|id| !old.contains(id))
         .collect();
+    // ⭐ E ao objecto Motion em edição (doc ObjectsAndComponents 01 §13) — no MESMO passo do undo.
+    if let Some(owner) = motion.objeto.editing {
+        for id in &fresh {
+            motion.doc.set_owner(*id, owner);
+        }
+    }
+    let Some(level) = motion.level else {
+        return; // at the root, membership is the absence of an entry
+    };
     for id in fresh {
         motion.doc.members.entry(id).or_insert(level);
     }

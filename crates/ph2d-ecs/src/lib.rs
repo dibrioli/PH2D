@@ -173,7 +173,7 @@ pub use factory::{
     reconcile_factories, tick_factories,
 };
 pub use flip_object_ref::FlipObjectRef;
-pub use motion_generator::MotionGenerator;
+pub use motion_generator::{MotionGenerator, MotionTemplate, assign_motion_templates};
 pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
 mod subtree_copies;
 pub use instantiate::{

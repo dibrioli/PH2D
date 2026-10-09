@@ -85,6 +85,9 @@ pub fn is_off_canvas(sim: &World, entity: Entity) -> bool {
         || sim
             .get::<ph2d_ecs::Visibility>(entity)
             .is_some_and(|v| v.hidden)
+        // ⭐ 3. ser MOLDE de um objecto Motion (doc ObjectsAndComponents 01 §13): só as cópias se
+        //    desenham — o molde continua publicado ao cozido, que não pergunta isto.
+        || sim.get::<ph2d_ecs::MotionTemplate>(entity).is_some()
 }
 
 /// ⭐⭐⭐ **A metade que fala de RECEITAS** — *«esta entidade é peça de uma receita que ninguém
@@ -122,6 +125,25 @@ mod off_canvas_tests {
         ChildOf, EnableMode, MasterRoot, Name, OnScreenEnabler, SimWorld, Transform, Visibility,
         VisibilityLayer,
     };
+
+    /// ⭐⭐ **O MOLDE de um objecto Motion não se desenha** (doc ObjectsAndComponents 01 §13) — só as
+    /// cópias. A metade que desenha primeiro (solto), depois filho do objecto Motion.
+    ///
+    /// **Mutação:** apagar o termo `MotionTemplate` de [`super::is_off_canvas`] ⇒ RED.
+    #[test]
+    fn a_motion_template_does_not_draw_itself() {
+        let mut sim = SimWorld::new();
+        let motion = sim.world_mut().spawn(ph2d_ecs::MotionGenerator).id();
+        let bola = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Bola")))
+            .id();
+        ph2d_ecs::assign_motion_templates(sim.world_mut());
+        assert!(draws_this_frame(sim.world(), bola, u32::MAX, [0.0, 0.0]));
+        sim.world_mut().entity_mut(bola).insert(ChildOf(motion));
+        ph2d_ecs::assign_motion_templates(sim.world_mut());
+        assert!(is_off_canvas(sim.world(), bola), "o molde desenhou-se sozinho");
+    }
 
     /// ⭐⭐ **O PISCAR da invencibilidade passa pela MESMA porta** (plano 28, W5) — com a marca
     /// derivada o objecto não se desenha, sem ela desenha-se. ⚠️ A metade que desenha vem primeiro,

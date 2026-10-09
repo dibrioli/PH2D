@@ -18,6 +18,7 @@ impl crate::App {
             hero_screen,
             flip,
             vec_scene,
+            motion,
             ..
         } = FrameGfx::of(gfx);
         let Some(hero) = hero_screen.as_mut() else {
@@ -43,12 +44,14 @@ impl crate::App {
         );
         let world = sim.world();
         let mut image_edit = ph2d_app_painter::image_edit_mode::Family::new(world);
+        let mut motion_edit = ph2d_app_motion::motion_objeto::modo::Family::new(motion);
         let families: &mut [&mut dyn ModeFamily] = &mut [
             &mut paint,
             &mut flip,
             &mut vector,
             &mut skeleton,
             &mut image_edit,
+            &mut motion_edit,
         ];
         if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {
             self.title_dirty = true;

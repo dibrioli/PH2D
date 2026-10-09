@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::{Members, Subgraph};
+use ph2d_nodegraph::graph::Edge;
 
 const SIM: &str = include_str!("../tests/fixtures/motion_doc_sim_antes_do_dono.txt");
 const HIBRIDO: &str = include_str!("../tests/fixtures/motion_doc_hibrido_antes_do_dono.txt");
@@ -111,4 +112,55 @@ fn rehome_passa_os_nos_de_um_dono_a_outro() {
     assert_eq!(doc.rehome(4, 8), 1);
     assert_eq!(doc.owner_of(a), Some(8));
     assert_eq!(doc.owner_of(b), Some(6));
+}
+
+/// ⭐ A cópia de um dono leva nós, params e fios internos; o fio que vinha de FORA continua a vir do
+/// mesmo nó; o original fica intacto. (Mutação: não refazer as arestas ⇒ RED.)
+#[test]
+fn copiar_um_dono_da_a_copia_um_grafo_proprio() {
+    let mut doc = MotionDoc::new();
+    let fora = doc.graph.add_node("motion.grid");
+    let a = doc.graph.add_node("motion.grid");
+    let b = doc.graph.add_node("motion.output");
+    doc.graph.set_param(a, "rows", 7.0);
+    doc.graph
+        .connect(Edge { from: (a, 0), to: (b, 0), delayed: false })
+        .unwrap();
+    doc.set_owner(fora, 9);
+    doc.set_owner(a, 1);
+    doc.set_owner(b, 1);
+    let map = doc.copy_owner(1, 2);
+    assert_eq!(map.len(), 2);
+    let (a2, b2) = (map[&a], map[&b]);
+    assert_eq!(doc.nodes_of(2), vec![a2, b2]);
+    assert_eq!(doc.nodes_of(1), vec![a, b], "o original fica");
+    assert_eq!(
+        doc.graph.node_param_overrides(a2).and_then(|p| p.get("rows")),
+        Some(&7.0)
+    );
+    assert!(doc.graph.edges().iter().any(|e| e.from.0 == a2 && e.to.0 == b2));
+    assert!(MotionDoc::from_text(&doc.to_text()).is_ok());
+}
+
+#[test]
+fn a_moldura_tem_dono_e_sai_com_ele() {
+    let (mut doc, a, _) = doc_de_dois_nos();
+    doc.backdrops.push(crate::Backdrop {
+        id: 4,
+        x: 0.0,
+        y: 0.0,
+        w: 10.0,
+        h: 10.0,
+        color: 0,
+        title: "Chuva".into(),
+    });
+    doc.set_owner(a, 3);
+    doc.adopt_unowned(3);
+    assert_eq!(doc.backdrop_owners.get(&4), Some(&3));
+    let text = doc.to_text();
+    assert!(text.contains("ob 4 3"));
+    assert_eq!(MotionDoc::from_text(&text).unwrap(), doc);
+    doc.remove_owner(3);
+    assert!(doc.backdrops.is_empty());
+    assert!(doc.backdrop_owners.is_empty());
 }

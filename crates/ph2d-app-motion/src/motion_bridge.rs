@@ -358,7 +358,8 @@ pub fn dispatch(
     #[cfg(feature = "panel-motion-graph")]
     params::publish(motion, &mut hero.store, motion_active, hero.project, toasts);
 
-    if !motion_active {
+    // ⭐ Um objecto Motion visível cozinha e desenha sem a ferramenta (doc ObjectsAndComponents 01 §13).
+    if !motion_active && !motion.objeto.desenha() {
         return;
     }
 
@@ -366,7 +367,7 @@ pub fn dispatch(
     // The render output IS the Output node — the sink follows the graph (wire a
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
-    motion.sinks = output_nodes(&motion.doc.graph);
+    motion.sinks = crate::motion_objeto::sinks_visiveis(motion, output_nodes(&motion.doc.graph));
     // As TOMADAS, recomputadas pelo mesmo motivo dos sinks: elas se curam sozinhas depois
     // de um load, um undo ou uma edição do grafo.
     motion.signal_taps = signal_nodes(&motion.doc.graph);

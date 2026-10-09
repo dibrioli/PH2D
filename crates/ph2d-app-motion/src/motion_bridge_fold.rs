@@ -138,6 +138,8 @@ fn slot_of(slots: &[(NodeId, u16)], node: NodeId, port: u16) -> Option<u16> {
 /// A document with no subgraphs takes the early exit and pays a breadcrumb — the
 /// fold is not a tax on the graphs that never group anything.
 pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
+    // ⭐ Primeiro o DONO (o objecto Motion em edição), depois o nível (doc ObjectsAndComponents 01 §13).
+    crate::motion_objeto::view::so_do_dono(motion, snap);
     let level = motion.level;
     snap.level = level;
     snap.breadcrumb = breadcrumb(motion);
@@ -155,7 +157,7 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
     // The cards standing at THIS level, each with its derived interface.
     let cards: Vec<u32> = subs
         .iter()
-        .filter(|s| s.parent == level)
+        .filter(|s| s.parent == level && crate::motion_objeto::view::mostra_grupo(motion, s.id))
         .map(|s| s.id)
         .collect();
     let ports: BTreeMap<u32, CardPorts> = cards

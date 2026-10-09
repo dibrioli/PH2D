@@ -11,6 +11,7 @@ authors.workspace = true
 
 [dependencies]
 ph2d-curve = { path = "../ph2d-curve" }
+ph2d-ease = { path = "../ph2d-ease" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 

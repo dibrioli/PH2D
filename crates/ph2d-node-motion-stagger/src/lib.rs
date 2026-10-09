@@ -24,6 +24,7 @@
 use ph2d_node_registry::{
     NodeRegistry, ParamChannelRange, ParamUnit, ParamUnitDecl, RegistryError,
 };
+use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -100,13 +101,108 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // ⭐ CICLO 17 (doc 126) — apendados no fim; os defaults deixam todo grafo autorado ao bit.
+        // A FORMA das famílias que a leem (`ph2d_ease::Shape`).
+        ParamSpec {
+            name: "overshoot",
+            default: ph2d_ease::Shape::DEFAULT.overshoot,
+        },
+        ParamSpec {
+            name: "period",
+            default: ph2d_ease::Shape::DEFAULT.period,
+        },
+        ParamSpec {
+            name: "steps",
+            default: ph2d_ease::Shape::DEFAULT.steps,
+        },
+        ParamSpec {
+            name: "damping",
+            default: ph2d_ease::Shape::DEFAULT.damping,
+        },
+        ParamSpec {
+            name: "bez_x1",
+            default: ph2d_ease::Shape::DEFAULT.bezier[0],
+        },
+        ParamSpec {
+            name: "bez_y1",
+            default: ph2d_ease::Shape::DEFAULT.bezier[1],
+        },
+        ParamSpec {
+            name: "bez_x2",
+            default: ph2d_ease::Shape::DEFAULT.bezier[2],
+        },
+        ParamSpec {
+            name: "bez_y2",
+            default: ph2d_ease::Shape::DEFAULT.bezier[3],
+        },
+        // A ORDEM no ESPAÇO (`Grid` · `From Point`).
+        ParamSpec {
+            name: "grid_cols",
+            default: 10.0,
+        },
+        ParamSpec {
+            name: "grid_from",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "grid_cell",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "axis",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "origin_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "origin_y",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "reach",
+            default: 5.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// A forma das famílias (`Back` · `Elastic` · `Steps` · `Spring` · `Bezier`), lida dos params.
+fn shape_of(ctx: &EvalCtx<'_>) -> ph2d_ease::Shape {
+    ph2d_ease::Shape {
+        overshoot: ctx.param("overshoot"),
+        period: ctx.param("period"),
+        steps: ctx.param("steps"),
+        damping: ctx.param("damping"),
+        bezier: [
+            ctx.param("bez_x1"),
+            ctx.param("bez_y1"),
+            ctx.param("bez_x2"),
+            ctx.param("bez_y2"),
+        ],
+    }
+}
+
+/// A ordem inteira, lida dos params — os que escolhem ramo arredondados como o WGSL os arredonda.
+#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "índices de enum e contagens")]
+fn order_of(ctx: &EvalCtx<'_>) -> order::Order {
+    order::Order {
+        kind: ctx.param("order").round() as i32,
+        seed: ctx.param("seed").max(0.0).round() as u32,
+        cols: ctx.param("grid_cols").round().max(1.0) as u32,
+        from: ctx.param("grid_from").round() as i32,
+        cell: ctx.param("grid_cell").round().max(0.0) as u32,
+        axis: ctx.param("axis").round() as i32,
+        origin: [ctx.param("origin_x"), ctx.param("origin_y")],
+        reach: ctx.param("reach"),
+    }
+}
+
 /// The per-instance stagger delta before it's added to the channel: the eased
 /// ramp `min→max` at position `raw ∈ [0,1]`, scaled by `falloff`. Easing is the
 /// `curve` family shaped by `dir` (In / Out / In-Out) — see [`ease`].
+#[expect(clippy::too_many_arguments, reason = "a conta é uma linha; os números são do nó")]
 fn stagger_delta(
     min: f32,
     max: f32,
@@ -115,8 +211,9 @@ fn stagger_delta(
     raw: f32,
     falloff: f32,
     custom: Option<&Curve>,
+    shape: &ph2d_ease::Shape,
 ) -> f32 {
-    (min + ease(curve, dir, raw, custom) * (max - min)) * falloff
+    (min + ease(curve, dir, raw, custom, shape) * (max - min)) * falloff
 }
 
 struct MotionStagger;
@@ -134,10 +231,10 @@ impl NodeOp for MotionStagger {
         let dir = ctx.param("ease_dir").round() as i32;
         let reverse = ctx.param("reverse") >= 0.5;
         let offset = ctx.param("offset");
-        // ⭐ A ORDEM em que a onda corre pela fila (ciclo 2, W2 — ver [`order`]).
-        let ordem = ctx.param("order").round() as i32;
-        #[expect(clippy::cast_sign_loss, reason = "uma semente e' um padrao de bits")]
-        let semente = ctx.param("seed").max(0.0).round() as u32;
+        // ⭐ A ORDEM em que a onda corre pela fila (ciclo 2 · ciclo 17 — ver [`order`]) e a
+        // FORMA da família (ciclo 17).
+        let ordem = order_of(ctx);
+        let shape = shape_of(ctx);
         // A forma DESENHADA (`ease_curve = Custom`). Parseada UMA vez, fora do laço: ela
         // é uniforme na fileira inteira, e um parse por elemento seria uma string por
         // instância.
@@ -145,11 +242,17 @@ impl NodeOp for MotionStagger {
         let out = {
             let input = ctx.input(0);
             let n = input.count();
+            // Só o `From Point` lê a posição; as outras ordens nem a pedem.
+            let posicoes: &[[f32; 2]] = match input.get("P") {
+                Some(Column::Vec2(v)) if ordem.kind == order::ORDER_FROM_POINT => v,
+                _ => &[],
+            };
             let deltas: Vec<f32> = (0..n)
                 .map(|i| {
                     // A posição na onda, `0..1` — pela porta única, a mesma que o WGSL usa.
+                    let p = posicoes.get(i).copied().unwrap_or([0.0, 0.0]);
                     #[expect(clippy::cast_possible_truncation, reason = "a contagem cabe num u32")]
-                    let raw = order::raw_at(ordem, i as u32, n as u32, semente);
+                    let raw = order::raw_at(&ordem, i as u32, n as u32, p);
                     let raw = if reverse { 1.0 - raw } else { raw };
                     // ⚠️ **O `frac` só corre com o knob armado, e a razão é a
                     // PONTA da rampa:** o último elemento senta exactamente em
@@ -169,6 +272,7 @@ impl NodeOp for MotionStagger {
                         raw,
                         falloff_at(input, i),
                         custom.as_ref(),
+                        &shape,
                     )
                 })
                 .collect();
@@ -224,7 +328,89 @@ static PARAM_GATES: &[ParamGate] = &[
     ParamGate {
         param: "ease_dir",
         when: "ease_curve",
-        values: &[1, 2, 3, 4, 5, 6, 7],
+        values: ph2d_ease::USES_DIRECTION,
+    },
+    // ⭐ CICLO 17 — cada número de forma só aparece na família que o LÊ.
+    ParamGate {
+        param: "overshoot",
+        when: "ease_curve",
+        values: &[ph2d_ease::BACK],
+    },
+    ParamGate {
+        param: "period",
+        when: "ease_curve",
+        values: &[ph2d_ease::ELASTIC],
+    },
+    ParamGate {
+        param: "steps",
+        when: "ease_curve",
+        values: &[ph2d_ease::STEPS],
+    },
+    ParamGate {
+        param: "damping",
+        when: "ease_curve",
+        values: &[ph2d_ease::SPRING],
+    },
+    ParamGate {
+        param: "bez_x1",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "bez_y1",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "bez_x2",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    ParamGate {
+        param: "bez_y2",
+        when: "ease_curve",
+        values: &[ph2d_ease::BEZIER],
+    },
+    // A grelha só no `Grid`; a célula só no `Grid` E com `From = Cell` (os gates somam-se).
+    ParamGate {
+        param: "grid_cols",
+        when: "order",
+        values: &[order::ORDER_GRID],
+    },
+    ParamGate {
+        param: "grid_from",
+        when: "order",
+        values: &[order::ORDER_GRID],
+    },
+    ParamGate {
+        param: "grid_cell",
+        when: "order",
+        values: &[order::ORDER_GRID],
+    },
+    ParamGate {
+        param: "grid_cell",
+        when: "grid_from",
+        values: &[order::FROM_CELL],
+    },
+    ParamGate {
+        param: "axis",
+        when: "order",
+        values: &[order::ORDER_GRID, order::ORDER_FROM_POINT],
+    },
+    ParamGate {
+        param: "origin_x",
+        when: "order",
+        values: &[order::ORDER_FROM_POINT],
+    },
+    ParamGate {
+        param: "origin_y",
+        when: "order",
+        values: &[order::ORDER_FROM_POINT],
+    },
+    ParamGate {
+        param: "reach",
+        when: "order",
+        values: &[order::ORDER_FROM_POINT],
     },
     // ⚠️ **A semente só é lida no `Random`** (ciclo 2, W2) — um controlo que o cook não abre
     // não é pintado.
@@ -277,7 +463,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         // ⚠️ **Apendada**: a `Custom` é o índice 8, e as oito de sempre ficam onde
         // estavam — um documento autorado guarda o NÚMERO, não o nome.
-        max: 8.0,
+        max: 14.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
@@ -290,6 +476,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
                 "node.motion.stagger.param.ease_curve.6",
                 "node.motion.stagger.param.ease_curve.7",
                 "node.motion.stagger.param.ease_curve.8",
+                "node.motion.stagger.param.ease_curve.9",
+                "node.motion.stagger.param.ease_curve.10",
+                "node.motion.stagger.param.ease_curve.11",
+                "node.motion.stagger.param.ease_curve.12",
+                "node.motion.stagger.param.ease_curve.13",
+                "node.motion.stagger.param.ease_curve.14",
             ],
         },
     },
@@ -342,13 +534,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "order",
         label: "node.motion.stagger.param.order",
         min: 0.0,
-        max: 2.0,
+        max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
                 "node.motion.stagger.param.order.0",
                 "node.motion.stagger.param.order.1",
                 "node.motion.stagger.param.order.2",
+                "node.motion.stagger.param.order.3",
+                "node.motion.stagger.param.order.4",
             ],
         },
     },
@@ -359,6 +553,140 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 999.0,
         step: 1.0,
         widget: ParamWidget::Seed,
+    },
+    // ⭐ CICLO 17 — a forma das famílias e a ordem no espaço.
+    ParamUiHint {
+        param: "overshoot",
+        label: "node.motion.stagger.param.overshoot",
+        min: 0.0,
+        max: 5.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "period",
+        label: "node.motion.stagger.param.period",
+        min: 0.05,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "steps",
+        label: "node.motion.stagger.param.steps",
+        min: 1.0,
+        max: 64.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "damping",
+        label: "node.motion.stagger.param.damping",
+        min: 0.05,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_x1",
+        label: "node.motion.stagger.param.bez_x1",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_y1",
+        label: "node.motion.stagger.param.bez_y1",
+        min: -1.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_x2",
+        label: "node.motion.stagger.param.bez_x2",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "bez_y2",
+        label: "node.motion.stagger.param.bez_y2",
+        min: -1.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "grid_cols",
+        label: "node.motion.stagger.param.grid_cols",
+        min: 1.0,
+        max: 1000.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "grid_from",
+        label: "node.motion.stagger.param.grid_from",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.motion.stagger.param.grid_from.0",
+                "node.motion.stagger.param.grid_from.1",
+                "node.motion.stagger.param.grid_from.2",
+                "node.motion.stagger.param.grid_from.3",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "grid_cell",
+        label: "node.motion.stagger.param.grid_cell",
+        min: 0.0,
+        max: 10000.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: "axis",
+        label: "node.motion.stagger.param.axis",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.motion.stagger.param.axis.0",
+                "node.motion.stagger.param.axis.1",
+                "node.motion.stagger.param.axis.2",
+            ],
+        },
+    },
+    ParamUiHint {
+        param: "origin_x",
+        label: "node.motion.stagger.param.origin_x",
+        min: -50.0,
+        max: 50.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "origin_y",
+        label: "node.motion.stagger.param.origin_y",
+        min: -50.0,
+        max: 50.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "reach",
+        label: "node.motion.stagger.param.reach",
+        min: 0.0,
+        max: 50.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
     },
 ];
 
@@ -375,6 +703,19 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "max",
         unit: ParamUnit::FromChannel,
+    },
+    // O ponto e o alcance do `From Point` são lugares do MUNDO.
+    ParamUnitDecl {
+        param: "origin_x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "origin_y",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "reach",
+        unit: ParamUnit::Length,
     },
 ];
 
@@ -503,7 +844,7 @@ mod tests {
     #[test]
     fn single_instance_takes_min() {
         // n == 1 → raw = 0 → delta = min (no divide-by-zero on `n-1`).
-        assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0, None), 3.0);
+        assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0, None, &ph2d_ease::Shape::DEFAULT), 3.0);
     }
 
     /// The focus field gates the ramp (audit 2026-07-10: untested until now):
@@ -601,7 +942,7 @@ mod tests {
     fn swapping_the_endpoints_inverts_and_reverse_is_a_different_thing() {
         let ramp = |lo: f32, hi: f32, curve: i32| -> Vec<f32> {
             (0..5)
-                .map(|i| stagger_delta(lo, hi, curve, 0, i as f32 / 4.0, 1.0, None))
+                .map(|i| stagger_delta(lo, hi, curve, 0, i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
                 .collect()
         };
         for curve in 0..=7 {
@@ -626,7 +967,7 @@ mod tests {
             }
             // (2) O `reverse` ESPELHA a rampa ascendente.
             let mirrored: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(0.0, 1.0, curve, 0, 1.0 - i as f32 / 4.0, 1.0, None))
+                .map(|i| stagger_delta(0.0, 1.0, curve, 0, 1.0 - i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
                 .collect();
             let up_rev: Vec<f32> = up.iter().rev().copied().collect();
             for (a, b) in mirrored.iter().zip(&up_rev) {
@@ -665,10 +1006,10 @@ mod tests {
     fn measure_reversed_endpoints() {
         for curve in 0..=7 {
             let up: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(0.0, 1.0, curve, 0, i as f32 / 4.0, 1.0, None))
+                .map(|i| stagger_delta(0.0, 1.0, curve, 0, i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
                 .collect();
             let down: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(1.0, 0.0, curve, 0, i as f32 / 4.0, 1.0, None))
+                .map(|i| stagger_delta(1.0, 0.0, curve, 0, i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
                 .collect();
             // O que um "swap + reverse" daria: a mesma rampa lida ao contrário.
             let mirror: Vec<f32> = up.iter().rev().copied().collect();

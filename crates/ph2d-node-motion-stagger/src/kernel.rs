@@ -83,7 +83,33 @@ const SG_PARAMS: &[&str] = &[
     // lista mais longa; só o compilador do device sabe que é a MESMA coisa duas vezes.*
     "order",
     "seed",
+    // ⭐ CICLO 17 — a forma das famílias e a ordem no espaço (o `ph2d_ease::wgsl_lib!` lê-os).
+    "overshoot",
+    "period",
+    "steps",
+    "damping",
+    "bez_x1",
+    "bez_y1",
+    "bez_x2",
+    "bez_y2",
+    "grid_cols",
+    "grid_from",
+    "grid_cell",
+    "axis",
+    "origin_x",
+    "origin_y",
+    "reach",
 ];
+
+/// A posição, LIDA pelo `From Point` nas variantes que não a escrevem (a X/Y já a liga em
+/// leitura-escrita). Ausente ⇒ a origem, como a CPU.
+const SG_P_READ: ColumnBinding = ColumnBinding {
+    column: "P",
+    dim: Dim::Vec2,
+    access: ColumnAccess::Read,
+    identity: [0.0; 4],
+    port: 0,
+};
 
 /// The falloff mask, bound identically by every variant.
 const SG_FALLOFF: ColumnBinding = ColumnBinding {
@@ -94,79 +120,33 @@ const SG_FALLOFF: ColumnBinding = ColumnBinding {
     port: 0,
 };
 
-/// The whole easing table, ported verbatim from the CPU: 8 curve families × 3
-/// directions, all polynomial or `sqrt` (HR-5 — no `pow`, no transcendental),
-/// with In-Out built by reflecting the In base exactly as the CPU does.
+/// A tabela de easing e a ordem são as da casa (`ph2d_ease::wgsl_lib!`, ciclo 17 — a MESMA conta
+/// da CPU); aqui só mora o que é deste nó: ler os params e a LUT da `Custom`.
 ///
-/// Shared by all three variants — see the module note on why this is one
-/// constant and not three copies.
-const SG_LIB: &str = "\
+/// Partilhado pelas três variantes — ver a nota do módulo.
+const SG_LIB: &str = concat!(
+    ph2d_ease::wgsl_lib!(),
+    "\
     fn sg_round(x: f32) -> f32 {\n\
         return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
     }\n\
-    fn sg_bounce_out(t: f32) -> f32 {\n\
-        let n1 = 7.5625;\n\
-        let d1 = 2.75;\n\
-        if (t < 1.0 / d1) { return n1 * t * t; }\n\
-        if (t < 2.0 / d1) {\n\
-            let u = t - 1.5 / d1;\n\
-            return n1 * u * u + 0.75;\n\
-        }\n\
-        if (t < 2.5 / d1) {\n\
-            let u = t - 2.25 / d1;\n\
-            return n1 * u * u + 0.9375;\n\
-        }\n\
-        let u = t - 2.625 / d1;\n\
-        return n1 * u * u + 0.984375;\n\
-    }\n\
-    fn sg_ease_in(curve: i32, t: f32) -> f32 {\n\
-        if (curve == 1) { return t * t; }\n\
-        if (curve == 2) { return t * t * t; }\n\
-        if (curve == 3) { return t * t * t * t; }\n\
-        if (curve == 4) { return t * t * t * t * t; }\n\
-        if (curve == 5) { return 1.0 - sqrt(max(1.0 - t * t, 0.0)); }\n\
-        if (curve == 6) {\n\
-            let c1 = 1.70158;\n\
-            let c3 = c1 + 1.0;\n\
-            return c3 * t * t * t - c1 * t * t;\n\
-        }\n\
-        if (curve == 7) { return 1.0 - sg_bounce_out(1.0 - t); }\n\
-        return t;\n\
-    }\n\
     fn sg_ease(curve: i32, dir: i32, t: f32) -> f32 {\n\
-        if (curve == 0) { return t; }\n\
         // A NONA familia: a DESENHADA, lida da LUT que o sequenciador assa do\n\
-        // text param. Ela ignora o `dir` pela mesma razao que o Linear -- a\n\
-        // curva e' a declaracao de intencao do artista. Curva ausente => a\n\
-        // tabela e' a identidade, que e' o proprio Linear.\n\
+        // text param. Curva ausente => a tabela e' a identidade, o proprio Linear.\n\
         if (curve == 8) { return sg_curve_sample(t); }\n\
-        if (dir == 1) { return 1.0 - sg_ease_in(curve, 1.0 - t); }\n\
-        if (dir == 2) {\n\
-            if (t < 0.5) { return sg_ease_in(curve, 2.0 * t) * 0.5; }\n\
-            return 1.0 - sg_ease_in(curve, 2.0 - 2.0 * t) * 0.5;\n\
-        }\n\
-        return sg_ease_in(curve, t);\n\
-    }\n\
-    fn sg_hash01(i: u32, seed: u32) -> f32 {\n\
-        var x = i * 2654435769u + seed * 2246822507u;\n\
-        x = x ^ (x >> 16u);\n\
-        x = x * 2146121005u;\n\
-        x = x ^ (x >> 15u);\n\
-        x = x * 2221713035u;\n\
-        x = x ^ (x >> 16u);\n\
-        return f32(x) / 4294967296.0;\n\
+        let s0 = vec4<f32>(params.overshoot, params.period, params.steps, params.damping);\n\
+        let s1 = vec4<f32>(params.bez_x1, params.bez_y1, params.bez_x2, params.bez_y2);\n\
+        return pe_ease(curve, dir, t, s0, s1);\n\
     }\n\
     fn sg_raw_at(i: u32) -> f32 {\n\
-        if (params.count <= 1u) { return 0.0; }\n\
-        let last = f32(params.count) - 1.0;\n\
-        let ord = i32(sg_round(params.order));\n\
-        if (ord == 1) {\n\
-        \x20   return abs(2.0 * f32(i) - last) / last;\n\
-        }\n\
-        if (ord == 2) {\n\
-        \x20   return sg_hash01(i, u32(max(sg_round(params.seed), 0.0)));\n\
-        }\n\
-        return f32(i) / last;\n\
+        return pe_raw_at(i32(sg_round(params.order)),\n\
+        \x20   u32(max(sg_round(params.seed), 0.0)),\n\
+        \x20   u32(max(sg_round(params.grid_cols), 1.0)),\n\
+        \x20   i32(sg_round(params.grid_from)),\n\
+        \x20   u32(max(sg_round(params.grid_cell), 0.0)),\n\
+        \x20   i32(sg_round(params.axis)),\n\
+        \x20   vec2<f32>(params.origin_x, params.origin_y), params.reach,\n\
+        \x20   i, params.count, read_P(i));\n\
     }\n\
     fn sg_delta(i: u32) -> f32 {\n\
         var raw = sg_raw_at(i);\n\
@@ -180,7 +160,8 @@ const SG_LIB: &str = "\
         let e = sg_ease(i32(sg_round(params.ease_curve)),\n\
         \x20   i32(sg_round(params.ease_dir)), raw);\n\
         return (params.min + e * (params.max - params.min)) * read_falloff(i);\n\
-    }\n";
+    }\n"
+);
 
 /// **X / Y** — adds the delta to one component of `P`. The channel test is
 /// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
@@ -227,6 +208,7 @@ const SG_ROT: GpuKernel = GpuKernel {
             port: 0,
         },
         SG_FALLOFF,
+        SG_P_READ,
     ],
     params: SG_PARAMS,
     count_law: None,
@@ -252,6 +234,7 @@ const SG_SIZE: GpuKernel = GpuKernel {
             port: 0,
         },
         SG_FALLOFF,
+        SG_P_READ,
     ],
     params: SG_PARAMS,
     count_law: None,

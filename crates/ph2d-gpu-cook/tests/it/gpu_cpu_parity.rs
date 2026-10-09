@@ -5657,6 +5657,75 @@ fn stagger_kernel_matches_the_cpu_across_every_easing() {
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }
 
+/// ⭐ **CICLO 17 (doc 126): as seis famílias novas e as duas ordens no ESPAÇO, no dispositivo.**
+///
+/// Cada família é um ramo e cada uma tem o SEU número de forma — por isso a fixtura tira-os do
+/// default (um `Steps` a 7, um `Spring` sub-amortecido, um `Bezier` que ultrapassa). As ordens
+/// `Grid`/`From Point` correm nos TRÊS canais: as variantes de rotação e tamanho ganharam a
+/// leitura de `P` neste ciclo, e um canal que não a lê dá o `From Point` na origem em silêncio.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn stagger_kernel_matches_the_cpu_in_the_cycle_17_families_and_orders() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let forma = |g: &mut Graph, node: NodeId| {
+        g.set_param(node, "overshoot", 2.4);
+        g.set_param(node, "period", 0.23);
+        g.set_param(node, "steps", 7.0);
+        g.set_param(node, "damping", 0.27);
+        g.set_param(node, "bez_x1", 0.68);
+        g.set_param(node, "bez_y1", -0.55);
+        g.set_param(node, "bez_x2", 0.27);
+        g.set_param(node, "bez_y2", 1.55);
+    };
+    for curve in [6.0_f32, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0] {
+        for dir in 0..=2 {
+            let mut g = Graph::new();
+            let (node, out) = deformer_chain(&mut g, 40.0, "motion.stagger");
+            g.set_param(node, "channel", 1.0);
+            g.set_param(node, "min", -0.83);
+            g.set_param(node, "max", 2.17);
+            g.set_param(node, "ease_curve", curve);
+            g.set_param(node, "ease_dir", dir as f32);
+            forma(&mut g, node);
+            eprintln!("ciclo 17: família {curve} direção {dir}");
+            assert_gpu_parity(&gpu, &reg, &g, out, 2);
+        }
+    }
+    for channel in [1.0_f32, 2.0, 3.0] {
+        for (order, from, axis) in [
+            (3.0_f32, 0.0_f32, 0.0_f32),
+            (3.0, 1.0, 0.0),
+            (3.0, 2.0, 1.0),
+            (3.0, 3.0, 2.0),
+            (4.0, 0.0, 0.0),
+            (4.0, 0.0, 1.0),
+            (4.0, 0.0, 2.0),
+        ] {
+            let mut g = Graph::new();
+            let (node, out) = deformer_chain(&mut g, 40.0, "motion.stagger");
+            g.set_param(node, "channel", channel);
+            g.set_param(node, "min", -0.83);
+            g.set_param(node, "max", 2.17);
+            g.set_param(node, "ease_curve", 9.0);
+            g.set_param(node, "ease_dir", 2.0);
+            g.set_param(node, "order", order);
+            g.set_param(node, "grid_cols", 37.0); // não divide 1 600: a última linha é parcial
+            g.set_param(node, "grid_from", from);
+            g.set_param(node, "grid_cell", 911.0);
+            g.set_param(node, "axis", axis);
+            g.set_param(node, "origin_x", 3.1);
+            g.set_param(node, "origin_y", -2.2);
+            g.set_param(node, "reach", 7.5);
+            eprintln!("ciclo 17: canal {channel} ordem {order} partida {from} eixo {axis}");
+            assert_gpu_parity(&gpu, &reg, &g, out, 2);
+        }
+    }
+}
+
 // ── The value-domain COMBINER and ROUTER ────────────────────────────────────
 //
 // Both arrive with the engine's **third count law** (`max` over every input

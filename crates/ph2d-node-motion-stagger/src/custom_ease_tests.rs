@@ -182,13 +182,11 @@ fn the_panel_offers_the_custom_family_and_hides_the_direction_in_it() {
     let ParamWidget::Enum { labels } = row.widget else {
         panic!("a ease é um seletor nomeado")
     };
-    assert_eq!(
-        labels.len() as i32 - 1,
-        ease::EASE_CUSTOM,
-        "a ultima etiqueta é a Custom"
-    );
+    // ⭐ Ciclo 17: a escada cresceu para quinze (a `Custom` FICA no 8 — um documento guarda o
+    // NÚMERO); o selector oferece todas, até à última da casa.
+    assert_eq!(labels.len() as i32 - 1, ph2d_ease::LAST, "uma etiqueta por família");
     assert_eq!(ph2d_i18n::tr(labels[ease::EASE_CUSTOM as usize]), "Custom");
-    assert!((row.max - ease::EASE_CUSTOM as f32).abs() < f32::EPSILON);
+    assert!((row.max - ph2d_ease::LAST as f32).abs() < f32::EPSILON);
 
     // A linha da CURVA existe — senão a família nova nasce sem como ser desenhada.
     let curve_row = PARAM_HINTS
@@ -207,6 +205,7 @@ fn the_panel_offers_the_custom_family_and_hides_the_direction_in_it() {
         "a Custom ignora a direcao, entao ela nao pode aparecer"
     );
     assert!(!dir_gate.values.contains(&0), "nem o Linear");
-    // O controle: ele lista as sete que de facto a usam.
-    assert_eq!(dir_gate.values, &[1, 2, 3, 4, 5, 6, 7]);
+    // O controle: ele lista as que de facto a usam — as sete do ciclo 2 e as quatro do 17
+    // (`Spring` e `Bezier` são curvas inteiras, como a `Custom`).
+    assert_eq!(dir_gate.values, &[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]);
 }

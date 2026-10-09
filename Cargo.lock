@@ -7022,6 +7022,7 @@ name = "ph2d-node-motion-stagger"
 version = "0.0.0"
 dependencies = [
  "ph2d-curve",
+ "ph2d-ease",
  "ph2d-i18n",
  "ph2d-node-registry",
  "ph2d-nodegraph",

@@ -4,7 +4,7 @@ use super::*;
 
 /// As posições `0..1` de uma fila de `n`, na ordem pedida.
 fn fila(order: i32, n: u32, seed: u32) -> Vec<f32> {
-    (0..n).map(|i| raw_at(order, i, n, seed)).collect()
+    (0..n).map(|i| raw_at_index(order, i, n, seed)).collect()
 }
 
 /// ⭐⭐⭐ **A `Index` É BYTE-IDÊNTICA AO QUE SEMPRE FOI** — todo grafo autorado lê a mesma onda.
@@ -18,11 +18,11 @@ fn the_index_order_is_the_old_ramp_bit_for_bit() {
             } else {
                 i as f32 / (n as f32 - 1.0)
             };
-            assert_eq!(raw_at(ORDER_INDEX, i, n, 0), antigo, "n={n} i={i}");
+            assert_eq!(raw_at_index(ORDER_INDEX, i, n, 0), antigo, "n={n} i={i}");
         }
     }
     // E uma ordem FORA de alcance cai na de sempre — a lei do `Pick::of` e do `Transfer::of`.
-    assert_eq!(raw_at(99, 3, 7, 0), raw_at(ORDER_INDEX, 3, 7, 0));
+    assert_eq!(raw_at_index(99, 3, 7, 0), raw_at_index(ORDER_INDEX, 3, 7, 0));
 }
 
 /// ⭐⭐ **`FROM CENTER` ARRANCA NO MEIO E ACABA NAS DUAS PONTAS** — e é SIMÉTRICA, que é a
@@ -53,7 +53,9 @@ fn from_edges_is_from_center_mirrored_and_needs_no_entry() {
     let pontas: Vec<f32> = centro.iter().map(|r| 1.0 - r).collect();
     assert_eq!(pontas[0], 0.0, "as pontas arrancam primeiro: {pontas:?}");
     assert_eq!(pontas[4], 1.0, "e o meio por ultimo");
-    // E o enum tem MESMO três entradas — o controle que impede a lista de crescer sem medir.
+    // E o enum NÃO tem `From Edges` — o controle que impede a lista de crescer sem medir. O
+    // ciclo 17 apendou `Grid` e `From Point`, que respondem perguntas que o toggle não responde
+    // (a origem na grelha, a distância a um ponto — doc 126 §3.2).
     let hints = crate::PARAM_HINTS
         .iter()
         .find(|h| h.param == "order")
@@ -64,7 +66,7 @@ fn from_edges_is_from_center_mirrored_and_needs_no_entry() {
     // ⚠️ O array carrega CHAVES; o que este gate afirma são as PALAVRAS do selector.
     assert_eq!(
         labels.iter().map(|l| ph2d_i18n::tr(l)).collect::<Vec<_>>(),
-        ["Index", "From Center", "Random"]
+        ["Index", "From Center", "Random", "Grid", "From Point"]
     );
 }
 
@@ -102,8 +104,8 @@ fn random_is_deterministic_spread_and_the_seed_moves_it() {
 #[test]
 fn a_row_of_one_has_no_order() {
     for ord in [ORDER_INDEX, ORDER_FROM_CENTER, ORDER_RANDOM] {
-        assert_eq!(raw_at(ord, 0, 1, 3), 0.0, "ordem {ord}");
-        assert_eq!(raw_at(ord, 0, 0, 3), 0.0, "e uma fila vazia tambem");
+        assert_eq!(raw_at_index(ord, 0, 1, 3), 0.0, "ordem {ord}");
+        assert_eq!(raw_at_index(ord, 0, 0, 3), 0.0, "e uma fila vazia tambem");
     }
 }
 
@@ -114,8 +116,8 @@ fn the_wgsl_says_what_the_rust_says() {
     let w = crate::kernel::GPU_KERNEL.wgsl_lib;
     for termo in [
         "sg_raw_at",
-        "sg_hash01",
-        "abs(2.0 * f32(i) - last) / last",
+        "pe_hash01",
+        "pe_div(abs(2.0 * f32(i) - last), last)",
         "4294967296.0",
     ] {
         assert!(w.contains(termo), "o WGSL perdeu `{termo}`");

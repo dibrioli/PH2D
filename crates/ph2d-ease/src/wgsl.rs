@@ -9,7 +9,13 @@
 #[macro_export]
 macro_rules! wgsl_lib {
     () => {
-        "fn pe_round(x: f32) -> f32 {
+        "fn pe_div(a: f32, b: f32) -> f32 {
+    let y0 = 1.0 / b;
+    let y = fma(fma(-b, y0, 1.0), y0, y0);
+    let q = a * y;
+    return fma(fma(-q, b, a), y, q);
+}
+fn pe_round(x: f32) -> f32 {
     return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);
 }
 fn pe_sinq(x: f32) -> f32 {
@@ -78,12 +84,12 @@ fn pe_ease_in(curve: i32, t: f32, s0: vec4<f32>) -> f32 {
         if (t >= 1.0) { return 1.0; }
         let p = max(s0.y, 0.05);
         let q = t - 1.0;
-        return -(pe_exp2(10.0 * q) * pe_sin_turn((q - p * 0.25) / p));
+        return -(pe_exp2(10.0 * q) * pe_sin_turn(pe_div(q - p * 0.25, p)));
     }
     if (curve == 12) {
         if (t >= 1.0) { return 1.0; }
         let n = max(pe_round(s0.z), 1.0);
-        return floor(t * n) / n;
+        return pe_div(floor(t * n), n);
     }
     return t;
 }
@@ -93,25 +99,25 @@ fn pe_spring_x(tau: f32, damping: f32) -> f32 {
     let z = clamp(damping, 0.05, 4.0);
     let decay = pe_exp2(-ln1000 * tau * inv_ln2);
     if (z < 0.999) {
-        let w = ln1000 / z;
+        let w = pe_div(ln1000, z);
         let wd = w * sqrt(1.0 - z * z);
         let turns = wd * tau * bitcast<f32>(0x3e22f983u);
-        return 1.0 - decay * (pe_cos_turn(turns) + (ln1000 / wd) * pe_sin_turn(turns));
+        return 1.0 - decay * (pe_cos_turn(turns) + pe_div(ln1000, wd) * pe_sin_turn(turns));
     }
     if (z <= 1.001) {
         return 1.0 - decay * (1.0 + ln1000 * tau);
     }
     let r = sqrt(z * z - 1.0);
-    let w = ln1000 / (z - r);
+    let w = pe_div(ln1000, z - r);
     let r2 = -w * (z + r);
     let r1 = -ln1000;
     let e2 = pe_exp2(r2 * tau * inv_ln2);
-    return 1.0 - (r2 * decay - r1 * e2) / (r2 - r1);
+    return 1.0 - pe_div(r2 * decay - r1 * e2, r2 - r1);
 }
 fn pe_spring(t: f32, damping: f32) -> f32 {
     if (t <= 0.0) { return 0.0; }
     if (t >= 1.0) { return 1.0; }
-    return pe_spring_x(t, damping) / pe_spring_x(1.0, damping);
+    return pe_div(pe_spring_x(t, damping), pe_spring_x(1.0, damping));
 }
 fn pe_bezier(t: f32, b: vec4<f32>) -> f32 {
     if (t <= 0.0) { return 0.0; }
@@ -165,13 +171,13 @@ fn pe_grid_cell(k: u32, cols: u32) -> vec2<f32> {
 fn pe_grid_dist(c: vec2<f32>, o: vec2<f32>, axis: i32) -> f32 {
     return pe_axis_dist(c.x - o.x, c.y - o.y, axis);
 }
-fn pe_grid_raw(cols_in: u32, from: i32, cell: u32, axis: i32, i: u32, n: u32) -> f32 {
+fn pe_grid_raw(cols_in: u32, partida: i32, cell: u32, axis: i32, i: u32, n: u32) -> f32 {
     let cols = max(cols_in, 1u);
     let rows = (n + cols - 1u) / cols;
     var o = vec2<f32>(0.0, 0.0);
-    if (from == 1) { o = vec2<f32>(f32(cols - 1u) * 0.5, f32(rows - 1u) * 0.5); }
-    else if (from == 2) { o = pe_grid_cell(n - 1u, cols); }
-    else if (from == 3) { o = pe_grid_cell(min(cell, n - 1u), cols); }
+    if (partida == 1) { o = vec2<f32>(f32(cols - 1u) * 0.5, f32(rows - 1u) * 0.5); }
+    else if (partida == 2) { o = pe_grid_cell(n - 1u, cols); }
+    else if (partida == 3) { o = pe_grid_cell(min(cell, n - 1u), cols); }
     let last_row = f32(rows - 1u);
     let last_col = f32((n - 1u) % cols);
     var largura = n;
@@ -183,22 +189,22 @@ fn pe_grid_raw(cols_in: u32, from: i32, cell: u32, axis: i32, i: u32, n: u32) ->
     if (rows > 1u) {
         dmax = max(dmax, pe_grid_dist(vec2<f32>(f32(cols - 1u), last_row - 1.0), o, axis));
     }
-    if (dmax > 0.0) { return pe_grid_dist(pe_grid_cell(i, cols), o, axis) / dmax; }
+    if (dmax > 0.0) { return pe_div(pe_grid_dist(pe_grid_cell(i, cols), o, axis), dmax); }
     return 0.0;
 }
-fn pe_raw_at(kind: i32, seed: u32, cols: u32, from: i32, cell: u32, axis: i32,
+fn pe_raw_at(kind: i32, seed: u32, cols: u32, partida: i32, cell: u32, axis: i32,
              origin: vec2<f32>, reach: f32, i: u32, n: u32, p: vec2<f32>) -> f32 {
     if (kind == 4) {
         let d = pe_axis_dist(p.x - origin.x, p.y - origin.y, axis);
-        if (reach > 0.0) { return min(d / reach, 1.0); }
+        if (reach > 0.0) { return min(pe_div(d, reach), 1.0); }
         return 0.0;
     }
     if (n <= 1u) { return 0.0; }
     let last = f32(n) - 1.0;
-    if (kind == 1) { return abs(2.0 * f32(i) - last) / last; }
+    if (kind == 1) { return pe_div(abs(2.0 * f32(i) - last), last); }
     if (kind == 2) { return pe_hash01(i, seed); }
-    if (kind == 3) { return pe_grid_raw(cols, from, cell, axis, i, n); }
-    return f32(i) / last;
+    if (kind == 3) { return pe_grid_raw(cols, partida, cell, axis, i, n); }
+    return pe_div(f32(i), last);
 }
 "
     };

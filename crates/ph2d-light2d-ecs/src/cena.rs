@@ -49,4 +49,27 @@ pub struct CenaDeLuz {
     pub luzes: u32,
     /// ⭐ As entidades com `NaoRecebeLuz` (ordem do `StableId`) — o receptor não as multiplica.
     pub nao_recebem: Vec<bevy_ecs::entity::Entity>,
+    /// ⭐ Os sprites que emitem ou bloqueiam, com o QUAD que os representa acima (W3): a C0 da placa
+    /// troca esse quad pelo alfa de cada texel da textura; o gabarito continua a ver o quad.
+    pub sprites: Vec<SpriteDeLuz>,
+}
+
+/// Um sprite que entra na luz (W3) — a ponte entre o quad da cena e a textura que a C0 amostra.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpriteDeLuz {
+    pub entidade: bevy_ecs::entity::Entity,
+    /// Onde está o quad dele nesta cena.
+    pub forma: FormaDoSprite,
+    /// O multiplicador da cor do texel na emissão (`tint∘self_tint`·α·`SpriteEmissive`); zero num
+    /// oclusor.
+    pub emissao: Rgb,
+    /// A opacidade por entrada (1 num emissor, que é opaco; a do `BloqueiaLuz` num oclusor).
+    pub opacidade: f32,
+}
+
+/// O índice do quad de um sprite em [`CenaDeLuz::emissores`] ou [`CenaDeLuz::oclusores`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FormaDoSprite {
+    Emissor(usize),
+    Oclusor(usize),
 }

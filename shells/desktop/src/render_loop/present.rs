@@ -313,7 +313,7 @@ impl crate::App {
         //    codificação) — o vetor recebe a luz na colagem delas. Depois o solver, antes do primeiro
         //    passe de sprite, e os dois receptores. ⛔ Sem `Luz`: nada disto muda o quadro.
         plan.banded |= luz2d.grade().is_some();
-        luz2d.gravar(surface.gpu());
+        luz2d.gravar(surface.gpu(), present, renderer);
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do

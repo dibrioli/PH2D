@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use kurbo::Affine;
+use ph2d_ecs::PresentWorld;
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
@@ -31,6 +32,8 @@ pub struct LuzDoQuadro {
     resolvido: Option<Resolvido>,
     relatorio: Option<RelatorioC0>,
     erro: Option<ErroSolver>,
+    /// `(por texel, sprites da cena)` no último quadro — os outros ficaram com o quad.
+    sprites_por_texel: (usize, usize),
 }
 
 impl Default for LuzDoQuadro {
@@ -57,6 +60,7 @@ impl LuzDoQuadro {
             resolvido: None,
             relatorio: None,
             erro: None,
+            sprites_por_texel: (0, 0),
         }
     }
 
@@ -91,8 +95,14 @@ impl LuzDoQuadro {
 
     /// **Porta 2** — grava o solver num encoder próprio e submete-o (a fila põe-no antes do passe de
     /// sprite). Apagada, não faz nada. O solver só é RECRIADO quando as dimensões da grade mudam
-    /// (redimensionar a janela); pan e zoom só o reposicionam.
-    pub fn gravar(&mut self, gpu: &GpuContext) {
+    /// (redimensionar a janela); pan e zoom só o reposicionam. Os sprites que emitem ou bloqueiam
+    /// entram pelo alfa de cada texel — das instâncias do `present`, com as texturas do `renderer`.
+    pub fn gravar(
+        &mut self,
+        gpu: &GpuContext,
+        present: &mut PresentWorld,
+        renderer: &SpriteRenderer,
+    ) {
         let Some(g) = self.grade else {
             return;
         };
@@ -127,7 +137,12 @@ impl LuzDoQuadro {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("luz2d quadro do editor"),
             });
-        self.relatorio = Some(r.solver.gravar(gpu, &mut enc, &self.cena));
+        let sprites = crate::captura::sprites_da_cena(&self.cena, present, renderer);
+        self.sprites_por_texel = (sprites.substituidos.len(), self.cena.sprites.len());
+        self.relatorio = Some(
+            r.solver
+                .gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites),
+        );
         gpu.queue.submit([enc.finish()]);
     }
 
@@ -178,6 +193,13 @@ impl LuzDoQuadro {
     #[must_use]
     pub fn relatorio(&self) -> Option<&RelatorioC0> {
         self.relatorio.as_ref()
+    }
+
+    /// `(capturados por texel, sprites que emitem ou bloqueiam)` no último quadro: a diferença ficou
+    /// com o QUAD (malha, ladrilho, textura cozida ou instância fora do `present`).
+    #[must_use]
+    pub fn sprites_por_texel(&self) -> (usize, usize) {
+        self.sprites_por_texel
     }
 
     /// A recusa do solver no último quadro, se houve.

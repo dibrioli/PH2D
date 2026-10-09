@@ -8,6 +8,7 @@
 //! 3. [`LuzDoQuadro::ligar`] — acende (ou apaga) os dois receptores: o passe de sprite e a colagem
 //!    do vetor.
 
+mod captura;
 mod grade;
 mod quadro;
 

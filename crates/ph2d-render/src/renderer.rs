@@ -235,6 +235,20 @@ impl SpriteRenderer {
         );
     }
 
+    /// ⭐ A vista da textura de um `texture_id` — o átlas ou uma individual — que a luz 2D amostra na
+    /// captura (o alfa do texel É a cobertura). `None` para uma cozida (comprimida: o filtro e o
+    /// formato são do cozimento) ou um id desconhecido; quem chama fica com o quad.
+    #[must_use]
+    pub fn vista_da_textura(&self, texture_id: u32) -> Option<&wgpu::TextureView> {
+        if texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+            Some(&self.atlas.view)
+        } else if RenderInstance::is_cooked_texture_id(texture_id) {
+            None
+        } else {
+            self.individual.entries.get(&texture_id).map(|e| &e.view)
+        }
+    }
+
     /// A luz está acesa para os próximos desenhos da cena?
     #[must_use]
     pub fn luz_acesa(&self) -> bool {

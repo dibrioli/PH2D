@@ -16,6 +16,8 @@ authors.workspace = true
 # A declaração da família à shell (`FAMILY`).
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-gpu = { path = "../ph2d-gpu" }
+# O `PresentWorld` e o `SimRef`: as instâncias que o passe de sprite desenha, casadas com a cena.
+ph2d-ecs = { path = "../ph2d-ecs" }
 # A coleta (`World → CenaDeLuz`) — a ÚNICA porta do ECS.
 ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
 # O solver (C0 → C1 → C2) e a `Grade`.

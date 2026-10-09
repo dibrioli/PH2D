@@ -98,6 +98,7 @@ fn ler_fluencia(gpu: &GpuContext, s: &Solver) -> Vec<[f32; 3]> {
 /// A maior variação RELATIVA de um ponto estático ao longo do pan, nas duas grades.
 fn variacoes(gpu: &GpuContext) -> (f64, f64) {
     let w = cena();
+    let renderer = crate::comum::renderer(gpu);
     let mut ancorada = LuzDoQuadro::new();
     let mut solta: Option<Solver> = None;
     let (mut ref_a, mut ref_s): (Vec<f64>, Vec<f64>) = (vec![], vec![]);
@@ -106,7 +107,7 @@ fn variacoes(gpu: &GpuContext) -> (f64, f64) {
         // 0,37 de texel por quadro: sub-texel, e atravessa vários blocos da cascata de topo.
         let centro = [0.37 * 0.0625 * passo as f32, 0.11 * 0.0625 * passo as f32];
         assert!(ancorada.preparar(&w, afim(centro), ALVO));
-        ancorada.gravar(gpu);
+        ancorada.gravar(gpu, &mut ph2d_ecs::PresentWorld::new(), &renderer);
         let g = ancorada.grade().expect("acesa");
         let fa = ler_fluencia(gpu, ancorada.solver().expect("solver"));
 

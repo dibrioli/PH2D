@@ -6,7 +6,17 @@ use crate::config::Precisao;
 /// A gêmea WGSL da `ph2d_light2d_ref::queda::queda` (gate G12).
 pub const QUEDA_WGSL: &str = include_str!("wgsl/queda.wgsl");
 
-pub(crate) const C0: &str = include_str!("wgsl/c0_captura.wgsl");
+pub(crate) const C0: &str = concat!(
+    include_str!("wgsl/c0_dono.wgsl"),
+    include_str!("wgsl/c0_captura.wgsl")
+);
+/// A C0 dos sprites por texel (W3): a MESMA lei do dono à frente.
+pub(crate) const C0_SPRITE: &str = concat!(
+    include_str!("wgsl/c0_dono.wgsl"),
+    include_str!("wgsl/c0_sprite.wgsl")
+);
+/// O texto da lei do dono — o censo (um texto, dois consumidores) lê-o.
+pub const C0_DONO_WGSL: &str = include_str!("wgsl/c0_dono.wgsl");
 pub(crate) const C1: &str = include_str!("wgsl/c1_jfa.wgsl");
 
 macro_rules! rc {

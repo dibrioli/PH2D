@@ -29,7 +29,7 @@ pub(crate) struct Forma {
 }
 
 /// Quem ficou fora da C0.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Quem {
     Emissor(usize),
     Oclusor(usize),
@@ -83,7 +83,7 @@ fn inverso_do_alcance(alcance_m: f32) -> f32 {
 }
 
 /// Caixa em texels inteiros recortada à grade; `None` se vazia.
-fn caixa(min: [f64; 2], max: [f64; 2], g: &Grade) -> Option<[f32; 4]> {
+pub(crate) fn caixa(min: [f64; 2], max: [f64; 2], g: &Grade) -> Option<[f32; 4]> {
     let x0 = min[0].floor().max(0.0);
     let y0 = min[1].floor().max(0.0);
     let x1 = max[0].ceil().min(f64::from(g.largura));
@@ -263,6 +263,15 @@ pub fn o_que_fica_fora(cena: &CenaDeLuz, g: &Grade) -> RelatorioC0 {
 }
 
 pub(crate) fn capturar(cena: &CenaDeLuz, g: &Grade) -> Captura {
+    capturar_sem(cena, g, &std::collections::BTreeSet::new())
+}
+
+/// A captura sem as formas `substituidas` (o quad de um sprite que a C0 captura pela textura).
+pub(crate) fn capturar_sem(
+    cena: &CenaDeLuz,
+    g: &Grade,
+    substituidas: &std::collections::BTreeSet<Quem>,
+) -> Captura {
     let mut m = Montagem {
         g,
         formas: Vec::new(),
@@ -270,10 +279,16 @@ pub(crate) fn capturar(cena: &CenaDeLuz, g: &Grade) -> Captura {
         fora: Vec::new(),
     };
     for (k, o) in cena.oclusores.iter().enumerate() {
+        if substituidas.contains(&Quem::Oclusor(k)) {
+            continue;
+        }
         m.poligono(Quem::Oclusor(k), &o.vertices, [0.0; 4], o.opacidade);
     }
     for (k, e) in cena.emissores.iter().enumerate() {
         let quem = Quem::Emissor(k);
+        if substituidas.contains(&quem) {
+            continue;
+        }
         match e {
             Emissor::Disco {
                 centro,

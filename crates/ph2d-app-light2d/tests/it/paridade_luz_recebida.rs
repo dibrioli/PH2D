@@ -135,9 +135,6 @@ fn a_luz_recebida_na_placa_bate_a_conta_e_o_gabarito() {
     let w = cena();
     let mut luz = LuzDoQuadro::new();
     assert!(luz.preparar(&w, afim_alvo(), ALVO));
-    luz.gravar(&gpu);
-    let g = luz.grade().expect("acesa");
-
     // O sprite branco que cobre a vista, pelo passe da CENA.
     let mut renderer = SpriteRenderer::new(
         gpu.clone(),
@@ -145,6 +142,8 @@ fn a_luz_recebida_na_placa_bate_a_conta_e_o_gabarito() {
         TextureAtlas::new(&gpu, 256),
         4,
     );
+    luz.gravar(&gpu, &mut PresentWorld::new(), &renderer);
+    let g = luz.grade().expect("acesa");
     let branco = renderer
         .acquire_individual(1, 1, &[255, 255, 255, 255])
         .expect("branco");
@@ -267,7 +266,7 @@ fn quem_nao_recebe_luz_fica_na_cor_de_sempre() {
         .spawn((quad(tex, [1.0, 0.0]), SimRef(nao)));
     let mut luz = LuzDoQuadro::new();
     assert!(luz.preparar(&w, afim(), (W, H)));
-    luz.gravar(&gpu);
+    luz.gravar(&gpu, &mut present, &c.renderer);
     luz.ligar(&gpu, &mut c.renderer, &mut c.colagem, &c.tonemap);
     let bgra = c.quadro(
         &gpu,

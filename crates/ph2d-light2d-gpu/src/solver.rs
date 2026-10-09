@@ -7,12 +7,14 @@ use bytemuck::{Pod, Zeroable};
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::CenaDeLuz;
 
-use crate::captura::{Forma, RelatorioC0, capturar};
+use crate::captura::{Forma, RelatorioC0, capturar_sem};
+use crate::captura_sprite::{self, CapturaDeSprites};
 use crate::config::{Config, Precisao};
 use crate::passlist::{
     CASCATAS, COBERTURA, EMISSAO, PASSO_UNIFORME, PassList, SEMENTES, TAU_DENTRO, Textura,
 };
 use crate::shaders;
+use crate::solver_sprite;
 use crate::tempos::{self, Tempos, TemposMs};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -99,7 +101,7 @@ fn criar_textura(device: &wgpu::Device, t: &Textura) -> wgpu::Texture {
 }
 
 /// O ÚNICO sítio onde o solver cria um buffer.
-fn criar_buffer(
+pub(crate) fn criar_buffer(
     device: &wgpu::Device,
     nome: &'static str,
     bytes: u64,
@@ -133,6 +135,10 @@ pub struct Solver {
     c0_layout: wgpu::BindGroupLayout,
     c0: wgpu::RenderPipeline,
     geometria: Option<Geometria>,
+    /// Os formatos dos três alvos da C0 (a pipeline dos sprites nasce com eles).
+    formatos_c0: [wgpu::TextureFormat; 3],
+    /// ⭐ A pipeline dos sprites por texel (W3) — criada no primeiro quadro que os tem.
+    c0_sprites: Option<solver_sprite::C0Sprites>,
     jfa_semente: wgpu::ComputePipeline,
     jfa_salto: wgpu::ComputePipeline,
     jfa_grupos: Vec<wgpu::BindGroup>,
@@ -316,22 +322,12 @@ impl Solver {
             bind_group_layouts: &[Some(&c0_layout)],
             immediate_size: 0,
         });
-        // Emissão do dono: o maior (um só, no caso comum). Cobertura: soma. τ dentro: multiplica.
-        let soma = wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::One,
-            dst_factor: wgpu::BlendFactor::One,
-            operation: wgpu::BlendOperation::Add,
-        };
-        let maior = wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::One,
-            dst_factor: wgpu::BlendFactor::One,
-            operation: wgpu::BlendOperation::Max,
-        };
-        let multiplica = wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::Zero,
-            dst_factor: wgpu::BlendFactor::Src,
-            operation: wgpu::BlendOperation::Add,
-        };
+        // Os alvos e a mistura da C0 — a lei única das duas pipelines (formas e sprites).
+        let formatos_c0 = [
+            lista.texturas[EMISSAO].formato,
+            lista.texturas[COBERTURA].formato,
+            lista.texturas[TAU_DENTRO].formato,
+        ];
         let c0 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("luz2d c0 captura"),
             layout: Some(&c0_pl),
@@ -345,32 +341,7 @@ impl Solver {
                 module: &c0_modulo,
                 entry_point: Some("fs"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[
-                    Some(wgpu::ColorTargetState {
-                        format: lista.texturas[EMISSAO].formato,
-                        blend: Some(wgpu::BlendState {
-                            color: maior,
-                            alpha: maior,
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    }),
-                    Some(wgpu::ColorTargetState {
-                        format: lista.texturas[COBERTURA].formato,
-                        blend: Some(wgpu::BlendState {
-                            color: soma,
-                            alpha: soma,
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    }),
-                    Some(wgpu::ColorTargetState {
-                        format: lista.texturas[TAU_DENTRO].formato,
-                        blend: Some(wgpu::BlendState {
-                            color: multiplica,
-                            alpha: multiplica,
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    }),
-                ],
+                targets: &solver_sprite::alvos_c0(formatos_c0),
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -593,6 +564,8 @@ impl Solver {
             c0_layout,
             c0,
             geometria: None,
+            formatos_c0,
+            c0_sprites: None,
             jfa_semente,
             jfa_salto,
             jfa_grupos,
@@ -639,7 +612,10 @@ impl Solver {
     pub fn bytes_da_geometria_residente(&self) -> u64 {
         self.geometria.as_ref().map_or(0, |g| {
             (g.cap_formas * size_of::<Forma>() + g.cap_vertices * size_of::<[f32; 2]>()) as u64
-        })
+        }) + self
+            .c0_sprites
+            .as_ref()
+            .map_or(0, solver_sprite::C0Sprites::bytes_residentes)
     }
 
     fn subir_geometria(&mut self, gpu: &GpuContext, formas: &[Forma], vertices: &[[f32; 2]]) {
@@ -712,8 +688,29 @@ impl Solver {
         enc: &mut wgpu::CommandEncoder,
         cena: &CenaDeLuz,
     ) -> RelatorioC0 {
-        let cap = capturar(cena, &self.cfg.grade);
+        self.gravar_com_sprites(gpu, enc, cena, &CapturaDeSprites::default())
+    }
+
+    /// [`Self::gravar`] com os SPRITES por texel (W3): o quad de cada um sai da C0 das formas e a
+    /// textura dele entra pela pipeline irmã, no MESMO passe e nos mesmos alvos.
+    pub fn gravar_com_sprites(
+        &mut self,
+        gpu: &GpuContext,
+        enc: &mut wgpu::CommandEncoder,
+        cena: &CenaDeLuz,
+        sprites: &CapturaDeSprites<'_>,
+    ) -> RelatorioC0 {
+        let cap = capturar_sem(cena, &self.cfg.grade, &sprites.substituidos);
         self.subir_geometria(gpu, &cap.formas, &cap.vertices);
+        let (formas_sprite, lotes) = captura_sprite::na_grade(sprites, &self.cfg.grade);
+        let lotes = if formas_sprite.is_empty() {
+            Vec::new()
+        } else {
+            let formatos = self.formatos_c0;
+            self.c0_sprites
+                .get_or_insert_with(|| solver_sprite::C0Sprites::novo(&gpu.device, formatos))
+                .preparar(gpu, &self.uni_c0, &formas_sprite, &lotes, &sprites.texturas)
+        };
 
         let mut uni = vec![0u8; (PASSO_UNIFORME * u64::from(self.n)) as usize];
         for i in 0..self.n {
@@ -788,6 +785,9 @@ impl Solver {
                 p.set_pipeline(&self.c0);
                 p.set_bind_group(0, &geo.grupo, &[]);
                 p.draw(0..4, 0..total);
+            }
+            if let Some(s) = &self.c0_sprites {
+                s.desenhar(&mut p, &lotes);
             }
         }
         {

@@ -111,12 +111,7 @@ fn cobertura(f: Forma, p: vec2<f32>) -> f32 {
     return f32(n) / f32(SUB * SUB);
 }
 
-struct Alvos {
-    @location(0) emissao: vec4<f32>,
-    @location(1) cobertura: vec4<f32>,
-    @location(2) tau_dentro: vec4<f32>,
-}
-
+// A lei do dono (`c0_alvos`) vem de `c0_dono.wgsl`, concatenado à frente.
 @fragment
 fn fs(e: Saida) -> Alvos {
     let f = formas[e.forma];
@@ -124,10 +119,5 @@ fn fs(e: Saida) -> Alvos {
     if c <= 0.0 {
         discard;
     }
-    let dono = c >= 0.5;
-    var o: Alvos;
-    o.emissao = select(vec4<f32>(0.0), f.cor, dono);
-    o.cobertura = vec4<f32>(c);
-    o.tau_dentro = vec4<f32>(select(1.0, 1.0 - f.opacidade, dono));
-    return o;
+    return c0_alvos(c, f.cor, f.opacidade);
 }

@@ -13,15 +13,18 @@
 //! [`RelatorioC0`], como toda forma que não acende nenhum texel.
 
 mod captura;
+mod captura_sprite;
 mod config;
 mod passlist;
 mod shaders;
 mod solver;
+mod solver_sprite;
 mod tempos;
 
 pub use captura::{ForaDaC0, Motivo, Quem, RelatorioC0, o_que_fica_fora};
+pub use captura_sprite::{CapturaDeSprites, SpriteNaC0};
 pub use config::{Config, Fusao, Grade, Precisao};
 pub use passlist::{Buffer, PassList, Passe, Textura};
-pub use shaders::{QUEDA_WGSL, rc as fonte_do_rc};
+pub use shaders::{C0_DONO_WGSL, QUEDA_WGSL, rc as fonte_do_rc};
 pub use solver::{ErroSolver, Solver};
 pub use tempos::TemposMs;

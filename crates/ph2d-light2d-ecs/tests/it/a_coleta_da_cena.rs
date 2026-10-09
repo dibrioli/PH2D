@@ -255,7 +255,18 @@ fn a_ordem_da_cena_nao_depende_da_ordem_de_spawn() {
         !a.emissores.is_empty(),
         "controlo: a cena tem de ter emissores"
     );
-    assert_eq!(cena_de_luz(&povoar(true)), a);
+    assert_eq!(sem_ids(cena_de_luz(&povoar(true))), sem_ids(a));
+}
+
+/// A cena sem os ids de entidade — eles são locais a cada `World`; a ORDEM é o que se compara.
+fn sem_ids(mut c: CenaDeLuz) -> CenaDeLuz {
+    for s in &mut c.sprites {
+        s.entidade = bevy_ecs::entity::Entity::PLACEHOLDER;
+    }
+    for e in &mut c.nao_recebem {
+        *e = bevy_ecs::entity::Entity::PLACEHOLDER;
+    }
+    c
 }
 
 #[test]
@@ -311,4 +322,44 @@ fn quem_nao_recebe_luz_vem_na_cena_em_ordem_estavel() {
     let a = w.spawn((sprite(), t, g, NaoRecebeLuz, StableId(3))).id();
     w.spawn((sprite(), t, g, StableId(5)));
     assert_eq!(cena_de_luz(&w).nao_recebem, vec![a, b]);
+}
+
+/// ⭐ (W3) Cada sprite que emite ou bloqueia aponta o QUAD que o representa na cena — é por aí que a
+/// C0 da placa troca o quad pelo alfa da textura, e o gabarito continua a ver o quad.
+#[test]
+fn cada_sprite_aponta_o_quad_que_o_representa() {
+    use ph2d_light2d_ecs::FormaDoSprite;
+    let c = cena_de_luz(&povoar(false));
+    assert_eq!(
+        c.sprites.len(),
+        3,
+        "dois sprites que brilham e um que bloqueia: {c:#?}"
+    );
+    let (mut emissores, mut oclusores) = (0, 0);
+    for s in &c.sprites {
+        match s.forma {
+            FormaDoSprite::Emissor(i) => {
+                emissores += 1;
+                let Emissor::Poligono { radiancia, .. } = &c.emissores[i] else {
+                    panic!(
+                        "o emissor {i} de um sprite é o QUAD dele: {:?}",
+                        c.emissores[i]
+                    );
+                };
+                assert!(rgb_perto(*radiancia, s.emissao));
+                assert!((s.opacidade - 1.0).abs() < TOL, "o emissor é opaco");
+            }
+            FormaDoSprite::Oclusor(i) => {
+                oclusores += 1;
+                assert!((c.oclusores[i].opacidade - s.opacidade).abs() < TOL);
+                assert_eq!(s.emissao, [0.0; 3]);
+            }
+        }
+    }
+    assert_eq!((emissores, oclusores), (2, 1));
+    assert_eq!(
+        sem_ids(cena_de_luz(&povoar(true))).sprites,
+        sem_ids(c).sprites,
+        "ordem estável"
+    );
 }

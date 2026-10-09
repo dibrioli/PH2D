@@ -53,7 +53,7 @@ fn quadro(gpu: &ph2d_gpu::GpuContext, familia: Option<&World>) -> Vec<u8> {
     if let Some(w) = familia {
         let mut luz = LuzDoQuadro::new();
         luz.preparar(w, afim(), (W, H));
-        luz.gravar(gpu);
+        luz.gravar(gpu, &mut PresentWorld::new(), &c.renderer);
         luz.ligar(gpu, &mut c.renderer, &mut c.colagem, &c.tonemap);
     }
     c.quadro(gpu, &mut PresentWorld::new(), &extra, &vetor)

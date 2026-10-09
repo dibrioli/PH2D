@@ -19,7 +19,7 @@ use bevy_ecs::world::World;
 use ph2d_ecs::{GlobalTransform, SpriteEmissive, StableId, is_hidden_in_tree};
 use ph2d_render::Sprite;
 
-use crate::cena::{CenaDeLuz, Emissor, Oclusor, Rgb};
+use crate::cena::{CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz};
 use crate::componentes::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 
 /// Chave de ordem: o `StableId` (sobrevive a undo e save), depois a `Entity`.
@@ -62,6 +62,8 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     let mut oclusores: BTreeMap<Chave, Oclusor> = BTreeMap::new();
     let mut ceu = [0.0_f32; 3];
     let mut luzes = 0_u32;
+    // O que cada sprite da cena É para a luz: `(é emissor, emissão, opacidade)`, pela chave.
+    let mut de_sprite: BTreeMap<Chave, (bool, Rgb, f32)> = BTreeMap::new();
 
     if let Some(mut q) = world.try_query::<(Entity, &Luz, Option<&GlobalTransform>)>() {
         for (e, luz, g) in q.iter(world) {
@@ -115,6 +117,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
                 let alfa = t[3] * s[3];
                 let radiancia = [0, 1, 2].map(|i| t[i] * s[i] * alfa * k);
                 if acende(radiancia) {
+                    de_sprite.insert(chave(world, e), (true, radiancia, 1.0));
                     emissores.insert(
                         chave(world, e),
                         Emissor::Poligono {
@@ -129,6 +132,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
             if let Some(b) = world.get::<BloqueiaLuz>(e)
                 && b.opacidade > 0.0
             {
+                de_sprite.insert(chave(world, e), (false, [0.0; 3], b.opacidade.min(1.0)));
                 oclusores.insert(
                     chave(world, e),
                     Oclusor {
@@ -147,11 +151,34 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         }
     }
 
+    // O índice de cada quad de sprite na ordem FINAL das duas listas.
+    fn posicoes<T>(m: &BTreeMap<Chave, T>) -> BTreeMap<Chave, usize> {
+        m.keys().enumerate().map(|(i, k)| (*k, i)).collect()
+    }
+    let (pos_e, pos_o) = (posicoes(&emissores), posicoes(&oclusores));
+    let sprites = de_sprite
+        .iter()
+        .filter_map(|(k, &(emite, emissao, opacidade))| {
+            let forma = if emite {
+                FormaDoSprite::Emissor(*pos_e.get(k)?)
+            } else {
+                FormaDoSprite::Oclusor(*pos_o.get(k)?)
+            };
+            Some(SpriteDeLuz {
+                entidade: k.1,
+                forma,
+                emissao,
+                opacidade,
+            })
+        })
+        .collect();
+
     CenaDeLuz {
         emissores: emissores.into_values().collect(),
         oclusores: oclusores.into_values().collect(),
         ceu,
         luzes,
         nao_recebem: nao_recebem.into_values().collect(),
+        sprites,
     }
 }

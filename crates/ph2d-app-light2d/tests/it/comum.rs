@@ -39,6 +39,16 @@ pub fn afim() -> Affine {
     camera().world_to_screen_affine(janela())
 }
 
+/// Um renderer de sprites sobre `Rgba16Float` (o `game_rt`).
+pub fn renderer(gpu: &GpuContext) -> SpriteRenderer {
+    SpriteRenderer::new(
+        gpu.clone(),
+        wgpu::TextureFormat::Rgba16Float,
+        TextureAtlas::new(gpu, 256),
+        16,
+    )
+}
+
 pub struct Cadeia {
     pub renderer: SpriteRenderer,
     pub game: GameRt,
@@ -55,12 +65,7 @@ impl Cadeia {
         let game = GameRt::new(gpu, (W, H));
         let tonemap = Tonemap::new(gpu, game.texture().create_view(&Default::default()), (W, H));
         Self {
-            renderer: SpriteRenderer::new(
-                gpu.clone(),
-                wgpu::TextureFormat::Rgba16Float,
-                TextureAtlas::new(gpu, 256),
-                16,
-            ),
+            renderer: renderer(gpu),
             game,
             tonemap,
             mundo: WorldRt::new(gpu, (W, H)),
@@ -202,4 +207,15 @@ pub fn ler(gpu: &GpuContext, t: &wgpu::Texture, bpp: u32) -> Vec<u8> {
         out.extend_from_slice(&m[y * padded as usize..][..(w * bpp) as usize]);
     }
     out
+}
+
+/// A fluência rgb de um solver, lida de volta (`Rgba16Float`).
+pub fn fluencia_lida(gpu: &GpuContext, s: &ph2d_light2d_gpu::Solver) -> Vec<[f32; 3]> {
+    ler(gpu, s.fluencia(), 8)
+        .chunks_exact(8)
+        .map(|c| {
+            let h = |k: usize| half::f16::from_le_bytes([c[2 * k], c[2 * k + 1]]).to_f32();
+            [h(0), h(1), h(2)]
+        })
+        .collect()
 }

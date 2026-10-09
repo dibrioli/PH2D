@@ -20,16 +20,21 @@ pub struct Degrau {
     /// A margem fora da vista, em fração da vista, de CADA lado (emissores fora da tela iluminam
     /// dentro dela).
     pub margem: f64,
-    /// Píxeis do alvo do Vello por texel da grade na camada do vetor que bloqueia (a C0 amostra-a
-    /// bilinear em 8×8 subamostras por texel).
+    /// Píxeis do alvo do Vello por texel da grade na camada do vetor que bloqueia (a C0 lê-a EXATA:
+    /// cada subamostra cai num píxel cuja área já é a cobertura).
     pub vetor_px_por_texel: u32,
 }
 
-/// O degrau por omissão (ver a tabela da rodada no handoff W3).
+/// O degrau por omissão — MEDIDO (rodada W3, RTX 5060 Ti, 1920×1080; tabela no handoff W3): o K7
+/// (≤ 3 GB/s a 60 Hz) só passa com o texel de 4 px e margem ≤ 12,5 % — `2,96 GB/s`, `49 MB/quadro`,
+/// `2,32 ms` na placa. O texel de 2 px com margem de 25 % dava `19 GB/s` e `11 ms`. O recurso que
+/// limita é a BANDA de memória; em janelas maiores o governador (W5) sobe o `c0_px`. Camada do vetor:
+/// 1 px por texel, lida EXATA (o píxel do Vello já é a cobertura de área), mede `0,0012` contra o
+/// polígono a `0,34 ms` (20 caminhos); lida bilinear, a mesma camada media `0,066`.
 pub const DEGRAU_PADRAO: Degrau = Degrau {
-    c0_px: 2.0,
-    margem: 0.25,
-    vetor_px_por_texel: 2,
+    c0_px: 4.0,
+    margem: 0.125,
+    vetor_px_por_texel: 1,
 };
 
 /// O afim píxel → mundo: o INVERSO do mundo → tela que o Vello usou, nas duas linhas que o

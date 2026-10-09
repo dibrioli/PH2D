@@ -1,7 +1,7 @@
 //! **O vetor que bloqueia a luz** (W3) — os caminhos com `BloqueiaLuz`, desenhados pelo Vello pela
 //! MESMA porta do tile de uma forma (`draw_path_standalone`: o que se vê é o que bloqueia) num alvo
 //! alinhado à GRADE de luz, `Degrau::vetor_px_por_texel` píxeis por texel. Cada camada (uma por opacidade) entra na C0 como
-//! um sprite que cobre a grade inteira — a captura por texel já provada para os sprites.
+//! um sprite que cobre a grade inteira — a captura por texel já provada para os sprites, lida EXATA.
 //!
 //! ⚠️ O Vello só escreve `Rgba8Unorm` com alfa directa: o alfa É a cobertura, a cor não importa (o
 //! vetor não emite — a emissão é do `SpriteEmissive`, que é de sprite).

@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::{PresentWorld, SimRef};
 use ph2d_light2d_ecs::{CenaDeLuz, FormaDoSprite, SpriteDeLuz};
-use ph2d_light2d_gpu::{CapturaDeSprites, Quem, SpriteNaC0};
+use ph2d_light2d_gpu::{Amostragem, CapturaDeSprites, Quem, SpriteNaC0};
 use ph2d_render::{RenderInstance, SpriteMesh, SpriteRenderer};
 
 /// O quad de uma instância no mundo: `mundo(s, t) = origem + s·eixo_s + t·eixo_t`, com `(0, 0)` em
@@ -60,7 +60,7 @@ pub(crate) fn sprites_da_cena<'r>(
             continue;
         };
         let textura = *por_textura.entry(inst.texture_id).or_insert_with(|| {
-            c.texturas.push(vista);
+            c.texturas.push((vista, Amostragem::Bilinear));
             c.texturas.len() - 1
         });
         let [mut u0, mut v0, mut u1, mut v1] = inst.atlas_uv;

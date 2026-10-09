@@ -27,7 +27,7 @@ const ALVO: (u32, u32) = (256, 128);
 const ALTURA_M: f32 = 4.0;
 
 /// **Tolerâncias MEDIDAS + 10 %** (RTX 5060 Ti, Vulkan, 2026-10-09; os números que este teste
-/// imprime), RMSE relativo da fluência atrás do objeto. Medido: opaco × quad `0,0000` (a mesma
+/// imprime, no degrau `ALTO` das leis), RMSE relativo da fluência atrás do objeto. Medido: opaco × quad `0,0000` (a mesma
 /// cobertura subamostra a subamostra; o piso é o `f16`); fenda `0,0131` (o quad: `0,611`); duas cores
 /// `0,0036`.
 const TOL_QUAD: f64 = 1e-3;
@@ -79,7 +79,7 @@ fn fluencia(
     present: &mut PresentWorld,
     r: &SpriteRenderer,
 ) -> (Vec<[f32; 3]>, Grade, CenaDeLuz) {
-    let mut luz = LuzDoQuadro::new();
+    let mut luz = LuzDoQuadro::com_degrau(crate::comum::ALTO);
     assert!(luz.preparar(w, afim(), ALVO));
     luz.gravar(gpu, present, r);
     eprintln!("captura: sprites por texel {:?}", luz.sprites_por_texel());

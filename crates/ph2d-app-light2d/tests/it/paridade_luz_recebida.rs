@@ -29,12 +29,12 @@ const ALVO: (u32, u32) = (256, 128);
 /// 32 px/m: a vista `x ∈ [−4, 4]`, `y ∈ [−2, 2]`; `c0 = 2 px` ⇒ texel 1/16 m.
 const ALTURA_M: f32 = 4.0;
 
-/// **Tolerâncias MEDIDAS + 10 %** (RTX 5060 Ti, Vulkan, 2026-10-09; o número que este teste imprime).
-/// A conta: medido `1,21e-3` — o `game_rt` é `f16` (meio ulp relativo ≈ 4,9e-4) e o filtro bilinear
-/// da placa tem 8 bits de fração. A resposta: medido `0,0475` (1 786 pontos) — a régua do G3, cuja
-/// penumbra no degrau Alto mede `0,090`.
-const TOL_CONTA_REL: f64 = 1.35e-3;
-const TOL_RESPOSTA_RMSE: f64 = 0.0525;
+/// **Tolerâncias MEDIDAS + 10 %** (RTX 5060 Ti, Vulkan, 2026-10-09; os números que este teste imprime).
+/// A conta: medido `1,21e-3` / `1,23e-3` — o `game_rt` é `f16` (meio ulp relativo ≈ 4,9e-4) e o filtro
+/// bilinear da placa tem 8 bits de fração. A resposta, POR DEGRAU (a régua do G3, cuja penumbra no
+/// Alto mede `0,090`): `ALTO` (texel 2 px) `0,0475`; o PADRÃO (4 px) `0,0755` — 1 786 pontos.
+const TOL_CONTA_REL: f64 = 1.36e-3;
+const TOL_RESPOSTA_RMSE: [(&str, f64); 2] = [("ALTO", 0.0525), ("PADRÃO", 0.0831)];
 
 fn janela() -> WindowSize {
     WindowSize::new(ALVO.0, ALVO.1)
@@ -132,8 +132,23 @@ fn a_luz_recebida_na_placa_bate_a_conta_e_o_gabarito() {
         eprintln!("paridade: sem placa — saltado");
         return;
     };
+    for (nome, degrau) in [
+        ("ALTO", crate::comum::ALTO),
+        ("PADRÃO", ph2d_app_light2d::DEGRAU_PADRAO),
+    ] {
+        paridade_no_degrau(&gpu, nome, degrau);
+    }
+}
+
+fn paridade_no_degrau(gpu: &ph2d_gpu::GpuContext, nome: &str, degrau: ph2d_app_light2d::Degrau) {
+    let gpu = gpu.clone();
+    let tol_resposta = TOL_RESPOSTA_RMSE
+        .iter()
+        .find(|(n, _)| *n == nome)
+        .map(|(_, t)| *t)
+        .expect("tolerância do degrau");
     let w = cena();
-    let mut luz = LuzDoQuadro::new();
+    let mut luz = LuzDoQuadro::com_degrau(degrau);
     assert!(luz.preparar(&w, afim_alvo(), ALVO));
     // O sprite branco que cobre a vista, pelo passe da CENA.
     let mut renderer = SpriteRenderer::new(
@@ -214,8 +229,8 @@ fn a_luz_recebida_na_placa_bate_a_conta_e_o_gabarito() {
     }
     let rmse = (soma_err2 / f64::from(n)).sqrt() / (soma_ref / f64::from(n));
     eprintln!(
-        "paridade: conta {pior_conta:.2e} (relativo, pior pixel) · gabarito RMSE relativo {rmse:.4} \
-         sobre {} pontos",
+        "paridade ({nome}): conta {pior_conta:.2e} (relativo, pior pixel) · gabarito RMSE relativo \
+         {rmse:.4} sobre {} pontos",
         n / 3
     );
     assert!(
@@ -223,8 +238,8 @@ fn a_luz_recebida_na_placa_bate_a_conta_e_o_gabarito() {
         "a luz recebida na placa afasta-se da conta da CPU {pior_conta:.2e}"
     );
     assert!(
-        rmse <= TOL_RESPOSTA_RMSE,
-        "a luz recebida afasta-se do gabarito: RMSE relativo {rmse:.4}"
+        rmse <= tol_resposta,
+        "({nome}) a luz recebida afasta-se do gabarito: RMSE relativo {rmse:.4}"
     );
 }
 

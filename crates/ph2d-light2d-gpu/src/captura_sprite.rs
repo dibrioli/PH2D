@@ -32,10 +32,20 @@ pub struct SpriteNaC0 {
     pub textura: usize,
 }
 
+/// Como a C0 lê uma textura nas 8×8 subamostras de cada texel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Amostragem {
+    /// Bilinear — a textura de um sprite, em qualquer escala.
+    Bilinear,
+    /// O texel EXATO (sem filtro) — uma textura alinhada à grade cujo píxel já É a cobertura de
+    /// área (a camada do vetor que o Vello desenha); filtrá-la borraria a silhueta.
+    Exata,
+}
+
 /// Os sprites do quadro para a C0, com as texturas que eles amostram.
 #[derive(Default)]
 pub struct CapturaDeSprites<'a> {
-    pub texturas: Vec<&'a wgpu::TextureView>,
+    pub texturas: Vec<(&'a wgpu::TextureView, Amostragem)>,
     pub sprites: Vec<SpriteNaC0>,
     /// As formas da `CenaDeLuz` que estes sprites SUBSTITUEM (o quad deles).
     pub substituidos: BTreeSet<Quem>,

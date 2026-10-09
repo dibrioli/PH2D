@@ -13,6 +13,15 @@ use ph2d_render::{
 use vello::kurbo::{Affine, Rect};
 use vello::peniko::{Color, Fill};
 
+/// ⭐ O degrau FINO das leis (texel de 2 px — o «Alto» do G3): os gates de LEI (a captura por texel
+/// e a do vetor contra o polígono) medem-se onde a discretização não mascara a lei. A qualidade do
+/// degrau PADRÃO (4 px) mede-se à parte (a paridade com o gabarito e a rodada).
+pub const ALTO: ph2d_app_light2d::Degrau = ph2d_app_light2d::Degrau {
+    c0_px: 2.0,
+    margem: 0.25,
+    vetor_px_por_texel: 1,
+};
+
 pub const W: u32 = 64;
 pub const H: u32 = 32;
 pub const FUNDO: wgpu::Color = wgpu::Color {
@@ -58,20 +67,31 @@ pub struct Cadeia {
     pub vello: VelloPass,
     /// Uma textura 1×1 opaca de cada cor pedida.
     pub texturas: Vec<([u8; 4], u32)>,
+    pub tamanho: (u32, u32),
 }
 
 impl Cadeia {
     pub fn nova(gpu: &GpuContext) -> Self {
-        let game = GameRt::new(gpu, (W, H));
-        let tonemap = Tonemap::new(gpu, game.texture().create_view(&Default::default()), (W, H));
+        Self::nova_com(gpu, (W, H))
+    }
+
+    pub fn nova_com(gpu: &GpuContext, tamanho: (u32, u32)) -> Self {
+        let game = GameRt::new(gpu, tamanho);
+        let tonemap = Tonemap::new(
+            gpu,
+            game.texture().create_view(&Default::default()),
+            tamanho,
+        );
         Self {
             renderer: renderer(gpu),
             game,
             tonemap,
-            mundo: WorldRt::new(gpu, (W, H)),
+            mundo: WorldRt::new(gpu, tamanho),
             colagem: BandBlit::new(gpu, WorldRt::FORMAT),
-            vello: VelloPass::new(gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (W, H)).expect("vello"),
+            vello: VelloPass::new(gpu, wgpu::TextureFormat::Bgra8UnormSrgb, tamanho)
+                .expect("vello"),
             texturas: Vec::new(),
+            tamanho,
         }
     }
 
@@ -95,11 +115,25 @@ impl Cadeia {
         extra: &LiftedInstances,
         vetor: &vello::Scene,
     ) -> Vec<u8> {
+        self.desenhar(gpu, present, extra, vetor, &camera());
+        ler_bgra(gpu, self.mundo.texture())
+    }
+
+    /// O quadro SEM ler de volta (a sonda mede o relógio dele).
+    pub fn desenhar(
+        &mut self,
+        gpu: &GpuContext,
+        present: &mut PresentWorld,
+        extra: &LiftedInstances,
+        vetor: &vello::Scene,
+        camera: &Camera2d,
+    ) {
+        let (w, h) = self.tamanho;
         self.renderer.render_with_streams(
             self.game.view(),
             present,
-            &camera(),
-            janela(),
+            camera,
+            WindowSize::new(w, h),
             wgpu::Color::TRANSPARENT,
             extra,
             None,
@@ -116,7 +150,7 @@ impl Cadeia {
             BandSource::Sprites,
         );
         self.vello
-            .render_to_intermediate(gpu, vetor, (W, H), Color::TRANSPARENT)
+            .render_to_intermediate(gpu, vetor, (w, h), Color::TRANSPARENT)
             .expect("vello");
         self.colagem.blit(
             gpu,
@@ -124,7 +158,6 @@ impl Cadeia {
             self.vello.intermediate_view(),
             BandSource::Vector,
         );
-        ler_bgra(gpu, self.mundo.texture())
     }
 }
 

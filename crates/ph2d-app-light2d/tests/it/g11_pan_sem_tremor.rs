@@ -21,9 +21,10 @@ const ALVO: (u32, u32) = (256, 128);
 /// 32 px/m: com `c0 = 2 px` o texel é 1/16 m.
 const ALTURA_M: f32 = 4.0;
 
-/// **O limiar MEDIDO** (RTX 5060 Ti, 2026-10-09): ancorada **8,1e-15** — a fluência nos pontos
+/// **O limiar MEDIDO** (RTX 5060 Ti, 2026-10-09): ancorada **0** no degrau padrão (texel 4 px) e
+/// **8,1e-15** no de 2 px — a fluência nos pontos
 /// estáticos sai BIT-idêntica de quadro para quadro, e o resto é o arredondamento `f64` da amostragem
-/// na CPU; solta **2,6** (relativo, na penumbra). O limiar fica muito abaixo de um ulp de `f16`
+/// na CPU; solta **4,9** (padrão) / **2,6** (2 px), relativo, na penumbra. O limiar fica muito abaixo de um ulp de `f16`
 /// (~1e-3): qualquer mudança na fluência guardada reprova.
 const LIMIAR: f64 = 1e-9;
 

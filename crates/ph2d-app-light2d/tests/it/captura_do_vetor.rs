@@ -3,7 +3,7 @@
 //! W2. ⛔ Sem a camada vetorial (o controlo) o caminho não bloqueia nada.
 
 use bevy_ecs::world::World;
-use ph2d_app_light2d::{DEGRAU_PADRAO, Degrau, LuzDoQuadro};
+use ph2d_app_light2d::{Degrau, LuzDoQuadro};
 use ph2d_ecs::{GlobalTransform, PresentWorld, Transform, VecPathRef};
 use ph2d_host::WindowSize;
 use ph2d_light2d_ecs::{BloqueiaLuz, Luz, Oclusor, TipoDeLuz};
@@ -17,9 +17,11 @@ use crate::comum::{fluencia_lida, gpu, renderer};
 const ALVO: (u32, u32) = (256, 128);
 const ALTURA_M: f32 = 4.0;
 
-/// **Tolerância MEDIDA + 10 %** (RTX 5060 Ti, Vulkan, 2026-10-09): RMSE relativo da fluência atrás
-/// do caminho, medido `0,0074` com o degrau padrão (sem a camada: `1,38`).
-const TOL: f64 = 0.0082;
+/// **Tolerância MEDIDA** (RTX 5060 Ti, Vulkan, 2026-10-09): RMSE relativo da fluência atrás do
+/// caminho, medido `0,0000` no degrau `ALTO` das leis — a camada a 1 px por texel lida EXATA dá a
+/// cobertura de área do Vello, a mesma que as 8×8 subamostras do polígono (o piso é o `f16`); sem a
+/// camada: `1,38`. Lida bilinear (a 1.ª redacção) media `0,0074` a 2 px por texel.
+const TOL: f64 = 1e-3;
 
 fn afim() -> Affine {
     Camera2d::new([0.0, 0.0], ALTURA_M).world_to_screen_affine(WindowSize::new(ALVO.0, ALVO.1))
@@ -109,7 +111,7 @@ fn um_caminho_vetorial_que_bloqueia_faz_a_sombra_do_seu_poligono() {
         eprintln!("vetor: sem placa — saltado");
         return;
     };
-    let (com, sem) = medir(&gpu, DEGRAU_PADRAO);
+    let (com, sem) = medir(&gpu, crate::comum::ALTO);
     eprintln!("vetor: caminho × polígono — RMSE relativo {com:.4} (sem a camada: {sem:.4})");
     assert!(
         com <= TOL,

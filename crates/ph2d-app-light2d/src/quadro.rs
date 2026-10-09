@@ -157,7 +157,10 @@ impl LuzDoQuadro {
             });
         let mut sprites = crate::captura::sprites_da_cena(&self.cena, present, renderer);
         for (vista, mut s) in self.vetores.sprites() {
-            sprites.texturas.push(vista);
+            // A camada está alinhada à grade e o píxel dela já é a cobertura de área: lida EXATA.
+            sprites
+                .texturas
+                .push((vista, ph2d_light2d_gpu::Amostragem::Exata));
             s.textura = sprites.texturas.len() - 1;
             sprites.sprites.push(s);
         }

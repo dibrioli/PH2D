@@ -7,4 +7,5 @@ mod censo_wgsl_partilhado;
 mod comum;
 mod g11_pan_sem_tremor;
 mod g6_ponto_neutro;
+mod medida_luz2d_w3;
 mod paridade_luz_recebida;

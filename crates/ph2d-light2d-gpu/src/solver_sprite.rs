@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use ph2d_gpu::GpuContext;
 
-use crate::captura_sprite::FormaSprite;
+use crate::captura_sprite::{Amostragem, FormaSprite};
 use crate::shaders;
 
 /// Os três alvos da C0 e a MISTURA de cada um — a lei única das duas pipelines: emissão do dono pelo
@@ -52,6 +52,7 @@ pub(crate) struct C0Sprites {
     layout_formas: wgpu::BindGroupLayout,
     layout_textura: wgpu::BindGroupLayout,
     amostra: wgpu::Sampler,
+    amostra_exata: wgpu::Sampler,
     residente: Option<Residente>,
 }
 
@@ -144,11 +145,16 @@ impl C0Sprites {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
+        let amostra_exata = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("luz2d c0 sprites amostra exata"),
+            ..Default::default()
+        });
         Self {
             pipeline,
             layout_formas,
             layout_textura,
             amostra,
+            amostra_exata,
             residente: None,
         }
     }
@@ -161,7 +167,7 @@ impl C0Sprites {
         uni_c0: &wgpu::Buffer,
         formas: &[FormaSprite],
         lotes: &[(usize, Range<u32>)],
-        texturas: &[&wgpu::TextureView],
+        texturas: &[(&wgpu::TextureView, Amostragem)],
     ) -> Vec<(wgpu::BindGroup, Range<u32>)> {
         if formas.is_empty() {
             return Vec::new();
@@ -197,7 +203,11 @@ impl C0Sprites {
         lotes
             .iter()
             .filter_map(|(t, intervalo)| {
-                let vista = texturas.get(*t)?;
+                let (vista, amostragem) = texturas.get(*t)?;
+                let amostra = match amostragem {
+                    Amostragem::Bilinear => &self.amostra,
+                    Amostragem::Exata => &self.amostra_exata,
+                };
                 let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("luz2d c0 sprites textura"),
                     layout: &self.layout_textura,
@@ -208,7 +218,7 @@ impl C0Sprites {
                         },
                         wgpu::BindGroupEntry {
                             binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&self.amostra),
+                            resource: wgpu::BindingResource::Sampler(amostra),
                         },
                     ],
                 });

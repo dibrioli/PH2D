@@ -432,6 +432,24 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     (72,5 > 25 %) · `o_fio_alarga_para_a_orla_como_o_funil_do_rebelle` (3,5 → 3 contra ≥ 1,5 px) · e a guarda
     `a_raiz_do_fio_nao_faz_degrau_na_orla` (verde hoje). Os achados inteiros e a cura:
     [10_PROMPT_janela_W1d_cura.md](10_PROMPT_janela_W1d_cura.md) · [prancha a 8×](prancha_auditoria_w1c.png).
+  - **O «Smooth Edges» do Watercolor avaliado** (pedido do dono, 09/10, antes da cura: *«talvez ajude a
+    nossa própria solução… smooth edges»*; e *«não sei se essa imagem do rebelle serve… não tem muito
+    pigmento nas bordas»* — a régua do meio-tom é relativa ao pico LOCAL, não depende da carga; o contraste
+    sim). A lei (`watercolor_aa.rs::aa_coverage`: 3×3 amostras a ±0,667 texel, `alpha = média ÷ máx` linear
+    sobre o pixel acabado, nada de água nem pigmento movido) aplicada FORA do produto às telas da sonda, com a
+    mancha 0/1 como campo de cobertura (`ferramentas/smooth_edges_no_wet.py`, emulação):
+
+    | descida do S | binária % | meio-tom % | salto/B0 | último px ÷ puro | faixa pura (12 px acima) | pontinhos |
+    |---|---|---|---|---|---|---|
+    | azul do dono 100 px, hoje | 72,5 | 9,8 | 1,04 | 1,00 | 5 | 94 |
+    | + Smooth Edges | **14,0** | **61,7** | **0,47** | 0,46 | 4 | 38 |
+    | azul do dono 60 px, hoje | 57,0 | 23,8 | 0,97 | 1,00 | 3 | 18 |
+    | + Smooth Edges | 31,6 | 41,5 | 0,44 | 0,67 | 3 | 4 |
+    | tela direita, hoje · + SE | 16,6 · 1,6 | 67,4 · 82,4 | 0,57 · 0,23 | — | — | 73 · 27 |
+
+    ⇒ cura o PIXEL da orla (A1) e apaga boa parte dos pontinhos (A4), mas NÃO a faixa de cor pura (A3) nem o
+    rectângulo da raiz (B2) — [prancha a 8×](prancha_smooth_edges.png): a escada fica de cantos macios, a faixa
+    fica. Aplicado em toda a mancha muda as cercas «ao byte» (tela direita: 4 204 px; Create Drips off: 6 532).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

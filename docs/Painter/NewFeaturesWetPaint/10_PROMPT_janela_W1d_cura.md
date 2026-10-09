@@ -112,7 +112,14 @@ C (as réguas que não viram) a_borda_do_s_e_a_do_rebelle mede a POSIÇÃO da or
 
 A CURA (direcções — meça antes de escolher; todas SÓ onde há linha de contacto)
 - A1: ⭐ meio-tom SEM deixar passar água (a faixa de transição que deixa passar fluxo está RECUSADA: inunda).
-  Candidato padrão-ouro: anti-serrilhado MORFOLÓGICO da máscara da orla (MLAA, Reshetov 2009) — a orla por
+  ⭐ PRIMEIRO CANDIDATO (dono, 09/10): o NOSSO «Smooth Edges» do Watercolor (`watercolor_aa.rs::aa_coverage`)
+  — avaliado em emulação (05 §4b, `ferramentas/smooth_edges_no_wet.py`): binária 72,5 → 14 %, meio-tom 9,8 →
+  62 %, salto 1,04 → 0,47·B0, pontinhos 94 → 38; NÃO tira a faixa pura (5 → 4 px) nem o rectângulo da raiz.
+  Reuse a LEI (uma porta só — não copie a função: «a mesma conta ao lado de uma cópia» diverge), com a mancha do
+  Wet Paint como campo de cobertura, no composite. ⚠️ Decisão do DONO antes de portar: só onde há linha de
+  contacto (as cercas c/d ficam) ou um «Smooth Edges» no Wet Paint como no Watercolor, em toda a mancha (cura
+  também os pontinhos da tela direita, mas as cercas c/d mudam de bytes e são regravadas de propósito).
+  Alternativa a medir contra ele: anti-serrilhado MORFOLÓGICO da máscara da orla (MLAA, Reshetov 2009) — a orla por
   coluna ao longo da transversal à gravidade, uma recta local sobre ±4 colunas, e a cobertura de cada pixel
   da orla e do pixel seco abaixo dela = a área do pixel do lado molhado dessa recta; aplicada à cobertura do
   pigmento (`pa`) no composite, só nas células de orla (`is_front`) — sem orla (Create Drips off, tela

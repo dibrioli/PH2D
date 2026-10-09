@@ -14,46 +14,88 @@
 //! polígono (linha, polilinha, triângulo, rectângulo, …); senão, se fecha uma volta, é a elipse dos
 //! momentos de área da região desenhada (exacta para uma elipse perfeita); senão não é forma.
 
+pub use crate::quickshape_geom::snap;
+use crate::quickshape_geom::{
+    Fit, P2, add, angle, centroid, cross, dist, dot, intersect, mul, project, rdp, resample,
+    rotate, solve, sub, tls, turn, unit, wrap_pi,
+};
 use ph2d_vec_scene::{VecPath, VecVertex};
-use std::f64::consts::{FRAC_PI_2, PI, TAU};
+use std::f64::consts::{FRAC_PI_2, TAU};
 
-type P2 = [f64; 2];
+/// **As constantes da lei**, num valor só para que a sonda as VARRA no mesmo processo
+/// (`quickshape_measure_tests.rs`). [`Law::MEASURED`] é a que corre; cada campo diz a FAIXA em que
+/// todas as fixtures e os traços de mão continuam certos, e de onde vem a fronteira.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Law {
+    /// Piso do tamanho (diagonal da caixa do traço), px de tela: abaixo disto o tremor da mão manda.
+    pub(crate) min_size_px: f64,
+    /// Um lado mais curto que o MENOR de `corner_px` (o mínimo do oráculo, 40 un. = 94 px — o
+    /// rectângulo 500×60 dele é cru porque os lados de 60 px são quinas) e `corner_of_diag` × a
+    /// diagonal (as formas PEQUENAS, ordem do dono 09/10) é QUINA.
+    pub(crate) corner_px: f64,
+    pub(crate) corner_of_diag: f64,
+    /// Tolerância do RDP, fracção da diagonal.
+    pub(crate) rdp_of_diag: f64,
+    /// Viragem abaixo da qual dois lados são UM (graus); o octógono vira 45°.
+    pub(crate) merge_turn_deg: f64,
+    /// Flecha máxima de um lado RECTO (fracção do comprimento): o oráculo endireita 3,3 %
+    /// (`linha_arco_leve`); um lado de círculo dá ≥ 7,7 %.
+    pub(crate) bow_max: f64,
+    /// Numa polilinha aberta, a quina interior não passa esta fracção do lado vizinho mais curto.
+    pub(crate) open_corner_of_side: f64,
+    /// A flecha mede-se sem esta fracção de cada ponta; o ajuste da recta, sem `fit_trim`.
+    pub(crate) bow_trim: f64,
+    pub(crate) fit_trim: f64,
+    /// Folga de fecho (fracção do comprimento): o oráculo fecha 4,4 % e recusa 7,6 %; a ponta procura
+    /// a outra nos `close_window` iniciais/finais (o traço que PASSA do início).
+    pub(crate) close_of_length: f64,
+    pub(crate) close_window: f64,
+    /// Desvio da quina a 90° para ser rectângulo (graus): oráculo, paralelogramo 6° sim, 10° não.
+    pub(crate) right_tol_deg: f64,
+    /// Endireitar aos eixos (graus): oráculo, rodado 4° sai alinhado, 6° não.
+    pub(crate) axis_snap_deg: f64,
+    /// Resíduo radial rms máximo de uma elipse (fracção do raio).
+    pub(crate) ellipse_rms_max: f64,
+    /// Eixos nesta razão = CÍRCULO (a elipse 3:2 fica elipse).
+    pub(crate) round_ratio: f64,
+    /// A viragem total de uma elipse é uma volta ± isto (graus).
+    pub(crate) turn_tol_deg: f64,
+}
 
-/// Tamanho mínimo (diagonal da caixa do traço), em **px de tela**. O oráculo recusa abaixo de 40
-/// unidades de página = **94 px** à escala do corpus (`× 0,42491`). Faixa medida: a linha de
-/// 60 px e o rectângulo 70×50 (diagonal 86 px) são crus, o círculo de raio 40 (diagonal 113 px) é
-/// reconhecido ⇒ `(86, 113]`. É também o lado mínimo: um lado mais curto é QUINA (o rectângulo
-/// 500×60 do oráculo é cru porque os lados de 60 px não são lados).
-pub const MIN_SIZE_PX: f64 = 94.0;
+impl Law {
+    /// Os valores medidos — a faixa de cada um (varrida sozinha) no doc do QuickShape (oráculo
+    /// `00_resultados.md` §3d).
+    pub(crate) const MEASURED: Self = Self {
+        min_size_px: MIN_SIZE_PX,
+        corner_px: 94.0,
+        corner_of_diag: CORNER_OF_DIAG,
+        rdp_of_diag: 0.04,
+        merge_turn_deg: 29.0,
+        bow_max: 0.055,
+        open_corner_of_side: OPEN_CORNER_OF_SIDE,
+        bow_trim: 0.10,
+        fit_trim: 0.175,
+        close_of_length: 0.06,
+        close_window: 0.10,
+        right_tol_deg: 8.0,
+        axis_snap_deg: 5.0,
+        ellipse_rms_max: ELLIPSE_RMS_MAX,
+        round_ratio: 1.10,
+        turn_tol_deg: 90.0,
+    };
+}
+
+/// O piso de tamanho, px de tela — MEDIDO (sonda `measure_small_shapes`).
+pub const MIN_SIZE_PX: f64 = 12.0;
+/// Quina relativa — MEDIDA (sonda `measure_the_law_ranges`).
+const CORNER_OF_DIAG: f64 = 0.2;
+/// Quina interior de polilinha / lado vizinho — MEDIDA (sonda `measure_the_s_curve`): a 0,2 o
+/// zigue-zague de quinas arredondadas cai (88 %), a 0,4 o S passa por zigue-zague (2–5 %).
+const OPEN_CORNER_OF_SIDE: f64 = 0.3;
+/// Resíduo da elipse — MEDIDO (sonda `measure_the_law_ranges`).
+const ELLIPSE_RMS_MAX: f64 = 0.065;
 /// Amostras da reamostragem por comprimento (o desenho não depende da cadência do rato).
 const RESAMPLE: usize = 256;
-/// Tolerância do RDP, em fracção da diagonal. Faixa válida `0,01..0,10`.
-const RDP_OF_DIAG: f64 = 0.04;
-/// Viragem abaixo da qual dois lados são UM (graus). Faixa `5..41`; o octógono vira 45°.
-const MERGE_TURN_DEG: f64 = 25.0;
-/// Flecha máxima de um lado RECTO, em fracção do comprimento dele. Faixa `0,04..0,075`: o
-/// oráculo endireita uma flecha de 3,3 % (`linha_arco_leve`); um lado de círculo dá ≥ 7,7 %.
-const BOW_MAX: f64 = 0.055;
-/// A flecha mede-se sem os 10 % de cada ponta (a quina arredondada da mão). Faixa `0,10..0,15`.
-const BOW_TRIM: f64 = 0.10;
-/// O ajuste da recta de cada lado ignora 15 % de cada ponta, pela mesma razão.
-const FIT_TRIM: f64 = 0.15;
-/// Folga de fecho, em fracção do comprimento. Faixa `0,05..0,07`: o oráculo fecha 4,4 % (círculo
-/// aberto 40 px) e recusa 7,6 % (rectângulo aberto 90 px).
-const CLOSE_OF_LENGTH: f64 = 0.06;
-/// A ponta procura a outra nos 10 % iniciais/finais do traço (o traço que PASSA do início).
-const CLOSE_WINDOW: f64 = 0.10;
-/// Desvio máximo do ângulo de quina a 90° para ser rectângulo (graus). Oráculo: o paralelogramo
-/// de 6° vira rectângulo, o de 10° não ⇒ `(6, 10)`. Fora disto é quadrilátero como desenhado.
-const RIGHT_TOL_DEG: f64 = 8.0;
-/// Endireitar aos eixos (graus). Oráculo: linha e rectângulo rodados 4° saem alinhados, 6° não.
-const AXIS_SNAP_DEG: f64 = 5.0;
-/// Resíduo radial rms máximo de uma elipse (fracção do raio). Faixa `0,03..0,10`.
-const ELLIPSE_RMS_MAX: f64 = 0.04;
-/// Uma elipse com eixos nesta razão é um CÍRCULO. Faixa `1,05..1,50` (a elipse 3:2 fica elipse).
-const ROUND_RATIO: f64 = 1.10;
-/// A viragem total de uma elipse é uma volta ± isto (graus). Faixa `40..180`.
-const TURN_TOL_DEG: f64 = 90.0;
 /// O degrau do `regular` (o 2.º dedo do Procreate = `Shift`): ângulos em múltiplos de 15°.
 pub const REGULAR_STEP_DEG: f64 = 15.0;
 
@@ -77,10 +119,19 @@ pub enum QuickShape {
 /// triângulo equilátero, polígono regular, linha a 15°.
 #[must_use]
 pub fn recognise(samples: &[P2], px_to_world: f64, regular: bool) -> Option<QuickShape> {
+    recognise_with(&Law::MEASURED, samples, px_to_world, regular)
+}
+
+pub(crate) fn recognise_with(
+    law: &Law,
+    samples: &[P2],
+    px_to_world: f64,
+    regular: bool,
+) -> Option<QuickShape> {
     if samples.len() < 3 {
         return None;
     }
-    let min = MIN_SIZE_PX * px_to_world;
+    let min = law.min_size_px * px_to_world;
     let (lo, hi) = samples
         .iter()
         .fold(([f64::MAX; 2], [f64::MIN; 2]), |(l, h), p| {
@@ -94,16 +145,17 @@ pub fn recognise(samples: &[P2], px_to_world: f64, regular: bool) -> Option<Quic
     if diag < min || length <= 0.0 {
         return None;
     }
-    let closed = gap(samples, length) <= CLOSE_OF_LENGTH * length;
+    let closed = gap(samples, length, law.close_window) <= law.close_of_length * length;
+    let corner = (law.corner_px * px_to_world).min(law.corner_of_diag * diag);
     let r = resample(samples, RESAMPLE);
-    let mut zones: Vec<Zone> = rdp(&r, RDP_OF_DIAG * diag)
+    let mut zones: Vec<Zone> = rdp(&r, law.rdp_of_diag * diag)
         .into_iter()
         .map(|i| (i, i))
         .collect();
-    merge_small_turns(&r, &mut zones);
-    absorb_short_sides(&r, &mut zones, min);
-    polygonal(samples, &r, &zones, min, closed, regular)
-        .or_else(|| closed.then(|| ellipse(samples, &r, regular)).flatten())
+    merge_small_turns(&r, &mut zones, law.merge_turn_deg);
+    absorb_short_sides(&r, &mut zones, corner, law.merge_turn_deg);
+    polygonal(law, samples, &r, &zones, corner, closed, regular)
+        .or_else(|| closed.then(|| ellipse(law, samples, &r, regular)).flatten())
 }
 
 impl QuickShape {
@@ -186,55 +238,60 @@ fn corners_path(corners: &[P2], closed: bool) -> VecPath {
 /// isto metade do chanfro entrava em cada lado vizinho e lia-se como flecha.
 type Zone = (usize, usize);
 
-/// Uma recta ajustada: um ponto dela e a direcção unitária.
-#[derive(Clone, Copy)]
-struct Fit {
-    c: P2,
-    d: P2,
-}
-
 fn polygonal(
+    law: &Law,
     samples: &[P2],
     r: &[P2],
     zones: &[Zone],
-    min: f64,
+    corner: f64,
     closed: bool,
     regular: bool,
 ) -> Option<QuickShape> {
-    // Uma quina maior que o tamanho mínimo já não é quina: as faixas encadeadas de um S escondiam
+    // Uma faixa maior que uma quina já não é quina: as faixas encadeadas de um S escondiam
     // as curvas dele e liam-se como uma linha.
-    if zones.iter().any(|&(a, b)| dist(r[a], r[b]) > min) {
+    if zones.iter().any(|&(a, b)| dist(r[a], r[b]) > corner) {
         return None;
+    }
+    // Numa polilinha ABERTA uma quina interior do tamanho dos lados vizinhos é a crista de um S,
+    // não um bico de zigue-zague.
+    if !closed && zones.len() > 2 {
+        for j in 1..zones.len() - 1 {
+            let side = |a: usize, b: usize| dist(r[a], r[b]);
+            let adj = side(zones[j - 1].1, zones[j].0).min(side(zones[j].1, zones[j + 1].0));
+            if side(zones[j].0, zones[j].1) > law.open_corner_of_side * adj {
+                return None;
+            }
+        }
     }
     let sides: Vec<(usize, usize)> = zones.windows(2).map(|w| (w[0].1, w[1].0)).collect();
     if sides.is_empty()
         || sides
             .iter()
-            .any(|&(a, b)| b <= a || bow(&r[a..=b]) > BOW_MAX)
+            .any(|&(a, b)| b <= a || bow(&r[a..=b], law.bow_trim) > law.bow_max)
     {
         return None;
     }
     let mut fits: Vec<Fit> = sides
         .iter()
-        .map(|&(a, b)| trimmed_fit(&r[a..=b]))
+        .map(|&(a, b)| trimmed_fit(&r[a..=b], law.fit_trim))
         .collect::<Option<_>>()?;
     // Fechado a começar a meio de um lado (ou a passar do início): o último lado e o primeiro são
     // o MESMO lado.
     if closed
         && fits.len() > 3
-        && turn(fits[fits.len() - 1].d, fits[0].d) < MERGE_TURN_DEG.to_radians()
+        && turn(fits[fits.len() - 1].d, fits[0].d) < law.merge_turn_deg.to_radians()
     {
         let (la, lb) = sides[sides.len() - 1];
         let (fa, fb) = sides[0];
         let mut q = r[la..=lb].to_vec();
         q.extend_from_slice(&r[fa..=fb]);
-        fits[0] = trimmed_fit(&q)?;
+        fits[0] = trimmed_fit(&q, law.fit_trim)?;
         fits.pop();
     }
     match (closed, fits.len()) {
-        (false, 1) => Some(line(samples, &r[sides[0].0..=sides[0].1], regular)),
+        (false, 1) => Some(line(law, samples, &r[sides[0].0..=sides[0].1], regular)),
         (false, _) => Some(polyline(samples, &mut fits, regular)),
-        (true, k) if k >= 3 => Some(closed_polygon(&fits, regular)),
+        (true, k) if k >= 3 => Some(closed_polygon(law, &fits, regular)),
         _ => None,
     }
 }
@@ -242,7 +299,7 @@ fn polygonal(
 /// A recta ajusta-se ao CORPO (`body`, sem os ganchos das pontas, que são quinas absorvidas); as
 /// pontas são as projecções extremas de TODAS as amostras (o oráculo estende a linha até à ponta do
 /// gancho).
-fn line(samples: &[P2], body: &[P2], regular: bool) -> QuickShape {
+fn line(law: &Law, samples: &[P2], body: &[P2], regular: bool) -> QuickShape {
     let Some(Fit { c, d }) = tls(body) else {
         return QuickShape::Line {
             a: samples[0],
@@ -252,7 +309,7 @@ fn line(samples: &[P2], body: &[P2], regular: bool) -> QuickShape {
     let mut d = if regular {
         unit(snap(angle(d), REGULAR_STEP_DEG.to_radians()))
     } else {
-        axis_snap(d)
+        axis_snap(d, law.axis_snap_deg)
     };
     if dot(d, sub(samples[samples.len() - 1], samples[0])) < 0.0 {
         d = mul(d, -1.0);
@@ -283,19 +340,20 @@ fn polyline(samples: &[P2], fits: &mut [Fit], regular: bool) -> QuickShape {
     }
 }
 
-fn closed_polygon(fits: &[Fit], regular: bool) -> QuickShape {
+fn closed_polygon(law: &Law, fits: &[Fit], regular: bool) -> QuickShape {
     let k = fits.len();
     let corners: Vec<P2> = (0..k)
         .map(|j| intersect(fits[(j + k - 1) % k], fits[j]))
         .collect();
     let corners = if regular {
-        regularise(&corners)
+        regularise(&corners, law.axis_snap_deg)
     } else if k == 4
         && (0..4).all(|j| {
-            (turn(fits[(j + 3) % 4].d, fits[j].d) - FRAC_PI_2).abs() < RIGHT_TOL_DEG.to_radians()
+            (turn(fits[(j + 3) % 4].d, fits[j].d) - FRAC_PI_2).abs()
+                < law.right_tol_deg.to_radians()
         })
     {
-        square_up(fits)
+        square_up(fits, law.axis_snap_deg)
     } else {
         corners
     };
@@ -307,12 +365,12 @@ fn closed_polygon(fits: &[Fit], regular: bool) -> QuickShape {
 
 /// Os quatro lados passam a dois pares ortogonais, na rotação média do traço (média circular de
 /// `4θ`, que não distingue os quatro lados), cada um pelo centróide do seu lado.
-fn square_up(fits: &[Fit]) -> Vec<P2> {
+fn square_up(fits: &[Fit], axis_deg: f64) -> Vec<P2> {
     let (s, c) = fits.iter().fold((0.0, 0.0), |(s, c), f| {
         let a = 4.0 * angle(f.d);
         (s + a.sin(), c + a.cos())
     });
-    let m = angle(axis_snap(unit(f64::atan2(s, c) / 4.0)));
+    let m = angle(axis_snap(unit(f64::atan2(s, c) / 4.0), axis_deg));
     let sq: Vec<Fit> = fits
         .iter()
         .map(|f| Fit {
@@ -325,7 +383,7 @@ fn square_up(fits: &[Fit]) -> Vec<P2> {
 
 /// O polígono regular de `k` lados mais perto dos cantos: mesmo centro, raio médio, a fase média,
 /// o sentido de desenho; e endireitado aos eixos como o rectângulo.
-fn regularise(corners: &[P2]) -> Vec<P2> {
+fn regularise(corners: &[P2], axis_deg: f64) -> Vec<P2> {
     let k = corners.len();
     let c = centroid(corners);
     let radius = corners.iter().map(|&p| dist(p, c)).sum::<f64>() / k as f64;
@@ -343,17 +401,17 @@ fn regularise(corners: &[P2]) -> Vec<P2> {
     let mut phase = f64::atan2(s, co);
     let at = |phase: f64, i: usize| add(c, mul(unit(phase + i as f64 * step), radius));
     let side = angle(sub(at(phase, 1), at(phase, 0)));
-    phase += angle(axis_snap(unit(side))) - side;
+    phase += angle(axis_snap(unit(side), axis_deg)) - side;
     (0..k).map(|i| at(phase, i)).collect()
 }
 
 // ── a elipse ────────────────────────────────────────────────────────────────────────────────────
 
-fn ellipse(samples: &[P2], r: &[P2], regular: bool) -> Option<QuickShape> {
+fn ellipse(law: &Law, samples: &[P2], r: &[P2], regular: bool) -> Option<QuickShape> {
     let total: f64 = (1..r.len() - 1)
         .map(|i| wrap_pi(angle(sub(r[i + 1], r[i])) - angle(sub(r[i], r[i - 1]))))
         .sum();
-    if (total.abs() - TAU).abs() > TURN_TOL_DEG.to_radians() {
+    if (total.abs() - TAU).abs() > law.turn_tol_deg.to_radians() {
         return None;
     }
     let (centre, a, b, rot) = area_moments(samples)?;
@@ -366,10 +424,10 @@ fn ellipse(samples: &[P2], r: &[P2], regular: bool) -> Option<QuickShape> {
         .sum::<f64>()
         / samples.len() as f64)
         .sqrt();
-    if rms > ELLIPSE_RMS_MAX {
+    if rms > law.ellipse_rms_max {
         return None;
     }
-    if regular || a / b <= ROUND_RATIO {
+    if regular || a / b <= law.round_ratio {
         let radius = samples.iter().map(|&p| dist(p, centre)).sum::<f64>() / samples.len() as f64;
         return Some(QuickShape::Ellipse {
             centre,
@@ -424,16 +482,16 @@ fn area_moments(p: &[P2]) -> Option<(P2, f64, f64, f64)> {
 // ── o traço partido em lados ────────────────────────────────────────────────────────────────────
 
 /// A menor distância entre uma ponta e a janela inicial/final da outra.
-fn gap(p: &[P2], length: f64) -> f64 {
+fn gap(p: &[P2], length: f64, window: f64) -> f64 {
     let mut cum = 0.0;
     let mut head = vec![p[0]];
     let mut tail = Vec::new();
     for w in p.windows(2) {
         cum += dist(w[0], w[1]);
-        if cum <= CLOSE_WINDOW * length {
+        if cum <= window * length {
             head.push(w[1]);
         }
-        if cum >= (1.0 - CLOSE_WINDOW) * length {
+        if cum >= (1.0 - window) * length {
             tail.push(w[1]);
         }
     }
@@ -443,51 +501,8 @@ fn gap(p: &[P2], length: f64) -> f64 {
     a.min(b)
 }
 
-fn resample(p: &[P2], n: usize) -> Vec<P2> {
-    let mut cum = vec![0.0];
-    for w in p.windows(2) {
-        cum.push(cum[cum.len() - 1] + dist(w[0], w[1]));
-    }
-    let total = cum[cum.len() - 1];
-    let mut out = Vec::with_capacity(n);
-    let mut j = 0;
-    for i in 0..n {
-        let t = total * i as f64 / (n - 1) as f64;
-        while j + 2 < cum.len() && cum[j + 1] < t {
-            j += 1;
-        }
-        let seg = cum[j + 1] - cum[j];
-        let u = if seg > 0.0 {
-            ((t - cum[j]) / seg).clamp(0.0, 1.0)
-        } else {
-            0.0
-        };
-        out.push(add(p[j], mul(sub(p[j + 1], p[j]), u)));
-    }
-    out
-}
-
-/// Ramer-Douglas-Peucker, devolvendo os ÍNDICES que ficam (iterativo, pilha explícita).
-fn rdp(r: &[P2], tol: f64) -> Vec<usize> {
-    let mut keep = vec![false; r.len()];
-    keep[0] = true;
-    keep[r.len() - 1] = true;
-    let mut stack = vec![(0, r.len() - 1)];
-    while let Some((a, b)) = stack.pop() {
-        let worst = ((a + 1)..b)
-            .map(|i| (seg_dist(r[i], r[a], r[b]), i))
-            .fold((0.0, a), |m, x| if x.0 > m.0 { x } else { m });
-        if worst.0 > tol {
-            keep[worst.1] = true;
-            stack.push((a, worst.1));
-            stack.push((worst.1, b));
-        }
-    }
-    (0..r.len()).filter(|&i| keep[i]).collect()
-}
-
-/// Funde, menor primeiro, as quinas que viram menos que [`MERGE_TURN_DEG`].
-fn merge_small_turns(r: &[P2], z: &mut Vec<Zone>) {
+/// Funde, menor primeiro, as quinas que viram menos que `merge_deg`.
+fn merge_small_turns(r: &[P2], z: &mut Vec<Zone>, merge_deg: f64) {
     while z.len() > 2 {
         // Com SENTIDO (segmentos, não rectas): um bico de 160° não é uma viragem de 20°.
         let (t, j) = (1..z.len() - 1)
@@ -497,32 +512,32 @@ fn merge_small_turns(r: &[P2], z: &mut Vec<Zone>) {
                 (wrap_pi(angle(b) - angle(a)).abs(), j)
             })
             .fold((f64::MAX, 0), |m, x| if x.0 < m.0 { x } else { m });
-        if t >= MERGE_TURN_DEG.to_radians() {
+        if t >= merge_deg.to_radians() {
             return;
         }
         z.remove(j);
     }
 }
 
-/// Um lado mais curto que `min` é parte de uma quina (ou um gancho na ponta): as duas faixas que o
+/// Um lado mais curto que `corner` é parte de uma quina (ou um gancho na ponta): as duas faixas que o
 /// fecham passam a UMA, que o contém.
-fn absorb_short_sides(r: &[P2], z: &mut Vec<Zone>, min: f64) {
+fn absorb_short_sides(r: &[P2], z: &mut Vec<Zone>, corner: f64, merge_deg: f64) {
     while z.len() > 2 {
         let (len, j) = (0..z.len() - 1)
             .map(|j| (dist(r[z[j].1], r[z[j + 1].0]), j))
             .fold((f64::MAX, 0), |m, x| if x.0 < m.0 { x } else { m });
-        if len >= min {
+        if len >= corner {
             return;
         }
         z[j].1 = z[j + 1].1;
         z.remove(j + 1);
-        merge_small_turns(r, z);
+        merge_small_turns(r, z, merge_deg);
     }
 }
 
 /// A flecha de um lado: o termo quadrático do resíduo à recta, em fracção do comprimento.
-fn bow(q: &[P2]) -> f64 {
-    let k = (q.len() as f64 * BOW_TRIM) as usize;
+fn bow(q: &[P2], trim: f64) -> f64 {
+    let k = (q.len() as f64 * trim) as usize;
     let q = &q[k..q.len() - k];
     let Some(f) = tls(q) else { return 0.0 };
     let t: Vec<f64> = q.iter().map(|&p| dot(sub(p, f.c), f.d)).collect();
@@ -547,31 +562,11 @@ fn bow(q: &[P2]) -> f64 {
             }
         }
     }
-    solve3(m, v).map_or(0.0, |s| s[0].abs() / (2.0 * half))
+    solve(m, v).map_or(0.0, |s| s[0].abs() / (2.0 * half))
 }
 
-fn solve3(m: [[f64; 3]; 3], v: [f64; 3]) -> Option<[f64; 3]> {
-    let det = |a: [[f64; 3]; 3]| {
-        a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
-            - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
-            + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
-    };
-    let d = det(m);
-    if d.abs() <= f64::MIN_POSITIVE {
-        return None;
-    }
-    let col = |c: usize| {
-        let mut a = m;
-        for (row, &x) in a.iter_mut().zip(&v) {
-            row[c] = x;
-        }
-        det(a) / d
-    };
-    Some([col(0), col(1), col(2)])
-}
-
-fn trimmed_fit(q: &[P2]) -> Option<Fit> {
-    let k = ((q.len() as f64 * FIT_TRIM) as usize).max(1);
+fn trimmed_fit(q: &[P2], trim: f64) -> Option<Fit> {
+    let k = ((q.len() as f64 * trim) as usize).max(1);
     if q.len() > 2 * k + 1 {
         tls(&q[k..q.len() - k])
     } else {
@@ -579,106 +574,14 @@ fn trimmed_fit(q: &[P2]) -> Option<Fit> {
     }
 }
 
-/// Mínimos quadrados TOTAIS (a recta que minimiza a distância perpendicular).
-fn tls(q: &[P2]) -> Option<Fit> {
-    if q.len() < 2 {
-        return None;
-    }
-    let c = centroid(q);
-    let (sxx, syy, sxy) = q.iter().fold((0.0, 0.0, 0.0), |(a, b, s), &p| {
-        let [x, y] = sub(p, c);
-        (a + x * x, b + y * y, s + x * y)
-    });
-    (sxx + syy > 0.0).then(|| Fit {
-        c,
-        d: unit(0.5 * f64::atan2(2.0 * sxy, sxx - syy)),
-    })
-}
-
-fn intersect(f: Fit, g: Fit) -> P2 {
-    let den = cross(f.d, g.d);
-    if den.abs() <= 1e-9 {
-        return mul(add(f.c, g.c), 0.5);
-    }
-    add(f.c, mul(f.d, cross(sub(g.c, f.c), g.d) / den))
-}
-
-fn project(p: P2, f: Fit) -> P2 {
-    add(f.c, mul(f.d, dot(sub(p, f.c), f.d)))
-}
-
-fn axis_snap(d: P2) -> P2 {
+fn axis_snap(d: P2, tol_deg: f64) -> P2 {
     let a = angle(d);
     let q = snap(a, FRAC_PI_2);
-    if (a - q).abs() <= AXIS_SNAP_DEG.to_radians() {
+    if (a - q).abs() <= tol_deg.to_radians() {
         unit(q)
     } else {
         d
     }
-}
-
-// ── geometria ───────────────────────────────────────────────────────────────────────────────────
-
-/// O ângulo, arredondado ao múltiplo de `step` mais perto.
-#[must_use]
-pub fn snap(a: f64, step: f64) -> f64 {
-    (a / step).round() * step
-}
-
-/// A viragem entre duas RECTAS (direcção sem sentido, `mod π`), em `[0, π/2]`.
-fn turn(a: P2, b: P2) -> f64 {
-    let t = wrap_pi(angle(b) - angle(a)).abs();
-    t.min(PI - t)
-}
-
-fn wrap_pi(a: f64) -> f64 {
-    a - TAU * ((a + PI) / TAU).floor()
-}
-
-fn centroid(q: &[P2]) -> P2 {
-    let s = q.iter().fold([0.0, 0.0], |s, &p| add(s, p));
-    mul(s, 1.0 / q.len().max(1) as f64)
-}
-
-fn seg_dist(p: P2, a: P2, b: P2) -> f64 {
-    let v = sub(b, a);
-    let vv = dot(v, v);
-    let t = if vv > 0.0 {
-        (dot(sub(p, a), v) / vv).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    dist(p, add(a, mul(v, t)))
-}
-
-fn rotate(p: P2, a: f64) -> P2 {
-    let (s, c) = a.sin_cos();
-    [p[0] * c - p[1] * s, p[0] * s + p[1] * c]
-}
-fn unit(a: f64) -> P2 {
-    let (s, c) = a.sin_cos();
-    [c, s]
-}
-fn angle(v: P2) -> f64 {
-    v[1].atan2(v[0])
-}
-fn add(a: P2, b: P2) -> P2 {
-    [a[0] + b[0], a[1] + b[1]]
-}
-fn sub(a: P2, b: P2) -> P2 {
-    [a[0] - b[0], a[1] - b[1]]
-}
-fn mul(a: P2, s: f64) -> P2 {
-    [a[0] * s, a[1] * s]
-}
-fn dot(a: P2, b: P2) -> f64 {
-    a[0] * b[0] + a[1] * b[1]
-}
-fn cross(a: P2, b: P2) -> f64 {
-    a[0] * b[1] - a[1] * b[0]
-}
-fn dist(a: P2, b: P2) -> f64 {
-    (a[0] - b[0]).hypot(a[1] - b[1])
 }
 
 #[cfg(test)]
@@ -688,3 +591,11 @@ mod tests;
 #[cfg(test)]
 #[path = "quickshape_pencil_tests.rs"]
 mod pencil_tests;
+
+#[cfg(test)]
+#[path = "quickshape_hand_tests.rs"]
+mod hand_tests;
+
+#[cfg(test)]
+#[path = "quickshape_measure_tests.rs"]
+mod measure_tests;

@@ -27,6 +27,7 @@ pub mod pencil_width;
 pub use pencil::Pencil;
 /// **QuickShape** (F7): a lei traço → forma perfeita, e o gatilho de segurar no fim do traço.
 pub mod quickshape;
+mod quickshape_geom;
 pub mod quickshape_hold;
 
 /// Pen STYLE + edit HISTORY (sibling module, HR-18 file-LOC cap).

@@ -41,6 +41,14 @@ mod tests {
     }
 
     #[test]
+    fn the_hold_slop_is_the_same_number_as_the_touch_slop() {
+        assert_eq!(
+            ph2d_vec_edit::quickshape_hold::HOLD_SLOP_PX,
+            f64::from(ph2d_editor_core::interaction::touch::SLOP_PT)
+        );
+    }
+
+    #[test]
     fn the_shift_reaches_the_hold_as_regular() {
         let mut vec = crate::state::VecState::default();
         let mut scene = ph2d_vec_scene::VecScene::default();

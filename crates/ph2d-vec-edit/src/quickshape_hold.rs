@@ -12,6 +12,12 @@ use crate::quickshape::{self, QuickShape, REGULAR_STEP_DEG};
 /// `ph2d-app-vec` prova que os dois são o MESMO número.
 pub const HOLD_NS: u128 = 500_000_000;
 
+/// Quanto a mão pode tremer e continuar PARADA (px de tela): a folga do toque — `SLOP_PT`, o
+/// `allowableMovement` do UIKit, os mesmos 10 da fronteira toque × arrasto do F6 (gate na
+/// `ph2d-app-vec`). Sem ela, o tremor de uma mão em repouso (mais que o passo de 1,5 px) reiniciava
+/// o meio segundo — a «pouca sensibilidade» do smoke do dono (09/10).
+pub const HOLD_SLOP_PX: f64 = 10.0;
+
 /// O que um quadro fez.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HoldTick {
@@ -28,8 +34,9 @@ pub(crate) struct Hold {
     live: Option<Live>,
     /// `Esc` devolveu o traço livre: este gesto não volta a reconhecer.
     dismissed: bool,
-    /// O carimbo da última amostra já tentada — uma pausa sem forma não se re-tenta a cada quadro.
-    tried_at: Option<u128>,
+    /// Quantas amostras havia na última tentativa — uma pausa sem forma só se re-tenta quando a mão
+    /// deixa uma amostra nova.
+    tried_at: Option<usize>,
 }
 
 struct Live {
@@ -52,7 +59,7 @@ impl Hold {
     pub(crate) fn tick(
         &mut self,
         samples: &[[f64; 2]],
-        last_t: u128,
+        rest_t: u128,
         now: u128,
         px_to_world: f64,
         regular: bool,
@@ -70,12 +77,12 @@ impl Hold {
         }
         if !enabled
             || self.dismissed
-            || now.saturating_sub(last_t) < HOLD_NS
-            || self.tried_at == Some(last_t)
+            || now.saturating_sub(rest_t) < HOLD_NS
+            || self.tried_at == Some(samples.len())
         {
             return HoldTick::Idle;
         }
-        self.tried_at = Some(last_t);
+        self.tried_at = Some(samples.len());
         let Some(base) = quickshape::recognise(samples, px_to_world, regular) else {
             return HoldTick::Idle;
         };

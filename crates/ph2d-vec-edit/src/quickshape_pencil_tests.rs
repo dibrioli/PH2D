@@ -39,7 +39,9 @@ fn holding_still_for_half_a_second_turns_the_stroke_into_the_shape_and_release_c
     let t = draw(&mut pencil, &mut scene, &rect_stroke());
     let id = pencil.active_path().unwrap();
     assert_eq!(
-        pencil.hold_tick(&mut scene, t + HOLD_NS - 1, false, true),
+        // O meio segundo conta desde que a mão ENTROU na folga (os últimos 10 px, ~8 ms antes da
+        // última amostra) — 50 ms antes ainda não é hora.
+        pencil.hold_tick(&mut scene, t + HOLD_NS - 50_000_000, false, true),
         HoldTick::Idle,
         "antes da hora"
     );
@@ -227,4 +229,39 @@ fn after_esc_a_new_pause_does_not_bring_the_shape_back() {
         HoldTick::Idle
     );
     assert!(!pencil.is_quick());
+}
+
+#[test]
+fn a_hand_that_trembles_at_rest_still_holds_but_one_that_moves_does_not() {
+    use crate::pencil_width::PenDynamics;
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    let end = rect_stroke()[rect_stroke().len() - 1];
+    // Em repouso a mão treme ±3 px (passa o passo de 1,5 px: cada tremor é uma amostra NOVA).
+    for k in 1..=10u32 {
+        let d = if k % 2 == 0 { 3.0 } else { -3.0 };
+        let at = PenDynamics {
+            pressure: 1.0,
+            t_ns: t + u128::from(k) * 40_000_000,
+        };
+        pencil.on_drag(&mut scene, add(end, [d, 0.0]), at);
+    }
+    assert_eq!(
+        pencil.hold_tick(&mut scene, t + HOLD_NS, false, true),
+        HoldTick::Recognised,
+        "parada DENTRO da folga desde t: o tremor não reinicia o meio segundo"
+    );
+    // Controlo: a mesma mão que ANDA 20 px (fora da folga) não está parada.
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    let at = PenDynamics {
+        pressure: 1.0,
+        t_ns: t + 400_000_000,
+    };
+    pencil.on_drag(&mut scene, add(end, [20.0, 0.0]), at);
+    assert_eq!(
+        pencil.hold_tick(&mut scene, t + HOLD_NS, false, true),
+        HoldTick::Idle
+    );
 }

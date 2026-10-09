@@ -41,6 +41,24 @@ impl ClipOwner {
 /// A vista da Cena.
 pub const SCENE: u64 = 0;
 
+/// O dono gravável da chave de vista `owner` (`SCENE` ⇒ `None`).
+pub(super) fn scope_of(owner: u64) -> Option<ClipOwner> {
+    (owner != SCENE).then(|| ClipOwner::live(owner))
+}
+
+/// `a` e `b` são a MESMA animação — o escopo dos nomes de clip. Pela identidade gravada quando as
+/// duas a têm (um dono à espera da cura do load ainda não tem bits), senão pelos bits.
+pub(super) fn same_animation(a: Option<ClipOwner>, b: Option<ClipOwner>) -> bool {
+    match (a, b) {
+        (None, None) => true,
+        (Some(x), Some(y)) if x.wire_id != WireId::NULL && y.wire_id != WireId::NULL => {
+            x.wire_id == y.wire_id
+        }
+        (Some(x), Some(y)) => x.entity == y.entity,
+        _ => false,
+    }
+}
+
 impl TimelineDoc {
     /// O clip `index` pertence à animação de `owner` (`SCENE` = a da Cena)?
     #[must_use]
@@ -54,6 +72,14 @@ impl TimelineDoc {
     /// Os índices dos clips da animação de `owner`, por ordem.
     pub fn clips_of(&self, owner: u64) -> impl Iterator<Item = usize> + '_ {
         (0..self.clips.len()).filter(move |&i| self.clip_belongs_to(i, owner))
+    }
+
+    /// ⭐ **O clip chamado `name` na animação de `owner`** — a porta de quem guarda um clip pelo
+    /// NOME (o osso inteligente). O nome é único por animação, nunca no documento: um dono sem
+    /// esse clip responde `None`, e NUNCA o homónimo de outro dono (onda 4, item 2).
+    #[must_use]
+    pub fn clip_named(&self, owner: u64, name: &str) -> Option<usize> {
+        self.clips_of(owner).find(|&i| self.clips[i].name == name)
     }
 
     /// `true` se o objecto `entity` tem o componente Animação (é dono de ≥ 1 clip vivo).
@@ -82,9 +108,7 @@ impl TimelineDoc {
         if self.clips_of(owner).count() >= MAX_CLIPS || self.clips.len() > usize::from(u16::MAX) {
             return None;
         }
-        let i = self.push_clip(name);
-        self.clips[i].owner = (owner != SCENE).then(|| ClipOwner::live(owner));
-        Some(i)
+        Some(self.push_clip(name, scope_of(owner)))
     }
 
     /// **Tira o componente Animação de `owner`**: todos os clips dele saem (e os strips que os
@@ -128,8 +152,11 @@ impl TimelineDoc {
             let Some(j) = self.duplicate_clip(i) else {
                 break;
             };
-            self.clips[j].name = self.unique_clip_name(&self.clips[i].name.clone(), Some(j));
+            // O dono primeiro, o nome depois: a unicidade é a da animação de DESTINO, logo a
+            // cópia de «andar» continua «andar» (onda 4, item 2).
             self.clips[j].owner = Some(ClipOwner::live(to));
+            self.clips[j].name =
+                self.unique_clip_name(&self.clips[i].name.clone(), Some(j), self.clips[j].owner);
             let targets: Vec<AnimTarget> = self.clips[j]
                 .clip
                 .tracks()

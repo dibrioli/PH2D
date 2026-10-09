@@ -147,8 +147,8 @@ fn a_copia_de_um_objecto_leva_clips_proprios() {
     let novo = doc.clips_of(copia).next().expect("a cópia tem animação");
     assert_eq!(
         doc.clips()[novo].name,
-        "andar 2",
-        "nome único (um osso referencia pelo nome)"
+        "andar",
+        "o nome é único POR animação — a cópia mantém o dela (onda 4, item 2)"
     );
 
     // Um conjunto: o clip guarda as tracks ordenadas pelo ALVO, não pela ordem de chegada.

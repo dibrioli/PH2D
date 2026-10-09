@@ -376,7 +376,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             // O clip novo é da animação EM VISTA (doc ObjectsAndComponents 01 §6).
             let owner = state.view.owner;
             edit(state, |doc, sel| {
-                let name = doc.fresh_clip_name();
+                let name = doc.fresh_clip_name_in(owner);
                 let Some(i) = doc.add_clip_for(name, owner) else {
                     return;
                 };

@@ -27,10 +27,10 @@ impl TimelineDoc {
             .unwrap_or(self.active_clip)
     }
 
-    /// The clip itself, with no cap and no owner (the Scene's) — the one door both
-    /// [`Self::add_clip`] and [`Self::add_clip_for`] go through.
-    pub(super) fn push_clip(&mut self, name: String) -> usize {
-        let name = self.unique_clip_name(&name, None);
+    /// The clip itself, with no cap, in the animation of `owner` (`None` = the Scene's) — the one
+    /// door both [`Self::add_clip`] and [`Self::add_clip_for`] go through.
+    pub(super) fn push_clip(&mut self, name: String, owner: Option<ClipOwner>) -> usize {
+        let name = self.unique_clip_name(&name, None, owner);
         self.clips.push(NamedClip {
             name,
             clip: Clip::new(RationalTime::from_seconds(0.0)),
@@ -42,7 +42,7 @@ impl TimelineDoc {
             expr: BTreeMap::new(),
             // Em BRANCO: um clip novo não herda trajetória nenhuma (ver o campo).
             paths: BTreeMap::new(),
-            owner: None,
+            owner,
         });
         self.clips.len() - 1
     }
@@ -55,7 +55,7 @@ impl TimelineDoc {
         if index >= self.clips.len() {
             return;
         }
-        let name = self.unique_clip_name(&name, Some(index));
+        let name = self.unique_clip_name(&name, Some(index), self.clips[index].owner);
         if let Some(c) = self.clips.get_mut(index) {
             c.name = name;
         }
@@ -97,7 +97,7 @@ impl TimelineDoc {
             return None;
         }
         let copy = NamedClip {
-            name: self.fresh_copy_name(&src.name),
+            name: self.fresh_copy_name(&src.name, src.owner),
             clip: src.clip.clone(),
             loop_range: src.loop_range,
             loop_ping_pong: src.loop_ping_pong,
@@ -141,9 +141,9 @@ impl TimelineDoc {
         true
     }
 
-    /// `"Walk copy"`, then `"Walk copy 2"`… — a name no clip is using yet.
-    fn fresh_copy_name(&self, of: &str) -> String {
-        self.unique_clip_name(&format!("{of} copy"), None)
+    /// `"Walk copy"`, then `"Walk copy 2"`… — a name no clip of the animation `scope` uses yet.
+    fn fresh_copy_name(&self, of: &str, scope: Option<ClipOwner>) -> String {
+        self.unique_clip_name(&format!("{of} copy"), None, scope)
     }
 
     /// ⭐⭐⭐ **A NAME NO OTHER CLIP IS USING** — `"Walk"`, then `"Walk 2"`, `"Walk 3"`…
@@ -165,26 +165,39 @@ impl TimelineDoc {
     ///
     /// ⛔ Warning instead would leave the artist holding a document he cannot repair by renaming
     /// (both names are equally valid), which is the shape of a refusal with extra steps.
+    ///
+    /// # ⭐ The scope is the ANIMATION (`scope` = the owner), never the document
+    ///
+    /// Onda 4, item 2: a Smart Bone resolves its clip inside the animation it lives in
+    /// ([`Self::clip_named`]), so two owners may each have a `"Walk"` — and a Prefab copy keeps
+    /// `"Walk"` instead of becoming `"Walk 2"`, which is what made the copy's bone find the
+    /// ORIGINAL's clip by name.
     #[must_use]
-    pub(super) fn unique_clip_name(&self, wanted: &str, except: Option<usize>) -> String {
-        let taken = |name: &str| {
-            self.clips
-                .iter()
-                .enumerate()
-                .any(|(i, c)| Some(i) != except && c.name == name)
-        };
-        if !taken(wanted) {
+    pub(super) fn unique_clip_name(
+        &self,
+        wanted: &str,
+        except: Option<usize>,
+        scope: Option<ClipOwner>,
+    ) -> String {
+        if !self.name_taken(wanted, except, scope) {
             return wanted.to_string();
         }
-        // ⚠️ The ceiling is [`MAX_CLIPS`] + 1 because that is how many names can be taken at once
-        // — the resource is the document's own clip cap, not a number picked here.
+        // ⚠️ The ceiling is [`MAX_CLIPS`] + 1 because that is how many names one animation can
+        // hold at once — the resource is the per-animation clip cap, not a number picked here.
         for n in 2..=MAX_CLIPS + 1 {
             let candidate = format!("{wanted} {n}");
-            if !taken(&candidate) {
+            if !self.name_taken(&candidate, except, scope) {
                 return candidate;
             }
         }
         wanted.to_string()
+    }
+
+    /// Some clip other than `except`, in the animation `scope`, is called `name`.
+    fn name_taken(&self, name: &str, except: Option<usize>, scope: Option<ClipOwner>) -> bool {
+        self.clips.iter().enumerate().any(|(i, c)| {
+            Some(i) != except && c.name == name && owner::same_animation(c.owner, scope)
+        })
     }
 
     /// Delete clip `index`, returning `true` if it went.
@@ -217,9 +230,16 @@ impl TimelineDoc {
     /// the dropdown unreadable and the rename ambiguous).
     #[must_use]
     pub fn fresh_clip_name(&self) -> String {
+        self.fresh_clip_name_in(owner::SCENE)
+    }
+
+    /// [`Self::fresh_clip_name`] na animação de `owner` — o nome só tem de ser livre NELA.
+    #[must_use]
+    pub fn fresh_clip_name_in(&self, owner: u64) -> String {
+        let scope = owner::scope_of(owner);
         for n in 2..=MAX_CLIPS + 1 {
             let candidate = format!("Clip {n}");
-            if !self.clips.iter().any(|c| c.name == candidate) {
+            if !self.name_taken(&candidate, None, scope) {
                 return candidate;
             }
         }

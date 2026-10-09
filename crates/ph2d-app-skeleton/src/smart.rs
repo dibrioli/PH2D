@@ -153,6 +153,16 @@ fn animation_of(world: &World, doc: &TimelineDoc, osso: Entity) -> u64 {
     ph2d_timeline::SCENE
 }
 
+/// ⭐⭐⭐ **O CLIP QUE ESTE OSSO PERCORRE** — o nome dele DENTRO da animação onde o osso vive.
+///
+/// ⛔ O nome é único por animação, não no documento (onda 4, item 2): a cópia de um Prefab tem o
+/// seu «andar», e resolver sobre `doc.clips()` inteiro punha o osso da cópia a tocar o do ORIGINAL.
+/// Sem esse nome ali o controlo fica inerte — nunca cai para o homónimo de outro dono.
+#[must_use]
+pub fn clip_of(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Option<usize> {
+    doc.clip_named(animation_of(world, doc, osso), &sb.clip)
+}
+
 /// ⭐⭐⭐ **ESCOLHER A ACÇÃO NA POSIÇÃO `i` DA LISTA PINTADA** — a porta que o dreno do painel chama.
 ///
 /// Devolve `Some(nome)` quando escreveu, e diz se essa acção está **ABERTA** na timeline (o
@@ -172,10 +182,11 @@ pub fn choose_action(
 ) -> Option<(String, bool)> {
     let sb = sim.world().get::<SmartBone>(osso)?.clone();
     let nome = action_at(sim.world(), doc, &sb, osso, i)?;
-    let aberta = doc
-        .clips()
-        .get(doc.active_index())
-        .is_some_and(|c| c.name == nome);
+    let escolhido = SmartBone {
+        clip: nome.clone(),
+        ..sb
+    };
+    let aberta = clip_of(sim.world(), doc, &escolhido, osso) == Some(doc.active_index());
     sim.world_mut().get_mut::<SmartBone>(osso)?.clip = nome.clone();
     Some((nome, aberta))
 }
@@ -263,7 +274,7 @@ pub fn remove(
     let Some(sb) = sim.world().get::<SmartBone>(osso).cloned() else {
         return false;
     };
-    let conduzidas = driven_by(sim.world(), doc, &sb);
+    let conduzidas = driven_by(sim.world(), doc, &sb, osso);
     sim.world_mut().entity_mut(osso).remove::<SmartBone>();
     for e in conduzidas {
         for d in ph2d_timeline_preview::DRIVERS {
@@ -281,8 +292,8 @@ pub fn remove(
 /// ⚠️ Uma binding pendurada (o objecto foi apagado) some do censo, como no `state_of_bindings`: não
 /// há pose para lhe devolver.
 #[must_use]
-fn driven_by(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<Entity> {
-    let Some(c) = doc.clips().iter().find(|c| c.name == sb.clip) else {
+fn driven_by(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Vec<Entity> {
+    let Some(c) = clip_of(world, doc, sb, osso).map(|i| &doc.clips()[i]) else {
         return Vec::new();
     };
     let mut bits: Vec<u64> = doc
@@ -358,7 +369,7 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
         // ⚠️ **O clip é achado pelo NOME** — a lei da referência durável desta casa. Um clip
         // apagado ou renomeado deixa o controlo inerte, e isso é a resposta certa: inventar um
         // índice poria o osso a percorrer a animação do vizinho.
-        let Some(i) = doc.clips().iter().position(|c| c.name == sb.clip) else {
+        let Some(i) = clip_of(sim.world(), doc, &sb, e) else {
             if log {
                 eprintln!(
                     "[bone] osso inteligente de {e:?}: nao ha clip chamado \"{}\" -- inerte",
@@ -396,7 +407,7 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
         // ⭐ A porta certa já existia e responde à pergunta inteira: ela lê o override de duração,
         // senão a extensão das CHAVES, e trata o clip só-de-expressão. *A grandeza crua e a
         // pergunta têm nomes parecidos e respostas diferentes.*
-        conduzidas.extend(driven_by(sim.world(), doc, &sb));
+        conduzidas.extend(driven_by(sim.world(), doc, &sb, e));
         let dur = doc.clip_end_seconds(i);
         let quando = ph2d_skeleton::action_time(t, sb.from, sb.to, dur);
         let escritas = ph2d_timeline::apply_one_clip(sim.world_mut(), doc, i, quando);

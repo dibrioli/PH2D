@@ -112,7 +112,7 @@ pub(crate) fn apply(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         AnimationIntent::Add(owner) => {
             if owner != SCENE && !state.doc.has_animation(owner) {
                 edit(state, |doc, sel| {
-                    let name = doc.fresh_clip_name();
+                    let name = doc.fresh_clip_name_in(owner);
                     if let Some(i) = doc.add_clip_for(name, owner) {
                         doc.set_clip_length_override(i, Some(crate::DEFAULT_DURATION_SECONDS));
                         doc.set_active(i);

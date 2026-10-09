@@ -220,3 +220,96 @@ fn o_osso_ve_as_accoes_da_animacao_onde_vive() {
         "sem animação na cadeia: a da Cena (o «Main» ficou de fora do tecto — 1 + 15)"
     );
 }
+
+/// ⭐⭐⭐ **O OSSO DA CÓPIA TOCA O CLIP DA CÓPIA** (onda 4, item 2) — a cópia de um Prefab leva a sua
+/// Animação com os MESMOS nomes, e cada osso resolve o nome dentro da animação onde vive.
+///
+/// ⛔ Com a unicidade no documento a cópia ganhava «andar 2», o osso dela (que guarda «andar»)
+/// achava pelo nome o clip do ORIGINAL, e girá-lo movia a mão do original — calado.
+///
+/// **Mutações que devem sangrar:** `clip_of` resolver sobre `doc.clips()` inteiro · o escopo do
+/// `unique_clip_name` voltar a ser o documento.
+#[test]
+fn o_osso_da_copia_toca_o_clip_da_copia() {
+    let mut sim = SimWorld::default();
+    let mut par = |nome: &str| {
+        let raiz = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new(nome)))
+            .id();
+        let osso = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Braço"),
+                ph2d_ecs::ChildOf(raiz),
+            ))
+            .id();
+        let mao = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Mão"),
+                ph2d_ecs::ChildOf(raiz),
+            ))
+            .id();
+        (raiz, osso, mao)
+    };
+    let (heroi, osso, mao) = par("Herói");
+    let (copia, osso2, mao2) = par("Herói cópia");
+    let mut doc = TimelineDoc::default();
+    let andar = doc.add_clip_for("andar".into(), heroi.to_bits()).unwrap();
+    doc.set_active(andar);
+    for (t, v) in [(0.0, 0.0_f32), (2.0, 10.0)] {
+        doc.insert_key(
+            mao.to_bits(),
+            PropKind::TranslationX,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    for b in doc.bindings_mut() {
+        b.entity = mao.to_bits();
+        b.missing = false;
+    }
+    let remap = |e: u64| (e == mao.to_bits()).then(|| mao2.to_bits());
+    assert_eq!(
+        doc.copy_animation(heroi.to_bits(), copia.to_bits(), remap),
+        1
+    );
+    doc.set_active(0); // nenhuma das duas aberta: um controlo não percorre a que se grava
+    for o in [osso, osso2] {
+        super::tests::liga(&mut sim, o, "andar");
+    }
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(osso2) {
+        #[expect(clippy::cast_possible_truncation, reason = "o Transform da casa é f32")]
+        {
+            t.rotation = super::tests::ATE as f32;
+        }
+    }
+    let mut pv = PreviewDrive::default();
+    crate::smart::drive(&mut sim, &doc, &mut pv);
+    let x = |e: Entity| sim.world().get::<Transform>(e).unwrap().translation.x;
+    assert!(
+        (x(mao2) - 10.0).abs() < 1e-3,
+        "girar o osso da CÓPIA não percorreu o clip dela: a mão da cópia está em {}",
+        x(mao2)
+    );
+    assert!(
+        x(mao).abs() < 1e-4,
+        "girar o osso da cópia moveu a mão do ORIGINAL para {} — o nome resolveu-se no documento",
+        x(mao)
+    );
+    let sb = sim.world().get::<SmartBone>(osso2).unwrap().clone();
+    assert_eq!(
+        crate::smart::clip_of(sim.world(), &doc, &sb, osso2),
+        doc.clip_named(copia.to_bits(), "andar")
+    );
+    // E um osso cuja animação não tem o nome fica INERTE — não cai para o de outro dono.
+    let solto = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Solto")))
+        .id();
+    assert_eq!(crate::smart::clip_of(sim.world(), &doc, &sb, solto), None);
+}

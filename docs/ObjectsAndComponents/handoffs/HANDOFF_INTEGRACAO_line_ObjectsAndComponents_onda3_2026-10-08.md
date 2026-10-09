@@ -39,7 +39,8 @@ intenção só em inglês · **F6.2** filtro = botão ▾ ao lado da busca, só 
   estava vivo e morreu ⇒ os nós saem num passo do undo do Motion, nunca com o relógio a andar; cópia do
   editor ⇒ `copy_owner`; o dono em edição segue a selecção e o pai de um molde; moldes ligados no
   momento da ligação/migração (o 1.º quadro só semeia). `view::so_do_dono` antes do fold. `modo::Family`
-  (Object·Edit; wants com a ferramenta na mão; conteúdo «Nodes (n)», i18n `hier_rows.content.nodes`).
+  (Object·Edit; wants com a ferramenta na mão; ⛔ SEM conteúdo na Hierarquia — dono no smoke de 09/10:
+  «nodes apenas nos grafos»; o «Nodes (n)» que nasceu nesta onda saiu, com teste a trancá-lo).
   Add ▸ Motion no grupo 2D (i18n `object_add.motion`). `MotionState.objeto: ObjetoState`.
 - **Origem do dono (a pose do objecto desloca o que o grafo gera):**
   CPU — `MotionCookPump.faixas: Vec<FaixaDoSink>` + `composicoes` (`ph2d-eval-motion`);
@@ -109,7 +110,7 @@ intenção só em inglês · **F6.2** filtro = botão ▾ ao lado da busca, só 
   `!motion_active && !motion.objeto.desenha()`; `sinks_visiveis`) · `motion_state.rs` +3 (campo
   `objeto`; +1 linha em `motion_state_verbos.rs`) · `shells/desktop/src/render_loop/fase_motion_gizmos.rs`
   +1 −1 (câmara do dono no retrato do colisor) · `present.rs` +6 −2 (`motion_draws`).
-- **Ids/i18n novos:** `HIER_FILTER_DD`, `hier_filter_opt(i)`; `hier_rows.content.nodes`,
+- **Ids/i18n novos:** `HIER_FILTER_DD`, `hier_filter_opt(i)`;
   `object_add.motion`, `panel.hierarchy.filter.{all,option,animation}`, `component.<snake>.keywords` (59).
 - **Shell (composição):** `+61 −27`; a catraca soma entre linhas (onda 1 +35, onda 2 +194).
 
@@ -180,8 +181,8 @@ PH2D_VIDA_SMOKE=1 ./target/smoke/ph2d-host-desktop            # F6: ▾ ao lado 
 Fotografados com `fotografa_cena.sh`:
 
 - `=1`: duas simulações — **Pile** (formas a cair em duas taças, cena `=114`) e **Swarm** (cópias da
-  Ball puxadas por íman/ruído/arrasto, objecto em (400,150) px rodado ~20°). Hierarquia «Scene ▸ Pile ▸
-  Nodes (18)», «Swarm ▸ Nodes (8)» + Ball filha. Errado se o Swarm não acompanhar a pose do objecto, ou
+  Ball puxadas por íman/ruído/arrasto, objecto em (400,150) px rodado ~20°). Hierarquia «Scene ▸ Pile»,
+  «Swarm ▸ Ball» (o molde; sem linhas de nós). Errado se o Swarm não acompanhar a pose do objecto, ou
   se a Pile sumir com a ferramenta desligada.
 - `=2`: Swarm em Edit — o editor de nós mostra SÓ os 8 nós dele. Errado se aparecerem os da Pile.
 - F6 em `PH2D_VIDA_SMOKE=1`: o ▾ «All» ao lado da busca (lista só os componentes presentes, com

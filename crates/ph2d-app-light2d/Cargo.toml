@@ -25,6 +25,12 @@ ph2d-light2d-gpu = { path = "../ph2d-light2d-gpu" }
 # Os receptores: o passe de sprite e a colagem do vetor (`receber.wgsl`).
 ph2d-render = { path = "../ph2d-render" }
 bevy_ecs = "0.19"
+# O artista (W4): o menu Add (`AddEntry`), o vocabulário da secção do Inspector (`luz_edits`), o
+# nome único de um objeto novo, as palavras, e a cor do seletor (sRGB) ↔ a da luz (linear).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-color = { path = "../ph2d-color" }
 wgpu = "29.0.4"
 # O afim mundo → tela que o Vello usou (o vetor recebe a luz pelo inverso dele).
 kurbo = "0.13.1"

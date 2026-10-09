@@ -34,8 +34,9 @@ use super::*;
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
 ///
-/// ⚠️ `48` → `47` em 2026-10-05: a secção LIVE MESH saiu com o 3D (ADR-0179).
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 46] = [
+/// ⚠️ `48` → `47` em 2026-10-05: a secção LIVE MESH saiu com o 3D (ADR-0179). `46` → `47` em
+/// 2026-10-09: a LUZ (Luz 2D, W4).
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 47] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
@@ -129,6 +130,8 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 46] = [
         INSP_LIVE_NAV_COST_AREA_GRIP,
     ),
     (INSP_LIVE_NAV_LINK_SECTION, INSP_LIVE_NAV_LINK_GRIP),
+    // ⭐ A 47.ª (contada) — LUZ (Luz 2D, W4), no mesmo commit que a secção.
+    (INSP_LIVE_LUZ_SECTION, INSP_LIVE_LUZ_GRIP),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

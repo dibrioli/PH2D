@@ -12,6 +12,8 @@
 
 mod captura;
 mod grade;
+pub mod inspector;
+pub mod object_add;
 mod quadro;
 pub mod smoke;
 mod vetor;

@@ -113,6 +113,8 @@ mod inspector_game;
 mod inspector_nav;
 mod inspector_player;
 mod inspector_vida;
+/// ⭐ As palavras da LUZ 2D (W4) — a secção do Inspector e os avisos da luz do quadro.
+mod luz2d;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
 /// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.
@@ -508,6 +510,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| inspector_game::tr(k))
             .or_else(|| inspector_vida::tr(k))
             .or_else(|| inspector_nav::tr(k))
+            .or_else(|| luz2d::tr(k))
             .or_else(|| inspector_player::tr(k))
             .or_else(|| audio::tr(k))
             .or_else(|| grid_snap::tr(k))

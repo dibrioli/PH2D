@@ -23,6 +23,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.game.body" => "Physics Body",
         "object_add.game.sound" => "Sound",
         "object_add.game.hud" => "HUD",
+        "object_add.light.point" => "Light",
+        "object_add.light.ambient" => "Ambient Light",
         "object_add.added" => "Added {name}",
         "object_add.failed" => "Could not add the object: {e}",
         "object_add.not_born" => "the object did not appear in the scene",

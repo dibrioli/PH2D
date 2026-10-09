@@ -26,10 +26,10 @@ pub const NOMES_CANONICOS: [&str; 3] = [
 /// **A porta de registo** — chamada uma vez no arranque, ao lado do `register_ecs_components`.
 /// Sem ela o `WorldSnapshot` (undo + save) descarta a luz em silêncio.
 ///
-/// `Luz` usa `register` (sem `Default`): ela chega pelo menu Add com valores escolhidos, nunca
-/// pela paleta no ponto neutro. `BloqueiaLuz` e `NaoRecebeLuz` são oferecidos pela paleta.
+/// `Luz` chega pelo menu Add (o catálogo marca-a `intrinsic`: fora da paleta); o `Default` dela é a
+/// lâmpada de fábrica. `BloqueiaLuz` e `NaoRecebeLuz` são oferecidos pela paleta.
 pub fn register_light2d_components(reg: &mut ComponentRegistry) {
     reg.register_default::<BloqueiaLuz>(NOMES_CANONICOS[0]);
-    reg.register::<Luz>(NOMES_CANONICOS[1]);
+    reg.register_default::<Luz>(NOMES_CANONICOS[1]);
     reg.register_default::<NaoRecebeLuz>(NOMES_CANONICOS[2]);
 }

@@ -55,6 +55,9 @@ pub struct CenaDeLuz {
     /// ⭐ Os caminhos VETORIAIS que bloqueiam (W3) — a geometria não está no `World` (vive na
     /// `VecScene`): a C0 da placa desenha-os pelo Vello na grade; o gabarito NÃO os vê.
     pub vetores: Vec<VetorDeLuz>,
+    /// ⭐ Cada `Luz` que virou emissor, com o índice dela em [`Self::emissores`] (W4): a UI diz o
+    /// que a captura fez com ESTA lâmpada.
+    pub luzes_emissoras: Vec<(bevy_ecs::entity::Entity, usize)>,
 }
 
 /// Um caminho vetorial que bloqueia a luz (W3).

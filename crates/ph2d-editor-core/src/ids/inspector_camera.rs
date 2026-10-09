@@ -138,5 +138,9 @@ pub const INSP_LIVE_NAV_COST_AREA_GRIP: NodeId = hash_node_id("insp_live_nav_cos
 pub const INSP_LIVE_NAV_LINK_SECTION: NodeId = hash_node_id("insp_live_nav_link_section");
 /// A pega de arrasto da secção NAV LINK.
 pub const INSP_LIVE_NAV_LINK_GRIP: NodeId = hash_node_id("insp_live_nav_link_grip");
+/// O cabeçalho dobrável da secção LUZ — a lâmpada (Luz 2D, W4).
+pub const INSP_LIVE_LUZ_SECTION: NodeId = hash_node_id("insp_live_luz_section");
+/// A pega de arrasto da secção LUZ.
+pub const INSP_LIVE_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

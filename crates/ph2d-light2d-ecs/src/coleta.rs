@@ -64,6 +64,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     let mut luzes = 0_u32;
     // O que cada sprite da cena É para a luz: `(é emissor, emissão, opacidade)`, pela chave.
     let mut de_sprite: BTreeMap<Chave, (bool, Rgb, f32)> = BTreeMap::new();
+    let mut de_luz: Vec<Chave> = Vec::new();
 
     if let Some(mut q) = world.try_query::<(Entity, &Luz, Option<&GlobalTransform>)>() {
         for (e, luz, g) in q.iter(world) {
@@ -103,6 +104,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
                 continue;
             };
             emissores.insert(chave(world, e), emissor);
+            de_luz.push(chave(world, e));
         }
     }
 
@@ -190,6 +192,11 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
             })
         })
         .collect();
+    let mut luzes_emissoras: Vec<(Entity, usize)> = de_luz
+        .iter()
+        .filter_map(|k| Some((k.1, *pos_e.get(k)?)))
+        .collect();
+    luzes_emissoras.sort_by_key(|&(_, i)| i);
 
     CenaDeLuz {
         emissores: emissores.into_values().collect(),
@@ -199,5 +206,6 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         nao_recebem: nao_recebem.into_values().collect(),
         sprites,
         vetores: vetores.into_values().collect(),
+        luzes_emissoras,
     }
 }

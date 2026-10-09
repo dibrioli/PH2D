@@ -6,10 +6,11 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use kurbo::Affine;
 use ph2d_ecs::PresentWorld;
+use ph2d_editor_core::luz_edits::AvisoDaLuz;
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
-use ph2d_light2d_gpu::{Config, ErroSolver, Grade, RelatorioC0, Solver};
+use ph2d_light2d_gpu::{Config, ErroSolver, Grade, Motivo, Quem, RelatorioC0, Solver};
 use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
@@ -38,6 +39,11 @@ pub struct LuzDoQuadro {
     vetores: crate::vetor::CamadaVetorial,
     /// A cena de smoke armada já foi encenada (uma vez por sessão).
     smoke_encenado: bool,
+    /// A recusa do solver já foi DITA ao artista (o aviso sai na transição, não a cada quadro).
+    recusa_dita: bool,
+    /// A re-coleta ([`Self::recolher`]) achou a cena SEM `Luz` depois da codificação: este quadro
+    /// fica apagado (receptores neutros), nunca preto.
+    sem_luz_no_quadro: bool,
 }
 
 impl Default for LuzDoQuadro {
@@ -67,6 +73,8 @@ impl LuzDoQuadro {
             sprites_por_texel: (0, 0),
             vetores: crate::vetor::CamadaVetorial::default(),
             smoke_encenado: false,
+            recusa_dita: false,
+            sem_luz_no_quadro: false,
         }
     }
 
@@ -80,6 +88,7 @@ impl LuzDoQuadro {
         alvo_px: (u32, u32),
     ) -> bool {
         self.cena = cena_de_luz(world);
+        self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
         self.grade = if self.cena.luzes == 0 {
             None
@@ -130,10 +139,24 @@ impl LuzDoQuadro {
         }
     }
 
+    /// ⭐ **Porta 2a** — re-coleta a cena logo antes do solver. As edições do quadro (o Inspector, o
+    /// arrasto do gizmo) aplicam-se DEPOIS da codificação; sem isto a luz respondia um quadro
+    /// atrasado. A guarda e a grade ficam as da codificação (o documento já foi às faixas por elas):
+    /// uma `Luz` nova acende no quadro seguinte, e a última apagada deixa ESTE quadro neutro.
+    pub fn recolher(&mut self, world: &World) {
+        if self.grade.is_none() {
+            return;
+        }
+        self.cena = cena_de_luz(world);
+        self.sem_luz_no_quadro = self.cena.luzes == 0;
+        self.sem_luz.clear();
+        self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
+    }
+
     /// A luz está acesa neste quadro (a cena tem `Luz` e o solver não recusou)?
     #[must_use]
     pub fn acesa(&self) -> bool {
-        self.grade.is_some() && self.erro.is_none()
+        self.grade.is_some() && self.erro.is_none() && !self.sem_luz_no_quadro
     }
 
     /// **Porta 2** — grava o solver num encoder próprio e submete-o (a fila põe-no antes do passe de
@@ -146,7 +169,7 @@ impl LuzDoQuadro {
         present: &mut PresentWorld,
         renderer: &SpriteRenderer,
     ) {
-        let Some(g) = self.grade else {
+        let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
             return;
         };
         let mesmas = self.resolvido.as_ref().is_some_and(|r| {
@@ -257,6 +280,71 @@ impl LuzDoQuadro {
     #[must_use]
     pub fn erro(&self) -> Option<&ErroSolver> {
         self.erro.as_ref()
+    }
+
+    /// ⭐ **O que o artista precisa de saber sobre a lâmpada `e`** no último quadro (W4), do mais
+    /// grave para o mais brando: a recusa do solver (a cena inteira apagada), o que a captura fez
+    /// com ESTA lâmpada, e os sprites que entraram pelo quad. Recusa que só o terminal vê é botão
+    /// mudo — cada caso aqui era um `eprintln!` ou nada.
+    #[must_use]
+    pub fn avisos_de(&self, e: Entity) -> Vec<AvisoDaLuz> {
+        let mut out = Vec::new();
+        if let Some(erro) = &self.erro {
+            out.push(match erro {
+                ErroSolver::GradeGrandeDemais { lado, limite } => AvisoDaLuz::GradeGrandeDemais {
+                    lado: *lado,
+                    limite: *limite,
+                },
+                ErroSolver::SemShaderF16 | ErroSolver::ConfigInvalida(_) => {
+                    AvisoDaLuz::SolverIndisponivel
+                }
+            });
+        }
+        let indice = self
+            .cena
+            .luzes_emissoras
+            .iter()
+            .find(|(quem, _)| *quem == e)
+            .map(|&(_, i)| i);
+        if let (Some(k), Some(r)) = (indice, &self.relatorio) {
+            for f in r.fora.iter().filter(|f| f.quem == Quem::Emissor(k)) {
+                out.push(match f.motivo {
+                    Motivo::PontoSemArea => AvisoDaLuz::PontoSemTamanho,
+                    Motivo::MenorQueOTexel => AvisoDaLuz::PequenaDemaisParaOZoom,
+                    Motivo::ForaDaGrade => AvisoDaLuz::ForaDaVista,
+                });
+            }
+        }
+        let (por_texel, total) = self.sprites_por_texel;
+        if self.acesa() && por_texel < total {
+            out.push(AvisoDaLuz::SpritesPeloQuad {
+                com_quad: total - por_texel,
+                total,
+            });
+        }
+        out
+    }
+
+    /// ⭐ **A recusa NOVA deste quadro**, já em palavras (o aviso que sobe na tela): `Some` só no
+    /// quadro em que o solver passa a recusar; enquanto a recusa dura, `None`.
+    pub fn recusa_nova(&mut self) -> Option<String> {
+        let Some(erro) = &self.erro else {
+            self.recusa_dita = false;
+            return None;
+        };
+        if self.recusa_dita {
+            return None;
+        }
+        self.recusa_dita = true;
+        Some(match erro {
+            ErroSolver::GradeGrandeDemais { lado, limite } => ph2d_i18n::tr_with(
+                "light2d.toast.grid_too_big",
+                &[("lado", lado), ("limite", limite)],
+            ),
+            ErroSolver::SemShaderF16 | ErroSolver::ConfigInvalida(_) => {
+                ph2d_i18n::tr("light2d.toast.solver_unavailable").to_string()
+            }
+        })
     }
 
     /// O solver vivo (a sonda lê os tempos dele).

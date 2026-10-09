@@ -72,4 +72,6 @@ pub enum ComponentEdit {
     /// **NAV REGION e NAV AGENT** (plano 30, W4) — as duas secções partilham UM vocabulário (ver o
     /// cabeçalho do [`crate::nav_edits`]).
     Nav(crate::nav_edits::NavFieldEdit),
+    /// **LUZ** (Luz 2D, W4) — cor, intensidade, tamanho, alcance e tipo da lâmpada.
+    Luz(crate::luz_edits::LuzFieldEdit),
 }

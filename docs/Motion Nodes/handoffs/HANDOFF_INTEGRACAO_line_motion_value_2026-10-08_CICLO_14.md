@@ -85,7 +85,8 @@ tiveram o vermelho-primeiro sobre a árvore de partida (o disco velho, as tabela
   correm em paralelo na mesma placa); não reaberto.
 - O `ph2d-render` tem o mesmo desenho do SIGSEGV (`~20` `OnceLock` de contexto nos `tests/it`) — não
   medido (fora do módulo). A cura medida aqui é o contexto único.
-- A sonda `FIELD_DOC_VERSION` do `scripts/collision-surface.sh` (herdada do ciclo 13).
+- A sonda `FIELD_DOC_VERSION` do `scripts/collision-surface.sh` (herdada do ciclo 13). ✅ Fechada no
+  `main` (`69b28daa5`) — confirmado no ciclo 16 ([doc 125 §5](../125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md)).
 
 ## §7 — O que fica ABERTO
 

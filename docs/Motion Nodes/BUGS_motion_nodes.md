@@ -1430,23 +1430,62 @@ inchar).
   (absoluto) foi refutado pelo corpo NU (`0,2511`) — a régua de uma propriedade do corpo é relativa
   ao corpo sem o nó sob teste.
 
-## Bug #16 — a corda com colisor atravessa-se durante um chicote a 60 Hz (ABERTO — resíduo do ciclo 15)
+## Bug #16 — a corda com colisor atravessa-se durante um chicote a 60 Hz (✅ FECHADO 08/10, ciclo 16 — o contacto mora DENTRO das iterações, e a âncora anda)
 
-### O que se vê
+### O que se via
 `motion.verlet_rope --pre--> motion.collide → rope.state` (a fixtura `rope_thickness`: `24` nós,
-raio `0,5`, a cabeça a chicotear `±3,0` em `0,6 s`): na pose final os nós distantes ficam a
-`0,811·D`, mas DURANTE o chicote chegam a `0,0497` — a cabeça move-se `~0,5` por quadro e os nós
-atravessam-se num só passo.
+raio `0,5`, a cabeça a chicotear `±3,0` em `0,6 s`): na pose final os nós distantes ficavam a
+`0,811·D`, mas DURANTE o chicote chegavam a `0,0497`. E o laço não era montável pelo artista: o
+`motion.collide` está fora do catálogo.
 
-### Mecanismo (medido, doc 124 §2.3)
-Com sub-passos do grafo a corda segura `0,52`/`0,81`/`0,80` a `2`/`4`/`8`. Mas a corda NÃO declara o
-ritmo do grafo: o `solver_substeps` dela é LOCAL de propósito (um `substeps` de grafo fazia uma
-`sim.zone` vizinha custar `8×` — medido), e um laço local não inclui o colisor. Antes do ciclo 15 a
-corda «tinha espessura» porque o colisor a esticava `37 %` (o Bug #15 na corda).
+### Mecanismo (medido, doc 125 §1)
+Três defeitos com a mesma assinatura, um por baixo do outro:
+1. **O contacto corria FORA das restrições** (uma vez por tique, depois da relaxação). Medido no MESMO
+   processo: o contacto depois das iterações de cada sub-passo não segura nem a `8` sub-passos
+   (`0,73`); DENTRO das iterações (o Vellum) segura a `1` (`0,915·D`) — mas estica `23 %` durante as
+   dobras, porque as iterações não convergem contra o contacto.
+2. **Faltava o passo seguro**: com os sub-passos a subir até cada nó andar no máximo MEIO alcance
+   (a condição CFL), `0,966·D` e o comprimento `1,01×` o da corda nua, a `2,9` sub-passos por quadro.
+3. **A âncora saltava o quadro inteiro no 1.º sub-passo** — numa corda FINA (raio `0,12`) a cabeça
+   atravessava a conta vizinha (`0,1451` contra `0,24`), e o passo seguro realimentava-se do salto
+   (pedia `76` sub-passos). Com a âncora a andar ao longo dos sub-passos: `0,2333`, `12` no máximo.
 
-### Estado
-⏳ **Aberto, nomeado.** O `motion.collide` está fora do catálogo (o artista não monta este laço);
-existe em documentos antigos e cenas. A cura é o ritmo do grafo para a corda (rever a decisão do
-`solver_substeps` com a medição do vizinho ao lado) ou um limite de velocidade por partícula (o
-`maxSpeed` do FleX). Decisão a tomar com a próxima linha que tocar na corda.
+### A cura (o padrão-ouro, com o oráculo)
+A corda ganhou a porta `shape` (`Shape → Verlet Rope`, as peças distribuídas como o `Cycle` do
+Duplicator) e LÊ o colisor que o `Collide` do Shape declara, como o corpo mole (doc 124 §6): o
+contacto do `ph2d_contact` corre a cada iteração, com o filtro do repouso (os vizinhos são da
+corda); com ele, os sub-passos sobem pelo passo seguro e a âncora anda. Sem declaração, a corda de
+sempre ao bit. O oráculo Godot estendido a uma corrente (`ferramentas/godot_oracle_corrente/`):
+`0,9957·D` com a lei, e colidir os vizinhos INCHA a corrente `4×`. Pela porta do artista: `0,0138 →
+0,9598`, comprimento `1,04×` (`the_rope_reads_its_pieces_collider_and_does_not_cross`). Cenas
+`=130` (o gesto) e `=131` (o `Collide` depois da corda: o cartão aconselha).
+
+### Lições
+- ⛔ **Onde o contacto corre no passo decide tudo, e o número de sub-passos não compensa o sítio
+  errado** — por sub-passo a `8` (`0,73`) perde para por iteração a `1` (`0,915`).
+- ⛔ **Um alvo cinemático que salta o quadro inteiro no 1.º sub-passo anula os sub-passos** — e um
+  passo seguro que lê o deslocamento realimenta-se do salto. A fixtura de raio GRANDE escondia-o
+  (`0,9659` com o salto): foi a corda fina da CENA que o mostrou.
+- ⛔ `c + (a − c)·1` não devolve `a` ao bit: o último sub-passo usa a âncora exacta (a 1.ª versão
+  mudava a corda a `Substeps 1`, `0,9154 → 0,8947`).
+
+## Bug #17 — o passe do fim inchava um corpo de peças no DESENHO (✅ FECHADO 08/10, ciclo 16 — achado pelo censo dos botões)
+
+### O que se via
+Um corpo mole de peças (`Grid → Duplicator ← Shape → Soft Body`) com o `Collide` do Shape E o do
+Output ligados: o corpo segurava, e o que se DESENHAVA inchava — `3,0281 → 3,7561` de extensão.
+
+### Mecanismo
+O passe do fim (`ph2d_contact::passe`) lia a declaração do colisor e NÃO lia o `rest`/`body` que o
+corpo publica: empurrava os vizinhos de malha (que o repouso já sobrepõe, e que o corpo segura) até
+ao diâmetro — a lei do Bug #15, num quarto leitor que o ciclo 15 não alcançou.
+
+### A cura
+O mesmo filtro do `motion.collide` (`Pecas::com_ligados`) quando a corrente traz as duas colunas;
+sem elas, byte-idêntico. `the_end_pass_does_not_swell_a_body_of_pieces` (`3,0281 → 3,0285`); a
+mutação sem o filtro sangra-o (doc 125 §6, M5).
+
+### Lição
+⛔ **Uma lei do colisor tem de chegar a TODO leitor da declaração** — e o censo que a encontrou foi o
+que liga cada botão sozinho e mede o DESENHO (doc 125 §2), não um gate do motor.
 

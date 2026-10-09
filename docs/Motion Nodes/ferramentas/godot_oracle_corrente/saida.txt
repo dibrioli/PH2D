@@ -1,0 +1,6 @@
+# oraculo: 4.7.2.stable.arch_linux.ed1daf0bf · licenca MIT
+# fixtura: rope_thickness (24 contas, comprimento 6,0, raio 0,5, ancora 3,0·sin(2πt/0,6)), 4 s a 4800 Hz, molas k=1e6 ao longo dos elos
+# data: 2026-10-08
+CORRENTE modo=nu quadros=19201 hz=4800 pior_nao_ligado_fim=1.0513 pior_nao_ligado_2a_metade=0.8631 arco_fim=6.1691 maior_arco_2a_metade=6.3290 repouso=6.0000 diametro=1.0000
+CORRENTE modo=lei quadros=19201 hz=4800 pior_nao_ligado_fim=1.0414 pior_nao_ligado_2a_metade=0.9957 arco_fim=6.1359 maior_arco_2a_metade=6.6652 repouso=6.0000 diametro=1.0000
+CORRENTE modo=todos quadros=19201 hz=4800 pior_nao_ligado_fim=1.0073 pior_nao_ligado_2a_metade=0.9570 arco_fim=24.4158 maior_arco_2a_metade=24.4989 repouso=6.0000 diametro=1.0000

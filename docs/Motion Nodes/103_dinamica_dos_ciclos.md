@@ -137,6 +137,18 @@ inventada. Contagens do registry em 2026-09-05.
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
 | **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa. ⭐ **E o carimbo FOI à placa** (§8.4–§8.6): o custo das imagens deixou de crescer com o número, e no proxy de telemóvel o Motion a `32 768` foi de `7,30` para **`0,72 ms`** | ✅ **o tecto fica em `32 768`** (o dono mandou seguir sem o mudar) · smokes do dono **aprovados** (§8.5 as imagens e as marcas das posições · §8.6 os cartões, `0,56 ms` de Motion na máquina dele) | — |
 
+> ⚠️ **Estado em 2026-10-08 (noite, 2) — CICLO 16, «vamos corrigir tudo»**
+> ([doc 125](125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md)). ⭐ O Bug
+> #16 fechou: a corda ganhou a porta `shape` e LÊ o colisor que o `Collide` do Shape declara (como o
+> corpo mole), com o contacto DENTRO das iterações, um passo seguro (os sub-passos sobem até cada
+> nó andar meio alcance) e a âncora a andar ao longo deles — `0,0138 → 0,9598·D` na fixtura do
+> oráculo (Godot, uma corrente: `0,9957`), sem esticar. Um `Collide` que a outra chave não ouve
+> passou a ACONSELHAR no cartão (`ColisorMudo`, com a cura nomeada), e um censo liga cada botão
+> sozinho em cinco montagens; o passe do fim deixou de inchar um corpo de peças. O `scatter` era
+> LINEAR desde a grelha — o tecto de `3 000` media o algoritmo de antes; passou ao da casa. O
+> SIGSEGV do `ph2d-render` não reproduz (`0/32`) e a sonda `FIELD_DOC_VERSION` já tinha saído do
+> `main`. Cenas `=130`/`=131`.
+>
 > ⚠️ **Estado em 2026-10-08 (noite) — CICLO 15, o tecto em todo criador e o Bug #15**
 > ([doc 124](124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md)). O tecto de `32 768`
 > por nó vale agora em TODO criador: o corpo mole (lado `181`), o emissor (`4 M → 32 768`, as duas

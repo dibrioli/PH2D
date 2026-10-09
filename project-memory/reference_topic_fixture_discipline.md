@@ -49,3 +49,5 @@ número a lei depende, e teste longe dele.*
 - ⛔⛔⛔ [Fixtura SIMÉTRICA aprova uma lei que não distingue nada — 4× numa wave; o sinal é o parâmetro não ter efeito](feedback_a_symmetric_fixture_approves_a_law_that_distinguishes_nothing.md)
 
 - ⛔⛔ [Fixture de BYTES de um formato antigo = o ficheiro que o build antigo GRAVOU, nunca uma lista copiada à mão (251 → 253 e 257)](feedback_a_byte_fixture_is_the_old_builds_file_never_a_hand_copy.md)
+
+- ⛔⛔ **UM ALVO CINEMÁTICO QUE SALTA O QUADRO INTEIRO NO 1.º SUB-PASSO ANULA OS SUB-PASSOS, e um CFL que lê deslocamento alimenta-se do salto** (pediu 76 sub-passos; ciclo 16, doc 125) — a fixtura do oráculo com raio `0,5` escondeu-o (`0,9659` com o salto); a corda fina da CENA de smoke (raio `0,12`) mostrou-o (`0,1451` contra `0,24`). Interpole o alvo pelos sub-passos e use o alvo EXACTO no último (`c + (a − c)·1` não é `a` ao bit: a 1.ª versão mudou a corda a Substeps 1, `0,9154 → 0,8947`).

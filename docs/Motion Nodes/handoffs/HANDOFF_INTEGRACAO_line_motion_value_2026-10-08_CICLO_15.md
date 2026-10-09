@@ -59,9 +59,14 @@
 
 - O `ph2d-render` com o desenho do SIGSEGV (`~20` `OnceLock` de contexto nos `tests/it`) e a sonda
   `FIELD_DOC_VERSION` do `scripts/collision-surface.sh` — herdados do ciclo 14, fora do módulo.
+  ✅ Ciclo 16 ([doc 125 §4–§5](../125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md)):
+  o SIGSEGV não reproduz (`0/32`); a sonda já tinha saído no `main` (`69b28daa5`).
 - O `motion.scatter` honra no `eval` o tecto da casa mas é `O(count²)`: o digitável dele é `3 000`
   (de recurso); um `count` dirigido por fio acima disso custa segundos. Medido no censo, não é deste
   ciclo.
+  ⛔ **Refutado no ciclo 16** ([doc 125 §0.3](../125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md)):
+  o nó é LINEAR desde a `NearGrid` (`23,8 ms` a `32 768` em release) — o «quadrático» era a nota de
+  antes da grelha; o digitável passou ao tecto da casa.
 
 ## §7 — O que fica ABERTO
 

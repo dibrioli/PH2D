@@ -322,6 +322,20 @@ peças umas para fora das outras a cada passo, e a linha <b>Substeps</b> do Soft
 o deixa segurar quando ele é sacudido com força. A cena <code>PH2D_GPU_COOK_DEMO=129</code> mostra as
 duas lado a lado.</div>
 
+<div class="note"><b>Uma corda que não se atravessa.</b> Ligue um <b>Shape</b> direto à porta
+<b>shape</b> do <b>Verlet Rope</b>: a corda passa a ser feita de contas com essa forma (não precisa
+de Duplicator). No cartão Shape ligue <b>Collide</b> (e o <b>Collider Shape</b> em <b>Circle</b>):
+as contas empurram-se para fora umas das outras dentro de cada passo, e quando a corda é sacudida
+depressa ela divide o passo sozinha para nenhuma conta atravessar a vizinha. A cena
+<code>PH2D_GPU_COOK_DEMO=130</code> mostra as duas cordas lado a lado.</div>
+
+<div class="note"><b>O Collide tem de estar ANTES da simulação.</b> Se o Shape vestir a corda (ou o
+corpo mole) <b>depois</b>, num Duplicator, o Collide só arruma o desenho — a simulação nunca vê as
+formas, e as contas atravessam-se na mesma. O cartão do Shape mostra um sinal <b>⚠</b> (aproxime o
+grafo com a roda do rato até os cartões mostrarem as linhas); clique nele e a mensagem diz o que
+fazer: ligar o Shape à porta <b>shape</b> do corpo. A cena <code>PH2D_GPU_COOK_DEMO=131</code> é esse
+caso.</div>
+
 <div class="note"><b>Nenhum cartão faz mais de 32&nbsp;768 objectos</b> — é o limite por cartão da
 casa. Por isso o <code>Soft Body</code> pára em 181×181 (32&nbsp;761 bolinhas), como o
 <code>Wave</code>: pedir mais não dá mais, e no limite ele gasta um quarto de milésimo de segundo por

@@ -74,6 +74,8 @@ cada criação de `BindGroup`/uniform — um conflito aqui resolve-se mantendo a
 - `crossing_the_reach_boundary_does_not_step_the_cost` — flake de carga registado; `2/2` verde sozinho.
 - Fora do módulo (para o integrador registar): a sonda `FIELD_DOC_VERSION` do `collision-surface.sh`
   estava cega desde a saída do 3D (o handoff de continuação nomeou-a; nesta corrida não imprimiu linha).
+  ✅ **Fechada no `main` (`69b28daa5`, a sonda saiu com a `ph2d-field`)** — confirmado no ciclo 16
+  ([doc 125 §5](../125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md)).
 
 ## §7 — O que fica ABERTO
 

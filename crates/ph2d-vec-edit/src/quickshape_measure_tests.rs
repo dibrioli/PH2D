@@ -72,7 +72,10 @@ fn rounded(poly: &[P2], f: f64) -> Vec<P2> {
 }
 
 /// As formas de mão de tamanho `s` (px) e o que a lei tem de responder. `None` = não é forma.
-fn cases(s: f64) -> Vec<(&'static str, Vec<P2>, fn(&Option<QuickShape>) -> bool)> {
+/// Um caso: o nome, a polilinha da mão e o que a lei tem de responder.
+type Case = (&'static str, Vec<P2>, fn(&Option<QuickShape>) -> bool);
+
+fn cases(s: f64) -> Vec<Case> {
     let h = 0.62 * s;
     let tri: Vec<P2> = (0..=3)
         .map(|k| {

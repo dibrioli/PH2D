@@ -66,8 +66,9 @@ pub(crate) fn solve<const N: usize>(mut m: [[f64; N]; N], mut v: [f64; N]) -> Op
         v.swap(c, p);
         for r in (c + 1)..N {
             let f = m[r][c] / m[c][c];
-            for k in c..N {
-                m[r][k] -= f * m[c][k];
+            let pivot = m[c];
+            for (x, &q) in m[r][c..].iter_mut().zip(&pivot[c..]) {
+                *x -= f * q;
             }
             v[r] -= f * v[c];
         }

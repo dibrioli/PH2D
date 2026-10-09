@@ -236,9 +236,10 @@ fn only_the_listed_gestures_arm_a_sound() {
             // correm durante a reprodução, e um som por transição seria o app a comentar o que o
             // motor decidiu.
             FRAME,
-            5,
+            6,
             "consolidar a booleana · o interruptor da preview de poses · fazer o conjunto de \
-             Morph States · o interruptor da preview do Morph · os três verbos de mundo dele",
+             Morph States · o interruptor da preview do Morph · os três verbos de mundo dele · a \
+             forma do QuickShape que nasce de a MÃO segurar (F7)",
         ),
         (DISPATCH, 2, "as duas recusas da trava do Painter"),
     ];

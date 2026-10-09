@@ -194,6 +194,7 @@ mod the_panel_drag_drafts_the_shape;
 mod the_paste_is_the_one_joint_edit_that_fans_out;
 mod the_pattern_smoke_shapes_are_born_stroked;
 mod the_patternpath_handles_are_drawn_and_dragged;
+mod the_pencil_holds_into_a_quickshape;
 mod the_pencil_owns_its_whole_gesture;
 mod the_pick_reads_the_map_that_was_drawn;
 mod the_picked_colour_reaches_the_shape_before_the_rows_are_read;

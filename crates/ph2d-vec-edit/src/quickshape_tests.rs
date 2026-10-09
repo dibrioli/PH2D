@@ -503,3 +503,88 @@ fn transformed_scales_and_turns_about_the_pivot_and_to_path_keeps_the_nodes() {
     assert_eq!(l.pivot(), [1.0, 1.0]);
     assert!(!l.to_path().closed);
 }
+
+// ── as cláusulas que só as fixtures não guardavam (pedidas pela prova de mutação) ───────────────
+
+#[test]
+fn the_regular_square_keeps_the_drawn_corners_and_sits_on_the_axes() {
+    // Um rectângulo tosco desenhado no sentido HORÁRIO (y para cima), inclinado ~1,4°.
+    let rect = hand(
+        &[
+            [0.0, 0.0],
+            [0.0, 260.0],
+            [400.0, 270.0],
+            [400.0, 10.0],
+            [0.0, 0.0],
+        ],
+        1.0,
+    );
+    let Some(QuickShape::Polygon {
+        corners,
+        closed: true,
+    }) = recognise(&rect, 1.0, true)
+    else {
+        panic!("rect")
+    };
+    let drawn = [[0.0, 0.0], [0.0, 260.0], [400.0, 270.0], [400.0, 10.0]];
+    let radius = dist(corners[0], centroid(&corners));
+    for (i, (&c, &d)) in corners.iter().zip(&drawn).enumerate() {
+        assert!(
+            dist(c, d) < 0.35 * radius,
+            "canto {i} {c:?} longe do desenhado {d:?}: o sentido inverteu"
+        );
+    }
+    let side = angle(sub(corners[1], corners[0]));
+    assert!(
+        remainder_quarter(side) < 1e-9,
+        "o quadrado endireita aos eixos: lado a {}°",
+        side.to_degrees()
+    );
+}
+
+fn remainder_quarter(a: f64) -> f64 {
+    (a - snap(a, FRAC_PI_2)).abs()
+}
+
+#[test]
+fn a_line_starts_where_the_hand_started() {
+    // Da direita para a esquerda: o `a` (o pivô do arrasto) é a ponta onde a mão POUSOU.
+    let l = hand(&[[400.0, 0.0], [0.0, 200.0]], 0.5);
+    let Some(QuickShape::Line { a, b }) = recognise(&l, 1.0, false) else {
+        panic!("linha")
+    };
+    assert!(
+        dist(a, l[0]) < 2.0 && dist(b, l[l.len() - 1]) < 2.0,
+        "{a:?} → {b:?}"
+    );
+}
+
+#[test]
+fn a_loop_drawn_twice_is_not_a_circle() {
+    // Duas voltas fecham no início e têm os momentos de UM círculo — só a viragem total as separa.
+    let two: Vec<P2> = (0..=400)
+        .map(|i| {
+            let a = 2.0 * TAU * f64::from(i) / 400.0;
+            [200.0 * a.cos(), 200.0 * a.sin()]
+        })
+        .collect();
+    assert!(recognise(&two, 1.0, false).is_none());
+    // Controlo: UMA volta, a mesma mão, é o círculo.
+    assert!(matches!(
+        recognise(&two[..=200], 1.0, false),
+        Some(QuickShape::Ellipse { .. })
+    ));
+}
+
+#[test]
+fn a_sharp_spike_is_two_sides_not_one_line() {
+    // Um «V» de 20° de abertura: a viragem é de 160°, e sem SENTIDO leria-se como 20° e fundia-se.
+    let half = 10f64.to_radians();
+    let tip = [400.0 * half.cos(), 400.0 * half.sin()];
+    let v = hand(&[[0.0, 0.0], tip, [0.0, 2.0 * 400.0 * half.sin()]], 0.3);
+    assert!(
+        matches!(recognise(&v, 1.0, false), Some(QuickShape::Polygon { ref corners, closed: false }) if corners.len() == 3),
+        "{:?}",
+        recognise(&v, 1.0, false)
+    );
+}

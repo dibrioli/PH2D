@@ -17,9 +17,12 @@
 > **F6 (08/10)**: dois dedos arrastam a vista e a pinça dá zoom à volta deles, cena `=11`, foto
 > [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png) —
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md).
-> **QuickShape (08/10, tarde)**: o dono autorizou o Xournal++ e o oráculo CORREU — 41 fixtures e as
-> leis em [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md); o código é a
-> próxima janela, [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md).
+> **F7 QuickShape (08/10)**: desenhar e SEGURAR = forma perfeita com nós (linha, polilinha,
+> triângulo, rectângulo, polígono, elipse/círculo), arrastar escala e roda, `Shift` regulariza;
+> interruptor na fila do Lápis. A lei bate as **65** medições do Xournal++
+> ([`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md)); cena `=12`, foto
+> [`fotos/f7_01`](fotos/f7_01_cena12_tres_tracos_seguros_viram_formas.png) —
+> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md).
 
 ## O roteador
 

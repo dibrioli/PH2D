@@ -41,6 +41,51 @@ mod tests {
     }
 
     #[test]
+    fn the_shift_reaches_the_hold_as_regular() {
+        let mut vec = crate::state::VecState::default();
+        let mut scene = ph2d_vec_scene::VecScene::default();
+        let d = |i: u128| ph2d_vec_edit::pencil_width::PenDynamics {
+            pressure: 1.0,
+            t_ns: i * 4_000_000,
+        };
+        let corners = [
+            [0.0, 0.0],
+            [400.0, 0.0],
+            [400.0, 250.0],
+            [0.0, 250.0],
+            [0.0, 0.0],
+        ];
+        let mut n = 0u128;
+        vec.pencil.on_press(&mut scene, corners[0], 1.0, d(0));
+        for w in corners.windows(2) {
+            for k in 1..=50 {
+                let u = f64::from(k) / 50.0;
+                n += 1;
+                let p = [
+                    w[0][0] + (w[1][0] - w[0][0]) * u,
+                    w[0][1] + (w[1][1] - w[0][1]) * u,
+                ];
+                vec.pencil.on_drag(&mut scene, p, d(n));
+            }
+        }
+        let held = n * 4_000_000 + ph2d_vec_edit::quickshape_hold::HOLD_NS;
+        assert!(super::frame(&mut vec, &mut scene, held, true));
+        let id = vec.pencil.active_path().expect("o traço vivo");
+        let v: Vec<[f64; 2]> = scene
+            .path(id)
+            .expect("o caminho")
+            .verts
+            .iter()
+            .map(|v| v.anchor)
+            .collect();
+        let side = |i: usize| (v[i][0] - v[(i + 1) % 4][0]).hypot(v[i][1] - v[(i + 1) % 4][1]);
+        assert!(
+            (side(0) - side(1)).abs() < 1e-6,
+            "o Shift faz o QUADRADO: {v:?}"
+        );
+    }
+
+    #[test]
     fn esc_gives_back_the_free_stroke_then_cancels_it() {
         let mut vec = crate::state::VecState::default();
         let mut scene = ph2d_vec_scene::VecScene::default();

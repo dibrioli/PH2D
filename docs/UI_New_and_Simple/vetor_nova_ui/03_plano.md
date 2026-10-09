@@ -6,8 +6,8 @@
 > [`02_estudo_os_apps_amados.md`](02_estudo_os_apps_amados.md) (o que os outros fazem, com fontes).
 > **F0–F3 entregues em 07/10** (`line/UIUX`) — o que foi medido e decidido na obra está no
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md) §1–§2.
-> **F4 e F5 entregues em 08/10** — ⛔ **a roda (F4.1) foi RETIRADA pelo dono no smoke** (D10.2) —, menos o **QuickShape** (PARADO: nenhum oráculo permissivo que se
-> corra está instalado) — [handoff de 08/10](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md).
+> **F4 e F5 entregues em 08/10** — ⛔ **a roda (F4.1) foi RETIRADA pelo dono no smoke** (D10.2) — [handoff de 08/10](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md);
+> **F6** (navegar com os dedos) e **F7** (o QuickShape, com o oráculo corrido) também em 08/10 — §4.
 
 ## §0 — A ideia numa frase
 
@@ -205,9 +205,18 @@ ir ao Enio.
   (não existe *enquadrar tudo* no app — pergunta ao dono, não invenção).
 - Smoke: cena `PH2D_OBJECT_MODE_SMOKE=11` (contactos sintéticos sobre as formas da cena 9),
   foto [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png).
-- **QuickShape (F7, por fazer):** o oráculo (Xournal++, autorizado pelo dono) **já correu** — leis e
-  fixtures em [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md); o código
-  é a janela [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md).
+
+### F7 — QuickShape (entregue 08/10)
+
+- **Desenhar e SEGURAR 0,5 s = a forma perfeita, com nós de quina editáveis** (o gesto do Procreate):
+  linha, polilinha aberta, triângulo e quadrilátero como desenhados, rectângulo (quinas a 90 ± 8°,
+  endireitado aos eixos até 5°), polígono de N lados, elipse, círculo. Sem soltar, arrastar ESCALA e
+  RODA à volta do início (linha) ou do centro; `Shift` (= o 2.º dedo) regulariza e roda a 15°.
+  Soltar comete a forma (um passo de undo); `Esc` devolve o traço livre.
+- A lei (`ph2d-vec-edit::quickshape`) bate as **65** medições do Xournal++ ou, onde o Procreate manda
+  mais, a geometria que gerou o traço — [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md) §3b–§3c.
+- Porta visível: **QuickShape** na fila do Lápis (ligado por omissão) e a dica ⑤ «Hold at the end:
+  perfect shape». Smoke: cena `=12`, foto [`fotos/f7_01`](fotos/f7_01_cena12_tres_tracos_seguros_viram_formas.png).
 
 ## §5 — O que NÃO entra (e porquê)
 

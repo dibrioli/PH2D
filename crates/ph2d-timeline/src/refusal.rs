@@ -107,3 +107,36 @@ impl KeyRefusal {
         }
     }
 }
+
+/// ⭐ **Porque é que um clip NOVO não nasceu** (Add Clip, Duplicate, Add Animation — onda 4, item 4).
+///
+/// ⛔ Antes o motor devolvia `None` e o painel engolia-o: o artista carregava no `+` com dezasseis
+/// clips e nada acontecia, sem frase. A recusa é um VALOR que o [`crate::TimelineState`] guarda até
+/// quem fala (o toast) a drenar — o mesmo trajecto das irmãs acima.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ClipRefusal {
+    /// A animação já tem [`crate::MAX_CLIPS`] — o recurso é o seletor, que mostra UMA animação.
+    AnimationFull,
+    /// O documento chegou ao índice `u16` que um strip guarda para nomear o seu clip.
+    DocumentFull,
+}
+
+impl ClipRefusal {
+    /// A CHAVE da frase (com `{max}`), resolvida por quem a mostra.
+    #[must_use]
+    pub fn message_key(self) -> &'static str {
+        match self {
+            Self::AnimationFull => "timeline.clip.animation_full",
+            Self::DocumentFull => "timeline.clip.document_full",
+        }
+    }
+
+    /// O tecto que a frase cita — o mesmo número que o motor aplica, nunca um escrito no texto.
+    #[must_use]
+    pub fn limit(self) -> usize {
+        match self {
+            Self::AnimationFull => crate::MAX_CLIPS,
+            Self::DocumentFull => usize::from(u16::MAX) + 1,
+        }
+    }
+}

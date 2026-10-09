@@ -105,10 +105,20 @@ impl TimelineDoc {
     /// animação já tem [`MAX_CLIPS`] (o recurso é o seletor, que mostra UMA animação) ou o
     /// documento chegou ao índice de `u16` que um strip guarda.
     pub fn add_clip_for(&mut self, name: String, owner: u64) -> Option<usize> {
-        if self.clips_of(owner).count() >= MAX_CLIPS || self.clips.len() > usize::from(u16::MAX) {
-            return None;
-        }
+        self.clip_room(owner).ok()?;
         Some(self.push_clip(name, scope_of(owner)))
+    }
+
+    /// ⭐ **Cabe mais um clip na animação de `owner`?** — a porta única do tecto, que criar e
+    /// copiar consultam e que quem aplica as intenções lê para DIZER porque não (onda 4, item 4).
+    pub fn clip_room(&self, owner: u64) -> Result<(), crate::ClipRefusal> {
+        if self.clips_of(owner).count() >= MAX_CLIPS {
+            Err(crate::ClipRefusal::AnimationFull)
+        } else if self.clips.len() > usize::from(u16::MAX) {
+            Err(crate::ClipRefusal::DocumentFull)
+        } else {
+            Ok(())
+        }
     }
 
     /// **Tira o componente Animação de `owner`**: todos os clips dele saem (e os strips que os
@@ -214,7 +224,7 @@ impl TimelineDoc {
 
 impl TimelineDoc {
     /// A chave de vista do clip `index`: os bits do dono, ou [`SCENE`].
-    pub(super) fn view_key(&self, index: usize) -> u64 {
+    pub(crate) fn view_key(&self, index: usize) -> u64 {
         self.clips
             .get(index)
             .and_then(|c| c.owner)

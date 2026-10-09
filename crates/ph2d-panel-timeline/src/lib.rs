@@ -102,6 +102,18 @@ pub use state::{
     request_reveal_playhead, set_current_timeline,
 };
 
+/// ⭐ **As recusas de clip viram TOASTS** (onda 4, item 4) — a porta que a shell chama depois de
+/// aplicar as intenções. O motor não conhece toasts: a recusa viaja como chave + o tecto que cita.
+pub fn speak_clip_refusals(
+    timeline: &mut ph2d_timeline::TimelineState,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    for r in timeline.refusals.drain(..) {
+        let frase = ph2d_i18n::tr_with(r.message_key(), &[("max", &r.limit())]);
+        toasts.push(ph2d_editor_core::Toast::warning(frase));
+    }
+}
+
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};

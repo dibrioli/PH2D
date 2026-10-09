@@ -116,7 +116,7 @@ pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use place_owner::{PLACE_PROPS, PlaceMove, PlaceMoveRefusal, rehome_moved_places};
 pub use pose::{animated_entities, entity_key_times, pose_at, world_pose_at, world_pose_at_into};
 pub use prop::{Algebra, PropKind};
-pub use refusal::{KeyRefusal, NestRefusal};
+pub use refusal::{ClipRefusal, KeyRefusal, NestRefusal};
 pub use signal::{TimelineSignal, signals_crossed};
 pub use snapshot::{ContainerView, KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};

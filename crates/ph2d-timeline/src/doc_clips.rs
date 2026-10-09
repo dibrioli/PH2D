@@ -91,11 +91,7 @@ impl TimelineDoc {
     /// brackets, so a copy of the animation has the same one.
     pub fn duplicate_clip(&mut self, index: usize) -> Option<usize> {
         let src = self.clips.get(index)?;
-        if self.clips_of(self.view_key(index)).count() >= MAX_CLIPS
-            || self.clips.len() > usize::from(u16::MAX)
-        {
-            return None;
-        }
+        self.clip_room(self.view_key(index)).ok()?;
         let copy = NamedClip {
             name: self.fresh_copy_name(&src.name, src.owner),
             clip: src.clip.clone(),

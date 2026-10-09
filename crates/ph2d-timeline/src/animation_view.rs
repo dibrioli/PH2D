@@ -110,7 +110,10 @@ pub(crate) fn apply(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             show(state, playhead, owner);
         }
         AnimationIntent::Add(owner) => {
-            if owner != SCENE && !state.doc.has_animation(owner) {
+            let nova = owner != SCENE && !state.doc.has_animation(owner);
+            if let (true, Err(r)) = (nova, state.doc.clip_room(owner)) {
+                state.refusals.push(r);
+            } else if nova {
                 edit(state, |doc, sel| {
                     let name = doc.fresh_clip_name_in(owner);
                     if let Some(i) = doc.add_clip_for(name, owner) {

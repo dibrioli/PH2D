@@ -375,6 +375,11 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::AddClip => {
             // O clip novo é da animação EM VISTA (doc ObjectsAndComponents 01 §6).
             let owner = state.view.owner;
+            // Cheio ⇒ uma recusa DITA (onda 4, item 4), e nenhum passo de undo vazio.
+            if let Err(r) = state.doc.clip_room(owner) {
+                state.refusals.push(r);
+                return;
+            }
             edit(state, |doc, sel| {
                 let name = doc.fresh_clip_name_in(owner);
                 let Some(i) = doc.add_clip_for(name, owner) else {
@@ -401,6 +406,12 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             sync_loop(&state.doc, playhead, state.keys_mode);
         }
         I::DuplicateClip { index } => {
+            if index < state.doc.clips().len()
+                && let Err(r) = state.doc.clip_room(state.doc.view_key(index))
+            {
+                state.refusals.push(r);
+                return;
+            }
             edit(state, |doc, sel| {
                 // The copy is where you want to be — you asked for it to work on it.
                 if let Some(i) = doc.duplicate_clip(index) {

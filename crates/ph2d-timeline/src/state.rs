@@ -236,6 +236,9 @@ pub struct TimelineState {
     /// **De quem é a animação em vista** (doc ObjectsAndComponents 01 §6) — sessão, como
     /// [`Self::flags`]; [`crate::animation_view::follow`] a mantém.
     pub view: crate::AnimationView,
+    /// **As recusas de clip deste quadro, à espera de quem FALA** (onda 4, item 4) — o
+    /// `apply_intent` empurra, a shell drena para toasts. Sessão; nunca gravado nem desfeito.
+    pub refusals: Vec<crate::ClipRefusal>,
 }
 
 impl TimelineState {

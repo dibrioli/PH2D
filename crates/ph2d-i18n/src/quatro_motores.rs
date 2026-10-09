@@ -23,8 +23,8 @@
 //! *Cada uma diz o que aconteceu E o que a pilha está a fazer, porque «can't key here» sem razão é
 //! só um pouco melhor que silêncio.* O texto mudou de sítio, não de intenção.
 
-/// A tradução de uma chave `color.*` / `anim.easing.*` / `input.pad.*` / `timeline.{nest,key}.*`,
-/// ou `None` se ela não é daqui.
+/// A tradução de uma chave `color.*` / `anim.easing.*` / `input.pad.*` /
+/// `timeline.{nest,key,clip}.*`, ou `None` se ela não é daqui.
 #[allow(clippy::too_many_lines)]
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
@@ -112,6 +112,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    as duas coisas.*
         "timeline.key.bone_handles_from_chain" => {
             "Can't key the bend: this bone's handles come from the chain \u{2014} set Curve Handles to Manual"
+        }
+        // A recusa de um clip NOVO (onda 4, item 4): o `+` cheio dizia nada.
+        "timeline.clip.animation_full" => {
+            "Can't add a clip: this animation already has {max} \u{2014} delete one, or animate another object"
+        }
+        "timeline.clip.document_full" => {
+            "Can't add a clip: the document already holds {max}, the most a strip can name"
         }
         // ph2d-migrar-texto:end
         _ => return None,

@@ -20,13 +20,11 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx { sim, .. } = FrameGfx::of(gfx);
+        let FrameGfx { sim, toasts, .. } = FrameGfx::of(gfx);
 
-        // General timeline (W1): drain pending panel/K intents into the app-general
-        // document, then apply it to the scene. Three clocks, one chosen per view:
-        // Keys drives the CLIP playhead (solo the clip); inside a container the
-        // CONTAINER playhead (solo the interior); Arrange the timeline playhead (blend
-        // the stack). Skipping the dragged entity. No-op while empty.
+        // General timeline (W1): drain the panel/K intents into the document, then apply it to
+        // the scene. Three clocks, one per view: Keys = the CLIP playhead (solo the clip); in a
+        // container its own; Arrange the timeline's (blend the stack). Skips the dragged entity.
         let active_playhead = if keys_mode {
             &mut self.clip_playhead
         } else if container.is_some() {
@@ -71,6 +69,8 @@ impl crate::App {
             // escrevem enquanto o playhead toca não é uma edição (`crate::timeline_preview`).
             &mut self.preview_drive,
         );
+        // A recusa de um clip novo (o `+` cheio) DITA num toast — onda 4, item 4.
+        ph2d_panel_timeline::speak_clip_refusals(&mut self.timeline, toasts);
         if timeline_reset {
             // The document just went back to a fresh state (the last animated
             // object was deleted — Enio 2026-07-22, "a timeline precisa ser

@@ -74,3 +74,31 @@ fn the_board_never_paints_an_opaque_selection_over_its_content() {
         assert!(a < 128, "{theme:?}: a faixa de seleccionar tapa (alfa {a})");
     }
 }
+
+/// ⭐ S1 — cada carimbo é o seu ícone Lucide INTEIRO: cada caminho SVG lê-se (um `from_svg` que falha
+/// seria um ícone a menos, em silêncio — o `q`/`t` da chama, os arcos), cabe no quadrado de 24 e tem
+/// um `MoveTo` por caminho.
+#[test]
+fn every_stamp_is_its_whole_lucide_icon() {
+    for (s, svg) in super::facilitate::STAMP_SVG {
+        for d in svg {
+            assert!(ph2d_vector::BezPath::from_svg(d).is_ok(), "{s:?}: {d}");
+        }
+        let p = super::stamp_path(s);
+        let moves = p
+            .elements()
+            .iter()
+            .filter(|e| matches!(e, PathEl::MoveTo(_)))
+            .count();
+        assert_eq!(moves, svg.len(), "{s:?}: um caminho por elemento SVG");
+        let b = p.bounding_box();
+        assert!(
+            b.x0 >= 0.0 && b.y0 >= 0.0 && b.x1 <= 24.0 && b.y1 <= 24.0,
+            "{s:?}: {b:?}"
+        );
+    }
+    assert_eq!(
+        super::facilitate::STAMP_SVG.len(),
+        ph2d_board_model::Stamp::ALL.len()
+    );
+}

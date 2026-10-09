@@ -17,11 +17,11 @@ use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_edit::Tool;
-use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, ShapeType, Style};
+use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, ShapeType};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Color, VectorScene};
+use ph2d_vector::VectorScene;
 
 /// ⛔ O salto tem os 16 bits do MEIO diferentes dos das abas de quadro (`…_0000_0003`): os dois
 /// lados XOR-am números pequenos, e saltos que só diferem nos bits de baixo COLIDEM (medido: o
@@ -33,8 +33,8 @@ const SALT: u64 = 0xb0a2_d7ab_5ba2_0000;
 mod look;
 pub use look::shape_name_key;
 use look::{
-    arrow_icon, ink, paint_panel, selected_arrow, selected_kind, selected_style, selection_box,
-    shape_icon, shown, stroke, tooltip_key,
+    arrow_icon, doc_color, ink, is_current, paint_panel, selected_arrow, selected_kind,
+    selected_style, selection_box, shape_icon, shown, stroke, swatch, tooltip_key,
 };
 
 /// As notas e o texto (W3, módulo filho: o ficheiro estava no tecto de LOC).
@@ -55,6 +55,9 @@ pub use organize::OrgItem;
 #[path = "board_bar_mind.rs"]
 mod mind;
 pub use mind::MindItem;
+#[path = "board_bar_facilitate.rs"]
+mod fac;
+pub use fac::FacItem;
 
 /// A caneta e o rascunho (W4, módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_pen.rs"]
@@ -117,6 +120,8 @@ pub enum Item {
     Organize(OrgItem),
     /// Planear (W6): os modelos e os controlos de um nó de mapa mental.
     Mind(MindItem),
+    /// Facilitar (W7): cronómetro, votação, carimbos, agrupar.
+    Fac(FacItem),
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -152,7 +157,7 @@ pub enum Selected {
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
 /// do brainstorm).
-const TOOLBAR: [Item; 14] = [
+const TOOLBAR: [Item; 16] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
     Item::Tool(Tool::Shape(ShapeType::Sticky)),
@@ -167,6 +172,8 @@ const TOOLBAR: [Item; 14] = [
     Item::Tool(Tool::Shape(ShapeType::Triangle)),
     Item::MoreShapes,
     Item::Sketch,
+    fac::TIMER,
+    fac::VOTE,
 ];
 
 /// ⭐ **A tabela** — todo controlo das barras, por grupo da barra de estilo. O índice é o id.
@@ -177,6 +184,7 @@ pub fn items() -> Vec<Item> {
     v.extend(notes::flyout_items());
     v.extend(pen::flyout_items());
     v.extend(mind::flyout_items());
+    v.extend(fac::flyout_items());
     for it in [
         Selected::Shapes,
         Selected::Arrows,
@@ -254,7 +262,10 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             opacity,
             font,
         ],
-        Selected::Notes => notes::note_groups(),
+        Selected::Notes => notes::note_groups()
+            .into_iter()
+            .chain([fac::note_group()])
+            .collect(),
         Selected::TextNote => notes::text_groups(false),
         Selected::TextShape => notes::text_groups(true),
         Selected::Ink => pen::ink_groups(),
@@ -306,6 +317,7 @@ pub fn paint(
     let theme = hero.theme;
     let shapes_open = hero.documents.live.shapes_open;
     let templates_open = mind::sync_gallery(&mut hero.documents.live);
+    let fac_now = fac::Now::of(hero);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -338,7 +350,8 @@ pub fn paint(
             || (it == pen::PEN_TOOL && pen::flyout_open(tool))
             || (it == Item::Sketch && sketch_on)
             || (it == organize::FRAME_TOOL && tool == Tool::Frame)
-            || mind::is_on(it, ed, &board.doc, templates_open) == Some(true);
+            || mind::is_on(it, ed, &board.doc, templates_open) == Some(true)
+            || fac_now.is_on(it) == Some(true);
         paint_item(
             scene,
             text_system,
@@ -382,6 +395,7 @@ pub fn paint(
     if let Some((key, _)) = notice {
         organize::paint_notice(scene, text_system, theme, area, key);
     }
+    fac::sync_flyouts(&mut live.fac, what == Some(Selected::Notes));
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };
@@ -398,14 +412,16 @@ pub fn paint(
             g.into_iter()
                 .filter(|it| org.shows(*it) != Some(false))
                 .filter(|it| mind::shows(*it, ed, &board.doc) != Some(false))
+                .filter(|it| fac::shows(*it, ed, &board.doc) != Some(false))
                 .collect()
         })
         .filter(|g: &Vec<Item>| !g.is_empty())
         .collect();
     let bar = layout::style_rects_of(area, sel, groups);
     paint_panel(scene, &bar, theme);
-    for (it, r) in bar {
+    for (it, r) in bar.clone() {
         let on = mind::is_on(it, ed, &board.doc, templates_open)
+            .or_else(|| fac_now.is_on(it))
             .or_else(|| org.is_on(it, style.fill))
             .or_else(|| notes::is_current(it, Some(&style), &now))
             .or_else(|| pen::is_current(it, ed, Some(style.stroke_width), theme))
@@ -421,37 +437,8 @@ pub fn paint(
             on,
         );
     }
-}
-
-/// A cor de documento de um item de cor.
-fn swatch(it: Item, theme: Theme) -> Option<Rgba> {
-    match it {
-        Item::Fill(Some(i)) | Item::Stroke(Some(Some(i))) => Some(palette(i)),
-        Item::Stroke(Some(None)) => Some(ink(theme)),
-        _ => None,
-    }
-}
-
-fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
-    Color::from_rgba8(r, g, b, a) // LITERAL-COLOR-OK: cor do DOCUMENTO (dado do artista), não da UI
-}
-
-/// O item corresponde ao estilo actual da selecção?
-fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: Theme) -> bool {
-    match it {
-        Item::Route(r) => arrow.is_some_and(|c| c.route == r),
-        Item::Head(i, h) => arrow.is_some_and(|c| c.heads[i] == h),
-        Item::Fill(None) => s.fill.is_none(),
-        Item::Fill(Some(_)) => s.fill == swatch(it, theme),
-        Item::Stroke(None) => s.stroke.is_none(),
-        Item::Stroke(Some(_)) => s.stroke == swatch(it, theme),
-        Item::Width(i) => s.stroke_width == WIDTHS[i],
-        Item::Dash(d) => s.dash == d,
-        Item::Round(r) => s.round == r,
-        Item::Opacity(i) => s.opacity == OPACITIES[i],
-        Item::Font(i) => s.font_size == FONT_SIZES[i],
-        _ => false,
-    }
+    let (hit, store) = (&mut hero.hit_index, &hero.store);
+    fac::paint_flyout(scene, text_system, theme, hit, store, &bar, fac_now);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -485,6 +472,7 @@ fn paint_item(
         || pen::paint_icon(scene, theme, it, inner, fg, line)
         || organize::paint_icon(scene, theme, it, inner, fg, line)
         || mind::paint_icon(scene, text_system, it, r, inner, fg, line, on)
+        || fac::paint_icon(scene, text_system, it, r, inner, fg, line)
     {
         return;
     }
@@ -591,7 +579,8 @@ fn paint_item(
         | Item::Pen(_)
         | Item::Sketch
         | Item::Organize(_)
-        | Item::Mind(_) => {}
+        | Item::Mind(_)
+        | Item::Fac(_) => {}
     }
 }
 
@@ -609,6 +598,10 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return true;
     }
     mind::toggle_gallery(&mut hero.documents.live, it);
+    fac::toggle_flyouts(&mut hero.documents.live, it);
+    if fac::apply(hero, it) {
+        return true;
+    }
     if it == Item::Organize(OrgItem::Tag) {
         super::board_nav::open_tag_field(hero);
         return true;
@@ -670,7 +663,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::Pen(_)
         | Item::Sketch
         | Item::Organize(_)
-        | Item::Mind(_) => {}
+        | Item::Mind(_)
+        | Item::Fac(_) => {}
     }
     true
 }

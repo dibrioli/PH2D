@@ -29,15 +29,25 @@ fn only_function_words_are_dropped() {
         keys("We need new tests and the work is high", Lang::English),
         ["need", "new", "test", "work", "high"]
     );
-    assert_eq!(keys("O tempo de trabalho é novo", Lang::Portuguese), ["temp", "trabalh", "nov"]);
+    assert_eq!(
+        keys("O tempo de trabalho é novo", Lang::Portuguese),
+        ["temp", "trabalh", "nov"]
+    );
 }
 
 /// Uma letra não é um assunto (o Snowball português NÃO lista o `é`, que ia agrupar tudo).
 #[test]
 fn a_single_letter_never_counts() {
     assert!(keys("é a e o x", Lang::Portuguese).is_empty());
-    assert!(keys("v2.0", Lang::English).is_empty(), "`v2.0` tem UMA letra");
-    assert_eq!(keys("b2b", Lang::English), ["b2b"], "duas letras ou mais contam, com algarismos");
+    assert!(
+        keys("v2.0", Lang::English).is_empty(),
+        "`v2.0` tem UMA letra"
+    );
+    assert_eq!(
+        keys("b2b", Lang::English),
+        ["b2b"],
+        "duas letras ou mais contam, com algarismos"
+    );
 }
 
 /// ⭐ Os acentos ficam até à raiz: `informação` e `informações` são uma; sem acentos não seriam.
@@ -57,13 +67,29 @@ fn accents_reach_the_stemmer() {
 fn the_surface_is_the_folded_word_with_accents() {
     let k = keywords("Reunião", Lang::Portuguese);
     assert_eq!(k[0].surface, "reunião");
-    assert_eq!(k[0].key, "reunia", "a raiz da libstemmer é `reuniã`, sem o acento");
+    assert_eq!(
+        k[0].key, "reunia",
+        "a raiz da libstemmer é `reuniã`, sem o acento"
+    );
 }
 
 /// ⭐ A língua é a que tem mais palavras vazias; empate = inglês.
 #[test]
 fn the_language_is_the_one_with_more_function_words() {
-    assert_eq!(detect(&["A equipa trabalha bem em pares", "Mais informações nas reuniões"]), Lang::Portuguese);
-    assert_eq!(detect(&["The team is slow", "Builds are slow"]), Lang::English);
-    assert_eq!(detect(&["Kanban", "Retro"]), Lang::English, "sem nenhuma, a da interface");
+    assert_eq!(
+        detect(&[
+            "A equipa trabalha bem em pares",
+            "Mais informações nas reuniões"
+        ]),
+        Lang::Portuguese
+    );
+    assert_eq!(
+        detect(&["The team is slow", "Builds are slow"]),
+        Lang::English
+    );
+    assert_eq!(
+        detect(&["Kanban", "Retro"]),
+        Lang::English,
+        "sem nenhuma, a da interface"
+    );
 }

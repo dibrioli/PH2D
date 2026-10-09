@@ -20,11 +20,18 @@ pub const TIMER_BLINK: Duration = Duration::from_millis(500);
 pub enum TimerRun {
     /// Armado, parado: mostra a duração armada.
     Set,
-    Running { deadline: Instant },
+    Running {
+        deadline: Instant,
+    },
     /// Pausado em `at` com `left` por correr.
-    Paused { left: Duration, at: Instant },
+    Paused {
+        left: Duration,
+        at: Instant,
+    },
     /// Chegou a zero em `at`.
-    Done { at: Instant },
+    Done {
+        at: Instant,
+    },
 }
 
 /// O cronómetro de um quadro.
@@ -72,23 +79,19 @@ impl Timer {
         if self.run != TimerRun::Set {
             return false;
         }
-        let m = self.minutes;
-        let next = if up {
-            if m < TIMER_FINE_UNTIL {
-                m + 1
-            } else {
-                m + TIMER_COARSE_STEP
-            }
-        } else if m > TIMER_FINE_UNTIL {
-            (m - TIMER_COARSE_STEP).max(TIMER_FINE_UNTIL)
-        } else {
-            m.saturating_sub(1)
-        };
-        let max = u32::try_from(TIMER_MAX.as_secs() / 60).unwrap_or(u32::MAX);
-        let next = next.clamp(1, max);
-        let moved = next != m;
+        let next = step_minutes(self.minutes, up);
+        let moved = next != self.minutes;
         self.minutes = next;
         moved
+    }
+
+    /// Um cronómetro armado com `m` minutos (entre 1 e 99).
+    #[must_use]
+    pub fn with_minutes(m: u32) -> Self {
+        Self {
+            minutes: m.clamp(1, max_minutes()),
+            ..Self::default()
+        }
     }
 
     /// ▶ — arranca (armado ou no zero) ou retoma (pausado). Esvazia a pergunta do ■.
@@ -188,6 +191,28 @@ impl Timer {
             _ => false,
         }
     }
+}
+
+/// O tecto em minutos inteiros (99).
+fn max_minutes() -> u32 {
+    u32::try_from(TIMER_MAX.as_secs() / 60).unwrap_or(u32::MAX)
+}
+
+/// ⭐ F2 — o `±` sobre `m` minutos: de 1 em 1 até 10, de 5 em 5 acima; entre 1 e 99.
+#[must_use]
+pub fn step_minutes(m: u32, up: bool) -> u32 {
+    let next = if up {
+        if m < TIMER_FINE_UNTIL {
+            m + 1
+        } else {
+            m + TIMER_COARSE_STEP
+        }
+    } else if m > TIMER_FINE_UNTIL {
+        (m - TIMER_COARSE_STEP).max(TIMER_FINE_UNTIL)
+    } else {
+        m.saturating_sub(1)
+    };
+    next.clamp(1, max_minutes())
 }
 
 fn phase(t: Duration) -> bool {

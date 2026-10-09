@@ -199,6 +199,16 @@ impl Editor {
         self.vote.as_ref()
     }
 
+    /// Tira a sessão do editor (a aba muda: ela fica à espera do quadro dela).
+    pub fn take_vote(&mut self) -> Option<VoteSession> {
+        self.vote.take()
+    }
+
+    /// Devolve ao editor a sessão do quadro que voltou a ser o activo.
+    pub fn put_vote(&mut self, s: Option<VoteSession>) {
+        self.vote = s;
+    }
+
     /// V3 — «I'm done». `false` = não há sessão.
     pub fn next_voter(&mut self) -> bool {
         self.vote.as_mut().map(VoteSession::next_voter).is_some()

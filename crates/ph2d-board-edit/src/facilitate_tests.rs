@@ -11,7 +11,13 @@ use ph2d_board_model::{Rgba, STICKY_COLORS, Stamp};
 
 impl World {
     /// Uma nota de 199 em `[x, y]` com `text`, da cor `c` de [`STICKY_COLORS`] e com `tags`.
-    pub(super) fn sticky(&mut self, at: [f64; 2], text: &str, c: usize, tags: &[&str]) -> ElementId {
+    pub(super) fn sticky(
+        &mut self,
+        at: [f64; 2],
+        text: &str,
+        c: usize,
+        tags: &[&str],
+    ) -> ElementId {
         let ink = Rgba([20, 20, 20, 255]);
         let mut el = Element::new_shape(
             self.doc.mint_id(),
@@ -75,13 +81,20 @@ fn the_step_is_one_minute_below_ten_and_five_above() {
 fn adding_time_works_running_or_paused_and_never_passes_99_59() {
     let now = Instant::now();
     let mut t = Timer::default();
-    assert!(!t.add(now, Duration::from_secs(60)), "armado não soma (arma-se com ±)");
+    assert!(
+        !t.add(now, Duration::from_secs(60)),
+        "armado não soma (arma-se com ±)"
+    );
     t.play(now);
     assert!(t.add(now, Duration::from_secs(60)));
     assert_eq!(t.display(now), (6, 0));
     t.pause(now + Duration::from_secs(30));
     assert!(t.add(now, Duration::from_secs(300)));
-    assert_eq!(t.display(now + Duration::from_secs(999)), (10, 30), "pausado não anda");
+    assert_eq!(
+        t.display(now + Duration::from_secs(999)),
+        (10, 30),
+        "pausado não anda"
+    );
     for _ in 0..30 {
         t.add(now, Duration::from_secs(300));
     }
@@ -114,14 +127,21 @@ fn at_zero_it_rings_once_and_stays_at_zero() {
     t.play(now);
     let end = now + Duration::from_secs(300);
     assert!(!t.tick(end - Duration::from_millis(1)));
-    assert_eq!(t.display(end - Duration::from_millis(1)), (0, 1), "arredonda para cima");
+    assert_eq!(
+        t.display(end - Duration::from_millis(1)),
+        (0, 1),
+        "arredonda para cima"
+    );
     assert!(t.tick(end), "soa no zero");
     assert!(!t.tick(end + Duration::from_secs(5)), "e só uma vez");
     assert_eq!(t.display(end + Duration::from_secs(60)), (0, 0));
     assert!(matches!(t.run(), TimerRun::Done { .. }));
     t.play(end + Duration::from_secs(70));
     t.sound = false;
-    assert!(!t.tick(end + Duration::from_secs(70 + 300)), "com o altifalante desligado, não soa");
+    assert!(
+        !t.tick(end + Duration::from_secs(70 + 300)),
+        "com o altifalante desligado, não soa"
+    );
 }
 
 /// F4/F6: pausado o mostrador pisca; a correr não.
@@ -145,12 +165,19 @@ fn a_session_votes_on_the_selection_or_the_board() {
     let a = w.sticky([0.0, 0.0], "a", 1, &[]);
     let b = w.sticky([300.0, 0.0], "b", 1, &[]);
     assert!(w.ed.start_vote(&w.doc, VoteSetup::default()));
-    assert_eq!(w.ed.vote().unwrap().targets().len(), 2, "sem selecção, o quadro inteiro");
+    assert_eq!(
+        w.ed.vote().unwrap().targets().len(),
+        2,
+        "sem selecção, o quadro inteiro"
+    );
     w.ed.vote = None;
     w.ed.select(&w.doc, [a]);
     assert!(w.ed.start_vote(&w.doc, VoteSetup::default()));
     assert_eq!(*w.ed.vote().unwrap().targets(), [a].into());
-    assert!(w.ed.selection().is_empty(), "a sessão não deixa nada seleccionado");
+    assert!(
+        w.ed.selection().is_empty(),
+        "a sessão não deixa nada seleccionado"
+    );
     let _ = b;
     let mut empty = world();
     assert!(!empty.ed.start_vote(&empty.doc, VoteSetup::default()));
@@ -163,7 +190,13 @@ fn a_session_votes_on_the_selection_or_the_board() {
 fn a_click_on_the_plus_casts_one_vote() {
     let mut w = world();
     let a = w.sticky([0.0, 0.0], "a", 1, &[]);
-    w.ed.start_vote(&w.doc, VoteSetup { votes: 2, ..VoteSetup::default() });
+    w.ed.start_vote(
+        &w.doc,
+        VoteSetup {
+            votes: 2,
+            ..VoteSetup::default()
+        },
+    );
     let p = w.plus(a);
     assert_eq!(p, [199.0, 199.0]);
     w.click(p, NONE);
@@ -172,11 +205,18 @@ fn a_click_on_the_plus_casts_one_vote() {
     assert_eq!((s.mine(a), s.left()), (2, 0));
     w.click(p, NONE);
     assert_eq!(w.ed.take_notice(), Some(Notice::NoVotesLeft));
-    let minus = w.ed.vote_marks(&w.doc)[0].minus.expect("com votos há o −").0;
+    let minus = w.ed.vote_marks(&w.doc)[0]
+        .minus
+        .expect("com votos há o −")
+        .0;
     w.click(minus, NONE);
     assert_eq!(w.ed.vote().unwrap().mine(a), 1);
     assert!(w.ed.selection().is_empty(), "votar não selecciona");
-    assert_eq!(w.doc.get(a).unwrap().votes(), 0, "a sessão não escreve no documento");
+    assert_eq!(
+        w.doc.get(a).unwrap().votes(),
+        0,
+        "a sessão não escreve no documento"
+    );
 }
 
 /// ⭐ V2: com «One vote per object», o 2.º voto no mesmo objecto é a recusa.
@@ -184,7 +224,13 @@ fn a_click_on_the_plus_casts_one_vote() {
 fn one_vote_per_object_refuses_the_second() {
     let mut w = world();
     let a = w.sticky([0.0, 0.0], "a", 1, &[]);
-    w.ed.start_vote(&w.doc, VoteSetup { one_per_object: true, ..VoteSetup::default() });
+    w.ed.start_vote(
+        &w.doc,
+        VoteSetup {
+            one_per_object: true,
+            ..VoteSetup::default()
+        },
+    );
     let p = w.plus(a);
     w.click(p, NONE);
     w.click(p, NONE);
@@ -223,10 +269,16 @@ fn ending_writes_the_totals_in_one_step() {
     w.click(p, NONE);
     assert!(w.ed.end_vote(&mut w.doc, &mut w.h));
     assert!(w.ed.vote().is_none());
-    assert_eq!((w.doc.get(a).unwrap().votes(), w.doc.get(b).unwrap().votes()), (3, 0));
+    assert_eq!(
+        (w.doc.get(a).unwrap().votes(), w.doc.get(b).unwrap().votes()),
+        (3, 0)
+    );
     assert_eq!(vote_results(&w.doc), [(a, 3)]);
     assert!(w.cmd(Command::Undo));
-    assert_eq!((w.doc.get(a).unwrap().votes(), w.doc.get(b).unwrap().votes()), (0, 9));
+    assert_eq!(
+        (w.doc.get(a).unwrap().votes(), w.doc.get(b).unwrap().votes()),
+        (0, 9)
+    );
 }
 
 /// V5: os selos vão do menor ao maior total do quadro.
@@ -241,7 +293,10 @@ fn the_range_of_the_badges_is_the_boards() {
         w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
     }
     assert_eq!(vote_range(&w.doc), Some([2, 5]));
-    assert_eq!(vote_results(&w.doc).iter().map(|r| r.1).collect::<Vec<_>>(), [5, 2]);
+    assert_eq!(
+        vote_results(&w.doc).iter().map(|r| r.1).collect::<Vec<_>>(),
+        [5, 2]
+    );
 }
 
 /// ⭐ V7: uma cópia não leva os votos; «Clear results» tira-os num passo.
@@ -258,7 +313,11 @@ fn a_copy_carries_no_votes_and_clear_takes_them_off() {
     let copy = *w.ed.selection().iter().next().unwrap();
     assert_ne!(copy, a);
     assert_eq!(w.doc.get(copy).unwrap().votes(), 0, "V7: os votos não vão");
-    assert_eq!(w.doc.get(copy).unwrap().stamps()[0].count, 2, "S4: os carimbos vão");
+    assert_eq!(
+        w.doc.get(copy).unwrap().stamps()[0].count,
+        2,
+        "S4: os carimbos vão"
+    );
     assert!(w.ed.clear_votes(&mut w.doc, &mut w.h));
     assert_eq!(w.doc.get(a).unwrap().votes(), 0);
     assert!(!w.ed.clear_votes(&mut w.doc, &mut w.h));
@@ -278,9 +337,16 @@ fn stamping_the_selection_is_one_step() {
     assert!(w.ed.stamp(&mut w.doc, &mut w.h, Stamp::Star));
     assert_eq!(w.doc.get(a).unwrap().stamps()[0].count, 2);
     assert_eq!(w.doc.get(b).unwrap().stamps()[0].count, 2);
-    assert!(w.doc.get(r).unwrap().stamps().is_empty(), "uma forma não leva carimbos");
+    assert!(
+        w.doc.get(r).unwrap().stamps().is_empty(),
+        "uma forma não leva carimbos"
+    );
     assert!(w.cmd(Command::Undo));
-    assert_eq!(w.doc.get(a).unwrap().stamps()[0].count, 1, "cada carimbar é UM passo");
+    assert_eq!(
+        w.doc.get(a).unwrap().stamps()[0].count,
+        1,
+        "cada carimbar é UM passo"
+    );
 }
 
 /// ⭐ S3: clicar numa ficha dá +1, `Shift`+clicar tira um; a 0 a ficha sai — e o clique não

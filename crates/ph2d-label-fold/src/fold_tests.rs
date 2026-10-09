@@ -80,6 +80,10 @@ fn case_fold_keeps_the_accents_and_composes() {
     assert_eq!(case_fold("INFORMAÇÕES"), "informações");
     assert_eq!(case_fold("Straße"), "strasse");
     assert_eq!(case_fold("\u{fb01}le"), "file");
-    assert_eq!(case_fold("cafe\u{301}"), "caf\u{e9}", "a entrada NFD sai NFC");
+    assert_eq!(
+        case_fold("cafe\u{301}"),
+        "caf\u{e9}",
+        "a entrada NFD sai NFC"
+    );
     assert_eq!(fold(&case_fold("Café")), fold("CAFE"));
 }

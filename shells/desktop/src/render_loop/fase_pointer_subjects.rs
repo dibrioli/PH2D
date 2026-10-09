@@ -23,6 +23,13 @@ impl crate::App {
         if let Some(what) = self.pending_ui_sound.take() {
             self.ui_sound(what);
         }
+        // A campainha do cronómetro do quadro (MiroClone W7): um alarme, não um som de UI.
+        let hero = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
+        if hero.is_some_and(|h| h.documents.take_chime())
+            && let Some(audio) = self.audio.as_mut()
+        {
+            audio.play_chime();
+        }
         // ⭐ **O dedo do jogador, resolvido do mapa** (plano 30 W5) — no TOPO do quadro, e num
         // local, porque ele lê o `HeroScreen` (onde o mapa mora) e escreve no estado resolvido da
         // `App`: fazê-lo no sítio do consumo emprestaria `self` duas vezes.

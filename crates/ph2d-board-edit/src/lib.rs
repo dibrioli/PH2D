@@ -58,9 +58,12 @@ pub use snap::Guide;
 pub use templates::Template;
 pub use text::hand_lettered;
 pub use timer::{
-    TIMER_BLINK, TIMER_COARSE_STEP, TIMER_DEFAULT_MIN, TIMER_FINE_UNTIL, TIMER_MAX, Timer, TimerRun,
+    TIMER_BLINK, TIMER_COARSE_STEP, TIMER_DEFAULT_MIN, TIMER_FINE_UNTIL, TIMER_MAX, Timer,
+    TimerRun, step_minutes,
 };
-pub use vote::{VOTES_DEFAULT, VOTES_MAX, VoteSession, VoteSetup, results as vote_results, vote_range, votable};
+pub use vote::{
+    VOTES_DEFAULT, VOTES_MAX, VoteSession, VoteSetup, results as vote_results, votable, vote_range,
+};
 
 /// Tamanho de uma forma criada com um clique (sem arrastar), em unidades do MUNDO — o formato
 /// paisagem de uma caixa de fluxograma.

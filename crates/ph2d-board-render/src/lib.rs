@@ -6,6 +6,7 @@
 //! ⚠️ Reconstrói a cena a cada quadro, recortando ao ecrã; o texto moldado vem da [`TextCache`].
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
 
+mod facilitate;
 mod frames;
 mod grid;
 mod mind;
@@ -14,6 +15,7 @@ mod sketch;
 mod tags;
 mod theme_ink;
 
+pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
 pub use grid::{dot_grid, grid_step_world};
 pub use theme_ink::ThemeInk;
@@ -66,6 +68,11 @@ pub struct RenderCache {
     frame: u64,
     /// O nível de detalhe de longe (W5) — parâmetro para as réguas compararem variantes.
     pub detail: Detail,
+    /// W7 — os selos do resultado escondidos (há uma votação aberta: o resultado anterior não a
+    /// influencia).
+    pub hide_votes: bool,
+    /// W7 — o menor e o maior total do quadro, pela revisão do documento.
+    vote_range: Option<(u64, Option<[u32; 2]>)>,
 }
 
 /// O contorno guardado de `owner` (refeito se a forma mudou) — uma função sobre o CAMPO, para o
@@ -177,6 +184,7 @@ pub fn paint(
     let chains = frames::Chains::new(&board.doc, &shown, &far);
     let framed = board.doc.has_frames();
     let board_ink = cache.ink;
+    let range = cache.vote_range(&board.doc);
     for el in board.doc.live_in_z_order() {
         if framed {
             if el.as_frame().is_some() {
@@ -278,6 +286,15 @@ pub fn paint(
             sel_of(el.id),
         );
         mind::paint_badge(scene, ts, cache, board, el, v);
+        facilitate::paint_marks(
+            scene,
+            ts,
+            &mut cache.text,
+            board.id.0,
+            el,
+            v * to_world(el),
+            range,
+        );
     }
     clips.close(scene);
     frames::paint_titles(scene, ts, cache, board, area, &frames, &chains, theme);

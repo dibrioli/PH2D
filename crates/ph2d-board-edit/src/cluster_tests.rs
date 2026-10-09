@@ -31,8 +31,12 @@ impl World {
             .iter()
             .map(|f| {
                 let el = self.el(*f);
-                let mut kids: Vec<&Element> =
-                    self.doc.descendants(*f).iter().map(|id| self.el(*id)).collect();
+                let mut kids: Vec<&Element> = self
+                    .doc
+                    .descendants(*f)
+                    .iter()
+                    .map(|id| self.el(*id))
+                    .collect();
                 kids.sort_by(|a, b| a.y.total_cmp(&b.y).then(a.x.total_cmp(&b.x)));
                 (
                     el.as_frame().unwrap().name.clone(),
@@ -78,26 +82,52 @@ fn the_cluster_grid_is_the_measured_one() {
     assert!(w.cluster(&all, ClusterBy::Color));
     let c = w.clusters();
     assert_eq!(c.len(), 2);
-    assert!(c.iter().all(|(n, _, _)| n.is_empty()), "C5: por cor não há título");
+    assert!(
+        c.iter().all(|(n, _, _)| n.is_empty()),
+        "C5: por cor não há título"
+    );
     // A verde aparece primeiro na leitura (está mais acima) ⇒ o 1.º frame, no canto da selecção.
     let (_, gk, g) = &c[0];
     assert_eq!(*gk, [green]);
-    assert_eq!([g[0], g[1]], [100.0, 50.0], "C2: o canto superior esquerdo da selecção");
+    assert_eq!(
+        [g[0], g[1]],
+        [100.0, 50.0],
+        "C2: o canto superior esquerdo da selecção"
+    );
     let [px, pt, pb] = CLUSTER_PAD.map(|f| f * S);
     assert!(close(g[2], 2.0 * px + S) && close(g[3], pt + S + pb));
     let (_, yk, y) = &c[1];
-    assert!(close(y[0], g[0] + g[2] + CLUSTER_BETWEEN * S), "o vão entre frames");
+    assert!(
+        close(y[0], g[0] + g[2] + CLUSTER_BETWEEN * S),
+        "o vão entre frames"
+    );
     assert!(close(y[1], g[1]), "alinhados em cima");
     let [gx, gy] = CLUSTER_GAP.map(|f| f * S);
-    assert!(close(y[2], 2.0 * px + 3.0 * S + 2.0 * gx), "5 notas → 3 colunas");
+    assert!(
+        close(y[2], 2.0 * px + 3.0 * S + 2.0 * gx),
+        "5 notas → 3 colunas"
+    );
     assert!(close(y[3], pt + 2.0 * S + gy + pb), "… e 2 filas");
     let first = w.el(yk[0]);
     assert!(close(first.x, y[0] + px) && close(first.y, y[1] + pt));
     let fourth = w.el(yk[3]);
     assert!(close(fourth.y, y[1] + pt + S + gy) && close(fourth.x, first.x));
-    assert!(yk.iter().all(|id| w.el(*id).frame == Some(w.ed.selection().iter().copied().find(|f| w.doc.descendants(*f).contains(id)).unwrap())));
+    assert!(yk.iter().all(|id| {
+        w.el(*id).frame
+            == Some(
+                w.ed.selection()
+                    .iter()
+                    .copied()
+                    .find(|f| w.doc.descendants(*f).contains(id))
+                    .unwrap(),
+            )
+    }));
     assert!(w.cmd(Command::Undo));
-    assert_eq!(w.doc.live_len(), 6, "UM passo: os frames saem e as notas voltam");
+    assert_eq!(
+        w.doc.live_len(),
+        6,
+        "UM passo: os frames saem e as notas voltam"
+    );
     assert!(close(w.el(green).x, 100.0));
 }
 
@@ -130,7 +160,10 @@ fn a_note_with_two_tags_is_in_two_clusters() {
     let b = w.sticky([300.0, 0.0], "none", 1, &[]);
     assert!(w.cluster(&[a, b], ClusterBy::Tag));
     let c = w.clusters();
-    assert_eq!(c.iter().map(|c| c.0.as_str()).collect::<Vec<_>>(), ["Q1", "Q2", "no tag"]);
+    assert_eq!(
+        c.iter().map(|c| c.0.as_str()).collect::<Vec<_>>(),
+        ["Q1", "Q2", "no tag"]
+    );
     assert_eq!(c[0].1, [a]);
     let copy = c[1].1[0];
     assert_ne!(copy, a);
@@ -165,9 +198,17 @@ fn notes_sharing_a_root_cluster_together() {
     assert!(w.cluster(&ids, ClusterBy::Keyword));
     let c = w.clusters();
     let groups: Vec<Vec<String>> = c.iter().map(|g| w.texts(&g.1)).collect();
-    assert_eq!(groups[0], [texts[0], texts[1], texts[2]], "build: três notas, a maior");
+    assert_eq!(
+        groups[0],
+        [texts[0], texts[1], texts[2]],
+        "build: três notas, a maior"
+    );
     assert_eq!(groups[1], [texts[3], texts[4]], "pair (pairing/Pair)");
-    assert_eq!(groups[2], [texts[5], texts[6]], "team (Team/team’s) — as soltas que sobram");
+    assert_eq!(
+        groups[2],
+        [texts[5], texts[6]],
+        "team (Team/team’s) — as soltas que sobram"
+    );
     assert_eq!(groups[3], [texts[7]], "o resto");
     assert_eq!(c[3].0, "#uncategorized");
 }

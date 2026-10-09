@@ -13,6 +13,8 @@ pub use ph2d_board_model::BoardSet;
 use ph2d_board_model::{Board, BoardId, History};
 use std::collections::BTreeMap;
 
+#[path = "documents_fac.rs"]
+pub(crate) mod fac;
 #[path = "documents_nav.rs"]
 pub(crate) mod nav;
 
@@ -57,6 +59,8 @@ pub(crate) struct BoardLive {
     pub(crate) notice: Option<(&'static str, std::time::Instant)>,
     /// A navegação (W5): minimapa, painel de Frames, busca, etiquetas, links.
     pub(crate) nav: nav::Nav,
+    /// A facilitação (W7): cronómetros, votações, painéis.
+    pub(crate) fac: fac::Fac,
 }
 
 impl std::fmt::Debug for BoardLive {
@@ -77,6 +81,12 @@ pub(crate) struct TabDrag {
 }
 
 impl Documents {
+    /// W7 — a campainha de um cronómetro de quadro que chegou a zero (F6), tirada UMA vez: a shell
+    /// toca-a. É um ALARME que o facilitador armou, não um som de UI.
+    pub fn take_chime(&mut self) -> bool {
+        std::mem::take(&mut self.live.fac.chime)
+    }
+
     /// Todos os quadros, na ordem das abas — o que a shell grava.
     #[must_use]
     pub fn boards(&self) -> &BoardSet {

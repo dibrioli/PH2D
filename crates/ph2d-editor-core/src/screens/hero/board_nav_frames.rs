@@ -47,9 +47,14 @@ fn row_h() -> f32 {
     Spacing::Xl2.px()
 }
 
+/// A largura do painel (a coluna da facilitação encosta-se à esquerda dele).
+pub(crate) fn panel_width() -> f32 {
+    Spacing::Xl4.px() * WIDTH_STEPS
+}
+
 /// O painel: à direita, em cima.
 fn panel_rect(area: Rect, rows: usize) -> Rect {
-    let w = Spacing::Xl4.px() * WIDTH_STEPS;
+    let w = panel_width();
     let h = (rows as f32 + 1.0) * row_h();
     let top = area.y + Spacing::Md.px();
     let room = (area.h - 2.0 * Spacing::Md.px()).max(row_h());

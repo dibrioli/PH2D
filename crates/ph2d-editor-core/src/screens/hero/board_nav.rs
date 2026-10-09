@@ -17,6 +17,9 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
+/// A facilitação (W7): o cartão do cronómetro e o painel da votação.
+#[path = "board_facilitate.rs"]
+pub mod facilitate;
 #[path = "board_nav_frames.rs"]
 mod frames;
 #[path = "board_nav_minimap.rs"]
@@ -24,6 +27,7 @@ mod minimap;
 #[path = "board_nav_search.rs"]
 mod search;
 
+pub(crate) use frames::panel_width as frames_panel_width;
 pub use frames::{Part as RowPart, row_node};
 pub use minimap::minimap_rect;
 pub use search::{board_tags, chip_node, find, open_tag_field};
@@ -103,6 +107,7 @@ pub fn populate(store: &mut WidgetStore) {
         register(store, id);
         store.set_tooltip(id, ph2d_i18n::tr(key));
     }
+    facilitate::populate(store);
 }
 
 fn button_key(b: NavButton) -> &'static str {
@@ -237,7 +242,10 @@ pub fn key(
 
 /// ⭐ Os cliques da navegação. Corre no pré-despacho (ids derivados).
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
-    if search::apply_event(hero, event) || frames::apply_event(hero, event) {
+    if search::apply_event(hero, event)
+        || frames::apply_event(hero, event)
+        || facilitate::apply_event(hero, event)
+    {
         return true;
     }
     let (WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)) = event else {
@@ -290,6 +298,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     paint_links(hero, a, scene, theme);
     minimap::paint(hero, area, scene, theme);
     frames::paint(hero, area, scene, ts, theme);
+    facilitate::paint(hero, area, scene, ts);
     search::paint_fields(hero, area, scene, ts, theme);
     let open = {
         let n = &hero.documents.live.nav;

@@ -239,11 +239,15 @@ pub fn paint_hero_screen(
             // O que se desenha por cima vem ANTES: ele ajusta as notas que nasceram por ajustar,
             // e o quadro desenha-as já com a altura certa.
             let overlay = ed.overlay(&mut board.doc, text_system);
+            // W7 — com uma votação aberta o resultado anterior esconde-se; os `+` vão por cima.
+            let marks = ed.vote_marks(&board.doc);
+            live.render_cache.hide_votes = ed.vote().is_some();
             let routes = ed.routes(&board.doc);
             let cache = &mut live.render_cache;
             let text = overlay.text.as_ref();
             ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes, text);
             ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
+            ph2d_board_render::paint_votes(board, area, scene, text_system, cache, &marks);
         }
         super::board_nav::paint(hero, r, scene, text_system);
         super::board_bar::paint(hero, r, scene, text_system);

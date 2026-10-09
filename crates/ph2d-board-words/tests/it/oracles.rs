@@ -26,7 +26,12 @@ fn stems_match_libstemmer() {
         }
     }
     assert!(n > 7_000, "li só {n} palavras — a fixture partiu-se");
-    assert!(bad.is_empty(), "{} raízes diferentes da libstemmer:\n{}", bad.len(), bad.join("\n"));
+    assert!(
+        bad.is_empty(),
+        "{} raízes diferentes da libstemmer:\n{}",
+        bad.len(),
+        bad.join("\n")
+    );
 }
 
 /// ⭐ A segmentação = o `Intl.Segmenter` do Node 24.19 (ICU 78.3, Unicode 17) sobre as 20 notas das

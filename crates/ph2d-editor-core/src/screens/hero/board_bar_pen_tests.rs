@@ -198,10 +198,14 @@ impl T {
     /// tomar chega à barra. (O `click_bar` fala directamente com a barra e salta esse passo — por isso
     /// nunca viu o defeito de 07/10.)
     pub(super) fn shell_click_bar(&mut self, item: Item) {
-        let id = node(item);
+        self.shell_click_id(node(item), &format!("{item:?}"));
+    }
+
+    /// O mesmo para qualquer controlo pintado (o cartão do cronómetro, o painel da votação — W7).
+    pub(super) fn shell_click_id(&mut self, id: NodeId, what: &str) {
         let (x, y) = self
             .find(id)
-            .unwrap_or_else(|| panic!("{item:?} não está pintado"));
+            .unwrap_or_else(|| panic!("{what} não está pintado"));
         let on_canvas =
             self.hero.chrome_panel_at(x, y).is_none() && self.hero.chrome_hit(x, y).is_none();
         assert!(!on_canvas, "um botão da barra não é quadro");

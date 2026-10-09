@@ -41,6 +41,79 @@ pub struct StampCount {
     pub count: u32,
 }
 
+/// V2 — o `+` de votar: Ø em fracção do lado do objecto, com o centro NO canto inferior direito
+/// (`vote_03` do help do Miro: 49 px numa nota de 236, ±1 px do canto).
+pub const VOTE_PLUS: f64 = 0.21;
+/// V5 — o selo do resultado: Ø do MENOR e do MAIOR total, em fracção do lado (`vote_05`: 52 e 80 px
+/// numa nota de 236 — 1 e 2 votos), linear entre os dois.
+pub const VOTE_BADGE: [f64; 2] = [0.22, 0.34];
+/// V5 — o centro do selo sai do canto inferior direito por esta fracção do lado, nos dois eixos
+/// (`vote_05`: +6,5/+5 e +7,5/+8,5 px numa nota de 236).
+pub const VOTE_BADGE_OUT: f64 = 0.03;
+/// S3 — a ficha de um carimbo: a altura em fracção do lado e o vão entre fichas e até à nota. ⚠️
+/// Escolha (o Miro não mostra o emoji na nota numa imagem medível): a ficha lê-se a 100 % e cabem
+/// quatro de um algarismo numa nota quadrada.
+pub const STAMP_CHIP_H: f64 = 0.16;
+pub const STAMP_CHIP_GAP: f64 = 0.03;
+/// S3 — a largura de uma ficha por altura: o ícone e as folgas, mais cada algarismo da contagem (a
+/// conta é a mesma para quem desenha e para quem acerta o clique).
+pub const STAMP_CHIP_BASE: f64 = 1.05;
+pub const STAMP_CHIP_DIGIT: f64 = 0.36;
+
+/// O lado de que as fracções da facilitação partem: o MENOR da caixa (a nota larga mede-se pela
+/// altura, como a quadrada).
+#[must_use]
+pub fn mark_side(el: &Element) -> f64 {
+    el.w.min(el.h)
+}
+
+/// V2 — o centro e o Ø do `+` de votar, no referencial da caixa do elemento (origem no canto superior
+/// esquerdo, antes de rodar).
+#[must_use]
+pub fn vote_plus(el: &Element) -> ([f64; 2], f64) {
+    ([el.w, el.h], mark_side(el) * VOTE_PLUS)
+}
+
+/// V5 — o centro e o Ø do selo de `count` votos, quando os totais do quadro vão de `lo` a `hi`, no
+/// referencial da caixa.
+#[must_use]
+pub fn vote_badge(el: &Element, count: u32, [lo, hi]: [u32; 2]) -> ([f64; 2], f64) {
+    let s = mark_side(el);
+    let t = if hi > lo {
+        f64::from(count.saturating_sub(lo)) / f64::from(hi - lo)
+    } else {
+        1.0
+    };
+    let d = s * (VOTE_BADGE[0] + (VOTE_BADGE[1] - VOTE_BADGE[0]) * t.clamp(0.0, 1.0));
+    let out = s * VOTE_BADGE_OUT;
+    ([el.w + out, el.h + out], d)
+}
+
+/// Quantos algarismos tem `n` (a largura da ficha).
+#[must_use]
+pub fn digits(n: u32) -> usize {
+    n.checked_ilog10().map_or(1, |l| l as usize + 1)
+}
+
+/// S3 — as fichas dos carimbos de `el`, por baixo dela, da esquerda, em filas da largura dela:
+/// `(carimbo, [x0, y0, x1, y1])` no referencial da caixa.
+#[must_use]
+pub fn stamp_chips(el: &Element) -> Vec<(StampCount, [f64; 4])> {
+    let s = mark_side(el);
+    let (h, gap) = (s * STAMP_CHIP_H, s * STAMP_CHIP_GAP);
+    let (mut x, mut y) = (0.0, el.h + gap);
+    let mut out = Vec::new();
+    for c in el.stamps() {
+        let w = h * (STAMP_CHIP_BASE + STAMP_CHIP_DIGIT * digits(c.count) as f64);
+        if x > 0.0 && x + w > el.w {
+            (x, y) = (0.0, y + h + gap);
+        }
+        out.push((*c, [x, y, x + w, y + h]));
+        x += w + gap;
+    }
+    out
+}
+
 impl Element {
     /// O total do último resultado de votação neste objecto (V4; `0` = nenhum).
     #[must_use]

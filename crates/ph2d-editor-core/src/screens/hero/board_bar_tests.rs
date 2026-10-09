@@ -493,3 +493,6 @@ mod mind;
 
 #[path = "board_nav_tests.rs"]
 mod nav;
+
+#[path = "board_bar_facilitate_tests.rs"]
+mod facilitate;

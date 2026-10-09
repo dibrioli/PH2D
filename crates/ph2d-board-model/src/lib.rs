@@ -27,7 +27,11 @@ pub use connector::{Anchor, Connector, End, Head, Route};
 pub use element::{
     BoardDoc, Dash, Element, ElementId, ElementKind, Rgba, Shape, ShapeType, Style, rotate_about,
 };
-pub use facilitate::{Stamp, StampCount};
+pub use facilitate::{
+    STAMP_CHIP_BASE, STAMP_CHIP_DIGIT, STAMP_CHIP_GAP, STAMP_CHIP_H, Stamp, StampCount, VOTE_BADGE,
+    VOTE_BADGE_OUT, VOTE_PLUS, digits as count_digits, mark_side, stamp_chips, vote_badge,
+    vote_plus,
+};
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};
 pub use ink::{Ink, Pen};

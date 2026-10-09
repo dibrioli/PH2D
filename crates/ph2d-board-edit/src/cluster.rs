@@ -91,10 +91,18 @@ impl Editor {
             .fold(0.0, f64::max);
         let [gx, gy] = CLUSTER_GAP.map(|f| f * s);
         let [px, pt, pb] = CLUSTER_PAD.map(|f| f * s);
-        let x0 = notes.iter().map(|e| e.aabb()[0]).fold(f64::INFINITY, f64::min);
-        let y0 = notes.iter().map(|e| e.aabb()[1]).fold(f64::INFINITY, f64::min);
+        let x0 = notes
+            .iter()
+            .map(|e| e.aabb()[0])
+            .fold(f64::INFINITY, f64::min);
+        let y0 = notes
+            .iter()
+            .map(|e| e.aabb()[1])
+            .fold(f64::INFINITY, f64::min);
         // Todas na mesma casa ⇒ os frames novos moram nela.
-        let home = notes[0].frame.filter(|f| notes.iter().all(|e| e.frame == Some(*f)));
+        let home = notes[0]
+            .frame
+            .filter(|f| notes.iter().all(|e| e.frame == Some(*f)));
         let mut z = doc.z_on_top();
         let mut next_z = || {
             let k = z.clone();

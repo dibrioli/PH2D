@@ -2,7 +2,7 @@
 //! de LOC): o balão de cada controlo, o que está seleccionado, e os ícones — o contorno da forma e a
 //! seta desenhados com a MESMA geometria do quadro.
 
-use super::{HEADS, Item, Selected};
+use super::{FONT_SIZES, HEADS, Item, OPACITIES, Selected, WIDTHS, palette};
 use crate::zones::Rect;
 use ph2d_board_edit::{Editor, Frame, Tool};
 use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, Shape, ShapeType, Style};
@@ -19,6 +19,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         .or_else(|| super::pen::tooltip_key(it))
         .or_else(|| super::organize::tooltip_key(it))
         .or_else(|| super::mind::tooltip_key(it))
+        .or_else(|| super::fac::tooltip_key(it))
     {
         return Some(k);
     }
@@ -57,7 +58,8 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         | Item::Pen(_)
         | Item::Sketch
         | Item::Organize(_)
-        | Item::Mind(_) => return None,
+        | Item::Mind(_)
+        | Item::Fac(_) => return None,
     })
 }
 
@@ -304,4 +306,35 @@ pub(super) fn ink(_theme: Theme) -> Rgba {
 /// Como o quadro desenhará a cor `c` neste tema (o quadradinho mostra o que o quadro vai mostrar).
 pub(super) fn shown(c: Rgba, theme: Theme) -> Color {
     ph2d_board_render::ThemeInk::of(theme).color(c)
+}
+
+/// A cor de documento de um item de cor.
+pub(super) fn swatch(it: Item, theme: Theme) -> Option<Rgba> {
+    match it {
+        Item::Fill(Some(i)) | Item::Stroke(Some(Some(i))) => Some(palette(i)),
+        Item::Stroke(Some(None)) => Some(ink(theme)),
+        _ => None,
+    }
+}
+
+pub(super) fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
+    Color::from_rgba8(r, g, b, a) // LITERAL-COLOR-OK: cor do DOCUMENTO (dado do artista), não da UI
+}
+
+/// O item corresponde ao estilo actual da selecção?
+pub(super) fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: Theme) -> bool {
+    match it {
+        Item::Route(r) => arrow.is_some_and(|c| c.route == r),
+        Item::Head(i, h) => arrow.is_some_and(|c| c.heads[i] == h),
+        Item::Fill(None) => s.fill.is_none(),
+        Item::Fill(Some(_)) => s.fill == swatch(it, theme),
+        Item::Stroke(None) => s.stroke.is_none(),
+        Item::Stroke(Some(_)) => s.stroke == swatch(it, theme),
+        Item::Width(i) => s.stroke_width == WIDTHS[i],
+        Item::Dash(d) => s.dash == d,
+        Item::Round(r) => s.round == r,
+        Item::Opacity(i) => s.opacity == OPACITIES[i],
+        Item::Font(i) => s.font_size == FONT_SIZES[i],
+        _ => false,
+    }
 }

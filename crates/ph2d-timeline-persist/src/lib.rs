@@ -131,7 +131,7 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     ph2d_ecs::assign_missing_stable_ids(world);
     // ⭐ As cópias do EDITOR (Duplicate, Make, Instantiate, colocar um prefab) levam a Animação
     // PRÓPRIA (escolha do dono, 08/10) — anunciadas pelas portas de cópia (`SubtreeCopies`).
-    let copias = ph2d_ecs::take_copies(world);
+    let copias = ph2d_ecs::take_copies(world, ph2d_ecs::CopyReader::Timeline);
     if !copias.is_empty() {
         copy_animations(timeline, &copias);
     }

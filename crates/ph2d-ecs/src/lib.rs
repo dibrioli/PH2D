@@ -62,6 +62,8 @@ pub mod emissive;
 /// como componente (o idioma delas é `instantiate()` em código).
 pub mod factory;
 pub mod flip_object_ref;
+/// ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5).
+pub mod motion_generator;
 /// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
 pub mod instantiate;
@@ -171,6 +173,7 @@ pub use factory::{
     reconcile_factories, tick_factories,
 };
 pub use flip_object_ref::FlipObjectRef;
+pub use motion_generator::MotionGenerator;
 pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
 mod subtree_copies;
 pub use instantiate::{
@@ -237,7 +240,7 @@ pub use stable_id::{
     StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_for_name,
     stable_id_of,
 };
-pub use subtree_copies::{SubtreeCopies, announce_copy, take_copies};
+pub use subtree_copies::{CopyReader, SubtreeCopies, announce_copy, take_copies};
 pub use tags::Tags;
 pub use timer::{
     TIMER_MAX_US, TIMER_NAME_MAX_BYTES, TIMERS_MAX, Timer, TimerOutcome, TimerRuntime, TimerState,

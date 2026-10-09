@@ -130,7 +130,7 @@ fn a_copia_que_o_editor_anuncia_leva_a_animacao_no_quadro_seguinte() {
         "a cópia ganhou clips próprios"
     );
     assert!(
-        ph2d_ecs::take_copies(sim.world_mut()).is_empty(),
+        ph2d_ecs::take_copies(sim.world_mut(), ph2d_ecs::CopyReader::Timeline).is_empty(),
         "o anúncio foi drenado"
     );
     assert_eq!(

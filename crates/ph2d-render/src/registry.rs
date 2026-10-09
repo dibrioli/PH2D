@@ -112,7 +112,9 @@ mod tests {
         //   `Sculpt3dPieceRef` e `Mesh3D`. Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-10-05: `107` -> `106`, delta -1** -- o `VecObject` sai (spec/06 F3 ▸ Vector,
         //   2.ª volta: cada forma é um objecto). Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 106);
+        // ⚠️ **2026-10-08: `106` -> `107`, delta +1** -- o `MotionGenerator` (o objecto Motion,
+        //   doc ObjectsAndComponents 01 §13, F5). Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 107);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

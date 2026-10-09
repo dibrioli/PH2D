@@ -389,6 +389,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0114: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
     // save perderia o vínculo objeto↔entidade e o load duplicaria os objetos Flip.
     reg.register_default::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
+    // ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5): sem ele o save perderia QUEM é
+    // gerador, e os nós do MotionDoc (donos por `StableId`) ficariam sem objecto.
+    reg.register_default::<crate::MotionGenerator>("ph2d::ecs::MotionGenerator");
     // Live Shapes: os parâmetros de uma forma paramétrica viva (a geometria é
     // derivada deles). Sem registrar, um save/undo perderia a "forma-ness" e o texto
     // não saberia se re-cozinhar / converter em curvas.

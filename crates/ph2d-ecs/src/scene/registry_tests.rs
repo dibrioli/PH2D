@@ -237,8 +237,11 @@ fn register_ecs_components_populates_registry() {
     //   `Sculpt3dPieceRef` e `Mesh3D` deixam o registo. Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-05: `106` -> `105`, delta -1** -- o `VecObject` sai (spec/06 F3 ▸ Vector, 2.ª
     //   volta: o dono retira o contentor; cada forma é um objecto). Conte o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 105);
+    // ⚠️ **2026-10-08: `105` -> `106`, delta +1** -- o `MotionGenerator` (o objecto Motion, doc
+    //   ObjectsAndComponents 01 §13, F5). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 106);
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
+    assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ShakeEmitter").is_some());

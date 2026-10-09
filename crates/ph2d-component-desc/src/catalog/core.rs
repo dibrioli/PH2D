@@ -252,6 +252,15 @@ pub const DESCS: &[D] = &[
         C::Instancing,
         &[],
     ),
+    // ⭐ **O objecto Motion** (doc ObjectsAndComponents 01 §13, F5) — chega com o gesto que o cria
+    // (Add ▸ Motion) e é marcador do tipo [`crate::ObjectKind::Motion`]; anexá-lo pela paleta faria
+    // um gerador sem nós.
+    D::intrinsic(
+        "ph2d::ecs::MotionGenerator",
+        "component.motion_generator.name",
+        C::Animation,
+        &[],
+    ),
     D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME),
     // ⭐ **As EXCEPÇÕES de uma instância** (ADR-0164 / F4.4) — o conjunto de `(peça, componente)`
     // que a cópia possui contra a receita.

@@ -360,17 +360,21 @@ pub enum ObjectKind {
     Painted,
     /// O esqueleto (`ph2d::skeleton::Skeleton`): os ossos são as partes dele (A14).
     Skeleton,
+    /// ⭐ Um gerador do Motion Nodes (`ph2d::ecs::MotionGenerator`): os nós são dele, os moldes são
+    /// os filhos (doc ObjectsAndComponents 01 §13, F5).
+    Motion,
 }
 
 impl ObjectKind {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectKind; 6] = [
+    pub const ALL: [ObjectKind; 7] = [
         ObjectKind::Empty,
         ObjectKind::Image,
         ObjectKind::Vector,
         ObjectKind::Flip,
         ObjectKind::Painted,
         ObjectKind::Skeleton,
+        ObjectKind::Motion,
     ];
 
     /// O rótulo que o artista lê no filtro da paleta. Inglês (HR-15).
@@ -383,6 +387,7 @@ impl ObjectKind {
             ObjectKind::Flip => "component.object_kind.flip",
             ObjectKind::Painted => "component.object_kind.painted",
             ObjectKind::Skeleton => "component.object_kind.skeleton",
+            ObjectKind::Motion => "component.object_kind.motion",
         }
     }
 
@@ -400,6 +405,7 @@ impl ObjectKind {
             ObjectKind::Flip => Some("ph2d::ecs::FlipObjectRef"),
             ObjectKind::Painted => Some("ph2d::ecs::PaintedDoc"),
             ObjectKind::Skeleton => Some("ph2d::skeleton::Skeleton"),
+            ObjectKind::Motion => Some("ph2d::ecs::MotionGenerator"),
         }
     }
 
@@ -425,12 +431,17 @@ impl ObjectKinds {
     /// Só vetor.
     pub const VECTOR: ObjectKinds = ObjectKinds(ObjectKind::Vector.bit());
 
-    /// Qualquer objeto que tenha uma forma visível — tudo menos [`ObjectKind::Empty`] e
-    /// [`ObjectKind::Skeleton`]. É a resposta certa para o que precisa de algo para desenhar
-    /// (blend, máscara, camada de visibilidade): um vazio ou um esqueleto não têm pixels a
-    /// misturar (os ossos são overlay do editor).
-    pub const DRAWABLE: ObjectKinds =
-        ObjectKinds(ObjectKinds::ANY.0 & !ObjectKind::Empty.bit() & !ObjectKind::Skeleton.bit());
+    /// Qualquer objeto que tenha uma forma visível — tudo menos [`ObjectKind::Empty`],
+    /// [`ObjectKind::Skeleton`] e [`ObjectKind::Motion`]. É a resposta certa para o que precisa de
+    /// algo para desenhar (blend, máscara, camada de visibilidade): um vazio ou um esqueleto não têm
+    /// pixels a misturar (os ossos são overlay do editor), e o que um Motion desenha é o fluxo dos
+    /// sinks dele, não pixels da entidade.
+    pub const DRAWABLE: ObjectKinds = ObjectKinds(
+        ObjectKinds::ANY.0
+            & !ObjectKind::Empty.bit()
+            & !ObjectKind::Skeleton.bit()
+            & !ObjectKind::Motion.bit(),
+    );
 
     /// Constrói a partir de uma lista.
     #[must_use]

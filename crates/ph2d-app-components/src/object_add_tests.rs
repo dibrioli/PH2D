@@ -157,6 +157,9 @@ fn every_marker_derives_its_kind() {
             ObjectKind::Skeleton => {
                 e.insert(ph2d_skeleton_ecs::Skeleton);
             }
+            ObjectKind::Motion => {
+                e.insert(ph2d_ecs::MotionGenerator);
+            }
         }
         let e = e.id();
         assert_eq!(kind_of(sim.world(), e), kind, "{kind:?}");

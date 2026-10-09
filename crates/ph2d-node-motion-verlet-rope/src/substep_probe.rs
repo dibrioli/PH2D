@@ -47,6 +47,7 @@ pub(crate) fn steady_stretch(
             [0.0, 0.0],
             1.0 / 60.0,
             &p,
+            None,
         );
         pos = np;
         prev = pp;
@@ -112,6 +113,7 @@ fn what_a_substep_costs() {
                     [0.0, 0.0],
                     1.0 / 60.0,
                     &p,
+                    None,
                 ));
             }
             let ms = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
@@ -171,7 +173,7 @@ pub(crate) fn travel(substeps: usize) -> f32 {
         // 1ª fixture ancorava no próprio ponto 0 e media uma corda CONGELADA
         // (`dx = -0,0000` em toda a varredura, inclusive no controle).
         let a = [k as f32 * 3.0 * dt, 0.0];
-        let (np, pp) = step(pos.clone(), &prev, &[], &[], a, [0.0, 0.0], dt, &p);
+        let (np, pp) = step(pos.clone(), &prev, &[], &[], a, [0.0, 0.0], dt, &p, None);
         pos = np;
         prev = pp;
     }
@@ -197,7 +199,17 @@ pub(crate) fn free_fall(substeps: usize) -> f32 {
     let mut prev = pos.clone();
     let start = pos[count - 1];
     for _ in 0..60 {
-        let (np, pp) = step(pos.clone(), &prev, &[], &[], [0.0, 0.0], [0.0, 0.0], dt, &p);
+        let (np, pp) = step(
+            pos.clone(),
+            &prev,
+            &[],
+            &[],
+            [0.0, 0.0],
+            [0.0, 0.0],
+            dt,
+            &p,
+            None,
+        );
         pos = np;
         prev = pp;
     }
@@ -257,7 +269,17 @@ fn measure_what_substeps_do_to_the_damping() {
             for k in 0..120 {
                 let t = k as f32 / 60.0;
                 let a = [(t * 6.0).sin() * 1.5, 0.0];
-                let (np, pp) = step(pos.clone(), &prev, &[], &[], a, [0.0, 0.0], 1.0 / 60.0, &p);
+                let (np, pp) = step(
+                    pos.clone(),
+                    &prev,
+                    &[],
+                    &[],
+                    a,
+                    [0.0, 0.0],
+                    1.0 / 60.0,
+                    &p,
+                    None,
+                );
                 pos = np;
                 prev = pp;
                 let y = pos[p.count - 1][1];

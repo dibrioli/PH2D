@@ -7105,6 +7105,7 @@ dependencies = [
 name = "ph2d-node-motion-verlet-rope"
 version = "0.0.0"
 dependencies = [
+ "ph2d-contact",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

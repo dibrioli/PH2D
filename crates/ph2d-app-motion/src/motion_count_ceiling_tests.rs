@@ -197,13 +197,13 @@ mod tests {
                 &[10_000.0, 100_000.0, 400_000.0],
                 None,
             ),
-            // O QUADRÁTICO — best-candidate blue noise (Mitchell): `nearest_sq` varre todos os
-            // pontos já postos, logo O(count² × CANDIDATES). A varredura cerca o quadro de 60 fps.
+            // O best-candidate blue noise (Mitchell) — LINEAR desde a `NearGrid` (2026-09-05; o
+            // tecto digitável de `3 000` media o quadrático de antes, doc 125 §3).
             (
                 "motion.scatter",
                 "count",
                 &[],
-                &[2_000.0, 3_000.0, 4_000.0, 6_000.0],
+                &[3_000.0, 10_000.0, 32_768.0],
                 None,
             ),
             // Os MULTIPLICADORES — leem um stream e o repetem. A fonte é declarada (100

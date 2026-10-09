@@ -131,3 +131,32 @@ fn the_chip_lands_inside_the_canvas_not_the_window() {
         "a ficha saiu do canvas: {at:?} contra {canvas:?}"
     );
 }
+
+/// ⭐⭐ **A ficha PINTA o texto inteiro que ela mediu** (doc 125 §8, a legenda da cena `=130`).
+///
+/// ⛔ A largura sai do `prefix_width` mais a folga da ficha (`CHIP_PAD_X_PX`), e o pintor pedia o
+/// orçamento de um RÓTULO (`label_budget`, que desconta `Spacing::Md` de cada lado): a folga
+/// contada duas vezes à mão divergia, e toda ficha perdia as últimas letras para uma reticência —
+/// `«SEM Collide»` saía `«SEM Col…»`. A régua é o que a elisão ESCOLHE para o orçamento que a
+/// ficha dá ao texto, sobre as fichas que o app de facto desenha.
+#[test]
+fn a_chip_paints_the_whole_text_it_measured() {
+    let mut t = ts();
+    for s in [
+        "SEM Collide",
+        "COM Collide",
+        "-1234.5 px",
+        "+120.0, -45.0 px",
+        "\u{d7}1.20",
+        "+45.0\u{b0}",
+        "Collide DESLIGADO: as contas atravessam-se",
+    ] {
+        let w = chip_width(&mut t, s, 0.0);
+        let orcamento = chip_text_budget(&mut t, s, w);
+        let mostrado = crate::text_elide::fit(&mut t, s, CHIP_FONT_PX, orcamento);
+        assert_eq!(
+            mostrado, s,
+            "a ficha de {w:.1} px pinta {mostrado:?} em vez de {s:?}"
+        );
+    }
+}

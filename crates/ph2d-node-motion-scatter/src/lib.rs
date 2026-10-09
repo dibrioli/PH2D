@@ -44,8 +44,8 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 
 /// Random darts thrown per placed point; the farthest from the existing set wins.
 /// Mitchell's rule of thumb (`k ≈ current_count + 1`) is bounded here to a small
-/// constant — the blue-noise quality is already excellent and the cost stays
-/// `O(N²·K)` linear in K.
+/// constant — the blue-noise quality is already excellent, and with the [`NearGrid`]
+/// the cost is `O(N·K)`.
 const CANDIDATES: u32 = 12;
 
 /// A chave do param **da densidade graduada** — quanto a densidade cai do coração
@@ -208,6 +208,8 @@ impl NearGrid {
             // primeiros pontos) o `r` chega ao lado da grelha e isso sozinho era metade do
             // relógio.
             let visita = |cel: &Vec<u32>, best: &mut f32| {
+                #[cfg(test)]
+                VISITAS.with(|v| v.set(v.get() + cel.len() as u64));
                 for &i in cel {
                     let q = placed[i as usize];
                     let (dx, dy) = (p[0] - q[0], p[1] - q[1]);
@@ -255,6 +257,12 @@ impl NearGrid {
         }
         best
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Quantas distâncias a grelha mediu — a régua do custo que não lê o relógio.
+    static VISITAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// Lay out `count` blue-noise points in `region` (centred on the origin) by
@@ -340,25 +348,27 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
-/// **O teto DURO de `count` — e aqui ele é um limite de RECURSO, não um freio ergonômico** (doc 88
-/// A1 · §0). O blue noise por *best-candidate* (Mitchell) mede a distância de cada candidato a
-/// TODOS os pontos já postos (`nearest_sq`), logo o custo é **O(count² × CANDIDATES)** — inerente
-/// ao algoritmo, não um defeito. O cook mediu, pela porta do produto:
+/// **O teto DURO de `count` é o da CASA** ([`MAX_INSTANCIAS_POR_NO`]) — o MESMO número em que o
+/// `eval` corta, logo o que a caixa aceita é o que sai (doc 125 §3).
 ///
-/// | instâncias | cook |
-/// |---|---|
-/// | 2.000 | 5,190 ms |
-/// | **3.000** | **11,443 ms** |
-/// | 4.000 | 20,661 ms ← passa o quadro |
-/// | 6.000 | 44,512 ms |
+/// ⛔ **O `3 000` que aqui esteve media o algoritmo de ANTES da [`NearGrid`]** (doc 88 A1: `O(count²)`,
+/// `20,7 ms` a `4 000`), e a grelha de 2026-09-05 tornou-o LINEAR sem que a nota fosse reconferida —
+/// o tecto ficou a defender um custo que já não existia, e um `count` por fio acima dele passava na
+/// mesma. Medido no ciclo 16 (`measure_scatter_cost`, o mínimo de três, máquina calma):
 ///
-/// ⚠️ **O quadro de 60 fps quebra entre 3.000 e 4.000**, então o teto é **3.000** — e ele fica
-/// deliberadamente PERTO do soft de 2.000. Um teto redondo e generoso aqui (os 1.000.000 que os
-/// nós LINEARES desta mesma wave receberam) deixaria o artista digitar um número que **congela o
-/// app por minutos**: a 100.000 este cook custou **12,3 segundos**, e a 400.000, **208**.
+/// | pontos | release | debug |
+/// |---|---|---|
+/// | 3 000 | `1,99 ms` | `8,0 ms` |
+/// | 10 000 | `6,75 ms` | `27,1 ms` |
+/// | **32 768** | **`23,8 ms`** | `94,7 ms` |
+///
+/// `0,7 µs` por ponto em release, a qualquer contagem: o recurso é o tempo de UM cozimento (o nó é
+/// `Pure`, coze quando um param muda), e o gate `the_grid_keeps_the_work_per_point_flat` conta as
+/// distâncias em vez de ler o relógio.
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "count",
-    max: 3_000.0,
+    #[expect(clippy::cast_precision_loss, reason = "32 768 e' exacto num f32")]
+    max: MAX_INSTANCIAS_POR_NO as f32,
 }];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
@@ -613,13 +623,57 @@ mod grid_tests {
         }
     }
 
+    /// ⭐ **O tecto digitável é onde o `eval` corta** (doc 125 §3, o molde do `motion.kaleidoscope`):
+    /// a caixa de texto e um `value.*` ligado ao `count` dizem a mesma verdade.
+    #[test]
+    fn the_typed_ceiling_is_where_the_eval_clamps() {
+        let tecto = crate::PARAM_HARD_MAX
+            .iter()
+            .find(|h| h.param == "count")
+            .map(|h| h.max);
+        #[expect(clippy::cast_precision_loss, reason = "32 768 e' exacto num f32")]
+        let corte = super::MAX_INSTANCIAS_POR_NO as f32;
+        assert_eq!(
+            tecto,
+            Some(corte),
+            "o digitavel do `count` e o corte do `eval`"
+        );
+    }
+
+    /// ⭐ **O trabalho por ponto é PLANO até ao tecto da casa** (doc 125 §3) — contado em distâncias
+    /// medidas, não no relógio: o tecto digitável é `MAX_INSTANCIAS_POR_NO`, e o que o defende é a
+    /// grelha não deixar o custo voltar a ser `O(count²)`.
+    #[test]
+    fn the_grid_keeps_the_work_per_point_flat() {
+        let por_ponto = |n: usize, w: f32, h: f32| {
+            super::VISITAS.with(|v| v.set(0));
+            assert_eq!(scatter(n, &Region::rect(w, h), 0.0, 1).len(), n);
+            super::VISITAS.with(std::cell::Cell::get) as f64 / n as f64
+        };
+        for (w, h) in [(4.0, 4.0), (12.0, 12.0), (40.0, 0.5)] {
+            let (a, b) = (
+                por_ponto(3_000, w, h),
+                por_ponto(super::MAX_INSTANCIAS_POR_NO, w, h),
+            );
+            eprintln!("caixa {w}x{h}: {a:.1} -> {b:.1} distancias por ponto");
+            assert!(
+                b <= a * 1.5,
+                "caixa {w}x{h}: o trabalho por ponto cresce com a contagem ({a:.1} -> {b:.1})"
+            );
+        }
+    }
+
     /// **A MEDIÇÃO da cura** — `#[ignore]`, para o número do doc ser reproduzível com um comando.
     ///
     /// `cargo test -p ph2d-node-motion-scatter --release -- --ignored --nocapture measure_scatter_cost`
     #[test]
     #[ignore = "medicao"]
     fn measure_scatter_cost() {
-        let region = Region::rect(800.0, 600.0);
+        let caixa: f32 = std::env::var("SCATTER_CAIXA")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(800.0);
+        let region = Region::rect(caixa, caixa * 0.75);
         eprintln!(
             "  load: {}",
             std::fs::read_to_string("/proc/loadavg")
@@ -627,7 +681,7 @@ mod grid_tests {
                 .trim()
         );
         eprintln!("  {:>8} │ {:>10} │ {:>12}", "pontos", "ms", "us/ponto");
-        for n in [500usize, 1_000, 5_000, 10_000, 50_000] {
+        for n in [500usize, 3_000, 10_000, 32_768, 50_000] {
             let mut melhor = f64::MAX;
             for _ in 0..3 {
                 let t = std::time::Instant::now();

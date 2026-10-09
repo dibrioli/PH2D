@@ -129,6 +129,10 @@ mod fio_vortex_demo;
 #[path = "motion_state_corpo_com_colisor_demo.rs"]
 mod corpo_com_colisor_demo;
 
+/// As cenas `=130`/`=131` — a corda com colisor (o Bug #16 fechado, doc 125). Ver o cabeçalho dela.
+#[path = "motion_state_corda_com_colisor_demo.rs"]
+mod corda_com_colisor_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

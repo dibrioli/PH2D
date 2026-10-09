@@ -94,3 +94,48 @@ fn a_frase_das_posicoes_diz_o_que_se_ve_e_o_que_falta() {
         );
     }
 }
+
+/// ⭐ **O `Collide` depois da corda leva o SELO ⚠ no cartão, e a frase diz o gesto** (doc 125 §2,
+/// a cena `=131`): o selo é o que o painel pinta (`inert_reaching_output`), a frase é a do
+/// `explain`, e o fio que ela pede (Shape → a porta `shape` da corda) tira o selo.
+#[test]
+fn a_collide_after_the_rope_gets_the_badge_and_the_rewire_clears_it() {
+    let mut m = MotionState::new();
+    let (saidas, _) = crate::motion_demo_legend::monta("131", &mut m.doc, &m.registry);
+    assert_eq!(saidas.len(), 1, "a cena 131 monta");
+    let id = |tipo: &str| {
+        m.doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == tipo)
+            .map(|n| n.id)
+            .expect("o no' da cena")
+    };
+    let (shape, corda) = (id("source.shape"), id("motion.verlet_rope"));
+    assert!(
+        inert_reaching_output(&m).contains(&shape.0),
+        "o cartao do Shape leva o selo"
+    );
+    let d = diagnose(&m.doc.graph, &m.registry)
+        .into_iter()
+        .find(|d| d.node == shape)
+        .expect("o diagnostico do Shape");
+    assert!(
+        explain(&d).contains("'shape' input"),
+        "a frase nomeia a porta do gesto: {}",
+        explain(&d)
+    );
+    m.doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (shape, 0),
+            to: (corda, 3),
+            delayed: false,
+        })
+        .expect("o fio do gesto");
+    assert!(
+        !inert_reaching_output(&m).contains(&shape.0),
+        "o fio tira o selo"
+    );
+}

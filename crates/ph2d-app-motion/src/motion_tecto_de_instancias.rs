@@ -507,10 +507,10 @@ fn conta_no_instante(
 /// do emissor só passa a comandar depois de o `rate` subir. Os outros ficam no valor modesto (os
 /// params de ITERAÇÃO no extremo foram o que matou as duas primeiras corridas do censo).
 ///
-/// ⛔ **`1e9` foi medido e recusado como extremo:** o `motion.scatter` honra no `eval` o tecto da
-/// casa mas o algoritmo dele é `O(count²)` (o tecto digitável dele é `3 000`, de recurso), e a
-/// corrida não acabou em `10` minutos. O que o `eval` faz a um número acima do digitável é a
-/// pergunta de cada crate (`the_mesh_never_passes_the_per_node_ceiling` e irmãos).
+/// ⛔ **`1e9` foi medido e recusado como extremo** (não acabou em `10` min) — e o culpado era o
+/// `motion.voronoi` (`~60 s`, o caminho de REFERÊNCIA da CPU, o [`LENTOS_NO_EXTREMO`]), não o
+/// `scatter` que esta nota acusava (linear; `sonda_cada_contagem_a_1e9_por_fio`, doc 125 §3.2). O
+/// que o `eval` faz acima do digitável é a pergunta de cada crate (`the_mesh_never_passes_…`).
 ///
 /// ⚠️ O cozimento é a `t = 10 s` num `Cook` novo: o emissor é uma janela do relógio (a `t = 0` não
 /// há ninguém vivo) e uma simulação semeia no primeiro cozimento.
@@ -692,3 +692,7 @@ fn nenhum_criador_passa_o_tecto_com_a_contagem_no_extremo() {
         acima.join("\n  ")
     );
 }
+
+#[cfg(test)]
+#[path = "motion_tecto_por_fio_probe.rs"]
+mod por_fio;

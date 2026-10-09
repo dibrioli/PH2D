@@ -106,6 +106,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: INST_VEC2,
         },
+        // ⭐ As PEÇAS (doc 125 §1): a aparência e o colisor declarado de cada nó (`Shape → Rope`).
+        // A ÚLTIMA porta, para `anchor_x`/`anchor_y`/`state` ficarem nos índices 0/1/2.
+        PortSpec {
+            name: "shape",
+            ty: INST_VEC2,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -241,6 +247,8 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 #[path = "colunas.rs"]
 mod colunas;
 use colunas::{accel_col, inv_mass_col, scalar_col, share, value_head, vec2_col};
+mod contacto;
+use contacto::Contacto;
 
 /// The simulation parameters resolved at eval (all arithmetic-ready).
 struct Params {
@@ -297,6 +305,7 @@ fn step(
     tail_pin: [f32; 2],
     dt: f32,
     p: &Params,
+    contacto: Option<&Contacto>,
 ) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
     let n = pos.len();
     // O peso efectivo: os pinos intrínsecos são massa infinita, o resto é o que a
@@ -331,7 +340,8 @@ fn step(
     // `a − (a − b)` **não** devolve `b` em IEEE-754 quando `a` e `b` estão longe
     // (o cancelamento arredonda), então re-escalar por `1` moveria os bits de
     // toda corda que já pendeu. O `to_vec()` é a identidade.
-    let sub = p.substeps.max(1);
+    let sub = contacto::sub_passos(&pos, prev, anchor, p, contacto);
+    let passo_max = contacto.and_then(Contacto::passo_max);
     let dts = dt / sub as f32;
     let mut prev_local: Vec<[f32; 2]> = if sub == 1 {
         prev.to_vec()
@@ -360,7 +370,9 @@ fn step(
     // deles produzia. Para um pino GENÉRICO é a linha inteira: sem alvo a que o
     // clampar, *não se mover* É o pino, e `prev_out` já guardou a posição de
     // entrada ⇒ a velocidade dele fica zero e ele segura para sempre.
-    for _ in 0..sub {
+    let cabeca = pos.first().copied().unwrap_or(anchor);
+    for s in 0..sub {
+        let (anchor, tail_pin) = contacto::alvos(contacto, cabeca, anchor, tail_pin, s, sub);
         let entry = pos.clone();
         for i in 0..n {
             if w[i] <= 0.0 {
@@ -385,6 +397,12 @@ fn step(
                 c[0] + (c[0] - pv[0]) * keep + a[0] * dt2 * w[i],
                 c[1] + (c[1] - pv[1]) * keep - ga * w[i] + a[1] * dt2 * w[i],
             ];
+            if let Some(m) = passo_max {
+                let d = contacto::dist(np, c);
+                if d > m {
+                    np = [c[0] + (np[0] - c[0]) * m / d, c[1] + (np[1] - c[1]) * m / d];
+                }
+            }
             // NaN/∞ guard (reference parity): a diverged point recovers at the anchor.
             if !(np[0].is_finite() && np[1].is_finite()) {
                 np = anchor;
@@ -433,6 +451,19 @@ fn step(
                     pos[i + 2] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
                 }
             }
+            // ⭐ O CONTACTO no laço das restrições (doc 125 §1): as peças que se tocam afastam-se
+            // na MESMA passagem em que a corrente se puxa, e o Verlet lê-o como velocidade.
+            if let Some(c) = contacto
+                && c.por_iteracao()
+            {
+                c.separa(&mut pos, &w);
+            }
+            pin(&mut pos, anchor, tail_pin, p);
+        }
+        if let Some(c) = contacto
+            && !c.por_iteracao()
+        {
+            c.separa(&mut pos, &w);
             pin(&mut pos, anchor, tail_pin, p);
         }
         prev_local = entry;
@@ -497,7 +528,13 @@ fn pin(pos: &mut [[f32; 2]], anchor: [f32; 2], tail_pin: [f32; 2], p: &Params) {
 
 /// The whole node as a pure function: seed on the first tick / a count change,
 /// else step. Returns the emitted stream (`P` + the `rope_prev`/`sim_t` state).
-fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stream {
+fn simulate(
+    anchor: [f32; 2],
+    state: &Stream,
+    playhead: f32,
+    p: &Params,
+    contacto: Option<&Contacto>,
+) -> Stream {
     let s_pos = vec2_col(state, "P");
     let s_prev = vec2_col(state, "rope_prev");
     // The tail's fixed point sits at PINNED_SPAN of the rope length along +x from
@@ -515,7 +552,9 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
         let accel = accel_col(state, p.count);
         let w = inv_mass_col(state, p.count);
-        step(s_pos, &s_prev, &accel, &w, anchor, tail_pin, dt, p)
+        step(
+            s_pos, &s_prev, &accel, &w, anchor, tail_pin, dt, p, contacto,
+        )
     } else {
         // Tick 0 (Empty state) or a count change → re-seed the strand.
         seed(anchor, p)
@@ -584,18 +623,22 @@ impl NodeOp for MotionVerletRope {
             value_head(&scalar_col(ctx.input(1), VALUE_COL)),
         ];
         let state = ctx.input(2);
-        let mut out = simulate(anchor, state, playhead, &p);
         // ⭐ A corda DECLARA ao colisor quem está junto (doc 124 §0.2): o repouso é a corrente
         // RECTA (a soma dos segmentos, a mesma pose da semente) e o corpo é o nó (`+ 1`: `0` =
         // nenhum). Os nós a menos de `r_i + r_j` na corda não se empurram — a restrição de
         // distância segura-os, e o colisor a empurrá-los lutava contra ela.
-        let n = out.count();
-        out.set("rest", Column::Vec2(seed([0.0, 0.0], &p).0));
+        let rest = seed([0.0, 0.0], &p).0;
         #[expect(clippy::cast_precision_loss, reason = "a chave de um no' e' pequena")]
-        out.set(
-            "body",
-            Column::Scalar(vec![(ctx.node_key() as f32) + 1.0; n]),
-        );
+        let body = (ctx.node_key() as f32) + 1.0;
+        // ⭐ As peças da porta `shape` trazem o colisor que DECLARAM (o `Collide` do Shape) e a
+        // aparência — ver o [`contacto`]. Sem porta (ou sem declaração), a corda de sempre.
+        let forma = ctx.input(3);
+        let contacto = Contacto::de(forma, p.count, rest.clone(), body);
+        let mut out = simulate(anchor, state, playhead, &p, contacto.as_ref());
+        let n = out.count();
+        out.set("rest", Column::Vec2(rest));
+        out.set("body", Column::Scalar(vec![body; n]));
+        contacto::veste(&mut out, forma);
         ctx.emit(out);
     }
 }
@@ -604,6 +647,8 @@ impl NodeOp for MotionVerletRope {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionVerletRope))?;
+    // doc 125 §1: a corda lê o colisor que as peças da porta `shape` declaram.
+    reg.register_declared_collider_reader(MANIFEST.id);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -646,3 +691,7 @@ mod substep_tests;
 #[cfg(test)]
 #[path = "substep_probe.rs"]
 mod substep_probe;
+
+#[cfg(test)]
+#[path = "contacto_probe.rs"]
+mod contacto_probe;

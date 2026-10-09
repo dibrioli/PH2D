@@ -97,6 +97,19 @@ fn atenuacao(s: &Stream, n: usize) -> Vec<f32> {
 }
 
 /// Os pesos de uma corrente, ou `1` para quem não os declara.
+/// ⭐ **Quem está junto no REPOUSO não colide** (doc 125 §2, o filtro do Bug #15): o `rest` e o
+/// `body` que um corpo publica (`motion.soft_body`, `motion.verlet_rope`). Sem eles o passe
+/// empurrava os vizinhos de um corpo de peças até ao diâmetro, e o DESENHO inchava. `None` sem as
+/// duas colunas ⇒ byte-idêntico.
+fn repouso(s: &Stream, n: usize) -> Option<(&[[f32; 2]], &[f32])> {
+    match (s.get("rest"), s.get("body")) {
+        (Some(Column::Vec2(r)), Some(Column::Scalar(b))) if r.len() == n && b.len() == n => {
+            Some((r.as_slice(), b.as_slice()))
+        }
+        _ => None,
+    }
+}
+
 fn pesos(s: &Stream, n: usize) -> Vec<f32> {
     match s.get(INV_MASS_COLUMN) {
         Some(Column::Scalar(v)) if v.len() == n => v
@@ -205,12 +218,12 @@ fn separa_contando(entrada: &Stream, varreduras: usize, r: &mut Relatorio) -> Op
     r.pecas = n;
     (r.candidatos, r.grandes) = crate::candidatos_e_grandes(&colisores, &pos, &w);
     r.duas_camadas = crate::grelha::duas_camadas_activas();
-    r.varreduras = crate::separate(
-        &mut pos,
-        &mut Saida { giro: &mut giro },
-        &Pecas::novas(&colisores, &w, &inv_i),
-        varreduras,
-    );
+    let pecas = Pecas::novas(&colisores, &w, &inv_i);
+    let pecas = match repouso(entrada, n) {
+        Some((rest, body)) => pecas.com_ligados(rest, body),
+        None => pecas,
+    };
+    r.varreduras = crate::separate(&mut pos, &mut Saida { giro: &mut giro }, &pecas, varreduras);
     // ⭐⭐ **A MISTURA, no fim — a lei do nó termo a termo** (doc 115 §15.1). `k = 1` (a coluna
     // ausente) devolve o que o motor deu, **ao bit**: o `if` é o que garante que nem a aritmética
     // de vírgula flutuante corre para quem não declara atenuação nenhuma.

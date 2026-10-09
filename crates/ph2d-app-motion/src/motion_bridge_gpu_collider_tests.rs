@@ -227,6 +227,8 @@ fn todo_leitor_do_colisor_declarado_se_regista() {
         ("ph2d-node-sim-collide", Some("sim.collide")),
         // O corpo mole lê o colisor das peças da porta `shape` (doc 124 §6) — só na CPU.
         ("ph2d-node-motion-soft-body", Some("motion.soft_body")),
+        // A corda lê o colisor das peças da porta `shape` (doc 125 §1) — só na CPU.
+        ("ph2d-node-motion-verlet-rope", Some("motion.verlet_rope")),
         // O `sim.step` lê-o pelo mundo de contacto (doc 121 §9.20, `colisores_locais`).
         ("ph2d-contact-world", Some("sim.step")),
         // A shell: o gizmo do cartão desenha o colisor e as cenas de pilha medem-no. Nenhum

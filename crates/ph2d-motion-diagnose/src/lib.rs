@@ -102,6 +102,7 @@ const TRANSIENT_COLUMNS: &[&str] = &["accel", "falloff", "inv_mass"];
 /// producer-inert transient or a read-required stream, never both; a gate pins it): the
 /// two analyses do not touch the same column. `vel` (for `force.drag`/`force.buoyancy`,
 /// which only exists after an integrator runs) is a later low-priority member.
+mod colisor;
 mod deficit;
 pub use deficit::{Deficit, Diagnostic, Fix};
 
@@ -225,6 +226,14 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
             out.push(Diagnostic {
                 node: inst.id,
                 deficit: Deficit::SemQuemVista,
+                fix: Fix::Offer,
+            });
+        }
+        // Um `Collide` que a outra chave não ouve (doc 125 §2) — não é causa-raiz: não corta o laço.
+        if let Some(cura) = colisor::colisor_mudo(graph, reg, inst.id, ty) {
+            out.push(Diagnostic {
+                node: inst.id,
+                deficit: Deficit::ColisorMudo(cura),
                 fix: Fix::Offer,
             });
         }

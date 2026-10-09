@@ -6,6 +6,17 @@
 
 use super::*;
 
+/// ⭐ **As cenas que ENSINAM a segunda chave do colisor** (doc 125 §2): nascem com um `Collide`
+/// ligado e o outro por ligar, porque o passo do dono é ligá-lo — o conselho no cartão É a lição
+/// (a `=121`–`=123` nascem desarmadas, doc 115 W5; a `=131` é o Shape depois da corda). ⚠️ A
+/// catraca ao contrário: uma cena que deixe de o acusar sai daqui.
+const ENSINAM_A_SEGUNDA_CHAVE: &[(&str, &str)] = &[
+    ("121", "output"),
+    ("122", "output"),
+    ("123", "output"),
+    ("131", "shape"),
+];
+
 #[test]
 fn no_conference_scene_ships_a_setup_hole() {
     let mut reg = NodeRegistry::new();
@@ -20,7 +31,19 @@ fn no_conference_scene_ships_a_setup_hole() {
             continue;
         }
         built += 1;
-        let d = ph2d_motion_diagnose::diagnose_setup(&doc.graph, &reg);
+        let mut d = ph2d_motion_diagnose::diagnose_setup(&doc.graph, &reg);
+        if let Some((_, cura)) = ENSINAM_A_SEGUNDA_CHAVE
+            .iter()
+            .find(|(n, _)| *n == level.to_string())
+        {
+            let antes = d.len();
+            d.retain(|x| x.deficit != ph2d_motion_diagnose::Deficit::ColisorMudo(cura));
+            if d.len() == antes {
+                bad.push(format!(
+                    "=`{level}` saiu de ENSINAM_A_SEGUNDA_CHAVE: ja' nao acusa ColisorMudo({cura:?})"
+                ));
+            }
+        }
         if !d.is_empty() {
             bad.push(format!("=`{level}`: {d:?}"));
         }

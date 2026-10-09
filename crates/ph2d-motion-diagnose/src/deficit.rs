@@ -101,6 +101,11 @@ pub enum Deficit {
     /// ⚠️ **Sempre [`Fix::Offer`]**: inserir um duplicador é conteúdo, não canalização. Ele
     /// nasceria vazio e o aviso mudava de sítio sem nada ficar resolvido.
     SemQuemVista,
+    /// ⭐⭐ **UM `Collide` LIGADO QUE NINGUÉM OUVE** (doc 125 §2) — carrega a CURA: `"shape"` (a
+    /// forma veste uma simulação; ligue-a à porta `shape` do corpo), `"output"` (ligue o `Collide`
+    /// do Output) ou `"collide"` (o Output arma o passe e nenhum Shape declara). A régua mora no
+    /// módulo `colisor`. Sempre [`Fix::Offer`]: religar o grafo é escolha do artista.
+    ColisorMudo(&'static str),
 }
 
 impl Deficit {
@@ -126,6 +131,9 @@ impl Deficit {
         Deficit::Shadowed("fx.glow"),
         Deficit::DeadBranch("in1"),
         Deficit::SemQuemVista,
+        Deficit::ColisorMudo("shape"),
+        Deficit::ColisorMudo("output"),
+        Deficit::ColisorMudo("collide"),
     ];
 }
 

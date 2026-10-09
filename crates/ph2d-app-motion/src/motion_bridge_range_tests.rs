@@ -343,42 +343,29 @@ fn the_raised_boid_ceiling_still_has_the_escape_that_justifies_it() {
     );
 }
 
-/// **E o teto do `scatter` continua APERTADO, porque ali ele é um RECURSO.**
+/// **O teto do `scatter` é o da CASA, porque o nó é LINEAR** (doc 125 §3).
 ///
-/// O blue noise por best-candidate é **O(count²)** e o cook mediu o quadro de 60 fps quebrando
-/// entre 3.000 (11,4 ms) e 4.000 (20,7 ms) — a 100.000 ele custa **12,3 segundos**. Este gate
-/// existe para que ninguém "harmonize" este teto com o **1.000.000** que os nós LINEARES da
-/// mesma wave receberam: os dois números descrevem coisas diferentes, e uniformizá-los daria ao
-/// artista uma caixa que aceita um valor capaz de congelar o app por minutos.
+/// ⛔⛔ **Este gate defendia o contrário até ao ciclo 16, e a premissa era de um algoritmo que já não
+/// existia.** Ele exigia o teto ABAIXO de `4 000` porque o best-candidate era `O(count²)` (doc 88
+/// A1: `20,7 ms` a `4 000`); a `NearGrid` de 2026-09-05 tornou-o linear e ninguém reconferiu a nota
+/// (`CLAUDE.md` §0.0). Medido: `0,7 µs` por ponto a qualquer contagem, `23,8 ms` a `32 768` em
+/// release — e o `eval` já cortava no teto da casa, logo um fio passava os `3 000` na mesma.
 ///
-/// ⚠️ A barra é a contagem MEDIDA em que o quadro quebra, não um número escolhido.
+/// ⇒ a caixa que o artista vê pelo PAINEL diz o número em que o `eval` corta, o mesmo de um nó linear
+/// (`motion.fibonacci`); a linearidade tem o gate dela na crate
+/// (`the_grid_keeps_the_work_per_point_flat`, distâncias contadas, não o relógio).
 #[test]
-fn the_quadratic_node_keeps_a_tight_ceiling() {
-    const FRAME_BREAKS_AT: f64 = 4_000.0; // medido: 20,661 ms > 16,6 ms
+fn the_scatter_ceiling_is_the_house_ceiling_now_that_it_is_linear() {
+    #[expect(clippy::cast_precision_loss, reason = "32 768 e' exacto num f64")]
+    let casa = ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f64;
     let r = row_of("motion.scatter", "count");
-    assert!(
-        r.hard_max < FRAME_BREAKS_AT,
-        "o teto do scatter ({}) tem de ficar ABAIXO da contagem em que o quadro quebra \
-         ({FRAME_BREAKS_AT}) — ele é limite de RECURSO, não freio ergonômico",
-        r.hard_max
+    assert_eq!(
+        r.hard_max, casa,
+        "o painel do scatter alcanca o teto da casa"
     );
-    // E o CONTROLE, a metade que impede a leitura preguiçosa "então aperte todo mundo": um nó
-    // LINEAR alcança mais longe que o quadrático, porque a medição dele disse isso.
-    //
-    // ⛔⛔⛔ **A RAZÃO QUE ESTE CONTROLO EXIGIA MORREU EM 2026-09-22, E FOI UMA ORDEM DO DONO QUE A
-    // MATOU** (*«vamos efetivar o limite de 16 384»*). Ele pedia `100×` — e pedia-o com razão: o
-    // `motion.fibonacci` declarava `1 000 000` contra os `3 000` do `scatter`, uma razão de `333`.
-    // Com o tecto por nó, todo gerador LINEAR fica em `16 384` e a razão cai para **`5,46`**.
-    //
-    // ⚠️ *A lei não morreu — o NÚMERO dela é que era uma propriedade do tecto antigo.* O que
-    // continua verdade, e é o que este controlo existe para dizer, é que o quadrático fica
-    // **estritamente mais apertado** que o linear: harmonizar os dois daria ao artista uma caixa
-    // que aceita `16 384` num nó cujo quadro quebra aos `4 000`.
     let linear = row_of("motion.fibonacci", "count");
-    assert!(
-        linear.hard_max > r.hard_max,
-        "um nó linear tem de alcançar além do quadrático — {} contra {}",
-        linear.hard_max,
-        r.hard_max
+    assert_eq!(
+        linear.hard_max, r.hard_max,
+        "um no' linear e o scatter alcancam o mesmo teto"
     );
 }

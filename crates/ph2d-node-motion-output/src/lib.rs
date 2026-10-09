@@ -429,6 +429,8 @@ impl NodeOp for MotionOutput {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionOutput))?;
+    // doc 125 §2: o `Collide` arma o passe do fim — o diagnóstico pergunta se alguém o declara.
+    reg.register_contact_pass_switch(MANIFEST.id, COLLIDE_PARAM);
     // M1.R1 — UI metadata (the render sink → red Output, circle terminal).
     reg.register_ui(
         MANIFEST.id,

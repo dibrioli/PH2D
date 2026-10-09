@@ -40,7 +40,7 @@ fn run(anchor: impl Fn(f32) -> [f32; 2], p: &Params, ticks: usize, dt: f32) -> V
     let mut frames = Vec::new();
     for k in 0..ticks {
         let t = k as f32 * dt;
-        let out = simulate(anchor(t), &state, t, p);
+        let out = simulate(anchor(t), &state, t, p, None);
         state = out.clone();
         frames.push(out);
     }
@@ -175,7 +175,7 @@ fn probe_what_bend_changes() {
 #[test]
 fn seeds_a_straight_strand_at_tick_zero() {
     let p = params(5, 4.0, 9.0, false);
-    let out = simulate([1.0, 2.0], &Stream::new(0), 0.0, &p);
+    let out = simulate([1.0, 2.0], &Stream::new(0), 0.0, &p, None);
     let pos = pos_of(&out);
     assert_eq!(pos.len(), 5);
     assert_eq!(pos[0], [1.0, 2.0], "head pinned at the anchor");
@@ -288,7 +288,7 @@ fn without_the_state_loop_it_stays_a_straight_strand() {
     let p = params(8, 5.0, 12.0, false);
     for k in 0..30 {
         // Empty state every tick.
-        let out = simulate([0.0, 0.0], &Stream::new(0), k as f32 / 60.0, &p);
+        let out = simulate([0.0, 0.0], &Stream::new(0), k as f32 / 60.0, &p, None);
         let pos = pos_of(&out);
         assert!(pos.iter().all(|q| q[1].abs() < 1e-6), "flat, no sim at {k}");
     }
@@ -306,7 +306,7 @@ fn non_finite_state_recovers() {
         )
         .with("rope_prev", Column::Vec2(vec![[0.0, 0.0]; 4]))
         .with("sim_t", Column::Scalar(vec![0.0; 4]));
-    let out = simulate([0.0, 0.0], &state, 1.0 / 60.0, &p);
+    let out = simulate([0.0, 0.0], &state, 1.0 / 60.0, &p, None);
     assert!(
         pos_of(&out)
             .iter()
@@ -453,6 +453,7 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
         [0.0, 0.0],
         dt,
         &p,
+        None,
     );
     assert!(
         free[1][1] > 0.3,
@@ -469,6 +470,7 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
         [0.0, 0.0],
         dt,
         &p,
+        None,
     );
     assert_eq!(
         held[1][1].to_bits(),
@@ -493,7 +495,7 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
 #[test]
 fn a_corda_declara_a_corrente_dela() {
     let p = params(6, 1.0, 9.8, false);
-    let out = simulate([0.0, 0.0], &Stream::new(0), 0.0, &p);
+    let out = simulate([0.0, 0.0], &Stream::new(0), 0.0, &p, None);
     let Some(Column::Scalar(parent)) = out.get("parent") else {
         panic!("a corda tem de publicar a corrente dela");
     };

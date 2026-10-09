@@ -42,7 +42,17 @@ fn one_substep_is_the_old_rope_to_the_bit() {
     // Dois tiques com âncora a mexer-se, para o estado sair do repouso.
     for k in 0..2 {
         let a = [k as f32 * 0.3, 0.0];
-        let (np, pp) = step(pos.clone(), &prev, &[], &[], a, [0.0, 0.0], 1.0 / 60.0, &p);
+        let (np, pp) = step(
+            pos.clone(),
+            &prev,
+            &[],
+            &[],
+            a,
+            [0.0, 0.0],
+            1.0 / 60.0,
+            &p,
+            None,
+        );
         pos = np;
         prev = pp;
     }
@@ -55,6 +65,7 @@ fn one_substep_is_the_old_rope_to_the_bit() {
         [0.0, 0.0],
         1.0 / 60.0,
         &p,
+        None,
     );
 
     // O CONTROLE de que a fixture contém o fenômeno: com DOIS sub-passos o
@@ -70,6 +81,7 @@ fn one_substep_is_the_old_rope_to_the_bit() {
         [0.0, 0.0],
         1.0 / 60.0,
         &p,
+        None,
     );
     let moved = (0..count)
         .flat_map(|i| (0..2).map(move |c| (i, c)))

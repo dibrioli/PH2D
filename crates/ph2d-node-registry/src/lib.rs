@@ -19,6 +19,9 @@ use ph2d_nodegraph::gpu::{
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
+/// ⭐ **QUEM DECLARA, QUEM LÊ E QUEM ARMA o colisor** (doc 115 W4, doc 125 §2) — módulo irmão
+/// pelo TETO DE LOC, cortado por ASSUNTO: as três perguntas que o diagnóstico faz a um `Collide`.
+mod colisor_declarado;
 /// ⭐ **O QUE UM NÓ DECLARA QUE NÃO DISPENSA** — as portas e os params de texto sem os quais ele
 /// fica inerte. Módulo irmão por TETO DE LOC (HR-18, 700 para `crates/`), e o corte é por
 /// RESPONSABILIDADE: o `lib.rs` guarda o REGISTO (a struct e o que se escreve nela) e este
@@ -220,6 +223,10 @@ pub struct NodeRegistry {
     /// scene as a pile on the CPU and a blur on the card, with no error.
     /// Opt-in and default-empty.
     declared_collider_readers: std::collections::BTreeSet<NodeTypeId>,
+    /// Quem DECLARA o colisor por um interruptor, e quem ARMA o passe do fim — ver o módulo
+    /// `colisor_declarado` (doc 125 §2).
+    collider_switches: BTreeMap<NodeTypeId, &'static str>,
+    contact_pass_switches: BTreeMap<NodeTypeId, &'static str>,
     /// Node types that are **registered and fully working, and that the Add-Node
     /// catalogue does NOT offer** (doc 115 W6).
     ///
@@ -495,25 +502,6 @@ impl NodeRegistry {
     #[must_use]
     pub fn is_object_source(&self, id: NodeTypeId) -> bool {
         self.object_sources.contains(&id)
-    }
-
-    /// Register a node type as a **reader of the DECLARED collider** (doc 115 W4):
-    /// it calls `ph2d_contact::colisores` on the stream that reaches it, so the
-    /// shape an object declares changes what it does. Additive; idempotent.
-    ///
-    /// ⚠️ **Whoever writes the next such node registers it here**, and the census
-    /// in `ph2d-app-motion` (`todo_leitor_do_colisor_declarado_se_regista`) fails
-    /// until they do: the flag is what a fence reads, and a reader that forgets it
-    /// cooks on the device with a disc kernel while the CPU honours a box.
-    pub fn register_declared_collider_reader(&mut self, id: NodeTypeId) {
-        self.declared_collider_readers.insert(id);
-    }
-
-    /// Does `id` read the collider the stream DECLARES? Absent ⇒ no, the
-    /// byte-identical default.
-    #[must_use]
-    pub fn reads_declared_collider(&self, id: NodeTypeId) -> bool {
-        self.declared_collider_readers.contains(&id)
     }
 
     /// Take `id` **out of the Add-Node catalogue** while leaving it registered

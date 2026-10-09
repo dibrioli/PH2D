@@ -35,7 +35,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use crate::paint::{fill_rounded_rect, paint_text_centered_com_orcamento, resolve};
 use crate::zones::Rect;
 
 /// Corpo da ficha, px de tela. Herdado do rótulo do smart guide, que o herdou da régua: as três
@@ -92,7 +92,18 @@ pub fn paint_chip(
     let bg: Color = resolve(ColorToken::Bg1, theme);
     let fg: Color = resolve(ColorToken::Text1, theme);
     fill_rounded_rect(scene, rect, CHIP_RADIUS_PX, bg);
-    paint_text_centered(text_system, scene, text, rect, CHIP_FONT_PX, fg);
+    let orcamento = chip_text_budget(text_system, text, w);
+    paint_text_centered_com_orcamento(text_system, scene, text, rect, orcamento, CHIP_FONT_PX, fg);
+}
+
+/// **O orçamento do texto numa ficha de largura `w`** — a MESMA folga com que [`chip_width`] a
+/// mediu, e nunca menos que o texto medido (`(a + p) − p` não devolve `a` ao bit). ⛔ O pintor pedia
+/// o `label_budget` de um rótulo (outra folga) e cortava as últimas letras de toda ficha
+/// (`readout_tests::a_chip_paints_the_whole_text_it_measured`).
+#[must_use]
+pub fn chip_text_budget(text_system: &mut TextSystem, text: &str, w: f32) -> f32 {
+    let medido = text_system.prefix_width(text, CHIP_FONT_PX);
+    (w - CHIP_PAD_X_PX * 2.0).max(medido)
 }
 
 /// **Onde a ficha pousa quando ela segue a MÃO** — o centro dela, dado o cursor e o canvas.

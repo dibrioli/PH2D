@@ -18,7 +18,7 @@ use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
 const CICLOS: &[&str] = &[
-    "111", "112", "113", "114", "115", "116", "117", "118", "119", "120",
+    "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "130", "131",
 ];
 
 /// Este nível é uma cena de ciclo?
@@ -138,6 +138,21 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::rig_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::rig_demo::captions());
             announce::rig();
+            sinks
+        }
+        // ⭐ **A CORDA COM COLISOR** (ciclo 16, doc 125 §1): a única diferença entre as duas é o
+        // `Collide` do Shape ligado à porta `shape` da corda.
+        "130" => {
+            let sinks = super::corda_com_colisor_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::corda_com_colisor_demo::captions());
+            super::corda_com_colisor_demo::announce();
+            sinks
+        }
+        // ⭐ **O `Collide` DEPOIS DA CORDA** (ciclo 16, doc 125 §2): o cartão do Shape diz o que fazer.
+        "131" => {
+            let sinks = super::corda_com_colisor_demo::build_depois(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::corda_com_colisor_demo::captions_depois());
+            super::corda_com_colisor_demo::announce_depois();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

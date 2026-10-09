@@ -510,6 +510,8 @@ impl NodeOp for SourceShape {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SourceShape))?;
+    // doc 125 §2: o `Collide` declara o colisor — o diagnóstico pergunta se alguém o lê.
+    reg.register_collider_switch(MANIFEST.id, param::COLLIDE);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

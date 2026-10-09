@@ -11,6 +11,7 @@ mod board;
 mod camera;
 mod connector;
 mod element;
+mod facilitate;
 mod frac;
 mod history;
 mod ink;
@@ -26,6 +27,7 @@ pub use connector::{Anchor, Connector, End, Head, Route};
 pub use element::{
     BoardDoc, Dash, Element, ElementId, ElementKind, Rgba, Shape, ShapeType, Style, rotate_about,
 };
+pub use facilitate::{Stamp, StampCount};
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};
 pub use ink::{Ink, Pen};

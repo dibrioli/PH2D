@@ -9,8 +9,9 @@ use crate::BoardDoc;
 /// e as anteriores continuam a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1);
 /// 3 = o texto das formas com estilo por trecho (W3); 4 = o rascunho (`Style::sketch`,
 /// `Board::sketch`) e os traços da caneta (W4); 5 = organizar — frames, grupos, travar, links e
-/// etiquetas (W5); 6 = o nó de mapa mental (`Org::mind`, W6).
-pub const FORMAT_VERSION: u32 = 6;
+/// etiquetas (W5); 6 = o nó de mapa mental (`Org::mind`, W6); 7 = os votos e os carimbos
+/// (`Org::votes`, `Org::stamps`, W7).
+pub const FORMAT_VERSION: u32 = 7;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -172,6 +173,7 @@ impl BoardSet {
             3 => crate::legacy::read_v3(bytes),
             4 => crate::legacy::read_v4(bytes),
             5 => crate::legacy::read_v5(bytes),
+            6 => crate::legacy::read_v6(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

@@ -7,6 +7,7 @@
 //! - 3 (W3): sem rascunho (`Style::sketch`, `Board::sketch`) nem traços da caneta — tudo final.
 //! - 4 (W4): sem os campos de organizar (`frame`, `groups`, `locked`, `link`, `tags`) — tudo solto.
 //! - 5 (W5): sem o nó de mapa mental (`Org::mind`, W6) — nada é mapa.
+//! - 6 (W6): sem os votos nem os carimbos (`Org::votes`, `Org::stamps`, W7) — nenhum.
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -313,6 +314,92 @@ fn element_v5(e: ElementV5) -> Element {
             link: o.link,
             tags: o.tags,
             mind: None,
+            votes: 0,
+            stamps: Vec::new(),
+        })
+    });
+    (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
+    el
+}
+
+/// O `Org` do formato 6: sem os votos nem os carimbos.
+#[derive(Deserialize)]
+struct OrgV6 {
+    groups: Vec<crate::GroupId>,
+    locked: bool,
+    link: Option<ElementId>,
+    tags: Vec<crate::Tag>,
+    mind: Option<crate::Mind>,
+}
+
+/// O elemento do formato 6: o de hoje com o `Org` antigo.
+#[derive(Deserialize)]
+struct ElementV6 {
+    id: ElementId,
+    kind: ElementKind,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+    angle: f64,
+    z: FracKey,
+    frame: Option<ElementId>,
+    org: Option<Box<OrgV6>>,
+    version: u64,
+    nonce: u32,
+    deleted: bool,
+}
+
+#[derive(Deserialize)]
+struct BoardV6 {
+    id: BoardId,
+    name: String,
+    camera: Camera,
+    doc: DocOld<ElementV6>,
+    sketch: bool,
+}
+
+#[derive(Deserialize)]
+struct SetV6 {
+    _version: u32,
+    boards: Vec<BoardV6>,
+    next_id: u64,
+}
+
+/// Os bytes de um `BoardSet` no formato 6 (W6), já no formato actual: nenhum voto, nenhum carimbo.
+pub(crate) fn read_v6(bytes: &[u8]) -> Result<BoardSet, String> {
+    let old: SetV6 = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+    let boards = old
+        .boards
+        .into_iter()
+        .map(|b| {
+            let mut doc = doc_old(b.doc, &element_v6);
+            doc.reindex();
+            Board {
+                id: b.id,
+                name: b.name,
+                camera: b.camera,
+                doc,
+                sketch: b.sketch,
+            }
+        })
+        .collect();
+    Ok(BoardSet::from_parts(boards, old.next_id))
+}
+
+fn element_v6(e: ElementV6) -> Element {
+    let mut el = Element::bare(e.id, e.z, e.kind, [e.x, e.y, e.w, e.h]);
+    el.angle = e.angle;
+    el.frame = e.frame;
+    el.org = e.org.map(|o| {
+        Box::new(crate::Org {
+            groups: o.groups,
+            locked: o.locked,
+            link: o.link,
+            tags: o.tags,
+            mind: o.mind,
+            votes: 0,
+            stamps: Vec::new(),
         })
     });
     (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);

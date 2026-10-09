@@ -1,0 +1,12 @@
+[
+ {"id": "n1", "text": "Faster BUILDS please"},
+ {"id": "n2", "text": "Build times are too slow"},
+ {"id": "n3", "text": "Slow builds block the Team"},
+ {"id": "n4", "text": "More pairing sessions"},
+ {"id": "n5", "text": "Pair programming helped a lot"},
+ {"id": "n6", "text": "Team lunch on Fridays"},
+ {"id": "n7", "text": "The team’s morale is HIGH"},
+ {"id": "n8", "text": "Testing, testing: flaky tests!"},
+ {"id": "n9", "text": "Café meetings & CAFE coffee"},
+ {"id": "n10", "text": "Don't skip retros; retro-board v2.0 rocks"}
+]

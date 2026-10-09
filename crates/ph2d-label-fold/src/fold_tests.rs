@@ -3,7 +3,7 @@
 //! ⚠️ **As DUAS colunas são obrigatórias.** Uma dobra que colapsasse tudo em `""` passaria na
 //! primeira; é a segunda — *o que NÃO pode colapsar* — que a apanha.
 
-use super::fold;
+use super::{case_fold, fold};
 
 /// ⭐⭐ **Os que TÊM de colapsar, e os que NÃO podem.**
 ///
@@ -71,4 +71,15 @@ fn the_fold_is_idempotent_and_normalisation_blind() {
         fold("c\u{327}\u{301}"),
         "NFC e NFD dao a mesma chave"
     );
+}
+
+/// ⭐ [`case_fold`] dobra como [`fold`] mas GUARDA os acentos, e recompõe (NFC): é a entrada do
+/// stemmer do quadro (`docs/MiroClone/05_facilitacao.md` §1.3, achado 2 e §3).
+#[test]
+fn case_fold_keeps_the_accents_and_composes() {
+    assert_eq!(case_fold("INFORMAÇÕES"), "informações");
+    assert_eq!(case_fold("Straße"), "strasse");
+    assert_eq!(case_fold("\u{fb01}le"), "file");
+    assert_eq!(case_fold("cafe\u{301}"), "caf\u{e9}", "a entrada NFD sai NFC");
+    assert_eq!(fold(&case_fold("Café")), fold("CAFE"));
 }

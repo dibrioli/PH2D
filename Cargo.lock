@@ -5235,6 +5235,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-board-words"
+version = "0.0.0"
+dependencies = [
+ "icu_segmenter",
+ "ph2d-label-fold",
+ "serde_json",
+ "snowball",
+]
+
+[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -10130,6 +10140,10 @@ checksum = "dd538fb6910ac1099850255cf94a94df6551fbdd602454387d0adb2d1ca6dead"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "snowball"
+version = "3.1.1"
 
 [[package]]
 name = "spade"

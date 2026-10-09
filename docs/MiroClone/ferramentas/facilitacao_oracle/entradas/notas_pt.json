@@ -1,0 +1,8 @@
+[
+ {"id": "p1", "text": "Informação chega tarde à equipa"},
+ {"id": "p2", "text": "Mais informações nas reuniões"},
+ {"id": "p3", "text": "Reunião diária é longa demais"},
+ {"id": "p4", "text": "A equipa trabalha bem em pares"},
+ {"id": "p5", "text": "Testes automáticos falham à noite"},
+ {"id": "p6", "text": "O teste de integração é lento"}
+]

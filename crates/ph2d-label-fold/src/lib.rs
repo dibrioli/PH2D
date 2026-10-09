@@ -53,6 +53,20 @@ pub fn fold(label: &str) -> String {
     sem_marcas.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// O *case folding* COMPLETO de [`fold`] (o `ß` → `ss`, a ligadura `ﬁ` → `fi`) **sem tirar os
+/// acentos**, recomposto em NFC — a entrada de um *stemmer*, que precisa deles (o Snowball português
+/// corta `ção`; sem o acento, `informação` e `informações` dariam raízes diferentes —
+/// `docs/MiroClone/05_facilitacao.md` §3). Não é uma chave de rótulo: para isso, [`fold`].
+#[must_use]
+pub fn case_fold(text: &str) -> String {
+    let nfd = DecomposingNormalizerBorrowed::new_nfd();
+    let decomposto = nfd.normalize(text);
+    let dobrado = CaseMapperBorrowed::new().fold_string(&decomposto);
+    icu_normalizer::ComposingNormalizerBorrowed::new_nfc()
+        .normalize(&dobrado)
+        .into_owned()
+}
+
 #[cfg(test)]
 #[path = "fold_tests.rs"]
 mod tests;

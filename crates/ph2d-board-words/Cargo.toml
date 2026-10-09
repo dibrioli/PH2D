@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-board-words"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# As PALAVRAS de uma nota, para agrupar por palavra (W7, `docs/MiroClone/05_facilitacao.md` §2 C7):
+# segmentação UAX#29, *case folding*, palavras vazias e a raiz Snowball. Sem documento, sem UI.
+#
+# A segmentação da MESMA família ICU 2.3 do `ph2d-label-fold` (o `parley` já a traz no programa);
+# só os dados cozidos, sem LSTM nem dicionários (o quadro escreve em escritas latinas).
+icu_segmenter = { version = "2.3", default-features = false, features = ["compiled_data"] }
+ph2d-label-fold = { path = "../ph2d-label-fold" }
+# ⭐ O Snowball 3.1.1 gerado pelo compilador oficial, VENDORIZADO (o idioma do ADR-0123): medido
+# contra a `libstemmer` 3.1.1 instalada, 0 palavras diferentes; o `rust-stemmers` e o
+# `waken_snowball` davam 57 e 17 (o estudo §1.3). Ver `vendor/snowball/VENDOR.md`.
+snowball = { path = "vendor/snowball" }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+serde_json = "1"

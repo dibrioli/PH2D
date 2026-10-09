@@ -1,0 +1,344 @@
+{
+ "meta": {
+  "node": "v24.19.0",
+  "icu": "78.3",
+  "unicode": "17.0",
+  "segmenter": "Intl.Segmenter('en',{granularity:'word'}) isWordLike"
+ },
+ "notas": [
+  {
+   "id": "n1",
+   "text": "Faster BUILDS please",
+   "words": [
+    "Faster",
+    "BUILDS",
+    "please"
+   ],
+   "folded": [
+    "faster",
+    "builds",
+    "please"
+   ]
+  },
+  {
+   "id": "n2",
+   "text": "Build times are too slow",
+   "words": [
+    "Build",
+    "times",
+    "are",
+    "too",
+    "slow"
+   ],
+   "folded": [
+    "build",
+    "times",
+    "are",
+    "too",
+    "slow"
+   ]
+  },
+  {
+   "id": "n3",
+   "text": "Slow builds block the Team",
+   "words": [
+    "Slow",
+    "builds",
+    "block",
+    "the",
+    "Team"
+   ],
+   "folded": [
+    "slow",
+    "builds",
+    "block",
+    "the",
+    "team"
+   ]
+  },
+  {
+   "id": "n4",
+   "text": "More pairing sessions",
+   "words": [
+    "More",
+    "pairing",
+    "sessions"
+   ],
+   "folded": [
+    "more",
+    "pairing",
+    "sessions"
+   ]
+  },
+  {
+   "id": "n5",
+   "text": "Pair programming helped a lot",
+   "words": [
+    "Pair",
+    "programming",
+    "helped",
+    "a",
+    "lot"
+   ],
+   "folded": [
+    "pair",
+    "programming",
+    "helped",
+    "a",
+    "lot"
+   ]
+  },
+  {
+   "id": "n6",
+   "text": "Team lunch on Fridays",
+   "words": [
+    "Team",
+    "lunch",
+    "on",
+    "Fridays"
+   ],
+   "folded": [
+    "team",
+    "lunch",
+    "on",
+    "fridays"
+   ]
+  },
+  {
+   "id": "n7",
+   "text": "The team’s morale is HIGH",
+   "words": [
+    "The",
+    "team’s",
+    "morale",
+    "is",
+    "HIGH"
+   ],
+   "folded": [
+    "the",
+    "team’s",
+    "morale",
+    "is",
+    "high"
+   ]
+  },
+  {
+   "id": "n8",
+   "text": "Testing, testing: flaky tests!",
+   "words": [
+    "Testing",
+    "testing",
+    "flaky",
+    "tests"
+   ],
+   "folded": [
+    "testing",
+    "testing",
+    "flaky",
+    "tests"
+   ]
+  },
+  {
+   "id": "n9",
+   "text": "Café meetings & CAFE coffee",
+   "words": [
+    "Café",
+    "meetings",
+    "CAFE",
+    "coffee"
+   ],
+   "folded": [
+    "cafe",
+    "meetings",
+    "cafe",
+    "coffee"
+   ]
+  },
+  {
+   "id": "n10",
+   "text": "Don't skip retros; retro-board v2.0 rocks",
+   "words": [
+    "Don't",
+    "skip",
+    "retros",
+    "retro",
+    "board",
+    "v2.0",
+    "rocks"
+   ],
+   "folded": [
+    "don't",
+    "skip",
+    "retros",
+    "retro",
+    "board",
+    "v2.0",
+    "rocks"
+   ]
+  },
+  {
+   "id": "a1",
+   "text": "The team's morale",
+   "words": [
+    "The",
+    "team's",
+    "morale"
+   ],
+   "folded": [
+    "the",
+    "team's",
+    "morale"
+   ]
+  },
+  {
+   "id": "a2",
+   "text": "The team’s morale",
+   "words": [
+    "The",
+    "team’s",
+    "morale"
+   ],
+   "folded": [
+    "the",
+    "team’s",
+    "morale"
+   ]
+  },
+  {
+   "id": "a3",
+   "text": "Don’t skip",
+   "words": [
+    "Don’t",
+    "skip"
+   ],
+   "folded": [
+    "don’t",
+    "skip"
+   ]
+  },
+  {
+   "id": "a4",
+   "text": "STRASSE Straße ﬁle",
+   "words": [
+    "STRASSE",
+    "Straße",
+    "ﬁle"
+   ],
+   "folded": [
+    "strasse",
+    "straße",
+    "ﬁle"
+   ]
+  },
+  {
+   "id": "p1",
+   "text": "Informação chega tarde à equipa",
+   "words": [
+    "Informação",
+    "chega",
+    "tarde",
+    "à",
+    "equipa"
+   ],
+   "folded": [
+    "informacao",
+    "chega",
+    "tarde",
+    "a",
+    "equipa"
+   ]
+  },
+  {
+   "id": "p2",
+   "text": "Mais informações nas reuniões",
+   "words": [
+    "Mais",
+    "informações",
+    "nas",
+    "reuniões"
+   ],
+   "folded": [
+    "mais",
+    "informacoes",
+    "nas",
+    "reunioes"
+   ]
+  },
+  {
+   "id": "p3",
+   "text": "Reunião diária é longa demais",
+   "words": [
+    "Reunião",
+    "diária",
+    "é",
+    "longa",
+    "demais"
+   ],
+   "folded": [
+    "reuniao",
+    "diaria",
+    "e",
+    "longa",
+    "demais"
+   ]
+  },
+  {
+   "id": "p4",
+   "text": "A equipa trabalha bem em pares",
+   "words": [
+    "A",
+    "equipa",
+    "trabalha",
+    "bem",
+    "em",
+    "pares"
+   ],
+   "folded": [
+    "a",
+    "equipa",
+    "trabalha",
+    "bem",
+    "em",
+    "pares"
+   ]
+  },
+  {
+   "id": "p5",
+   "text": "Testes automáticos falham à noite",
+   "words": [
+    "Testes",
+    "automáticos",
+    "falham",
+    "à",
+    "noite"
+   ],
+   "folded": [
+    "testes",
+    "automaticos",
+    "falham",
+    "a",
+    "noite"
+   ]
+  },
+  {
+   "id": "p6",
+   "text": "O teste de integração é lento",
+   "words": [
+    "O",
+    "teste",
+    "de",
+    "integração",
+    "é",
+    "lento"
+   ],
+   "folded": [
+    "o",
+    "teste",
+    "de",
+    "integracao",
+    "e",
+    "lento"
+   ]
+  }
+ ]
+}

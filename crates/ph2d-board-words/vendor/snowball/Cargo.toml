@@ -1,0 +1,13 @@
+# Vendored Snowball 3.1.1 (see VENDOR.md). Excluded from the workspace (root Cargo.toml),
+# consumed by ph2d-board-words as a path dependency — the ADR-0123 idiom.
+[package]
+name = "snowball"
+version = "3.1.1"
+edition = "2015"
+license = "BSD-3-Clause"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]

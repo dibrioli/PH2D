@@ -150,3 +150,11 @@ congelado (`Tool=12`/`PanelEvent=4` intactos; o Inspector vai por `EditorAction:
    levar a pequena (0,15 m) de 0,945 m a ≈ 0,33 m na placa, e o passe de preenchimento tem de pôr luz no
    interior da parede da cena 1 sem custo no `g4_o_interior…`.
 4. Fotos da W4: `docs/Luz2D/handoffs/fotos_W4/cena{1,2,4}.png` (`fotografa_cena.sh`, 1920×1080).
+
+## Smoke compilado (regra I, depois do `rm -rf target/*/incremental`)
+
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª saída:
+
+```
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```

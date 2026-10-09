@@ -953,3 +953,9 @@ mod organize;
 
 #[path = "guides_tests.rs"]
 mod guides;
+
+#[path = "facilitate_tests.rs"]
+mod facilitate;
+
+#[path = "cluster_tests.rs"]
+mod cluster;

@@ -291,6 +291,8 @@ pub(crate) fn remap_organize(
         if let Some(l) = el.link().and_then(|l| map.get(&l)) {
             el.set_link(Some(*l));
         }
+        // V7 — os votos são da sessão que os deu, não do objecto: uma cópia não os leva.
+        el.set_votes(0);
         // Um nó copiado com o pai fica debaixo da cópia dele; sem o pai, é irmão do original — LOGO
         // DEPOIS dele, com chave própria (duas chaves iguais faziam o `Enter` seguinte entrar em
         // pânico, auditoria W6); e se o pai já não existe, a cópia é a raiz de um mapa novo.

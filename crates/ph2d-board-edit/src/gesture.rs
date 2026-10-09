@@ -196,6 +196,9 @@ impl Editor {
         if self.ink_down(doc, p) {
             return Down::Taken;
         }
+        if self.facilitate_down(doc, history, p) {
+            return Down::Taken;
+        }
         if self.linking {
             let target = self.hit(doc, p);
             self.link_click(doc, history, target);

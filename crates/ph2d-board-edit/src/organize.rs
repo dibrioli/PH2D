@@ -65,16 +65,27 @@ pub enum Notice {
     /// O destino do link foi apagado (o Miro: *«the linked item has been deleted from this
     /// board»*).
     LinkGone,
+    /// W7 — a pessoa já deu todos os votos dela (o Miro: «N votes left»).
+    NoVotesLeft,
+    /// W7 — «One vote per object»: já votou neste.
+    OneVotePerObject,
+    /// W7 — votar ou agrupar sem nada que se vote ou agrupe (precisa de notas ou formas).
+    NothingToVote,
+    NothingToCluster,
 }
 
 impl Notice {
     /// Todos — o gate de que cada um tem frase.
-    pub const ALL: [Notice; 5] = [
+    pub const ALL: [Notice; 9] = [
         Notice::GroupAcrossFrames,
         Notice::Locked,
         Notice::TooManyTags,
         Notice::LinkPick,
         Notice::LinkGone,
+        Notice::NoVotesLeft,
+        Notice::OneVotePerObject,
+        Notice::NothingToVote,
+        Notice::NothingToCluster,
     ];
 
     /// A chave i18n da frase que o artista lê.
@@ -86,6 +97,10 @@ impl Notice {
             Notice::TooManyTags => "board.notice.too_many_tags",
             Notice::LinkPick => "board.notice.link_pick",
             Notice::LinkGone => "board.notice.link_gone",
+            Notice::NoVotesLeft => "board.notice.no_votes_left",
+            Notice::OneVotePerObject => "board.notice.one_vote_per_object",
+            Notice::NothingToVote => "board.notice.nothing_to_vote",
+            Notice::NothingToCluster => "board.notice.nothing_to_cluster",
         }
     }
 }

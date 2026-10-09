@@ -8,7 +8,9 @@
 //! ⚠️ **Um arrasto mexe no documento AO VIVO** (o desenho é o do documento, sem segunda fonte de
 //! verdade) e guarda o passo de desfazer só ao largar, com o estado do início do gesto.
 
+mod cluster;
 mod command;
+mod facilitate;
 mod frame_box;
 mod gesture;
 mod gesture_end;
@@ -25,6 +27,8 @@ mod resize;
 mod snap;
 mod templates;
 mod text;
+mod timer;
+mod vote;
 mod wire;
 
 use std::collections::BTreeSet;
@@ -35,6 +39,10 @@ use ph2d_board_model::{
 };
 use ph2d_board_route::RouteCache;
 
+pub use cluster::{
+    CLUSTER_BETWEEN, CLUSTER_GAP, CLUSTER_PAD, CLUSTER_TITLE_WORDS, ClusterBy, ClusterNames,
+};
+pub use facilitate::{VOTE_MINUS_STEP, VoteMark, chip_at};
 pub use frame_box::Frame;
 pub use gesture::Down;
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
@@ -49,6 +57,10 @@ pub use ph2d_board_layout::Move;
 pub use snap::Guide;
 pub use templates::Template;
 pub use text::hand_lettered;
+pub use timer::{
+    TIMER_BLINK, TIMER_COARSE_STEP, TIMER_DEFAULT_MIN, TIMER_FINE_UNTIL, TIMER_MAX, Timer, TimerRun,
+};
+pub use vote::{VOTES_DEFAULT, VOTES_MAX, VoteSession, VoteSetup, results as vote_results, vote_range, votable};
 
 /// Tamanho de uma forma criada com um clique (sem arrastar), em unidades do MUNDO — o formato
 /// paisagem de uma caixa de fluxograma.
@@ -299,6 +311,8 @@ pub struct Editor {
     pub frame_name: fn(usize) -> String,
     /// O nó onde o arrasto de um nó de mapa o largaria como filho (o realce, W6).
     mind_drop: Option<ElementId>,
+    /// A sessão de voto aberta (W7).
+    vote: Option<VoteSession>,
 }
 
 impl Editor {
@@ -331,6 +345,7 @@ impl Editor {
             notice: None,
             frame_name: |n| n.to_string(),
             mind_drop: None,
+            vote: None,
         }
     }
 

@@ -655,3 +655,29 @@ fn a_hook_at_the_end_does_not_tilt_the_line() {
     let got = angle(sub(q, p)).to_degrees();
     assert!((got - 30.0).abs() < 0.2, "a recta inclinou para {got}°");
 }
+
+#[test]
+fn a_side_split_by_the_start_is_fitted_from_both_halves() {
+    // Começado a MEIO do lado de cima, e a mão volta 12 px abaixo de onde partiu: as duas metades
+    // são UM lado, e a recta dele é a média (y = 250), não só a última metade (y = 244).
+    let r = hand(
+        &[
+            [200.0, 256.0],
+            [400.0, 256.0],
+            [400.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 244.0],
+            [200.0, 244.0],
+        ],
+        0.3,
+    );
+    let Some(QuickShape::Polygon {
+        corners,
+        closed: true,
+    }) = recognise(&r, 1.0, false)
+    else {
+        panic!("{:?}", recognise(&r, 1.0, false))
+    };
+    let want = [[0.0, 250.0], [400.0, 250.0], [400.0, 0.0], [0.0, 0.0]];
+    assert!(worst(&corners, &want) < 1.5, "{corners:?}");
+}

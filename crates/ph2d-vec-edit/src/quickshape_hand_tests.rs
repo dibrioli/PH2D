@@ -180,3 +180,38 @@ fn a_side_split_by_the_start_is_fitted_from_both_halves() {
     let want = [[0.0, 250.0], [400.0, 250.0], [400.0, 0.0], [0.0, 0.0]];
     assert!(worst(&corners, &want) < 1.5, "{corners:?}");
 }
+
+#[test]
+fn a_hand_drawn_s_is_not_a_zigzag() {
+    // As cristas de um S cabem nas quinas-faixa e os troços entre elas são quase rectos: sem a
+    // proporção quina/lado das polilinhas abertas ele saía zigue-zague em 12–38 % destas mãos.
+    let (_, s, _) = super::measure_tests::cases(160.0)
+        .into_iter()
+        .find(|c| c.0.starts_with('S'))
+        .expect("o caso do S");
+    let zigzags = (0..40)
+        .filter(|&seed| {
+            recognise(&super::measure_tests::hand(&s, 2.0, 1.0, seed), 1.0, false).is_some()
+        })
+        .count();
+    assert!(zigzags <= 2, "{zigzags} de 40 mãos leram o S como forma");
+}
+
+#[test]
+fn a_wobbly_hand_circle_is_still_a_circle() {
+    // O raio treme em duas frequências altas (resíduo rms ~4,8 %): com a elipse no limite apertado da
+    // faixa (0,04) isto
+    // ficava traço livre — a «pouca sensibilidade» do smoke do dono.
+    let c: Vec<P2> = (0..=240)
+        .map(|i| {
+            let a = TAU * f64::from(i) / 240.0;
+            let r = 150.0 * (1.0 + 0.05 * (11.0 * a).sin() + 0.045 * (17.0 * a + 0.7).sin());
+            [r * a.cos(), r * a.sin()]
+        })
+        .collect();
+    assert!(
+        matches!(recognise(&c, 1.0, false), Some(QuickShape::Ellipse { rx, ry, .. }) if rx == ry),
+        "{:?}",
+        recognise(&c, 1.0, false)
+    );
+}

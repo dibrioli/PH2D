@@ -22,7 +22,7 @@ impl Lcg {
 
 /// Uma mão: a polilinha amostrada a `step` px com o tremor do `gera_entradas.py` (±`amp`, média
 /// móvel de 5 — o ruído da mão é suave, não branco).
-fn hand(poly: &[P2], step: f64, amp: f64, seed: u64) -> Vec<P2> {
+pub(super) fn hand(poly: &[P2], step: f64, amp: f64, seed: u64) -> Vec<P2> {
     let mut pts = vec![poly[0]];
     for w in poly.windows(2) {
         let n = (dist(w[0], w[1]) / step).ceil().max(1.0) as usize;
@@ -73,9 +73,9 @@ fn rounded(poly: &[P2], f: f64) -> Vec<P2> {
 
 /// As formas de mão de tamanho `s` (px) e o que a lei tem de responder. `None` = não é forma.
 /// Um caso: o nome, a polilinha da mão e o que a lei tem de responder.
-type Case = (&'static str, Vec<P2>, fn(&Option<QuickShape>) -> bool);
+pub(super) type Case = (&'static str, Vec<P2>, fn(&Option<QuickShape>) -> bool);
 
-fn cases(s: f64) -> Vec<Case> {
+pub(super) fn cases(s: f64) -> Vec<Case> {
     let h = 0.62 * s;
     let tri: Vec<P2> = (0..=3)
         .map(|k| {

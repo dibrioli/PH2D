@@ -304,7 +304,7 @@ impl RenderInstance {
     // fragment shader (`shaders/sprite.wgsl`) decodes the SAME masks —
     // keep these constants and the WGSL `& Nu` literals in lockstep.
     // Bits 3-4 = repeat; bits 5-7 = blend tag (CPU-only, shader ignores);
-    // bits 8..31 = mesh tag (CPU-only, shader ignores — `MESH_SHIFT`).
+    // bits 8..30 = mesh tag (CPU-only, shader ignores — `MESH_SHIFT`); bit 31 = `SEM_LUZ_BIT`.
     /// `flip_uv` bit 0 — mirror the sampled texture U (logical flip_x).
     pub const FLIP_X_BIT: u32 = 1 << 0;
     /// `flip_uv` bit 1 — mirror the sampled texture V (logical flip_y).
@@ -368,13 +368,18 @@ impl RenderInstance {
     /// another render call.
     pub const MESH_SHIFT: u32 = 8;
 
-    /// The bits of the mesh tag in [`Self::flip_uv`].
-    pub const MESH_MASK: u32 = !0u32 << Self::MESH_SHIFT;
+    /// The bits of the mesh tag in [`Self::flip_uv`] (8–30: 2²³ − 1 meshes per call).
+    pub const MESH_MASK: u32 = (!0u32 << Self::MESH_SHIFT) & !Self::SEM_LUZ_BIT;
 
     /// Unpack the mesh tag (`0` = quad) from a `flip_uv` flags word.
     pub const fn unpack_mesh(flip_uv: u32) -> u32 {
-        flip_uv >> Self::MESH_SHIFT
+        (flip_uv & Self::MESH_MASK) >> Self::MESH_SHIFT
     }
+
+    /// ⭐ `flip_uv` bit 31 — **`NaoRecebeLuz`**: o `sprite.wgsl` não multiplica esta instância pela
+    /// luz 2D. Só a coleta o escreve (pelo `SimRef`, contra o conjunto que a luz do quadro entrega);
+    /// toda instância de fora chega sem ele.
+    pub const SEM_LUZ_BIT: u32 = 1 << 31;
 
     /// ⭐⭐ **O `z_order` de toda sprite do MOTION: por cima do mundo** (doc 118 §10, 2026-09-23).
     ///

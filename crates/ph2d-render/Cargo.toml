@@ -104,6 +104,8 @@ criterion = { version = "0.8", default-features = false }
 # reaches a GPU pipeline build. Mirrors ph2d-painter-brush's stamp.wgsl
 # naga gate. `wgsl-in` feature for the WGSL front-end.
 naga = { version = "29.0.4", features = ["wgsl-in"] }
+# O G7 (luz 2D) escreve a fluência sintética em `Rgba16Float` — o formato que o solver entrega.
+half = "2"
 # Painter W3 Block 2: the blend math source-of-truth `apply_blend` + `BlendMode`
 # is the CPU REFERENCE for `shader_blend_modes_bit_identical_with_rust` and the
 # GPU↔CPU readback parity gate. Dev-dep only — production `LayerCompositor`

@@ -129,6 +129,7 @@ pub(super) fn glass(gpu: &ph2d_gpu::GpuContext, g: Gear<'_>) {
             wgpu::Color::TRANSPARENT,
             g.instances,
             g.scene_viewport,
+            true,
         );
         g.tonemap.run(gpu);
         g.band_blit.blit(

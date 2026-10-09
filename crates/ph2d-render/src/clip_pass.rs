@@ -45,6 +45,8 @@ pub(crate) fn encode_clip_groups<'a>(
     // marcava o stencil na pose de REPOUSO**: a silhueta que corta num sítio e a arte noutro. *É a
     // costura que um `grep` por «desenha» não vê — o passe de marca não desenha cor nenhuma.*
     skin_bg: &wgpu::BindGroup,
+    // ⭐ O grupo da LUZ 2D recebida (o neutro sem luz) — a mesma pipeline do passe normal.
+    luz_bg: &wgpu::BindGroup,
     quad_buf: &wgpu::Buffer,
     instance_buf: &wgpu::Buffer,
     meshes: (&wgpu::Buffer, &[(u32, u32)]),
@@ -83,6 +85,7 @@ pub(crate) fn encode_clip_groups<'a>(
     });
     pass.set_bind_group(0, frame_bg, &[]);
     pass.set_bind_group(2, skin_bg, &[]);
+    pass.set_bind_group(3, luz_bg, &[]);
     pass.set_vertex_buffer(0, quad_buf.slice(..));
     pass.set_vertex_buffer(1, instance_buf.slice(..));
 
@@ -162,6 +165,8 @@ pub(crate) fn encode_mask_pass<'a>(
     // marcava o stencil na pose de REPOUSO**: a silhueta que corta num sítio e a arte noutro. *É a
     // costura que um `grep` por «desenha» não vê — o passe de marca não desenha cor nenhuma.*
     skin_bg: &wgpu::BindGroup,
+    // ⭐ O grupo da LUZ 2D recebida (o neutro sem luz) — a mesma pipeline do passe normal.
+    luz_bg: &wgpu::BindGroup,
     quad_buf: &wgpu::Buffer,
     instance_buf: &wgpu::Buffer,
     meshes: (&wgpu::Buffer, &[(u32, u32)]),
@@ -196,6 +201,7 @@ pub(crate) fn encode_mask_pass<'a>(
     });
     pass.set_bind_group(0, frame_bg, &[]);
     pass.set_bind_group(2, skin_bg, &[]);
+    pass.set_bind_group(3, luz_bg, &[]);
     pass.set_vertex_buffer(0, quad_buf.slice(..));
     pass.set_vertex_buffer(1, instance_buf.slice(..));
 

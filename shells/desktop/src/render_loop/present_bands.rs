@@ -100,7 +100,8 @@ pub(super) fn draw_lower_bands(
             gpu,
             g.world_rt.blend_view(),
             g.vello_pass.intermediate_view(),
-            ph2d_render::BandSource::Vector,
+            // A grade é CHROME: a convenção do vetor, mas nunca recebe a luz 2D.
+            ph2d_render::BandSource::Grade,
         );
     }
     let upto = plan.last_sprite.unwrap_or(plan.bands.len());

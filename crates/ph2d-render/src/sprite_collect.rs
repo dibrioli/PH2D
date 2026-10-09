@@ -57,6 +57,8 @@ pub(crate) fn collect_sorted_instances(
     extra: &crate::LiftedInstances,
     rank_window: Option<(u32, u32)>,
     held_back: Option<&std::collections::BTreeSet<ph2d_ecs::Entity>>,
+    // ⭐ As entidades da simulação com `NaoRecebeLuz` (luz 2D): ganham o `SEM_LUZ_BIT`.
+    sem_luz: Option<&std::collections::BTreeSet<ph2d_ecs::Entity>>,
 ) {
     scratch.clear();
     meshes.clear();
@@ -78,6 +80,12 @@ pub(crate) fn collect_sorted_instances(
         }
         let mut inst = *inst;
         crate::sprite_mesh::clear_mesh_tag(&mut inst);
+        inst.flip_uv &= !RenderInstance::SEM_LUZ_BIT;
+        if let (Some(sem), Some(sim_ref)) = (sem_luz, sim_ref)
+            && sem.contains(&sim_ref.0)
+        {
+            inst.flip_uv |= RenderInstance::SEM_LUZ_BIT;
+        }
         if let Some(malha) = malha {
             inst.flip_uv |=
                 meshes.push(malha, inst.anchor, inst.size) << RenderInstance::MESH_SHIFT;
@@ -88,6 +96,7 @@ pub(crate) fn collect_sorted_instances(
     scratch.extend_from_slice(extra.instances());
     for inst in &mut scratch[de_fora..] {
         crate::sprite_mesh::clear_mesh_tag(inst);
+        inst.flip_uv &= !RenderInstance::SEM_LUZ_BIT;
     }
     // ⭐⭐⭐ **A fatia de fora TAMBÉM leva malhas** (plano `docs/Skeleton/03`, W7): os fantasmas do
     // onion de uma imagem presa ao esqueleto são a arte DEFORMADA em `t ± k`, e sem isto eles

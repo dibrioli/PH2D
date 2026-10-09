@@ -8,7 +8,8 @@
 //! shader silently reads the wrong bytes. Mirrors ph2d-painter-brush's
 //! `stamp_wgsl_validates_via_naga`.
 
-const SPRITE_WGSL: &str = include_str!("../../src/shaders/sprite.wgsl");
+// O texto que a placa compila: `receber.wgsl` (luz 2D) concatenado à frente do `sprite.wgsl`.
+const SPRITE_WGSL: &str = ph2d_render::pipeline::SPRITE_WGSL;
 
 #[test]
 fn sprite_wgsl_parses_and_validates() {
@@ -91,9 +92,11 @@ fn sprite_wgsl_instance_basis_is_vec4_at_location_6() {
 #[test]
 fn the_sprite_fragment_does_not_clamp_its_colour_output() {
     // As duas linhas de retorno do fragmento principal — o ramo premultiplicado e o reto.
+    // ⭐ Desde a luz 2D (W3) os dois passam por `luz_receber`, que multiplica e NUNCA satura — a
+    //    segunda metade deste gate lê o corpo dela.
     for needle in [
-        "return vec4<f32>(rgb * extra_alpha, alpha);",
-        "return vec4<f32>(rgb * alpha, alpha);",
+        "return luz_receber(vec4<f32>(rgb * extra_alpha, alpha), in.mundo, in.sem_luz);",
+        "return luz_receber(vec4<f32>(rgb * alpha, alpha), in.mundo, in.sem_luz);",
     ] {
         assert!(
             SPRITE_WGSL.contains(needle),
@@ -102,6 +105,18 @@ fn the_sprite_fragment_does_not_clamp_its_colour_output() {
              silencio: a sprite desenha-se igual, mas nenhuma cor passa de 1.0, o bright-pass do \
              bloom nao encontra nada, e o halo desaparece sem erro nenhum.\n\
              Ver `docs/Sprite_projeto/18` W8 e `shells/desktop/src/render_loop/sprite_emissive.rs`."
+        );
+    }
+    let corpo = ph2d_render::RECEBER_WGSL
+        .split("fn luz_receber(")
+        .nth(1)
+        .and_then(|r| r.split("\n}").next())
+        .expect("receber.wgsl define `fn luz_receber(`");
+    for proibido in ["clamp", "saturate", "min(", "max("] {
+        assert!(
+            !corpo.contains(proibido),
+            "`luz_receber` passou a conter `{proibido}` — a cor da sprite deixaria de passar do \
+             branco e a emissao morreria em silencio (ver acima)."
         );
     }
 }

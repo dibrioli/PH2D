@@ -25,6 +25,9 @@ pub enum BandSource {
     ///
     /// ⚠️ Apendado: a posição é o índice do uniforme, e reordenar trocaria as convenções em silêncio.
     Formas,
+    /// ⭐ A GRADE do editor por trás dos objectos: a convenção do Vello, mas é CHROME — nunca recebe
+    /// a luz 2D (o documento vetorial usa [`Self::Vector`], que recebe). Apendado.
+    Grade,
 }
 
 impl BandSource {
@@ -35,15 +38,35 @@ impl BandSource {
             BandSource::Sprites => (1, 1),
             BandSource::Vector => (0, 0),
             BandSource::Formas => (0, 1),
+            BandSource::Grade => (0, 0),
         }
     }
 }
+
+impl BandSource {
+    /// A fonte é conteúdo do MUNDO que recebe a luz 2D quando acesa? Os sprites já a receberam no
+    /// passe deles; a grade é chrome.
+    #[must_use]
+    pub fn recebe_luz(self) -> bool {
+        matches!(self, BandSource::Vector | BandSource::Formas)
+    }
+}
+
+/// O módulo da colagem: a luz recebida e a conta do tonemap À FRENTE (as mesmas do sprite).
+pub const BAND_BLIT_WGSL: &str = concat!(
+    include_str!("shaders/receber.wgsl"),
+    include_str!("shaders/tonemap_conta.wgsl"),
+    include_str!("shaders/band_blit.wgsl")
+);
 
 pub struct BandBlit {
     pipeline: wgpu::RenderPipeline,
     bgl: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
-    uniforms: [wgpu::Buffer; 3],
+    uniforms: [wgpu::Buffer; 4],
+    /// ⭐ O `@group(3)` da luz 2D (+ o LUT do tonemap nos bindings 3–4).
+    luz_bgl: wgpu::BindGroupLayout,
+    luz: crate::luz_recebida::GrupoDeLuz,
 }
 
 impl BandBlit {
@@ -80,14 +103,39 @@ impl BandBlit {
                 },
             ],
         });
+        let [l0, l1, l2] = crate::luz_recebida::entradas_do_layout();
+        let luz_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-render band blit luz bgl"),
+            entries: &[
+                l0,
+                l1,
+                l2,
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-render band blit layout"),
-            bind_group_layouts: &[Some(&bgl)],
+            bind_group_layouts: &[Some(&bgl), None, None, Some(&luz_bgl)],
             immediate_size: 0,
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-render band blit shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/band_blit.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(BAND_BLIT_WGSL.into()),
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-render band blit pipeline"),
@@ -146,18 +194,66 @@ impl BandBlit {
             min_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-        // Um uniforme por fonte, construído uma vez: os três valores são constantes.
+        // Um uniforme por fonte, construído uma vez: os quatro valores são constantes.
         let uniforms = [
             uniform_for(device, BandSource::Sprites),
             uniform_for(device, BandSource::Vector),
             uniform_for(device, BandSource::Formas),
+            uniform_for(device, BandSource::Grade),
         ];
+        // O grupo NEUTRO precisa de um LUT ligado (o layout o pede) — nunca amostrado: `ligada = 0`.
+        let lut_neutro = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-render band blit lut neutro"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D3,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let lut_vista = lut_neutro.create_view(&wgpu::TextureViewDescriptor::default());
+        let luz = crate::luz_recebida::GrupoDeLuz::novo(
+            gpu,
+            &luz_bgl,
+            &lut_entradas(&lut_vista, &sampler),
+        );
         Self {
             pipeline,
             bgl,
             sampler,
             uniforms,
+            luz_bgl,
+            luz,
         }
+    }
+
+    /// ⭐ **Acende (`Some`) ou apaga (`None`) a luz 2D** para as colagens que se seguem: as fontes do
+    /// MUNDO ([`BandSource::recebe_luz`]) passam pela conta do sprite. `tela_para_mundo` = o afim
+    /// píxel do alvo → mundo, o INVERSO do que o Vello usou para desenhar o documento; `tonemap` dá o
+    /// LUT (o mesmo do passe de sprite). `None` = a colagem de sempre, byte a byte.
+    pub fn receber_luz(
+        &mut self,
+        gpu: &GpuContext,
+        luz: Option<(
+            &crate::LuzRecebida<'_>,
+            [[f64; 3]; 2],
+            &crate::tonemap::Tonemap,
+        )>,
+    ) {
+        let Some((l, tela_para_mundo, tonemap)) = luz else {
+            self.luz.definir(gpu, &self.luz_bgl, None, &[]);
+            return;
+        };
+        let (lut, lut_amostra) = tonemap.lut();
+        let extra = lut_entradas(lut, lut_amostra);
+        let uniforme = l.uniforme(Some(tela_para_mundo));
+        self.luz
+            .definir(gpu, &self.luz_bgl, Some((l.fluencia, uniforme)), &extra);
     }
 
     /// Cola `src` sobre `target`, com a convenção de `source`.
@@ -215,16 +311,33 @@ impl BandBlit {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bg, &[]);
+            pass.set_bind_group(3, self.luz.ligar(source.recebe_luz()), &[]);
             pass.draw(0..3, 0..1);
         }
         gpu.queue.submit(Some(enc.finish()));
     }
 }
 
+fn lut_entradas<'a>(
+    lut: &'a wgpu::TextureView,
+    amostra: &'a wgpu::Sampler,
+) -> [wgpu::BindGroupEntry<'a>; 2] {
+    [
+        wgpu::BindGroupEntry {
+            binding: 3,
+            resource: wgpu::BindingResource::TextureView(lut),
+        },
+        wgpu::BindGroupEntry {
+            binding: 4,
+            resource: wgpu::BindingResource::Sampler(amostra),
+        },
+    ]
+}
+
 fn uniform_for(device: &wgpu::Device, source: BandSource) -> wgpu::Buffer {
     use wgpu::util::DeviceExt as _;
     let (decode, premul) = source.flags();
-    let data: [u32; 4] = [decode, premul, 0, 0];
+    let data: [u32; 4] = [decode, premul, u32::from(source.recebe_luz()), 0];
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("ph2d-render band blit flags"),
         contents: bytemuck::cast_slice(&data),
@@ -244,6 +357,10 @@ mod tests {
         assert_eq!(BandSource::Vector.flags(), (0, 0));
         // ⭐ A terceira: as cores do desenhista (como o Vello) e pré-multiplicada (como a sprite).
         assert_eq!(BandSource::Formas.flags(), (0, 1));
+        // ⭐ A grade: a convenção do vetor, mas nunca recebe a luz (é chrome).
+        assert_eq!(BandSource::Grade.flags(), (0, 0));
+        assert!(BandSource::Vector.recebe_luz() && BandSource::Formas.recebe_luz());
+        assert!(!BandSource::Sprites.recebe_luz() && !BandSource::Grade.recebe_luz());
     }
 
     /// O índice do uniforme é o discriminante — um enum reordenado trocaria os dois em silêncio.
@@ -252,5 +369,6 @@ mod tests {
         assert_eq!(BandSource::Sprites as usize, 0);
         assert_eq!(BandSource::Vector as usize, 1);
         assert_eq!(BandSource::Formas as usize, 2);
+        assert_eq!(BandSource::Grade as usize, 3);
     }
 }

@@ -32,6 +32,7 @@ mod fx_stack_modes_gpu;
 mod fx_stack_morphology_gpu;
 mod fx_stack_segment_cost;
 mod fx_stack_turbulence_gpu;
+mod g7_sprite_e_vetor_sob_a_mesma_luz;
 mod generate_v3_fixtures;
 mod gpu_gates_are_not_vacuous;
 mod impasto_light_gpu;

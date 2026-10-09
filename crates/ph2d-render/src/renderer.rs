@@ -111,6 +111,10 @@ pub struct SpriteRenderer {
     skin_buffers: crate::sprite_mesh_skin_gpu::SkinBuffers,
     /// O buffer de vértices dessas malhas, o gémeo do `instance_buffer`.
     mesh_buffer: crate::sprite_mesh::MeshVertexBuffer,
+    /// ⭐ A LUZ 2D recebida (`@group(3)`) — neutro até [`Self::receber_luz`] a acender.
+    luz: crate::luz_recebida::GrupoDeLuz,
+    /// As entidades da simulação com `NaoRecebeLuz` neste quadro (vazio sem luz).
+    sem_luz: std::collections::BTreeSet<ph2d_ecs::Entity>,
 }
 
 /// The `Stencil8` texture + its view + the size it was allocated for.
@@ -182,6 +186,7 @@ impl SpriteRenderer {
         let individual = IndividualTextureStore::new(&gpu);
         let mesh_buffer = crate::sprite_mesh::MeshVertexBuffer::new(&gpu);
         let skin_buffers = crate::sprite_mesh_skin_gpu::SkinBuffers::new(&gpu, &pipeline.skin_bgl);
+        let luz = crate::luz_recebida::GrupoDeLuz::novo(&gpu, &pipeline.luz_bgl, &[]);
 
         Self {
             gpu,
@@ -207,7 +212,33 @@ impl SpriteRenderer {
             mesh_frame: crate::sprite_mesh::MeshFrame::default(),
             skin_buffers,
             mesh_buffer,
+            luz,
+            sem_luz: std::collections::BTreeSet::new(),
         }
+    }
+
+    /// ⭐ **Acende (`Some`) ou apaga (`None`) a luz 2D** para os desenhos da CENA que se seguem
+    /// (`render*` que lêem o `PresentWorld`). Os desenhos ISOLADOS (`render_instances_only`,
+    /// `render_lifted_instances` — o brilho, o vidro) ligam sempre o grupo neutro: a emissão é luz,
+    /// não a recebe. `None` = o quadro de sempre, byte a byte.
+    pub fn receber_luz(&mut self, luz: Option<&crate::LuzRecebida<'_>>) {
+        self.sem_luz.clear();
+        if let Some(l) = luz {
+            self.sem_luz.extend(l.sem_luz.iter().copied());
+        }
+        let bgl = &self.pipeline.luz_bgl;
+        self.luz.definir(
+            &self.gpu,
+            bgl,
+            luz.map(|l| (l.fluencia, l.uniforme(None))),
+            &[],
+        );
+    }
+
+    /// A luz está acesa para os próximos desenhos da cena?
+    #[must_use]
+    pub fn luz_acesa(&self) -> bool {
+        self.luz.aceso()
     }
 
     /// O sub-retângulo que o ÚLTIMO desenho aplicou de facto (ver

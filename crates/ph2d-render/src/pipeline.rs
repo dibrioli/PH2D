@@ -134,6 +134,13 @@ pub fn blend_state_for(tag: u8) -> wgpu::BlendState {
     }
 }
 
+/// O módulo do sprite: a luz recebida À FRENTE (o sprite chama `luz_receber`), concatenada — não há
+/// `#include` em WGSL, e duas cópias divergiriam em silêncio.
+pub const SPRITE_WGSL: &str = concat!(
+    include_str!("shaders/receber.wgsl"),
+    include_str!("shaders/sprite.wgsl")
+);
+
 pub struct SpritePipeline {
     /// Normal pass (no stencil): every non-clipped sprite, exactly as
     /// before ClipChildren existed (zero-regression path). Equivalent to
@@ -157,6 +164,9 @@ pub struct SpritePipeline {
     /// ⭐ O layout do grupo da PELE — ver a construção dele.
     pub skin_bgl: wgpu::BindGroupLayout,
     pub material_bgl: wgpu::BindGroupLayout,
+    /// ⭐ O layout do grupo da LUZ recebida (`@group(3)`, `receber.wgsl`) — o idioma do grupo da
+    /// pele: em TODAS as pipelines, ligado uma vez por passe, o NEUTRO quando não há luz.
+    pub luz_bgl: wgpu::BindGroupLayout,
 }
 
 /// The parts of a sprite render pipeline that vary between the normal /
@@ -238,11 +248,23 @@ impl SpritePipeline {
                 }),
             });
 
+        let luz_bgl = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render luz recebida bgl"),
+                entries: &crate::luz_recebida::entradas_do_layout(),
+            });
+
         let layout = gpu
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("ph2d-render sprite layout"),
-                bind_group_layouts: &[Some(&frame_bgl), Some(&material_bgl), Some(&skin_bgl)],
+                bind_group_layouts: &[
+                    Some(&frame_bgl),
+                    Some(&material_bgl),
+                    Some(&skin_bgl),
+                    Some(&luz_bgl),
+                ],
                 immediate_size: 0,
             });
 
@@ -250,7 +272,7 @@ impl SpritePipeline {
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("ph2d-render sprite shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/sprite.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(SPRITE_WGSL.into()),
             });
 
         // Normal-pass vertex buffers: quad + the 12-attr instance layout.
@@ -470,6 +492,7 @@ impl SpritePipeline {
             frame_bgl,
             skin_bgl,
             material_bgl,
+            luz_bgl,
         }
     }
 

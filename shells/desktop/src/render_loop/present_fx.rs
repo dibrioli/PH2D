@@ -61,6 +61,8 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
             // O MESMO sub-rect da cena fundida — senão o halo desliza para fora da
             // sprite que o emitiu (o mesmo cuidado que o glow do Motion documenta).
             g.scene_viewport,
+            // A emissão É luz: nunca recebe a luz 2D.
+            false,
         );
         g.motion_fx.bloom_over(
             gpu,

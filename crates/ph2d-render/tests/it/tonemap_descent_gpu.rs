@@ -73,7 +73,8 @@ const W: u32 = 256;
 /// Altura: oito grupos de oito linhas — o que faz cada byte visitar as 64 células.
 const H: u32 = 64;
 
-const TONEMAP_WGSL: &str = include_str!("../../src/shaders/tonemap.wgsl");
+// O texto que a placa compila: a conta partilhada à frente do passe.
+const TONEMAP_WGSL: &str = ph2d_render::tonemap::TONEMAP_WGSL;
 
 /// **A validação do WGSL, sem GPU nenhuma.** Sem isto, uma recusa do naga só apareceria ao abrir a
 /// janela — e o passe de tonemap está no caminho de **todo** o conteúdo do app.

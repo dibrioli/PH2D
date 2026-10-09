@@ -59,6 +59,15 @@ pub struct Tonemap {
     output_size: (u32, u32),
 }
 
+/// O módulo do tonemap: a CONTA partilhada à frente (ver `tonemap_conta.wgsl`).
+pub const TONEMAP_WGSL: &str = concat!(
+    include_str!("shaders/tonemap_conta.wgsl"),
+    include_str!("shaders/tonemap.wgsl")
+);
+
+/// O texto da conta do tonemap — o que a colagem do vetor aceso concatena (censo no gate G7).
+pub const TONEMAP_CONTA_WGSL: &str = include_str!("shaders/tonemap_conta.wgsl");
+
 impl Tonemap {
     /// LDR output format. **Must match** the texture you bind as
     /// the render target when calling [`run`](Self::run).
@@ -121,7 +130,7 @@ impl Tonemap {
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("ph2d-render tonemap shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/tonemap.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(TONEMAP_WGSL.into()),
             });
 
         let pipeline = gpu
@@ -210,6 +219,13 @@ impl Tonemap {
 
     /// View of the LDR output texture. Bound by the
     /// [`Compositor`](crate::Compositor) as its "game" input.
+    /// ⭐ O LUT ligado e o sampler dele — a colagem do vetor aceso pela luz 2D aplica a MESMA conta
+    /// (`tonemap_conta.wgsl`) e tem de ler o MESMO LUT, ou um bake futuro divergiria em silêncio.
+    #[must_use]
+    pub fn lut(&self) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self.lut_view, &self.sampler_3d)
+    }
+
     pub fn output_view(&self) -> &wgpu::TextureView {
         &self.output_view
     }
@@ -454,7 +470,7 @@ mod tests {
     fn agx_log_constants_match_blender_reference() {
         // We don't expose the WGSL constants, but the shader source
         // is plain text — assert by string match.
-        let src = include_str!("shaders/tonemap.wgsl");
+        let src = TONEMAP_WGSL;
         assert!(
             src.contains("AGX_MIN_EV: f32 = -12.47393"),
             "AGX_MIN_EV constant drifted from Blender 4.0+ reference"
@@ -475,7 +491,7 @@ mod tests {
     /// qualquer máquina, e não só naquela em que a recusa nasceu.
     #[test]
     fn the_measured_refusal_of_a_dither_here_stays_written_down() {
-        let src = include_str!("shaders/tonemap.wgsl");
+        let src = TONEMAP_WGSL;
         for needle in [
             "RECUSA MEDIDA",
             "tonemap_descent_gpu",

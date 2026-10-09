@@ -206,6 +206,10 @@ struct VertexOutput {
     @location(6) @interpolate(flat) atlas_uv: vec4<f32>,
     @location(7) @interpolate(flat) uv_xform: vec4<f32>,
     @location(8) @interpolate(flat) repeat_mode: u32,
+    // ⭐ A LUZ 2D recebida (`receber.wgsl`, concatenado à frente): a posição no MUNDO, para
+    // `luz_em`, e o `NaoRecebeLuz` (bit 31 do `flip_uv`, posto pela coleta).
+    @location(9) mundo: vec2<f32>,
+    @location(10) @interpolate(flat) sem_luz: u32,
 };
 
 // Wrap `t` into [0,1] per the resolved RepeatMode (W3.T3.11): 2 Enabled
@@ -275,6 +279,8 @@ fn vs_main(@builtin(vertex_index) vi: u32, v: VertexInput, i: InstanceInput) -> 
     out.atlas_uv = i.atlas_uv;
     out.uv_xform = i.uv_xform;
     out.repeat_mode = (i.flip_uv >> 3u) & 3u;
+    out.mundo = world;
+    out.sem_luz = (i.flip_uv >> 31u) & 1u;
     return out;
 }
 
@@ -328,13 +334,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         // the authored alpha factors are not (§4.4 amended; audit H-1/E-2).
         // extra_alpha defaults 1.0 (opacity/tint.a/corner.a all 1) → the
         // BG-Removal fringe fix is preserved byte-for-byte.
-        return vec4<f32>(rgb * extra_alpha, alpha);
+        return luz_receber(vec4<f32>(rgb * extra_alpha, alpha), in.mundo, in.sem_luz);
     }
     // Straight (non-premultiplied) sRGB atlas + premultiplied blend:
     // premultiply here so overlap composites linearly without the
     // dark-fringe artifact. `alpha` already carries opacity + every alpha
     // factor, so rgb is dimmed correctly through this multiply.
-    return vec4<f32>(rgb * alpha, alpha);
+    return luz_receber(vec4<f32>(rgb * alpha, alpha), in.mundo, in.sem_luz);
 }
 
 // ─── ClipChildren stencil-mark pass (W3 §8; ADR-0070/0074-amendment) ───

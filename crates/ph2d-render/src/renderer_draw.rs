@@ -124,6 +124,7 @@ impl SpriteRenderer {
             extra,
             rank_window,
             held_back,
+            Some(&self.sem_luz).filter(|_| self.luz.aceso()),
         );
         self.draw_scratch(
             target,
@@ -132,6 +133,7 @@ impl SpriteRenderer {
             clear_color,
             gpu_extra,
             scene_viewport,
+            true,
         );
     }
 
@@ -185,12 +187,18 @@ impl SpriteRenderer {
             clear_color,
             gpu_extra,
             scene_viewport,
+            false,
         );
     }
 
     /// ⭐⭐ [`render_instances_only`](Self::render_instances_only) para instâncias COPIADAS DA CENA com
     /// as malhas delas ([`crate::LiftedInstances`]) — o vidro do prefab e o emissivo. Uma imagem presa
     /// ao esqueleto desenha-se aqui deformada, como na cena (plano `docs/Skeleton/03`, W3).
+    ///
+    /// ⭐ `com_luz`: as peças da cena levantadas (o vidro) recebem a luz 2D como na cena; a emissão
+    /// (o brilho) NÃO — ela é luz. ⚠️ Uma instância levantada não traz o `SimRef`, logo o
+    /// `NaoRecebeLuz` não chega aqui (as peças da receita aberta acendem sempre).
+    #[allow(clippy::too_many_arguments)]
     pub fn render_lifted_instances(
         &mut self,
         target: &wgpu::TextureView,
@@ -199,12 +207,21 @@ impl SpriteRenderer {
         clear_color: wgpu::Color,
         lifted: &crate::LiftedInstances,
         scene_viewport: Option<[f32; 4]>,
+        com_luz: bool,
     ) {
         self.scratch.clear();
         self.scratch.extend_from_slice(lifted.instances());
         crate::sprite_mesh::tag_lifted(&mut self.scratch, &mut self.mesh_frame, lifted.meshes());
         crate::sprite_collect::sort_render_order(&mut self.scratch);
-        self.draw_scratch(target, camera, window, clear_color, None, scene_viewport);
+        self.draw_scratch(
+            target,
+            camera,
+            window,
+            clear_color,
+            None,
+            scene_viewport,
+            com_luz,
+        );
     }
 
     /// The draw pass over the already-filled `self.scratch`: compute runs, upload,
@@ -221,6 +238,8 @@ impl SpriteRenderer {
         clear_color: wgpu::Color,
         gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
+        // `true` = desenho da CENA: liga a luz 2D se acesa; `false` = isolado (sempre neutro).
+        com_luz: bool,
     ) {
         compute_runs(&self.scratch, &mut self.runs);
         // Ensure a bind group exists for every distinct sampling used by a run
@@ -359,6 +378,7 @@ impl SpriteRenderer {
                 // ⚠️ **O grupo da PELE é ligado UMA vez por passe**, e não por chamada: ele não
                 // muda dentro de um passe, e o `SEM_PELE` é quem decide por vértice.
                 pass.set_bind_group(2, self.skin_buffers.grupo_ligado(), &[]);
+                pass.set_bind_group(3, self.luz.ligar(com_luz), &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
                 // §10: bind the per-run blend pipeline. Runs are keyed by
@@ -409,6 +429,7 @@ impl SpriteRenderer {
                 // ⚠️ **O grupo da PELE é ligado UMA vez por passe**, e não por chamada: ele não
                 // muda dentro de um passe, e o `SEM_PELE` é quem decide por vértice.
                 pass.set_bind_group(2, self.skin_buffers.grupo_ligado(), &[]);
+                pass.set_bind_group(3, self.luz.ligar(com_luz), &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, buffer.slice(..));
                 if runs.is_empty() {
@@ -452,6 +473,7 @@ impl SpriteRenderer {
                 &self.pipeline,
                 &self.frame_bind_group,
                 self.skin_buffers.grupo_ligado(),
+                self.luz.ligar(com_luz),
                 &self.quad_buffer,
                 self.instance_buffer.buffer(),
                 (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),
@@ -472,6 +494,7 @@ impl SpriteRenderer {
                 &self.pipeline,
                 &self.frame_bind_group,
                 self.skin_buffers.grupo_ligado(),
+                self.luz.ligar(com_luz),
                 &self.quad_buffer,
                 self.instance_buffer.buffer(),
                 (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),

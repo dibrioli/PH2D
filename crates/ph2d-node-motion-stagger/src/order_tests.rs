@@ -22,7 +22,10 @@ fn the_index_order_is_the_old_ramp_bit_for_bit() {
         }
     }
     // E uma ordem FORA de alcance cai na de sempre — a lei do `Pick::of` e do `Transfer::of`.
-    assert_eq!(raw_at_index(99, 3, 7, 0), raw_at_index(ORDER_INDEX, 3, 7, 0));
+    assert_eq!(
+        raw_at_index(99, 3, 7, 0),
+        raw_at_index(ORDER_INDEX, 3, 7, 0)
+    );
 }
 
 /// ⭐⭐ **`FROM CENTER` ARRANCA NO MEIO E ACABA NAS DUAS PONTAS** — e é SIMÉTRICA, que é a

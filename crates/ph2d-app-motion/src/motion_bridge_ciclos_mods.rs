@@ -78,6 +78,12 @@ mod animadores_probe;
 #[path = "motion_bridge_aparencia_relogio.rs"]
 mod aparencia_relogio;
 
+/// O relógio do grupo do ciclo 17 (doc 126 §5) — as curvas e as ordens novas nos dois motores;
+/// sonda `#[ignore]`, não um gate.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_bridge_ritmo_relogio.rs"]
+mod ritmo_relogio;
+
 /// O preço da costura de uma FONTE (ciclo 8, doc 113 §3) — sonda `#[ignore]`, não um gate. Mora
 /// aqui porque corre a ponte do produto (`cook_gpu`).
 #[cfg(all(test, feature = "panel-motion-graph"))]

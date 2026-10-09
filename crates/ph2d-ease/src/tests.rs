@@ -105,12 +105,18 @@ fn the_polynomial_sin_and_exp2_hold_their_measured_error() {
     let mut pior_exp = 0.0_f64;
     for k in 0..=200_000_u32 {
         let x = -3.0 + 6.0 * f64::from(k) / 200_000.0;
-        #[expect(clippy::cast_possible_truncation, reason = "a entrada é f32 por desenho")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a entrada é f32 por desenho"
+        )]
         let xf = x as f32;
         let ref_sin = (std::f64::consts::TAU * f64::from(xf)).sin();
         pior_sin = pior_sin.max((f64::from(sin_turn(xf)) - ref_sin).abs());
         let xe = -10.0 + 10.0 * f64::from(k) / 200_000.0;
-        #[expect(clippy::cast_possible_truncation, reason = "a entrada é f32 por desenho")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a entrada é f32 por desenho"
+        )]
         let xef = xe as f32;
         let ref_exp = f64::from(xef).exp2();
         pior_exp = pior_exp.max((f64::from(exp2(xef)) - ref_exp).abs() / ref_exp);
@@ -202,10 +208,7 @@ fn the_closed_form_spring_follows_the_integrated_one() {
             let r = spring_rk4(f64::from(z), t) / fim;
             #[expect(clippy::cast_possible_truncation, reason = "t é f32 por desenho")]
             let e = spring(t as f32, z);
-            assert!(
-                (f64::from(e) - r).abs() < 2e-5,
-                "ζ {z} t {t}: {e} vs {r}"
-            );
+            assert!((f64::from(e) - r).abs() < 2e-5, "ζ {z} t {t}: {e} vs {r}");
         }
     }
 }

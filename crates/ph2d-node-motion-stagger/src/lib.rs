@@ -185,7 +185,11 @@ fn shape_of(ctx: &EvalCtx<'_>) -> ph2d_ease::Shape {
 }
 
 /// A ordem inteira, lida dos params — os que escolhem ramo arredondados como o WGSL os arredonda.
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "índices de enum e contagens")]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "índices de enum e contagens"
+)]
 fn order_of(ctx: &EvalCtx<'_>) -> order::Order {
     order::Order {
         kind: ctx.param("order").round() as i32,
@@ -202,7 +206,10 @@ fn order_of(ctx: &EvalCtx<'_>) -> order::Order {
 /// The per-instance stagger delta before it's added to the channel: the eased
 /// ramp `min→max` at position `raw ∈ [0,1]`, scaled by `falloff`. Easing is the
 /// `curve` family shaped by `dir` (In / Out / In-Out) — see [`ease`].
-#[expect(clippy::too_many_arguments, reason = "a conta é uma linha; os números são do nó")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a conta é uma linha; os números são do nó"
+)]
 fn stagger_delta(
     min: f32,
     max: f32,
@@ -704,19 +711,9 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         param: "max",
         unit: ParamUnit::FromChannel,
     },
-    // O ponto e o alcance do `From Point` são lugares do MUNDO.
-    ParamUnitDecl {
-        param: "origin_x",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "origin_y",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "reach",
-        unit: ParamUnit::Length,
-    },
+    // ⚠️ O ponto e o alcance do `From Point` são metros do mundo, mas NÃO se declaram `Length`:
+    // num nó cujas magnitudes dependem do `channel`, o painel escalaria-os por `pixels_per_meter`
+    // como se fossem a rampa (o censo `no_param_of_a_channel_driven_node_is_declared_a_fixed_length`).
 ];
 
 /// **A faixa que estas magnitudes querem quando o canal é ANGULAR** — graus, não
@@ -844,7 +841,10 @@ mod tests {
     #[test]
     fn single_instance_takes_min() {
         // n == 1 → raw = 0 → delta = min (no divide-by-zero on `n-1`).
-        assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0, None, &ph2d_ease::Shape::DEFAULT), 3.0);
+        assert_eq!(
+            stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0, None, &ph2d_ease::Shape::DEFAULT),
+            3.0
+        );
     }
 
     /// The focus field gates the ramp (audit 2026-07-10: untested until now):
@@ -942,7 +942,18 @@ mod tests {
     fn swapping_the_endpoints_inverts_and_reverse_is_a_different_thing() {
         let ramp = |lo: f32, hi: f32, curve: i32| -> Vec<f32> {
             (0..5)
-                .map(|i| stagger_delta(lo, hi, curve, 0, i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
+                .map(|i| {
+                    stagger_delta(
+                        lo,
+                        hi,
+                        curve,
+                        0,
+                        i as f32 / 4.0,
+                        1.0,
+                        None,
+                        &ph2d_ease::Shape::DEFAULT,
+                    )
+                })
                 .collect()
         };
         for curve in 0..=7 {
@@ -967,7 +978,18 @@ mod tests {
             }
             // (2) O `reverse` ESPELHA a rampa ascendente.
             let mirrored: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(0.0, 1.0, curve, 0, 1.0 - i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
+                .map(|i| {
+                    stagger_delta(
+                        0.0,
+                        1.0,
+                        curve,
+                        0,
+                        1.0 - i as f32 / 4.0,
+                        1.0,
+                        None,
+                        &ph2d_ease::Shape::DEFAULT,
+                    )
+                })
                 .collect();
             let up_rev: Vec<f32> = up.iter().rev().copied().collect();
             for (a, b) in mirrored.iter().zip(&up_rev) {
@@ -1006,10 +1028,32 @@ mod tests {
     fn measure_reversed_endpoints() {
         for curve in 0..=7 {
             let up: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(0.0, 1.0, curve, 0, i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
+                .map(|i| {
+                    stagger_delta(
+                        0.0,
+                        1.0,
+                        curve,
+                        0,
+                        i as f32 / 4.0,
+                        1.0,
+                        None,
+                        &ph2d_ease::Shape::DEFAULT,
+                    )
+                })
                 .collect();
             let down: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(1.0, 0.0, curve, 0, i as f32 / 4.0, 1.0, None, &ph2d_ease::Shape::DEFAULT))
+                .map(|i| {
+                    stagger_delta(
+                        1.0,
+                        0.0,
+                        curve,
+                        0,
+                        i as f32 / 4.0,
+                        1.0,
+                        None,
+                        &ph2d_ease::Shape::DEFAULT,
+                    )
+                })
                 .collect();
             // O que um "swap + reverse" daria: a mesma rampa lida ao contrário.
             let mirror: Vec<f32> = up.iter().rev().copied().collect();

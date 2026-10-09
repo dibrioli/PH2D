@@ -4,8 +4,8 @@
 //! ⚠️ O anime.js arredonda a distância do `stagger` a centésimos (medido: `√13 → 3,61`), por isso a
 //! régua da cascata é `0,006` sobre o normalizado; as curvas saem com 6 casas.
 
-use ph2d_ease::order::{self, Order};
 use ph2d_ease::Shape;
+use ph2d_ease::order::{self, Order};
 
 const FIXTURA: &str = include_str!("../fixtures/animejs.txt");
 
@@ -83,7 +83,9 @@ fn the_grid_wave_matches_the_oracle_step_by_step() {
             let raw = order::raw_at(&o, i, c.n, [0.0, 0.0]);
             let nosso = match c.ease {
                 "-" => f64::from(raw),
-                "easeInQuad" => f64::from(ph2d_ease::ease(ph2d_ease::QUAD, 0, raw, &Shape::DEFAULT)),
+                "easeInQuad" => {
+                    f64::from(ph2d_ease::ease(ph2d_ease::QUAD, 0, raw, &Shape::DEFAULT))
+                }
                 "easeOutCubic" => {
                     f64::from(ph2d_ease::ease(ph2d_ease::CUBIC, 1, raw, &Shape::DEFAULT))
                 }
@@ -111,20 +113,56 @@ fn confere(nome: &str, f: impl Fn(f32) -> f32, tol: f64) {
 #[test]
 fn sine_and_expo_match_the_oracle() {
     let s = Shape::DEFAULT;
-    confere("easeInSine", |t| ph2d_ease::ease(ph2d_ease::SINE, 0, t, &s), 2e-6);
-    confere("easeOutSine", |t| ph2d_ease::ease(ph2d_ease::SINE, 1, t, &s), 2e-6);
-    confere("easeInOutSine", |t| ph2d_ease::ease(ph2d_ease::SINE, 2, t, &s), 2e-6);
-    confere("easeInExpo", |t| ph2d_ease::ease(ph2d_ease::EXPO, 0, t, &s), 2e-6);
-    confere("easeOutExpo", |t| ph2d_ease::ease(ph2d_ease::EXPO, 1, t, &s), 2e-6);
-    confere("easeInOutExpo", |t| ph2d_ease::ease(ph2d_ease::EXPO, 2, t, &s), 2e-6);
+    confere(
+        "easeInSine",
+        |t| ph2d_ease::ease(ph2d_ease::SINE, 0, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeOutSine",
+        |t| ph2d_ease::ease(ph2d_ease::SINE, 1, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeInOutSine",
+        |t| ph2d_ease::ease(ph2d_ease::SINE, 2, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeInExpo",
+        |t| ph2d_ease::ease(ph2d_ease::EXPO, 0, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeOutExpo",
+        |t| ph2d_ease::ease(ph2d_ease::EXPO, 1, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeInOutExpo",
+        |t| ph2d_ease::ease(ph2d_ease::EXPO, 2, t, &s),
+        2e-6,
+    );
 }
 
 #[test]
 fn elastic_matches_the_oracle_at_amplitude_1_period_0_3() {
     let s = Shape::DEFAULT;
-    confere("easeOutElastic(1,.3)", |t| ph2d_ease::ease(ph2d_ease::ELASTIC, 1, t, &s), 2e-6);
-    confere("easeInElastic(1,.3)", |t| ph2d_ease::ease(ph2d_ease::ELASTIC, 0, t, &s), 2e-6);
-    confere("easeInOutElastic(1,.3)", |t| ph2d_ease::ease(ph2d_ease::ELASTIC, 2, t, &s), 2e-6);
+    confere(
+        "easeOutElastic(1,.3)",
+        |t| ph2d_ease::ease(ph2d_ease::ELASTIC, 1, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeInElastic(1,.3)",
+        |t| ph2d_ease::ease(ph2d_ease::ELASTIC, 0, t, &s),
+        2e-6,
+    );
+    confere(
+        "easeInOutElastic(1,.3)",
+        |t| ph2d_ease::ease(ph2d_ease::ELASTIC, 2, t, &s),
+        2e-6,
+    );
 }
 
 #[test]

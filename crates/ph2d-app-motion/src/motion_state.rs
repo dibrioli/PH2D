@@ -133,6 +133,10 @@ mod corpo_com_colisor_demo;
 #[path = "motion_state_corda_com_colisor_demo.rs"]
 mod corda_com_colisor_demo;
 
+/// A cena `=132` — o ritmo (ciclo 17, doc 126): a onda pela ordem e pela curva da casa.
+#[path = "motion_state_ritmo_demo.rs"]
+mod ritmo_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

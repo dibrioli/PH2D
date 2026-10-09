@@ -35,11 +35,18 @@ fn every_timeline_family_is_the_house_curve() {
             for k in 0..=1024_u16 {
                 let t = f32::from(k) / 1024.0;
                 let a = e.eval(f64::from(t));
-                #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap, reason = "0..=2")]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_possible_wrap,
+                    reason = "0..=2"
+                )]
                 let b = f64::from(ph2d_ease::ease(da_casa(family), dir as i32, t, &s));
                 let d = (a - b).abs();
                 pior = pior.max(d);
-                assert!(d < 2e-6, "{family:?} {mode:?} t {t}: timeline {a} × nós {b}");
+                assert!(
+                    d < 2e-6,
+                    "{family:?} {mode:?} t {t}: timeline {a} × nós {b}"
+                );
             }
         }
     }

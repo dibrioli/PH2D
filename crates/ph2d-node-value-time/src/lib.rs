@@ -188,23 +188,30 @@ pub const CURVE_KEY: &str = "curve";
 /// device result is bit-comparable to the CPU (the only divergence is an FMA the
 /// driver may fuse, ε below the parity budget). No `applicable` — no CPU fallback.
 const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        var vt_v = params.playhead * params.rate + params.offset\n\
-        \x20   + f32(i) * params.stagger;\n\
-        if (params.delay != 0.0) {\n\
-        \x20   vt_v = vt_v - params.delay * vt_ease(vt_raw_at(i));\n\
-        }\n\
-        write_v(i, vt_v);\n",
+    wgsl: VT_BODY,
     wgsl_lib: VT_LIB,
+    bindings: &[VT_V],
+    params: VT_PARAMS,
+    count_law: Some(time_count),
+    // ⚠️ **Só o `From Point` LÊ a posição**, e é por isso que ela vive numa VARIANTE: declarada no
+    // kernel de topo, toda `value.time` solta (o relógio global, sem entrada) era lida pelo
+    // diagnóstico como «lê `P` sem fonte» — um `MissingSource(P)` FALSO na cena `=76`.
+    variant_by_param: Some(|param| {
+        if param("order").round() as i32 == ph2d_ease::order::ORDER_FROM_POINT {
+            &VT_PONTO
+        } else {
+            &GPU_KERNEL
+        }
+    }),
+    applicable: None,
+};
+
+/// A variante do `From Point`: a mesma conta, com a posição LIDA.
+const VT_PONTO: GpuKernel = GpuKernel {
+    wgsl: VT_BODY,
+    wgsl_lib: VT_LIB_PONTO,
     bindings: &[
-        ColumnBinding {
-            column: VALUE_COL,
-            dim: Dim::Scalar,
-            access: ColumnAccess::Write,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        // A posição, LIDA pelo `From Point` (ausente ⇒ a origem, como a CPU).
+        VT_V,
         ColumnBinding {
             column: "P",
             dim: Dim::Vec2,
@@ -213,40 +220,60 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &[
-        "rate",
-        "offset",
-        "stagger",
-        "delay",
-        "order",
-        "seed",
-        "ease_curve",
-        "ease_dir",
-        "overshoot",
-        "period",
-        "steps",
-        "damping",
-        "bez_x1",
-        "bez_y1",
-        "bez_x2",
-        "bez_y2",
-        "grid_cols",
-        "grid_from",
-        "grid_cell",
-        "axis",
-        "origin_x",
-        "origin_y",
-        "reach",
-    ],
+    params: VT_PARAMS,
     count_law: Some(time_count),
     variant_by_param: None,
     applicable: None,
 };
 
-/// A tabela e a ordem da casa (`ph2d_ease::wgsl_lib!`) e a leitura dos params deste nó.
-const VT_LIB: &str = concat!(
-    ph2d_ease::wgsl_lib!(),
-    "\
+const VT_V: ColumnBinding = ColumnBinding {
+    column: VALUE_COL,
+    dim: Dim::Scalar,
+    access: ColumnAccess::Write,
+    identity: [0.0; 4],
+    port: 0,
+};
+
+const VT_BODY: &str = "\
+        var vt_v = params.playhead * params.rate + params.offset\n\
+        \x20   + f32(i) * params.stagger;\n\
+        if (params.delay != 0.0) {\n\
+        \x20   vt_v = vt_v - params.delay * vt_ease(vt_raw_at(i));\n\
+        }\n\
+        write_v(i, vt_v);\n";
+
+const VT_PARAMS: &[&str] = &[
+    "rate",
+    "offset",
+    "stagger",
+    "delay",
+    "order",
+    "seed",
+    "ease_curve",
+    "ease_dir",
+    "overshoot",
+    "period",
+    "steps",
+    "damping",
+    "bez_x1",
+    "bez_y1",
+    "bez_x2",
+    "bez_y2",
+    "grid_cols",
+    "grid_from",
+    "grid_cell",
+    "axis",
+    "origin_x",
+    "origin_y",
+    "reach",
+];
+
+/// O trecho comum: a curva e a ordem lidas dos params; a POSIÇÃO entra pelo literal `$p`.
+macro_rules! vt_lib {
+    ($p:literal) => {
+        concat!(
+            ph2d_ease::wgsl_lib!(),
+            "\
     fn vt_ease(t: f32) -> f32 {\n\
         let curve = i32(pe_round(params.ease_curve));\n\
         if (curve == 8) { return vt_curve_sample(t); }\n\
@@ -262,9 +289,19 @@ const VT_LIB: &str = concat!(
         \x20   u32(max(pe_round(params.grid_cell), 0.0)),\n\
         \x20   i32(pe_round(params.axis)),\n\
         \x20   vec2<f32>(params.origin_x, params.origin_y), params.reach,\n\
-        \x20   i, params.count, read_P(i));\n\
+        \x20   i, params.count, ",
+            $p,
+            ");\n\
     }\n"
-);
+        )
+    };
+}
+
+/// A tabela e a ordem da casa (`ph2d_ease::wgsl_lib!`) e a leitura dos params deste nó — sem a
+/// posição (toda ordem que não a lê).
+const VT_LIB: &str = vt_lib!("vec2<f32>(0.0, 0.0)");
+/// O mesmo, com a posição LIDA (a variante do `From Point`).
+const VT_LIB_PONTO: &str = vt_lib!("read_P(i)");
 
 /// A LUT da curva desenhada (`Custom`) — a mesma resolução do `motion.stagger` e pela mesma
 /// razão (doc do kernel dele).
@@ -281,7 +318,11 @@ fn fill_curve_lut(text: &str, out: &mut [f32]) {
     let n = out.len();
     for (k, slot) in out.iter_mut().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "k < 512")]
-        let t = if n <= 1 { 0.0 } else { k as f32 / (n - 1) as f32 };
+        let t = if n <= 1 {
+            0.0
+        } else {
+            k as f32 / (n - 1) as f32
+        };
         *slot = curve.eval(t);
     }
 }
@@ -379,7 +420,10 @@ impl NodeOp for ValueTime {
                     // ⚠️ Só com o knob armado: o neutro é o relógio de sempre, ao bit.
                     Some(a) => {
                         let p = posicoes.get(i).copied().unwrap_or([0.0, 0.0]);
-                        #[expect(clippy::cast_possible_truncation, reason = "a contagem cabe num u32")]
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            reason = "a contagem cabe num u32"
+                        )]
                         let raw = ph2d_ease::order::raw_at(&a.ordem, i as u32, n as u32, p);
                         base - delay * a.ease(raw)
                     }
@@ -742,7 +786,10 @@ static PARAM_GATES: &[ParamGate] = &[
     ParamGate {
         param: "axis",
         when: "order",
-        values: &[ph2d_ease::order::ORDER_GRID, ph2d_ease::order::ORDER_FROM_POINT],
+        values: &[
+            ph2d_ease::order::ORDER_GRID,
+            ph2d_ease::order::ORDER_FROM_POINT,
+        ],
     },
     ParamGate {
         param: "origin_x",

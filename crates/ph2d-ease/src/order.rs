@@ -72,13 +72,19 @@ pub fn axis_dist(dx: f32, dy: f32, axis: i32) -> f32 {
     }
 }
 
-#[expect(clippy::cast_precision_loss, reason = "uma célula de grelha cabe num f32")]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "uma célula de grelha cabe num f32"
+)]
 fn grid_cell(k: u32, cols: u32) -> [f32; 2] {
     [(k % cols) as f32, (k / cols) as f32]
 }
 
 /// A posição `0..1` da célula `i` numa grelha de `n` ocupadas.
-#[expect(clippy::cast_precision_loss, reason = "uma célula de grelha cabe num f32")]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "uma célula de grelha cabe num f32"
+)]
 fn grid_raw(o: &Order, i: u32, n: u32) -> f32 {
     let cols = o.cols.max(1);
     let rows = n.div_ceil(cols);
@@ -123,7 +129,10 @@ pub fn raw_at(o: &Order, i: u32, n: u32, p: [f32; 2]) -> f32 {
     if n <= 1 {
         return 0.0;
     }
-    #[expect(clippy::cast_precision_loss, reason = "uma contagem de linhas cabe num f32")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "uma contagem de linhas cabe num f32"
+    )]
     let last = (n - 1) as f32;
     match o.kind {
         ORDER_FROM_CENTER => {
@@ -150,7 +159,10 @@ pub fn hash01(i: u32, seed: u32) -> f32 {
     x ^= x >> 15;
     x = x.wrapping_mul(0x846C_A68B);
     x ^= x >> 16;
-    #[expect(clippy::cast_precision_loss, reason = "a divisão exacta que o WGSL escreve igual")]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "a divisão exacta que o WGSL escreve igual"
+    )]
     let r = x as f32 / 4_294_967_296.0;
     r
 }

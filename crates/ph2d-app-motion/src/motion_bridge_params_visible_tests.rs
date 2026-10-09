@@ -68,10 +68,22 @@ fn a_gated_row_is_hidden_outside_its_modes_and_shown_inside() {
             let outside = (0..=64)
                 .find(|k| !g.values.contains(k))
                 .expect("algum indice tem de estar fora da lista");
+            // ⚠️ **Os gates de um param SOMAM-SE** (`Visibility::shows` exige todos): o `grid_cell`
+            // do `motion.stagger` (ciclo 17) só aparece com `order = Grid` E `grid_from = Cell`.
+            // «Dentro» é dentro de TODOS — os irmãos ficam no primeiro valor deles, e só o gate
+            // medido varia.
+            let irmao = |p: &str| {
+                gates
+                    .iter()
+                    .find(|o| o.param == g.param && o.when == p && o.when != g.when)
+                    .and_then(|o| o.values.first())
+            };
             let at = |k: i32| {
                 let value_of = |p: &str| {
                     if p == g.when {
                         k as f32
+                    } else if let Some(v) = irmao(p) {
+                        *v as f32
                     } else {
                         m.param_default(p).unwrap_or(0.0)
                     }

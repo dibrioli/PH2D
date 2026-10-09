@@ -58,8 +58,6 @@ pub struct Dono {
     pub visible: bool,
     /// Local → mundo: a origem do que os sinks dele geram.
     pub afim: Afim,
-    /// A mesma, como pose (translação, rotação, escala) — o PAI do gizmo de campo.
-    pub pose: ph2d_editor_core::TransformSnapshot,
 }
 
 /// O estado do Motion-como-objecto, guardado no `MotionState`.
@@ -222,11 +220,6 @@ fn vivos(world: &mut World) -> BTreeMap<u64, Dono> {
                     entity: e.to_bits(),
                     visible: !ph2d_ecs::visibility::is_hidden_in_tree(world, e),
                     afim: ph2d_ecs::GlobalTransform::from_transform(t).affine(),
-                    pose: ph2d_editor_core::TransformSnapshot {
-                        translation: [t.translation.x, t.translation.y],
-                        rotation: t.rotation,
-                        scale: [t.scale.x, t.scale.y],
-                    },
                 },
             )
         })
@@ -281,16 +274,6 @@ pub fn camera_do_dono(
     motion: &MotionState,
 ) -> ph2d_render::Camera2d {
     camera.with_model(afim_em_edicao(motion))
-}
-
-/// ⭐ A pose do objecto Motion em edição — o PAI do gizmo de campo (o gizmo genérico devolve o local).
-#[must_use]
-pub fn pai_em_edicao(motion: &MotionState) -> ph2d_editor_core::TransformSnapshot {
-    motion
-        .objeto
-        .editing
-        .and_then(|s| motion.objeto.donos.get(&s))
-        .map_or(ph2d_editor_core::TransformSnapshot::IDENTITY, |d| d.pose)
 }
 
 /// As cópias do editor de um objecto Motion levam um grafo próprio (um passo do undo do Motion).

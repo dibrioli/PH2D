@@ -97,7 +97,6 @@ mod tests {
                 entity: 42,
                 visible: true,
                 afim: IDENTIDADE,
-                pose: ph2d_editor_core::TransformSnapshot::IDENTITY,
             },
         );
         m

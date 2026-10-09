@@ -2,15 +2,12 @@
 
 use super::*;
 use crate::motion_objeto::Dono;
-use ph2d_editor_core::TransformSnapshot;
 
 fn dono(afim: [f32; 6], visible: bool) -> Dono {
-    let pose = TransformSnapshot::IDENTITY;
     Dono {
         entity: 1,
         visible,
         afim,
-        pose,
     }
 }
 

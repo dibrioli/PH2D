@@ -228,7 +228,6 @@ fn a_origem_leva_a_faixa_do_dono_e_nunca_duas_vezes() {
             entity: 0,
             visible: true,
             afim: rot,
-            pose: ph2d_editor_core::TransformSnapshot::IDENTITY,
         },
     );
     m.objeto.donos.insert(
@@ -237,7 +236,6 @@ fn a_origem_leva_a_faixa_do_dono_e_nunca_duas_vezes() {
             entity: 0,
             visible: true,
             afim: IDENTIDADE,
-            pose: ph2d_editor_core::TransformSnapshot::IDENTITY,
         },
     );
     origem::aplica_cpu(&mut m);

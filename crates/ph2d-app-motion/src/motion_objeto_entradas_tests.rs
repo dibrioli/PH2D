@@ -134,11 +134,6 @@ fn dono(afim: Afim) -> Dono {
         entity: 0,
         visible: true,
         afim,
-        pose: ph2d_editor_core::TransformSnapshot {
-            translation: [0.0, 0.0],
-            rotation: 0.0,
-            scale: [1.0, 1.0],
-        },
     }
 }
 

@@ -39,12 +39,10 @@ fn cena(afim: Option<[f32; 6]>) -> (MotionState, NodeId) {
     }
     if let Some(afim) = afim {
         motion.doc.set_owner(bid, 7);
-        let pose = TransformSnapshot::IDENTITY;
         let dono = crate::motion_objeto::Dono {
             entity: 1,
             visible: true,
             afim,
-            pose,
         };
         motion.objeto.donos.insert(7, dono);
         motion.objeto.editing = Some(7);

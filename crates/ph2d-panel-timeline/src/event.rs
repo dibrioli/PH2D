@@ -428,15 +428,10 @@ fn stack_click(
                     ph2d_timeline::StripSource::Container(u16::try_from(c).unwrap_or(u16::MAX)),
                     snap.containers.get(c).map_or(0.0, |v| v.length),
                 ),
-                None => (
-                    ph2d_timeline::StripSource::Clip(
-                        u16::try_from(snap.active_clip).unwrap_or(u16::MAX),
-                    ),
-                    // The clip's EFFECTIVE length (last key, not authored duration) — the
-                    // same number `add_strip` sizes the slice to, so the strip is born at
-                    // speed 1 instead of crammed.
-                    snap.clip_length_seconds,
-                ),
+                // The clip — the active one, or one of ANOTHER animation picked in the Scene's
+                // Arrange (onda 4, item 5) — at its EFFECTIVE length (last key, not authored
+                // duration): the number `add_strip` sizes the slice to, so it is born at speed 1.
+                None => crate::transport_sources::placed_clip(state, &snap),
             };
             // Only an EMPTY source (no keys, no strips inside) falls back to a grabbable
             // minimum: a zero-width strip is one nobody can grab to fix.

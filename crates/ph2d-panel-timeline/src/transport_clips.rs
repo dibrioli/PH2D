@@ -129,16 +129,21 @@ pub(crate) fn cluster(
 /// option past it could be painted but never clicked.
 pub(crate) fn source_options(snap: &TimelineViewSnapshot, tab: Tab) -> Vec<DropdownOption<usize>> {
     let mut out: Vec<DropdownOption<usize>> = Vec::new();
-    out.extend(
-        snap.clips
-            .iter()
-            .enumerate()
-            .take(ids::TIMELINE_CLIP_OPT.len())
-            .map(|(i, name)| {
-                DropdownOption::new(ids::TIMELINE_CLIP_OPT[i], 0, name.clone())
-                    .with_icon(CLIP_GLYPH)
-            }),
-    );
+    if crate::transport_sources::grouped(snap, tab) {
+        // ⭐ O Arrange da Cena: os clips de TODAS as animações, por dono (onda 4, item 5).
+        out = crate::transport_sources::options(snap);
+    } else {
+        out.extend(
+            snap.clips
+                .iter()
+                .enumerate()
+                .take(ids::TIMELINE_CLIP_OPT.len())
+                .map(|(i, name)| {
+                    DropdownOption::new(ids::TIMELINE_CLIP_OPT[i], 0, name.clone())
+                        .with_icon(CLIP_GLYPH)
+                }),
+        );
+    }
     if tab != Tab::Keys {
         out.extend(
             snap.containers
@@ -164,10 +169,22 @@ pub(crate) fn selected_source(
     snap: &TimelineViewSnapshot,
     view: crate::transport::BarView,
 ) -> usize {
-    let clips = snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len());
+    let clips = clip_rows(snap, view.tab);
     match view.source_container {
         Some(c) if view.tab != Tab::Keys => clips + c.min(ids::TIMELINE_CONT_OPT.len()),
+        _ if crate::transport_sources::grouped(snap, view.tab) => {
+            crate::transport_sources::selected_row(snap, view.source_clip)
+        }
         _ => snap.active_row().min(clips),
+    }
+}
+
+/// Quantas linhas de CLIP (cabeçalhos incluídos) a lista pinta antes dos containers.
+fn clip_rows(snap: &TimelineViewSnapshot, tab: Tab) -> usize {
+    if crate::transport_sources::grouped(snap, tab) {
+        crate::transport_sources::row_count(snap)
+    } else {
+        snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len())
     }
 }
 
@@ -182,7 +199,7 @@ pub(crate) fn selected_source(
 ///
 /// A sheet of drawing against a packed BOX: a clip is one animation, a container is a piece
 /// with several inside — the Symbol of Animate, whose icon is a box for the same reason.
-const CLIP_GLYPH: IconId = IconId::Layer;
+pub(crate) const CLIP_GLYPH: IconId = IconId::Layer;
 /// …and the box. See [`CLIP_GLYPH`].
 const CONTAINER_GLYPH: IconId = IconId::Prefab;
 
@@ -218,6 +235,7 @@ pub(crate) fn owns(ev: &WidgetEvent) -> bool {
         || id == ids::TIMELINE_DELETE_CLIP
         || id == ids::TIMELINE_CLIP_RENAME_INPUT
         || source_at(id).is_some()
+        || crate::transport_sources::row_of(id).is_some()
 }
 
 /// Answer one clip-cluster event. Only reached for events [`owns`] claimed.
@@ -234,9 +252,13 @@ pub(crate) fn apply_event(
         // ── Source selector: picking a CLIP or a CONTAINER from the open list ────
         // The kind comes from `source_at` (which id array the option belongs to), so the two
         // halves cannot be confused for one another at the same list position.
+        WidgetEvent::Click(id) if crate::transport_sources::row_of(id).is_some() => {
+            let row = crate::transport_sources::row_of(id).unwrap_or_default();
+            crate::transport_sources::pick(state, host, row)
+        }
         WidgetEvent::Click(id) if source_at(id).is_some() => {
             let snap = state::current_snapshot();
-            let clips = snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len());
+            let clips = clip_rows(&snap, state.tab);
             // Where the pick sits in the painted list. Computed from the PICK, not from
             // `selected_source`: the clip half only reaches the snapshot next frame, and
             // asking the derived answer now would show the previous selection for one frame.
@@ -250,6 +272,7 @@ pub(crate) fn apply_event(
                         state::push_intent(TimelineIntent::SetActiveClip { index });
                     }
                     state.source_container = None;
+                    state.source_clip = None;
                     row = Some(r);
                 }
                 Some(Ok(index)) => {
@@ -259,6 +282,7 @@ pub(crate) fn apply_event(
                     // selected and travelled could not express that at all. Travelling is
                     // the host picker's job.
                     state.source_container = Some(index);
+                    state.source_clip = None;
                     row = Some(clips + index);
                 }
                 None => {}
@@ -397,6 +421,7 @@ mod tests {
             tab,
             speed_view: false,
             source_container: c,
+            source_clip: None,
         };
         assert_eq!(
             selected_source(&s, view(Tab::Arrange, None)),

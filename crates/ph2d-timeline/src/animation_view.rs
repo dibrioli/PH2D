@@ -49,6 +49,21 @@ pub struct AnimationHeader {
     pub choices: Vec<(u64, String)>,
     /// O seleccionado SEM Animação — o ▾ oferece criá-la nele.
     pub offer: Option<(u64, String)>,
+    /// ⭐ **As fontes do Arrange da CENA** (onda 4, item 5): os clips de TODAS as animações, um
+    /// grupo por dono (a Cena primeiro). Vazio fora da vista da Cena — ali o seletor é o da
+    /// animação em vista.
+    pub sources: Vec<SourceGroup>,
+}
+
+/// Um grupo do seletor de fontes do Arrange: os clips de UMA animação.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SourceGroup {
+    /// O dono ([`SCENE`] = a Cena).
+    pub owner: u64,
+    /// O nome do dono (a shell enche-o; vazio na Cena — o painel diz «Cena» pela i18n).
+    pub name: String,
+    /// `(índice no documento, nome, duração efectiva em s)` de cada clip, por ordem.
+    pub clips: Vec<(usize, String, f64)>,
 }
 
 /// De quem é a animação que a Timeline mostra: o seleccionado, ou o ancestral mais próximo com
@@ -168,6 +183,33 @@ pub(crate) fn fill_clips(snap: &mut TimelineViewSnapshot, state: &TimelineState)
         snap.clip_index.push(i);
     }
     snap.active_clip = state.doc.active_index();
+    fill_sources(&mut snap.animation.sources, state);
+}
+
+/// Os grupos do Arrange da Cena: a Cena, depois cada dono vivo pela ordem do 1.º clip dele.
+fn fill_sources(out: &mut Vec<SourceGroup>, state: &TimelineState) {
+    out.clear();
+    if state.view.owner != SCENE {
+        return;
+    }
+    let doc = &state.doc;
+    let mut owners = vec![SCENE];
+    for o in doc.animation_owners() {
+        if !owners.contains(&o) {
+            owners.push(o);
+        }
+    }
+    for owner in owners {
+        let clips = doc
+            .clips_of(owner)
+            .map(|i| (i, doc.clips()[i].name.clone(), doc.clip_end_seconds(i)))
+            .collect();
+        out.push(SourceGroup {
+            owner,
+            name: String::new(),
+            clips,
+        });
+    }
 }
 
 impl TimelineViewSnapshot {

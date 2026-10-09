@@ -265,3 +265,23 @@ fn editado_depois_de_apagar_volta_em_dois_passos() {
         "o caminho de sempre continua lá"
     );
 }
+
+/// ⭐ As fontes do Arrange da Cena levam o NOME de cada dono (onda 4, item 5) — o documento não o
+/// conhece; o cabeçalho dos grupos do ▾ lê-o daqui.
+#[test]
+fn as_fontes_do_arrange_levam_o_nome_do_dono() {
+    let mut sim = SimWorld::new();
+    let h = heroi(&mut sim).to_bits();
+    let mut timeline = TimelineState::new();
+    timeline.doc.add_clip_for("andar".into(), h).unwrap();
+    let mut view = ph2d_timeline::TimelineViewSnapshot::default();
+    view.rebuild(&mut timeline, &ph2d_core::Playhead::new(1.0 / 60.0), false);
+    crate::publish_animation_header(&mut view, &timeline, sim.world());
+    let nomes: Vec<(u64, &str)> = view
+        .animation
+        .sources
+        .iter()
+        .map(|g| (g.owner, g.name.as_str()))
+        .collect();
+    assert_eq!(nomes, [(SCENE, ""), (h, "Herói")]);
+}

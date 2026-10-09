@@ -158,11 +158,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         head_strip,
         body,
         &snapshot,
-        transport::BarView {
-            tab: state.tab,
-            speed_view: state.speed_view,
-            source_container: state.source_container,
-        },
+        crate::transport_sources::bar_view(state, &snapshot),
     );
     let g = geom::resolve(rect, after_transport, state.label_w, min_label);
     // Write the clamped width back, so a drag that ran past the bounds does not
@@ -380,43 +376,10 @@ fn paint_overlays(
     if let Some(c) = o.anim_dd_chip.filter(|c| c.open) {
         crate::transport_animation::paint_popover(ctx, theme, snapshot, c.rect);
     }
+    // The SAME doors the chip paints from, so the open list and the collapsed chip cannot name
+    // different things — clamped, SCROLLED when it does not fit, and published (onda 4, item 5).
     if let Some(c) = o.clip_dd_chip.filter(|c| c.open) {
-        let chip = c.rect;
-        // The SAME doors the chip paints from, so the open list and the collapsed chip
-        // cannot name different things.
-        let view = crate::transport::BarView {
-            tab: state.tab,
-            speed_view: state.speed_view,
-            source_container: state.source_container,
-        };
-        let dd = ph2d_editor_core::widget::Dropdown::new(
-            ids::TIMELINE_CLIP_DD,
-            "",
-            crate::transport_clips::source_options(snapshot, state.tab),
-        )
-        .selected(crate::transport_clips::selected_source(snapshot, view))
-        .open(true);
-        ph2d_editor_core::widget::paint_dropdown_popover(
-            &dd,
-            chip,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-        );
-        // Each option's hit rect is only knowable HERE, from the OPEN popover's
-        // geometry — register them now, or the list paints and nothing clicks.
-        for (i, opt) in dd.options.iter().enumerate() {
-            ctx.host
-                .hit_index_mut()
-                .register(opt.id, dd.option_rect(chip, i));
-        }
-        // Publish the popover so a Down that lands OUTSIDE it closes the list
-        // (`dispatch::pointer_down`'s light-dismiss). Without this the list stays
-        // open over the dope sheet, which is the bug Enio hit — and the reason is
-        // that the dismiss reads a slot no painter had ever written.
-        ctx.host
-            .store_mut()
-            .set_dropdown_popover(ids::TIMELINE_CLIP_DD, dd.popover_rect(chip));
+        crate::transport_sources::paint_popover(ctx, theme, state, snapshot, c.rect);
     }
 
     crate::marker_rename::paint(

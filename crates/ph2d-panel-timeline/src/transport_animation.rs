@@ -28,7 +28,7 @@ pub(crate) fn width(_snap: &TimelineViewSnapshot) -> f32 {
 }
 
 /// O nome que o menu mostra: «Scene», o `Name` do objecto, ou o id curto de quem não tem nome.
-fn who(bits: u64, name: &str) -> String {
+pub(crate) fn who(bits: u64, name: &str) -> String {
     if bits == SCENE {
         ph2d_i18n::tr("hier_rows.scene").to_string()
     } else if name.is_empty() {

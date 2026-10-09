@@ -152,6 +152,8 @@ pub(crate) struct BarView {
     /// **What the lane's `+` would place**, never where the view is looking: those are two
     /// questions, and the second one is answered by the Containers list you double-click.
     pub source_container: Option<usize>,
+    /// A clip de OUTRA animação escolhido no Arrange da Cena (`transport_sources::foreign`).
+    pub source_clip: Option<usize>,
 }
 
 /// Flow the transport controls beside the panel title, wrapping onto as many rows

@@ -161,6 +161,10 @@ pub struct TimelinePanelState {
     /// kept apart so switching tabs does not lose the other half: picking a clip in Keys must
     /// not forget which container Arrange was about to drop.
     pub source_container: Option<usize>,
+    /// **Um clip de OUTRA animação escolhido no Arrange da Cena** (onda 4, item 5) — `(índice do
+    /// documento, nome)`; o nome confirma o índice (apagar um clip desliza os de cima). `None` ⇒ a
+    /// fonte é o clip activo. Estado do painel, como [`Self::source_container`].
+    pub source_clip: Option<(usize, String)>,
     /// The Summary channel's column lock, toggled by its padlock. **Open by
     /// default** (Enio, 2026-07-11): clicking a key selects just that key.
     /// Close it and grabbing any single key grabs its whole time column, so
@@ -286,6 +290,7 @@ impl Default for TimelinePanelState {
             speed_view: false,
             tab: crate::tab::Tab::default(),
             source_container: None,
+            source_clip: None,
             column_lock: false,
             handle_drag: None,
             anchor_drag: None,

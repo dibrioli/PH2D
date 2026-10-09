@@ -71,3 +71,5 @@ mod timeline;
 pub use timeline::*;
 mod timeline_animation;
 pub use timeline_animation::*;
+mod timeline_sources;
+pub use timeline_sources::*;

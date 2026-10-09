@@ -9,6 +9,7 @@
 mod a_coluna_do_toggle_mede_a_lista;
 mod add_clip_full_seam;
 mod animation_chip_seam;
+mod arrange_sources_seam;
 mod buffer_curves_seam;
 mod close_button_seam;
 mod containers_tab_seam;

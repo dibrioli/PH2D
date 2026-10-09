@@ -52,6 +52,11 @@ pub fn publish_animation_header(
     world: &World,
 ) {
     let header = &mut view.animation;
+    // Os nomes dos donos das fontes do Arrange da Cena (onda 4, item 5) — o `rebuild` deixou-os
+    // vazios: o documento não conhece nomes.
+    for g in header.sources.iter_mut().filter(|g| g.owner != SCENE) {
+        g.name = name_of(world, g.owner);
+    }
     header.owner = timeline.view.owner;
     header.choices.clear();
     header.offer = None;

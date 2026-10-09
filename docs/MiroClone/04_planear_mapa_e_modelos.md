@@ -108,14 +108,16 @@ letra de 14 px). Régua: scripts Python sobre os píxeis no scratchpad da sessã
 | M7 | `Enter` a escrever cria o irmão **logo depois**, em edição; na raiz, um filho. `Shift+Enter` quebra a linha | Miro; ME = SMM (a raiz: o ME) | `enter_adds_the_next_sibling_right_after` |
 | M8 | Setas (seleccionado, não a escrever) **navegam**: para dentro = o pai; para fora = o filho mais perto do meio; ↑/↓ = o vizinho visível à MESMA profundidade e do mesmo lado (atravessa para o primo) | Miro silente ⇒ estrutural como o ME; ⚠️ divergência escolhida: o ME pára no último irmão e dá o 1.º filho — o primo e o do meio são o que o olho espera numa faixa | `arrows_walk_the_tree` |
 | M9 | `Delete` apaga o ramo inteiro; a selecção passa ao pai | Miro; ME (SMM: o irmão) | `delete_takes_the_whole_branch_and_selects_the_parent` |
-| M10 | Recolher esconde os descendentes **sem rearrumar**; o nó mostra um selo da cor do ramo com o número de escondidos; clicar no selo (ou `Ctrl+/`) expande. Escondido = fora do desenho, do clique, do laço, da busca | Miro (GIF do help); ⛔ não o ME/SMM, que rearrumam; a tecla é a do XMind | `collapsing_hides_without_moving_anyone` |
+| M10 | Recolher esconde os descendentes **sem rearrumar**; o nó mostra um selo da cor do ramo com o número de escondidos; clicar no selo expande; `Ctrl+↑` recolhe e `Ctrl+↓` expande (e o botão da barra de contexto). Escondido = fora do desenho, do clique, do laço, da busca (sai de `BoardDoc::live`, a porta única) | Miro (GIF do help); ⛔ não o ME/SMM, que rearrumam. A tecla é a dos outliners (Workflowy): a `/` do XMind não chega ao quadro (a shell traduz só letras, algarismos e as teclas de edição, e a shell só encolhe) | `collapsing_hides_without_moving_anyone` · `collapsing_hides_and_the_badge_expands` |
 | M11 | Auto layout ligado por omissão; desligado num pai, os filhos dele ficam onde a mão os pôs e **andam com ele** | Miro | `a_parent_without_auto_layout_carries_its_children` |
 | M12 | Arrastar um nó: largado sobre outro nó → filho dele (o último); largado no vazio → muda de lugar entre os irmãos (e de lado, se cruzar a raiz); `Ctrl` = só reordena. As guias calam-se num nó arrumado pelo layout | Miro | `dropping_a_node_on_another_reparents_it` · `dropping_beside_siblings_reorders` |
 | M13 | Os ramos são **derivados** (não guardados): cúbica da borda de fora do pai à de dentro do filho, a meia altura, tangentes no eixo, braço **0,39 do vão**; traço **1,5** à letra 14; a cor do ramo do filho | Miro §1.3 | `a_branch_is_the_measured_miro_curve` |
 | M14 | Cor: cada filho NOVO da raiz recebe a seguinte da paleta medida (5); os descendentes herdam a do pai | Miro §1.3 | `a_new_branch_takes_the_next_colour_and_children_inherit` |
 | M15 | A raiz nasce pílula 66 de alto (texto + meia altura de cada lado); os outros nós só texto, caixa = texto + 9. A largura cresce com o texto (sem quebra; a linha nova é do `Shift+Enter`) | Miro §1.3 | `a_node_grows_in_width_with_its_text` |
 | M16 | Layout vertical (opção da raiz): as mesmas leis com os eixos trocados | Miro | `the_vertical_layout_is_the_same_law_turned` |
-| M17 | O layout é invariante do documento: todo `apply_batch` que toca um mapa arruma-o no mesmo passo de desfazer; a raiz não se move | decisão (Etapa 2: uma operação remota também chega arrumada) | `undo_brings_back_the_layout_of_before` |
+| M17 | O layout é invariante do documento: todo `apply_batch` que toca um mapa arruma-o no mesmo passo de desfazer; a raiz não se move. Os caminhos AO VIVO (escrever, colar, largar uma cópia) arrumam com `settle_live` e guardam só o seu inverso — desfazer volta a arrumar, porque o layout é função do documento | decisão (Etapa 2: uma operação remota também chega arrumada) | `undo_brings_back_the_layout_of_before` |
+| M18 | Um nó novo mora na casa do PAI (o frame dele); a raiz, no frame onde nasce — o frame leva o mapa ao mexer-se | achado da foto da cena 8 (o mapa dentro de um frame; os filhos novos ficavam soltos) | `a_new_node_lives_in_its_parents_frame` |
+| M19 | `Tab` e `Enter` a escrever só são «filho» e «irmão» num NÓ; numa nota o `Tab` continua a ser a nota seguinte e o `Enter` uma linha nova (W3); seleccionado, as setas de um nó andam pela árvore em vez de empurrar | a colisão de teclas do briefing §2 | `a_note_keeps_its_tab_and_enter` · `a_note_has_no_mind_child` |
 
 ### Modelos
 
@@ -148,15 +150,35 @@ Inserir (o Miro é silente em tudo menos «chega desagrupado e por cima do que e
 ## §4 — Medir antes de limitar (§0.0)
 
 Régua `crates/ph2d-board-render/tests/it/measure_mind_layout_cost.rs` (molde da `measure_snap_cost.rs`):
-um mapa de N nós (raiz, ~6 filhos por nó até N), o custo de arrumar o mapa inteiro depois de uma tecla
-(`settle`) e o de UMA tecla completa (`Tab` → filho novo + arrumar), variantes no mesmo processo
-intercaladas, o mínimo de 7 rodadas, `--release`. A tabela entra no fecho, sobre o código final; nenhum
-`MAX_*` de nós sem ela.
+um mapa de N nós (a raiz, até seis filhos por nó, larguras variadas, metade de cada lado). **Arrumar** =
+`mind_settle` sobre o mapa já arrumado (o que cada lote que toca o mapa paga — uma letra num nó);
+**Tab** = a tecla inteira pelo editor (o nó novo, o lote, o layout e os vizinhos que se mexem);
+**taffy** = o MESMO layout pelo `ph2d-vec-layout` (uma linha `[nó, coluna dos filhos]` centrada por
+subárvore). Variantes no mesmo processo, intercaladas, o mínimo de 7 rodadas (mediana ao lado),
+`--release`, 08/10, `load` 64,9 na máquina partilhada (os números são um TECTO):
+
+| N nós | arrumar | Tab | taffy |
+|---|---|---|---|
+| 100 | 0,066 ms (med 0,071) | 0,172 (0,216) | 0,291 (0,293) |
+| 1 000 | 0,571 (0,618) | 0,889 (0,957) | 2,197 (2,944) |
+| 10 000 | 7,26 (7,85) | 9,91 (10,93) | 27,96 (31,12) |
+
+⇒ **nenhum tecto de nós**: a 10 mil (dez vezes o maior mapa que um planeamento à mão faz) uma tecla
+cabe num quadro de 60 Hz, com a máquina a 65 de carga. ⇒ **o `taffy` exprime a lei** — o gate
+`taffy_expresses_the_mind_layout` prova as mesmas posições (a < 1e-3: ele conta em `f32`) — **e custa
+~3,8×**: montar a árvore de caixas e resolvê-la paga mais que a conta de três linhas que ela faz. Fica
+a passagem própria (`ph2d_board_model::mind::layout`), com o `taffy` como prova da lei.
 
 ## §5 — O que o dono vê (cena 8)
 
-`PH2D_BOARD_SMOKE=8`: à esquerda, um mapa mental começado (a raiz «Plan», três ramos, um deles recolhido com
-o número à vista); à direita, a galeria aberta à mão, com um modelo já inserido. As lições: seleccionar um
-nó e carregar `Tab` (nasce o filho, em edição), `Enter` (o irmão logo abaixo, e os vizinhos abrem espaço),
-as setas (andar pela árvore), o selo (expandir) e um modelo a partir da galeria. O gate
-`every_mind_lesson_does_what_it_says` conduz cada lição pelo editor real com as medidas da interface.
+`PH2D_BOARD_SMOKE=8` (`crates/ph2d-app-board/src/smoke_mind.rs`, foto `ferramentas/cena8_foto.png`): um
+mapa mental começado — «Plan» com «Ideas» (dois filhos) e «Risks» (três filhos, RECOLHIDO: o «3» à vista)
+à direita e «Next steps» à esquerda — e, por baixo, seis notas, uma por lição, com os nomes dos nós que
+usam: `Tab` (nasce o filho, a escrever) · `Enter` a escrever (o irmão logo abaixo; `Shift+Enter`, linha
+nova) · as setas andam e `Delete` leva o ramo · o número abre o ramo (`Ctrl+↑` volta a fechar) · arrastar
+«Sketch» para «Next steps» · o botão dos modelos. Tudo dentro de um frame com a margem do que os painéis
+e a barra de estado tapam: o 1.º quadro enquadra o quadro INTEIRO na janela (handoff W5b §10.1), e as três
+primeiras fotos mostraram-no — a galeria aberta tapava o ramo da esquerda, depois a fila de baixo ficava
+debaixo da barra de estado e as notas das pontas debaixo dos painéis. O gate
+`every_mind_lesson_does_what_it_says` conduz cada lição pelo editor real com as medidas da interface, a
+zoom 1 e 0,8.

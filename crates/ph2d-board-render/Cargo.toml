@@ -25,6 +25,9 @@ ph2d-vector = { path = "../ph2d-vector" }
 [dev-dependencies]
 serde_json = "1"
 ph2d-vec-connect = { path = "../ph2d-vec-connect" }
+# A régua do mapa mental (`tests/it/measure_mind_layout_cost.rs`): o mesmo layout pelo motor de
+# caixas da casa, a pergunta «a composição já o exprime?» (W6).
+ph2d-vec-layout = { path = "../ph2d-vec-layout" }
 # A régua da PLACA (`tests/it/measure_gpu_raster_cost.rs`): o dispositivo da casa e o `VelloPass` do
 # PRODUTO (o dono do anti-aliasing), nunca um `vello::Renderer` montado no teste. Sem ciclo:
 # `ph2d-render` só chega a esta crate pelas dev-deps dele.

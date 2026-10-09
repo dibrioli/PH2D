@@ -5208,6 +5208,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vec-connect",
+ "ph2d-vec-layout",
  "ph2d-vec-render",
  "ph2d-vector",
  "serde_json",

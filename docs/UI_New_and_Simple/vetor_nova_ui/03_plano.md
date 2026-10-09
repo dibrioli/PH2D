@@ -204,8 +204,10 @@ ir ao Enio.
 - ⛔ Sem rotação da vista (a câmera 2D não tem rotação — medido) e sem «quick-pinch encaixa no ecrã»
   (não existe *enquadrar tudo* no app — pergunta ao dono, não invenção).
 - Smoke: cena `PH2D_OBJECT_MODE_SMOKE=11` (contactos sintéticos sobre as formas da cena 9),
-  foto [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png). O QuickShape
-  continua PARADO (oráculo por instalar — decisão do dono).
+  foto [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png).
+- **QuickShape (F7, por fazer):** o oráculo (Xournal++, autorizado pelo dono) **já correu** — leis e
+  fixtures em [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md); o código
+  é a janela [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md).
 
 ## §5 — O que NÃO entra (e porquê)
 

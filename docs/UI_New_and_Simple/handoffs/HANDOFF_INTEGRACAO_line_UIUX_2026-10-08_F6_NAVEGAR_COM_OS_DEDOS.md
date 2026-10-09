@@ -46,10 +46,19 @@ o roteador omitia). A frase: «toque — dois dedos navegam».
   da lei. ⚠️ A 1.ª foto (205 %, âncora a fugir ~20 px) é a que levou à lei «uma vez por quadro».
 - **A folga de 10 pt é a fronteira dos DOIS gestos** — não se acrescentou nenhum número novo.
 
-## §3 — ⛔ QuickShape: continua PARADO (CLAUDE.md §0.9)
+## §3 — ⭐ QuickShape: o ORÁCULO CORREU; o código fica para a janela F7
 
-Pergunta feita ao dono no início da janela (instalar o Xournal++ — GPL-2, corre-se como caixa preta,
-só a saída é gravada), sem resposta até ao fecho. Nada escrito. Comportamento-alvo em R4 L165–169.
+O dono autorizou (08/10: *«Xournal++ pode instalar»*) e instalaram-se `xournalpp` 1.3.8 (GPL-2 —
+caixa preta, só a saída), `xorg-server-xvfb` (a tela invisível) e `xdotool` (o dedo sintético).
+Instrumento versionado em [`vetor_nova_ui/oraculo_quickshape/`](../vetor_nova_ui/oraculo_quickshape/00_resultados.md):
+gerador de 43 traços NOSSOS (uma grandeza varia por traço), corredor com calibração tela→página, 43
+fixtures com cabeçalho (27 reconhecidas; 40/41 byte a byte iguais em duas passagens), resumo em geometria. **As leis** (§3 do doc): linha ⇒ 2 pontos (tremor até
+±24 px); rectângulo ⇒ 4 cantos cravados a 90° com a rotação do traço (aberto até 40 px, tremor até
+±16); triângulo ⇒ 3 cantos COMO DESENHADOS; 5+ lados e círculos ⇒ círculo perfeito (rms 0); elipses,
+arcos, S, zigzag, rabisco ⇒ cru; mínimo 40 unidades de página. O que o Procreate manda a mais
+(elipse, polígonos, gatilho = SEGURAR, 2.º dedo = regular) está na §4 do doc. Nada de código ainda:
+prompt da próxima janela em [`06_prompt_F7_quickshape.md`](../vetor_nova_ui/06_prompt_F7_quickshape.md),
+com os endereços do lápis (`ph2d-vec-edit::Pencil`), do hook por quadro e dos construtores.
 
 ## §4 — Foundational tocado e contratos
 
@@ -114,7 +123,7 @@ Ver o relatório ao dono (passos numerados). Foto:
 
 ## §8 — O que fica ABERTO
 
-- **QuickShape** — §3, decisão do dono (instalar um oráculo).
+- **QuickShape** — o oráculo correu (§3); o código é a janela F7 (`06_prompt_F7_quickshape.md`).
 - **«Quick-pinch encaixa no ecrã»** — não há *enquadrar tudo* no app; se o dono o quiser, é uma
   porta visível (menu *Ver*) + a pinça rápida sobre ela.
 - **Um dedo real** — a lei está provada por gate e a cena 11 por foto, mas nenhum dedo de verdade

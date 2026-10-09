@@ -17,7 +17,9 @@
 > **F6 (08/10)**: dois dedos arrastam a vista e a pinça dá zoom à volta deles, cena `=11`, foto
 > [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png) —
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md).
-> Aberto: o QuickShape (oráculo por instalar — decisão do dono).
+> **QuickShape (08/10, tarde)**: o dono autorizou o Xournal++ e o oráculo CORREU — 41 fixtures e as
+> leis em [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md); o código é a
+> próxima janela, [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md).
 
 ## O roteador
 
@@ -28,6 +30,8 @@
 | ⭐⭐ **O plano** — os desenhos alvo (desktop e iPad), a tabela de destino das 41 secções, as peças e onde vivem, as fases F0–F5 com gates, o que fica de fora, e **as decisões do Enio** (respondidas) | [`03_plano.md`](03_plano.md) |
 | ⭐ **O prompt da próxima janela** — F4 (radial, `Ctrl+K` que ensina) e F5 (iPad), com o estado da linha e as lições de F0–F3 | [`04_prompt_F4_F5.md`](04_prompt_F4_F5.md) |
 | O prompt de F6 — navegar com os dedos, o QuickShape à espera do oráculo, a ponte do toque | [`05_prompt_F6_toque_completo.md`](05_prompt_F6_toque_completo.md) |
+| ⭐ **O oráculo do QuickShape** — o Xournal++ corrido sobre 43 traços nossos: triagem de licença, o roteiro, as leis medidas, o que o Procreate manda a mais | [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md) |
+| O prompt de F7 — o QuickShape no PH2D (a lei pura, o gesto de segurar, a porta visível, a cena 12) | [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md) |
 | As fontes, com URL por afirmação | [`referencias/R1_affinity.md`](referencias/R1_affinity.md) · [`R2_figma_sketch_penpot_graphite.md`](referencias/R2_figma_sketch_penpot_graphite.md) · [`R3_illustrator_curve_rive_inkscape.md`](referencias/R3_illustrator_curve_rive_inkscape.md) · [`R4_apps_de_ipad.md`](referencias/R4_apps_de_ipad.md) |
 | As fotos do «antes» e o precedente interno (a barra curta e a barra de estilo do Quadro) | [`fotos/`](fotos/) |
 

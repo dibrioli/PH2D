@@ -551,9 +551,23 @@ fn the_quickshape_switch_and_its_hint_follow_the_tool() {
         })
     };
     let on = barras(true);
-    assert!(lit(&on, t::VECTOR_PENCIL_QUICKSHAPE_OFF), "ligado: o chip aceso é o que desliga");
-    assert!(on.hint.contains("Hold"), "a dica ensina a segurar: {}", on.hint);
+    assert!(
+        lit(&on, t::VECTOR_PENCIL_QUICKSHAPE_OFF),
+        "ligado: o chip aceso é o que desliga"
+    );
+    assert!(
+        on.hint.contains("Hold"),
+        "a dica ensina a segurar: {}",
+        on.hint
+    );
     let off = barras(false);
-    assert!(row_ids(&off).contains(&t::VECTOR_PENCIL_QUICKSHAPE_ON) && !lit(&off, t::VECTOR_PENCIL_QUICKSHAPE_ON));
-    assert!(!off.hint.contains("Hold"), "desligado, a dica não promete o gesto: {}", off.hint);
+    assert!(
+        row_ids(&off).contains(&t::VECTOR_PENCIL_QUICKSHAPE_ON)
+            && !lit(&off, t::VECTOR_PENCIL_QUICKSHAPE_ON)
+    );
+    assert!(
+        !off.hint.contains("Hold"),
+        "desligado, a dica não promete o gesto: {}",
+        off.hint
+    );
 }

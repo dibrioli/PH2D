@@ -218,7 +218,14 @@ impl Pencil {
         let (Some(_), Some(last)) = (self.active, self.dyns.last()) else {
             return HoldTick::Idle;
         };
-        let t = self.hold.tick(&self.samples, last.t_ns, now_ns, self.px_to_world, regular, enabled);
+        let t = self.hold.tick(
+            &self.samples,
+            last.t_ns,
+            now_ns,
+            self.px_to_world,
+            regular,
+            enabled,
+        );
         if t != HoldTick::Idle {
             self.rebuild(scene);
         }

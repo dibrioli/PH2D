@@ -134,6 +134,7 @@ pub mod paint_dilate;
 pub mod pattern_live;
 pub mod pencil_input;
 pub mod profile_live;
+pub mod quickshape_frame;
 pub mod resize_box_edit;
 pub mod selection_sync;
 pub mod shape_build;
@@ -151,7 +152,6 @@ pub mod vec_clip_edit;
 pub mod vec_frame_edit;
 pub mod vec_gizmo_view;
 pub mod vec_selection;
-pub mod quickshape_frame;
 pub mod vector_bridge;
 pub mod vector_mode;
 /// A cena 10 do modo (F4): a paleta que ensina.

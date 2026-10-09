@@ -155,7 +155,11 @@ pub(super) fn gesture_chips(
             } else {
                 ids::VECTOR_PENCIL_QUICKSHAPE_ON
             };
-            v.push(chip(quick, "panel.vector.pencil.quickshape", snap.pencil_quickshape));
+            v.push(chip(
+                quick,
+                "panel.vector.pencil.quickshape",
+                snap.pencil_quickshape,
+            ));
         }
         DrawMode::Cut if crate::state::cut_line_exists() => {
             v.push(chip(

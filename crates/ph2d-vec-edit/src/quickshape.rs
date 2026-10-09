@@ -67,7 +67,12 @@ pub enum QuickShape {
     /// Cantos em ordem de desenho; `closed` = polígono, senão polilinha aberta.
     Polygon { corners: Vec<P2>, closed: bool },
     /// `rot` em radianos, do eixo x para o semi-eixo `rx`.
-    Ellipse { centre: P2, rx: f64, ry: f64, rot: f64 },
+    Ellipse {
+        centre: P2,
+        rx: f64,
+        ry: f64,
+        rot: f64,
+    },
 }
 
 /// **A lei.** `px_to_world` converte as fronteiras de tela; `regular` = quadrado, círculo,
@@ -78,9 +83,14 @@ pub fn recognise(samples: &[P2], px_to_world: f64, regular: bool) -> Option<Quic
         return None;
     }
     let min = MIN_SIZE_PX * px_to_world;
-    let (lo, hi) = samples.iter().fold(([f64::MAX; 2], [f64::MIN; 2]), |(l, h), p| {
-        ([l[0].min(p[0]), l[1].min(p[1])], [h[0].max(p[0]), h[1].max(p[1])])
-    });
+    let (lo, hi) = samples
+        .iter()
+        .fold(([f64::MAX; 2], [f64::MIN; 2]), |(l, h), p| {
+            (
+                [l[0].min(p[0]), l[1].min(p[1])],
+                [h[0].max(p[0]), h[1].max(p[1])],
+            )
+        });
     let diag = dist(lo, hi);
     let length: f64 = samples.windows(2).map(|w| dist(w[0], w[1])).sum();
     if diag < min || length <= 0.0 {
@@ -102,7 +112,10 @@ impl QuickShape {
     pub fn pivot(&self) -> P2 {
         match self {
             Self::Line { a, .. } => *a,
-            Self::Polygon { corners, closed: false } => corners.first().copied().unwrap_or_default(),
+            Self::Polygon {
+                corners,
+                closed: false,
+            } => corners.first().copied().unwrap_or_default(),
             Self::Polygon { corners, .. } => centroid(corners),
             Self::Ellipse { centre, .. } => *centre,
         }
@@ -118,7 +131,12 @@ impl QuickShape {
                 corners: corners.iter().map(|&p| m(p)).collect(),
                 closed: *closed,
             },
-            Self::Ellipse { centre, rx, ry, rot: r0 } => Self::Ellipse {
+            Self::Ellipse {
+                centre,
+                rx,
+                ry,
+                rot: r0,
+            } => Self::Ellipse {
                 centre: m(*centre),
                 rx: rx * scale,
                 ry: ry * scale,
@@ -133,7 +151,12 @@ impl QuickShape {
         match self {
             Self::Line { a, b } => corners_path(&[*a, *b], false),
             Self::Polygon { corners, closed } => corners_path(corners, *closed),
-            Self::Ellipse { centre, rx, ry, rot } => {
+            Self::Ellipse {
+                centre,
+                rx,
+                ry,
+                rot,
+            } => {
                 let mut p = ph2d_vec_scene::ellipse(*centre, *rx, *ry);
                 let turn = |q: P2| add(*centre, rotate(sub(q, *centre), *rot));
                 for v in &mut p.verts {
@@ -164,15 +187,27 @@ struct Fit {
     d: P2,
 }
 
-fn polygonal(samples: &[P2], r: &[P2], idx: &[usize], closed: bool, regular: bool) -> Option<QuickShape> {
+fn polygonal(
+    samples: &[P2],
+    r: &[P2],
+    idx: &[usize],
+    closed: bool,
+    regular: bool,
+) -> Option<QuickShape> {
     let sides: Vec<(usize, usize)> = idx.windows(2).map(|w| (w[0], w[1])).collect();
     if sides.is_empty() || sides.iter().any(|&(a, b)| bow(&r[a..=b]) > BOW_MAX) {
         return None;
     }
-    let mut fits: Vec<Fit> = sides.iter().map(|&(a, b)| trimmed_fit(&r[a..=b])).collect::<Option<_>>()?;
+    let mut fits: Vec<Fit> = sides
+        .iter()
+        .map(|&(a, b)| trimmed_fit(&r[a..=b]))
+        .collect::<Option<_>>()?;
     // Fechado a começar a meio de um lado (ou a passar do início): o último lado e o primeiro são
     // o MESMO lado.
-    if closed && fits.len() > 3 && turn(fits[fits.len() - 1].d, fits[0].d) < MERGE_TURN_DEG.to_radians() {
+    if closed
+        && fits.len() > 3
+        && turn(fits[fits.len() - 1].d, fits[0].d) < MERGE_TURN_DEG.to_radians()
+    {
         let (la, _) = sides[sides.len() - 1];
         let (_, fb) = sides[0];
         let mut q = r[la..].to_vec();
@@ -192,13 +227,29 @@ fn line(samples: &[P2], regular: bool) -> QuickShape {
     let fit = tls(samples).map(|f| {
         let res: Vec<f64> = samples.iter().map(|&p| cross(f.d, sub(p, f.c))).collect();
         let rms = (res.iter().map(|e| e * e).sum::<f64>() / res.len() as f64).sqrt();
-        let keep: Vec<P2> = samples.iter().zip(&res).filter(|(_, e)| e.abs() <= OUTLIER_RMS * rms).map(|(p, _)| *p).collect();
-        if keep.len() < samples.len() && keep.len() >= 2 { tls(&keep).unwrap_or(f) } else { f }
+        let keep: Vec<P2> = samples
+            .iter()
+            .zip(&res)
+            .filter(|(_, e)| e.abs() <= OUTLIER_RMS * rms)
+            .map(|(p, _)| *p)
+            .collect();
+        if keep.len() < samples.len() && keep.len() >= 2 {
+            tls(&keep).unwrap_or(f)
+        } else {
+            f
+        }
     });
     let Some(Fit { c, d }) = fit else {
-        return QuickShape::Line { a: samples[0], b: samples[samples.len() - 1] };
+        return QuickShape::Line {
+            a: samples[0],
+            b: samples[samples.len() - 1],
+        };
     };
-    let mut d = if regular { unit(snap(angle(d), REGULAR_STEP_DEG.to_radians())) } else { axis_snap(d) };
+    let mut d = if regular {
+        unit(snap(angle(d), REGULAR_STEP_DEG.to_radians()))
+    } else {
+        axis_snap(d)
+    };
     if dot(d, sub(samples[samples.len() - 1], samples[0])) < 0.0 {
         d = mul(d, -1.0);
     }
@@ -206,7 +257,10 @@ fn line(samples: &[P2], regular: bool) -> QuickShape {
         let t = dot(sub(p, c), d);
         (lo.min(t), hi.max(t))
     });
-    QuickShape::Line { a: add(c, mul(d, t0)), b: add(c, mul(d, t1)) }
+    QuickShape::Line {
+        a: add(c, mul(d, t0)),
+        b: add(c, mul(d, t1)),
+    }
 }
 
 fn polyline(samples: &[P2], fits: &mut [Fit], regular: bool) -> QuickShape {
@@ -219,20 +273,32 @@ fn polyline(samples: &[P2], fits: &mut [Fit], regular: bool) -> QuickShape {
     let mut corners = vec![project(samples[0], fits[0])];
     corners.extend((1..k).map(|j| intersect(fits[j - 1], fits[j])));
     corners.push(project(samples[samples.len() - 1], fits[k - 1]));
-    QuickShape::Polygon { corners, closed: false }
+    QuickShape::Polygon {
+        corners,
+        closed: false,
+    }
 }
 
 fn closed_polygon(fits: &[Fit], regular: bool) -> QuickShape {
     let k = fits.len();
-    let corners: Vec<P2> = (0..k).map(|j| intersect(fits[(j + k - 1) % k], fits[j])).collect();
+    let corners: Vec<P2> = (0..k)
+        .map(|j| intersect(fits[(j + k - 1) % k], fits[j]))
+        .collect();
     let corners = if regular {
         regularise(&corners)
-    } else if k == 4 && (0..4).all(|j| (turn(fits[(j + 3) % 4].d, fits[j].d) - FRAC_PI_2).abs() < RIGHT_TOL_DEG.to_radians()) {
+    } else if k == 4
+        && (0..4).all(|j| {
+            (turn(fits[(j + 3) % 4].d, fits[j].d) - FRAC_PI_2).abs() < RIGHT_TOL_DEG.to_radians()
+        })
+    {
         square_up(fits)
     } else {
         corners
     };
-    QuickShape::Polygon { corners, closed: true }
+    QuickShape::Polygon {
+        corners,
+        closed: true,
+    }
 }
 
 /// Os quatro lados passam a dois pares ortogonais, na rotação média do traço (média circular de
@@ -245,7 +311,10 @@ fn square_up(fits: &[Fit]) -> Vec<P2> {
     let m = angle(axis_snap(unit(f64::atan2(s, c) / 4.0)));
     let sq: Vec<Fit> = fits
         .iter()
-        .map(|f| Fit { c: f.c, d: unit(m + snap(angle(f.d) - m, FRAC_PI_2)) })
+        .map(|f| Fit {
+            c: f.c,
+            d: unit(m + snap(angle(f.d) - m, FRAC_PI_2)),
+        })
         .collect();
     (0..4).map(|j| intersect(sq[(j + 3) % 4], sq[j])).collect()
 }
@@ -256,12 +325,17 @@ fn regularise(corners: &[P2]) -> Vec<P2> {
     let k = corners.len();
     let c = centroid(corners);
     let radius = corners.iter().map(|&p| dist(p, c)).sum::<f64>() / k as f64;
-    let area: f64 = (0..k).map(|i| cross(corners[i], corners[(i + 1) % k])).sum();
+    let area: f64 = (0..k)
+        .map(|i| cross(corners[i], corners[(i + 1) % k]))
+        .sum();
     let step = TAU / k as f64 * if area < 0.0 { -1.0 } else { 1.0 };
-    let (s, co) = corners.iter().enumerate().fold((0.0, 0.0), |(s, co), (i, &p)| {
-        let a = angle(sub(p, c)) - i as f64 * step;
-        (s + a.sin(), co + a.cos())
-    });
+    let (s, co) = corners
+        .iter()
+        .enumerate()
+        .fold((0.0, 0.0), |(s, co), (i, &p)| {
+            let a = angle(sub(p, c)) - i as f64 * step;
+            (s + a.sin(), co + a.cos())
+        });
     let mut phase = f64::atan2(s, co);
     let at = |phase: f64, i: usize| add(c, mul(unit(phase + i as f64 * step), radius));
     let side = angle(sub(at(phase, 1), at(phase, 0)));
@@ -272,7 +346,9 @@ fn regularise(corners: &[P2]) -> Vec<P2> {
 // ── a elipse ────────────────────────────────────────────────────────────────────────────────────
 
 fn ellipse(samples: &[P2], r: &[P2], regular: bool) -> Option<QuickShape> {
-    let total: f64 = (1..r.len() - 1).map(|i| wrap_pi(angle(sub(r[i + 1], r[i])) - angle(sub(r[i], r[i - 1])))).sum();
+    let total: f64 = (1..r.len() - 1)
+        .map(|i| wrap_pi(angle(sub(r[i + 1], r[i])) - angle(sub(r[i], r[i - 1]))))
+        .sum();
     if (total.abs() - TAU).abs() > TURN_TOL_DEG.to_radians() {
         return None;
     }
@@ -291,9 +367,19 @@ fn ellipse(samples: &[P2], r: &[P2], regular: bool) -> Option<QuickShape> {
     }
     if regular || a / b <= ROUND_RATIO {
         let radius = samples.iter().map(|&p| dist(p, centre)).sum::<f64>() / samples.len() as f64;
-        return Some(QuickShape::Ellipse { centre, rx: radius, ry: radius, rot: 0.0 });
+        return Some(QuickShape::Ellipse {
+            centre,
+            rx: radius,
+            ry: radius,
+            rot: 0.0,
+        });
     }
-    Some(QuickShape::Ellipse { centre, rx: a, ry: b, rot })
+    Some(QuickShape::Ellipse {
+        centre,
+        rx: a,
+        ry: b,
+        rot,
+    })
 }
 
 /// A elipse com os mesmos momentos de área que a região que o traço fecha (Green sobre o
@@ -321,7 +407,14 @@ fn area_moments(p: &[P2]) -> Option<(P2, f64, f64, f64)> {
     let sxy = ixy / (24.0 * area) - c[0] * c[1];
     let (mid, half) = ((sxx + syy) / 2.0, ((sxx - syy) / 2.0).hypot(sxy));
     let (l1, l2) = (mid + half, mid - half);
-    (l2 > 0.0).then(|| (c, 2.0 * l1.sqrt(), 2.0 * l2.sqrt(), 0.5 * f64::atan2(2.0 * sxy, sxx - syy)))
+    (l2 > 0.0).then(|| {
+        (
+            c,
+            2.0 * l1.sqrt(),
+            2.0 * l2.sqrt(),
+            0.5 * f64::atan2(2.0 * sxy, sxx - syy),
+        )
+    })
 }
 
 // ── o traço partido em lados ────────────────────────────────────────────────────────────────────
@@ -360,7 +453,11 @@ fn resample(p: &[P2], n: usize) -> Vec<P2> {
             j += 1;
         }
         let seg = cum[j + 1] - cum[j];
-        let u = if seg > 0.0 { ((t - cum[j]) / seg).clamp(0.0, 1.0) } else { 0.0 };
+        let u = if seg > 0.0 {
+            ((t - cum[j]) / seg).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
         out.push(add(p[j], mul(sub(p[j + 1], p[j]), u)));
     }
     out
@@ -373,7 +470,9 @@ fn rdp(r: &[P2], tol: f64) -> Vec<usize> {
     keep[r.len() - 1] = true;
     let mut stack = vec![(0, r.len() - 1)];
     while let Some((a, b)) = stack.pop() {
-        let worst = ((a + 1)..b).map(|i| (seg_dist(r[i], r[a], r[b]), i)).fold((0.0, a), |m, x| if x.0 > m.0 { x } else { m });
+        let worst = ((a + 1)..b)
+            .map(|i| (seg_dist(r[i], r[a], r[b]), i))
+            .fold((0.0, a), |m, x| if x.0 > m.0 { x } else { m });
         if worst.0 > tol {
             keep[worst.1] = true;
             stack.push((a, worst.1));
@@ -428,7 +527,9 @@ fn bow(q: &[P2]) -> f64 {
     let q = &q[k..q.len() - k];
     let Some(f) = tls(q) else { return 0.0 };
     let t: Vec<f64> = q.iter().map(|&p| dot(sub(p, f.c), f.d)).collect();
-    let (lo, hi) = t.iter().fold((f64::MAX, f64::MIN), |(l, h), &x| (l.min(x), h.max(x)));
+    let (lo, hi) = t
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(l, h), &x| (l.min(x), h.max(x)));
     let half = (hi - lo) / 2.0;
     if half <= f64::MIN_POSITIVE {
         return 0.0;
@@ -452,7 +553,8 @@ fn bow(q: &[P2]) -> f64 {
 
 fn solve3(m: [[f64; 3]; 3], v: [f64; 3]) -> Option<[f64; 3]> {
     let det = |a: [[f64; 3]; 3]| {
-        a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+        a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+            - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
             + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
     };
     let d = det(m);
@@ -471,7 +573,11 @@ fn solve3(m: [[f64; 3]; 3], v: [f64; 3]) -> Option<[f64; 3]> {
 
 fn trimmed_fit(q: &[P2]) -> Option<Fit> {
     let k = ((q.len() as f64 * FIT_TRIM) as usize).max(1);
-    if q.len() > 2 * k + 1 { tls(&q[k..q.len() - k]) } else { tls(q) }
+    if q.len() > 2 * k + 1 {
+        tls(&q[k..q.len() - k])
+    } else {
+        tls(q)
+    }
 }
 
 /// Mínimos quadrados TOTAIS (a recta que minimiza a distância perpendicular).
@@ -484,7 +590,10 @@ fn tls(q: &[P2]) -> Option<Fit> {
         let [x, y] = sub(p, c);
         (a + x * x, b + y * y, s + x * y)
     });
-    (sxx + syy > 0.0).then(|| Fit { c, d: unit(0.5 * f64::atan2(2.0 * sxy, sxx - syy)) })
+    (sxx + syy > 0.0).then(|| Fit {
+        c,
+        d: unit(0.5 * f64::atan2(2.0 * sxy, sxx - syy)),
+    })
 }
 
 fn intersect(f: Fit, g: Fit) -> P2 {
@@ -502,7 +611,11 @@ fn project(p: P2, f: Fit) -> P2 {
 fn axis_snap(d: P2) -> P2 {
     let a = angle(d);
     let q = snap(a, FRAC_PI_2);
-    if (a - q).abs() <= AXIS_SNAP_DEG.to_radians() { unit(q) } else { d }
+    if (a - q).abs() <= AXIS_SNAP_DEG.to_radians() {
+        unit(q)
+    } else {
+        d
+    }
 }
 
 // ── geometria ───────────────────────────────────────────────────────────────────────────────────
@@ -531,7 +644,11 @@ fn centroid(q: &[P2]) -> P2 {
 fn seg_dist(p: P2, a: P2, b: P2) -> f64 {
     let v = sub(b, a);
     let vv = dot(v, v);
-    let t = if vv > 0.0 { (dot(sub(p, a), v) / vv).clamp(0.0, 1.0) } else { 0.0 };
+    let t = if vv > 0.0 {
+        (dot(sub(p, a), v) / vv).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     dist(p, add(a, mul(v, t)))
 }
 
@@ -568,3 +685,7 @@ fn dist(a: P2, b: P2) -> f64 {
 #[cfg(test)]
 #[path = "quickshape_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "quickshape_pencil_tests.rs"]
+mod pencil_tests;

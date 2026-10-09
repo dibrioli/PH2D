@@ -68,7 +68,11 @@ impl Hold {
             l.regular = regular;
             return HoldTick::Reshaped;
         }
-        if !enabled || self.dismissed || now.saturating_sub(last_t) < HOLD_NS || self.tried_at == Some(last_t) {
+        if !enabled
+            || self.dismissed
+            || now.saturating_sub(last_t) < HOLD_NS
+            || self.tried_at == Some(last_t)
+        {
             return HoldTick::Idle;
         }
         self.tried_at = Some(last_t);
@@ -76,7 +80,12 @@ impl Hold {
             return HoldTick::Idle;
         };
         let end = samples[samples.len() - 1];
-        self.live = Some(Live { base, regular, anchor: end, pointer: end });
+        self.live = Some(Live {
+            base,
+            regular,
+            anchor: end,
+            pointer: end,
+        });
         HoldTick::Recognised
     }
 

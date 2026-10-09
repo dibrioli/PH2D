@@ -94,7 +94,12 @@ impl crate::App {
         // desenha, que é a promessa do lápis desde o W1a (*"o ajuste é AO VIVO"*).
         // ⭐ **O QuickShape** (F7): segurar no fim do traço ⇒ a forma perfeita. Antes do perfil, que a
         // partir dela pede a largura do estilo; o clique confirma o que a MÃO fez.
-        if ph2d_app_vec::quickshape_frame::frame(&mut self.vec, vec_scene, Self::timestamp_ns(), self.modifiers.shift_key()) {
+        if ph2d_app_vec::quickshape_frame::frame(
+            &mut self.vec,
+            vec_scene,
+            Self::timestamp_ns(),
+            self.modifiers.shift_key(),
+        ) {
             self.pending_ui_sound = Some(crate::ui_sound::UiSound::Click);
         }
         if let Some(id) = self.vec.pencil.active_path() {

@@ -29,10 +29,15 @@ thread_local! {
 fn hand(poly: &[[f64; 2]], amp: f64) -> Vec<[f64; 2]> {
     let mut out = vec![poly[0]];
     for w in poly.windows(2) {
-        let n = ((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]) / STEP_WORLD).ceil().max(1.0) as usize;
+        let n = ((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]) / STEP_WORLD)
+            .ceil()
+            .max(1.0) as usize;
         out.extend((1..=n).map(|i| {
             let u = i as f64 / n as f64;
-            [w[0][0] + (w[1][0] - w[0][0]) * u, w[0][1] + (w[1][1] - w[0][1]) * u]
+            [
+                w[0][0] + (w[1][0] - w[0][0]) * u,
+                w[0][1] + (w[1][1] - w[0][1]) * u,
+            ]
         }));
     }
     out.iter()
@@ -48,7 +53,16 @@ fn hand(poly: &[[f64; 2]], amp: f64) -> Vec<[f64; 2]> {
 fn stroke(k: usize) -> Vec<[f64; 2]> {
     match k {
         // Um rectângulo tosco: os cantos fora do sítio e o fim a 20 px do início.
-        0 => hand(&[[-2.0, 0.2], [-0.5, 0.26], [-0.56, 1.15], [-1.96, 1.1], [-2.0, 0.29]], 0.006),
+        0 => hand(
+            &[
+                [-2.0, 0.2],
+                [-0.5, 0.26],
+                [-0.56, 1.15],
+                [-1.96, 1.1],
+                [-2.0, 0.29],
+            ],
+            0.006,
+        ),
         // Um círculo tosco: o raio respira ±4 % e o fim pára antes de fechar.
         1 => {
             let ring: Vec<[f64; 2]> = (0..=96)
@@ -68,12 +82,23 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
 /// Um passo da cena 12; devolve o próximo estágio, se mudou. `50` = o Lápis pelo botão · `51` =
 /// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` =
 /// as três seleccionadas, com o Lápis ainda na mão · `9` = feito.
-pub fn step(stage: u8, vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene, hero: &mut HeroScreen) -> Option<u8> {
-    let lit = |hero: &HeroScreen, id| hero.store.tool_bars().is_some_and(|b| b.column.iter().flatten().any(|x| x.on && x.id == id));
+pub fn step(
+    stage: u8,
+    vec: &mut VecState,
+    scene: &mut ph2d_vec_scene::VecScene,
+    hero: &mut HeroScreen,
+) -> Option<u8> {
+    let lit = |hero: &HeroScreen, id| {
+        hero.store
+            .tool_bars()
+            .is_some_and(|b| b.column.iter().flatten().any(|x| x.on && x.id == id))
+    };
     let now = hero.store.clock_ns();
     match stage {
         50 => {
-            hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_PENCIL));
+            hero.apply_event(WidgetEvent::Click(
+                ph2d_tool_vector::ids::VECTOR_MODE_PENCIL,
+            ));
             Some(51)
         }
         51 if lit(hero, ph2d_tool_vector::ids::VECTOR_MODE_PENCIL) => Some(52),
@@ -81,7 +106,10 @@ pub fn step(stage: u8, vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene,
             // A mão acabou AGORA: a última amostra leva o relógio de agora, as outras o passado.
             let pts = stroke(STROKE.with(Cell::get));
             let n = pts.len() as u128;
-            let at = |i: usize| PenDynamics { pressure: 1.0, t_ns: now - (n - 1 - i as u128) * STEP_NS };
+            let at = |i: usize| PenDynamics {
+                pressure: 1.0,
+                t_ns: now - (n - 1 - i as u128) * STEP_NS,
+            };
             vec.pencil.on_press(scene, pts[0], PX_TO_WORLD, at(0));
             for (i, &p) in pts.iter().enumerate().skip(1) {
                 vec.pencil.on_drag(scene, p, at(i));
@@ -91,7 +119,10 @@ pub fn step(stage: u8, vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene,
         }
         53 if vec.pencil.is_quick() || now.saturating_sub(PRESSED.with(Cell::get)) > GIVE_UP_NS => {
             if !vec.pencil.is_quick() {
-                eprintln!("[smoke] quickshape: o traço {} NÃO virou forma em 3 s", STROKE.with(Cell::get));
+                eprintln!(
+                    "[smoke] quickshape: o traço {} NÃO virou forma em 3 s",
+                    STROKE.with(Cell::get)
+                );
             }
             if vec.pencil.on_release(scene) {
                 vec.pen.select(vec.pencil.selected());
@@ -118,9 +149,23 @@ mod tests {
     #[test]
     fn the_three_synthetic_strokes_are_the_shapes_the_scene_promises() {
         use ph2d_vec_edit::quickshape::{QuickShape, recognise};
-        let got: Vec<_> = (0..super::STROKES).map(|k| recognise(&super::stroke(k), super::PX_TO_WORLD, false)).collect();
-        assert!(matches!(&got[0], Some(QuickShape::Polygon { corners, closed: true }) if corners.len() == 4), "{:?}", got[0]);
-        assert!(matches!(&got[1], Some(QuickShape::Ellipse { rx, ry, .. }) if rx == ry), "{:?}", got[1]);
-        assert!(matches!(&got[2], Some(QuickShape::Line { .. })), "{:?}", got[2]);
+        let got: Vec<_> = (0..super::STROKES)
+            .map(|k| recognise(&super::stroke(k), super::PX_TO_WORLD, false))
+            .collect();
+        assert!(
+            matches!(&got[0], Some(QuickShape::Polygon { corners, closed: true }) if corners.len() == 4),
+            "{:?}",
+            got[0]
+        );
+        assert!(
+            matches!(&got[1], Some(QuickShape::Ellipse { rx, ry, .. }) if rx == ry),
+            "{:?}",
+            got[1]
+        );
+        assert!(
+            matches!(&got[2], Some(QuickShape::Line { .. })),
+            "{:?}",
+            got[2]
+        );
     }
 }

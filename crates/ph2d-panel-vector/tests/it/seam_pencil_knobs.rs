@@ -88,7 +88,10 @@ fn the_quickshape_pair_reaches_what_the_frame_reads() {
     publish_mode(ph2d_tool_vector::DrawMode::Pencil);
     let mut host = crate::host_aberto();
     let mut tool = ph2d_tool_vector::VectorTool::default();
-    assert!(tool.draw_config().pencil_quickshape, "ligado por omissão (o Procreate também)");
+    assert!(
+        tool.draw_config().pencil_quickshape,
+        "ligado por omissão (o Procreate também)"
+    );
     for (id, want) in [
         (ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_OFF, false),
         (ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_ON, true),
@@ -105,6 +108,10 @@ fn the_quickshape_pair_reaches_what_the_frame_reads() {
         }
         assert!(forwarded, "o clique em {id:?} nunca virou ToolPanelEvent");
         assert_eq!(tool.draw_config().pencil_quickshape, want, "{id:?}");
-        assert_eq!(tool.ui_snapshot().pencil_quickshape, want, "o painel pinta a partir do snapshot");
+        assert_eq!(
+            tool.ui_snapshot().pencil_quickshape,
+            want,
+            "o painel pinta a partir do snapshot"
+        );
     }
 }

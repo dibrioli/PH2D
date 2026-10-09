@@ -8,6 +8,7 @@
 //! ⛔ Excepção: um ficheiro com `#[global_allocator]` tem de ser binário PRÓPRIO (dois alocadores
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
+mod a_mesma_tabela;
 mod authoring;
 mod determinism;
 mod easing;

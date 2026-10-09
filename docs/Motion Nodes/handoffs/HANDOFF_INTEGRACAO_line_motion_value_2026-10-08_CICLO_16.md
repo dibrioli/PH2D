@@ -98,6 +98,8 @@ Nada dos cinco itens. Os conhecidos fora do módulo estão no §6.
 
 ## §8 — Smoke e binário
 
+✅ **Smoke do dono APROVADO (2026-10-09)** — as cenas `=130` e `=131`.
+
 Smoke ao dono (em `--release`): a cena `=130` (as duas cordas sacudidas de lado, sem gravidade; a única
 diferença é o `Collide` do Shape ligado à porta `shape`; o gesto é ligar o da esquerda) e a `=131` (o
 Shape depois da corda: o selo ⚠ no cartão, a frase, e o fio que o cala), fotografadas aos `9`/`12 s` e

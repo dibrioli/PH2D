@@ -588,3 +588,70 @@ fn a_sharp_spike_is_two_sides_not_one_line() {
         recognise(&v, 1.0, false)
     );
 }
+
+#[test]
+fn a_side_drawn_with_a_slight_kink_is_still_one_side() {
+    // O lado de cima dobra 12° ao meio: o RDP põe lá uma quina (desvio > 4 % da diagonal) e é a
+    // FUSÃO das viragens pequenas que a tira — sem ela saía um pentágono.
+    let kink = [200.0, 250.0 + 200.0 * 6f64.to_radians().tan()];
+    let r = hand(
+        &[
+            [0.0, 0.0],
+            [400.0, 0.0],
+            [400.0, 250.0],
+            kink,
+            [0.0, 250.0],
+            [0.0, 0.0],
+        ],
+        0.5,
+    );
+    assert!(
+        matches!(recognise(&r, 1.0, false), Some(QuickShape::Polygon { ref corners, closed: true }) if corners.len() == 4),
+        "{:?}",
+        recognise(&r, 1.0, false)
+    );
+}
+
+#[test]
+fn a_chamfered_corner_is_absorbed_where_it_sits() {
+    // Quinas cortadas a 55 px (o chanfro tem 78 px < 94): cada chanfro é QUINA, e a quina fica no MEIO
+    // dele — os quatro cantos saem no rectângulo de 400×250 que a mão queria.
+    let c = 55.0;
+    let r = hand(
+        &[
+            [c, 0.0],
+            [400.0 - c, 0.0],
+            [400.0, c],
+            [400.0, 250.0 - c],
+            [400.0 - c, 250.0],
+            [c, 250.0],
+            [0.0, 250.0 - c],
+            [0.0, c],
+            [c, 0.0],
+        ],
+        0.3,
+    );
+    let Some(QuickShape::Polygon {
+        corners,
+        closed: true,
+    }) = recognise(&r, 1.0, false)
+    else {
+        panic!("{:?}", recognise(&r, 1.0, false))
+    };
+    let want = [[0.0, 0.0], [400.0, 0.0], [400.0, 250.0], [0.0, 250.0]];
+    assert!(worst(&corners, &want) < 2.0, "{corners:?}");
+}
+
+#[test]
+fn a_hook_at_the_end_does_not_tilt_the_line() {
+    // 30° e um gancho de 60 px perpendicular no fim: sem o reajuste sem os pontos fora, a recta inclina.
+    let a = 30f64.to_radians();
+    let end = [500.0 * a.cos(), 500.0 * a.sin()];
+    let hook = add(end, mul([a.sin(), -a.cos()], 60.0));
+    let l = hand(&[[0.0, 0.0], end, hook], 0.3);
+    let Some(QuickShape::Line { a: p, b: q }) = recognise(&l, 1.0, false) else {
+        panic!("linha")
+    };
+    let got = angle(sub(q, p)).to_degrees();
+    assert!((got - 30.0).abs() < 0.2, "a recta inclinou para {got}°");
+}

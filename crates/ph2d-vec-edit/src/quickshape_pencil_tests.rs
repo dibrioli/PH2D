@@ -201,3 +201,30 @@ fn the_shift_regularises_live_and_turns_in_fifteen_degree_steps() {
         turned.to_degrees()
     );
 }
+
+#[test]
+fn after_esc_a_new_pause_does_not_bring_the_shape_back() {
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut pencil = crate::Pencil::default();
+    let t = draw(&mut pencil, &mut scene, &rect_stroke());
+    assert_eq!(
+        pencil.hold_tick(&mut scene, t + HOLD_NS, false, true),
+        HoldTick::Recognised
+    );
+    assert!(pencil.quick_dismiss(&mut scene));
+    // A mão anda um pouco (amostra NOVA, carimbo novo) e pára outra vez: o Esc vale o gesto inteiro.
+    let t2 = t + 2 * HOLD_NS;
+    pencil.on_drag(
+        &mut scene,
+        [3.0, 3.0],
+        crate::pencil_width::PenDynamics {
+            pressure: 1.0,
+            t_ns: t2,
+        },
+    );
+    assert_eq!(
+        pencil.hold_tick(&mut scene, t2 + HOLD_NS, false, true),
+        HoldTick::Idle
+    );
+    assert!(!pencil.is_quick());
+}

@@ -54,8 +54,6 @@ const ELLIPSE_RMS_MAX: f64 = 0.04;
 const ROUND_RATIO: f64 = 1.10;
 /// A viragem total de uma elipse é uma volta ± isto (graus). Faixa `40..180`.
 const TURN_TOL_DEG: f64 = 90.0;
-/// Na linha, amostras a mais de 2,5 rms da recta (um gancho no fim) não a inclinam.
-const OUTLIER_RMS: f64 = 2.5;
 /// O degrau do `regular` (o 2.º dedo do Procreate = `Shift`): ângulos em múltiplos de 15°.
 pub const REGULAR_STEP_DEG: f64 = 15.0;
 
@@ -98,10 +96,13 @@ pub fn recognise(samples: &[P2], px_to_world: f64, regular: bool) -> Option<Quic
     }
     let closed = gap(samples, length) <= CLOSE_OF_LENGTH * length;
     let r = resample(samples, RESAMPLE);
-    let mut idx = rdp(&r, RDP_OF_DIAG * diag);
-    merge_small_turns(&r, &mut idx);
-    absorb_short_sides(&r, &mut idx, min);
-    polygonal(samples, &r, &idx, closed, regular)
+    let mut zones: Vec<Zone> = rdp(&r, RDP_OF_DIAG * diag)
+        .into_iter()
+        .map(|i| (i, i))
+        .collect();
+    merge_small_turns(&r, &mut zones);
+    absorb_short_sides(&r, &mut zones, min);
+    polygonal(samples, &r, &zones, min, closed, regular)
         .or_else(|| closed.then(|| ellipse(samples, &r, regular)).flatten())
 }
 
@@ -180,6 +181,11 @@ fn corners_path(corners: &[P2], closed: bool) -> VecPath {
 
 // ── o caminho poligonal ─────────────────────────────────────────────────────────────────────────
 
+/// Uma QUINA, como a faixa de `r` que ela ocupa: um ponto do RDP, ou um lado curto absorvido (o
+/// chanfro, a curva de uma quina arredondada, o gancho na ponta). Os lados correm ENTRE faixas — sem
+/// isto metade do chanfro entrava em cada lado vizinho e lia-se como flecha.
+type Zone = (usize, usize);
+
 /// Uma recta ajustada: um ponto dela e a direcção unitária.
 #[derive(Clone, Copy)]
 struct Fit {
@@ -190,12 +196,22 @@ struct Fit {
 fn polygonal(
     samples: &[P2],
     r: &[P2],
-    idx: &[usize],
+    zones: &[Zone],
+    min: f64,
     closed: bool,
     regular: bool,
 ) -> Option<QuickShape> {
-    let sides: Vec<(usize, usize)> = idx.windows(2).map(|w| (w[0], w[1])).collect();
-    if sides.is_empty() || sides.iter().any(|&(a, b)| bow(&r[a..=b]) > BOW_MAX) {
+    // Uma quina maior que o tamanho mínimo já não é quina: as faixas encadeadas de um S escondiam
+    // as curvas dele e liam-se como uma linha.
+    if zones.iter().any(|&(a, b)| dist(r[a], r[b]) > min) {
+        return None;
+    }
+    let sides: Vec<(usize, usize)> = zones.windows(2).map(|w| (w[0].1, w[1].0)).collect();
+    if sides.is_empty()
+        || sides
+            .iter()
+            .any(|&(a, b)| b <= a || bow(&r[a..=b]) > BOW_MAX)
+    {
         return None;
     }
     let mut fits: Vec<Fit> = sides
@@ -208,38 +224,26 @@ fn polygonal(
         && fits.len() > 3
         && turn(fits[fits.len() - 1].d, fits[0].d) < MERGE_TURN_DEG.to_radians()
     {
-        let (la, _) = sides[sides.len() - 1];
-        let (_, fb) = sides[0];
-        let mut q = r[la..].to_vec();
-        q.extend_from_slice(&r[..=fb]);
+        let (la, lb) = sides[sides.len() - 1];
+        let (fa, fb) = sides[0];
+        let mut q = r[la..=lb].to_vec();
+        q.extend_from_slice(&r[fa..=fb]);
         fits[0] = trimmed_fit(&q)?;
         fits.pop();
     }
     match (closed, fits.len()) {
-        (false, 1) => Some(line(samples, regular)),
+        (false, 1) => Some(line(samples, &r[sides[0].0..=sides[0].1], regular)),
         (false, _) => Some(polyline(samples, &mut fits, regular)),
         (true, k) if k >= 3 => Some(closed_polygon(&fits, regular)),
         _ => None,
     }
 }
 
-fn line(samples: &[P2], regular: bool) -> QuickShape {
-    let fit = tls(samples).map(|f| {
-        let res: Vec<f64> = samples.iter().map(|&p| cross(f.d, sub(p, f.c))).collect();
-        let rms = (res.iter().map(|e| e * e).sum::<f64>() / res.len() as f64).sqrt();
-        let keep: Vec<P2> = samples
-            .iter()
-            .zip(&res)
-            .filter(|(_, e)| e.abs() <= OUTLIER_RMS * rms)
-            .map(|(p, _)| *p)
-            .collect();
-        if keep.len() < samples.len() && keep.len() >= 2 {
-            tls(&keep).unwrap_or(f)
-        } else {
-            f
-        }
-    });
-    let Some(Fit { c, d }) = fit else {
+/// A recta ajusta-se ao CORPO (`body`, sem os ganchos das pontas, que são quinas absorvidas); as
+/// pontas são as projecções extremas de TODAS as amostras (o oráculo estende a linha até à ponta do
+/// gancho).
+fn line(samples: &[P2], body: &[P2], regular: bool) -> QuickShape {
+    let Some(Fit { c, d }) = tls(body) else {
         return QuickShape::Line {
             a: samples[0],
             b: samples[samples.len() - 1],
@@ -483,41 +487,36 @@ fn rdp(r: &[P2], tol: f64) -> Vec<usize> {
 }
 
 /// Funde, menor primeiro, as quinas que viram menos que [`MERGE_TURN_DEG`].
-fn merge_small_turns(r: &[P2], idx: &mut Vec<usize>) {
-    while idx.len() > 2 {
+fn merge_small_turns(r: &[P2], z: &mut Vec<Zone>) {
+    while z.len() > 2 {
         // Com SENTIDO (segmentos, não rectas): um bico de 160° não é uma viragem de 20°.
-        let (t, j) = (1..idx.len() - 1)
+        let (t, j) = (1..z.len() - 1)
             .map(|j| {
-                let (a, b) = (sub(r[idx[j]], r[idx[j - 1]]), sub(r[idx[j + 1]], r[idx[j]]));
+                let a = sub(r[z[j].0], r[z[j - 1].1]);
+                let b = sub(r[z[j + 1].0], r[z[j].1]);
                 (wrap_pi(angle(b) - angle(a)).abs(), j)
             })
             .fold((f64::MAX, 0), |m, x| if x.0 < m.0 { x } else { m });
         if t >= MERGE_TURN_DEG.to_radians() {
             return;
         }
-        idx.remove(j);
+        z.remove(j);
     }
 }
 
-/// Um lado mais curto que `min` é parte de uma quina (ou um gancho na ponta): some, e a quina fica
-/// no meio dele.
-fn absorb_short_sides(r: &[P2], idx: &mut Vec<usize>, min: f64) {
-    while idx.len() > 2 {
-        let (len, j) = (0..idx.len() - 1)
-            .map(|j| (dist(r[idx[j]], r[idx[j + 1]]), j))
+/// Um lado mais curto que `min` é parte de uma quina (ou um gancho na ponta): as duas faixas que o
+/// fecham passam a UMA, que o contém.
+fn absorb_short_sides(r: &[P2], z: &mut Vec<Zone>, min: f64) {
+    while z.len() > 2 {
+        let (len, j) = (0..z.len() - 1)
+            .map(|j| (dist(r[z[j].1], r[z[j + 1].0]), j))
             .fold((f64::MAX, 0), |m, x| if x.0 < m.0 { x } else { m });
         if len >= min {
             return;
         }
-        if j == 0 {
-            idx.remove(1);
-        } else if j == idx.len() - 2 {
-            idx.remove(j);
-        } else {
-            idx[j] = (idx[j] + idx[j + 1]) / 2;
-            idx.remove(j + 1);
-        }
-        merge_small_turns(r, idx);
+        z[j].1 = z[j + 1].1;
+        z.remove(j + 1);
+        merge_small_turns(r, z);
     }
 }
 

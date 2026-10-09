@@ -96,6 +96,10 @@ fn the_quickshape_pair_reaches_what_the_frame_reads() {
         (ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_OFF, false),
         (ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_ON, true),
     ] {
+        assert!(
+            host.store().get(id).is_some(),
+            "{id:?} não está registado no store — pintado e morto sob o rato"
+        );
         let mut st = VectorPanelState;
         let out = host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::Click(id));
         assert_eq!(out, EventOutcome::Consumed, "{id:?} não foi consumido");

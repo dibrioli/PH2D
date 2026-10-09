@@ -34,7 +34,7 @@ fn paleta_sobre_a_fisica() -> (PaletteModel, ph2d_editor_core::NodeId) {
             color: ph2d_tokens::ColorToken::NodeCatSource,
             subs: vec![PaletteSub {
                 title: None,
-                items: vec![PaletteItem { label: rotulo, id }],
+                items: vec![PaletteItem { label: rotulo, id, keywords: "" }],
             }],
         }],
     };

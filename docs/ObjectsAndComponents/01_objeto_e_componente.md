@@ -244,3 +244,22 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | §6 «Clipes como conteúdo» via `ModeFamily::content` | a Timeline não é família de modo ⇒ `ContentOpens::{Mode, Panel}` e a Timeline declara o grupo (`ph2d-panel-timeline/src/hier.rs`); a Cena recebe conteúdo pela entrada `HIER_SCENE_ROW` | `family()` só acha uma família pelo MODO (`mode_drive.rs:155`) |
 | `MAX_CLIPS` (16) do documento | **por animação** (o recurso é o seletor, que mostra uma); o documento pára no `u16` do strip | e o seletor de acções do osso inteligente passou a listar a animação onde o osso vive — o pool fixo de 16 já não cabia o documento |
 | — | o dope sheet lista o que a animação em vista anima (+ bindings ainda sem chave) | a foto do smoke mostrou o Inimigo (Cena) nas linhas do Herói |
+
+## §13 — Onda 3 (F5 + F6): a medição e as escolhas do dono (08/10)
+
+**O que a medição de abertura derrubou no §5/§8:**
+
+| plano | o que é | porquê (medido) |
+|---|---|---|
+| §5 «as formas que publica como filhos» | o resultado do Motion **não são objectos**: é um fluxo de instâncias desenhado direto (`present.rs`, ADR-0035), milhares por quadro | uma linha por cópia é a árvore inchada do §2; o que vira filho é o **molde** (a forma que ele copia) |
+| «Motion é algo da cena» | hoje o resultado **só se desenha com a ferramenta Motion activa** (`present.rs:229`, `motion_active`) | é o «solto» do §1 no grau máximo: sai da tela ao trocar de ferramenta |
+| N documentos (um por objecto Motion) | **UM `MotionDoc`**, cada nó com dono (molde da onda 2) | 258 ficheiros contam com o tipo, `ProjectFile.motion` é um campo, o undo é um (`MotionHistory`) |
+
+**Escolhas do dono (08/10):**
+
+| | escolha |
+|---|---|
+| F5.1 | o resultado do objecto Motion aparece **sempre** (como qualquer objecto, Play incluído); some só pelo olho |
+| F5.2 | a forma copiada (a «Bola») **vira filha do objecto Motion e não se desenha sozinha** — só as cópias (como no Cavalry) |
+| F6.1 | a busca por intenção do *Add Component* entende **só inglês** (a língua da interface): «fall» ⇒ Corpo físico |
+| F6.2 | o filtro da Hierarquia por componente é um **botão ▾ ao lado da busca**, que lista só os componentes presentes na cena, com contagem |

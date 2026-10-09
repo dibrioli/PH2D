@@ -26,6 +26,10 @@ use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "component.";
 const TABLE: &str = "crates/ph2d-i18n/src/component_catalog.rs";
+/// ⭐ As palavras de INTENÇÃO do *Add Component* (F6) — chaves DERIVADAS de cada componente
+/// (`ComponentDesc::keywords_key`), nunca citadas como literal: contam como usadas quando o
+/// componente de onde derivam existe.
+const KEYWORDS_TABLE: &str = "crates/ph2d-i18n/src/component_keywords.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
 const NOT_LANGUAGE: &[Excecao] = &[];
@@ -68,7 +72,11 @@ fn every_named_exception_still_shelters_a_real_literal() {
 #[test]
 fn every_key_of_this_catalog_exists_on_both_sides() {
     let (_, repo) = gate::raizes(env!("CARGO_MANIFEST_DIR"));
-    let c = gate::chaves(&repo, PREFIX, &[TABLE]);
+    let mut c = gate::chaves(&repo, PREFIX, &[TABLE, KEYWORDS_TABLE]);
+    let derivadas: Vec<String> = ph2d_component_desc::all()
+        .map(ph2d_component_desc::ComponentDesc::keywords_key)
+        .collect();
+    c.orfas.retain(|k| !derivadas.contains(k));
     // ⛔ Controlo de vacuidade: a população MEDIDA na migração (291), menos folga para encolher.
     assert!(
         c.declaradas >= 280 && c.usadas >= 280,

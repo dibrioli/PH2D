@@ -90,6 +90,18 @@ pub struct ComponentDesc {
 }
 
 impl ComponentDesc {
+    /// ⭐ **A chave das palavras de INTENÇÃO** (doc ObjectsAndComponents 01 §7.3, F6) — derivada da
+    /// do nome (`component.<snake>.name` → `component.<snake>.keywords`), nunca um segundo literal.
+    /// A busca do *Add Component* acha o componente por elas («fall» ⇒ *Physics Body*).
+    #[must_use]
+    pub fn keywords_key(&self) -> String {
+        let stem = self
+            .display_key
+            .strip_suffix(".name")
+            .unwrap_or(self.display_key);
+        format!("{stem}.keywords")
+    }
+
     /// **Um componente que o artista anexa.**
     ///
     /// Construtor `const` porque o catálogo é `static`, e porque escrever a struct inteira

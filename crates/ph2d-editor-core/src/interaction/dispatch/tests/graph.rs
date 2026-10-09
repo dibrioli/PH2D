@@ -151,6 +151,7 @@ fn an_open_palette_wins_the_click_over_a_shadowing_graph_surface() {
                 items: vec![PaletteItem {
                     label: "Boids".into(),
                     id: pill,
+                    keywords: "",
                 }],
             }],
         }],

@@ -88,6 +88,8 @@ mod vector_engine;
 mod chrome;
 /// As palavras do catálogo de componentes — o 1.º MOTOR a falar pela tabela.
 mod component_catalog;
+/// As palavras de INTENÇÃO do *Add Component* — só a busca as lê (F6).
+mod component_keywords;
 // ⚠️ **O doc que aqui estava era o do [`tags`]** e descrevia o painel errado — um `///` colado ao
 //    item seguinte é o mesmo acidente que esta fatia quase repetiu duas declarações abaixo. Ele
 //    voltou para o irmão a que pertence; este módulo fica sem doc, que é honesto, em vez de com um
@@ -476,6 +478,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
             .or_else(|| component_catalog::tr(k))
+            .or_else(|| component_keywords::tr(k))
             .or_else(|| paint_engines::tr(k))
             .or_else(|| ecs_scene::tr(k))
             .or_else(|| tags_engine::tr(k))

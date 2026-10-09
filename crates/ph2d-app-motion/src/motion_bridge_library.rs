@@ -153,6 +153,7 @@ pub(super) fn build_palette_model(
     let make_item = |nc: &ph2d_panel_motion_graph::NodeChoice| PaletteItem {
         label: nc.display.to_string(),
         id: ph2d_tool_registry::hash_node_id(nc.type_name),
+        keywords: "",
     };
     let mut groups = Vec::new();
     for (c, title) in ORDER {

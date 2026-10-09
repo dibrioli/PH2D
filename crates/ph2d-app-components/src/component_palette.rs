@@ -141,6 +141,15 @@ fn brings_along(desc: &ComponentDesc) -> Vec<&'static str> {
     out
 }
 
+/// ⭐ **As palavras de intenção** do componente (doc ObjectsAndComponents 01 §7.3, F6) — `""` quando a
+/// tabela não as tem (o gate `every_offered_component_has_intent_words` diz se faltou alguma).
+#[must_use]
+pub(crate) fn intent_words(desc: &ComponentDesc) -> &'static str {
+    let key = desc.keywords_key();
+    let words = ph2d_i18n::tr(&key);
+    if words == key { "" } else { words }
+}
+
 /// Um item da paleta, com o rótulo já pronto.
 fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
     // ⚠️ **A razão E a cascata viajam no RÓTULO**, e não em campos novos do widget genérico: o
@@ -162,6 +171,7 @@ fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
     PaletteItem {
         label,
         id: item_id(desc.canonical_name),
+        keywords: intent_words(desc),
     }
 }
 
@@ -249,6 +259,7 @@ pub(crate) fn offer_animation(model: &mut PaletteModel) {
     let item = PaletteItem {
         label: ph2d_i18n::tr("app.components.component_palette.animation").to_string(),
         id: ANIMATION_ITEM,
+        keywords: "",
     };
     let title = cat_title(C::Animation);
     if let Some(g) = model.groups.iter_mut().find(|g| g.title == title) {
@@ -294,6 +305,11 @@ pub(crate) fn name_of_pick(id: NodeId) -> Option<&'static str> {
 #[cfg(test)]
 #[path = "component_palette_tests.rs"]
 mod tests;
+
+/// ⭐ A busca por intenção (F6) — ver [`crate::component_palette_intent_tests`].
+#[cfg(test)]
+#[path = "component_palette_intent_tests.rs"]
+mod intent_tests;
 
 /// ⭐ A SONDA da paleta — ver [`crate::component_palette_measure`].
 #[cfg(test)]

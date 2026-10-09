@@ -116,6 +116,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
                 Some(PaletteItem {
                     label: e.label()?.to_string(),
                     id: e.node_id()?,
+                    keywords: "",
                 })
             })
             .collect();
@@ -142,6 +143,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             panels.push(PaletteItem {
                 label: humanise_panel_id(p.manifest.id),
                 id: p.manifest.panel_node_id,
+                keywords: "",
             });
         }
     });
@@ -173,6 +175,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
                 .map(|(id, label, _)| PaletteItem {
                     label: palette_label(label.tr()),
                     id: *id,
+                    keywords: "",
                 })
                 .collect();
             (!items.is_empty()).then(|| PaletteSub {

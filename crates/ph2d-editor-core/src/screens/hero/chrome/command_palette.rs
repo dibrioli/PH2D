@@ -113,10 +113,12 @@ mod tests {
                         PaletteItem {
                             label: "Grid".into(),
                             id: hash_node_id("motion.grid"),
+                            keywords: "",
                         },
                         PaletteItem {
                             label: "Boids".into(),
                             id: hash_node_id("motion.boids"),
+                            keywords: "",
                         },
                     ],
                 }],

@@ -109,10 +109,12 @@ pub fn build(
                             None => ready.push(PaletteItem {
                                 label: label.to_string(),
                                 id: e.id(),
+                                keywords: "",
                             }),
                             Some(reason) => blocked.push(PaletteItem {
                                 label: format!("{label}  \u{2014}  {reason}"),
                                 id: e.id(),
+                                keywords: "",
                             }),
                         }
                     }

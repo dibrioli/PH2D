@@ -8,6 +8,7 @@ fn item(label: &'static str) -> PaletteItem {
     PaletteItem {
         label: label.into(),
         id: hash_node_id(label),
+        keywords: "",
     }
 }
 
@@ -42,10 +43,46 @@ fn model() -> PaletteModel {
 /// the `Enter` top-match both call this, so what is shown and what is added cannot disagree.
 #[test]
 fn item_matches_is_case_insensitive_substring_and_empty_matches_all() {
-    assert!(item_matches("", "anything"), "empty query matches all");
-    assert!(item_matches("boi", "Boids"));
-    assert!(item_matches("BOI", "Boids"), "case-insensitive");
-    assert!(!item_matches("xyz", "Boids"));
+    assert!(item_matches("", &item("anything")), "empty query matches all");
+    assert!(item_matches("boi", &item("Boids")));
+    assert!(item_matches("BOI", &item("Boids")), "case-insensitive");
+    assert!(!item_matches("xyz", &item("Boids")));
+}
+
+/// ⭐ **A busca por INTENÇÃO** (doc ObjectsAndComponents 01 §7.3): cada palavra da busca tem de estar no
+/// rótulo ou nas palavras do item, em qualquer ordem — e um item sem palavras só casa pelo rótulo.
+#[test]
+fn every_query_word_is_found_in_the_label_or_the_intent_words() {
+    let fonte = PaletteItem {
+        keywords: "play sound, sfx, music",
+        ..item("Audio Source 2D")
+    };
+    assert!(item_matches("play sound", &fonte));
+    assert!(item_matches("sound PLAY", &fonte), "order and case do not matter");
+    assert!(item_matches("audio music", &fonte), "label and words mix");
+    assert!(!item_matches("play video", &fonte), "every word has to be found");
+    assert!(!item_matches("sound", &item("Audio Source 2D")), "no words: label only");
+}
+
+/// ⭐ **O `Enter` prefere o NOME à intenção**: «grav» adiciona *Gravity* mesmo que um item anterior na
+/// ordem de exibição liste «gravity» entre as palavras. FALSIFIED se `top_match` só seguisse a ordem.
+#[test]
+fn enter_prefers_a_name_match_over_an_earlier_intent_match() {
+    let mut m = model();
+    m.groups[0].subs[0].items[0].keywords = "gravity well";
+    assert_eq!(top_match(&m, "grav"), Some(hash_node_id("Gravity")));
+    assert_eq!(top_match(&m, "gravity well"), Some(hash_node_id("Grid")));
+}
+
+/// ⭐ **Uma palavra INTEIRA da lista vence um fragmento** — «jump» é a palavra de um e só um pedaço de
+/// «jump link» do outro. FALSIFIED se o `Enter` só seguisse a ordem de exibição.
+#[test]
+fn enter_prefers_a_whole_intent_word_over_a_fragment() {
+    let mut m = model();
+    m.groups[0].subs[0].items[1].keywords = "jump link, ladder";
+    m.groups[1].subs[0].items[0].keywords = "fall, jump";
+    assert_eq!(top_match(&m, "jump"), Some(hash_node_id("Gravity")));
+    assert_eq!(top_match(&m, "jump lin"), Some(hash_node_id("Boids")));
 }
 
 /// **A filtered library drops sub-clusters and categories that end up empty** — no coloured header sits
@@ -257,7 +294,7 @@ fn tall(n: usize, k: usize) -> PaletteModel {
 
 fn item_owned(label: String) -> PaletteItem {
     let id = hash_node_id(Box::leak(label.clone().into_boxed_str()));
-    PaletteItem { label, id }
+    PaletteItem { label, id, keywords: "" }
 }
 
 const VP: ZRect = ZRect {

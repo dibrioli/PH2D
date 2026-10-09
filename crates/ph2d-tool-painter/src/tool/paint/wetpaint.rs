@@ -147,6 +147,8 @@ pub(crate) struct WetPaintState {
     pub(super) relogio_fixo: Option<f64>,
     /// O pedido do bloco de presets que espera a ponte da app (o disco é dela, não do tool).
     pub(super) preset_pedido: Option<super::wetpaint_preset::PedidoPreset>,
+    /// Os números da lei das gotas que a sessão leva ao nascer (o produto: `DripLaw::DEFAULT`).
+    pub(super) drip_law: ph2d_wet_paint::drips::DripLaw,
 }
 
 impl Default for WetPaintState {
@@ -171,6 +173,7 @@ impl Default for WetPaintState {
             flow_ratio: 1,
             relogio_fixo: None,
             preset_pedido: None,
+            drip_law: ph2d_wet_paint::drips::DripLaw::DEFAULT,
         }
     }
 }
@@ -182,6 +185,13 @@ impl PainterTool {
     /// thread própria (`wetpaint/offthread.rs`).
     pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
+    }
+
+    /// **A lei das gotas da CALIBRAÇÃO** — as variantes correm no mesmo processo (CLAUDE.md §2); vale para
+    /// a sessão que nascer depois (chame-a antes do primeiro traço). O produto nunca a chama.
+    #[doc(hidden)]
+    pub fn set_wet_drip_law(&mut self, law: ph2d_wet_paint::drips::DripLaw) {
+        self.paint.wetpaint.drip_law = law;
     }
 }
 

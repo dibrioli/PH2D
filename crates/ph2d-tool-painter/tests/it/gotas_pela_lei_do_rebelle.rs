@@ -361,10 +361,26 @@ fn com_easy_drips_o_wet_round_de_fabrica_pinga_como_o_round_do_rebelle() {
     assert_eq!(seco, 0, "o Dry Brush não tem água para pingar");
 }
 
+/// **L2-2 — o pincel cujo NOME promete gotas pinga** (auditoria 08/10: o Wet Drip de fábrica, água 0,49,
+/// dava 0 px em todo estado que o painel alcança). Na tela no máximo, sem Easy Drips, ele pinga como o
+/// Round do Rebelle (302 px; a barra da bancada, 250); a meio, não. A água dele é a da bancada que pinga
+/// (0,7 — medido: 0,49 → 0 px, 0,6 → 260, 0,7 → 259, 1,0 → 278).
+#[test]
+fn o_wet_drip_de_fabrica_pinga_na_tela_no_maximo() {
+    let max = traco_de_fabrica("Wet Drip", 8, false);
+    let meio = traco_de_fabrica("Wet Drip", 4, false);
+    println!("[gotas] Wet Drip: no máximo {max} · a meio {meio}");
+    assert!(
+        max >= 250,
+        "o Wet Drip pinga {max} px no máximo (Rebelle 302)"
+    );
+    assert_eq!(meio, 0, "a meia inclinação nada pinga");
+}
+
 /// ⛔ **A mancha guarda a forma do traço** (report do dono 08/10, a foto do S: *«a tinta se assenta
 /// formando bases retas e degraus»*). Na cena do report (o S e o L, Wet Round largo e muito molhado), com a
 /// tela no máximo e sem gotas, a orla de baixo de cada coluna fica onde estava com a tela direita (a água
-/// desce DENTRO da mancha); e com as gotas, poucos fios — nos pontos baixos, nunca um pente (eram 20).
+/// desce DENTRO da mancha); e com as gotas, fios de toda a orla — nunca um pente (eram 20).
 /// Mutação que sangra: a linha de contacto a cortar só a componente de descida (a 1.ª forma).
 #[test]
 fn com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente() {
@@ -415,7 +431,13 @@ fn com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente() {
         fora <= 300,
         "{fora} px de tinta fora da mancha da tela direita (degraus/bases planas)"
     );
-    assert!((1..=6).contains(&fios), "{fios} fios na cena do S (pente?)");
+    // Os fios saem de TODA a orla (o Rebelle: 10–11 no S de 1000 px, W1c) — mas nunca o pente de dezenas
+    // (20 na cena do dono antes da 2.ª ronda). Reescrito de propósito na W1c: a 1.ª barra (1–6) era a
+    // regra «só o ponto baixo», que contradiz o oráculo; hoje 14.
+    assert!(
+        (4..=17).contains(&fios),
+        "{fios} fios na cena do S (pente?)"
+    );
 }
 
 /// As BRECHAS da faixa escura da orla de baixo do traço `c`: no NÚCLEO da faixa (as linhas onde ≥ 80 %

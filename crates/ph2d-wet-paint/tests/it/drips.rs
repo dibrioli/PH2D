@@ -125,7 +125,13 @@ fn a_linha_de_contacto_conserva_a_massa() {
         )
     };
     let antes = soma(g);
-    ph2d_wet_paint::solver::advect_jacobi_pinned(g, &p, 0.0, 0.02);
+    ph2d_wet_paint::solver::advect_jacobi_pinned(
+        g,
+        &p,
+        0.0,
+        0.02,
+        ph2d_wet_paint::drips::DripLaw::DEFAULT.notch_w,
+    );
     let depois = soma(g);
     assert!(
         (antes.0 - depois.0).abs() <= 1e-4 * antes.0.max(1.0),

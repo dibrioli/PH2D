@@ -43,7 +43,13 @@ impl PainterTool {
         let flow =
             ph2d_wet_paint::flow::clamp_ratio(usize::from(self.paint.wetpaint.flow_ratio.max(1)));
         self.paint.wetpaint.session = Some(WetSession {
-            engine: EngineSlot::new_here(Engine::with_flow_ratio(gw, gh, flow)),
+            engine: EngineSlot::new_here({
+                let mut e = Engine::with_flow_ratio(gw, gh, flow);
+                // A lei das gotas está em px da tela e anda em células desta grade.
+                e.sim.drip_px_per_cell = f64::from(ratio);
+                e.sim.drip_law = self.paint.wetpaint.drip_law;
+                e
+            }),
             ratio,
             grid: (gw, gh),
             worker: None,

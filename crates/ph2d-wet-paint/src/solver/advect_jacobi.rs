@@ -127,12 +127,12 @@ pub fn advect_jacobi(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
 
 /// [`advect_jacobi`] com a rota forçada — a porta dos gates de identidade.
 pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) -> f64 {
-    advect_jacobi_core(g, p, gx, gy, false, mode)
+    advect_jacobi_core(g, p, gx, gy, None, mode)
 }
 
 /// [`advect_jacobi`] com a **linha de contacto** das gotas ([`crate::drips::pin_downhill`]): a porta do
 /// `Sim` quando o papel tem a lei das gotas (`Sim::gotas`). Sem gravidade é o [`advect_jacobi`] ao byte.
-pub fn advect_jacobi_pinned(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
+pub fn advect_jacobi_pinned(g: &mut Grid, p: &Params, gx: f64, gy: f64, notch_w: i32) -> f64 {
     let rows = (g.by1 - g.by0 + 1).max(0) as usize;
     let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
     advect_jacobi_core(
@@ -140,20 +140,27 @@ pub fn advect_jacobi_pinned(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
         p,
         gx,
         gy,
-        true,
+        Some(notch_w),
         Rows::pick(rows, span, par::MIN_CELLS_ADVECT),
     )
 }
 
-fn advect_jacobi_core(g: &mut Grid, p: &Params, gx: f64, gy: f64, pin: bool, mode: Rows) -> f64 {
+fn advect_jacobi_core(
+    g: &mut Grid,
+    p: &Params,
+    gx: f64,
+    gy: f64,
+    pin: Option<i32>,
+    mode: Rows,
+) -> f64 {
     if g.by0 > g.by1 {
         return 0.0;
     }
     g.scratch.ensure(g.cells);
     momentum_rows(g, p, gx, gy, mode);
     let vmax = prepare_rows(g, mode);
-    if pin {
-        crate::drips::pin_downhill(g, [gx, gy], mode);
+    if let Some(notch_w) = pin {
+        crate::drips::pin_downhill(g, [gx, gy], notch_w, mode);
     }
     outflow_rows(g, p, mode);
     transport_rows(g, p, mode);

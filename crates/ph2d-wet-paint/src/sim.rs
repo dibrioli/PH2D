@@ -66,9 +66,14 @@ pub struct Sim {
     pub gravity_override: Option<[f64; 2]>,
     /// **A lei das gotas do PAPEL** ([`crate::drips`], W1b): `Some` com `create` = a linha de contacto +
     /// as gotas (a lei do Rebelle); `create` desligado = o escorrimento NATURAL do motor, igual a `None`
-    /// (o boot, o port 1:1 da referência, cujo fingerprint não muda). Só a rota de Jacobi (`order_invariant`) a
-    /// aplica: o Gauss-Seidel é a referência congelada.
+    /// (o boot, o port 1:1 da referência, cujo fingerprint não muda). A força da lei e as gotas correm nas
+    /// DUAS rotas do passo; a linha de contacto só na de Jacobi (`order_invariant`, o produto).
     pub gotas: Option<crate::drips::DripPaper>,
+    /// Os números da lei das gotas ([`crate::drips::DripLaw::DEFAULT`] no produto; a calibração varia-os).
+    pub drip_law: crate::drips::DripLaw,
+    /// Quantos px da tela cabem numa célula da grade (a razão da grade do tool): a lei das gotas está em
+    /// px e anda em células.
+    pub drip_px_per_cell: f64,
     /// Experimental color routing (K–M pigment mixing checkbox).
     pub km_mixing: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
@@ -138,6 +143,8 @@ impl Default for Sim {
             tilt_scale: 1.0,
             gravity_override: None,
             gotas: None,
+            drip_law: crate::drips::DripLaw::DEFAULT,
+            drip_px_per_cell: 1.0,
             km_mixing: false,
             ext_bypass: false,
             order_invariant: true,
@@ -198,7 +205,7 @@ impl Sim {
         if self.gotas.is_some_and(|p| p.create) {
             // A lei das gotas (Create Drips) tem a SUA tela, calibrada contra o Rebelle; sem ela, a
             // gravidade é a do motor de sempre — o escorrimento natural, ao byte.
-            mag *= crate::drips::DRIP_LAW_GRAVITY;
+            mag *= self.drip_law.gravity;
         }
         [self.tilt_dir_x * mag, self.tilt_dir_y * mag]
     }
@@ -313,7 +320,13 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             // A linha de contacto só com Create Drips LIGADO: desligado, o escorrimento é o NATURAL do
             // motor (a água sai pela orla e corre livre — o que o dono tinha antes e quis de volta, 08/10).
             c.vmax = if sim.order_invariant && sim.gotas.is_some_and(|p| p.create) {
-                crate::solver::advect_jacobi_pinned(g, &c.p, c.grav[0], c.grav[1])
+                crate::solver::advect_jacobi_pinned(
+                    g,
+                    &c.p,
+                    c.grav[0],
+                    c.grav[1],
+                    sim.drip_law.notch_w,
+                )
             } else if sim.order_invariant {
                 crate::solver::advect_jacobi(g, &c.p, c.grav[0], c.grav[1])
             } else {
@@ -331,7 +344,15 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             // As gotas (W1b) moram no estágio da cadência, o mais leve: o custo delas é medido à parte
             // (`measure_drip_pass_cost`) e não muda o pior estágio.
             if let Some(paper) = sim.gotas {
-                crate::drips::drip_pass(g, &c.p, c.grav, paper, n);
+                crate::drips::drip_pass(
+                    g,
+                    &c.p,
+                    c.grav,
+                    paper,
+                    sim.drip_law,
+                    sim.drip_px_per_cell,
+                    n,
+                );
             }
             // Adaptive drying cadence for the NEXT frames, from this advection's max
             // velocity component: calm water dries faster per pass, flowing water is

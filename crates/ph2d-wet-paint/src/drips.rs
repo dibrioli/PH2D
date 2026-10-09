@@ -7,11 +7,14 @@
 //! 1. [`pin_downhill`] — **a linha de contacto**: o papel seco POR FORA da mancha não recebe água de lado
 //!    nenhum; a água desce DENTRO dela e junta-se na orla de baixo — a orla escurece, e a mancha guarda a
 //!    forma do traço (sem degraus nem bases planas).
-//! 2. [`drip_pass`] — **a gota**: no ponto BAIXO da orla, onde ela junta água bastante para a força da
-//!    inclinação vencer o que o papel segura, nasce UM corredor que desce, bebe a água da orla da sua
-//!    bacia (o Size é o alcance e a largura) e deixa um fio pálido de pigmento ASSENTE, tirado da orla e
-//!    do traço acima dela (o Length é quanto ele corre). Poucos, finos e longos: um por bacia, nunca um
-//!    pente.
+//! 2. [`drip_pass`] — **a gota**: em TODA a orla de baixo (o Rebelle: encostas, arco, vale), onde ela
+//!    junta água bastante para a força da inclinação vencer o que o papel segura, nasce um corredor que
+//!    desce — um por bacia, e a bacia é a orla que recolhe [`DripLaw::basin_water`] (um traço largo pinga
+//!    mais junto que um fino). Ele bebe a orla da bacia até [`DripLaw::recede`], e o canal continua a
+//!    escoá-la depois de o fio acabar: a água sai, o pigmento fica na linha da orla (sem isso a água
+//!    empoçava atrás da linha de contacto e o pigmento espremia-se numa faixa chapada cujo topo era a
+//!    escada — W1c). Deixa um fio pálido de pigmento ASSENTE, tirado da orla e do traço acima dela, com um
+//!    funil escuro na raiz (o Length é quanto ele corre, o Size a largura e o alcance).
 //!
 //! Determinismo (ADR-0134/0147): `f64`, ordem fixa (pontuação, depois índice), hashes sem estado (a fase
 //! do desvio do fio), nenhum RNG.
@@ -22,9 +25,15 @@ use crate::grid::Grid;
 use crate::par::{self, Rows};
 use crate::sim::Params;
 
+mod edge;
+mod trail;
+pub use edge::pin_downhill;
+use edge::{basin_reach, inside, is_front, walk_edge};
+use trail::advance;
+
 /// As gotas do PAPEL (Rebelle *Visual Settings → Watercolor Behavior*): criar sim/não, tamanho e
 /// comprimento em `1..=10`, `5` por omissão — os do Rebelle — e o papel que segura MENOS (`easy`,
-/// pedido do dono 08/10: as duas versões, por uma caixa — ver [`HOLD_EASY`]).
+/// pedido do dono 08/10: as duas versões, por uma caixa — ver [`DripLaw::hold_easy`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DripPaper {
     pub create: bool,
@@ -63,7 +72,8 @@ impl Default for DripPaper {
 
 /// Uma gota: a cabeça, a origem (o centro da bacia que a alimenta), a água e o pigmento que leva, e o
 /// rasto que ainda lhe falta. Uma gota que ACABOU fica na lista (`run_left == 0`) até a água do grid
-/// secar: a bacia dela não volta a pingar no mesmo episódio molhado (1–2 fios por traço, nunca um pente).
+/// secar: a bacia dela não volta a pingar no mesmo episódio molhado (e o canal dela continua a escoá-la,
+/// [`DripLaw::drain_after`]).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Drip {
     pub x: f64,
@@ -81,6 +91,10 @@ pub struct Drip {
     pub basin: [i32; 4],
     /// O pigmento por célula de rasto ([`tinta_do_fio`] do traço onde ela nasceu).
     pub tint: f64,
+    /// A meia-largura da bacia ao longo da orla (células): a que recolheu [`DripLaw::basin_water`].
+    pub reach: f64,
+    /// A maior orla molhada que a bacia já teve (índices): a reserva de tinta do fio.
+    pub orla: Vec<usize>,
 }
 
 impl Drip {
@@ -90,75 +104,108 @@ impl Drip {
     }
 }
 
-/// **A força da tela da lei das gotas**, em vezes a gravidade do motor (`Knob::Gravity`, `0,005` no
-/// boot): com a linha de contacto a água não incha para fora da mancha, e para a orla escurecer como no
-/// Rebelle (baixo/cima 3,03 / 2,12 contra 3,07 / 2,28) a tela pesa 4×. Só com Create Drips ligado: sem
-/// ele a gravidade é a do motor de sempre e o escorrimento é o NATURAL (o dono quis-o de volta, 08/10).
-pub const DRIP_LAW_GRAVITY: f64 = 4.0;
+/// **A lei das gotas, em DADOS** — os números medidos contra o Rebelle (doc 05 §4b, a tabela da W1c).
+/// O produto usa [`DripLaw::DEFAULT`]; `Sim::drip_law` existe para a calibração correr as variantes no
+/// MESMO processo (CLAUDE.md §2: nunca uma `const` recompilada por variante). As distâncias estão em
+/// px da TELA: o motor converte-as pela grade (`Sim::drip_px_per_cell`, a razão do tool).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DripLaw {
+    /// A força da tela com Create Drips ligado, em vezes a gravidade do motor (`Knob::Gravity`): a orla de
+    /// baixo escurece como no Rebelle (baixo/cima 3,03 / 2,12 contra 3,07 / 2,28). ⛔ Baixá-la NÃO cura a
+    /// escada (W1c, medido no S: ×1 tira os degraus mas o corpo deixa de clarear, 0,76 contra 0,43).
+    pub gravity: f64,
+    /// **O ângulo mínimo** (em gravidade da lei): abaixo dele nenhuma gota desliza — a histerese do
+    /// ângulo de contacto do papel (o Rebelle pinga só na máxima; nenhum limiar de peso separa a meia
+    /// da máxima, o ângulo sim): o meio geométrico entre a meia (`0,02`) e a máxima (`0,04`).
+    pub slide: f64,
+    /// O que o papel SEGURA, em `gravidade × água` da orla: o meio geométrico entre a água 0,7 (`0,91`) e a
+    /// 0,4 (`0,125`) na máxima.
+    pub hold: f64,
+    /// O papel que segura menos (`DripPaper::easy`): o meio entre o traço de água 0,2 (`0,006`) e o Wet
+    /// Round (`0,025`).
+    pub hold_easy: f64,
+    /// A opacidade de cada célula do rasto, em fração da do traço acima da orla (Rebelle 40–52 %).
+    pub trail_alpha: f64,
+    /// O rasto no Length 5 com a bacia no limiar (px).
+    pub run_5: f64,
+    /// O alcance MÁXIMO da bacia de uma gota, em px por ponto de Size.
+    pub catch_per_size: f64,
+    /// A água (película × px²) que a bacia de uma gota recolhe atrás da orla — o espaço entre as gotas.
+    /// Medido (W1c): o S do oráculo a 100 px dá 12 fios (Rebelle 10–11) e o traço recto a 40 px um (o
+    /// Rebelle um); um alcance FIXO não dá os dois (9 px por Size: 9 no S e 3 por traço recto).
+    pub basin_water: f64,
+    /// Até onde uma gota VIVA bebe a orla da sua bacia (em `gravidade × água`, como [`Self::hold`]): para
+    /// soltar a orla precisa de [`Self::hold`], e o canal aberto escoa-a até aqui — a água sai pelo fio e o
+    /// pigmento fica na linha da borda (o anel). No S: `hold` 84 % de colunas com degrau, `0,003` 31 %,
+    /// `0,001` com o canal a continuar 7 % (Rebelle 8 %).
+    pub recede: f64,
+    /// Fração do excesso da orla (sobre o nível) que a gota bebe por passo.
+    pub feed: f64,
+    /// O canal de uma gota que ACABOU continua a escoar a orla da bacia (o fio é um caminho molhado).
+    pub drain_after: bool,
+    /// A brecha mais larga da franja que a linha de contacto fecha (células de cada lado; `0` = nenhuma).
+    pub notch_w: i32,
+    /// A largura mínima do fio (px).
+    pub trail_min_px: f64,
+    /// Quanto mais tinta leva o pescoço, na raiz (`1 + neck_dark` vezes a do fio, a afinar até ao fio): o
+    /// funil escuro (raiz ÷ fio 1,69; Rebelle ~2). ⚠️ A partir de 3 a tinta tirada à orla abre brechas na
+    /// faixa da orla recta (0 → 21 colunas).
+    pub neck_dark: f64,
+}
+
+impl DripLaw {
+    pub const DEFAULT: Self = Self {
+        gravity: 4.0,
+        slide: 0.028_28,
+        hold: 0.337,
+        hold_easy: 0.012,
+        trail_alpha: 0.4,
+        run_5: 270.0,
+        catch_per_size: 30.0,
+        basin_water: 3000.0,
+        recede: 0.001,
+        feed: 0.5,
+        drain_after: true,
+        notch_w: 4,
+        trail_min_px: 3.0,
+        neck_dark: 2.0,
+    };
+}
+
+impl Default for DripLaw {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// A força da tela da lei de fábrica ([`DripLaw::gravity`]) — a porta de quem pergunta fora do passo.
+pub const DRIP_LAW_GRAVITY: f64 = DripLaw::DEFAULT.gravity;
 
 /// Água abaixo disto é papel SECO (a mesma fronteira do fingering do solver).
 pub const DRY_FILM: f64 = 0.01;
 
-/// **O ângulo mínimo** (em gravidade): abaixo dele nenhuma gota desliza, molhada que esteja a orla — a
-/// histerese do ângulo de contacto do papel. Medido (doc 05 §4b): na meia inclinação a água 1,0 junta na
-/// orla MAIS que a 0,7 na máxima (`1,26` contra `0,91` em `gravidade × água`), e o Rebelle pinga só na
-/// máxima ⇒ nenhum limiar de peso separa os dois: o ângulo sim. Entre a meia (`0,02`) e a máxima (`0,04`)
-/// do dial do painter, o meio geométrico (anéis 6–8 pingam, 0–5 não).
-const SLIDE: f64 = 0.028_28;
-/// O que o papel SEGURA, em `gravidade × água` da orla: acima disto (e do [`SLIDE`]) a gota solta-se.
-/// Medido na inclinação máxima com a linha de contacto final: a água 0,7 chega a `0,91`, a 0,4 a `0,125`;
-/// o meio geométrico.
-const HOLD: f64 = 0.337;
-/// **O papel que segura menos** (`DripPaper::easy`): no Rebelle o Round de fábrica (água 29) pinga 302 px
-/// com a tela no máximo e o nosso Wet Round (0,29) não — a bancada dele com água 40 não pinga, logo um
-/// limiar só não dá as duas respostas, e o dono quis as DUAS versões por uma caixa. Medido na máxima: o
-/// Wet Round chega a `0,025`, o traço da bancada de água 0,2 a `0,006` e o Wet Dry Brush a `0`; o meio
-/// geométrico. ⚠️ O Wet Wash pinga também (ele junta MAIS na orla que o Round: nenhum limiar os separa).
-/// O ângulo mínimo ([`SLIDE`]) não muda.
-const HOLD_EASY: f64 = 0.012;
-/// Fração do excesso da orla (sobre o que o papel segura) que a gota bebe por passo.
-const FEED: f64 = 0.25;
-/// **A tinta do fio**: a opacidade de cada célula do rasto é esta fração da do traço logo acima da orla
-/// (o máximo de uma coluna). Pela OPACIDADE e não pela massa: a opacidade satura, então o amontoado de
-/// pigmento na orla, a franja das cerdas e a largura do traço deixam de mexer na tinta do fio — medido,
-/// uma fração da MASSA dava 16–22 de escuro no papel que segura menos contra 76–116 no outro, e nada nos
-/// traços finos da bancada. Rebelle: o fio tem 40–52 % do escuro do traço.
-const TRAIL_ALPHA: f64 = 0.4;
 /// Velocidade da cabeça, em px por passo, por unidade de gravidade (`1 px/passo` na inclinação máxima).
 const SPEED: f64 = 100.0;
-/// O rasto no Length 5 e na bacia no limiar, em px (o Rebelle dá 249 px à água 0,7, a barra do gate é 250).
-const RUN_5: f64 = 270.0;
 /// O rasto cresce com o Length como `(length / 5)^RUN_LEN` (Length 10 ⇒ ×3: o fundo da tela).
 const RUN_LEN: f64 = 1.6;
-/// E com a força da bacia como `(pontuação / HOLD)^RUN_WATER` — fraco de propósito (Rebelle: 249 → 283
+/// E com a força da bacia como `(pontuação / hold)^RUN_WATER` — fraco de propósito (Rebelle: 249 → 283
 /// px da água 0,7 para a 1,0).
 const RUN_WATER: f64 = 0.1;
-/// A água que uma célula de rasto bebe (o papel absorve o fio por onde passa). Não depende da largura:
-/// a largura é como o fio se ESPALHA, a água é quanto ele corre. Medido: a `0,1` o funil 10/10 da água
-/// 0,7 ficava sem água a 394 px depois que a orla passou a fechar as brechas da franja (Rebelle: 465, o
-/// fundo da tela); só alonga as gotas que a água limita, as outras param pelo Length.
+/// A água que uma célula de rasto bebe (o papel absorve o fio por onde passa). Medido: a `0,1` o funil
+/// 10/10 da água 0,7 ficava sem água a 394 px (Rebelle: 465, o fundo da tela).
 const TRAIL_FILM: f64 = 0.07;
 /// Quantas células ao longo da gravidade a caminhada da orla procura em cada coluna, à volta da da coluna
 /// anterior (a orla de um traço oblíquo sobe e desce).
 const EDGE_SEARCH: i32 = 12;
-/// Quantas células abaixo da candidata pode a orla ainda descer, na bacia, e ela continuar a ser o PONTO
-/// BAIXO (a franja das cerdas recorta a orla em dentes de 1–2 células).
-const LOW_SLACK: i32 = 2;
 /// Quantas células secas a jusante fazem uma orla de baixo (mais que os buracos da franja das cerdas).
 const FRONT_DRY: i32 = 8;
 /// Quantas colunas seguidas SEM orla a caminhada atravessa: a franja das cerdas recorta a orla, e um
 /// dente seco no meio dela não parte a bacia em duas. Mais do que isto é papel seco: outra bacia.
 const EDGE_GAP: i32 = 3;
-/// O alcance da bacia, em px por ponto de Size (Size 5 ⇒ 150 px de cada lado: 1 fio num traço de 150, o
-/// do Rebelle).
-const CATCH_PER_SIZE: f64 = 30.0;
-/// Quantas células acima da orla é a reserva de tinta do fio (a orla e o traço logo acima).
-const TINT_REACH: i32 = 8;
+/// Quantos px acima da orla é a reserva de tinta do fio (a orla e o traço logo acima).
+const TINT_REACH_PX: f64 = 8.0;
 /// A coluna (células) acima da orla onde se lê o traço para a tinta do fio.
 const BODY_REACH: i32 = 24;
-/// A brecha mais larga da franja que a orla fecha (células de cada lado): os dentes das cerdas, não
-/// a abertura de um arco.
-const NOTCH_W: i32 = 4;
 /// ⛔ **Recusa MEDIDA (08/10):** uma faixa de transição na borda (o papel seco por fora a receber uma
 /// fração do fluxo — 12 %; só a 1.ª fila vizinha de água; com tecto de película) INUNDA a folha em riscos
 /// verticais nas quatro formas tentadas (106 000–127 000 px de tinta fora da mancha na cena do dono, contra
@@ -171,20 +218,42 @@ const SOFT_EDGE: f64 = 0.9;
 const MEANDER_PX: f64 = 0.7;
 const MEANDER_WAVE_PX: f64 = 70.0;
 const MEANDER_SEED: u32 = 0x0d21_9a5e;
-/// O pescoço: a largura (células) onde o fio sai da orla, e em quantos px afina até à do fio.
+/// O pescoço: a largura (px) onde o fio sai da orla, e em quantos px afina até à do fio.
 const NECK_W: f64 = 3.0;
 const NECK_PX: f64 = 12.0;
 /// A contra-gota: o raio (células) e quanta tinta, em células de fio, ela leva no máximo.
 const BEAD_R: i32 = 2;
 const BEAD_CELLS: f64 = 10.0;
-/// A largura máxima do rasto: `WIDTH_K · size²` células (Size 5 ⇒ 2, Size 10 ⇒ 8, o funil).
+/// A largura máxima do rasto: `WIDTH_K · size²` px (Size 5 ⇒ 2, Size 10 ⇒ 8, o funil).
 const WIDTH_K: f64 = 0.08;
 
-/// A tela está inclinada o bastante para uma gota deslizar ([`SLIDE`])? — a porta da lei para quem
-/// precisa da resposta fora do passo (o painel esmaece as gotas quando não).
+/// **A lei em CÉLULAS da grade**: a [`DripLaw`] com as distâncias em px divididas por `px_per_cell` (a
+/// razão da grade do tool; `1` = uma célula por px).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Cells {
+    pub(crate) law: DripLaw,
+    pub(crate) px: f64,
+}
+
+impl Cells {
+    pub(crate) fn new(law: DripLaw, px_per_cell: f64) -> Self {
+        Self {
+            law,
+            px: px_per_cell.max(1.0),
+        }
+    }
+    /// `v` px em células.
+    #[inline]
+    pub(crate) fn c(&self, v: f64) -> f64 {
+        v / self.px
+    }
+}
+
+/// A tela está inclinada o bastante para uma gota deslizar ([`DripLaw::slide`] de fábrica)? — a porta
+/// da lei para quem precisa da resposta fora do passo (o painel esmaece as gotas quando não).
 #[must_use]
 pub fn can_slide(grav: [f64; 2]) -> bool {
-    unit(grav).is_some_and(|(_, _, m)| m >= SLIDE)
+    unit(grav).is_some_and(|(_, _, m)| m >= DripLaw::DEFAULT.slide)
 }
 
 #[inline]
@@ -193,224 +262,70 @@ fn unit(grav: [f64; 2]) -> Option<(f64, f64, f64)> {
     (m > 0.0).then(|| (grav[0] / m, grav[1] / m, m))
 }
 
-/// **A linha de contacto** — chamada pelo advect de Jacobi entre o fluxo materializado (`scratch.uv`) e a
-/// saída: com a tela inclinada uma célula ativa SECA e POR FORA da mancha (seca a jusante) não puxa água de
-/// lado nenhum — a mancha guarda a forma do traço e a água desce DENTRO dela (pelos buracos da franja,
-/// que têm água por baixo) até à orla de baixo. ⛔ Fechar também os buracos de dentro prendia a água: a
-/// orla deixava de escurecer (baixo/cima 1,0) e as gotas não enchiam (medido). ⛔ Cortar só a componente de DESCIDA (a 1.ª
-/// forma) deixava a água entrar de LADO no papel seco por baixo de uma encosta: bases planas e degraus
-/// (report do dono 08/10, foto do S).
-/// Como a saída e o transporte leem o MESMO `uv`, a massa continua exata (o gather não muda de forma).
-/// Linhas disjuntas (cada uma escreve só o seu `uv`): a rota de linhas do advect, `mode`.
-pub fn pin_downhill(g: &mut Grid, grav: [f64; 2], mode: Rows) {
-    let Some((nx, ny, _)) = unit(grav) else {
-        return;
-    };
-    if g.by0 > g.by1 {
-        return;
-    }
-    let (gw, gh) = (g.w as i32, g.h as i32);
-    let s = g.s;
-    let (by0, by1) = (g.by0, g.by1);
-    let Grid {
-        scratch,
-        film,
-        active,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
-        ..
-    } = g;
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let (film, active): (&[f32], &[u8]) = (film, active);
-    let band = by0 as usize * s..(by1 as usize + 1) * s;
-    par::walk_rows(mode, &mut scratch.uv[band], s, |ri, row| {
-        let y = by0 + ri as i32;
-        let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-        if lo > hi {
-            return;
-        }
-        let base = y as usize * s;
-        for x in lo as usize..=hi as usize {
-            if active[base + x] == 0 || film[base + x] as f64 > DRY_FILM {
-                continue;
-            }
-            // Papel seco POR FORA da mancha (seco também a jusante): não recebe água de lado nenhum. Um
-            // buraco seco POR DENTRO (água logo abaixo — a franja das cerdas) deixa-a passar até à orla.
-            let (mut cx, mut cy) = (x as i32, y);
-            let por_fora = (0..FRONT_DRY).all(|_| {
-                (cx, cy) = downhill(cx, cy, nx, ny);
-                cx < 1
-                    || cy < 1
-                    || cx > gw
-                    || cy > gh
-                    || film[cx as usize + cy as usize * s] as f64 <= DRY_FILM
-            });
-            // Uma BRECHA estreita da franja (água dos dois lados na transversal, a até `NOTCH_W`) enche:
-            // a tensão superficial fecha-a. Debaixo de uma encosta (água de um lado só) ou de um arco
-            // (abertura larga) não — os degraus não voltam. Medido: sem isto, os buracos da franja junto
-            // à orla ficavam brechas claras na faixa escura (report do dono, «borda quadriculada»).
-            let molhada = |cx: i32, cy: i32| {
-                cx >= 1
-                    && cy >= 1
-                    && cx <= gw
-                    && cy <= gh
-                    && film[cx as usize + cy as usize * s] as f64 > DRY_FILM
-            };
-            let lado = |sinal: f64| {
-                (1..=NOTCH_W).any(|k| {
-                    let t = sinal * f64::from(k);
-                    molhada(
-                        (x as f64 - ny * t).round() as i32,
-                        (f64::from(y) + nx * t).round() as i32,
-                    )
-                })
-            };
-            if por_fora && !(lado(-1.0) && lado(1.0)) {
-                row[x] = [0.0, 0.0];
-            }
-        }
-    });
-}
-
-/// A célula a jusante de `(x, y)` (um passo ao longo da gravidade, arredondado).
-#[inline]
-fn downhill(x: i32, y: i32, nx: f64, ny: f64) -> (i32, i32) {
-    (x + nx.round() as i32, y + ny.round() as i32)
-}
-
-#[inline]
-fn inside(g: &Grid, x: i32, y: i32) -> bool {
-    x >= 1 && y >= 1 && x <= g.w as i32 && y <= g.h as i32
-}
-
-/// É orla de baixo: molhada, com [`FRONT_DRY`] células SECAS a jusante — papel seco de verdade, não um
-/// buraco da franja das cerdas DENTRO do traço (uma gota nascida num buraco cai na água do próprio traço
-/// e morre, e a bacia dela calava a orla verdadeira: medido, o funil 10/10 da água 1,0 sumia).
-#[inline]
-fn is_front(g: &Grid, x: i32, y: i32, nx: f64, ny: f64) -> bool {
-    let i = x as usize + y as usize * g.s;
-    if g.film[i] as f64 <= DRY_FILM {
-        return false;
-    }
-    let (mut cx, mut cy) = (x, y);
-    for _ in 0..FRONT_DRY {
-        (cx, cy) = downhill(cx, cy, nx, ny);
-        if !inside(g, cx, cy) {
-            return false;
-        }
-        if g.film[cx as usize + cy as usize * g.s] as f64 > DRY_FILM {
-            return false;
-        }
-    }
-    true
-}
-
-/// **A orla da bacia** de `(ox, oy)`: caminha na transversal para os dois lados até `reach`, e em cada
-/// coluna toma a célula de orla mais perto (ao longo da gravidade) da da coluna anterior; mais de
-/// [`EDGE_GAP`] colunas seguidas sem orla é papel seco — a bacia acaba ali. Chama `visita` em cada célula
-/// de orla (índice, valor ao longo) e devolve `[t mín, t máx, k mín, k máx]`.
-///
-/// ⚠️ Custa `O(reach · EDGE_SEARCH)` por gota — a orla e não a ÁREA (a varredura em caixa que ela
-/// substituiu custava 15 ms por passo a 4096² com cem gotas; doc 05 §4b).
-fn walk_edge(
-    g: &Grid,
-    o: (i32, i32),
-    nx: f64,
-    ny: f64,
-    reach: f64,
-    mut visita: impl FnMut(usize, i32),
-) -> [i32; 4] {
-    let (px, py) = (-ny, nx);
-    let r = reach.floor() as i32;
-    let mut out = [0, 0, 0, 0];
-    let mut coluna = |t: i32, k0: i32| -> Option<i32> {
-        let (bx, by) = (
-            f64::from(o.0) + px * f64::from(t),
-            f64::from(o.1) + py * f64::from(t),
-        );
-        for d in 0..=2 * EDGE_SEARCH {
-            let k = k0 + if d % 2 == 0 { d / 2 } else { -(d + 1) / 2 };
-            let (x, y) = (
-                (bx + nx * f64::from(k)).round() as i32,
-                (by + ny * f64::from(k)).round() as i32,
-            );
-            if inside(g, x, y) && is_front(g, x, y, nx, ny) {
-                visita(x as usize + y as usize * g.s, k);
-                return Some(k);
-            }
-        }
-        None
-    };
-    let k_origem = coluna(0, 0).unwrap_or(0);
-    out[2] = k_origem;
-    out[3] = k_origem;
-    for lado in [-1i32, 1] {
-        let (mut k0, mut falhas) = (k_origem, 0);
-        for passo in 1..=r {
-            let t = lado * passo;
-            match coluna(t, k0) {
-                Some(k) => {
-                    k0 = k;
-                    falhas = 0;
-                    out[0] = out[0].min(t);
-                    out[1] = out[1].max(t);
-                    out[2] = out[2].min(k);
-                    out[3] = out[3].max(k);
-                }
-                None => {
-                    falhas += 1;
-                    if falhas > EDGE_GAP {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    out
-}
-
-/// A massa por célula de fio cuja opacidade é [`TRAIL_ALPHA`] × a de `massa` (a curva do motor,
+/// A massa por célula de fio cuja opacidade é `alfa` × a de `massa` (a curva do motor,
 /// `opacity::OPACITY`: `α(m) = 1 − 0,998^m`).
-fn tinta_do_fio(massa: f64) -> f64 {
+fn tinta_do_fio(massa: f64, alfa: f64) -> f64 {
     const K: f64 = 0.998;
-    let alfa = TRAIL_ALPHA * (1.0 - libm::pow(K, massa.max(0.0)));
+    let alfa = alfa * (1.0 - libm::pow(K, massa.max(0.0)));
     libm::log(1.0 - alfa) / libm::log(K)
 }
 
-/// O rasto total de uma gota cuja bacia chegou a `acima` vezes o que o papel segura.
-fn run_for(acima: f64, length: u8) -> f64 {
-    RUN_5 * (f64::from(length) / 5.0).powf(RUN_LEN) * acima.max(1.0).powf(RUN_WATER)
+/// O rasto total (células) de uma gota cuja bacia chegou a `acima` vezes o que o papel segura.
+fn run_for(c: &Cells, acima: f64, length: u8) -> f64 {
+    c.c(c.law.run_5) * (f64::from(length) / 5.0).powf(RUN_LEN) * acima.max(1.0).powf(RUN_WATER)
 }
 
 /// **Um passo das gotas** — nascer (num passo em quatro), beber da bacia, descer e assentar o rasto.
-/// `n` é o relógio do passo. Sem gravidade, ou com `create` desligado, não faz nada.
-pub fn drip_pass(g: &mut Grid, p: &Params, grav: [f64; 2], paper: DripPaper, n: u64) {
+/// `n` é o relógio do passo; `law` a lei e `px_per_cell` a grade. Sem gravidade, ou com `create`
+/// desligado, não faz nada.
+pub fn drip_pass(
+    g: &mut Grid,
+    p: &Params,
+    grav: [f64; 2],
+    paper: DripPaper,
+    law: DripLaw,
+    px_per_cell: f64,
+    n: u64,
+) {
     let Some((nx, ny, mag)) = unit(grav) else {
         return;
     };
     if !paper.create {
         return;
     }
+    let c = Cells::new(law, px_per_cell);
     let paper = paper.clamped();
-    let reach = CATCH_PER_SIZE * f64::from(paper.size);
-    let hold = if paper.easy { HOLD_EASY } else { HOLD } / mag;
-    if n.is_multiple_of(4) && mag >= SLIDE {
-        spawn(g, nx, ny, hold, reach, paper.length);
+    let reach = c.c(law.catch_per_size * f64::from(paper.size));
+    let hold = if paper.easy { law.hold_easy } else { law.hold } / mag;
+    let recede = law
+        .recede
+        .min(if paper.easy { law.hold_easy } else { law.hold })
+        / mag;
+    if n.is_multiple_of(4) && mag >= law.slide {
+        spawn(g, &c, nx, ny, hold, reach, paper.length);
     }
     let mut drips = std::mem::take(&mut g.drips);
-    for d in drips.iter_mut().filter(|d| d.alive()) {
-        let orla = feed(g, d, nx, ny, hold, reach, paper.length);
-        advance(g, p, d, nx, ny, mag, paper, &orla);
+    for d in drips.iter_mut() {
+        if d.alive() {
+            let orla = feed(g, &c, d, nx, ny, (hold, recede), paper.length);
+            advance(g, p, &c, d, nx, ny, mag, paper, &orla);
+        } else if law.drain_after {
+            // O fio acabou mas o canal continua aberto: a orla da bacia escoa por ele (a água sai, o
+            // pigmento fica na linha da orla).
+            let o = (d.ox.round() as i32, d.oy.round() as i32);
+            let mut orla = Vec::new();
+            walk_edge(g, o, nx, ny, law.notch_w, d.reach, |i, _, _| orla.push(i));
+            for i in orla {
+                bebe(g, i, law.feed, recede);
+            }
+        }
     }
     g.drips = drips;
 }
 
 /// As orlas que passaram o que o papel segura, pela ordem (mais água primeiro, depois o índice); cada
 /// uma fora da bacia de toda gota deste episódio vira uma gota nova.
-fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
+fn spawn(g: &mut Grid, c: &Cells, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
     let s = g.s;
     let (by0, by1) = (g.by0, g.by1);
     if by0 > by1 {
@@ -432,7 +347,7 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
             for x in lo..=hi {
                 let i = x as usize + y as usize * s;
                 let f = gr.film[i] as f64;
-                if f > hold && gr.active[i] != 0 && is_front(gr, x, y, nx, ny) {
+                if f > hold && gr.active[i] != 0 && is_front(gr, x, y, nx, ny, c.law.notch_w) {
                     slot[0].push((f, i, x, y));
                 }
             }
@@ -456,20 +371,12 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
         if na_bacia {
             continue;
         }
-        // O ponto baixo COM ÁGUA da bacia: a orla com água que desce mais ao lado. A franja das cerdas
-        // põe pêlos secos abaixo da orla molhada — esses não contam.
-        let gr: &Grid = g;
-        let mut baixo = 0;
-        let basin = walk_edge(gr, (x, y), nx, ny, reach, |i, k| {
-            if f64::from(gr.film[i]) > hold {
-                baixo = baixo.max(k);
-            }
-        });
-        if baixo > LOW_SLACK {
-            // A orla com água continua a DESCER ao lado: a água escorre por ela até ao ponto baixo, e é
-            // lá que a gota nasce (numa encosta, cada degrau soltava a sua: o pente do report do dono).
-            continue;
-        }
+        // Toda a orla pinga (o Rebelle: as encostas, o arco, o vale), uma gota por bacia — a orla mais
+        // molhada primeiro, as outras a um alcance dela.
+        let nw = c.law.notch_w;
+        let v = c.law.basin_water / (c.px * c.px);
+        let alcance = basin_reach(g, (x, y), (nx, ny), nw, reach, v);
+        let basin = walk_edge(g, (x, y), nx, ny, nw, alcance, |_, _, _| {});
         // A tinta do fio é uma fração da OPACIDADE do traço acima da orla ([`tinta_do_fio`]) e SAI dele,
         // fileira a fileira, enquanto o fio desce (a orla só lhe dá água).
         // Medido: a tinta bebida da orla deixava a gota parada à espera dela no papel que segura menos
@@ -487,8 +394,11 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
             })
             .filter(|m| *m > 0.0)
             .collect();
-        let tint = tinta_do_fio(massas.iter().copied().fold(0.0, f64::max));
-        let run = run_for(f / hold, length);
+        let tint = tinta_do_fio(
+            massas.iter().copied().fold(0.0, f64::max),
+            c.law.trail_alpha,
+        );
+        let run = run_for(c, f / hold, length);
         g.drips.push(Drip {
             x: fx,
             y: fy,
@@ -500,6 +410,8 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
             run_left: run,
             basin,
             tint,
+            reach: alcance,
+            orla: Vec::new(),
         });
     }
 }
@@ -508,268 +420,45 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
 /// mais forte que ela já bebeu alonga o rasto que lhe falta.
 fn feed(
     g: &mut Grid,
+    c: &Cells,
     d: &mut Drip,
     nx: f64,
     ny: f64,
-    hold: f64,
-    reach: f64,
+    (hold, recede): (f64, f64),
     length: u8,
 ) -> Vec<usize> {
     let mut orla = Vec::new();
     let o = (d.ox.round() as i32, d.oy.round() as i32);
-    d.basin = walk_edge(g, o, nx, ny, reach, |i, _| orla.push(i));
+    d.basin = walk_edge(g, o, nx, ny, c.law.notch_w, d.reach, |i, _, _| orla.push(i));
     let mut best = 0.0f64;
     for &i in &orla {
         let f = g.film[i] as f64;
-        if f <= hold {
-            continue;
+        if f > hold {
+            best = best.max(f);
         }
-        best = best.max(f);
-        let dw = FEED * (f - hold);
-        d.water += dw;
-        g.film[i] = (f - dw) as f32;
+        d.water += bebe(g, i, c.law.feed, recede);
     }
-    let run = run_for(best / hold, length);
+    let run = run_for(c, best / hold, length);
     if run > d.run {
         d.run_left += run - d.run;
         d.run = run;
     }
-    orla
+    // A orla escoada seca aos bocados: a reserva de tinta do fio é a maior orla que a bacia já teve.
+    if orla.len() >= d.orla.len() {
+        d.orla = orla;
+    }
+    d.orla.clone()
 }
 
-/// As células da coluna curta ([`TINT_REACH`]) acima da orla `o`, contra a gravidade.
-fn coluna_acima(g: &Grid, o: (f64, f64), nx: f64, ny: f64) -> impl Iterator<Item = usize> + '_ {
-    (0..=TINT_REACH).filter_map(move |k| {
-        let (cx, cy) = (
-            (o.0 - nx * f64::from(k)).round() as i32,
-            (o.1 - ny * f64::from(k)).round() as i32,
-        );
-        inside(g, cx, cy).then(|| cx as usize + cy as usize * g.s)
-    })
-}
-
-/// Tira até `quanto` de pigmento da ORLA da bacia (onde ele se juntou), a mesma fração de cada célula
-/// (assente e suspenso), e devolve-o com a cor dele — a massa SAI da orla (conserva-se: vai para o fio).
-/// A orla inteira é a reserva: uma coluna estreita esgotava-se e o fio sumia aos 31 px (medido).
-fn tira_da_orla(g: &mut Grid, orla: &[usize], quanto: f64) -> (f64, [f64; 3]) {
-    let total: f64 = orla
-        .iter()
-        .map(|&i| f64::from(g.sett[i]) + f64::from(g.susp[i]))
-        .sum();
-    if total <= 0.0 || quanto <= 0.0 {
-        return (0.0, [0.0; 3]);
+/// A gota bebe `feed` do que a célula de orla `i` tem acima de `nivel`; devolve o que bebeu.
+fn bebe(g: &mut Grid, i: usize, feed: f64, nivel: f64) -> f64 {
+    let f = f64::from(g.film[i]);
+    if f <= nivel {
+        return 0.0;
     }
-    let fr = (quanto / total).min(1.0);
-    let (mut tirado, mut rgb) = (0.0f64, [0.0f64; 3]);
-    for &i in orla {
-        for assente in [true, false] {
-            let (massa, cor) = if assente {
-                (f64::from(g.sett[i]), g.sett_rgb[i])
-            } else {
-                (f64::from(g.susp[i]), g.susp_rgb[i])
-            };
-            let dm = massa * fr;
-            if dm <= 0.0 {
-                continue;
-            }
-            let w = dm / (tirado + dm);
-            for (k, ch) in rgb.iter_mut().enumerate() {
-                *ch += (f64::from(cor[k]) - *ch) * w;
-            }
-            tirado += dm;
-            if assente {
-                g.sett[i] = (massa - dm) as f32;
-            } else {
-                g.susp[i] = (massa - dm) as f32;
-            }
-        }
-    }
-    (tirado, rgb)
-}
-
-/// A cabeça desce um passo e assenta o rasto (largura de funil: `wmax · (falta / total)²`). Quando o
-/// rasto ou a água acabam, o resto do pigmento assenta ali (a contra-gota no fim do fio).
-fn advance(
-    g: &mut Grid,
-    p: &Params,
-    d: &mut Drip,
-    nx: f64,
-    ny: f64,
-    mag: f64,
-    paper: DripPaper,
-    orla: &[usize],
-) {
-    let wmax = WIDTH_K * f64::from(paper.size) * f64::from(paper.size);
-    let run = d.run;
-    let largura = |falta: f64| (wmax * (falta / run).powi(2)).round().max(1.0) as i32;
-    let w = largura(d.run_left);
-    // O papel que segura menos (`easy`) também absorve menos o fio, na mesma proporção.
-    let pelicula = if paper.easy {
-        TRAIL_FILM * HOLD_EASY / HOLD
-    } else {
-        TRAIL_FILM
-    };
-    if d.water < pelicula {
-        // Ainda não bebeu o bastante para a próxima célula: a cabeça espera pela bacia.
-        return;
-    }
-    let v = (SPEED * mag).min(1.0);
-    d.x += nx * v;
-    d.y += ny * v;
-    // O fio desvia-se um pouco (a água procura o caminho no papel): uma onda lenta e pequena, com a fase
-    // da gota — determinista (o hash da origem), sem RNG.
-    let andou = d.run - d.run_left;
-    let fase = crate::rng::hash2(d.ox as i32, d.oy as i32, MEANDER_SEED);
-    let desvio =
-        MEANDER_PX * libm::sin(2.0 * std::f64::consts::PI * (andou / MEANDER_WAVE_PX + fase));
-    let (hx, hy) = (d.x - ny * desvio, d.y + nx * desvio);
-    let (cx, cy) = (hx.round() as i32, hy.round() as i32);
-    if !inside(g, cx, cy) {
-        d.run_left = 0.0;
-        return;
-    }
-    if (cx, cy) == d.cell {
-        return;
-    }
-    d.cell = (cx, cy);
-    let i = cx as usize + cy as usize * g.s;
-    if g.film[i] as f64 > DRY_FILM {
-        if d.ox.round() as i32 != cx || cy > d.oy.round() as i32 + 1 {
-            // Chegou a outra água (não a da própria bacia): junta-se a ela.
-            merge_into(g, i, d.water);
-            d.water = 0.0;
-            d.run_left = 0.0;
-        }
-        return;
-    }
-    // A mesma tinta por CÉLULA ao longo do rasto (`tint`), tirada da orla e do traço acima dela fileira a
-    // fileira: quando ele se esgota o fio clareia (nunca para à espera). O pescoço: onde a gota sai da
-    // orla o fio é mais largo e afina em `NECK_PX`.
-    let w = w.max((NECK_W * (1.0 - andou / NECK_PX)).round() as i32);
-    // A reserva: a orla E o traço logo acima dela (com o papel que segura menos a gota nasce antes de o
-    // pigmento descer à orla: só da orla, o fio saía com 16–22 de escuro contra 76–116 — medido).
-    let reserva: Vec<usize> = orla
-        .iter()
-        .flat_map(|&i| {
-            let (x, y) = ((i % g.s) as f64, (i / g.s) as f64);
-            coluna_acima(g, (x, y), nx, ny).collect::<Vec<_>>()
-        })
-        .collect();
-    let (dm, rgb) = tira_da_orla(g, &reserva, d.tint * (f64::from(w) + SOFT_EDGE));
-    d.run_left = (d.run_left - 1.0).max(0.0);
-    let sub = (hx - f64::from(cx)) * -ny + (hy - f64::from(cy)) * nx;
-    settle(g, p, cx, cy, sub, w, nx, ny, dm, rgb);
-    d.water -= pelicula;
-    if d.run_left == 0.0 {
-        // A contra-gota: uma pequena gota redonda na ponta do fio.
-        let (resto, rgb) = tira_da_orla(g, &reserva, d.tint * BEAD_CELLS);
-        bead(g, p, cx, cy, resto, rgb);
-        d.water = 0.0;
-    }
-}
-
-/// A contra-gota: `mass` num disco de raio [`BEAD_R`] em volta de `(cx, cy)` (mais no centro).
-fn bead(g: &mut Grid, p: &Params, cx: i32, cy: i32, mass: f64, rgb: [f64; 3]) {
-    if mass <= 0.0 {
-        return;
-    }
-    let r = BEAD_R;
-    let pesos: Vec<(i32, i32, f64)> = (-r..=r)
-        .flat_map(|dy| (-r..=r).map(move |dx| (dx, dy)))
-        .filter_map(|(dx, dy)| {
-            let q = f64::from(dx * dx + dy * dy) / f64::from(r * r + 1);
-            (q <= 1.0).then_some((dx, dy, 1.0 - q))
-        })
-        .collect();
-    let soma: f64 = pesos.iter().map(|w| w.2).sum();
-    for (dx, dy, w) in pesos {
-        settle_cell(g, p, cx + dx, cy + dy, mass * w / soma, rgb);
-    }
-}
-
-/// Assenta `mass` numa célula (a mistura de cor do assente, e o sujo).
-fn settle_cell(g: &mut Grid, p: &Params, x: i32, y: i32, mass: f64, rgb: [f64; 3]) {
-    if mass <= 0.0 || !inside(g, x, y) {
-        return;
-    }
-    let i = x as usize + y as usize * g.s;
-    let old = g.sett[i] as f64;
-    let c = g.sett_rgb[i];
-    let mut out = [0.0f64; 3];
-    p.mix.mix(
-        f64::from(c[0]),
-        f64::from(c[1]),
-        f64::from(c[2]),
-        rgb[0],
-        rgb[1],
-        rgb[2],
-        mass / (old + mass),
-        &mut out,
-    );
-    g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
-    g.sett[i] = (old + mass) as f32;
-    note_dirty(g, x, y);
-}
-
-/// Assenta `mass` de pigmento numa fileira transversal centrada em `(cx, cy) + sub`, `w` células cheias
-/// e a descida suave de [`SOFT_EDGE`] (a borda do fio é macia e anti-serrilhada, não um risco de régua).
-fn settle(
-    g: &mut Grid,
-    p: &Params,
-    cx: i32,
-    cy: i32,
-    sub: f64,
-    w: i32,
-    nx: f64,
-    ny: f64,
-    mass: f64,
-    rgb: [f64; 3],
-) {
-    if mass <= 0.0 {
-        return;
-    }
-    // O perfil: 1 no miolo (meia-largura `w/2`), a descer suavemente a 0 em `SOFT_EDGE` células, centrado
-    // em `sub` (a posição transversal da cabeça dentro da célula). Normalizado ao total `mass`.
-    let half = f64::from(w) / 2.0;
-    let reach = (half + SOFT_EDGE).ceil() as i32 + 1;
-    let peso = |k: i32| -> f64 {
-        let dist = (f64::from(k) - sub).abs();
-        let r = (dist - half + SOFT_EDGE / 2.0) / SOFT_EDGE;
-        if r <= 0.0 {
-            1.0
-        } else if r >= 1.0 {
-            0.0
-        } else {
-            1.0 - r * r * (3.0 - 2.0 * r)
-        }
-    };
-    let soma: f64 = (-reach..=reach).map(peso).sum();
-    if soma <= 0.0 {
-        return;
-    }
-    for k in -reach..=reach {
-        let wk = peso(k);
-        if wk <= 0.0 {
-            continue;
-        }
-        let t = f64::from(k);
-        let (x, y) = (
-            (f64::from(cx) - ny * t).round() as i32,
-            (f64::from(cy) + nx * t).round() as i32,
-        );
-        settle_cell(g, p, x, y, mass * wk / soma, rgb);
-    }
-}
-
-fn merge_into(g: &mut Grid, i: usize, water: f64) {
-    g.film[i] = (g.film[i] as f64 + water) as f32;
-}
-
-fn note_dirty(g: &mut Grid, x: i32, y: i32) {
-    g.drip_dirty = Some(match g.drip_dirty {
-        None => [x, y, x, y],
-        Some([x0, y0, x1, y1]) => [x0.min(x), y0.min(y), x1.max(x), y1.max(y)],
-    });
+    let dw = feed * (f - nivel);
+    g.film[i] = (f - dw) as f32;
+    dw
 }
 
 /// O episódio molhado acaba (a folha secou ou foi limpa): as gotas saem da lista. Elas não carregam

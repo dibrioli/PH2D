@@ -85,7 +85,8 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     },
     Receita {
         nome: "Wet Drip",
-        water: 0.49,
+        // O nome promete gotas (W1c, L2-2): a água da bancada que pinga na tela no máximo (0,49 → 0 px).
+        water: 0.7,
         pigment: 600.0,
         pickup: 0.8,
         gate: 0.2,

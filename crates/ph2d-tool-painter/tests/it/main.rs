@@ -9,6 +9,7 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
+mod borda_do_s;
 mod gotas_pela_lei_do_rebelle;
 mod measure_undo_capacity;
 mod os_outros_meios_nao_mudam;
@@ -17,4 +18,5 @@ mod sonda_gestos;
 mod sonda_gotas;
 mod sonda_gotas_do_dono;
 mod sonda_largura;
+mod sonda_lei_das_gotas;
 mod sonda_tracos_por_meio;

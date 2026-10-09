@@ -188,6 +188,9 @@ pub struct PainterTool {
     /// **As gotas do papel** ([`papel`], W1b): Create Drips · Drip Size · Drip Length — da OBRA, como o
     /// papel (Rebelle *Watercolor Behavior*); só o Wet Paint as lê.
     gotas: ph2d_wet_paint::drips::DripPaper,
+    /// As gotas de sprites cuja tela a SAÍDA do Painter desmontou (`deactivate` não guarda o documento:
+    /// os píxeis vão para a sprite, as gotas não) — voltam quando a sprite volta ([`Self::bind_document`]).
+    gotas_sem_tela: BTreeMap<u64, ph2d_wet_paint::drips::DripPaper>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
     /// [`Self::canvas_rgba`] and the three relief planes rather than in `PaintState` (which holds
     /// settings and per-stroke bookkeeping). `None` whenever nothing is painting through a gate,
@@ -383,6 +386,7 @@ impl Default for PainterTool {
             sem_vidro: false,
             papel: None,
             gotas: ph2d_wet_paint::drips::DripPaper::DEFAULT,
+            gotas_sem_tela: BTreeMap::new(),
             gate: None,
             mask_scratch_gen: 0,
             composited: None,
@@ -448,7 +452,7 @@ pub use paint::{
     StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, UsoDaCamada,
     WetKnobs, WetTool, brush_falloff_weight_at, render_classic_flow_preview,
 };
-pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias};
+pub use paint::{DICA_DO_PARAMETRO, DICA_SEM_GOTAS, Dependente, Inercias};
 mod layer_edit;
 /// O papel do documento: a cor sob as camadas (pedido do dono, 2026-10-05).
 mod papel;

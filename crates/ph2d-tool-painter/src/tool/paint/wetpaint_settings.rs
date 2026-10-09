@@ -97,7 +97,10 @@ impl WetKnobs {
     /// not `KNOB_DEFS`, so a reset lands on the same values the section opened with — the product tweaks
     /// included (for every knob but Enio's five, `DEFAULT` and `KNOB_DEFS` agree, so this is a no-op change).
     pub fn reset_group(&mut self, group: KnobGroup) {
-        for def in KNOB_DEFS.iter().filter(|d| d.group == group) {
+        for def in KNOB_DEFS
+            .iter()
+            .filter(|d| d.group == group && !super::wetpaint_preset::knob_da_obra(d.knob))
+        {
             self.knobs[def.knob as usize] = Self::DEFAULT.knobs[def.knob as usize];
         }
     }
@@ -213,16 +216,45 @@ impl PainterTool {
         }
     }
 
-    /// A inclinação AUTORADA solta gotas? — o mesmo vetor que o motor usa com a lei das gotas
-    /// (`Sim::gravity`: knob da gravidade × anel/4 × a força da lei, ligado) contra o ângulo mínimo.
+    /// A gravidade da tela no anel `anel`, sem a força da lei — a de `Sim::gravity` (knob × anel/4).
+    fn wet_gravidade_no_anel(&self, anel: u8) -> f64 {
+        self.paint.wetpaint.knobs.get(Knob::Gravity) * f64::from(anel) / 4.0
+    }
+
+    /// A gravidade AUTORADA da tela (`0` desligada ou no anel 0) — a de `Sim::gravity` sem a lei.
+    pub(crate) fn wet_gravidade_da_tela(&self) -> f64 {
+        let w = &self.paint.wetpaint;
+        if w.tilt_on {
+            self.wet_gravidade_no_anel(w.tilt_ring)
+        } else {
+            0.0
+        }
+    }
+
+    /// Uma gota desliza no anel `anel`? — o vetor do motor com a lei das gotas contra o ângulo mínimo.
+    fn wet_anel_solta_gotas(&self, anel: u8) -> bool {
+        ph2d_wet_paint::drips::can_slide([
+            0.0,
+            self.wet_gravidade_no_anel(anel) * ph2d_wet_paint::drips::DRIP_LAW_GRAVITY,
+        ])
+    }
+
+    /// A inclinação AUTORADA solta gotas?
     pub(crate) fn wet_tilt_lets_drips_slide(&self) -> bool {
         let w = &self.paint.wetpaint;
-        w.tilt_on
-            && ph2d_wet_paint::drips::can_slide([
-                0.0,
-                w.knobs.get(Knob::Gravity) * f64::from(w.tilt_ring) / 4.0
-                    * ph2d_wet_paint::drips::DRIP_LAW_GRAVITY,
-            ])
+        w.tilt_on && self.wet_anel_solta_gotas(w.tilt_ring)
+    }
+
+    /// O primeiro anel do dial em que uma gota desliza (`None`: nenhum) — o número das dicas.
+    pub(crate) fn wet_primeiro_anel_das_gotas(&self) -> Option<u8> {
+        (0..=8).find(|&anel| self.wet_anel_solta_gotas(anel))
+    }
+
+    /// O Reset do Paper repõe as gotas onde elas se oferecem (o Wet Paint) — um passo de desfazer.
+    pub(crate) fn reset_gotas_do_papel(&mut self) {
+        if self.paint.wetpaint.armed {
+            self.gotas_pelo_painel(ph2d_wet_paint::drips::DripPaper::DEFAULT, None);
+        }
     }
 
     /// The authored knob values (the panel snapshot's source).
@@ -321,7 +353,7 @@ impl PainterTool {
             } else {
                 g.length = n;
             }
-            self.set_gotas(g);
+            self.gotas_pelo_painel(g, Some(id));
             return true;
         }
         let w = &mut self.paint.wetpaint;
@@ -377,13 +409,13 @@ impl PainterTool {
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_DRIPS_CREATE => {
                 let mut g = self.gotas();
                 g.create = !g.create;
-                self.set_gotas(g);
+                self.gotas_pelo_painel(g, None);
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_DRIPS_EASY => {
                 let mut g = self.gotas();
                 g.easy = !g.easy;
-                self.set_gotas(g);
+                self.gotas_pelo_painel(g, None);
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TILT_TOGGLE => {
@@ -490,7 +522,8 @@ enum TuneWidget {
 }
 
 /// The dynamic id family, resolved ONCE: every VISIBLE knob's slider / chip /
-/// reset id (the hidden §17 group has no UI, exactly like the model). Built
+/// reset id (the hidden §17 group has no UI, exactly like the model; the work's
+/// knobs, `KNOBS_DA_OBRA`, have no row — the tilt dial is their door). Built
 /// from the same `KNOB_DEFS` + id-derive functions the panel paints from —
 /// no table to drift.
 fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId, (usize, TuneWidget)>
@@ -501,7 +534,7 @@ fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId,
     MAP.get_or_init(|| {
         let mut m = std::collections::BTreeMap::new();
         for (i, def) in KNOB_DEFS.iter().enumerate() {
-            if def.group == KnobGroup::Hidden {
+            if def.group == KnobGroup::Hidden || super::wetpaint_preset::knob_da_obra(def.knob) {
                 continue;
             }
             m.insert(

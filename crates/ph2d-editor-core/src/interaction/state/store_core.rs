@@ -246,8 +246,14 @@ impl WidgetStore {
         self.number_to_slider.get(&number).copied()
     }
 
+    /// A box with NO slider whose value is a whole count: the drag-scrub, the stepper and the typed
+    /// commit round it — the same snap [`Self::link_slider_number_mapped_integer`] gives a linked chip.
+    pub fn set_number_integer(&mut self, number: NodeId) {
+        self.number_to_slider_snap_integer.insert(number);
+    }
+
     /// `true` iff the chip is registered with
-    /// [`link_slider_number_mapped_integer`] — the dispatch's
+    /// [`link_slider_number_mapped_integer`] (or [`Self::set_number_integer`]) — the dispatch's
     /// [`apply_chip_value_with_mirror`] will `.round()` the typed
     /// display value before writing chip+slider.
     pub fn linked_slider_snap_integer(&self, number: NodeId) -> bool {

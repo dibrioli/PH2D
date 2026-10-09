@@ -73,6 +73,8 @@ impl ModelSnapshot {
             //   muda um pixel, e exigir igualdade deles recusaria todo passo elidido — que é o comum.
             relief_elided: _,
             writes: _,
+            //   `gotas` decide o que a água FARÁ, nunca um píxel já pintado.
+            gotas: _,
         } = self;
 
         // ⚠️ **Uma sessão VIVA desqualifica o passo, em vez de ser comparada.** O `restore_model`

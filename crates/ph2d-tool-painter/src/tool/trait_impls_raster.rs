@@ -24,7 +24,9 @@ impl RasterEditTool for PainterTool {
         self.layers = LayerStack::new();
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
+        self.selection.clear(); // as filas seleccionadas eram camadas do documento de antes
         self.papel = None; // a fonte crua É a camada; o papel nasce na porta do documento (`bind_document`)
+        self.gotas = ph2d_wet_paint::drips::DripPaper::DEFAULT; // ...e as gotas dele com ele
         self.layer_pixel_versions.clear();
         let active = self.layers.active();
         self.bump_layer_pixels(active);

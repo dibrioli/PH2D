@@ -15,6 +15,9 @@
 /// A cor do papel em cada meio (pedido do dono, 2026-10-05).
 #[path = "cor_do_papel_tests.rs"]
 mod cor_do_papel_tests;
+/// As gotas do papel no painel: Reset, Ctrl+Z, a inércia contra o motor (W1c).
+#[path = "gotas_do_papel_tests.rs"]
+mod gotas_do_papel_tests;
 #[path = "impasto_pool_tests.rs"]
 mod impasto_pool_tests;
 #[path = "journal_delta_tests.rs"]

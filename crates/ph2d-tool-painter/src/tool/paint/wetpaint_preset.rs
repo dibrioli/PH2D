@@ -42,7 +42,7 @@ pub const KNOBS_DA_OBRA: [(Knob, &str); 1] = [(
 )];
 
 /// O knob é da obra ([`KNOBS_DA_OBRA`])?
-fn knob_da_obra(k: Knob) -> bool {
+pub(super) fn knob_da_obra(k: Knob) -> bool {
     KNOBS_DA_OBRA.iter().any(|(o, _)| *o == k)
 }
 

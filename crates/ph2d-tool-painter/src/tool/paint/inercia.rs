@@ -127,6 +127,9 @@ const GRAIN: [NodeId; 7] = [
 /// A dica do parâmetro de um padrão (Grain ou Shape) que está inerte.
 pub const DICA_DO_PARAMETRO: &str = "panel.painter_layers.inerte.detail_above_minimum";
 
+/// A dica das gotas quando nenhum anel do dial as deixa deslizar (as outras dizem o anel, `{ring}`).
+pub const DICA_SEM_GOTAS: &str = "panel.painter_layers.inerte.drips_cannot_slide";
+
 /// O que está inerte AGORA — viaja no instantâneo do pincel ([`super::BrushSettings::inercias`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Inercias {
@@ -135,6 +138,8 @@ pub struct Inercias {
     grain_params: u8,
     /// Bit `k` = o parâmetro `k` da Shape está inerte.
     shape_params: u8,
+    /// O primeiro anel do dial em que uma gota desliza — o `{ring}` das dicas das gotas.
+    anel_das_gotas: Option<u8>,
 }
 
 impl Inercias {
@@ -143,11 +148,18 @@ impl Inercias {
         dependentes: 0,
         grain_params: 0,
         shape_params: 0,
+        anel_das_gotas: None,
     };
 
     #[must_use]
     pub fn inerte(self, d: Dependente) -> bool {
         self.dependentes & d.bit() != 0
+    }
+
+    /// O primeiro anel do dial em que uma gota desliza (`None`: nenhum) — o `{ring}` das dicas.
+    #[must_use]
+    pub fn anel_das_gotas(self) -> Option<u8> {
+        self.anel_das_gotas
     }
 
     /// **A dica de um id pintado, se ele está inerte** — a pergunta única do painel.
@@ -157,7 +169,12 @@ impl Inercias {
             .into_iter()
             .find(|d| self.inerte(*d) && d.ids().contains(&id))
         {
-            return Some(d.dica());
+            let gotas = matches!(d, Dependente::GotasDaTela | Dependente::FormaDaGota);
+            return Some(if gotas && self.anel_das_gotas.is_none() {
+                DICA_SEM_GOTAS
+            } else {
+                d.dica()
+            });
         }
         let slot_inerte = |mask: u8, ids: &[NodeId]| {
             ids.iter()
@@ -226,12 +243,12 @@ impl PainterTool {
                 matches!(self.paint_media(), super::media::PaintMedia::Digital)
                     && !self.papel_pode_ser_grain(),
             ),
-            // Create Drips escolhe entre o escorrimento natural e a lei das gotas: só não age com a tela
-            // direita. A forma da gota (Easy, Size, Length) age só com a lei ligada E a tela inclinada o
-            // bastante para uma gota deslizar (o ângulo mínimo do motor, `drips::can_slide`).
+            // Create Drips escolhe entre o escorrimento natural e a lei das gotas: só não age sem
+            // gravidade (a tela desligada ou no anel 0). A forma da gota (Easy, Size, Length) age só com a
+            // lei ligada E a tela inclinada o bastante para uma gota deslizar (`drips::can_slide`).
             (
                 Dependente::GotasDaTela,
-                agua && !self.paint.wetpaint.tilt_on,
+                agua && self.wet_gravidade_da_tela() == 0.0,
             ),
             (
                 Dependente::FormaDaGota,
@@ -245,6 +262,29 @@ impl PainterTool {
                 .fold(0, |m, (d, _)| m | d.bit()),
             grain_params: params_inertes(&b.texture),
             shape_params: params_inertes(&b.shape),
+            anel_das_gotas: self.wet_primeiro_anel_das_gotas(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Sem anel que solte gotas, as dicas das gotas não podem prometer um `{ring}`.
+    #[test]
+    fn sem_anel_das_gotas_a_dica_nao_promete_anel() {
+        let i = |anel| Inercias {
+            dependentes: Dependente::FormaDaGota.bit() | Dependente::GotasDaTela.bit(),
+            anel_das_gotas: anel,
+            ..Inercias::NENHUMA
+        };
+        for id in [
+            ids::PAINTER_WETPAINT_DRIP_SIZE,
+            ids::PAINTER_WETPAINT_DRIPS_CREATE,
+        ] {
+            assert_eq!(i(None).dica_de(id), Some(DICA_SEM_GOTAS), "{id:?}");
+            assert_ne!(i(Some(6)).dica_de(id), Some(DICA_SEM_GOTAS), "{id:?}");
         }
     }
 }

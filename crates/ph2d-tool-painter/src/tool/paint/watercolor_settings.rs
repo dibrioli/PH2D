@@ -398,6 +398,7 @@ impl PainterTool {
         self.paint.paper_image = None;
         self.paint.paper_image_version = self.paint.paper_image_version.wrapping_add(1);
         self.sync_paper_across_slots();
+        self.reset_gotas_do_papel(); // as gotas vivem na secção Paper do Wet Paint
     }
 
     /// Set the **Paper** slot kind (`TextureKind` wire u8) + force canvas-anchored mapping, reset the

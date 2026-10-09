@@ -12,7 +12,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VelloBlend};
 
@@ -33,19 +33,29 @@ fn alfa_inativo(theme: Theme) -> f32 {
 }
 
 /// A dica do primeiro dos `ids` que a ferramenta diz inerte, com o instantâneo publicado AGORA.
-fn dica(ids: &[NodeId]) -> Option<&'static str> {
+fn dica(ids: &[NodeId]) -> Option<String> {
     let inercias = crate::state::current_inercias();
-    ids.iter().find_map(|id| inercias.dica_de(*id))
+    ids.iter()
+        .find_map(|id| inercias.dica_de(*id))
+        .map(|chave| texto(chave, inercias.anel_das_gotas()))
+}
+
+/// O texto de uma dica: as das gotas dizem o anel da lei (`{ring}`), as outras são o texto da chave.
+pub(crate) fn texto(chave: &str, anel: Option<u8>) -> String {
+    tr_with(chave, &[("ring", &anel.unwrap_or_default())])
 }
 
 /// Uma dica que ESTE módulo escreveu — a única que ele pode apagar (outras linhas têm dicas próprias,
-/// registadas no `populate`).
-fn e_dica_de_inercia(texto: &str) -> bool {
+/// registadas no `populate`). O anel muda com a física: qualquer um dos do dial conta.
+fn e_dica_de_inercia(t: &str) -> bool {
     ph2d_tool_painter::Dependente::TODOS
         .iter()
         .map(|d| d.dica())
-        .chain(std::iter::once(ph2d_tool_painter::DICA_DO_PARAMETRO))
-        .any(|chave| tr(chave) == texto)
+        .chain([
+            ph2d_tool_painter::DICA_DO_PARAMETRO,
+            ph2d_tool_painter::DICA_SEM_GOTAS,
+        ])
+        .any(|chave| (0..=8).any(|anel| texto(chave, Some(anel)) == t))
 }
 
 /// **Pinta `pintar` esmaecido se algum dos `ids` está inerte**, e põe (ou tira) a dica de cada id.
@@ -60,8 +70,8 @@ pub(crate) fn talvez_esmaecido<R>(
     let dica = dica(ids);
     for id in ids {
         let store = ctx.host.store_mut();
-        match dica {
-            Some(chave) => store.set_tooltip(*id, tr(chave)),
+        match &dica {
+            Some(t) => store.set_tooltip(*id, t.as_str()),
             None if store.tooltip_for(*id).is_some_and(e_dica_de_inercia) => {
                 store.set_tooltip(*id, "");
             }
@@ -97,7 +107,7 @@ pub(crate) fn opcoes_esmaecidas(ctx: &mut PaintCtx, theme: Theme, ids: &[NodeId]
         let dica = inercias.dica_de(*id);
         let store = ctx.host.store_mut();
         match dica {
-            Some(chave) => store.set_tooltip(*id, tr(chave)),
+            Some(chave) => store.set_tooltip(*id, texto(chave, inercias.anel_das_gotas())),
             None if store.tooltip_for(*id).is_some_and(e_dica_de_inercia) => {
                 store.set_tooltip(*id, "");
             }

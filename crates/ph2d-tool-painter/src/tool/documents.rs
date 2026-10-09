@@ -147,10 +147,23 @@ impl PainterTool {
                 self.shape_source_preview_dirty = true;
             }
         }
+        // A tela desmontada levou os píxeis para a sprite; as gotas ficam com o id dela.
+        if torn_down
+            && let Some(old) = self.bound_doc
+            && self.gotas != ph2d_wet_paint::drips::DripPaper::DEFAULT
+        {
+            self.gotas_sem_tela.insert(old, self.gotas);
+        }
+        let gotas_guardadas = self.gotas_sem_tela.remove(&entity);
         self.bound_doc = Some(entity);
         match self.doc_cache.remove(&entity) {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
-            None => self.abre_a_sprite(rgba, width, height), // fresh (or the sprite's flat texture)
+            None => {
+                self.abre_a_sprite(rgba, width, height); // fresh (or the sprite's flat texture)
+                if let Some(g) = gotas_guardadas {
+                    self.gotas = g;
+                }
+            }
         }
         self.serve_pending_layer(entity);
     }
@@ -398,8 +411,11 @@ mod tests {
 
     /// As GOTAS do papel são do documento: trocar de sprite não as empresta ao seguinte, e voltar
     /// devolve-as — mesmo numa tela de uma camada só (gotas não-default tornam-na não-descartável).
+    /// E pelas DUAS rotas da troca: dentro do Painter, e saindo dele entre os binds (a saída desmonta
+    /// a tela, e o `bind_document` seguinte abre a sprite pelo `set_source`).
     #[test]
     fn the_paper_drips_travel_with_their_document_across_a_switch() {
+        use ph2d_editor_core::tool::Tool;
         use ph2d_wet_paint::drips::DripPaper;
         let gotas = DripPaper {
             create: false,
@@ -407,17 +423,94 @@ mod tests {
             length: 2,
             easy: true,
         };
+        for sai_do_painter in [false, true] {
+            let sai = |t: &mut PainterTool| {
+                if sai_do_painter {
+                    t.on_deactivate();
+                    t.on_activate();
+                }
+            };
+            let mut t = PainterTool::default();
+            t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);
+            t.set_gotas(gotas);
+            sai(&mut t);
+            t.bind_document(2, vec![0u8; 8 * 8 * 4], 8, 8);
+            assert_eq!(
+                t.gotas(),
+                DripPaper::DEFAULT,
+                "o sprite 2 não herda as gotas do 1 (saindo do Painter: {sai_do_painter})"
+            );
+            sai(&mut t);
+            t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);
+            assert_eq!(
+                t.gotas(),
+                gotas,
+                "as gotas do sprite 1 voltaram com ele (saindo do Painter: {sai_do_painter})"
+            );
+        }
+    }
+
+    /// **O `set_source` abre um documento NOVO: todo campo por-documento volta ao de fábrica.** O
+    /// censo é o [`StashedDoc`] desestruturado SEM `..`: um campo novo do documento não compila aqui
+    /// até alguém dizer o que o `set_source` faz com ele (as gotas foram o campo esquecido).
+    #[test]
+    fn set_source_resets_every_per_document_field() {
+        use ph2d_wet_paint::drips::DripPaper;
+        let fresco = |t: &mut PainterTool| t.set_source(vec![0u8; 4 * 4 * 4], 4, 4);
+        let mut referencia = PainterTool::default();
+        fresco(&mut referencia);
+        let r = referencia.stash_current_doc();
+
         let mut t = PainterTool::default();
         t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);
-        t.set_gotas(gotas);
-        t.bind_document(2, vec![0u8; 8 * 8 * 4], 8, 8);
-        assert_eq!(
-            t.gotas(),
-            DripPaper::DEFAULT,
-            "o sprite 2 não herda as gotas do 1"
+        t.layers.add_raster("Layer 2", 8, 8);
+        let id = t.layers.active().expect("uma camada activa");
+        t.heights.insert(id, Arc::new(vec![1.0; 64]));
+        t.covers.insert(id, Arc::new(vec![1; 64]));
+        t.mats.insert(id, Arc::new(vec![[0u8; 7]; 64]));
+        t.papel = Some([10, 20, 30]);
+        t.set_gotas(DripPaper {
+            create: false,
+            size: 9,
+            length: 2,
+            easy: true,
+        });
+        t.selection.insert(id);
+        t.aplica_o_papel(); // um passo de desfazer
+        fresco(&mut t);
+        let StashedDoc {
+            canvas_rgba,
+            layers,
+            images,
+            heights,
+            covers,
+            mats,
+            vidros,
+            papel,
+            gotas,
+            layer_pixel_versions,
+            source_size,
+            undo,
+            selection,
+        } = t.stash_current_doc();
+        assert_eq!(canvas_rgba, r.canvas_rgba, "a tela");
+        assert_eq!(layers.root().len(), r.layers.root().len(), "as camadas");
+        assert!(images.is_empty() && r.images.is_empty(), "as imagens");
+        assert!(heights.is_empty(), "o relevo");
+        assert!(covers.is_empty(), "a cobertura");
+        assert!(mats.is_empty(), "o material");
+        assert!(vidros.is_empty(), "o vidro");
+        assert_eq!(papel, r.papel, "o papel");
+        assert_eq!(gotas, r.gotas, "as gotas do papel");
+        assert!(
+            layer_pixel_versions
+                .keys()
+                .eq(r.layer_pixel_versions.keys()),
+            "as versões de camadas que já não existem"
         );
-        t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);
-        assert_eq!(t.gotas(), gotas, "as gotas do sprite 1 voltaram com ele");
+        assert_eq!(source_size, r.source_size, "o tamanho");
+        assert!(!undo.can_undo() && !r.undo.can_undo(), "o histórico");
+        assert_eq!(selection, r.selection, "a selecção de camadas");
     }
 
     /// A sculpted document keeps its RELIEF across sprite switches — and, the sharper half, does not

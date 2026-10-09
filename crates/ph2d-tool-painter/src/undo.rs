@@ -135,6 +135,8 @@ pub struct ModelSnapshot {
     pub offset_base_px: f32,
     /// O PAPEL do documento ([`crate::tool::PainterTool::papel`]) — volta com o desfazer.
     pub papel: Option<[u8; 3]>,
+    /// As GOTAS do papel ([`crate::tool::PainterTool::gotas`]) — voltam com o desfazer, como o papel.
+    pub gotas: ph2d_wet_paint::drips::DripPaper,
     /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
     /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
     pub preview_patch: Option<PreviewPatch>,
@@ -262,6 +264,8 @@ pub enum CoalesceKind {
     OpCycleSelection(usize),
     /// A cor do PAPEL a mudar ao vivo (`tool::papel`): o arrasto no seletor é um passo de desfazer.
     CorDoPapel,
+    /// O arrasto de um campo das GOTAS do papel (Drip Size, Drip Length): um passo por campo.
+    CampoDasGotas(ph2d_a11y::NodeId),
 }
 
 /// One retained history entry: the two endpoints' **metadata** plus the DELTA of every canvas-shaped

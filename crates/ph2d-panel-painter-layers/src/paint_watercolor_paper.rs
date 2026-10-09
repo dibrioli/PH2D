@@ -327,6 +327,7 @@ fn paint_drip_rows(
             g.length,
         ),
     ] {
+        ctx.host.store_mut().set_number_integer(id); // contagens: o arrasto anda de inteiro em inteiro
         y = number_field::paint_num_row(
             ctx,
             theme,

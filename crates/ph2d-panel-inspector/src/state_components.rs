@@ -197,6 +197,11 @@ thread_local! {
         std::cell::RefCell<Option<ph2d_editor_core::shake_edits::InspectorShakeInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// ⭐ O snapshot da LUZ (Luz 2D, W4) — a shell escreve-o todo o quadro.
+    static CURRENT_INSPECTOR_LUZ:
+        std::cell::RefCell<Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>> =
+        const { std::cell::RefCell::new(None) };
+
     /// ⭐ O snapshot do EMISSOR DE ABANÃO (suplente #25) — a shell escreve-o todo o quadro.
     static CURRENT_INSPECTOR_EMITTER:
         std::cell::RefCell<Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo>> =
@@ -351,6 +356,15 @@ pub fn set_current_inspector_emitter(
 pub(crate) fn current_inspector_emitter()
 -> Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo> {
     CURRENT_INSPECTOR_EMITTER.with(|c| c.borrow().clone())
+}
+
+/// ⭐ O snapshot da LUZ (Luz 2D, W4) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_luz(info: Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>) {
+    CURRENT_INSPECTOR_LUZ.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_luz() -> Option<ph2d_editor_core::luz_edits::InspectorLuzInfo> {
+    CURRENT_INSPECTOR_LUZ.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do EMISSOR DE PARTÍCULAS (TOP-20 #18) — a shell escreve-o todo o quadro.

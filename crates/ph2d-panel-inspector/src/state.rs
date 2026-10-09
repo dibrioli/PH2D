@@ -90,6 +90,8 @@ pub struct InspectorState {
     pub last_emitter_row: Option<usize>,
     /// CAMERA SHAKE — a assinatura do último instantâneo semeado (suplente #25).
     pub last_shake_sig: Option<u64>,
+    /// LUZ — a assinatura do último instantâneo semeado (Luz 2D, W4).
+    pub last_luz_sig: Option<u64>,
     /// Qual tween está aberto — estado do PAINEL, como o do gatilho (suplente #22).
     ///
     /// ⚠️ **Não vai ao barramento**: um `Tweens` não tem «o tween actual» — os N correm todos ao

@@ -57,6 +57,7 @@ mod seam;
 mod seam_anim;
 mod seam_apply_ladder;
 mod seam_joint;
+mod seam_luz;
 mod seam_open_prefab;
 mod seam_orphan_list;
 mod seam_path_follow;

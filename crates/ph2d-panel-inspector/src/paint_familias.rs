@@ -448,6 +448,24 @@ pub(crate) fn push_familia_saida<'a>(
             )
         },
     );
+    // ⭐ A LUZ (Luz 2D, W4) — família LUZ (`14` de 16), entre a CÂMERA e o SCRIPT pelo catálogo.
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_LUZ_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_luz::paint_luz_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                header_h,
+                snaps.luz_info.as_ref(),
+            )
+        },
+    );
     plano.push(
         ph2d_editor_core::ids::INSP_LIVE_SCRIPT_SECTION,
         move |c, t, y| {

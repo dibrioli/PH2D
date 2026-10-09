@@ -28,6 +28,8 @@ pub use inspector_counter_watch::*;
 /// ⭐ Os ids das DUAS secções do ABANÃO (suplente #25) — ver o cabeçalho.
 mod inspector_shake;
 pub use inspector_shake::*;
+mod inspector_luz;
+pub use inspector_luz::*;
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;

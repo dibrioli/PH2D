@@ -83,6 +83,8 @@ pub(crate) mod instance_removed;
 pub(crate) mod joint;
 mod joint_pair_rows;
 pub(crate) mod lifecycle;
+/// ⭐ A LUZ (Luz 2D, W4).
+pub(crate) mod luz;
 mod material_blend;
 pub(crate) mod nav;
 /// ⭐ (W7) As secções NAV COST AREA e NAV LINK e os interruptores do agente — irmão do `nav` pelo

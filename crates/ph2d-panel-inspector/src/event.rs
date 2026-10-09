@@ -109,6 +109,10 @@ pub(crate) fn apply_event(
     // aberta), como a vigia, os timers e a tabela de acções.
     // ⭐⭐⭐ O ABANÃO (suplente #25) — a da CÂMERA não precisa de estado de painel (não tem lista);
     // a do EMISSOR precisa, como o gatilho.
+    // ⭐ A LUZ (Luz 2D, W4) — sem estado de painel: um objeto tem UMA luz.
+    if crate::event_luz::apply_luz_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_shake::apply_shake_event(host, ev) {
         return EventOutcome::Consumed;
     }

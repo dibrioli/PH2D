@@ -93,6 +93,8 @@ pub(crate) struct LiveSnapshots {
     pub shake_info: Option<ph2d_editor_core::shake_edits::InspectorShakeInfo>,
     /// ⭐⭐⭐ O EMISSOR DE ABANÃO (suplente #25) — *ao ouvir o quê* este objecto abana a vista.
     pub emitter_info: Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo>,
+    /// ⭐ A LUZ (Luz 2D, W4).
+    pub luz_info: Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -150,6 +152,7 @@ impl LiveSnapshots {
         let path_follow_info = crate::state_components::current_inspector_path_follow();
         let shake_info = crate::state_components::current_inspector_shake();
         let emitter_info = crate::state_components::current_inspector_emitter();
+        let luz_info = crate::state_components::current_inspector_luz();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -186,6 +189,7 @@ impl LiveSnapshots {
             path_follow_info.is_some(),
             shake_info.is_some(),
             emitter_info.is_some(),
+            luz_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -220,6 +224,7 @@ impl LiveSnapshots {
             path_follow_info,
             shake_info,
             emitter_info,
+            luz_info,
             tags_info,
             blend_info,
             physics_info,

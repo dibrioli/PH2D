@@ -163,6 +163,7 @@ fn synthetic(
         components: Vec::new(),
         content: Vec::new(),
         has: Default::default(),
+        entity: None,
     }
 }
 

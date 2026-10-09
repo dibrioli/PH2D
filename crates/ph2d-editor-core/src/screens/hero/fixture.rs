@@ -206,6 +206,10 @@ pub struct HierarchyEntity {
     /// ⭐ Os componentes AUTORADOS que o objecto tem (+ a Animação) — o que o filtro ▾ da Hierarquia
     /// pergunta (doc ObjectsAndComponents 01 §13, F6).
     pub has: ph2d_component_desc::ComponentSet,
+    /// ⭐ **A ENTIDADE da linha** (`Entity::to_bits`), quando ela é um objecto do mundo — a
+    /// identidade que o pedido ao Inspector leva (onda 4, item 10a): dois objectos podem ter o
+    /// mesmo nome. `None` na fixtura sem mundo e nas linhas sintéticas (a Cena, o conteúdo).
+    pub entity: Option<u64>,
 }
 
 /// Placeholder hierarchy until the pilot project wires real entities.
@@ -228,6 +232,7 @@ pub fn hierarchy() -> Vec<HierarchyEntity> {
         components: Vec::new(),
         content: Vec::new(),
         has: Default::default(),
+        entity: None,
     }]
 }
 

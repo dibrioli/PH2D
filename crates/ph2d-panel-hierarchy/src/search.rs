@@ -86,6 +86,7 @@ mod tests {
             components: Vec::new(),
             content: Vec::new(),
             has: Default::default(),
+            entity: None,
         }
     }
 

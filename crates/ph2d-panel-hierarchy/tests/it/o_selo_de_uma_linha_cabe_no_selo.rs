@@ -64,6 +64,7 @@ fn linha(nome: &str, selo: &str) -> HierarchyEntity {
         components: Vec::new(),
         content: Vec::new(),
         has: Default::default(),
+        entity: None,
     }
 }
 

@@ -13,11 +13,15 @@ pub struct HierRowsState {
 }
 
 /// ⭐ **«Mostra o cartão desta família»** — o clique num ícone de componente da linha. O Inspector
-/// atende-o no primeiro quadro em que pinta o objecto de nome `label`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// atende-o no primeiro quadro em que pinta a entidade `entity` (`Entity::to_bits`).
+///
+/// ⚠️ Pela IDENTIDADE, nunca pelo nome: com dois objectos do mesmo nome e um deles já no
+/// Inspector, o pedido do outro casava no quadro de ANTES da troca e o cartão rolava sobre o
+/// objecto errado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InspectorReveal {
     pub category: ph2d_component_desc::ComponentCategory,
-    pub label: String,
+    pub entity: u64,
 }
 
 impl WidgetStore {
@@ -34,13 +38,13 @@ impl WidgetStore {
         }
     }
 
-    /// Pede ao Inspector que traga à vista o primeiro cartão de `category` do objecto `label`.
+    /// Pede ao Inspector que traga à vista o primeiro cartão de `category` da entidade `entity`.
     pub fn request_inspector_reveal(
         &mut self,
         category: ph2d_component_desc::ComponentCategory,
-        label: String,
+        entity: u64,
     ) {
-        self.hier_rows.reveal = Some(InspectorReveal { category, label });
+        self.hier_rows.reveal = Some(InspectorReveal { category, entity });
     }
 
     /// O pedido em curso (o Inspector lê-o ao pintar).

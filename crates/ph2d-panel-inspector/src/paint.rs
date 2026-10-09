@@ -47,7 +47,6 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     // refs on the host. Reborrow store via `store()` then `store_mut()`
     // sequentially below for the post-paint scroll publish.
     let pending;
-    let ctx_label: Option<String>;
     {
         // Build a transient owning copy of selection to avoid holding an
         // immutable borrow of host while also borrowing host's
@@ -55,7 +54,6 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         // `store_and_hit_index_mut` accessor avoids the dyn-trait
         // aliasing dance for the &WidgetStore + &mut HitIndex pair.
         let selection_clone: Option<HeroSelection> = ctx.host.selection().cloned();
-        ctx_label = selection_clone.as_ref().map(|s| s.label.clone());
         // ⚠️ **A BANDA DOS POPOVERS, e ela NÃO é o `slot`** — resolvido na integração de 2026-09-10.
         // A `line/UIUX` trocou o 1.º parâmetro desta função de `&HeroLayout` para `slot: Rect`
         // (*«para saber onde ele PRÓPRIO fica, um painel lê o `slot`»*) e esta linha, no mesmo dia,
@@ -102,9 +100,9 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     if let Some(painted) = state_popovers::take_painted_popover() {
         store.publish_dropdown_popover(painted);
     }
-    // O pedido da Hierarquia (doc 01 §7.1) ANTES do clamp, que o prende à altura do conteúdo.
-    let label = ctx_label.as_deref();
-    crate::reveal::serve(store, label);
+    // O pedido da Hierarquia (doc 01 §7.1) ANTES do clamp, que o prende à altura do conteúdo —
+    // casado pela ENTIDADE que os retratos deste quadro pintaram, nunca pelo nome da selecção.
+    crate::reveal::serve(store, inspector_state.last_entity);
     // As alturas do corpo, o clamp e o dono da barra — a metade da porta que precisa do store
     // mutável (`scroll_area::Pending`).
     pending.publish(store);

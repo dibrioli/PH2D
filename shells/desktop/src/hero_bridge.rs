@@ -179,6 +179,7 @@ impl EntityNodeMap {
                     components: Vec::new(),
                     content: Vec::new(),
                     has: Default::default(),
+                    entity: Some(entry.entity),
                 },
             );
         }

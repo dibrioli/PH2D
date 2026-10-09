@@ -9,11 +9,12 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{
     HeroSelection, InspectorAudioInfo, InspectorAudioSource, InspectorCameraFollow,
-    InspectorCameraInfo, InspectorCameraLimits, InspectorGameCamera,
+    InspectorCameraInfo, InspectorCameraLimits, InspectorGameCamera, InspectorVisibilityInfo,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_audio, set_current_inspector_camera,
+    set_current_inspector_visibility,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -24,6 +25,10 @@ const VIEWPORT: Rect = Rect {
     h: 420.0,
 };
 const NOME: &str = "Câmara";
+/// A entidade que os retratos pintam — a identidade pela qual o pedido casa (onda 4, item 10a).
+const ENTIDADE: u64 = 0xABCD_1234;
+/// OUTRA entidade com o MESMO nome.
+const HOMONIMO: u64 = 0xABCD_5678;
 
 fn host() -> (MockPanelHost, InspectorState) {
     let mut h = MockPanelHost::with_panel::<InspectorPanel>();
@@ -85,6 +90,13 @@ fn host() -> (MockPanelHost, InspectorState) {
         preview_on: false,
         selected_count: 1,
     }));
+    // ⚠️ O Inspector sabe QUEM pinta pelos retratos de identidade (nome/transform/visibilidade):
+    // é o `last_entity` do sync, e é por ele que o pedido casa.
+    set_current_inspector_visibility(Some(InspectorVisibilityInfo {
+        entity_bits: ENTIDADE,
+        visible: true,
+        mixed: false,
+    }));
     *h.selection_mut() = Some(HeroSelection {
         label: NOME.into(),
         kind: "ENT".into(),
@@ -94,6 +106,7 @@ fn host() -> (MockPanelHost, InspectorState) {
 }
 
 fn limpa() {
+    set_current_inspector_visibility(None);
     set_current_inspector_audio(None);
     set_current_inspector_camera(None);
 }
@@ -113,13 +126,14 @@ fn o_pedido_rola_ate_ao_cartao_da_familia_e_abre_o() {
     h.store_mut()
         .set_collapsed(ids::INSP_LIVE_CAMERA_SECTION, true);
     let antes = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    let topo = header_y(&antes, ids::INSP_LIVE_AUDIO_SECTION).expect("o Audio é o 1.º cartão");
+    // O 1.º cartão é o da visibilidade (o retrato de identidade também pinta).
+    let topo = header_y(&antes, ids::INSP_LIVE_VISIBILITY_SECTION).expect("o 1.º cartão");
     assert!(
         header_y(&antes, ids::INSP_LIVE_CAMERA_SECTION).is_none(),
         "pré-condição: a Camera tem de começar FORA da vista, senão o teste não mede a rolagem"
     );
     h.store_mut()
-        .request_inspector_reveal(ComponentCategory::Camera, NOME.into());
+        .request_inspector_reveal(ComponentCategory::Camera, ENTIDADE);
     // Dois quadros: o 1.º abre o cartão, o 2.º rola com a altura dele já medida.
     h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     h.paint::<InspectorPanel>(&mut st, VIEWPORT);
@@ -133,15 +147,28 @@ fn o_pedido_rola_ate_ao_cartao_da_familia_e_abre_o() {
     );
     let scroll = h.store().panel_scroll(ids::INSP_PANEL);
     assert!(scroll > 0.0, "a Camera está abaixo do Audio e nada rolou");
-    let depois = header_y(
-        &h.paint::<InspectorPanel>(&mut st, VIEWPORT),
-        ids::INSP_LIVE_CAMERA_SECTION,
-    )
-    .expect("depois de rolar, a Camera tem de estar à vista");
+    let pintado = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let depois = header_y(&pintado, ids::INSP_LIVE_CAMERA_SECTION)
+        .expect("depois de rolar, a Camera tem de estar à vista");
+    // ⚠️ A lei alinha a BANDA da Camera à do 1.º cartão; o cabeçalho de um cartão de componente fica
+    // uns píxeis abaixo do de um cartão de identidade (medido: 9 px), então mede-se «é o de cima e
+    // está a menos de um cabeçalho do topo».
+    let alto = pintado
+        .iter()
+        .find(|(id, _)| *id == ids::INSP_LIVE_CAMERA_SECTION)
+        .map_or(0.0, |(_, r)| r.h);
     assert!(
-        (depois - topo).abs() < 1.0,
+        (depois - topo).abs() < alto,
         "a Camera devia ficar no TOPO do corpo (onde o 1.º cartão estava, {topo}) e ficou em {depois}"
     );
+    for id in ids::LIVE_SECTION_IDS {
+        if let Some(y) = header_y(&pintado, id) {
+            assert!(
+                id == ids::INSP_LIVE_CAMERA_SECTION || y > depois || y < topo,
+                "o cartão {id:?} ficou entre o topo e a Camera ({y} < {depois})"
+            );
+        }
+    }
     limpa();
 }
 
@@ -149,16 +176,42 @@ fn o_pedido_rola_ate_ao_cartao_da_familia_e_abre_o() {
 fn o_pedido_de_outro_objecto_espera_e_o_sem_cartao_morre_sem_rolar() {
     let (mut h, mut st) = host();
     h.store_mut()
-        .request_inspector_reveal(ComponentCategory::Camera, "Outro".into());
+        .request_inspector_reveal(ComponentCategory::Camera, HOMONIMO);
     h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     assert!(
         h.store().inspector_reveal().is_some(),
         "o pedido de um objecto que ainda não chegou ao Inspector tem de esperar por ele"
     );
     h.store_mut()
-        .request_inspector_reveal(ComponentCategory::Scripting, NOME.into());
+        .request_inspector_reveal(ComponentCategory::Scripting, ENTIDADE);
     h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     assert!(h.store().inspector_reveal().is_none());
     assert_eq!(h.store().panel_scroll(ids::INSP_PANEL), 0.0);
     limpa();
+}
+
+/// ⭐⭐ RED-FIRST (onda 4, item 10a) — **dois objectos com o MESMO nome**, um já no Inspector: o
+/// pedido do OUTRO espera pela troca. Casado pelo nome, ele era atendido no quadro de antes da
+/// troca — o cartão abria e rolava sobre o objecto errado.
+#[test]
+fn o_pedido_de_um_homonimo_espera_pela_troca() {
+    let (mut h, mut st) = host();
+    h.store_mut()
+        .set_collapsed(ids::INSP_LIVE_CAMERA_SECTION, true);
+    h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    // O OUTRO «Câmara» (outra entidade, mesmo nome) pediu o cartão da Camera.
+    h.store_mut()
+        .request_inspector_reveal(ComponentCategory::Camera, HOMONIMO);
+    h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let pendente = h.store().inspector_reveal().is_some();
+    let fechado = h.store().is_collapsed(ids::INSP_LIVE_CAMERA_SECTION);
+    let scroll = h.store().panel_scroll(ids::INSP_PANEL);
+    limpa();
+    assert!(
+        pendente,
+        "o pedido do homónimo foi atendido sobre o objecto que ainda está no Inspector"
+    );
+    assert!(fechado, "o cartão abriu no objecto errado");
+    assert_eq!(scroll, 0.0, "o corpo rolou no objecto errado");
 }

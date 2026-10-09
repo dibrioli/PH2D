@@ -159,8 +159,10 @@ fn component_click(
         host.set_panel_visible(panel, true);
         return Some(EventOutcome::Consumed);
     }
-    host.store_mut()
-        .request_inspector_reveal(category, entry.name.clone());
+    // O pedido leva a ENTIDADE (o Inspector casa por ela); uma linha sem mundo não tem cartão.
+    if let Some(entity) = entry.entity {
+        host.store_mut().request_inspector_reveal(category, entity);
+    }
     host.set_panel_visible("inspector", true);
     Some(EventOutcome::Consumed)
 }

@@ -39,6 +39,7 @@ fn entry(name: &str) -> HierarchyEntity {
         components: Vec::new(),
         content: Vec::new(),
         has: Default::default(),
+        entity: None,
     }
 }
 

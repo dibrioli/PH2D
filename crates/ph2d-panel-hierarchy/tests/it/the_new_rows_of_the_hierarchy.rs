@@ -21,6 +21,8 @@ use ph2d_panel_hierarchy::state::HierarchyState;
 use ph2d_ui_testkit::MockPanelHost;
 
 const HEROI: NodeId = NodeId(100_000);
+/// A entidade do Herói — a identidade que o pedido ao Inspector leva (onda 4, item 10a).
+const HEROI_BITS: u64 = 0xBEEF_0001;
 
 fn heroi() -> HierarchyEntity {
     HierarchyEntity {
@@ -58,6 +60,7 @@ fn heroi() -> HierarchyEntity {
             ],
         }],
         has: Default::default(),
+        entity: Some(HEROI_BITS),
     }
 }
 
@@ -112,7 +115,10 @@ fn o_icone_de_um_componente_selecciona_o_objecto_e_pede_o_cartao() {
         .inspector_reveal()
         .expect("nenhum pedido ao Inspector");
     assert_eq!(req.category, ComponentCategory::Audio);
-    assert_eq!(req.label, "Herói");
+    assert_eq!(
+        req.entity, HEROI_BITS,
+        "o pedido leva a ENTIDADE da linha, nunca o nome (dois objectos podem ter o mesmo)"
+    );
     assert!(host.panel_visible("inspector"));
 }
 

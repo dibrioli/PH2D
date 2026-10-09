@@ -145,6 +145,7 @@ fn arma_a_arvore(store: &mut WidgetStore) {
                     components: Vec::new(),
                     content: Vec::new(),
                     has: Default::default(),
+                    entity: None,
                 },
             )
         })

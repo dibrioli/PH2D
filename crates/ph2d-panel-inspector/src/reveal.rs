@@ -110,14 +110,15 @@ pub(crate) fn record_content_top(top: f32) {
     CONTENT_TOP.with(|c| c.set(top));
 }
 
-/// ⭐ **Atende o pedido**, se ele é do objecto que o corpo acabou de pintar (`label`): rola até
-/// ao primeiro cartão da família e abre-o. Um pedido de OUTRO objecto espera o quadro em que a
-/// selecção chega; um do mesmo objecto sem cartão daquela família morre aqui.
-pub(crate) fn serve(store: &mut WidgetStore, label: Option<&str>) {
-    let Some(req) = store.inspector_reveal() else {
+/// ⭐ **Atende o pedido**, se ele é da entidade que o corpo acabou de pintar (`painted`, a dos
+/// retratos do quadro — `InspectorState::last_entity`): rola até ao primeiro cartão da família e
+/// abre-o. Um pedido de OUTRA entidade — mesmo com o mesmo nome — espera o quadro em que a selecção
+/// chega; um da mesma sem cartão daquela família morre aqui.
+pub(crate) fn serve(store: &mut WidgetStore, painted: Option<u64>) {
+    let Some(req) = store.inspector_reveal().copied() else {
         return;
     };
-    if label != Some(req.label.as_str()) {
+    if painted != Some(req.entity) {
         return;
     }
     let category = req.category;

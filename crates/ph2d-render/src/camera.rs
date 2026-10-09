@@ -369,7 +369,10 @@ mod tests {
         let m = [0.0, 2.0, -2.0, 0.0, 5.0, 1.0]; // 90° e escala 2, deslocado (5, 1)
         let cam = base.with_model(m);
         let p = [1.5, -0.5];
-        let mp = [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+        let mp = [
+            m[0] * p[0] + m[2] * p[1] + m[4],
+            m[1] * p[0] + m[3] * p[1] + m[5],
+        ];
         let (sx, sy) = cam.world_to_screen(p, win);
         let (bx, by) = base.world_to_screen(mp, win);
         assert!((sx - bx).abs() < 1e-3 && (sy - by).abs() < 1e-3);
@@ -382,10 +385,14 @@ mod tests {
             .transform_point3(ph2d_core::Vec3::new(p[0], p[1], 0.0));
         let px = (ndc.x + 1.0) * 0.5 * 800.0;
         let py = (1.0 - ndc.y) * 0.5 * 600.0;
-        assert!((px - sx).abs() < 1e-2 && (py - sy).abs() < 1e-2, "{px},{py} ≠ {sx},{sy}");
+        assert!(
+            (px - sx).abs() < 1e-2 && (py - sy).abs() < 1e-2,
+            "{px},{py} ≠ {sx},{sy}"
+        );
         assert_eq!(
             Camera2d::new([3.0, -2.0], 12.0).world_to_screen(p, win),
-            base.with_model(Camera2d::MODEL_IDENTITY).world_to_screen(p, win),
+            base.with_model(Camera2d::MODEL_IDENTITY)
+                .world_to_screen(p, win),
             "identidade = a câmara de sempre"
         );
     }

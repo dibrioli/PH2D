@@ -591,7 +591,8 @@ fn the_field_of_a_moved_motion_object_shows_where_the_object_put_it() {
     let c = [p(&motion, bid, "center_x"), p(&motion, bid, "center_y")];
     let esperado = [10.0 - c[1], 4.0 + c[0]];
     assert!(
-        (v.pivot_world[0] - esperado[0]).abs() < 1e-4 && (v.pivot_world[1] - esperado[1]).abs() < 1e-4,
+        (v.pivot_world[0] - esperado[0]).abs() < 1e-4
+            && (v.pivot_world[1] - esperado[1]).abs() < 1e-4,
         "{:?} ≠ {esperado:?}",
         v.pivot_world
     );

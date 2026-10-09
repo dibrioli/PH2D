@@ -17,7 +17,11 @@ fn every_offered_component_has_intent_words() {
     let offered: Vec<&ComponentDesc> = ph2d_component_desc::all()
         .filter(|d| matches!(d.attach, Attach::Authored { .. }))
         .collect();
-    assert!(offered.len() >= 50, "o catálogo encolheu? {}", offered.len());
+    assert!(
+        offered.len() >= 50,
+        "o catálogo encolheu? {}",
+        offered.len()
+    );
     let missing: Vec<&str> = offered
         .iter()
         .filter(|d| intent_words(d).is_empty())

@@ -556,7 +556,10 @@ fn o_editor_anuncia_a_copia_e_a_fabrica_nao() {
     assert!(pares.len() > 1, "e cada peça da receita");
 
     let dup = duplicate(&mut sim, &r, inst).expect("duplicou");
-    assert!(ph2d_ecs::take_copies(sim.world_mut(), ph2d_ecs::CopyReader::Timeline).contains(&(inst.to_bits(), dup.to_bits())));
+    assert!(
+        ph2d_ecs::take_copies(sim.world_mut(), ph2d_ecs::CopyReader::Timeline)
+            .contains(&(inst.to_bits(), dup.to_bits()))
+    );
 
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     super::instantiate_master_many(

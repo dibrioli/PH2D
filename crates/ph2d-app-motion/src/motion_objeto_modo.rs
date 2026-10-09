@@ -45,7 +45,9 @@ impl<'a> Family<'a> {
 /// A ferramenta Motion está na mão?
 #[must_use]
 pub fn holds_the_tool(tools: &ToolRegistry) -> bool {
-    tools.active().is_some_and(|t| t.id() == ToolId::new(MOTION))
+    tools
+        .active()
+        .is_some_and(|t| t.id() == ToolId::new(MOTION))
 }
 
 impl ModeFamily for Family<'_> {
@@ -164,7 +166,10 @@ mod tests {
         let mut m = motion_com_dois_nos();
         let mut tools = ToolRegistry::new();
         let mut f = Family::new(&mut m);
-        assert!(!f.enter(ObjectMode::Edit, 99, &mut tools), "não é objecto Motion");
+        assert!(
+            !f.enter(ObjectMode::Edit, 99, &mut tools),
+            "não é objecto Motion"
+        );
         let _ = f.enter(ObjectMode::Edit, 42, &mut tools);
         assert_eq!(m.objeto.editing, Some(5));
     }

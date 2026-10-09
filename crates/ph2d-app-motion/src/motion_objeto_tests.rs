@@ -4,7 +4,8 @@ use super::*;
 use ph2d_ecs::SimWorld;
 use ph2d_nodegraph::graph::NodeId;
 
-const SIM: &str = include_str!("../../ph2d-motion-doc/tests/fixtures/motion_doc_sim_antes_do_dono.txt");
+const SIM: &str =
+    include_str!("../../ph2d-motion-doc/tests/fixtures/motion_doc_sim_antes_do_dono.txt");
 
 fn motion_com(text: &str) -> MotionState {
     let mut m = MotionState::new();
@@ -117,7 +118,11 @@ fn o_dono_em_edicao_segue_a_seleccao_e_o_pai() {
     assert_eq!(m.objeto.editing, Some(b));
     let solto = sim.world_mut().spawn_empty().id();
     upkeep(&mut m, sim.world_mut(), Some(solto.to_bits()), false);
-    assert_eq!(m.objeto.editing, Some(b), "seleccionar outra coisa não larga o grafo");
+    assert_eq!(
+        m.objeto.editing,
+        Some(b),
+        "seleccionar outra coisa não larga o grafo"
+    );
 }
 
 /// ⭐ O olho de um objecto Motion esconde os sinks DELE (e só os dele).
@@ -136,7 +141,10 @@ fn o_olho_esconde_os_sinks_do_dono() {
         .insert(ph2d_ecs::Visibility { hidden: true });
     upkeep(&mut m, sim.world_mut(), None, false);
     assert_eq!(sinks_visiveis(&m, vec![sa, sb]), vec![sb]);
-    assert!(m.objeto.desenha(), "o B continua a desenhar sem a ferramenta");
+    assert!(
+        m.objeto.desenha(),
+        "o B continua a desenhar sem a ferramenta"
+    );
 }
 
 /// ⭐⭐ **A forma que o Motion copia vira filha dele** na migração — e é molde (não se desenha).
@@ -149,9 +157,13 @@ fn na_migracao_o_molde_vira_filho_e_molde() {
     let bola = sim.world_mut().spawn(ph2d_ecs::Name::new("Bola")).id();
     let feito = upkeep(&mut m, sim.world_mut(), None, false);
     let sid = feito.nasceu.expect("a migração faz nascer o objecto");
-    let pai = sim.world().get::<ph2d_ecs::ChildOf>(bola).map(|c| c.parent());
+    let pai = sim
+        .world()
+        .get::<ph2d_ecs::ChildOf>(bola)
+        .map(|c| c.parent());
     assert_eq!(
-        pai.and_then(|p| sim.world().get::<StableId>(p)).map(|s| s.0),
+        pai.and_then(|p| sim.world().get::<StableId>(p))
+            .map(|s| s.0),
         Some(sid)
     );
     assert!(sim.world().get::<ph2d_ecs::MotionTemplate>(bola).is_some());
@@ -196,18 +208,46 @@ fn a_origem_leva_a_faixa_do_dono_e_nunca_duas_vezes() {
     m.doc.set_owner(sb, 2);
     m.pump.instances = vec![inst(1.0, 0.0), inst(5.0, 5.0)];
     m.pump.faixas = vec![
-        ph2d_eval_motion::FaixaDoSink { sink: sa, instancias: 0..1, vetores: 0..0 },
-        ph2d_eval_motion::FaixaDoSink { sink: sb, instancias: 1..2, vetores: 0..0 },
+        ph2d_eval_motion::FaixaDoSink {
+            sink: sa,
+            instancias: 0..1,
+            vetores: 0..0,
+        },
+        ph2d_eval_motion::FaixaDoSink {
+            sink: sb,
+            instancias: 1..2,
+            vetores: 0..0,
+        },
     ];
     m.pump.composicoes = 1;
     // A: rodado 90° e deslocado (10, 0). B: identidade.
     let rot = [0.0, 1.0, -1.0, 0.0, 10.0, 0.0];
-    m.objeto.donos.insert(1, Dono { entity: 0, visible: true, afim: rot, pose: ph2d_editor_core::TransformSnapshot::IDENTITY });
-    m.objeto.donos.insert(2, Dono { entity: 0, visible: true, afim: IDENTIDADE, pose: ph2d_editor_core::TransformSnapshot::IDENTITY });
+    m.objeto.donos.insert(
+        1,
+        Dono {
+            entity: 0,
+            visible: true,
+            afim: rot,
+            pose: ph2d_editor_core::TransformSnapshot::IDENTITY,
+        },
+    );
+    m.objeto.donos.insert(
+        2,
+        Dono {
+            entity: 0,
+            visible: true,
+            afim: IDENTIDADE,
+            pose: ph2d_editor_core::TransformSnapshot::IDENTITY,
+        },
+    );
     origem::aplica_cpu(&mut m);
     assert_eq!(m.pump.instances[0].world_pos, [10.0, 1.0]);
     assert_eq!(m.pump.instances[0].basis, [0.0, 1.0, -1.0, 0.0]);
-    assert_eq!(m.pump.instances[1].world_pos, [5.0, 5.0], "o outro dono não mexe");
+    assert_eq!(
+        m.pump.instances[1].world_pos,
+        [5.0, 5.0],
+        "o outro dono não mexe"
+    );
     // Mesmo quadro de novo (nada mudou): nada se reaplica.
     origem::aplica_cpu(&mut m);
     assert_eq!(m.pump.instances[0].world_pos, [10.0, 1.0]);

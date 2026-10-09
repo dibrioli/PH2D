@@ -43,7 +43,10 @@ fn model() -> PaletteModel {
 /// the `Enter` top-match both call this, so what is shown and what is added cannot disagree.
 #[test]
 fn item_matches_is_case_insensitive_substring_and_empty_matches_all() {
-    assert!(item_matches("", &item("anything")), "empty query matches all");
+    assert!(
+        item_matches("", &item("anything")),
+        "empty query matches all"
+    );
     assert!(item_matches("boi", &item("Boids")));
     assert!(item_matches("BOI", &item("Boids")), "case-insensitive");
     assert!(!item_matches("xyz", &item("Boids")));
@@ -58,10 +61,19 @@ fn every_query_word_is_found_in_the_label_or_the_intent_words() {
         ..item("Audio Source 2D")
     };
     assert!(item_matches("play sound", &fonte));
-    assert!(item_matches("sound PLAY", &fonte), "order and case do not matter");
+    assert!(
+        item_matches("sound PLAY", &fonte),
+        "order and case do not matter"
+    );
     assert!(item_matches("audio music", &fonte), "label and words mix");
-    assert!(!item_matches("play video", &fonte), "every word has to be found");
-    assert!(!item_matches("sound", &item("Audio Source 2D")), "no words: label only");
+    assert!(
+        !item_matches("play video", &fonte),
+        "every word has to be found"
+    );
+    assert!(
+        !item_matches("sound", &item("Audio Source 2D")),
+        "no words: label only"
+    );
 }
 
 /// ⭐ **O `Enter` prefere o NOME à intenção**: «grav» adiciona *Gravity* mesmo que um item anterior na
@@ -294,7 +306,11 @@ fn tall(n: usize, k: usize) -> PaletteModel {
 
 fn item_owned(label: String) -> PaletteItem {
     let id = hash_node_id(Box::leak(label.clone().into_boxed_str()));
-    PaletteItem { label, id, keywords: "" }
+    PaletteItem {
+        label,
+        id,
+        keywords: "",
+    }
 }
 
 const VP: ZRect = ZRect {

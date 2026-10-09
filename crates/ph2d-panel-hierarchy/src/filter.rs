@@ -65,7 +65,10 @@ pub(crate) fn rows(
     }
     let mut bits: Vec<(u8, u32)> = counts.into_iter().collect();
     bits.sort_by_key(|(bit, _)| (rank(*bit), *bit));
-    let mut out = vec![(None, ph2d_i18n::tr("panel.hierarchy.filter.all").to_string())];
+    let mut out = vec![(
+        None,
+        ph2d_i18n::tr("panel.hierarchy.filter.all").to_string(),
+    )];
     out.extend(bits.into_iter().map(|(bit, n)| {
         let label = ph2d_i18n::tr_with(
             "panel.hierarchy.filter.option",

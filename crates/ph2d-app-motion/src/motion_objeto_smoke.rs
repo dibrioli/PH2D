@@ -11,8 +11,8 @@
 //! Enxame seleccionado. `=2`: o Enxame em **Edit** — o editor de nós abre só com o grafo dele.
 
 use ph2d_core::Vec2;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_ecs::{ChildOf, MotionGenerator, Name, StableId, Transform};
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_render::Sprite;
 
@@ -83,11 +83,7 @@ pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
     }
     let world = cx.sim.world_mut();
     let pilha = world
-        .spawn((
-            Name::new("Pile"),
-            Transform::IDENTITY,
-            MotionGenerator,
-        ))
+        .spawn((Name::new("Pile"), Transform::IDENTITY, MotionGenerator))
         .id();
     let mut pose = Transform::from_translation(Vec2::new(4.0, 1.5));
     pose.rotation = 20f32.to_radians();
@@ -104,7 +100,11 @@ pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
     let sid = |e| world.get::<StableId>(e).map_or(0, |s| s.0);
     let (s_pilha, s_enxame) = (sid(pilha), sid(enxame_e));
     let antes: Vec<NodeId> = cx.motion.doc.graph.nodes().iter().map(|n| n.id).collect();
-    crate::motion_state::demo_router::build_level(Some("114"), &mut cx.motion.doc, &cx.motion.registry);
+    crate::motion_state::demo_router::build_level(
+        Some("114"),
+        &mut cx.motion.doc,
+        &cx.motion.registry,
+    );
     let novos: Vec<NodeId> = cx
         .motion
         .doc

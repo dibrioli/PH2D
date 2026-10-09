@@ -142,7 +142,10 @@ mod off_canvas_tests {
         assert!(draws_this_frame(sim.world(), bola, u32::MAX, [0.0, 0.0]));
         sim.world_mut().entity_mut(bola).insert(ChildOf(motion));
         ph2d_ecs::assign_motion_templates(sim.world_mut());
-        assert!(is_off_canvas(sim.world(), bola), "o molde desenhou-se sozinho");
+        assert!(
+            is_off_canvas(sim.world(), bola),
+            "o molde desenhou-se sozinho"
+        );
     }
 
     /// ⭐⭐ **O PISCAR da invencibilidade passa pela MESMA porta** (plano 28, W5) — com a marca

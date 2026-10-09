@@ -21,6 +21,9 @@ use crate::GpuCook;
 /// Uma afim `[a, b, c, d, tx, ty]` (colunas `(a, b)`, `(c, d)`; translação `(tx, ty)`).
 pub type Afim = [f32; 6];
 
+/// As faixas `(sink, cópias)` de um buffer.
+pub type Faixas<'a> = &'a [(NodeId, Range<u32>)];
+
 const WGSL: &str = r"
 struct Faixa {
     inicio: u32,
@@ -110,10 +113,26 @@ impl GpuCook {
             });
         let mut algum = false;
         if let Some(i) = self.instances.as_ref() {
-            algum |= aplica(gpu, passe, &mut encoder, &i.buffer, SPRITES, &i.faixas, afins);
+            algum |= aplica(
+                gpu,
+                passe,
+                &mut encoder,
+                &i.buffer,
+                SPRITES,
+                &i.faixas,
+                afins,
+            );
         }
         if let Some(f) = self.formas.as_ref() {
-            algum |= aplica(gpu, passe, &mut encoder, &f.buffer, FORMAS, &f.faixas, afins);
+            algum |= aplica(
+                gpu,
+                passe,
+                &mut encoder,
+                &f.buffer,
+                FORMAS,
+                &f.faixas,
+                afins,
+            );
         }
         if algum {
             gpu.queue.submit(Some(encoder.finish()));
@@ -122,7 +141,7 @@ impl GpuCook {
 
     /// As faixas `(sink, cópias)` do último cozido no buffer das sprites e no das formas.
     #[must_use]
-    pub fn faixas_dos_sinks(&self) -> (&[(NodeId, Range<u32>)], &[(NodeId, Range<u32>)]) {
+    pub fn faixas_dos_sinks(&self) -> (Faixas<'_>, Faixas<'_>) {
         (
             self.instances.as_ref().map_or(&[][..], |i| &i.faixas),
             self.formas.as_ref().map_or(&[][..], |f| &f.faixas),
@@ -152,7 +171,10 @@ fn aplica(
         for (k, w) in [r.start, r.end, d.passo, d.base].iter().enumerate() {
             u[k * 4..k * 4 + 4].copy_from_slice(&w.to_le_bytes());
         }
-        for (k, v) in [a[0], a[1], a[2], a[3], a[4], a[5], 0.0, 0.0].iter().enumerate() {
+        for (k, v) in [a[0], a[1], a[2], a[3], a[4], a[5], 0.0, 0.0]
+            .iter()
+            .enumerate()
+        {
             u[16 + k * 4..16 + k * 4 + 4].copy_from_slice(&v.to_le_bytes());
         }
         let uniform = gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -197,7 +219,10 @@ mod tests {
     use ph2d_render::RenderInstance;
 
     fn ponto(a: &Afim, p: [f32; 2]) -> [f32; 2] {
-        [a[0] * p[0] + a[2] * p[1] + a[4], a[1] * p[0] + a[3] * p[1] + a[5]]
+        [
+            a[0] * p[0] + a[2] * p[1] + a[4],
+            a[1] * p[0] + a[3] * p[1] + a[5],
+        ]
     }
 
     fn base(a: &Afim, b: [f32; 4]) -> [f32; 4] {
@@ -286,7 +311,11 @@ mod tests {
                 lida.world_pos
             );
             for c in 0..4 {
-                assert!(quase(lida.basis[c], b[c]), "{k}: base {:?} ≠ {b:?}", lida.basis);
+                assert!(
+                    quase(lida.basis[c], b[c]),
+                    "{k}: base {:?} ≠ {b:?}",
+                    lida.basis
+                );
             }
             assert_eq!(lida.size, orig.size);
             assert_eq!(lida.tint, orig.tint);
@@ -296,7 +325,10 @@ mod tests {
             let o = k * FORMAS.passo as usize;
             let p = ponto(&a, [formas[o], formas[o + 1]]);
             let lido = [f32::from_bits(palavras[o]), f32::from_bits(palavras[o + 1])];
-            assert!(quase(lido[0], p[0]) && quase(lido[1], p[1]), "forma {k}: {lido:?}");
+            assert!(
+                quase(lido[0], p[0]) && quase(lido[1], p[1]),
+                "forma {k}: {lido:?}"
+            );
             let b = base(&a, [1.0, 0.0, 0.0, 1.0]);
             assert!(quase(f32::from_bits(palavras[o + 4]), b[0]));
             assert!(quase(f32::from_bits(palavras[o + 7]), b[3]));

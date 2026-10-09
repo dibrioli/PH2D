@@ -82,8 +82,7 @@ impl crate::App {
         // moravam na `fase_selection_highlight`, que corre ANTES desta — o gizmo ficava ATRÁS dos
         // quadrados que ele manipula. Medido no quadro emendado (`arte em 623773, gizmo em 484970`),
         // e é o mesmo defeito que o report de 08/09 do gizmo de warp já tinha dado.
-        // ⭐ Os gizmos do Motion desenham no espaço do objecto Motion em edição (doc
-        // ObjectsAndComponents 01 §13): a câmara da cena com a matriz de modelo dele.
+        // ⭐ Os gizmos do Motion no espaço do objecto em edição (doc ObjectsAndComponents 01 §13).
         let camera_motion = ph2d_app_motion::motion_objeto::camera_do_dono(camera, motion);
         if let Some(v) = ph2d_app_motion::warp_gizmo::view() {
             let port = ph2d_app_motion::warp_gizmo::param_port(motion, v.node);

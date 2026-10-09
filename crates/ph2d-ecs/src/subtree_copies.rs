@@ -88,7 +88,10 @@ mod tests {
     fn each_reader_reads_each_copy_once() {
         let mut world = World::new();
         announce(&mut world, &[(1, 2), (3, 4)]);
-        assert_eq!(take_copies(&mut world, CopyReader::Timeline), vec![(1, 2), (3, 4)]);
+        assert_eq!(
+            take_copies(&mut world, CopyReader::Timeline),
+            vec![(1, 2), (3, 4)]
+        );
         assert!(take_copies(&mut world, CopyReader::Timeline).is_empty());
         announce(&mut world, &[(5, 6)]);
         assert_eq!(
@@ -96,6 +99,9 @@ mod tests {
             vec![(1, 2), (3, 4), (5, 6)]
         );
         assert_eq!(take_copies(&mut world, CopyReader::Timeline), vec![(5, 6)]);
-        assert!(world.resource::<SubtreeCopies>().0.is_empty(), "lido por todos, sai");
+        assert!(
+            world.resource::<SubtreeCopies>().0.is_empty(),
+            "lido por todos, sai"
+        );
     }
 }

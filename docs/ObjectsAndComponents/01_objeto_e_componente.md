@@ -280,3 +280,15 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | origem | a posição/rotação/escala do objecto é a origem do que os sinks dele geram: um passe afim por faixa de sink, fora do cozido (CPU e placa), num buffer de desenho próprio (o cozido memoizado nunca é transformado duas vezes); identidade = caminho de hoje, byte a byte | `motion_objeto`, `ph2d-gpu-cook` |
 | espaço | o grafo pensa no espaço do OBJECTO (o *layer space* do Cavalry/AE); o que vem do mundo (cursor, colisores) chega em coordenadas de mundo — com o objecto na origem as duas coincidem | — |
 | molde | filho de um objecto Motion não se desenha sozinho (`off_canvas`), mas continua publicado ao cozido; vira filho no momento da ligação (migração, ou o nó passa a nomeá-lo) — arrastá-lo para fora é escolha do artista e é respeitada | `ph2d-entity-visibility`, `motion_objeto` |
+
+**Onda 3 entregue (08/10)** — handoff: [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda3_2026-10-08.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda3_2026-10-08.md).
+
+| plano | o que ficou | porquê (medido) |
+|---|---|---|
+| §7.3 sinónimos «cair/pular/tocar som» | palavras de INTENÇÃO em inglês por componente (tabela `component_keywords`, 59); o `Enter` prefere nome > palavra inteira > fragmento | só inglês (escolha F6.1); «jump» achava o *Nav Link* («jump link») antes do *Physics Body* pela ordem de exibição |
+| §7.3 «pular ⇒ Jogador plataforma» | «jump» ⇒ *Physics Body* | o *Platform Player* não é oferecido pelo `+`: chega com o corpo Dynamic (catálogo, intrínseco) |
+| §7.5 «só o que tem Vida» | ▾ ao lado da busca com os componentes PRESENTES e a contagem; soma-se à busca e guarda os pais | o ícone da linha só sabia a FAMÍLIA ⇒ `ComponentSet` (u128) por linha, sondado uma vez por archetype |
+| §5 «formas que publica como filhos» | os MOLDES (o que um `source.object` copia) são filhos; as cópias não são linhas | o resultado é um fluxo de instâncias (ADR-0035), milhares por quadro |
+| — | `SubtreeCopies` com um LEITOR por consumidor | drenar por um só deixava o Motion sem as cópias que a Timeline já tinha lido |
+| «a posição do objecto é a origem» | afim por faixa de sink depois do cozido — CPU sobre a cópia local, placa por passe de cálculo; gizmos pela `Camera2d.model`; o campo pelo `parent_world` do gizmo genérico | ~25 sítios sem ponto comum; recozinhar o tick avança a simulação (CPU), a placa reescreve tudo a cada quadro |
+| — | as formas do Motion (passe vectorial) desenham sem a ferramenta | a foto do smoke apanhou-as presas ao `motion_tool_active` em `fase_hero_scene` |

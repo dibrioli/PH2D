@@ -104,11 +104,8 @@ impl crate::App {
             self.fase_vector_fx_recook(vec_view, vec_xf, cam_affine, vec_live)?;
         // ⭐ As formas do Motion desenham com a ferramenta OU com um objecto Motion visível (doc
         // ObjectsAndComponents 01 §13) — a mesma lei do passe de sprites.
-        let motion_draws = motion_tool_active
-            || self
-                .gfx
-                .as_ref()
-                .is_some_and(|g| g.motion.objeto.desenha());
+        let motion_draws =
+            motion_tool_active || self.gfx.as_ref().is_some_and(|g| g.motion.objeto.desenha());
         let (vec_view, vec_xf, cam_affine) = self.fase_vector_bands(
             motion_draws,
             vec_view,

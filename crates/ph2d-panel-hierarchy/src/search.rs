@@ -143,7 +143,8 @@ mod tests {
     #[test]
     fn no_match_hides_everything() {
         let (order, depths, map) = build_tree();
-        let (display, direct) = compute_match_filter(&order, &depths, &map, "zzz_does_not_exist", None);
+        let (display, direct) =
+            compute_match_filter(&order, &depths, &map, "zzz_does_not_exist", None);
         assert!(display.iter().all(|&b| !b));
         assert!(direct.iter().all(|&b| !b));
     }

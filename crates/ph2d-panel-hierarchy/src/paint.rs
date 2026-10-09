@@ -78,8 +78,7 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
             theme,
             hit_index,
             store,
-            rename_target,
-            (&entities_by_id, filter),
+            (rename_target, &entities_by_id, filter),
         )
     };
     let content_h = state::last_hierarchy_content_h();
@@ -293,8 +292,8 @@ fn paint_hierarchy_body(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    rename_target: Option<ph2d_a11y::NodeId>,
-    (entities_by_id, filter): (
+    (rename_target, entities_by_id, filter): (
+        Option<ph2d_a11y::NodeId>,
         &std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>,
         Option<u8>,
     ),
@@ -352,7 +351,7 @@ fn paint_hierarchy_body(
     //    filho?»*. O modelo dá `MAX(3 · increased_margin, 12)` = 12.
     let indent_px: f32 = ph2d_tokens::list_indent_px();
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
-    let depths = row_depths(&order, &entities_by_id, store);
+    let depths = row_depths(&order, entities_by_id, store);
     let query = search_text.trim().to_lowercase();
     let search_active = !query.is_empty() || filter.is_some();
     let (display_mask, direct_match_mask): (Vec<bool>, Vec<bool>) = if search_active {

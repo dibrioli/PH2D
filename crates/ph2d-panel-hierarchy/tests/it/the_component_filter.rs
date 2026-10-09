@@ -126,7 +126,11 @@ fn escolher_health_mostra_so_quem_tem_vida_e_os_pais_deles() {
     abre(&mut host, &mut state);
     click(&mut host, &mut state, hier_filter_opt(0));
     assert_eq!(state.component_filter, None);
-    assert_eq!(pintadas(&mut host, &mut state), ORDEM, "«All» devolve todos");
+    assert_eq!(
+        pintadas(&mut host, &mut state),
+        ORDEM,
+        "«All» devolve todos"
+    );
 }
 
 #[test]

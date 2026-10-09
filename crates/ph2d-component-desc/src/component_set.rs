@@ -77,7 +77,10 @@ mod tests {
             s.insert(bit);
             assert!(s.contains(bit));
             assert_eq!(s.iter().collect::<Vec<_>>(), vec![bit]);
-            assert_eq!(ComponentSet::desc_of(bit).map(|x| x.canonical_name), Some(d.canonical_name));
+            assert_eq!(
+                ComponentSet::desc_of(bit).map(|x| x.canonical_name),
+                Some(d.canonical_name)
+            );
         }
         assert!(ComponentSet::desc_of(ComponentSet::ANIMATION).is_none());
     }

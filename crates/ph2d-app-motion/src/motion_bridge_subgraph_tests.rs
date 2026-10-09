@@ -440,3 +440,57 @@ fn moving_a_card_carries_everything_inside_it() {
         }
     );
 }
+
+/// ⭐ **O nó criado pelo editor nasce do objecto Motion em EDIÇÃO** (doc ObjectsAndComponents 01 §13)
+/// — no funil único, no mesmo passo do undo. (Mutação: `adopt_new` sem o dono ⇒ RED.)
+#[test]
+fn a_node_added_in_the_editor_belongs_to_the_object_being_edited() {
+    let mut m = flat();
+    m.objeto.editing = Some(5);
+    let before: Vec<NodeId> = m.doc.graph.nodes().iter().map(|n| n.id).collect();
+    push_intent(GraphIntent::AddNode {
+        type_name: "motion.grid",
+        x: 0.0,
+        y: 0.0,
+    });
+    apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
+    );
+    let fresh = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .map(|n| n.id)
+        .find(|id| !before.contains(id))
+        .expect("the node was added");
+    assert_eq!(m.doc.owner_of(fresh), Some(5));
+}
+
+/// ⭐ **O editor de nós mostra só o grafo do objecto em edição** — os nós do outro objecto Motion
+/// ficam fora da vista. (Mutação: `so_do_dono` não filtrar ⇒ RED.)
+#[test]
+fn the_editor_shows_only_the_graph_of_the_object_being_edited() {
+    let mut m = flat();
+    let ids: Vec<NodeId> = m.doc.graph.nodes().iter().map(|n| n.id).collect();
+    let (meus, outros) = ids.split_at(ids.len() / 2);
+    for n in meus {
+        m.doc.set_owner(*n, 9);
+    }
+    for n in outros {
+        m.doc.set_owner(*n, 4);
+    }
+    m.objeto.editing = Some(9);
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    fold::fold(&m, &mut snap);
+    assert!(!snap.nodes.is_empty());
+    assert!(snap.nodes.iter().all(|n| meus.contains(&NodeId(n.id))));
+    assert!(
+        snap.edges
+            .iter()
+            .all(|e| meus.contains(&NodeId(e.from_node)) && meus.contains(&NodeId(e.to_node)))
+    );
+}

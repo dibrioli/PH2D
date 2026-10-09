@@ -11,9 +11,7 @@
 
 use ph2d_app_motion::field_gizmo::*;
 use ph2d_editor_core::screens::layout::CenterSplit;
-use ph2d_editor_core::{
-    GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget,
-};
+use ph2d_editor_core::{GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget};
 use ph2d_host::WindowSize;
 
 /// **A JANELA DA CENA deste quadro** — o atalho que põe um consumidor na porta sem ele ter

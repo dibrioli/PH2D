@@ -32,7 +32,8 @@ pub struct MotionTemplate;
 pub fn assign_motion_templates(world: &mut bevy_ecs::world::World) -> bool {
     use std::collections::BTreeSet;
     let roots: Vec<bevy_ecs::entity::Entity> = {
-        let mut q = world.query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<MotionGenerator>>();
+        let mut q = world
+            .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<MotionGenerator>>();
         q.iter(world).collect()
     };
     let mut want: BTreeSet<bevy_ecs::entity::Entity> = BTreeSet::new();
@@ -50,7 +51,8 @@ pub fn assign_motion_templates(world: &mut bevy_ecs::world::World) -> bool {
         }
     }
     let have: BTreeSet<bevy_ecs::entity::Entity> = {
-        let mut q = world.query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<MotionTemplate>>();
+        let mut q = world
+            .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<MotionTemplate>>();
         q.iter(world).collect()
     };
     let mut touched = false;
@@ -85,14 +87,20 @@ mod tests {
         let neto = w.spawn(ChildOf(bola)).id();
         let solto = w.spawn_empty().id();
         assert!(assign_motion_templates(&mut w));
-        assert!(w.get::<MotionTemplate>(motion).is_none(), "a raiz não é molde");
+        assert!(
+            w.get::<MotionTemplate>(motion).is_none(),
+            "a raiz não é molde"
+        );
         assert!(w.get::<MotionTemplate>(bola).is_some());
         assert!(w.get::<MotionTemplate>(neto).is_some());
         assert!(w.get::<MotionTemplate>(solto).is_none());
         assert!(!assign_motion_templates(&mut w), "estável: nada a mexer");
         w.entity_mut(bola).remove::<ChildOf>();
         assert!(assign_motion_templates(&mut w));
-        assert!(w.get::<MotionTemplate>(bola).is_none(), "arrastado para fora, desenha-se");
+        assert!(
+            w.get::<MotionTemplate>(bola).is_none(),
+            "arrastado para fora, desenha-se"
+        );
         assert!(w.get::<MotionTemplate>(neto).is_none());
     }
 }

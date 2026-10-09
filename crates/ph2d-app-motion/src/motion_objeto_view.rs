@@ -35,9 +35,8 @@ pub fn so_do_dono(motion: &MotionState, snap: &mut GraphViewSnapshot) {
         return;
     };
     snap.nodes.retain(|n| mostra_no(motion, NodeId(n.id)));
-    snap.edges.retain(|e| {
-        mostra_no(motion, NodeId(e.from_node)) && mostra_no(motion, NodeId(e.to_node))
-    });
+    snap.edges
+        .retain(|e| mostra_no(motion, NodeId(e.from_node)) && mostra_no(motion, NodeId(e.to_node)));
     snap.backdrops.retain(|b| {
         motion
             .doc

@@ -22,18 +22,18 @@ use ph2d_ecs::{Entity, MotionGenerator, StableId, World};
 
 use crate::motion_state::MotionState;
 
-/// ⭐ A origem: a afim do dono aplicada ao que os sinks dele geram.
-#[path = "motion_objeto_origem.rs"]
-pub mod origem;
-/// ⭐ Add ▸ Motion.
-#[path = "motion_object_add.rs"]
-pub mod object_add;
-/// `PH2D_MOTION_OBJETO_SMOKE=1|2` — a cena do smoke do dono.
-#[path = "motion_objeto_smoke.rs"]
-pub mod smoke;
 /// ⭐ Motion ▸ Edit — a família de modos.
 #[path = "motion_objeto_modo.rs"]
 pub mod modo;
+/// ⭐ Add ▸ Motion.
+#[path = "motion_object_add.rs"]
+pub mod object_add;
+/// ⭐ A origem: a afim do dono aplicada ao que os sinks dele geram.
+#[path = "motion_objeto_origem.rs"]
+pub mod origem;
+/// `PH2D_MOTION_OBJETO_SMOKE=1|2` — a cena do smoke do dono.
+#[path = "motion_objeto_smoke.rs"]
+pub mod smoke;
 /// ⭐ O editor de nós mostra o grafo do objecto em edição.
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_objeto_view.rs"]
@@ -267,7 +267,10 @@ pub fn afim_em_edicao(motion: &MotionState) -> Afim {
 /// ⭐ A câmara da cena vista do espaço do objecto Motion em edição — a dos gizmos do Motion (warp,
 /// pivô, colisor, pontos): o que eles desenham em coordenadas do grafo cai onde o objecto o pôs.
 #[must_use]
-pub fn camera_do_dono(camera: &ph2d_render::Camera2d, motion: &MotionState) -> ph2d_render::Camera2d {
+pub fn camera_do_dono(
+    camera: &ph2d_render::Camera2d,
+    motion: &MotionState,
+) -> ph2d_render::Camera2d {
     camera.with_model(afim_em_edicao(motion))
 }
 
@@ -290,7 +293,10 @@ fn copias(motion: &mut MotionState, world: &mut World, feito: &mut Manutencao) {
     let sid_de = |bits: u64| -> Option<u64> {
         let e = Entity::try_from_bits(bits)?;
         world.get::<MotionGenerator>(e)?;
-        world.get::<StableId>(e).filter(|s| !s.is_none()).map(|s| s.0)
+        world
+            .get::<StableId>(e)
+            .filter(|s| !s.is_none())
+            .map(|s| s.0)
     };
     let pares: Vec<(u64, u64)> = pares
         .into_iter()
@@ -421,7 +427,10 @@ pub fn motion_na_cadeia(world: &World, bits: u64) -> Option<u64> {
     let mut passos = 0;
     while let Some(e) = cur {
         if world.get::<MotionGenerator>(e).is_some() {
-            return world.get::<StableId>(e).filter(|s| !s.is_none()).map(|s| s.0);
+            return world
+                .get::<StableId>(e)
+                .filter(|s| !s.is_none())
+                .map(|s| s.0);
         }
         passos += 1;
         if passos > 256 {
@@ -433,7 +442,10 @@ pub fn motion_na_cadeia(world: &World, bits: u64) -> Option<u64> {
 }
 
 /// ⭐ **Os sinks que cozinham**: os de todos os objectos visíveis (o olho esconde os do dono).
-pub fn sinks_visiveis(motion: &MotionState, sinks: Vec<ph2d_nodegraph::graph::NodeId>) -> Vec<ph2d_nodegraph::graph::NodeId> {
+pub fn sinks_visiveis(
+    motion: &MotionState,
+    sinks: Vec<ph2d_nodegraph::graph::NodeId>,
+) -> Vec<ph2d_nodegraph::graph::NodeId> {
     sinks
         .into_iter()
         .filter(|s| !motion.objeto.escondido(motion.doc.owner_of(*s)))

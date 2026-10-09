@@ -78,13 +78,18 @@ pub(crate) fn validate(
     backdrop_owners: &BTreeMap<u32, u64>,
 ) -> Result<(), ParseError> {
     if let Some(n) = owners.keys().find(|n| graph.node(**n).is_none()) {
-        return Err(ParseError::BadLine(format!("o {} — node does not exist", n.0)));
+        return Err(ParseError::BadLine(format!(
+            "o {} — node does not exist",
+            n.0
+        )));
     }
     if let Some(b) = backdrop_owners
         .keys()
         .find(|b| !backdrops.iter().any(|x| x.id == **b))
     {
-        return Err(ParseError::BadLine(format!("ob {b} — backdrop does not exist")));
+        return Err(ParseError::BadLine(format!(
+            "ob {b} — backdrop does not exist"
+        )));
     }
     Ok(())
 }
@@ -203,7 +208,11 @@ impl MotionDoc {
                 continue;
             };
             let twin = self.graph.add_node(inst.type_name.clone());
-            let params = self.graph.node_param_overrides(n).cloned().unwrap_or_default();
+            let params = self
+                .graph
+                .node_param_overrides(n)
+                .cloned()
+                .unwrap_or_default();
             for (k, v) in params {
                 self.graph.set_param(twin, k, v);
             }
@@ -259,8 +268,7 @@ impl MotionDoc {
             .subgraphs
             .iter()
             .filter(|s| {
-                let deep =
-                    crate::subgraph::member_nodes_deep(&self.subgraphs, &self.members, s.id);
+                let deep = crate::subgraph::member_nodes_deep(&self.subgraphs, &self.members, s.id);
                 !deep.is_empty() && deep.iter().all(|n| self.owner_of(*n) == Some(from))
             })
             .cloned()
@@ -280,7 +288,8 @@ impl MotionDoc {
         }
         for (orig, twin) in map {
             if let Some(sid) = self.members.get(orig).copied() {
-                self.members.insert(*twin, sub_map.get(&sid).copied().unwrap_or(sid));
+                self.members
+                    .insert(*twin, sub_map.get(&sid).copied().unwrap_or(sid));
             }
         }
         let mine: Vec<Backdrop> = self
@@ -290,7 +299,12 @@ impl MotionDoc {
             .cloned()
             .collect();
         for b in mine {
-            let id = self.backdrops.iter().map(|x| x.id).max().map_or(0, |m| m + 1);
+            let id = self
+                .backdrops
+                .iter()
+                .map(|x| x.id)
+                .max()
+                .map_or(0, |m| m + 1);
             if let Some(sid) = self.backdrop_members.get(&b.id).copied() {
                 self.backdrop_members
                     .insert(id, sub_map.get(&sid).copied().unwrap_or(sid));

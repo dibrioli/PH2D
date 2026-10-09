@@ -124,7 +124,11 @@ fn copiar_um_dono_da_a_copia_um_grafo_proprio() {
     let b = doc.graph.add_node("motion.output");
     doc.graph.set_param(a, "rows", 7.0);
     doc.graph
-        .connect(Edge { from: (a, 0), to: (b, 0), delayed: false })
+        .connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
         .unwrap();
     doc.set_owner(fora, 9);
     doc.set_owner(a, 1);
@@ -135,10 +139,17 @@ fn copiar_um_dono_da_a_copia_um_grafo_proprio() {
     assert_eq!(doc.nodes_of(2), vec![a2, b2]);
     assert_eq!(doc.nodes_of(1), vec![a, b], "o original fica");
     assert_eq!(
-        doc.graph.node_param_overrides(a2).and_then(|p| p.get("rows")),
+        doc.graph
+            .node_param_overrides(a2)
+            .and_then(|p| p.get("rows")),
         Some(&7.0)
     );
-    assert!(doc.graph.edges().iter().any(|e| e.from.0 == a2 && e.to.0 == b2));
+    assert!(
+        doc.graph
+            .edges()
+            .iter()
+            .any(|e| e.from.0 == a2 && e.to.0 == b2)
+    );
     assert!(MotionDoc::from_text(&doc.to_text()).is_ok());
 }
 

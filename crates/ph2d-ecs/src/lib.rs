@@ -62,8 +62,6 @@ pub mod emissive;
 /// como componente (o idioma delas é `instantiate()` em código).
 pub mod factory;
 pub mod flip_object_ref;
-/// ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5).
-pub mod motion_generator;
 /// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
 pub mod instantiate;
@@ -72,6 +70,8 @@ pub mod instantiate;
 pub mod lifetime;
 pub mod masking;
 pub mod master;
+/// ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5).
+pub mod motion_generator;
 pub mod name;
 /// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
 pub mod named_anchor;
@@ -173,8 +173,8 @@ pub use factory::{
     reconcile_factories, tick_factories,
 };
 pub use flip_object_ref::FlipObjectRef;
-pub use motion_generator::{MotionGenerator, MotionTemplate, assign_motion_templates};
 pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
+pub use motion_generator::{MotionGenerator, MotionTemplate, assign_motion_templates};
 mod subtree_copies;
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,

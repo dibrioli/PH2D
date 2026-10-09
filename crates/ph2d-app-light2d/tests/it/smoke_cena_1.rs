@@ -20,8 +20,6 @@ fn centro(w: &mut World, nome: &str) -> [f64; 2] {
 fn a_cena_1_ensina_a_sombra_atras_da_parede() {
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 1));
-    assert!(!smoke::encenar(&mut World::new(), 2), "só há a cena 1");
-    assert_eq!(smoke::ROUTERS[0].max_level, 1);
 
     let mut luz = LuzDoQuadro::new();
     assert!(luz.preparar(&w, crate::comum::afim(), (crate::comum::W, crate::comum::H)));

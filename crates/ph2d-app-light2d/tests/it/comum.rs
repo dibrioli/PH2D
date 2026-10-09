@@ -254,3 +254,40 @@ pub fn fluencia_lida(gpu: &GpuContext, s: &ph2d_light2d_gpu::Solver) -> Vec<[f32
         })
         .collect()
 }
+
+/// A fração VISÍVEL do disco (`centro`, `raio`) vista de `p`, com a parede abaixo da reta `p → canto`
+/// (a geometria, sem traçar raio nenhum): no plano a fluência de um disco uniforme é a radiância
+/// vezes o ÂNGULO que ele subtende, logo a fração é a do ângulo.
+pub fn visivel(p: [f64; 2], centro: [f64; 2], raio: f64, canto: [f64; 2]) -> f64 {
+    let d = [centro[0] - p[0], centro[1] - p[1]];
+    let fc = d[1].atan2(d[0]);
+    let alfa = (raio / d[0].hypot(d[1])).asin();
+    let f_canto = (canto[1] - p[1]).atan2(canto[0] - p[0]);
+    ((f_canto - (fc - alfa)) / (2.0 * alfa)).clamp(0.0, 1.0)
+}
+
+/// A largura entre 10 % e 90 % de uma curva crescente amostrada em `ys`.
+pub fn largura_10_90(ys: &[f64], f: &[f64]) -> Option<f64> {
+    let cruza = |nivel: f64| {
+        let i = f.windows(2).position(|w| w[0] < nivel && w[1] >= nivel)?;
+        let t = (nivel - f[i]) / (f[i + 1] - f[i]);
+        Some(ys[i] + t * (ys[i + 1] - ys[i]))
+    };
+    Some((cruza(0.9)? - cruza(0.1)?).abs())
+}
+
+/// A luz recebida em `p` pela CPU sobre a fluência lida da placa (a conta do `receber.wgsl`).
+pub fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2]) -> f64 {
+    let tx = (p[0] - g.origem_m[0]) / g.texel_m - 0.5;
+    let ty = (p[1] - g.origem_m[1]) / g.texel_m - 0.5;
+    let (i0, j0) = (tx.floor(), ty.floor());
+    let (fx, fy) = (tx - i0, ty - j0);
+    let em = |i: f64, j: f64| {
+        let i = (i.max(0.0) as u32).min(g.largura - 1);
+        let j = (j.max(0.0) as u32).min(g.altura - 1);
+        f64::from(f[(j * g.largura + i) as usize][1])
+    };
+    let a = em(i0, j0) * (1.0 - fx) + em(i0 + 1.0, j0) * fx;
+    let b = em(i0, j0 + 1.0) * (1.0 - fx) + em(i0 + 1.0, j0 + 1.0) * fx;
+    a * (1.0 - fy) + b * fy
+}

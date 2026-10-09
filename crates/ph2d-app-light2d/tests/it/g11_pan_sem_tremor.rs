@@ -11,10 +11,11 @@ use ph2d_ecs::{GlobalTransform, Transform};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_light2d_ecs::{BloqueiaLuz, Luz, TipoDeLuz};
-use ph2d_light2d_gpu::{Config, Grade, Solver};
+use ph2d_light2d_gpu::{Config, Solver};
 use ph2d_render::{Camera2d, Sprite};
 use vello::kurbo::Affine;
 
+use crate::comum::amostra as amostrar;
 use crate::comum::{gpu, ler};
 
 const ALVO: (u32, u32) = (256, 128);
@@ -68,22 +69,6 @@ fn pontos() -> Vec<[f64; 2]> {
     (0..24)
         .map(|k| [0.2 + 0.03 * f64::from(k % 6), -0.6 + 0.05 * f64::from(k)])
         .collect()
-}
-
-/// A luz recebida em `p` pela CPU sobre a fluência lida da placa (a conta do `receber.wgsl`).
-fn amostrar(f: &[[f32; 3]], g: Grade, p: [f64; 2]) -> f64 {
-    let tx = (p[0] - g.origem_m[0]) / g.texel_m - 0.5;
-    let ty = (p[1] - g.origem_m[1]) / g.texel_m - 0.5;
-    let (i0, j0) = (tx.floor(), ty.floor());
-    let (fx, fy) = (tx - i0, ty - j0);
-    let em = |i: f64, j: f64| {
-        let i = (i.max(0.0) as u32).min(g.largura - 1);
-        let j = (j.max(0.0) as u32).min(g.altura - 1);
-        f64::from(f[(j * g.largura + i) as usize][1])
-    };
-    let a = em(i0, j0) * (1.0 - fx) + em(i0 + 1.0, j0) * fx;
-    let b = em(i0, j0 + 1.0) * (1.0 - fx) + em(i0 + 1.0, j0 + 1.0) * fx;
-    a * (1.0 - fy) + b * fy
 }
 
 fn ler_fluencia(gpu: &GpuContext, s: &Solver) -> Vec<[f32; 3]> {

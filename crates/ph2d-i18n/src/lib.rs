@@ -331,6 +331,10 @@ fn tr_ingles(key: &str) -> &'static str {
         // o selo de TIPO de uma linha sem selo próprio — palavra gritada que a 1.ª régua não via
         "panel.hierarchy.badge.entity" => "ENT",
         "panel.hierarchy.search" => "Search\u{2026}",
+        // O filtro ▾ por componente (doc ObjectsAndComponents 01 §13, F6).
+        "panel.hierarchy.filter.all" => "All",
+        "panel.hierarchy.filter.option" => "{name} \u{00b7} {count}",
+        "panel.hierarchy.filter.animation" => "Animation",
         "panel.hierarchy.count.entities" => "{entities} entities",
         "panel.hierarchy.count.entities_components" => {
             "{entities} entities \u{00b7} {components} components"

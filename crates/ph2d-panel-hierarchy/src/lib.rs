@@ -19,6 +19,7 @@
 
 mod event;
 mod event_rows;
+mod filter;
 pub mod ids;
 mod paint;
 mod populate;

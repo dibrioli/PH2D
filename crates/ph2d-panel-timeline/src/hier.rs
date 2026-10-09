@@ -3,10 +3,11 @@
 //! editam na Timeline. A Timeline declara; a shell só passa o documento (a lei do §8 F3: «a
 //! família declara, a shell não escreve a lista»).
 
-use ph2d_component_desc::ComponentCategory;
+use ph2d_component_desc::{ComponentCategory, ComponentSet};
 use ph2d_editor_core::hier_rows::{ContentGroup, ContentItem, ContentOpens, row_categories};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::screens::hero::PANEL_TIMELINE;
+use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
 use ph2d_timeline::{SCENE, TimelineState};
 
 /// O grupo *Clips (n)* da animação de `owner` ([`SCENE`] = a da Cena), ou `None` sem clips. A
@@ -35,23 +36,20 @@ pub fn clips_content(timeline: &TimelineState, owner: u64) -> Option<ContentGrou
 
 /// **Declara a Animação na linha de `bits`**: o ícone da família e o grupo de clips — nada, se o
 /// objecto não tem Animação.
-pub fn declare_in_row(
-    timeline: &TimelineState,
-    bits: u64,
-    components: &mut Vec<ComponentCategory>,
-    content: &mut Vec<ContentGroup>,
-) {
+pub fn declare_in_row(timeline: &TimelineState, bits: u64, entry: &mut HierarchyEntity) {
     if bits == SCENE {
         return;
     }
     let Some(group) = clips_content(timeline, bits) else {
         return;
     };
-    *components = row_categories(
-        components
+    entry.components = row_categories(
+        entry
+            .components
             .iter()
             .copied()
             .chain([ComponentCategory::Animation]),
     );
-    content.push(group);
+    entry.content.push(group);
+    entry.has.insert(ComponentSet::ANIMATION);
 }

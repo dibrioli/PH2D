@@ -57,6 +57,7 @@ fn heroi() -> HierarchyEntity {
                 },
             ],
         }],
+        has: Default::default(),
     }
 }
 

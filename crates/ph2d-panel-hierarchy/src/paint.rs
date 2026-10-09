@@ -67,7 +67,9 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
         .set_panel_rect(ids::HIER_PANEL, ctx.slot);
     let theme = ctx.host.theme();
     let rename_target = state.rename_target_row;
-    let (row_set, area) = {
+    let filter = state.component_filter;
+    let entities_by_id = entries_now();
+    let (row_set, area, chip) = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_hierarchy_body(
             ctx.slot,
@@ -77,11 +79,37 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
             hit_index,
             store,
             rename_target,
+            (&entities_by_id, filter),
         )
     };
     let content_h = state::last_hierarchy_content_h();
     ctx.host.store_mut().set_hierarchy_row_ids(row_set);
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
+    if crate::filter::is_open(ctx.host.store()) {
+        let panel = crate::filter::paint_popover(
+            &entities_by_id,
+            filter,
+            chip,
+            ctx.viewport,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            ctx.host.hit_index_mut(),
+        );
+        ctx.host
+            .store_mut()
+            .set_dropdown_popover(crate::ids::HIER_FILTER_DD, panel);
+    }
+}
+
+/// As linhas que o painel mostra: as do mundo, ou a fixtura sem mundo.
+fn entries_now() -> std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> {
+    current_live_entries().unwrap_or_else(|| {
+        fixture::hierarchy()
+            .into_iter()
+            .filter_map(|e| crate::ids::hierarchy_id(&e.name).map(|id| (id, e)))
+            .collect()
+    })
 }
 
 /// ⭐ **AS LINHAS DE PARENTESCO** — as guias no estilo do Godot que ligam um pai aos filhos.
@@ -266,17 +294,29 @@ fn paint_hierarchy_body(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     rename_target: Option<ph2d_a11y::NodeId>,
+    (entities_by_id, filter): (
+        &std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>,
+        Option<u8>,
+    ),
 ) -> (
     std::collections::BTreeSet<ph2d_a11y::NodeId>,
     widget::scroll_area::ScrollArea,
+    Rect,
 ) {
     paint_panel_surface(rect, scene, theme);
     // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA.
     // Saíram **em par** com o `InteractiveState::BlenderHit` do `pre_populate.rs` — ver o irmão
     // em `ph2d-panel-inspector/src/paint_body.rs`.
 
-    let (body_pad, search_rect, search_text) =
-        head::paint_hierarchy_head(rect, scene, text_system, theme, hit_index, store);
+    let (body_pad, search_rect, search_text, chip) = head::paint_hierarchy_head(
+        rect,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        (entities_by_id, filter),
+    );
 
     let body_top = search_rect.y + search_rect.h + Spacing::Sm.px();
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
@@ -304,15 +344,6 @@ fn paint_hierarchy_body(
     // `row_w = rect.w - body_pad*2 - (SCROLLBAR_W + Sm)`.
     let _scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
     let row_w = (rect.w - body_pad).max(0.0);
-    let entities_by_id: std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> =
-        if let Some(live) = current_live_entries() {
-            live
-        } else {
-            fixture::hierarchy()
-                .into_iter()
-                .filter_map(|e| crate::ids::hierarchy_id(&e.name).map(|id| (id, e)))
-                .collect()
-        };
     let order: Vec<ph2d_a11y::NodeId> = store.hierarchy_order().to_vec();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
 
@@ -323,9 +354,9 @@ fn paint_hierarchy_body(
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
     let depths = row_depths(&order, &entities_by_id, store);
     let query = search_text.trim().to_lowercase();
-    let search_active = !query.is_empty();
+    let search_active = !query.is_empty() || filter.is_some();
     let (display_mask, direct_match_mask): (Vec<bool>, Vec<bool>) = if search_active {
-        compute_match_filter(&order, &depths, &entities_by_id, &query)
+        compute_match_filter(&order, &depths, entities_by_id, &query, filter)
     } else {
         (Vec::new(), Vec::new())
     };
@@ -439,7 +470,7 @@ fn paint_hierarchy_body(
     // consuma, re-registá-las seria pintar chrome morto sob o dedo.
     let content_h = (y - start_y).max(0.0);
     set_last_hierarchy_content_h(content_h);
-    (crate::rows::object_rows(&order, &entities_by_id), area)
+    (crate::rows::object_rows(&order, entities_by_id), area, chip)
 }
 
 /// **A caixa de renomear de uma linha da Hierarquia.**

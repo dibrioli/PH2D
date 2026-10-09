@@ -188,6 +188,9 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if crate::filter::owns(&ev) {
+        return crate::filter::apply_event(state, host, &ev);
+    }
     if let Some(outcome) = crate::event_rows::apply(host, &ev) {
         return outcome;
     }

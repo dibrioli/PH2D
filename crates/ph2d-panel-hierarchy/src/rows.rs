@@ -162,6 +162,7 @@ fn synthetic(
         role,
         components: Vec::new(),
         content: Vec::new(),
+        has: Default::default(),
     }
 }
 

@@ -6,13 +6,13 @@ use ph2d_tool_registry::hash_node_id;
 /// ⚠️ **Um id de linha nunca tem os bits dos companheiros** (58–62, `ph2d_editor_core::ids::*_BIT`):
 /// `linha | EXPAND_TOGGLE_BIT` é o galo dela, e um id que já os tivesse seria lido como o galo de
 /// OUTRA linha. Os ids sintéticos abaixo vivem nos 58 bits de baixo, como os da ponte.
-const ROW_ID_MASK: u64 = (1u64 << 58) - 1;
+pub(super) const ROW_ID_MASK: u64 = (1u64 << 58) - 1;
 
 /// A raiz CENA ([`ph2d_editor_core::hier_rows::RowRole::Scene`]).
 pub const HIER_SCENE_ROW: NodeId = NodeId(hash_node_id("hier_scene_row").0 & ROW_ID_MASK);
 
 /// SplitMix64 — mistura estável de um `u64` (os ids sintéticos têm de sobreviver entre quadros).
-const fn mix(mut z: u64) -> u64 {
+pub(super) const fn mix(mut z: u64) -> u64 {
     z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);

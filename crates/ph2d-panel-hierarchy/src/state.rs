@@ -28,6 +28,9 @@ pub struct HierarchyState {
     /// overlay; `apply_event` writes this on long-press / right-click
     /// "Rename" and clears it on Submit / Cancel / Blur.
     pub rename_target_row: Option<NodeId>,
+    /// ⭐ O filtro ▾ por componente — o bit do [`ph2d_component_desc::ComponentSet`] escolhido, ou
+    /// `None` = todos (doc ObjectsAndComponents 01 §13, F6).
+    pub component_filter: Option<u8>,
 }
 
 thread_local! {

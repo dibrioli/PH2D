@@ -10,7 +10,7 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, TextInputState};
+use ph2d_editor_core::widget::{ButtonState, DropdownState, TextInputState};
 
 /// Panel boot-time populate — registers the Hierarchy header `+`
 /// button + search input + the fixture placeholder row.
@@ -30,6 +30,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
+    register_filter(store);
     let entities = [ids::HIER_PLAYER];
     for id in entities {
         store.register(id, InteractiveState::Plain);
@@ -71,7 +72,28 @@ pub fn repopulate(store: &mut WidgetStore, ids_: &[ph2d_a11y::NodeId]) {
     // `set_hierarchy_order` (force-overwrite) — `init_hierarchy_order`
     // is idempotent and would no-op after `populate()` seeded
     // `[HIER_PLAYER]`, so live mode would paint zero rows.
+    register_filter(store);
     store.set_hierarchy_order(ids_.to_vec());
+}
+
+/// O chip ▾ do filtro por componente e as linhas da lista dele (F6).
+fn register_filter(store: &mut WidgetStore) {
+    store.register_if_absent(
+        crate::ids::HIER_FILTER_DD,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
+        },
+    );
+    for i in 0..crate::ids::HIER_FILTER_ROWS {
+        store.register_if_absent(
+            crate::ids::hier_filter_opt(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
 }
 
 /// ⭐ **Os ícones de componente são WIDGETS** ([`crate::row_components`]): registados aqui, o clique

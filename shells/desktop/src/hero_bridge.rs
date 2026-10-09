@@ -178,6 +178,7 @@ impl EntityNodeMap {
                     role: Default::default(),
                     components: Vec::new(),
                     content: Vec::new(),
+                    has: Default::default(),
                 },
             );
         }

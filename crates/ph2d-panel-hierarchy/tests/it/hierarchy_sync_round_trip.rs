@@ -79,6 +79,7 @@ fn make_entry(name: &str) -> HierarchyEntity {
         role: Default::default(),
         components: Vec::new(),
         content: Vec::new(),
+        has: Default::default(),
     }
 }
 
@@ -256,6 +257,7 @@ fn hierarchy_row_click_raises_pending_for_live_entries() {
             role: Default::default(),
             components: Vec::new(),
             content: Vec::new(),
+            has: Default::default(),
         },
     );
     ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &[row_id], entries);

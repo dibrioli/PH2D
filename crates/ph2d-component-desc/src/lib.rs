@@ -40,6 +40,9 @@
 pub mod catalog;
 
 pub use catalog::{all, desc_for};
+/// ⭐ O conjunto de componentes de um objecto — o filtro da Hierarquia (F6).
+mod component_set;
+pub use component_set::ComponentSet;
 
 /// **O descritor de um tipo de componente.**
 ///

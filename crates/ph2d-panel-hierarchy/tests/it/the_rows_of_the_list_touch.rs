@@ -38,6 +38,7 @@ fn entry(name: &str) -> HierarchyEntity {
         role: Default::default(),
         components: Vec::new(),
         content: Vec::new(),
+        has: Default::default(),
     }
 }
 

@@ -203,6 +203,9 @@ pub struct HierarchyEntity {
     pub components: Vec<ph2d_component_desc::ComponentCategory>,
     /// O conteúdo que a família do objecto declara; o painel desdobra-o em sub-linhas.
     pub content: Vec<crate::hier_rows::ContentGroup>,
+    /// ⭐ Os componentes AUTORADOS que o objecto tem (+ a Animação) — o que o filtro ▾ da Hierarquia
+    /// pergunta (doc ObjectsAndComponents 01 §13, F6).
+    pub has: ph2d_component_desc::ComponentSet,
 }
 
 /// Placeholder hierarchy until the pilot project wires real entities.
@@ -224,6 +227,7 @@ pub fn hierarchy() -> Vec<HierarchyEntity> {
         role: Default::default(),
         components: Vec::new(),
         content: Vec::new(),
+        has: Default::default(),
     }]
 }
 

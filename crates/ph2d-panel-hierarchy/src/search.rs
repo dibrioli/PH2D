@@ -29,6 +29,7 @@ pub(crate) fn compute_match_filter(
     depths: &[u32],
     entities_by_id: &std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>,
     query: &str,
+    filter: Option<u8>,
 ) -> (Vec<bool>, Vec<bool>) {
     let n = order.len();
     let mut display = vec![false; n];
@@ -43,11 +44,11 @@ pub(crate) fn compute_match_filter(
                 break;
             }
         }
-        let name_lower = entities_by_id
-            .get(&order[i])
-            .map(|e| e.name.to_lowercase())
-            .unwrap_or_default();
-        let is_match = !name_lower.is_empty() && name_lower.contains(query);
+        let entity = entities_by_id.get(&order[i]);
+        let name_lower = entity.map(|e| e.name.to_lowercase()).unwrap_or_default();
+        let name_hit = query.is_empty() || (!name_lower.is_empty() && name_lower.contains(query));
+        let filter_hit = filter.is_none_or(|bit| entity.is_some_and(|e| e.has.contains(bit)));
+        let is_match = name_hit && filter_hit;
         if is_match {
             direct[i] = true;
             display[i] = true;
@@ -84,6 +85,7 @@ mod tests {
             role: Default::default(),
             components: Vec::new(),
             content: Vec::new(),
+            has: Default::default(),
         }
     }
 
@@ -107,7 +109,7 @@ mod tests {
     #[test]
     fn direct_match_keeps_ancestor_visible() {
         let (order, depths, map) = build_tree();
-        let (display, direct) = compute_match_filter(&order, &depths, &map, "alpha");
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "alpha", None);
         assert!(direct[1]);
         assert!(display[0]);
         assert!(display[1]);
@@ -120,7 +122,7 @@ mod tests {
     #[test]
     fn ancestor_match_does_not_pull_descendants() {
         let (order, depths, map) = build_tree();
-        let (display, direct) = compute_match_filter(&order, &depths, &map, "group_a");
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "group_a", None);
         assert!(direct[0]);
         assert!(display[0]);
         assert!(!display[1]);
@@ -132,7 +134,7 @@ mod tests {
     #[test]
     fn case_insensitive_and_substring() {
         let (order, depths, map) = build_tree();
-        let (display, direct) = compute_match_filter(&order, &depths, &map, "gamm");
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "gamm", None);
         assert!(direct[4]);
         assert!(display[3]);
         assert!(display[4]);
@@ -141,7 +143,7 @@ mod tests {
     #[test]
     fn no_match_hides_everything() {
         let (order, depths, map) = build_tree();
-        let (display, direct) = compute_match_filter(&order, &depths, &map, "zzz_does_not_exist");
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "zzz_does_not_exist", None);
         assert!(display.iter().all(|&b| !b));
         assert!(direct.iter().all(|&b| !b));
     }
@@ -154,7 +156,7 @@ mod tests {
         map.insert(NodeId(10), entity("root", 0));
         map.insert(NodeId(11), entity("mid", 1));
         map.insert(NodeId(12), entity("leaf_xyz", 2));
-        let (display, direct) = compute_match_filter(&order, &depths, &map, "xyz");
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "xyz", None);
         assert!(display[0]);
         assert!(display[1]);
         assert!(display[2]);

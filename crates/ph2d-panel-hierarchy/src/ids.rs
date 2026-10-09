@@ -9,7 +9,9 @@
 //! de slug vigia-as o censo DERIVADO (`ph2d-editor-core/tests/it/node_id_collisions.rs`), que lê os
 //! literais da workspace inteira — o id não precisa de morar ao lado dele.
 
+mod filter;
 mod menus;
 mod rows;
+pub use filter::*;
 pub use menus::*;
 pub use rows::*;

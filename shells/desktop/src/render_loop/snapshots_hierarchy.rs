@@ -71,13 +71,9 @@ pub(super) fn publish_hierarchy(
         for (id, entry) in &mut entries {
             if let Some(bits) = live.bridge.entity_for(*id) {
                 entry.components = icons.of_entity(sim.world(), bits);
+                entry.has = icons.set_of(sim.world(), bits);
                 entry.content = hero.gizmo.content_of(bits).to_vec();
-                ph2d_panel_timeline::hier::declare_in_row(
-                    timeline,
-                    bits,
-                    &mut entry.components,
-                    &mut entry.content,
-                );
+                ph2d_panel_timeline::hier::declare_in_row(timeline, bits, entry);
             }
         }
         // A Animação da CENA é conteúdo da raiz, que não é entidade: vai na entrada com o id dela.

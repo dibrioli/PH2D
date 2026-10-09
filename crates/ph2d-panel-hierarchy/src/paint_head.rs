@@ -11,7 +11,7 @@
 use super::*;
 use ph2d_i18n::{tr, tr_with};
 
-/// Pinta o cabeçalho e devolve `(body_pad, search_rect, search_text)`.
+/// Pinta o cabeçalho e devolve `(body_pad, search_rect, search_text, filter_chip_rect)`.
 pub(super) fn paint_hierarchy_head(
     rect: Rect,
     scene: &mut VectorScene,
@@ -19,7 +19,11 @@ pub(super) fn paint_hierarchy_head(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-) -> (f32, Rect, String) {
+    (entries, filter): (
+        &std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>,
+        Option<u8>,
+    ),
+) -> (f32, Rect, String, Rect) {
     // Canonical panel title (single source of truth — `panel_chrome`).
     // Reserve ≈ICON_BTN_SIZE on the right for the header Add-button.
     let title_y = rect.y + PANEL_TITLE_BASELINE;
@@ -77,10 +81,30 @@ pub(super) fn paint_hierarchy_head(
     let body_pad = Spacing::Xs.px();
 
     let search_h = ROW_H_PX;
+    // ⭐ O filtro ▾ por componente (F6) à direita da busca, que encolhe para lhe dar lugar.
+    let gap = Spacing::Xs.px();
+    let row_w = (rect.w - body_pad * 2.0).max(0.0);
+    let chip_w = crate::filter::FILTER_W.min(row_w * 0.5);
+    let chip = Rect::new(
+        rect.x + body_pad + row_w - chip_w,
+        header_bottom,
+        chip_w,
+        search_h,
+    );
+    crate::filter::paint_chip(
+        entries,
+        filter,
+        chip,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
     let search_rect = Rect::new(
         rect.x + body_pad,
         header_bottom,
-        (rect.w - body_pad * 2.0).max(0.0),
+        (row_w - chip_w - gap).max(0.0),
         search_h,
     );
     hit_index.register(crate::ids::HIER_SEARCH, search_rect);
@@ -107,5 +131,5 @@ pub(super) fn paint_hierarchy_head(
         text_system,
         theme,
     );
-    (body_pad, search_rect, search_text)
+    (body_pad, search_rect, search_text, chip)
 }

@@ -82,7 +82,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "1. Timer — the card at the top right. Set the minutes with − and +, then Play. +1m and +5m add time; at zero it chimes."
         }
         "board.smoke.fac.l2" => {
-            "2. Vote — press Voting in the left bar (it shows the last result), then New vote, the votes per person and Start voting. Click the grey + at a note's corner; − takes one back."
+            "2. Vote — Voting (left bar) shows the last result: New vote, then Start voting. Click the grey + at a note's corner; − takes one back."
         }
         "board.smoke.fac.l3" => {
             "3. Turns — I'm done hands the screen to the next person (their votes start at zero). End for all puts the totals on the notes."

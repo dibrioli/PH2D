@@ -173,8 +173,8 @@ Os três achados do oráculo da palavra (entradas nossas, `notas_w7.json`):
 
 | # | lei | fonte | número / teste |
 |---|---|---|---|
-| C1 | Na barra de contexto de 2+ notas: **Cluster** › By color · By tag · By keyword | Miro CL (Author e Sentiment fora, §3) | `cluster_needs_two_notes` |
-| C2 | Cada grupo é um FRAME com as notas dentro (a casa delas passa a ser ele), lado a lado numa FILA alinhada em cima, a começar no canto superior esquerdo da caixa da selecção; o resultado fica seleccionado; UM passo | `cluster_01`/`_02`; o lugar é calado ⇒ escolha | `clusters_sit_in_a_row_from_the_selection_corner` |
+| C1 | **Cluster** › By color · By tag · By keyword, na barra de contexto de 2+ notas — e na de um FRAME com 2+ notas dentro (agrupa as de dentro) | Miro CL (Author e Sentiment fora, §3); o frame: achado do gate da cena 9 (dentro de um frame o vazio é do frame — W5, ordem do dono —, uma caixa à volta das ideias movia o frame) | `cluster_needs_two_notes` · `a_selected_frame_clusters_its_notes_and_grows_to_hold_them` |
+| C2 | Cada grupo é um FRAME com as notas dentro (a casa delas passa a ser ele), lado a lado numa FILA alinhada em cima, a começar no canto superior esquerdo da caixa das notas; os grupos moram na casa comum das notas, que CRESCE (e as de fora dela) para os conter; o resultado fica seleccionado; UM passo | `cluster_01`/`_02`; o lugar é calado ⇒ escolha; crescer: um filho mora dentro dos limites do pai (SDK do Miro, DEV-F) | `the_cluster_grid_is_the_measured_one` · `a_selected_frame_clusters_its_notes_and_grows_to_hold_them` |
 | C3 | Dentro: ⌈√n⌉ colunas; folga horizontal **0,17 s**, passo vertical com a folga **0,27 s**; margem **0,30 s** dos lados, **0,32 s** em cima, **0,43 s** em baixo; entre frames **0,40 s** (médias das duas imagens) | §1.2 | `the_cluster_grid_is_the_measured_one` |
 | C4 | Ordem dos grupos e das notas: a primeira aparição na ORDEM DE LEITURA da selecção | §1.2 (a do Miro não se vê; nenhuma das óbvias bate) ⇒ escolha, a do `reading_order` | `clusters_keep_reading_order` |
 | C5 | Por cor: um grupo por cor, SEM título (o artista dá-lho) | Miro CL | `color_clusters_have_no_title` |
@@ -215,5 +215,6 @@ e o cartão é um desenho de interface de tamanho fixo).
 carimbos e duas com o resultado de uma votação já feita —, o cronómetro armado a 5:00, e notas-lição na
 ordem real: armar e arrancar o cronómetro · votar (abrir a votação, os `+`, «I'm done», «End for all», o
 resultado) · carimbar (o botão Stamp, clicar numa ficha, `Shift`+clicar) · agrupar por cor, por etiqueta e
-por palavra. Tudo num frame com a margem do que os painéis e a barra de estado tapam (lição da W6), e o gate
+por palavra (clicando no frame «Ideas»: a 1.ª redacção dizia «arraste uma caixa à volta das ideias» e o gate
+mostrou que esse arrasto MOVE o frame — o vazio de um frame é dele, W5). Tudo num frame com a margem do que os painéis e a barra de estado tapam (lição da W6), e o gate
 conduz cada lição pelo editor na ORDEM REAL, a dois zooms.

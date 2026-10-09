@@ -269,7 +269,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         Selected::TextNote => notes::text_groups(false),
         Selected::TextShape => notes::text_groups(true),
         Selected::Ink => pen::ink_groups(),
-        Selected::Frames => vec![organize::frame_fill_group()],
+        Selected::Frames => vec![organize::frame_fill_group(), fac::frame_group()],
         Selected::Mind => return mind::groups(),
     };
     groups.extend(org);
@@ -395,7 +395,7 @@ pub fn paint(
     if let Some((key, _)) = notice {
         organize::paint_notice(scene, text_system, theme, area, key);
     }
-    fac::sync_flyouts(&mut live.fac, what == Some(Selected::Notes));
+    fac::sync_flyouts(&mut live.fac, matches!(what, Some(Selected::Notes | Selected::Frames)));
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };

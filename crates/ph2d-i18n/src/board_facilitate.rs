@@ -63,6 +63,32 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.notice.one_vote_per_object" => "One vote per object — this one already has yours",
         "board.notice.nothing_to_vote" => "Nothing to vote on — votes go on notes and shapes",
         "board.notice.nothing_to_cluster" => "Select two or more notes to cluster them",
+        "board.smoke.fac.frame" => "Facilitate a brainstorm",
+        "board.smoke.fac.ideas_frame" => "Ideas",
+        "board.smoke.fac.tag_speed" => "Speed",
+        "board.smoke.fac.tag_team" => "Team",
+        "board.smoke.fac.i1" => "Faster builds",
+        "board.smoke.fac.i2" => "Builds break at night",
+        "board.smoke.fac.i3" => "Slow builds block the team",
+        "board.smoke.fac.i4" => "More pair programming",
+        "board.smoke.fac.i5" => "Pairing on hard bugs",
+        "board.smoke.fac.i6" => "Team lunch on Fridays",
+        "board.smoke.fac.i7" => "Coffee machine upstairs",
+        "board.smoke.fac.l1" => {
+            "1. Timer — the card at the top right. Set the minutes with − and +, then Play. +1m and +5m add time; at zero it chimes."
+        }
+        "board.smoke.fac.l2" => {
+            "2. Vote — press Voting in the left bar, choose the votes per person, then Start voting. Click the grey + at a note's corner; − takes one back."
+        }
+        "board.smoke.fac.l3" => {
+            "3. Turns — I'm done hands the screen to the next person (their votes start at zero). End for all puts the totals on the notes."
+        }
+        "board.smoke.fac.l4" => {
+            "4. Stamps — select a note and press Stamp in its bar. Click a stamp under a note to add one; Shift+click takes one back."
+        }
+        "board.smoke.fac.l5" => {
+            "5. Cluster — click the Ideas frame, then Cluster in its bar: By color, By tag or By keyword. Each group becomes a frame."
+        }
         _ => return None,
     })
 }

@@ -52,14 +52,7 @@ impl Editor {
         by: ClusterBy,
         names: &ClusterNames,
     ) -> bool {
-        let ids: Vec<ElementId> = self.selection.iter().copied().collect();
-        let picked: Vec<Element> = crate::organize::with_descendants(doc, &ids)
-            .into_iter()
-            .filter_map(|id| doc.get(id))
-            .filter(|e| e.shape().is_some_and(|s| s.kind.is_note()))
-            .filter(|e| !e.locked() && !e.is_hidden())
-            .cloned()
-            .collect();
+        let picked = self.clusterable(doc);
         if picked.len() < 2 {
             self.notice = Some(Notice::NothingToCluster);
             return false;
@@ -76,6 +69,21 @@ impl Editor {
         history.apply(doc, ops);
         self.selection = frames;
         true
+    }
+
+    /// C1 — as notas que agrupar levaria: as seleccionadas e as dos frames seleccionados (a qualquer
+    /// profundidade), sem as travadas nem as escondidas. A barra pergunta o MESMO (o botão só se pinta
+    /// com duas ou mais).
+    #[must_use]
+    pub fn clusterable(&self, doc: &BoardDoc) -> Vec<Element> {
+        let ids: Vec<ElementId> = self.selection.iter().copied().collect();
+        crate::organize::with_descendants(doc, &ids)
+            .into_iter()
+            .filter_map(|id| doc.get(id))
+            .filter(|e| e.shape().is_some_and(|s| s.kind.is_note()))
+            .filter(|e| !e.locked() && !e.is_hidden())
+            .cloned()
+            .collect()
     }
 
     /// C2/C3 — os frames e as notas no sítio: o lote e os ids dos frames.
@@ -150,6 +158,35 @@ impl Editor {
                 y += rows[r] + gy;
             }
             x += w + CLUSTER_BETWEEN * s;
+        }
+        // C2 — a casa (e as de fora dela) cresce para conter os grupos: um filho mora dentro dos
+        // limites do pai (o SDK do Miro, DEV-F; a pertença W5).
+        let mut need = [x0, y0, x - CLUSTER_BETWEEN * s, f64::NEG_INFINITY];
+        for op in &ops {
+            if let BoardOp::Put(e) = op
+                && frames.contains(&e.id)
+            {
+                need[3] = need[3].max(e.y + e.h);
+            }
+        }
+        let chain = home.map(|h| std::iter::once(h).chain(doc.frame_chain(h)).collect::<Vec<_>>());
+        for f in chain.unwrap_or_default() {
+            let Some(mut fe) = doc.get(f).cloned() else {
+                break;
+            };
+            let [x1, y1] = [fe.x + fe.w, fe.y + fe.h];
+            let grown = [
+                fe.x.min(need[0] - px),
+                fe.y.min(need[1] - pt),
+                x1.max(need[2] + px),
+                y1.max(need[3] + pb),
+            ];
+            if grown == [fe.x, fe.y, x1, y1] {
+                break;
+            }
+            (fe.x, fe.y, fe.w, fe.h) = (grown[0], grown[1], grown[2] - grown[0], grown[3] - grown[1]);
+            need = grown;
+            ops.push(BoardOp::Put(fe));
         }
         (ops, frames)
     }

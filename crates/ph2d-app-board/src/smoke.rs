@@ -10,6 +10,7 @@
 //! | 2 | as FORMAS (W1): um fluxograma com texto dentro (início → recolher ideias → «boa ideia?» → construir → fim), um passo rodado, um tracejado e um meio transparente; por baixo, o catálogo das 18 formas com o nome de cada uma — seleccionar, mover, redimensionar, rodar, duplo-clique para escrever, a barra curta à esquerda e a de estilo por cima da selecção |
 //! | 7 | as GUIAS de objectos rodados (W5b), uma lição por frame, cada «arraste-me» a 40 do que ensina: «Tilted shapes» (B desliza ao longo dos 30° e a borda dele vai à linha inclinada da de A, guia inclinada) · «Rotate» (o direito encaixa em 30°, 45° e direito; `Shift` = 15°; `Ctrl` suspende) · «Tilted frame» a 20° (espaçamento igual e alinhamento nos eixos do frame) · «Equal spacing» · «Frame A»/«Frame B» (o frame alinha a caixa dele) |
 //! | 8 | PLANEAR (W6): um MAPA MENTAL começado — «Plan» com «Ideas» e «Risks» (RECOLHIDO: o número à vista) à direita e «Next steps» à esquerda — e seis notas com as lições (`Tab` filho · `Enter` irmão · as setas · o número abre · arrastar para outro pai · o botão dos MODELOS), tudo num frame (o 1.º quadro enquadra na janela inteira e os painéis tapam as bordas) |
+//! | 9 | FACILITAR (W7): uma retrospectiva com sete ideias num frame «Ideas» (cores e etiquetas variadas, os selos de uma votação anterior — 3 e 1 —, carimbos) e cinco notas com as lições na ordem real (o cronómetro · votar com os `+` · «I'm done»/«End for all» · os carimbos · agrupar por cor, etiqueta ou palavra); o cartão do cronómetro abre armado a 5:00 |
 
 use ph2d_board_model::{
     Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Mark, Rgba,
@@ -37,10 +38,14 @@ mod guides;
 #[path = "smoke_mind.rs"]
 mod mind;
 
+/// A cena 9 (W7), num ficheiro filho.
+#[path = "smoke_facilitate.rs"]
+mod facilitate;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 8,
+    max_level: 9,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -60,7 +65,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         6 => organize::scene_organize(hero),
         7 => guides::scene_guides(hero),
         8 => mind::scene_mind(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=8)"),
+        9 => facilitate::scene_facilitate(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=9)"),
     }
 }
 

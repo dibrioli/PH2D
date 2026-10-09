@@ -239,3 +239,34 @@ fn a_locked_note_is_left_alone() {
     assert_eq!(w.clusters()[0].1, [a, b]);
     assert!(close(w.el(l).x, 600.0) && w.el(l).frame.is_none());
 }
+
+/// ⭐ C1/C2: seleccionar um FRAME agrupa as notas de dentro; os grupos moram nele e ele CRESCE para os
+/// conter (um filho mora dentro dos limites do pai — o SDK do Miro).
+#[test]
+fn a_selected_frame_clusters_its_notes_and_grows_to_hold_them() {
+    let mut w = world();
+    let a = w.sticky([20.0, 20.0], "a", 1, &[]);
+    let b = w.sticky([240.0, 20.0], "b", 4, &[]);
+    let c = w.sticky([460.0, 20.0], "c", 8, &[]);
+    let mut f = w.ed.new_frame(&mut w.doc, [0.0, 0.0, 700.0, 260.0]);
+    f.z = w.doc.z_on_top();
+    let fid = f.id;
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(f)]);
+    for id in [a, b, c] {
+        let mut el = w.el(id).clone();
+        el.frame = Some(fid);
+        w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
+    }
+    w.ed.select(&w.doc, [fid]);
+    assert_eq!(w.ed.clusterable(&w.doc).len(), 3);
+    assert!(w.ed.cluster(&mut w.doc, &mut w.h, ClusterBy::Color, &names()));
+    let groups: Vec<ElementId> = w.ed.selection().iter().copied().collect();
+    assert_eq!(groups.len(), 3);
+    let home = w.el(fid).clone();
+    for g in groups {
+        let e = w.el(g);
+        assert_eq!(e.frame, Some(fid), "o grupo mora no frame seleccionado");
+        assert!(home.box_contains_all_of(e), "e cabe nele");
+    }
+    assert!(home.w > 700.0, "o frame cresceu: {}", home.w);
+}

@@ -1,9 +1,10 @@
 //! As barras do quadro para FACILITAR (W7, módulo filho de [`super`] — `docs/MiroClone/05_facilitacao.md`):
 //! na barra curta o Cronómetro e a Votação (abrem o cartão e o painel do canto); na barra de contexto
-//! de notas o Carimbo (a galeria dos oito, S2) e Agrupar (por cor, etiqueta ou palavra, C1).
+//! de notas o Carimbo (a galeria dos oito, S2) e Agrupar (por cor, etiqueta ou palavra, C1); na de
+//! frames, Agrupar as notas de dentro.
 //!
 //! ⚠️ Um controlo que não faria nada à selecção de agora NÃO se pinta: Agrupar só com duas notas ou
-//! mais.
+//! mais (as dos frames contam).
 
 use super::{HeroScreen, Item, paint_item, paint_panel};
 use crate::icons::IconId;
@@ -62,6 +63,11 @@ pub(super) fn note_group() -> Vec<Item> {
     vec![STAMPS, CLUSTER]
 }
 
+/// O grupo da barra de contexto de frames: agrupar as notas de dentro (C1).
+pub(super) fn frame_group() -> Vec<Item> {
+    vec![CLUSTER]
+}
+
 /// As notas seleccionadas.
 fn notes(ed: &Editor, doc: &BoardDoc) -> usize {
     ed.selection()
@@ -74,7 +80,7 @@ fn notes(ed: &Editor, doc: &BoardDoc) -> usize {
 /// O controlo faz alguma coisa à selecção de agora? `None` = não é daqui.
 pub(super) fn shows(it: Item, ed: &Editor, doc: &BoardDoc) -> Option<bool> {
     match it {
-        CLUSTER => Some(notes(ed, doc) >= 2),
+        CLUSTER => Some(ed.clusterable(doc).len() >= 2),
         STAMPS => Some(notes(ed, doc) >= 1),
         _ => None,
     }

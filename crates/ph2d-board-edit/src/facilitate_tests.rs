@@ -452,3 +452,18 @@ fn stamp_chips_stop_before_the_vote_badge() {
         assert!(r[2] < c[0] - d / 2.0, "a ficha {r:?} entra no selo");
     }
 }
+
+/// S2: uma nota TRAVADA não leva o carimbo (a mesma pergunta do botão: notas editáveis).
+#[test]
+fn a_locked_note_takes_no_stamp() {
+    let mut w = world();
+    let a = w.sticky([0.0, 0.0], "a", 1, &[]);
+    let l = w.sticky([300.0, 0.0], "l", 1, &[]);
+    let mut el = w.el(l).clone();
+    el.set_locked(true);
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
+    w.ed.select(&w.doc, [a, l]);
+    assert!(w.ed.stamp(&mut w.doc, &mut w.h, Stamp::Star));
+    assert_eq!(w.el(a).stamps().len(), 1);
+    assert!(w.el(l).stamps().is_empty(), "a travada não muda");
+}

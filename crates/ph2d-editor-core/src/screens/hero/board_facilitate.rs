@@ -246,18 +246,10 @@ pub fn toggle_vote(hero: &mut HeroScreen) {
 }
 
 /// ⭐ Uma vez por pintura, com QUALQUER aba activa (a Cena incluída — F1: trocar de aba não pára um
-/// relógio): os cronómetros andam e o zero pede a campainha (F6). Os de quadros que já não existem
-/// saem (auditoria W7: a campainha tocava por um quadro apagado).
+/// relógio): os cronómetros andam e o zero pede a campainha (F6). Os de um quadro apagado ou de um
+/// projecto trocado já saíram por `Documents::remove`/`replace` (a porta única).
 pub fn tick(hero: &mut HeroScreen, now: Instant) {
-    let alive: std::collections::BTreeSet<BoardId> = hero
-        .documents
-        .boards()
-        .boards()
-        .iter()
-        .map(|b| b.id)
-        .collect();
     let f = &mut hero.documents.live.fac;
-    f.timers.retain(|id, _| alive.contains(id));
     for t in f.timers.values_mut() {
         if t.tick(now) {
             f.chime = true;

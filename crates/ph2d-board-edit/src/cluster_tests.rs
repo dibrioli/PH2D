@@ -298,11 +298,13 @@ impl World {
 #[test]
 fn the_home_is_the_common_ancestor_frame() {
     let mut w = world();
-    let a = w.sticky([20.0, 20.0], "a", 1, &[]);
-    let b = w.sticky([240.0, 20.0], "b", 4, &[]);
-    let c = w.sticky([520.0, 20.0], "c", 8, &[]);
+    // A 1.ª nota na ordem de leitura (`c`, a de cima à esquerda) mora no subframe G: a casa é a que
+    // contém TODAS, não a da primeira.
+    let c = w.sticky([20.0, 20.0], "c", 8, &[]);
+    let a = w.sticky([340.0, 60.0], "a", 1, &[]);
+    let b = w.sticky([560.0, 60.0], "b", 4, &[]);
     let f = w.frame_with([0.0, 0.0, 900.0, 300.0], &[a, b], None);
-    w.frame_with([500.0, 0.0, 300.0, 260.0], &[c], Some(f));
+    w.frame_with([0.0, 0.0, 300.0, 260.0], &[c], Some(f));
     w.ed.select(&w.doc, [f]);
     assert!(w.ed.cluster(&mut w.doc, &mut w.h, ClusterBy::Color, &names()));
     for g in w.ed.selection().clone() {

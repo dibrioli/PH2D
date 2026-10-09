@@ -373,6 +373,10 @@ fn loading_or_deleting_a_board_takes_its_facilitation() {
     t.hero.documents.remove(id);
     t.paint();
     assert!(!t.hero.documents.take_chime(), "o quadro apagado não toca");
+    assert!(
+        !t.hero.documents.live.fac.timers.contains_key(&id),
+        "e o relógio dele saiu"
+    );
 }
 
 /// F1/F6: com a aba Cena activa, o cronómetro de um quadro chega a zero e TOCA.

@@ -538,6 +538,19 @@ pub fn branch(doc: &BoardDoc, child: ElementId) -> Option<[[f64; 2]; 4]> {
 }
 
 impl BoardDoc {
+    /// Uma seta presa a um nó escondido por um ramo recolhido some com ele (desenho e clique).
+    #[must_use]
+    pub fn connector_hidden(&self, el: &Element) -> bool {
+        el.connector().is_some_and(|c| {
+            [&c.start, &c.end].into_iter().any(|e| match e {
+                crate::End::Bound { target, .. } => {
+                    self.elements.get(target).is_some_and(Element::is_hidden)
+                }
+                crate::End::Free(_) => false,
+            })
+        })
+    }
+
     /// Há algum ramo de mapa mental (o desenho salta os ramos num quadro sem nenhum).
     #[must_use]
     pub fn has_mind_links(&self) -> bool {

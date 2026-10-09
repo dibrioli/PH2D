@@ -196,6 +196,20 @@ impl Editor {
             Template::MindMap => self.mind_template(&mut b, tr),
         };
         let mut els = b.els;
+        // O mapa mental arruma-se ANTES de centrar (num documento de rascunho com só ele): senão o
+        // centro era o dos nós empilhados na raiz (auditoria W6).
+        if els.iter().any(|e| e.mind().is_some()) {
+            let mut scratch = BoardDoc::default();
+            let _ = ph2d_board_model::apply_batch(
+                &mut scratch,
+                els.iter().cloned().map(BoardOp::Put).collect(),
+            );
+            for el in &mut els {
+                if let Some(laid) = scratch.get(el.id) {
+                    (el.x, el.y) = (laid.x, laid.y);
+                }
+            }
+        }
         let boxes: Vec<[f64; 4]> = els
             .iter()
             .filter(|e| e.connector().is_none())
@@ -221,9 +235,14 @@ impl Editor {
             center[0] - (bb[0] + bb[2]) / 2.0,
             center[1] - (bb[1] + bb[3]) / 2.0,
         ];
+        // M18: o mapa do modelo mora no frame onde é inserido (os nós nasceram longe dele).
+        let home = doc.deepest_frame_at(center, &BTreeSet::new());
         for el in &mut els {
             if el.connector().is_none() {
                 el.translate(d);
+            }
+            if el.mind().is_some() {
+                el.frame = home;
             }
         }
         history.apply(doc, els.into_iter().map(BoardOp::Put).collect());
@@ -255,14 +274,14 @@ impl Editor {
         let root = node(b, root_mind, tr("board.tpl.mindmap.root"));
         let mut order = FracKey::between(None, None);
         let mut first = None;
-        for i in 0..4 {
+        for (i, color) in MIND_COLORS.iter().take(4).enumerate() {
             order = FracKey::between(Some(&order), None);
             let side = if i % 2 == 0 {
                 Side::After
             } else {
                 Side::Before
             };
-            let m = Mind::new(Some(root), order.clone(), side, Rgba(MIND_COLORS[i]));
+            let m = Mind::new(Some(root), order.clone(), side, Rgba(*color));
             let id = node(b, m, format!("{} {}", tr("board.tpl.mindmap.topic"), i + 1));
             first.get_or_insert(id);
         }

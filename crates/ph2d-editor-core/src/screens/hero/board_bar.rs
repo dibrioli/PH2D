@@ -305,7 +305,7 @@ pub fn paint(
 ) {
     let theme = hero.theme;
     let shapes_open = hero.documents.live.shapes_open;
-    let templates_open = hero.documents.live.templates_open;
+    let templates_open = mind::sync_gallery(&mut hero.documents.live);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -391,6 +391,7 @@ pub fn paint(
     let knob = (m.dot + m.handle) as f32;
     sel.y -= knob;
     sel.h += knob;
+    mind::sync_tooltip(&mut hero.store, ed, &board.doc);
     let groups: Vec<Vec<Item>> = style_groups(what)
         .into_iter()
         .map(|g| {
@@ -607,8 +608,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.documents.live.shapes_open = !hero.documents.live.shapes_open;
         return true;
     }
-    let live = &mut hero.documents.live;
-    live.templates_open = it == mind::TEMPLATES && !live.templates_open;
+    mind::toggle_gallery(&mut hero.documents.live, it);
     if it == Item::Organize(OrgItem::Tag) {
         super::board_nav::open_tag_field(hero);
         return true;

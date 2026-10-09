@@ -69,7 +69,8 @@ impl Editor {
             el.version = 0;
         }
         crate::wire::remap(&mut copies, &map);
-        crate::command::remap_organize(doc, &mut copies, &map);
+        let roots = crate::command::remap_organize(doc, &mut copies, &map);
+        self.unfitted.extend(roots);
         let ids: Vec<ElementId> = copies
             .into_iter()
             .map(|mut el| {
@@ -79,7 +80,11 @@ impl Editor {
                 id
             })
             .collect();
-        self.selection = ids.iter().copied().collect();
+        self.selection = ids
+            .iter()
+            .copied()
+            .filter(|id| doc.get(*id).is_some_and(|e| !e.is_hidden()))
+            .collect();
         ids
     }
 }

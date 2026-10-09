@@ -22,6 +22,16 @@ pub(crate) fn lead(doc: &BoardDoc, moved: &BTreeSet<ElementId>) -> Option<Elemen
     })
 }
 
+/// O nó arrumado que o arrasto leva SÓ com o ramo dele (nada mais seleccionado): uma selecção
+/// mista move-se como se move tudo, e o layout devolve os nós dele ao sítio (auditoria W6: a nota
+/// que ia junto voltava para trás).
+pub(crate) fn branch_lead(doc: &BoardDoc, moved: &BTreeSet<ElementId>) -> Option<ElementId> {
+    let l = lead(doc, moved)?;
+    let mut branch = doc.mind_descendants(l);
+    branch.insert(l);
+    moved.iter().all(|id| branch.contains(id)).then_some(l)
+}
+
 /// O nó (de qualquer mapa, à vista, fora de `moved`) onde largar faz de pai: o de cima sob `p`.
 pub(crate) fn drop_target(
     doc: &BoardDoc,
@@ -51,11 +61,15 @@ impl Editor {
                 true
             }
             Tool::Select => {
-                if let Some(side) = self.mind_plus_at(doc, p) {
-                    return self.mind_child(doc, history, ts, Some(side));
+                // O selo primeiro, e ele SELECCIONA o nó: o `Ctrl+↑` seguinte volta a fechar ESTE
+                // ramo (a lição 4 da cena fechava o mapa inteiro — auditoria W6).
+                if let Some(id) = self.mind_badge_at(doc, p.world) {
+                    self.mind_collapse(doc, history, Some(id));
+                    self.selection = BTreeSet::from([id]);
+                    return true;
                 }
-                match self.mind_badge_at(doc, p.world) {
-                    Some(id) => self.mind_collapse(doc, history, Some(id)),
+                match self.mind_plus_at(doc, p) {
+                    Some(side) => self.mind_child(doc, history, ts, Some(side)),
                     None => false,
                 }
             }
@@ -75,7 +89,7 @@ impl Editor {
         } else {
             copies.iter().copied().collect()
         };
-        lead(doc, &moved)
+        branch_lead(doc, &moved)
     }
 
     /// A meio do arrasto: o nó onde largar faria de pai (o realce). `true` = o arrasto leva um nó
@@ -92,7 +106,7 @@ impl Editor {
         } else {
             copies.iter().copied().collect()
         };
-        let laid = lead(doc, &moved).is_some();
+        let laid = branch_lead(doc, &moved).is_some();
         self.mind_drop = laid.then(|| drop_target(doc, p, &moved)).flatten();
         laid
     }
@@ -168,14 +182,32 @@ impl Editor {
                 siblings.get(i).copied(),
             )
         };
-        m.order = FracKey::between(
-            order_of(doc, prev.as_ref()).as_ref(),
-            order_of(doc, next.as_ref()).as_ref(),
-        );
+        let lo = order_of(doc, prev.as_ref());
+        let hi = order_of(doc, next.as_ref()).filter(|h| lo.as_ref().is_none_or(|l| h > l));
+        m.order = FracKey::between(lo.as_ref(), hi.as_ref());
+        let moved_home = m.parent != Some(parent);
         m.parent = Some(parent);
-        let recolor = (!root_parent && target.is_some())
-            .then(|| doc.get(parent).and_then(Element::mind).map(|pm| pm.color))
-            .flatten();
+        // A cor do ramo: debaixo de um nó, a dele; na raiz (vindo de outro pai), a seguinte da paleta.
+        let recolor = if !moved_home {
+            None
+        } else if root_parent {
+            Some(crate::mindmap::next_color(doc, parent))
+        } else {
+            doc.get(parent).and_then(Element::mind).map(|pm| pm.color)
+        };
+        // M18: o ramo muda para a casa do pai novo.
+        let home = doc.get(parent).map(|pe| pe.frame);
+        // Um pai recolhido abre-se (como no `Tab`): largado lá dentro, o ramo não some.
+        let open = target
+            .and_then(|t| doc.get(t))
+            .filter(|t| t.mind().is_some_and(|tm| tm.collapsed))
+            .cloned()
+            .map(|mut t| {
+                if let Some(tm) = t.mind_mut() {
+                    tm.collapsed = false;
+                }
+                t
+            });
         if copies.is_empty() {
             for o in originals {
                 live(doc, o.clone());
@@ -187,13 +219,20 @@ impl Editor {
             m.color = c;
         }
         el.set_mind(Some(m));
-        let mut ops = vec![BoardOp::Put(el)];
-        if let Some(c) = recolor {
+        if moved_home && let Some(h) = home {
+            el.frame = h;
+        }
+        let mut ops: Vec<BoardOp> = open.into_iter().map(BoardOp::Put).collect();
+        ops.push(BoardOp::Put(el));
+        if moved_home {
             for d in doc.mind_descendants(lead) {
-                if let Some(mut e) = doc.get(d).cloned()
-                    && let Some(dm) = e.mind_mut()
-                {
-                    dm.color = c;
+                if let Some(mut e) = doc.get(d).cloned() {
+                    if let (Some(c), Some(dm)) = (recolor, e.mind_mut()) {
+                        dm.color = c;
+                    }
+                    if let Some(h) = home {
+                        e.frame = h;
+                    }
                     ops.push(BoardOp::Put(e));
                 }
             }

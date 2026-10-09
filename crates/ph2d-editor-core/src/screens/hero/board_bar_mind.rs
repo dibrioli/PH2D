@@ -39,7 +39,7 @@ pub(super) const TEMPLATES: Item = Item::Mind(MindItem::Templates);
 
 /// A largura de uma linha da galeria, em botões da barra: o nome mais longo — «Customer journey
 /// map» — cabe a `Sm` (a 6 lia-se «Customer journey…» na foto da cena 8).
-const GALLERY_W: f32 = 8.0;
+const GALLERY_W: f32 = 8.0; // LITERAL-PX-OK: largura em botões, medida na foto da cena 8
 
 /// Os itens da galeria (registados na tabela da barra).
 pub(super) fn flyout_items() -> Vec<Item> {
@@ -86,6 +86,43 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Mind(MindItem::Vertical) => "board.mind.vertical",
         _ => return None,
     })
+}
+
+/// A dica do botão de recolher pelo estado do nó: «expandir» com o ramo recolhido (o ícone já é o
+/// «+»; a dica estática mentia — auditoria W6).
+pub(super) fn sync_tooltip(store: &mut WidgetStore, ed: &Editor, doc: &BoardDoc) {
+    let collapsed = ed
+        .mind_focus(doc)
+        .and_then(|id| doc.get(id)?.mind().map(|m| m.collapsed))
+        .unwrap_or(false);
+    let key = if collapsed {
+        "board.mind.expand"
+    } else {
+        "board.mind.collapse"
+    };
+    store.set_tooltip(super::node(Item::Mind(MindItem::Collapse)), tr(key));
+}
+
+/// A galeria fecha quando outra janela da barra abre (a nota, a caneta, as formas) — as quatro
+/// começam à direita da barra curta e sobrepunham-se (auditoria W6). Devolve se fica aberta.
+pub(super) fn sync_gallery(live: &mut crate::documents::BoardLive) -> bool {
+    let tool = live.editor.as_ref().map(|e| e.tool);
+    let other = live.shapes_open
+        || tool.is_some_and(|t| super::flyout_open(t) || super::pen::flyout_open(t));
+    live.templates_open &= !other;
+    live.templates_open
+}
+
+/// Um clique na barra: o dos Modelos abre ou fecha a galeria (e abri-la fecha as outras janelas da
+/// barra); qualquer outro fecha-a.
+pub(super) fn toggle_gallery(live: &mut crate::documents::BoardLive, it: Item) {
+    live.templates_open = it == TEMPLATES && !live.templates_open;
+    if live.templates_open {
+        live.shapes_open = false;
+        if let Some(ed) = live.editor.as_mut() {
+            ed.tool = Tool::Select;
+        }
+    }
 }
 
 /// Aceso? `None` = não é daqui.
@@ -183,6 +220,15 @@ pub(super) fn paint_icon(
     true
 }
 
+/// O desenho do glifo do Mapa mental, em fracções do quadrado do ícone: o centro do nó, o raio dele,
+/// a altura de cada ramo e os dois braços da curva.
+const GLYPH_NODE: [f64; 2] = [0.25, 0.5]; // LITERAL-PX-OK: desenho do glifo
+const GLYPH_R: f64 = 0.12; // LITERAL-PX-OK: desenho do glifo
+const GLYPH_TIPS: [f64; 3] = [0.15, 0.5, 0.85]; // LITERAL-PX-OK: desenho do glifo
+const GLYPH_ARMS: [f64; 2] = [0.55, 0.5]; // LITERAL-PX-OK: desenho do glifo
+/// A tolerância do círculo em caminho (px).
+const GLYPH_TOL: f64 = 0.1; // LITERAL-PX-OK: tolerância de aplanar a curva
+
 /// O ícone do Mapa mental: um nó com três ramos curvos para a direita.
 fn mind_glyph(scene: &mut VectorScene, r: Rect, fg: Color, line: f64) {
     let (x, y, w, h) = (
@@ -191,13 +237,17 @@ fn mind_glyph(scene: &mut VectorScene, r: Rect, fg: Color, line: f64) {
         f64::from(r.w),
         f64::from(r.h),
     );
-    let (cx, cy) = (x + w * 0.25, y + h * 0.5);
+    let (cx, cy) = (x + w * GLYPH_NODE[0], y + h * GLYPH_NODE[1]);
     let mut p = BezPath::new();
-    p.extend(ph2d_vector::Circle::new((cx, cy), w * 0.12).path_elements(0.1));
-    for t in [0.15, 0.5, 0.85] {
+    p.extend(ph2d_vector::Circle::new((cx, cy), w * GLYPH_R).path_elements(GLYPH_TOL));
+    for t in GLYPH_TIPS {
         let ty = y + h * t;
-        p.move_to((cx + w * 0.12, cy));
-        p.curve_to((x + w * 0.55, cy), (x + w * 0.5, ty), (x + w, ty));
+        p.move_to((cx + w * GLYPH_R, cy));
+        p.curve_to(
+            (x + w * GLYPH_ARMS[0], cy),
+            (x + w * GLYPH_ARMS[1], ty),
+            (x + w, ty),
+        );
     }
     super::look::stroke(scene, &p, fg, line, Dash::Solid);
 }

@@ -476,3 +476,6 @@ fn a_new_node_lives_in_its_parents_frame() {
     let a = w.child("A");
     assert_eq!(w.el(a).frame, Some(f), "o filho mora no frame do pai");
 }
+
+#[path = "mindmap_audit_tests.rs"]
+mod audit;

@@ -164,8 +164,10 @@ pub fn key(
         }
         return taken();
     }
-    if let Some(c) = mind_key(ed, doc, k, ctrl) {
-        let _ = ed.command(doc, history, ts, c);
+    if let Some(c) = mind_key(ed, doc, k, ctrl, mods.shift) {
+        if let Some(c) = c {
+            let _ = ed.command(doc, history, ts, c);
+        }
         return taken();
     }
     let nudge = ph2d_board_edit::NUDGE[usize::from(mods.shift)];
@@ -243,12 +245,17 @@ pub fn key(
 /// ⭐ As teclas de um NÓ de mapa mental seleccionado (W6, `docs/MiroClone/04` M6/M8/M10): `Tab` = o
 /// filho · as setas andam pela árvore (em vez de empurrar: o layout manda no sítio) · `Ctrl+↑`
 /// recolhe e `Ctrl+↓` expande (o idioma dos outliners — a `/` do XMind não chega ao quadro).
+///
+/// `Some(None)` = a tecla é do nó mas não faz nada agora: um `Ctrl+seta` num nó NUNCA cai no
+/// `Grow` das formas (clonava o nó com uma seta — auditoria W6); `Ctrl+Shift+seta` segue para o
+/// alinhar.
 fn mind_key(
     ed: &ph2d_board_edit::Editor,
     doc: &ph2d_board_model::BoardDoc,
     k: BoardKey,
     ctrl: bool,
-) -> Option<Command> {
+    shift: bool,
+) -> Option<Option<Command>> {
     let id = ed.mind_focus(doc)?;
     let collapsed = doc.get(id)?.mind()?.collapsed;
     let arrow = match k {
@@ -256,16 +263,19 @@ fn mind_key(
         BoardKey::Right => [1.0, 0.0],
         BoardKey::Up => [0.0, -1.0],
         BoardKey::Down => [0.0, 1.0],
-        BoardKey::Tab if !ctrl => return Some(Command::MindChild),
+        BoardKey::Tab if !ctrl => return Some(Some(Command::MindChild)),
         _ => return None,
     };
     if !ctrl {
-        return Some(Command::MindNav(arrow));
+        return Some(Some(Command::MindNav(arrow)));
     }
-    match (k, collapsed) {
+    if shift {
+        return None;
+    }
+    Some(match (k, collapsed) {
         (BoardKey::Up, false) | (BoardKey::Down, true) => Some(Command::MindCollapse),
         _ => None,
-    }
+    })
 }
 
 /// `Ctrl+B` negrito · `Ctrl+I` itálico · `Ctrl+U` sublinhado · `Ctrl+Shift+X` riscado (o do Miro e

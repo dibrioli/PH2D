@@ -399,3 +399,16 @@ fn a_branch_is_the_measured_miro_curve() {
         "um ramo escondido não se desenha"
     );
 }
+
+/// O número do selo lê-se sobre a cor de cada ramo (a tinta legível, não o branco: o verde-água
+/// dava 1,4:1 — auditoria W6). Contraste WCAG ≥ 3 (texto grande).
+#[test]
+fn every_branch_colour_has_a_readable_badge_ink() {
+    let lum = |c: Rgba| c.luminance();
+    for c in MIND_COLORS.iter().copied().chain([MIND_ROOT_STROKE]) {
+        let (bg, ink) = (Rgba(c), Rgba(c).readable_ink());
+        let (a, b) = (lum(bg), lum(ink));
+        let ratio = (a.max(b) + 0.05) / (a.min(b) + 0.05);
+        assert!(ratio >= 3.0, "{c:?}: {ratio:.2}");
+    }
+}

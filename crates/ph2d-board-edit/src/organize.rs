@@ -197,8 +197,11 @@ impl Editor {
             return false;
         }
         let on = !sel.iter().all(|el| el.locked());
+        // Um nó de mapa mental não se trava (o Miro: «não roda, não agrupa, não tranca») — um ramo
+        // com um nó travado deixava órfãos ao apagar o pai (auditoria W6).
         let ops = sel
             .into_iter()
+            .filter(|el| el.mind().is_none())
             .filter(|el| el.locked() != on)
             .map(|el| {
                 let mut el = el.clone();
@@ -483,10 +486,15 @@ pub(crate) fn with_descendants(doc: &BoardDoc, ids: &[ElementId]) -> BTreeSet<El
         if doc.get(*id).is_some_and(|e| e.as_frame().is_some()) {
             out.extend(doc.descendants(*id));
         }
-        // Um nó de mapa mental leva o ramo dele (W6, M9/M12): apagar, mover, copiar.
-        if doc.get(*id).is_some_and(|e| e.mind().is_some()) {
-            out.extend(doc.mind_descendants(*id));
-        }
+    }
+    // Um nó de mapa mental leva o ramo dele (W6, M9/M12) — também o que um frame leva.
+    let nodes: Vec<ElementId> = out
+        .iter()
+        .copied()
+        .filter(|id| doc.get(*id).is_some_and(|e| e.mind().is_some()))
+        .collect();
+    for id in nodes {
+        out.extend(doc.mind_descendants(id));
     }
     out
 }
@@ -578,7 +586,7 @@ pub(crate) fn settle_frame(doc: &BoardDoc, frame: ElementId) -> Vec<Element> {
         return Vec::new();
     };
     let mut out = Vec::new();
-    for el in doc.live() {
+    for el in doc.live_with_hidden() {
         if el.id == frame || el.connector().is_some() {
             continue;
         }

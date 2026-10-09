@@ -206,3 +206,70 @@ fn the_mind_controls_show_only_when_they_act() {
     t.shell_click_bar(mind(MindItem::Vertical));
     assert!(t.doc().get(root).unwrap().mind().unwrap().vertical);
 }
+
+/// B1 (auditoria W6): num nó, `Ctrl+seta` NUNCA cai no «forma seguinte» — o `Ctrl+Down` num nó já
+/// aberto e o `Ctrl+Right` não criam nada.
+#[test]
+fn ctrl_arrows_on_a_node_never_grow_a_shape() {
+    let mut t = T::new();
+    let root = t.start_map("Plan");
+    assert!(t.key(BoardKey::Tab, NONE, None));
+    t.write("A");
+    assert!(t.key(BoardKey::Escape, NONE, None));
+    t.select(root);
+    let n0 = t.elements().len();
+    let ctrl = Modifiers { ctrl: true, ..NONE };
+    for k in [BoardKey::Down, BoardKey::Right, BoardKey::Left] {
+        assert!(t.key(k, ctrl, None), "a tecla é do nó");
+    }
+    assert_eq!(t.elements().len(), n0, "nada nasceu");
+    assert!(!t.doc().get(root).unwrap().mind().unwrap().collapsed);
+}
+
+/// B4: a galeria nunca fica por cima de outra janela da barra — abri-la fecha a da Nota, escolher a
+/// Nota fecha-a, e um clique no quadro também.
+#[test]
+fn the_gallery_never_overlaps_another_flyout() {
+    let mut t = T::new();
+    let gallery_open = |t: &T| t.find(node(mind(MindItem::Template(0)))).is_some();
+    t.shell_click_bar(Item::Tool(Tool::Shape(ShapeType::Sticky)));
+    t.shell_click_bar(TEMPLATES);
+    assert!(gallery_open(&t));
+    assert!(
+        !super::super::notes::flyout_open(t.editor().tool),
+        "a da Nota fechou"
+    );
+    assert!(t.key(BoardKey::Char('n'), NONE, Some("n")));
+    assert!(!gallery_open(&t), "escolher a Nota fecha a galeria");
+    t.shell_click_bar(TEMPLATES);
+    assert!(gallery_open(&t));
+    let p = t.at(0.6, 0.6);
+    t.drag(p, p);
+    assert!(!gallery_open(&t), "um clique no quadro fecha-a");
+}
+
+/// B8: a dica do botão de recolher diz o que ele faz agora (expandir, com o ramo recolhido).
+#[test]
+fn the_collapse_tooltip_follows_the_branch() {
+    let mut t = T::new();
+    let root = t.start_map("Plan");
+    assert!(t.key(BoardKey::Tab, NONE, None));
+    t.write("A");
+    assert!(t.key(BoardKey::Escape, NONE, None));
+    t.select(root);
+    let id = node(mind(MindItem::Collapse));
+    assert_eq!(
+        t.hero.store.tooltip_for(id),
+        Some(tr("board.mind.collapse"))
+    );
+    t.shell_click_bar(mind(MindItem::Collapse));
+    assert_eq!(t.hero.store.tooltip_for(id), Some(tr("board.mind.expand")));
+}
+
+/// B9: a lição 6 da cena 8 diz «the button under the mind map one» — o dos Modelos vem logo a seguir
+/// ao do Mapa mental na barra curta.
+#[test]
+fn the_templates_button_sits_right_under_the_mind_map_one() {
+    let at = |it| TOOLBAR.iter().position(|i| *i == it);
+    assert_eq!(at(TEMPLATES), at(MIND_TOOL).map(|p| p + 1));
+}

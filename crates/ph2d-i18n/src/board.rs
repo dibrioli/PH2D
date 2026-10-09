@@ -252,7 +252,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "6. Templates: the button under the mind map one, on the left bar — one click, a whole board"
         }
         "board.tool.mindmap" => {
-            "Mind map — click to start one; Tab adds a child, Enter a sibling, the arrows walk the tree"
+            "Mind map — click to start one; Tab adds a child, Enter while typing adds a sibling, the arrows walk the tree"
         }
         "board.tool.templates" => "Templates — start from a ready-made board",
         "board.mind.collapse" => "Collapse branch (Ctrl+Up)",

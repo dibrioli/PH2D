@@ -110,6 +110,115 @@ fn lighter_side(doc: &BoardDoc, root: ElementId) -> Side {
     }
 }
 
+/// Arruma AO VIVO os mapas a que `ids` pertencem — o fim de um gesto que mexeu em nós sem ser o
+/// largar de um ramo (um arrasto misto, redimensionar, rodar): o layout devolve os arrumados ao
+/// sítio (M17; auditoria W6).
+pub(crate) fn settle_moved(doc: &mut BoardDoc, ids: impl IntoIterator<Item = ElementId>) {
+    let roots: BTreeSet<ElementId> = ids.into_iter().filter_map(|id| doc.mind_root(id)).collect();
+    if !roots.is_empty() {
+        let _ = ph2d_board_model::mind_settle(doc, &roots);
+    }
+}
+
+/// O nó é arrumado pelo layout (tem pai, e o pai tem auto layout).
+pub(crate) fn laid(doc: &BoardDoc, id: ElementId) -> bool {
+    doc.mind_parent(id)
+        .and_then(|p| doc.get(p))
+        .and_then(Element::mind)
+        .is_some_and(|m| !m.manual)
+}
+
+/// A chave do primeiro irmão (filho de `parent`) ESTRITAMENTE depois de `key` — o vizinho de cima
+/// de um «logo depois», mesmo num documento com chaves repetidas.
+pub(crate) fn after(doc: &BoardDoc, parent: ElementId, key: &FracKey) -> Option<FracKey> {
+    doc.mind_children(parent)
+        .into_iter()
+        .filter_map(|c| doc.get(c)?.mind().map(|m| m.order.clone()))
+        .filter(|o| o > key)
+        .min()
+}
+
+/// M14: a cor do filho novo da raiz — a seguinte da paleta depois da do ÚLTIMO filho (depois de
+/// apagar um do meio, a contagem repetia a do vizinho — auditoria W6).
+pub(crate) fn next_color(doc: &BoardDoc, root: ElementId) -> Rgba {
+    let last = doc
+        .mind_children(root)
+        .last()
+        .and_then(|c| doc.get(*c))
+        .and_then(Element::mind)
+        .and_then(|m| MIND_COLORS.iter().position(|c| Rgba(*c) == m.color));
+    Rgba(MIND_COLORS[last.map_or(0, |i| (i + 1) % MIND_COLORS.len())])
+}
+
+/// Onde nasce o filho de um pai SEM auto layout (M11): um vão de nível depois da borda de fora
+/// dele, logo abaixo do último filho (ou à altura do pai) — nunca por cima do pai.
+fn beside_last(doc: &BoardDoc, parent: ElementId, kids: &[ElementId], side: Side) -> [f64; 2] {
+    let Some(p) = doc.get(parent) else {
+        return [0.0, 0.0];
+    };
+    let (vertical, _) = ph2d_board_model::outward(doc, parent);
+    let k = p.style().font_size / ph2d_board_model::MIND_FONT;
+    let (level, gap) = (
+        ph2d_board_model::MIND_LEVEL_GAP * k,
+        ph2d_board_model::MIND_SIBLING_GAP * k,
+    );
+    let sign = if side == Side::After { 1.0 } else { -1.0 };
+    let last = kids.last().and_then(|c| doc.get(*c));
+    let [cx, cy] = p.center();
+    if vertical {
+        let y = cy + sign * (p.h / 2.0 + level);
+        let x = last.map_or(cx, |l| l.x + l.w + gap + l.w / 2.0);
+        [x, y]
+    } else {
+        // O filho novo nasce vazio: meia largura de um nó vazio além do vão.
+        let half = (EMPTY_EMS + 2.0 * MIND_PAD[0] / ph2d_board_model::MIND_FONT)
+            * p.style().font_size
+            / 2.0;
+        let x = cx + sign * (p.w / 2.0 + level + half);
+        let y = last.map_or(cy, |l| l.y + l.h + gap + l.h / 2.0);
+        [x, y]
+    }
+}
+
+/// Uma CÓPIA de nó (colar, duplicar, `Alt`): com o pai copiado, fica debaixo da cópia dele; sem
+/// ele, é irmã do original LOGO DEPOIS dele, com chave própria; se o pai já não existe, é a raiz de
+/// um mapa novo (com a forma de raiz). `true` = virou raiz (o tamanho acerta-se no próximo
+/// overlay).
+pub(crate) fn rehome_copy(
+    doc: &BoardDoc,
+    el: &mut Element,
+    map: &std::collections::BTreeMap<ElementId, ElementId>,
+) -> bool {
+    let Some(m) = el.mind().cloned() else {
+        return false;
+    };
+    let Some(p) = m.parent else {
+        return false;
+    };
+    if let Some(np) = map.get(&p) {
+        if let Some(mm) = el.mind_mut() {
+            mm.parent = Some(*np);
+        }
+        return false;
+    }
+    if doc.get(p).and_then(Element::mind).is_some() {
+        let order = FracKey::between(Some(&m.order), after(doc, p, &m.order).as_ref());
+        if let Some(mm) = el.mind_mut() {
+            mm.order = order;
+        }
+        return false;
+    }
+    if let Some(mm) = el.mind_mut() {
+        mm.parent = None;
+        mm.color = Rgba(MIND_ROOT_STROKE);
+    }
+    if let Some(s) = el.shape_mut() {
+        s.kind = ShapeType::Pill;
+        s.style.stroke = Some(Rgba(MIND_ROOT_STROKE));
+    }
+    true
+}
+
 /// A casa (o frame) de um nó novo: a do pai; a raiz, a do frame onde nasce.
 fn home_of(doc: &BoardDoc, mind: &Mind, at: [f64; 2]) -> Option<ElementId> {
     match mind.parent.and_then(|p| doc.get(p)) {
@@ -259,17 +368,16 @@ impl Editor {
         let is_root = doc.mind_parent(parent).is_none();
         let (side, color) = if is_root {
             let s = side.unwrap_or_else(|| lighter_side(doc, parent));
-            (s, Rgba(MIND_COLORS[kids.len() % MIND_COLORS.len()]))
+            (s, next_color(doc, parent))
         } else {
             (doc.mind_side(parent), pm.color)
         };
-        let node = self.mind_node(
-            doc,
-            ts,
-            Mind::new(Some(parent), order, side, color),
-            p.center(),
-            "",
-        );
+        let at = if pm.manual {
+            beside_last(doc, parent, &kids, side)
+        } else {
+            p.center()
+        };
+        let node = self.mind_node(doc, ts, Mind::new(Some(parent), order, side, color), at, "");
         let id = node.id;
         let mut ops = Vec::new();
         if pm.collapsed {
@@ -307,12 +415,7 @@ impl Editor {
         let Some(m) = el.mind().cloned() else {
             return false;
         };
-        let kids = doc.mind_children(parent);
-        let next = kids
-            .iter()
-            .position(|c| *c == id)
-            .and_then(|i| kids.get(i + 1));
-        let order = FracKey::between(Some(&m.order), order_of(doc, next).as_ref());
+        let order = FracKey::between(Some(&m.order), after(doc, parent, &m.order).as_ref());
         let node = self.mind_node(
             doc,
             ts,
@@ -462,8 +565,18 @@ impl Editor {
             &[Side::Before]
         };
         let [cx, cy] = el.center();
+        // Recolhido, o lado de fora é do selo (o número): o «+» dele tapava-o e roubava-lhe o clique
+        // a zoom alto (auditoria W6) — expande-se primeiro.
+        let badge = el.mind().filter(|m| m.collapsed).map(|_| {
+            if sign > 0.0 {
+                Side::After
+            } else {
+                Side::Before
+            }
+        });
         sides
             .iter()
+            .filter(|s| Some(**s) != badge)
             .map(|s| {
                 let k = if *s == Side::After { 1.0 } else { -1.0 };
                 if vertical {

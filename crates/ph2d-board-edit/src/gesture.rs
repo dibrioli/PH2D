@@ -158,7 +158,7 @@ impl Editor {
             .live_in_z_order()
             .into_iter()
             .rev()
-            .filter(|el| el.as_frame().is_none())
+            .filter(|el| el.as_frame().is_none() && !doc.connector_hidden(el))
             .find(|el| match el.connector() {
                 Some(c) => routes
                     .get(el.id)
@@ -612,6 +612,7 @@ impl Editor {
                 for el in crate::organize::rehome_on_drop(doc, &roots, p.world) {
                     live(doc, el);
                 }
+                crate::mindmap::settle_moved(doc, moved.iter().copied());
                 if copies.is_empty() {
                     history.record(undo_ops(doc, &originals));
                 } else {
@@ -625,9 +626,11 @@ impl Editor {
                 for f in originals.iter().filter(|o| o.as_frame().is_some()) {
                     crate::organize::settle_live(doc, f.id, &mut undo);
                 }
+                crate::mindmap::settle_moved(doc, originals.iter().map(|o| o.id));
                 history.record(undo);
             }
             Gesture::Rotate { originals, .. } => {
+                crate::mindmap::settle_moved(doc, originals.iter().map(|o| o.id));
                 history.record(undo_ops(doc, &originals));
             }
             Gesture::Create {

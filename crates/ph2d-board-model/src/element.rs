@@ -512,6 +512,12 @@ impl BoardDoc {
             .filter(|e| !e.deleted && !e.is_hidden())
     }
 
+    /// Os elementos vivos COM os escondidos por um ramo recolhido — o que um frame leva consigo
+    /// (apagar, copiar, mover, adoptar): o ramo recolhido continua dentro dele (auditoria W6).
+    pub fn live_with_hidden(&self) -> impl Iterator<Item = &Element> {
+        self.elements.values().filter(|e| !e.deleted)
+    }
+
     /// Os elementos vivos e à vista, de trás para a frente (ordem de desenho).
     #[must_use]
     pub fn live_in_z_order(&self) -> Vec<&Element> {

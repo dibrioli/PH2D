@@ -178,6 +178,8 @@ pub fn pointer(
     match kind {
         PointerKind::Down if on_canvas && super::board_nav::pointer_down(hero, x, y) => true,
         PointerKind::Down if on_canvas && inside(hero.last_canvas, x, y) => {
+            // Um clique no quadro fecha a galeria dos modelos (W6).
+            hero.documents.live.templates_open = false;
             // ⚠️ Tomar o Down antes do despacho herda a obrigação dele de largar o foco: sem isto o
             // campo de renomear uma aba (ou qualquer campo do chrome) ficava com o teclado.
             let arena = bumpalo::Bump::new();

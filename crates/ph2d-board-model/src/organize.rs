@@ -194,10 +194,11 @@ impl BoardDoc {
         out
     }
 
-    /// Tudo o que vive dentro de `frame`, a qualquer profundidade (filhos, netos…), por id.
+    /// Tudo o que vive dentro de `frame`, a qualquer profundidade (filhos, netos…), por id — os nós
+    /// escondidos por um ramo recolhido incluídos.
     #[must_use]
     pub fn descendants(&self, frame: ElementId) -> BTreeSet<ElementId> {
-        self.live()
+        self.live_with_hidden()
             .filter(|e| e.frame.is_some() && self.frame_chain(e.id).contains(&frame))
             .map(|e| e.id)
             .collect()

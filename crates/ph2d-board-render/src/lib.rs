@@ -177,7 +177,6 @@ pub fn paint(
     let chains = frames::Chains::new(&board.doc, &shown, &far);
     let framed = board.doc.has_frames();
     let board_ink = cache.ink;
-    mind::paint_branches(scene, board, v, clip);
     for el in board.doc.live_in_z_order() {
         if framed {
             if el.as_frame().is_some() {
@@ -193,7 +192,10 @@ pub fn paint(
             cache.sketch.ink = cache.ink;
         }
         if let Some(c) = el.connector() {
-            if let Some(r) = routes.get(el.id) {
+            if let Some(r) = routes
+                .get(el.id)
+                .filter(|_| !board.doc.connector_hidden(el))
+            {
                 if framed {
                     // Uma seta não vive num frame: a tinta é a do frame debaixo do meio dela.
                     cache.ink = frames::ink_at(&board.doc, r.mid, board_ink);
@@ -219,6 +221,7 @@ pub fn paint(
             }
             continue;
         }
+        mind::paint_branch(scene, board, el, v, clip);
         let [ax0, ay0, ax1, ay1] = el.aabb();
         let a = board.camera.to_screen(area, [ax0, ay0]);
         let b = board.camera.to_screen(area, [ax1, ay1]);
@@ -274,9 +277,9 @@ pub fn paint(
             board.id.0,
             sel_of(el.id),
         );
+        mind::paint_badge(scene, ts, cache, board, el, v);
     }
     clips.close(scene);
-    mind::paint_badges(scene, ts, cache, board, v);
     frames::paint_titles(scene, ts, cache, board, area, &frames, &chains, theme);
     scene.pop_layer();
     cache.end_frame();

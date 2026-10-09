@@ -417,7 +417,13 @@ impl Editor {
         from: ElementId,
         dir: [f64; 2],
     ) -> bool {
-        let Some(src) = doc.get(from).filter(|el| el.shape().is_some()).cloned() else {
+        // Um nó de mapa mental não cresce em forma ligada: o clone levava o pai e a chave de ordem
+        // dele (auditoria W6); o filho do nó é o `Tab`.
+        let Some(src) = doc
+            .get(from)
+            .filter(|el| el.shape().is_some() && el.mind().is_none())
+            .cloned()
+        else {
             return false;
         };
         let f = Frame::of(&src);

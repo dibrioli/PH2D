@@ -86,10 +86,12 @@ impl Editor {
                     .collect();
                 let mut ops = self.release_ends(doc, &gone);
                 ops.extend(gone.iter().map(|id| BoardOp::Delete(*id)));
-                // M9: apagar um nó de mapa passa a selecção ao pai.
+                // M9: apagar um nó de mapa passa a selecção ao pai — se saiu alguma coisa.
                 let parent = self.mind_focus(doc).and_then(|n| doc.mind_parent(n));
-                self.selection = parent.into_iter().collect();
                 let any = !gone.is_empty();
+                if any {
+                    self.selection = parent.into_iter().collect();
+                }
                 history.apply(doc, ops);
                 any
             }
@@ -108,7 +110,14 @@ impl Editor {
                 !self.clipboard.is_empty()
             }
             Command::Nudge(d) => {
-                let free: Vec<ElementId> = self.movable(doc).iter().map(|el| el.id).collect();
+                // Um nó que o layout arruma não se empurra (o layout devolvia-o no mesmo passo e
+                // ficava um passo de desfazer vazio — auditoria W6).
+                let free: Vec<ElementId> = self
+                    .movable(doc)
+                    .iter()
+                    .filter(|el| !crate::mindmap::laid(doc, el.id))
+                    .map(|el| el.id)
+                    .collect();
                 let ops: Vec<BoardOp> = crate::organize::with_descendants(doc, &free)
                     .into_iter()
                     .filter_map(|id| doc.get(id))
@@ -209,7 +218,8 @@ impl Editor {
             })
             .collect();
         crate::wire::remap(&mut copies, &map);
-        remap_organize(doc, &mut copies, &map);
+        let roots = remap_organize(doc, &mut copies, &map);
+        self.unfitted.extend(roots);
         let ops = copies
             .into_iter()
             .map(|mut el| {
@@ -223,7 +233,11 @@ impl Editor {
         for el in &ops {
             crate::mindmap::settle_live(doc, el.id);
         }
-        self.selection = ids;
+        // Os escondidos de um ramo recolhido copiado não ficam seleccionados (auditoria W6).
+        self.selection = ids
+            .into_iter()
+            .filter(|id| doc.get(*id).is_some_and(|e| !e.is_hidden()))
+            .collect();
         true
     }
 }
@@ -267,8 +281,9 @@ pub(crate) fn remap_organize(
     doc: &mut BoardDoc,
     copies: &mut [Element],
     map: &std::collections::BTreeMap<ElementId, ElementId>,
-) {
+) -> Vec<ElementId> {
     let mut groups = std::collections::BTreeMap::new();
+    let mut roots = Vec::new();
     for el in copies.iter_mut() {
         if let Some(f) = el.frame.and_then(|f| map.get(&f)) {
             el.frame = Some(*f);
@@ -276,14 +291,15 @@ pub(crate) fn remap_organize(
         if let Some(l) = el.link().and_then(|l| map.get(&l)) {
             el.set_link(Some(*l));
         }
-        // Um nó copiado com o pai fica debaixo da cópia dele; sem o pai, é irmão do original (W6).
-        if let Some(m) = el.mind_mut()
-            && let Some(p) = m.parent.and_then(|p| map.get(&p))
-        {
-            m.parent = Some(*p);
+        // Um nó copiado com o pai fica debaixo da cópia dele; sem o pai, é irmão do original — LOGO
+        // DEPOIS dele, com chave própria (duas chaves iguais faziam o `Enter` seguinte entrar em
+        // pânico, auditoria W6); e se o pai já não existe, a cópia é a raiz de um mapa novo.
+        if crate::mindmap::rehome_copy(doc, el, map) {
+            roots.push(el.id);
         }
         for g in el.groups_mut() {
             *g = *groups.entry(*g).or_insert_with(|| doc.mint_group());
         }
     }
+    roots
 }

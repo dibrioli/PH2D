@@ -143,6 +143,7 @@ fn taffy_tree(doc: &BoardDoc, root: ElementId) -> (Vec<Node>, Vec<(ElementId, us
         nodes.len() - 1
     }
     // Uma subárvore do lado `side` debaixo de `parent` (índice da caixa onde ela entra).
+    #[allow(clippy::too_many_arguments)]
     fn subtree(
         doc: &BoardDoc,
         id: ElementId,

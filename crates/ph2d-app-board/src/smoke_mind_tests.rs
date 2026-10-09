@@ -121,7 +121,11 @@ fn every_mind_lesson_does_what_it_says() {
         r.ed.text_key(&mut r.doc, &mut r.h, &mut r.ts, TextKey::Newline);
         assert!(r.text(sib).contains('\n'));
 
-        // 3. As setas andam pela árvore; Delete leva o ramo.
+        // 3. As setas andam pela árvore; Delete leva o ramo (e selecciona o pai).
+        r.select(sib);
+        assert!(r.cmd(Command::Delete));
+        assert!(r.doc.get(sib).is_none());
+        assert_eq!(r.focus(), ideas);
         r.select(sketch);
         assert!(r.cmd(Command::MindNav([0.0, 1.0])));
         assert_ne!(r.focus(), sketch, "a seta andou");
@@ -135,11 +139,21 @@ fn every_mind_lesson_does_what_it_says() {
         let n = ph2d_board_model::hidden_count(&r.doc, risks);
         let [x, y, w, h] =
             ph2d_board_model::badge_rect(&r.doc, risks, ph2d_board_edit::digits(n)).unwrap();
-        r.ed.select(&r.doc, []);
+        // A ordem REAL das lições: «Plan» continua seleccionado da 3 (auditoria W6: o Ctrl+Up
+        // fechava o mapa inteiro).
         r.drag([x + w / 2.0, y + h / 2.0], [x + w / 2.0, y + h / 2.0]);
         assert!(
             !r.doc.get(risks).unwrap().mind().unwrap().collapsed,
             "o ramo abriu"
+        );
+        assert!(r.cmd(Command::MindCollapse), "Ctrl+Up");
+        assert!(
+            r.doc.get(risks).unwrap().mind().unwrap().collapsed,
+            "volta a fechar «Risks»"
+        );
+        assert!(
+            !r.doc.get(root).unwrap().mind().unwrap().collapsed,
+            "e não o mapa"
         );
 
         // 5. «Sketch» largado sobre «Next steps»: passa para lá, com a cor de lá.

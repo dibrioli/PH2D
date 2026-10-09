@@ -90,8 +90,9 @@ fn every_template_lands_centred_selected_and_in_one_undo_step() {
         assert_eq!(w.ed.selection().len(), picked.len());
         let b = w.bbox();
         let c = [(b[0] + b[2]) / 2.0, (b[1] + b[3]) / 2.0];
-        // O mapa mental arruma-se DEPOIS de centrado (a raiz fica, os ramos abrem-se à volta dela).
-        let tol = if t == Template::MindMap { 200.0 } else { 1e-6 };
+        // O mapa arruma-se antes de centrar com as larguras ESTIMADAS do texto; o 1.º desenho acerta-as
+        // ao moldado e os ramos andam o que a estimativa errou (meia largura de um nó, no máximo).
+        let tol = if t == Template::MindMap { 40.0 } else { 1e-6 };
         assert!(
             (c[0] - CENTER[0]).abs() < tol && (c[1] - CENTER[1]).abs() < tol,
             "{t:?}: centro {c:?}"

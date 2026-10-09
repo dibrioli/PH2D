@@ -436,3 +436,62 @@ fn a_rotated_guide_paints_along_the_rotated_edges() {
         "a 6 px da linha inclinada a guia pintou"
     );
 }
+
+/// ⭐ Um RAMO de mapa mental corta-se na borda do frame onde o nó vive, como os filhos (auditoria W6:
+/// pintado à parte, atravessava a borda e ligava-se ao vazio). Frame branco `(0,0) 200×200`; a raiz
+/// dentro, um filho em `x = 400` que mora no mesmo frame (fora da caixa dele); o ramo, recto, em
+/// `y = 100`, com 6 de espessura (letra 56 = 4 × a de nascença).
+#[test]
+fn a_mind_branch_is_cut_at_the_frame_border() {
+    use ph2d_board_model::{FracKey, MIND_COLORS, Mind, Side};
+    let Some(mut g) = gpu() else {
+        return;
+    };
+    let mut set = frame_scene(1.0);
+    let id = set.boards()[0].id;
+    let b = set.get_mut(id).unwrap();
+    let fid = b.doc.frames().next().unwrap().id;
+    let stray: Vec<_> = b
+        .doc
+        .live()
+        .filter(|e| e.shape().is_some())
+        .map(|e| e.id)
+        .collect();
+    for s in stray {
+        BoardOp::Delete(s).apply(&mut b.doc);
+    }
+    let node = |doc: &mut ph2d_board_model::BoardDoc, parent, bx: [f64; 4]| {
+        let mut style = Style::new(None, None, RED);
+        style.font_size = 56.0;
+        let shape = Shape {
+            kind: ShapeType::Rectangle,
+            style,
+            text: Default::default(),
+        };
+        let mut el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, bx);
+        el.frame = Some(fid);
+        let color = Rgba(MIND_COLORS[0]);
+        el.set_mind(Some(Mind::new(
+            parent,
+            FracKey::between(None, None),
+            Side::After,
+            color,
+        )));
+        let id = el.id;
+        BoardOp::Put(el).apply(doc);
+        id
+    };
+    let root = node(&mut b.doc, None, [20.0, 85.0, 80.0, 30.0]);
+    node(&mut b.doc, Some(root), [400.0, 85.0, 80.0, 30.0]);
+    let px = render(&mut g, &set, Detail::default());
+    // Zoom 1, centro (100,100) no meio de 640×480: o mundo x → ecrã x + 220, y → y + 140.
+    let orange = Rgba(MIND_COLORS[0]);
+    assert!(
+        px.is(150 + 220, 240, orange),
+        "dentro do frame o ramo pinta-se"
+    );
+    assert!(
+        !px.is(300 + 220, 240, orange),
+        "fora da borda o ramo é CORTADO"
+    );
+}

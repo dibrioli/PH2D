@@ -20,7 +20,7 @@ use ph2d_ecs::{GlobalTransform, SpriteEmissive, StableId, is_hidden_in_tree};
 use ph2d_render::Sprite;
 
 use crate::cena::{CenaDeLuz, Emissor, Oclusor, Rgb};
-use crate::componentes::{BloqueiaLuz, Luz, TipoDeLuz};
+use crate::componentes::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 
 /// Chave de ordem: o `StableId` (sobrevive a undo e save), depois a `Entity`.
 type Chave = (Option<u64>, Entity);
@@ -61,12 +61,14 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     let mut emissores: BTreeMap<Chave, Emissor> = BTreeMap::new();
     let mut oclusores: BTreeMap<Chave, Oclusor> = BTreeMap::new();
     let mut ceu = [0.0_f32; 3];
+    let mut luzes = 0_u32;
 
     if let Some(mut q) = world.try_query::<(Entity, &Luz, Option<&GlobalTransform>)>() {
         for (e, luz, g) in q.iter(world) {
             if is_hidden_in_tree(world, e) {
                 continue;
             }
+            luzes += 1;
             let fluencia = luz.cor.map(|c| c * luz.intensidade);
             if !acende(fluencia) {
                 continue;
@@ -138,9 +140,18 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         }
     }
 
+    let mut nao_recebem: BTreeMap<Chave, Entity> = BTreeMap::new();
+    if let Some(mut q) = world.try_query_filtered::<Entity, bevy_ecs::query::With<NaoRecebeLuz>>() {
+        for e in q.iter(world) {
+            nao_recebem.insert(chave(world, e), e);
+        }
+    }
+
     CenaDeLuz {
         emissores: emissores.into_values().collect(),
         oclusores: oclusores.into_values().collect(),
         ceu,
+        luzes,
+        nao_recebem: nao_recebem.into_values().collect(),
     }
 }

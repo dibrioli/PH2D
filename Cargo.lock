@@ -4882,6 +4882,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-light2d"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "half",
+ "kurbo",
+ "ph2d-app-host",
+ "ph2d-ecs",
+ "ph2d-gpu",
+ "ph2d-host",
+ "ph2d-light2d-ecs",
+ "ph2d-light2d-gpu",
+ "ph2d-light2d-ref",
+ "ph2d-render",
+ "vello",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-app-motion"
 version = "0.0.0"
 dependencies = [
@@ -5040,6 +5059,7 @@ dependencies = [
  "ph2d-app-components",
  "ph2d-app-flip",
  "ph2d-app-host",
+ "ph2d-app-light2d",
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",
@@ -5881,6 +5901,7 @@ dependencies = [
  "ph2d-app-components",
  "ph2d-app-flip",
  "ph2d-app-host",
+ "ph2d-app-light2d",
  "ph2d-app-motion",
  "ph2d-app-painter",
  "ph2d-app-physics",

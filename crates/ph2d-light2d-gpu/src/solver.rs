@@ -828,6 +828,21 @@ impl Solver {
         cap.relatorio
     }
 
+    /// Move a grade no MUNDO (pan, oitava de zoom) SEM realocar: as dimensões ficam, e a origem e o
+    /// texel só entram pela captura e pelos uniformes de cada quadro (`gravar`). Quem ancora a
+    /// origem (G11) é o chamador.
+    ///
+    /// # Errors
+    /// [`ErroSolver::ConfigInvalida`] com origem ou texel não finitos (a grade fica a anterior).
+    pub fn reposicionar(&mut self, origem_m: [f64; 2], texel_m: f64) -> Result<(), ErroSolver> {
+        let mut cfg = self.cfg;
+        cfg.grade.origem_m = origem_m;
+        cfg.grade.texel_m = texel_m;
+        validar(&cfg)?;
+        self.cfg = cfg;
+        Ok(())
+    }
+
     /// Um quadro: grava e submete.
     pub fn quadro(&mut self, gpu: &GpuContext, cena: &CenaDeLuz) -> RelatorioC0 {
         let mut enc = gpu

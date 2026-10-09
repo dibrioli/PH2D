@@ -32,6 +32,7 @@ pub fn penumbra() -> CenaDeLuz {
         emissores: vec![disco(LUZ, RAIO_LUZ, [L; 3], f32::INFINITY)],
         oclusores: vec![oclusor_14px()],
         ceu: [0.0; 3],
+        ..Default::default()
     }
 }
 
@@ -41,6 +42,7 @@ pub fn faisca() -> CenaDeLuz {
         emissores: vec![disco(LUZ, 0.01, [L; 3], f32::INFINITY)],
         oclusores: vec![oclusor_14px()],
         ceu: [0.0; 3],
+        ..Default::default()
     }
 }
 
@@ -56,6 +58,7 @@ pub fn ceu_e_vidro() -> CenaDeLuz {
             oclusor(parede, 1.0),
         ],
         ceu: [0.05, 0.08, 0.12],
+        ..Default::default()
     }
 }
 
@@ -94,6 +97,7 @@ pub fn enxame(n: u32) -> CenaDeLuz {
         emissores,
         oclusores: vec![],
         ceu: [0.0; 3],
+        ..Default::default()
     }
 }
 
@@ -134,6 +138,7 @@ pub fn enxame_de_luzes(luzes: u32) -> CenaDeLuz {
         emissores: vec![],
         oclusores: vec![],
         ceu: [0.0; 3],
+        ..Default::default()
     };
     for i in 0..celulas {
         let c = (u64::from(i) * u64::from(passo) % u64::from(celulas)) as u32;

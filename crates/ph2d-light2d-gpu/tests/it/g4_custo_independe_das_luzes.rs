@@ -84,6 +84,7 @@ fn opaco(raio: f32) -> ph2d_light2d_ecs::CenaDeLuz {
         )],
         oclusores: vec![],
         ceu: [0.0; 3],
+        ..Default::default()
     }
 }
 

@@ -164,6 +164,7 @@ fn esperado() -> CenaDeLuz {
             opacidade: 0.75,
         }],
         ceu: [0.1, 0.1, 0.2],
+        ..Default::default()
     }
 }
 
@@ -263,4 +264,51 @@ fn um_mundo_sem_luz_da_a_cena_vazia() {
     let (t, g) = pose(0.0, 0.0, 0.0);
     w.spawn((Sprite::atlas(0, [1.0, 1.0], [1.0; 4]), t, g));
     assert_eq!(cena_de_luz(&w), CenaDeLuz::default());
+}
+
+/// ⭐ A GUARDA da W3 conta a PRESENÇA de uma `Luz`, não o brilho dela: uma luz a zero é uma sala
+/// escura que o artista pediu (contá-la só quando acende faria a cena voltar ao claro de sempre ao
+/// baixar a intensidade). Escondida na árvore não conta — não está na cena.
+#[test]
+fn a_cena_conta_as_luzes_presentes_mesmo_apagadas() {
+    let mut w = World::new();
+    let (t, g) = pose(0.0, 0.0, 0.0);
+    w.spawn((luz([1.0; 3], 0.0, 0.5, TipoDeLuz::Ponto), t, g));
+    w.spawn((luz([1.0; 3], 3.0, 0.0, TipoDeLuz::Ambiente), t, g));
+    w.spawn((
+        luz([1.0; 3], 3.0, 0.5, TipoDeLuz::Ponto),
+        t,
+        g,
+        Visibility::hidden(),
+    ));
+    let c = cena_de_luz(&w);
+    assert_eq!(c.luzes, 2, "{c:#?}");
+    // Uma sprite que brilha SEM `Luz` na cena não é luz: a guarda fica apagada.
+    let mut so_brilho = World::new();
+    so_brilho.spawn((
+        Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        SpriteEmissive(2.0),
+        t,
+        g,
+    ));
+    let c = cena_de_luz(&so_brilho);
+    assert_eq!(c.luzes, 0);
+    assert_eq!(
+        c.emissores.len(),
+        1,
+        "a sprite que brilha continua emissora"
+    );
+}
+
+/// `NaoRecebeLuz` chega aos receptores pela MESMA porta, na ordem do `StableId`.
+#[test]
+fn quem_nao_recebe_luz_vem_na_cena_em_ordem_estavel() {
+    use ph2d_light2d_ecs::NaoRecebeLuz;
+    let mut w = World::new();
+    let (t, g) = pose(0.0, 0.0, 0.0);
+    let sprite = || Sprite::atlas(0, [1.0, 1.0], [1.0; 4]);
+    let b = w.spawn((sprite(), t, g, NaoRecebeLuz, StableId(9))).id();
+    let a = w.spawn((sprite(), t, g, NaoRecebeLuz, StableId(3))).id();
+    w.spawn((sprite(), t, g, StableId(5)));
+    assert_eq!(cena_de_luz(&w).nao_recebem, vec![a, b]);
 }

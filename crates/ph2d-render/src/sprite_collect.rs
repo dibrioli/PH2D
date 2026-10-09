@@ -94,9 +94,10 @@ pub(crate) fn collect_sorted_instances(
     }
     let de_fora = scratch.len();
     scratch.extend_from_slice(extra.instances());
+    // ⚠️ O `SEM_LUZ_BIT` de uma instância de FORA é do PRODUTOR (a interface que vem por aqui — as
+    // barras do HUD, a tinta da máscara — marca-se a si mesma); a marca de malha não.
     for inst in &mut scratch[de_fora..] {
         crate::sprite_mesh::clear_mesh_tag(inst);
-        inst.flip_uv &= !RenderInstance::SEM_LUZ_BIT;
     }
     // ⭐⭐⭐ **A fatia de fora TAMBÉM leva malhas** (plano `docs/Skeleton/03`, W7): os fantasmas do
     // onion de uma imagem presa ao esqueleto são a arte DEFORMADA em `t ± k`, e sem isto eles

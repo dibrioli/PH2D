@@ -114,6 +114,9 @@ pub(crate) struct AppGfx {
     /// re-derivá-la seria a segunda resposta, e um quadro em que as duas discordassem desenharia
     /// a receita duas vezes ou nenhuma.
     pub(crate) frosting: bool,
+    /// ⭐ A LUZ 2D do quadro (`ph2d-app-light2d`): a codificação decide se acende (`preparar`); o
+    /// presente grava o solver e liga os receptores.
+    pub(crate) luz2d: ph2d_app_light2d::LuzDoQuadro,
     /// O compositor está a ler o acumulador (em vez da saída do tonemap)?
     ///
     /// ⚠️ **Ele guarda o `game_view` num bind group construído uma vez**, então trocar a fonte é um

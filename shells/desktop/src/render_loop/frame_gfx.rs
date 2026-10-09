@@ -97,6 +97,7 @@ pub(super) struct FrameGfx<'a> {
     pub(super) frost_doc_scene: &'a mut ph2d_vector::VectorScene,
     pub(super) frost_front_scene: &'a mut ph2d_vector::VectorScene,
     pub(super) frosting: &'a mut bool,
+    pub(super) luz2d: &'a mut ph2d_app_light2d::LuzDoQuadro,
 }
 
 impl<'a> FrameGfx<'a> {
@@ -218,6 +219,8 @@ impl<'a> FrameGfx<'a> {
             frosting,
             // ⭐ A grade ATRÁS dos objectos é do PRESENTE (`present.rs` enche-a e desenha-a).
             grid_behind_scene: _,
+            // ⭐ A luz 2D: a codificação do documento decide se acende (as faixas dependem disso).
+            luz2d,
         } = gfx;
         Self {
             doc_guides,
@@ -283,6 +286,7 @@ impl<'a> FrameGfx<'a> {
             frost_doc_scene,
             frost_front_scene,
             frosting,
+            luz2d,
         }
     }
 }

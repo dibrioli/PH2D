@@ -16,6 +16,7 @@ pub fn cena(emissores: Vec<Emissor>, oclusores: Vec<Oclusor>) -> CenaDeLuz {
         emissores,
         oclusores,
         ceu: [0.0; 3],
+        ..Default::default()
     }
 }
 

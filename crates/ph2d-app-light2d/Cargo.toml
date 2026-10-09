@@ -1,0 +1,41 @@
+[package]
+name = "ph2d-app-light2d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A FAMÍLIA da luz 2D (plano `docs/Luz2D/01_plano.md` §2.1): a composição no quadro — coleta,
+# guarda, grade ancorada, solver e os dois receptores. A shell só a CHAMA (três portas).
+# ⚠️ Versões LITERAIS, como as irmãs: este workspace não tem `[workspace.dependencies]`.
+[dependencies]
+# A declaração da família à shell (`FAMILY`).
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+# A coleta (`World → CenaDeLuz`) — a ÚNICA porta do ECS.
+ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
+# O solver (C0 → C1 → C2) e a `Grade`.
+ph2d-light2d-gpu = { path = "../ph2d-light2d-gpu" }
+# Os receptores: o passe de sprite e a colagem do vetor (`receber.wgsl`).
+ph2d-render = { path = "../ph2d-render" }
+bevy_ecs = "0.19"
+wgpu = "29.0.4"
+# O afim mundo → tela que o Vello usou (o vetor recebe a luz pelo inverso dele).
+kurbo = "0.13.1"
+
+[dev-dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-host = { path = "../ph2d-host" }
+# O quadrado vetorial dos gates desenha-se pela porta do documento (o Vello de verdade).
+vello = "0.10.0"
+# A fluência sai em `Rgba16Float`; os gates leem-na de volta (já no `Cargo.lock`).
+half = "2"
+# O gabarito: a paridade da luz recebida mede contra ele.
+ph2d-light2d-ref = { path = "../ph2d-light2d-ref" }
+
+[lints]
+workspace = true

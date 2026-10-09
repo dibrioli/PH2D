@@ -43,4 +43,10 @@ pub struct CenaDeLuz {
     pub oclusores: Vec<Oclusor>,
     /// Radiância do céu (soma das luzes `Ambiente`), que chega por toda direção que escapa.
     pub ceu: Rgb,
+    /// ⭐ Quantas `Luz` a cena TEM (visíveis), acesas ou não — a GUARDA do quadro (W3): sem nenhuma,
+    /// o solver não corre e o quadro é o de sempre. Uma sprite que brilha não conta (ela ilumina
+    /// quando a cena tem luz; sozinha deixaria todo projeto antigo com brilho no escuro).
+    pub luzes: u32,
+    /// ⭐ As entidades com `NaoRecebeLuz` (ordem do `StableId`) — o receptor não as multiplica.
+    pub nao_recebem: Vec<bevy_ecs::entity::Entity>,
 }

@@ -16,6 +16,7 @@ ph2d-app-audio = { path = "../ph2d-app-audio", optional = true }
 ph2d-app-board = { path = "../ph2d-app-board", optional = true }
 ph2d-app-components = { path = "../ph2d-app-components", optional = true }
 ph2d-app-flip = { path = "../ph2d-app-flip", optional = true }
+ph2d-app-light2d = { path = "../ph2d-app-light2d", optional = true }
 ph2d-app-motion = { path = "../ph2d-app-motion", optional = true }
 ph2d-app-painter = { path = "../ph2d-app-painter", optional = true }
 ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
@@ -34,6 +35,7 @@ default = [
     "app-board",
     "app-components",
     "app-flip",
+    "app-light2d",
     "app-motion",
     "app-painter",
     "app-physics",
@@ -48,6 +50,7 @@ app-audio = ["dep:ph2d-app-audio"]
 app-board = ["dep:ph2d-app-board"]
 app-components = ["dep:ph2d-app-components"]
 app-flip = ["dep:ph2d-app-flip"]
+app-light2d = ["dep:ph2d-app-light2d"]
 app-motion = ["dep:ph2d-app-motion"]
 app-painter = ["dep:ph2d-app-painter"]
 app-physics = ["dep:ph2d-app-physics"]

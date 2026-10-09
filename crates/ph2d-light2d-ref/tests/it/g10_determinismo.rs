@@ -52,6 +52,7 @@ fn cena_cheia() -> CenaDeLuz {
             },
         ],
         ceu: [0.05, 0.06, 0.1],
+        ..Default::default()
     }
 }
 

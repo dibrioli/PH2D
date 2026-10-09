@@ -200,6 +200,7 @@ impl crate::App {
             frame_order,
             hero_screen,
             grid_behind_scene,
+            luz2d,
             ..
         } = gfx;
         // M14.5 — viewport / RT pipeline. Four GPU submissions
@@ -268,8 +269,13 @@ impl crate::App {
             for (i, inst) in onion_ghosts.instances().iter().enumerate() {
                 e.push(*inst, onion_ghosts.mesh_of(i));
             }
+            // ⭐ A tinta da máscara e as barras são INTERFACE: nunca recebem a luz 2D.
+            let sem_luz = |i: &ph2d_render::RenderInstance| ph2d_render::RenderInstance {
+                flip_uv: i.flip_uv | ph2d_render::RenderInstance::SEM_LUZ_BIT,
+                ..*i
+            };
             for (i, inst) in bgremoval_tint.instances().iter().enumerate() {
-                e.push(*inst, bgremoval_tint.mesh_of(i));
+                e.push(sem_luz(inst), bgremoval_tint.mesh_of(i));
             }
             for i in motion_slice {
                 e.push(*i, None);
@@ -280,7 +286,7 @@ impl crate::App {
             // ⚠️ **Por último e com `z_order = u32::MAX`**: uma barra por trás do inimigo que ela
             // descreve não se lê.
             for i in barras {
-                e.push(*i, None);
+                e.push(sem_luz(i), None);
             }
             e
         };
@@ -303,6 +309,12 @@ impl crate::App {
         plan.banded |= grid_behind;
         // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
         plan.banded |= self.motion_shell.placa.ativa();
+        // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
+        //    codificação) — o vetor recebe a luz na colagem delas. Depois o solver, antes do primeiro
+        //    passe de sprite, e os dois receptores. ⛔ Sem `Luz`: nada disto muda o quadro.
+        plan.banded |= luz2d.grade().is_some();
+        luz2d.gravar(surface.gpu());
+        luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são

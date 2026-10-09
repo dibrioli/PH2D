@@ -377,8 +377,9 @@ impl RenderInstance {
     }
 
     /// ⭐ `flip_uv` bit 31 — **`NaoRecebeLuz`**: o `sprite.wgsl` não multiplica esta instância pela
-    /// luz 2D. Só a coleta o escreve (pelo `SimRef`, contra o conjunto que a luz do quadro entrega);
-    /// toda instância de fora chega sem ele.
+    /// luz 2D. Para a cena, a coleta o escreve pelo `SimRef` (contra o conjunto que a luz do quadro
+    /// entrega); uma instância de fora que é INTERFACE (barras do HUD, tinta da máscara) traz-o do
+    /// produtor.
     pub const SEM_LUZ_BIT: u32 = 1 << 31;
 
     /// ⭐⭐ **O `z_order` de toda sprite do MOTION: por cima do mundo** (doc 118 §10, 2026-09-23).

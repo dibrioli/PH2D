@@ -18,6 +18,7 @@ fn o_forno_branco_devolve_o_ceu() {
         emissores: vec![],
         oclusores: vec![],
         ceu,
+        ..Default::default()
     };
     for p in [[0.0, 0.0], [3.7, -12.0], [1e3, 1e3]] {
         let e = luz_em(&c, p);
@@ -38,7 +39,10 @@ fn o_disco_no_vazio_da_a_formula_fechada() {
     // O raio da cena é `f32`: a fórmula usa o MESMO número, não o `0,3` decimal.
     let (a32, l) = (0.3_f32, 2.0_f64);
     let a = f64::from(a32);
-    let c = cena(vec![disco([0.0, 0.0], a32, [l as f32; 3], f32::INFINITY)], vec![]);
+    let c = cena(
+        vec![disco([0.0, 0.0], a32, [l as f32; 3], f32::INFINITY)],
+        vec![],
+    );
     for r in [0.31, 0.5, 1.0, 4.0, 40.0] {
         let e = luz_em(&c, [r, 0.0])[0];
         let esperado = 2.0 * l * (a / r).asin() / TAU;

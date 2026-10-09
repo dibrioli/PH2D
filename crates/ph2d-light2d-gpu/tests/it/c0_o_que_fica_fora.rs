@@ -13,6 +13,7 @@ fn so(emissores: Vec<Emissor>) -> CenaDeLuz {
         emissores,
         oclusores: vec![],
         ceu: [0.0; 3],
+        ..Default::default()
     }
 }
 
@@ -69,6 +70,7 @@ fn a_forma_menor_que_o_texel_e_a_de_fora_da_grade_vem_ditas() {
             oclusor(regular([4.0, 4.0], 0.5, 5, 0.1), 1.0),
         ],
         ceu: [0.0; 3],
+        ..Default::default()
     };
     let fora = o_que_fica_fora(&cena, &g).fora;
     assert_eq!(

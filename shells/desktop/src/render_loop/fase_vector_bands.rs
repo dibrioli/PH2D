@@ -46,6 +46,8 @@ impl crate::App {
             frost_front_scene,
             frosting,
             motion,
+            luz2d,
+            surface,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -137,7 +139,11 @@ impl crate::App {
                 cam_affine,
             ),
         };
-        let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa);
+        // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS — é a colagem delas que o acende com a
+        //    mesma conta do sprite. ⛔ Sem `Luz` na cena, `false`: o quadro de sempre.
+        let alvo = surface.size();
+        let luz_acesa = luz2d.preparar(sim.world(), cam_affine, (alvo.width, alvo.height));
+        let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa || luz_acesa);
         for band in &doc_bands {
             let keep = frame_order.vector_ids_in(*band);
             let mut band_view = vec_view.clone();

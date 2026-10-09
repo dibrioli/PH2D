@@ -132,6 +132,13 @@ C4 receber   o shader de sprite amostra `luz_em()` (forward, sem buffer de tela 
 marcha diz «dentro» onde a cobertura INTERPOLADA ≥ ½ e lê o material do vizinho mais coberto. Ler o texel
 mais próximo dilatava a silhueta (erro de captura 0,097 → 0,018 no Alto). O alfa de um sprite é a cobertura.
 
+**Fixado na W3 (medido — [handoff W3](handoffs/HANDOFF_CONTINUACAO_W3_2026-10-09.md)):** a guarda é a
+PRESENÇA de uma `Luz` (não «ou um emissor»: todo projeto com brilho escureceria); a luz acesa força o
+quadro às FAIXAS e o vetor recebe na COLAGEM delas (o compositor não separa documento de chrome); o
+tonemap é UMA função (`tonemap_conta.wgsl`) partilhada com a colagem; o vetor que bloqueia entra por uma
+camada do Vello alinhada à grade, 1 px por texel, lida exata; o degrau padrão (texel 4 px, margem 12,5 %)
+sai do K7 a 1080p.
+
 ⚠️ O vetor vive depois do tonemap porque o Vello só escreve `Rgba8Unorm` (medido, ver
 `crates/ph2d-app-motion/src/motion_glow_layer.rs`). Receber a luz ali é o ponto mais frágil do
 desenho: **gate G7** (um sprite e uma forma vetorial da mesma cor, sob a mesma luz, dão o mesmo pixel)

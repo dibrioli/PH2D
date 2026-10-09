@@ -120,3 +120,52 @@ impl ModeFamily for Family<'_> {
         self.enter(mode, entity, tools)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::motion_objeto::{Dono, IDENTIDADE};
+
+    fn motion_com_dois_nos() -> MotionState {
+        let mut m = MotionState::new();
+        let a = m.doc.graph.add_node("motion.grid");
+        let b = m.doc.graph.add_node("motion.output");
+        m.doc.set_owner(a, 5);
+        m.doc.set_owner(b, 5);
+        m.objeto.donos.insert(
+            5,
+            Dono {
+                entity: 42,
+                visible: true,
+                afim: IDENTIDADE,
+                pose: ph2d_editor_core::TransformSnapshot::IDENTITY,
+            },
+        );
+        m
+    }
+
+    /// ⭐ A linha «Nodes (n)» sob o objecto Motion, com os nós DELE, abre o Edit.
+    #[test]
+    fn the_motion_object_declares_its_nodes_as_content() {
+        let mut m = motion_com_dois_nos();
+        let mut tools = ToolRegistry::new();
+        let mut out = ContentMap::default();
+        Family::new(&mut m).content(&mut tools, &mut out);
+        let grupos = out.get(&42).expect("o objecto 42 tem conteúdo");
+        assert_eq!(grupos.len(), 1);
+        assert_eq!(grupos[0].label_key, "hier_rows.content.nodes");
+        assert_eq!(grupos[0].items.len(), 2);
+        assert_eq!(grupos[0].opens, ContentOpens::Mode(ObjectMode::Edit));
+    }
+
+    /// Entrar no Edit de um objecto Motion faz dele o dono em edição; outra entidade recusa.
+    #[test]
+    fn entering_edit_picks_the_object_as_the_one_being_edited() {
+        let mut m = motion_com_dois_nos();
+        let mut tools = ToolRegistry::new();
+        let mut f = Family::new(&mut m);
+        assert!(!f.enter(ObjectMode::Edit, 99, &mut tools), "não é objecto Motion");
+        let _ = f.enter(ObjectMode::Edit, 42, &mut tools);
+        assert_eq!(m.objeto.editing, Some(5));
+    }
+}

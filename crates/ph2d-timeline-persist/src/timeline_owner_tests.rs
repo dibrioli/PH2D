@@ -139,3 +139,129 @@ fn a_copia_que_o_editor_anuncia_leva_a_animacao_no_quadro_seguinte() {
         "o original fica como estava"
     );
 }
+
+/// O Ctrl+Z global: o objecto volta com o MESMO `StableId` e bits novos (o snapshot v2 reinsere-o).
+fn renasce(sim: &mut SimWorld, id: StableId) -> u64 {
+    sim.world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Herói"), id))
+        .id()
+        .to_bits()
+}
+
+/// ⭐⭐ **UM Ctrl+Z** (doc ObjectsAndComponents 01 §14, item 3): o undo global devolve o objecto e,
+/// no mesmo quadro, o cemitério devolve a animação dele — sem o Ctrl+Z da timeline, e o passo da
+/// purga sai da fila (um Ctrl+Z a seguir não o «desfaz» outra vez). (Mutação: `ressuscita` sem a
+/// chamada no `upkeep` ⇒ RED.)
+#[test]
+fn um_ctrl_z_global_devolve_o_objecto_com_a_animacao() {
+    let mut sim = SimWorld::new();
+    let e = heroi(&mut sim);
+    let mut timeline = TimelineState::new();
+    timeline
+        .doc
+        .add_clip_for("andar".into(), e.to_bits())
+        .unwrap();
+    upkeep(&mut timeline, sim.world_mut());
+    let id = *sim.world().get::<StableId>(e).unwrap();
+    let passos = timeline.history.can_undo();
+
+    sim.world_mut().despawn(e);
+    upkeep(&mut timeline, sim.world_mut());
+    assert_eq!(
+        timeline.doc.clips().len(),
+        1,
+        "a animação saiu com o objecto"
+    );
+
+    let volta = renasce(&mut sim, id);
+    upkeep(&mut timeline, sim.world_mut());
+    assert!(
+        timeline.doc.has_animation(volta),
+        "voltou com o objecto, sem 2.º Ctrl+Z"
+    );
+    assert_eq!(
+        timeline.history.can_undo(),
+        passos,
+        "o passo da purga saiu da fila"
+    );
+}
+
+/// ⭐ As PISTAS do objecto (as chaves dele nos clipes da Cena) também voltam, e o documento que a
+/// purga do último objecto animado reiniciou volta inteiro.
+#[test]
+fn as_pistas_e_o_reset_tambem_voltam_num_ctrl_z() {
+    let mut sim = SimWorld::new();
+    let e = heroi(&mut sim);
+    let mut timeline = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut timeline,
+        &mut ph,
+        I::AddKey {
+            entity: e.to_bits(),
+            prop: ph2d_timeline::PropKind::TranslationX,
+            t: ph2d_anim::RationalTime::from_seconds(0.0),
+            value: ph2d_anim::AnimValue::Float(1.0),
+            interp: ph2d_anim::Interp::Linear,
+        },
+    );
+    upkeep(&mut timeline, sim.world_mut());
+    let id = *sim.world().get::<StableId>(e).unwrap();
+    let antes = timeline.doc.clone();
+
+    sim.world_mut().despawn(e);
+    ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
+    assert!(
+        upkeep(&mut timeline, sim.world_mut()),
+        "o último objecto animado reinicia"
+    );
+
+    let volta = renasce(&mut sim, id);
+    upkeep(&mut timeline, sim.world_mut());
+    assert_eq!(timeline.doc.bindings().len(), 1, "a pista voltou");
+    assert_eq!(
+        timeline.doc.bindings()[0].entity,
+        volta,
+        "recolada no objecto renascido"
+    );
+    assert_eq!(timeline.doc.clips(), antes.clips(), "o documento inteiro");
+}
+
+/// ⛔ Editado DEPOIS de apagar ⇒ o trabalho novo não é apagado: a animação volta pelo caminho de
+/// sempre (o Ctrl+Z da timeline), em dois passos.
+#[test]
+fn editado_depois_de_apagar_volta_em_dois_passos() {
+    let mut sim = SimWorld::new();
+    let e = heroi(&mut sim);
+    let mut timeline = TimelineState::new();
+    timeline
+        .doc
+        .add_clip_for("andar".into(), e.to_bits())
+        .unwrap();
+    upkeep(&mut timeline, sim.world_mut());
+    let id = *sim.world().get::<StableId>(e).unwrap();
+    sim.world_mut().despawn(e);
+    upkeep(&mut timeline, sim.world_mut());
+
+    let pre = timeline.doc.clone();
+    timeline.doc.add_clip_for("novo".into(), SCENE).unwrap();
+    timeline.history.push(pre);
+    let volta = renasce(&mut sim, id);
+    upkeep(&mut timeline, sim.world_mut());
+    assert!(
+        !timeline.doc.has_animation(volta),
+        "nada sobrescreve a edição"
+    );
+    assert!(
+        timeline.doc.clips().iter().any(|c| c.name == "novo"),
+        "a edição fica"
+    );
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    apply_intent(&mut timeline, &mut ph, I::Undo);
+    apply_intent(&mut timeline, &mut ph, I::Undo);
+    upkeep(&mut timeline, sim.world_mut());
+    assert!(
+        timeline.doc.has_animation(volta),
+        "o caminho de sempre continua lá"
+    );
+}

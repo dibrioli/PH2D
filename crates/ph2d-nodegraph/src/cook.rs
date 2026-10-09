@@ -105,6 +105,8 @@ struct Cached {
 mod lazy;
 pub use lazy::{LazyBranches, LazySelect, MAX_LAZY_CHOICES};
 
+#[path = "cook_espacos.rs"]
+mod espacos;
 /// O sub-tique — [`Cook::substep`] e o que ele tem de saber sobre o relogio. FILHO de
 /// proposito: ele mexe nos campos privados do `Cook` (`tick`, `prev_playhead`,
 /// `prev_outputs`, `cache`), que um modulo IRMAO nao enxergaria.
@@ -150,6 +152,8 @@ pub struct Cook {
     rev_counter: u64,
     /// **A memória de cada nó** por `(nó, escopo)` — ver [`Memo`] (doc 121 §9.20).
     memo: BTreeMap<(NodeId, ScopeKey), Box<dyn DynMemo>>,
+    /// O espaço de cada nó (`NodeId.0` → `StableId` do dono deslocado) — ver [`espacos`].
+    spaces: BTreeMap<u32, u64>,
 }
 
 impl Cook {
@@ -537,6 +541,7 @@ impl Cook {
             text_params: text_params_fingerprint(graph.node_text_param_overrides(node)),
             // A muted node cooks a passthrough, not its op — flipping it must recompute.
             bypassed: graph.node_bypassed(node),
+            space: self.space_of(node),
             param_sources: crate::param_source::fingerprint(sources),
             // The externals this node read LAST time, at their revisions NOW (doc 65). A node that
             // has never cooked has read nothing, so this is the hash of the empty list — and its
@@ -568,6 +573,7 @@ impl Cook {
             driven,
             started: self.prev_outputs.contains_key(&node),
             node_key: node.0,
+            space: self.space_of(node),
             memo: self.memo.remove(&(node, key)),
             // The ROOT clock's step. A rewritten lane has no meaningful delta across ticks —
             // and a node that needs one to hold state is sequential, which a scope refuses.

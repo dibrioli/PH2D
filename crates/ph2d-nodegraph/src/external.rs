@@ -180,6 +180,26 @@ pub fn appearance_of(name: &str, time_offset: f32) -> String {
     )
 }
 
+/// The separator between a name and the SPACE its copy is expressed in ([`in_space`]). A control
+/// character: no artist types it, so a spaced key can never be an artist's name.
+pub const SPACE_SEP: char = '\u{1f}';
+
+/// ⭐ **The same external, expressed in the space of an OBJECT** (doc ObjectsAndComponents 01 §14,
+/// item 6). A graph thinks in the space of the Motion object that owns it; what the editor
+/// publishes in WORLD space (cursor, view, positions, poses, curves) is republished, converted,
+/// under this key — and [`crate::cook::EvalCtx::external`] reads it for a node of that space.
+/// `space` is the owner's `StableId` (never `0`: `0` is the world, which needs no copy).
+#[must_use]
+pub fn in_space(name: &str, space: u64) -> String {
+    format!("{name}{SPACE_SEP}{space:016x}")
+}
+
+/// Is `name` a spaced copy ([`in_space`])?
+#[must_use]
+pub fn is_spaced(name: &str) -> bool {
+    name.contains(SPACE_SEP)
+}
+
 /// One published value, and the revision that IS its content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {

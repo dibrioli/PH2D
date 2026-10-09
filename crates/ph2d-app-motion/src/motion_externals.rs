@@ -56,6 +56,9 @@ pub fn publish_all(motion: &mut MotionState, seconds: f64) {
     // âncoras sob a mesma chave de conteúdo, então tem de viver e morrer com a geometria.
     // Varrê-lo noutro ponto do quadro deixaria uma das duas tabelas a descrever a outra.
     motion.lsystem_memo.sweep();
+    // ⭐ E por ÚLTIMO, o mundo no espaço de cada objecto Motion fora da origem (doc
+    // ObjectsAndComponents 01 §14, item 6) — depois de todo externo do quadro estar publicado.
+    crate::motion_objeto::entradas::publica(motion);
 }
 
 /// **Os params de `node` que um FIO conduz, já resolvidos** (doc 58) — vazio no caso comum.

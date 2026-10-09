@@ -280,3 +280,56 @@ fn a_afim_compoe_os_pais() {
     assert_eq!([a[4], a[5]], [10.0, 2.0]);
     let _ = NodeId(0);
 }
+
+/// ⭐⭐ **UM Ctrl+Z** (doc ObjectsAndComponents 01 §14, item 3): o undo global devolve o objecto
+/// Motion (o MESMO `StableId`, bits novos) e o cemitério devolve os nós dele no mesmo quadro; o passo
+/// da purga sai da fila do Motion. Editado entretanto ⇒ fica o caminho de sempre (dois passos).
+/// (Mutação: `ressuscita` fora do `upkeep` ⇒ RED.)
+#[test]
+fn um_ctrl_z_global_devolve_o_objecto_com_os_nos() {
+    let mut m = motion_com(SIM);
+    let mut sim = SimWorld::new();
+    let (e, sid) = objeto(&mut sim, "Fonte");
+    m.doc.adopt_unowned(sid);
+    let grafo = m.doc.graph.clone();
+    upkeep(&mut m, sim.world_mut(), None, false);
+    sim.world_mut().despawn(e);
+    upkeep(&mut m, sim.world_mut(), None, false);
+    assert!(m.doc.graph.nodes().is_empty());
+
+    sim.world_mut().spawn((
+        ph2d_ecs::Name::new("Fonte"),
+        ph2d_ecs::Transform::IDENTITY,
+        MotionGenerator,
+        StableId(sid),
+    ));
+    let feito = upkeep(&mut m, sim.world_mut(), None, false);
+    assert!(feito.ressuscitados);
+    assert_eq!(m.doc.graph, grafo, "os nós voltaram com o objecto");
+    assert_eq!(m.doc.owner_ids(), BTreeSet::from([sid]));
+    assert!(
+        m.history.undo(&m.doc).is_none(),
+        "o passo da purga saiu da fila"
+    );
+}
+
+#[test]
+fn editado_depois_de_apagar_o_motion_volta_em_dois_passos() {
+    let mut m = motion_com(SIM);
+    let mut sim = SimWorld::new();
+    let (e, sid) = objeto(&mut sim, "Fonte");
+    m.doc.adopt_unowned(sid);
+    upkeep(&mut m, sim.world_mut(), None, false);
+    sim.world_mut().despawn(e);
+    upkeep(&mut m, sim.world_mut(), None, false);
+    m.history.push_undo(m.doc.clone()); // uma edição depois da purga
+    sim.world_mut().spawn((
+        ph2d_ecs::Name::new("Fonte"),
+        ph2d_ecs::Transform::IDENTITY,
+        MotionGenerator,
+        StableId(sid),
+    ));
+    let feito = upkeep(&mut m, sim.world_mut(), None, false);
+    assert!(!feito.ressuscitados);
+    assert!(m.doc.graph.nodes().is_empty(), "nada sobrescreve a edição");
+}

@@ -132,9 +132,9 @@ pub(super) fn publish(
     // the `QueryState` (it caches on the world), the iteration is read-only.
     let mut q = sim
         .world_mut()
-        .query::<(&Sprite, &Name, Option<&ph2d_ecs::Transform>)>();
+        .query::<(Entity, &Sprite, &Name, Option<&ph2d_ecs::Transform>)>();
     let world = sim.world();
-    for (spr, name, xf) in q.iter(world) {
+    for (e, spr, name, xf) in q.iter(world) {
         if name.0.trim().is_empty() {
             continue; // unnamed: nothing for the artist to type into the node
         }
@@ -150,7 +150,12 @@ pub(super) fn publish(
         // X" that read THAT `P` would aim at the origin for every object in the scene,
         // which is how `motion.look_at`'s Object mode shipped broken: a column with the
         // right name holding another question's answer.
-        if let Some(t) = xf {
+        // ⭐ A pose de MUNDO (os pais compostos): o canal diz *onde está*, e um filho publicado com
+        // o `Transform` local respondia a pergunta do pai (doc ObjectsAndComponents 01 §14, item 6).
+        if let Some(t) = xf
+            .and_then(|_| ph2d_ecs::world_transform(world, e))
+            .as_ref()
+        {
             cook.set_external(
                 ph2d_nodegraph::external::position_of(&name.0),
                 Stream::new(1).with(

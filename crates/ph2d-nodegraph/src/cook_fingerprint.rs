@@ -43,6 +43,9 @@ pub(super) struct Fingerprint {
     /// passthrough instead of its op, so flipping it must recompute: without this field the cache
     /// would hand back the pre-mute stream (or the pre-un-mute one), and a toggle would look inert.
     pub(super) bypassed: bool,
+    /// The SPACE the node reads its externals in (`external::in_space`; `0` = world). A node that
+    /// moves to another owner reads other copies, and the names it read last time would not say so.
+    pub(super) space: u64,
 }
 
 /// FNV-1a over a node's overrides, in `BTreeMap` (deterministic) order. `None`

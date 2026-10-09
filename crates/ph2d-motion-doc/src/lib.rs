@@ -339,6 +339,12 @@ impl MotionHistory {
         }
     }
 
+    /// Tira o passo do topo se ele for `pre` — o cemitério do objecto Motion a desfazer a purga
+    /// sozinho, quando o undo global devolveu o dono. Não vai para o redo.
+    pub fn take_top_if(&mut self, pre: &MotionDoc) -> Option<MotionDoc> {
+        (self.undo.last() == Some(pre)).then(|| self.undo.pop())?
+    }
+
     /// Push a pre-state straight onto the undo stack (atomic op that already knows
     /// it mutated). Clears redo.
     pub fn push_undo(&mut self, pre: MotionDoc) {

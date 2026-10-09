@@ -57,6 +57,8 @@ pub struct EvalCtx<'a> {
     /// continua sem ver arestas, vizinhos ou tipos — vê o próprio nome, do mesmo
     /// jeito que já vê o próprio manifesto e os próprios params.
     pub(super) node_key: u32,
+    /// The space this node reads externals in ([`Self::external`]; `0` = world).
+    pub(super) space: u64,
     /// Seconds since the previous tick, on the ROOT clock (0 on the first tick).
     pub(super) dt: f64,
     pub(super) outputs: Vec<CookValue>,
@@ -73,7 +75,21 @@ impl<'a> EvalCtx<'a> {
     /// memo), so editing the curve recomputes the node — which nothing else here would notice.
     pub fn external(&mut self, name: &str) -> &'a Stream {
         static EMPTY: Stream = Stream::empty();
-        self.read_externals.push(name.to_string());
+        // ⭐ A node of an OBJECT's space reads the copy expressed in it, when the app published one
+        // (`external::in_space`); a value that does not depend on space has no copy and is read
+        // raw. Both names enter the fingerprint: the copy appearing (the owner moved off the
+        // origin) must recompute the node as surely as the raw value changing.
+        if self.space != 0 {
+            let spaced = crate::external::in_space(name, self.space);
+            let hit = self.externals.get(&spaced);
+            self.read_externals.push(spaced);
+            self.read_externals.push(name.to_string());
+            if let Some(e) = hit {
+                return &e.value;
+            }
+        } else {
+            self.read_externals.push(name.to_string());
+        }
         self.externals.get(name).map_or(&EMPTY, |e| &e.value)
     }
     /// The cooked **instance stream** on input `port` (empty if unconnected, or

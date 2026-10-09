@@ -129,6 +129,9 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     // física chama isto em vez de contar com outro sistema. Idempotente e sem alocação quando
     // não há nada a atribuir (`collect` de um iterador vazio não toca no heap).
     ph2d_ecs::assign_missing_stable_ids(world);
+    // ⭐ Antes da cura: o dono que o undo global devolveu traz os clipes de volta (o cemitério), e a
+    // cura deste mesmo quadro recola-lhes as bindings.
+    ressuscita(timeline, world);
     // ⭐ As cópias do EDITOR (Duplicate, Make, Instantiate, colocar um prefab) levam a Animação
     // PRÓPRIA (escolha do dono, 08/10) — anunciadas pelas portas de cópia (`SubtreeCopies`).
     let copias = ph2d_ecs::take_copies(world, ph2d_ecs::CopyReader::Timeline);
@@ -204,6 +207,56 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     purge_the_dead(timeline, &by_wire, &nomeados)
 }
 
+/// ⭐ Abre as covas cujos donos vivem outra vez ([`ph2d_ecs::graveyard`]).
+fn ressuscita(timeline: &mut TimelineState, world: &mut World) {
+    if timeline.history.graveyard.is_empty() {
+        return;
+    }
+    let vivos: std::collections::BTreeSet<u64> = world
+        .query::<&StableId>()
+        .iter(world)
+        .filter(|s| !s.is_none())
+        .map(|s| s.0)
+        .collect();
+    let mut graveyard = std::mem::take(&mut timeline.history.graveyard);
+    let abriu = graveyard.rise(
+        |id| vivos.contains(&id),
+        |antes| {
+            let Some(d) = timeline.history.take_top_if(&antes) else {
+                return false;
+            };
+            timeline.doc = d;
+            true
+        },
+    );
+    timeline.history.graveyard = graveyard;
+    if abriu {
+        timeline.selection.clear();
+    }
+}
+
+/// Os `StableId` dos donos que a purga leva — das bindings e dos clipes (sem o NULL, que nunca volta).
+fn dead_wire_ids(
+    doc: &ph2d_timeline::TimelineDoc,
+    is_dead: &impl Fn(&ph2d_timeline::ClipOwner) -> bool,
+    by_wire: &std::collections::BTreeMap<u64, Option<u64>>,
+) -> Vec<u64> {
+    let ids: std::collections::BTreeSet<u64> = doc
+        .bindings()
+        .iter()
+        .filter(|b| b.missing && by_wire.get(&b.wire_id.0) != Some(&None))
+        .map(|b| b.wire_id.0)
+        .chain(
+            doc.clips()
+                .iter()
+                .filter_map(|c| c.owner.as_ref().filter(|o| is_dead(o)))
+                .map(|o| o.wire_id.0),
+        )
+        .filter(|&w| w != ph2d_timeline::WireId::NULL.0)
+        .collect();
+    ids.into_iter().collect()
+}
+
 /// The purge half of [`upkeep`] — see its docs for the policy. Returns whether
 /// the document was fully reset.
 fn purge_the_dead(
@@ -236,7 +289,14 @@ fn purge_the_dead(
     // path after an accidental delete is global Ctrl+Z (the object respawns,
     // same name) + timeline Ctrl+Z (the doc returns, bindings dormant) — and
     // the heal above recolors them on the next frame.
-    timeline.history.push(timeline.doc.clone());
+    // ⭐ E ENTERRA-o com os donos (o cemitério): o undo global que os devolver desfaz este passo
+    // sozinho, no mesmo quadro — um Ctrl+Z, não dois (doc ObjectsAndComponents 01 §14, item 3).
+    let antes = timeline.doc.clone();
+    timeline.history.graveyard.bury(
+        dead_wire_ids(&timeline.doc, &is_dead, by_wire),
+        antes.clone(),
+    );
+    timeline.history.push(antes);
     let dead_bindings = dead.len();
     for target in dead {
         timeline.doc.purge_binding(target);

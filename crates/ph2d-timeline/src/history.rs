@@ -18,6 +18,9 @@ pub struct TimelineHistory {
     undo: Vec<TimelineDoc>,
     redo: Vec<TimelineDoc>,
     pending: Option<TimelineDoc>,
+    /// ⭐ As covas das purgas de donos mortos ([`ph2d_ecs::graveyard`]) — o undo global que devolve
+    /// o objecto devolve os clipes no mesmo quadro (`ph2d-timeline-persist`).
+    pub graveyard: ph2d_ecs::Graveyard<TimelineDoc>,
 }
 
 impl TimelineHistory {
@@ -84,6 +87,12 @@ impl TimelineHistory {
             .iter_mut()
             .chain(self.redo.iter_mut())
             .chain(self.pending.iter_mut())
+    }
+
+    /// Tira o passo do topo se ele for `pre` — o cemitério a desfazer a purga sozinho, quando o undo
+    /// global devolveu o dono. Não vai para o redo: o redo global volta a apagar, e a purga a enterrar.
+    pub fn take_top_if(&mut self, pre: &TimelineDoc) -> Option<TimelineDoc> {
+        (self.undo.last() == Some(pre)).then(|| self.undo.pop())?
     }
 
     /// Undo: return the previous doc; push `current` onto redo.

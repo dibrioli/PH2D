@@ -223,3 +223,79 @@ fn republishing_the_same_stream_skips_the_hash() {
     assert_eq!(h3, 2, "conteudo novo hasha");
     assert_ne!(cook.externals()["t"].rev, rev1, "e a revisao muda");
 }
+
+/// ⭐⭐ **O ESPAÇO de um nó** (doc ObjectsAndComponents 01 §14, item 6): um nó do espaço `7` lê a cópia
+/// `in_space(nome, 7)` quando ela existe, e o nome cru quando não; a cópia APARECER, o nó mudar de
+/// espaço e o mapa esvaziar recozinham-no — três mudanças que os nomes lidos da última vez não
+/// contam. (Mutações: `external` sem o ramo do espaço; `Fingerprint.space` fora ⇒ RED.)
+#[test]
+fn a_node_of_a_space_reads_its_copy_and_recooks_when_the_space_changes() {
+    let mut g = Graph::new();
+    let n = g.add_node("test.external_echo");
+    g.set_text_param(n, "src", "$cursor");
+    let o = Ops(Echo {
+        evals: AtomicU64::new(0),
+    });
+    let mut cook = Cook::new();
+    cook.set_external("$cursor", curve(&[[0.0, 1.0]]));
+    assert_eq!(ys(cook.cook(&g, &o, n, 0.0).unwrap()), vec![1.0]);
+
+    cook.set_spaces(BTreeMap::from([(n.0, 7)]));
+    assert_eq!(
+        ys(cook.cook(&g, &o, n, 0.0).unwrap()),
+        vec![1.0],
+        "sem cópia: o cru"
+    );
+    let antes = o.0.evals.load(Ordering::Relaxed);
+    cook.set_external(
+        crate::external::in_space("$cursor", 7),
+        curve(&[[0.0, 5.0]]),
+    );
+    assert_eq!(
+        ys(cook.cook(&g, &o, n, 0.0).unwrap()),
+        vec![5.0],
+        "a cópia apareceu"
+    );
+    assert_eq!(o.0.evals.load(Ordering::Relaxed), antes + 1);
+
+    cook.set_external(
+        crate::external::in_space("$cursor", 8),
+        curve(&[[0.0, 9.0]]),
+    );
+    cook.set_spaces(BTreeMap::from([(n.0, 8)]));
+    assert_eq!(
+        ys(cook.cook(&g, &o, n, 0.0).unwrap()),
+        vec![9.0],
+        "mudou de espaço"
+    );
+
+    cook.clear_spaced_externals();
+    cook.set_spaces(BTreeMap::new());
+    assert!(
+        cook.externals()
+            .keys()
+            .all(|k| !crate::external::is_spaced(k))
+    );
+    assert_eq!(
+        ys(cook.cook(&g, &o, n, 0.0).unwrap()),
+        vec![1.0],
+        "de volta ao mundo"
+    );
+}
+
+/// ⭐ Sem espaço, o nó lê o que sempre leu e regista um nome só — o caminho de sempre, ao bit.
+#[test]
+fn a_node_of_the_world_reads_exactly_what_it_always_read() {
+    let mut g = Graph::new();
+    let n = g.add_node("test.external_echo");
+    g.set_text_param(n, "src", "Track");
+    let o = Ops(Echo {
+        evals: AtomicU64::new(0),
+    });
+    let mut cook = Cook::new();
+    cook.set_external("Track", curve(&[[0.0, 1.0]]));
+    cook.set_external(crate::external::in_space("Track", 7), curve(&[[0.0, 5.0]]));
+    assert_eq!(ys(cook.cook(&g, &o, n, 0.0).unwrap()), vec![1.0]);
+    let lidos = &cook.cache.get(&(n, SCOPE_ROOT)).unwrap().read_externals;
+    assert_eq!(lidos, &vec!["Track".to_string()]);
+}

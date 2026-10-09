@@ -175,7 +175,9 @@ pub use factory::{
 pub use flip_object_ref::FlipObjectRef;
 pub use hud::{Counter, CounterRuntime, Fit, LabelSource, UiButton, UiCanvas, UiLabel};
 pub use motion_generator::{MotionGenerator, MotionTemplate, assign_motion_templates};
+pub mod graveyard;
 mod subtree_copies;
+pub use graveyard::{GRAVEYARD_DEPTH, Graveyard};
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,
     deep_copy_subtree, deep_copy_subtree_many, remap_instance_of,

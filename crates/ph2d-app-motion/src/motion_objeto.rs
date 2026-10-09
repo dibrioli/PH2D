@@ -31,6 +31,9 @@ pub mod object_add;
 /// ⭐ A origem: a afim do dono aplicada ao que os sinks dele geram.
 #[path = "motion_objeto_origem.rs"]
 pub mod origem;
+
+#[path = "motion_objeto_entradas.rs"]
+pub mod entradas;
 /// `PH2D_MOTION_OBJETO_SMOKE=1|2` — a cena do smoke do dono.
 #[path = "motion_objeto_smoke.rs"]
 pub mod smoke;
@@ -75,6 +78,9 @@ pub struct ObjetoState {
     /// O 1.º quadro semeia as ligações sem mexer na árvore (o artista pode ter arrastado um molde
     /// para fora, e abrir o projecto não o pode desfazer).
     semeado: bool,
+    /// ⭐ As covas das purgas ([`ph2d_ecs::graveyard`]): o undo global que devolve o objecto devolve
+    /// os nós dele no mesmo quadro.
+    pub cemiterio: ph2d_ecs::Graveyard<ph2d_motion_doc::MotionDoc>,
 }
 
 impl ObjetoState {
@@ -102,6 +108,8 @@ pub struct Manutencao {
     pub purgados: Vec<u64>,
     /// `(original, cópia)` cujos grafos foram copiados.
     pub copiados: Vec<(u64, u64)>,
+    /// O undo global devolveu um objecto, e o cemitério devolveu os nós dele.
+    pub ressuscitados: bool,
 }
 
 /// ⭐ **A manutenção por quadro** — antes do `dispatch`, com o mundo na mão.
@@ -117,6 +125,7 @@ pub fn upkeep(
     ph2d_ecs::assign_missing_stable_ids(world);
     motion.objeto.donos = vivos(world);
     copias(motion, world, &mut feito);
+    ressuscita(motion, &mut feito);
     mortes(motion, playing, &mut feito);
     let migrou = orfaos(motion, world, playing, &mut feito);
     if feito.nasceu.is_some() {
@@ -315,6 +324,28 @@ fn copias(motion: &mut MotionState, world: &mut World, feito: &mut Manutencao) {
     motion.pump.mark_dirty();
 }
 
+/// ⭐ O objecto que o undo global devolveu traz os nós dele de volta, no mesmo Ctrl+Z (o cemitério).
+fn ressuscita(motion: &mut MotionState, feito: &mut Manutencao) {
+    if motion.objeto.cemiterio.is_empty() {
+        return;
+    }
+    let (donos, history, doc) = (&motion.objeto.donos, &mut motion.history, &mut motion.doc);
+    let abriu = motion.objeto.cemiterio.rise(
+        |sid| donos.contains_key(&sid),
+        |antes| {
+            let Some(d) = history.take_top_if(&antes) else {
+                return false;
+            };
+            *doc = d;
+            true
+        },
+    );
+    if abriu {
+        feito.ressuscitados = true;
+        motion.pump.mark_dirty();
+    }
+}
+
 /// ⛔ O objecto que estava vivo e morreu leva os nós dele — nunca com o relógio a andar.
 fn mortes(motion: &mut MotionState, playing: bool, feito: &mut Manutencao) {
     if playing {
@@ -332,6 +363,7 @@ fn mortes(motion: &mut MotionState, playing: bool, feito: &mut Manutencao) {
         return;
     }
     let pre = motion.doc.clone();
+    motion.objeto.cemiterio.bury(mortos.clone(), pre.clone());
     for s in mortos {
         motion.doc.remove_owner(s);
         feito.purgados.push(s);

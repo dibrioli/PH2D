@@ -10,7 +10,14 @@
 - Abertos da onda 2 (nome «andar 2»; undo em dois passos; a animação própria não toca sozinha no
   Play): handoff da onda 2, §10.
 
-## Próxima onda (3): F5 + F6
+## Onda 3 fechada (08/10)
+
+- F5 (o Motion como objecto) e F6 (busca por intenção + filtro da Hierarquia) estão fechadas:
+  [handoff da onda 3](HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda3_2026-10-08.md).
+- As **TRÊS ondas vão juntas** na branch `line/ObjectsAndComponents` (nenhuma está no `main`).
+- A próxima onda é **decisão do dono** — ver §10 do handoff novo (abertos a–g).
+
+## (Histórico) Onda 3 como estava planeada: F5 + F6
 
 - **F5 — Motion como objecto-gerador** (doc 01 §8, escolha 9.3 do dono: vira objecto na árvore, com
   o que cria como filhos; pode haver vários). ⚠️ O `ph2d-app-motion` é da `line/motion-value` (viva:

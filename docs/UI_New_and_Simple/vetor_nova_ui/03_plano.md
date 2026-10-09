@@ -217,6 +217,10 @@ ir ao Enio.
   mais, a geometria que gerou o traço — [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md) §3b–§3c.
 - Porta visível: **QuickShape** na fila do Lápis (ligado por omissão) e a dica ⑤ «Hold at the end:
   perfect shape». Smoke: cena `=12`, foto [`fotos/f7_01`](fotos/f7_01_cena12_tres_tracos_seguros_viram_formas.png).
+- **F7b (09/10, depois do smoke do dono):** formas PEQUENAS (piso 94 → 12 px, medido sob tremor), o
+  «parado» com a folga do toque (10 px) e a elipse no meio da faixa medida — a «pouca sensibilidade»;
+  um S deixa de passar por zigue-zague. Medições em [`00_resultados.md`](oraculo_quickshape/00_resultados.md) §3d;
+  foto [`fotos/f7b_01`](fotos/f7b_01_cena12_quatro_tracos_com_um_circulo_pequeno.png).
 
 ## §5 — O que NÃO entra (e porquê)
 

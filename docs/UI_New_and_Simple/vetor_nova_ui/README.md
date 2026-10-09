@@ -22,7 +22,9 @@
 > interruptor na fila do Lápis. A lei bate as **65** medições do Xournal++
 > ([`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md)); cena `=12`, foto
 > [`fotos/f7_01`](fotos/f7_01_cena12_tres_tracos_seguros_viram_formas.png) —
-> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md).
+> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md). **F7b (09/10)**:
+> formas pequenas, mais sensibilidade (o parado com folga, a elipse no meio da faixa) —
+> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-09_F7b_QUICKSHAPE_SENSIBILIDADE.md).
 
 ## O roteador
 

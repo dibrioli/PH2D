@@ -215,3 +215,30 @@ fn a_wobbly_hand_circle_is_still_a_circle() {
         recognise(&c, 1.0, false)
     );
 }
+
+#[test]
+fn a_long_thin_rectangle_keeps_its_short_sides() {
+    // 1200×150 px: a quina RELATIVA (0,2 × diagonal = 242 px) engoliria os lados de 150 px; o tecto
+    // absoluto do oráculo (94 px) é que os deixa ser lados.
+    let r = hand(
+        &[
+            [0.0, 0.0],
+            [1200.0, 0.0],
+            [1200.0, 150.0],
+            [0.0, 150.0],
+            [0.0, 0.0],
+        ],
+        0.5,
+    );
+    assert!(
+        matches!(recognise(&r, 1.0, false), Some(QuickShape::Polygon { ref corners, closed: true }) if corners.len() == 4),
+        "{:?}",
+        recognise(&r, 1.0, false)
+    );
+}
+
+#[test]
+fn the_solver_pivots_past_a_zero_on_the_diagonal() {
+    let x = crate::quickshape_geom::solve([[0.0, 1.0], [1.0, 0.0]], [2.0, 3.0]);
+    assert_eq!(x, Some([3.0, 2.0]));
+}

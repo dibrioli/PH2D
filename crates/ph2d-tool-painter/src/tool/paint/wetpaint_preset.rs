@@ -6,14 +6,13 @@
 //! traço do Wet Paint lê ([`CAMPOS_DO_PINCEL`]), as máscaras da forma e do grão, o modo (a ferramenta
 //! molhada) e os volumes. Fica de fora o que é da OBRA, do GESTO e dos outros meios
 //! ([`CAMPOS_FORA`], cada um com o porquê). Todo campo do `BrushSpec` está numa das duas listas, e o
-//! gate `o_pincel_guardado_pinta_o_mesmo_traco` prova que os de fora não mudam o traço. Do registo de
-//! knobs, os da OBRA ([`KNOBS_DA_OBRA`]) também ficam de fora: nem se gravam nem se aplicam.
+//! gate `o_pincel_guardado_pinta_o_mesmo_traco` prova que os de fora não mudam o traço.
 
 use super::brush_settings::BrushTextureImage;
 use super::*;
 use ph2d_brush_presets::{Parametros, Preset, SCHEMA, Volumes, escrever_textura, ler_textura};
 use ph2d_painter_brush::TextureKind;
-use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
+use ph2d_wet_paint::tuning::KNOB_DEFS;
 use std::collections::BTreeMap;
 
 mod json;
@@ -33,18 +32,6 @@ pub const MOTOR_DOS_PRESETS: &str = "WetPainter";
 const CHAVE_ERASE: &str = "erase";
 const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
-
-/// Os knobs do registo que são da OBRA e não do pincel (W1b, doc `NewFeaturesWetPaint/06`): o preset não
-/// os grava, e aplicar um preset (de fábrica, do artista ou antigo) não os toca — ficam os da obra.
-pub const KNOBS_DA_OBRA: [(Knob, &str); 1] = [(
-    Knob::Gravity,
-    "a gravidade é da TELA (o dial de inclinação), nunca do pincel: 0 de 281 presets do Rebelle a têm",
-)];
-
-/// O knob é da obra ([`KNOBS_DA_OBRA`])?
-pub(super) fn knob_da_obra(k: Knob) -> bool {
-    KNOBS_DA_OBRA.iter().any(|(o, _)| *o == k)
-}
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
 pub const CAMPOS_DO_PINCEL: [&str; 28] = [
@@ -305,12 +292,10 @@ impl PainterTool {
         );
         let falhas = self.instalar_mascaras(&p.texturas);
 
-        let obra = self.paint.wetpaint.knobs;
+        let water = self.paint.wetpaint.knobs.water;
         let mut k = WetKnobs::DEFAULT;
         for def in &KNOB_DEFS {
-            if knob_da_obra(def.knob) {
-                k.knobs[def.knob as usize] = obra.get(def.knob);
-            } else if let Some(&v) = prm.engine.get(def.key) {
+            if let Some(&v) = prm.engine.get(def.key) {
                 k.set(def.knob, v);
             }
         }
@@ -321,7 +306,7 @@ impl PainterTool {
                 v.clamp(0.0, 1.0)
             };
         }
-        k.water = obra.water;
+        k.water = water;
         self.paint.wetpaint.knobs = k;
 
         if let Some(m) = prm.paint_mode.as_deref() {
@@ -383,11 +368,7 @@ impl PainterTool {
             .extend(json::pincel_para_json(&self.paint.brush, &CAMPOS_DO_PINCEL));
         let k = &self.paint.wetpaint.knobs;
         for def in &KNOB_DEFS {
-            if knob_da_obra(def.knob) {
-                p.engine.remove(def.key);
-            } else {
-                p.engine.insert(def.key.to_owned(), k.get(def.knob));
-            }
+            p.engine.insert(def.key.to_owned(), k.get(def.knob));
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
         let v = self.wet_preset_volumes();

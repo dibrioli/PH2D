@@ -47,15 +47,6 @@ impl Engine {
                 self.merge_dirty(x0, y0, x1, y1);
             }
         }
-        self.merge_drip_dirty(idx);
         done
-    }
-
-    /// O rasto das gotas ([`crate::drips`]) pinta FORA da bbox da água: as duas portas do passo
-    /// ([`Self::step_simulation`] e [`Self::step_stage`]) juntam-no ao sujo por aqui.
-    pub(crate) fn merge_drip_dirty(&mut self, idx: usize) {
-        if let Some([x0, y0, x1, y1]) = self.layers[idx].grid.drip_dirty.take() {
-            self.merge_dirty(x0, y0, x1, y1);
-        }
     }
 }

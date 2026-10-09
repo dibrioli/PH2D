@@ -476,7 +476,6 @@ impl Engine {
                 self.merge_dirty(x0, y0, x1, y1);
             }
         }
-        self.merge_drip_dirty(idx);
         ran
     }
 
@@ -508,7 +507,6 @@ impl Engine {
         self.drain_step();
         let mix = self.sim.gather_params(&self.tuning).mix;
         let g = self.active_grid_mut();
-        crate::drips::end_episode(g);
         dry_canvas(g, mix);
         g.bloom.fill(0); // backrun budgets recharge on dry
         self.mark_dirty_full();
@@ -523,7 +521,6 @@ impl Engine {
     pub fn fast_dry_now(&mut self) {
         self.drain_step();
         let idx = self.active_layer;
-        crate::drips::end_episode(&mut self.layers[idx].grid);
         sim_fast_dry(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         self.mark_dirty_full();
     }

@@ -38,7 +38,6 @@ impl PainterTool {
             offset_norm: self.shape_offset_norm(),
             offset_base_px: self.shape_offset_base_px(),
             papel: self.papel,
-            gotas: self.gotas,
             preview_patch: None,
             // Layer ops carry no parked stroke shapes; the shape paths override this via `capture_shape_model`.
             parked_shapes: Vec::new(),
@@ -153,7 +152,6 @@ impl PainterTool {
         );
         self.set_shape_offset_norm(m.offset_norm);
         self.set_shape_offset_base_px(m.offset_base_px);
-        self.gotas = m.gotas; // não pinta nada agora: a sessão viva recebe-as no próximo tique
         if self.papel != m.papel {
             self.papel = m.papel;
             self.invalidate_composite(); // o papel cobre a tela inteira

@@ -16,9 +16,6 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
     /// re-assar quando só ele mexe (o papel do artista re-semeia pela [`PaperKey`]).
     pub(in crate::tool::paint) tooth: f32,
-    /// As gotas do PAPEL (W1b) — `None` só no [`Self::BOOT`] (o motor nasce sem a lei); o tool leva
-    /// sempre `Some` (o papel do documento).
-    pub(in crate::tool::paint) gotas: Option<ph2d_wet_paint::drips::DripPaper>,
 }
 
 impl WetEngineFacts {
@@ -30,7 +27,6 @@ impl WetEngineFacts {
         tilt: (true, 4, 3),
         km_mixing: false,
         tooth: 1.0,
-        gotas: None,
     };
 }
 
@@ -185,9 +181,6 @@ impl WetSession {
         }
         if f.km_mixing != a.km_mixing {
             e.sim.km_mixing = f.km_mixing;
-        }
-        if f.gotas != a.gotas {
-            e.sim.gotas = f.gotas;
         }
         if f.tooth != a.tooth {
             e.set_paper_tooth(f.tooth);

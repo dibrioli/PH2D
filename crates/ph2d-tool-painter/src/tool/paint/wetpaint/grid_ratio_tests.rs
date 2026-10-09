@@ -482,7 +482,7 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
 }
 
 /// **O Smooth Edges do Wet Paint (dono 09/10) só toca a SILHUETA, e desligado pelo checkbox é o `over` de
-/// antes ao byte.** Ligado (de fábrica): os bytes que divergem do oráculo estão todos num pixel cuja
+/// antes ao byte.** Desligado de fábrica; ligado pelo checkbox: os bytes que divergem do oráculo estão todos num pixel cuja
 /// vizinhança 3×3 tem mancha e papel (`pa ≥ SS0` e `< SS0`) — o miolo e o papel aberto ficam iguais; e há
 /// divergência (o meio-tom existe). O clique desliga-o e recompõe: 0 bytes contra o oráculo.
 #[test]
@@ -490,7 +490,11 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = wet_tool(1);
-    assert!(t.paint.wetpaint.smooth_edges, "ligado de fábrica");
+    assert!(!t.paint.wetpaint.smooth_edges, "desligado de fábrica");
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(
+        crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES
+    )));
+    assert!(t.paint.wetpaint.smooth_edges, "o clique liga");
     stroke(&mut t);
     composite_all(&mut t);
     let (mut fora_da_silhueta, mut na_silhueta) = (0usize, 0usize);

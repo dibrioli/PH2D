@@ -1,5 +1,5 @@
-//! **Smooth Edges do Wet Paint** (dono 09/10, «opção B»: o NOSSO Smooth Edges do Watercolor também no Wet
-//! Paint, ligado de fábrica). A lei é a do Watercolor — [`aa_coverage`] (`watercolor_aa.rs`), uma porta só:
+//! **Smooth Edges do Wet Paint** (dono 09/10: o NOSSO Smooth Edges do Watercolor também no Wet Paint; ficou
+//! como OPÇÃO, desligado de fábrica, quando as gotas foram desfeitas). A lei é a do Watercolor — [`aa_coverage`] (`watercolor_aa.rs`), uma porta só:
 //! a cobertura endurecida amostrada 3×3 à volta do pixel e a fração aplicada como alfa LINEAR sobre o pixel
 //! acabado. O campo de cobertura do Wet Paint é a MANCHA (`pa ≥ SS0`, 0/1 por pixel): o miolo e o papel
 //! aberto ficam iguais ao byte; só a silhueta ganha meio-tom (a orla 0/1 da linha de contacto e os pontinhos

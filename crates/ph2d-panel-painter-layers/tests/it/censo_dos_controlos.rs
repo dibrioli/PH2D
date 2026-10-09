@@ -81,14 +81,6 @@ pub(crate) fn nome(nomes: &BTreeMap<NodeId, String>, id: NodeId) -> String {
 /// O lado da tela: 128² chega para os dois traços e para a borda da aguada.
 const LADO: u32 = 128;
 
-/// O raio da grelha do dial da inclinação na fracção da área dele (a margem de 6 px em 128 —
-/// `paint_wetpaint_tilt::drag_to_ring_spoke`): o anel `k` está a `k/8` dele do centro.
-const ANEL_DO_DIAL: f32 = 0.5 - 6.0 / 128.0;
-
-/// Quadros de água depois dos traços com a tela INCLINADA: a gota nasce na orla quando a água junta
-/// e desce ao passo; os 30 da fábrica acabam antes de ela se soltar.
-const QUADROS_COM_A_TELA_INCLINADA: usize = 240;
-
 /// A tela de partida: branca, com um BLOCO de cor no quadrante de baixo-direita — os controlos que
 /// MISTURAM (Pickup, Smudge, Mix, Rewet…) só agem sobre tinta que já está lá.
 fn tela() -> Vec<u8> {
@@ -365,12 +357,7 @@ fn risca(t: &mut PainterTool) -> Vec<u8> {
         [1.0, 0.4],
         [0.4, -0.3],
     );
-    let quadros = if t.brush_settings().wet_tilt_on {
-        QUADROS_COM_A_TELA_INCLINADA
-    } else {
-        30
-    };
-    for _ in 0..quadros {
+    for _ in 0..30 {
         tique(t, &mut ultima);
     }
     ultima.expect("os traços sujaram a pré-visualização")
@@ -1114,37 +1101,6 @@ fn pre_condicoes() -> Vec<Linha> {
             nome,
             vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(k))],
             vec![Alvo::Id(PAINTER_WETPAINT_PICKUP)],
-            false,
-        ));
-    }
-    // A TELA inclinada para baixo (raio 3), pelo arrasto real do dial: o anel 0 com a tela «ligada»
-    // não tem gravidade; o 4 e o 5 escorrem sem soltar gotas; o 8 solta-as (a lei, `drips::can_slide`).
-    // ⚠️ O 8 com Easy Drips: a 128² o traço do censo não junta na orla a água que passa o HOLD do papel
-    // normal (medido: 900 quadros, 0 texels de gota; com Easy, 1 355) — sem gota não há forma a medir.
-    for (anel, facil, nome) in [
-        (0u8, false, "a tela «ligada» no anel 0 (sem gravidade)"),
-        (4, false, "a tela inclinada no anel 4"),
-        (5, false, "a tela inclinada no anel 5"),
-        (8, true, "a tela inclinada no anel 8, com Easy Drips"),
-    ] {
-        let raio = ANEL_DO_DIAL * f32::from(anel) / 8.0;
-        let mut armar = vec![Gesto::Arrasto(PAINTER_WETPAINT_TILT_PAD, 0.5, 0.5 + raio)];
-        if facil {
-            armar.push(Gesto::Clique(PAINTER_WETPAINT_DRIPS_EASY));
-            // E o Length no mínimo (um fio de ~20 px): desde a W1c a gota tem a água da bacia e corre o
-            // Length inteiro — 270 px no 5 e 570 no 8 do gesto, os dois além do fundo da tela de 128.
-            armar.push(Gesto::Numero(PAINTER_WETPAINT_DRIP_LENGTH, 1.0));
-        }
-        v.push((
-            WetPaint,
-            nome,
-            armar,
-            vec![
-                Alvo::Id(PAINTER_WETPAINT_DRIPS_CREATE),
-                Alvo::Id(PAINTER_WETPAINT_DRIPS_EASY),
-                Alvo::Id(PAINTER_WETPAINT_DRIP_SIZE),
-                Alvo::Id(PAINTER_WETPAINT_DRIP_LENGTH),
-            ],
             false,
         ));
     }

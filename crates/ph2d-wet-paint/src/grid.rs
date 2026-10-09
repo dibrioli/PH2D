@@ -122,10 +122,6 @@ pub struct Grid {
     // Paper identity (re-baked by paper.rs; part of history snapshots).
     pub paper_preset: PaperPreset,
     pub paper_sheet: u32,
-    /// As gotas em voo ([`crate::drips`]) — estado do grid: viajam no snapshot.
-    pub drips: Vec<crate::drips::Drip>,
-    /// O retângulo que as gotas pintaram, FORA da bbox da água (o engine o junta ao sujo e o esvazia).
-    pub drip_dirty: Option<[i32; 4]>,
 }
 
 /// Dilatação (em células) que a faixa viva ganha sobre a extensão observada —
@@ -231,8 +227,6 @@ impl Grid {
             scratch: SolverScratch::default(),
             paper_preset: PaperPreset::Cold,
             paper_sheet: 0,
-            drips: Vec::new(),
-            drip_dirty: None,
         }
     }
 
@@ -554,7 +548,6 @@ pub struct GridSnapshot {
     pub row_hi: Vec<i32>,
     pub paper_preset: PaperPreset,
     pub paper_sheet: u32,
-    pub drips: Vec<crate::drips::Drip>,
 }
 
 pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
@@ -578,7 +571,6 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         row_hi: g.row_hi.clone(),
         paper_preset: g.paper_preset,
         paper_sheet: g.paper_sheet,
-        drips: g.drips.clone(),
     }
 }
 
@@ -609,6 +601,5 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     let paper_changed = g.paper_preset != s.paper_preset || g.paper_sheet != s.paper_sheet;
     g.paper_preset = s.paper_preset;
     g.paper_sheet = s.paper_sheet;
-    g.drips.clone_from(&s.drips);
     paper_changed
 }

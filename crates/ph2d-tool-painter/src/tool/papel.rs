@@ -230,39 +230,6 @@ impl PainterTool {
         self.papel
     }
 
-    /// As gotas do papel (W1b) — o que o Wet Paint lê para a forma das gotas.
-    #[must_use]
-    pub fn gotas(&self) -> ph2d_wet_paint::drips::DripPaper {
-        self.gotas
-    }
-
-    /// Escreve as gotas do papel (fora de `1..=10` grampeia); a sessão viva as recebe no próximo tique.
-    pub fn set_gotas(&mut self, g: ph2d_wet_paint::drips::DripPaper) {
-        self.gotas = g.clamped();
-    }
-
-    /// **As gotas pela porta do PAINEL** — um passo de desfazer; o arrasto de um campo (`Some(id)`)
-    /// é um passo só. Sem mudança, sem passo (o campo re-emite o mesmo valor a cada quadro).
-    pub(crate) fn gotas_pelo_painel(
-        &mut self,
-        g: ph2d_wet_paint::drips::DripPaper,
-        campo: Option<ph2d_a11y::NodeId>,
-    ) {
-        let g = g.clamped();
-        if g == self.gotas {
-            return;
-        }
-        let before = self.snapshot_model();
-        self.gotas = g;
-        match campo {
-            Some(id) => self.commit_structural_edit_coalesced(
-                crate::undo::CoalesceKind::CampoDasGotas(id),
-                before,
-            ),
-            None => self.commit_structural_edit(before),
-        }
-    }
-
     /// **Compõe a região `r` do composite `rgba` (do tamanho da região) sobre o papel** — a porta
     /// que toda saída do documento chama ENTRE o composite e a luz do relevo.
     pub(crate) fn compoe_sobre_o_papel(&self, rgba: &mut [u8], r: Region) {

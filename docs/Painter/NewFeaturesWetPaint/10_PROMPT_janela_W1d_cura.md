@@ -1,3 +1,6 @@
+> ⛔ **OBSOLETO (09/10):** o dono mandou desfazer as gotas e a linha de contacto (05 §4b «⏪ DESFEITO»). Este
+> prompt descreve código que já não existe; fica como registo da auditoria.
+
 # 10 — PROMPT da janela W1d: a orla com meio-tom, sem faixa de cor pura, e a raiz em funil
 
 > Cole o bloco abaixo numa janela NOVA. É auto-contido. Origem: a auditoria de 09/10

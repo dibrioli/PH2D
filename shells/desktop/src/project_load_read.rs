@@ -97,31 +97,6 @@ impl crate::App {
             // ⚠️ **E COM migração, ao contrário dos últimos onze degraus:** o `128` é o schema que o
             // `main` tem desde 10/09, com o `Timer` e o `SignalActions` dentro — um projecto gravado
             // desde então tem autoria que recusar apagaria.
-            // ⭐ **187 → 188: as GOTAS do papel.** O documento pintado ganhou um campo no FIM, mas a
-            // lista dele está no MEIO do ficheiro: com o tipo vivo, um 187 com pintura leria lixo
-            // bem-formado. Com migração, como o 128 — o 187 é o `main` publicado com o papel dentro.
-            187 => {
-                match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV187)>(&bytes)
-                {
-                    Ok((_, old)) => {
-                        let file = crate::project_migrate::migrate_v187_to_v188(old);
-                        eprintln!(
-                            "[proj] migrado v187 -> v{PROJECT_SCHEMA} ({} documento(s) pintado(s) com as gotas default)",
-                            file.painted.len()
-                        );
-                        self.toast(ph2d_i18n::tr_with(
-                            "shell.project_load.project_migrated_from_187",
-                            &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
-                        ));
-                        (file, None)
-                    }
-                    Err(e) => {
-                        eprintln!("[proj] v187 ilegivel: {e}");
-                        self.toast_refused("shell.project_load.project_refused_format_187", &e);
-                        return None;
-                    }
-                }
-            }
             128 => {
                 match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV128)>(&bytes)
                 {

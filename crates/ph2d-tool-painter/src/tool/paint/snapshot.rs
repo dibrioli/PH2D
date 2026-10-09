@@ -397,7 +397,6 @@ impl PainterTool {
             wet_tilt_on: self.paint.wetpaint.tilt_on,
             wet_tilt_ring: self.paint.wetpaint.tilt_ring,
             wet_tilt_spoke: self.paint.wetpaint.tilt_spoke,
-            wet_gotas: self.gotas,
             wet_show_wet: self.paint.wetpaint.show_wet,
             wet_paper_visual: self.paint.wetpaint.paper_visual,
             wet_smooth_edges: self.paint.wetpaint.smooth_edges,

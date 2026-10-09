@@ -485,10 +485,29 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     máscara por linha 10 → 15; máscara da região em PARALELO + linhas sem borda saltadas **11,3 → 15,3 ms**
     (a recomposição inteira: o clique, a tela toda molhada) e **0,14 → 0,31 ms** no rectângulo de um traço.
   - [prancha a 8×: Rebelle · antes · agora](prancha_smooth_edges_wet.png).
+- ⏪ **DESFEITO — as gotas, a linha de contacto e a água de fábrica delas** (dono, 09/10: *«parece que o
+  traço perdeu qualidade desde o momento que vc introduziu os limites e o sistema de drips. Consegue
+  desfazer isso tudo?»* → escolheu «voltar tudo menos o Smooth Edges»). O CÓDIGO (80 ficheiros fora de
+  `docs/`) voltou ao de `69b4f1a75` (08/10, o preview vivo, antes da W1b): sem `drips*`, sem Create/Easy
+  Drips nem Drip Size/Length no Paper, sem `DripLaw`/`DRIP_LAW_GRAVITY`, a Gravity e a água dos 4 pincéis de
+  fábrica as de antes, o dial Tilt como era, o degrau do schema de novo **187** (sem o 188 nem a migração
+  `ProjectFileV187` — ⚠️ um projecto gravado durante os testes das gotas, a 188, não abre nesta build). Ficou
+  SÓ o **Smooth Edges** do Wet Paint, como OPÇÃO **desligada de fábrica** (o checkbox abaixo de Paper;
+  desligado = o composite de antes ao byte, gate `smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes`).
+  - Ficaram em `docs/` (sem efeito no programa): os docs 06–10, as fixtures do Rebelle (`rebelle_gotas/`,
+    `s_zoom*.png`), as capturas do dono e as réguas Python (`borda.py`, `borda_cobertura.py`,
+    `smooth_edges_no_wet.py`). Os testes Rust das gotas e da auditoria (`borda_do_s.rs`,
+    `auditoria_borda_w1c.rs`, `gotas_pela_lei_do_rebelle.rs`, as sondas) saíram com o código; vivem no
+    histórico (`8d3e8f68a`).
+  - ⛔ **Para quem voltar às gotas:** o dono julgou que a BARREIRA (a linha de contacto que prende a água no
+    papel seco) e o que veio com ela pioraram o TRAÇO, não só a borda. Antes de reconstruir, compare o traço
+    normal (tela direita e inclinada, os pincéis de fábrica) contra este estado, com o dono, e leia a
+    tabela de recusas da W1b/W1c. O prompt [10](10_PROMPT_janela_W1d_cura.md) está OBSOLETO.
+  - Verificado depois de desfazer: `check --workspace --all-targets` ✓ · clippy `-D warnings` (6 crates) ✓ ·
+    suítes de ph2d-tool-painter / panel-painter-layers / i18n / wet-paint / panel-wet-tuning ✓ · testes do
+    projecto da shell (98) ✓ · `cerca.sh` ✓ (0 ficheiros protegidos no diff).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
-  ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
-  `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`
-  só reconta a escada e a tripla).
+  (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 
 ## §5 — A próxima janela (a W2)
 

@@ -105,11 +105,8 @@ pub(crate) struct WetPaintState {
     /// rail eraser's other view.
     pub(super) tool: WetTool,
     /// The tilt DIAL (doc 22): on/off + ring (0..8, magnitude `ring/4`) +
-    /// spoke (0..11, 30° steps) — the ONLY door to «does the paint run, where, how much» (W1b: the
-    /// gravity is the CANVAS's, never the brush's — Rebelle law, doc `NewFeaturesWetPaint/06`). Boot =
-    /// OFF (the canvas comes upright: nothing runs until the artist tilts it), straight down, half
-    /// radius. ⚠️ The engine still boots ON (the 1:1 reference port), so the first reconcile pushes OFF
-    /// — `the_tool_default_reaches_the_engine_exactly` pins it.
+    /// spoke (0..11, 30° steps). Boot = the model's boot = the engine's
+    /// boot: ON, straight down, half radius (gate-pinned no-op reconcile).
     pub(super) tilt_on: bool,
     pub(super) tilt_ring: u8,
     pub(super) tilt_spoke: u8,
@@ -121,7 +118,7 @@ pub(crate) struct WetPaintState {
     /// purpose — it is part of the painting, unlike the show-wet veil.
     pub(super) paper_visual: bool,
     /// **Smooth Edges** (dono 09/10): a silhueta da mancha com meio-tom, pela lei do Watercolor
-    /// ([`smooth_edges`]). Ligado de fábrica; desligado = o composite de antes, ao byte.
+    /// ([`smooth_edges`]). Desligado de fábrica (dono 09/10, ao desfazer as gotas) = o composite de antes, ao byte.
     pub(super) smooth_edges: bool,
     /// Experimental: K–M pigment mixing (`sim.km_mixing`).
     pub(super) km_mixing: bool,
@@ -150,8 +147,6 @@ pub(crate) struct WetPaintState {
     pub(super) relogio_fixo: Option<f64>,
     /// O pedido do bloco de presets que espera a ponte da app (o disco é dela, não do tool).
     pub(super) preset_pedido: Option<super::wetpaint_preset::PedidoPreset>,
-    /// Os números da lei das gotas que a sessão leva ao nascer (o produto: `DripLaw::DEFAULT`).
-    pub(super) drip_law: ph2d_wet_paint::drips::DripLaw,
 }
 
 impl Default for WetPaintState {
@@ -164,12 +159,12 @@ impl Default for WetPaintState {
             pending_deposit: Vec::new(),
             deposit_pass: false,
             tool: WetTool::default(),
-            tilt_on: false,
+            tilt_on: true,
             tilt_ring: 4,
             tilt_spoke: 3,
             show_wet: false,
             paper_visual: false,
-            smooth_edges: true,
+            smooth_edges: false,
             km_mixing: false,
             km_glaze: false,
             tuning_open: false,
@@ -177,7 +172,6 @@ impl Default for WetPaintState {
             flow_ratio: 1,
             relogio_fixo: None,
             preset_pedido: None,
-            drip_law: ph2d_wet_paint::drips::DripLaw::DEFAULT,
         }
     }
 }
@@ -189,13 +183,6 @@ impl PainterTool {
     /// thread própria (`wetpaint/offthread.rs`).
     pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
-    }
-
-    /// **A lei das gotas da CALIBRAÇÃO** — as variantes correm no mesmo processo (CLAUDE.md §2); vale para
-    /// a sessão que nascer depois (chame-a antes do primeiro traço). O produto nunca a chama.
-    #[doc(hidden)]
-    pub fn set_wet_drip_law(&mut self, law: ph2d_wet_paint::drips::DripLaw) {
-        self.paint.wetpaint.drip_law = law;
     }
 }
 

@@ -22,7 +22,6 @@ mod seam_composite_montagem; // o `+`, o menu e o `x` da pilha: pintados, regist
 mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;
-mod seam_gotas_do_papel; // a dica diz o anel da lei, a fábrica explica, os campos arrastam inteiros
 mod seam_grid_stamp;
 mod seam_impasto_rig;
 mod seam_impasto_tool;

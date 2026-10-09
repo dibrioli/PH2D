@@ -120,7 +120,6 @@ pub fn clear_canvas(g: &mut Grid) {
     g.wet.fill(0);
     g.active.fill(0);
     g.bloom.fill(0);
-    g.drips.clear();
     g.empty_bbox();
     // Aqui a faixa PODE ser zerada: esta é a porta que zerou a velocidade.
     g.clear_spans();

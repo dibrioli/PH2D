@@ -46,16 +46,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
-        // As das gotas dizem o anel da LEI (`{ring}`, o primeiro em que uma gota desliza).
-        "panel.painter_layers.inerte.canvas_tilted" => {
-            "Acts when the Tilt is on and off centre; drips slide from ring {ring}"
-        }
-        "panel.painter_layers.inerte.create_drips_on" => {
-            "Acts with Create Drips on and the Tilt at ring {ring} or more"
-        }
-        "panel.painter_layers.inerte.drips_cannot_slide" => {
-            "Acts when a Tilt ring lets drips slide; none does now"
-        }
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
         "panel.painter_layers.inerte.detail_above_minimum" => {
             "Acts when Detail is above its minimum"
@@ -523,10 +513,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.watercolor.pigment" => "Pigment",
         "panel.painter_layers.paper.relief" => "Relief",
         "panel.painter_layers.paper.roughness" => "Roughness",
-        "panel.painter_layers.paper.create_drips" => "Create Drips",
-        "panel.painter_layers.paper.easy_drips" => "Easy Drips",
-        "panel.painter_layers.paper.drip_size" => "Drip Size",
-        "panel.painter_layers.paper.drip_length" => "Drip Length",
         "panel.painter_layers.paper.paper" => "Paper",
         "panel.painter_layers.paper.angle" => "Angle",
         "panel.painter_layers.paper.offset" => "Offset",
@@ -566,6 +552,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.pickup" => "Pickup",
         "panel.painter_layers.wetpaint.dry_speed" => "Dry Speed",
         "panel.painter_layers.wetpaint.edge_darkening" => "Edge Darkening",
+        "panel.painter_layers.wetpaint.gravity" => "Gravity",
         "panel.painter_layers.wetpaint.erase_strength" => "Erase Strength",
         "panel.painter_layers.wetpaint.canvas_actions" => "Wet canvas actions",
         "panel.painter_layers.wetpaint.wet_canvas" => "Wet canvas",
@@ -582,10 +569,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.tilt" => "Tilt",
         "panel.painter_layers.layers.save_as_object" => "Save As Object",
         // ph2d-migrar-texto:end
-        // ⚠️ À MÃO (W1c, 08/10): a dica do Tilt diz o que as gotas pedem (`{ring}` = o anel da lei).
-        "panel.painter_layers.wetpaint.tilt_drips" => {
-            "Drips need Create Drips on (in Paper) and the Tilt at ring {ring} or more"
-        }
         "panel.painter_layers.adjust.tone_not_relief" => {
             "The paint's relief stays as it is: this effect works on tones. Blur and Sharpen \
              soften and crisp the relief too"

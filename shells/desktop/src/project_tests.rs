@@ -570,10 +570,6 @@ mod pattern_art;
 #[path = "project_boards_tests.rs"]
 mod boards;
 
-/// **As GOTAS do papel no arquivo** (v188) — filho pela mesma razão: as fixtures são as portas.
-#[path = "project_gotas_tests.rs"]
-mod gotas;
-
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
 /// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele:

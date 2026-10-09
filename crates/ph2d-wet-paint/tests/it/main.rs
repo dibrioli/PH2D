@@ -12,7 +12,6 @@ mod util;
 mod acceptance;
 mod acceptance_budget;
 mod deposit_rows;
-mod drips;
 mod fingerprint;
 mod flow_grid;
 mod flow_symmetry;

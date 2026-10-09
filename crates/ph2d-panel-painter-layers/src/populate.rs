@@ -137,7 +137,6 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     .chain(ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS)
     .chain(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS)
-    .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS)
     {
         store.register(

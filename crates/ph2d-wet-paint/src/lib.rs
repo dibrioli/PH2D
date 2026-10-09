@@ -30,7 +30,6 @@
 
 pub mod brush;
 pub mod colorops;
-pub mod drips;
 pub mod drying;
 pub mod flow;
 pub mod grid;

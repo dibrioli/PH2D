@@ -21,7 +21,7 @@
 
 | Doc | O que tem |
 |---|---|
-| [10_PROMPT_janela_W1d_cura.md](10_PROMPT_janela_W1d_cura.md) | **O prompt da PRÓXIMA janela** (W1d — a orla com meio-tom, sem a faixa de cor pura, e a raiz em funil), com os achados da auditoria de 09/10 ([09](09_PROMPT_janela_auditoria_W1c.md)) no template da DIRETIVA §3 |
+| [10_PROMPT_janela_W1d_cura.md](10_PROMPT_janela_W1d_cura.md) | ⛔ OBSOLETO — as gotas foram DESFEITAS a 09/10 (05 §4b «⏪ DESFEITO»; ficou só o Smooth Edges, desligado). Registo da auditoria de 09/10 ([09](09_PROMPT_janela_auditoria_W1c.md)) |
 | [07_PROMPT_janela_W1b_gotas.md](07_PROMPT_janela_W1b_gotas.md) · [08](08_PROMPT_janela_W1c_borda.md) | Os prompts das janelas W1b (as gotas pela lei do Rebelle) e W1c (a borda e as gotas pela auditoria de 08/10) |
 | [05_plano_da_linha_e_o_antes.md](05_plano_da_linha_e_o_antes.md) | **O tracker da linha**: o «antes» do Wet Paint medido e reproduzido, onde cada onda entra no código, a barra de cada gate tirada do vale, as decisões do dono e o estado de cada onda |
 | [06_gotas_rebelle_x_ph2d.md](06_gotas_rebelle_x_ph2d.md) | **As gotas**: a lei do Rebelle (tela + papel, nunca o pincel) lida dos dados e medida na bancada, e a nossa ao lado; a proposta que o dono aprovou |

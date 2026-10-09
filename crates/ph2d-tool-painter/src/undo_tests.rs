@@ -19,7 +19,6 @@ fn model(active_px: u8) -> ModelSnapshot {
         offset_norm: 0.5,
         offset_base_px: 0.0,
         papel: None,
-        gotas: ph2d_wet_paint::drips::DripPaper::DEFAULT,
         preview_patch: None,
         parked_shapes: Vec::new(),
         active_op: 0,

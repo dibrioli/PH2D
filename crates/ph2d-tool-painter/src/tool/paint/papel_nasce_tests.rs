@@ -424,10 +424,7 @@ fn um_desenho_novo_nasce_transparente_sobre_o_papel_branco() {
         let piso = match meio {
             PaintMedia::Digital | PaintMedia::Impasto => 4,
             PaintMedia::Watercolor => 1,
-            // 1, não 0, desde o Smooth Edges do Wet Paint (dono 09/10): a fração da silhueta na cobertura
-            // arredonda o alfa da camada transparente uma vez a mais que sobre o branco (medido: pior 1,
-            // 0 bytes > 1) — o mesmo piso de duas representações do Digital, menor.
-            PaintMedia::WetPaint => 1,
+            PaintMedia::WetPaint => 0,
         };
         for (s, raio) in PINCEIS {
             for (nome, gesto) in GESTOS {

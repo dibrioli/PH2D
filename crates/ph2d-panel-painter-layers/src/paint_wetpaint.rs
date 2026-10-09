@@ -22,6 +22,8 @@ const PICKUP_STEP: f64 = 0.001; // LITERAL-PX-OK: wet-paint Pickup slider step (
 const DRY_SPEED_MAX: f32 = 8.0; // LITERAL-PX-OK: wet-paint Evaporation range bound (SPEC §16)
 const DRY_SPEED_STEP: f64 = 0.05; // LITERAL-PX-OK: wet-paint Evaporation slider step (SPEC §16)
 const EDGE_MAX: f32 = 200.0; // LITERAL-PX-OK: wet-paint Edge-darkening range bound (SPEC §16)
+const GRAVITY_MAX: f32 = 0.05; // LITERAL-PX-OK: wet-paint Gravity range bound (SPEC §16)
+const GRAVITY_STEP: f64 = 0.0005; // LITERAL-PX-OK: wet-paint Gravity slider step (SPEC §16)
 // A faixa da grade do fluido (px por célula) — espelha `wetpaint::grid_map`
 // MIN_RATIO/MAX_RATIO, do mesmo jeito que os knobs acima espelham os clamps do
 // tool. Não é valor de design: é o domínio do parâmetro.
@@ -104,7 +106,7 @@ pub(crate) fn paint_wetpaint_section(
         y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
         let k = brush.wet_knobs;
         // O Water é um VOLUME do topo (W1, `paint_wetpaint_presets.rs`): um só controlo por facto.
-        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 5] = [
+        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 6] = [
             (
                 "panel.painter_layers.wetpaint.pigment",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
@@ -140,6 +142,15 @@ pub(crate) fn paint_wetpaint_section(
                 EDGE_MAX,
                 1.0,
                 0,
+            ),
+            (
+                "panel.painter_layers.wetpaint.gravity",
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
+                k.gravity() as f32,
+                0.0,
+                GRAVITY_MAX,
+                GRAVITY_STEP,
+                4,
             ),
             (
                 "panel.painter_layers.wetpaint.erase_strength",
@@ -205,7 +216,7 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_layers.wetpaint.paper",
             brush.wet_paper_visual,
         );
-        // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; ligado de fábrica).
+        // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; desligado de fábrica).
         y = crate::paint_brush_top::paint_checkbox_row(
             ctx,
             theme,

@@ -110,20 +110,6 @@ pub(crate) fn paint_tilt_card(
     ctx.host
         .hit_index_mut()
         .register(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD, canvas);
-    // O que as gotas pedem, dito onde se vê: o Paper (onde está o Create Drips) nasce recolhido.
-    let anel = brush.inercias.anel_das_gotas();
-    let chave = if anel.is_some() {
-        "panel.painter_layers.wetpaint.tilt_drips"
-    } else {
-        ph2d_tool_painter::DICA_SEM_GOTAS
-    };
-    let dica = crate::esmaecer::texto(chave, anel);
-    for id in [
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
-    ] {
-        ctx.host.store_mut().set_tooltip(id, dica.as_str());
-    }
     canvas.y + side + Spacing::Xs.px()
 }
 

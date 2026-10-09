@@ -14,8 +14,7 @@ use ph2d_brush_presets::{
     Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
 };
 use ph2d_tool_painter::{
-    KNOBS_DA_OBRA, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PaintMedia, PainterTool, WetKnobs,
-    miniatura_do_preset,
+    MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PaintMedia, PainterTool, WetKnobs, miniatura_do_preset,
 };
 use ph2d_wet_paint::tuning::Knob;
 use std::path::PathBuf;
@@ -34,9 +33,7 @@ fn raiz() -> PathBuf {
 }
 
 /// Uma linha do 02 §6.9. `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
-/// `pickup`/`edge` são RAZÕES ao Wet Round, que é o padrão do dono (05 §1.2). ⛔ Sem `gravity` (W1b): a
-/// gravidade é da TELA, e a água é a de fábrica da aquarela do Rebelle (06 §1.4: Round 29, Wash Round 24,
-/// Flat Dry 9, Dip Pen 49) — o Wet Drip é «muita água», não «muita gravidade».
+/// `pickup`/`edge`/`gravity` são RAZÕES ao Wet Round, que é o padrão do dono (05 §1.2).
 struct Receita {
     nome: &'static str,
     water: f64,
@@ -45,6 +42,7 @@ struct Receita {
     gate: f64,
     evaporation: f64,
     edge: f64,
+    gravity: f64,
     bristle_size: f64,
     bristle_count: f64,
 }
@@ -52,46 +50,49 @@ struct Receita {
 const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Round",
-        water: 0.29,
+        water: 1.0,
         pigment: 800.0,
         pickup: 1.0,
         gate: 0.4,
         evaporation: 1.0,
         edge: 1.0,
+        gravity: 1.0,
         bristle_size: 2.0,
         bristle_count: 2000.0,
     },
     Receita {
         nome: "Wet Wash",
-        water: 0.24,
+        water: 1.0,
         pigment: 400.0,
         pickup: 0.6,
         gate: 0.3,
         evaporation: 0.7,
         edge: 0.75,
+        gravity: 0.6,
         bristle_size: 3.0,
         bristle_count: 3000.0,
     },
     Receita {
         nome: "Wet Dry Brush",
-        water: 0.09,
+        water: 0.2,
         pigment: 1200.0,
         pickup: 1.6,
         gate: 0.6,
         evaporation: 1.5,
         edge: 1.125,
+        gravity: 0.4,
         bristle_size: 1.5,
         bristle_count: 1500.0,
     },
     Receita {
         nome: "Wet Drip",
-        // O nome promete gotas (W1c, L2-2): a água da bancada que pinga na tela no máximo (0,49 → 0 px).
-        water: 0.7,
+        water: 1.0,
         pigment: 600.0,
         pickup: 0.8,
         gate: 0.2,
         evaporation: 0.6,
         edge: 1.0,
+        gravity: 2.0,
         bristle_size: 2.0,
         bristle_count: 2000.0,
     },
@@ -113,6 +114,7 @@ fn parametros(r: &Receita) -> Parametros {
         ("evaporation", r.evaporation),
         ("pickup", d.get(Knob::Pickup) * r.pickup),
         ("edgeDarkening", d.get(Knob::EdgeDarkening) * r.edge),
+        ("gravity", d.get(Knob::Gravity) * r.gravity),
         ("bristleSize", r.bristle_size),
         ("bristleCount", r.bristle_count),
     ] {
@@ -209,24 +211,6 @@ fn the_factory_presets_are_counted() {
             e.preset.parametros.name,
             "o nome do ficheiro é o do preset"
         );
-    }
-}
-
-/// ⛔ W1b: nenhum preset de fábrica leva um knob da OBRA (a gravidade é da tela — doc 06).
-#[test]
-fn nenhum_preset_de_fabrica_leva_um_knob_da_obra() {
-    let chaves: Vec<&str> = KNOBS_DA_OBRA
-        .iter()
-        .map(|(k, _)| ph2d_wet_paint::tuning::KNOB_DEFS[*k as usize].key)
-        .collect();
-    assert!(chaves.contains(&"gravity"), "a gravidade é da obra");
-    let fabrica = ficheiros_de_fabrica();
-    assert_eq!(fabrica.len(), PRESETS_DE_FABRICA);
-    for (rel, b) in fabrica {
-        let p = ler(&b).unwrap();
-        for c in &chaves {
-            assert!(!p.parametros.engine.contains_key(*c), "{rel} leva `{c}`");
-        }
     }
 }
 

@@ -1112,7 +1112,7 @@ fn the_engine_boots_with_the_knob_defaults() {
     assert_eq!(e.tuning.get(Knob::Pickup), d.pickup());
     assert_eq!(e.tuning.get(Knob::Evaporation), d.dry_speed());
     assert_eq!(e.tuning.get(Knob::EdgeDarkening), d.edge_darkening());
-    assert_eq!(e.tuning.get(Knob::Gravity), d.get(Knob::Gravity));
+    assert_eq!(e.tuning.get(Knob::Gravity), d.gravity());
 }
 
 /// A turned knob reaches the LIVE engine — through the panel's own channel
@@ -1197,7 +1197,7 @@ fn the_wet_section_reset_restores_the_knob_defaults() {
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = tool_in_mode("wetpaint");
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-        crate::ids::PAINTER_WETPAINT_PICKUP,
+        crate::ids::PAINTER_WETPAINT_GRAVITY,
         0.03
     )));
     assert_ne!(t.wet_knobs(), WetKnobs::default());

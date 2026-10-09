@@ -131,12 +131,9 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_TAPER_DIAMETERS, Taper},
 };
-/// As gotas do PAPEL do documento (W1b) — o tipo do motor, para o painel não depender dele.
-pub use ph2d_wet_paint::drips::DripPaper;
 pub use tool::paint::wetpaint_preset::{
     CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview, DIAMETRO_DA_MINIATURA,
-    KNOBS_DA_OBRA, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PedidoPreset, miniatura_do_preset,
-    pintar_preview,
+    MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PedidoPreset, miniatura_do_preset, pintar_preview,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
@@ -150,7 +147,7 @@ pub use tool::{
     TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_falloff_weight_at,
     render_classic_flow_preview, set_pending_select_mods,
 };
-pub use tool::{DICA_DO_PARAMETRO, DICA_SEM_GOTAS, Dependente, Inercias};
+pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias};
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 
 use ph2d_a11y::Role;

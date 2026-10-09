@@ -91,6 +91,17 @@ espelhos (106) contam só os registadores DELES — não sobem.
 - `opacidade` do `BloqueiaLuz` é **por ENTRADA** do raio no objeto (`× (1−α)` por entrada, sem
   depender da espessura) — no RC isso é detetar a transição fora→dentro, inclusive na fronteira
   de cada intervalo de cascata.
+- **Luz recebida (fixada na W3):** `luz_em(p) = F(p) / 2π` — a radiância MÉDIA sobre a volta. Um
+  sprite/vetor é uma superfície DE FRENTE para a câmera, no plano da cena: a luz chega rasante de
+  todas as direções do plano e não há normal no plano que pese umas mais que outras ⇒ o núcleo de
+  reflexão é isotrópico, `k(ω) = 1/2π` (integral 1). O fator sai do **forno branco**: num campo de
+  radiância uniforme `L`, uma superfície branca devolve `L` (`∫ L·k dω = L`); qualquer outro fator
+  (`1/π` do Lambert 3D, `1/2` do Lambert de flatland com normal no plano) acende ou apaga a cena
+  inteira. O receptor faz `linear(albedo) × luz_em` (sprite antes do tonemap; vetor na colagem, a
+  MESMA conta). Consequências medidas pelo gabarito (`ph2d-light2d-ref::luz_em`, gates
+  `luz_em_de_frente.rs`): Ambiente `cor·I` dá `luz_em = cor·I/2π` (`I = 2π` acende branco a 1); um
+  ponto `I` a `r` dá `I/(2π·r)` — **a W4 precisa disto para o padrão do Inspector**: `I = 2π` é
+  branco a 1 m.
 - A forma que a coleta vê é o **quad** do sprite (`GlobalTransform` × âncora/tamanho); a cor de um
   emissor é `tint∘self_tint`·α·k. Os texels e o alfa por texel NÃO estão no `World` (só o
   `AssetId`): são da captura C0.

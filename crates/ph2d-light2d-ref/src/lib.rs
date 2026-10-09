@@ -151,6 +151,14 @@ fn transmissao_ate(objetos: &[Objeto], buf: &[Vec<f64>], limite: f64) -> f64 {
     transmissao
 }
 
+/// A luz que uma superfície DE FRENTE (sprite ou vetor, no plano da cena) recebe em `ponto`:
+/// `F / 2π`, a radiância média sobre a volta — o forno branco (plano §2.3). O receptor multiplica
+/// o albedo linear por isto.
+#[must_use]
+pub fn luz_em(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
+    fluencia(cena, ponto).map(|f| f / TAU)
+}
+
 /// A fluência (radiância integrada sobre o ângulo) que chega a `ponto`, por canal.
 #[must_use]
 pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {

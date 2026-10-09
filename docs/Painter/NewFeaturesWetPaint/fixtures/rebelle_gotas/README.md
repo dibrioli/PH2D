@@ -16,6 +16,8 @@ Rebelle. Gerador: [`ferramentas/gotas.py`](../../ferramentas/gotas.py), enviado 
 | `s_inclinado_1.png` | idem, 1:1 | (0, 1) ligada | on, 5/5 | o mesmo S, 1.ª corrida — ⚠️ o painel do pincel mostrou Water **80** / Size 25 depois dela (as outras três: 100 / 11) |
 | `s_sem_gotas.png` | idem, 1:1 | (0, 1) | **off** | o mesmo S |
 | `s_plano.png` | idem, 1:1 | desligada | on, 5/5 | o mesmo S |
+| `s_zoom100.png` | idem, 1:1 (09/10, auditoria da W1c) | (0, 1) ligada | on, 5/5 | o mesmo S, 1.ª corrida de uma sessão nova (o painel: Size 47, Opacity 60) — `gotas_tela.sh az_s --forma s --size_px 100 --agua 100 --tilt 0 1`, foto `_c` |
+| `s_zoom400.png` | a MESMA tela a **400 %** (campo de zoom do Navigator), a vista inteira da janela (1470×1024) | idem | idem | a descida e as raízes, como o dono olha: o ecrã do Rebelle amplia SUAVE (sem blocos), a orla é pálida e com meio-tom, a raiz é um funil |
 
 Traço: 150 px horizontal em y = 150, `size_px` 40, pressão 1, azul `#1765b3`, `POINTER_MOVE` a 3 px.
 Tempos: `_2s` ≈ 2 s depois do último traço; os outros depois de `SIMULATION` +400 e +1 200 passos

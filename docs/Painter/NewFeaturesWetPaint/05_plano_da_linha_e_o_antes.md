@@ -405,6 +405,33 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     para a 3.ª, NÃO medida: o `na_bacia` do `spawn` compara cada candidata com TODAS as gotas (O(orla × gotas))
     — um índice das gotas pela coordenada transversal tira-o.
   - Pranchas: [antes · depois · Rebelle, a 3×](prancha_borda_w1c.png) · [o S inteiro](prancha_s_w1c.png).
+- 🔎 **Auditoria da W1c, 09/10** (smoke do dono sobre `f216fd97c`: *«borda pixelada e artificial. veja o
+  escorrimento. Que app pro faria isso?»* — [capturas](fixtures/smoke_dono_w1c/), prompt
+  [09](09_PROMPT_janela_auditoria_W1c.md)). Uma rodada: a régua NOVA da cobertura do pixel e da raiz
+  (`ferramentas/borda_cobertura.py`, portada em `tests/it/auditoria_borda_w1c.rs` com a sonda
+  `sonda_auditoria_w1c`, 9 cenas no mesmo processo, load 3–7), o Rebelle a 400 % (`s_zoom400.png`).
+  - **A escada é o CONTEÚDO da tela, não o ecrã.** O dono olha a ~8,5× (cada degrau = 1 px da tela; a
+    rampa de cada degrau mede 8 px de ecrã = o filtro Linear, `ImageFilterMode::Smooth` por omissão); o
+    Rebelle a 400 % também amplia suave. A orla com a lei ligada é **0/1 em 72,5 %** das colunas da descida
+    (meio-tom 9,8 %) — com Create Drips desligado 9,8 / 43,5, com a tela direita 16,6 / 67,4, na grade 2
+    (o composite reconstrói por smoothstep) **0 / 68,9**; Rebelle 5,7–19,7 / 67–89. A linha de contacto
+    (`pin_downhill`, fluxo 0 na célula `por_fora`) faz a orla binária e nada no motor nem no composite
+    (cobertura = `pa`) lhe dá meio-tom.
+  - **E o contraste multiplica-a:** o degrau orla → papel vale 1,04·B0 = 222 de escuro num pixel
+    (Rebelle 0,44·B0 = 45: **4,9×**); a faixa de ≥ 88 % da cor pura tem **4 px** na bancada e no azul do dono a
+    100 px (a captura do dono: 4–5 px; Rebelle 0). O portão da W1c (faixa ≥ B0 ≤ 6) aprova-a.
+  - **A raiz:** a orla NÃO muda de altura no fio (degrau 0,7 px contra 1,3 longe dos fios; Rebelle 1,8 / 1,3;
+    `drain_after` e `recede` não mudam nem uma raiz). O que o dono vê é o fio RECTANGULAR de topo plano
+    (3 px desde 1 px abaixo da orla; Rebelle 5 → 4 → 3, um funil) colado por baixo de uma orla OBLÍQUA de
+    cor pura: o lado de cima faz o canto. O «funil» da W1b é só tinta (`neck_dark`), não forma. O fio é
+    vertical também no Rebelle (desvio 0).
+  - **Os pontinhos** por baixo da orla existem com a tela DIREITA (72 por 100 colunas; Rebelle 2–57): vêm
+    do carimbo do pincel (hipótese por leitura: o rabo do falloff × as cerdas × `pigmentPerDab` 600, sem
+    piso), não das gotas — e mexer ali muda as duas cercas «ao byte».
+  - Portões novos, VERMELHOS e `#[ignore]` (a cura tira-o): `a_orla_do_s_tem_meio_tom_como_a_do_rebelle`
+    (72,5 > 25 %) · `o_fio_alarga_para_a_orla_como_o_funil_do_rebelle` (3,5 → 3 contra ≥ 1,5 px) · e a guarda
+    `a_raiz_do_fio_nao_faz_degrau_na_orla` (verde hoje). Os achados inteiros e a cura:
+    [10_PROMPT_janela_W1d_cura.md](10_PROMPT_janela_W1d_cura.md) · [prancha a 8×](prancha_auditoria_w1c.png).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

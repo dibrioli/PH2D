@@ -95,9 +95,9 @@ pub fn grava(out: &str, nome: &str, px: &[u8]) {
 // Wet Round ~213): os dois pigmentam diferente, a FORMA da borda é o que se compara. A descida do S
 // (x 440–632, declive 0,72–0,75) é a janela do README das fixtures.
 
-const DESCIDA: std::ops::Range<usize> = 440..633;
+pub const DESCIDA: std::ops::Range<usize> = 440..633;
 
-fn escuro(px: &[u8], x: usize, y: usize) -> f64 {
+pub fn escuro(px: &[u8], x: usize, y: usize) -> f64 {
     let i = (y * W as usize + x) * 4;
     f64::from(255 - px[i..i + 3].iter().copied().min().unwrap_or(255))
 }
@@ -112,7 +112,7 @@ fn eixo(x: f64) -> f64 {
 }
 
 /// A largura da corrida horizontal de tinta (`> t`) que contém `(x, y)`.
-fn corrida(px: &[u8], x: usize, y: usize, t: f64) -> usize {
+pub fn corrida(px: &[u8], x: usize, y: usize, t: f64) -> usize {
     if escuro(px, x, y) <= t {
         return 0;
     }
@@ -128,7 +128,7 @@ fn corrida(px: &[u8], x: usize, y: usize, t: f64) -> usize {
 
 /// A orla de baixo da coluna `x`: a linha de tinta mais baixa (corrida > 8 px: não um fio) a até 75 px
 /// abaixo do eixo, sem um buraco de mais de 3 linhas desde o eixo.
-fn orla(px: &[u8], x: usize, t: f64) -> usize {
+pub fn orla(px: &[u8], x: usize, t: f64) -> usize {
     let c = eixo(x as f64).round() as usize;
     let (mut yb, mut buraco) = (c, 0);
     for y in c..(c + 75).min(H as usize) {
@@ -144,7 +144,7 @@ fn orla(px: &[u8], x: usize, t: f64) -> usize {
     yb
 }
 
-fn mediana(mut v: Vec<f64>) -> f64 {
+pub fn mediana(mut v: Vec<f64>) -> f64 {
     v.sort_by(f64::total_cmp);
     let n = v.len();
     if n == 0 {

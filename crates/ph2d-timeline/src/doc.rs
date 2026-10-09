@@ -112,12 +112,16 @@ mod clip_paths;
 /// **migra** em vez de recusar: um v18 abre com todos os clips da Cena, zero perda
 /// (`doc_v18.rs`, provado contra `tests/fixtures/timeline_doc_v18.bin`).
 ///
+/// v20: **o clipe de ENTRADA** (`NamedClip.autoplay`, doc ObjectsAndComponents 01 §14, item 1 — o
+/// *Autoplay* do Godot): o clipe que a Animação de um objecto toca sozinha no Play. Migra
+/// (`doc_v19.rs`, provado contra `tests/fixtures/timeline_doc_v19.bin`): nenhum marcado ⇒ o 1.º.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 19;
+pub const DOC_VERSION: u32 = 20;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -224,6 +228,9 @@ pub struct NamedClip {
     /// **De quem é esta animação**: `None` = a Cena; `Some` = o objecto (o componente Animação
     /// dele é o conjunto dos clips que o nomeiam). Apêndice ⇒ `DOC_VERSION` 18 -> 19.
     pub owner: Option<ClipOwner>,
+    /// ⭐ **O clipe de ENTRADA da animação do dono** — o que toca sozinho no Play (no máximo um por
+    /// dono; nenhum ⇒ o 1.º, [`TimelineDoc::entry_clip_of`]). Apêndice ⇒ `DOC_VERSION` 19 -> 20.
+    pub autoplay: bool,
 }
 
 /// The editable timeline document (see module docs).
@@ -302,6 +309,7 @@ impl TimelineDoc {
                 expr: BTreeMap::new(),
                 paths: BTreeMap::new(),
                 owner: None,
+                autoplay: false,
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -393,6 +401,7 @@ impl TimelineDoc {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         let doc: TimelineDoc = match postcard::take_from_bytes::<u32>(bytes) {
             Ok((v18::VERSION, _)) => v18::migrate(bytes)?,
+            Ok((v19::VERSION, _)) => v19::migrate(bytes)?,
             _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
         };
         if doc.version != DOC_VERSION {
@@ -564,3 +573,7 @@ pub use owner::{ClipOwner, SCENE};
 /// **A migração v18 → v19** — o único leitor de bytes antigos deste documento.
 #[path = "doc_v18.rs"]
 mod v18;
+#[path = "doc_v19.rs"]
+mod v19;
+#[path = "doc_entry.rs"]
+mod entry;

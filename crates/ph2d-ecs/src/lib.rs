@@ -93,6 +93,8 @@ pub mod scroll_limits;
 pub mod scroll_motion;
 pub mod scroll_repeat;
 pub mod sequence;
+pub mod clip_playback;
+pub use clip_playback::ClipPlayback;
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
 pub mod signal_actions;

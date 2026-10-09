@@ -427,3 +427,11 @@ mod tags_tests;
 
 #[path = "undo_library_tests.rs"]
 mod library;
+
+/// ⭐ O cemitério (doc ObjectsAndComponents 01 §14, item 3) é tão fundo como este undo: mais fundo, o
+/// undo global já não devolve o objecto e a cova nunca abriria; mais raso, um objecto apagado há
+/// muitos passos voltaria sem a animação.
+#[test]
+fn the_graveyard_is_as_deep_as_the_global_undo() {
+    assert_eq!(ph2d_ecs::GRAVEYARD_DEPTH, UNDO_CAP);
+}

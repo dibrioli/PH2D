@@ -63,6 +63,7 @@ pub(super) fn migrate(bytes: &[u8]) -> Result<TimelineDoc, String> {
                 expr: c.expr,
                 paths: c.paths,
                 owner: None,
+                autoplay: false,
             })
             .collect(),
         active_clip: old.active_clip,

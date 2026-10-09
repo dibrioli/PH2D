@@ -18,6 +18,7 @@ mod auto_orient;
 mod bone_bend_channels;
 mod clearing_a_formula_hands_the_pose_back;
 mod clip_clock;
+mod clip_entry;
 mod clip_names_per_owner;
 mod clip_owner;
 mod clip_stack;

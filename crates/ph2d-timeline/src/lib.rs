@@ -26,7 +26,7 @@ pub mod apply;
 /// ⭐ **Aplicar UM clip fora do transporte** — irmão do `apply` pelo teto de LOC, cortado por
 /// responsabilidade. O 1.º cliente é o osso inteligente do esqueleto.
 mod apply_one;
-pub use apply_one::apply_one_clip;
+pub use apply_one::{apply_autoplay, apply_one_clip, apply_one_clip_except};
 mod apply_path;
 mod apply_prop;
 mod apply_views;

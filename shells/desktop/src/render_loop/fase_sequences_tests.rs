@@ -1,10 +1,10 @@
 //! Os gates da fase das CUTSCENES (TOP-20 #19).
 //!
-//! ⚠️ Eles correm a função do PRODUTO (`toca_as_cutscenes`) sobre um mundo e um `TimelineDoc`
+//! ⚠️ Eles correm a função do PRODUTO (`toca_os_objectos`) sobre um mundo e um `TimelineDoc`
 //! construídos à mão — nenhum precisa de janela nem de GPU, e é por isso que eles são possíveis
 //! aqui e não em `tests/it/` (a função é `pub(crate)`).
 
-use super::toca_as_cutscenes;
+use super::toca_os_objectos;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::timer::{TimerRuntime, TimerState};
 use ph2d_ecs::{Entity, SequencePlayer, Transform, World};
@@ -74,7 +74,7 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, true);
     assert_eq!(
-        toca_as_cutscenes(&mut w, &mut doc, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
         1
     );
     let meio = y(&w, e);
@@ -86,7 +86,7 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, false);
     assert_eq!(
-        toca_as_cutscenes(&mut w, &mut doc, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
         0
     );
     assert!(
@@ -103,7 +103,7 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
 fn o_que_a_cutscene_escreve_passa_pelo_ledger() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, true);
-    toca_as_cutscenes(&mut w, &mut doc, &mut drive, |_| false);
+    toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false);
     let Some(Driven::SolverPose(autorado)) = drive.authored(e.to_bits(), Driver::SolverPose) else {
         panic!("o ledger não guardou a pose autorada deste objecto");
     };
@@ -125,7 +125,7 @@ fn um_nome_errado_nao_toca_o_primeiro_container() {
         container: "Ausente".to_owned(),
     });
     assert_eq!(
-        toca_as_cutscenes(&mut w, &mut doc, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
         0
     );
     assert!(y(&w, e).abs() < 1e-6, "nada foi tocado");
@@ -138,7 +138,7 @@ fn sem_cutscenes_a_fase_nao_mexe_no_ledger() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, _) = cena("Porta", 1_000_000, false);
     assert_eq!(
-        toca_as_cutscenes(&mut w, &mut doc, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
         0
     );
     assert!(
@@ -202,5 +202,49 @@ fn o_instantaneo_do_inspector_le_a_mesma_porta() {
     assert!(
         fonte.contains("fase_sequences::a_vista_deixa_correr("),
         "o publicador deixou de ler a porta — o aviso do painel passa a ser um palpite"
+    );
+}
+
+/// ⭐⭐ **A Animação de um objecto toca sozinha** (doc ObjectsAndComponents 01 §14, item 1): o clipe
+/// de entrada do Herói move-o no relógio da cena, pela porta do produto, e a escrita é declarada ao
+/// ledger do undo como as das cutscenes. Controlo: o mesmo clipe com dono na Cena não toca sozinho.
+#[test]
+fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
+    let mut drive = PreviewDrive::default();
+    let mut w = World::new();
+    let e = w.spawn(Transform::default()).id();
+    let bits = e.to_bits();
+    let mut doc = TimelineDoc::new();
+    let andar = doc.add_clip_for("andar".into(), bits).expect("cabe");
+    doc.set_active(andar);
+    for (t, v) in [(0.0, 0.0), (2.0, 10.0)] {
+        doc.upsert_key(
+            bits,
+            PropKind::TranslationY,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    assert_eq!(
+        toca_os_objectos(&mut w, &mut doc, 1.0, &mut drive, |_| false),
+        1
+    );
+    assert!((y(&w, e) - 5.0).abs() < 1e-4, "y = {}", y(&w, e));
+
+    let mut cena = TimelineDoc::new();
+    cena.upsert_key(
+        bits,
+        PropKind::TranslationY,
+        RationalTime::from_seconds(2.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
+    let mut w2 = World::new();
+    w2.spawn(Transform::default());
+    assert_eq!(
+        toca_os_objectos(&mut w2, &mut cena, 1.0, &mut drive, |_| false),
+        0,
+        "um clipe da Cena é do Arrange, não toca sozinho"
     );
 }

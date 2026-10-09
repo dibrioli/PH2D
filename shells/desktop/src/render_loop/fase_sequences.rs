@@ -1,5 +1,7 @@
-//! **Fase do quadro: as CUTSCENES** (TOP-20 #19) — cada objecto toca o container dele, no relógio
-//! dele.
+//! **Fase do quadro: os objectos no RELÓGIO DELES** — a Animação de cada objecto (o clipe de entrada,
+//! ou o que alguém pediu: doc ObjectsAndComponents 01 §14, item 1) e as CUTSCENES (TOP-20 #19, o
+//! container de um `SequencePlayer`). Primeiro a Animação, depois a cutscene: o pedido explícito
+//! escreve por último.
 //!
 //! # ⚠️ DEPOIS do apply da cena, e a ordem é o que faz o ledger compor
 //!
@@ -41,10 +43,12 @@ pub(crate) const fn a_vista_deixa_correr(keys_mode: bool, container: Option<usiz
     container.is_none() && !keys_mode
 }
 
-/// Ver o cabeçalho. Devolve **quantas** cutscenes correram, para o diagnóstico.
-pub(crate) fn toca_as_cutscenes(
+/// Ver o cabeçalho. `t` é o relógio da cena. Devolve **quantos** objectos tocaram (Animações e
+/// cutscenes), para o diagnóstico.
+pub(crate) fn toca_os_objectos(
     world: &mut World,
     doc: &mut TimelineDoc,
+    t: f64,
     drive: &mut PreviewDrive,
     skip: impl Fn(u64) -> bool + Copy,
 ) -> usize {
@@ -52,18 +56,24 @@ pub(crate) fn toca_as_cutscenes(
     // é o que a mantém testável sem uma, e o que impede uma segunda cópia da comparação de nomes.
     let nomes: Vec<&str> = doc.containers().iter().map(|c| c.name.as_str()).collect();
     let corridas = ph2d_ecs::sequence::em_corrida(world, &nomes);
-    if corridas.is_empty() {
+    let animados = doc.animation_owners().next().is_some();
+    if corridas.is_empty() && !animados {
         return 0;
     }
     // ⚠️ **UM censo para todas**, e não um por cutscene: ele é `O(bindings)` (o `TimelineDoc`
     // NOMEIA quem anima), e duas cutscenes a escrever a mesma entidade compõem dentro deste
     // parêntesis — a última escreve, e o autorado continua a ser o de antes do laço.
     let antes = crate::timeline_preview::state_of_bindings(world, doc);
+    let n = if animados {
+        ph2d_timeline::apply_autoplay(world, doc, t, skip)
+    } else {
+        0
+    };
     for c in &corridas {
         ph2d_timeline::apply_container(world, doc, c.container, c.t, skip);
     }
     crate::timeline_preview::declare_timeline_writes(world, &antes, drive);
-    corridas.len()
+    n + corridas.len()
 }
 
 #[cfg(test)]

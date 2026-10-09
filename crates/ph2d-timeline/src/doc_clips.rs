@@ -43,6 +43,7 @@ impl TimelineDoc {
             // Em BRANCO: um clip novo não herda trajetória nenhuma (ver o campo).
             paths: BTreeMap::new(),
             owner,
+            autoplay: false,
         });
         self.clips.len() - 1
     }
@@ -110,6 +111,8 @@ impl TimelineDoc {
             paths: src.paths.clone(),
             // E o dono: a variação é da mesma animação.
             owner: src.owner,
+            // ⚠️ Mas NÃO a entrada: uma variação não rouba o clipe que toca no Play.
+            autoplay: false,
         };
         self.clips.push(copy);
         Some(self.clips.len() - 1)

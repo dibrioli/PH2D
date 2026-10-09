@@ -30,6 +30,18 @@ use crate::TimelineDoc;
 /// Devolve quantas propriedades foram escritas — `0` quando o clip está vazio, quando nenhuma
 /// binding dele resolve nesta sessão, ou quando o índice não existe.
 pub fn apply_one_clip(world: &mut World, doc: &TimelineDoc, clip: usize, t: f64) -> usize {
+    apply_one_clip_except(world, doc, clip, t, |_| false)
+}
+
+/// [`apply_one_clip`] que salta as entidades de `skip` (a arrastada pelo gizmo, a pose deslocada) —
+/// a mesma mão que o apply da cena respeita.
+pub fn apply_one_clip_except(
+    world: &mut World,
+    doc: &TimelineDoc,
+    clip: usize,
+    t: f64,
+    skip: impl Fn(u64) -> bool,
+) -> usize {
     let Some(named) = doc.clips().get(clip) else {
         return 0;
     };
@@ -41,7 +53,7 @@ pub fn apply_one_clip(world: &mut World, doc: &TimelineDoc, clip: usize, t: f64)
         let Some(b) = doc.bindings().iter().find(|b| b.target == *target) else {
             continue;
         };
-        if b.missing || b.entity == 0 {
+        if b.missing || b.entity == 0 || skip(b.entity) {
             continue;
         }
         let Some(v) = named.clip.sample(*target, t) else {
@@ -66,4 +78,28 @@ pub fn apply_one_clip(world: &mut World, doc: &TimelineDoc, clip: usize, t: f64)
         feitas += 1;
     }
     feitas
+}
+
+/// ⭐⭐ **A ANIMAÇÃO de cada objecto, no relógio dele** (doc ObjectsAndComponents 01 §14, item 1):
+/// o clipe que ele pediu ([`ph2d_ecs::ClipPlayback`]) desde o pedido, ou o de ENTRADA desde o
+/// início — dobrado pelo loop do clipe ([`TimelineDoc::clip_local_time`]). Os objectos que a Cena
+/// arranjou ficam com o que a Cena compôs ([`TimelineDoc::autoplay_entries`]). Devolve quantos
+/// objectos tocaram.
+pub fn apply_autoplay(
+    world: &mut World,
+    doc: &TimelineDoc,
+    t: f64,
+    skip: impl Fn(u64) -> bool + Copy,
+) -> usize {
+    let mut tocaram = 0;
+    for (dono, entrada) in doc.autoplay_entries() {
+        let pedido = ph2d_ecs::Entity::try_from_bits(dono)
+            .and_then(|e| world.get::<ph2d_ecs::ClipPlayback>(e))
+            .and_then(|p| p.em(t))
+            .and_then(|(nome, desde)| Some((doc.clip_named(dono, nome)?, desde)));
+        let (clip, local) = pedido.unwrap_or((entrada, t));
+        apply_one_clip_except(world, doc, clip, doc.clip_local_time(clip, local), skip);
+        tocaram += 1;
+    }
+    tocaram
 }

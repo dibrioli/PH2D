@@ -150,8 +150,8 @@ fn schema_version_is_nineteen() {
     //      provado contra a fixtura em `clip_owner.rs`).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field (v18 is the one exception, read by a frozen image).
-    assert_eq!(DOC_VERSION, 19);
-    assert_eq!(TimelineDoc::new().version, 19);
+    assert_eq!(DOC_VERSION, 20);
+    assert_eq!(TimelineDoc::new().version, 20);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

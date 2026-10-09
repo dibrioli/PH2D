@@ -44,8 +44,10 @@ fn marcha(tiques: u64) -> [(Stream, Vec<[f32; 2]>); 2] {
             }
         }
     }
+    // ⚠️ A régua lê a SAÍDA (o que é desenhado), não o `Stagger`: a 1.ª foto da cena mostrou as
+    // 800 estrelas do mesmo tamanho com o `Stagger` a variar — o que chega ao ecrã é a pergunta.
     let ler = |c: &Coluna| {
-        m.pump.cook.peek(c.stagger).expect("o stagger cozeu")[0]
+        m.pump.cook.peek(c.saida).expect("a saida cozeu")[0]
             .as_stream()
             .clone()
     };
@@ -57,13 +59,30 @@ fn marcha(tiques: u64) -> [(Stream, Vec<[f32; 2]>); 2] {
 /// As estrelas DENTRO da onda (a encolher) — `(fileira de partida, distância ao centro)` de cada.
 fn na_onda(s: &Stream) -> Vec<(usize, f32)> {
     let (tam, p) = (vec2(s, "size"), vec2(s, "P"));
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "o lado da grelha")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "o lado da grelha"
+    )]
     let lado = LADO as usize;
+    // Na SAÍDA o tamanho é o da estrela vezes o do ponto, e a posição já levou o `offset_x` da
+    // coluna: lê-se RELATIVO ao maior tamanho e ao centro da galáxia.
+    let maior = tam.iter().map(|t| t[0]).fold(0.0_f32, f32::max);
+    #[expect(clippy::cast_precision_loss, reason = "poucas estrelas")]
+    let n = p.len().max(1) as f32;
+    let c = p
+        .iter()
+        .fold([0.0_f32; 2], |a, q| [a[0] + q[0] / n, a[1] + q[1] / n]);
+    eprintln!(
+        "  saida: {} estrelas, tamanho {:.3}..{maior:.3}",
+        tam.len(),
+        tam.iter().map(|t| t[0]).fold(f32::MAX, f32::min)
+    );
     tam.iter()
         .zip(&p)
         .enumerate()
-        .filter(|(_, (t, _))| t[0] < 0.5)
-        .map(|(i, (_, q))| (i / lado, q[0].hypot(q[1])))
+        .filter(|(_, (t, _))| t[0] < 0.5 * maior)
+        .map(|(i, (_, q))| (i / lado, (q[0] - c[0]).hypot(q[1] - c[1])))
         .collect()
 }
 
@@ -90,11 +109,23 @@ fn the_wave_runs_in_rows_on_the_left_and_in_rings_on_the_right() {
         de.len(),
         dd.len()
     );
-    assert!(de.len() >= 20 && dd.len() >= 20, "ha' uma onda a passar nas duas");
+    assert!(
+        de.len() >= 20 && dd.len() >= 20,
+        "ha' uma onda a passar nas duas"
+    );
     assert!(fe <= 4, "a laranja: a onda e' uma faixa de fileiras ({fe})");
-    assert!(ae > 3.0, "e atravessa a galaxia ({ae:.2} m)");
-    assert!(ad < 1.5, "a azul: a onda e' um anel estreito ({ad:.2} m)");
-    assert!(fd >= 8, "que corta muitas fileiras ({fd})");
+    assert!(
+        ae > 3.0 * ad,
+        "e atravessa a galaxia ({ae:.2} m, o anel da azul {ad:.2} m)"
+    );
+    assert!(
+        ad < 0.25 * ALCANCE,
+        "a azul: a onda e' um anel estreito ({ad:.2} m)"
+    );
+    assert!(
+        fd >= fe + 4,
+        "que corta muitas fileiras ({fd} contra {fe} da laranja)"
+    );
 }
 
 /// A SIMULAÇÃO corre: em 3 s a galáxia gira (as estrelas deixam a grelha de partida), e não foge
@@ -107,9 +138,19 @@ fn the_galaxies_turn_and_keep_their_size() {
     let andou = p
         .iter()
         .zip(&p0)
-        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+        .map(|(a, b)| (a[0] + COL_X - b[0]).hypot(a[1] - b[1]))
         .fold(0.0_f32, f32::max);
-    let ext = |v: &[[f32; 2]]| v.iter().map(|q| q[0].hypot(q[1])).fold(0.0_f32, f32::max);
+    // A saída já levou o `offset_x` da coluna: a extensão mede-se a partir do CENTRO da galáxia.
+    let ext = |v: &[[f32; 2]]| {
+        #[expect(clippy::cast_precision_loss, reason = "poucas estrelas")]
+        let n = v.len().max(1) as f32;
+        let c = v
+            .iter()
+            .fold([0.0_f32; 2], |a, q| [a[0] + q[0] / n, a[1] + q[1] / n]);
+        v.iter()
+            .map(|q| (q[0] - c[0]).hypot(q[1] - c[1]))
+            .fold(0.0_f32, f32::max)
+    };
     eprintln!(
         "cena 132: a estrela que mais andou {andou:.3} m · extensao {:.2} -> {:.2}",
         ext(&p0),
@@ -140,4 +181,102 @@ fn the_two_columns_differ_only_in_the_order() {
         );
         assert_eq!(px, py, "tudo o resto e' igual");
     }
+}
+
+/// A FONTE do tutorial deste ciclo — lida, para que os nomes do gate e os do texto não divirjam.
+const TUTORIAL: &str = include_str!("../../../docs/Motion Nodes/tutoriais/src/10_o_ritmo.html");
+
+/// A PALAVRA que a linha mostra (o instantâneo pode trazer a chave ou já a palavra).
+fn palavra(l: &str) -> String {
+    if l.starts_with("node.") {
+        ph2d_i18n::tr(l).to_string()
+    } else {
+        l.to_string()
+    }
+}
+
+/// As linhas que o cartão mostra, com o nó num estado dado.
+fn linhas(m: &MotionState, no: NodeId) -> Vec<&'static str> {
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    crate::motion_bridge::params::card::stamp_card_params(
+        m,
+        ph2d_editor_core::ProjectSettings::default(),
+        &mut snap,
+    );
+    let v = snap
+        .nodes
+        .iter()
+        .find(|v| v.id == no.0)
+        .expect("o cartao esta no instantaneo");
+    v.params.iter().map(|c| c.hint.label).collect()
+}
+
+/// Um passo do tutorial: o estado do cartão `Time` e as linhas que ele tem de mostrar.
+type Passo = (&'static [(&'static str, f32)], &'static [&'static str]);
+
+/// ⭐⭐⭐ **CADA PASSO DO TUTORIAL É POSSÍVEL NO APP** (doc 103 §1, passo 7): cada linha que o texto
+/// manda mexer está no cartão `Time` da fila de cima NO ESTADO em que o passo a pede — o
+/// `Origin X` só existe com `From Point`, o `Columns` só com `Grid`, o `Damping` só com `Spring`.
+#[test]
+fn every_row_the_rhythm_tutorial_names_is_on_the_card() {
+    let mut m = MotionState::new();
+    let [laranja, _] = monta(&mut m.doc, &m.registry).expect("a cena monta");
+    let t = laranja.tempo;
+    let passos: &[Passo] = &[
+        (&[], &["Delay", "Order", "Ease", "Direction"]),
+        (&[("order", 4.0)], &["Origin X", "Origin Y", "Reach"]),
+        (&[("order", 3.0)], &["Columns", "From", "Axis"]),
+        (&[("order", 2.0)], &["Seed"]),
+        (&[("ease_curve", 12.0)], &["Steps"]),
+        (&[("ease_curve", 11.0)], &["Period"]),
+        (&[("ease_curve", 13.0)], &["Damping"]),
+        (
+            &[("ease_curve", 14.0)],
+            &["Handle 1 X", "Handle 1 Y", "Handle 2 X", "Handle 2 Y"],
+        ),
+    ];
+    for (estado, pedidas) in passos {
+        let mut mm = MotionState::new();
+        mm.doc = m.doc.clone();
+        for &(p, v) in *estado {
+            mm.doc.graph.set_param(t, p, v);
+        }
+        let rows: Vec<String> = linhas(&mm, t).iter().map(|l| palavra(l)).collect();
+        for l in *pedidas {
+            assert!(
+                rows.iter().any(|r| r == l),
+                "o tutorial manda mexer em `{l}` (estado {estado:?}) e o cartao mostra {rows:?}"
+            );
+            assert!(
+                TUTORIAL.contains(&format!("<code>{l}</code>")),
+                "o gate defende `{l}` e o texto nao a nomeia"
+            );
+        }
+    }
+    // E o controlo: com `Delay = 0` a onda some do cartão (a nota do tutorial).
+    m.doc.graph.set_param(t, "delay", 0.0);
+    let rows: Vec<String> = linhas(&m, t).iter().map(|l| palavra(l)).collect();
+    assert!(
+        !rows.iter().any(|r| r == "Order"),
+        "Delay a zero esconde a onda: {rows:?}"
+    );
+}
+
+/// Cada figura existe, e o tutorial abre a cena deste ciclo.
+#[test]
+fn the_rhythm_tutorial_opens_this_scene_and_its_figures_exist() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Motion Nodes/tutoriais/fig");
+    let mut n = 0;
+    for pedaco in TUTORIAL.split("src=\"../fig/").skip(1) {
+        let nome = pedaco.split('"').next().expect("o nome da figura");
+        assert!(
+            dir.join(nome).is_file(),
+            "o tutorial mostra `{nome}` e a figura nao existe"
+        );
+        n += 1;
+    }
+    assert_eq!(n, 2, "duas figuras, achei {n}");
+    assert!(TUTORIAL.contains("PH2D_GPU_COOK_DEMO=132"));
+    assert!(crate::motion_state::demo_router::is_cycle_scene("132"));
 }

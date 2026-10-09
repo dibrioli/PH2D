@@ -121,6 +121,8 @@ mod node_catalog;
 mod node_groups;
 /// As OPCOES de cada selector de nó — a 5.ª fatia da fronteira dos motores.
 mod node_options;
+/// A metade `value` das opcoes de selector — o corte de LOC por familia (ciclo 17).
+mod node_options_value;
 /// Os rótulos de PARAMETRO dos nós — a 4.ª fatia, e a maior.
 mod node_params;
 /// A metade `motion` dos rotulos de parametro — o corte de LOC por familia.

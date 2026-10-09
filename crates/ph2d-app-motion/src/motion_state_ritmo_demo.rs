@@ -17,13 +17,13 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 /// Estrelas por lado de cada galáxia.
-pub(crate) const LADO: f32 = 20.0;
+pub(crate) const LADO: f32 = 16.0;
 /// O vão da grelha de partida (metros).
-const VAO: f32 = 0.55;
+const VAO: f32 = 0.32;
 /// O tamanho da estrela desenhada.
-const ESTRELA: f32 = 0.22;
+const ESTRELA: f32 = 0.13;
 /// Onde cada galáxia fica no mundo (`± COL_X`).
-pub(crate) const COL_X: f32 = 7.5;
+pub(crate) const COL_X: f32 = 4.5;
 /// O atraso TOTAL da onda: a última estrela espera isto (segundos).
 pub(crate) const ONDA: f32 = 2.4;
 /// A onda repete-se a cada `CICLO` segundos (o `value.wrap` em `Repeat`).
@@ -31,21 +31,23 @@ pub(crate) const CICLO: f32 = 4.0;
 /// Cada estrela cresce de `0` a `1` em `SUBIDA` segundos depois de a onda a alcançar.
 pub(crate) const SUBIDA: f32 = 0.8;
 /// O alcance do `From Point`: a onda chega à borda da galáxia.
-pub(crate) const ALCANCE: f32 = 6.0;
-/// A rotação que o `Stagger` distribui (graus).
-const GIRO: f32 = 72.0;
+pub(crate) const ALCANCE: f32 = 3.4;
+/// A rotação que o `Stagger` distribui (graus). ⚠️ METADE da simetria da estrela (`72°`): girar
+/// `72°` uma estrela de cinco pontas devolve a MESMA estrela, e a onda do `Stagger` ficava
+/// invisível (foto de 09/10).
+const GIRO: f32 = 36.0;
 /// As duas ordens — a ÚNICA diferença entre as colunas.
 pub(crate) const ORDENS: [f32; 2] = [
     ph2d_ease::order::ORDER_INDEX as f32,
     ph2d_ease::order::ORDER_FROM_POINT as f32,
 ];
 
-/// A galáxia deste campo: o núcleo cobre o canto (`~7,4 m`), e o ímã sai da lei de órbita
-/// (`s_a = s_v²/núcleo`, ver [`super::carimbo_demo::Galaxia`]): uma volta a cada `~42 s`.
-const NUCLEO: f32 = 8.0;
-const VORTEX: f32 = 1.2;
+/// A galáxia deste campo: o núcleo cobre o canto (`~3,4 m`), e o ímã sai da lei de órbita
+/// (`s_a = s_v²/núcleo`, ver [`super::carimbo_demo::Galaxia`]): uma volta a cada `~31 s`.
+const NUCLEO: f32 = 4.0;
+const VORTEX: f32 = 0.8;
 const RESISTENCIA: f32 = 5.0;
-const IMA: f32 = 0.18;
+const IMA: f32 = 0.158;
 const ALCANCE_FORCA: f32 = 200.0;
 
 fn liga(g: &mut Graph, de: NodeId, para: NodeId, porta: u16, pre: bool) -> Option<()> {
@@ -68,7 +70,8 @@ fn indice_da_estrela() -> Option<f32> {
     Some(i as f32)
 }
 
-/// Os nós que os gates leem de uma coluna.
+/// Os nós que os gates leem de uma coluna (o produto só usa a `saida`).
+#[cfg_attr(not(test), expect(dead_code, reason = "lidos pelos gates da cena"))]
 pub(crate) struct Coluna {
     pub saida: NodeId,
     pub tempo: NodeId,
@@ -79,7 +82,7 @@ pub(crate) struct Coluna {
 /// Uma galáxia com a sua onda. `k = 0` à esquerda, `1` à direita.
 fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
     #[expect(clippy::cast_precision_loss, reason = "duas colunas")]
-    let y0 = 520.0 * k as f32;
+    let y0 = 330.0 * k as f32;
     let no = |g: &mut Graph, tipo: &str, x: f32, dy: f32| {
         let n = g.add_node(tipo.to_string());
         g.set_pos(n, Pos { x, y: y0 + dy });
@@ -92,17 +95,17 @@ fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
     g.set_param(grade, "gap_x", VAO);
     g.set_param(grade, "gap_y", VAO);
     let galaxia = no(g, "motion.integrate", -440.0, 0.0);
-    let nucleo = no(g, "motion.falloff", -880.0, -200.0);
+    let nucleo = no(g, "motion.falloff", -880.0, -110.0);
     g.set_param(nucleo, "shape", 0.0);
     g.set_param(nucleo, "curve", 0.0);
     g.set_param(nucleo, "radius", NUCLEO);
     g.set_param(nucleo, "invert", 1.0);
-    let vortex = no(g, "force.vortex", -660.0, -200.0);
+    let vortex = no(g, "force.vortex", -660.0, -110.0);
     g.set_param(vortex, "strength", VORTEX);
     g.set_param(vortex, "radius", ALCANCE_FORCA);
     g.set_param(vortex, ph2d_node_force_vortex::MODE, 1.0);
     g.set_param(vortex, ph2d_node_force_vortex::AIR_RESIST, RESISTENCIA);
-    let ima = no(g, "force.attractor", -440.0, -200.0);
+    let ima = no(g, "force.attractor", -440.0, -110.0);
     g.set_param(ima, "strength", IMA);
     g.set_param(ima, "radius", ALCANCE_FORCA);
     liga(g, grade, galaxia, 0, false)?;
@@ -113,7 +116,7 @@ fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
 
     // ── A ONDA NO TEMPO: o atraso de cada estrela pela ORDEM, em laço, e o crescimento.
     let ordem = ORDENS[k];
-    let tempo = no(g, "value.time", -220.0, -200.0);
+    let tempo = no(g, "value.time", -220.0, -110.0);
     for (p, v) in [
         ("delay", ONDA),
         ("ease_curve", ph2d_ease::SINE as f32),
@@ -124,12 +127,12 @@ fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
         g.set_param(tempo, p, v);
     }
     liga(g, galaxia, tempo, 0, false)?;
-    let laco = no(g, "value.wrap", 0.0, -200.0);
+    let laco = no(g, "value.wrap", 0.0, -110.0);
     g.set_param(laco, "mode", 1.0);
     g.set_param(laco, "lo", 0.0);
     g.set_param(laco, "hi", CICLO);
     liga(g, tempo, laco, 0, false)?;
-    let cresce = no(g, "value.map_range", 220.0, -200.0);
+    let cresce = no(g, "value.map_range", 220.0, -110.0);
     for (p, v) in [
         ("in_lo", 0.0),
         ("in_hi", SUBIDA),
@@ -162,7 +165,7 @@ fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
     liga(g, tamanho, stagger, 0, false)?;
 
     // ── A FORMA: uma estrela, vestida em cada ponto.
-    let forma = no(g, "source.shape", 0.0, 200.0);
+    let forma = no(g, "source.shape", 0.0, 160.0);
     use ph2d_node_motion_shape::param as p;
     let cor = if k == 0 {
         [0.95, 0.62, 0.25]
@@ -181,6 +184,9 @@ fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
         g.set_param(forma, chave, valor);
     }
     let pecas = no(g, "motion.duplicator", 220.0, 100.0);
+    // ⚠️ A escala do PONTO entra inteira — sem isto a forma manda no tamanho e a onda do `Time`
+    // não se vê (foto de 09/10: as 800 estrelas do mesmo tamanho).
+    g.set_param(pecas, "point_scale", 1.0);
     liga(g, forma, pecas, 0, false)?;
     liga(g, stagger, pecas, 1, false)?;
     let lugar = no(g, "motion.transform", 440.0, 100.0);
@@ -214,7 +220,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption {
         text: t.to_string(),
-        world: [x, 7.0],
+        world: [x, -4.0],
     };
     vec![
         ficha(-COL_X, "Order = Index: fila a fila"),

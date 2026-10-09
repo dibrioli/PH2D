@@ -136,7 +136,7 @@ inventada. Contagens do registry em 2026-09-05.
 | 10 ✅ ([doc 116](116_ciclo_10_o_carimbo_no_dispositivo.md), fechado com o ciclo 12) | ⚡ **O CARIMBO NO DISPOSITIVO** — `source.shape` + `motion.duplicator` | (optimização, não um grupo novo) | ⛔ **não tem tutorial** (doc 116 §1) |
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
 | **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa. ⭐ **E o carimbo FOI à placa** (§8.4–§8.6): o custo das imagens deixou de crescer com o número, e no proxy de telemóvel o Motion a `32 768` foi de `7,30` para **`0,72 ms`** | ✅ **o tecto fica em `32 768`** (o dono mandou seguir sem o mudar) · smokes do dono **aprovados** (§8.5 as imagens e as marcas das posições · §8.6 os cartões, `0,56 ms` de Motion na máquina dele) | — |
-| **17** ([doc 126](126_ciclo_17_o_ritmo.md)) | **O RITMO** — uma tabela de easing (+ Sine · Expo · Elastic · Steps · Spring · Bezier no dispositivo) e a cascata com origem na GRELHA e no ESPAÇO, também como atraso no tempo | `motion.stagger` · `value.time` · a crate `ph2d-ease` | «O ritmo — quando cada um se mexe» |
+| **17** ([doc 126](126_ciclo_17_o_ritmo.md)) | **O RITMO** — uma tabela de easing (+ Sine · Expo · Elastic · Steps · Spring · Bezier no dispositivo) e a cascata com origem na GRELHA e no ESPAÇO, também como atraso no tempo | `motion.stagger` · `value.time` · a crate `ph2d-ease` | «O ritmo» — cena `=132`, [tutorial 10](tutoriais/10_o_ritmo.pdf) · ⏳ smoke do dono |
 | 18 | **A COR QUE O OLHO VÊ** — OKLab/OKLCH | `color_ramp` · `color_array` · `tint` · misturas | — |
 | 19 | **O JOGO MANDA** — entradas publicadas, tempo dirigido por valor, crossfade de estados | `value.input` (novo) · `time_remap` · `mixer` | — |
 | 20 | **O ACABAMENTO** — pós-processamento como nós | `post.*` (novos) · `fx.glow` | — |
@@ -146,7 +146,10 @@ inventada. Contagens do registry em 2026-09-05.
 
 > ⚠️ **Estado em 2026-10-09 — a OBRA 17→23** ([doc 126 §0](126_ciclo_17_o_ritmo.md)). Depois da
 > avaliação da stack de referência, o dono mandou fazer tudo menos o export de vídeo. Sete ciclos,
-> ordenados por dependência e ganho ÷ esforço; o **17 (O RITMO)** abre.
+> ordenados por dependência e ganho ÷ esforço. O **17 (O RITMO)** fez os sete passos (doc 126):
+> uma tabela de easing em Rust e WGSL (15 famílias, as 8 antigas ao bit), a cascata na GRELHA e no
+> ESPAÇO conferida contra o anime.js corrido, o ATRASO no `value.time`, paridade placa × CPU `9,5e-7`
+> (depois de curar a divisão do WGSL), cena `=132` fotografada, tutorial 10. ⏳ Falta o smoke do dono.
 >
 > ⚠️ **Estado em 2026-10-08 (noite, 2) — CICLO 16, «vamos corrigir tudo»**
 > ([doc 125](125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md)). ⭐ O Bug

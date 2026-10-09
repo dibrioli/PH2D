@@ -1,0 +1,218 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · O ritmo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .wide figcaption { font-size:11px; color:var(--t2); margin-top:6px; text-align:center; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>O ritmo
+  <small>PH2D · Motion Nodes · tutorial 10 — <b>quando</b> cada peça se mexe: uma onda que corre
+  fila a fila, ou em anéis a partir de um ponto, com a curva que você escolher</small></h1>
+
+<p>Até aqui, quando muitas peças se mexiam, mexiam-se <b>todas ao mesmo tempo</b>, ou numa fila
+da primeira à última. Os programas de animação de vídeo (GSAP, anime.js) têm uma ferramenta que
+faz falta numa cena com centenas de peças: a <b>cascata</b>. Cada peça começa um pouco depois da
+outra, e o artista escolhe <b>de onde</b> a onda parte e <b>com que ritmo</b> ela corre.</p>
+
+<p>Dois cartões fazem isso, e os dois respondem às mesmas duas perguntas:</p>
+
+<table>
+  <tr><th>cartão</th><th>o que ele espalha pela onda</th></tr>
+  <tr><td><code>Time</code></td><td>um <b>atraso</b> (<code>Delay</code>): as peças longe da origem
+      começam mais tarde. É a cascata do GSAP.</td></tr>
+  <tr><td><code>Stagger</code></td><td>um <b>valor</b> (posição, rotação ou tamanho): as peças
+      longe da origem recebem mais.</td></tr>
+</table>
+
+<div class="note"><b>As duas perguntas, nos dois cartões:</b> <code>Order</code> diz <b>por onde</b>
+a onda corre (fila a fila, do centro, ao acaso, numa grelha, ou a partir de um ponto do mundo);
+<code>Ease</code> diz <b>com que ritmo</b> (devagar no começo, com salto, com mola, aos degraus…).
+As curvas são as MESMAS da timeline: uma chave <code>Back Out</code> e uma onda <code>Back
+Out</code> desenham a mesma curva.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=132 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Olhe a tela</b> (se as estrelas estiverem paradas, carregue em <kbd>Play</kbd>).
+      <div class="out">Duas <b>galáxias</b> de estrelas a girar devagar — laranja à esquerda, azul
+      à direita. O giro é uma <b>simulação</b>: um redemoinho e um íman (dois campos de força)
+      mantêm as estrelas em órbita.</div>
+      <div class="bad">Se as galáxias estiverem paradas, a simulação não corre — avise.</div></li>
+  <li><b>Espere a onda.</b> A cada 4 segundos uma onda passa por cada galáxia: as estrelas que ela
+      alcança <b>encolhem e voltam a crescer</b>.
+      <div class="out">Na <b>laranja</b> a onda é uma faixa que corre <b>fila a fila</b>, de um
+      canto ao outro. Na <b>azul</b> ela é um <b>anel</b> que parte do centro e corre para fora — e
+      continua redondo com a galáxia a girar, porque a distância é medida na posição de cada estrela
+      naquele instante.</div>
+      <div class="bad">Se a azul também correr fila a fila, ou se nenhuma estrela encolher,
+      avise.</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/ritmo_cena.png" alt="duas galaxias de estrelas; na laranja uma faixa diagonal de estrelas pequenas, na azul um anel de estrelas pequenas no centro">
+  <figcaption>A onda a meio: à esquerda uma faixa de fileiras, à direita um anel. As fichas por
+  baixo dizem o <code>Order</code> de cada uma.</figcaption></figure>
+
+<h2>2 · Um botão de diferença</h2>
+<p>No grafo (em baixo) há <b>duas filas</b> de cartões, uma por galáxia — a de cima é a laranja.
+Elas são iguais menos um botão: o <code>Order</code> dos cartões <code>Time</code> e
+<code>Stagger</code>.</p>
+
+<figure class="wide"><img src="../fig/ritmo_cartoes.png" alt="a fila de cartoes da galaxia laranja">
+  <figcaption>A fila da laranja: a simulação (<code>Falloff → Vortex → Attractor → Integrate</code>),
+  a onda no tempo (<code>Time → Wrap → Map Range → Drive</code>, o tamanho) e a onda no valor
+  (<code>Stagger</code>, a rotação), vestida por <code>Shape → Duplicator</code>.</figcaption></figure>
+
+<ol class="steps">
+  <li><b>Na fila de cima, clique no cartão <code>Time</code>.</b> Na linha <code>Order</code>,
+      escolha <b><code>From Point</code></b>.
+      <div class="out">Aparecem três linhas novas: <code>Origin X</code>, <code>Origin Y</code> e
+      <code>Reach</code>. A laranja passa a encolher em <b>anéis</b>, como a azul.</div>
+      <div class="bad">Se nada mudar na laranja, avise.</div></li>
+  <li><b>Arraste <code>Origin X</code> para a direita.</b>
+      <div class="out">O centro dos anéis sai do meio: a onda passa a partir desse ponto.
+      <code>Reach</code> é a distância até onde ela chega no fim do atraso — diminua-o e as
+      estrelas de fora acordam todas juntas no fim.</div></li>
+  <li><b>Mude <code>Order</code> para <code>Grid</code>.</b>
+      <div class="out">Aparecem <code>Columns</code>, <code>From</code> e <code>Axis</code>. A
+      onda passa a ser medida em <b>células</b> da grelha de partida (como no GSAP). Com
+      <code>Axis = X</code> ela corre só na horizontal, em colunas.</div></li>
+</ol>
+
+<h2>3 · O ritmo da onda</h2>
+<p>Ainda no cartão <code>Time</code> da laranja, a linha <code>Ease</code> escolhe a curva com que
+o atraso se espalha. Experimente uma de cada vez:</p>
+<ol class="steps">
+  <li><b><code>Ease = Steps</code></b>, <code>Steps = 4</code>.
+      <div class="out">A onda anda aos <b>saltos</b>: quatro grupos de estrelas acordam juntos, um
+      depois do outro.</div></li>
+  <li><b><code>Ease = Elastic</code></b>.
+      <div class="out">As de dentro acordam em sequência; as de fora acordam quase juntas, num
+      tremor — a curva passa do fim e volta.</div></li>
+  <li><b><code>Ease = Spring</code></b>, depois mexa em <code>Damping</code>.
+      <div class="out">Uma <b>mola</b>: com <code>Damping</code> baixo a onda vai e volta antes de
+      assentar; com <code>Damping</code> acima de 1 ela chega devagar, sem passar.</div></li>
+  <li><b><code>Ease = Bezier</code></b>.
+      <div class="out">As quatro linhas <code>Handle 1 X</code> · <code>Handle 1 Y</code> ·
+      <code>Handle 2 X</code> · <code>Handle 2 Y</code> são as alças de uma curva do CSS. As de
+      fábrica (<code>0,25 · 0,1 · 0,25 · 1</code>) são o <code>ease</code> dos browsers.</div></li>
+</ol>
+
+<div class="note"><b>Delay a zero esconde tudo.</b> Com <code>Delay = 0</code> o cartão
+<code>Time</code> é o relógio de sempre, e as linhas da onda (<code>Order</code>,
+<code>Ease</code>…) somem do cartão — não fazem nada até haver um atraso para espalhar.</div>
+
+<h2>4 · O que cada botão faz</h2>
+<table>
+  <tr><th>linha</th><th>cartão</th><th>o que faz</th><th>faixa</th></tr>
+  <tr><td><code>Delay</code></td><td>Time</td><td>o atraso da ÚLTIMA peça da onda; as outras
+      esperam uma parte dele</td><td>0 – 10 s</td></tr>
+  <tr><td><code>Order</code></td><td>os dois</td><td>Index · From Center · Random · Grid · From
+      Point</td><td>—</td></tr>
+  <tr><td><code>Ease</code> · <code>Direction</code></td><td>os dois</td><td>a curva (15) e o lado
+      dela (In · Out · In-Out)</td><td>—</td></tr>
+  <tr><td><code>Overshoot</code></td><td>os dois</td><td>quanto o <code>Back</code> passa do
+      fim</td><td>0 – 5</td></tr>
+  <tr><td><code>Period</code></td><td>os dois</td><td>o tremor do <code>Elastic</code> (menor =
+      mais rápido)</td><td>0,05 – 1</td></tr>
+  <tr><td><code>Steps</code></td><td>os dois</td><td>os degraus do <code>Steps</code></td>
+      <td>1 – 64</td></tr>
+  <tr><td><code>Damping</code></td><td>os dois</td><td>a mola: &lt; 1 oscila, 1 crítico, &gt; 1
+      lenta</td><td>0,05 – 2</td></tr>
+  <tr><td><code>Handle 1/2 X/Y</code></td><td>os dois</td><td>as alças do
+      <code>Bezier</code></td><td>X 0–1 · Y −1–2</td></tr>
+  <tr><td><code>Columns</code> · <code>From</code> · <code>Cell</code></td><td>os dois</td><td>a
+      grelha do <code>Grid</code> e a célula de onde parte</td><td>—</td></tr>
+  <tr><td><code>Axis</code></td><td>os dois</td><td>a distância conta nos dois eixos, só em X, ou
+      só em Y</td><td>—</td></tr>
+  <tr><td><code>Origin X/Y</code> · <code>Reach</code></td><td>os dois</td><td>o ponto do
+      <code>From Point</code> e onde a onda chega ao fim</td><td>metros</td></tr>
+</table>
+
+<h2>5 · Vá além</h2>
+<ol class="steps">
+  <li><b>Um brilho ao acaso.</b> No <code>Time</code> da laranja, <code>Order = Random</code>: cada
+      estrela pisca no seu momento. Mude <code>Seed</code> para sortear outra ordem.</li>
+  <li><b>A onda que ocupa o ciclo inteiro.</b> Suba o <code>Delay</code> para perto de
+      <code>3,5</code>: a última estrela acorda pouco antes de a onda seguinte começar, e a galáxia
+      nunca fica parada.</li>
+  <li><b>Os dois cartões juntos.</b> No <code>Stagger</code> da azul, mude <code>Channel</code>
+      para <code>Size</code> e <code>Max</code> para <code>1</code>: por baixo dos anéis do <code>Time</code>, as estrelas de fora ficam
+      maiores que as do centro — o mesmo <code>Order</code> a espalhar um VALOR em vez de um
+      atraso.</li>
+</ol>
+
+<h2>6 · O que isto custa</h2>
+<p>32 761 estrelas, na placa de vídeo (o caminho de sempre) e na CPU (o de reserva), medidos lado a
+lado (ms por quadro; um quadro a 60 fps tem 16,7 ms):</p>
+<table>
+  <tr><th>caso</th><th class="n">placa</th><th class="n">CPU</th></tr>
+  <tr><td>sem onda (a base)</td><td class="n">0,10</td><td class="n">0,10</td></tr>
+  <tr><td>Stagger, curvas antigas (Linear · Quad · Bounce)</td><td class="n">0,12</td><td class="n">0,36 – 0,39</td></tr>
+  <tr><td>Stagger, Sine · Expo · Elastic · Steps</td><td class="n">0,12</td><td class="n">0,38 – 0,52</td></tr>
+  <tr><td>Stagger, Spring</td><td class="n">0,12</td><td class="n">0,89</td></tr>
+  <tr><td>Stagger, Bezier</td><td class="n">0,15</td><td class="n">5,14</td></tr>
+  <tr><td>Stagger, Grid · From Point</td><td class="n">0,12</td><td class="n">0,61 · 0,38</td></tr>
+  <tr><td>Time com Delay (Index · From Point + Spring)</td><td class="n">0,13 · 0,12</td><td class="n">0,37 · 0,43</td></tr>
+</table>
+<p class="soft">Na placa as curvas novas custam o mesmo que as antigas. Na CPU o <code>Bezier</code>
+é o caro (procura a curva 24 vezes por estrela); ele só corre na CPU se a placa não estiver
+disponível.</p>
+
+<h2>7 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que reportar</th></tr>
+  <tr><td>nenhuma estrela encolhe</td><td>«a onda do <code>Time</code> não aparece» + foto</td></tr>
+  <tr><td>a azul corre fila a fila</td><td>«o <code>From Point</code> não lê a posição»</td></tr>
+  <tr><td>mudar <code>Ease</code> não muda o ritmo</td><td>qual curva, e em qual cartão</td></tr>
+  <tr><td>uma linha que aparece no cartão e não faz nada</td><td>o nome da linha e o
+      <code>Ease</code>/<code>Order</code> escolhido</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 17 (doc 126) · cena <code>PH2D_GPU_COOK_DEMO=132</code> ·
+as curvas conferidas contra o anime.js (MIT), corrido sobre as nossas grelhas</footer>

@@ -5152,7 +5152,10 @@ fn value_time_delay_matches_the_cpu_in_every_order() {
             let (cpu, gc) = cook_both(&gpu, &reg, &g, drive);
             let worst = compare_column(&gpu, &gc, drive, &cpu, "P");
             eprintln!("ciclo 17 value.time ordem {order} família {curve}: max |d| = {worst:e}");
-            assert!(worst < 1e-4, "ordem {order} família {curve}: max |d| = {worst:e}");
+            assert!(
+                worst < 1e-4,
+                "ordem {order} família {curve}: max |d| = {worst:e}"
+            );
         }
     }
 }

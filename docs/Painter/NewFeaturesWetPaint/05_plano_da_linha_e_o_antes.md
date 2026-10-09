@@ -322,6 +322,12 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   no suspenso). `TRAIL_FILM` 0,1 → 0,07: com as brechas a encher a orla dá menos água à gota e o funil
   10/10 da água 0,7 parava a 394 px (Rebelle 465). Custo a 4096² (load 46, inflado): estágio das gotas
   p99 1,34 ms, um pico de 2,1 ms.
+- 🔎 **Auditoria da borda** (08/10, pedido do dono: *«nada feito. auditoria com agentes»*): 2 lentes +
+  o oráculo do S a 1:1 (fixtures `s_*.png`). 5 achados de correção (L1) e 9 de costura (L2), com o
+  mecanismo, a reprodução e o gate que faltava — no prompt da janela seguinte
+  [08_PROMPT_janela_W1c_borda.md](08_PROMPT_janela_W1c_borda.md). Dono: os controlos das gotas FICAM no
+  Paper; «cuidado para não piorar nossa engine» ⇒ as quatro cercas (incluindo o escorrimento natural ao
+  byte) do princípio ao fim.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

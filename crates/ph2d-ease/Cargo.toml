@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-ease"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Folha sem dependências (doc 126 §3.1): a tabela de easing e a ORDEM da cascata, numa conta só
+# escrita em duas línguas — Rust (`f32`) e WGSL (`wgsl_lib!`) — lidas pelo `motion.stagger` e pelo
+# `value.time`. Quem a consome é o nó; ela não conhece o grafo.
+[dependencies]
+
+[lints]
+workspace = true

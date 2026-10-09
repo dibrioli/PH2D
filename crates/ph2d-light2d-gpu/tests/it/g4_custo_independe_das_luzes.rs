@@ -18,6 +18,9 @@ use crate::medicao::{Caso, loadavg, perfil, rodadas};
 const K3: f64 = 0.05;
 const CONTAGENS: [u32; 5] = [1, 10, 100, 1_000, 10_000];
 const RODADAS: usize = 15;
+/// Disco opaco de 100 px ÷ 25 px (RC, relógio da placa, RTX 5060 Ti): com a saída antecipada
+/// 1,34; sem ela 3,41 (medido no mesmo processo, 08/10, `load ~12–20`).
+const RAZAO_INTERIOR: f64 = 2.0;
 
 #[test]
 fn g4_o_custo_do_rc_nao_depende_do_numero_de_luzes() {
@@ -67,5 +70,54 @@ fn g4_o_custo_do_rc_nao_depende_do_numero_de_luzes() {
         variacao <= K3,
         "K3: o RC varia {:.2} % com o número de luzes",
         100.0 * variacao
+    );
+}
+
+/// Um disco OPACO no centro do quadro, de raio `raio` (metros).
+fn opaco(raio: f32) -> ph2d_light2d_ecs::CenaDeLuz {
+    ph2d_light2d_ecs::CenaDeLuz {
+        emissores: vec![crate::comum::disco(
+            [2.56, 2.56],
+            raio,
+            [1.0; 3],
+            f32::INFINITY,
+        )],
+        oclusores: vec![],
+        ceu: [0.0; 3],
+    }
+}
+
+/// O custo do interior de um opaco — mesmo relógio, mesma faixa isolada. Um intervalo que COMEÇA
+/// dentro de algo opaco devolve `(0, 0)` (exato: o raio que passa ali já foi absorvido); sem isso a
+/// marcha anda o interior texel a texel e o custo segue a ÁREA do objeto (medido: um disco de
+/// 100 px custava 6,4 ms contra 2,0 ms com a saída). A régua: o disco de 100 px contra o de 25 px,
+/// mesmo centro.
+#[test]
+fn g4_o_interior_de_um_opaco_nao_custa() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[0];
+    let mut casos: Vec<Caso> = [("raio 25 px", 0.25), ("raio 100 px", 1.0)]
+        .into_iter()
+        .map(|(nome, r)| Caso {
+            nome: nome.into(),
+            solver: Solver::novo(&gpu, Config::padrao(grade(lado, texel))).expect("solver"),
+            cena: opaco(r),
+        })
+        .collect();
+    let carga = loadavg();
+    let Some(r) = rodadas(&gpu, &mut casos, RODADAS) else {
+        eprintln!("G4 interior: a placa não tem TIMESTAMP_QUERY — saltado");
+        return;
+    };
+    let razao = r[1].rc[0] / r[0].rc[0];
+    eprintln!(
+        "G4 interior · perfil {} · loadavg {carga} · RC {:.4} ms (25 px) · {:.4} ms (100 px) · razão {razao:.2} (limite {RAZAO_INTERIOR})",
+        perfil(),
+        r[0].rc[0],
+        r[1].rc[0]
+    );
+    assert!(
+        razao <= RAZAO_INTERIOR,
+        "o interior do opaco voltou a custar: razão {razao:.2}"
     );
 }

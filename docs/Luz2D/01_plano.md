@@ -116,6 +116,11 @@ C4 receber   o shader de sprite amostra `luz_em()` (forward, sem buffer de tela 
              o vetor (LDR) recebe no compositor: linear(albedo) × E → AgX — a MESMA conta do sprite
 ```
 
+**Fixado na W2 (medido — [handoff W2](handoffs/HANDOFF_CONTINUACAO_W2_2026-10-08.md)):** a C0 escreve
+`cobertura` (soma, 8×8 subamostras), `tau_dentro` e `emissao` do DONO do texel (cobertura própria ≥ ½); a
+marcha diz «dentro» onde a cobertura INTERPOLADA ≥ ½ e lê o material do vizinho mais coberto. Ler o texel
+mais próximo dilatava a silhueta (erro de captura 0,097 → 0,018 no Alto). O alfa de um sprite é a cobertura.
+
 ⚠️ O vetor vive depois do tonemap porque o Vello só escreve `Rgba8Unorm` (medido, ver
 `crates/ph2d-app-motion/src/motion_glow_layer.rs`). Receber a luz ali é o ponto mais frágil do
 desenho: **gate G7** (um sprite e uma forma vetorial da mesma cor, sob a mesma luz, dão o mesmo pixel)

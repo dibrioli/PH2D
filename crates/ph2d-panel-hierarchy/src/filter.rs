@@ -13,11 +13,11 @@ use std::collections::BTreeMap;
 use ph2d_a11y::NodeId;
 use ph2d_component_desc::{ComponentCategory, ComponentSet};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
-use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
-use ph2d_editor_core::widget::{
-    Dropdown, DropdownOption, paint_dropdown_chip, paint_dropdown_popover_in_viewport,
+use ph2d_editor_core::panel::{
+    EventOutcome, PanelHostInternal, paint_dropdown_popover_scrolled_with_hits,
 };
+use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, PaintedPopover, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -118,8 +118,10 @@ pub(crate) fn paint_chip(
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
 }
 
-/// A lista aberta — depois das linhas, por cima delas. Regista cada linha (o rect só se conhece
-/// aqui) e devolve o rect do popover, que quem chama publica para o clique de fora a fechar.
+/// A lista aberta — depois das linhas, por cima delas. ⭐ Ela ROLA quando não cabe (uma linha por
+/// componente presente passa da janela): a porta da fundação regista só a faixa visível de cada
+/// linha e a barra ([`ph2d_editor_core::widget::DROPDOWN_SCROLLBAR_ID`]); quem chama publica o
+/// devolvido, e é por ele que a roda, o polegar e o clique de fora acham a lista.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_popover(
     entries: &BTreeMap<NodeId, HierarchyEntity>,
@@ -129,8 +131,9 @@ pub(crate) fn paint_popover(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &WidgetStore,
     hit_index: &mut HitIndex,
-) -> Rect {
+) -> PaintedPopover {
     let dd = dropdown(&rows(entries, chosen), chosen, true);
     let text_w = ph2d_editor_core::paint::label_column_width(
         text_system,
@@ -144,15 +147,16 @@ pub(crate) fn paint_popover(
             .max(ph2d_editor_core::widget::popover_width_for(text_w, false)),
         chip.h,
     );
-    paint_dropdown_popover_in_viewport(&dd, chip, Some(viewport), scene, text_system, theme);
-    let panel = dd.popover_rect_clamped(chip, viewport);
-    for i in 0..dd.options.len() {
-        let r = dd.option_rect_in(chip, panel, i);
-        if r.y + r.h <= panel.y + panel.h {
-            hit_index.register(hier_filter_opt(i), r);
-        }
-    }
-    panel
+    paint_dropdown_popover_scrolled_with_hits(
+        &dd,
+        chip,
+        viewport,
+        store,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    )
 }
 
 /// A linha `id` da lista, se é dela.

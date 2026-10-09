@@ -97,17 +97,10 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     // seletores deste painel publicava**, porque o passe diferido não tem `&mut WidgetStore`. Os
     // outros nove painéis do app publicam-no onde pintam; aqui o passe deposita e este sítio, que
     // é o primeiro com o store mutável depois da pintura, publica.
-    if let Some((id, panel, content_h, visible_h)) = state_popovers::take_painted_popover() {
-        store.set_dropdown_popover(id, panel);
-        // ⚠️ **As duas alturas viajam com o rect**: são elas que dizem à roda e à barra até onde
-        // rolar. Um popover clampado mais curto que a lista, publicado sem elas, fica cortado e
-        // IMÓVEL.
-        store.set_panel_content_h(id, content_h);
-        store.set_panel_visible_h(id, visible_h);
-        let max_scroll = (content_h - visible_h).max(0.0);
-        if store.panel_scroll(id) > max_scroll {
-            store.set_panel_scroll(id, max_scroll);
-        }
+    // ⚠️ **As duas alturas viajam com o rect** (`publish_dropdown_popover`): um popover clampado
+    // mais curto que a lista, publicado sem elas, fica cortado e IMÓVEL.
+    if let Some(painted) = state_popovers::take_painted_popover() {
+        store.publish_dropdown_popover(painted);
     }
     // O pedido da Hierarquia (doc 01 §7.1) ANTES do clamp, que o prende à altura do conteúdo.
     let label = ctx_label.as_deref();

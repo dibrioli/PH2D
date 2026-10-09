@@ -99,6 +99,23 @@ impl MockPanelHost {
         out
     }
 
+    /// **Drive a REAL wheel notch** at `(x, y)` through the same `dispatch_wheel` the shell runs —
+    /// the only proof that what a panel PUBLISHED (an open popover's rect, `content_h`/`visible_h`)
+    /// is what the wheel routes by. `delta_y < 0` scrolls the content down.
+    pub fn wheel_at(&mut self, x: f32, y: f32, delta_y: f32) -> Vec<WidgetEvent> {
+        self.clock_ns += NANOS_PER_SECOND;
+        let arena = Bump::new();
+        let event = ph2d_host::WheelEvent {
+            x,
+            y,
+            delta_x: 0.0,
+            delta_y,
+            modifiers: ph2d_host::Modifiers::default(),
+            timestamp_ns: self.clock_ns,
+        };
+        ph2d_editor_core::interaction::dispatch_wheel(&mut self.store, event, &arena).to_vec()
+    }
+
     /// The id a pointer at `(x, y)` actually LANDS ON — the dispatcher's own resolution
     /// (topmost = last registered wins). When [`Self::click_at`] emits nothing, this says
     /// whether the widget lost the hit to something painted over it, or was never hit at all.

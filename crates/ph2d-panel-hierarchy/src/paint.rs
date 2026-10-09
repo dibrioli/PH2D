@@ -85,7 +85,8 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     ctx.host.store_mut().set_hierarchy_row_ids(row_set);
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
     if crate::filter::is_open(ctx.host.store()) {
-        let panel = crate::filter::paint_popover(
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        let painted = crate::filter::paint_popover(
             &entities_by_id,
             filter,
             chip,
@@ -93,11 +94,10 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
             ctx.scene,
             ctx.text_system,
             theme,
-            ctx.host.hit_index_mut(),
+            store,
+            hit_index,
         );
-        ctx.host
-            .store_mut()
-            .set_dropdown_popover(crate::ids::HIER_FILTER_DD, panel);
+        ctx.host.store_mut().publish_dropdown_popover(painted);
     }
 }
 

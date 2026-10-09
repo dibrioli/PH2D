@@ -133,7 +133,7 @@ thread_local! {
     /// **cortada e imóvel** — o defeito que o painel autorado nomeia: *o `popover_rect_clamped`
     /// fazia o trabalho dele e ninguém fazia o resto*.
     pub(crate) static PAINTED_POPOVER: std::cell::Cell<
-        Option<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect, f32, f32)>,
+        Option<ph2d_editor_core::widget::PaintedPopover>,
     > = const { std::cell::Cell::new(None) };
 }
 
@@ -244,16 +244,10 @@ pub(crate) fn take_pending_script_enum() -> Option<(usize, ph2d_editor_core::zon
 }
 
 /// Regista que um popover foi pintado neste quadro — ver [`PAINTED_POPOVER`].
-pub(crate) fn set_painted_popover(
-    id: ph2d_a11y::NodeId,
-    panel: ph2d_editor_core::zones::Rect,
-    content_h: f32,
-    visible_h: f32,
-) {
-    PAINTED_POPOVER.with(|c| c.set(Some((id, panel, content_h, visible_h))));
+pub(crate) fn set_painted_popover(painted: ph2d_editor_core::widget::PaintedPopover) {
+    PAINTED_POPOVER.with(|c| c.set(Some(painted)));
 }
 
-pub(crate) fn take_painted_popover()
--> Option<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect, f32, f32)> {
+pub(crate) fn take_painted_popover() -> Option<ph2d_editor_core::widget::PaintedPopover> {
     PAINTED_POPOVER.with(|c| c.take())
 }

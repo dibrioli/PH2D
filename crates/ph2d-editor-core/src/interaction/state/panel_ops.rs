@@ -298,6 +298,19 @@ impl WidgetStore {
         self.dropdown_popover = Some((id, rect));
     }
 
+    /// ⭐ **Publica uma lista ROLADA** ([`crate::panel::paint_dropdown_popover_scrolled_with_hits`]):
+    /// o rect (a roda e o clique de fora acham-na por ele), as duas alturas (o alcance da roda e do
+    /// polegar) e a rolagem presa ao alcance de hoje.
+    pub fn publish_dropdown_popover(&mut self, p: crate::widget::PaintedPopover) {
+        self.set_dropdown_popover(p.id, p.panel);
+        self.set_panel_content_h(p.id, p.content_h);
+        self.set_panel_visible_h(p.id, p.visible_h);
+        let max_scroll = (p.content_h - p.visible_h).max(0.0);
+        if self.panel_scroll(p.id) > max_scroll {
+            self.set_panel_scroll(p.id, max_scroll);
+        }
+    }
+
     /// The open dropdown popover `(id, rect)`, if any. Stale after close — callers gate on `open`.
     pub fn dropdown_popover(&self) -> Option<(NodeId, Rect)> {
         self.dropdown_popover

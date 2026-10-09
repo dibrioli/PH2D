@@ -198,6 +198,18 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
     }
 }
 
+/// O que uma lista ROLADA pintou neste quadro ([`crate::panel::paint_dropdown_popover_scrolled_with_hits`])
+/// — o rect do painel e as duas alturas da rolagem. É o que
+/// [`crate::interaction::WidgetStore::publish_dropdown_popover`] publica: sem as alturas, um
+/// popover clampado mais curto que a lista fica cortado e imóvel à roda e ao polegar.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PaintedPopover {
+    pub id: NodeId,
+    pub panel: Rect,
+    pub content_h: f32,
+    pub visible_h: f32,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -12,10 +12,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::showcase::take_pending_dropdown_chip;
-use ph2d_editor_core::widget::{
-    self, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, scrollbar_is_needed,
-    scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -56,35 +53,18 @@ fn paint_open_popover<T: Clone + PartialEq>(
     theme: ph2d_tokens::Theme,
     hit_index: &mut HitIndex,
 ) {
-    let panel = dd.popover_rect_clamped(chip, region);
-    let content_h = dd.content_height(chip.h);
-    let visible_h = panel.h;
-    let max_scroll = (content_h - visible_h).max(0.0);
-    let scroll = store.panel_scroll(dd.id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    widget::paint_dropdown_popover_scrolled(
+    let painted = ph2d_editor_core::panel::paint_dropdown_popover_scrolled_with_hits(
         dd,
         chip,
-        panel,
-        scroll,
-        store.scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(dd.id)),
+        region,
+        store,
         scene,
         text_system,
         theme,
+        hit_index,
     );
-    for (i, opt) in dd.options.iter().enumerate() {
-        let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
-        let top = r.y.max(panel.y);
-        let bot = (r.y + r.h).min(panel.y + panel.h);
-        if bot - top >= 1.0 {
-            // LITERAL-PX-OK: um pixel é o piso de uma faixa clicável, não uma medida de desenho
-            hit_index.register(opt.id, Rect::new(r.x, top, r.w, bot - top));
-        }
-    }
-    if scrollbar_is_needed(content_h, visible_h) {
-        hit_index.register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
-    }
     // ⚠️ **Publicar é do fim do `paint`** — aqui não há `&mut WidgetStore`. Ver `PAINTED_POPOVER`.
-    state_popovers::set_painted_popover(dd.id, panel, content_h, visible_h);
+    state_popovers::set_painted_popover(painted);
 }
 
 /// **OS CINCO POPOVERS DIFERIDOS** — a §9 Sampling, a §7 Sorting Layer, a §12 «Rides Parent

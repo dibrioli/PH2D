@@ -18,6 +18,8 @@
 //! - [`registry`] — process-wide `PANEL_REGISTRY` installed at boot.
 //! - [`event_outcome`] — `EventOutcome::{Consumed, Ignored, Observed}`.
 
+/// ⭐⭐ A porta de uma lista de dropdown aberta que ROLA (pintura + hits + o que se publica).
+pub mod dropdown_popover;
 pub mod erased;
 pub mod event_outcome;
 pub mod host;
@@ -36,6 +38,7 @@ pub use crate::widget::section_plan;
 /// O laço do plano das secções para os painéis que pintam por um `PaintCtx`.
 pub mod section_plan_ctx;
 
+pub use dropdown_popover::paint_dropdown_popover_scrolled_with_hits;
 pub use erased::ErasedPanel;
 pub use event_outcome::EventOutcome;
 pub use host::{PanelHost, PanelHostInternal};

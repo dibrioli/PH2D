@@ -331,6 +331,7 @@ fn the_stroke_thickness_is_fixed_in_the_world_and_scales_with_the_zoom() {
         center: [0.0, 0.0],
         height_world: 10.0,
         cull_mask: u32::MAX,
+        ..ph2d_render::Camera2d::default()
     };
     let near = ph2d_render::Camera2d {
         height_world: 5.0, // 2× mais perto

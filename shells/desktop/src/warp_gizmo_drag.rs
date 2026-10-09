@@ -54,7 +54,9 @@ impl crate::App {
     /// Quantas unidades de MUNDO vale um pixel de tela, na câmara da cena.
     fn warp_world_per_px(&self) -> Option<f32> {
         let win = self.warp_scene_window()?;
-        let cam = &self.gfx.as_ref()?.camera;
+        let gfx = self.gfx.as_ref()?;
+        // ⭐ O espaço do objecto Motion em edição (doc ObjectsAndComponents 01 §13).
+        let cam = &ph2d_app_motion::motion_objeto::camera_do_dono(&gfx.camera, &gfx.motion);
         // Dois pontos de tela a um pixel de distância, medidos no mundo.
         let a = cam.screen_to_world((0.0, 0.0), win);
         let b = cam.screen_to_world((1.0, 0.0), win);
@@ -65,7 +67,9 @@ impl crate::App {
     /// O ponto de tela em coordenadas de MUNDO, na câmara da cena.
     fn warp_world_at(&self, sx: f32, sy: f32) -> Option<[f32; 2]> {
         let win = self.warp_scene_window()?;
-        Some(self.gfx.as_ref()?.camera.screen_to_world((sx, sy), win))
+        let gfx = self.gfx.as_ref()?;
+        let cam = ph2d_app_motion::motion_objeto::camera_do_dono(&gfx.camera, &gfx.motion);
+        Some(cam.screen_to_world((sx, sy), win))
     }
 
     /// Tenta agarrar uma alça. `true` = agarrou, e o `Down` **não** deve seguir para o

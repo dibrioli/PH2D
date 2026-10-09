@@ -12,7 +12,7 @@
 use ph2d_app_motion::field_gizmo::*;
 use ph2d_editor_core::screens::layout::CenterSplit;
 use ph2d_editor_core::{
-    GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget, TransformSnapshot,
+    GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget,
 };
 use ph2d_host::WindowSize;
 
@@ -85,12 +85,18 @@ impl crate::App {
             // field não tem pai, e o param JÁ é de mundo, então o `world_snap` é o `start`.
             // `anchor = [0, 0]`: o `start` de um field É o centro dele — a caixa está
             // centrada no próprio pivô, e o termo reduz literalmente ao de antes.
-            let pivot = ph2d_editor_core::anchor_pivot_world(
-                hit.kind,
-                [0.0, 0.0],
-                intrinsic_half,
-                start,
-                ctrl,
+            // ⭐ Os params do campo são do espaço do objecto Motion em edição (doc ObjectsAndComponents
+            // 01 §13): ele é o PAI do arrasto, e o pivô (calculado no local) vai para o mundo.
+            let pai = ph2d_app_motion::motion_objeto::pai_em_edicao(&gfx.motion);
+            let pivot = ph2d_app_motion::motion_objeto::origem::ponto(
+                &ph2d_app_motion::motion_objeto::afim_em_edicao(&gfx.motion),
+                ph2d_editor_core::anchor_pivot_world(
+                    hit.kind,
+                    [0.0, 0.0],
+                    intrinsic_half,
+                    start,
+                    ctrl,
+                ),
             );
             FieldGizmoDrag {
                 drag: GizmoDragState {
@@ -107,7 +113,7 @@ impl crate::App {
                     sprite_half_intrinsic: intrinsic_half,
                     anchor_is_center: ctrl,
                     target: GizmoTarget::MotionField,
-                    parent_world: TransformSnapshot::IDENTITY,
+                    parent_world: pai,
                     turns: 0,
                 },
                 node: nid,

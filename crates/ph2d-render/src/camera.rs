@@ -30,6 +30,10 @@ pub struct Camera2d {
     /// never uploaded to `CameraUniform`. Default `u32::MAX` = every
     /// layer visible (no culling).
     pub cull_mask: u32,
+    /// ⭐ **A matriz de MODELO** `[a, b, c, d, tx, ty]` — local → mundo, aplicada ANTES da vista
+    /// (doc ObjectsAndComponents 01 §13: os gizmos do Motion vêem o grafo no espaço do objecto Motion
+    /// em edição). Identidade = a câmara de sempre, byte a byte. ⚠️ O passe de sprites nunca a põe.
+    pub model: [f32; 6],
 }
 
 impl Camera2d {
@@ -48,7 +52,47 @@ impl Camera2d {
             center,
             height_world,
             cull_mask: u32::MAX,
+            model: Self::MODEL_IDENTITY,
         }
+    }
+
+    /// A matriz de modelo identidade.
+    pub const MODEL_IDENTITY: [f32; 6] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+
+    /// ⭐ Esta câmara vista do espaço LOCAL de `model` (local → mundo): um ponto local `p` cai no ecrã
+    /// onde `model·p` cairia nesta câmara.
+    #[must_use]
+    pub fn with_model(mut self, model: [f32; 6]) -> Self {
+        self.model = model;
+        self
+    }
+
+    /// `model·p`.
+    fn model_point(&self, p: [f32; 2]) -> [f32; 2] {
+        let m = &self.model;
+        [
+            m[0] * p[0] + m[2] * p[1] + m[4],
+            m[1] * p[0] + m[3] * p[1] + m[5],
+        ]
+    }
+
+    /// `model⁻¹·w` — o ponto local que cai em `w`; um modelo degenerado (escala 0) devolve `w`.
+    fn unmodel_point(&self, w: [f32; 2]) -> [f32; 2] {
+        let m = &self.model;
+        let det = m[0] * m[3] - m[2] * m[1];
+        if det.abs() < f32::EPSILON {
+            return w;
+        }
+        let (x, y) = (w[0] - m[4], w[1] - m[5]);
+        [(m[3] * x - m[2] * y) / det, (-m[1] * x + m[0] * y) / det]
+    }
+
+    /// A matriz de modelo como `Mat4` (para a projecção).
+    fn model_mat4(&self) -> Mat4 {
+        let m = &self.model;
+        Mat4::from_cols_array(&[
+            m[0], m[1], 0.0, 0.0, m[2], m[3], 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, m[4], m[5], 0.0, 1.0,
+        ])
     }
 
     /// Multiply `height_world` by `factor` and clamp to
@@ -155,7 +199,10 @@ impl Camera2d {
         let half_w = half_h * aspect;
         let world_x = self.center[0] + nx * half_w;
         let world_y = self.center[1] - ny * half_h;
-        [world_x, world_y]
+        if self.model == Self::MODEL_IDENTITY {
+            return [world_x, world_y];
+        }
+        self.unmodel_point([world_x, world_y])
     }
 
     /// Project a world-space point (meters) to a screen-pixel position
@@ -167,6 +214,11 @@ impl Camera2d {
     /// footprint without a GPU readback — e.g. the Background-Removal
     /// live preview blit.
     pub fn world_to_screen(&self, world: [f32; 2], window: WindowSize) -> (f32, f32) {
+        let world = if self.model == Self::MODEL_IDENTITY {
+            world
+        } else {
+            self.model_point(world)
+        };
         let w = window.width.max(1) as f32;
         let h = window.height.max(1) as f32;
         let aspect = w / h;
@@ -200,9 +252,13 @@ impl Camera2d {
         let w = window.width.max(1) as f64;
         let h = window.height.max(1) as f64;
         let k = h / (self.height_world as f64).max(1e-6);
-        Affine::translate((w * 0.5, h * 0.5))
+        let view = Affine::translate((w * 0.5, h * 0.5))
             * Affine::scale_non_uniform(k, -k)
-            * Affine::translate((-(self.center[0] as f64), -(self.center[1] as f64)))
+            * Affine::translate((-(self.center[0] as f64), -(self.center[1] as f64)));
+        if self.model == Self::MODEL_IDENTITY {
+            return view;
+        }
+        view * Affine::new(self.model.map(f64::from))
     }
 
     /// Build the view-projection matrix for the given window.
@@ -226,14 +282,18 @@ impl Camera2d {
         let half_w = half_h * aspect;
         let cx = self.center[0];
         let cy = self.center[1];
-        Mat4::orthographic_rh(
+        let proj = Mat4::orthographic_rh(
             cx - half_w,
             cx + half_w,
             cy - half_h,
             cy + half_h,
             -1.0,
             1.0,
-        )
+        );
+        if self.model == Self::MODEL_IDENTITY {
+            return proj;
+        }
+        proj * self.model_mat4()
     }
 
     pub fn uniform(&self, window: WindowSize) -> CameraUniform {
@@ -256,14 +316,18 @@ impl Camera2d {
         let half_w = half_h * aspect;
         let cx = self.center[0];
         let cy = self.center[1];
-        Mat4::orthographic_rh(
+        let proj = Mat4::orthographic_rh(
             cx - half_w,
             cx + half_w,
             cy - half_h,
             cy + half_h,
             -1.0,
             1.0,
-        )
+        );
+        if self.model == Self::MODEL_IDENTITY {
+            return proj;
+        }
+        proj * self.model_mat4()
     }
 
     /// [`CameraUniform`] form of [`Self::view_proj_for_subrect`].
@@ -282,6 +346,7 @@ impl Default for Camera2d {
             center: [0.0, 0.0],
             height_world: 10.0,
             cull_mask: u32::MAX,
+            model: Self::MODEL_IDENTITY,
         }
     }
 }
@@ -289,6 +354,41 @@ impl Default for Camera2d {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐⭐ **A matriz de modelo** (doc ObjectsAndComponents 01 §13): um ponto LOCAL cai no ecrã onde o
+    /// ponto `model·p` cairia na câmara sem modelo; ida e volta pelo cursor devolve o local; a afim do
+    /// Vello e a `view_proj` dizem o mesmo que as duas portas de ponto. (Mutação: `unmodel_point`
+    /// devolver `w` ⇒ RED.)
+    #[test]
+    fn the_model_matrix_moves_every_door_together() {
+        let win = WindowSize {
+            width: 800,
+            height: 600,
+        };
+        let base = Camera2d::new([3.0, -2.0], 12.0);
+        let m = [0.0, 2.0, -2.0, 0.0, 5.0, 1.0]; // 90° e escala 2, deslocado (5, 1)
+        let cam = base.with_model(m);
+        let p = [1.5, -0.5];
+        let mp = [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+        let (sx, sy) = cam.world_to_screen(p, win);
+        let (bx, by) = base.world_to_screen(mp, win);
+        assert!((sx - bx).abs() < 1e-3 && (sy - by).abs() < 1e-3);
+        let back = cam.screen_to_world((sx, sy), win);
+        assert!((back[0] - p[0]).abs() < 1e-4 && (back[1] - p[1]).abs() < 1e-4);
+        let a = cam.world_to_screen_affine(win) * vello::kurbo::Point::new(1.5, -0.5);
+        assert!((a.x as f32 - sx).abs() < 1e-3 && (a.y as f32 - sy).abs() < 1e-3);
+        let ndc = cam
+            .view_proj(win)
+            .transform_point3(ph2d_core::Vec3::new(p[0], p[1], 0.0));
+        let px = (ndc.x + 1.0) * 0.5 * 800.0;
+        let py = (1.0 - ndc.y) * 0.5 * 600.0;
+        assert!((px - sx).abs() < 1e-2 && (py - sy).abs() < 1e-2, "{px},{py} ≠ {sx},{sy}");
+        assert_eq!(
+            Camera2d::new([3.0, -2.0], 12.0).world_to_screen(p, win),
+            base.with_model(Camera2d::MODEL_IDENTITY).world_to_screen(p, win),
+            "identidade = a câmara de sempre"
+        );
+    }
 
     #[test]
     fn cull_mask_defaults_to_all_layers_visible() {

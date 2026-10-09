@@ -365,11 +365,18 @@ pub fn field_view(
     let (nid, spec) = selected_field(motion)?;
     let p = |name: &str| crate::motion_bridge::params::param_value(motion, nid, name);
     let half = spec.size.half(p);
+    // ⭐ Os params do campo são do espaço do objecto Motion em edição (doc ObjectsAndComponents 01
+    // §13): o gizmo mostra-os no mundo — o centro pela afim dele, a rotação e a escala pela pose.
+    let pai = crate::motion_objeto::pai_em_edicao(motion);
+    let [cx, cy] = crate::motion_objeto::origem::ponto(
+        &crate::motion_objeto::afim_em_edicao(motion),
+        [p(spec.center_x), p(spec.center_y)],
+    );
     Some(view_from_params(
-        p(spec.center_x),
-        p(spec.center_y),
-        half,
-        spec.rotation.map_or(0.0, p),
+        cx,
+        cy,
+        [half[0] * pai.scale[0], half[1] * pai.scale[1]],
+        spec.rotation.map_or(0.0, p) + pai.rotation.to_degrees(),
         camera,
         win_w,
         win_h,

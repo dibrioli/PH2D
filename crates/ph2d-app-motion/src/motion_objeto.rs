@@ -52,6 +52,8 @@ pub struct Dono {
     pub visible: bool,
     /// Local → mundo: a origem do que os sinks dele geram.
     pub afim: Afim,
+    /// A mesma, como pose (translação, rotação, escala) — o PAI do gizmo de campo.
+    pub pose: ph2d_editor_core::TransformSnapshot,
 }
 
 /// O estado do Motion-como-objecto, guardado no `MotionState`.
@@ -201,12 +203,18 @@ fn vivos(world: &mut World) -> BTreeMap<u64, Dono> {
         .collect();
     ids.into_iter()
         .map(|(e, sid)| {
+            let t = pose_de(world, e);
             (
                 sid,
                 Dono {
                     entity: e.to_bits(),
                     visible: !ph2d_ecs::visibility::is_hidden_in_tree(world, e),
-                    afim: afim_de(world, e),
+                    afim: ph2d_ecs::GlobalTransform::from_transform(t).affine(),
+                    pose: ph2d_editor_core::TransformSnapshot {
+                        translation: [t.translation.x, t.translation.y],
+                        rotation: t.rotation,
+                        scale: [t.scale.x, t.scale.y],
+                    },
                 },
             )
         })
@@ -217,6 +225,11 @@ fn vivos(world: &mut World) -> BTreeMap<u64, Dono> {
 /// mesma composição da propagação, `Transform::compose`).
 #[must_use]
 pub fn afim_de(world: &World, entity: Entity) -> Afim {
+    ph2d_ecs::GlobalTransform::from_transform(pose_de(world, entity)).affine()
+}
+
+/// A pose composta (local → mundo) de `entity`.
+fn pose_de(world: &World, entity: Entity) -> ph2d_ecs::Transform {
     let mut cadeia = Vec::new();
     let mut cur = Some(entity);
     while let Some(e) = cur {
@@ -229,13 +242,40 @@ pub fn afim_de(world: &World, entity: Entity) -> Afim {
         cur = world.get::<ph2d_ecs::ChildOf>(e).map(|c| c.parent());
     }
     let Some(raiz) = cadeia.pop() else {
-        return IDENTIDADE;
+        return ph2d_ecs::Transform::IDENTITY;
     };
-    let t = cadeia
+    cadeia
         .into_iter()
         .rev()
-        .fold(raiz, ph2d_ecs::Transform::compose);
-    ph2d_ecs::GlobalTransform::from_transform(t).affine()
+        .fold(raiz, ph2d_ecs::Transform::compose)
+}
+
+/// ⭐ A afim do objecto Motion em EDIÇÃO (identidade sem ele) — o espaço em que os gizmos do editor
+/// de nós desenham e arrastam.
+#[must_use]
+pub fn afim_em_edicao(motion: &MotionState) -> Afim {
+    motion
+        .objeto
+        .editing
+        .and_then(|s| motion.objeto.donos.get(&s))
+        .map_or(IDENTIDADE, |d| d.afim)
+}
+
+/// ⭐ A câmara da cena vista do espaço do objecto Motion em edição — a dos gizmos do Motion (warp,
+/// pivô, colisor, pontos): o que eles desenham em coordenadas do grafo cai onde o objecto o pôs.
+#[must_use]
+pub fn camera_do_dono(camera: &ph2d_render::Camera2d, motion: &MotionState) -> ph2d_render::Camera2d {
+    camera.with_model(afim_em_edicao(motion))
+}
+
+/// ⭐ A pose do objecto Motion em edição — o PAI do gizmo de campo (o gizmo genérico devolve o local).
+#[must_use]
+pub fn pai_em_edicao(motion: &MotionState) -> ph2d_editor_core::TransformSnapshot {
+    motion
+        .objeto
+        .editing
+        .and_then(|s| motion.objeto.donos.get(&s))
+        .map_or(ph2d_editor_core::TransformSnapshot::IDENTITY, |d| d.pose)
 }
 
 /// As cópias do editor de um objecto Motion levam um grafo próprio (um passo do undo do Motion).

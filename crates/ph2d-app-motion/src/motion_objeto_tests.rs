@@ -202,8 +202,8 @@ fn a_origem_leva_a_faixa_do_dono_e_nunca_duas_vezes() {
     m.pump.composicoes = 1;
     // A: rodado 90° e deslocado (10, 0). B: identidade.
     let rot = [0.0, 1.0, -1.0, 0.0, 10.0, 0.0];
-    m.objeto.donos.insert(1, Dono { entity: 0, visible: true, afim: rot });
-    m.objeto.donos.insert(2, Dono { entity: 0, visible: true, afim: IDENTIDADE });
+    m.objeto.donos.insert(1, Dono { entity: 0, visible: true, afim: rot, pose: ph2d_editor_core::TransformSnapshot::IDENTITY });
+    m.objeto.donos.insert(2, Dono { entity: 0, visible: true, afim: IDENTIDADE, pose: ph2d_editor_core::TransformSnapshot::IDENTITY });
     origem::aplica_cpu(&mut m);
     assert_eq!(m.pump.instances[0].world_pos, [10.0, 1.0]);
     assert_eq!(m.pump.instances[0].basis, [0.0, 1.0, -1.0, 0.0]);

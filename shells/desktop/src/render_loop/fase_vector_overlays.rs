@@ -82,13 +82,16 @@ impl crate::App {
         // moravam na `fase_selection_highlight`, que corre ANTES desta — o gizmo ficava ATRÁS dos
         // quadrados que ele manipula. Medido no quadro emendado (`arte em 623773, gizmo em 484970`),
         // e é o mesmo defeito que o report de 08/09 do gizmo de warp já tinha dado.
+        // ⭐ Os gizmos do Motion desenham no espaço do objecto Motion em edição (doc
+        // ObjectsAndComponents 01 §13): a câmara da cena com a matriz de modelo dele.
+        let camera_motion = ph2d_app_motion::motion_objeto::camera_do_dono(camera, motion);
         if let Some(v) = ph2d_app_motion::warp_gizmo::view() {
             let port = ph2d_app_motion::warp_gizmo::param_port(motion, v.node);
             ph2d_app_motion::warp_overlay::draw_warp_gizmo(
                 true,
                 &v,
                 &port,
-                camera,
+                &camera_motion,
                 hero.view.center_split,
                 surface.size(),
                 vector_scene,
@@ -103,7 +106,7 @@ impl crate::App {
         if let Some(v) = ph2d_app_motion::pivot_gizmo::view() {
             ph2d_app_motion::pivot_gizmo_overlay::draw(
                 &v,
-                camera,
+                &camera_motion,
                 hero.view.center_split,
                 surface.size(),
                 vector_scene,
@@ -112,7 +115,7 @@ impl crate::App {
         if let Some(v) = ph2d_app_motion::collider_gizmo::view() {
             ph2d_app_motion::collider_gizmo_overlay::draw(
                 &v,
-                camera,
+                &camera_motion,
                 hero.view.center_split,
                 surface.size(),
                 vector_scene,
@@ -125,7 +128,7 @@ impl crate::App {
         if let Some(v) = ph2d_app_motion::ponto_gizmo::view() {
             ph2d_app_motion::ponto_gizmo_overlay::draw(
                 &v,
-                camera,
+                &camera_motion,
                 hero.view.center_split,
                 surface.size(),
                 vector_scene,

@@ -82,7 +82,7 @@ impl crate::App {
         ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at(
             motion,
             motion_tool_active,
-            camera,
+            &ph2d_app_motion::motion_objeto::camera_do_dono(camera, motion),
             hero.view.center_split,
             window_size,
             self.last_pointer,

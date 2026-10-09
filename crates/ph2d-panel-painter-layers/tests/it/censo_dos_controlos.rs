@@ -1131,6 +1131,9 @@ fn pre_condicoes() -> Vec<Linha> {
         let mut armar = vec![Gesto::Arrasto(PAINTER_WETPAINT_TILT_PAD, 0.5, 0.5 + raio)];
         if facil {
             armar.push(Gesto::Clique(PAINTER_WETPAINT_DRIPS_EASY));
+            // E o Length no mínimo (um fio de ~20 px): desde a W1c a gota tem a água da bacia e corre o
+            // Length inteiro — 270 px no 5 e 570 no 8 do gesto, os dois além do fundo da tela de 128.
+            armar.push(Gesto::Numero(PAINTER_WETPAINT_DRIP_LENGTH, 1.0));
         }
         v.push((
             WetPaint,

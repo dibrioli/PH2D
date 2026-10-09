@@ -27,9 +27,11 @@ pub(crate) struct Lessons {
 /// A margem do frame da cena (a da cena 8: os painéis laterais e a barra de estado tapam as bordas).
 const MARGIN_X: f64 = 330.0;
 const MARGIN_Y: f64 = 90.0;
-/// A margem do frame das ideias, o vão entre as notas e entre as ideias e as lições.
+/// A margem do frame das ideias, o vão entre as notas e entre as ideias e as lições. O vão das ideias é
+/// o do modelo do Miro medido (`vote_05`: 78–80 numa nota de 236 = 0,33 do lado): com a metade, o selo
+/// de 3 votos tapava o canto da nota de baixo (1.ª foto da cena 9).
 const PAD: f64 = 60.0;
-const NOTE_GAP: f64 = 34.0;
+const NOTE_GAP: f64 = 0.33 * STICKY_SIDE;
 const GAP: f64 = 60.0;
 /// As ideias: `(chave do texto, cor das 16 do Miro, etiquetas, votos de antes, carimbos)`.
 type Idea = (

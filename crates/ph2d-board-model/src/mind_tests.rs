@@ -412,3 +412,46 @@ fn every_branch_colour_has_a_readable_badge_ink() {
         assert!(ratio >= 3.0, "{c:?}: {ratio:.2}");
     }
 }
+
+/// M10 com um ramo ALTO (o sobrevivente 5 da prova de mutação): recolher um nó com três filhos — a
+/// faixa dele é maior que ele — não move o irmão de baixo (o recolhido continua a reservar a faixa).
+#[test]
+fn collapsing_a_tall_branch_moves_no_neighbour() {
+    let (mut m, root) = Map::new();
+    let a = m.add(root, Side::After);
+    for _ in 0..3 {
+        m.add(a, Side::After);
+    }
+    let b = m.add(root, Side::After);
+    let by = m.el(b).y;
+    m.edit(a, |el| el.mind_mut().unwrap().collapsed = true);
+    assert!((m.el(b).y - by).abs() < R, "o irmão não se mexe");
+}
+
+/// Os descendentes de um frame incluem os nós ESCONDIDOS de um ramo recolhido dentro dele (o
+/// sobrevivente 26: apagar, copiar, mover e adoptar perguntam por eles).
+#[test]
+fn a_frames_descendants_include_the_hidden_nodes() {
+    let (mut m, root) = Map::new();
+    let paper = Rgba([255, 255, 255, 255]);
+    let frame = crate::Frame {
+        name: "f".into(),
+        style: Style::new(Some(paper), None, ink()),
+    };
+    let f = Element::new_frame(
+        m.doc.mint_id(),
+        m.doc.z_on_top(),
+        frame,
+        [-500.0, -500.0, 2_000.0, 2_000.0],
+    );
+    let fid = f.id;
+    m.h.apply(&mut m.doc, vec![BoardOp::Put(f)]);
+    let a = m.add(root, Side::After);
+    let a1 = m.add(a, Side::After);
+    for id in [root, a, a1] {
+        m.edit(id, |el| el.frame = Some(fid));
+    }
+    m.edit(a, |el| el.mind_mut().unwrap().collapsed = true);
+    assert!(m.doc.elements[&a1].is_hidden());
+    assert!(m.doc.descendants(fid).contains(&a1));
+}

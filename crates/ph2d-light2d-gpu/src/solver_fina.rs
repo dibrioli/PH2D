@@ -10,16 +10,6 @@ use crate::captura::capturar_opacos;
 use crate::config::Grade;
 use gravar::subir_geometria;
 
-/// ⭐ A MARCA da captura fina para o campo de distância (C1): zerá-la e marcá-la (um fio por texel
-/// fino) — a semente do JFA lê-a. Ler a captura fina na semente (256 texels por célula num fio) custava
-/// 0,71 ms (medido, W5a).
-pub(super) struct Marca {
-    pub zera: wgpu::ComputePipeline,
-    pub marca: wgpu::ComputePipeline,
-    pub grupo_zera: wgpu::BindGroup,
-    pub grupo_marca: wgpu::BindGroup,
-}
-
 pub(super) struct CapturaFina {
     uni: wgpu::Buffer,
     /// `[cobertura, τ dentro]` da captura fina.
@@ -28,9 +18,6 @@ pub(super) struct CapturaFina {
     formatos: [wgpu::TextureFormat; 3],
     geometria: Option<Geometria>,
     sprites: Option<solver_sprite::C0Sprites>,
-    marca: Marca,
-    /// O tamanho da captura fina e o do campo (as dispatches da marca).
-    tamanhos: ([u32; 2], [u32; 2]),
 }
 
 impl CapturaFina {
@@ -44,8 +31,6 @@ impl CapturaFina {
         formatos: [wgpu::TextureFormat; 3],
         g: Grade,
         fila: &wgpu::Queue,
-        marca: Marca,
-        celulas: [u32; 2],
     ) -> Self {
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("luz2d c0 captura fina"),
@@ -86,21 +71,7 @@ impl CapturaFina {
             formatos,
             geometria: None,
             sprites: None,
-            marca,
-            tamanhos: ([g.largura, g.altura], celulas),
         }
-    }
-
-    /// Zera e marca a marca, no passe C1 aberto (antes da semente).
-    pub(super) fn marcar(&self, p: &mut wgpu::ComputePass<'_>) {
-        let grupos = |n: [u32; 2]| [n[0].div_ceil(8), n[1].div_ceil(8)];
-        let (fina, celulas) = (grupos(self.tamanhos.0), grupos(self.tamanhos.1));
-        p.set_pipeline(&self.marca.zera);
-        p.set_bind_group(0, &self.marca.grupo_zera, &[]);
-        p.dispatch_workgroups(celulas[0], celulas[1], 1);
-        p.set_pipeline(&self.marca.marca);
-        p.set_bind_group(0, &self.marca.grupo_marca, &[]);
-        p.dispatch_workgroups(fina[0], fina[1], 1);
     }
 
     /// Captura `cena` e `sprites` na grade `g` (a da captura). Devolve os bytes de geometria que

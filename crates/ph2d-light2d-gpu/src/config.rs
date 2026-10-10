@@ -358,9 +358,13 @@ impl Config {
                 "passo_direto e passo_na_borda têm de ser finitos e > 0",
             ));
         }
-        if !cfg.captura.is_power_of_two() {
+        // ⭐ Até as 8 subamostras da C0 grossa: um oclusor que POSSUI um texel da captura fina cobre
+        // o centro dele, que é uma subamostra da grossa (onde ele entra como cobertura, mesmo menor
+        // que o texel) — e é a grossa que semeia o campo de distância (W5a: ler a fina na semente
+        // custava 0,71 ms; uma marca paralela, 0,17).
+        if !cfg.captura.is_power_of_two() || cfg.captura > crate::captura::SUB {
             return Err(ErroSolver::ConfigInvalida(
-                "captura tem de ser uma potência de 2",
+                "captura tem de ser uma potência de 2 até as 8 subamostras da C0",
             ));
         }
         if cfg.preenchimento.is_some_and(|f| !f.is_power_of_two()) {

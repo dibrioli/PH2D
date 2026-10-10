@@ -44,9 +44,7 @@ struct UniformeJfa {
     tamanho: [u32; 2],
     fator: u32,
     salto: u32,
-    /// Texels da captura fina por texel das cascatas (W5a); 0 = sem ela (a semente não lê a marca).
-    escala: u32,
-    _pad: u32,
+    _pad: [u32; 2],
 }
 
 #[repr(C)]
@@ -369,18 +367,13 @@ impl Solver {
                 tamanho: jfa_tamanho,
                 fator: cfg.fator_jfa,
                 salto,
-                escala: if op.marca.is_some() {
-                    cfg.escala_da_captura()
-                } else {
-                    0
-                },
-                _pad: 0,
+                _pad: [0; 2],
             };
             let o = j * PASSO_UNIFORME as usize;
             uni[o..o + size_of::<UniformeJfa>()].copy_from_slice(bytemuck::bytes_of(&u));
         }
         gpu.queue.write_buffer(&uni_jfa, 0, &uni);
-        let jfa_grupo = |j: usize, (cobertura, entrada, saida): (usize, usize, usize)| {
+        let jfa_grupo = |j: usize, entrada: usize, saida: usize| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("luz2d c1"),
                 layout: &jfa_layout,
@@ -395,7 +388,7 @@ impl Solver {
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&vistas[cobertura]),
+                        resource: wgpu::BindingResource::TextureView(&vistas[COBERTURA]),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
@@ -408,25 +401,11 @@ impl Solver {
                 ],
             })
         };
-        // A semente escreve A e lê a marca da captura fina como entrada (sem ela liga B, que não
-        // lê); o salto j lê j%2 e escreve o outro.
-        let mut jfa_grupos = vec![jfa_grupo(
-            0,
-            (COBERTURA, op.marca.unwrap_or(SEMENTES[1]), SEMENTES[0]),
-        )];
+        // A semente escreve A (e liga B como entrada, que ela não lê); o salto j lê j%2 e escreve o outro.
+        let mut jfa_grupos = vec![jfa_grupo(0, SEMENTES[1], SEMENTES[0])];
         for j in 0..saltos.len() {
-            jfa_grupos.push(jfa_grupo(
-                j + 1,
-                (COBERTURA, SEMENTES[j % 2], SEMENTES[(j + 1) % 2]),
-            ));
+            jfa_grupos.push(jfa_grupo(j + 1, SEMENTES[j % 2], SEMENTES[(j + 1) % 2]));
         }
-        // ⭐ W5a: zerar e marcar a marca da captura fina (o uniforme da semente).
-        let jfa_marca = op.captura.zip(op.marca).map(|(c, m)| fina::Marca {
-            zera: compute("luz2d c1 zera", &jfa_pl, &jfa_modulo, "zera", &[]),
-            marca: compute("luz2d c1 marca", &jfa_pl, &jfa_modulo, "marca", &[]),
-            grupo_zera: jfa_grupo(0, (COBERTURA, SEMENTES[1], m)),
-            grupo_marca: jfa_grupo(0, (c[0], SEMENTES[1], m)),
-        });
         let sementes_finais = SEMENTES[saltos.len() % 2];
 
         // ── C2 ──
@@ -560,7 +539,7 @@ impl Solver {
             sementes_finais,
             vizinhos: &vizinhos,
         });
-        let fina = op.captura.zip(jfa_marca).map(|(c, marca)| {
+        let fina = op.captura.map(|c| {
             fina::CapturaFina::novo(
                 device,
                 &c0_modulo,
@@ -570,8 +549,6 @@ impl Solver {
                 formatos_c0,
                 cfg.grade_da_captura(),
                 &gpu.queue,
-                marca,
-                jfa_tamanho,
             )
         });
 

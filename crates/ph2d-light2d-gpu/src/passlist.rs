@@ -23,8 +23,6 @@ pub(crate) struct Opcionais {
     /// ⭐ W5a (F1, F2): a captura FINA dos opacos `[cobertura, τ dentro]`, com
     /// [`Config::usa_captura_fina`].
     pub captura: Option<[usize; 2]>,
-    /// ⭐ W5a: a MARCA, por célula do campo, de cobertura na captura fina (a semente lê-a).
-    pub marca: Option<usize>,
     /// ⭐ W5a (F3): o par do JFA do complemento (o preenchimento do interior dos opacos).
     pub preenche: Option<[usize; 2]>,
 }
@@ -43,7 +41,6 @@ impl Opcionais {
                 let k = proxima(2);
                 [k, k + 1]
             }),
-            marca: cfg.usa_captura_fina().then(|| proxima(1)),
             preenche: cfg.preenchimento.map(|_| {
                 let k = proxima(2);
                 [k, k + 1]
@@ -198,14 +195,6 @@ impl PassList {
                 });
             }
         }
-        if op.marca.is_some() {
-            texturas.push(Textura {
-                nome: "luz2d/tex/marca_fina",
-                formato: wgpu::TextureFormat::R32Uint,
-                tamanho: jfa,
-                usos: T::STORAGE_BINDING | amostrada,
-            });
-        }
         let preenche = cfg.grade_do_preenchimento();
         if let Some((celulas, _)) = &preenche {
             for nome in ["luz2d/tex/preenche_a", "luz2d/tex/preenche_b"] {
@@ -282,28 +271,16 @@ impl PassList {
             le: vec![],
             escreve: vec![EMISSAO, COBERTURA, TAU_DENTRO],
         }];
-        let mut le_sementes = vec![COBERTURA];
-        if let (Some(c), Some(m)) = (op.captura, op.marca) {
+        if let Some(c) = op.captura {
             passes.push(Passe {
                 nome: "C0 captura fina".into(),
                 le: vec![],
                 escreve: c.to_vec(),
             });
-            passes.push(Passe {
-                nome: "C1 zera a marca".into(),
-                le: vec![],
-                escreve: vec![m],
-            });
-            passes.push(Passe {
-                nome: "C1 marca fina".into(),
-                le: vec![c[0]],
-                escreve: vec![m],
-            });
-            le_sementes.push(m);
         }
         passes.push(Passe {
             nome: "C1 sementes".into(),
-            le: le_sementes,
+            le: vec![COBERTURA],
             escreve: vec![SEMENTES[0]],
         });
         for (j, k) in saltos.iter().enumerate() {

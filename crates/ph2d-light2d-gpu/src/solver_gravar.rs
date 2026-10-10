@@ -229,9 +229,6 @@ impl Solver {
             });
             let [w, h] = self.cfg.grade_jfa();
             let grupos = [w.div_ceil(8), h.div_ceil(8)];
-            if let Some(f) = &self.fina {
-                f.marcar(&mut p);
-            }
             p.set_pipeline(&self.jfa_semente);
             p.set_bind_group(0, &self.jfa_grupos[0], &[]);
             p.dispatch_workgroups(grupos[0], grupos[1], 1);

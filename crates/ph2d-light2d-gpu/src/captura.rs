@@ -3,8 +3,9 @@
 //! Cada forma entra com a sua COBERTURA por texel, medida em 8×8 subamostras com a regra do
 //! gabarito (paridade de cruzamentos; disco: `|p − c| < r`), e o seu material nos texels que POSSUI
 //! (cobertura ≥ ½). O que não possui texel nenhum sai no [`RelatorioC0`] — nunca some em silêncio:
-//! o `Ponto` (`tamanho_m = 0`) é o caminho analítico C3 (W5); uma forma menor que meio texel, ou
-//! fora da grade, não existe para a C0 das cascatas (W5a: a captura fina dos opacos vê-a).
+//! o `Ponto` (`tamanho_m = 0`) é o caminho analítico C3 (W5); uma forma fora da grade não existe
+//! para a C0, e uma menor que o texel entra só como cobertura (W5a: semeia o campo de distância; não
+//! acende nem tapa as cascatas, e a captura fina dos opacos vê-a).
 
 use bytemuck::{Pod, Zeroable};
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
@@ -72,7 +73,7 @@ pub(crate) struct Captura {
 const F16_MAX: f32 = 65504.0;
 
 /// Subamostras por eixo na cobertura (as mesmas do `c0_captura.wgsl`).
-const SUB: u32 = 8;
+pub(crate) const SUB: u32 = 8;
 
 /// `1/alcance` (0 = infinito), saturado no alcance do `f16` (≈ 15 µm): uma luz que não chega a
 /// 15 µm só acende o próprio texel, e a queda dá 0 além dele dos dois modos.
@@ -209,12 +210,13 @@ impl Montagem<'_> {
             return;
         };
         let v: Vec<[f32; 2]> = pts.iter().map(|p| [p[0] as f32, p[1] as f32]).collect();
+        // ⭐ W5a: menor que o texel, fica DITA (não acende nem tapa as cascatas) mas entra como
+        // cobertura — semeia o campo de distância para a captura fina dos opacos, que a vê.
         if !Geo::Poligono(&v).possui_algum_texel(c) {
             self.fora.push(ForaDaC0 {
                 quem,
                 motivo: Motivo::MenorQueOTexel,
             });
-            return;
         }
         let primeiro = u32::try_from(self.vertices.len()).expect("vértices cabem em u32");
         let n = u32::try_from(v.len()).expect("vértices cabem em u32");
@@ -245,7 +247,6 @@ impl Montagem<'_> {
                 quem,
                 motivo: Motivo::MenorQueOTexel,
             });
-            return;
         }
         self.formas.push(Forma {
             caixa: cx,

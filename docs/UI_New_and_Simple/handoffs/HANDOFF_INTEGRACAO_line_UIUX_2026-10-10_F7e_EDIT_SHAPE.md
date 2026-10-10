@@ -118,6 +118,9 @@ o rectângulo com os quatro nós próprios (pontos), o botão Edit Shape aceso �
    CONTORNO (fora dos pontos) aumenta a forma inteira; `Ctrl+Z` desfaz uma afinação de cada vez.
 6. Sair: clique fora da forma, outro traço, `Esc` ou outra ferramenta.
 
+**Smoke do dono (10/10): OK.** Integração ainda NÃO pedida. As duas perguntas do §7 (o lugar do botão;
+o contorno escala ou move) seguem abertas.
+
 ## §7 — O que fica ABERTO
 
 - **Perguntas ao dono (produto):** (1) o lugar do botão — à frente da barra de ações junto da forma

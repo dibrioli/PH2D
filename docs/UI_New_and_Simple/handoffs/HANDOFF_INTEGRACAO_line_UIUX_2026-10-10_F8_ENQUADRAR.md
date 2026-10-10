@@ -14,6 +14,7 @@
 ## §0 — Para o `CLAUDE.md` §5.1 — JÁ APLICADO
 
 UI/UX: «Último:» → este ficheiro; a frase ganha «enquadrar»; o smoke `…|6..13` → `…|6..14`.
+Depois do relatório, o dono escolheu as teclas (`Ctrl+0`, `F`): commit «as teclas que o dono escolheu».
 
 ## §1 — O que mudou
 
@@ -44,8 +45,10 @@ Tabelas em [`11_enquadrar_tudo.md`](../vetor_nova_ui/11_enquadrar_tudo.md) §2.
   `ViewFlight::arbitrate`: o gesto mais novo ganha.
 - **O pedido resolve-se um quadro depois** — medido nas fotos: a `PH2D_VEC_BONE_MEDIA_SMOKE=1/2`
   pede no quadro em que monta, e as mídias presas a ossos saíam cortadas.
-- **`F`/`Home` e as ~10 cenas de smoke que pedem `Selected` NÃO mudaram** (centrar, saltar): o
-  *Enquadrar seleção* é um pedido novo. Teclas novas: nenhuma (decisão do dono; proposta no §7).
+- **Teclas — decisão do dono (10/10, depois do relatório):** `Ctrl+0` (e o `0` numérico) =
+  *Enquadrar tudo*; `F`/`Home` = *Enquadrar seleção* com zoom (antes só centravam). O duplo-clique na
+  Hierarquia e as ~10 cenas de smoke que pedem `Selected` continuam a centrar e saltar. Mutações das
+  teclas (K1–K3) sangram no gate de texto `the_shell_asks_through_…` (commit `9da9d3a7d`).
 - **Beliscão rápido:** fronteira = `LONG_PRESS_NS` (0,5 s, a do toque de 2 dedos), varrida 100–1200 ms;
   nenhum número novo.
 
@@ -112,15 +115,13 @@ o *Frame All* curado na cena das mídias presas a ossos.
 3. Tem de acontecer: a vista ANDA (não salta) até as cinco formas caberem, com folga em volta; nenhuma
    por baixo da coluna de ferramentas nem da pílula do rodapé.
 4. Errado: alguma forma cortada ou fora da tela, ou a vista a saltar.
-5. Na mesma janela: dê zoom/arraste para longe e use **View ▸ Frame All**; selecione uma forma e use
-   **View ▸ Frame Selection**; `F` continua a só centrar. Num ecrã de toque: um beliscão RÁPIDO
-   (juntar os dedos e levantar) enquadra tudo; o mesmo gesto ao contrário volta à vista de antes;
-   a pinça devagar continua a só dar zoom.
-
+5. Na mesma janela: afaste-se ou dê zoom e carregue `Ctrl+0` (ou **View ▸ Frame All · Ctrl+0**);
+   clique numa forma e carregue `F` — a vista anda até ela, com zoom (**View ▸ Frame Selection · F**
+   faz o mesmo). Num ecrã de toque: um beliscão RÁPIDO (juntar os dedos e levantar) enquadra tudo; o
+   mesmo gesto ao contrário volta à vista de antes; a pinça devagar continua a só dar zoom.
 ## §7 — O que fica ABERTO
 
-- **Teclas (pergunta ao dono):** pelo perfil Illustrator, `Ctrl+0` = *Enquadrar tudo*; e `F` passar
-  a *Enquadrar seleção* (enquadrar com zoom, como Unity/Maya/Blender) em vez de só centrar.
+- ✅ **Teclas, decididas pelo dono (10/10):** `Ctrl+0` = *Enquadrar tudo*, `F` = *Enquadrar seleção*.
 - O botão VIEW da régua continua o ciclo antigo (Selected → Camera → All).
 - Um dedo real ainda não fez o beliscão rápido (provado com a mão sintética, como a F6).
 - O Flip numa receita por editar: as caixas do Flip filtram o escondido pela árvore, não a receita.

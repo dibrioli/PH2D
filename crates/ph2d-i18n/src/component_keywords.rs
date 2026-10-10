@@ -32,6 +32,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.camera_limits.keywords" => "bounds, clamp camera, level edges, stay inside",
         "component.camera_shake.keywords" => "shake, screen shake, tremble, impact, rumble",
         "component.game_camera.keywords" => "camera, view, viewport, look, see, frame the game",
+        // Light
+        "component.bloqueia_luz.keywords" => "shadow, block light, cast shadow, occluder, wall",
+        "component.nao_recebe_luz.keywords" => "unlit, ignore light, always bright, hud, no shading",
         "component.scroll_factor.keywords" => "parallax, depth, background, scroll, layers",
         "component.scroll_limits.keywords" => "parallax bounds, scroll limits, clamp background",
         "component.scroll_motion.keywords" => "drift, scroll, clouds, moving background, conveyor",

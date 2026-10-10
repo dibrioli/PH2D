@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**136 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**139 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -140,6 +140,9 @@
 | 123 |   | [123_ciclo_14_os_oito_abertos.md](123_ciclo_14_os_oito_abertos.md) | — | 123 — CICLO 14: os oito abertos que o ciclo 13 deixou, num ciclo |
 | 124 |   | [124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md](124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md) | — | 124 — CICLO 15: o tecto por nó em TODO criador, e o colisor que respeita o corpo mole |
 | 125 |   | [125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md](125_ciclo_16_a_corda_que_nao_se_atravessa_e_o_collide_que_diz_o_que_fazer.md) | — | 125 — CICLO 16: a corda que não se atravessa, e o `Collide` que diz o que fazer |
+| 126 |   | [126_ciclo_17_o_ritmo.md](126_ciclo_17_o_ritmo.md) | — | 126 — CICLO 17: O RITMO (quando cada um se mexe) |
+| 127 |   | [127_ciclo_18_a_cor_que_o_olho_ve.md](127_ciclo_18_a_cor_que_o_olho_ve.md) | — | 127 — CICLO 18: A COR QUE O OLHO VÊ (misturar cores em OKLab / OKLCH) |
+| 128 |   | [128_ciclo_19_o_jogo_manda.md](128_ciclo_19_o_jogo_manda.md) | — | 128 — CICLO 19: O JOGO MANDA (entradas publicadas, tempo dirigido, crossfade de estados) |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

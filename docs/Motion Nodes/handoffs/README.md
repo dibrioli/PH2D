@@ -8,9 +8,11 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**69 handoffs** · **15** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**90 handoffs** · **16** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
+> ⚠️ **2026-10-10:** as linhas entre 2026-10-05 e o ciclo 19 (ciclos 6–18) ainda não têm linha na tabela; a contagem `90` é a da pasta (`ls *.md | grep -v README | wc -l`).
+>
 > ⚠️ **Reconciliado outra vez em 2026-09-16, e a diferença era SEIS** — as quatro fases da saída da
 > família (11–12/09) e as duas integrações dos ciclos nunca entraram, e a contagem `54` descrevia
 > 07/09. *A doença que esta nota descreve reincidiu no mês seguinte, com o aviso escrito por cima.*
@@ -93,6 +95,9 @@
 | 2026-10-03 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md) | integração | **O BUFFER DE ACUMULAÇÃO** (doc 121 §9.8–§9.12) — substitui as listas das células; iGPU esticadas `1,50 → 0,88 ms` (kill-criterion à 1.ª), tracejado no ecrã, variante enxuta; `shells/desktop` intocada; aberto: memória a 1080p, variante esparsa |
 | 2026-10-05 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-05.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-05.md) | continuação | o prompt da janela do §9.17: mutações do §9.15, os `override`, o app, a emissão por peça |
 | 2026-10-05 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-05.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-05.md) | integração | **O ABERTO DO PASSE DE FORMAS** (doc 121 §9.16–§9.17) — a sonda intercalada (`37` s em vez de `4`–`5` h); os pedaços do §9.15 dobrados por deixar-um-de-fora, mutações `7/7`; a `=127` tracejada `128 → 64` MB de arestas; a emissão tracejada no fundo do modelo um-fio-por-cópia (L/H/P/G32 recusados); `shells/desktop` intocada |
+
+| 2026-10-10 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-10_CICLO_19.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-10_CICLO_19.md) | integração | **CICLO 19 «O JOGO MANDA»** (doc 128) — `value.input`/`value.follow`, `TimeMode::Driven`, a fita das entradas, o componente `Motion Input`, a cena `=134`; ciclos 13–19 por integrar sobre `2a925859d`; ECS `105→106`, `PROJECT_SCHEMA 187→188`; smoke do dono ⏳ |
+| 2026-10-10 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-10_CICLO_20.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-10_CICLO_20.md) | continuação | o prompt do ciclo 20 «O ACABAMENTO» (pós-processamento como nós) |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

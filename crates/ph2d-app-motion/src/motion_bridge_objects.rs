@@ -94,6 +94,12 @@ pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 #[path = "motion_bridge_objects_collider.rs"]
 pub(super) mod colisor;
 
+/// ⭐ A pose que os canais `$at:`/`$pose:` publicam: a de MUNDO, com os pais compostos — um filho
+/// publicado com o `Transform` local respondia onde está em relação ao pai (onda 4, item 6).
+pub(super) fn pose_de_mundo(world: &ph2d_ecs::World, e: Entity) -> Option<Transform> {
+    ph2d_ecs::world_transform(world, e)
+}
+
 /// Publish every **named sprite** into the cook (doc 86 §2).
 ///
 /// ⚠️ **Appends — does NOT clear.** `motion_bridge_shapes::publish` clears the
@@ -152,10 +158,7 @@ pub(super) fn publish(
         // right name holding another question's answer.
         // ⭐ A pose de MUNDO (os pais compostos): o canal diz *onde está*, e um filho publicado com
         // o `Transform` local respondia a pergunta do pai (doc ObjectsAndComponents 01 §14, item 6).
-        if let Some(t) = xf
-            .and_then(|_| ph2d_ecs::world_transform(world, e))
-            .as_ref()
-        {
+        if let Some(t) = xf.and_then(|_| pose_de_mundo(world, e)).as_ref() {
             cook.set_external(
                 ph2d_nodegraph::external::position_of(&name.0),
                 Stream::new(1).with(

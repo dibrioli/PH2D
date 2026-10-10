@@ -50,3 +50,24 @@ fn the_objects_pose_carries_its_rotation_and_scale() {
     assert_ne!(b, c);
     assert_ne!(a, c);
 }
+
+/// ⭐ **O canal diz onde a coisa está no MUNDO** (onda 4, item 6): um filho de um pai deslocado e
+/// rodado publica a pose composta, não a local — é dela que a conversão para o espaço do objecto
+/// Motion parte. (Mutação: `pose_de_mundo` devolver o `Transform` local ⇒ RED.)
+#[test]
+fn a_pose_publicada_de_um_filho_e_a_de_mundo() {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let mut pai = Transform::from_translation(ph2d_core::Vec2::new(10.0, 0.0));
+    pai.rotation = std::f32::consts::FRAC_PI_2;
+    let p = w.spawn(pai).id();
+    let f = w
+        .spawn((
+            Transform::from_translation(ph2d_core::Vec2::new(2.0, 0.0)),
+            ChildOf(p),
+        ))
+        .id();
+    let t = pose_de_mundo(sim.world(), f).expect("tem pose");
+    assert!((t.translation.x - 10.0).abs() < 1e-4 && (t.translation.y - 2.0).abs() < 1e-4);
+    assert!((t.rotation - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
+}

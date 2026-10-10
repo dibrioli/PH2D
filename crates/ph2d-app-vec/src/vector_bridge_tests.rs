@@ -573,3 +573,23 @@ fn the_stroke_opacity_reaches_a_patterned_stroke() {
         "a opacidade nao volta a subir"
     );
 }
+
+/// **A ponte entrega aos três produtores o estilo SEM a ponta da seta do QuickShape** (F7d). O
+/// `dispatch` exige janela e tool — nenhum teste o conduz —, por isso a costura lê-se no FONTE: o
+/// `PenStyle` passa por `Pencil::next_style` (a lei, gateada em `ph2d-vec-edit`) antes de chegar à
+/// caneta, às formas e ao lápis. Sem isto a foto da cena 12 tinha o gelado solto com seta.
+#[test]
+fn the_bridge_gives_new_paths_the_style_without_the_arrows_head() {
+    let src = include_str!("vector_bridge.rs");
+    let gate = src
+        .find("let style = pencil.next_style(style, pen.selected());")
+        .expect("a ponte passa o estilo por next_style");
+    for set in [
+        "pen.set_style(style);",
+        "shape.set_style(style);",
+        "pencil.set_style(style);",
+    ] {
+        let at = src.find(set).unwrap_or_else(|| panic!("{set} sumiu"));
+        assert!(gate < at, "{set} antes do next_style");
+    }
+}

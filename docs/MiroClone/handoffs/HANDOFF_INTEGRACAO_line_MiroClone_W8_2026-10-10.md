@@ -230,3 +230,21 @@ Compilado na worktree depois do último commit de código (`609763094`);
 ```text
     Finished `smoke` profile [optimized] target(s) in 0.20s
 ```
+
+## 12. Smoke do dono — OK (10/10), com um pedido de estudo
+
+*«Smoke OK»* — a cena 10 (`PH2D_BOARD_SMOKE=10`). O dono abriu um quadro feito no excalidraw.com
+(`~/Downloads/bv.excalidraw`: elipse, rectângulo, losango e três setas presas) e comparou-o com o nosso:
+
+- as setas eram RECTAS lá e ficaram CURVAS cá (as três têm `roundness {type:2}` com **dois** pontos — no
+  Excalidraw uma seta «round» de dois pontos é recta);
+- lá a ponta da seta é «inteligente» (encolhe em setas curtas) e a seta pára um pouco ANTES da forma;
+- cá a seta do losango para o rectângulo nasce dentro do losango e acaba dentro do rectângulo.
+
+⚠️ O ficheiro vem de um Excalidraw MAIS NOVO que o oráculo (0.18.1): as ligações são
+`{elementId, mode: "orbit", fixedPoint}` sem `focus`/`gap`. O «EXCALIDRAW» verde da captura do dono NÃO
+está no ficheiro (6 elementos, nenhum `freedraw`) — não é defeito da importação.
+
+Ordem do dono: *«coloque um agente para estudar o excalidraw, descobrir como tornar toda a importação mais
+fiel, além de sugerir melhoramentos inspirados no excalidraw»* — o estudo vai para
+`docs/MiroClone/07_fidelidade_excalidraw.md`, por cima, na mesma branch (a W8 continua por integrar).

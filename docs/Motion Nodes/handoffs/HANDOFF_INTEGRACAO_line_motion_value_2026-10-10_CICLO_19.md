@@ -191,6 +191,18 @@ páginas, gate `every_step_of_the_game_tutorial_is_reachable`) — sobre a cena 
    mexe na barra. Fotos de controlo: `target/prova/c19/fotos/`.
 4. Porta de teste sem clicar: `PH2D_MOTION_INPUTS=vida=0.25:estado=1:time=0.2,0.5,1`.
 
+## §6.1 — Depois do smoke: BUGS do Motion #18 (`4a85d94ba`)
+
+O report do mesmo smoke (*«apertar botões … impreciso e inconsistente»*) foi curado na linha:
+`ph2d-editor-core/src/interaction/press_slop.rs` — UMA folga (`PressSlop`, `PRESS_SLOP_PX` = 4 px
+lógicos) para o grafo, a timeline e o Flip; saem `TIMELINE_DRAG_SLOP_PX` e
+`FLIP_STRIP_DRAG_SLOP_PX` (sem uso fora do núcleo nesta árvore — ⚠️ o integrador confere se outra
+linha os passou a usar); os campos `graph_moved`/`timeline_press`/`timeline_moved` do `WidgetStore`
+viram `graph_slop`/`timeline_slop`, e `set_graph_moved` vira `begin_graph_press` +
+`note_graph_pointer`. No grafo os `Update` só correm depois da folga. E no cartão, na faixa de zoom
+legível-mas-não-agarrável, um toque age na fileira (`tap_on_a_readable_row`). Detalhe e gates:
+[BUGS #18](../BUGS_motion_nodes.md). ⏳ smoke do dono.
+
 ## §7 — O que fica ABERTO
 
 Do doc 128 §7:

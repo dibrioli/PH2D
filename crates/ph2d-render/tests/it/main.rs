@@ -43,6 +43,7 @@ mod layer_compositor_ajustes_gpu;
 mod layer_compositor_gpu;
 mod layer_compositor_papel_gpu;
 mod layers_no_alloc;
+mod lens_gpu;
 mod mask_interaction_regression;
 mod measure_first_stroke_pipelines;
 mod migrate_sprite_v3_to_v4;

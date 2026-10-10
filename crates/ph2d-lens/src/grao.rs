@@ -44,11 +44,15 @@ pub fn pcg3d(v: [u32; 3]) -> [u32; 3] {
     v
 }
 
-fn unif(h: u32) -> f32 {
-    (h >> 8) as f32 * (1.0 / 16_777_216.0)
-}
+/// A média da soma de quatro uniformes de 23 bits (`4 × (2²³ - 1) / 2`).
+const CENTRO: i32 = (1 << 24) - 2;
+/// `√3 / 2²³`: os bits do `√3` com o expoente descido 23.
+const ESCALA: f32 = f32::from_bits(0x345D_B3D7);
 
-/// Uma amostra ~N(0,1) por célula (Irwin–Hall de 4 uniformes, escalada para variância 1).
+/// Uma amostra ~N(0,1) por célula: Irwin–Hall de 4 uniformes de **23 bits** somadas em INTEIRO
+/// (a soma centrada cabe exacta num `f32`), escalada para variância 1 — um arredondamento só, o
+/// da multiplicação, e o MESMO bit nas duas línguas. Medido: com a soma em `f32` a placa errava
+/// 1 ulp (a célula `[-6, -6]` do `lens_gpu`).
 #[must_use]
 pub fn gauss_celula(cel: [i32; 2], semente: u32, canal: u32) -> f32 {
     let a = pcg3d([
@@ -57,7 +61,8 @@ pub fn gauss_celula(cel: [i32; 2], semente: u32, canal: u32) -> f32 {
         semente ^ canal.wrapping_mul(0x9E37_79B9),
     ]);
     let b = pcg3d([a[0], a[1], a[2] ^ 0x85EB_CA6B]);
-    (unif(a[0]) + unif(a[1]) + unif(a[2]) + unif(b[0]) - 2.0) * 3.0_f32.sqrt()
+    let soma = (a[0] >> 9) + (a[1] >> 9) + (a[2] >> 9) + (b[0] >> 9);
+    (soma as i32 - CENTRO) as f32 * ESCALA
 }
 
 /// O ruído no pixel de centro `p`: as quatro células vizinhas, interpoladas com `smoothstep`.

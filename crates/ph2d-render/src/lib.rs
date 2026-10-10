@@ -57,6 +57,8 @@ pub mod instance_buffer;
 /// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod ktx2_format;
+/// A lente da câmera sobre o acumulador do mundo (Motion ciclo 20, doc 129).
+pub mod lens;
 /// GPU layer compositor (Painter W3, Block 2) — real-time sibling of the CPU
 /// reference `ph2d_tool_painter::compositor`. 22 W3C blend modes + groups via a
 /// per-pixel stack machine; texture-array cache + dirty-rect dispatch. See
@@ -130,6 +132,7 @@ pub use impasto_light::{
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
 pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};
+pub use lens::{LensPass, LensUniform};
 pub use layer_compositor::{
     CompositeSpace, GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_DISCRETE_BYTES,
     LAYER_CACHE_BUDGET_SHARED_BYTES, LayerCompositeError, LayerCompositor, LayerMask, LayerOp,

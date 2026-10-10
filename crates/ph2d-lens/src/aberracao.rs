@@ -24,15 +24,22 @@ impl Aberracao {
     }
 }
 
+/// O deslocamento `d` do modo linear, em px (o vermelho lê em `p - d`, o azul em `p + d`) — por
+/// quadro; o passe da placa recebe-o como uniform.
+#[must_use]
+pub fn deslocamento(meia_diag: f32, a: &Aberracao) -> [f32; 2] {
+    let ang = a.angle * std::f32::consts::TAU;
+    [
+        a.amount * meia_diag * ang.cos(),
+        a.amount * meia_diag * ang.sin(),
+    ]
+}
+
 /// As posições (R, G, B) onde o pixel de centro `p` lê a fonte.
 #[must_use]
 pub fn posicoes(p: [f32; 2], centro: [f32; 2], meia_diag: f32, a: &Aberracao) -> [[f32; 2]; 3] {
     if a.linear {
-        let ang = a.angle * std::f32::consts::TAU;
-        let d = [
-            a.amount * meia_diag * ang.cos(),
-            a.amount * meia_diag * ang.sin(),
-        ];
+        let d = deslocamento(meia_diag, a);
         return [[p[0] - d[0], p[1] - d[1]], p, [p[0] + d[0], p[1] + d[1]]];
     }
     let em = |s: f32| {

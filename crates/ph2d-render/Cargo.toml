@@ -34,6 +34,10 @@ bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 # `SpriteImage::new` takes `Vec<SrgbRgba>` instead of `Vec<u8>`.
 ph2d-bloom = { path = "../ph2d-bloom" }
 ph2d-color = { path = "../ph2d-color" }
+# A lente (doc 129 do Motion): as leis na CPU que o `lens.wgsl` repete, e a biblioteca WGSL do
+# `ph2d-ease` que o OKLab da saturação pede (`pe_cbrt`).
+ph2d-lens = { path = "../ph2d-lens" }
+ph2d-ease = { path = "../ph2d-ease" }
 # Vello renderer for the M11 widget paint pass. ⛔ TETO: o vello 0.10 pede
 # `wgpu = "^29.0.3"`, e e' ELE que fixa toda a cadeia de GPU em 29.0.4 — o
 # wgpu 30 existe e nao e' alcancavel (forcar da' DUAS copias, e o `Device` de

@@ -112,7 +112,7 @@ textura sobre aquele alvo» — a metade B que o doc 94 §2 mediu como ausente.
 | wave | o quê | estado |
 |---|---|---|
 | W0 | os oráculos corridos (fixtures) · a crate `ph2d-lens` com as leis na CPU e os gates contra as fixtures | ✅ 14 gates verdes |
-| W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | — |
+| W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | ✅ §5.2 |
 | W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | — |
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | — |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
@@ -146,12 +146,44 @@ O que os oráculos ensinaram (e o que NÃO era a lei):
   neutro = identidade EXACTA, quente puxa para o vermelho, magenta tira verde), a exposição e o
   contraste (o cinzento médio fica).
 
+### §5.2 — A placa contra a CPU (W1, 10/10)
+
+`LensPass` (`ph2d-render/src/lens.rs` + `shaders/lens_lib.wgsl`/`lens.wgsl`) contra
+`ph2d_lens::aplica_cpu`, num sub-rect `96×64` em `(20, 9)` de um alvo `Bgra8Unorm` `128×88` (o
+acumulador do mundo), cena do oráculo; `tests/it/lens_gpu.rs` (`#[ignore]`, `PH2D_GPU=1`):
+
+| caso | desvio máximo (níveis de 8 bits) | canais que diferem (de 18 432) |
+|---|---:|---:|
+| aberração radial · linear | 1 · 1 | 172 · 207 |
+| vinheta escura · clara quase retângulo | 1 · 1 | 516 · 502 |
+| grade sem LUT · só a LUT (9³, `mix 0,7`) | 1 · 1 | 187 · 450 |
+| grão mono · colorido | 1 · 1 | 447 · 496 |
+| os quatro juntos, com LUT | 1 | 529 |
+
+Fora do sub-rect: zero bytes mudam (todo caso). Lente neutra: `aplica` devolve `false` e o alvo é
+byte-idêntico, mesmo com LUT carregada e `lut_mix = 0`. O hash do grão (`pcg3d`) e a gaussiana de
+célula: **o mesmo bit** em 256 células (sonda de compute sobre a mesma biblioteca WGSL).
+
+Desenho que a W1 decidiu (e porquê):
+- a fonte lê-se em bytes CRUS (`textureLoad`) e **des-pré-multiplica antes de descodificar** — o
+  acumulador guarda sRGB pré-multiplicado, e a vista sRGB do hardware descodificaria o valor ainda
+  multiplicado (errado com `α < 1`); a descodificação à mão é a fórmula da `ph2d-color`;
+- o que é por QUADRO (balanço, geometria da vinheta, deslocamento/escalas da aberração, semente,
+  `2^exposure`, `2^contraste`) sai das funções da `ph2d-lens` e viaja como uniform — o deslocamento
+  linear ganhou a porta `aberracao::deslocamento` para não ser reconstruído por subtração;
+- a LUT é uma textura 3D `Rgba32Float` (os valores exactos da CPU), lida por `textureLoad`;
+- o uniform tem o mesmo tamanho e a mesma ordem de campos nos dois lados (gate pelo `naga`).
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo
   ImageMagick põem o centro em sítios diferentes (índice × contínuo), e o leitor de PNG do ffmpeg
   desvia `0,0046`. Antes de gravar uma fixture, prove o oráculo num caso de resposta conhecida (os
   cantos da LUT têm de sair exactos).
+- **«O mesmo bit nas duas línguas» exige UM arredondamento só**: a gaussiana do grão somava quatro
+  uniformes em `f32` e a placa errou 1 ulp na célula `[-6, -6]` (o compilador da placa pode fundir
+  ou reordenar). Cura: uniformes de 23 bits somadas em INTEIRO (a soma centrada cabe exacta num
+  `f32`), e a única operação de vírgula flutuante é a multiplicação final.
 - **Uma aproximação que acerta no caso fácil reprova no difícil**: `Φ(d/σ)` errava `0,03` com a
   borda fina e `0,23` com a larga. Varra as configurações ANTES de escolher a lei, nunca uma só.
 

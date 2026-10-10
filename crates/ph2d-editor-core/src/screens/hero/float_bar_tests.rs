@@ -120,10 +120,20 @@ fn the_frame_margin_clears_both_floating_bars() {
     let m = frame_margin();
     let a = area();
     let col = panel_of(column_rects(a, &[3, 2])).unwrap();
-    assert!(col.x + col.w - a.x <= m, "a coluna ({}) passa da margem {m}", col.x + col.w - a.x);
+    assert!(
+        col.x + col.w - a.x <= m,
+        "a coluna ({}) passa da margem {m}",
+        col.x + col.w - a.x
+    );
     let sel = Rect::new(a.x + m, a.y + m, 200.0, 120.0);
     let strip = panel_of(strip_rects(a, sel, &[4, 2], button_px())).unwrap();
-    assert!(strip.y >= a.y, "a ④ sai da área por cima: {strip:?}");
-    assert!(strip.y + strip.h <= sel.y, "a ④ não cabe por cima da seleção: {strip:?}");
+    assert!(
+        strip.y - a.y >= Spacing::Xs.px(),
+        "a ④ cola na borda de cima (sem o ar `Xs`): {strip:?}"
+    );
+    assert!(
+        strip.y + strip.h <= sel.y,
+        "a ④ não cabe por cima da seleção: {strip:?}"
+    );
     assert!((24.0..=64.0).contains(&m), "{m} fora da faixa dos oráculos");
 }

@@ -245,6 +245,32 @@ impl ViewFlight {
         self.leg.is_some()
     }
 
+    /// Pedido mas ainda sem um tique — mais NOVO do que qualquer gesto já em curso.
+    #[must_use]
+    pub fn fresh(&self) -> bool {
+        self.leg.is_some_and(|l| l.from.is_none())
+    }
+
+    /// Larga a câmera (um gesto mais novo tomou-a).
+    pub fn abandon(&mut self) {
+        self.leg = None;
+        self.published = None;
+    }
+
+    /// ⭐ **A roda × o voo: quem chegou por ÚLTIMO ganha.** Um voo ainda sem tique é mais novo do que
+    /// a roda (devolve `true`: a roda larga o destino dela); uma roda com destino durante um voo já a
+    /// andar é mais nova (o voo larga) — o 1.º tique da mola da roda pode não mexer nada, e sem isto
+    /// o voo escrevia por cima e o entalhe perdia-se (apanhado pelo gate da shell, 10/10).
+    pub fn arbitrate(&mut self, wheel_in_flight: bool) -> bool {
+        if self.fresh() {
+            return true;
+        }
+        if wheel_in_flight {
+            self.abandon();
+        }
+        false
+    }
+
     /// **O tique do quadro.** Devolve a vista a publicar, ou `None` quando a câmera não é do voo.
     pub fn tick(&mut self, live: View, mut step: impl FnMut(f32) -> f32) -> Option<View> {
         let mut leg = self.leg?;

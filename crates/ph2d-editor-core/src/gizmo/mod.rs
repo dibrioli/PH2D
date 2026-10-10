@@ -42,6 +42,9 @@ pub mod sprite_box;
 pub mod transform;
 
 #[cfg(test)]
+#[path = "aabb_tests.rs"]
+mod aabb_tests;
+#[cfg(test)]
 mod tests;
 
 pub use camera::{GizmoCamera, GizmoModifiers, GizmoSnap};

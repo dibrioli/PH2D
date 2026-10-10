@@ -11,6 +11,22 @@ use ph2d_render::camera_frame::{self, Area, ViewFlight};
 use ph2d_render::{Camera2d, WorldBbox};
 use ph2d_vec_scene::{VecScene, VecXforms};
 
+/// ⭐ **A vista entre quadros**: o voo, e o pedido ADIADO — um pedido resolve-se no quadro SEGUINTE
+/// ao que o fez, quando o que nasceu nesse quadro (uma cena montada e enquadrada de uma vez) já foi
+/// desenhado e entra na caixa (medido: as mídias presas a ossos saíam cortadas).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ViewState {
+    pub flight: ViewFlight,
+    held: Option<ViewFocusKind>,
+}
+
+impl ViewState {
+    /// Guarda o pedido deste quadro e devolve o do anterior.
+    pub fn defer(&mut self, now: Option<ViewFocusKind>) -> Option<ViewFocusKind> {
+        std::mem::replace(&mut self.held, now)
+    }
+}
+
 /// O que o quadro tem à mão para responder a um pedido.
 pub struct Sources<'a> {
     pub sim: &'a SimWorld,
@@ -26,7 +42,7 @@ pub struct Sources<'a> {
     /// A seleção: a primária e as extras.
     pub selection: Vec<u64>,
     /// A área onde o conteúdo pode ficar, a janela da câmera e a margem — px físicos.
-    pub area: Area,
+    pub area: ph2d_editor_core::zones::Rect,
     pub window: WindowSize,
     pub margin: f32,
 }
@@ -53,7 +69,8 @@ pub fn resolve(
         window,
         margin,
     } = src;
-    let target = |b| camera_frame::frame(b, area, window, margin);
+    let (x, y, w, h) = (area.x, area.y, area.w, area.h);
+    let target = |b| camera_frame::frame(b, Area { x, y, w, h }, window, margin);
     let mut selected = || {
         let mut acc = None;
         for bits in &selection {

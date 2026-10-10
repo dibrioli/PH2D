@@ -411,3 +411,65 @@ fn the_reverse_quick_pinch_returns_to_the_exact_view_only_while_untouched() {
     g.gesture_starts(cam);
     assert!(!g.go_back(mola.v));
 }
+
+/// `fresh` = pedido e ainda sem tique (o mais novo dos gestos); `abandon` larga a câmera de vez.
+#[test]
+fn a_fresh_flight_is_newer_than_any_gesture_and_abandon_lets_go() {
+    let a = View {
+        center: [0.0, 0.0],
+        height_world: 10.0,
+    };
+    let b = View {
+        center: [7.0, 3.0],
+        height_world: 2.5,
+    };
+    let mut f = ViewFlight::default();
+    assert!(!f.fresh());
+    f.go(b, None);
+    assert!(f.fresh() && f.flying());
+    let mut mola = Mola {
+        v: None,
+        passo: 0.25,
+        chamadas: Vec::new(),
+    };
+    let cam = f.tick(a, |g| mola.step(g)).unwrap();
+    assert!(!f.fresh() && f.flying());
+    f.abandon();
+    assert!(!f.flying());
+    assert_eq!(f.tick(cam, |g| mola.step(g)), None);
+}
+
+/// ⭐ **A roda × o voo: quem chegou por último ganha.** Um voo pedido ainda sem tique manda a roda
+/// largar; uma roda com destino durante um voo já a andar larga o voo; sem roda, nada muda.
+#[test]
+fn the_newest_of_the_wheel_and_the_flight_wins() {
+    let a = View {
+        center: [0.0, 0.0],
+        height_world: 10.0,
+    };
+    let b = View {
+        center: [7.0, 3.0],
+        height_world: 2.5,
+    };
+    let mut mola = Mola {
+        v: None,
+        passo: 0.25,
+        chamadas: Vec::new(),
+    };
+    let mut f = ViewFlight::default();
+    f.go(b, None);
+    assert!(
+        f.arbitrate(true),
+        "o enquadramento pedido depois da roda não a largou"
+    );
+    assert!(f.flying());
+    f.tick(a, |g| mola.step(g)).unwrap();
+    assert!(!f.arbitrate(false));
+    assert!(f.flying(), "sem roda o voo largou");
+    assert!(!f.arbitrate(true));
+    assert!(!f.flying(), "a roda a meio do voo não ganhou");
+    assert!(
+        !ViewFlight::default().arbitrate(true),
+        "sem voo a roda é livre"
+    );
+}

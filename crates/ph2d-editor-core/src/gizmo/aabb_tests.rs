@@ -16,7 +16,7 @@ fn rodada(rotation: f32) -> GizmoView {
         cursor_screen: None,
         pivot_world: [3.0, 3.0],
         pivot_tool_active: false,
-        model: crate::gizmo::MODEL_IDENTITY,
+        model: MODEL_IDENTITY,
     }
 }
 
@@ -26,7 +26,10 @@ fn the_world_box_of_a_turned_gizmo_covers_its_turned_corners() {
     // A 90° a caixa 4×2 vira 2×4 à volta do centro (3, 3).
     let (lo, hi) = rodada(std::f32::consts::FRAC_PI_2).world_aabb();
     for (a, b) in [(lo, [2.0, 1.0]), (hi, [4.0, 5.0])] {
-        assert!((a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5, "{a:?} ≠ {b:?}");
+        assert!(
+            (a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5,
+            "{a:?} ≠ {b:?}"
+        );
     }
     // A 45° cada meia-extensão é (2 + 1)·√½.
     let (lo, hi) = rodada(std::f32::consts::FRAC_PI_4).world_aabb();

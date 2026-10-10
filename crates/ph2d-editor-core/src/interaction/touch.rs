@@ -110,7 +110,9 @@ pub enum TouchOut {
     /// ⭐ O **beliscão RÁPIDO** (F8, o *Quick-Pinch* do Procreate): uma navegação que acabou antes de
     /// um toque-e-segurar e cujo afastamento mudou mais do que a folga e mais do que o ponto médio
     /// andou. `closing` = os dedos juntaram-se (*enquadrar tudo*); afastaram-se = a vista anterior.
-    QuickPinch { closing: bool },
+    QuickPinch {
+        closing: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]

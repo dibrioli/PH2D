@@ -119,8 +119,7 @@ fn the_view_menu_rows_ask_the_shell_to_frame() {
         assert!(hero.apply_event(WidgetEvent::Click(id)));
         let got: Vec<_> = hero.bus.drain().collect();
         assert!(
-            got.iter()
-                .any(|a| *a == EditorAction::SetViewFocus { kind }),
+            got.contains(&EditorAction::SetViewFocus { kind }),
             "{kind:?}: {got:?}"
         );
     }

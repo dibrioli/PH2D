@@ -150,7 +150,7 @@ pub(crate) fn build_initial_state(
         present,
         camera,
         canvas_zoom: crate::canvas_zoom::CanvasZoom::default(),
-        view_flight: ph2d_render::camera_frame::ViewFlight::default(),
+        view: ph2d_app_vec::view_request::ViewState::default(),
         asset_db,
         logical_texture_map,
         atlas_is_real,

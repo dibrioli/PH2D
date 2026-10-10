@@ -243,9 +243,6 @@ pub(crate) struct App {
     /// widgets (Toggle, RadioGroup, ColorSwatch).
     pub(crate) dragging: Option<NodeId>,
     pub(crate) title_dirty: bool,
-    /// F8: o pedido de enquadramento do quadro ANTERIOR — resolve-se um quadro depois, quando o que
-    /// nasceu no quadro do pedido (uma cena montada) já foi desenhado e entra na caixa.
-    pub(crate) view_request: Option<ph2d_editor_core::ViewFocusKind>,
     /// One-shot latch for the `PH2D_IMPASTO_SMOKE` canvas (spawned on the first frame the atlas
     /// plumbing is in scope, not at init — where `atlas_asset_map` does not exist yet).
     pub(crate) impasto_smoke_done: bool,

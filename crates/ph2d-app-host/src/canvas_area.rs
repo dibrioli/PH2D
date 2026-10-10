@@ -38,3 +38,7 @@ pub fn visible(hero: &ph2d_editor_core::screens::hero::HeroScreen, viewport: Rec
         viewport
     }
 }
+
+#[cfg(test)]
+#[path = "canvas_area_tests.rs"]
+mod tests;

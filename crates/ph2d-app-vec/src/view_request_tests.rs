@@ -23,6 +23,8 @@ const AREA: Area = Area {
     w: 1000.0,
     h: 900.0,
 };
+const RECT: ph2d_editor_core::zones::Rect =
+    ph2d_editor_core::zones::Rect::new(300.0, 50.0, 1000.0, 900.0);
 
 /// Corre o pedido e o voo até assentar (a mola de brincar chega num passo), como o quadro faz.
 fn pede(
@@ -45,7 +47,7 @@ fn pede(
             others: Vec::new(),
             other_box: &mut |_| None,
             selection: vec![sel],
-            area: AREA,
+            area: RECT,
             window: JANELA,
             margin: 44.0,
         },
@@ -115,4 +117,19 @@ fn an_empty_scene_returns_to_the_default_view() {
         Some("shell.view.view_all_empty_scene")
     );
     assert_eq!(cam.view(), Camera2d::default().view());
+}
+
+/// O pedido resolve-se UM quadro depois de feito — nem antes (o que nasceu nesse quadro ainda não foi
+/// desenhado), nem perdido (um quadro sem pedido entrega o anterior).
+#[test]
+fn a_request_is_answered_one_frame_later() {
+    let mut v = ViewState::default();
+    assert_eq!(v.defer(Some(ViewFocusKind::All)), None);
+    assert_eq!(v.defer(None), Some(ViewFocusKind::All));
+    assert_eq!(v.defer(None), None);
+    assert_eq!(v.defer(Some(ViewFocusKind::Previous)), None);
+    assert_eq!(
+        v.defer(Some(ViewFocusKind::FrameSelected)),
+        Some(ViewFocusKind::Previous)
+    );
 }

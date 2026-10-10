@@ -365,7 +365,10 @@ fn rapido(out: &[TouchOut]) -> Option<bool> {
 fn a_quick_pinch_asks_for_the_frame_and_a_slow_one_only_zooms() {
     let r = mao(200, 200.0, 60.0, [0.0, 0.0]);
     assert_eq!(rapido(&r), Some(true), "{r:?}");
-    assert!(r.iter().any(|o| matches!(o, TouchOut::Zoom { .. })), "a pinça viva sumiu");
+    assert!(
+        r.iter().any(|o| matches!(o, TouchOut::Zoom { .. })),
+        "a pinça viva sumiu"
+    );
     assert!(!r.contains(&TouchOut::Undo));
     assert_eq!(rapido(&mao(200, 60.0, 200.0, [0.0, 0.0])), Some(false));
     // A pinça da cena 11 (F6): 1 s — só zoom.
@@ -378,8 +381,16 @@ fn a_quick_pinch_asks_for_the_frame_and_a_slow_one_only_zooms() {
 /// afastamento mudou), uma pinça rápida que não passou da folga, e um contacto cancelado.
 #[test]
 fn a_quick_pan_or_a_pinch_inside_the_slop_is_not_a_quick_pinch() {
-    assert_eq!(rapido(&mao(200, 100.0, 140.0, [200.0, 0.0])), None, "pan rápido");
-    assert_eq!(rapido(&mao(200, 100.0, 115.0, [0.0, 0.0])), None, "dentro da folga");
+    assert_eq!(
+        rapido(&mao(200, 100.0, 140.0, [200.0, 0.0])),
+        None,
+        "pan rápido"
+    );
+    assert_eq!(
+        rapido(&mao(200, 100.0, 115.0, [0.0, 0.0])),
+        None,
+        "dentro da folga"
+    );
     let mut t = g();
     t.feed(1, TouchPhase::Start, [300.0, 300.0], 0, None);
     t.feed(2, TouchPhase::Start, [500.0, 300.0], MS, None);
@@ -407,4 +418,28 @@ fn the_quick_slow_border_is_the_long_press() {
         assert_eq!(q, (dur + 8) * MS < LONG_PRESS_NS, "{dur} ms: {tabela:?}");
     }
     assert!(tabela.iter().any(|&(_, q)| q) && tabela.iter().any(|&(_, q)| !q));
+}
+
+/// O último afastamento conta com os dedos ONDE LEVANTARAM, mesmo sem um `tick` entre o último
+/// movimento e o levantar (num dedo real os dois chegam no mesmo quadro); e um beliscão acabado não
+/// deixa resto: o toque de 2 dedos seguinte desfaz e só desfaz.
+#[test]
+fn the_quick_pinch_reads_where_the_fingers_lifted_and_leaves_nothing_behind() {
+    let mut t = g();
+    t.feed(1, TouchPhase::Start, [300.0, 300.0], 0, None);
+    t.feed(2, TouchPhase::Start, [500.0, 300.0], MS, None);
+    t.feed(1, TouchPhase::Move, [320.0, 300.0], 16 * MS, None);
+    assert_eq!(t.tick(16 * MS), vec![TouchOut::NavBegin([410.0, 300.0])]);
+    // O fecho inteiro e o levantar no MESMO quadro.
+    t.feed(1, TouchPhase::Move, [390.0, 300.0], 30 * MS, None);
+    t.feed(2, TouchPhase::Move, [430.0, 300.0], 30 * MS, None);
+    let mut out = t.feed(1, TouchPhase::End, [390.0, 300.0], 32 * MS, None);
+    out.extend(t.feed(2, TouchPhase::End, [430.0, 300.0], 34 * MS, None));
+    assert_eq!(rapido(&out), Some(true), "{out:?}");
+    // A seguir, um toque de 2 dedos parado.
+    t.feed(1, TouchPhase::Start, [300.0, 300.0], 100 * MS, None);
+    t.feed(2, TouchPhase::Start, [500.0, 300.0], 101 * MS, None);
+    let mut out = t.feed(1, TouchPhase::End, [300.0, 300.0], 150 * MS, None);
+    out.extend(t.feed(2, TouchPhase::End, [500.0, 300.0], 151 * MS, None));
+    assert_eq!(out, vec![TouchOut::Undo]);
 }

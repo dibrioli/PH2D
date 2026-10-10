@@ -152,6 +152,25 @@ impl CanvasZoom {
     }
 }
 
+/// ⭐ **A câmera do quadro** — a roda e o voo de um enquadramento (F8), e o gesto mais NOVO ganha.
+pub(crate) fn publish(
+    zoom: &mut CanvasZoom,
+    flight: &mut ph2d_render::camera_frame::ViewFlight,
+    camera: &mut Camera2d,
+    motion: &mut UiMotion,
+) {
+    if flight.arbitrate(zoom.target.is_some()) {
+        zoom.target = None;
+    }
+    if let Some(next) = zoom.tick(camera.height_world, motion) {
+        camera.height_world = next;
+    }
+    let step = |g| motion.animate(VIEW_FLIGHT, g, Role::Viewpoint);
+    if let Some(v) = flight.tick(camera.view(), step) {
+        camera.set_view(v);
+    }
+}
+
 #[cfg(test)]
 #[path = "canvas_zoom_tests.rs"]
 mod tests;

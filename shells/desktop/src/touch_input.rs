@@ -102,7 +102,7 @@ impl crate::App {
                 TouchOut::NavBegin(p) => {
                     // F8: a memória do beliscão ao contrário lê a vista (nunca a escreve).
                     if let Some(g) = self.gfx.as_mut() {
-                        g.view_flight.gesture_starts(g.camera.view());
+                        g.view.flight.gesture_starts(g.camera.view());
                     }
                     self.on_cursor_moved(at(p));
                     self.on_mouse_input(ElementState::Pressed, MouseButton::Middle);

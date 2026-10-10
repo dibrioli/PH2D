@@ -145,7 +145,7 @@ impl Editor {
         };
         match (id, dot, origin) {
             (Some(id), _, _) => {
-                history.record(vec![BoardOp::Delete(id)]);
+                history.record(vec![BoardOp::Delete(id)], doc);
                 self.selection = BTreeSet::from([id]);
                 self.tool = crate::Tool::Select;
             }
@@ -279,7 +279,7 @@ impl Editor {
         }
         // Um ponto criado no meio e largado logo na vizinha não muda nada: não é passo.
         if doc.get(id).is_some_and(|now| now.kind != original.kind) {
-            history.record(vec![BoardOp::Put(original)]);
+            history.record(vec![BoardOp::Put(original)], doc);
         }
     }
 
@@ -459,7 +459,7 @@ impl Editor {
         let _ = BoardOp::Put(next).apply(doc);
         let w = Element::new_connector(doc.mint_id(), doc.z_on_top(), wire);
         let _ = BoardOp::Put(w.clone()).apply(doc);
-        history.record(vec![BoardOp::Delete(w.id), BoardOp::Delete(id)]);
+        history.record(vec![BoardOp::Delete(w.id), BoardOp::Delete(id)], doc);
         self.selection = BTreeSet::from([id]);
         true
     }

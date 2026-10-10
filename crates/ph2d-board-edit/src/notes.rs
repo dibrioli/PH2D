@@ -224,7 +224,7 @@ impl Editor {
         }
         let nid = next.id;
         live(doc, next);
-        history.record(vec![BoardOp::Delete(nid)]);
+        history.record(vec![BoardOp::Delete(nid)], doc);
         self.open_text(doc, nid)
     }
 
@@ -276,7 +276,7 @@ impl Editor {
         let cells: Vec<Vec<String>> = vec![lines];
         let made = self.place_cells(doc, None, &cells, [draft.x, draft.y]);
         self.unfitted.extend(made.iter().copied());
-        self.finish_placed(history, made);
+        self.finish_placed(doc, history, made);
     }
 
     /// ⭐ **Colar uma planilha**: uma nota por célula com texto, na grelha das células, centrada em
@@ -301,7 +301,7 @@ impl Editor {
         let w = cols as f64 * (bx[2] + gap) - gap;
         let h = cells.len() as f64 * (bx[3] + gap) - gap;
         let made = self.place_cells(doc, Some(ts), &cells, [c[0] - w / 2.0, c[1] - h / 2.0]);
-        self.finish_placed(history, made)
+        self.finish_placed(doc, history, made)
     }
 
     /// Notas novas para as células com texto de `cells` (linha `r`, coluna `k` da grelha) a partir
@@ -342,11 +342,16 @@ impl Editor {
         made
     }
 
-    fn finish_placed(&mut self, history: &mut History, made: Vec<ElementId>) -> bool {
+    fn finish_placed(
+        &mut self,
+        doc: &BoardDoc,
+        history: &mut History,
+        made: Vec<ElementId>,
+    ) -> bool {
         if made.is_empty() {
             return false;
         }
-        history.record(made.iter().rev().map(|id| BoardOp::Delete(*id)).collect());
+        history.record(made.iter().rev().map(|id| BoardOp::Delete(*id)).collect(), doc);
         self.selection = made.into_iter().collect();
         true
     }

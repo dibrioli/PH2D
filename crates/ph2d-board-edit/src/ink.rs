@@ -181,8 +181,8 @@ impl Editor {
             return false;
         }
         match self.ink.take() {
-            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)]),
-            Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g)),
+            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)], doc),
+            Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g), doc),
             _ => {}
         }
         true
@@ -192,8 +192,8 @@ impl Editor {
     /// num passo de desfazer. `false` = não havia.
     pub(crate) fn ink_finish(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
         match self.ink.take() {
-            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)]),
-            Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g)),
+            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)], doc),
+            Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g), doc),
             Some(InkGesture::Laser) => {}
             None => return false,
         }

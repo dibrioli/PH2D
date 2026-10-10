@@ -211,7 +211,7 @@ impl Editor {
             return;
         }
         if doc.get(e.id).is_some_and(|now| *now != e.original) {
-            history.record(vec![BoardOp::Put(e.original)]);
+            history.record(vec![BoardOp::Put(e.original)], doc);
         }
         let _ = doc;
     }

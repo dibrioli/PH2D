@@ -244,7 +244,7 @@ impl Editor {
                 let _ = op.apply(doc);
             }
             settle_live(doc, lead);
-            history.record(copies.iter().rev().map(|c| BoardOp::Delete(*c)).collect());
+            history.record(copies.iter().rev().map(|c| BoardOp::Delete(*c)).collect(), doc);
         }
     }
 }

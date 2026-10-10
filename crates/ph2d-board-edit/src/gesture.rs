@@ -583,11 +583,11 @@ impl Editor {
         match g {
             Gesture::Text | Gesture::Marquee { .. } => {}
             Gesture::Peel { stack, .. } => self.selection = BTreeSet::from([stack.id]),
-            Gesture::Grid { originals, .. } => history.record(undo_ops(doc, &originals)),
+            Gesture::Grid { originals, .. } => history.record(undo_ops(doc, &originals), doc),
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
             g @ Gesture::Bend { .. } => self.bend_up(doc, history, g, p),
             Gesture::EndDrag { original, .. } => {
-                history.record(undo_ops(doc, std::slice::from_ref(&original)));
+                history.record(undo_ops(doc, std::slice::from_ref(&original)), doc);
             }
             Gesture::Move {
                 originals,
@@ -617,9 +617,9 @@ impl Editor {
                 }
                 crate::mindmap::settle_moved(doc, moved.iter().copied());
                 if copies.is_empty() {
-                    history.record(undo_ops(doc, &originals));
+                    history.record(undo_ops(doc, &originals), doc);
                 } else {
-                    history.record(copies.into_iter().rev().map(BoardOp::Delete).collect());
+                    history.record(copies.into_iter().rev().map(BoardOp::Delete).collect(), doc);
                 }
             }
             Gesture::Resize { originals, .. } => {
@@ -630,11 +630,11 @@ impl Editor {
                     crate::organize::settle_live(doc, f.id, &mut undo);
                 }
                 crate::mindmap::settle_moved(doc, originals.iter().map(|o| o.id));
-                history.record(undo);
+                history.record(undo, doc);
             }
             Gesture::Rotate { originals, .. } => {
                 crate::mindmap::settle_moved(doc, originals.iter().map(|o| o.id));
-                history.record(undo_ops(doc, &originals));
+                history.record(undo_ops(doc, &originals), doc);
             }
             Gesture::Create {
                 kind,
@@ -664,7 +664,7 @@ impl Editor {
                     // O frame desenhado adopta o que lhe ficou inteiro dentro (oráculo A1).
                     crate::organize::settle_live(doc, id, &mut undo);
                 }
-                history.record(undo);
+                history.record(undo, doc);
                 self.selection = BTreeSet::from([id]);
                 self.tool = Tool::Select;
             }

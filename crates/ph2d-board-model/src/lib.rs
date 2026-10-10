@@ -12,6 +12,7 @@ mod camera;
 mod connector;
 mod element;
 mod facilitate;
+mod fields;
 mod frac;
 mod history;
 mod ink;
@@ -34,6 +35,7 @@ pub use facilitate::{
     VOTE_BADGE_OUT, VOTE_PLUS, digits as count_digits, mark_side, stamp_chips, vote_badge,
     vote_plus,
 };
+pub use fields::Field;
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};
 pub use ink::{Ink, Pen};

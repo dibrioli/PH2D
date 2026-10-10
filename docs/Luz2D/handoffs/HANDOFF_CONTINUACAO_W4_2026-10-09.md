@@ -226,3 +226,40 @@ Sonda `medida_luz2d_w4::medida_borda_reta` (ignorada): a borda de CIMA da sombra
    o rebote. Alvo medido nesta sonda: **ondulação ≤ 0,2 px rms** e penumbra = geometria (`smoke_cenas_w4`)
    em QUALQUER nível, com o custo por lâmpada na rodada. Cura junto o ABERTO 2 (lâmpada pequena) e 3 (some
    no zoom).
+
+## Smoke do dono (10/10, 3.ª volta) — «pontilhado como Cycles 1 sample», «Size afeta qualidade», «o gizmo deve ter prioridade»
+
+**Gizmo:** `gizmo::glifos` é a ÚNICA conta do ícone (desenho e clique); `gizmo::pick_at` + a shell pergunta-lhe
+PRIMEIRO no `pick_objects_at` — gate da shell: vazio e lâmpada no mesmo ponto → só a lâmpada (vermelho sem a
+prioridade: `[vazio, lâmpada]`). `961b55387`.
+
+**C3 — a luz DIRETA das lâmpadas** (`bf0a0dddd`; o W5 nº 1 trazido para cá pelo report). `c3_direta.wgsl`,
+concatenado depois da C2 e chamado na c0: «cone livre» (fora da penumbra, visibilidade 1 exata) e, na penumbra,
+9 raios FIXOS + 5 bissecções da borda (determinístico — o pontilhado era o sorteio de uma 1.ª versão com 32
+raios). As `LAMPADAS_DIRETAS_MAX = 8` mais fortes saem da captura e são opacas ANALITICAMENTE na marcha
+(`primeira_lampada`). Medido (RTX 5060 Ti, `smoke`, 1920×1080):
+
+| régua | antes da C3 | com a C3 |
+|---|---|---|
+| ondulação da borda (Low · Medium · High) | 4,08 · 1,19 · 0,77 px | **0,46 · 0,17 · 0,10 px** (gate `a_borda_da_sombra_e_reta_na_placa`) |
+| penumbra da cena 4 na placa, lâmpada 0,15 m (geometria 0,328) | 0,945 m | **0,330 m** em qualquer nível (gate a 5 %) |
+| G3 penumbra · Alto / Baixo | 0,048 / 0,076 | 0,018 / 0,064 |
+| faísca (lâmpada de 2 px) | só no Alto | acende em todo degrau (0,033 · 0,058 · 0,093) |
+| ponto (`tamanho 0`) | não acendia | `I/r` a 0,09 % |
+| custo por lâmpada (Low · Medium) | — | 0,42 · 1,64 ms (com o teste analítico na marcha); 1ª tentativa com o disco na captura: 1,1 ms (o cone falhava no próprio disco) |
+| G4 (1 → 10 000 luzes) | 1,21 % | 0,93 % |
+
+Recusas medidas: 32 raios sorteados (o pontilhado; e 2,3× o custo); a lâmpada direta como disco opaco na captura
+(cone falha em todo ponto: 1,1 ms/lâmpada); a lâmpada fora da captura SEM o teste analítico (o céu atravessa-a:
+G3 céu e vidro 0,0399 × 0,0126). Leis reescritas (não afrouxadas) nos gates: o ponto, a faísca e a lâmpada pequena
+ACENDEM e não são «fora»; o que passa do teto volta a ser relatado; o controlo do anel usa um emissor POLÍGONO;
+duas tolerâncias de captura seguem o medido (fenda 0,020; vetor 0,006 — o caminho direto é nítido e vê a
+diferença entre as duas capturas). Mutação: 9/10 sangraram de 1.ª; a D7 (o cone não ver OUTRA lâmpada) ganhou o
+gate `uma_lampada_direta_faz_sombra_na_luz_de_outra` e sangra (39,5 × 0,0005). Portão: 16 898/16 898 ✓.
+
+⚠️ **ABERTO nº 1 (novo, visto na foto `cena4_low_medium_high.png`):** a sombra NÍTIDA de uma lâmpada pequena,
+guardada na grade do nível, sai em ESCADA em Low (células de ~7 px) e em degraus finos em Medium; High é liso. A
+cura: a luz direta numa grade FINA própria (≈ 1–2 px, independente do nível), com a fluência das cascatas
+(suave) somada por interpolação — os receptores leem uma textura só, como hoje. Custo previsto ~1 ms/lâmpada a
+1080p (medir). E a grade inteira é montada para a JANELA, não para a área da cena: ~40 % de texels sob os
+painéis (medir antes de cortar).

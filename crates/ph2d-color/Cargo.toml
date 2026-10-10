@@ -16,6 +16,9 @@ publish.workspace = true
 # bytemuck is zero-deps + std-only — small, audited, the Rust
 # ecosystem's canonical solution for repr-transparent zero-copy.
 [dependencies]
+# A matemática determinista (raiz cúbica, atan2, seno/cosseno, ciclo 18): a mistura perceptual tem
+# de dar a mesma cor na CPU e no WGSL.
+ph2d-ease = { path = "../ph2d-ease" }
 bytemuck = { version = "1", features = ["derive"] }
 # `serde` derives on `OklchColor` so the canonical type can round-trip
 # through postcard / JSON savefiles. The Painter `PainterParams` stub

@@ -42,6 +42,30 @@ fn pe_exp2(x: f32) -> f32 {
     let ki = i32(clamp(k, -126.0, 127.0));
     return p * bitcast<f32>(u32(ki + 127) << 23u);
 }
+fn pe_atan_turn(y: f32, x: f32) -> f32 {
+    let ax = abs(x);
+    let ay = abs(y);
+    let mx = max(ax, ay);
+    if (mx == 0.0) { return 0.0; }
+    let z = pe_div(min(ax, ay), mx);
+    let u = z * z;
+    var r = z * ((((((bitcast<f32>(0x3be01636u) * u + bitcast<f32>(0xbd0a17aeu)) * u
+        + bitcast<f32>(0x3da36d02u)) * u + bitcast<f32>(0xbe07a5b6u)) * u
+        + bitcast<f32>(0x3e4ae2adu)) * u + bitcast<f32>(0xbeaa96f1u)) * u + bitcast<f32>(0x3f7fffc7u));
+    if (ay > ax) { r = bitcast<f32>(0x3fc90fdbu) - r; }
+    if (x < 0.0) { r = bitcast<f32>(0x40490fdbu) - r; }
+    if (y < 0.0) { r = -r; }
+    return r * bitcast<f32>(0x3e22f983u);
+}
+fn pe_cbrt(x: f32) -> f32 {
+    if (x == 0.0) { return 0.0; }
+    let a = abs(x);
+    var y = bitcast<f32>(bitcast<u32>(a) / 3u + 0x2a514067u);
+    for (var k = 0; k < 4; k = k + 1) {
+        y = (y + y + pe_div(a, y * y)) * bitcast<f32>(0x3eaaaaabu);
+    }
+    return select(y, -y, x < 0.0);
+}
 fn pe_bounce_out(t: f32) -> f32 {
     let n1 = 7.5625;
     let d1 = 2.75;

@@ -117,6 +117,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "blend",
             default: 0.0,
         },
+        // ⭐ CICLO 18 (doc 127) — o ESPAÇO em que o gradiente mistura: `0` RGB linear (o de sempre,
+        // e o que um documento gravado lê) · `1` OKLab · `2` OKLCH curto · `3` OKLCH longo. Um nó
+        // NOVO nasce em OKLab (`register_param_defaults`).
+        ParamSpec {
+            name: "space",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -284,11 +291,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   var tn_g = 0.0;\n\
         \x20   if (tn_cnt > 1.0) { tn_g = clamp(tn_idx / (tn_cnt - 1.0), 0.0, 1.0); }\n\
         \x20   let tn_end = vec4<f32>(params.r2, params.g2, params.b2, params.a2);\n\
+        \x20   let tn_sp = i32(tn_round(params.space));\n\
+        \x20   if (tn_sp == 0) {\n\
         \x20   tn_t = vec4<f32>(\n\
         \x20       tn_t.x * (1.0 - tn_g) + tn_end.x * tn_g,\n\
         \x20       tn_t.y * (1.0 - tn_g) + tn_end.y * tn_g,\n\
         \x20       tn_t.z * (1.0 - tn_g) + tn_end.z * tn_g,\n\
         \x20       tn_t.w * (1.0 - tn_g) + tn_end.w * tn_g);\n\
+        \x20   } else {\n\
+        \x20       // A mistura perceptual da casa (ph2d_color::perceptual, a MESMA conta).\n\
+        \x20       tn_t = pc_mix(tn_t, tn_end, tn_g, tn_sp);\n\
+        \x20   }\n\
         }\n\
         // The blend meets the existing colour BEFORE the mask lerps (the\n\
         // CPU's `blended`); mode 0 (Mix) returns `tn_t` itself, so the\n\
@@ -305,7 +318,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             tn_e.y * (1.0 - tn_f) + tn_t.y * tn_f,\n\
             tn_e.z * (1.0 - tn_f) + tn_t.z * tn_f,\n\
             tn_e.w * (1.0 - tn_f) + tn_t.w * tn_f));\n",
-    wgsl_lib: "\
+    wgsl_lib: concat!(
+        ph2d_ease::wgsl_lib!(),
+        ph2d_color::wgsl_perceptual!(),
+        "\
         fn tn_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
@@ -323,7 +339,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             \x20   return e / t;\n\
             }\n\
             return t;\n\
-        }\n",
+        }\n"
+    ),
     bindings: &[
         ColumnBinding {
             column: "tint",
@@ -356,7 +373,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["r", "g", "b", "a", "r2", "g2", "b2", "a2", "mode", "blend"],
+    params: &[
+        "r", "g", "b", "a", "r2", "g2", "b2", "a2", "mode", "blend", "space",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -372,6 +391,8 @@ impl NodeOp for MotionTint {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let gradient = ctx.param("mode").round() as i32 == 1;
         let blend = BlendMode::from_param(ctx.param("blend"));
+        #[expect(clippy::cast_possible_truncation, reason = "indice de enum")]
+        let space = ctx.param("space").round() as i32;
         let start = [
             ctx.param("r"),
             ctx.param("g"),
@@ -407,7 +428,17 @@ impl NodeOp for MotionTint {
                         } else {
                             0.0
                         };
-                        lerp4(start, end, t)
+                        // ⭐ Ciclo 18: o espaço da mistura; `0` é o `lerp4` de sempre, ao bit.
+                        if space == 0 {
+                            lerp4(start, end, t)
+                        } else {
+                            ph2d_color::perceptual::mix(
+                                start,
+                                end,
+                                t,
+                                ph2d_color::perceptual::MixSpace::from_index(space),
+                            )
+                        }
                     } else {
                         start
                     };
@@ -445,6 +476,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    // ⭐ Um tint NOVO mistura em OKLab (ciclo 18); o gravado lê o default do manifesto (linear).
+    reg.register_param_defaults(MANIFEST.id, &[("space", 1.0)]);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering (Solid mode), on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
@@ -467,11 +500,19 @@ use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
 /// mais aqui não decidiriam nada.
 ///
 /// `0 = Solid` · `1 = Gradient`.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "r2",
-    when: "mode",
-    values: &[1],
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "r2",
+        when: "mode",
+        values: &[1],
+    },
+    // O espaço só decide alguma coisa no gradiente (uma cor sólida não mistura nada).
+    ParamGate {
+        param: "space",
+        when: "mode",
+        values: &[1],
+    },
+];
 
 /// The last valid `blend` value. Written as a literal because a `usize as f32`
 /// cast is not what a slider bound should cost — and pinned to the label list by
@@ -534,6 +575,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &BlendMode::LABELS,
+        },
+    },
+    // ⭐ Ciclo 18: o espaço da mistura do gradiente (a escada de `ph2d_color::perceptual::MixSpace`).
+    ParamUiHint {
+        param: "space",
+        label: "node.motion.tint.param.space",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.motion.tint.param.space.0",
+                "node.motion.tint.param.space.1",
+                "node.motion.tint.param.space.2",
+                "node.motion.tint.param.space.3",
+            ],
         },
     },
 ];

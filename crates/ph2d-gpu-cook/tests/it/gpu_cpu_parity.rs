@@ -1389,6 +1389,52 @@ fn tint_gradient_kernel_matches_the_cpu_within_epsilon() {
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + falloff + tint
 }
 
+/// ⭐ **CICLO 18 (doc 127): o gradiente do `Tint` em OKLab / OKLCH no dispositivo.** Os pares
+/// atravessam a gama (vermelho → azul pelo caminho LONGO passa por um verde que o sRGB não tem), e
+/// é aí que o mapeamento de gama corre a bissecção — o ramo onde um ULP poderia mudar uma iteração.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn tint_gradient_mixes_in_the_perceptual_spaces_like_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let pares: [([f32; 4], [f32; 4]); 3] = [
+        ([1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 0.6]),
+        ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0, 0.0, 1.0]),
+        ([0.18, 0.18, 0.18, 1.0], [1.0, 0.25, 0.02, 1.0]),
+    ];
+    let mut pior = 0.0_f32;
+    for space in 1..=3 {
+        for (a, b) in pares {
+            let mut g = Graph::new();
+            let grid = grid_node(&mut g, 64.0);
+            let tint = g.add_node("motion.tint");
+            g.set_param(tint, "mode", 1.0);
+            g.set_param(tint, "space", space as f32);
+            for (&k, v) in ["r", "g", "b", "a"].iter().zip(a) {
+                g.set_param(tint, k, v);
+            }
+            for (&k, v) in ["r2", "g2", "b2", "a2"].iter().zip(b) {
+                g.set_param(tint, k, v);
+            }
+            let out = g.add_node("motion.output");
+            connect(&mut g, grid, tint);
+            connect(&mut g, tint, out);
+            let (cpu, gc) = cook_both(&gpu, &reg, &g, out);
+            let d = compare_column(&gpu, &gc, out, &cpu, "tint");
+            eprintln!("ciclo 18: tint espaco {space} de {a:?} a {b:?}: max |d| = {d:e}");
+            pior = pior.max(d);
+        }
+    }
+    // ⚠️ **A régua é MEDIDA, e diz de que recurso é** (doc 127 §5): a cadeia perceptual (raiz
+    // cúbica, `atan`, seno, os cubos da volta e ~19 iterações do mapeamento de gama) acumula ULPs
+    // que o dispositivo funde de outra maneira; um degrau do ecrã é `1/255 = 3,9e-3`.
+    eprintln!("ciclo 18: pior |d| no tint perceptual = {pior:e}");
+    assert!(pior < 5e-5, "tint perceptual: {pior:e}");
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn a_gradient_tint_keys_positionally_when_index_is_absent() {

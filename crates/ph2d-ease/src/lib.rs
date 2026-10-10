@@ -186,6 +186,64 @@ pub fn exp2(x: f32) -> f32 {
     p * escala
 }
 
+const T0: f32 = f32::from_bits(0x3f7f_ffc7);
+const T1: f32 = f32::from_bits(0xbeaa_96f1);
+const T2: f32 = f32::from_bits(0x3e4a_e2ad);
+const T3: f32 = f32::from_bits(0xbe07_a5b6);
+const T4: f32 = f32::from_bits(0x3da3_6d02);
+const T5: f32 = f32::from_bits(0xbd0a_17ae);
+const T6: f32 = f32::from_bits(0x3be0_1636);
+const PI: f32 = f32::from_bits(0x4049_0fdb);
+const HALF_PI: f32 = f32::from_bits(0x3fc9_0fdb);
+const UM_TERCO: f32 = f32::from_bits(0x3eaa_aaab);
+
+/// ⭐ **`atan2(y, x)` em VOLTAS** (`(−0,5, 0,5]`) — polinómio de grau 13 sobre `[0, 1]` (erro
+/// medido `3,5e-7` rad) e a redução por octante, escrito igual no WGSL (ciclo 18: a matiz do OKLCH
+/// tem de ser a mesma na placa e na CPU).
+#[must_use]
+pub fn atan_turn(y: f32, x: f32) -> f32 {
+    let (ax, ay) = (x.abs(), y.abs());
+    let mx = ax.max(ay);
+    if mx == 0.0 {
+        return 0.0;
+    }
+    let z = ax.min(ay) / mx;
+    let u = z * z;
+    let mut r = z * ((((((T6 * u + T5) * u + T4) * u + T3) * u + T2) * u + T1) * u + T0);
+    if ay > ax {
+        r = HALF_PI - r;
+    }
+    if x < 0.0 {
+        r = PI - r;
+    }
+    if y < 0.0 {
+        r = -r;
+    }
+    r * INV_TAU
+}
+
+/// ⭐ **A raiz cúbica** — o palpite pelos BITS e quatro passos de Newton, escrito igual no WGSL
+/// (o WGSL não tem `cbrt`, e o `pow` dele não promete nada).
+#[must_use]
+pub fn cbrt(x: f32) -> f32 {
+    if x == 0.0 {
+        return 0.0;
+    }
+    let a = x.abs();
+    let mut y = f32::from_bits(a.to_bits() / 3 + 0x2a51_4067);
+    for _ in 0..4 {
+        y = (y + y + a / (y * y)) * UM_TERCO;
+    }
+    if x < 0.0 { -y } else { y }
+}
+
+/// `x − floor(x)` — a parte fracionária que o WGSL escreve igual (o `rem_euclid` do Rust não é a
+/// mesma conta).
+#[must_use]
+pub fn fract(x: f32) -> f32 {
+    x - x.floor()
+}
+
 /// O `easeOutBounce` canónico — quatro parábolas.
 fn bounce_out(t: f32) -> f32 {
     const N1: f32 = 7.5625;

@@ -393,6 +393,7 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.motion.tint.param.mode", "Mode"),
     ("node.motion.tint.param.r", "Color"),
     ("node.motion.tint.param.r2", "End"),
+    ("node.motion.tint.param.space", "Color Space"),
     ("node.motion.trail.param.alpha_max", "Tail Alpha Max"),
     ("node.motion.trail.param.echo_blend", "Echo Blend"),
     ("node.motion.trail.param.fade", "Tail Alpha"),

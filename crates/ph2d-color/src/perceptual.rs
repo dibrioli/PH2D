@@ -17,7 +17,6 @@
 //! em linha recta.
 
 use crate::color_ramp::RampHue;
-use crate::{LinearRgba, OklabColor};
 
 /// O espaço de uma mistura de cor — a escada é wire format (um param guarda o NÚMERO).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -51,36 +50,67 @@ impl MixSpace {
 pub const CROMA_SEM_MATIZ: f32 = 2e-4;
 /// A JND do mapeamento de gama do CSS Color 4 (distância euclidiana em OKLab).
 const JND: f32 = 0.02;
-/// A precisão da bissecção da croma.
-const EPS_CROMA: f32 = 1e-4;
+/// ⚠️ **A RESOLUÇÃO da bissecção — mais fina que a do CSS (`1e-4`), e MEDIDO porquê** (doc 127):
+/// a bissecção devolve a croma só até à sua resolução, e um ULP de diferença numa comparação (o
+/// dispositivo pode fundir `a·b + c`) muda o lado de uma iteração — com `1e-4` a placa e a CPU
+/// divergiam `9,5e-5` no `tint` OKLCH. A `1e-6` a divergência fica na resolução nova.
+const RESOLUCAO_CROMA: f32 = 1e-6;
 
-/// RGB linear → OKLab `[L, a, b]`.
+/// As matrizes de Ottosson, as MESMAS da [`OklabColor`], dadas por bits para o WGSL as ler iguais
+/// (o gate `the_matrices_are_the_oklab_colour_ones` confere-as contra os literais dela).
+pub(crate) const M_LMS: [[u32; 3]; 3] = [
+    [0x3ed3_0eb1, 0x3f09_4d16, 0x3d52_b909],
+    [0x3e58_fd3b, 0x3f2e_4253, 0x3ddb_f2f0],
+    [0x3db4_d7ec, 0x3e90_3d74, 0x3f21_4649],
+];
+pub(crate) const M_LAB: [[u32; 3]; 3] = [
+    [0x3e57_8152, 0x3f4b_2a89, 0xbb85_6ece],
+    [0x3ffd_2f0e, 0xc01b_6e0e, 0x3ee6_b438],
+    [0x3cd4_34b4, 0x3f48_63bb, 0xbf4f_0560],
+];
+pub(crate) const M_LMS_DE_LAB: [[u32; 2]; 3] = [
+    [0x3eca_ecc9, 0x3e5c_fba9],
+    [0xbdd8_308c, 0xbd82_c5fa],
+    [0xbdb7_437b, 0xbfa5_4f66],
+];
+pub(crate) const M_RGB: [[u32; 3]; 3] = [
+    [0x4082_74ab, 0xc053_b18c, 0x3e6c_8362],
+    [0xbfa2_5c2d, 0x4027_0644, 0xbeae_c16a],
+    [0xbb89_7f53, 0xbf34_133e, 0x3fda_931e],
+];
+
+fn linha(m: [u32; 3], v: [f32; 3]) -> f32 {
+    f32::from_bits(m[0]) * v[0] + f32::from_bits(m[1]) * v[1] + f32::from_bits(m[2]) * v[2]
+}
+
+/// RGB linear → OKLab `[L, a, b]` — a raiz cúbica DETERMINISTA ([`ph2d_ease::cbrt`]).
 #[must_use]
 pub fn to_oklab(c: [f32; 3]) -> [f32; 3] {
-    let o = OklabColor::from_linear(LinearRgba::new(c[0], c[1], c[2], 1.0));
-    [o.l, o.a, o.b]
+    let lms = M_LMS.map(|m| ph2d_ease::cbrt(linha(m, c)));
+    M_LAB.map(|m| linha(m, lms))
 }
 
 /// OKLab → RGB linear (sem corte).
 #[must_use]
 pub fn from_oklab(o: [f32; 3]) -> [f32; 3] {
-    let l = OklabColor::new(o[0], o[1], o[2], 1.0).to_linear();
-    [l.r(), l.g(), l.b()]
+    let lms = M_LMS_DE_LAB.map(|m| {
+        let v = o[0] + f32::from_bits(m[0]) * o[1] + f32::from_bits(m[1]) * o[2];
+        v * v * v
+    });
+    M_RGB.map(|m| linha(m, lms))
 }
 
 /// OKLab → OKLCH `[L, C, h]`, `h` em VOLTAS (`0..1`), como a matiz do HSV desta crate.
 #[must_use]
 pub fn oklab_to_oklch(o: [f32; 3]) -> [f32; 3] {
-    let c = o[1].hypot(o[2]);
-    let h = (o[2].atan2(o[1]) / std::f32::consts::TAU).rem_euclid(1.0);
-    [o[0], c, h]
+    let c = (o[1] * o[1] + o[2] * o[2]).sqrt();
+    [o[0], c, ph2d_ease::fract(ph2d_ease::atan_turn(o[2], o[1]))]
 }
 
 /// OKLCH → OKLab.
 #[must_use]
 pub fn oklch_to_oklab(p: [f32; 3]) -> [f32; 3] {
-    let (s, c) = (p[2] * std::f32::consts::TAU).sin_cos();
-    [p[0], p[1] * c, p[1] * s]
+    [p[0], p[1] * ph2d_ease::cos_turn(p[2]), p[1] * ph2d_ease::sin_turn(p[2])]
 }
 
 fn na_gama(c: [f32; 3]) -> bool {
@@ -119,7 +149,7 @@ pub fn gamut_map(lch: [f32; 3]) -> [f32; 3] {
     let (mut min, mut max) = (0.0_f32, lch[1]);
     let mut min_na_gama = true;
     let mut cortado = cortado;
-    while max - min > EPS_CROMA {
+    while max - min > RESOLUCAO_CROMA {
         let croma = (min + max) * 0.5;
         corrente[1] = croma;
         let rgb = from_oklab(oklch_to_oklab(corrente));
@@ -130,9 +160,9 @@ pub fn gamut_map(lch: [f32; 3]) -> [f32; 3] {
         cortado = corta(rgb);
         let e = distancia(to_oklab(cortado), oklch_to_oklab(corrente));
         if e < JND {
-            if JND - e < EPS_CROMA {
-                return cortado;
-            }
+            // ⚠️ O CSS sai aqui quando `JND − E < ε`; nós NÃO (doc 127): essa saída é um degrau
+            // que um ULP atravessa num lado e não no outro (placa × CPU `9,5e-5`), e sem ela o laço
+            // converge até à resolução — a mesma cor a menos dela.
             min_na_gama = false;
             min = croma;
         } else {
@@ -143,13 +173,42 @@ pub fn gamut_map(lch: [f32; 3]) -> [f32; 3] {
 }
 
 /// A matiz misturada, com a «matiz sem poder» de uma cor cinza (CSS Color 4): ela herda a da outra.
+/// O sentido é o do [`RampHue`] (a mesma lei do HSV desta crate), e o fim é `x − floor(x)`, que o
+/// WGSL escreve igual.
 fn matiz(h1: f32, c1: f32, h2: f32, c2: f32, t: f32, hue: RampHue) -> f32 {
     let (h1, h2) = match (c1 < CROMA_SEM_MATIZ, c2 < CROMA_SEM_MATIZ) {
         (true, false) => (h2, h2),
         (false, true) => (h1, h1),
         _ => (h1, h2),
     };
-    crate::color_ramp::lerp_hue_pub(h1, h2, t, hue)
+    let mut d = h2 - h1;
+    match hue {
+        RampHue::Near => {
+            if d > 0.5 {
+                d -= 1.0;
+            } else if d < -0.5 {
+                d += 1.0;
+            }
+        }
+        RampHue::Far => {
+            if (0.0..0.5).contains(&d) {
+                d -= 1.0;
+            } else if (-0.5..=0.0).contains(&d) {
+                d += 1.0;
+            }
+        }
+        RampHue::Ccw => {
+            if d < 0.0 {
+                d += 1.0;
+            }
+        }
+        RampHue::Cw => {
+            if d > 0.0 {
+                d -= 1.0;
+            }
+        }
+    }
+    ph2d_ease::fract(h1 + d * t)
 }
 
 /// A mistura no espaço, ANTES de voltar à gama: OKLCH `[L, C, h]` (o `Linear` não passa aqui).

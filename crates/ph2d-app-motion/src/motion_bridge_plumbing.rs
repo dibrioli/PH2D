@@ -152,6 +152,15 @@ pub(super) fn seed_text_defaults(graph: &mut Graph, registry: &NodeRegistry, bef
                 graph.set_text_param(id, *key, *value);
             }
         }
+        // ⭐ E os NÚMEROS de fábrica (ciclo 18) — pela mesma lei: só os que ainda não existem.
+        for (key, value) in registry.param_defaults(ty) {
+            if graph
+                .node_param_overrides(id)
+                .is_none_or(|m| !m.contains_key(*key))
+            {
+                graph.set_param(id, *key, *value);
+            }
+        }
     }
 }
 

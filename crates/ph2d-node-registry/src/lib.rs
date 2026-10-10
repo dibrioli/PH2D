@@ -74,6 +74,7 @@ pub struct NodeRegistry {
     /// já carrega. Side-metadata, o irmão exato do `param_ui`; ausente ⇒ nada a
     /// semear, que é o mundo de sempre.
     text_defaults: BTreeMap<NodeTypeId, &'static [(&'static str, &'static str)]>,
+    param_defaults: BTreeMap<NodeTypeId, &'static [(&'static str, f32)]>,
     /// Os params cuja FAIXA segue o CANAL que o nó dirige — a declaração que
     /// substituiu uma tabela de nomes de nó no shell.
     param_channel_range: BTreeMap<NodeTypeId, &'static [ParamChannelRange]>,
@@ -343,6 +344,25 @@ impl NodeRegistry {
         pairs: &'static [(&'static str, &'static str)],
     ) {
         self.text_defaults.insert(id, pairs);
+    }
+
+    /// **O NÚMERO que um nó recém-SOLTO já carrega** — o irmão numérico de
+    /// [`Self::register_text_defaults`], aplicado pelo editor no MESMO gesto.
+    ///
+    /// ⭐ Existe para mudar o que um nó NOVO faz sem mudar o que um documento GRAVADO faz (ciclo
+    /// 18: o `motion.tint` novo mistura em OKLab, e um gravado sem o param continua no default do
+    /// manifesto — RGB linear, ao bit). ⚠️ O default do MANIFESTO é o que um documento antigo lê;
+    /// este é o que o artista recebe ao largar o nó.
+    ///
+    /// Aditivo; last write wins. Ausente ⇒ nada é semeado.
+    pub fn register_param_defaults(&mut self, id: NodeTypeId, pairs: &'static [(&'static str, f32)]) {
+        self.param_defaults.insert(id, pairs);
+    }
+
+    /// Os números de fábrica de um nó recém-solto ([`Self::register_param_defaults`]).
+    #[must_use]
+    pub fn param_defaults(&self, id: NodeTypeId) -> &'static [(&'static str, f32)] {
+        self.param_defaults.get(&id).copied().unwrap_or(&[])
     }
 
     /// **Os params cuja FAIXA segue o CANAL que o nó dirige.**

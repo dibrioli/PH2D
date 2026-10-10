@@ -397,3 +397,36 @@ fn the_firewall_buttons_show_when_the_family_says_and_ask_it() {
     t.room(LiveRole::Guest { host: "Ana".into() });
     assert!(t.find(allow).is_none(), "o convidado não abre a firewall");
 }
+
+/// Uma lista que não cabe (muitos quadros achados) acaba em «+n» com o que ficou de fora, e o
+/// cartão não passa do canto — antes cortava-se calada.
+#[test]
+fn a_list_that_does_not_fit_ends_in_plus_n() {
+    let mut t = T::new();
+    t.open_live();
+    t.hero.documents.live_view_mut().found = (0..200)
+        .map(|i| LiveFound {
+            board: format!("B{i}"),
+            host: "Ana".into(),
+            addr: format!("10.0.0.{}:47320", i % 250),
+        })
+        .collect();
+    t.paint();
+    let shown = t.hero.documents.live_view.panel.found.len();
+    assert!(shown > 0 && shown < 200, "{shown}");
+    let more = format!("+{}", 200 - shown);
+    let xs = ph2d_tokens::TypeToken::Xs.px();
+    assert!(
+        runs(&t.scene())
+            .iter()
+            .any(|r| r.0 == xs && r.1 == more.chars().count()),
+        "não pintou «{more}»"
+    );
+    t.hero.documents.live_view_mut().found.truncate(2);
+    t.paint();
+    assert_eq!(
+        t.hero.documents.live_view.panel.found.len(),
+        2,
+        "o que cabe mostra-se todo"
+    );
+}

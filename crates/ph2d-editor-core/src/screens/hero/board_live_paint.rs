@@ -365,13 +365,28 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
             .filter(|r| !r.is_list())
             .map(|r| row_h(r, ts, inner) + g)
             .sum::<f32>();
-    let fit = ((room - fixed) / (s + g)).floor().max(0.0) as usize;
+    let lists = all.iter().filter(|r| r.is_list()).count();
+    let mut fit = ((room - fixed) / (s + g)).floor().max(0.0) as usize;
+    // A lista que não cabe acaba em «+n» (antes cortava-se calada); a fila dele sai do que cabe.
+    if lists > fit {
+        fit = fit.saturating_sub(1);
+    }
     let mut seen = 0;
-    all.retain(|r| {
-        let keep = !r.is_list() || seen < fit;
-        seen += usize::from(r.is_list());
-        keep
-    });
+    let mut kept = Vec::with_capacity(all.len());
+    for r in all {
+        if r.is_list() {
+            seen += 1;
+            if seen > fit {
+                if seen == fit + 1 {
+                    let more = tr_with("board.live.more", &[("n", &(lists - fit).to_string())]);
+                    kept.push(Row::Text(more, TypeToken::Xs, ColorToken::Text3));
+                }
+                continue;
+            }
+        }
+        kept.push(r);
+    }
+    let all = kept;
     let h = pad * 2.0 + s + g + all.iter().map(|r| row_h(r, ts, inner) + g).sum::<f32>();
     let card = Rect::new(x, y0, w, h);
     super::super::panels::card(scene, card, theme);

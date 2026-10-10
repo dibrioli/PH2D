@@ -234,7 +234,8 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
         &[("at", &(at + 1).to_string()), ("n", &n.to_string())],
     );
     let font = TypeToken::Sm.px();
-    let counter_w = ts.prefix_width(&label, font) + 2.0 * Spacing::Sm.px();
+    // A caixa pela porta do rótulo (o orçamento que o pintor centrado usa): «1/3 · Esc» nunca se corta.
+    let counter_w = crate::paint::rect_for_label(ts.prefix_width(&label, font));
     let prev = Rect::new(x, y, s, s);
     let count = Rect::new(x + s + g, y, counter_w, s);
     let next = Rect::new(count.x + counter_w + g, y, s, s);

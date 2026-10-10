@@ -303,7 +303,16 @@ fn presenting_owns_the_window_and_gives_the_tool_back() {
     let mut scene = VectorScene::new();
     scene.record();
     let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
-    paint_hero_screen(&mut t.hero, vp, &mut scene, &mut t.ts);
+    let ((), seen) = crate::text_elide::elisao::medindo(|| {
+        paint_hero_screen(&mut t.hero, vp, &mut scene, &mut t.ts);
+    });
+    // A foto dos estados viu «1/3 ·…»: o contador sai inteiro (o `onde` do censo é o do pintor
+    // centrado, por isso o contador acha-se pelo texto).
+    let counter: Vec<_> = seen.iter().filter(|m| m.texto.contains("Esc")).collect();
+    assert!(!counter.is_empty(), "o contador foi medido");
+    for m in counter {
+        assert!(m.coube(), "{:?} pintado {:?}", m.texto, m.pintado);
+    }
     let paper = scene.take_record().iter().any(|op| {
         matches!(op, DrawOp::Fill { brush: Brush::Solid(c), .. } if *c == ph2d_board_render::EXPORT_PAPER)
     });

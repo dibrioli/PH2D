@@ -118,15 +118,15 @@ o rectângulo com os quatro nós próprios (pontos), o botão Edit Shape aceso �
    CONTORNO (fora dos pontos) aumenta a forma inteira; `Ctrl+Z` desfaz uma afinação de cada vez.
 6. Sair: clique fora da forma, outro traço, `Esc` ou outra ferramenta.
 
-**Smoke do dono (10/10): OK.** Integração ainda NÃO pedida. As duas perguntas do §7 (o lugar do botão;
-o contorno escala ou move) seguem abertas.
+**Smoke do dono (10/10): OK.** Integração ainda NÃO pedida. As perguntas do §7 foram respondidas: tudo
+fica como está.
 
 ## §7 — O que fica ABERTO
 
-- **Perguntas ao dono (produto):** (1) o lugar do botão — à frente da barra de ações junto da forma
-  (decidido por ser a barra das ações da seleção e ligada por decisão dele de 07/10); o Procreate
-  põe-no na barra de cima — confirme; (2) arrastar o CONTORNO escala (o manual do Procreate) — ou
-  deve MOVER (o Excalidraw e o tldraw)?
+- ✅ **Decidido pelo dono (10/10), as três como estão:** (1) o botão Edit Shape fica à frente da barra
+  de ações JUNTO DA FORMA (não no topo, como no Procreate); (2) arrastar o CONTORNO ESCALA (o manual
+  do Procreate), não move; (3) a ponta de seta por omissão é o **V aberto** (a pergunta aberta do F7d
+  §7 — fechada).
 - O Edit Shape só existe logo depois do QuickShape (o do Procreate): uma forma de ontem afina-se no
   modo de nós genérico.
 - Um arco de elipse ou um biarco afinados deixam de ter arcos de círculo (a afinidade guarda a

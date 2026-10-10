@@ -110,6 +110,7 @@ pub(crate) fn legacy(t: &Element, from: [f64; 2], tip: [f64; 2], fallback: f64) 
 /// ⭐ Onde o 0.18.1 põe a ponta ao re-ligar a ligação `{focus, gap}` a partir de `from` (mundo) — a
 /// lei medida (XV7), no rectângulo de cantos vivos e na elipse; `None` noutras formas, ou quando a
 /// recta do foco não toca o nível (ele deixa a ponta onde estava).
+#[cfg(test)]
 pub(crate) fn landing(t: &Element, from: [f64; 2], focus: f64, gap: f64) -> Option<[f64; 2]> {
     let fr = Frame::of(t).filter(Frame::measured)?;
     let q = landing_local(&fr, fr.local(t, from), focus, gap)?;

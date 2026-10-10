@@ -253,11 +253,6 @@ impl Pencil {
         if e.grab.take().is_none() {
             return false;
         }
-        // Um clique num nó sem arrasto não é uma afinação.
-        if e.history[e.at] == e.history[e.at - 1] {
-            e.history.pop();
-            e.at -= 1;
-        }
         let path = e.path;
         self.active = None;
         self.committed = Some(path);
@@ -327,11 +322,6 @@ impl Pencil {
     /// O traço seguinte começa: a oferta acaba (o «continue a pintar» do Procreate).
     pub(super) fn shape_edit_forget(&mut self) {
         self.edit = None;
-    }
-
-    /// Há um arrasto de Edit Shape em curso?
-    pub(super) fn shape_edit_grabbing(&self) -> bool {
-        self.edit.as_ref().is_some_and(|e| e.grab.is_some())
     }
 }
 

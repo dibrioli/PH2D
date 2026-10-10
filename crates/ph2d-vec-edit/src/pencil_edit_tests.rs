@@ -207,21 +207,54 @@ fn undo_inside_the_edit_finds_the_shape_that_wrote_that_geometry() {
 }
 
 #[test]
-fn a_click_on_a_node_without_moving_is_not_a_step() {
+fn a_click_on_a_node_without_moving_changes_nothing_and_a_cancel_after_it_returns_to_birth() {
+    // Um clique sem arrasto empilha uma forma IGUAL — invisível: o undo procura pela geometria
+    // (a prova de mutação de 10/10 mediu-o: o descarte do degrau repetido saiu do código).
     let (mut scene, mut pencil) = (VecScene::default(), Pencil::default());
     let id = quick(&mut pencil, &mut scene, &RECT);
     pencil.toggle_shape_edit();
     let born = scene.path(id).unwrap().clone();
     let c = pencil.shape_edit_nodes().0[1];
     pencil.shape_edit_press(&scene, c, 1.0, Xform::IDENTITY, false);
-    pencil.on_release(&mut scene);
-    // Se o clique tivesse empilhado uma forma igual, o undo para o nascimento ainda acertava —
-    // o que distingue é o CANCEL seguinte: ele desce UM degrau, e o degrau é o nascimento.
+    assert!(pencil.on_release(&mut scene));
+    assert_eq!(scene.path(id).unwrap().verts, born.verts);
     pencil.shape_edit_press(&scene, c, 1.0, Xform::IDENTITY, false);
     pencil.on_drag(&mut scene, [c[0] + 30.0, c[1]], dy(1));
     pencil.cancel(&mut scene);
     assert_eq!(scene.path(id).unwrap().verts, born.verts);
-    *scene.path_mut(id).unwrap() = born;
+    pencil.shape_edit_tick(&scene, Xform::IDENTITY, Some(id), true);
+    assert_eq!(pencil.shape_edit_state(), ShapeEditState::Open);
+}
+
+#[test]
+fn an_armed_head_that_recedes_the_path_keeps_receding_it_while_the_tip_is_dragged() {
+    // A ponta TRIÂNGULO (armada no painel) avança para lá do nó: o caminho recua (`Marker::inset`)
+    // para o bico cair onde a mão o pôs — e a afinação tem de recuar o MESMO, senão o caminho
+    // escrito deixa de ser o da forma e o quadro seguinte fecha o Edit Shape.
+    let (mut scene, mut pencil) = (VecScene::default(), Pencil::default());
+    pencil.set_style(crate::PenStyle {
+        marker_end: ph2d_vec_scene::Marker::Triangle,
+        stroke_w_px: 4.0,
+        ..crate::PenStyle::default()
+    });
+    let id = quick(
+        &mut pencil,
+        &mut scene,
+        &[[0.0, 0.0], [400.0, 0.0], [340.0, -40.0], [400.0, 0.0], [340.0, 40.0]],
+    );
+    let tip = crate::quickshape::edit::nodes(pencil.shape_edit_shape().unwrap())[1];
+    let end = *anchors(&scene, id).last().unwrap();
+    let inset = tip[0] - end[0];
+    assert!(inset > 1.0, "o triângulo recua o caminho: {inset}");
+    pencil.shape_edit_tick(&scene, Xform::IDENTITY, Some(id), true);
+    assert_eq!(pencil.shape_edit_state(), ShapeEditState::Offered, "o caminho recuado É o da forma");
+    pencil.toggle_shape_edit();
+    pencil.shape_edit_press(&scene, tip, 1.0, Xform::IDENTITY, false);
+    pencil.on_drag(&mut scene, [tip[0], tip[1] + 100.0], dy(1));
+    pencil.on_release(&mut scene);
+    let end = *anchors(&scene, id).last().unwrap();
+    let to_tip = ((tip[0] - end[0]).powi(2) + (tip[1] + 100.0 - end[1]).powi(2)).sqrt();
+    assert!((to_tip - inset).abs() < 1e-6, "o mesmo recuo: {to_tip} ≠ {inset}");
     pencil.shape_edit_tick(&scene, Xform::IDENTITY, Some(id), true);
     assert_eq!(pencil.shape_edit_state(), ShapeEditState::Open);
 }

@@ -288,7 +288,7 @@ impl Pencil {
     #[must_use]
     pub fn width_stops(&self, source: WidthSource) -> WidthStops {
         // A forma perfeita tem a largura do estilo: o perfil da mão descrevia o traço que saiu.
-        if self.hold.is_live() || self.shape_edit_grabbing() {
+        if self.hold.is_live() {
             return WidthStops::default();
         }
         width_stops(source, &self.samples, &self.dyns)

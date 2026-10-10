@@ -401,3 +401,6 @@ capturadas são atravessadas em vez de pararem o raio — sob `load` 27 ele repr
 
 **Ordem do dono:** «coloque na fila de implementação o que ainda não está bom» ⇒ `01_plano.md` §7.1 (F1–F3), a
 próxima janela começa por ela.
+
+**Smoke do dono (10/10, 2.ª volta da W4b): «smoke OK»** — a lâmpada escura já não faz sombra. W4b fechada; a
+próxima janela começa pela fila `01_plano.md` §7.1.

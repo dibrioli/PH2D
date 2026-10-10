@@ -77,7 +77,9 @@ fn solid(b: &Brush) -> Color {
         Brush::Solid(c) => *c,
         Brush::Gradient(g) => {
             debug_assert!(false, "o quadro não pinta gradientes");
-            g.stops.first().map_or(Color::BLACK, |s| s.color.to_alpha_color())
+            g.stops
+                .first()
+                .map_or(Color::BLACK, |s| s.color.to_alpha_color())
         }
         Brush::Image(_) => {
             debug_assert!(false, "o quadro não pinta imagens");
@@ -164,7 +166,11 @@ pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
                 ..
             } => {
                 next += 1;
-                let rule = if *rule == Fill::EvenOdd { " clip-rule=\"evenodd\"" } else { "" };
+                let rule = if *rule == Fill::EvenOdd {
+                    " clip-rule=\"evenodd\""
+                } else {
+                    ""
+                };
                 let _ = writeln!(
                     out,
                     "<clipPath id=\"c{next}\"><path d=\"{}\"{rule}{}/></clipPath>",
@@ -199,7 +205,12 @@ pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
                     escape(&run.text)
                 );
                 for (i, [x, y]) in placed {
-                    let _ = write!(out, "<use href=\"#g{i}\" x=\"{}\" y=\"{}\"/>", num(x), num(y));
+                    let _ = write!(
+                        out,
+                        "<use href=\"#g{i}\" x=\"{}\" y=\"{}\"/>",
+                        num(x),
+                        num(y)
+                    );
                 }
                 out.push_str("</g>\n");
             }
@@ -246,7 +257,11 @@ fn fill(out: &mut String, path: &str, rule: Fill, t: Affine, c: Color, extra: Op
     }
     let (hex, a) = paint(c);
     let a = a.map_or(String::new(), |a| format!(" fill-opacity=\"{a}\""));
-    let rule = if rule == Fill::EvenOdd { " fill-rule=\"evenodd\"" } else { "" };
+    let rule = if rule == Fill::EvenOdd {
+        " fill-rule=\"evenodd\""
+    } else {
+        ""
+    };
     let _ = writeln!(
         out,
         "<path d=\"{path}\" fill=\"{hex}\"{a}{rule}{}{}/>",

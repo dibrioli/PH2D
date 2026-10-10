@@ -8,8 +8,18 @@ use ph2d_vector::DrawOp;
 
 const INK: Rgba = Rgba([30, 30, 30, 255]);
 
-fn shape(b: &mut Board, kind: ShapeType, text: &str, bx: [f64; 4], frame: Option<ElementId>) -> ElementId {
-    let fill = if kind.is_note() { Some(Rgba([255, 249, 177, 255])) } else { None };
+fn shape(
+    b: &mut Board,
+    kind: ShapeType,
+    text: &str,
+    bx: [f64; 4],
+    frame: Option<ElementId>,
+) -> ElementId {
+    let fill = if kind.is_note() {
+        Some(Rgba([255, 249, 177, 255]))
+    } else {
+        None
+    };
     let mut el = Element::new_shape(
         b.doc.mint_id(),
         b.doc.z_on_top(),
@@ -48,10 +58,28 @@ fn board() -> (BoardSet, [ElementId; 5]) {
     let a = set.create("Launch".into());
     let b = set.get_mut(a).unwrap();
     let f1 = frame(b, "Problem", [0.0, 0.0, 800.0, 450.0]);
-    let note = shape(b, ShapeType::Sticky, "Slow builds", [40.0, 40.0, 199.0, 199.0], Some(f1));
+    let note = shape(
+        b,
+        ShapeType::Sticky,
+        "Slow builds",
+        [40.0, 40.0, 199.0, 199.0],
+        Some(f1),
+    );
     let f2 = frame(b, "Plan", [1000.0, 0.0, 800.0, 450.0]);
-    shape(b, ShapeType::Rectangle, "Cache", [1100.0, 100.0, 160.0, 80.0], Some(f2));
-    let out = shape(b, ShapeType::Ellipse, "Outside", [0.0, 600.0, 160.0, 80.0], None);
+    shape(
+        b,
+        ShapeType::Rectangle,
+        "Cache",
+        [1100.0, 100.0, 160.0, 80.0],
+        Some(f2),
+    );
+    let out = shape(
+        b,
+        ShapeType::Ellipse,
+        "Outside",
+        [0.0, 600.0, 160.0, 80.0],
+        None,
+    );
     let arrow = Element::new_connector(
         b.doc.mint_id(),
         b.doc.z_on_top(),
@@ -102,7 +130,10 @@ fn the_board_page_is_the_extent_plus_the_excalidraw_padding() {
     assert_eq!(s.rect, [-PAD, -PAD, 800.0 + PAD, 450.0 + PAD]);
     let mut empty = BoardSet::default();
     let e = empty.create("e".into());
-    assert!(board_page(empty.get(e).unwrap(), &RouteCache::default()).is_none(), "vazio: nada");
+    assert!(
+        board_page(empty.get(e).unwrap(), &RouteCache::default()).is_none(),
+        "vazio: nada"
+    );
 }
 
 /// ⭐ E4: o PDF tem um frame por página na ordem do painel, sem os escondidos; a selecção restringe aos
@@ -118,12 +149,21 @@ fn pdf_pages_are_the_slides_or_the_selected_frames() {
         [Some(f1), Some(f2)]
     );
     assert_eq!(pages[1].rect, [1000.0, 0.0, 1800.0, 450.0]);
-    assert_eq!(pdf_pages(set.get(id).unwrap(), &r, &[f2, note])[0].frame, Some(f2));
+    assert_eq!(
+        pdf_pages(set.get(id).unwrap(), &r, &[f2, note])[0].frame,
+        Some(f2)
+    );
     set.get_mut(id).unwrap().team.set_slide_hidden(f1, true);
     assert_eq!(pdf_pages(set.get(id).unwrap(), &r, &[]).len(), 1);
     let mut bare = BoardSet::default();
     let a = bare.create("x".into());
-    shape(bare.get_mut(a).unwrap(), ShapeType::Rectangle, "", [0.0, 0.0, 10.0, 10.0], None);
+    shape(
+        bare.get_mut(a).unwrap(),
+        ShapeType::Rectangle,
+        "",
+        [0.0, 0.0, 10.0, 10.0],
+        None,
+    );
     let p = pdf_pages(bare.get(a).unwrap(), &RouteCache::default(), &[]);
     assert_eq!((p.len(), p[0].frame), (1, None));
 }
@@ -151,7 +191,14 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
     let b = &set.boards()[0];
     let mut ts = TextSystem::without_system_fonts();
     let page = frame_page(b, f1).unwrap();
-    let (mut scene, size) = paint_page(b, &page, 1.0, Some(ph2d_board_render::EXPORT_PAPER), true, &mut ts);
+    let (mut scene, size) = paint_page(
+        b,
+        &page,
+        1.0,
+        Some(ph2d_board_render::EXPORT_PAPER),
+        true,
+        &mut ts,
+    );
     assert_eq!(size, [800.0, 450.0]);
     let ops = scene.take_record();
     assert_eq!(texts(&ops).concat(), "Slow builds");
@@ -164,12 +211,19 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
     let all_ops = all.take_record();
     let mut t = texts(&all_ops);
     t.sort();
-    assert_eq!(t, ["Cache", "Outside", "Slow builds"], "sem «Problem» nem «Plan»");
+    assert_eq!(
+        t,
+        ["Cache", "Outside", "Slow builds"],
+        "sem «Problem» nem «Plan»"
+    );
     let all_strokes = all_ops
         .iter()
         .filter(|o| matches!(o, DrawOp::Stroke { .. }))
         .count();
-    assert!(all_strokes > strokes, "a seta e os contornos de fora só no quadro");
+    assert!(
+        all_strokes > strokes,
+        "a seta e os contornos de fora só no quadro"
+    );
 }
 
 /// E7: papel branco por omissão; transparente = nenhum preenchimento de fundo.
@@ -186,11 +240,17 @@ fn the_paper_is_white_or_nothing() {
             DrawOp::Fill { brush, .. } => Some(brush.clone()),
             _ => None,
         });
-        let n = ops.iter().filter(|o| matches!(o, DrawOp::Fill { .. })).count();
+        let n = ops
+            .iter()
+            .filter(|o| matches!(o, DrawOp::Fill { .. }))
+            .count();
         (first, n)
     };
     let (white, with) = fills(Some(ph2d_board_render::EXPORT_PAPER));
-    assert_eq!(white, Some(ph2d_vector::Brush::Solid(ph2d_board_render::EXPORT_PAPER)));
+    assert_eq!(
+        white,
+        Some(ph2d_vector::Brush::Solid(ph2d_board_render::EXPORT_PAPER))
+    );
     let (_, without) = fills(None);
     assert_eq!(with, without + 1, "transparente: o papel não se pinta");
 }
@@ -214,7 +274,14 @@ fn svg_and_pdf_carry_the_text() {
     let recs: Vec<_> = pages
         .iter()
         .map(|p| {
-            let (mut sc, sz) = paint_page(b, p, 1.0, Some(ph2d_board_render::EXPORT_PAPER), true, &mut ts);
+            let (mut sc, sz) = paint_page(
+                b,
+                p,
+                1.0,
+                Some(ph2d_board_render::EXPORT_PAPER),
+                true,
+                &mut ts,
+            );
             (sc.take_record(), sz)
         })
         .collect();

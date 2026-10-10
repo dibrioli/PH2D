@@ -25,7 +25,11 @@ fn every_recording_door_records_in_order() {
     s.record();
     s.fill_rect(r, red);
     s.push_object_layer(&r, VelloBlend::default(), 0.5);
-    s.fill_path(&r.to_path(0.1), &Brush::Solid(red), Affine::translate((5.0, 0.0)));
+    s.fill_path(
+        &r.to_path(0.1),
+        &Brush::Solid(red),
+        Affine::translate((5.0, 0.0)),
+    );
     s.stroke_path(&Stroke::new(2.0), Affine::IDENTITY, &Brush::Solid(red), &r);
     s.push_clip(&r);
     s.blurred_rounded_rect(Affine::IDENTITY, r, red, 1.0, 2.0);
@@ -34,7 +38,9 @@ fn every_recording_door_records_in_order() {
     let ops = s.take_record();
     assert_eq!(
         kinds(&ops),
-        ["fill", "layer", "fill", "stroke", "layer", "blur", "pop", "pop"]
+        [
+            "fill", "layer", "fill", "stroke", "layer", "blur", "pop", "pop"
+        ]
     );
     let DrawOp::Layer { alpha, .. } = &ops[1] else {
         unreachable!()
@@ -55,6 +61,9 @@ fn every_recording_door_records_in_order() {
 #[test]
 fn without_record_nothing_is_kept() {
     let mut s = VectorScene::new();
-    s.fill_rect(Rect::new(0.0, 0.0, 1.0, 1.0), Color::from_rgba8(0, 0, 0, 255));
+    s.fill_rect(
+        Rect::new(0.0, 0.0, 1.0, 1.0),
+        Color::from_rgba8(0, 0, 0, 255),
+    );
     assert!(s.take_record().is_empty());
 }

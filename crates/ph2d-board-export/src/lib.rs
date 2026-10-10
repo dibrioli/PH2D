@@ -47,7 +47,12 @@ impl Page {
 
 fn union(a: Option<[f64; 4]>, b: [f64; 4]) -> Option<[f64; 4]> {
     Some(a.map_or(b, |a| {
-        [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])]
+        [
+            a[0].min(b[0]),
+            a[1].min(b[1]),
+            a[2].max(b[2]),
+            a[3].max(b[3]),
+        ]
     }))
 }
 
@@ -56,7 +61,11 @@ fn padded(r: [f64; 4]) -> [f64; 4] {
 }
 
 /// A caixa de `ids` (ou de tudo, com `None`): as caixas dos elementos e as rotas das setas.
-fn extent(board: &Board, routes: &RouteCache, ids: Option<&BTreeSet<ElementId>>) -> Option<[f64; 4]> {
+fn extent(
+    board: &Board,
+    routes: &RouteCache,
+    ids: Option<&BTreeSet<ElementId>>,
+) -> Option<[f64; 4]> {
     let mut r = None;
     for el in board.doc.live() {
         if ids.is_some_and(|s| !s.contains(&el.id)) {

@@ -139,9 +139,17 @@ pub(super) fn paint(
         if *top {
             let eid = row_node(*id, Part::Eye);
             super::register(&mut hero.store, eid);
-            let tip = if *hidden { "board.present.show_frame" } else { "board.present.hide_frame" };
+            let tip = if *hidden {
+                "board.present.show_frame"
+            } else {
+                "board.present.hide_frame"
+            };
             hero.store.set_tooltip(eid, ph2d_i18n::tr(tip));
-            let icon = if *hidden { IconId::EyeClosed } else { IconId::Eye };
+            let icon = if *hidden {
+                IconId::EyeClosed
+            } else {
+                IconId::Eye
+            };
             let (hit, store) = (&mut hero.hit_index, &hero.store);
             super::button(scene, hit, store, eid, icon, eye, false, theme);
         }
@@ -165,7 +173,14 @@ pub(super) fn paint(
                 text_y(y),
                 font,
                 row.w - 2.0 * pad,
-                resolve(if *hidden { ColorToken::Text3 } else { ColorToken::Text1 }, theme),
+                resolve(
+                    if *hidden {
+                        ColorToken::Text3
+                    } else {
+                        ColorToken::Text1
+                    },
+                    theme,
+                ),
             );
         }
         let (hit, store) = (&mut hero.hit_index, &hero.store);

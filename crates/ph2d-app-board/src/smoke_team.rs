@@ -7,14 +7,17 @@
 
 use super::default_name;
 use ph2d_board_model::{
-    Anchor, Board, BoardOp, BoardSet, Connector, Element, ElementId, End, Pin, Rgba, RichText, Route,
-    STICKY_COLORS, STICKY_SIDE, Shape, ShapeType, Style, ThreadId,
+    Anchor, Board, BoardOp, BoardSet, Connector, Element, ElementId, End, Pin, Rgba, RichText,
+    Route, STICKY_COLORS, STICKY_SIDE, Shape, ShapeType, Style, ThreadId,
 };
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::screens::hero::{board_nav, document_tabs};
 
 /// O que o gate conduz.
-#[cfg_attr(not(test), expect(dead_code, reason = "só o gate da cena lê as lições"))]
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "só o gate da cena lê as lições")
+)]
 pub(crate) struct Lessons {
     pub frames: [ElementId; 3],
     pub builds: ElementId,
@@ -46,10 +49,21 @@ fn put(b: &mut Board, el: Element) -> ElementId {
     id
 }
 
-fn note(b: &mut Board, key: &str, color: usize, bx: [f64; 4], wide: bool, home: Option<ElementId>) -> ElementId {
+fn note(
+    b: &mut Board,
+    key: &str,
+    color: usize,
+    bx: [f64; 4],
+    wide: bool,
+    home: Option<ElementId>,
+) -> ElementId {
     let c = Rgba(STICKY_COLORS[color]);
     let shape = Shape {
-        kind: if wide { ShapeType::StickyWide } else { ShapeType::Sticky },
+        kind: if wide {
+            ShapeType::StickyWide
+        } else {
+            ShapeType::Sticky
+        },
         style: Style::new(Some(c), None, c.readable_ink()),
         text: RichText::plain(&tr(key)),
     };
@@ -71,8 +85,14 @@ fn boxed(b: &mut Board, key: &str, bx: [f64; 4], home: ElementId) -> ElementId {
 
 fn arrow(b: &mut Board, from: ElementId, to: ElementId) {
     let c = Connector::new(
-        End::Bound { target: from, anchor: Anchor::Center },
-        End::Bound { target: to, anchor: Anchor::Center },
+        End::Bound {
+            target: from,
+            anchor: Anchor::Center,
+        },
+        End::Bound {
+            target: to,
+            anchor: Anchor::Center,
+        },
         Route::Straight,
         Style::new(None, Some(INK), INK),
     );
@@ -82,40 +102,109 @@ fn arrow(b: &mut Board, from: ElementId, to: ElementId) {
 
 /// Monta o lançamento em `b`.
 pub(crate) fn build(b: &mut Board) -> Lessons {
-    let names = ["board.smoke.team.problem", "board.smoke.team.ideas", "board.smoke.team.plan"];
+    let names = [
+        "board.smoke.team.problem",
+        "board.smoke.team.ideas",
+        "board.smoke.team.plan",
+    ];
     let frames: [ElementId; 3] = std::array::from_fn(|i| {
         let x = i as f64 * (FRAME[0] + GAP);
-        super::organize::frame(&mut b.doc, &tr(names[i]), [x, 0.0, FRAME[0], FRAME[1]], None)
+        super::organize::frame(
+            &mut b.doc,
+            &tr(names[i]),
+            [x, 0.0, FRAME[0], FRAME[1]],
+            None,
+        )
     });
     let (s, y0) = (SMALL, 90.0);
-    let builds = note(b, "board.smoke.team.n_builds", 1, [GAP, y0, s, s], false, Some(frames[0]));
-    note(b, "board.smoke.team.n_reviews", 3, [2.0 * GAP + s, y0, s, s], false, Some(frames[0]));
+    let builds = note(
+        b,
+        "board.smoke.team.n_builds",
+        1,
+        [GAP, y0, s, s],
+        false,
+        Some(frames[0]),
+    );
+    note(
+        b,
+        "board.smoke.team.n_reviews",
+        3,
+        [2.0 * GAP + s, y0, s, s],
+        false,
+        Some(frames[0]),
+    );
     let ix = FRAME[0] + GAP;
     let col = |k: f64| ix + 20.0 + k * (s + 15.0);
-    note(b, "board.smoke.team.n_cache", 5, [col(0.0), y0, s, s], false, Some(frames[1]));
-    note(b, "board.smoke.team.n_pair", 12, [col(1.0), y0, s, s], false, Some(frames[1]));
+    note(
+        b,
+        "board.smoke.team.n_cache",
+        5,
+        [col(0.0), y0, s, s],
+        false,
+        Some(frames[1]),
+    );
+    note(
+        b,
+        "board.smoke.team.n_pair",
+        12,
+        [col(1.0), y0, s, s],
+        false,
+        Some(frames[1]),
+    );
     let px = 2.0 * (FRAME[0] + GAP);
     let w = 120.0;
-    let m = boxed(b, "board.smoke.team.measure", [px + 30.0, 130.0, w, 70.0], frames[2]);
-    let c = boxed(b, "board.smoke.team.cache", [px + 200.0, 130.0, w, 70.0], frames[2]);
-    let ship = boxed(b, "board.smoke.team.ship", [px + 370.0, 130.0, w, 70.0], frames[2]);
+    let m = boxed(
+        b,
+        "board.smoke.team.measure",
+        [px + 30.0, 130.0, w, 70.0],
+        frames[2],
+    );
+    let c = boxed(
+        b,
+        "board.smoke.team.cache",
+        [px + 200.0, 130.0, w, 70.0],
+        frames[2],
+    );
+    let ship = boxed(
+        b,
+        "board.smoke.team.ship",
+        [px + 370.0, 130.0, w, 70.0],
+        frames[2],
+    );
     arrow(b, m, c);
     arrow(b, c, ship);
     // R1 — a versão de antes da última ideia (restaurá-la mostra o quadro sem ela).
     // As horas são as de AGORA recuadas (a 1.ª foto dos estados lia «20736 d ago»: o instante 0 é 1970).
     let now = board_nav::team::now_unix();
     b.save_version(tr("board.smoke.team.version"), now - 26 * 3600);
-    note(b, "board.smoke.team.n_small", 8, [col(2.0), y0, s, s], false, Some(frames[1]));
+    note(
+        b,
+        "board.smoke.team.n_small",
+        8,
+        [col(2.0), y0, s, s],
+        false,
+        Some(frames[1]),
+    );
     // K2/K6 — o Rui comentou a nota dos builds (por ler); a Ana aprovou o plano (resolvido).
     let at = ph2d_board_model::Element::center(b.doc.get(builds).expect("acabou de nascer"));
     let rui = b
         .team
-        .open(Pin::at(&b.doc, Some(builds), [at[0] + 45.0, at[1] - 45.0]), "Rui", &tr("board.smoke.team.c_rui"), now - 2 * 3600)
+        .open(
+            Pin::at(&b.doc, Some(builds), [at[0] + 45.0, at[1] - 45.0]),
+            "Rui",
+            &tr("board.smoke.team.c_rui"),
+            now - 2 * 3600,
+        )
         .expect("texto");
     let ship_at = b.doc.get(ship).expect("acabou de nascer").center();
     let ana = b
         .team
-        .open(Pin::at(&b.doc, Some(ship), ship_at), "Ana", &tr("board.smoke.team.c_ana"), now - 5 * 3600)
+        .open(
+            Pin::at(&b.doc, Some(ship), ship_at),
+            "Ana",
+            &tr("board.smoke.team.c_ana"),
+            now - 5 * 3600,
+        )
         .expect("texto");
     b.team.set_resolved(ana, true);
     // As lições, por baixo, na ordem real.
@@ -136,15 +225,28 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
     };
     // O título à vista por cima dos frames (a 1.ª foto tinha-o no canto, debaixo do painel).
     // ⛔ Nada travado: o quadro marca um travado com um cadeado (a foto dos estados viu três soltos).
-    let t = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, right, 40.0]);
+    let t = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        title,
+        [0.0, -80.0, right, 40.0],
+    );
     put(b, t);
-    for at in [[-MARGIN_X, -80.0 - MARGIN_Y], [right + MARGIN_X, y + side + MARGIN_Y]] {
+    for at in [
+        [-MARGIN_X, -80.0 - MARGIN_Y],
+        [right + MARGIN_X, y + side + MARGIN_Y],
+    ] {
         let dot = Shape {
             kind: ShapeType::Rectangle,
             style: Style::new(None, None, INK),
             text: RichText::default(),
         };
-        let d = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), dot, [at[0], at[1], 1.0, 1.0]);
+        let d = Element::new_shape(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            dot,
+            [at[0], at[1], 1.0, 1.0],
+        );
         put(b, d);
     }
     Lessons {

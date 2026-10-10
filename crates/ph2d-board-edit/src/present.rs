@@ -32,9 +32,7 @@ pub fn first_slide(board: &Board, slides: &[ElementId], selection: &[ElementId])
         .iter()
         .find_map(|&s| {
             let chain = board.doc.frame_chain(s);
-            slides
-                .iter()
-                .position(|f| *f == s || chain.contains(f))
+            slides.iter().position(|f| *f == s || chain.contains(f))
         })
         .unwrap_or(0)
 }

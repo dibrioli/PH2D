@@ -190,7 +190,11 @@ impl Team {
         let Some(at) = self.threads.iter().position(|t| t.id == id) else {
             return false;
         };
-        if self.threads[at].messages.get(n).is_none_or(|m| m.author != me) {
+        if self.threads[at]
+            .messages
+            .get(n)
+            .is_none_or(|m| m.author != me)
+        {
             return false;
         }
         if n == 0 {
@@ -256,7 +260,10 @@ impl Board {
         };
         let raw = postcard::to_allocvec(&set).unwrap_or_default();
         let mut z = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::new(1));
-        let bytes = z.write_all(&raw).and_then(|()| z.finish()).unwrap_or_default();
+        let bytes = z
+            .write_all(&raw)
+            .and_then(|()| z.finish())
+            .unwrap_or_default();
         self.team.versions.push(Version { name, at, bytes });
     }
 }

@@ -95,11 +95,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.team.version" => "Kick-off",
         "board.smoke.team.c_rui" => "Is this the CI or local builds?",
         "board.smoke.team.c_ana" => "Approved for the next sprint",
-        "board.smoke.team.l1" => "1. Comment: press C, click a note, write, Enter. Click Rui's blue bubble to read and reply.",
-        "board.smoke.team.l2" => "2. Versions: right-click this tab, Versions…, Save. Restore opens one as a new board.",
-        "board.smoke.team.l3" => "3. Present: the Present button at the bottom right. Arrows move, Esc stops.",
-        "board.smoke.team.l4" => "4. Export: right-click the tab, Export…, pick PNG, SVG or PDF, then Export…",
-        "board.smoke.team.l5" => "5. Excalidraw: right-click the tab, Open an Excalidraw file…, pick example.excalidraw",
+        "board.smoke.team.l1" => {
+            "1. Comment: press C, click a note, write, Enter. Click Rui's blue bubble to read and reply."
+        }
+        "board.smoke.team.l2" => {
+            "2. Versions: right-click this tab, Versions…, Save. Restore opens one as a new board."
+        }
+        "board.smoke.team.l3" => {
+            "3. Present: the Present button at the bottom right. Arrows move, Esc stops."
+        }
+        "board.smoke.team.l4" => {
+            "4. Export: right-click the tab, Export…, pick PNG, SVG or PDF, then Export…"
+        }
+        "board.smoke.team.l5" => {
+            "5. Excalidraw: right-click the tab, Open an Excalidraw file…, pick example.excalidraw"
+        }
         _ => return None,
     })
 }

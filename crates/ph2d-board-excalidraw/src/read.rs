@@ -36,18 +36,22 @@ fn text_of(v: &Value) -> Option<Text> {
         .to_owned();
     Some(Text {
         text,
-        size: num(v, "fontSize").filter(|s| *s > 0.0).unwrap_or(ph2d_board_model::DEFAULT_FONT_SIZE),
+        size: num(v, "fontSize")
+            .filter(|s| *s > 0.0)
+            .unwrap_or(ph2d_board_model::DEFAULT_FONT_SIZE),
         color: v["strokeColor"].as_str().and_then(parse_color).flatten(),
     })
 }
 
 /// O estilo de um elemento de fora (os valores fora de faixa caem nos de nascença DELE, X3).
 fn style_of(v: &Value) -> Style {
-    let color = |k: &str, dflt: Option<Rgba>| {
-        v[k].as_str().and_then(parse_color).unwrap_or(dflt)
-    };
+    let color = |k: &str, dflt: Option<Rgba>| v[k].as_str().and_then(parse_color).unwrap_or(dflt);
     let ink = Rgba([0x1e, 0x1e, 0x1e, 255]);
-    let mut st = Style::new(color("backgroundColor", None), color("strokeColor", Some(ink)), ink);
+    let mut st = Style::new(
+        color("backgroundColor", None),
+        color("strokeColor", Some(ink)),
+        ink,
+    );
     st.stroke_width = num(v, "strokeWidth").filter(|w| *w > 0.0).unwrap_or(2.0);
     st.dash = match v["strokeStyle"].as_str() {
         Some("dashed") => Dash::Dashed,
@@ -109,8 +113,15 @@ pub fn read(json: &str) -> Result<Import, String> {
         }
         let ok = matches!(
             kind,
-            "rectangle" | "ellipse" | "diamond" | "arrow" | "line" | "freedraw" | "frame"
-                | "magicframe" | "text"
+            "rectangle"
+                | "ellipse"
+                | "diamond"
+                | "arrow"
+                | "line"
+                | "freedraw"
+                | "frame"
+                | "magicframe"
+                | "text"
         );
         if ok {
             kept.push(v);
@@ -144,7 +155,10 @@ pub fn read(json: &str) -> Result<Import, String> {
     let mut next_group = 0u64;
     for v in &kept {
         for g in v["groupIds"].as_array().into_iter().flatten() {
-            if let Some(n) = g.as_str().and_then(|s| s.strip_prefix(ID)?.strip_prefix('g')?.parse().ok()) {
+            if let Some(n) = g
+                .as_str()
+                .and_then(|s| s.strip_prefix(ID)?.strip_prefix('g')?.parse().ok())
+            {
                 next_group = next_group.max(n);
                 groups.insert(g.as_str().unwrap_or("").to_owned(), GroupId(n));
             }
@@ -171,7 +185,9 @@ pub fn read(json: &str) -> Result<Import, String> {
             None => match foreign(v, id, key, texts.get(me), &map) {
                 Some(el) => el,
                 None => {
-                    *imp.skipped.entry(v["type"].as_str().unwrap_or("").to_owned()).or_default() += 1;
+                    *imp.skipped
+                        .entry(v["type"].as_str().unwrap_or("").to_owned())
+                        .or_default() += 1;
                     continue;
                 }
             },
@@ -185,7 +201,12 @@ pub fn read(json: &str) -> Result<Import, String> {
         tops.push((came, frame));
         // Os grupos (sem o par forma+texto nosso).
         let mut gs = Vec::new();
-        for g in v["groupIds"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        for g in v["groupIds"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
             if g.strip_prefix(ID).is_some_and(|r| r.starts_with('s')) {
                 continue;
             }
@@ -205,7 +226,8 @@ pub fn read(json: &str) -> Result<Import, String> {
         out.push(el);
     }
     // Um nosso dentro de um frame ANINHADO viajou com o de topo: fica no seu se o de topo é o mesmo.
-    let parent: BTreeMap<ElementId, Option<ElementId>> = out.iter().map(|e| (e.id, e.frame)).collect();
+    let parent: BTreeMap<ElementId, Option<ElementId>> =
+        out.iter().map(|e| (e.id, e.frame)).collect();
     let top = |mut f: ElementId| {
         let mut seen = BTreeSet::new();
         while let Some(Some(up)) = parent.get(&f) {
@@ -241,10 +263,9 @@ fn end_of(v: &Value, key: &str, at: [f64; 2], map: &BTreeMap<String, ElementId>)
         return End::Free(at);
     };
     let anchor = match b["fixedPoint"].as_array() {
-        Some(fp) if fp.len() == 2 => Anchor::Fixed([
-            fp[0].as_f64().unwrap_or(0.5),
-            fp[1].as_f64().unwrap_or(0.5),
-        ]),
+        Some(fp) if fp.len() == 2 => {
+            Anchor::Fixed([fp[0].as_f64().unwrap_or(0.5), fp[1].as_f64().unwrap_or(0.5)])
+        }
         _ => Anchor::Center,
     };
     End::Bound {
@@ -279,31 +300,48 @@ fn world_points(v: &Value) -> Vec<[f64; 2]> {
 
 /// As edições que o Excalidraw sabe fazer, aplicadas ao nosso elemento que viajou (X2): o que mudou
 /// lá ganha; o que ficou igual fica exactamente o nosso.
-fn edits(el: &mut Element, v: &Value, text: Option<&Text>, map: &BTreeMap<String, ElementId>, fresh: bool) {
+fn edits(
+    el: &mut Element,
+    v: &Value,
+    text: Option<&Text>,
+    map: &BTreeMap<String, ElementId>,
+    fresh: bool,
+) {
     let (x, y) = (num(v, "x").unwrap_or(el.x), num(v, "y").unwrap_or(el.y));
     let near = |a: f64, b: f64| (a - b).abs() < 1e-6;
     match &el.kind {
         ph2d_board_model::ElementKind::Shape(s) if crate::write::is_native(s.kind) => {
-            let (w, h) = (num(v, "width").unwrap_or(el.w), num(v, "height").unwrap_or(el.h));
+            let (w, h) = (
+                num(v, "width").unwrap_or(el.w),
+                num(v, "height").unwrap_or(el.h),
+            );
             if !(near(x, el.x) && near(y, el.y) && near(w, el.w) && near(h, el.h)) {
                 (el.x, el.y, el.w, el.h) = (x, y, w, h);
             }
         }
         ph2d_board_model::ElementKind::Shape(s) => {
-            let p0 = crate::write::polygon(el, s).first().copied().unwrap_or([el.x, el.y]);
+            let p0 = crate::write::polygon(el, s)
+                .first()
+                .copied()
+                .unwrap_or([el.x, el.y]);
             if !(near(x, p0[0]) && near(y, p0[1])) {
                 el.translate([x - p0[0], y - p0[1]]);
             }
         }
         ph2d_board_model::ElementKind::Frame(_) => {
-            let (w, h) = (num(v, "width").unwrap_or(el.w), num(v, "height").unwrap_or(el.h));
+            let (w, h) = (
+                num(v, "width").unwrap_or(el.w),
+                num(v, "height").unwrap_or(el.h),
+            );
             (el.x, el.y, el.w, el.h) = (x, y, w, h);
             if let (Some(n), Some(f)) = (v["name"].as_str(), frame_mut(el)) {
                 n.clone_into(&mut f.name);
             }
         }
         ph2d_board_model::ElementKind::Ink(_) => {
-            let first = ph2d_board_edit::world_points(el).first().map_or([el.x, el.y], |p| [p[0], p[1]]);
+            let first = ph2d_board_edit::world_points(el)
+                .first()
+                .map_or([el.x, el.y], |p| [p[0], p[1]]);
             if !(near(x, first[0]) && near(y, first[1])) {
                 el.translate([x - first[0], y - first[1]]);
             }
@@ -311,7 +349,10 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, map: &BTreeMap<String
         ph2d_board_model::ElementKind::Connector(_) => {
             let pts = world_points(v);
             if let (Some(c), Some(&a), Some(&b)) = (el.connector_mut(), pts.first(), pts.last()) {
-                let ends = [end_of(v, "startBinding", a, map), end_of(v, "endBinding", b, map)];
+                let ends = [
+                    end_of(v, "startBinding", a, map),
+                    end_of(v, "endBinding", b, map),
+                ];
                 for (k, e) in ends.into_iter().enumerate() {
                     let same = match (&c.ends()[k], &e) {
                         (End::Bound { target: t0, .. }, End::Bound { target: t1, .. }) => t0 == t1,
@@ -325,7 +366,10 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, map: &BTreeMap<String
             }
         }
     }
-    if !matches!(el.kind, ph2d_board_model::ElementKind::Ink(_) | ph2d_board_model::ElementKind::Connector(_)) {
+    if !matches!(
+        el.kind,
+        ph2d_board_model::ElementKind::Ink(_) | ph2d_board_model::ElementKind::Connector(_)
+    ) {
         let a = num(v, "angle").unwrap_or(el.angle);
         if !near(a, el.angle) {
             el.angle = a;
@@ -333,7 +377,10 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, map: &BTreeMap<String
     }
     // O estilo: só o que difere do que escrevemos.
     let st = el.style_mut();
-    for (k, slot) in [("strokeColor", &mut st.stroke), ("backgroundColor", &mut st.fill)] {
+    for (k, slot) in [
+        ("strokeColor", &mut st.stroke),
+        ("backgroundColor", &mut st.fill),
+    ] {
         if let Some(s) = v[k].as_str()
             && s != hex(*slot)
             && let Some(c) = parse_color(s)

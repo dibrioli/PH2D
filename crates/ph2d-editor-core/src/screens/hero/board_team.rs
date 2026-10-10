@@ -141,7 +141,9 @@ pub fn hit_of(id: NodeId) -> Option<Hit> {
         (v >> 40 == 0 && v != 0).then_some(v)
     };
     if let Some(v) = low(SALT) {
-        return ALL.get(usize::try_from(v - 1).ok()?).map(|b| Hit::Button(*b));
+        return ALL
+            .get(usize::try_from(v - 1).ok()?)
+            .map(|b| Hit::Button(*b));
     }
     if let Some(v) = low(SALT_BUBBLE) {
         return Some(Hit::Bubble(ThreadId(v)));
@@ -149,7 +151,12 @@ pub fn hit_of(id: NodeId) -> Option<Hit> {
     if let Some(v) = low(SALT_ROW) {
         return Some(Hit::Row(ThreadId(v)));
     }
-    let split = |v: u64| (v >> 32, usize::try_from(v & 0xffff_ffff).unwrap_or(usize::MAX));
+    let split = |v: u64| {
+        (
+            v >> 32,
+            usize::try_from(v & 0xffff_ffff).unwrap_or(usize::MAX),
+        )
+    };
     if let Some((k, n)) = low(SALT_MSG).map(split) {
         return match k {
             1 => Some(Hit::Edit(n)),
@@ -277,7 +284,11 @@ pub fn open_thread(hero: &mut HeroScreen, t: ThreadId) {
     let team = &mut hero.documents.live.team;
     team.open.insert(id, OpenThread::Thread(t));
     team.editing = None;
-    super::open_field(&mut hero.store, crate::ids::BOARD_COMMENT_INPUT, String::new());
+    super::open_field(
+        &mut hero.store,
+        crate::ids::BOARD_COMMENT_INPUT,
+        String::new(),
+    );
 }
 
 fn close_card(hero: &mut HeroScreen) {
@@ -312,7 +323,11 @@ pub fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     let pin = Pin::at(&board.doc, on, world);
     live.team.open.insert(board.id, OpenThread::New(pin));
     live.team.editing = None;
-    super::open_field(&mut hero.store, crate::ids::BOARD_COMMENT_INPUT, String::new());
+    super::open_field(
+        &mut hero.store,
+        crate::ids::BOARD_COMMENT_INPUT,
+        String::new(),
+    );
     true
 }
 
@@ -346,7 +361,11 @@ fn post(hero: &mut HeroScreen) {
         },
         None => return,
     }
-    super::open_field(&mut hero.store, crate::ids::BOARD_COMMENT_INPUT, String::new());
+    super::open_field(
+        &mut hero.store,
+        crate::ids::BOARD_COMMENT_INPUT,
+        String::new(),
+    );
 }
 
 /// ⭐ K1/K8 — as teclas da equipa, antes das do editor: `C` arma a ferramenta, `Shift+C` mostra/esconde
@@ -480,8 +499,12 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Hit::Edit(n) => paint::begin_edit(hero, n),
         Hit::Delete(n) => {
             let author = me(hero);
-            let open = hero.documents.active().and_then(|b| hero.documents.live.team.open.get(&b).copied());
-            if let (Some(OpenThread::Thread(t)), Some(board)) = (open, hero.documents.active_board_mut())
+            let open = hero
+                .documents
+                .active()
+                .and_then(|b| hero.documents.live.team.open.get(&b).copied());
+            if let (Some(OpenThread::Thread(t)), Some(board)) =
+                (open, hero.documents.active_board_mut())
                 && board.team.delete(t, n, &author)
                 && board.team.thread(t).is_none()
             {
@@ -508,7 +531,9 @@ fn button(hero: &mut HeroScreen, b: TeamButton) {
         TeamButton::CardResolve => {
             let open = active.and_then(|id| t.open.get(&id).copied());
             let show = t.show_resolved;
-            if let (Some(OpenThread::Thread(th)), Some(board)) = (open, hero.documents.active_board_mut()) {
+            if let (Some(OpenThread::Thread(th)), Some(board)) =
+                (open, hero.documents.active_board_mut())
+            {
                 let now = !board.team.thread(th).is_some_and(|x| x.resolved);
                 board.team.set_resolved(th, now);
                 // K5 — resolvido esconde-se do quadro: o cartão fecha (a não ser com «Show resolved»).

@@ -75,13 +75,15 @@ impl Glyphs {
             let at = match self.index.get(&(face, g.id)) {
                 Some(&i) => i,
                 None => {
-                    let f = font.get_or_insert_with(|| FontRef::from_index(data, run.font.index).ok());
+                    let f =
+                        font.get_or_insert_with(|| FontRef::from_index(data, run.font.index).ok());
                     let mut pen = Pen::default();
                     if let Some(glyph) = f
                         .as_ref()
                         .and_then(|f| f.outline_glyphs().get(GlyphId::new(g.id)))
                     {
-                        let at = DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&coords));
+                        let at =
+                            DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&coords));
                         let _ = glyph.draw(at, &mut pen);
                     }
                     let local = run.skew.unwrap_or(Affine::IDENTITY) * Affine::FLIP_Y;

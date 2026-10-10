@@ -49,7 +49,12 @@ pub(crate) fn sample() -> (BoardSet, [ElementId; 2]) {
         [0.0, 0.0, 960.0, 540.0],
     );
     let f1 = put(b, el);
-    let mut n = shape(b, ShapeType::Sticky, "Slow builds ação", [40.0, 40.0, 199.0, 199.0]);
+    let mut n = shape(
+        b,
+        ShapeType::Sticky,
+        "Slow builds ação",
+        [40.0, 40.0, 199.0, 199.0],
+    );
     n.frame = Some(f1);
     n.set_votes(3);
     n.add_stamp(Stamp::Heart, 2);
@@ -78,7 +83,15 @@ pub(crate) fn sample() -> (BoardSet, [ElementId; 2]) {
             [60.0 + 400.0 * t, 400.0 + 40.0 * (t * 9.0).sin(), 0.5]
         })
         .collect();
-    let (ink, bx) = Ink::from_world(&pts, Style { stroke_width: 4.0, ..pen }, Pen::Pen, false);
+    let (ink, bx) = Ink::from_world(
+        &pts,
+        Style {
+            stroke_width: 4.0,
+            ..pen
+        },
+        Pen::Pen,
+        false,
+    );
     let mut stroke = Element::new_ink(b.doc.mint_id(), b.doc.z_on_top(), ink, bx);
     stroke.frame = Some(f1);
     put(b, stroke);
@@ -107,7 +120,12 @@ pub(crate) fn sample() -> (BoardSet, [ElementId; 2]) {
         [1100.0, 0.0, 600.0, 540.0],
     );
     let f2 = put(b, el);
-    let mut r = shape(b, ShapeType::Cylinder, "Cache", [1200.0, 120.0, 180.0, 140.0]);
+    let mut r = shape(
+        b,
+        ShapeType::Cylinder,
+        "Cache",
+        [1200.0, 120.0, 180.0, 140.0],
+    );
     r.frame = Some(f2);
     put(b, r);
     (set, [f1, f2])

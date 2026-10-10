@@ -22,7 +22,8 @@ fn btn() -> f32 {
 fn column(hero: &HeroScreen, area: Rect) -> (f32, f32, f32) {
     let nav = &hero.documents.live.nav;
     let (x, y, w) = super::super::facilitate::column(area, nav.frames_open, nav.search_open);
-    let fac = super::super::facilitate::timer_open(hero) || super::super::facilitate::vote_open(hero);
+    let fac =
+        super::super::facilitate::timer_open(hero) || super::super::facilitate::vote_open(hero);
     let w2 = btn() * 10.0; // LITERAL-PX-OK: a largura do cartão do fio, em botões
     if fac {
         (x - w2 - Spacing::Md.px(), y, w2)
@@ -32,7 +33,12 @@ fn column(hero: &HeroScreen, area: Rect) -> (f32, f32, f32) {
 }
 
 /// ⭐ Pinta o painel aberto (a lista, as versões, ou o exportar).
-pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
+pub(super) fn paint(
+    hero: &mut HeroScreen,
+    area: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+) {
     let (x, y, w) = column(hero, area);
     let room = Rect::new(x, y, w, area.y + area.h - y);
     let t = &hero.documents.live.team;
@@ -47,36 +53,74 @@ pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, 
 
 fn card(scene: &mut VectorScene, r: Rect, theme: ph2d_tokens::Theme) {
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    crate::paint::fill_rounded_rect(scene, r, radius, crate::paint::resolve(ColorToken::BgElev, theme));
+    crate::paint::fill_rounded_rect(
+        scene,
+        r,
+        radius,
+        crate::paint::resolve(ColorToken::BgElev, theme),
+    );
 }
 
 /// O título e o × de um painel; devolve o y da fila seguinte.
-fn header(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &mut TextSystem, key: &str, close: TeamButton) -> f32 {
+fn header(
+    hero: &mut HeroScreen,
+    at: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    key: &str,
+    close: TeamButton,
+) -> f32 {
     let theme = hero.theme;
     let (s, pad) = (btn(), Spacing::Sm.px());
     let y = at.y + pad;
     let fg = crate::paint::resolve(ColorToken::Text1, theme);
-    crate::paint::paint_text_elided(ts, scene, tr(key), at.x + pad, y + s * 0.25, TypeToken::Sm.px(), at.w - 3.0 * pad - s, fg);
+    crate::paint::paint_text_elided(
+        ts,
+        scene,
+        tr(key),
+        at.x + pad,
+        y + s * 0.25,
+        TypeToken::Sm.px(),
+        at.w - 3.0 * pad - s,
+        fg,
+    );
     let r = Rect::new(at.x + at.w - pad - s, y, s, s);
-    super::super::super::board_nav::button(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(close)), IconId::Close, r, false, theme);
+    super::super::super::board_nav::button(
+        scene,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(close)),
+        IconId::Close,
+        r,
+        false,
+        theme,
+    );
     y + s + Spacing::Xs.px()
 }
 
 /// R1 — o painel das versões: abre-se com o campo do nome já pronto («Version N»).
 pub(super) fn open_versions(hero: &mut HeroScreen) {
-    let n = hero.documents.active_board().map_or(0, |b| b.team.versions.len());
+    let n = hero
+        .documents
+        .active_board()
+        .map_or(0, |b| b.team.versions.len());
     let t = &mut hero.documents.live.team;
     t.versions_open = true;
     t.export = None;
     t.list_open = false;
     t.renaming_version = None;
     let name = tr_with("board.version.default", &[("n", &(n + 1).to_string())]);
-    super::super::super::board_nav::open_field(&mut hero.store, crate::ids::BOARD_VERSION_INPUT, name);
+    super::super::super::board_nav::open_field(
+        &mut hero.store,
+        crate::ids::BOARD_VERSION_INPUT,
+        name,
+    );
 }
 
 /// R1/R2 — o campo do nome: guardar uma versão nova, ou renomear a que se renomeia.
 pub(super) fn version_submit(hero: &mut HeroScreen) {
-    let name = super::super::super::board_nav::field_text(&hero.store, crate::ids::BOARD_VERSION_INPUT);
+    let name =
+        super::super::super::board_nav::field_text(&hero.store, crate::ids::BOARD_VERSION_INPUT);
     let renaming = hero.documents.live.team.renaming_version.take();
     let Some(b) = hero.documents.active_board_mut() else {
         return;
@@ -99,9 +143,17 @@ pub(super) fn version_submit(hero: &mut HeroScreen) {
             super::notice(hero, "board.version.saved");
         }
     }
-    let next = hero.documents.active_board().map_or(0, |b| b.team.versions.len()) + 1;
+    let next = hero
+        .documents
+        .active_board()
+        .map_or(0, |b| b.team.versions.len())
+        + 1;
     let fresh = tr_with("board.version.default", &[("n", &next.to_string())]);
-    super::super::super::board_nav::open_field(&mut hero.store, crate::ids::BOARD_VERSION_INPUT, fresh);
+    super::super::super::board_nav::open_field(
+        &mut hero.store,
+        crate::ids::BOARD_VERSION_INPUT,
+        fresh,
+    );
 }
 
 /// R2/R3 — restaurar (como quadro NOVO), apagar, renomear (duplo clique no nome).
@@ -133,7 +185,11 @@ pub(super) fn version_click(hero: &mut HeroScreen, h: Hit, n: usize, double: boo
                 .map(|v| v.name.clone())
                 .unwrap_or_default();
             hero.documents.live.team.renaming_version = Some(n);
-            super::super::super::board_nav::open_field(&mut hero.store, crate::ids::BOARD_VERSION_INPUT, name);
+            super::super::super::board_nav::open_field(
+                &mut hero.store,
+                crate::ids::BOARD_VERSION_INPUT,
+                name,
+            );
         }
         _ => {}
     }
@@ -145,7 +201,13 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
     let list: Vec<(String, i64)> = hero
         .documents
         .active_board()
-        .map(|b| b.team.versions.iter().map(|v| (v.name.clone(), v.at)).collect())
+        .map(|b| {
+            b.team
+                .versions
+                .iter()
+                .map(|v| (v.name.clone(), v.at))
+                .collect()
+        })
         .unwrap_or_default();
     let now = now_unix();
     let renaming = hero.documents.live.team.renaming_version;
@@ -154,22 +216,70 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
     let h = pad * 2.0 + (s + g) * (3.0 + shown.max(1) as f32);
     let r = Rect::new(at.x, at.y, at.w, h);
     card(scene, r, theme);
-    hero.hit_index.register(node(Hit::Button(TeamButton::VersionsSurface)), r);
-    let mut y = header(hero, at, scene, ts, "board.version.title", TeamButton::VersionsClose);
+    hero.hit_index
+        .register(node(Hit::Button(TeamButton::VersionsSurface)), r);
+    let mut y = header(
+        hero,
+        at,
+        scene,
+        ts,
+        "board.version.title",
+        TeamButton::VersionsClose,
+    );
     // R1 — o nome e «Save version» (o campo renomeia quando se renomeia uma).
     let save_w = s * 3.0; // LITERAL-PX-OK: «Save» a `Sm`, em botões
     let field = Rect::new(at.x + pad, y, at.w - 2.0 * pad - save_w - g, s);
-    super::super::super::board_nav::paint_field(crate::ids::BOARD_VERSION_INPUT, field, scene, ts, theme, &mut hero.hit_index, &hero.store);
+    super::super::super::board_nav::paint_field(
+        crate::ids::BOARD_VERSION_INPUT,
+        field,
+        scene,
+        ts,
+        theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
     let save = Rect::new(field.x + field.w + g, y, save_w, s);
-    let label = if renaming.is_some() { tr("board.version.rename") } else { tr("board.version.save_short") };
-    text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::VersionsSave)), label, save, true, theme);
+    let label = if renaming.is_some() {
+        tr("board.version.rename")
+    } else {
+        tr("board.version.save_short")
+    };
+    text_button(
+        scene,
+        ts,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::VersionsSave)),
+        label,
+        save,
+        true,
+        theme,
+    );
     y += s + g;
     let hint = tr("board.version.hint");
-    crate::paint::paint_text_elided(ts, scene, hint, at.x + pad, y + s * 0.25, TypeToken::Xs.px(), at.w - 2.0 * pad, crate::paint::resolve(ColorToken::Text3, theme));
+    crate::paint::paint_text_elided(
+        ts,
+        scene,
+        hint,
+        at.x + pad,
+        y + s * 0.25,
+        TypeToken::Xs.px(),
+        at.w - 2.0 * pad,
+        crate::paint::resolve(ColorToken::Text3, theme),
+    );
     y += s + g;
     if list.is_empty() {
         let none = tr("board.version.none");
-        crate::paint::paint_text_elided(ts, scene, none, at.x + pad, y + s * 0.25, TypeToken::Sm.px(), at.w - 2.0 * pad, crate::paint::resolve(ColorToken::Text3, theme));
+        crate::paint::paint_text_elided(
+            ts,
+            scene,
+            none,
+            at.x + pad,
+            y + s * 0.25,
+            TypeToken::Sm.px(),
+            at.w - 2.0 * pad,
+            crate::paint::resolve(ColorToken::Text3, theme),
+        );
     }
     // R2 — da mais nova à mais velha.
     for (n, (name, when)) in list.iter().enumerate().rev().take(shown) {
@@ -182,16 +292,44 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
         register(&mut hero.store, rid);
         hero.store.set_tooltip(rid, tr("board.version.rename_tip"));
         let line = format!("{name} · {}", ago(*when, now));
-        crate::paint::paint_text_elided(ts, scene, &line, row.x, row.y + s * 0.25, TypeToken::Sm.px(), row.w, crate::paint::resolve(ColorToken::Text1, theme));
+        crate::paint::paint_text_elided(
+            ts,
+            scene,
+            &line,
+            row.x,
+            row.y + s * 0.25,
+            TypeToken::Sm.px(),
+            row.w,
+            crate::paint::resolve(ColorToken::Text1, theme),
+        );
         hero.hit_index.register(rid, row);
         let res = node(Hit::Restore(n));
         register(&mut hero.store, res);
         hero.store.set_tooltip(res, tr("board.version.restore_tip"));
-        text_button(scene, ts, &mut hero.hit_index, &hero.store, res, tr("board.version.restore"), restore, false, theme);
+        text_button(
+            scene,
+            ts,
+            &mut hero.hit_index,
+            &hero.store,
+            res,
+            tr("board.version.restore"),
+            restore,
+            false,
+            theme,
+        );
         let d = node(Hit::DropVersion(n));
         register(&mut hero.store, d);
         hero.store.set_tooltip(d, tr("board.version.delete"));
-        super::super::super::board_nav::button(scene, &mut hero.hit_index, &hero.store, d, IconId::Trash, del, false, theme);
+        super::super::super::board_nav::button(
+            scene,
+            &mut hero.hit_index,
+            &hero.store,
+            d,
+            IconId::Trash,
+            del,
+            false,
+            theme,
+        );
         y += s + g;
     }
 }
@@ -205,7 +343,9 @@ fn png_px(hero: &HeroScreen, c: ExportChoice) -> Option<(u32, u32)> {
     let page = match c.scope {
         Scope::Board => ph2d_board_export::board_page(b, &routes),
         Scope::Selection => ph2d_board_export::selection_page(b, &routes, &sel),
-        Scope::Frames => ph2d_board_export::pdf_pages(b, &routes, &sel).into_iter().next(),
+        Scope::Frames => ph2d_board_export::pdf_pages(b, &routes, &sel)
+            .into_iter()
+            .next(),
     }?;
     let k = ph2d_board_export::png_scale(&page, ph2d_board_export::PNG_MEGAPIXELS[c.size.min(2)]);
     let [w, h] = page.size();
@@ -243,15 +383,29 @@ fn paint_export(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &m
     };
     let (s, pad, g) = (btn(), Spacing::Sm.px(), Spacing::Xs.px());
     let has_sel = !selection(hero).is_empty();
-    let has_frames = hero.documents.active_board().is_some_and(|b| b.doc.has_frames());
+    let has_frames = hero
+        .documents
+        .active_board()
+        .is_some_and(|b| b.doc.has_frames());
     let png = c.format == Format::Png;
     let vector_alpha = matches!(c.format, Format::Png | Format::Svg);
-    let rows = 4.0 + f32::from(u8::from(c.format != Format::Excalidraw)) + f32::from(u8::from(png)) * 2.0 + f32::from(u8::from(vector_alpha));
+    let rows = 4.0
+        + f32::from(u8::from(c.format != Format::Excalidraw))
+        + f32::from(u8::from(png)) * 2.0
+        + f32::from(u8::from(vector_alpha));
     let h = pad * 2.0 + (s + g) * rows;
     let r = Rect::new(at.x, at.y, at.w, h);
     card(scene, r, theme);
-    hero.hit_index.register(node(Hit::Button(TeamButton::ExportSurface)), r);
-    let mut y = header(hero, at, scene, ts, "board.export.title", TeamButton::ExportClose);
+    hero.hit_index
+        .register(node(Hit::Button(TeamButton::ExportSurface)), r);
+    let mut y = header(
+        hero,
+        at,
+        scene,
+        ts,
+        "board.export.title",
+        TeamButton::ExportClose,
+    );
     let row = |y: f32, n: usize, i: usize| {
         let w = (at.w - 2.0 * pad - g * (n as f32 - 1.0)) / n as f32;
         Rect::new(at.x + pad + i as f32 * (w + g), y, w, s)
@@ -262,25 +416,67 @@ fn paint_export(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &m
         (TeamButton::ExportPdf, "PDF", Format::Pdf),
     ];
     for (i, (b, label, f)) in formats.into_iter().enumerate() {
-        text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(b)), label, row(y, 3, i), c.format == f, theme);
+        text_button(
+            scene,
+            ts,
+            &mut hero.hit_index,
+            &hero.store,
+            node(Hit::Button(b)),
+            label,
+            row(y, 3, i),
+            c.format == f,
+            theme,
+        );
     }
     y += s + g;
     // O `.excalidraw` numa fila só dele (na fila dos quatro o nome cortava-se: «.exc…»).
     let exc = node(Hit::Button(TeamButton::ExportExcalidraw));
-    text_button(scene, ts, &mut hero.hit_index, &hero.store, exc, tr("board.export.excalidraw_short"), row(y, 1, 0), c.format == Format::Excalidraw, theme);
+    text_button(
+        scene,
+        ts,
+        &mut hero.hit_index,
+        &hero.store,
+        exc,
+        tr("board.export.excalidraw_short"),
+        row(y, 1, 0),
+        c.format == Format::Excalidraw,
+        theme,
+    );
     y += s + g;
     if c.format != Format::Excalidraw {
         // E2/E4 — a área; a selecção e os frames só quando existem.
-        let mut scopes = vec![(TeamButton::ScopeBoard, "board.export.scope_board", Scope::Board)];
+        let mut scopes = vec![(
+            TeamButton::ScopeBoard,
+            "board.export.scope_board",
+            Scope::Board,
+        )];
         if has_sel {
-            scopes.push((TeamButton::ScopeSelection, "board.export.scope_selection", Scope::Selection));
+            scopes.push((
+                TeamButton::ScopeSelection,
+                "board.export.scope_selection",
+                Scope::Selection,
+            ));
         }
         if has_frames {
-            scopes.push((TeamButton::ScopeFrames, "board.export.scope_frames", Scope::Frames));
+            scopes.push((
+                TeamButton::ScopeFrames,
+                "board.export.scope_frames",
+                Scope::Frames,
+            ));
         }
         let n = scopes.len();
         for (i, (b, key, sc)) in scopes.into_iter().enumerate() {
-            text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(b)), tr(key), row(y, n, i), c.scope == sc, theme);
+            text_button(
+                scene,
+                ts,
+                &mut hero.hit_index,
+                &hero.store,
+                node(Hit::Button(b)),
+                tr(key),
+                row(y, n, i),
+                c.scope == sc,
+                theme,
+            );
         }
         y += s + g;
     }
@@ -291,17 +487,61 @@ fn paint_export(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &m
             (TeamButton::SizeLarge, "board.export.large"),
         ];
         for (i, (b, key)) in sizes.into_iter().enumerate() {
-            text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(b)), tr(key), row(y, 3, i), c.size == i, theme);
+            text_button(
+                scene,
+                ts,
+                &mut hero.hit_index,
+                &hero.store,
+                node(Hit::Button(b)),
+                tr(key),
+                row(y, 3, i),
+                c.size == i,
+                theme,
+            );
         }
         y += s + g;
-        let px = png_px(hero, c).map_or_else(String::new, |(w, h)| tr_with("board.export.px", &[("w", &w.to_string()), ("h", &h.to_string())]));
-        crate::paint::paint_text_elided(ts, scene, &px, at.x + pad, y + s * 0.25, TypeToken::Xs.px(), at.w - 2.0 * pad, crate::paint::resolve(ColorToken::Text2, theme));
+        let px = png_px(hero, c).map_or_else(String::new, |(w, h)| {
+            tr_with(
+                "board.export.px",
+                &[("w", &w.to_string()), ("h", &h.to_string())],
+            )
+        });
+        crate::paint::paint_text_elided(
+            ts,
+            scene,
+            &px,
+            at.x + pad,
+            y + s * 0.25,
+            TypeToken::Xs.px(),
+            at.w - 2.0 * pad,
+            crate::paint::resolve(ColorToken::Text2, theme),
+        );
         y += s + g;
     }
     if vector_alpha {
-        text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::Transparent)), tr("board.export.transparent"), row(y, 1, 0), c.transparent, theme);
+        text_button(
+            scene,
+            ts,
+            &mut hero.hit_index,
+            &hero.store,
+            node(Hit::Button(TeamButton::Transparent)),
+            tr("board.export.transparent"),
+            row(y, 1, 0),
+            c.transparent,
+            theme,
+        );
         y += s + g;
     }
     let go = tr("board.export.go");
-    text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ExportGo)), go, row(y, 1, 0), true, theme);
+    text_button(
+        scene,
+        ts,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ExportGo)),
+        go,
+        row(y, 1, 0),
+        true,
+        theme,
+    );
 }

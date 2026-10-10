@@ -31,17 +31,29 @@ fn a_pin_on_an_object_follows_it() {
     let (a, id) = note(&mut set);
     let b = set.get_mut(a).unwrap();
     let pin = Pin::at(&b.doc, Some(id), [150.0, 125.0]);
-    assert_eq!(pin, Pin::Element { id, at: [0.25, 0.25] });
+    assert_eq!(
+        pin,
+        Pin::Element {
+            id,
+            at: [0.25, 0.25]
+        }
+    );
     let t = b.team.open(pin, "Ana", "aqui", 0).unwrap();
     let mut el = b.doc.get(id).unwrap().clone();
     (el.x, el.y, el.w, el.h) = (0.0, 0.0, 400.0, 200.0);
     BoardOp::Put(el.clone()).apply(&mut b.doc);
-    assert_eq!(b.team.thread(t).unwrap().anchor(&b.doc), Some([100.0, 50.0]));
+    assert_eq!(
+        b.team.thread(t).unwrap().anchor(&b.doc),
+        Some([100.0, 50.0])
+    );
     el.angle = std::f64::consts::FRAC_PI_2;
     BoardOp::Put(el).apply(&mut b.doc);
     let p = b.team.thread(t).unwrap().anchor(&b.doc).unwrap();
     // A meio-volta horária à volta do centro (200, 100): (100, 50) → (250, 0).
-    assert!((p[0] - 250.0).abs() < 1e-9 && (p[1] - 0.0).abs() < 1e-9, "{p:?}");
+    assert!(
+        (p[0] - 250.0).abs() < 1e-9 && (p[1] - 0.0).abs() < 1e-9,
+        "{p:?}"
+    );
 }
 
 /// K2: no vazio ou numa seta (sem caixa: a geometria é a rota), o pino fica no ponto.
@@ -67,7 +79,10 @@ fn a_pin_on_nothing_or_on_an_arrow_stays_on_the_point() {
     );
     let cid = c.id;
     BoardOp::Put(c).apply(&mut b.doc);
-    assert_eq!(Pin::at(&b.doc, Some(cid), [5.0, 6.0]), Pin::Point([5.0, 6.0]));
+    assert_eq!(
+        Pin::at(&b.doc, Some(cid), [5.0, 6.0]),
+        Pin::Point([5.0, 6.0])
+    );
 }
 
 /// ⭐ K3: o objecto apagado leva o fio; desfazer o apagar devolve-o.
@@ -159,13 +174,18 @@ fn a_version_restores_as_a_new_board_beside_and_leaves_the_original() {
     assert!(sketch);
     assert_eq!(doc.get(id).unwrap().shape().unwrap().text.as_str(), "ideia");
     let tail = set.create("Tail".into());
-    let r = set.insert_after(a, "Retro — v1".into(), doc, sketch).unwrap();
+    let r = set
+        .insert_after(a, "Retro — v1".into(), doc, sketch)
+        .unwrap();
     let ids: Vec<_> = set.boards().iter().map(|b| b.id).collect();
     assert_eq!(ids, [a, r, tail]);
     let restored = set.get(r).unwrap();
     assert!(restored.team.threads.is_empty() && restored.team.versions.is_empty());
     assert!(restored.doc.get(id).is_some());
-    assert!(set.get(a).unwrap().doc.get(id).is_none(), "o original não muda");
+    assert!(
+        set.get(a).unwrap().doc.get(id).is_none(),
+        "o original não muda"
+    );
 }
 
 /// ⭐ A versão é exactamente os bytes de um `BoardSet` de um quadro (sem o clonar): o leitor de
@@ -232,7 +252,10 @@ fn a_format_7_file_still_opens_with_no_team() {
     assert!(els[3].connector().is_some());
     assert_eq!(b.doc.frames_in_panel_order()[0].id, els[0].id);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
 }
 
 /// Gravados pelo build do formato 7 (`74e5b7163`).

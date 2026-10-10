@@ -9,7 +9,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ph2d_board_export::{Page, board_page, frame_page, paint_page, pdf, pdf_pages, png, selection_page, svg};
+use ph2d_board_export::{
+    Page, board_page, frame_page, paint_page, pdf, pdf_pages, png, selection_page, svg,
+};
 use ph2d_board_model::{Board, ElementId};
 use ph2d_board_render::EXPORT_PAPER;
 use ph2d_board_route::RouteCache;
@@ -98,7 +100,10 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                     let skipped = skipped_list(&imp.skipped);
                     let id = hero.documents.import_board(name.clone(), imp.doc);
                     document_tabs::register_board(&mut hero.store, id);
-                    let mut t = tr_with("board.io.imported", &[("name", &name), ("n", &n.to_string())]);
+                    let mut t = tr_with(
+                        "board.io.imported",
+                        &[("name", &name), ("n", &n.to_string())],
+                    );
                     if !skipped.is_empty() {
                         t.push_str(". ");
                         t.push_str(&tr_with("board.io.skipped", &[("list", &skipped)]));
@@ -113,8 +118,10 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
 }
 
 fn display(p: &Path) -> String {
-    p.file_name()
-        .map_or_else(|| p.display().to_string(), |n| n.to_string_lossy().into_owned())
+    p.file_name().map_or_else(
+        || p.display().to_string(),
+        |n| n.to_string_lossy().into_owned(),
+    )
 }
 
 /// «1 image, 2 embeddable» — o que a importação saltou (X3), pelos nomes do Excalidraw.
@@ -139,10 +146,20 @@ fn extension(f: Format) -> (&'static str, &'static str) {
 fn file_stem(name: &str) -> String {
     let s: String = name
         .chars()
-        .map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '_' } else { c })
+        .map(|c| {
+            if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                '_'
+            } else {
+                c
+            }
+        })
         .collect();
     let s = s.trim();
-    if s.is_empty() { "board".to_owned() } else { s.to_owned() }
+    if s.is_empty() {
+        "board".to_owned()
+    } else {
+        s.to_owned()
+    }
 }
 
 /// As páginas (PDF) ou imagens (PNG/SVG) de uma escolha (E2/E4).
@@ -163,7 +180,9 @@ fn pages_of(b: &Board, routes: &RouteCache, c: ExportChoice, sel: &[ElementId]) 
 fn links(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], usize)> {
     let page_of = |id: ElementId| {
         let chain = b.doc.frame_chain(id);
-        pages.iter().position(|p| p.frame.is_some_and(|f| f == id || chain.contains(&f)))
+        pages
+            .iter()
+            .position(|p| p.frame.is_some_and(|f| f == id || chain.contains(&f)))
     };
     let p = &pages[i];
     b.doc
@@ -172,7 +191,15 @@ fn links(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], usize)> {
             let to = page_of(el.link()?)?;
             (page_of(el.id) == Some(i) && to != i).then(|| {
                 let [x0, y0, x1, y1] = el.aabb();
-                ([x0 - p.rect[0], y0 - p.rect[1], x1 - p.rect[0], y1 - p.rect[1]], to)
+                (
+                    [
+                        x0 - p.rect[0],
+                        y0 - p.rect[1],
+                        x1 - p.rect[0],
+                        y1 - p.rect[1],
+                    ],
+                    to,
+                )
             })
         })
         .collect()
@@ -188,8 +215,12 @@ fn nth_path(path: &Path, b: &Board, page: &Page, n: usize) -> PathBuf {
         .and_then(|f| b.doc.get(f))
         .and_then(|f| f.as_frame().map(|x| x.name.clone()))
         .unwrap_or_default();
-    let stem = path.file_stem().map_or_else(String::new, |s| s.to_string_lossy().into_owned());
-    let ext = path.extension().map_or_else(String::new, |s| s.to_string_lossy().into_owned());
+    let stem = path
+        .file_stem()
+        .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
+    let ext = path
+        .extension()
+        .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
     path.with_file_name(format!("{stem}-{}.{ext}", file_stem(&name)))
 }
 
@@ -244,13 +275,15 @@ pub fn write_export(
             for p in &pages {
                 let (mut s, size) = paint_page(b, p, 1.0, paper, true, ts);
                 let to = nth_path(path, b, p, pages.len());
-                std::fs::write(&to, svg::write(&s.take_record(), size)).map_err(|e| e.to_string())?;
+                std::fs::write(&to, svg::write(&s.take_record(), size))
+                    .map_err(|e| e.to_string())?;
                 out.push(to);
             }
         }
         Format::Png => {
             let gpu = gpu.ok_or("no GPU")?;
-            let mut pass = ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (64, 64))?;
+            let mut pass =
+                ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (64, 64))?;
             let tile = png::tile_side(gpu);
             let mp = ph2d_board_export::PNG_MEGAPIXELS[c.size.min(2)];
             for p in &pages {

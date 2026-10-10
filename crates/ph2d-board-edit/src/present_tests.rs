@@ -53,7 +53,11 @@ fn the_show_starts_at_the_selected_frame_or_its_container() {
     assert_eq!(first_slide(b, &s, &[]), 0);
     assert_eq!(first_slide(b, &s, &[three]), 2);
     assert_eq!(first_slide(b, &s, &[inner]), 0, "o de dentro → o de topo");
-    assert_eq!(first_slide(b, &s, &[two, one]), 1, "o 1.º da selecção manda");
+    assert_eq!(
+        first_slide(b, &s, &[two, one]),
+        1,
+        "o 1.º da selecção manda"
+    );
 }
 
 /// ⭐ P3: o diapositivo enquadra-se com 0,8 % do lado limitante — um 16:9 numa área 16:9 ocupa
@@ -65,11 +69,17 @@ fn a_slide_fits_with_the_measured_margin() {
     let area = [0.0, 0.0, 1727.0, 853.0];
     let c = slide_camera(b, one, area).unwrap();
     let h = 900.0 * c.zoom;
-    assert!((h - (853.0 - 2.0 * 853.0 * SLIDE_MARGIN)).abs() < 1e-9, "{h}");
+    assert!(
+        (h - (853.0 - 2.0 * 853.0 * SLIDE_MARGIN)).abs() < 1e-9,
+        "{h}"
+    );
     assert!((h / 853.0 - 0.984).abs() < 1e-3);
     assert_eq!([c.center_x, c.center_y], [800.0, 450.0]);
     let sq = slide_camera(b, two, area).unwrap();
-    assert!((800.0 * sq.zoom - 839.352).abs() < 1e-3, "o quadrado encaixa pela altura");
+    assert!(
+        (800.0 * sq.zoom - 839.352).abs() < 1e-3,
+        "o quadrado encaixa pela altura"
+    );
 }
 
 /// ⭐ P5: a viagem é a curva ajustada aos dois pontos medidos, e acaba em `TRAVEL_SECS`.
@@ -95,6 +105,9 @@ fn the_travel_matches_the_measured_points() {
     assert_eq!(camera_at(a, b, 5.0), b);
     let mid = camera_at(a, b, TRAVEL_SECS / 2.0);
     let k = travel(TRAVEL_SECS / 2.0);
-    assert!((mid.zoom - 100f64.powf(k)).abs() < 1e-9, "zoom em escala geométrica");
+    assert!(
+        (mid.zoom - 100f64.powf(k)).abs() < 1e-9,
+        "zoom em escala geométrica"
+    );
     assert!((mid.center_x - 100.0 * k).abs() < 1e-9);
 }

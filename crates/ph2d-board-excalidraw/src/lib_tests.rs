@@ -75,7 +75,12 @@ fn sample() -> Board {
     let mut el = fr(b, "Detail", [500.0, 300.0, 350.0, 250.0]);
     el.frame = Some(outer);
     let inner = put(b, el);
-    let mut n = shape(b, ShapeType::Sticky, "Slow builds", [40.0, 40.0, 199.0, 199.0]);
+    let mut n = shape(
+        b,
+        ShapeType::Sticky,
+        "Slow builds",
+        [40.0, 40.0, 199.0, 199.0],
+    );
     n.frame = Some(outer);
     n.set_votes(3);
     n.add_stamp(Stamp::Heart, 2);
@@ -84,7 +89,12 @@ fn sample() -> Board {
         color: Rgba([240, 147, 157, 255]),
     });
     let note = put(b, n);
-    let mut r = shape(b, ShapeType::Rectangle, "Plan\nship it", [300.0, 60.0, 180.0, 100.0]);
+    let mut r = shape(
+        b,
+        ShapeType::Rectangle,
+        "Plan\nship it",
+        [300.0, 60.0, 180.0, 100.0],
+    );
     r.frame = Some(outer);
     if let Some(s) = r.shape_mut() {
         s.style.round = true;
@@ -139,7 +149,10 @@ fn sample() -> Board {
         Route::Straight,
         Style::new(None, Some(INK), INK),
     );
-    free.heads = [ph2d_board_model::Head::Bar, ph2d_board_model::Head::Triangle];
+    free.heads = [
+        ph2d_board_model::Head::Bar,
+        ph2d_board_model::Head::Triangle,
+    ];
     let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), free);
     put(b, el);
     let pts: Vec<[f64; 3]> = (0..12)
@@ -188,7 +201,11 @@ fn grava_a_entrada_do_oraculo() {
 /// ⭐ X4: o escritor é determinístico e continua a escrever a ENTRADA que o oráculo correu.
 #[test]
 fn our_writer_still_writes_the_oracle_input() {
-    assert_eq!(write(&sample()), INPUT, "o escritor mudou: corra o oráculo outra vez");
+    assert_eq!(
+        write(&sample()),
+        INPUT,
+        "o escritor mudou: corra o oráculo outra vez"
+    );
 }
 
 /// ⭐⭐ X2: o nosso quadro → `.excalidraw` → o Excalidraw (`restore` + `serializeAsJSON`) → o nosso
@@ -228,19 +245,27 @@ fn an_excalidraw_file_opens_by_the_direct_mapping() {
     assert_eq!(imp.skipped.get("iframe"), Some(&1));
     let els = imp.doc.live_in_z_order();
     let shapes: Vec<_> = els.iter().filter_map(|e| e.shape()).collect();
-    let boxed = shapes.iter().find(|s| s.text.as_str() == "Olá caixa").expect("o texto preso");
+    let boxed = shapes
+        .iter()
+        .find(|s| s.text.as_str() == "Olá caixa")
+        .expect("o texto preso");
     assert_eq!(boxed.kind, ShapeType::Rectangle);
     assert!(boxed.style.round && boxed.style.sketch);
     assert_eq!(boxed.style.fill, Some(Rgba([0xa5, 0xd8, 0xff, 255])));
     let arrows: Vec<_> = els.iter().filter_map(|e| e.connector()).collect();
     assert!(
-        arrows.iter().any(|c| matches!(c.start, End::Bound { .. }) && matches!(c.end, End::Bound { .. })),
+        arrows
+            .iter()
+            .any(|c| matches!(c.start, End::Bound { .. }) && matches!(c.end, End::Bound { .. })),
         "a seta presa às duas formas"
     );
     assert!(els.iter().any(|e| e.ink().is_some()), "o traço");
     let frames: Vec<_> = els.iter().filter(|e| e.as_frame().is_some()).collect();
     assert!(!frames.is_empty());
-    assert!(els.iter().any(|e| e.frame == Some(frames[0].id)), "um filho no frame");
+    assert!(
+        els.iter().any(|e| e.frame == Some(frames[0].id)),
+        "um filho no frame"
+    );
 }
 
 /// As cores: `transparent`, `#rgb`, `#rrggbb`, `#rrggbbaa`; o resto não se percebe.
@@ -253,7 +278,12 @@ fn colors_parse_and_print() {
     assert_eq!(parse_color("red"), None);
     assert_eq!(hex(Some(Rgba([0, 0, 0, 128]))), "#00000080");
     assert_eq!(hex(None), "transparent");
-    for h in [ph2d_board_model::Head::None, ph2d_board_model::Head::Arrow, ph2d_board_model::Head::DiamondOpen, ph2d_board_model::Head::Bar] {
+    for h in [
+        ph2d_board_model::Head::None,
+        ph2d_board_model::Head::Arrow,
+        ph2d_board_model::Head::DiamondOpen,
+        ph2d_board_model::Head::Bar,
+    ] {
         assert_eq!(head_of(head_name(h)), h);
     }
 }
@@ -286,10 +316,17 @@ fn edits_made_in_excalidraw_come_back() {
     assert_eq!(doc.get(ElementId(4)).unwrap().x, 350.0, "movido");
     let note = doc.get(ElementId(3)).unwrap();
     assert_eq!(note.shape().unwrap().text.as_str(), "Fast builds");
-    assert_eq!(note.shape().unwrap().kind, ShapeType::Sticky, "continua nota");
+    assert_eq!(
+        note.shape().unwrap().kind,
+        ShapeType::Sticky,
+        "continua nota"
+    );
     assert_eq!((note.votes(), note.tags().len()), (3, 1));
     let ell = doc.get(ElementId(6)).unwrap();
-    assert_eq!(ell.shape().unwrap().style.fill, Some(Rgba([0xff, 0xc9, 0xc9, 255])));
+    assert_eq!(
+        ell.shape().unwrap().style.fill,
+        Some(Rgba([0xff, 0xc9, 0xc9, 255]))
+    );
     let copies: Vec<_> = doc
         .live()
         .filter(|e| e.shape().is_some_and(|s| s.kind == ShapeType::Ellipse))
@@ -298,7 +335,14 @@ fn edits_made_in_excalidraw_come_back() {
     let c = copies.iter().find(|e| e.id != ElementId(6)).unwrap();
     // O id do traço apagado (10) está livre no quadro novo: a cópia pode tê-lo — o que conta é ser ÚNICO.
     assert_eq!(c.x, 400.0, "no sítio dela");
-    assert_eq!(doc.live().filter(|e| e.id == c.id).count(), 1, "um id só dela");
-    assert!(doc.live().all(|e| e.ink().is_none()), "o traço apagado não entra");
+    assert_eq!(
+        doc.live().filter(|e| e.id == c.id).count(),
+        1,
+        "um id só dela"
+    );
+    assert!(
+        doc.live().all(|e| e.ink().is_none()),
+        "o traço apagado não entra"
+    );
     assert!(back.skipped.is_empty());
 }

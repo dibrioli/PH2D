@@ -23,7 +23,12 @@ const ROOM: Color = Color::from_rgba8(0, 0, 0, 255);
 /// A área da apresentação: a janela inteira.
 fn area(hero: &HeroScreen) -> [f64; 4] {
     let v = hero.last_viewport;
-    [f64::from(v.x), f64::from(v.y), f64::from(v.w), f64::from(v.h)]
+    [
+        f64::from(v.x),
+        f64::from(v.y),
+        f64::from(v.w),
+        f64::from(v.h),
+    ]
 }
 
 /// A apresentação está a correr?
@@ -109,7 +114,11 @@ pub fn stop(hero: &mut HeroScreen) {
     let Some(s) = hero.documents.live.team.show.take() else {
         return;
     };
-    if let Some(b) = hero.documents.active_board_mut().filter(|b| b.id == s.board) {
+    if let Some(b) = hero
+        .documents
+        .active_board_mut()
+        .filter(|b| b.id == s.board)
+    {
         b.camera = s.before;
     }
 }
@@ -130,7 +139,11 @@ pub fn key(
         BoardKey::Left | BoardKey::Up | BoardKey::PageUp => step(hero, false),
         BoardKey::Home | BoardKey::End => {
             if let Some(s) = hero.documents.live.team.show.as_mut() {
-                let to = if k == BoardKey::Home { 0 } else { s.slides.len() - 1 };
+                let to = if k == BoardKey::Home {
+                    0
+                } else {
+                    s.slides.len() - 1
+                };
                 go(s, to, cam);
             }
         }
@@ -206,9 +219,36 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
     // Os comandos num painel (cinzento sobre preto não se via: a foto dos estados).
     super::super::super::board_nav::panel(scene, &[prev, count, next, exit], theme);
     let nav = super::super::super::board_nav::button;
-    nav(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ShowPrev)), IconId::ChevronLeft, prev, false, theme);
-    nav(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ShowNext)), IconId::ChevronRight, next, false, theme);
-    nav(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ShowExit)), IconId::Close, exit, false, theme);
+    nav(
+        scene,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ShowPrev)),
+        IconId::ChevronLeft,
+        prev,
+        false,
+        theme,
+    );
+    nav(
+        scene,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ShowNext)),
+        IconId::ChevronRight,
+        next,
+        false,
+        theme,
+    );
+    nav(
+        scene,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ShowExit)),
+        IconId::Close,
+        exit,
+        false,
+        theme,
+    );
     let label = format!("{}/{n}", at + 1);
     let fg = crate::paint::resolve(ColorToken::Text2, theme);
     crate::paint::paint_text_centered(ts, scene, &label, count, TypeToken::Sm.px(), fg);

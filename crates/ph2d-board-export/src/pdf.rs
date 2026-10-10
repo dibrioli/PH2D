@@ -182,10 +182,14 @@ impl Doc {
         path(&mut c, &p, Affine::IDENTITY);
         c.fill_nonzero();
         let body = c.finish();
-        let bb = p.elements().is_empty().then(|| [0.0; 4]).unwrap_or_else(|| {
-            let b = ph2d_vector::Shape::bounding_box(&p);
-            [b.x0, b.y0, b.x1, b.y1]
-        });
+        let bb = p
+            .elements()
+            .is_empty()
+            .then(|| [0.0; 4])
+            .unwrap_or_else(|| {
+                let b = ph2d_vector::Shape::bounding_box(&p);
+                [b.x0, b.y0, b.x1, b.y1]
+            });
         let mut form = self.pdf.form_xobject(r, &body);
         form.bbox(Rect::new(f(bb[0]), f(bb[1]), f(bb[2]), f(bb[3])));
         form.finish();
@@ -342,11 +346,7 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                     }
                     c.x_object(Name(name.as_bytes()));
                 }
-                stack
-                    .last_mut()
-                    .expect("a página")
-                    .content
-                    .restore_state();
+                stack.last_mut().expect("a página").content.restore_state();
             }
             DrawOp::Glyphs(run) => {
                 let placed = doc.glyphs.place(run);

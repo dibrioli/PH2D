@@ -98,7 +98,10 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
     let whole = png::render(&gpu, &mut pass, b, &page, 1.0, paper, 8192, &mut ts).unwrap();
     let tiled = png::render(&gpu, &mut pass, b, &page, 1.0, paper, 300, &mut ts).unwrap();
     let (seam_bad, seam_mean) = diff(&whole.rgba, &tiled.rgba, 2);
-    println!("ladrilhos 300 px contra inteira: {:.4} % > 2 · média {seam_mean:.4}", seam_bad * 100.0);
+    println!(
+        "ladrilhos 300 px contra inteira: {:.4} % > 2 · média {seam_mean:.4}",
+        seam_bad * 100.0
+    );
     std::fs::write(d.join("gpu.png"), png::encode(&whole)).unwrap();
     std::fs::write(d.join("gpu_tiled.png"), png::encode(&tiled)).unwrap();
 
@@ -109,7 +112,10 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
     std::fs::write(&svg_path, &svg_text).unwrap();
     run("xmllint", &["--noout", svg_path.to_str().unwrap()]);
     let resvg_png = d.join("board_resvg.png");
-    run("resvg", &[svg_path.to_str().unwrap(), resvg_png.to_str().unwrap()]);
+    run(
+        "resvg",
+        &[svg_path.to_str().unwrap(), resvg_png.to_str().unwrap()],
+    );
     let rsvg_png = d.join("board_rsvg.png");
     run(
         "rsvg-convert",
@@ -119,8 +125,15 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
         let (w, h, px) = decode(p);
         assert_eq!((w, h), (whole.width, whole.height), "{name}: o tamanho");
         let (bad, mean) = diff(&whole.rgba, &px, 48);
-        println!("SVG por {name} contra a placa: {:.3} % > 48 · média {mean:.3}", bad * 100.0);
-        assert!(bad < 0.002, "{name}: {:.3} % dos píxeis diferem (> 48)", bad * 100.0);
+        println!(
+            "SVG por {name} contra a placa: {:.3} % > 48 · média {mean:.3}",
+            bad * 100.0
+        );
+        assert!(
+            bad < 0.002,
+            "{name}: {:.3} % dos píxeis diferem (> 48)",
+            bad * 100.0
+        );
     }
 
     // 3. O PDF: uma página por frame; texto, estrutura e o desenho de cada página.
@@ -148,19 +161,37 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
     assert!(info.contains("Pages:           2"), "{info}");
     let text = run("pdftotext", &["-layout", p, "-"]);
     println!("pdftotext: {text:?}");
-    for t in ["Slow builds ação", "Sketch", "Half", "next", "Cache", "urgent"] {
+    for t in [
+        "Slow builds ação",
+        "Sketch",
+        "Half",
+        "next",
+        "Cache",
+        "urgent",
+    ] {
         assert!(text.contains(t), "o texto «{t}» não se extrai: {text:?}");
     }
     let prefix = d.join("board_pdf");
-    run("pdftoppm", &["-r", "72", "-png", p, prefix.to_str().unwrap()]);
+    run(
+        "pdftoppm",
+        &["-r", "72", "-png", p, prefix.to_str().unwrap()],
+    );
     for (i, pg) in pages.iter().enumerate() {
         let gpu_page = png::render(&gpu, &mut pass, b, pg, 1.0, paper, 8192, &mut ts).unwrap();
         let (w, h, px) = decode(&d.join(format!("board_pdf-{}.png", i + 1)));
         assert_eq!((w, h), (gpu_page.width, gpu_page.height), "página {i}");
         let (bad, mean) = diff(&gpu_page.rgba, &px, 48);
-        println!("PDF p.{} por pdftoppm contra a placa: {:.3} % > 48 · média {mean:.3}", i + 1, bad * 100.0);
+        println!(
+            "PDF p.{} por pdftoppm contra a placa: {:.3} % > 48 · média {mean:.3}",
+            i + 1,
+            bad * 100.0
+        );
         assert!(bad < 0.005, "página {i}: {:.3} %", bad * 100.0);
     }
-    assert!(seam_bad < 1e-4, "costura entre ladrilhos: {:.4} %", seam_bad * 100.0);
+    assert!(
+        seam_bad < 1e-4,
+        "costura entre ladrilhos: {:.4} %",
+        seam_bad * 100.0
+    );
     let _ = PNG_MEGAPIXELS;
 }

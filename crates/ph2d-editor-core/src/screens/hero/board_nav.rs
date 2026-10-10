@@ -332,11 +332,22 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     let open = {
         let n = &hero.documents.live.nav;
         let list = hero.documents.live.team.list_open;
-        [false, list, n.frames_open, n.search_open, n.minimap_open, false]
+        [
+            false,
+            list,
+            n.frames_open,
+            n.search_open,
+            n.minimap_open,
+            false,
+        ]
     };
     let rects = button_rects(area);
     for part in [&rects[..TEAM_ROW], &rects[TEAM_ROW..]] {
-        panel(scene, &part.iter().map(|(_, r)| *r).collect::<Vec<_>>(), theme);
+        panel(
+            scene,
+            &part.iter().map(|(_, r)| *r).collect::<Vec<_>>(),
+            theme,
+        );
     }
     for ((b, r), on) in rects.into_iter().zip(open) {
         let icon = match b {

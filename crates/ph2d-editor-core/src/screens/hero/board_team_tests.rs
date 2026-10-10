@@ -26,7 +26,10 @@ fn every_team_id_round_trips_and_no_salt_reads_another() {
     ids.dedup();
     assert_eq!(ids.len(), all.len(), "dois alvos com o mesmo id");
     // Os ids da navegação e da facilitação não são da equipa.
-    for b in [super::super::NavButton::Frames, super::super::NavButton::Present] {
+    for b in [
+        super::super::NavButton::Frames,
+        super::super::NavButton::Present,
+    ] {
         assert_eq!(hit_of(super::super::button_node(b)), None);
     }
     let fac = super::super::facilitate::fac_node(super::super::facilitate::FacButton::Surface);
@@ -42,5 +45,9 @@ fn ago_reads_in_the_largest_unit() {
     assert_eq!(ago(0, 3599), "59 min ago");
     assert_eq!(ago(0, 7200), "2 h ago");
     assert_eq!(ago(0, 86_400 * 3), "3 d ago");
-    assert_eq!(ago(500, 100), "now", "um relógio que andou para trás não dá negativo");
+    assert_eq!(
+        ago(500, 100),
+        "now",
+        "um relógio que andou para trás não dá negativo"
+    );
 }

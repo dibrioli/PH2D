@@ -11,7 +11,10 @@ fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
         if p.is_dir() {
             sources(&p, out);
         } else if name.ends_with(".rs") && !name.ends_with("_tests.rs") {
-            out.push((p.display().to_string(), std::fs::read_to_string(&p).unwrap()));
+            out.push((
+                p.display().to_string(),
+                std::fs::read_to_string(&p).unwrap(),
+            ));
         }
     }
 }
@@ -23,7 +26,11 @@ fn board_paint_never_bypasses_the_recording() {
     for c in ["ph2d-board-render/src", "ph2d-board-layout/src"] {
         sources(&root.join(c), &mut files);
     }
-    assert!(files.len() > 10, "o censo varre os dois crates ({})", files.len());
+    assert!(
+        files.len() > 10,
+        "o censo varre os dois crates ({})",
+        files.len()
+    );
     let mut bad = Vec::new();
     for (path, text) in &files {
         for (i, line) in text.lines().enumerate() {

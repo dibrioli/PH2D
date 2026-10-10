@@ -9,7 +9,9 @@ use crate::interaction::{ContextMenuKind, ContextMenuRequest};
 use crate::screens::hero::board_bar::fac::FacItem;
 use crate::screens::hero::board_nav::team::{Hit, TeamButton, node as team_node};
 use crate::screens::hero::board_nav::{self, NavButton, RowPart, button_node, row_node};
-use ph2d_board_model::{BoardOp, ElementId, Frame, Pin, Rgba, RichText, STICKY_COLORS, Shape, Style};
+use ph2d_board_model::{
+    BoardOp, ElementId, Frame, Pin, Rgba, RichText, STICKY_COLORS, Shape, Style,
+};
 use ph2d_host::{KeyEvent, KeyKind};
 
 impl T {
@@ -53,7 +55,13 @@ impl T {
     /// O ponto `world` no ecrã.
     fn screen(&self, world: [f64; 2]) -> (f32, f32) {
         let a = board_view::area_of(self.hero.last_canvas);
-        let p = self.hero.documents.active_board().unwrap().camera.to_screen(a, world);
+        let p = self
+            .hero
+            .documents
+            .active_board()
+            .unwrap()
+            .camera
+            .to_screen(a, world);
         (p[0] as f32, p[1] as f32)
     }
 
@@ -61,7 +69,15 @@ impl T {
     fn click_board(&mut self, at: (f32, f32)) {
         let (h, ts, c) = (&mut self.hero, &mut self.ts, &mut self.clock);
         for kind in [PointerKind::Down, PointerKind::Up] {
-            board_view::pointer(h, inp(ts, c), kind, PointerButton::Primary, at.0, at.1, true);
+            board_view::pointer(
+                h,
+                inp(ts, c),
+                kind,
+                PointerButton::Primary,
+                at.0,
+                at.1,
+                true,
+            );
         }
         self.paint();
     }
@@ -125,20 +141,31 @@ fn the_comment_tool_pins_a_thread_to_the_object_and_enter_posts_it() {
     assert!(t.hero.documents.live.team.commenting);
     let p = t.screen([0.0, 0.0]);
     t.click_board(p);
-    assert_eq!(t.elements().len(), 1, "o clique de comentar não criou nada no quadro");
+    assert_eq!(
+        t.elements().len(),
+        1,
+        "o clique de comentar não criou nada no quadro"
+    );
     t.write_and_enter("Looks good");
     let th = &t.team().threads;
     assert_eq!(th.len(), 1);
     assert_eq!(th[0].messages[0].author, "Ana");
     assert_eq!(th[0].messages[0].text, "Looks good");
-    assert!(matches!(th[0].pin, Pin::Element { id, .. } if id == note), "{:?}", th[0].pin);
+    assert!(
+        matches!(th[0].pin, Pin::Element { id, .. } if id == note),
+        "{:?}",
+        th[0].pin
+    );
     let bubble = team_node(Hit::Bubble(th[0].id));
     let before = t.find(bubble).expect("a bolha está pintada");
     // A nota anda: a bolha vai com ela.
     let (board, live) = t.hero.documents.active_parts().unwrap();
     let mut el = board.doc.get(note).unwrap().clone();
     el.x += 100.0;
-    live.histories.entry(board.id).or_default().apply(&mut board.doc, vec![BoardOp::Put(el)]);
+    live.histories
+        .entry(board.id)
+        .or_default()
+        .apply(&mut board.doc, vec![BoardOp::Put(el)]);
     t.paint();
     let after = t.find(bubble).unwrap();
     assert!(after.0 > before.0 + 10.0, "{before:?} → {after:?}");
@@ -153,19 +180,34 @@ fn a_bubble_opens_reads_and_resolve_hides_until_show_resolved() {
     t.note_at([-100.0, -100.0], "idea");
     let id = {
         let b = t.hero.documents.active_board_mut().unwrap();
-        b.team.open(Pin::Point([0.0, 0.0]), "Rui", "Why?", 0).unwrap()
+        b.team
+            .open(Pin::Point([0.0, 0.0]), "Rui", "Why?", 0)
+            .unwrap()
     };
     t.paint();
     assert!(t.team().thread(id).unwrap().unread_for("Ana"));
     t.shell_click_id(team_node(Hit::Bubble(id)), "a bolha");
-    assert!(!t.team().thread(id).unwrap().unread_for("Ana"), "K6: abrir lê");
+    assert!(
+        !t.team().thread(id).unwrap().unread_for("Ana"),
+        "K6: abrir lê"
+    );
     t.btn(TeamButton::CardResolve);
     assert!(t.team().thread(id).unwrap().resolved);
-    assert!(t.find(team_node(Hit::Bubble(id))).is_none(), "K5: resolvido some do quadro");
-    assert!(t.find(team_node(Hit::Button(TeamButton::CardClose))).is_none(), "e o cartão fecha");
+    assert!(
+        t.find(team_node(Hit::Bubble(id))).is_none(),
+        "K5: resolvido some do quadro"
+    );
+    assert!(
+        t.find(team_node(Hit::Button(TeamButton::CardClose)))
+            .is_none(),
+        "e o cartão fecha"
+    );
     t.shell_click_id(button_node(NavButton::Comments), "Comments");
     t.btn(TeamButton::ListShowResolved);
-    assert!(t.find(team_node(Hit::Bubble(id))).is_some(), "com «Show resolved» volta");
+    assert!(
+        t.find(team_node(Hit::Bubble(id))).is_some(),
+        "com «Show resolved» volta"
+    );
     assert!(t.find(team_node(Hit::Row(id))).is_some(), "e está na lista");
 }
 
@@ -187,7 +229,10 @@ fn c_arms_the_tool_and_shift_c_hides_the_bubbles() {
         ..Modifiers::default()
     };
     assert!(t.key(BoardKey::Char('c'), shift, Some("C")));
-    assert!(t.find(team_node(Hit::Bubble(id))).is_none(), "Shift+C esconde");
+    assert!(
+        t.find(team_node(Hit::Bubble(id))).is_none(),
+        "Shift+C esconde"
+    );
     t.key(BoardKey::Char('c'), shift, Some("C"));
     assert!(t.find(team_node(Hit::Bubble(id))).is_some(), "e volta");
 }
@@ -200,13 +245,19 @@ fn only_my_messages_edit_and_delete() {
     t.hero.documents.set_author("Ana".into());
     let id = {
         let b = t.hero.documents.active_board_mut().unwrap();
-        let id = b.team.open(Pin::Point([0.0, 0.0]), "Ana", "first", 0).unwrap();
+        let id = b
+            .team
+            .open(Pin::Point([0.0, 0.0]), "Ana", "first", 0)
+            .unwrap();
         b.team.reply(id, "Rui", "second", 1);
         id
     };
     t.paint();
     t.shell_click_id(team_node(Hit::Bubble(id)), "a bolha");
-    assert!(t.find(team_node(Hit::Edit(0))).is_some(), "a minha tem editar");
+    assert!(
+        t.find(team_node(Hit::Edit(0))).is_some(),
+        "a minha tem editar"
+    );
     assert!(t.find(team_node(Hit::Edit(1))).is_none(), "a do Rui não");
     assert!(t.find(team_node(Hit::Delete(1))).is_none());
     t.shell_click_id(team_node(Hit::Edit(0)), "editar");
@@ -235,7 +286,10 @@ fn deleting_the_object_hides_its_bubble_and_undo_brings_it_back() {
     let bubble = team_node(Hit::Bubble(id));
     assert!(t.find(bubble).is_some());
     let (board, live) = t.hero.documents.active_parts().unwrap();
-    live.histories.entry(board.id).or_default().apply(&mut board.doc, vec![BoardOp::Delete(note)]);
+    live.histories
+        .entry(board.id)
+        .or_default()
+        .apply(&mut board.doc, vec![BoardOp::Delete(note)]);
     t.paint();
     assert!(t.find(bubble).is_none(), "o objecto apagado leva o fio");
     let ctrl = Modifiers {
@@ -262,15 +316,44 @@ fn a_version_saves_from_the_tab_menu_and_restores_as_a_new_board() {
     assert_eq!(t.team().versions.len(), 1);
     assert_eq!(t.team().versions[0].name, "Version 1");
     let (board, live) = t.hero.documents.active_parts().unwrap();
-    live.histories.entry(board.id).or_default().apply(&mut board.doc, vec![BoardOp::Delete(note)]);
+    live.histories
+        .entry(board.id)
+        .or_default()
+        .apply(&mut board.doc, vec![BoardOp::Delete(note)]);
     t.paint();
     t.shell_click_id(team_node(Hit::Restore(0)), "Restore");
     let now = t.hero.documents.active().unwrap();
     assert_ne!(now, original, "um quadro novo, activo");
-    let tabs: Vec<_> = t.hero.documents.boards().boards().iter().map(|b| b.id).collect();
+    let tabs: Vec<_> = t
+        .hero
+        .documents
+        .boards()
+        .boards()
+        .iter()
+        .map(|b| b.id)
+        .collect();
     assert_eq!(tabs, [original, now], "logo à direita");
-    assert!(t.hero.documents.boards().get(now).unwrap().doc.get(note).is_some());
-    assert!(t.hero.documents.boards().get(original).unwrap().doc.get(note).is_none(), "o original não muda");
+    assert!(
+        t.hero
+            .documents
+            .boards()
+            .get(now)
+            .unwrap()
+            .doc
+            .get(note)
+            .is_some()
+    );
+    assert!(
+        t.hero
+            .documents
+            .boards()
+            .get(original)
+            .unwrap()
+            .doc
+            .get(note)
+            .is_none(),
+        "o original não muda"
+    );
 }
 
 /// ⭐ P1–P6 — «Present» (o botão do canto): começa no 1.º diapositivo, a sala inteira toma o clique,
@@ -308,7 +391,11 @@ fn present_walks_the_frames_and_esc_gives_the_view_back() {
     assert_eq!(show(&t).at, 0);
     t.key(BoardKey::Escape, Modifiers::default(), None);
     assert!(t.hero.documents.live.team.show.is_none());
-    assert_eq!(t.hero.documents.active_board().unwrap().camera, before, "P6: a vista de antes");
+    assert_eq!(
+        t.hero.documents.active_board().unwrap().camera,
+        before,
+        "P6: a vista de antes"
+    );
 }
 
 /// P2 — sem frames, «Present» avisa e não abre.
@@ -331,16 +418,30 @@ fn export_and_import_ask_the_family_for_a_file() {
     let mut t = T::new();
     t.note_at([-100.0, -100.0], "idea");
     t.tab_menu(crate::ids::CTX_MENU_BOARD_EXPORT);
-    assert!(t.find(team_node(Hit::Button(TeamButton::ScopeSelection))).is_none());
-    assert!(t.find(team_node(Hit::Button(TeamButton::SizeLarge))).is_some(), "PNG: os tamanhos");
+    assert!(
+        t.find(team_node(Hit::Button(TeamButton::ScopeSelection)))
+            .is_none()
+    );
+    assert!(
+        t.find(team_node(Hit::Button(TeamButton::SizeLarge)))
+            .is_some(),
+        "PNG: os tamanhos"
+    );
     t.btn(TeamButton::ExportPdf);
-    assert!(t.find(team_node(Hit::Button(TeamButton::SizeLarge))).is_none(), "PDF: sem tamanhos");
+    assert!(
+        t.find(team_node(Hit::Button(TeamButton::SizeLarge)))
+            .is_none(),
+        "PDF: sem tamanhos"
+    );
     t.btn(TeamButton::ExportGo);
     match t.hero.documents.take_io() {
         Some(IoRequest::Export { choice, .. }) => assert_eq!(choice.format, Format::Pdf),
         other => panic!("{other:?}"),
     }
-    assert!(t.hero.documents.live.team.export.is_none(), "o diálogo fecha");
+    assert!(
+        t.hero.documents.live.team.export.is_none(),
+        "o diálogo fecha"
+    );
     t.tab_menu(crate::ids::CTX_MENU_BOARD_IMPORT);
     assert_eq!(t.hero.documents.take_io(), Some(IoRequest::Import));
 }
@@ -356,13 +457,20 @@ fn no_shell_gesture_zone_sits_on_a_team_button() {
         b.team.open(Pin::Point([0.0, 0.0]), "Rui", "x", 0).unwrap()
     };
     t.paint();
-    let mut found = vec![("bubble".to_owned(), t.find(team_node(Hit::Bubble(id))).unwrap())];
+    let mut found = vec![(
+        "bubble".to_owned(),
+        t.find(team_node(Hit::Bubble(id))).unwrap(),
+    )];
     t.shell_click_id(team_node(Hit::Bubble(id)), "a bolha");
     for b in [TeamButton::CardResolve, TeamButton::CardClose] {
         found.push((format!("{b:?}"), t.find(team_node(Hit::Button(b))).unwrap()));
     }
     t.tab_menu(crate::ids::CTX_MENU_BOARD_EXPORT);
-    for b in [TeamButton::ExportPng, TeamButton::ExportGo, TeamButton::ScopeFrames] {
+    for b in [
+        TeamButton::ExportPng,
+        TeamButton::ExportGo,
+        TeamButton::ScopeFrames,
+    ] {
         found.push((format!("{b:?}"), t.find(team_node(Hit::Button(b))).unwrap()));
     }
     for b in [NavButton::Present, NavButton::Comments] {
@@ -370,8 +478,14 @@ fn no_shell_gesture_zone_sits_on_a_team_button() {
     }
     let layout = t.hero.last_layout.unwrap();
     for (what, p) in found {
-        assert!(layout.dock_seam_at(p).is_none(), "{what}: a costura da doca rouba-o");
-        assert!(layout.dock_reopen_at(p).is_none(), "{what}: o reabrir da doca rouba-o");
+        assert!(
+            layout.dock_seam_at(p).is_none(),
+            "{what}: a costura da doca rouba-o"
+        );
+        assert!(
+            layout.dock_reopen_at(p).is_none(),
+            "{what}: o reabrir da doca rouba-o"
+        );
         let band = t.hero.rulers_live() && crate::ruler::hit(t.hero.last_canvas, p).is_some();
         assert!(!band, "{what}: a faixa da régua rouba-o");
     }

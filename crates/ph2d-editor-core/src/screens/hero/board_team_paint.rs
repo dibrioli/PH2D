@@ -9,7 +9,9 @@ use super::{Hit, TeamButton, ago, me, node, now_unix, register};
 use crate::documents::team::OpenThread;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text_block, paint_text_centered, paint_text_elided, resolve};
+use crate::paint::{
+    fill_rounded_rect, paint_text_block, paint_text_centered, paint_text_elided, resolve,
+};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{Board, Thread, ThreadId};
@@ -130,15 +132,33 @@ fn paint_bubbles(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
             crate::paint::paint_icon(scene, IconId::Check, i, resolve(fg, theme), 2.0); // LITERAL-PX-OK: traço do ícone
         } else {
             let first = th.messages.first().map_or("?", |m| m.author.as_str());
-            let initial: String = first.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
-            paint_text_centered(ts, scene, &initial, r, TypeToken::Sm.px(), resolve(fg, theme));
+            let initial: String = first
+                .chars()
+                .next()
+                .map(|c| c.to_uppercase().collect())
+                .unwrap_or_default();
+            paint_text_centered(
+                ts,
+                scene,
+                &initial,
+                r,
+                TypeToken::Sm.px(),
+                resolve(fg, theme),
+            );
         }
         if th.messages.len() > 1 {
             let s = d * BADGE;
             let br = Rect::new(r.x + d - s * 0.6, r.y - s * 0.4, s, s);
             fill_rounded_rect(scene, br, s / 2.0, resolve(ColorToken::Accent, theme));
             let n = th.messages.len().to_string();
-            paint_text_centered(ts, scene, &n, br, TypeToken::Xs.px(), resolve(ColorToken::AccentFg, theme));
+            paint_text_centered(
+                ts,
+                scene,
+                &n,
+                br,
+                TypeToken::Xs.px(),
+                resolve(ColorToken::AccentFg, theme),
+            );
         }
         let id = node(Hit::Bubble(th.id));
         register(&mut hero.store, id);
@@ -178,47 +198,137 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         // O fio novo mostra onde vai ficar: a bolha vazia na ponta.
         let r = bubble_rect(at);
         fill_rounded_rect(scene, r, s / 2.0, resolve(ColorToken::Accent, theme));
-        fill_rounded_rect(scene, Rect::new(r.x, r.y + s / 2.0, s / 2.0, s / 2.0), 0.0, resolve(ColorToken::Accent, theme));
+        fill_rounded_rect(
+            scene,
+            Rect::new(r.x, r.y + s / 2.0, s / 2.0, s / 2.0),
+            0.0,
+            resolve(ColorToken::Accent, theme),
+        );
     }
     let x = (at[0] + s + Spacing::Xs.px()).min(area.x + area.w - w - Spacing::Md.px());
-    let y = (at[1] - s).clamp(area.y + Spacing::Md.px(), (area.y + area.h - s * 4.0).max(area.y)); // CLAMP-OK: o cartão cabe na área (o máximo ≥ o mínimo pelo .max)
+    let y = (at[1] - s).clamp(
+        area.y + Spacing::Md.px(),
+        (area.y + area.h - s * 4.0).max(area.y),
+    ); // CLAMP-OK: o cartão cabe na área (o máximo ≥ o mínimo pelo .max)
     // O conteúdo numa cena à parte: a altura só se sabe depois de quebrar as linhas.
     let mut body = VectorScene::new();
     let mut later = Deferred::new();
     let mut cy = y + pad;
     // A fila de cima: resolver (só num fio que existe) e fechar.
     let close = Rect::new(x + w - pad - s, cy, s, s);
-    icon_button(&mut body, &mut hero.store, &mut later, node(Hit::Button(TeamButton::CardClose)), IconId::Close, close, false, theme);
+    icon_button(
+        &mut body,
+        &mut hero.store,
+        &mut later,
+        node(Hit::Button(TeamButton::CardClose)),
+        IconId::Close,
+        close,
+        false,
+        theme,
+    );
     if let Some(th) = &thread {
         let res = Rect::new(close.x - s - Spacing::Xs.px(), cy, s, s);
-        icon_button(&mut body, &mut hero.store, &mut later, node(Hit::Button(TeamButton::CardResolve)), IconId::Check, res, th.resolved, theme);
-        let title = if th.resolved { tr("board.comment.resolved") } else { tr("board.comment.thread") };
-        paint_text_elided(ts, &mut body, title, x + pad, cy + s * 0.25, TypeToken::Sm.px(), res.x - x - 2.0 * pad, resolve(ColorToken::Text2, theme));
+        icon_button(
+            &mut body,
+            &mut hero.store,
+            &mut later,
+            node(Hit::Button(TeamButton::CardResolve)),
+            IconId::Check,
+            res,
+            th.resolved,
+            theme,
+        );
+        let title = if th.resolved {
+            tr("board.comment.resolved")
+        } else {
+            tr("board.comment.thread")
+        };
+        paint_text_elided(
+            ts,
+            &mut body,
+            title,
+            x + pad,
+            cy + s * 0.25,
+            TypeToken::Sm.px(),
+            res.x - x - 2.0 * pad,
+            resolve(ColorToken::Text2, theme),
+        );
     } else {
         let t = tr("board.comment.new");
-        paint_text_elided(ts, &mut body, t, x + pad, cy + s * 0.25, TypeToken::Sm.px(), w - 3.0 * pad - s, resolve(ColorToken::Text2, theme));
+        paint_text_elided(
+            ts,
+            &mut body,
+            t,
+            x + pad,
+            cy + s * 0.25,
+            TypeToken::Sm.px(),
+            w - 3.0 * pad - s,
+            resolve(ColorToken::Text2, theme),
+        );
     }
     cy += s + Spacing::Xs.px();
     for (n, m) in thread.iter().flat_map(|t| t.messages.iter().enumerate()) {
         let head = format!("{} · {}", m.author, ago(m.at, now));
         let own = m.author == mine;
-        let room = if own { w - 2.0 * pad - 2.0 * s } else { w - 2.0 * pad };
-        paint_text_elided(ts, &mut body, &head, x + pad, cy, TypeToken::Xs.px(), room, resolve(ColorToken::Text2, theme));
+        let room = if own {
+            w - 2.0 * pad - 2.0 * s
+        } else {
+            w - 2.0 * pad
+        };
+        paint_text_elided(
+            ts,
+            &mut body,
+            &head,
+            x + pad,
+            cy,
+            TypeToken::Xs.px(),
+            room,
+            resolve(ColorToken::Text2, theme),
+        );
         if own {
             let small = s * 0.75; // LITERAL-PX-OK: os botões de uma mensagem, ¾ de um botão
             let del = Rect::new(x + w - pad - small, cy - small * 0.2, small, small);
             let edit = Rect::new(del.x - small, del.y, small, small);
-            icon_button(&mut body, &mut hero.store, &mut later, node(Hit::Edit(n)), IconId::VectorPencil, edit, false, theme);
-            icon_button(&mut body, &mut hero.store, &mut later, node(Hit::Delete(n)), IconId::Trash, del, false, theme);
-            hero.store.set_tooltip(node(Hit::Edit(n)), tr("board.comment.edit"));
-            hero.store.set_tooltip(node(Hit::Delete(n)), tr("board.comment.delete"));
+            icon_button(
+                &mut body,
+                &mut hero.store,
+                &mut later,
+                node(Hit::Edit(n)),
+                IconId::VectorPencil,
+                edit,
+                false,
+                theme,
+            );
+            icon_button(
+                &mut body,
+                &mut hero.store,
+                &mut later,
+                node(Hit::Delete(n)),
+                IconId::Trash,
+                del,
+                false,
+                theme,
+            );
+            hero.store
+                .set_tooltip(node(Hit::Edit(n)), tr("board.comment.edit"));
+            hero.store
+                .set_tooltip(node(Hit::Delete(n)), tr("board.comment.delete"));
         }
         cy += TypeToken::Xs.px() * 1.6; // LITERAL-PX-OK: a altura da linha do cabeçalho (1,6 em)
         let mut text = m.text.clone();
         if m.edited {
             text.push_str(&format!(" {}", tr("board.comment.edited")));
         }
-        cy += paint_text_block(ts, &mut body, &text, x + pad, cy, TypeToken::Sm.px(), w - 2.0 * pad, resolve(ColorToken::Text1, theme));
+        cy += paint_text_block(
+            ts,
+            &mut body,
+            &text,
+            x + pad,
+            cy,
+            TypeToken::Sm.px(),
+            w - 2.0 * pad,
+            resolve(ColorToken::Text1, theme),
+        );
         cy += Spacing::Sm.px();
     }
     let field = Rect::new(x + pad, cy, w - 2.0 * pad, s);
@@ -227,16 +337,38 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
     // O fundo toma o clique (registado ANTES dos botões, que ganham por cima dele).
-    hero.hit_index.register(node(Hit::Button(TeamButton::CardSurface)), card);
+    hero.hit_index
+        .register(node(Hit::Button(TeamButton::CardSurface)), card);
     for (id, r) in later {
         hero.hit_index.register(id, r);
     }
     scene.append_transformed(&body, ph2d_vector::Affine::IDENTITY);
     let fid = crate::ids::BOARD_COMMENT_INPUT;
-    super::super::super::board_nav::paint_field(fid, field, scene, ts, theme, &mut hero.hit_index, &hero.store);
+    super::super::super::board_nav::paint_field(
+        fid,
+        field,
+        scene,
+        ts,
+        theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
     if super::super::super::board_nav::field_text(&hero.store, fid).is_empty() {
-        let hint = if thread.is_some() { tr("board.comment.reply") } else { tr("board.comment.write") };
-        paint_text_elided(ts, scene, hint, field.x + pad, field.y + s * 0.25, TypeToken::Sm.px(), field.w - 2.0 * pad, resolve(ColorToken::Text3, theme));
+        let hint = if thread.is_some() {
+            tr("board.comment.reply")
+        } else {
+            tr("board.comment.write")
+        };
+        paint_text_elided(
+            ts,
+            scene,
+            hint,
+            field.x + pad,
+            field.y + s * 0.25,
+            TypeToken::Sm.px(),
+            field.w - 2.0 * pad,
+            resolve(ColorToken::Text3, theme),
+        );
     }
 }
 
@@ -249,7 +381,12 @@ pub(super) fn begin_edit(hero: &mut HeroScreen, n: usize) {
     let Some(OpenThread::Thread(t)) = hero.documents.live.team.open.get(&b.id).copied() else {
         return;
     };
-    let Some(m) = b.team.thread(t).and_then(|th| th.messages.get(n)).filter(|m| m.author == mine) else {
+    let Some(m) = b
+        .team
+        .thread(t)
+        .and_then(|th| th.messages.get(n))
+        .filter(|m| m.author == mine)
+    else {
         return;
     };
     let text = m.text.clone();
@@ -281,12 +418,18 @@ pub(super) fn go_to_thread(hero: &mut HeroScreen, t: ThreadId) {
     };
     // Uma janela de um ecrã à volta do ponto, ao zoom de agora (só se desloca a vista).
     let (hw, hh) = (area[2] / 2.0 / b.camera.zoom, area[3] / 2.0 / b.camera.zoom);
-    b.camera.fit(area, [p[0] - hw, p[1] - hh, p[0] + hw, p[1] + hh], 0.0);
+    b.camera
+        .fit(area, [p[0] - hw, p[1] - hh, p[0] + hw, p[1] + hh], 0.0);
 }
 
 /// ⭐ K8 — a lista dos comentários (o botão «Comments» do canto): o meu nome (K10), «Show resolved»,
 /// e os fios do mais novo ao mais velho com a bolha de novo.
-pub(super) fn paint_list(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &mut TextSystem) -> f32 {
+pub(super) fn paint_list(
+    hero: &mut HeroScreen,
+    at: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+) -> f32 {
     let theme = hero.theme;
     let mine = me(hero);
     let (s, pad, g) = (btn(), Spacing::Sm.px(), Spacing::Xs.px());
@@ -303,7 +446,13 @@ pub(super) fn paint_list(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScen
         .map(|t| {
             let m = &t.messages[0];
             let line = format!("{}: {}", m.author, m.text.lines().next().unwrap_or(""));
-            (t.id, line, t.unread_for(&mine), t.resolved, t.messages.len())
+            (
+                t.id,
+                line,
+                t.unread_for(&mine),
+                t.resolved,
+                t.messages.len(),
+            )
         })
         .collect();
     rows.reverse();
@@ -314,36 +463,116 @@ pub(super) fn paint_list(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScen
     let r = Rect::new(at.x, at.y, at.w, h);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
-    hero.hit_index.register(node(Hit::Button(TeamButton::ListSurface)), r);
+    hero.hit_index
+        .register(node(Hit::Button(TeamButton::ListSurface)), r);
     let mut y = at.y + pad;
-    paint_text_elided(ts, scene, tr("board.comment.title"), at.x + pad, y + s * 0.25, TypeToken::Sm.px(), at.w - 3.0 * pad - s, resolve(ColorToken::Text1, theme));
+    paint_text_elided(
+        ts,
+        scene,
+        tr("board.comment.title"),
+        at.x + pad,
+        y + s * 0.25,
+        TypeToken::Sm.px(),
+        at.w - 3.0 * pad - s,
+        resolve(ColorToken::Text1, theme),
+    );
     let close = Rect::new(at.x + at.w - pad - s, y, s, s);
-    super::super::super::board_nav::button(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ListClose)), IconId::Close, close, false, theme);
+    super::super::super::board_nav::button(
+        scene,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ListClose)),
+        IconId::Close,
+        close,
+        false,
+        theme,
+    );
     y += s + g;
     // K10 — «Name: …» (clicar abre o campo).
     let name_r = Rect::new(at.x + pad, y, at.w - 2.0 * pad, s);
     if editing {
-        super::super::super::board_nav::paint_field(crate::ids::BOARD_AUTHOR_INPUT, name_r, scene, ts, theme, &mut hero.hit_index, &hero.store);
+        super::super::super::board_nav::paint_field(
+            crate::ids::BOARD_AUTHOR_INPUT,
+            name_r,
+            scene,
+            ts,
+            theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
     } else {
         let label = tr_with("board.comment.name", &[("name", &mine)]);
-        text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ListAuthor)), &label, name_r, false, theme);
+        text_button(
+            scene,
+            ts,
+            &mut hero.hit_index,
+            &hero.store,
+            node(Hit::Button(TeamButton::ListAuthor)),
+            &label,
+            name_r,
+            false,
+            theme,
+        );
     }
     y += s + g;
     let tog = Rect::new(at.x + pad, y, at.w - 2.0 * pad, s);
-    text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ListShowResolved)), tr("board.comment.show_resolved"), tog, show_resolved, theme);
+    text_button(
+        scene,
+        ts,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ListShowResolved)),
+        tr("board.comment.show_resolved"),
+        tog,
+        show_resolved,
+        theme,
+    );
     y += s + g;
     if rows.is_empty() {
-        paint_text_elided(ts, scene, tr("board.comment.none"), at.x + pad, y + s * 0.25, TypeToken::Sm.px(), at.w - 2.0 * pad, resolve(ColorToken::Text3, theme));
+        paint_text_elided(
+            ts,
+            scene,
+            tr("board.comment.none"),
+            at.x + pad,
+            y + s * 0.25,
+            TypeToken::Sm.px(),
+            at.w - 2.0 * pad,
+            resolve(ColorToken::Text3, theme),
+        );
     }
     for (id, line, unread, resolved, n) in rows.into_iter().take(shown) {
         let rr = Rect::new(at.x + pad, y, at.w - 2.0 * pad, s);
         let nid = node(Hit::Row(id));
         register(&mut hero.store, nid);
         let dot = s * 0.3; // LITERAL-PX-OK: o ponto de «novo», 0,3 de uma linha
-        let mark = if resolved { ColorToken::Text3 } else if unread { ColorToken::Accent } else { ColorToken::Bg3 };
-        fill_rounded_rect(scene, Rect::new(rr.x, rr.y + (s - dot) / 2.0, dot, dot), dot / 2.0, resolve(mark, theme));
-        let count = if n > 1 { format!(" ({n})") } else { String::new() };
-        paint_text_elided(ts, scene, &format!("{line}{count}"), rr.x + dot + g, rr.y + s * 0.25, TypeToken::Sm.px(), rr.w - dot - g, resolve(ColorToken::Text1, theme));
+        let mark = if resolved {
+            ColorToken::Text3
+        } else if unread {
+            ColorToken::Accent
+        } else {
+            ColorToken::Bg3
+        };
+        fill_rounded_rect(
+            scene,
+            Rect::new(rr.x, rr.y + (s - dot) / 2.0, dot, dot),
+            dot / 2.0,
+            resolve(mark, theme),
+        );
+        let count = if n > 1 {
+            format!(" ({n})")
+        } else {
+            String::new()
+        };
+        paint_text_elided(
+            ts,
+            scene,
+            &format!("{line}{count}"),
+            rr.x + dot + g,
+            rr.y + s * 0.25,
+            TypeToken::Sm.px(),
+            rr.w - dot - g,
+            resolve(ColorToken::Text1, theme),
+        );
         hero.hit_index.register(nid, rr);
         y += s + g;
     }
@@ -365,7 +594,11 @@ pub(super) fn text_button(
 ) {
     let hover = matches!(
         store.button_state(id),
-        Some(crate::widget::ButtonState::Hovered | crate::widget::ButtonState::Pressed | crate::widget::ButtonState::Focused)
+        Some(
+            crate::widget::ButtonState::Hovered
+                | crate::widget::ButtonState::Pressed
+                | crate::widget::ButtonState::Focused
+        )
     );
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let bg = if on {
@@ -376,7 +609,14 @@ pub(super) fn text_button(
         ColorToken::Bg2
     };
     fill_rounded_rect(scene, r, radius, resolve(bg, theme));
-    let fg = resolve(if on { ColorToken::AccentFg } else { ColorToken::Text1 }, theme);
+    let fg = resolve(
+        if on {
+            ColorToken::AccentFg
+        } else {
+            ColorToken::Text1
+        },
+        theme,
+    );
     paint_text_centered(ts, scene, label, r, TypeToken::Sm.px(), fg);
     hit.register(id, r);
 }

@@ -2,7 +2,9 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_board_model::{Board, Dash, Element, ElementId, ElementKind, End, Route, Shape, ShapeType};
+use ph2d_board_model::{
+    Board, Dash, Element, ElementId, ElementKind, End, Route, Shape, ShapeType,
+};
 use ph2d_board_route::RouteCache;
 use ph2d_vector::{BezPath, PathEl};
 use serde_json::{Map, Value, json};
@@ -105,15 +107,19 @@ fn text(
     m.insert("containerId".into(), json!(container));
     m.insert("lineHeight".into(), json!(LINE_HEIGHT));
     m.insert("autoResize".into(), json!(true));
-    m.insert("customData".into(), json!({ PH2D: { "text_of": owner.id.0 } }));
+    m.insert(
+        "customData".into(),
+        json!({ PH2D: { "text_of": owner.id.0 } }),
+    );
     Value::Object(m)
 }
 
 fn native(kind: ShapeType) -> Option<&'static str> {
     match kind {
-        ShapeType::Rectangle | ShapeType::Sticky | ShapeType::StickyStack | ShapeType::StickyWide => {
-            Some("rectangle")
-        }
+        ShapeType::Rectangle
+        | ShapeType::Sticky
+        | ShapeType::StickyStack
+        | ShapeType::StickyWide => Some("rectangle"),
         ShapeType::Ellipse => Some("ellipse"),
         ShapeType::Diamond => Some("diamond"),
         _ => None,
@@ -262,7 +268,12 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     if !c.label.is_empty() {
         let st = &c.style;
         let w = ph2d_board_route::LABEL_WRAP;
-        let rect = [r.mid[0] - w / 2.0, r.mid[1] - st.font_size, w, 2.0 * st.font_size];
+        let rect = [
+            r.mid[0] - w / 2.0,
+            r.mid[1] - st.font_size,
+            w,
+            2.0 * st.font_size,
+        ];
         let me = id(el.id);
         out.push(text(
             board,

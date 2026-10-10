@@ -1,7 +1,9 @@
 //! Os ficheiros do quadro (W8) sem o diálogo: o que se escreve num caminho e o que se abre de um.
 
 use super::*;
-use ph2d_board_model::{BoardOp, BoardSet, Element, Frame, Rgba, RichText, Shape, ShapeType, Style};
+use ph2d_board_model::{
+    BoardOp, BoardSet, Element, Frame, Rgba, RichText, Shape, ShapeType, Style,
+};
 
 const INK: Rgba = Rgba([30, 30, 30, 255]);
 
@@ -65,13 +67,28 @@ fn the_pdf_has_a_page_per_frame_and_the_link_between_them() {
     let d = dir("pdf");
     let mut ts = TextSystem::without_system_fonts();
     let path = d.join("b.pdf");
-    let files = write_export(&board(), choice(Format::Pdf, Scope::Board), &[], None, &mut ts, &path).unwrap();
+    let files = write_export(
+        &board(),
+        choice(Format::Pdf, Scope::Board),
+        &[],
+        None,
+        &mut ts,
+        &path,
+    )
+    .unwrap();
     assert_eq!(files, [path.clone()]);
     let bytes = std::fs::read(&path).unwrap();
     let text = String::from_utf8_lossy(&bytes);
     assert!(bytes.starts_with(b"%PDF-"));
-    assert_eq!(text.matches("/Type /Page").count() - text.matches("/Type /Pages").count(), 2);
-    assert_eq!(text.matches("/Subtype /Link").count(), 1, "o link do 1.º frame para o 2.º");
+    assert_eq!(
+        text.matches("/Type /Page").count() - text.matches("/Type /Pages").count(),
+        2
+    );
+    assert_eq!(
+        text.matches("/Subtype /Link").count(),
+        1,
+        "o link do 1.º frame para o 2.º"
+    );
 }
 
 /// E2 — o SVG do quadro; vários frames em SVG = um ficheiro por frame, com o nome do frame.
@@ -81,10 +98,26 @@ fn svg_writes_one_file_or_one_per_frame() {
     let mut ts = TextSystem::without_system_fonts();
     let b = board();
     let one = d.join("b.svg");
-    let files = write_export(&b, choice(Format::Svg, Scope::Board), &[], None, &mut ts, &one).unwrap();
+    let files = write_export(
+        &b,
+        choice(Format::Svg, Scope::Board),
+        &[],
+        None,
+        &mut ts,
+        &one,
+    )
+    .unwrap();
     assert_eq!(files, [one.clone()]);
     assert!(std::fs::read_to_string(&one).unwrap().starts_with("<svg"));
-    let many = write_export(&b, choice(Format::Svg, Scope::Frames), &[], None, &mut ts, &one).unwrap();
+    let many = write_export(
+        &b,
+        choice(Format::Svg, Scope::Frames),
+        &[],
+        None,
+        &mut ts,
+        &one,
+    )
+    .unwrap();
     let names: Vec<String> = many.iter().map(|p| display(p)).collect();
     assert_eq!(names, ["b-Problem.svg", "b-Plan.svg"]);
 }
@@ -96,7 +129,15 @@ fn an_excalidraw_file_written_opens_back() {
     let mut ts = TextSystem::without_system_fonts();
     let b = board();
     let path = d.join("Launch.excalidraw");
-    write_export(&b, choice(Format::Excalidraw, Scope::Board), &[], None, &mut ts, &path).unwrap();
+    write_export(
+        &b,
+        choice(Format::Excalidraw, Scope::Board),
+        &[],
+        None,
+        &mut ts,
+        &path,
+    )
+    .unwrap();
     let (name, imp) = import_file(&path).unwrap();
     assert_eq!(name, "Launch");
     assert_eq!(imp.doc.live_len(), b.doc.live_len());
@@ -116,7 +157,10 @@ fn an_excalidraw_png_with_the_scene_opens() {
     assert!(imp.doc.live_len() > 5);
     let bad = d.join("plain.txt");
     std::fs::write(&bad, "hello").unwrap();
-    assert!(import_file(&bad).is_err(), "um ficheiro qualquer recusa-se com a razão");
+    assert!(
+        import_file(&bad).is_err(),
+        "um ficheiro qualquer recusa-se com a razão"
+    );
 }
 
 /// O PNG sem placa recusa-se com a razão (a interface pinta-a), e nada a exportar também.
@@ -124,12 +168,26 @@ fn an_excalidraw_png_with_the_scene_opens() {
 fn png_without_a_gpu_and_an_empty_board_refuse_with_a_reason() {
     let d = dir("refuse");
     let mut ts = TextSystem::without_system_fonts();
-    let e = write_export(&board(), choice(Format::Png, Scope::Board), &[], None, &mut ts, &d.join("b.png"));
+    let e = write_export(
+        &board(),
+        choice(Format::Png, Scope::Board),
+        &[],
+        None,
+        &mut ts,
+        &d.join("b.png"),
+    );
     assert_eq!(e, Err("no GPU".to_owned()));
     let mut set = BoardSet::default();
     let a = set.create("Empty".into());
     let empty = set.get(a).unwrap().clone();
-    let e = write_export(&empty, choice(Format::Svg, Scope::Board), &[], None, &mut ts, &d.join("e.svg"));
+    let e = write_export(
+        &empty,
+        choice(Format::Svg, Scope::Board),
+        &[],
+        None,
+        &mut ts,
+        &d.join("e.svg"),
+    );
     assert_eq!(e, Err(tr("board.io.nothing").to_owned()));
 }
 

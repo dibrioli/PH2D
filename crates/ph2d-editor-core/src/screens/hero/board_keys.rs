@@ -69,7 +69,10 @@ pub fn key(
         return if pressed {
             super::board_nav::team::show::key(hero, k).unwrap_or_default()
         } else {
-            KeyOutcome { consumed: true, copy: None }
+            KeyOutcome {
+                consumed: true,
+                copy: None,
+            }
         };
     }
     if pressed && let Some(out) = super::board_nav::key(hero, k, mods) {

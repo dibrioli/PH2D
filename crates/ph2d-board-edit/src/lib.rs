@@ -54,10 +54,10 @@ pub use notes::{
 };
 pub use organize::{Align, Axis, Notice, Order};
 pub use overlay::{Overlay, Target, TextOverlay, Wire, grid_handle_offset};
+pub use ph2d_board_layout::Move;
 pub use present::{
     SLIDE_MARGIN, TRAVEL_POWER, TRAVEL_SECS, camera_at, first_slide, slide_camera, slides, travel,
 };
-pub use ph2d_board_layout::Move;
 pub use snap::Guide;
 pub use templates::Template;
 pub use text::hand_lettered;

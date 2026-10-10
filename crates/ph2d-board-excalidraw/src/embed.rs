@@ -49,9 +49,13 @@ pub fn scene_from_bytes(bytes: &[u8]) -> Result<String, String> {
     if text.trim_start().starts_with('{') {
         return Ok(text.to_owned());
     }
-    let start = text.find("payload-start -->").ok_or("this image has no Excalidraw scene")?;
+    let start = text
+        .find("payload-start -->")
+        .ok_or("this image has no Excalidraw scene")?;
     let rest = &text[start + "payload-start -->".len()..];
-    let end = rest.find("<!--").ok_or("this image has no Excalidraw scene")?;
+    let end = rest
+        .find("<!--")
+        .ok_or("this image has no Excalidraw scene")?;
     let b64: String = rest[..end].chars().filter(|c| !c.is_whitespace()).collect();
     let raw = base64::engine::general_purpose::STANDARD
         .decode(b64)

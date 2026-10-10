@@ -237,6 +237,17 @@ C de ¾ da sonda das folgas: arco **30/30** (antes: traço livre), nunca círcul
 | `arc_bend_back` | 0,25 | 0,15 … 0,35 | ↓ os arcos pequenos tremidos (75 % a 0,1) · ↑ rabisco (5 % a 0,4) |
 | `arc_chords` | 6 | 4 … 8 | ↓ rabisco a 3 · ↑ o tremor de cada corda vira para trás (arcos ±2: 90 % a 12, 72 % a 24) |
 
+**Taubin × Kåsa** (`measure_taubin_against_kasa`, 40 mãos): com tremor ±2 px Kåsa encolhe o raio de um
+arco de 30° de raio 80 em −9,8 px e de 45° em −3,5 px; Taubin erra −0,1 a +5 (30°) e ~0 de 45° para
+cima. Gate `taubin_does_not_shrink_a_short_noisy_arc_as_kasa_does`.
+
+**Arcos de ELIPSE** (fora do escopo; `measure_elliptic_arcs`, raio maior 160 px, ±1 px, 20 mãos): até
+2:1 eles viram arco de CÍRCULO — 90° com desvio máximo de 3 px (1,25:1) a 8 px (2:1); o meio arco pelo
+eixo MAIOR com 6–12 px; pelo eixo MENOR (1,5:1 e mais) fica traço livre; a 3:1, 90°, metade sai
+polilinha. Também viram arco as espirais de Euler (60–120°) e o «taco» (recta + curva de 90°). ⇒ o
+círculo «chega» no sentido de não estragar nada que antes funcionava; se o desvio incomodar o dono, o
+próximo degrau é o arco de elipse (a medir) ou apertar o resíduo com um piso em px para o tremor.
+
 **O `regular`** (`Shift` / o 2.º dedo) — decisão técnica, sem medição: o Procreate não corre aqui (é
 iPad) e o manual só descreve o 2.º dedo para linha (15°), elipse (círculo) e polígonos (regulares). A
 lei escolhida é a da LINHA aplicada ao arco: o varrido em múltiplos de 15° (90° e 180° exactos) e a

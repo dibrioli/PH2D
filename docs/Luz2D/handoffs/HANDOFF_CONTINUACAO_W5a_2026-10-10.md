@@ -140,3 +140,14 @@ Automático; ao recriar a grade (outro nível ou janela) o custo da anterior esq
 `com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido` (1080p: Low 2,3 · High 37,7 ms, sob carga) — as
 duas metades sangram na mutação (sem o filtro antigo: «nunca foi lido»; sem o esquecer: «ainda mostra o custo
 do anterior»). Portão: clippy · deny-check · família 40 + 8 ✓.
+
+## Smoke do dono (10/10, 2.ª volta): «ao dar zoom e pan o aspecto da iluminação muda» — F4, para a W5
+
+**Medido** (`a_luz_num_ponto_nao_muda_com_a_vista`, cena 4 sem a ambiente, três pontos à direita da parede
+pequena, na sombra da lâmpada pequena): vistas de fábrica, 4 m e 2,5 m → 0 · 0 · 0 (o gabarito 0 · 0 · 0); vista
+de 1,5 m (grade x ∈ [−5, 0]) → **0 · 2,45 · 2,38** (0,176 do máximo). **Mecanismo:** a lâmpada DIRETA (C3)
+ilumina de qualquer distância, mas a captura só tem os opacos DENTRO da grade (vista + margem): o raio até a
+lâmpada grande cruza o muro do meio num trecho fora da grade e passa. (As cascatas não têm o defeito: um
+emissor fora da grade também não existe para elas — a margem é o desenho delas.) O gate está com `ignore`
+(vermelho visto) e é o **F4** do plano §7.1, com três curas candidatas a medir. Não curado nesta janela:
+é uma mudança de desenho (como a luz direta vê o mundo fora da grade) que pede rodada própria.

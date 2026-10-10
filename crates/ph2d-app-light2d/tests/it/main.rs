@@ -4,6 +4,7 @@
 mod a_escada_da_sombra;
 mod a_face_acesa_da_parede;
 mod a_grade_fina;
+mod a_luz_nao_muda_com_a_vista;
 mod a_nitidez_da_luz;
 mod captura_do_vetor;
 mod captura_por_texel;

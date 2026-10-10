@@ -19,6 +19,9 @@ use crate::tempos::{self, Tempos, TemposMs};
 
 pub use crate::erro::ErroSolver;
 
+/// ⭐ A montagem das cascatas (C2) — ficheiro irmão pelo mesmo tecto (W5c).
+#[path = "solver_c2.rs"]
+mod c2;
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
@@ -424,25 +427,6 @@ impl Solver {
         let sementes_finais = SEMENTES[saltos.len() % 2];
 
         // ── C2 ──
-        let formato = lista.texturas[CASCATAS[0]].formato;
-        let rc_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("luz2d c2"),
-            entries: &[
-                entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
-                entrada_textura(1, FLOAT),
-                entrada_textura(2, wgpu::TextureSampleType::Uint),
-                entrada_textura(3, FLOAT),
-                entrada_escrita(4, formato),
-                entrada_textura(5, FLOAT),
-                entrada_textura(6, FLOAT),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 7,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-                    count: None,
-                },
-            ],
-        });
         let rc_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("luz2d c2_rc.wgsl"),
             source: wgpu::ShaderSource::Wgsl(shaders::rc(cfg.aritmetica, cfg.armazenamento).into()),
@@ -478,83 +462,22 @@ impl Solver {
             distantes::Distantes::novo(NOMES_DISTANTES.map(buffer), texturas[atlas].clone());
         let lampadas_grupo =
             distantes::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
-        let rc_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("luz2d c2"),
-            bind_group_layouts: &[Some(&rc_layout), Some(&lampadas_layout)],
-            immediate_size: 0,
-        });
-        let rc = compute(
-            "luz2d c2 cascata",
-            &rc_pl,
-            &rc_modulo,
-            "cascata",
-            &[
-                ("FUSAO", cfg.fusao.codigo()),
-                ("PASSO", f64::from(cfg.passo_perto)),
-                (
-                    "MASCARA_C0",
-                    f64::from(u8::from(cfg.preenchimento.is_some())),
-                ),
-                ("MASCARA_DA_FUSAO", cfg.mascara_da_fusao.codigo()),
-                (
-                    "FRONTEIRA_NA_FACE",
-                    f64::from(u8::from(cfg.fronteira_na_face)),
-                ),
-            ],
-        );
         // O `textureGather` dos 4 vizinhos da cobertura; a borda prende-se ao texel da borda.
         let vizinhos = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("luz2d c2 vizinhos"),
             ..Default::default()
         });
-        let rc_grupos = (0..n)
-            .map(|i| {
-                let saida = CASCATAS[((n - 1 - i) % 2) as usize];
-                let superior = CASCATAS[((n - i) % 2) as usize];
-                device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("luz2d c2"),
-                    layout: &rc_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: fatia_uniforme(
-                                &uni_cascatas,
-                                u64::from(i),
-                                size_of::<UniformeCascata>() as u64,
-                            ),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::TextureView(&vistas[EMISSAO]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: wgpu::BindingResource::TextureView(&vistas[sementes_finais]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 3,
-                            resource: wgpu::BindingResource::TextureView(&vistas[superior]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 4,
-                            resource: wgpu::BindingResource::TextureView(&vistas[saida]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 5,
-                            resource: wgpu::BindingResource::TextureView(&vistas[COBERTURA]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 6,
-                            resource: wgpu::BindingResource::TextureView(&vistas[TAU_DENTRO]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 7,
-                            resource: wgpu::BindingResource::Sampler(&vizinhos),
-                        },
-                    ],
-                })
-            })
-            .collect();
+        let (rc, rc_grupos) = c2::cascatas(&c2::Entradas {
+            device,
+            cfg: &cfg,
+            lista: &lista,
+            vistas: &vistas,
+            modulo: &rc_modulo,
+            lampadas_layout: &lampadas_layout,
+            uni_cascatas: &uni_cascatas,
+            sementes_finais,
+            vizinhos: &vizinhos,
+        });
         let c3 = c3::C3::novo(&c3::Entradas {
             gpu,
             cfg: &cfg,

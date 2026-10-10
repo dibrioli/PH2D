@@ -360,6 +360,9 @@ fn sonda_sala_rebote_a_rebote() {
     }
 }
 
+/// Uma face da sala na sonda: `(nome, o ponto da face em t ∈ [0, 1], o passo para dentro)`.
+type Face = (&'static str, fn(f64) -> [f64; 2], [f64; 2]);
+
 /// A fonte do rebote (rgba16f) texel a texel.
 fn ler_fonte(gpu: &ph2d_gpu::GpuContext, s: &Solver) -> Vec<[f32; 4]> {
     let tex = s.fonte_do_rebote().expect("com o rebote");
@@ -404,7 +407,7 @@ fn sonda_fonte_ao_longo_das_faces() {
             let gr = s.config().grade;
             let w = gr.largura as usize;
             // (nome, ponto na face, passo para DENTRO da parede)
-            let faces: [(&str, fn(f64) -> [f64; 2], [f64; 2]); 3] = [
+            let faces: [Face; 3] = [
                 ("chão", |t| [t * 4.0, 0.0], [0.0, -1.0]),
                 ("vermelha", |t| [0.0, t * 2.5], [-1.0, 0.0]),
                 ("teto", |t| [t * 4.0, 2.5], [0.0, 1.0]),

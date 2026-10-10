@@ -7,7 +7,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_board_model::{ElementId, Message, MessageId, Pin, Team, Thread, ThreadId, Version, VersionId};
+use ph2d_board_model::{
+    ElementId, Message, MessageId, Pin, Team, Thread, ThreadId, Version, VersionId,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::Lamport;
@@ -63,7 +65,11 @@ impl Shadow {
     pub(crate) fn of(team: &Team) -> Self {
         Self {
             threads: team.threads.clone(),
-            versions: team.versions.iter().map(|v| (v.id, v.name.clone())).collect(),
+            versions: team
+                .versions
+                .iter()
+                .map(|v| (v.id, v.name.clone()))
+                .collect(),
             slides: team.hidden_slides.clone(),
         }
     }
@@ -112,7 +118,11 @@ impl TeamState {
             let Some(o) = old.get(&id) else {
                 out.push(TeamWrite::Thread(t.clone()));
                 if let Some(last) = last {
-                    out.extend(t.read_by.iter().map(|r| TeamWrite::Read(id, r.clone(), last)));
+                    out.extend(
+                        t.read_by
+                            .iter()
+                            .map(|r| TeamWrite::Read(id, r.clone(), last)),
+                    );
                 }
                 continue;
             };
@@ -152,7 +162,8 @@ impl TeamState {
                 .filter(|id| !now.contains(id))
                 .map(|id| TeamWrite::ThreadGone(*id)),
         );
-        let ov: BTreeMap<VersionId, &String> = shadow.versions.iter().map(|(i, n)| (*i, n)).collect();
+        let ov: BTreeMap<VersionId, &String> =
+            shadow.versions.iter().map(|(i, n)| (*i, n)).collect();
         for v in &team.versions {
             match ov.get(&v.id) {
                 None => out.push(TeamWrite::Version(v.clone())),

@@ -92,7 +92,8 @@ impl Seen {
             None => self.cursor.clear(),
         }
         let c = p.camera;
-        self.camera.push(at_ms, [c.center_x, c.center_y, c.zoom.ln()]);
+        self.camera
+            .push(at_ms, [c.center_x, c.center_y, c.zoom.ln()]);
         self.last = Some(p);
     }
 

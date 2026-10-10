@@ -195,7 +195,12 @@ impl Replica {
                 let odd: BTreeMap<Field, Lamport> = odd.iter().copied().collect();
                 Field::ALL
                     .into_iter()
-                    .filter_map(|f| odd.get(&f).copied().or(Some(*common)).map(|l| ((*id, f), l)))
+                    .filter_map(|f| {
+                        odd.get(&f)
+                            .copied()
+                            .or(Some(*common))
+                            .map(|l| ((*id, f), l))
+                    })
                     .filter(|(_, l)| *l != Lamport::default())
                     .collect::<Vec<_>>()
             })

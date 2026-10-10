@@ -115,9 +115,20 @@ fn same(a: &Peer, b: &Peer, ctx: &str) {
             "fios {:?}; versões {:?}; slides {:?}",
             t.threads
                 .iter()
-                .map(|t| (t.id.0 % 1000, t.resolved, t.messages.iter().map(|m| (m.id.0 % 1000, m.text.clone(), m.at)).collect::<Vec<_>>(), t.read_by.clone()))
+                .map(|t| (
+                    t.id.0 % 1000,
+                    t.resolved,
+                    t.messages
+                        .iter()
+                        .map(|m| (m.id.0 % 1000, m.text.clone(), m.at))
+                        .collect::<Vec<_>>(),
+                    t.read_by.clone()
+                ))
                 .collect::<Vec<_>>(),
-            t.versions.iter().map(|v| (v.id.0 % 1000, v.name.clone(), v.at)).collect::<Vec<_>>(),
+            t.versions
+                .iter()
+                .map(|v| (v.id.0 % 1000, v.name.clone(), v.at))
+                .collect::<Vec<_>>(),
             t.hidden_slides
         )
     };
@@ -443,7 +454,14 @@ fn team_edit(p: &mut Peer, rng: &mut Rng) {
         }
         (2, Some(t)) => p.b.team.mark_read(t, me),
         (3, Some(t)) => {
-            let msgs: Vec<(MessageId, String)> = p.b.team.thread(t).unwrap().messages.iter().map(|m| (m.id, m.author.clone())).collect();
+            let msgs: Vec<(MessageId, String)> =
+                p.b.team
+                    .thread(t)
+                    .unwrap()
+                    .messages
+                    .iter()
+                    .map(|m| (m.id, m.author.clone()))
+                    .collect();
             let (m, author) = msgs[rng.below(msgs.len())].clone();
             if rng.below(2) == 0 {
                 p.b.team.edit(t, m, &author, &format!("e{}", rng.below(9)));
@@ -471,12 +489,22 @@ fn team_edit(p: &mut Peer, rng: &mut Rng) {
 #[test]
 fn two_replies_at_once_both_stay_in_one_order() {
     let (mut a, mut b, _) = two();
-    let t = a.b.team.open(Pin::Point([0.0, 0.0]), "ana", "pergunta", 10).unwrap();
+    let t =
+        a.b.team
+            .open(Pin::Point([0.0, 0.0]), "ana", "pergunta", 10)
+            .unwrap();
     concurrently(&mut a, &mut b);
     a.b.team.reply(t, "ana", "eu", 20);
     b.b.team.reply(t, "bia", "eu também", 20);
     concurrently(&mut a, &mut b);
-    let texts: Vec<String> = b.b.team.thread(t).unwrap().messages.iter().map(|m| m.text.clone()).collect();
+    let texts: Vec<String> =
+        b.b.team
+            .thread(t)
+            .unwrap()
+            .messages
+            .iter()
+            .map(|m| m.text.clone())
+            .collect();
     assert_eq!(texts.len(), 3, "{texts:?}");
 }
 
@@ -484,7 +512,10 @@ fn two_replies_at_once_both_stay_in_one_order() {
 #[test]
 fn a_thread_deleted_while_another_replies_stays_deleted() {
     let (mut a, mut b, _) = two();
-    let t = a.b.team.open(Pin::Point([0.0, 0.0]), "ana", "x", 10).unwrap();
+    let t =
+        a.b.team
+            .open(Pin::Point([0.0, 0.0]), "ana", "x", 10)
+            .unwrap();
     concurrently(&mut a, &mut b);
     let first = a.b.team.thread(t).unwrap().messages[0].id;
     assert!(a.b.team.delete(t, first, "ana"));
@@ -498,7 +529,10 @@ fn a_thread_deleted_while_another_replies_stays_deleted() {
 #[test]
 fn two_readers_at_once_both_count_and_a_reply_resets_the_others() {
     let (mut a, mut b, _) = two();
-    let t = a.b.team.open(Pin::Point([0.0, 0.0]), "caio", "x", 10).unwrap();
+    let t =
+        a.b.team
+            .open(Pin::Point([0.0, 0.0]), "caio", "x", 10)
+            .unwrap();
     concurrently(&mut a, &mut b);
     a.b.team.mark_read(t, "ana");
     b.b.team.mark_read(t, "bia");

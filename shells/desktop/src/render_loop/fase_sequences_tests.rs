@@ -267,7 +267,7 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         1
     );
     assert!((y(&w, e) - 5.0).abs() < 1e-4, "y = {}", y(&w, e));
-    // ⭐ Controlo (pedido do dono, 09/10): SEM o Play All a Animação do objecto não toca — o
+    // ⭐ Controlo (dono, 09/10): SEM a cena a correr a Animação do objecto não toca — o
     // Arrange vazio não toca nada.
     w.get_mut::<Transform>(e).expect("tem pose").translation.y = 0.0;
     assert_eq!(
@@ -280,7 +280,7 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         ),
         0
     );
-    assert!(y(&w, e).abs() < 1e-4, "sem Play All, parado");
+    assert!(y(&w, e).abs() < 1e-4, "sem a cena a correr, parado");
 
     let mut cena = TimelineDoc::new();
     cena.upsert_key(
@@ -290,7 +290,7 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         AnimValue::Float(10.0),
         Interp::Linear,
     );
-    // ⭐ A Cena com o Arrange VAZIO: no Play All o clipe dela toca (2.º smoke do dono — o Inimigo
+    // ⭐ A Cena com o Arrange VAZIO: com a cena a correr o clipe dela toca (2.º smoke do dono — o Inimigo
     // ficava parado); com o Play normal, não.
     let mut w2 = World::new();
     let e2 = w2.spawn(Transform::default()).id();
@@ -319,7 +319,7 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
             |_| false
         ),
         1,
-        "Play All: o clipe da Cena toca"
+        "a correr: o clipe da Cena toca"
     );
     assert!(
         (y(&w2, e2) - 10.0).abs() < 1e-4,
@@ -328,40 +328,39 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
     );
 }
 
-/// ⭐ O **Play All** do menu Run chega à timeline (`TransportCmd::PlayAll` → `TimelineIntent::PlayAll`),
-/// e o dreno passa-o ANTES de escolher o relógio da vista — senão o Play All tocaria o relógio do
-/// clipe na aba Keys. (O clique no menu → `TransportCmd::PlayAll` é provado na fundação.)
+/// ⭐ O **Play da barra de cima** põe a cena a correr (dono, 3.º smoke de 09/10: o Autoplay do Godot
+/// toca no Play do runtime): o bus entrega `ph2d_transport::runtime_intent` à timeline, e o dreno
+/// passa-o ANTES de escolher o relógio da vista — senão a cena correria no relógio do clipe na aba
+/// Keys. Com ela a correr, o painel lê o relógio da CENA (o ▶/⏸ dela). (A tradução do comando é
+/// provada no `ph2d-transport`.)
 #[test]
-fn o_play_all_do_menu_chega_a_timeline_antes_do_relogio_da_vista() {
+fn o_play_de_cima_chega_a_timeline_antes_do_relogio_da_vista() {
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
     let bus = std::fs::read_to_string(raiz.join("fase_bus_chrome.rs")).unwrap();
     let i = bus
-        .find("TransportCmd::PlayAll")
-        .expect("o bus trata o PlayAll");
+        .find("ph2d_transport::runtime_intent(cmd)")
+        .expect("o bus pergunta o que o comando faz à cena");
     assert!(
         bus[i..]
             .lines()
             .take(3)
-            .any(|l| l.contains("TimelineIntent::PlayAll")),
+            .any(|l| l.contains("self.timeline_intents.push(i)")),
         "e entrega-o à timeline"
     );
     let dreno = std::fs::read_to_string(raiz.join("fase_timeline_drain.rs")).unwrap();
-    let take = dreno
-        .find("take_play_all")
-        .expect("o dreno passa o Play All");
+    let take = dreno.find("take_runtime").expect("o dreno passa a corrida");
     let relogio = dreno
         .find("let active_playhead")
         .expect("a escolha do relógio");
     assert!(take < relogio, "antes de escolher o relógio da vista");
-    // E com o modo marcado o transporte do painel mostra o relógio da CENA (o ▶/⏸ dela).
     let snap = dreno
         .rfind("let active_playhead")
-        .expect("a escolha do relógio do painel");
+        .expect("o relógio do painel");
     assert!(
         dreno[snap..]
             .lines()
             .take(3)
-            .any(|l| l.contains("self.timeline.play_all")),
-        "o painel lê o relógio da cena no Play All"
+            .any(|l| l.contains("self.timeline.runtime")),
+        "o painel lê o relógio da cena com ela a correr"
     );
 }

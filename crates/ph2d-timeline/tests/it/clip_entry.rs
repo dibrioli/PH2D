@@ -204,10 +204,10 @@ fn um_pedido_de_um_clipe_que_nao_existe_e_dito_uma_vez() {
     );
 }
 
-/// ⭐ **O Play All toca a animação da CENA** quando o Arrange está vazio (2.º smoke do dono, 09/10: o
+/// ⭐ **Com a cena a correr, a animação da CENA toca** quando o Arrange está vazio (2.º smoke do dono, 09/10: o
 /// Inimigo, animado pela Cena, ficava parado); com Arrange, é ele que toca e o clipe da Cena não entra.
 #[test]
-fn com_o_arrange_vazio_o_play_all_toca_o_clipe_da_cena() {
+fn com_o_arrange_vazio_a_cena_a_correr_toca_o_clipe_da_cena() {
     let mut world = bevy_ecs::world::World::new();
     let e = world.spawn(ph2d_ecs::Transform::IDENTITY).id();
     let inimigo = e.to_bits();

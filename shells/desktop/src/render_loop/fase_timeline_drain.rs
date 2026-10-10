@@ -25,13 +25,13 @@ impl crate::App {
         // General timeline (W1): drain the panel/K intents into the document, then apply it to
         // the scene. Three clocks, one per view: Keys = the CLIP playhead (solo the clip); in a
         // container its own; Arrange the timeline's (blend the stack). Skips the dragged entity.
-        // ⭐ O Play All avalia a CENA no relógio dela, em qualquer aba (onda 4, item 1).
-        ph2d_timeline::take_play_all(
+        // ⭐ A cena a CORRER (o Play de cima) avalia a CENA no relógio dela, em qualquer aba.
+        ph2d_timeline::take_runtime(
             &mut self.timeline,
             &mut self.timeline_intents,
             &mut self.playhead,
         );
-        let tudo = self.timeline.play_all;
+        let tudo = self.timeline.runtime;
         let (vista_keys, vista_cont) = if tudo {
             (false, None)
         } else {
@@ -121,8 +121,8 @@ impl crate::App {
         // state; tracks/keys from E3+). Rebuilt from the ACTIVE playhead (the clip
         // clock in Keys mode, the CONTAINER clock inside one, the timeline clock in
         // Arrange), so the whole transport reflects the clock the panel is showing.
-        // ⭐ Com o Play All marcado o transporte mostra o relógio da CENA (o ▶/⏸ é o dela).
-        let active_playhead = if self.timeline.play_all {
+        // ⭐ Com a cena a correr o transporte mostra o relógio da CENA (o ▶/⏸ é o dela).
+        let active_playhead = if self.timeline.runtime {
             &self.playhead
         } else if keys_mode {
             &self.clip_playhead

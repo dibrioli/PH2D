@@ -30,8 +30,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         TransportCmd::Pause
     } else if id == ids::TOPBAR_RESET {
         TransportCmd::Reset
-    } else if id == ids::TOPBAR_PLAY_ALL {
-        TransportCmd::PlayAll
     } else {
         return false;
     };
@@ -58,7 +56,6 @@ mod tests {
             (ids::TOPBAR_PLAY_BUTTON, TransportCmd::Play),
             (ids::TOPBAR_PAUSE, TransportCmd::Pause),
             (ids::TOPBAR_RESET, TransportCmd::Reset),
-            (ids::TOPBAR_PLAY_ALL, TransportCmd::PlayAll),
         ] {
             let mut hero = HeroScreen::new(NodeId(1));
             let consumed = super::super::dispatch_all(&mut hero, WidgetEvent::Click(id));

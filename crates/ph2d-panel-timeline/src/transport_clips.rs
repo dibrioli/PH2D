@@ -254,7 +254,7 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     if crate::transport_entry::owns(&ev) {
-        return crate::transport_entry::apply_event(&ev);
+        return crate::transport_entry::apply_event();
     }
     match ev {
         // ── Clip selector (W5) ──────────────────────────────────────────────

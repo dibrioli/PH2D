@@ -56,16 +56,10 @@ pub(crate) fn paint(
 
 pub(crate) fn owns(ev: &WidgetEvent) -> bool {
     matches!(*ev, WidgetEvent::Toggled(id) if id == TIMELINE_CLIP_AUTOPLAY)
-        || matches!(*ev, WidgetEvent::Click(id) if id == crate::ids::TIMELINE_PLAY_ALL)
 }
 
-/// Ligar = este clipe passa a ser a entrada (um passo do undo da timeline). O clique no «Play All»
-/// (o irmão de `transport_row`) pede-o pelo mesmo canal.
-pub(crate) fn apply_event(ev: &WidgetEvent) -> EventOutcome {
-    if matches!(*ev, WidgetEvent::Click(id) if id == crate::ids::TIMELINE_PLAY_ALL) {
-        crate::state::push_intent(TimelineIntent::PlayAll);
-        return EventOutcome::Consumed;
-    }
+/// Ligar = este clipe passa a ser a entrada (um passo do undo da timeline).
+pub(crate) fn apply_event() -> EventOutcome {
     let snap = crate::state::current_snapshot();
     if snap.animation.entry.is_some_and(|e| e != snap.active_clip) {
         crate::state::push_intent(TimelineIntent::SetEntryClip {

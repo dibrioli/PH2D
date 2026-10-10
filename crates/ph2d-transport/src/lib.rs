@@ -22,8 +22,19 @@ pub fn apply(cmd: TransportCmd, playhead: &mut Playhead) {
             playhead.rewind();
             playhead.pause();
         }
-        // A metade do RELÓGIO; o modo (a cena inteira) é da timeline — a shell entrega-lhe o pedido.
-        TransportCmd::PlayAll => playhead.play(),
+    }
+}
+
+/// ⭐ **E o que o comando faz à CENA** (onda 4, item 1 — dono, 3.º smoke de 09/10: *«na Godot os
+/// marcados com Autoplay tocam no Play do runtime, o Play da barra superior»*): o Play de cima põe a
+/// cena a CORRER — cada objecto a Animação dele, em qualquer aba; o Reset de cima sai; o Pause só
+/// pausa (a corrida continua, parada).
+#[must_use]
+pub fn runtime_intent(cmd: TransportCmd) -> Option<ph2d_timeline::TimelineIntent> {
+    match cmd {
+        TransportCmd::Play => Some(ph2d_timeline::TimelineIntent::RunScene),
+        TransportCmd::Reset => Some(ph2d_timeline::TimelineIntent::StopScene),
+        TransportCmd::Pause => None,
     }
 }
 
@@ -33,6 +44,15 @@ mod tests {
 
     fn ph() -> Playhead {
         Playhead::new(1.0 / 60.0)
+    }
+
+    /// O Play de cima corre a cena, o Reset sai, o Pause não mexe na corrida.
+    #[test]
+    fn the_top_bar_play_runs_the_scene_and_reset_leaves_it() {
+        use ph2d_timeline::TimelineIntent as I;
+        assert_eq!(runtime_intent(TransportCmd::Play), Some(I::RunScene));
+        assert_eq!(runtime_intent(TransportCmd::Reset), Some(I::StopScene));
+        assert_eq!(runtime_intent(TransportCmd::Pause), None);
     }
 
     #[test]

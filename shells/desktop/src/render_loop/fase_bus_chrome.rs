@@ -163,12 +163,11 @@ impl crate::App {
                 // `transport::apply` is unit-tested headless. NOTE:
                 // physics scrub-back — the ball flying back up — is
                 // W1.5; here Reset only returns the clock to 0.
-                // ⭐ O Play All é um MODO da timeline (a cena inteira, em qualquer aba).
-                if cmd == ph2d_editor_core::action_bus::TransportCmd::PlayAll {
-                    self.timeline_intents
-                        .push(ph2d_timeline::TimelineIntent::PlayAll);
-                } else {
-                    ph2d_transport::apply(cmd, &mut self.playhead);
+                ph2d_transport::apply(cmd, &mut self.playhead);
+                // ⭐ O Play de CIMA põe a cena a CORRER (a Animação de cada objecto, em qualquer aba —
+                // o Autoplay do Godot); o Reset de cima sai. O Pause só pausa (onda 4, item 1).
+                if let Some(i) = ph2d_transport::runtime_intent(cmd) {
+                    self.timeline_intents.push(i);
                 }
             }
             // (Bgremoval bake leftover handled inside the

@@ -48,7 +48,7 @@ pub(crate) const fn a_vista_deixa_correr(keys_mode: bool, container: Option<usiz
 pub(crate) fn toca_os_objectos(
     world: &mut World,
     doc: &mut TimelineDoc,
-    (t, refusals, play_all): (f64, &mut Vec<ph2d_timeline::ClipRefusal>, bool),
+    (t, refusals, runtime): (f64, &mut Vec<ph2d_timeline::ClipRefusal>, bool),
     drive: &mut PreviewDrive,
     skip: impl Fn(u64) -> bool + Copy,
 ) -> usize {
@@ -56,9 +56,9 @@ pub(crate) fn toca_os_objectos(
     // é o que a mantém testável sem uma, e o que impede uma segunda cópia da comparação de nomes.
     let nomes: Vec<&str> = doc.containers().iter().map(|c| c.name.as_str()).collect();
     let corridas = ph2d_ecs::sequence::em_corrida(world, &nomes);
-    // A Animação de cada objecto (e, com o Arrange vazio, o clipe da Cena) só toca no PLAY ALL
-    // (pedido do dono, 09/10): com o Play normal o Arrange vazio não toca nada.
-    let animados = play_all;
+    // A Animação de cada objecto (e, com o Arrange vazio, o clipe da Cena) só toca com a cena a
+    // CORRER — o Play da barra de cima (dono, 09/10); o transporte da timeline toca o que a aba mostra.
+    let animados = runtime;
     if corridas.is_empty() && !animados {
         return 0;
     }

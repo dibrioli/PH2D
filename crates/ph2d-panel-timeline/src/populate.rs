@@ -68,7 +68,6 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     button(store, crate::ids::TIMELINE_GO_START);
     button(store, crate::ids::TIMELINE_PREV_FRAME);
     button(store, crate::ids::TIMELINE_PLAY);
-    button(store, crate::ids::TIMELINE_PLAY_ALL);
     button(store, crate::ids::TIMELINE_NEXT_FRAME);
     button(store, crate::ids::TIMELINE_GO_END);
     button(store, ids::TIMELINE_ADD_TRACK);

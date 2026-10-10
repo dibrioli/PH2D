@@ -206,8 +206,8 @@ pub struct TimelineViewSnapshot {
     pub frame: i64,
     /// Whether the transport is playing.
     pub playing: bool,
-    /// O **Play All** está a correr ([`crate::TimelineState::play_all`]).
-    pub play_all: bool,
+    /// A cena está a CORRER ([`crate::TimelineState::runtime`]).
+    pub runtime: bool,
     /// Loop range `[start, end)` in seconds, if set.
     pub loop_range: Option<(f64, f64)>,
     /// The loop plays back and forth instead of wrapping. Only meaningful with a
@@ -408,7 +408,7 @@ impl TimelineViewSnapshot {
         self.time_seconds = playhead.time();
         self.frame = playhead.frame(doc.fps_display);
         self.playing = playhead.is_playing();
-        self.play_all = state.play_all;
+        self.runtime = state.runtime;
         // The loop the panel DRAWS + braces come from the doc's view-appropriate
         // pair, not from the playhead: the Keys tab shows the clip-clock loop, the
         // Arrange tab the timeline loop, and they are independent (Enio, 2026-07-16).

@@ -241,7 +241,7 @@ pub(crate) fn run(
     // de edição mentir. Ver o cabeçalho da fase.
     if super::fase_sequences::a_vista_deixa_correr(solo, container) {
         let t = playhead.time();
-        let tudo = timeline.play_all;
+        let tudo = timeline.runtime;
         let (doc, recusas) = (&mut timeline.doc, &mut timeline.refusals);
         let n =
             super::fase_sequences::toca_os_objectos(world, doc, (t, recusas, tudo), drive, skip);

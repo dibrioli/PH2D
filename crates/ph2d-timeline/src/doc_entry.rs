@@ -98,7 +98,7 @@ impl TimelineDoc {
         self.clip_cut(index, local)
     }
 
-    /// ⭐ **Quem toca a entrada no Play All**: a CENA primeiro — o clipe de entrada dela (o 1.º) quando
+    /// ⭐ **Quem toca a entrada com a cena a correr** (o Play da barra superior): a CENA primeiro — o clipe de entrada dela (o 1.º) quando
     /// o Arrange está vazio (com Arrange, é ele que toca) —, depois cada objecto vivo com Animação que a
     /// Cena não dirige, com o clipe de entrada dele, por ordem do 1.º clipe, sem repetições. O objecto
     /// escreve por último: a animação PRÓPRIA dele manda sobre a da Cena.

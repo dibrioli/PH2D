@@ -107,10 +107,10 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.set_loop(0.0, 2.0);
         self.playhead.play();
-        // `=3`: abre com o PLAY ALL ligado — a cena inteira (onda 4, item 1).
+        // `=3`: abre como o Play da barra de CIMA — a cena a CORRER (onda 4, item 1).
         if nivel == "3" {
             self.timeline_intents
-                .push(ph2d_timeline::TimelineIntent::PlayAll);
+                .push(ph2d_timeline::TimelineIntent::RunScene);
         }
         eprintln!(
             "[animacao-smoke] Herói ▸ Clips (andar, pular) · Espada (filha) · Inimigo (Animação da Cena). \

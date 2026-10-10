@@ -14,6 +14,8 @@ authors.workspace = true
 [dependencies]
 ph2d-core = { path = "../ph2d-core" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O Play de cima também põe a cena a CORRER (`TimelineIntent::RunScene`) — onda 4, item 1.
+ph2d-timeline = { path = "../ph2d-timeline" }
 
 [lints]
 workspace = true

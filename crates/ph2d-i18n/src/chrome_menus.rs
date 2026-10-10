@@ -149,7 +149,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.play_space" => "Play \u{00b7} Space",
         "chrome.menu.pause_space" => "Pause \u{00b7} Space",
         "chrome.menu.rewind" => "Rewind",
-        "chrome.menu.play_all" => "Play All",
         "chrome.menu.pixels_per_meter" => "Pixels per meter",
         "chrome.menu.display_unit" => "Display unit",
         "chrome.menu.angle_unit" => "Angle unit",

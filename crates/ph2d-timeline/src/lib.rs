@@ -27,8 +27,8 @@ pub mod apply;
 /// responsabilidade. O 1.º cliente é o osso inteligente do esqueleto.
 mod apply_one;
 pub use apply_one::{apply_autoplay, apply_one_clip, apply_one_clip_except};
-mod play_all;
-pub use play_all::take_play_all;
+mod runtime;
+pub use runtime::take_runtime;
 mod apply_path;
 mod apply_prop;
 mod apply_views;

@@ -1,19 +1,13 @@
-//! A fileira do transporte `|< < >/|| > >|` e, ao lado, o **Play All** (onda 4, item 1 — pedido do
-//! dono no smoke de 09/10: *«um segundo Play na Timeline para Play All»*). Irmã do `transport.rs`,
-//! que está no tecto de 600 LOC.
+//! A fileira do transporte `|< < >/|| > >|` — irmã do `transport.rs`, que estava no tecto de 600 LOC.
+//! É o transporte de EDIÇÃO (toca o que a aba mostra); a cena a CORRER é o Play da barra superior
+//! (onda 4, item 1).
 
 use super::*;
 
-/// A largura do botão «Play All» — LITERAL-PX-OK: a mesma razão do `ADD_MARKER_W`, um rótulo curto.
-const PLAY_ALL_W: f32 = 64.0; // LITERAL-PX-OK: "Play All" button width
-
-/// A largura da fileira: os cinco botões num corpo, o vão, e o Play All.
+/// A largura da fileira: os cinco botões num corpo, com um fio entre peças.
 pub(super) fn width() -> f32 {
     let n = TRANSPORT_BTNS as f32;
-    BTN_W * n
-        + ph2d_editor_core::widget::SEGMENT_HAIRLINE * (n - 1.0)
-        + Spacing::Xs.px()
-        + PLAY_ALL_W
+    BTN_W * n + ph2d_editor_core::widget::SEGMENT_HAIRLINE * (n - 1.0)
 }
 
 /// `|< < >/|| > >|` — jump to start, step back, play/pause, step forward, jump to end, as
@@ -81,7 +75,7 @@ pub(super) fn paint(
         IconId::ChevronRight,
         pos(3),
     ) + fio;
-    let x = widgets::icon_button_in(
+    widgets::icon_button_in(
         ctx,
         theme,
         x,
@@ -89,23 +83,5 @@ pub(super) fn paint(
         TIMELINE_GO_END,
         IconId::SkipForward,
         pos(4),
-    ) + Spacing::Xs.px();
-    play_all(ctx, theme, x, y, snap);
-}
-
-/// ⭐ **Play All**: a cena inteira no relógio da CENA, em qualquer aba (cada objecto a Animação dele,
-/// o Arrange, as cutscenes). Acende (`Accent`) enquanto corre; o mesmo botão desliga-o.
-fn play_all(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &TimelineViewSnapshot) {
-    let id = crate::ids::TIMELINE_PLAY_ALL;
-    let rect = Rect::new(x, y, PLAY_ALL_W, ROW_H_PX);
-    let kind = if snap.play_all {
-        ph2d_editor_core::widget::ButtonKind::Accent
-    } else {
-        ph2d_editor_core::widget::ButtonKind::Default
-    };
-    let btn = Button::new(id, ph2d_i18n::tr("panel.timeline.play_all"))
-        .kind(kind)
-        .visual(ctx.host.store().button_visual(id));
-    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(id, rect);
+    );
 }

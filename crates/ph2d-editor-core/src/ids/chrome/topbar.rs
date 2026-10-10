@@ -10,8 +10,6 @@ pub const TOPBAR_RIGHT_ASSETS: NodeId = hash_node_id("topbar_right_assets");
 pub const TOPBAR_RIGHT_SCRIPT: NodeId = hash_node_id("topbar_right_script");
 pub const TOPBAR_PAUSE: NodeId = hash_node_id("topbar_pause");
 pub const TOPBAR_RESET: NodeId = hash_node_id("topbar_reset");
-/// ⭐ «Play All» (o menu Run) — a cena inteira em qualquer aba (onda 4, item 1).
-pub const TOPBAR_PLAY_ALL: NodeId = hash_node_id("topbar_play_all");
 pub const TOPBAR_SAVE_AS: NodeId = hash_node_id("topbar_save_as");
 pub const TOPBAR_OPEN: NodeId = hash_node_id("topbar_open");
 /// Settings cluster (gear icon) — opens the SettingsMenu context menu

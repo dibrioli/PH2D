@@ -8702,6 +8702,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-core",
  "ph2d-editor-core",
+ "ph2d-timeline",
 ]
 
 [[package]]

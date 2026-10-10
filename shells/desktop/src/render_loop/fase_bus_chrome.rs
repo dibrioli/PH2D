@@ -163,7 +163,13 @@ impl crate::App {
                 // `transport::apply` is unit-tested headless. NOTE:
                 // physics scrub-back — the ball flying back up — is
                 // W1.5; here Reset only returns the clock to 0.
-                ph2d_transport::apply(cmd, &mut self.playhead);
+                // ⭐ O Play All é um MODO da timeline (a cena inteira, em qualquer aba).
+                if cmd == ph2d_editor_core::action_bus::TransportCmd::PlayAll {
+                    self.timeline_intents
+                        .push(ph2d_timeline::TimelineIntent::PlayAll);
+                } else {
+                    ph2d_transport::apply(cmd, &mut self.playhead);
+                }
             }
             // (Bgremoval bake leftover handled inside the
             // `OneShotImageOp` arm above — defers to the

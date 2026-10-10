@@ -87,6 +87,9 @@ pub enum TransportCmd {
     Pause,
     /// Rewind the clock to the start and stop (`playhead.rewind()` + pause).
     Reset,
+    /// ⭐ **Play All** — a cena inteira (cada objecto a Animação dele, o Arrange, as cutscenes), em
+    /// qualquer aba; a shell entrega-o à timeline (`TimelineIntent::PlayAll`).
+    PlayAll,
 }
 
 /// ⭐⭐ **O que se pode fazer a um catálogo** (plano 07, wave A3).

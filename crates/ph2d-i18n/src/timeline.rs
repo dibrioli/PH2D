@@ -46,6 +46,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.frame" => "Frame",
         "panel.timeline.loop" => "Loop",
         "panel.timeline.autoplay" => "Autoplay",
+        "panel.timeline.play_all" => "Play All",
         // ⭐⭐ **`Ping-Pong`, com hífen — decisão do Enio (2026-09-19).** O app tinha DUAS grafias
         // para a mesma coisa: `PingPong` aqui e `Ping-Pong` nos outros quatro sítios que a
         // nomeiam (o menu desta mesma timeline, a tira do Flip, a direcção de animação do

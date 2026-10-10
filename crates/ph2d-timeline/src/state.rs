@@ -239,6 +239,10 @@ pub struct TimelineState {
     /// **As recusas de clip deste quadro, à espera de quem FALA** (onda 4, item 4) — o
     /// `apply_intent` empurra, a shell drena para toasts. Sessão; nunca gravado nem desfeito.
     pub refusals: Vec<crate::ClipRefusal>,
+    /// ⭐ **Play All** (onda 4, item 1 — pedido do dono no smoke de 09/10): a cena inteira a tocar no
+    /// relógio da CENA, em qualquer aba — cada objecto a Animação dele, o Arrange e as cutscenes.
+    /// Sessão; acaba quando esse relógio pára ([`crate::take_play_all`]).
+    pub play_all: bool,
 }
 
 impl TimelineState {

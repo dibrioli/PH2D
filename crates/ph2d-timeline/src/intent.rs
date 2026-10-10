@@ -37,6 +37,9 @@ pub enum TimelineIntent {
     Pause,
     /// Toggle play/pause.
     TogglePlay,
+    /// ⭐ Liga/desliga o **Play All** — a cena inteira no relógio da CENA, em qualquer aba. Drenado
+    /// antes de todos pela shell ([`crate::take_play_all`]), porque o relógio dele não é o da vista.
+    PlayAll,
     /// Scrub to an absolute time (seconds); frame-snapped if the flag is set.
     Scrub(f64),
     /// Seek to a whole frame index at the document fps.

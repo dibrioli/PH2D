@@ -232,10 +232,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView, label_col: f32)
         Item::Animation => crate::transport_animation::width(snap),
         Item::Clips => crate::transport_clips::width(snap, view.tab, label_col),
         // |< < >/|| > >| — five buttons, ONE body: four hairlines between them (2026-09-30).
-        Item::Transport => {
-            let n = TRANSPORT_BTNS as f32;
-            BTN_W * n + ph2d_editor_core::widget::SEGMENT_HAIRLINE * (n - 1.0)
-        }
+        Item::Transport => row::width(),
         Item::ReverseKeys | Item::OnionSettings => BTN_W,
         Item::AddMarker => ADD_MARKER_W,
         Item::TimeChip | Item::FrameChip | Item::LengthChip => chip_w(label_col),
@@ -302,82 +299,6 @@ pub(crate) fn length_scope(container_open: Option<usize>, keys_mode: bool) -> Le
     }
 }
 
-/// `|< < >/|| > >|` — jump to start, step back, play/pause, step forward, jump to end, as
-/// ONE body (report do dono de 2026-09-30). Saiu do [`paint_item`] pelo tecto de 200 LOC por
-/// função: é um assunto só, a fileira de transporte.
-fn transport_row(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    x: f32,
-    y: f32,
-    snap: &TimelineViewSnapshot,
-    view: BarView,
-) {
-    // |< < >/|| > >| — jump to start, step back, play/pause, step forward,
-    // jump to end. The skip glyphs bracket the frame-steppers, as every
-    // transport does.
-    // ⭐ UM corpo (report do dono de 2026-09-30): as cinco peças ENCOSTAM a um fio e só
-    //    as pontas de fora arredondam — o que separa duas peças do mesmo controlo é a
-    //    quina, não um vão. `width` mede com o MESMO fio.
-    let fio = ph2d_editor_core::widget::SEGMENT_HAIRLINE;
-    let pos = |i: usize| ph2d_editor_core::widget::GroupCell {
-        col: ph2d_editor_core::widget::GroupPos::of(i, TRANSPORT_BTNS),
-        row: ph2d_editor_core::widget::GroupPos::Only,
-    };
-    let mut x = widgets::icon_button_in(
-        ctx,
-        theme,
-        x,
-        y,
-        TIMELINE_GO_START,
-        IconId::SkipBack,
-        pos(0),
-    ) + fio;
-    x = widgets::icon_button_in(
-        ctx,
-        theme,
-        x,
-        y,
-        TIMELINE_PREV_FRAME,
-        IconId::ChevronLeft,
-        pos(1),
-    ) + fio;
-    let play_glyph = if snap.playing {
-        IconId::Pause
-    } else {
-        IconId::Play
-    };
-    // **The Containers LIST has no playback mode** (Enio, 2026-07-22): the
-    // list is a library of assets, not a view of time, so play/pause paints
-    // DEAD there — disabled AND unhittable, because a dimmed control that
-    // still dispatches lies ([[feedback_widget_is_done_when_a_test_clicks_it]]).
-    // It comes back inside a container, on Keys and on Arrange, where the
-    // same door (`tab::rows`) stops answering `Containers`.
-    x = if crate::tab::rows(view.tab, snap) == crate::tab::Rows::Containers {
-        widgets::dead_icon_button(ctx, theme, x, y, play_glyph, pos(2))
-    } else {
-        widgets::icon_button_in(ctx, theme, x, y, TIMELINE_PLAY, play_glyph, pos(2))
-    } + fio;
-    x = widgets::icon_button_in(
-        ctx,
-        theme,
-        x,
-        y,
-        TIMELINE_NEXT_FRAME,
-        IconId::ChevronRight,
-        pos(3),
-    ) + fio;
-    widgets::icon_button_in(
-        ctx,
-        theme,
-        x,
-        y,
-        TIMELINE_GO_END,
-        IconId::SkipForward,
-        pos(4),
-    );
-}
-
 #[allow(clippy::too_many_arguments)]
 fn paint_item(
     ctx: &mut PaintCtx,
@@ -401,7 +322,7 @@ fn paint_item(
         Item::Clips => {
             return crate::transport_clips::cluster(ctx, theme, x, y, snap, (view, label_col));
         }
-        Item::Transport => transport_row(ctx, theme, x, y, snap, view),
+        Item::Transport => row::paint(ctx, theme, x, y, snap, view),
         // **I** — the active clip's keys, played backwards. Beside the transport it
         // reads as what it is: a thing you do to the whole clip, not to a selection.
         Item::ReverseKeys => {
@@ -572,6 +493,9 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
 /// The bar's reusable pieces (icon-button, number chip, toggle, label) — a sibling module
 /// under the 600-LOC panel cap. They are the transport's *vocabulary*: nothing in here knows
 /// what a playhead is, which is exactly why they were the honest slice to cut.
+#[path = "transport_row.rs"]
+mod row;
+
 #[path = "transport_widgets.rs"]
 mod widgets;
 pub(crate) use widgets::{chip, icon_button, icon_button_in, label, mirror_number};

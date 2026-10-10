@@ -22,6 +22,8 @@ pub fn apply(cmd: TransportCmd, playhead: &mut Playhead) {
             playhead.rewind();
             playhead.pause();
         }
+        // A metade do RELÓGIO; o modo (a cena inteira) é da timeline — a shell entrega-lhe o pedido.
+        TransportCmd::PlayAll => playhead.play(),
     }
 }
 

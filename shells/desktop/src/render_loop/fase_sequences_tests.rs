@@ -74,9 +74,13 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, true);
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
-            false
-        }),
+        toca_os_objectos(
+            &mut w,
+            &mut doc,
+            (0.0, &mut Vec::new(), false),
+            &mut drive,
+            |_| { false }
+        ),
         1
     );
     let meio = y(&w, e);
@@ -88,9 +92,13 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, false);
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
-            false
-        }),
+        toca_os_objectos(
+            &mut w,
+            &mut doc,
+            (0.0, &mut Vec::new(), false),
+            &mut drive,
+            |_| { false }
+        ),
         0
     );
     assert!(
@@ -107,9 +115,13 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
 fn o_que_a_cutscene_escreve_passa_pelo_ledger() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, true);
-    toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
-        false
-    });
+    toca_os_objectos(
+        &mut w,
+        &mut doc,
+        (0.0, &mut Vec::new(), false),
+        &mut drive,
+        |_| false,
+    );
     let Some(Driven::SolverPose(autorado)) = drive.authored(e.to_bits(), Driver::SolverPose) else {
         panic!("o ledger não guardou a pose autorada deste objecto");
     };
@@ -131,9 +143,13 @@ fn um_nome_errado_nao_toca_o_primeiro_container() {
         container: "Ausente".to_owned(),
     });
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
-            false
-        }),
+        toca_os_objectos(
+            &mut w,
+            &mut doc,
+            (0.0, &mut Vec::new(), false),
+            &mut drive,
+            |_| { false }
+        ),
         0
     );
     assert!(y(&w, e).abs() < 1e-6, "nada foi tocado");
@@ -146,9 +162,13 @@ fn sem_cutscenes_a_fase_nao_mexe_no_ledger() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, _) = cena("Porta", 1_000_000, false);
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
-            false
-        }),
+        toca_os_objectos(
+            &mut w,
+            &mut doc,
+            (0.0, &mut Vec::new(), false),
+            &mut drive,
+            |_| { false }
+        ),
         0
     );
     assert!(
@@ -237,12 +257,30 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         );
     }
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, (1.0, &mut Vec::new()), &mut drive, |_| {
-            false
-        }),
+        toca_os_objectos(
+            &mut w,
+            &mut doc,
+            (1.0, &mut Vec::new(), true),
+            &mut drive,
+            |_| { false }
+        ),
         1
     );
     assert!((y(&w, e) - 5.0).abs() < 1e-4, "y = {}", y(&w, e));
+    // ⭐ Controlo (pedido do dono, 09/10): SEM o Play All a Animação do objecto não toca — o
+    // Arrange vazio não toca nada.
+    w.get_mut::<Transform>(e).expect("tem pose").translation.y = 0.0;
+    assert_eq!(
+        toca_os_objectos(
+            &mut w,
+            &mut doc,
+            (1.5, &mut Vec::new(), false),
+            &mut drive,
+            |_| false
+        ),
+        0
+    );
+    assert!(y(&w, e).abs() < 1e-4, "sem Play All, parado");
 
     let mut cena = TimelineDoc::new();
     cena.upsert_key(
@@ -258,11 +296,38 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         toca_os_objectos(
             &mut w2,
             &mut cena,
-            (1.0, &mut Vec::new()),
+            (1.0, &mut Vec::new(), true),
             &mut drive,
             |_| false
         ),
         0,
         "um clipe da Cena é do Arrange, não toca sozinho"
     );
+}
+
+/// ⭐ O **Play All** do menu Run chega à timeline (`TransportCmd::PlayAll` → `TimelineIntent::PlayAll`),
+/// e o dreno passa-o ANTES de escolher o relógio da vista — senão o Play All tocaria o relógio do
+/// clipe na aba Keys. (O clique no menu → `TransportCmd::PlayAll` é provado na fundação.)
+#[test]
+fn o_play_all_do_menu_chega_a_timeline_antes_do_relogio_da_vista() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let bus = std::fs::read_to_string(raiz.join("fase_bus_chrome.rs")).unwrap();
+    let i = bus
+        .find("TransportCmd::PlayAll")
+        .expect("o bus trata o PlayAll");
+    assert!(
+        bus[i..]
+            .lines()
+            .take(3)
+            .any(|l| l.contains("TimelineIntent::PlayAll")),
+        "e entrega-o à timeline"
+    );
+    let dreno = std::fs::read_to_string(raiz.join("fase_timeline_drain.rs")).unwrap();
+    let take = dreno
+        .find("take_play_all")
+        .expect("o dreno passa o Play All");
+    let relogio = dreno
+        .find("let active_playhead")
+        .expect("a escolha do relógio");
+    assert!(take < relogio, "antes de escolher o relógio da vista");
 }

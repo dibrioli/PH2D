@@ -241,8 +241,10 @@ pub(crate) fn run(
     // de edição mentir. Ver o cabeçalho da fase.
     if super::fase_sequences::a_vista_deixa_correr(solo, container) {
         let t = playhead.time();
+        let tudo = timeline.play_all;
         let (doc, recusas) = (&mut timeline.doc, &mut timeline.refusals);
-        let n = super::fase_sequences::toca_os_objectos(world, doc, (t, recusas), drive, skip);
+        let n =
+            super::fase_sequences::toca_os_objectos(world, doc, (t, recusas, tudo), drive, skip);
         if n > 0 && std::env::var_os("PH2D_SEQUENCE_LOG").is_some() {
             eprintln!("[sequence] {n} objecto(s) a tocar no relógio deles");
         }

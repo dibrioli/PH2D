@@ -25,9 +25,21 @@ impl crate::App {
         // General timeline (W1): drain the panel/K intents into the document, then apply it to
         // the scene. Three clocks, one per view: Keys = the CLIP playhead (solo the clip); in a
         // container its own; Arrange the timeline's (blend the stack). Skips the dragged entity.
-        let active_playhead = if keys_mode {
+        // ⭐ O Play All avalia a CENA no relógio dela, em qualquer aba (onda 4, item 1).
+        ph2d_timeline::take_play_all(
+            &mut self.timeline,
+            &mut self.timeline_intents,
+            &mut self.playhead,
+        );
+        let tudo = self.timeline.play_all;
+        let (vista_keys, vista_cont) = if tudo {
+            (false, None)
+        } else {
+            (keys_mode, container)
+        };
+        let active_playhead = if vista_keys {
             &mut self.clip_playhead
-        } else if container.is_some() {
+        } else if vista_cont.is_some() {
             &mut self.container_playhead
         } else {
             &mut self.playhead
@@ -62,8 +74,8 @@ impl crate::App {
             &mut self.timeline_intents,
             maos,
             &mut self.autokey,
-            keys_mode,
-            container,
+            vista_keys,
+            vista_cont,
             &mut self.timeline_signals,
             // ⚠️ **O terceiro membro da família pré-visualização↔documento** — o que as curvas
             // escrevem enquanto o playhead toca não é uma edição (`crate::timeline_preview`).

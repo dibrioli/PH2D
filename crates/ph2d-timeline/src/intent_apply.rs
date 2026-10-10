@@ -55,6 +55,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::TogglePlay => {
             playhead.toggle_play();
         }
+        // Já drenado por `take_play_all` (o relógio dele é o da cena); aqui não resta nada a fazer.
+        I::PlayAll => {}
         I::Scrub(t) => playhead.seek(snap(t, fps, state.flags.frame_snap)),
         I::SeekFrame(f) => playhead.seek_frame(f, fps),
         I::SetRate(r) => playhead.set_rate(r),

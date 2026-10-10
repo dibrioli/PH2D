@@ -85,3 +85,24 @@ fn a_cena_nao_tem_autoplay() {
     let mut st = TimelineState::new();
     assert!(pinta(&mut st).2.is_none());
 }
+
+/// ⭐⭐ O **Play All** (pedido do dono, 09/10): existe em qualquer aba, e o clique real pede-o pelo
+/// canal de intents — a shell drena-o (`take_play_all`) e põe a CENA inteira a tocar. Na Cena
+/// também (é a cena inteira, não a animação em vista).
+#[test]
+fn o_play_all_pede_a_cena_inteira() {
+    for mut st in [heroi("andar"), TimelineState::new()] {
+        let (mut host, mut panel, _) = pinta(&mut st);
+        let regs = host.paint::<TimelinePanel>(&mut panel, VIEWPORT);
+        let r = regs
+            .iter()
+            .find(|(w, _)| *w == ids::TIMELINE_PLAY_ALL)
+            .map(|(_, r)| *r)
+            .expect("o Play All está pintado e registado");
+        let _ = ph2d_panel_timeline::drain_intents();
+        for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+            host.apply_panel_event::<TimelinePanel>(&mut panel, ev);
+        }
+        assert_eq!(ph2d_panel_timeline::drain_intents(), [I::PlayAll]);
+    }
+}

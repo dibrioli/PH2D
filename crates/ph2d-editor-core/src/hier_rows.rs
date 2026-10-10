@@ -84,6 +84,7 @@ pub const fn component_icon(category: ComponentCategory) -> Option<IconId> {
         ComponentCategory::Logic => Some(IconId::Bolt),
         ComponentCategory::Audio => Some(IconId::Audio),
         ComponentCategory::Camera => Some(IconId::Camera),
+        ComponentCategory::Light => Some(IconId::Light),
         ComponentCategory::Scripting => Some(IconId::Script),
         ComponentCategory::Identity
         | ComponentCategory::Transform

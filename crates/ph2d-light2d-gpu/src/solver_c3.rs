@@ -167,6 +167,8 @@ impl C3 {
             let constantes = [
                 ("PASSO", fino(b.visibilidade_no_passo_fino)),
                 ("CERTIFICAR", f64::from(u8::from(b.certificar))),
+                ("RAIOS_DIRETOS", f64::from(b.raios)),
+                ("BISSECOES", f64::from(b.bissecoes)),
             ];
             (
                 pipeline("luz2d c3 visibilidade", &g2, "c3_visibilidade", &constantes),

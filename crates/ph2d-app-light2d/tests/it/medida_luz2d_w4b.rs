@@ -109,8 +109,17 @@ fn variantes_do_refino() -> Vec<(&'static str, Refino)> {
         ),
         b("raios 8+5", Bordas { raios: 8, ..p }),
         b(
-            "raios 2+6",
+            "visibilidade no passo fino + 8+5",
             Bordas {
+                visibilidade_no_passo_fino: true,
+                raios: 8,
+                ..p
+            },
+        ),
+        b(
+            "visibilidade no passo fino + 2+6",
+            Bordas {
+                visibilidade_no_passo_fino: true,
                 raios: 2,
                 bissecoes: 6,
                 ..p

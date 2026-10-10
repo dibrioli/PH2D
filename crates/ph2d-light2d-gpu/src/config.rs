@@ -78,8 +78,10 @@ pub struct Bordas {
     pub certificar: bool,
     /// O passe grosso marcha no passo FINO (senão no das cascatas).
     pub visibilidade_no_passo_fino: bool,
-    /// Os raios fixos e as bissecções da abertura no texel fino refinado.
+    /// Os raios fixos da abertura (nas sondas e no texel refinado).
     pub raios: u32,
+    /// As bissecções da borda na abertura (nas sondas e no texel refinado): a borda fica a
+    /// 1/(raios·2^bissecções) da abertura.
     pub bissecoes: u32,
 }
 
@@ -111,24 +113,27 @@ pub struct Config {
 }
 
 /// O refino por omissão — MEDIDO (rodada `medida_luz2d_w4b`, RTX 5060 Ti, 1920×1080, grade fina de
-/// 1 px; tabela no handoff W4b). Escada da cena 4 (contornos 10 · 50 · 90 %) e ms por lâmpada no Low:
-/// - o limiar 0,1 refina onde a interpolação erra (0,25 deixava o meio da penumbra ao passo grosso:
-///   0,18 px no de 50 %);
+/// 1 px; tabela no handoff W4b). Régua: a escada da cena 4 (degrau dos contornos 2 · 10 · 50 · 90 ·
+/// 98 %, do canto até o muro) e o custo por lâmpada (Low · Medium):
+/// - o limiar 0,1 (0,25 deixava o meio da penumbra interpolado: Low 0,51 px no de 10 %);
 /// - o `joelho`: sem ele uma célula de cantos «0, 0, 0, 0,08» era interpolada e desenhava MANCHAS de
 ///   até 8 % de luz sobre o preto (vistas na FOTO; a régua de 10 · 50 · 90 % não as via): contorno de
-///   2 % no Low 0,352 → 0,165 px (o exato: 0,163), por +2 % de custo;
-/// - a visibilidade no passo GROSSO: o fino custava 2,6× no passe grosso pela mesma escada;
-/// - 4 raios + 5 bissecções: 8+5 custava +35 % no passe fino por 0,005 px; 2+6 o mesmo que 4+5 mas
-///   mais frágil com vários oclusores numa abertura;
-/// - certificar: custo empatado (0,665 × 0,660 ms) — fica, de graça, contra o oclusor fino.
+///   2 % no Low 0,352 → 0,165 px;
+/// - a visibilidade das sondas no passo FINO: no grosso o tremor da marcha entra onde a penumbra é
+///   larga e se interpola (Medium 0,26 · 0,31 · 0,22 px → 0,18 · 0,12 · 0,08; a penumbra da lâmpada
+///   grande também em Low), por +30 % de custo;
+/// - 4 raios + 5 bissecções: 8+5 custava +50 % pela mesma régua (o exato); 2+6 mede igual e custa
+///   −20 %, mas com 3 raios fixos um oclusor mais fino que MEIA abertura da lâmpada passa sem sombra
+///   (com 5, um quarto) — fica a robustez;
+/// - certificar: custo empatado — fica, de graça, contra o oclusor fino entre as sondas.
 ///
-/// Resultado (contornos 2 · 10 · 50 · 90 · 98 %): 0,165 · 0,108 · 0,064 · 0,134 · 0,181 px a 0,55 ms por
-/// lâmpada (o exato em todo texel: 0,163 · 0,103 · 0,056 · 0,128 · 0,177 px a 1,12 ms).
+/// Resultado: Low 0,163 · 0,105 · 0,085 · 0,139 · 0,182 px · Medium 0,176 · 0,123 · 0,079 · 0,122 ·
+/// 0,170 a 0,69 · 0,67 ms por lâmpada (o exato em todo texel: a mesma régua a 1,22 · 1,11 ms).
 pub const REFINO_PADRAO: Refino = Refino::Bordas(Bordas {
     limiar: 0.1,
     joelho: true,
     certificar: true,
-    visibilidade_no_passo_fino: false,
+    visibilidade_no_passo_fino: true,
     raios: 4,
     bissecoes: 5,
 });

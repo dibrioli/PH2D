@@ -75,9 +75,9 @@ fn a_grade_fina_e_o_gabarito_no_texel_fino() {
 }
 
 /// O teto da razão fina ÷ grossa por cena = o MEDIDO + 10 % (W4b, RTX 5060 Ti, `fina` ×4 no Baixo):
-/// penumbra 0,0551 ÷ 0,5226 = 0,105 · faísca 0,0807 ÷ 1,8661 = 0,043 · céu e vidro 0,0275 ÷ 0,0568 =
+/// penumbra 0,0533 ÷ 0,5226 = 0,102 · faísca 0,0804 ÷ 1,8661 = 0,043 · céu e vidro 0,0275 ÷ 0,0568 =
 /// 0,484 (as cascatas pesam mais nela: o céu e os vidros não são luz direta).
-const TETO_GANHO: [f64; 3] = [0.116, 0.048, 0.533];
+const TETO_GANHO: [f64; 3] = [0.112, 0.048, 0.533];
 
 /// ⭐⭐ **O refino pelas BORDAS dá a visibilidade medida em todo texel** (`Refino::Tudo`), a menos
 /// do que a interpolação das sondas deixa onde a visibilidade é suave.
@@ -106,9 +106,9 @@ fn o_refino_pelas_bordas_e_o_exato_em_todo_texel() {
     }
 }
 
-/// O MEDIDO + 10 % (W4b): penumbra 0,00599 · faísca 0,00302 — o que a interpolação das sondas deixa
-/// no miolo da penumbra (o limiar 0,1 do `REFINO_PADRAO`).
-const TETO_BORDAS: f64 = 0.0066;
+/// O MEDIDO + 10 % (W4b, o `REFINO_PADRAO`): penumbra 0,00127 · faísca 0,00026 — o que a interpolação
+/// das sondas deixa no miolo da penumbra (com as sondas no passo grosso e sem o joelho: 0,0060 · 0,0030).
+const TETO_BORDAS: f64 = 0.0014;
 
 /// ⭐⭐ **Só a REGIÃO se calcula, e por dentro dela é o MESMO bit** que a grade inteira (cada
 /// texel fino é independente); fora dela o solver novo deixa a textura como nasceu (zeros).

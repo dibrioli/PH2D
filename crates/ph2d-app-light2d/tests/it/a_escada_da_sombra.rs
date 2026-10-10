@@ -111,7 +111,11 @@ pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia
     let dist = d[0].hypot(d[1]);
     let u = [d[0] / dist, d[1] / dist];
     let nrm = [-u[1], u[0]];
-    let s_fim = (f64::from(linha) - c[0]) / u[0];
+    // Até o perfil tocar 2 px antes da face do muro do meio (x = −0,1 m): a foto da W4b viu um salto
+    // junto a ele, depois da linha de medida. Dentro do muro a fração é 0 ÷ 0 (cruzamento falso).
+    let _ = linha;
+    let muro = -0.1 - 2.0 / ppm;
+    let s_fim = (muro - c[0]) / u[0];
     let mut desvios: [Vec<(f64, f64)>; 5] = Default::default();
     let mut k = 4.0;
     while k / ppm <= s_fim {
@@ -119,6 +123,9 @@ pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia
         let p0 = [c[0] + s * u[0], c[1] + s * u[1]];
         // Meia penumbra (o cone do disco a `s` do canto) e 6 px de folga de cada lado.
         let h = s * raio / dist + 6.0 / ppm;
+        if p0[0] + h * nrm[0].abs() >= muro {
+            break;
+        }
         let n = (2.0 * h * ppm * 20.0).ceil() as usize;
         let ts: Vec<f64> = (0..=n)
             .map(|i| -h + 2.0 * h * i as f64 / n as f64)
@@ -159,16 +166,17 @@ pub(crate) fn degraus() -> [(&'static str, Degrau); 3] {
     .map(|(nome, n)| (nome, ph2d_app_light2d::qualidade::degrau_do(n)))
 }
 
-/// O teto da escada — o MEDIDO + 10 % (W4b, `medida_luz2d_w4b` B), degrau dos contornos 2 · 10 · 50 ·
-/// 90 · 98 %: com a grade fina de 1 px, Low 0,165 · 0,108 · 0,064 · 0,134 · 0,181 px e Medium 0,169 ·
-/// 0,123 · 0,060 · 0,124 · 0,184 (= o High: 0,182 · 0,107 · 0,049 · 0,120 · 0,174); sem ela Low 0,715 ·
-/// 0,646 · 0,434 · 0,675 · 1,202 e Medium 0,472 · 0,311 · 0,168 · 0,296 · 0,487; sem o joelho, o de 2 %
-/// no Low 0,352 (as manchas da foto).
+/// O teto da escada — o MEDIDO + 10 % (W4b, `medida_luz2d_w4b` B, do canto até o muro), degrau dos
+/// contornos 2 · 10 · 50 · 90 · 98 % com a grade fina de 1 px: Low 0,163 · 0,105 · 0,085 · 0,139 ·
+/// 0,182 px, Medium 0,176 · 0,123 · 0,079 · 0,122 · 0,170, High 0,179 · 0,113 · 0,061 · 0,121 · 0,179;
+/// sem a grade fina Low 0,666 · 0,739 · 0,474 · 0,664 · 1,121 e Medium 0,435 · 0,341 · 0,204 · 0,309 ·
+/// 0,420; sem o joelho, o de 2 % no Low 0,352 (as manchas da foto); com a visibilidade das sondas no
+/// passo grosso, Medium 0,258 · 0,307 · 0,221.
 const TETO_DO_DEGRAU_PX: f64 = 0.21;
 /// O deslocamento da borda inteira, em texels da grade GROSSA: a captura arredonda o canto do
-/// oclusor (medido 0,44–0,77 texel conforme o contorno e o nível; a marcha mais fina só tira ~16 %
-/// dele — ABERTO da W4b).
-const TETO_DA_MEDIA_EM_TEXELS: f64 = 0.85;
+/// oclusor (medido 0,57–0,87 texel conforme o contorno e o nível — o maior é o de 2 % no High; a
+/// marcha mais fina só tira ~16 % dele — ABERTO da W4b).
+const TETO_DA_MEDIA_EM_TEXELS: f64 = 0.95;
 
 /// ⭐⭐⭐ **GATE — a sombra nítida não tem ESCADA** em nenhum nível (os três contornos da penumbra,
 /// a cada píxel de tela), e a borda não sai do lugar mais do que a captura explica.

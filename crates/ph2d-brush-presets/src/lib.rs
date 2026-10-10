@@ -5,7 +5,7 @@
 //! texturas NOSSAS em chunks privados `phTx`. Qualquer visualizador mostra a miniatura; o artista
 //! arrasta, partilha e vê o ficheiro na pasta.
 //!
-//! Esta crate é SÓ o formato e a biblioteca (pastas = grupos, favoritos, recentes): não conhece o
+//! Esta crate é SÓ o formato e a biblioteca (pastas = grupos, favoritos): não conhece o
 //! motor. Aplicar, capturar e pintar a miniatura vivem do lado da ferramenta, que depende desta.
 //!
 //! Leis do formato:
@@ -22,6 +22,6 @@ mod png;
 pub use biblioteca::{
     Biblioteca, EXTENSAO, Entrada, apagar, caminho_relativo, gravar, pasta_do_utilizador,
 };
-pub use estado::{EstadoDoUtilizador, FICHEIRO_ESTADO, Lembrado, MAX_RECENTES, Politica};
+pub use estado::{EstadoDoUtilizador, FICHEIRO_ESTADO, Lembrado, Politica};
 pub use modelo::{Erro, LADO_MINIATURA, Miniatura, Origem, Parametros, Preset, SCHEMA, Volumes};
 pub use png::{escrever, escrever_textura, ler, ler_textura};

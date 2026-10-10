@@ -12,7 +12,7 @@ pub const EXTENSAO: &str = ".ph2d-brush.png";
 /// Um preset visível na biblioteca.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Entrada {
-    /// `<motor>/<meio>/<grupo>/<nome>.ph2d-brush.png`, sempre com `/` — a chave de favoritos e recentes.
+    /// `<motor>/<meio>/<grupo>/<nome>.ph2d-brush.png`, sempre com `/` — a chave dos favoritos.
     pub relativo: String,
     /// O ficheiro que vale (o do utilizador quando sobrepõe).
     pub caminho: PathBuf,

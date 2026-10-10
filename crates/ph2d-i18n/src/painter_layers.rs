@@ -535,7 +535,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.preset_none" => "No preset",
         "panel.painter_layers.wetpaint.preset_favorite" => "Favorite",
         "panel.painter_layers.wetpaint.preset_favorites" => "Favorites",
-        "panel.painter_layers.wetpaint.preset_recent" => "Recent",
         "panel.painter_layers.wetpaint.preset_unreadable" => "{n} preset files could not be read",
         "panel.painter_layers.wetpaint.preset_actions" => "Preset actions",
         "panel.painter_layers.wetpaint.preset_save_new" => "Save as New",

@@ -1,4 +1,4 @@
-//! O que é do artista e não do preset: favoritos, recentes, a política dos volumes, os volumes
+//! O que é do artista e não do preset: favoritos, a política dos volumes, os volumes
 //! lembrados por preset e o preset activo — `estado.json` na raiz do utilizador.
 
 use crate::modelo::{Erro, Volumes};
@@ -6,10 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-
-/// Quantos recentes a lista guarda. Recurso: as linhas do navegador (a secção «Recentes» mostra-os
-/// todos sem rolar dentro da coluna do painel).
-pub const MAX_RECENTES: usize = 8;
 
 /// O nome do ficheiro de estado na raiz do utilizador.
 pub const FICHEIRO_ESTADO: &str = "estado.json";
@@ -44,9 +40,6 @@ pub struct Lembrado {
 pub struct EstadoDoUtilizador {
     #[serde(default)]
     pub favoritos: BTreeSet<String>,
-    /// O mais recente primeiro, sem repetidos, no máximo [`MAX_RECENTES`].
-    #[serde(default)]
-    pub recentes: Vec<String>,
     #[serde(default)]
     pub politica: Politica,
     #[serde(default)]
@@ -83,11 +76,9 @@ impl EstadoDoUtilizador {
         std::fs::rename(&tmp, raiz.join(FICHEIRO_ESTADO)).map_err(disco)
     }
 
-    /// O artista escolheu este preset: passa a activo e ao topo dos recentes.
+    /// O artista escolheu este preset: passa a activo. (Os «recentes» saíram a 09/10, pedido do dono: o
+    /// menu repetia os nomes; um `estado.json` antigo com eles guarda-os em `extra` e nada os lê.)
     pub fn usar(&mut self, relativo: &str) {
-        self.recentes.retain(|r| r != relativo);
-        self.recentes.insert(0, relativo.to_owned());
-        self.recentes.truncate(MAX_RECENTES);
         self.ativo = Some(relativo.to_owned());
     }
 

@@ -4,7 +4,7 @@
 //!
 //! Fábrica em `assets/brushes/` (do repositório), do artista em `~/.local/share/ph2d/brushes/`
 //! (`pasta_do_utilizador`). Um ficheiro do artista no mesmo caminho SOBREPÕE o de fábrica («Save as
-//! Default»); o «Reset» apaga-o. Favoritos, recentes, a política e os volumes lembrados vivem em
+//! Default»); o «Reset» apaga-o. Favoritos, a política e os volumes lembrados vivem em
 //! `estado.json` na raiz do artista.
 
 use ph2d_brush_presets::{
@@ -308,7 +308,6 @@ impl Presets {
             .unwrap_or(0) as u8;
         self.vista = Arc::new(VistaPresets {
             entradas,
-            recentes: self.estado.recentes.clone(),
             ativo: self.aplicado.clone(),
             politica,
             ilegiveis: self.bib.erros.len(),

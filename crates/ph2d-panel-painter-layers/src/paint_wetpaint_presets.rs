@@ -1,6 +1,6 @@
 //! **O bloco de presets do Wet Painter** (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`): no Wet Paint
 //! ele toma o lugar da fileira «Preset» dos meios. De cima para baixo: o chip Preset (o navegador:
-//! Favoritos · Recentes · os grupos, que são as pastas), Favorite, o preview VIVO, Save as New ·
+//! Favoritos · os grupos, que são as pastas), Favorite, o preview VIVO, Save as New ·
 //! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water) com os valores
 //! rápidos, e a política dos volumes. Opacity, Pressure e Length não têm leitor no Wet Paint: não
 //! aparecem (gate `a_opacidade_nao_tem_leitor_no_wet_paint`).
@@ -22,11 +22,11 @@ use ph2d_i18n::{tr, tr_with};
 use ph2d_tool_painter::{BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BrushSettings, ids};
 use ph2d_vector::ImageQuality;
 
-/// As secções do popover do Preset (o id de cada linha leva a secção: um preset aparece até três vezes).
+/// As secções do popover do Preset (o id de cada linha leva a secção). Cada preset aparece UMA vez (dono
+/// 09/10: o menu repetia os nomes): os favoritos no topo saem do grupo deles; não há «Recent».
 const SECAO_FAVORITOS: u8 = 0;
-const SECAO_RECENTES: u8 = 1;
 const SECAO_GRUPO: u8 = 2;
-const SECOES: [u8; 3] = [SECAO_FAVORITOS, SECAO_RECENTES, SECAO_GRUPO];
+const SECOES: [u8; 2] = [SECAO_FAVORITOS, SECAO_GRUPO];
 const SIZE_STEP: f64 = 1.0; // LITERAL-PX-OK: Size px volume step (1 px of diameter)
 const PERCENT: f32 = 100.0; // LITERAL-PX-OK: 0..1 volume shown as percent in the quick list
 /// O volume Size px é o DIÂMETRO; o pincel guarda o raio (05 §1.1).
@@ -266,7 +266,7 @@ fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
     }
     let mut linha = |out: &mut Vec<DropdownOption<usize>>, secao: u8, e: &st::VistaPreset| {
         let k = out.len();
-        if secao == SECAO_GRUPO && v.ativo.as_deref() == Some(e.relativo.as_str()) {
+        if v.ativo.as_deref() == Some(e.relativo.as_str()) {
             atual = k;
         }
         out.push(DropdownOption::new(
@@ -285,18 +285,8 @@ fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
             linha(&mut out, SECAO_FAVORITOS, e);
         }
     }
-    let recentes: Vec<&st::VistaPreset> = v.recentes.iter().filter_map(|r| v.procurar(r)).collect();
-    if !recentes.is_empty() {
-        titulo(
-            &mut out,
-            tr("panel.painter_layers.wetpaint.preset_recent").to_owned(),
-        );
-        for e in recentes {
-            linha(&mut out, SECAO_RECENTES, e);
-        }
-    }
     let mut grupo_atual: Option<&str> = None;
-    for e in &v.entradas {
+    for e in v.entradas.iter().filter(|e| !e.favorito) {
         if grupo_atual != Some(e.grupo.as_str()) {
             grupo_atual = Some(e.grupo.as_str());
             titulo(&mut out, e.grupo.clone());

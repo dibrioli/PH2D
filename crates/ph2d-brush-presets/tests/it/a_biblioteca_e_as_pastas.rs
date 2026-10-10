@@ -1,9 +1,9 @@
 //! A biblioteca sobre o disco: duas raízes, o do utilizador sobrepõe, o «Reset» apaga-o; o estado do
-//! artista (favoritos, recentes, política).
+//! artista (favoritos, o activo, política).
 
 use ph2d_brush_presets::{
-    Biblioteca, EstadoDoUtilizador, MAX_RECENTES, Miniatura, Origem, Parametros, Politica, Preset,
-    Volumes, apagar, caminho_relativo, gravar,
+    Biblioteca, EstadoDoUtilizador, Miniatura, Origem, Parametros, Politica, Preset, Volumes,
+    apagar, caminho_relativo, gravar,
 };
 use std::path::PathBuf;
 
@@ -90,15 +90,10 @@ fn guardar_como_novo_nunca_esmaga_um_nome() {
 }
 
 #[test]
-fn recentes_favoritos_e_a_politica() {
+fn o_ativo_os_favoritos_e_a_politica() {
     let mut e = EstadoDoUtilizador::default();
-    for k in 0..MAX_RECENTES + 3 {
-        e.usar(&format!("p{k}"));
-    }
+    e.usar("p1");
     e.usar("p4");
-    assert_eq!(e.recentes.len(), MAX_RECENTES);
-    assert_eq!(e.recentes[0], "p4");
-    assert_eq!(e.recentes.iter().filter(|r| *r == "p4").count(), 1);
     assert_eq!(e.ativo.as_deref(), Some("p4"));
 
     e.alternar_favorito("p1");

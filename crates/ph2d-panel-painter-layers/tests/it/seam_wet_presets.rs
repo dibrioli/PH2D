@@ -30,11 +30,11 @@ fn vista(ativo: Option<&str>) -> Arc<VistaPresets> {
         relativo: rel.to_owned(),
         nome: nome.to_owned(),
         grupo: "Watercolor · Fluid".to_owned(),
-        favorito: false,
+        // O Round é favorito: o menu mostra-o no topo e NÃO no grupo (cada pincel uma vez — dono 09/10).
+        favorito: rel == ROUND,
     };
     Arc::new(VistaPresets {
         entradas: vec![e(ROUND, "Wet Round"), e(WASH, "Wet Wash")],
-        recentes: vec![ROUND.to_owned()],
         ativo: ativo.map(str::to_owned),
         politica: 0,
         ilegiveis: 0,
@@ -170,9 +170,9 @@ fn os_valores_rapidos_mudam_o_volume() {
 
 #[test]
 fn escolher_um_preset_no_navegador_pede_esse_preset() {
-    for secao in [1u8, 2] {
+    for secao in [0u8, 2] {
         let mut t = molhado();
-        let alvo = if secao == 1 { ROUND } else { WASH };
+        let alvo = if secao == 0 { ROUND } else { WASH };
         escolhe(
             &mut t,
             Some(ROUND),
@@ -270,4 +270,28 @@ fn o_preview_vivo_tem_a_sua_faixa_no_bloco() {
         y(&com)
     );
     set_current_wet_preview(None);
+}
+
+/// **Cada pincel aparece UMA vez no menu** (dono 09/10, captura: o «Recent» e o grupo repetiam os quatro
+/// nomes). Aberto o chip: o Round (favorito) está nos Favoritos e não no grupo; o Wash está só no grupo; a
+/// secção 1 (o antigo «Recent») não pinta nada.
+#[test]
+fn cada_pincel_aparece_uma_vez_no_menu() {
+    let t = molhado();
+    let (mut host, mut st, rects) = novo(&t, Some(ROUND));
+    let chip = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).expect("o chip do Preset");
+    for ev in host.click_at(chip.x + chip.w * 0.5, chip.y + chip.h * 0.5) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    let rects = painted(&t, &mut host, &mut st);
+    let pintado = |secao: u8, rel: &str| {
+        rect_of(&rects, ids::painter_wetpaint_preset_option_id(secao, rel)).is_some()
+    };
+    assert!(pintado(0, ROUND), "o favorito no topo");
+    assert!(pintado(2, WASH), "o resto no grupo");
+    assert!(!pintado(2, ROUND), "o favorito repetido no grupo");
+    assert!(!pintado(0, WASH), "um não-favorito nos Favoritos");
+    for rel in [ROUND, WASH] {
+        assert!(!pintado(1, rel), "a secção «Recent» voltou: {rel}");
+    }
 }

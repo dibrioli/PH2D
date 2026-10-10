@@ -22,8 +22,6 @@ pub struct VistaPreset {
 pub struct VistaPresets {
     /// Pela ordem da biblioteca (meio, grupo, nome).
     pub entradas: Vec<VistaPreset>,
-    /// Caminhos dos recentes, o mais recente primeiro.
-    pub recentes: Vec<String>,
     pub ativo: Option<String>,
     /// A política dos volumes, índice em `Politica::TODAS`.
     pub politica: u8,

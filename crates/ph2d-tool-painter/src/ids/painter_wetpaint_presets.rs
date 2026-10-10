@@ -12,8 +12,8 @@ use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 pub const PAINTER_WETPAINT_PRESET: NodeId = hash_node_id("painter_brush.wetpaint_preset");
 
 /// One preset in the open Preset popover, keyed by its library path (stable across list changes) and
-/// by the popover section it is listed in (`0` Favorites · `1` Recent · `2` its group): one preset can
-/// appear in three places, and each row needs its own hit id.
+/// by the popover section it is listed in (`0` Favorites · `2` its group). Since 09/10 a preset is listed
+/// ONCE (a favourite leaves its group; there is no Recent section — the owner: the menu repeated names).
 #[must_use]
 pub fn painter_wetpaint_preset_option_id(secao: u8, relativo: &str) -> NodeId {
     hash_node_id_runtime(&format!(
@@ -21,7 +21,7 @@ pub fn painter_wetpaint_preset_option_id(secao: u8, relativo: &str) -> NodeId {
     ))
 }
 
-/// A section title in the open Preset popover (Favorites / Recent / a group) — painted disabled.
+/// A section title in the open Preset popover (Favorites / a group) — painted disabled.
 #[must_use]
 pub fn painter_wetpaint_preset_title_id(k: usize) -> NodeId {
     hash_node_id_runtime(&format!("painter_brush.wetpaint_preset_title.{k}"))

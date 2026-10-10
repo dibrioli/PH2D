@@ -112,6 +112,44 @@ pub fn physics_of(
     (k.min(TENSION_CEIL), c.min(FRICTION_CEIL))
 }
 
+/// ⭐ **UM PASSO DA MOLA** — `(valor, velocidade)` depois de `dt` atrás de `alvo`; a lei que o
+/// `motion.spring` e o `value.follow` (ciclo 19) correm, escrita UMA vez.
+///
+/// Euler semi-implícito com sub-passo adaptativo. ⚠️⚠️ **O sub-passo guarda as DUAS forças**: o
+/// limite `sub_dt²·tension < STABLE` é o da rigidez; o do atrito é outro — o Euler semi-implícito
+/// só é estável enquanto `friction·sub_dt < 2`, e o modo `Time` alcança pares amortecidos onde a
+/// mola explodia (até 06/09). ⭐ A faixa autorada de sempre é byte-idêntica — o gate
+/// `the_friction_bound_never_bites_in_the_authored_range` afirma-o.
+#[must_use]
+pub fn passo(valor: f32, vel: f32, alvo: f32, tension: f32, friction: f32, dt: f32) -> (f32, f32) {
+    let ideal = (crate::STABLE / tension)
+        .sqrt()
+        .min(crate::FRICTION_STABLE / friction);
+    let steps = if dt > 0.0 {
+        ((dt / ideal).ceil() as usize).clamp(1, crate::MAX_STEPS)
+    } else {
+        1
+    };
+    let sub_dt = dt / steps as f32;
+    let (mut x, mut v) = (valor, vel);
+    // NaN/∞ guard (reference parity): a diverged instance recovers.
+    if !(x.is_finite() && v.is_finite()) {
+        x = alvo;
+        v = 0.0;
+    }
+    for _ in 0..steps {
+        let accel = -friction * v - tension * (x - alvo);
+        v += accel * sub_dt;
+        x += v * sub_dt;
+    }
+    // E DEPOIS do passo: o quadro em que ela diverge sai no alvo, nunca NaN/∞ (doc 123 §4).
+    if !(x.is_finite() && v.is_finite()) {
+        x = alvo;
+        v = 0.0;
+    }
+    (x, v)
+}
+
 #[cfg(test)]
 #[path = "law_tests.rs"]
 mod tests;

@@ -201,6 +201,20 @@ pub fn is_spaced(name: &str) -> bool {
 }
 
 /// One published value, and the revision that IS its content.
+/// **A entrada PUBLICADA `name` do grafo** (ciclo 19, doc 128 §3.1) — o que o jogo escreve e o
+/// `value.input` lê. No espaço reservado: um objecto chamado `vida` não colide com a entrada `vida`.
+/// O stream tem uma linha por escritor: [`INPUT_VALUE`] (o número; num gatilho, o pulso) e, numa
+/// cor, [`INPUT_COLOR`].
+#[must_use]
+pub fn input_of(name: &str) -> String {
+    format!("{RESERVED_PREFIX}input:{}", name.trim())
+}
+
+/// A coluna do número de uma entrada publicada.
+pub const INPUT_VALUE: &str = "v";
+/// A coluna da cor (`Vec4`, RGBA linear) de uma entrada publicada.
+pub const INPUT_COLOR: &str = "c";
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {
     /// FNV-1a over the stream's columns. Two identical publishes have the same revision, so a

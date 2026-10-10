@@ -7349,7 +7349,9 @@ dependencies = [
  "ph2d-node-value-attribute",
  "ph2d-node-value-cursor",
  "ph2d-node-value-curve",
+ "ph2d-node-value-follow",
  "ph2d-node-value-gain",
+ "ph2d-node-value-input",
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
@@ -7576,9 +7578,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-value-follow"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ease",
+ "ph2d-node-motion-spring",
+ "ph2d-node-registry",
+ "ph2d-node-value-input",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-value-gain"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-input"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

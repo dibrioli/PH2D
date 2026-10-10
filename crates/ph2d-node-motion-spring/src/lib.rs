@@ -43,7 +43,7 @@ use std::collections::BTreeMap;
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// Ceiling on a single integration step (see `motion.integrate`).
-const MAX_DT: f32 = 0.1;
+pub const MAX_DT: f32 = 0.1;
 /// Stability bound for the adaptive sub-step: `sub_dt² · tension < STABLE`.
 const STABLE: f32 = 0.05;
 /// ⚠️ **O limite do ATRITO, que é outro** — o Euler semi-implícito é estável enquanto
@@ -267,43 +267,10 @@ fn solve(
             _ => playhead,
         };
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
-        // Adaptive sub-step from the stability limit (reference parity).
-        // ⚠️⚠️ **O SUB-PASSO GUARDA AS DUAS FORÇAS, e até 2026-09-06 guardava só uma.**
-        // O limite `sub_dt²·tension < STABLE` é o da RIGIDEZ; o do ATRITO é outro — o Euler
-        // semi-implícito só é estável enquanto `friction·sub_dt < 2` (acima disso a velocidade
-        // troca de sinal e cresce). Enquanto os sliders iam até `friction 20` com `tension 0,5`
-        // o termo do atrito dava `0,33` e nunca mordia; o modo `Time` alcança pares muito mais
-        // amortecidos, e ali a mola **explodia**.
-        // ⭐ **A faixa autorada de sempre é byte-idêntica** — o gate
-        // `the_friction_bound_never_bites_in_the_authored_range` afirma-o.
-        let ideal = (STABLE / tension).sqrt().min(FRICTION_STABLE / friction);
-        let steps = if dt > 0.0 {
-            ((dt / ideal).ceil() as usize).clamp(1, MAX_STEPS)
-        } else {
-            1
-        };
-        let sub_dt = dt / steps as f32;
         for (i, slot) in prev.iter().enumerate() {
             let Some(j) = *slot else { continue }; // fresh id: stays at its target
-            let (mut v, mut x) = (s_vel[j], s_value[j]);
-            // NaN/∞ guard (reference parity): a diverged instance recovers.
-            if !(x.is_finite() && v.is_finite()) {
-                x = targets[i];
-                v = 0.0;
-            }
-            for _ in 0..steps {
-                let accel = -friction * v - tension * (x - targets[i]);
-                v += accel * sub_dt;
-                x += v * sub_dt;
-            }
-            // E DEPOIS do passo: o quadro em que ela diverge sai no alvo, nunca NaN/∞ (doc 123 §4
-            // — só a guarda de cima deixava UM quadro não finito chegar ao ecrã).
-            if !(x.is_finite() && v.is_finite()) {
-                x = targets[i];
-                v = 0.0;
-            }
-            value[i] = x;
-            vel[i] = v;
+            (value[i], vel[i]) =
+                law::passo(s_value[j], s_vel[j], targets[i], tension, friction, dt);
         }
     }
 

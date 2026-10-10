@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-node-value-follow"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+# A lei da mola (`law::passo`, `physics_of`) — escrita UMA vez, ali.
+ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
+# O `exp2` determinista da casa (o modo Smooth).
+ph2d-ease = { path = "../ph2d-ease" }
+
+[dev-dependencies]
+# O gate do oráculo corre a cadeia REAL do crossfade: a entrada publicada e o seguidor.
+ph2d-node-value-input = { path = "../ph2d-node-value-input" }
+
+[lints]
+workspace = true

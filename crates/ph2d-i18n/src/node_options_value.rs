@@ -8,8 +8,15 @@
 /// O texto ingles de cada opcao da familia `value`.
 #[rustfmt::skip]
 pub(crate) const ENTRADAS: &[(&str, &str)] = &[
+    ("node.value.follow.param.mode.0", "Linear"),
+    ("node.value.follow.param.mode.1", "Smooth"),
+    ("node.value.follow.param.mode.2", "Spring"),
     ("node.value.gain.param.mode.0", "Gain"),
     ("node.value.gain.param.mode.1", "Bias"),
+    ("node.value.input.param.kind.0", "Number"),
+    ("node.value.input.param.kind.1", "Toggle"),
+    ("node.value.input.param.kind.2", "Trigger"),
+    ("node.value.input.param.kind.3", "Color"),
     ("node.value.instance_field.param.key.0", "Index"),
     ("node.value.instance_field.param.key.1", "Id"),
     ("node.value.instance_field.param.mode.0", "Index"),

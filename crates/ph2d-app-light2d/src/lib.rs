@@ -11,6 +11,7 @@
 //!    do vetor.
 
 mod captura;
+pub mod gizmo;
 mod grade;
 pub mod inspector;
 pub mod object_add;

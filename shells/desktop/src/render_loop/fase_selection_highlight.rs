@@ -143,6 +143,16 @@ impl crate::App {
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
             );
+            // ⭐ **O GIZMO DA LUZ** (Luz 2D): a lâmpada no tamanho real, os raios e o alcance.
+            ph2d_app_light2d::gizmo::desenhar(
+                sim.world(),
+                hero.gizmo.selection,
+                hero.project.pixels_per_meter,
+                hero.theme,
+                camera,
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
+                vector_scene,
+            );
 
             // Tween v2 — a correção de pares: os dois desenhos-chave sobrepostos + as
             // linhas de par (pela confiança) + órfãos, no MESMO `l2w` do objeto. Só

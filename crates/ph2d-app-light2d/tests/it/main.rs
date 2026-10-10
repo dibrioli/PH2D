@@ -10,6 +10,7 @@ mod g11_pan_sem_tremor;
 mod g6_ponto_neutro;
 mod medida_luz2d_w3;
 mod medida_luz2d_w4;
+mod o_gizmo_da_luz;
 mod paridade_luz_recebida;
 mod smoke_cena_1;
 mod smoke_cenas_w4;

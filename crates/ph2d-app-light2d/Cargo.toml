@@ -31,6 +31,9 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-color = { path = "../ph2d-color" }
+# O gizmo da luz no canvas: a janela da câmera, os tokens de cor e a cena do chrome.
+ph2d-host = { path = "../ph2d-host" }
+ph2d-tokens = { path = "../ph2d-tokens" }
 wgpu = "29.0.4"
 # O afim mundo → tela que o Vello usou (o vetor recebe a luz pelo inverso dele).
 kurbo = "0.13.1"
@@ -45,7 +48,6 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-ecs = { path = "../ph2d-ecs" }
-ph2d-host = { path = "../ph2d-host" }
 # O quadrado vetorial dos gates desenha-se pela porta do documento (o Vello de verdade).
 vello = "0.10.0"
 # A fluência sai em `Rgba16Float`; os gates leem-na de volta (já no `Cargo.lock`).

@@ -246,15 +246,16 @@ fn discover(st: &mut State, hero: &mut HeroScreen) {
     let Some((d, asked)) = &mut st.discovery else {
         return;
     };
+    // A procura corre enquanto o painel a pede, e a lista dela é a verdade: um quadro que fechou SAI
+    // (o mDNS diz adeus, ~1 s, ADR-0181 §Medições). Quando ela pára, a lista apaga-se — a seguinte
+    // começa vazia em vez de mostrar o que já fechou (a foto b3 da cena 12 tinha-o).
     if asked.elapsed() > DISCOVER_FOR {
         st.discovery = None;
+        hero.documents.live_view_mut().found.clear();
         return;
     }
-    let found = d.poll();
-    if found.is_empty() && !hero.documents.live_view().found.is_empty() {
-        return;
-    }
-    hero.documents.live_view_mut().found = found
+    hero.documents.live_view_mut().found = d
+        .poll()
         .into_iter()
         .map(|f| LiveFound {
             board: f.board,

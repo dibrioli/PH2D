@@ -214,6 +214,18 @@ impl Host {
                     snapshot: Box::new(self.replica.snapshot(board)),
                 },
             ));
+            // Quem entra vê JÁ onde estão os outros: a presença só sai quando muda, e quem estava
+            // parado ficava invisível ao recém-chegado até mexer o rato (a foto b2 da cena 12).
+            let mine = self.room.sent.iter().cloned();
+            let theirs = self
+                .room
+                .seen
+                .iter()
+                .filter(|(p, _)| **p != peer)
+                .filter_map(|(_, s)| s.last.clone());
+            for p in mine.chain(theirs).collect::<Vec<_>>() {
+                out.push((To::One(conn), Msg::Presence(p)));
+            }
             out.push((To::AllBut(conn), Msg::Joined(info.clone())));
             events.push(Event::Joined(info));
             return (out, events);

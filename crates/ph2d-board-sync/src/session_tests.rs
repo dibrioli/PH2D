@@ -181,6 +181,56 @@ fn summon_reaches_everyone_but_the_caller() {
     assert!(ev.is_empty(), "quem chamou não se chama");
 }
 
+/// Quem entra vê JÁ o cursor de quem está parado: o do anfitrião e o dos outros convidados (a
+/// presença só sai quando muda — sem o retrato dela, o recém-chegado não via ninguém).
+#[test]
+fn a_newcomer_sees_where_everyone_already_is() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    assert_eq!(
+        host.presence(0, presence(5.0, vec![])).len(),
+        1,
+        "a Ana pôs o rato"
+    );
+    let mut b = Guest::new(2, "Bia".into(), 2);
+    let mut bb = None;
+    let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 10);
+    for (_, m) in &out {
+        deliver(&mut b, &mut bb, &m.encode(), 10);
+    }
+    let pb = b.presence(20, presence(9.0, vec![])).remove(0);
+    let _ = host.frame(&mut hb, 7, &pb.encode(), 20);
+    let mut c = Guest::new(3, "Caio".into(), 3);
+    let mut cb = None;
+    let (out, _) = host.frame(&mut hb, 8, &c.hello().encode(), 30);
+    let to_caio: Vec<u64> = out
+        .iter()
+        .filter_map(|(to, m)| match (to, m) {
+            (To::One(8), Msg::Presence(p)) => Some(p.peer),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        to_caio,
+        vec![1, 2],
+        "o Caio não soube onde estavam a Ana e a Bia"
+    );
+    for (to, m) in &out {
+        if *to == To::One(8) {
+            deliver(&mut c, &mut cb, &m.encode(), 30);
+        }
+    }
+    let late = 30 + RENDER_DELAY_MS + 1;
+    assert!(
+        c.seen(1).and_then(|s| s.cursor_at(late)).is_some(),
+        "o cursor da Ana"
+    );
+    assert!(
+        c.seen(2).and_then(|s| s.cursor_at(late)).is_some(),
+        "o cursor da Bia"
+    );
+}
+
 /// O anfitrião fecha a sala de propósito: o convidado sabe-o (e não confunde com uma queda), e o
 /// adeus é o ÚLTIMO byte da enumeração (um índice que viaja não se reordena).
 #[test]

@@ -87,7 +87,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "2. If the panel says the firewall blocks: Allow on home network, then your system password."
         }
         "board.smoke.live.l3" => {
-            "3. 2nd window: PH2D with PH2D_BOARD_SMOKE=1, Live, click Retro in the list, type the code, Join."
+            "3. In a 2nd PH2D window: press Live, click Retro in the list, type the code, then Join."
         }
         "board.smoke.live.l4" => {
             "4. Draw or move a note in one window: it moves in the other. You see their arrow and name."

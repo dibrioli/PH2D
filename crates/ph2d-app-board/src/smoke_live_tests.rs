@@ -235,3 +235,174 @@ fn the_live_scene_hosts_and_a_second_window_joins_by_its_code() {
     assert_eq!(seen.copy, n + 1, "a cópia não ficou");
     assert_eq!(host.documents.live_view().role, LiveRole::Off);
 }
+
+/// 📷 Os ESTADOS da cena 12 que a foto da janela não alcança (a tela virtual não aceita cliques, e a
+/// 2.ª janela é outro programa): a Ana (a cena) e a Bia (a cena 1, o painel aberto) em duas threads,
+/// cada uma com a SUA placa, o ecrã inteiro. Corre à mão e LÊ-SE cada foto:
+///
+/// ```text
+/// PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-board --lib fotos_dos_estados_da_cena_12 -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "fotografias: correm-se à mão com a placa"]
+fn fotos_dos_estados_da_cena_12() {
+    use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_text::TextSystem;
+    use ph2d_vector::VectorScene;
+
+    /// Uma janela: o ecrã, o texto e a placa dela.
+    struct Shots {
+        gpu: ph2d_gpu::GpuContext,
+        pass: ph2d_render::VelloPass,
+        ts: TextSystem,
+        dir: std::path::PathBuf,
+    }
+    impl Shots {
+        fn new() -> Self {
+            ph2d_editor_core::test_support::ensure_panel_registry();
+            let gpu =
+                ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).unwrap();
+            let size = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
+            let pass = ph2d_render::VelloPass::new(&gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, size)
+                .unwrap();
+            let dir = std::env::temp_dir().join("ph2d_w11_fotos");
+            std::fs::create_dir_all(&dir).unwrap();
+            Self {
+                gpu,
+                pass,
+                ts: TextSystem::without_system_fonts(),
+                dir,
+            }
+        }
+        fn paint(&mut self, h: &mut HeroScreen) -> VectorScene {
+            let mut scene = VectorScene::new();
+            let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+            paint_hero_screen(h, vp, &mut scene, &mut self.ts);
+            scene
+        }
+        fn shot(&mut self, h: &mut HeroScreen, name: &str) {
+            self.paint(h);
+            let scene = self.paint(h);
+            let size = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
+            let px = self
+                .pass
+                .render_and_readback(&self.gpu, scene.inner(), size)
+                .unwrap();
+            let img = ph2d_board_export::png::Image {
+                width: size.0,
+                height: size.1,
+                rgba: px,
+            };
+            let path = self.dir.join(format!("{name}.png"));
+            std::fs::write(&path, ph2d_board_export::png::encode(&img)).unwrap();
+            println!("foto: {}", path.display());
+        }
+    }
+
+    reset_for_tests();
+    let ufw = Probe {
+        ufw_conf: Some("ENABLED=yes\n".into()),
+        pkexec: true,
+        ..Probe::default()
+    };
+    fake_firewall_for_tests(ufw, vec!["192.168.15.0/24".parse().unwrap()]);
+    let mut cam = Shots::new();
+    let mut ana = hero("Ana");
+    scene_live(&mut ana);
+    ana.documents.live_view_mut().my_cursor = Some([120.0, 160.0]);
+    assert!(until(&mut ana, 5, |h| h
+        .documents
+        .live_view()
+        .firewall
+        .can_allow));
+    cam.shot(&mut ana, "a0_abertura");
+    let LiveRole::Hosting { code, addrs } = ana.documents.live_view().role.clone() else {
+        panic!();
+    };
+    let port = addrs[0].parse::<SocketAddr>().unwrap().port();
+    let (to_ana, from_bia) = mpsc::channel::<()>();
+    let (to_bia, from_ana) = mpsc::channel::<()>();
+    let bia = std::thread::spawn(move || {
+        reset_for_tests();
+        let mut cam = Shots::new();
+        let mut g = hero("Bia");
+        super::super::scene_two_boards(&mut g);
+        live_board::toggle(&mut g);
+        until(&mut g, 8, |g| !g.documents.live_view().found.is_empty());
+        cam.shot(&mut g, "b0_painel_com_achados");
+        g.documents.ask_live(LiveRequest::Join {
+            addr: Some(format!("127.0.0.1:{port}")),
+            code,
+        });
+        service(&mut g);
+        cam.shot(&mut g, "b1_a_entrar");
+        let gid = {
+            until(&mut g, 10, |g| count(g) > 0);
+            g.documents.live_view().board.unwrap()
+        };
+        let b = room(&mut g).unwrap();
+        let (ink, fill) = (Rgba([20, 20, 20, 255]), Rgba([255, 214, 153, 255]));
+        let el = Element::new_shape(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            Shape {
+                kind: ShapeType::Rectangle,
+                style: Style::new(Some(fill), Some(ink), ink),
+                text: RichText::plain("Bia"),
+            },
+            [1000.0, 120.0, 140.0, 70.0],
+        );
+        let _ = BoardOp::Put(el).apply(&mut b.doc);
+        g.documents.live_view_mut().my_cursor = Some([1080.0, 220.0]);
+        assert!(
+            until(&mut g, 5, |g| g
+                .documents
+                .live_view()
+                .others
+                .iter()
+                .any(|o| o.cursor.is_some())),
+            "a seta da Ana não chegou"
+        );
+        cam.shot(&mut g, "b2_dentro_da_sala");
+        to_ana.send(()).unwrap();
+        from_ana.recv_timeout(Duration::from_secs(20)).unwrap();
+        until(&mut g, 5, |g| g.documents.live_view().role == LiveRole::Off);
+        g.documents.activate(Some(gid));
+        // A «Retro» fechou: sai da lista dos achados (antes ficava lá para sempre).
+        assert!(
+            until(&mut g, 8, |g| g.documents.live_view().found.is_empty()),
+            "a sala fechada continua na lista: {:?}",
+            g.documents.live_view().found
+        );
+        cam.shot(&mut g, "b3_a_ana_fechou");
+    });
+    let end = Instant::now() + Duration::from_secs(30);
+    while from_bia.try_recv().is_err() && Instant::now() < end {
+        service(&mut ana);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    until(&mut ana, 3, |h| {
+        h.documents
+            .live_view()
+            .others
+            .iter()
+            .any(|o| o.cursor.is_some())
+    });
+    cam.shot(&mut ana, "a1_com_a_bia");
+    let peer = ana
+        .documents
+        .live_view()
+        .peers
+        .iter()
+        .find(|p| !p.me)
+        .unwrap()
+        .peer;
+    ana.documents.live_view_mut().following = Some(peer);
+    until(&mut ana, 2, |_| false);
+    cam.shot(&mut ana, "a2_a_seguir_a_bia");
+    ana.documents.ask_live(LiveRequest::Leave);
+    service(&mut ana);
+    to_bia.send(()).unwrap();
+    bia.join().unwrap();
+}

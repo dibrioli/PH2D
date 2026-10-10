@@ -206,6 +206,12 @@ fn paint_badge(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     );
 }
 
+/// Os campos do `Off`, pela ordem: o rótulo e o campo (a coluna dos rótulos mede-se por eles).
+const FIELDS: [(&str, NodeId); 2] = [
+    ("board.live.code", crate::ids::BOARD_LIVE_CODE_INPUT),
+    ("board.live.address", crate::ids::BOARD_LIVE_ADDR_INPUT),
+];
+
 /// Uma fila do painel.
 enum Row {
     /// Texto que quebra em linhas.
@@ -298,14 +304,7 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
                     ColorToken::Text3,
                 ));
             }
-            out.push(Row::Field(
-                "board.live.code",
-                crate::ids::BOARD_LIVE_CODE_INPUT,
-            ));
-            out.push(Row::Field(
-                "board.live.address",
-                crate::ids::BOARD_LIVE_ADDR_INPUT,
-            ));
+            out.extend(FIELDS.iter().map(|(k, id)| Row::Field(k, *id)));
             out.push(button(LiveButton::Join, "board.live.join", true));
         }
         LiveRole::Joining => {
@@ -465,8 +464,12 @@ fn paint_row(
         }
         Row::Button(b, label, main) => button(hero, scene, ts, node(Hit::Button(*b)), label, *main),
         Row::Field(key, id) => {
-            let lw = r.w * 0.4; // LITERAL-PX-OK: o rótulo ocupa 40 % da fila
             let font = TypeToken::Xs.px();
+            // A coluna dos rótulos é a do MAIS LARGO dos campos do painel (os dois alinham): a 40 %
+            // fixa cortava «Address (optional)» (foto b0 da cena 12). Nunca mais de 60 % da fila.
+            let widest =
+                crate::paint::label_column_width(ts, font, FIELDS.iter().map(|(k, _)| tr(k)));
+            let lw = (widest + Spacing::Sm.px()).min(r.w * 0.6); // LITERAL-PX-OK: tecto de 60 % da fila
             paint_text_elided(
                 ts,
                 scene,

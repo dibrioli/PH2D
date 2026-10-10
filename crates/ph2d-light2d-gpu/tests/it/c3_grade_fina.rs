@@ -124,7 +124,14 @@ fn so_a_regiao_se_calcula_e_por_dentro_e_o_mesmo_bit() {
         fina: FINA,
         ..Config::padrao(grade(lado, texel))
     };
-    let cena = penumbra();
+    // ⭐ W5a: e uma parede que ATRAVESSA a borda esquerda da região (x = 0,37 m), com a face mais
+    // próxima do interior visível FORA dela — o preenchimento corre na grade inteira, senão a parte
+    // de dentro acharia a outra face (e mudaria de cor no pan).
+    let mut cena = penumbra();
+    cena.oclusores.push(crate::comum::oclusor(
+        vec![[0.30, 1.0], [0.60, 1.0], [0.60, 2.0], [0.30, 2.0]],
+        1.0,
+    ));
     let mut inteira = Solver::novo(&gpu, cfg).expect("solver");
     inteira.quadro(&gpu, &cena);
     let a = ler_bytes(&gpu, inteira.fluencia());
@@ -265,10 +272,30 @@ fn o_fio_de_sombra_entre_as_sondas_e_o_do_exato() {
 fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
     let Some(gpu) = gpu() else { return };
     let (_, lado, texel) = DEGRAUS[2];
-    for (nome, cena, teto) in [
-        ("penumbra", penumbra(), TETO_INTERIOR[0]),
-        ("faísca", faisca(), TETO_INTERIOR[1]),
-    ] {
+    // Uma parede GROSSA (40 texels finos) acesa de um lado: o interior fundo é do JFA.
+    let parede = CenaDeLuz {
+        emissores: vec![crate::comum::disco(
+            [1.2, 2.56],
+            0.3,
+            [1.0; 3],
+            f32::INFINITY,
+        )],
+        oclusores: vec![crate::comum::oclusor(
+            vec![[1.8, 1.5], [2.2, 1.5], [2.2, 3.5], [1.8, 3.5]],
+            1.0,
+        )],
+        ceu: [0.0; 3],
+        ..Default::default()
+    };
+    for (k, (nome, cena)) in [
+        ("penumbra", penumbra()),
+        ("faísca", faisca()),
+        ("parede grossa", parede),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let teto = TETO_INTERIOR[k];
         // A captura do PRODUTO: duas vezes mais fina que a grade fina (a grossa arredonda o canto em
         // ~1 texel fino e troca a face mais próxima junto a ele).
         let com = Config {
@@ -285,6 +312,24 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
         let r = gabarito(&cena, &g);
         let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
         let (ec, es) = (rmse_rel(&fc, &r, &dentro), rmse_rel(&fs, &r, &dentro));
+        // O interior FUNDO (o do JFA): a MÉDIA do erro, relativa ao máximo do gabarito (o fio do eixo
+        // medial é ~1 texel na parede de 40).
+        let fundo = crate::comum::dentro_de_opaco(&cena, &g);
+        let max = r.iter().map(|v| v[1]).fold(0.0_f64, f64::max);
+        let mut erros: Vec<f64> = (0..r.len())
+            .filter(|&k| fundo(k) && !dentro(k))
+            .map(|k| (f64::from(fc[k][1]) - r[k][1]).abs() / max)
+            .collect();
+        let media = erros.iter().sum::<f64>() / erros.len().max(1) as f64;
+        eprintln!(
+            "F3 interior fundo · {nome}: erro médio {media:.4} do máximo ({} texels; teto {})",
+            erros.len(),
+            TETO_FUNDO[k]
+        );
+        assert!(
+            media <= TETO_FUNDO[k],
+            "F3 interior fundo · {nome}: {media:.4}"
+        );
         let mut piores: Vec<(f64, usize)> = (0..r.len())
             .filter(|&k| dentro(k))
             .map(|k| ((f64::from(fc[k][1]) - r[k][1]).abs(), k))
@@ -314,8 +359,11 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
 
 /// Texels finos de dentro, a partir da borda, que a régua mede.
 const FAIXA_INTERIOR: f64 = 2.0;
-/// O MEDIDO + 10 % (W5a, captura 2 × fina, a faixa de 2 texels): penumbra 0,3135 · faísca 0,0032;
-/// sem o preenchimento 1,67 · 2,00. Com a captura GROSSA a penumbra dava 0,80 (o canto arredondado
+/// O MEDIDO + 10 % (W5a): o erro médio do interior FUNDO, do máximo do gabarito — penumbra 0,0043 ·
+/// faísca 0,0007 · parede grossa 0,0011.
+const TETO_FUNDO: [f64; 3] = [0.0047, 0.0008, 0.0013];
+/// O MEDIDO + 10 % (W5a, captura 2 × fina, a faixa de 2 texels): penumbra 0,3135 · faísca 0,0032 ·
+/// parede grossa 0,0759; sem o preenchimento 1,67 · 2,00 · 1,58. Com a captura GROSSA a penumbra dava 0,80 (o canto arredondado
 /// troca a face mais próxima); escolhendo o texel exterior mais perto em vez do ponto de FRONTEIRA
 /// mais perto, 0,83; só com as sementes do JFA de células de 4, 1,15.
-const TETO_INTERIOR: [f64; 2] = [0.345, 0.0036];
+const TETO_INTERIOR: [f64; 3] = [0.345, 0.0036, 0.0835];

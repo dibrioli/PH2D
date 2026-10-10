@@ -158,7 +158,7 @@ impl Pintor {
         enc: &mut wgpu::CommandEncoder,
         (alvo, lado_da_atlas, lado): (&wgpu::TextureView, u32, u32),
         mascaras: &[Mascara],
-        texturas: &[(&wgpu::TextureView, Amostragem)],
+        (texturas, tempos): (&[(&wgpu::TextureView, Amostragem)], Option<&Tempos>),
     ) {
         let device = &gpu.device;
         // Agrupadas por textura (um grupo por lote).
@@ -242,7 +242,7 @@ impl Pintor {
                 },
             })],
             depth_stencil_attachment: None,
-            timestamp_writes: None,
+            timestamp_writes: tempos.map(|t| t.escrita_render(tempos::C3_MASCARAS)),
             occlusion_query_set: None,
             multiview_mask: None,
         });
@@ -307,7 +307,7 @@ impl Distantes {
         gpu: &GpuContext,
         enc: &mut wgpu::CommandEncoder,
         m: &MundoDistante,
-        texturas: &[(&wgpu::TextureView, Amostragem)],
+        (texturas, tempos): (&[(&wgpu::TextureView, Amostragem)], Option<&Tempos>),
     ) -> bool {
         let device = &gpu.device;
         let mut mudou = false;
@@ -333,6 +333,13 @@ impl Distantes {
             }
         }
         if m.mascaras.is_empty() {
+            // Sem máscaras, um passe vazio escreve os carimbos delas (valem 0).
+            if let Some(t) = tempos {
+                enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("luz2d C3 mascaras (vazia)"),
+                    timestamp_writes: Some(t.escrita_compute(tempos::C3_MASCARAS)),
+                });
+            }
             return mudou;
         }
         if m.lado_da_atlas > self.lado {
@@ -363,18 +370,29 @@ impl Distantes {
                 enc,
                 (&self.vista, self.lado, m.lado),
                 &m.mascaras,
-                texturas,
+                (texturas, tempos),
             );
         mudou
     }
 
+    /// Os bytes que CRESCERAM além do mínimo que a [`PassList`] declara (esse já está nela), e o
+    /// passe das máscaras quando nasceu.
     pub(super) fn bytes_residentes(&self) -> u64 {
-        let atlas = u64::from(self.lado) * u64::from(self.lado);
-        let lista = self
+        let buffers: u64 = self
+            .caps
+            .iter()
+            .zip(MINIMOS)
+            .map(|(&cap, min)| if cap > min { cap } else { 0 })
+            .sum();
+        let atlas = if self.lado > 1 {
+            u64::from(self.lado) * u64::from(self.lado)
+        } else {
+            0
+        };
+        let pintor = self
             .pintor
             .as_ref()
-            .and_then(|p| p.lista.as_ref())
-            .map_or(0, |(_, cap)| *cap);
-        self.caps.iter().sum::<u64>() + atlas + lista
+            .map_or(0, |p| 16 + p.lista.as_ref().map_or(0, |(_, cap)| *cap));
+        buffers + atlas + pintor
     }
 }

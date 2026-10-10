@@ -113,7 +113,12 @@ impl Solver {
             0,
             &crate::direta::bytes_na_grade(cena, &diretas, &self.cfg.grade, &distante.listas),
         );
-        if self.distantes.subir(gpu, enc, &distante, &sprites.texturas) {
+        if self.distantes.subir(
+            gpu,
+            enc,
+            &distante,
+            (&sprites.texturas, self.tempos.as_ref()),
+        ) {
             self.lampadas_grupo = Self::grupo_das_lampadas(
                 &gpu.device,
                 &self.lampadas_layout,

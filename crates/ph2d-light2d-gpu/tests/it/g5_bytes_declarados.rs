@@ -142,3 +142,95 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         );
     }
 }
+
+/// ⭐ W5b (F4): o mundo FORA da grade — os objetos distantes, as arestas e a atlas das máscaras
+/// crescem com ele, e o que a placa aloca para eles cobre o que o solver diz ter residente.
+#[test]
+fn g5_o_mundo_fora_da_grade_e_contado() {
+    use ph2d_light2d_ecs::{CenaDeLuz, Emissor, Oclusor};
+    use ph2d_light2d_gpu::{Amostragem, CapturaDeSprites, SpriteNaC0};
+    let Some(gpu) = gpu() else { return };
+    if alocacoes(&gpu).is_none() {
+        eprintln!("G5: o backend não dá relatório do alocador — saltado");
+        return;
+    }
+    // A grade [0, 4]²; a lâmpada, um polígono e um sprite à direita, fora dela.
+    let mut s = Solver::novo(&gpu, Config::padrao(grade(64, 1.0 / 16.0))).expect("solver");
+    let cena = CenaDeLuz {
+        emissores: vec![Emissor::Disco {
+            centro: [6.0, 2.0],
+            raio: 0.2,
+            radiancia: [1.0; 3],
+            alcance_m: f32::INFINITY,
+        }],
+        oclusores: vec![Oclusor {
+            vertices: vec![[4.5, 1.5], [4.8, 1.5], [4.8, 2.5], [4.5, 2.5]],
+            opacidade: 1.0,
+        }],
+        luzes: 1,
+        ..Default::default()
+    };
+    let textura = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("g5 sprite"),
+        size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let vista = textura.create_view(&Default::default());
+    let sprites = CapturaDeSprites {
+        texturas: vec![(&vista, Amostragem::Bilinear)],
+        sprites: vec![SpriteNaC0 {
+            origem: [5.0, 1.0],
+            eixo_s: [0.3, 0.0],
+            eixo_t: [0.0, -1.0],
+            uv: [0.0, 0.0, 1.0, 1.0],
+            emissao: [0.0; 3],
+            opacidade: 1.0,
+            premultiplicada: false,
+            textura: 0,
+        }],
+        ..Default::default()
+    };
+    let antes = alocacoes(&gpu).expect("relatório");
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    let r = s.gravar_com_sprites(&gpu, &mut enc, &cena, &sprites);
+    gpu.queue.submit([enc.finish()]);
+    let depois = alocacoes(&gpu).expect("relatório");
+    // Um recurso que cresce é TROCADO (a contagem fica): conta o que mudou de bytes ou nasceu.
+    let mudou: Alocacoes = depois
+        .iter()
+        .filter(|(nome, v)| antes.get(*nome) != Some(*v))
+        .map(|(n, v)| (n.clone(), *v))
+        .collect();
+    let alocado: u64 = mudou.values().map(|v| v.1).sum();
+    eprintln!(
+        "G5 distantes: {} objetos, {} máscaras · {mudou:?} · residente {}",
+        r.distantes,
+        r.mascaras,
+        s.bytes_da_geometria_residente()
+    );
+    assert_eq!((r.distantes, r.mascaras), (2, 1), "G5 distantes: {r:?}");
+    for nome in [
+        "luz2d/buf/distantes",
+        "luz2d/buf/arestas",
+        "luz2d/tex/mascaras",
+    ] {
+        assert!(
+            mudou.contains_key(nome),
+            "G5 distantes: «{nome}» não cresceu: {mudou:?}"
+        );
+    }
+    assert!(
+        alocado >= s.bytes_da_geometria_residente(),
+        "G5 distantes: alocado {alocado} < residente {}",
+        s.bytes_da_geometria_residente()
+    );
+}

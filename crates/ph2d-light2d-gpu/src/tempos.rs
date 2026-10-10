@@ -1,10 +1,11 @@
 //! Carimbos `TIMESTAMP_QUERY` por passe: C0, C1 (todos os saltos do JFA num passe), os dois da
-//! luz direta (C3), a captura fina e o preenchimento (W5a) e cada cascata.
+//! luz direta (C3), a captura fina e o preenchimento (W5a), as máscaras dos distantes (W5b) e cada
+//! cascata.
 
-/// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina, C0 fina, C3 preenche
-/// e as `n` cascatas.
+/// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina, C0 fina, C3 preenche,
+/// C3 máscaras e as `n` cascatas.
 pub(crate) fn n_carimbos(n_cascatas: u32) -> u32 {
-    2 * (6 + n_cascatas)
+    2 * (7 + n_cascatas)
 }
 
 pub(crate) const C0: u32 = 0;
@@ -13,10 +14,11 @@ pub(crate) const C3_VISIBILIDADE: u32 = 4;
 pub(crate) const C3_FINA: u32 = 6;
 pub(crate) const C0_FINA: u32 = 8;
 pub(crate) const C3_PREENCHE: u32 = 10;
+pub(crate) const C3_MASCARAS: u32 = 12;
 
 /// O par de carimbos da cascata `nivel`.
 pub(crate) fn da_cascata(nivel: u32) -> u32 {
-    12 + 2 * nivel
+    14 + 2 * nivel
 }
 
 /// Milissegundos de placa do último quadro, por passe.
@@ -34,6 +36,8 @@ pub struct TemposMs {
     pub c0_fina: f64,
     /// ⭐ W5a (F3): o JFA do complemento (0 sem o preenchimento).
     pub c3_preenche: f64,
+    /// ⭐ W5b (F4): as máscaras dos sprites distantes (0 sem nenhum).
+    pub c3_mascaras: f64,
 }
 
 impl TemposMs {
@@ -50,14 +54,21 @@ impl TemposMs {
 
     #[must_use]
     pub fn total(&self) -> f64 {
-        self.c0 + self.rc() + self.c3_visibilidade + self.c3_fina + self.c0_fina + self.c3_preenche
+        self.c0
+            + self.rc()
+            + self.c3_visibilidade
+            + self.c3_fina
+            + self.c0_fina
+            + self.c3_preenche
+            + self.c3_mascaras
     }
 
     /// ⭐ A parte do tamanho da grade FINA, o mesmo em todo nível: ela, a captura fina e o
-    /// preenchimento (o governador prevê a subida sem a multiplicar).
+    /// preenchimento (o governador prevê a subida sem a multiplicar) — e as máscaras dos distantes,
+    /// que seguem o objeto e não o nível.
     #[must_use]
     pub fn fixo(&self) -> f64 {
-        self.c3_fina + self.c0_fina + self.c3_preenche
+        self.c3_fina + self.c0_fina + self.c3_preenche + self.c3_mascaras
     }
 
     /// ⭐ A parte que segue a célula do NÍVEL (`1/célula²`): tudo menos o [`Self::fixo`].
@@ -153,6 +164,7 @@ impl Tempos {
             c3_fina: ms(C3_FINA),
             c0_fina: ms(C0_FINA),
             c3_preenche: ms(C3_PREENCHE),
+            c3_mascaras: ms(C3_MASCARAS),
         }
     }
 

@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**45 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **45** são handoffs (registro **morto**).
+**46 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **46** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -59,7 +59,8 @@
 | 2026-10-08 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 — F4 (o alcance) e F5 (o toque) da NOVA UI DO VECTOR |
 | 2026-10-08 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 (3.ª volta) — F6: NAVEGAR COM OS DEDOS |
 | 2026-10-08 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-08 (4.ª volta) — F7: O QUICKSHAPE |
-| 2026-10-09 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-09_F7b_QUICKSHAPE_SENSIBILIDADE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-09_F7b_QUICKSHAPE_SENSIBILIDADE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-09 — F7b: O QUICKSHAPE DEPOIS DO SMOKE DO DONO |
+| 2026-10-09 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-09_F7b_QUICKSHAPE_SENSIBILIDADE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-09_F7b_QUICKSHAPE_SENSIBILIDADE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-09 — F7b: O QUICKSHAPE DEPOIS DO SMOKE DO DONO |
+| 2026-10-10 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7c_QUICKSHAPE_ARCOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7c_QUICKSHAPE_ARCOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F7c: O QUICKSHAPE COM ARCOS |
 
 ---
 

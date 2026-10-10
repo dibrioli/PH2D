@@ -110,9 +110,11 @@ pub(super) fn cases(s: f64) -> Vec<Case> {
             |q| matches!(q, Some(QuickShape::Polygon { corners, closed: false }) if corners.len() == 3),
         ),
         ("S (não é forma)", s_curve, Option::is_none),
-        ("meio arco", ring(s / 2.0, s / 2.0, 0.5), |q| {
-            matches!(q, Some(QuickShape::Arc { sweep, .. }) if (sweep.abs() - PI).abs() < 0.1 * PI)
-        }),
+        (
+            "meio arco",
+            ring(s / 2.0, s / 2.0, 0.5),
+            |q| matches!(q, Some(QuickShape::Arc { sweep, .. }) if (sweep.abs() - PI).abs() < 0.1 * PI),
+        ),
     ]
 }
 

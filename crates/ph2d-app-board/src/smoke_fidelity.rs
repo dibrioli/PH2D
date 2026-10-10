@@ -3,13 +3,14 @@
 //! rectas, paradas antes das formas, como na foto `docs/MiroClone/bv_excalidraw.png`, o SVG do oráculo
 //! `saidas/w9_dono_bv.next.svg` pelo `resvg` a 2×),
 //! uma fila de setas curtas de 10 a 60 (a ponta encolhe), duas caixas para desenhar uma seta que pára
-//! antes da forma, e uma nota LARGA por lição na ORDEM REAL. O gate `every_fidelity_lesson_does_what_it_says`
+//! antes da forma, uma caixa com a letra do ficheiro que segue o botão «Rascunho ↔ Final» (W10, a lição 5
+//! é ela mesma), e uma nota LARGA por lição na ORDEM REAL. O gate `every_fidelity_lesson_does_what_it_says`
 //! conduz cada lição pelo mesmo caminho.
 
 use super::default_name;
 use ph2d_board_model::{
-    Board, BoardOp, BoardSet, Connector, Element, ElementId, End, Head, Rgba, RichText, Route,
-    STICKY_COLORS, STICKY_SIDE, STICKY_WIDE, Shape, ShapeType, Style,
+    Board, BoardOp, BoardSet, Connector, Element, ElementId, End, Head, Letter, Rgba, RichText,
+    Route, STICKY_COLORS, STICKY_SIDE, STICKY_WIDE, Shape, ShapeType, Style,
 };
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::screens::hero::{board_nav, document_tabs};
@@ -56,6 +57,9 @@ pub(crate) struct Lessons {
     pub from: ElementId,
     pub to: ElementId,
     pub lessons: [ElementId; 4],
+    /// A caixa da lição 5 (W10): à mão e com a letra do ficheiro fixa (`Letter::Sans`), como chega
+    /// de um `.excalidraw` — o botão «Rascunho ↔ Final» devolve-a ao modo.
+    pub letter: ElementId,
     /// O que a cena enquadra ao nascer: tudo, mais a margem do que os painéis tapam.
     pub view: [f64; 4],
 }
@@ -143,6 +147,22 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         12,
         [1060.0, 300.0, 180.0, 110.0],
     );
+    // A lição 5 é a própria caixa: o texto dela muda de letra com o botão.
+    let mut st = Style::new(None, Some(INK), INK);
+    st.sketch = true;
+    st.look.letter = Letter::Sans;
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style: st,
+        text: RichText::plain(&tr("board.smoke.fidelity.l5")),
+    };
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        shape,
+        [800.0, 450.0, 440.0, 130.0],
+    );
+    let letter = put(b, el);
     // As lições, por baixo, na ordem real.
     let y = ROW[1] + 100.0;
     let (w, h) = (STICKY_WIDE, STICKY_SIDE);
@@ -169,6 +189,7 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         from,
         to,
         lessons,
+        letter,
         view: [
             -MARGIN_X,
             -80.0 - MARGIN_Y,

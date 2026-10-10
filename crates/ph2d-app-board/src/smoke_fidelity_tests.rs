@@ -5,6 +5,7 @@
 use super::*;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{Anchor, STICKY_SIDE};
+use ph2d_editor_core::screens::hero::board_bar;
 use ph2d_board_route::RouteCache;
 use ph2d_editor_core::screens::hero::board_keys::{self, BoardKey};
 use ph2d_editor_core::screens::hero::board_view::{self, Input};
@@ -151,7 +152,7 @@ fn the_lessons_fit_and_the_scene_is_in_view() {
 #[test]
 fn the_files_the_lessons_name_exist() {
     let mut seen = 0;
-    for i in 1..=4 {
+    for i in 1..=5 {
         let text = ph2d_i18n::tr(&format!("board.smoke.fidelity.l{i}"));
         for w in text.split_whitespace() {
             let path = w.trim_end_matches([',', '.', ';']);
@@ -324,6 +325,51 @@ fn lesson_4_a_drawn_arrow_stops_before_the_box_and_ctrl_leaves_it_loose() {
         .unwrap()
         .end;
     assert!(matches!(loose, End::Free(_)), "{loose:?}");
+}
+
+/// ⭐ Lição 5 (W10, decisão do dono 10/10) — o botão «Rascunho ↔ Final» clicado NA BARRA, sem
+/// selecção: a caixa que chegou com a letra do ficheiro (`Letter::Sans`, à mão) passa à letra do modo
+/// (`Auto` ⇒ à mão, como o quadro); antes ela escrevia na letra comum.
+#[test]
+fn lesson_5_the_sketch_button_gives_the_files_letter_back_to_the_mode() {
+    let mut s = Screen::new();
+    let el = s.board().doc.get(s.l.letter).unwrap();
+    assert_eq!(el.style().look.letter, Letter::Sans);
+    assert!(el.style().sketch && !ph2d_board_edit::hand_lettered(el));
+    let id = board_bar::node(board_bar::Item::Sketch);
+    let vp = s.hero.last_viewport;
+    let mut at = None;
+    let mut y = vp.y;
+    while y < vp.y + vp.h && at.is_none() {
+        let mut x = vp.x;
+        while x < vp.x + vp.w && at.is_none() {
+            if s.hero.hit_index.hit(x, y) == Some(id) {
+                at = Some((x, y));
+            }
+            x += 2.0;
+        }
+        y += 2.0;
+    }
+    let (x, y) = at.expect("o botão Rascunho ↔ Final está pintado");
+    let arena = bumpalo::Bump::new();
+    let ev = |kind| ph2d_host::PointerEvent {
+        x,
+        y,
+        pressure: 1.0,
+        kind,
+        source: ph2d_host::PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    };
+    let mut events = s.hero.handle_pointer(ev(PointerKind::Down), &arena).to_vec();
+    events.extend_from_slice(s.hero.handle_pointer(ev(PointerKind::Up), &arena));
+    for e in events {
+        s.hero.apply_event(e);
+    }
+    s.paint();
+    let el = s.board().doc.get(s.l.letter).unwrap();
+    assert_eq!(el.style().look.letter, Letter::Auto, "a letra do ficheiro ficou");
+    assert!(ph2d_board_edit::hand_lettered(el), "a lição promete a letra à mão");
 }
 
 /// ⭐ A cena 3 ensina o que a mão consegue: TODAS as setas presas param a `g` das formas (auditoria W9:

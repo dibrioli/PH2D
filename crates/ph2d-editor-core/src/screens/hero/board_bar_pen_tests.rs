@@ -2,7 +2,7 @@
 //! pela porta da shell, as teclas pela do teclado.
 
 use super::*;
-use ph2d_board_model::Pen;
+use ph2d_board_model::{BoardOp, ElementId, Letter, Pen};
 
 const NONE: Modifiers = Modifiers {
     shift: false,
@@ -130,6 +130,46 @@ fn the_sketch_button_flips_the_whole_board_and_what_is_born_after_it() {
     t.click_bar(Item::Sketch);
     assert!(!t.sketch());
     assert!(t.elements().iter().all(|e| !e.style().sketch));
+}
+
+/// ⭐ W10 (decisão do dono 10/10, «troca junto com o botão»): a letra que um `.excalidraw` trouxe
+/// (`Letter::Hand`/`Sans`, fixa) volta ao MODO (`Letter::Auto`) quando o botão «Rascunho ↔ Final»
+/// alcança o elemento — no mesmo passo de desfazer; e só nos que ele alcança (a selecção).
+#[test]
+fn the_sketch_button_gives_an_imported_letter_back_to_the_mode() {
+    let mut t = T::new();
+    for (a, b) in [((0.2, 0.2), (0.35, 0.35)), ((0.5, 0.5), (0.65, 0.65))] {
+        t.press('r');
+        t.drag(t.at(a.0, a.1), t.at(b.0, b.1));
+    }
+    t.press('v');
+    t.key(BoardKey::Escape, NONE, None);
+    let doc = &mut t.hero.documents.active_board_mut().unwrap().doc;
+    let ids: Vec<ElementId> = doc.live_in_z_order().iter().map(|e| e.id).collect();
+    for (id, l) in ids.iter().zip([Letter::Hand, Letter::Sans]) {
+        let mut el = doc.get(*id).unwrap().clone();
+        el.style_mut().look.letter = l;
+        BoardOp::Put(el).apply(doc);
+    }
+    let letters = |t: &T| -> Vec<Letter> {
+        t.elements().iter().map(|e| e.style().look.letter).collect()
+    };
+    t.click_bar(Item::Sketch);
+    assert!(t.elements().iter().all(|e| e.style().sketch));
+    assert_eq!(letters(&t), [Letter::Auto; 2], "a letra do ficheiro ficou fixa");
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert_eq!(letters(&t), [Letter::Hand, Letter::Sans], "UM passo desfaz as duas");
+    // Com selecção: só a seleccionada volta ao modo. (Outro botão antes: dois cliques seguidos no
+    // mesmo são um duplo-clique no relógio do teste.)
+    t.click_bar(Item::Tool(Tool::Select));
+    let p = t.at(0.275, 0.2);
+    t.drag(p, p);
+    assert_eq!(
+        t.hero.documents.live.editor.as_ref().unwrap().selection().iter().copied().collect::<Vec<_>>(),
+        [ids[0]]
+    );
+    t.click_bar(Item::Sketch);
+    assert_eq!(letters(&t), [Letter::Auto, Letter::Sans]);
 }
 
 /// Um traço seleccionado mostra a barra de estilo DOS TRAÇOS; a espessura dela muda o traço e não o

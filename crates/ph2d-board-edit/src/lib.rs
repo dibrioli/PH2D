@@ -36,7 +36,7 @@ use std::collections::BTreeSet;
 use std::time::Instant;
 
 use ph2d_board_model::{
-    BoardDoc, BoardOp, Element, ElementId, Head, History, Route, Shape, ShapeType, Style,
+    BoardDoc, BoardOp, Element, ElementId, Head, History, Letter, Route, Shape, ShapeType, Style,
 };
 use ph2d_board_route::RouteCache;
 
@@ -474,7 +474,8 @@ impl Editor {
     /// ⭐ **O botão «Rascunho ↔ Final»** (W4): com selecção, troca as formas e setas dela; sem
     /// selecção, o quadro INTEIRO — e devolve o modo novo do quadro (`Some`), que é também o das
     /// formas que nascerem. Fica tudo à mão se havia alguma final, e final se já estava tudo à mão.
-    /// As notas e os traços da caneta não entram: são papel e mão por natureza. UM passo.
+    /// As notas e os traços da caneta não entram: são papel e mão por natureza. UM passo. A letra
+    /// fixa de um `.excalidraw` (`Letter::Hand`/`Sans`) volta ao modo (`Auto`) em todo o alcançado.
     pub fn toggle_sketch(
         &mut self,
         doc: &mut BoardDoc,
@@ -495,12 +496,15 @@ impl Editor {
         } else {
             !targets.iter().all(|el| el.style().sketch)
         };
+        // A letra fixa que um `.excalidraw` trouxe volta ao modo com o botão (decisão do dono, W10).
         let ops = targets
             .into_iter()
-            .filter(|el| el.style().sketch != on)
+            .filter(|el| el.style().sketch != on || el.style().look.letter != Letter::Auto)
             .map(|el| {
                 let mut el = el.clone();
-                el.style_mut().sketch = on;
+                let st = el.style_mut();
+                st.sketch = on;
+                st.look.letter = Letter::Auto;
                 BoardOp::Put(el)
             })
             .collect();

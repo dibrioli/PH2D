@@ -571,6 +571,7 @@ fn a_holografica_numa_grade_que_nao_e_potencia_de_dois() {
     let dentro = dentro_de_opaco(&cena, &ge);
     let e = rmse_rel(&flu, &r, |k| !dentro(k));
     eprintln!("holográfica · grade {}×{}: {e:.4}", ge.largura, ge.altura);
-    // Medido (W5c): 0,0089; com a contagem truncada (P17) as colunas da borda direita leem o céu.
-    assert!(e <= 0.0098, "{e:.4}");
+    // Medido (W5c): 0,0032 (a grade efetiva é 320×192: 320 não é múltiplo de 128); com a contagem
+    // truncada (P17) a última coluna parcial de sondas lê o céu: 0,0167.
+    assert!(e <= 0.0035, "{e:.4}");
 }

@@ -61,6 +61,8 @@ def main():
     ap.add_argument("--drip_length", type=int, default=5)
     ap.add_argument("--colunas", nargs=4, default=COLUNAS)
     ap.add_argument("--forma", choices=["tracos", "s"], default="tracos")
+    ap.add_argument("--sem_motor", action="store_true",
+                    help="não manda o SET_ENGINE_PARAMS das gotas (depois dele o Flat Dry perde o tamanho, W1e)")
     ap.add_argument("--size_px", type=float, default=100.0, help="só --forma s")
     ap.add_argument("--agua", default="100", help="só --forma s (vazia = a do preset)")
     a = ap.parse_args()
@@ -69,9 +71,10 @@ def main():
          "paper": {"preset": "Default/EX00 White Simple", "color": {"r": 255, "g": 255, "b": 255},
                    "deckled_edges": False, "paper_scale": 100, "visible": True}},
         {"event_type": "SET_RANDOM_SEED", "seed": 7},
-        {"event_type": "SET_ENGINE_PARAMS", "create_drips": a.drips == "on", "drip_size": a.drip_size,
-         "drip_length": a.drip_length},
     ]
+    if not a.sem_motor:
+        ev.append({"event_type": "SET_ENGINE_PARAMS", "create_drips": a.drips == "on", "drip_size": a.drip_size,
+                   "drip_length": a.drip_length})
     if a.sem_tilt:
         ev.append({"event_type": "SET_CANVAS_TILT", "tilt": {"x": 0, "y": 0}, "enabled": False})
     elif a.tilt:

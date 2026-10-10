@@ -884,6 +884,25 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - Pranchas: [1:1](prancha_mistura_camadas.png) · [8× no miolo](prancha_mistura_camadas_8x.png) (Rebelle ·
     de fábrica antes · depois · K–M cena do dono antes · depois; colunas azul · 1 · 2 · 3 · 5 · 10 · seco).
     Gerador `ferramentas/prancha_camadas.py`.
+- 🔎 **Conferência dos 4 pincéis de fábrica (dono 10/10: «o Wet Wash é seco mesmo? o nome confere?»).**
+  A bancada de `gotas.py` (4 traços de 150 px a 40 px) dos dois lados: Rebelle `--sem_motor` (Round · Wash
+  Round · Flat Dry · Round água 100; [fixtures/rebelle_presets/](fixtures/rebelle_presets/)) e a sonda
+  `wetpaint/sonda_presets.rs` (Wet Round · Wet Wash · Wet Dry Brush · Wet Drip, cada um numa tela sua, 30 s);
+  régua `ferramentas/presets_regua.py` (tinta = mediana de `255 − min(rgb)` no centro; orla = borda ÷ centro);
+  [prancha](prancha_presets_conferencia.png).
+
+  | plano, 30 s (inclinado: escorre) | tinta | largura (40) | orla | papel a aparecer | escorre inclinado |
+  |---|---|---|---|---|---|
+  | Wet Round · Rebelle Round | 210 · 54 | 25 · 32 | 0,87 · 0,92 | 0 · 0,01 | 12 · 340 |
+  | **Wet Wash · Rebelle Wash Round** | **214 · 39** | 30 · 41 | **0,90 · 1,41** | 0 · 0 | **115 · 0** |
+  | Wet Dry Brush · Rebelle Flat Dry | 160 · 102 | 19 · 34 | 0,64 · 1,00 | **0,20 · 0** (estrias) | 1 · 1 |
+  | Wet Drip (o Tilt dele) · Rebelle Round água 100 | 210 · 60 | 30 · 32 | 0,92 · 0,91 | 0 · 0 | 70 · 344 |
+
+  ⇒ **O nome não confere no Wet Wash:** a aguada do Rebelle é a MAIS clara, lisa, a mais larga, com a orla
+  fina e escura ao secar, e não escorre (água 24); a nossa carrega tanta tinta como o Round e é a que MAIS
+  escorre. Round, Dry Brush e Drip conferem com o nome (o Dry Brush é fios partidos onde o do Rebelle é
+  estriado e cheio; os fios do Drip são grossos e curtos — o «fio único» aberto da W1e). ⚠️ Os quatro
+  carregam 3–4× a tinta do Rebelle e saem 25–30 px a 40 (a largura prometida, W2). Decisão do dono pendente.
 - **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

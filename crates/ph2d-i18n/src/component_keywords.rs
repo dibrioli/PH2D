@@ -55,6 +55,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.health_bar.keywords" => "life bar, hp bar, health display, hearts",
         "component.health.keywords" => "life, hp, health, die, hit points, damage, alive",
         "component.lifetime.keywords" => "expire, timeout, disappear, self destroy, fade out",
+        "component.motion_input.keywords" => {
+            "drive motion, feed motion graph, send value to motion"
+        }
         "component.path_follow.keywords" => "follow path, patrol, move along, rail, route",
         "component.sequence_player.keywords" => "sequence, cutscene, steps, script steps, play",
         "component.signal_actions.keywords" => "when, on event, react, trigger action, respond",

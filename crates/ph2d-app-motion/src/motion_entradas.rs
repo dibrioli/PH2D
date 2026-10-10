@@ -36,6 +36,27 @@ pub fn le_do_jogo(motion: &mut MotionState, sim: &SimWorld) {
         .unwrap_or_default();
 }
 
+/// **Os nomes que o grafo LÊ** (cada `value.input`, sem repetir, em ordem) — o que o cartão do
+/// `Motion Input` no Inspector oferece, para o artista não ter de adivinhar o nome.
+#[must_use]
+pub fn nomes_que_o_grafo_le(motion: &MotionState) -> Vec<String> {
+    let g = &motion.doc.graph;
+    let nomes: BTreeSet<String> = g
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == ph2d_node_value_input::MANIFEST.name)
+        .map(|n| {
+            g.node_text_param_overrides(n.id)
+                .and_then(|t| t.get(ph2d_node_value_input::NAME_KEY))
+                .map_or(ph2d_node_value_input::FACTORY_NAME, String::as_str)
+                .trim()
+                .to_string()
+        })
+        .filter(|n| !n.is_empty())
+        .collect();
+    nomes.into_iter().collect()
+}
+
 /// ⭐ O disparo de TESTE: cada mudança do `fire` de um `value.input` Trigger é um disparo no
 /// nome dele (o cartão é o jogo de quem ainda não tem jogo).
 fn disparos_dos_cartoes(motion: &mut MotionState) {

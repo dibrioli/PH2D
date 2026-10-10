@@ -8,42 +8,7 @@
 use super::tests::{failures, load};
 use super::*;
 
-/// Gerador determinístico (LCG de Knuth) — a sonda repete-se bit a bit.
-struct Lcg(u64);
-impl Lcg {
-    fn next(&mut self) -> f64 {
-        self.0 = self
-            .0
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        (self.0 >> 11) as f64 / (1u64 << 53) as f64 * 2.0 - 1.0
-    }
-}
-
-/// Uma mão: a polilinha amostrada a `step` px com o tremor do `gera_entradas.py` (±`amp`, média
-/// móvel de 5 — o ruído da mão é suave, não branco).
-pub(super) fn hand(poly: &[P2], step: f64, amp: f64, seed: u64) -> Vec<P2> {
-    let mut pts = vec![poly[0]];
-    for w in poly.windows(2) {
-        let n = (dist(w[0], w[1]) / step).ceil().max(1.0) as usize;
-        pts.extend((1..=n).map(|i| add(w[0], mul(sub(w[1], w[0]), i as f64 / n as f64))));
-    }
-    let mut g = Lcg(seed.wrapping_mul(2_654_435_761).wrapping_add(1));
-    let noise: Vec<P2> = pts
-        .iter()
-        .map(|_| [amp * g.next(), amp * g.next()])
-        .collect();
-    (0..pts.len())
-        .map(|i| {
-            let w = &noise[i.saturating_sub(2)..(i + 3).min(noise.len())];
-            let m = mul(
-                w.iter().fold([0.0, 0.0], |s, &q| add(s, q)),
-                1.0 / w.len() as f64,
-            );
-            add(pts[i], m)
-        })
-        .collect()
-}
+pub(super) use crate::test_hand::hand;
 
 fn ring(rx: f64, ry: f64, turns: f64) -> Vec<P2> {
     (0..=200)

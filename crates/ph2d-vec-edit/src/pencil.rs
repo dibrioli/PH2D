@@ -335,8 +335,12 @@ impl Pencil {
             0 => Vec::new(),
             1 => vec![VecVertex::corner(self.samples[0])],
             _ => {
-                let knots = decimate(&self.samples, self.fidelity_px * self.px_to_world);
-                crate::hobby::fit_hobby_open(&knots)
+                // Troços de Hobby entre as QUINAS que a mão fez (F7b) — a curva suave fica suave.
+                crate::pencil_corners::fit(
+                    &self.samples,
+                    self.fidelity_px * self.px_to_world,
+                    self.px_to_world,
+                )
             }
         }
     }

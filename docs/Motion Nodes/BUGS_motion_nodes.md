@@ -20,7 +20,7 @@
 | [12](#bug-12--o-fio-agia-num-ramo-e-não-no-outro-e-o-cartão-mentia-nos-dois) | **"Number no Strength do Vortex não tem efeito"** + **"Number não aceita negativos"** | o ramo HÍBRIDO do `cook_gpu` (não entregava os valores do fio) + o CARTÃO (desenhava o override) + a faixa `0..40` das forças com sentido | ✅ **CURADO** (aguarda smoke, cena `=128`) | 2026-10-03 |
 | [13](#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
-| [18](#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ⏳ cura feita, smoke do dono | 2026-10-10 |
+| [18](#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ✅ FECHADO (smoke do dono 10/10) | 2026-10-10 |
 ---
 
 ## Bug #1 — O nó acusado estava INOCENTE: o campo gateia o pulso, e não gateia a MEMÓRIA
@@ -1494,7 +1494,8 @@ que liga cada botão sozinho e mede o DESENHO (doc 125 §2), não um gate do mot
 
 ## Bug #18 — um toque que TREME virava arrasto no grafo, e um campo LEGÍVEL não respondia
 
-**Estado:** ⏳ cura feita e gateada em 2026-10-10 — por smoke do dono.
+**Estado:** ✅ **FECHADO** em 2026-10-10 — cura gateada e **smoke aprovado pelo Enio**
+(*«smoke OK. Vamos seguir»*).
 
 ### O que se via
 Report do dono (10/10, no smoke do ciclo 19): *«apertar botões em todo módulo desde os botões da

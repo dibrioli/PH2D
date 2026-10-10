@@ -201,7 +201,7 @@ linha os passou a usar); os campos `graph_moved`/`timeline_press`/`timeline_move
 viram `graph_slop`/`timeline_slop`, e `set_graph_moved` vira `begin_graph_press` +
 `note_graph_pointer`. No grafo os `Update` só correm depois da folga. E no cartão, na faixa de zoom
 legível-mas-não-agarrável, um toque age na fileira (`tap_on_a_readable_row`). Detalhe e gates:
-[BUGS #18](../BUGS_motion_nodes.md). ⏳ smoke do dono.
+[BUGS #18](../BUGS_motion_nodes.md). ✅ smoke do dono (10/10).
 
 ## §7 — O que fica ABERTO
 

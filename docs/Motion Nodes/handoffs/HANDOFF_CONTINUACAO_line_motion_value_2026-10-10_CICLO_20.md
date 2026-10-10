@@ -3,8 +3,11 @@ TROCA DE AGENTE — linha JÁ EXISTENTE     (PH2D · DIRETRIZ §1.5)
 ═══════════════════════════════════════════════════════════════════
 Sua linha: line/motion-value · worktree Worktrees/line-motion-value/ (JÁ EXISTE — não crie)
 Base: ciclos 13–19 em `line/motion-value` sobre o `main` `2a925859d`, POR INTEGRAR. O ciclo 19
-(O JOGO MANDA, [doc 128](../128_ciclo_19_o_jogo_manda.md)) fechou o código e o gate batched; o handoff
-de integração é o [CICLO_19](HANDOFF_INTEGRACAO_line_motion_value_2026-10-10_CICLO_19.md).
+(O JOGO MANDA, [doc 128](../128_ciclo_19_o_jogo_manda.md)) fechou com o smoke do dono APROVADO (10/10),
+e o defeito que ele achou no mesmo smoke — os cliques imprecisos em todo o módulo,
+[BUGS #18](../BUGS_motion_nodes.md) (`4a85d94ba`, uma folga para o grafo, a timeline e o Flip) — também
+com o smoke APROVADO (10/10, *«smoke OK. Vamos seguir»*). O handoff de integração é o
+[CICLO_19](HANDOFF_INTEGRACAO_line_motion_value_2026-10-10_CICLO_19.md).
 
 FASE 0: cd Worktrees/line-motion-value && pwd && git branch --show-current && git log --oneline -6 &&
         git status --short — ANTES de abrir qualquer ficheiro.
@@ -16,10 +19,8 @@ FASE 0: cd Worktrees/line-motion-value && pwd && git branch --show-current && gi
 ⭐ CUSTO: delegue a leitura larga a agentes `explorador` em paralelo e o gate batched a um
    `verificador`; a janela principal desenha e decide.
 
-PRIMEIRO — o smoke do dono do ciclo 19 está ⏳ PENDENTE (tutorial 12
-`docs/Motion Nodes/tutoriais/12_o_jogo_manda.pdf`, cena `PH2D_GPU_COOK_DEMO=134`). Se o Enio trouxer
-um problema, CORRIJA antes de abrir o ciclo 20 (o relatório do dono manda; foi assim no ciclo 17,
-`c7ef7e7e0`). Sem relato, siga.
+⚠️ Se o Enio trouxer um problema do que já está feito, CORRIJA antes de seguir (o relatório do dono
+manda; foi assim no ciclo 17, `c7ef7e7e0`, e no 19, BUGS #18).
 
 ABRA O CICLO 20 — **O ACABAMENTO** (doc novo `129_ciclo_20_o_acabamento.md`; linha 20 da tabela do
 doc 126 §0): pós-processamento como NÓS sobre a camada do Motion — blur · glow · sombra de pixel ·
@@ -60,5 +61,6 @@ ABERTOS NOMEADOS (doc 128 §7 e herdados):
 - a vida e o dano do mesmo objecto pedem dois objectos (um `Motion Input` por objecto);
 - o `Bezier` do easing e o `Tint` OKLCH caros na CPU de reserva (5 ms e 21 ms a 32 761 linhas; na
   placa 0,15 e 0,16 ms) — um Newton com a mesma contagem nas duas línguas cortaria-os;
-- ⏳ a tabela de provas de mutação do ciclo 19 (a corrida da janela anterior), no handoff de integração.
+- um gate novo de gesto passa pelo caminho REAL do rato (pintar → `Down/Move/Up` no despacho →
+  pintar; molde `interact_tremor_tests.rs`), nunca por um `Click` sintético (BUGS #18).
 ═══════════════════════════════════════════════════════════════════

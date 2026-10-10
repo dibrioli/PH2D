@@ -67,7 +67,7 @@ fn written(shape: &QuickShape, inset: [f64; 2]) -> VecPath {
 }
 
 fn map_vert(v: &VecVertex, xf: &Xform) -> VecVertex {
-    let mut v = v.clone();
+    let mut v = *v;
     v.anchor = xf.apply(v.anchor);
     v.in_handle = xf.apply(v.in_handle);
     v.out_handle = xf.apply(v.out_handle);
@@ -90,7 +90,9 @@ fn same(path: &VecPath, xf: &Xform, shape: &QuickShape, inset: [f64; 2]) -> bool
     let near = |a: P2, b: P2| (a[0] - b[0]).abs() <= tol && (a[1] - b[1]).abs() <= tol;
     w.verts.iter().zip(&path.verts).all(|(a, b)| {
         let b = map_vert(b, xf);
-        near(a.anchor, b.anchor) && near(a.in_handle, b.in_handle) && near(a.out_handle, b.out_handle)
+        near(a.anchor, b.anchor)
+            && near(a.in_handle, b.in_handle)
+            && near(a.out_handle, b.out_handle)
     })
 }
 
@@ -122,10 +124,7 @@ impl Pencil {
     #[must_use]
     pub fn shape_edit_nodes(&self) -> (Vec<P2>, Option<usize>) {
         match &self.edit {
-            Some(e) if e.open => (
-                edit::nodes(e.shape()),
-                e.grab.as_ref().and_then(|g| g.node),
-            ),
+            Some(e) if e.open => (edit::nodes(e.shape()), e.grab.as_ref().and_then(|g| g.node)),
             _ => (Vec::new(), None),
         }
     }
@@ -176,7 +175,8 @@ impl Pencil {
                 .min_by(|a, b| a.1.total_cmp(&b.1));
             let on_body = || {
                 let w = written(&shape, e.inset);
-                ph2d_vec_scene::nearest_point_on_path(&w, p, 32).is_some_and(|(_, _, d2)| d2 <= r * r)
+                ph2d_vec_scene::nearest_point_on_path(&w, p, 32)
+                    .is_some_and(|(_, _, d2)| d2 <= r * r)
             };
             match node {
                 Some((i, _)) => Some((Some(i), nodes[i])),

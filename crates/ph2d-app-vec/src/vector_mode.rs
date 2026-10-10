@@ -381,7 +381,10 @@ pub fn smoke_step(
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
             BARS.store(
-                u8::from(matches!(scene.as_deref(), Ok("9" | "10" | "11" | "12" | "13"))),
+                u8::from(matches!(
+                    scene.as_deref(),
+                    Ok("9" | "10" | "11" | "12" | "13")
+                )),
                 Ordering::Relaxed,
             );
             REACH.store(u8::from(scene.as_deref() == Ok("10")), Ordering::Relaxed);

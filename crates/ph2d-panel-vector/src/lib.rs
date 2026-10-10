@@ -182,8 +182,8 @@ pub use state::{
     EXPAND_KNOBS_AT_BIRTH, FILTER_DETAIL_MAX, FalloffRole, FillKind, FilterKindView, FilterRowView,
     FontPreview, FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, StrokePaintKind,
     TextAxisSlot, TexturePatternRow, VectorPanelState, expand_join, expand_side, last_content_h,
-    last_visible_h, selected_stop, set_current_brush, set_current_contour,
-    set_current_contour_can_add, set_current_convertible, set_current_effects,
+    last_visible_h, request_shape_edit_toggle, selected_stop, set_current_brush,
+    set_current_contour, set_current_contour_can_add, set_current_convertible, set_current_effects,
     set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_filter_can_add, set_current_filters,
     set_current_grad_influence, set_current_grad_jitter, set_current_guides,
@@ -197,7 +197,7 @@ pub use state::{
     set_current_vector_style, set_current_vertex_count, set_current_vertex_pos,
     set_cut_line_exists, set_expand_join, set_expand_side, set_filter_blend_names,
     set_filter_kinds, set_length_suffix, set_selected_vertex_type, set_stroke_paint_kind,
-    request_shape_edit_toggle, take_shape_edit_toggle, take_want_font_previews,
+    take_shape_edit_toggle, take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

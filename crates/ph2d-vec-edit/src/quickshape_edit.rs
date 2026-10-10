@@ -165,9 +165,16 @@ fn ellipse_node(shape: &QuickShape, k: usize) -> P2 {
     else {
         return [0.0; 2];
     };
-    let (axis, r) = if k % 2 == 0 { (0.0, *rx) } else { (1.0, *ry) };
+    let (axis, r) = if k.is_multiple_of(2) {
+        (0.0, *rx)
+    } else {
+        (1.0, *ry)
+    };
     let s = if k < 2 { 1.0 } else { -1.0 };
-    add(*centre, mul(unit(rot + axis * std::f64::consts::FRAC_PI_2), s * r))
+    add(
+        *centre,
+        mul(unit(rot + axis * std::f64::consts::FRAC_PI_2), s * r),
+    )
 }
 
 fn drag_ellipse(shape: &QuickShape, node: usize, to: P2, regular: bool) -> QuickShape {
@@ -177,7 +184,11 @@ fn drag_ellipse(shape: &QuickShape, node: usize, to: P2, regular: bool) -> Quick
     let k = node % 4;
     let o = ellipse_node(shape, (k + 2) % 4);
     let d = unit(angle(sub(ellipse_node(shape, k), o)));
-    let (r_own, r_other) = if k % 2 == 0 { (rx, ry) } else { (ry, rx) };
+    let (r_own, r_other) = if k.is_multiple_of(2) {
+        (rx, ry)
+    } else {
+        (ry, rx)
+    };
     let span = dot(sub(to, o), d);
     let r_new = (span.abs() / 2.0).max(MIN_FRACTION * rx.max(ry));
     let r_side = if regular {
@@ -185,7 +196,7 @@ fn drag_ellipse(shape: &QuickShape, node: usize, to: P2, regular: bool) -> Quick
     } else {
         r_other
     };
-    let (rx, ry) = if k % 2 == 0 {
+    let (rx, ry) = if k.is_multiple_of(2) {
         (r_new, r_side)
     } else {
         (r_side, r_new)
@@ -264,7 +275,10 @@ fn drag_arc(shape: &QuickShape, node: usize, to: P2, regular: bool) -> QuickShap
     if l <= f64::MIN_POSITIVE {
         return shape.clone();
     }
-    let (u, n) = (mul(chord, 1.0 / l), mul(rotate(chord, std::f64::consts::FRAC_PI_2), 1.0 / l));
+    let (u, n) = (
+        mul(chord, 1.0 / l),
+        mul(rotate(chord, std::f64::consts::FRAC_PI_2), 1.0 / l),
+    );
     let h = dot(sub(apex(shape), s), n);
     let (s2, e2, h2) = match node {
         0 => (step15(e, to, regular), e, h),
@@ -276,7 +290,11 @@ fn drag_arc(shape: &QuickShape, node: usize, to: P2, regular: bool) -> QuickShap
     let u2 = mul(chord2, 1.0 / l2);
     let n2 = rotate(u2, std::f64::consts::FRAC_PI_2);
     let guard = MIN_FRACTION * l2;
-    let h2 = if h2.abs() < guard { guard * sign(h2) } else { h2 };
+    let h2 = if h2.abs() < guard {
+        guard * sign(h2)
+    } else {
+        h2
+    };
     if let QuickShape::Arc(a) = shape
         && is_circle(a)
     {

@@ -26,6 +26,25 @@
 
 static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::input_text::dispatch);
 
+/// ⚠️ **O press do lápis MUDOU-SE para a crate** (F7e, 10/10: ele agarra um nó do Edit Shape antes
+/// de abrir um traço): no despacho fica a CHAMADA a esta porta, e o `on_press` mora nela — o gate
+/// segue o código para a casa nova (lido daqui), nunca deixa de o ver.
+const PENCIL_PRESS: &str = "ph2d_app_vec::pencil_input::press(";
+
+/// A porta do press do lápis na crate: ela abre o traço quando não agarra um nó.
+fn the_crate_press_opens_the_stroke() -> bool {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/ph2d-app-vec/src/pencil_input.rs"
+    ))
+    .expect("crates/ph2d-app-vec/src/pencil_input.rs");
+    let fun = &src[src
+        .find("pub fn press(")
+        .expect("a porta `pencil_input::press`")..];
+    let fun = &fun[..fun.find("\n}\n").map_or(fun.len(), |i| i + 3)];
+    fun.contains("vec.pencil.on_press(")
+}
+
 /// A posição da 1ª ocorrência, com uma mensagem que nomeia o que se perdeu.
 fn at(needle: &str) -> usize {
     SRC.find(needle)
@@ -92,7 +111,6 @@ fn window(from: usize, until: &str) -> &'static str {
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
     for (recv, method) in [
-        ("self.vec.pencil", "on_press"),
         ("self.vec.pen", "on_press"),
         ("self.vec.shape", "on_press"),
         ("self.vec.pencil", "on_release"),
@@ -103,7 +121,12 @@ fn the_scanner_finds_what_it_scans_for() {
              ORDEM abaixo passariam sem examinar nada"
         );
     }
+    assert!(
+        the_crate_press_opens_the_stroke(),
+        "controle positivo falhou: a porta `pencil_input::press` nao chama `vec.pencil.on_press(`"
+    );
     for needle in [
+        PENCIL_PRESS,
         "DrawMode::Pencil",
         "if shape_kind_for_mode(&self.vec.draw_config).is_none() {",
     ] {
@@ -118,7 +141,7 @@ fn the_scanner_finds_what_it_scans_for() {
 /// **O press do lápis precede o da caneta E o da forma.**
 #[test]
 fn the_pencil_press_runs_before_the_pen_and_the_shape() {
-    let pencil = call("self.vec.pencil", "on_press");
+    let pencil = at(PENCIL_PRESS);
     let pen = call("self.vec.pen", "on_press");
     let shape = call("self.vec.shape", "on_press");
     assert!(
@@ -233,7 +256,7 @@ fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
     );
     let press = window(from, "// Modo Connect");
     assert!(
-        press.contains("self.vec.pencil") && press.contains(".on_press("),
+        press.contains(PENCIL_PRESS),
         "controle positivo: a janela do press nao contem o proprio press"
     );
     assert!(

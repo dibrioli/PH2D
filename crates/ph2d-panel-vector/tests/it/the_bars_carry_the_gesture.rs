@@ -586,7 +586,12 @@ fn the_edit_shape_button_is_offered_after_a_quickshape_and_its_click_waits_for_t
         .barras()
         .0
     };
-    let first = |b: &ToolBars| b.actions.first().and_then(|g| g.first()).map(|x| (x.id, x.on));
+    let first = |b: &ToolBars| {
+        b.actions
+            .first()
+            .and_then(|g| g.first())
+            .map(|x| (x.id, x.on))
+    };
     assert!(!action_ids(&barras(false, false)).contains(&p::VECTOR_PENCIL_EDIT_SHAPE));
     let offered = barras(true, false);
     assert_eq!(first(&offered), Some((p::VECTOR_PENCIL_EDIT_SHAPE, false)));
@@ -596,11 +601,15 @@ fn the_edit_shape_button_is_offered_after_a_quickshape_and_its_click_waits_for_t
     assert!(open.hint.contains("Drag a node"), "{}", open.hint);
     let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
-    let out = host.apply_panel_event::<VectorPanel>(
-        &mut st,
-        WidgetEvent::Click(p::VECTOR_PENCIL_EDIT_SHAPE),
-    );
+    let out = host
+        .apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::Click(p::VECTOR_PENCIL_EDIT_SHAPE));
     assert_eq!(out, EventOutcome::Consumed);
-    assert!(ph2d_panel_vector::take_shape_edit_toggle(), "o clique espera o lápis");
-    assert!(!ph2d_panel_vector::take_shape_edit_toggle(), "e consome-se uma vez");
+    assert!(
+        ph2d_panel_vector::take_shape_edit_toggle(),
+        "o clique espera o lápis"
+    );
+    assert!(
+        !ph2d_panel_vector::take_shape_edit_toggle(),
+        "e consome-se uma vez"
+    );
 }

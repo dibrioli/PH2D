@@ -11,7 +11,8 @@ const ORACLE: &str = concat!(
 
 fn fixture(dir: &str, name: &str) -> Value {
     let p = format!("{ORACLE}/{dir}/{name}.json");
-    serde_json::from_str(&std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{p}: {e}"))).unwrap()
+    serde_json::from_str(&std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{p}: {e}")))
+        .unwrap()
 }
 
 fn f(v: &Value) -> f64 {
@@ -51,7 +52,11 @@ fn the_rectangle_corners_do_what_both_oracles_do() {
     // (+40, +25), livre e com `Shift`, dá a MESMA caixa e a mesma rotação.
     let mut n = 0;
     for (dir, name, key) in [
-        ("fixtures_excalidraw_edita", "rect_alinhado_400x250", "alcas"),
+        (
+            "fixtures_excalidraw_edita",
+            "rect_alinhado_400x250",
+            "alcas",
+        ),
         ("fixtures_excalidraw_edita", "quadrado_300", "alcas"),
         ("fixtures_tldraw_edita", "rectangulo", "arrastos"),
         ("fixtures_tldraw_edita", "rectangulo_rodado_25", "arrastos"),
@@ -59,7 +64,10 @@ fn the_rectangle_corners_do_what_both_oracles_do() {
         let fx = fixture(dir, name);
         let (shape, rot) = if key == "alcas" {
             let b = &fx["nascida"];
-            (rect(f(&b["x"]), f(&b["y"]), f(&b["w"]), f(&b["h"]), 0.0), 0.0)
+            (
+                rect(f(&b["x"]), f(&b["y"]), f(&b["w"]), f(&b["h"]), 0.0),
+                0.0,
+            )
         } else {
             let s = &fx["base"]["shape"];
             let r = f(&s["rotation"]);
@@ -93,7 +101,10 @@ fn the_rectangle_corners_do_what_both_oracles_do() {
                 let (ow, oh) = if key == "alcas" {
                     (f(&out["forma"]["w"]), f(&out["forma"]["h"]))
                 } else {
-                    (f(&out["shape"]["props"]["w"]), f(&out["shape"]["props"]["h"]))
+                    (
+                        f(&out["shape"]["props"]["w"]),
+                        f(&out["shape"]["props"]["h"]),
+                    )
                 };
                 assert!(
                     (w - ow).abs() < 0.01 && (h - oh).abs() < 0.01,
@@ -138,7 +149,9 @@ fn the_ellipse_axis_nodes_do_what_the_tldraw_side_handles_do() {
                 let (ox, oy) = (f(&out["x"]), f(&out["y"]));
                 let got = [centre[0] - rx, centre[1] - ry, 2.0 * rx, 2.0 * ry];
                 assert!(
-                    got.iter().zip([ox, oy, ow, oh]).all(|(a, b)| (a - b).abs() < 0.01),
+                    got.iter()
+                        .zip([ox, oy, ow, oh])
+                        .all(|(a, b)| (a - b).abs() < 0.01),
                     "{name} {side}/{mode}: {got:?} ≠ oráculo {:?}",
                     [ox, oy, ow, oh]
                 );
@@ -170,7 +183,8 @@ fn the_line_ends_and_the_fifteen_degree_step_are_the_oracles() {
             .as_array()
             .unwrap();
         let start = nodes(&shape)[node];
-        let QuickShape::Line { a, b } = drag(&shape, node, add(start, [40.0, 25.0]), regular) else {
+        let QuickShape::Line { a, b } = drag(&shape, node, add(start, [40.0, 25.0]), regular)
+        else {
             unreachable!()
         };
         assert!(
@@ -207,7 +221,10 @@ fn the_curved_arrow_keeps_its_bend_and_the_middle_only_moves_the_bend_as_in_tldr
         let QuickShape::Arc(a) = &got else {
             panic!("{handle}: deixou de ser arco")
         };
-        assert!(is_circle(a), "{handle}: o arco de círculo continua de círculo");
+        assert!(
+            is_circle(a),
+            "{handle}: o arco de círculo continua de círculo"
+        );
         let at = nodes(&got);
         let o = &out["shape"]["props"];
         assert!(
@@ -354,7 +371,10 @@ fn a_circle_becomes_an_ellipse_unless_shift_and_the_opposite_node_stays() {
     let QuickShape::Ellipse { centre, rx, ry, .. } = drag(&c, 0, [14.0, 7.0], true) else {
         unreachable!()
     };
-    assert!((rx - 12.0).abs() < 1e-12 && (ry - 12.0).abs() < 1e-12, "Shift: círculo");
+    assert!(
+        (rx - 12.0).abs() < 1e-12 && (ry - 12.0).abs() < 1e-12,
+        "Shift: círculo"
+    );
     assert!(near(centre, [2.0, 0.0], 1e-12));
     // O arrasto pode passar do oposto: a elipse vira-se, nunca colapsa a zero.
     let QuickShape::Ellipse { rx, .. } = drag(&c, 0, [-10.0, 0.0], false) else {
@@ -380,7 +400,10 @@ fn an_elliptic_arc_follows_the_chord_affinity_exactly() {
     assert!(near(s2, s, 1e-9) && near(e2, e, 1e-9), "as pontas ficam");
     // O ápice anda SÓ através da corda (o paralelo não conta — o tldraw).
     let chord = sub(e, s);
-    let n = mul(rotate(chord, std::f64::consts::FRAC_PI_2), 1.0 / chord[0].hypot(chord[1]));
+    let n = mul(
+        rotate(chord, std::f64::consts::FRAC_PI_2),
+        1.0 / chord[0].hypot(chord[1]),
+    );
     assert!((dot(sub(top2, s), n) - dot(sub(to, s), n)).abs() < 1e-9);
     assert!((dot(sub(top2, top), chord)).abs() < 1e-9);
     // E a curva inteira é a imagem afim da de antes, parâmetro a parâmetro.
@@ -393,7 +416,13 @@ fn an_elliptic_arc_follows_the_chord_affinity_exactly() {
     for i in 0..=8 {
         let t = a.start + a.sweep * f64::from(i) / 8.0;
         let p = a.at(t);
-        let want = add(s, add(mul(u, dot(sub(p, s), u)), mul(n, dot(sub(p, s), n) * h2 / h)));
+        let want = add(
+            s,
+            add(
+                mul(u, dot(sub(p, s), u)),
+                mul(n, dot(sub(p, s), n) * h2 / h),
+            ),
+        );
         let tb = b.start + b.sweep * f64::from(i) / 8.0;
         assert!(near(b.at(tb), want, 1e-9), "t {i}");
     }
@@ -407,13 +436,20 @@ fn the_affine_image_of_an_arc_is_exact_even_through_a_mirror() {
         [[0.9, 0.0], [0.0, -1.4]],
         [[-1.1, 0.3], [0.5, 0.6]],
     ] {
-        let m = Affine { lin, t: [3.0, -1.0] };
+        let m = Affine {
+            lin,
+            t: [3.0, -1.0],
+        };
         let b = m.arc(&a);
         assert!(b.rx >= b.ry && b.ry > 0.0);
         for i in 0..=6 {
             let t = f64::from(i) / 6.0;
             assert!(
-                near(b.at(b.start + b.sweep * t), m.point(a.at(a.start + a.sweep * t)), 1e-9),
+                near(
+                    b.at(b.start + b.sweep * t),
+                    m.point(a.at(a.start + a.sweep * t)),
+                    1e-9
+                ),
                 "{lin:?} t {t}"
             );
         }
@@ -437,7 +473,10 @@ fn the_biarc_stays_two_tangent_arcs() {
         let (j0, j1) = (p.at(p.start + p.sweep), q.at(q.start));
         assert!(near(j0, j1, 1e-9), "a junção");
         let (d0, d1) = (tan(&p, p.start + p.sweep), tan(&q, q.start));
-        assert!(cross(d0, d1).abs() / (d0[0].hypot(d0[1]) * d1[0].hypot(d1[1])) < 1e-6, "tangente");
+        assert!(
+            cross(d0, d1).abs() / (d0[0].hypot(d0[1]) * d1[0].hypot(d1[1])) < 1e-6,
+            "tangente"
+        );
         assert!(dot(d0, d1) > 0.0);
     }
 }
@@ -453,8 +492,16 @@ fn the_arrow_tip_is_the_shaft_end_and_the_heads_stay() {
     });
     let got = drag(&arrow, 1, [12.0, 4.0], false);
     assert_eq!(got.heads(), [None, Some(2.0)]);
-    let QuickShape::Arrow(a) = got else { unreachable!() };
-    assert_eq!(*a.shaft, QuickShape::Line { a: [0.0, 0.0], b: [12.0, 4.0] });
+    let QuickShape::Arrow(a) = got else {
+        unreachable!()
+    };
+    assert_eq!(
+        *a.shaft,
+        QuickShape::Line {
+            a: [0.0, 0.0],
+            b: [12.0, 4.0]
+        }
+    );
 }
 
 #[test]

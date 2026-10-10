@@ -409,7 +409,14 @@ impl crate::App {
                 && let Some(gfx) = self.gfx.as_mut()
             {
                 let scene = &mut gfx.vec_scene;
-                ph2d_app_vec::pencil_input::press(&mut self.vec, scene, w, px_to_world, dyn_in, shift);
+                ph2d_app_vec::pencil_input::press(
+                    &mut self.vec,
+                    scene,
+                    w,
+                    px_to_world,
+                    dyn_in,
+                    shift,
+                );
             }
             // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
             // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um

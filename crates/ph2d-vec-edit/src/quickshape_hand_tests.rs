@@ -242,3 +242,42 @@ fn the_solver_pivots_past_a_zero_on_the_diagonal() {
     let x = crate::quickshape_geom::solve([[0.0, 1.0], [1.0, 0.0]], [2.0, 3.0]);
     assert_eq!(x, Some([3.0, 2.0]));
 }
+
+#[test]
+fn regular_keeps_a_star_a_star() {
+    // Pentagrama numa só passada (ponta k → k+2): o regular dá o pentagrama REGULAR, não o pentágono.
+    let tip = |k: usize, r: f64| {
+        let a = FRAC_PI_2 + TAU * k as f64 / 5.0 + 0.05 * k as f64;
+        [r * a.cos(), r * a.sin()]
+    };
+    let poly: Vec<P2> = (0..=5)
+        .map(|i| tip((2 * i) % 5, 150.0 + 8.0 * i as f64))
+        .collect();
+    let star = hand(&poly, 0.5);
+    let Some(QuickShape::Polygon {
+        corners,
+        closed: true,
+    }) = recognise(&star, 1.0, true)
+    else {
+        panic!("{:?}", recognise(&star, 1.0, true))
+    };
+    assert_eq!(corners.len(), 5);
+    let c = centroid(&corners);
+    for i in 0..5 {
+        let turn = wrap_pi(angle(sub(corners[(i + 1) % 5], c)) - angle(sub(corners[i], c)));
+        assert!(
+            (turn.abs().to_degrees() - 144.0).abs() < 1e-6,
+            "de ponta a ponta {}°",
+            turn.to_degrees()
+        );
+    }
+    // Controlo: sem `regular` também é estrela (a ordem de desenho, não a convexa).
+    let Some(QuickShape::Polygon { corners, .. }) = recognise(&star, 1.0, false) else {
+        panic!()
+    };
+    let c = centroid(&corners);
+    let t = wrap_pi(angle(sub(corners[1], c)) - angle(sub(corners[0], c)))
+        .abs()
+        .to_degrees();
+    assert!((t - 144.0).abs() < 10.0, "{t}°");
+}

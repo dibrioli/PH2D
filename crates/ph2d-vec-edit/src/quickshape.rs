@@ -387,10 +387,14 @@ fn regularise(corners: &[P2], axis_deg: f64) -> Vec<P2> {
     let k = corners.len();
     let c = centroid(corners);
     let radius = corners.iter().map(|&p| dist(p, c)).sum::<f64>() / k as f64;
-    let area: f64 = (0..k)
-        .map(|i| cross(corners[i], corners[(i + 1) % k]))
+    // O passo é o ângulo que o desenho anda de canto a canto à volta do centro: um polígono dá UMA
+    // volta (360°/k), uma estrela de 5 pontas dá DUAS (144°) — com 360°/k a estrela virava pentágono.
+    let swept: f64 = (0..k)
+        .map(|i| wrap_pi(angle(sub(corners[(i + 1) % k], c)) - angle(sub(corners[i], c))))
         .sum();
-    let step = TAU / k as f64 * if area < 0.0 { -1.0 } else { 1.0 };
+    let turns = (swept / TAU).round();
+    let turns = if turns == 0.0 { 1.0 } else { turns };
+    let step = TAU * turns / k as f64;
     let (s, co) = corners
         .iter()
         .enumerate()

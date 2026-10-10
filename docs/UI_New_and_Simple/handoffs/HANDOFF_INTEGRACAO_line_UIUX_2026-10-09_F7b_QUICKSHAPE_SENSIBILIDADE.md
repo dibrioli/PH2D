@@ -79,6 +79,15 @@ rectângulo aberto 90 px do oráculo passa a excepção «fecha» (o dono manda 
 (`worst`) deixou de dar `panic` quando a contagem de cantos difere (derrubava a sonda das faixas).
 Tabelas em [`00_resultados.md`](../vetor_nova_ui/oraculo_quickshape/00_resultados.md) §3f.
 
+### §1e — O fecho de 10/10
+
+Smoke do dono OK (*«Smoke OK. Vamos seguir adiante»*). As sondas de sensibilidade desceram para
+`quickshape_sensitivity_tests.rs` (`quickshape_measure_tests.rs` tinha chegado a 790 > tecto 700).
+**Gate final** (`verificador`, HEAD `4bae2a02e`, `BASE=2a925859d`): fmt · warnings-deny · clippy do ship ·
+machete · standalone-optional · workflow-packages · censos · doc-index ✓; `nextest-impacted`
+**17 020 / 17 020**; catracas ✓. Próxima janela (escolha do dono): **F7c — o QuickShape com arcos**,
+prompt [`07_prompt_F7c_arcos.md`](../vetor_nova_ui/07_prompt_F7c_arcos.md).
+
 ## §2 — Medido e decidido (técnico, delegado)
 
 As três sondas (`cargo test --release -p ph2d-vec-edit --lib measure_ -- --ignored --nocapture

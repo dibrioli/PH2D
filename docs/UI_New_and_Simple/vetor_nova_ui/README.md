@@ -37,6 +37,7 @@
 | O prompt de F6 — navegar com os dedos, o QuickShape à espera do oráculo, a ponte do toque | [`05_prompt_F6_toque_completo.md`](05_prompt_F6_toque_completo.md) |
 | ⭐ **O oráculo do QuickShape** — o Xournal++ corrido sobre 43 traços nossos: triagem de licença, o roteiro, as leis medidas, o que o Procreate manda a mais | [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md) |
 | O prompt de F7 — o QuickShape no PH2D (a lei pura, o gesto de segurar, a porta visível, a cena 12) | [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md) |
+| ⭐ **O prompt da próxima janela** — F7c: o QuickShape com ARCOS (pedido do dono, 10/10) | [`07_prompt_F7c_arcos.md`](07_prompt_F7c_arcos.md) |
 | As fontes, com URL por afirmação | [`referencias/R1_affinity.md`](referencias/R1_affinity.md) · [`R2_figma_sketch_penpot_graphite.md`](referencias/R2_figma_sketch_penpot_graphite.md) · [`R3_illustrator_curve_rive_inkscape.md`](referencias/R3_illustrator_curve_rive_inkscape.md) · [`R4_apps_de_ipad.md`](referencias/R4_apps_de_ipad.md) |
 | As fotos do «antes» e o precedente interno (a barra curta e a barra de estilo do Quadro) | [`fotos/`](fotos/) |
 

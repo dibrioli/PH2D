@@ -382,6 +382,7 @@ pub(crate) const WATERCOLOR_CARTAO: &[&str] = &[
 pub(crate) const WETPAINT: &[&str] = &[
     "panel.painter_layers.wetpaint.show_wet",
     "panel.painter_layers.wetpaint.smooth_edges",
+    "panel.painter_layers.wetpaint.live_water",
     "panel.painter_layers.wetpaint.tuning",
     "panel.painter_layers.wetpaint.tilt",
 ];
@@ -395,6 +396,7 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.edge_darkening",
     "panel.painter_layers.wetpaint.gravity",
     "panel.painter_layers.wetpaint.erase_strength",
+    "panel.painter_layers.wetpaint.heavy_edge",
 ];
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.

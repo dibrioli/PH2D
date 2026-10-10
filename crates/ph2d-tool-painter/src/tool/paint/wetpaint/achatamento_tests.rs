@@ -50,7 +50,7 @@ fn corridas(t: &[bool]) -> Vec<usize> {
 }
 
 /// O que a régua lê: (a orla plana mais longa, fios largos, deles de ponta quadrada).
-fn le(px: &[u8]) -> (usize, usize, usize) {
+pub(super) fn le(px: &[u8]) -> (usize, usize, usize) {
     let t = tinta(px);
     let run = corridas(&t);
     let larga = |x: usize, y: usize| t[y * W + x] && run[y * W + x] > 8;
@@ -132,7 +132,7 @@ fn le(px: &[u8]) -> (usize, usize, usize) {
     (plano, fios, quadrados)
 }
 
-fn barra((plano, fios, quadrados): (usize, usize, usize)) -> Result<(), String> {
+pub(super) fn barra((plano, fios, quadrados): (usize, usize, usize)) -> Result<(), String> {
     let mut f = Vec::new();
     if plano > PLANO_DO_REBELLE {
         f.push(format!(

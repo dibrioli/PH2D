@@ -16,7 +16,7 @@ fn escuro(px: &[u8], x: usize, y: usize) -> f64 {
 }
 
 /// Do traço `i`: (orla de baixo ÷ de cima, a tinta mais baixa abaixo da orla, px).
-fn le(px: &[u8], i: usize) -> (f64, usize) {
+pub(super) fn le(px: &[u8], i: usize) -> (f64, usize) {
     let x0 = 60 + 240 * i;
     let miolo = x0 + 25..x0 + 125;
     let cheia = |y: usize| miolo.clone().filter(|&x| escuro(px, x, y) > 25.0).count() * 2 >= 100;

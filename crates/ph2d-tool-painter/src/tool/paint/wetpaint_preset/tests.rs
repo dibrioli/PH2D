@@ -251,7 +251,40 @@ fn ferramenta_mexida() -> PainterTool {
     // O Tilt (W1e, F4): o pincel guardado leva a inclinação — mexida dos três lados do de fábrica.
     let w = &mut t.paint.wetpaint;
     (w.tilt_on, w.tilt_ring, w.tilt_spoke) = (true, 7, 2);
+    // As opções da W1g viajam no preset.
+    t.set_wet_agua_viva(true);
+    t.set_wet_borda_que_pesa(0.7);
     t
+}
+
+/// **Um preset de ANTES das opções da W1g não mexe nelas** (a regra do Tilt). Mutação que sangra:
+/// aplicar o neutro quando o ficheiro não as traz.
+#[test]
+fn um_preset_sem_as_opcoes_da_w1g_nao_mexe_nelas() {
+    let mut p = ferramenta_mexida()
+        .wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "T", "Antigo"))
+        .0;
+    assert_eq!(
+        (p.live_water, p.heavy_edge),
+        (Some(true), Some(0.7)),
+        "a captura leva as opções"
+    );
+    (p.live_water, p.heavy_edge) = (None, None);
+    let lido = pelo_ficheiro(p, BTreeMap::new());
+    assert_eq!(
+        (lido.parametros.live_water, lido.parametros.heavy_edge),
+        (None, None)
+    );
+    let mut t = ferramenta();
+    t.set_wet_agua_viva(true);
+    t.set_wet_borda_que_pesa(0.3);
+    let _ = t.wet_preset_aplicar(&lido);
+    assert!(t.wet_agua_viva(), "um preset sem a Live Water desligou-a");
+    assert_eq!(
+        t.wet_borda_que_pesa(),
+        0.3,
+        "um preset sem a Heavy Edge mexeu nela"
+    );
 }
 
 /// **Um preset de ANTES do Tilt não mexe na tela** (W1e, F4: o campo é opcional, o formato não sobe de

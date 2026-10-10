@@ -208,6 +208,8 @@ impl PainterTool {
         w.tilt_ring = 4;
         w.tilt_spoke = 3;
         w.km_mixing = false;
+        w.agua_viva = false;
+        w.borda_que_pesa = 0.0;
         let need_recomposite = w.show_wet || w.paper_visual || w.km_glaze || w.smooth_edges;
         w.show_wet = false;
         w.paper_visual = false;
@@ -231,6 +233,28 @@ impl PainterTool {
     #[must_use]
     pub fn wet_smooth_edges(&self) -> bool {
         self.paint.wetpaint.smooth_edges
+    }
+
+    /// A **Live Water** (W1g): a água corre com o traço aberto.
+    pub fn set_wet_agua_viva(&mut self, ligada: bool) {
+        self.paint.wetpaint.agua_viva = ligada;
+    }
+
+    /// A **Live Water** está ligada?
+    #[must_use]
+    pub fn wet_agua_viva(&self) -> bool {
+        self.paint.wetpaint.agua_viva
+    }
+
+    /// A **Heavy Edge** (W1g, `0..1`; NaN = o neutro).
+    pub fn set_wet_borda_que_pesa(&mut self, v: f64) {
+        self.paint.wetpaint.borda_que_pesa = if v.is_nan() { 0.0 } else { v.clamp(0.0, 1.0) };
+    }
+
+    /// A **Heavy Edge** de agora.
+    #[must_use]
+    pub fn wet_borda_que_pesa(&self) -> f64 {
+        self.paint.wetpaint.borda_que_pesa
     }
 
     /// The authored knob values (the panel snapshot's source).
@@ -318,6 +342,10 @@ impl PainterTool {
             self.set_wet_flow_ratio(v);
             return true;
         }
+        if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {
+            self.set_wet_borda_que_pesa(v);
+            return true;
+        }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
         match id {
@@ -401,6 +429,10 @@ impl PainterTool {
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES => {
                 self.paint.wetpaint.smooth_edges = !self.paint.wetpaint.smooth_edges;
                 self.wet_recomposite_full();
+                true
+            }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {
+                self.set_wet_agua_viva(!self.paint.wetpaint.agua_viva);
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TUNING => {

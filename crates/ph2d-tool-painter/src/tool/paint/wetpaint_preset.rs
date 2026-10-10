@@ -319,6 +319,13 @@ impl PainterTool {
             w.tilt_ring = tl.ring.min(8);
             w.tilt_spoke = tl.spoke % 12;
         }
+        // As opções da W1g, pela mesma regra: ausentes num preset de antes delas, não mexem.
+        if let Some(v) = prm.live_water {
+            self.set_wet_agua_viva(v);
+        }
+        if let Some(v) = prm.heavy_edge {
+            self.set_wet_borda_que_pesa(v);
+        }
         self.wet_preset_aplicar_volumes(&prm.volumes);
         falhas
     }
@@ -389,6 +396,8 @@ impl PainterTool {
             ring: w.tilt_ring,
             spoke: w.tilt_spoke,
         });
+        p.live_water = Some(w.agua_viva);
+        p.heavy_edge = Some(w.borda_que_pesa);
 
         let mut texturas = BTreeMap::new();
         if self.paint.brush.shape.kind == TextureKind::Image

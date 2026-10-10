@@ -87,6 +87,13 @@ pub struct Parametros {
     /// formato não sobe de versão — o campo é opcional).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tilt: Option<Tilt>,
+    /// **A Água ao vivo** do Wet Paint (W1g): a água corre com o traço. `None` = um preset de antes dela
+    /// (aplicá-lo não mexe na opção — a regra do Tilt).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live_water: Option<bool>,
+    /// **A Borda que pesa** do Wet Paint (W1g, `0..1`). `None` = um preset de antes dela (não mexe).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heavy_edge: Option<f64>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -106,6 +113,8 @@ impl Parametros {
             brush: BTreeMap::new(),
             width_table: Vec::new(),
             tilt: None,
+            live_water: None,
+            heavy_edge: None,
             extra: BTreeMap::new(),
         }
     }

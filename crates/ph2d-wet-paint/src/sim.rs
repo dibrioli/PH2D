@@ -43,6 +43,8 @@ pub struct Params {
     pub glaze_filme: f64,
     /// A lei da gota deste passo ([`crate::solver::Gota`]) — `None` no port ou com a tela direita.
     pub(crate) gota: Option<crate::solver::Gota>,
+    /// O pigmento que desce mais que a água ([`Sim::sedimenta`]).
+    pub sedimenta: f64,
 }
 
 impl Params {
@@ -85,6 +87,9 @@ pub struct Sim {
     /// **A lei da GOTA** (W1e, F1, [`crate::solver::Gota`]): a altura crítica da conta de baixo vezes
     /// `|g|` — `0` = o port (o freio de sempre); o produto liga o valor calibrado contra o Rebelle.
     pub drip_head: f64,
+    /// **O pigmento DESCE mais que a água** (W1g, «Heavy Edge», [`crate::solver::sedimenta`]): a fracção
+    /// por passo, por unidade de `|g|`, que o pigmento em suspensão passa à vizinha de baixo. `0` = o port.
+    pub sedimenta: f64,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -156,6 +161,7 @@ impl Default for Sim {
             glaze_filme: 0.0,
             sim_while_painting: false,
             drip_head: 0.0,
+            sedimenta: 0.0,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -231,6 +237,7 @@ impl Sim {
                 let [gx, gy] = self.gravity(tuning);
                 crate::solver::Gota::new(self.drip_head, gx, gy)
             },
+            sedimenta: self.sedimenta,
         }
     }
 }
@@ -330,6 +337,11 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 crate::solver::advect_jacobi(g, &c.p, c.grav[0], c.grav[1])
             } else {
                 advect(g, &c.p, c.grav[0], c.grav[1])
+            };
+            if c.p.sedimenta > 0.0 {
+                let [gx, gy] = c.grav;
+                let a = c.p.sedimenta * (gx * gx + gy * gy).sqrt();
+                crate::solver::sedimenta(g, a, gx, gy, c.p.km_mixing);
             }
         }
         4 => apply_boundaries(g, false),

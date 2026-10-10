@@ -41,6 +41,20 @@ pub(super) fn bancada_com(
     aguas: [f64; 4],
     ajusta: &dyn Fn(&mut ph2d_wet_paint::sim::Sim),
 ) -> Vec<u8> {
+    bancada_toda(gravidade, gota, knobs, anel, aguas, ajusta, &|_| {})
+}
+
+/// [`bancada_com`] com `prepara` sobre a FERRAMENTA antes de a sessão nascer (as opções da W1g pelo
+/// caminho do produto: o autorado → o reconcile → o motor).
+pub(super) fn bancada_toda(
+    gravidade: f64,
+    gota: f64,
+    knobs: &[(Knob, f64)],
+    anel: Option<u8>,
+    aguas: [f64; 4],
+    ajusta: &dyn Fn(&mut ph2d_wet_paint::sim::Sim),
+    prepara: &dyn Fn(&mut PainterTool),
+) -> Vec<u8> {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     let p = &b
@@ -65,6 +79,7 @@ pub(super) fn bancada_com(
     t.paint.wetpaint.tilt_spoke = 3;
     t.paint.wetpaint.tilt_ring = anel.unwrap_or(4);
     t.set_brush_color_srgb8([23, 101, 179]);
+    prepara(&mut t);
     assert!(t.ensure_wet_session());
     t.paint
         .wetpaint

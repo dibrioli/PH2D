@@ -78,11 +78,33 @@ fn le(px: &[u8], antes: &[u8]) -> Leitura {
 
 /// A cena: devolve as telas ANTES do azul, DURANTE o azul (ponteiro em baixo) e 2 s DEPOIS do Up.
 fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    cena_com(seco, produto, None)
+    cena_com(seco, produto, None, false)
 }
 
-/// [`cena`] com a velatura do filme no render forçada (`filme`).
-fn cena_com(seco: bool, produto: bool, filme: Option<f64>) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+/// [`cena`] pelo PRODUTO com a Live Water autorada (`viva`): o reconcile põe a água e a velatura.
+fn cena_produto(seco: bool, viva: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+    cena_toda(seco, true, None, false, viva)
+}
+
+/// [`cena`] com a velatura do filme no render forçada (`filme`) e a Água ao vivo (`viva`, W1g).
+fn cena_com(
+    seco: bool,
+    produto: bool,
+    filme: Option<f64>,
+    viva: bool,
+) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+    cena_toda(seco, produto, filme, viva, false)
+}
+
+/// A cena inteira: `viva` liga a água no traço DIRECTAMENTE no motor (as sondas); `opcao` liga a Live
+/// Water autorada (o produto).
+fn cena_toda(
+    seco: bool,
+    produto: bool,
+    filme: Option<f64>,
+    viva: bool,
+    opcao: bool,
+) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     let p = &b
@@ -99,7 +121,18 @@ fn cena_com(seco: bool, produto: bool, filme: Option<f64>) -> (Vec<u8>, Vec<u8>,
     t.wet_preset_aplicar_volumes(&p.parametros.volumes);
     t.paint.wetpaint.tilt_on = false;
     t.set_brush_size_px(30.0);
+    t.set_wet_agua_viva(opcao);
     assert!(t.ensure_wet_session());
+    if viva {
+        t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("sessão")
+            .engine
+            .sim
+            .sim_while_painting = true;
+    }
     if !produto {
         let s = t.paint.wetpaint.session.as_mut().expect("sessão");
         s.engine.sim.glaze = 0.0;
@@ -207,17 +240,45 @@ fn azul_sobre_vermelho_vela_no_seco_e_sangra_no_molhado_como_no_rebelle() {
 
 /// **Sonda (W1f): a velatura do filme no render**, com a água só depois do Up — o γ e a sangria por
 /// valor, no MESMO processo.
+/// **Com a Live Water (W1g) a mistura continua na barra do Rebelle** — pelo produto (a opção autorada,
+/// que troca a velatura do filme para [`ph2d_wet_paint::colorops::VELATURA_DO_FILME_VIVA`]). O controlo:
+/// a água ao vivo com a velatura da água PARADA reprova (a sangria no seco passa de 3).
+#[test]
+fn com_a_live_water_a_mistura_continua_na_barra_do_rebelle() {
+    let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
+    let parada = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
+    let controlo = barra(
+        ler(cena_com(true, true, Some(parada), true)),
+        ler(cena_com(false, true, Some(parada), true)),
+    );
+    assert!(
+        controlo.is_err(),
+        "CONTROLO: a velatura da água parada passou a barra com a água ao vivo — a régua não discrimina"
+    );
+    if let Err(e) = barra(
+        ler(cena_produto(true, true)),
+        ler(cena_produto(false, true)),
+    ) {
+        panic!("a mistura com a Live Water falhou a barra do Rebelle: {e}");
+    }
+}
+
 #[test]
 #[ignore = "sonda: corre-se à mão"]
 fn sonda_velatura_do_filme() {
-    for f in [0.47, 0.35, 0.25, 0.20, 0.15, 0.0] {
+    let viva = std::env::var("PH2D_SONDA_VIVA").is_ok_and(|v| v == "1");
+    let filmes: Vec<f64> = std::env::var("PH2D_SONDA_FILMES")
+        .ok()
+        .map(|v| v.split(',').filter_map(|s| s.parse().ok()).collect())
+        .unwrap_or_else(|| vec![0.47, 0.35, 0.25, 0.20, 0.15, 0.0]);
+    for f in filmes {
         let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
         let (s, m) = (
-            ler(cena_com(true, true, Some(f))),
-            ler(cena_com(false, true, Some(f))),
+            ler(cena_com(true, true, Some(f), viva)),
+            ler(cena_com(false, true, Some(f), viva)),
         );
         println!(
-            "[filme {f:.2}] seco γ durante {:.2} depois {:.2} sangria {:+.0} · molhado γ durante {:.2} depois {:.2} sangria {:+.0} · barra {:?}",
+            "[filme {f:.2} viva {viva}] seco γ durante {:.2} depois {:.2} sangria {:+.1} · molhado γ durante {:.2} depois {:.2} sangria {:+.0} · barra {:?}",
             s.0.gama,
             s.1.gama,
             s.1.sangria,

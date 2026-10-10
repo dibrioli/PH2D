@@ -120,6 +120,10 @@ pub(crate) struct WetPaintState {
     /// **Smooth Edges** (dono 09/10): a silhueta da mancha com meio-tom, pela lei do Watercolor
     /// ([`smooth_edges`]). Desligado de fábrica (dono 09/10, ao desfazer as gotas) = o composite de antes, ao byte.
     pub(super) smooth_edges: bool,
+    /// **Live Water** (W1g): a água corre com o traço aberto. Desligado de fábrica = a W1f, ao byte.
+    pub(super) agua_viva: bool,
+    /// **Heavy Edge** (W1g, `0..1`): o pigmento desce mais que a água na tela inclinada. `0` = a W1f, ao byte.
+    pub(super) borda_que_pesa: f64,
     /// Experimental: K–M pigment mixing (`sim.km_mixing`).
     pub(super) km_mixing: bool,
     /// Experimental: K–M glaze stacking in the composite.
@@ -149,6 +153,11 @@ pub(crate) struct WetPaintState {
     pub(super) preset_pedido: Option<super::wetpaint_preset::PedidoPreset>,
 }
 
+/// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
+/// Medida na rodada da W1g (05 §4b): a meia, o motor a 5 dá a orla de baixo ÷ de cima do Rebelle (1,56;
+/// Rebelle 1,6) ⇒ o meio do slider; a 10 ela é 4,1 e a régua do recto continua verde.
+pub(super) const SEDIMENTA_DA_BORDA: f64 = 10.0;
+
 impl Default for WetPaintState {
     fn default() -> Self {
         Self {
@@ -165,6 +174,8 @@ impl Default for WetPaintState {
             show_wet: false,
             paper_visual: false,
             smooth_edges: false,
+            agua_viva: false,
+            borda_que_pesa: 0.0,
             km_mixing: false,
             km_glaze: false,
             tuning_open: false,
@@ -419,14 +430,20 @@ mod gota_tests;
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
+mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
+#[cfg(test)]
 #[path = "wetpaint/showwet_tests.rs"]
 mod showwet_tests;
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
+mod sonda_fios; // O3: os fios finos do Rebelle saem dos knobs que o motor já tem?
+#[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
+#[cfg(test)]
+mod sonda_opcoes; // as opções da W1g numa rodada só
 #[cfg(test)]
 mod sonda_papel_seco; // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
 

@@ -38,7 +38,7 @@ pub(crate) fn drag_to_ring_spoke(x: f32, y: f32) -> (u8, u8) {
     (ring, spoke)
 }
 
-/// The dial card: a "Tilt" toggle row + the polar pad. Returns the next `y`.
+/// The dial card: a "Tilt" toggle row + the polar pad + the Heavy Edge row (W1g). Returns the next `y`.
 pub(crate) fn paint_tilt_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -110,7 +110,22 @@ pub(crate) fn paint_tilt_card(
     ctx.host
         .hit_index_mut()
         .register(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD, canvas);
-    canvas.y + side + Spacing::Xs.px()
+    // Heavy Edge (W1g) — com a tela inclinada o pigmento pesa na orla de baixo; `0` de fábrica (esmaece
+    // com o Tilt desligado: `Dependente::BordaSemTilt`).
+    crate::card::card_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        canvas.y + side + Spacing::Xs.px(),
+        "panel.painter_layers.wetpaint.heavy_edge",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_HEAVY_EDGE,
+        brush.wet_heavy_edge,
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+    )
 }
 
 /// The `event.rs` drain arm's body (kept HERE so the event router stays at

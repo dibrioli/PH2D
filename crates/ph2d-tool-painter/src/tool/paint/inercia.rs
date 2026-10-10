@@ -28,10 +28,11 @@ pub enum Dependente {
     DepthSourceGrain,
     EraseDaAgua,
     ToothDoDigital,
+    BordaSemTilt,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 14] = [
+    pub const TODOS: [Dependente; 15] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -46,6 +47,7 @@ impl Dependente {
         Dependente::DepthSourceGrain,
         Dependente::EraseDaAgua,
         Dependente::ToothDoDigital,
+        Dependente::BordaSemTilt,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -68,6 +70,7 @@ impl Dependente {
             Dependente::DepthSourceGrain => &[ids::PAINTER_IMPASTO_SOURCE_GRAIN],
             Dependente::EraseDaAgua => &[ids::PAINTER_WETPAINT_ERASE],
             Dependente::ToothDoDigital => &[ids::PAINTER_WATERCOLOR_PAPER_DEPTH],
+            Dependente::BordaSemTilt => &[ids::PAINTER_WETPAINT_HEAVY_EDGE],
         }
     }
 
@@ -90,6 +93,7 @@ impl Dependente {
             Dependente::DepthSourceGrain => "panel.painter_layers.inerte.grain_chosen",
             Dependente::EraseDaAgua => "panel.painter_layers.inerte.eraser_on",
             Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
+            Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
         }
     }
 
@@ -210,6 +214,11 @@ impl PainterTool {
                 Dependente::ToothDoDigital,
                 matches!(self.paint_media(), super::media::PaintMedia::Digital)
                     && !self.papel_pode_ser_grain(),
+            ),
+            // A Heavy Edge só age com a tela inclinada (`Sim::sedimenta` multiplica `|g|`).
+            (
+                Dependente::BordaSemTilt,
+                agua && !(self.paint.wetpaint.tilt_on && self.paint.wetpaint.tilt_ring > 0),
             ),
         ];
         Inercias {

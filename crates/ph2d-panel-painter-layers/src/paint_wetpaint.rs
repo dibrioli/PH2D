@@ -194,39 +194,7 @@ pub(crate) fn paint_wetpaint_section(
             ],
             usize::MAX,
         );
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
-            "panel.painter_layers.wetpaint.show_wet",
-            brush.wet_show_wet,
-        );
-        // (O «Paper» que morava aqui é a Texture on Paint da secção Paper desde a W1e: um papel, uma secção.)
-        // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; desligado de fábrica).
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
-            "panel.painter_layers.wetpaint.smooth_edges",
-            brush.wet_smooth_edges,
-        );
-        // Tuning — opens the side panel with the engine's full knob table.
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
-            "panel.painter_layers.wetpaint.tuning",
-            brush.wet_tuning_open,
-        );
+        y = paint_display_toggles(ctx, theme, x, content_w, y, &brush);
     }
     let out = y;
     crate::paint_brush_top::end_fold(ctx, fold, out)
@@ -346,6 +314,64 @@ fn paint_resolution_readout(
         resolve(ColorToken::Text2, theme),
     );
     y + font + ph2d_tokens::control_gap_px()
+}
+
+/// As caixas do fim da secção — Show Wet, Smooth Edges, Live Water (W1g) e Tuning. Partida de
+/// [`paint_wetpaint_section`] pelo tecto de 200 LOC de função dos painéis.
+fn paint_display_toggles(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let mut y = y;
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
+        "panel.painter_layers.wetpaint.show_wet",
+        brush.wet_show_wet,
+    );
+    // (O «Paper» que morava aqui é a Texture on Paint da secção Paper desde a W1e: um papel, uma secção.)
+    // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; desligado de fábrica).
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+        "panel.painter_layers.wetpaint.smooth_edges",
+        brush.wet_smooth_edges,
+    );
+    // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_LIVE_WATER,
+        "panel.painter_layers.wetpaint.live_water",
+        brush.wet_live_water,
+    );
+    // Tuning — opens the side panel with the engine's full knob table.
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
+        "panel.painter_layers.wetpaint.tuning",
+        brush.wet_tuning_open,
+    );
+    y
 }
 
 #[cfg(test)]

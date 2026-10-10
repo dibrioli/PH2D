@@ -16,6 +16,9 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
     /// re-assar quando só ele mexe (o papel do artista re-semeia pela [`PaperKey`]).
     pub(in crate::tool::paint) tooth: f32,
+    /// As opções da W1g: a Água ao vivo e a Borda que pesa (`0..1`).
+    pub(in crate::tool::paint) agua_viva: bool,
+    pub(in crate::tool::paint) borda_que_pesa: f64,
 }
 
 impl WetEngineFacts {
@@ -27,6 +30,8 @@ impl WetEngineFacts {
         tilt: (true, 4, 3),
         km_mixing: false,
         tooth: 1.0,
+        agua_viva: false,
+        borda_que_pesa: 0.0,
     };
 }
 
@@ -193,6 +198,18 @@ impl WetSession {
         }
         if f.km_mixing != a.km_mixing {
             e.sim.km_mixing = f.km_mixing;
+        }
+        if f.agua_viva != a.agua_viva {
+            e.sim.sim_while_painting = f.agua_viva;
+            // A velatura do filme depende do modo (medida nos dois, `colorops`).
+            e.sim.glaze_filme = if f.agua_viva {
+                ph2d_wet_paint::colorops::VELATURA_DO_FILME_VIVA
+            } else {
+                ph2d_wet_paint::colorops::VELATURA_DO_FILME
+            };
+        }
+        if f.borda_que_pesa != a.borda_que_pesa {
+            e.sim.sedimenta = f.borda_que_pesa * super::SEDIMENTA_DA_BORDA;
         }
         if f.tooth != a.tooth {
             e.set_paper_tooth(f.tooth);

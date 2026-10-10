@@ -400,6 +400,8 @@ impl PainterTool {
             wet_show_wet: self.paint.wetpaint.show_wet,
             wet_paper_visual: self.paint.wetpaint.paper_visual,
             wet_smooth_edges: self.paint.wetpaint.smooth_edges,
+            wet_live_water: self.paint.wetpaint.agua_viva,
+            wet_heavy_edge: self.paint.wetpaint.borda_que_pesa as f32,
             wet_km_mixing: self.paint.wetpaint.km_mixing,
             wet_km_glaze: self.paint.wetpaint.km_glaze,
             wet_tuning_open: self.paint.wetpaint.tuning_open,

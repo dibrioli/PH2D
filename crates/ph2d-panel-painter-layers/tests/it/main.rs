@@ -39,3 +39,4 @@ mod seam_watercolor_cards;
 mod seam_watercolor_flow; // as linhas da forma da borda: Flow, Size, Angle, Paper Edge (BUGS #31)
 mod seam_wet_presets;
 mod seam_wetpaint; // W1: o navegador de presets e os volumes do Wet Painter, pelo ponteiro
+mod seam_wetpaint_opcoes; // W1g: Live Water e Heavy Edge pelo clique real

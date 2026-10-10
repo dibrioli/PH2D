@@ -47,6 +47,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
+        "panel.painter_layers.inerte.tilt_on" => "Acts when Tilt is on",
+        // ── As opções da W1g do Wet Paint (à mão, fora dos marcadores) ─────────────────────────────
+        "panel.painter_layers.wetpaint.live_water" => "Live Water",
+        "panel.painter_layers.wetpaint.live_water_tip" => {
+            "The water keeps flowing while you paint. Slower on big canvases: at 4096 px the \
+             slowest frame goes from 2-4 ms to 14-45 ms"
+        }
+        "panel.painter_layers.wetpaint.heavy_edge" => "Heavy Edge",
         "panel.painter_layers.inerte.detail_above_minimum" => {
             "Acts when Detail is above its minimum"
         }

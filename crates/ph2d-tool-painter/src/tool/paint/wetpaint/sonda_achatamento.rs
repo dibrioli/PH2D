@@ -60,6 +60,11 @@ pub(super) struct Variante {
     pub sem_faixa: bool,
     /// `Some(true)` = a água corre com o traço aberto (a W1e; o produto desligou-a na W1f).
     pub agua_no_traco: Option<bool>,
+    /// A Borda que pesa no motor (`Sim::sedimenta`, W1g).
+    pub sedimenta: Option<f64>,
+    /// As opções da W1g pelo caminho do PRODUTO (a ferramenta): a Heavy Edge e a Live Water.
+    pub heavy_edge: Option<f64>,
+    pub live_water: Option<bool>,
 }
 
 impl Variante {
@@ -69,6 +74,9 @@ impl Variante {
         }
         if let Some(a) = self.agua_no_traco {
             sim.sim_while_painting = a;
+        }
+        if let Some(k) = self.sedimenta {
+            sim.sedimenta = k;
         }
     }
 }
@@ -107,6 +115,12 @@ pub(super) fn cena(
     t.paint.wetpaint.tilt_spoke = raio;
     t.paint.wetpaint.tilt_ring = anel;
     t.set_brush_color_srgb8([200, 25, 25]);
+    if let Some(v) = v.heavy_edge {
+        t.set_wet_borda_que_pesa(v);
+    }
+    if let Some(v) = v.live_water {
+        t.set_wet_agua_viva(v);
+    }
     assert!(t.ensure_wet_session());
     {
         let s = t.paint.wetpaint.session.as_mut().expect("sessão");

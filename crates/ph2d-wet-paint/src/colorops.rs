@@ -97,6 +97,17 @@ pub const VELATURA_MEDIDA: f64 = 0.47;
 /// (Rebelle 0,42–0,49 · 0,44–0,51; a sangria no molhado não muda: +25 a +26.)
 pub const VELATURA_DO_FILME: f64 = 0.20;
 
+/// **A mesma velatura com a água A CORRER no traço** (W1g, «Live Water»): a água que assenta durante o
+/// traço muda a conta, e o `0,20` deixava o azul sangrar `+3,2` sobre o vermelho SECO (barra `≤ 3`,
+/// Rebelle `+1…+2`). Varrido no MESMO processo, água ao vivo (seco γ durante · depois · sangria):
+///
+/// | filme | 0,20 | 0,25 | 0,30 | 0,32 | **0,35** | 0,40 | 0,47 |
+/// |---|---|---|---|---|---|---|---|
+/// | seco | 0,42 · 0,41 · +3,2 | 0,47 · 0,44 · +3,2 | 0,52 · 0,48 · +3,1 | 0,54 · 0,49 · +3,0 | **0,57 · 0,51 · +2,9** | 0,61 · 0,55 · +2,8 | 0,67 · 0,59 · +3 |
+///
+/// (molhado: γ durante 0,40–0,44, sangria +27…+28 em todos; Rebelle seco 0,42–0,49 · 0,44–0,51.)
+pub const VELATURA_DO_FILME_VIVA: f64 = 0.35;
+
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos
 /// TRANSPARENTES: a cor de cima perde, na fração `glaze`, a luz que a de baixo já absorveu.
 ///

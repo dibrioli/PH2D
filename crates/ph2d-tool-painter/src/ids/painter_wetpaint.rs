@@ -74,13 +74,21 @@ pub const PAINTER_WETPAINT_PAPER_VISUAL: NodeId =
 pub const PAINTER_WETPAINT_SMOOTH_EDGES: NodeId =
     hash_node_id("painter_brush.wetpaint_smooth_edges");
 
+/// **Live Water** checkbox (W1g, dono 10/10): a água corre COM o traço aberto (`Sim::sim_while_painting`).
+/// Desligado de fábrica: a 4096² o pior quadro a pintar sobe de 2–4 ms a 14–45 ms (05 §4b, W1f).
+pub const PAINTER_WETPAINT_LIVE_WATER: NodeId = hash_node_id("painter_brush.wetpaint_live_water");
+
+/// **Heavy Edge** (W1g, `0..1`, `0` de fábrica): com a tela inclinada o pigmento desce mais que a água e
+/// pesa na orla de baixo (`Sim::sedimenta`). Sem Tilt não faz nada.
+pub const PAINTER_WETPAINT_HEAVY_EDGE: NodeId = hash_node_id("painter_brush.wetpaint_heavy_edge");
+
 /// **Tuning** checkbox — shows/hides the side panel with the full knob table.
 pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint_tuning");
 
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 21] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],
@@ -96,6 +104,7 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
     PAINTER_WETPAINT_SHOWWET,
     PAINTER_WETPAINT_PAPER_VISUAL,
     PAINTER_WETPAINT_SMOOTH_EDGES,
+    PAINTER_WETPAINT_LIVE_WATER,
     PAINTER_WETPAINT_TUNING,
     super::PAINTER_WETPAINT_PRESET_BUTTONS[0],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[1],
@@ -152,7 +161,7 @@ pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 10] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 11] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -163,4 +172,5 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 10] = [
     PAINTER_WETPAINT_GRAVITY,
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
+    PAINTER_WETPAINT_HEAVY_EDGE,
 ];

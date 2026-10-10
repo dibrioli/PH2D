@@ -467,6 +467,10 @@ pub struct BrushSettings {
     pub wet_paper_visual: bool,
     /// Smooth Edges do Wet Paint — a silhueta da mancha com meio-tom (a lei do Watercolor).
     pub wet_smooth_edges: bool,
+    /// **Live Water** (W1g): a água corre com o traço aberto.
+    pub wet_live_water: bool,
+    /// **Heavy Edge** (W1g, `0..1`): o pigmento pesa na orla de baixo da tela inclinada.
+    pub wet_heavy_edge: f32,
     /// Experimental K-M flags (mixing = sim-side, glaze = composite-side).
     pub wet_km_mixing: bool,
     pub wet_km_glaze: bool,

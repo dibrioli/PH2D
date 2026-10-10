@@ -381,3 +381,83 @@ fn sonda_grava_azul_sobre_vermelho() {
         std::fs::write(format!("{d}/avs_{k}.ppm"), o).unwrap();
     }
 }
+
+/// Um vermelho largo (Wet Round 60 px, água 1, a tela direita) até a água parar, e por cima dele uma
+/// aguada azul (Wet Wash 40 px, fios longos) com a tela no máximo e a Heavy Edge a 1: os fios descem SOBRE
+/// o vermelho, na mesma sessão, com as linhas escuras da Heavy Edge (5.º smoke do dono).
+fn fios_sobre_vermelho(forca: f32) -> Vec<u8> {
+    use crate::tool::PainterTool;
+    use ph2d_brush_presets::{Biblioteca, Volumes};
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o pincel de fábrica")
+        .preset;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 400 * 300 * 4], 400, 300);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.paint.wetpaint.smooth_edges = forca;
+    let cp = |x: f32, y: f32, phase| CanvasPointer {
+        pos: [x, y],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let traco = |t: &mut PainterTool, y: f32| {
+        t.on_canvas_pointer(cp(40.0, y, PointerPhase::Down));
+        for k in 1..=80 {
+            t.on_canvas_pointer(cp(40.0 + 4.0 * k as f32, y, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(360.0, y, PointerPhase::Up));
+        for _ in 0..60 * 40 {
+            t.on_tick(1000.0 / 60.0);
+        }
+    };
+    t.paint.wetpaint.tilt_on = false;
+    t.wet_preset_aplicar_volumes(&Volumes {
+        size_px: Some(60.0),
+        water: Some(1.0),
+        ..Volumes::default()
+    });
+    t.set_brush_color_srgb8([200, 30, 30]);
+    traco(&mut t, 200.0);
+    let wash = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Wash")
+        .expect("o pincel de fábrica")
+        .preset;
+    assert!(t.wet_preset_aplicar(wash).is_empty());
+    t.paint.wetpaint.smooth_edges = forca;
+    (t.paint.wetpaint.tilt_on, t.paint.wetpaint.tilt_ring) = (true, 8);
+    t.set_wet_borda_que_pesa(1.0);
+    t.wet_preset_aplicar_volumes(&Volumes {
+        size_px: Some(40.0),
+        ..Volumes::default()
+    });
+    t.set_brush_color_srgb8([30, 60, 210]);
+    traco(&mut t, 110.0);
+    t.run_full().0
+}
+
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_grava_fios_sobre_vermelho() {
+    let d = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| "/tmp".into());
+    for (k, f) in [0.0f32, 1.0].into_iter().enumerate() {
+        let px = fios_sobre_vermelho(f);
+        let mut o = b"P6\n400 300\n255\n".to_vec();
+        for p in px.chunks(4) {
+            o.extend_from_slice(&p[..3]);
+        }
+        std::fs::write(format!("{d}/fsv_{k}.ppm"), o).unwrap();
+    }
+}

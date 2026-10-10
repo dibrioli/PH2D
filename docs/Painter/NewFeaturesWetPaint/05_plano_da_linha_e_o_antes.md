@@ -809,7 +809,8 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     o traço em 0,2–0,4 s; era a apresentação a esperar a água parar num arrasto (agora mostra o mais
     recente; `o_preview_nao_espera_a_agua_parar`). O Smooth Edges («maravilhoso») documentado em
     [14](14_smooth_edges_a_borda_suave.md), e estendido às bordas SOBRE tinta (o degrau de cor dentro da
-    mancha — a lei e a rodada dos limiares no 14 §2–§3).
+    mancha — a lei e a rodada dos limiares no 14 §2–§3). 5.º smoke: as linhas escuras da Heavy Edge por
+    dentro da tinta — o detetor de LINHA COMPRIDA (14 §2 passo 5).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

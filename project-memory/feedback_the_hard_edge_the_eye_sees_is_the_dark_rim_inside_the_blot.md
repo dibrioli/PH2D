@@ -13,6 +13,10 @@ raio `r` numa faixa à volta da orla, com peso `4·B·(1−B)` (`B` = a mancha d
 E a borda de uma tinta SOBRE outra (4.º smoke) também é um salto de tom dentro da mancha: detecta-se pela
 tinta desfocada a `r` px de cada LADO (no grão os dois lados são iguais; o declive local confundia o grão
 com um degrau e borrou-o −38 %), com limiar medido contra «o S aprovado não muda».
+E uma LINHA fina (a da Heavy Edge, 5.º smoke) não é um degrau — os dois lados são iguais; detecta-se pelo
+meio contra a média dos lados, e só se for COMPRIDA (as células da aguada têm o mesmo contraste mas são
+curtas: sem esse critério o S aprovado mudava 6 713 px) e só na direção da GRAVIDADE (as listras das
+cerdas também são compridas, mas seguem o traço: em todas as direções o miolo de um traço deitado mudava −26 %).
 Doc: `docs/Painter/NewFeaturesWetPaint/14_smooth_edges_a_borda_suave.md`.
 
 **Why:** uma régua de forma (contorno, área) aprovou a 3.ª lei e ela era invisível; a métrica que acompanhou o

@@ -154,6 +154,13 @@ fn sonda_smooth_edges_sobre_tinta() {
             ..Volumes::default()
         });
         t.paint.wetpaint.smooth_edges = s;
+        // `PH2D_SONDA_BORDA=<v>`: a Heavy Edge (5.º smoke do dono: as linhas escuras dela sobre a tinta).
+        if let Some(v) = std::env::var("PH2D_SONDA_BORDA")
+            .ok()
+            .and_then(|v| v.parse().ok())
+        {
+            t.set_wet_borda_que_pesa(v);
+        }
         let cp = |x: f32, y: f32, phase| CanvasPointer {
             pos: [x, y],
             pressure: 1.0,

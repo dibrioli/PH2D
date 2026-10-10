@@ -51,6 +51,12 @@ impl PainterTool {
         // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`); `0` = desligado.
         let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
         let suave = raio > 0.0;
+        // As linhas que o Smooth Edges procura dentro da tinta: as da GRAVIDADE (o eixo mais perto dela).
+        let wp = &self.paint.wetpaint;
+        let linhas = (wp.tilt_on && wp.tilt_ring > 0).then(|| {
+            let [gx, gy] = ph2d_wet_paint::sim::tilt_dir_for_spoke(wp.tilt_spoke);
+            gy.abs() >= gx.abs()
+        });
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -224,6 +230,7 @@ impl PainterTool {
                 (w, h),
                 (px0, py0, px1, py1),
                 raio,
+                linhas,
             )
         });
         canvas[py0 * stride..py1 * stride]

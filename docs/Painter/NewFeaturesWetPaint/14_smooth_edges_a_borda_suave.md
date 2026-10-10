@@ -29,7 +29,15 @@ Num pixel da região que o composite escreve:
    altura do degrau (no grão e nas células da aguada, desfocados, os dois lados são iguais) e
    `u = (P̄ − P̄(−r)) / d` a posição dentro dele. Peso `smoothstep(DEGRAU_MIN, DEGRAU_CHEIO, |d|) · 4·u·(1−u)
    · (2B − 1)` — um sino no meio do degrau, como na orla com o papel.
-5. **A mistura** `P' = P + (P̄ − P) · peso`, com `peso = max(4·B·(1 − B), o do degrau)` — inteiro na orla
+5. **A linha comprida dentro da tinta** (5.º smoke, 10/10: *«heavy edge nem sempre aceita a influência de
+   smooth edge»* — as linhas escuras que a Heavy Edge deixa por dentro da tinta, e a tinta levantada):
+   numa linha os dois lados são IGUAIS e o degrau não a vê. Por canal, `|P̄ − (P̄(−r) + P̄(+r))/2| · (r+1)`
+   (≈ contraste × largura: o pico da tenda) — só se a mesma linha continuar a `r` px ao LONGO dela (o
+   mínimo dos três: as células da aguada são curtas; o grão, desfocado em 2D, fica `r+1` vezes mais
+   fraco) — e só as linhas na direção da GRAVIDADE (o eixo mais perto de `ĝ`; nenhuma com a tela
+   direita): as da Heavy Edge, da tinta levantada e dos fios descem; as listras das cerdas seguem o traço
+   e não são bordas. Peso `smoothstep(LINHA_MIN, LINHA_CHEIA)` × `(2B − 1)`.
+6. **A mistura** `P' = P + (P̄ − P) · peso`, com `peso = max(4·B·(1 − B), o do degrau, o da linha)` — inteiro na orla
    (`B = ½`) e no meio de um degrau, zero no miolo e no papel aberto. `peso < 10⁻³` ⇒ o pixel sai pelo
    caminho de antes, sem conta nenhuma.
 
@@ -57,6 +65,15 @@ que mudam mais de 8 níveis): 0,04 → −48 % · 10 679 px; 0,10 → −42 % ·
 (11 acima de 24 níveis); 0,20 → −27 % · 109. Ficou `DEGRAU_MIN = 0,15`, `DEGRAU_CHEIO = 0,40`: abaixo
 ficam as células da aguada e o grão; acima, o degrau entre duas tintas e a tinta levantada.
 
+Os limiares da LINHA, medidos (as linhas de uma aguada azul com a Heavy Edge a escorrer sobre um vermelho,
+Wet Wash 120 px · píxeis do S aprovado > 8 níveis): sem linha −1 % · 512; **0,10 −31 % · 4 480** (a olho, o
+S igual); 0,15 −18 % · 3 032; 0,25 −6 % · 2 019. ⛔ Sem o critério de COMPRIDA, 0,15 dava −37 % mas 6 713
+(as células da aguada contavam como linhas). Ficou `LINHA_MIN = 0,10`, `LINHA_CHEIA = 0,20`. ⛔ E com as
+linhas em TODAS as direções o miolo de um traço horizontal mudava −26 % (as listras das cerdas são linhas
+compridas): só as da gravidade — o S aprovado (pintado com a tela a meia) muda então 1 746 px > 8 níveis
+(95 > 24). ⚠️ A cena de física com fios azuis a escorrer sobre o vermelho não discrimina a lei das linhas
+(os fios eram apanhados como degraus: −31 % sem ela, −34 % com ela); o portão é um campo desenhado à mão.
+
 ⚠️ **A régua engana se o vermelho for assentado** («Dry canvas» leva-o à tela de baixo): para a água só
 sobra o azul, a borda dele é uma borda com o PAPEL e a lei 4 já a amaciava — a mutação «degrau a zero»
 sobreviveu nesse cenário. O caso do dono é a MESMA sessão de água (o vermelho seco mas ainda no fluido).
@@ -72,6 +89,7 @@ volta da orla, contorno escuro incluído. Prancha das tentativas 3 e 4 no S do d
 |---|---|
 | `smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte` | `0` = o composite sem Smooth Edges, FNV da tela na razão 1 e 2 (a identidade e o amostrador) |
 | `smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes` | no máximo, todo byte que muda tem mancha E papel — ou um degrau de cor > `DEGRAU_MIN` — a menos de `alcance` px; voltar a 0 = 0 bytes de diferença |
+| `linhas_tests::a_linha_e_a_faixa_da_gravidade_amaciam_e_as_cerdas_nao` | um campo vermelho desenhado à mão: uma linha roxa vertical de 2 px perde 73 % do contraste e uma faixa clara (a tinta levantada) 61 % com a gravidade para baixo; listras horizontais (cerdas) mudam ≤ 1 %; com a tela direita nada muda. Mutação «linhas a zero» ⇒ VERMELHO (110 → 110) |
 | `a_borda_de_um_traco_sobre_tinta_tambem_amacia` | um azul sobre um vermelho (Wet Round 60 · 30 px), na mesma sessão E assentado: a borda perde ≥ 30 % da aspereza, o miolo do vermelho muda ≤ 5 %. Mutação «degrau a zero» (a lei 4 sozinha: −16 %) ⇒ VERMELHO |
 | `mais_smooth_edges_e_uma_borda_mais_suave` | a **aspereza** (soma das diferenças de escuro entre vizinhos) cai a cada degrau: −27 % · −37 % · −45 % a ¼ · ½ · 1; a tinta total dentro de 2,3 %. Mutação «raio fixo» (o slider vira interruptor) ⇒ VERMELHO |
 | `o_smooth_edges_e_um_slider_que_chega_a_ferramenta` (painel) | o clique real: viva sob o ponteiro, a edição vira `SetValue`, presa a `0..1` |
@@ -87,7 +105,8 @@ volta da orla, contorno escuro incluído. Prancha das tentativas 3 e 4 no S do d
 | 1.ª versão da lei 4 (load 42) | 82 ms | 3,3 ms |
 | + as passadas saltam as linhas sem tinta a `alcance` (lá o desfocado é EXACTAMENTE zero) | 45 ms | 3,0 ms |
 | + o pigmento da região lido uma vez num plano (só nas linhas a `2 × alcance` da tinta) | 31 ms | 1,1 ms |
-| **+ o degrau dentro da tinta, a tinta desfocada separável** (load 4,4) | **38 ms** | **1,15 ms** |
+| + o degrau dentro da tinta, a tinta desfocada separável (load 4,4) | 38 ms | 1,15 ms |
+| **+ a linha comprida** (load 28: o relógio vale pouco, a ordem de grandeza vale) | **38,7 ms** | **1,4 ms** |
 
 A tinta desfocada passou a separável (quatro passadas na região) para o degrau ler os vizinhos a `r` px;
 isso substituiu a convolução 2D por pixel da orla.

@@ -31,5 +31,12 @@ ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-render = { path = "../ph2d-render" }
 rfd = "0.17"
 
+[dev-dependencies]
+# O gate da cena 10 conduz o ecrã real (os eventos do ponteiro e do teclado do hero).
+bumpalo = "3"
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-vector = { path = "../ph2d-vector" }
+
 [lints]
 workspace = true

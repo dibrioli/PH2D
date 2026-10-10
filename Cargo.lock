@@ -4618,6 +4618,8 @@ dependencies = [
 name = "ph2d-app-board"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
+ "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-board-edit",
  "ph2d-board-excalidraw",
@@ -4627,10 +4629,12 @@ dependencies = [
  "ph2d-board-route",
  "ph2d-editor-core",
  "ph2d-gpu",
+ "ph2d-host",
  "ph2d-i18n",
  "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-vector",
  "rfd",
 ]
 

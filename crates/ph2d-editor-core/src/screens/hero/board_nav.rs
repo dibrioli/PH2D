@@ -131,18 +131,28 @@ fn button_key(b: NavButton) -> &'static str {
     }
 }
 
-/// Os botões do canto, da esquerda para a direita, encostados ao canto de baixo à direita.
+/// Os da equipa (W8), numa fila POR CIMA dos da navegação, encostados à direita. ⛔ Na mesma fila,
+/// seis botões chegavam à pílula da barra de estado (foto da cena 10: o Present meio tapado).
+const TEAM_ROW: usize = 2;
+
+/// Os botões do canto, da esquerda para a direita: a fila da equipa por cima, a da navegação encostada
+/// ao canto de baixo à direita.
 #[must_use]
 pub fn button_rects(area: Rect) -> Vec<(NavButton, Rect)> {
     let (s, g) = (Spacing::Xl2.px(), ph2d_tokens::control_gap_px());
-    let n = BUTTONS.len() as f32;
+    let row = |items: &[NavButton], y: f32| {
+        let n = items.len() as f32;
+        let x0 = area.x + area.w - Spacing::Md.px() - n * s - (n - 1.0) * g;
+        items
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (*b, Rect::new(x0 + i as f32 * (s + g), y, s, s)))
+            .collect::<Vec<_>>()
+    };
     let y = area.y + area.h - Spacing::Md.px() - s;
-    let x0 = area.x + area.w - Spacing::Md.px() - n * s - (n - 1.0) * g;
-    BUTTONS
-        .iter()
-        .enumerate()
-        .map(|(i, b)| (*b, Rect::new(x0 + i as f32 * (s + g), y, s, s)))
-        .collect()
+    let mut out = row(&BUTTONS[..TEAM_ROW], y - s - 2.0 * Spacing::Xs.px() - g);
+    out.extend(row(&BUTTONS[TEAM_ROW..], y));
+    out
 }
 
 /// A margem do «enquadrar» (px de ecrã).
@@ -325,11 +335,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         [false, list, n.frames_open, n.search_open, n.minimap_open, false]
     };
     let rects = button_rects(area);
-    panel(
-        scene,
-        &rects.iter().map(|(_, r)| *r).collect::<Vec<_>>(),
-        theme,
-    );
+    for part in [&rects[..TEAM_ROW], &rects[TEAM_ROW..]] {
+        panel(scene, &part.iter().map(|(_, r)| *r).collect::<Vec<_>>(), theme);
+    }
     for ((b, r), on) in rects.into_iter().zip(open) {
         let icon = match b {
             NavButton::Present => IconId::Presentation,

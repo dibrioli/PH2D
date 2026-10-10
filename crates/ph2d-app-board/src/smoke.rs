@@ -42,10 +42,14 @@ mod mind;
 #[path = "smoke_facilitate.rs"]
 mod facilitate;
 
+/// A cena 10 (W8), num ficheiro filho.
+#[path = "smoke_team.rs"]
+mod team;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 9,
+    max_level: 10,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -66,7 +70,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         7 => guides::scene_guides(hero),
         8 => mind::scene_mind(hero),
         9 => facilitate::scene_facilitate(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=9)"),
+        10 => team::scene_team(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=10)"),
     }
 }
 

@@ -147,6 +147,12 @@ impl Documents {
         self.live.team.io.take()
     }
 
+    /// O estado de sessão da equipa (só para ler: quem o muda é a interface).
+    #[must_use]
+    pub fn team_session(&self) -> &Team {
+        &self.live.team
+    }
+
     /// K10 — o nome de quem escreve.
     #[must_use]
     pub fn author(&self) -> &str {

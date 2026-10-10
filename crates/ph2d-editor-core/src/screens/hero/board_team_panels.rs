@@ -246,7 +246,7 @@ fn paint_export(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &m
     let has_frames = hero.documents.active_board().is_some_and(|b| b.doc.has_frames());
     let png = c.format == Format::Png;
     let vector_alpha = matches!(c.format, Format::Png | Format::Svg);
-    let rows = 3.0 + f32::from(u8::from(c.format != Format::Excalidraw)) + f32::from(u8::from(png)) * 2.0 + f32::from(u8::from(vector_alpha));
+    let rows = 4.0 + f32::from(u8::from(c.format != Format::Excalidraw)) + f32::from(u8::from(png)) * 2.0 + f32::from(u8::from(vector_alpha));
     let h = pad * 2.0 + (s + g) * rows;
     let r = Rect::new(at.x, at.y, at.w, h);
     card(scene, r, theme);
@@ -260,11 +260,14 @@ fn paint_export(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: &m
         (TeamButton::ExportPng, "PNG", Format::Png),
         (TeamButton::ExportSvg, "SVG", Format::Svg),
         (TeamButton::ExportPdf, "PDF", Format::Pdf),
-        (TeamButton::ExportExcalidraw, ".excalidraw", Format::Excalidraw),
     ];
     for (i, (b, label, f)) in formats.into_iter().enumerate() {
-        text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(b)), label, row(y, 4, i), c.format == f, theme);
+        text_button(scene, ts, &mut hero.hit_index, &hero.store, node(Hit::Button(b)), label, row(y, 3, i), c.format == f, theme);
     }
+    y += s + g;
+    // O `.excalidraw` numa fila só dele (na fila dos quatro o nome cortava-se: «.exc…»).
+    let exc = node(Hit::Button(TeamButton::ExportExcalidraw));
+    text_button(scene, ts, &mut hero.hit_index, &hero.store, exc, tr("board.export.excalidraw_short"), row(y, 1, 0), c.format == Format::Excalidraw, theme);
     y += s + g;
     if c.format != Format::Excalidraw {
         // E2/E4 — a área; a selecção e os frames só quando existem.

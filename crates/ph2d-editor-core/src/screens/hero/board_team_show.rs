@@ -203,6 +203,8 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
     let count = Rect::new(x + s + g, y, counter_w, s);
     let next = Rect::new(count.x + counter_w + g, y, s, s);
     let exit = Rect::new(next.x + s + g * 4.0, y, s, s);
+    // Os comandos num painel (cinzento sobre preto não se via: a foto dos estados).
+    super::super::super::board_nav::panel(scene, &[prev, count, next, exit], theme);
     let nav = super::super::super::board_nav::button;
     nav(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ShowPrev)), IconId::ChevronLeft, prev, false, theme);
     nav(scene, &mut hero.hit_index, &hero.store, node(Hit::Button(TeamButton::ShowNext)), IconId::ChevronRight, next, false, theme);

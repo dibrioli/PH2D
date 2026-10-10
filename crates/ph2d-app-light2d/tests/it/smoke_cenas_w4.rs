@@ -221,24 +221,20 @@ fn a_cena_4_na_placa_as_penumbras_sao_a_geometria() {
 }
 
 /// ⭐⭐⭐ **Cena 3 (W5c):** o que a cena ensina é o que acontece — pelo GABARITO com a série do
-/// rebote: o fundo avermelha junto à parede vermelha e esverdeia junto à verde, cada face da caixa
-/// toma a cor da parede que a olha, e sem o rebote a luz do fundo é branca.
+/// rebote: o fundo avermelha junto à parede vermelha e esverdeia junto à verde, a sala clareia sem
+/// estourar, e sem o rebote a luz do fundo é branca.
 #[test]
 fn a_cena_3_ensina_o_rebote() {
     use ph2d_light2d_ref::{OpcoesDoRebote, Rebote, luz_em};
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 3));
     let cena = cena_de_luz(&w);
-    assert_eq!(
-        cena.oclusores.len(),
-        5,
-        "chão, teto, duas paredes e a caixa"
-    );
+    assert_eq!(cena.oclusores.len(), 4, "chão, teto e as duas paredes");
     assert!(
         cena.oclusores
             .iter()
             .all(|o| o.albedo.iter().any(|&a| a > 0.0)),
-        "as paredes e a caixa refletem: {:?}",
+        "as paredes refletem: {:?}",
         cena.oclusores
     );
     let serie = Rebote::resolver(
@@ -248,30 +244,28 @@ fn a_cena_3_ensina_o_rebote() {
             rebotes: 120,
         },
     );
-    let [sw, sh] = smoke::SALA_DO_REBOTE.map(f64::from);
-    let (x, y) = (0.5 * sw, 0.5 * sh);
-    let perto_vermelha = [-x + 0.3, 0.0];
-    let perto_verde = [x - 0.3, 0.0];
-    let caixa_esquerda = [-0.42, -y + 0.5];
-    let caixa_direita = [0.42, -y + 0.5];
+    let [sw, _] = smoke::SALA_DO_REBOTE.map(f64::from);
+    let x = 0.5 * sw;
+    let (perto_vermelha, perto_verde, meio) = ([-x + 0.3, 0.0], [x - 0.3, 0.0], [0.0, -0.8]);
     let r = |p: [f64; 2]| {
         let l = serie.luz_em(p);
         l[0] / l[1]
     };
     let (rv, rg) = (r(perto_vermelha), r(perto_verde));
-    let (ce, cd) = (r(caixa_esquerda), r(caixa_direita));
+    let (com, sem) = (serie.luz_em(meio)[1], luz_em(&cena, meio)[1]);
     eprintln!(
-        "cena 3: R/G junto à vermelha {rv:.3} · à verde {rg:.3} · caixa esquerda {ce:.3} · direita {cd:.3}"
+        "cena 3: R/G junto à vermelha {rv:.3} · à verde {rg:.3} · o meio {sem:.3} → {com:.3}"
     );
     assert!(
         rv > 1.2 && rg < 1.0 / 1.2,
         "o fundo tinge-se: {rv:.3} · {rg:.3}"
     );
     assert!(
-        ce > 1.1 && cd < 1.0 / 1.1,
-        "as faces da caixa tingem-se: {ce:.3} · {cd:.3}"
+        com > 1.5 * sem,
+        "o rebote clareia a sala: {sem:.3} → {com:.3}"
     );
-    for p in [perto_vermelha, perto_verde, caixa_esquerda, caixa_direita] {
+    assert!(com < 1.0, "a sala não estoura: {com:.3}");
+    for p in [perto_vermelha, perto_verde, meio] {
         let l = luz_em(&cena, p);
         assert!(
             (l[0] - l[1]).abs() <= 1e-9 * l[0],

@@ -481,3 +481,55 @@ fn g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes() {
         100.0 * (max - min) / min
     );
 }
+
+/// ⭐ **Um enxame denso não tem pintas pretas** (W5c, a foto da cena 2): quadradinhos que brilham com
+/// frestas mais estreitas que uma sonda — o interior de cada um (o preenchimento do F3) lê a luz que o
+/// rodeia, nunca zero, mesmo onde as quatro sondas de um texel caem dentro de quadradinhos.
+#[test]
+fn um_enxame_denso_nao_tem_pintas_pretas() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[1];
+    let t = texel as f32;
+    let mut emissores = Vec::new();
+    let mut centros = Vec::new();
+    for j in 0..14 {
+        for i in 0..14 {
+            // 3 texels de lado, frestas de 0,6 texel (mais estreitas que uma sonda).
+            let c = [2.0 + 3.6 * t * i as f32, 2.0 + 3.6 * t * j as f32];
+            let h = 1.5 * t;
+            emissores.push(ph2d_light2d_ecs::Emissor::Poligono {
+                vertices: vec![
+                    [c[0] - h, c[1] - h],
+                    [c[0] + h, c[1] - h],
+                    [c[0] + h, c[1] + h],
+                    [c[0] - h, c[1] + h],
+                ],
+                radiancia: [1.0; 3],
+                alcance_m: f32::INFINITY,
+            });
+            centros.push([f64::from(c[0]), f64::from(c[1])]);
+        }
+    }
+    let cena = CenaDeLuz {
+        emissores,
+        luzes: 1,
+        ..Default::default()
+    };
+    let (flu, _) = rodar(
+        &gpu,
+        com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO)),
+        &cena,
+    );
+    let g = grade(lado, texel);
+    let valores: Vec<f64> = centros
+        .iter()
+        .map(|&p| crate::g9_rebote::luz_na_placa(&flu, &g, p)[0])
+        .collect();
+    let media = valores.iter().sum::<f64>() / valores.len() as f64;
+    let minimo = valores.iter().copied().fold(f64::INFINITY, f64::min);
+    eprintln!("enxame denso: o mínimo {minimo:.4} da média {media:.4}");
+    assert!(
+        minimo > 0.25 * media,
+        "uma pinta preta: {minimo:.4} × {media:.4}"
+    );
+}

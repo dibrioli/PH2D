@@ -185,7 +185,7 @@ fn custo(gpu: &GpuContext) {
     );
 }
 
-/// Os pontos da cena 3: junto à vermelha, à verde, ao chão no meio, e as faces da caixa.
+/// Os pontos da cena 3: junto à vermelha, à verde, ao chão, o meio e junto ao teto.
 fn pontos_da_cena_3() -> [[f64; 2]; 5] {
     let [sw, sh] = smoke::SALA_DO_REBOTE.map(f64::from);
     let (x, y) = (0.5 * sw, 0.5 * sh);
@@ -193,8 +193,8 @@ fn pontos_da_cena_3() -> [[f64; 2]; 5] {
         [-x + 0.3, 0.0],
         [x - 0.3, 0.0],
         [-1.5, -y + 0.15],
-        [-0.45, -y + 0.5],
-        [0.45, -y + 0.5],
+        [0.0, -0.8],
+        [1.5, y - 0.15],
     ]
 }
 

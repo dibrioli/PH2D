@@ -281,8 +281,13 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         f = desempacotar(r_cima[indice_r(hrc.nx, 0u, onde, v, 0u)]).r;
     }
     // Partir de DENTRO de um translúcido conta como entrada (a lei do gabarito): os traços da sonda
-    // começam «já dentro» e não a contam.
-    f *= meio(na_grade(f32(onde), f32(v))).tau;
+    // começam «já dentro» e não a contam. A sonda dentro de um OPACO fica com a luz que a rodeia: a
+    // máscara tira-a da bilinear, mas onde as quatro de um texel caem dentro (um enxame denso) a
+    // bilinear crua lê-a — com zero, pintas pretas (medido na foto da cena 2, W5c).
+    let tau = meio(na_grade(f32(onde), f32(v))).tau;
+    if tau > 0.0 {
+        f *= tau;
+    }
     let t = texel_da_grade(u, v);
     let i = t.y * hrc.grade.x + t.x;
     if hrc.quadrante == 0u {

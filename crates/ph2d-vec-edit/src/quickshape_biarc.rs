@@ -16,7 +16,7 @@ use std::f64::consts::FRAC_PI_2;
 type Params = [f64; 7];
 
 /// O ponto a `s` ao longo de um arco de curvatura `k` que sai de `p` com a direcção `th`.
-fn advance(p: P2, th: f64, k: f64, s: f64) -> P2 {
+pub(crate) fn advance(p: P2, th: f64, k: f64, s: f64) -> P2 {
     if (k * s).abs() < 1e-9 {
         return add(p, mul(unit(th), s));
     }

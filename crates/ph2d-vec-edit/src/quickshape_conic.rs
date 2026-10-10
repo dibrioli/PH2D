@@ -86,7 +86,8 @@ pub(crate) fn fit_ellipse(p: &[P2]) -> Option<Conic> {
     })
 }
 
-/// O vector próprio de `a` que é ELIPSE (`4 v₀ v₂ − v₁² > 0`).
+/// O vector próprio de `a` que é ELIPSE: o de maior `4 v₀ v₂ − v₁²` (normalizado). Se nenhum é
+/// positivo, a cónica é hipérbole e [`conic_to_ellipse`] recusa-a.
 fn ellipse_eigenvector(a: &[[f64; 3]; 3]) -> Option<[f64; 3]> {
     let tr = a[0][0] + a[1][1] + a[2][2];
     let c1 = a[0][0] * a[1][1] - a[0][1] * a[1][0] + a[0][0] * a[2][2] - a[0][2] * a[2][0]
@@ -108,7 +109,7 @@ fn ellipse_eigenvector(a: &[[f64; 3]; 3]) -> Option<[f64; 3]> {
                 .max_by(|u, w| dot3(*u, *u).total_cmp(&dot3(*w, *w)))?;
             let n = dot3(v, v);
             let cond = (4.0 * v[0] * v[2] - v[1] * v[1]) / n;
-            (n > f64::MIN_POSITIVE && cond > 0.0).then_some((cond, v))
+            (n > f64::MIN_POSITIVE).then_some((cond, v))
         })
         .max_by(|x, y| x.0.total_cmp(&y.0))
         .map(|(_, v)| v)

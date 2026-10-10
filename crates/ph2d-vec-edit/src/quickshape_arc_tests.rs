@@ -499,6 +499,9 @@ fn a_biarc_path_is_one_tangent_stroke() {
         (din[0] * dout[1] - din[1] * dout[0]).abs() < 1e-9,
         "alças colineares"
     );
+    // A alça de SAÍDA é a do 2.º arco (o 1.º acaba com ela colada à âncora): sem ela a junção é bico.
+    let q = second.to_path();
+    assert!(dist(j.out_handle, q.verts[0].out_handle) < 1e-12 && dot(dout, dout) > 1.0);
     assert_eq!(p.verts[0].kind, VertexKind::Corner);
     assert_eq!(p.verts[3].kind, VertexKind::Corner);
     let pivot = b.pivot();
@@ -510,4 +513,115 @@ fn a_biarc_path_is_one_tangent_stroke() {
         dist(t[0].pivot(), pivot) < 1e-9
             && dist(t[1].pivot(), t[0].at(t[0].start + t[0].sweep)) < 1e-9
     );
+}
+
+// ── as testemunhas que a prova de mutação pediu (2.ª onda) ──────────────────────────────────────
+
+/// O gancho do dono aguenta a mão TRÉMULA (±4 px): biarco a ½×, 1× e 2×, espelhado ou não — mesmo
+/// quando o círculo falha e o biarco não chega a 5× mais perto (o 1.º termo da escolha).
+#[test]
+fn the_owners_hook_survives_a_trembling_hand() {
+    for k in [0.5, 1.0, 2.0] {
+        for mirror in [1.0, -1.0] {
+            let poly: Vec<P2> = owners_hook()
+                .iter()
+                .map(|&p| [mirror * p[0] * k, p[1] * k])
+                .collect();
+            for seed in 0..4 {
+                let q = recognise(&stroke(&poly, 4.0, seed), 1.0, false);
+                assert!(
+                    matches!(q, Some(QuickShape::Biarc(_))),
+                    "{k}× {mirror} (mão {seed}): {q:?}"
+                );
+            }
+        }
+    }
+}
+
+/// Um arco SIMÉTRICO que RESPIRA (o raio ±4–6 %, 1,5–4 lobos, quatro fases, ±1–2 px) fica CÍRCULO:
+/// o biarco segue o respirar, mas não a 1/5 do resíduo do círculo (`arc_asymmetric_gain`).
+#[test]
+fn a_symmetric_arc_that_breathes_stays_a_circle() {
+    for b in [0.04, 0.06] {
+        for lobes in [1.5, 2.5, 4.0] {
+            for phase in [0.0, 1.6, 3.1, 4.7] {
+                let poly: Vec<P2> = (0..=200)
+                    .map(|i| {
+                        let a = (30.0 + 180.0 * f64::from(i) / 200.0).to_radians();
+                        mul(unit(a), 160.0 * (1.0 + b * (lobes * a + phase).sin()))
+                    })
+                    .collect();
+                for (amp, seed) in [(1.0, 0), (2.0, 1), (4.0, 2)] {
+                    let q = recognise(&stroke(&poly, amp, seed), 1.0, false);
+                    assert!(
+                        matches!(q, Some(QuickShape::Arc(a)) if a.rx == a.ry),
+                        "±{b} {lobes} lobos fase {phase} ±{amp}: {q:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Um «caracol» (meio arco largo e um enrolamento de 300°) vira mais de uma volta: não é biarco.
+#[test]
+fn a_snail_that_turns_more_than_once_is_not_a_biarc() {
+    let mut poly = arc_poly(150.0, 180.0, -180.0);
+    let c = add(poly[poly.len() - 1], [-30.0, 0.0]);
+    poly.extend(
+        arc_poly(30.0, 0.0, -300.0)
+            .iter()
+            .skip(1)
+            .map(|&p| add(p, c)),
+    );
+    for amp in [1.0, 2.0, 4.0] {
+        for seed in 0..4 {
+            let q = recognise(&stroke(&poly, amp, seed), 1.0, false);
+            assert!(
+                !matches!(&q, Some(QuickShape::Biarc(b)) if (b[0].sweep + b[1].sweep).abs() >= TAU),
+                "±{amp} (mão {seed}): {q:?}"
+            );
+        }
+    }
+}
+
+/// Um «taco» (recta de 200 px e uma curva de 120°) nunca vira um biarco com INFLEXÃO (curvaturas de
+/// sinais opostos: um S); e um Π de cantos arredondados não vira biarco (o resíduo dele passa a régua).
+#[test]
+fn a_hockey_stick_never_bends_both_ways_and_a_rounded_gate_is_not_a_biarc() {
+    let mut taco: Vec<P2> = vec![[-200.0, 60.0], [0.0, 60.0]];
+    taco.extend(arc_poly(60.0, 90.0, -120.0).iter().skip(1));
+    let mut gate = vec![[0.0, 0.0]];
+    let pi: [P2; 4] = [[0.0, 0.0], [0.0, 200.0], [300.0, 200.0], [300.0, 0.0]];
+    for w in pi.windows(3) {
+        let (a, v, c) = (w[0], w[1], w[2]);
+        let (p, q) = (add(v, mul(sub(a, v), 0.3)), add(v, mul(sub(c, v), 0.3)));
+        for k in 0..=12 {
+            let t = f64::from(k) / 12.0;
+            let (m1, m2) = (add(p, mul(sub(v, p), t)), add(v, mul(sub(q, v), t)));
+            gate.push(add(m1, mul(sub(m2, m1), t)));
+        }
+    }
+    gate.push(pi[3]);
+    for amp in [1.0, 2.0, 4.0] {
+        for seed in 0..4 {
+            let q = recognise(&stroke(&taco, amp, seed), 1.0, false);
+            assert!(
+                !matches!(&q, Some(QuickShape::Biarc(b)) if b[0].sweep * b[1].sweep < 0.0),
+                "taco ±{amp} (mão {seed}): {q:?}"
+            );
+            let q = recognise(&stroke(&gate, amp, seed), 1.0, false);
+            assert!(
+                !matches!(q, Some(QuickShape::Biarc(_))),
+                "Π ±{amp} (mão {seed}): {q:?}"
+            );
+        }
+    }
+}
+
+/// O avanço ao longo de um arco de curvatura ZERO é a recta (a fórmula do arco divide por `k`).
+#[test]
+fn advancing_with_zero_curvature_is_a_straight_line() {
+    let p = crate::quickshape_biarc::advance([1.0, 2.0], FRAC_PI_2, 0.0, 3.0);
+    assert!(dist(p, [1.0, 5.0]) < 1e-12, "{p:?}");
 }

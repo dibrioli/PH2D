@@ -99,6 +99,12 @@ panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # <ph2d-panel-sync:features:end>
 
 [dev-dependencies]
+# ⭐ Os censos daqui medem o APP — o `default` do shell, que liga os 25 painéis. Os quatro de baixo
+# não estão no `default` desta crate, e sem esta aresta `cargo test -p` lia 77 falhas que o
+# `--workspace` (unificação de features) não via. Aresta para si própria: só os testes a sentem.
+ph2d-panel-registry-init = { path = ".", features = [
+    "panel-flip", "panel-flip-frames", "panel-painter-layers", "panel-wet-tuning",
+] }
 # ⭐ Só para a fixtura `o_painter_armado`, que precisa do TIPO do instantâneo de pincel e do
 #    enum do padrão. ⛔ Sem eles a fixtura teria de escrever `11` à mão para dizer «Wood».
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }

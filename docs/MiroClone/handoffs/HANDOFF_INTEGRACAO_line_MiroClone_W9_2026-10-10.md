@@ -16,7 +16,7 @@
 | base (merge-base) | `2a925859d` — **o `main` não andou** (`git rev-parse main` = `2a925859d`) ⇒ `--ff-only` se ninguém aterrar antes |
 | commits da W9 | `cf569d02c` (núcleo) · `c56682526` (oráculo) · `c863826a8` (cena 11) · `877aae148` (curas do portão e da auditoria) · `2de1cdcff` (mutação) + este handoff; o estudo e a decisão do dono vieram antes (`ac95616c2`, `c5a83477f`, `3b4ec7784`) |
 | diff da W9 | `git diff --shortstat 3b4ec7784..HEAD`: 69 ficheiros, +14 147 / −629 (código em `crates/`: 46 ficheiros, +3 436 / −448; o resto são as saídas do oráculo re-corridas, a foto e o ficheiro do dono) |
-| smoke | **por fazer pelo dono** (cena 11, §8) |
+| smoke | **OK do dono (10/10)** — cena 11 e, depois da cura do traço à mão (§8-bis), a seta curva à mão |
 
 O que a W9 trouxe ao Quadro, pela ordem do estudo §5: **M1** a seta pára ANTES da forma (`5 + traço da
 forma/2`, como o Excalidraw) em TODO o quadro — decisão do dono 10/10 —, com a âncora nova `Orbit` (a lei
@@ -222,3 +222,9 @@ Limpa: nenhum processo desta linha (`pgrep -af 'ph2d|cargo|rustc'`); quem segura
 ```text
     Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
+
+## 12. Smoke do dono — OK (10/10)
+
+1.º smoke: *«Funcionou!»*, com o defeito do traço à mão numa seta curva (§8-bis, da W4), curado em
+`30af8c85a`. 2.º smoke: *«Smoke OK. Podemos seguir.»*
+

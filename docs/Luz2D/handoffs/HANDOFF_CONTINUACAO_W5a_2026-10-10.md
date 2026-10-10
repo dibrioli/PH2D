@@ -129,3 +129,14 @@ As cenas 1 e 4 (`PH2D_LIGHT2D_SMOKE=1` · `=4`) em Low · Medium · High (Settin
 desligado): a sombra nítida sai do CANTO da parede (antes começava abaixo dele, mais no Low), sem degraus;
 a face acesa da parede sem a linha escura. O F2 (objeto de 5 cm) não tem cena de smoke — a régua é o gate
 `o_oclusor_fino`; para o dono ver, desenhar um retângulo fino com «Bloqueia luz» perto da lâmpada da cena 1.
+
+## Smoke do dono (10/10): «Smoke OK. No Inspector o custo é igual para qualquer qualidade»
+
+**Mecanismo:** o custo de placa que o Inspector mostra só se lia para o GOVERNADOR — com o «Automatic»
+desligado (como manda o passo do smoke) o número ficava congelado no último nível automático. **Cura**
+(`b8bf470c6`, `fb3f3532d`): `LuzDoQuadro::gravar` lê os carimbos sem esperar sempre que há preferência do
+editor (as sondas, sem ela, continuam com a leitura bloqueante só delas); só o governador depende do
+Automático; ao recriar a grade (outro nível ou janela) o custo da anterior esquece-se. Gate vermelho-primeiro
+`com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido` (1080p: Low 2,3 · High 37,7 ms, sob carga) — as
+duas metades sangram na mutação (sem o filtro antigo: «nunca foi lido»; sem o esquecer: «ainda mostra o custo
+do anterior»). Portão: clippy · deny-check · família 40 + 8 ✓.

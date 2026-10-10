@@ -344,3 +344,49 @@ fn another_persons_cursor_paints_their_name_beside_it() {
     t.hero.documents.live_view_mut().board = None;
     assert!(!runs(&t.scene()).iter().any(near), "pintou fora da sala");
 }
+
+/// ADR-0181 §8 — o botão da firewall: aparece antes de abrir e na sala do anfitrião quando a família
+/// diz que ela fecha esta rede, pede pela costura REAL, some enquanto a senha é pedida, e nunca ao
+/// convidado.
+#[test]
+fn the_firewall_buttons_show_when_the_family_says_and_ask_it() {
+    use crate::documents::live::LiveFirewall;
+    let allow = live_node(Hit::Button(LiveButton::FirewallAllow));
+    let remove = live_node(Hit::Button(LiveButton::FirewallRemove));
+    let mut t = T::new();
+    t.open_live();
+    t.paint();
+    assert!(t.find(allow).is_none() && t.find(remove).is_none(), "sem firewall, sem botão");
+    let set = |t: &mut T, can_allow, can_remove, busy| {
+        t.hero.documents.live_view_mut().firewall = LiveFirewall {
+            can_allow,
+            can_remove,
+            busy,
+        };
+        t.paint();
+    };
+    set(&mut t, true, false, false);
+    assert!(t.find(remove).is_none());
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::FirewallAllow));
+    assert_eq!(t.asked(), vec![LiveRequest::FirewallAllow]);
+    set(&mut t, false, true, false);
+    assert!(t.find(allow).is_none());
+    t.live_click(Hit::Button(LiveButton::FirewallRemove));
+    assert_eq!(t.asked(), vec![LiveRequest::FirewallRemove]);
+    set(&mut t, true, true, true);
+    assert!(
+        t.find(allow).is_none() && t.find(remove).is_none(),
+        "à espera da senha não se pede outra vez"
+    );
+    set(&mut t, true, false, false);
+    t.room(LiveRole::Hosting {
+        code: "ABCDEF".into(),
+        addrs: vec!["192.168.0.7:47320".into()],
+    });
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::FirewallAllow));
+    assert_eq!(t.asked(), vec![LiveRequest::FirewallAllow], "na sala do anfitrião");
+    t.room(LiveRole::Guest { host: "Ana".into() });
+    assert!(t.find(allow).is_none(), "o convidado não abre a firewall");
+}

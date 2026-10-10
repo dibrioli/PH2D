@@ -14,10 +14,9 @@ use std::time::{Duration, Instant};
 
 use ph2d_board_model::BoardId;
 use ph2d_board_net as net;
+use ph2d_board_net::firewall::Change;
 use ph2d_board_sync::{self as sync, Event, Msg, Presence, To};
-use ph2d_editor_core::documents::live::{
-    LiveFound, LiveOther, LivePeer, LiveRequest, LiveRole,
-};
+use ph2d_editor_core::documents::live::{LiveFound, LiveOther, LivePeer, LiveRequest, LiveRole};
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_editor_core::screens::hero::document_tabs;
 use ph2d_i18n::{tr, tr_with};
@@ -52,10 +51,14 @@ enum Live {
     },
 }
 
+#[path = "live_firewall.rs"]
+mod firewall;
+
 #[derive(Default)]
 struct State {
     live: Option<Live>,
     discovery: Option<(net::Discovery, Instant)>,
+    fw: firewall::Fw,
 }
 
 thread_local! {
@@ -87,6 +90,7 @@ pub fn service(hero: &mut HeroScreen) {
             request(st, hero, req);
         }
         discover(st, hero);
+        st.fw.service(hero);
         match st.live.take() {
             Some(Live::Host { net, s, board }) => st.live = host_tick(hero, net, s, board, now),
             Some(g @ Live::Guest { .. }) => st.live = guest_tick(hero, g, now),
@@ -108,7 +112,12 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                 return;
             };
             let me = hero.documents.author().to_owned();
-            let name = hero.documents.boards().get(id).map(|b| b.name.clone()).unwrap_or_default();
+            let name = hero
+                .documents
+                .boards()
+                .get(id)
+                .map(|b| b.name.clone())
+                .unwrap_or_default();
             let ann = net::Announce {
                 board: name,
                 host: me.clone(),
@@ -116,7 +125,10 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             let n = match net::Host::open(&ann, waker()) {
                 Ok(n) => n,
                 Err(e) => {
-                    hero.documents.tell(tr_with("board.live.unreachable", &[("error", &e.to_string())]));
+                    hero.documents.tell(tr_with(
+                        "board.live.unreachable",
+                        &[("error", &e.to_string())],
+                    ));
                     return;
                 }
             };
@@ -132,18 +144,25 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                 addrs,
             };
             v.board = Some(id);
-            hero.documents.tell(tr_with("board.live.opened", &[("code", &code)]));
-            if firewall_on() {
-                hero.documents
-                    .tell(tr_with("board.live.firewall", &[("port", &n.port().to_string())]));
-            }
-            st.live = Some(Live::Host { net: n, s, board: id });
+            hero.documents
+                .tell(tr_with("board.live.opened", &[("code", &code)]));
+            st.fw.probe(Some(n.port()));
+            st.live = Some(Live::Host {
+                net: n,
+                s,
+                board: id,
+            });
         }
         LiveRequest::Join { addr, code } => {
             if st.live.is_some() {
                 return;
             }
-            let found = hero.documents.live_view().found.first().map(|f| f.addr.clone());
+            let found = hero
+                .documents
+                .live_view()
+                .found
+                .first()
+                .map(|f| f.addr.clone());
             let Some(addr) = addr.or(found).and_then(|a| parse_addr(&a)) else {
                 hero.documents.tell(tr("board.live.unreachable").to_owned());
                 return;
@@ -161,7 +180,10 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             });
             hero.documents.live_view_mut().role = LiveRole::Joining;
         }
+        LiveRequest::FirewallAllow => st.fw.request(hero, Change::Allow),
+        LiveRequest::FirewallRemove => st.fw.request(hero, Change::Remove),
         LiveRequest::Discover => {
+            st.fw.probe(None);
             match &mut st.discovery {
                 Some((_, asked)) => *asked = Instant::now(),
                 None => {
@@ -182,7 +204,12 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
                     send_host(net, s.summon(cam));
                 }
             }
-            Some(Live::Guest { net: Some(n), s, board: Some(board), .. }) => {
+            Some(Live::Guest {
+                net: Some(n),
+                s,
+                board: Some(board),
+                ..
+            }) => {
                 if let Some(b) = hero.documents.boards().get(*board) {
                     let _ = n.send(s.summon(b.camera).encode());
                 }
@@ -204,9 +231,11 @@ fn dial(addr: SocketAddr, code: &str) -> mpsc::Receiver<Result<net::Guest, net::
 
 fn parse_addr(s: &str) -> Option<SocketAddr> {
     let s = s.trim();
-    s.parse::<SocketAddr>()
-        .ok()
-        .or_else(|| s.parse::<IpAddr>().ok().map(|ip| SocketAddr::new(ip, net::PORT)))
+    s.parse::<SocketAddr>().ok().or_else(|| {
+        s.parse::<IpAddr>()
+            .ok()
+            .map(|ip| SocketAddr::new(ip, net::PORT))
+    })
 }
 
 fn discover(st: &mut State, hero: &mut HeroScreen) {
@@ -391,7 +420,8 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             return None;
         }
         lost = Some(Instant::now());
-        hero.documents.tell(tr("board.live.reconnecting").to_owned());
+        hero.documents
+            .tell(tr("board.live.reconnecting").to_owned());
     }
     // Caída: tenta voltar de tempos a tempos, até desistir.
     if let Some(t) = lost
@@ -429,7 +459,11 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                 me: Some(p.peer) == me,
             })
             .collect();
-        let host = peers.iter().find(|p| p.color == 0).map(|p| p.name.clone()).unwrap_or_default();
+        let host = peers
+            .iter()
+            .find(|p| p.color == 0)
+            .map(|p| p.name.clone())
+            .unwrap_or_default();
         hero.documents.live_view_mut().role = LiveRole::Guest { host };
         view(hero, id, &peers, |p| s.seen(p), now);
     }
@@ -447,10 +481,13 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
 
 fn join_error(e: &net::JoinError) -> String {
     match e {
-        net::JoinError::WrongCode | net::JoinError::InvalidCode => tr("board.live.wrong_code").to_owned(),
-        net::JoinError::Locked(d) => {
-            tr_with("board.live.locked", &[("s", &d.as_secs().max(1).to_string())])
+        net::JoinError::WrongCode | net::JoinError::InvalidCode => {
+            tr("board.live.wrong_code").to_owned()
         }
+        net::JoinError::Locked(d) => tr_with(
+            "board.live.locked",
+            &[("s", &d.as_secs().max(1).to_string())],
+        ),
         net::JoinError::Incompatible => tr("board.live.refused").to_owned(),
         _ => tr("board.live.unreachable").to_owned(),
     }
@@ -458,17 +495,28 @@ fn join_error(e: &net::JoinError) -> String {
 
 /// Um aviso da sessão, e «trazer todos».
 fn event(hero: &mut HeroScreen, board: BoardId, e: Event, names: &[(u64, String)]) {
-    let name = |p: u64| names.iter().find(|(q, _)| *q == p).map(|(_, n)| n.clone()).unwrap_or_default();
+    let name = |p: u64| {
+        names
+            .iter()
+            .find(|(q, _)| *q == p)
+            .map(|(_, n)| n.clone())
+            .unwrap_or_default()
+    };
     match e {
-        Event::Joined(p) => hero.documents.tell(tr_with("board.live.joined", &[("name", &p.name)])),
-        Event::Left(p) => hero.documents.tell(tr_with("board.live.left", &[("name", &name(p))])),
+        Event::Joined(p) => hero
+            .documents
+            .tell(tr_with("board.live.joined", &[("name", &p.name)])),
+        Event::Left(p) => hero
+            .documents
+            .tell(tr_with("board.live.left", &[("name", &name(p))])),
         Event::Summoned { from, camera } => {
             if let Some(b) = hero.documents.board_mut(board) {
                 b.camera = camera;
             }
             hero.documents.activate(Some(board));
             hero.documents.live_view_mut().following = None;
-            hero.documents.tell(tr_with("board.live.summoned", &[("name", &name(from))]));
+            hero.documents
+                .tell(tr_with("board.live.summoned", &[("name", &name(from))]));
         }
         Event::Welcomed | Event::Refused { .. } | Event::Arrived(_) => {}
     }
@@ -527,13 +575,6 @@ fn stop(hero: &mut HeroScreen) {
     if let Some(b) = board.and_then(|id| hero.documents.board_mut(id)) {
         b.set_session(None);
     }
-}
-
-/// A firewall do sistema (ufw) está ligada? Então quem está noutro computador não chega cá sem a
-/// porta aberta — o PH2D nunca a abre sozinho (ADR-0181 §8).
-fn firewall_on() -> bool {
-    std::fs::read_to_string("/etc/ufw/ufw.conf")
-        .is_ok_and(|s| s.lines().any(|l| l.trim() == "ENABLED=yes"))
 }
 
 /// Para os testes da família: a sessão desta thread acaba.

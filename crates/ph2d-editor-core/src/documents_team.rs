@@ -214,6 +214,12 @@ impl Documents {
         self.live.team.message = Some((text, Instant::now()));
     }
 
+    /// A última frase dita (a que o topo do quadro pinta).
+    #[must_use]
+    pub fn told(&self) -> Option<&str> {
+        self.live.team.message.as_ref().map(|(t, _)| t.as_str())
+    }
+
     /// K10 — o nome mudou na interface: devolve-o UMA vez para a família o gravar.
     pub fn take_author_change(&mut self) -> Option<String> {
         std::mem::take(&mut self.live.team.author_dirty).then(|| self.live.team.author.clone())

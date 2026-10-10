@@ -7,7 +7,7 @@
 //!   tudo (ChaCha20-Poly1305, uma chave e um contador por direcção): sem o código não se lê nem se
 //!   escreve, e não se adivinha fora de linha.
 //! - **Só a rede local**: porta fixa ([`PORT`]), origens não-privadas recusadas ([`is_lan`]); a
-//!   firewall nunca é tocada.
+//!   firewall só é tocada pelo botão, com a senha do sistema, e só para a sub-rede local ([`firewall`]).
 //! - **Threads std**, sem async: uma thread de leitura por ligação, escrita por um canal. Tudo pára no
 //!   `Drop`. A UI acorda pelo [`Waker`], chamado da thread de rede quando chega algo.
 //!
@@ -15,6 +15,7 @@
 
 mod code;
 mod discover;
+pub mod firewall;
 mod guest;
 mod handshake;
 mod host;
@@ -23,6 +24,8 @@ mod wire;
 
 #[cfg(test)]
 mod code_tests;
+#[cfg(test)]
+mod firewall_tests;
 #[cfg(test)]
 mod lan_tests;
 #[cfg(test)]
@@ -33,9 +36,10 @@ use std::sync::Arc;
 
 pub use code::{ALPHABET, CODE_LEN, LOCKOUT, MAX_FAILS};
 pub use discover::{Discovery, Found, SERVICE, discover};
+pub use firewall::Subnet;
 pub use guest::Guest;
 pub use host::{Host, HostConfig, PORT, PORT_TRIES};
-pub use lan::{is_lan, lan_addrs};
+pub use lan::{is_lan, lan_addrs, lan_subnets};
 pub use wire::MAX_FRAME;
 
 /// Uma ligação no anfitrião (os do convidado vêm todos com `0`: só há o anfitrião).

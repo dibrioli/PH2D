@@ -19,7 +19,12 @@ fn rect(b: &mut Board, x: f64) {
         style: Style::new(Some(ink), None, ink),
         text: RichText::plain("x"),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, [x, 0.0, 10.0, 10.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        shape,
+        [x, 0.0, 10.0, 10.0],
+    );
     let _ = BoardOp::Put(el).apply(&mut b.doc);
 }
 
@@ -65,12 +70,21 @@ fn a_guest_joins_by_code_and_both_see_each_others_work() {
             addr: Some(format!("127.0.0.1:{port}")),
             code: code.to_lowercase(),
         });
-        assert!(until(&mut g, 10, |g| shapes(g) == 1), "não recebeu o quadro");
-        assert!(matches!(g.documents.live_view().role, LiveRole::Guest { .. }));
+        assert!(
+            until(&mut g, 10, |g| shapes(g) == 1),
+            "não recebeu o quadro"
+        );
+        assert!(matches!(
+            g.documents.live_view().role,
+            LiveRole::Guest { .. }
+        ));
         let b = g.documents.live_view().board.unwrap();
         rect(g.documents.board_mut(b).unwrap(), 50.0);
         let _ = tx.send("criei");
-        assert!(until(&mut g, 10, |g| shapes(g) == 3), "não viu a forma do anfitrião");
+        assert!(
+            until(&mut g, 10, |g| shapes(g) == 3),
+            "não viu a forma do anfitrião"
+        );
         assert!(
             until(&mut g, 10, |g| g
                 .documents
@@ -84,7 +98,11 @@ fn a_guest_joins_by_code_and_both_see_each_others_work() {
         service(&mut g);
         assert_eq!(g.documents.live_view().role, LiveRole::Off);
         assert_eq!(shapes(&g), 0, "a vista da sala fechou");
-        assert_eq!(g.documents.boards().get(b).unwrap().doc.live_len(), 3, "a cópia fica");
+        assert_eq!(
+            g.documents.boards().get(b).unwrap().doc.live_len(),
+            3,
+            "a cópia fica"
+        );
     });
     assert!(
         until(&mut host, 10, |h| h.documents.live_view().peers.len() == 2),
@@ -122,7 +140,15 @@ fn a_wrong_code_is_said_and_nothing_opens() {
     let port = addrs[0].parse::<SocketAddr>().unwrap().port();
     let wrong: String = code
         .chars()
-        .map(|c| if c == 'A' { 'B' } else if c == '-' { '-' } else { 'A' })
+        .map(|c| {
+            if c == 'A' {
+                'B'
+            } else if c == '-' {
+                '-'
+            } else {
+                'A'
+            }
+        })
         .collect();
     let guest = std::thread::spawn(move || {
         let mut g = hero("Bia");
@@ -130,7 +156,9 @@ fn a_wrong_code_is_said_and_nothing_opens() {
             addr: Some(format!("127.0.0.1:{port}")),
             code: wrong,
         });
-        until(&mut g, 10, |g| g.documents.live_view().role == LiveRole::Off && shapes(g) == 0);
+        until(&mut g, 10, |g| {
+            g.documents.live_view().role == LiveRole::Off && shapes(g) == 0
+        });
         g.documents.live_view().role.clone()
     });
     let end = Instant::now() + Duration::from_secs(12);
@@ -181,7 +209,14 @@ fn measure_drag_latency_with_2_4_and_8_people() {
                 }
                 let b = h.documents.live_view().board.unwrap();
                 let x_of = |h: &HeroScreen| {
-                    h.documents.boards().get(b).unwrap().doc.live().next().map_or(0.0, |e| e.x)
+                    h.documents
+                        .boards()
+                        .get(b)
+                        .unwrap()
+                        .doc
+                        .live()
+                        .next()
+                        .map_or(0.0, |e| e.x)
                 };
                 let mut last = 0.0;
                 let end = Instant::now() + Duration::from_secs(4);
@@ -219,7 +254,15 @@ fn measure_drag_latency_with_2_4_and_8_people() {
             }
             service(&mut host);
             // O anfitrião também observa (com 2 pessoas é o único).
-            let x = host.documents.boards().get(id).unwrap().doc.live().next().map_or(0.0, |e| e.x);
+            let x = host
+                .documents
+                .boards()
+                .get(id)
+                .unwrap()
+                .doc
+                .live()
+                .next()
+                .map_or(0.0, |e| e.x);
             if x > last {
                 let t = Instant::now();
                 if let Some(s) = sent.lock().unwrap().get(x as usize - 1) {

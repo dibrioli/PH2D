@@ -59,7 +59,13 @@ alheia (c11), ressuscita (c12) e um cliente prende-se numa reordenação (c17).
    PH2D nunca abre a firewall SEM o artista: no Linux (onde o sistema não pergunta, só bloqueia) o painel
    Live mostra um botão que libera a porta fixa + o mDNS SÓ para a sub-rede local, com a senha do sistema
    (polkit), e outro que desfaz; no Windows e no macOS o próprio sistema pergunta na 1.ª escuta (decisão
-   do dono, 10/10). Os números (o custo de cada dependência no build, a fiabilidade da descoberta, a latência)
+   do dono, 10/10). Construído (`ph2d_board_net::firewall` decide, `ph2d-app-board::live` corre): ufw e
+   firewalld; a FAIXA inteira das portas que o anfitrião pode tomar (TCP 47320–47329, duas janelas na
+   mesma máquina) + UDP 5353; UMA senha (`pkexec /bin/sh -c` com as regras em `&&`); o botão aparece
+   antes de abrir e na sala do anfitrião (a descoberta de quem entra também precisa dele), nunca ao
+   convidado; o que se liberou lembra-se em `~/.ph2d/live_firewall.txt` (a lista de regras só o root a
+   lê ⇒ uma regra apagada à mão continua a «parecer» liberada). Outra firewall ligada (nftables/iptables)
+   ou sem `pkexec` ⇒ sem botão, a frase com a porta. Os números (o custo de cada dependência no build, a fiabilidade da descoberta, a latência)
    medem-se ao entrar cada uma e escrevem-se neste ADR, §Medições.
 
 ## Alternativas recusadas (preço medido em `08_ao_vivo.md` §1)

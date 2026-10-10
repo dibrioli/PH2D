@@ -244,10 +244,41 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
         v
     };
     let button = |b, k: &str, main| Row::Button(b, tr(k).to_owned(), main);
+    // A firewall (ADR-0181 §8): antes de abrir e enquanto se é anfitrião — quem entra precisa dela
+    // aberta deste lado, e a descoberta também.
+    let firewall = || {
+        let f = lv.firewall;
+        let mut v = Vec::new();
+        if f.busy {
+            v.push(text("board.live.fw_busy", TypeToken::Xs, ColorToken::Text2));
+            return v;
+        }
+        if f.can_allow {
+            v.push(text(
+                "board.live.fw_blocked",
+                TypeToken::Xs,
+                ColorToken::Text2,
+            ));
+            v.push(button(
+                LiveButton::FirewallAllow,
+                "board.live.fw_allow",
+                false,
+            ));
+        }
+        if f.can_remove {
+            v.push(button(
+                LiveButton::FirewallRemove,
+                "board.live.fw_remove",
+                false,
+            ));
+        }
+        v
+    };
     let mut out = Vec::new();
     match &lv.role {
         LiveRole::Off => {
             out.push(button(LiveButton::Open, "board.live.open", true));
+            out.extend(firewall());
             out.push(text(
                 "board.live.join_title",
                 TypeToken::Sm,
@@ -291,6 +322,7 @@ fn rows(hero: &HeroScreen) -> Vec<Row> {
             for a in addrs {
                 out.push(Row::Text(a.clone(), TypeToken::Xs, ColorToken::Text3));
             }
+            out.extend(firewall());
             out.extend(people());
             out.push(button(LiveButton::Summon, "board.live.summon", false));
             out.push(button(LiveButton::End, "board.live.end", false));

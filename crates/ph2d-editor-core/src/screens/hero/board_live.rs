@@ -50,9 +50,14 @@ pub enum LiveButton {
     Unfollow,
     /// O corpo do selo (toma o clique).
     Badge,
+    /// «Permitir na rede de casa» (a firewall; pede a senha do sistema).
+    FirewallAllow,
+    /// «Remover a permissão».
+    FirewallRemove,
 }
 
-const ALL: [LiveButton; 10] = [
+/// ⛔ Só se ACRESCENTA no fim: o id de um botão é a posição dele aqui.
+const ALL: [LiveButton; 12] = [
     LiveButton::Close,
     LiveButton::Surface,
     LiveButton::Open,
@@ -63,6 +68,8 @@ const ALL: [LiveButton; 10] = [
     LiveButton::Leave,
     LiveButton::Unfollow,
     LiveButton::Badge,
+    LiveButton::FirewallAllow,
+    LiveButton::FirewallRemove,
 ];
 
 /// O que um id derivado é.
@@ -118,6 +125,8 @@ fn tooltip_key(b: LiveButton) -> &'static str {
         LiveButton::End => "board.live.end",
         LiveButton::Leave => "board.live.leave",
         LiveButton::Unfollow => "board.live.unfollow_tip",
+        LiveButton::FirewallAllow => "board.live.fw_allow_tip",
+        LiveButton::FirewallRemove => "board.live.fw_remove_tip",
     }
 }
 
@@ -360,6 +369,8 @@ fn button(hero: &mut HeroScreen, b: LiveButton) {
         LiveButton::Cancel | LiveButton::End | LiveButton::Leave => ask(hero, LiveRequest::Leave),
         LiveButton::Summon => ask(hero, LiveRequest::Summon),
         LiveButton::Unfollow => unfollow(hero),
+        LiveButton::FirewallAllow => ask(hero, LiveRequest::FirewallAllow),
+        LiveButton::FirewallRemove => ask(hero, LiveRequest::FirewallRemove),
         LiveButton::Surface | LiveButton::Badge => {}
     }
 }

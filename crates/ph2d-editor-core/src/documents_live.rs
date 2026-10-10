@@ -19,6 +19,10 @@ pub enum LiveRequest {
     Leave,
     /// «Trazer todos» para a minha vista.
     Summon,
+    /// Liberar as portas do quadro ao vivo na firewall, só para a rede de casa (pede a senha).
+    FirewallAllow,
+    /// Desfazer o que o PH2D liberou.
+    FirewallRemove,
 }
 
 /// Em que pé está esta pessoa.
@@ -62,6 +66,17 @@ pub struct LiveOther {
     pub selection: Vec<ElementId>,
 }
 
+/// A firewall desta máquina, como a família a leu (ADR-0181 §8).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LiveFirewall {
+    /// Uma firewall que o PH2D sabe mudar está a bloquear esta rede: o botão «Permitir».
+    pub can_allow: bool,
+    /// O PH2D liberou-a antes: o botão «Remover».
+    pub can_remove: bool,
+    /// À espera da senha do sistema (ou do comando).
+    pub busy: bool,
+}
+
 /// O estado partilhado entre o ecrã e a família.
 #[derive(Clone, Debug, Default)]
 pub struct LiveView {
@@ -75,6 +90,7 @@ pub struct LiveView {
     pub following: Option<u64>,
     /// Onde está o MEU rato no mundo do quadro da sala (o ecrã escreve-o).
     pub my_cursor: Option<[f64; 2]>,
+    pub firewall: LiveFirewall,
     requests: Vec<LiveRequest>,
     /// O que só o ecrã sabe (o painel aberto, o relógio da procura, o que se pintou onde).
     pub(crate) panel: LivePanel,

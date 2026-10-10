@@ -515,11 +515,13 @@ fn um_enxame_denso_nao_tem_pintas_pretas() {
         luzes: 1,
         ..Default::default()
     };
-    let (flu, _) = rodar(
-        &gpu,
-        com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO)),
-        &cena,
-    );
+    // A captura FINA dos opacos do produto (2× no Alto): na fresta ela diz «fora» e as quatro sondas
+    // grossas dizem «dentro» — o caso que a bilinear crua lia.
+    let cfg = Config {
+        captura: 2,
+        ..com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO))
+    };
+    let (flu, _) = rodar(&gpu, cfg, &cena);
     let g = grade(lado, texel);
     let valores: Vec<f64> = centros
         .iter()
@@ -528,8 +530,9 @@ fn um_enxame_denso_nao_tem_pintas_pretas() {
     let media = valores.iter().sum::<f64>() / valores.len() as f64;
     let minimo = valores.iter().copied().fold(f64::INFINITY, f64::min);
     eprintln!("enxame denso: o mínimo {minimo:.4} da média {media:.4}");
+    // Medido (W5c): 0,40 da média com a cura, 0,21 com a sonda opaca a zero.
     assert!(
-        minimo > 0.25 * media,
+        minimo > 0.33 * media,
         "uma pinta preta: {minimo:.4} × {media:.4}"
     );
 }

@@ -47,6 +47,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "ecs.signal_verb.destroy" => "Destroy",
         "ecs.signal_verb.heal" => "Heal",
         "ecs.signal_verb.hide" => "Hide",
+        "ecs.signal_verb.play_clip" => "Play Clip",
         "ecs.signal_verb.play_sound" => "Play Sound",
         "ecs.signal_verb.restart_run" => "Restart Run",
         "ecs.signal_verb.show" => "Show",

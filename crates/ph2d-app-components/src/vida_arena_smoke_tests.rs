@@ -128,7 +128,7 @@ impl Jogo {
         let mut recomecar = false;
         if !efeitos.is_empty() {
             let mut mudo = |_: &mut SimWorld, _: Som, _: Entity| false;
-            let r = apply(&mut self.sim, &efeitos, &mut self.drive, &mut mudo);
+            let r = apply(&mut self.sim, &efeitos, 0.0, &mut self.drive, &mut mudo);
             for (alvo, p) in r.pedidos_de_vida {
                 self.ponte.pede_vida(alvo, p);
             }

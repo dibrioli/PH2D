@@ -174,6 +174,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.actions.target_empty_this_object" => "target (empty = this object)",
         "panel.inspector.actions.timer_name_empty_all" => "timer name (empty = all)",
         "panel.inspector.actions.object_name_empty_own" => "object name (empty = its own target)",
+        "panel.inspector.actions.clip_name" => "clip name in the target's Animation",
         "panel.inspector.actions.count_empty_one" => "amount to add (empty = 1)",
         "panel.inspector.actions.amount_of_life" => "amount (e.g. 10)",
         "panel.inspector.actions.this_action_never_runs_it" => {

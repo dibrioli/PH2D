@@ -249,6 +249,8 @@ fn so_estes_verbos_leem_o_argumento() {
             | SignalVerb::Heal
             // …e QUEM perseguir (plano 30, W6). ⚠️ O `Stop` não lê nada.
             | SignalVerb::StartNavigation
+            // …e QUE clipe tocar (ObjectsAndComponents onda 4, item 1).
+            | SignalVerb::PlayClip
         );
         assert_eq!(
             v.uses_arg(),
@@ -271,6 +273,7 @@ fn cada_verbo_diz_o_que_o_argumento_e() {
             SignalVerb::AddToCounter => ArgKind::Count,
             SignalVerb::Damage | SignalVerb::Heal => ArgKind::Amount,
             SignalVerb::StartNavigation => ArgKind::ObjectName,
+            SignalVerb::PlayClip => ArgKind::ClipName,
             _ => ArgKind::None,
         };
         assert_eq!(v.arg_kind(), esperado, "{}", v.label());

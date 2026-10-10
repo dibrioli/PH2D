@@ -71,7 +71,7 @@ fn corre(sim: &mut SimWorld, quadros: u32) {
         if !efeitos.is_empty() {
             // ⚠️ **O som INJECTADO**, desde que a ponte desceu para a família: este gate mede a
             // CADEIA do contador, e um fecho mudo é o que ela sempre significou.
-            signal_actions::apply(sim, &efeitos, &mut drive, &mut |_, _, _| false);
+            signal_actions::apply(sim, &efeitos, 0.0, &mut drive, &mut |_, _, _| false);
         }
     }
 }

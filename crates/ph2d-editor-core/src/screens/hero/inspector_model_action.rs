@@ -65,6 +65,8 @@ pub enum ActionArgHint {
     Amount,
     /// O nome de um objecto (vazio = o alvo que o componente já tem).
     ObjectName,
+    /// O nome de um clipe da Animação do alvo (vazio = inerte).
+    ClipName,
 }
 
 /// Uma linha da tabela, como o Inspector a lê.

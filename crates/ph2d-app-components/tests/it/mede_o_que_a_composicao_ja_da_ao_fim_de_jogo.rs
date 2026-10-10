@@ -91,7 +91,7 @@ fn mede_o_que_a_composicao_ja_da_ao_fim_de_jogo() {
         .collect();
     let mut drive = PreviewDrive::default();
     let mut mudo = |_: &mut SimWorld, _: Som, _: ph2d_ecs::Entity| false;
-    let relatorio = apply(&mut sim, &efeitos, &mut drive, &mut mudo);
+    let relatorio = apply(&mut sim, &efeitos, 0.0, &mut drive, &mut mudo);
     let vidas = sim
         .world()
         .get::<CounterRuntime>(heroi)

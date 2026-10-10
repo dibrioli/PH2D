@@ -91,6 +91,31 @@ fn the_argument_field_follows_the_verb() {
     }
 }
 
+/// ⭐⭐ **O `Play Clip` é oferecido e o campo dele é o NOME do clipe** (ObjectsAndComponents onda
+/// 4, item 1): escolhido pela tag, o painel pinta o campo com a dica do clipe e o texto chega à
+/// tabela, aparado.
+///
+/// **Mutações que devem sangrar:** `ArgKind::None` no `PlayClip` · a dica do clipe cair na do relógio.
+#[test]
+fn the_play_clip_verb_is_offered_and_takes_a_clip_name() {
+    use ph2d_editor_core::screens::hero::ActionArgHint;
+    let mut sim = SimWorld::default();
+    let reg = registry();
+    let e = objecto(&mut sim, vec![SignalAction::default()]);
+    let tag = SignalVerb::PlayClip.tag();
+    assert_eq!(info(&sim, e).verb_labels[usize::from(tag)], "Play Clip");
+    edit(&mut sim, e, &reg, ActionFieldEdit::Verb(0, tag));
+    edit(&mut sim, e, &reg, ActionFieldEdit::Arg(0, " pular ".into()));
+    let r = &info(&sim, e).rows[0];
+    assert_eq!(r.verb_tag, tag);
+    assert!(r.uses_arg, "o campo do nome do clipe não é pintado");
+    assert_eq!(r.arg_hint, ActionArgHint::ClipName);
+    assert_eq!(
+        sim.world().get::<SignalActions>(e).expect("a tabela").0[0].arg,
+        "pular"
+    );
+}
+
 /// **O `+` cria uma linha que ainda não dispara — e o painel tem de o dizer.**
 ///
 /// ⚠️ Um default que disparasse em alguma coisa faria um `+` mudar a cena sem ninguém pedir.

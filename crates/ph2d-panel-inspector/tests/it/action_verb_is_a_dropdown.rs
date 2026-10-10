@@ -91,6 +91,7 @@ fn actions() -> InspectorActionInfo {
             "Heal".into(),
             "Start Navigation".into(),
             "Stop Navigation".into(),
+            "Play Clip".into(),
         ],
         selected_count: 1,
     }
@@ -273,6 +274,43 @@ fn picking_a_verb_reaches_the_bus_and_closes_the_list() {
             })
         ),
         "a entrada ficou `Pressed` depois do clique — ela reabriria acesa"
+    );
+}
+
+/// ⭐⭐ **O `Play Clip`, a última entrada do seletor, chega ao barramento** (ObjectsAndComponents
+/// onda 4, item 1) — com o gesto real, pela tag que o motor lhe dá (`SignalVerb::ALL`, posição 14).
+///
+/// **Mutação que deve sangrar:** esquecer o id `insp_action_verb_play_clip` em `INSP_ACTION_VERB`.
+#[test]
+fn picking_play_clip_reaches_the_bus() {
+    const TAG_PLAY_CLIP: u8 = 14;
+    let (mut h, mut st) = host();
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let alvo = ph2d_panel_inspector::ids::INSP_ACTION_VERB[usize::from(TAG_PLAY_CLIP)];
+    let (_, r) = rects
+        .iter()
+        .find(|(n, _)| *n == alvo)
+        .copied()
+        .expect("a entrada `Play Clip` nao foi pintada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let _ = h.drained_actions();
+    let mut evs = h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    evs.extend(h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100)));
+    for ev in evs {
+        h.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    let acoes = h.drained_actions();
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorActionEdit {
+                edit: ActionFieldEdit::Verb(0, t),
+                ..
+            } if *t == TAG_PLAY_CLIP
+        )),
+        "escolher `Play Clip` nao chegou ao barramento; o que chegou foi {acoes:?}"
     );
 }
 

@@ -357,7 +357,7 @@ fn uma_linha_reage_por_disparo_e_nao_por_nome() {
 #[test]
 fn a_tag_de_um_verbo_ja_gravado_nunca_se_mexe() {
     // ⚠️ **Escrita à mão de propósito**: derivá-la do `ALL` mediria o `ALL` contra si próprio.
-    const GRAVADAS: [(SignalVerb, u8); 14] = [
+    const GRAVADAS: [(SignalVerb, u8); 15] = [
         (SignalVerb::StartTimer, 0),
         (SignalVerb::StopTimer, 1),
         (SignalVerb::Show, 2),
@@ -374,6 +374,8 @@ fn a_tag_de_um_verbo_ja_gravado_nunca_se_mexe() {
         // ⭐ Os verbos da NAVEGAÇÃO (plano 30, W6).
         (SignalVerb::StartNavigation, 12),
         (SignalVerb::StopNavigation, 13),
+        // ⭐ O clipe pedido (ObjectsAndComponents onda 4, item 1).
+        (SignalVerb::PlayClip, 14),
     ];
     for (v, tag) in GRAVADAS {
         assert_eq!(

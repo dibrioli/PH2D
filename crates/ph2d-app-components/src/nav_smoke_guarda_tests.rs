@@ -123,7 +123,7 @@ impl Jogo {
             let efeitos: Vec<SignalEffect> =
                 resolve_signal_actions(self.sim.world_mut(), &self.tags, &disparos);
             let mut mudo = |_: &mut SimWorld, _: Som, _: Entity| false;
-            let r = apply(&mut self.sim, &efeitos, &mut self.drive, &mut mudo);
+            let r = apply(&mut self.sim, &efeitos, 0.0, &mut self.drive, &mut mudo);
             entrega_a_fisica(r.pedidos_de_vida, r.pedidos_de_navegacao, &mut self.ponte);
         }
         // As FÁBRICAS (só com o relógio a andar — a `fase_fabrica_e_morte`).

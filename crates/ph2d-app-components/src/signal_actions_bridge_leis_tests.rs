@@ -70,6 +70,7 @@ fn a_signal_starts_a_timer_that_autostart_never_would() {
     let r = apply(
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -91,6 +92,7 @@ fn stopping_by_signal_keeps_the_progress_and_starting_rewinds() {
     apply(
         &mut sim,
         &[efeito(e, SignalVerb::StopTimer, "")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -101,6 +103,7 @@ fn stopping_by_signal_keeps_the_progress_and_starting_rewinds() {
     apply(
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -121,6 +124,7 @@ fn the_argument_picks_one_timer_and_empty_picks_them_all() {
     apply(
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "b")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -131,6 +135,7 @@ fn the_argument_picks_one_timer_and_empty_picks_them_all() {
     apply(
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -160,6 +165,7 @@ fn hiding_by_signal_is_preview_and_the_capture_sees_the_authored_value() {
     apply(
         &mut sim,
         &[efeito(e, SignalVerb::Hide, "")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -195,6 +201,7 @@ fn toggling_inverts_what_the_scene_shows() {
         apply(
             &mut sim,
             &[efeito(e, SignalVerb::ToggleVisibility, "")],
+            0.0,
             &mut drive,
             &mut mudo(),
         );
@@ -222,6 +229,7 @@ fn an_effect_on_an_object_without_the_component_is_inert_and_counted() {
             efeito(vazio, SignalVerb::StartTimer, ""),
             efeito(vazio, SignalVerb::Hide, ""),
         ],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -237,6 +245,7 @@ fn a_timer_name_that_matches_nothing_starts_nobody() {
     let r = apply(
         &mut sim,
         &[efeito(e, SignalVerb::StartTimer, "nao_existe")],
+        0.0,
         &mut drive,
         &mut mudo(),
     );

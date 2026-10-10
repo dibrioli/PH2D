@@ -4654,6 +4654,7 @@ dependencies = [
  "ph2d-tags",
  "ph2d-text",
  "ph2d-thumbnail",
+ "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-topdown",

@@ -70,6 +70,7 @@ fn o_destroy_tira_quem_nasceu_e_recusa_o_documento() {
     let r = apply(
         &mut sim,
         &[destruir(autorado, autorado)],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -81,6 +82,7 @@ fn o_destroy_tira_quem_nasceu_e_recusa_o_documento() {
     let r = apply(
         &mut sim,
         &[destruir(nascido, nascido)],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -161,6 +163,7 @@ fn o_verbo_do_recomeco_anuncia_e_nao_toca_no_mundo() {
     let r = apply(
         &mut sim,
         &[recomecar(autorado, autorado)],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -189,7 +192,7 @@ fn dez_pedidos_no_mesmo_quadro_sao_um_recomeco() {
     let (mut sim, autorado, _) = cena();
     let efeitos: Vec<SignalEffect> = (0..10).map(|_| recomecar(autorado, autorado)).collect();
     let mut drive = PreviewDrive::default();
-    let r = apply(&mut sim, &efeitos, &mut drive, &mut mudo());
+    let r = apply(&mut sim, &efeitos, 0.0, &mut drive, &mut mudo());
     // ⛔ O tipo é a lei: um booleano não sabe contar até dez.
     assert!(r.recomecar);
     assert_eq!(
@@ -218,8 +221,8 @@ fn os_outros_verbos_nao_pedem_recomeco() {
             source: autorado,
         })
         .collect();
-    assert_eq!(outros.len(), 13, "piso de populacao: os outros treze");
-    let r = apply(&mut sim, &outros, &mut drive, &mut mudo());
+    assert_eq!(outros.len(), 14, "piso de populacao: os outros catorze");
+    let r = apply(&mut sim, &outros, 0.0, &mut drive, &mut mudo());
     assert!(
         !r.recomecar,
         "um verbo que nao e' o `Restart Run` pediu o recomeco"
@@ -269,6 +272,7 @@ fn os_verbos_da_vida_anunciam_um_pedido() {
             vida(SignalVerb::Damage, "12", alvo, alvo),
             vida(SignalVerb::Heal, " 4.5 ", alvo, alvo),
         ],
+        0.0,
         &mut drive,
         &mut mudo(),
     );
@@ -297,7 +301,7 @@ fn um_argumento_ilegivel_ou_um_alvo_sem_vida_e_inerte() {
         .collect();
     efeitos.push(vida(SignalVerb::Heal, "-1", alvo, alvo));
     efeitos.push(vida(SignalVerb::Damage, "5", sem_vida, sem_vida));
-    let r = apply(&mut sim, &efeitos, &mut drive, &mut mudo());
+    let r = apply(&mut sim, &efeitos, 0.0, &mut drive, &mut mudo());
     assert!(
         r.pedidos_de_vida.is_empty(),
         "passou um pedido inválido: {:?}",
@@ -319,6 +323,7 @@ fn a_dica_do_argumento_diz_o_que_ele_e() {
         (SignalVerb::Damage, ActionArgHint::Amount),
         (SignalVerb::Heal, ActionArgHint::Amount),
         (SignalVerb::StartNavigation, ActionArgHint::ObjectName),
+        (SignalVerb::PlayClip, ActionArgHint::ClipName),
     ] {
         assert_eq!(dica_do_argumento(v), esperado, "{}", v.label());
     }
@@ -353,6 +358,7 @@ fn os_verbos_da_navegacao_anunciam_um_pedido() {
             nav(SignalVerb::StopNavigation, "", autorado),
             nav(SignalVerb::StopNavigation, "", outro),
         ],
+        0.0,
         &mut drive,
         &mut mudo(),
     );

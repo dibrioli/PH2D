@@ -311,7 +311,9 @@ fn o_veneno_fere_o_roxo_e_so_o_relogio_dele_o_cura() {
                     .count(),
         );
         let r =
-            crate::signal_actions_bridge::apply(sim, &efeitos, &mut drive, &mut |_, _, _| false);
+            crate::signal_actions_bridge::apply(sim, &efeitos, 0.0, &mut drive, &mut |_, _, _| {
+                false
+            });
         for (e, p) in r.pedidos_de_vida {
             ponte.pede_vida(e, p);
         }

@@ -101,7 +101,8 @@ impl crate::App {
                 Som::Cala => audio_2d::stop_target(w, audio.as_deref_mut(), alvo),
             }
         };
-        let r = signal_actions::apply(sim, &efeitos, &mut self.preview_drive, &mut som);
+        let t = self.playhead.time();
+        let r = signal_actions::apply(sim, &efeitos, t, &mut self.preview_drive, &mut som);
         if self.signal_readers.logging() {
             eprintln!(
                 "[signal] {} accao(oes) aplicada(s), {} inerte(s)",

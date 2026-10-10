@@ -182,6 +182,10 @@ pub enum SignalVerb {
     /// ⭐⭐⭐ **Pára o agente de navegação do alvo** (plano 30, W6) — fica onde está e esquece o caminho,
     /// até um [`Self::StartNavigation`]. O alvo que um `Start` lhe deu fica guardado.
     StopNavigation,
+    /// ⭐⭐ **Toca um clipe da Animação do alvo** (doc ObjectsAndComponents 01 §14, item 1 — escolha
+    /// 4.1: *«os outros tocam quando algo pedir»*). O `arg` é o NOME do clipe, único na animação do
+    /// alvo; **vazio = inerte**. Põe o [`crate::ClipPlayback`] desde o instante do relógio da cena.
+    PlayClip,
 }
 
 /// ⭐⭐ **O que o `arg` de um verbo significa** — ver [`SignalVerb::arg_kind`].
@@ -197,12 +201,14 @@ pub enum ArgKind {
     Amount,
     /// O NOME de um objecto — vazio = o que o componente do alvo já diz (plano 30, W6).
     ObjectName,
+    /// O NOME de um clipe da Animação do alvo — obrigatório (vazio = inerte).
+    ClipName,
 }
 
 impl SignalVerb {
     /// Todos, em ordem — **a fonte da iteração**. ⛔ Nunca escreva a lista uma segunda vez.
     /// ⚠️ **APPEND-ONLY**: a posição é a tag e ela viaja no ficheiro. Um verbo novo entra no FIM.
-    pub const ALL: [SignalVerb; 14] = [
+    pub const ALL: [SignalVerb; 15] = [
         SignalVerb::StartTimer,
         SignalVerb::StopTimer,
         SignalVerb::Show,
@@ -217,6 +223,7 @@ impl SignalVerb {
         SignalVerb::Heal,
         SignalVerb::StartNavigation,
         SignalVerb::StopNavigation,
+        SignalVerb::PlayClip,
     ];
 
     /// O rótulo que o artista lê, em INGLÊS — um ACESSÓRIO derivado da tabela desde 2026-09-19
@@ -246,6 +253,7 @@ impl SignalVerb {
             SignalVerb::Heal => "ecs.signal_verb.heal",
             SignalVerb::StartNavigation => "ecs.signal_verb.start_navigation",
             SignalVerb::StopNavigation => "ecs.signal_verb.stop_navigation",
+            SignalVerb::PlayClip => "ecs.signal_verb.play_clip",
         }
     }
 
@@ -272,6 +280,7 @@ impl SignalVerb {
             SignalVerb::AddToCounter => ArgKind::Count,
             SignalVerb::Damage | SignalVerb::Heal => ArgKind::Amount,
             SignalVerb::StartNavigation => ArgKind::ObjectName,
+            SignalVerb::PlayClip => ArgKind::ClipName,
             SignalVerb::Show
             | SignalVerb::Hide
             | SignalVerb::ToggleVisibility

@@ -312,7 +312,7 @@ fn o_jogo_joga_se_recomeca_e_as_luzes_voltam() {
             let efeitos: Vec<SignalEffect> =
                 resolve_signal_actions(sim.world_mut(), &tags, &disparos);
             if !efeitos.is_empty() {
-                let r = apply(&mut sim, &efeitos, &mut drive, &mut mudo);
+                let r = apply(&mut sim, &efeitos, 0.0, &mut drive, &mut mudo);
                 if r.recomecar {
                     // O que a shell faz ao servir — ver a `fase_fabrica_e_morte`.
                     //

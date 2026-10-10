@@ -80,6 +80,7 @@ pub mod painted_doc;
 /// `ph2d-particles`.
 pub mod particle_emitter;
 pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
+pub mod clip_playback;
 pub mod present;
 /// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.
 pub mod rewind_runtime;
@@ -93,7 +94,6 @@ pub mod scroll_limits;
 pub mod scroll_motion;
 pub mod scroll_repeat;
 pub mod sequence;
-pub mod clip_playback;
 pub use clip_playback::ClipPlayback;
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.

@@ -30,6 +30,10 @@ fn a_fase_le_pela_porta_e_manda_as_mortes_ao_despachante() {
         FASE.contains("resolve_signal_actions(sim.world_mut(), tags, &disparos)"),
         "a tabela voltou a receber so' nomes"
     );
+    assert!(
+        FASE.contains("let t = self.playhead.time();") && FASE.contains("apply(sim, &efeitos, t,"),
+        "o `Play Clip` deixou de datar o pedido com o relógio da CENA (o que o `apply_autoplay` lê)"
+    );
     // ⛔ O CONTROLO da própria régua: sem isto, um `include_str!` que apontasse a um ficheiro vazio
     // (ou a um que deixasse de existir e fosse recriado) passaria as três asserções por vácuo.
     assert!(

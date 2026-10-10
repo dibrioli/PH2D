@@ -166,7 +166,7 @@ pub const INSP_ACTION_ROW: [NodeId; 16] = [
 /// até 2026-09-09 (*«as actions deveriam ficar num dropdown e não em muitos botões»*, report do
 /// dono): passaram a ser as linhas do popover **sem mudar de significado**, que é o que manteve o
 /// despacho — `position(|&o| o == id)` — intacto.
-pub const INSP_ACTION_VERB: [NodeId; 14] = [
+pub const INSP_ACTION_VERB: [NodeId; 15] = [
     hash_node_id("insp_action_verb_start"),
     hash_node_id("insp_action_verb_stop"),
     hash_node_id("insp_action_verb_show"),
@@ -191,6 +191,8 @@ pub const INSP_ACTION_VERB: [NodeId; 14] = [
     // ⭐ **O `Start Navigation` e o `Stop Navigation`** (plano 30, W6), APENDADOS no mesmo commit.
     hash_node_id("insp_action_verb_start_navigation"),
     hash_node_id("insp_action_verb_stop_navigation"),
+    // ⭐ **O `Play Clip`** (ObjectsAndComponents onda 4, item 1), APENDADO no mesmo commit.
+    hash_node_id("insp_action_verb_play_clip"),
 ];
 
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).

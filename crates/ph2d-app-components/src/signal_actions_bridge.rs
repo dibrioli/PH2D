@@ -144,9 +144,13 @@ pub fn entrega_a_fisica(
 /// ⚠️ **O fecho devolve `false` quando não havia o que tocar** — a mesma leitura de sempre: um
 /// editor sem dispositivo de som corre em silêncio de propósito (o `AudioSystem::new` devolve
 /// `None` e a casa degrada como faz com o `gilrs`), e isso conta como **inerte**, nunca como erro.
+///
+/// ⚠️ **`t` é o relógio da CENA neste quadro** (o `Playhead` da shell, o mesmo que o
+/// `apply_autoplay` lê) — só o [`SignalVerb::PlayClip`] o usa, para datar o pedido.
 pub fn apply(
     sim: &mut SimWorld,
     effects: &[SignalEffect],
+    t: f64,
     drive: &mut PreviewDrive,
     som: &mut dyn FnMut(&mut SimWorld, Som, ph2d_ecs::Entity) -> bool,
 ) -> ActionReport {
@@ -203,6 +207,9 @@ pub fn apply(
                     None => false,
                 }
             }
+            // ⭐⭐ **O CLIPE PEDIDO** (ObjectsAndComponents onda 4, item 1) — escreve o pedido no
+            // alvo; quem o toca é o `apply_autoplay` da timeline, no quadro seguinte.
+            SignalVerb::PlayClip => pede_clipe(sim, fx, t),
         };
         if ok {
             report.applied += 1;
@@ -230,8 +237,30 @@ pub fn dica_do_argumento(verb: SignalVerb) -> ph2d_editor_core::screens::hero::A
         ph2d_ecs::ArgKind::Count => ActionArgHint::Count,
         ph2d_ecs::ArgKind::Amount => ActionArgHint::Amount,
         ph2d_ecs::ArgKind::ObjectName => ActionArgHint::ObjectName,
+        ph2d_ecs::ArgKind::ClipName => ActionArgHint::ClipName,
         ph2d_ecs::ArgKind::TimerName | ph2d_ecs::ArgKind::None => ActionArgHint::TimerName,
     }
+}
+
+/// ⭐⭐ **Põe (ou troca) o [`ph2d_ecs::ClipPlayback`] do alvo**: o clipe `arg` desde `t`.
+///
+/// ⚠️ Estado de EXECUÇÃO (não registado) ⇒ nem ledger nem undo. ⛔ Um nome em branco é INERTE (a
+/// regra do `SequencePlayer`: *um nome em branco não é um contrato*); um nome que a Animação do
+/// alvo não tem toca a entrada — quem o resolve é a timeline (`TimelineDoc::clip_named`), que esta
+/// crate não vê.
+fn pede_clipe(sim: &mut SimWorld, fx: &SignalEffect, t: f64) -> bool {
+    let clip = fx.arg.trim();
+    if clip.is_empty() {
+        return false;
+    }
+    let Ok(mut alvo) = sim.world_mut().get_entity_mut(fx.target) else {
+        return false;
+    };
+    alvo.insert(ph2d_ecs::ClipPlayback {
+        clip: clip.to_string(),
+        desde: t,
+    });
+    true
 }
 
 /// O pedido que um `Start/Stop Navigation` faz — ou `None` (INERTE) num alvo sem `NavAgent`. O
@@ -422,3 +451,8 @@ mod tests;
 #[cfg(test)]
 #[path = "signal_actions_bridge_tests.rs"]
 mod destroy_tests;
+
+/// ⭐⭐ Os gates do verbo `Play Clip` (ObjectsAndComponents onda 4, item 1), com a timeline.
+#[cfg(test)]
+#[path = "signal_actions_play_clip_tests.rs"]
+mod play_clip_tests;

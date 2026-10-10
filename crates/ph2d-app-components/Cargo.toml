@@ -144,6 +144,10 @@ ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 # ⭐ O ESTADO de um agente de navegação (plano 30, W3) — o gate da cena lê `Status::Arrived`. Só nos
 # testes: o produto lê a navegação pela ponte da física, que já a reexporta onde precisa.
 ph2d-nav = { path = "../ph2d-nav" }
+# ⭐ O LEITOR do pedido do `Play Clip` (ObjectsAndComponents onda 4, item 1): o gate de ponta a ponta
+# corre o `apply_autoplay` sobre o `ClipPlayback` que a ponte escreveu. Só nos testes: o produto
+# liga as duas metades na shell, pelo mundo.
+ph2d-timeline = { path = "../ph2d-timeline" }
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**

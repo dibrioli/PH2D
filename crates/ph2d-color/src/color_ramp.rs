@@ -17,6 +17,11 @@ use convert::{
 pub use convert::{hsv_to_rgba, rgb_to_hsv};
 
 /// Largest number of stops a ramp can hold (matches Blender's `MAXCOLORBAND`).
+/// A mistura de matiz desta crate (em voltas), para a [`crate::perceptual`] usar a MESMA lei.
+pub(crate) fn lerp_hue_pub(h1: f32, h2: f32, fac: f32, mode: RampHue) -> f32 {
+    convert::lerp_hue(h1, h2, fac, mode)
+}
+
 pub const MAX_RAMP_STOPS: usize = 32;
 
 /// The space in which adjacent stop colors are interpolated.

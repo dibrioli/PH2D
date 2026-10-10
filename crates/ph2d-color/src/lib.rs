@@ -47,6 +47,7 @@ pub mod linear;
 pub mod oklab;
 pub mod oklch;
 pub mod palette;
+pub mod perceptual;
 pub mod palette_text;
 pub mod pigment_space;
 /// A precisão com que uma imagem é guardada, e as conversões entre elas.

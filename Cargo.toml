@@ -99,6 +99,12 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.rustfft]
 opt-level = 2
+# The live board's cipher (ADR-0181): at opt-0 ChaCha20-Poly1305 is ~100x slower — a 57 MiB join
+# snapshot goes from 104 ms (smoke, measured 10/10) to ~20 s, a dev run reporting joining as hung.
+[profile.dev.package.chacha20]
+opt-level = 2
+[profile.dev.package.poly1305]
+opt-level = 2
 
 # ⭐⭐ **E O MESMO NEGÓCIO PARA OS PESOS DE PELE** (2026-09-15) — a terceira vez que esta lista
 # cresce, e sempre pelo mesmo motivo escrito acima: *aritmética de ponto flutuante em varreduras de

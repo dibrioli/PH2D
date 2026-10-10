@@ -82,7 +82,9 @@ impl Write {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Snapshot {
     pub board: Vec<u8>,
-    stamps: Vec<((ElementId, Field), Lamport)>,
+    /// Por elemento: o carimbo mais comum dos registos dele e os que diferem (medido: um carimbo por
+    /// registo eram ~500 dos 603 B/elemento de um quadro ao vivo).
+    stamps: Vec<(ElementId, Lamport, Vec<(Field, Lamport)>)>,
     board_stamps: Vec<(BoardField, Lamport)>,
     tokens: Tokens,
     tops: Vec<(ElementId, Lamport)>,
@@ -186,7 +188,18 @@ impl Replica {
 
     fn adopt(&mut self, snap: &Snapshot) {
         self.clock = self.clock.max(snap.clock);
-        self.stamps = snap.stamps.iter().copied().collect();
+        self.stamps = snap
+            .stamps
+            .iter()
+            .flat_map(|(id, common, odd)| {
+                let odd: BTreeMap<Field, Lamport> = odd.iter().copied().collect();
+                Field::ALL
+                    .into_iter()
+                    .filter_map(|f| odd.get(&f).copied().or(Some(*common)).map(|l| ((*id, f), l)))
+                    .filter(|(_, l)| *l != Lamport::default())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
         self.board_stamps = snap.board_stamps.iter().copied().collect();
         self.tokens = snap.tokens.clone();
         self.tops = snap.tops.iter().copied().collect();
@@ -198,13 +211,43 @@ impl Replica {
     pub fn snapshot(&self, board: &Board) -> Snapshot {
         Snapshot {
             board: BoardSet::board_bytes(board),
-            stamps: self.stamps.iter().map(|(k, v)| (*k, *v)).collect(),
+            stamps: self.packed_stamps(),
             board_stamps: self.board_stamps.iter().map(|(k, v)| (*k, *v)).collect(),
             tokens: self.tokens.clone(),
             tops: self.tops.iter().map(|(k, v)| (*k, *v)).collect(),
             team: self.team.clone(),
             clock: self.clock,
         }
+    }
+
+    /// Os carimbos por elemento: o mais comum e os que diferem dele (os registos sem carimbo — que o
+    /// tipo não tem, ou nunca escritos — diferem com o carimbo zero).
+    fn packed_stamps(&self) -> Vec<(ElementId, Lamport, Vec<(Field, Lamport)>)> {
+        let mut by: BTreeMap<ElementId, BTreeMap<Field, Lamport>> = BTreeMap::new();
+        for ((id, f), l) in &self.stamps {
+            by.entry(*id).or_default().insert(*f, *l);
+        }
+        by.into_iter()
+            .map(|(id, fields)| {
+                let mut count: BTreeMap<Lamport, usize> = BTreeMap::new();
+                for l in fields.values() {
+                    *count.entry(*l).or_default() += 1;
+                }
+                let common = count
+                    .iter()
+                    .max_by_key(|(l, n)| (**n, std::cmp::Reverse(**l)))
+                    .map(|(l, _)| *l)
+                    .unwrap_or_default();
+                let odd = Field::ALL
+                    .into_iter()
+                    .filter_map(|f| {
+                        let l = fields.get(&f).copied().unwrap_or_default();
+                        (l != common).then_some((f, l))
+                    })
+                    .collect();
+                (id, common, odd)
+            })
+            .collect()
     }
 
     fn tick(&mut self) -> Lamport {

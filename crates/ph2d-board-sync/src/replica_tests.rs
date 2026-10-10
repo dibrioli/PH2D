@@ -522,3 +522,28 @@ fn a_saved_version_travels_and_a_delete_beats_a_rename() {
     concurrently(&mut a, &mut b);
     assert!(a.b.team.versions.is_empty());
 }
+
+/// O retrato compacta os carimbos por elemento e devolve-os IGUAIS a quem entra; e mede quanto pesa
+/// por elemento um quadro feito ao vivo (impresso: 193 B, 129 do quadro e 63 dos carimbos, 10/10;
+/// sem compactar eram 603).
+#[test]
+fn the_snapshot_packs_the_stamps_and_gives_them_back_equal() {
+    let (mut a, _, x) = two();
+    let n = 1000;
+    for i in 0..n {
+        rect(&mut a.b, i as f64, "texto de uma nota");
+    }
+    edit(&mut a, x, |el| el.x = 9.0);
+    let _ = a.r.local(&mut a.b);
+    let snap = a.r.snapshot(&a.b);
+    let (joined, _) = Replica::join(9, &snap, 9).unwrap();
+    assert_eq!(joined.stamps, a.r.stamps);
+    let bytes = postcard::to_allocvec(&snap).unwrap().len();
+    let board = snap.board.len();
+    eprintln!(
+        "retrato: {} B/elemento ({} do quadro, {} dos carimbos)",
+        bytes / n,
+        board / n,
+        (bytes - board) / n
+    );
+}

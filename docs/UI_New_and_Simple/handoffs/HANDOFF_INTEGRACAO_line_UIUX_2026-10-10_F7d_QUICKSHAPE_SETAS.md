@@ -23,7 +23,7 @@ UI/UX: «Último:» → este ficheiro (só o link; a frase e as cenas não mudam
 | ⭐ **a lei** | `QuickShape::Arrow(ArrowShape { shaft, heads })`: a ponta no FIM e no INÍCIO (o 1.º mínimo do resíduo ao V; o eixo do cabo pela parábola do fim dele; as farpas saem DA ponta), o cabo pela lei que já existe (linha, polilinha, arco, biarco) e com 92,5 % do comprimento do traço dele (uma forma fechada mede 0: o cabo é aberto) | `ph2d-vec-edit/src/quickshape_arrow.rs` (novo); o ramo em `recognise_with`, ANTES do fecho |
 | **a ponta** | o `Marker` do traço: a ARMADA no lápis, senão `Open` (a «arrow» de nascença do Excalidraw: duas riscas em V); o tamanho põe o alcance da ponta igual à farpa média; o caminho recua o `Marker::inset` (o bico cai na ponta desenhada); fora da seta, as do estilo | `pencil.rs` (`arrow_ends`, `rebuild`) |
 | **o gesto** | o de toda forma: segurar → a seta; arrastar escala e roda a seta INTEIRA (o cabo à volta do início, as farpas com ele); soltar comete com nós e a ponta; `Esc` devolve o traço livre SEM ponta; o `Shift` regulariza o cabo e as pontas FICAM | `quickshape_hold.rs` (sem mudança), `quickshape.rs` (`pivot`/`transformed`/`to_path`/`heads`) |
-| ⭐ **a ponta não passa ao traço seguinte** | ACHADO pela foto: ao soltar, a seta é selecionada, a tool ADOTA o traço dela («último usado») e o gelado nascia com seta. `Pencil::next_style`: enquanto a seta estiver selecionada com as pontas que o QuickShape lhe deu, o próximo caminho (lápis, caneta, formas) nasce com as ARMADAS antes dela; mexer nas pontas ou selecionar outra coisa devolve a lei | `pencil.rs`; a ponte `ph2d-app-vec/src/vector_bridge.rs` (1 linha) |
+| ⭐ **a ponta não passa ao traço seguinte** | ACHADO pela foto (o gelado nascia com seta) e, depois da 1.ª cura, pelo smoke do dono: *«todo traço está herdando uma ponta pequena. Não deveria»* — a 1.ª cura (uma excepção no lápis que comparava o tamanho da ponta) caía quando o painel arredondava o tamanho ou a seta era desselecionada. A cura é de lei: a tool separa as pontas MOSTRADAS (as da seleção, adotadas) das ARMADAS (as do próximo caminho, que só o painel escreve, campo a campo); a ponte dá aos caminhos novos (lápis, caneta, formas) as armadas | `ph2d-tool-vector/src/tool.rs` (`armed`, `armed_markers`), `tool_armed_tests.rs` (novo); a ponte `ph2d-app-vec/src/vector_bridge.rs` |
 | **cena 12** | um 7.º traço SEGURO: uma seta de cabo curvo (arco de 140° + V aberto) por cima do rectângulo (8 traços, `HELD = 7`); foto [`f7d_01`](../vetor_nova_ui/fotos/f7d_01_cena12_uma_seta_segura_vira_seta_perfeita.png) | `ph2d-app-vec/src/vector_mode_quick.rs` |
 | organização | `gap`/`bow` descem para `quickshape_geom.rs` (o `quickshape.rs` ia passar das 700); o gesto no lápis em `quickshape_arrow_pencil_tests.rs` | `ph2d-vec-edit/src/` |
 
@@ -53,11 +53,14 @@ Tabelas inteiras em [`00_resultados.md`](../vetor_nova_ui/oraculo_quickshape/00_
 ## §3 — Foundational tocado e contratos
 
 - **`ph2d-vec-edit`** (público): a variante `QuickShape::Arrow(ArrowShape)`, o `pub struct ArrowShape`
-  (re-exportado em `quickshape`), `QuickShape::heads`, `Pencil::next_style`. Nenhum `match` exaustivo
+  (re-exportado em `quickshape`), `QuickShape::heads`. Nenhum `match` exaustivo
   sobre `QuickShape` fora da crate (varrido: só `matches!` no gate da cena 12). Privados: o módulo
   `quickshape_arrow`, `ArrowLaw` (`Law.arrow: Option<ArrowLaw>`), `pencil::arrow_ends`;
   `quickshape_geom::{gap, bow}` (movidos); `Fixture.name`/`ours` passam a `pub(super)`.
-- **`ph2d-app-vec`**: a ponte chama `next_style` (1 linha) + gate de fonte; a cena 12 com 8 traços.
+- **`ph2d-tool-vector`**: `VectorTool::armed_markers` (pub) e o campo privado `armed` (`ArmedHead`): selecionar
+  um caminho deixa de ARMAR as pontas dele para o próximo — mudança de comportamento do «último usado»
+  SÓ nas pontas (cor, largura, cap… continuam a herdar), pedida pelo dono.
+- **`ph2d-app-vec`**: o `PenStyle` dos caminhos novos leva as pontas armadas + gate de fonte; a cena 12 com 8 traços.
 - **Contratos congelados (§6): nenhum.** Shell: **intocada** (`+0`).
 
 ## §4 — Superfície de colisão e contadores
@@ -75,13 +78,19 @@ warnings-deny ✓ · clippy do ship ✓ · machete ✓ · standalone-optional �
 `no_orphan_source_file`) · `architecture_claude_md_cabe_no_orcamento` 3/3. Depois: o handoff, o link do
 `CLAUDE.md` e o `doc-index` (só docs).
 
+**Depois da correção do smoke** (as pontas armadas, HEAD `347f00caf`), 2.ª corrida do `verificador`: fmt ✓
+· warnings-deny ✓ · clippy do ship ✓ · machete ✓ · standalone-optional ✓ · workflow-packages ✓ · censos
+114/114 e 12/12 ✓ · `nextest-impacted` **17 057 / 17 057** (9 791 pulados; um SLOW de 60,9 s no
+`ph2d-skeleton-live`, `load` 12,7–17,7, passou).
+
 ### Mutação
 
 Agente `mutacao` (verde visto antes, âncoras 1×, árvore limpa no fim): **30 de 37** sangram à primeira
 (a ponta do início, o eixo pela parábola, o piso, a farpa máxima, o ângulo máximo, a volta à ponta e
 de que farpa ela conta, o resíduo, a corda do V, o comprimento do arco, o fim do cabo, as farpas no
 arrasto, o ramo antes do fecho, o pivô, `heads`, e no lápis as pontas, o tamanho, o recuo, a `Open`, só
-onde a mão desenhou, o alcance, as quatro condições do `next_style`, a costura da ponte e a cena). Das
+onde a mão desenhou, o alcance, as quatro condições do `next_style` — que depois saiu, §1 —, a costura da
+ponte e a cena). Das
 7 sobreviventes, a busca base × mutante sobre 6 775 traços (`measure_arrow_witness`) achou testemunha
 para **5** — fechadas com portões vistos VERMELHOS sob a mutação: o 1.º mínimo e o `break` da candidata
 que deixa de passar (`the_first_minimum_keeps_these_small_arrows`), o preenchimento do cabo
@@ -91,6 +100,10 @@ dois oráculos quando a re-medida saiu). **2 redundantes retiradas do código** 
 diferentes): a re-medida das razões contra o cabo real e a cláusula «o cabo é aberto» (o preenchimento
 já a faz; `length_of` mede 0 numa forma fechada). Fica o portão `a_loop_with_a_head_is_not_an_arrow`
 (documenta o laço de 330° com bico: círculo, nunca seta sem ponta visível).
+
+**A correção do smoke** (as pontas armadas): 7 / 7 sangram — adotar que arma, cada uma das cinco
+escritas do painel (tamanho, arredondamento, começo, fim, Both Ends) que não arma, a ponte que leva as
+pontas MOSTRADAS aos caminhos novos.
 
 ## §6 — Smoke do dono
 
@@ -107,6 +120,9 @@ ponta (a 1.ª foto tinha-a — §1).
    à ponta, vai ao outro) — segure parado meio segundo ⇒ seta. Arraste sem soltar ⇒ cresce e roda
    inteira; `Esc` ⇒ volta o traço livre sem ponta; solte ⇒ fica. O bico também pode ir no começo (as
    duas pontas) e o cabo pode ser curvo.
+6. (Depois do 1.º smoke do dono — *«Funciona bem! mas todo traço está herdando uma ponta pequena»*.)
+   Faça uma seta, clique no vazio, e desenhe traços livres e formas: nenhum nasce com ponta. Escolher
+   uma ponta no painel (End) com nada selecionado arma-a para os traços seguintes, como antes.
 
 ## §7 — O que fica ABERTO
 
@@ -116,17 +132,18 @@ ponta (a 1.ª foto tinha-a — §1).
 - **Setas pequenas** (cabo < 96 px com farpas < 8 px) ficam livres: o piso de 5,75 px é o do repouso.
 - O tamanho da ponta sai até 34 % menor que o desenhado (o estabilizador encurta a farpa).
 - **Perguntas ao dono (produto):** (1) a ponta por omissão é o V ABERTO (a do Excalidraw e a que a mão
-  desenha) — ou prefere o triângulo cheio («Arrow» no painel)?; (2) depois de uma seta, o traço seguinte
-  nasce SEM ponta (a decisão desta jornada) — ou quer que herde, como herda a cor?
+  desenha) — ou prefere o triângulo cheio («Arrow» no painel)? (A 2.ª — o traço seguinte herdar a ponta —
+  o dono respondeu no smoke: não deve.)
 - Do F7: «Edit Shape».
 
 ## §8 — Binário de smoke (2.ª corrida)
 
 Depois do `rm -rf target/*/incremental` (5,9 GB debug + 1,3 GB smoke) — `bash scripts/ph2d-run.sh
-cargo build -p ph2d-host-desktop --profile smoke`, 1.ª corrida 21,0 s; a 2.ª:
+cargo build -p ph2d-host-desktop --profile smoke`, refeito depois da correção do smoke: 1.ª corrida
+20,4 s; a 2.ª:
 
 ```
-    Finished `smoke` profile [optimized] target(s) in 0.25s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
 
 Varredura no fecho: zero processos meus (um `ph2d-host-desktop` vivo é da `line-Luz2D`; o `cargo test -p

@@ -370,11 +370,13 @@ das razões contra o cabo REAL (a volta à ponta já segura a estrela) e a cláu
 preenchimento já a faz) — saíram; e um instrumento: o
 repouso aplicado DEPOIS do estabilizador (75 traços antigos mudavam; o lápis filtra na entrada — 3).
 
-**A ponta não passa ao traço seguinte.** A foto da cena 12 apanhou-o: ao soltar, a seta é selecionada,
-a tool ADOTA o traço dela («último usado») e o gelado solto nascia com ponta. `Pencil::next_style` (a
-ponte, para o lápis, a caneta e as formas): enquanto a seta estiver selecionada com as pontas que o
-QuickShape lhe deu, o próximo caminho nasce com as ARMADAS antes dela; mexer nas pontas ou selecionar
-outra coisa devolve a lei. Gate `the_arrows_head_does_not_pass_to_the_next_stroke`; foto `f7d_01`.
+**A ponta não passa ao traço seguinte.** Ao soltar, a seta é selecionada e a tool ADOTA o traço dela
+(«último usado»): o gelado da foto nascia com seta; e a 1.ª cura (uma excepção no lápis que comparava
+o tamanho da ponta) falhou no smoke do dono — *«todo traço está herdando uma ponta pequena»*: o painel
+arredonda o tamanho e, ao desselecionar, a excepção deixava de valer. A cura é de LEI: a tool separa as
+pontas MOSTRADAS (as da seleção — o painel diz a verdade e a edição aplica-se a ela) das ARMADAS (as do
+próximo caminho, que só o painel escreve, campo a campo); a ponte dá aos caminhos novos as armadas
+(`VectorTool::armed_markers`). Gates `tool_armed_tests.rs`, `new_paths_get_the_armed_heads_not_the_selections`.
 
 **A fronteira medida:** a LINHA QUE VOLTA ATRÁS sobre si e só então faz uma farpa — à vista é uma farpa
 só (a volta fica por baixo do traço), e lê-se seta em 40–50 % a 48–160 px, 10 % a 400 px: o ângulo

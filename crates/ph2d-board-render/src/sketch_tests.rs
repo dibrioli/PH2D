@@ -183,3 +183,91 @@ fn a_hand_drawn_shape_stays_inside_its_opacity_layer() {
         }
     }
 }
+
+/// O maior afastamento (mundo) do traço `hand` à rota `route`, amostrado ao longo do traço.
+fn worst_gap(hand: &BezPath, route: &BezPath) -> f64 {
+    use ph2d_vector::{ParamCurve, ParamCurveNearest};
+    let segs: Vec<_> = route.segments().collect();
+    let mut worst: f64 = 0.0;
+    for s in hand.segments() {
+        for k in 0..=32 {
+            let p = s.eval(f64::from(k) / 32.0);
+            let d = segs
+                .iter()
+                .map(|r| r.nearest(p, 1e-9).distance_sq)
+                .fold(f64::INFINITY, f64::min)
+                .sqrt();
+            worst = worst.max(d);
+        }
+    }
+    worst
+}
+
+/// ⭐ O traço À MÃO de uma seta CURVA segue a curva dela — a guia da selecção (smoke do dono, 10/10:
+/// «se aplicar a opção hand-draw a seta fica deformada»: com três pontos por cúbica o Catmull-Rom do
+/// rough.js cortava o canto à saída e chegava torto à ponta). Sem tremor (rugosidade 0) o traço fica a
+/// menos de [`HAND_CURVE_TOL`] da rota, na curva do Miro em «U» e na curva do Excalidraw com pontos.
+#[test]
+fn a_hand_drawn_curved_arrow_follows_its_route() {
+    use ph2d_board_model::{Anchor, BoardDoc, BoardOp, Connector, End, Head, Route};
+    let ink = ph2d_board_model::Rgba([30, 30, 30, 255]);
+    let mut doc = BoardDoc::default();
+    let shape = |doc: &mut BoardDoc, bx: [f64; 4]| {
+        let el = Element::new_shape(
+            doc.mint_id(),
+            doc.z_on_top(),
+            Shape {
+                kind: ShapeType::Ellipse,
+                style: Style::new(None, Some(ink), ink),
+                text: Default::default(),
+            },
+            bx,
+        );
+        let id = el.id;
+        BoardOp::Put(el).apply(doc);
+        id
+    };
+    let a = shape(&mut doc, [0.0, 0.0, 400.0, 215.0]);
+    let b = shape(&mut doc, [700.0, -200.0, 120.0, 155.0]);
+    let bottom = |t| End::Bound {
+        target: t,
+        anchor: Anchor::Orbit([0.5, 1.0]),
+    };
+    let mut ids = Vec::new();
+    for (route, waypoints) in [
+        (Route::Curved, vec![]),
+        (Route::Spline, vec![[300.0, 420.0], [650.0, 300.0]]),
+    ] {
+        let mut c = Connector::new(
+            bottom(a),
+            bottom(b),
+            route,
+            Style::new(None, Some(ink), ink),
+        );
+        c.heads = [Head::None, Head::Arrow];
+        c.waypoints = waypoints;
+        let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+        ids.push(el.id);
+        BoardOp::Put(el).apply(&mut doc);
+    }
+    let mut routes = ph2d_board_route::RouteCache::default();
+    routes.sync(&doc);
+    let opts = rough::Options {
+        roughness: 0.0,
+        ..rough::Options::default()
+    };
+    for id in ids {
+        let r = routes.get(id).unwrap();
+        let d = ph2d_board_route::drawn(r, [Head::None, Head::Arrow], 2.0);
+        let mut hand = BezPath::new();
+        for s in hand_line(&d.line, &opts) {
+            bez(&s.ops, &mut hand);
+        }
+        let gap = worst_gap(&hand, &d.line);
+        assert!(
+            gap <= HAND_CURVE_TOL + 1e-6,
+            "seta {}: o traço à mão afasta-se {gap:.2} da rota",
+            id.0
+        );
+    }
+}

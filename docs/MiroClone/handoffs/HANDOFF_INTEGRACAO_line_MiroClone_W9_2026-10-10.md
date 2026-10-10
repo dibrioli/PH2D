@@ -170,6 +170,20 @@ A cena abre com o desenho do dono em cima à esquerda, as setas curtas por baixo
 `Ctrl` ao largar. Fotografada duas vezes pelo `fotografa_cena.sh` (a 1.ª partia o caminho longo a meio e
 punha os números ao lado das setas — curado). As cenas 1–10 continuam; a 3 e a 5 mostram agora o vão.
 
+## 8-bis. Depois do fecho — o 1.º smoke do dono (10/10): «funcionou», e um defeito
+
+*«Ao criar uma nova seta, se aplicar a opção hand-draw, a seta fica deformada»* (duas capturas: a curva
+em «U» do Miro em rascunho afastava-se da guia azul). **Não era da W9: era da W4.** O `hand_line`
+(`ph2d-board-render/src/sketch.rs`) dava à `curve` do rough.js TRÊS pontos por cúbica, e o Catmull-Rom 1/6
+dela por tão poucos pontos corta o canto à saída (a tangente da ponta é a corda para o 1.º ponto) e chega
+torto à ponta. **Medido**: a curva em «U» afastava-se **31,8** da rota. Cura (`curve_points`): os três de
+antes e MAIS só onde o Catmull-Rom dele se afasta da curva verdadeira mais que `HAND_CURVE_TOL` = 0,5
+(o tremor continua o dele; 29 e 25 pontos nas duas setas do teste; **~40 µs** por seta em `--release`, só
+quando a seta muda — o rascunho está em cache; a 1.ª versão, com o `nearest` a 1e-9 em todos os
+segmentos, custava ~110 µs). Gate `a_hand_drawn_curved_arrow_follows_its_route` (vermelho com a lei
+antiga: 31,8), na curva do Miro e na do Excalidraw com pontos; os portões do rascunho contra o oráculo
+(`rascunho_setas`) continuam verdes. Fotografada (cena 11 com uma seta em «U» temporária, retirada).
+
 ## 9. O que fica ABERTO
 
 - **O 0.18.1 depois de MEXER uma forma** (lente 1, média): ao abrir o nosso ficheiro as duas versões

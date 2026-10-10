@@ -292,37 +292,97 @@ fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough 
     r
 }
 
+/// O maior afastamento (mundo) do traço à mão SEM tremor contra a curva da seta: meio traço do de
+/// nascença — à vista a guia da selecção e o traço coincidem.
+pub const HAND_CURVE_TOL: f64 = 0.5;
+
 /// ⭐ Os sets do rascunho de uma LINHA aberta (a rota de uma seta), pelas primitivas do Excalidraw
 /// (medidas, `rascunho_setas`): só segmentos ⇒ `linearPath` com os vértices presos; com curvas ⇒ a
 /// `curve` pelos pontos (três por cúbica — a curva do Excalidraw passa pelos pontos dela). O tremor
 /// é o de uma LINHA ([`hand_roughness`] com `linear`): inteiro a partir de 50 de comprimento.
 #[must_use]
 pub fn hand_line(path: &BezPath, opts: &rough::Options) -> Vec<OpSet> {
-    let mut pts: Vec<[f64; 2]> = Vec::new();
-    let mut curved = false;
-    for seg in path.segments() {
-        if pts.is_empty() {
-            let p = seg.start();
-            pts.push([p.x, p.y]);
-        }
-        match seg {
-            PathSeg::Line(l) => pts.push([l.p1.x, l.p1.y]),
-            other => {
-                curved = true;
-                for t in [1.0 / 3.0, 2.0 / 3.0, 1.0] {
-                    let p = other.eval(t);
-                    pts.push([p.x, p.y]);
-                }
-            }
-        }
-    }
-    if pts.len() < 2 {
+    let segs: Vec<PathSeg> = path.segments().collect();
+    if segs.is_empty() {
         return Vec::new();
     }
-    if curved {
-        rough::curve(&pts, opts)
-    } else {
-        rough::linear_path(&pts, opts)
+    if segs.iter().all(|s| matches!(s, PathSeg::Line(_))) {
+        let mut pts = vec![[segs[0].start().x, segs[0].start().y]];
+        pts.extend(segs.iter().map(|s| [s.end().x, s.end().y]));
+        return rough::linear_path(&pts, opts);
+    }
+    rough::curve(&curve_points(&segs), opts)
+}
+
+/// ⭐ Os pontos por onde a `curve` do rough.js passa para seguir `segs`: os três por cúbica de antes
+/// (o idioma do Excalidraw), e MAIS onde o Catmull-Rom 1/6 dela (o `_curve`, pontas duplicadas) se
+/// afasta da curva verdadeira mais que [`HAND_CURVE_TOL`] — só onde é preciso, para o tremor continuar o
+/// dele. ⛔ Só com os três, a curva do Miro em «U» afastava-se 31,8 da rota: cortava o canto à saída e
+/// chegava torta à ponta (smoke do dono, 10/10).
+fn curve_points(segs: &[PathSeg]) -> Vec<[f64; 2]> {
+    use ph2d_vector::ParamCurveNearest;
+    /// Tecto de pontos: muito acima de qualquer rota (uma curva que precisasse dele é patológica).
+    const MAX_POINTS: usize = 512;
+    // `(segmento, t)` de cada ponto; o 1.º é o início.
+    let mut at: Vec<(usize, f64)> = vec![(0, 0.0)];
+    for (i, s) in segs.iter().enumerate() {
+        match s {
+            PathSeg::Line(_) => at.push((i, 1.0)),
+            _ => at.extend([1.0 / 3.0, 2.0 / 3.0, 1.0].map(|t| (i, t))),
+        }
+    }
+    let point = |(i, t): (usize, f64)| {
+        let p = segs[i].eval(t);
+        [p.x, p.y]
+    };
+    // A distância à curva verdadeira, só nos segmentos do intervalo (a 1e-3 do mundo: a tolerância é 0,5).
+    let far = |q: Point, from: usize, to: usize| {
+        segs[from..=to]
+            .iter()
+            .map(|s| s.nearest(q, 1e-3).distance_sq)
+            .fold(f64::INFINITY, f64::min)
+            .sqrt()
+    };
+    loop {
+        let pts: Vec<[f64; 2]> = at.iter().map(|&a| point(a)).collect();
+        let n = pts.len();
+        let p = |k: isize| pts[k.clamp(0, n as isize - 1) as usize];
+        let mut split = Vec::new();
+        for k in 0..n - 1 {
+            // O troço `k` do Catmull-Rom 1/6 do rough.js (as pontas repetidas).
+            let (a, b) = (p(k as isize), p(k as isize + 1));
+            let (pa, nb) = (p(k as isize - 1), p(k as isize + 2));
+            let c1 = [a[0] + (b[0] - pa[0]) / 6.0, a[1] + (b[1] - pa[1]) / 6.0];
+            let c2 = [b[0] - (nb[0] - a[0]) / 6.0, b[1] - (nb[1] - a[1]) / 6.0];
+            let eval = |u: f64| {
+                let v = 1.0 - u;
+                let (w0, w1, w2, w3) = (v * v * v, 3.0 * v * v * u, 3.0 * v * u * u, u * u * u);
+                Point::new(
+                    w0 * a[0] + w1 * c1[0] + w2 * c2[0] + w3 * b[0],
+                    w0 * a[1] + w1 * c1[1] + w2 * c2[1] + w3 * b[1],
+                )
+            };
+            let (from, to) = (at[k].0, at[k + 1].0);
+            if [0.25, 0.5, 0.75]
+                .into_iter()
+                .any(|u| far(eval(u), from, to) > HAND_CURVE_TOL)
+            {
+                split.push(k);
+            }
+        }
+        if split.is_empty() || at.len() + split.len() > MAX_POINTS {
+            return pts;
+        }
+        // O meio de cada troço afastado, no segmento dele (no fim do anterior quando muda de segmento).
+        for &k in split.iter().rev() {
+            let ((i0, t0), (i1, t1)) = (at[k], at[k + 1]);
+            let mid = if i0 == i1 {
+                (i0, (t0 + t1) / 2.0)
+            } else {
+                (i1, t1 / 2.0)
+            };
+            at.insert(k + 1, mid);
+        }
     }
 }
 

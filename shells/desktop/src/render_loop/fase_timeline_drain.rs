@@ -121,7 +121,10 @@ impl crate::App {
         // state; tracks/keys from E3+). Rebuilt from the ACTIVE playhead (the clip
         // clock in Keys mode, the CONTAINER clock inside one, the timeline clock in
         // Arrange), so the whole transport reflects the clock the panel is showing.
-        let active_playhead = if keys_mode {
+        // ⭐ Com o Play All marcado o transporte mostra o relógio da CENA (o ▶/⏸ é o dela).
+        let active_playhead = if self.timeline.play_all {
+            &self.playhead
+        } else if keys_mode {
             &self.clip_playhead
         } else if container.is_some() {
             &self.container_playhead

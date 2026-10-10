@@ -56,9 +56,9 @@ pub(crate) fn toca_os_objectos(
     // é o que a mantém testável sem uma, e o que impede uma segunda cópia da comparação de nomes.
     let nomes: Vec<&str> = doc.containers().iter().map(|c| c.name.as_str()).collect();
     let corridas = ph2d_ecs::sequence::em_corrida(world, &nomes);
-    // A Animação de cada objecto só toca no PLAY ALL (pedido do dono, 09/10): o Arrange vazio não
-    // toca nada.
-    let animados = play_all && doc.animation_owners().next().is_some();
+    // A Animação de cada objecto (e, com o Arrange vazio, o clipe da Cena) só toca no PLAY ALL
+    // (pedido do dono, 09/10): com o Play normal o Arrange vazio não toca nada.
+    let animados = play_all;
     if corridas.is_empty() && !animados {
         return 0;
     }

@@ -98,15 +98,27 @@ impl TimelineDoc {
         self.clip_cut(index, local)
     }
 
-    /// ⭐ **Quem toca a entrada no Play**: cada objecto vivo com Animação que a Cena não dirige, com
-    /// o clipe de entrada dele — por ordem do 1.º clipe, sem repetições.
+    /// ⭐ **Quem toca a entrada no Play All**: a CENA primeiro — o clipe de entrada dela (o 1.º) quando
+    /// o Arrange está vazio (com Arrange, é ele que toca) —, depois cada objecto vivo com Animação que a
+    /// Cena não dirige, com o clipe de entrada dele, por ordem do 1.º clipe, sem repetições. O objecto
+    /// escreve por último: a animação PRÓPRIA dele manda sobre a da Cena.
     #[must_use]
     pub fn autoplay_entries(&self) -> Vec<(u64, usize)> {
+        let cena = self
+            .stack
+            .iter()
+            .all(|l| l.strips.is_empty())
+            .then(|| self.entry_clip_of(SCENE))
+            .flatten()
+            .map(|c| (SCENE, c));
         let dirigidos = self.arranged_owners();
         let mut vistos = BTreeSet::new();
-        self.animation_owners()
-            .filter(|o| !dirigidos.contains(o) && vistos.insert(*o))
-            .filter_map(|o| Some((o, self.entry_clip_of(o)?)))
+        cena.into_iter()
+            .chain(
+                self.animation_owners()
+                    .filter(|o| !dirigidos.contains(o) && vistos.insert(*o))
+                    .filter_map(|o| Some((o, self.entry_clip_of(o)?))),
+            )
             .collect()
     }
 }

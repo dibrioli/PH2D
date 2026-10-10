@@ -290,8 +290,26 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         AnimValue::Float(10.0),
         Interp::Linear,
     );
+    // ⭐ A Cena com o Arrange VAZIO: no Play All o clipe dela toca (2.º smoke do dono — o Inimigo
+    // ficava parado); com o Play normal, não.
     let mut w2 = World::new();
-    w2.spawn(Transform::default());
+    let e2 = w2.spawn(Transform::default()).id();
+    assert_eq!(
+        e2.to_bits(),
+        bits,
+        "o mesmo índice: o clipe da Cena nomeia este objecto"
+    );
+    assert_eq!(
+        toca_os_objectos(
+            &mut w2,
+            &mut cena,
+            (1.0, &mut Vec::new(), false),
+            &mut drive,
+            |_| false
+        ),
+        0,
+        "Play normal: o Arrange vazio não toca nada"
+    );
     assert_eq!(
         toca_os_objectos(
             &mut w2,
@@ -300,8 +318,13 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
             &mut drive,
             |_| false
         ),
-        0,
-        "um clipe da Cena é do Arrange, não toca sozinho"
+        1,
+        "Play All: o clipe da Cena toca"
+    );
+    assert!(
+        (y(&w2, e2) - 10.0).abs() < 1e-4,
+        "a única chave: y = {}",
+        y(&w2, e2)
     );
 }
 
@@ -330,4 +353,15 @@ fn o_play_all_do_menu_chega_a_timeline_antes_do_relogio_da_vista() {
         .find("let active_playhead")
         .expect("a escolha do relógio");
     assert!(take < relogio, "antes de escolher o relógio da vista");
+    // E com o modo marcado o transporte do painel mostra o relógio da CENA (o ▶/⏸ dela).
+    let snap = dreno
+        .rfind("let active_playhead")
+        .expect("a escolha do relógio do painel");
+    assert!(
+        dreno[snap..]
+            .lines()
+            .take(3)
+            .any(|l| l.contains("self.timeline.play_all")),
+        "o painel lê o relógio da cena no Play All"
+    );
 }

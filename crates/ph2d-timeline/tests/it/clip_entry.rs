@@ -56,7 +56,11 @@ fn a_entrada_e_a_marcada_ou_a_primeira() {
         !doc.set_entry_clip(0),
         "a Cena toca o Arrange, não tem entrada"
     );
-    assert_eq!(doc.autoplay_entries(), vec![(heroi, andar)]);
+    assert_eq!(
+        doc.autoplay_entries(),
+        vec![(SCENE, 0), (heroi, andar)],
+        "a Cena (Arrange vazio: o clipe dela) e depois o objecto"
+    );
 }
 
 /// ⭐ A Cena DIRIGE quem ela arranjou: um objecto cujo clipe está no Arrange não toca a entrada por
@@ -73,7 +77,6 @@ fn um_objecto_arranjado_pela_cena_nao_toca_a_entrada() {
     assert!(doc.arranged_owners().contains(&heroi));
     let quem: Vec<u64> = doc.autoplay_entries().iter().map(|e| e.0).collect();
     assert_eq!(quem, vec![vilao]);
-    let _ = SCENE;
 }
 
 /// O relógio do clipe: sem loop toca uma vez e fica; com o loop do Keys dobra como uma faixa; com
@@ -198,5 +201,40 @@ fn um_pedido_de_um_clipe_que_nao_existe_e_dito_uma_vez() {
         ph2d_i18n::tr(ph2d_timeline::ClipRefusal::UnknownClip.message_key()),
         ph2d_timeline::ClipRefusal::UnknownClip.message_key(),
         "a chave está na tabela"
+    );
+}
+
+/// ⭐ **O Play All toca a animação da CENA** quando o Arrange está vazio (2.º smoke do dono, 09/10: o
+/// Inimigo, animado pela Cena, ficava parado); com Arrange, é ele que toca e o clipe da Cena não entra.
+#[test]
+fn com_o_arrange_vazio_o_play_all_toca_o_clipe_da_cena() {
+    let mut world = bevy_ecs::world::World::new();
+    let e = world.spawn(ph2d_ecs::Transform::IDENTITY).id();
+    let inimigo = e.to_bits();
+    let mut doc = TimelineDoc::new();
+    doc.set_active(0);
+    doc.insert_key(
+        inimigo,
+        PropKind::TranslationY,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        inimigo,
+        PropKind::TranslationY,
+        s(1.0),
+        AnimValue::Float(8.0),
+        Interp::Linear,
+    );
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false, &mut Vec::new());
+    let y = world.get::<ph2d_ecs::Transform>(e).unwrap().translation.y;
+    assert!((y - 4.0).abs() < 1e-4, "o clipe da Cena tocou: y = {y}");
+
+    let lane = doc.add_lane("Base".into()).expect("uma lane");
+    doc.add_strip(lane, 0, 0.0, 2.0).expect("o Main no Arrange");
+    assert!(
+        doc.autoplay_entries().iter().all(|e| e.0 != SCENE),
+        "com Arrange, é o Arrange que toca"
     );
 }

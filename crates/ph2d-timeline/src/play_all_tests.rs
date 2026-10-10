@@ -4,10 +4,10 @@ fn relogio() -> Playhead {
     Playhead::new(1.0 / 60.0)
 }
 
-/// Ligar toca a cena; o mesmo pedido outra vez pausa e desliga; o relógio parado por outra via
-/// (o Pause) acaba-o. (Mutações: o toggle sem o `pause`; o fim sem o relógio ⇒ RED.)
+/// Marcar toca a cena; o Pause NÃO o desmarca (é um modo — 2.º smoke do dono); o mesmo botão
+/// desmarca e pausa. (Mutações: o fim pelo relógio de volta; o desmarcar sem `pause` ⇒ RED.)
 #[test]
-fn o_play_all_liga_desliga_e_acaba_com_o_relogio() {
+fn o_play_all_e_um_modo_que_so_o_botao_desmarca() {
     let (mut st, mut cena) = (TimelineState::new(), relogio());
     let mut pedido = vec![TimelineIntent::PlayAll, TimelineIntent::Scrub(1.0)];
     take_play_all(&mut st, &mut pedido, &mut cena);
@@ -18,14 +18,14 @@ fn o_play_all_liga_desliga_e_acaba_com_o_relogio() {
         "drenado; o resto fica"
     );
 
+    cena.pause();
+    take_play_all(&mut st, &mut Vec::new(), &mut cena);
+    assert!(st.play_all, "o Pause não desmarca o modo");
+    cena.play();
+
     take_play_all(&mut st, &mut vec![TimelineIntent::PlayAll], &mut cena);
     assert!(
         !st.play_all && !cena.is_playing(),
-        "o mesmo botão desliga e pausa"
+        "o mesmo botão desmarca e pausa"
     );
-
-    take_play_all(&mut st, &mut vec![TimelineIntent::PlayAll], &mut cena);
-    cena.pause();
-    take_play_all(&mut st, &mut Vec::new(), &mut cena);
-    assert!(!st.play_all, "pausado por outra via: acabou");
 }

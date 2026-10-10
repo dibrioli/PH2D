@@ -115,8 +115,9 @@ pub fn apply_autoplay(
             .and_then(|p| p.em(t))
             .and_then(|(nome, desde)| Some((doc.clip_named(dono, nome)?, desde)));
         let (clip, local) = pedido.unwrap_or((entrada, t));
-        apply_one_clip_except(world, doc, clip, doc.clip_local_time(clip, local), skip);
-        tocaram += 1;
+        let escritas =
+            apply_one_clip_except(world, doc, clip, doc.clip_local_time(clip, local), skip);
+        tocaram += usize::from(escritas > 0);
     }
     tocaram
 }

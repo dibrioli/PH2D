@@ -137,6 +137,10 @@ mod corda_com_colisor_demo;
 #[path = "motion_state_ritmo_demo.rs"]
 mod ritmo_demo;
 
+/// A cena `=133` — a cor que o olho vê (ciclo 18, doc 127).
+#[path = "motion_state_cor_demo.rs"]
+mod cor_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

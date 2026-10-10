@@ -1,0 +1,161 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · A cor que o olho vê</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .wide figcaption { font-size:11px; color:var(--t2); margin-top:6px; text-align:center; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>A cor que o olho vê
+  <small>PH2D · Motion Nodes · tutorial 11 — misturar cores <b>sem passar pelo cinza</b>: o espaço
+  em que um degradê, um crossfade ou uma mistura acontecem</small></h1>
+
+<p>Quando o programa mistura duas cores, ele tem de escolher <b>em que espaço</b> faz a conta.
+Até aqui era sempre em RGB (vermelho, verde, azul): rápido, mas o olho não vê assim — de azul para
+amarelo, o meio passa por um <b>cinza apagado</b>, e de preto para branco o meio já está claro
+demais. O CSS moderno e as ferramentas de design misturam em <b>OKLab</b> e <b>OKLCH</b>, espaços
+feitos para o olho: a luminosidade anda por igual, e a cor roda pelo círculo das cores em vez de
+atravessar o cinza.</p>
+
+<table>
+  <tr><th>espaço</th><th>o que faz</th></tr>
+  <tr><td><code>Linear RGB</code></td><td>a mistura de sempre. Os documentos gravados antes
+      continuam assim.</td></tr>
+  <tr><td><code>OKLab</code></td><td>a luminosidade anda por igual. É o que um nó <b>novo</b> já
+      usa.</td></tr>
+  <tr><td><code>OKLCH Shorter</code></td><td>a cor roda pelo caminho <b>curto</b> do círculo: nunca
+      passa pelo cinza.</td></tr>
+  <tr><td><code>OKLCH Longer</code></td><td>a cor dá a volta pelo caminho <b>longo</b> (um arco-íris).</td></tr>
+</table>
+
+<div class="note"><b>Onde isto vale:</b> no <code>Tint</code> em modo <code>Gradient</code>, no
+<code>Morph</code> (a cor do crossfade), no <code>Mixer</code> (Blend e Avg) e no
+<code>Color Ramp</code> (o botão do espaço no editor do gradiente ganhou <code>OKLab</code> e
+<code>OKLCH</code>). Quando uma mistura sai das cores que o ecrã consegue mostrar, ela volta para
+dentro <b>baixando a saturação</b> (o método do CSS), nunca cortando um canal — por isso a cor não
+muda de matiz no fim.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=133 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Olhe a tela</b> (se os discos estiverem parados, carregue em <kbd>Play</kbd>).
+      <div class="out">Duas <b>galáxias</b> de discos a girar devagar — a mesma <b>simulação</b>
+      do tutorial 10 (um redemoinho e um íman). Cada disco é pintado por um degradê de
+      <b>azul</b> para <b>amarelo</b>, pela ordem.</div></li>
+  <li><b>Compare os meios.</b>
+      <div class="out">Na <b>esquerda</b> o meio do degradê é um <b>cinza</b> claro e lavado. Na
+      <b>direita</b> o meio é <b>verde-azulado</b> e vivo.</div>
+      <div class="bad">Se a direita também tiver cinza no meio, avise.</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/cor_cena.png" alt="duas galaxias de discos; a esquerda vai de azul a amarelo por cinza, a direita por verde">
+  <figcaption>A mesma conta, dois espaços: à esquerda <code>Linear RGB</code>, à direita
+  <code>OKLCH Shorter</code>.</figcaption></figure>
+
+<h2>2 · Um botão de diferença</h2>
+<p>No grafo há <b>duas filas</b> de cartões, uma por galáxia — a de cima é a da esquerda. A cor
+sai do cartão <code>Tint</code>.</p>
+
+<figure class="wide"><img src="../fig/cor_cartoes.png" alt="a fila de cartoes da galaxia da esquerda">
+  <figcaption>A simulação (<code>Falloff → Vortex → Attractor → Integrate</code>), o disco
+  (<code>Shape → Duplicator</code>) e a cor (<code>Tint</code>).</figcaption></figure>
+
+<ol class="steps">
+  <li><b>Na fila de cima, clique no cartão <code>Tint</code></b> e mude a linha
+      <code>Color Space</code> para <code>OKLab</code>.
+      <div class="out">O cinza do meio vira um <b>azul-esverdeado suave</b>, e a luminosidade passa
+      a subir por igual do azul ao amarelo (em RGB ela já estava clara demais no meio).</div>
+      <div class="bad">Se nada mudar, avise.</div></li>
+  <li><b>Mude para <code>OKLCH Shorter</code>.</b>
+      <div class="out">Fica como a galáxia da direita: verde-azulado vivo no meio.</div></li>
+  <li><b>Mude para <code>OKLCH Longer</code>.</b>
+      <div class="out">O degradê dá a volta pelo outro lado do círculo: passa por roxo, vermelho e
+      laranja antes de chegar ao amarelo.</div></li>
+  <li><b>Mude <code>Mode</code> para <code>Solid</code>.</b>
+      <div class="out">A linha <code>Color Space</code> desaparece: uma cor só não mistura nada.</div></li>
+</ol>
+
+<h2>3 · O que cada botão faz</h2>
+<table>
+  <tr><th>linha</th><th>cartão</th><th>o que faz</th></tr>
+  <tr><td><code>Color Space</code></td><td>Tint (Gradient)</td><td>o espaço do degradê de
+      <code>Start</code> para <code>End</code></td></tr>
+  <tr><td><code>Color Space</code></td><td>Morph</td><td>o espaço em que a cor de A vira a de B</td></tr>
+  <tr><td><code>Color Space</code></td><td>Mixer (Blend · Avg)</td><td>o espaço da mistura das
+      cores das entradas; no <code>Avg</code> os três perceptuais fazem a média em OKLab</td></tr>
+  <tr><td>o botão do espaço</td><td>Color Ramp (editor do gradiente)</td><td>RGB · HSV · HSL ·
+      <code>OKLab</code> · <code>OKLCH</code>; no OKLCH o botão ao lado escolhe o sentido da cor</td></tr>
+</table>
+
+<h2>4 · Vá além</h2>
+<ol class="steps">
+  <li><b>Preto para branco.</b> No <code>Tint</code> de cima ponha <code>Start</code> preto e
+      <code>End</code> branco: em <code>Linear RGB</code> os discos ficam claros cedo demais; em
+      <code>OKLab</code> o cinza do meio fica mesmo a meio.</li>
+  <li><b>Um arco-íris de duas cores.</b> <code>Start</code> vermelho, <code>End</code> laranja e
+      <code>OKLCH Longer</code>: o degradê passa pelo círculo inteiro.</li>
+  <li><b>No gradiente do Color Ramp.</b> Num cartão <code>Color Ramp</code>, abra o editor do
+      gradiente e clique no botão do espaço até <code>OKLCH</code>.</li>
+</ol>
+
+<h2>5 · O que isto custa</h2>
+<p>Na placa de vídeo, com 4 096 discos e o gradiente em OKLCH, a mistura perceptual dá a mesma cor
+que a CPU com uma diferença de no máximo <code>0,000016</code> (um degrau de cor do ecrã é
+<code>0,004</code>). O <code>Color Ramp</code> é calculado uma vez numa tabela, por isso o espaço
+não custa nada por disco.</p>
+
+<h2>6 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que reportar</th></tr>
+  <tr><td>a direita tem cinza no meio</td><td>«o OKLCH não roda a cor» + foto</td></tr>
+  <tr><td>mudar o <code>Color Space</code> não muda nada</td><td>em que cartão</td></tr>
+  <tr><td>discos pretos ou brancos estourados</td><td>a mistura saiu da gama — o espaço e as duas cores</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 18 (doc 127) · cena <code>PH2D_GPU_COOK_DEMO=133</code> ·
+a mistura conferida contra o culori (MIT), corrido sobre as nossas cores</footer>

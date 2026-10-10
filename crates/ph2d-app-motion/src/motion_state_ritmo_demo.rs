@@ -70,25 +70,15 @@ fn indice_da_estrela() -> Option<f32> {
     Some(i as f32)
 }
 
-/// Os nós que os gates leem de uma coluna (o produto só usa a `saida`).
-#[cfg_attr(not(test), expect(dead_code, reason = "lidos pelos gates da cena"))]
-pub(crate) struct Coluna {
-    pub saida: NodeId,
-    pub tempo: NodeId,
-    pub stagger: NodeId,
-    pub galaxia: NodeId,
-}
-
-/// Uma galáxia com a sua onda. `k = 0` à esquerda, `1` à direita.
-fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
-    #[expect(clippy::cast_precision_loss, reason = "duas colunas")]
-    let y0 = 330.0 * k as f32;
+/// ⭐ **Uma galáxia de `LADO²` pontos a girar** — a grelha de partida e a SIMULAÇÃO com campos
+/// (núcleo → redemoinho em velocidade-alvo → ímã → `Integrate`), com os cartões na fileira `y0`.
+/// Partilhada pelas cenas `=132` (o ritmo) e `=133` (a cor). Devolve o `Integrate`.
+pub(super) fn galaxia(g: &mut Graph, y0: f32) -> Option<NodeId> {
     let no = |g: &mut Graph, tipo: &str, x: f32, dy: f32| {
         let n = g.add_node(tipo.to_string());
         g.set_pos(n, Pos { x, y: y0 + dy });
         n
     };
-    // ── AS POSIÇÕES, e a SIMULAÇÃO COM CAMPOS que as faz girar.
     let grade = no(g, "motion.grid", -660.0, 0.0);
     g.set_param(grade, "rows", LADO);
     g.set_param(grade, "cols", LADO);
@@ -113,6 +103,30 @@ fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
     liga(g, nucleo, vortex, 0, false)?;
     liga(g, vortex, ima, 0, false)?;
     liga(g, ima, galaxia, 1, false)?;
+
+    Some(galaxia)
+}
+
+/// Os nós que os gates leem de uma coluna (o produto só usa a `saida`).
+#[cfg_attr(not(test), expect(dead_code, reason = "lidos pelos gates da cena"))]
+pub(crate) struct Coluna {
+    pub saida: NodeId,
+    pub tempo: NodeId,
+    pub stagger: NodeId,
+    pub galaxia: NodeId,
+}
+
+/// Uma galáxia com a sua onda. `k = 0` à esquerda, `1` à direita.
+fn coluna(g: &mut Graph, k: usize) -> Option<Coluna> {
+    #[expect(clippy::cast_precision_loss, reason = "duas colunas")]
+    let y0 = 330.0 * k as f32;
+    let no = |g: &mut Graph, tipo: &str, x: f32, dy: f32| {
+        let n = g.add_node(tipo.to_string());
+        g.set_pos(n, Pos { x, y: y0 + dy });
+        n
+    };
+    // ── AS POSIÇÕES, e a SIMULAÇÃO COM CAMPOS que as faz girar.
+    let galaxia = galaxia(g, y0)?;
 
     // ── A ONDA NO TEMPO: o atraso de cada estrela pela ORDEM, em laço, e o crescimento.
     let ordem = ORDENS[k];

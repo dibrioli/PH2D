@@ -196,6 +196,7 @@ fn nearest_col(a: &Column, b: &Column, blend: &[f32], n: usize) -> Column {
 /// ⚠️ **Uma coluna que só UM lado carrega é PROPAGADA, não descartada** — descartar é
 /// exatamente o defeito que esta wave conserta, e a alternativa (inventar a identidade do
 /// lado ausente) escolheria por um artista que não pediu nada.
+#[cfg(test)]
 fn morph_stream(a: &Stream, b: &Stream, blend: &[f32]) -> Stream {
     morph_stream_no_espaco(a, b, blend, ph2d_color::perceptual::MixSpace::Linear)
 }

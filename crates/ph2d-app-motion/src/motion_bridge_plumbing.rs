@@ -208,3 +208,7 @@ pub(super) fn reconcile_after(graph: &mut Graph, registry: &NodeRegistry, before
         }
     }
 }
+
+#[cfg(test)]
+#[path = "motion_bridge_plumbing_defaults_tests.rs"]
+mod defaults_tests;

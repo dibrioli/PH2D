@@ -14,6 +14,16 @@ FASE 0: cd Worktrees/line-motion-value && pwd && git branch --show-current && gi
    de vídeo] não me interessa. Vamos fazer os demais»*. Sete ciclos, 17 → 23, na fila do
    [doc 103 §5](../103_dinamica_dos_ciclos.md). O protocolo de cada um é o doc 103 §1 (os sete passos).
 
+⭐ ATUALIZAÇÃO 10/10: o ciclo 18 FOI FEITO nesta mesma janela ([doc 127](../127_ciclo_18_a_cor_que_o_olho_ve.md),
+   cena `=133`, tutorial 11) — ⏳ smoke do dono. A próxima janela abre o **ciclo 19 (O JOGO MANDA)**:
+   `value.input` sobre o `cook.set_external` (`ph2d-nodegraph/src/external.rs`), `TimeMode::Driven`,
+   crossfade de estados pelo `mixer`, pontes dos componentes/Luau — desenho no doc 126 §0. Lições do
+   18: a matemática DETERMINISTA vive na `ph2d-ease` (`cbrt`, `atan_turn`, `sin/cos_turn`, `fract`,
+   `pe_div`) e o WGSL gera-se das mesmas tabelas por bits; um algoritmo com saída antecipada (o
+   «return se perto o bastante» do CSS) é um DEGRAU que um ULP atravessa — tire-o se a placa tiver de
+   dar a mesma resposta (doc 127 §5.2); um nó NOVO muda de default por `register_param_defaults`,
+   nunca pelo default do manifesto (que é o que um documento gravado lê).
+
 O QUE FAZER, NESTA ORDEM:
 1. Se o dono reportar o smoke do 17 com defeito: corrija PRIMEIRO (mecanismo, medição, gate —
    `/pd-bug-causa`), depois siga.

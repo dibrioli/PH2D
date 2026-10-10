@@ -118,6 +118,44 @@ const GRUPO: &[Caso] = &[
         ],
         via_drive: true,
     },
+    // ⭐ Ciclo 18 (doc 127 §5.4): o gradiente do Tint nos espaços perceptuais (vermelho → azul,
+    // o par que atravessa a gama no OKLCH longo — o pior caso do mapeamento).
+    Caso {
+        rotulo: "tint Linear",
+        no: "motion.tint",
+        params: &[
+            ("mode", 1.0),
+            ("g", 0.0),
+            ("b", 0.0),
+            ("b2", 1.0),
+            ("space", 0.0),
+        ],
+        via_drive: false,
+    },
+    Caso {
+        rotulo: "tint OKLab",
+        no: "motion.tint",
+        params: &[
+            ("mode", 1.0),
+            ("g", 0.0),
+            ("b", 0.0),
+            ("b2", 1.0),
+            ("space", 1.0),
+        ],
+        via_drive: false,
+    },
+    Caso {
+        rotulo: "tint OKLCH longo",
+        no: "motion.tint",
+        params: &[
+            ("mode", 1.0),
+            ("g", 0.0),
+            ("b", 0.0),
+            ("b2", 1.0),
+            ("space", 3.0),
+        ],
+        via_drive: false,
+    },
 ];
 
 fn liga(m: &mut MotionState, de: NodeId, para: NodeId, porta: u16) {

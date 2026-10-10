@@ -13,6 +13,8 @@ authors.workspace = true
 # O documento do Quadro — PURO: sem ECS, sem render, sem UI. Entra e sai por ops e bytes.
 serde = { version = "1", features = ["derive"] }
 postcard = { version = "1", features = ["alloc"] }
+# W8 — as versões guardam-se comprimidas (deflate 1: `docs/MiroClone/06_equipa_e_saida.md` §4.1).
+flate2 = "1"
 
 [lints]
 workspace = true

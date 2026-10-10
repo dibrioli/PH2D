@@ -31,9 +31,7 @@ pub(crate) fn paint_under(scene: &mut VectorScene, el: &Element, shape: &Shape, 
         el.w - side * 0.02,
         el.h + reach + drop * 0.4,
     );
-    scene
-        .inner_mut()
-        .draw_blurred_rounded_rect(t, body, shadow, 0.0, side * NOTE_SHADOW_BLUR);
+    scene.blurred_rounded_rect(t, body, shadow, 0.0, side * NOTE_SHADOW_BLUR);
     let Some(Rgba([r, g, b, a])) = shape.style.fill else {
         return;
     };

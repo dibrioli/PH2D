@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 use ph2d_board_model::{Board, BoardDoc, Element, ElementId, RichText};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Affine, BezPath, Brush, Point, Rect, Shape as _, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Rect, Shape as _, Stroke, VectorScene};
 
 use crate::{RenderCache, ThemeInk, doc_color, token};
 
@@ -58,12 +58,14 @@ pub(crate) fn visible(board: &Board, area: [f64; 4], clip: Rect) -> Vec<(&Elemen
 }
 
 /// O fundo e a borda de cada frame à vista; devolve os que, de tão pequenos, mostram só o título.
+/// `export`: o fio da interface (sem contorno do artista) não sai — é cromado, não documento (W8 E6).
 pub(crate) fn paint_backs(
     scene: &mut VectorScene,
     frames: &[(&Element, BezPath)],
     zoom: f64,
     theme: Theme,
     detail: Detail,
+    export: bool,
 ) -> BTreeSet<ElementId> {
     let hairline = Stroke::new(f64::from(StrokeToken::Hairline.px()));
     let mut far = BTreeSet::new();
@@ -79,14 +81,15 @@ pub(crate) fn paint_backs(
                 let px = st.stroke_width * zoom;
                 (Stroke::new(px), Brush::Solid(doc_color(c)))
             }
+            None if export => (Stroke::new(0.0), Brush::Solid(Color::TRANSPARENT)),
             None => (
                 hairline.clone(),
                 Brush::Solid(token(ColorToken::Border, theme)),
             ),
         };
-        scene
-            .inner_mut()
-            .stroke(&line, Affine::IDENTITY, &brush, None, r);
+        if line.width > 0.0 {
+            scene.stroke_path(&line, Affine::IDENTITY, &brush, r);
+        }
         if f.h * zoom < detail.frame_title_only_px {
             far.insert(f.id);
         }
@@ -212,7 +215,7 @@ pub(crate) fn paint_titles(
             * Affine::rotate(f.angle)
             * Affine::translate((0.0, -gap - h));
         scene.push_clip(&(along * Rect::new(0.0, 0.0, w, h + gap).to_path(0.1)));
-        ph2d_board_layout::paint(scene, layout, along, ink);
+        ph2d_board_layout::paint(scene, layout, &frame.name, along, ink);
         scene.pop_layer();
     }
 }

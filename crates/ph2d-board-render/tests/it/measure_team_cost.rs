@@ -87,7 +87,9 @@ fn measure_team_cost() {
         ("fluxo 10k", flow(10_000)),
         ("fluxo 100k", flow(100_000)),
     ];
-    println!("\n== guardar uma versão (ms a guardar · bytes · ms a restaurar; mínimo [mediana]) ==");
+    println!(
+        "\n== guardar uma versão (ms a guardar · bytes · ms a restaurar; mínimo [mediana]) =="
+    );
     for (name, set) in &boards {
         let mut save = vec![Vec::new(); KEEPS.len()];
         let mut back = vec![Vec::new(); KEEPS.len()];

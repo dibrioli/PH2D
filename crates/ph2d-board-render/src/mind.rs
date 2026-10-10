@@ -56,11 +56,10 @@ pub(crate) fn paint_branch(
         .area()
         > 0.0;
     if on_screen {
-        scene.inner_mut().stroke(
+        scene.stroke_path(
             &Stroke::new(width),
             Affine::IDENTITY,
             &Brush::Solid(doc_color(m.color)),
-            None,
             &path,
         );
     }
@@ -95,7 +94,13 @@ pub(crate) fn paint_badge(
     let layout = cache.text.get_rich(ts, key, &text, size, f32::MAX, false);
     let (tw, th) = (f64::from(layout.width()), f64::from(layout.height()));
     let at = v * Affine::translate((x + (w - tw) / 2.0, y + (h - th) / 2.0));
-    ph2d_board_layout::paint(scene, layout, at, doc_color(m.color.readable_ink()));
+    ph2d_board_layout::paint(
+        scene,
+        layout,
+        text.as_str(),
+        at,
+        doc_color(m.color.readable_ink()),
+    );
 }
 
 /// Por cima: o realce do nó onde o arrasto largaria (como pai) e o «+» do nó seleccionado.
@@ -110,11 +115,10 @@ pub(crate) fn paint_overlay(
     let thin = f64::from(StrokeToken::Thin.px());
     let thick = f64::from(StrokeToken::Thick.px());
     let stroke = |scene: &mut VectorScene, path: &BezPath, width: f64| {
-        scene.inner_mut().stroke(
+        scene.stroke_path(
             &Stroke::new(width),
             Affine::IDENTITY,
             &Brush::Solid(accent),
-            None,
             path,
         );
     };

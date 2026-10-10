@@ -25,7 +25,9 @@ use parley::{
 };
 use ph2d_board_model::{Rgba, RichText, Span};
 use ph2d_text::TextSystem;
-use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Glyph, Rect, Shape as _, VectorScene};
+use ph2d_vector::{
+    Affine, BezPath, Brush, Color, Glyph, GlyphStyle, Rect, Shape as _, VectorScene,
+};
 
 pub use edit::{Move, TextEdit};
 
@@ -104,7 +106,14 @@ pub fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
 
 /// Desenha `layout` com `transform` (do espaço do texto — origem no canto superior esquerdo do
 /// bloco, em unidades do mundo — para o ecrã); `ink` é a tinta da forma (a dos trechos sem cor).
-pub fn paint(scene: &mut VectorScene, layout: &Layout<Ink>, transform: Affine, ink: Color) {
+/// `text` é o texto que o `layout` moldou: cada corrida grava o seu pedaço (o PDF devolve-o à busca).
+pub fn paint(
+    scene: &mut VectorScene,
+    layout: &Layout<Ink>,
+    text: &str,
+    transform: Affine,
+    ink: Color,
+) {
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else {
@@ -118,23 +127,23 @@ pub fn paint(scene: &mut VectorScene, layout: &Layout<Ink>, transform: Affine, i
                 .synthesis()
                 .skew()
                 .map(|deg| Affine::skew(f64::from(deg).to_radians().tan(), 0.0));
-            scene
-                .inner_mut()
-                .draw_glyphs(r.font())
-                .font_size(r.font_size())
-                .hint(false)
-                .normalized_coords(r.normalized_coords())
-                .glyph_transform(skew)
-                .brush(color)
-                .transform(transform)
-                .draw(
-                    Fill::NonZero,
-                    run.positioned_glyphs().map(|g| Glyph {
-                        id: g.id,
-                        x: g.x,
-                        y: g.y,
-                    }),
-                );
+            let gs = GlyphStyle {
+                font: r.font(),
+                size: r.font_size(),
+                coords: r.normalized_coords(),
+                skew,
+                brush: color,
+                transform,
+                text: text.get(r.text_range()).unwrap_or_default(),
+            };
+            scene.glyph_run(
+                &gs,
+                run.positioned_glyphs().map(|g| Glyph {
+                    id: g.id,
+                    x: g.x,
+                    y: g.y,
+                }),
+            );
             let m = r.metrics();
             let (x0, x1) = (run.offset(), run.offset() + run.advance());
             let mut bar = |offset: f32, size: f32| {

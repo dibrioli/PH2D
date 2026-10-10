@@ -1,0 +1,38 @@
+[package]
+name = "ph2d-board-export"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A SAÍDA do Quadro (W8, `docs/MiroClone/06_equipa_e_saida.md` §2 E): a gravação do desenho
+# (`ph2d_vector::DrawOp`) escrita em SVG e PDF — a MESMA lei de desenho que o ecrã e o PNG.
+# Sem UI, sem ficheiros: devolve bytes.
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-board-edit = { path = "../ph2d-board-edit" }
+ph2d-board-render = { path = "../ph2d-board-render" }
+ph2d-board-route = { path = "../ph2d-board-route" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+# Os contornos das letras (a MESMA fonte e os mesmos glifos que o Vello desenha). ⛔ TETO: o `vello
+# 0.10.0` e o `parley 0.11.1` pedem `^0.44.0` — outra versão seria uma 2.ª cópia (STACK_VERSOES.md).
+skrifa = "0.44.0"
+# O PDF: só a serialização (a geometria é a nossa). MIT/Apache, deps `bitflags itoa memchr ryu`.
+# ⛔ `krilla` recusado (estudo §3): `skrifa ^0.42` = uma 2.ª cópia, e um 2.º moldador.
+pdf-writer = "0.15"
+# As máscaras de desfoque e os conteúdos do PDF, comprimidos (FlateDecode).
+flate2 = "1"
+# O PNG pela PLACA (o `VelloPass` do produto, o dono do anti-aliasing), em ladrilhos do tecto do
+# dispositivo — e os bytes PNG (a mesma versão que o `image` já traz no lock).
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
+png = "0.18"
+
+[lints]
+workspace = true

@@ -3,15 +3,16 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::BoardDoc;
+use crate::{BoardDoc, Team};
 
 /// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a,
 /// e as anteriores continuam a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1);
 /// 3 = o texto das formas com estilo por trecho (W3); 4 = o rascunho (`Style::sketch`,
 /// `Board::sketch`) e os traços da caneta (W4); 5 = organizar — frames, grupos, travar, links e
 /// etiquetas (W5); 6 = o nó de mapa mental (`Org::mind`, W6); 7 = os votos e os carimbos
-/// (`Org::votes`, `Org::stamps`, W7).
-pub const FORMAT_VERSION: u32 = 7;
+/// (`Org::votes`, `Org::stamps`, W7); 8 = a equipa (`Board::team`: comentários, versões, frames fora da
+/// apresentação, W8).
+pub const FORMAT_VERSION: u32 = 8;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -45,6 +46,8 @@ pub struct Board {
     pub doc: BoardDoc,
     /// O quadro está em RASCUNHO: o que nasce nele nasce à mão (W4).
     pub sketch: bool,
+    /// W8 — comentários, versões e frames fora da apresentação ([`Team`]).
+    pub team: Team,
 }
 
 /// Todos os quadros do projecto, na ordem das abas.
@@ -104,6 +107,7 @@ impl BoardSet {
             camera: Camera::default(),
             doc: BoardDoc::default(),
             sketch: false,
+            team: Team::default(),
         });
         id
     }
@@ -133,6 +137,38 @@ impl BoardSet {
         let b = self.boards.remove(from);
         self.boards.insert(to.min(self.boards.len()), b);
         true
+    }
+
+    /// Os quadros, por valor (o leitor de uma versão, W8).
+    #[must_use]
+    pub fn into_boards(self) -> Vec<Board> {
+        self.boards
+    }
+
+    /// Restaura uma versão (R3): um quadro NOVO logo à direita de `after`, com o documento e o rascunho
+    /// dela e nada da equipa. `None` se `after` não existe.
+    pub fn insert_after(
+        &mut self,
+        after: BoardId,
+        name: String,
+        doc: BoardDoc,
+        sketch: bool,
+    ) -> Option<BoardId> {
+        let at = self.boards.iter().position(|b| b.id == after)?;
+        self.next_id += 1;
+        let id = BoardId(self.next_id);
+        self.boards.insert(
+            at + 1,
+            Board {
+                id,
+                name,
+                camera: Camera::default(),
+                doc,
+                sketch,
+                team: Team::default(),
+            },
+        );
+        Some(id)
     }
 
     /// Tira o quadro e devolve-o (quem chama decide se o guarda para desfazer).
@@ -174,6 +210,7 @@ impl BoardSet {
             4 => crate::legacy::read_v4(bytes),
             5 => crate::legacy::read_v5(bytes),
             6 => crate::legacy::read_v6(bytes),
+            7 => crate::legacy::read_v7(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

@@ -49,6 +49,7 @@ pub(crate) fn paint(
         ph2d_board_layout::paint(
             scene,
             layout,
+            &tag.name,
             t * Affine::translate((x + pad, y + pad / 2.0)),
             ink,
         );

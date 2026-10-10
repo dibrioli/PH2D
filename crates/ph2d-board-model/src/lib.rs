@@ -20,6 +20,7 @@ mod mind;
 mod ops;
 mod organize;
 mod rich;
+mod team;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
@@ -44,6 +45,7 @@ pub use mind::{
 pub use ops::{BoardOp, apply_batch};
 pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag};
 pub use rich::{Mark, Marks, RichText, Span};
+pub use team::{Message, Pin, Team, Thread, ThreadId, Version};
 
 /// Espessura do contorno de uma forma nova, em unidades do mundo: a MAIS FINA que o quadro oferece,
 /// 0,5 — ordens do dono (07/10): *«a espessura padrão deve ser a mais fina»* (captura

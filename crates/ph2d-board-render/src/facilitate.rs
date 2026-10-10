@@ -150,7 +150,7 @@ pub fn paint_stamp(scene: &mut VectorScene, s: Stamp, at: [f64; 2], side: f64, t
         .with_join(ph2d_vector::Join::Round);
     let into = t * Affine::translate((at[0], at[1])) * Affine::scale(k);
     let brush = Brush::Solid(doc_color(stamp_color(s)));
-    scene.inner_mut().stroke(&stroke, into, &brush, None, path);
+    scene.stroke_path(&stroke, into, &brush, path);
 }
 
 /// Um número centrado em `c` (referencial de `t`), na cache de texto sob `key`.
@@ -166,10 +166,11 @@ fn number(
     t: Affine,
     ink: Color,
 ) {
+    let digits = n.to_string();
     let layout = text.get_rich(
         ts,
         key,
-        &RichText::plain(&n.to_string()),
+        &RichText::plain(&digits),
         size as f32,
         f32::MAX,
         false,
@@ -178,6 +179,7 @@ fn number(
     ph2d_board_layout::paint(
         scene,
         layout,
+        &digits,
         t * Affine::translate((c[0] - w / 2.0, c[1] - h / 2.0)),
         ink,
     );
@@ -204,9 +206,7 @@ pub(crate) fn paint_marks(
             t,
         );
         let edge = Brush::Solid(Color::from_rgba8(0, 0, 0, 40)); // LITERAL-COLOR-OK: idem
-        scene
-            .inner_mut()
-            .stroke(&Stroke::new(h * 0.04), t, &edge, None, &chip);
+        scene.stroke_path(&Stroke::new(h * 0.04), t, &edge, &chip);
         let icon = h * CHIP_ICON;
         paint_stamp(
             scene,
@@ -284,9 +284,7 @@ fn paint_vote_marks(
             p.line_to((c[0], c[1] + arm));
         }
         let s = Stroke::new(d * 0.08).with_caps(ph2d_vector::Cap::Round);
-        scene
-            .inner_mut()
-            .stroke(&s, v, &Brush::Solid(white), None, &p);
+        scene.stroke_path(&s, v, &Brush::Solid(white), &p);
     };
     for m in marks {
         let (c, d) = m.plus;

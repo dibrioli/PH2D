@@ -22,6 +22,7 @@
 
 /// A porta que corre o passo de RESOLUÇÃO do Vello — o pedaço de CPU entre o encode e a placa.
 pub mod resolve_cost;
+pub mod record;
 pub mod scene;
 /// A porta do carimbo — uma forma encodada UMA vez, carimbada `N` vezes.
 pub mod scene_prepared;
@@ -38,6 +39,7 @@ mod atlas_probe_pieces_tests;
 mod atlas_probe_tests;
 
 pub use resolve_cost::{ResolveSize, SceneResolver};
+pub use record::{DrawOp, GlyphRun, GlyphStyle};
 pub use scene::{CLIPPED_IMAGE_INFO_WORDS, StableImage, VELLO_BIN_DATA_WORDS, VectorScene};
 pub use vector_network::{
     ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,
@@ -92,4 +94,5 @@ pub use vello::peniko::{BlendMode as VelloBlend, Compose, Mix};
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`
 // directly (text rendering in ph2d-editor::paint). Same version-skew
 // rationale as kurbo/peniko above.
-pub use vello::{Glyph, Scene};
+pub use vello::peniko::FontData;
+pub use vello::{Glyph, NormalizedCoord, Scene};

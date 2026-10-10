@@ -323,9 +323,7 @@ fn paint_rough(scene: &mut VectorScene, r: &Rough, st: &Style, t: Affine, ink: c
         }
         if !r.hachure.is_empty() {
             let hatch = Stroke::new(st.stroke_width.max(1.0) / 2.0).with_caps(Cap::Round);
-            scene
-                .inner_mut()
-                .stroke(&hatch, t, &brush, None, &r.hachure);
+            scene.stroke_path(&hatch, t, &brush, &r.hachure);
         }
     }
     if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0)
@@ -334,9 +332,7 @@ fn paint_rough(scene: &mut VectorScene, r: &Rough, st: &Style, t: Affine, ink: c
         let line = style_stroke(st.stroke_width, st.dash)
             .with_caps(Cap::Round)
             .with_join(Join::Round);
-        scene
-            .inner_mut()
-            .stroke(&line, t, &Brush::Solid(ink.color(c)), None, &r.line);
+        scene.stroke_path(&line, t, &Brush::Solid(ink.color(c)), &r.line);
     }
 }
 
@@ -387,7 +383,7 @@ pub(crate) fn paint_connector(
     let line = style_stroke(st.stroke_width, st.dash)
         .with_caps(Cap::Round)
         .with_join(Join::Round);
-    scene.inner_mut().stroke(&line, v, &brush, None, &r.line);
+    scene.stroke_path(&line, v, &brush, &r.line);
 }
 
 /// As opções do perfect-freehand de um traço: a espessura do estilo, sem afinar quando a pressão não
@@ -482,11 +478,10 @@ pub(crate) fn paint_laser(
         seg.move_to(v * Point::new(a[0], a[1]));
         seg.line_to(v * Point::new(b[0], b[1]));
         let stroke = Stroke::new(width * life.max(0.2)).with_caps(Cap::Round);
-        scene.inner_mut().stroke(
+        scene.stroke_path(
             &stroke,
             Affine::IDENTITY,
             &Brush::Solid(color.with_alpha(life as f32)),
-            None,
             &seg,
         );
     }

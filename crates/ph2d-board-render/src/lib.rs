@@ -11,6 +11,7 @@ mod frames;
 mod grid;
 mod mind;
 mod note;
+mod overlay;
 mod sketch;
 mod tags;
 mod theme_ink;
@@ -18,11 +19,11 @@ mod theme_ink;
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
 pub use grid::{dot_grid, grid_step_world};
+pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
 
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
 
-use ph2d_board_edit::{Frame, Handle, Metrics, Overlay};
 use ph2d_board_geom::{outline, text_origin, text_rect, to_world};
 use std::collections::BTreeMap;
 
@@ -31,7 +32,7 @@ use ph2d_board_layout::TextCache;
 use ph2d_board_model::{Area, Board, Camera, Connector, Dash, Element, Rgba, Shape, ShapeType};
 use ph2d_board_route::{LABEL_WRAP, RouteCache, Routed, label_origin};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Color, Join, Point, Rect, Shape as _, Stroke, VectorScene,
     VelloBlend,
@@ -73,7 +74,26 @@ pub struct RenderCache {
     pub hide_votes: bool,
     /// W7 — o menor e o maior total do quadro, pela revisão do documento.
     vote_range: Option<(u64, Option<[u32; 2]>)>,
+    /// W8 — o desenho para EXPORTAR ([`ExportLook`]); `None` = o ecrã.
+    pub export: Option<ExportLook>,
 }
+
+/// ⭐ W8 — o desenho para EXPORTAR (`docs/MiroClone/06_equipa_e_saida.md` E6/E7): o papel (ou nada:
+/// transparente), sem a grelha, sem os títulos dos frames; no vector o detalhe INTEIRO a qualquer
+/// escala (não tem zoom a que a letra vire traço). Os selos de voto saem pelo `hide_votes`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ExportLook {
+    /// `None` = fundo transparente.
+    pub paper: Option<Color>,
+    /// `true` = vector (SVG/PDF): o detalhe inteiro. `false` = imagem (PNG): o nível de detalhe do ecrã
+    /// à escala do export — uma letra de 2 px não se lê em lado nenhum, e 100 mil notas inteiras
+    /// passavam do tecto do Vello (a imagem em branco da régua do W0).
+    pub vector: bool,
+}
+
+/// O papel branco do export (E7: o Miro não exporta a cor de fundo).
+// LITERAL-COLOR-OK: papel do DOCUMENTO exportado, o mesmo em qualquer tema.
+pub const EXPORT_PAPER: Color = Color::from_rgba8(255, 255, 255, 255);
 
 /// O contorno guardado de `owner` (refeito se a forma mudou) — uma função sobre o CAMPO, para o
 /// desenho poder ao mesmo tempo escrever noutro campo da cache (o rascunho).
@@ -97,6 +117,23 @@ fn cached_outline<'a>(
 }
 
 impl RenderCache {
+    /// Um limiar do nível de detalhe, ou zero no export (o detalhe inteiro).
+    fn lod(&self, px: f64) -> f64 {
+        if self.export.is_some_and(|e| e.vector) {
+            0.0
+        } else {
+            px
+        }
+    }
+
+    /// A cor do fundo onde o quadro assenta (o recorte do rótulo de uma seta usa-a).
+    fn paper(&self, theme: Theme) -> Color {
+        match self.export {
+            Some(e) => e.paper.unwrap_or(EXPORT_PAPER),
+            None => token(ColorToken::Bg1, theme),
+        }
+    }
+
     fn end_frame(&mut self) {
         self.text.end_frame();
         self.frame += 1;
@@ -165,21 +202,28 @@ pub fn paint(
         return;
     }
     let clip = Rect::new(x, y, x + w, y + h);
-    cache.ink = ThemeInk::of(theme);
+    // No export a tinta lê-se contra o PAPEL (branco), nunca contra o tema do ecrã (E7).
+    let paper = ph2d_board_model::Rgba(ph2d_board_model::FRAME_FILL);
+    cache.ink = match cache.export {
+        Some(_) => ThemeInk::of(theme).over(paper),
+        None => ThemeInk::of(theme),
+    };
     cache.sketch.ink = cache.ink;
     scene.push_clip(&clip);
-    scene.fill_rect(clip, token(ColorToken::Bg1, theme));
-    let dots = dot_grid(&board.camera, area);
-    scene.fill_path(
-        &dots,
-        &Brush::Solid(token(ColorToken::GridLine, theme)),
-        Affine::IDENTITY,
-    );
+    if cache.export.is_none() {
+        scene.fill_rect(clip, token(ColorToken::Bg1, theme));
+        let dots = dot_grid(&board.camera, area);
+        let grid = Brush::Solid(token(ColorToken::GridLine, theme));
+        scene.fill_path(&dots, &grid, Affine::IDENTITY);
+    } else if let Some(p) = cache.export.and_then(|e| e.paper) {
+        scene.fill_rect(clip, p);
+    }
     let v = view(&board.camera, area);
     let zoom = board.camera.zoom;
     let frames = frames::visible(board, area, clip);
     let shown: std::collections::BTreeSet<_> = frames.iter().map(|(f, _)| f.id).collect();
-    let far = frames::paint_backs(scene, &frames, zoom, theme, cache.detail);
+    let export = cache.export.is_some();
+    let far = frames::paint_backs(scene, &frames, zoom, theme, cache.detail, export);
     let mut clips = frames::Clips::default();
     let chains = frames::Chains::new(&board.doc, &shown, &far);
     let framed = board.doc.has_frames();
@@ -221,7 +265,7 @@ pub fn paint(
                 let a = board.camera.to_screen(area, [bx0 - pad, by0 - pad]);
                 let b = board.camera.to_screen(area, [bx1 + pad, by1 + pad]);
                 if Rect::new(a[0], a[1], b[0], b[1]).intersect(clip).area() > 0.0 {
-                    let ink = Brush::Solid(token(ColorToken::Bg1, theme));
+                    let ink = Brush::Solid(cache.paper(theme));
                     let at = (board.id.0, el.id.0);
                     let s = sel_of(el.id);
                     paint_connector(scene, el, c, r, v, zoom, ts, cache, at, &ink, s);
@@ -238,7 +282,7 @@ pub fn paint(
             continue;
         }
         if let Some(ink) = el.ink() {
-            if r.width().max(r.height()) < DOT_PX {
+            if r.width().max(r.height()) < cache.lod(DOT_PX) {
                 if let Some(c) = ink.style.stroke {
                     scene.fill_rect(r, cache.ink.color(c));
                 }
@@ -253,7 +297,10 @@ pub fn paint(
         };
         let st = &shape.style;
         // De longe uma nota é um bloco da cor dela (W5, [`Detail::note_blocks`]).
-        if cache.detail.note_blocks && shape.kind.is_note() && st.font_size * zoom < READ_PX {
+        if cache.detail.note_blocks
+            && shape.kind.is_note()
+            && st.font_size * zoom < cache.lod(READ_PX)
+        {
             // O bloco roda com a nota (smoke do dono, 08/10: de longe as notas de um frame rodado
             // ficavam direitas).
             if let Some(c) = st.fill {
@@ -264,7 +311,7 @@ pub fn paint(
         }
         let plain =
             el.angle == 0.0 && st.opacity == 100 && st.stroke.is_none() && !st.round && !st.sketch;
-        if r.width().max(r.height()) < DOT_PX
+        if r.width().max(r.height()) < cache.lod(DOT_PX)
             || (plain && shape.kind == ShapeType::Rectangle && shape.text.is_empty())
         {
             // Um ponto de cor, ou o rectângulo cheio sem mais nada: o caminho rápido da W0.
@@ -297,7 +344,9 @@ pub fn paint(
         );
     }
     clips.close(scene);
-    frames::paint_titles(scene, ts, cache, board, area, &frames, &chains, theme);
+    if cache.export.is_none() {
+        frames::paint_titles(scene, ts, cache, board, area, &frames, &chains, theme);
+    }
     scene.pop_layer();
     cache.end_frame();
 }
@@ -342,15 +391,16 @@ fn paint_shape(
         if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0) {
             let stroke = style_stroke(st.stroke_width, st.dash);
             let brush = Brush::Solid(cache.ink.color(c));
-            scene.inner_mut().stroke(&stroke, t, &brush, None, &o.fill);
+            scene.stroke_path(&stroke, t, &brush, &o.fill);
             if !o.lines.is_empty() {
-                scene.inner_mut().stroke(&stroke, t, &brush, None, &o.lines);
+                scene.stroke_path(&stroke, t, &brush, &o.lines);
             }
         }
     }
     let font_px = st.font_size * zoom;
+    let read_px = cache.lod(READ_PX);
     let text_ink = cache.ink.text(st);
-    if !shape.text.is_empty() && font_px >= GREEK_MIN_PX {
+    if !shape.text.is_empty() && font_px >= cache.lod(GREEK_MIN_PX) {
         let [_, _, tw, _] = text_rect(shape.kind, el.w, el.h);
         let layout = cache.text.get_rich(
             ts,
@@ -365,15 +415,15 @@ fn paint_shape(
         if let Some(sel) = sel {
             sel.paint(scene, at);
         }
-        if font_px >= READ_PX {
-            ph2d_board_layout::paint(scene, layout, at, text_ink);
+        if font_px >= read_px {
+            ph2d_board_layout::paint(scene, layout, shape.text.as_str(), at, text_ink);
         } else {
             let bars = ph2d_board_layout::line_bars(layout);
             let c = text_ink.with_alpha(GREEK_ALPHA);
             scene.fill_path(&bars, &Brush::Solid(c), at);
         }
     }
-    if shape.kind.is_note() && !el.tags().is_empty() && font_px >= READ_PX {
+    if shape.kind.is_note() && !el.tags().is_empty() && font_px >= cache.lod(READ_PX) {
         tags::paint(scene, ts, &mut cache.text, board, el, st.font_size, t);
     }
     if faded {
@@ -413,7 +463,7 @@ fn paint_connector(
         );
     }
     let [x0, y0, x1, y1] = r.bbox;
-    if (x1 - x0).max(y1 - y0) * zoom < DOT_PX {
+    if (x1 - x0).max(y1 - y0) * zoom < cache.lod(DOT_PX) {
         // Uma seta de poucos px: o traço de ponta a ponta, sem curva nem pontas (o nível de detalhe
         // das formas, `DOT_PX`).
         if let Some(color) = st.stroke {
@@ -422,9 +472,7 @@ fn paint_connector(
             p.move_to(point(a));
             p.line_to(point(b));
             let line = Stroke::new(st.stroke_width);
-            scene
-                .inner_mut()
-                .stroke(&line, v, &Brush::Solid(cache.ink.color(color)), None, &p);
+            scene.stroke_path(&line, v, &Brush::Solid(cache.ink.color(color)), &p);
         }
         if faded {
             scene.pop_layer();
@@ -441,7 +489,7 @@ fn paint_connector(
         let line = style_stroke(st.stroke_width, st.dash)
             .with_caps(Cap::Round)
             .with_join(Join::Round);
-        scene.inner_mut().stroke(&line, v, &brush, None, &d.line);
+        scene.stroke_path(&line, v, &brush, &d.line);
         let solid = Stroke::new(st.stroke_width)
             .with_caps(Cap::Round)
             .with_join(Join::Round);
@@ -449,14 +497,15 @@ fn paint_connector(
             if *filled {
                 scene.fill_path(head, &brush, v);
             } else {
-                scene.inner_mut().stroke(&solid, v, &brush, None, head);
+                scene.stroke_path(&solid, v, &brush, head);
             }
         }
     }
     let font_px = st.font_size * zoom;
+    let read_px = cache.lod(READ_PX);
     // O rótulo assenta num recorte do FUNDO do quadro: segue a tinta do tema.
     let label_ink = cache.ink.color(st.text_color);
-    if !c.label.is_empty() && font_px >= GREEK_MIN_PX {
+    if !c.label.is_empty() && font_px >= cache.lod(GREEK_MIN_PX) {
         let layout = cache.text.get(
             ts,
             owner,
@@ -476,8 +525,8 @@ fn paint_connector(
         if let Some(sel) = sel {
             sel.paint(scene, at);
         }
-        if font_px >= READ_PX {
-            ph2d_board_layout::paint(scene, layout, at, label_ink);
+        if font_px >= read_px {
+            ph2d_board_layout::paint(scene, layout, &c.label, at, label_ink);
         } else {
             let c = label_ink.with_alpha(GREEK_ALPHA);
             scene.fill_path(&bars, &Brush::Solid(c), at);
@@ -507,176 +556,8 @@ pub fn style_stroke(width: f64, dash: Dash) -> Stroke {
     }
 }
 
-/// ⭐ **O que o editor desenha por cima** — moldura e pegas, contornos dos seleccionados, selecção
-/// por arrasto, guias e o texto em edição (selecção + cursor). Espessuras e pegas são de ECRÃ.
-pub fn paint_overlay(
-    board: &Board,
-    area: Area,
-    scene: &mut VectorScene,
-    theme: Theme,
-    overlay: &Overlay,
-    metrics: &Metrics,
-) {
-    let [x, y, w, h] = area;
-    let clip = Rect::new(x, y, x + w, y + h);
-    scene.push_clip(&clip);
-    let v = view(&board.camera, area);
-    let px = 1.0 / board.camera.zoom;
-    let accent = token(ColorToken::Accent, theme);
-    let thin = f64::from(StrokeToken::Thin.px());
-    let line = |scene: &mut VectorScene, path: &BezPath, color: Color, width: f64| {
-        scene.inner_mut().stroke(
-            &Stroke::new(width),
-            Affine::IDENTITY,
-            &Brush::Solid(color),
-            None,
-            path,
-        );
-    };
-    if let Some(t) = &overlay.text
-        && let Some(el) = board.doc.get(t.element)
-    {
-        let to_screen = v * to_world(el) * Affine::translate((t.origin[0], t.origin[1]));
-        // A selecção do texto pinta-se no quadro, DEBAIXO das letras (`paint`); aqui só o cursor.
-        if let Some(c) = t.caret {
-            // O cursor tem a espessura de UM px de ecrã a qualquer zoom.
-            let mid = (c[0] + c[2]) / 2.0;
-            let mut p = BezPath::new();
-            p.move_to(to_screen * Point::new(mid, c[1]));
-            p.line_to(to_screen * Point::new(mid, c[3]));
-            line(scene, &p, token(ColorToken::Text1, theme), thin);
-        }
-    }
-    for f in &overlay.boxes {
-        line(scene, &frame_path(f, &v), accent, thin);
-    }
-    if let Some(r) = overlay.marquee {
-        let p0 = v * Point::new(r[0], r[1]);
-        let p1 = v * Point::new(r[2], r[3]);
-        let rect = Rect::from_points(p0, p1).to_path(0.1);
-        // TRANSLÚCIDA por contrato (`GraphMarquee`): a faixa passa por cima do que selecciona, e a
-        // `AccentSoft` opaca tapava as formas e o texto (smoke da W3).
-        scene.fill_path(
-            &rect,
-            &Brush::Solid(token(ColorToken::GraphMarquee, theme)),
-            Affine::IDENTITY,
-        );
-        line(scene, &rect, accent, thin);
-    }
-    let guide = token(ColorToken::Danger, theme);
-    for g in &overlay.guides {
-        let mut p = BezPath::new();
-        p.move_to(v * Point::new(g.a[0], g.a[1]));
-        p.line_to(v * Point::new(g.b[0], g.b[1]));
-        line(scene, &p, guide, thin);
-    }
-    if let Some(t) = &overlay.target
-        && let Some(o) = board
-            .doc
-            .get(t.element)
-            .and_then(ph2d_board_geom::world_outline)
-    {
-        let thick = f64::from(StrokeToken::Thick.px());
-        line(scene, &(v * o.fill), accent, thick);
-        if let Some(p) = t.fixed {
-            let dot = ph2d_vector::Circle::new(v * point(p), metrics.handle / 2.0).to_path(0.1);
-            scene.fill_path(&dot, &Brush::Solid(accent), Affine::IDENTITY);
-        }
-    }
-    let paper = Brush::Solid(token(ColorToken::Bg1, theme));
-    for w in &overlay.wires {
-        let path = v * ph2d_vec_render::build_bezpath(&w.path);
-        line(scene, &path, accent, thin);
-        // As pontas e os pontos de ajuste: círculos ocos (arrastam-se) — o idioma do Miro.
-        // Do tamanho do alcance do clique (`Editor::wire_handle_at`): o que se vê é o que se agarra.
-        for e in w.ends.iter().chain(&w.points) {
-            let c = ph2d_vector::Circle::new(v * point(*e), metrics.handle).to_path(0.1);
-            scene.fill_path(&c, &paper, Affine::IDENTITY);
-            line(scene, &c, accent, thin);
-        }
-        // O meio de cada trecho: a bolinha cheia que, arrastada, cria um ponto ali.
-        for m in &w.mids {
-            let c = ph2d_vector::Circle::new(v * point(*m), metrics.handle / 2.0).to_path(0.1);
-            scene.fill_path(&c, &Brush::Solid(accent), Affine::IDENTITY);
-        }
-    }
-    for (at, dir) in &overlay.dots {
-        let c = v * point(*at);
-        let p = Point::new(c.x + dir[0] * metrics.dot, c.y + dir[1] * metrics.dot);
-        // Do tamanho do alcance do clique (`Editor::dot_at`): o que se vê é o que se agarra.
-        let dot = ph2d_vector::Circle::new(p, metrics.handle).to_path(0.1);
-        scene.fill_path(&dot, &Brush::Solid(accent), Affine::IDENTITY);
-        line(scene, &dot, token(ColorToken::Bg1, theme), thin);
-    }
-    mind::paint_overlay(scene, overlay, v, metrics, theme);
-    if let Some(f) = &overlay.frame {
-        line(scene, &frame_path(f, &v), accent, thin);
-        let top = v * point(f.handle(handle_top(), px, metrics));
-        let knob = v * point(f.handle(Handle::Rotate, px, metrics));
-        let mut stem = BezPath::new();
-        stem.move_to(top);
-        stem.line_to(knob);
-        line(scene, &stem, accent, thin);
-        let half = metrics.handle / 2.0;
-        let paper = Brush::Solid(token(ColorToken::Bg1, theme));
-        let knob_path = ph2d_vector::Circle::new(knob, half).to_path(0.1);
-        scene.fill_path(&knob_path, &paper, Affine::IDENTITY);
-        line(scene, &knob_path, accent, thin);
-        for d in ph2d_board_edit::Dir::ALL {
-            let c = v * point(f.handle(Handle::Resize(d), px, metrics));
-            let sq = Rect::new(c.x - half, c.y - half, c.x + half, c.y + half).to_path(0.1);
-            scene.fill_path(&sq, &paper, Affine::IDENTITY);
-            line(scene, &sq, accent, thin);
-        }
-    }
-    if let Some(g) = overlay.grid {
-        // A pega de ARRUMAR EM GRELHA: um botão redondo com os quatro pontos, fora do canto superior
-        // direito — onde `Editor::grid_handle` a agarra (do tamanho do alcance do clique).
-        let off = ph2d_board_edit::grid_handle_offset(metrics);
-        let c = v * point(g);
-        let c = Point::new(c.x + off, c.y - off);
-        let knob = ph2d_vector::Circle::new(c, metrics.handle).to_path(0.1);
-        scene.fill_path(&knob, &paper, Affine::IDENTITY);
-        line(scene, &knob, accent, thin);
-        let q = metrics.handle / 3.0;
-        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
-            let dot = ph2d_vector::Circle::new(Point::new(c.x + sx * q, c.y + sy * q), q / 2.0);
-            scene.fill_path(&dot.to_path(0.1), &Brush::Solid(accent), Affine::IDENTITY);
-        }
-    }
-    sketch::paint_laser(scene, &overlay.laser, v, theme, f64::from(Spacing::Xs.px()));
-    if let Some(c) = overlay.eraser {
-        let ring = ph2d_vector::Circle::new(v * point(c), metrics.eraser).to_path(0.1);
-        line(scene, &ring, token(ColorToken::Text2, theme), thin);
-    }
-    scene.pop_layer();
-}
-
-fn handle_top() -> Handle {
-    Handle::Resize(ph2d_board_edit::Dir::N)
-}
-
 fn point(p: [f64; 2]) -> Point {
     Point::new(p[0], p[1])
-}
-
-/// O contorno de uma moldura rodada, já no ecrã.
-fn frame_path(f: &Frame, v: &Affine) -> BezPath {
-    let (hw, hh) = (f.w / 2.0, f.h / 2.0);
-    let mut p = BezPath::new();
-    for (i, l) in [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]
-        .iter()
-        .enumerate()
-    {
-        let q = *v * point(f.point(*l));
-        if i == 0 {
-            p.move_to(q);
-        } else {
-            p.line_to(q);
-        }
-    }
-    p.close_path();
-    p
 }
 
 fn token(t: ColorToken, theme: Theme) -> Color {

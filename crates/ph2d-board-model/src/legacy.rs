@@ -8,6 +8,7 @@
 //! - 4 (W4): sem os campos de organizar (`frame`, `groups`, `locked`, `link`, `tags`) — tudo solto.
 //! - 5 (W5): sem o nó de mapa mental (`Org::mind`, W6) — nada é mapa.
 //! - 6 (W6): sem os votos nem os carimbos (`Org::votes`, `Org::stamps`, W7) — nenhum.
+//! - 7 (W7): sem a equipa (`Board::team`: comentários, versões, frames fora da apresentação, W8).
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -18,7 +19,7 @@ use serde::Deserialize;
 
 use crate::{
     Board, BoardDoc, BoardId, BoardSet, Camera, Connector, Dash, Element, ElementId, ElementKind,
-    End, FracKey, Head, Rgba, RichText, Route, Shape, ShapeType, Style,
+    End, FracKey, Head, Rgba, RichText, Route, Shape, ShapeType, Style, Team,
 };
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
@@ -181,6 +182,7 @@ fn read_old<E: for<'de> Deserialize<'de>>(
             camera: b.camera,
             doc: doc_old(b.doc, &element),
             sketch: false,
+            team: Team::default(),
         })
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
@@ -234,6 +236,7 @@ pub(crate) fn read_v4(bytes: &[u8]) -> Result<BoardSet, String> {
             camera: b.camera,
             doc: doc_old(b.doc, &element_old),
             sketch: b.sketch,
+            team: Team::default(),
         })
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
@@ -297,6 +300,7 @@ pub(crate) fn read_v5(bytes: &[u8]) -> Result<BoardSet, String> {
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
+                team: Team::default(),
             }
         })
         .collect();
@@ -381,6 +385,7 @@ pub(crate) fn read_v6(bytes: &[u8]) -> Result<BoardSet, String> {
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
+                team: Team::default(),
             }
         })
         .collect();
@@ -459,4 +464,42 @@ fn element_v1(e: ElementV1) -> Element {
     let mut el = Element::bare(e.id, e.z, ElementKind::Shape(shape), [e.x, e.y, e.w, e.h]);
     (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
     el
+}
+
+#[derive(Deserialize)]
+struct BoardV7 {
+    id: BoardId,
+    name: String,
+    camera: Camera,
+    doc: BoardDoc,
+    sketch: bool,
+}
+
+#[derive(Deserialize)]
+struct SetV7 {
+    _version: u32,
+    boards: Vec<BoardV7>,
+    next_id: u64,
+}
+
+/// Os bytes de um `BoardSet` no formato 7 (W7), já no formato actual: sem comentários nem versões.
+pub(crate) fn read_v7(bytes: &[u8]) -> Result<BoardSet, String> {
+    let old: SetV7 = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+    let boards = old
+        .boards
+        .into_iter()
+        .map(|b| {
+            let mut doc = b.doc;
+            doc.reindex();
+            Board {
+                id: b.id,
+                name: b.name,
+                camera: b.camera,
+                doc,
+                sketch: b.sketch,
+                team: Team::default(),
+            }
+        })
+        .collect();
+    Ok(BoardSet::from_parts(boards, old.next_id))
 }

@@ -8,14 +8,16 @@
 
 use std::sync::Arc;
 use vello::Scene;
-use vello::kurbo::{Affine, BezPath, Rect, Stroke};
+use vello::kurbo::{Affine, BezPath, Rect, Shape as _, Stroke};
 use vello::peniko::{
     Blob, Brush, Color, Extend, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
     ImageQuality,
 };
 
 pub struct VectorScene {
-    inner: Scene,
+    pub(crate) inner: Scene,
+    /// A gravação ([`crate::record`]), ligada só por quem lê a cena de volta (o export do Quadro).
+    pub(crate) rec: Option<Vec<crate::DrawOp>>,
     /// ⭐ **Esta cena pede o MUNDO por baixo dela** — ver [`VectorScene::pede_o_mundo_por_baixo`].
     mundo_por_baixo: bool,
 }
@@ -225,6 +227,7 @@ impl VectorScene {
     pub fn new() -> Self {
         Self {
             inner: Scene::new(),
+            rec: None,
             mundo_por_baixo: false,
         }
     }
@@ -234,6 +237,9 @@ impl VectorScene {
     /// reused across frames so this is cheap.
     pub fn reset(&mut self) {
         self.inner.reset();
+        if let Some(r) = &mut self.rec {
+            r.clear();
+        }
         self.mundo_por_baixo = false;
     }
 
@@ -283,11 +289,23 @@ impl VectorScene {
             None,
             &rect,
         );
+        self.rec(|| crate::DrawOp::Fill {
+            rule: Fill::NonZero,
+            transform: Affine::IDENTITY,
+            brush: Brush::Solid(color),
+            path: rect.to_path(0.1),
+        });
     }
 
     /// Fill an arbitrary path with a brush.
     pub fn fill_path(&mut self, path: &BezPath, brush: &Brush, transform: Affine) {
         self.inner.fill(Fill::NonZero, transform, brush, None, path);
+        self.rec(|| crate::DrawOp::Fill {
+            rule: Fill::NonZero,
+            transform,
+            brush: brush.clone(),
+            path: path.clone(),
+        });
     }
 
     /// Blit a straight-alpha RGBA8 bitmap into `dest` (screen-space
@@ -548,6 +566,13 @@ impl VectorScene {
             Affine::IDENTITY,
             path,
         );
+        self.rec(|| crate::DrawOp::Layer {
+            rule,
+            blend: vello::peniko::BlendMode::default(),
+            alpha: 1.0,
+            transform: Affine::IDENTITY,
+            clip: path.to_path(0.1),
+        });
     }
 
     /// ⭐⭐⭐ **A CAMADA DE UM OBJECTO** — o que faz *opacidade do objecto* e *modo de mistura*
@@ -569,6 +594,13 @@ impl VectorScene {
         // e `EvenOdd` coincidem — a escolha é a do irmão `push_clip` e não uma decisão nova.
         self.inner
             .push_layer(Fill::NonZero, blend, alpha, Affine::IDENTITY, rect);
+        self.rec(|| crate::DrawOp::Layer {
+            rule: Fill::NonZero,
+            blend,
+            alpha,
+            transform: Affine::IDENTITY,
+            clip: rect.to_path(0.1),
+        });
     }
 
     /// ⭐ **Uma camada recortada a uma FORMA sob um afim** — a irmã de [`Self::push_object_layer`]
@@ -586,11 +618,19 @@ impl VectorScene {
     ) {
         self.inner
             .push_layer(Fill::NonZero, blend, alpha, transform, shape);
+        self.rec(|| crate::DrawOp::Layer {
+            rule: Fill::NonZero,
+            blend,
+            alpha,
+            transform,
+            clip: shape.to_path(0.1),
+        });
     }
 
     /// Pop the most recent layer pushed via [`Self::push_clip`].
     pub fn pop_layer(&mut self) {
         self.inner.pop_layer();
+        self.rec(|| crate::DrawOp::Pop);
     }
 }
 

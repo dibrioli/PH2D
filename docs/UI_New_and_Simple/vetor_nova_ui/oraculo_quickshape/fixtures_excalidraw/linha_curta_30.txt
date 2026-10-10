@@ -1,0 +1,23 @@
+# entrada: linha_curta_30
+# varia: comprimento 30 px (abaixo do mínimo do oráculo, 40)
+# unidade: px da tela virtual 1600x1000
+# pontos: 10
+# oraculo: @excalidraw/element 0.18.0-143b5b6 (MIT) · recognizeShape(points, null, zoom 1) + convertToShape(appState minimo)
+# unidade: a da entrada (px da tela virtual) — o Excalidraw trabalha em coordenadas de cena = ecra a zoom 1
+# tipo: line
+# elemento_ponta_corrente_arrow: {"type":"line","x":900,"y":500,"w":0,"h":0,"angle":0,"points":[[900,500],[930,500]],"startArrowhead":null,"endArrowhead":null,"roundness":{"type":2}}
+# elemento_ponta_corrente_null: {"type":"line","x":900,"y":500,"w":0,"h":0,"angle":0,"points":[[900,500],[930,500]],"startArrowhead":null,"endArrowhead":null,"roundness":{"type":2}}
+# --- entrada (px) ---
+in 900 500
+in 900 500
+in 904 500
+in 908 500
+in 912 500
+in 916 500
+in 920 500
+in 924 500
+in 928 500
+in 930 500
+# --- elemento do oraculo (px) ---
+out 900 500
+out 930 500

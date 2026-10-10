@@ -1,0 +1,75 @@
+# entrada: seta_pequena_v_aberto
+# varia: cabo de 150 px e farpas de 30 px
+# unidade: px da tela virtual 1600x1000
+# pontos: 62
+# oraculo: @excalidraw/element 0.18.0-143b5b6 (MIT) · recognizeShape(points, null, zoom 1) + convertToShape(appState minimo)
+# unidade: a da entrada (px da tela virtual) — o Excalidraw trabalha em coordenadas de cena = ecra a zoom 1
+# tipo: arrow
+# elemento_ponta_corrente_arrow: {"type":"arrow","x":700,"y":500,"w":0,"h":0,"angle":0,"points":[[700,500],[841.3,495]],"startArrowhead":null,"endArrowhead":"arrow","roundness":{"type":2}}
+# elemento_ponta_corrente_null: {"type":"arrow","x":700,"y":500,"w":0,"h":0,"angle":0,"points":[[700,500],[841.3,495]],"startArrowhead":null,"endArrowhead":null,"roundness":{"type":2}}
+# --- entrada (px) ---
+in 700 500
+in 700 500
+in 704 500
+in 708 500
+in 712 500
+in 716 500
+in 720 500
+in 724 500
+in 728 500
+in 732 500
+in 736 500
+in 740 500
+in 744 500
+in 748 500
+in 752 500
+in 756 500
+in 760 500
+in 764 500
+in 768 500
+in 772 500
+in 776 500
+in 780 500
+in 784 500
+in 788 500
+in 792 500
+in 796 500
+in 800 500
+in 804 500
+in 808 500
+in 812 500
+in 816 500
+in 820 500
+in 824 500
+in 828 500
+in 832 500
+in 836 500
+in 840 500
+in 844 500
+in 848 500
+in 848.3 499
+in 844.8 497
+in 841.3 495
+in 837.9 493
+in 834.4 491
+in 830.9 489
+in 827.5 487
+in 824 485
+in 827.5 487
+in 830.9 489
+in 834.4 491
+in 837.9 493
+in 841.3 495
+in 844.8 497
+in 848.3 499
+in 848.3 501
+in 844.8 503
+in 841.3 505
+in 837.9 507
+in 834.4 509
+in 830.9 511
+in 827.5 513
+in 824 515
+# --- elemento do oraculo (px) ---
+out 700 500
+out 841.3 495

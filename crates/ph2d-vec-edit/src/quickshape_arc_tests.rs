@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::quickshape_arc::taubin;
+use crate::quickshape_geom::solve;
 use crate::test_hand::{Lcg, hand, stabilise};
 use ph2d_vec_scene::VertexKind;
 use std::f64::consts::PI;

@@ -172,3 +172,53 @@ pub(crate) fn cross(a: P2, b: P2) -> f64 {
 pub(crate) fn dist(a: P2, b: P2) -> f64 {
     (a[0] - b[0]).hypot(a[1] - b[1])
 }
+
+/// A menor distância entre uma ponta e a janela inicial/final da outra.
+pub(crate) fn gap(p: &[P2], length: f64, window: f64) -> f64 {
+    let mut cum = 0.0;
+    let mut head = vec![p[0]];
+    let mut tail = Vec::new();
+    for w in p.windows(2) {
+        cum += dist(w[0], w[1]);
+        if cum <= window * length {
+            head.push(w[1]);
+        }
+        if cum >= (1.0 - window) * length {
+            tail.push(w[1]);
+        }
+    }
+    let last = p[p.len() - 1];
+    let a = head.iter().map(|&h| dist(h, last)).fold(f64::MAX, f64::min);
+    let b = tail.iter().map(|&t| dist(t, p[0])).fold(f64::MAX, f64::min);
+    a.min(b)
+}
+
+/// A flecha de um lado: o termo quadrático do resíduo à recta, em fracção do comprimento.
+pub(crate) fn bow(q: &[P2], trim: f64) -> f64 {
+    let k = (q.len() as f64 * trim) as usize;
+    let q = &q[k..q.len() - k];
+    let Some(f) = tls(q) else { return 0.0 };
+    let t: Vec<f64> = q.iter().map(|&p| dot(sub(p, f.c), f.d)).collect();
+    let (lo, hi) = t
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(l, h), &x| (l.min(x), h.max(x)));
+    let half = (hi - lo) / 2.0;
+    if half <= f64::MIN_POSITIVE {
+        return 0.0;
+    }
+    // Mínimos quadrados de `e = α u² + β u + γ`, `u ∈ [-1, 1]`: as equações normais 3×3.
+    let mut m = [[0.0; 3]; 3];
+    let mut v = [0.0; 3];
+    for (&p, &ti) in q.iter().zip(&t) {
+        let u = (ti - (hi + lo) / 2.0) / half;
+        let row = [u * u, u, 1.0];
+        let e = cross(f.d, sub(p, f.c));
+        for i in 0..3 {
+            v[i] += row[i] * e;
+            for j in 0..3 {
+                m[i][j] += row[i] * row[j];
+            }
+        }
+    }
+    solve(m, v).map_or(0.0, |s| s[0].abs() / (2.0 * half))
+}

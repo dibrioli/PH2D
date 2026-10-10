@@ -35,7 +35,7 @@
 
 use crate::PenStyle;
 use crate::pencil_width::{PenDynamics, WidthSource, width_stops};
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, WidthStops};
+use ph2d_vec_scene::{Marker, VecPath, VecPathId, VecScene, VecVertex, WidthStops};
 
 /// Tolerância do decimador, em **pixels de tela**, quando ninguém escolhe (o *Fidelity*
 /// default).
@@ -290,14 +290,19 @@ impl Pencil {
             .sum::<f64>()
     }
 
-    /// Reescreve a geometria do path vivo. `true` se ele existe.
+    /// Reescreve a geometria do path vivo — e as pontas dele (a SETA do QuickShape põe-nas, o traço
+    /// livre e as outras formas devolvem as do estilo). `true` se ele existe.
     fn rebuild(&self, scene: &mut VecScene) -> bool {
         let Some(id) = self.active else {
             return false;
         };
-        let (verts, closed) = match self.hold.shape() {
+        let shape = self.hold.shape();
+        let heads = shape.as_ref().map_or([None; 2], |s| s.heads());
+        let ends = arrow_ends(&self.style, heads, self.style.stroke_w_px * self.px_to_world);
+        let (verts, closed) = match shape {
             Some(s) => {
                 let p = s.to_path();
+                let p = ph2d_vec_scene::trim_path(&p, ends.inset[0], ends.inset[1]).unwrap_or(p);
                 (p.verts, p.closed)
             }
             None => (self.fit(), false),
@@ -307,6 +312,10 @@ impl Pencil {
         };
         live.verts = verts;
         live.closed = closed;
+        if let Some(s) = live.stroke.as_mut() {
+            [s.marker_start, s.marker_end] = ends.markers;
+            s.marker_scale = ends.scale;
+        }
         true
     }
 
@@ -343,6 +352,60 @@ impl Pencil {
                 )
             }
         }
+    }
+}
+
+/// As pontas do traço vivo: o `[início, fim]`, o tamanho, e quanto o caminho recua em cada extremo.
+#[derive(Debug, PartialEq)]
+pub(crate) struct ArrowEnds {
+    pub(crate) markers: [Marker; 2],
+    pub(crate) scale: f64,
+    pub(crate) inset: [f64; 2],
+}
+
+/// **As pontas de um traço de largura `w` (mundo) com farpas desenhadas `heads`** — as do estilo se
+/// não há farpas. Num extremo com farpas: a ponta ARMADA no lápis (a desse extremo, senão a do
+/// outro) ou, sem nenhuma, a `Open` — a «arrow» de nascença do Excalidraw (duas riscas em V,
+/// medida pela linha do Quadro) e o que a mão desenhou; sem farpas, nenhuma. O tamanho põe o
+/// alcance da ponta igual à farpa média desenhada; o recuo é o que a ponta avança para lá do nó
+/// (`Marker::inset`), para o bico cair onde a mão o pôs.
+pub(crate) fn arrow_ends(style: &PenStyle, heads: [Option<f64>; 2], w: f64) -> ArrowEnds {
+    let drawn: Vec<f64> = heads.iter().flatten().copied().collect();
+    if drawn.is_empty() || w <= 0.0 {
+        return ArrowEnds {
+            markers: [style.marker_start, style.marker_end],
+            scale: style.marker_scale,
+            inset: [0.0; 2],
+        };
+    }
+    let armed = |m: Marker| (m != Marker::None).then_some(m);
+    let pick = |own: Marker, other: Marker| armed(own).or(armed(other)).unwrap_or(Marker::Open);
+    let markers = [
+        heads[0].map_or(Marker::None, |_| pick(style.marker_start, style.marker_end)),
+        heads[1].map_or(Marker::None, |_| pick(style.marker_end, style.marker_start)),
+    ];
+    let m = if heads[1].is_some() {
+        markers[1]
+    } else {
+        markers[0]
+    };
+    // O alcance da ponta à escala 1 e largura 1: o vértice mais longe do bico.
+    let reach = m
+        .build([0.0, 0.0], [1.0, 0.0], 1.0, 1.0, 0.0)
+        .map_or(0.0, |p| {
+            p.verts
+                .iter()
+                .map(|v| v.anchor[0].hypot(v.anchor[1]))
+                .fold(0.0, f64::max)
+        });
+    if reach <= f64::MIN_POSITIVE {
+        return arrow_ends(style, [None; 2], w);
+    }
+    let scale = drawn.iter().sum::<f64>() / drawn.len() as f64 / (w * reach);
+    ArrowEnds {
+        markers,
+        scale,
+        inset: [0, 1].map(|k| heads[k].map_or(0.0, |_| markers[k].inset(scale) * w)),
     }
 }
 

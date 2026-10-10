@@ -1,0 +1,74 @@
+# entrada: circulo_r40
+# varia: círculo raio 40 (pequeno)
+# unidade: px da tela virtual 1600x1000
+# pontos: 63
+# oraculo: @excalidraw/element 0.18.0-143b5b6 (MIT) · recognizeShape(points, null, zoom 1) + convertToShape(appState minimo)
+# unidade: a da entrada (px da tela virtual) — o Excalidraw trabalha em coordenadas de cena = ecra a zoom 1
+# tipo: ellipse
+# elemento_ponta_corrente_arrow: {"type":"ellipse","x":760,"y":460.1,"w":80,"h":79.79999999999995,"angle":0,"roundness":{"type":2}}
+# elemento_ponta_corrente_null: {"type":"ellipse","x":760,"y":460.1,"w":80,"h":79.79999999999995,"angle":0,"roundness":{"type":2}}
+# --- entrada (px) ---
+in 840 500
+in 839.8 504
+in 839.2 508.1
+in 838.2 512
+in 836.8 515.8
+in 835 519.4
+in 832.8 522.9
+in 830.4 526.1
+in 827.6 529
+in 824.5 531.6
+in 821.2 533.9
+in 817.6 535.9
+in 813.9 537.5
+in 810 538.7
+in 806.1 539.5
+in 802 539.9
+in 798 539.9
+in 793.9 539.5
+in 790 538.7
+in 786.1 537.5
+in 782.4 535.9
+in 778.8 533.9
+in 775.5 531.6
+in 772.4 529
+in 769.6 526.1
+in 767.2 522.9
+in 765 519.4
+in 763.2 515.8
+in 761.8 512
+in 760.8 508.1
+in 760.2 504
+in 760 500
+in 760.2 496
+in 760.8 491.9
+in 761.8 488
+in 763.2 484.2
+in 765 480.6
+in 767.2 477.1
+in 769.6 473.9
+in 772.4 471
+in 775.5 468.4
+in 778.8 466.1
+in 782.4 464.1
+in 786.1 462.5
+in 790 461.3
+in 793.9 460.5
+in 798 460.1
+in 802 460.1
+in 806.1 460.5
+in 810 461.3
+in 813.9 462.5
+in 817.6 464.1
+in 821.2 466.1
+in 824.5 468.4
+in 827.6 471
+in 830.4 473.9
+in 832.8 477.1
+in 835 480.6
+in 836.8 484.2
+in 838.2 488
+in 839.2 491.9
+in 839.8 496
+in 840 500
+# --- elemento do oraculo (px) ---

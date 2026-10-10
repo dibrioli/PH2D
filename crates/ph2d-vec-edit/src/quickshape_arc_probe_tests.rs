@@ -333,6 +333,7 @@ fn measure_asymmetric_arcs() {
                     Some(QuickShape::Line { .. }) => rest.push("linha"),
                     Some(QuickShape::Polygon { .. }) => rest.push("polígono"),
                     Some(QuickShape::Ellipse { .. }) => rest.push("elipse fechada"),
+                    Some(QuickShape::Arrow(_)) => rest.push("seta"),
                 }
             }
             rest.sort_unstable();

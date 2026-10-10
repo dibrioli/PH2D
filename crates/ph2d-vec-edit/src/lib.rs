@@ -30,6 +30,7 @@ mod pencil_corners;
 /// **QuickShape** (F7): a lei traço → forma perfeita, e o gatilho de segurar no fim do traço.
 pub mod quickshape;
 mod quickshape_arc;
+mod quickshape_arrow;
 mod quickshape_biarc;
 mod quickshape_conic;
 mod quickshape_geom;

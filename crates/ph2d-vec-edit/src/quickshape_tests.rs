@@ -17,7 +17,7 @@ const FIXTURES: &str = concat!(
 const TOL: f64 = 1.0;
 
 pub(super) struct Fixture {
-    name: String,
+    pub(super) name: String,
     scale: [f64; 2],
     offset: [f64; 2],
     input: Vec<P2>,
@@ -33,7 +33,7 @@ impl Fixture {
             p[1] * self.scale[1] + self.offset[1],
         ]
     }
-    fn ours(&self, law: &Law) -> Option<QuickShape> {
+    pub(super) fn ours(&self, law: &Law) -> Option<QuickShape> {
         recognise_with(law, &self.input, self.scale[0], false)
     }
 }
@@ -134,6 +134,9 @@ enum Own {
     /// O arco do Procreate (o pedido do dono, 10/10; o Xournal++ deixa-o cru): centro, raio, início
     /// e varrido (graus, com sinal).
     Arc(P2, f64, f64, f64),
+    /// A SETA (o pedido do dono, 10/10; o Xournal++ não tem seta — lê-a linha ou cru): o cabo, e as
+    /// farpas desenhadas no `[início, fim]` (px do gerador).
+    Arrow(Box<Own>, [Option<f64>; 2]),
 }
 
 fn rect_400x250() -> Vec<P2> {
@@ -155,6 +158,7 @@ fn regular(n: usize) -> Vec<P2> {
 }
 
 fn own(name: &str) -> Option<Own> {
+    let arrow = |shaft: Own, both: bool| Own::Arrow(Box::new(shaft), [both.then_some(60.0), Some(60.0)]);
     let skew = |deg: f64| {
         let dx = 250.0 * deg.to_radians().tan() / 2.0;
         Own::Closed(vec![
@@ -211,6 +215,23 @@ fn own(name: &str) -> Option<Own> {
         // `gera_entradas.py`: centro (800, 500), raio 200, de 180° a 360° e de 180° a 270°.
         "arco_meio" => Own::Arc([800.0, 500.0], 200.0, 180.0, 180.0),
         "arco_quarto" => Own::Arc([800.0, 500.0], 200.0, 180.0, 90.0),
+        // `gera_entradas.py`, 3.ª leva: o cabo recto de (500, 500) a (1000, 500), farpas de 60 px.
+        "seta_recta_v_aberto" | "seta_recta_v_ida_volta" | "seta_recta_v_fechado"
+        | "seta_farpa_20" | "seta_farpa_45" | "seta_farpa_60" | "seta_tremor_03" => {
+            arrow(Own::Line([500.0, 500.0], [1000.0, 500.0]), false)
+        }
+        "seta_recta_duas_pontas" => arrow(Own::Line([500.0, 500.0], [1000.0, 500.0]), true),
+        "seta_diagonal_v_aberto" => arrow(Own::Line([500.0, 400.0], [846.410, 600.0]), false),
+        "seta_pequena_v_aberto" => Own::Arrow(
+            Box::new(Own::Line([700.0, 500.0], [850.0, 500.0])),
+            [None, Some(30.0)],
+        ),
+        "seta_curva_v_aberto" => arrow(Own::Arc([800.0, 800.0], 320.0, 200.0, 140.0), false),
+        "seta_curva_duas_pontas" => arrow(Own::Arc([800.0, 800.0], 320.0, 200.0, 140.0), true),
+        "seta_cabo_L" => arrow(
+            Own::Open(vec![[500.0, 300.0], [500.0, 700.0], [900.0, 700.0]]),
+            false,
+        ),
         _ => return None,
     })
 }
@@ -219,7 +240,7 @@ fn own(name: &str) -> Option<Own> {
 fn the_oracle_fixtures_all_agree_with_the_law_or_with_the_owners_product() {
     let all = load();
     // Controlos: a pasta inteira foi lida, e o oráculo reconheceu o bastante para medir algo.
-    assert!(all.len() >= 65, "só {} fixtures lidas", all.len());
+    assert!(all.len() >= 80, "só {} fixtures lidas", all.len());
     let rec = all.iter().filter(|f| f.recognised).count();
     assert!(
         rec >= 26,
@@ -239,8 +260,23 @@ fn the_oracle_fixtures_all_agree_with_the_law_or_with_the_owners_product() {
 pub(super) fn failures(all: &[Fixture], law: &Law) -> Vec<String> {
     let mut failures = Vec::new();
     for f in all {
-        let got = f.ours(law);
-        let verdict = match (own(&f.name), &got) {
+        // A seta desembrulha-se: as farpas a ≤ 10 % do desenho, e o CABO julga-se como outra forma.
+        let (want, got) = match (own(&f.name), f.ours(law)) {
+            (Some(Own::Arrow(shaft, heads)), Some(QuickShape::Arrow(a))) => {
+                let ok = (0..2).all(|k| match (heads[k], a.heads[k]) {
+                    (None, None) => true,
+                    (Some(w), Some(h)) => (h - w * f.scale[0]).abs() <= 0.1 * w * f.scale[0],
+                    _ => false,
+                });
+                if !ok {
+                    failures.push(format!("{}: farpas {:?} vs {heads:?} px", f.name, a.heads));
+                    continue;
+                }
+                (Some(*shaft), Some(*a.shaft))
+            }
+            (want, got) => (want, got),
+        };
+        let verdict = match (want, &got) {
             (
                 Some(Own::Closed(want)),
                 Some(QuickShape::Polygon {
@@ -373,9 +409,9 @@ fn every_own_law_exception_names_a_fixture_that_exists() {
     let names: Vec<String> = load().into_iter().map(|f| f.name).collect();
     let used = names.iter().filter(|n| own(n).is_some()).count();
     // 3 polígonos + 6 rectângulos de mão (com o aberto 90 px, 09/10) + 5 quadriláteros + 3 polilinhas
-    // + 3 elipses + 2 círculos + 3 formas pequenas + 2 arcos (F7c, 10/10).
+    // + 3 elipses + 2 círculos + 3 formas pequenas + 2 arcos (F7c, 10/10) + 13 setas (F7d, 10/10).
     assert_eq!(
-        used, 27,
+        used, 40,
         "uma excepção ficou órfã (a fixture mudou de nome?)"
     );
 }

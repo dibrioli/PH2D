@@ -16,10 +16,12 @@
 //! um ARCO ([`crate::quickshape_arc`]); senão não é forma.
 
 pub use crate::quickshape_arc::{ArcShape, OWNERS_HOOK_PX};
+pub use crate::quickshape_arrow::ArrowShape;
+use crate::quickshape_arrow::ArrowLaw;
 pub use crate::quickshape_geom::snap;
 use crate::quickshape_geom::{
-    Fit, P2, add, angle, centroid, cross, dist, dot, intersect, mul, project, rdp, resample,
-    rotate, solve, sub, tls, turn, unit, wrap_pi,
+    Fit, P2, add, angle, bow, centroid, dist, dot, gap, intersect, mul, project, rdp, resample,
+    rotate, sub, tls, turn, unit, wrap_pi,
 };
 use ph2d_vec_scene::{VecPath, VecVertex};
 use std::f64::consts::{FRAC_PI_2, TAU};
@@ -81,6 +83,8 @@ pub(crate) struct Law {
     /// ganho vale `0,1–0,25` (0,3: 0,9 %); a 0,1 uma espiral fica círculo.
     pub(crate) arc_asymmetric_gain: f64,
     pub(crate) arc_circle_keep: f64,
+    /// A SETA ([`crate::quickshape_arrow`]); `None` = desligada (o A × B das sondas, o cabo).
+    pub(crate) arrow: Option<ArrowLaw>,
 }
 
 impl Law {
@@ -108,6 +112,7 @@ impl Law {
         arc_chords: 6,
         arc_asymmetric_gain: 0.2,
         arc_circle_keep: 0.04,
+        arrow: Some(ArrowLaw::MEASURED),
     };
 }
 
@@ -143,6 +148,8 @@ pub enum QuickShape {
     Arc(ArcShape),
     /// Dois arcos de círculo tangentes (o arco assimétrico).
     Biarc([ArcShape; 2]),
+    /// Um cabo aberto com ponta num extremo ou nos dois.
+    Arrow(ArrowShape),
 }
 
 /// **A lei.** `px_to_world` converte as fronteiras de tela; `regular` = quadrado, círculo,
@@ -178,6 +185,12 @@ pub(crate) fn recognise_with(
     let closed = gap(samples, length, law.close_window) <= law.close_of_length * length;
     let corner = (law.corner_px * px_to_world).min(law.corner_of_diag * diag);
     let r = resample(samples, RESAMPLE);
+    if !closed
+        && let Some(arrow) =
+            crate::quickshape_arrow::recognise(law, samples, &r, length, px_to_world, regular)
+    {
+        return Some(arrow);
+    }
     let mut zones: Vec<Zone> = rdp(&r, law.rdp_of_diag * diag)
         .into_iter()
         .map(|i| (i, i))
@@ -225,6 +238,7 @@ impl QuickShape {
             Self::Ellipse { centre, .. } => *centre,
             Self::Arc(a) => a.pivot(),
             Self::Biarc(b) => b[0].pivot(),
+            Self::Arrow(a) => a.shaft.pivot(),
         }
     }
 
@@ -251,6 +265,7 @@ impl QuickShape {
             },
             Self::Arc(a) => Self::Arc(a.transformed(pivot, scale, rot)),
             Self::Biarc(b) => Self::Biarc(b.map(|a| a.transformed(pivot, scale, rot))),
+            Self::Arrow(a) => Self::Arrow(a.transformed(pivot, scale, rot)),
         }
     }
 
@@ -277,6 +292,16 @@ impl QuickShape {
             }
             Self::Arc(a) => a.to_path(),
             Self::Biarc(b) => crate::quickshape_arc::biarc_path(b),
+            Self::Arrow(a) => a.shaft.to_path(),
+        }
+    }
+
+    /// As farpas desenhadas no `[início, fim]` (mundo) — `None` nos dois se não é seta.
+    #[must_use]
+    pub fn heads(&self) -> [Option<f64>; 2] {
+        match self {
+            Self::Arrow(a) => a.heads,
+            _ => [None; 2],
         }
     }
 }
@@ -546,26 +571,6 @@ fn area_moments(p: &[P2]) -> Option<(P2, f64, f64, f64)> {
 
 // ── o traço partido em lados ────────────────────────────────────────────────────────────────────
 
-/// A menor distância entre uma ponta e a janela inicial/final da outra.
-fn gap(p: &[P2], length: f64, window: f64) -> f64 {
-    let mut cum = 0.0;
-    let mut head = vec![p[0]];
-    let mut tail = Vec::new();
-    for w in p.windows(2) {
-        cum += dist(w[0], w[1]);
-        if cum <= window * length {
-            head.push(w[1]);
-        }
-        if cum >= (1.0 - window) * length {
-            tail.push(w[1]);
-        }
-    }
-    let last = p[p.len() - 1];
-    let a = head.iter().map(|&h| dist(h, last)).fold(f64::MAX, f64::min);
-    let b = tail.iter().map(|&t| dist(t, p[0])).fold(f64::MAX, f64::min);
-    a.min(b)
-}
-
 /// Funde, menor primeiro, as quinas que viram menos que `merge_deg`.
 fn merge_small_turns(r: &[P2], z: &mut Vec<Zone>, merge_deg: f64) {
     while z.len() > 2 {
@@ -598,36 +603,6 @@ fn absorb_short_sides(r: &[P2], z: &mut Vec<Zone>, corner: f64, merge_deg: f64) 
         z.remove(j + 1);
         merge_small_turns(r, z, merge_deg);
     }
-}
-
-/// A flecha de um lado: o termo quadrático do resíduo à recta, em fracção do comprimento.
-fn bow(q: &[P2], trim: f64) -> f64 {
-    let k = (q.len() as f64 * trim) as usize;
-    let q = &q[k..q.len() - k];
-    let Some(f) = tls(q) else { return 0.0 };
-    let t: Vec<f64> = q.iter().map(|&p| dot(sub(p, f.c), f.d)).collect();
-    let (lo, hi) = t
-        .iter()
-        .fold((f64::MAX, f64::MIN), |(l, h), &x| (l.min(x), h.max(x)));
-    let half = (hi - lo) / 2.0;
-    if half <= f64::MIN_POSITIVE {
-        return 0.0;
-    }
-    // Mínimos quadrados de `e = α u² + β u + γ`, `u ∈ [-1, 1]`: as equações normais 3×3.
-    let mut m = [[0.0; 3]; 3];
-    let mut v = [0.0; 3];
-    for (&p, &ti) in q.iter().zip(&t) {
-        let u = (ti - (hi + lo) / 2.0) / half;
-        let row = [u * u, u, 1.0];
-        let e = cross(f.d, sub(p, f.c));
-        for i in 0..3 {
-            v[i] += row[i] * e;
-            for j in 0..3 {
-                m[i][j] += row[i] * row[j];
-            }
-        }
-    }
-    solve(m, v).map_or(0.0, |s| s[0].abs() / (2.0 * half))
 }
 
 fn trimmed_fit(q: &[P2], trim: f64) -> Option<Fit> {
@@ -676,3 +651,11 @@ mod arc_tests;
 #[cfg(test)]
 #[path = "quickshape_arc_probe_tests.rs"]
 mod arc_probe_tests;
+
+#[cfg(test)]
+#[path = "quickshape_arrow_tests.rs"]
+mod arrow_tests;
+
+#[cfg(test)]
+#[path = "quickshape_arrow_probe_tests.rs"]
+mod arrow_probe_tests;

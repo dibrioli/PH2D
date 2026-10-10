@@ -188,6 +188,51 @@ for deg in (2, 4, 6, 8):
     entrada(f"linha_rodada_{deg:02d}", f"linha de 500 px inclinada {deg}°", line(550, 500, 550 + 500 * math.cos(a), 500 + 500 * math.sin(a)))
     entrada(f"rect_rodado_{deg:02d}", f"400×250 rodado {deg}°", rect(800, 500, 400, 250, a))
 
+# ── 3.ª LEVA (F7d, 10/10): SETAS num traço só — o cabo e depois a ponta, sem a mão levantar.
+# Acrescentada no FIM e sem `rng` (o tremor é determinístico): as 65 de cima ficam byte a byte iguais.
+
+
+def head(tip, prev, length, deg, kind):
+    """A ponta desenhada a partir de `tip`, com o cabo a chegar de `prev`: as farpas a `deg` graus do
+    cabo e `length` px. `kind`: «v_aberto» (farpa, volta à ponta, outra farpa), «v_ida_volta» (e volta
+    à ponta), «v_fechado» (farpa, outra farpa, ponta), «uma_farpa»."""
+    d = math.hypot(tip[0] - prev[0], tip[1] - prev[1])
+    bx, by = (prev[0] - tip[0]) / d, (prev[1] - tip[1]) / d
+    a = math.radians(deg)
+    b1 = (tip[0] + length * (bx * math.cos(a) - by * math.sin(a)), tip[1] + length * (bx * math.sin(a) + by * math.cos(a)))
+    b2 = (tip[0] + length * (bx * math.cos(a) + by * math.sin(a)), tip[1] + length * (-bx * math.sin(a) + by * math.cos(a)))
+    return {"v_aberto": [b1, tip, b2], "v_ida_volta": [b1, tip, b2, tip], "v_fechado": [b1, b2, tip], "uma_farpa": [b1]}[kind]
+
+
+def arrow(shaft, length=60, deg=30, kind="v_aberto", both=False):
+    """`shaft` em vértices (px); a ponta no FIM e, com `both`, também no início (a mão começa numa
+    farpa, vai à ponta, à outra farpa, volta à ponta e só então desenha o cabo)."""
+    poly = list(shaft) + head(shaft[-1], shaft[-2], length, deg, kind)
+    if both:
+        b = head(shaft[0], shaft[1], length, deg, "v_ida_volta")
+        poly = [b[0], b[1], b[2]] + poly
+    return resample(poly)
+
+
+def tremble(pts, amp):
+    """Tremor DETERMINÍSTICO (duas sinusóides incomensuráveis) — sem `rng`, para não mexer nas leves de cima."""
+    return [(x + amp * math.sin(0.37 * i) * math.cos(0.11 * i), y + amp * math.sin(0.23 * i + 1.0)) for i, (x, y) in enumerate(pts)]
+
+
+arc_shaft = ellipse(800, 800, 320, 320, math.radians(200), math.radians(340))
+for kind in ("v_aberto", "v_ida_volta", "v_fechado", "uma_farpa"):
+    entrada(f"seta_recta_{kind}", f"cabo recto de 500 px e a ponta {kind} (farpas de 60 px a 30°)", arrow([(500, 500), (1000, 500)], kind=kind))
+entrada("seta_recta_duas_pontas", "cabo recto de 500 px, ponta V nas DUAS extremidades", arrow([(500, 500), (1000, 500)], both=True))
+entrada("seta_curva_v_aberto", "cabo em ARCO (raio 320, 140°) e a ponta V aberta", arrow(arc_shaft))
+entrada("seta_curva_duas_pontas", "cabo em ARCO (raio 320, 140°), ponta V nas duas extremidades", arrow(arc_shaft, both=True))
+entrada("seta_cabo_L", "cabo em L (400 + 400 px) e a ponta V aberta", arrow([(500, 300), (500, 700), (900, 700)]))
+entrada("seta_diagonal_v_aberto", "cabo recto de 400 px inclinado 30° e a ponta V aberta", arrow([(500, 400), (500 + 400 * math.cos(math.radians(30)), 400 + 400 * math.sin(math.radians(30)))]))
+entrada("seta_pequena_v_aberto", "cabo de 150 px e farpas de 30 px", arrow([(700, 500), (850, 500)], length=30))
+for deg in (20, 45, 60):
+    entrada(f"seta_farpa_{deg:02d}", f"cabo recto de 500 px e farpas de 60 px a {deg}°", arrow([(500, 500), (1000, 500)], deg=deg))
+entrada("seta_farpa_curta_20px", "cabo recto de 500 px e farpas de só 20 px", arrow([(500, 500), (1000, 500)], length=20))
+entrada("seta_tremor_03", "cabo recto de 500 px, V aberto, tremor ±3 px determinístico", tremble(arrow([(500, 500), (1000, 500)]), 3))
+
 for nome, varia, pts in ENTRADAS:
     with open(os.path.join(OUT, nome + ".txt"), "w", encoding="utf-8") as f:
         f.write(f"# entrada: {nome}\n# varia: {varia}\n# unidade: px da tela virtual 1600x1000\n# pontos: {len(pts)}\n")

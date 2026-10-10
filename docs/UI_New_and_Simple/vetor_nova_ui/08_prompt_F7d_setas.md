@@ -9,7 +9,7 @@ Máquina = workstation ⇒ Modo L (ADR-0107).
 docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md com
 MODULO=UIUX — FASE 0 → 1 → 2, na ordem.
 Estado em 10/10 (fim da janela F7c): line/UIUX = HEAD desta janela, base
-(merge-base) = 2a925859d = main; F0–F7c NÃO integradas (~95 commits à frente;
+(merge-base) = 2a925859d = main; F0–F7c NÃO integradas (85 commits à frente;
 o dono disse «ainda não vamos integrar»). ⇒ `git cherry main HEAD` dá >0 e os
 commits são DESTA linha: siga sem reset. Se o main tiver andado: `git rebase main`
 (conflito fora dos seus ficheiros = PARE e reporte ao Enio).

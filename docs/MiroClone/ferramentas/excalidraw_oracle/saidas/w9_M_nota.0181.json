@@ -1,0 +1,67 @@
+{
+ "cabecalho": {
+  "oraculo": "@excalidraw/excalidraw",
+  "versao": "0.18.1",
+  "licenca": "MIT",
+  "chromium": "153.0.8010.12",
+  "casos": "w9_casos.json",
+  "casos_sha256": "79a49085a39c633be725c1e928d8adf92b48c8ee2de97558f7ca3254a9108f31",
+  "caso": "M_nota",
+  "descricao": "a ferramenta Sticky note (N) arrastada (só existe no next)",
+  "semente": 1750526044,
+  "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
+  "consola": []
+ },
+ "passos": [
+  {
+   "passo": {
+    "tipo": "montar"
+   },
+   "elementos": []
+  },
+  {
+   "passo": {
+    "tipo": "estado",
+    "chaves": [
+     "bindMode",
+     "bindingPreference",
+     "isBindingEnabled",
+     "isMidpointSnappingEnabled"
+    ]
+   },
+   "appState": {
+    "bindMode": null,
+    "bindingPreference": null,
+    "isBindingEnabled": true,
+    "isMidpointSnappingEnabled": null
+   }
+  },
+  {
+   "passo": {
+    "tipo": "desenhar",
+    "tecla": "n",
+    "de": [
+     300,
+     300
+    ],
+    "a": [
+     500,
+     460
+    ]
+   },
+   "elementos": []
+  },
+  {
+   "passo": {
+    "tipo": "serializar"
+   },
+   "elementos": []
+  },
+  {
+   "passo": {
+    "tipo": "svg"
+   },
+   "elementos": []
+  }
+ ]
+}

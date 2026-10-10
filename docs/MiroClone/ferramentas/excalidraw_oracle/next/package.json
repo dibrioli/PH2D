@@ -1,0 +1,17 @@
+{
+  "name": "ph2d-excalidraw-oracle-next",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Excalidraw (canal next, o do excalidraw.com) como oráculo corrido por script.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.0-143b5b6",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
+  }
+}

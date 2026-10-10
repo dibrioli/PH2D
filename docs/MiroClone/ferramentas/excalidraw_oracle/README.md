@@ -340,3 +340,63 @@ Concordância sobre o SVG mínimo: librsvg × Inkscape × magick ≤ 8/255; × r
 antialias). PDF mínimo: pdftoppm = pdftocairo; gs e magick diferem no texto (Type1 Helvetica). O SVG do
 Excalidraw rasterizado × o PNG do canvas: resvg 1,9 % · Inkscape 2,7 % · librsvg 3,7 % dos px > 8 (sobretudo o
 texto: o resvg avisa que salta o `@font-face`, as fontes caem no recurso).
+
+### W9 — a fidelidade do `.excalidraw` nas DUAS versões: `corre_fidelidade.mjs` (estudo [07](../../07_fidelidade_excalidraw.md))
+
+O excalidraw.com já grava um formato MAIS NOVO que o 0.18.1 (ligações `{elementId, mode:"orbit",
+fixedPoint}` sem `focus`/`gap`, o tipo `stickynote`, …). O npm `latest` continua a ser o 0.18.1 (20/04/2026);
+o formato novo só existe no canal `next` (builds `0.18.0-<commit>` do `master`). Triagem por artefacto
+instalado (`package.json` de cada pacote em `node_modules`; o `@excalidraw/*` não traz ficheiro LICENSE,
+só o campo `license`), 10/10:
+
+| pacote (canal next) | versão | licença |
+|---|---|---|
+| `@excalidraw/excalidraw` · `element` · `common` · `math` | 0.18.0-143b5b6 (`next` de 08/10/2026) | MIT |
+| `@excalidraw/fractional-indexing` | 0.18.0-143b5b6 | CC0-1.0 |
+| `@excalidraw/laser-pointer` | 1.3.1 | MIT (LICENSE) |
+| `roughjs` 4.6.4 · `perfect-freehand` 1.2.0 · `points-on-curve` 1.0.1 | — | MIT (LICENSE) |
+| `react`/`react-dom` 19.1.0 · `esbuild` 0.28.2 · `playwright` 1.63.0 | — | MIT · MIT · Apache-2.0 |
+
+**Bissecção pelo npm** (`npm pack` de cada build, `grep` nos `.d.ts`): o `BindMode = "inside" | "orbit" |
+"skip"` entra entre `0.18.0-7f66e1f` (13/11/2025, não tem) e `0.18.0-c141960` (25/11/2025, tem); o tipo
+`stickynote` entre `0.18.0-2b1c2a9` (07/09/2026) e `0.18.0-afa3a65` (10/09/2026).
+
+```bash
+bash docs/MiroClone/ferramentas/excalidraw_oracle/instala.sh        # se ainda não (a 0.18.1 + Chromium)
+bash docs/MiroClone/ferramentas/excalidraw_oracle/instala_w9.sh     # ~/Apps/excalidraw-oracle-next (next/package.json + lock) e www_w9/ nas duas
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_w9_casos.py \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w9_casos.json     # só se mudar os casos
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_fidelidade.mjs \
+  [--so <caso>] [--versao 0181|next] docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w9_casos.json \
+  docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/mede_w9.py     # as tabelas do estudo 07, das saídas
+```
+
+A página `src/oracle_w9.js` é INDEPENDENTE da versão (`import * as EX`: o `next` já não exporta `restore`,
+e renomeou a prop `excalidrawAPI` → `onExcalidrawAPI` — o `src/oracle.js` antigo não monta no next).
+70 casos (`entradas/w9_casos.json`, gerados): `B_*` ligações (orbit/inside/skip/legado, fixedPoint no centro,
+dentro, na borda, fora; espessuras; cantos redondos; as duas gramáticas juntas), `P_*` pontas (comprimento ×
+espessura × tipo, o último trecho), `F_fuste`, `M_*`/`M2_*` setas desenhadas pelo RATO no editor (profundidade,
+tempo parado, modificadores, cliques, arrastar a ponta), `T_formato` (um elemento de cada tipo/propriedade),
+`dono_bv` (o ficheiro do dono, `entradas/w9_dono_bv.excalidraw`, smoke 10/10). Saídas: `saidas/w9_<caso>.<0181|next>.json`
+(cabeçalho com versão, licença, sha das entradas, semente; os elementos depois de CADA passo) e `.svg`.
+
+⚠️ **Relógio:** os casos de desenho à mão correm com o relógio LIVRE (`"relogio": "livre"`): o editor next
+decide a ligação por um temporizador (`bindModeHandler`) e o relógio fixo congelava-o. Nesses casos os ids,
+a `seed` e o `created` dos elementos novos são normalizados (`novo1…`, 7919·(i+1), sem `created`).
+**Determinismo:** duas corridas dos 70 casos × 2 versões = **220/220 ficheiros idênticos** (10/10, `load` 79).
+
+- **A ponta presa em `orbit`** (XB1): fica na recta entre os dois FOCOS (o `fixedPoint` de cada ponta no
+  mundo, ou a ponta solta), no 1.º ponto a **5 + strokeWidth(da FORMA)/2** do contorno — 5,5 · 6 · 7 para
+  1 · 2 · 4 (a espessura da SETA não entra: seta 4 em forma 1 ⇒ 5,5); elipse = semi-eixos + vão; segue os
+  cantos redondos; foco FORA da faixa ⇒ a ponta é o próprio foco (`B_orbit_fora`: 50 px fora). Contra os
+  pontos GRAVADOS no ficheiro do dono: erro ≤ **0,04** px nas seis pontas. `inside` ⇒ a ponta É o foco.
+- **A ponta de seta** (XA2): comprimento = **min(base, último trecho/2)**, sem depender da espessura;
+  `arrow` 25 a 20°, `triangle` 15 a 25°, `circle` Ø15, `bar` 15 de cada lado, `diamond` 24. Igual nas duas versões.
+- **O fuste** (XA1): «redonda» de 2 pontos = RECTA (controlos a ⅓ e ⅔ da corda); de 3+ = Catmull-Rom
+  uniforme (pega = (P₊₁ − P₋₁)/6; nas pontas (P₁ − P₀)/6). Igual nas duas versões.
+- **0.18.1 × next lendo o MESMO ficheiro:** o 0.18.1 IGNORA `mode`/`fixedPoint` numa seta não-cotovelo
+  (acrescenta `focus:0`, sem `gap` ⇒ re-liga ao centro a encostar); o next converte `{focus,gap}` em
+  `orbit` com o `fixedPoint` tirado da ponta gravada e IGNORA o `gap` (usa a lei XB1). Com as DUAS
+  gramáticas na mesma ligação cada versão usa a sua (`B_ambos_orbit_e_legado`). O 0.18.1 DESCARTA o
+  `stickynote`; o next renomeia `dot` → `circle` e `crowfoot_*` → `cardinality_*`.

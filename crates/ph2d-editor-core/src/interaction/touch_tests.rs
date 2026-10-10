@@ -443,3 +443,35 @@ fn the_quick_pinch_reads_where_the_fingers_lifted_and_leaves_nothing_behind() {
     out.extend(t.feed(2, TouchPhase::End, [500.0, 300.0], 151 * MS, None));
     assert_eq!(out, vec![TouchOut::Undo]);
 }
+
+/// Uma TORÇÃO rápida (os dois dedos rodam à volta do meio, o afastamento quase igual) não enquadra:
+/// o afastamento tem de mudar mais do que a folga, não só mais do que o meio andou.
+#[test]
+fn a_quick_twist_is_not_a_quick_pinch() {
+    let mut t = g();
+    let mut out = Vec::new();
+    let c = [400.0_f32, 300.0_f32];
+    let em = |k: f32| {
+        let (ang, r) = (k * std::f32::consts::FRAC_PI_2, 50.0 + 5.0 * k);
+        let (s, co) = ang.sin_cos();
+        ([c[0] - r * co, c[1] - r * s], [c[0] + r * co, c[1] + r * s])
+    };
+    let (a, b) = em(0.0);
+    out.extend(t.feed(1, TouchPhase::Start, a, 0, None));
+    out.extend(t.feed(2, TouchPhase::Start, b, MS, None));
+    for i in 1..=12u128 {
+        #[allow(clippy::cast_precision_loss)]
+        let (a, b) = em(i as f32 / 12.0);
+        out.extend(t.feed(1, TouchPhase::Move, a, i * 16 * MS, None));
+        out.extend(t.feed(2, TouchPhase::Move, b, i * 16 * MS, None));
+        out.extend(t.tick(i * 16 * MS));
+    }
+    let (a, b) = em(1.0);
+    out.extend(t.feed(1, TouchPhase::End, a, 200 * MS, None));
+    out.extend(t.feed(2, TouchPhase::End, b, 208 * MS, None));
+    assert!(
+        out.iter().any(|o| matches!(o, TouchOut::NavBegin(_))),
+        "nem navegou: {out:?}"
+    );
+    assert_eq!(rapido(&out), None, "{out:?}");
+}

@@ -473,3 +473,37 @@ fn the_newest_of_the_wheel_and_the_flight_wins() {
         "sem voo a roda é livre"
     );
 }
+
+/// Um enquadramento SEM memória (a seleção) depois de um *Enquadrar tudo* desarma a volta: a vista de
+/// partida dele já não é a que o beliscão ao contrário devolveria.
+#[test]
+fn framing_the_selection_after_everything_disarms_the_way_back() {
+    let antes = View {
+        center: [5.0, 5.0],
+        height_world: 3.0,
+    };
+    let tudo = View {
+        center: [0.0, 0.0],
+        height_world: 40.0,
+    };
+    let sel = View {
+        center: [2.0, 1.0],
+        height_world: 4.0,
+    };
+    let mut mola = Mola {
+        v: None,
+        passo: 0.5,
+        chamadas: Vec::new(),
+    };
+    let mut f = ViewFlight::default();
+    let mut cam = antes;
+    f.go_remembering(tudo, mola.v);
+    voa(&mut f, &mut cam, &mut mola);
+    f.go(sel, mola.v);
+    voa(&mut f, &mut cam, &mut mola);
+    f.gesture_starts(cam);
+    assert!(
+        !f.go_back(mola.v),
+        "a volta ficou armada depois de enquadrar a seleção"
+    );
+}

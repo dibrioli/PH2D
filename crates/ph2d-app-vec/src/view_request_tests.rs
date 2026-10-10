@@ -133,3 +133,36 @@ fn a_request_is_answered_one_frame_later() {
         Some(ViewFocusKind::Previous)
     );
 }
+
+/// ⭐ **As duas costuras da shell que nenhum teste de unidade alcança** (a mutação F8 provou-o): o
+/// quadro pede pelo ADIAMENTO (`ViewState::defer`) e a roda passa pela ARBITRAGEM do voo. ⚠️ Lê a
+/// shell pelo texto: quem mover estas linhas move a agulha junto (HOWTO §2).
+#[test]
+fn the_shell_asks_through_the_deferral_and_the_wheel_through_the_arbitration() {
+    let shell = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src");
+    let ler =
+        |f: &str| std::fs::read_to_string(shell.join(f)).unwrap_or_else(|e| panic!("{f}: {e}"));
+    let fase = ler("render_loop/fase_view_frame.rs");
+    assert!(
+        fase.contains("view_request::resolve("),
+        "controlo: a fase mudou de casa"
+    );
+    assert!(
+        fase.contains(".view.defer(kind)?"),
+        "o pedido não espera um quadro"
+    );
+    let zoom = ler("canvas_zoom.rs");
+    assert!(
+        zoom.contains("pub(crate) fn publish("),
+        "controlo: o publish mudou de casa"
+    );
+    assert!(
+        zoom.contains("flight.arbitrate(zoom.target.is_some())"),
+        "a roda não passa pela arbitragem do voo"
+    );
+    let relogio = ler("render_loop/fase_chrome_clock.rs");
+    assert!(
+        relogio.contains("crate::canvas_zoom::publish("),
+        "o relógio não publica pela porta"
+    );
+}

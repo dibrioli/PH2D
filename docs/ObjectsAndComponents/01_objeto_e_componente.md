@@ -352,3 +352,16 @@ Abertos da onda 4: §10 do handoff novo.
 | c | o argumento do Play Clip é texto livre | o Inspector só vê `&World`; o runtime resolve o nome na animação DO ALVO | recurso `ClipNames` publicado pelo `upkeep` da timeline (só reescreve quando muda); o parâmetro vira ▾ com os clipes da Animação do alvo quando o alvo é UM objecto (nome ou «este»); por tag / quem bateu fica o texto livre e o toast no Play. Nome fora da lista ⇒ a linha de aviso por baixo (o idioma da secção — o chip não tem estado de aviso) |
 | d | guarda `nomeados` do reset procura no documento inteiro | falso positivo: um osso vivo com um homónimo do dono que saiu segurava a composição rançosa | a guarda resolve o nome NA animação onde o osso vive; a lei `animation_of` desce para `TimelineDoc::animation_of` (uma porta, dois chamadores) |
 | f | `ph2d-panel-registry-init -p` com 76 falhas | 77, todas censos que medem o APP (o default do shell) sem 4 painéis | dev-dependency da crate em si própria com as 4 features — 124/124 |
+
+## §16 — Onda 6 (10/10): esticar em grupo uma imagem inclinada (o aberto da onda 5)
+
+**Handoff:** [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda6_2026-10-10.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda6_2026-10-10.md). Escolha do dono (10/10): a onda 6 é este pendente.
+
+- **Medido:** o gizmo GLOBAL multiplicava a escala de cada membro pelos factores do MUNDO e não tocava no
+  skew. Com rotação nula, `D·Sk·S = Sk'·S'` é EXACTO quando `tan k'ₓ = tan kₓ·fₓ/f_y` e
+  `tan k'_y = tan k_y·f_y/fₓ` — logo a imagem inclinada esticada na horizontal tem de mudar o ângulo, e não
+  mudava. Rodada, a escala do grupo já é uniforme (`fₓ = f_y` ⇒ skew intacto).
+- **Ficou:** `gizmo::group_member_pose` (a conta de cada membro saiu da shell; sem skew, bit a bit) +
+  `skew_under_world_scale`; o skew lê-se do VIVO (`tan k·s_y/sₓ` é invariante — sem estado guardado).
+- **Da mesma família:** a regra «selecção rodada ⇒ escala uniforme» lia a rotação LOCAL; um filho de pai
+  rodado escapava-lhe — lê a de MUNDO.

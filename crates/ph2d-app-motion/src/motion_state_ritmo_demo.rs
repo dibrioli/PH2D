@@ -45,7 +45,7 @@ pub(crate) const ORDENS: [f32; 2] = [
 /// A galáxia deste campo: o núcleo cobre o canto (`~3,4 m`), e o ímã sai da lei de órbita
 /// (`s_a = s_v²/núcleo`, ver [`super::carimbo_demo::Galaxia`]): uma volta a cada `~31 s`.
 const NUCLEO: f32 = 4.0;
-const VORTEX: f32 = 0.8;
+pub(crate) const VORTEX: f32 = 0.8;
 const RESISTENCIA: f32 = 5.0;
 const IMA: f32 = 0.158;
 const ALCANCE_FORCA: f32 = 200.0;
@@ -74,6 +74,12 @@ fn indice_da_estrela() -> Option<f32> {
 /// (núcleo → redemoinho em velocidade-alvo → ímã → `Integrate`), com os cartões na fileira `y0`.
 /// Partilhada pelas cenas `=132` (o ritmo) e `=133` (a cor). Devolve o `Integrate`.
 pub(super) fn galaxia(g: &mut Graph, y0: f32) -> Option<NodeId> {
+    galaxia_e_redemoinho(g, y0).map(|(galaxia, _)| galaxia)
+}
+
+/// A [`galaxia`] e o redemoinho dela (o `force.vortex`) — a cena `=134` (ciclo 19) dirige-lhe a
+/// força por um gatilho. Devolve o `Integrate` e o redemoinho.
+pub(super) fn galaxia_e_redemoinho(g: &mut Graph, y0: f32) -> Option<(NodeId, NodeId)> {
     let no = |g: &mut Graph, tipo: &str, x: f32, dy: f32| {
         let n = g.add_node(tipo.to_string());
         g.set_pos(n, Pos { x, y: y0 + dy });
@@ -103,8 +109,7 @@ pub(super) fn galaxia(g: &mut Graph, y0: f32) -> Option<NodeId> {
     liga(g, nucleo, vortex, 0, false)?;
     liga(g, vortex, ima, 0, false)?;
     liga(g, ima, galaxia, 1, false)?;
-
-    Some(galaxia)
+    Some((galaxia, vortex))
 }
 
 /// Os nós que os gates leem de uma coluna (o produto só usa a `saida`).

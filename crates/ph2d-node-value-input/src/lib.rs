@@ -16,6 +16,9 @@
 //! | Trigger | `1` no tique do disparo, `0` nos outros | idem |
 //! | Color | a luminosidade OKLab (`L`) | a cor |
 //!
+//! E `pulse`: a coluna do `out` no tipo da família `pulse.*` — um Trigger liga direto ao
+//! `pulse.adsr` / `pulse.counter`.
+//!
 //! ⚠️ **O gatilho é um pulso decidido por quem ESCREVE** (doc 128 §3.2): o escritor conta os
 //! disparos e publica `1` no tique em que a conta mudou. Uma borda detectada AQUI precisaria do
 //! laço `pre`, e um nó sequencial é proibido debaixo de um `time_remap`. O `fire` do cartão é o
@@ -38,7 +41,10 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
+/// O PULSO (o tipo da família `pulse.*`): um gatilho liga direto a um `pulse.adsr`/`counter`.
+const PULSE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Event);
 const VALUE_COL: &str = "v";
+const PULSE_COL: &str = "pulse";
 
 /// O text param com o NOME da entrada.
 pub const NAME_KEY: &str = "name";
@@ -80,6 +86,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         PortSpec {
             name: "a",
             ty: VALUE,
+        },
+        // A mesma coluna do `out`, no tipo do PULSO (num Trigger, o disparo).
+        PortSpec {
+            name: "pulse",
+            ty: PULSE,
         },
     ],
     // Pure: o memo guarda a revisão de cada external lido, então isto volta a cozer exactamente
@@ -194,6 +205,9 @@ impl NodeOp for ValueInput {
         for k in 0..4 {
             ctx.emit(col(&|l| l.1[k]));
         }
+        // O pulso viaja na coluna da família `pulse.*`.
+        let pulso = linhas.iter().map(|l| l.0).collect();
+        ctx.emit(Stream::new(n).with(PULSE_COL, Column::Scalar(pulso)));
     }
 }
 

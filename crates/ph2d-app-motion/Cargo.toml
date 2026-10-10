@@ -73,6 +73,7 @@ ph2d-node-source-text = { path = "../ph2d-node-source-text" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 # O `value.input` (ciclo 19): o publicador lê o `fire` de teste dos cartões pelo nome dos params.
 ph2d-node-value-input = { path = "../ph2d-node-value-input" }
+ph2d-node-value-follow = { path = "../ph2d-node-value-follow" }
 ph2d-node-value-pattern = { path = "../ph2d-node-value-pattern" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
 ph2d-node-value-table = { path = "../ph2d-node-value-table" }

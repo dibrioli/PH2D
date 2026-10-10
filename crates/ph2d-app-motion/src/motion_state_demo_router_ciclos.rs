@@ -19,7 +19,7 @@ use ph2d_nodegraph::graph::NodeId;
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
 const CICLOS: &[&str] = &[
     "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "130", "131", "132",
-    "133",
+    "133", "134",
 ];
 
 /// Este nível é uma cena de ciclo?
@@ -170,6 +170,14 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::cor_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::cor_demo::captions());
             super::cor_demo::announce();
+            sinks
+        }
+        // ⭐ **O JOGO MANDA** (ciclo 19, doc 128): quatro entradas publicadas mandam numa barra
+        // (tempo dirigido), num cruzamento de estados e numa explosão sobre a galáxia simulada.
+        "134" => {
+            let sinks = super::jogo_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::jogo_demo::captions());
+            super::jogo_demo::announce();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

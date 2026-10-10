@@ -53,6 +53,12 @@ fn the_card_answers_until_the_game_publishes_and_then_the_game_does() {
         "o número como cinza"
     );
     assert_eq!(s[4], vec![1.0]);
+    let out = cook.cook(&g, &Reg, n, 0.0).unwrap();
+    assert_eq!(
+        out[5].as_stream().get("pulse"),
+        Some(&Column::Scalar(vec![0.3])),
+        "o pulso é o out, na coluna da família pulse.*"
+    );
 }
 
 /// O nome é a morada: outra entrada com outro nome não chega, e um objecto chamado igual também

@@ -141,6 +141,10 @@ mod ritmo_demo;
 #[path = "motion_state_cor_demo.rs"]
 mod cor_demo;
 
+/// A cena `=134` — o jogo manda (ciclo 19, doc 128).
+#[path = "motion_state_jogo_demo.rs"]
+mod jogo_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

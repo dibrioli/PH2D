@@ -20,7 +20,7 @@ use ph2d_ecs::{Entity, FlipObjectRef, SimWorld};
 use ph2d_editor_core::GizmoView;
 use ph2d_flip::{FlipDoc, FlipObjectId};
 use ph2d_host::WindowSize;
-use ph2d_render::Camera2d;
+use ph2d_render::{Camera2d, WorldBbox};
 
 use ph2d_flip_entities::entities::FlipEntityMap;
 use ph2d_flip_entities::transform::object_xform;
@@ -164,6 +164,35 @@ pub fn view(
 /// O ponto de mundo `p` pega a arte do objeto de `entity` (a ≤ `stroke_hit_r` de
 /// algum traço)? A geometria é LOCAL, então `p` desce ao espaço local pelo afim
 /// inverso e o raio (world) converte pela escala.
+/// F8: a caixa de MUNDO alinhada aos eixos de um objecto Flip — a do gizmo, rodada pela mesma lei
+/// ([`GizmoView::world_aabb`]); a câmera não entra na caixa.
+#[must_use]
+pub fn world_aabb(sim: &SimWorld, doc: &FlipDoc, entity: Entity) -> Option<WorldBbox> {
+    let v = view(
+        sim,
+        doc,
+        entity,
+        &Camera2d::default(),
+        WindowSize::new(1, 1),
+        (0.0, 0.0),
+        false,
+    )?;
+    let (min, max) = v.world_aabb();
+    Some(WorldBbox { min, max })
+}
+
+/// F8: as caixas dos objectos Flip DESENHADOS — o escondido (pela árvore, a lei do pick daqui) não
+/// conta, o trancado conta. É o que o *Enquadrar tudo* soma às outras famílias.
+#[must_use]
+pub fn drawn_aabbs(sim: &SimWorld, doc: &FlipDoc) -> Vec<WorldBbox> {
+    let w = sim.world();
+    w.iter_entities()
+        .map(|r| r.id())
+        .filter(|&e| w.get::<FlipObjectRef>(e).is_some() && !ph2d_ecs::is_hidden_in_tree(w, e))
+        .filter_map(|e| world_aabb(sim, doc, e))
+        .collect()
+}
+
 #[must_use]
 pub fn contains_world(
     sim: &SimWorld,

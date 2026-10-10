@@ -12,6 +12,21 @@
 
 use ph2d_editor_core::zones::Rect;
 
+/// ⭐ **Onde um ENQUADRAMENTO pode pôr o conteúdo** (F8): a área visível sem a faixa da pílula ⑤ do
+/// rodapé, que FLUTUA por cima dela (medido na foto da cena 14: as formas de baixo iam para debaixo
+/// dela). A barra ① e a ④ ficam dentro da margem do enquadramento (`float_bar::frame_margin`).
+#[must_use]
+pub fn frameable(hero: &ph2d_editor_core::screens::hero::HeroScreen, viewport: Rect) -> Rect {
+    let mut r = visible(hero, viewport);
+    if let Some(l) = hero.last_layout.as_ref()
+        && l.bottom_hud.h > 0.0
+    {
+        let hud_top = hero.escala().rect_to_physical(l.bottom_hud).y;
+        r.h = r.h.min(hud_top - r.y).max(0.0);
+    }
+    r
+}
+
 /// A área visível do canvas, ou `viewport` enquanto ela ainda não foi publicada.
 #[must_use]
 pub fn visible(hero: &ph2d_editor_core::screens::hero::HeroScreen, viewport: Rect) -> Rect {

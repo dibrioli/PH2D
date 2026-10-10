@@ -541,12 +541,16 @@ pub enum RequestedSpriteStrategy {
 }
 
 /// Que enquadramento pedir à câmera (o botão VIEW, `F`/`Home`, o menu *Ver*, o beliscão rápido).
-/// A lei é `ph2d_render::camera_frame` (F8); todos VOAM pela mola `Role::Viewpoint`.
+/// A lei dos que enquadram é `ph2d_render::camera_frame` (F8) e eles VOAM pela mola
+/// `Role::Viewpoint`; `Selected` e `Camera` só centram e saltam (as cenas de smoke contam com isso).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ViewFocusKind {
-    /// *Enquadrar seleção*: a seleção inteira (a primária e as extras) cabe na área visível.
-    /// Sem seleção nada se move.
+    /// Centra na seleção (`F`/`Home`, o duplo-clique na Hierarquia), sem mudar o zoom; sem
+    /// seleção, a origem.
     Selected,
+    /// *Enquadrar seleção*: a seleção inteira (a primária e as extras) cabe na área visível. Sem
+    /// seleção nada se move.
+    FrameSelected,
     /// Focus the active camera. No camera-object exists yet, so the
     /// host pans to (0,0). Doesn't change zoom.
     Camera,

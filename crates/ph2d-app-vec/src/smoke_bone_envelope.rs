@@ -171,11 +171,10 @@ pub const fn prologo_do_nivel(n: u32) -> Prologo {
     Prologo {
         // ⭐ A `=3` (o PAR) fecha a timeline também — com ela aberta a peça de baixo fica atrás dela.
         timeline_fechada: n >= 2,
-        // ⛔⛔ **Mas NÃO enquadra, e a FOTO é que o disse (2026-09-29):** o `Frame All` mede
-        // `scene_sprites_bbox_world`, que conta só IMAGENS — com o par ele enquadrou a imagem de
-        // baixo e deixou o desenho de cima FORA do ecrã. Aqui ele funciona por acaso: a cena só tem
-        // desenhos, a caixa vem vazia e o ramo vazio devolve a câmera de omissão. ⇒ a `=3` abre
-        // directamente na câmera de omissão, dimensionada para lá caber (gate no `smoke_bone_par`).
+        // ⛔⛔ **Mas NÃO enquadra, e a FOTO é que o disse (2026-09-29):** o `Frame All` de então
+        // contava só IMAGENS e deixou o desenho de cima FORA do ecrã. ⇒ a `=3` abre na câmera de
+        // omissão, dimensionada para lá caber (gate no `smoke_bone_par`). Desde a F8 (10/10) o
+        // `Frame All` conta os desenhos e a `=2` enquadra-os de verdade (refotografada).
         enquadrar: n == 2,
         // ⭐⭐⭐ **O PAINEL DOS OSSOS ABRE NAS DUAS, e a premissa que o prendia ao `=2` MORREU**
         // (2026-09-19, ao chegar o pincel de PESO): aquele painel é a ÚNICA porta dos três verbos

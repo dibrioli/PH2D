@@ -82,7 +82,9 @@ pub fn frame_within(
     h_range: (f32, f32),
 ) -> Option<View> {
     let finite = [b.min, b.max].iter().flatten().all(|v| v.is_finite())
-        && [area.x, area.y, area.w, area.h, margin_px].iter().all(|v| v.is_finite());
+        && [area.x, area.y, area.w, area.h, margin_px]
+            .iter()
+            .all(|v| v.is_finite());
     if !finite || b.max[0] < b.min[0] || b.max[1] < b.min[1] {
         return None;
     }
@@ -107,10 +109,7 @@ pub fn frame_within(
         (f64::from(b.min[0]) + f64::from(b.max[0])) * 0.5,
         (f64::from(b.min[1]) + f64::from(b.max[1])) * 0.5,
     ];
-    let a = [
-        f64::from(area.x) + aw * 0.5,
-        f64::from(area.y) + ah * 0.5,
-    ];
+    let a = [f64::from(area.x) + aw * 0.5, f64::from(area.y) + ah * 0.5];
     // O centro da ÁREA cai no centro da caixa (`screen_to_world(a) == c`; o mundo é y para cima).
     #[allow(clippy::cast_possible_truncation)]
     Some(View {
@@ -155,7 +154,9 @@ pub fn along(from: View, to: View, s: f32) -> View {
     } else {
         (1.0 - rs) / (1.0 - lr.exp())
     };
-    let c = |i: usize| f64::from(from.center[i]) + (f64::from(to.center[i]) - f64::from(from.center[i])) * g;
+    let c = |i: usize| {
+        f64::from(from.center[i]) + (f64::from(to.center[i]) - f64::from(from.center[i])) * g
+    };
     #[allow(clippy::cast_possible_truncation)]
     View {
         center: [c(0) as f32, c(1) as f32],
@@ -165,7 +166,9 @@ pub fn along(from: View, to: View, s: f32) -> View {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Leg {
-    from: View,
+    /// `None` até ao 1.º tique: o voo parte da câmera COMO ELA ESTÁ quando ele começa a andar (um
+    /// pedido logo a seguir à roda não é desfeito pelo resto da mola dela).
+    from: Option<View>,
     to: View,
     /// O valor da mola quando a perna partiu: `s = mola − base`, o destino é `base + 1`.
     base: f32,
@@ -193,26 +196,26 @@ pub struct ViewFlight {
 }
 
 impl ViewFlight {
-    /// Voa de `live` para `to`. `track` = o valor actual da mola (`None` = ela não existe).
-    pub fn go(&mut self, live: View, to: View, track: Option<f32>) {
-        self.start(live, to, track, false);
+    /// Voa para `to`. `track` = o valor actual da mola (`None` = ela não existe).
+    pub fn go(&mut self, to: View, track: Option<f32>) {
+        self.start(to, track, false);
     }
 
     /// Voa para um «enquadrar tudo» e LEMBRA a vista de partida.
-    pub fn go_remembering(&mut self, live: View, to: View, track: Option<f32>) {
-        self.back = Some(live);
+    pub fn go_remembering(&mut self, to: View, track: Option<f32>) {
+        self.back = None;
         self.landed = None;
-        self.start(live, to, track, true);
+        self.start(to, track, true);
     }
 
     /// O beliscão rápido ao contrário: volta à vista de antes do último «enquadrar tudo». `false`
     /// sem memória armada (o gesto fica só a pinça que já foi).
-    pub fn go_back(&mut self, live: View, track: Option<f32>) -> bool {
+    pub fn go_back(&mut self, track: Option<f32>) -> bool {
         let Some(back) = self.back.take() else {
             return false;
         };
         self.landed = None;
-        self.start(live, back, track, false);
+        self.start(back, track, false);
         true
     }
 
@@ -225,15 +228,15 @@ impl ViewFlight {
         }
     }
 
-    fn start(&mut self, live: View, to: View, track: Option<f32>, remember: bool) {
+    fn start(&mut self, to: View, track: Option<f32>, remember: bool) {
         self.leg = Some(Leg {
-            from: live,
+            from: None,
             to,
             base: track.unwrap_or(0.0),
             seed: track.is_none(),
             remember,
         });
-        self.published = Some(live);
+        self.published = None;
     }
 
     /// Em voo?
@@ -245,11 +248,21 @@ impl ViewFlight {
     /// **O tique do quadro.** Devolve a vista a publicar, ou `None` quando a câmera não é do voo.
     pub fn tick(&mut self, live: View, mut step: impl FnMut(f32) -> f32) -> Option<View> {
         let mut leg = self.leg?;
-        if self.published != Some(live) {
-            self.leg = None;
-            self.published = None;
-            return None;
-        }
+        let from = match leg.from {
+            None => {
+                if leg.remember {
+                    self.back = Some(live);
+                }
+                leg.from = Some(live);
+                live
+            }
+            Some(f) if self.published == Some(live) => f,
+            Some(_) => {
+                self.leg = None;
+                self.published = None;
+                return None;
+            }
+        };
         if leg.seed {
             step(leg.base);
             leg.seed = false;
@@ -265,7 +278,7 @@ impl ViewFlight {
             leg.to
         } else {
             self.leg = Some(leg);
-            along(leg.from, leg.to, now - leg.base)
+            along(from, leg.to, now - leg.base)
         };
         self.published = self.leg.map(|_| v);
         Some(v)

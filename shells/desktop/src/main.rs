@@ -734,6 +734,7 @@ impl App {
             hover_outline: Vec::new(),
             dragging: None,
             title_dirty: true,
+            view_request: None,
             impasto_smoke_done: false,
             substrate_smoke_done: false,
             line_smoke_done: false,

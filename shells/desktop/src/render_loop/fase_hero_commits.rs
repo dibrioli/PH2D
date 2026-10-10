@@ -56,7 +56,6 @@ impl crate::App {
                 hierarchy_select_intent,
                 rename_seed_row: take(&mut pd.rename_seed_row),
                 rename_commit: take(&mut pd.rename_commit),
-                view_focus_kind: take(&mut pd.view_focus_kind),
             },
             window_size,
         );

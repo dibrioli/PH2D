@@ -57,6 +57,8 @@ use ph2d_render::Camera2d;
 
 /// O id do escalar no substrato. Hash de string ⇒ **nenhum contador de gate** se move.
 pub(crate) const CANVAS_ZOOM: NodeId = ph2d_tool_registry::hash_node_id("canvas.zoom");
+/// O escalar do voo de um enquadramento (F8, `ph2d_render::camera_frame::ViewFlight`).
+pub(crate) const VIEW_FLIGHT: NodeId = ph2d_tool_registry::hash_node_id("canvas.view_flight");
 
 /// O destino do zoom do canvas, e a testemunha que devolve a câmera aos outros donos.
 #[derive(Clone, Copy, Debug, Default)]

@@ -29,7 +29,6 @@ pub(super) struct HierarchyIntents {
     pub(super) hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent>,
     pub(super) rename_seed_row: Option<NodeId>,
     pub(super) rename_commit: Option<(NodeId, String)>,
-    pub(super) view_focus_kind: Option<ph2d_editor_core::ViewFocusKind>,
 }
 
 impl crate::App {
@@ -46,7 +45,6 @@ impl crate::App {
         let FrameGfx {
             renderer,
             sim,
-            present,
             camera,
             asset_db,
             toasts,
@@ -80,10 +78,8 @@ impl crate::App {
             hierarchy_select_intent,
             rename_seed_row,
             rename_commit,
-            view_focus_kind,
         } = intents;
         if hierarchy::dispatch(
-            view_focus_kind,
             visibility_toggle_row,
             lock_toggle_row,
             group_toggle_row,
@@ -104,7 +100,6 @@ impl crate::App {
             hero,
             hero_live,
             sim,
-            present,
             camera,
             toasts,
             window_size,

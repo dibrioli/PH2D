@@ -34,7 +34,6 @@ mod image_edit;
 mod sprite_merge;
 pub(crate) mod texture_edit;
 pub(crate) mod texture_rebind;
-mod view;
 
 pub(crate) use hierarchy::drain_reparent;
 pub(crate) use image_edit::{
@@ -48,4 +47,3 @@ mod sprite_merge_result;
 pub(crate) use sprite_merge_result::{
     MergedLayers, take_last_merge_result, take_last_merged_layers,
 };
-pub(crate) use view::drain_view_focus;

@@ -91,8 +91,8 @@ fn a_click_locks_a_modifier_and_the_focus_row_asks_for_focus() {
     );
 }
 
-/// ⭐ **F8: *Ver ▸ Enquadrar tudo / seleção* pedem o enquadramento à shell** — pela MESMA variante
-/// que o `F`, o botão VIEW e o beliscão rápido, e fecham o menu. As linhas vivem na tabela do *Ver*
+/// ⭐ **F8: *Ver ▸ Enquadrar tudo / seleção* pedem o enquadramento à shell** — o tudo pela MESMA
+/// variante do botão VIEW e do beliscão rápido —, e fecham o menu. As linhas vivem na tabela do *Ver*
 /// e no registo da barra (sem `InteractiveState` uma linha nasce morta).
 #[test]
 fn the_view_menu_rows_ask_the_shell_to_frame() {
@@ -105,7 +105,10 @@ fn the_view_menu_rows_ask_the_shell_to_frame() {
     .collect();
     for (id, kind) in [
         (ids::MENUBAR_VIEW_FRAME_ALL, ViewFocusKind::All),
-        (ids::MENUBAR_VIEW_FRAME_SELECTED, ViewFocusKind::Selected),
+        (
+            ids::MENUBAR_VIEW_FRAME_SELECTED,
+            ViewFocusKind::FrameSelected,
+        ),
     ] {
         assert!(rows.contains(&id), "a linha não está no menu *Ver*");
         assert!(
@@ -116,7 +119,8 @@ fn the_view_menu_rows_ask_the_shell_to_frame() {
         assert!(hero.apply_event(WidgetEvent::Click(id)));
         let got: Vec<_> = hero.bus.drain().collect();
         assert!(
-            got.iter().any(|a| *a == EditorAction::SetViewFocus { kind }),
+            got.iter()
+                .any(|a| *a == EditorAction::SetViewFocus { kind }),
             "{kind:?}: {got:?}"
         );
     }

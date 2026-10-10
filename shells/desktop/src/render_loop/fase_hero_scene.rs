@@ -114,6 +114,8 @@ impl crate::App {
             vec_live,
             viewport,
         )?;
+        // F8: o enquadramento pedido, com as `VecXforms` assentadas (voa no próximo relógio).
+        self.fase_view_frame(take(&mut pd.view_focus_kind), &vec_xf, viewport);
         let (overlay, vec_xf, cam_affine) =
             self.fase_vector_overlays(motion_draws, vector_active, vec_xf, cam_affine)?;
         let (vec_xf, cam_affine) =

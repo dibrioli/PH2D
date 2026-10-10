@@ -8,6 +8,8 @@
 //! ali — exactamente o que os dois `let Some(..) else { return; }` do topo do bloco faziam.
 
 use super::*;
+use crate::canvas_zoom::VIEW_FLIGHT;
+use ph2d_editor_core::motion::Role;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo. Devolve o `wall_dt` do quadro, que o acumulador da sim lê mais abaixo.
@@ -17,6 +19,7 @@ impl crate::App {
         let FrameGfx {
             camera,
             canvas_zoom,
+            view_flight,
             zen,
             toasts,
             jobs,
@@ -60,6 +63,12 @@ impl crate::App {
             // meio do quadro faria a imagem e o cursor discordarem sobre onde o mundo está.
             if let Some(next) = canvas_zoom.tick(camera.height_world, &mut hero.motion) {
                 camera.height_world = next;
+            }
+            // F8: o voo de um enquadramento, DEPOIS da roda (uma roda a meio do voo ganha).
+            let m = &mut hero.motion;
+            let step = |g| m.animate(VIEW_FLIGHT, g, Role::Viewpoint);
+            if let Some(v) = view_flight.tick(camera.view(), step) {
+                camera.set_view(v);
             }
         }
         let prev_toasts = toasts.len();

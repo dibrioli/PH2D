@@ -100,6 +100,10 @@ impl crate::App {
                     self.on_mouse_input(ElementState::Released, MouseButton::Right);
                 }
                 TouchOut::NavBegin(p) => {
+                    // F8: a memória do beliscão ao contrário lê a vista (nunca a escreve).
+                    if let Some(g) = self.gfx.as_mut() {
+                        g.view_flight.gesture_starts(g.camera.view());
+                    }
                     self.on_cursor_moved(at(p));
                     self.on_mouse_input(ElementState::Pressed, MouseButton::Middle);
                 }
@@ -115,6 +119,14 @@ impl crate::App {
                 }
                 TouchOut::NavEnd => {
                     self.on_mouse_input(ElementState::Released, MouseButton::Middle)
+                }
+                // F8: o beliscão rápido pede pela porta do menu *Ver* (ao contrário: a vista de antes).
+                TouchOut::QuickPinch { closing } => {
+                    use ph2d_editor_core::{ViewFocusKind as K, action_bus::EditorAction as A};
+                    let kind = if closing { K::All } else { K::Previous };
+                    if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                        h.bus.push(A::SetViewFocus { kind });
+                    }
                 }
             }
         }

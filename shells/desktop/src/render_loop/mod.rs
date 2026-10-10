@@ -434,6 +434,7 @@ mod fase_vector_tree_settle;
 mod fase_vector_upkeeps;
 /// Fase do quadro: a vista vectorial, os estilos conduzidos e as recozeduras de forma.
 mod fase_vector_view_and_drives;
+mod fase_view_frame;
 /// Fase do quadro: as pontes dos painéis do mundo (tokens e afins).
 mod fase_world_panel_bridges;
 /// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.

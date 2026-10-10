@@ -130,10 +130,9 @@ pub struct Prologo {
     /// (`Camera2d::default().height_world = 10 m`), onde a área livre é folgada, e dimensiona-se
     /// para lá dentro.
     ///
-    /// ⚠️ **Isto NÃO é a cura do defeito** — ele é do verbo *Frame All* e vale para toda a casa
-    /// (abrir a timeline e carregar em *Frame All* corta a cena de qualquer módulo). A cura pede o
-    /// rectângulo LIVRE em vez do da janela, muda o enquadramento de todas as cenas do app, e por
-    /// isso é decisão do dono e não de uma linha a meio de uma wave.
+    /// ✅ **A cura do verbo chegou na F8 (10/10, `line/UIUX`):** o *Frame All* encaixa agora na área
+    /// VISÍVEL (sem painéis, réguas nem a pílula do rodapé), conta todas as famílias e voa; as
+    /// `=1`/`=2` foram refotografadas inteiras. A `=3` e a `=4` ficam como o dono as aprovou.
     pub enquadrar: bool,
 }
 

@@ -37,6 +37,7 @@ pub(super) struct FrameGfx<'a> {
     pub(super) present: &'a mut PresentWorld,
     pub(super) camera: &'a mut Camera2d,
     pub(super) canvas_zoom: &'a mut crate::canvas_zoom::CanvasZoom,
+    pub(super) view_flight: &'a mut ph2d_render::camera_frame::ViewFlight,
     pub(super) asset_db: &'a mut AssetDb,
     pub(super) script: &'a mut Option<ScriptHost>,
     /// ⭐ Os emissores de partículas a correr (TOP-20 #18).
@@ -115,6 +116,7 @@ impl<'a> FrameGfx<'a> {
             present,
             camera,
             canvas_zoom,
+            view_flight,
             asset_db,
             atlas_is_real: _,
             script,
@@ -227,6 +229,7 @@ impl<'a> FrameGfx<'a> {
             present,
             camera,
             canvas_zoom,
+            view_flight,
             asset_db,
             script,
             particles,

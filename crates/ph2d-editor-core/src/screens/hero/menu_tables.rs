@@ -199,9 +199,12 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
     ),
     // F5: a porta VISÍVEL do toque de 4 dedos — um verbo (com o modo ligado a barra some).
     menu_row(ids::MENUBAR_VIEW_FOCUS, "chrome.menu.focus_mode"),
-    // F8: as portas VISÍVEIS do beliscão rápido e do `F`/`Home` (verbos).
+    // F8: a porta VISÍVEL do beliscão rápido, e o enquadrar da seleção (verbos).
     menu_row(ids::MENUBAR_VIEW_FRAME_ALL, "chrome.menu.frame_all"),
-    menu_row(ids::MENUBAR_VIEW_FRAME_SELECTED, "chrome.menu.frame_selected"),
+    menu_row(
+        ids::MENUBAR_VIEW_FRAME_SELECTED,
+        "chrome.menu.frame_selected",
+    ),
     menu_row(
         ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM,
         "chrome.menu.tool_row_bottom",

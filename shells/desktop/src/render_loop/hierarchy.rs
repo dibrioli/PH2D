@@ -11,11 +11,10 @@
 
 use crate::HeroLive;
 use crate::hero_intents;
-use ph2d_ecs::PresentWorld;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor_core::action_bus::SelectModifier;
 use ph2d_editor_core::screens::hero::HierReparentIntent;
-use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
+use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_i18n::tr;
 use ph2d_render::Camera2d;
@@ -48,7 +47,6 @@ pub(super) enum HierarchySelectIntent {
 /// Returns `true` if any dispatch pushed a toast.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch(
-    view_focus_kind: Option<ViewFocusKind>,
     visibility_toggle_row: Option<NodeId>,
     lock_toggle_row: Option<NodeId>,
     group_toggle_row: Option<NodeId>,
@@ -87,7 +85,6 @@ pub(super) fn dispatch(
     hero: &mut HeroScreen,
     hero_live: &Option<HeroLive>,
     sim: &mut SimWorld,
-    present: &mut PresentWorld,
     camera: &mut Camera2d,
     toasts: &mut ToastQueue,
     window_size: WindowSize,
@@ -111,7 +108,6 @@ pub(super) fn dispatch(
     let mut title_dirty = false;
 
     title_dirty |= drain_view_and_row_toggles(
-        view_focus_kind,
         visibility_toggle_row,
         lock_toggle_row,
         group_toggle_row,
@@ -119,10 +115,8 @@ pub(super) fn dispatch(
         hero,
         hero_live,
         sim,
-        present,
         camera,
         toasts,
-        window_size,
     );
     // M14.6 F: drain per-row Hierarchy context-menu actions. Each is
     // a `HierDuplicate/AddChild/ResetTransform/Delete` bus variant
@@ -280,7 +274,6 @@ pub(super) fn dispatch(
 /// devolve se o título ficou sujo.
 #[allow(clippy::too_many_arguments)]
 fn drain_view_and_row_toggles(
-    view_focus_kind: Option<ViewFocusKind>,
     visibility_toggle_row: Option<NodeId>,
     lock_toggle_row: Option<NodeId>,
     group_toggle_row: Option<NodeId>,
@@ -288,10 +281,8 @@ fn drain_view_and_row_toggles(
     hero: &mut HeroScreen,
     hero_live: &Option<HeroLive>,
     sim: &mut SimWorld,
-    present: &mut PresentWorld,
     camera: &mut Camera2d,
     toasts: &mut ToastQueue,
-    window_size: WindowSize,
 ) -> bool {
     let mut title_dirty = false;
     // M14.4b.bis: drain pending camera-reset request from the VIEW
@@ -303,23 +294,7 @@ fn drain_view_and_row_toggles(
         toasts.push(Toast::info(tr("shell.hierarchy.view_zero_camera_reset")));
         title_dirty = true;
     }
-    // M14.7 polish: drain pending view-focus intent (F/Home key OR
-    // VIEW button click). Per `ViewFocusKind`:
-    //   - `Selected`: pan to gizmo_selection or (0,0).
-    //   - `Camera`: pan to (0,0) until camera-object exists.
-    //   - `All`: pan + zoom to fit all sprites.
-    if let Some(kind) = view_focus_kind
-        && hero_intents::drain_view_focus(
-            kind,
-            hero.gizmo.selection,
-            present,
-            camera,
-            window_size,
-            toasts,
-        )
-    {
-        title_dirty = true;
-    }
+    // O pedido de enquadramento (F/Home, VIEW, menu *Ver*, beliscão) mora na `fase_view_frame`.
     // M14.6A: drain pending hierarchy visibility toggle — resolve row
     // NodeId → ECS Entity via the bridge, flip the `Visibility`
     // component on SimWorld.

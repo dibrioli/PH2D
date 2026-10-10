@@ -287,9 +287,7 @@ fn bone_media_smoke(
     *next_import_cell = next_import_cell.saturating_add(gastas);
     hero.gizmo.replace_selection(Some(bits));
     // ⚠️ **O enquadramento NÃO se pede aqui** — ele é decisão do prólogo
-    // (`smoke_bone_media::Prologo::enquadrar`), porque a cena que abre a timeline não o pode pedir:
-    // o `Frame All` ajusta à JANELA e os painéis tapam-lhe as bordas. A razão medida vive no doc
-    // daquele campo.
+    // (`smoke_bone_media::Prologo::enquadrar`); a razão medida vive no doc daquele campo.
     toasts.push(Toast::success(
         match ph2d_app_vec::smoke_bone_media::nivel() {
             2 => "Bone-media smoke: TESTE NULO — os tres bracos tem de dobrar IGUAL",

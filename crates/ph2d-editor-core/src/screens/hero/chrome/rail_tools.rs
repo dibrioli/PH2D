@@ -32,10 +32,13 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.set_tool_view_mode(next);
         return true;
     }
-    // F8: *Ver ▸ Enquadrar tudo / seleção* — os mesmos pedidos do VIEW e do `F`, pela mesma porta.
+    // F8: *Ver ▸ Enquadrar tudo / seleção* — pela MESMA porta do VIEW (o tudo é o mesmo pedido).
     let menu = [
         (ids::MENUBAR_VIEW_FRAME_ALL, ViewFocusKind::All),
-        (ids::MENUBAR_VIEW_FRAME_SELECTED, ViewFocusKind::Selected),
+        (
+            ids::MENUBAR_VIEW_FRAME_SELECTED,
+            ViewFocusKind::FrameSelected,
+        ),
     ];
     if let Some(&(_, kind)) = menu.iter().find(|(m, _)| *m == id) {
         hero.bus.push(EditorAction::SetViewFocus { kind });

@@ -30,6 +30,8 @@ pub(crate) struct AppGfx {
     /// câmera é de quem a escrever — o `View · All`, o load, as cenas de smoke. Ver
     /// [`crate::canvas_zoom`].
     pub(crate) canvas_zoom: crate::canvas_zoom::CanvasZoom,
+    /// **O voo de um enquadramento** (F8, `ph2d_render::camera_frame`) — o outro dono animado.
+    pub(crate) view_flight: ph2d_render::camera_frame::ViewFlight,
     /// M6 — set when PNG fixtures loaded successfully; held so the
     /// AssetDb keeps `Arc<Asset>` alive for hot-reload follow-ups.
     pub(crate) asset_db: AssetDb,

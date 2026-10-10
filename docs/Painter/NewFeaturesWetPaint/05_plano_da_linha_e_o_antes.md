@@ -506,6 +506,13 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - Verificado depois de desfazer: `check --workspace --all-targets` ✓ · clippy `-D warnings` (6 crates) ✓ ·
     suítes de ph2d-tool-painter / panel-painter-layers / i18n / wet-paint / panel-wet-tuning ✓ · testes do
     projecto da shell (98) ✓ · `cerca.sh` ✓ (0 ficheiros protegidos no diff).
+- 🔎 **Depois de desfazer (09/10): o escorrimento, o papel e o Tilt** — ordens do dono e medições no
+  [11_PROMPT_janela_W1e_agua_papel_tilt.md](11_PROMPT_janela_W1e_agua_papel_tilt.md): o motor escorre em PENTE
+  (7–10 dedos por traço) onde o Rebelle não escorre (a meio) ou faz UM fio (no máximo); o Wet Paint tem dois
+  papéis (o do painel quando armado, o procedural do motor sem Kind — o dono: obedecer ao painel); o pincel
+  seco não pega nos picos com o papel do motor (picos ÷ vales 1,06; com o do painel 1,81); o preset não guarda
+  o Tilt. ✅ Feito: o menu de presets lista cada pincel uma vez (`3d8e40be1`). Sondas:
+  `tests/it/sonda_tilt_do_preset.rs`, `wetpaint/sonda_papel_seco.rs`, régua `ferramentas/tilt_rebelle.py`.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

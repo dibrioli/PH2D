@@ -14,4 +14,5 @@ mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
 mod sonda_gestos;
 mod sonda_largura;
+mod sonda_tilt_do_preset;
 mod sonda_tracos_por_meio;

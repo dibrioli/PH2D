@@ -8,9 +8,10 @@
 //! alcance infinito o integrando é constante no intervalo (soma exata das larguras); com alcance
 //! finito integra-se a `queda` por Gauss–Kronrod adaptativo.
 //!
-//! Semântica (a GPU tem de responder a MESMA pergunta): emissores com área são OPACOS (o raio
-//! termina no primeiro); um oclusor multiplica por `1 − opacidade` a cada ENTRADA do raio; o céu
-//! chega pelas direções que escapam. Por que este método e não quadratura: decidido pelos gates
+//! Semântica (a GPU tem de responder a MESMA pergunta): os CORPOS que brilham (polígonos: sprites e
+//! formas) são OPACOS (o raio termina no primeiro); uma LÂMPADA (disco, a `Luz`) é luz e não corpo —
+//! o raio que a atravessa soma a radiância dela e segue (smoke do dono, 10/10); um oclusor multiplica
+//! por `1 − opacidade` a cada ENTRADA do raio; o céu chega pelas direções que escapam. Por que este método e não quadratura: decidido pelos gates
 //! G1/G2 (ver o handoff da W1).
 
 mod geometria;
@@ -25,8 +26,10 @@ use queda::queda;
 
 struct Objeto {
     fronteira: Fronteira,
-    /// `Some` = emissor (opaco).
+    /// `Some` = emissor.
     emissao: Option<([f64; 3], f64)>,
+    /// O emissor é um CORPO (termina o raio)? A lâmpada (disco) não é.
+    opaco: bool,
     /// `1 − opacidade` (só para oclusores).
     transmissao: f64,
 }
@@ -63,7 +66,8 @@ fn montar(cena: &CenaDeLuz) -> (Vec<Objeto>, Vec<Pontual>) {
                     r: f64::from(*raio),
                 },
                 emissao: Some((rgb(*radiancia), f64::from(*alcance_m))),
-                transmissao: 0.0,
+                opaco: false,
+                transmissao: 1.0,
             }),
             Emissor::Poligono {
                 vertices,
@@ -72,6 +76,7 @@ fn montar(cena: &CenaDeLuz) -> (Vec<Objeto>, Vec<Pontual>) {
             } => objetos.push(Objeto {
                 fronteira: Fronteira::Poligono(pontos(vertices)),
                 emissao: Some((rgb(*radiancia), f64::from(*alcance_m))),
+                opaco: true,
                 transmissao: 0.0,
             }),
             Emissor::Ponto {
@@ -89,16 +94,28 @@ fn montar(cena: &CenaDeLuz) -> (Vec<Objeto>, Vec<Pontual>) {
         objetos.push(Objeto {
             fronteira: Fronteira::Poligono(pontos(&o.vertices)),
             emissao: None,
+            opaco: false,
             transmissao: 1.0 - f64::from(o.opacidade),
         });
     }
     (objetos, pontuais)
 }
 
-/// O que um raio encontra: o emissor que o termina (índice e distância) e a transmissão até lá.
+/// O que um raio encontra: o corpo que o termina (índice e distância), a transmissão até lá, e as
+/// LÂMPADAS que ele atravessa antes (índice e a transmissão até a entrada em cada uma).
 struct Raio {
     acerto: Option<(usize, f64)>,
     transmissao: f64,
+    lampadas: Vec<(usize, f64)>,
+}
+
+/// Onde o raio entra no objeto: `0` partindo de dentro; `None` se não o cruza.
+fn entrada(c: &[f64]) -> Option<f64> {
+    if c.len() % 2 == 1 {
+        Some(0.0)
+    } else {
+        c.first().copied()
+    }
 }
 
 fn lancar(objetos: &[Objeto], o: [f64; 2], d: [f64; 2], buf: &mut Vec<Vec<f64>>) -> Raio {
@@ -106,24 +123,26 @@ fn lancar(objetos: &[Objeto], o: [f64; 2], d: [f64; 2], buf: &mut Vec<Vec<f64>>)
     let mut acerto: Option<(usize, f64)> = None;
     for (k, obj) in objetos.iter().enumerate() {
         cruzamentos(&obj.fronteira, o, d, &mut buf[k]);
-        if obj.emissao.is_some() {
-            let c = &buf[k];
-            let t = if c.len() % 2 == 1 {
-                Some(0.0)
-            } else {
-                c.first().copied()
-            };
-            if let Some(t) = t
-                && acerto.is_none_or(|(_, ta)| t < ta)
-            {
-                acerto = Some((k, t));
-            }
+        if obj.emissao.is_some()
+            && obj.opaco
+            && let Some(t) = entrada(&buf[k])
+            && acerto.is_none_or(|(_, ta)| t < ta)
+        {
+            acerto = Some((k, t));
         }
     }
     let limite = acerto.map_or(f64::INFINITY, |(_, t)| t);
+    let lampadas = objetos
+        .iter()
+        .enumerate()
+        .filter(|(_, obj)| obj.emissao.is_some() && !obj.opaco)
+        .filter_map(|(k, _)| entrada(&buf[k]).filter(|&t| t < limite).map(|t| (k, t)))
+        .map(|(k, t)| (k, transmissao_ate(objetos, buf, t)))
+        .collect();
     Raio {
         acerto,
         transmissao: transmissao_ate(objetos, buf, limite),
+        lampadas,
     }
 }
 
@@ -151,6 +170,21 @@ fn transmissao_ate(objetos: &[Objeto], buf: &[Vec<f64>], limite: f64) -> f64 {
     transmissao
 }
 
+/// A radiância de um emissor e o peso angular dele em `[a, b]` visto de `ponto`: a largura, ou, com
+/// alcance finito, a `queda` integrada (Gauss–Kronrod) à distância da entrada.
+fn peso_do_emissor(obj: &Objeto, ponto: [f64; 2], a: f64, b: f64) -> ([f64; 3], f64) {
+    let (l, alcance) = obj.emissao.expect("um emissor");
+    if alcance == f64::INFINITY {
+        return (l, b - a);
+    }
+    let mut c = Vec::new();
+    let peso = integra::gauss_kronrod(a, b, &mut |th| {
+        cruzamentos(&obj.fronteira, ponto, [th.cos(), th.sin()], &mut c);
+        queda(entrada(&c).unwrap_or(0.0), alcance)
+    });
+    (l, peso)
+}
+
 /// A luz que uma superfície DE FRENTE (sprite ou vetor, no plano da cena) recebe em `ponto`:
 /// `F / 2π`, a radiância média sobre a volta — o forno branco (plano §2.3). O receptor multiplica
 /// o albedo linear por isto.
@@ -174,31 +208,20 @@ pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
         }
         let meio = 0.5 * (a + b);
         let raio = lancar(&objetos, ponto, [meio.cos(), meio.sin()], &mut buf);
-        let (radiancia, peso) = match raio.acerto {
+        // O fundo (o céu, ou o corpo que termina o raio) e cada lâmpada atravessada antes dele.
+        let (fundo, peso) = match raio.acerto {
             None => (ceu, b - a),
-            Some((k, _)) => {
-                let (l, alcance) = objetos[k].emissao.expect("acerto é emissor");
-                let peso = if alcance == f64::INFINITY {
-                    b - a
-                } else {
-                    let f = &objetos[k].fronteira;
-                    let mut c = Vec::new();
-                    integra::gauss_kronrod(a, b, &mut |th| {
-                        cruzamentos(f, ponto, [th.cos(), th.sin()], &mut c);
-                        let t = if c.len() % 2 == 1 {
-                            0.0
-                        } else {
-                            c.first().copied().unwrap_or(0.0)
-                        };
-                        queda(t, alcance)
-                    })
-                };
-                (l, peso)
+            Some((k, _)) => peso_do_emissor(&objetos[k], ponto, a, b),
+        };
+        let mut somar = |l: [f64; 3], w: f64| {
+            for ch in 0..3 {
+                total[ch] += l[ch] * w;
             }
         };
-        let w = raio.transmissao * peso;
-        for ch in 0..3 {
-            total[ch] += radiancia[ch] * w;
+        somar(fundo, raio.transmissao * peso);
+        for &(k, tr) in &raio.lampadas {
+            let (l, peso) = peso_do_emissor(&objetos[k], ponto, a, b);
+            somar(l, tr * peso);
         }
     }
 

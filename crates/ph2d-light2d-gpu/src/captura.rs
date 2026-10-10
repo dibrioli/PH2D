@@ -23,7 +23,8 @@ pub(crate) struct Forma {
     pub disco: [f32; 4],
     /// Polígono: `(primeiro vértice, contagem)` em `vertices`.
     pub vertices: [u32; 2],
-    /// 1 num emissor (opaco); a `opacidade` do `BloqueiaLuz` num oclusor.
+    /// 1 num corpo que brilha (opaco); 0 numa lâmpada (disco: luz, não corpo); a `opacidade` do
+    /// `BloqueiaLuz` num oclusor.
     pub opacidade: f32,
     pub _pad: f32,
 }
@@ -250,7 +251,8 @@ impl Montagem<'_> {
             cor,
             disco: [c32[0], c32[1], r32, 1.0],
             vertices: [0; 2],
-            opacidade: 1.0,
+            // Uma lâmpada é LUZ, não corpo: emite e deixa passar (a marcha soma-a na entrada).
+            opacidade: 0.0,
             _pad: 0.0,
         });
     }
@@ -299,9 +301,9 @@ pub(crate) fn capturar_sem(
                 alcance_m,
             } => {
                 // ⭐ Uma lâmpada DIRETA (C3) NÃO entra na captura: a luz dela vem do caminho direto
-                // (não a contar duas vezes), e um disco opaco aqui fazia o «cone livre» do caminho
-                // direto falhar perto da PRÓPRIA lâmpada em todo ponto — medido 1,1 ms por lâmpada
-                // (Low, 1080p). ⚠️ O preço: ela não bloqueia a luz de outra que passe por dentro dela.
+                // (não a contar duas vezes), e um disco aqui fazia o «cone livre» do caminho direto
+                // falhar perto da PRÓPRIA lâmpada em todo ponto — medido 1,1 ms por lâmpada (Low,
+                // 1080p). Nenhuma lâmpada bloqueia luz (é luz, não corpo).
                 if diretas.binary_search(&k).is_ok() {
                     continue;
                 }

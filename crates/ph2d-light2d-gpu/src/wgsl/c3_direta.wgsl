@@ -68,32 +68,6 @@ const SEM_FOLGA: f32 = 1e-6;
 const INTEIRA: u32 = 254u;
 const CERTA: u32 = 255u;
 
-// Onde o raio A + d·t (t ∈ [0, len]) entra no PRIMEIRO disco de lâmpada direta; `len + 1` se em
-// nenhum. Partir de DENTRO de um disco é t = 0 (a lei da entrada, como nos opacos da captura).
-fn primeira_lampada(A: vec2<f32>, d: vec2<f32>, len: f32) -> f32 {
-    var melhor = len + 1.0;
-    for (var k = 0u; k < lampadas.n; k++) {
-        let L = lampadas.itens[k];
-        if L.raio <= 0.0 {
-            continue;
-        }
-        let o = A - L.centro;
-        let c = dot(o, o) - L.raio * L.raio;
-        if c <= 0.0 {
-            return 0.0;
-        }
-        let b = dot(o, d);
-        let disc = b * b - c;
-        if b < 0.0 && disc >= 0.0 {
-            let t = -b - sqrt(disc);
-            if t <= len {
-                melhor = min(melhor, t);
-            }
-        }
-    }
-    return melhor;
-}
-
 // A transmissão de P até B (o meio entre eles; o emissor de chegada fica de fora).
 fn transmissao(P: vec2<f32>, B: vec2<f32>) -> f32 {
     return f32(marchar(P, P, B).t);
@@ -142,19 +116,9 @@ fn visivel_do_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, base: f32, al
 }
 
 // O cone de P ao disco está LIVRE? — nenhum ponto «dentro» a menos da meia-largura do cone mais
-// `folga` até `fim` (o caminho barato: fora da penumbra a visibilidade é exatamente 1).
-fn cone_livre(P: vec2<f32>, dir: vec2<f32>, fim: f32, tg: f32, alvo: u32, folga: f32) -> bool {
-    // As OUTRAS lâmpadas diretas (fora da captura): o disco delas toca o cone?
-    for (var k = 0u; k < lampadas.n; k++) {
-        let L = lampadas.itens[k];
-        if k == alvo || L.raio <= 0.0 {
-            continue;
-        }
-        let s_k = clamp(dot(L.centro - P, dir), 0.0, fim);
-        if distance(P + dir * s_k, L.centro) < L.raio + s_k * tg + 1.0 + folga {
-            return false;
-        }
-    }
+// `folga` até `fim` (o caminho barato: fora da penumbra a visibilidade é exatamente 1). As outras
+// lâmpadas não contam: uma lâmpada é luz, não corpo (smoke do dono, 10/10).
+fn cone_livre(P: vec2<f32>, dir: vec2<f32>, fim: f32, tg: f32, folga: f32) -> bool {
     var s = 0.0;
     loop {
         if s >= fim {
@@ -194,7 +158,7 @@ fn visibilidade(P: vec2<f32>, k: u32, folga: f32) -> f32 {
     let d = length(v);
     if L.raio <= 0.0 {
         if folga > 0.0 {
-            return select(-1.0, 1.0, cone_livre(P, v / max(d, 1e-6), max(d - ANTES_DO_DISCO, 0.0), 0.0, k, folga));
+            return select(-1.0, 1.0, cone_livre(P, v / max(d, 1e-6), max(d - ANTES_DO_DISCO, 0.0), 0.0, folga));
         }
         return transmissao(P, L.centro);
     }
@@ -204,7 +168,7 @@ fn visibilidade(P: vec2<f32>, k: u32, folga: f32) -> f32 {
     let alfa = asin(min(L.raio / d, 1.0));
     let dir = v / d;
     let fim = max(d - L.raio - ANTES_DO_DISCO, 0.0);
-    if cone_livre(P, dir, fim, tan(alfa), k, folga) {
+    if cone_livre(P, dir, fim, tan(alfa), folga) {
         return 1.0;
     }
     if folga > 0.0 {

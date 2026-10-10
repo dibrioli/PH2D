@@ -13,8 +13,9 @@
 //   ÚLTIMA do intervalo de baixo — `recuo` = min(passo, comprimento dele) antes do início (com o
 //   recuo de um passo inteiro e um intervalo de baixo mais curto, ela caía atrás da sonda e uma
 //   entrada contava duas vezes). Na c0 a amostra anterior é «fora»: partir de dentro é entrada;
-// - emissores são OPACOS (τ dentro = 0): ao entrar, o raio recolhe `perda · L·queda(|x − P|,
-//   alcance)` e termina;
+// - ao ENTRAR num emissor o raio recolhe `L·queda(|x − P|, alcance)` (× a transmissão até ali); um
+//   CORPO que brilha é opaco (τ dentro = 0) e termina-o; uma LÂMPADA (o disco de uma `Luz`) é luz,
+//   não corpo (τ dentro = 1): o raio segue (smoke do dono, 10/10);
 // - o céu entra pelos raios que escapam do intervalo da cascata de topo.
 
 override FUSAO: u32 = 1u;
@@ -56,11 +57,13 @@ struct Traco {
 struct Meio {
     tau: f32,
     texel: vec2<i32>,
+    // Dentro de um EMISSOR (o texel dono tem radiância).
+    luz: bool,
 }
 
 // O meio em `p`: fora da grade, nada; dentro ⟺ cobertura interpolada ≥ ½.
 fn meio(p: vec2<f32>) -> Meio {
-    var m = Meio(1.0, vec2<i32>(0));
+    var m = Meio(1.0, vec2<i32>(0), false);
     let n = vec2<f32>(cas.tamanho);
     if p.x < 0.0 || p.y < 0.0 || p.x >= n.x || p.y >= n.y {
         return m;
@@ -88,6 +91,7 @@ fn meio(p: vec2<f32>) -> Meio {
     }
     m.texel = clamp(vec2<i32>(base) + o, vec2<i32>(0), vec2<i32>(cas.tamanho) - 1);
     m.tau = textureLoad(tau_dentro, m.texel, 0).r;
+    m.luz = any(textureLoad(emissao, m.texel, 0).rgb > vec3<f32>(0.0));
     return m;
 }
 
@@ -122,8 +126,12 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
     }
     let d = seg / len;
     var tau_ant = 1.0;
+    // A amostra anterior estava dentro de um emissor (a ENTRADA nele conta uma vez).
+    var luz_ant = false;
     if cas.nivel > 0u {
-        tau_ant = meio(A - d * cas.recuo).tau;
+        let antes = meio(A - d * cas.recuo);
+        tau_ant = antes.tau;
+        luz_ant = antes.luz;
         // O intervalo começa DENTRO de algo opaco: todo raio que passe por aqui já foi absorvido
         // ali — (0, 0) é a resposta exata, e marchar o interior era trabalho que dependia do
         // tamanho do objeto (medido: um disco de 100 px custava 4× a penumbra).
@@ -131,10 +139,7 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
             return Traco(vec3<Real>(Real(0)), Real(0));
         }
     }
-    // ⭐ C3: as lâmpadas DIRETAS não estão na captura, mas são OPACAS (a lei do gabarito): o
-    // segmento acaba na primeira que ele cruza (`c3_direta.wgsl`, círculo exato), e ali é absorvido.
-    let tl = primeira_lampada(A, d, len);
-    let s_fim = max(min(len, tl) - PASSO, 0.0);
+    let s_fim = max(len - PASSO, 0.0);
     var s = 0.0;
     loop {
         let x = A + d * s;
@@ -142,30 +147,28 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
         let l = livre(x);
         if l > PASSO {
             tau_ant = 1.0;
+            luz_ant = false;
             passo = l;
         } else {
             let m = meio(x);
-            if m.tau < tau_ant {
+            if m.luz && !luz_ant {
                 let e = textureLoad(emissao, m.texel, 0);
-                if any(e.rgb > vec3<f32>(0.0)) {
-                    let perda = 1.0 - m.tau / tau_ant;
-                    let l = e.rgb * queda(distance(x, P) * cas.texel_m, e.a);
-                    tr.r += tr.t * vec3<Real>(l * perda);
-                }
+                let l = e.rgb * queda(distance(x, P) * cas.texel_m, e.a);
+                tr.r += tr.t * vec3<Real>(l);
+            }
+            if m.tau < tau_ant {
                 tr.t *= Real(m.tau / tau_ant);
                 if tr.t <= Real(0) {
                     break;
                 }
             }
             tau_ant = m.tau;
+            luz_ant = m.luz;
         }
         if s >= s_fim {
             break;
         }
         s = min(s + passo, s_fim);
-    }
-    if tl <= len {
-        tr.t = Real(0);
     }
     return tr;
 }

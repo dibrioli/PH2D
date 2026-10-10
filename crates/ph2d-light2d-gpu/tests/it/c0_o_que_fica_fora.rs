@@ -130,51 +130,67 @@ fn a_forma_menor_que_o_texel_e_a_de_fora_da_grade_vem_ditas() {
     );
 }
 
-/// ⭐ **Uma lâmpada direta faz SOMBRA na luz de outra** (a lei do gabarito: emissores são opacos).
-/// Elas não estão na captura: o cone livre e a marcha testam os discos analiticamente. A região
-/// medida é a faixa ATRÁS da lâmpada do meio, onde só a sombra dela muda a resposta.
+/// A faixa ATRÁS da lâmpada escura do meio, contra o gabarito: `(placa, controlo)`. O controlo é o
+/// gabarito da MESMA cena com a escura feita CORPO (um polígono que brilha): a lei antiga.
+fn atras_da_escura(gpu: &ph2d_gpu::GpuContext, fina: u32, outras_fortes: usize) -> (f64, f64) {
+    let escura = disco([3.0, 3.2], 0.25, [0.05; 3], f32::INFINITY);
+    let mut emissores = vec![disco([1.0, 3.2], 0.3, [4.0; 3], f32::INFINITY), escura];
+    // Lâmpadas MAIS fortes longe dali (alcance curto): tomam o teto das diretas, e a escura passa a
+    // ir pelas CASCATAS (a captura).
+    emissores.extend(
+        (0..outras_fortes).map(|k| disco([0.4 + 0.9 * k as f32, 0.4], 0.1, [100.0; 3], 0.3)),
+    );
+    let cena = so(emissores);
+    let cfg = Config {
+        fina,
+        ..Config::padrao(grade(64, 0.1))
+    };
+    let mut s = Solver::novo(gpu, cfg).expect("solver");
+    s.quadro(gpu, &cena);
+    let f = ler_fluencia(gpu, &s);
+    let g = s.grade_da_fluencia();
+    let r = crate::comum::gabarito(&cena, &g);
+    let atras = |k: usize| {
+        let [x, y] = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+        x > 3.6 && x < 6.0 && (y - 3.2).abs() < 0.12
+    };
+    let mut corpo = cena.clone();
+    corpo.emissores[1] = Emissor::Poligono {
+        vertices: regular([3.0, 3.2], 0.25, 64, 0.0),
+        radiancia: [0.05; 3],
+        alcance_m: f32::INFINITY,
+    };
+    let lei_antiga: Vec<[f32; 3]> = crate::comum::gabarito(&corpo, &g)
+        .iter()
+        .map(|c| c.map(|x| x as f32))
+        .collect();
+    (
+        crate::comum::rmse_rel(&f, &r, atras),
+        crate::comum::rmse_rel(&lei_antiga, &r, atras),
+    )
+}
+
+/// ⭐⭐⭐ **Uma lâmpada é LUZ, não corpo: não faz sombra na luz de outra** (smoke do dono, 10/10: *«cor
+/// escura na lâmpada faz com que ela se comporte como um objeto que gera sombra de outra lâmpada»*). A
+/// lâmpada escura do meio fica entre a forte e a faixa medida — pela luz direta (na grade das
+/// cascatas e na fina) e pelas CASCATAS (quando o teto das diretas a deixa de fora).
 #[test]
-fn uma_lampada_direta_faz_sombra_na_luz_de_outra() {
+fn uma_lampada_nao_faz_sombra_na_luz_de_outra() {
     let Some(gpu) = gpu() else { return };
-    let cena = so(vec![
-        disco([1.0, 3.2], 0.3, [4.0; 3], f32::INFINITY),
-        disco([3.0, 3.2], 0.25, [0.05; 3], f32::INFINITY),
-    ]);
-    // Na grade das cascatas e na FINA (W4b: a visibilidade das sondas e o refino pelas bordas).
-    for fina in [1, 4] {
-        let cfg = Config {
-            fina,
-            ..Config::padrao(grade(64, 0.1))
-        };
-        let mut s = Solver::novo(&gpu, cfg).expect("solver");
-        s.quadro(&gpu, &cena);
-        let f = ler_fluencia(&gpu, &s);
-        let g = s.grade_da_fluencia();
-        let r = crate::comum::gabarito(&cena, &g);
-        let atras = |k: usize| {
-            let [x, y] = g.centro(k as u32 % g.largura, k as u32 / g.largura);
-            x > 3.6 && x < 6.0 && (y - 3.2).abs() < 0.12
-        };
-        let e = crate::comum::rmse_rel(&f, &r, atras);
-        let sem_sombra = crate::comum::gabarito(&so(vec![cena.emissores[0].clone()]), &g);
-        let controlo = crate::comum::rmse_rel(
-            &sem_sombra
-                .iter()
-                .map(|c| c.map(|x| x as f32))
-                .collect::<Vec<_>>(),
-            &r,
-            atras,
-        );
-        eprintln!(
-            "sombra de lâmpada em lâmpada (fina ×{fina}): RMSE {e:.4} (sem a sombra: {controlo:.4})"
-        );
+    for (nome, fina, outras) in [
+        ("direta", 1, 0),
+        ("direta, fina ×4", 4, 0),
+        ("pelas cascatas", 1, LAMPADAS_DIRETAS_MAX - 1),
+    ] {
+        let (e, controlo) = atras_da_escura(&gpu, fina, outras);
+        eprintln!("a lâmpada escura no caminho ({nome}): RMSE {e:.4} (como corpo: {controlo:.4})");
         assert!(
-            e < 0.1,
-            "a lâmpada do meio não faz a sombra do gabarito (fina ×{fina}): {e:.4}"
+            e < 0.05,
+            "a lâmpada escura tapa a luz da outra ({nome}): {e:.4}"
         );
         assert!(
             controlo > 0.5,
-            "controlo: sem a sombra a resposta tinha de ser outra ({controlo:.4})"
+            "controlo: como corpo a resposta tinha de ser outra ({controlo:.4})"
         );
     }
 }

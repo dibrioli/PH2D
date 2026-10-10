@@ -490,3 +490,88 @@ fn transformed_scales_the_heads_with_the_shaft() {
     );
     assert_eq!(t.to_path().verts.len(), 2, "o caminho é o do cabo");
 }
+
+// ── as testemunhas da prova de mutação (achadas por `measure_arrow_witness`, base × mutante) ─────
+
+/// A mão da busca: `mão k` = tremor, estabilizador e repouso.
+fn hand_k(p: &[P2], k: usize) -> Vec<P2> {
+    let (amp, stab, rest) = [
+        (0.5, 0.0, 1.0),
+        (1.0, 0.5, 1.0),
+        (2.0, 0.5, 3.0),
+        (2.0, 0.0, 3.0),
+        (4.0, 0.5, 4.0),
+    ][k];
+    held_with(p, amp, k as u64, stab, rest)
+}
+
+/// **A ponta é o PRIMEIRO mínimo do resíduo** — com o menor de todos (ou sem parar quando a candidata
+/// deixa de passar) estas setas de 48 px saíam livres.
+#[test]
+fn the_first_minimum_keeps_these_small_arrows() {
+    let arc = shafts(48.0).remove(1).1;
+    let line = shafts(48.0).remove(0).1;
+    for (name, p, both, k) in [
+        (
+            "arco",
+            skewed_arrow(&arc, 0.4 * 48.0, 20.0, 0.0, Kind::Open, false),
+            false,
+            3,
+        ),
+        (
+            "recto",
+            skewed_arrow(&line, 0.4 * 48.0, 20.0, 10.0, Kind::Open, true),
+            true,
+            4,
+        ),
+    ] {
+        let q = recognise(&hand_k(&p, k), 1.0, false);
+        assert!(is_the_arrow(&q, name, both), "{name}: {q:?}");
+    }
+}
+
+/// **O T numa mão que treme** (±2 px, sem estabilizador, o repouso de ±3) não é seta: sem o
+/// preenchimento do cabo o T de 24 px saía seta.
+#[test]
+fn a_t_is_not_an_arrow_even_in_a_shaky_hand() {
+    for seed in 0..4 {
+        let t = not_arrows(24.0, seed)
+            .into_iter()
+            .find(|x| x.0 == "T")
+            .unwrap()
+            .1;
+        let q = recognise(&hand_k(&t, 3), 1.0, false);
+        assert!(
+            !matches!(q, Some(QuickShape::Arrow(_))),
+            "T (mão {seed}): {q:?}"
+        );
+    }
+}
+
+/// **A linha que volta atrás, numa mão firme, é linha** — sem o ângulo mínimo das farpas, a volta (uma
+/// farpa a 0°) fazia a 2.ª farpa (o caso medido da fronteira: §3h).
+#[test]
+fn a_line_that_goes_back_is_a_line_in_a_steady_hand() {
+    for seed in 0..3 {
+        let p = not_arrows(48.0, seed)
+            .into_iter()
+            .find(|x| x.0 == "linha que volta atrás")
+            .unwrap()
+            .1;
+        let q = recognise(&hand_k(&p, 0), 1.0, false);
+        assert!(
+            !matches!(q, Some(QuickShape::Arrow(_))),
+            "mão {seed}: {q:?}"
+        );
+    }
+}
+
+/// **Um laço com bico não é seta** — o cabo de 330° FECHA, e um caminho fechado não leva ponta
+/// (`stroke_head` não a desenha): sai o círculo, nunca uma seta sem ponta visível.
+#[test]
+fn a_loop_with_a_head_is_not_an_arrow() {
+    let ring = arc_poly(80.0, 0.0, 330.0);
+    let p = skewed_arrow(&ring, 32.0, 25.0, 0.0, Kind::Open, false);
+    let q = recognise(&hand_k(&p, 0), 1.0, false);
+    assert!(!matches!(q, Some(QuickShape::Arrow(_))), "{q:?}");
+}

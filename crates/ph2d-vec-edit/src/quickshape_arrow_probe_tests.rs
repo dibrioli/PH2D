@@ -495,3 +495,82 @@ fn measure_arrow_zz_star() {
         }
     }
 }
+
+/// **A busca das testemunhas** (prova de mutação): uma linha por traço candidato — as famílias de
+/// setas e de «não é seta» em todas as mãos, e o laço com bico (um cabo FECHADO) — para comparar a
+/// saída da lei com a de um mutante (`diff` das duas corridas).
+#[test]
+#[ignore = "sonda"]
+fn measure_arrow_witness() {
+    let kind = |q: &Option<QuickShape>| match q {
+        None => "livre".to_owned(),
+        Some(QuickShape::Arrow(a)) => format!(
+            "seta {:?} {}",
+            a.heads.map(|h| h.map(|v| v.round())),
+            match &*a.shaft {
+                QuickShape::Polygon { corners, .. } => format!("poli{}", corners.len()),
+                QuickShape::Line { a, b } => format!("linha {:.0}", dist(*a, *b)),
+                QuickShape::Arc(_) => "arco".into(),
+                QuickShape::Biarc(_) => "biarco".into(),
+                _ => "?".into(),
+            }
+        ),
+        Some(o) => format!("{o:?}").chars().take(8).collect(),
+    };
+    let mut lines = Vec::new();
+    let hands = [
+        (0.5, 0.0, 1.0),
+        (1.0, 0.5, 1.0),
+        (2.0, 0.5, 3.0),
+        (2.0, 0.0, 3.0),
+        (4.0, 0.5, 4.0),
+    ];
+    for s in [24.0, 48.0, 96.0, 160.0, 400.0] {
+        let mut polys: Vec<(String, Vec<P2>)> = Vec::new();
+        for seed in 0..4 {
+            polys.extend(
+                non_arrows(s, seed)
+                    .into_iter()
+                    .map(|(n, p)| (format!("{n} {seed}"), p)),
+            );
+        }
+        for (name, shaft) in shafts(s) {
+            for kind in KINDS {
+                for both in [false, true] {
+                    for (deg, skew) in [(20.0, 0.0), (20.0, 10.0), (60.0, 10.0)] {
+                        for frac in [0.08, 0.25, 0.4] {
+                            let p = skewed_arrow(&shaft, frac * s, deg, skew, kind, both);
+                            polys.push((
+                                format!("seta {name} {kind:?} {both} {deg}±{skew} {frac}"),
+                                p,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        // O laço com bico: um círculo e, no fim, o V — um cabo FECHADO não leva ponta.
+        let mut ring = arc_poly(s / 2.0, 0.0, 350.0);
+        let (t, q) = (ring[ring.len() - 1], ring[ring.len() - 2]);
+        let back = sub(q, t);
+        let u = mul(back, 1.0 / dist(q, t));
+        ring.extend([
+            add(t, mul(rotate(u, 0.5), 0.2 * s)),
+            t,
+            add(t, mul(rotate(u, -0.5), 0.2 * s)),
+        ]);
+        polys.push(("laço com bico".into(), ring));
+        for (name, p) in &polys {
+            for (k, &(amp, stab, ra)) in hands.iter().enumerate() {
+                let h = held_with(p, amp, k as u64, stab, ra);
+                lines.push(format!(
+                    "{s} {name} mão{k}: {}",
+                    kind(&recognise(&h, 1.0, false))
+                ));
+            }
+        }
+    }
+    let out = std::env::var("ARROW_WITNESS").unwrap_or_else(|_| "/dev/null".into());
+    std::fs::write(&out, lines.join("\n")).unwrap();
+    println!("\n{} traços → {out}", lines.len());
+}

@@ -50,7 +50,7 @@ pub(crate) struct ArrowLaw {
     /// cai (98 %). Máximo `80–85` — a 75 a farpa de 60° desenhada a 70° cai, a 90 o T (a barra) é seta.
     pub(crate) barb_min_deg: f64,
     pub(crate) barb_max_deg: f64,
-    /// A farpa média em fracção do cabo REAL: mínimo `0,04–0,05` (abaixo, a farpa de 4 % que os DOIS
+    /// A farpa média em fracção do traço antes da ponta: mínimo `0,04–0,05` (abaixo, a farpa de 4 % que os DOIS
     /// oráculos chamam linha vira seta; a 0,055 a seta comprida de ponta pequena, 8 %, cai), máximo
     /// `0,4–2` (a 0,35 a ponta grande, 40 %, cai; a 3 o T volta).
     pub(crate) head_min: f64,
@@ -101,14 +101,10 @@ pub(crate) fn recognise(
     let stop = end.map_or(r.len() - 1, |(i, _)| i);
     let back: Vec<P2> = r[..=stop].iter().rev().copied().collect();
     let start = head(&a, &back, ds, px_to_world).map(|(i, h)| (stop - i, h));
-    // Cada ponta achou-se contra TUDO o que vinha antes dela; o cabo é só o meio. A pentagrama lia-se
-    // seta de duas pontas com farpas maiores que o cabo (gate `regular_keeps_a_star_a_star`).
-    let from = start.map_or(0, |(i, _)| i);
-    let shaft = (stop - from) as f64 * ds;
-    let fits = |h: &(usize, f64)| (a.head_min * shaft..=a.head_max * shaft).contains(&h.1);
-    if !start.iter().chain(end.iter()).all(fits) || (end.is_none() && start.is_none()) {
+    if end.is_none() && start.is_none() {
         return None;
     }
+    let from = start.map_or(0, |(i, _)| i);
     let body = between(
         samples,
         r[from],

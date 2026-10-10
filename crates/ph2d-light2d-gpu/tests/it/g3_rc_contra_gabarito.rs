@@ -174,3 +174,42 @@ fn g3_os_caminhos_de_precisao_respondem_igual() {
         );
     }
 }
+
+/// ⭐ **A queda de alcance FINITO entra nas cascatas** (mutação P9 da W5c — nenhum portão a via: a
+/// lâmpada de alcance finito do «céu e vidro» vai pela luz direta). Um corpo que brilha com alcance
+/// de 0,8 m: a fluência das cascatas contra o gabarito, na clássica e na holográfica.
+#[test]
+fn g3_a_queda_de_alcance_finito_nas_cascatas() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[1];
+    let g = grade(lado, texel);
+    let cena = CenaDeLuz {
+        emissores: vec![ph2d_light2d_ecs::Emissor::Poligono {
+            vertices: crate::comum::regular([2.56, 2.56], 0.15, 12, 0.0),
+            radiancia: [1.0; 3],
+            alcance_m: 0.8,
+        }],
+        luzes: 1,
+        ..Default::default()
+    };
+    let r = gabarito(&cena, &g);
+    let dentro = crate::comum::dentro_de_opaco(&cena, &g);
+    let (flu, _) = rodar(&gpu, Config::padrao(g), &cena);
+    let e = rmse_rel(&flu, &r, |k| !dentro(k));
+    // ⚠️ A holográfica conta a queda do início de cada segmento fundido (a composição dos traços não
+    // carrega a distância ao recetor): 4,21 nesta cena — ABERTO da W5c, impresso, sem teto.
+    let (holo, _) = rodar(
+        &gpu,
+        Config {
+            holografica: Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+            ..Config::padrao(g)
+        },
+        &cena,
+    );
+    let eh = rmse_rel(&holo, &r, |k| !dentro(k));
+    eprintln!("G3 queda finita: clássica {e:.4} · holográfica {eh:.4} (ABERTO)");
+    assert!(e <= TOL_QUEDA, "{e:.4}");
+}
+
+/// Medido (W5c) na clássica: 0,3601 + 10 %.
+const TOL_QUEDA: f64 = 0.40;

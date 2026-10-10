@@ -536,3 +536,41 @@ fn um_enxame_denso_nao_tem_pintas_pretas() {
         "uma pinta preta: {minimo:.4} × {media:.4}"
     );
 }
+
+/// ⭐ **A holográfica numa grade QUALQUER** (mutação P17 da W5c): os portões acima correm em grades
+/// de potência de 2; a do produto não é — a última coluna parcial de sondas de cada nível existe.
+#[test]
+fn a_holografica_numa_grade_que_nao_e_potencia_de_dois() {
+    let Some(gpu) = gpu() else { return };
+    let g = ph2d_light2d_gpu::Grade {
+        origem_m: [0.0, 0.0],
+        texel_m: 0.02,
+        largura: 300,
+        altura: 172,
+    };
+    let mut cena = CenaDeLuz {
+        oclusores: vec![crate::comum::oclusor(
+            crate::comum::regular([3.0, 1.7], 0.4, 4, 0.3),
+            1.0,
+        )],
+        ceu: [1.0; 3],
+        luzes: 1,
+        ..Default::default()
+    };
+    cena.emissores.push(ph2d_light2d_ecs::Emissor::Poligono {
+        vertices: crate::comum::regular([5.4, 2.6], 0.2, 8, 0.0),
+        radiancia: [2.0; 3],
+        alcance_m: f32::INFINITY,
+    });
+    let cfg = com(Config::padrao(g), Some(HOLOGRAFICA_PADRAO));
+    let mut s = Solver::novo(&gpu, cfg).expect("solver");
+    s.quadro(&gpu, &cena);
+    let ge = s.config().grade;
+    let flu = ler_fluencia(&gpu, &s);
+    let r = gabarito(&cena, &ge);
+    let dentro = dentro_de_opaco(&cena, &ge);
+    let e = rmse_rel(&flu, &r, |k| !dentro(k));
+    eprintln!("holográfica · grade {}×{}: {e:.4}", ge.largura, ge.altura);
+    // Medido (W5c): 0,0089; com a contagem truncada (P17) as colunas da borda direita leem o céu.
+    assert!(e <= 0.0098, "{e:.4}");
+}

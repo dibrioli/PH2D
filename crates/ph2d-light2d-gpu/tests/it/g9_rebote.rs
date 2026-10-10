@@ -630,3 +630,26 @@ fn sonda_g9_pelo_tamanho_da_grade() {
         }
     }
 }
+
+/// ⭐ **O translúcido não reflete na placa** (a lei do plano §2.4; mutação P5 da W5c): a sala com as
+/// paredes a 0,99 de opacidade e albedo — com e sem o rebote, a MESMA fluência, bit a bit.
+#[test]
+fn o_translucido_nao_reflete_na_placa() {
+    let Some(gpu) = gpu() else { return };
+    let mut cena = sala();
+    for o in &mut cena.oclusores {
+        o.opacidade = 0.99;
+    }
+    let (_, lado, texel) = DEGRAUS[1];
+    let g = grade(lado, texel);
+    let mut com = Solver::novo(&gpu, com_rebote(g, true)).expect("solver");
+    let mut sem = Solver::novo(&gpu, com_rebote(g, false)).expect("solver");
+    for _ in 0..8 {
+        com.quadro(&gpu, &cena);
+        sem.quadro(&gpu, &cena);
+    }
+    assert!(
+        ler_fluencia(&gpu, &com) == ler_fluencia(&gpu, &sem),
+        "um translúcido com albedo refletiu"
+    );
+}

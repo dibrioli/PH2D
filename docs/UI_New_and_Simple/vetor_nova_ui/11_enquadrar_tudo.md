@@ -90,15 +90,16 @@ a página da Adobe recusa o robô); o perfil do Illustrator que o Inkscape traz 
 
 | porta | pedido |
 |---|---|
-| *Ver ▸ Frame All · quick pinch* | `All` (voa, lembra a vista de partida) |
-| *Ver ▸ Frame Selection* | `FrameSelected` (voa) |
+| *Ver ▸ Frame All · Ctrl+0*, `Ctrl+0` (e o `0` numérico) | `All` (voa, lembra a vista de partida) |
+| *Ver ▸ Frame Selection · F*, `F`/`Home` | `FrameSelected` (voa) |
 | beliscão rápido a juntar / a afastar | `All` / `Previous` |
 | botão VIEW da régua (ciclo) | `Selected` → `Camera` → `All` |
-| `F`/`Home`, duplo-clique na Hierarquia, ~10 cenas de smoke | `Selected` — **só centra, salta** (inalterado: as cenas contam com isso) |
+| duplo-clique na Hierarquia, ~10 cenas de smoke | `Selected` — **só centra, salta** (inalterado: as cenas contam com isso) |
 
-**Teclas: nenhuma nova** (decisão do dono). Proposta pelo perfil Illustrator: `Ctrl+0` = *Enquadrar
-tudo* (sem pranchetas, o *Fit Artboard* e o *Fit All* são a mesma coisa); e `F` passar a *Enquadrar
-seleção* (o `F` do Unity/Maya/Blender enquadra com zoom; hoje só centra).
+**Teclas — decisão do dono (10/10):** `Ctrl+0` = *Enquadrar tudo* (o perfil Illustrator; sem
+pranchetas, o *Fit Artboard* e o *Fit All* são a mesma coisa) e `F` = *Enquadrar seleção* com zoom
+(Unity/Maya/Blender; antes só centrava). O `Home` anda com o `F`, como sempre andou; o `0` sem
+`Ctrl` não faz nada novo.
 
 ## §5 — ⛔ Recusas MEDIDAS
 
@@ -107,5 +108,5 @@ seleção* (o `F` do Unity/Maya/Blender enquadra com zoom; hoje só centra).
 | o ciclo do `Shift+2` do tldraw (fora dos 100 % vai a 100 %) | dois gestos iguais fazem coisas diferentes conforme o zoom; o Excalidraw e o *Frame Selected* do Blender/Unity encaixam |
 | o tecto de 100 % do Excalidraw | um app vetorial aproxima um desenho pequeno (tldraw, Illustrator); o tecto da câmera já impede o ponto de encher a tela |
 | margem proporcional à janela (o `×1,1` antigo) | os dois oráculos usam px fixos nas três janelas medidas |
-| mudar o `Selected` (o `F` e as cenas) para encaixar com zoom | ~10 cenas de smoke de outras linhas centram e pintam a coordenadas da câmera de omissão |
+| mudar o `Selected` (as cenas e o duplo-clique) para encaixar com zoom — o `F` passou a pedir o `FrameSelected` | ~10 cenas de smoke de outras linhas centram e pintam a coordenadas da câmera de omissão |
 | resolver o pedido no próprio quadro | as mídias presas a ossos saíam cortadas (o mundo desenhado era o do quadro anterior) |

@@ -3,6 +3,8 @@
 //! FILHO do `input_handlers` (por `#[path]`), para ver os métodos privados de lá sem mudar a visibilidade de nenhum.
 
 use super::*;
+use ph2d_editor_core::ViewFocusKind;
+use ph2d_editor_core::action_bus::EditorAction::SetViewFocus;
 use ph2d_i18n::tr;
 
 impl crate::App {
@@ -22,11 +24,8 @@ impl crate::App {
             // Tools panels (Color EQ Tile Grid, Equalize Sizes Fixed
             // W/H, Upscale Scale, …). Tool switching now goes through
             // the canvas tool palette + Image Tools chrome pills.
-            // M14.7 polish: F / Home = frame the currently selected
-            // sprite. Falls back to (0, 0) when nothing is selected
-            // (Blender / Maya "frame view" semantics). Raises a
-            // pending intent on the hero — the render_frame drain
-            // resolves the selection and updates `gfx.camera`.
+            // F8 (decisão do dono, 10/10): `F`/`Home` ENQUADRAM a seleção com zoom (Unity/Maya/
+            // Blender) e `Ctrl+0` enquadra tudo (o perfil Illustrator); os dois voam.
             // Motion Nodes M1: over the graph panel, F fits the GRAPH. Pushed
             // directly (not via the graph_focused/focus_id dispatch gate, which
             // could be blocked by a stale focus) using the proven cursor check —
@@ -38,14 +37,18 @@ impl crate::App {
             // transform is panel state, so this raises a request the panel's
             // `paint` consumes (it alone knows the time area's pixel width).
             KeyCode::KeyF if over_timeline => ph2d_panel_timeline::request_fit(),
+            KeyCode::Digit0 | KeyCode::Numpad0 if cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.bus.push(SetViewFocus {
+                        kind: ViewFocusKind::All,
+                    });
+                }
+            }
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    // Wave 2.5 PR 11.8d: bus migration (was
-                    // `hero.pending_view_focus = Some(...)`).
-                    hero.bus
-                        .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                            kind: ph2d_editor_core::ViewFocusKind::Selected,
-                        });
+                    hero.bus.push(SetViewFocus {
+                        kind: ViewFocusKind::FrameSelected,
+                    });
                 } else {
                     // No hero panel — fall back to legacy "reset
                     // camera" so the non-editor demo mode still has

@@ -103,7 +103,7 @@ fn each_request_lands_the_camera_where_the_law_says() {
     assert_eq!(
         (cam.center, cam.height_world),
         ([1.0, 0.5], 3.0),
-        "o F centra e não mexe no zoom"
+        "o centrar não mexe no zoom"
     );
 }
 
@@ -159,6 +159,27 @@ fn the_shell_asks_through_the_deferral_and_the_wheel_through_the_arbitration() {
     assert!(
         zoom.contains("flight.arbitrate(zoom.target.is_some())"),
         "a roda não passa pela arbitragem do voo"
+    );
+    // As teclas (decisão do dono, 10/10): `Ctrl+0` = tudo, `F`/`Home` = a seleção com zoom.
+    let teclas = ler("input_dispatch/handlers_teclas_editor.rs");
+    // A agulha do pedido tem de vir ANTES do ramo seguinte (as duas têm de existir).
+    let antes = |de: &str, agulha: &str, fim: &str| {
+        let r = &teclas[teclas.find(de).unwrap_or_else(|| panic!("sem `{de}`"))..];
+        let (a, f) = (r.find(agulha), r.find(fim));
+        assert!(
+            a.is_some() && f.is_some() && a < f,
+            "`{de}` não pede `{agulha}`"
+        );
+    };
+    antes(
+        "KeyCode::Digit0 | KeyCode::Numpad0 if cmd_chord =>",
+        "ViewFocusKind::All",
+        "KeyCode::Home",
+    );
+    antes(
+        "KeyCode::Home | KeyCode::KeyF =>",
+        "ViewFocusKind::FrameSelected",
+        "} else {",
     );
     let relogio = ler("render_loop/fase_chrome_clock.rs");
     assert!(

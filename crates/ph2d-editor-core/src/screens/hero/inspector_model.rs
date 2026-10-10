@@ -545,7 +545,7 @@ pub enum RequestedSpriteStrategy {
 /// `Role::Viewpoint`; `Selected` e `Camera` só centram e saltam (as cenas de smoke contam com isso).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ViewFocusKind {
-    /// Centra na seleção (`F`/`Home`, o duplo-clique na Hierarquia), sem mudar o zoom; sem
+    /// Centra na seleção (o duplo-clique na Hierarquia, as cenas de smoke), sem mudar o zoom; sem
     /// seleção, a origem.
     Selected,
     /// *Enquadrar seleção*: a seleção inteira (a primária e as extras) cabe na área visível. Sem

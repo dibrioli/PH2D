@@ -326,7 +326,7 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
         // medial é ~1 texel na parede de 40).
         let fundo = crate::comum::dentro_de_opaco(&cena, &g);
         let max = r.iter().map(|v| v[1]).fold(0.0_f64, f64::max);
-        let mut erros: Vec<f64> = (0..r.len())
+        let erros: Vec<f64> = (0..r.len())
             .filter(|&k| fundo(k) && !dentro(k))
             .map(|k| (f64::from(fc[k][1]) - r[k][1]).abs() / max)
             .collect();

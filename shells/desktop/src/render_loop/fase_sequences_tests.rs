@@ -74,7 +74,9 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, true);
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
+            false
+        }),
         1
     );
     let meio = y(&w, e);
@@ -86,7 +88,9 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, false);
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
+            false
+        }),
         0
     );
     assert!(
@@ -103,7 +107,9 @@ fn uma_cutscene_a_correr_move_o_objecto_e_uma_parada_nao() {
 fn o_que_a_cutscene_escreve_passa_pelo_ledger() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, e) = cena("Porta", 1_000_000, true);
-    toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false);
+    toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
+        false
+    });
     let Some(Driven::SolverPose(autorado)) = drive.authored(e.to_bits(), Driver::SolverPose) else {
         panic!("o ledger não guardou a pose autorada deste objecto");
     };
@@ -125,7 +131,9 @@ fn um_nome_errado_nao_toca_o_primeiro_container() {
         container: "Ausente".to_owned(),
     });
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
+            false
+        }),
         0
     );
     assert!(y(&w, e).abs() < 1e-6, "nada foi tocado");
@@ -138,7 +146,9 @@ fn sem_cutscenes_a_fase_nao_mexe_no_ledger() {
     let mut drive = PreviewDrive::default();
     let (mut w, mut doc, _) = cena("Porta", 1_000_000, false);
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, 0.0, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, (0.0, &mut Vec::new()), &mut drive, |_| {
+            false
+        }),
         0
     );
     assert!(
@@ -227,7 +237,9 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
         );
     }
     assert_eq!(
-        toca_os_objectos(&mut w, &mut doc, 1.0, &mut drive, |_| false),
+        toca_os_objectos(&mut w, &mut doc, (1.0, &mut Vec::new()), &mut drive, |_| {
+            false
+        }),
         1
     );
     assert!((y(&w, e) - 5.0).abs() < 1e-4, "y = {}", y(&w, e));
@@ -243,7 +255,13 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
     let mut w2 = World::new();
     w2.spawn(Transform::default());
     assert_eq!(
-        toca_os_objectos(&mut w2, &mut cena, 1.0, &mut drive, |_| false),
+        toca_os_objectos(
+            &mut w2,
+            &mut cena,
+            (1.0, &mut Vec::new()),
+            &mut drive,
+            |_| false
+        ),
         0,
         "um clipe da Cena é do Arrange, não toca sozinho"
     );

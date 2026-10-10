@@ -142,7 +142,7 @@ fn o_alvo_passa_a_tocar_o_clipe_pedido_a_partir_do_instante_do_sinal() {
     }
     let toca = |sim: &mut SimWorld, t: f64| {
         assert_eq!(
-            ph2d_timeline::apply_autoplay(sim.world_mut(), &doc, t, |_| false),
+            ph2d_timeline::apply_autoplay(sim.world_mut(), &doc, t, |_| false, &mut Vec::new()),
             1
         );
     };

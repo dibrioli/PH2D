@@ -90,10 +90,27 @@ pub fn apply_autoplay(
     doc: &TimelineDoc,
     t: f64,
     skip: impl Fn(u64) -> bool + Copy,
+    refusals: &mut Vec<crate::ClipRefusal>,
 ) -> usize {
     let mut tocaram = 0;
     for (dono, entrada) in doc.autoplay_entries() {
-        let pedido = ph2d_ecs::Entity::try_from_bits(dono)
+        let e = ph2d_ecs::Entity::try_from_bits(dono).filter(|e| world.get_entity(*e).is_ok());
+        // ⚠️ Um pedido do FUTURO — o relógio voltou para antes dele (rewind, scrub, recomeçar) — é
+        // largado: senão revivia ao passar outra vez pelo instante, sem o sinal ter disparado. E um
+        // pedido de um clipe que a animação não tem é largado E DITO, uma vez.
+        if let Some(e) = e
+            && let Some(p) = world.get::<ph2d_ecs::ClipPlayback>(e)
+        {
+            let futuro = p.desde > t;
+            let desconhecido = doc.clip_named(dono, &p.clip).is_none();
+            if futuro || desconhecido {
+                world.entity_mut(e).remove::<ph2d_ecs::ClipPlayback>();
+            }
+            if desconhecido && !futuro {
+                refusals.push(crate::ClipRefusal::UnknownClip);
+            }
+        }
+        let pedido = e
             .and_then(|e| world.get::<ph2d_ecs::ClipPlayback>(e))
             .and_then(|p| p.em(t))
             .and_then(|(nome, desde)| Some((doc.clip_named(dono, nome)?, desde)));

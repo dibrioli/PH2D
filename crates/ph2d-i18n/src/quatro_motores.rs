@@ -120,6 +120,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "timeline.clip.document_full" => {
             "Can't add a clip: the document already holds {max}, the most a strip can name"
         }
+        // O Play Clip que pede um clipe que não existe (onda 4, item 1).
+        "timeline.clip.unknown_request" => {
+            "Play Clip: the object's Animation has no clip with that name \u{2014} it keeps playing its Autoplay clip"
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

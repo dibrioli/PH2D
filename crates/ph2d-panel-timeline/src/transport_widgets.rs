@@ -232,12 +232,15 @@ pub(crate) fn toggle_vivo(
         }
     }
     // Gallery builder form (label rendered separately, above).
-    let widget = if vivo {
-        Toggle::new(id, "").visual(ctx.host.store().toggle_visual(id))
+    let visual = if vivo {
+        ctx.host.store().toggle_visual(id)
     } else {
-        Toggle::new(id, "").state(ph2d_editor_core::widget::ToggleState::Disabled)
-    }
-    .on(on);
+        (
+            ph2d_editor_core::widget::ToggleState::Disabled,
+            ph2d_editor_core::motion::SETTLED,
+        )
+    };
+    let widget = Toggle::new(id, "").visual(visual).on(on);
     paint_toggle(&widget, rect, ctx.scene, theme);
     if vivo {
         ctx.host.hit_index_mut().register(id, rect);

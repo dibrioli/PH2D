@@ -136,7 +136,7 @@ fn cada_objecto_toca_a_sua_animacao_e_um_pedido_troca_o_clipe() {
     }
 
     assert_eq!(
-        ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false),
+        ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false, &mut Vec::new()),
         1
     );
     assert!(
@@ -148,19 +148,55 @@ fn cada_objecto_toca_a_sua_animacao_e_um_pedido_troca_o_clipe() {
         clip: "pular".into(),
         desde: 2.0,
     });
-    ph2d_timeline::apply_autoplay(&mut world, &doc, 2.25, |_| false);
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 2.25, |_| false, &mut Vec::new());
     assert!(
         (x_de(&world, e) + 2.5).abs() < 1e-4,
         "o pedido, desde o instante dele"
     );
-    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.25, |_| false);
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.25, |_| false, &mut Vec::new());
     assert!(
         (x_de(&world, e) - 2.5).abs() < 1e-4,
         "rewind para antes do pedido: a entrada"
     );
-    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.25, |b| b == heroi);
     assert!(
-        (x_de(&world, e) - 2.5).abs() < 1e-4,
+        world.get::<ph2d_ecs::ClipPlayback>(e).is_none(),
+        "o pedido do futuro foi largado"
+    );
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 2.25, |_| false, &mut Vec::new());
+    assert!(
+        (x_de(&world, e) - 10.0).abs() < 1e-4,
+        "a passar outra vez pelo instante, o pedido NÃO revive: a entrada, na última pose"
+    );
+    assert!(world.get::<ph2d_ecs::ClipPlayback>(e).is_none());
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.25, |b| b == heroi, &mut Vec::new());
+    assert!(
+        (x_de(&world, e) - 10.0).abs() < 1e-4,
         "a mão do artista (skip) não é pisada"
+    );
+}
+
+/// ⛔ Um **Play Clip** de um clipe que a animação não tem: o pedido é largado e DITO uma vez (uma
+/// recusa na fila que a shell fala num toast); o objecto continua na entrada. (Mutação: sem o
+/// `refusals.push` ⇒ RED.)
+#[test]
+fn um_pedido_de_um_clipe_que_nao_existe_e_dito_uma_vez() {
+    let mut world = bevy_ecs::world::World::new();
+    let e = world.spawn(ph2d_ecs::Transform::IDENTITY).id();
+    let mut doc = TimelineDoc::new();
+    doc.add_clip_for("andar".into(), e.to_bits()).unwrap();
+    world.entity_mut(e).insert(ph2d_ecs::ClipPlayback {
+        clip: "voar".into(),
+        desde: 0.0,
+    });
+    let mut recusas = Vec::new();
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false, &mut recusas);
+    assert_eq!(recusas, [ph2d_timeline::ClipRefusal::UnknownClip]);
+    assert!(world.get::<ph2d_ecs::ClipPlayback>(e).is_none(), "largado");
+    ph2d_timeline::apply_autoplay(&mut world, &doc, 0.6, |_| false, &mut recusas);
+    assert_eq!(recusas.len(), 1, "dito UMA vez, não a cada quadro");
+    assert_ne!(
+        ph2d_i18n::tr(ph2d_timeline::ClipRefusal::UnknownClip.message_key()),
+        ph2d_timeline::ClipRefusal::UnknownClip.message_key(),
+        "a chave está na tabela"
     );
 }

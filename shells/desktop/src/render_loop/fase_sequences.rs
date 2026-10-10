@@ -48,7 +48,7 @@ pub(crate) const fn a_vista_deixa_correr(keys_mode: bool, container: Option<usiz
 pub(crate) fn toca_os_objectos(
     world: &mut World,
     doc: &mut TimelineDoc,
-    t: f64,
+    (t, refusals): (f64, &mut Vec<ph2d_timeline::ClipRefusal>),
     drive: &mut PreviewDrive,
     skip: impl Fn(u64) -> bool + Copy,
 ) -> usize {
@@ -65,7 +65,7 @@ pub(crate) fn toca_os_objectos(
     // parêntesis — a última escreve, e o autorado continua a ser o de antes do laço.
     let antes = crate::timeline_preview::state_of_bindings(world, doc);
     let n = if animados {
-        ph2d_timeline::apply_autoplay(world, doc, t, skip)
+        ph2d_timeline::apply_autoplay(world, doc, t, skip, refusals)
     } else {
         0
     };

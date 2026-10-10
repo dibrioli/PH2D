@@ -119,6 +119,9 @@ pub enum ClipRefusal {
     AnimationFull,
     /// O documento chegou ao índice `u16` que um strip guarda para nomear o seu clip.
     DocumentFull,
+    /// ⭐ Um **Play Clip** pediu um clipe que a Animação do alvo não tem (onda 4, item 1): o pedido
+    /// é largado e o objecto continua na entrada — dito uma vez, nunca calado.
+    UnknownClip,
 }
 
 impl ClipRefusal {
@@ -128,6 +131,7 @@ impl ClipRefusal {
         match self {
             Self::AnimationFull => "timeline.clip.animation_full",
             Self::DocumentFull => "timeline.clip.document_full",
+            Self::UnknownClip => "timeline.clip.unknown_request",
         }
     }
 
@@ -137,6 +141,7 @@ impl ClipRefusal {
         match self {
             Self::AnimationFull => crate::MAX_CLIPS,
             Self::DocumentFull => usize::from(u16::MAX) + 1,
+            Self::UnknownClip => 0,
         }
     }
 }

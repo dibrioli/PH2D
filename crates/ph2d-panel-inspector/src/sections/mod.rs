@@ -86,6 +86,7 @@ pub(crate) mod lifecycle;
 /// ⭐ A LUZ (Luz 2D, W4).
 pub(crate) mod luz;
 mod material_blend;
+pub(crate) mod motion_input;
 pub(crate) mod nav;
 /// ⭐ (W7) As secções NAV COST AREA e NAV LINK e os interruptores do agente — irmão do `nav` pelo
 /// tecto de LOC do painel.

@@ -859,6 +859,11 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint_optional_nav.rs",
         "as QUATRO MOLDURAS das seccoes da NAVEGACAO (a regiao, o agente e — W7 — a area de custo e o atalho); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),
+    // O molde do irmão da NAVEGAÇÃO (ciclo 19 do Motion), com a isenção MEDIDA da mesma forma.
+    (
+        "ph2d-panel-inspector/src/paint_optional_motion_input.rs",
+        "a MOLDURA da seccao MOTION INPUT; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional_top20_tail.rs",
         "a cauda da CAUDA — a moldura da seccao TWEEN, cortada do irmao pelo teto de ficheiro de painel; nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",

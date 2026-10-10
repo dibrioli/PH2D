@@ -48,6 +48,8 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/inspector_nav.rs",
     // ⭐ **A SEXTA:** a secção LUZ (Luz 2D, W4) — mora com as palavras da família da luz.
     "crates/ph2d-i18n/src/luz2d.rs",
+    // A SEXTA: a secção MOTION INPUT (ciclo 19 do Motion), pela mesma lei.
+    "crates/ph2d-i18n/src/inspector_motion_input.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

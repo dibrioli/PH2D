@@ -63,6 +63,8 @@ pub(crate) struct LiveSnapshots {
     pub vida_info: Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
     /// ⭐⭐⭐ As secções NAV REGION e NAV AGENT (plano 30, W4).
     pub nav_info: Option<ph2d_editor_core::nav_edits::InspectorNavInfo>,
+    /// O MOTION INPUT (ciclo 19). ENTRA no `any_section`: vale para qualquer objecto.
+    pub motion_input_info: Option<ph2d_editor_core::motion_input_edits::InspectorMotionInputInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
     pub statemachine_info: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     /// ⭐ O snapshot do SCRIPT (TOP-20 #16).
@@ -141,6 +143,7 @@ impl LiveSnapshots {
         let weapon_info = crate::state_components::current_inspector_weapon();
         let vida_info = crate::state_components::current_inspector_vida();
         let nav_info = crate::state_components::current_inspector_nav();
+        let motion_input_info = crate::state_components::current_inspector_motion_input();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
         let script_info = crate::state_components::current_inspector_script();
         let particles_info = crate::state_components::current_inspector_particles();
@@ -178,6 +181,7 @@ impl LiveSnapshots {
             weapon_info.is_some(),
             vida_info.is_some(),
             nav_info.is_some(),
+            motion_input_info.is_some(),
             statemachine_info.is_some(),
             script_info.is_some(),
             particles_info.is_some(),
@@ -213,6 +217,7 @@ impl LiveSnapshots {
             weapon_info,
             vida_info,
             nav_info,
+            motion_input_info,
             statemachine_info,
             script_info,
             particles_info,

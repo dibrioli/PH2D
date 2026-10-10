@@ -39,6 +39,8 @@ pub(super) struct Sessao<'a> {
     pub(super) a_correr: bool,
     /// O mapa de acções, para a coluna *«esta acção existe?»* da secção do gatilho.
     pub(super) mapa: &'a ph2d_input::InputMap,
+    /// O Motion — para o Inspector oferecer os nomes que o grafo lê (o cartão do `Motion Input`).
+    pub(super) motion: &'a ph2d_app_motion::motion_state::MotionState,
 }
 
 pub(super) fn publica(
@@ -53,6 +55,7 @@ pub(super) fn publica(
         quantos,
         a_correr,
         mapa,
+        motion,
     } = *s;
     // ⚠️ **A pergunta é «há CÂMERA DE JOGO na cena?»**, e não «a pré-visualização está ligada»: o
     // canvas cola-se à vista dela em qualquer dos casos, e é a AUSÊNCIA da câmera que deixa o HUD
@@ -104,6 +107,12 @@ pub(super) fn publica(
     }));
     ph2d_panel_inspector::set_current_inspector_emitter(escolhido.and_then(|b| {
         ph2d_app_components::shake_inspector::build_info_emitter(sim, b, a_correr, quantos)
+    }));
+    // O MOTION INPUT (ciclo 19): os nomes do grafo vêm do Motion, que não é o mundo.
+    ph2d_panel_inspector::set_current_inspector_motion_input(escolhido.and_then(|b| {
+        ph2d_app_components::motion_input_inspector::build_info(sim, b, quantos, || {
+            ph2d_app_motion::motion_entradas::nomes_que_o_grafo_le(motion)
+        })
     }));
     ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
         ph2d_app_components::action_trigger_inspector::build_info(sim, b, a_correr, quantos, &|n| {

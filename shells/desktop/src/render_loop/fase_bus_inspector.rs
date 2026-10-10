@@ -223,6 +223,7 @@ impl crate::App {
                 ComponentEdit::Vida(e) => pd.vida_edits.push((entity_bits, e)),
                 ComponentEdit::Nav(e) => pd.nav_edits.push((entity_bits, e)),
                 ComponentEdit::Luz(e) => pd.luz_edits.push((entity_bits, e)),
+                ComponentEdit::MotionInput(e) => pd.motion_input_edits.push((entity_bits, e)),
                 ComponentEdit::Tween(e) => pd.tween_edits.push((entity_bits, e)),
                 ComponentEdit::PathFollow(e) => pd.path_follow_edits.push((entity_bits, e)),
                 ComponentEdit::StateMachine(e) => pd.statemachine_edits.push((entity_bits, e)),

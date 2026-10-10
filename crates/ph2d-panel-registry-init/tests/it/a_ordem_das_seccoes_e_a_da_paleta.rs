@@ -51,6 +51,7 @@ const SECCAO_E_COMPONENTE: &[(&str, &str)] = &[
     ("insp_live_watch_section", "ph2d::ecs::CounterWatch"),
     ("insp_live_trigger_section", "ph2d::ecs::SignalOnAction"),
     ("insp_live_tween_section", "ph2d::ecs::Tweens"),
+    ("insp_live_motion_input_section", "ph2d::ecs::MotionInput"),
     ("insp_live_audio_section", "ph2d::ecs::AudioSource2D"),
     ("insp_live_camera_section", "ph2d::ecs::GameCamera"),
     ("insp_live_shake_section", "ph2d::ecs::CameraShake"),

@@ -142,5 +142,9 @@ pub const INSP_LIVE_NAV_LINK_GRIP: NodeId = hash_node_id("insp_live_nav_link_gri
 pub const INSP_LIVE_LUZ_SECTION: NodeId = hash_node_id("insp_live_luz_section");
 /// A pega de arrasto da secção LUZ.
 pub const INSP_LIVE_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_grip");
+/// O cabeçalho dobrável da secção MOTION INPUT — a entrada que o grafo do Motion lê (ciclo 19).
+pub const INSP_LIVE_MOTION_INPUT_SECTION: NodeId = hash_node_id("insp_live_motion_input_section");
+/// A pega de arrasto da secção MOTION INPUT.
+pub const INSP_LIVE_MOTION_INPUT_GRIP: NodeId = hash_node_id("insp_live_motion_input_grip");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

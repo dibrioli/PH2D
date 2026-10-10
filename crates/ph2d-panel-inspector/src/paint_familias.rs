@@ -342,6 +342,15 @@ pub(crate) fn push_familia_logica_cont<'a>(
         snaps.vida_info.as_ref(),
         infos.resist_selected,
     );
+    // O MOTION INPUT (ciclo 19 do Motion) — família LÓGICA pelo catálogo (`ph2d::ecs::MotionInput`).
+    crate::paint_optional_motion_input::push_motion_input_section(
+        plano,
+        store,
+        inner_x,
+        inner_w,
+        header_h,
+        snaps.motion_input_info.as_ref(),
+    );
 }
 
 /// ⭐ **ÁUDIO** (`12`) · **CÂMERA** (`13`) · **SCRIPT** (`14`) — as três últimas famílias que o

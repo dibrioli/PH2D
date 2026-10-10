@@ -135,6 +135,7 @@ pub struct InspectorState {
     pub last_weapon_sig: Option<u64>,
     /// A assinatura das secções NAV REGION e NAV AGENT (plano 30, W4) — mesma lei.
     pub last_nav_sig: Option<u64>,
+    pub last_motion_input_sig: Option<u64>,
     /// A assinatura das secções HEALTH e DAMAGE — mesma lei, nascida no MESMO commit que elas.
     pub last_vida_sig: Option<u64>,
     /// A assinatura do último instantâneo do MOVER DE VISTA DE CIMA semeado (plano 28, W5 — a

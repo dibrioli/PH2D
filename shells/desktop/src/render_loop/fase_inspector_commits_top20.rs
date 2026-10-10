@@ -46,6 +46,10 @@ pub(super) fn aplicar(
     vida: &[(u64, ph2d_editor_core::vida_edits::VidaFieldEdit)],
     nav: &[(u64, ph2d_editor_core::nav_edits::NavFieldEdit)],
     luz: &[(u64, ph2d_editor_core::luz_edits::LuzFieldEdit)],
+    motion_input: &[(
+        u64,
+        ph2d_editor_core::motion_input_edits::MotionInputFieldEdit,
+    )],
     tween: &[(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)],
     path_follow: &[(
         u64,
@@ -65,6 +69,7 @@ pub(super) fn aplicar(
         | ph2d_app_components::vida_inspector::apply_all(sim, vida)
         | ph2d_app_components::nav_inspector::apply_all(sim, nav)
         | ph2d_app_light2d::inspector::apply_all(sim, luz)
+        | ph2d_app_components::motion_input_inspector::apply_all(sim, motion_input)
         | ph2d_app_components::tween_inspector::apply_all(sim, tween)
         | ph2d_app_components::path_follow_inspector::apply_all(sim, path_follow)
         | super::statemachine_commits::aplicar(sim, statemachine)

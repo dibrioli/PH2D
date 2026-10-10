@@ -76,6 +76,7 @@ impl crate::App {
             particles,
             luz2d,
             toasts,
+            motion,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -217,6 +218,7 @@ impl crate::App {
                 quantos: hero.gizmo.selected_len(),
                 a_correr: self.playhead.is_playing(),
                 mapa: &hero.input_map,
+                motion,
             },
         );
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.

@@ -83,6 +83,7 @@ impl crate::App {
                 vida_edits: take(&mut pd.vida_edits),
                 nav_edits: take(&mut pd.nav_edits),
                 luz_edits: take(&mut pd.luz_edits),
+                motion_input_edits: take(&mut pd.motion_input_edits),
                 tween_edits: take(&mut pd.tween_edits),
                 path_follow_edits: take(&mut pd.path_follow_edits),
                 statemachine_edits: take(&mut pd.statemachine_edits),

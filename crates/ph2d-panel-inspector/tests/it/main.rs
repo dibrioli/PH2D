@@ -15,6 +15,7 @@ mod a_pega_reordena_as_seccoes;
 mod a_seccao_barra_de_vida_esta_viva;
 mod a_seccao_counter_watch_esta_viva;
 mod a_seccao_gatilho_esta_viva;
+mod a_seccao_motion_input_esta_viva;
 mod a_seccao_nav_custo_esta_viva;
 mod a_seccao_nav_esta_viva;
 mod a_seccao_parallax_esta_viva;

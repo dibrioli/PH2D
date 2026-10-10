@@ -476,6 +476,11 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) nav_edits: Vec<(u64, ph2d_editor_core::nav_edits::NavFieldEdit)>,
     /// ⭐ As edições da secção LUZ (Luz 2D, W4).
     pub(in crate::render_loop) luz_edits: Vec<(u64, ph2d_editor_core::luz_edits::LuzFieldEdit)>,
+    /// As edições da secção MOTION INPUT (ciclo 19 do Motion).
+    pub(in crate::render_loop) motion_input_edits: Vec<(
+        u64,
+        ph2d_editor_core::motion_input_edits::MotionInputFieldEdit,
+    )>,
     /// ⭐⭐⭐ As edições da secção TWEEN (suplente #22).
     pub(in crate::render_loop) tween_edits:
         Vec<(u64, ph2d_editor_core::tween_edits::TweenFieldEdit)>,

@@ -15,6 +15,7 @@
 //!
 //! ⛔ **Nunca subir o número do cap: ele só desce.**
 
+use ph2d_editor_core::motion_input_edits::InspectorMotionInputInfo;
 use ph2d_editor_core::nav_edits::InspectorNavInfo;
 use ph2d_editor_core::parallax_edits::InspectorParallaxInfo;
 use ph2d_editor_core::particles_edits::InspectorParticlesInfo;
@@ -374,6 +375,21 @@ pub fn set_current_inspector_particles(info: Option<InspectorParticlesInfo>) {
 
 pub(crate) fn current_inspector_particles() -> Option<InspectorParticlesInfo> {
     CURRENT_INSPECTOR_PARTICLES.with(|c| c.borrow().clone())
+}
+
+thread_local! {
+    /// O snapshot da secção MOTION INPUT (ciclo 19 do Motion).
+    static CURRENT_INSPECTOR_MOTION_INPUT: std::cell::RefCell<Option<InspectorMotionInputInfo>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// O snapshot do MOTION INPUT — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_motion_input(info: Option<InspectorMotionInputInfo>) {
+    CURRENT_INSPECTOR_MOTION_INPUT.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_motion_input() -> Option<InspectorMotionInputInfo> {
+    CURRENT_INSPECTOR_MOTION_INPUT.with(|c| c.borrow().clone())
 }
 
 /// ⭐ O snapshot do SCRIPT (TOP-20 #16) — a shell escreve-o todo o quadro.

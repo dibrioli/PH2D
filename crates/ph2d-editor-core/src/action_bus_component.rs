@@ -74,4 +74,6 @@ pub enum ComponentEdit {
     Nav(crate::nav_edits::NavFieldEdit),
     /// **LUZ** (Luz 2D, W4) — cor, intensidade, tamanho, alcance e tipo da lâmpada.
     Luz(crate::luz_edits::LuzFieldEdit),
+    /// **MOTION INPUT** (ciclo 19 do Motion) — o nome, a fonte e o valor que o grafo lê.
+    MotionInput(crate::motion_input_edits::MotionInputFieldEdit),
 }

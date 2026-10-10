@@ -43,6 +43,7 @@ use ph2d_editor_core::factory_edits::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
 };
 use ph2d_editor_core::hud_edits::InspectorHudInfo;
+use ph2d_editor_core::motion_input_edits::InspectorMotionInputInfo;
 use ph2d_editor_core::nav_edits::{
     InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
     InspectorNavRegion, NavAgora, NavAlvoModo, NavEstado,
@@ -1197,6 +1198,22 @@ fn arma_o_top20() {
         clock_playing: false,
         selected_count: selecionados(),
     }));
+    // O MOTION INPUT (ciclo 19) — no estado que pinta MAIS linhas: a queixa do nome que o grafo
+    // não lê, os chips dos nomes do grafo e a linha do número.
+    insp::set_current_inspector_motion_input(Some(InspectorMotionInputInfo {
+        entity_bits: BITS,
+        name: "speed".to_string(),
+        source: 0,
+        value: 0.5,
+        color: [1.0; 4],
+        nomes_do_grafo: vec![
+            "energy".to_string(),
+            "health".to_string(),
+            "hit".to_string(),
+        ],
+        tem_vida: false,
+        selected_count: selecionados(),
+    }));
 }
 
 /// **Desarma as 29 portas.** ⚠️ Sem isto a varredura de fábrica passaria a medir um Inspector
@@ -1217,6 +1234,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_vida(None);
     insp::set_current_inspector_nav(None);
+    insp::set_current_inspector_motion_input(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
     insp::set_current_inspector_visibility(None);
@@ -1322,6 +1340,9 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("vida", || insp::set_current_inspector_vida(None)),
     // ⭐ A NAVEGAÇÃO (plano 30, W4): a região e o agente partilham UMA porta.
     ("nav", || insp::set_current_inspector_nav(None)),
+    ("motion_input", || {
+        insp::set_current_inspector_motion_input(None)
+    }),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

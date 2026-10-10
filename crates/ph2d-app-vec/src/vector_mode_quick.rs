@@ -1,9 +1,9 @@
 //! ⭐ **A cena 12** (`PH2D_OBJECT_MODE_SMOKE=12`, D10 F7 — 08/10): o QUICKSHAPE. No layout *Vetor*,
-//! o Lápis pelo botão dele na coluna ① e cinco traços de mão SINTÉTICOS: um rectângulo tosco, um
-//! círculo tosco, uma linha trémula e um círculo PEQUENO (F7b), cada um SEGURADO no fim — e um
-//! gelado SOLTO sem segurar, o traço livre com quinas vivas e a bola curva (F7b). Quem mede o
-//! segurar é a SHELL, a cada quadro, com o relógio do ponteiro (o `clock_ns` do chrome é esse
-//! relógio): a cena só carimba as amostras e espera. No fim os cinco ficam seleccionados com o
+//! o Lápis pelo botão dele na coluna ① e seis traços de mão SINTÉTICOS: um rectângulo tosco, um
+//! círculo tosco, uma linha trémula, um círculo PEQUENO (F7b) e um ARCO (F7c), cada um SEGURADO no
+//! fim — e um gelado SOLTO sem segurar, o traço livre com quinas vivas e a bola curva (F7b). Quem
+//! mede o segurar é a SHELL, a cada quadro, com o relógio do ponteiro (o `clock_ns` do chrome é esse
+//! relógio): a cena só carimba as amostras e espera. No fim os seis ficam seleccionados com o
 //! Lápis ainda na mão: os nós à vista, o QuickShape aceso, a dica no ⑤.
 
 use crate::state::VecState;
@@ -20,9 +20,9 @@ const STEP_NS: u128 = 8_000_000;
 const STEP_WORLD: f64 = 4.0 * PX_TO_WORLD;
 /// Se a forma não nascer em 3 s (o segurar é 0,5 s), a cena solta na mesma: a foto mostra a falha.
 const GIVE_UP_NS: u128 = 3_000_000_000;
-const STROKES: usize = 5;
+const STROKES: usize = 6;
 /// Os primeiros `HELD` traços são SEGUROS (QuickShape); o último é solto logo — o traço livre.
-const HELD: usize = 4;
+const HELD: usize = 5;
 
 thread_local! {
     static STROKE: Cell<usize> = const { Cell::new(0) };
@@ -92,6 +92,18 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
                 })
                 .collect()
         }
+        // Um ARCO (F7c, o dono 10/10: «QuickShape com arcos»): um sorriso de 130° por baixo da
+        // linha, o raio a respirar ±3 % — segurado, vira um arco de círculo perfeito.
+        4 => {
+            let ring: Vec<[f64; 2]> = (0..=40)
+                .map(|i| {
+                    let a = (205.0 + 130.0 * f64::from(i) / 40.0).to_radians();
+                    let r = 0.7 * (1.0 + 0.03 * (4.0 * a).sin());
+                    [-0.4 + r * a.cos(), -0.75 + r * a.sin()]
+                })
+                .collect();
+            hand(&ring, 0.004)
+        }
         // Um GELADO SOLTO sem segurar (F7b): a aba, a ponta do cone, a outra aba e o começo da
         // bola são quatro quinas vivas; a bola continua uma curva suave — o lápis com quinas.
         _ => {
@@ -113,7 +125,7 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
 
 /// Um passo da cena 12; devolve o próximo estágio, se mudou. `50` = o Lápis pelo botão · `51` =
 /// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` =
-/// os cinco seleccionados, com o Lápis ainda na mão · `9` = feito.
+/// os seis seleccionados, com o Lápis ainda na mão · `9` = feito.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
@@ -168,8 +180,8 @@ pub fn step(
             });
             Some(if k < STROKES { 52 } else { 54 })
         }
-        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); os cinco
-        // seleccionadas mostram os nós.
+        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); os seis
+        // seleccionados mostram os nós.
         54 => {
             let all: Vec<ph2d_vec_scene::VecPathId> = vec.entities.keys().copied().collect();
             vec.pen.select_many(&all);
@@ -206,6 +218,12 @@ mod tests {
             matches!(&got[3], Some(QuickShape::Ellipse { rx, ry, .. }) if rx == ry),
             "o círculo pequeno: {:?}",
             got[3]
+        );
+        assert!(
+            matches!(&got[4], Some(QuickShape::Arc { sweep, .. })
+                if (sweep.to_degrees() - 130.0).abs() < 10.0),
+            "o arco: {:?}",
+            got[4]
         );
     }
 

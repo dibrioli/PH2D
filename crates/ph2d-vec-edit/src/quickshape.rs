@@ -63,9 +63,13 @@ pub(crate) struct Law {
     pub(crate) round_ratio: f64,
     /// A viragem total de uma elipse é uma volta ± isto (graus).
     pub(crate) turn_tol_deg: f64,
-    /// Resíduo rms máximo de um ARCO, fracção do menor de raio e diagonal ([`crate::quickshape_arc`]).
+    /// Resíduo rms máximo de um ARCO, fracção do menor de raio e diagonal ([`crate::quickshape_arc`]):
+    /// a 0,04 o meio arco sem estabilizador (±2 px, 24–400 px) cai de 99 % a 86 %, a 0,06 um rabisco
+    /// vira arco (2,5 %) — sonda `measure_arc_joint`.
     pub(crate) arc_rms_max: f64,
-    /// Fracção máxima da viragem CONTRA o sentido do arco, entre `arc_chords` cordas iguais.
+    /// Fracção máxima da viragem CONTRA o sentido do arco, entre `arc_chords` cordas iguais: vale
+    /// `0,15–0,35` (a 0,1 os arcos pequenos tremidos caem a 75 %, a 0,4 um rabisco vira arco); as
+    /// cordas, `3–8` (a 12 o tremor de cada corda já vira para trás).
     pub(crate) arc_bend_back: f64,
     pub(crate) arc_chords: usize,
 }
@@ -91,8 +95,8 @@ impl Law {
         round_ratio: 1.10,
         turn_tol_deg: 150.0,
         arc_rms_max: 0.05,
-        arc_bend_back: 0.15,
-        arc_chords: 8,
+        arc_bend_back: 0.25,
+        arc_chords: 6,
     };
 }
 

@@ -375,6 +375,20 @@ fn measure_open_gaps() {
                 worst = (forced, name);
             }
         }
-        println!(" {:.0} % ({}) |", 100.0 * worst.0, worst.1);
+        // O C de ¾ é um ARCO aberto (F7c), nunca um círculo fechado à força.
+        let c_arc = (0..30)
+            .filter(|&seed| {
+                let pts = crate::test_hand::stabilise(&hand(&open[2].1, 2.0, 1.0, seed), 0.5);
+                matches!(
+                    recognise_with(&law, &pts, 1.0, false),
+                    Some(QuickShape::Arc { .. })
+                )
+            })
+            .count();
+        println!(
+            " {:.0} % ({}) | C ¾ arco {c_arc}/30 |",
+            100.0 * worst.0,
+            worst.1
+        );
     }
 }

@@ -284,6 +284,31 @@ fn measure_arcs() {
             }
             println!();
         }
+        // O que os arcos que FALHAM viram: livre e linha são inofensivos, outra forma não.
+        let (mut free, mut line, mut loose, mut other) = (0, 0, 0, Vec::new());
+        for sweep in SWEEPS {
+            for r in RADII {
+                for seed in 0..40 {
+                    let mut g = Lcg(seed + 5);
+                    let poly = arc_poly(r, 180.0 * g.next(), sweep);
+                    match recognise(&stroke(&poly, amp, seed), 1.0, false) {
+                        q if is_the_arc(&q, sweep) => {}
+                        None => free += 1,
+                        Some(QuickShape::Line { .. }) => line += 1,
+                        Some(QuickShape::Arc { .. }) => loose += 1,
+                        Some(QuickShape::Ellipse { .. }) if sweep >= 330.0 => {}
+                        q => other.push(format!("{sweep}° r {r}: {q:?}")),
+                    }
+                }
+            }
+        }
+        println!(
+            "falhas: livre {free} · linha {line} · arco com o varrido a > 10 % {loose} · OUTRA forma {}",
+            other.len()
+        );
+        for o in other.iter().take(6) {
+            println!("  {}", o.chars().take(160).collect::<String>());
+        }
     }
     let (w, name) = worst_false_arc(&Law::MEASURED, 40);
     println!("\npior «não é arco» lido como arco: {:.1} % ({name})", 100.0 * w);
@@ -323,6 +348,54 @@ fn measure_arc_ab() {
                 print!(" {:.1} % |", 100.0 * r);
             }
             println!();
+        }
+    }
+}
+
+/// **As três constantes JUNTAS** (o resíduo e a viragem para trás seguram o rabisco a meias): o meio
+/// arco da sonda de sensibilidade (mão sem estabilizador, 24–400 px), os arcos de 45–300° com o
+/// estabilizador, e o pior «não é arco» lido como arco (40 mãos).
+#[test]
+#[ignore = "sonda"]
+fn measure_arc_joint() {
+    println!("\n| rms | volta atrás | cordas | meio arco ±2 | ±4 | arcos ±2 | pior «não é arco» |");
+    for chords in [4, 6, 8] {
+        for bend in [0.15, 0.2, 0.25, 0.3] {
+            for rms in [0.03, 0.04, 0.05, 0.06] {
+                let law = Law {
+                    arc_rms_max: rms,
+                    arc_bend_back: bend,
+                    arc_chords: chords,
+                    ..Law::MEASURED
+                };
+                let half = |amp: f64| {
+                    [24.0, 48.0, 160.0, 400.0]
+                        .iter()
+                        .map(|&s| {
+                            super::measure_tests::hit_rate(&law, s, amp, 40)
+                                .into_iter()
+                                .find(|(n, _)| *n == "meio arco")
+                                .map_or(0.0, |x| x.1)
+                        })
+                        .sum::<f64>()
+                        / 4.0
+                };
+                let (mut arcs, mut n) = (0.0, 0.0);
+                for sweep in [45.0, 90.0, 180.0, 270.0, 300.0] {
+                    for r in [40.0, 80.0, 160.0, 400.0] {
+                        arcs += arc_rate(&law, r, sweep, 2.0, 20);
+                        n += 1.0;
+                    }
+                }
+                let (w, wn) = worst_false_arc(&law, 40);
+                println!(
+                    "| {rms} | {bend} | {chords} | {:.1} % | {:.1} % | {:.1} % | {:.1} % ({wn}) |",
+                    100.0 * half(2.0),
+                    100.0 * half(4.0),
+                    100.0 * arcs / n,
+                    100.0 * w
+                );
+            }
         }
     }
 }

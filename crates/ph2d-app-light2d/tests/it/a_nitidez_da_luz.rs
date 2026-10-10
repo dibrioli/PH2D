@@ -210,7 +210,6 @@ fn com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido() {
         ms.unwrap_or_else(|| panic!("{nivel:?} sem o Automático: o custo nunca foi lido"))
     };
     let baixa = custo(N::Baixa);
-    drop(custo);
     // O 1.º quadro do nível novo recria a grade: o custo lido era o da ANTERIOR e não se mostra.
     let p = PreferenciaDaLuz {
         nivel: N::Alta,

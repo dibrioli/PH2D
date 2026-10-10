@@ -293,6 +293,7 @@ pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.offset",
     "panel.painter_layers.paper.size",
     "panel.painter_layers.paper.tooth",
+    "panel.painter_layers.paper.texture_on_paint",
     "panel.painter_layers.paper.relief",
     "panel.painter_layers.paper.roughness",
 ];
@@ -380,7 +381,6 @@ pub(crate) const WATERCOLOR_CARTAO: &[&str] = &[
 /// *Wet Paint* — inclui a caixa do cartão de inclinação.
 pub(crate) const WETPAINT: &[&str] = &[
     "panel.painter_layers.wetpaint.show_wet",
-    "panel.painter_layers.wetpaint.paper",
     "panel.painter_layers.wetpaint.smooth_edges",
     "panel.painter_layers.wetpaint.tuning",
     "panel.painter_layers.wetpaint.tilt",

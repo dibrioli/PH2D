@@ -97,36 +97,45 @@ impl PainterTool {
             .paper_depth
             .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
         sess.engine.set_paper_tooth(tooth);
-        let want = brush.paper.is_active().then_some(PaperKey {
+        // ⚠️ **UM papel, o do PAINEL (W1e, F2 — ordem do dono 09/10).** Com um Kind armado, o do artista;
+        // SEM Kind, o papel de FÁBRICA do painel (`substrate_relief::papel_de_fabrica`, o Cold que o Relief
+        // arma e acende) — pela mesma lei, nunca mais o papel procedural do MOTOR (`ph2d_wet_paint::paper`),
+        // cujos três knobs viviam no Tuning, fora da secção Paper. A chave existe nos dois casos, então o
+        // motor nunca re-assa o dele no produto. (O ruído de recurso da Aquarela foi medido e recusado:
+        // o Tooth deixava de ser monótono, halo 81 / 60 / 91 a Tooth 0 / 1 / 2 — 05 §4b.)
+        let want = Some(PaperKey {
             tex: brush.paper,
             image_version: self.paint.paper_image_version,
             period,
             tooth,
         });
         if sess.paper_key != want {
-            if want.is_some() {
-                let paper_tex = brush.paper;
-                let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
-                let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
-                // ⚠️ O `seed_paper_with` fala em CÉLULAS (ele passa `cell − 1`),
-                // e o papel é uma lei de CANVAS — sob razão > 1 amostrá-lo na
-                // coordenada de célula encolheria o dente do papel pelo mesmo
-                // fator, e o papel deixaria de casar com o do resto do app.
-                sess.engine.seed_paper_with(&|cx, cy| {
-                    let px = grid_map::cell_center_texel(cx as i32 + 1, ratio);
-                    let py = grid_map::cell_center_texel(cy as i32 + 1, ratio);
-                    f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
-                        &paper_tex,
-                        px,
-                        py,
-                        paper_img.as_ref(),
-                        rot,
-                        period,
-                    ))
-                });
+            let armado = brush.paper.is_active();
+            let paper_tex = if armado {
+                brush.paper
             } else {
-                sess.engine.rebake_paper();
-            }
+                super::super::substrate_relief::papel_de_fabrica()
+            };
+            let paper_img = armado
+                .then(|| self.paint.paper_image.as_ref().map(|i| i.as_mask()))
+                .flatten();
+            let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
+            // ⚠️ O `seed_paper_with` fala em CÉLULAS (ele passa `cell − 1`),
+            // e o papel é uma lei de CANVAS — sob razão > 1 amostrá-lo na
+            // coordenada de célula encolheria o dente do papel pelo mesmo
+            // fator, e o papel deixaria de casar com o do resto do app.
+            sess.engine.seed_paper_with(&|cx, cy| {
+                let px = grid_map::cell_center_texel(cx as i32 + 1, ratio);
+                let py = grid_map::cell_center_texel(cy as i32 + 1, ratio);
+                f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+                    &paper_tex,
+                    px,
+                    py,
+                    paper_img.as_ref(),
+                    rot,
+                    period,
+                ))
+            });
             sess.paper_key = want;
         }
         // ── The authored facts — same reconcile law as the paper. ──────────

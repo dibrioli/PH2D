@@ -70,3 +70,58 @@ fn o_seletor_da_cor_do_papel_aplica_o_papel_nos_quatro_meios() {
         );
     }
 }
+
+/// **Um papel, uma secção** (W1e, F2 — dono 09/10: *«o Wet Paint obedece ao Paper do painel»*): a
+/// *Paint Texture* (o papel impresso dentro da tinta, que morava na secção Wet Paint com o nome
+/// «Paper») vive na secção Paper e só no Wet Paint; o Tooth aparece SEM Kind no Wet Paint (lá ele morde
+/// o papel de fábrica — esconder um controlo que age é mentir); e o clique REAL na caixa chega à
+/// ferramenta. Mutações que sangram: pintar a caixa fora do `brush.wetpaint` (aparece no Digital) ·
+/// voltar a esconder o Tooth sem Kind · tirar o id do braço da ferramenta (o clique não liga nada).
+#[test]
+fn a_paint_texture_e_o_tooth_do_wet_paint_vivem_na_seccao_paper() {
+    use ph2d_tool_painter::ids::{PAINTER_WATERCOLOR_PAPER_DEPTH, PAINTER_WETPAINT_PAPER_VISUAL};
+    for meio in ["0", "1", "2", "3"] {
+        let mut tool = PainterTool::default();
+        tool.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+        tool.handle_panel_event(PanelEvent::SelectOption(PAINTER_BRUSH_MEDIA, meio.into()));
+        assert_eq!(tool.brush_settings().paper_kind, 0, "a fixture começa sem Kind");
+        set_current_brush(Some(tool.brush_settings()));
+        set_current_dock_shows_layers(false);
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
+        let _ = host.paint::<PainterLayersPanel>(&mut st, vp);
+        host.open_all_sections();
+        let pintados = host.paint::<PainterLayersPanel>(&mut st, vp);
+        let achar = |id| {
+            pintados
+                .iter()
+                .find(|(i, r)| *i == id && r.w > 0.0 && r.h > 0.0)
+                .map(|(_, r)| *r)
+        };
+        let molhado = meio == "3";
+        assert_eq!(
+            achar(PAINTER_WETPAINT_PAPER_VISUAL).is_some(),
+            molhado,
+            "meio {meio}: a Paint Texture é do Wet Paint, e só dele"
+        );
+        if !molhado {
+            continue;
+        }
+        assert!(
+            achar(PAINTER_WATERCOLOR_PAPER_DEPTH).is_some(),
+            "o Tooth tem de aparecer sem Kind no Wet Paint (ele morde o papel de fábrica)"
+        );
+        let r = achar(PAINTER_WETPAINT_PAPER_VISUAL).expect("pintada");
+        let antes = tool.brush_settings().wet_paper_visual;
+        for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        encaminha(&mut host, &mut tool);
+        assert_ne!(
+            tool.brush_settings().wet_paper_visual,
+            antes,
+            "o clique na Paint Texture não chegou à ferramenta"
+        );
+    }
+}

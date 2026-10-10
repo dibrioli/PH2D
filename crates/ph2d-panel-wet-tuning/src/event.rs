@@ -41,7 +41,7 @@ pub(crate) fn apply_event(
         // Section headers fold (panel-local view state, never forwarded).
         WidgetEvent::Click(id)
             if rows::SECTIONS.iter().any(|s| s.header == id)
-                || id == ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5] =>
+                || id == ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4] =>
         {
             seam_reset_button(host, id);
             // ⚠️ A PORTA ÚNICA — este bloco era `set_collapsed(id, !is_collapsed(id))` escrito à
@@ -56,7 +56,6 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id)
             if rows::row_for(id).is_some_and(|r| r.reset == id)
                 || rows::SECTIONS.iter().any(|s| s.reset == id)
-                || id == ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE
                 || id == ph2d_tool_painter::ids::WET_TUNING_KM_MIXING
                 || id == ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE =>
         {

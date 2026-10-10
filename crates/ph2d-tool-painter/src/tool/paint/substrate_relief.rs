@@ -367,3 +367,9 @@ impl crate::tool::PainterTool {
         }
     }
 }
+
+/// **O papel de FÁBRICA do painel** — o que o Relief arma quando não há Kind, e o que o Wet Paint sente
+/// sem Kind (W1e, F2: um papel só — o que a luz acende é o que a água morde).
+pub(super) fn papel_de_fabrica() -> TextureSettings {
+    default_paper()
+}

@@ -52,13 +52,15 @@ fn lin(c: f64) -> f64 {
 }
 
 /// O que a régua lê de uma tela: `γ` (média do G e do B — o R do cruzamento sobe com a MISTURA, e
-/// aí não mede a velatura) e a sangria (Δ do canal azul a 15 px, níveis sRGB).
+/// aí não mede a velatura) e a sangria: quanto o vermelho a 15 px do cruzamento ganhou de azul desde
+/// ANTES do azul (o MESMO sítio — a textura do papel não entra; comparar com o vermelho longe lia −3
+/// só pelo papel).
 struct Leitura {
     gama: f64,
     sangria: f64,
 }
 
-fn le(px: &[u8]) -> Leitura {
+fn le(px: &[u8], antes: &[u8]) -> Leitura {
     let cruz = media(px, 295, 306, 145, 156);
     let verm = media(px, 195, 206, 145, 156);
     let azul = media(px, 295, 306, 60, 100);
@@ -69,12 +71,12 @@ fn le(px: &[u8]) -> Leitura {
     };
     Leitura {
         gama: (g(1) + g(2)) / 2.0,
-        sangria: perto[2] - verm[2],
+        sangria: perto[2] - media(antes, 315, 330, 145, 156)[2],
     }
 }
 
-/// A cena: devolve as telas DURANTE o azul (ponteiro em baixo) e 2 s DEPOIS do Up.
-fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>) {
+/// A cena: devolve as telas ANTES do azul, DURANTE o azul (ponteiro em baixo) e 2 s DEPOIS do Up.
+fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     let p = &b
@@ -115,6 +117,7 @@ fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>) {
             t.on_tick(1000.0 / 60.0);
         }
     }
+    let antes = t.canvas_rgba.to_vec();
     t.set_brush_color_srgb8([30, 60, 210]);
     t.on_canvas_pointer(cp([300.0, 40.0], PointerPhase::Down));
     let mut k: u16 = 0;
@@ -131,7 +134,7 @@ fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>) {
     for _ in 0..120 {
         t.on_tick(1000.0 / 60.0);
     }
-    (durante, t.canvas_rgba.to_vec())
+    (antes, durante, t.canvas_rgba.to_vec())
 }
 
 /// A barra (o Rebelle com folga): o seco VELA (γ entre 0,30 e 0,70, durante e depois) e não sangra
@@ -157,7 +160,7 @@ fn barra(seco: (Leitura, Leitura), molhado: (Leitura, Leitura)) -> Result<(), St
 
 #[test]
 fn azul_sobre_vermelho_vela_no_seco_e_sangra_no_molhado_como_no_rebelle() {
-    let ler = |(a, b): (Vec<u8>, Vec<u8>)| (le(&a), le(&b));
+    let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
     let produto = barra(ler(cena(true, true)), ler(cena(false, true)));
     let port = barra(ler(cena(true, false)), ler(cena(false, false)));
     assert!(

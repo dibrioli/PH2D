@@ -158,14 +158,10 @@ fn paint_body(
     y: f32,
     theme: Theme,
 ) -> f32 {
-    // While the artist's Paper SLOT drives the tooth, the engine's own tile
-    // is not the source — its three physical knobs hide (lei 3: a knob that
-    // does nothing is a dead control wearing a live one's clothes).
-    let artist_paper_armed = brush.paper_kind != 0;
     let mut plano = PlanoCtx::new();
     for i in 0..rows::SECTIONS.len() {
         plano.seccao(rows::SECTIONS[i].header, move |ctx, tema, y| {
-            paint_group(ctx, tema, brush, i, artist_paper_armed, x, w, y)
+            paint_group(ctx, tema, brush, i, x, w, y)
         });
     }
     plano.seccao(crate::plano::EXPERIMENTAL, |ctx, tema, y| {
@@ -183,7 +179,6 @@ fn paint_group(
     theme: Theme,
     brush: &BrushSettings,
     i: usize,
-    artist_paper_armed: bool,
     x: f32,
     w: f32,
     y: f32,
@@ -197,15 +192,6 @@ fn paint_group(
         y,
         section.header,
         section.reset,
-        {
-            // The PAPER header carries the eye — the paperVisibility
-            // master's on/off face (the same authored fact as the basic
-            // section's Paper checkbox).
-            matches!(section.group, ph2d_wet_paint::tuning::KnobGroup::Paper).then_some((
-                ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
-                brush.wet_paper_visual,
-            ))
-        },
         tr(section.label),
     );
     // ⚠️ **A DOBRA do corpo (F4b)** — o escopo é aberto DEPOIS do cabeçalho (que já pintou)
@@ -216,9 +202,6 @@ fn paint_group(
     };
     let mut inner = y;
     for row in rows::rows().iter().filter(|r| r.group == section.group) {
-        if artist_paper_armed && rows::is_engine_paper_physical(row.key) {
-            continue;
-        }
         let value = brush.wet_knobs.knobs[row.knob];
         inner = paint_row(ctx, row, value, x, w, inner, theme);
     }
@@ -243,7 +226,6 @@ fn paint_experimental(
         y,
         id,
         id, // no reset: the reset slot repeats the header (skipped)
-        None,
         tr("panel.wet_tuning.group.experimental"),
     );
     let Some(scope) = open_fold(ctx, id, x, w, y) else {
@@ -352,8 +334,7 @@ fn paint_row(
 }
 
 /// Section header: chevron+label (collapse toggles on click), the drag GRIP
-/// at the right edge, the group reset left of it, and — for PAPER — the
-/// visibility eye beside it.
+/// at the right edge and the group reset left of it. (O olho do PAPER saiu com o grupo, W1e F2.)
 ///
 /// ⭐ O cabeçalho sai da porta do plano ([`crate::plano`]): a dobra viva (o
 /// estado e o `t`, lidos do store pela MESMA porta — antes eram um par passado
@@ -368,19 +349,20 @@ fn header_row(
     y: f32,
     header: ph2d_a11y::NodeId,
     reset: ph2d_a11y::NodeId,
-    eye: Option<(ph2d_a11y::NodeId, bool)>,
     label: &str,
 ) -> f32 {
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    // ⚠️ O título reserva a largura dos controlos que este cabeçalho pinta à direita (o repor e o
-    //    olho), senão um nome comprido corria por baixo deles.
-    let botao = RESET_W + Spacing::Xs.px();
-    let reserva =
-        if reset != header { botao } else { 0.0 } + if eye.is_some() { botao } else { 0.0 };
+    // ⚠️ O título reserva a largura do repor que este cabeçalho pinta à direita, senão um nome
+    //    comprido corria por baixo dele.
+    let reserva = if reset != header {
+        RESET_W + Spacing::Xs.px()
+    } else {
+        0.0
+    };
     let hdr = crate::plano::cabecalho(ctx, header, label).reserve_right(reserva);
     paint_section_header(&hdr, rect, ctx.scene, ctx.text_system, theme);
     crate::plano::regista(ctx, header, rect);
-    let mut right = x + w - crate::plano::largura_da_pega() - RESET_W;
+    let right = x + w - crate::plano::largura_da_pega() - RESET_W;
     if reset != header {
         let r = Rect::new(right, y, RESET_W, ROW_H_PX);
         let v = ctx.host.store().button_visual(reset);
@@ -393,24 +375,6 @@ fn header_row(
             theme,
         );
         ctx.host.hit_index_mut().register(reset, r);
-        right -= RESET_W + Spacing::Xs.px();
-    }
-    if let Some((eye_id, on)) = eye {
-        let r = Rect::new(right, y, RESET_W, ROW_H_PX);
-        let v = ctx.host.store().button_visual(eye_id);
-        paint_icon_button(
-            r,
-            IconGlyph::Builtin(if on {
-                ph2d_editor_core::IconId::Eye
-            } else {
-                ph2d_editor_core::IconId::EyeClosed
-            }),
-            IconButtonStyle::Plain,
-            v,
-            ctx.scene,
-            theme,
-        );
-        ctx.host.hit_index_mut().register(eye_id, r);
     }
     y + ph2d_tokens::row_pitch_px()
 }

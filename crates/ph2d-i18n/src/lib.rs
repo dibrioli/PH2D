@@ -273,7 +273,6 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.group.water" => "Water",
         "panel.wet_tuning.group.physics" => "Physics",
         "panel.wet_tuning.group.tools" => "Tools",
-        "panel.wet_tuning.group.paper" => "Paper",
         "panel.wet_tuning.group.experimental" => "Experimental",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
@@ -316,12 +315,6 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.knob.smear" => "Smear",
         "panel.wet_tuning.knob.wetLift" => "Rewet lift",
         "panel.wet_tuning.knob.extStaining" => "Staining",
-        "panel.wet_tuning.knob.paperContrast" => "Contrast",
-        "panel.wet_tuning.knob.paperFibres" => "Fibres",
-        "panel.wet_tuning.knob.paperGrooves" => "Grooves",
-        "panel.wet_tuning.knob.visualGrain" => "Visual grain",
-        "panel.wet_tuning.knob.emboss" => "Emboss",
-        "panel.wet_tuning.knob.paperVisibility" => "Paper visibility",
         // **O painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system, autorável.
         // ⚠️ Os NOMES dos tokens (`bg-0`, `accent`, …) NÃO passam por aqui: eles são as chaves do
         // `tokens.json`, o endereço que o artista digita no picker de binding e que o arquivo

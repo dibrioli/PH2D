@@ -392,12 +392,8 @@ impl PainterTool {
                 self.wet_recomposite_full();
                 true
             }
-            PanelEvent::Click(id)
-                if *id == crate::ids::PAINTER_WETPAINT_PAPER_VISUAL
-                    || *id == crate::ids::WET_TUNING_PAPER_EYE =>
-            {
-                // One fact, two views: the basic checkbox and the Tuning
-                // panel's PAPER eye.
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_PAPER_VISUAL => {
+                // A Texture on Paint da secção Paper (W1e, F2).
                 self.paint.wetpaint.paper_visual = !self.paint.wetpaint.paper_visual;
                 self.wet_recomposite_full();
                 true
@@ -442,7 +438,6 @@ impl PainterTool {
                 KnobGroup::Water,
                 KnobGroup::Physics,
                 KnobGroup::Tools,
-                KnobGroup::Paper,
             ][gi];
             self.paint.wetpaint.knobs.reset_group(group);
             return true;
@@ -489,7 +484,8 @@ fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId,
     MAP.get_or_init(|| {
         let mut m = std::collections::BTreeMap::new();
         for (i, def) in KNOB_DEFS.iter().enumerate() {
-            if def.group == KnobGroup::Hidden {
+            // O PAPER não tem linhas no Tuning (W1e, F2): o papel é o da secção Paper do painel.
+            if matches!(def.group, KnobGroup::Hidden | KnobGroup::Paper) {
                 continue;
             }
             m.insert(

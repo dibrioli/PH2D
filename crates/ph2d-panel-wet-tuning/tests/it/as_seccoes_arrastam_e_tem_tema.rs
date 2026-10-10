@@ -26,7 +26,7 @@ fn moveis() -> Vec<NodeId> {
         .iter()
         .map(|s| s.header)
         .chain(std::iter::once(
-            ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+            ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
         ))
         .collect()
 }

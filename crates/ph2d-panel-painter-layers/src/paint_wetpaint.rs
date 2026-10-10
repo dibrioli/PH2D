@@ -204,18 +204,7 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_layers.wetpaint.show_wet",
             brush.wet_show_wet,
         );
-        // Paper — the tooth becomes visually part of the painting (render
-        // grain + emboss printed into the pigment; bakes on purpose).
-        y = crate::paint_brush_top::paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
-            "panel.painter_layers.wetpaint.paper",
-            brush.wet_paper_visual,
-        );
+        // (O «Paper» que morava aqui é a Texture on Paint da secção Paper desde a W1e: um papel, uma secção.)
         // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; desligado de fábrica).
         y = crate::paint_brush_top::paint_checkbox_row(
             ctx,

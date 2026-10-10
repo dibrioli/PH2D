@@ -183,6 +183,14 @@ pub(crate) fn paint_paper_section(
     // ── O SUBSTRATO: o dente do papel e o filme de pigmento (as três rows abaixo). ──
     y = paint_substrate_rows(ctx, theme, x, content_w, y, brush);
     if kind == TextureKind::None {
+        // ⚠️ O Wet Paint SEM Kind pinta no papel de FÁBRICA do painel (o Cold que o Relief arma, W1e F2):
+        // o Tooth morde-o e a Texture on Paint imprime-o — os dois vivem aqui, nunca escondidos nem fora
+        // da secção.
+        if brush.wetpaint {
+            let sec = seccao_do_papel(ctx);
+            y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
+            y = paint_texture_on_paint_row(ctx, theme, x, content_w, y, brush);
+        }
         return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
     // ── Live preview of the paper pattern (grayscale; reads the Paper slot via a texture-field view) ──
@@ -246,24 +254,9 @@ pub(crate) fn paint_paper_section(
         2,
         sec,
     );
-    // ── Tooth: quanto o grão do papel morde a tinta — na aguada e na água, e no Digital (onde a tinta
-    //    entra no dente, `PainterTool::papel_como_grain`); o Impasto não o lê. ──
-    if brush.paper_tooth_offered() {
-        y = number_field::paint_num_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.paper.tooth"),
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
-            brush.paper_depth.clamp(0.0, PAPER_TOOTH_MAX), // CLAMP-OK: 0 e a const PAPER_TOOTH_MAX (2,0)
-            0.0,
-            PAPER_TOOTH_MAX,
-            number_field::FINE_STEP,
-            2,
-            sec,
-        );
+    y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
+    if brush.wetpaint {
+        y = paint_texture_on_paint_row(ctx, theme, x, content_w, y, brush);
     }
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
     let pp = crate::number_field::params_de_padrao(
@@ -273,6 +266,61 @@ pub(crate) fn paint_paper_section(
     );
     let out = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
     crate::paint_brush_top::end_fold(ctx, fold, out)
+}
+
+/// ── Tooth: quanto o grão do papel morde a tinta — na aguada e na água, e no Digital (onde a tinta
+///    entra no dente, `PainterTool::papel_como_grain`); o Impasto não o lê.
+#[allow(clippy::too_many_arguments)]
+fn paint_tooth_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+    sec: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    if !brush.paper_tooth_offered() {
+        return y;
+    }
+    number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.paper.tooth"),
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+        brush.paper_depth.clamp(0.0, PAPER_TOOTH_MAX), // CLAMP-OK: 0 e a const PAPER_TOOTH_MAX (2,0)
+        0.0,
+        PAPER_TOOTH_MAX,
+        number_field::FINE_STEP,
+        2,
+        sec,
+    )
+}
+
+/// ── Paint Texture (só o Wet Paint): o dente do papel impresso DENTRO da tinta (grão + relevo da
+///    massa) — o efeito que o Rebelle guarda no papel (*Paint Texture*, `paint_texture`). Morava na secção Wet Paint
+///    com o nome «Paper»; desde a W1e (F2) é do papel, como tudo o que é do papel.
+fn paint_texture_on_paint_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
+        "panel.painter_layers.paper.texture_on_paint",
+        brush.wet_paper_visual,
+    )
 }
 
 /// sRGB `f32` triple → 8-bit (mirror of `paint_brush::encode_rgb`, private there).

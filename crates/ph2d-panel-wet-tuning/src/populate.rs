@@ -55,8 +55,7 @@ pub fn populate(store: &mut WidgetStore) {
         button(store, section.header);
         button(store, section.reset);
     }
-    button(store, ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5]); // Experimental fold
-    button(store, ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE);
+    button(store, ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4]); // Experimental fold
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_MIXING);
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE);
     button(store, ph2d_tool_painter::ids::WET_TUNING_CLOSE);

@@ -84,7 +84,7 @@ fn a_chip_commit_forwards_its_number() {
     );
 }
 
-/// Group resets, the PAPER eye, the K–M checkboxes and the close button all
+/// Group resets, the K–M checkboxes and the close button all
 /// forward — and close forwards the BASIC section's Tuning toggle (the one
 /// authored fact; a panel-local hide would fight the bridge).
 #[test]
@@ -98,7 +98,6 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
         assert!(drained_click(&host.drained_actions(), id));
     }
     for id in [
-        ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
         ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
         ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
     ] {
@@ -144,12 +143,11 @@ fn a_header_click_folds_locally() {
     );
 }
 
-/// Paint offers every row (slider+chip+reset rects), the six headers, the
-/// eye and the K–M checkboxes — and hides the three ENGINE-paper physical
-/// knobs while the artist's Paper slot is armed (lei 3: a knob that does
-/// nothing is a dead control wearing a live one's clothes).
+/// Paint offers every row (slider+chip+reset rects), the headers and the K–M
+/// checkboxes — and NO paper row, armed or not (W1e, F2: o papel do Wet Paint é
+/// o da secção Paper do painel; nenhum controlo de papel vive fora dela).
 #[test]
-fn paint_offers_the_table_and_hides_engine_paper_knobs_under_artist_paper() {
+fn paint_offers_the_table_and_no_paper_row_lives_here() {
     // ⚠️ Alto o bastante para o painel INTEIRO caber: desde a porta da rolagem o clique também é
     // recortado pelo corpo, e medido 2026-09-29 o corpo pede `1333` px contra `766` visíveis a
     // `900` de viewport — as linhas de baixo só passavam porque o registo não era recortado.
@@ -176,25 +174,24 @@ fn paint_offers_the_table_and_hides_engine_paper_knobs_under_artist_paper() {
         assert!(has(&plain, s.reset), "group reset missing");
     }
     for id in [
-        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
-        ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+        ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
         ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
         ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
         ph2d_tool_painter::ids::WET_TUNING_CLOSE,
     ] {
         assert!(has(&plain, id), "static widget {id:?} missing");
     }
-    // Artist Paper armed: the engine-tile physical knobs hide, the render
-    // knobs stay.
+    // Nenhuma linha de papel, com o papel do artista armado ou não.
     let mut armed = PainterTool::default().brush_settings();
     armed.paper_kind = 1;
-    let armed = paint_with(armed);
-    for row in rows::rows() {
-        let visible = has(&armed, row.slider);
-        if rows::is_engine_paper_physical(row.key) {
-            assert!(!visible, "engine-paper knob {} must hide", row.key);
-        } else {
-            assert!(visible, "row {} must stay", row.key);
+    for brush in [PainterTool::default().brush_settings(), armed] {
+        let rects = paint_with(brush);
+        for def in ph2d_wet_paint::tuning::KNOB_DEFS
+            .iter()
+            .filter(|d| d.group == ph2d_wet_paint::tuning::KnobGroup::Paper)
+        {
+            let id = ph2d_tool_painter::ids::wet_tuning_slider_id(def.key);
+            assert!(!has(&rects, id), "a linha de papel {} vive fora da secção Paper", def.key);
         }
     }
     set_current_brush(None);

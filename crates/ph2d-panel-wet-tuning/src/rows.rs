@@ -68,7 +68,8 @@ pub fn rows() -> &'static [TuneRow] {
         KNOB_DEFS
             .iter()
             .enumerate()
-            .filter(|(_, d)| d.group != KnobGroup::Hidden)
+            // O PAPER não tem linhas aqui (W1e, F2): o papel é o da secção Paper do painel.
+            .filter(|(_, d)| !matches!(d.group, KnobGroup::Hidden | KnobGroup::Paper))
             .map(|(i, d)| TuneRow {
                 key: d.key,
                 knob: i,
@@ -104,9 +105,9 @@ pub struct Section {
     pub label: &'static str,
 }
 
-/// The five knob groups, in the model's display order. (Experimental is not
-/// a knob group — it is the two K–M checkboxes, painted after these.)
-pub const SECTIONS: [Section; 5] = [
+/// The four knob groups shown, in the model's display order (o PAPER saiu na W1e, F2). (Experimental is
+/// not a knob group — it is the two K–M checkboxes, painted after these.)
+pub const SECTIONS: [Section; 4] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -131,19 +132,8 @@ pub const SECTIONS: [Section; 5] = [
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[3],
         label: "panel.wet_tuning.group.tools",
     },
-    Section {
-        group: KnobGroup::Paper,
-        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
-        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[4],
-        label: "panel.wet_tuning.group.paper",
-    },
 ];
 
-/// The three PAPER knobs that re-bake the ENGINE's own tile — inert (and so
-/// hidden, lei 3) while the artist's Paper slot drives the tooth.
-pub fn is_engine_paper_physical(key: &str) -> bool {
-    matches!(key, "paperContrast" | "paperFibres" | "paperGrooves")
-}
 
 #[cfg(test)]
 mod tests {
@@ -172,8 +162,7 @@ mod tests {
         }
         for id in [
             ids::WET_TUNING_PANEL,
-            ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
-            ph2d_tool_painter::ids::WET_TUNING_PAPER_EYE,
+            ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
             ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
             ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
             ph2d_tool_painter::ids::WET_TUNING_DRAG_HANDLE,
@@ -185,19 +174,19 @@ mod tests {
         }
     }
 
-    /// 42 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
+    /// 36 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
     /// by doc 23 — + 7 Water + 10 Physics + 5 Tools — incl. the doc-23
-    /// Rewet lift — + 5 Paper + the PaperVisibility master) — the
-    /// registry's visible surface, whole.
+    /// Rewet lift) — the registry's visible surface, whole. O PAPER (6) saiu
+    /// na W1e (F2): nenhuma linha de papel vive fora da secção Paper do painel.
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 42);
+        assert_eq!(rows().len(), 36);
         for g in [
             (KnobGroup::Paint, 14),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 10),
             (KnobGroup::Tools, 5),
-            (KnobGroup::Paper, 6),
+            (KnobGroup::Paper, 0),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);

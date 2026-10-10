@@ -23,6 +23,80 @@ fn cp(x: f32) -> CanvasPointer {
     }
 }
 
+/// **Sonda (W1e, F2): o que o checkbox «Paper» do Wet Paint acrescenta ao Relief do painel.** O Wet Round
+/// no Cold do painel, Relief 0 e 0,6 × o checkbox desligado e ligado, a tela COM a luz do relevo; grava
+/// as quatro telas (`PH2D_SONDA_OUT`) e imprime os texels que cada interruptor move.
+#[test]
+#[ignore = "sonda: o checkbox Paper do Wet Paint contra o Relief; corre-se à mão"]
+fn sonda_checkbox_paper() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o pincel de fábrica")
+        .preset;
+    let mut telas = Vec::new();
+    for relief in [0.0f32, 0.6] {
+        for caixa in [false, true] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+            t.set_paint_tool_mode("wetpaint");
+            t.set_wet_relogio_fixo(true);
+            assert!(t.wet_preset_aplicar(p).is_empty());
+            t.wet_preset_aplicar_volumes(&p.parametros.volumes);
+            t.set_brush_size_px(30.0);
+            t.set_brush_color_srgb8([23, 101, 179]);
+            t.paint.wetpaint.tilt_on = false;
+            t.set_brush_paper_kind(1);
+            t.set_substrate_depth(relief);
+            t.paint.wetpaint.paper_visual = caixa;
+            t.on_canvas_pointer(CanvasPointer {
+                phase: PointerPhase::Down,
+                ..cp(100.0)
+            });
+            for k in 1..=133 {
+                t.on_canvas_pointer(cp(100.0 + 3.0 * k as f32));
+                t.on_tick(8.0);
+            }
+            t.on_canvas_pointer(CanvasPointer {
+                phase: PointerPhase::Up,
+                ..cp(500.0)
+            });
+            for _ in 0..30 * 60 {
+                t.on_tick(1000.0 / 60.0);
+            }
+            let mut px = t.run_full().0;
+            t.apply_impasto_light(
+                &mut px,
+                crate::Region {
+                    x: 0,
+                    y: 0,
+                    w: W as u32,
+                    h: H as u32,
+                },
+            );
+            if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
+                let mut ppm = format!("P6 {W} {H} 255\n").into_bytes();
+                for k in 0..W * H {
+                    ppm.extend_from_slice(&px[k * 4..k * 4 + 3]);
+                }
+                std::fs::write(format!("{dir}/caixa_r{relief}_c{caixa}.ppm"), ppm).expect("grava");
+            }
+            telas.push(((relief, caixa), px));
+        }
+    }
+    let dif = |a: &[u8], b: &[u8]| a.chunks(4).zip(b.chunks(4)).filter(|(x, y)| x != y).count();
+    let (r0c0, r0c1, r6c0, r6c1) = (&telas[0].1, &telas[1].1, &telas[2].1, &telas[3].1);
+    println!(
+        "[caixa] o checkbox move {} texels sem Relief e {} com Relief 0,6 · o Relief move {} sem o checkbox",
+        dif(r0c0, r0c1),
+        dif(r6c0, r6c1),
+        dif(r0c0, r6c0)
+    );
+}
+
 #[test]
 #[ignore = "sonda: o pincel seco nos picos do papel; corre-se à mão"]
 fn sonda_papel_seco() {
@@ -74,6 +148,15 @@ fn sonda_papel_seco() {
                 t.on_tick(1000.0 / 60.0);
             }
             let px = t.run_full().0;
+            if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
+                let mut ppm = format!("P6 {W} {H} 255\n").into_bytes();
+                for k in 0..W * H {
+                    ppm.extend_from_slice(&px[k * 4..k * 4 + 3]);
+                }
+                let painel = if armado { "painel" } else { "fabrica" };
+                std::fs::write(format!("{dir}/papel_{}_{painel}.ppm", nome.replace(' ', "_")), ppm)
+                    .expect("grava a tela");
+            }
             let mut pares: Vec<(f64, f64)> = Vec::new();
             for y in 135..165 {
                 for x in 140..460 {
@@ -103,7 +186,7 @@ fn sonda_papel_seco() {
             let (vales, picos) = (media(&por_h[..q]), media(&por_h[por_h.len() - q..]));
             println!(
                 "[papel] {nome:<14} papel {:<7} água {:?} | px com tinta {:5.1} % | r(escuro, altura) {:+.3} | picos {:5.1} ÷ vales {:5.1} = {:.2}",
-                if armado { "painel" } else { "motor" },
+                if armado { "painel" } else { "fábrica" },
                 p.parametros.volumes.water,
                 100.0 * n / (30.0 * 320.0),
                 r,

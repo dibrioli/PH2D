@@ -5,11 +5,11 @@
 //! ser um [`PlanoCtx`](ph2d_editor_core::panel::section_plan_ctx::PlanoCtx) — a lei da ordem, do
 //! tema, da marca de queda e do fantasma é a partilhada; aqui só mora QUEM é o quê.
 //!
-//! ⭐ **As seis são MÓVEIS, e nenhuma é fixa nem aninhada** — os cinco grupos de botões do motor
-//! (Paint · Water · Physics · Tools · Paper) e o cartão *Experimental* são assuntos paralelos: nenhum
-//! reinterpreta o que está abaixo dele (a razão que prende a Máscara do Painter), e nenhum vive
-//! dentro de outro. ⚠️ O *olho* do Paper e o repor de cada grupo moram NO cabeçalho e viajam com
-//! ele — encostados à esquerda da pega.
+//! ⭐ **As cinco são MÓVEIS, e nenhuma é fixa nem aninhada** — os quatro grupos de botões do motor
+//! (Paint · Water · Physics · Tools; o Paper saiu na W1e, F2 — o papel é o da secção Paper do painel)
+//! e o cartão *Experimental* são assuntos paralelos: nenhum reinterpreta o que está abaixo dele (a
+//! razão que prende a Máscara do Painter), e nenhum vive dentro de outro. ⚠️ O repor de cada grupo
+//! mora NO cabeçalho e viaja com ele — encostado à esquerda da pega.
 //!
 //! ⚠️ **O painel tem a SUA dobra** (o `event` despacha o clique do título como `toggle_collapsed`),
 //! e ela continua a valer: o livro do quadro regista o título sob o MESMO id da secção, que é o que
@@ -24,7 +24,7 @@ use ph2d_editor_core::zones::Rect;
 use crate::rows;
 
 /// O id do cartão *Experimental* — o sexto cabeçalho, que não é um grupo de botões do motor.
-pub(crate) const EXPERIMENTAL: NodeId = ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5];
+pub(crate) const EXPERIMENTAL: NodeId = ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4];
 
 /// ⭐ **As secções que se ARRASTAM**, pela ordem natural em que o corpo as pinta — os cinco grupos
 /// da tabela e o *Experimental*. ⚠️ Derivada da [`rows::SECTIONS`]: um grupo novo entra aqui pelo
@@ -49,7 +49,7 @@ pub(crate) fn regista(ctx: &mut PaintCtx, id: NodeId, head: Rect) {
 }
 
 /// A largura que a ponta direita de um cabeçalho guarda para a pega — quem pinta um controlo ali
-/// (o repor do grupo, o olho do Paper) começa à esquerda dela.
+/// (o repor do grupo) começa à esquerda dela.
 #[must_use]
 pub(crate) fn largura_da_pega() -> f32 {
     ph2d_editor_core::widget::section_grip::grip_slot_w_px()

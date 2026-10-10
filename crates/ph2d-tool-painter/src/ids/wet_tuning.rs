@@ -48,29 +48,24 @@ pub const WET_TUNING_RESIZE_HANDLE: NodeId = hash_node_id("wet_tuning.resize_han
 pub const WET_TUNING_RESIZE_HANDLE_BL: NodeId = hash_node_id("wet_tuning.resize_handle_bl");
 
 /// Collapsible group headers, in display order:
-/// Paint · Water · Physics · Tools · Paper · Experimental.
-pub const WET_TUNING_GROUP_HEADERS: [NodeId; 6] = [
+/// Paint · Water · Physics · Tools · Experimental. (O PAPER saiu na W1e, F2: o papel do Wet Paint é o da
+/// secção Paper do painel — nenhum controlo de papel vive fora dela.)
+pub const WET_TUNING_GROUP_HEADERS: [NodeId; 5] = [
     hash_node_id("wet_tuning.group_paint"),
     hash_node_id("wet_tuning.group_water"),
     hash_node_id("wet_tuning.group_physics"),
     hash_node_id("wet_tuning.group_tools"),
-    hash_node_id("wet_tuning.group_paper"),
     hash_node_id("wet_tuning.group_experimental"),
 ];
 
 /// Per-group reset buttons (the model's header `resetGroup`), same order as
-/// the first five headers (Experimental has no reset — two checkboxes).
-pub const WET_TUNING_GROUP_RESETS: [NodeId; 5] = [
+/// the first four headers (Experimental has no reset — two checkboxes).
+pub const WET_TUNING_GROUP_RESETS: [NodeId; 4] = [
     hash_node_id("wet_tuning.reset_paint"),
     hash_node_id("wet_tuning.reset_water"),
     hash_node_id("wet_tuning.reset_physics"),
     hash_node_id("wet_tuning.reset_tools"),
-    hash_node_id("wet_tuning.reset_paper"),
 ];
-
-/// The PAPER group's eye toggle — the `paperVisibility` master's on/off face
-/// (the same authored fact as the basic section's Paper checkbox).
-pub const WET_TUNING_PAPER_EYE: NodeId = hash_node_id("wet_tuning.paper_eye");
 
 /// Experimental: Kubelka–Munk pigment mixing (`sim.km_mixing`).
 pub const WET_TUNING_KM_MIXING: NodeId = hash_node_id("wet_tuning.km_mixing");

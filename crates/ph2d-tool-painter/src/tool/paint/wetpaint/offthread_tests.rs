@@ -493,6 +493,60 @@ fn measure_a_painting_frame_with_the_water_running() {
     println!("[quadro a pintar] load {}", carga.trim());
 }
 
+/// **O 1.º lote de uma sessão a 4096²** (W1e, F2) — medição, nunca barra: o nascimento + a semente do
+/// papel (sem Kind = o Cold de fábrica do painel, pela lei do painel; antes era o ladrilho memorizado do
+/// motor) contra um lote seguinte. O mínimo de 5 sessões.
+#[test]
+#[ignore = "medicao — rode com --profile smoke --ignored --nocapture --test-threads=1"]
+fn measure_the_first_batch_of_a_session() {
+    let (mut primeiro, mut seguinte) = (f32::INFINITY, f32::INFINITY);
+    for _ in 0..5 {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 4096 * 4096 * 4], 4096, 4096);
+        t.set_paint_media(PaintMedia::WetPaint);
+        let a = Instant::now();
+        t.on_canvas_pointer(cp([2000.0, 2000.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([2010.0, 2000.0], PointerPhase::Move));
+        primeiro = primeiro.min(a.elapsed().as_secs_f32() * 1e3);
+        let a = Instant::now();
+        t.on_canvas_pointer(cp([2020.0, 2000.0], PointerPhase::Move));
+        seguinte = seguinte.min(a.elapsed().as_secs_f32() * 1e3);
+        t.on_canvas_pointer(cp([2020.0, 2000.0], PointerPhase::Up));
+    }
+    // As duas portas do papel, intercaladas sobre o MESMO motor: o re-assar do motor (o «antes») e a
+    // semente pela lei do painel com o Cold de fábrica (o «agora»).
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 4096 * 4096 * 4], 4096, 4096);
+    t.set_paint_media(PaintMedia::WetPaint);
+    assert!(t.ensure_wet_session());
+    let cold = crate::tool::paint::substrate_relief::papel_de_fabrica();
+    let rot = ph2d_painter_brush::texture::angle_basis(cold.angle_deg);
+    let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+    let (mut assar, mut semear) = (f32::INFINITY, f32::INFINITY);
+    for _ in 0..5 {
+        let a = Instant::now();
+        s.engine.rebake_paper();
+        assar = assar.min(a.elapsed().as_secs_f32() * 1e3);
+        let a = Instant::now();
+        s.engine.seed_paper_with(&|cx, cy| {
+            f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+                &cold,
+                cx,
+                cy,
+                None,
+                rot,
+                [0.0, 0.0],
+            ))
+        });
+        semear = semear.min(a.elapsed().as_secs_f32() * 1e3);
+    }
+    println!(
+        "[primeiro lote] 4096²: o 1.º {primeiro:.1} ms · o seguinte {seguinte:.2} ms · o papel: re-assar o do \
+         motor {assar:.1} ms · semear o do painel {semear:.1} ms · load {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 5 — UMA AÇÃO DE CANVAS ALCANÇA O MOTOR
 // ---------------------------------------------------------------------------

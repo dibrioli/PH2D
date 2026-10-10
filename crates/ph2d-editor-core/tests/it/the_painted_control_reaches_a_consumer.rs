@@ -194,7 +194,6 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
 /// grosseiro e a régua tem de ser lida antes do código.
 const KNOWN_LIVE: &[(&str, &str)] = &[
     // `ph2d-panel-wet-tuning` — auditado 42/42 limpo. Estes sao os consts dele.
-    ("WET_TUNING_PAPER_EYE", "CMP no event.rs do painel"),
     ("WET_TUNING_KM_MIXING", "CMP no event.rs do painel"),
     ("WET_TUNING_KM_GLAZE", "CMP no event.rs do painel"),
     (

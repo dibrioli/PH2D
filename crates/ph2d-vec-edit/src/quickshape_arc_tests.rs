@@ -145,7 +145,8 @@ fn regular_snaps_the_sweep_and_the_chord_to_fifteen_degrees_and_keeps_the_start(
 
 #[test]
 fn the_arc_path_is_open_smooth_inside_cornered_at_the_ends_and_on_the_circle() {
-    for (sweep, n) in [(PI / 3.0, 2), (-PI, 3), (1.5 * PI, 4), (1.9 * PI, 5)] {
+    // 92° cabe num troço (a folga de 5 %): o meio arco de uma mão tem 181° e três nós.
+    for (sweep, n) in [(PI / 3.0, 2), (0.51 * PI, 2), (-PI, 3), (1.5 * PI, 4), (1.9 * PI, 5)] {
         let p = arc_path([10.0, 20.0], 100.0, 0.3, sweep);
         assert!(!p.closed && p.verts.len() == n, "{sweep}: {} nós", p.verts.len());
         let last = p.verts.len() - 1;
@@ -452,81 +453,70 @@ fn measure_arc_constants() {
     }
 }
 
-// ── BUSCA TEMPORÁRIA de testemunhas para as sobreviventes da mutação (sai depois) ──────────────
+// ── Taubin × Kåsa e os arcos de elipse ─────────────────────────────────────────────────────────
 
-fn kind(q: &Option<QuickShape>) -> String {
-    match q {
-        None => "livre".into(),
-        Some(QuickShape::Line { .. }) => "linha".into(),
-        Some(QuickShape::Polygon { corners, closed }) => format!("poli{}{}", corners.len(), if *closed { "F" } else { "A" }),
-        Some(QuickShape::Ellipse { .. }) => "elipse".into(),
-        Some(QuickShape::Arc { sweep, .. }) => format!("ARCO{:.0}", sweep.to_degrees()),
-    }
-}
-
+/// Com tremor, Kåsa ENCOLHE o raio de um arco curto e Taubin não (`measure_taubin_against_kasa`:
+/// 45°, raio 80, ±2 px — Taubin −0,06 px, Kåsa −3,5 px em média).
 #[test]
-#[ignore = "busca"]
-fn search_witnesses() {
-    let mut cands: Vec<(String, Vec<P2>)> = Vec::new();
-    for t in [60.0_f64, 90.0, 120.0, 180.0] {
-        // espiral de Euler: curvatura de 0 a k, comprimento 300
-        let (n, len) = (300, 300.0);
-        let k = 2.0 * t.to_radians() / len;
-        let (mut p, mut a) = ([0.0, 0.0], 0.0_f64);
-        let mut v = vec![p];
-        for i in 0..n {
-            let s = len * f64::from(i) / f64::from(n);
-            a += k * s / len * (len / f64::from(n));
-            p = add(p, mul(unit(a), len / f64::from(n)));
-            v.push(p);
-        }
-        cands.push((format!("euler {t}"), v));
+fn taubin_does_not_shrink_a_short_noisy_arc_as_kasa_does() {
+    let (mut t, mut k) = (0.0, 0.0);
+    for seed in 0..40 {
+        let pts = stroke(&arc_poly(80.0, 0.0, 45.0), 2.0, seed);
+        t += (taubin(&pts).unwrap().1 - 80.0) / 40.0;
+        k += (kasa(&pts).1 - 80.0) / 40.0;
     }
-    for b in [30.0, 60.0, 100.0] {
-        let mut v: Vec<P2> = vec![[-200.0, b], [0.0, b]];
-        v.extend(arc_poly(b, 90.0, -90.0).iter().skip(1));
-        cands.push((format!("taco {b}"), v));
-    }
-    for a in [0.03, 0.06, 0.1] {
-        for per in [1.0, 1.5, 2.0] {
-            let v: Vec<P2> = (0..=200)
-                .map(|i| {
-                    let t = f64::from(i) / 200.0;
-                    [300.0 * t, 300.0 * a * (TAU * per * t).sin()]
-                })
-                .collect();
-            cands.push((format!("onda a{a} p{per}"), v));
-        }
-    }
-    for k in [3, 4, 5] {
-    for t in [30.0_f64, 35.0, 40.0, 45.0, 50.0] {
-        for phi in [3.0_f64, 5.0, 7.0, 11.0] {
-            let mut v = vec![[0.0, 0.0]];
-            for j in 0..k {
-                let q = v[v.len() - 1];
-                v.push(add(q, mul(unit((phi + t * f64::from(j)).to_radians()), 150.0)));
-            }
-            cands.push((format!("poli{k} t{t} phi{phi}"), v));
-        }
-    }
-    }
-    for (n, p) in not_arcs(160.0, 0) {
-        cands.push((n.into(), p));
-    }
-    let m1 = Law { arc_bend_back: 1.0, ..Law::MEASURED };
-    for (name, poly) in &cands {
-        for seed in 0..10 {
-            let pts = stroke(poly, 1.0, seed);
-            let (r0, r1, b) = (
-                kind(&recognise(&pts, 1.0, false)),
-                kind(&recognise(&pts, 1.0, true)),
-                kind(&recognise_with(&m1, &pts, 1.0, false)),
-            );
-            println!("C {name} s{seed}: {r0} {r1} {b}");
+    assert!(k < -2.5, "controlo: Kåsa encolhe {k:+.2} px");
+    assert!(t.abs() < 1.0, "Taubin erra {t:+.2} px");
+}
+
+/// As duas guardas do S são CAMADAS, e cada uma segura sozinha: o S raso (onda de 10 %) só a
+/// viragem para trás o pára; sem ela, o resíduo relativo ao MENOR de raio e tamanho pára o S fundo
+/// (relativo ao raio enorme do ajuste ele passava).
+#[test]
+fn each_guard_of_the_s_holds_alone() {
+    let shallow: Vec<P2> = (0..=200)
+        .map(|i| {
+            let t = f64::from(i) / 200.0;
+            [300.0 * t, 30.0 * (TAU * t).sin()]
+        })
+        .collect();
+    let no_bend = Law {
+        arc_bend_back: 1.0,
+        ..Law::MEASURED
+    };
+    for seed in 0..10 {
+        let q = recognise(&stroke(&shallow, 1.0, seed), 1.0, false);
+        assert!(!matches!(q, Some(QuickShape::Arc { .. })), "S raso (mão {seed}): {q:?}");
+        for (name, poly) in not_arcs(160.0, seed).into_iter().take(2) {
+            let q = recognise_with(&no_bend, &stroke(&poly, 1.0, seed), 1.0, false);
+            assert!(!matches!(q, Some(QuickShape::Arc { .. })), "{name} (mão {seed}): {q:?}");
         }
     }
 }
 
+/// O `Shift` nunca troca o TIPO: a polilinha de três lados com quinas de 30° (a régua da fusão é
+/// 29°) que a lei lê polilinha continua polilinha com o `regular` — medida COM o regular, a
+/// polilinha regularizada ficava mais longe do traço e o arco ganhava.
+#[test]
+fn the_shift_never_turns_a_polyline_into_an_arc() {
+    let mut poly = vec![[0.0, 0.0]];
+    for j in 0..3 {
+        let q = poly[poly.len() - 1];
+        poly.push(add(q, mul(unit((5.0 + 30.0 * f64::from(j)).to_radians()), 150.0)));
+    }
+    for seed in [1, 4, 6, 8, 9] {
+        let pts = stroke(&poly, 1.0, seed);
+        for regular in [false, true] {
+            let q = recognise(&pts, 1.0, regular);
+            assert!(
+                matches!(q, Some(QuickShape::Polygon { closed: false, .. })),
+                "regular {regular} (mão {seed}): {q:?}"
+            );
+        }
+    }
+}
+
+/// O ajuste algébrico de Kåsa (o controlo do gate de Taubin).
 fn kasa(p: &[P2]) -> (P2, f64) {
     let (mut m, mut v) = ([[0.0; 3]; 3], [0.0; 3]);
     for &[x, y] in p {

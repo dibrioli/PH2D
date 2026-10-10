@@ -69,7 +69,7 @@ pub(crate) struct Law {
     pub(crate) arc_rms_max: f64,
     /// Fracção máxima da viragem CONTRA o sentido do arco, entre `arc_chords` cordas iguais: vale
     /// `0,15–0,35` (a 0,1 os arcos pequenos tremidos caem a 75 %, a 0,4 um rabisco vira arco); as
-    /// cordas, `3–8` (a 12 o tremor de cada corda já vira para trás).
+    /// cordas, `4–8` (a 3 um rabisco vira arco, a 12 o tremor de cada corda já vira para trás).
     pub(crate) arc_bend_back: f64,
     pub(crate) arc_chords: usize,
 }

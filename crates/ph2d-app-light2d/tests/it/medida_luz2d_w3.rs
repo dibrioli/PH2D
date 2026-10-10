@@ -373,8 +373,8 @@ fn margem(gpu: &GpuContext) {
     );
     eprintln!("|---|{}", "---|".repeat(distancias.len()));
     let coluna = |l: &LuzDoQuadro| -> Vec<f64> {
-        let g = l.grade().expect("acesa");
-        let f = fluencia_lida(gpu, l.solver().expect("solver"));
+        let crate::comum::Fluencia { v: f, grade: g } =
+            fluencia_lida(gpu, l.solver().expect("solver"));
         let x = borda + 0.2;
         let i = (((x - g.origem_m[0]) / g.texel_m) as u32).min(g.largura - 1);
         (0..g.altura)

@@ -326,6 +326,7 @@ fn a_edicao_depois_da_codificacao_chega_ao_mesmo_quadro() {
     let r = renderer(&gpu);
     let maximo = |luz: &LuzDoQuadro| {
         crate::comum::fluencia_lida(&gpu, luz.solver().expect("solver"))
+            .v
             .iter()
             .flatten()
             .fold(0.0_f32, |m, &v| m.max(v))

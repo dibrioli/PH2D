@@ -1,0 +1,250 @@
+//! ⭐⭐⭐ **A ESCADA da sombra nítida** (smoke do dono, 10/10, foto
+//! `docs/Luz2D/handoffs/fotos_W4/cena4_low_medium_high.png`): a borda da sombra da lâmpada PEQUENA da
+//! cena 4, junto ao canto da parede (onde a penumbra é mais estreita), guardada numa grade grossa sai
+//! em degraus. A `medida_borda_reta` amostra a cada 10 cm e não os vê; esta régua amostra a CADA
+//! PÍXEL de tela.
+//!
+//! O gabarito é a geometria: o ponto de 50 % de luz está EXATAMENTE na reta centro da lâmpada → canto
+//! (metade do disco à vista). O desvio do ponto de 50 % da placa a essa reta, píxel a píxel, é a régua.
+
+use bevy_ecs::world::World;
+use ph2d_app_light2d::{Degrau, LuzDoQuadro, smoke};
+use ph2d_ecs::Name;
+use ph2d_gpu::GpuContext;
+use ph2d_host::WindowSize;
+use ph2d_render::Camera2d;
+use vello::kurbo::Affine;
+
+use crate::comum::visivel;
+
+const FHD: (u32, u32) = (1920, 1080);
+
+fn afim() -> Affine {
+    Camera2d::default().world_to_screen_affine(WindowSize::new(FHD.0, FHD.1))
+}
+
+/// A escada de um contorno: o desvio dele ao da geometria, em píxeis de tela.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Escada {
+    /// O desvio médio (um deslocamento da borda inteira, não degrau).
+    pub media_px: f64,
+    /// O rms depois de tirar a reta de mínimos quadrados (só os degraus).
+    pub degrau_px: f64,
+    pub pontos: usize,
+}
+
+fn tira(w: &mut World, nome: &str) {
+    let e = w
+        .query::<(bevy_ecs::entity::Entity, &Name)>()
+        .iter(w)
+        .find(|(_, n)| n.0 == nome)
+        .map(|(e, _)| e)
+        .expect("existe");
+    w.despawn(e);
+}
+
+/// A cena 4 sem a ambiente (só as lâmpadas contam) — com e sem a parede da sala da PEQUENA.
+pub(crate) fn cena4_com_e_sem() -> (World, World) {
+    let (mut com, mut sem) = (World::new(), World::new());
+    assert!(smoke::encenar(&mut com, 4) && smoke::encenar(&mut sem, 4));
+    tira(&mut com, "Luz ambiente");
+    tira(&mut sem, "Luz ambiente");
+    tira(&mut sem, "Parede da pequena");
+    (com, sem)
+}
+
+/// A luz recebida em `p` pelo caminho do PRODUTO (`LuzDoQuadro` com `degrau`), lida da placa.
+pub(crate) fn luz_do_quadro(gpu: &GpuContext, degrau: Degrau, w: &World) -> crate::comum::Fluencia {
+    let r = crate::comum::renderer(gpu);
+    let mut l = LuzDoQuadro::com_degrau(degrau);
+    assert!(l.preparar(w, afim(), FHD));
+    l.gravar(gpu, &mut ph2d_ecs::PresentWorld::new(), &r);
+    crate::comum::fluencia_lida(gpu, l.solver().expect("solver"))
+}
+
+/// Os três contornos da penumbra que a régua segue: o escuro, o meio e o claro. A escada que o dono
+/// viu vive nos de 10 % e 90 % (o de 50 % de uma degrau interpolado quase não ondula).
+pub(crate) const NIVEIS: [f64; 3] = [0.1, 0.5, 0.9];
+
+fn cruza(ts: &[f64], f: &[f64], nivel: f64) -> Option<f64> {
+    f.windows(2)
+        .position(|w| (w[0] - nivel) * (w[1] - nivel) <= 0.0 && w[0] != w[1])
+        .map(|i| ts[i] + (nivel - f[i]) / (f[i + 1] - f[i]) * (ts[i + 1] - ts[i]))
+}
+
+fn resumo(desvios: &[(f64, f64)]) -> Escada {
+    let n = desvios.len().max(1) as f64;
+    let (mx, my) = desvios
+        .iter()
+        .fold((0.0, 0.0), |a, p| (a.0 + p.0 / n, a.1 + p.1 / n));
+    let (sxy, sxx) = desvios.iter().fold((0.0, 0.0), |a, p| {
+        (a.0 + (p.0 - mx) * (p.1 - my), a.1 + (p.0 - mx).powi(2))
+    });
+    let inclinacao = sxy / sxx.max(1e-12);
+    let resto = |p: &(f64, f64)| p.1 - (my + inclinacao * (p.0 - mx));
+    Escada {
+        media_px: my,
+        degrau_px: (desvios.iter().map(|p| resto(p).powi(2)).sum::<f64>() / n).sqrt(),
+        pontos: desvios.len(),
+    }
+}
+
+/// ⭐ **A régua**: de 4 px depois do canto até a linha de medida da penumbra, a cada píxel de tela,
+/// o perfil perpendicular à borda (passo de 1/20 de píxel); em cada contorno de [`NIVEIS`], o
+/// desvio do cruzamento da placa (fração com/sem parede) ao da geometria (`comum::visivel`).
+pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia) -> [Escada; 3] {
+    let [a, b, ..] = afim().as_coeffs();
+    let ppm = a.hypot(b);
+    let (lampada, canto, linha) = smoke::geometria_da_sala(smoke::SALAS_X[0]);
+    let (l, c) = (lampada.map(f64::from), canto.map(f64::from));
+    let raio = f64::from(smoke::LAMPADA_PEQUENA_M);
+    let d = [c[0] - l[0], c[1] - l[1]];
+    let dist = d[0].hypot(d[1]);
+    let u = [d[0] / dist, d[1] / dist];
+    let nrm = [-u[1], u[0]];
+    let s_fim = (f64::from(linha) - c[0]) / u[0];
+    let mut desvios: [Vec<(f64, f64)>; 3] = Default::default();
+    let mut k = 4.0;
+    while k / ppm <= s_fim {
+        let s = k / ppm;
+        let p0 = [c[0] + s * u[0], c[1] + s * u[1]];
+        // Meia penumbra (o cone do disco a `s` do canto) e 6 px de folga de cada lado.
+        let h = s * raio / dist + 6.0 / ppm;
+        let n = (2.0 * h * ppm * 20.0).ceil() as usize;
+        let ts: Vec<f64> = (0..=n)
+            .map(|i| -h + 2.0 * h * i as f64 / n as f64)
+            .collect();
+        let ponto = |t: f64| [p0[0] + t * nrm[0], p0[1] + t * nrm[1]];
+        let f: Vec<f64> = ts
+            .iter()
+            .map(|&t| fc.amostra(ponto(t)) / fs.amostra(ponto(t)).max(1e-9))
+            .collect();
+        let g: Vec<f64> = ts.iter().map(|&t| visivel(ponto(t), l, raio, c)).collect();
+        for (j, nivel) in NIVEIS.into_iter().enumerate() {
+            if let (Some(tp), Some(tg)) = (cruza(&ts, &f, nivel), cruza(&ts, &g, nivel)) {
+                desvios[j].push((k, (tp - tg) * ppm));
+            }
+        }
+        k += 1.0;
+    }
+    desvios.each_ref().map(|d| resumo(d))
+}
+
+/// A régua sobre o caminho do PRODUTO com `degrau`.
+pub(crate) fn escada(gpu: &GpuContext, degrau: Degrau) -> [Escada; 3] {
+    let (com, sem) = cena4_com_e_sem();
+    escada_de(
+        &luz_do_quadro(gpu, degrau, &com),
+        &luz_do_quadro(gpu, degrau, &sem),
+    )
+}
+
+/// O degrau de cada nível do Settings (Low · Medium · High).
+pub(crate) fn degraus() -> [(&'static str, Degrau); 3] {
+    use ph2d_editor_core::luz_edits::NivelDaLuz;
+    [
+        ("Low", NivelDaLuz::Baixa),
+        ("Medium", NivelDaLuz::Media),
+        ("High", NivelDaLuz::Alta),
+    ]
+    .map(|(nome, n)| (nome, ph2d_app_light2d::qualidade::degrau_do(n)))
+}
+
+/// O teto da escada — pelo MEDIDO (W4b, `medida_luz2d_w4b` B): com a grade fina de 1 px o degrau
+/// dos três contornos é 0,108 · 0,064 · 0,135 px no Low e 0,12 · 0,06 · 0,12 no Medium (= o High:
+/// 0,107 · 0,049 · 0,120); sem ela 0,65 · 0,43 · 0,68 (Low) e 0,31 · 0,17 · 0,30 (Medium).
+const TETO_DO_DEGRAU_PX: f64 = 0.2;
+/// O deslocamento da borda inteira, em texels da grade GROSSA: a captura arredonda o canto do
+/// oclusor (medido 0,50 · 0,50 · 0,57 texel; a marcha mais fina só tira ~16 % dele, ABERTO da W4b).
+const TETO_DA_MEDIA_EM_TEXELS: f64 = 0.75;
+
+/// ⭐⭐⭐ **GATE — a sombra nítida não tem ESCADA** em nenhum nível (os três contornos da penumbra,
+/// a cada píxel de tela), e a borda não sai do lugar mais do que a captura explica.
+#[test]
+fn a_sombra_nitida_nao_tem_escada() {
+    let Some(gpu) = crate::comum::gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let [a, b, ..] = afim().as_coeffs();
+    let ppm = a.hypot(b);
+    for (nome, degrau) in degraus() {
+        let g = ph2d_app_light2d::grade_do_quadro(afim(), FHD, degrau).expect("grade");
+        let texel_px = g.texel_m * ppm;
+        for (nivel, e) in NIVEIS.into_iter().zip(escada(&gpu, degrau)) {
+            eprintln!(
+                "escada · {nome} · {:>2.0} %: degrau {:.3} px · média {:.3} px ({:.2} texel) · {} pontos",
+                nivel * 100.0,
+                e.degrau_px,
+                e.media_px,
+                e.media_px / texel_px,
+                e.pontos
+            );
+            assert!(
+                e.pontos >= 150,
+                "a régua achou só {} pontos da borda",
+                e.pontos
+            );
+            assert!(
+                e.degrau_px <= TETO_DO_DEGRAU_PX,
+                "{nome}, contorno de {nivel}: a borda da sombra sai em ESCADA — {:.3} px (teto {TETO_DO_DEGRAU_PX})",
+                e.degrau_px
+            );
+            assert!(
+                e.media_px.abs() <= TETO_DA_MEDIA_EM_TEXELS * texel_px,
+                "{nome}, contorno de {nivel}: a borda saiu do lugar {:.2} px (teto {TETO_DA_MEDIA_EM_TEXELS} texel = {:.2} px)",
+                e.media_px,
+                TETO_DA_MEDIA_EM_TEXELS * texel_px
+            );
+        }
+    }
+}
+
+/// Sonda da CAUSA do deslocamento da borda (a média): a marcha com passo de ¼ de texel perto do
+/// conteúdo. Se a média cai, é a amostragem da marcha; se fica, é a captura (o canto arredondado
+/// pela cobertura interpolada). À mão: `… --ignored --nocapture medida_causa_do_desvio`.
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn medida_causa_do_desvio() {
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let (com, sem) = cena4_com_e_sem();
+    let (cc, cs) = (
+        ph2d_light2d_ecs::coleta::cena_de_luz(&com),
+        ph2d_light2d_ecs::coleta::cena_de_luz(&sem),
+    );
+    for (nome, degrau) in degraus() {
+        let g = ph2d_app_light2d::grade_do_quadro(afim(), FHD, degrau).expect("grade");
+        let fina = ph2d_app_light2d::fina_do_quadro(afim(), degrau);
+        for (passo, refino) in [
+            (1.0_f32, ph2d_light2d_gpu::REFINO_PADRAO),
+            (0.25, ph2d_light2d_gpu::REFINO_PADRAO),
+            (0.125, ph2d_light2d_gpu::REFINO_PADRAO),
+            (1.0, ph2d_light2d_gpu::Refino::Tudo),
+            (0.25, ph2d_light2d_gpu::Refino::Tudo),
+        ] {
+            let cfg = ph2d_light2d_gpu::Config {
+                passo_perto: passo,
+                fina,
+                refino,
+                ..ph2d_light2d_gpu::Config::padrao_para(&gpu.device, g)
+            };
+            let flu = |cena: &ph2d_light2d_ecs::CenaDeLuz| {
+                let mut s = ph2d_light2d_gpu::Solver::novo(&gpu, cfg).expect("solver");
+                s.quadro(&gpu, cena);
+                crate::comum::fluencia_lida(&gpu, &s)
+            };
+            let e = escada_de(&flu(&cc), &flu(&cs));
+            eprintln!(
+                "causa · {nome} · passo {passo} · {refino:?}: média {:.3} · {:.3} · {:.3} · degrau {:.3} · {:.3} · {:.3} px (10 · 50 · 90 %)",
+                e[0].media_px,
+                e[1].media_px,
+                e[2].media_px,
+                e[0].degrau_px,
+                e[1].degrau_px,
+                e[2].degrau_px
+            );
+        }
+    }
+}

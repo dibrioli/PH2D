@@ -143,10 +143,9 @@ pub(crate) fn penumbras_na_placa(
         let mut l = ph2d_app_light2d::LuzDoQuadro::com_degrau(degrau);
         assert!(l.preparar(w, afim, (1920, 1080)));
         l.gravar(gpu, &mut ph2d_ecs::PresentWorld::new(), &r);
-        (
-            crate::comum::fluencia_lida(gpu, l.solver().expect("solver")),
-            l.grade().expect("grade"),
-        )
+        let f = crate::comum::fluencia_lida(gpu, l.solver().expect("solver"));
+        let texel = l.grade().expect("grade").texel_m;
+        (f, texel)
     };
     let tira = |w: &mut World, nome: &str| {
         let e = w
@@ -171,15 +170,12 @@ pub(crate) fn penumbras_na_placa(
         tira(&mut com, "Luz ambiente");
         tira(&mut sem, "Luz ambiente");
         tira(&mut sem, ["Parede da pequena", "Parede da grande"][sala]);
-        let ((fc, g), (fs, _)) = (fluencia(&com), fluencia(&sem));
+        let ((fc, texel), (fs, _)) = (fluencia(&com), fluencia(&sem));
         let (lampada, canto, linha) = smoke::geometria_da_sala(smoke::SALAS_X[sala]);
         let linha = f64::from(linha);
         let medida: Vec<f64> = ys
             .iter()
-            .map(|&y| {
-                crate::comum::amostra(&fc, g, [linha, y])
-                    / crate::comum::amostra(&fs, g, [linha, y])
-            })
+            .map(|&y| fc.amostra([linha, y]) / fs.amostra([linha, y]))
             .collect();
         let prevista: Vec<f64> = ys
             .iter()
@@ -195,7 +191,7 @@ pub(crate) fn penumbras_na_placa(
         out.push((
             nome,
             raio,
-            g.texel_m,
+            texel,
             largura_10_90(&ys, &medida),
             largura_10_90(&ys, &prevista).expect("geometria"),
         ));

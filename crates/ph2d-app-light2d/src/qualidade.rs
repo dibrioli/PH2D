@@ -36,6 +36,22 @@ fn vizinho(n: NivelDaLuz, passo: isize) -> Option<NivelDaLuz> {
     NivelDaLuz::ALL.get(i.checked_add_signed(passo)?).copied()
 }
 
+/// ⭐ Uma leitura do custo de placa da luz, partida pelo que segue a célula do nível (`1/célula²`:
+/// a captura, o campo, as cascatas e a visibilidade das lâmpadas) e o que não segue (a grade FINA da
+/// luz direta, do mesmo tamanho em todo nível).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Custo {
+    pub por_nivel: f64,
+    pub fixo: f64,
+}
+
+impl Custo {
+    #[must_use]
+    pub fn total(&self) -> f64 {
+        self.por_nivel + self.fixo
+    }
+}
+
 /// ⭐ O governador: lê o custo medido e decide o nível, sem passar do teto.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Governador {
@@ -56,15 +72,16 @@ impl Governador {
 
     /// Uma leitura do custo da luz (`ms` de placa, o solver inteiro) com o teto `teto`. Devolve o
     /// nível a usar.
-    pub fn ler(&mut self, ms: f64, teto: NivelDaLuz) -> NivelDaLuz {
+    pub fn ler(&mut self, custo: Custo, teto: NivelDaLuz) -> NivelDaLuz {
         if self.nivel > teto {
             *self = Self::novo(teto);
             return self.nivel;
         }
+        let ms = custo.total();
         let acima = vizinho(self.nivel, 1).filter(|&a| a <= teto);
         let previsto = acima.map(|a| {
             let r = f64::from(self.nivel.celula_px() / a.celula_px());
-            ms * r * r
+            custo.por_nivel * r * r + custo.fixo
         });
         if ms > ORCAMENTO_MS {
             self.folgadas = 0;

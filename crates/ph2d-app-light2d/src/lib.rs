@@ -20,7 +20,9 @@ pub mod qualidade;
 pub mod smoke;
 mod vetor;
 
-pub use grade::{DEGRAU_PADRAO, Degrau, grade_do_quadro, tela_para_mundo};
+pub use grade::{
+    DEGRAU_PADRAO, Degrau, fina_do_quadro, grade_do_quadro, regiao_da_janela, tela_para_mundo,
+};
 pub use quadro::LuzDoQuadro;
 
 /// A declaração da família à shell.

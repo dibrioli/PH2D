@@ -7,7 +7,7 @@ use ph2d_app_light2d::{Degrau, LuzDoQuadro};
 use ph2d_ecs::{GlobalTransform, PresentWorld, Transform, VecPathRef};
 use ph2d_host::WindowSize;
 use ph2d_light2d_ecs::{BloqueiaLuz, Luz, Oclusor, TipoDeLuz};
-use ph2d_light2d_gpu::{Config, Solver};
+use ph2d_light2d_gpu::Solver;
 use ph2d_render::Camera2d;
 use ph2d_vec_scene::{VecScene, VecXforms, Xform, rectangle};
 use vello::kurbo::Affine;
@@ -64,13 +64,10 @@ pub fn medir(gpu: &ph2d_gpu::GpuContext, d: Degrau) -> (f64, f64) {
             luz.desenhar_vetores(gpu, &doc, &xforms);
         }
         luz.gravar(gpu, &mut PresentWorld::new(), &r);
-        (
-            fluencia_lida(gpu, luz.solver().expect("solver")),
-            luz.grade().expect("acesa"),
-            luz.cena().clone(),
-        )
+        let s = luz.solver().expect("solver");
+        (fluencia_lida(gpu, s), *s.config(), luz.cena().clone())
     };
-    let (com, g, cena) = correr(true);
+    let (com, cfg, cena) = correr(true);
     let (sem, _, _) = correr(false);
 
     // A régua: o MESMO retângulo como polígono, no mundo.
@@ -85,15 +82,25 @@ pub fn medir(gpu: &ph2d_gpu::GpuContext, d: Degrau) -> (f64, f64) {
         ],
         opacidade: 1.0,
     }];
-    let mut sol = Solver::novo(gpu, Config::padrao_para(&gpu.device, g)).expect("solver");
+    // A MESMA configuração do quadro (grade, grade fina): só a forma do oclusor muda.
+    let mut sol = Solver::novo(gpu, cfg).expect("solver");
+    let (ini, fim) = ph2d_app_light2d::regiao_da_janela(sol.grade_da_fluencia(), afim(), ALVO);
+    sol.regiao_fina(ini, fim);
     sol.quadro(gpu, &poligono);
-    let referencia = fluencia_lida(gpu, &sol);
+    let crate::comum::Fluencia {
+        v: referencia,
+        grade: g,
+    } = fluencia_lida(gpu, &sol);
 
     let rmse = |a: &[[f32; 3]]| {
         let (mut e2, mut soma, mut n) = (0.0_f64, 0.0_f64, 0u32);
         for (k, (x, y)) in a.iter().zip(&referencia).enumerate() {
-            let i = f64::from(k as u32 % g.largura);
-            if g.origem_m[0] + (i + 0.5) * g.texel_m < 0.8 {
+            let (i, j) = (k as u32 % g.largura, k as u32 / g.largura);
+            // Só a região da janela (a única que o quadro calcula), atrás do caminho.
+            if !(ini[0]..fim[0]).contains(&i) || !(ini[1]..fim[1]).contains(&j) {
+                continue;
+            }
+            if g.origem_m[0] + (f64::from(i) + 0.5) * g.texel_m < 0.8 {
                 continue;
             }
             for ch in 0..3 {
@@ -105,7 +112,7 @@ pub fn medir(gpu: &ph2d_gpu::GpuContext, d: Degrau) -> (f64, f64) {
         }
         (e2 / f64::from(n)).sqrt() / (soma / f64::from(n))
     };
-    (rmse(&com), rmse(&sem))
+    (rmse(&com.v), rmse(&sem.v))
 }
 
 #[test]

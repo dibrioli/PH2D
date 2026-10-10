@@ -16,7 +16,7 @@ use ph2d_light2d_gpu::{Config, ErroSolver, Grade, Motivo, Quem, RelatorioC0, Sol
 use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
-use crate::grade::{DEGRAU_PADRAO, Degrau, grade_do_quadro, tela_para_mundo};
+use crate::grade::{DEGRAU_PADRAO, Degrau, fina_do_quadro, grade_do_quadro, tela_para_mundo};
 
 struct Resolvido {
     solver: Solver,
@@ -31,7 +31,10 @@ pub struct LuzDoQuadro {
     sem_luz: BTreeSet<Entity>,
     /// `Some` = a cena tem `Luz` neste quadro.
     grade: Option<Grade>,
+    /// ⭐ Texels finos por texel da grade (a luz direta, W4b).
+    fina: u32,
     mundo_para_tela: Affine,
+    alvo_px: (u32, u32),
     resolvido: Option<Resolvido>,
     relatorio: Option<RelatorioC0>,
     erro: Option<ErroSolver>,
@@ -74,7 +77,9 @@ impl LuzDoQuadro {
             cena: CenaDeLuz::default(),
             sem_luz: BTreeSet::new(),
             grade: None,
+            fina: 1,
             mundo_para_tela: Affine::IDENTITY,
+            alvo_px: (0, 0),
             resolvido: None,
             relatorio: None,
             erro: None,
@@ -102,11 +107,13 @@ impl LuzDoQuadro {
         self.cena = cena_de_luz(world);
         self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
+        self.alvo_px = alvo_px;
         self.grade = if self.cena.luzes == 0 {
             None
         } else {
             grade_do_quadro(mundo_para_tela, alvo_px, self.degrau)
         };
+        self.fina = fina_do_quadro(mundo_para_tela, self.degrau);
         self.sem_luz.clear();
         if self.grade.is_some() {
             self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
@@ -227,16 +234,21 @@ impl LuzDoQuadro {
         let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
             return;
         };
+        let fina = self.fina;
         let mesmas = self.resolvido.as_ref().is_some_and(|r| {
-            let c = r.solver.config().grade;
-            (c.largura, c.altura) == (g.largura, g.altura)
+            let c = r.solver.config();
+            (c.grade.largura, c.grade.altura, c.fina) == (g.largura, g.altura, fina)
         });
         let pronto = if mesmas {
             let r = self.resolvido.as_mut().expect("verificado acima");
             r.solver.reposicionar(g.origem_m, g.texel_m)
         } else {
             self.resolvido = None;
-            Solver::novo(gpu, Config::padrao_para(&gpu.device, g)).map(|solver| {
+            let cfg = Config {
+                fina,
+                ..Config::padrao_para(&gpu.device, g)
+            };
+            Solver::novo(gpu, cfg).map(|solver| {
                 let vista = solver
                     .fluencia()
                     .create_view(&wgpu::TextureViewDescriptor::default());
@@ -253,6 +265,12 @@ impl LuzDoQuadro {
             .resolvido
             .as_mut()
             .expect("criado ou reposicionado acima");
+        let (inicio, fim) = crate::grade::regiao_da_janela(
+            r.solver.grade_da_fluencia(),
+            self.mundo_para_tela,
+            self.alvo_px,
+        );
+        r.solver.regiao_fina(inicio, fim);
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -279,7 +297,11 @@ impl LuzDoQuadro {
         {
             self.custo_ms = Some(t.total());
             self.leituras += 1;
-            self.governador.ler(t.total(), p.nivel);
+            let custo = crate::qualidade::Custo {
+                por_nivel: t.por_nivel(),
+                fixo: t.c3_fina,
+            };
+            self.governador.ler(custo, p.nivel);
         }
     }
 
@@ -290,7 +312,8 @@ impl LuzDoQuadro {
             return None;
         }
         let r = self.resolvido.as_ref()?;
-        let g = r.solver.config().grade;
+        // ⭐ A grade FINA: a fluência que os receptores leem vive nela (W4b).
+        let g = r.solver.grade_da_fluencia();
         Some(LuzRecebida {
             fluencia: &r.vista,
             origem_m: g.origem_m,

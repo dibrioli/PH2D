@@ -23,6 +23,10 @@ pub struct Degrau {
     /// Píxeis do alvo do Vello por texel da grade na camada do vetor que bloqueia (a C0 lê-a EXATA:
     /// cada subamostra cai num píxel cuja área já é a cobertura).
     pub vetor_px_por_texel: u32,
+    /// ⭐ O lado de um texel da grade FINA (a luz direta, C3) em píxeis no zoom mais fino da oitava
+    /// — independente do nível (W4b). Mais grosso que o `c0_px` não afina nada (a grade fina é a
+    /// das cascatas).
+    pub fino_px: f64,
 }
 
 /// O degrau por omissão — MEDIDO (rodada W3, RTX 5060 Ti, 1920×1080; tabela no handoff W3): o K7
@@ -35,7 +39,25 @@ pub const DEGRAU_PADRAO: Degrau = Degrau {
     c0_px: 4.0,
     margem: 0.125,
     vetor_px_por_texel: 1,
+    fino_px: 1.0,
 };
+
+/// O texel de `px` píxeis no zoom mais fino da oitava: a potência de 2 em metros (G11).
+fn texel_de(px: f64, ppm: f64) -> f64 {
+    (px / ppm).log2().ceil().exp2()
+}
+
+/// ⭐ **Texels finos por texel das cascatas** (`Config::fina`) para a vista: a razão entre os dois
+/// texels, ambos potências de 2 em metros — a grade fina herda a âncora e a oitava da grossa.
+#[must_use]
+pub fn fina_do_quadro(mundo_para_tela: Affine, degrau: Degrau) -> u32 {
+    let ppm = mundo_para_tela.determinant().abs().sqrt();
+    if !(ppm.is_finite() && ppm > 0.0) {
+        return 1;
+    }
+    let razao = texel_de(degrau.c0_px, ppm) / texel_de(degrau.fino_px, ppm);
+    (razao.round() as u32).max(1)
+}
 
 /// O afim píxel → mundo: o INVERSO do mundo → tela que o Vello usou, nas duas linhas que o
 /// `receber.wgsl` lê.
@@ -58,7 +80,7 @@ pub fn grade_do_quadro(
     if !(ppm.is_finite() && ppm > 0.0) || alvo_px.0 == 0 || alvo_px.1 == 0 {
         return None;
     }
-    let texel_m = (degrau.c0_px / ppm).log2().ceil().exp2();
+    let texel_m = texel_de(degrau.c0_px, ppm);
     let lado = |px: u32| (f64::from(px) / degrau.c0_px * (1.0 + 2.0 * degrau.margem)).ceil() as u32;
     let base = (lado(alvo_px.0).max(1), lado(alvo_px.1).max(1));
 
@@ -91,4 +113,30 @@ pub fn grade_do_quadro(
     let encaixa = |c: f64, n: u32| ((c - f64::from(n) * texel_m / 2.0) / passo).round() * passo;
     g.origem_m = [encaixa(centro.x, g.largura), encaixa(centro.y, g.altura)];
     Some(g)
+}
+
+/// ⭐ **A região da JANELA na grade `g`** (a fina): `[início, fim)` em texels, com um de folga
+/// de cada lado para a bilinear do receptor. Só ela se calcula — a grade cobre o pior zoom da oitava
+/// e a margem (na vista de fábrica a 1920×1080, 82 % dela fica fora da janela, W4b).
+#[must_use]
+pub fn regiao_da_janela(
+    g: Grade,
+    mundo_para_tela: Affine,
+    alvo_px: (u32, u32),
+) -> ([u32; 2], [u32; 2]) {
+    let inv = mundo_para_tela.inverse();
+    let (w, h) = (f64::from(alvo_px.0), f64::from(alvo_px.1));
+    let cantos = [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)].map(|(x, y)| inv * Point::new(x, y));
+    let eixo = |k: usize, n: u32| {
+        let v = cantos.map(|p| {
+            let c = if k == 0 { p.x } else { p.y };
+            (c - g.origem_m[k]) / g.texel_m
+        });
+        let lo = v.iter().copied().fold(f64::INFINITY, f64::min).floor() - 1.0;
+        let hi = v.iter().copied().fold(f64::NEG_INFINITY, f64::max).ceil() + 1.0;
+        let preso = |x: f64| x.clamp(0.0, f64::from(n)) as u32;
+        (preso(lo), preso(hi))
+    };
+    let ((x0, x1), (y0, y1)) = (eixo(0, g.largura), eixo(1, g.altura));
+    ([x0, y0], [x1, y1])
 }

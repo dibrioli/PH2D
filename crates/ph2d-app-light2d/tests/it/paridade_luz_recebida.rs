@@ -160,7 +160,8 @@ fn paridade_no_degrau(gpu: &ph2d_gpu::GpuContext, nome: &str, degrau: ph2d_app_l
         4,
     );
     luz.gravar(&gpu, &mut PresentWorld::new(), &renderer);
-    let g = luz.grade().expect("acesa");
+    // A grade da FLUÊNCIA (a fina da luz direta, W4b) — a que o receptor amostra.
+    let g = luz.solver().expect("solver").grade_da_fluencia();
     let branco = renderer
         .acquire_individual(1, 1, &[255, 255, 255, 255])
         .expect("branco");

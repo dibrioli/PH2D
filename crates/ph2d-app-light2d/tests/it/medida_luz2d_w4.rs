@@ -296,9 +296,7 @@ fn medida_borda_reta() {
                 (crate::comum::fluencia_lida(&gpu, &s), ms)
             };
             let ((fc, ms), (fs, _)) = (flu(&cc), flu(&cs));
-            let pts = borda_de_cima(&|p| {
-                crate::comum::amostra(&fc, g, p) / crate::comum::amostra(&fs, g, p).max(1e-9)
-            });
+            let pts = borda_de_cima(&|p| fc.amostra(p) / fs.amostra(p).max(1e-9));
             let (r, m) = ondulacao(&pts);
             eprintln!(
                 "| {c0_px} px · {fusao:?} | {:.2} | {:.2} | {:.2} | {ms:.2} |",
@@ -389,10 +387,6 @@ fn a_borda_da_sombra_e_reta_na_placa() {
         return;
     };
     let (com, sem) = cena1_com_e_sem();
-    let (cc, cs) = (
-        ph2d_light2d_ecs::coleta::cena_de_luz(&com),
-        ph2d_light2d_ecs::coleta::cena_de_luz(&sem),
-    );
     let [a, b, ..] = afim().as_coeffs();
     let ppm = a.hypot(b);
     for (c0_px, teto_px) in [(4.0, 0.6), (2.0, 0.25)] {
@@ -400,17 +394,10 @@ fn a_borda_da_sombra_e_reta_na_placa() {
             c0_px,
             ..ph2d_app_light2d::DEGRAU_PADRAO
         };
-        let g = ph2d_app_light2d::grade_do_quadro(afim(), FHD, degrau).expect("grade");
-        let cfg = ph2d_light2d_gpu::Config::padrao_para(&gpu.device, g);
-        let flu = |cena: &ph2d_light2d_ecs::CenaDeLuz| {
-            let mut s = ph2d_light2d_gpu::Solver::novo(&gpu, cfg).expect("solver");
-            s.quadro(&gpu, cena);
-            crate::comum::fluencia_lida(&gpu, &s)
-        };
-        let (fc, fs) = (flu(&cc), flu(&cs));
-        let pts = borda_de_cima(&|p| {
-            crate::comum::amostra(&fc, g, p) / crate::comum::amostra(&fs, g, p).max(1e-9)
-        });
+        // O caminho do PRODUTO (a grade do nível e a fina da luz direta), não um solver à mão.
+        let flu = |w: &World| crate::a_escada_da_sombra::luz_do_quadro(&gpu, degrau, w);
+        let (fc, fs) = (flu(&com), flu(&sem));
+        let pts = borda_de_cima(&|p| fc.amostra(p) / fs.amostra(p).max(1e-9));
         assert!(
             pts.len() >= 50,
             "a régua achou só {} pontos da borda",

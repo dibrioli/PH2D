@@ -5,7 +5,6 @@
 //! ⛔ A grade NÃO ancorada (a mesma, com a origem a seguir a câmera) treme: é o controlo.
 
 use bevy_ecs::world::World;
-use half::f16;
 use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro, grade_do_quadro};
 use ph2d_ecs::{GlobalTransform, Transform};
 use ph2d_gpu::GpuContext;
@@ -15,8 +14,7 @@ use ph2d_light2d_gpu::{Config, Solver};
 use ph2d_render::{Camera2d, Sprite};
 use vello::kurbo::Affine;
 
-use crate::comum::amostra as amostrar;
-use crate::comum::{gpu, ler};
+use crate::comum::{fluencia_lida, gpu};
 
 const ALVO: (u32, u32) = (256, 128);
 /// 32 px/m: com `c0 = 2 px` o texel é 1/16 m.
@@ -71,18 +69,6 @@ fn pontos() -> Vec<[f64; 2]> {
         .collect()
 }
 
-fn ler_fluencia(gpu: &GpuContext, s: &Solver) -> Vec<[f32; 3]> {
-    ler(gpu, s.fluencia(), 8)
-        .as_chunks::<8>()
-        .0
-        .iter()
-        .map(|c| {
-            let h = |k: usize| f16::from_le_bytes([c[2 * k], c[2 * k + 1]]).to_f32();
-            [h(0), h(1), h(2)]
-        })
-        .collect()
-}
-
 /// A maior variação RELATIVA de um ponto estático ao longo do pan, nas duas grades.
 fn variacoes(gpu: &GpuContext) -> (f64, f64) {
     let w = cena();
@@ -96,8 +82,7 @@ fn variacoes(gpu: &GpuContext) -> (f64, f64) {
         let centro = [0.37 * 0.0625 * passo as f32, 0.11 * 0.0625 * passo as f32];
         assert!(ancorada.preparar(&w, afim(centro), ALVO));
         ancorada.gravar(gpu, &mut ph2d_ecs::PresentWorld::new(), &renderer);
-        let g = ancorada.grade().expect("acesa");
-        let fa = ler_fluencia(gpu, ancorada.solver().expect("solver"));
+        let fa = fluencia_lida(gpu, ancorada.solver().expect("solver"));
 
         // A MESMA grade com a origem a seguir a câmera (sem encaixe).
         let mut gs = grade_do_quadro(afim(centro), ALVO, DEGRAU_PADRAO).expect("grade");
@@ -105,16 +90,19 @@ fn variacoes(gpu: &GpuContext) -> (f64, f64) {
             f64::from(centro[0]) - f64::from(gs.largura) * gs.texel_m / 2.0,
             f64::from(centro[1]) - f64::from(gs.altura) * gs.texel_m / 2.0,
         ];
-        let s = solta.get_or_insert_with(|| {
-            Solver::novo(gpu, Config::padrao_para(&gpu.device, gs)).expect("solver solto")
-        });
+        // A MESMA configuração da ancorada (grade fina incluída): só a origem segue a câmera.
+        let cfg = Config {
+            grade: gs,
+            ..*ancorada.solver().expect("solver").config()
+        };
+        let s = solta.get_or_insert_with(|| Solver::novo(gpu, cfg).expect("solver solto"));
         s.reposicionar(gs.origem_m, gs.texel_m)
             .expect("reposicionar");
         s.quadro(gpu, ancorada.cena());
-        let fs = ler_fluencia(gpu, s);
+        let fs = fluencia_lida(gpu, s);
 
-        let va: Vec<f64> = pontos().iter().map(|&p| amostrar(&fa, g, p)).collect();
-        let vs: Vec<f64> = pontos().iter().map(|&p| amostrar(&fs, gs, p)).collect();
+        let va: Vec<f64> = pontos().iter().map(|&p| fa.amostra(p)).collect();
+        let vs: Vec<f64> = pontos().iter().map(|&p| fs.amostra(p)).collect();
         if passo == 0 {
             assert!(
                 va.iter().any(|&v| v > 0.05) && va.iter().any(|&v| v < 0.5 * va[va.len() - 1]),

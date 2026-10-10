@@ -20,6 +20,7 @@ pub const ALTO: ph2d_app_light2d::Degrau = ph2d_app_light2d::Degrau {
     c0_px: 2.0,
     margem: 0.25,
     vetor_px_por_texel: 1,
+    fino_px: 1.0,
 };
 
 pub const W: u32 = 64;
@@ -242,9 +243,15 @@ pub fn ler(gpu: &GpuContext, t: &wgpu::Texture, bpp: u32) -> Vec<u8> {
     out
 }
 
-/// A fluência rgb de um solver, lida de volta (`Rgba16Float`).
-pub fn fluencia_lida(gpu: &GpuContext, s: &ph2d_light2d_gpu::Solver) -> Vec<[f32; 3]> {
-    ler(gpu, s.fluencia(), 8)
+/// A fluência rgb de um solver, lida de volta (`Rgba16Float`), com a grade ONDE ela vive (a fina
+/// da luz direta: amostrá-la por outra grade lê o texel errado sem erro nenhum).
+pub struct Fluencia {
+    pub v: Vec<[f32; 3]>,
+    pub grade: ph2d_light2d_gpu::Grade,
+}
+
+pub fn fluencia_lida(gpu: &GpuContext, s: &ph2d_light2d_gpu::Solver) -> Fluencia {
+    let v = ler(gpu, s.fluencia(), 8)
         .as_chunks::<8>()
         .0
         .iter()
@@ -252,7 +259,11 @@ pub fn fluencia_lida(gpu: &GpuContext, s: &ph2d_light2d_gpu::Solver) -> Vec<[f32
             let h = |k: usize| half::f16::from_le_bytes([c[2 * k], c[2 * k + 1]]).to_f32();
             [h(0), h(1), h(2)]
         })
-        .collect()
+        .collect();
+    Fluencia {
+        v,
+        grade: s.grade_da_fluencia(),
+    }
 }
 
 /// A fração VISÍVEL do disco (`centro`, `raio`) vista de `p`, com a parede abaixo da reta `p → canto`
@@ -276,8 +287,15 @@ pub fn largura_10_90(ys: &[f64], f: &[f64]) -> Option<f64> {
     Some((cruza(0.9)? - cruza(0.1)?).abs())
 }
 
+impl Fluencia {
+    /// A luz recebida em `p` pela CPU (a conta bilinear do `receber.wgsl`).
+    pub fn amostra(&self, p: [f64; 2]) -> f64 {
+        amostra(&self.v, self.grade, p)
+    }
+}
+
 /// A luz recebida em `p` pela CPU sobre a fluência lida da placa (a conta do `receber.wgsl`).
-pub fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2]) -> f64 {
+fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2]) -> f64 {
     let tx = (p[0] - g.origem_m[0]) / g.texel_m - 0.5;
     let ty = (p[1] - g.origem_m[1]) / g.texel_m - 0.5;
     let (i0, j0) = (tx.floor(), ty.floor());

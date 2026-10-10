@@ -3,7 +3,7 @@
 //! nunca passa do nível escolhido.
 
 use ph2d_app_light2d::LuzDoQuadro;
-use ph2d_app_light2d::qualidade::{Governador, ORCAMENTO_MS, degrau_do};
+use ph2d_app_light2d::qualidade::{Custo, Governador, ORCAMENTO_MS, degrau_do};
 use ph2d_ecs::PresentWorld;
 use ph2d_editor_core::luz_edits::{NivelDaLuz as N, PreferenciaDaLuz};
 
@@ -20,14 +20,26 @@ fn cada_nivel_tem_a_sua_celula() {
 
 /// O governador desce depois de leituras caras SEGUIDAS, sobe só com folga prevista pela lei
 /// `1/célula²`, e nunca passa do teto.
+/// Um custo sem a grade fina (tudo segue o nível).
+fn so(ms: f64) -> Custo {
+    Custo {
+        por_nivel: ms,
+        fixo: 0.0,
+    }
+}
+
 #[test]
 fn o_governador_desce_sobe_e_respeita_o_teto() {
     let caro = ORCAMENTO_MS * 1.5;
     let mut g = Governador::novo(N::Alta);
-    assert_eq!(g.ler(caro, N::Alta), N::Alta, "um pico isolado não muda");
-    g.ler(caro, N::Alta);
     assert_eq!(
-        g.ler(caro, N::Alta),
+        g.ler(so(caro), N::Alta),
+        N::Alta,
+        "um pico isolado não muda"
+    );
+    g.ler(so(caro), N::Alta);
+    assert_eq!(
+        g.ler(so(caro), N::Alta),
         N::Media,
         "três seguidas descem um nível"
     );
@@ -36,26 +48,42 @@ fn o_governador_desce_sobe_e_respeita_o_teto() {
     let quase = ORCAMENTO_MS * 0.75 / 4.0 * 1.1;
     for _ in 0..100 {
         assert_eq!(
-            g.ler(quase, N::Alta),
+            g.ler(so(quase), N::Alta),
             N::Media,
             "sem folga prevista não sobe"
         );
     }
-    let subiu = (0..100).any(|_| g.ler(barato, N::Alta) == N::Alta);
+    let subiu = (0..100).any(|_| g.ler(so(barato), N::Alta) == N::Alta);
     assert!(subiu, "com folga prevista, sobe");
     for _ in 0..100 {
-        assert_eq!(g.ler(0.01, N::Alta), N::Alta, "nunca passa do teto");
+        assert_eq!(g.ler(so(0.01), N::Alta), N::Alta, "nunca passa do teto");
     }
     assert_eq!(
-        g.ler(0.01, N::Baixa),
+        g.ler(so(0.01), N::Baixa),
         N::Baixa,
         "baixar o teto obedece na hora"
     );
     // Subir com o teto na MÉDIA: chega lá e não passa.
     let mut g = Governador::novo(N::Baixa);
-    let niveis: Vec<N> = (0..200).map(|_| g.ler(0.01, N::Media)).collect();
+    let niveis: Vec<N> = (0..200).map(|_| g.ler(so(0.01), N::Media)).collect();
     assert!(niveis.contains(&N::Media), "com folga sobe até o teto");
     assert!(!niveis.contains(&N::Alta), "e nunca acima dele");
+}
+
+/// ⭐ A grade FINA da luz direta (W4b) tem o mesmo tamanho em todo nível: a subida prevê só a
+/// parte do nível ×4 e soma a fina UMA vez. Controlo: com o custo inteiro ×4 (a lei antiga), metade
+/// do orçamento na fina já impedia toda subida.
+#[test]
+fn o_governador_preve_a_subida_com_a_grade_fina_fixa() {
+    let fixo = ORCAMENTO_MS * 0.5;
+    let por_nivel = (ORCAMENTO_MS * 0.75 - fixo) / 4.0 * 0.9;
+    assert!(
+        4.0 * (por_nivel + fixo) > ORCAMENTO_MS * 0.75,
+        "controlo: pela lei antiga não subiria"
+    );
+    let mut g = Governador::novo(N::Media);
+    let subiu = (0..100).any(|_| g.ler(Custo { por_nivel, fixo }, N::Alta) == N::Alta);
+    assert!(subiu, "a fina não se multiplica pelo nível");
 }
 
 /// Na PLACA: com o «Automático», o custo chega ao governador SEM ESPERAR (em poucos quadros), e o

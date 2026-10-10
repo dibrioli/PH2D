@@ -29,3 +29,9 @@ criou a entrada de menu do Wine (`~/.local/share/applications/wine/Programs/Rebe
   Resultado: [`docs/Painter/47_o_papel_no_rebelle_estado_da_arte.md`](../docs/Painter/47_o_papel_no_rebelle_estado_da_arte.md)
   — o papel não é camada, a tinta guarda o alfa, compõe-se por «cobrir com transparência», a ordem
   não importa. Fechar: matar só o `kwin_wayland … oraculo/sessao.sh` e `wineserver -k` NESTE prefixo.
+- ⛔ **O PAPEL pela porta WebSocket não serve de barra (medido 09/10, W1e):** sob o Wine o papel não se
+  desenha (branco, desvio 0, até no RH00 de arranque); `SET_PAPER` derruba o 8.3.4 («bad optional
+  access»); um `SET_ENGINE_PARAMS` (texture_influence…) depois de um `SET_BRUSH` reduz o pincel a um fio
+  (o Flat Dry saiu com 12 px numa faixa de 30 — a «fração de papel branco» lia a faixa vazia). A MISTURA
+  (cores sobre papel liso) mede-se bem: `docs/Painter/NewFeaturesWetPaint/ferramentas/mistura_papel*.{py,sh}`
+  com foto DURANTE o traço (o RELEASE num ficheiro à parte). A tela virtual fecha-se sozinha em 1 h.

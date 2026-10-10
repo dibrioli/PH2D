@@ -155,3 +155,9 @@ Compilado na worktree (a foto final da cena 9 construiu-o depois do último comm
 ```text
     Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
+
+## 12. Smoke do dono — OK (09/10)
+
+*«smoke OK»* — a cena 9 (`PH2D_BOARD_SMOKE=9`): cronómetro, votação com turnos e resultado, carimbos e
+agrupar por palavra a partir do frame «Ideas». Nenhuma correcção pedida. A próxima janela segue com a W8
+([continuação W8](HANDOFF_CONTINUACAO_W8_2026-10-09.md)), por cima, na mesma branch.

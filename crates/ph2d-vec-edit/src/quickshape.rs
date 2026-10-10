@@ -12,7 +12,8 @@
 //! O caminho, numa frase: reamostra por comprimento, parte em lados por Ramer-Douglas-Peucker,
 //! funde viragens pequenas, absorve lados curtos nas quinas, e se TODOS os lados são rectos é um
 //! polígono (linha, polilinha, triângulo, rectângulo, …); senão, se fecha uma volta, é a elipse dos
-//! momentos de área da região desenhada (exacta para uma elipse perfeita); senão não é forma.
+//! momentos de área da região desenhada (exacta para uma elipse perfeita); se fica aberto, talvez
+//! um ARCO ([`crate::quickshape_arc`]); senão não é forma.
 
 pub use crate::quickshape_geom::snap;
 use crate::quickshape_geom::{
@@ -62,6 +63,11 @@ pub(crate) struct Law {
     pub(crate) round_ratio: f64,
     /// A viragem total de uma elipse é uma volta ± isto (graus).
     pub(crate) turn_tol_deg: f64,
+    /// Resíduo rms máximo de um ARCO, fracção do menor de raio e diagonal ([`crate::quickshape_arc`]).
+    pub(crate) arc_rms_max: f64,
+    /// Fracção máxima da viragem CONTRA o sentido do arco, entre `arc_chords` cordas iguais.
+    pub(crate) arc_bend_back: f64,
+    pub(crate) arc_chords: usize,
 }
 
 impl Law {
@@ -84,6 +90,9 @@ impl Law {
         ellipse_rms_max: ELLIPSE_RMS_MAX,
         round_ratio: 1.10,
         turn_tol_deg: 150.0,
+        arc_rms_max: 0.05,
+        arc_bend_back: 0.15,
+        arc_chords: 8,
     };
 }
 
@@ -114,6 +123,14 @@ pub enum QuickShape {
         rx: f64,
         ry: f64,
         rot: f64,
+    },
+    /// Um arco de círculo aberto: começa no ângulo `start` e varre `sweep` (radianos; o SINAL é o
+    /// sentido do desenho, `|sweep| < 2π`).
+    Arc {
+        centre: P2,
+        radius: f64,
+        start: f64,
+        sweep: f64,
     },
 }
 
@@ -156,8 +173,30 @@ pub(crate) fn recognise_with(
         .collect();
     merge_small_turns(&r, &mut zones, law.merge_turn_deg);
     absorb_short_sides(&r, &mut zones, corner, law.merge_turn_deg);
-    polygonal(law, samples, &r, &zones, corner, closed, regular)
-        .or_else(|| closed.then(|| ellipse(law, samples, &r, regular)).flatten())
+    let poly = polygonal(law, samples, &r, &zones, corner, closed, regular);
+    if closed {
+        return poly.or_else(|| ellipse(law, samples, &r, regular));
+    }
+    if matches!(poly, Some(QuickShape::Line { .. })) {
+        return poly;
+    }
+    let Some(arc) = crate::quickshape_arc::fit(law, &r, diag) else {
+        return poly;
+    };
+    // Aberto e curvo pode ler-se como polilinha (um arco de 60° são dois lados de flecha no limite
+    // da régua do recto): ganha a forma que passa mais PERTO do traço. A polilinha mede-se SEM o
+    // `regular`, para o `Shift` nunca trocar o tipo.
+    let free = if regular {
+        polygonal(law, samples, &r, &zones, corner, false, false)
+    } else {
+        poly.clone()
+    };
+    if let Some(QuickShape::Polygon { corners, .. }) = &free
+        && crate::quickshape_arc::polyline_rms(&r, corners) <= arc.rms
+    {
+        return poly;
+    }
+    Some(arc.shape(r[0], regular))
 }
 
 impl QuickShape {
@@ -173,6 +212,12 @@ impl QuickShape {
             } => corners.first().copied().unwrap_or_default(),
             Self::Polygon { corners, .. } => centroid(corners),
             Self::Ellipse { centre, .. } => *centre,
+            Self::Arc {
+                centre,
+                radius,
+                start,
+                ..
+            } => add(*centre, mul(unit(*start), *radius)),
         }
     }
 
@@ -196,6 +241,17 @@ impl QuickShape {
                 rx: rx * scale,
                 ry: ry * scale,
                 rot: r0 + rot,
+            },
+            Self::Arc {
+                centre,
+                radius,
+                start,
+                sweep,
+            } => Self::Arc {
+                centre: m(*centre),
+                radius: radius * scale,
+                start: start + rot,
+                sweep: *sweep,
             },
         }
     }
@@ -221,6 +277,12 @@ impl QuickShape {
                 }
                 p
             }
+            Self::Arc {
+                centre,
+                radius,
+                start,
+                sweep,
+            } => crate::quickshape_arc::arc_path(*centre, *radius, *start, *sweep),
         }
     }
 }
@@ -612,3 +674,7 @@ mod measure_tests;
 #[cfg(test)]
 #[path = "quickshape_sensitivity_tests.rs"]
 mod sensitivity_tests;
+
+#[cfg(test)]
+#[path = "quickshape_arc_tests.rs"]
+mod arc_tests;

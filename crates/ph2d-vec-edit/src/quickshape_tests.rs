@@ -131,6 +131,9 @@ enum Own {
     /// Formas PEQUENAS (ordem do dono, 09/10: *«formas pequenas devem funcionar»*) — o Xournal++
     /// recusa abaixo de 40 un. de página; a nossa lei, abaixo de `MIN_SIZE_PX`.
     Line(P2, P2),
+    /// O arco do Procreate (o pedido do dono, 10/10; o Xournal++ deixa-o cru): centro, raio, início
+    /// e varrido (graus, com sinal).
+    Arc(P2, f64, f64, f64),
 }
 
 fn rect_400x250() -> Vec<P2> {
@@ -205,6 +208,9 @@ fn own(name: &str) -> Option<Own> {
             [835.0, 525.0],
             [765.0, 525.0],
         ]),
+        // `gera_entradas.py`: centro (800, 500), raio 200, de 180° a 360° e de 180° a 270°.
+        "arco_meio" => Own::Arc([800.0, 500.0], 200.0, 180.0, 180.0),
+        "arco_quarto" => Own::Arc([800.0, 500.0], 200.0, 180.0, 90.0),
         _ => return None,
     })
 }
@@ -280,6 +286,24 @@ pub(super) fn failures(all: &[Fixture], law: &Law) -> Vec<String> {
                     f.page(c)
                 ))
             }
+            (
+                Some(Own::Arc(c, radius, a0, deg)),
+                Some(QuickShape::Arc {
+                    centre,
+                    radius: got,
+                    start,
+                    sweep,
+                }),
+            ) => {
+                let want = radius * f.scale[0];
+                let da = wrap_pi(start - a0.to_radians()).abs();
+                (dist(*centre, f.page(c)) <= TOL
+                    && (got - want).abs() <= 0.01 * want
+                    && da <= 1f64.to_radians()
+                    && (sweep - deg.to_radians()).abs() <= 1f64.to_radians())
+                .then_some(())
+                .ok_or(format!("arco {centre:?} {got} {start} {sweep}"))
+            }
             (Some(Own::Line(a, b)), Some(QuickShape::Line { a: p, b: q })) => {
                 let (a, b) = (f.page(a), f.page(b));
                 let e = dist(*p, a).max(dist(*q, b));
@@ -346,9 +370,9 @@ fn every_own_law_exception_names_a_fixture_that_exists() {
     let names: Vec<String> = load().into_iter().map(|f| f.name).collect();
     let used = names.iter().filter(|n| own(n).is_some()).count();
     // 3 polígonos + 6 rectângulos de mão (com o aberto 90 px, 09/10) + 5 quadriláteros + 3 polilinhas
-    // + 3 elipses + 2 círculos + 3 formas pequenas.
+    // + 3 elipses + 2 círculos + 3 formas pequenas + 2 arcos (F7c, 10/10).
     assert_eq!(
-        used, 25,
+        used, 27,
         "uma excepção ficou órfã (a fixture mudou de nome?)"
     );
 }

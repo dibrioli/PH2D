@@ -20,7 +20,7 @@ fn rect_stroke() -> Vec<P2> {
 }
 
 /// Desenha `pts` a 4 ms por amostra; devolve o carimbo da última.
-fn draw(pencil: &mut crate::Pencil, scene: &mut ph2d_vec_scene::VecScene, pts: &[P2]) -> u128 {
+pub(super) fn draw(pencil: &mut crate::Pencil, scene: &mut ph2d_vec_scene::VecScene, pts: &[P2]) -> u128 {
     let dy = |i: usize| crate::pencil_width::PenDynamics {
         pressure: 1.0,
         t_ns: i as u128 * 4_000_000,

@@ -7,6 +7,7 @@
 
 use super::tests::{failures, load};
 use super::*;
+use std::f64::consts::PI;
 
 pub(super) use crate::test_hand::hand;
 
@@ -109,11 +110,9 @@ pub(super) fn cases(s: f64) -> Vec<Case> {
             |q| matches!(q, Some(QuickShape::Polygon { corners, closed: false }) if corners.len() == 3),
         ),
         ("S (não é forma)", s_curve, Option::is_none),
-        (
-            "meio arco (não é forma)",
-            ring(s / 2.0, s / 2.0, 0.5),
-            Option::is_none,
-        ),
+        ("meio arco", ring(s / 2.0, s / 2.0, 0.5), |q| {
+            matches!(q, Some(QuickShape::Arc { sweep, .. }) if (sweep.abs() - PI).abs() < 0.1 * PI)
+        }),
     ]
 }
 
@@ -284,6 +283,24 @@ fn measure_the_law_ranges() {
             Law::MEASURED.min_size_px,
             |l, v| l.min_size_px = v,
             grid(0.0, 120.0, 30),
+        ),
+        (
+            "arc_rms_max",
+            Law::MEASURED.arc_rms_max,
+            |l, v| l.arc_rms_max = v,
+            grid(0.0, 0.2, 40),
+        ),
+        (
+            "arc_bend_back",
+            Law::MEASURED.arc_bend_back,
+            |l, v| l.arc_bend_back = v,
+            grid(0.0, 0.5, 20),
+        ),
+        (
+            "arc_chords",
+            Law::MEASURED.arc_chords as f64,
+            |l, v| l.arc_chords = v as usize,
+            grid(2.0, 32.0, 30),
         ),
     ];
     println!("\n| constante | medida | faixa válida contígua | o 1.º a cair em cada ponta |");

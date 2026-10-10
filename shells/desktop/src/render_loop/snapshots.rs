@@ -279,6 +279,11 @@ mod sheet_authorship_tests;
 #[path = "snapshots_object_gizmo_tests.rs"]
 mod object_gizmo_tests;
 
+/// A caixa de uma sprite com SKEW é o paralelogramo desenhado (onda 5, item a).
+#[cfg(test)]
+#[path = "snapshots_skew_gizmo_tests.rs"]
+mod skew_gizmo_tests;
+
 /// O passe do gizmo: a poda dos mortos, a view da seleção primária e das extras (o `build_view`), o número do
 /// arrasto e o gizmo de ponto das juntas. Os gates que leem este passe pelo caminho do ficheiro leem-no aqui.
 #[allow(clippy::too_many_arguments)]

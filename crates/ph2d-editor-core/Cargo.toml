@@ -71,6 +71,9 @@ smallvec              = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 
 [dev-dependencies]
+# ⭐ O ORÁCULO da caixa da sprite (`gizmo/sprite_box_tests.rs`): a afim que o motor DESENHA
+# (`GlobalTransform::from_transform`) e a composição pai×filho dele — nunca uma cópia da fórmula.
+ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 ph2d-panel-vector = { path = "../ph2d-panel-vector" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }

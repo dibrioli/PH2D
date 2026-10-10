@@ -5327,6 +5327,7 @@ dependencies = [
  "ph2d-chrome-sync",
  "ph2d-color",
  "ph2d-component-desc",
+ "ph2d-ecs",
  "ph2d-grid",
  "ph2d-guides",
  "ph2d-host",

@@ -158,6 +158,28 @@ pub fn world_transform_with(
     ))
 }
 
+/// O skew de MUNDO de `entity`: a soma dos skews da cadeia (`Transform::compose` soma-os, a
+/// aproximação documentada do §2.2.1). Sem alocar; um ciclo de `ChildOf` pára pelo método de Floyd,
+/// não num número escolhido. Toda a cadeia sem skew ⇒ `[0.0, 0.0]` exacto.
+#[must_use]
+pub fn world_skew(world: &World, entity: Entity) -> [f32; 2] {
+    let pai = |e: Entity| world.get::<ChildOf>(e).map(ChildOf::parent);
+    let (mut lento, mut rapido) = (Some(entity), Some(entity));
+    let mut s = [0.0_f32; 2];
+    while let Some(e) = lento {
+        if let Some(t) = world.get::<Transform>(e) {
+            s[0] += t.skew_x;
+            s[1] += t.skew_y;
+        }
+        lento = pai(e);
+        rapido = rapido.and_then(pai).and_then(pai);
+        if rapido.is_some() && rapido == lento {
+            break;
+        }
+    }
+    s
+}
+
 impl Transform {
     /// Every field is finite — no `NaN`, no `±inf`.
     ///

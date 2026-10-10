@@ -191,10 +191,11 @@ impl App {
     /// chokepoint (one GPU readback for an Individual texture — done once
     /// per drag, cached by the caller), scans the alpha channel for the
     /// opaque bounds, then maps the bbox center (texture px) through the
-    /// quad's local frame to world: `quad_center + R·((u-0.5)·size·scale,
+    /// quad's frame to world: `quad_center + R·((u-0.5)·size·scale,
     /// −(v-0.5)·size·scale)`, where `quad_center = drag.pivot_world` and
-    /// `R` is `start_transform.rotation`. The Y term is negated because
-    /// image rows run top-down while world Y is up.
+    /// `R`/`scale` are the WORLD pose (pai·local, sem skew — o skew entra no
+    /// `ramo_gizmo_mover_pivo`). The Y term is negated because image rows run
+    /// top-down while world Y is up.
     fn compute_pivot_content_center(
         &mut self,
         drag: &ph2d_editor_core::GizmoDragState,
@@ -244,11 +245,12 @@ impl App {
         let cy = (min_y as f32 + max_y as f32 + 1.0) * 0.5;
         let u = cx / w as f32 - 0.5;
         let v = cy / h as f32 - 0.5;
-        let scale = drag.start_transform.scale;
+        let mundo = ph2d_editor_core::compose_snapshot(drag.parent_world, drag.start_transform);
+        let scale = mundo.scale;
         let local_x = u * size[0] * scale[0];
         let local_y = -v * size[1] * scale[1];
         // T1.3.5 cross-OS bit-identical.
-        let (sin_r, cos_r) = libm::sincosf(drag.start_transform.rotation);
+        let (sin_r, cos_r) = libm::sincosf(mundo.rotation);
         let qc = drag.pivot_world;
         Some([
             qc[0] + local_x * cos_r - local_y * sin_r,

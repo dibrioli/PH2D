@@ -226,6 +226,19 @@ impl crate::App {
             } else {
                 drag
             };
+            // Escalar uma sprite com skew corre no espaço sem skew e volta pela afim (`sprite_box`).
+            let skew_m = ph2d_editor_core::gizmo::drag_skew_model(
+                &drag,
+                ph2d_ecs::world_skew(gfx.sim.world(), entity),
+            );
+            let skew_inv = ph2d_editor_core::gizmo::model_inverse(&skew_m)
+                .unwrap_or(ph2d_editor_core::gizmo::MODEL_IDENTITY);
+            let (para_o_desenho, do_desenho) = (
+                |w: [f32; 2]| ph2d_editor_core::gizmo::model_apply(&skew_m, w),
+                |w: [f32; 2]| ph2d_editor_core::gizmo::model_apply(&skew_inv, w),
+            );
+            let drag_for_math =
+                ph2d_editor_core::gizmo::drag_in_skew_frame(drag_for_math, &skew_m, &cam);
             let new_t = if is_scale && vec_scale_snap {
                 // Encaixa o CANTO arrastado (cursor) nas outras formas + grade e
                 // publica as guias — mesmo motor do translate, mas quem aplica é o
@@ -236,12 +249,13 @@ impl crate::App {
                 let snap_state = &mut hero.grid.snap_state;
                 let t = {
                     let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
+                        let w = para_o_desenho(w);
                         let p = [f64::from(w[0]), f64::from(w[1])];
                         let mut grid = |q: [f64; 2]| crate::vec_snap::ask_grid(snap_state, q);
                         let r = ph2d_vec_edit::snap::snap(&[p], targets, vec_cfg, Some(&mut grid));
                         guides = crate::vec_snap::guides_of(&r);
                         let s = r.apply(p);
-                        [s[0] as f32, s[1] as f32]
+                        do_desenho([s[0] as f32, s[1] as f32])
                     };
                     ph2d_editor_core::compute_gizmo_transform(
                         &drag_for_math,
@@ -255,8 +269,9 @@ impl crate::App {
                 t
             } else if is_scale {
                 let snap_state = &mut hero.grid.snap_state;
-                let mut snap_closure =
-                    |w: [f32; 2]| -> [f32; 2] { snap_state.snap_world(w, sprite_half_rendered) };
+                let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
+                    do_desenho(snap_state.snap_world(para_o_desenho(w), sprite_half_rendered))
+                };
                 ph2d_editor_core::compute_gizmo_transform(
                     &drag_for_math,
                     &cam,
@@ -280,6 +295,14 @@ impl crate::App {
                 }
             } else {
                 new_t
+            };
+            let new_t = ph2d_editor_core::TransformSnapshot {
+                translation: ph2d_editor_core::gizmo::skew_translation_out(
+                    &skew_m,
+                    drag.parent_world,
+                    new_t.translation,
+                ),
+                ..new_t
             };
             let new_t = if is_scale {
                 new_t
@@ -322,6 +345,13 @@ impl crate::App {
             let window_size = crate::field_gizmo_host::scene_window_of(gfx);
             let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
             let raw_world = gfx.camera.screen_to_world(drag.cursor_screen, window_size);
+            // Os candidatos nascem na pose de mundo SEM skew; com skew vão ao desenho pela afim, e o
+            // alvo volta por ela antes da conta da âncora (`sprite_box`).
+            let skew_m = ph2d_editor_core::gizmo::drag_skew_model(
+                &drag,
+                ph2d_ecs::world_skew(gfx.sim.world(), entity),
+            );
+            let mundo = ph2d_editor_core::compose_snapshot(drag.parent_world, drag.start_transform);
             let target = if ctrl {
                 let half_world = gfx
                     .sim
@@ -329,16 +359,13 @@ impl crate::App {
                     .get::<ph2d_render::Sprite>(entity)
                     .map(|s| {
                         [
-                            s.size[0] * drag.start_transform.scale[0] * 0.5,
-                            s.size[1] * drag.start_transform.scale[1] * 0.5,
+                            s.size[0] * mundo.scale[0] * 0.5,
+                            s.size[1] * mundo.scale[1] * 0.5,
                         ]
                     })
                     .unwrap_or([0.0, 0.0]);
-                let cands = ph2d_editor_core::pivot_snap_candidates(
-                    drag.pivot_world,
-                    drag.start_transform.rotation,
-                    half_world,
-                );
+                let cands =
+                    ph2d_editor_core::pivot_snap_candidates(drag.pivot_world, mundo.rotation, half_world);
                 // Snap when within ~14 px of a candidate, converted
                 // to world units at the current zoom.
                 let thresh = 14.0 * gfx.camera.height_world / window_size.height as f32;
@@ -353,21 +380,26 @@ impl crate::App {
                         *best = c;
                     }
                 };
-                for c in cands {
+                for c in cands.into_iter().chain(content_center) {
+                    let c = ph2d_editor_core::gizmo::model_apply(&skew_m, c);
                     consider(c, &mut best, &mut best_d2);
-                }
-                if let Some(cc) = content_center {
-                    consider(cc, &mut best, &mut best_d2);
                 }
                 best
             } else {
                 raw_world
             };
+            let target = ph2d_editor_core::gizmo::model_inverse(&skew_m)
+                .map_or(target, |inv| ph2d_editor_core::gizmo::model_apply(&inv, target));
             let (new_translation, new_anchor) = ph2d_editor_core::move_pivot_transform(
                 drag.start_transform,
                 drag.pivot_world,
                 target,
                 drag.parent_world,
+            );
+            let new_translation = ph2d_editor_core::gizmo::skew_translation_out(
+                &skew_m,
+                drag.parent_world,
+                new_translation,
             );
             if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                 t.translation = ph2d_core::Vec2::new(new_translation[0], new_translation[1]);

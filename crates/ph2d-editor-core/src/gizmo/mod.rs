@@ -37,6 +37,7 @@ pub mod paint;
 mod paint_geom;
 pub mod point;
 pub mod readout;
+pub mod sprite_box;
 pub mod transform;
 
 #[cfg(test)]
@@ -47,12 +48,13 @@ pub use drag::{
     GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, GroupDragSnapshot, TransformSnapshot,
 };
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
-pub use model::{MODEL_IDENTITY, model_apply, model_inverse};
+pub use model::{MODEL_IDENTITY, model_apply, model_inverse, skew_about, skew_translation_out};
 pub use paint::{
     GizmoView, HANDLE_SIZE_PX, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed,
 };
 pub use point::{PointGizmoView, PointHandle, PointHandleKind, paint_point_gizmo, point_handle_id};
 pub use readout::{GizmoReadout, gizmo_readout};
+pub use sprite_box::{SpriteBox, drag_in_skew_frame, drag_skew_model, sprite_box};
 pub use transform::{
     anchor_pivot_world, compose_snapshot, compute_gizmo_transform, live_anchor,
     move_pivot_transform, pivot_snap_candidates, world_delta_to_local, world_translation_to_local,

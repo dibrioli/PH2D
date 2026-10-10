@@ -93,15 +93,14 @@ pub(super) fn global_view(
             .into_iter()
             .chain(hero.gizmo.extra_views.iter().map(|(_, v)| v));
         iter.next().map(|first| {
-            let mut min_x = first.bbox_min_world[0];
-            let mut min_y = first.bbox_min_world[1];
-            let mut max_x = first.bbox_max_world[0];
-            let mut max_y = first.bbox_max_world[1];
+            // De MUNDO: os cantos pintados de cada vista (rodados, e por `model` quando há skew).
+            let ([mut min_x, mut min_y], [mut max_x, mut max_y]) = first.world_aabb();
             for v in iter {
-                min_x = min_x.min(v.bbox_min_world[0]);
-                min_y = min_y.min(v.bbox_min_world[1]);
-                max_x = max_x.max(v.bbox_max_world[0]);
-                max_y = max_y.max(v.bbox_max_world[1]);
+                let (lo, hi) = v.world_aabb();
+                min_x = min_x.min(lo[0]);
+                min_y = min_y.min(lo[1]);
+                max_x = max_x.max(hi[0]);
+                max_y = max_y.max(hi[1]);
             }
             let pixel_to_world = first.camera_height_world / first.window_h.max(1.0);
             let offset_world = 32.0 * pixel_to_world;
@@ -111,6 +110,7 @@ pub(super) fn global_view(
                 pivot_world: [(min_x + max_x) * 0.5, (min_y + max_y) * 0.5],
                 pivot_tool_active: false,
                 rotation: 0.0,
+                model: ph2d_editor_core::gizmo::MODEL_IDENTITY,
                 ..*first
             }
         })
@@ -156,17 +156,8 @@ pub(super) fn sprite_view(
             None
         }
     })?;
-    let affine = gt.affine();
-    let col0_x = affine[0];
-    let col0_y = affine[1];
-    let col1_x = affine[2];
-    let col1_y = affine[3];
-    let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
-    let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
-    let rotation = col0_y.atan2(col0_x);
-    let p = gt.translation();
     // A caixa (folha aberta · malha desenhada · quad) vive na `sheet_lattice::gizmo_box`, onde tem
-    // gate — aqui só se aplicam a escala e a rotação.
+    // gate; a conta da afim ao gizmo (e o skew em `model`) na `ph2d_editor_core::gizmo::sprite_box`.
     // ⚠️ **A malha vem POSADA pela porta** ([`SpriteMesh::posado`], F9 W2) e pode ser OWNED: com a
     // placa a posar, o componente traz o REPOUSO, e uma caixa de gizmo tirada dele envolveria a arte
     // onde ela **não** está.
@@ -180,20 +171,14 @@ pub(super) fn sprite_view(
         crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),
         malha,
     );
-    let half_w = half[0] * scale_x;
-    let half_h = half[1] * scale_y;
-    let ax = eff_anchor[0] * scale_x;
-    let ay = eff_anchor[1] * scale_y;
-    // T1.3.5 cross-OS bit-identical.
-    let (sin_r, cos_r) = libm::sincosf(rotation);
-    let cx = p.x + ax * cos_r - ay * sin_r;
-    let cy = p.y + ax * sin_r + ay * cos_r;
+    let skew = ph2d_ecs::world_skew(sim.world(), sim_entity);
+    let caixa = ph2d_editor_core::gizmo::sprite_box(gt.affine(), skew, eff_anchor, half);
     Some(ph2d_editor_core::GizmoView {
-        bbox_min_world: [cx - half_w, cy - half_h],
-        bbox_max_world: [cx + half_w, cy + half_h],
-        pivot_world: [p.x, p.y],
+        bbox_min_world: caixa.bbox_min_world,
+        bbox_max_world: caixa.bbox_max_world,
+        pivot_world: caixa.pivot_world,
         pivot_tool_active,
-        rotation,
+        rotation: caixa.rotation,
         camera_center: camera.center,
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
@@ -205,6 +190,6 @@ pub(super) fn sprite_view(
             window_size.height as f32,
         ),
         cursor_screen: Some(last_pointer),
-        model: ph2d_editor_core::gizmo::MODEL_IDENTITY,
+        model: caixa.model,
     })
 }

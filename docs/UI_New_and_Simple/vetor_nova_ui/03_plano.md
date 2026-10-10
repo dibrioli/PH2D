@@ -221,6 +221,11 @@ ir ao Enio.
   «parado» com a folga do toque (10 px) e a elipse no meio da faixa medida — a «pouca sensibilidade»;
   um S deixa de passar por zigue-zague. Medições em [`00_resultados.md`](oraculo_quickshape/00_resultados.md) §3d;
   foto [`fotos/f7b_01`](fotos/f7b_01_cena12_quatro_tracos_com_um_circulo_pequeno.png).
+- **F7c (10/10, escolha do dono):** o ARCO — traço aberto, curvo, de curvatura de um só sinal, que o
+  círculo de Taubin desenha bem; polilinha E arco ⇒ ganha o mais perto do traço; `Shift` = varrido e
+  corda a 15°. [`00_resultados.md`](oraculo_quickshape/00_resultados.md) §3g; foto
+  [`fotos/f7c_01`](fotos/f7c_01_cena12_um_arco_seguro_vira_arco_perfeito.png). Fora: setas, arcos de
+  elipse, «Edit Shape».
 
 ## §5 — O que NÃO entra (e porquê)
 

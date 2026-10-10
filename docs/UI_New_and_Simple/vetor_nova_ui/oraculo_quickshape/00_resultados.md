@@ -195,6 +195,53 @@ Escolhida **0,13** (e a janela da ponta 0,13). O rectângulo aberto 90 px do or�
 rectângulo ±2 px 93,8 → 96,2 %, zigue-zague 90,3 → 94,1 %; o S e o arco passam por forma em 1–2 %
 das mãos (a 0,07 o arco chega a 2,5 % — recusado).
 
+## §3g — O ARCO (F7c, 10/10, pedido do dono: *«QuickShape com arcos»*)
+
+O Xournal++ deixa os arcos crus (`arco_meio`, `arco_quarto`) ⇒ é lei do PRODUTO do dono (o Procreate
+faz arcos): as duas fixtures passam a excepção em `own()` com a geometria do gerador (25 → 27).
+[`quickshape_arc.rs`](../../../../crates/ph2d-vec-edit/src/quickshape_arc.rs): um traço ABERTO que a
+lei poligonal não explica (ou que ela lê polilinha) é arco se a curvatura tem UM sinal (a fracção da
+viragem CONTRA o sentido, entre 6 cordas iguais, ≤ 0,25) e o círculo de **Taubin** (porte do
+`CircleFitByTaubin` de Chernov, 2010 — o de Kåsa encolhe o raio nos arcos curtos) o desenha a ≤ 0,05
+do menor de raio e diagonal; mais de uma volta não é arco. ⭐ **Polilinha E arco** (um arco de 60° são
+dois lados de flecha no limite da régua do recto — achado pelo gate de mão): ganha a forma mais PERTO
+do traço, medida sem o `regular` para o `Shift` nunca trocar o tipo. Sondas em
+`quickshape_arc_tests.rs` (`measure_arc*`).
+
+**O preço nas formas antigas** (`measure_arc_ab`, 80 mãos, 24–400 px, A × B no mesmo processo):
+**zero** — rectângulo, triângulo, círculo, elipse, linha, zigue-zagues, L e S iguais ao décimo com e
+sem arco. O meio arco: 0 % → **100 / 99,7 / 74,7 %** a ±1 / ±2 / ±4 px.
+
+**Os arcos de mão** (`measure_arcs`, o estabilizador, 40 mãos, início ao acaso, os dois sentidos):
+
+| varrido | r 20 | r 40 | r 80 | r 160 | r 400 | (±1 px; a ±2 px) |
+|---|---|---|---|---|---|---|
+| 30° | 0 % | 25 % | 30 % | 55 % | 68 % | a fronteira com a LINHA (flecha 6,5 % ≈ 30°) |
+| 45° | 38 % | 75 % | 100 % | 100 % | 100 % | r 80: 78 % |
+| 60° | 52 % | 85 % | 100 % | 100 % | 100 % | r 80: 98 % |
+| 90° | 88 % | 100 % | 100 % | 100 % | 100 % | r 20: 65 % |
+| 120°–315° | 100 % | 100 % | 100 % | 100 % | 100 % | ≥ 98 % (r 20: 85 % a 120°) |
+| 330° | 0 % | 0 % | 0 % | 0 % | 0 % | FECHA em círculo (a folga de 13 % fecha a partir de ~318°) |
+
+As falhas: traço livre, LINHA (os arcos rasos) ou arco com o varrido errado > 10 % (os curtos); «outra
+forma» só nos arcos MINÚSCULOS (raio 20 px a 45–90°, raio 40 px a 30°: 15–30 px de traço), que já
+eram polilinha antes do arco — o tremor faz a polilinha passar mais perto. Os «não é arco» (S de dois
+meios círculos, S de seno, rabisco, volta e meia; 48–400 px, ±0,5–2 px): **0 %** lidos como arco. O
+C de ¾ da sonda das folgas: arco **30/30** (antes: traço livre), nunca círculo.
+
+**As faixas** (`measure_arc_joint`, as três juntas — o resíduo e a viragem seguram o rabisco a meias):
+
+| constante | medida | faixa | o que cai em cada ponta |
+|---|---|---|---|
+| `arc_rms_max` | 0,05 | 0,04 … 0,06 | ↓ o meio arco sem estabilizador ±2 px cai de 99 % a 86 % · ↑ rabisco lido como arco (2,5 %; 10 % a 0,1) |
+| `arc_bend_back` | 0,25 | 0,15 … 0,35 | ↓ os arcos pequenos tremidos (75 % a 0,1) · ↑ rabisco (5 % a 0,4) |
+| `arc_chords` | 6 | 4 … 8 | ↓ rabisco a 3 · ↑ o tremor de cada corda vira para trás (arcos ±2: 90 % a 12, 72 % a 24) |
+
+**O `regular`** (`Shift` / o 2.º dedo) — decisão técnica, sem medição: o Procreate não corre aqui (é
+iPad) e o manual só descreve o 2.º dedo para linha (15°), elipse (círculo) e polígonos (regulares). A
+lei escolhida é a da LINHA aplicada ao arco: o varrido em múltiplos de 15° (90° e 180° exactos) e a
+corda início → fim a 15°; o início fica onde a mão o pôs e o raio é o ajustado.
+
 ## §4 — O que isto decide para o PH2D (e o que NÃO decide)
 
 - **Copia-se a lei:** linha ⇒ 2 pontos; rectângulo ⇒ 4 cantos a 90° com a rotação do traço;

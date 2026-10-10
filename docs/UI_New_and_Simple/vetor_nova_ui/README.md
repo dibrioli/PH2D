@@ -25,6 +25,9 @@
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F7_QUICKSHAPE.md). **F7b (09/10)**:
 > formas pequenas, mais sensibilidade (o parado com folga, a elipse no meio da faixa) —
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-09_F7b_QUICKSHAPE_SENSIBILIDADE.md).
+> **F7c (10/10)**: o ARCO — um arco de mão seguro vira um arco de círculo perfeito (§3g do oráculo;
+> foto [`fotos/f7c_01`](fotos/f7c_01_cena12_um_arco_seguro_vira_arco_perfeito.png)) —
+> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7c_QUICKSHAPE_ARCOS.md).
 
 ## O roteador
 

@@ -102,3 +102,8 @@ Smoke recompilado (regra I, depois do `rm -rf target/*/incremental`), 2.ª saíd
 - ⛔ WGSL deixa um laço interno ESCONDER um parâmetro com o mesmo nome (`for (var k …)` dentro de uma função de
   `k`): compila e lê a lâmpada errada. Custou a 1.ª volta (a penumbra +24 %).
 - O teto `LAMPADAS_DIRETAS_MAX = 7` não foi re-medido: no Low a vista do dono com a cura custa MENOS que sem ela.
+
+## Smoke do dono (10/10): «smoke OK»
+
+A cena 4 com zoom e pan (a área à direita da parede pequena preta em qualquer vista; Low · Medium · High) —
+aprovado. F4 fechado do lado do dono.

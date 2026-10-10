@@ -11,9 +11,10 @@
 > um comportamento realista de verdade»*.
 
 ```
-TROCA DE AGENTE — line/PainterWatercolor («Wet Painter»), onda W1e: o escorrimento REALISTA só com água,
-pigmento e o círculo do Tilt; o Wet Paint obedece ao Paper do PAINEL; o pincel seco pega nos picos; o preset
-guarda o Tilt. Um bloco (§0.10): é tudo a mesma família — a água sobre o papel.
+TROCA DE AGENTE — line/PainterWatercolor («Wet Painter»), onda W1e: a MISTURA de pigmento realista e em tempo
+real (velatura sobre o seco, mistura sobre o molhado); o escorrimento REALISTA só com água, pigmento e o círculo
+do Tilt; o Wet Paint obedece ao Paper do PAINEL; o pincel seco pega nos picos; o preset guarda o Tilt. Um bloco
+(§0.10): é tudo a mesma família — a água e o pigmento sobre o papel.
 
 FASE 0 — ONDE VOCÊ ESTÁ (antes de ler QUALQUER ficheiro):
 1. cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && pwd && git branch --show-current
@@ -138,6 +139,6 @@ ORDEM: F6 (a mistura e o tempo real: muda o que todo traço faz sobre outro) →
 escorrimento e a constante) → F4 (o Tilt no preset e os valores de fábrica). Medições de cada passo numa rodada
 (variantes no MESMO processo); série só porque o resultado de F1 decide os valores de F4.
 
-FECHO: tabela no 05 §4b (antes · depois · Rebelle) para F1–F5; prancha a 1:1 e a 8× (o nosso × o Rebelle);
+FECHO: tabela no 05 §4b (antes · depois · Rebelle) para F1–F6; prancha a 1:1 e a 8× (o nosso × o Rebelle);
 commit por caminho (--no-verify); nunca push. AO DONO, curto e sem jargão, com o smoke em passos numerados.
 ```

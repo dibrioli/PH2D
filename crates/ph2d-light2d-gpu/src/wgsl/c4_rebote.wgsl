@@ -11,17 +11,9 @@
 @group(3) @binding(3) var fonte_saida: texture_storage_2d<rgba16float, write>;
 
 override BANDA_DO_REBOTE: f32 = 2.0;
-// ⭐ W5c: a parte das CASCATAS da fonte lê-se este tanto (texels) para FORA da face, na direção do
-// interior → fronteira (o RC erra junto à face, e o erro depende do alinhamento dela com a grade);
-// a luz direta das lâmpadas fica NA face (exata). 0 = na face.
-override RECUO_DA_FONTE: f32 = 0.0;
 
-fn luz_do_rebote(P: vec2<f32>, fora: vec2<f32>) -> vec3<f32> {
-    var c = fora;
-    if meio(c).tau <= 0.0 {
-        c = P;
-    }
-    var f = c0_em(c);
+fn luz_do_rebote(P: vec2<f32>) -> vec3<f32> {
+    var f = c0_em(P);
     for (var k = 0u; k < lampadas.n; k++) {
         let s = sem_sombra(P, lampadas.itens[k]);
         if any(s > vec3<f32>(0.0)) {
@@ -38,7 +30,6 @@ fn c3_rebote(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let P = vec2<f32>(gid.xy) + 0.5;
     var Q = P;
-    var para_fora = vec2<f32>(0.0);
     if meio(P).tau <= 0.0 {
         var d_melhor = 3.4e38;
         for (var dy = -2; dy <= 2; dy++) {
@@ -55,7 +46,6 @@ fn c3_rebote(@builtin(global_invocation_id) gid: vec3<u32>) {
                 if d < d_melhor {
                     d_melhor = d;
                     Q = b;
-                    para_fora = (b - P) / max(d, 1e-6);
                 }
             }
         }
@@ -67,5 +57,5 @@ fn c3_rebote(@builtin(global_invocation_id) gid: vec3<u32>) {
         textureStore(fonte_saida, gid.xy, vec4<f32>(0.0));
         return;
     }
-    textureStore(fonte_saida, gid.xy, vec4<f32>(luz_do_rebote(Q, Q + para_fora * RECUO_DA_FONTE), 1.0));
+    textureStore(fonte_saida, gid.xy, vec4<f32>(luz_do_rebote(Q), 1.0));
 }

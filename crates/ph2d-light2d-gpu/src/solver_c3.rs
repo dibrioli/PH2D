@@ -408,10 +408,7 @@ impl C3 {
                 })
             };
             let grupos = [grupo(&g2, 1, c0), grupo(&g3, 3, fonte)];
-            let mut constantes = vec![
-                ("PASSO", fino(true)),
-                ("RECUO_DA_FONTE", f64::from(cfg.recuo_da_fonte)),
-            ];
+            let mut constantes = vec![("PASSO", fino(true))];
             if let Some(b) = bordas {
                 constantes.push(("RAIOS_DIRETOS", f64::from(b.raios)));
                 constantes.push(("BISSECOES", f64::from(b.bissecoes)));

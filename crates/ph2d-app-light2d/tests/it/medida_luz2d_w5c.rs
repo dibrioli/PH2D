@@ -470,12 +470,8 @@ fn sonda_sala_g9_no_produto() {
         );
         let pts = [[-1.5, 0.0], [1.5, 0.0], [0.0, -0.9], [0.0, 0.0]];
         let mut linha = Vec::new();
-        for recuo in [0.0_f32, 1.0, 2.0, 3.0] {
-            let cfg = Config {
-                recuo_da_fonte: recuo,
-                ..config(&gpu, NivelDaLuz::Alta, Variante::Classica)
-            };
-            let mut s = solver(&gpu, cfg);
+        for v in [Variante::Classica, Variante::Holo] {
+            let mut s = solver(&gpu, config(&gpu, NivelDaLuz::Alta, v));
             for _ in 0..120 {
                 s.quadro(&gpu, &c);
             }
@@ -487,7 +483,7 @@ fn sonda_sala_g9_no_produto() {
                     (f.amostra(p) - g) / g
                 })
                 .fold(0.0_f64, |m, x| if x.abs() > m.abs() { x } else { m });
-            linha.push(format!("recuo {recuo}: {e:+.3}"));
+            linha.push(format!("{v:?}: {e:+.3}"));
         }
         eprintln!("{nome}: {}", linha.join(" · "));
     }

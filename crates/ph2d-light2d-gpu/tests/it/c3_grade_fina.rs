@@ -132,6 +132,14 @@ fn so_a_regiao_se_calcula_e_por_dentro_e_o_mesmo_bit() {
         vec![[0.30, 1.0], [0.60, 1.0], [0.60, 2.0], [0.30, 2.0]],
         1.0,
     ));
+    // E uma lâmpada FORA da região que acende essa face: o texel de dentro que se calcula nela mede a
+    // visibilidade (as sondas em volta estão fora da região).
+    cena.emissores.push(crate::comum::disco(
+        [0.1, 1.5],
+        0.05,
+        [1.0; 3],
+        f32::INFINITY,
+    ));
     let mut inteira = Solver::novo(&gpu, cfg).expect("solver");
     inteira.quadro(&gpu, &cena);
     let a = ler_bytes(&gpu, inteira.fluencia());

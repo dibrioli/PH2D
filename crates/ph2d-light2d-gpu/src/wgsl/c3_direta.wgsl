@@ -289,8 +289,9 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
         lo = vec2<i32>(fina.inicio / CELULA_PREENCHE);
         hi = vec2<i32>((fina.fim + CELULA_PREENCHE - 1u) / CELULA_PREENCHE);
     }
-    var semente = id;
-    var d_semente = 3.4e38;
+    // Entre as sementes da célula e das 8 vizinhas, a de ponto de FRONTEIRA mais perto (a mesma regra
+    // da janela: a semente de uma célula é UM texel exterior dela, e o desempate entre texels
+    // equidistantes não pode decidir a face).
     for (var dy = -1; dy <= 1; dy++) {
         for (var dx = -1; dx <= 1; dx++) {
             let q = c + vec2<i32>(dx, dy);
@@ -301,17 +302,16 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
             if s == SEM_SEMENTE {
                 continue;
             }
-            let t = vec2<u32>(s & 0xffffu, s >> 16u);
-            let v = vec2<f32>(t) - vec2<f32>(id);
-            let d = dot(v, v);
-            if d < d_semente {
-                d_semente = d;
-                semente = t;
+            let b = na_fronteira(P0, ponto_fino(vec2<u32>(s & 0xffffu, s >> 16u)));
+            let d = distance(b, P0);
+            if d < d_melhor {
+                d_melhor = d;
+                melhor = b;
             }
         }
     }
-    if d_semente < 3.4e38 {
-        return Onde(na_fronteira(P0, ponto_fino(semente)), true);
+    if d_melhor < 3.4e38 {
+        return Onde(melhor, true);
     }
     return Onde(P0, false);
 }

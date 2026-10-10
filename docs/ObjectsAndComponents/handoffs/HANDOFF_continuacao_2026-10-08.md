@@ -34,3 +34,10 @@ escolhas dele estão no [doc 01 §14](../01_objeto_e_componente.md). As ondas 1�
 leva as quatro juntas. ⚠️ Os itens 6–8 tocam `ph2d-app-motion` — `line/motion-value` viva: colisão primeiro
 (`collision-surface.sh` nas duas worktrees). O item 1 sobe o `DOC_VERSION` da timeline (19 → 20, com
 migração provada contra fixtura gravada ANTES).
+
+## Onda 4 fechada (09/10)
+
+- Os 10 itens do [doc 01 §14](../01_objeto_e_componente.md) estão fechados:
+  [handoff da onda 4](HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda4_2026-10-09.md).
+- As **QUATRO ondas vão juntas** na branch `line/ObjectsAndComponents`; nenhuma está no `main`.
+- O que fica aberto: §10 do handoff novo (a–g). **Próxima onda = decisão do dono.**

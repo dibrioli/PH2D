@@ -321,3 +321,21 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | 9 | lista do filtro ▾ com rolagem quando não cabe no ecrã | onda 3 (f) |
 | 10 | o pedido ao Inspector casa pela IDENTIDADE, não pelo nome · camada pendente de um Paint recusado é largada | onda 1 §10 |
 | — | caminhos: nada a construir (escolha 4.3) | onda 3 (e) |
+
+**Onda 4 entregue (09/10)** — handoff: [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda4_2026-10-09.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda4_2026-10-09.md)
+
+| # | plano | o que ficou | porquê medido |
+|---|---|---|---|
+| 1 | clipe de entrada + cada objecto toca a sua | `NamedClip.autoplay` (`DOC_VERSION` 19→20, migração contra fixtura v19 gravada antes); `toca_os_objectos`; interruptor «Autoplay» (rádio); verbo `Play Clip` | o Play só tocava o Arrange da Cena; o molde era o das cutscenes (relógio por objecto) |
+| 2 | nomes de clip únicos por animação | `same_animation`/`clip_named(owner,name)`; osso inteligente resolve dentro da sua animação | a cópia tocava o «andar» do original |
+| 3 | UM Ctrl+Z devolve objecto + clipes + nós | `Graveyard<D>` (fundo 256 = `UNDO_CAP`, gate); a fila desfaz o passo sozinha só se ainda é o topo | «undo composto entre filas» recusado: parte quando uma fila é desfeita fora de ordem |
+| 4 | Add Clip acima do tecto: recusa visível | `ClipRefusal::{AnimationFull, DocumentFull}` em toast, verificada antes da edição | botão desabilitado calaria a recusa |
+| 5 | seletor do Arrange com clips de todas as animações | ▾ agrupado por dono, com rolagem; `TIMELINE_SOURCE_ROWS = 131 072` | 65 536 clips (u16 de um strip) + um cabeçalho por dono |
+| 6 | mundo no espaço do objecto Motion | porta única `ctx.external` (`Cook::set_spaces`, `in_space`); `$at:` passa a ser a pose de MUNDO; smoke `=3` | cozido global; nenhum kernel da placa lê externos (censo); `$at:` publicava o Transform local |
+| 7 | gizmo de campo exacto | `GizmoView.model`; arrasto pela inversa | o cisalhamento não cabia em `GizmoView` |
+| 8 | legendas seguem o dono | `Caption.no`; `monta_cena` porta única | — |
+| 9 | filtro ▾ com rolagem | `paint_dropdown_popover_scrolled_with_hits` na fundação | em `widget/` reprovava o DAG dos módulos (43→45) |
+| 10 | pedido ao Inspector pela identidade · camada pendente | `InspectorReveal.entity` (bits); `pending_layer` largado em `leave`/outra imagem | o Inspector só tem bits; um Paint recusado não chega a escrever a camada |
+| — | caminhos (4.3) | nada a construir | escolha do dono |
+
+Abertos da onda 4: §10 do handoff novo.

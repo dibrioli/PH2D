@@ -158,3 +158,40 @@ congelado (`Tool=12`/`PanelEvent=4` intactos; o Inspector vai por `EditorAction:
 ```
     Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
+
+## Smoke do dono (09/10) e as curas — «muita coisa não está boa»
+
+Report: *«Resolução muito baixa. Luz sem gizmo, mover a lâmpada não atualiza a posição da luz, etc.»*
+
+| report | mecanismo (medido) | cura · gate |
+|---|---|---|
+| mover a lâmpada não move a luz | no editor o `GlobalTransform` do MUNDO não é mantido (a propagação escreve-o só no `PresentWorld`, `sim_extract`); a coleta lia-o → ficava no valor de nascença, e a lâmpada do **menu Add nem acendia** (0 emissores: a cena ESCURECIA). Os gates da W4 punham o `GlobalTransform` à mão (a lição «onde os objetos NASCEM») | a coleta lê `ph2d_ecs::world_transform_into` (a porta do clique/gizmo) · `a_pose_e_a_do_editor` (3, vermelho-primeiro) · `3e366ba27` |
+| luz sem gizmo | o anel do objeto vazio dizia ONDE, não que é luz, o tamanho, nem o alcance | `gizmo::{glifo, desenhar}`: lâmpada no tamanho real (piso 3 px), raios fora do anel, alcance tracejado na selecionada, a Ambiente com o seu símbolo · `o_gizmo_da_luz` · `c7c75a117` · foto `cena4_gizmo.png` |
+| resolução muito baixa | a grade a 4 px (K7, orçamento de CELULAR) dava degraus na borda da sombra e uma faixa escura de 4 px em volta das paredes | dono escolheu: **Settings ▸ 2D Light** (Low · Medium · High = 4 · 3 · 2 px) **+ Automatic** (ligado; o nível é o TETO; desce após 3 leituras > 5,56 ms = 1/3 do quadro a 60 Hz, sobe se o nível acima, previsto por `1/célula²`, cabe em 75 %). Leitura dos carimbos SEM ESPERAR. Preferência do editor em `~/.ph2d/prefs.txt`; o Inspector diz «Quality: High (automatic), x ms» · `a_nitidez_da_luz` (3, um na placa), `settings_luz`, `every_light_quality_survives_a_round_trip` · `fe4373252` · foto `cena4_antes_depois_nitidez.png` (degraus somem; cena 1 a 60 fps em High) |
+
+**Mutação das curas** (agente `mutacao` + re-prova): 12/12 sangram depois de três gates novos (`a6dcaa6bf`) —
+G2 (raios começando dentro de uma lâmpada maior que o anel), Q2 (subir além de um teto Médio), Q4 (o
+automático que leria UMA vez e travaria). Controlo (folga 4 → 5 px) sobreviveu — certo.
+
+**Portão** (depois de `1c511c1d6`): fmt · clippy `-D warnings` (9 crates + shell) · machete · `check
+--workspace` sem avisos ✓; `nextest-impacted` 16 893/16 896 — os 3 vermelhos eram do `chrome-sync` (um
+ficheiro de TESTE dentro de `chrome/` conta como handler) e curados em `1c511c1d6` (re-corridos: 3/3 ✓).
+Shell: 185 758 linhas (+190 sobre 185 568; tecto 189 041).
+
+**Fundação nova desta volta** (ADR-0107, append): `ph2d-editor-core` — `NivelDaLuz`/`PreferenciaDaLuz`,
+`ViewState::luz2d`, `ContextMenuKind::SettingsLightSubmenu`, `CTX_MENU_SETTINGS_LIGHT`/`_LIGHT_NIVEL[3]`/
+`_LIGHT_AUTO`, a linha no Settings, a marca (parâmetro a mais em `id_is_currently_selected` e
+`paint_context_menu_overlay`), `chrome/settings_luz.rs` (chain regenerada). `ph2d-i18n`: `chrome.menu.light_2d`
+(«2D Light» — `chrome.menu.light` já era o TEMA) e os níveis. `ph2d-light2d-gpu`: `Tempos::ler_sem_esperar`,
+`Solver::tempos_sem_esperar`. Shell: `prefs.rs` (`light_quality`, `light_auto`), `init.rs`,
+`forwarding_persist.rs`, `fase_snapshots_publish.rs` (`preferir`), `fase_selection_highlight.rs` (gizmo).
+
+**Ainda aberto, visível** (para a W5, nº 1): a **faixa/pontilhado escuro** na face iluminada das paredes
+(agora 2 px em High) e as paredes PRETAS que recebem luz — a mesma regra «o interior de um opaco recebe
+0»; o «etc» do dono ainda não foi listado.
+
+Smoke recompilado depois das curas (regra I), 2.ª saída:
+
+```
+    Finished `smoke` profile [optimized] target(s) in 0.33s
+```

@@ -176,6 +176,12 @@ fn card_anchor(hero: &HeroScreen, area: Rect) -> Option<(OpenThread, [f32; 2])> 
     Some((open, [p[0] as f32, p[1] as f32]))
 }
 
+/// O x do cartão de largura `w` que quer começar em `want`: nunca passa a borda direita da área (com
+/// a margem `m`) e, numa área mais estreita que ele, encosta à esquerda (o título e o × à vista).
+pub(super) fn card_x(want: f32, w: f32, area: Rect, m: f32) -> f32 {
+    want.min(area.x + area.w - w - m).max(area.x + m)
+}
+
 /// O texto de uma mensagem como o cartão o mostra.
 fn shown_text(m: &Message) -> String {
     if m.edited {
@@ -248,7 +254,7 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         first -= 1;
     }
     let h = used + if first > 0 { small } else { 0.0 };
-    let x = (at[0] + s + g).min(area.x + area.w - w - m).max(area.x + m);
+    let x = card_x(at[0] + s + g, w, area, m);
     let y = (at[1] - s).min(area.y + area.h - m - h).max(area.y + m);
     let card = Rect::new(x, y, w, h);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());

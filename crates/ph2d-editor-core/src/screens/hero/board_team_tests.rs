@@ -51,3 +51,22 @@ fn ago_reads_in_the_largest_unit() {
         "um relógio que andou para trás não dá negativo"
     );
 }
+
+/// K4 — o cartão nunca passa a borda direita e, numa área mais estreita que ele, encosta à esquerda
+/// (prova de mutação W8: só a borda direita tinha teste).
+#[test]
+fn the_card_x_keeps_both_edges() {
+    let area = crate::zones::Rect::new(100.0, 0.0, 500.0, 400.0);
+    assert_eq!(paint::card_x(200.0, 300.0, area, 10.0), 200.0);
+    assert_eq!(
+        paint::card_x(450.0, 300.0, area, 10.0),
+        290.0,
+        "a borda direita"
+    );
+    let narrow = crate::zones::Rect::new(100.0, 0.0, 200.0, 400.0);
+    assert_eq!(
+        paint::card_x(250.0, 300.0, narrow, 10.0),
+        110.0,
+        "estreita: à esquerda"
+    );
+}

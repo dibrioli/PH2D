@@ -230,6 +230,23 @@ fn same_tree(a: &serde_json::Value, b: &serde_json::Value, at: &str) -> Result<(
     }
 }
 
+/// A comparação da árvore tem tolerância de ARREDONDAMENTO, nunca de valor: um ULP passa, 1e-3 não.
+#[test]
+fn the_tree_comparison_forgives_only_rounding() {
+    let n = |v: f64| serde_json::json!({ "x": [v] });
+    let x = 114.473_245_882_204_54_f64;
+    assert!(same_tree(&n(x), &n(f64::from_bits(x.to_bits() + 1)), "").is_ok());
+    assert!(same_tree(&n(x), &n(x + 1e-3), "").is_err());
+    assert!(
+        same_tree(
+            &serde_json::json!({"a": 1}),
+            &serde_json::json!({"b": 1}),
+            ""
+        )
+        .is_err()
+    );
+}
+
 /// ⭐ X4: o escritor é determinístico (byte a byte no mesmo build) e continua a escrever a ENTRADA que
 /// o oráculo correu (a mesma árvore, a menos do último dígito de uma conta de vírgula flutuante).
 #[test]
@@ -405,8 +422,20 @@ fn a_copy_of_a_line_shape_keeps_its_own_text() {
         text["originalText"] = serde_json::json!("Copy");
         text["text"] = serde_json::json!("Copy");
         text["groupIds"] = serde_json::json!(["fresh-group"]);
+        // Uma 2.ª cópia noutro grupo: cada texto fica com o anfitrião do SEU grupo (prova de mutação
+        // W8: com uma cópia só, «o primeiro grupo» e «o grupo dele» davam o mesmo).
+        let (mut line2, mut text2) = (line.clone(), text.clone());
+        line2["id"] = serde_json::json!("copyline2");
+        line2["x"] = serde_json::json!(line["x"].as_f64().unwrap() + 500.0);
+        line2["groupIds"] = serde_json::json!(["another-group"]);
+        text2["id"] = serde_json::json!("copytext2");
+        text2["originalText"] = serde_json::json!("Second");
+        text2["text"] = serde_json::json!("Second");
+        text2["groupIds"] = serde_json::json!(["another-group"]);
         els.push(line);
         els.push(text);
+        els.push(line2);
+        els.push(text2);
     });
     let cyl: Vec<String> = imp
         .doc
@@ -418,7 +447,7 @@ fn a_copy_of_a_line_shape_keeps_its_own_text() {
                 .map(|s| s.text.as_str().to_owned())
         })
         .collect();
-    assert_eq!(cyl, ["DB", "Copy"]);
+    assert_eq!(cyl, ["DB", "Copy", "Second"]);
 }
 
 /// ⭐ X2 — o tracejado e os cantos mudados lá voltam; um redimensionar de uma forma `line` escala-a;

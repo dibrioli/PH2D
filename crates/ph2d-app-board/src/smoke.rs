@@ -70,7 +70,7 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         7 => guides::scene_guides(hero),
         8 => mind::scene_mind(hero),
         9 => facilitate::scene_facilitate(hero),
-        10 => team::scene_team(hero),
+        10 => _ = team::scene_team(hero),
         _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=10)"),
     }
 }

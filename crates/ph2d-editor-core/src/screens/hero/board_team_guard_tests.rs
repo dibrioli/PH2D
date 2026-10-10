@@ -298,6 +298,11 @@ fn presenting_owns_the_window_and_gives_the_tool_back() {
     t.arm();
     t.shell_click_id(button_node(NavButton::Present), "Present");
     assert!(board_nav::team::show::showing(&t.hero));
+    // Um painel publicado sob o ponto (o que um painel do chrome faz a cada quadro): a apresentação
+    // tapa-o (prova de mutação W8: sem painel nenhum ali, a pergunta era vazia).
+    let panel = NodeId(0x7e57_0001);
+    let under = Rect::new(0.0, 0.0, 200.0, 200.0);
+    t.hero.store.set_panel_rect(panel, under);
     assert!(t.hero.chrome_panel_at(10.0, 10.0).is_none());
     assert_eq!(t.hero.toggle_legacy_chrome(), None, "F9 recusado");
     let mut scene = VectorScene::new();
@@ -321,6 +326,12 @@ fn presenting_owns_the_window_and_gives_the_tool_back() {
     assert!(
         t.hero.documents.live.team.commenting,
         "a ferramenta volta armada"
+    );
+    t.hero.store.set_panel_rect(panel, under);
+    assert_eq!(
+        t.hero.chrome_panel_at(10.0, 10.0),
+        Some(panel),
+        "o controlo: fora da apresentação o painel responde"
     );
 }
 

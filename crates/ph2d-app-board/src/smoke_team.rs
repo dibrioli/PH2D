@@ -247,13 +247,15 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
     }
 }
 
-pub(super) fn scene_team(hero: &mut HeroScreen) {
+/// A cena 10 no hero; devolve os ids dela (os testes conduzem-na pelo MESMO caminho do smoke).
+pub(super) fn scene_team(hero: &mut HeroScreen) -> Lessons {
     let mut set = BoardSet::default();
     let id = set.create(default_name(1));
-    let view = build(set.get_mut(id).expect("acabou de nascer")).view;
+    let l = build(set.get_mut(id).expect("acabou de nascer"));
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
-    board_nav::show_box(hero, false, false, view);
+    board_nav::show_box(hero, false, false, l.view);
+    l
 }
 
 #[cfg(test)]

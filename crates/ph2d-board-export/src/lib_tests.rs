@@ -329,7 +329,8 @@ fn svg_stays_xml_and_carries_links() {
 /// 500 → 5,2 MB e 2 000 → 85 MB).
 #[test]
 fn the_pdf_grows_linearly_with_faded_objects() {
-    let size_for = |n: usize| {
+    // `n` objectos esbatidos com `k` opacidades diferentes (cada uma o seu estado de alfa `A*`).
+    let size_for = |n: usize, k: usize| {
         let mut set = BoardSet::default();
         let a = set.create("Faded".into());
         let b = set.get_mut(a).unwrap();
@@ -342,7 +343,7 @@ fn the_pdf_grows_linearly_with_faded_objects() {
                 None,
             );
             let mut el = b.doc.get(id).unwrap().clone();
-            el.style_mut().opacity = 50;
+            el.style_mut().opacity = u8::try_from(1 + i % k).unwrap();
             BoardOp::Put(el).apply(&mut b.doc);
         }
         let b = set.get(a).unwrap().clone();
@@ -358,10 +359,18 @@ fn the_pdf_grows_linearly_with_faded_objects() {
         }])
         .len() as f64
     };
-    let (small, big) = (size_for(200), size_for(800));
+    let (small, big) = (size_for(200, 1), size_for(800, 1));
     assert!(
         big / small < 6.0,
         "4× os objectos deu {:.1}× os bytes",
         big / small
+    );
+    // Cada conteúdo declara só os estados de alfa que USA (prova de mutação W8: com todos em cada
+    // grupo, 9× as opacidades multiplicava os bytes; só os usados, quase nada).
+    let (few, many) = (size_for(180, 10), size_for(180, 90));
+    assert!(
+        many / few < 1.5,
+        "9× as opacidades deu {:.2}× os bytes",
+        many / few
     );
 }

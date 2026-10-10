@@ -54,12 +54,8 @@ impl Screen {
     fn new() -> Self {
         ph2d_editor_core::test_support::ensure_panel_registry();
         let mut hero = HeroScreen::new(NodeId(1));
-        let mut set = BoardSet::default();
-        let id = set.create(default_name(1));
-        let l = build(set.get_mut(id).unwrap());
-        document_tabs::load(&mut hero, set);
-        hero.documents.activate(Some(id));
-        board_nav::show(&mut hero, false, false);
+        // O caminho do smoke, não uma cópia dele (prova de mutação W8: a cópia enquadrava sem a caixa).
+        let l = scene_team(&mut hero);
         let mut s = Self {
             hero,
             ts: TextSystem::without_system_fonts(),
@@ -242,6 +238,20 @@ fn the_lessons_fit_and_the_launch_is_in_view() {
                 "{q:?}"
             );
         }
+    }
+    // A cena enquadra a CAIXA com a margem do que os painéis tapam (não só o que tem): os cantos
+    // dela cabem na área (prova de mutação W8: enquadrar o quadro sem a margem também punha os
+    // frames à vista, e os painéis tapavam-lhes as pontas).
+    let v = s.l.view;
+    for p in [[v[0], v[1]], [v[2], v[3]]] {
+        let q = b.camera.to_screen(a, p);
+        assert!(
+            q[0] >= a[0] - 1.0
+                && q[1] >= a[1] - 1.0
+                && q[0] <= a[0] + a[2] + 1.0
+                && q[1] <= a[1] + a[3] + 1.0,
+            "a caixa da cena sai da área: {q:?} em {a:?}"
+        );
     }
     assert!(
         s.find(node(Hit::Bubble(s.l.rui))).is_some(),

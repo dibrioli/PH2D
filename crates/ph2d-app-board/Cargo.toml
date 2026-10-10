@@ -37,6 +37,9 @@ bumpalo = "3"
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-vector = { path = "../ph2d-vector" }
+# O gate da cena 11 lê o ficheiro do dono e mede a ponta contra o contorno.
+ph2d-board-geom = { path = "../ph2d-board-geom" }
+serde_json = "1"
 
 [lints]
 workspace = true

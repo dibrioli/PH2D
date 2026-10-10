@@ -11,6 +11,8 @@
 //! | 7 | as GUIAS de objectos rodados (W5b), uma lição por frame, cada «arraste-me» a 40 do que ensina: «Tilted shapes» (B desliza ao longo dos 30° e a borda dele vai à linha inclinada da de A, guia inclinada) · «Rotate» (o direito encaixa em 30°, 45° e direito; `Shift` = 15°; `Ctrl` suspende) · «Tilted frame» a 20° (espaçamento igual e alinhamento nos eixos do frame) · «Equal spacing» · «Frame A»/«Frame B» (o frame alinha a caixa dele) |
 //! | 8 | PLANEAR (W6): um MAPA MENTAL começado — «Plan» com «Ideas» e «Risks» (RECOLHIDO: o número à vista) à direita e «Next steps» à esquerda — e seis notas com as lições (`Tab` filho · `Enter` irmão · as setas · o número abre · arrastar para outro pai · o botão dos MODELOS), tudo num frame (o 1.º quadro enquadra na janela inteira e os painéis tapam as bordas) |
 //! | 9 | FACILITAR (W7): uma retrospectiva com sete ideias num frame «Ideas» (cores e etiquetas variadas, os selos de uma votação anterior — 3 e 1 —, carimbos) e cinco notas com as lições na ordem real (o cronómetro · votar com os `+` · «I'm done»/«End for all» · os carimbos · agrupar por cor, etiqueta ou palavra); o cartão do cronómetro abre armado a 5:00 |
+//! | 10 | a EQUIPA e a SAÍDA (W8): um lançamento em três frames-diapositivo, um comentário por ler e um resolvido, uma versão guardada, e as cinco lições (comentar · versões · apresentar · exportar · abrir um `.excalidraw`) |
+//! | 11 | a FIDELIDADE ao Excalidraw (W9): o `bv.excalidraw` do dono aberto pelo leitor (setas rectas, paradas a 5 + traço/2 das formas — compare com a foto `docs/MiroClone/bv_excalidraw.png`), setas curtas de 10 a 60 (a ponta encolhe para metade), duas caixas para desenhar uma seta que pára antes da forma, e as quatro lições |
 
 use ph2d_board_model::{
     Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Mark, Rgba,
@@ -46,10 +48,14 @@ mod facilitate;
 #[path = "smoke_team.rs"]
 mod team;
 
+/// A cena 11 (W9), num ficheiro filho.
+#[path = "smoke_fidelity.rs"]
+mod fidelity;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 10,
+    max_level: 11,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -71,7 +77,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         8 => mind::scene_mind(hero),
         9 => facilitate::scene_facilitate(hero),
         10 => _ = team::scene_team(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=10)"),
+        11 => _ = fidelity::scene_fidelity(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=11)"),
     }
 }
 

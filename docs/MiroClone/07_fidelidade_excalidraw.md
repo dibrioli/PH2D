@@ -210,7 +210,7 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
 ### §6.3 — O que a cena/smoke deve mostrar ao dono
 
 Uma cena nova (a 11.ª do quadro, `PH2D_BOARD_SMOKE=11`) que abre o ficheiro do PRÓPRIO dono
-(`docs/MiroClone/excalidraw_dono_bv.excalidraw`, cópia de `entradas/w9_dono_bv.excalidraw`) ao lado da
+(`docs/MiroClone/bv.excalidraw`, cópia de `entradas/w9_dono_bv.excalidraw`; a foto `docs/MiroClone/bv_excalidraw.png`) ao lado da
 fotografia do Excalidraw (`saidas/w9_dono_bv.next.svg` rasterizado): as três setas RECTAS, a parar 5,5 antes
 das formas, a seta curta do losango com a ponta pequena; e uma fila de setas curtas (10…60) a mostrar a ponta a
 encolher. Fotografada antes de mandar; passos numerados para o dono (abrir o ficheiro pelo menu da aba,

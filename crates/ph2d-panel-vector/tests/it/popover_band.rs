@@ -119,13 +119,12 @@ fn the_first_row_of_the_token_picker_lands_on_the_panels_band() {
 
 /// **A porta é UMA** — nenhum popover deste painel clampa contra a janela.
 ///
-/// ⚠️ Arch-gate porque o defeito é de GEOMETRIA e nasce no sítio da chamada: são cinco popovers
-/// (token, mistura de filtro, ponta de traço, categoria do catálogo, fonte) e o sexto nasce com o
-/// defeito se a resposta for escrita de novo. Um gate por popover cobriria os cinco que alguém se
-/// lembrou de listar.
+/// ⚠️ Arch-gate porque o defeito é de GEOMETRIA e nasce no sítio da chamada: são nove popovers e o
+/// décimo nasce com o defeito se a região for escrita de novo. Todos passam pela porta da fundação
+/// (`panel::paint_dropdown_list`), e a REGIÃO que lhe entregam é a banda do layout.
 #[test]
 fn no_popover_in_this_panel_clamps_against_the_window() {
-    const FILES: [(&str, &str); 5] = [
+    const FILES: [(&str, &str); 9] = [
         ("paint_tokens.rs", include_str!("../../src/paint_tokens.rs")),
         (
             "paint_filters_blend.rs",
@@ -143,21 +142,36 @@ fn no_popover_in_this_panel_clamps_against_the_window() {
             "font_dropdown.rs",
             include_str!("../../src/font_dropdown.rs"),
         ),
+        (
+            "icon_dropdown.rs",
+            include_str!("../../src/icon_dropdown.rs"),
+        ),
+        (
+            "paint_appearance.rs",
+            include_str!("../../src/paint_appearance.rs"),
+        ),
+        (
+            "paint_stack_rows.rs",
+            include_str!("../../src/paint_stack_rows.rs"),
+        ),
+        (
+            "paint_morph_states.rs",
+            include_str!("../../src/paint_morph_states.rs"),
+        ),
     ];
     for (name, src) in FILES {
-        // Controle positivo: o scanner esta' a olhar para um ficheiro que de facto clampa.
+        // Controle positivo: o scanner esta' a olhar para um ficheiro que de facto pinta uma lista.
         assert!(
-            src.contains("popover_rect_clamped("),
+            src.contains("paint_dropdown_list("),
             "{name}: o gate deixou de ver a chamada que julga (ficheiro renomeado?)"
         );
         assert!(
-            !src.contains("popover_rect_clamped(chip, ctx.viewport)")
-                && !src.contains("popover_rect_clamped(chip_rect, ctx.viewport)"),
-            "{name}: clampa contra a JANELA — a lista encosta na borda de cima e sai de cima do \
-             painel dela. A regiao e' `ctx.layout.popover_region()`."
+            !src.contains("let region = ctx.viewport") && !src.contains("popover_rect_clamped("),
+            "{name}: clampa contra a JANELA (ou à mão) — a lista encosta na borda de cima e sai de \
+             cima do painel dela. A regiao e' `ctx.layout.popover_region()`."
         );
         assert!(
-            src.contains("ctx.layout.popover_region()"),
+            src.contains("let region = ctx.layout.popover_region();"),
             "{name}: o popover tem de perguntar a regiao ao layout"
         );
     }

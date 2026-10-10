@@ -8,10 +8,8 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
-use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal};
-use ph2d_editor_core::widget::{
-    Dropdown, DropdownOption, paint_dropdown_chip, paint_dropdown_popover,
-};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal, paint_dropdown_list};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{AnimationIntent, SCENE, TimelineIntent, TimelineViewSnapshot};
 use ph2d_tokens::{ROW_H_PX, Theme};
@@ -130,8 +128,9 @@ pub(crate) fn chip(
     })
 }
 
-/// A lista aberta — no passo adiado, por cima do dope sheet. Regista cada opção (o rect só se
-/// conhece aqui) e publica o popover para o clique de fora o fechar.
+/// A lista aberta — no passo adiado, por cima do dope sheet, pela porta da fundação (a mesma do
+/// irmão [`crate::transport_sources`]): clampada à banda do chrome, rolada quando não cabe, e
+/// publicada para o clique de fora a fechar.
 pub(crate) fn paint_popover(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -153,15 +152,8 @@ pub(crate) fn paint_popover(
             .max(ph2d_editor_core::widget::popover_width_for(text_w, true)),
         chip.h,
     );
-    paint_dropdown_popover(&dd, chip, ctx.scene, ctx.text_system, theme);
-    for (i, opt) in dd.options.iter().enumerate() {
-        ctx.host
-            .hit_index_mut()
-            .register(opt.id, dd.option_rect(chip, i));
-    }
-    ctx.host
-        .store_mut()
-        .set_dropdown_popover(ids::TIMELINE_ANIM_DD, dd.popover_rect(chip));
+    let region = ctx.layout.popover_region();
+    paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }
 
 /// O que a opção `id` pede.

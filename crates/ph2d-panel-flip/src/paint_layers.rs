@@ -16,14 +16,13 @@ use crate::state::{FlipLayerRow, FlipLayersSnapshot, FlipPanelState, LayerRename
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
-use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list};
 use ph2d_editor_core::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption,
-    DropdownState, SliderOrientation, SliderState, TextInput, TextInputState, default_chip_w,
-    paint_button, paint_dropdown_chip, paint_dropdown_popover_scrolled,
-    paint_slider_with_chip_layout_adaptive, paint_text_input_with_buffer, scrollbar_is_needed,
-    scrollbar_track_rect, slider_with_chip_is_stacked,
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, SliderOrientation,
+    SliderState, TextInput, TextInputState, default_chip_w, paint_button, paint_dropdown_chip,
+    paint_slider_with_chip_layout_adaptive, paint_text_input_with_buffer,
+    slider_with_chip_is_stacked,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;

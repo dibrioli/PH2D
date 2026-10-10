@@ -50,6 +50,10 @@ mod section_smart;
 mod section_tip;
 pub mod state;
 
+#[cfg(test)]
+#[path = "as_listas_rolam_tests.rs"]
+mod as_listas_rolam_tests;
+
 pub use state::{
     Skinned, SmartBoneView, TipView, set_current_bone, set_current_bone_actions,
     set_current_bone_aim, set_current_bone_handles, set_current_bone_ik,

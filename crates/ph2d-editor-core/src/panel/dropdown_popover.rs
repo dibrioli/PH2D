@@ -3,22 +3,88 @@
 //! ⚠️ Mora no `panel`, e não no `widget` ao lado do pintor, porque lê o [`WidgetStore`] e regista no
 //! [`HitIndex`]: a aresta `widget → interaction` é uma catraca que só encolhe
 //! (`architecture_the_foundation_modules_form_a_dag`), e o `panel` já está acima dos dois.
+//!
+//! ⛔ Catorze painéis traziam cópias desta lei; o censo `architecture_dropdown_lists_use_the_door`
+//! reprova a décima-quinta.
 
-use crate::interaction::{HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
+use crate::panel::PaintCtx;
 use crate::widget::{
-    DROPDOWN_SCROLLBAR_ID, Dropdown, PaintedPopover, paint_dropdown_popover_scrolled,
-    scrollbar_is_needed, scrollbar_track_rect,
+    ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, PaintedPopover, PopoverRowPainter,
+    paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
 };
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-/// ⭐⭐ **A PORTA de uma lista aberta que ROLA** — clamp a `region`, rolagem lida do store, pintura,
-/// e os hits: só a faixa VISÍVEL de cada linha (uma linha rolada para fora apanharia o clique por
-/// baixo do popover; as `disabled` nunca) e a trilha da barra sob o [`DROPDOWN_SCROLLBAR_ID`],
-/// que o despacho liga ao dropdown publicado. Quem chama publica o devolvido — logo, ou no fim do
-/// `paint` quando o passe não tem o store mutável (o Inspector).
+/// ⭐⭐⭐ **A PORTA de um painel** — a lista aberta de `dd` sob o `chip`, clampada a `region`, com
+/// TUDO o que a faz viva: pintura (`rows` pinta o conteúdo de cada linha; `None` = rótulo), hits
+/// da faixa visível e da barra, cada linha visível registada como `Button` focável, e a
+/// publicação (rect + alturas + rolagem clampada gravada de volta) por onde a roda e o polegar a
+/// acham.
+pub fn paint_dropdown_list<T: Clone + PartialEq>(
+    ctx: &mut PaintCtx,
+    dd: &Dropdown<T>,
+    chip: Rect,
+    region: Rect,
+    theme: Theme,
+    rows: Option<PopoverRowPainter<'_>>,
+) -> PaintedPopover {
+    let painted = {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        paint_list(
+            dd,
+            chip,
+            region,
+            store,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+            rows,
+        )
+    };
+    let store = ctx.host.store_mut();
+    for (id, _) in visible_option_bands(dd, chip, painted.panel, painted.scroll) {
+        store.register_if_absent(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    store.publish_dropdown_popover(painted);
+    painted
+}
+
+/// ⭐⭐ **A lei da FAIXA VISÍVEL** — cada opção ativa cuja linha rolada mostra pelo menos um pixel
+/// dentro do `panel`, com o recorte dela. Uma linha rolada para fora apanharia o clique por baixo
+/// do popover; as `disabled` pintam-se e nunca se oferecem.
+pub fn visible_option_bands<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip: Rect,
+    panel: Rect,
+    scroll: f32,
+) -> impl Iterator<Item = (NodeId, Rect)> + '_ {
+    dd.options
+        .iter()
+        .enumerate()
+        .filter(|(_, opt)| !opt.disabled)
+        .filter_map(move |(i, opt)| {
+            let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
+            let top = r.y.max(panel.y);
+            let bot = (r.y + r.h).min(panel.y + panel.h);
+            // LITERAL-PX-OK: um pixel é o piso de uma faixa clicável, não uma medida de desenho
+            (bot - top >= 1.0).then(|| (opt.id, Rect::new(r.x, top, r.w, bot - top)))
+        })
+}
+
+/// ⭐⭐ **O NÚCLEO para quem não tem o store mutável no passe** (o Inspector publica no fim do
+/// `paint`): clamp a `region`, rolagem lida do store, pintura, hits da faixa visível e da trilha
+/// da barra sob o [`DROPDOWN_SCROLLBAR_ID`]. Quem chama publica o devolvido. Com o store mutável,
+/// a porta é o [`paint_dropdown_list`].
 #[allow(clippy::too_many_arguments)]
 pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
     dd: &Dropdown<T>,
@@ -29,6 +95,31 @@ pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
+) -> PaintedPopover {
+    paint_list(
+        dd,
+        chip,
+        region,
+        store,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_list<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip: Rect,
+    region: Rect,
+    store: &WidgetStore,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    rows: Option<PopoverRowPainter<'_>>,
 ) -> PaintedPopover {
     let panel = dd.popover_rect_clamped(chip, region);
     let content_h = dd.content_height(chip.h);
@@ -44,18 +135,10 @@ pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
         scene,
         text_system,
         theme,
+        rows,
     );
-    for (i, opt) in dd.options.iter().enumerate() {
-        if opt.disabled {
-            continue;
-        }
-        let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
-        let top = r.y.max(panel.y);
-        let bot = (r.y + r.h).min(panel.y + panel.h);
-        if bot - top >= 1.0 {
-            // LITERAL-PX-OK: um pixel é o piso de uma faixa clicável, não uma medida de desenho
-            hit_index.register(opt.id, Rect::new(r.x, top, r.w, bot - top));
-        }
+    for (id, band) in visible_option_bands(dd, chip, panel, scroll) {
+        hit_index.register(id, band);
     }
     if scrollbar_is_needed(content_h, visible_h) {
         hit_index.register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
@@ -65,5 +148,6 @@ pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
         panel,
         content_h,
         visible_h,
+        scroll,
     }
 }

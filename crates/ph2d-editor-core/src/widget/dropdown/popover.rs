@@ -10,7 +10,7 @@ use crate::widget::scrollbar;
 /// its second pass, after every section has painted).
 ///
 /// No-op when `!dd.open`.
-pub fn paint_dropdown_popover<T: Clone + PartialEq>(
+pub(crate) fn paint_dropdown_popover<T: Clone + PartialEq>(
     dd: &Dropdown<T>,
     chip_rect: Rect,
     scene: &mut VectorScene,
@@ -23,7 +23,7 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
 /// Variant of [`paint_dropdown_popover`] that flips above when below
 /// overflows `viewport`. Panels paint chips near the bottom of the
 /// screen pass `PaintCtx::viewport` here so option lists stay on-screen.
-pub fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
+pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
     dd: &Dropdown<T>,
     chip_rect: Rect,
     viewport: Option<Rect>,
@@ -44,60 +44,10 @@ pub fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
         Some(vp) => dd.popover_rect_clamped(chip_rect, vp),
         None => dd.popover_rect(chip_rect),
     };
-    let panel_radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(
-        scene,
-        panel,
-        panel_radius,
-        opaque(ColorToken::BgElev, theme),
-    );
-    crate::paint::stroke_frame(
-        scene,
-        panel,
-        panel_radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        opaque(ColorToken::Border, theme),
-    );
-    let font_size = TypeToken::Base.px();
+    paint_popover_frame(scene, panel, theme);
     for (i, opt) in dd.options.iter().enumerate() {
-        let r = dd.option_rect_in(chip_rect, panel, i);
-        let is_selected = dd.selected.as_ref() == Some(&opt.value);
-        if is_selected {
-            // Use the saturated `Accent` (alpha-255 by token) for
-            // the selected row instead of `AccentSoft` (which is
-            // intentionally semi-transparent for inline overlays).
-            fill_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Sm.px()),
-                opaque(ColorToken::Accent, theme),
-            );
-        }
-        let fg = if is_selected {
-            ColorToken::AccentFg
-        } else {
-            ColorToken::Text1
-        };
-        let (icon_rect, text_rect) = option_icon_split(r, opt.icon.is_some());
-        if let Some(icon) = opt.icon {
-            paint_icon(
-                scene,
-                icon,
-                icon_rect,
-                opaque(fg, theme),
-                StrokeToken::Default.px(),
-            );
-        }
-        paint_text_centered(
-            text_system,
-            scene,
-            &opt.label,
-            text_rect,
-            font_size,
-            opaque(fg, theme),
-        );
+        let row = PopoverRow::of(dd, opt, i, dd.option_rect_in(chip_rect, panel, i));
+        paint_popover_row_default(scene, text_system, theme, row, opt);
     }
 }
 
@@ -117,25 +67,53 @@ pub fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
 /// the clamped popover, so the list scrolls — wheel + this draggable bar (Enio: app-wide default).
 pub const DROPDOWN_SCROLLBAR_ID: NodeId = NodeId(831);
 
-/// Paint an open dropdown popover whose option list **scrolls**: rows are clipped to `panel` and
-/// shifted up by `scroll`, with a draggable scrollbar when the list overflows. `panel` is the clamped
-/// popover rect, `scroll` the current offset (`>= 0`), `scrollbar` e o PAR visual do polegar
-/// ([`crate::interaction::WidgetStore::scrollbar_visual_for`], chaveado pelo CHIP). Mirrors [`paint_dropdown_popover_in_viewport`] visually; the caller owns the
-/// store/scroll/hit wiring (see the panels' `paint_dropdown_popover`).
-#[allow(clippy::too_many_arguments)]
-pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
-    dd: &Dropdown<T>,
-    chip_rect: Rect,
-    panel: Rect,
-    scroll: f32,
-    scrollbar: (crate::widget::ScrollbarState, f32),
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    if !dd.open {
-        return;
+/// ⭐⭐ **Uma linha VISÍVEL de uma lista aberta** — o que o pintor de linha recebe (o padrão
+/// [`paint_popover_row_default`], ou o próprio de um painel cuja linha desenha a COISA: o glifo do
+/// picker de ícone, o contorno de uma fonte).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PopoverRow {
+    /// O índice da opção em `dd.options`.
+    pub index: usize,
+    /// O rect da linha já rolado (o clip do painel trata os parciais).
+    pub rect: Rect,
+    /// A linha é a vigente — o realce [`paint_popover_row_highlight`] já foi pintado por baixo.
+    pub selected: bool,
+    pub disabled: bool,
+}
+
+impl PopoverRow {
+    fn of<T: Clone + PartialEq>(
+        dd: &Dropdown<T>,
+        opt: &DropdownOption<T>,
+        index: usize,
+        rect: Rect,
+    ) -> Self {
+        Self {
+            index,
+            rect,
+            selected: dd.selected.as_ref() == Some(&opt.value),
+            disabled: opt.disabled,
+        }
     }
+
+    /// A tinta do conteúdo da linha: sobre o realce, apagada, ou a de repouso.
+    #[must_use]
+    pub fn ink(&self) -> ColorToken {
+        if self.selected {
+            ColorToken::AccentFg
+        } else if self.disabled {
+            ColorToken::TextDisabled
+        } else {
+            ColorToken::Text1
+        }
+    }
+}
+
+/// O pintor do CONTEÚDO de uma linha — `None` na porta é o [`paint_popover_row_default`].
+pub type PopoverRowPainter<'a> = &'a mut dyn FnMut(&mut VectorScene, &mut TextSystem, PopoverRow);
+
+/// **A moldura opaca de uma lista aberta** — uma só para a lista que rola e a que não rola.
+fn paint_popover_frame(scene: &mut VectorScene, panel: Rect, theme: Theme) {
     let panel_radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(
         scene,
@@ -152,6 +130,68 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         1.0,
         opaque(ColorToken::Border, theme),
     );
+}
+
+/// **O realce da linha vigente** — pintado pela lista por baixo de QUALQUER pintor de linha.
+pub fn paint_popover_row_highlight(scene: &mut VectorScene, rect: Rect, theme: Theme) {
+    fill_rounded_rect(
+        scene,
+        rect,
+        crate::paint::frame_radius(theme, Radius::Sm.px()),
+        opaque(ColorToken::Accent, theme),
+    );
+}
+
+/// **A linha padrão**: o realce, o glifo de TIPO da opção (se tem) e o rótulo centrado.
+fn paint_popover_row_default<T>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    row: PopoverRow,
+    opt: &DropdownOption<T>,
+) {
+    if row.selected {
+        paint_popover_row_highlight(scene, row.rect, theme);
+    }
+    let fg = opaque(row.ink(), theme);
+    let (icon_rect, text_rect) = option_icon_split(row.rect, opt.icon.is_some());
+    if let Some(icon) = opt.icon {
+        paint_icon(scene, icon, icon_rect, fg, StrokeToken::Default.px());
+    }
+    paint_text_centered(
+        text_system,
+        scene,
+        &opt.label,
+        text_rect,
+        TypeToken::Base.px(),
+        fg,
+    );
+}
+
+/// ⭐⭐ **A lista aberta que ROLA**: moldura, linhas recortadas ao `panel` e subidas de `scroll`, e
+/// a barra quando a lista transborda. `scrollbar` é o PAR visual do polegar
+/// ([`crate::interaction::WidgetStore::scrollbar_visual_for`], chaveado pelo CHIP). `rows`
+/// pinta o CONTEÚDO de cada linha visível por cima do realce; `None` = [`paint_popover_row_default`].
+///
+/// ⛔ `pub(crate)`: a store, a rolagem e os hits são da porta do `panel`
+/// ([`crate::panel::paint_dropdown_list`]) — um painel que chamasse isto escreveria a 15.ª cópia
+/// deles.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip_rect: Rect,
+    panel: Rect,
+    scroll: f32,
+    scrollbar: (crate::widget::ScrollbarState, f32),
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    mut rows: Option<PopoverRowPainter<'_>>,
+) {
+    if !dd.open {
+        return;
+    }
+    paint_popover_frame(scene, panel, theme);
     // Clip the rows to the panel so scrolled-out rows don't paint past the edges.
     let clip = ph2d_vector::Rect::new(
         panel.x as f64,
@@ -160,36 +200,21 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         (panel.y + panel.h) as f64,
     );
     scene.push_clip(&clip);
-    let font_size = TypeToken::Base.px();
     for (i, opt) in dd.options.iter().enumerate() {
         let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
         if r.y + r.h <= panel.y || r.y >= panel.y + panel.h {
             continue; // fully scrolled out (the clip handles partials)
         }
-        let is_selected = dd.selected.as_ref() == Some(&opt.value);
-        if is_selected {
-            fill_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Sm.px()),
-                opaque(ColorToken::Accent, theme),
-            );
+        let row = PopoverRow::of(dd, opt, i, r);
+        match rows.as_mut() {
+            Some(paint_row) => {
+                if row.selected {
+                    paint_popover_row_highlight(scene, r, theme);
+                }
+                paint_row(scene, text_system, row);
+            }
+            None => paint_popover_row_default(scene, text_system, theme, row, opt),
         }
-        let fg = if is_selected {
-            ColorToken::AccentFg
-        } else if opt.disabled {
-            ColorToken::TextDisabled
-        } else {
-            ColorToken::Text1
-        };
-        paint_text_centered(
-            text_system,
-            scene,
-            &opt.label,
-            r,
-            font_size,
-            opaque(fg, theme),
-        );
     }
     scene.pop_layer();
     let content_h = dd.content_height(chip_rect.h);
@@ -199,7 +224,7 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
 }
 
 /// O que uma lista ROLADA pintou neste quadro ([`crate::panel::paint_dropdown_popover_scrolled_with_hits`])
-/// — o rect do painel e as duas alturas da rolagem. É o que
+/// — o rect do painel, as duas alturas e a rolagem JÁ clampada com que pintou. É o que
 /// [`crate::interaction::WidgetStore::publish_dropdown_popover`] publica: sem as alturas, um
 /// popover clampado mais curto que a lista fica cortado e imóvel à roda e ao polegar.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -208,6 +233,7 @@ pub struct PaintedPopover {
     pub panel: Rect,
     pub content_h: f32,
     pub visible_h: f32,
+    pub scroll: f32,
 }
 
 #[cfg(test)]

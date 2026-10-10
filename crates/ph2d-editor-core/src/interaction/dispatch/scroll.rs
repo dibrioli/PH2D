@@ -129,12 +129,7 @@ pub(super) fn begin_bar_drag(
     cursor_y: f32,
 ) {
     let published = store.scroll_bar_track(id);
-    let panel = if id == crate::widget::DROPDOWN_SCROLLBAR_ID {
-        store.dropdown_popover().map(|(dd, _)| dd)
-    } else {
-        store.scroll_bar_panel(id)
-    };
-    let Some(panel) = panel else {
+    let Some(panel) = store.scroll_bar_panel(id) else {
         return;
     };
     let (Some(content_h), Some(visible_h)) =

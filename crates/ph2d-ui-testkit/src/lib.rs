@@ -535,6 +535,10 @@ impl MockPanelHost {
 /// linhas levou este ficheiro a `714 / 700`.
 mod gestures;
 
+/// ⭐⭐ **A prova de que uma lista de dropdown longa ROLA** — ver [`lista_longa`].
+mod lista_longa;
+pub use lista_longa::prova_que_a_lista_longa_rola;
+
 impl Default for MockPanelHost {
     fn default() -> Self {
         Self::new()

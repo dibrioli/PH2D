@@ -32,10 +32,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
-use ph2d_editor_core::widget::{
-    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_dropdown_chip,
-    paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
-};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ICON_BTN_SIZE_PX, Spacing, StrokeToken, Theme, TypeToken};
@@ -338,51 +335,8 @@ pub(crate) fn paint_group_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) 
         .collect();
     let dd = Dropdown::new(id, "", options).selected(sel).open(true);
 
-    let panel = dd.popover_rect_clamped(chip, ctx.layout.popover_region());
-    let content_h = dd.content_height(chip.h);
-    let visible_h = panel.h;
-    let max_scroll = (content_h - visible_h).max(0.0);
-    {
-        let store = ctx.host.store_mut();
-        store.set_dropdown_popover(id, panel);
-        store.set_panel_content_h(id, content_h);
-        store.set_panel_visible_h(id, visible_h);
-        if store.panel_scroll(id) > max_scroll {
-            store.set_panel_scroll(id, max_scroll);
-        }
-    }
-    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    paint_dropdown_popover_scrolled(
-        &dd,
-        chip,
-        panel,
-        scroll,
-        ctx.host
-            .store()
-            .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(id)),
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-
-    // Hit-register só a parte VISÍVEL de cada linha (a barra de rolagem é o alvo do drag).
-    let hit_index = ctx.host.hit_index_mut();
-    for i in 0..groups.len() {
-        let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
-        let top = r.y.max(panel.y);
-        let bot = (r.y + r.h).min(panel.y + panel.h);
-        if bot - top >= 1.0 {
-            hit_index.register(
-                ph2d_tool_vector::ids::vector_shape_group_id(i),
-                Rect::new(r.x, top, r.w, bot - top),
-            );
-        }
-    }
-    if scrollbar_is_needed(content_h, visible_h) {
-        ctx.host
-            .hit_index_mut()
-            .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
-    }
+    let region = ctx.layout.popover_region();
+    ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }
 
 #[cfg(test)]

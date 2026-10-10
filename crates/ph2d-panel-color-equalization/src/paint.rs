@@ -27,13 +27,11 @@ use crate::paint_sections::{
 };
 use crate::state::{self, set_last_content_h, set_last_visible_h};
 use crate::{ColorEqualizationPanel, ColorEqualizationPanelState};
-use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::panel::{PaintCtx, Panel, paint_dropdown_list};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
-use ph2d_editor_core::widget::{
-    COLOR_EQUALIZATION_SCROLLBAR_ID, Dropdown, DropdownState, paint_dropdown_popover_in_viewport,
-};
+use ph2d_editor_core::widget::{COLOR_EQUALIZATION_SCROLLBAR_ID, Dropdown, DropdownState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -220,11 +218,11 @@ fn paint_body_sections(
 }
 
 /// Drain `state::take_pending_popovers()` and paint each open chip's
-/// option list on top of the panel chrome. The viewport rect is taken
-/// from `ctx.viewport` so the popover flips above the chip when it'd
-/// overflow below — important because the Posterize / Quantize chips
-/// sit near the bottom of the panel, where a 16-row LUT list (or even
-/// an 8-row Quantize list) extends past the screen bottom.
+/// option list on top of the panel chrome, by the foundation door
+/// (`panel::paint_dropdown_list`): clamped to `ctx.viewport` so it flips
+/// above the chip when it'd overflow below — the Posterize / Quantize
+/// chips sit near the bottom of the panel — and SCROLLED when it fits on
+/// neither side (a 16-row LUT list on a short window).
 fn paint_pending_popovers(ctx: &mut PaintCtx) {
     let pending = state::take_pending_popovers();
     let snapshot_for_popover = state::current_snapshot();
@@ -250,20 +248,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
                     .selected(selected)
                     .state(DropdownState::Focused)
                     .open(true);
-                paint_dropdown_popover_in_viewport(
-                    &dd,
-                    p.chip,
-                    Some(viewport),
-                    ctx.scene,
-                    ctx.text_system,
-                    theme,
-                );
-                let panel_rect = dd.popover_rect_clamped(p.chip, viewport);
-                for (i, opt) in dd.options.iter().enumerate() {
-                    ctx.host
-                        .hit_index_mut()
-                        .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
-                }
+                paint_dropdown_list(ctx, &dd, p.chip, viewport, theme, None);
             }
             3 => {
                 let dd = Dropdown::new(
@@ -274,20 +259,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
                 .selected(snapshot_for_popover.posterize_levels)
                 .state(DropdownState::Focused)
                 .open(true);
-                paint_dropdown_popover_in_viewport(
-                    &dd,
-                    p.chip,
-                    Some(viewport),
-                    ctx.scene,
-                    ctx.text_system,
-                    theme,
-                );
-                let panel_rect = dd.popover_rect_clamped(p.chip, viewport);
-                for (i, opt) in dd.options.iter().enumerate() {
-                    ctx.host
-                        .hit_index_mut()
-                        .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
-                }
+                paint_dropdown_list(ctx, &dd, p.chip, viewport, theme, None);
             }
             4 => {
                 let dd = Dropdown::new(
@@ -298,20 +270,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
                 .selected(snapshot_for_popover.quantize_colors)
                 .state(DropdownState::Focused)
                 .open(true);
-                paint_dropdown_popover_in_viewport(
-                    &dd,
-                    p.chip,
-                    Some(viewport),
-                    ctx.scene,
-                    ctx.text_system,
-                    theme,
-                );
-                let panel_rect = dd.popover_rect_clamped(p.chip, viewport);
-                for (i, opt) in dd.options.iter().enumerate() {
-                    ctx.host
-                        .hit_index_mut()
-                        .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
-                }
+                paint_dropdown_list(ctx, &dd, p.chip, viewport, theme, None);
             }
             _ => {}
         }

@@ -17,7 +17,7 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::panel::{PaintCtx, Panel, paint_dropdown_list};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
@@ -25,9 +25,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, SectionFold, SkinParam,
-    icon_glyph, inline_option_rect, paint_dropdown_popover_scrolled, paint_widget_skin_with,
-    scrollbar_is_needed, scrollbar_track_rect,
+    AUTHORED_SCROLLBAR_ID, Dropdown, DropdownOption, SectionFold, SkinParam, icon_glyph,
+    inline_option_rect, paint_widget_skin_with,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -197,60 +196,11 @@ fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
     // O rótulo vai VAZIO: o chip já o mostra, e o pintor da lista não o desenha.
     let mut dd = Dropdown::new(id, "", opts).open(true);
     dd.select(open.selected);
-    // ⚠️ **`_clamped` e o pintor derivam o painel da MESMA regra** — se o chip está perto do fundo
-    // da tela a lista vira para CIMA, e um retângulo de hit computado pela regra não-clampada
-    // ficaria onde a lista não foi desenhada: opções visíveis e mortas sob o rato.
-    let panel = dd.popover_rect_clamped(open.chip, ctx.viewport);
-    let content_h = dd.content_height(open.chip.h);
-    let visible_h = panel.h;
-    let max_scroll = (content_h - visible_h).max(0.0);
-    // ⚠️ **Os três factos são PUBLICADOS, e não é higiene:** é por eles que o `dispatch_wheel`
-    // sabe que a roda sobre aquele retângulo move a LISTA e não o corpo do painel por baixo. Sem o
-    // `set_dropdown_popover` a lista longa fica imóvel sob o rato enquanto o painel rola atrás
-    // dela.
-    {
-        let store = ctx.host.store_mut();
-        store.set_dropdown_popover(id, panel);
-        store.set_panel_content_h(id, content_h);
-        store.set_panel_visible_h(id, visible_h);
-        if store.panel_scroll(id) > max_scroll {
-            store.set_panel_scroll(id, max_scroll);
-        }
-    }
-    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    let scrollbar = ctx
-        .host
-        .store()
-        .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(id));
-    paint_dropdown_popover_scrolled(
-        &dd,
-        open.chip,
-        panel,
-        scroll,
-        scrollbar,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    // ⚠️ **Só a parte VISÍVEL de cada linha é oferecida, e é isto que faltava.** O
-    // `popover_rect_clamped` encolhe o PAINEL quando nem abaixo nem acima cabe a lista inteira, mas
-    // as linhas continuam dispostas a `row_h * index` a partir do topo dele — então as últimas
-    // saíam por baixo. Medido, 30 opções num viewport de 900: as opções 26 a 29 pousavam em
-    // `y = 900..1012`, **fora da tela**, desenhadas e vivas para o dispatcher.
-    let hit_index = ctx.host.hit_index_mut();
-    for (i, opt) in dd.options.iter().enumerate() {
-        let r = dd.option_rect_in_scrolled(open.chip, panel, i, scroll);
-        let top = r.y.max(panel.y);
-        let bot = (r.y + r.h).min(panel.y + panel.h);
-        if bot - top >= 1.0 {
-            hit_index.register(opt.id, Rect::new(r.x, top, r.w, bot - top));
-        }
-    }
-    if scrollbar_is_needed(content_h, visible_h) {
-        ctx.host
-            .hit_index_mut()
-            .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
-    }
+    // ⚠️ A porta clampa, rola, publica (é por isso que a roda move a LISTA e não o corpo por baixo)
+    // e oferece só a faixa VISÍVEL de cada linha — medido: 30 opções num viewport de 900 pousavam
+    // as 26–29 em `y = 900..1012`, fora da tela e vivas para o dispatcher.
+    let viewport = ctx.viewport;
+    paint_dropdown_list(ctx, &dd, open.chip, viewport, theme, None);
 }
 
 /// **UM cabeçalho manda nas rows ATÉ o próximo** — o colapso de seção (plano UI/UX, §6.3 item 2).

@@ -92,8 +92,16 @@ impl WidgetStore {
     /// ⚠️ A tabela à mão do despachante (`scrollbar_panel_for_id`) morreu em 2026-09-29: toda barra
     /// passa pela porta, e uma barra nunca pintada não pode ser carregada. `None` antes do 1.º
     /// quadro é a resposta certa — ainda não há barra nenhuma.
+    ///
+    /// ⭐ **A barra da lista de um dropdown é a única que a porta não publica:** há um só dropdown
+    /// aberto de cada vez, e é ele que ela rola ([`Self::dropdown_popover`]). A resposta mora AQUI,
+    /// e não no despacho: com ela só no arrasto, o polegar agarrado pintava-se em repouso para
+    /// quem perguntasse pelo [`Self::scrollbar_visual`] (os pickers de ícone e de fonte do Vector).
     #[must_use]
     pub fn scroll_bar_panel(&self, bar: NodeId) -> Option<NodeId> {
+        if bar == crate::widget::DROPDOWN_SCROLLBAR_ID {
+            return self.dropdown_popover().map(|(dd, _)| dd);
+        }
         self.scroll.bar_owner.get(&bar).map(|(p, _)| *p)
     }
 

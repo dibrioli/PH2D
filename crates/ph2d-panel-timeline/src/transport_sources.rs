@@ -2,7 +2,7 @@
 //!
 //! A Cena arruma no Arrange dela clips de QUALQUER objecto (§12), e o ▾ só oferecia a animação em
 //! vista. Aqui ele lista os clips de TODAS as animações, um grupo por dono — o cabeçalho é o nome
-//! do dono e não se clica — e rola quando não cabe (a porta da fundação + `DROPDOWN_SCROLLBAR_ID`,
+//! do dono e não se clica — e rola quando não cabe (a porta da fundação `paint_dropdown_list`,
 //! nunca uma barra nova). Irmão de [`crate::transport_clips`], que está perto do tecto de LOC.
 //!
 //! Escolher um clip da CENA continua a ser `SetActiveClip`; um de OUTRO dono não pode ser o clip
@@ -10,10 +10,8 @@
 //! ([`TimelinePanelState::source_clip`]) e é ele que o `+` da lane põe no Arrange.
 
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::{
-    EventOutcome, PaintCtx, PanelHostInternal, paint_dropdown_popover_scrolled_with_hits,
-};
-use ph2d_editor_core::widget::{ButtonState, Dropdown, DropdownOption, popover_width_for};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal, paint_dropdown_list};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, popover_width_for};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{SCENE, StripSource, TimelineIntent, TimelineViewSnapshot};
 use ph2d_tokens::{Theme, TypeToken};
@@ -159,9 +157,9 @@ pub(crate) fn pick(
     EventOutcome::Consumed
 }
 
-/// **A lista aberta do ▾**, por cima de tudo — clampada à banda do chrome, ROLADA quando não cabe,
-/// cada linha VISÍVEL registada no store (a faixa derivada não se popula no arranque) e o rect com
-/// as duas alturas publicado (a roda, o polegar e o clique de fora acham-na por ele).
+/// **A lista aberta do ▾**, por cima de tudo, pela porta da fundação — clampada à banda do chrome,
+/// ROLADA quando não cabe, só as linhas VISÍVEIS no store (a lista pode ter milhares, e o Tab
+/// percorre o store) e o rect com as duas alturas publicado.
 pub(crate) fn paint_popover(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -189,37 +187,5 @@ pub(crate) fn paint_popover(
         chip.h,
     );
     let region = ctx.layout.popover_region();
-    // Só as linhas à vista vão ao store: a lista pode ter milhares, e o Tab percorre o store.
-    let panel = dd.popover_rect_clamped(chip, region);
-    let max_scroll = (dd.content_height(chip.h) - panel.h).max(0.0);
-    let scroll = ctx.host.store().panel_scroll(dd.id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    let visivel = |i: usize| {
-        let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
-        r.y + r.h > panel.y && r.y < panel.y + panel.h
-    };
-    for (_, opt) in dd
-        .options
-        .iter()
-        .enumerate()
-        .filter(|(i, o)| !o.disabled && visivel(*i))
-    {
-        ctx.host.store_mut().register_if_absent(
-            opt.id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-    }
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let painted = paint_dropdown_popover_scrolled_with_hits(
-        &dd,
-        chip,
-        region,
-        store,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-        hit_index,
-    );
-    ctx.host.store_mut().publish_dropdown_popover(painted);
+    paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }

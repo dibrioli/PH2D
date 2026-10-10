@@ -38,7 +38,9 @@ pub use crate::widget::section_plan;
 /// O laço do plano das secções para os painéis que pintam por um `PaintCtx`.
 pub mod section_plan_ctx;
 
-pub use dropdown_popover::paint_dropdown_popover_scrolled_with_hits;
+pub use dropdown_popover::{
+    paint_dropdown_list, paint_dropdown_popover_scrolled_with_hits, visible_option_bands,
+};
 pub use erased::ErasedPanel;
 pub use event_outcome::EventOutcome;
 pub use host::{PanelHost, PanelHostInternal};

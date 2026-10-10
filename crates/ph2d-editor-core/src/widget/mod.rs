@@ -104,12 +104,16 @@ pub use combobox::{
 pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use drag_ghost::{afim_do_fantasma, paint_card_ghost};
+// ⛔ Os pintores da lista ABERTA são `pub(crate)`: um painel chega-lhe pela porta
+// `panel::paint_dropdown_list`, que também clampa, rola, regista e publica.
 pub use dropdown::{
-    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, PaintedPopover,
-    chip_border_color, dropdown_chevron_size, dropdown_chip_width_for, dropdown_feel,
-    dropdown_label_budget, opaque as resolve_opaque, paint_dropdown, paint_dropdown_chip,
+    DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, PaintedPopover, PopoverRow,
+    PopoverRowPainter, chip_border_color, dropdown_chevron_size, dropdown_chip_width_for,
+    dropdown_feel, dropdown_label_budget, opaque as resolve_opaque, paint_dropdown,
+    paint_dropdown_chip, paint_popover_row_highlight, popover_width_for,
+};
+pub(crate) use dropdown::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
-    popover_width_for,
 };
 pub use segmented_layout::{segment_rects_for, wrapped_cells_for};
 // ⭐ A MESMA conta que o grupo adaptativo faz, para a porta da escolha medir sem pintar

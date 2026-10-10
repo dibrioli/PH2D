@@ -272,3 +272,7 @@ mod rotation_map_tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "as_listas_rolam_tests.rs"]
+mod as_listas_rolam_tests;

@@ -4,8 +4,8 @@
 //! ⚠️ A lista tem uma linha por componente PRESENTE na cena; numa cena que use o catálogo inteiro
 //! ela passa da altura da janela, o clamp encolhe o popover e, sem rolagem, as linhas de baixo
 //! ficavam desenhadas fora dele e nunca registadas — impossíveis de escolher. A porta é a mesma dos
-//! outros painéis: `paint_dropdown_popover_scrolled` + `DROPDOWN_SCROLLBAR_ID`, com o rect e as
-//! duas alturas publicados para o `HIER_FILTER_DD` (é por eles que a roda e o arrasto o acham).
+//! outros painéis: `panel::paint_dropdown_list`, com o rect e as duas alturas publicados para o
+//! `HIER_FILTER_DD` (é por eles que a roda e o arrasto o acham).
 
 use std::collections::BTreeMap;
 

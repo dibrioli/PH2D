@@ -21,16 +21,14 @@
 use crate::ids;
 use crate::state;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
-use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_scrollbar, resolve_opaque,
-    scrollbar_is_needed, scrollbar_track_rect,
-};
+use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
+use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, PopoverRow};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::TextKey;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_vector::VectorScene;
 
 /// Lado do quadrado do glifo, como fração da altura da linha — deixa folga para o rótulo ao lado.
 const GLYPH_RATIO: f32 = 0.72; // LITERAL-PX-OK: lado do glifo ÷ altura da linha (métrica de lista)
@@ -75,156 +73,43 @@ fn selected_row() -> usize {
         .map_or(0, |n| n + 1)
 }
 
-/// Pinta o popover aberto para `chip_rect`. Só é chamado com o chip aberto.
+/// Pinta o popover aberto para `chip_rect` pela porta da fundação. Só é chamado com o chip aberto.
 pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
-    let id = ids::VECTOR_WIDGET_ICON_DD;
-    let count = row_count();
-    let sel = selected_row();
-    let options: Vec<DropdownOption<usize>> = (0..count)
+    let options: Vec<DropdownOption<usize>> = (0..row_count())
         .map(|i| DropdownOption::new(ids::vector_widget_icon_option_id(i), i, String::new()))
         .collect();
-    let dd = Dropdown::new(id, "", options).selected(sel).open(true);
-
-    let panel = dd.popover_rect_clamped(chip_rect, ctx.layout.popover_region());
-    let content_h = dd.content_height(chip_rect.h);
-    let visible_h = panel.h;
-    let max_scroll = (content_h - visible_h).max(0.0);
-    {
-        let store = ctx.host.store_mut();
-        store.set_dropdown_popover(id, panel);
-        store.set_panel_content_h(id, content_h);
-        store.set_panel_visible_h(id, visible_h);
-        if store.panel_scroll(id) > max_scroll {
-            store.set_panel_scroll(id, max_scroll);
-        }
-    }
-    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-
-    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(
-        ctx.scene,
-        panel,
-        radius,
-        resolve_opaque(ColorToken::BgElev, theme),
-    );
-    // ⭐ Pela porta do TEMA: o popover é plano num tema moderno.
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        panel,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Default.px(),
-        resolve_opaque(ColorToken::Border, theme),
-    );
-
-    let clip = ph2d_vector::Rect::new(
-        panel.x as f64,
-        panel.y as f64,
-        (panel.x + panel.w) as f64,
-        (panel.y + panel.h) as f64,
-    );
-    ctx.scene.push_clip(&clip);
-    paint_rows(ctx, &dd, chip_rect, panel, scroll, sel, theme);
-    ctx.scene.pop_layer();
-
-    if scrollbar_is_needed(content_h, visible_h) {
-        paint_scrollbar(
-            panel,
-            scroll,
-            content_h,
-            visible_h,
-            ctx.host.store().scrollbar_visual(DROPDOWN_SCROLLBAR_ID),
-            ctx.scene,
-            theme,
-        );
-    }
-
-    {
-        let store = ctx.host.store_mut();
-        for i in 0..count {
-            store.register_if_absent(
-                ids::vector_widget_icon_option_id(i),
-                InteractiveState::Button {
-                    state: ButtonState::Normal,
-                },
-            );
-        }
-    }
-    // ⚠️ Hit-registar só a parte VISÍVEL da linha: uma linha rolada para fora do popover ainda
-    // tem retângulo, e registá-lo inteiro faria um clique no corpo do painel cair nela.
-    let hit_index = ctx.host.hit_index_mut();
-    for i in 0..count {
-        let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
-        let top = r.y.max(panel.y);
-        let bot = (r.y + r.h).min(panel.y + panel.h);
-        if bot - top >= 1.0 {
-            hit_index.register(
-                ids::vector_widget_icon_option_id(i),
-                Rect::new(r.x, top, r.w, bot - top),
-            );
-        }
-    }
-    if scrollbar_is_needed(content_h, visible_h) {
-        ctx.host
-            .hit_index_mut()
-            .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
-    }
+    let dd = Dropdown::new(ids::VECTOR_WIDGET_ICON_DD, "", options)
+        .selected(selected_row())
+        .open(true);
+    let region = ctx.layout.popover_region();
+    let mut linha = |scene: &mut VectorScene, text: &mut TextSystem, row: PopoverRow| {
+        paint_row(scene, text, row, theme);
+    };
+    paint_dropdown_list(ctx, &dd, chip_rect, region, theme, Some(&mut linha));
 }
 
-/// Cada linha visível: o realce do vigente, o GLIFO, e o slug ao lado.
-fn paint_rows(
-    ctx: &mut PaintCtx,
-    dd: &Dropdown<usize>,
-    chip_rect: Rect,
-    panel: Rect,
-    scroll: f32,
-    sel: usize,
-    theme: Theme,
-) {
-    let text1 = resolve(ColorToken::Text1, theme);
-    let accent_fg = resolve(ColorToken::AccentFg, theme);
-    let accent = resolve_opaque(ColorToken::Accent, theme);
+/// O conteúdo de uma linha visível: o GLIFO e o slug ao lado (o realce é da lista).
+fn paint_row(scene: &mut VectorScene, text_system: &mut TextSystem, row: PopoverRow, theme: Theme) {
+    let r = row.rect;
+    let color = resolve(row.ink(), theme);
     let pad = Spacing::Md.px();
-    for i in 0..row_count() {
-        let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
-        if r.y + r.h <= panel.y || r.y >= panel.y + panel.h {
-            continue; // fora do popover — o clip trata os parciais
-        }
-        let is_sel = i == sel;
-        if is_sel {
-            fill_rounded_rect(
-                ctx.scene,
-                r,
-                ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-                accent,
-            );
-        }
-        let color = if is_sel { accent_fg } else { text1 };
-        let d = r.h * GLYPH_RATIO;
-        let mut text_x = r.x + pad;
-        if let Some(n) = i.checked_sub(1) {
-            let g = Rect::new(r.x + pad, r.y + (r.h - d) * 0.5, d, d);
-            paint_icon(
-                ctx.scene,
-                IconId::all()[n],
-                g,
-                color,
-                StrokeToken::Default.px(),
-            );
-            text_x = g.x + g.w + pad;
-        }
-        paint_text(
-            ctx.text_system,
-            ctx.scene,
-            row_label(i),
-            text_x,
-            r.y + (r.h - TypeToken::Base.px()) * 0.5,
-            TypeToken::Base.px(),
-            (r.x + r.w - pad - text_x).max(1.0),
-            color,
-        );
+    let d = r.h * GLYPH_RATIO;
+    let mut text_x = r.x + pad;
+    if let Some(n) = row.index.checked_sub(1) {
+        let g = Rect::new(r.x + pad, r.y + (r.h - d) * 0.5, d, d);
+        paint_icon(scene, IconId::all()[n], g, color, StrokeToken::Default.px());
+        text_x = g.x + g.w + pad;
     }
+    paint_text(
+        text_system,
+        scene,
+        row_label(row.index),
+        text_x,
+        r.y + (r.h - TypeToken::Base.px()) * 0.5,
+        TypeToken::Base.px(),
+        (r.x + r.w - pad - text_x).max(1.0),
+        color,
+    );
 }
 
 #[cfg(test)]

@@ -7,10 +7,9 @@
 //! 900: as opções 26 a 29 pousam em `y = 900..1012`, ou seja **abaixo da borda de baixo da tela**.
 //! Desenhadas, vivas para o dispatcher, e inalcançáveis.
 //!
-//! ⚠️ **E a resposta já existia no repo, três vezes** — `paint_filters_blend`, `font_dropdown` e o
-//! `dropdown_popover` do painel de camadas usam `paint_dropdown_popover_scrolled` +
-//! `option_rect_in_scrolled` e recortam o retângulo de hit ao painel. Este gate existe para que o
-//! painel gerado seja o quarto, e não uma quarta resposta.
+//! ⚠️ **E a resposta é UMA porta** — `ph2d_editor_core::panel::paint_dropdown_list`, a mesma de
+//! todos os painéis com uma lista que rola. Este gate existe para que o painel gerado a use, e não
+//! escreva outra resposta.
 
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::{Panel, PanelHostInternal};
@@ -160,5 +159,21 @@ fn the_option_that_does_not_fit_is_reachable_by_scrolling() {
         panel.y,
         panel.y + panel.h
     );
+    rows::set_live_rows(None);
+}
+
+/// ⭐⭐ **A lista longa ROLA de ponta a ponta** — a prova partilhada (`ph2d_ui_testkit`): alcance
+/// publicado, só o visível registado e focável, a roda e a última linha, o clamp gravado de volta e
+/// o polegar agarrado.
+#[test]
+fn a_lista_longa_rola_de_ponta_a_ponta() {
+    let (id, key) = long_list();
+    let (mut host, mut state) = host_with_open_list(id);
+    let opcoes: Vec<_> = (0..options())
+        .map(|i| ids::authored_option_id(&key, i))
+        .collect();
+    ph2d_ui_testkit::prova_que_a_lista_longa_rola(&mut host, id, &opcoes, &mut |h| {
+        h.paint::<AuthoredPanel>(&mut state, VIEWPORT)
+    });
     rows::set_live_rows(None);
 }

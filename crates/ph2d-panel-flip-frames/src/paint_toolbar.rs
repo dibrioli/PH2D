@@ -12,12 +12,12 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    ButtonState, Dropdown, DropdownOption, DropdownState, IconButtonStyle, IconGlyph, NumberInput,
-    paint_dropdown_chip, paint_dropdown_popover, paint_icon_button, paint_number_input_with_buffer,
+    Dropdown, DropdownOption, DropdownState, IconButtonStyle, IconGlyph, NumberInput,
+    paint_dropdown_chip, paint_icon_button, paint_number_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::TextKey;
@@ -201,7 +201,8 @@ fn dropdown_chip(
     open.then_some(PendingCycle { id, chip: r })
 }
 
-/// O popover aberto de um dos chips — pintado por último, fora de qualquer clip.
+/// O popover aberto de um dos chips — pintado por último, fora de qualquer clip, pela porta da
+/// fundação (clampado à janela; rola se não couber).
 pub(crate) fn paint_cycle_popover(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -211,17 +212,6 @@ pub(crate) fn paint_cycle_popover(
     let dd = Dropdown::new(pending.id, "", options_of(pending.id))
         .selected(cur)
         .open(true);
-    paint_dropdown_popover(&dd, pending.chip, ctx.scene, ctx.text_system, theme);
-    let panel = dd.popover_rect(pending.chip);
-    ctx.host.store_mut().set_dropdown_popover(pending.id, panel);
-    for (i, opt) in dd.options.iter().enumerate() {
-        ctx.host.store_mut().register_if_absent(
-            opt.id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        let r = dd.option_rect(pending.chip, i);
-        ctx.host.hit_index_mut().register(opt.id, r);
-    }
+    let viewport = ctx.viewport;
+    paint_dropdown_list(ctx, &dd, pending.chip, viewport, theme, None);
 }

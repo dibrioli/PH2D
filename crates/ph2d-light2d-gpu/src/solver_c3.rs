@@ -44,6 +44,24 @@ struct Preenchimento {
     u: UniformePreenche,
 }
 
+/// ⭐ W5b (F4): a mesma entrada SEM e COM o mundo fora da grade (`DISTANTES`). O quadro sem nenhum
+/// objeto distante corre a sem: o código dele custa mesmo com as listas vazias (+2,5 % a +6 % no
+/// Low, +1,3 % a +2,3 % no High — rodada `medida_luz2d_w5b`, A2).
+struct Par {
+    sem: wgpu::ComputePipeline,
+    com: Option<wgpu::ComputePipeline>,
+}
+
+impl Par {
+    fn de(&self, com: bool) -> &wgpu::ComputePipeline {
+        if com {
+            self.com.as_ref().unwrap_or(&self.sem)
+        } else {
+            &self.sem
+        }
+    }
+}
+
 /// O que os passes C3 pegam do solver ao nascer.
 pub(super) struct Entradas<'a> {
     pub gpu: &'a GpuContext,
@@ -63,9 +81,9 @@ pub(super) struct Entradas<'a> {
 pub(super) struct C3 {
     /// O grupo 0: a cena capturada e o uniforme da c0 (a marcha da c0, sem as saídas das cascatas).
     cena: wgpu::BindGroup,
-    visibilidade: Option<(wgpu::ComputePipeline, wgpu::BindGroup)>,
+    visibilidade: Option<(Par, wgpu::BindGroup)>,
     preenchimento: Option<Preenchimento>,
-    fina: wgpu::ComputePipeline,
+    fina: Par,
     grupo_fina: wgpu::BindGroup,
     uniforme: wgpu::Buffer,
     /// O uniforme deste quadro: a grade fina inteira por omissão, a região da janela com
@@ -158,7 +176,6 @@ impl C3 {
             ),
             ("PREENCHE", f64::from(u8::from(cfg.preenchimento.is_some()))),
             ("CELULA_PREENCHE", f64::from(cfg.preenchimento.unwrap_or(1))),
-            ("DISTANTES", f64::from(u8::from(cfg.distantes))),
         ];
         let bordas = match cfg.refino {
             Refino::Bordas(b) => Some(b),
@@ -190,12 +207,23 @@ impl C3 {
                         g2: &wgpu::BindGroupLayout,
                         entrada: &str,
                         constantes: &[(&str, f64)]| {
-            pipeline_em(
-                rotulo,
-                &[Some(&cena_layout), Some(e.lampadas_layout), Some(g2)],
-                entrada,
-                constantes,
-            )
+            let em = |d: f64| {
+                let c: Vec<(&str, f64)> = constantes
+                    .iter()
+                    .copied()
+                    .chain([("DISTANTES", d)])
+                    .collect();
+                pipeline_em(
+                    rotulo,
+                    &[Some(&cena_layout), Some(e.lampadas_layout), Some(g2)],
+                    entrada,
+                    &c,
+                )
+            };
+            Par {
+                sem: em(0.0),
+                com: cfg.distantes.then(|| em(1.0)),
+            }
         };
 
         let visibilidade = bordas.filter(|_| cfg.usa_visibilidade()).map(|b| {
@@ -406,12 +434,13 @@ impl C3 {
         }
     }
 
-    /// Grava os dois passes (o da visibilidade fica vazio sem ela: os carimbos dele valem 0).
+    /// Grava os dois passes (o da visibilidade fica vazio sem ela: os carimbos dele valem 0) —
+    /// `distantes`: alguma lâmpada tem objetos fora da grade neste quadro.
     pub(super) fn gravar(
         &self,
         gpu: &GpuContext,
         enc: &mut wgpu::CommandEncoder,
-        lampadas: &wgpu::BindGroup,
+        (lampadas, distantes): (&wgpu::BindGroup, bool),
         tempos: Option<&Tempos>,
     ) {
         gpu.queue
@@ -453,7 +482,7 @@ impl C3 {
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_VISIBILIDADE)),
             });
             if let Some((pipe, g2)) = &self.visibilidade {
-                p.set_pipeline(pipe);
+                p.set_pipeline(pipe.de(distantes));
                 p.set_bind_group(0, &self.cena, &[]);
                 p.set_bind_group(1, lampadas, &[]);
                 p.set_bind_group(2, g2, &[]);
@@ -464,7 +493,7 @@ impl C3 {
             label: Some("luz2d C3 fina"),
             timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_FINA)),
         });
-        p.set_pipeline(&self.fina);
+        p.set_pipeline(self.fina.de(distantes));
         p.set_bind_group(0, &self.cena, &[]);
         p.set_bind_group(1, lampadas, &[]);
         p.set_bind_group(2, &self.grupo_fina, &[]);

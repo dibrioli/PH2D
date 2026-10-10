@@ -17,6 +17,7 @@ mod medida_luz2d_w3;
 mod medida_luz2d_w4;
 mod medida_luz2d_w4b;
 mod medida_luz2d_w5a;
+mod medida_luz2d_w5b;
 mod o_gizmo_da_luz;
 mod o_oclusor_fino;
 mod paridade_luz_recebida;

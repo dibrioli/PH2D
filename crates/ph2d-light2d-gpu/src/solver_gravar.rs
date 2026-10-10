@@ -280,8 +280,12 @@ impl Solver {
             p.set_bind_group(1, &self.lampadas_grupo, &[]);
             p.dispatch_workgroups(grupos[0], grupos[1], 1);
         }
-        self.c3
-            .gravar(gpu, enc, &self.lampadas_grupo, self.tempos.as_ref());
+        self.c3.gravar(
+            gpu,
+            enc,
+            (&self.lampadas_grupo, !distante.indices.is_empty()),
+            self.tempos.as_ref(),
+        );
         if let Some(t) = &self.tempos {
             t.resolver(enc);
         }

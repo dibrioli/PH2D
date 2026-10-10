@@ -811,7 +811,10 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     [14](14_smooth_edges_a_borda_suave.md), e estendido às bordas SOBRE tinta (o degrau de cor dentro da
     mancha — a lei e a rodada dos limiares no 14 §2–§3). 5.º smoke: as linhas escuras da Heavy Edge por
     dentro da tinta — o detetor de LINHA COMPRIDA (14 §2 passo 5).
-- **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
+  - **Smoke do dono sobre `711513d42`: OK** — e um defeito novo para a PRÓXIMA janela: a mistura de pigmentos
+    (amarelo sobre azul seco dá PRETO e nunca cobre; [captura](fixtures/smoke_dono_w1g/amarelo_sobre_azul_seco.png)).
+    Prompt: [15](15_PROMPT_janela_auditoria_mistura.md).
+- **Falta (só com ordem do dono):** a auditoria da mistura (prompt 15) e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 
 ## §5 — A próxima janela (a W2)

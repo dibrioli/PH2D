@@ -507,6 +507,52 @@ color_tokens! {
     /// ler-se. O pai deste apelido foi **MEDIDO** nos 8 temas; a tabela vive em
     /// [`crate::color_alias`].
     BoneHandle => "bone-handle",
+
+    // ── O quadro ao vivo: a cor de cada PESSOA (MiroClone W11) ─────
+    // Cores de DADO: o índice viaja pela rede, então a pessoa 3 tem de ser a MESMA cor no ecrã de
+    // todos, em qualquer tema — o mesmo valor nos doze. Desenho próprio em OKLCH (L 0,545–0,575,
+    // oito matizes espalhados como as paletas de colaboradores do Excalidraw/tldraw/Miro): o
+    // `person-ink` lê-se sobre cada uma a ≥ 4,5:1, e a figura (a cor com contorno nele) sobre o
+    // quadro de todo tema a ≥ 3:1 (gate `person_colours_read_in_every_theme`).
+    /// `person-0` — vermelho.
+    Person0 => "person-0",
+    /// `person-1` — laranja.
+    Person1 => "person-1",
+    /// `person-2` — oliva/ouro.
+    Person2 => "person-2",
+    /// `person-3` — verde.
+    Person3 => "person-3",
+    /// `person-4` — azul-petróleo.
+    Person4 => "person-4",
+    /// `person-5` — azul.
+    Person5 => "person-5",
+    /// `person-6` — violeta.
+    Person6 => "person-6",
+    /// `person-7` — magenta.
+    Person7 => "person-7",
+    /// `person-ink` — o texto e o contorno por cima da cor de uma pessoa (o nome na etiqueta, a
+    /// inicial no avatar).
+    PersonInk => "person-ink",
+}
+
+impl ColorToken {
+    /// As oito cores das pessoas, pelo índice que viaja na rede (`LivePeer::color`).
+    pub const PEOPLE: [Self; 8] = [
+        Self::Person0,
+        Self::Person1,
+        Self::Person2,
+        Self::Person3,
+        Self::Person4,
+        Self::Person5,
+        Self::Person6,
+        Self::Person7,
+    ];
+
+    /// A cor da pessoa de índice `i` (dá a volta depois da oitava).
+    #[must_use]
+    pub const fn person(i: u8) -> Self {
+        Self::PEOPLE[(i % 8) as usize]
+    }
 }
 
 impl ColorToken {

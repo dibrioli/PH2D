@@ -15,6 +15,9 @@ use ph2d_host::PointerButton;
 
 #[path = "board_team_bubbles.rs"]
 mod bubbles;
+/// W11 — o quadro ao vivo (o painel «Live», os avatares, seguir, os cursores alheios).
+#[path = "board_live.rs"]
+pub mod live_board;
 #[path = "board_team_paint.rs"]
 mod paint;
 #[path = "board_team_panels.rs"]
@@ -235,6 +238,7 @@ pub fn populate(store: &mut WidgetStore) {
         register(store, id);
         store.set_tooltip(id, ph2d_i18n::tr(tooltip_key(b)));
     }
+    live_board::populate(store);
 }
 
 /// O instante de agora em segundos UNIX (as mensagens e as versões guardam-no; a vista mostra «há

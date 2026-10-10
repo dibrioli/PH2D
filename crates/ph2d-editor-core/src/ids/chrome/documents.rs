@@ -24,6 +24,9 @@ pub const BOARD_FRAME_RENAME_INPUT: NodeId = hash_node_id("board_frame_rename_in
 pub const BOARD_COMMENT_INPUT: NodeId = hash_node_id("board_comment_input");
 pub const BOARD_AUTHOR_INPUT: NodeId = hash_node_id("board_author_input");
 pub const BOARD_VERSION_INPUT: NodeId = hash_node_id("board_version_input");
+/// W11 — o painel «Live»: o código de 6 caracteres e o endereço (opcional) do quadro a que se entra.
+pub const BOARD_LIVE_CODE_INPUT: NodeId = hash_node_id("board_live_code_input");
+pub const BOARD_LIVE_ADDR_INPUT: NodeId = hash_node_id("board_live_addr_input");
 /// Menu do botão direito numa aba de quadro.
 pub const CTX_MENU_BOARD_RENAME: NodeId = hash_node_id("ctx_menu_board_rename");
 pub const CTX_MENU_BOARD_DUPLICATE: NodeId = hash_node_id("ctx_menu_board_duplicate");

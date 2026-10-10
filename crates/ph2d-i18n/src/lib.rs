@@ -55,6 +55,7 @@ mod board;
 mod board_facilitate;
 /// O QUADRO — a fidelidade ao Excalidraw (W9): a cena 11.
 mod board_fidelity;
+mod board_live;
 mod board_team;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
@@ -521,6 +522,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| board::tr(k))
             .or_else(|| board_facilitate::tr(k))
             .or_else(|| board_team::tr(k))
+            .or_else(|| board_live::tr(k))
             .or_else(|| board_fidelity::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))

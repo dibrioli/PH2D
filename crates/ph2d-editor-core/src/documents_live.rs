@@ -76,6 +76,20 @@ pub struct LiveView {
     /// Onde está o MEU rato no mundo do quadro da sala (o ecrã escreve-o).
     pub my_cursor: Option<[f64; 2]>,
     requests: Vec<LiveRequest>,
+    /// O que só o ecrã sabe (o painel aberto, o relógio da procura, o que se pintou onde).
+    pub(crate) panel: LivePanel,
+}
+
+/// O estado do painel «Live» no ecrã — nunca da família.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct LivePanel {
+    pub open: bool,
+    /// Segundos até à próxima procura na rede (só com o painel aberto e ninguém em sessão).
+    pub discover_in: f64,
+    /// Os pares de cada avatar pintado, pela ordem (o clique no avatar `i` segue `avatars[i]`).
+    pub avatars: Vec<u64>,
+    /// O endereço de cada linha de «achados» pintada, pela ordem.
+    pub found: Vec<String>,
 }
 
 impl Documents {

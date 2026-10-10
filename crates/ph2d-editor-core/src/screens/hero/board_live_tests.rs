@@ -1,0 +1,346 @@
+//! O quadro ao vivo (W11) pelo caminho REAL do ecrã: o botão «Live» e o painel pela ordem da shell
+//! (`shell_click_id`), os campos pelo teclado do hero, o quadro pela porta do ponteiro e da roda
+//! (`board_view`), e o que se pinta lido no `encoding` da cena (os glifos de cada texto).
+
+use super::*;
+use crate::documents::live::{LiveFound, LiveOther, LivePeer, LiveRequest, LiveRole};
+use crate::screens::hero::board_nav::team::live_board::{self, Hit, LiveButton, node as live_node};
+use crate::screens::hero::board_nav::{NavButton, button_node};
+
+impl T {
+    fn live_click(&mut self, h: Hit) {
+        self.shell_click_id(live_node(h), &format!("{h:?}"));
+    }
+
+    fn asked(&mut self) -> Vec<LiveRequest> {
+        self.hero.documents.take_live()
+    }
+
+    fn open_live(&mut self) {
+        self.shell_click_id(button_node(NavButton::Live), "Live");
+    }
+
+    /// Escreve `s` no campo com foco pelo despacho do hero (as letras uma a uma).
+    fn type_text(&mut self, s: &str) {
+        for ch in s.chars() {
+            let arena = Bump::new();
+            let ev = self.hero.handle_text_input(ch, &arena).to_vec();
+            for e in ev {
+                self.hero.apply_event(e);
+            }
+        }
+        self.paint();
+    }
+
+    fn enter(&mut self) {
+        let arena = Bump::new();
+        let e = ph2d_host::KeyEvent {
+            keycode: crate::interaction::KEY_ENTER,
+            modifiers: Modifiers::default(),
+            kind: ph2d_host::KeyKind::Down,
+            timestamp_ns: 0,
+        };
+        let ev = self.hero.handle_key(e, &arena).to_vec();
+        for e in ev {
+            self.hero.apply_event(e);
+        }
+        self.paint();
+    }
+
+    /// A sala com a pessoa `me` (eu) e a Bia (par 2, cor 3), como a família a escreve.
+    fn room(&mut self, role: LiveRole) {
+        let board = self.hero.documents.active();
+        let lv = self.hero.documents.live_view_mut();
+        lv.role = role;
+        lv.board = board;
+        lv.peers = vec![
+            LivePeer {
+                peer: 1,
+                name: "Eu".into(),
+                color: 0,
+                me: true,
+            },
+            LivePeer {
+                peer: 2,
+                name: "Bia".into(),
+                color: 3,
+                me: false,
+            },
+        ];
+        self.paint();
+    }
+
+    fn following(&self) -> Option<u64> {
+        self.hero.documents.live_view().following
+    }
+
+    /// A cena inteira desta imagem (o mesmo pintor do `paint`).
+    fn scene(&mut self) -> VectorScene {
+        let mut scene = VectorScene::new();
+        let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+        paint_hero_screen(&mut self.hero, vp, &mut scene, &mut self.ts);
+        scene
+    }
+}
+
+/// Os textos pintados: `(tamanho da letra, nº de glifos, origem do 1.º glifo)`.
+fn runs(scene: &VectorScene) -> Vec<(f32, usize, [f64; 2])> {
+    let res = &scene.inner().encoding().resources;
+    res.glyph_runs
+        .iter()
+        .filter_map(|r| {
+            let g = res.glyphs[r.glyphs.clone()].first()?;
+            let t = r.transform.translation;
+            let at = [f64::from(t[0] + g.x), f64::from(t[1] + g.y)];
+            Some((r.font_size, r.glyphs.len(), at))
+        })
+        .collect()
+}
+
+/// ⭐ O botão «Live» abre o painel (pintado na coluna da equipa) e procura quadros na rede logo, e de
+/// novo a cada 3 s pelo tique; fechar pára a procura.
+#[test]
+fn the_live_button_opens_the_panel_and_discovers_every_three_seconds() {
+    let mut t = T::new();
+    assert!(
+        t.find(live_node(Hit::Button(LiveButton::Surface)))
+            .is_none()
+    );
+    t.open_live();
+    assert!(live_board::is_open(&t.hero));
+    assert!(
+        t.find(live_node(Hit::Button(LiveButton::Surface)))
+            .is_some()
+    );
+    assert_eq!(t.asked(), vec![LiveRequest::Discover]);
+    t.hero.tick_motion(1.0);
+    assert!(t.asked().is_empty(), "procurou antes dos 3 s");
+    t.hero.tick_motion(2.1); // LITERAL-PX-OK: segundos do relógio do teste
+    assert_eq!(t.asked(), vec![LiveRequest::Discover]);
+    // Com «Comments» aberto depois, o «Live» cede-lhe a coluna; e o × fecha.
+    t.shell_click_id(button_node(NavButton::Comments), "Comments");
+    assert!(
+        !live_board::is_open(&t.hero),
+        "dois painéis na mesma coluna"
+    );
+    t.open_live();
+    assert!(
+        !t.hero.documents.live.team.list_open,
+        "o Live não fechou a lista"
+    );
+    t.live_click(Hit::Button(LiveButton::Close));
+    assert!(!live_board::is_open(&t.hero));
+    t.asked();
+    t.hero.tick_motion(5.0); // LITERAL-PX-OK: segundos do relógio do teste
+    assert!(t.asked().is_empty(), "fechado e ainda a procurar");
+}
+
+/// `Off` — «Open to the network» pede para abrir a sala.
+#[test]
+fn open_to_the_network_asks_to_host() {
+    let mut t = T::new();
+    t.open_live();
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::Open));
+    assert_eq!(t.asked(), vec![LiveRequest::Host]);
+}
+
+/// ⭐ `Off` — o código escreve-se de qualquer maneira, mostra-se em maiúsculas, e «Join» pede com ele
+/// limpo; curto, não pede (e diz porquê). Uma linha achada preenche o endereço e o Enter entra.
+#[test]
+fn a_typed_code_joins_normalized_and_a_found_row_fills_the_address() {
+    let mut t = T::new();
+    t.open_live();
+    t.asked();
+    t.shell_click_id(crate::ids::BOARD_LIVE_CODE_INPUT, "o campo do código");
+    t.type_text("ab3");
+    t.live_click(Hit::Button(LiveButton::Join));
+    assert!(t.asked().is_empty(), "um código curto pediu para entrar");
+    assert_eq!(
+        t.hero.documents.live.notice.map(|n| n.0),
+        Some("board.live.code_short")
+    );
+    t.shell_click_id(crate::ids::BOARD_LIVE_CODE_INPUT, "o campo do código");
+    t.type_text(" x-9z");
+    let shown = crate::screens::hero::board_nav::field_text_for_tests(
+        &t.hero,
+        crate::ids::BOARD_LIVE_CODE_INPUT,
+    );
+    assert_eq!(shown, "AB3 X-9Z", "o campo não mostra em maiúsculas");
+    t.live_click(Hit::Button(LiveButton::Join));
+    assert_eq!(
+        t.asked(),
+        vec![LiveRequest::Join {
+            addr: None,
+            code: "AB3X9Z".into()
+        }]
+    );
+    // Uma linha achada: o endereço vai para o campo, o teclado para o código.
+    t.hero.documents.live_view_mut().found = vec![LiveFound {
+        board: "Plan".into(),
+        host: "Ana".into(),
+        addr: "10.0.0.5:7777".into(),
+    }];
+    t.paint();
+    t.live_click(Hit::Found(0));
+    assert_eq!(
+        crate::screens::hero::board_nav::field_text_for_tests(
+            &t.hero,
+            crate::ids::BOARD_LIVE_ADDR_INPUT
+        ),
+        "10.0.0.5:7777"
+    );
+    t.type_text("qwe rty");
+    t.enter();
+    assert_eq!(
+        t.asked(),
+        vec![LiveRequest::Join {
+            addr: Some("10.0.0.5:7777".into()),
+            code: "QWERTY".into()
+        }]
+    );
+}
+
+/// `Hosting` pinta o código grande em duas metades; `Joining` cancela; `Guest` traz todos e sai.
+#[test]
+fn each_role_paints_its_own_panel_and_buttons() {
+    let mut t = T::new();
+    t.open_live();
+    t.room(LiveRole::Hosting {
+        code: "ABCDEF".into(),
+        addrs: vec!["192.168.0.7:7777".into()],
+    });
+    let big = ph2d_tokens::TypeToken::Xl2.px();
+    let code = runs(&t.scene())
+        .into_iter()
+        .filter(|r| r.0 == big)
+        .map(|r| r.1)
+        .collect::<Vec<_>>();
+    assert_eq!(code, vec![7], "o código ABC-DEF não está pintado");
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::Summon));
+    t.live_click(Hit::Button(LiveButton::End));
+    assert_eq!(t.asked(), vec![LiveRequest::Summon, LiveRequest::Leave]);
+    t.hero.documents.live_view_mut().role = LiveRole::Joining;
+    t.paint();
+    assert!(t.find(live_node(Hit::Button(LiveButton::Open))).is_none());
+    t.live_click(Hit::Button(LiveButton::Cancel));
+    assert_eq!(t.asked(), vec![LiveRequest::Leave]);
+    t.hero.documents.live_view_mut().role = LiveRole::Guest { host: "Ana".into() };
+    t.paint();
+    t.live_click(Hit::Button(LiveButton::Leave));
+    assert_eq!(t.asked(), vec![LiveRequest::Leave]);
+}
+
+/// ⭐ c21 — o avatar de OUTRA pessoa liga o seguir (o selo aparece), o × desliga; clicar de novo no
+/// avatar desliga; e cada gesto meu na vista (pan com o meio, a roda, carregar no quadro) pára-o.
+#[test]
+fn an_avatar_follows_and_my_own_view_gestures_stop_following() {
+    let mut t = T::new();
+    t.room(LiveRole::Guest { host: "Ana".into() });
+    assert!(
+        t.find(live_node(Hit::Avatar(0))).is_none(),
+        "o meu avatar segue-me"
+    );
+    t.live_click(Hit::Avatar(1));
+    assert_eq!(t.following(), Some(2));
+    assert!(t.find(live_node(Hit::Button(LiveButton::Badge))).is_some());
+    t.live_click(Hit::Button(LiveButton::Unfollow));
+    assert_eq!(t.following(), None);
+    assert!(t.find(live_node(Hit::Button(LiveButton::Badge))).is_none());
+    t.live_click(Hit::Avatar(1));
+    t.live_click(Hit::Avatar(1));
+    assert_eq!(t.following(), None, "o 2.º clique não desligou");
+    let (a, b) = (t.at(0.5, 0.6), t.at(0.6, 0.7));
+    // Pan com o botão do meio.
+    t.live_click(Hit::Avatar(1));
+    let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+    let mid = PointerButton::Middle;
+    board_view::pointer(h, inp(ts, c), PointerKind::Down, mid, a.0, a.1, true);
+    board_view::pointer_move(h, inp(ts, c), b.0, b.1);
+    board_view::pointer(h, inp(ts, c), PointerKind::Up, mid, b.0, b.1, true);
+    assert_eq!(t.following(), None, "o pan não parou de seguir");
+    // A roda (zoom).
+    t.paint();
+    t.live_click(Hit::Avatar(1));
+    assert!(board_view::wheel(&mut t.hero, a.0, a.1, 1.0));
+    assert_eq!(t.following(), None, "o zoom não parou de seguir");
+    // Carregar no quadro.
+    t.paint();
+    t.live_click(Hit::Avatar(1));
+    t.drag(a, b);
+    assert_eq!(
+        t.following(),
+        None,
+        "o clique no quadro não parou de seguir"
+    );
+    // Quem sai da sala deixa de ser seguido.
+    t.live_click(Hit::Avatar(1));
+    t.hero.documents.live_view_mut().peers.truncate(1);
+    t.hero.tick_motion(0.0);
+    assert_eq!(t.following(), None);
+}
+
+/// O meu cursor: no mundo do quadro da sala ao mexer o rato sobre ele; `None` fora dele ou sem sala.
+#[test]
+fn moving_the_mouse_over_the_room_board_writes_my_cursor() {
+    let mut t = T::new();
+    let p = t.at(0.5, 0.5);
+    board_view::pointer_move(&mut t.hero, inp(&mut t.ts, &mut t.clock), p.0, p.1);
+    assert_eq!(t.hero.documents.live_view().my_cursor, None, "sem sala");
+    t.room(LiveRole::Guest { host: "Ana".into() });
+    board_view::pointer_move(&mut t.hero, inp(&mut t.ts, &mut t.clock), p.0, p.1);
+    let a = board_view::area_of(t.hero.last_canvas);
+    let cam = t.hero.documents.active_board().unwrap().camera;
+    let want = cam.to_world(a, [f64::from(p.0), f64::from(p.1)]);
+    assert_eq!(t.hero.documents.live_view().my_cursor, Some(want));
+    let c = t.hero.last_canvas;
+    board_view::pointer_move(
+        &mut t.hero,
+        inp(&mut t.ts, &mut t.clock),
+        c.x - 1.0,
+        c.y + 1.0,
+    );
+    assert_eq!(
+        t.hero.documents.live_view().my_cursor,
+        None,
+        "fora do quadro"
+    );
+}
+
+/// ⭐ Um `LiveOther` com cursor pinta a etiqueta com o NOME ao lado da ponta (os glifos do nome, no
+/// tamanho da etiqueta, logo abaixo e à direita do ponto); fora do quadro da sala, nada.
+#[test]
+fn another_persons_cursor_paints_their_name_beside_it() {
+    let mut t = T::new();
+    t.room(LiveRole::Guest { host: "Ana".into() });
+    let at = t.at(0.5, 0.5);
+    let a = board_view::area_of(t.hero.last_canvas);
+    let cam = t.hero.documents.active_board().unwrap().camera;
+    let world = cam.to_world(a, [f64::from(at.0), f64::from(at.1)]);
+    t.hero.documents.live_view_mut().others = vec![LiveOther {
+        peer: 2,
+        name: "Bianca".into(),
+        color: 3,
+        cursor: Some(world),
+        selection: Vec::new(),
+    }];
+    let xs = ph2d_tokens::TypeToken::Xs.px();
+    let near = |r: &(f32, usize, [f64; 2])| {
+        let reach = f64::from(ph2d_tokens::Spacing::Xl4.px()) * 2.0;
+        r.0 == xs
+            && r.1 == "Bianca".len()
+            && r.2[0] > f64::from(at.0)
+            && r.2[0] < f64::from(at.0) + reach
+            && r.2[1] > f64::from(at.1)
+            && r.2[1] < f64::from(at.1) + reach
+    };
+    assert!(
+        runs(&t.scene()).iter().any(near),
+        "o nome não está ao lado do cursor: {:?}",
+        runs(&t.scene())
+    );
+    // Controlo: o mesmo par fora do quadro da sala não se pinta.
+    t.hero.documents.live_view_mut().board = None;
+    assert!(!runs(&t.scene()).iter().any(near), "pintou fora da sala");
+}

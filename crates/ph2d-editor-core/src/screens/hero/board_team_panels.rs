@@ -19,7 +19,7 @@ fn btn() -> f32 {
 
 /// A coluna dos painéis da equipa `(x, y, largura)`: a da facilitação, ou à esquerda dela quando um
 /// cartão dela está aberto.
-fn column(hero: &HeroScreen, area: Rect) -> (f32, f32, f32) {
+pub(super) fn column(hero: &HeroScreen, area: Rect) -> (f32, f32, f32) {
     let nav = &hero.documents.live.nav;
     let (x, y, w) = super::super::facilitate::column(area, nav.frames_open, nav.search_open);
     let fac =
@@ -56,7 +56,7 @@ pub(super) fn paint(
     }
 }
 
-fn card(scene: &mut VectorScene, r: Rect, theme: ph2d_tokens::Theme) {
+pub(super) fn card(scene: &mut VectorScene, r: Rect, theme: ph2d_tokens::Theme) {
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     crate::paint::fill_rounded_rect(
         scene,
@@ -67,7 +67,7 @@ fn card(scene: &mut VectorScene, r: Rect, theme: ph2d_tokens::Theme) {
 }
 
 /// O fundo dos painéis: por cima da fila de botões de cima do canto.
-fn bottom(area: Rect) -> f32 {
+pub(super) fn bottom(area: Rect) -> f32 {
     super::super::super::board_nav::button_rects(area)
         .first()
         .map_or(area.y + area.h, |(_, r)| r.y)

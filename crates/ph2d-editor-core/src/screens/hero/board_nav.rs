@@ -63,15 +63,20 @@ pub enum NavButton {
     Search,
     Minimap,
     Fit,
+    /// W11 — o quadro ao vivo (o painel «Live»).
+    Live,
 }
 
-const BUTTONS: [NavButton; 6] = [
+/// ⚠️ A ordem dá o id (`button_node`): um botão novo entra no FIM; a fila em que se pinta é a de
+/// [`TEAM`] / [`NAV`].
+const BUTTONS: [NavButton; 7] = [
     NavButton::Present,
     NavButton::Comments,
     NavButton::Frames,
     NavButton::Search,
     NavButton::Minimap,
     NavButton::Fit,
+    NavButton::Live,
 ];
 
 /// ⛔ Os saltos diferem uns dos outros nos bits ALTOS (40 a 47) e cada descodificador exige os bits
@@ -136,12 +141,25 @@ fn button_key(b: NavButton) -> &'static str {
         NavButton::Search => "board.nav.search",
         NavButton::Minimap => "board.nav.minimap",
         NavButton::Fit => "board.nav.fit",
+        NavButton::Live => "board.live.tip",
     }
 }
 
-/// Os da equipa (W8), numa fila POR CIMA dos da navegação, encostados à direita. ⛔ Na mesma fila,
-/// seis botões chegavam à pílula da barra de estado (foto da cena 10: o Present meio tapado).
-const TEAM_ROW: usize = 2;
+/// Os da equipa (W8) e o «Live» (W11), numa fila POR CIMA dos da navegação, encostados à direita.
+/// ⛔ Na mesma fila, seis botões chegavam à pílula da barra de estado (foto da cena 10: o Present
+/// meio tapado).
+const TEAM: [NavButton; 3] = [NavButton::Live, NavButton::Present, NavButton::Comments];
+const NAV: [NavButton; 4] = [
+    NavButton::Frames,
+    NavButton::Search,
+    NavButton::Minimap,
+    NavButton::Fit,
+];
+
+/// A largura de um botão do canto: o «Live» é de TEXTO (a palavra que o dono procura), dois lados.
+fn width(b: NavButton, s: f32, g: f32) -> f32 {
+    if b == NavButton::Live { 2.0 * s + g } else { s }
+}
 
 /// Os botões do canto, da esquerda para a direita: a fila da equipa por cima, a da navegação encostada
 /// ao canto de baixo à direita.
@@ -149,17 +167,21 @@ const TEAM_ROW: usize = 2;
 pub fn button_rects(area: Rect) -> Vec<(NavButton, Rect)> {
     let (s, g) = (Spacing::Xl2.px(), ph2d_tokens::control_gap_px());
     let row = |items: &[NavButton], y: f32| {
-        let n = items.len() as f32;
-        let x0 = area.x + area.w - Spacing::Md.px() - n * s - (n - 1.0) * g;
+        let total: f32 = items.iter().map(|b| width(*b, s, g) + g).sum::<f32>() - g;
+        let mut x = area.x + area.w - Spacing::Md.px() - total;
         items
             .iter()
-            .enumerate()
-            .map(|(i, b)| (*b, Rect::new(x0 + i as f32 * (s + g), y, s, s)))
+            .map(|b| {
+                let w = width(*b, s, g);
+                let r = Rect::new(x, y, w, s);
+                x += w + g;
+                (*b, r)
+            })
             .collect::<Vec<_>>()
     };
     let y = area.y + area.h - Spacing::Md.px() - s;
-    let mut out = row(&BUTTONS[..TEAM_ROW], y - s - 2.0 * Spacing::Xs.px() - g);
-    out.extend(row(&BUTTONS[TEAM_ROW..], y));
+    let mut out = row(&TEAM, y - s - 2.0 * Spacing::Xs.px() - g);
+    out.extend(row(&NAV, y));
     out
 }
 
@@ -202,6 +224,18 @@ const GO_CONTEXT: f64 = 3.0; // LITERAL-PX-OK: três caixas (a do elemento e dua
 /// ⭐ **As teclas da navegação** — antes das do editor: `M` o minimapa, `Ctrl+F` a busca, `Alt+1`
 /// enquadrar tudo, `Alt+2` a selecção, `Ctrl+Alt+K` o link. `Some` = tomada.
 pub fn key(
+    hero: &mut HeroScreen,
+    k: super::board_keys::BoardKey,
+    mods: ph2d_host::Modifiers,
+) -> Option<super::board_keys::KeyOutcome> {
+    // c21 — a tecla que mexeu a minha vista (`Alt+1`, `Alt+2`) pára de seguir.
+    let before = team::live_board::camera(hero);
+    let out = key_inner(hero, k, mods);
+    team::live_board::unfollow_if_moved(hero, before);
+    out
+}
+
+fn key_inner(
     hero: &mut HeroScreen,
     k: super::board_keys::BoardKey,
     mods: ph2d_host::Modifiers,
@@ -275,7 +309,16 @@ pub fn key(
 
 /// ⭐ Os cliques da navegação. Corre no pré-despacho (ids derivados).
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
-    if search::apply_event(hero, event)
+    // c21 — o clique que mexeu a MINHA vista (um frame, um link, «Fit»…) pára de seguir.
+    let before = team::live_board::camera(hero);
+    let took = apply_inner(hero, event);
+    team::live_board::unfollow_if_moved(hero, before);
+    took
+}
+
+fn apply_inner(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
+    if team::live_board::apply_event(hero, event)
+        || search::apply_event(hero, event)
         || frames::apply_event(hero, event)
         || facilitate::apply_event(hero, event)
         || team::apply_event(hero, event)
@@ -291,6 +334,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         match b {
             NavButton::Present => team::show::start(hero),
             NavButton::Comments => team::toggle_list(hero),
+            NavButton::Live => team::live_board::toggle(hero),
             NavButton::Frames => n.frames_open = !n.frames_open,
             NavButton::Minimap => n.minimap_open = !n.minimap_open,
             NavButton::Search => {
@@ -336,39 +380,34 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     }
     search::paint_highlight(hero, area, scene, theme);
     paint_links(hero, a, scene, theme);
+    team::live_board::paint_others(hero, area, scene, ts);
     minimap::paint(hero, area, scene, theme);
     frames::paint(hero, area, scene, ts, theme);
     facilitate::paint(hero, area, scene, ts);
     team::paint(hero, area, scene, ts);
+    team::live_board::paint(hero, area, scene, ts);
     search::paint_fields(hero, area, scene, ts, theme);
-    let open = {
-        let n = &hero.documents.live.nav;
-        let list = hero.documents.live.team.list_open;
-        [
-            false,
-            list,
-            n.frames_open,
-            n.search_open,
-            n.minimap_open,
-            false,
-        ]
-    };
     let rects = button_rects(area);
-    for part in [&rects[..TEAM_ROW], &rects[TEAM_ROW..]] {
+    for part in [&rects[..TEAM.len()], &rects[TEAM.len()..]] {
         panel(
             scene,
             &part.iter().map(|(_, r)| *r).collect::<Vec<_>>(),
             theme,
         );
     }
-    for ((b, r), on) in rects.into_iter().zip(open) {
-        let icon = match b {
-            NavButton::Present => IconId::Presentation,
-            NavButton::Comments => IconId::MessageSquare,
-            NavButton::Frames => IconId::Layers,
-            NavButton::Search => IconId::Search,
-            NavButton::Minimap => IconId::Grid,
-            NavButton::Fit => IconId::Maximize,
+    for (b, r) in rects {
+        let n = &hero.documents.live.nav;
+        let (icon, on) = match b {
+            NavButton::Live => {
+                team::live_board::paint_button(hero, button_node(b), r, scene, ts);
+                continue;
+            }
+            NavButton::Present => (IconId::Presentation, false),
+            NavButton::Comments => (IconId::MessageSquare, hero.documents.live.team.list_open),
+            NavButton::Frames => (IconId::Layers, n.frames_open),
+            NavButton::Search => (IconId::Search, n.search_open),
+            NavButton::Minimap => (IconId::Grid, n.minimap_open),
+            NavButton::Fit => (IconId::Maximize, false),
         };
         button(
             scene,

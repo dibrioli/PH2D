@@ -34,7 +34,7 @@
 //!
 //! # ⚠️ As cores de DADO não se derivam — emprestam-se
 //!
-//! `node-cat-*`, `port-*`, `curve-*`, `wire-fire-glow`, `graph-backdrop-*`, `attr-write`: são as
+//! `node-cat-*`, `port-*`, `curve-*`, `wire-fire-glow`, `graph-backdrop-*`, `attr-write`, `person-*`: são as
 //! únicas com matiz por direito (a lei que os quatro modelos planos partilham — `pesquisa/08 §3`),
 //! e já estão calibradas em OKLCH *dark-safe* no `tokens.json`. Um tema moderno escuro lê-as da
 //! tabela do `forge`, um claro da do `sunstone`. ⭐ Os eixos `axis-x/y/z` são os do Godot.
@@ -562,6 +562,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
             || k.starts_with("port-")
             || k.starts_with("curve-")
             || k.starts_with("graph-backdrop-")
+            || k.starts_with("person-")
             || k == "wire-fire-glow"
             || k == "attr-write" =>
         {

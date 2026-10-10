@@ -152,6 +152,11 @@ pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
     if !inside(area, x, y) {
         return false;
     }
+    if hero.documents.active().is_none() {
+        return false;
+    }
+    // c21 — o MEU zoom pára de seguir.
+    super::board_nav::team::live_board::unfollow(hero);
     let Some(board) = hero.documents.active_board_mut() else {
         return false;
     };
@@ -179,6 +184,10 @@ pub fn pointer(
     }
     let area = area_of(hero.last_canvas);
     let theme = hero.theme;
+    // c21 — carregar no quadro (clicar, arrastar, pan com o meio ou o espaço) pára de seguir.
+    if matches!(kind, PointerKind::Down) && on_canvas && inside(hero.last_canvas, x, y) {
+        super::board_nav::team::live_board::unfollow(hero);
+    }
     match kind {
         // K2 — uma bolha de comentário (um controlo, não o quadro) arrasta-se para outro sítio.
         PointerKind::Down if super::board_nav::team::bubble_down(hero, x, y, button) => true,
@@ -271,6 +280,8 @@ pub fn pointer(
 
 /// O cursor mexeu-se. `true` = um arrasto do quadro (vista ou gesto) está em curso e consumiu-o.
 pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> bool {
+    // W11 — o meu cursor no quadro da sala (a família manda-o aos outros).
+    super::board_nav::team::live_board::cursor(hero, x, y);
     if super::board_nav::pointer_move(hero, x, y) {
         return true;
     }

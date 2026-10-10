@@ -192,3 +192,55 @@ fn color_value_from_oklch_clamps_alpha() {
     let cv = ColorValue::from_oklch(0.5, 0.0, 0.0, -1.0);
     assert_eq!(cv.rgba[3], 0);
 }
+
+/// ⭐ As cores das PESSOAS do quadro ao vivo: o índice viaja na rede, então a mesma pessoa tem a
+/// mesma cor em todo tema; o nome escrito por cima lê-se (AA, 4,5:1); a figura lê-se sobre o quadro
+/// de todo tema (3:1, um gráfico); e duas pessoas não se confundem (distância OKLab).
+#[test]
+fn person_colours_read_in_every_theme() {
+    use crate::theme::Theme;
+    let ink = ColorToken::PersonInk;
+    for (i, p) in ColorToken::PEOPLE.into_iter().enumerate() {
+        assert_eq!(ColorToken::person(i as u8), p);
+        let c0 = p.resolve(Theme::Forge);
+        for theme in Theme::ALL {
+            let c = p.resolve(theme);
+            assert_eq!(c, c0, "{p:?} muda de cor no tema {theme:?}");
+            let on = ink.resolve(theme).contrast_ratio(&c);
+            assert!(on >= 4.5, "{p:?} em {theme:?}: o nome lê-se a {on:.2}");
+            // O quadro pinta-se no `bg-1`. A figura (cursor, avatar) leva o contorno em
+            // `person-ink`: lê-se se a cor OU o contorno se separam do fundo a 3:1 (um gráfico) — e
+            // nos temas de base (claro e escuro) a cor sozinha já se separa.
+            let ground = ColorToken::Bg1.resolve(theme);
+            let (fill, edge) = (
+                ground.contrast_ratio(&c),
+                ground.contrast_ratio(&ink.resolve(theme)),
+            );
+            assert!(
+                fill.max(edge) >= 3.0,
+                "{p:?} em {theme:?}: {fill:.2} / {edge:.2}"
+            );
+            if matches!(
+                theme,
+                Theme::Forge | Theme::Sunstone | Theme::Dark | Theme::Light
+            ) {
+                assert!(fill >= 3.0, "{p:?} em {theme:?}: sobre o fundo a {fill:.2}");
+            }
+        }
+    }
+    let lab = |c: Color| {
+        let (l, ch, h) = srgb_to_oklch(c.r, c.g, c.b);
+        let h = h.to_radians();
+        (l, ch * h.cos(), ch * h.sin())
+    };
+    for a in ColorToken::PEOPLE {
+        for b in ColorToken::PEOPLE {
+            if a == b {
+                continue;
+            }
+            let (x, y) = (lab(a.resolve(Theme::Forge)), lab(b.resolve(Theme::Forge)));
+            let d = ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt();
+            assert!(d > 0.08, "{a:?} e {b:?} confundem-se ({d:.3})");
+        }
+    }
+}

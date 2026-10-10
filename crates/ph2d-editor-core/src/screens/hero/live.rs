@@ -21,6 +21,8 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
     tick_panel_scroll(hero, dt);
     tick_section_fold(hero);
     tick_fill_tether(hero, dt);
+    // W11 — o quadro ao vivo: a procura na rede com o painel aberto, o seguir de quem saiu.
+    super::board_nav::team::live_board::tick(hero, dt);
 }
 
 /// **RE-ALVEJAR · INTEGRAR · PUBLICAR — e a ordem é a correcção de um defeito medido.**

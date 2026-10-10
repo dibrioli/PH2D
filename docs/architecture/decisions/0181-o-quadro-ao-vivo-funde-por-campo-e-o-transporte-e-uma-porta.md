@@ -56,8 +56,10 @@ alheia (c11), ressuscita (c12) e um cliente prende-se numa reordenação (c17).
    anunciado na rede (mDNS) e escreve um **código curto** que o anfitrião mostra; o código autentica por
    PAKE (SPAKE2) e a chave que dele sai cifra tudo (ChaCha20-Poly1305) — quem está no mesmo Wi-Fi e não tem
    o código nem lê nem escreve, e não o pode adivinhar fora de linha. Nada se expõe fora da rede local e o
-   PH2D nunca abre a firewall sozinho (a porta é fixa, para o dono a liberar UMA vez se quiser outro
-   computador). Os números (o custo de cada dependência no build, a fiabilidade da descoberta, a latência)
+   PH2D nunca abre a firewall SEM o artista: no Linux (onde o sistema não pergunta, só bloqueia) o painel
+   Live mostra um botão que libera a porta fixa + o mDNS SÓ para a sub-rede local, com a senha do sistema
+   (polkit), e outro que desfaz; no Windows e no macOS o próprio sistema pergunta na 1.ª escuta (decisão
+   do dono, 10/10). Os números (o custo de cada dependência no build, a fiabilidade da descoberta, a latência)
    medem-se ao entrar cada uma e escrevem-se neste ADR, §Medições.
 
 ## Alternativas recusadas (preço medido em `08_ao_vivo.md` §1)

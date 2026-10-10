@@ -41,6 +41,29 @@ alcança as NOTAS, decisão do dono 10/10) e `aa2a8d7c9` (ADR-0181 + estudo [`08
 
 ## 2. POR FAZER, pela ordem
 
+0. **O BOTÃO DA FIREWALL** — decisão do dono (10/10, depois da construção): *«no próprio app não deveria
+   ter um botão que configura tudo sobre a firewall?»* → sim, com a senha do sistema (ADR-0181 §8, já
+   emendado). Desenho combinado com ele:
+   - **Linux** (o sistema não pergunta, só bloqueia): no painel Live do ANFITRIÃO, um botão «Permitir na
+     rede de casa» quando há uma firewall suportada ligada — **ufw** (`/etc/ufw/ufw.conf` `ENABLED=yes`, já
+     lido por `firewall_on()` em `ph2d-app-board/src/live.rs`) e **firewalld** (`systemctl is-active
+     firewalld`). Corre por `pkexec` (o polkit pede a senha; o KDE tem agente): ufw `allow from <sub-rede
+     da LAN> to any port 47320 proto tcp` + o mDNS `5353/udp` da mesma sub-rede (sem ele um 2.º computador
+     não DESCOBRE o quadro — meça-o: a descoberta foi medida só na mesma máquina); firewalld uma
+     `rich-rule` `--permanent` equivalente + `--reload`. A sub-rede vem dos `addrs` do anfitrião (ex.:
+     `192.168.15.0/24`), NUNCA `any`. Permanente; um 2.º botão «Remover a permissão» desfaz exactamente
+     a(s) regra(s) (lembre-se num ficheiro em `~/.ph2d/` quais pôs, para o botão certo aparecer — a lista
+     de regras da firewall só a lê o root).
+   - **Windows / macOS**: o sistema pergunta sozinho na 1.ª escuta — nenhum botão (registe-o).
+   - Firewall desconhecida (nftables/iptables à mão…): sem botão; a frase escrita com a porta.
+   - Avisos (`tell`) para: liberado, cancelado (senha recusada — o `pkexec` sai com 126/127), falhou (com
+     o erro). Chaves `tr` novas no `ph2d-i18n/src/board_live.rs`.
+   - Gates: a construção dos comandos é PURA (sub-rede → argumentos; ufw × firewalld × desconhecida;
+     instalar × remover) e testa-se; o botão pela costura (DIRETIVA §2: id, registo, pintura, evento,
+     despacho, efeito = um pedido `LiveRequest` novo que a família serve). A execução real corre-se à mão
+     no smoke (o dono, com a senha).
+   - ⛔ O comando corre FORA da thread do ecrã (o `pkexec` espera pela senha).
+
 1. **A CENA 12** — `PH2D_BOARD_SMOKE=12`. O roteador está em `crates/ph2d-app-board/src/smoke.rs` e vai
    até 11: acrescente o `mod` filho (`#[path = "smoke_live.rs"]`), o braço `12 =>`, `max_level: 12`, a mensagem
    «1..=12» do braço `_`, a linha 12 na tabela do cabeçalho. Modelo: `smoke_team.rs` (+ `smoke_team_tests.rs`).

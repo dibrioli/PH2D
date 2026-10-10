@@ -303,7 +303,7 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | | escolha |
 |---|---|
 | 4.1 Play | cada Animação tem um **clipe de entrada** que começa sozinho no Play (por omissão o 1.º), como o *Autoplay* do Godot; os outros tocam quando algo pedir (estado, sinal, script) |
-| 4.1b Play All (smoke, 09/10) | ⛔ o Arrange vazio **não toca nada** (*«como pode tocar alguma coisa?»*) — a cena inteira (cada objecto a sua Animação, o Arrange — ou, vazio, o clipe da Cena —, as cutscenes) toca num **segundo Play, «Play All»**, em qualquer aba (também no menu Run); é um MODO: o Play/Pause não o desmarca (2.º smoke) |
+| 4.1b onde toca (smokes, 09/10) | ⛔ o Arrange vazio **não toca nada** (*«como pode tocar alguma coisa?»*); o Autoplay toca no **Play da barra de cima** (*«na Godot os marcados com Autoplay tocam no Play do runtime»*) — a cena inteira (cada objecto a sua Animação, o Arrange ou, vazio, o clipe da Cena, as cutscenes), em qualquer aba; o transporte da timeline é de edição. ⛔ Recusado: um 2.º botão «Play All» na timeline |
 | 4.2 Motion fora do centro | o que vem do mundo (rato, colisores da cena, câmara, poses de objectos) é convertido **sozinho** para o espaço do objecto Motion — nada a configurar |
 | 4.3 Caminhos | uma curva usada como CAMINHO (`motion.path`, spline-wrap) **fica onde está** — é guia visível; só a forma COPIADA vira molde |
 

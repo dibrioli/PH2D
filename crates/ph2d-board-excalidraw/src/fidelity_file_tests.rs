@@ -297,7 +297,7 @@ fn m7_m8_his_look_comes_in() {
 #[test]
 fn a_w8_file_still_carries_our_elements() {
     let file = include_str!("../fixtures/w8_escrito.excalidraw");
-    let v: Value = serde_json::from_str(&file).unwrap();
+    let v: Value = serde_json::from_str(file).unwrap();
     let carried = v["elements"]
         .as_array()
         .unwrap()
@@ -308,7 +308,7 @@ fn a_w8_file_still_carries_our_elements() {
         });
     assert!(carried);
     assert!(
-        read(&file)
+        read(file)
             .unwrap()
             .doc
             .live_in_z_order()

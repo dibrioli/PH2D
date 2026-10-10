@@ -570,10 +570,10 @@ mod scratch;
 mod owner;
 pub use owner::{ClipOwner, SCENE};
 
+#[path = "doc_entry.rs"]
+mod entry;
 /// **A migração v18 → v19** — o único leitor de bytes antigos deste documento.
 #[path = "doc_v18.rs"]
 mod v18;
 #[path = "doc_v19.rs"]
 mod v19;
-#[path = "doc_entry.rs"]
-mod entry;

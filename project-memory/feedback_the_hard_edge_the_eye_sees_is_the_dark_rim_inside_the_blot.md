@@ -10,6 +10,9 @@ da Aquarela, o slider a misturá-lo, e um raio a alisar a FORMA (contorno −55 
 não vi benefício». O que se via duro era o contorno ESCURO (o `EdgeDarkening`), por dentro da mancha, com
 escadinha de pixel. A lei aprovada («maravilhoso», 10/10) desfoca a tinta premultiplicada por uma tenda de
 raio `r` numa faixa à volta da orla, com peso `4·B·(1−B)` (`B` = a mancha desfocada).
+E a borda de uma tinta SOBRE outra (4.º smoke) também é um salto de tom dentro da mancha: detecta-se pela
+tinta desfocada a `r` px de cada LADO (no grão os dois lados são iguais; o declive local confundia o grão
+com um degrau e borrou-o −38 %), com limiar medido contra «o S aprovado não muda».
 Doc: `docs/Painter/NewFeaturesWetPaint/14_smooth_edges_a_borda_suave.md`.
 
 **Why:** uma régua de forma (contorno, área) aprovou a 3.ª lei e ela era invisível; a métrica que acompanhou o

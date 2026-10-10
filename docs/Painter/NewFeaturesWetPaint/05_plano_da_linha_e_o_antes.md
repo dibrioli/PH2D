@@ -805,6 +805,11 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
       razão: uma linha a mais volta a reprovar). O censo dos controlos: o Texture on Paint sem papel
       esmaece com o Tooth (`Dependente::SemPapel`); saiu a exceção «escolher o Cold a partir de None não
       muda a tinta» (agora muda).
+  - **3.º e 4.º smoke do dono (10/10):** o preview demorava até 10 s — o 1.º quadro sai em 0,01–0,05 s e
+    o traço em 0,2–0,4 s; era a apresentação a esperar a água parar num arrasto (agora mostra o mais
+    recente; `o_preview_nao_espera_a_agua_parar`). O Smooth Edges («maravilhoso») documentado em
+    [14](14_smooth_edges_a_borda_suave.md), e estendido às bordas SOBRE tinta (o degrau de cor dentro da
+    mancha — a lei e a rodada dos limiares no 14 §2–§3).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

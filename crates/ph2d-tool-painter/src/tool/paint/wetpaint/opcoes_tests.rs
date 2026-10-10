@@ -245,3 +245,139 @@ fn sem_papel_o_traco_nao_tem_o_desenho_de_um_papel() {
         "sem papel a tinta total é {razao:.3} da do Cold"
     );
 }
+
+/// O pincel de fábrica: um vermelho largo (Wet Round 60 px, água 1) e um azul (30 px) a atravessá-lo na
+/// vertical — a borda do azul passa POR CIMA da tinta. `assentar`: o vermelho vai à tela de baixo (Dry
+/// canvas) e para a água só sobra o azul; senão a água corre 40 s e o vermelho fica na MESMA sessão (o
+/// caso do dono: a borda do azul é um degrau de cor dentro da tinta).
+fn azul_sobre_vermelho(forca: f32, assentar: bool) -> Vec<u8> {
+    use crate::tool::PainterTool;
+    use ph2d_brush_presets::{Biblioteca, Volumes};
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{
+        CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool,
+    };
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o pincel de fábrica")
+        .preset;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 400 * 240 * 4], 400, 240);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.paint.wetpaint.tilt_on = false;
+    t.paint.wetpaint.smooth_edges = forca;
+    let cp = |x: f32, y: f32, phase| CanvasPointer {
+        pos: [x, y],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let traco = |t: &mut PainterTool, de: [f32; 2], a: [f32; 2]| {
+        let n = 80;
+        t.on_canvas_pointer(cp(de[0], de[1], PointerPhase::Down));
+        for k in 1..=n {
+            let f = k as f32 / n as f32;
+            t.on_canvas_pointer(cp(
+                de[0] + (a[0] - de[0]) * f,
+                de[1] + (a[1] - de[1]) * f,
+                PointerPhase::Move,
+            ));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(a[0], a[1], PointerPhase::Up));
+        for _ in 0..120 {
+            t.on_tick(1000.0 / 60.0);
+        }
+    };
+    t.wet_preset_aplicar_volumes(&Volumes {
+        size_px: Some(60.0),
+        water: Some(1.0),
+        ..Volumes::default()
+    });
+    t.set_brush_color_srgb8([200, 30, 30]);
+    traco(&mut t, [40.0, 120.0], [360.0, 120.0]);
+    if assentar {
+        assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(
+            crate::ids::PAINTER_WETPAINT_DRYCANVAS
+        )));
+    } else {
+        for _ in 0..60 * 40 {
+            t.on_tick(1000.0 / 60.0);
+        }
+    }
+    t.wet_preset_aplicar_volumes(&Volumes {
+        size_px: Some(30.0),
+        ..Volumes::default()
+    });
+    t.set_brush_color_srgb8([30, 60, 210]);
+    traco(&mut t, [200.0, 30.0], [200.0, 210.0]);
+    t.run_full().0
+}
+
+/// A aspereza de uma janela (a soma das diferenças entre vizinhos, por canal) de uma tela 400 de largo.
+fn aspereza_em(px: &[u8], (x0, y0, x1, y1): (usize, usize, usize, usize)) -> u64 {
+    let w = 400usize;
+    let mut tv = 0u64;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = (y * w + x) * 4;
+            for c in 0..3 {
+                tv += u64::from(px[i + c].abs_diff(px[i + 4 + c]));
+                tv += u64::from(px[i + c].abs_diff(px[i + w * 4 + c]));
+            }
+        }
+    }
+    tv
+}
+
+/// **A borda de um traço SOBRE tinta também amacia** (dono 10/10, 4.º smoke: «o smooth edge parece não
+/// funcionar quando a tinta escorre sobre área já pintada»): com o Smooth Edges no máximo, as bordas do
+/// azul por cima do vermelho perdem ≥ 30 % da aspereza — com o vermelho na mesma sessão de água (o caso
+/// do dono) e assentado na tela — e o MIOLO do vermelho longe de qualquer borda muda ≤ 5 % (o grão e a
+/// aguada ficam). Mutação que sangra: o peso do degrau a zero (só a orla com o papel, a lei de antes:
+/// medido −18 % no caso assentado).
+#[test]
+fn a_borda_de_um_traco_sobre_tinta_tambem_amacia() {
+    // As bordas do azul (x ≈ 185 e 215) dentro do vermelho (y 105–135); o miolo do vermelho a 80 px delas.
+    let borda = (176, 105, 224, 135);
+    let miolo = (90, 108, 130, 132);
+    for assentar in [false, true] {
+        let (antes, depois) = (
+            azul_sobre_vermelho(0.0, assentar),
+            azul_sobre_vermelho(1.0, assentar),
+        );
+        let (b0, b1) = (aspereza_em(&antes, borda), aspereza_em(&depois, borda));
+        let (m0, m1) = (aspereza_em(&antes, miolo), aspereza_em(&depois, miolo));
+        eprintln!(
+            "[smooth sobre tinta] assentado {assentar}: borda {b0} → {b1} · miolo {m0} → {m1}"
+        );
+        assert!(
+            (b1 as f64) <= 0.70 * b0 as f64,
+            "assentado {assentar}: a borda do azul sobre o vermelho não amaciou ({b0} → {b1})"
+        );
+        assert!(
+            (m1 as f64 / m0.max(1) as f64 - 1.0).abs() <= 0.05,
+            "assentado {assentar}: o miolo do vermelho mudou ({m0} → {m1})"
+        );
+    }
+}
+
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_grava_azul_sobre_vermelho() {
+    let d = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| "/tmp".into());
+    for (k, f) in [0.0f32, 1.0].into_iter().enumerate() {
+        let px = azul_sobre_vermelho(f, false);
+        let mut o = b"P6\n400 240\n255\n".to_vec();
+        for p in px.chunks(4) {
+            o.extend_from_slice(&p[..3]);
+        }
+        std::fs::write(format!("{d}/avs_{k}.ppm"), o).unwrap();
+    }
+}

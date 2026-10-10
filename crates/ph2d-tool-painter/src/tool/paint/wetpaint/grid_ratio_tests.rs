@@ -481,10 +481,10 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
     );
 }
 
-/// **O Smooth Edges do Wet Paint só toca a ORLA, e no zero é o `over` de antes ao byte.** `0` de fábrica;
+/// **O Smooth Edges do Wet Paint só toca as BORDAS, e no zero é o `over` de antes ao byte.** `0` de fábrica;
 /// no máximo, os bytes que divergem do oráculo estão todos num pixel com mancha E papel (`pa ≥ SS0` e
-/// `< SS0`) a menos do [`alcance`](super::smooth_edges::alcance) do raio — o miolo e o papel aberto ficam
-/// iguais; e há divergência. Voltar a `0` recompõe: 0 bytes contra o oráculo.
+/// `< SS0`) — ou um degrau de cor maior que `DEGRAU_MIN` — a menos do
+/// [`alcance`](super::smooth_edges::alcance) do raio; o resto fica igual; e há divergência. Voltar a `0` recompõe: 0 bytes contra o oráculo.
 #[test]
 fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
@@ -518,7 +518,27 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
                     .flat_map(|y| xs.clone().map(move |x| (x, y)))
                     .map(|(x, y)| dentro(x, y))
                     .collect();
-                if viz.iter().any(|&d| d) && viz.iter().any(|&d| !d) {
+                // Ou um DEGRAU de cor na vizinhança (4.º smoke: a borda sobre tinta também amacia).
+                let premul = |x: usize, y: usize| {
+                    let i = (y * W + x) * 4;
+                    let a = f32::from(pig[i + 3]) / 255.0;
+                    [0, 1, 2].map(|c| f32::from(pig[i + c]) / 255.0 * a)
+                };
+                let (ys2, xs2) = (
+                    py.saturating_sub(a)..=(py + a).min(H - 1),
+                    px.saturating_sub(a)..=(px + a).min(W - 1),
+                );
+                let cores: Vec<[f32; 3]> = ys2
+                    .flat_map(|y| xs2.clone().map(move |x| (x, y)))
+                    .map(|(x, y)| premul(x, y))
+                    .collect();
+                let degrau = (0..3).any(|c| {
+                    let (lo, hi) = cores
+                        .iter()
+                        .fold((f32::MAX, f32::MIN), |(l, h), v| (l.min(v[c]), h.max(v[c])));
+                    hi - lo > super::smooth_edges::DEGRAU_MIN
+                });
+                if (viz.iter().any(|&d| d) && viz.iter().any(|&d| !d)) || degrau {
                     na_silhueta += 1;
                 } else {
                     fora_da_silhueta += 1;

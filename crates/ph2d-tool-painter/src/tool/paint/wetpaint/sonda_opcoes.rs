@@ -123,3 +123,71 @@ fn sonda_smooth_edges_no_s() {
         grava(&format!("smooth_{s}"), 1000, 640, &px);
     }
 }
+
+/// **Sonda (dono 10/10: «o smooth edge não funciona quando a tinta escorre sobre área já pintada»):** um
+/// traço horizontal vermelho, depois um S azul por cima com a tela no máximo — os fios descem SOBRE o
+/// vermelho. Smooth Edges 0 e 1, `PH2D_SONDA_OUT/levanta_<s>.ppm`.
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_smooth_edges_sobre_tinta() {
+    use crate::tool::PainterTool;
+    use ph2d_brush_presets::{Biblioteca, Volumes};
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Wash")
+        .expect("o pincel de fábrica")
+        .preset;
+    for s in [0.0f32, 1.0] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 1000 * 640 * 4], 1000, 640);
+        t.set_paint_tool_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(p).is_empty());
+        t.wet_preset_aplicar_volumes(&Volumes {
+            size_px: Some(120.0),
+            water: Some(1.0),
+            ..Volumes::default()
+        });
+        t.paint.wetpaint.smooth_edges = s;
+        let cp = |x: f32, y: f32, phase| CanvasPointer {
+            pos: [x, y],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        // O vermelho, com a tela direita, e seco.
+        t.paint.wetpaint.tilt_on = false;
+        t.set_brush_color_srgb8([200, 30, 30]);
+        t.on_canvas_pointer(cp(100.0, 380.0, PointerPhase::Down));
+        for k in 1..=266 {
+            t.on_canvas_pointer(cp(100.0 + 3.0 * k as f32, 380.0, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(900.0, 380.0, PointerPhase::Up));
+        for _ in 0..60 * 40 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        // O azul por cima, a tela no máximo: os fios descem sobre o vermelho.
+        t.paint.wetpaint.tilt_on = true;
+        t.paint.wetpaint.tilt_ring = 8;
+        t.set_brush_color_srgb8([30, 60, 210]);
+        let pts: Vec<[f32; 2]> = super::sonda_achatamento::o_s();
+        t.on_canvas_pointer(cp(pts[0][0], pts[0][1], PointerPhase::Down));
+        for q in &pts[1..] {
+            t.on_canvas_pointer(cp(q[0], q[1], PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        let u = pts[pts.len() - 1];
+        t.on_canvas_pointer(cp(u[0], u[1], PointerPhase::Up));
+        for _ in 0..60 * 40 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        let px = t.run_full().0;
+        grava(&format!("levanta_{s}"), 1000, 640, &px);
+    }
+}

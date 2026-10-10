@@ -84,29 +84,45 @@ fn caixa(n: usize, h: f32, i: usize, ler: impl Fn(usize) -> f32) -> f32 {
     s / (2.0 * k as f32 + 1.0 + 2.0 * f)
 }
 
-/// A tenda 1D: a caixa de meia largura fracionária `h` convolvida consigo mesma (o mesmo núcleo que as
-/// duas passadas de [`caixa`] aplicam ao campo da mancha).
-fn tenda(h: f32) -> Vec<f32> {
-    let (k, f) = (h.floor() as usize, h - h.floor());
-    let mut cx = vec![1.0f32; 2 * k + 3];
-    (cx[0], cx[2 * k + 2]) = (f, f);
-    let n: f32 = cx.iter().sum();
-    cx.iter_mut().for_each(|v| *v /= n);
-    let mut t = vec![0.0f32; 2 * cx.len() - 1];
-    for (i, a) in cx.iter().enumerate() {
-        for (j, b) in cx.iter().enumerate() {
-            t[i + j] += a * b;
+/// [`caixa`] para os quatro canais da tinta de uma vez.
+#[inline]
+fn caixa4(n: usize, h: f32, i: usize, ler: impl Fn(usize) -> [f32; 4]) -> [f32; 4] {
+    let (k, f) = (h.floor() as isize, h - h.floor());
+    let em = |d: isize| ler((i as isize + d).clamp(0, n as isize - 1) as usize);
+    let mut s = [0.0f32; 4];
+    for d in -k..=k {
+        let v = em(d);
+        for c in 0..4 {
+            s[c] += v[c];
         }
     }
-    t
+    if f > 0.0 {
+        let (a, b) = (em(-k - 1), em(k + 1));
+        for c in 0..4 {
+            s[c] += f * (a[c] + b[c]);
+        }
+    }
+    let n = 2.0 * k as f32 + 1.0 + 2.0 * f;
+    s.map(|v| v / n)
 }
+
+/// O degrau de cor DENTRO da tinta (a altura, em `0..1` por canal premultiplicado, entre a tinta
+/// desfocada a `raio` px de cada lado) a partir do qual a borda interior amacia, e por inteiro. Medido
+/// (dono 10/10, 4.º smoke; a borda de um azul sobre um vermelho · o S aprovado, píxeis que mudam > 8
+/// níveis): 0,04 → −48 % · 10 679 px; 0,10 → −42 % · 2 639; **0,15 → −35 % · 512**; 0,20 → −27 % · 109.
+/// Abaixo ficam as células da aguada e o grão; acima, o degrau entre duas tintas e a tinta levantada.
+pub(super) const DEGRAU_MIN: f32 = 0.15;
+const DEGRAU_CHEIO: f32 = 0.40;
 
 /// **O Smooth Edges de uma região do composite** (dono 10/10: «não vi benefício no máximo»): uma BORDA
 /// SUAVE de largura ajustável. A mancha (`pa ≥ SS0`) desfocada por uma tenda de meia largura `raio` (duas
 /// caixas de `raio/2`, separáveis) diz onde fica a orla: `B ∈ (0, 1)`. Nessa faixa o pixel mostra a tinta
 /// (cor e cobertura, premultiplicadas) desfocada pela MESMA tenda, com peso `4·B·(1 − B)` — inteiro na
 /// orla, zero no miolo e no papel aberto (o caminho de antes). O contorno escuro e a silhueta amaciam
-/// juntos e a tinta conserva-se. `raio = 0` ⇒ `B` é a própria mancha ⇒ peso 0 ⇒ o desligado, ao byte.
+/// juntos e a tinta conserva-se. **Dentro** da tinta (onde a mancha é toda 1 — a borda de um traço sobre
+/// outra cor, a tinta levantada) a borda é um DEGRAU de cor: a tinta desfocada a `raio` px de cada lado
+/// mede a altura do degrau (no grão os dois lados são iguais), o peso vai de 0 a 1 entre [`DEGRAU_MIN`] e
+/// [`DEGRAU_CHEIO`] e é um sino na posição dentro do degrau (dono 10/10, 4.º smoke). `raio = 0` ⇒ `B` é a própria mancha ⇒ peso 0 ⇒ o desligado, ao byte.
 pub(super) struct Suave {
     x0: usize,
     y0: usize,
@@ -114,11 +130,10 @@ pub(super) struct Suave {
     w: usize,
     h: usize,
     b: Vec<f32>,
-    /// A tenda 1D (meia largura `alcance − 1`, soma 1).
-    tenda: Vec<f32>,
-    /// O pigmento da região (premultiplicado + `pa`), lido UMA vez nas linhas a `2 × alcance` da tinta
-    /// (as que a convolução da orla pode ler); o resto fica a zero e nunca se lê.
-    pre: Vec<[f32; 4]>,
+    raio: f32,
+    /// A tinta da região (premultiplicada + `pa`) desfocada pela MESMA tenda que a mancha, nas linhas a
+    /// `alcance + 1` da tinta (as que [`Suave::aplica`] lê, com o vizinho do declive); o resto não se lê.
+    pbar: Vec<[f32; 4]>,
 }
 
 impl Suave {
@@ -204,6 +219,41 @@ impl Suave {
                 *v = caixa(rh, hb, y, |j| t[j * rw + x]);
             }
         });
+        // A tinta desfocada: duas caixas horizontais nas linhas onde a tinta foi lida (pre → tmp → pre) e
+        // duas verticais nas que se leem (pre → tmp → pre).
+        let lida = |y: usize| acc[(y + 2 * al + 1).min(rh)] > acc[y.saturating_sub(2 * al)];
+        let lida_v = |y: usize| acc[(y + al + 2).min(rh)] > acc[y.saturating_sub(al + 1)];
+        let mut tmp = vec![[0.0f32; 4]; rw * rh];
+        tmp.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if lida(y) {
+                let fonte = &pre[y * rw..(y + 1) * rw];
+                for (x, v) in l.iter_mut().enumerate() {
+                    *v = caixa4(rw, hb, x, |i| fonte[i]);
+                }
+            }
+        });
+        pre.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if lida(y) {
+                let fonte = &tmp[y * rw..(y + 1) * rw];
+                for (x, v) in l.iter_mut().enumerate() {
+                    *v = caixa4(rw, hb, x, |i| fonte[i]);
+                }
+            }
+        });
+        tmp.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if lida_v(y) {
+                for (x, v) in l.iter_mut().enumerate() {
+                    *v = caixa4(rh, hb, y, |j| pre[j * rw + x]);
+                }
+            }
+        });
+        pre.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if lida_v(y) {
+                for (x, v) in l.iter_mut().enumerate() {
+                    *v = caixa4(rh, hb, y, |j| tmp[j * rw + x]);
+                }
+            }
+        });
         Suave {
             x0: rx0,
             y0: ry0,
@@ -211,38 +261,55 @@ impl Suave {
             w,
             h,
             b,
-            tenda: tenda(hb),
-            pre,
+            raio,
+            pbar: pre,
         }
     }
 
-    /// O pigmento que o pixel `(px, py)` mostra: `dele` longe da orla (o caminho de antes); na orla, a
-    /// mistura dele com a tinta desfocada.
+    /// O pigmento que o pixel `(px, py)` mostra: `dele` longe de qualquer borda (o caminho de antes); na
+    /// orla com o papel e nos degraus de cor dentro da tinta, a mistura dele com a tinta desfocada.
     pub(super) fn aplica(&self, px: usize, py: usize, dele: ([f32; 3], f32)) -> ([f32; 3], f32) {
-        let b = self.b[(py - self.y0) * self.rw + (px - self.x0)];
-        let peso = 4.0 * b * (1.0 - b);
+        let i = (py - self.y0) * self.rw + (px - self.x0);
+        let b = self.b[i];
+        let mut peso = 4.0 * b * (1.0 - b);
+        // Dentro da tinta: um DEGRAU de cor — a tinta desfocada a `r` px de cada lado do pixel (num
+        // degrau os dois lados diferem; no grão, desfocado, são iguais) e a posição do pixel dentro dele
+        // (`u`), com o peso em sino `4·u·(1−u)` como na orla com o papel.
+        let dentro = (2.0 * b - 1.0).clamp(0.0, 1.0);
+        if dentro > 0.0 {
+            let r = (self.raio.round() as usize).max(1);
+            let altura = self.b.len() / self.rw;
+            let q = |x: usize, y: usize| {
+                self.pbar[(y.clamp(self.y0, self.y0 + altura - 1) - self.y0) * self.rw
+                    + (x.clamp(self.x0, self.x0 + self.rw - 1) - self.x0)]
+            };
+            let meio = self.pbar[i];
+            let mut melhor = 0.0f32;
+            for (a, c) in [
+                (q(px.saturating_sub(r), py), q((px + r).min(self.w - 1), py)),
+                (q(px, py.saturating_sub(r)), q(px, (py + r).min(self.h - 1))),
+            ] {
+                for k in 0..4 {
+                    let esc = if k < 3 { 1.0 / 255.0 } else { 1.0 };
+                    let d = (c[k] - a[k]) * esc;
+                    if d.abs() <= DEGRAU_MIN {
+                        continue;
+                    }
+                    let u = (((meio[k] - a[k]) * esc) / d).clamp(0.0, 1.0);
+                    let w = ((d.abs() - DEGRAU_MIN) / (DEGRAU_CHEIO - DEGRAU_MIN)).clamp(0.0, 1.0);
+                    melhor = melhor.max(w * w * (3.0 - 2.0 * w) * 4.0 * u * (1.0 - u));
+                }
+            }
+            peso = peso.max(melhor * dentro);
+        }
         if peso < 1e-3 {
             return dele;
         }
-        let r = (self.tenda.len() / 2) as isize;
-        let (mut s, mut sa) = ([0.0f32; 3], 0.0f32);
-        for (j, wy) in self.tenda.iter().enumerate() {
-            let y = (py as isize + j as isize - r).clamp(0, self.h as isize - 1) as usize;
-            let base = (y - self.y0) * self.rw;
-            for (i, wx) in self.tenda.iter().enumerate() {
-                let x = (px as isize + i as isize - r).clamp(0, self.w as isize - 1) as usize;
-                let q = self.pre[base + x - self.x0];
-                let k = wx * wy;
-                for c in 0..3 {
-                    s[c] += q[c] * k;
-                }
-                sa += q[3] * k;
-            }
-        }
+        let s = self.pbar[i];
         let l = |d: f32, o: f32| d + (o - d) * peso;
         (
             [l(dele.0[0], s[0]), l(dele.0[1], s[1]), l(dele.0[2], s[2])],
-            l(dele.1, sa),
+            l(dele.1, s[3]),
         )
     }
 }

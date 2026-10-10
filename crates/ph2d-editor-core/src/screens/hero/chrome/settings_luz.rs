@@ -38,5 +38,5 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 }
 
 #[cfg(test)]
-#[path = "settings_luz_tests.rs"]
+#[path = "../settings_luz_tests.rs"]
 mod tests;

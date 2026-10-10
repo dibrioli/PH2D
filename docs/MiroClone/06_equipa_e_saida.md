@@ -188,8 +188,8 @@ ryu`) — só serializa, a geometria é nossa. ⛔ `krilla` 0.8.2 recusado (§3)
 
 | lei | fonte | número |
 |---|---|---|
-| **X1** exportar: rectângulo/elipse/losango → os deles; as outras 15 formas → `line` fechada com o nosso contorno (preenchida) + o texto num `text` do mesmo grupo; nota → `rectangle` cheio sem traço com o texto preso; seta → `arrow` com `startBinding`/`endBinding`, curva = `roundness {type:2}`, cotovelo = `elbowed` com `fixedPoint`; caneta → `freedraw` com `pressures`; frame → `frame` (`frameId` = o frame de topo); grupos → `groupIds`; travar, link → `locked`, `link`; `seed` = a nossa (o rascunho treme igual lá) | §1.3 | — |
-| **X2** o que o Excalidraw não tem vai em `customData.ph2d` (o tipo, as etiquetas, os votos, os carimbos, o mapa, o rascunho, o id e a ligação exacta) e o leitor prefere-o ⇒ nosso → Excalidraw → nosso = IGUAL (a menos dos ids) | §1.3 | — |
+| **X1** exportar: rectângulo/elipse/losango → os deles; as outras 15 formas → `line` fechada com o nosso contorno (preenchida) + o texto num `text` do mesmo grupo; nota → `rectangle` cheio sem traço com o texto preso; seta → `arrow` com `startBinding`/`endBinding`, curva = `roundness {type:2}`, cotovelo = `elbowed` com `fixedPoint`; caneta → `freedraw` com `pressures`; frame → `frame` (`frameId` = o frame de topo); grupos → `groupIds`; travar → `locked`; `link` = `null` (o do Excalidraw é um URL; a nossa ligação aponta para OUTRO ELEMENTO e viaja em `customData.ph2d`, X2); `seed` = a nossa (o rascunho treme igual lá) | §1.3 | — |
+| **X2** o que o Excalidraw não tem vai em `customData.ph2d` (o tipo, as etiquetas, os votos, os carimbos, o mapa, o rascunho, o id e a ligação exacta) e o leitor prefere-o ⇒ nosso → Excalidraw → nosso = IGUAL (a menos dos ids). O que se EDITOU lá ganha ao guardado: o leitor compara o elemento com o que escreveu (`customData.ph2d.wrote` nas setas) e devolve a cor, o tracejado, a opacidade, o tamanho do texto, o redimensionar (polígono e caneta escalam) e os pontos de uma seta RECTA | §1.3 | — |
 | **X3** importar: um quadro novo com o nome do ficheiro; texto solto → forma sem preenchimento nem traço com o texto; imagem, embeddable, iframe e tipos desconhecidos SALTAM com um aviso que os conta; valores fora de faixa → os de nascença dele; lê também o `.png`/`.svg` com a cena embebida | §1.3 | — |
 | **X4** o array sai pela ordem de z e sem `index` (a ordem manda); `version`/`versionNonce` = os nossos, `updated` = 1 (ficheiro determinístico) | §1.3 | — |
 
@@ -207,6 +207,7 @@ ryu`) — só serializa, a geometria é nossa. ⛔ `krilla` 0.8.2 recusado (§3)
 | o PNG por factor de escala (`2×`) | ⛔ o Miro mede por ÁREA (§1.2): um quadro comprido a `2×` passava do tecto da placa, um pequeno saía minúsculo |
 | exportar com o recorte do frame em `ns1:clip-path` (o SVG do Excalidraw) | ⛔ medido no oráculo: o librsvg e o Inkscape não recortam — o nosso `clip-path` é o do SVG 1.1 |
 | o laser na apresentação | ⛔ o Miro não o tem; a apresentação esconde as ferramentas |
+| pontos editados no Excalidraw numa seta CURVA ou em COTOVELO | ⛔ a nossa curva e o nosso cotovelo são DERIVADOS pelo roteador dos dois pontos de ligação (W2); os pontos do Excalidraw são a forma dele e não têm leitura na nossa lei — a seta volta com a rota guardada (o desenho lá mudado perde-se, a ligação não) |
 | imagens no quadro (o `image` do Excalidraw) | ⛔ o quadro não tem elemento imagem (`ElementKind` = forma · seta · caneta · frame): saltam na importação com aviso que as conta — onda própria |
 
 ## §4 — Medir antes de limitar (§0.0)
@@ -258,6 +259,8 @@ desenha as notas de longe como blocos — o vector desenha tudo, por isso pesa m
 `PH2D_BOARD_SMOKE=10`: um quadro de «Lançamento» com três frames (Problema · Ideias · Plano), dois fios de
 comentários (um por ler, de outra pessoa; um resolvido), uma versão já guardada, e notas-lição na ordem real:
 comentar (`C`, escrever, `Enter`, resolver) · guardar uma versão e restaurá-la como cópia (o menu da aba) ·
-apresentar (o menu da aba ou o botão do painel de Frames; setas; `Esc`) · exportar (PNG/SVG/PDF) · abrir um
-`.excalidraw` (o ficheiro de exemplo ao lado). Num frame com a margem do que os painéis tapam (lição W6), o
-gate conduz cada lição pelo caminho do ECRÃ na ordem real (lição W7), fotografada antes de mandar.
+apresentar (o botão «Present» na fila de cima do canto de baixo à direita, ou o menu da aba; setas; `Esc`) ·
+exportar (PNG/SVG/PDF) · abrir um `.excalidraw` (`docs/MiroClone/example.excalidraw`). A cena enquadra a
+caixa do que tem mais a margem do que os painéis tapam (lição W6; `board_nav::show_box`, sem elementos
+invisíveis no documento), e o gate conduz cada lição pelo caminho do ECRÃ na ordem real (lição W7),
+fotografada antes de mandar.

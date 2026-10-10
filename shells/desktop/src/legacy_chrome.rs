@@ -13,21 +13,17 @@
 //! responsabilidade: aquele ficheiro roteia teclas, este sabe o que é o chrome legado.
 
 impl crate::App {
-    /// Alterna o chrome legado e diz no terminal em que estado ficou. `false` quando não há
-    /// `HeroScreen` (a tecla não é consumida).
+    /// Alterna o chrome legado (a porta é do hero) e diz no terminal em que estado ficou. `false`
+    /// quando não há `HeroScreen` ou a apresentação do quadro a recusa (a tecla não é consumida).
     pub(crate) fn toggle_legacy_chrome(&mut self) -> bool {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
-        hero.view.legacy_chrome = !hero.view.legacy_chrome;
-        eprintln!(
-            "[ui] chrome legado (barra de topo + trilho): {}",
-            if hero.view.legacy_chrome {
-                "VISIVEL"
-            } else {
-                "fora"
-            }
-        );
+        let Some(on) = hero.toggle_legacy_chrome() else {
+            return false;
+        };
+        let state = if on { "VISIVEL" } else { "fora" };
+        eprintln!("[ui] chrome legado (barra de topo + trilho): {state}");
         true
     }
 }

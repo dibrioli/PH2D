@@ -239,6 +239,10 @@ pub fn key(
         _ => None,
     });
     if let Some(c) = command {
+        // K1 — escolher outra ferramenta larga a de comentar (uma de cada vez).
+        if matches!(c, Command::Tool(_)) {
+            live.team.commenting = false;
+        }
         // ⚠️ Um atalho de uma tecla que o quadro reconhece é SEMPRE dele — mesmo sem efeito
         // (`Esc` sem nada seleccionado): deixá-lo cair faria a cena reagir por baixo.
         let _ = ed.command(doc, history, ts, c);

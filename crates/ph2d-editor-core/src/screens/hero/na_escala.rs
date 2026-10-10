@@ -48,11 +48,26 @@ impl HeroScreen {
         self.hit_index.hit(x, y)
     }
 
-    /// O painel sob um ponto FÍSICO da janela.
+    /// O painel sob um ponto FÍSICO da janela. A apresentação do quadro (W8) cobre a janela
+    /// inteira: nenhum painel por baixo dela recebe o ponteiro.
     #[must_use]
     pub fn chrome_panel_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        if super::board_nav::team::show::showing(self) {
+            return None;
+        }
         let (x, y) = self.escala().to_logical((x, y));
         self.store.panel_at(x, y)
+    }
+
+    /// F9 — o chrome legado entra ou sai; devolve o estado novo. Durante a apresentação do quadro
+    /// a tecla é recusada (`None`: ela cobre a janela, e o chrome que voltasse por baixo dela
+    /// mudaria a área do quadro a meio).
+    pub fn toggle_legacy_chrome(&mut self) -> Option<bool> {
+        if super::board_nav::team::show::showing(self) {
+            return None;
+        }
+        self.view.legacy_chrome = !self.view.legacy_chrome;
+        Some(self.view.legacy_chrome)
     }
 
     /// O rect de um painel na JANELA (físico) — para o comparar com o ponteiro, ou para o usar

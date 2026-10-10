@@ -42,6 +42,14 @@ pub fn show(hero: &mut HeroScreen, frames: bool, minimap: bool) {
     n.frames_open = frames;
     n.minimap_open = minimap;
     n.fit_pending = true;
+    n.fit_box = None;
+}
+
+/// [`show`] a enquadrar a caixa `world` (`[x0, y0, x1, y1]`) em vez do quadro inteiro: a margem do
+/// que os painéis tapam sem elementos invisíveis no documento.
+pub fn show_box(hero: &mut HeroScreen, frames: bool, minimap: bool, world: [f64; 4]) {
+    show(hero, frames, minimap);
+    hero.documents.live.nav.fit_box = Some(world);
 }
 
 /// Os botões do canto.
@@ -317,10 +325,14 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let theme = hero.theme;
     let a = super::board_view::area_of(area);
+    let fit_box = hero.documents.live.nav.fit_box.take();
     if std::mem::take(&mut hero.documents.live.nav.fit_pending)
         && let Some(board) = hero.documents.active_board_mut()
     {
-        fit_all(board, a);
+        match fit_box {
+            Some(world) => board.camera.fit(a, world, fit_margin()),
+            None => fit_all(board, a),
+        }
     }
     search::paint_highlight(hero, area, scene, theme);
     paint_links(hero, a, scene, theme);
@@ -401,6 +413,22 @@ pub(crate) fn button(
     on: bool,
     theme: Theme,
 ) {
+    button_ink(scene, hit, store, id, icon, r, on, theme, ColorToken::Text2);
+}
+
+/// [`button`] com a tinta do ícone apagado escolhida (`Text1` sobre a sala preta da apresentação).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn button_ink(
+    scene: &mut VectorScene,
+    hit: &mut HitIndex,
+    store: &WidgetStore,
+    id: NodeId,
+    icon: IconId,
+    r: Rect,
+    on: bool,
+    theme: Theme,
+    rest: ColorToken,
+) {
     let hover = matches!(
         store.button_state(id),
         Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
@@ -411,14 +439,7 @@ pub(crate) fn button(
     } else if hover {
         fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
     }
-    let fg = resolve(
-        if on {
-            ColorToken::Accent
-        } else {
-            ColorToken::Text2
-        },
-        theme,
-    );
+    let fg = resolve(if on { ColorToken::Accent } else { rest }, theme);
     let i = Spacing::Xs.px();
     let inner = Rect::new(r.x + i, r.y + i, r.w - 2.0 * i, r.h - 2.0 * i);
     paint_icon(scene, icon, inner, fg, StrokeToken::Default.px());
@@ -566,8 +587,13 @@ pub(crate) fn field_text_for_tests(hero: &HeroScreen, id: NodeId) -> String {
 }
 
 /// Minimapa: o carregar no quadro, antes do editor. `true` = era no minimapa.
-pub fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    minimap::down(hero, x, y) || team::pointer_down(hero, x, y)
+pub fn pointer_down(
+    hero: &mut HeroScreen,
+    x: f32,
+    y: f32,
+    button: ph2d_host::PointerButton,
+) -> bool {
+    minimap::down(hero, x, y) || team::pointer_down(hero, x, y, button)
 }
 
 /// Minimapa: o arrasto. `true` = consumido.

@@ -168,7 +168,7 @@ fn the_comment_tool_pins_a_thread_to_the_object_and_enter_posts_it() {
         .apply(&mut board.doc, vec![BoardOp::Put(el)]);
     t.paint();
     let after = t.find(bubble).unwrap();
-    assert!(after.0 > before.0 + 10.0, "{before:?} → {after:?}");
+    assert!(after.0 > before.0 + 10.0, "{before:?} -> {after:?}");
 }
 
 /// ⭐ K5/K6/K8 — a bolha de um fio de OUTRO abre-o e marca-o lido por mim; resolver esconde-o do quadro
@@ -269,6 +269,8 @@ fn only_my_messages_edit_and_delete() {
     let m = &t.team().thread(id).unwrap().messages[0];
     assert_eq!((m.text.as_str(), m.edited), ("first!", true));
     t.shell_click_id(team_node(Hit::Delete(0)), "apagar");
+    assert!(t.team().thread(id).is_some(), "o 1.º clique só arma");
+    t.shell_click_id(team_node(Hit::Delete(0)), "confirmar");
     assert!(t.team().thread(id).is_none(), "apagar a 1.ª apaga o fio");
 }
 
@@ -490,3 +492,6 @@ fn no_shell_gesture_zone_sits_on_a_team_button() {
         assert!(!band, "{what}: a faixa da régua rouba-o");
     }
 }
+
+#[path = "board_team_guard_tests.rs"]
+mod guard;

@@ -20,6 +20,10 @@ extend-ignore-identifiers-re = [
     # (`ph2d-contact`): *«dois contactos, e a lei deles é a dos vizinhos»*. O typos quer o
     # inglês `contacts`. 16 ocorrências, a maioria em doc-comments do solver.
     "^(contactos|CONTACTOS)$",
+    # `FlateDecode` — o nome do filtro de compressão do PDF (ISO 32000 §7.4.4, o deflate), no
+    # escritor do exportar do quadro (`ph2d-board-export`, `pdf_writer::Filter::FlateDecode`). O
+    # typos quer `Flat`: é o nome do padrão, não uma palavra.
+    "^FlateDecode$",
     # `DIRECCIONAL` — pt-PT de «direcional», no doc do `ph2d-material`: *«a radiância que uma
     # luz DIRECCIONAL devolve»*. O typos quer `DIRECTIONAL`.
     "^DIRECCIONAL$",

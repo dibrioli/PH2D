@@ -190,7 +190,12 @@ fn page_of(b: &Board, pages: &[Page], id: ElementId) -> Option<usize> {
 /// A caixa de `id` em px da página `p` (a escala 1 do vector).
 fn on_page(b: &Board, p: &Page, id: ElementId) -> Option<[f64; 4]> {
     let [x0, y0, x1, y1] = b.doc.get(id)?.aabb();
-    Some([x0 - p.rect[0], y0 - p.rect[1], x1 - p.rect[0], y1 - p.rect[1]])
+    Some([
+        x0 - p.rect[0],
+        y0 - p.rect[1],
+        x1 - p.rect[0],
+        y1 - p.rect[1],
+    ])
 }
 
 /// ⭐ E5 — as ligações da página `i`: cada elemento com link (W5) cujo alvo está numa página exportada

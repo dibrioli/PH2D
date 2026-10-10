@@ -180,7 +180,9 @@ pub fn pointer(
     let area = area_of(hero.last_canvas);
     let theme = hero.theme;
     match kind {
-        PointerKind::Down if on_canvas && super::board_nav::pointer_down(hero, x, y) => true,
+        PointerKind::Down if on_canvas && super::board_nav::pointer_down(hero, x, y, button) => {
+            true
+        }
         PointerKind::Down if on_canvas && inside(hero.last_canvas, x, y) => {
             // Um clique no quadro fecha a galeria dos modelos (W6).
             hero.documents.live.templates_open = false;

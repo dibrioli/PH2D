@@ -83,6 +83,17 @@ pub struct Show {
     pub since: Instant,
     /// P6 — a vista de antes, devolvida ao sair.
     pub before: Camera,
+    /// P6 — a ferramenta de comentar estava armada antes (volta armada ao sair).
+    pub was_commenting: bool,
+}
+
+/// O apagar armado à espera do 2.º clique.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Confirm {
+    /// A mensagem `n` do fio.
+    Message(ThreadId, usize),
+    /// A versão `n` do quadro.
+    Version(BoardId, usize),
 }
 
 /// O estado de sessão da equipa.
@@ -98,12 +109,25 @@ pub struct Team {
     pub list_open: bool,
     /// O fio aberto no cartão, por quadro.
     pub open: BTreeMap<BoardId, OpenThread>,
-    /// K4 — a mensagem do fio aberto que se está a editar (o índice).
-    pub editing: Option<usize>,
+    /// K4 — a mensagem que se está a editar: o fio E o índice (um índice sozinho apontava para outra
+    /// mensagem depois de um apagar, auditoria W8).
+    pub editing: Option<(ThreadId, usize)>,
     /// R2 — o painel das versões do quadro activo está aberto.
     pub versions_open: bool,
-    /// R2 — a versão que se está a renomear (o índice).
-    pub renaming_version: Option<usize>,
+    /// R2 — a versão que se está a renomear: o quadro E o índice.
+    pub renaming_version: Option<(BoardId, usize)>,
+    /// K4/R2 — apagar pede um 2.º clique no MESMO alvo (o 1.º arma; qualquer outro clique desarma).
+    pub confirm: Option<Confirm>,
+    /// A 1.ª linha da lista ou das versões à vista (os painéis paginam quando não cabem).
+    pub from: usize,
+    /// Quantas filas couberam na última pintura (o passo de uma página).
+    pub page: usize,
+    /// E3 — o tamanho do PNG já medido e a chave dele (quadro, revisão, escolha, selecção).
+    #[allow(clippy::type_complexity)]
+    pub px: Option<(
+        (BoardId, u64, ExportChoice, Vec<ElementId>),
+        Option<(u32, u32)>,
+    )>,
     /// O diálogo de exportar está aberto, com as escolhas.
     pub export: Option<ExportChoice>,
     /// A apresentação a correr.

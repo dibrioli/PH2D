@@ -2,11 +2,9 @@
 //! aberto (K4/K5), a lista (K8/K10), e a frase dos pedidos servidos. Os painéis das versões e do
 //! exportar estão em `board_team_panels.rs`; a apresentação em `board_team_show.rs`.
 
-use std::time::Instant;
-
 use super::super::super::HeroScreen;
-use super::{Hit, TeamButton, ago, me, node, now_unix, register};
-use crate::documents::team::OpenThread;
+use super::{Hit, TeamButton, ago, me, node, now_unix, register, text_y};
+use crate::documents::team::{Confirm, OpenThread};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{
@@ -14,10 +12,10 @@ use crate::paint::{
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
-use ph2d_board_model::{Board, Thread, ThreadId};
+use ph2d_board_model::{Board, Message, ThreadId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O lado de uma bolha e de um botão (K7: tamanho de INTERFACE, o de um botão da barra).
@@ -30,6 +28,9 @@ const BADGE: f32 = 0.47; // LITERAL-PX-OK: fracção medida da bolha
 
 /// A largura do cartão do fio e dos painéis, em botões.
 const CARD_BTNS: f32 = 10.0; // LITERAL-PX-OK: largura em botões (uma mensagem curta numa linha)
+
+/// Os botões de uma mensagem (editar, apagar) e a fila do cabeçalho dela: ¾ de um botão.
+const SMALL: f32 = 0.75; // LITERAL-PX-OK: fracção de um botão
 
 /// O quadro activo, para ler.
 fn board(hero: &HeroScreen) -> Option<&Board> {
@@ -101,20 +102,28 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
 fn paint_bubbles(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let theme = hero.theme;
     let mine = me(hero);
-    let list = visible(hero, area);
-    let Some(b) = hero.documents.active_board() else {
-        return;
-    };
-    let threads: Vec<Thread> = list
-        .iter()
-        .filter_map(|(id, _)| b.team.thread(*id).cloned())
-        .collect();
     let d = btn();
-    for (th, (_, at)) in threads.iter().zip(&list) {
-        let r = bubble_rect(*at);
-        let unread = th.unread_for(&mine);
+    // O contorno da gota é um ANEL: pela porta do tema (o plano não o tem em repouso).
+    let ring = crate::paint::fill_ring(
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    for (id, at) in visible(hero, area) {
+        let Some(th) = board(hero).and_then(|b| b.team.thread(id)) else {
+            continue;
+        };
+        let (resolved, unread, count) = (th.resolved, th.unread_for(&mine), th.messages.len());
+        let initial: String = th
+            .messages
+            .first()
+            .and_then(|m| m.author.chars().next())
+            .map(|c| c.to_uppercase().collect())
+            .unwrap_or_default();
+        let r = bubble_rect(at);
         // K6 — novo azul, lido branco, resolvido com o visto.
-        let (bg, fg) = if th.resolved {
+        let (bg, fg) = if resolved {
             (ColorToken::Bg2, ColorToken::Text2)
         } else if unread {
             (ColorToken::Accent, ColorToken::AccentFg)
@@ -122,45 +131,32 @@ fn paint_bubbles(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
             (ColorToken::BgElev, ColorToken::Text1)
         };
         // A gota: um círculo e o quadrante de baixo à esquerda em ponta (a ponta está no alvo).
-        fill_rounded_rect(scene, r, d / 2.0, resolve(ColorToken::Border, theme));
-        let inner = Rect::new(r.x + 1.0, r.y + 1.0, d - 2.0, d - 2.0); // LITERAL-PX-OK: o fio do contorno
-        fill_rounded_rect(scene, inner, (d - 2.0) / 2.0, resolve(bg, theme)); // LITERAL-PX-OK: idem
+        let inset = ring.map_or(0.0, |(w, c)| {
+            fill_rounded_rect(scene, r, d / 2.0, c);
+            w
+        });
+        let inner = Rect::new(r.x + inset, r.y + inset, d - 2.0 * inset, d - 2.0 * inset);
+        fill_rounded_rect(scene, inner, inner.w / 2.0, resolve(bg, theme));
         let tail = Rect::new(r.x, r.y + d / 2.0, d / 2.0, d / 2.0);
         fill_rounded_rect(scene, tail, 0.0, resolve(bg, theme));
-        if th.resolved {
-            let i = Rect::new(r.x + d * 0.25, r.y + d * 0.25, d * 0.5, d * 0.5);
-            crate::paint::paint_icon(scene, IconId::Check, i, resolve(fg, theme), 2.0); // LITERAL-PX-OK: traço do ícone
+        if resolved {
+            let i = Spacing::Sm.px();
+            let ir = Rect::new(r.x + i, r.y + i, d - 2.0 * i, d - 2.0 * i);
+            let stroke = StrokeToken::Thick.px();
+            crate::paint::paint_icon(scene, IconId::Check, ir, resolve(fg, theme), stroke);
         } else {
-            let first = th.messages.first().map_or("?", |m| m.author.as_str());
-            let initial: String = first
-                .chars()
-                .next()
-                .map(|c| c.to_uppercase().collect())
-                .unwrap_or_default();
-            paint_text_centered(
-                ts,
-                scene,
-                &initial,
-                r,
-                TypeToken::Sm.px(),
-                resolve(fg, theme),
-            );
+            let font = TypeToken::Sm.px();
+            paint_text_centered(ts, scene, &initial, r, font, resolve(fg, theme));
         }
-        if th.messages.len() > 1 {
+        if count > 1 {
+            // K7 — o selo da contagem centrado no canto de cima à direita.
             let s = d * BADGE;
-            let br = Rect::new(r.x + d - s * 0.6, r.y - s * 0.4, s, s);
+            let br = Rect::new(r.x + d - s / 2.0, r.y - s / 2.0, s, s);
             fill_rounded_rect(scene, br, s / 2.0, resolve(ColorToken::Accent, theme));
-            let n = th.messages.len().to_string();
-            paint_text_centered(
-                ts,
-                scene,
-                &n,
-                br,
-                TypeToken::Xs.px(),
-                resolve(ColorToken::AccentFg, theme),
-            );
+            let fg = resolve(ColorToken::AccentFg, theme);
+            paint_text_centered(ts, scene, &count.to_string(), br, TypeToken::Xs.px(), fg);
         }
-        let id = node(Hit::Bubble(th.id));
+        let id = node(Hit::Bubble(id));
         register(&mut hero.store, id);
         hero.store.set_tooltip(id, tr("board.comment.open"));
         hero.hit_index.register(id, r);
@@ -180,16 +176,33 @@ fn card_anchor(hero: &HeroScreen, area: Rect) -> Option<(OpenThread, [f32; 2])> 
     Some((open, [p[0] as f32, p[1] as f32]))
 }
 
-/// ⭐ K4/K5 — o cartão do fio aberto, à direita da bolha (dentro da área).
+/// O texto de uma mensagem como o cartão o mostra.
+fn shown_text(m: &Message) -> String {
+    if m.edited {
+        format!("{} {}", m.text, tr("board.comment.edited"))
+    } else {
+        m.text.clone()
+    }
+}
+
+/// ⭐ K4/K5 — o cartão do fio aberto, à direita da bolha e SEMPRE dentro da área: um fio comprido
+/// mostra as últimas mensagens que cabem e «N earlier» por cima delas; o alvo fora da vista esconde
+/// o cartão com ele (volta quando o alvo volta).
+#[allow(clippy::too_many_lines)]
 fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let Some((open, at)) = card_anchor(hero, area) else {
         return;
     };
+    if !area.contains(at[0], at[1]) {
+        return;
+    }
     let theme = hero.theme;
     let mine = me(hero);
     let now = now_unix();
-    let (s, pad) = (btn(), Spacing::Sm.px());
-    let w = s * CARD_BTNS;
+    let confirm = hero.documents.live.team.confirm;
+    let (s, pad, g, m) = (btn(), Spacing::Sm.px(), Spacing::Xs.px(), Spacing::Md.px());
+    let (xs, sm) = (TypeToken::Xs.px(), TypeToken::Sm.px());
+    let (w, small) = (s * CARD_BTNS, s * SMALL);
     let thread = match open {
         OpenThread::Thread(t) => board(hero).and_then(|b| b.team.thread(t).cloned()),
         OpenThread::New(_) => None,
@@ -197,27 +210,58 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
     if matches!(open, OpenThread::New(_)) {
         // O fio novo mostra onde vai ficar: a bolha vazia na ponta.
         let r = bubble_rect(at);
-        fill_rounded_rect(scene, r, s / 2.0, resolve(ColorToken::Accent, theme));
-        fill_rounded_rect(
-            scene,
-            Rect::new(r.x, r.y + s / 2.0, s / 2.0, s / 2.0),
-            0.0,
-            resolve(ColorToken::Accent, theme),
-        );
+        let accent = resolve(ColorToken::Accent, theme);
+        fill_rounded_rect(scene, r, s / 2.0, accent);
+        let tail = Rect::new(r.x, r.y + s / 2.0, s / 2.0, s / 2.0);
+        fill_rounded_rect(scene, tail, 0.0, accent);
     }
-    let x = (at[0] + s + Spacing::Xs.px()).min(area.x + area.w - w - Spacing::Md.px());
-    let y = (at[1] - s).clamp(
-        area.y + Spacing::Md.px(),
-        (area.y + area.h - s * 4.0).max(area.y),
-    ); // CLAMP-OK: o cartão cabe na área (o máximo ≥ o mínimo pelo .max)
-    // O conteúdo numa cena à parte: a altura só se sabe depois de quebrar as linhas.
-    let mut body = VectorScene::new();
+    // As alturas primeiro (a mesma passada que pinta, numa cena descartada): escolhe-se o que cabe.
+    let msgs: &[Message] = thread.as_ref().map_or(&[], |t| &t.messages);
+    let text1 = resolve(ColorToken::Text1, theme);
+    let mut probe = VectorScene::new();
+    let heights: Vec<f32> = msgs
+        .iter()
+        .map(|msg| {
+            let body = paint_text_block(
+                ts,
+                &mut probe,
+                &shown_text(msg),
+                0.0,
+                0.0,
+                sm,
+                w - 2.0 * pad,
+                text1,
+            );
+            small + body + pad
+        })
+        .collect();
+    let fixed = pad + s + g + s + pad;
+    let max_h = area.h - 2.0 * m;
+    let (mut first, mut used) = (msgs.len(), fixed);
+    while first > 0 {
+        let more = heights[first - 1] + if first > 1 { small } else { 0.0 };
+        // A última mensagem mostra-se sempre (mesmo maior que a área).
+        if used + more > max_h && first < msgs.len() {
+            break;
+        }
+        used += heights[first - 1];
+        first -= 1;
+    }
+    let h = used + if first > 0 { small } else { 0.0 };
+    let x = (at[0] + s + g).min(area.x + area.w - w - m).max(area.x + m);
+    let y = (at[1] - s).min(area.y + area.h - m - h).max(area.y + m);
+    let card = Rect::new(x, y, w, h);
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
+    fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
+    // O fundo toma o clique (registado ANTES dos botões, que ganham por cima dele).
+    hero.hit_index
+        .register(node(Hit::Button(TeamButton::CardSurface)), card);
     let mut later = Deferred::new();
     let mut cy = y + pad;
     // A fila de cima: resolver (só num fio que existe) e fechar.
     let close = Rect::new(x + w - pad - s, cy, s, s);
     icon_button(
-        &mut body,
+        scene,
         &mut hero.store,
         &mut later,
         node(Hit::Button(TeamButton::CardClose)),
@@ -226,71 +270,82 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         false,
         theme,
     );
-    if let Some(th) = &thread {
-        let res = Rect::new(close.x - s - Spacing::Xs.px(), cy, s, s);
-        icon_button(
-            &mut body,
-            &mut hero.store,
-            &mut later,
-            node(Hit::Button(TeamButton::CardResolve)),
-            IconId::Check,
-            res,
-            th.resolved,
-            theme,
-        );
-        let title = if th.resolved {
-            tr("board.comment.resolved")
-        } else {
-            tr("board.comment.thread")
-        };
+    let mut title_end = close.x;
+    let title = match &thread {
+        Some(th) => {
+            let res = Rect::new(close.x - s - g, cy, s, s);
+            icon_button(
+                scene,
+                &mut hero.store,
+                &mut later,
+                node(Hit::Button(TeamButton::CardResolve)),
+                IconId::Check,
+                res,
+                th.resolved,
+                theme,
+            );
+            title_end = res.x;
+            if th.resolved {
+                tr("board.comment.resolved")
+            } else {
+                tr("board.comment.thread")
+            }
+        }
+        None => tr("board.comment.new"),
+    };
+    let text2 = resolve(ColorToken::Text2, theme);
+    paint_text_elided(
+        ts,
+        scene,
+        title,
+        x + pad,
+        text_y(cy, s, sm),
+        sm,
+        title_end - g - x - pad,
+        text2,
+    );
+    cy += s + g;
+    if first > 0 {
+        let n = first.to_string();
+        let earlier = tr_with("board.comment.earlier", &[("n", &n)]);
+        let text3 = resolve(ColorToken::Text3, theme);
         paint_text_elided(
             ts,
-            &mut body,
-            title,
+            scene,
+            &earlier,
             x + pad,
-            cy + s * 0.25,
-            TypeToken::Sm.px(),
-            res.x - x - 2.0 * pad,
-            resolve(ColorToken::Text2, theme),
+            text_y(cy, small, xs),
+            xs,
+            w - 2.0 * pad,
+            text3,
         );
-    } else {
-        let t = tr("board.comment.new");
-        paint_text_elided(
-            ts,
-            &mut body,
-            t,
-            x + pad,
-            cy + s * 0.25,
-            TypeToken::Sm.px(),
-            w - 3.0 * pad - s,
-            resolve(ColorToken::Text2, theme),
-        );
+        cy += small;
     }
-    cy += s + Spacing::Xs.px();
-    for (n, m) in thread.iter().flat_map(|t| t.messages.iter().enumerate()) {
-        let head = format!("{} · {}", m.author, ago(m.at, now));
-        let own = m.author == mine;
+    let tid = thread.as_ref().map(|t| t.id);
+    for (n, msg) in msgs.iter().enumerate().skip(first) {
+        let head = format!("{} · {}", msg.author, ago(msg.at, now));
+        let own = msg.author == mine;
         let room = if own {
-            w - 2.0 * pad - 2.0 * s
+            w - 2.0 * pad - 2.0 * small
         } else {
             w - 2.0 * pad
         };
         paint_text_elided(
             ts,
-            &mut body,
+            scene,
             &head,
             x + pad,
-            cy,
-            TypeToken::Xs.px(),
+            text_y(cy, small, xs),
+            xs,
             room,
-            resolve(ColorToken::Text2, theme),
+            text2,
         );
-        if own {
-            let small = s * 0.75; // LITERAL-PX-OK: os botões de uma mensagem, ¾ de um botão
-            let del = Rect::new(x + w - pad - small, cy - small * 0.2, small, small);
-            let edit = Rect::new(del.x - small, del.y, small, small);
+        if let (true, Some(t)) = (own, tid) {
+            let del = Rect::new(x + w - pad - small, cy, small, small);
+            let edit = Rect::new(del.x - small, cy, small, small);
+            let armed = confirm == Some(Confirm::Message(t, n));
             icon_button(
-                &mut body,
+                scene,
                 &mut hero.store,
                 &mut later,
                 node(Hit::Edit(n)),
@@ -300,49 +355,41 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
                 theme,
             );
             icon_button(
-                &mut body,
+                scene,
                 &mut hero.store,
                 &mut later,
                 node(Hit::Delete(n)),
                 IconId::Trash,
                 del,
-                false,
+                armed,
                 theme,
             );
+            let tip = if armed {
+                "board.comment.confirm"
+            } else {
+                "board.comment.delete"
+            };
             hero.store
                 .set_tooltip(node(Hit::Edit(n)), tr("board.comment.edit"));
-            hero.store
-                .set_tooltip(node(Hit::Delete(n)), tr("board.comment.delete"));
+            hero.store.set_tooltip(node(Hit::Delete(n)), tr(tip));
         }
-        cy += TypeToken::Xs.px() * 1.6; // LITERAL-PX-OK: a altura da linha do cabeçalho (1,6 em)
-        let mut text = m.text.clone();
-        if m.edited {
-            text.push_str(&format!(" {}", tr("board.comment.edited")));
-        }
+        cy += small;
         cy += paint_text_block(
             ts,
-            &mut body,
-            &text,
+            scene,
+            &shown_text(msg),
             x + pad,
             cy,
-            TypeToken::Sm.px(),
+            sm,
             w - 2.0 * pad,
-            resolve(ColorToken::Text1, theme),
+            text1,
         );
-        cy += Spacing::Sm.px();
+        cy += pad;
     }
-    let field = Rect::new(x + pad, cy, w - 2.0 * pad, s);
-    let h = field.y + field.h + pad - y;
-    let card = Rect::new(x, y, w, h);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
-    // O fundo toma o clique (registado ANTES dos botões, que ganham por cima dele).
-    hero.hit_index
-        .register(node(Hit::Button(TeamButton::CardSurface)), card);
     for (id, r) in later {
         hero.hit_index.register(id, r);
     }
-    scene.append_transformed(&body, ph2d_vector::Affine::IDENTITY);
+    let field = Rect::new(x + pad, cy, w - 2.0 * pad, s);
     let fid = crate::ids::BOARD_COMMENT_INPUT;
     super::super::super::board_nav::paint_field(
         fid,
@@ -359,15 +406,16 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         } else {
             tr("board.comment.write")
         };
+        let text3 = resolve(ColorToken::Text3, theme);
         paint_text_elided(
             ts,
             scene,
             hint,
             field.x + pad,
-            field.y + s * 0.25,
-            TypeToken::Sm.px(),
+            text_y(field.y, s, sm),
+            sm,
             field.w - 2.0 * pad,
-            resolve(ColorToken::Text3, theme),
+            text3,
         );
     }
 }
@@ -390,7 +438,7 @@ pub(super) fn begin_edit(hero: &mut HeroScreen, n: usize) {
         return;
     };
     let text = m.text.clone();
-    hero.documents.live.team.editing = Some(n);
+    hero.documents.live.team.editing = Some((t, n));
     // Editar continua o texto (o cursor no fim, nada seleccionado): uma tecla nunca apaga a mensagem.
     let id = crate::ids::BOARD_COMMENT_INPUT;
     let caret = text.len();
@@ -432,7 +480,8 @@ pub(super) fn paint_list(
 ) -> f32 {
     let theme = hero.theme;
     let mine = me(hero);
-    let (s, pad, g) = (btn(), Spacing::Sm.px(), Spacing::Xs.px());
+    let (s, pad, g) = (btn(), Spacing::Sm.px(), ph2d_tokens::control_gap_px());
+    let sm = TypeToken::Sm.px();
     let Some(b) = board(hero) else {
         return 0.0;
     };
@@ -456,38 +505,24 @@ pub(super) fn paint_list(
         })
         .collect();
     rows.reverse();
-    let room = at.y + at.h - Spacing::Md.px();
-    let max_rows = (((room - at.y) / (s + g)).floor() as usize).saturating_sub(4);
-    let shown = rows.len().min(max_rows);
-    let h = pad * 2.0 + (s + g) * (3.0 + shown.max(1) as f32);
+    let fit = super::panels::fit_rows(at.h);
+    let (from, up, down) = super::panels::window(hero, rows.len(), fit);
+    let shown = rows.len().saturating_sub(from).min(fit);
+    let h = pad * 2.0 + (s + g) * (super::panels::HEAD_ROWS + shown.max(1)) as f32;
     let r = Rect::new(at.x, at.y, at.w, h);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     hero.hit_index
         .register(node(Hit::Button(TeamButton::ListSurface)), r);
-    let mut y = at.y + pad;
-    paint_text_elided(
+    let mut y = super::panels::header(
+        hero,
+        at,
+        scene,
         ts,
-        scene,
-        tr("board.comment.title"),
-        at.x + pad,
-        y + s * 0.25,
-        TypeToken::Sm.px(),
-        at.w - 3.0 * pad - s,
-        resolve(ColorToken::Text1, theme),
+        "board.comment.title",
+        TeamButton::ListClose,
+        (up, down),
     );
-    let close = Rect::new(at.x + at.w - pad - s, y, s, s);
-    super::super::super::board_nav::button(
-        scene,
-        &mut hero.hit_index,
-        &hero.store,
-        node(Hit::Button(TeamButton::ListClose)),
-        IconId::Close,
-        close,
-        false,
-        theme,
-    );
-    y += s + g;
     // K10 — «Name: …» (clicar abre o campo).
     let name_r = Rect::new(at.x + pad, y, at.w - 2.0 * pad, s);
     if editing {
@@ -534,13 +569,13 @@ pub(super) fn paint_list(
             scene,
             tr("board.comment.none"),
             at.x + pad,
-            y + s * 0.25,
-            TypeToken::Sm.px(),
+            text_y(y, s, sm),
+            sm,
             at.w - 2.0 * pad,
             resolve(ColorToken::Text3, theme),
         );
     }
-    for (id, line, unread, resolved, n) in rows.into_iter().take(shown) {
+    for (id, line, unread, resolved, n) in rows.into_iter().skip(from).take(shown) {
         let rr = Rect::new(at.x + pad, y, at.w - 2.0 * pad, s);
         let nid = node(Hit::Row(id));
         register(&mut hero.store, nid);
@@ -568,8 +603,8 @@ pub(super) fn paint_list(
             scene,
             &format!("{line}{count}"),
             rr.x + dot + g,
-            rr.y + s * 0.25,
-            TypeToken::Sm.px(),
+            text_y(rr.y, s, sm),
+            sm,
             rr.w - dot - g,
             resolve(ColorToken::Text1, theme),
         );
@@ -639,5 +674,4 @@ fn paint_message(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     paint_text_centered(ts, scene, &text, r, font, resolve(ColorToken::Text1, theme));
-    let _ = Instant::now;
 }

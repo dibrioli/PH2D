@@ -28,6 +28,8 @@ pub(crate) struct Nav {
     pub(crate) links: Option<(u64, Vec<ElementId>)>,
     /// Enquadrar tudo na próxima pintura (quando a área já tem o tamanho dela).
     pub(crate) fit_pending: bool,
+    /// O que enquadrar em vez do quadro inteiro (uma cena que reserva a margem dos painéis).
+    pub(crate) fit_box: Option<[f64; 4]>,
 }
 
 /// O mundo `extent` encaixado (com a proporção dele) no rectângulo `r` do ecrã.

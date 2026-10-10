@@ -6,11 +6,12 @@
 use std::time::Instant;
 
 use super::super::HeroScreen;
-use crate::documents::team::{ExportChoice, Format, IoRequest, OpenThread, Scope};
+use crate::documents::team::{Confirm, ExportChoice, Format, IoRequest, OpenThread, Scope};
 use crate::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use crate::widget::ButtonState;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{BoardId, Pin, ThreadId};
+use ph2d_host::PointerButton;
 
 #[path = "board_team_paint.rs"]
 mod paint;
@@ -59,9 +60,12 @@ pub enum TeamButton {
     ShowExit,
     /// A apresentação inteira toma o clique (nada por baixo se carrega).
     ShowSurface,
+    /// A lista ou as versões não cabem: as filas de antes / de depois.
+    PageUp,
+    PageDown,
 }
 
-const ALL: [TeamButton; 28] = [
+const ALL: [TeamButton; 30] = [
     TeamButton::CardResolve,
     TeamButton::CardClose,
     TeamButton::CardSurface,
@@ -90,6 +94,8 @@ const ALL: [TeamButton; 28] = [
     TeamButton::ShowNext,
     TeamButton::ShowExit,
     TeamButton::ShowSurface,
+    TeamButton::PageUp,
+    TeamButton::PageDown,
 ];
 
 /// O que um id derivado é.
@@ -154,7 +160,7 @@ pub fn hit_of(id: NodeId) -> Option<Hit> {
     let split = |v: u64| {
         (
             v >> 32,
-            usize::try_from(v & 0xffff_ffff).unwrap_or(usize::MAX),
+            usize::try_from(v & u64::from(u32::MAX)).unwrap_or(usize::MAX),
         )
     };
     if let Some((k, n)) = low(SALT_MSG).map(split) {
@@ -198,6 +204,8 @@ fn tooltip_key(b: TeamButton) -> &'static str {
         TeamButton::ShowPrev => "board.present.prev",
         TeamButton::ShowNext => "board.present.next",
         TeamButton::ShowExit => "board.present.exit",
+        TeamButton::PageUp => "board.team.page_up",
+        TeamButton::PageDown => "board.team.page_down",
         TeamButton::CardSurface
         | TeamButton::ListSurface
         | TeamButton::VersionsSurface
@@ -267,10 +275,34 @@ pub fn toggle_comment_tool(hero: &mut HeroScreen) {
     }
 }
 
+/// K1 — outra ferramenta escolhida (barra ou tecla): a de comentar larga-se (uma ferramenta de cada
+/// vez, o idioma da barra).
+pub fn disarm_comment_tool(hero: &mut HeroScreen) {
+    hero.documents.live.team.commenting = false;
+}
+
+/// Um painel do canto de cada vez: abrir um fecha os outros (a lista, as versões, o exportar).
+pub(super) fn only_panel(t: &mut crate::documents::team::Team) {
+    t.list_open = false;
+    t.versions_open = false;
+    t.export = None;
+    t.renaming_version = None;
+    t.editing_author = false;
+    t.confirm = None;
+    t.from = 0;
+}
+
 /// K8 — o botão «Comments» do canto: a lista.
 pub fn toggle_list(hero: &mut HeroScreen) {
     let t = &mut hero.documents.live.team;
-    t.list_open = !t.list_open;
+    let open = !t.list_open;
+    only_panel(t);
+    t.list_open = open;
+}
+
+/// O y do texto de `font` px centrado numa fila de altura `row` que começa em `y`.
+pub(super) fn text_y(y: f32, row: f32, font: f32) -> f32 {
+    y + (row - font) / 2.0
 }
 
 /// Abre o fio `t` do quadro activo no cartão: lido por mim (K6), o compositor pronto para responder.
@@ -296,15 +328,18 @@ fn close_card(hero: &mut HeroScreen) {
         hero.documents.live.team.open.remove(&id);
     }
     hero.documents.live.team.editing = None;
+    hero.documents.live.team.confirm = None;
     if hero.store.focus_id() == Some(crate::ids::BOARD_COMMENT_INPUT) {
         hero.store.set_focus(None);
     }
 }
 
-/// ⭐ K1/K2 — com a ferramenta armada, um carregar no quadro abre um fio NOVO preso ao objecto de
-/// cima sob ele (o mesmo pick do clique), ou ao ponto. `true` = consumido (nada chega ao editor).
-pub fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    if !hero.documents.live.team.commenting {
+/// ⭐ K1/K2 — com a ferramenta armada, um carregar PRIMÁRIO no quadro abre um fio NOVO preso ao
+/// objecto de cima sob ele (o mesmo pick do clique), ou ao ponto. O botão do meio, o direito e o
+/// `Espaço`+arrastar continuam a deslocar a vista. `true` = consumido (nada chega ao editor).
+pub fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, button: PointerButton) -> bool {
+    let live = &hero.documents.live;
+    if !live.team.commenting || button != PointerButton::Primary || live.space {
         return false;
     }
     let area = super::super::board_view::area_of(hero.last_canvas);
@@ -356,8 +391,8 @@ fn post(hero: &mut HeroScreen) {
             }
         }
         Some(OpenThread::Thread(t)) => match editing {
-            Some(n) => _ = board.team.edit(t, n, &author, &text),
-            None => _ = board.team.reply(t, &author, &text, now),
+            Some((th, n)) if th == t => _ = board.team.edit(t, n, &author, &text),
+            _ => _ = board.team.reply(t, &author, &text, now),
         },
         None => return,
     }
@@ -426,7 +461,9 @@ pub fn menu(hero: &mut HeroScreen, board: BoardId, id: NodeId) -> bool {
         panels::open_versions(hero);
     } else if id == crate::ids::CTX_MENU_BOARD_EXPORT {
         hero.documents.activate(Some(board));
-        hero.documents.live.team.export = Some(ExportChoice::default());
+        let t = &mut hero.documents.live.team;
+        only_panel(t);
+        t.export = Some(ExportChoice::default());
     } else if id == crate::ids::CTX_MENU_BOARD_IMPORT {
         hero.documents.live.team.io = Some(IoRequest::Import);
     } else {
@@ -449,6 +486,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             return true;
         }
         WidgetEvent::Cancel(id) if id == BOARD_COMMENT_INPUT => {
+            // `Esc` no compositor larga tudo: o cartão E a ferramenta (o `Esc` do quadro faz o mesmo).
+            hero.documents.live.team.commenting = false;
             close_card(hero);
             return true;
         }
@@ -489,6 +528,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     let double = matches!(event, WidgetEvent::DoubleClick(_));
+    // Qualquer clique desarma o apagar; só o 2.º no MESMO alvo apaga.
+    let armed = hero.documents.live.team.confirm.take();
     match h {
         Hit::Bubble(t) | Hit::Row(t) => {
             if matches!(h, Hit::Row(_)) {
@@ -497,26 +538,46 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             open_thread(hero, t);
         }
         Hit::Edit(n) => paint::begin_edit(hero, n),
-        Hit::Delete(n) => {
-            let author = me(hero);
-            let open = hero
-                .documents
-                .active()
-                .and_then(|b| hero.documents.live.team.open.get(&b).copied());
-            if let (Some(OpenThread::Thread(t)), Some(board)) =
-                (open, hero.documents.active_board_mut())
-                && board.team.delete(t, n, &author)
-                && board.team.thread(t).is_none()
-            {
-                close_card(hero);
-            }
-        }
+        Hit::Delete(n) => delete_message(hero, n, armed),
         Hit::Restore(n) | Hit::DropVersion(n) | Hit::RenameVersion(n) => {
-            panels::version_click(hero, h, n, double);
+            panels::version_click(hero, h, n, double, armed);
         }
         Hit::Button(b) => button(hero, b),
     }
     true
+}
+
+/// K4 — o 1.º clique no lixo arma, o 2.º apaga. A edição em curso segue a SUA mensagem: a apagada
+/// larga-a, uma de cima desce-lhe o índice.
+fn delete_message(hero: &mut HeroScreen, n: usize, armed: Option<Confirm>) {
+    let author = me(hero);
+    let open = hero
+        .documents
+        .active()
+        .and_then(|b| hero.documents.live.team.open.get(&b).copied());
+    let Some(OpenThread::Thread(t)) = open else {
+        return;
+    };
+    if armed != Some(Confirm::Message(t, n)) {
+        hero.documents.live.team.confirm = Some(Confirm::Message(t, n));
+        return;
+    }
+    let Some(board) = hero.documents.active_board_mut() else {
+        return;
+    };
+    if !board.team.delete(t, n, &author) {
+        return;
+    }
+    if board.team.thread(t).is_none() {
+        close_card(hero);
+        return;
+    }
+    let team = &mut hero.documents.live.team;
+    team.editing = match team.editing {
+        Some((th, m)) if th == t && m == n => None,
+        Some((th, m)) if th == t && m > n => Some((th, m - 1)),
+        e => e,
+    };
 }
 
 fn button(hero: &mut HeroScreen, b: TeamButton) {
@@ -568,6 +629,8 @@ fn button(hero: &mut HeroScreen, b: TeamButton) {
         TeamButton::Transparent => set(&mut t.export, &|c| c.transparent = !c.transparent),
         TeamButton::ExportGo => panels::export_go(hero),
         TeamButton::ExportClose => t.export = None,
+        TeamButton::PageUp => t.from = t.from.saturating_sub(t.page.max(1)),
+        TeamButton::PageDown => t.from += t.page.max(1),
         TeamButton::ShowPrev => show::step(hero, false),
         TeamButton::ShowNext => show::step(hero, true),
         TeamButton::ShowExit => show::stop(hero),

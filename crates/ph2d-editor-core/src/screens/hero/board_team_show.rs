@@ -11,14 +11,14 @@ use crate::documents::team::Show;
 use crate::icons::IconId;
 use crate::zones::Rect;
 use ph2d_board_model::Camera;
-use ph2d_board_render::ExportLook;
+use ph2d_board_render::{EXPORT_PAPER, ExportLook};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_vector::{Color, VectorScene};
 
-/// P3 — fora do diapositivo, preto (o «Dark background» do Miro, medido no GIF oficial).
-// LITERAL-COLOR-OK: o preto da sala de apresentação, o mesmo em qualquer tema.
-const ROOM: Color = Color::from_rgba8(0, 0, 0, 255);
+/// P3 — fora do diapositivo, preto (o «Dark background» do Miro, medido no GIF oficial), o mesmo em
+/// qualquer tema.
+const ROOM: Color = Color::from_rgba8(0, 0, 0, 255); // LITERAL-COLOR-OK: a sala, igual em todo tema
 
 /// A área da apresentação: a janela inteira.
 fn area(hero: &HeroScreen) -> [f64; 4] {
@@ -38,7 +38,7 @@ pub fn showing(hero: &HeroScreen) -> bool {
 }
 
 /// ⭐ P1/P2 — começa no quadro activo: os diapositivos, o 1.º (o seleccionado, ou o que o contém).
-/// Sem frames visíveis, avisa e não abre.
+/// Sem frames visíveis, avisa (sem frames, ou todos escondidos) e não abre.
 pub fn start(hero: &mut HeroScreen) {
     let selection: Vec<_> = hero
         .documents
@@ -52,13 +52,18 @@ pub fn start(hero: &mut HeroScreen) {
     };
     let slides = ph2d_board_edit::slides(b);
     if slides.is_empty() {
-        super::notice(hero, "board.present.no_frames");
+        let key = if b.doc.has_frames() {
+            "board.present.all_hidden"
+        } else {
+            "board.present.no_frames"
+        };
+        super::notice(hero, key);
         return;
     }
     let at = ph2d_board_edit::first_slide(b, &slides, &selection);
     let (board, before) = (b.id, b.camera);
     let t = &mut hero.documents.live.team;
-    t.commenting = false;
+    let was_commenting = std::mem::take(&mut t.commenting);
     t.show = Some(Show {
         board,
         slides,
@@ -67,6 +72,7 @@ pub fn start(hero: &mut HeroScreen) {
         to: before,
         since: Instant::now(),
         before,
+        was_commenting,
     });
     hero.store.set_focus(None);
 }
@@ -109,11 +115,12 @@ fn go(s: &mut Show, to: usize, cam: Option<Camera>) {
     s.since = Instant::now();
 }
 
-/// P6 — sair: a vista de antes volta.
+/// P6 — sair: a vista de antes volta (e a ferramenta de comentar, se estava armada).
 pub fn stop(hero: &mut HeroScreen) {
     let Some(s) = hero.documents.live.team.show.take() else {
         return;
     };
+    hero.documents.live.team.commenting = s.was_commenting;
     if let Some(b) = hero
         .documents
         .active_board_mut()
@@ -188,12 +195,23 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
             vector: false,
         });
         cache.hide_votes = true;
+        let corners = board.doc.get(slide).map(|f| {
+            (
+                cam.to_screen(a, [f.x, f.y]),
+                cam.to_screen(a, [f.x + f.w, f.y + f.h]),
+            )
+        });
+        // O diapositivo é papel (um frame sem fundo não fica preto: o papel do exportar).
+        if let Some((p0, p1)) = corners {
+            scene.fill_rect(
+                ph2d_vector::Rect::new(p0[0], p0[1], p1[0], p1[1]),
+                EXPORT_PAPER,
+            );
+        }
         ph2d_board_render::paint(board, a, scene, theme, ts, cache, routes, None);
         cache.export = None;
         // Fora do diapositivo, preto (os vizinhos não espreitam).
-        if let Some(f) = board.doc.get(slide) {
-            let p0 = cam.to_screen(a, [f.x, f.y]);
-            let p1 = cam.to_screen(a, [f.x + f.w, f.y + f.h]);
+        if let Some((p0, p1)) = corners {
             let (vx0, vy0, vx1, vy1) = (a[0], a[1], a[0] + a[2], a[1] + a[3]);
             for [x0, y0, x1, y1] in [
                 [vx0, vy0, vx1, p0[1]],
@@ -211,14 +229,38 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
     let (s, g, m) = (Spacing::Xl2.px(), Spacing::Xs.px(), Spacing::Md.px());
     let y = viewport.y + viewport.h - m - s;
     let x = viewport.x + m;
-    let counter_w = s * 2.0; // LITERAL-PX-OK: «12/12» a `Sm`, em botões
+    let label = ph2d_i18n::tr_with(
+        "board.present.count",
+        &[("at", &(at + 1).to_string()), ("n", &n.to_string())],
+    );
+    let font = TypeToken::Sm.px();
+    let counter_w = ts.prefix_width(&label, font) + 2.0 * Spacing::Sm.px();
     let prev = Rect::new(x, y, s, s);
     let count = Rect::new(x + s + g, y, counter_w, s);
     let next = Rect::new(count.x + counter_w + g, y, s, s);
-    let exit = Rect::new(next.x + s + g * 4.0, y, s, s);
+    let exit = Rect::new(next.x + s + m, y, s, s);
     // Os comandos num painel (cinzento sobre preto não se via: a foto dos estados).
     super::super::super::board_nav::panel(scene, &[prev, count, next, exit], theme);
-    let nav = super::super::super::board_nav::button;
+    let nav = |scene: &mut VectorScene,
+               hit: &mut crate::interaction::HitIndex,
+               store: &crate::interaction::WidgetStore,
+               id,
+               icon,
+               r,
+               on,
+               theme| {
+        super::super::super::board_nav::button_ink(
+            scene,
+            hit,
+            store,
+            id,
+            icon,
+            r,
+            on,
+            theme,
+            ColorToken::Text1,
+        );
+    };
     nav(
         scene,
         &mut hero.hit_index,
@@ -249,7 +291,6 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
         false,
         theme,
     );
-    let label = format!("{}/{n}", at + 1);
-    let fg = crate::paint::resolve(ColorToken::Text2, theme);
-    crate::paint::paint_text_centered(ts, scene, &label, count, TypeToken::Sm.px(), fg);
+    let fg = crate::paint::resolve(ColorToken::Text1, theme);
+    crate::paint::paint_text_centered(ts, scene, &label, count, font, fg);
 }

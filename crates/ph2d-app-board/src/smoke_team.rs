@@ -3,7 +3,7 @@
 //! comentário do Rui por ler numa nota e um da Ana já resolvido, uma versão «Kick-off» guardada antes da
 //! última ideia, e por baixo uma nota LARGA por lição na ORDEM REAL (comentar · versões · apresentar ·
 //! exportar · abrir um `.excalidraw`). ⚠️ Sem frame à volta (os três deixariam de ser diapositivos): a
-//! margem do que os painéis tapam é a de dois pontos invisíveis nos cantos. O gate `every_team_lesson_does_what_it_says` conduz cada lição pelo ECRÃ.
+//! margem do que os painéis tapam é a caixa que a cena manda enquadrar (`board_nav::show_box`). O gate `every_team_lesson_does_what_it_says` conduz cada lição pelo ECRÃ.
 
 use super::default_name;
 use ph2d_board_model::{
@@ -24,6 +24,8 @@ pub(crate) struct Lessons {
     pub rui: ThreadId,
     pub ana: ThreadId,
     pub lessons: [ElementId; 5],
+    /// O que a cena enquadra ao nascer: tudo, mais a margem do que os painéis tapam.
+    pub view: [f64; 4],
 }
 
 /// A margem do que os painéis e a barra de estado tapam. ⛔ A da cena 9 (330) não chega: ela é em
@@ -215,8 +217,6 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         let x = i as f64 * (side + GAP);
         note(b, &key, 1, [x, y, side, side], false, None)
     });
-    // A margem do que os painéis tapam: dois pontos invisíveis nos cantos (o enquadramento de nascença
-    // inclui-os).
     let right = 3.0 * FRAME[0] + 2.0 * GAP;
     let title = Shape {
         kind: ShapeType::Rectangle,
@@ -232,39 +232,28 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         [0.0, -80.0, right, 40.0],
     );
     put(b, t);
-    for at in [
-        [-MARGIN_X, -80.0 - MARGIN_Y],
-        [right + MARGIN_X, y + side + MARGIN_Y],
-    ] {
-        let dot = Shape {
-            kind: ShapeType::Rectangle,
-            style: Style::new(None, None, INK),
-            text: RichText::default(),
-        };
-        let d = Element::new_shape(
-            b.doc.mint_id(),
-            b.doc.z_on_top(),
-            dot,
-            [at[0], at[1], 1.0, 1.0],
-        );
-        put(b, d);
-    }
     Lessons {
         frames,
         builds,
         rui,
         ana,
         lessons,
+        view: [
+            -MARGIN_X,
+            -80.0 - MARGIN_Y,
+            right + MARGIN_X,
+            y + side + MARGIN_Y,
+        ],
     }
 }
 
 pub(super) fn scene_team(hero: &mut HeroScreen) {
     let mut set = BoardSet::default();
     let id = set.create(default_name(1));
-    build(set.get_mut(id).expect("acabou de nascer"));
+    let view = build(set.get_mut(id).expect("acabou de nascer")).view;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
-    board_nav::show(hero, false, false);
+    board_nav::show_box(hero, false, false, view);
 }
 
 #[cfg(test)]

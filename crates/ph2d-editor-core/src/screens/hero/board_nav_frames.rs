@@ -128,10 +128,11 @@ pub(super) fn paint(
         if y + s > p.y + p.h {
             break;
         }
-        let row = Rect::new(p.x, y, p.w - 3.0 * s, s);
-        let eye = Rect::new(p.x + p.w - 3.0 * s, y, s, s);
-        let up = Rect::new(p.x + p.w - 2.0 * s, y, s, s);
+        // Da direita: descer · subir · o olho (P1) · o nome no resto.
         let down = Rect::new(p.x + p.w - s, y, s, s);
+        let up = Rect::new(down.x - s, y, s, s);
+        let eye = Rect::new(up.x - s, y, s, s);
+        let row = Rect::new(p.x, y, eye.x - p.x, s);
         for (part, r) in [(Part::Row, row), (Part::Up, up), (Part::Down, down)] {
             super::register(&mut hero.store, row_node(*id, part));
             hero.hit_index.register(row_node(*id, part), r);

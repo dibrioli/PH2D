@@ -22,6 +22,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.comment.new" => "New comment",
         "board.comment.edit" => "Edit",
         "board.comment.delete" => "Delete (the first one deletes the thread)",
+        "board.comment.confirm" => "Click again to delete",
+        "board.comment.earlier" => "{n} earlier",
         "board.comment.edited" => "(edited)",
         "board.comment.reply" => "Reply…",
         "board.comment.write" => "Write a comment and press Enter",
@@ -31,6 +33,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.comment.none" => "No comments yet",
         "board.team.close" => "Close",
         "board.team.surface" => "Comments, versions and export",
+        "board.team.page_up" => "Earlier rows",
+        "board.team.page_down" => "Later rows",
         "board.version.save" => "Save a named version of this board",
         "board.version.title" => "Versions",
         "board.version.default" => "Version {n}",
@@ -42,6 +46,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.version.restore" => "Restore",
         "board.version.restore_tip" => "Open this version as a new board (this one stays as it is)",
         "board.version.delete" => "Delete this version",
+        "board.version.confirm" => "Click again to delete this version",
         "board.version.saved" => "Version saved",
         "board.version.restored" => "Version restored as a new board",
         "board.version.unreadable" => "This version can't be read by this build",
@@ -51,6 +56,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.export.pdf" => "PDF (one page per frame)",
         "board.export.excalidraw" => "Excalidraw file",
         "board.export.excalidraw_short" => "Excalidraw (.excalidraw)",
+        "board.export.png_short" => "PNG",
+        "board.export.svg_short" => "SVG",
+        "board.export.pdf_short" => "PDF",
         "board.export.scope_board" => "Board",
         "board.export.scope_selection" => "Selection",
         "board.export.scope_frames" => "Frames",
@@ -64,6 +72,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.present.next" => "Next frame",
         "board.present.exit" => "Stop presenting (Esc)",
         "board.present.no_frames" => "Add a frame to present",
+        "board.present.all_hidden" => {
+            "Every frame is hidden from the presentation (Frames panel, the eye)"
+        }
+        "board.present.count" => "{at}/{n} · Esc",
         "board.present.hide_frame" => "Hide from presentation",
         "board.present.show_frame" => "Show in presentation",
         "board.ago.now" => "now",
@@ -109,7 +121,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. Export: right-click the tab, Export…, pick PNG, SVG or PDF, then Export…"
         }
         "board.smoke.team.l5" => {
-            "5. Excalidraw: right-click the tab, Open an Excalidraw file…, pick example.excalidraw"
+            "5. Excalidraw: right-click the tab, Open an Excalidraw file…, pick docs/MiroClone/example.excalidraw"
         }
         _ => return None,
     })

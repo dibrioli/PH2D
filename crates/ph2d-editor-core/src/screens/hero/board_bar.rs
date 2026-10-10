@@ -606,6 +606,13 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if fac::apply(hero, it) {
         return true;
     }
+    // K1 — escolher outra ferramenta larga a de comentar (uma de cada vez).
+    if matches!(
+        it,
+        Item::Tool(_) | Item::Pick(_) | Item::Pen(pen::PenItem::Kind(_))
+    ) {
+        super::board_nav::team::disarm_comment_tool(hero);
+    }
     if it == Item::Organize(OrgItem::Tag) {
         super::board_nav::open_tag_field(hero);
         return true;

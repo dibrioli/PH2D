@@ -120,7 +120,10 @@ SUBSTITUI o da W10, CLAUDE.md §5.1. Não integra, não pusha. Ao dono: PT-BR, c
 - Uma recta paralela a um eixo, um `0` especial, um nível degenerado: os casos que a varredura «natural»
   não sorteia são onde a lei de outro programa diverge — ponha-os de propósito.
 
-## 6. Pergunta de produto pendente (W10 §9)
+## 6. Pergunta de produto da W10 §9 — RESPONDIDA e feita (10/10)
 
-Uma NOTA importada de um `.excalidraw` com a letra à mão fica à mão para sempre (o botão «Rascunho ↔ Final»
-não alcança notas). O dono ainda não respondeu — não a resolva sozinho.
+Uma NOTA importada com a letra à mão ficava assim para sempre. O dono escolheu: **o botão «Rascunho ↔
+Final» passa a mexer nas notas** (só na letra; o papel desenha-se e exporta-se liso, `roughness 0`; as
+notas novas nascem no modo do quadro). Gates: `the_sketch_button_gives_an_imported_notes_letter_back_to_the_mode`,
+`a_sketched_note_travels_with_smooth_paper_and_the_hand_letter` e os dois de `ink_tests` reescritos, cada um
+visto vermelho antes. A recusa antiga no plano (§ Recusas) está revogada com o porquê.

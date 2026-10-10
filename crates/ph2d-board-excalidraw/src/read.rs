@@ -377,6 +377,8 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>,
     if let Some(s) = seed_of(v).filter(|s| *s != el.seed()) {
         el.set_imported_seed(Some(s));
     }
+    let ours = f64::from(crate::write::roughness(el));
+    let note = el.shape().is_some_and(|s| s.kind.is_note());
     let st = el.style_mut();
     for (k, slot) in [
         ("strokeColor", &mut st.stroke),
@@ -406,9 +408,9 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>,
             st.font_size = t.size;
         }
     }
-    let ours = f64::from(u8::from(st.sketch) * (1 + u8::from(st.look.cartoonist)));
     let rough = num(v, "roughness").unwrap_or(ours);
-    if !near(rough, ours) {
+    // O papel de uma nota não treme: a `roughness` dela não diz nada do modo.
+    if !note && !near(rough, ours) {
         st.sketch = rough > 0.0;
         st.look.cartoonist = rough > 1.5;
     }

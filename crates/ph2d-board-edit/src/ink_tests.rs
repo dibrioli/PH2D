@@ -197,7 +197,7 @@ fn a_stroke_is_selected_by_clicking_on_it_and_moves_like_a_shape() {
 }
 
 #[test]
-fn the_sketch_button_flips_the_selection_or_else_the_whole_board_but_never_notes_or_ink() {
+fn the_sketch_button_flips_the_selection_or_else_the_whole_board_notes_included_but_never_ink() {
     let mut w = world();
     let r1 = w.rect([0.0, 0.0, 100.0, 60.0]);
     let r2 = w.rect([300.0, 0.0, 100.0, 60.0]);
@@ -213,14 +213,19 @@ fn the_sketch_button_flips_the_selection_or_else_the_whole_board_but_never_notes
     w.ed.select(&w.doc, []);
     assert_eq!(w.ed.toggle_sketch(&mut w.doc, &mut w.h, false), Some(true));
     assert!(w.el(r1).style().sketch && w.el(r2).style().sketch);
-    assert!(
-        !w.el(note).style().sketch && !w.el(ink).style().sketch,
-        "a nota é papel; a caneta já é mão"
-    );
+    // A nota troca a letra com o quadro (decisão do dono, 10/10); a caneta já é mão.
+    assert!(w.el(note).style().sketch && !w.el(ink).style().sketch);
     let r3 = w.rect([0.0, 200.0, 100.0, 60.0]);
     assert!(
         w.el(r3).style().sketch,
         "num quadro em rascunho as formas nascem à mão"
+    );
+    w.ed.tool = Tool::Shape(ShapeType::Sticky);
+    w.click([600.0, 300.0], NONE);
+    let born = *w.ed.selection().iter().next().unwrap();
+    assert!(
+        crate::hand_lettered(w.el(born)),
+        "num quadro em rascunho as notas nascem com a letra à mão"
     );
     // E volta: tudo à mão ⇒ final.
     w.ed.select(&w.doc, []);
@@ -260,9 +265,9 @@ fn the_precision_eraser_cuts_a_sparse_stroke_between_its_points() {
 }
 
 /// A letra à mão decide-se numa porta só (`hand_lettered`, que o desenho e o editor de texto leem):
-/// formas e setas em rascunho sim; em final não; uma nota nunca, mesmo marcada.
+/// formas, setas e notas em rascunho sim (a nota só na letra: o papel fica liso); em final não.
 #[test]
-fn only_sketched_shapes_and_arrows_are_hand_lettered() {
+fn sketched_shapes_arrows_and_notes_are_hand_lettered() {
     let mut w = world();
     let r = w.rect([0.0, 0.0, 100.0, 60.0]);
     assert!(!crate::hand_lettered(w.el(r)));
@@ -273,6 +278,8 @@ fn only_sketched_shapes_and_arrows_are_hand_lettered() {
     w.click([400.0, 0.0], NONE);
     let note = *w.ed.selection().iter().next().unwrap();
     let mut el = w.el(note).clone();
+    el.style_mut().sketch = false;
+    assert!(!crate::hand_lettered(&el));
     el.style_mut().sketch = true;
-    assert!(!crate::hand_lettered(&el), "a nota é papel");
+    assert!(crate::hand_lettered(&el), "a nota segue a letra do modo");
 }

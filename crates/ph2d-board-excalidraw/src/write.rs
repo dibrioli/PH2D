@@ -55,7 +55,7 @@ fn base(board: &Board, el: &Element, kind: &str, groups: &[String]) -> Map<Strin
         Dash::Dotted => "dotted",
     };
     m.insert("strokeStyle".into(), json!(dash));
-    m.insert("roughness".into(), json!(roughness(st)));
+    m.insert("roughness".into(), json!(roughness(el)));
     m.insert("opacity".into(), json!(st.opacity));
     m.insert("roundness".into(), Value::Null);
     m.insert("seed".into(), json!(el.seed()));
@@ -340,8 +340,13 @@ fn fill_style_name(f: FillStyle) -> &'static str {
     }
 }
 
-/// A `roughness` dele: 0 no final, 1 no rascunho, 2 no rascunho «cartoonist».
-fn roughness(st: &Style) -> u8 {
+/// A `roughness` dele: 0 no final, 1 no rascunho, 2 no rascunho «cartoonist» — e 0 numa nota, cujo
+/// rascunho é só a letra (o papel desenha-se liso).
+pub(crate) fn roughness(el: &Element) -> u8 {
+    let st = el.style();
+    if el.shape().is_some_and(|s| s.kind.is_note()) {
+        return 0;
+    }
     match (st.sketch, st.look.cartoonist) {
         (false, _) => 0,
         (true, false) => 1,

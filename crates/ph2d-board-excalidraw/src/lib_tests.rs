@@ -490,3 +490,26 @@ fn style_resize_and_straight_points_edited_there_come_back() {
     );
     assert_eq!(doc.get(ElementId(9)).unwrap().style().opacity, 100);
 }
+
+/// ⭐ Decisão do dono (10/10) — a nota num quadro em rascunho tem a letra à mão e o papel LISO: sai
+/// com `roughness 0` (o papel que se vê) e a Virgil, e volta em rascunho com a letra do modo.
+#[test]
+fn a_sketched_note_travels_with_smooth_paper_and_the_hand_letter() {
+    let mut set = BoardSet::default();
+    let a = set.create("Notes".into());
+    let b = set.get_mut(a).unwrap();
+    let mut n = shape(b, ShapeType::Sticky, "oi", [0.0, 0.0, 200.0, 200.0]);
+    n.style_mut().sketch = true;
+    let id = put(b, n);
+    let file: serde_json::Value = serde_json::from_str(&write(b)).unwrap();
+    let els = file["elements"].as_array().unwrap();
+    for e in els {
+        assert_eq!(e["roughness"], 0, "{}: o papel treme", e["id"]);
+    }
+    let text = &els[at(els, &format!("ph2d-{}-text", id.0))];
+    assert_eq!(text["fontFamily"], 1, "a letra do modo é a Virgil");
+    let back = read(&serde_json::to_string(&file).unwrap()).unwrap();
+    let st = back.doc.get(id).unwrap().style().clone();
+    assert!(st.sketch, "a nota voltou final");
+    assert_eq!(st.look.letter, ph2d_board_model::Letter::Auto);
+}

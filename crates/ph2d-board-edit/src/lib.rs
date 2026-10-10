@@ -474,7 +474,7 @@ impl Editor {
     /// ⭐ **O botão «Rascunho ↔ Final»** (W4): com selecção, troca as formas e setas dela; sem
     /// selecção, o quadro INTEIRO — e devolve o modo novo do quadro (`Some`), que é também o das
     /// formas que nascerem. Fica tudo à mão se havia alguma final, e final se já estava tudo à mão.
-    /// As notas e os traços da caneta não entram: são papel e mão por natureza. UM passo. A letra
+    /// As notas entram só na letra; os traços da caneta não entram (já são mão). UM passo. A letra
     /// fixa de um `.excalidraw` (`Letter::Hand`/`Sans`) volta ao modo (`Auto`) em todo o alcançado. Um
     /// texto aberto fecha-se primeiro, no seu próprio passo.
     pub fn toggle_sketch(
@@ -577,10 +577,11 @@ impl Editor {
     }
 }
 
-/// O botão «Rascunho ↔ Final» mexe neste elemento? As formas (menos as notas) e as setas.
+/// O botão «Rascunho ↔ Final» mexe neste elemento? As formas e as setas — as notas também, só na
+/// letra (decisão do dono, 10/10: o papel fica liso, o desenho não as passa ao traço tremido).
 #[must_use]
 pub fn sketchable(el: &Element) -> bool {
-    el.connector().is_some() || el.shape().is_some_and(|s| !s.kind.is_note())
+    el.connector().is_some() || el.shape().is_some()
 }
 
 /// A caixa alinhada que contém todos `els` (rodados): `[x0, y0, x1, y1]`.

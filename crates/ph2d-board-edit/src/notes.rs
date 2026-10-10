@@ -133,6 +133,8 @@ impl Editor {
         let c = self.notes.color;
         let mut style = Style::new(Some(c), None, c.readable_ink());
         style.font_size = note_font(kind, bx[2]);
+        // A letra do modo do quadro, como as formas que nascem.
+        style.sketch = self.style.sketch;
         let shape = Shape {
             kind,
             style,

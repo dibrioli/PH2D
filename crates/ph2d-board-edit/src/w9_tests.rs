@@ -181,3 +181,27 @@ fn the_sketch_button_reaches_a_sketched_element_with_a_fixed_letter() {
     assert!(w.el(a).style().sketch && w.el(b).style().sketch);
     assert_eq!(w.el(a).style().look.letter, ph2d_board_model::Letter::Auto);
 }
+
+/// ⭐ Decisão do dono (10/10, a pergunta da W10 §9) — uma NOTA importada com a letra à mão fixa do
+/// ficheiro volta ao modo com o botão: rascunho ⇒ à mão, e o final seguinte ⇒ a letra comum (antes o
+/// botão não alcançava notas e ela ficava à mão para sempre).
+#[test]
+fn the_sketch_button_gives_an_imported_notes_letter_back_to_the_mode() {
+    let mut w = world();
+    w.ed.tool = Tool::Shape(ShapeType::Sticky);
+    w.click([0.0, 0.0], NONE);
+    let note = *w.ed.selection().iter().next().unwrap();
+    let mut el = w.el(note).clone();
+    el.style_mut().look.letter = ph2d_board_model::Letter::Hand;
+    BoardOp::Put(el).apply(&mut w.doc);
+    assert!(crate::hand_lettered(w.el(note)));
+    w.ed.select(&w.doc, []);
+    assert_eq!(w.ed.toggle_sketch(&mut w.doc, &mut w.h, false), Some(true));
+    assert_eq!(
+        w.el(note).style().look.letter,
+        ph2d_board_model::Letter::Auto
+    );
+    assert!(crate::hand_lettered(w.el(note)));
+    assert_eq!(w.ed.toggle_sketch(&mut w.doc, &mut w.h, true), Some(false));
+    assert!(!crate::hand_lettered(w.el(note)), "a nota ficou à mão");
+}

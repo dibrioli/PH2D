@@ -71,7 +71,12 @@ Nada que some entre linhas: sem ids, chaves, cenas novas (a 12 só ganha um tra�
 
 ## §5 — Gate final
 
-GATE_AQUI
+Uma corrida do `verificador` (`BASE=2a925859d`, HEAD `bbf31dcac`): **fmt ✗** (19 quebras de linha em
+três ficheiros de teste — curado com `cargo fmt` em `022068ae7`, `--check` limpo, testes re-corridos
+35/35) · warnings-deny ✓ · clippy do ship ✓ · machete ✓ · standalone-optional ✓ · workflow-packages ✓ ·
+censos 114/114 e 12/12 ✓ · `doc-index`/`adr-index` ✓ · `nextest-impacted` **17 030 / 17 030** (9 782
+pulados) · catracas ✓ (`the_shell_only_shrinks`, LOC, `no_orphan_source_file`). Depois: o portão do
+`CLAUDE.md` (`architecture_claude_md_cabe_no_orcamento`) 3/3 com o link novo.
 
 ### Mutação
 
@@ -101,8 +106,25 @@ sorriso por baixo da linha é um arco de três nós; o gelado continua livre.
 
 ## §8 — Binário de smoke (2.ª corrida)
 
-BINARIO_AQUI
+Depois do `rm -rf target/*/incremental` (12,3 GB) — `bash scripts/ph2d-run.sh cargo build -p
+ph2d-host-desktop --profile smoke`, 1.ª corrida 18,5 s; a 2.ª:
+
+```
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```
+
+Varredura no fecho: zero processos meus.
 
 ## §9 — `agent-loop-profile.sh`
 
-PERFIL_AQUI
+```
+  ✗ paralelismo de ferramenta              1.14/passo   alvo: >= 1,5  (9% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                280   alvo: <= 800
+  ✗ cargo test : cargo check                733 : 314   alvo: <= 1,0  razao 2.3x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  34%   alvo: >= 80%
+  ✗ contexto relido por passo (media)         451 mil   alvo: <= 250 mil
+  ✓ contexto no inicio da sessao               62 mil   alvo: <= 80 mil
+```
+(Janela NOVA para esta onda, como pedia a lei; as sondas são `cargo test --release` por natureza —
+é delas a maior parte do `test`.)

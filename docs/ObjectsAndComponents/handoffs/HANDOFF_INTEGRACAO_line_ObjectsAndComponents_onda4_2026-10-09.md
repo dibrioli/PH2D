@@ -152,6 +152,8 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
 - Censos da árvore combinada: 12/12 censos, 114/114 testes ✓. `nextest-impacted` **18974/18974** ✓ (104,7 s,
   load 23→36). `PH2D_GPU=1 cargo test -p ph2d-gpu-cook dono -- --ignored` 1/1 ✓.
 
+- Depois do Play All (`acd61634c`): `check --workspace --all-targets` ✓ · clippy `--workspace --all-targets -D warnings` ✓ · fmt ✓ · `nextest-impacted` **18980/18980** ✓ (108 s); 4/4 mutações do Play All sangraram (o toggle sem `pause`, o fim pelo relógio, o `play_all &&` da fase, a ponte bus→timeline).
+
 ## 6. Provas de mutação (27/27 SANGRARAM nas leis da janela principal + as dos agentes)
 
 - Janela principal (27 — as 4 últimas: `holds`, `top_is_buried`, `undo_e_do_global`, o gancho do `keyboard_timeline`): espaço no `EvalCtx` · push da chave espaçada · `Fingerprint.space` · `publica` no

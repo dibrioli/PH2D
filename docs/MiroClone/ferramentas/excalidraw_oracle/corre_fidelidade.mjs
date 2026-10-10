@@ -2,7 +2,7 @@
 // (npm `latest`) e o canal `next` fixado em next/package.json (o do excalidraw.com, que grava as ligações
 // `mode:"orbit"`). Só a API pública (src/oracle_w9.js) + rato/teclado do Playwright no editor montado.
 //
-// Uso: node corre_fidelidade.mjs [--so <caso>] [--versao 0181|next] <casos.json> <pasta_saida>
+// Uso: node corre_fidelidade.mjs [--so <caso>] [--versao 0181|next] [--prefixo w9] <casos.json> <pasta_saida>
 // Por caso <c> e versão <v>: saidas/w9_<c>.<v>.json (cada passo: os elementos depois dele) e
 // saidas/w9_<c>.<v>.svg (o export do último estado, cabeçalho com versão e sha da entrada).
 // Passos (casos.json, `passos`):
@@ -12,9 +12,11 @@
 //   desenhar {tecla, de, a, via?, n?, dt?, espera?, mods?}  arma a ferramenta pela tecla e arrasta de `de`
 //                      a `a` (cena = ecrã) pelos `via`, `n` passos por trecho, `espera` ms parado antes de largar;
 //                      `manter` não limpa a selecção; `clique_clique` larga no início e clica no fim;
-//                      `sem_escape` não carrega Escape no fim
+//                      `sem_escape` não carrega Escape no fim; `captura: <nome>` fotografa o ecrã e guarda
+//                      o appState de ligação/realce ANTES de largar (W10: o realce a meio do arrasto)
 //   serializar         serializeAsJSON(…, "local") → os elementos do ficheiro que ele GRAVA
 //   svg                exportToSvg do estado actual (padding 10)
+// Qualquer passo com `"guardar": false` corre mas não se escreve na saída.
 // Determinismo: Math.random/crypto semeados pelo sha256 (casos.json + nome do caso), relógio fixo.
 import { createRequire } from "node:module";
 import { createServer } from "node:http";
@@ -38,6 +40,7 @@ const opt = (flag) => {
 };
 const so = opt("--so");
 const soVersao = opt("--versao");
+const prefixo = opt("--prefixo") || "w9";
 const [casosPath, outDir] = args;
 if (!casosPath || !outDir) {
   console.error("uso: node corre_fidelidade.mjs [--so <caso>] [--versao 0181|next] <casos.json> <pasta_saida>");
@@ -166,6 +169,21 @@ for (const [versao, home] of Object.entries(HOMES)) {
             }
             await page.mouse.move(passo.a[0], passo.a[1]);
             await page.waitForTimeout(passo.espera ?? 50);
+            // W10 `captura`: a meio do arrasto (antes de largar) o ecrã em PNG e as chaves do appState
+            // que falam de ligação/realce — o que o editor MOSTRA enquanto se arrasta.
+            if (passo.captura) {
+              await page.screenshot({ path: path.join(outDir, `${prefixo}_${caso.nome}.${versao}.${passo.captura}.png`) });
+              const meio = await page.evaluate(() => {
+                const a = window.oracle.editorApi().getAppState();
+                const ks = Object.keys(a).filter((k) => /bind|suggest|hover|highlight/i.test(k)).sort();
+                return JSON.parse(JSON.stringify(Object.fromEntries(ks.map((k) => [k, a[k] ?? null]))));
+              });
+              // Os voláteis saem também de DENTRO do appState (o `suggestedBinding` leva o elemento inteiro).
+              const semVolateis = JSON.parse(JSON.stringify(meio, (k, v) => (VOLATEIS.has(k) ? undefined : v)));
+              let cena = await page.evaluate(() => window.oracle.scene());
+              if (caso.relogio === "livre") cena = normaliza(cena, conhecidos);
+              passos.push({ passo: { tipo: "captura", nome: passo.captura }, appState: semVolateis, elementos: limpa(cena) });
+            }
             await page.mouse.up();
             if (passo.clique_final) { await page.waitForTimeout(100); await page.mouse.down(); await page.mouse.up(); }
             for (const m of passo.mods || []) await page.keyboard.up(m);
@@ -184,6 +202,8 @@ for (const [versao, home] of Object.entries(HOMES)) {
           } else {
             throw new Error(`passo desconhecido ${t}`);
           }
+          // `guardar: false`: o passo corre mas não vai para a saída (W10: a varredura só guarda o fim).
+          if (passo.guardar === false) continue;
           passos.push({ passo, elementos: limpa(caso.relogio === "livre" ? normaliza(atuais, conhecidos) : atuais) });
         }
       } catch (e) {
@@ -191,9 +211,10 @@ for (const [versao, home] of Object.entries(HOMES)) {
         falhas++;
       }
       await ctx.close();
-      const base = path.join(outDir, `w9_${caso.nome}.${versao}`);
+      const base = path.join(outDir, `${prefixo}_${caso.nome}.${versao}`);
       const cab = { oraculo: "@excalidraw/excalidraw", versao: PKG.version, licenca: PKG.license, chromium: browser.version(), casos: path.basename(casosPath), casos_sha256: sha(casosBytes), caso: caso.nome, descricao: caso.descricao || null, semente: seed, relogio_fixo_utc: new Date(FIXED_TIME).toISOString(), consola };
-      fs.writeFileSync(base + ".json", JSON.stringify({ cabecalho: cab, passos }, null, 1) + "\n");
+      // `"compacto": true` no caso: a saída sem indentação (a varredura W10).
+      fs.writeFileSync(base + ".json", JSON.stringify({ cabecalho: cab, passos }, null, caso.compacto ? undefined : 1) + "\n");
       if (svg) fs.writeFileSync(base + ".svg", `<!-- ph2d excalidraw-oracle W9: @excalidraw/excalidraw ${PKG.version} · caso ${caso.nome} · ${path.basename(casosPath)} sha256 ${cab.casos_sha256} -->\n${svg}\n`);
       console.log(`ok ${versao} ${caso.nome}: ${passos.length} passos${consola.length ? ` · consola ${consola.length}` : ""}`);
     }

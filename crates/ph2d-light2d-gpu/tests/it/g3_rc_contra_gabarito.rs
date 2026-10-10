@@ -6,9 +6,9 @@
 //! se vê sem obstáculo, o RC sem *bilinear fix* tem de reprovar e com ele tem de passar.
 
 use ph2d_light2d_ecs::CenaDeLuz;
-use ph2d_light2d_gpu::{Config, Fusao, Motivo, Precisao, Solver, o_que_fica_fora};
+use ph2d_light2d_gpu::{Config, Fusao, Precisao, Solver, o_que_fica_fora};
 
-use crate::cenas::{DEGRAUS, ceu_e_vidro, faisca, penumbra, regiao_livre};
+use crate::cenas::{DEGRAUS, ceu_e_vidro, faisca, penumbra, regiao_livre_longe};
 use crate::comum::{gabarito, gpu, grade, ler_fluencia, rmse_rel, tem_f16};
 
 // Tolerância = medido + 10 % (o RC é determinístico — G10 —; a folga cobre outro driver, não uma
@@ -66,28 +66,23 @@ fn g3_ceu_vidros_sobrepostos_e_alcance_finito_por_degrau() {
     por_degrau("céu e vidro", &ceu_e_vidro(), TOL_CEU_E_VIDRO);
 }
 
-/// A faísca (luz de 2 px): só no Alto ela possui texels (raio de 1 texel). No Médio e no Baixo
-/// não possui nenhum, e isso tem de vir DITO no relatório — é o caminho analítico C3 (W5).
+/// ⭐ A faísca (luz de 2 px) ACENDE em TODO degrau pela luz direta (C3, W4) — antes só no Alto,
+/// e nos outros saía da C0. O tamanho da lâmpada já não decide se ela existe.
 #[test]
-fn g3_faisca_no_alto_e_dita_fora_nos_outros() {
+fn g3_a_faisca_acende_em_todo_degrau_pela_luz_direta() {
     let Some(gpu) = gpu() else { return };
     let cena = faisca();
     for (degrau, lado, texel) in DEGRAUS {
         let g = grade(lado, texel);
         let fora = o_que_fica_fora(&cena, &g).fora;
-        if lado == 512 {
-            assert!(fora.is_empty(), "no Alto a faísca entra na C0: {fora:?}");
-            let (gf, r) = rodar(&gpu, Config::padrao(g), &cena);
-            let e = rmse_rel(&gf, &r, |_| true);
-            eprintln!("G3 faísca · {degrau}: RMSE relativo {e:.4} (tolerância {TOL_FAISCA_ALTO})");
-            assert!(e <= TOL_FAISCA_ALTO, "G3 faísca · {degrau}: {e:.4}");
-        } else {
-            assert!(
-                fora.iter().any(|f| f.motivo == Motivo::MenorQueOTexel),
-                "{degrau}: a faísca não cabe e o relatório não o diz: {fora:?}"
-            );
-            eprintln!("G3 faísca · {degrau}: fora da C0 (menor que meio texel) — caminho C3");
-        }
+        assert!(
+            fora.is_empty(),
+            "{degrau}: a faísca direta não é «fora»: {fora:?}"
+        );
+        let (gf, r) = rodar(&gpu, Config::padrao(g), &cena);
+        let e = rmse_rel(&gf, &r, |_| true);
+        eprintln!("G3 faísca · {degrau}: RMSE relativo {e:.4} (tolerância {TOL_FAISCA_ALTO})");
+        assert!(e <= TOL_FAISCA_ALTO, "G3 faísca · {degrau}: {e:.4}");
     }
 }
 
@@ -95,7 +90,23 @@ fn g3_faisca_no_alto_e_dita_fora_nos_outros() {
 fn g3_o_anel_reprova_sem_a_correcao_bilinear() {
     let Some(gpu) = gpu() else { return };
     let (_, lado, texel) = DEGRAUS[0];
-    let cena = penumbra();
+    // ⚠️ O anel é das CASCATAS: a lâmpada da penumbra vai pela luz direta (C3), então o emissor aqui
+    // é o MESMO disco como polígono (o que um sprite que brilha é) — ele fica nas cascatas.
+    let cena = crate::cenas::penumbra_pelas_cascatas();
+    // A região LIVRE: onde o gabarito é o da mesma cena sem obstáculo (e longe da luz).
+    let sem = gabarito(
+        &CenaDeLuz {
+            oclusores: vec![],
+            ..cena.clone()
+        },
+        &grade(lado, texel),
+    );
+    let livre = |r: &[[f64; 3]]| {
+        let sem = &sem;
+        let longe = regiao_livre_longe(lado, texel);
+        let r = r.to_vec();
+        move |k: usize| longe(k) && (r[k][0] - sem[k][0]).abs() <= 1e-9 * sem[k][0]
+    };
     let mut erros = Vec::new();
     for fusao in [Fusao::CorrecaoBilinear, Fusao::Classica] {
         let cfg = Config {
@@ -103,7 +114,7 @@ fn g3_o_anel_reprova_sem_a_correcao_bilinear() {
             ..Config::padrao(grade(lado, texel))
         };
         let (g, r) = rodar(&gpu, cfg, &cena);
-        let e = rmse_rel(&g, &r, regiao_livre(&r, lado, texel));
+        let e = rmse_rel(&g, &r, livre(&r));
         eprintln!(
             "G3 anel · {fusao:?}: RMSE relativo na região livre {e:.4} (tolerância {TOL_ANEL})"
         );

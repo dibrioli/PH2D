@@ -15,6 +15,7 @@
 mod captura;
 mod captura_sprite;
 mod config;
+mod direta;
 mod passlist;
 mod shaders;
 mod solver;
@@ -24,6 +25,7 @@ mod tempos;
 pub use captura::{ForaDaC0, Motivo, Quem, RelatorioC0, o_que_fica_fora};
 pub use captura_sprite::{Amostragem, CapturaDeSprites, SpriteNaC0};
 pub use config::{Config, Fusao, Grade, Precisao};
+pub use direta::{LAMPADAS_DIRETAS_MAX, lampadas_diretas};
 pub use passlist::{Buffer, PassList, Passe, Textura};
 pub use shaders::{C0_DONO_WGSL, QUEDA_WGSL, rc as fonte_do_rc};
 pub use solver::{ErroSolver, Solver};

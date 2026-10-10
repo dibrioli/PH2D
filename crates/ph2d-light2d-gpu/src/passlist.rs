@@ -141,6 +141,12 @@ impl PassList {
                 bytes: PASSO_UNIFORME * u64::from(n),
                 usos: uniforme,
             },
+            // ⭐ C3 — as lâmpadas diretas (o teto, `direta::LAMPADAS_DIRETAS_MAX`).
+            Buffer {
+                nome: "luz2d/buf/lampadas",
+                bytes: crate::direta::BYTES_DO_BUFFER,
+                usos: B::STORAGE | B::COPY_DST,
+            },
         ];
         if com_tempos {
             let bytes = 8 * u64::from(crate::tempos::n_carimbos(n));

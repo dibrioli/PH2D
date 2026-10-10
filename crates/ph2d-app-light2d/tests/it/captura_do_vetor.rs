@@ -21,7 +21,10 @@ const ALTURA_M: f32 = 4.0;
 /// caminho, medido `0,0000` no degrau `ALTO` das leis — a camada a 1 px por texel lida EXATA dá a
 /// cobertura de área do Vello, a mesma que as 8×8 subamostras do polígono (o piso é o `f16`); sem a
 /// camada: `1,38`. Lida bilinear (a 1.ª redacção) media `0,0074` a 2 px por texel.
-const TOL: f64 = 1e-3;
+/// ⚠️ Desde a luz DIRETA (C3, W4) mede `0,0043`: as cascatas borravam a diferença de captura entre o
+/// Vello (cobertura de área) e as 8×8 subamostras do polígono; o caminho direto é nítido (sem a
+/// camada: `1,39`, 320× acima).
+const TOL: f64 = 0.006;
 
 fn afim() -> Affine {
     Camera2d::new([0.0, 0.0], ALTURA_M).world_to_screen_affine(WindowSize::new(ALVO.0, ALVO.1))

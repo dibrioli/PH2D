@@ -25,7 +25,8 @@ macro_rules! rc {
             include_str!($real),
             include_str!($saida),
             include_str!("wgsl/queda.wgsl"),
-            include_str!("wgsl/c2_rc.wgsl")
+            include_str!("wgsl/c2_rc.wgsl"),
+            include_str!("wgsl/c3_direta.wgsl")
         )
     };
 }

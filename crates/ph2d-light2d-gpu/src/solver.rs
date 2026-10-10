@@ -149,6 +149,9 @@ pub struct Solver {
     jfa_grupos: Vec<wgpu::BindGroup>,
     rc: wgpu::ComputePipeline,
     rc_grupos: Vec<wgpu::BindGroup>,
+    /// ⭐ C3 — as lâmpadas DIRETAS (o grupo 1 das cascatas; a c0 soma-as).
+    lampadas: wgpu::Buffer,
+    lampadas_grupo: wgpu::BindGroup,
     tempos: Option<Tempos>,
 }
 
@@ -274,6 +277,7 @@ impl Solver {
         let uni_c0 = buffer("luz2d/buf/c0");
         let uni_jfa = buffer("luz2d/buf/jfa");
         let uni_cascatas = buffer("luz2d/buf/cascatas");
+        let lampadas = buffer("luz2d/buf/lampadas");
         let tempos = com_tempos.then(|| Tempos {
             set: device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("luz2d/carimbos"),
@@ -476,9 +480,31 @@ impl Solver {
             label: Some("luz2d c2_rc.wgsl"),
             source: wgpu::ShaderSource::Wgsl(shaders::rc(cfg.aritmetica, cfg.armazenamento).into()),
         });
+        // ⭐ C3 — as lâmpadas diretas, no grupo 1 (o buffer é fixo: o teto de lâmpadas).
+        let lampadas_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("luz2d c3 lampadas"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        let lampadas_grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("luz2d c3 lampadas"),
+            layout: &lampadas_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: lampadas.as_entire_binding(),
+            }],
+        });
         let rc_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("luz2d c2"),
-            bind_group_layouts: &[Some(&rc_layout)],
+            bind_group_layouts: &[Some(&rc_layout), Some(&lampadas_layout)],
             immediate_size: 0,
         });
         let rc = compute(
@@ -577,6 +603,8 @@ impl Solver {
             jfa_grupos,
             rc,
             rc_grupos,
+            lampadas,
+            lampadas_grupo,
             tempos,
         })
     }

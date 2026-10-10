@@ -48,14 +48,42 @@ fn a_ambiente_de_fabrica_e_o_forno_branco() {
     }
 }
 
-/// ⭐ **A lâmpada de fábrica POSSUI texel na grade padrão** à vista de fábrica do editor (1920×1080)
-/// e ao afastar o zoom — e o número de oitavas é MEDIDO aqui (o doc do `TAMANHO_DE_FABRICA_M` cita-o).
-#[test]
-fn a_lampada_de_fabrica_existe_na_grade_ao_afastar_o_zoom() {
+/// A cena com a lâmpada de fábrica e, se `fortes`, as [`LAMPADAS_DIRETAS_MAX`] lâmpadas MAIS fortes
+/// longe dela (que ocupam o caminho direto). Devolve o índice da de fábrica em `emissores`.
+fn de_fabrica_com(fortes: bool) -> (ph2d_light2d_ecs::CenaDeLuz, usize) {
+    let mut w = World::new();
+    let t = Transform::IDENTITY;
+    let e = w
+        .spawn((Luz::default(), t, GlobalTransform::from_transform(t)))
+        .id();
+    if fortes {
+        for k in 0..ph2d_light2d_gpu::LAMPADAS_DIRETAS_MAX {
+            let mut t = Transform::IDENTITY;
+            t.translation.x = 50.0 + k as f32;
+            w.spawn((
+                Luz {
+                    intensidade: 1000.0,
+                    ..Luz::default()
+                },
+                t,
+                GlobalTransform::from_transform(t),
+            ));
+        }
+    }
+    let cena = cena_de_luz(&w);
+    let i = cena
+        .luzes_emissoras
+        .iter()
+        .find(|(q, _)| *q == e)
+        .map(|&(_, i)| i)
+        .expect("a de fábrica emite");
+    (cena, i)
+}
+
+/// O primeiro zoom (÷2^k da vista de fábrica, 1920×1080) em que a lâmpada `i` sai da grade.
+fn sai_da_grade(cena: &ph2d_light2d_ecs::CenaDeLuz, i: usize) -> Option<i32> {
     let janela = WindowSize::new(1920, 1080);
-    let cena = cena_de_luz(&com_luz(Luz::default()));
-    let mut primeira_fora = None;
-    for k in 0..10 {
+    (0..10).find(|&k| {
         let cam = Camera2d::new([0.0, 0.0], Camera2d::default().height_world * 2f32.powi(k));
         let g = grade_do_quadro(
             cam.world_to_screen_affine(janela),
@@ -63,23 +91,30 @@ fn a_lampada_de_fabrica_existe_na_grade_ao_afastar_o_zoom() {
             DEGRAU_PADRAO,
         )
         .expect("grade");
-        let fora = ph2d_light2d_gpu::o_que_fica_fora(&cena, &g);
-        eprintln!(
-            "zoom ÷{}: texel {:.4} m, fora {:?}",
-            1 << k,
-            g.texel_m,
-            fora.fora
-        );
-        if !fora.fora.is_empty() && primeira_fora.is_none() {
-            primeira_fora = Some(k);
-        }
-    }
-    let k = primeira_fora.expect("controlo: algum zoom tem de a perder (senão a régua mede nada)");
+        ph2d_light2d_gpu::o_que_fica_fora(cena, &g)
+            .fora
+            .iter()
+            .any(|f| f.quem == ph2d_light2d_gpu::Quem::Emissor(i))
+    })
+}
+
+/// ⭐ **A lâmpada NÃO some ao afastar o zoom** (smoke do dono, 09–10/10: *«o tamanho afeta a
+/// qualidade»*): pela luz direta (C3) ela não depende da grade — em 10 oitavas nunca sai. Controlo:
+/// com o caminho direto ocupado por 16 lâmpadas mais fortes, ela fica nas cascatas e sai a ÷8 (o
+/// número medido antes da C3).
+#[test]
+fn a_lampada_de_fabrica_nao_some_ao_afastar_o_zoom() {
+    let (cena, i) = de_fabrica_com(false);
     assert_eq!(
-        k,
-        3,
-        "a lâmpada de fábrica sai da grade a ÷{} do zoom (o doc diz ÷8)",
-        1 << k
+        sai_da_grade(&cena, i),
+        None,
+        "a lâmpada direta saiu da grade"
+    );
+    let (cena, i) = de_fabrica_com(true);
+    assert_eq!(
+        sai_da_grade(&cena, i),
+        Some(3),
+        "controlo: nas cascatas ela sai a ÷8"
     );
 }
 
@@ -223,15 +258,35 @@ fn os_avisos_chegam_a_ui() {
     let mut luz = LuzDoQuadro::new();
     assert!(luz.preparar(&w, afim(), (W, H)));
     luz.gravar(&gpu, &mut PresentWorld::new(), &r);
+    // ⭐ Pela luz direta (C3) o ponto e a mini acendem: nada a avisar.
+    for e in [ponto, mini, boa] {
+        assert_eq!(
+            luz.avisos_de(e),
+            vec![],
+            "a lâmpada direta não tem do que avisar"
+        );
+    }
+    // Além do teto (16 mais fortes no caminho direto), as duas voltam às cascatas — e ao aviso.
+    for k in 0..ph2d_light2d_gpu::LAMPADAS_DIRETAS_MAX {
+        let mut t = Transform::IDENTITY;
+        t.translation.x = -1.5 + 0.1 * k as f32;
+        t.translation.y = 0.8;
+        w.spawn((
+            Luz {
+                intensidade: 1000.0,
+                tamanho_m: 0.3,
+                ..Luz::default()
+            },
+            t,
+            GlobalTransform::from_transform(t),
+        ));
+    }
+    assert!(luz.preparar(&w, afim(), (W, H)));
+    luz.gravar(&gpu, &mut PresentWorld::new(), &r);
     assert_eq!(luz.avisos_de(ponto), vec![AvisoDaLuz::PontoSemTamanho]);
     assert_eq!(
         luz.avisos_de(mini),
         vec![AvisoDaLuz::PequenaDemaisParaOZoom]
-    );
-    assert_eq!(
-        luz.avisos_de(boa),
-        vec![],
-        "a de fábrica não tem do que avisar"
     );
     assert_eq!(luz.recusa_nova(), None);
 

@@ -131,7 +131,10 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
             return Traco(vec3<Real>(Real(0)), Real(0));
         }
     }
-    let s_fim = max(len - PASSO, 0.0);
+    // ⭐ C3: as lâmpadas DIRETAS não estão na captura, mas são OPACAS (a lei do gabarito): o
+    // segmento acaba na primeira que ele cruza (`c3_direta.wgsl`, círculo exato), e ali é absorvido.
+    let tl = primeira_lampada(A, d, len);
+    let s_fim = max(min(len, tl) - PASSO, 0.0);
     var s = 0.0;
     loop {
         let x = A + d * s;
@@ -160,6 +163,9 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
             break;
         }
         s = min(s + passo, s_fim);
+    }
+    if tl <= len {
+        tr.t = Real(0);
     }
     return tr;
 }
@@ -245,6 +251,8 @@ fn cascata(@builtin(global_invocation_id) id: vec3<u32>) {
     var valor = vec3<f32>(soma) * 0.25;
     if i == 0u {
         valor *= TAU;
+        // ⭐ C3: a luz DIRETA das lâmpadas (`c3_direta.wgsl`, concatenado depois deste).
+        valor += direta(P);
     }
     textureStore(saida, id.xy, vec4<f32>(valor, 1.0));
 }

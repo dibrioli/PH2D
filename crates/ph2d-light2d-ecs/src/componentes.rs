@@ -40,11 +40,10 @@ impl Default for Luz {
 }
 
 impl Luz {
-    /// ⭐ O raio da lâmpada de fábrica. O recurso é a GRADE da luz: um disco que não possui meio
-    /// texel sai da captura (`Motivo::MenorQueOTexel`) e a lâmpada apaga-se (o Inspector avisa).
-    /// Medido (`w4_artista`, 1920×1080, degrau padrão): a vista de fábrica dá texel de 0,0625 m; a
-    /// 0,25 m a lâmpada possui texel até o zoom ÷4 (texel 0,25 m) e sai a ÷8 (0,5 m). O ponto exato
-    /// (`0`) e a lâmpada que a grade não vê são o caminho analítico da W5.
+    /// ⭐ O raio da lâmpada de fábrica — o que decide a PENUMBRA (uma lâmpada doméstica). Desde a luz
+    /// DIRETA (C3, W4) o tamanho não decide se ela existe nem a qualidade: uma lâmpada de qualquer
+    /// tamanho (até um ponto, `0`) acende e faz a sombra da geometria em qualquer zoom
+    /// (`w4_artista::a_lampada_de_fabrica_nao_some_ao_afastar_o_zoom`).
     pub const TAMANHO_DE_FABRICA_M: f32 = 0.25;
 
     /// ⭐ **A luz ambiente de fábrica** — o FORNO BRANCO: `I = 2π` ⇒ `luz_em = 1` em todo ponto

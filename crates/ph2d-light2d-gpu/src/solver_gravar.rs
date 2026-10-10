@@ -86,7 +86,13 @@ impl Solver {
         cena: &CenaDeLuz,
         sprites: &CapturaDeSprites<'_>,
     ) -> RelatorioC0 {
-        let cap = capturar_sem(cena, &self.cfg.grade, &sprites.substituidos);
+        let diretas = crate::direta::lampadas_diretas(cena);
+        let cap = capturar_sem(cena, &self.cfg.grade, &sprites.substituidos, &diretas);
+        gpu.queue.write_buffer(
+            &self.lampadas,
+            0,
+            &crate::direta::bytes_na_grade(cena, &diretas, &self.cfg.grade),
+        );
         self.subir_geometria(gpu, &cap.formas, &cap.vertices);
         let (formas_sprite, lotes) = captura_sprite::na_grade(sprites, &self.cfg.grade);
         let lotes = if formas_sprite.is_empty() {
@@ -206,6 +212,7 @@ impl Solver {
             });
             p.set_pipeline(&self.rc);
             p.set_bind_group(0, &self.rc_grupos[i as usize], &[]);
+            p.set_bind_group(1, &self.lampadas_grupo, &[]);
             p.dispatch_workgroups(grupos[0], grupos[1], 1);
         }
         if let Some(t) = &self.tempos {

@@ -31,7 +31,10 @@ const ALTURA_M: f32 = 4.0;
 /// cobertura subamostra a subamostra; o piso é o `f16`); fenda `0,0131` (o quad: `0,611`); duas cores
 /// `0,0036`.
 const TOL_QUAD: f64 = 1e-3;
-const TOL_FENDA: f64 = 0.0145;
+/// ⚠️ Desde a luz DIRETA (C3, W4) a fenda mede `0,0182`: as cascatas borravam a diferença entre as
+/// duas capturas (a textura por texel × as duas metades analíticas), e o caminho direto é nítido — a
+/// diferença é da captura, não da luz (o quad: `0,661`, 36× acima).
+const TOL_FENDA: f64 = 0.020;
 const TOL_CORES: f64 = 0.004;
 
 fn afim() -> Affine {

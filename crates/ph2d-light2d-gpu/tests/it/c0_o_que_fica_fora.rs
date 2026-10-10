@@ -1,10 +1,12 @@
-//! **O que a C0 não captura vem DITO**, nunca some em silêncio: o `Emissor::Ponto` (sem área, o
-//! caminho analítico C3 da W5), a forma que não cobre o centro de nenhum texel, a forma fora da
-//! grade. E na placa: uma cena só com um `Ponto` dá fluência ZERO em toda a grade — é isto que
-//! acontece hoje, até a C3 existir.
+//! **O que a C0 não captura vem DITO**, nunca some em silêncio: o `Emissor::Ponto`, a forma que não
+//! cobre o centro de nenhum texel, a forma fora da grade. ⭐ Desde a C3 (luz DIRETA, W4) as
+//! [`LAMPADAS_DIRETAS_MAX`] lâmpadas mais fortes (discos e pontos) NÃO dependem da grade: não são
+//! «fora» e acendem; só o que passa do teto volta a ser relatado.
 
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
-use ph2d_light2d_gpu::{Config, ForaDaC0, Motivo, Quem, Solver, o_que_fica_fora};
+use ph2d_light2d_gpu::{
+    Config, ForaDaC0, LAMPADAS_DIRETAS_MAX, Motivo, Quem, Solver, o_que_fica_fora,
+};
 
 use crate::comum::{disco, gpu, grade, ler_fluencia, oclusor, regular};
 
@@ -25,29 +27,51 @@ fn ponto(centro: [f32; 2]) -> Emissor {
     }
 }
 
+/// O ponto direto não é «fora»; o que passa do teto (o mais fraco) é, e vem dito.
 #[test]
-fn o_ponto_fica_fora_da_c0_e_o_relatorio_o_diz() {
+fn o_ponto_alem_do_teto_fica_fora_e_o_relatorio_o_diz() {
     let g = grade(64, 0.1);
-    let fora = o_que_fica_fora(&so(vec![ponto([3.2, 3.2])]), &g).fora;
+    let mut pontos: Vec<Emissor> = (0..LAMPADAS_DIRETAS_MAX)
+        .map(|k| ponto([0.3 + 0.35 * k as f32, 5.5]))
+        .collect();
+    assert!(o_que_fica_fora(&so(pontos.clone()), &g).fora.is_empty());
+    pontos.push(Emissor::Ponto {
+        centro: [3.2, 3.2],
+        intensidade: [0.5; 3],
+        alcance_m: f32::INFINITY,
+    });
     assert_eq!(
-        fora,
+        o_que_fica_fora(&so(pontos), &g).fora,
         vec![ForaDaC0 {
-            quem: Quem::Emissor(0),
+            quem: Quem::Emissor(LAMPADAS_DIRETAS_MAX),
             motivo: Motivo::PontoSemArea
         }]
     );
 }
 
+/// ⭐ Na placa, um ponto sozinho ACENDE pela luz direta, e é o gabarito (`F = I/r`).
 #[test]
-fn na_placa_um_ponto_sozinho_nao_acende_nada() {
+fn na_placa_um_ponto_sozinho_acende_pela_luz_direta() {
     let Some(gpu) = gpu() else { return };
-    let mut s = Solver::novo(&gpu, Config::padrao(grade(64, 0.1))).expect("solver");
-    let rel = s.quadro(&gpu, &so(vec![ponto([3.2, 3.2])]));
-    assert_eq!(rel.fora.len(), 1);
+    let g = grade(64, 0.1);
+    let cena = so(vec![ponto([3.2, 3.2])]);
+    let mut s = Solver::novo(&gpu, Config::padrao(g)).expect("solver");
+    let rel = s.quadro(&gpu, &cena);
+    assert!(rel.fora.is_empty(), "o ponto direto não é «fora»");
     let f = ler_fluencia(&gpu, &s);
+    let r = crate::comum::gabarito(&cena, &g);
+    let mut pior = 0.0_f64;
+    for (k, (a, b)) in f.iter().zip(&r).enumerate() {
+        let (i, j) = ((k % 64) as f64 + 0.5, (k / 64) as f64 + 0.5);
+        if (i * 0.1 - 3.2).hypot(j * 0.1 - 3.2) < 0.3 {
+            continue; // a 1/r explode perto do ponto
+        }
+        pior = pior.max((f64::from(a[0]) - b[0]).abs() / b[0]);
+    }
+    eprintln!("ponto direto × gabarito: pior erro relativo {pior:.4}");
     assert!(
-        f.iter().all(|t| *t == [0.0; 3]),
-        "o Ponto não pode acender pela C0"
+        pior < 0.01,
+        "o ponto direto não é o I/r do gabarito: {pior:.4}"
     );
 }
 
@@ -59,8 +83,15 @@ fn a_forma_menor_que_o_texel_e_a_de_fora_da_grade_vem_ditas() {
     let no_canto = disco([3.0, 3.0], 0.02, [1.0; 3], f32::INFINITY);
     let no_centro = disco([3.05, 3.05], 0.05, [1.0; 3], f32::INFINITY);
     let longe = disco([30.0, 30.0], 0.5, [1.0; 3], f32::INFINITY);
+    // ⚠️ O teto de lâmpadas diretas ocupado por discos MAIS FORTES: os três de cima ficam nas
+    // cascatas (dependem da grade) e voltam a ser relatados.
+    let fortes = (0..LAMPADAS_DIRETAS_MAX)
+        .map(|k| disco([0.3 + 0.35 * k as f32, 5.5], 0.1, [100.0; 3], f32::INFINITY));
     let cena = CenaDeLuz {
-        emissores: vec![no_canto, no_centro, longe],
+        emissores: [no_canto, no_centro, longe]
+            .into_iter()
+            .chain(fortes)
+            .collect(),
         // Uma lasca de 0,11 texel (cobertura ≤ 0,11 em qualquer texel), e um oclusor normal.
         oclusores: vec![
             oclusor(

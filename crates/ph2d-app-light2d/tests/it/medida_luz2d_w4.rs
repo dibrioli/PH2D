@@ -309,3 +309,72 @@ fn medida_borda_reta() {
         }
     }
 }
+
+/// D. **O custo por lâmpada da luz DIRETA** (C3): a cena 1 com `n` lâmpadas (as mesmas, espalhadas),
+/// por nível. O teto `LAMPADAS_DIRETAS_MAX` sai daqui.
+#[test]
+#[ignore = "sonda do custo por lâmpada: corre-se à mão"]
+fn medida_custo_por_lampada() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    eprintln!(
+        "# Custo por lâmpada · perfil {} · loadavg {}",
+        if cfg!(debug_assertions) {
+            "DEBUG"
+        } else {
+            "smoke"
+        },
+        loadavg()
+    );
+    eprintln!("| nível | 0 lâmpadas (só a ambiente) | 1 | 4 | 16 | ms por lâmpada |");
+    eprintln!("|---|---|---|---|---|---|");
+    for c0_px in [4.0, 2.0] {
+        let degrau = ph2d_app_light2d::Degrau {
+            c0_px,
+            ..ph2d_app_light2d::DEGRAU_PADRAO
+        };
+        let mut linha = Vec::new();
+        for n in [0_usize, 1, 4, 16] {
+            let mut w = cena(1);
+            let lampadas: Vec<_> = w
+                .query::<(bevy_ecs::entity::Entity, &ph2d_light2d_ecs::Luz)>()
+                .iter(&w)
+                .filter(|(_, l)| l.tipo == ph2d_light2d_ecs::TipoDeLuz::Ponto)
+                .map(|(e, _)| e)
+                .collect();
+            for e in lampadas {
+                w.despawn(e);
+            }
+            for k in 0..n {
+                let mut t = ph2d_ecs::Transform::IDENTITY;
+                t.translation.x = -4.0 + 0.5 * k as f32;
+                t.translation.y = if k % 2 == 0 { 1.8 } else { -1.8 };
+                w.spawn((
+                    ph2d_light2d_ecs::Luz {
+                        intensidade: 3.0,
+                        ..ph2d_light2d_ecs::Luz::default()
+                    },
+                    t,
+                    GlobalTransform::from_transform(t),
+                ));
+            }
+            let mut luz = LuzDoQuadro::com_degrau(degrau);
+            let r = renderer(&gpu);
+            let mut ms = f64::INFINITY;
+            for _ in 0..12 {
+                assert!(luz.preparar(&w, afim(), FHD));
+                luz.gravar(&gpu, &mut PresentWorld::new(), &r);
+                if let Some(t) = luz.solver().and_then(|s| s.tempos(&gpu)) {
+                    ms = ms.min(t.total());
+                }
+            }
+            linha.push(ms);
+        }
+        let por = (linha[3] - linha[0]) / 16.0;
+        eprintln!(
+            "| {c0_px} px | {:.2} | {:.2} | {:.2} | {:.2} | {por:.3} |",
+            linha[0], linha[1], linha[2], linha[3]
+        );
+    }
+}

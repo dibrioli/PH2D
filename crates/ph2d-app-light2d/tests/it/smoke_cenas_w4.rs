@@ -203,13 +203,12 @@ pub(crate) fn penumbras_na_placa(
     out
 }
 
-/// ⭐⭐ **Cena 4 NA PLACA (o degrau padrão):** a lâmpada pequena faz a sombra mais NÍTIDA que a grande,
-/// e a grande fica perto da geometria. ⚠️ A pequena NÃO chega à geometria: medido 0,77 m contra
-/// 0,135 m, e 0,67 m no degrau fino (texel 2 px) — é a resolução ANGULAR das cascatas, não a grade.
-/// A sombra nítida de uma lâmpada pequena é da W5 (caminho analítico C3 / HRC). Este gate fixa o
-/// SENTIDO que a cena ensina e o erro da grande; os números estão no handoff.
+/// ⭐⭐⭐ **Cena 4 NA PLACA (o degrau BAIXO, o mais grosso): as duas penumbras SÃO a geometria.** Pela
+/// luz direta (C3) a visibilidade do disco vem de raios até ele, não das sondas das cascatas: medido
+/// 0,3289 × 0,3283 m (pequena) e 1,4365 × 1,4064 m (grande). Antes da C3: 0,945 e 1,708 (a
+/// resolução angular das cascatas) — o «tamanho afeta a qualidade» do smoke do dono, 09–10/10.
 #[test]
-fn a_cena_4_na_placa_a_pequena_e_mais_nitida() {
+fn a_cena_4_na_placa_as_penumbras_sao_a_geometria() {
     let Some(gpu) = crate::comum::gpu() else {
         eprintln!("sem GPU — gate saltado");
         return;
@@ -220,12 +219,10 @@ fn a_cena_4_na_placa_a_pequena_e_mais_nitida() {
         "placa: pequena {pequena:.4} m · grande {grande:.4} m (geometria {:.4} · {:.4})",
         p[0].4, p[1].4
     );
-    assert!(
-        pequena < 0.75 * grande,
-        "a pequena tem de ser mais nítida ({pequena:.3} × {grande:.3})"
-    );
-    assert!(
-        (grande - p[1].4).abs() < 0.3 * p[1].4,
-        "a grande longe da geometria: {grande:.3}"
-    );
+    for (m, g) in [(pequena, p[0].4), (grande, p[1].4)] {
+        assert!(
+            (m - g).abs() < 0.05 * g,
+            "a penumbra na placa ({m:.4}) não é a da geometria ({g:.4})"
+        );
+    }
 }

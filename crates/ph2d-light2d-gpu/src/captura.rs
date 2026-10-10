@@ -263,7 +263,8 @@ pub fn o_que_fica_fora(cena: &CenaDeLuz, g: &Grade) -> RelatorioC0 {
 }
 
 pub(crate) fn capturar(cena: &CenaDeLuz, g: &Grade) -> Captura {
-    capturar_sem(cena, g, &std::collections::BTreeSet::new())
+    let diretas = crate::direta::lampadas_diretas(cena);
+    capturar_sem(cena, g, &std::collections::BTreeSet::new(), &diretas)
 }
 
 /// A captura sem as formas `substituidas` (o quad de um sprite que a C0 captura pela textura).
@@ -271,6 +272,7 @@ pub(crate) fn capturar_sem(
     cena: &CenaDeLuz,
     g: &Grade,
     substituidas: &std::collections::BTreeSet<Quem>,
+    diretas: &[usize],
 ) -> Captura {
     let mut m = Montagem {
         g,
@@ -296,6 +298,13 @@ pub(crate) fn capturar_sem(
                 radiancia,
                 alcance_m,
             } => {
+                // ⭐ Uma lâmpada DIRETA (C3) NÃO entra na captura: a luz dela vem do caminho direto
+                // (não a contar duas vezes), e um disco opaco aqui fazia o «cone livre» do caminho
+                // direto falhar perto da PRÓPRIA lâmpada em todo ponto — medido 1,1 ms por lâmpada
+                // (Low, 1080p). ⚠️ O preço: ela não bloqueia a luz de outra que passe por dentro dela.
+                if diretas.binary_search(&k).is_ok() {
+                    continue;
+                }
                 let [r, g, b] = *radiancia;
                 m.disco(
                     quem,
@@ -317,6 +326,8 @@ pub(crate) fn capturar_sem(
                     1.0,
                 );
             }
+            // O ponto DIRETO (C3) não precisa da grade.
+            Emissor::Ponto { .. } if diretas.binary_search(&k).is_ok() => {}
             Emissor::Ponto { .. } => m.fora.push(ForaDaC0 {
                 quem,
                 motivo: Motivo::PontoSemArea,

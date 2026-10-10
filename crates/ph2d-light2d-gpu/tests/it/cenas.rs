@@ -1,6 +1,6 @@
 //! As cenas dos gates, em metros: 1 px da réplica = 1 cm, o quadro de 512 px = 5,12 m.
 
-use ph2d_light2d_ecs::CenaDeLuz;
+use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 
 use crate::comum::{disco, oclusor, regular};
 
@@ -33,6 +33,19 @@ pub fn penumbra() -> CenaDeLuz {
         oclusores: vec![oclusor_14px()],
         ceu: [0.0; 3],
         ..Default::default()
+    }
+}
+
+/// A [`penumbra`] com a lâmpada como POLÍGONO de 64 lados (a mesma área e radiância): um emissor que
+/// não vai pela luz direta — o que mede as cascatas (o anel da correção bilinear).
+pub fn penumbra_pelas_cascatas() -> CenaDeLuz {
+    CenaDeLuz {
+        emissores: vec![Emissor::Poligono {
+            vertices: regular(LUZ, RAIO_LUZ, 64, 0.0),
+            radiancia: [L; 3],
+            alcance_m: f32::INFINITY,
+        }],
+        ..penumbra()
     }
 }
 
@@ -116,6 +129,18 @@ pub fn regiao_livre(r: &[[f64; 3]], lado: u32, texel: f64) -> impl Fn(usize) -> 
         let d = (p[0] - f64::from(LUZ[0])).hypot(p[1] - f64::from(LUZ[1]));
         let vazio = 2.0 * (a / d).asin();
         d > 3.0 * a && (r[k][0] - vazio).abs() <= 1e-9 * vazio
+    }
+}
+
+/// Os texels longe da luz (a 3 raios), para uma máscara montada pelo chamador.
+pub fn regiao_livre_longe(lado: u32, texel: f64) -> impl Fn(usize) -> bool {
+    let a = f64::from(RAIO_LUZ);
+    move |k| {
+        let p = [
+            (f64::from(k as u32 % lado) + 0.5) * texel,
+            (f64::from(k as u32 / lado) + 0.5) * texel,
+        ];
+        (p[0] - f64::from(LUZ[0])).hypot(p[1] - f64::from(LUZ[1])) > 3.0 * a
     }
 }
 

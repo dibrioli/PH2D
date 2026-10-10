@@ -159,3 +159,90 @@ fn cada_nivel_tem_metade_da_celula_do_anterior_em_todo_zoom() {
         );
     }
 }
+
+/// ⭐⭐ **Com o Automático DESLIGADO, o custo no Inspector é o do nível escolhido** (smoke do dono,
+/// 10/10: *«no Inspector o custo é igual para qualquer qualidade»* — o custo só se lia para o
+/// governador, e com o Automático desligado ficava congelado no último nível automático).
+#[test]
+fn com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido() {
+    let Some(gpu) = gpu() else { return };
+    if !gpu
+        .device
+        .features()
+        .contains(wgpu::Features::TIMESTAMP_QUERY)
+    {
+        eprintln!("sem TIMESTAMP_QUERY — gate saltado");
+        return;
+    }
+    let fhd = ph2d_render::Camera2d::default()
+        .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
+    let r = renderer(&gpu);
+    let mut w = bevy_ecs::world::World::new();
+    w.spawn((
+        ph2d_light2d_ecs::Luz::default(),
+        ph2d_ecs::Transform::IDENTITY,
+    ));
+    let mut luz = LuzDoQuadro::new();
+    let mut custo = |nivel: N| {
+        let p = PreferenciaDaLuz {
+            nivel,
+            automatica: false,
+        };
+        let mut ms = None;
+        for _ in 0..60 {
+            luz.preferir(p);
+            assert!(luz.preparar(&w, fhd, (1920, 1080)));
+            luz.gravar(&gpu, &mut PresentWorld::new(), &r);
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            ms = luz.custo_ms();
+            if ms.is_some() && luz.qualidade() == Some((nivel, false)) {
+                // Três quadros a mais: a leitura sem espera é de há poucos quadros.
+                for _ in 0..3 {
+                    luz.preferir(p);
+                    assert!(luz.preparar(&w, fhd, (1920, 1080)));
+                    luz.gravar(&gpu, &mut PresentWorld::new(), &r);
+                    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                }
+                ms = luz.custo_ms();
+                break;
+            }
+        }
+        ms.unwrap_or_else(|| panic!("{nivel:?} sem o Automático: o custo nunca foi lido"))
+    };
+    let baixa = custo(N::Baixa);
+    drop(custo);
+    // O 1.º quadro do nível novo recria a grade: o custo lido era o da ANTERIOR e não se mostra.
+    let p = PreferenciaDaLuz {
+        nivel: N::Alta,
+        automatica: false,
+    };
+    luz.preferir(p);
+    assert!(luz.preparar(&w, fhd, (1920, 1080)));
+    luz.gravar(&gpu, &mut PresentWorld::new(), &r);
+    assert_eq!(
+        luz.custo_ms(),
+        None,
+        "trocado o nível, o Inspector ainda mostra o custo do anterior"
+    );
+    let mut custo = |nivel: N| {
+        let p = PreferenciaDaLuz {
+            nivel,
+            automatica: false,
+        };
+        for _ in 0..60 {
+            luz.preferir(p);
+            assert!(luz.preparar(&w, fhd, (1920, 1080)));
+            luz.gravar(&gpu, &mut PresentWorld::new(), &r);
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        }
+        luz.custo_ms()
+            .unwrap_or_else(|| panic!("{nivel:?} sem o Automático: o custo nunca foi lido"))
+    };
+    let alta = custo(N::Alta);
+    eprintln!("custo sem o Automático: Low {baixa:.2} ms · High {alta:.2} ms");
+    // A lei 1/célula² dá ×16 entre os dois (medido na W5a a 1080p: 1,57 × 19,5 ms).
+    assert!(
+        alta > 4.0 * baixa,
+        "o custo não seguiu o nível: Low {baixa:.2} · High {alta:.2} ms"
+    );
+}

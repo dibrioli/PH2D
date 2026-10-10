@@ -56,7 +56,7 @@ pub struct LuzDoQuadro {
     /// ⭐ A preferência do editor (`None` = degrau fixo, o da sonda/dos gates) e o governador.
     preferencia: Option<PreferenciaDaLuz>,
     governador: Governador,
-    /// O último custo de placa que o governador leu (ms, o solver inteiro) e quantas leituras.
+    /// O último custo de placa lido (ms, o solver inteiro; da grade atual) e quantas leituras.
     custo_ms: Option<f64>,
     leituras: u32,
 }
@@ -181,8 +181,8 @@ impl LuzDoQuadro {
         self.degrau = crate::qualidade::degrau_do(nivel);
     }
 
-    /// O último custo de placa que o «Automático» leu (ms); `None` antes da 1.ª leitura ou sem
-    /// `TIMESTAMP_QUERY` (aí o automático fica no teto).
+    /// O último custo de placa da grade atual (ms), com ou sem o «Automático»; `None` antes da 1.ª
+    /// leitura dela ou sem `TIMESTAMP_QUERY` (aí o automático fica no teto).
     #[must_use]
     pub fn custo_ms(&self) -> Option<f64> {
         self.custo_ms
@@ -253,6 +253,8 @@ impl LuzDoQuadro {
             r.solver.reposicionar(g.origem_m, g.texel_m)
         } else {
             self.resolvido = None;
+            // A grade nova (outro nível, outra janela) tem outro custo: o lido era da anterior.
+            self.custo_ms = None;
             let cfg = Config {
                 fina,
                 captura,
@@ -301,17 +303,21 @@ impl LuzDoQuadro {
                 .gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites),
         );
         gpu.queue.submit([enc.finish()]);
-        // ⭐ O governador lê o custo de placa SEM ESPERAR (de há poucos quadros) e decide o nível.
-        if let Some(p) = self.preferencia.filter(|p| p.automatica)
+        // ⭐ O custo de placa lê-se SEM ESPERAR (de há poucos quadros) sempre que há preferência do
+        // editor — o Inspector mostra-o em todo nível; com o Automático desligado ficava congelado
+        // no último nível automático (smoke do dono, 10/10). Só o governador depende do Automático.
+        if let Some(p) = self.preferencia
             && let Some(t) = r.solver.tempos_sem_esperar(gpu)
         {
             self.custo_ms = Some(t.total());
             self.leituras += 1;
-            let custo = crate::qualidade::Custo {
-                por_nivel: t.por_nivel(),
-                fixo: t.fixo(),
-            };
-            self.governador.ler(custo, p.nivel);
+            if p.automatica {
+                let custo = crate::qualidade::Custo {
+                    por_nivel: t.por_nivel(),
+                    fixo: t.fixo(),
+                };
+                self.governador.ler(custo, p.nivel);
+            }
         }
     }
 

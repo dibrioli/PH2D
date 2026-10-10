@@ -23,6 +23,8 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
+# A régua da W8 (`tests/it/measure_team_cost.rs`): o custo de uma versão comprimida.
+flate2 = "1"
 serde_json = "1"
 ph2d-vec-connect = { path = "../ph2d-vec-connect" }
 # A régua do mapa mental (`tests/it/measure_mind_layout_cost.rs`): o mesmo layout pelo motor de

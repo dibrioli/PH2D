@@ -51,7 +51,9 @@ PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh \
   bash docs/MiroClone/ferramentas/excalidraw_oracle/corre.sh <pasta_saida> <entrada.excalidraw>...
 ```
 
-Por entrada `<n>`: `<n>.svg` · `<n>.png` (escala 2; omitido acima de 300 KB) · `<n>.restored.json`
+Por entrada `<n>`: `<n>.svg` · `<n>.png` (pede `exportScale: 2`, mas o `exportToBlob` IGNORA o
+`appState.exportScale` — medido na W8: escala 1/2/3 dão o MESMO PNG byte a byte; estes PNG são **1×**,
+do tamanho do SVG; omitido acima de 300 KB) · `<n>.restored.json`
 (elementos depois da normalização) · `<n>.meta.json` (versões, data, sha256 da entrada). Setas
 `elbowed`: também `<n>.editor.{svg,png,json}` — o `restore` sozinho **não** roteia o cotovelo; o editor
 montado sim (as formas das pontas são empurradas `→` `←` para forçar a rota).
@@ -233,3 +235,108 @@ idênticos** (o `.meta.json` sem o campo `date`).
   extremo (L2) ele encaixa e a ponta final interior **não**. Seta: as duas pontas (= a caixa). Traço
   livre: esquerda/direita da caixa sim, vértice interior não. Os pontos nos `snapLines` são os cantos
   da caixa (`[100,260]` não é vértice da linha).
+
+### W8 — o esquema `.excalidraw` e a ida e volta: `corre_esquema.mjs`
+
+```bash
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_w8_sondas.py \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w8_sondas.json            # só se mudar as sondas
+bash docs/MiroClone/ferramentas/excalidraw_oracle/instala.sh   # 1× depois de 09/10: o src/oracle.js expõe restore/serializeAsJSON/loadFromBlob/exportToCanvas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_esquema.mjs \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w8_tipos.excalidraw \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w8_sondas.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+```
+
+(`ORACLE_WWW=<pasta>` serve outra página construída; a porta é FIXA, `ORACLE_PORT` = 47118, porque o
+`serializeAsJSON` grava `source` = a origem da página.) A entrada `w8_tipos` traz um elemento MÍNIMO
+de cada tipo (só as chaves que importam) — rectângulo/elipse/losango, texto solto, texto num contentor,
+seta recta ligada, seta `elbowed` com `fixedPoint`, linha tracejada, traço livre, moldura com 3 filhos
+(grupo aninhado `["G1","G0"]` e uma imagem PNG 8×8 em `files`), `magicframe`, `embeddable`, `iframe`.
+Saídas `saidas/w8_*`: `.restored.json`, `.serialized.excalidraw` (o ficheiro que o Excalidraw grava),
+`.serialized_database.json`, `.svg`/`.png`, `.embed.svg`/`.embed.png`, `.escuro.png`, `.sem_fundo.png`,
+`.export.json` (cada variante de export: dimensões, sha, chunks PNG, `<metadata>` SVG, e a volta pelo
+`loadFromBlob`), `w8_sondas.json` (117 sondas de elementos + 6 de `appState`, entrada → saída),
+`w8_appstate_restaurado.json`. **Determinismo:** duas corridas = **12/12 ficheiros idênticos** (o
+`.meta.json` sem `date`).
+
+- **Ficheiro:** `{type:"excalidraw", version:2, source, elements, appState, files}`. O `appState`
+  gravado é SÓ `{gridSize, gridStep, gridModeEnabled, viewBackgroundColor}` (local = database);
+  `files` = `{<fileId>: {mimeType, id, dataURL, created}}`. Ida e volta: `loadFromBlob(json)` →
+  `serializeAsJSON` dá o MESMO texto; os elementos voltam iguais ao `restore`.
+- **O que o `restore` PREENCHE** (elemento sem a chave): `strokeColor #1e1e1e` · `backgroundColor
+  transparent` · `fillStyle solid` · `strokeWidth 2` (também se vier `0` — falsy) · `strokeStyle solid` ·
+  `roughness 1` · `opacity 100` · `angle 0` · `roundness null` · `groupIds []` · `frameId null` ·
+  `boundElements []` · `link null` · `locked false` · `isDeleted false` · `seed 1` (FIXO, não sorteia) ·
+  `version` = dada+1 (ausente ⇒ 2) · `versionNonce` sorteado · `updated` = agora · `id` sorteado
+  (21 car., nanoid) · `index` fraccionário. Texto: `textAlign left` · `verticalAlign top` ·
+  `originalText` = `text` · `autoResize true` · `lineHeight` = **altura / (fontSize × linhas)** (1,85
+  para 37/20; sem altura ⇒ 1,25) — e **NÃO preenche** `fontSize` nem `fontFamily`. Linear:
+  `startBinding/endBinding/lastCommittedPoint null`, seta `endArrowhead "arrow"`/linha `null`.
+  Imagem: `status pending` · `scale [1,1]` · `crop null` (sem `fileId` ⇒ chave ausente). Moldura: `name null`.
+- **O que ele CORRIGE:** caixa negativa ⇒ normalizada (x −40, w 50); `x null` ⇒ 0; pontos com o 1.º ≠
+  (0,0) ⇒ trasladados para (0,0) e o `x,y` ajustado; `width/height` da linear ⇒ a caixa dos pontos;
+  linear de 1 ponto ⇒ **descartada**; `selection` e tipo desconhecido ⇒ **descartados**; `link
+  javascript:` ⇒ `about:blank`; `containerId`/`boundElements`/`frameId`/`startBinding` para id
+  inexistente ⇒ `null`/removido; texto com `containerId` válido ⇒ o contentor ganha o `boundElements`
+  (a seta NÃO — fica ligada sem recíproca); id duplicado ⇒ o 2.º ganha id novo; seta `elbowed` com
+  ligação SEM `fixedPoint` ⇒ ligações `null`; `elbowed` diagonal ⇒ cotovelo `[[0,0],[50,0],[50,50],[100,50]]`;
+  `fixedPoint 0.5` ⇒ `0.5001`; legado `strokeSharpness "round"` ⇒ rectângulo `{type:1}`, losango `{type:2}`.
+- **O que ele NÃO valida** (passa tal e qual): `opacity` 150/−5/"50", `roughness` 7, `strokeStyle`/
+  `fillStyle`/`textAlign`/`verticalAlign`/`startArrowhead` desconhecidos, `roundness {type:9}`, `angle`
+  10, cor inválida, `x:"10"`, `groupIds:"G"`, `locked:"sim"`, `fontFamily` 4/10/99/`"Virgil"`. ⇒ o
+  NOSSO import valida (o Excalidraw confia no ficheiro).
+- **O que REBENTA o import inteiro** (excepção, nenhum elemento entra): texto sem `text` ou com `text`
+  número; `line`/`arrow`/`freedraw` sem `points`; `index` inválido (`"zz!"` ⇒ *invalid order key*).
+- **`index`** (fractional-indexing, base 62): ausentes ⇒ `a0..a9 aA..aZ aa..` pela ordem do array;
+  válidos e crescentes ⇒ mantidos (`a0`, `a0V`, `b0`); fora de ordem ou duplicados ⇒ só os que violam
+  são reescritos (`a5, null, a1` ⇒ `a5, a6, a7`). **A ordem é a do ARRAY**, o `index` segue-a.
+- **Constantes** (do bundle): `FONT_FAMILY` Virgil 1 · Helvetica 2 · Cascadia 3 · Excalifont 5 ·
+  Nunito 6 · Lilita One 7 · Comic Shanns 8 · Liberation Sans 9 (o 4 não existe); `ROUNDNESS` LEGACY 1 ·
+  PROPORTIONAL_RADIUS 2 · ADAPTIVE_RADIUS 3; MIME `application/vnd.excalidraw+json`.
+- **`convertToExcalidrawElements`** (esqueleto) preenche MAIS que o `restore`: caixa 100×100, texto
+  `fontSize 20`/`fontFamily 5`/medido, seta `[[0.5,0],[99.5,0]]` com `elbowed:false`, imagem
+  `strokeColor transparent`; NÃO converte `freedraw` nem `embeddable` (passam crus, `version` ausente).
+- **Export (API):** `exportToSvg({exportPadding, exportingFrame, skipInliningFonts, renderEmbeddables})`
+  + `appState.{exportBackground, viewBackgroundColor, exportWithDarkMode, exportEmbedScene}`;
+  `exportToBlob/exportToCanvas({exportPadding, maxWidthOrHeight, getDimensions, mimeType, quality})`.
+  ⛔ `appState.exportScale` é **ignorado** pela API (só a UI o usa); a escala é `getDimensions:
+  (w,h)=>({width:2w,height:2h,scale:2})` (1880×1200 medido). Padding 0/10/50 ⇒ 920/940/1020 de largura;
+  `exportingFrame` ⇒ a caixa da moldura sem padding (400×200); escuro = `filter="invert(93%)
+  hue-rotate(180deg)"` na raiz do SVG (no PNG, o canvas filtrado); sem fundo ⇒ sem o `<rect>` de fundo
+  (PNG RGBA). **PDF: nenhum** — zero ocorrências de `pdf` nos `.d.ts`.
+- **Embed:** PNG ⇒ chunk **`tEXt`** de chave `application/vnd.excalidraw+json`, valor
+  `{"version":"1","encoding":"bstring","compressed":true,"encoded":<zlib deflate como bytes latin1>}`,
+  inflado = o JSON do ficheiro (aqui com `appState` só `{viewBackgroundColor}`). SVG ⇒
+  `<!-- svg-source:excalidraw --><metadata><!-- payload-type:application/vnd.excalidraw+json -->
+  <!-- payload-version:2 --><!-- payload-start -->BASE64(o mesmo invólucro)<!-- payload-end --></metadata>`.
+  `loadFromBlob` de um e de outro devolve os 17 elementos iguais ao `restore`; de um SVG sem embed ⇒
+  *EncodingError: Image doesn't contain scene*.
+- **O SVG exportado:** imagens como `<symbol id="image-<fileId>">` + `<use href>`; fontes como
+  `@font-face` woff2 em data-URL; moldura = `<clipPath id=<frameId>>` com `rx 8` e título `<text>`
+  Helvetica 14 px `#999999` (a `magicframe` sem nome escreve «AI Frame»); linha tracejada ⇒
+  `stroke-width` +0,5 e `stroke-dasharray "8 10"`. ⛔ O recorte vai como **`ns1:clip-path`** (atributo no
+  namespace SVG, artefacto do `XMLSerializer`): o **resvg** recorta, o **librsvg** e o **Inkscape NÃO**.
+
+#### Oráculos SVG/PDF do SISTEMA (triagem por artefacto, `LANG=C pacman -Qi`, 09/10) — `fumo_svg_pdf.sh`
+
+```bash
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh bash docs/MiroClone/ferramentas/excalidraw_oracle/fumo_svg_pdf.sh <pasta>
+```
+
+| ferramenta | pacote · versão | licença do artefacto | papel | fumo |
+|---|---|---|---|---|
+| `resvg`/`usvg` | resvg 0.48.1 | Apache-2.0 / MIT | rasterizar o NOSSO SVG (a mesma `usvg` 0.48.1 do lock) | ok; ignora `@font-face` |
+| `rsvg-convert` | librsvg 2.63.2 | LGPL-2.1+ (só correr) | 2.º rasterizador SVG | ok; ignora `ns1:clip-path` |
+| `inkscape` | 1.4.4 | GPL/LGPL (só correr) | 3.º rasterizador; SVG→PDF (cairo 1.18.6) | ok |
+| `magick` | imagemagick 7.1.2-32 | ImageMagick (permissiva) | SVG via librsvg; PDF via gs | ok |
+| `pdftoppm`/`pdftocairo`/`pdfinfo` | poppler 26.08.0 | GPL-2/3 (só correr) | rasterizar o NOSSO PDF; PDF→SVG; metadados | ok; os dois iguais (max 0) |
+| `qpdf --check`/`--json` | qpdf 12.4.2 | Apache-2.0 / Artistic-2.0 | validar a ESTRUTURA do PDF (xref, streams) | ok |
+| `gs` | ghostscript 10.08.0 | **AGPL-3.0+** (só correr) | 2.º rasterizador PDF | ok |
+| `xmllint` | libxml2 2.15.4 | MIT | SVG bem-formado | ok |
+| `mutool`, `cairosvg`, `veraPDF`, `fitz`, `pypdf` | — | — | ausentes | — |
+| Python | pillow 12.3 (MIT-CMU), numpy 2.5.3, lxml 6.1.3 | — | comparar PNG | ok |
+
+Concordância sobre o SVG mínimo: librsvg × Inkscape × magick ≤ 8/255; × resvg máx 29 (1,48 % dos px,
+antialias). PDF mínimo: pdftoppm = pdftocairo; gs e magick diferem no texto (Type1 Helvetica). O SVG do
+Excalidraw rasterizado × o PNG do canvas: resvg 1,9 % · Inkscape 2,7 % · librsvg 3,7 % dos px > 8 (sobretudo o
+texto: o resvg avisa que salta o `@font-face`, as fontes caem no recurso).

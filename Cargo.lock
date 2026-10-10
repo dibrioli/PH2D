@@ -5198,6 +5198,7 @@ dependencies = [
 name = "ph2d-board-render"
 version = "0.0.0"
 dependencies = [
+ "flate2",
  "ph2d-board-edit",
  "ph2d-board-geom",
  "ph2d-board-layout",

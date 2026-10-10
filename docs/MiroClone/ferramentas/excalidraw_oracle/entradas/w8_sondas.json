@@ -1,0 +1,2389 @@
+{
+ "sondas_elementos": [
+  {
+   "nome": "minimo_rectangle",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_ellipse",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "ellipse"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_diamond",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "diamond"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_text",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_line",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_arrow",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "arrow"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_freedraw",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "freedraw"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_frame",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "frame"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_magicframe",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "magicframe"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_image",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "image"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_embeddable",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "embeddable"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_iframe",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "iframe"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_selection",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "selection"
+    }
+   ]
+  },
+  {
+   "nome": "minimo_com_id",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "meu-id"
+    }
+   ]
+  },
+  {
+   "nome": "tipo_desconhecido",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "star",
+     "id": "s1"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "ok"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_opacity_150",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "opacity": 150,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_opacity_menos5",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "opacity": -5,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_opacity_texto",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "opacity": "50",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_opacity_0",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "opacity": 0,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_roughness_7",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "roughness": 7,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_roughness_menos1",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "roughness": -1,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_strokeStyle_wavy",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "strokeStyle": "wavy",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_fillStyle_bogus",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "fillStyle": "bogus",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_strokeWidth_0",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "strokeWidth": 0,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_strokeWidth_menos3",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "strokeWidth": -3,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_roundness_tipo9",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "roundness": {
+      "type": 9
+     },
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_roundness_valor",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "roundness": {
+      "type": 3,
+      "value": 12
+     },
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_angle_10",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "angle": 10,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_angle_menos1",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "angle": -1,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_width_negativa",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": -50,
+     "height": -20,
+     "type": "rectangle",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_x_texto",
+   "elementos": [
+    {
+     "x": "10",
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_x_null",
+   "elementos": [
+    {
+     "x": null,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_strokeColor_invalida",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "strokeColor": "nao-e-cor",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_backgroundColor_rgba",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "backgroundColor": "rgba(1,2,3,0.5)",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_locked_texto",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "locked": "sim",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_customData",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "customData": {
+      "ph2d": {
+       "nota": 1
+      }
+     },
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_link_javascript",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "link": "javascript:alert(1)",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_link_sem_esquema",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "link": "example.com",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_link_http",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "link": "https://example.com/a?b=1",
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_isDeleted",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "isDeleted": true,
+     "id": "r"
+    }
+   ]
+  },
+  {
+   "nome": "invalido_versao_dada",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "v",
+     "version": 5,
+     "versionNonce": 7,
+     "seed": 9,
+     "updated": 1234
+    }
+   ]
+  },
+  {
+   "nome": "invalido_versao_zero",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "v0",
+     "version": 0,
+     "versionNonce": 0,
+     "seed": 0
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_99",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 99,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_texto",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": "Virgil",
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_1",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 1,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_2",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 2,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_3",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 3,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_4",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 4,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_5",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 5,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_6",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 6,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_7",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 7,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_8",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 8,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_9",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 9,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_fontFamily_10",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "fontFamily": 10,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_textAlign_justify",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "textAlign": "justify",
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_verticalAlign_baseline",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "verticalAlign": "baseline",
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_sem_fontSize",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_sem_originalText",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": "abc"
+    }
+   ]
+  },
+  {
+   "nome": "texto_originalText_diferente",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": "abc",
+     "originalText": "xyz"
+    }
+   ]
+  },
+  {
+   "nome": "texto_lineHeight_2",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "lineHeight": 2,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_autoResize_false",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "autoResize": false,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "texto_text_numero",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": 123
+    }
+   ]
+  },
+  {
+   "nome": "legado_strokeSharpness_round_rectangle",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "l",
+     "strokeSharpness": "round"
+    }
+   ]
+  },
+  {
+   "nome": "legado_strokeSharpness_sharp_rectangle",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "l",
+     "strokeSharpness": "sharp"
+    }
+   ]
+  },
+  {
+   "nome": "legado_strokeSharpness_round_line",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line",
+     "id": "l",
+     "strokeSharpness": "round"
+    }
+   ]
+  },
+  {
+   "nome": "legado_strokeSharpness_sharp_line",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line",
+     "id": "l",
+     "strokeSharpness": "sharp"
+    }
+   ]
+  },
+  {
+   "nome": "legado_strokeSharpness_round_diamond",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "diamond",
+     "id": "l",
+     "strokeSharpness": "round"
+    }
+   ]
+  },
+  {
+   "nome": "legado_strokeSharpness_sharp_diamond",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "diamond",
+     "id": "l",
+     "strokeSharpness": "sharp"
+    }
+   ]
+  },
+  {
+   "nome": "ref_containerId_ausente",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": "x",
+     "containerId": "nao-existe"
+    }
+   ]
+  },
+  {
+   "nome": "ref_boundElements_ausentes",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r",
+     "boundElements": [
+      {
+       "id": "nada",
+       "type": "arrow"
+      },
+      {
+       "id": "nada2",
+       "type": "text"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "ref_binding_ausente",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 0,
+     "type": "arrow",
+     "id": "a",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       0
+      ]
+     ],
+     "startBinding": {
+      "elementId": "nada",
+      "focus": 0,
+      "gap": 1
+     }
+    }
+   ]
+  },
+  {
+   "nome": "ref_binding_sem_reciproca",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r"
+    },
+    {
+     "x": 120,
+     "y": 20,
+     "width": 100,
+     "height": 0,
+     "type": "arrow",
+     "id": "a",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       0
+      ]
+     ],
+     "startBinding": {
+      "elementId": "r",
+      "focus": 0,
+      "gap": 1
+     }
+    }
+   ]
+  },
+  {
+   "nome": "ref_contentor_sem_reciproca",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": "x",
+     "containerId": "r"
+    }
+   ]
+  },
+  {
+   "nome": "ref_frameId_ausente",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r",
+     "frameId": "nada"
+    }
+   ]
+  },
+  {
+   "nome": "ref_groupIds_texto",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r",
+     "groupIds": "G"
+    }
+   ]
+  },
+  {
+   "nome": "pontos_primeiro_nao_zero",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line",
+     "id": "l",
+     "points": [
+      [
+       10,
+       10
+      ],
+      [
+       50,
+       30
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "pontos_um_so",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line",
+     "id": "l",
+     "points": [
+      [
+       0,
+       0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "pontos_caixa_errada",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 999,
+     "height": 999,
+     "type": "arrow",
+     "id": "a",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       40
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "pontos_negativos",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line",
+     "id": "l",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       -60,
+       -30
+      ],
+      [
+       40,
+       -10
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "freedraw_pressoes_curtas",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "freedraw",
+     "id": "f",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       5,
+       5
+      ],
+      [
+       10,
+       0
+      ]
+     ],
+     "pressures": [
+      0.5
+     ],
+     "simulatePressure": false
+    }
+   ]
+  },
+  {
+   "nome": "seta_elbowed_sem_fixedPoint",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r"
+    },
+    {
+     "x": 300,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "q"
+    },
+    {
+     "x": 111,
+     "y": 45,
+     "width": 100,
+     "height": 0,
+     "type": "arrow",
+     "id": "a",
+     "elbowed": true,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       188,
+       0
+      ]
+     ],
+     "startBinding": {
+      "elementId": "r",
+      "focus": 0,
+      "gap": 1
+     },
+     "endBinding": {
+      "elementId": "q",
+      "focus": 0,
+      "gap": 1
+     }
+    }
+   ]
+  },
+  {
+   "nome": "seta_elbowed_diagonal",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "arrow",
+     "id": "a",
+     "elbowed": true,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       50
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "seta_pontas",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 0,
+     "type": "arrow",
+     "id": "a",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       0
+      ]
+     ],
+     "startArrowhead": "bogus",
+     "endArrowhead": null
+    }
+   ]
+  },
+  {
+   "nome": "seta_sem_pontas_dadas",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 0,
+     "type": "arrow",
+     "id": "a",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       0
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "linha_polygon",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "line",
+     "id": "l",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       0
+      ],
+      [
+       50,
+       50
+      ],
+      [
+       0,
+       0
+      ]
+     ],
+     "polygon": true
+    }
+   ]
+  },
+  {
+   "nome": "imagem_sem_fileId",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "image",
+     "id": "i"
+    }
+   ]
+  },
+  {
+   "nome": "imagem_pending_escala",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "image",
+     "id": "i",
+     "fileId": "f",
+     "status": "pending",
+     "scale": [
+      -1,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "imagem_crop",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "image",
+     "id": "i",
+     "fileId": "f",
+     "crop": {
+      "x": 1,
+      "y": 2,
+      "width": 4,
+      "height": 4,
+      "naturalWidth": 8,
+      "naturalHeight": 8
+     }
+    }
+   ]
+  },
+  {
+   "nome": "indice_ausente_5",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r0"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r1"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r2"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r3"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r4"
+    }
+   ]
+  },
+  {
+   "nome": "indice_fora_de_ordem",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r0",
+     "index": "a5"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r1",
+     "index": null
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r2",
+     "index": "a1"
+    }
+   ]
+  },
+  {
+   "nome": "indice_invalido",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r0",
+     "index": "zz!"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r1",
+     "index": "a1"
+    }
+   ]
+  },
+  {
+   "nome": "indice_duplicado",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r0",
+     "index": "a1"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r1",
+     "index": "a1"
+    }
+   ]
+  },
+  {
+   "nome": "indice_valido_mantido",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r0",
+     "index": "a0"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r1",
+     "index": "a0V"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r2",
+     "index": "b0"
+    }
+   ]
+  },
+  {
+   "nome": "indice_40",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r00"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r01"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r02"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r03"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r04"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r05"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r06"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r07"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r08"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r09"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r10"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r11"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r12"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r13"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r14"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r15"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r16"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r17"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r18"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r19"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r20"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r21"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r22"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r23"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r24"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r25"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r26"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r27"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r28"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r29"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r30"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r31"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r32"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r33"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r34"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r35"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r36"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r37"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r38"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r39"
+    }
+   ]
+  },
+  {
+   "nome": "ids_duplicados",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "dup"
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "ellipse",
+     "id": "dup"
+    }
+   ]
+  },
+  {
+   "nome": "texto_em_contentor_grande",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r",
+     "boundElements": [
+      {
+       "id": "t",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 5,
+     "height": 5,
+     "type": "text",
+     "id": "t",
+     "text": "um texto muito comprido que nao cabe",
+     "containerId": "r"
+    }
+   ]
+  },
+  {
+   "nome": "texto_em_contentor_grande_refresh",
+   "opts": {
+    "refreshDimensions": true,
+    "repairBindings": true
+   },
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r",
+     "boundElements": [
+      {
+       "id": "t",
+       "type": "text"
+      }
+     ]
+    },
+    {
+     "x": 10,
+     "y": 20,
+     "width": 5,
+     "height": 5,
+     "type": "text",
+     "id": "t",
+     "text": "um texto muito comprido que nao cabe",
+     "containerId": "r"
+    }
+   ]
+  },
+  {
+   "nome": "texto_refresh_solto",
+   "opts": {
+    "refreshDimensions": true
+   },
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 5,
+     "height": 5,
+     "type": "text",
+     "id": "t",
+     "text": "Olá mundo",
+     "fontSize": 20,
+     "fontFamily": 5
+    }
+   ]
+  },
+  {
+   "nome": "texto_lineHeight_derivado_1linha",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 37,
+     "type": "text",
+     "id": "t",
+     "text": "a",
+     "fontSize": 20,
+     "fontFamily": 5
+    }
+   ]
+  },
+  {
+   "nome": "texto_lineHeight_derivado_2linhas",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "text",
+     "id": "t",
+     "text": "a\nb",
+     "fontSize": 20,
+     "fontFamily": 5
+    }
+   ]
+  },
+  {
+   "nome": "texto_lineHeight_altura0",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 0,
+     "type": "text",
+     "id": "t",
+     "text": "a",
+     "fontSize": 20,
+     "fontFamily": 5
+    }
+   ]
+  },
+  {
+   "nome": "texto_sem_fontFamily",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 25,
+     "type": "text",
+     "id": "t",
+     "text": "a",
+     "fontSize": 20
+    }
+   ]
+  },
+  {
+   "nome": "texto_completo_lineHeight_dado",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 99,
+     "type": "text",
+     "id": "t",
+     "text": "a",
+     "fontSize": 20,
+     "fontFamily": 1,
+     "lineHeight": 1.25
+    }
+   ]
+  },
+  {
+   "nome": "seta_binding_com_reciproca",
+   "elementos": [
+    {
+     "x": 10,
+     "y": 20,
+     "width": 100,
+     "height": 50,
+     "type": "rectangle",
+     "id": "r",
+     "boundElements": [
+      {
+       "id": "a",
+       "type": "arrow"
+      }
+     ]
+    },
+    {
+     "x": 111,
+     "y": 45,
+     "width": 100,
+     "height": 0,
+     "type": "arrow",
+     "id": "a",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       100,
+       0
+      ]
+     ],
+     "startBinding": {
+      "elementId": "r",
+      "focus": 0.3,
+      "gap": 4
+     }
+    }
+   ]
+  },
+  {
+   "nome": "linha_sem_caixa",
+   "elementos": [
+    {
+     "type": "line",
+     "id": "l",
+     "x": 5,
+     "y": 6,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       30,
+       40
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "convert_rectangle",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "rectangle",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  },
+  {
+   "nome": "convert_ellipse",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "ellipse",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  },
+  {
+   "nome": "convert_diamond",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "diamond",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  },
+  {
+   "nome": "convert_text",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "text",
+     "x": 0,
+     "y": 0,
+     "text": "Olá"
+    }
+   ]
+  },
+  {
+   "nome": "convert_line",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "line",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  },
+  {
+   "nome": "convert_arrow",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "arrow",
+     "x": 0,
+     "y": 0
+    }
+   ]
+  },
+  {
+   "nome": "convert_arrow_ligada",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "arrow",
+     "x": 100,
+     "y": 50,
+     "start": {
+      "type": "rectangle"
+     },
+     "end": {
+      "type": "ellipse"
+     }
+    }
+   ]
+  },
+  {
+   "nome": "convert_rectangle_label",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "rectangle",
+     "x": 0,
+     "y": 0,
+     "label": {
+      "text": "Olá caixa"
+     }
+    }
+   ]
+  },
+  {
+   "nome": "convert_frame",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "rectangle",
+     "id": "c",
+     "x": 10,
+     "y": 10
+    },
+    {
+     "type": "frame",
+     "children": [
+      "c"
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "convert_freedraw",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "freedraw",
+     "x": 0,
+     "y": 0,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       10
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "convert_image",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "fileId": "f"
+    }
+   ]
+  },
+  {
+   "nome": "convert_embeddable",
+   "via": "convert",
+   "elementos": [
+    {
+     "type": "embeddable",
+     "x": 0,
+     "y": 0,
+     "link": "https://example.com"
+    }
+   ]
+  }
+ ],
+ "sondas_appstate": [
+  {
+   "nome": "appstate_vazio",
+   "appState": {}
+  },
+  {
+   "nome": "appstate_nulo",
+   "appState": null
+  },
+  {
+   "nome": "appstate_lixo",
+   "appState": {
+    "viewBackgroundColor": 5,
+    "gridSize": -1,
+    "gridStep": 0,
+    "zoom": {
+     "value": 100
+    },
+    "theme": "x",
+    "scrollX": "a",
+    "name": 3,
+    "gridModeEnabled": "sim",
+    "currentItemFontFamily": 99,
+    "exportScale": 7
+   }
+  },
+  {
+   "nome": "appstate_legado_isSidebarDocked",
+   "appState": {
+    "isSidebarDocked": true
+   }
+  },
+  {
+   "nome": "appstate_ferramenta_desconhecida",
+   "appState": {
+    "activeTool": {
+     "type": "star"
+    }
+   }
+  },
+  {
+   "nome": "appstate_export",
+   "appState": {
+    "exportBackground": false,
+    "exportEmbedScene": true,
+    "exportWithDarkMode": true,
+    "exportScale": 3,
+    "viewBackgroundColor": "#123456",
+    "gridSize": 40,
+    "gridStep": 4,
+    "gridModeEnabled": true,
+    "name": "Quadro X"
+   }
+  }
+ ]
+}

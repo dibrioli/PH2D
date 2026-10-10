@@ -7,3 +7,4 @@ mod measure_gpu_raster_cost;
 mod measure_mind_layout_cost;
 mod measure_route_cost;
 mod measure_snap_cost;
+mod measure_team_cost;

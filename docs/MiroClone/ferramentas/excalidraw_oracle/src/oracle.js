@@ -10,6 +10,15 @@ import {
   exportToBlob,
   restoreElements,
   convertToExcalidrawElements,
+  // W8 (corre_esquema.mjs): o ficheiro .excalidraw de ida e volta.
+  restore,
+  restoreAppState,
+  serializeAsJSON,
+  loadFromBlob,
+  exportToCanvas,
+  FONT_FAMILY,
+  ROUNDNESS,
+  MIME_TYPES,
 } from "@excalidraw/excalidraw";
 
 async function blobToBase64(blob) {
@@ -144,5 +153,10 @@ window.oracle.editorUnmount = () => {
   if (editor) { editor.root.unmount(); editor.host.remove(); editor = null; }
 };
 // As funções públicas cruas, para sondas ad hoc (page.evaluate).
-window.oracle.api = { exportToSvg, exportToBlob, restoreElements, convertToExcalidrawElements };
+window.oracle.api = {
+  exportToSvg, exportToBlob, restoreElements, convertToExcalidrawElements,
+  restore, restoreAppState, serializeAsJSON, loadFromBlob, exportToCanvas,
+  FONT_FAMILY, ROUNDNESS, MIME_TYPES,
+};
+window.oracle.blobToBase64 = blobToBase64;
 window.oracleReady = true;

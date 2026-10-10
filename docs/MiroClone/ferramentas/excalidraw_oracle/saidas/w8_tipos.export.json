@@ -1,0 +1,1366 @@
+{
+  "svg": {
+    "base": {
+      "sha256": "57caa5e4506f8697f13af3744a82da07b29a5f5ba93254dec4cb98faee6ac8bb",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "bytes": 26314,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"940\" height=\"600\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "padding0": {
+      "sha256": "3a0e43df07b9263e5ceb3328fd5ef078b9215dba4af34bb59c98bb2f2a9d350f",
+      "width": "920",
+      "height": "580",
+      "viewBox": "0 0 920 580",
+      "bytes": 26303,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"920\" height=\"580\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "padding50": {
+      "sha256": "c7fa37fe098531d240137a3537123835be7d377c52ad0450d8c6b24955acf090",
+      "width": "1020",
+      "height": "680",
+      "viewBox": "0 0 1020 680",
+      "bytes": 26321,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"680\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "sem_fundo": {
+      "sha256": "af93093ec52677d0af914799806d1f7bad8ffbde1e88b5aecf8bda71213f9f46",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "bytes": 26255,
+      "font_faces": 2,
+      "rect_fundo": "<rect transform=\"translate(10 390) rotate(0 200 100)\" width=\"400px\" height=\"200px\" rx=\"8\" ry=\"8\" fill=\"none\" stroke=\"#bbb\" stroke-width=\"2\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "escuro": {
+      "sha256": "5663372bac68d9cde2471a498a54e554969d5f81b6f9bea47b8ecc65c2831c0a",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "filter": "invert(93%) hue-rotate(180deg)",
+      "bytes": 26410,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"940\" height=\"600\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "fundo_cor": {
+      "sha256": "90a00dae609b09678b487883386798ab0ee7fb105618fe2698f6e7f9a8df5f6b",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "bytes": 26314,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"940\" height=\"600\" fill=\"#ffec99\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "embed": {
+      "sha256": "5246afe8652c54ff4b578d028a994f48f09ded30457f714c99a6c7760b447c8f",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "bytes": 30493,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"940\" height=\"600\" fill=\"#ffffff\"/>",
+      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO2b6XLbNlx1MDAxMID/+yk0zM86Nlx1MDAwMd5uko58xHGa046TetJMXHUwMDA3XCIhXG5jXkOCltyMXHUwMDFmps/SXHUwMDE3K0hJJEDCXHU",
+      "metadata_bytes": 4169,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "sem_fontes_inline": {
+      "sha256": "a98b380e5b994f78940e2c276537a25c93a5b2ae56c885f2308ba2a57b0bc64f",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "bytes": 20687,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"940\" height=\"600\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "so_moldura": {
+      "sha256": "60fab9f2654af6aa3140a1282b77ce00b2917a16a3bc408389068d91edd7de9b",
+      "width": "400",
+      "height": "200",
+      "viewBox": "0 0 400 200",
+      "bytes": 8585,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"400\" height=\"200\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "render_embeddables": {
+      "sha256": "aa8fd0057670b2f9d17c0b59265f4ad9a0eee374f0111800d5d9a258f45424f0",
+      "width": "940",
+      "height": "600",
+      "viewBox": "0 0 940 600",
+      "bytes": 27147,
+      "font_faces": 2,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"940\" height=\"600\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 2,
+      "images": 1,
+      "foreignObjects": 2
+    }
+  },
+  "png": {
+    "base": {
+      "type": "image/png",
+      "bytes": 93053,
+      "sha256": "2f4a82fe6dda319708e948e85eccc9d91612790658680f690b5b121399bbedb9",
+      "width": 940,
+      "height": 600,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 2602
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "escala1": {
+      "type": "image/png",
+      "bytes": 93053,
+      "sha256": "2f4a82fe6dda319708e948e85eccc9d91612790658680f690b5b121399bbedb9",
+      "width": 940,
+      "height": 600,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 2602
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "escala3": {
+      "type": "image/png",
+      "bytes": 93053,
+      "sha256": "2f4a82fe6dda319708e948e85eccc9d91612790658680f690b5b121399bbedb9",
+      "width": 940,
+      "height": 600,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 2602
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "sem_fundo": {
+      "type": "image/png",
+      "bytes": 103845,
+      "sha256": "69d8ca6e048b14bf9c745a231adc3ba6ef240509d8f9f639fc6b0358724b117e",
+      "width": 940,
+      "height": 600,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 1070
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "escuro": {
+      "type": "image/png",
+      "bytes": 95851,
+      "sha256": "60e5de79a81bd167ee7a0a40bc791c6a22468335eeba57b05a6c7c88e5c4b29d",
+      "width": 940,
+      "height": 600,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 1292
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "embed": {
+      "type": "image/png",
+      "bytes": 95947,
+      "sha256": "69c76fe64fecb7b3e99fef58210351eea3795030fc200f0b3c71c55f0b300d17",
+      "width": 940,
+      "height": 600,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 2602
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "tEXt",
+          "len": 2882,
+          "keyword": "application/vnd.excalidraw+json",
+          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xíënÛ6\\u0014ÿç)\\fõçÒD¤îYÛÁNÒ4m×KÒ´\\u000bºb %Z&¢\\u001b$*vVäaö,{±Q-\\u0012cË»%\\u001dÀy9:$¿"
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "maxWidthOrHeight300": {
+      "type": "image/png",
+      "bytes": 20840,
+      "sha256": "4becf4f9ce7b73be7b0fdb37072d57dbddba5b1b83a0f769c7de24cf3e74608d",
+      "width": 300,
+      "height": 191,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 225
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "getDimensions_fixo": {
+      "type": "image/png",
+      "bytes": 33112,
+      "sha256": "396261ca13de42eeb90979c1d22eebfe9486da3f137eb9976a0d1d88238b535d",
+      "width": 400,
+      "height": 300,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 173
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "getDimensions_escala2": {
+      "type": "image/png",
+      "bytes": 245276,
+      "sha256": "fd780cea3f580de5defbd9361977ba466b18d7f2f35a0c4f3c0985b154b1941f",
+      "width": 1880,
+      "height": 1200,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 2829
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "so_moldura": {
+      "type": "image/png",
+      "bytes": 10317,
+      "sha256": "99ad1e49eb01a679e3f0b07376266e376678012f9fd6b20a683539b4976a19a5",
+      "width": 400,
+      "height": 200,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 2026
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "jpeg": {
+      "type": "image/jpeg",
+      "bytes": 46844,
+      "sha256": "9adadebec3862c4d4959010e8baa96782ebd6f67616877597f3aad849d7eaf5e",
+      "formato": "ffd8ffe0"
+    }
+  },
+  "canvas": {
+    "padding10": [
+      940,
+      600
+    ],
+    "padding0": [
+      920,
+      580
+    ]
+  },
+  "volta": {
+    "json": {
+      "n": 17,
+      "ids": [
+        "r1",
+        "t_r1",
+        "e1",
+        "d1",
+        "a1",
+        "a2",
+        "tx",
+        "l1",
+        "f1",
+        "fr1",
+        "g1a",
+        "g1b",
+        "g0c",
+        "img1",
+        "mf1",
+        "emb1",
+        "ifr1"
+      ],
+      "igual_ao_restore": true,
+      "files": [
+        "file1"
+      ],
+      "appState_view": "#ffffff",
+      "reserialize_igual": true
+    },
+    "png_embed": {
+      "n": 17,
+      "ids": [
+        "r1",
+        "t_r1",
+        "e1",
+        "d1",
+        "a1",
+        "a2",
+        "tx",
+        "l1",
+        "f1",
+        "fr1",
+        "g1a",
+        "g1b",
+        "g0c",
+        "img1",
+        "mf1",
+        "emb1",
+        "ifr1"
+      ],
+      "igual_ao_restore": true,
+      "files": [
+        "file1"
+      ],
+      "appState_view": "#ffffff"
+    },
+    "svg_embed": {
+      "n": 17,
+      "ids": [
+        "r1",
+        "t_r1",
+        "e1",
+        "d1",
+        "a1",
+        "a2",
+        "tx",
+        "l1",
+        "f1",
+        "fr1",
+        "g1a",
+        "g1b",
+        "g0c",
+        "img1",
+        "mf1",
+        "emb1",
+        "ifr1"
+      ],
+      "igual_ao_restore": true,
+      "files": [
+        "file1"
+      ],
+      "appState_view": "#ffffff"
+    },
+    "svg_sem_embed": {
+      "erro": "EncodingError: Image doesn't contain scene"
+    }
+  }
+}

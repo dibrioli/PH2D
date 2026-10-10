@@ -31,6 +31,7 @@
 
 pub mod camera;
 pub mod drag;
+pub mod group;
 pub mod hit;
 pub mod model;
 pub mod paint;
@@ -47,6 +48,7 @@ pub use camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
 pub use drag::{
     GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, GroupDragSnapshot, TransformSnapshot,
 };
+pub use group::{GroupMotion, MemberPose, group_member_pose, skew_under_world_scale};
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
 pub use model::{MODEL_IDENTITY, model_apply, model_inverse, skew_about, skew_translation_out};
 pub use paint::{

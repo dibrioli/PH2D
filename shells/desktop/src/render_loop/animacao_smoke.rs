@@ -5,7 +5,8 @@
 //! Timeline aberto (`=2`: «Animation: Scene» e «Add animation to Inimigo»). `=4` (onda 5): o Herói
 //! com uma Signal Action «Play Clip» — o parâmetro é o ▾ com «andar» e «pular» — e a «Bandeira»,
 //! uma sprite com SKEW cuja caixa de gizmo é o paralelogramo desenhado (`=5`: a mesma cena, com a
-//! Bandeira seleccionada).
+//! Bandeira seleccionada; `=6`: a Bandeira sem rotação e a Caixa, as duas seleccionadas — esticar o
+//! grupo na horizontal muda o ângulo da inclinação, como o desenho esticado).
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
@@ -64,8 +65,8 @@ impl crate::App {
             ))
             .id()
             .to_bits();
-        let mut bandeira = None;
-        if nivel == "4" || nivel == "5" {
+        let (mut bandeira, mut caixa) = (None, None);
+        if matches!(nivel.as_str(), "4" | "5" | "6") {
             world
                 .entity_mut(heroi)
                 .insert(ph2d_ecs::SignalActions(vec![ph2d_ecs::SignalAction {
@@ -76,7 +77,8 @@ impl crate::App {
                 }]));
             let mut torta = Transform::from_translation(Vec2::new(0.5, -1.2));
             torta.skew_x = 0.5;
-            torta.rotation = 0.3;
+            // Em `=6` sem rotação: rodada, a escala do grupo é uniforme e o skew não muda.
+            torta.rotation = if nivel == "6" { 0.0 } else { 0.3 };
             bandeira = Some(
                 world
                     .spawn((
@@ -87,6 +89,19 @@ impl crate::App {
                     .id()
                     .to_bits(),
             );
+            if nivel == "6" {
+                let lado = Transform::from_translation(Vec2::new(3.5, -1.2));
+                caixa = Some(
+                    world
+                        .spawn((
+                            lado,
+                            sprite(1.0, 1.0, [0.9, 0.8, 0.2, 1.0]),
+                            Name::new("Caixa"),
+                        ))
+                        .id()
+                        .to_bits(),
+                );
+            }
         }
         let heroi = heroi.to_bits();
 
@@ -118,10 +133,11 @@ impl crate::App {
             let segundo = nivel == "2";
             let alvo = match (segundo, bandeira) {
                 (true, _) => inimigo,
-                (false, Some(b)) if nivel == "5" => b,
+                (false, Some(b)) if nivel == "5" || nivel == "6" => b,
                 _ => heroi,
             };
             hero.gizmo.replace_selection(Some(alvo));
+            hero.gizmo.extra_selection.extend(caixa);
             // O ▾ aberto: o estado do chip vive no `store` do ecrã (o `populate` regista-o no arranque).
             if segundo
                 && let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {

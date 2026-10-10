@@ -53,12 +53,11 @@ impl crate::App {
                     ph2d_editor_core::GizmoDragKind::ScaleCorner { .. }
                         | ph2d_editor_core::GizmoDragKind::ScaleEdge { .. }
                 )
-                && (drag.start_transform.rotation != 0.0
-                    || self
-                        .group_drag_starts
-                        .iter()
-                        .any(|s| s.start_transform.rotation != 0.0))
-            {
+                // A rotação de MUNDO (pai·local): um filho de pai rodado também está rodado.
+                && (drag.parent_world.rotation + drag.start_transform.rotation != 0.0
+                    || self.group_drag_starts.iter().any(|s| {
+                        s.parent_world.rotation + s.start_transform.rotation != 0.0
+                    })) {
                 let ss = drag.start_transform.scale;
                 let fx = if ss[0].abs() > f32::EPSILON {
                     new_t.scale[0] / ss[0]

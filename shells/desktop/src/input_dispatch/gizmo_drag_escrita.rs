@@ -29,10 +29,13 @@ impl crate::App {
         factor_y: f32,
     ) {
         if let Some(gfx) = self.gfx.as_mut() {
-            let is_global = matches!(drag.target, ph2d_editor_core::GizmoTarget::Global);
-            let pivot = drag.pivot_world;
-            // T1.3.5 cross-OS bit-identical.
-            let (sin_d, cos_d) = libm::sincosf(delta_rot);
+            // A conta de cada membro (e o skew sob a escala de mundo) é a `gizmo::group_member_pose`.
+            let movimento = ph2d_editor_core::gizmo::GroupMotion {
+                pivot: drag.pivot_world,
+                delta_rot,
+                factor: [factor_x, factor_y],
+                global: matches!(drag.target, ph2d_editor_core::GizmoTarget::Global),
+            };
             // (bits, depth, start_local, start_parent_world) for the
             // dragged primary + every extra. Depth = ChildOf chain
             // length; sort ascending (tie-break on bits for HR-5
@@ -77,56 +80,39 @@ impl crate::App {
             members.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
             for (bits, _depth, start_local, start_parent) in members {
                 let member = ph2d_ecs::Entity::from_bits(bits);
-                // START world = start_parent ∘ start_local.
-                let start_world = ph2d_editor_core::compose_snapshot(start_parent, start_local);
-                let target_rotation = start_world.rotation + delta_rot;
-                let target_scale = [
-                    start_world.scale[0] * factor_x,
-                    start_world.scale[1] * factor_y,
-                ];
-                let target_translation = if is_global {
-                    // Orbit (+ scale) the world position around the
-                    // shared global pivot.
-                    let rel_x = start_world.translation[0] - pivot[0];
-                    let rel_y = start_world.translation[1] - pivot[1];
-                    let scaled_x = rel_x * factor_x;
-                    let scaled_y = rel_y * factor_y;
-                    [
-                        pivot[0] + scaled_x * cos_d - scaled_y * sin_d,
-                        pivot[1] + scaled_x * sin_d + scaled_y * cos_d,
-                    ]
-                } else {
-                    // Local pivot: each sprite turns about its own
-                    // center → its world position is unchanged.
-                    start_world.translation
-                };
-                // Convert the target WORLD transform back to LOCAL
-                // against the parent's CURRENT world (reflects any
-                // selected ancestor already written this frame).
+                // O pai de AGORA (um antepassado seleccionado já pode ter sido escrito neste quadro).
                 let live_parent = ph2d_ecs::parent_world_transform(gfx.sim.world(), member);
                 let live_parent = ph2d_editor_core::TransformSnapshot {
                     translation: [live_parent.translation.x, live_parent.translation.y],
                     rotation: live_parent.rotation,
                     scale: [live_parent.scale.x, live_parent.scale.y],
                 };
-                let new_translation =
-                    ph2d_editor_core::world_translation_to_local(live_parent, target_translation);
-                let new_rotation = target_rotation - live_parent.rotation;
-                let psx = if live_parent.scale[0].abs() > 1e-6 {
-                    live_parent.scale[0]
-                } else {
-                    1.0
+                let Some(&vivo) = gfx.sim.world().get::<Transform>(member) else {
+                    continue;
                 };
-                let psy = if live_parent.scale[1].abs() > 1e-6 {
-                    live_parent.scale[1]
-                } else {
-                    1.0
-                };
-                let new_scale = [target_scale[0] / psx, target_scale[1] / psy];
+                let skew = [vivo.skew_x, vivo.skew_y];
+                let mundo = ph2d_ecs::world_skew(gfx.sim.world(), member);
+                let pose = ph2d_editor_core::gizmo::group_member_pose(
+                    start_local,
+                    start_parent,
+                    live_parent,
+                    [mundo[0] - skew[0], mundo[1] - skew[1]],
+                    (
+                        ph2d_editor_core::TransformSnapshot {
+                            translation: [vivo.translation.x, vivo.translation.y],
+                            rotation: vivo.rotation,
+                            scale: [vivo.scale.x, vivo.scale.y],
+                        },
+                        skew,
+                    ),
+                    movimento,
+                );
                 if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(member) {
-                    t.translation = ph2d_core::Vec2::new(new_translation[0], new_translation[1]);
-                    t.rotation = new_rotation;
-                    t.scale = ph2d_core::Vec2::new(new_scale[0], new_scale[1]);
+                    t.translation = ph2d_core::Vec2::new(pose.translation[0], pose.translation[1]);
+                    t.rotation = pose.rotation;
+                    t.scale = ph2d_core::Vec2::new(pose.scale[0], pose.scale[1]);
+                    t.skew_x = pose.skew[0];
+                    t.skew_y = pose.skew[1];
                 }
             }
         }

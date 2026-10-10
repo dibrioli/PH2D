@@ -31,7 +31,7 @@ mod distantes;
 /// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_fina.rs"]
 mod fina;
-/// ⭐ A cascata holográfica (W5c, o nível Ultra) — ficheiro irmão pelo mesmo tecto.
+/// ⭐ A cascata holográfica (W5c) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_hrc.rs"]
 mod holo;
 /// ⭐ O rebote (W5c) — ficheiro irmão pelo mesmo tecto.

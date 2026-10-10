@@ -11,7 +11,7 @@ fn g10_dois_quadros_da_mesma_cena_sao_bit_identicos() {
     let Some(gpu) = gpu() else { return };
     let (_, lado, texel) = DEGRAUS[0];
     let cena = ceu_e_vidro();
-    // ⭐ W5c: e a cascata holográfica (o nível Ultra).
+    // ⭐ W5c: e a cascata holográfica (a do produto).
     for holografica in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
         let cfg = Config {
             holografica,

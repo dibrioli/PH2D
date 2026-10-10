@@ -12,7 +12,7 @@ mod g3_rc_contra_gabarito;
 mod g4_custo_independe_das_luzes;
 mod g5_bytes_declarados;
 mod g9_rebote;
+mod holografica;
 mod junto_a_face;
 mod medicao;
 mod medida_luz2d;
-mod ultra_hrc;

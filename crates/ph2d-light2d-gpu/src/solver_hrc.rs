@@ -1,4 +1,4 @@
-//! ⭐ **A cascata holográfica na placa** (W5c, o nível Ultra) — o plano dos passes do `c2_hrc.wgsl`
+//! ⭐ **A cascata holográfica na placa** (W5c) — o plano dos passes do `c2_hrc.wgsl`
 //! (por quadrante: T0–T2 traçados, T3..TN e R_{N−1}..R0 pelas fusões, a soma; depois a saída na c0),
 //! montado UMA vez (os grupos e os uniformes não mudam com a cena) e regravado por quadro. Módulo-filho
 //! do [`super`].

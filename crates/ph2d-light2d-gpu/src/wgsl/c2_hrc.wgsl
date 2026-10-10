@@ -1,4 +1,4 @@
-// C2 HOLOGRÁFICA (W5c, o nível «Ultra») — Holographic Radiance Cascades (Freeman, Sannikov, Margel,
+// C2 HOLOGRÁFICA (W5c, a do produto em todo nível) — Holographic Radiance Cascades (Freeman, Sannikov, Margel,
 // arXiv 2505.02041; descrição para implementar em `docs/Luz2D/pesquisa/research_notes/
 // hrc_para_implementar.md`). Substitui as cascatas: escreve a MESMA c0 (fluência por texel das
 // cascatas, alfa = fora dos opacos) que a C3, o rebote e os receptores leem.

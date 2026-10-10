@@ -136,13 +136,16 @@ pub struct Config {
     /// ⭐ W5c — o REBOTE (plano §2.4): a luz que chega a um corpo opaco que recebe luz volta ao
     /// plano × o albedo dele, um rebote por quadro (a fonte do quadro anterior, lida no MUNDO).
     pub rebote: bool,
+    /// ⭐ W5c: quantos texels para FORA da face a fonte do rebote lê a parte das cascatas (a luz
+    /// direta, na face).
+    pub recuo_da_fonte: f32,
     /// ⭐ W5c — a fusão das cascatas junto a uma parede (o ABERTO 1 da W5a).
     pub mascara_da_fusao: MascaraDaFusao,
     /// ⭐ W5c — a fronteira entre intervalos junto a uma face (o `FRONTEIRA_NA_FACE` do
     /// `c2_rc.wgsl`): uma sonda de cima dentro de um opaco (ou sobre a face) zerava a fusão inteira e o
     /// raio de baixo que acaba dentro da face perdia a entrada nela.
     pub fronteira_na_face: bool,
-    /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, o nível Ultra) no lugar das cascatas de Sannikov: a mesma
+    /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
 }
@@ -288,6 +291,7 @@ impl Config {
             distantes: true,
             mascara_px: MASCARA_PX_PADRAO,
             rebote: false,
+            recuo_da_fonte: 0.0,
             mascara_da_fusao: MascaraDaFusao::PeloFim,
             fronteira_na_face: true,
             holografica: None,

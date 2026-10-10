@@ -1,4 +1,4 @@
-//! ⭐ W5c — **o nível Ultra: a cascata holográfica** (HRC) contra o gabarito e contra as cascatas
+//! ⭐ W5c — **a cascata holográfica** (HRC, a do produto em todo nível) contra o gabarito e contra as cascatas
 //! clássicas, nas cenas que passam pelas CASCATAS (a lâmpada direta da C3 não depende delas).
 
 use ph2d_light2d_ecs::CenaDeLuz;
@@ -7,22 +7,22 @@ use ph2d_light2d_gpu::{Config, HOLOGRAFICA_PADRAO, Holografica, Solver};
 use crate::cenas::{DEGRAUS, ceu_e_vidro, penumbra_pelas_cascatas, regiao_livre_longe};
 use crate::comum::{dentro_de_opaco, gabarito, gpu, grade, ler_fluencia, rmse_rel};
 
-// Os tetos do Ultra — medido + 10 % na RTX 5060 Ti (W5c; tabela no handoff):
+// Os tetos da holográfica — medido + 10 % na RTX 5060 Ti (W5c; tabela no handoff):
 // - a penumbra pelas cascatas no Alto: holográfica 0,0757 × clássica 0,1175; céu e vidro 0,0075;
 // - junto a uma face (o pior de 6 desvios; longe · próprio): Alto 0,003 · 0,002 · Médio 0,007 ·
 //   0,005 · Baixo 0,011 · 0,009 (a clássica até 0,046 · 0,215);
 // - o G9 do rebote: 0,0092 · 0,0104 · 0,0071 (a clássica 0,044 · 0,074 · 0,131);
 // - o pan (a grade por blocos, 3 vistas): 0,00061.
-const TOL_PENUMBRA_ULTRA: f64 = 0.0833;
-const TOL_CEU_E_VIDRO_ULTRA: f64 = 0.0083;
-const TOL_FACE_ULTRA: [[f64; 2]; 3] = [[0.0035, 0.0025], [0.0077, 0.0055], [0.0121, 0.0099]];
-const TOL_G9_ULTRA: [f64; 3] = [0.0101, 0.0115, 0.0079];
-const TOL_PAN_ULTRA: f64 = 0.00067;
+const TOL_PENUMBRA_HOLO: f64 = 0.0833;
+const TOL_CEU_E_VIDRO_HOLO: f64 = 0.0083;
+const TOL_FACE_HOLO: [[f64; 2]; 3] = [[0.0035, 0.0025], [0.0077, 0.0055], [0.0121, 0.0099]];
+const TOL_G9_HOLO: [f64; 3] = [0.0101, 0.0115, 0.0079];
+const TOL_PAN_HOLO: f64 = 0.00067;
 
-/// ⭐ **O Ultra bate o Alto na penumbra** das cascatas (a afirmação do artigo, Fig. 8) e iguala-o no
+/// ⭐ **A holográfica bate a clássica na penumbra** das cascatas (a afirmação do artigo, Fig. 8) e iguala-o no
 /// céu e vidro.
 #[test]
-fn g3_o_ultra_bate_o_alto_na_penumbra() {
+fn g3_a_holografica_bate_a_classica_na_penumbra() {
     let Some(gpu) = gpu() else { return };
     let (_, lado, texel) = DEGRAUS[0];
     let g = grade(lado, texel);
@@ -30,33 +30,33 @@ fn g3_o_ultra_bate_o_alto_na_penumbra() {
     let r = gabarito(&cena, &g);
     let dentro = dentro_de_opaco(&cena, &g);
     let (classica, _) = rodar(&gpu, Config::padrao(g), &cena);
-    let (ultra, _) = rodar(
+    let (holo, _) = rodar(
         &gpu,
         com(Config::padrao(g), Some(HOLOGRAFICA_PADRAO)),
         &cena,
     );
     let (ec, eu) = (
         rmse_rel(&classica, &r, |k| !dentro(k)),
-        rmse_rel(&ultra, &r, |k| !dentro(k)),
+        rmse_rel(&holo, &r, |k| !dentro(k)),
     );
-    eprintln!("G3 Ultra · penumbra pelas cascatas: holográfica {eu:.4} · clássica {ec:.4}");
-    assert!(eu <= TOL_PENUMBRA_ULTRA && eu < ec, "{eu:.4} × {ec:.4}");
+    eprintln!("G3 holográfica · penumbra pelas cascatas: holográfica {eu:.4} · clássica {ec:.4}");
+    assert!(eu <= TOL_PENUMBRA_HOLO && eu < ec, "{eu:.4} × {ec:.4}");
     let cena = ceu_e_vidro();
     let r = gabarito(&cena, &g);
     let dentro = dentro_de_opaco(&cena, &g);
-    let (ultra, _) = rodar(
+    let (holo, _) = rodar(
         &gpu,
         com(Config::padrao(g), Some(HOLOGRAFICA_PADRAO)),
         &cena,
     );
-    let e = rmse_rel(&ultra, &r, |k| !dentro(k));
-    eprintln!("G3 Ultra · céu e vidro: {e:.4}");
-    assert!(e <= TOL_CEU_E_VIDRO_ULTRA, "{e:.4}");
+    let e = rmse_rel(&holo, &r, |k| !dentro(k));
+    eprintln!("G3 holográfica · céu e vidro: {e:.4}");
+    assert!(e <= TOL_CEU_E_VIDRO_HOLO, "{e:.4}");
 }
 
-/// ⭐ **O Ultra junto a uma face** — em todo alinhamento e degrau.
+/// ⭐ **A holográfica junto a uma face** — em todo alinhamento e degrau.
 #[test]
-fn o_ultra_junto_a_uma_face_e_o_gabarito() {
+fn a_holografica_junto_a_uma_face_e_o_gabarito() {
     let Some(gpu) = gpu() else { return };
     let mut falhas = Vec::new();
     for (k, (degrau, lado, texel)) in DEGRAUS.into_iter().enumerate() {
@@ -69,7 +69,7 @@ fn o_ultra_junto_a_uma_face_e_o_gabarito() {
                 (40.0 + desvio) * t,
                 (100.0 + desvio) * t,
             );
-            if l > TOL_FACE_ULTRA[k][0] || p > TOL_FACE_ULTRA[k][1] {
+            if l > TOL_FACE_HOLO[k][0] || p > TOL_FACE_HOLO[k][1] {
                 falhas.push(format!(
                     "{degrau} desvio {desvio}: longe {l:.4} · próprio {p:.4}"
                 ));
@@ -79,9 +79,9 @@ fn o_ultra_junto_a_uma_face_e_o_gabarito() {
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
 
-/// ⭐ **G9 no Ultra** — o rebote converge para o gabarito em todo degrau.
+/// ⭐ **G9 na holográfica** — o rebote converge para o gabarito em todo degrau.
 #[test]
-fn g9_o_rebote_no_ultra() {
+fn g9_o_rebote_na_holografica() {
     use crate::g9_rebote::{luz_na_placa, pontos, sala};
     use ph2d_light2d_ref::{OpcoesDoRebote, Rebote};
     let Some(gpu) = gpu() else { return };
@@ -110,7 +110,7 @@ fn g9_o_rebote_no_ultra() {
             let e = (0..3)
                 .map(|c| (l[c] - r[c]).abs() / r[c])
                 .fold(0.0, f64::max);
-            if e > TOL_G9_ULTRA[k] {
+            if e > TOL_G9_HOLO[k] {
                 falhas.push(format!("{degrau} {p:?}: {e:.4}"));
             }
         }
@@ -118,13 +118,13 @@ fn g9_o_rebote_no_ultra() {
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
 
-/// ⭐ **O Ultra não muda com o pan** — a grade por blocos, os mesmos pontos do mundo.
+/// ⭐ **A holográfica não muda com o pan** — a grade por blocos, os mesmos pontos do mundo.
 #[test]
-fn o_ultra_nao_muda_com_o_pan() {
+fn a_holografica_nao_muda_com_o_pan() {
     let Some(gpu) = gpu() else { return };
     let pior = pior_no_pan(&gpu, Some(HOLOGRAFICA_PADRAO));
-    eprintln!("Ultra · pan: pior {pior:.5}");
-    assert!(pior <= TOL_PAN_ULTRA, "{pior:.5}");
+    eprintln!("holográfica · pan: pior {pior:.5}");
+    assert!(pior <= TOL_PAN_HOLO, "{pior:.5}");
 }
 
 pub fn com(cfg: Config, holografica: Option<Holografica>) -> Config {

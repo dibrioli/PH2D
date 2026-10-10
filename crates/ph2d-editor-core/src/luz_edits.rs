@@ -89,14 +89,11 @@ pub enum NivelDaLuz {
     /// Células de 1–2 px.
     #[default]
     Alta,
-    /// ⭐ W5c — as células da Alta com a CASCATA HOLOGRÁFICA (HRC) no lugar das cascatas: a luz junto
-    /// às faces e o rebote quase exatos (o limite: a luz pequena, de raio < ~6 células).
-    Ultra,
 }
 
 impl NivelDaLuz {
     /// Do mais barato ao mais nítido.
-    pub const ALL: [Self; 4] = [Self::Baixa, Self::Media, Self::Alta, Self::Ultra];
+    pub const ALL: [Self; 3] = [Self::Baixa, Self::Media, Self::Alta];
 
     /// O lado da célula, em px de tela.
     #[must_use]
@@ -105,7 +102,6 @@ impl NivelDaLuz {
             Self::Baixa => 4.0, // LITERAL-PX-OK: o degrau da W3 (K7 a 1080p)
             Self::Media => 2.0, // LITERAL-PX-OK: uma oitava abaixo
             Self::Alta => 1.0,  // LITERAL-PX-OK: duas oitavas abaixo
-            Self::Ultra => 1.0, // LITERAL-PX-OK: a célula da Alta (muda a conta, não a grade)
         }
     }
 
@@ -116,7 +112,6 @@ impl NivelDaLuz {
             Self::Baixa => "chrome.menu.light_low",
             Self::Media => "chrome.menu.light_medium",
             Self::Alta => "chrome.menu.light_high",
-            Self::Ultra => "chrome.menu.light_ultra",
         }
     }
 
@@ -127,7 +122,6 @@ impl NivelDaLuz {
             Self::Baixa => "low",
             Self::Media => "medium",
             Self::Alta => "high",
-            Self::Ultra => "ultra",
         }
     }
 

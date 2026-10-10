@@ -588,3 +588,45 @@ fn sonda_g9_holografica() {
         eprintln!("G9 holográfica {degrau}: {}", e.join(" · "));
     }
 }
+
+/// Sonda (à mão): o G9 no Alto (texel 1 cm) com a grade maior (mais cascatas), a sala no centro.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_g9_pelo_tamanho_da_grade() {
+    let Some(gpu) = gpu() else { return };
+    let cena = sala();
+    let serie = Rebote::resolver(
+        &cena,
+        OpcoesDoRebote {
+            passo_m: 0.01,
+            rebotes: 300,
+        },
+    );
+    let gab = pontos().map(|p| serie.luz_em(p));
+    for lado in [512u32, 1024, 2048] {
+        for holografica in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
+            let meio = 0.01 * f64::from(lado) / 2.0;
+            let g = Grade {
+                origem_m: [2.5 - meio, 1.75 - meio],
+                texel_m: 0.01,
+                largura: lado,
+                altura: lado,
+            };
+            let cfg = Config {
+                holografica,
+                ..com_rebote(g, true)
+            };
+            let n = cfg.n_cascatas();
+            let mut s = Solver::novo(&gpu, cfg).expect("solver");
+            let placa = depois_de(&gpu, &mut s, &cena, QUADROS);
+            let e: Vec<String> = (0..4)
+                .map(|i| format!("{:+.4}", (placa[i][1] - gab[i][1]) / gab[i][1]))
+                .collect();
+            eprintln!(
+                "grade {lado}² ({n} cascatas) holográfica {}: {}",
+                holografica.is_some(),
+                e.join(" ")
+            );
+        }
+    }
+}

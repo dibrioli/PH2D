@@ -243,7 +243,7 @@ impl LuzDoQuadro {
             return;
         };
         let (fina, captura) = (self.fina, self.captura);
-        // ⭐ W5c: o Ultra (a cascata holográfica) tem a grade da Alta — a troca recria o solver.
+        // ⭐ W5c: a cascata holográfica (o degrau escolhe-a; a troca recria o solver).
         let holografica = self
             .degrau
             .holografica

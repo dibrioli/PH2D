@@ -185,7 +185,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.light_low" => "Low",
         "chrome.menu.light_medium" => "Medium",
         "chrome.menu.light_high" => "High",
-        "chrome.menu.light_ultra" => "Ultra",
         "chrome.menu.light_automatic" => "Automatic",
         "chrome.menu.interface_font" => "Interface font",
         "chrome.menu.font_weight" => "Font weight",

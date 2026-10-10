@@ -1,4 +1,4 @@
-//! ⭐ **A geometria da cascata holográfica** (W5c, o nível Ultra; `c2_hrc.wgsl`) — CPU, pura: os
+//! ⭐ **A geometria da cascata holográfica** (W5c; `c2_hrc.wgsl`) — CPU, pura: os
 //! quadrantes, os níveis, as sondas e os bytes dos buffers. A MESMA conta dá a `PassList` (G5) e o
 //! plano dos passes do solver.
 
@@ -62,9 +62,10 @@ impl Quadrante {
         Self { x, y, n }
     }
 
-    /// As sondas ao longo de u na cascata `n` (uma além da grade: a fusão lê `xi + 1`).
+    /// As sondas ao longo de u na cascata `n` DENTRO da grade (`xi·2ⁿ < X`): a de fora tem o traço
+    /// no vácuo e o cone no céu — o shader responde-os sem os guardar.
     pub(crate) fn nx(&self, n: u32) -> u32 {
-        (self.x - 1) / (1 << n) + 2
+        self.x.div_ceil(1 << n)
     }
 
     /// Entradas de T_n.
@@ -148,7 +149,7 @@ mod testes {
         assert_eq!((q.x, q.y, q.n), (600, 340, 10));
         assert_eq!(Quadrante::de(1, [600, 340]).n, 9);
         assert_eq!(Quadrante::de(0, [5, 5]).n, 3);
-        // A sonda além da grade existe em todo nível.
-        assert!(q.nx(10) * 1024 >= 600 + 1024);
+        // Só as sondas de dentro da grade se guardam; a do topo é uma.
+        assert_eq!((q.nx(0), q.nx(1), q.nx(10)), (600, 300, 1));
     }
 }

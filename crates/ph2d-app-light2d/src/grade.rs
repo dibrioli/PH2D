@@ -30,7 +30,8 @@ pub struct Degrau {
     /// ⭐ O lado de um texel da captura FINA dos opacos (onde a luz direta marcha, W5a) em píxeis no
     /// zoom mais fino da oitava. Mais grosso que o `c0_px`, a captura é a das cascatas.
     pub captura_px: f64,
-    /// ⭐ W5c: a CASCATA HOLOGRÁFICA (o nível Ultra) no lugar das cascatas.
+    /// ⭐ W5c: a CASCATA HOLOGRÁFICA (HRC) no lugar das cascatas de Sannikov — ver o
+    /// [`DEGRAU_PADRAO`].
     pub holografica: bool,
 }
 
@@ -46,13 +47,20 @@ pub struct Degrau {
 /// de 5 cm faz a sombra do gabarito (massa 2,6 % · fundo 0,027; a das cascatas não a via; a de 1 px
 /// alargava a lasca 11 %), por 0,06 ms de captura, +65 MB e o Vello da camada do vetor a 8 px por
 /// texel (0,50 ms contra 0,23).
+///
+/// ⭐ W5c — a CASCATA HOLOGRÁFICA em todo nível (rodada `medida_luz2d_w5c`, 1920×1080, vista de
+/// fábrica, `load` 0,8; tabela no handoff W5c): o rebote da cena 3 contra o gabarito Baixo · Médio ·
+/// Alto 5,5 · 24 · 39 % → 2,1 · 2,2 · 1,0 %; a luz junto a uma face até 21 % → ≤ 1,1 %; o tempo
+/// 2,8–4,5 · 6,9–9,8 · 22,4–31,0 → 1,8–3,8 · 5,1–6,7 · 26,3–28,4 ms; a memória 109 · 146 · 244 →
+/// 148 · 309 · 894 MB (o recurso que ela paga). O limite medido: a luz menor que ~3 células de raio
+/// (−20 % de viés no raio 1,5; os vaga-lumes da cena 2 têm ~2 no Baixo e saem a −2,7 %).
 pub const DEGRAU_PADRAO: Degrau = Degrau {
     c0_px: 4.0,
     margem: 0.125,
     vetor_px_por_texel: 1,
     fino_px: 1.0,
     captura_px: 0.5,
-    holografica: false,
+    holografica: true,
 };
 
 /// O texel de `px` píxeis no zoom mais fino da oitava: a potência de 2 em metros (G11).

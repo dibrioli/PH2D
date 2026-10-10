@@ -13,8 +13,8 @@ use crate::comum::{H, W, afim, gpu, renderer};
 fn cada_nivel_tem_a_sua_celula() {
     assert_eq!(
         N::ALL.map(|n| (degrau_do(n).c0_px, degrau_do(n).holografica)),
-        [(4.0, false), (2.0, false), (1.0, false), (1.0, true)],
-        "Baixa · Média · Alta · Ultra (a célula da Alta com a cascata holográfica)"
+        [(4.0, true), (2.0, true), (1.0, true)],
+        "Baixa · Média · Alta, todas com a cascata holográfica (W5c)"
     );
 }
 

@@ -211,11 +211,9 @@ impl TimeMap {
             TimeMode::Scale => scaled + self.offset,
             TimeMode::Freeze => self.offset,
             TimeMode::Driven => {
-                let u = if self.drive.is_nan() {
-                    0.0
-                } else {
-                    self.drive.clamp(0.0, 1.0)
-                };
+                // O limite `0..1` vive no `sample_curve_lut` (a prova de mutação do ciclo 19 achou-o
+                // escrito duas vezes); aqui só o `NaN`, que nenhum `clamp` resolve.
+                let u = if self.drive.is_nan() { 0.0 } else { self.drive };
                 self.offset + self.duration * f64::from(sample_curve_lut(&self.curve, u as f32))
             }
             TimeMode::Reverse => self.offset - scaled,

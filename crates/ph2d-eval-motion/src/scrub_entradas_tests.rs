@@ -242,3 +242,21 @@ fn with_the_clock_stopped_dragging_forward_replays_the_recorded_inputs() {
         "a fita guardou o ramo"
     );
 }
+
+/// ⭐ **Derivar duas vezes no MESMO tique dá o MESMO pulso** — as sub-passadas da placa e um
+/// re-cozimento do mesmo tique voltam a derivar; o pulso compara com as contagens de ANTES do tique,
+/// nunca com as que a própria derivação acabou de guardar.
+#[test]
+fn a_second_derivation_in_the_same_tick_keeps_the_pulse() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    conta(&mut pump, 0.0);
+    scrub(&mut pump, &g, c, 0);
+    conta(&mut pump, 1.0);
+    assert_eq!(scrub(&mut pump, &g, c, 1), 1.0, "o disparo pulsa no tique 1");
+    pump.mark_dirty_keeping_ring();
+    // O mesmo tique outra vez: o estado já somou o tique 1 (a lei do re-cozimento), e o pulso
+    // continua a ser 1 — senão o disparo seria engolido por quem coze duas vezes.
+    assert_eq!(scrub(&mut pump, &g, c, 1), 2.0, "o pulso do tique 1 continua 1");
+}

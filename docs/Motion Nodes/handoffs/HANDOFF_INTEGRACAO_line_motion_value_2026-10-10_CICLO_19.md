@@ -128,7 +128,21 @@ corta numa janela de largura fixa, `c7ef7e7e0`); o `rustfmt` do `ph2d-color`.
 
 ## § Provas de mutação
 
-(a tabela entra quando a corrida terminar)
+| mutação | o gate | resultado |
+|---|---|---|
+| M1 o scrub não põe a fita (`entradas_do_replay` apagado) | `a_scrub_replays_the_inputs_…` | ✅ sangra (15 ≠ 11) |
+| M2 parado não repete (`!a_tocar` → `false`) | `with_the_clock_stopped_dragging_forward_…` · o gate da PLACA | ✅ sangra (110 ≠ 12) · ✅ sangra |
+| M3 o ramo não esquece o anel | `playing_on_after_a_scrub_…` | ✅ sangra (72 ≠ 60) |
+| M4 o pulso compara com `agora` em vez de `antes` | ⚠️ SOBREVIVEU ao gate de então → gate NOVO `a_second_derivation_in_the_same_tick_keeps_the_pulse` | ✅ sangra (o re-cozimento do mesmo tique engolia o disparo) |
+| M5 o `drive` dirigido não se resolve fora | `a_wired_drive_is_cooked_on_the_outer_clock` | ✅ sangra ([0] ≠ [0,6]) |
+| M6 a camada ignorada nas três leituras | `a_scrub_replays_the_inputs_…` | ✅ sangra |
+| M7 o `Follow` anda para o alvo de AGORA | `the_linear_follow_is_the_godot_crossfade_frame_by_frame` | ✅ sangra |
+| M8 o `value.input` lê o nome cru (sem `$input:`) | `only_the_input_with_this_name_reaches_this_node` | ✅ sangra ([0,7] ≠ [0]) |
+| M9 republicar suja sempre | `republishing_the_same_inputs_does_not_dirty_the_pump` | ✅ sangra |
+| M10 o dano dispara com `<=` | `health_publishes_its_ratio_and_damage_fires_on_each_drop` | ✅ sangra ([2] ≠ [1]) |
+| M11 sem o `clamp` do `Driven` | ⚠️ SOBREVIVEU — o `sample_curve_lut` já encosta a `0..1`: o limite estava escrito DUAS vezes | ✅ curado: a cópia do `apply` saiu (fica só o `NaN`) |
+
+Controlo: cada gate verde antes de mutar; cada âncora casou 1× (3× no M6); árvore limpa no fim.
 
 ## §5 — Medições e oráculo
 

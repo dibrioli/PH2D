@@ -119,6 +119,8 @@ o *Frame All* curado na cena das mídias presas a ossos.
    clique numa forma e carregue `F` — a vista anda até ela, com zoom (**View ▸ Frame Selection · F**
    faz o mesmo). Num ecrã de toque: um beliscão RÁPIDO (juntar os dedos e levantar) enquadra tudo; o
    mesmo gesto ao contrário volta à vista de antes; a pinça devagar continua a só dar zoom.
+**Smoke do dono (10/10): OK** — com as teclas (`Ctrl+0`, `F`). Integração ainda NÃO pedida.
+
 ## §7 — O que fica ABERTO
 
 - ✅ **Teclas, decididas pelo dono (10/10):** `Ctrl+0` = *Enquadrar tudo*, `F` = *Enquadrar seleção*.

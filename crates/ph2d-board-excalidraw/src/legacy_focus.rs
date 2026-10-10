@@ -229,3 +229,31 @@ fn ellipse_gap(a: f64, b: f64, p: [f64; 2]) -> Option<f64> {
 
 /// O semi-eixo mais fino que se escreve no nível da elipse (1 px).
 const THINNEST: f64 = 1.0;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_board_model::{FracKey, Rgba, RichText, Shape, Style};
+
+    /// ⭐ Um ponto fixo fundo numa elipse ACHATADA, junto ao eixo maior: o nível que passa por ele tem
+    /// um semi-eixo abaixo de [`THINNEST`] (0,55 px) e recusa-se — fica o ponto do foco (`gap 0`). A
+    /// elipse degenerada do 0.18.1 errou 9,8 px no oráculo (semi-eixo 6e-11, `X10_nosso` ph2d-19).
+    #[test]
+    fn a_level_thinner_than_a_pixel_is_refused() {
+        let ink = Rgba([30, 30, 30, 255]);
+        let el = Element::new_shape(
+            ph2d_board_model::ElementId(1),
+            FracKey::between(None, None),
+            Shape {
+                kind: ShapeType::Ellipse,
+                style: Style::new(None, Some(ink), ink),
+                text: RichText::plain(""),
+            },
+            [0.0, 0.0, 200.0, 20.0],
+        );
+        let (tip, from) = ([160.0, 9.6], [161.0, -190.0]);
+        assert!(ellipse_gap(100.0, 10.0, [60.0, -0.4]).is_none());
+        let (_, gap) = legacy(&el, from, tip, 6.0);
+        assert_eq!(gap, 0.0, "o nível de meio pixel escreveu-se");
+    }
+}

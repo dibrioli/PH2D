@@ -163,3 +163,21 @@ fn the_sketch_button_closes_the_open_text_first() {
         "o 1.º desfazer levou também a escrita"
     );
 }
+
+/// ⭐ W10 (prova de mutação) — o botão alcança também quem JÁ está no modo novo: uma forma à mão com a
+/// letra fixa do ficheiro, num quadro com outra ainda final, passa à letra do modo (a sobrevivente: o
+/// filtro só pela `sketch` deixava-a com a letra fixa).
+#[test]
+fn the_sketch_button_reaches_a_sketched_element_with_a_fixed_letter() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([300.0, 0.0, 160.0, 100.0]);
+    let mut el = w.el(a).clone();
+    el.style_mut().sketch = true;
+    el.style_mut().look.letter = ph2d_board_model::Letter::Sans;
+    BoardOp::Put(el).apply(&mut w.doc);
+    w.ed.select(&w.doc, []);
+    assert_eq!(w.ed.toggle_sketch(&mut w.doc, &mut w.h, false), Some(true));
+    assert!(w.el(a).style().sketch && w.el(b).style().sketch);
+    assert_eq!(w.el(a).style().look.letter, ph2d_board_model::Letter::Auto);
+}

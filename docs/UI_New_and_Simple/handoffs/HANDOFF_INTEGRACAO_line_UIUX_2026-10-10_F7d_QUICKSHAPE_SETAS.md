@@ -124,6 +124,8 @@ ponta (a 1.ª foto tinha-a — §1).
    Faça uma seta, clique no vazio, e desenhe traços livres e formas: nenhum nasce com ponta. Escolher
    uma ponta no painel (End) com nada selecionado arma-a para os traços seguintes, como antes.
 
+**Smoke do dono (10/10, 2.ª volta): OK** — depois da correção das pontas armadas. Integração ainda NÃO.
+
 ## §7 — O que fica ABERTO
 
 - **A linha que volta atrás** sobre si e só então faz uma farpa lê-se seta (40–50 % a 48–160 px, 10 % a

@@ -288,16 +288,19 @@ pub(super) fn failures(all: &[Fixture], law: &Law) -> Vec<String> {
             }
             (
                 Some(Own::Arc(c, radius, a0, deg)),
-                Some(QuickShape::Arc {
+                Some(QuickShape::Arc(ArcShape {
                     centre,
-                    radius: got,
+                    rx: got,
+                    ry,
                     start,
                     sweep,
-                }),
+                    ..
+                })),
             ) => {
                 let want = radius * f.scale[0];
                 let da = wrap_pi(start - a0.to_radians()).abs();
                 (dist(*centre, f.page(c)) <= TOL
+                    && got == ry
                     && (got - want).abs() <= 0.01 * want
                     && da <= 1f64.to_radians()
                     && (sweep - deg.to_radians()).abs() <= 1f64.to_radians())

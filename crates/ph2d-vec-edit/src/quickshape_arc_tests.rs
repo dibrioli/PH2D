@@ -2,15 +2,25 @@
 //! Sondas: `cargo test --release -p ph2d-vec-edit --lib measure_arc -- --ignored --nocapture
 //! --test-threads=1`.
 
-use super::tests::{failures, load};
 use super::*;
-use crate::quickshape_arc::{arc_path, taubin};
+use crate::quickshape_arc::taubin;
 use crate::test_hand::{Lcg, hand, stabilise};
 use ph2d_vec_scene::VertexKind;
 use std::f64::consts::PI;
 
+fn circle_arc(centre: P2, r: f64, start: f64, sweep: f64) -> ArcShape {
+    ArcShape {
+        centre,
+        rx: r,
+        ry: r,
+        rot: 0.0,
+        start,
+        sweep,
+    }
+}
+
 /// Um arco de raio `r` à volta da origem, de `a0` a varrer `sweep` (graus, com sinal), a 1 px.
-fn arc_poly(r: f64, a0: f64, sweep: f64) -> Vec<P2> {
+pub(super) fn arc_poly(r: f64, a0: f64, sweep: f64) -> Vec<P2> {
     let n = ((sweep.to_radians().abs() * r).ceil() as usize).max(8);
     (0..=n)
         .map(|i| mul(unit((a0 + sweep * i as f64 / n as f64).to_radians()), r))
@@ -18,12 +28,12 @@ fn arc_poly(r: f64, a0: f64, sweep: f64) -> Vec<P2> {
 }
 
 /// Uma mão: o tremor `amp` e o estabilizador por omissão do lápis.
-fn stroke(poly: &[P2], amp: f64, seed: u64) -> Vec<P2> {
+pub(super) fn stroke(poly: &[P2], amp: f64, seed: u64) -> Vec<P2> {
     stabilise(&hand(poly, 2.0, amp, seed), 0.5)
 }
 
 /// O S de dois meios círculos, o S de seno e um rabisco (o do `gera_entradas.py`): não são arcos.
-fn not_arcs(s: f64, seed: u64) -> Vec<(&'static str, Vec<P2>)> {
+pub(super) fn not_arcs(s: f64, seed: u64) -> Vec<(&'static str, Vec<P2>)> {
     let mut s2 = arc_poly(s / 4.0, 90.0, -180.0);
     s2.extend(
         arc_poly(s / 4.0, 90.0, 180.0)
@@ -55,8 +65,8 @@ fn not_arcs(s: f64, seed: u64) -> Vec<(&'static str, Vec<P2>)> {
 }
 
 /// O arco que a mão quis (raio `r`, varrendo `sweep` graus)? Tipo, sentido e o varrido a ≤ 10 %.
-fn is_the_arc(q: &Option<QuickShape>, sweep: f64) -> bool {
-    matches!(q, Some(QuickShape::Arc { sweep: s, .. })
+pub(super) fn is_the_arc(q: &Option<QuickShape>, sweep: f64) -> bool {
+    matches!(q, Some(QuickShape::Arc(ArcShape { sweep: s, .. }))
         if s.signum() == sweep.signum() && (s.to_degrees() - sweep).abs() <= 0.1 * sweep.abs())
 }
 
@@ -82,12 +92,12 @@ fn a_hand_drawn_arc_becomes_a_perfect_arc_in_its_own_sense() {
             let pts = stroke(&arc_poly(150.0, 17.0 * seed as f64, sweep), 1.0, seed);
             let q = recognise(&pts, 1.0, false);
             assert!(is_the_arc(&q, sweep), "{sweep}° (mão {seed}): {q:?}");
-            let Some(QuickShape::Arc { centre, radius, .. }) = q else {
+            let Some(QuickShape::Arc(ArcShape { centre, rx, ry, .. })) = q else {
                 unreachable!()
             };
             assert!(
-                dist(centre, [0.0, 0.0]) < 6.0 && (radius - 150.0).abs() < 6.0,
-                "{sweep}°: centro {centre:?} raio {radius}"
+                rx == ry && dist(centre, [0.0, 0.0]) < 6.0 && (rx - 150.0).abs() < 6.0,
+                "{sweep}°: um CÍRCULO, centro {centre:?} raios {rx} {ry}"
             );
             assert!(
                 dist(q.as_ref().unwrap().pivot(), pts[0]) < 3.0,
@@ -131,12 +141,13 @@ fn a_c_that_almost_closes_closes_into_a_circle_and_a_wider_one_stays_an_arc() {
 #[test]
 fn regular_snaps_the_sweep_and_the_chord_to_fifteen_degrees_and_keeps_the_start() {
     let pts = stroke(&arc_poly(150.0, 8.0, 97.0), 1.0, 3);
-    let Some(QuickShape::Arc {
+    let Some(QuickShape::Arc(ArcShape {
         centre,
-        radius,
+        rx: radius,
         start,
         sweep,
-    }) = recognise(&pts, 1.0, true)
+        ..
+    })) = recognise(&pts, 1.0, true)
     else {
         panic!()
     };
@@ -167,7 +178,7 @@ fn the_arc_path_is_open_smooth_inside_cornered_at_the_ends_and_on_the_circle() {
         (1.5 * PI, 4),
         (1.9 * PI, 5),
     ] {
-        let p = arc_path([10.0, 20.0], 100.0, 0.3, sweep);
+        let p = circle_arc([10.0, 20.0], 100.0, 0.3, sweep).to_path();
         assert!(
             !p.closed && p.verts.len() == n,
             "{sweep}: {} nós",
@@ -194,24 +205,14 @@ fn the_arc_path_is_open_smooth_inside_cornered_at_the_ends_and_on_the_circle() {
             );
         }
     }
-    let a = QuickShape::Arc {
-        centre: [0.0, 0.0],
-        radius: 2.0,
-        start: 0.0,
-        sweep: PI,
-    };
+    let a = QuickShape::Arc(circle_arc([0.0, 0.0], 2.0, 0.0, PI));
     assert_eq!(a.pivot(), [2.0, 0.0]);
-    let QuickShape::Arc {
-        centre,
-        radius,
-        start,
-        sweep,
-    } = a.transformed([2.0, 0.0], 2.0, FRAC_PI_2)
-    else {
+    let QuickShape::Arc(b) = a.transformed([2.0, 0.0], 2.0, FRAC_PI_2) else {
         panic!()
     };
-    assert!(dist(centre, [2.0, -4.0]) < 1e-12 && radius == 4.0 && sweep == PI);
-    assert!((start - FRAC_PI_2).abs() < 1e-12, "a rotação anda o início");
+    assert!(dist(b.centre, [2.0, -4.0]) < 1e-12 && b.rx == 4.0 && b.sweep == PI);
+    assert!((b.rot - FRAC_PI_2).abs() < 1e-12, "a rotação roda o arco");
+    assert!(dist(b.pivot(), [2.0, 0.0]) < 1e-12, "o início fica");
 }
 
 #[test]
@@ -255,248 +256,6 @@ fn the_pencil_holds_an_arc_and_the_drag_turns_it_about_its_start() {
     assert!(!p.closed && p.verts.len() == 3, "soltar comete o ARCO");
     assert_eq!(p.verts[1].kind, VertexKind::Smooth);
     assert_eq!(p.verts[0].kind, VertexKind::Corner);
-}
-
-// ── as sondas ───────────────────────────────────────────────────────────────────────────────────
-
-const SWEEPS: [f64; 11] = [
-    30.0, 45.0, 60.0, 90.0, 120.0, 180.0, 240.0, 270.0, 300.0, 315.0, 330.0,
-];
-const RADII: [f64; 5] = [20.0, 40.0, 80.0, 160.0, 400.0];
-
-/// A fracção de `seeds` mãos (início ao acaso, os dois sentidos) que sai o arco.
-fn arc_rate(law: &Law, r: f64, sweep: f64, amp: f64, seeds: u64) -> f64 {
-    (0..seeds)
-        .filter(|&seed| {
-            let sw = if seed % 2 == 0 { sweep } else { -sweep };
-            let mut g = Lcg(seed + 5);
-            let poly = arc_poly(r, 180.0 * g.next(), sw);
-            is_the_arc(
-                &recognise_with(law, &stroke(&poly, amp, seed), 1.0, false),
-                sw,
-            )
-        })
-        .count() as f64
-        / seeds as f64
-}
-
-/// O pior «não é arco» que sai arco, sobre 48–400 px e tremor ±0,5–2.
-fn worst_false_arc(law: &Law, seeds: u64) -> (f64, &'static str) {
-    let mut worst = (0.0, "");
-    for s in [48.0, 160.0, 400.0] {
-        for amp in [0.5, 1.0, 2.0] {
-            for k in 0..4 {
-                let n = (0..seeds)
-                    .filter(|&seed| {
-                        let (_, p) = &not_arcs(s, seed)[k];
-                        matches!(
-                            recognise_with(law, &stroke(p, amp, seed), 1.0, false),
-                            Some(QuickShape::Arc { .. })
-                        )
-                    })
-                    .count() as f64
-                    / seeds as f64;
-                if n > worst.0 {
-                    worst = (n, not_arcs(s, 0)[k].0);
-                }
-            }
-        }
-    }
-    worst
-}
-
-/// **Os arcos de mão**: a fracção que sai arco por varrido × raio, a três tremores (40 mãos/célula).
-#[test]
-#[ignore = "sonda"]
-fn measure_arcs() {
-    for amp in [0.5, 1.0, 2.0] {
-        println!("\n## tremor ±{amp} px, o estabilizador, 40 mãos por célula");
-        print!("| varrido |");
-        for r in RADII {
-            print!(" r {r} |");
-        }
-        println!();
-        for sweep in SWEEPS {
-            print!("| {sweep}° |");
-            for r in RADII {
-                print!(
-                    " {:.0} % |",
-                    100.0 * arc_rate(&Law::MEASURED, r, sweep, amp, 40)
-                );
-            }
-            println!();
-        }
-        // O que os arcos que FALHAM viram: livre e linha são inofensivos, outra forma não.
-        let (mut free, mut line, mut loose, mut other) = (0, 0, 0, Vec::new());
-        for sweep in SWEEPS {
-            for r in RADII {
-                for seed in 0..40 {
-                    let mut g = Lcg(seed + 5);
-                    let poly = arc_poly(r, 180.0 * g.next(), sweep);
-                    match recognise(&stroke(&poly, amp, seed), 1.0, false) {
-                        q if is_the_arc(&q, sweep) => {}
-                        None => free += 1,
-                        Some(QuickShape::Line { .. }) => line += 1,
-                        Some(QuickShape::Arc { .. }) => loose += 1,
-                        Some(QuickShape::Ellipse { .. }) if sweep >= 330.0 => {}
-                        q => other.push(format!("{sweep}° r {r}: {q:?}")),
-                    }
-                }
-            }
-        }
-        println!(
-            "falhas: livre {free} · linha {line} · arco com o varrido a > 10 % {loose} · OUTRA forma {}",
-            other.len()
-        );
-        for o in other.iter().take(6) {
-            println!("  {}", o.chars().take(160).collect::<String>());
-        }
-    }
-    let (w, name) = worst_false_arc(&Law::MEASURED, 40);
-    println!(
-        "\npior «não é arco» lido como arco: {:.1} % ({name})",
-        100.0 * w
-    );
-}
-
-/// **O preço do arco nas formas que já existiam**: A × B no mesmo processo — sem arco
-/// (`arc_rms_max = 0`) e com ele —, as formas da sonda de sensibilidade, 80 mãos, 24–400 px.
-#[test]
-#[ignore = "sonda"]
-fn measure_arc_ab() {
-    let off = Law {
-        arc_rms_max: 0.0,
-        ..Law::MEASURED
-    };
-    for (name, law) in [("sem arco", off), ("com arco", Law::MEASURED)] {
-        println!("\n## {name}");
-        print!("| tremor |");
-        for (n, _, _) in super::measure_tests::cases(1.0) {
-            print!(" {n} |");
-        }
-        println!();
-        for amp in [1.0, 2.0, 4.0] {
-            let mut acc: Vec<f64> = Vec::new();
-            for s in [24.0, 48.0, 160.0, 400.0] {
-                for (i, (_, r)) in super::measure_tests::hit_rate(&law, s, amp, 80)
-                    .into_iter()
-                    .enumerate()
-                {
-                    if acc.len() <= i {
-                        acc.push(0.0);
-                    }
-                    acc[i] += r / 4.0;
-                }
-            }
-            print!("| ±{amp} |");
-            for r in acc {
-                print!(" {:.1} % |", 100.0 * r);
-            }
-            println!();
-        }
-    }
-}
-
-/// **As três constantes JUNTAS** (o resíduo e a viragem para trás seguram o rabisco a meias): o meio
-/// arco da sonda de sensibilidade (mão sem estabilizador, 24–400 px), os arcos de 45–300° com o
-/// estabilizador, e o pior «não é arco» lido como arco (40 mãos).
-#[test]
-#[ignore = "sonda"]
-fn measure_arc_joint() {
-    println!("\n| rms | volta atrás | cordas | meio arco ±2 | ±4 | arcos ±2 | pior «não é arco» |");
-    for chords in [4, 6, 8] {
-        for bend in [0.15, 0.2, 0.25, 0.3] {
-            for rms in [0.03, 0.04, 0.05, 0.06] {
-                let law = Law {
-                    arc_rms_max: rms,
-                    arc_bend_back: bend,
-                    arc_chords: chords,
-                    ..Law::MEASURED
-                };
-                let half = |amp: f64| {
-                    [24.0, 48.0, 160.0, 400.0]
-                        .iter()
-                        .map(|&s| {
-                            super::measure_tests::hit_rate(&law, s, amp, 40)
-                                .into_iter()
-                                .find(|(n, _)| *n == "meio arco")
-                                .map_or(0.0, |x| x.1)
-                        })
-                        .sum::<f64>()
-                        / 4.0
-                };
-                let (mut arcs, mut n) = (0.0, 0.0);
-                for sweep in [45.0, 90.0, 180.0, 270.0, 300.0] {
-                    for r in [40.0, 80.0, 160.0, 400.0] {
-                        arcs += arc_rate(&law, r, sweep, 2.0, 20);
-                        n += 1.0;
-                    }
-                }
-                let (w, wn) = worst_false_arc(&law, 40);
-                println!(
-                    "| {rms} | {bend} | {chords} | {:.1} % | {:.1} % | {:.1} % | {:.1} % ({wn}) |",
-                    100.0 * half(2.0),
-                    100.0 * half(4.0),
-                    100.0 * arcs / n,
-                    100.0 * w
-                );
-            }
-        }
-    }
-}
-
-/// **A faixa de cada constante nova**: fixtures, o acerto médio e o pior nos arcos de 45–300° a
-/// 40–400 px (±1 px), e o pior «não é arco» lido como arco.
-#[test]
-#[ignore = "sonda"]
-fn measure_arc_constants() {
-    let all = load();
-    type Set = fn(&mut Law, f64);
-    let fields: Vec<(&str, Set, Vec<f64>)> = vec![
-        (
-            "arc_rms_max",
-            |l, v| l.arc_rms_max = v,
-            vec![0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.07, 0.1, 0.15],
-        ),
-        (
-            "arc_bend_back",
-            |l, v| l.arc_bend_back = v,
-            vec![0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5],
-        ),
-        (
-            "arc_chords",
-            |l, v| l.arc_chords = v as usize,
-            vec![3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0],
-        ),
-    ];
-    println!(
-        "\n| constante | valor | fixtures | arco médio ±1 | pior célula ±1 | média ±2 | pior «não é arco» |"
-    );
-    for (name, set, values) in fields {
-        for v in values {
-            let mut law = Law::MEASURED;
-            set(&mut law, v);
-            let f = failures(&all, &law).len();
-            let (mut sum, mut n, mut worst, mut sum2) = (0.0, 0.0, 1.0_f64, 0.0);
-            for sweep in [45.0, 90.0, 180.0, 270.0, 300.0] {
-                for r in [40.0, 80.0, 160.0, 400.0] {
-                    let x = arc_rate(&law, r, sweep, 1.0, 20);
-                    sum += x;
-                    sum2 += arc_rate(&law, r, sweep, 2.0, 20);
-                    n += 1.0;
-                    worst = worst.min(x);
-                }
-            }
-            let (w, wn) = worst_false_arc(&law, 20);
-            println!(
-                "| `{name}` | {v} | {f} | {:.1} % | {:.0} % | {:.1} % | {:.1} % ({wn}) |",
-                100.0 * sum / n,
-                100.0 * worst,
-                100.0 * sum2 / n,
-                100.0 * w
-            );
-        }
-    }
 }
 
 // ── Taubin × Kåsa e os arcos de elipse ─────────────────────────────────────────────────────────
@@ -572,7 +331,7 @@ fn the_shift_never_turns_a_polyline_into_an_arc() {
 }
 
 /// O ajuste algébrico de Kåsa (o controlo do gate de Taubin).
-fn kasa(p: &[P2]) -> (P2, f64) {
+pub(super) fn kasa(p: &[P2]) -> (P2, f64) {
     let (mut m, mut v) = ([[0.0; 3]; 3], [0.0; 3]);
     for &[x, y] in p {
         let row = [x, y, 1.0];
@@ -589,65 +348,166 @@ fn kasa(p: &[P2]) -> (P2, f64) {
     (c, (c[0] * c[0] + c[1] * c[1] - s[2]).sqrt())
 }
 
+// ── o arco ASSIMÉTRICO (o smoke do dono, 10/10: «arcos assimétricos como na foto não funcionam») ─
+
+/// O traço da captura do dono (px da tela, y para baixo): abre largo e fecha apertado.
+pub(super) fn owners_hook() -> Vec<P2> {
+    crate::quickshape::OWNERS_HOOK_PX.to_vec()
+}
+
+/// Os arcos assimétricos: o gancho do dono (½×, 1×, 2×, e espelhado), arcos de ELIPSE começados
+/// fora do eixo, e espirais (a curvatura triplica de ponta a ponta).
+pub(super) fn asymmetric() -> Vec<(String, Vec<P2>)> {
+    let mut v = Vec::new();
+    for k in [0.5, 1.0, 2.0] {
+        let h: Vec<P2> = owners_hook().iter().map(|&p| mul(p, k)).collect();
+        v.push((format!("gancho do dono {k}×"), h.clone()));
+        v.push((
+            format!("gancho espelhado {k}×"),
+            h.iter().map(|p| [-p[0], p[1]]).collect(),
+        ));
+    }
+    for ratio in [1.5, 2.0, 3.0] {
+        for (a0, sweep) in [(200.0_f64, 230.0_f64), (120.0, 150.0)] {
+            let poly: Vec<P2> = (0..=200)
+                .map(|i| {
+                    let a = (a0 + sweep * f64::from(i) / 200.0).to_radians();
+                    rotate([160.0 * a.cos(), 160.0 / ratio * a.sin()], 0.4)
+                })
+                .collect();
+            v.push((format!("elipse {ratio}:1 {a0}°+{sweep}°"), poly));
+        }
+    }
+    for turn in [120.0_f64, 200.0, 270.0] {
+        // Curvatura de k a 3k, comprimento 500 px.
+        let (n, len) = (400, 500.0);
+        let k0 = turn.to_radians() / (2.0 * len);
+        let (mut p, mut a) = ([0.0, 0.0], 0.0_f64);
+        let mut poly = vec![p];
+        for i in 0..n {
+            let s = len * f64::from(i) / f64::from(n);
+            a += k0 * (1.0 + 2.0 * s / len) * len / f64::from(n);
+            p = add(p, mul(unit(a), len / f64::from(n)));
+            poly.push(p);
+        }
+        v.push((format!("espiral {turn}°"), poly));
+    }
+    v
+}
+
+/// O maior desvio (px) da curva DESENHADA ao arco reconhecido.
+pub(super) fn deviation(q: &QuickShape, poly: &[P2]) -> f64 {
+    let arcs: Vec<ArcShape> = match q {
+        QuickShape::Arc(a) => vec![*a],
+        QuickShape::Biarc(b) => b.to_vec(),
+        _ => return f64::INFINITY,
+    };
+    let on: Vec<P2> = arcs
+        .iter()
+        .flat_map(|a| (0..=400).map(|i| a.at(a.start + a.sweep * f64::from(i) / 400.0)))
+        .collect();
+    poly.iter()
+        .map(|&p| on.iter().map(|&q| dist(p, q)).fold(f64::MAX, f64::min))
+        .fold(0.0, f64::max)
+}
+
+// ── os gates do arco ASSIMÉTRICO ────────────────────────────────────────────────────────────────
+
+/// O gancho da captura do dono (abre largo, fecha apertado) vira um BIARCO que o segue — a 4 % do
+/// tamanho no pior ponto (`measure_asymmetric_arcs`: 11,3 px num gancho de 345 px); espelhado e a
+/// meio tamanho também. Com `Shift`, um arco de CÍRCULO.
 #[test]
-#[ignore = "sonda"]
-fn measure_taubin_against_kasa() {
-    println!("\n| varrido | r | tremor | erro médio do raio Taubin | Kåsa |");
-    for sweep in [30.0, 45.0, 60.0, 90.0] {
-        for r in [80.0, 300.0] {
-            for amp in [1.0, 2.0] {
-                let (mut t, mut k) = (0.0, 0.0);
-                for seed in 0..40 {
-                    let pts = stroke(&arc_poly(r, 0.0, sweep), amp, seed);
-                    t += taubin(&pts).unwrap().1 - r;
-                    k += kasa(&pts).1 - r;
-                }
-                println!(
-                    "| {sweep}° | {r} | ±{amp} | {:+.2} | {:+.2} |",
-                    t / 40.0,
-                    k / 40.0
+fn the_owners_asymmetric_hook_becomes_a_biarc_that_follows_it() {
+    for k in [0.5, 1.0] {
+        for mirror in [1.0, -1.0] {
+            let poly: Vec<P2> = owners_hook()
+                .iter()
+                .map(|&p| [mirror * p[0] * k, p[1] * k])
+                .collect();
+            for seed in 0..5 {
+                let pts = stroke(&poly, 1.0, seed);
+                let q = recognise(&pts, 1.0, false);
+                let Some(q @ QuickShape::Biarc(b)) = q else {
+                    panic!("{k}× espelho {mirror} (mão {seed}): {q:?}")
+                };
+                assert!(deviation(&q, &poly) < 0.04 * 345.0 * k, "{k}×: {q:?}");
+                assert!(b[0].rx > 3.0 * b[1].rx, "abre largo, fecha apertado: {b:?}");
+                let r = recognise(&pts, 1.0, true);
+                assert!(
+                    matches!(r, Some(QuickShape::Arc(a)) if a.rx == a.ry),
+                    "Shift: {r:?}"
                 );
             }
         }
     }
 }
 
-/// Arcos de ELIPSE (fora do escopo, a menos que o círculo não chegue): o que a lei faz deles.
+/// Um arco de ELIPSE (2:1, começado fora do eixo) sai arco de elipse, a ≤ 3 px do desenho; uma
+/// espiral (a curvatura triplica) de 200° e 270° sai um arco a ≤ 5 px. A de 120° o CÍRCULO ainda a
+/// desenha dentro da régua — e o círculo fica (a lei: o assimétrico só quando ele não serve).
 #[test]
-#[ignore = "sonda"]
-fn measure_elliptic_arcs() {
-    println!(
-        "\n| razão | arco | eixo | arco de círculo | livre | outra | pior desvio do traço ao arco (px) |"
-    );
-    for ratio in [1.25, 1.5, 2.0, 3.0] {
-        for sweep in [90.0_f64, 180.0] {
-            for (axis, a0) in [("maior", 180.0_f64), ("menor", 90.0)] {
-                let (rx, ry) = (160.0, 160.0 / ratio);
-                let n = 200;
-                let poly: Vec<P2> = (0..=n)
-                    .map(|i| {
-                        let a = (a0 + sweep * f64::from(i) / f64::from(n)).to_radians();
-                        [rx * a.cos(), ry * a.sin()]
-                    })
-                    .collect();
-                let (mut arc, mut free, mut other, mut worst) = (0, 0, 0, 0.0_f64);
-                for seed in 0..20 {
-                    let pts = stroke(&poly, 1.0, seed);
-                    match recognise(&pts, 1.0, false) {
-                        Some(QuickShape::Arc { centre, radius, .. }) => {
-                            arc += 1;
-                            for &p in &poly {
-                                worst = worst.max((dist(p, centre) - radius).abs());
-                            }
-                        }
-                        None => free += 1,
-                        _ => other += 1,
-                    }
-                }
-                println!(
-                    "| {ratio}:1 | {sweep}° | {axis} | {arc}/20 | {free} | {other} | {worst:.1} |"
+fn an_elliptic_arc_and_a_spiral_are_followed() {
+    for (name, poly) in asymmetric() {
+        let elliptic = name.starts_with("elipse 2:1");
+        if !(elliptic || name.starts_with("espiral")) {
+            continue;
+        }
+        for seed in 0..5 {
+            let q = recognise(&stroke(&poly, 1.0, seed), 1.0, false);
+            let Some(q) = q else {
+                panic!("{name} (mão {seed}): livre")
+            };
+            if elliptic {
+                assert!(
+                    matches!(q, QuickShape::Arc(a) if a.rx > 1.5 * a.ry || a.ry > 1.5 * a.rx),
+                    "{name}: {q:?}"
                 );
             }
+            if name == "espiral 120°" {
+                assert!(
+                    matches!(q, QuickShape::Arc(a) if a.rx == a.ry),
+                    "{name}: {q:?}"
+                );
+                continue;
+            }
+            let d = deviation(&q, &poly);
+            assert!(d < if elliptic { 3.0 } else { 5.0 }, "{name}: {d:.1} px");
         }
     }
+}
+
+/// O caminho de um biarco é UM traço: os dois arcos em seguida, o nó da junção `Smooth` com as alças
+/// colineares (são tangentes), `Corner` nas pontas; o pivô é o início e a semelhança mantém-no.
+#[test]
+fn a_biarc_path_is_one_tangent_stroke() {
+    let first = circle_arc([0.0, 0.0], 100.0, -FRAC_PI_2, PI);
+    let join = first.at(first.start + first.sweep);
+    // O 2.º arco, tangente: o centro sobre o raio da junção, raio 30.
+    let second = circle_arc(mul(join, 0.7), 30.0, FRAC_PI_2, FRAC_PI_2);
+    assert!(dist(second.at(second.start), join) < 1e-9);
+    let b = QuickShape::Biarc([first, second]);
+    let p = b.to_path();
+    assert!(
+        !p.closed && p.verts.len() == 3 + 2 - 1,
+        "{} nós",
+        p.verts.len()
+    );
+    let j = &p.verts[2];
+    assert_eq!(j.kind, VertexKind::Smooth);
+    let (din, dout) = (sub(j.anchor, j.in_handle), sub(j.out_handle, j.anchor));
+    assert!(
+        (din[0] * dout[1] - din[1] * dout[0]).abs() < 1e-9,
+        "alças colineares"
+    );
+    assert_eq!(p.verts[0].kind, VertexKind::Corner);
+    assert_eq!(p.verts[3].kind, VertexKind::Corner);
+    let pivot = b.pivot();
+    assert!(dist(pivot, [0.0, -100.0]) < 1e-9);
+    let QuickShape::Biarc(t) = b.transformed(pivot, 2.0, 0.3) else {
+        panic!()
+    };
+    assert!(
+        dist(t[0].pivot(), pivot) < 1e-9
+            && dist(t[1].pivot(), t[0].at(t[0].start + t[0].sweep)) < 1e-9
+    );
 }

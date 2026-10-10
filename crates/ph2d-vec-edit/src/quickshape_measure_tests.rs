@@ -113,7 +113,7 @@ pub(super) fn cases(s: f64) -> Vec<Case> {
         (
             "meio arco",
             ring(s / 2.0, s / 2.0, 0.5),
-            |q| matches!(q, Some(QuickShape::Arc { sweep, .. }) if (sweep.abs() - PI).abs() < 0.1 * PI),
+            |q| matches!(q, Some(QuickShape::Arc(ArcShape { sweep, .. })) if (sweep.abs() - PI).abs() < 0.1 * PI),
         ),
     ]
 }

@@ -15,6 +15,7 @@
 //! momentos de área da região desenhada (exacta para uma elipse perfeita); se fica aberto, talvez
 //! um ARCO ([`crate::quickshape_arc`]); senão não é forma.
 
+pub use crate::quickshape_arc::{ArcShape, OWNERS_HOOK_PX};
 pub use crate::quickshape_geom::snap;
 use crate::quickshape_geom::{
     Fit, P2, add, angle, centroid, cross, dist, dot, intersect, mul, project, rdp, resample,
@@ -72,6 +73,14 @@ pub(crate) struct Law {
     /// cordas, `4–8` (a 3 um rabisco vira arco, a 12 o tremor de cada corda já vira para trás).
     pub(crate) arc_bend_back: f64,
     pub(crate) arc_chords: usize,
+    /// Um círculo que JÁ desenha o traço dá lugar ao arco assimétrico (elipse ou biarco) só se este
+    /// o desenha a esta fracção do resíduo do círculo E o círculo erra mais que `arc_circle_keep` do
+    /// menor de raio e tamanho: a mão que desenha um arco SIMÉTRICO respira o raio, e o biarco seguia
+    /// esse respirar (o arco da cena 12). Medidas JUNTAS (`measure_arc_circle_keep`, arcos que
+    /// respiram ±2–6 %): só a guarda 0,04 lê 0 % deles assimétricos (0,03: 0,7–4,9 %), e com ela o
+    /// ganho vale `0,1–0,25` (0,3: 0,9 %); a 0,1 uma espiral fica círculo.
+    pub(crate) arc_asymmetric_gain: f64,
+    pub(crate) arc_circle_keep: f64,
 }
 
 impl Law {
@@ -97,6 +106,8 @@ impl Law {
         arc_rms_max: 0.05,
         arc_bend_back: 0.25,
         arc_chords: 6,
+        arc_asymmetric_gain: 0.2,
+        arc_circle_keep: 0.04,
     };
 }
 
@@ -128,14 +139,10 @@ pub enum QuickShape {
         ry: f64,
         rot: f64,
     },
-    /// Um arco de círculo aberto: começa no ângulo `start` e varre `sweep` (radianos; o SINAL é o
-    /// sentido do desenho, `|sweep| < 2π`).
-    Arc {
-        centre: P2,
-        radius: f64,
-        start: f64,
-        sweep: f64,
-    },
+    /// Um arco aberto, de círculo ou de elipse.
+    Arc(ArcShape),
+    /// Dois arcos de círculo tangentes (o arco assimétrico).
+    Biarc([ArcShape; 2]),
 }
 
 /// **A lei.** `px_to_world` converte as fronteiras de tela; `regular` = quadrado, círculo,
@@ -216,12 +223,8 @@ impl QuickShape {
             } => corners.first().copied().unwrap_or_default(),
             Self::Polygon { corners, .. } => centroid(corners),
             Self::Ellipse { centre, .. } => *centre,
-            Self::Arc {
-                centre,
-                radius,
-                start,
-                ..
-            } => add(*centre, mul(unit(*start), *radius)),
+            Self::Arc(a) => a.pivot(),
+            Self::Biarc(b) => b[0].pivot(),
         }
     }
 
@@ -246,17 +249,8 @@ impl QuickShape {
                 ry: ry * scale,
                 rot: r0 + rot,
             },
-            Self::Arc {
-                centre,
-                radius,
-                start,
-                sweep,
-            } => Self::Arc {
-                centre: m(*centre),
-                radius: radius * scale,
-                start: start + rot,
-                sweep: *sweep,
-            },
+            Self::Arc(a) => Self::Arc(a.transformed(pivot, scale, rot)),
+            Self::Biarc(b) => Self::Biarc(b.map(|a| a.transformed(pivot, scale, rot))),
         }
     }
 
@@ -281,12 +275,8 @@ impl QuickShape {
                 }
                 p
             }
-            Self::Arc {
-                centre,
-                radius,
-                start,
-                sweep,
-            } => crate::quickshape_arc::arc_path(*centre, *radius, *start, *sweep),
+            Self::Arc(a) => a.to_path(),
+            Self::Biarc(b) => crate::quickshape_arc::biarc_path(b),
         }
     }
 }
@@ -682,3 +672,7 @@ mod sensitivity_tests;
 #[cfg(test)]
 #[path = "quickshape_arc_tests.rs"]
 mod arc_tests;
+
+#[cfg(test)]
+#[path = "quickshape_arc_probe_tests.rs"]
+mod arc_probe_tests;

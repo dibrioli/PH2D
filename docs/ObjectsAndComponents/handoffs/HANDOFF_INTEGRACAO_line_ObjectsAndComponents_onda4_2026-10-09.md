@@ -35,8 +35,16 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
   `ph2d_timeline::apply_autoplay` + `apply_one_clip_except` (respeita o skip/a mão do artista): pedido > entrada;
   pedido do futuro (rewind) LARGADO; clipe inexistente largado e DITO (`ClipRefusal::UnknownClip`, toast).
   Shell: `fase_sequences::toca_os_objectos` (ex-`toca_as_cutscenes`) toca a Animação de cada objecto e depois
-  as cutscenes, com UM censo do ledger do undo, só na vista que deixa correr (Arrange; Keys e Containers solam
-  o que se edita). UI: interruptor «Autoplay» no grupo de clipes (`transport_entry.rs`, id
+  as cutscenes, com UM censo do ledger do undo. ⭐ **A Animação de cada objecto só toca no PLAY ALL**
+  (`acd61634c`, dono no smoke de 09/10: *«se o Arrange ainda não tem nada, como pode tocar alguma coisa? Um
+  segundo Play na Timeline para Play All»*): o Play de sempre toca o que a aba mostra (Keys: o clipe; Arrange:
+  só o arranjado + cutscenes, como antes da onda 4); o Play All toca a cena inteira no relógio da CENA, em
+  qualquer aba, e acaba quando esse relógio pára. `TimelineState.play_all` · `TimelineIntent::PlayAll` drenado
+  por `ph2d_timeline::take_play_all` ANTES de o dreno escolher o relógio da vista (com ele ligado a vista
+  avaliada é a da cena) · `toca_os_objectos(.., (t, refusals, play_all), ..)` · botão «Play All» ao lado do
+  transporte (`transport_row.rs`, saído do `transport.rs` que estava em 599/600; acende `Accent`) · linha
+  «Play All» no menu Run (`TOPBAR_PLAY_ALL` → `TransportCmd::PlayAll` → a shell entrega o intent; `OWN_ROWS`
+  8→9). A barra de espaço continua o Play normal. UI: interruptor «Autoplay» no grupo de clipes (`transport_entry.rs`, id
   `TIMELINE_CLIP_AUTOPLAY` em `ids/timeline_entry.rs`, i18n `panel.timeline.autoplay`): rádio — no clipe que já
   é a entrada pinta-se ligado e MORTO (Disabled, sem registo de clique); nos outros emite
   `TimelineIntent::SetEntryClip` (um passo do undo da timeline); só na vista de um OBJECTO
@@ -124,7 +132,7 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
 | `Caption.no: Option<NodeId>` | campo novo |
 | `TimelineIntent::SetEntryClip` · `ClipRefusal::UnknownClip` (+`AnimationFull`/`DocumentFull`) | variantes novas |
 | `signal_actions_bridge::apply(.., t)` · `SignalVerb::PlayClip` | assinatura / variante |
-| `toca_os_objectos(world, doc, (t, refusals), drive, skip)` · `apply_autoplay(.., refusals)` | assinaturas |
+| `toca_os_objectos(world, doc, (t, refusals, play_all), drive, skip)` · `apply_autoplay(.., refusals)` · `TimelineState.play_all` · `TimelineIntent::PlayAll` · `TransportCmd::PlayAll` (variante nova — `match` exaustivo noutra linha reprova) · `TimelineViewSnapshot.play_all` | assinaturas |
 | `InspectorReveal.entity` · `HierarchyEntity.entity` | campos novos |
 | `transport_clips::width/cluster` | levam a coluna de rótulos |
 
@@ -186,8 +194,9 @@ PH2D_MOTION_OBJETO_SMOKE=3 ./target/smoke/ph2d-host-desktop  # item 6: o íman s
 PH2D_VIDA_SMOKE=1 ./target/smoke/ph2d-host-desktop           # item 9: ▾ «All» ao lado da busca
 ```
 
-- `PH2D_ANIMACAO_SMOKE=1`: interruptor «Autoplay» ligado no «andar» do Herói. Na aba **Arrange**, em Play, o
-  Herói anda sozinho enquanto o Inimigo salta pela Animação da Cena. Errado: o Herói parado, ou o interruptor
+- `PH2D_ANIMACAO_SMOKE=1`: interruptor «Autoplay» ligado no «andar» do Herói; botão «Play All» ao lado do
+  transporte. Com **Play All** (em qualquer aba) o Herói anda sozinho enquanto o Inimigo salta pela Animação da
+  Cena. Errado: o Herói parado em Play All, ou a mexer-se num Arrange vazio com o Play normal, ou o interruptor
   clicável no clipe que já é a entrada.
 - `=1` (Motion): Pilha + Enxame; legendas sob as taças (item 8). `=3`: sem rato na tela virtual o cursor fica
   na origem do MUNDO e o enxame correu para lá — não para a origem do objecto em (400,150), como antes desta onda.
@@ -204,7 +213,7 @@ PH2D_VIDA_SMOKE=1 ./target/smoke/ph2d-host-desktop           # item 9: ▾ «All
   para oferecer um ▾ de clipes; o nome errado é DITO em toast no Play.
 - (d) A guarda do reset da timeline (`nomeados` em `timeline-persist`) procura nomes de ossos inteligentes no
   documento inteiro — só mais conservadora.
-- (e) O autoplay corre só na aba Arrange (Keys/Containers solam o que se edita) — lei documentada; o smoke manda clicar Arrange.
+- (e) ~~O autoplay corre só na aba Arrange~~ — substituído pelo **Play All** (`acd61634c`, pedido do dono).
 - (f) `ph2d-panel-registry-init` com `-p` simples mostra 76 falhas por features que só o workspace liga (com
   `--features panel-flip,panel-flip-frames,panel-painter-layers,panel-wet-tuning` 124/124).
 - (g) Flakes de carga vistos e confirmados sozinhos: `ph2d-tool-painter::the_mask_stroke_cost_does_not_follow_the_canvas`

@@ -306,7 +306,13 @@ fn xb1_every_bound_tip_lands_where_the_next_puts_it() {
 /// ponta cai onde o next a põe depois de re-ligar (o `gap` gravado deita-se fora, recusa §3).
 #[test]
 fn xv2_a_legacy_binding_orbits_the_focus_its_tip_aims_at() {
-    for caso in ["B_legado_gap1", "B_legado_focus05_gap10"] {
+    // O `_diag` aponta FORA do centro (a prova de mutação W9 viu o foco forçado ao centro passar nos dois
+    // horizontais: a recta deles já passa pelo centro).
+    for caso in [
+        "B_legado_gap1",
+        "B_legado_focus05_gap10",
+        "B_legado_focus05_gap10_diag",
+    ] {
         let legacy = saida(caso, "0181");
         let els = passo(&legacy, "restore");
         assert!(els.iter().any(|e| e["endBinding"]["gap"].is_number()));

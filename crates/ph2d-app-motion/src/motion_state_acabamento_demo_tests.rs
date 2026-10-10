@@ -1,5 +1,5 @@
-//! Os gates da cena `=135`: a lente está NO fio, nasce só com a vinheta, e o fio passa intacto —
-//! medido na SAÍDA, pela bomba do produto.
+//! Os gates da cena `=135`: o filtro e a lente estão NO fio, a lente nasce só com a vinheta, o
+//! filtro é a sombra projectada, e o fio passa intacto — medido na SAÍDA, pela bomba do produto.
 
 use super::*;
 use crate::motion_state::MotionState;
@@ -41,16 +41,13 @@ fn the_scene_opens_with_only_the_vignette_on() {
     assert!(m.lente.liga(true), "a lente corre com o Motion na cena");
 }
 
-/// A lente está NO fio, entre a cor e a saída — e o fio passa INTACTO (passthrough).
+/// O filtro e a lente estão NO fio, entre a cor e a saída — e o fio passa INTACTO (passthrough).
 #[test]
-fn the_lens_sits_on_the_wire_and_passes_it_through() {
+fn the_filter_and_the_lens_sit_on_the_wire_and_pass_it_through() {
     let (m, cena) = cozida(30);
     let g = &m.doc.graph;
-    assert!(
-        g.edges()
-            .iter()
-            .any(|e| e.from.0 == cena.tint && e.to.0 == cena.lente)
-    );
+    let liga = |de, para| g.edges().iter().any(|e| e.from.0 == de && e.to.0 == para);
+    assert!(liga(cena.tint, cena.filtro) && liga(cena.filtro, cena.lente));
     assert!(
         g.edges()
             .iter()
@@ -63,6 +60,22 @@ fn the_lens_sits_on_the_wire_and_passes_it_through() {
         n(cena.saida)
     );
     assert_eq!(n(cena.saida), n(cena.tint));
+}
+
+/// ⭐ O passo do filtro: a cena abre com UMA sombra projectada na pilha, e os filtros correm.
+#[test]
+fn the_scene_opens_with_a_drop_shadow_on_the_layer() {
+    let (mut m, cena) = cozida(2);
+    m.filtro.prepara(&m.doc.graph);
+    let pilha = m.filtro.pilha();
+    assert_eq!(pilha.len(), 1);
+    assert_eq!(pilha[0].no, cena.filtro);
+    assert_eq!(pilha[0].op.kind, ph2d_ecs::FxOp::DROP_SHADOW);
+    assert!(
+        m.filtro.liga(true),
+        "os filtros correm com o Motion na cena"
+    );
+    assert!(m.filtro.queixa(cena.filtro).is_none());
 }
 
 /// O roteiro só nomeia rows que o cartão do `Lens` pinta (o nome que aparece NA TELA).
@@ -96,5 +109,26 @@ fn every_row_the_script_names_is_on_the_lens_card() {
         "node.group.grain",
     ] {
         assert_ne!(ph2d_i18n::tr(secao), secao, "secção sem nome: {secao}");
+    }
+}
+
+/// O roteiro só nomeia rows e opções que o cartão do `Filter` pinta.
+#[test]
+fn every_row_the_script_names_is_on_the_filter_card() {
+    let m = MotionState::new();
+    let id = ph2d_nodegraph::node::NodeTypeId::of(ph2d_node_fx_filter::TYPE_NAME);
+    let hints = m.registry.param_ui(id).unwrap_or(&[]);
+    let rotulos: Vec<&str> = hints.iter().map(|h| ph2d_i18n::tr(h.label)).collect();
+    for nome in [
+        "Filter", "Radius", "Offset X", "Offset Y", "Color", "Opacity",
+    ] {
+        assert!(rotulos.contains(&nome), "{nome} ∉ {rotulos:?}");
+    }
+    let tipos: Vec<&str> = ph2d_node_fx_filter::KIND_LABELS
+        .iter()
+        .map(|c| ph2d_i18n::tr(c))
+        .collect();
+    for tipo in ["Drop Shadow", "Blur", "Glow", "Outline"] {
+        assert!(tipos.contains(&tipo), "{tipo} ∉ {tipos:?}");
     }
 }

@@ -98,8 +98,20 @@ impl crate::App {
         // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121, W2) — por cima do mundo (sprites e
         // documento, já no acumulador) e por baixo dos gizmos e do chrome, que vêm na cena Vello.
         // A camada foi DESENHADA antes do halo (`present.rs`, doc 121 §9.14); cola-se aqui.
+        // ⭐ Com `fx.filter` no fio a placa entra na CAMADA filtrada (ciclo 20 W3), colada aqui.
         let tamanho = (window_size.width, window_size.height);
-        if let Some(camada) = self.motion_shell.placa.camada() {
+        let formas = self.motion_shell.placa.camada();
+        let filtrada = motion.filtra_a_camada(ph2d_app_motion::motion_filter::Engrenagem {
+            gpu: surface.gpu(),
+            renderer,
+            camera,
+            window: window_size,
+            scene_viewport,
+            formas,
+            mundo: world_rt,
+            band_blit,
+        });
+        if let (false, Some(camada)) = (filtrada, formas) {
             let formas = ph2d_render::BandSource::Formas;
             band_blit.blit(surface.gpu(), world_rt.blend_view(), camada, formas);
         }

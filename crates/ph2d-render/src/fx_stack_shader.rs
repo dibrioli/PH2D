@@ -33,7 +33,7 @@ struct Globals {
     tint_b: vec4<f32>,
     src_org: vec2<i32>,
     stop_count: u32,
-    _pad3: i32,
+    src_premul: u32,
     stops: array<vec4<f32>, 8>,
     stop_pos: array<vec4<f32>, 2>,
 };
@@ -349,7 +349,9 @@ pub(crate) const FX_STACK_MID_WGSL: &str = r#"
 @compute @workgroup_size(8, 8, 1)
 fn cs_ingest(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    let s = tap_src(i32(id.x) + g.src_org.x, i32(id.y) + g.src_org.y);
+    var s = tap_src(i32(id.x) + g.src_org.x, i32(id.y) + g.src_org.y);
+    // A camada do Motion chega PRÉ-multiplicada no espaço do desenhista: desfaz antes de descodificar.
+    if (g.src_premul == 1u && s.a > 0.0) { s = vec4<f32>(s.rgb / s.a, s.a); }
     textureStore(
         dst,
         vec2<i32>(i32(id.x), i32(id.y)),

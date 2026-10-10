@@ -4948,6 +4948,7 @@ dependencies = [
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
  "ph2d-node-fx-drop-shadow",
+ "ph2d-node-fx-filter",
  "ph2d-node-fx-glow",
  "ph2d-node-fx-lens",
  "ph2d-node-motion-bezier-warp",
@@ -6580,6 +6581,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-fx-filter"
+version = "0.0.0"
+dependencies = [
+ "ph2d-fx-op",
+ "ph2d-i18n",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-fx-glow"
 version = "0.0.0"
 dependencies = [
@@ -7272,6 +7283,7 @@ dependencies = [
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
  "ph2d-node-fx-drop-shadow",
+ "ph2d-node-fx-filter",
  "ph2d-node-fx-glow",
  "ph2d-node-fx-lens",
  "ph2d-node-fx-rgb-split",
@@ -8478,6 +8490,7 @@ dependencies = [
  "ph2d-ease",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-fx-op",
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-imageio",

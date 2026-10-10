@@ -328,7 +328,7 @@ pub(super) fn stamp(
             (None, None) => None,
         };
         // A recusa de uma LUT diz-se NO cartão da lente, na linha de leitura (ciclo 20).
-        if let Some(queixa) = motion.lente.queixa(id) {
+        if let Some(queixa) = motion.lente.queixa(id).or_else(|| motion.filtro.queixa(id)) {
             node.readout = Some(queixa);
         }
         // The wire's mass — see `exact` above. Without it every wire flattens to

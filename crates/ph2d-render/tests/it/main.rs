@@ -30,6 +30,7 @@ mod fx_stack_kinds_gpu;
 mod fx_stack_linear_gpu;
 mod fx_stack_modes_gpu;
 mod fx_stack_morphology_gpu;
+mod fx_stack_premul_gpu;
 mod fx_stack_segment_cost;
 mod fx_stack_turbulence_gpu;
 mod g7_sprite_e_vetor_sob_a_mesma_luz;

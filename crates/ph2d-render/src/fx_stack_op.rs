@@ -7,8 +7,8 @@
 
 /// **Um degrau da pilha, já resolvido em PIXELS DE TELA.**
 ///
-/// A conversão mundo→pixel (o zoom da câmera) é da shell: este passe não sabe o que é uma câmera,
-/// e um segundo lugar a fazer a conta seria um segundo lugar a errá-la.
+/// A conversão mundo→pixel é [`FxOpGpu::resolve`], a porta ÚNICA dos dois autores (o Vector e a
+/// camada do Motion): o passe não sabe o que é uma câmera, só a parte LINEAR dela.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct FxOpGpu {
     /// `0` Blur · `1` Glow · `2` Drop Shadow (os códigos do `ph2d_ecs::FxOp`).
@@ -61,4 +61,49 @@ pub struct FxOpGpu {
     pub stop_pos: [[f32; 4]; 2],
     /// Quantos stops valem (`0` = a rampa preto→branco, a identidade em luma).
     pub stop_count: u32,
+}
+
+impl FxOpGpu {
+    /// **O degrau AUTORADO resolvido em pixels de tela.** `linear = [a, b, c, d]` é a parte linear
+    /// da transformação mundo → pixel (a do Vector é a vista do Vello; a do Motion inverte o Y).
+    ///
+    /// Comprimentos (raio, tamanho do ruído, crescimento) atravessam a ESCALA média da câmera; o
+    /// deslocamento atravessa a matriz e arredonda a pixel INTEIRO (o halo é lido por
+    /// `textureLoad`). ⚠️ **Cores, matiz e frações NÃO cruzam a câmera** — dar zoom não muda a cor.
+    /// O `blend_code`/`detail_clamped` são a metade de HONRAR das portas do `FxOp`.
+    #[must_use]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "pixels de tela cabem num i32/f32"
+    )]
+    pub fn resolve(o: &ph2d_fx_op::FxOp, linear: [f64; 4]) -> Self {
+        let [a, b, c, d] = linear;
+        let cam_scale = ((a * a + b * b).sqrt() + (c * c + d * d).sqrt()) as f32 * 0.5;
+        let (ox, oy) = (f64::from(o.offset[0]), f64::from(o.offset[1]));
+        let (stops, stop_pos, stop_count) = o.ramp_for_device();
+        Self {
+            kind: o.kind,
+            sigma_px: (o.radius * cam_scale).max(0.0),
+            offset_px: [
+                (a * ox + c * oy).round() as i32,
+                (b * ox + d * oy).round() as i32,
+            ],
+            tint: o.color,
+            tint_b: o.color_b,
+            opacity: o.opacity,
+            mode: o.mode,
+            blend: o.blend_code(),
+            stops,
+            stop_pos,
+            stop_count,
+            noise_scale_px: (o.scale * cam_scale).max(0.0),
+            detail: o.detail_clamped(),
+            seed: o.seed,
+            // ⚠️ Sem `max(0.0)`: aqui o sinal É a operação.
+            grow_px: o.grow * cam_scale,
+            hue: o.hue,
+            sat: o.sat,
+            bright: o.bright,
+        }
+    }
 }

@@ -37,6 +37,9 @@ ph2d-color = { path = "../ph2d-color" }
 # A lente (doc 129 do Motion): as leis na CPU que o `lens.wgsl` repete, e a biblioteca WGSL do
 # `ph2d-ease` que o OKLab da saturação pede (`pe_cbrt`).
 ph2d-lens = { path = "../ph2d-lens" }
+# O degrau AUTORADO da pilha raster: a tradução mundo → pixel ([`FxOpGpu::resolve`]) é porta única
+# do Vector e do Motion.
+ph2d-fx-op = { path = "../ph2d-fx-op" }
 ph2d-ease = { path = "../ph2d-ease" }
 # Vello renderer for the M11 widget paint pass. ⛔ TETO: o vello 0.10 pede
 # `wgpu = "^29.0.3"`, e e' ELE que fixa toda a cadeia de GPU em 29.0.4 — o

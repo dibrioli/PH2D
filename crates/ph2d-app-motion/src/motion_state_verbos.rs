@@ -102,6 +102,7 @@ impl MotionState {
             band_cache: crate::motion_audio_gen::BandCache::default(),
             table_cache: crate::motion_table_gen::TableCache::default(),
             lente: crate::motion_lens::MotionLente::default(),
+            filtro: crate::motion_filter::MotionFiltro::default(),
             // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.
             node_help_enabled: true,
             ui_now: 0.0,

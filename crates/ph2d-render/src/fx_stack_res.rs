@@ -87,8 +87,10 @@ pub(crate) struct Globals {
     /// números no erro — exactamente a classe de falha que o doc do `_pad` promete pegar, e que
     /// derrubou os 82 gates de GPU de uma vez.
     pub(crate) stop_count: u32,
-    /// ⚠️ Padding explícito — fecha a fileira de 16 bytes que o `src_org` abriu.
-    pub(crate) _pad3: i32,
+    /// **A fonte chega PRÉ-MULTIPLICADA?** (`1` = sim; só o ingest o lê). O Vector entrega sRGB
+    /// reto e escreve `0`; a camada do Motion (doc 129 §3.3) é o acumulador do desenhista,
+    /// pré-multiplicado. Fecha a fileira de 16 bytes que o `src_org` abriu.
+    pub(crate) src_premul: u32,
     /// **Os STOPS da rampa**, RGBA — o `rgb` é sRGB reto em `[0,1]` (o shader o lineariza pela
     /// MESMA porta das duas pontas do Duotone) e o **alfa é a FORÇA** daquele stop.
     ///
@@ -143,7 +145,7 @@ impl Globals {
             // Nenhum op lê a fonte — o ingest já a trouxe para o espaço de trabalho.
             src_org: [0, 0],
             stop_count: op.stop_count,
-            _pad3: 0,
+            src_premul: 0,
             stops: op.stops,
             stop_pos: op.stop_pos,
         }

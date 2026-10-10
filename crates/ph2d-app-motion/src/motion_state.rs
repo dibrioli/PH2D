@@ -476,6 +476,8 @@ pub struct MotionState {
     pub table_cache: crate::motion_table_gen::TableCache,
     /// A LENTE (`fx.lens`, ciclo 20): o nó, o tique, a LUT lida do disco e o passe da placa.
     pub lente: crate::motion_lens::MotionLente,
+    /// Os FILTROS DA CAMADA (`fx.filter`, ciclo 20 W3): a pilha do fio e o passe da placa.
+    pub filtro: crate::motion_filter::MotionFiltro,
     /// **The node-help system on/off** (ADR-0155, Enio 2026-08-04). The ONE flag the
     /// setup diagnoser rides: the auto-heal, the ⚠ inert badges and the advisories all
     /// read it (`motion_bridge_heal`), so turning it off makes the graph stop offering to

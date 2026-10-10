@@ -125,6 +125,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_lens.lut_bad_size" => "LUT: size {n} is outside 2-256",
         "app.motion.motion_lens.lut_bad_line" => "LUT: line {linha} is not three numbers",
         "app.motion.motion_lens.lut_count" => "LUT: {lido} entries, {esperado} expected",
+        "app.motion.motion_filter.off_the_wire" => "Not on the wire to an Output - filters nothing",
         "app.motion.motion_bridge_params_text_rows.rule_problem" => {
             "\u{ab}{rule}\u{bb}: {say} (+{queixas} more)"
         }

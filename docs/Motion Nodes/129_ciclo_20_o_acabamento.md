@@ -114,7 +114,7 @@ textura sobre aquele alvo» — a metade B que o doc 94 §2 mediu como ausente.
 | W0 | os oráculos corridos (fixtures) · a crate `ph2d-lens` com as leis na CPU e os gates contra as fixtures | ✅ 14 gates verdes |
 | W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | ✅ §5.2 |
 | W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | ✅ §5.3 (+ a cena `=135` com a lente; o filtro entra na W3) |
-| W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | — |
+| W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | ✅ §5.4 (+ a `=135` com uma sombra projectada) |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
 | W5 | provas de mutação · o handoff | — |
 
@@ -198,6 +198,47 @@ Desenho que a W1 decidiu (e porquê):
   `lut_1d.cube` (o cartão recusa).
 - Achado de passagem: o ângulo do `fx.glow` está gateado ao contrário — [BUGS #19](BUGS_motion_nodes.md).
 
+### §5.4 — Os filtros da camada (W3, 10/10)
+
+- **O nó** `ph2d-node-fx-filter`: passthrough, kernel `PASSTHROUGH`, **NÃO singleton** — a pilha são
+  os `fx.filter` no fio principal (porta 0) de cada `Output`, de montante para jusante
+  (`from_graph`); um `fx.filter` fora do fio diz-lo no cartão (`fora_do_fio` → `MotionFiltro::queixa`,
+  «Not on the wire to an Output - filters nothing»). 23 params: o tipo (Enum, as 15 chaves
+  `node.opts.node_fx_filter.kind_labels.*` — o gate confere cada palavra contra a `SPECS`) e os
+  knobs, cada um com um `ParamGate` sobre o tipo DERIVADO em `const fn` da `SPECS` — a lista
+  COMPACTA, com o comprimento contado por genérico `const` (o sentinela `-1` do doc 94 §1 reprovava
+  o censo `no_gate_hides_nothing`, que mede o comprimento: uma lista de 15 com sentinelas lê-se como
+  «não esconde nada»). Os três params de modo (queda · ruído · rampa) servem os tipos com a MESMA lista
+  de modos (gate: todo tipo com modos tem exactamente um). Fora da ficha, declarado: a lei de
+  mistura (Normal) e a rampa do Gradient Map com 2 stops (as duas cores).
+- **A régua de comprimento é MEDIDA:** raio, deslocamento, tamanho e crescimento partilham
+  `COMPRIMENTO_MAX = 0,6` mundo — o raio em que o passe SATURA (`MAX_HALF = 96` ⇒ `σ ≤ 32` px) na
+  câmera do produto (`height_world = 10` sobre os `534` px da cena: `53,4` px/unidade). Gate
+  `the_length_ruler_is_where_the_pass_saturates` refaz a conta pela projecção da câmera.
+- **Mundo → pixel tem UMA porta:** `FxOpGpu::resolve(op, [a, b, c, d])` (`ph2d-render`), chamada pelo
+  Vector (`fx_live_resolve`, a conta saiu de lá) e pelo Motion (a parte linear de
+  `Camera2d::world_to_screen_affine` no sub-rect da cena, sem a matriz de modelo — Y para baixo).
+- **A camada** (`ph2d-app-motion/src/motion_filter.rs`): com pilha, o Motion SAI do passe fundido
+  (`MotionState::sprites_da_camada`, a mesma pergunta para os dois) e o quadro vai em faixas; no
+  lugar da colagem da placa: as sprites por `render_instances_only` num alvo linear `Rgba16Float` →
+  `BandBlit` `Sprites` numa camada `Rgba16Float` (espaço do desenhista, pré-multiplicado) → a placa
+  das formas por cima (`Formas`) → `FxStackPass::run_premultiplied` → `BandBlit` `Vector` sobre o
+  `WorldRt`, antes da lente. Sem `fx.filter` no fio, o quadro é o de sempre (os dois ramos novos só
+  correm com `MotionFiltro::liga = true`).
+- **O ingest pré-multiplicado:** o `_pad3` do `Globals` virou `src_premul` (o Vector escreve `0` e
+  fica byte-idêntico); com `1` o ingest desfaz `rgb·α` antes do `srgb_to_linear3`.
+- **Medido na placa** (`tests/it/fx_stack_premul_gpu.rs`, `PH2D_GPU=1`): a mesma imagem reta ou
+  pré-multiplicada sai igual — pilha vazia **0** níveis, blur · sombra · ajuste de cor **≤ 1** —, e
+  o controlo (a camada lida como reta) desvia **> 20**. O borrão σ = 3 da camada contra o ImageMagick
+  (`blur_linear_s3.txt`), no miolo (a pilha tem borda TRANSPARENTE, o oráculo REPLICADA; margem 10 px
+  > `3σ`): **1 161** pontos, pior **1,19** níveis; o controlo σ = 2,5 desvia **16,65**.
+- **Na foto** (`fotografa_cena.sh`, `=135`, 1600×972): sem filtro a cena de sempre; com o `Filter`
+  em `Drop Shadow` cada disco ganha a sombra para baixo e à direita, com a vinheta da lente por cima.
+- ⚠️ **A camada filtrada vai POR CIMA do mundo** (a camada do After Effects): fora do passe fundido o
+  Motion deixa de se intercalar por z com as sprites da cena. Onion, partículas e barras ficam lá.
+- ⚠️ **Sem tonemap:** ele está em bypass (`clamp`); o gate `the_layer_skips_a_tonemap_that_is_a_bypass`
+  reprova se o AgX ligar — a camada terá de o seguir.
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo
@@ -215,3 +256,9 @@ Desenho que a W1 decidiu (e porquê):
   borda fina e `0,23` com a larga. Varra as configurações ANTES de escolher a lei, nunca uma só.
 
 ## §7 — Abertos nomeados
+
+- (W3) Formas da rota da CPU (o Vello, `formas_pedem_o_vello`) não entram na camada filtrada — medir
+  quando acontece numa cena com filtro (W4).
+- (W3) O passe da camada corre na janela INTEIRA (o tamanho do `WorldRt`), não no sub-rect da cena:
+  o relógio a 4K é da W4.
+- (W3) A lei de mistura do `fx.filter` sem ficha (os rótulos são da shell) e a rampa com 2 stops.

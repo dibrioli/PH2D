@@ -227,19 +227,11 @@ impl crate::App {
         // voltaram»*). O lowering de CPU cala uma corrente de posições, e o caminho da GPU **nunca
         // perguntava** — ver `lei_da_aparencia::a_arte_desenha`, que responde pela FRONTEIRA e sem
         // ler o dispositivo de volta.
-        let arte_desenha =
-            ph2d_app_motion::lei_da_aparencia::a_arte_desenha(motion, motion.pump.a_lei());
-        let motion_gpu: Option<(&wgpu::Buffer, u32, &[ph2d_render::GpuTexRun])> =
-            (motion_active && arte_desenha && motion.gpu_live)
-                .then(|| motion.gpu_cook.instances())
-                .flatten()
-                .map(|gi| (gi.buffer(), gi.len(), motion.gpu_cook.texture_runs()));
-        let motion_slice: &[ph2d_render::RenderInstance] = if motion_active && motion_gpu.is_none()
-        {
-            &motion.pump.instances
-        } else {
-            &[]
-        };
+        // ⭐ Os efeitos do Motion sobre o acumulador do mundo (ciclo 20): a lente e os FILTROS DA
+        // CAMADA — com filtros, o Motion sai deste passe e é desenhado à parte (`motion_filter`).
+        let lente = motion.lente.liga(motion_active);
+        let filtrada = motion.filtro.liga(motion_active);
+        let (motion_gpu, motion_slice) = motion.sprites_da_camada(motion_active && !filtrada);
         // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do onion (ADR-0142),
         // o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos objectos.
         //
@@ -314,8 +306,8 @@ impl crate::App {
         luz2d.recolher(sim.world());
         luz2d.gravar(surface.gpu(), present, renderer);
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
-        // E A LENTE (ciclo 20): ela corre sobre o acumulador do mundo.
-        plan.banded |= motion.lente.liga(motion_active);
+        // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
+        plan.banded |= lente || filtrada;
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são

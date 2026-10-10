@@ -133,6 +133,8 @@ pub struct FxStackPass {
     segs: wgpu::Buffer,
     segs_cap: u64,
     work: Option<[Tex; 4]>,
+    /// A fonte da corrida em curso é pré-multiplicada ([`FxStackPass::run_premultiplied`]).
+    premul: bool,
 }
 
 /// **Os dois módulos WGSL que a pilha compila** — porta ÚNICA, com dois consumidores: o
@@ -253,6 +255,7 @@ impl FxStackPass {
             segs,
             segs_cap,
             work: None,
+            premul: false,
         }
     }
 
@@ -333,6 +336,23 @@ impl FxStackPass {
         self.run_from(gpu, src, [0, 0], dst, w, h, ops, geom);
     }
 
+    /// A mesma pilha sobre uma fonte **PRÉ-multiplicada** no espaço do desenhista (a camada do
+    /// Motion, doc 129 §3.3 — sRGB codificado, `rgb·α`), sem geometria: o campo de distância é
+    /// semeado pela imagem. A saída é a de sempre (sRGB reto, `Rgba8Unorm`).
+    pub fn run_premultiplied(
+        &mut self,
+        gpu: &GpuContext,
+        src: &wgpu::Texture,
+        dst: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        ops: &[FxOpGpu],
+    ) {
+        self.premul = true;
+        self.run_from(gpu, src, [0, 0], dst, w, h, ops, &[]);
+        self.premul = false;
+    }
+
     /// A mesma pilha, lendo a fonte a partir de `src_org` — a forma vive numa **CÉLULA** de uma
     /// textura partilhada por todas as formas filtradas do frame.
     ///
@@ -395,7 +415,7 @@ impl FxStackPass {
             tint_b: [0.0; 4],
             src_org: [0, 0],
             stop_count: 0,
-            _pad3: 0,
+            src_premul: 0,
             stops: [[0.0; 4]; 8],
             stop_pos: [[0.0; 4]; 2],
         };
@@ -403,7 +423,16 @@ impl FxStackPass {
         // porque nenhum lê tint/sigma/banda — mas o resolve lê `work[cur]`, que já é local, e
         // dar-lhe a origem seria escrever um número que ninguém lê hoje e que o próximo leitor
         // interpretaria como verdade.
-        write_at(&mut blob, 0, &Globals { src_org, ..edges });
+        let src_premul = u32::from(self.premul);
+        write_at(
+            &mut blob,
+            0,
+            &Globals {
+                src_org,
+                src_premul,
+                ..edges
+            },
+        );
         write_at(&mut blob, total_slots - 1, &edges);
         // **A ORIGEM da grade de ruído é a MARGEM da pilha** — a mesma `stack_reach` que
         // dimensionou o scratch, perguntada aqui em vez de recebida por parâmetro: quem reserva a

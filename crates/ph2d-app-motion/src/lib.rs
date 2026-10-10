@@ -199,6 +199,7 @@ pub mod motion_bridge;
 /// Ciclo 19: as entradas que o jogo publica para o grafo (`value.input`).
 pub mod motion_entradas;
 pub mod motion_externals;
+pub mod motion_filter;
 /// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
 /// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas
 /// e as duas lojas de textura estão em mão ao mesmo tempo.

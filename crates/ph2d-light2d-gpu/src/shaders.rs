@@ -18,6 +18,8 @@ pub(crate) const C0_SPRITE: &str = concat!(
 /// O texto da lei do dono — o censo (um texto, dois consumidores) lê-o.
 pub const C0_DONO_WGSL: &str = include_str!("wgsl/c0_dono.wgsl");
 pub(crate) const C1: &str = include_str!("wgsl/c1_jfa.wgsl");
+/// ⭐ W5c: a soma do rebote na emissão (o passe depois da C0).
+pub(crate) const C0_REBOTE: &str = include_str!("wgsl/c0_rebote.wgsl");
 /// ⭐ W5b (F4): as máscaras dos sprites distantes.
 pub(crate) const C3_MASCARA: &str = include_str!("wgsl/c3_mascara.wgsl");
 
@@ -29,7 +31,8 @@ macro_rules! rc {
             include_str!("wgsl/queda.wgsl"),
             include_str!("wgsl/c2_rc.wgsl"),
             include_str!("wgsl/c3_direta.wgsl"),
-            include_str!("wgsl/c3_preenche.wgsl")
+            include_str!("wgsl/c3_preenche.wgsl"),
+            include_str!("wgsl/c4_rebote.wgsl")
         )
     };
 }

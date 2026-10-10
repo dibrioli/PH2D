@@ -133,6 +133,38 @@ pub struct Config {
     /// ⭐ W5b (F4): o lado, em texels, da MÁSCARA do alfa de um sprite distante na moldura dele
     /// (potência de 2; desce sozinho quando as máscaras não cabem na atlas).
     pub mascara_px: u32,
+    /// ⭐ W5c — o REBOTE (plano §2.4): a luz que chega a um corpo opaco que recebe luz volta ao
+    /// plano × o albedo dele, um rebote por quadro (a fonte do quadro anterior, lida no MUNDO).
+    pub rebote: bool,
+    /// ⭐ W5c — a fusão das cascatas junto a uma parede (o ABERTO 1 da W5a).
+    pub mascara_da_fusao: MascaraDaFusao,
+    /// ⭐ W5c — a fronteira entre intervalos junto a uma face (o `FRONTEIRA_NA_FACE` do
+    /// `c2_rc.wgsl`): uma sonda de cima dentro de um opaco (ou sobre a face) zerava a fusão inteira e o
+    /// raio de baixo que acaba dentro da face perdia a entrada nela.
+    pub fronteira_na_face: bool,
+}
+
+/// ⭐ W5c — que raios bilineares a fusão deixa de fora junto a um opaco (o `MASCARA_DA_FUSAO` do
+/// `c2_rc.wgsl`); os pesos dos que ficam renormalizam-se.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MascaraDaFusao {
+    /// A bilinear de sempre: o raio até uma sonda de cima de DENTRO de uma parede vê a parede.
+    Nenhuma,
+    /// Sem as sondas de cima que caem dentro de um opaco.
+    PelaSonda,
+    /// Sem os raios de uma sonda de cima DENTRO de um opaco cujo FIM (dentro/fora de um opaco)
+    /// discorda do fim do raio verdadeiro.
+    PeloFim,
+}
+
+impl MascaraDaFusao {
+    pub(crate) fn codigo(self) -> f64 {
+        match self {
+            Self::Nenhuma => 0.0,
+            Self::PelaSonda => 1.0,
+            Self::PeloFim => 2.0,
+        }
+    }
 }
 
 /// O lado da máscara de um sprite distante por omissão (W5b) — ver a rodada `medida_luz2d_w5b`.
@@ -233,6 +265,9 @@ impl Config {
             preenche_a_grade_inteira: true,
             distantes: true,
             mascara_px: MASCARA_PX_PADRAO,
+            rebote: false,
+            mascara_da_fusao: MascaraDaFusao::PeloFim,
+            fronteira_na_face: true,
         }
     }
 

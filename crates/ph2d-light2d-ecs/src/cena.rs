@@ -4,6 +4,12 @@
 /// Cor linear RGB.
 pub type Rgb = [f32; 3];
 
+/// ⭐ W5c — **o teto do albedo do rebote** (a lei do plano §2.4; o gabarito e a placa leem-no daqui).
+/// O recurso é a CONVERGÊNCIA: numa sala fechada o resíduo depois de `n` rebotes é `≤ A_MAX^n`; com
+/// `a = 1` a série diverge (a luz cresceria quadro a quadro até estourar o f16 da placa). O número é o
+/// teto físico dos materiais (neve fresca ≈ 0,8–0,9).
+pub const ALBEDO_MAX: f32 = 0.9;
+
 /// Quem emite. Todo emissor com área é **opaco**: o raio termina no primeiro emissor que acerta.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Emissor {

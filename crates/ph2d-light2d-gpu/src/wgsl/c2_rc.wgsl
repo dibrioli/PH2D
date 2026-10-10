@@ -28,6 +28,22 @@ override ESCALA_DA_CAPTURA: f32 = 1.0;
 override COM_LUZ: bool = true;
 // ⭐ W5a (F3): a c0 marca no alfa (0) a sonda que cai DENTRO de um opaco — a C3 não a mistura.
 override MASCARA_C0: bool = false;
+// ⭐ W5c — a fusão junto a uma parede (o ABERTO 1 da W5a): um raio bilinear que acaba DENTRO de um
+// opaco onde o raio verdadeiro (até `P + d·t_fim`) acaba fora — ou o contrário — vê a parede em vez
+// do que está além dela. 0 = a bilinear de sempre; 1 = sem as sondas de cima que caem dentro de um
+// opaco (o alfa de cada cascata); 2 = sem os raios de uma sonda de cima DENTRO de um opaco cujo FIM
+// discorda do fim do verdadeiro (fora dos opacos a mistura de acertos e falhas na silhueta de uma luz
+// pequena é a correção bilinear — tirá-la devolve o anel). Os pesos das que ficam renormalizam-se; se
+// nenhuma fica, os de sempre.
+override MASCARA_DA_FUSAO: u32 = 0u;
+// ⭐ W5c — a FRONTEIRA entre intervalos junto a uma face. O intervalo de cima conta a entrada na
+// fronteira pela amostra ANTERIOR na linha DELE; na fusão bilinear o raio que chega vem de outra
+// sonda, por outra linha. Uma sonda de cima DENTRO de um opaco (ou sobre a face) tem essa amostra
+// dentro: (1) o zero inteiro («quem passa aqui já foi absorvido») só quando a anterior E o início
+// caem dentro; (2) o raio de baixo até ela amostra o próprio FIM e conta lá a entrada (senão o raio
+// que acaba dentro da face perdia-a — o termo próprio de uma face que brilha). Fora dos opacos fica a
+// regra de sempre: amostrar o fim também lá reforça o anel de uma luz pequena (medido, W5c).
+override FRONTEIRA_NA_FACE: bool = false;
 // ⭐ W5a (F1): o passo onde a captura tem cobertura (a menos de um texel de uma borda), em fração
 // do `PASSO` — o raio que roça o canto do oclusor não o salta.
 override PASSO_NA_BORDA: f32 = 1.0;
@@ -71,12 +87,15 @@ struct Meio {
     texel: vec2<i32>,
     // Dentro de um EMISSOR (o texel dono tem radiância).
     luz: bool,
+    // ⭐ W5c: a emissão do dono (rgb, 1/alcance), já lida — a entrada não a relê (o G4: a recolha na
+    // entrada era o que crescia com o número de luzes).
+    e: vec4<f32>,
 }
 
 // O meio em `pc` (texels das cascatas): fora da grade, nada; dentro ⟺ cobertura interpolada ≥ ½ —
 // na captura ligada, na escala dela.
 fn meio(pc: vec2<f32>) -> Meio {
-    var m = Meio(1.0, 0.0, vec2<i32>(0), false);
+    var m = Meio(1.0, 0.0, vec2<i32>(0), false, vec4<f32>(0.0));
     let p = pc * ESCALA_DA_CAPTURA;
     let n = vec2<f32>(cas.tamanho) * ESCALA_DA_CAPTURA;
     if p.x < 0.0 || p.y < 0.0 || p.x >= n.x || p.y >= n.y {
@@ -107,7 +126,8 @@ fn meio(pc: vec2<f32>) -> Meio {
     m.texel = clamp(vec2<i32>(base) + o, vec2<i32>(0), vec2<i32>(n) - 1);
     m.tau = textureLoad(tau_dentro, m.texel, 0).r;
     if COM_LUZ {
-        m.luz = any(textureLoad(emissao, m.texel, 0).rgb > vec3<f32>(0.0));
+        m.e = textureLoad(emissao, m.texel, 0);
+        m.luz = any(m.e.rgb > vec3<f32>(0.0));
     }
     return m;
 }
@@ -135,6 +155,11 @@ fn livre(p: vec2<f32>) -> f32 {
 
 // O segmento A → B; `P` é a sonda (a distância da queda conta-se dela).
 fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
+    return marchar_ate(P, A, B, false);
+}
+
+// [`marchar`]; `ate_o_fim` = a última amostra é o próprio B (a fronteira é deste raio).
+fn marchar_ate(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>, ate_o_fim: bool) -> Traco {
     var tr = Traco(vec3<Real>(Real(0)), Real(1));
     let seg = B - A;
     let len = length(seg);
@@ -152,11 +177,11 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
         // O intervalo começa DENTRO de algo opaco: todo raio que passe por aqui já foi absorvido
         // ali — (0, 0) é a resposta exata, e marchar o interior era trabalho que dependia do
         // tamanho do objeto (medido: um disco de 100 px custava 4× a penumbra).
-        if tau_ant <= 0.0 {
+        if tau_ant <= 0.0 && (!FRONTEIRA_NA_FACE || meio(A).tau <= 0.0) {
             return Traco(vec3<Real>(Real(0)), Real(0));
         }
     }
-    let s_fim = max(len - PASSO, 0.0);
+    let s_fim = select(max(len - PASSO, 0.0), len, ate_o_fim);
     var s = 0.0;
     loop {
         let x = A + d * s;
@@ -169,8 +194,11 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
         } else {
             let m = meio(x);
             if m.luz && !luz_ant {
-                let e = textureLoad(emissao, m.texel, 0);
-                let l = e.rgb * queda(distance(x, P) * cas.texel_m, e.a);
+                // Alcance infinito (1/alcance = 0): a queda vale 1 exatamente.
+                var l = m.e.rgb;
+                if m.e.a > 0.0 {
+                    l *= queda(distance(x, P) * cas.texel_m, m.e.a);
+                }
                 tr.r += tr.t * vec3<Real>(l);
             }
             if m.tau < tau_ant {
@@ -193,11 +221,53 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
     return tr;
 }
 
-// O valor pré-médio da direção `k` (da cascata de cima) na sonda de cima `q`.
-fn ler_superior(q: vec2<i32>, k: u32, sondas_sup: vec2<u32>) -> vec3<Real> {
+// O valor pré-médio da direção `k` (da cascata de cima) na sonda de cima `q` — rgb e a máscara (a).
+fn ler_superior4(q: vec2<i32>, k: u32, sondas_sup: vec2<u32>) -> vec4<f32> {
     let blocos = 1u << (cas.nivel + 1u);
     let b = vec2<u32>(k % blocos, k / blocos);
-    return vec3<Real>(textureLoad(superior, vec2<i32>(b * sondas_sup) + q, 0).rgb);
+    return textureLoad(superior, vec2<i32>(b * sondas_sup) + q, 0);
+}
+
+fn ler_superior(q: vec2<i32>, k: u32, sondas_sup: vec2<u32>) -> vec3<Real> {
+    return vec3<Real>(ler_superior4(q, k, sondas_sup).rgb);
+}
+
+// ⭐ W5c: os pesos bilineares das 4 sondas de cima × a máscara (`MASCARA_DA_FUSAO`); `fim` = o fim do
+// raio verdadeiro, `espac_sup` e `d` para o fim de cada raio bilinear.
+fn pesos_da_fusao(
+    base: vec2<i32>,
+    fr: vec2<f32>,
+    k: u32,
+    sondas_sup: vec2<u32>,
+    ultimo: vec2<i32>,
+    fim: vec2<f32>,
+    passo_sup: f32,
+    dir: vec2<f32>,
+) -> vec4<f32> {
+    var w = vec4<f32>(0.0);
+    var m = vec4<f32>(1.0);
+    var fora_verdadeiro = true;
+    if MASCARA_DA_FUSAO == 2u {
+        fora_verdadeiro = meio(fim).tau > 0.0;
+    }
+    for (var j = 0u; j < 4u; j++) {
+        let o = vec2<u32>(j & 1u, j >> 1u);
+        let ww = mix(1.0 - fr, fr, vec2<f32>(o));
+        w[j] = ww.x * ww.y;
+        let q = clamp(base + vec2<i32>(o), vec2<i32>(0), ultimo);
+        if MASCARA_DA_FUSAO == 1u {
+            m[j] = ler_superior4(q, k, sondas_sup).a;
+        } else if MASCARA_DA_FUSAO == 2u && ler_superior4(q, k, sondas_sup).a <= 0.0 {
+            let fim_j = (vec2<f32>(q) + 0.5) * passo_sup + dir * cas.t_fim;
+            m[j] = select(0.0, 1.0, (meio(fim_j).tau > 0.0) == fora_verdadeiro);
+        }
+    }
+    let wm = w * m;
+    let soma = wm.x + wm.y + wm.z + wm.w;
+    if soma <= 0.0 {
+        return w;
+    }
+    return wm / soma;
 }
 
 fn radiancia(P: vec2<f32>, sonda: vec2<u32>, d: vec2<f32>, k: u32, s: u32) -> vec3<Real> {
@@ -214,27 +284,30 @@ fn radiancia(P: vec2<f32>, sonda: vec2<u32>, d: vec2<f32>, k: u32, s: u32) -> ve
     let base = vec2<i32>(floor(u));
     let fr = u - vec2<f32>(base);
 
+    let pesos = pesos_da_fusao(base, fr, k, sondas_sup, ultimo, P + d * cas.t_fim, espac_sup, d);
     switch FUSAO {
         case 0u: {
             let tr = marchar(P, A, P + d * cas.t_fim);
             var cima = vec3<Real>(Real(0));
             for (var j = 0u; j < 4u; j++) {
                 let o = vec2<u32>(j & 1u, j >> 1u);
-                let w = mix(1.0 - fr, fr, vec2<f32>(o));
                 let q = clamp(base + vec2<i32>(o), vec2<i32>(0), ultimo);
-                cima += Real(w.x * w.y) * ler_superior(q, k, sondas_sup);
+                cima += Real(pesos[j]) * ler_superior(q, k, sondas_sup);
             }
             return tr.r + tr.t * cima;
         }
         case 1u: {
             var soma = vec3<Real>(Real(0));
             for (var j = 0u; j < 4u; j++) {
+                if pesos[j] <= 0.0 {
+                    continue;
+                }
                 let o = vec2<u32>(j & 1u, j >> 1u);
-                let w = mix(1.0 - fr, fr, vec2<f32>(o));
                 let q = clamp(base + vec2<i32>(o), vec2<i32>(0), ultimo);
                 let Q = (vec2<f32>(q) + 0.5) * espac_sup;
-                let tr = marchar(P, A, Q + d * cas.t_fim);
-                soma += Real(w.x * w.y) * (tr.r + tr.t * ler_superior(q, k, sondas_sup));
+                let sup = ler_superior4(q, k, sondas_sup);
+                let tr = marchar_ate(P, A, Q + d * cas.t_fim, FRONTEIRA_NA_FACE && sup.a <= 0.0);
+                soma += Real(pesos[j]) * (tr.r + tr.t * vec3<Real>(sup.rgb));
             }
             return soma;
         }
@@ -276,9 +349,10 @@ fn cascata(@builtin(global_invocation_id) id: vec3<u32>) {
     if i == 0u {
         // A c0 é a fluência das CASCATAS; a luz direta das lâmpadas soma-se na grade fina (C3).
         valor *= TAU;
-        if MASCARA_C0 && meio(P).tau <= 0.0 {
-            fora = 0.0;
-        }
+    }
+    if ((i == 0u && MASCARA_C0) || (i > 0u && (MASCARA_DA_FUSAO > 0u || FRONTEIRA_NA_FACE)))
+        && meio(P).tau <= 0.0 {
+        fora = 0.0;
     }
     textureStore(saida, id.xy, vec4<f32>(valor, fora));
 }

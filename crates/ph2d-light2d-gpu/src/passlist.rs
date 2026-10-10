@@ -25,6 +25,9 @@ pub(crate) struct Opcionais {
     pub captura: Option<[usize; 2]>,
     /// ⭐ W5a (F3): o par do JFA do complemento (o preenchimento do interior dos opacos).
     pub preenche: Option<[usize; 2]>,
+    /// ⭐ W5c: o rebote — `[albedo, fonte]`: o albedo que a C0 captura e a luz que cada superfície
+    /// recebeu no quadro anterior (lida no mundo pelo quadro seguinte).
+    pub rebote: Option<[usize; 2]>,
 }
 
 impl Opcionais {
@@ -42,6 +45,10 @@ impl Opcionais {
                 [k, k + 1]
             }),
             preenche: cfg.preenchimento.map(|_| {
+                let k = proxima(2);
+                [k, k + 1]
+            }),
+            rebote: cfg.rebote.then(|| {
                 let k = proxima(2);
                 [k, k + 1]
             }),
@@ -207,6 +214,21 @@ impl PassList {
             }
         }
 
+        if op.rebote.is_some() {
+            texturas.push(Textura {
+                nome: "luz2d/tex/albedo",
+                formato: wgpu::TextureFormat::Rgba8Unorm,
+                tamanho: fino,
+                usos: T::RENDER_ATTACHMENT | amostrada,
+            });
+            texturas.push(Textura {
+                nome: "luz2d/tex/rebote",
+                formato: wgpu::TextureFormat::Rgba16Float,
+                tamanho: fino,
+                usos: T::STORAGE_BINDING | amostrada,
+            });
+        }
+
         // ⭐ W5b (F4): a atlas das máscaras dos sprites distantes — a de 1 × 1 (cresce com elas,
         // contada na geometria residente).
         texturas.push(Textura {
@@ -273,6 +295,13 @@ impl PassList {
                 usos: uniforme,
             });
         }
+        if op.rebote.is_some() {
+            buffers.push(Buffer {
+                nome: "luz2d/buf/rebote",
+                bytes: 32,
+                usos: uniforme,
+            });
+        }
         if com_tempos {
             let bytes = 8 * u64::from(crate::tempos::n_carimbos(n));
             buffers.push(Buffer {
@@ -290,8 +319,19 @@ impl PassList {
         let mut passes = vec![Passe {
             nome: "C0 captura".into(),
             le: vec![],
-            escreve: vec![EMISSAO, COBERTURA, TAU_DENTRO],
+            escreve: [EMISSAO, COBERTURA, TAU_DENTRO]
+                .into_iter()
+                .chain(op.rebote.map(|r| r[0]))
+                .collect(),
         }];
+        // ⭐ W5c: a emissão ganha albedo × a luz que a superfície recebeu no quadro anterior.
+        if let Some([albedo, fonte]) = op.rebote {
+            passes.push(Passe {
+                nome: "C0 rebote".into(),
+                le: vec![albedo, fonte],
+                escreve: vec![EMISSAO],
+            });
+        }
         if let Some(c) = op.captura {
             passes.push(Passe {
                 nome: "C0 captura fina".into(),
@@ -361,6 +401,14 @@ impl PassList {
             le: le_fina,
             escreve: vec![FLUENCIA],
         });
+        // ⭐ W5c: a luz que cada superfície recebe (as cascatas + a luz direta), para o quadro seguinte.
+        if let Some([_, fonte]) = op.rebote {
+            passes.push(Passe {
+                nome: "C3 rebote".into(),
+                le: vec![c0, cob, tau, sementes_finais],
+                escreve: vec![fonte],
+            });
+        }
         Self {
             texturas,
             buffers,

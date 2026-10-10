@@ -12,7 +12,7 @@ use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 
 use crate::config::Grade;
 
-/// Uma forma como o `c0_captura.wgsl` a lê (64 bytes).
+/// Uma forma como o `c0_captura.wgsl` a lê (80 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub(crate) struct Forma {
@@ -28,6 +28,8 @@ pub(crate) struct Forma {
     /// `BloqueiaLuz` num oclusor.
     pub opacidade: f32,
     pub _pad: f32,
+    /// ⭐ W5c: o albedo do rebote (rgb; zero = não reflete).
+    pub albedo: [f32; 4],
 }
 
 /// Quem ficou fora da C0.
@@ -192,7 +194,13 @@ struct Montagem<'a> {
 }
 
 impl Montagem<'_> {
-    fn poligono(&mut self, quem: Quem, mundo: &[[f32; 2]], cor: [f32; 4], opacidade: f32) {
+    fn poligono(
+        &mut self,
+        quem: Quem,
+        mundo: &[[f32; 2]],
+        cor: [f32; 4],
+        (opacidade, albedo): (f32, [f32; 3]),
+    ) {
         if mundo.len() < 3 {
             self.fora.push(ForaDaC0 {
                 quem,
@@ -233,6 +241,7 @@ impl Montagem<'_> {
             vertices: [primeiro, n],
             opacidade,
             _pad: 0.0,
+            albedo: [albedo[0], albedo[1], albedo[2], 0.0],
         });
     }
 
@@ -261,6 +270,7 @@ impl Montagem<'_> {
             // Uma lâmpada é LUZ, não corpo: emite e deixa passar (a marcha soma-a na entrada).
             opacidade: 0.0,
             _pad: 0.0,
+            albedo: [0.0; 4],
         });
     }
 }
@@ -292,14 +302,19 @@ pub(crate) fn capturar_opacos(
     };
     for (k, o) in cena.oclusores.iter().enumerate() {
         if o.opacidade > 0.0 && !substituidas.contains(&Quem::Oclusor(k)) {
-            m.poligono(Quem::Oclusor(k), &o.vertices, [0.0; 4], o.opacidade);
+            m.poligono(
+                Quem::Oclusor(k),
+                &o.vertices,
+                [0.0; 4],
+                (o.opacidade, [0.0; 3]),
+            );
         }
     }
     for (k, e) in cena.emissores.iter().enumerate() {
         if let Emissor::Poligono { vertices, .. } = e
             && !substituidas.contains(&Quem::Emissor(k))
         {
-            m.poligono(Quem::Emissor(k), vertices, [0.0; 4], 1.0);
+            m.poligono(Quem::Emissor(k), vertices, [0.0; 4], (1.0, [0.0; 3]));
         }
     }
     let bytes_da_geometria =
@@ -332,7 +347,12 @@ pub(crate) fn capturar_sem(
         if substituidas.contains(&Quem::Oclusor(k)) {
             continue;
         }
-        m.poligono(Quem::Oclusor(k), &o.vertices, [0.0; 4], o.opacidade);
+        m.poligono(
+            Quem::Oclusor(k),
+            &o.vertices,
+            [0.0; 4],
+            (o.opacidade, o.albedo),
+        );
     }
     for (k, e) in cena.emissores.iter().enumerate() {
         let quem = Quem::Emissor(k);
@@ -371,7 +391,7 @@ pub(crate) fn capturar_sem(
                     quem,
                     vertices,
                     [r, g, b, inverso_do_alcance(*alcance_m)],
-                    1.0,
+                    (1.0, [0.0; 3]),
                 );
             }
             // O ponto DIRETO (C3) não precisa da grade.

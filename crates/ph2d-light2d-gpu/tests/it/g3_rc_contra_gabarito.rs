@@ -26,10 +26,17 @@ use crate::comum::{gabarito, gpu, grade, ler_fluencia, rmse_rel, tem_f16};
 // ⚠️ W5a: a população é a de FORA dos opacos (dentro, o gabarito deixou de ser 0 — o F3, com gate
 // próprio em `c3_grade_fina`). Fora, com a W5a: penumbra 0,0162 · 0,0264 · 0,0594 · céu e vidro
 // 0,0121 (Alto) — dentro dos tetos da W2.
-const TOL_PENUMBRA: [f64; 3] = [0.100, 0.155, 0.257];
-const TOL_FAISCA_ALTO: f64 = 0.310;
-const TOL_CEU_E_VIDRO: [f64; 3] = [0.014, 0.022, 0.042];
-const TOL_ANEL: f64 = 0.0435;
+// ⭐ W5c — a fusão junto a uma face (`MascaraDaFusao::PeloFim` + `fronteira_na_face`, o ABERTO 1):
+// céu e vidro 0,0121 · 0,0198 · 0,0374 → 0,0074 · 0,0087 · 0,0117; anel bilinear 0,0393 → 0,0365
+// (clássica 0,1251); penumbra e faísca (luz direta) iguais: 0,0162 · 0,0264 · 0,0594 e 0,0322 ·
+// 0,0583 · 0,1005. Os tetos herdados largos (W2) apertam-se ao medido de hoje + 10 %.
+const TOL_PENUMBRA: [f64; 3] = [0.0179, 0.0291, 0.0654];
+const TOL_FAISCA: [f64; 3] = [0.0355, 0.0642, 0.1106];
+const TOL_CEU_E_VIDRO: [f64; 3] = [0.0082, 0.0096, 0.0129];
+const TOL_ANEL: f64 = 0.0402;
+/// Os caminhos de precisão na penumbra, sobre TODOS os texels (dentro dos opacos também): W5c
+/// F32/F32 0,0218 · F16/F16 0,0217.
+const TOL_PRECISAO: f64 = 0.024;
 
 fn rodar(
     gpu: &ph2d_gpu::GpuContext,
@@ -77,7 +84,7 @@ fn g3_ceu_vidros_sobrepostos_e_alcance_finito_por_degrau() {
 fn g3_a_faisca_acende_em_todo_degrau_pela_luz_direta() {
     let Some(gpu) = gpu() else { return };
     let cena = faisca();
-    for (degrau, lado, texel) in DEGRAUS {
+    for (k, (degrau, lado, texel)) in DEGRAUS.into_iter().enumerate() {
         let g = grade(lado, texel);
         let fora = o_que_fica_fora(&cena, &g).fora;
         assert!(
@@ -86,8 +93,11 @@ fn g3_a_faisca_acende_em_todo_degrau_pela_luz_direta() {
         );
         let (gf, r) = rodar(&gpu, Config::padrao(g), &cena);
         let e = rmse_rel(&gf, &r, |_| true);
-        eprintln!("G3 faísca · {degrau}: RMSE relativo {e:.4} (tolerância {TOL_FAISCA_ALTO})");
-        assert!(e <= TOL_FAISCA_ALTO, "G3 faísca · {degrau}: {e:.4}");
+        eprintln!(
+            "G3 faísca · {degrau}: RMSE relativo {e:.4} (tolerância {})",
+            TOL_FAISCA[k]
+        );
+        assert!(e <= TOL_FAISCA[k], "G3 faísca · {degrau}: {e:.4}");
     }
 }
 
@@ -159,7 +169,7 @@ fn g3_os_caminhos_de_precisao_respondem_igual() {
         let e = rmse_rel(&g, &r, |_| true);
         eprintln!("G3 precisão · aritmética {aritmetica:?} · cascatas {armazenamento:?}: {e:.4}");
         assert!(
-            e <= TOL_PENUMBRA[0],
+            e <= TOL_PRECISAO,
             "{aritmetica:?}/{armazenamento:?}: {e:.4}"
         );
     }

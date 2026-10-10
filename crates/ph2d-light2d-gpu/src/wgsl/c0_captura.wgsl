@@ -25,6 +25,8 @@ struct Forma {
     vertices: vec2<u32>,
     opacidade: f32,
     _pad: f32,
+    // ⭐ W5c: o albedo do rebote (rgb; zero = não reflete).
+    albedo: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> grade: Grade;
@@ -119,5 +121,5 @@ fn fs(e: Saida) -> Alvos {
     if c <= 0.0 {
         discard;
     }
-    return c0_alvos(c, f.cor, f.opacidade);
+    return c0_alvos(c, f.cor, f.opacidade, f.albedo.rgb);
 }

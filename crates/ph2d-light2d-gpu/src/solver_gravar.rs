@@ -212,6 +212,18 @@ impl Solver {
                             store: wgpu::StoreOp::Store,
                         },
                     }),
+                    // ⭐ W5c: o albedo do rebote.
+                    self.rebote
+                        .as_ref()
+                        .map(|r| wgpu::RenderPassColorAttachment {
+                            view: &r.alvo_albedo,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        }),
                 ],
                 depth_stencil_attachment: None,
                 timestamp_writes: self.tempos.as_ref().map(|t| t.escrita_render(tempos::C0)),
@@ -246,6 +258,17 @@ impl Solver {
                 label: Some("luz2d C0 captura fina (vazia)"),
                 timestamp_writes: Some(t.escrita_compute(tempos::C0_FINA)),
             });
+        }
+        // ⭐ W5c: a emissão ganha a luz que cada superfície refletora recebeu no quadro anterior.
+        match &self.rebote {
+            Some(r) => r.gravar(
+                gpu,
+                enc,
+                &self.cfg.grade,
+                &self.alvos_c0[0],
+                self.tempos.as_ref(),
+            ),
+            None => rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::C0_REBOTE),
         }
         {
             let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -286,6 +309,10 @@ impl Solver {
             (&self.lampadas_grupo, !distante.indices.is_empty()),
             self.tempos.as_ref(),
         );
+        // A fonte que a C3 acabou de escrever está nesta grade: o quadro seguinte lê-a no mundo.
+        if let Some(r) = &mut self.rebote {
+            r.anterior = Some(self.cfg.grade);
+        }
         if let Some(t) = &self.tempos {
             t.resolver(enc);
         }

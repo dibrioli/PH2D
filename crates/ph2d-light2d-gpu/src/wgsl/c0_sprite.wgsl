@@ -20,8 +20,12 @@ struct FormaSprite {
     cor: vec4<f32>,
     opacidade: f32,
     premultiplicada: f32,
-    _p0: f32,
+    // ⭐ W5c: a textura guarda a cor em sRGB (a camada do vetor, `Rgba8Unorm`): o albedo linear sai
+    // pela curva; a de um sprite (`Rgba8UnormSrgb`) já chega linear.
+    srgb: f32,
     _p1: f32,
+    // ⭐ W5c: o multiplicador da cor do texel no albedo do rebote (zero = não reflete).
+    albedo: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> grade: Grade;
@@ -67,6 +71,11 @@ fn fs(e: Saida) -> Alvos {
     if c <= 0.0 {
         discard;
     }
-    let cor = vec4<f32>(soma_rgb / max(soma_a, 1e-6) * f.cor.rgb, f.cor.a);
-    return c0_alvos(c, cor, f.opacidade);
+    let reta = soma_rgb / max(soma_a, 1e-6);
+    let cor = vec4<f32>(reta * f.cor.rgb, f.cor.a);
+    var linear = reta;
+    if f.srgb > 0.5 {
+        linear = select(pow((reta + 0.055) / 1.055, vec3<f32>(2.4)), reta / 12.92, reta <= vec3<f32>(0.04045));
+    }
+    return c0_alvos(c, cor, f.opacidade, linear * f.albedo.rgb);
 }

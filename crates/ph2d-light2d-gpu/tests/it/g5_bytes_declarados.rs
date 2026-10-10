@@ -197,6 +197,8 @@ fn g5_o_mundo_fora_da_grade_e_contado() {
             opacidade: 1.0,
             premultiplicada: false,
             textura: 0,
+            albedo: [0.0; 3],
+            cor_em_srgb: false,
         }],
         ..Default::default()
     };

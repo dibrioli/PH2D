@@ -3,8 +3,9 @@
 //! alinhado à GRADE de luz, `Degrau::vetor_px_por_texel` píxeis por texel. Cada camada (uma por opacidade) entra na C0 como
 //! um sprite que cobre a grade inteira — a captura por texel já provada para os sprites, lida EXATA.
 //!
-//! ⚠️ O Vello só escreve `Rgba8Unorm` com alfa directa: o alfa É a cobertura, a cor não importa (o
-//! vetor não emite — a emissão é do `SpriteEmissive`, que é de sprite).
+//! ⚠️ O Vello só escreve `Rgba8Unorm` com alfa directa: o alfa É a cobertura; o vetor não emite (a
+//! emissão é do `SpriteEmissive`, que é de sprite). ⭐ W5c: a cor (sRGB) é o ALBEDO do rebote do
+//! caminho que reflete — uma camada por `(opacidade, reflete)`.
 
 use std::collections::BTreeMap;
 
@@ -18,6 +19,7 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 
 struct Camada {
     opacidade: f32,
+    reflete: bool,
     textura: wgpu::Texture,
     vista: wgpu::TextureView,
 }
@@ -63,11 +65,11 @@ impl CamadaVetorial {
             return;
         }
         self.distante.desenhar(gpu, g, cena, doc, xforms);
-        // Uma camada por opacidade (quase sempre uma: opaco).
-        let mut por_opacidade: BTreeMap<u32, Vec<u64>> = BTreeMap::new();
+        // Uma camada por opacidade e reflexo (quase sempre uma: opaco).
+        let mut por_opacidade: BTreeMap<(u32, bool), Vec<u64>> = BTreeMap::new();
         for v in &cena.vetores {
             por_opacidade
-                .entry(v.opacidade.to_bits())
+                .entry((v.opacidade.to_bits(), v.reflete))
                 .or_default()
                 .push(v.caminho);
         }
@@ -88,7 +90,7 @@ impl CamadaVetorial {
         };
         let mut cena_vello = VectorScene::new();
         let mut n = 0;
-        for (bits, caminhos) in por_opacidade {
+        for ((bits, reflete), caminhos) in por_opacidade {
             cena_vello.reset();
             for id in caminhos {
                 if let Some(path) = doc.path(id) {
@@ -109,7 +111,7 @@ impl CamadaVetorial {
                 gpu,
                 &mut self.camadas,
                 n,
-                f32::from_bits(bits),
+                (f32::from_bits(bits), reflete),
                 vello.intermediate_texture(),
                 tamanho,
             );
@@ -138,6 +140,8 @@ impl CamadaVetorial {
                     opacidade: c.opacidade,
                     premultiplicada: false,
                     textura: 0,
+                    albedo: if c.reflete { [1.0; 3] } else { [0.0; 3] },
+                    cor_em_srgb: true,
                 },
             ))
         })
@@ -217,6 +221,8 @@ impl Distante {
                 opacidade,
                 premultiplicada: false,
                 textura: 0,
+                albedo: [0.0; 3],
+                cor_em_srgb: true,
             });
         }
         if let Err(e) = vello.render_to_intermediate(
@@ -234,7 +240,7 @@ impl Distante {
             gpu,
             &mut uma,
             0,
-            1.0,
+            (1.0, false),
             vello.intermediate_texture(),
             (total, total),
         );
@@ -273,7 +279,7 @@ fn copiar(
     gpu: &GpuContext,
     camadas: &mut Vec<Camada>,
     i: usize,
-    opacidade: f32,
+    (opacidade, reflete): (f32, bool),
     origem: &wgpu::Texture,
     tamanho: (u32, u32),
 ) {
@@ -298,6 +304,7 @@ fn copiar(
         let vista = textura.create_view(&wgpu::TextureViewDescriptor::default());
         let c = Camada {
             opacidade,
+            reflete,
             textura,
             vista,
         };
@@ -308,6 +315,7 @@ fn copiar(
         }
     }
     camadas[i].opacidade = opacidade;
+    camadas[i].reflete = reflete;
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     enc.copy_texture_to_texture(
         origem.as_image_copy(),

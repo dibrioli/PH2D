@@ -151,6 +151,8 @@ fn como_sprites<'a>(cena: &CenaDeLuz, vista: &'a wgpu::TextureView) -> CapturaDe
             opacidade: o.opacidade,
             premultiplicada: false,
             textura: 0,
+            albedo: [0.0; 3],
+            cor_em_srgb: false,
         });
         c.substituidos.insert(Quem::Oclusor(k));
     }

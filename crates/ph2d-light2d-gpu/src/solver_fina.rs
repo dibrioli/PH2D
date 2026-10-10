@@ -15,7 +15,7 @@ pub(super) struct CapturaFina {
     /// `[cobertura, τ dentro]` da captura fina.
     alvos: [wgpu::TextureView; 2],
     pipeline: wgpu::RenderPipeline,
-    formatos: [wgpu::TextureFormat; 3],
+    formatos: solver_sprite::FormatosC0,
     geometria: Option<Geometria>,
     sprites: Option<solver_sprite::C0Sprites>,
 }
@@ -28,7 +28,7 @@ impl CapturaFina {
         layout: &wgpu::PipelineLayout,
         uni: wgpu::Buffer,
         alvos: [wgpu::TextureView; 2],
-        formatos: [wgpu::TextureFormat; 3],
+        formatos: solver_sprite::FormatosC0,
         g: Grade,
         fila: &wgpu::Queue,
     ) -> Self {
@@ -128,6 +128,7 @@ impl CapturaFina {
                 None,
                 alvo(&self.alvos[0], wgpu::Color::TRANSPARENT),
                 alvo(&self.alvos[1], wgpu::Color::WHITE),
+                None,
             ],
             depth_stencil_attachment: None,
             timestamp_writes: tempos.map(|t| t.escrita_render(tempos::C0_FINA)),

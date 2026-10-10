@@ -1,6 +1,6 @@
 //! **A pipeline dos sprites na C0** (W3) — irmã da das formas, criada no primeiro quadro que tem
 //! sprites (uma cena sem eles não aloca nada a mais). Desenha DENTRO do passe C0 das formas: os mesmos
-//! três alvos e a mesma mistura ([`alvos_c0`], a lei única das duas pipelines).
+//! alvos e a mesma mistura ([`alvos_c0`], a lei única das duas pipelines).
 
 use std::ops::Range;
 
@@ -9,9 +9,12 @@ use ph2d_gpu::GpuContext;
 use crate::captura_sprite::{Amostragem, FormaSprite};
 use crate::shaders;
 
-/// Os três alvos da C0 e a MISTURA de cada um — a lei única das duas pipelines: emissão do dono pelo
-/// maior (um só, no caso comum), cobertura pela soma, τ de dentro pelo produto.
-pub(crate) fn alvos_c0(formatos: [wgpu::TextureFormat; 3]) -> [Option<wgpu::ColorTargetState>; 3] {
+/// Os formatos dos alvos da C0: emissão, cobertura, τ dentro e (⭐ W5c, com o rebote) o albedo.
+pub(crate) type FormatosC0 = [Option<wgpu::TextureFormat>; 4];
+
+/// Os alvos da C0 e a MISTURA de cada um — a lei única das duas pipelines: emissão do dono pelo
+/// maior (um só, no caso comum), cobertura pela soma, τ de dentro pelo produto, albedo pelo maior.
+pub(crate) fn alvos_c0(formatos: FormatosC0) -> [Option<wgpu::ColorTargetState>; 4] {
     let soma = wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::One,
         dst_factor: wgpu::BlendFactor::One,
@@ -27,9 +30,9 @@ pub(crate) fn alvos_c0(formatos: [wgpu::TextureFormat; 3]) -> [Option<wgpu::Colo
         dst_factor: wgpu::BlendFactor::Src,
         operation: wgpu::BlendOperation::Add,
     };
-    let alvo = |formato, b: wgpu::BlendComponent| {
-        Some(wgpu::ColorTargetState {
-            format: formato,
+    let alvo = |formato: Option<wgpu::TextureFormat>, b: wgpu::BlendComponent| {
+        formato.map(|format| wgpu::ColorTargetState {
+            format,
             blend: Some(wgpu::BlendState { color: b, alpha: b }),
             write_mask: wgpu::ColorWrites::ALL,
         })
@@ -38,16 +41,15 @@ pub(crate) fn alvos_c0(formatos: [wgpu::TextureFormat; 3]) -> [Option<wgpu::Colo
         alvo(formatos[0], maior),
         alvo(formatos[1], soma),
         alvo(formatos[2], multiplica),
+        alvo(formatos[3], maior),
     ]
 }
 
 /// ⭐ Os alvos da captura FINA dos opacos (W5a): os MESMOS da C0 sem a emissão (a saída do fragmento
 /// para ela é descartada).
-pub(crate) fn alvos_c0_opacos(
-    formatos: [wgpu::TextureFormat; 3],
-) -> [Option<wgpu::ColorTargetState>; 3] {
-    let [_, cobertura, tau] = alvos_c0(formatos);
-    [None, cobertura, tau]
+pub(crate) fn alvos_c0_opacos(formatos: FormatosC0) -> [Option<wgpu::ColorTargetState>; 4] {
+    let [_, cobertura, tau, _] = alvos_c0(formatos);
+    [None, cobertura, tau, None]
 }
 
 struct Residente {
@@ -70,7 +72,7 @@ pub(crate) struct C0Sprites {
 impl C0Sprites {
     pub(crate) fn novo(
         device: &wgpu::Device,
-        alvos: &[Option<wgpu::ColorTargetState>; 3],
+        alvos: &[Option<wgpu::ColorTargetState>; 4],
         rotulo_do_buffer: &'static str,
     ) -> Self {
         let layout_formas = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

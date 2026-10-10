@@ -28,6 +28,9 @@ mod distantes;
 /// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_fina.rs"]
 mod fina;
+/// ⭐ O rebote (W5c) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_rebote.rs"]
+mod rebote;
 pub(crate) use distantes::{
     FORMATO_DA_ATLAS, MINIMOS as MINIMOS_DISTANTES, NOME_DA_ATLAS, NOMES as NOMES_DISTANTES,
     USOS_DA_ATLAS,
@@ -123,8 +126,8 @@ pub struct Solver {
     c0_layout: wgpu::BindGroupLayout,
     c0: wgpu::RenderPipeline,
     geometria: Option<Geometria>,
-    /// Os formatos dos três alvos da C0 (a pipeline dos sprites nasce com eles).
-    formatos_c0: [wgpu::TextureFormat; 3],
+    /// Os formatos dos alvos da C0 (a pipeline dos sprites nasce com eles).
+    formatos_c0: solver_sprite::FormatosC0,
     /// ⭐ A pipeline dos sprites por texel (W3) — criada no primeiro quadro que os tem.
     c0_sprites: Option<solver_sprite::C0Sprites>,
     jfa_semente: wgpu::ComputePipeline,
@@ -141,6 +144,7 @@ pub struct Solver {
     c3: c3::C3,
     /// ⭐ A captura fina dos opacos (W5a), com [`Config::usa_captura_fina`].
     fina: Option<fina::CapturaFina>,
+    rebote: Option<rebote::SomaDoRebote>,
     tempos: Option<Tempos>,
 }
 
@@ -294,10 +298,12 @@ impl Solver {
             immediate_size: 0,
         });
         // Os alvos e a mistura da C0 — a lei única das duas pipelines (formas e sprites).
+        let op = crate::passlist::Opcionais::de(&cfg);
         let formatos_c0 = [
-            lista.texturas[EMISSAO].formato,
-            lista.texturas[COBERTURA].formato,
-            lista.texturas[TAU_DENTRO].formato,
+            Some(lista.texturas[EMISSAO].formato),
+            Some(lista.texturas[COBERTURA].formato),
+            Some(lista.texturas[TAU_DENTRO].formato),
+            op.rebote.map(|r| lista.texturas[r[0]].formato),
         ];
         let c0 = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("luz2d c0 captura"),
@@ -369,7 +375,6 @@ impl Solver {
         let jfa_salto = compute("luz2d c1 salto", &jfa_pl, &jfa_modulo, "salto", &[]);
         let jfa_tamanho = cfg.grade_jfa();
         let fino = [cfg.grade.largura, cfg.grade.altura];
-        let op = crate::passlist::Opcionais::de(&cfg);
         let mut uni = vec![0u8; (PASSO_UNIFORME * (saltos.len() as u64 + 1)) as usize];
         for (j, salto) in std::iter::once(0).chain(saltos.iter().copied()).enumerate() {
             let u = UniformeJfa {
@@ -490,6 +495,11 @@ impl Solver {
                     "MASCARA_C0",
                     f64::from(u8::from(cfg.preenchimento.is_some())),
                 ),
+                ("MASCARA_DA_FUSAO", cfg.mascara_da_fusao.codigo()),
+                (
+                    "FRONTEIRA_NA_FACE",
+                    f64::from(u8::from(cfg.fronteira_na_face)),
+                ),
             ],
         );
         // O `textureGather` dos 4 vizinhos da cobertura; a borda prende-se ao texel da borda.
@@ -571,6 +581,10 @@ impl Solver {
             )
         });
 
+        let rebote = op.rebote.map(|r| {
+            let fonte = (buffer("luz2d/buf/rebote"), texturas[r[1]].clone());
+            rebote::SomaDoRebote::novo(device, &lista, &vistas, r, fonte)
+        });
         gpu.queue.write_buffer(
             &uni_c0,
             0,
@@ -609,6 +623,7 @@ impl Solver {
             distantes,
             c3,
             fina,
+            rebote,
             tempos,
         })
     }

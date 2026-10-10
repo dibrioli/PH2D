@@ -10,14 +10,10 @@
 
 use std::f64::consts::TAU;
 
+pub use ph2d_light2d_ecs::ALBEDO_MAX;
 use ph2d_light2d_ecs::CenaDeLuz;
 
 use crate::{Linha, Objeto, Pontual, geometria, linha, montar, opaco, rgb};
-
-/// ⭐ O teto do albedo do rebote. O recurso é a CONVERGÊNCIA: numa sala fechada o resíduo depois de
-/// `n` rebotes é `≤ A_MAX^n`; com `a = 1` a série diverge (a luz cresceria quadro a quadro até estourar
-/// o f16 da placa). O número é o teto físico dos materiais (neve fresca ≈ 0,8–0,9).
-pub const ALBEDO_MAX: f32 = 0.9;
 
 /// O afastamento de `x⁺` da fronteira (para FORA), em metros.
 const FORA: f64 = 1e-9;

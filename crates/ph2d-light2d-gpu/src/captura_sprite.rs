@@ -30,6 +30,11 @@ pub struct SpriteNaC0 {
     pub premultiplicada: bool,
     /// Índice em [`CapturaDeSprites::texturas`].
     pub textura: usize,
+    /// ⭐ W5c: o multiplicador da cor do texel no ALBEDO do rebote (zero = não reflete).
+    pub albedo: Rgb,
+    /// ⭐ W5c: a textura guarda a cor em sRGB (a camada do vetor do Vello); a de um sprite já é lida
+    /// linear.
+    pub cor_em_srgb: bool,
 }
 
 /// Como a C0 lê uma textura nas 8×8 subamostras de cada texel.
@@ -54,7 +59,7 @@ pub struct CapturaDeSprites<'a> {
     pub distantes: Vec<SpriteNaC0>,
 }
 
-/// Um sprite como o `c0_sprite.wgsl` o lê (96 bytes).
+/// Um sprite como o `c0_sprite.wgsl` o lê (112 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub(crate) struct FormaSprite {
@@ -65,7 +70,9 @@ pub(crate) struct FormaSprite {
     pub cor: [f32; 4],
     pub opacidade: f32,
     pub premultiplicada: f32,
-    pub _p: [f32; 2],
+    pub srgb: f32,
+    pub _p: f32,
+    pub albedo: [f32; 4],
 }
 
 /// Os sprites na grade `g`, AGRUPADOS por textura (um desenho por lote): `(formas, lotes)`, com cada
@@ -129,7 +136,9 @@ pub(crate) fn na_grade(
             cor: [er, eg, eb, 0.0],
             opacidade: s.opacidade,
             premultiplicada: if s.premultiplicada { 1.0 } else { 0.0 },
-            _p: [0.0; 2],
+            srgb: if s.cor_em_srgb { 1.0 } else { 0.0 },
+            _p: 0.0,
+            albedo: [s.albedo[0], s.albedo[1], s.albedo[2], 0.0],
         });
         match lotes.last_mut() {
             Some((t, r)) if *t == s.textura => r.end = i + 1,

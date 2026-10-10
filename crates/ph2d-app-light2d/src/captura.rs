@@ -80,6 +80,8 @@ pub(crate) fn sprites_da_cena<'r>(
             opacidade: papel.opacidade,
             premultiplicada: inst.premultiplied > 0.5,
             textura,
+            albedo: papel.albedo,
+            cor_em_srgb: false,
         });
         c.substituidos.insert(match papel.forma {
             FormaDoSprite::Emissor(i) => Quem::Emissor(i),

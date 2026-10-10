@@ -486,6 +486,8 @@ mod testes {
             opacidade: 1.0,
             premultiplicada: false,
             textura: 0,
+            albedo: [0.0; 3],
+            cor_em_srgb: false,
         }
     }
 

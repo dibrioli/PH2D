@@ -85,6 +85,11 @@ pub(super) struct C3 {
     preenchimento: Option<Preenchimento>,
     fina: Par,
     grupo_fina: wgpu::BindGroup,
+    /// ⭐ W5c: a FONTE do rebote (a luz que cada superfície recebe, para o quadro seguinte) — os
+    /// grupos 2 (a c0) e 3 (a saída).
+    rebote: Option<(Par, [wgpu::BindGroup; 2])>,
+    /// A grade das cascatas (a fonte do rebote cobre-a inteira).
+    tamanho_grosso: [u32; 2],
     uniforme: wgpu::Buffer,
     /// O uniforme deste quadro: a grade fina inteira por omissão, a região da janela com
     /// [`Self::regiao`].
@@ -387,6 +392,52 @@ impl C3 {
                 }
             });
 
+        // ⭐ W5c: a fonte do rebote, na grade das cascatas inteira (a marcha e o passo da luz direta).
+        let rebote = op.rebote.map(|[_, fonte]| {
+            let g2 = layout(device, "luz2d c3 rebote c0", &[entrada_textura(1, FLOAT)]);
+            let g3 = layout(
+                device,
+                "luz2d c3 rebote saida",
+                &[entrada_escrita(3, wgpu::TextureFormat::Rgba16Float)],
+            );
+            let grupo = |l: &wgpu::BindGroupLayout, b: u32, v: usize| {
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("luz2d c3 rebote"),
+                    layout: l,
+                    entries: &[vista(b, &e.vistas[v])],
+                })
+            };
+            let grupos = [grupo(&g2, 1, c0), grupo(&g3, 3, fonte)];
+            let mut constantes = vec![("PASSO", fino(true))];
+            if let Some(b) = bordas {
+                constantes.push(("RAIOS_DIRETOS", f64::from(b.raios)));
+                constantes.push(("BISSECOES", f64::from(b.bissecoes)));
+            }
+            let em = |d: f64| {
+                let c: Vec<(&str, f64)> = constantes
+                    .iter()
+                    .copied()
+                    .chain([("DISTANTES", d)])
+                    .collect();
+                pipeline_em(
+                    "luz2d c3 rebote",
+                    &[
+                        Some(&cena_layout),
+                        Some(e.lampadas_layout),
+                        Some(&g2),
+                        Some(&g3),
+                    ],
+                    "c3_rebote",
+                    &c,
+                )
+            };
+            let par = Par {
+                sem: em(0.0),
+                com: cfg.distantes.then(|| em(1.0)),
+            };
+            (par, grupos)
+        });
+
         let gf = cfg.grade_da_fluencia();
         let mut c3 = Self {
             cena,
@@ -394,6 +445,8 @@ impl C3 {
             preenchimento,
             fina,
             grupo_fina,
+            rebote,
+            tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
             uniforme: e.uni_c3.clone(),
             u: UniformeFina {
                 tamanho: [gf.largura, gf.altura],
@@ -487,6 +540,21 @@ impl C3 {
                 p.set_bind_group(1, lampadas, &[]);
                 p.set_bind_group(2, g2, &[]);
                 p.dispatch_workgroups(grossa[0], grossa[1], 1);
+            }
+        }
+        {
+            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("luz2d C3 rebote"),
+                timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_REBOTE)),
+            });
+            if let Some((pipe, [g2, g3])) = &self.rebote {
+                p.set_pipeline(pipe.de(distantes));
+                p.set_bind_group(0, &self.cena, &[]);
+                p.set_bind_group(1, lampadas, &[]);
+                p.set_bind_group(2, g2, &[]);
+                p.set_bind_group(3, g3, &[]);
+                let [w, h] = self.tamanho_grosso;
+                p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
             }
         }
         let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {

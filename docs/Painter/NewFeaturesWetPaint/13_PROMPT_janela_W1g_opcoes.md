@@ -46,8 +46,12 @@ O2 **Borda que pesa** (slider 0–1, 0 de fábrica): com a tela inclinada o pigm
    ĝ) e/ou assenta mais onde a água fica mais funda na orla. Contínuo, sem decisão por célula. Barra: a meia, o
    valor que dê 1,3–1,6 na bancada; a régua do recto continua verde (plano ≤ 22, pontas quadradas ≤ 15 %); direita
    ao byte (sem ĝ não há efeito).
-O3 (PERGUNTE ao dono antes) fios finos e compridos no máximo (o Rebelle: ~10 de 3–7 px e 250–460 px; nós ~20 grossos
-   e curtos). Está a um passo do sistema de gotas vetado — só com o dono a dizer sim, e nunca por canal/linha de contacto.
+O3 **Fios finos e compridos no máximo** (o Rebelle: ~10 de 3–7 px e 250–460 px; nós ~20 grossos e curtos). Dono
+   10/10: *«apenas depois e se for seguro»* ⇒ SÓ depois de O1 e O2 fechadas e verdes, como opção desligada de fábrica,
+   e «seguro» quer dizer, medido: (a) desligada = o traço de hoje ao byte; (b) ligada, a régua do recto verde (nada de
+   pontas quadradas nem escadas) e a tela direita e a meia sem um fio a mais; (c) nenhum mecanismo vetado (canal,
+   linha de contacto, Create/Easy Drips, DripLaw, trava célula a célula na entrada do seco). Se nenhuma lei passar
+   (a)–(c) numa rodada de variantes, NÃO entregue: registe as recusas no 05 §4b e diga-o ao dono.
 
 PROTOCOLO: §0.10 — as opções medem-se NUMA rodada (variantes no mesmo processo, intercaladas, o mínimo), antes de
 escolher valores; red-first: o gate de cada opção nasce vermelho na opção desligada→ligada e o controlo do neutro

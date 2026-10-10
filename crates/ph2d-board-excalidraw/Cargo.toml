@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-board-excalidraw"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O `.excalidraw` de ida e volta (W8, `docs/MiroClone/06_equipa_e_saida.md` §2 X1–X4): o esquema
+# aprendido pelas SAÍDAS do oráculo Excalidraw 0.18.1 (nunca pelo fonte). Sem UI, sem ficheiros.
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-board-geom = { path = "../ph2d-board-geom" }
+ph2d-board-edit = { path = "../ph2d-board-edit" }
+ph2d-board-route = { path = "../ph2d-board-route" }
+ph2d-vector = { path = "../ph2d-vector" }
+# `float_roundtrip`: sem ela o `serde_json` lê um `f64` com até 1 ULP de erro (medido: o traço da
+# caneta voltava 498.885670559028 → 498.88567055902803) — a ida e volta é AO BIT.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+# A cena EMBEBIDA num `.png` (um `tEXt`) ou num `.svg` (base64 em `<metadata>`), comprimida com zlib.
+base64 = "0.22"
+flate2 = "1"
+png = "0.18"
+
+[lints]
+workspace = true

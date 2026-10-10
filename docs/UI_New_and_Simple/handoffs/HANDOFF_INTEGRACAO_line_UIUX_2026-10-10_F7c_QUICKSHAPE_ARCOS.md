@@ -137,6 +137,8 @@ sorriso por baixo da linha é um arco de três nós; o gelado continua livre (sm
 simétricos). [`f7c_02`](../vetor_nova_ui/fotos/f7c_02_cena12_o_gancho_assimetrico_vira_biarco.png) — o
 gancho do dono, em cima, é um biarco de cinco nós; o sorriso continua círculo.
 
+**Smoke do dono (10/10, 2.ª volta): OK** — *«Muito bom. Smoke OK.»* Integração ainda NÃO (ordem do dono).
+
 ## §7 — O que fica ABERTO
 
 - **Arcos SIMÉTRICOS de elipse** (centrados no eixo) e espirais suaves (120°) continuam arco de CÍRCULO

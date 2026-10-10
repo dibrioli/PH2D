@@ -96,8 +96,8 @@ ECS 12. Smoke recompilado (regra I, depois do `rm -rf target/*/incremental`), 2.
    dentro da parede entram na fusão com 0. O preenchimento copia esse exterior para dentro. Território do HRC.
 2. **O interior de uma parede que RECEBE luz** mostra a face mais próxima: a metade do lado aceso clara, a outra
    escura, com o corte no EIXO MEDIAL (onde «a face mais próxima» troca num salto; o gate do interior mede a
-   faixa de 2 texels e o fundo pela média, não esse fio). As cenas 1 e 4 continuam com `NaoRecebeLuz` nas
-   paredes — mudar é decisão de PRODUTO (pergunta ao dono no relatório).
+   faixa de 2 texels e o fundo pela média, não esse fio). **Decisão do dono (10/10): as paredes das cenas 1 e
+   4 continuam com `NaoRecebeLuz` «por enquanto»** — não reabrir sem ele pedir.
 3. **G4 (K3) na beira do limite — herdado, não desta onda.** Medido ALTERNADO no mesmo regime (`load` ~2,4; o
    HEAD da W4b numa worktree temporária com `target` próprio): **W4b 4,37 · 4,82 · 4,41 · 5,09 %** × **W5a
    3,91 · 3,59 · 3,94 · 4,16 %** (limite 5 %). O próprio HEAD da W4b reprova às vezes; sob carga, as duas.

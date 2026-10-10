@@ -11,6 +11,7 @@ mod captura_por_texel;
 mod censo_wgsl_partilhado;
 mod comum;
 mod every_word_this_family_shows_comes_from_the_string_table;
+mod fotos_do_f4;
 mod g11_pan_sem_tremor;
 mod g6_ponto_neutro;
 mod medida_luz2d_w3;

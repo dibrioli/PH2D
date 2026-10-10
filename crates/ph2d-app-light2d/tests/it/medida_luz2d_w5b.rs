@@ -514,3 +514,61 @@ fn medida_luz2d_w5b_vazio() {
     }
     eprintln!("# loadavg depois {}", loadavg());
 }
+
+/// A3 à parte: o custo com N sprites FORA da grade no caminho da lâmpada (o laço da C3 é por objeto
+/// em cada raio e em cada cone). A cena 4 na vista do dono, mais N caixotes de 0,15 m espalhados na
+/// sala da grande (fora da grade, dentro do caminho até a lâmpada grande).
+#[test]
+#[ignore = "a rodada da W5b, A3: corre-se à mão"]
+fn medida_luz2d_w5b_muitos() {
+    let Some(gpu) = gpu() else { return };
+    eprintln!("# W5b A3 · loadavg antes {}", loadavg());
+    let branca = textura(&gpu, 1, 1, &[255; 4]);
+    let vb = branca.create_view(&Default::default());
+    let base = cena_de_luz(&cena4(0));
+    let com = |n: usize| {
+        let mut c = base.clone();
+        for k in 0..n {
+            // Uma espiral determinística na sala da grande (x ∈ [0,3; 2,3], y ∈ [−3,5; 3,5]).
+            let a = k as f32 * 2.399_963;
+            let r = (k as f32 + 0.5).sqrt() / (n as f32).sqrt();
+            let (x, y) = (1.3 + r * a.cos() * 0.95, r * a.sin() * 3.4);
+            let l = 0.075;
+            c.oclusores.push(Oclusor {
+                vertices: vec![
+                    [x - l, y - l],
+                    [x + l, y - l],
+                    [x + l, y + l],
+                    [x - l, y + l],
+                ],
+                opacidade: 1.0,
+            });
+        }
+        c
+    };
+    let ns = [0_usize, 10, 50, 200];
+    let cenas: Vec<CenaDeLuz> = ns.iter().map(|&n| com(n)).collect();
+    let ad = afim(DONO);
+    let mut s = solver(&gpu, config(&gpu, NivelDaLuz::Baixa, ad, true, 256), ad);
+    let mut minimo = vec![f64::INFINITY; ns.len()];
+    let mut objetos = vec![0; ns.len()];
+    for rodada in 0..15 {
+        for k in 0..ns.len() {
+            let i = (k + rodada) % ns.len();
+            let sp = como_sprites(&cenas[i], &vb);
+            for _ in 0..2 {
+                let mut enc = gpu.device.create_command_encoder(&Default::default());
+                objetos[i] = s
+                    .gravar_com_sprites(&gpu, &mut enc, &cenas[i], &sp)
+                    .distantes;
+                gpu.queue.submit([enc.finish()]);
+            }
+            minimo[i] = minimo[i].min(s.tempos(&gpu).expect("TIMESTAMP_QUERY").total());
+        }
+    }
+    eprintln!("| caixotes fora da grade | objetos distantes | ms (Low, dono) |\n|---|---|---|");
+    for (k, n) in ns.iter().enumerate() {
+        eprintln!("| {n} | {} | {:.3} |", objetos[k], minimo[k]);
+    }
+    eprintln!("# loadavg depois {}", loadavg());
+}

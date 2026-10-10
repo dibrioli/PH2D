@@ -507,6 +507,26 @@ mod testes {
         assert_eq!(m.listas, vec![[0, 2]], "{m:?}");
         assert_eq!(m.objetos.len(), 2);
         assert!(m.objetos.iter().all(|o| o.tipo == POLIGONO));
+        // A opacidade viaja: cada entrada × τ = 1 − opacidade.
+        let mut meio = ret(4.5, 1.5, 4.8, 2.5);
+        meio.opacidade = 0.25;
+        let m2 = montar(
+            &cena([6.0, 2.0], vec![meio]),
+            &g,
+            &[0],
+            &CapturaDeSprites::default(),
+            256,
+        );
+        assert_eq!(m2.objetos[0].t[3], 0.75, "{m2:?}");
+        // A lâmpada que ATRAVESSA a borda da grade (o disco meio dentro): também tem caminho.
+        let m3 = montar(
+            &cena([3.9, 2.0], oclusores.clone()),
+            &g,
+            &[0],
+            &CapturaDeSprites::default(),
+            256,
+        );
+        assert!(m3.listas[0][1] > 0, "{m3:?}");
         // A lâmpada dentro da grade: nada.
         let m = montar(
             &cena([2.0, 2.0], oclusores),

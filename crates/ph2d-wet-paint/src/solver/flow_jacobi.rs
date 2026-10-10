@@ -94,6 +94,7 @@ struct FlowConst {
     backrun: bool,
     ext_backrun: f64,
     mix: crate::colorops::ColorMix,
+    gota: Option<crate::solver::Gota>,
 }
 
 impl FlowConst {
@@ -131,6 +132,7 @@ impl FlowConst {
             backrun: !ext_bypass && p.k(Knob::ExtBackrun) > 0.0,
             ext_backrun: p.k(Knob::ExtBackrun),
             mix: p.mix,
+            gota: p.gota,
         }
     }
 }
@@ -400,6 +402,9 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     }
                 }
 
+                if let Some(gt) = c.gota {
+                    (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
+                }
                 fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
                 fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;
                 i += 1;

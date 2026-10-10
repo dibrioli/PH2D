@@ -248,7 +248,30 @@ fn ferramenta_mexida() -> PainterTool {
     k.set(Knob::BristleCount, 1500.0);
     k.erase = 0.6;
     k.water = 0.7;
+    // O Tilt (W1e, F4): o pincel guardado leva a inclinação — mexida dos três lados do de fábrica.
+    let w = &mut t.paint.wetpaint;
+    (w.tilt_on, w.tilt_ring, w.tilt_spoke) = (true, 7, 2);
     t
+}
+
+/// **Um preset de ANTES do Tilt não mexe na tela** (W1e, F4: o campo é opcional, o formato não sobe de
+/// versão). Mutação que sangra: aplicar um Tilt de fábrica quando o ficheiro não o traz.
+#[test]
+fn um_preset_sem_tilt_nao_mexe_na_inclinacao() {
+    let mut p = ferramenta_mexida().wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "T", "Antigo")).0;
+    p.tilt = None;
+    let lido = pelo_ficheiro(p, BTreeMap::new());
+    assert_eq!(lido.parametros.tilt, None, "o ficheiro sem tilt lê-se sem tilt");
+    let mut t = ferramenta();
+    let w = &mut t.paint.wetpaint;
+    (w.tilt_on, w.tilt_ring, w.tilt_spoke) = (false, 2, 5);
+    let _ = t.wet_preset_aplicar(&lido);
+    let w = &t.paint.wetpaint;
+    assert_eq!(
+        (w.tilt_on, w.tilt_ring, w.tilt_spoke),
+        (false, 2, 5),
+        "um preset sem tilt mexeu na inclinação"
+    );
 }
 
 fn pinta(t: &mut PainterTool) -> Vec<u8> {

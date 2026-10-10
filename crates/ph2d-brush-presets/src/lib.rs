@@ -23,5 +23,7 @@ pub use biblioteca::{
     Biblioteca, EXTENSAO, Entrada, apagar, caminho_relativo, gravar, pasta_do_utilizador,
 };
 pub use estado::{EstadoDoUtilizador, FICHEIRO_ESTADO, Lembrado, Politica};
-pub use modelo::{Erro, LADO_MINIATURA, Miniatura, Origem, Parametros, Preset, SCHEMA, Volumes};
+pub use modelo::{
+    Erro, LADO_MINIATURA, Miniatura, Origem, Parametros, Preset, SCHEMA, Tilt, Volumes,
+};
 pub use png::{escrever, escrever_textura, ler, ler_textura};

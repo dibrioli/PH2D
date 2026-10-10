@@ -39,6 +39,8 @@ pub struct Params {
     pub km_mixing: bool,
     /// A transparência do pigmento nas junções de duas tintas ([`crate::colorops::velatura`]).
     pub glaze: f64,
+    /// A lei da gota deste passo ([`crate::solver::Gota`]) — `None` no port ou com a tela direita.
+    pub(crate) gota: Option<crate::solver::Gota>,
 }
 
 impl Params {
@@ -75,6 +77,9 @@ pub struct Sim {
     /// baixo (só o Blow corre); o produto liga isto, como o Rebelle — a mistura e a sangria vêem-se a
     /// pintar, não só no Up.
     pub sim_while_painting: bool,
+    /// **A lei da GOTA** (W1e, F1, [`crate::solver::Gota`]): a altura crítica da conta de baixo vezes
+    /// `|g|` — `0` = o port (o freio de sempre); o produto liga o valor calibrado contra o Rebelle.
+    pub drip_head: f64,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -144,6 +149,7 @@ impl Default for Sim {
             km_mixing: false,
             glaze: 0.0,
             sim_while_painting: false,
+            drip_head: 0.0,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -214,6 +220,10 @@ impl Sim {
             },
             km_mixing: self.km_mixing,
             glaze: self.glaze,
+            gota: {
+                let [gx, gy] = self.gravity(tuning);
+                crate::solver::Gota::new(self.drip_head, gx, gy)
+            },
         }
     }
 }

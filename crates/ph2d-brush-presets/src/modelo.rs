@@ -82,6 +82,11 @@ pub struct Parametros {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub width_table: Vec<[f64; 2]>,
     /// Campos de ondas futuras: lidos e regravados intactos.
+    /// **A inclinação da tela que o pincel traz** (W1e, F4 — dono 09/10: o preset guarda o Tilt, o
+    /// artista continua a mudá-lo). `None` = um preset de antes dela: aplicá-lo NÃO mexe na tela (o
+    /// formato não sobe de versão — o campo é opcional).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tilt: Option<Tilt>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -100,9 +105,19 @@ impl Parametros {
             engine: BTreeMap::new(),
             brush: BTreeMap::new(),
             width_table: Vec::new(),
+            tilt: None,
             extra: BTreeMap::new(),
         }
     }
+}
+
+/// A inclinação da tela: ligada, o anel do dial (`0..=8`, a força) e o raio (`0..12`, a direcção, 3 =
+/// para baixo) — os três números do dial Tilt do Wet Paint.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tilt {
+    pub on: bool,
+    pub ring: u8,
+    pub spoke: u8,
 }
 
 /// A imagem do ficheiro: RGBA8 não pré-multiplicado, linha a linha.

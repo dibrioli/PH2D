@@ -11,7 +11,7 @@
 
 use super::sonda_gestos::{fnv1a, largura_mediana, traco_recto_com};
 use ph2d_brush_presets::{
-    Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
+    Biblioteca, Origem, Parametros, Preset, Tilt, caminho_relativo, escrever, gravar, ler,
 };
 use ph2d_tool_painter::{
     MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PaintMedia, PainterTool, WetKnobs, miniatura_do_preset,
@@ -33,7 +33,10 @@ fn raiz() -> PathBuf {
 }
 
 /// Uma linha do 02 §6.9. `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
-/// `pickup`/`edge`/`gravity` são RAZÕES ao Wet Round, que é o padrão do dono (05 §1.2).
+/// `pickup`/`edge` são RAZÕES ao Wet Round, que é o padrão do dono (05 §1.2). A gravidade é a MESMA em
+/// todos (W1e, F5: o Rebelle não a tem por pincel — a velocidade é inclinação × água × cor); o `tilt` é o
+/// do dial (W1e, F4: Round, Wash e Dry com a tela direita, como o Rebelle; o Drip, o único que promete
+/// escorrer, inclinado no máximo, para baixo).
 struct Receita {
     nome: &'static str,
     water: f64,
@@ -42,10 +45,17 @@ struct Receita {
     gate: f64,
     evaporation: f64,
     edge: f64,
-    gravity: f64,
+    tilt: Tilt,
     bristle_size: f64,
     bristle_count: f64,
 }
+
+/// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
+const DIREITA: Tilt = Tilt {
+    on: false,
+    ring: 4,
+    spoke: 3,
+};
 
 const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
@@ -56,7 +66,7 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         gate: 0.4,
         evaporation: 1.0,
         edge: 1.0,
-        gravity: 1.0,
+        tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
     },
@@ -68,7 +78,7 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         gate: 0.3,
         evaporation: 0.7,
         edge: 0.75,
-        gravity: 0.6,
+        tilt: DIREITA,
         bristle_size: 3.0,
         bristle_count: 3000.0,
     },
@@ -80,7 +90,7 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         gate: 0.6,
         evaporation: 1.5,
         edge: 1.125,
-        gravity: 0.4,
+        tilt: DIREITA,
         bristle_size: 1.5,
         bristle_count: 1500.0,
     },
@@ -92,7 +102,11 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         gate: 0.2,
         evaporation: 0.6,
         edge: 1.0,
-        gravity: 2.0,
+        tilt: Tilt {
+            on: true,
+            ring: 8,
+            spoke: 3,
+        },
         bristle_size: 2.0,
         bristle_count: 2000.0,
     },
@@ -107,6 +121,7 @@ fn parametros(r: &Receita) -> Parametros {
     p.volumes.size_px = None;
     p.volumes.opacity = None;
     p.volumes.water = Some(r.water);
+    p.tilt = Some(r.tilt);
     let d = WetKnobs::DEFAULT;
     for (chave, v) in [
         ("pigmentPerDab", r.pigment),
@@ -114,7 +129,6 @@ fn parametros(r: &Receita) -> Parametros {
         ("evaporation", r.evaporation),
         ("pickup", d.get(Knob::Pickup) * r.pickup),
         ("edgeDarkening", d.get(Knob::EdgeDarkening) * r.edge),
-        ("gravity", d.get(Knob::Gravity) * r.gravity),
         ("bristleSize", r.bristle_size),
         ("bristleCount", r.bristle_count),
     ] {

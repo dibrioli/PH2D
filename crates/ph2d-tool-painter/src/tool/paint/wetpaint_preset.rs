@@ -312,6 +312,13 @@ impl PainterTool {
         if let Some(m) = prm.paint_mode.as_deref() {
             self.wet_preset_aplicar_modo(m);
         }
+        // O Tilt do pincel (W1e, F4); um preset de antes dele (`None`) não mexe na tela.
+        if let Some(tl) = prm.tilt {
+            let w = &mut self.paint.wetpaint;
+            w.tilt_on = tl.on;
+            w.tilt_ring = tl.ring.min(8);
+            w.tilt_spoke = tl.spoke % 12;
+        }
         self.wet_preset_aplicar_volumes(&prm.volumes);
         falhas
     }
@@ -376,6 +383,12 @@ impl PainterTool {
         p.volumes.opacity = v.opacity;
         p.volumes.water = v.water;
         p.paint_mode = Some(self.wet_preset_modo());
+        let w = &self.paint.wetpaint;
+        p.tilt = Some(ph2d_brush_presets::Tilt {
+            on: w.tilt_on,
+            ring: w.tilt_ring,
+            spoke: w.tilt_spoke,
+        });
 
         let mut texturas = BTreeMap::new();
         if self.paint.brush.shape.kind == TextureKind::Image

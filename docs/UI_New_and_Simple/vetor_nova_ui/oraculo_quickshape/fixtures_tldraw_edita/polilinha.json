@@ -1,0 +1,976 @@
+{
+ "_cabecalho": {
+  "oraculo": "tldraw 5.5.2 (tldraw license — corre-se, não se porta)",
+  "forma": "polilinha",
+  "data": "2026-10-10",
+  "como": "Editor montado 1280×800, câmara 0,0 zoom 1; forma criada pela API e seleccionada; cada alça arrastada (+40,+25) pelo rato do Playwright, com e sem Shift, e a forma reposta entre arrastos",
+  "unidade": "px de página = px de ecrã"
+ },
+ "base": {
+  "shape": {
+   "x": 380,
+   "y": 450,
+   "rotation": 0,
+   "props": {
+    "dash": "draw",
+    "size": "m",
+    "color": "black",
+    "spline": "line",
+    "points": {
+     "a1": {
+      "id": "a1",
+      "index": "a1",
+      "x": 0,
+      "y": 0
+     },
+     "a2": {
+      "id": "a2",
+      "index": "a2",
+      "x": 200,
+      "y": -200
+     },
+     "a3": {
+      "id": "a3",
+      "index": "a3",
+      "x": 400,
+      "y": 0
+     }
+    },
+    "scale": 1
+   }
+  },
+  "alcas": [
+   {
+    "id": "a1",
+    "type": "vertex",
+    "x": 380,
+    "y": 450
+   },
+   {
+    "id": "a1ONpV",
+    "type": "create",
+    "x": 480,
+    "y": 350
+   },
+   {
+    "id": "a2",
+    "type": "vertex",
+    "x": 580,
+    "y": 250
+   },
+   {
+    "id": "a2OvkV",
+    "type": "create",
+    "x": 680,
+    "y": 350
+   },
+   {
+    "id": "a3",
+    "type": "vertex",
+    "x": 780,
+    "y": 450
+   }
+  ],
+  "caixa": {
+   "x": 380,
+   "y": 250,
+   "w": 400,
+   "h": 200,
+   "rot": 0
+  }
+ },
+ "arrastos": {
+  "vertex:a1/livre": {
+   "em": [
+    380,
+    450
+   ],
+   "largado_em": [
+    420,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 40,
+       "y": 25
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 420,
+     "y": 475
+    },
+    {
+     "id": "a1TZZV",
+     "type": "create",
+     "x": 500,
+     "y": 362.5
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2IEvV",
+     "type": "create",
+     "x": 680,
+     "y": 350
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 420,
+    "y": 250,
+    "w": 360,
+    "h": 225,
+    "rot": 0
+   }
+  },
+  "vertex:a1/shift": {
+   "em": [
+    380,
+    450
+   ],
+   "largado_em": [
+    420,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 61.955623077214995,
+       "y": 39.09987452945279
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 441.956,
+     "y": 489.1
+    },
+    {
+     "id": "a1RoNV",
+     "type": "create",
+     "x": 510.978,
+     "y": 369.55
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2Tf8V",
+     "type": "create",
+     "x": 680,
+     "y": 350
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 441.956,
+    "y": 250,
+    "w": 338.044,
+    "h": 239.1,
+    "rot": 0
+   }
+  },
+  "create:a1ONpV/livre": {
+   "em": [
+    480,
+    350
+   ],
+   "largado_em": [
+    520,
+    375
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      },
+      "a1Gp9V": {
+       "id": "a1Gp9V",
+       "index": "a1Gp9V",
+       "x": 140,
+       "y": -75
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a15utt",
+     "type": "create",
+     "x": 450,
+     "y": 412.5
+    },
+    {
+     "id": "a1Gp9V",
+     "type": "vertex",
+     "x": 520,
+     "y": 375
+    },
+    {
+     "id": "a1Ujz8",
+     "type": "create",
+     "x": 550,
+     "y": 312.5
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2JuZV",
+     "type": "create",
+     "x": 680,
+     "y": 350
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 250,
+    "w": 400,
+    "h": 200,
+    "rot": 0
+   }
+  },
+  "create:a1ONpV/shift": {
+   "em": [
+    480,
+    350
+   ],
+   "largado_em": [
+    520,
+    375
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      },
+      "a1LcPV": {
+       "id": "a1LcPV",
+       "index": "a1LcPV",
+       "x": 130.67287688068984,
+       "y": -79.92190041477168
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a19AZd",
+     "type": "create",
+     "x": 445.336,
+     "y": 410.039
+    },
+    {
+     "id": "a1LcPV",
+     "type": "vertex",
+     "x": 510.673,
+     "y": 370.078
+    },
+    {
+     "id": "a1aCJG",
+     "type": "create",
+     "x": 545.336,
+     "y": 310.039
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2U6sl",
+     "type": "create",
+     "x": 680,
+     "y": 350
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 250,
+    "w": 400,
+    "h": 200,
+    "rot": 0
+   }
+  },
+  "vertex:a2/livre": {
+   "em": [
+    580,
+    250
+   ],
+   "largado_em": [
+    620,
+    275
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 240,
+       "y": -175
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a1GoCV",
+     "type": "create",
+     "x": 500,
+     "y": 362.5
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 620,
+     "y": 275
+    },
+    {
+     "id": "a2Qh7V",
+     "type": "create",
+     "x": 700,
+     "y": 362.5
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 275,
+    "w": 400,
+    "h": 175,
+    "rot": 0
+   }
+  },
+  "vertex:a2/shift": {
+   "em": [
+    580,
+    250
+   ],
+   "largado_em": [
+    620,
+    275
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 232.3321736289278,
+       "y": -167.66782637107212
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a1Uizd",
+     "type": "create",
+     "x": 496.166,
+     "y": 366.166
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 612.332,
+     "y": 282.332
+    },
+    {
+     "id": "a2U4tl",
+     "type": "create",
+     "x": 696.166,
+     "y": 366.166
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 282.332,
+    "w": 400,
+    "h": 167.668,
+    "rot": 0
+   }
+  },
+  "create:a2OvkV/livre": {
+   "em": [
+    680,
+    350
+   ],
+   "largado_em": [
+    720,
+    375
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      },
+      "a2NLBV": {
+       "id": "a2NLBV",
+       "index": "a2NLBV",
+       "x": 340,
+       "y": -75
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a1LqsV",
+     "type": "create",
+     "x": 480,
+     "y": 350
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a28Erd",
+     "type": "create",
+     "x": 650,
+     "y": 312.5
+    },
+    {
+     "id": "a2NLBV",
+     "type": "vertex",
+     "x": 720,
+     "y": 375
+    },
+    {
+     "id": "a2dqBV",
+     "type": "create",
+     "x": 750,
+     "y": 412.5
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 250,
+    "w": 400,
+    "h": 200,
+    "rot": 0
+   }
+  },
+  "create:a2OvkV/shift": {
+   "em": [
+    680,
+    350
+   ],
+   "largado_em": [
+    720,
+    375
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 400,
+       "y": 0
+      },
+      "a2PShV": {
+       "id": "a2PShV",
+       "index": "a2PShV",
+       "x": 332.08461146396934,
+       "y": -67.91538853603062
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a1KTjV",
+     "type": "create",
+     "x": 480,
+     "y": 350
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2B42G",
+     "type": "create",
+     "x": 646.042,
+     "y": 316.042
+    },
+    {
+     "id": "a2PShV",
+     "type": "vertex",
+     "x": 712.085,
+     "y": 382.085
+    },
+    {
+     "id": "a2b8PG",
+     "type": "create",
+     "x": 746.042,
+     "y": 416.042
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 250,
+    "w": 400,
+    "h": 200,
+    "rot": 0
+   }
+  },
+  "vertex:a3/livre": {
+   "em": [
+    780,
+    450
+   ],
+   "largado_em": [
+    820,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 440,
+       "y": 25
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a1KBcV",
+     "type": "create",
+     "x": 480,
+     "y": 350
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2UUGt",
+     "type": "create",
+     "x": 700,
+     "y": 362.5
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 820,
+     "y": 475
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 250,
+    "w": 440,
+    "h": 225,
+    "rot": 0
+   }
+  },
+  "vertex:a3/shift": {
+   "em": [
+    780,
+    450
+   ],
+   "largado_em": [
+    820,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 380,
+    "y": 450,
+    "rotation": 0,
+    "props": {
+     "dash": "draw",
+     "size": "m",
+     "color": "black",
+     "spline": "line",
+     "points": {
+      "a1": {
+       "id": "a1",
+       "index": "a1",
+       "x": 0,
+       "y": 0
+      },
+      "a2": {
+       "id": "a2",
+       "index": "a2",
+       "x": 200,
+       "y": -200
+      },
+      "a3": {
+       "id": "a3",
+       "index": "a3",
+       "x": 432.62093628906234,
+       "y": 32.620936289062314
+      }
+     },
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "a1",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "a1R6nV",
+     "type": "create",
+     "x": 480,
+     "y": 350
+    },
+    {
+     "id": "a2",
+     "type": "vertex",
+     "x": 580,
+     "y": 250
+    },
+    {
+     "id": "a2OjfV",
+     "type": "create",
+     "x": 696.31,
+     "y": 366.31
+    },
+    {
+     "id": "a3",
+     "type": "vertex",
+     "x": 812.621,
+     "y": 482.621
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 250,
+    "w": 432.621,
+    "h": 232.621,
+    "rot": 0
+   }
+  }
+ }
+}

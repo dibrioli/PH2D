@@ -1,0 +1,618 @@
+{
+ "_cabecalho": {
+  "oraculo": "@excalidraw/excalidraw 0.18.0-143b5b6 (MIT)",
+  "entrada": "seta_recta_duas_pontas",
+  "data": "2026-10-10",
+  "como": "rato do Playwright no <Excalidraw> montado (1280×800, zoom 1); traço pela ferramenta autoshape; cada alça arrastada a partir da forma nascida, reposta entre arrastos",
+  "unidade": "px da página = px da entrada × 0.75 (+30 em y)"
+ },
+ "ao_soltar": {
+  "ferramenta": "autoshape",
+  "selecionados": 0,
+  "elementos": 1
+ },
+ "nascida": {
+  "type": "line",
+  "x": 414,
+  "y": 427.5,
+  "w": 0,
+  "h": 0,
+  "angle": 0,
+  "points": [
+   [
+    414,
+    427.5
+   ],
+   [
+    711,
+    427.5
+   ]
+  ],
+  "startArrowhead": null,
+  "endArrowhead": null,
+  "roundness": {
+   "type": 2
+  }
+ },
+ "alcas": {
+  "nw/livre": {
+   "em": [
+    401.984,
+    415.526
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "nw/shift": {
+   "em": [
+    401.984,
+    415.526
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ne/livre": {
+   "em": [
+    723.262,
+    415.526
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ne/shift": {
+   "em": [
+    723.262,
+    415.526
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "sw/livre": {
+   "em": [
+    401.984,
+    439.993
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "sw/shift": {
+   "em": [
+    401.984,
+    439.993
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "se/livre": {
+   "em": [
+    723.262,
+    439.993
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "se/shift": {
+   "em": [
+    723.262,
+    439.993
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "rotation/livre": {
+   "em": [
+    562.623,
+    399.526
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "rotation/shift": {
+   "em": [
+    562.623,
+    399.526
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 0,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ponto_0/livre": {
+   "em": [
+    414,
+    427.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 454,
+    "y": 452.5,
+    "w": 257,
+    "h": 25,
+    "angle": 0,
+    "points": [
+     [
+      454,
+      452.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ponto_0/shift": {
+   "em": [
+    414,
+    427.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 454,
+    "y": 427.5,
+    "w": 257,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      454,
+      427.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ponto_1/livre": {
+   "em": [
+    711,
+    427.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 337,
+    "h": 25,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      751,
+      452.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ponto_1/shift": {
+   "em": [
+    711,
+    427.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 337,
+    "h": 0,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      751,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "meio_0/livre": {
+   "em": [
+    562.5,
+    427.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 297,
+    "h": 25,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      602.5,
+      452.5
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "meio_0/shift": {
+   "em": [
+    562.5,
+    427.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "line",
+    "x": 414,
+    "y": 427.5,
+    "w": 297,
+    "h": 48.8,
+    "angle": 0,
+    "points": [
+     [
+      414,
+      427.5
+     ],
+     [
+      596.123,
+      476.3
+     ],
+     [
+      711,
+      427.5
+     ]
+    ],
+    "startArrowhead": null,
+    "endArrowhead": null,
+    "roundness": {
+     "type": 2
+    }
+   }
+  }
+ },
+ "com_a_ferramenta_na_mao": {
+  "alca": "se",
+  "elementos": 2,
+  "forma": {
+   "type": "line",
+   "x": 414,
+   "y": 427.5,
+   "w": 0,
+   "h": 0,
+   "angle": 0,
+   "points": [
+    [
+     414,
+     427.5
+    ],
+    [
+     711,
+     427.5
+    ]
+   ],
+   "startArrowhead": null,
+   "endArrowhead": null,
+   "roundness": {
+    "type": 2
+   }
+  }
+ }
+}

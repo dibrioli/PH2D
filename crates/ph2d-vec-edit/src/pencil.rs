@@ -90,6 +90,8 @@ pub struct Pencil {
     fidelity_px: f64,
     /// O QuickShape do gesto em curso ([`crate::quickshape_hold`]).
     hold: crate::quickshape_hold::Hold,
+    /// A forma que o QuickShape cometeu, afinável até ao gesto seguinte (o Edit Shape, F7e).
+    edit: Option<shape_edit::ShapeEdit>,
 }
 
 impl Pencil {
@@ -140,6 +142,7 @@ impl Pencil {
         if let Some(id) = self.active.take() {
             scene.remove_path(id);
         }
+        self.shape_edit_forget();
         self.samples.clear();
         self.dyns.clear();
         self.hold.reset();
@@ -160,6 +163,9 @@ impl Pencil {
         if self.active.is_none() {
             return false;
         }
+        if self.shape_edit_drag(scene, p) {
+            return true;
+        }
         // Com a forma reconhecida, o arrasto ESCALA e RODA (não desenha).
         if self.hold.drag(p) {
             return self.rebuild(scene);
@@ -178,6 +184,9 @@ impl Pencil {
     /// **Release** — fecha o gesto. `true` se o traço foi commitado; `false` se o gesto foi curto
     /// demais para ser um traço (e aí o path vivo sai da cena e a shell cancela o undo pendente).
     pub fn on_release(&mut self, scene: &mut VecScene) -> bool {
+        if self.shape_edit_release() {
+            return true;
+        }
         let Some(id) = self.active.take() else {
             return false;
         };
@@ -188,6 +197,11 @@ impl Pencil {
             return false;
         }
         self.committed = Some(id);
+        // A forma do QuickShape sobrevive ao soltar: é ela que o Edit Shape afina.
+        match self.hold.shape() {
+            Some(shape) => self.offer_shape_edit(id, shape),
+            None => self.shape_edit_forget(),
+        }
         self.samples.clear();
         self.dyns.clear();
         self.hold.reset();
@@ -196,6 +210,10 @@ impl Pencil {
 
     /// **Aborta** o traço em curso (o botão direito, o Esc) — o path vivo some sem deixar rastro.
     pub fn cancel(&mut self, scene: &mut VecScene) {
+        // A meio de uma afinação o caminho é o da forma: volta à de quando foi agarrada.
+        if self.shape_edit_cancel(scene) {
+            return;
+        }
         if let Some(id) = self.active.take() {
             scene.remove_path(id);
         }
@@ -270,7 +288,7 @@ impl Pencil {
     #[must_use]
     pub fn width_stops(&self, source: WidthSource) -> WidthStops {
         // A forma perfeita tem a largura do estilo: o perfil da mão descrevia o traço que saiu.
-        if self.hold.is_live() {
+        if self.hold.is_live() || self.shape_edit_grabbing() {
             return WidthStops::default();
         }
         width_stops(source, &self.samples, &self.dyns)
@@ -475,6 +493,10 @@ fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
     let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
     (dx * dx + dy * dy).sqrt()
 }
+
+#[path = "pencil_edit.rs"]
+mod shape_edit;
+pub use shape_edit::ShapeEditState;
 
 #[cfg(test)]
 #[path = "pencil_tests.rs"]

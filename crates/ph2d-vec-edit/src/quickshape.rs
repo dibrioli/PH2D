@@ -625,6 +625,9 @@ fn axis_snap(d: P2, tol_deg: f64) -> P2 {
     }
 }
 
+#[path = "quickshape_edit.rs"]
+pub mod edit;
+
 #[cfg(test)]
 #[path = "quickshape_tests.rs"]
 mod tests;

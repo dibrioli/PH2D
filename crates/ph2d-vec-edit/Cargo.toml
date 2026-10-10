@@ -26,6 +26,8 @@ ph2d-guides = { path = "../ph2d-guides" }
 # no dev-dep da `ph2d-gpu-cook`, que existem só para o gate de paridade CPU×GPU.
 ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 glam = "0.30"
+# Os gates do Edit Shape (F7e) LEEM as fixtures dos oráculos (Excalidraw, tldraw), que são JSON.
+serde_json = "1"
 
 [lints]
 workspace = true

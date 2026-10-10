@@ -1,0 +1,262 @@
+{
+ "_cabecalho": {
+  "oraculo": "@excalidraw/excalidraw 0.18.0-143b5b6 (MIT)",
+  "entrada": "circulo_r150",
+  "data": "2026-10-10",
+  "como": "rato do Playwright no <Excalidraw> montado (1280×800, zoom 1); traço pela ferramenta autoshape; cada alça arrastada a partir da forma nascida, reposta entre arrastos",
+  "unidade": "px da página = px da entrada × 0.75 (+30 em y)"
+ },
+ "ao_soltar": {
+  "ferramenta": "autoshape",
+  "selecionados": 0,
+  "elementos": 1
+ },
+ "nascida": {
+  "type": "ellipse",
+  "x": 487.5,
+  "y": 292.5,
+  "w": 225,
+  "h": 225,
+  "angle": 0,
+  "roundness": {
+   "type": 2
+  }
+ },
+ "alcas": {
+  "nw/livre": {
+   "em": [
+    483.5,
+    288.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 527.5,
+    "y": 317.5,
+    "w": 185,
+    "h": 200,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "nw/shift": {
+   "em": [
+    483.5,
+    288.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 512.5,
+    "y": 317.5,
+    "w": 200,
+    "h": 200,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ne/livre": {
+   "em": [
+    716.5,
+    288.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 487.5,
+    "y": 317.5,
+    "w": 265,
+    "h": 200,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ne/shift": {
+   "em": [
+    716.5,
+    288.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 487.5,
+    "y": 252.5,
+    "w": 265,
+    "h": 265,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "sw/livre": {
+   "em": [
+    483.5,
+    521.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 527.5,
+    "y": 292.5,
+    "w": 185,
+    "h": 250,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "sw/shift": {
+   "em": [
+    483.5,
+    521.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 462.5,
+    "y": 292.5,
+    "w": 250,
+    "h": 250,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "se/livre": {
+   "em": [
+    716.5,
+    521.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 487.5,
+    "y": 292.5,
+    "w": 265,
+    "h": 250,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "se/shift": {
+   "em": [
+    716.5,
+    521.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 487.5,
+    "y": 292.5,
+    "w": 265,
+    "h": 265,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "rotation/livre": {
+   "em": [
+    600,
+    272.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 487.5,
+    "y": 292.5,
+    "w": 225,
+    "h": 225,
+    "angle": 0.356,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "rotation/shift": {
+   "em": [
+    600,
+    272.5
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "ellipse",
+    "x": 487.5,
+    "y": 292.5,
+    "w": 225,
+    "h": 225,
+    "angle": 0.262,
+    "roundness": {
+     "type": 2
+    }
+   }
+  }
+ },
+ "com_a_ferramenta_na_mao": {
+  "alca": "se",
+  "elementos": 2,
+  "forma": {
+   "type": "ellipse",
+   "x": 487.5,
+   "y": 292.5,
+   "w": 225,
+   "h": 225,
+   "angle": 0,
+   "roundness": {
+    "type": 2
+   }
+  }
+ }
+}

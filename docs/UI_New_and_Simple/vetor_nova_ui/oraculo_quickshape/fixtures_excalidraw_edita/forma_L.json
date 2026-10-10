@@ -1,0 +1,16 @@
+{
+ "_cabecalho": {
+  "oraculo": "@excalidraw/excalidraw 0.18.0-143b5b6 (MIT)",
+  "entrada": "forma_L",
+  "data": "2026-10-10",
+  "como": "rato do Playwright no <Excalidraw> montado (1280×800, zoom 1); traço pela ferramenta autoshape; cada alça arrastada a partir da forma nascida, reposta entre arrastos",
+  "unidade": "px da página = px da entrada × 0.75 (+30 em y)"
+ },
+ "ao_soltar": {
+  "ferramenta": "autoshape",
+  "selecionados": 0,
+  "elementos": 0
+ },
+ "nascida": null,
+ "alcas": {}
+}

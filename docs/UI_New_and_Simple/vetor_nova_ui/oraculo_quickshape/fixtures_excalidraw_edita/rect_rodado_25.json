@@ -1,0 +1,262 @@
+{
+ "_cabecalho": {
+  "oraculo": "@excalidraw/excalidraw 0.18.0-143b5b6 (MIT)",
+  "entrada": "rect_rodado_25",
+  "data": "2026-10-10",
+  "como": "rato do Playwright no <Excalidraw> montado (1280×800, zoom 1); traço pela ferramenta autoshape; cada alça arrastada a partir da forma nascida, reposta entre arrastos",
+  "unidade": "px da página = px da entrada × 0.75 (+30 em y)"
+ },
+ "ao_soltar": {
+  "ferramenta": "autoshape",
+  "selecionados": 0,
+  "elementos": 1
+ },
+ "nascida": {
+  "type": "diamond",
+  "x": 425.1,
+  "y": 256.65,
+  "w": 350.475,
+  "h": 296.1,
+  "angle": 0,
+  "roundness": {
+   "type": 2
+  }
+ },
+ "alcas": {
+  "nw/livre": {
+   "em": [
+    421.1,
+    252.65
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 465.1,
+    "y": 281.65,
+    "w": 310.475,
+    "h": 271.1,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "nw/shift": {
+   "em": [
+    421.1,
+    252.65
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 454.691,
+    "y": 281.65,
+    "w": 320.884,
+    "h": 271.1,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ne/livre": {
+   "em": [
+    779.575,
+    252.65
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 425.1,
+    "y": 281.65,
+    "w": 390.475,
+    "h": 271.1,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "ne/shift": {
+   "em": [
+    779.575,
+    252.65
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 425.1,
+    "y": 222.856,
+    "w": 390.475,
+    "h": 329.894,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "sw/livre": {
+   "em": [
+    421.1,
+    556.75
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 465.1,
+    "y": 256.65,
+    "w": 310.475,
+    "h": 321.1,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "sw/shift": {
+   "em": [
+    421.1,
+    556.75
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 395.509,
+    "y": 256.65,
+    "w": 380.066,
+    "h": 321.1,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "se/livre": {
+   "em": [
+    779.575,
+    556.75
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 425.1,
+    "y": 256.65,
+    "w": 390.475,
+    "h": 321.1,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "se/shift": {
+   "em": [
+    779.575,
+    556.75
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 425.1,
+    "y": 256.65,
+    "w": 390.475,
+    "h": 329.894,
+    "angle": 0,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "rotation/livre": {
+   "em": [
+    600.338,
+    236.65
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 425.1,
+    "y": 256.65,
+    "w": 350.475,
+    "h": 296.1,
+    "angle": 0.273,
+    "roundness": {
+     "type": 2
+    }
+   }
+  },
+  "rotation/shift": {
+   "em": [
+    600.338,
+    236.65
+   ],
+   "arrasto": [
+    40,
+    25
+   ],
+   "elementos": 1,
+   "forma": {
+    "type": "diamond",
+    "x": 425.1,
+    "y": 256.65,
+    "w": 350.475,
+    "h": 296.1,
+    "angle": 0.262,
+    "roundness": {
+     "type": 2
+    }
+   }
+  }
+ },
+ "com_a_ferramenta_na_mao": {
+  "alca": "se",
+  "elementos": 2,
+  "forma": {
+   "type": "diamond",
+   "x": 425.1,
+   "y": 256.65,
+   "w": 350.475,
+   "h": 296.1,
+   "angle": 0,
+   "roundness": {
+    "type": 2
+   }
+  }
+ }
+}

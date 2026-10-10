@@ -1,0 +1,520 @@
+{
+ "_cabecalho": {
+  "oraculo": "tldraw 5.5.2 (tldraw license — corre-se, não se porta)",
+  "forma": "seta_curva",
+  "data": "2026-10-10",
+  "como": "Editor montado 1280×800, câmara 0,0 zoom 1; forma criada pela API e seleccionada; cada alça arrastada (+40,+25) pelo rato do Playwright, com e sem Shift, e a forma reposta entre arrastos",
+  "unidade": "px de página = px de ecrã"
+ },
+ "base": {
+  "shape": {
+   "x": 0,
+   "y": 0,
+   "rotation": 0,
+   "props": {
+    "kind": "arc",
+    "elbowMidPoint": 0.5,
+    "dash": "draw",
+    "size": "m",
+    "fill": "none",
+    "color": "black",
+    "labelColor": "black",
+    "bend": 120,
+    "start": {
+     "x": 380,
+     "y": 450
+    },
+    "end": {
+     "x": 780,
+     "y": 450
+    },
+    "arrowheadStart": "none",
+    "arrowheadEnd": "arrow",
+    "richText": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph"
+      }
+     ]
+    },
+    "labelPosition": 0.5,
+    "font": "draw",
+    "scale": 1
+   }
+  },
+  "alcas": [
+   {
+    "id": "start",
+    "type": "vertex",
+    "x": 380,
+    "y": 450
+   },
+   {
+    "id": "end",
+    "type": "vertex",
+    "x": 780,
+    "y": 450
+   },
+   {
+    "id": "middle",
+    "type": "virtual",
+    "x": 580,
+    "y": 570
+   }
+  ],
+  "caixa": {
+   "x": 380,
+   "y": 450,
+   "w": 400,
+   "h": 119.788,
+   "rot": 0
+  }
+ },
+ "arrastos": {
+  "vertex:start/livre": {
+   "em": [
+    380,
+    450
+   ],
+   "largado_em": [
+    420,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "props": {
+     "kind": "arc",
+     "elbowMidPoint": 0.5,
+     "dash": "draw",
+     "size": "m",
+     "fill": "none",
+     "color": "black",
+     "labelColor": "black",
+     "bend": 120,
+     "start": {
+      "x": 420,
+      "y": 475
+     },
+     "end": {
+      "x": 780,
+      "y": 450
+     },
+     "arrowheadStart": "none",
+     "arrowheadEnd": "arrow",
+     "richText": {
+      "type": "doc",
+      "content": [
+       {
+        "type": "paragraph"
+       }
+      ]
+     },
+     "labelPosition": 0.5,
+     "font": "draw",
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "start",
+     "type": "vertex",
+     "x": 420,
+     "y": 475
+    },
+    {
+     "id": "end",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    },
+    {
+     "id": "middle",
+     "type": "virtual",
+     "x": 608.313,
+     "y": 582.212
+    }
+   ],
+   "caixa": {
+    "x": 420,
+    "y": 450,
+    "w": 360,
+    "h": 132.649,
+    "rot": 0
+   }
+  },
+  "vertex:start/shift": {
+   "em": [
+    380,
+    450
+   ],
+   "largado_em": [
+    420,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "props": {
+     "kind": "arc",
+     "elbowMidPoint": 0.5,
+     "dash": "draw",
+     "size": "m",
+     "fill": "none",
+     "color": "black",
+     "labelColor": "black",
+     "bend": 120,
+     "start": {
+      "x": 419.13298848467736,
+      "y": 450.00000000000006
+     },
+     "end": {
+      "x": 780,
+      "y": 450
+     },
+     "arrowheadStart": "none",
+     "arrowheadEnd": "arrow",
+     "richText": {
+      "type": "doc",
+      "content": [
+       {
+        "type": "paragraph"
+       }
+      ]
+     },
+     "labelPosition": 0.5,
+     "font": "draw",
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "start",
+     "type": "vertex",
+     "x": 419.133,
+     "y": 450
+    },
+    {
+     "id": "end",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    },
+    {
+     "id": "middle",
+     "type": "virtual",
+     "x": 599.566,
+     "y": 570
+    }
+   ],
+   "caixa": {
+    "x": 419.133,
+    "y": 450,
+    "w": 360.867,
+    "h": 119.745,
+    "rot": 0
+   }
+  },
+  "vertex:end/livre": {
+   "em": [
+    780,
+    450
+   ],
+   "largado_em": [
+    820,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "props": {
+     "kind": "arc",
+     "elbowMidPoint": 0.5,
+     "dash": "draw",
+     "size": "m",
+     "fill": "none",
+     "color": "black",
+     "labelColor": "black",
+     "bend": 120,
+     "start": {
+      "x": 380,
+      "y": 450
+     },
+     "end": {
+      "x": 820,
+      "y": 475
+     },
+     "arrowheadStart": "none",
+     "arrowheadEnd": "arrow",
+     "richText": {
+      "type": "doc",
+      "content": [
+       {
+        "type": "paragraph"
+       }
+      ]
+     },
+     "labelPosition": 0.5,
+     "font": "draw",
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "start",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "end",
+     "type": "vertex",
+     "x": 820,
+     "y": 475
+    },
+    {
+     "id": "middle",
+     "type": "virtual",
+     "x": 593.193,
+     "y": 582.307
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 450,
+    "w": 440,
+    "h": 132.678,
+    "rot": 0
+   }
+  },
+  "vertex:end/shift": {
+   "em": [
+    780,
+    450
+   ],
+   "largado_em": [
+    820,
+    475
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "props": {
+     "kind": "arc",
+     "elbowMidPoint": 0.5,
+     "dash": "draw",
+     "size": "m",
+     "fill": "none",
+     "color": "black",
+     "labelColor": "black",
+     "bend": 120,
+     "start": {
+      "x": 380,
+      "y": 450
+     },
+     "end": {
+      "x": 820.7096549884061,
+      "y": 450
+     },
+     "arrowheadStart": "none",
+     "arrowheadEnd": "arrow",
+     "richText": {
+      "type": "doc",
+      "content": [
+       {
+        "type": "paragraph"
+       }
+      ]
+     },
+     "labelPosition": 0.5,
+     "font": "draw",
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "start",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "end",
+     "type": "vertex",
+     "x": 820.71,
+     "y": 450
+    },
+    {
+     "id": "middle",
+     "type": "virtual",
+     "x": 600.355,
+     "y": 570
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 450,
+    "w": 440.71,
+    "h": 119.821,
+    "rot": 0
+   }
+  },
+  "virtual:middle/livre": {
+   "em": [
+    580,
+    570
+   ],
+   "largado_em": [
+    620,
+    595
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "props": {
+     "kind": "arc",
+     "elbowMidPoint": 0.5,
+     "dash": "draw",
+     "size": "m",
+     "fill": "none",
+     "color": "black",
+     "labelColor": "black",
+     "bend": 145,
+     "start": {
+      "x": 380,
+      "y": 450
+     },
+     "end": {
+      "x": 780,
+      "y": 450
+     },
+     "arrowheadStart": "none",
+     "arrowheadEnd": "arrow",
+     "richText": {
+      "type": "doc",
+      "content": [
+       {
+        "type": "paragraph"
+       }
+      ]
+     },
+     "labelPosition": 0.5,
+     "font": "draw",
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "start",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "end",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    },
+    {
+     "id": "middle",
+     "type": "virtual",
+     "x": 580,
+     "y": 595
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 450,
+    "w": 400,
+    "h": 144.773,
+    "rot": 0
+   }
+  },
+  "virtual:middle/shift": {
+   "em": [
+    580,
+    570
+   ],
+   "largado_em": [
+    620,
+    595
+   ],
+   "formas": 1,
+   "shape": {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "props": {
+     "kind": "arc",
+     "elbowMidPoint": 0.5,
+     "dash": "draw",
+     "size": "m",
+     "fill": "none",
+     "color": "black",
+     "labelColor": "black",
+     "bend": 145,
+     "start": {
+      "x": 380,
+      "y": 450
+     },
+     "end": {
+      "x": 780,
+      "y": 450
+     },
+     "arrowheadStart": "none",
+     "arrowheadEnd": "arrow",
+     "richText": {
+      "type": "doc",
+      "content": [
+       {
+        "type": "paragraph"
+       }
+      ]
+     },
+     "labelPosition": 0.5,
+     "font": "draw",
+     "scale": 1
+    }
+   },
+   "alcas": [
+    {
+     "id": "start",
+     "type": "vertex",
+     "x": 380,
+     "y": 450
+    },
+    {
+     "id": "end",
+     "type": "vertex",
+     "x": 780,
+     "y": 450
+    },
+    {
+     "id": "middle",
+     "type": "virtual",
+     "x": 580,
+     "y": 595
+    }
+   ],
+   "caixa": {
+    "x": 380,
+    "y": 450,
+    "w": 400,
+    "h": 144.773,
+    "rot": 0
+   }
+  }
+ }
+}

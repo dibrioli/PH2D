@@ -241,12 +241,42 @@ C de ¾ da sonda das folgas: arco **30/30** (antes: traço livre), nunca círcul
 arco de 30° de raio 80 em −9,8 px e de 45° em −3,5 px; Taubin erra −0,1 a +5 (30°) e ~0 de 45° para
 cima. Gate `taubin_does_not_shrink_a_short_noisy_arc_as_kasa_does`.
 
-**Arcos de ELIPSE** (fora do escopo; `measure_elliptic_arcs`, raio maior 160 px, ±1 px, 20 mãos): até
-2:1 eles viram arco de CÍRCULO — 90° com desvio máximo de 3 px (1,25:1) a 8 px (2:1); o meio arco pelo
-eixo MAIOR com 6–12 px; pelo eixo MENOR (1,5:1 e mais) fica traço livre; a 3:1, 90°, metade sai
-polilinha. Também viram arco as espirais de Euler (60–120°) e o «taco» (recta + curva de 90°). ⇒ o
-círculo «chega» no sentido de não estragar nada que antes funcionava; se o desvio incomodar o dono, o
-próximo degrau é o arco de elipse (a medir) ou apertar o resíduo com um piso em px para o tremor.
+**Arcos de ELIPSE na 1.ª volta** (`measure_elliptic_arcs`, raio maior 160 px, ±1 px): até 2:1 viravam
+arco de CÍRCULO com 3–12 px de desvio. Continua assim para os arcos SIMÉTRICOS de elipse (centrados no
+eixo) — é o preço da guarda abaixo.
+
+### §3g.2 — O arco ASSIMÉTRICO (smoke do dono, 10/10: *«arcos simétricos são desenhados com facilidade; arcos assimétricos como na foto não funcionam»*)
+
+O traço da captura (o gancho: abre largo e fecha apertado, `OWNERS_HOOK_PX`) ficava LIVRE: o círculo
+erra 8,8 % do raio. Três modelos medidos sobre ele (`measure_asymmetric_arcs` e um protótipo, ±1 px):
+
+| modelo | rms no gancho (px) | pior desvio do desenho | arcos de elipse fora do eixo | espirais 200–270° |
+|---|---|---|---|---|
+| elipse (Fitzgibbon / Halíř–Flusser) | 7,0 | 22 px | **0,2 px rms, ≤ 2,2 px** | 0,3–3,5 rms, 2–13 px |
+| ⛔ espiral de Euler (curvatura linear) | 12,7 | 34 px (e inverte a curvatura) | 2,5–11 rms | 0,2 rms |
+| **biarco** (dois arcos tangentes, LM) | **2,3** | **11 px (3 % do tamanho)** | 1,2–5,6 rms | **1,0–1,4 rms, ≤ 4,5 px** |
+
+⇒ a lei: **o CÍRCULO primeiro; o mais perto entre ELIPSE e BIARCO quando o círculo não desenha o
+traço, ou quando o desenha mal (rms > 0,04 do menor de raio e tamanho) e o outro o desenha a ≤ 0,2 do
+resíduo dele.** O gancho sai biarco (raios ~217 e ~39 px), as elipses fora do eixo saem elipse, as
+espirais de 200–270° biarco; a de 120° continua círculo (9,8 px). O `Shift` faz sempre o arco de
+CÍRCULO. Um reconhecimento custa 0,2–1,5 ms em release (o mínimo de 20; uma vez por gesto).
+
+⛔ **Recusas MEDIDAS** (`measure_arc_circle_keep`, arcos SIMÉTRICOS que RESPIRAM ±2–6 %, 1,5–4 lobos,
+4 fases — a mão que o dono aprovou): trocar um círculo que JÁ serve pelo mais perto (só o ganho) fazia
+assimétricos 7–51 % deles (o arco da cena 12, ±3 %, saía biarco — o gate da cena apanhou-o); só o
+assimétrico quando o círculo FALHA deixava a espiral de 200° círculo a 18,6 px e a elipse 1,5:1 a 14,8 px.
+
+| guarda | ganho 0,1 | 0,15 | 0,2 | 0,25 | 0,3 | 0,35 | (arcos que respiram lidos assimétricos) |
+|---|---|---|---|---|---|---|---|
+| 0 | 7,2 % | 17,1 % | 26,2 % | 31,7 % | 42,4 % | 51,4 % | |
+| 0,02 | 2,3 % | 4,2 % | 5,8 % | 6,2 % | 10,2 % | 13,7 % | |
+| 0,03 | 0,7 % | 0,7 % | 1,4 % | 1,4 % | 3,0 % | 4,9 % | |
+| **0,04** | **0 %** | **0 %** | **0 %** | **0 %** | 0,9 % | 2,8 % | os assimétricos 100 % arco em todas |
+
+Escolhidos guarda **0,04** (a única linha a zero) e ganho **0,2** (o meio de `0,1–0,25`; a 0,1 uma
+espiral fica círculo). Os arcos de círculo limpos (45–270°, 40–400 px, ±1–2): 0 % lidos assimétricos.
+O preço: os arcos MINÚSCULOS (16–21 px de traço) que antes saíam livres saem às vezes biarco.
 
 **O `regular`** (`Shift` / o 2.º dedo) — decisão técnica, sem medição: o Procreate não corre aqui (é
 iPad) e o manual só descreve o 2.º dedo para linha (15°), elipse (círculo) e polígonos (regulares). A

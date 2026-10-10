@@ -44,6 +44,10 @@ pub fn file_filter(kind: FileKind) -> (&'static str, &'static [&'static str]) {
             ph2d_i18n::tr("app.motion.motion_bridge_params_file.table"),
             crate::motion_table_gen::TABLE_EXTS,
         ),
+        FileKind::Lut => (
+            ph2d_i18n::tr("app.motion.motion_bridge_params_file.lut"),
+            &["cube"],
+        ),
     }
 }
 

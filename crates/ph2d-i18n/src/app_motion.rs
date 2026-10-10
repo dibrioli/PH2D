@@ -118,6 +118,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "app.motion.motion_bridge_params_file.table" => "Table",
         "app.motion.motion_bridge_params_file.audio" => "Audio",
+        "app.motion.motion_bridge_params_file.lut" => "LUT (.cube)",
+        "app.motion.motion_lens.lut_unreadable" => "LUT: the file cannot be read",
+        "app.motion.motion_lens.lut_1d" => "LUT: only 3D LUTs (this one is 1D)",
+        "app.motion.motion_lens.lut_no_size" => "LUT: no LUT_3D_SIZE line",
+        "app.motion.motion_lens.lut_bad_size" => "LUT: size {n} is outside 2-256",
+        "app.motion.motion_lens.lut_bad_line" => "LUT: line {linha} is not three numbers",
+        "app.motion.motion_lens.lut_count" => "LUT: {lido} entries, {esperado} expected",
         "app.motion.motion_bridge_params_text_rows.rule_problem" => {
             "\u{ab}{rule}\u{bb}: {say} (+{queixas} more)"
         }

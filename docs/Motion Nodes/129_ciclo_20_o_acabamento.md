@@ -113,7 +113,7 @@ textura sobre aquele alvo» — a metade B que o doc 94 §2 mediu como ausente.
 |---|---|---|
 | W0 | os oráculos corridos (fixtures) · a crate `ph2d-lens` com as leis na CPU e os gates contra as fixtures | ✅ 14 gates verdes |
 | W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | ✅ §5.2 |
-| W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | — |
+| W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | ✅ §5.3 (+ a cena `=135` com a lente; o filtro entra na W3) |
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | — |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
 | W5 | provas de mutação · o handoff | — |
@@ -174,12 +174,39 @@ Desenho que a W1 decidiu (e porquê):
 - a LUT é uma textura 3D `Rgba32Float` (os valores exactos da CPU), lida por `textureLoad`;
 - o uniform tem o mesmo tamanho e a mesma ordem de campos nos dois lados (gate pelo `naga`).
 
+### §5.3 — O nó e a costura (W2, 10/10)
+
+- **O nó** `ph2d-node-fx-lens`: passthrough com kernel `PASSTHROUGH` no dispositivo, 22 params + o
+  texto `lut` (`ParamWidget::File { kind: FileKind::Lut }`, espécie nova, filtro `.cube`), quatro
+  secções na ordem fixa (só a `Vignette` nasce aberta, e é a única ligada: `0,4`), o ângulo da
+  aberração só no modo Linear, o `LUT Mix` só com LUT. Um passe de tela é UM: `fx.lens` entrou em
+  `SINGLETON_SCREEN_PASSES`.
+- **O estado** `ph2d-app-motion/src/motion_lens.rs` (`MotionState::lente`): `prepara` no
+  `coze_o_quadro` (o grafo, o TIQUE de `motion_tick` — o grão anda com o relógio do Motion — e o
+  `.cube`, relido só quando o caminho ou a data do ficheiro mudam); `liga` no plano do quadro
+  (`plan.banded |=`); `aplica` depois da colagem da placa e antes do vidro.
+- **A recusa da LUT diz-se no cartão**: a linha de leitura do `Lens` troca o readout pela frase
+  (`motion_bridge_readout.rs`), uma frase por variante do `ErroCubo` + ficheiro ilegível.
+- ⛔ **Medido na foto: o `scene_viewport` NÃO é a cena que se vê.** O mundo é renderizado por
+  baixo dos painéis docados (`[0, 0, 1600, 534]` numa janela `1600×972`), e uma vinheta centrada
+  ali escurecia cantos ESCONDIDOS — os cantos visíveis não mudavam (foto 1). Cura: o quadro da
+  lente é `HeroScreen::cena_visivel` = o conteúdo depois das réguas (já sem painéis nem timeline),
+  em pixels físicos, cortado pelo split (`[332, 96, 960, 438]`). Depois: cantos visíveis `83 → 69`
+  (≈ −17 %) com o centro `86 → 85`.
+- A cena `=135` (`motion_state_acabamento_demo.rs`): a galáxia simulada da `=132` com o degradê
+  OKLCH, `Tint → Lens → Output`; exemplos `docs/Motion Nodes/tutoriais/luts/quente.cube` (entra) e
+  `lut_1d.cube` (o cartão recusa).
+- Achado de passagem: o ângulo do `fx.glow` está gateado ao contrário — [BUGS #19](BUGS_motion_nodes.md).
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo
   ImageMagick põem o centro em sítios diferentes (índice × contínuo), e o leitor de PNG do ffmpeg
   desvia `0,0046`. Antes de gravar uma fixture, prove o oráculo num caso de resposta conhecida (os
   cantos da LUT têm de sair exactos).
+- **O retângulo onde o mundo se RENDERIZA não é o que o artista VÊ** — os painéis docados pintam
+  por cima do mundo. Um efeito de câmera centrado no primeiro passou nos gates de GPU (que não
+  têm painéis) e só a FOTO mostrou que os cantos visíveis não mudavam.
 - **«O mesmo bit nas duas línguas» exige UM arredondamento só**: a gaussiana do grão somava quatro
   uniformes em `f32` e a placa errou 1 ulp na célula `[-6, -6]` (o compilador da placa pode fundir
   ou reordenar). Cura: uniformes de 23 bits somadas em INTEIRO (a soma centrada cabe exacta num

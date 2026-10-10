@@ -21,6 +21,7 @@
 | [13](#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
 | [18](#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ✅ FECHADO (smoke do dono 10/10) | 2026-10-10 |
+| [19](#bug-19--o-ângulo-do-glow-aparece-só-onde-não-faz-nada) | **O ângulo do *streak* do Glow aparece só onde não faz nada** (achado do agente, ciclo 20, sem report) | `fx.glow` (`PARAM_GATES`) + `motion_bridge_params_visible.rs` | ⏳ aberto — mecanismo medido | 2026-10-10 |
 ---
 
 ## Bug #1 — O nó acusado estava INOCENTE: o campo gateia o pulso, e não gateia a MEMÓRIA
@@ -1535,3 +1536,36 @@ na faixa, o terceiro sangra. Timeline, Flip e Motion: as suites inteiras verdes.
 ### Lição
 Uma lei copiada em duas superfícies e esquecida na terceira é o mesmo defeito à espera — *uma
 porta*, não três cópias. E um gate que empurra o gesto sintético já assumiu a resposta do despacho.
+
+## Bug #19 — o ângulo do Glow aparece só onde não faz nada
+
+### O que se vê (achado lendo o código, 10/10, sem report do dono)
+
+O `Streak Angle` do `fx.glow` aparece com o `Anamorphic` em `1` (o halo redondo, onde o ângulo é
+a identidade) e **some** com o `Anamorphic` em `≥ 1,5` ou `< 0,5` — exactamente onde ele morde.
+
+### Mecanismo
+
+`ph2d-node-fx-glow/src/lib.rs` `PARAM_GATES = [ParamGate { param: "angle", when: "stretch",
+values: &[1] }]`, e o doc-comment ao lado diz *«o `1` é o único valor de `stretch` que ESCONDE o
+ângulo»*. Mas um `ParamGate` **mostra** o param quando `round(when) ∈ values`
+(`ph2d-node-registry/src/ui.rs` `ParamGate`: *«The allowed `when` values … for `param` to
+appear»*; `motion_bridge_params_visible.rs::shows`: esconde se `!values.contains(round(v))`). ⇒ a
+semântica está invertida. E é um gate de MODO (`mode_hides`): cruzar `1,5` com o ângulo ligado
+por fio é a travessia em que o painel trata a row como *«não existe»*.
+
+### A cura (por fazer — precisa de uma espécie de gate)
+
+O `stretch` vai de `0,2` a `6` e o ângulo morde dos DOIS lados de `1`: nenhum dos três gates
+existentes (`ParamGate` inteiro, `ParamGateText`, `ParamGateAbove` estrito) exprime *«≠ 1»*. As
+duas saídas honestas: (a) uma espécie `ParamGateAway { param, when, from }` (mostra quando
+`|when − from| > ε`, contínua como o `Above`, logo NÃO `mode_hides`), ou (b) tirar o gate e
+aceitar o ângulo inerte no default. Gate a escrever: o ângulo visível em `stretch ∈ {0,5; 2}` e
+escondido em `1`.
+
+### Lição
+
+**Um doc-comment que descreve o que um gate ESCONDE ao lado de uma estrutura que declara o que ele
+MOSTRA é a mesma família de «a nota descreve onde a tradução aconteceria»** — a prosa e o dado
+dizem o contrário, e nenhum teste perguntou ao painel.
+

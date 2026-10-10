@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-node-fx-lens"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+# As leis da lente (doc 129 do Motion): o nó lê o grafo para os params dela.
+ph2d-lens = { path = "../ph2d-lens" }
+
+[lints]
+workspace = true

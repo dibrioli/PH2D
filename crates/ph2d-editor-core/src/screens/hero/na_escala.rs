@@ -41,6 +41,23 @@ impl HeroScreen {
         UiScaleMap::no_ecra(self.ui_scale, self.escala_do_ecra)
     }
 
+    /// ⭐ **A cena que o artista VÊ**, em pixels FÍSICOS `[x, y, w, h]`: o conteúdo depois das
+    /// réguas (que já desconta os painéis docados e a faixa da timeline) cortado pelo split do
+    /// Motion (`scene_viewport`, físico). `None` antes do primeiro quadro pintado ou sem
+    /// interseção. É o quadro da LENTE da câmera (Motion ciclo 20): o mundo é renderizado por
+    /// baixo dos painéis, e uma vinheta centrada no render inteiro escurecia cantos escondidos.
+    #[must_use]
+    pub fn cena_visivel(&self, scene_viewport: Option<[f32; 4]>) -> Option<[f32; 4]> {
+        let c = self.escala().rect_to_physical(self.last_content);
+        let (mut x0, mut y0, mut x1, mut y1) = (c.x, c.y, c.x + c.w, c.y + c.h);
+        if let Some([vx, vy, vw, vh]) = scene_viewport {
+            (x0, y0) = (x0.max(vx), y0.max(vy));
+            (x1, y1) = (x1.min(vx + vw), y1.min(vy + vh));
+        }
+        let [x0, y0, x1, y1] = [x0, y0, x1, y1].map(f32::round);
+        (x1 > x0 && y1 > y0).then_some([x0, y0, x1 - x0, y1 - y0])
+    }
+
     /// O alvo do chrome sob um ponto FÍSICO da janela.
     #[must_use]
     pub fn chrome_hit(&self, x: f32, y: f32) -> Option<NodeId> {

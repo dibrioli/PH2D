@@ -4939,6 +4939,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
+ "ph2d-lens",
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
  "ph2d-node-audio-bands",
@@ -4948,6 +4949,7 @@ dependencies = [
  "ph2d-node-force-wind",
  "ph2d-node-fx-drop-shadow",
  "ph2d-node-fx-glow",
+ "ph2d-node-fx-lens",
  "ph2d-node-motion-bezier-warp",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-distribute-poisson",
@@ -6587,6 +6589,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-fx-lens"
+version = "0.0.0"
+dependencies = [
+ "ph2d-lens",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-fx-rgb-split"
 version = "0.0.0"
 dependencies = [
@@ -7262,6 +7273,7 @@ dependencies = [
  "ph2d-node-force-wind",
  "ph2d-node-fx-drop-shadow",
  "ph2d-node-fx-glow",
+ "ph2d-node-fx-lens",
  "ph2d-node-fx-rgb-split",
  "ph2d-node-motion-bend",
  "ph2d-node-motion-bezier-warp",

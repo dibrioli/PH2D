@@ -376,6 +376,8 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.opts.node_fx_glow.operation_labels.1", "Screen"),
     ("node.opts.node_fx_glow.source_labels.0", "Luminance"),
     ("node.opts.node_fx_glow.source_labels.1", "Alpha"),
+    ("node.opts.node_fx_lens.aberration_mode_labels.0", "Radial"),
+    ("node.opts.node_fx_lens.aberration_mode_labels.1", "Linear"),
     ("node.opts.node_motion_bend.mode_labels.0", "Unlimited"),
     ("node.opts.node_motion_bend.mode_labels.1", "Limited"),
     ("node.opts.node_motion_bend.mode_labels.2", "Within Box"),

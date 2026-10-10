@@ -46,6 +46,8 @@ impl crate::App {
             frost,
             frost_doc_scene,
             frost_front_scene,
+            motion,
+            hero_screen,
             ..
         } = gfx;
         // Pass 2: AgX tonemap
@@ -101,6 +103,11 @@ impl crate::App {
             let formas = ph2d_render::BandSource::Formas;
             band_blit.blit(surface.gpu(), world_rt.blend_view(), camada, formas);
         }
+        // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
+        let cena = hero_screen
+            .as_ref()
+            .and_then(|h| h.cena_visivel(scene_viewport));
+        motion.lente.aplica(surface.gpu(), world_rt, cena);
         // ⭐⭐⭐ **O VIDRO** — entre o mundo e a receita, e ANTES da cena de chrome de
         // propósito: os painéis entram pelo compositor, acima de tudo, e é isso que os
         // deixa nítidos sem uma máscara os nomear. Ver [`crate::render_loop::present_frost`].

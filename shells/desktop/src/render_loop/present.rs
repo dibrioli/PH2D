@@ -314,6 +314,8 @@ impl crate::App {
         luz2d.recolher(sim.world());
         luz2d.gravar(surface.gpu(), present, renderer);
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
+        // E A LENTE (ciclo 20): ela corre sobre o acumulador do mundo.
+        plan.banded |= motion.lente.liga(motion_active);
         let banded = plan.banded;
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são

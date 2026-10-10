@@ -141,6 +141,8 @@ mod ritmo_demo;
 #[path = "motion_state_cor_demo.rs"]
 mod cor_demo;
 
+#[path = "motion_state_acabamento_demo.rs"]
+mod acabamento_demo;
 /// A cena `=134` — o jogo manda (ciclo 19, doc 128).
 #[path = "motion_state_jogo_demo.rs"]
 mod jogo_demo;
@@ -472,6 +474,8 @@ pub struct MotionState {
     /// As TABELAS lidas (`source.table`, `value.table`) — o disco é lido AQUI, uma vez por
     /// ficheiro, e nunca dentro do cook (a mesma lei do `band_cache`, doc 63 §6).
     pub table_cache: crate::motion_table_gen::TableCache,
+    /// A LENTE (`fx.lens`, ciclo 20): o nó, o tique, a LUT lida do disco e o passe da placa.
+    pub lente: crate::motion_lens::MotionLente,
     /// **The node-help system on/off** (ADR-0155, Enio 2026-08-04). The ONE flag the
     /// setup diagnoser rides: the auto-heal, the ⚠ inert badges and the advisories all
     /// read it (`motion_bridge_heal`), so turning it off makes the graph stop offering to

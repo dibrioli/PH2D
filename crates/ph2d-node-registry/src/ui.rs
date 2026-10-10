@@ -226,6 +226,8 @@ pub enum FileKind {
     /// da shell: o nó não depende do leitor, e é essa cerca que impede a análise de entrar no
     /// cook.
     Table,
+    /// **Uma LUT 3D** (`.cube`, a spec *Adobe Cube LUT 1.0*) — o look do `fx.lens`.
+    Lut,
 }
 
 impl FileKind {
@@ -235,7 +237,7 @@ impl FileKind {
     /// (`every_file_kind_the_registry_declares_has_a_filter`) also checks its LENGTH against
     /// the arms the shell's exhaustive `match` covers — a variant added without a line here
     /// would otherwise be censused by nobody.
-    pub const ALL: &'static [FileKind] = &[FileKind::Audio, FileKind::Table];
+    pub const ALL: &'static [FileKind] = &[FileKind::Audio, FileKind::Table, FileKind::Lut];
 }
 
 /// ⭐⭐⭐ **A CHAVE do canal externo de uma tabela — porta ÚNICA, e vive AQUI por isso.**

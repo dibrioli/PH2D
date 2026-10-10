@@ -36,6 +36,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "node.force.wind.name" => "Wind",
         "node.fx.drop_shadow.name" => "Drop Shadow",
         "node.fx.glow.name" => "Glow",
+        "node.fx.lens.name" => "Lens",
         "node.fx.rgb_split.name" => "RGB Split",
         "node.motion.bend.name" => "Bend",
         "node.motion.bezier_warp.name" => "Bezier Warp",

@@ -120,7 +120,7 @@ const REQUIRED_UPSTREAM: &[&str] = &["P"];
 ///
 /// A lista existe em vez de o nome estar cravado porque o próximo passe de tela deste tipo
 /// tem de ser **uma linha**, e não uma regra nova a redescobrir.
-const SINGLETON_SCREEN_PASSES: &[&str] = &["fx.glow"];
+const SINGLETON_SCREEN_PASSES: &[&str] = &["fx.glow", "fx.lens"];
 
 /// ⭐⭐⭐ **OS BURACOS DE LIGAÇÃO, sem a nota sobre o DESTINO** — a [`diagnose`] menos o
 /// [`Deficit::SemQuemVista`].

@@ -207,6 +207,7 @@ pub mod motion_glow_dirt;
 /// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
 /// passe de sprites — a metade vetorial viva entra pelo tile assado.
 pub mod motion_glow_layer;
+pub mod motion_lens;
 /// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
 /// its node params, publish it into the cook, and draw the cooked instances as
 /// live GPU vector into the shared vector scene.

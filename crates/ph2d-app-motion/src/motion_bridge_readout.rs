@@ -327,6 +327,10 @@ pub(super) fn stamp(
             (None, Some(s)) => Some(readout_text(s, exact.unwrap_or(0) as usize)),
             (None, None) => None,
         };
+        // A recusa de uma LUT diz-se NO cartão da lente, na linha de leitura (ciclo 20).
+        if let Some(queixa) = motion.lente.queixa(id) {
+            node.readout = Some(queixa);
+        }
         // The wire's mass — see `exact` above. Without it every wire flattens to
         // the same thread the moment the device takes over, and the taper — the
         // panel's one answer to "how much is moving?" — dies exactly where the

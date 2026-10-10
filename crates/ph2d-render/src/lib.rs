@@ -57,14 +57,14 @@ pub mod instance_buffer;
 /// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod ktx2_format;
-/// A lente da câmera sobre o acumulador do mundo (Motion ciclo 20, doc 129).
-pub mod lens;
 /// GPU layer compositor (Painter W3, Block 2) — real-time sibling of the CPU
 /// reference `ph2d_tool_painter::compositor`. 22 W3C blend modes + groups via a
 /// per-pixel stack machine; texture-array cache + dirty-rect dispatch. See
 /// [`docs/Painter_projeto/02_layers.md`](../../../docs/Painter_projeto/02_layers.md).
 pub mod layer_compositor;
 pub mod luz_recebida;
+/// A lente da câmera sobre o acumulador do mundo (Motion ciclo 20, doc 129).
+pub mod lens;
 pub mod mipgen;
 pub mod motion_fx;
 pub mod nine_slice;
@@ -132,7 +132,6 @@ pub use impasto_light::{
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
 pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};
-pub use lens::{LensPass, LensUniform};
 pub use layer_compositor::{
     CompositeSpace, GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_DISCRETE_BYTES,
     LAYER_CACHE_BUDGET_SHARED_BYTES, LayerCompositeError, LayerCompositor, LayerMask, LayerOp,
@@ -142,6 +141,7 @@ pub use layer_compositor::{
     motion_weights,
 };
 pub use luz_recebida::{LuzRecebida, LuzUniforme, RECEBER_WGSL};
+pub use lens::{LensPass, LensUniform};
 pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{
     DrawnMesh, MeshUv, WorldBbox, drawn_instance_of, drawn_mesh_of, mesh_uv, pick_sprite_at_world,

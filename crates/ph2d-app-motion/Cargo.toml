@@ -102,6 +102,9 @@ ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-system-fonts = { path = "../ph2d-system-fonts" }
 ph2d-vec-text = { path = "../ph2d-vec-text" }
 ph2d-node-fx-glow = { path = "../ph2d-node-fx-glow" }
+# A lente da câmera (ciclo 20, doc 129): o nó e as leis (a LUT `.cube` lê-se aqui).
+ph2d-node-fx-lens = { path = "../ph2d-node-fx-lens" }
+ph2d-lens = { path = "../ph2d-lens" }
 # ⛔⛔ **HOWTO §2.4 — AS FEATURES NÃO VIAJAM COM O CÓDIGO, e esta é a armadilha muda.**
 # `109` sítios desta família estão atrás destas duas. Numa crate que não as DECLARA o `cfg` é
 # falso **por construção**: o `motion_bridge` perderia o `mod surfaces` (o que a ferramenta

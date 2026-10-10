@@ -40,6 +40,11 @@ fn registry() -> NodeRegistry {
 /// sempre»* e *«ninguém olhou»*, e é a única coisa que a próxima pessoa consegue conferir.
 const ALWAYS_READ: &[(&str, &str, &str)] = &[
     (
+        "fx.lens",
+        "lut",
+        "a LUT do grade: o `fx.lens` não tem modos, e o passe lê-a sempre que o `lut_mix` > 0",
+    ),
+    (
         "value.input",
         "name",
         "o NOME é a morada da entrada (`$input:<nome>`): todo tipo o lê, e sem ele o nó só tem o \

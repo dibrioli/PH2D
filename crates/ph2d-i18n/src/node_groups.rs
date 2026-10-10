@@ -27,6 +27,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "node.group.bottom_edge" => "Bottom Edge",
         "node.group.burst" => "Burst",
+        "node.group.aberration" => "Chromatic Aberration",
         "node.group.collision" => "Collision",
         "node.group.colour" => "Colour",
         "node.group.corners" => "Corners",
@@ -36,6 +37,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "node.group.falloff" => "Falloff",
         "node.group.field" => "Field",
         "node.group.flocking" => "Flocking",
+        "node.group.grade" => "Color Grade",
+        "node.group.grain" => "Film Grain",
         "node.group.grammar" => "Grammar",
         "node.group.growth" => "Growth",
         "node.group.gust" => "Gust",
@@ -64,6 +67,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "node.group.trigger" => "Trigger",
         "node.group.values" => "Values",
         "node.group.velocity" => "Velocity",
+        "node.group.vignette" => "Vignette",
         _ => return None,
     })
 }

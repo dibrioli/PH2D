@@ -13,7 +13,8 @@
 //! B. a convergência do rebote em quadros (a cena 3): o quadro em que cada ponto chega a 5 % e a 1 %
 //!    do convergido, por nível;
 //! C. o erro contra o gabarito: a cena 3 com a série do rebote, e os vaga-lumes (a luz pequena — o
-//!    limite medido da holográfica), por nível, clássica × holográfica.
+//!    limite medido da holográfica), por nível, clássica × holográfica;
+//! D. o rebote de FORA da grade: a parede vermelha a sair da grade com o pan.
 
 use bevy_ecs::world::World;
 use ph2d_app_light2d::{
@@ -112,6 +113,7 @@ fn medida_luz2d_w5c() {
     custo(&gpu);
     convergencia(&gpu);
     erro(&gpu);
+    fora_da_grade(&gpu);
     eprintln!("# loadavg depois {}", loadavg());
 }
 
@@ -296,6 +298,56 @@ fn erro(gpu: &GpuContext) {
         eprintln!(
             "- {nome}: cena 3 (rebote) pior {e3:.4} · vaga-lumes {}",
             e2.join(" ")
+        );
+    }
+}
+
+/// D. O rebote de FORA da grade: a cena 3 vista com a câmera deslocada para a direita até a parede
+/// vermelha sair da grade (a margem é o desenho das cascatas; o mundo fora da grade da W5b não tem
+/// albedo). Um ponto da sala junto à borda esquerda da vista, contra o gabarito (que vê a sala toda).
+fn fora_da_grade(gpu: &GpuContext) {
+    eprintln!(
+        "\n## D. O rebote de fora da grade (cena 3, a câmera deslocada; o ponto junto à borda esquerda da vista)"
+    );
+    let c3 = cena(3);
+    let serie = Rebote::resolver(
+        &c3,
+        OpcoesDoRebote {
+            passo_m: 0.02,
+            rebotes: 200,
+        },
+    );
+    for centro_x in [-2.0_f32, -1.0, 0.0, 1.0, 2.0] {
+        // A vista de 2 m de altura (a do dono na W5b): a grade cobre poucos metros à volta do centro.
+        let a = Camera2d::new([centro_x, 0.0], 2.0)
+            .world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
+        let d = degrau_do(NivelDaLuz::Media);
+        let g = grade_do_quadro(a, FHD, d).expect("grade");
+        let cfg = Config {
+            fina: fina_do_quadro(a, d),
+            captura: captura_do_quadro(a, d),
+            holografica: Some(HOLOGRAFICA_PADRAO),
+            rebote: true,
+            ..Config::padrao_para(&gpu.device, g)
+        };
+        let mut s = Solver::novo(gpu, cfg).expect("solver");
+        let (i, f) = ph2d_app_light2d::regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+        s.regiao_fina(i, f);
+        for _ in 0..80 {
+            s.quadro(gpu, &c3);
+        }
+        let fl = fluencia_lida(gpu, &s);
+        // A borda esquerda da vista no mundo, e um ponto da sala 0,3 m para dentro dela.
+        let esquerda = (a.inverse() * vello::kurbo::Point::new(0.0, 540.0)).x;
+        let p = [esquerda.max(-2.7) + 0.3, 0.0];
+        let gab = 2.0 * std::f64::consts::PI * serie.luz_em(p)[0];
+        let fora = g.origem_m[0] > -3.2;
+        eprintln!(
+            "- câmera em x = {centro_x}: a grade começa em {:.2} m (a parede vermelha {}) · ponto {:.2} · vermelho {:+.3} do gabarito",
+            g.origem_m[0],
+            if fora { "FORA dela" } else { "dentro" },
+            p[0],
+            (fl.amostra_canal(p, 0) - gab) / gab
         );
     }
 }

@@ -292,12 +292,17 @@ pub fn largura_10_90(ys: &[f64], f: &[f64]) -> Option<f64> {
 impl Fluencia {
     /// A luz recebida em `p` pela CPU (a conta bilinear do `receber.wgsl`).
     pub fn amostra(&self, p: [f64; 2]) -> f64 {
-        amostra(&self.v, self.grade, p)
+        amostra(&self.v, self.grade, p, 1)
+    }
+
+    /// ⭐ W5c: [`Self::amostra`] no canal `c` (0 = vermelho).
+    pub fn amostra_canal(&self, p: [f64; 2], c: usize) -> f64 {
+        amostra(&self.v, self.grade, p, c)
     }
 }
 
 /// A luz recebida em `p` pela CPU sobre a fluência lida da placa (a conta do `receber.wgsl`).
-fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2]) -> f64 {
+fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2], c: usize) -> f64 {
     let tx = (p[0] - g.origem_m[0]) / g.texel_m - 0.5;
     let ty = (p[1] - g.origem_m[1]) / g.texel_m - 0.5;
     let (i0, j0) = (tx.floor(), ty.floor());
@@ -305,7 +310,7 @@ fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2]) -> f64 {
     let em = |i: f64, j: f64| {
         let i = (i.max(0.0) as u32).min(g.largura - 1);
         let j = (j.max(0.0) as u32).min(g.altura - 1);
-        f64::from(f[(j * g.largura + i) as usize][1])
+        f64::from(f[(j * g.largura + i) as usize][c])
     };
     let a = em(i0, j0) * (1.0 - fx) + em(i0 + 1.0, j0) * fx;
     let b = em(i0, j0 + 1.0) * (1.0 - fx) + em(i0 + 1.0, j0 + 1.0) * fx;

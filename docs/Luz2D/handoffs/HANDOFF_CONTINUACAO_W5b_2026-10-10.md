@@ -3,8 +3,9 @@
 - **Linha:** `line/Luz2D` · worktree `Worktrees/line-Luz2D` · merge-base `2a925859d` (sem rebase pendente).
 - **HEAD:** o commit deste doc. Commits da onda: `cab079373` (a cura) · `8a0c4c40e` (a bissecção do disco que
   escondia a lâmpada; a régua estendida) · `b2f186ac9` (carimbo das máscaras; G5) · `e164de0c3` (a C3 em par; a
-  rodada) · `f3e29b1d4` (a régua só lê a janela; translúcidos; 2.ª máscara; testes de CPU) · o seguinte (os
-  sobreviventes de CPU; A3; `fotos_do_f4`) · `0bcc38e53` (fotos) · este doc.
+  rodada) · `f3e29b1d4` (a régua só lê a janela; translúcidos; 2.ª máscara; testes de CPU) · `…` (os
+  sobreviventes de CPU; A3; `fotos_do_f4`) · `0bcc38e53` (fotos) · `b33d78bad` (doc) · `9d2896cfa` (o portão: LOC e
+  clippy) · este fecho.
 - **Estado:** W5b FECHADA (onda). F4 riscado no [plano §7.1](../01_plano.md). Próxima: **W5 — janela NOVA**
   (rebote, HRC, governador acima de 1080p, Flip receber/bloquear, formas do Motion bloquearem e os ABERTOS).
 - **Delta da shell: 0** (nada em `shells/`, `ph2d-render`, `ph2d-editor-core`). Foundational: nenhum. Contratos
@@ -67,7 +68,14 @@ a sangrar.
 
 ## Portão de fecho
 
-(ver o fim deste doc — preenchido depois do portão)
+1.ª corrida (sobre `0bcc38e53`): fmt ✓ · machete ✓ · deny-check ✓ · **clippy ✗** (`redundant_iter_cloned` em
+`quadro.rs`) · **nextest ✗** (`workspace_src_files_under_loc_cap`: `solver.rs` 701 > 700 — curado MOVENDO o grupo das
+lâmpadas para o `solver_distantes.rs`, 682). 2.ª corrida, sobre `9d2896cfa`: `fmt --check` ✓ · clippy `-D warnings`
+(`ph2d-light2d-gpu`, `ph2d-app-light2d`, `ph2d-light2d-ref`, `ph2d-light2d-ecs`, `ph2d-host-desktop`) ✓ · `machete`
+✓ · `CARGO_BUILD_WARNINGS=deny check --workspace --all-targets` ✓ · `nextest-impacted` **16 930 / 16 930** ✓
+(`load` 17–45). Suítes da família: placa 22 + 3 ignorados · lib 5 · família 46 + 12 · gabarito 20 + 1 · ECS 12.
+Smoke recompilado (regra I, depois do `rm -rf target/*/incremental`), 2.ª saída:
+`Finished \`smoke\` profile [optimized] target(s) in 0.26s`.
 
 ## ⚠️ ABERTO (W5b → W5)
 

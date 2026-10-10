@@ -70,6 +70,15 @@ handles da junção, o lápis sem quinas, a estrela regular — dois sítios); a
 reais e os testes que as fecham **acharam um defeito**: a guarda das pontas corria ANTES do máximo local e
 um gancho de 8 px virava quina 14,6 px antes da ponta (`0496a4cca`). Agora as quatro sangram.
 
+### §1d — A linha aberta (4.º pedido do dono, 09/10)
+
+Folga de fecho `0,06 → 0,13` (e a janela da ponta `0,10 → 0,13`): fecha sempre o que tem até 10 % do
+contorno em falta (antes ~5 %); o U fundo 3:1 só fecharia a partir de 16 % (sonda `measure_open_gaps`).
+A régua do lado recto `0,06 → 0,065` (A × B com 80 mãos; a 0,07 o arco passa a forma em 2,5 %). O
+rectângulo aberto 90 px do oráculo passa a excepção «fecha» (o dono manda mais). A régua do gate
+(`worst`) deixou de dar `panic` quando a contagem de cantos difere (derrubava a sonda das faixas).
+Tabelas em [`00_resultados.md`](../vetor_nova_ui/oraculo_quickshape/00_resultados.md) §3f.
+
 ## §2 — Medido e decidido (técnico, delegado)
 
 As três sondas (`cargo test --release -p ph2d-vec-edit --lib measure_ -- --ignored --nocapture

@@ -178,6 +178,23 @@ Escolhidos: `bow_max 0,055 → 0,06` (faixa re-medida `0,035–0,085`), `bow_tri
 continuam certas. O preço medido: o S passa por forma em ~2 % das mãos (era 0,6 %) e o zigue-zague de
 quinas arredondadas PEQUENO (≤ 48 px) cai a 92 % no pior caso.
 
+## §3f — A linha aberta (09/10, 4.º pedido do dono: *«mais sensível, inclusive com a linha aberta»*)
+
+`measure_open_gaps` (30 mãos por caso, tremor ±1 px, estabilizador): formas fechadas com 4–20 % do
+contorno em falta × formas que a mão quer ABERTAS (U fundo 3:1, U, C de ¾, V, L):
+
+| folga | fecha com 8 % aberto | com 12 % | forma aberta fechada à força |
+|---|---|---|---|
+| 0,06 (antes) | 20 % | 0 % | 0 % |
+| 0,10 | 100 % | 20 % | 0 % |
+| **0,13** | **100 %** | 20–80 % (o triângulo e a estrela sim; o rectângulo e o círculo não) | **0 %** |
+| 0,16 | 100 % | 80 % | **100 % (o U fundo, abertura de 14,3 %)** |
+
+Escolhida **0,13** (e a janela da ponta 0,13). O rectângulo aberto 90 px do oráculo (7,6 %) passa de
+«polilinha» a RECTÂNGULO (excepção do dono). E a régua do lado recto `0,06 → 0,065` (A × B, 80 mãos):
+rectângulo ±2 px 93,8 → 96,2 %, zigue-zague 90,3 → 94,1 %; o S e o arco passam por forma em 1–2 %
+das mãos (a 0,07 o arco chega a 2,5 % — recusado).
+
 ## §4 — O que isto decide para o PH2D (e o que NÃO decide)
 
 - **Copia-se a lei:** linha ⇒ 2 pontos; rectângulo ⇒ 4 cantos a 90° com a rotação do traço;

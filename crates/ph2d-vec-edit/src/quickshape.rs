@@ -46,8 +46,10 @@ pub(crate) struct Law {
     /// A flecha mede-se sem esta fracção de cada ponta; o ajuste da recta, sem `fit_trim`.
     pub(crate) bow_trim: f64,
     pub(crate) fit_trim: f64,
-    /// Folga de fecho (fracção do comprimento): o oráculo fecha 4,4 % e recusa 7,6 %; a ponta procura
-    /// a outra nos `close_window` iniciais/finais (o traço que PASSA do início).
+    /// Folga de fecho (fracção do comprimento) e a janela em que a ponta procura a outra. O oráculo
+    /// fecha 4,4 % e recusa 7,6 %; o DONO (09/10: «inclusive com a linha aberta») manda mais: 13 %
+    /// fecha sempre o que tem até 10 % em falta, e o U fundo 3:1 (abertura de 14,3 %) só fecha a
+    /// partir de 16 % — sonda `measure_open_gaps`.
     pub(crate) close_of_length: f64,
     pub(crate) close_window: f64,
     /// Desvio da quina a 90° para ser rectângulo (graus): oráculo, paralelogramo 6° sim, 10° não.
@@ -71,12 +73,12 @@ impl Law {
         corner_of_diag: CORNER_OF_DIAG,
         rdp_of_diag: 0.04,
         merge_turn_deg: 29.0,
-        bow_max: 0.06,
+        bow_max: 0.065,
         open_corner_of_side: OPEN_CORNER_OF_SIDE,
         bow_trim: 0.0,
         fit_trim: 0.175,
-        close_of_length: 0.06,
-        close_window: 0.10,
+        close_of_length: 0.13,
+        close_window: 0.13,
         right_tol_deg: 8.0,
         axis_snap_deg: 5.0,
         ellipse_rms_max: ELLIPSE_RMS_MAX,

@@ -86,13 +86,12 @@ pub(super) fn load() -> Vec<Fixture> {
     v
 }
 
-/// A pior distância de um ponto de `want` ao ponto mais perto de `got` (e as contagens iguais).
+/// A pior distância de um ponto de `want` ao ponto mais perto de `got`; contagens diferentes são
+/// distância INFINITA (uma falha que a sonda das faixas conta, não um `panic` que a derruba).
 pub(super) fn worst(got: &[P2], want: &[P2]) -> f64 {
-    assert_eq!(
-        got.len(),
-        want.len(),
-        "contagem de cantos {got:?} vs {want:?}"
-    );
+    if got.len() != want.len() {
+        return f64::INFINITY;
+    }
     want.iter()
         .map(|&w| got.iter().map(|&g| dist(g, w)).fold(f64::MAX, f64::min))
         .fold(0.0, f64::max)
@@ -191,12 +190,9 @@ fn own(name: &str) -> Option<Own> {
             [950.0, 650.0],
             [1100.0, 400.0],
         ]),
-        // O rectângulo aberto 90 px é uma polilinha de 4 lados: a ponta é onde a mão parou.
-        "rect_aberto_90" => {
-            let mut v = rect_400x250();
-            v.push([600.0, 465.0]);
-            Own::Open(v)
-        }
+        // O rectângulo com 90 px (7 %) por fechar FECHA — o dono, 09/10: «mais sensível, inclusive
+        // com a linha aberta» (a folga mede-se em `measure_open_gaps`; o Xournal++ deixa-o cru).
+        "rect_aberto_90" => Own::Closed(rect_400x250()),
         "elipse_2para1" => Own::Ellipse([800.0, 500.0], 300.0, 150.0, 0.0),
         "elipse_2para1_rodada_30" => Own::Ellipse([800.0, 500.0], 300.0, 150.0, 30.0),
         "elipse_3para2" => Own::Ellipse([800.0, 500.0], 300.0, 200.0, 0.0),
@@ -252,20 +248,13 @@ pub(super) fn failures(all: &[Fixture], law: &Law) -> Vec<String> {
                     .ok_or(format!("cantos {corners:?} vs {want:?}"))
             }
             (
-                Some(Own::Open(mut want)),
+                Some(Own::Open(want)),
                 Some(QuickShape::Polygon {
                     corners,
                     closed: false,
                 }),
             ) => {
-                if f.name == "rect_aberto_90" {
-                    // A ponta solta é a última amostra da mão (já em página).
-                    want.pop();
-                }
-                let mut want: Vec<P2> = want.iter().map(|&p| f.page(p)).collect();
-                if f.name == "rect_aberto_90" {
-                    want.push(f.input[f.input.len() - 1]);
-                }
+                let want: Vec<P2> = want.iter().map(|&p| f.page(p)).collect();
                 (worst(corners, &want) <= TOL)
                     .then_some(())
                     .ok_or(format!("cantos {corners:?} vs {want:?}"))
@@ -356,8 +345,8 @@ pub(super) fn failures(all: &[Fixture], law: &Law) -> Vec<String> {
 fn every_own_law_exception_names_a_fixture_that_exists() {
     let names: Vec<String> = load().into_iter().map(|f| f.name).collect();
     let used = names.iter().filter(|n| own(n).is_some()).count();
-    // 3 polígonos + 5 rectângulos de mão + 5 quadriláteros + 4 polilinhas + 3 elipses + 2 círculos
-    // + 3 formas pequenas.
+    // 3 polígonos + 6 rectângulos de mão (com o aberto 90 px, 09/10) + 5 quadriláteros + 3 polilinhas
+    // + 3 elipses + 2 círculos + 3 formas pequenas.
     assert_eq!(
         used, 25,
         "uma excepção ficou órfã (a fixture mudou de nome?)"

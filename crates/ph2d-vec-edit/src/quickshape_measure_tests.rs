@@ -552,36 +552,33 @@ fn measure_sensitivity_of_each_constant() {
 #[ignore = "sonda"]
 fn measure_sensitivity_ab() {
     let all = load();
+    let base = Law {
+        close_of_length: 0.13,
+        close_window: 0.13,
+        ..Law::MEASURED
+    };
     let candidates = [
-        ("A medida", Law::MEASURED),
+        ("A folga 0,13", base),
         (
-            "B",
-            Law {
-                bow_max: 0.06,
-                bow_trim: 0.05,
-                ellipse_rms_max: 0.075,
-                turn_tol_deg: 150.0,
-                ..Law::MEASURED
-            },
-        ),
-        (
-            "C",
-            Law {
-                bow_max: 0.06,
-                bow_trim: 0.0,
-                ellipse_rms_max: 0.075,
-                turn_tol_deg: 150.0,
-                ..Law::MEASURED
-            },
-        ),
-        (
-            "D",
+            "B recto 0,065",
             Law {
                 bow_max: 0.065,
-                bow_trim: 0.05,
-                ellipse_rms_max: 0.075,
-                turn_tol_deg: 150.0,
-                ..Law::MEASURED
+                ..base
+            },
+        ),
+        (
+            "C recto 0,07",
+            Law {
+                bow_max: 0.07,
+                ..base
+            },
+        ),
+        (
+            "D recto 0,07 + elipse 0,09",
+            Law {
+                bow_max: 0.07,
+                ellipse_rms_max: 0.09,
+                ..base
             },
         ),
     ];
@@ -672,5 +669,122 @@ fn measure_hand_stars() {
                 );
             }
         }
+    }
+}
+
+/// Tira a fracção `g` do FIM de uma polilinha (o traço que pára antes de fechar).
+fn open_by(poly: &[P2], g: f64) -> Vec<P2> {
+    let total: f64 = poly.windows(2).map(|w| dist(w[0], w[1])).sum();
+    let mut left = total * (1.0 - g);
+    let mut out = vec![poly[0]];
+    for w in poly.windows(2) {
+        let d = dist(w[0], w[1]);
+        if d >= left {
+            out.push(add(w[0], mul(sub(w[1], w[0]), left / d)));
+            return out;
+        }
+        left -= d;
+        out.push(w[1]);
+    }
+    out
+}
+
+/// **Fechar a linha aberta** (o dono, 09/10: *«mais sensível, inclusive com a linha aberta»*): por
+/// folga de fecho, a fracção de formas FECHADAS de mão que fecham com 0–20 % do perímetro em falta,
+/// e a fracção de formas que a mão quer ABERTAS (U fundo, C de ¾, V, L, zigue-zague) que fecham à
+/// força — 30 mãos por caso, tremor ±1 px, o estabilizador.
+#[test]
+#[ignore = "sonda"]
+fn measure_open_gaps() {
+    let all = load();
+    let star: Vec<P2> = (0..=5)
+        .map(|i| {
+            let a = FRAC_PI_2 + TAU * ((2 * i) % 5) as f64 / 5.0;
+            [150.0 * a.cos(), 150.0 * a.sin()]
+        })
+        .collect();
+    let closed: Vec<(&str, Vec<P2>, usize)> = vec![
+        (
+            "rectângulo",
+            vec![
+                [0.0, 0.0],
+                [400.0, 0.0],
+                [400.0, 250.0],
+                [0.0, 250.0],
+                [0.0, 0.0],
+            ],
+            4,
+        ),
+        (
+            "triângulo",
+            vec![[0.0, 0.0], [300.0, 0.0], [150.0, 260.0], [0.0, 0.0]],
+            3,
+        ),
+        ("estrela", star, 5),
+        ("círculo", ring(150.0, 150.0, 1.0), 0),
+        ("elipse", ring(200.0, 100.0, 1.0), 0),
+    ];
+    let open: Vec<(&str, Vec<P2>)> = vec![
+        (
+            "U fundo",
+            vec![[0.0, 300.0], [0.0, 0.0], [100.0, 0.0], [100.0, 300.0]],
+        ),
+        (
+            "U",
+            vec![[0.0, 200.0], [0.0, 0.0], [150.0, 0.0], [150.0, 200.0]],
+        ),
+        ("C ¾", ring(150.0, 150.0, 0.75)),
+        ("V", vec![[0.0, 300.0], [100.0, 0.0], [200.0, 300.0]]),
+        ("L", vec![[0.0, 300.0], [0.0, 0.0], [200.0, 0.0]]),
+    ];
+    let is_closed = |q: &Option<QuickShape>, k: usize| match q {
+        Some(QuickShape::Polygon {
+            corners,
+            closed: true,
+        }) => k == 0 || corners.len() == k,
+        Some(QuickShape::Ellipse { .. }) => k == 0,
+        _ => false,
+    };
+    print!("\n| folga | fixtures |");
+    for g in [0.04, 0.08, 0.12, 0.16, 0.2] {
+        print!(" fecha c/ {:.0} % aberto |", 100.0 * g);
+    }
+    println!(" pior forma ABERTA fechada à força |");
+    for close in [0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2] {
+        let law = Law {
+            close_of_length: close,
+            close_window: close.max(0.1),
+            ..Law::MEASURED
+        };
+        print!("| {close} | {} |", failures(&all, &law).len());
+        for g in [0.04, 0.08, 0.12, 0.16, 0.2] {
+            let (mut ok, mut n) = (0, 0);
+            for (_, p, k) in &closed {
+                for seed in 0..30 {
+                    let pts =
+                        crate::test_hand::stabilise(&hand(&open_by(p, g), 2.0, 1.0, seed), 0.5);
+                    ok += usize::from(is_closed(&recognise_with(&law, &pts, 1.0, false), *k));
+                    n += 1;
+                }
+            }
+            print!(" {:.0} % |", 100.0 * ok as f64 / n as f64);
+        }
+        let mut worst = (0.0_f64, "");
+        for (name, p) in &open {
+            let forced = (0..30)
+                .filter(|&seed| {
+                    let pts = crate::test_hand::stabilise(&hand(p, 2.0, 1.0, seed), 0.5);
+                    matches!(
+                        recognise_with(&law, &pts, 1.0, false),
+                        Some(QuickShape::Polygon { closed: true, .. } | QuickShape::Ellipse { .. })
+                    )
+                })
+                .count() as f64
+                / 30.0;
+            if forced > worst.0 {
+                worst = (forced, name);
+            }
+        }
+        println!(" {:.0} % ({}) |", 100.0 * worst.0, worst.1);
     }
 }

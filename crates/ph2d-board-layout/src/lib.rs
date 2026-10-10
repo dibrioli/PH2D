@@ -23,7 +23,7 @@ use parley::{
     Alignment, AlignmentOptions, FontFamily, FontStyle, FontWeight, Layout, LayoutContext,
     OverflowWrap, PositionedLayoutItem, StyleProperty,
 };
-use ph2d_board_model::{Rgba, RichText, Span};
+use ph2d_board_model::{Rgba, RichText, Span, TextAlign};
 use ph2d_text::TextSystem;
 use ph2d_vector::{
     Affine, BezPath, Brush, Color, Glyph, GlyphStyle, Rect, Shape as _, VectorScene,
@@ -34,9 +34,27 @@ pub use edit::{Move, TextEdit};
 /// O pincel de um trecho: a sua cor, ou `None` = a tinta da forma.
 pub type Ink = Option<Rgba>;
 
-/// Moldar `text` com `spans` a `font_size` (mundo), com quebra em `max_width` (mundo), centrado.
-/// `hand` = na letra À MÃO ([`ph2d_text::HAND_FAMILY`], o rascunho), com a da interface por trás
-/// para o que ela não tiver.
+/// A cara de um texto do quadro: na letra À MÃO ([`ph2d_text::HAND_FAMILY`]) ou na da interface, e o
+/// alinhamento das linhas (W9: o `textAlign` que vem do Excalidraw; centrado de nascença). Um `bool`
+/// é a letra, centrada.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Face {
+    pub hand: bool,
+    pub align: TextAlign,
+}
+
+impl From<bool> for Face {
+    fn from(hand: bool) -> Self {
+        Self {
+            hand,
+            align: TextAlign::Center,
+        }
+    }
+}
+
+/// Moldar `text` com `spans` a `font_size` (mundo), com quebra em `max_width` (mundo), alinhado pela
+/// `face` (de nascença, centrado). `face.hand` = na letra À MÃO ([`ph2d_text::HAND_FAMILY`], o
+/// rascunho), com a da interface por trás para o que ela não tiver.
 pub fn shape(
     ts: &mut TextSystem,
     lcx: &mut LayoutContext<Ink>,
@@ -44,10 +62,10 @@ pub fn shape(
     spans: &[Span],
     font_size: f32,
     max_width: f32,
-    hand: bool,
+    face: Face,
 ) -> Layout<Ink> {
     let (fcx, _, stack) = ts.contexts();
-    let stack = if hand {
+    let stack = if face.hand {
         Cow::Owned(format!("{}, {stack}", ph2d_text::HAND_FAMILY))
     } else {
         Cow::Borrowed(stack)
@@ -78,7 +96,12 @@ pub fn shape(
     }
     let mut layout: Layout<Ink> = b.build(text);
     layout.break_all_lines(Some(max_width.max(1.0)));
-    layout.align(Alignment::Center, AlignmentOptions::default());
+    let align = match face.align {
+        TextAlign::Center => Alignment::Center,
+        TextAlign::Left => Alignment::Left,
+        TextAlign::Right => Alignment::Right,
+    };
+    layout.align(align, AlignmentOptions::default());
     layout
 }
 
@@ -93,7 +116,7 @@ pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_wid
         text.spans(),
         font_size,
         max_width,
-        false,
+        Face::default(),
     )
     .height()
 }
@@ -198,7 +221,7 @@ struct Entry {
     spans: Vec<Span>,
     size_bits: u32,
     width_bits: u32,
-    hand: bool,
+    face: Face,
     layout: Layout<Ink>,
     used: u64,
 }
@@ -221,7 +244,7 @@ impl TextCache {
         text: &RichText,
         font_size: f32,
         max_width: f32,
-        hand: bool,
+        face: impl Into<Face>,
     ) -> &Layout<Ink> {
         self.get(
             ts,
@@ -230,7 +253,7 @@ impl TextCache {
             text.spans(),
             font_size,
             max_width,
-            hand,
+            face,
         )
     }
 
@@ -245,8 +268,9 @@ impl TextCache {
         spans: &[Span],
         font_size: f32,
         max_width: f32,
-        hand: bool,
+        face: impl Into<Face>,
     ) -> &Layout<Ink> {
+        let face = face.into();
         let frame = self.frame;
         let (sb, wb) = (font_size.to_bits(), max_width.to_bits());
         let stale = self.map.get(&owner).is_none_or(|e| {
@@ -254,11 +278,11 @@ impl TextCache {
                 || e.spans != spans
                 || e.size_bits != sb
                 || e.width_bits != wb
-                || e.hand != hand
+                || e.face != face
         });
         if stale {
             self.shaped += 1;
-            let layout = shape(ts, &mut self.lcx, text, spans, font_size, max_width, hand);
+            let layout = shape(ts, &mut self.lcx, text, spans, font_size, max_width, face);
             self.map.insert(
                 owner,
                 Entry {
@@ -266,7 +290,7 @@ impl TextCache {
                     spans: spans.to_vec(),
                     size_bits: sb,
                     width_bits: wb,
-                    hand,
+                    face,
                     layout,
                     used: frame,
                 },

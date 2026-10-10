@@ -3,12 +3,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_model::{
-    Anchor, BoardDoc, BoardOp, Connector, Dash, Element, ElementId, End, FracKey, Frame, GroupId,
-    Ink, Pen, Rgba, RichText, Route, Shape, ShapeType, Style,
+    Anchor, BoardDoc, BoardOp, Connector, Dash, Element, ElementId, End, FillStyle, FracKey, Frame,
+    GroupId, Ink, Letter, Pen, Rgba, RichText, Route, Shape, ShapeType, Style, TextAlign, VAlign,
 };
 use serde_json::Value;
 
-use crate::{ID, PH2D, head_of, hex, parse_color};
+use crate::{ID, PH2D, head_of, hex, letter_of, parse_color};
 
 /// O que a importação trouxe: o documento e o que SALTOU, contado por tipo (o aviso X3).
 #[derive(Debug, Default)]
@@ -23,6 +23,9 @@ struct Text {
     text: String,
     size: f64,
     color: Option<Rgba>,
+    align: TextAlign,
+    valign: VAlign,
+    letter: Letter,
 }
 
 fn num(v: &Value, k: &str) -> Option<f64> {
@@ -40,7 +43,36 @@ fn text_of(v: &Value) -> Option<Text> {
             .filter(|s| *s > 0.0)
             .unwrap_or(ph2d_board_model::DEFAULT_FONT_SIZE),
         color: v["strokeColor"].as_str().and_then(parse_color).flatten(),
+        align: match v["textAlign"].as_str() {
+            Some("left") => TextAlign::Left,
+            Some("right") => TextAlign::Right,
+            _ => TextAlign::Center,
+        },
+        valign: match v["verticalAlign"].as_str() {
+            Some("top") => VAlign::Top,
+            Some("bottom") => VAlign::Bottom,
+            _ => VAlign::Middle,
+        },
+        letter: letter_of(v["fontFamily"].as_u64()),
     })
+}
+
+/// O `fillStyle` dele (desconhecido = cheio).
+fn fill_style_of(v: &Value) -> Option<FillStyle> {
+    Some(match v["fillStyle"].as_str()? {
+        "hachure" => FillStyle::Hachure,
+        "cross-hatch" => FillStyle::CrossHatch,
+        "zigzag" => FillStyle::Zigzag,
+        _ => FillStyle::Solid,
+    })
+}
+
+/// A `seed` dele (o tremor do rascunho), se é uma que a nossa conta aceita.
+fn seed_of(v: &Value) -> Option<u32> {
+    v["seed"]
+        .as_u64()
+        .and_then(|s| u32::try_from(s).ok())
+        .filter(|s| *s > 0)
 }
 
 /// O estilo de um elemento de fora (os valores fora de faixa caem nos de nascença DELE, X3).
@@ -60,8 +92,19 @@ fn style_of(v: &Value) -> Style {
     };
     st.opacity = opacity(v).unwrap_or(100);
     st.round = !v["roundness"].is_null();
-    st.sketch = num(v, "roughness").unwrap_or(1.0) > 0.0;
+    let rough = num(v, "roughness").unwrap_or(1.0);
+    st.sketch = rough > 0.0;
+    st.look.cartoonist = rough > 1.5;
+    st.look.fill_style = fill_style_of(v).unwrap_or_default();
+    st.look.seed = seed_of(v);
     st
+}
+
+/// O aspecto do texto `t` no estilo da forma que o leva.
+fn text_look(st: &mut Style, t: &Text) {
+    st.look.align = t.align;
+    st.look.valign = t.valign;
+    st.look.letter = t.letter;
 }
 
 /// A opacidade do ficheiro em `0..=100`; fora da faixa (o `restore` dele não a valida) = `None`, e
@@ -101,6 +144,10 @@ pub fn read(json: &str) -> Result<Import, String> {
         .filter(|v| !v["isDeleted"].as_bool().unwrap_or(false))
         .collect();
     let mut imp = Import::default();
+    let by_id: BTreeMap<&str, &Value> = live
+        .iter()
+        .filter_map(|v| Some((v["id"].as_str()?, *v)))
+        .collect();
     // Os textos presos (a um contentor que exista) e os das nossas formas que ele não tem.
     let ids: BTreeSet<&str> = live.iter().filter_map(|v| v["id"].as_str()).collect();
     let mut texts: BTreeMap<String, Text> = BTreeMap::new();
@@ -155,6 +202,7 @@ pub fn read(json: &str) -> Result<Import, String> {
             "rectangle"
                 | "ellipse"
                 | "diamond"
+                | "stickynote"
                 | "arrow"
                 | "line"
                 | "freedraw"
@@ -218,10 +266,10 @@ pub fn read(json: &str) -> Result<Import, String> {
                 ours.id = id;
                 ours.z = key;
                 ours.deleted = false;
-                edits(&mut ours, v, texts.get(me), &map, fresh);
+                edits(&mut ours, v, texts.get(me), (&map, &by_id), fresh);
                 ours
             }
-            None => match foreign(v, id, key, texts.get(me), &map) {
+            None => match foreign(v, id, key, texts.get(me), (&map, &by_id)) {
                 Some(el) => el,
                 None => {
                     *imp.skipped
@@ -295,22 +343,66 @@ pub fn read(json: &str) -> Result<Import, String> {
     Ok(imp)
 }
 
-/// A ponta de uma seta pela ligação dele (o id mapeado), ou solta no ponto.
-fn end_of(v: &Value, key: &str, at: [f64; 2], map: &BTreeMap<String, ElementId>) -> End {
+/// Os ids dele → os nossos, e os elementos dele pelo id.
+type Links<'a, 'v> = (&'a BTreeMap<String, ElementId>, &'a BTreeMap<&'v str, &'v Value>);
+
+/// ⭐ **A ponta de uma seta pela ligação dele** (W9, as duas gramáticas — estudo 07 XV1–XV3), ou solta
+/// no ponto `at`; `next` = a estação vizinha (o outro ponto da recta). `mode "inside"` ⇒ o ponto fixo (a
+/// ponta É o ponto, XB2); `orbit`/`skip` ⇒ em órbita do `fixedPoint` (XB1, XB3); só o legado `{focus,
+/// gap}` (0.18.1) ⇒ em órbita do foco que a recta da estação vizinha pela ponta gravada aponta (o que o
+/// next faz, XV2; o `gap` gravado deita-se fora — recusa §3). O cotovelo continua no ponto fixo/centro.
+fn end_of(v: &Value, key: &str, at: [f64; 2], next: [f64; 2], links: Links<'_, '_>) -> End {
     let b = &v[key];
-    let Some(target) = b["elementId"].as_str().and_then(|t| map.get(t)) else {
+    let Some(target) = b["elementId"].as_str().and_then(|t| links.0.get(t)) else {
         return End::Free(at);
     };
-    let anchor = match b["fixedPoint"].as_array() {
-        Some(fp) if fp.len() == 2 => {
-            Anchor::Fixed([fp[0].as_f64().unwrap_or(0.5), fp[1].as_f64().unwrap_or(0.5)])
+    let fp = b["fixedPoint"]
+        .as_array()
+        .filter(|f| f.len() == 2)
+        .map(|f| [f[0].as_f64().unwrap_or(0.5), f[1].as_f64().unwrap_or(0.5)]);
+    let anchor = if v["elbowed"].as_bool().unwrap_or(false) {
+        fp.map_or(Anchor::Center, Anchor::Fixed)
+    } else {
+        match (b["mode"].as_str(), fp) {
+            (Some("inside"), Some(fp)) => Anchor::Fixed(fp),
+            (_, Some(fp)) => Anchor::Orbit(fp),
+            (_, None) => Anchor::Orbit(
+                b["elementId"]
+                    .as_str()
+                    .and_then(|t| links.1.get(t))
+                    .map_or([0.5, 0.5], |t| focus_through(t, next, at)),
+            ),
         }
-        _ => Anchor::Center,
     };
     End::Bound {
         target: *target,
         anchor,
     }
+}
+
+/// O foco (fracção da caixa de `shape`, antes de rodar) para onde a recta de `from` pela ponta
+/// gravada `tip` aponta: o ponto dela mais perto do centro da forma, nunca aquém da ponta. A ponta
+/// sobre a recta que vem do centro dá o centro (`focus 0` ⇒ `[0.5, 0.5]`, como o next).
+fn focus_through(shape: &Value, from: [f64; 2], tip: [f64; 2]) -> [f64; 2] {
+    let (x, y) = (num(shape, "x").unwrap_or(0.0), num(shape, "y").unwrap_or(0.0));
+    let (w, h) = (num(shape, "width").unwrap_or(0.0), num(shape, "height").unwrap_or(0.0));
+    if w <= 0.0 || h <= 0.0 {
+        return [0.5, 0.5];
+    }
+    let c = [x + w / 2.0, y + h / 2.0];
+    let d = [tip[0] - from[0], tip[1] - from[1]];
+    let l2 = d[0] * d[0] + d[1] * d[1];
+    let q = if l2 < 1e-18 {
+        c
+    } else {
+        let t = (((c[0] - from[0]) * d[0] + (c[1] - from[1]) * d[1]) / l2).max(1.0);
+        [from[0] + d[0] * t, from[1] + d[1] * t]
+    };
+    let q = ph2d_board_model::rotate_about(q, c, -num(shape, "angle").unwrap_or(0.0));
+    [
+        ((q[0] - x) / w).clamp(0.0, 1.0),
+        ((q[1] - y) / h).clamp(0.0, 1.0),
+    ]
 }
 
 /// Os pontos de uma linha/seta/caneta no mundo (relativos a `x, y`, rodados à volta do centro da
@@ -343,7 +435,7 @@ fn edits(
     el: &mut Element,
     v: &Value,
     text: Option<&Text>,
-    map: &BTreeMap<String, ElementId>,
+    links: Links<'_, '_>,
     fresh: bool,
 ) {
     let (x, y) = (num(v, "x").unwrap_or(el.x), num(v, "y").unwrap_or(el.y));
@@ -415,17 +507,19 @@ fn edits(
         ph2d_board_model::ElementKind::Connector(_) => {
             let pts = world_points(v);
             if let (Some(c), Some(&a), Some(&b)) = (el.connector_mut(), pts.first(), pts.last()) {
+                let n = pts.len();
                 let ends = [
-                    end_of(v, "startBinding", a, map),
-                    end_of(v, "endBinding", b, map),
+                    end_of(v, "startBinding", a, pts[1.min(n - 1)], links),
+                    end_of(v, "endBinding", b, pts[n.saturating_sub(2)], links),
                 ];
-                // Uma RECTA com os pontos mexidos lá: os do meio são os novos pontos de ajuste (a curva
-                // e o cotovelo são da nossa lei — recusa no estudo §3).
+                // Uma RECTA (ou a curva DELE) com os pontos mexidos lá: os do meio são os novos pontos
+                // de ajuste (a curva do Miro e o cotovelo são da nossa lei — recusa no estudo §3).
                 let wrote = &v["customData"][PH2D]["wrote"];
                 let moved = wrote["points"] != v["points"]
                     || num(wrote, "x").is_none_or(|w| !near(w, num(v, "x").unwrap_or(w)))
                     || num(wrote, "y").is_none_or(|w| !near(w, num(v, "y").unwrap_or(w)));
-                if c.route == ph2d_board_model::Route::Straight && moved && !wrote.is_null() {
+                let theirs = matches!(c.route, Route::Straight | Route::Spline);
+                if theirs && moved && !wrote.is_null() {
                     c.waypoints = pts[1..pts.len() - 1].to_vec();
                 }
                 for (k, e) in ends.into_iter().enumerate() {
@@ -451,6 +545,7 @@ fn edits(
         }
     }
     // O estilo: só o que difere do que escrevemos.
+    let seed = el.seed();
     let st = el.style_mut();
     for (k, slot) in [
         ("strokeColor", &mut st.stroke),
@@ -480,9 +575,30 @@ fn edits(
             st.font_size = t.size;
         }
     }
-    let rough = num(v, "roughness").unwrap_or(f64::from(u8::from(st.sketch))) > 0.0;
-    if rough != st.sketch {
-        st.sketch = rough;
+    let ours = f64::from(u8::from(st.sketch) * (1 + u8::from(st.look.cartoonist)));
+    let rough = num(v, "roughness").unwrap_or(ours);
+    if !near(rough, ours) {
+        st.sketch = rough > 0.0;
+        st.look.cartoonist = rough > 1.5;
+    }
+    if let Some(f) = fill_style_of(v).filter(|f| *f != st.look.fill_style) {
+        st.look.fill_style = f;
+    }
+    if let Some(s) = seed_of(v).filter(|s| *s != seed) {
+        st.look.seed = Some(s);
+    }
+    if let Some(t) = text {
+        if t.align != st.look.align {
+            st.look.align = t.align;
+        }
+        if t.valign != st.look.valign {
+            st.look.valign = t.valign;
+        }
+        // A letra só muda se ele gravou outra que a que lhe escrevemos (a do modo fica do modo).
+        let wrote = crate::letter_of(Some(u64::from(crate::font_family(st))));
+        if t.letter != Letter::Auto && t.letter != wrote {
+            st.look.letter = t.letter;
+        }
     }
     // Os cantos de uma forma NATIVA (as que viajam como `line` vão sempre sem `roundness`).
     if let Some(shape) = el.shape_mut()
@@ -525,13 +641,16 @@ fn frame_mut(el: &mut Element) -> Option<&mut Frame> {
     }
 }
 
+/// A pressão de um traço de largura constante (a do meio: o raio é o da espessura).
+const CONSTANT_PRESSURE: f64 = 0.5;
+
 /// Um elemento de FORA (sem o nosso no `customData`) pelo mapeamento directo (X3).
 fn foreign(
     v: &Value,
     id: ElementId,
     z: FracKey,
     text: Option<&Text>,
-    map: &BTreeMap<String, ElementId>,
+    links: Links<'_, '_>,
 ) -> Option<Element> {
     let kind = v["type"].as_str()?;
     let bx = [
@@ -547,6 +666,7 @@ fn foreign(
             if let Some(c) = t.color {
                 st.text_color = c;
             }
+            text_look(&mut st, t);
         }
         Shape {
             kind,
@@ -555,19 +675,28 @@ fn foreign(
         }
     };
     let mut el = match kind {
-        "rectangle" | "ellipse" | "diamond" => {
+        "rectangle" | "ellipse" | "diamond" | "stickynote" => {
             let k = match kind {
                 "ellipse" => ShapeType::Ellipse,
                 "diamond" => ShapeType::Diamond,
+                "stickynote" => ShapeType::Sticky,
                 _ => ShapeType::Rectangle,
             };
+            if k == ShapeType::Sticky {
+                // A nota do next (XV4): papel sem traço, a cor dele.
+                st.stroke = None;
+            }
             Element::new_shape(id, z, shape(k, st, text), bx)
         }
         "text" => {
-            // Texto solto: uma forma sem preenchimento nem contorno com o texto dentro.
+            // Texto solto: uma forma sem preenchimento nem contorno com o texto dentro — a caixa
+            // alarga a folga do texto de cada lado, e o texto fica onde ele o pôs (a caixa dele é a do
+            // texto: sem isto a linha mais larga quebrava).
             let t = text_of(v)?;
             st.fill = None;
             st.stroke = None;
+            let p = ph2d_board_geom::TEXT_PADDING;
+            let bx = [bx[0] - p, bx[1] - p, bx[2] + 2.0 * p, bx[3] + 2.0 * p];
             Element::new_shape(id, z, shape(ShapeType::Rectangle, st, Some(&t)), bx)
         }
         "frame" | "magicframe" => {
@@ -592,7 +721,16 @@ fn foreign(
                 .enumerate()
                 .map(|(i, p)| [p[0], p[1], pr.get(i).copied().unwrap_or(0.5)])
                 .collect();
-            let measured = !v["simulatePressure"].as_bool().unwrap_or(true) && !pr.is_empty();
+            let mut measured = !v["simulatePressure"].as_bool().unwrap_or(true) && !pr.is_empty();
+            let mut world = world;
+            // A caneta de largura CONSTANTE do next (XV5, `M_caneta`): a pressão do meio em todos os
+            // pontos — o traço não afina.
+            if v["strokeOptions"]["variability"] == "constant" {
+                for p in &mut world {
+                    p[2] = CONSTANT_PRESSURE;
+                }
+                measured = true;
+            }
             let (ink, bx) = Ink::from_world(&world, st, Pen::Pen, measured);
             Element::new_ink(id, z, ink, bx)
         }
@@ -601,10 +739,13 @@ fn foreign(
             if pts.len() < 2 {
                 return None;
             }
+            // ⭐ A seta «redonda» é a curva DELE pelos pontos (XA1: recta com dois, Catmull-Rom com
+            // mais) — ⛔ nunca a curva do Miro (ordem do dono, 10/10: «quero apenas que a importação
+            // seja fiel»).
             let route = if v["elbowed"].as_bool().unwrap_or(false) {
                 Route::Elbow
             } else if st.round {
-                Route::Curved
+                Route::Spline
             } else {
                 Route::Straight
             };
@@ -613,9 +754,10 @@ fn foreign(
             if let Some(t) = text {
                 st.font_size = t.size;
             }
+            let n = pts.len();
             let mut c = Connector::new(
-                end_of(v, "startBinding", pts[0], map),
-                end_of(v, "endBinding", pts[pts.len() - 1], map),
+                end_of(v, "startBinding", pts[0], pts[1], links),
+                end_of(v, "endBinding", pts[n - 1], pts[n - 2], links),
                 route,
                 st,
             );

@@ -182,6 +182,67 @@ pub struct Style {
     /// ⭐ **Rascunho**: o contorno desenha-se À MÃO (o rough.js, com a semente do elemento); `false`
     /// = o traço final. W4 — o botão «Rascunho ↔ Final».
     pub sketch: bool,
+    /// W9 — o que um `.excalidraw` traz e a barra não oferece (o de nascença não muda nada).
+    /// `serde(default)`: o elemento que viajou no `customData` de um ficheiro anterior lê-se igual.
+    #[serde(default)]
+    pub look: Look,
+}
+
+/// ⭐ **O aspecto que vem do Excalidraw** (W9, [estudo 07](../../../docs/MiroClone/07_fidelidade_excalidraw.md)
+/// §4 e §5 M7–M8): o tipo de preenchimento, a rugosidade 2, a semente do tremor, o alinhamento e a
+/// letra do texto. O de nascença ([`Look::default`]) é o desenho de antes da W9.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Look {
+    /// Como o `fill` se pinta (o `fillStyle`).
+    pub fill_style: FillStyle,
+    /// A rugosidade 2 do Excalidraw («cartoonist») em vez da 1, quando em [`Style::sketch`].
+    pub cartoonist: bool,
+    /// A semente do tremor do ficheiro (o `seed`); `None` = a tirada do id ([`Element::seed`]).
+    pub seed: Option<u32>,
+    pub align: TextAlign,
+    pub valign: VAlign,
+    pub letter: Letter,
+}
+
+/// Como o preenchimento se pinta (o `fillStyle` do Excalidraw).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FillStyle {
+    #[default]
+    Solid,
+    /// Riscas paralelas.
+    Hachure,
+    /// Riscas nos dois sentidos.
+    CrossHatch,
+    /// Uma risca contínua em ziguezague.
+    Zigzag,
+}
+
+/// O alinhamento HORIZONTAL das linhas do texto na caixa dele (o `textAlign`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TextAlign {
+    #[default]
+    Center,
+    Left,
+    Right,
+}
+
+/// Onde o bloco de texto assenta na caixa dele quando sobra altura (o `verticalAlign`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VAlign {
+    #[default]
+    Middle,
+    Top,
+    Bottom,
+}
+
+/// A letra do texto (o `fontFamily`): a do modo (`Auto` = à mão no rascunho, a da interface no
+/// final), ou fixa — o Excalidraw grava-a por elemento.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Letter {
+    #[default]
+    Auto,
+    Hand,
+    Sans,
 }
 
 /// Um elemento. Os quatro últimos campos são a gramática da colaboração (Etapa 2).
@@ -228,6 +289,7 @@ impl Style {
             text_color,
             font_size: crate::DEFAULT_FONT_SIZE,
             sketch: false,
+            look: Look::default(),
         }
     }
 }
@@ -292,9 +354,13 @@ impl Element {
 
     /// ⭐ A **semente** do traço à mão deste elemento (W4): tirada do id (splitmix64), em
     /// `1..2³¹` — a mesma a cada desenho e em cada máquina, sem campo no ficheiro; uma cópia tem
-    /// outro id e treme de outra maneira (como no Excalidraw, que sorteia uma semente nova).
+    /// outro id e treme de outra maneira (como no Excalidraw, que sorteia uma semente nova). A semente
+    /// que veio de um `.excalidraw` ([`Look::seed`], W9) manda: o desenho treme como lá.
     #[must_use]
     pub fn seed(&self) -> u32 {
+        if let Some(s) = self.style().look.seed {
+            return s;
+        }
         let mut z = self.id.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
         z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);

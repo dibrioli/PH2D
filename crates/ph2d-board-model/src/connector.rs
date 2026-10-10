@@ -27,7 +27,16 @@ pub enum Anchor {
     /// Num PONTO FIXO `[u, v]` da caixa da forma antes de rodar (`0..1`, o `fixedPoint` do
     /// Excalidraw): roda e escala com ela, e a linha sai sempre dali.
     Fixed([f64; 2]),
+    /// ⭐ **Em ÓRBITA do foco `[u, v]`** (W9, o `bindMode "orbit"` do Excalidraw, lei XB1 do
+    /// [estudo 07](../../../docs/MiroClone/07_fidelidade_excalidraw.md) §2): a ponta fica na recta
+    /// entre os DOIS focos, onde ela entra na faixa de [`ORBIT_GAP`] `+ traço da forma / 2` à volta
+    /// do contorno — PÁRA antes da forma. Foco fora da forma e longe dela = a ponta é o foco.
+    Orbit([f64; 2]),
 }
+
+/// ⭐ O vão entre a ponta de uma seta em [`Anchor::Orbit`] e a forma, ANTES de somar meio traço da
+/// forma (XB1, as duas versões do oráculo): `5 + strokeWidth/2` ⇒ 5,5 · 6 · 7 para o traço 1 · 2 · 4.
+pub const ORBIT_GAP: f64 = 5.0;
 
 /// Como a rota se desenha.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,6 +49,10 @@ pub enum Route {
     /// artista — a de nascença (ordem do dono, 06/10).
     #[default]
     Curved,
+    /// ⭐ **A curva do EXCALIDRAW pelos pontos** (W9, lei XA1): Catmull-Rom uniforme com pegas de
+    /// 1/6 — com só as duas pontas é RECTA. É a seta `roundness` que vem de um `.excalidraw` (a curva
+    /// DELE pelos pontos DELE); a do quadro continua [`Route::Curved`] (ordem do dono, 10/10).
+    Spline,
 }
 
 /// O desenho numa ponta (o catálogo de pontas do vectorial, `ph2d_vec_scene::Marker`).
@@ -54,11 +67,21 @@ pub enum Head {
     Circle,
     CircleOpen,
     Bar,
+    /// O triângulo VAZADO (`triangle_outline`, W9).
+    TriangleOpen,
+    /// As pontas de CARDINALIDADE dos diagramas entidade-relação (o pé-de-galinha do Excalidraw,
+    /// `cardinality_*`, W9): um · muitos · um ou muitos · exactamente um · zero ou um · zero ou muitos.
+    One,
+    Many,
+    OneOrMany,
+    ExactlyOne,
+    ZeroOrOne,
+    ZeroOrMany,
 }
 
 impl Head {
-    /// Todas, na ordem do enum — a que a barra oferece.
-    pub const ALL: [Head; 8] = [
+    /// Todas, na ordem do enum. (A barra oferece as suas, `HEADS`; as outras entram pelo ficheiro.)
+    pub const ALL: [Head; 15] = [
         Head::None,
         Head::Arrow,
         Head::Triangle,
@@ -67,6 +90,13 @@ impl Head {
         Head::Circle,
         Head::CircleOpen,
         Head::Bar,
+        Head::TriangleOpen,
+        Head::One,
+        Head::Many,
+        Head::OneOrMany,
+        Head::ExactlyOne,
+        Head::ZeroOrOne,
+        Head::ZeroOrMany,
     ];
 }
 

@@ -3,7 +3,8 @@
 use std::collections::BTreeMap;
 
 use ph2d_board_model::{
-    Board, Dash, Element, ElementId, ElementKind, End, Route, Shape, ShapeType,
+    Anchor, Board, Dash, Element, ElementId, ElementKind, End, FillStyle, Route, Shape, ShapeType,
+    Style, TextAlign, VAlign,
 };
 use ph2d_board_route::RouteCache;
 use ph2d_vector::{BezPath, PathEl};
@@ -43,7 +44,7 @@ fn base(board: &Board, el: &Element, kind: &str, groups: &[String]) -> Map<Strin
     m.insert("angle".into(), json!(el.angle));
     m.insert("strokeColor".into(), json!(hex(st.stroke)));
     m.insert("backgroundColor".into(), json!(hex(st.fill)));
-    m.insert("fillStyle".into(), json!("solid"));
+    m.insert("fillStyle".into(), json!(fill_style_name(st.look.fill_style)));
     m.insert("strokeWidth".into(), json!(st.stroke_width));
     let dash = match st.dash {
         Dash::Solid => "solid",
@@ -51,7 +52,7 @@ fn base(board: &Board, el: &Element, kind: &str, groups: &[String]) -> Map<Strin
         Dash::Dotted => "dotted",
     };
     m.insert("strokeStyle".into(), json!(dash));
-    m.insert("roughness".into(), json!(u8::from(st.sketch)));
+    m.insert("roughness".into(), json!(roughness(st)));
     m.insert("opacity".into(), json!(st.opacity));
     m.insert("roundness".into(), Value::Null);
     m.insert("seed".into(), json!(el.seed()));
@@ -76,18 +77,16 @@ fn base(board: &Board, el: &Element, kind: &str, groups: &[String]) -> Map<Strin
 
 /// O texto de uma forma ou de uma seta, num `text` preso a `container` (ou solto num grupo, quando o
 /// contentor não o aceita).
-#[allow(clippy::too_many_arguments)]
 fn text(
     board: &Board,
     owner: &Element,
     content: &str,
-    font: f64,
-    sketch: bool,
-    color: ph2d_board_model::Rgba,
+    st: &Style,
     rect: [f64; 4],
     container: Option<&str>,
     groups: &[String],
 ) -> Value {
+    let (font, color) = (st.font_size, st.text_color);
     let lines = content.split('\n').count().max(1) as f64;
     let h = lines * font * LINE_HEIGHT;
     let mut m = base(board, owner, "text", groups);
@@ -101,9 +100,19 @@ fn text(
     m.insert("text".into(), json!(content));
     m.insert("originalText".into(), json!(content));
     m.insert("fontSize".into(), json!(font));
-    m.insert("fontFamily".into(), json!(font_family(sketch)));
-    m.insert("textAlign".into(), json!("center"));
-    m.insert("verticalAlign".into(), json!("middle"));
+    m.insert("fontFamily".into(), json!(font_family(st)));
+    let align = match st.look.align {
+        TextAlign::Center => "center",
+        TextAlign::Left => "left",
+        TextAlign::Right => "right",
+    };
+    m.insert("textAlign".into(), json!(align));
+    let valign = match st.look.valign {
+        VAlign::Middle => "middle",
+        VAlign::Top => "top",
+        VAlign::Bottom => "bottom",
+    };
+    m.insert("verticalAlign".into(), json!(valign));
     m.insert("containerId".into(), json!(container));
     m.insert("lineHeight".into(), json!(LINE_HEIGHT));
     m.insert("autoResize".into(), json!(true));
@@ -207,14 +216,11 @@ fn shape(board: &Board, el: &Element, s: &Shape, out: &mut Vec<Value>) {
     }
     out.push(Value::Object(m));
     if has_text {
-        let color = st.text_color;
         out.push(text(
             board,
             el,
             s.text.as_str(),
-            st.font_size,
-            st.sketch,
-            color,
+            st,
             [el.x, el.y, el.w, el.h],
             container.as_deref(),
             &groups,
@@ -227,6 +233,8 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     let Some(r) = routes.get(el.id) else { return };
     let pts = match c.route {
         Route::Straight | Route::Elbow => r.polyline(),
+        // A curva DELE pelos pontos: ele refá-la igual (XA1).
+        Route::Spline => r.stations.clone(),
         Route::Curved => {
             let d = ph2d_board_route::drawn(r, [ph2d_board_model::Head::None; 2], 1.0);
             flat(&d.line, 0.5)
@@ -243,7 +251,7 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     m.insert("height".into(), json!(h));
     m.insert("points".into(), rel.clone());
     m.insert("lastCommittedPoint".into(), Value::Null);
-    if c.route == Route::Curved {
+    if matches!(c.route, Route::Curved | Route::Spline) {
         m.insert("roundness".into(), json!({ "type": 2 }));
     }
     let elbow = c.route == Route::Elbow;
@@ -251,13 +259,12 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     let ends = [&pts[0], &pts[pts.len() - 1]];
     for (k, key) in ["startBinding", "endBinding"].into_iter().enumerate() {
         let b = match c.ends()[k] {
-            End::Bound { target, .. } => board.doc.get(target).map(|t| {
-                let fp = ph2d_board_route::normalized(t, *ends[k]);
+            End::Bound { target, anchor } => board.doc.get(target).map(|t| {
                 if elbow {
-                    json!({ "elementId": id(target), "focus": 0, "gap": 1, "fixedPoint": fp })
-                } else {
-                    json!({ "elementId": id(target), "focus": 0, "gap": 1 })
+                    let fp = ph2d_board_route::normalized(t, *ends[k]);
+                    return json!({ "elementId": id(target), "focus": 0, "gap": 1, "fixedPoint": fp });
                 }
+                binding(t, anchor)
             }),
             End::Free(_) => None,
         };
@@ -293,15 +300,55 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
             board,
             el,
             &c.label,
-            st.font_size,
-            st.sketch,
-            st.text_color,
+            st,
             rect,
             Some(&me),
             &[],
         ));
     }
 }
+
+/// ⭐ **Uma ligação nas DUAS gramáticas** (W9, XV3: cada versão lê a sua e preserva a outra): a do next
+/// (`mode` + `fixedPoint`) e a do 0.18.1 (`focus` + `gap`). O ponto fixo é o `inside` dele (a ponta É o
+/// ponto); a órbita e o centro são `orbit` com o vão da forma — o centro com o foco do next
+/// (`[0.5001, 0.5001]`, XV2).
+fn binding(t: &Element, anchor: Anchor) -> Value {
+    let g = ph2d_board_route::gap(t);
+    match anchor {
+        Anchor::Fixed(fp) => json!({
+            "elementId": id(t.id), "mode": "inside", "fixedPoint": fp, "focus": 0, "gap": 1
+        }),
+        Anchor::Orbit(fp) => json!({
+            "elementId": id(t.id), "mode": "orbit", "fixedPoint": fp, "focus": 0, "gap": g
+        }),
+        Anchor::Center => json!({
+            "elementId": id(t.id), "mode": "orbit", "fixedPoint": [CENTER_FOCUS, CENTER_FOCUS],
+            "focus": 0, "gap": g
+        }),
+    }
+}
+
+/// O `fillStyle` dele.
+fn fill_style_name(f: FillStyle) -> &'static str {
+    match f {
+        FillStyle::Solid => "solid",
+        FillStyle::Hachure => "hachure",
+        FillStyle::CrossHatch => "cross-hatch",
+        FillStyle::Zigzag => "zigzag",
+    }
+}
+
+/// A `roughness` dele: 0 no final, 1 no rascunho, 2 no rascunho «cartoonist».
+fn roughness(st: &Style) -> u8 {
+    match (st.sketch, st.look.cartoonist) {
+        (false, _) => 0,
+        (true, false) => 1,
+        (true, true) => 2,
+    }
+}
+
+/// O foco do centro que o next escreve (XV2: `focus 0` ⇒ `[0.5001, 0.5001]`).
+const CENTER_FOCUS: f64 = 0.5001;
 
 fn freedraw(board: &Board, el: &Element, out: &mut Vec<Value>) {
     let Some(ink) = el.ink() else { return };

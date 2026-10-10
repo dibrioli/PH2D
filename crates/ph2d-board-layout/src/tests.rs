@@ -4,7 +4,7 @@ use ph2d_board_model::{Mark, Marks};
 
 fn plain(ts: &mut TextSystem, text: &str, size: f32, width: f32) -> Layout<Ink> {
     let mut lcx = LayoutContext::new();
-    shape(ts, &mut lcx, text, &[], size, width, false)
+    shape(ts, &mut lcx, text, &[], size, width, false.into())
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn bold_is_a_real_weight_and_italic_a_skew() {
         rich.spans(),
         20.0,
         1000.0,
-        false,
+        false.into(),
     );
     let mut seen = Vec::new();
     for line in l.lines() {
@@ -194,8 +194,8 @@ fn the_sketch_letters_are_the_hand_face_in_the_drawing_and_in_the_editor() {
     let mut ts = TextSystem::without_system_fonts();
     let text = RichText::plain("Worth it? ação");
     let mut lcx = LayoutContext::new();
-    let plain_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, false).width();
-    let hand_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, true).width();
+    let plain_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, false.into()).width();
+    let hand_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, true.into()).width();
     assert!(
         (plain_w - hand_w).abs() > 1.0,
         "a letra à mão mede o mesmo que a da interface: {plain_w} = {hand_w}"

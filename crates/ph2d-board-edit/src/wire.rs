@@ -35,7 +35,7 @@ impl Gesture {
             element: id,
             fixed: match anchor {
                 Anchor::Center => None,
-                Anchor::Fixed(uv) => Some(fixed_world(el, uv)),
+                Anchor::Fixed(uv) | Anchor::Orbit(uv) => Some(fixed_world(el, uv)),
             },
         })
     }

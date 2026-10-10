@@ -11,8 +11,9 @@ use crate::{BoardDoc, Team};
 /// `Board::sketch`) e os traços da caneta (W4); 5 = organizar — frames, grupos, travar, links e
 /// etiquetas (W5); 6 = o nó de mapa mental (`Org::mind`, W6); 7 = os votos e os carimbos
 /// (`Org::votes`, `Org::stamps`, W7); 8 = a equipa (`Board::team`: comentários, versões, frames fora da
-/// apresentação, W8).
-pub const FORMAT_VERSION: u32 = 8;
+/// apresentação, W8); 9 = o aspecto que vem do Excalidraw (`Style::look`: preenchimento, rugosidade 2,
+/// semente, alinhamento e letra do texto, W9).
+pub const FORMAT_VERSION: u32 = 9;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -211,6 +212,7 @@ impl BoardSet {
             5 => crate::legacy::read_v5(bytes),
             6 => crate::legacy::read_v6(bytes),
             7 => crate::legacy::read_v7(bytes),
+            8 => crate::legacy::read_v8(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

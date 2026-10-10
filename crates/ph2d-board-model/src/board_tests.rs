@@ -201,7 +201,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 8);
+    assert_eq!(FORMAT_VERSION, 9);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -388,3 +388,39 @@ fn frames_groups_lock_link_and_tags_round_trip_through_the_bytes() {
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
 }
+
+/// ⭐ Um ficheiro do formato 8 (W8) continua a abrir com o aspecto de nascença (W9: `Style::look`) —
+/// gravado pelo build de `3b4ec7784` (o último do formato 8, um teste temporário que escreveu
+/// `to_bytes`): «Retro8» em rascunho, um frame «Sprint», um rectângulo redondo à mão dentro dele, uma
+/// nota, uma seta curva (ponto fixo → centro, barra → triângulo, rótulo, um ponto de ajuste), um
+/// traço com pressão e um comentário com resposta.
+#[test]
+fn a_format_8_file_still_opens_with_the_default_look() {
+    use crate::{Anchor, End, Head, Look, Route};
+    let set = BoardSet::from_bytes(V8_BYTES).expect("o formato 8 lê-se");
+    let b = &set.boards()[0];
+    assert_eq!((b.name.as_str(), b.camera.zoom, b.sketch), ("Retro8", 0.5, true));
+    let els = b.doc.live_in_z_order();
+    assert_eq!(els.len(), 5);
+    assert_eq!(els[0].as_frame().unwrap().name, "Sprint");
+    let rect = els[1].shape().unwrap();
+    assert_eq!(els[1].frame, Some(els[0].id));
+    assert!(rect.style.sketch && rect.style.round);
+    assert_eq!(rect.text.as_str(), "caixa");
+    assert_eq!(els[2].shape().unwrap().kind, ShapeType::Sticky);
+    let c = els[3].connector().unwrap();
+    assert_eq!(c.route, Route::Curved);
+    assert_eq!(c.heads, [Head::Bar, Head::Triangle]);
+    assert_eq!(c.label, "sim");
+    assert_eq!(c.waypoints, vec![[260.0, 30.0]]);
+    assert!(matches!(c.start, End::Bound { anchor: Anchor::Fixed([1.0, 0.5]), .. }));
+    assert!(matches!(c.end, End::Bound { anchor: Anchor::Center, .. }));
+    assert!(els[4].ink().unwrap().pressure);
+    assert_eq!(b.team.threads.len(), 1);
+    assert!(els.iter().all(|e| e.style().look == Look::default()));
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
+}
+
+/// Gravados pelo build do formato 8 (`3b4ec7784`).
+const V8_BYTES: &[u8] = include_bytes!("../fixtures/format_v8.bin");

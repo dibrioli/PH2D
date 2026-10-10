@@ -84,18 +84,19 @@ fn only_the_arrow_whose_shape_moved_is_rerouted() {
 }
 
 /// ⭐ Presa ao CENTRO, a seta sai pela face que olha para a outra forma — e troca de face quando a
-/// forma passa para baixo (o «nunca atravessa a forma» do Miro).
+/// forma passa para baixo (o «nunca atravessa a forma» do Miro), parada a [`gap`] dela (W9).
 #[test]
 fn a_center_anchor_follows_the_nearest_face() {
     let mut doc = BoardDoc::default();
     let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
     let b = shape(&mut doc, ShapeType::Rectangle, [400.0, 0.0, 160.0, 100.0]);
     let id = link(&mut doc, center(a), center(b), Route::Elbow);
+    let g = gap(doc.get(a).unwrap());
     let mut cache = RouteCache::default();
     cache.sync(&doc);
     assert_eq!(
         cache.get(id).unwrap().ends()[0],
-        [160.0, 50.0],
+        [160.0 + g, 50.0],
         "a face direita"
     );
     moved(&mut doc, b, [-400.0, 600.0]);
@@ -104,14 +105,15 @@ fn a_center_anchor_follows_the_nearest_face() {
     assert_eq!(cache.get(id).unwrap().sides[0], Dir::North);
     assert_eq!(
         cache.get(id).unwrap().ends()[0],
-        [80.0, 100.0],
+        [80.0, 100.0 + g],
         "a face de baixo"
     );
 }
 
-/// A recta presa ao centro encosta no CONTORNO verdadeiro (numa elipse, não na caixa dela).
+/// A recta presa ao centro pára a [`gap`] do CONTORNO verdadeiro (numa elipse, não na caixa dela: a
+/// elipse de semi-eixos + vão, XB1).
 #[test]
-fn a_straight_arrow_touches_the_real_outline() {
+fn a_straight_arrow_stops_the_gap_before_the_real_outline() {
     let mut doc = BoardDoc::default();
     let a = shape(&mut doc, ShapeType::Ellipse, [0.0, 0.0, 200.0, 200.0]);
     let b = shape(&mut doc, ShapeType::Rectangle, [600.0, 600.0, 100.0, 100.0]);
@@ -120,16 +122,18 @@ fn a_straight_arrow_touches_the_real_outline() {
     cache.sync(&doc);
     let p = cache.get(id).unwrap().ends()[0];
     let r = (p[0] - 100.0).hypot(p[1] - 100.0);
+    let want = 100.0 + gap(doc.get(a).unwrap());
     assert!(
-        (r - 100.0).abs() < 0.5,
-        "no círculo (raio 100), não na quina da caixa: {p:?} r={r}"
+        (r - want).abs() < 1e-6,
+        "no círculo (raio 100 + vão), não na quina da caixa: {p:?} r={r}"
     );
 }
 
-/// ⭐ A regra da ligação: miolo = centro; faixa junto ao contorno = ponto fixo (colado ao meio do
-/// lado quando perto dele); fora = nada.
+/// ⭐ A regra da ligação: miolo = centro; faixa junto ao contorno = ÓRBITA de um ponto dele (colado ao
+/// meio do lado quando perto dele, o encaixe do Excalidraw XB5; W9 — o vão do quadro inteiro); fora =
+/// nada.
 #[test]
-fn the_binding_rule_center_inside_fixed_near_the_outline() {
+fn the_binding_rule_center_inside_orbit_near_the_outline() {
     let mut doc = BoardDoc::default();
     let id = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 200.0, 100.0]);
     let el = doc.get(id).unwrap();
@@ -137,11 +141,11 @@ fn the_binding_rule_center_inside_fixed_near_the_outline() {
     assert_eq!(anchor_for(el, [100.0, 50.0], band), Some(Anchor::Center));
     assert_eq!(
         anchor_for(el, [204.0, 53.0], band),
-        Some(Anchor::Fixed([1.0, 0.5])),
+        Some(Anchor::Orbit([1.0, 0.5])),
         "colado ao meio"
     );
-    let Some(Anchor::Fixed([u, v])) = anchor_for(el, [197.0, 20.0], band) else {
-        panic!("perto do contorno, por dentro: ponto fixo");
+    let Some(Anchor::Orbit([u, v])) = anchor_for(el, [197.0, 20.0], band) else {
+        panic!("perto do contorno, por dentro: em órbita do ponto do contorno");
     };
     assert!((u - 1.0).abs() < 1e-9 && (v - 0.2).abs() < 1e-9, "{u} {v}");
     assert_eq!(anchor_for(el, [260.0, 50.0], band), None);
@@ -156,7 +160,7 @@ fn a_side_middle_off_the_outline_does_not_snap() {
     // Na aresta esquerda, a 36 do (0, ½) — dentro de uma faixa de 40, que o deixaria colar.
     let got = anchor_for(el, [20.0, 80.0], 40.0);
     assert!(
-        matches!(got, Some(Anchor::Fixed(uv)) if uv != [0.0, 0.5]),
+        matches!(got, Some(Anchor::Orbit(uv)) if uv != [0.0, 0.5]),
         "o (0, ½) do triângulo é vazio: {got:?}"
     );
 }
@@ -253,10 +257,11 @@ fn a_fixed_point_arrow_does_not_spread_its_centered_neighbour() {
     );
     let mut cache = RouteCache::default();
     cache.sync(&doc);
+    let g = gap(doc.get(b).unwrap());
     assert_eq!(
         cache.get(front).unwrap().ends()[1],
-        [400.0, 50.0],
-        "no vértice esquerdo"
+        [400.0 - g, 50.0],
+        "diante do vértice esquerdo, a `g` dele"
     );
 }
 
@@ -293,14 +298,17 @@ fn the_curve_is_one_cubic_leaving_and_entering_perpendicular_with_half_the_gap()
     let v = &r.path.verts;
     assert_eq!(v.len(), 2, "uma cúbica só");
     let ([x0, y0], [x1, y1]) = (v[0].anchor, v[1].anchor);
+    let g = gap(doc.get(right).unwrap());
     assert_eq!(
         ([x0, y0], [x1, y1]),
-        ([714.0, 200.0], [408.0, 353.0]),
-        "os meios das faces"
+        ([714.0 - g, 200.0], [408.0 + g, 353.0]),
+        "os meios das faces, a `g` delas"
     );
-    // O braço MEDIDO na captura do Miro: 154 (não a constante — senão o teste confirma-se a si mesmo).
+    // O braço MEDIDO na captura do Miro: 154 para pontas a 342,6 (não a constante — senão o teste
+    // confirma-se a si mesmo); com o vão (W9) as pontas ficam mais perto e o braço escala com elas.
     let k = v[0].anchor[0] - v[0].out_handle[0];
-    assert!((k - 154.0).abs() < 1.0, "braço {k}, medido 154");
+    let want = 154.0 * dist([x0, y0], [x1, y1]) / 342.6;
+    assert!((k - want).abs() < 1.0, "braço {k}, medido {want}");
     assert_eq!(
         v[0].out_handle,
         [x0 - k, y0],
@@ -411,7 +419,7 @@ fn on_a_curve_the_line_is_the_route_cut_at_the_middle_of_the_head_base() {
     cache.sync(&doc);
     let r = cache.get(id).unwrap();
     let w = 2.0;
-    let inset = marker(Head::Triangle).inset(HEAD_SCALE) * w;
+    let inset = crate::heads::inset(Head::Triangle, crate::heads::size(Head::Triangle, r.legs[1]));
     let d = drawn(r, [Head::None, Head::Triangle], w);
     let full = ph2d_vec_render::build_bezpath(&r.path);
     let on_route = |p: Point| {
@@ -508,7 +516,8 @@ fn under_a_head_the_curve_ends_in_a_straight_stem_and_the_head_is_straight() {
     cache.sync(&doc);
     let r = cache.get(id).unwrap();
     let w = 2.0;
-    let stem = marker(Head::Triangle).inset(HEAD_SCALE) * w;
+    // A haste é o que a ponta de nascença («V») ocupa ao longo da linha (W9: no tamanho dela).
+    let stem = crate::heads::along(Head::Arrow, crate::heads::size(Head::Arrow, r.legs[1]));
     let v = &r.path.verts;
     let (tip, before) = (v[v.len() - 1].anchor, v[v.len() - 2].anchor);
     assert_eq!(tip, [480.0, 100.0]);

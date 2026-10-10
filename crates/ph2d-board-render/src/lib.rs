@@ -254,9 +254,8 @@ pub fn paint(
                     cache.sketch.ink = cache.ink;
                 }
                 let [bx0, by0, bx1, by1] = r.bbox;
-                // A ponta de seta sai até 4 comprimentos de traço da rota; o rótulo, meia quebra.
-                let w = c.style.stroke_width;
-                let head = w * ph2d_board_route::head_scale(w) * 4.0;
+                // A ponta de seta sai até à maior base da rota; o rótulo, meia quebra.
+                let head = ph2d_board_route::head_reach(c.style.stroke_width);
                 let pad = if c.label.is_empty() {
                     head
                 } else {
@@ -382,7 +381,9 @@ fn paint_shape(
     }
     let (frame, at) = (cache.frame, (board, el.id.0));
     let o = cached_outline(&mut cache.outlines, frame, at, shape, el.w, el.h);
-    if st.sketch && !shape.kind.is_note() {
+    // O rascunho, ou um final com o preenchimento às riscas que veio de um `.excalidraw` (W9).
+    let hand = st.sketch || st.look.fill_style != ph2d_board_model::FillStyle::Solid;
+    if hand && !shape.kind.is_note() {
         sketch::paint_shape(scene, &mut cache.sketch, frame, at, el, shape.kind, o, t);
     } else {
         if let Some(c) = st.fill {
@@ -408,9 +409,10 @@ fn paint_shape(
             &shape.text,
             st.font_size as f32,
             tw as f32,
-            ph2d_board_edit::hand_lettered(el),
+            ph2d_board_edit::face(el),
         );
-        let [ox, oy] = text_origin(shape.kind, el.w, el.h, f64::from(layout.height()));
+        let block_h = f64::from(layout.height());
+        let [ox, oy] = text_origin(shape.kind, el.w, el.h, block_h, st.look.valign);
         let at = t * Affine::translate((ox, oy));
         if let Some(sel) = sel {
             sel.paint(scene, at);
@@ -452,7 +454,7 @@ fn paint_connector(
     let faded = st.opacity < 100;
     if faded {
         let [x0, y0, x1, y1] = r.bbox;
-        let pad = st.stroke_width * ph2d_board_route::head_scale(st.stroke_width) * 4.0;
+        let pad = ph2d_board_route::head_reach(st.stroke_width);
         scene.push_object_layer(
             &Rect::from_points(
                 v * Point::new(x0 - pad, y0 - pad),

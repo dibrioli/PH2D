@@ -14,7 +14,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_board_model::{Anchor, BoardDoc, Element, ElementId, End, Route, ShapeType};
+use ph2d_board_model::{Anchor, BoardDoc, Element, ElementId, End, Head, Route, ShapeType};
 use ph2d_vec_connect::Aabb;
 
 use crate::index::ShapeIndex;
@@ -30,6 +30,8 @@ enum EndKey {
         geo: [f64; 5],
         kind: ShapeType,
         round: bool,
+        /// O vão da forma (o traço dela, W9 [`crate::gap`]).
+        gap: f64,
     },
 }
 
@@ -39,8 +41,8 @@ struct Key {
     ends: [EndKey; 2],
     waypoints: Vec<[f64; 2]>,
     spread: f64,
-    /// As hastes debaixo das pontas de seta (dependem das pontas e da espessura).
-    stems: [f64; 2],
+    /// As pontas de seta (as hastes da curva dependem delas).
+    heads: [Head; 2],
 }
 
 #[derive(Debug)]
@@ -71,6 +73,7 @@ fn end_key(r: &Resolved<'_>) -> EndKey {
                 geo: [el.x, el.y, el.w, el.h, el.angle],
                 kind: s.kind,
                 round: s.style.round,
+                gap: crate::gap(el),
             }
         }
     }
@@ -166,7 +169,7 @@ impl RouteCache {
             ends: [end_key(&ends[0]), end_key(&ends[1])],
             waypoints: c.waypoints.clone(),
             spread,
-            stems: crate::stems(c),
+            heads: c.heads,
         };
         let entry = match prev {
             Some(e) if e.key == key => e,
@@ -174,7 +177,7 @@ impl RouteCache {
                 self.rerouted += 1;
                 let sides = prev.map_or([None; 2], |e| e.routed.sides.map(Some));
                 let ends = [&ends[0], &ends[1]];
-                let routed = compute(ends, c.route, &c.waypoints, sides, spread, key.stems);
+                let routed = compute(ends, c.route, &c.waypoints, sides, spread, key.heads);
                 Entry { key, routed }
             }
         };

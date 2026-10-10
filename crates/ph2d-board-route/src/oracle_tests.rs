@@ -61,8 +61,9 @@ fn close(a: [f64; 2], b: [f64; 2], tol: f64) -> bool {
     (a[0] - b[0]).abs() <= tol && (a[1] - b[1]).abs() <= tol
 }
 
-/// ⭐ A normalização: a ponta largada no meio do lado direito da origem prende-se ao ponto fixo
-/// `[1, 0.5]` (o `fixedPoint` do oráculo) e sai por esse lado; a do destino, `[0, 0.5]`, a oeste.
+/// ⭐ A normalização: a ponta largada no meio do lado direito da origem prende-se em órbita do ponto
+/// `[1, 0.5]` (o `fixedPoint` do oráculo; W9: órbita, com o vão) e sai por esse lado; a do destino,
+/// `[0, 0.5]`, a oeste.
 #[test]
 fn a_dropped_end_normalizes_like_the_oracle_fixed_point() {
     let mut doc = BoardDoc::default();
@@ -74,8 +75,8 @@ fn a_dropped_end_normalizes_like_the_oracle_fixed_point() {
         (d, [500.0, 325.0], [0.0, 0.5001], Dir::West),
     ] {
         let el = doc.get(id).unwrap();
-        let Some(Anchor::Fixed(uv)) = anchor_for(el, drop, band) else {
-            panic!("a ponta no contorno prende-se a um PONTO FIXO");
+        let Some(Anchor::Orbit(uv)) = anchor_for(el, drop, band) else {
+            panic!("a ponta no contorno prende-se em ÓRBITA de um ponto dele");
         };
         assert!(
             close(uv, oracle, ORACLE_TIE),

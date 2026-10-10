@@ -30,6 +30,8 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Route(Route::Straight) => "board.route.straight",
         Item::Route(Route::Elbow) => "board.route.elbow",
         Item::Route(Route::Curved) => "board.route.curved",
+        // A curva do Excalidraw só chega pelo ficheiro: a barra não a oferece (`ROUTES`).
+        Item::Route(Route::Spline) => return None,
         Item::Head(i, h) => return head_key(i, h),
         Item::Tool(Tool::Shape(ShapeType::Rectangle)) => "board.tool.rectangle",
         Item::Tool(Tool::Shape(ShapeType::Ellipse)) => "board.tool.ellipse",
@@ -236,7 +238,8 @@ pub(super) fn arrow_icon(
     let (x0, y0) = (f64::from(r.x), f64::from(r.y + r.h));
     let (x1, y1) = (f64::from(r.x + r.w), f64::from(r.y));
     let pts = match route {
-        Route::Straight => vec![[x0, y0], [x1, y1]],
+        // A do Excalidraw com duas pontas é recta (XA1).
+        Route::Straight | Route::Spline => vec![[x0, y0], [x1, y1]],
         Route::Elbow | Route::Curved => {
             let mx = (x0 + x1) / 2.0;
             vec![[x0, y0], [mx, y0], [mx, y1], [x1, y1]]

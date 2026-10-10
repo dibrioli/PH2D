@@ -238,15 +238,25 @@ fn the_board_draws_every_line_three_times() {
 /// O tremor do quadro é o pedido pelo dono (1,5), abaixo de 2 (os vértices continuam presos).
 #[test]
 fn the_board_trembles_more_than_the_artist_and_keeps_its_corners() {
-    assert_eq!(hand_roughness(160.0, 120.0, false, false), 1.5);
     let ink = Rgba([30, 30, 30, 255]);
+    let mut st = Style::new(None, Some(ink), ink);
+    st.sketch = true;
+    assert_eq!(hand_roughness(&st, 160.0, 120.0, false, false), 1.5);
     assert!(
-        hand_options(
-            1,
-            hand_roughness(160.0, 120.0, false, false),
-            &Style::new(None, Some(ink), ink),
-            false
-        )
-        .preserve_vertices
+        hand_options(1, hand_roughness(&st, 160.0, 120.0, false, false), &st, false)
+            .preserve_vertices
     );
+}
+
+/// ⭐ W9 (estudo 07 §5 M7): o «cartoonist» (2) só no elemento que o trouxe de um `.excalidraw`, e o
+/// final importado com riscas desenha-se DIREITO (o «architect», 0) — o rascunho do quadro continua 1,5.
+#[test]
+fn an_imported_cartoonist_trembles_at_two_and_a_final_hachure_at_zero() {
+    let ink = Rgba([30, 30, 30, 255]);
+    let mut st = Style::new(None, Some(ink), ink);
+    st.sketch = true;
+    st.look.cartoonist = true;
+    assert_eq!(hand_roughness(&st, 160.0, 120.0, false, false), 2.0);
+    st.sketch = false;
+    assert_eq!(hand_roughness(&st, 160.0, 120.0, false, false), 0.0);
 }

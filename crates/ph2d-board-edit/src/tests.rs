@@ -567,9 +567,10 @@ fn dragging_the_arrow_tool_from_a_shape_to_another_binds_both_centers() {
     assert_eq!(w.doc.live_len(), 2);
 }
 
-/// Largada na faixa junto ao contorno, a ponta fica num PONTO FIXO (colado ao meio do lado).
+/// Largada na faixa junto ao contorno, a ponta fica em ÓRBITA de um ponto dele (colado ao meio do
+/// lado) — W9: pára a `g` da forma, como no Excalidraw (decisão do dono, 10/10).
 #[test]
-fn an_end_dropped_near_the_outline_is_a_fixed_point() {
+fn an_end_dropped_near_the_outline_orbits_a_point_of_it() {
     let mut w = world();
     let a = w.rect([0.0, 0.0, 160.0, 100.0]);
     let b = w.rect([400.0, 0.0, 160.0, 100.0]);
@@ -578,9 +579,12 @@ fn an_end_dropped_near_the_outline_is_a_fixed_point() {
         w.ends(id)[1],
         End::Bound {
             target: b,
-            anchor: Anchor::Fixed([0.0, 0.5])
+            anchor: Anchor::Orbit([0.0, 0.5])
         }
     );
+    let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    let g = ph2d_board_route::gap(w.el(b));
+    assert!((tip[0] - (400.0 - g)).abs() < 1e-6, "pára a `g` da forma: {tip:?}");
     let _ = a;
 }
 
@@ -631,7 +635,8 @@ fn moving_a_box_moves_the_arrow_end_with_it() {
     w.drag([480.0, 50.0], [480.0, 350.0], CTRL);
     let after = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
     assert_ne!(before, after);
-    assert!(after[1] >= 300.0, "a ponta foi com a caixa: {after:?}");
+    let g = ph2d_board_route::gap(w.el(b));
+    assert!(after[1] >= 300.0 - g - 1e-9, "a ponta foi com a caixa: {after:?}");
     assert_eq!(
         w.el(id).connector(),
         saved.connector(),

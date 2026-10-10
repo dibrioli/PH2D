@@ -12,18 +12,20 @@
 //! baixo, e a geometria não se importa — `North` aqui é «para baixo no ecrã». Nada vira: só o nome.
 
 mod cache;
+pub mod heads;
 mod index;
 
 pub use cache::RouteCache;
+pub use heads::marker;
 pub use ph2d_vec_connect::Dir;
 pub use ph2d_vec_scene::VecPath;
 
-use ph2d_board_geom::{inside, nearest_on_outline, ray_exit};
-use ph2d_board_model::{Anchor, Element, End, Head, Route};
+use ph2d_board_geom::{band_entry, inside, nearest_on_outline, ray_exit_band};
+use ph2d_board_model::{Anchor, Element, End, Head, ORBIT_GAP, Route};
 use ph2d_vec_connect::{
     Aabb, EndSpec, RouteInput, RouteKind, exit_point, port_side, route, side_towards,
 };
-use ph2d_vec_scene::{Marker, VecVertex};
+use ph2d_vec_scene::VecVertex;
 use ph2d_vector::BezPath;
 
 /// ⭐ **O recuo da rota em cotovelo antes de poder dobrar** (o *jetty*), em unidades do mundo.
@@ -57,22 +59,11 @@ pub const END_ARM: f64 = 0.45;
 /// `docs/MiroClone/ferramentas/mede_curva_miro.py`.
 pub const POINT_ARM: f64 = 0.4;
 
-/// ⭐ **O tamanho da ponta de seta**, em múltiplos da largura do traço sobre a caixa do catálogo
-/// (`Marker`: comprimento 4·w). Medido no oráculo (`saidas/seta_reta_ligada.svg`, `strokeWidth 2`,
-/// ponta `arrow`): as duas riscas recuam **23,49** ao longo da linha ⇒ `23,49 / (4 · 2) = 2,94`.
-/// ⚠️ A abertura é a do catálogo (26,6° de meia-abertura contra os ~20° do Excalidraw): uma lei de
-/// pontas para o app inteiro vale mais que copiar o ângulo.
-pub const HEAD_SCALE: f64 = 2.94;
-/// A espessura a que [`HEAD_SCALE`] foi medido.
-const HEAD_MEASURED_WIDTH: f64 = 2.0;
-
-/// ⭐ O tamanho da ponta para a espessura `width`: o MESMO comprimento em qualquer espessura — a
-/// ponta do Excalidraw não cresce com o traço (`getArrowheadSize`: 25 para a `arrow`, lido no código
-/// dele por ordem do dono, 07/10; os 23,49 medidos são `25 · cos 20°`). Com o traço fino de nascença
-/// a ponta proporcional ficava com metade.
+/// Até onde uma ponta de seta sai da rota (mundo), além de meio traço: a maior base ([`heads::base`],
+/// a `arrow`, 25) — a folga do recorte ao ecrã e da camada de opacidade.
 #[must_use]
-pub fn head_scale(width: f64) -> f64 {
-    HEAD_SCALE * HEAD_MEASURED_WIDTH / width.max(f64::EPSILON)
+pub fn head_reach(width: f64) -> f64 {
+    heads::base(Head::Arrow) + width
 }
 
 /// A largura de quebra do rótulo de uma seta (mundo): a de uma caixa de nascença do editor
@@ -102,6 +93,9 @@ pub struct Routed {
     /// O meio (por comprimento) de cada TRECHO entre duas estações: as pegas que, arrastadas, criam
     /// um ponto de ajuste novo ali (as bolinhas cheias do Miro).
     pub leg_mids: Vec<[f64; 2]>,
+    /// O comprimento do trecho junto de cada ponta `[início, fim]` — a corda entre as duas estações
+    /// da ponta; no cotovelo, o último segmento. É o «último trecho» da ponta que encolhe (XA2).
+    pub legs: [f64; 2],
 }
 
 impl Routed {
@@ -112,12 +106,15 @@ impl Routed {
     pub fn from_points(stations: Vec<[f64; 2]>, kind: Route, sides: [Dir; 2]) -> Self {
         let n = stations.len();
         let breaks: Vec<usize> = (0..n).collect();
-        let verts = if kind == Route::Curved {
-            curve(&stations, sides.map(Dir::vec))
-        } else {
-            stations.iter().map(|p| VecVertex::corner(*p)).collect()
+        let verts = match kind {
+            Route::Curved => curve(&stations, sides.map(Dir::vec)),
+            Route::Spline => spline(&stations),
+            Route::Straight | Route::Elbow => {
+                stations.iter().map(|p| VecVertex::corner(*p)).collect()
+            }
         };
-        Self::assemble(stations, verts, &breaks, sides)
+        let legs = chords(&stations);
+        Self::assemble(stations, verts, &breaks, sides, legs)
     }
 
     /// ⭐ **A curva com HASTE**: ela acaba a `stems[k]` da ponta `k` (sobre a saída, perpendicular à
@@ -137,10 +134,11 @@ impl Routed {
             dist(stations[0], stations[1]) > stems[0]
                 && dist(stations[n - 2], stations[n - 1]) > stems[1]
         };
+        let legs = chords(&stations);
         if !fits || stems == [0.0; 2] {
             let verts = curve(&stations, d);
             let breaks: Vec<usize> = (0..n).collect();
-            return Self::assemble(stations, verts, &breaks, sides);
+            return Self::assemble(stations, verts, &breaks, sides, legs);
         }
         let mut inner = stations.clone();
         let out = |p: [f64; 2], v: [f64; 2], s: f64| [p[0] + v[0] * s, p[1] + v[1] * s];
@@ -158,7 +156,7 @@ impl Routed {
             verts.push(VecVertex::corner(stations[n - 1]));
             breaks[n - 1] = verts.len() - 1;
         }
-        Self::assemble(stations, verts, &breaks, sides)
+        Self::assemble(stations, verts, &breaks, sides, legs)
     }
 
     /// `verts` = o caminho; `breaks[k]` = o índice do vértice da estação `k`.
@@ -167,6 +165,7 @@ impl Routed {
         verts: Vec<VecVertex>,
         breaks: &[usize],
         sides: [Dir; 2],
+        legs: [f64; 2],
     ) -> Self {
         let path = VecPath {
             verts,
@@ -190,6 +189,7 @@ impl Routed {
             path,
             sides,
             leg_mids,
+            legs,
         }
     }
 
@@ -231,47 +231,31 @@ pub struct Drawn {
     pub heads: Vec<(BezPath, bool)>,
 }
 
-/// O comprimento da HASTE recta debaixo de cada ponta de seta da seta `c` (ver
-/// `Routed::curved_with_stems`): o comprimento da cabeça (o recuo dela, e no mínimo o de um triângulo
-/// — o «V» não recua a linha mas tem o mesmo comprimento). Sem cabeça, sem haste.
-#[must_use]
-pub fn stems(c: &ph2d_board_model::Connector) -> [f64; 2] {
-    let w = c.style.stroke_width;
-    let depth = Marker::Triangle.inset(head_scale(w));
-    c.heads.map(|h| match h {
-        Head::None => 0.0,
-        h => marker(h).inset(head_scale(w)).max(depth) * w,
-    })
-}
-
-/// O catálogo de pontas que desenha cada [`Head`].
-#[must_use]
-pub fn marker(h: Head) -> Marker {
-    match h {
-        Head::None => Marker::None,
-        Head::Arrow => Marker::Open,
-        Head::Triangle => Marker::Triangle,
-        Head::Diamond => Marker::Diamond,
-        Head::DiamondOpen => Marker::DiamondOpen,
-        Head::Circle => Marker::Circle,
-        Head::CircleOpen => Marker::CircleOpen,
-        Head::Bar => Marker::Bar,
-    }
+/// O comprimento da HASTE recta debaixo de cada ponta (ver `Routed::curved_with_stems`): o que a
+/// ponta ocupa ao longo da linha no tamanho a que o trecho `legs[k]` a encolhe. Sem ponta, sem haste.
+fn stems(heads: [Head; 2], legs: [f64; 2]) -> [f64; 2] {
+    [0, 1].map(|k| heads::along(heads[k], heads::size(heads[k], legs[k])))
 }
 
 /// ⭐ **A seta desenhada**: a ponta com o bico NA ponta da rota (a linha encosta no contorno, a seta
-/// aponta para a forma) e a linha recuada o que a ponta tapa (`Marker::inset`).
+/// aponta para a forma), cada uma no seu tamanho encolhido pelo trecho junto dela (XA2,
+/// [`heads::size`]), e a linha recuada o que a ponta tapa.
 #[must_use]
 pub fn drawn(r: &Routed, heads: [Head; 2], width: f64) -> Drawn {
-    drawn_at(r, heads, width, head_scale(width))
+    let sizes = [0, 1].map(|k| heads::size(heads[k], r.legs[k]));
+    drawn_sized(r, heads, width, sizes)
 }
 
-/// [`drawn`] com o tamanho da ponta `scale` (os ÍCONES da barra: a ponta do quadro, em 16 px, não
-/// cabia no botão — foto da cena 3, 06/10).
+/// [`drawn`] com a escala FIXA `scale` do catálogo (os ÍCONES da barra: a ponta do quadro, em 16 px,
+/// não cabia no botão — foto da cena 3, 06/10).
 #[must_use]
 pub fn drawn_at(r: &Routed, heads: [Head; 2], width: f64, scale: f64) -> Drawn {
+    let sizes = heads.map(|h| heads::size_for_scale(h, scale, width));
+    drawn_sized(r, heads, width, sizes)
+}
+
+fn drawn_sized(r: &Routed, heads: [Head; 2], width: f64, sizes: [f64; 2]) -> Drawn {
     use ph2d_vector::{ParamCurve, PathSeg};
-    let ms = heads.map(marker);
     let full = ph2d_vec_render::build_bezpath(&r.path);
     let segs: Vec<PathSeg> = full.segments().collect();
     if segs.is_empty() {
@@ -280,27 +264,24 @@ pub fn drawn_at(r: &Routed, heads: [Head; 2], width: f64, scale: f64) -> Drawn {
             heads: Vec::new(),
         };
     }
-    // A profundidade de uma cabeça (o comprimento do triângulo): é para onde ela APONTA de volta.
-    let depth = Marker::Triangle.inset(scale) * width;
-    let cut = [0, 1].map(|k| chord_cut(&segs, k == 1, ms[k].inset(scale) * width));
+    let cut = [0, 1].map(|k| chord_cut(&segs, k == 1, heads::inset(heads[k], sizes[k])));
     let mut heads_out = Vec::new();
-    for (k, m) in ms.into_iter().enumerate() {
-        let tip = if k == 0 {
-            segs[0].start()
-        } else {
-            segs[segs.len() - 1].end()
-        };
-        let Some(aim) = chord_cut(&segs, k == 1, depth).map(|(i, t)| segs[i].eval(t)) else {
+    for (k, h) in heads.into_iter().enumerate() {
+        if h == Head::None {
             continue;
-        };
-        let dir = [tip.x - aim.x, tip.y - aim.y];
-        if let Some(head) = m.build([tip.x, tip.y], dir, width, scale, 0.0) {
-            let closed = head.closed;
-            heads_out.push((
-                ph2d_vec_render::build_bezpath(&head),
-                closed && m.is_filled(),
-            ));
         }
+        let (tip, far) = if k == 0 {
+            (segs[0].start(), segs[segs.len() - 1].end())
+        } else {
+            (segs[segs.len() - 1].end(), segs[0].start())
+        };
+        // Para onde a ponta APONTA de volta: o ponto da linha à distância que ela ocupa. Uma linha
+        // inteira mais curta aponta para a outra ponta (⛔ antes saltava a ponta: a seta curta ficava
+        // sem ela).
+        let aim = chord_cut(&segs, k == 1, heads::along(h, sizes[k]))
+            .map_or(far, |(i, t)| segs[i].eval(t));
+        let dir = [tip.x - aim.x, tip.y - aim.y];
+        heads_out.extend(heads::build(h, [tip.x, tip.y], dir, width, sizes[k]));
     }
     let line = match cut {
         [Some(a), Some(b)] if a.0 < b.0 || (a.0 == b.0 && a.1 < b.1) => sub_path(&segs, a, b),
@@ -388,10 +369,11 @@ pub fn normalized(el: &Element, q: [f64; 2]) -> [f64; 2] {
 }
 
 /// ⭐ **A regra da ligação** (a semântica do Miro, pesquisa 01 §4.1, no gesto do tldraw): uma ponta
-/// largada sobre `el` em `p` prende-se ao CENTRO quando cai no miolo, e a um PONTO FIXO quando cai
-/// na faixa de largura `band` (mundo) junto ao contorno, por dentro ou por fora — o ponto do
-/// contorno mais perto, colado ao meio de um lado quando passa a menos de `band` dele. `None` =
-/// `p` está fora da forma e da faixa.
+/// largada sobre `el` em `p` prende-se ao CENTRO quando cai no miolo, e em ÓRBITA de um ponto do
+/// contorno quando cai na faixa de largura `band` (mundo) junto a ele, por dentro ou por fora — o
+/// ponto do contorno mais perto, colado ao meio de um lado quando passa a menos de `band` dele (o
+/// encaixe do Excalidraw, XB5). As duas param a [`gap`] da forma (W9, decisão do dono 10/10: o quadro
+/// inteiro adopta o vão). `None` = `p` está fora da forma e da faixa.
 #[must_use]
 pub fn anchor_for(el: &Element, p: [f64; 2], band: f64) -> Option<Anchor> {
     let (q, d) = nearest_on_outline(el, p)?;
@@ -408,7 +390,7 @@ pub fn anchor_for(el: &Element, p: [f64; 2], band: f64) -> Option<Anchor> {
         .filter(|(_, m)| dist(*m, q) <= band)
         .filter(|(_, m)| nearest_on_outline(el, *m).is_some_and(|(_, e)| e < ON_OUTLINE))
         .min_by(|a, b| dist(a.1, q).total_cmp(&dist(b.1, q)));
-    Some(Anchor::Fixed(
+    Some(Anchor::Orbit(
         mid.map_or_else(|| normalized(el, q), |m| m.0),
     ))
 }
@@ -439,6 +421,15 @@ impl Resolved<'_> {
     fn center(&self) -> [f64; 2] {
         self.bbox().center()
     }
+
+    /// O FOCO da ponta (XB1): o ponto dela (solta), o ponto fixo ou em órbita, o centro.
+    fn focus(&self) -> [f64; 2] {
+        match *self {
+            Resolved::Point(p) => p,
+            Resolved::Shape(el, Anchor::Fixed(uv) | Anchor::Orbit(uv)) => fixed_world(el, uv),
+            Resolved::Shape(..) => self.center(),
+        }
+    }
 }
 
 pub(crate) fn aabb(el: &Element) -> Aabb {
@@ -464,12 +455,50 @@ fn exit(
             let p = fixed_world(el, uv);
             (p, port_side(aabb(el), p, prev))
         }
-        Resolved::Shape(el, Anchor::Center) => {
-            exit_point(aabb(el), true, other, kind, prev, spread, |from, ray| {
-                ray_exit(el, from, ray)
-            })
+        Resolved::Shape(el, Anchor::Center) => center_exit(el, other, kind, prev, spread),
+        Resolved::Shape(el, Anchor::Orbit(uv)) => {
+            let focus = fixed_world(el, uv);
+            let g = gap(el);
+            if kind == RouteKind::Straight {
+                // XB1: na recta da outra estação ao foco, onde ela entra na faixa.
+                let p = band_entry(el, other, focus, g);
+                return (p, port_side(aabb(el), p, prev));
+            }
+            // A curva do Miro e o cotovelo saem PERPENDICULARES: do ponto do contorno (o foco que lá
+            // está), ou pela face que olha para a outra ponta (um foco no miolo), com o mesmo vão.
+            let tol = ON_OUTLINE * (1.0 + el.w.max(el.h));
+            match nearest_on_outline(el, focus) {
+                Some((q, d)) if d <= tol => {
+                    let side = port_side(aabb(el), q, prev);
+                    let n = ph2d_board_geom::outline_normal(el, q).unwrap_or(side.vec());
+                    ([q[0] + n[0] * g, q[1] + n[1] * g], side)
+                }
+                _ => center_exit(el, other, kind, prev, spread),
+            }
         }
     }
+}
+
+/// ⭐ **O vão de uma ponta presa** (W9, XB1): [`ORBIT_GAP`] mais meio traço da forma — 5,5 · 6 · 7
+/// para a forma de traço 1 · 2 · 4, seja qual for o traço da seta (`B_seta_sw*_forma_sw*`).
+#[must_use]
+pub fn gap(el: &Element) -> f64 {
+    ORBIT_GAP + el.style().stroke_width.max(0.0) / 2.0
+}
+
+/// A ponta presa ao CENTRO (a semântica do Miro: a face que olha para a outra ponta), a [`gap`] da
+/// forma — decisão do dono (10/10): o quadro inteiro pára antes da forma, como o Excalidraw.
+fn center_exit(
+    el: &Element,
+    other: [f64; 2],
+    kind: RouteKind,
+    prev: Option<Dir>,
+    spread: f64,
+) -> ([f64; 2], Dir) {
+    let g = gap(el);
+    exit_point(aabb(el), true, other, kind, prev, spread, |from, ray| {
+        ray_exit_band(el, from, ray, g)
+    })
 }
 
 /// ⭐ **A rota de uma seta** entre duas pontas resolvidas, pelos `waypoints` do artista, com a
@@ -481,15 +510,23 @@ pub(crate) fn compute(
     waypoints: &[[f64; 2]],
     prev: [Option<Dir>; 2],
     spread: f64,
-    stems: [f64; 2],
+    heads: [Head; 2],
 ) -> Routed {
     let rk = match kind {
-        Route::Straight => RouteKind::Straight,
+        Route::Straight | Route::Spline => RouteKind::Straight,
         Route::Elbow | Route::Curved => RouteKind::Orthogonal,
     };
-    // Cada ponta sai rumo à estação VIZINHA: o 1.º ponto de ajuste, ou a outra ponta.
-    let toward0 = waypoints.first().copied().unwrap_or(ends[1].center());
-    let toward1 = waypoints.last().copied().unwrap_or(ends[0].center());
+    // Cada ponta sai rumo à estação VIZINHA: o 1.º ponto de ajuste, ou a outra ponta — o FOCO dela numa
+    // rota recta (XB1: a recta entre os dois focos), o centro nas que escolhem a face (o Miro).
+    let other = |e: &Resolved<'_>| {
+        if rk == RouteKind::Straight {
+            e.focus()
+        } else {
+            e.center()
+        }
+    };
+    let toward0 = waypoints.first().copied().unwrap_or(other(ends[1]));
+    let toward1 = waypoints.last().copied().unwrap_or(other(ends[0]));
     let (p0, d0) = exit(ends[0], toward0, rk, prev[0], spread);
     let (p1, d1) = exit(ends[1], toward1, rk, prev[1], -spread);
     let mut stations = vec![p0];
@@ -505,9 +542,12 @@ pub(crate) fn compute(
                 Resolved::Point(_) => side.vec(),
             };
             let d = [normal(ends[0], p0, d0), normal(ends[1], p1, d1)];
+            let stems = stems(heads, chords(&stations));
             return Routed::curved_with_stems(stations, [d0, d1], d, stems);
         }
-        Route::Straight => return Routed::from_points(stations, kind, [d0, d1]),
+        Route::Straight | Route::Spline => {
+            return Routed::from_points(stations, kind, [d0, d1]);
+        }
         Route::Elbow => {}
     }
     // O cotovelo: cada trecho entre estações pelo roteador; por obstáculo, só a forma da PONTA em
@@ -551,7 +591,41 @@ pub(crate) fn compute(
         breaks.push(pts.len() - 1);
     }
     let verts = pts.iter().map(|p| VecVertex::corner(*p)).collect();
-    Routed::assemble(stations, verts, &breaks, [d0, d1])
+    let legs = chords(&pts);
+    Routed::assemble(stations, verts, &breaks, [d0, d1], legs)
+}
+
+/// A corda do 1.º e do último trecho de `pts`.
+fn chords(pts: &[[f64; 2]]) -> [f64; 2] {
+    let n = pts.len();
+    if n < 2 {
+        return [0.0; 2];
+    }
+    [dist(pts[0], pts[1]), dist(pts[n - 2], pts[n - 1])]
+}
+
+/// ⭐ **A curva do Excalidraw pelas estações** (W9, XA1, `F_fuste` nas duas versões): Catmull-Rom
+/// UNIFORME com pegas de 1/6 — a pega de saída de Pᵢ é `(Pᵢ₊₁ − Pᵢ₋₁)/6`, nas pontas `(P₁ − P₀)/6`.
+/// Com duas estações sai uma recta (as pegas na própria corda). ⛔ Não é a [`curve`] do Miro (essa sai
+/// perpendicular às formas): é a de quem desenhou no Excalidraw.
+fn spline(st: &[[f64; 2]]) -> Vec<VecVertex> {
+    let n = st.len();
+    let at = |i: isize| st[i.clamp(0, n as isize - 1) as usize];
+    (0..n)
+        .map(|i| {
+            let k = i as isize;
+            let (prev, next) = (at(k - 1), at(k + 1));
+            let t = [(next[0] - prev[0]) / 6.0, (next[1] - prev[1]) / 6.0];
+            let mut v = VecVertex::corner(st[i]);
+            if i + 1 < n {
+                v.out_handle = [st[i][0] + t[0], st[i][1] + t[1]];
+            }
+            if i > 0 {
+                v.in_handle = [st[i][0] - t[0], st[i][1] - t[1]];
+            }
+            v
+        })
+        .collect()
 }
 
 /// ⭐ **O recuo de um trecho cujas duas saídas se OLHAM** (opostas, com a chegada à frente da partida):

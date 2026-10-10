@@ -60,7 +60,7 @@ pub use present::{
 };
 pub use snap::Guide;
 pub use templates::Template;
-pub use text::hand_lettered;
+pub use text::{face, hand_lettered};
 pub use timer::{
     TIMER_BLINK, TIMER_COARSE_STEP, TIMER_DEFAULT_MIN, TIMER_FINE_UNTIL, TIMER_MAX, Timer,
     TimerRun, step_minutes,

@@ -69,14 +69,30 @@ pub(crate) fn head_name(h: Head) -> Option<&'static str> {
         Head::Circle => "circle",
         Head::CircleOpen => "circle_outline",
         Head::Bar => "bar",
+        Head::TriangleOpen => "triangle_outline",
+        // As três que o 0.18.1 já desenha vão pelo nome antigo (o next renomeia-as ao ler, XV5); as
+        // outras três só existem no next (o 0.18.1 desenha-as como `arrow`, `P_tipos`).
+        Head::One => "crowfoot_one",
+        Head::Many => "crowfoot_many",
+        Head::OneOrMany => "crowfoot_one_or_many",
+        Head::ExactlyOne => "cardinality_exactly_one",
+        Head::ZeroOrOne => "cardinality_zero_or_one",
+        Head::ZeroOrMany => "cardinality_zero_or_many",
     })
 }
 
-/// A ponta do Excalidraw → a nossa (as que não temos caem na mais próxima).
+/// A ponta do Excalidraw → a nossa (as duas gramáticas, XV5; uma desconhecida = sem ponta).
 pub(crate) fn head_of(s: Option<&str>) -> Head {
     match s {
         Some("arrow") => Head::Arrow,
-        Some("triangle" | "triangle_outline") => Head::Triangle,
+        Some("triangle") => Head::Triangle,
+        Some("triangle_outline") => Head::TriangleOpen,
+        Some("crowfoot_one" | "cardinality_one") => Head::One,
+        Some("crowfoot_many" | "cardinality_many") => Head::Many,
+        Some("crowfoot_one_or_many" | "cardinality_one_or_many") => Head::OneOrMany,
+        Some("cardinality_exactly_one") => Head::ExactlyOne,
+        Some("cardinality_zero_or_one") => Head::ZeroOrOne,
+        Some("cardinality_zero_or_many") => Head::ZeroOrMany,
         Some("diamond") => Head::Diamond,
         Some("diamond_outline") => Head::DiamondOpen,
         Some("circle" | "dot") => Head::Circle,
@@ -86,12 +102,31 @@ pub(crate) fn head_of(s: Option<&str>) -> Head {
     }
 }
 
-/// O `fontFamily` que escrevemos: a Virgil (1) no rascunho — a nossa letra à mão É a Virgil —, senão a
-/// Helvetica (2), a sem serifa dele mais perto da nossa.
-pub(crate) fn font_family(sketch: bool) -> u32 {
-    if sketch { 1 } else { 2 }
+/// O `fontFamily` que escrevemos: a Virgil (1) à mão — a nossa letra à mão É a Virgil —, senão a
+/// Helvetica (2), a sem serifa dele mais perto da nossa. A letra do modo segue o rascunho.
+pub(crate) fn font_family(st: &ph2d_board_model::Style) -> u32 {
+    let hand = match st.look.letter {
+        ph2d_board_model::Letter::Auto => st.sketch,
+        ph2d_board_model::Letter::Hand => true,
+        ph2d_board_model::Letter::Sans => false,
+    };
+    if hand { 1 } else { 2 }
+}
+
+/// A letra de um `fontFamily` dele (o estudo 07 §4): as à mão (Virgil 1, Excalifont 5, Comic Shanns
+/// 8) ⇒ a nossa à mão; as outras (Helvetica 2, Nunito 6, Liberation 9, e a Cascadia 3, mono, que não
+/// temos) ⇒ a da interface.
+pub(crate) fn letter_of(family: Option<u64>) -> ph2d_board_model::Letter {
+    match family {
+        Some(1 | 5 | 8) => ph2d_board_model::Letter::Hand,
+        Some(_) => ph2d_board_model::Letter::Sans,
+        None => ph2d_board_model::Letter::Auto,
+    }
 }
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "fidelity_tests.rs"]
+mod fidelity_tests;

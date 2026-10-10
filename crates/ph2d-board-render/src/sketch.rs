@@ -148,10 +148,27 @@ pub const HAND_PASSES: u8 = 3;
 /// não tinha: INTEIRO quando os dois lados são grandes (menor ≥ 20 e maior ≥ 50), ou a forma é
 /// redonda com o menor ≥ 15, ou é uma LINHA (`linear`, as setas) com o maior ≥ 50; senão o tremor a
 /// dividir por 2 (por 3 abaixo de 10), no máximo 2,5.
+/// O tremor de base é o do estilo ([`base_roughness`]).
 #[must_use]
-pub fn hand_roughness(w: f64, h: f64, round: bool, linear: bool) -> f64 {
-    adjust_roughness(ROUGHNESS, w, h, round, linear)
+pub fn hand_roughness(st: &Style, w: f64, h: f64, round: bool, linear: bool) -> f64 {
+    adjust_roughness(base_roughness(st), w, h, round, linear)
 }
+
+/// O tremor de BASE do estilo `st`: o do rascunho do quadro ([`ROUGHNESS`]); o «cartoonist» (2) só no
+/// elemento que o trouxe de um `.excalidraw` (W9, `Look::cartoonist` — o dono recusou-o para o
+/// quadro, não para o desenho de quem o fez lá); 0 no final (o preenchimento às riscas de um final
+/// importado desenha-se direito, como o «architect» dele).
+#[must_use]
+pub fn base_roughness(st: &Style) -> f64 {
+    match (st.sketch, st.look.cartoonist) {
+        (false, _) => 0.0,
+        (true, false) => ROUGHNESS,
+        (true, true) => CARTOONIST,
+    }
+}
+
+/// A rugosidade 2 do Excalidraw («cartoonist»).
+const CARTOONIST: f64 = 2.0;
 
 /// A lei do Excalidraw para um tremor de base `base` qualquer (o `adjustRoughness` dele) — o que o
 /// portão do oráculo confere com o `base` das saídas gravadas (1).
@@ -169,8 +186,10 @@ pub fn adjust_roughness(base: f64, w: f64, h: f64, round: bool, linear: bool) ->
 /// carácter a carácter) — o tremor do tamanho ([`hand_roughness`]), os VÉRTICES PRESOS com tremor
 /// < 2 (as esquinas encontram-se em vez de se cruzarem), a espessura do estilo, a semente.
 ///
-/// ⛔ O preenchimento às riscas (`hachure`) não: a cor da letra lê-se sobre o PREENCHIMENTO, e entre
-/// as riscas está o quadro (foto da cena 5, 07/10). Cheio, a letra lê-se igual nos dois modos.
+/// ⛔ O preenchimento às riscas (`hachure`) não nasce no quadro: a cor da letra lê-se sobre o
+/// PREENCHIMENTO, e entre as riscas está o quadro (foto da cena 5, 07/10). Só o elemento que o TROUXE
+/// de um `.excalidraw` (W9, `Look::fill_style`) o desenha. O `zigzag` (não portado nem medido, estudo
+/// 07 §6.4) desenha-se às riscas.
 #[must_use]
 pub fn hand_options(seed: u32, roughness: f64, st: &Style, fill: bool) -> rough::Options {
     rough::Options {
@@ -182,7 +201,13 @@ pub fn hand_options(seed: u32, roughness: f64, st: &Style, fill: bool) -> rough:
         passes: HAND_PASSES,
         stroke_width: st.stroke_width,
         fill: fill && st.fill.is_some(),
-        fill_style: FillStyle::Solid,
+        fill_style: match st.look.fill_style {
+            ph2d_board_model::FillStyle::Solid => FillStyle::Solid,
+            ph2d_board_model::FillStyle::Hachure | ph2d_board_model::FillStyle::Zigzag => {
+                FillStyle::Hachure
+            }
+            ph2d_board_model::FillStyle::CrossHatch => FillStyle::CrossHatch,
+        },
         stroke: st.stroke.is_some() && st.stroke_width > 0.0,
         ..rough::Options::default()
     }
@@ -243,7 +268,7 @@ pub fn hand_shape(
 /// O rascunho de uma forma, na caixa LOCAL dela.
 fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough {
     let mut r = Rough::default();
-    let rough = hand_roughness(el.w, el.h, st.round, false);
+    let rough = hand_roughness(st, el.w, el.h, st.round, false);
     let opts = hand_options(el.seed(), rough, st, true);
     collect(hand_shape(kind, st.round, el.w, el.h, o, &opts), &mut r);
     if !o.lines.is_empty() {
@@ -307,6 +332,7 @@ pub(crate) fn paint_shape(
         el.seed().hash(h);
         [el.w, el.h, st.stroke_width].map(f64::to_bits).hash(h);
         (st.fill.is_some(), st.stroke.is_some(), st.round).hash(h);
+        (st.sketch, st.look.cartoonist, st.look.fill_style as u8).hash(h);
     });
     let ink = cache.ink;
     let r = cached(&mut cache.rough, owner, key, frame, || {
@@ -350,6 +376,7 @@ pub(crate) fn paint_connector(
     let key = hash(|h| {
         el.seed().hash(h);
         st.stroke_width.to_bits().hash(h);
+        st.look.cartoonist.hash(h);
         path_hash(h, &d.line);
         for (p, filled) in &d.heads {
             path_hash(h, p);
@@ -359,7 +386,7 @@ pub(crate) fn paint_connector(
     let r = cached(&mut cache.rough, owner, key, frame, || {
         let mut r = Rough::default();
         let b = ph2d_vector::Shape::bounding_box(&d.line);
-        let rough = hand_roughness(b.width(), b.height(), false, true);
+        let rough = hand_roughness(st, b.width(), b.height(), false, true);
         let line = hand_options(el.seed(), rough, st, false);
         collect(hand_line(&d.line, &line), &mut r);
         for (i, (p, filled)) in d.heads.iter().enumerate() {

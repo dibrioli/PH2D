@@ -9,6 +9,8 @@
 //! - 5 (W5): sem o nó de mapa mental (`Org::mind`, W6) — nada é mapa.
 //! - 6 (W6): sem os votos nem os carimbos (`Org::votes`, `Org::stamps`, W7) — nenhum.
 //! - 7 (W7): sem a equipa (`Board::team`: comentários, versões, frames fora da apresentação, W8).
+//! - 8 (W8): sem o aspecto do Excalidraw (`Style::look`, W9) — o de nascença. Do 4 ao 8 o estilo
+//!   lê-se com [`StyleV8`] (pelo [`KindV8`]).
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -47,6 +49,119 @@ impl From<StyleV3> for Style {
             text_color: s.text_color,
             font_size: s.font_size,
             sketch: false,
+            look: crate::Look::default(),
+        }
+    }
+}
+
+/// O `Style` dos formatos 4–8 (sem o `look` da W9).
+#[derive(Deserialize)]
+struct StyleV8 {
+    fill: Option<Rgba>,
+    stroke: Option<Rgba>,
+    stroke_width: f64,
+    dash: Dash,
+    round: bool,
+    opacity: u8,
+    text_color: Rgba,
+    font_size: f64,
+    sketch: bool,
+}
+
+impl From<StyleV8> for Style {
+    fn from(s: StyleV8) -> Self {
+        Style {
+            fill: s.fill,
+            stroke: s.stroke,
+            stroke_width: s.stroke_width,
+            dash: s.dash,
+            round: s.round,
+            opacity: s.opacity,
+            text_color: s.text_color,
+            font_size: s.font_size,
+            sketch: s.sketch,
+            look: crate::Look::default(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct ShapeV8 {
+    kind: ShapeType,
+    style: StyleV8,
+    text: RichText,
+}
+
+#[derive(Deserialize)]
+struct ConnectorV8 {
+    start: End,
+    end: End,
+    route: Route,
+    heads: [Head; 2],
+    style: StyleV8,
+    label: String,
+    waypoints: Vec<[f64; 2]>,
+}
+
+#[derive(Deserialize)]
+struct InkV8 {
+    style: StyleV8,
+    pen: crate::Pen,
+    points: Vec<[f32; 3]>,
+    base: [f64; 2],
+    pressure: bool,
+}
+
+#[derive(Deserialize)]
+struct FrameV8 {
+    name: String,
+    style: StyleV8,
+}
+
+/// O `ElementKind` dos formatos 4–8 (o `Frame` entrou no FIM na W5: os índices 0..=2 do formato 4
+/// continuam a ser `Shape`, `Connector`, `Ink`).
+#[derive(Deserialize)]
+enum KindV8 {
+    Shape(ShapeV8),
+    Connector(Box<ConnectorV8>),
+    Ink(Box<InkV8>),
+    Frame(FrameV8),
+}
+
+impl From<KindV8> for ElementKind {
+    fn from(k: KindV8) -> Self {
+        match k {
+            KindV8::Shape(s) => ElementKind::Shape(Shape {
+                kind: s.kind,
+                style: s.style.into(),
+                text: s.text,
+            }),
+            KindV8::Connector(c) => {
+                let c = *c;
+                ElementKind::Connector(Box::new(Connector {
+                    start: c.start,
+                    end: c.end,
+                    route: c.route,
+                    heads: c.heads,
+                    style: c.style.into(),
+                    label: c.label,
+                    waypoints: c.waypoints,
+                }))
+            }
+            KindV8::Ink(i) => {
+                let i = *i;
+                ElementKind::Ink(Box::new(crate::Ink {
+                    style: i.style.into(),
+                    pen: i.pen,
+                    points: i.points,
+                    base: i.base,
+                    pressure: i.pressure,
+                }))
+            }
+            KindV8::Frame(f) => ElementKind::Frame(crate::Frame {
+                name: f.name,
+                style: f.style.into(),
+            }),
         }
     }
 }
@@ -210,7 +325,7 @@ struct BoardV4 {
     id: BoardId,
     name: String,
     camera: Camera,
-    doc: DocOld<ElementOld<ElementKind>>,
+    doc: DocOld<ElementOld<KindV8>>,
     sketch: bool,
 }
 
@@ -255,7 +370,7 @@ struct OrgV5 {
 #[derive(Deserialize)]
 struct ElementV5 {
     id: ElementId,
-    kind: ElementKind,
+    kind: KindV8,
     x: f64,
     y: f64,
     w: f64,
@@ -308,7 +423,7 @@ pub(crate) fn read_v5(bytes: &[u8]) -> Result<BoardSet, String> {
 }
 
 fn element_v5(e: ElementV5) -> Element {
-    let mut el = Element::bare(e.id, e.z, e.kind, [e.x, e.y, e.w, e.h]);
+    let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
     el.angle = e.angle;
     el.frame = e.frame;
     el.org = e.org.map(|o| {
@@ -340,7 +455,7 @@ struct OrgV6 {
 #[derive(Deserialize)]
 struct ElementV6 {
     id: ElementId,
-    kind: ElementKind,
+    kind: KindV8,
     x: f64,
     y: f64,
     w: f64,
@@ -393,7 +508,7 @@ pub(crate) fn read_v6(bytes: &[u8]) -> Result<BoardSet, String> {
 }
 
 fn element_v6(e: ElementV6) -> Element {
-    let mut el = Element::bare(e.id, e.z, e.kind, [e.x, e.y, e.w, e.h]);
+    let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
     el.angle = e.angle;
     el.frame = e.frame;
     el.org = e.org.map(|o| {
@@ -471,7 +586,7 @@ struct BoardV7 {
     id: BoardId,
     name: String,
     camera: Camera,
-    doc: BoardDoc,
+    doc: DocOld<ElementV8>,
     sketch: bool,
 }
 
@@ -489,7 +604,7 @@ pub(crate) fn read_v7(bytes: &[u8]) -> Result<BoardSet, String> {
         .boards
         .into_iter()
         .map(|b| {
-            let mut doc = b.doc;
+            let mut doc = doc_old(b.doc, &element_v8);
             doc.reindex();
             Board {
                 id: b.id,
@@ -498,6 +613,72 @@ pub(crate) fn read_v7(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team: Team::default(),
+            }
+        })
+        .collect();
+    Ok(BoardSet::from_parts(boards, old.next_id))
+}
+
+/// O elemento dos formatos 7–8: o de hoje com o estilo antigo.
+#[derive(Deserialize)]
+struct ElementV8 {
+    id: ElementId,
+    kind: KindV8,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+    angle: f64,
+    z: FracKey,
+    frame: Option<ElementId>,
+    org: Option<Box<crate::Org>>,
+    version: u64,
+    nonce: u32,
+    deleted: bool,
+}
+
+fn element_v8(e: ElementV8) -> Element {
+    let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
+    el.angle = e.angle;
+    el.frame = e.frame;
+    el.org = e.org;
+    (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
+    el
+}
+
+#[derive(Deserialize)]
+struct BoardV8 {
+    id: BoardId,
+    name: String,
+    camera: Camera,
+    doc: DocOld<ElementV8>,
+    sketch: bool,
+    team: Team,
+}
+
+#[derive(Deserialize)]
+struct SetV8 {
+    _version: u32,
+    boards: Vec<BoardV8>,
+    next_id: u64,
+}
+
+/// Os bytes de um `BoardSet` no formato 8 (W8), já no formato actual: o aspecto de nascença.
+pub(crate) fn read_v8(bytes: &[u8]) -> Result<BoardSet, String> {
+    let old: SetV8 = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+    let boards = old
+        .boards
+        .into_iter()
+        .map(|b| {
+            let mut doc = doc_old(b.doc, &element_v8);
+            doc.reindex();
+            Board {
+                id: b.id,
+                name: b.name,
+                camera: b.camera,
+                doc,
+                sketch: b.sketch,
+                team: b.team,
             }
         })
         .collect();

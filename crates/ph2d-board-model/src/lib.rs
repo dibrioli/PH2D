@@ -24,9 +24,10 @@ mod team;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
-pub use connector::{Anchor, Connector, End, Head, Route};
+pub use connector::{Anchor, Connector, End, Head, ORBIT_GAP, Route};
 pub use element::{
-    BoardDoc, Dash, Element, ElementId, ElementKind, Rgba, Shape, ShapeType, Style, rotate_about,
+    BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Rgba, Shape,
+    ShapeType, Style, TextAlign, VAlign, rotate_about,
 };
 pub use facilitate::{
     STAMP_CHIP_BASE, STAMP_CHIP_DIGIT, STAMP_CHIP_GAP, STAMP_CHIP_H, Stamp, StampCount, VOTE_BADGE,

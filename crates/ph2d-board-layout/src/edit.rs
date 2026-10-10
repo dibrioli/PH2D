@@ -44,8 +44,9 @@ pub struct TextEdit {
     dirty: bool,
     /// Abriu com TUDO seleccionado e ainda não moldou: a selecção resolve-se no próximo uso.
     all: bool,
-    /// Na letra à mão (o texto de uma forma em rascunho) — a MESMA que o desenho usa.
-    hand: bool,
+    /// A letra e o alinhamento (o texto de uma forma em rascunho, o `textAlign` dela) — os MESMOS que o
+    /// desenho usa.
+    face: crate::Face,
 }
 
 impl TextEdit {
@@ -63,14 +64,22 @@ impl TextEdit {
             layout: Layout::new(),
             dirty: true,
             all: true,
-            hand: false,
+            face: crate::Face::default(),
         }
     }
 
     /// Na letra à mão (`true`) — a de uma forma em rascunho.
     #[must_use]
     pub fn hand(mut self, hand: bool) -> Self {
-        self.hand = hand;
+        self.face.hand = hand;
+        self.dirty = true;
+        self
+    }
+
+    /// O alinhamento das linhas (W9) — o MESMO que o desenho usa.
+    #[must_use]
+    pub fn align(mut self, align: ph2d_board_model::TextAlign) -> Self {
+        self.face.align = align;
         self.dirty = true;
         self
     }
@@ -108,7 +117,7 @@ impl TextEdit {
             self.rich.spans(),
             self.font_size,
             self.width,
-            self.hand,
+            self.face,
         );
         self.sel = self.sel.refresh(&self.layout);
     }

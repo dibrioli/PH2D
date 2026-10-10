@@ -40,7 +40,7 @@ fn text_of(el: &Element) -> RichText {
 /// mundo (`x = y = 0`, sem rotação) e o bloco centra-se no meio `mid` da rota.
 fn origin(el: &Element, block_h: f64, mid: Option<[f64; 2]>) -> Option<[f64; 2]> {
     match el.shape() {
-        Some(s) => Some(text_origin(s.kind, el.w, el.h, block_h)),
+        Some(s) => Some(text_origin(s.kind, el.w, el.h, block_h, s.style.look.valign)),
         None => mid.map(|m| label_origin(m, block_h)),
     }
 }
@@ -142,11 +142,14 @@ impl Editor {
         };
         let text = text_of(&el);
         let hand = hand_lettered(&el);
+        let align = el.style().look.align;
         self.selection = std::iter::once(id).collect();
         self.editing = Some(Editing {
             id,
             original: el,
-            edit: TextEdit::new(&text, size, width).hand(hand),
+            edit: TextEdit::new(&text, size, width)
+                .hand(hand)
+                .align(align),
         });
         true
     }
@@ -347,8 +350,22 @@ impl Editor {
     }
 }
 
-/// O texto de `el` desenha-se na letra à mão? (uma forma ou seta em rascunho; nunca uma nota)
+/// O texto de `el` desenha-se na letra à mão? A letra do modo: uma forma ou seta em rascunho, nunca
+/// uma nota; ou a que veio fixa de um `.excalidraw` (W9, `Look::letter`).
 #[must_use]
 pub fn hand_lettered(el: &Element) -> bool {
-    el.style().sketch && crate::sketchable(el)
+    match el.style().look.letter {
+        ph2d_board_model::Letter::Auto => el.style().sketch && crate::sketchable(el),
+        ph2d_board_model::Letter::Hand => true,
+        ph2d_board_model::Letter::Sans => false,
+    }
+}
+
+/// A cara do texto de `el` (a letra e o alinhamento) — a MESMA para quem o desenha e quem o edita.
+#[must_use]
+pub fn face(el: &Element) -> ph2d_board_layout::Face {
+    ph2d_board_layout::Face {
+        hand: hand_lettered(el),
+        align: el.style().look.align,
+    }
 }

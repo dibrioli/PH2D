@@ -366,10 +366,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// As três fichas.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
-    let ficha = |x: f32, y: f32, t: &str| crate::motion_demo_legend::Caption {
-        text: t.to_string(),
-        world: [x, y],
-    };
+    let ficha =
+        |x: f32, y: f32, t: &str| crate::motion_demo_legend::Caption::new([x, y], t.to_string());
     vec![
         ficha(
             0.0,

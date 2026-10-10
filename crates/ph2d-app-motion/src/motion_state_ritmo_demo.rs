@@ -237,10 +237,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// As duas fichas, uma sobre cada galáxia.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
-    let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption {
-        text: t.to_string(),
-        world: [x, -4.0],
-    };
+    let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -4.0], t.to_string());
     vec![
         ficha(-COL_X, "Order = Index: fila a fila"),
         ficha(COL_X, "Order = From Point: do centro para fora"),

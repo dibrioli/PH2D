@@ -177,9 +177,8 @@ pub(super) fn build_depois(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Ve
 
 /// As fichas no canvas, por cima de cada corda.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
-    let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption {
-        text: t.to_string(),
-        world: [x, MASTRO_Y + 4.0],
+    let ficha = |x: f32, t: &str| {
+        crate::motion_demo_legend::Caption::new([x, MASTRO_Y + 4.0], t.to_string())
     };
     vec![
         ficha(MASTRO_X[0], "SEM Collide: atravessam-se"),
@@ -189,10 +188,10 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
 
 /// A ficha da `=131`.
 pub(super) fn captions_depois() -> Vec<crate::motion_demo_legend::Caption> {
-    vec![crate::motion_demo_legend::Caption {
-        text: "Collide DEPOIS da corda".to_string(),
-        world: [MASTRO_X[0], MASTRO_Y + 4.0],
-    }]
+    vec![crate::motion_demo_legend::Caption::new(
+        [MASTRO_X[0], MASTRO_Y + 4.0],
+        "Collide DEPOIS da corda".to_string(),
+    )]
 }
 
 /// **O roteiro que o dono segue** (`CLAUDE.md` §0.8).

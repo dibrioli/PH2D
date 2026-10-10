@@ -2,7 +2,9 @@
 //! o Herói tem a animação DELE («andar», «pular»; o «andar» também gira a Espada, filha dele), o
 //! Inimigo mexe-se pela Animação da Cena («Main»), e o Inimigo não tem Animação — o ▾ oferece-a.
 //! A Timeline e a Hierarquia abrem com o Herói seleccionado (`=1`), ou com o Inimigo e o ▾ da
-//! Timeline aberto (`=2`: «Animation: Scene» e «Add animation to Inimigo»).
+//! Timeline aberto (`=2`: «Animation: Scene» e «Add animation to Inimigo»). `=4` (onda 5): o Herói
+//! com uma Signal Action «Play Clip» — o parâmetro é o ▾ com «andar» e «pular» — e a «Bandeira»,
+//! uma sprite com SKEW cuja caixa de gizmo é o paralelogramo desenhado.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
@@ -61,6 +63,18 @@ impl crate::App {
             ))
             .id()
             .to_bits();
+        if nivel == "4" {
+            world.entity_mut(heroi).insert(ph2d_ecs::SignalActions(vec![ph2d_ecs::SignalAction {
+                on: "pulo".into(),
+                verb: ph2d_ecs::SignalVerb::PlayClip,
+                arg: "pular".into(),
+                ..Default::default()
+            }]));
+            let mut torta = Transform::from_translation(Vec2::new(0.5, -2.0));
+            torta.skew_x = 0.5;
+            torta.rotation = 0.3;
+            world.spawn((torta, sprite(2.0, 1.0, [0.2, 0.7, 0.4, 1.0]), Name::new("Bandeira")));
+        }
         let heroi = heroi.to_bits();
 
         let doc = &mut self.timeline.doc;

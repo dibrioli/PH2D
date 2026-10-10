@@ -124,7 +124,8 @@ ponta (a 1.ª foto tinha-a — §1).
    Faça uma seta, clique no vazio, e desenhe traços livres e formas: nenhum nasce com ponta. Escolher
    uma ponta no painel (End) com nada selecionado arma-a para os traços seguintes, como antes.
 
-**Smoke do dono (10/10, 2.ª volta): OK** — depois da correção das pontas armadas. Integração ainda NÃO.
+**Smoke do dono (10/10, 2.ª volta): OK** — depois da correção das pontas armadas. Integração ainda NÃO. Próxima janela
+(escolha do dono): **F7e — «Edit Shape»**, prompt [`09_prompt_F7e_edit_shape.md`](../vetor_nova_ui/09_prompt_F7e_edit_shape.md).
 
 ## §7 — O que fica ABERTO
 

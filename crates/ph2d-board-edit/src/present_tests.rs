@@ -111,3 +111,16 @@ fn the_travel_matches_the_measured_points() {
     );
     assert!((mid.center_x - 100.0 * k).abs() < 1e-9);
 }
+
+/// ⭐ P3 — a margem é do lado que LIMITA: um frame largo numa área alta encaixa pela largura, com
+/// 0,8 % dela (auditoria W8).
+#[test]
+fn the_margin_is_of_the_limiting_side() {
+    let (set, [_, _, _, three]) = board();
+    let b = &set.boards()[0];
+    let area = [0.0, 0.0, 1000.0, 2000.0];
+    let c = slide_camera(b, three, area).unwrap();
+    let w = 400.0 * c.zoom;
+    assert!((w - (1000.0 - 2.0 * 1000.0 * SLIDE_MARGIN)).abs() < 1e-9, "{w}");
+    assert_eq!(travel(f64::NAN), 0.0);
+}

@@ -163,12 +163,12 @@ pub(super) fn version_click(hero: &mut HeroScreen, h: Hit, n: usize, double: boo
     };
     match h {
         Hit::Restore(_) => match hero.documents.restore_version(id, n) {
-            Ok(new) => {
+            Some(new) => {
                 super::super::super::document_tabs::register_board(&mut hero.store, new);
                 hero.documents.live.team.versions_open = false;
                 super::notice(hero, "board.version.restored");
             }
-            Err(_) => super::notice(hero, "board.version.unreadable"),
+            None => super::notice(hero, "board.version.unreadable"),
         },
         Hit::DropVersion(_) => {
             if let Some(b) = hero.documents.active_board_mut()

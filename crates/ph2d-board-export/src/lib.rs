@@ -104,11 +104,18 @@ pub fn selection_page(board: &Board, routes: &RouteCache, selection: &[ElementId
     })
 }
 
-/// E4 — as páginas do PDF: um frame por página — os frames de TOPO seleccionados, senão os
-/// diapositivos (a ordem do painel, sem os escondidos); sem frames, a selecção ou o quadro.
+/// E4 — as páginas do PDF: um frame por página. Sem selecção, os diapositivos (a ordem do painel,
+/// sem os escondidos), senão o quadro numa página; com selecção, os frames de TOPO dela, senão a
+/// caixa dela numa página (a auditoria W8 viu a selecção de uma nota exportar o deck inteiro).
 #[must_use]
 pub fn pdf_pages(board: &Board, routes: &RouteCache, selection: &[ElementId]) -> Vec<Page> {
-    let slides = ph2d_board_edit::slides(board);
+    if selection.is_empty() {
+        let slides = ph2d_board_edit::slides(board);
+        if slides.is_empty() {
+            return board_page(board, routes).into_iter().collect();
+        }
+        return slides.into_iter().filter_map(|id| frame_page(board, id)).collect();
+    }
     let chosen: Vec<ElementId> = board
         .doc
         .frames_in_panel_order()
@@ -116,16 +123,10 @@ pub fn pdf_pages(board: &Board, routes: &RouteCache, selection: &[ElementId]) ->
         .filter(|f| f.frame.is_none() && selection.contains(&f.id))
         .map(|f| f.id)
         .collect();
-    let frames = if chosen.is_empty() { slides } else { chosen };
-    if frames.is_empty() {
-        let page = if selection.is_empty() {
-            board_page(board, routes)
-        } else {
-            selection_page(board, routes, selection)
-        };
-        return page.into_iter().collect();
+    if chosen.is_empty() {
+        return selection_page(board, routes, selection).into_iter().collect();
     }
-    frames
+    chosen
         .into_iter()
         .filter_map(|id| frame_page(board, id))
         .collect()

@@ -73,6 +73,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.io.exported" => "Exported to {file}",
         "board.io.export_failed" => "Could not export: {error}",
         "board.io.nothing" => "Nothing to export",
+        "board.io.no_gpu" => "PNG needs the graphics card, and none is available",
         "board.io.imported" => "Opened {name}: {n} elements",
         "board.io.skipped" => "Skipped (boards don't have these yet): {list}",
         "board.io.import_failed" => "Could not open: {error}",

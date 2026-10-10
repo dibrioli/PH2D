@@ -170,7 +170,8 @@ fn a_version_restores_as_a_new_board_beside_and_leaves_the_original() {
     BoardOp::Delete(id).apply(&mut b.doc);
     let v = &b.team.versions[0];
     assert_eq!((v.name.as_str(), v.at), ("v1", 42));
-    let (doc, sketch) = v.read().unwrap();
+    let saved = v.read().unwrap();
+    let (doc, sketch) = (saved.doc, saved.sketch);
     assert!(sketch);
     assert_eq!(doc.get(id).unwrap().shape().unwrap().text.as_str(), "ideia");
     let tail = set.create("Tail".into());
@@ -260,3 +261,31 @@ fn a_format_7_file_still_opens_with_no_team() {
 
 /// Gravados pelo build do formato 7 (`74e5b7163`).
 const V7_BYTES: &[u8] = include_bytes!("../fixtures/format_v7.bin");
+
+/// ⭐ R4/P1 — «não apresentar» é documento: a versão leva-o (a auditoria W8 viu a restaurada voltar a
+/// apresentar o frame escondido).
+#[test]
+fn a_version_keeps_the_frames_hidden_from_the_presentation() {
+    let mut set = BoardSet::default();
+    let (a, id) = note(&mut set);
+    let b = set.get_mut(a).unwrap();
+    b.team.set_slide_hidden(id, true);
+    b.save_version("v".into(), 0);
+    let saved = b.team.versions[0].read().unwrap();
+    assert!(saved.team.hidden_slides.contains(&id));
+    assert!(saved.team.threads.is_empty() && saved.team.versions.is_empty());
+}
+
+/// ⭐ Os ids de GRUPO partilham o contador dos elementos: um elemento posto com um grupo (a leitura de
+/// um ficheiro, uma colagem) sobe o contador acima dele — senão o próximo grupo cunhado juntava-se ao
+/// importado (auditoria W8).
+#[test]
+fn a_put_group_raises_the_counter_past_it() {
+    let mut set = BoardSet::default();
+    let (a, id) = note(&mut set);
+    let b = set.get_mut(a).unwrap();
+    let mut el = b.doc.get(id).unwrap().clone();
+    el.groups_mut().push(crate::GroupId(50));
+    BoardOp::Put(el).apply(&mut b.doc);
+    assert!(b.doc.mint_group().0 > 50);
+}

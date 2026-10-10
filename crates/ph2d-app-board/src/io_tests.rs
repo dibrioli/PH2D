@@ -176,7 +176,7 @@ fn png_without_a_gpu_and_an_empty_board_refuse_with_a_reason() {
         &mut ts,
         &d.join("b.png"),
     );
-    assert_eq!(e, Err("no GPU".to_owned()));
+    assert_eq!(e, Err(tr("board.io.no_gpu").to_owned()));
     let mut set = BoardSet::default();
     let a = set.create("Empty".into());
     let empty = set.get(a).unwrap().clone();
@@ -196,4 +196,43 @@ fn png_without_a_gpu_and_an_empty_board_refuse_with_a_reason() {
 fn file_names_lose_the_slashes() {
     assert_eq!(file_stem("Q1/Q2: plan"), "Q1_Q2_ plan");
     assert_eq!(file_stem("   "), "board");
+}
+
+/// ⭐ E5 — sem frames, o link vale na MESMA página (PDF e SVG); e dois frames com o mesmo nome dão dois
+/// ficheiros (auditoria W8).
+#[test]
+fn links_work_on_one_page_and_frame_names_never_collide() {
+    let d = dir("links");
+    let mut ts = TextSystem::without_system_fonts();
+    let mut b = board();
+    // Sem frames: as formas soltas, o link entre elas.
+    let frames: Vec<_> = b.doc.live().filter(|e| e.as_frame().is_some()).map(|e| e.id).collect();
+    for f in &frames {
+        let kids: Vec<_> = b.doc.live().filter(|e| e.frame == Some(*f)).cloned().collect();
+        for mut k in kids {
+            k.frame = None;
+            BoardOp::Put(k).apply(&mut b.doc);
+        }
+        BoardOp::Delete(*f).apply(&mut b.doc);
+    }
+    let pdf_path = d.join("one.pdf");
+    write_export(&b, choice(Format::Pdf, Scope::Board), &[], None, &mut ts, &pdf_path).unwrap();
+    let text = String::from_utf8_lossy(&std::fs::read(&pdf_path).unwrap()).into_owned();
+    assert_eq!(text.matches("/Subtype /Link").count(), 1, "o link na mesma página");
+    let svg_path = d.join("one.svg");
+    write_export(&b, choice(Format::Svg, Scope::Board), &[], None, &mut ts, &svg_path).unwrap();
+    assert!(std::fs::read_to_string(&svg_path).unwrap().contains("<a xlink:href=\"#link0\">"));
+    // Dois frames com o mesmo nome.
+    let mut twin = board();
+    let ids: Vec<_> = twin.doc.live().filter(|e| e.as_frame().is_some()).map(|e| e.id).collect();
+    for f in ids {
+        let mut el = twin.doc.get(f).unwrap().clone();
+        if let ph2d_board_model::ElementKind::Frame(fr) = &mut el.kind {
+            fr.name = "Plan".into();
+        }
+        BoardOp::Put(el).apply(&mut twin.doc);
+    }
+    let files = write_export(&twin, choice(Format::Svg, Scope::Frames), &[], None, &mut ts, &d.join("t.svg")).unwrap();
+    let names: Vec<String> = files.iter().map(|p| display(p)).collect();
+    assert_eq!(names, ["t-Plan.svg", "t-Plan-2.svg"]);
 }

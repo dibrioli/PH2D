@@ -302,14 +302,14 @@ fn edits_made_in_excalidraw_come_back() {
     els[i]["x"] = serde_json::json!(350.0);
     let i = find(els, "ph2d-3-text");
     els[i]["originalText"] = serde_json::json!("Fast builds");
-    let i = find(els, "ph2d-6");
+    let i = find(els, "ph2d-9");
     els[i]["backgroundColor"] = serde_json::json!("#ffc9c9");
     let mut copy = els[i].clone();
     copy["id"] = serde_json::json!("copy1");
     copy["x"] = serde_json::json!(400.0);
     copy["boundElements"] = serde_json::json!([]);
     els.push(copy);
-    let i = find(els, "ph2d-10");
+    let i = find(els, "ph2d-13");
     els[i]["isDeleted"] = serde_json::json!(true);
     let back = read(&serde_json::to_string(&file).unwrap()).unwrap();
     let doc = &back.doc;
@@ -322,7 +322,7 @@ fn edits_made_in_excalidraw_come_back() {
         "continua nota"
     );
     assert_eq!((note.votes(), note.tags().len()), (3, 1));
-    let ell = doc.get(ElementId(6)).unwrap();
+    let ell = doc.get(ElementId(9)).unwrap();
     assert_eq!(
         ell.shape().unwrap().style.fill,
         Some(Rgba([0xff, 0xc9, 0xc9, 255]))
@@ -332,7 +332,7 @@ fn edits_made_in_excalidraw_come_back() {
         .filter(|e| e.shape().is_some_and(|s| s.kind == ShapeType::Ellipse))
         .collect();
     assert_eq!(copies.len(), 2, "a cópia entrou");
-    let c = copies.iter().find(|e| e.id != ElementId(6)).unwrap();
+    let c = copies.iter().find(|e| e.id != ElementId(9)).unwrap();
     // O id do traço apagado (10) está livre no quadro novo: a cópia pode tê-lo — o que conta é ser ÚNICO.
     assert_eq!(c.x, 400.0, "no sítio dela");
     assert_eq!(
@@ -345,4 +345,67 @@ fn edits_made_in_excalidraw_come_back() {
         "o traço apagado não entra"
     );
     assert!(back.skipped.is_empty());
+}
+
+fn edited(f: impl FnOnce(&mut Vec<serde_json::Value>)) -> Import {
+    let mut file: serde_json::Value = serde_json::from_str(RESTORED).unwrap();
+    f(file["elements"].as_array_mut().unwrap());
+    read(&serde_json::to_string(&file).unwrap()).unwrap()
+}
+
+fn at(els: &[serde_json::Value], id: &str) -> usize {
+    els.iter().position(|e| e["id"] == id).unwrap()
+}
+
+/// ⭐ X2 — uma cópia de uma forma que viaja como `line` (o cilindro), feita LÁ com o texto mudado, fica
+/// com o SEU texto e o original com o dele (a auditoria W8 viu-os trocados pelo `text_of` herdado).
+#[test]
+fn a_copy_of_a_line_shape_keeps_its_own_text() {
+    let imp = edited(|els| {
+        let (l, t) = (at(els, "ph2d-8"), at(els, "ph2d-8-text"));
+        let (mut line, mut text) = (els[l].clone(), els[t].clone());
+        line["id"] = serde_json::json!("copyline");
+        line["x"] = serde_json::json!(line["x"].as_f64().unwrap() + 500.0);
+        line["groupIds"] = serde_json::json!(["fresh-group"]);
+        text["id"] = serde_json::json!("copytext");
+        text["originalText"] = serde_json::json!("Copy");
+        text["text"] = serde_json::json!("Copy");
+        text["groupIds"] = serde_json::json!(["fresh-group"]);
+        els.push(line);
+        els.push(text);
+    });
+    let cyl: Vec<String> = imp
+        .doc
+        .live_in_z_order()
+        .iter()
+        .filter_map(|e| e.shape().filter(|s| s.kind == ShapeType::Cylinder).map(|s| s.text.as_str().to_owned()))
+        .collect();
+    assert_eq!(cyl, ["DB", "Copy"]);
+}
+
+/// ⭐ X2 — o tracejado e os cantos mudados lá voltam; um redimensionar de uma forma `line` escala-a;
+/// pontos novos numa RECTA são pontos de ajuste; e a opacidade fora de faixa é a de nascença (100).
+#[test]
+fn style_resize_and_straight_points_edited_there_come_back() {
+    let imp = edited(|els| {
+        let r = at(els, "ph2d-4");
+        els[r]["strokeStyle"] = serde_json::json!("dotted");
+        els[r]["roundness"] = serde_json::Value::Null;
+        let l = at(els, "ph2d-8");
+        let w = els[l]["width"].as_f64().unwrap();
+        els[l]["width"] = serde_json::json!(w * 2.0);
+        let a = at(els, "ph2d-12");
+        let pts = els[a]["points"].as_array().unwrap().clone();
+        let last = pts.last().unwrap().clone();
+        els[a]["points"] = serde_json::json!([pts[0], [last[0].as_f64().unwrap() / 2.0, 0.0], last]);
+        let e = at(els, "ph2d-9");
+        els[e]["opacity"] = serde_json::json!(-5);
+    });
+    let doc = &imp.doc;
+    let rect = doc.get(ElementId(4)).unwrap().shape().unwrap();
+    assert_eq!(rect.style.dash, ph2d_board_model::Dash::Dotted);
+    assert!(!rect.style.round, "os cantos tirados lá");
+    assert!((doc.get(ElementId(8)).unwrap().w - 240.0).abs() < 1.0, "o cilindro escalou: {}", doc.get(ElementId(8)).unwrap().w);
+    assert_eq!(doc.get(ElementId(12)).unwrap().connector().unwrap().waypoints.len(), 1, "o ponto novo");
+    assert_eq!(doc.get(ElementId(9)).unwrap().style().opacity, 100);
 }

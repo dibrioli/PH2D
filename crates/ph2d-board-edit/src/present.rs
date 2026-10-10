@@ -42,7 +42,11 @@ pub fn first_slide(board: &Board, slides: &[ElementId], selection: &[ElementId])
 pub fn slide_camera(board: &Board, frame: ElementId, area: Area) -> Option<Camera> {
     let f = board.doc.get(frame)?;
     let mut c = board.camera;
-    let margin = area[2].min(area[3]) * SLIDE_MARGIN;
+    // A margem é do lado que LIMITA o encaixe (o GIF: o 16:9 encaixa pela altura, 7 de 853) — um
+    // frame mais largo que a área encaixa pela largura (auditoria W8: o lado curto da janela dava 8,6 px
+    // onde a lei dá 15,4).
+    let wide = f.w * area[3] >= f.h * area[2];
+    let margin = if wide { area[2] } else { area[3] } * SLIDE_MARGIN;
     c.fit(area, [f.x, f.y, f.x + f.w, f.y + f.h], margin);
     Some(c)
 }
@@ -50,7 +54,8 @@ pub fn slide_camera(board: &Board, frame: ElementId, area: Area) -> Option<Camer
 /// P5 — quanto da viagem já se fez ao fim de `t` segundos (`0..=1`).
 #[must_use]
 pub fn travel(t: f64) -> f64 {
-    if !(t > 0.0) {
+    // Um relógio parado, para trás, ou NaN: ainda não andou.
+    if t.is_nan() || t <= 0.0 {
         return 0.0;
     }
     1.0 - (1.0 - (t / TRAVEL_SECS).min(1.0)).powf(TRAVEL_POWER)

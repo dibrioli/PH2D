@@ -153,6 +153,13 @@ fn pdf_pages_are_the_slides_or_the_selected_frames() {
         pdf_pages(set.get(id).unwrap(), &r, &[f2, note])[0].frame,
         Some(f2)
     );
+    // A selecção SEM frames de topo é a caixa dela numa página — nunca o deck (auditoria W8).
+    let only_note = pdf_pages(set.get(id).unwrap(), &r, &[note]);
+    assert_eq!((only_note.len(), only_note[0].frame), (1, None));
+    assert_eq!(
+        only_note[0].rect,
+        [40.0 - PAD, 40.0 - PAD, 239.0 + PAD, 239.0 + PAD]
+    );
     set.get_mut(id).unwrap().team.set_slide_hidden(f1, true);
     assert_eq!(pdf_pages(set.get(id).unwrap(), &r, &[]).len(), 1);
     let mut bare = BoardSet::default();
@@ -298,4 +305,42 @@ fn svg_and_pdf_carry_the_text() {
     let text = String::from_utf8_lossy(&bytes);
     let pages = text.matches("/Type /Page").count() - text.matches("/Type /Pages").count();
     assert_eq!(pages, 2, "uma página por frame");
+}
+
+/// ⭐ E5 — o SVG é XML mesmo com caracteres de controlo no texto (um `.excalidraw` importado pode
+/// trazê-los), e uma ligação vira `<a>` para uma `<view>` com a caixa do alvo.
+#[test]
+fn svg_stays_xml_and_carries_links() {
+    assert_eq!(svg::escape("a\u{1}b<&\""), "a b&lt;&amp;&quot;");
+    let s = svg::write_linked(&[], [100.0, 50.0], &[([1.0, 2.0, 11.0, 12.0], [50.0, 0.0, 90.0, 40.0])]);
+    assert!(s.contains("<view id=\"link0\" viewBox=\"50 0 40 40\"/>"));
+    assert!(s.contains("<a xlink:href=\"#link0\"><rect x=\"1\" y=\"2\" width=\"10\" height=\"10\""));
+    assert!(s.contains("xmlns:xlink"));
+}
+
+/// ⭐ O PDF cresce com o NÚMERO de objectos translúcidos, nunca com o quadrado dele: cada grupo de
+/// transparência declara só os recursos que usa (auditoria W8: com o dicionário inteiro em cada grupo,
+/// 500 → 5,2 MB e 2 000 → 85 MB).
+#[test]
+fn the_pdf_grows_linearly_with_faded_objects() {
+    let size_for = |n: usize| {
+        let mut set = BoardSet::default();
+        let a = set.create("Faded".into());
+        let b = set.get_mut(a).unwrap();
+        for i in 0..n {
+            let id = shape(b, ShapeType::Rectangle, "abc", [(i % 40) as f64 * 60.0, (i / 40) as f64 * 60.0, 50.0, 40.0], None);
+            let mut el = b.doc.get(id).unwrap().clone();
+            el.style_mut().opacity = 50;
+            BoardOp::Put(el).apply(&mut b.doc);
+        }
+        let b = set.get(a).unwrap().clone();
+        let mut r = RouteCache::default();
+        r.sync(&b.doc);
+        let mut ts = TextSystem::without_system_fonts();
+        let (mut s, size) = paint_page(&b, &board_page(&b, &r).unwrap(), 1.0, None, true, &mut ts);
+        let ops = s.take_record();
+        pdf::write(&[pdf::PdfPage { ops: &ops, size, links: Vec::new() }]).len() as f64
+    };
+    let (small, big) = (size_for(200), size_for(800));
+    assert!(big / small < 6.0, "4× os objectos deu {:.1}× os bytes", big / small);
 }

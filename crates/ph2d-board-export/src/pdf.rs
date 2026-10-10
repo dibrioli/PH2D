@@ -4,7 +4,7 @@
 //! e uma camada invisível: a busca e a cópia), a sombra das notas como uma máscara de desfoque
 //! gaussiano, e os links do W5 como ligações entre páginas. 1 px da gravação = 1 pt.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write as _;
 
 use pdf_writer::types::{
@@ -15,12 +15,20 @@ use ph2d_vector::{Affine, BezPath, Brush, Cap, Color, DrawOp, Fill, Join, PathEl
 
 use crate::glyphs::Glyphs;
 
-/// Uma página: a gravação, o tamanho em px (= pt) e as ligações (a caixa em px, de cima, e a página
-/// de destino).
+/// Uma ligação (E5): a caixa do elemento em px da página (de cima), a página do alvo e o canto de
+/// cima à esquerda do alvo em px DESSA página.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Link {
+    pub rect: [f64; 4],
+    pub page: usize,
+    pub at: [f64; 2],
+}
+
+/// Uma página: a gravação, o tamanho em px (= pt) e as ligações.
 pub struct PdfPage<'a> {
     pub ops: &'a [DrawOp],
     pub size: [f64; 2],
-    pub links: Vec<([f64; 4], usize)>,
+    pub links: Vec<Link>,
 }
 
 #[allow(clippy::cast_possible_truncation)]
@@ -144,9 +152,13 @@ struct Doc {
     next: i32,
     alphas: BTreeMap<u8, (String, Ref)>,
     masks: BTreeMap<(u64, u64, u64, [u8; 4]), (String, Ref)>,
-    /// Os grupos de transparência por escrever (ref, conteúdo, tamanho da página).
-    forms: Vec<(Ref, Vec<u8>, [f64; 2])>,
-    form_names: Vec<(String, Ref)>,
+    /// Os grupos de transparência por escrever (ref, conteúdo, tamanho da página, os nomes que usam).
+    forms: Vec<(Ref, Vec<u8>, [f64; 2], BTreeSet<String>)>,
+    /// O objecto de cada nome de recurso (estados de alfa, máscaras, grupos, glifos): ⛔ cada conteúdo
+    /// declara SÓ os nomes que usa — com o dicionário inteiro em cada grupo, N objectos translúcidos
+    /// davam N grupos × N entradas (auditoria W8: 2 000 rectângulos a 50 % = 85 MB).
+    refs: BTreeMap<String, Ref>,
+    groups: usize,
     glyphs: Glyphs,
     /// O XObject de cada contorno de glifo já escrito (índice da cache → nome).
     glyph_forms: BTreeMap<usize, String>,
@@ -167,6 +179,7 @@ impl Doc {
         if !self.alphas.contains_key(&key) {
             let r = self.id();
             self.alphas.insert(key, (format!("A{key}"), r));
+            self.refs.insert(format!("A{key}"), r);
         }
         Some(self.alphas[&key].0.clone())
     }
@@ -195,7 +208,7 @@ impl Doc {
         form.finish();
         let name = format!("H{i}");
         self.glyph_forms.insert(i, name.clone());
-        self.form_names.push((name.clone(), r));
+        self.refs.insert(name.clone(), r);
         name
     }
 
@@ -230,14 +243,26 @@ impl Doc {
         sm.finish();
         let name = format!("M{}", self.masks.len());
         self.masks.insert(key, (name.clone(), img));
+        self.refs.insert(name.clone(), img);
         name
     }
 }
 
-/// Uma camada aberta: o conteúdo dela e, se é um grupo (alfa < 1), o alfa.
+/// Uma camada aberta: o conteúdo dela, se é um grupo (alfa < 1) o alfa, e os nomes que ela usa.
 struct Open {
     content: Content,
     group: Option<f32>,
+    used: BTreeSet<String>,
+}
+
+impl Open {
+    fn new(group: Option<f32>) -> Self {
+        Self {
+            content: Content::new(),
+            group,
+            used: BTreeSet::new(),
+        }
+    }
 }
 
 fn stroke_style(c: &mut Content, st: &Stroke) {
@@ -258,11 +283,8 @@ fn stroke_style(c: &mut Content, st: &Stroke) {
     }
 }
 
-fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
-    let mut stack = vec![Open {
-        content: Content::new(),
-        group: None,
-    }];
+fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> (Vec<u8>, BTreeSet<String>) {
+    let mut stack = vec![Open::new(None)];
     // Cada camada aberta: `Some(alfa)` = um grupo (um conteúdo novo na pilha); `None` = só o recorte.
     let mut levels: Vec<Option<f32>> = Vec::new();
     // O PDF sobe; a gravação desce: vira-se uma vez, e 1 px = 1 pt.
@@ -278,8 +300,9 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                 path: p,
             } => {
                 let a = doc.alpha(rgb(solid(brush)).1);
-                let c = &mut stack.last_mut().expect("a página").content;
-                fill(c, p, *rule, *transform, solid(brush), a.as_deref());
+                let top = stack.last_mut().expect("a página");
+                top.used.extend(a.clone());
+                fill(&mut top.content, p, *rule, *transform, solid(brush), a.as_deref());
             }
             DrawOp::Stroke {
                 style,
@@ -289,7 +312,9 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
             } => {
                 let ([r, g, b], a) = rgb(solid(brush));
                 let a = doc.alpha(a);
-                let c = &mut stack.last_mut().expect("a página").content;
+                let top = stack.last_mut().expect("a página");
+                top.used.extend(a.clone());
+                let c = &mut top.content;
                 c.save_state();
                 cm(c, *transform);
                 c.set_stroke_rgb(r, g, b);
@@ -318,10 +343,7 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                 }
                 c.end_path();
                 if *alpha < 1.0 {
-                    stack.push(Open {
-                        content: Content::new(),
-                        group: Some(*alpha),
-                    });
+                    stack.push(Open::new(Some(*alpha)));
                     levels.push(Some(*alpha));
                 } else {
                     levels.push(None);
@@ -336,11 +358,15 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                     let open = stack.pop().expect("o grupo");
                     let body = open.content.finish().to_vec();
                     let r = doc.id();
-                    doc.forms.push((r, body, size));
-                    let name = format!("G{}", doc.form_names.len());
-                    doc.form_names.push((name.clone(), r));
+                    doc.forms.push((r, body, size, open.used));
+                    let name = format!("G{}", doc.groups);
+                    doc.groups += 1;
+                    doc.refs.insert(name.clone(), r);
                     let a = open.group.and_then(|g| doc.alpha(g));
-                    let c = &mut stack.last_mut().expect("a página").content;
+                    let top = stack.last_mut().expect("a página");
+                    top.used.extend(a.clone());
+                    top.used.insert(name.clone());
+                    let c = &mut top.content;
                     if let Some(a) = &a {
                         c.set_parameters(Name(a.as_bytes()));
                     }
@@ -353,7 +379,11 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                 let names: Vec<String> = placed.iter().map(|(i, _)| doc.glyph_form(*i)).collect();
                 let ([r, g, b], alpha) = rgb(run.brush);
                 let a = doc.alpha(alpha);
-                let c = &mut stack.last_mut().expect("a página").content;
+                let top = stack.last_mut().expect("a página");
+                top.used.extend(a.clone());
+                top.used.extend(names.iter().cloned());
+                top.used.insert("F0".to_owned());
+                let c = &mut top.content;
                 c.begin_marked_content_with_properties(Name(b"Span"))
                     .properties()
                     .actual_text(TextStr(&run.text));
@@ -395,7 +425,9 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                 let k = 3.0 * std_dev;
                 let (x0, y0) = (rect.x0 - k, rect.y0 - k);
                 let (w, h) = (rect.width() + 2.0 * k, rect.height() + 2.0 * k);
-                let c = &mut stack.last_mut().expect("a página").content;
+                let top = stack.last_mut().expect("a página");
+                top.used.insert(name.clone());
+                let c = &mut top.content;
                 c.save_state();
                 cm(c, *transform);
                 // O quadrado unitário da imagem sobe; aqui desce: a linha 0 da máscara fica em cima.
@@ -406,7 +438,8 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
         }
     }
     debug_assert!(levels.is_empty(), "camada por fechar");
-    stack.pop().expect("a página").content.finish().to_vec()
+    let page = stack.swap_remove(0);
+    (page.content.finish().to_vec(), page.used)
 }
 
 fn fill(c: &mut Content, p: &BezPath, rule: Fill, t: Affine, color: Color, alpha: Option<&str>) {
@@ -438,7 +471,8 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
         alphas: BTreeMap::new(),
         masks: BTreeMap::new(),
         forms: Vec::new(),
-        form_names: Vec::new(),
+        refs: BTreeMap::new(),
+        groups: 0,
         glyphs: Glyphs::default(),
         glyph_forms: BTreeMap::new(),
     };
@@ -464,32 +498,37 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
             .non_stroking_alpha(a)
             .stroking_alpha(a);
     }
-    let alphas: Vec<(String, Ref)> = doc.alphas.values().cloned().collect();
-    let mut xobjects: Vec<(String, Ref)> = doc.masks.values().cloned().collect();
-    xobjects.extend(doc.form_names.iter().cloned());
-    let resources = |res: &mut pdf_writer::writers::Resources<'_>| {
+    let refs = std::mem::take(&mut doc.refs);
+    // Os recursos de UM conteúdo: só os nomes que ele usa.
+    let resources = |res: &mut pdf_writer::writers::Resources<'_>, used: &BTreeSet<String>| {
         let mut g = res.ext_g_states();
-        for (n, r) in &alphas {
-            g.pair(Name(n.as_bytes()), *r);
+        for n in used.iter().filter(|n| n.starts_with('A')) {
+            if let Some(r) = refs.get(n) {
+                g.pair(Name(n.as_bytes()), *r);
+            }
         }
         g.finish();
         let mut x = res.x_objects();
-        for (n, r) in &xobjects {
-            x.pair(Name(n.as_bytes()), *r);
+        for n in used.iter().filter(|n| !n.starts_with('A') && *n != "F0") {
+            if let Some(r) = refs.get(n) {
+                x.pair(Name(n.as_bytes()), *r);
+            }
         }
         x.finish();
-        res.fonts().pair(Name(b"F0"), font);
+        if used.contains("F0") {
+            res.fonts().pair(Name(b"F0"), font);
+        }
     };
-    for (r, body, [w, h]) in std::mem::take(&mut doc.forms) {
+    for (r, body, [w, h], used) in std::mem::take(&mut doc.forms) {
         let packed = deflate(&body);
         let mut form = doc.pdf.form_xobject(r, &packed);
         form.filter(Filter::FlateDecode);
         form.bbox(Rect::new(0.0, 0.0, f(w), f(h)));
         form.group().transparency();
-        resources(&mut form.resources());
+        resources(&mut form.resources(), &used);
         form.finish();
     }
-    for (i, (p, body)) in pages.iter().zip(contents).enumerate() {
+    for (i, (p, (body, used))) in pages.iter().zip(contents).enumerate() {
         let content = doc.id();
         let annots: Vec<Ref> = p.links.iter().map(|_| doc.id()).collect();
         let [w, h] = p.size;
@@ -498,23 +537,26 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
         page.parent(tree);
         page.contents(content);
         page.annotations(annots.iter().copied());
-        resources(&mut page.resources());
+        resources(&mut page.resources(), &used);
         page.finish();
         let packed = deflate(&body);
         doc.pdf.stream(content, &packed).filter(Filter::FlateDecode);
-        for (a, (bx, to)) in annots.iter().zip(&p.links) {
-            let Some(&dest) = page_ids.get(*to) else {
+        for (a, l) in annots.iter().zip(&p.links) {
+            let (Some(&dest), Some(target)) = (page_ids.get(l.page), pages.get(l.page)) else {
                 continue;
             };
+            let bx = l.rect;
             let mut an = doc.pdf.annotation(*a);
             an.subtype(AnnotationType::Link);
             an.rect(Rect::new(f(bx[0]), f(h - bx[3]), f(bx[2]), f(h - bx[1])));
             an.border(0.0, 0.0, 0.0, None);
+            // Para o sítio do alvo (na mesma página ou noutra), com o zoom de quem lê.
+            let top = target.size[1] - l.at[1];
             an.action()
                 .action_type(ActionType::GoTo)
                 .destination()
                 .page(dest)
-                .fit();
+                .xyz(f(l.at[0]), f(top), None);
         }
     }
     doc.pdf.finish()

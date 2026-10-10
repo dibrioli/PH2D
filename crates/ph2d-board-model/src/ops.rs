@@ -34,6 +34,11 @@ impl BoardOp {
                     .map_or(el.version, |p| p.version.max(el.version))
                     + 1;
                 doc.next_id = doc.next_id.max(el.id.0);
+                // Os ids de grupo partilham o contador (`mint_group`): um grupo que chega com o elemento
+                // (um ficheiro lido, uma colagem) também o sobe.
+                if let Some(g) = el.groups().iter().map(|g| g.0).max() {
+                    doc.next_id = doc.next_id.max(g);
+                }
                 if doc.top_z.as_ref().is_none_or(|t| el.z > *t) {
                     doc.top_z = Some(el.z.clone());
                 }

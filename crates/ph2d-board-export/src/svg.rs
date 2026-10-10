@@ -88,8 +88,15 @@ fn solid(b: &Brush) -> Color {
     }
 }
 
+/// O texto num atributo: os caracteres de controlo (que o XML não aceita — um `.excalidraw` importado
+/// pode trazê-los, auditoria W8) viram espaço, e os quatro especiais escapam-se.
 pub(crate) fn escape(s: &str) -> String {
-    s.replace('&', "&amp;")
+    let clean: String = s
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    clean
+        .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
@@ -126,10 +133,17 @@ fn stroke_attrs(st: &Stroke) -> String {
 /// ⭐ Escreve a página (`ops` gravadas por [`crate::paint_page`], `size` em px) em SVG.
 #[must_use]
 pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
+    write_linked(ops, size, &[])
+}
+
+/// [`write`] com as ligações (E5): cada `(caixa, alvo)` em px da página vira um `<a>` sobre a caixa
+/// para uma `<view>` com a caixa do alvo — a ligação interna do SVG 1.1.
+#[must_use]
+pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4])]) -> String {
     let mut glyphs = Glyphs::default();
     let [w, h] = size;
     let mut out = format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{0}\" height=\"{1}\" viewBox=\"0 0 {0} {1}\">\n",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{0}\" height=\"{1}\" viewBox=\"0 0 {0} {1}\">\n",
         num(w),
         num(h)
     );
@@ -207,7 +221,7 @@ pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
                 for (i, [x, y]) in placed {
                     let _ = write!(
                         out,
-                        "<use href=\"#g{i}\" x=\"{}\" y=\"{}\"/>",
+                        "<use xlink:href=\"#g{i}\" x=\"{}\" y=\"{}\"/>",
                         num(x),
                         num(y)
                     );
@@ -246,6 +260,20 @@ pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
                 );
             }
         }
+    }
+    for (i, (from, to)) in links.iter().enumerate() {
+        let _ = writeln!(
+            out,
+            "<view id=\"link{i}\" viewBox=\"{} {} {} {}\"/><a xlink:href=\"#link{i}\"><rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"#000000\" fill-opacity=\"0\"/></a>",
+            num(to[0]),
+            num(to[1]),
+            num(to[2] - to[0]),
+            num(to[3] - to[1]),
+            num(from[0]),
+            num(from[1]),
+            num(from[2] - from[0]),
+            num(from[3] - from[1])
+        );
     }
     out.push_str("</svg>\n");
     out

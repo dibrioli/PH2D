@@ -174,8 +174,7 @@ impl Documents {
         std::mem::take(&mut self.live.team.author_dirty).then(|| self.live.team.author.clone())
     }
 
-    /// X3 — um quadro novo à direita do activo (ou no fim) com o documento importado, já activo e
-    /// enquadrado.
+    /// X3 — um quadro novo no fim das abas com o documento importado, já activo e enquadrado.
     pub fn import_board(&mut self, name: String, doc: ph2d_board_model::BoardDoc) -> BoardId {
         let id = self.create(name);
         if let Some(b) = self.boards.get_mut(id) {
@@ -186,21 +185,21 @@ impl Documents {
     }
 
     /// R3 — restaura a versão `n` do quadro `id` como um quadro NOVO à direita dele, já activo.
-    /// `Err` = a versão não se lê.
-    ///
-    /// # Errors
-    /// Bytes corrompidos, ou de um formato que este build não lê.
-    pub fn restore_version(&mut self, id: BoardId, n: usize) -> Result<BoardId, String> {
-        let b = self.boards.get(id).ok_or("no board")?;
-        let v = b.team.versions.get(n).ok_or("no version")?;
-        let (doc, sketch) = v.read()?;
+    /// `None` = não há essa versão, ou ela não se lê (bytes corrompidos, ou de um formato que este
+    /// build não lê) — quem chama avisa.
+    pub fn restore_version(&mut self, id: BoardId, n: usize) -> Option<BoardId> {
+        let b = self.boards.get(id)?;
+        let v = b.team.versions.get(n)?;
+        let saved = v.read().ok()?;
         let name = format!("{} — {}", b.name, v.name);
         let new = self
             .boards
-            .insert_after(id, name, doc, sketch)
-            .ok_or("no board")?;
+            .insert_after(id, name, saved.doc, saved.sketch)?;
+        if let Some(r) = self.boards.get_mut(new) {
+            r.team.hidden_slides = saved.team.hidden_slides;
+        }
         self.activate(Some(new));
         self.live.nav.fit_pending = true;
-        Ok(new)
+        Some(new)
     }
 }

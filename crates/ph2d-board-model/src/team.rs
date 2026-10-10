@@ -220,7 +220,7 @@ impl Team {
     }
 }
 
-/// O que se guarda de um quadro numa versão: o documento e o rascunho (R4) — nunca a equipa.
+/// O que se guarda de um quadro numa versão: o documento, o rascunho e «não apresentar» (R4).
 #[derive(Serialize)]
 struct BoardRef<'a> {
     id: crate::BoardId,
@@ -244,14 +244,19 @@ struct SetRef<'a> {
 impl Board {
     /// Guarda uma versão (R1) com `name` e o instante `at`. ⚠️ Comprime: 14,5 ms a 100 mil elementos.
     pub fn save_version(&mut self, name: String, at: i64) {
-        let empty = Team::default();
+        // R4/P1 — a versão leva o documento, o rascunho e «não apresentar» (é do documento); nunca os
+        // comentários nem as outras versões.
+        let kept = Team {
+            hidden_slides: self.team.hidden_slides.clone(),
+            ..Team::default()
+        };
         let one = [BoardRef {
             id: self.id,
             name: &self.name,
             camera: crate::Camera::default(),
             doc: &self.doc,
             sketch: self.sketch,
-            team: &empty,
+            team: &kept,
         }];
         let set = SetRef {
             version: crate::FORMAT_VERSION,
@@ -269,11 +274,12 @@ impl Board {
 }
 
 impl Version {
-    /// O documento e o rascunho guardados (pelo leitor de TODOS os formatos).
+    /// O quadro guardado (o documento, o rascunho e os frames fora da apresentação), pelo leitor de
+    /// TODOS os formatos.
     ///
     /// # Errors
     /// Bytes corrompidos, ou de um formato que este build não lê.
-    pub fn read(&self) -> Result<(BoardDoc, bool), String> {
+    pub fn read(&self) -> Result<Board, String> {
         let mut z = flate2::write::DeflateDecoder::new(Vec::new());
         let raw = z
             .write_all(&self.bytes)
@@ -284,7 +290,7 @@ impl Version {
             .into_iter()
             .next()
             .ok_or("empty version")?;
-        Ok((b.doc, b.sketch))
+        Ok(b)
     }
 }
 

@@ -176,52 +176,84 @@ fn pages_of(b: &Board, routes: &RouteCache, c: ExportChoice, sel: &[ElementId]) 
     }
 }
 
-/// E5 — as ligações de cada página do PDF: um elemento com link (W5) cujo alvo vive noutra página.
-fn links(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], usize)> {
-    let page_of = |id: ElementId| {
-        let chain = b.doc.frame_chain(id);
-        pages
-            .iter()
-            .position(|p| p.frame.is_some_and(|f| f == id || chain.contains(&f)))
-    };
-    let p = &pages[i];
+/// A página onde `id` está: a do frame de topo que o contém, ou (páginas sem frame) a que contém o
+/// centro dele.
+fn page_of(b: &Board, pages: &[Page], id: ElementId) -> Option<usize> {
+    let chain = b.doc.frame_chain(id);
+    let c = b.doc.get(id)?.center();
+    pages.iter().position(|p| match p.frame {
+        Some(f) => f == id || chain.contains(&f),
+        None => (p.rect[0]..=p.rect[2]).contains(&c[0]) && (p.rect[1]..=p.rect[3]).contains(&c[1]),
+    })
+}
+
+/// A caixa de `id` em px da página `p` (a escala 1 do vector).
+fn on_page(b: &Board, p: &Page, id: ElementId) -> Option<[f64; 4]> {
+    let [x0, y0, x1, y1] = b.doc.get(id)?.aabb();
+    Some([x0 - p.rect[0], y0 - p.rect[1], x1 - p.rect[0], y1 - p.rect[1]])
+}
+
+/// ⭐ E5 — as ligações da página `i`: cada elemento com link (W5) cujo alvo está numa página exportada
+/// — a mesma ou outra (a auditoria W8 viu um quadro sem frames sair sem nenhuma): a caixa da origem
+/// em px desta página, a página do alvo e o alvo.
+fn link_pairs(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], usize, ElementId)> {
     b.doc
         .live()
+        .filter(|el| page_of(b, pages, el.id) == Some(i))
         .filter_map(|el| {
-            let to = page_of(el.link()?)?;
-            (page_of(el.id) == Some(i) && to != i).then(|| {
-                let [x0, y0, x1, y1] = el.aabb();
-                (
-                    [
-                        x0 - p.rect[0],
-                        y0 - p.rect[1],
-                        x1 - p.rect[0],
-                        y1 - p.rect[1],
-                    ],
-                    to,
-                )
+            let to = el.link()?;
+            let page = page_of(b, pages, to)?;
+            Some((on_page(b, &pages[i], el.id)?, page, to))
+        })
+        .collect()
+}
+
+/// As ligações do PDF (o alvo pelo canto de cima à esquerda na página dele).
+fn links(b: &Board, pages: &[Page], i: usize) -> Vec<pdf::Link> {
+    link_pairs(b, pages, i)
+        .into_iter()
+        .filter_map(|(rect, page, to)| {
+            let t = on_page(b, &pages[page], to)?;
+            Some(pdf::Link {
+                rect,
+                page,
+                at: [t[0], t[1]],
             })
         })
         .collect()
 }
 
-/// O caminho da imagem `k` de `n` (PNG/SVG de vários frames: o nome do frame no fim).
-fn nth_path(path: &Path, b: &Board, page: &Page, n: usize) -> PathBuf {
-    if n <= 1 {
-        return path.to_path_buf();
+/// Os caminhos das imagens (PNG/SVG de vários frames: o nome do frame no fim, e um número quando dois
+/// frames têm o mesmo nome — a auditoria W8 viu o 2.º escrever por cima do 1.º).
+fn page_paths(path: &Path, b: &Board, pages: &[Page]) -> Vec<PathBuf> {
+    if pages.len() <= 1 {
+        return vec![path.to_path_buf()];
     }
-    let name = page
-        .frame
-        .and_then(|f| b.doc.get(f))
-        .and_then(|f| f.as_frame().map(|x| x.name.clone()))
-        .unwrap_or_default();
     let stem = path
         .file_stem()
         .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
     let ext = path
         .extension()
         .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
-    path.with_file_name(format!("{stem}-{}.{ext}", file_stem(&name)))
+    let mut seen = std::collections::BTreeSet::new();
+    pages
+        .iter()
+        .map(|page| {
+            let name = page
+                .frame
+                .and_then(|f| b.doc.get(f))
+                .and_then(|f| f.as_frame().map(|x| x.name.clone()))
+                .unwrap_or_default();
+            let base = format!("{stem}-{}", file_stem(&name));
+            let mut file = format!("{base}.{ext}");
+            let mut k = 2;
+            while !seen.insert(file.clone()) {
+                file = format!("{base}-{k}.{ext}");
+                k += 1;
+            }
+            path.with_file_name(file)
+        })
+        .collect()
 }
 
 /// ⭐ Escreve o export de `b` em `path` (e, com vários frames em PNG/SVG, um ficheiro por frame ao
@@ -272,24 +304,28 @@ pub fn write_export(
             out.push(path.to_path_buf());
         }
         Format::Svg => {
-            for p in &pages {
+            for (i, (p, to)) in pages.iter().zip(page_paths(path, b, &pages)).enumerate() {
                 let (mut s, size) = paint_page(b, p, 1.0, paper, true, ts);
-                let to = nth_path(path, b, p, pages.len());
-                std::fs::write(&to, svg::write(&s.take_record(), size))
+                // As ligações de um SVG são as da própria página (um ficheiro, uma página).
+                let here: Vec<([f64; 4], [f64; 4])> = link_pairs(b, &pages, i)
+                    .into_iter()
+                    .filter(|(_, page, _)| *page == i)
+                    .filter_map(|(rect, _, to)| Some((rect, on_page(b, p, to)?)))
+                    .collect();
+                std::fs::write(&to, svg::write_linked(&s.take_record(), size, &here))
                     .map_err(|e| e.to_string())?;
                 out.push(to);
             }
         }
         Format::Png => {
-            let gpu = gpu.ok_or("no GPU")?;
+            let gpu = gpu.ok_or_else(|| tr("board.io.no_gpu").to_owned())?;
             let mut pass =
                 ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (64, 64))?;
             let tile = png::tile_side(gpu);
             let mp = ph2d_board_export::PNG_MEGAPIXELS[c.size.min(2)];
-            for p in &pages {
+            for (p, to) in pages.iter().zip(page_paths(path, b, &pages)) {
                 let scale = ph2d_board_export::png_scale(p, mp);
                 let img = png::render(gpu, &mut pass, b, p, scale, paper, tile, ts)?;
-                let to = nth_path(path, b, p, pages.len());
                 std::fs::write(&to, png::encode(&img)).map_err(|e| e.to_string())?;
                 out.push(to);
             }

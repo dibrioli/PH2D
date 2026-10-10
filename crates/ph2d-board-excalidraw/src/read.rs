@@ -58,10 +58,28 @@ fn style_of(v: &Value) -> Style {
         Some("dotted") => Dash::Dotted,
         _ => Dash::Solid,
     };
-    st.opacity = num(v, "opacity").map_or(100, |o| o.clamp(0.0, 100.0) as u8); // CLAMP-OK: opacidade do ficheiro, 0..=100
+    st.opacity = opacity(v).unwrap_or(100);
     st.round = !v["roundness"].is_null();
     st.sketch = num(v, "roughness").unwrap_or(1.0) > 0.0;
     st
+}
+
+/// A opacidade do ficheiro em `0..=100`; fora da faixa (o `restore` dele não a valida) = `None`, e
+/// quem lê fica com a de nascença dele (100, X3).
+fn opacity(v: &Value) -> Option<u8> {
+    num(v, "opacity")
+        .filter(|o| (0.0..=100.0).contains(o))
+        .map(|o| o.round() as u8)
+}
+
+/// O traço do Excalidraw.
+fn dash_of(v: &Value) -> Option<Dash> {
+    Some(match v["strokeStyle"].as_str()? {
+        "dashed" => Dash::Dashed,
+        "dotted" => Dash::Dotted,
+        "solid" => Dash::Solid,
+        _ => return None,
+    })
 }
 
 /// O elemento nosso que viajou no `customData`, se há.
@@ -87,13 +105,34 @@ pub fn read(json: &str) -> Result<Import, String> {
     let ids: BTreeSet<&str> = live.iter().filter_map(|v| v["id"].as_str()).collect();
     let mut texts: BTreeMap<String, Text> = BTreeMap::new();
     let mut consumed: BTreeSet<&str> = BTreeSet::new();
+    // As nossas formas que ele não tem (`line` com o nosso elemento), pelo grupo do par forma+texto:
+    // uma cópia feita LÁ ganha grupos novos, e o texto dela fica com ela (a auditoria W8 viu o texto
+    // da cópia ir parar ao original pelo `text_of`, que a cópia herda).
+    let mut by_group: BTreeMap<&str, &str> = BTreeMap::new();
+    for v in &live {
+        if v["type"] == "line" && carried(v).is_some() {
+            for g in v["groupIds"].as_array().into_iter().flatten() {
+                if let (Some(g), Some(me)) = (g.as_str(), v["id"].as_str()) {
+                    by_group.entry(g).or_insert(me);
+                }
+            }
+        }
+    }
     for v in &live {
         if v["type"] != "text" {
             continue;
         }
-        let own = v["customData"][PH2D]["text_of"]
-            .as_u64()
-            .map(|n| format!("{ID}{n}"));
+        let in_group = v["groupIds"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find_map(|g| by_group.get(g.as_str()?))
+            .map(|h| (*h).to_owned());
+        let own = in_group.or_else(|| {
+            v["customData"][PH2D]["text_of"]
+                .as_u64()
+                .map(|n| format!("{ID}{n}"))
+        });
         let host = v["containerId"].as_str().map(str::to_owned).or(own);
         if let (Some(h), Some(t), Some(me)) = (host, text_of(v), v["id"].as_str())
             && ids.contains(h.as_str())
@@ -320,11 +359,20 @@ fn edits(
             }
         }
         ph2d_board_model::ElementKind::Shape(s) => {
-            let p0 = crate::write::polygon(el, s)
-                .first()
-                .copied()
-                .unwrap_or([el.x, el.y]);
-            if !(near(x, p0[0]) && near(y, p0[1])) {
+            // A forma que viajou como `line`: a caixa dos pontos que escrevemos contra a dele — um
+            // redimensionar lá escala a nossa (a auditoria W8 viu-o reduzido a mover).
+            let poly = crate::write::polygon(el, s);
+            let p0 = poly.first().copied().unwrap_or([el.x, el.y]);
+            let (pw, ph) = extent(&poly);
+            let (w, h) = (num(v, "width").unwrap_or(pw), num(v, "height").unwrap_or(ph));
+            if !(near(w, pw) && near(h, ph)) && pw > 0.0 && ph > 0.0 {
+                let (kx, ky) = (w / pw, h / ph);
+                let (dx, dy) = (p0[0] - el.x, p0[1] - el.y);
+                el.w *= kx;
+                el.h *= ky;
+                el.x = x - dx * kx;
+                el.y = y - dy * ky;
+            } else if !(near(x, p0[0]) && near(y, p0[1])) {
                 el.translate([x - p0[0], y - p0[1]]);
             }
         }
@@ -339,10 +387,22 @@ fn edits(
             }
         }
         ph2d_board_model::ElementKind::Ink(_) => {
-            let first = ph2d_board_edit::world_points(el)
-                .first()
-                .map_or([el.x, el.y], |p| [p[0], p[1]]);
-            if !(near(x, first[0]) && near(y, first[1])) {
+            let pts: Vec<[f64; 2]> = ph2d_board_edit::world_points(el)
+                .iter()
+                .map(|p| [p[0], p[1]])
+                .collect();
+            let first = pts.first().copied().unwrap_or([el.x, el.y]);
+            let (pw, ph) = extent(&pts);
+            let (w, h) = (num(v, "width").unwrap_or(pw), num(v, "height").unwrap_or(ph));
+            if !(near(w, pw) && near(h, ph)) && pw > 0.0 && ph > 0.0 {
+                // Redimensionado lá: a caixa do traço escala (os pontos são relativos a ela).
+                let (kx, ky) = (w / pw, h / ph);
+                let (dx, dy) = (first[0] - el.x, first[1] - el.y);
+                el.w *= kx;
+                el.h *= ky;
+                el.x = x - dx * kx;
+                el.y = y - dy * ky;
+            } else if !(near(x, first[0]) && near(y, first[1])) {
                 el.translate([x - first[0], y - first[1]]);
             }
         }
@@ -353,6 +413,15 @@ fn edits(
                     end_of(v, "startBinding", a, map),
                     end_of(v, "endBinding", b, map),
                 ];
+                // Uma RECTA com os pontos mexidos lá: os do meio são os novos pontos de ajuste (a curva
+                // e o cotovelo são da nossa lei — recusa no estudo §3).
+                let wrote = &v["customData"][PH2D]["wrote"];
+                let moved = wrote["points"] != v["points"]
+                    || num(wrote, "x").is_none_or(|w| !near(w, num(v, "x").unwrap_or(w)))
+                    || num(wrote, "y").is_none_or(|w| !near(w, num(v, "y").unwrap_or(w)));
+                if c.route == ph2d_board_model::Route::Straight && moved && !wrote.is_null() {
+                    c.waypoints = pts[1..pts.len() - 1].to_vec();
+                }
                 for (k, e) in ends.into_iter().enumerate() {
                     let same = match (&c.ends()[k], &e) {
                         (End::Bound { target: t0, .. }, End::Bound { target: t1, .. }) => t0 == t1,
@@ -391,12 +460,32 @@ fn edits(
     if let Some(w) = num(v, "strokeWidth").filter(|w| !near(*w, st.stroke_width) && *w > 0.0) {
         st.stroke_width = w;
     }
-    if let Some(o) = num(v, "opacity").filter(|o| !near(*o, f64::from(st.opacity))) {
-        st.opacity = o.clamp(0.0, 100.0) as u8; // CLAMP-OK: opacidade do ficheiro, 0..=100
+    if num(v, "opacity").is_some_and(|o| !near(o, f64::from(st.opacity))) {
+        st.opacity = opacity(v).unwrap_or(100);
+    }
+    if let Some(d) = dash_of(v).filter(|d| *d != st.dash) {
+        st.dash = d;
+    }
+    if let Some(t) = text {
+        if let Some(c) = t.color.filter(|c| *c != st.text_color) {
+            st.text_color = c;
+        }
+        if !near(t.size, st.font_size) {
+            st.font_size = t.size;
+        }
     }
     let rough = num(v, "roughness").unwrap_or(f64::from(u8::from(st.sketch))) > 0.0;
     if rough != st.sketch {
         st.sketch = rough;
+    }
+    // Os cantos de uma forma NATIVA (as que viajam como `line` vão sempre sem `roundness`).
+    if let Some(shape) = el.shape_mut()
+        && crate::write::is_native(shape.kind)
+    {
+        let round = !v["roundness"].is_null();
+        if round != shape.style.round {
+            shape.style.round = round;
+        }
     }
     if let (Some(t), Some(shape)) = (text, el.shape_mut())
         && t.text != shape.text.as_str()
@@ -408,6 +497,15 @@ fn edits(
     {
         c.label.clone_from(&t.text);
     }
+}
+
+/// A largura e a altura da caixa de `pts`.
+fn extent(pts: &[[f64; 2]]) -> (f64, f64) {
+    let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+    for p in pts {
+        (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
+    }
+    if pts.is_empty() { (0.0, 0.0) } else { (x1 - x0, y1 - y0) }
 }
 
 fn frame_mut(el: &mut Element) -> Option<&mut Frame> {

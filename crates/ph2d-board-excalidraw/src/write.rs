@@ -126,17 +126,22 @@ fn native(kind: ShapeType) -> Option<&'static str> {
     }
 }
 
+/// Os pontos relativos ao 1.º (o `x, y` dele) e a largura e a altura da CAIXA deles (a do Excalidraw:
+/// a leitura compara-a para saber se o elemento foi redimensionado lá).
 fn points_rel(pts: &[[f64; 2]]) -> (f64, f64, Value, f64, f64) {
     let [x0, y0] = pts.first().copied().unwrap_or([0.0, 0.0]);
-    let (mut w, mut h) = (0.0f64, 0.0f64);
+    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
     let rel: Vec<Value> = pts
         .iter()
         .map(|p| {
-            w = w.max((p[0] - x0).abs());
-            h = h.max((p[1] - y0).abs());
+            for k in 0..2 {
+                lo[k] = lo[k].min(p[k]);
+                hi[k] = hi[k].max(p[k]);
+            }
             json!([p[0] - x0, p[1] - y0])
         })
         .collect();
+    let (w, h) = if pts.is_empty() { (0.0, 0.0) } else { (hi[0] - lo[0], hi[1] - lo[1]) };
     (x0, y0, Value::Array(rel), w, h)
 }
 
@@ -232,7 +237,7 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     m.insert("y".into(), json!(y0));
     m.insert("width".into(), json!(w));
     m.insert("height".into(), json!(h));
-    m.insert("points".into(), rel);
+    m.insert("points".into(), rel.clone());
     m.insert("lastCommittedPoint".into(), Value::Null);
     if c.route == Route::Curved {
         m.insert("roundness".into(), json!({ "type": 2 }));
@@ -257,7 +262,9 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     m.insert("startArrowhead".into(), json!(head_name(c.heads[0])));
     m.insert("endArrowhead".into(), json!(head_name(c.heads[1])));
     let custom = serde_json::to_value(el).unwrap_or(Value::Null);
-    m.insert("customData".into(), json!({ PH2D: { "element": custom } }));
+    // Os pontos que ESCREVEMOS (a leitura sabe se foram mexidos lá: uma recta com pontos novos).
+    let wrote = json!({ "x": x0, "y": y0, "points": rel });
+    m.insert("customData".into(), json!({ PH2D: { "element": custom, "wrote": wrote } }));
     if !c.label.is_empty() {
         m.insert(
             "boundElements".into(),

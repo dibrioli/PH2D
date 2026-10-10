@@ -2,3 +2,4 @@
 
 mod a_coleta_da_cena;
 mod a_luz_sobrevive_ao_snapshot;
+mod a_pose_e_a_do_editor;

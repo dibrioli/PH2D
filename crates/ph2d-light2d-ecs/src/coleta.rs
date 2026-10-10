@@ -29,6 +29,19 @@ fn chave(world: &World, e: Entity) -> Chave {
     (world.get::<StableId>(e).map(|s| s.0), e)
 }
 
+/// ⭐⭐ **A pose no mundo, a do EDITOR**: a local composta com a cadeia de pais
+/// (`ph2d_ecs::world_transform_into`, a porta do clique e do gizmo). ⛔ Nunca o `GlobalTransform` do
+/// mundo: no editor a propagação escreve-o só no `PresentWorld`, logo ele fica no valor com que o
+/// objeto nasceu (e o menu Add nem o põe) — medido no smoke do dono, 2026-10-09: arrastar a lâmpada
+/// não movia a luz, e a do menu Add não acendia (gate `a_pose_e_a_do_editor`).
+fn pose(
+    world: &World,
+    e: Entity,
+    scratch: &mut Vec<ph2d_ecs::Transform>,
+) -> Option<GlobalTransform> {
+    ph2d_ecs::world_transform_into(world, e, scratch).map(GlobalTransform::from_transform)
+}
+
 /// Os cantos do quad no mundo, na ordem do quad do shader de sprite.
 fn quad(g: &GlobalTransform, sprite: &Sprite) -> Vec<[f32; 2]> {
     let [ax, ay, bx, by, tx, ty] = g.affine();
@@ -65,9 +78,10 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     // O que cada sprite da cena É para a luz: `(é emissor, emissão, opacidade)`, pela chave.
     let mut de_sprite: BTreeMap<Chave, (bool, Rgb, f32)> = BTreeMap::new();
     let mut de_luz: Vec<Chave> = Vec::new();
+    let mut scratch = Vec::new();
 
-    if let Some(mut q) = world.try_query::<(Entity, &Luz, Option<&GlobalTransform>)>() {
-        for (e, luz, g) in q.iter(world) {
+    if let Some(mut q) = world.try_query::<(Entity, &Luz)>() {
+        for (e, luz) in q.iter(world) {
             if is_hidden_in_tree(world, e) {
                 continue;
             }
@@ -82,7 +96,8 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
                 }
                 continue;
             }
-            let (Some(alcance_m), Some(g)) = (alcance(luz.alcance_m), g) else {
+            let (Some(alcance_m), Some(g)) = (alcance(luz.alcance_m), pose(world, e, &mut scratch))
+            else {
                 continue;
             };
             let t = g.translation();
@@ -108,11 +123,15 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         }
     }
 
-    if let Some(mut q) = world.try_query::<(Entity, &Sprite, &GlobalTransform)>() {
-        for (e, sprite, g) in q.iter(world) {
+    if let Some(mut q) = world.try_query::<(Entity, &Sprite)>() {
+        for (e, sprite) in q.iter(world) {
             if is_hidden_in_tree(world, e) {
                 continue;
             }
+            let Some(pose_do_sprite) = pose(world, e, &mut scratch) else {
+                continue;
+            };
+            let g = &pose_do_sprite;
             let k = world.get::<SpriteEmissive>(e).map_or(0.0, |s| s.clamped());
             if k > 0.0 {
                 let (t, s) = (sprite.tint, sprite.self_tint);

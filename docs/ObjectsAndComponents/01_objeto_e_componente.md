@@ -340,3 +340,15 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | — | caminhos (4.3) | nada a construir | escolha do dono |
 
 Abertos da onda 4: §10 do handoff novo.
+
+## §15 — Onda 5 (10/10): os abertos da onda 4 (§10 do handoff dela)
+
+**Handoff:** [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda5_2026-10-10.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda5_2026-10-10.md). Nenhuma decisão de produto nova.
+
+| # | aberto | o que a medição mostrou | o que ficou |
+|---|---|---|---|
+| a | gizmo de SPRITE com pai de escala não uniforme | ⛔ **premissa falsa**: o motor compõe pai×filho somando rotações e multiplicando escalas (ADR-0025 emenda 1 §2.2.1) — o filho é desenhado retângulo e a caixa de sempre coincide (gate com controlo do produto exacto). O que cisalha é o **SKEW** (editável no Inspector) | `gizmo::sprite_box` (caixa no espaço `T·R·S`, o skew em `model` = `R·Sk·R⁻¹` no pivô); escalar e mover o pivô leem o cursor pela inversa e devolvem a translação pela afim; transladar/rodar/global ficam de mundo (rígidos); a união da global passa a envolver os cantos PINTADOS (ignorava a rotação de cada vista); snap do pivô e centro do conteúdo na pose de MUNDO (usavam a local) |
+| b | 5 painéis com cópia própria da lista que rola | eram **14** cópias (o vector sozinho 9) + 5 primas; o polegar das listas de ícone/fonte do vector nunca se lia «a arrastar» (pedia a barra sem dono) | UMA porta `panel::paint_dropdown_list` (clamp + escrita da rolagem, faixa visível, focáveis, pintor de linha opcional); gate `architecture_dropdown_lists_use_the_door`; o dono da barra resolve-se num sítio |
+| c | o argumento do Play Clip é texto livre | o Inspector só vê `&World`; o runtime resolve o nome na animação DO ALVO | recurso `ClipNames` publicado pelo `upkeep` da timeline (só reescreve quando muda); o parâmetro vira ▾ com os clipes da Animação do alvo quando o alvo é UM objecto (nome ou «este»); por tag / quem bateu fica o texto livre e o toast no Play. Nome fora da lista ⇒ a linha de aviso por baixo (o idioma da secção — o chip não tem estado de aviso) |
+| d | guarda `nomeados` do reset procura no documento inteiro | falso positivo: um osso vivo com um homónimo do dono que saiu segurava a composição rançosa | a guarda resolve o nome NA animação onde o osso vive; a lei `animation_of` desce para `TimelineDoc::animation_of` (uma porta, dois chamadores) |
+| f | `ph2d-panel-registry-init -p` com 76 falhas | 77, todas censos que medem o APP (o default do shell) sem 4 painéis | dev-dependency da crate em si própria com as 4 features — 124/124 |

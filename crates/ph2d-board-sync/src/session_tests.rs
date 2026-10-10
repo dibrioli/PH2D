@@ -1,0 +1,339 @@
+//! A sessão em estrela: entrar, a versão recusada, a presença (o tecto de envio e a interpolação),
+//! «trazer todos», e a convergência com convidados que CAEM (perdem o que ia no fio) e voltam.
+
+use std::collections::VecDeque;
+
+use super::*;
+use crate::presence::{RENDER_DELAY_MS, Track};
+use ph2d_board_model::{
+    BoardOp, BoardSet, Element, ElementId, History, Rgba, RichText, Shape, ShapeType, Style,
+};
+
+fn board() -> Board {
+    let mut set = BoardSet::default();
+    let id = set.create("Quadro".into());
+    set.get_mut(id).unwrap().clone()
+}
+
+fn rect(b: &mut Board, x: f64) -> ElementId {
+    let ink = Rgba([20, 20, 20, 255]);
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style: Style::new(Some(ink), None, ink),
+        text: RichText::plain("x"),
+    };
+    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, [x, 0.0, 10.0, 10.0]);
+    let id = el.id;
+    let _ = BoardOp::Put(el).apply(&mut b.doc);
+    id
+}
+
+fn presence(x: f64, sel: Vec<ElementId>) -> Presence {
+    Presence {
+        peer: 0,
+        cursor: Some([x, 0.0]),
+        selection: sel,
+        camera: Camera::default(),
+    }
+}
+
+fn shared(b: &Board) -> Vec<u8> {
+    let els: Vec<&Element> = b.doc.live_with_hidden().collect();
+    postcard::to_allocvec(&(els, &b.name, b.sketch)).unwrap()
+}
+
+/// Quem fala outra versão do protocolo é recusado, e o convidado sabe porquê.
+#[test]
+fn another_protocol_is_refused_with_a_reason() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let hello = Msg::Hello {
+        protocol: PROTOCOL + 1,
+        peer: 2,
+        name: "Bia".into(),
+    };
+    let (out, _) = host.frame(&mut hb, 7, &hello.encode(), 0);
+    assert_eq!(out, vec![(To::One(7), Msg::Refused { protocol: PROTOCOL })]);
+    let mut g = Guest::new(2, "Bia".into(), 2);
+    let mut gb = None;
+    let (_, ev) = g.frame(&mut gb, &out[0].1.encode(), 0);
+    assert_eq!(ev, vec![Event::Refused { theirs: PROTOCOL }]);
+    assert!(gb.is_none());
+}
+
+/// Entrar: o convidado recebe o quadro do anfitrião, a cor seguinte, e os outros sabem que chegou;
+/// quem volta guarda a cor.
+#[test]
+fn joining_gives_the_hosts_board_and_the_next_colour() {
+    let mut hb = board();
+    rect(&mut hb, 3.0);
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let g = Guest::new(2, "Bia".into(), 2);
+    let (out, ev) = host.frame(&mut hb, 7, &g.hello().encode(), 0);
+    let Msg::Welcome { you, .. } = &out[0].1 else {
+        panic!("{out:?}");
+    };
+    assert_eq!((you.color, &ev[0]), (1, &Event::Joined(you.clone())));
+    assert_eq!(out[1].0, To::AllBut(7));
+    let mut g = g;
+    let mut gb = None;
+    let (_, ev) = g.frame(&mut gb, &out[0].1.encode(), 0);
+    assert_eq!(ev, vec![Event::Welcomed]);
+    assert_eq!(shared(gb.as_ref().unwrap()), shared(&hb));
+    host.left(7);
+    let (out, _) = host.frame(&mut hb, 8, &g.hello().encode(), 1);
+    let Msg::Welcome { you, .. } = &out[0].1 else {
+        panic!();
+    };
+    assert_eq!(you.color, 1, "quem volta guarda a cor");
+}
+
+/// A presença sai no máximo a cada `SEND_EVERY_MS`; a última nunca se perde (sai no tique seguinte);
+/// uma selecção nova sai já.
+#[test]
+fn presence_is_capped_and_the_last_one_is_never_lost() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    assert_eq!(host.presence(0, presence(1.0, vec![])).len(), 1);
+    assert!(host.presence(10, presence(2.0, vec![])).is_empty());
+    let id = rect(&mut hb, 0.0);
+    let _ = host.tick(&mut hb, 11);
+    assert_eq!(host.presence(12, presence(3.0, vec![id])).len(), 1, "selecção");
+    assert!(host.presence(20, presence(4.0, vec![id])).is_empty());
+    assert!(host.tick(&mut hb, 30).is_empty(), "ainda não");
+    let out = host.tick(&mut hb, 12 + SEND_EVERY_MS);
+    assert!(
+        matches!(&out[..], [(To::All, Msg::Presence(p))] if p.cursor == Some([4.0, 0.0])),
+        "{out:?}"
+    );
+}
+
+/// O cursor alheio desenha-se `RENDER_DELAY_MS` no passado, ENTRE as amostras; nunca adivinha para a
+/// frente nem volta atrás.
+#[test]
+fn the_others_cursor_glides_between_samples() {
+    let mut t: Track<2> = Track::default();
+    t.push(1000, [0.0, 0.0]);
+    t.push(1000 + SEND_EVERY_MS, [33.0, 0.0]);
+    let mid = t.at(1000 + RENDER_DELAY_MS + 10).unwrap();
+    assert!((mid[0] - 10.0).abs() < 1e-9, "{mid:?}");
+    assert_eq!(t.at(1000 + RENDER_DELAY_MS + 999), Some([33.0, 0.0]));
+    assert_eq!(t.at(0), Some([0.0, 0.0]));
+    t.push(5, [99.0, 0.0]);
+    assert_eq!(t.at(5000), Some([33.0, 0.0]), "uma amostra velha não volta atrás");
+}
+
+/// «Trazer todos»: quem chama não se chama a si; o anfitrião e os outros recebem a câmara.
+#[test]
+fn summon_reaches_everyone_but_the_caller() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let mut b = Guest::new(2, "Bia".into(), 2);
+    let mut bb = None;
+    let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 0);
+    b.frame(&mut bb, &out[0].1.encode(), 0);
+    let cam = Camera {
+        center_x: 500.0,
+        center_y: -20.0,
+        zoom: 2.0,
+    };
+    let (out, ev) = host.frame(&mut hb, 7, &b.summon(cam).encode(), 1);
+    assert_eq!(ev, vec![Event::Summoned { from: 2, camera: cam }]);
+    assert_eq!(out[0].0, To::AllBut(7));
+    let (_, ev) = b.frame(&mut bb, &out[0].1.encode(), 2);
+    assert!(ev.is_empty(), "quem chamou não se chama");
+}
+
+/// O transporte de mentira: cada sentido de cada ligação é uma fila FIFO (como o TCP) com atraso
+/// sorteado; cair esvazia as duas filas.
+struct Link {
+    conn: ConnId,
+    up: VecDeque<(u64, Vec<u8>)>,
+    down: VecDeque<(u64, Vec<u8>)>,
+    online: bool,
+}
+
+struct Rng(u64);
+impl Rng {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+    fn below(&mut self, n: u64) -> u64 {
+        self.next() % n
+    }
+}
+
+fn send_from_host(links: &mut [Link], out: Vec<(To, Msg)>, at: u64) {
+    for (to, m) in out {
+        let bytes = m.encode();
+        for l in links.iter_mut().filter(|l| l.online) {
+            let hit = match to {
+                To::One(c) => c == l.conn,
+                To::All => true,
+                To::AllBut(c) => c != l.conn,
+            };
+            if hit {
+                let t = l.down.back().map_or(at, |(t, _)| at.max(*t));
+                l.down.push_back((t, bytes.clone()));
+            }
+        }
+    }
+}
+
+fn edit(b: &mut Board, h: &mut History, rng: &mut Rng) {
+    let ids: Vec<ElementId> = b.doc.live().map(|e| e.id).collect();
+    if ids.is_empty() || rng.below(4) == 0 {
+        rect(b, rng.below(300) as f64);
+        return;
+    }
+    let id = ids[rng.below(ids.len() as u64) as usize];
+    let mut el = b.doc.get(id).unwrap().clone();
+    match rng.below(5) {
+        0 => el.x = rng.below(300) as f64,
+        1 => el.style_mut().fill = Some(Rgba([rng.below(255) as u8, 1, 1, 255])),
+        2 => {
+            h.apply(&mut b.doc, vec![BoardOp::Delete(id)]);
+            return;
+        }
+        3 => {
+            h.undo(&mut b.doc);
+            return;
+        }
+        _ => {
+            el.add_stamp(ph2d_board_model::Stamp::Heart, 1);
+        }
+    }
+    h.apply(&mut b.doc, vec![BoardOp::Put(el)]);
+}
+
+/// ⭐⭐ Convergência em estrela: anfitrião + 3 convidados, atraso sorteado por ligação, edições e
+/// desfazer em todos, e convidados que CAEM (o que ia no fio perde-se, nos dois sentidos) e voltam.
+/// No fim, os quatro com o mesmo quadro.
+#[test]
+fn a_star_room_with_drops_ends_with_one_board() {
+    for seed in 1..=25u64 {
+        let mut rng = Rng(seed * 0x2545_f491 + 3);
+        let mut hb = board();
+        rect(&mut hb, 0.0);
+        let mut host = Host::open(1, "Ana".into(), &mut hb, seed);
+        let mut hh = History::default();
+        let n = 3;
+        let mut guests: Vec<(Guest, Option<Board>, History)> = (0..n)
+            .map(|i| (Guest::new(10 + i, format!("p{i}"), seed * 7 + i), None, History::default()))
+            .collect();
+        let mut links: Vec<Link> = (0..n)
+            .map(|i| Link {
+                conn: i,
+                up: VecDeque::new(),
+                down: VecDeque::new(),
+                online: true,
+            })
+            .collect();
+        let mut next_conn = n;
+        for (i, l) in links.iter_mut().enumerate() {
+            l.up.push_back((0, guests[i].0.hello().encode()));
+        }
+        for now in 0..2000u64 {
+            // Edições.
+            if rng.below(3) == 0 {
+                edit(&mut hb, &mut hh, &mut rng);
+            }
+            for (_, b, h) in &mut guests {
+                if rng.below(4) == 0
+                    && let Some(b) = b
+                {
+                    edit(b, h, &mut rng);
+                }
+            }
+            // Quedas e voltas.
+            if rng.below(150) == 0 {
+                let i = rng.below(n) as usize;
+                if links[i].online {
+                    links[i].online = false;
+                    links[i].up.clear();
+                    links[i].down.clear();
+                    let out = host.left(links[i].conn);
+                    send_from_host(&mut links, out, now);
+                } else {
+                    links[i].online = true;
+                    links[i].conn = next_conn;
+                    next_conn += 1;
+                    links[i].up.push_back((now, guests[i].0.hello().encode()));
+                }
+            }
+            // Entregas (o que chegou até agora).
+            for i in 0..n as usize {
+                while links[i].online && links[i].up.front().is_some_and(|(t, _)| *t <= now) {
+                    let (_, bytes) = links[i].up.pop_front().unwrap();
+                    let (out, _) = host.frame(&mut hb, links[i].conn, &bytes, now);
+                    send_from_host(&mut links, out, now + rng.below(20));
+                }
+                while links[i].online && links[i].down.front().is_some_and(|(t, _)| *t <= now) {
+                    let (_, bytes) = links[i].down.pop_front().unwrap();
+                    let (g, b, _) = &mut guests[i];
+                    let (out, _) = g.frame(b, &bytes, now);
+                    for m in out {
+                        links[i].up.push_back((now + rng.below(20), m.encode()));
+                    }
+                }
+            }
+            // Os tiques.
+            let out = host.tick(&mut hb, now);
+            send_from_host(&mut links, out, now + rng.below(20));
+            for (i, (g, b, _)) in guests.iter_mut().enumerate() {
+                if let Some(b) = b
+                    && links[i].online
+                {
+                    for m in g.tick(b, now) {
+                        let t = links[i].up.back().map_or(now, |(t, _)| now.max(*t));
+                        links[i].up.push_back((t + rng.below(20), m.encode()));
+                    }
+                }
+            }
+        }
+        // Todos voltam e a rede esvazia-se.
+        for (i, l) in links.iter_mut().enumerate() {
+            if !l.online {
+                l.online = true;
+                l.conn = next_conn;
+                next_conn += 1;
+                l.up.push_back((2000, guests[i].0.hello().encode()));
+            }
+        }
+        for now in 2000..4000u64 {
+            for i in 0..n as usize {
+                while let Some((_, bytes)) = links[i].up.pop_front() {
+                    let (out, _) = host.frame(&mut hb, links[i].conn, &bytes, now);
+                    send_from_host(&mut links, out, now);
+                }
+                while let Some((_, bytes)) = links[i].down.pop_front() {
+                    let (g, b, _) = &mut guests[i];
+                    let (out, _) = g.frame(b, &bytes, now);
+                    links[i].up.extend(out.into_iter().map(|m| (now, m.encode())));
+                }
+            }
+            let out = host.tick(&mut hb, now);
+            send_from_host(&mut links, out, now);
+            for (i, (g, b, _)) in guests.iter_mut().enumerate() {
+                if let Some(b) = b {
+                    links[i].up.extend(g.tick(b, now).into_iter().map(|m| (now, m.encode())));
+                }
+            }
+            if links.iter().all(|l| l.up.is_empty() && l.down.is_empty()) {
+                break;
+            }
+        }
+        for (i, (_, b, _)) in guests.iter().enumerate() {
+            let b = b.as_ref().unwrap();
+            assert!(
+                shared(b) == shared(&hb),
+                "semente {seed}: o convidado {i} divergiu ({} × {} elementos)",
+                b.doc.live().count(),
+                hb.doc.live().count()
+            );
+        }
+    }
+}

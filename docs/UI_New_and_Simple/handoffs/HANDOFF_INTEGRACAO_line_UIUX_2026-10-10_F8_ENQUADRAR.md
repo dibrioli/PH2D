@@ -152,3 +152,31 @@ Varredura no fecho: zero processos meus, ninguém meu na placa (os vivos são de
   ✓ contexto no inicio da sessao               62 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
 (Edições em lote por `python3` com `assert` de contagem — vários sítios da mesma peça de uma vez.)
+
+## §10 — INTEGRADO no `main` (10/10, por ordem do dono)
+
+- **`main` `782f90b69` → `6552055` por `--ff-only`** — F0–F8 inteiras (121 commits). O `main` tinha
+  andado (80 commits da `ObjectsAndComponents`); rebase pelo agente integrador, tip antigo em
+  `backup/UIUX-pre-integ-2026-10-10` (`52611ded2`).
+- **Conflitos (um commit, D10 F1–F3), pelos estágios:** `icons.rs` (o `Film` do `main` + os testes
+  que a linha mudou para `icons_tests.rs`); `paint_catalog.rs` APAGADO (a D10 tirou o popover; o `main`
+  tinha-o migrado para a porta `paint_dropdown_list`) e o teste de rolagem dele retirado;
+  `popover_band.rs` com a lista do `main` sem ele.
+- **Só a árvore combinada mostrava:** `PaletteItem.keywords` (campo novo do `main`) em dois literais
+  da paleta F4; **`GizmoView::world_aabb` escrita pelas DUAS linhas** — fica a do `main`
+  (`gizmo/sprite_box.rs`, cobre o `model`; igual com modelo identidade), sai `world_box.rs`, os testes
+  da F8 montam-se em `gizmo/mod.rs`; `camera.rs` 747 > 700 ⇒ os testes para `camera_tests.rs`; o piso
+  da porta das listas **19 → 18** (recontado: a D10 apagou um dos 19). Range-diff: 115 iguais, 5
+  mudados só pelas resoluções.
+- **Gate da árvore combinada:** `CARGO_BUILD_WARNINGS=deny` check `--workspace --all-targets` ✓ ·
+  fmt ✓ · censos 114 / 12 ✓ · registry-init re-sync sem diferença ✓ · `nextest-impacted`
+  (`BASE=main`) **17 538 / 17 540** — as 2 falhas eram as duas curas acima, re-corridas verdes depois
+  (não se re-correu a varredura inteira) · clippy do `ship.sh` (`--workspace --all-targets --features
+  ph2d-spike/bevy_ecs -D warnings`) ✓.
+- ⚠️ **O primário tinha trabalho de OUTRA sessão por gravar:** `project-memory/` (3 ficheiros) e dois
+  itens soltos (`crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs`, `docs/Painter/NewFeaturesWetPaint/`),
+  nenhum no caminho da linha. O `--ff-only` recusou pelo `MEMORY.md` (as duas mexeram nele, em entradas
+  diferentes): a edição da outra sessão foi guardada em patch, o ficheiro reposto, o `main` avançado e
+  o patch re-aplicado — o primário ficou com as MESMAS alterações por gravar (+3 −2), não preparadas.
+  Os passos do `foundational-integrate.sh` foram feitos à mão por isso (ele recusa o primário sujo).
+- **Não enviado** (`git push`): só por ordem do dono.

@@ -194,7 +194,10 @@ impl Distante {
         for (j, &(id, opacidade, xf, c)) in caixas.iter().enumerate() {
             let Some(path) = doc.path(id) else { continue };
             let j = j as u32;
-            let (x, y) = (f64::from((j % por_linha) * lado), f64::from((j / por_linha) * lado));
+            let (x, y) = (
+                f64::from((j % por_linha) * lado),
+                f64::from((j / por_linha) * lado),
+            );
             let l = f64::from(lado);
             let (kx, ky) = (l / (c[2] - c[0]), l / (c[3] - c[1]));
             // Mundo → píxel do desenho: x para a direita, y para BAIXO a partir do topo da caixa.
@@ -227,7 +230,14 @@ impl Distante {
             return;
         }
         let mut uma = self.camada.take().into_iter().collect::<Vec<_>>();
-        copiar(gpu, &mut uma, 0, 1.0, vello.intermediate_texture(), (total, total));
+        copiar(
+            gpu,
+            &mut uma,
+            0,
+            1.0,
+            vello.intermediate_texture(),
+            (total, total),
+        );
         self.camada = uma.pop();
     }
 }

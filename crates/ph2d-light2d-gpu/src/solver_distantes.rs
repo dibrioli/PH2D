@@ -19,8 +19,8 @@ pub(crate) const MINIMOS: [u64; 3] = [size_of::<Distante>() as u64, 16, 16];
 /// A atlas das máscaras — a [`PassList`] declara a de 1 × 1.
 pub(crate) const NOME_DA_ATLAS: &str = "luz2d/tex/mascaras";
 pub(crate) const FORMATO_DA_ATLAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-pub(crate) const USOS_DA_ATLAS: wgpu::TextureUsages = wgpu::TextureUsages::RENDER_ATTACHMENT
-    .union(wgpu::TextureUsages::TEXTURE_BINDING);
+pub(crate) const USOS_DA_ATLAS: wgpu::TextureUsages =
+    wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
 
 /// Uma máscara como o `c3_mascara.wgsl` a lê (32 bytes).
 #[repr(C)]
@@ -183,7 +183,8 @@ impl Pintor {
             self.lista = Some((b, cap));
         }
         let (lista, _) = self.lista.as_ref().expect("criada acima");
-        gpu.queue.write_buffer(lista, 0, bytemuck::cast_slice(&placa));
+        gpu.queue
+            .write_buffer(lista, 0, bytemuck::cast_slice(&placa));
         let n = lado_da_atlas as f32;
         gpu.queue
             .write_buffer(&self.uni, 0, bytemuck::bytes_of(&[n, n, 0.0, 0.0]));
@@ -355,13 +356,15 @@ impl Distantes {
                 .create_view(&wgpu::TextureViewDescriptor::default());
             mudou = true;
         }
-        self.pintor.get_or_insert_with(|| Pintor::novo(device)).desenhar(
-            gpu,
-            enc,
-            (&self.vista, self.lado, m.lado),
-            &m.mascaras,
-            texturas,
-        );
+        self.pintor
+            .get_or_insert_with(|| Pintor::novo(device))
+            .desenhar(
+                gpu,
+                enc,
+                (&self.vista, self.lado, m.lado),
+                &m.mascaras,
+                texturas,
+            );
         mudou
     }
 

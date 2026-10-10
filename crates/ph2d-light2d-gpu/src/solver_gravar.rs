@@ -98,7 +98,13 @@ impl Solver {
         let cap = capturar_sem(cena, &self.cfg.grade, &sprites.substituidos, &diretas);
         // ⭐ W5b (F4): o mundo fora da grade no caminho até cada lâmpada direta.
         let distante = if self.cfg.distantes {
-            crate::distantes::montar(cena, &self.cfg.grade, &diretas, sprites, self.cfg.mascara_px)
+            crate::distantes::montar(
+                cena,
+                &self.cfg.grade,
+                &diretas,
+                sprites,
+                self.cfg.mascara_px,
+            )
         } else {
             crate::distantes::MundoDistante::default()
         };

@@ -325,7 +325,7 @@ fn visivel_do_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, base: f32, al
         } else {
             var lo = a0;
             var hi = a1;
-            for (var k = 0u; k < BISSECOES; k++) {
+            for (var b = 0u; b < BISSECOES; b++) {
                 let m = 0.5 * (lo + hi);
                 let tm = ate_o_disco(P, v, d, raio, m, k);
                 if abs(tm - t0) <= abs(tm - t1) {

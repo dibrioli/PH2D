@@ -22,12 +22,12 @@ pub use crate::erro::ErroSolver;
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
-/// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
-#[path = "solver_fina.rs"]
-mod fina;
 /// ⭐ O mundo fora da grade na placa (W5b, F4) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_distantes.rs"]
 mod distantes;
+/// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_fina.rs"]
+mod fina;
 pub(crate) use distantes::{
     FORMATO_DA_ATLAS, MINIMOS as MINIMOS_DISTANTES, NOME_DA_ATLAS, NOMES as NOMES_DISTANTES,
     USOS_DA_ATLAS,
@@ -469,11 +469,10 @@ impl Solver {
             .iter()
             .position(|t| t.nome == NOME_DA_ATLAS)
             .expect("a PassList declara a atlas");
-        let distantes = distantes::Distantes::novo(
-            NOMES_DISTANTES.map(buffer),
-            texturas[atlas].clone(),
-        );
-        let lampadas_grupo = Self::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
+        let distantes =
+            distantes::Distantes::novo(NOMES_DISTANTES.map(buffer), texturas[atlas].clone());
+        let lampadas_grupo =
+            Self::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
         let rc_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("luz2d c2"),
             bind_group_layouts: &[Some(&rc_layout), Some(&lampadas_layout)],

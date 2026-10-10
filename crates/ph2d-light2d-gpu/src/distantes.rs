@@ -104,7 +104,9 @@ fn fecho(mut pts: Vec<P>) -> Vec<P> {
             Box::new(pts.iter().rev())
         };
         for &p in ordem {
-            while h.len() >= inicio + 2 && cruz(sub(h[h.len() - 1], h[h.len() - 2]), sub(p, h[h.len() - 2])) <= 0.0 {
+            while h.len() >= inicio + 2
+                && cruz(sub(h[h.len() - 1], h[h.len() - 2]), sub(p, h[h.len() - 2])) <= 0.0
+            {
                 h.pop();
             }
             h.push(p);
@@ -121,10 +123,11 @@ fn tocam(a: &[P], b: &[P]) -> bool {
             let e = sub(poli[(i + 1) % poli.len()], poli[i]);
             let n = [-e[1], e[0]];
             let proj = |q: &[P]| {
-                q.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
-                    let x = n[0] * p[0] + n[1] * p[1];
-                    (lo.min(x), hi.max(x))
-                })
+                q.iter()
+                    .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
+                        let x = n[0] * p[0] + n[1] * p[1];
+                        (lo.min(x), hi.max(x))
+                    })
             };
             let (a0, a1) = proj(a);
             let (b0, b1) = proj(b);
@@ -136,15 +139,30 @@ fn tocam(a: &[P], b: &[P]) -> bool {
 
 /// Um candidato a distante, antes de saber de que lâmpada é.
 enum Candidato {
-    Poligono { pts: Vec<P>, tau: f32 },
-    Mascara { quad: [P; 3], s: [f64; 3], t: [f64; 3], tau: f32, textura: usize, uv: [f32; 4] },
+    Poligono {
+        pts: Vec<P>,
+        tau: f32,
+    },
+    Mascara {
+        quad: [P; 3],
+        s: [f64; 3],
+        t: [f64; 3],
+        tau: f32,
+        textura: usize,
+        uv: [f32; 4],
+    },
 }
 
 impl Candidato {
     /// Os quatro cantos do paralelogramo que o envolve.
     fn cantos(&self) -> [P; 4] {
         let [o, a, b] = self.quad();
-        [o, [o[0] + a[0], o[1] + a[1]], [o[0] + a[0] + b[0], o[1] + a[1] + b[1]], [o[0] + b[0], o[1] + b[1]]]
+        [
+            o,
+            [o[0] + a[0], o[1] + a[1]],
+            [o[0] + a[0] + b[0], o[1] + a[1] + b[1]],
+            [o[0] + b[0], o[1] + b[1]],
+        ]
     }
 
     fn quad(&self) -> [P; 3] {
@@ -165,7 +183,10 @@ impl Candidato {
 /// O quad de um sprite em texels das cascatas e a inversa dele (`(s, t)` a partir do texel); `None`
 /// se degenerado.
 fn moldura(s: &SpriteNaC0, g: &Grade) -> Option<([P; 3], [f64; 3], [f64; 3])> {
-    let o = [(s.origem[0] - g.origem_m[0]) / g.texel_m, (s.origem[1] - g.origem_m[1]) / g.texel_m];
+    let o = [
+        (s.origem[0] - g.origem_m[0]) / g.texel_m,
+        (s.origem[1] - g.origem_m[1]) / g.texel_m,
+    ];
     let a = [s.eixo_s[0] / g.texel_m, s.eixo_s[1] / g.texel_m];
     let b = [s.eixo_t[0] / g.texel_m, s.eixo_t[1] / g.texel_m];
     let det = cruz(a, b);
@@ -215,10 +236,23 @@ fn caminhos(cena: &CenaDeLuz, g: &Grade, diretas: &[usize]) -> Vec<Option<Vec<P>
 /// cabe nela. Quem desenha a máscara de um caminho vetorial pergunta aqui antes (o Vello custa).
 #[must_use]
 pub fn tapa_fora_da_grade(cena: &CenaDeLuz, g: &Grade, min: [f64; 2], max: [f64; 2]) -> bool {
-    let t = |x: f64, y: f64| [(x - g.origem_m[0]) / g.texel_m, (y - g.origem_m[1]) / g.texel_m];
-    let cantos = [t(min[0], min[1]), t(max[0], min[1]), t(max[0], max[1]), t(min[0], max[1])];
+    let t = |x: f64, y: f64| {
+        [
+            (x - g.origem_m[0]) / g.texel_m,
+            (y - g.origem_m[1]) / g.texel_m,
+        ]
+    };
+    let cantos = [
+        t(min[0], min[1]),
+        t(max[0], min[1]),
+        t(max[0], max[1]),
+        t(min[0], max[1]),
+    ];
     let (w, h) = (f64::from(g.largura), f64::from(g.altura));
-    if cantos.iter().all(|p| (0.0..=w).contains(&p[0]) && (0.0..=h).contains(&p[1])) {
+    if cantos
+        .iter()
+        .all(|p| (0.0..=w).contains(&p[0]) && (0.0..=h).contains(&p[1]))
+    {
         return false;
     }
     caminhos(cena, g, &crate::direta::lampadas_diretas(cena))
@@ -256,7 +290,10 @@ pub(crate) fn montar(
     let substituido = |q: Quem| sprites.substituidos.contains(&q);
     for (k, o) in cena.oclusores.iter().enumerate() {
         if o.opacidade > 0.0 && o.vertices.len() >= 3 && !substituido(Quem::Oclusor(k)) {
-            candidatos.push(Candidato::Poligono { pts: em_texels(&o.vertices), tau: 1.0 - o.opacidade.min(1.0) });
+            candidatos.push(Candidato::Poligono {
+                pts: em_texels(&o.vertices),
+                tau: 1.0 - o.opacidade.min(1.0),
+            });
         }
     }
     for (k, e) in cena.emissores.iter().enumerate() {
@@ -264,7 +301,10 @@ pub(crate) fn montar(
             && vertices.len() >= 3
             && !substituido(Quem::Emissor(k))
         {
-            candidatos.push(Candidato::Poligono { pts: em_texels(vertices), tau: 0.0 });
+            candidatos.push(Candidato::Poligono {
+                pts: em_texels(vertices),
+                tau: 0.0,
+            });
         }
     }
     for s in sprites.sprites.iter().chain(&sprites.distantes) {
@@ -306,7 +346,9 @@ pub(crate) fn montar(
                 match c {
                     Candidato::Poligono { pts, tau } => {
                         // Anti-horário (área > 0): o interior à esquerda de cada aresta.
-                        let area: f64 = (0..pts.len()).map(|i| cruz(pts[i], pts[(i + 1) % pts.len()])).sum();
+                        let area: f64 = (0..pts.len())
+                            .map(|i| cruz(pts[i], pts[(i + 1) % pts.len()]))
+                            .sum();
                         d.tipo = POLIGONO;
                         d.t[3] = *tau;
                         d.primeira = u32::try_from(m.arestas.len()).expect("arestas cabem em u32");
@@ -316,17 +358,31 @@ pub(crate) fn montar(
                             if area < 0.0 {
                                 std::mem::swap(&mut a, &mut b);
                             }
-                            m.arestas.push([a[0] as f32, a[1] as f32, b[0] as f32, b[1] as f32]);
+                            m.arestas
+                                .push([a[0] as f32, a[1] as f32, b[0] as f32, b[1] as f32]);
                         }
                     }
-                    Candidato::Mascara { s, t, tau, textura, uv, .. } => {
+                    Candidato::Mascara {
+                        s,
+                        t,
+                        tau,
+                        textura,
+                        uv,
+                        ..
+                    } => {
                         d.tipo = MASCARA;
                         d.s = [s[0] as f32, s[1] as f32, s[2] as f32, 0.0];
                         d.t = [t[0] as f32, t[1] as f32, t[2] as f32, *tau];
                         let n = u32::try_from(janela_de.len()).expect("máscaras cabem em u32");
-                        let j = *janela_de.entry((*textura, uv.map(f32::to_bits))).or_insert(n);
+                        let j = *janela_de
+                            .entry((*textura, uv.map(f32::to_bits)))
+                            .or_insert(n);
                         if j == n {
-                            m.mascaras.push(Mascara { textura: *textura, uv: *uv, janela: [0, 0] });
+                            m.mascaras.push(Mascara {
+                                textura: *textura,
+                                uv: *uv,
+                                janela: [0, 0],
+                            });
                         }
                         janela_do_objeto.push((id as usize, j));
                     }
@@ -372,7 +428,14 @@ mod testes {
 
     #[test]
     fn o_fecho_e_o_toque() {
-        let h = fecho(vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [2.0, 2.0], [10.0, 2.0]]);
+        let h = fecho(vec![
+            [0.0, 0.0],
+            [4.0, 0.0],
+            [4.0, 4.0],
+            [0.0, 4.0],
+            [2.0, 2.0],
+            [10.0, 2.0],
+        ]);
         assert_eq!(h.len(), 5, "{h:?}");
         let perto = [[5.0, 1.5], [6.0, 1.5], [6.0, 2.5], [5.0, 2.5]];
         let longe = [[5.0, 4.0], [6.0, 4.0], [6.0, 5.0], [5.0, 5.0]];

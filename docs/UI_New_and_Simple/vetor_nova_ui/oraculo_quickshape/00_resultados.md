@@ -283,6 +283,100 @@ iPad) e o manual só descreve o 2.º dedo para linha (15°), elipse (círculo) e
 lei escolhida é a da LINHA aplicada ao arco: o varrido em múltiplos de 15° (90° e 180° exactos) e a
 corda início → fim a 15°; o início fica onde a mão o pôs e o raio é o ajustado.
 
+## §3h — A SETA (F7d, 10/10, pedido do dono: *«uma linha ou um arco com um bico no fim e SEGURAR ⇒ uma seta perfeita»*)
+
+**Os oráculos.** 3.ª leva do `gera_entradas.py` (15 setas num traço só — o cabo e o bico sem a mão
+levantar; acrescentada no fim e sem `rng`: as 65 de cima ficam byte a byte iguais).
+
+- **Xournal++ não tem seta:** 7 saem LINHA (a ponta engolida como gancho: V aberto, V fechado, farpas
+  de 20°, a farpa curta, a farpa só, o tremor), 8 cruas. Controlo de repetição: `linha_com_gancho`
+  igual byte a byte à de 08/10. ⇒ as 13 setas são excepções do DONO em `own()` (27 → **40**).
+- **2.º oráculo: o Excalidraw `next` (0.18.0-143b5b6), a ferramenta «draw shape».** Triagem por
+  artefacto (o `package.json` de cada pacote): `@excalidraw/element`, `common`, `math` **MIT**,
+  `fractional-indexing` CC0 — porta permissiva, mas corre-se e não se lê. Corredor
+  [`corre_excalidraw.mjs`](corre_excalidraw.mjs) (só a API pública `recognizeShape` + `convertToShape`,
+  em Node, sem browser) sobre as 80 entradas → [`fixtures_excalidraw/`](fixtures_excalidraw/). Gate
+  `the_excalidraw_arrows_are_arrows_and_nothing_else_is`.
+
+| entrada | Excalidraw | a nossa lei |
+|---|---|---|
+| cabo recto + V aberto / ida-e-volta / fechado; farpas 20–60°; pequena (150 px); inclinada; tremor ±3 | **seta** de 2 pontos | seta (o fim do cabo NA ponta desenhada) |
+| farpa só; farpas de 4 % do cabo (20 px em 500) | linha | linha (os dois oráculos concordam) |
+| duas pontas; cabo em ARCO; cabo em L | linha / traço livre | **seta** (o pedido do dono; o painel tem «Both Ends») |
+| as 65 formas antigas | nenhuma é seta | nenhuma é seta |
+
+Duas leis dele que não se copiam: o fim da seta fica **8–38 px AQUÉM** da ponta desenhada; e a forma
+da ponta vem da PREFERÊNCIA corrente (`currentItemEndArrowhead`; com `null` sai seta sem ponta), não do
+desenho. A de nascença, `arrow`, são **duas riscas em V** (medida pela linha do Quadro,
+`docs/MiroClone/ferramentas/excalidraw_oracle/README.md`) ⇒ a ponta por omissão é a nossa `Open` — e é
+o que a mão desenhou. Com uma ponta ARMADA no lápis, é ela.
+
+**A lei** ([`quickshape_arrow.rs`](../../../../crates/ph2d-vec-edit/src/quickshape_arrow.rs)). Cada
+amostra do fim do traço é candidata a ponta `T`; o eixo do cabo é a tangente na ponta da PARÁBOLA
+ajustada ao fim dele; as farpas são as amostras seguintes mais longe de `T` de cada lado do eixo; o
+traço da ponta tem de passar junto do V (as duas farpas e a corda), as farpas saem da ponta (o traço
+volta a ela), e a ponta é o **primeiro** mínimo do resíduo (o cabo acaba onde a ponta começa). O
+mesmo no INÍCIO (o traço ao contrário). As razões farpa/cabo re-medem-se contra o cabo REAL (entre as
+pontas); o cabo é reconhecido pela lei que já existe — linha, polilinha, arco, biarco — e a forma dele
+tem de ter 92,5 % do comprimento do traço dele. `QuickShape::Arrow(ArrowShape { shaft, heads })`; o
+lápis põe as pontas no traço vivo (o tamanho põe o alcance da ponta igual à farpa média), recua o
+caminho o que a ponta avança para lá do nó (`Marker::inset`), e devolve as do estilo fora da seta.
+
+**As setas de mão** (`measure_arrows`: 3 cabos × 3 pontas × uma e duas pontas × 4 ângulos × 4 farpas de
+8–40 % do cabo × 3 mãos, metade com as farpas ASSIMÉTRICAS ±10°, o repouso no fim):
+
+| cabo | ±0,5 | ±1 | ±2 | ±0,5 sem estab. | ±1 sem | ±2 sem |
+|---|---|---|---|---|---|---|
+| 24 px | 15 % | 14 % | 9 % | 41 % | 36 % | 25 % |
+| 48 px | 46 % | 44 % | 38 % | 75 % | 75 % | 54 % |
+| 96 px | 74 % | 74 % | 70 % | 100 % | 100 % | 86 % |
+| 160 px | 97 % | 97 % | 92 % | 100 % | 100 % | 96 % |
+| 400 px | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+
+As falhas das pequenas são as farpas abaixo do piso de 5,75 px (8 % de 96 px = 7,7 px, que o
+estabilizador encolhe): por farpa, a 48–400 px, 8 % → 44–50 %, 15 % → 72–75 %, 25 % → 92–97 %, 40 % →
+98–100 %. Os 18 cabos×pontas ficam iguais (73–82 %, a média das pequenas). **O cabo nunca piora**: contra
+o MESMO cabo desenhado sozinho, Hausdorff ao desenho, +1,03 px no pior de 246 pares; a ponta a ≤ 3,04
+px da desenhada; o tamanho da ponta até 34 % abaixo do desenhado (o estabilizador encurta a farpa).
+**Custo:** 0,85 ms uma seta de 400 px com duas pontas, 1,8 ms um rabisco (release, o mínimo de 20).
+
+**O preço nas formas antigas** (`measure_arrow_ab`, A × B no mesmo processo, 8 580 traços: as formas,
+os «não é arco», os «não é seta», os arcos e os assimétricos, ±1–4 px): **zero** fora de duas famílias
+novas — a linha que volta atrás (52, abaixo) e um T a ±4 px.
+
+**As faixas** (`measure_arrow_ranges`, cada uma sozinha no ponto final; `measure_arrow_angles` e
+`measure_arrow_joint` as que se seguram juntas). Faixa = as fixtures dos dois oráculos certas, as setas
+de 400 px ≥ 99 % e as de 24 px ≥ 20 %, nenhum «não é seta» lido seta; o valor no MEIO:
+
+| constante | valor | faixa | o que cai em cada ponta |
+|---|---|---|---|
+| `barb_min_deg` | 4° | **4** (um ponto) | 3: a linha que volta atrás a 400 px (25 %) · 5: a farpa de 20° desenhada a 10° (98 %) |
+| `barb_max_deg` | 82,5° | 80–85 | 75: a de 60° desenhada a 70° (97 %) · 90: o T (17 %) |
+| `head_min` | 0,0475 | 0,04–0,05 | 0,035: a farpa de 4 % que os dois oráculos chamam linha · 0,055: a ponta de 8 % (98 %) |
+| `head_max` | 1,2 | 0,4–2 | 0,35: a ponta de 40 % (64 %) · 3: o T |
+| `head_rms` | 0,095 | 0,09–0,10 | 0,08: 98 % · 0,11: o rabisco de 400 px · 0,13: a estrela (58 %) |
+| `barb_min_px` | 5,75 | 5,5–6 | 5: o repouso faz a 2.ª farpa de uma farpa só · 7: as de 24 px a 9 % |
+| `shaft_fill` | 0,925 | 0,9–0,95 | 0,875: o T de 400 px · 0,97: as de 24–32 px caem |
+| `tip_return` | 0,2 | 0,1–0,3 | 0,05: 95 % · 0,35: o T · 1 (sem guarda): a estrela 50 % |
+
+**⛔ Recusas MEDIDAS** (não se reconstroem): a candidata de MENOR resíduo (uma em cima da farpa
+percorre dois lados do V mais perto do modelo — o L de duas pontas a 50 %); a CORDA como eixo do cabo
+(vira metade do arco: 15–24° num cabo curvo, que saía livre); a seta só em traço ABERTO (as farpas de
+40 % nas duas pontas liam-se fechadas); a SIMETRIA das farpas como guarda (|θ₁ − θ₂| ≤ 25° matava a mão
+assimétrica e a volta à ponta já segura o triângulo); o TECTO de quinas do cabo (não separava nada); a
+RAZÃO entre as farpas (no ponto final 0 dá o mesmo que 0,7 — saiu do código); e um instrumento: o
+repouso aplicado DEPOIS do estabilizador (75 traços antigos mudavam; o lápis filtra na entrada — 3).
+
+**A ponta não passa ao traço seguinte.** A foto da cena 12 apanhou-o: ao soltar, a seta é selecionada,
+a tool ADOTA o traço dela («último usado») e o gelado solto nascia com ponta. `Pencil::next_style` (a
+ponte, para o lápis, a caneta e as formas): enquanto a seta estiver selecionada com as pontas que o
+QuickShape lhe deu, o próximo caminho nasce com as ARMADAS antes dela; mexer nas pontas ou selecionar
+outra coisa devolve a lei. Gate `the_arrows_head_does_not_pass_to_the_next_stroke`; foto `f7d_01`.
+
+**A fronteira medida:** a LINHA QUE VOLTA ATRÁS sobre si e só então faz uma farpa — à vista é uma farpa
+só (a volta fica por baixo do traço), e lê-se seta em 40–50 % a 48–160 px, 10 % a 400 px: o ângulo
+mínimo que a separaria (≥ 8°) mata as farpas assimétricas de 10°. Medida, não gateada.
+
 ## §4 — O que isto decide para o PH2D (e o que NÃO decide)
 
 - **Copia-se a lei:** linha ⇒ 2 pontos; rectângulo ⇒ 4 cantos a 90° com a rotação do traço;

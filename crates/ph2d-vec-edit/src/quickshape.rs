@@ -660,3 +660,7 @@ mod arrow_tests;
 #[cfg(test)]
 #[path = "quickshape_arrow_probe_tests.rs"]
 mod arrow_probe_tests;
+
+#[cfg(test)]
+#[path = "quickshape_arrow_pencil_tests.rs"]
+mod arrow_pencil_tests;

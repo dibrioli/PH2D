@@ -39,34 +39,36 @@ impl ArrowShape {
 
 /// **As constantes da seta** — campo de [`Law`] para as sondas as varrerem no mesmo processo
 /// (`quickshape_arrow_probe_tests.rs`, tabelas em `00_resultados.md` §3h). Cada FAIXA é onde as
-/// fixtures dos dois oráculos continuam certas, as setas de 400 px saem ≥ 99 %, as de 24 px ≥ 20 %
-/// e nenhum «não é seta» (gancho, zigue-zague, L, V, taco, farpa só, S, rabisco, as formas das
-/// sondas; 24–400 px, ±0,5–2, o repouso de ±1–3 px) passa de 10 % — e o valor é o MEIO dela.
+/// fixtures dos dois oráculos continuam certas, as setas de 400 px saem ≥ 99 % e as de 24 px ≥ 20 %,
+/// e nenhum «não é seta» (gancho, zigue-zague, L, V, T, taco, farpa só, S, estrela, rabisco, as
+/// formas das sondas; 24–400 px, ±0,5–2, o repouso de ±1–3 px) sai seta — a linha que volta atrás
+/// é a fronteira medida (§3h). O valor é o MEIO da faixa.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ArrowLaw {
-    /// O ângulo de cada farpa com o cabo (graus, da ponta para TRÁS): mínimo `2–4` (a 0 o
-    /// zigue-zague e o gancho viram seta; a 5 a farpa de 20° desenhada a 10° cai), máximo `80–120`
-    /// (a 75 a farpa de 60° desenhada a 70° cai; a 150 o zigue-zague é seta).
+    /// O ângulo de cada farpa com o cabo (graus, da ponta para TRÁS). Mínimo: uma faixa de um ponto,
+    /// `4` — a 3 a linha que volta atrás passa a 25 % a 400 px, a 5 a farpa de 20° desenhada a 10°
+    /// cai (98 %). Máximo `80–85` — a 75 a farpa de 60° desenhada a 70° cai, a 90 o T (a barra) é seta.
     pub(crate) barb_min_deg: f64,
     pub(crate) barb_max_deg: f64,
-    /// A farpa média em fracção do cabo: mínimo `0,04–0,05` (abaixo, a farpa de 4 % que os DOIS
+    /// A farpa média em fracção do cabo REAL: mínimo `0,04–0,05` (abaixo, a farpa de 4 % que os DOIS
     /// oráculos chamam linha vira seta; a 0,055 a seta comprida de ponta pequena, 8 %, cai), máximo
-    /// `0,4–0,6` (a 0,35 a ponta grande, 40 %, cai; a 0,8 o triângulo e o rabisco viram seta).
+    /// `0,4–2` (a 0,35 a ponta grande, 40 %, cai; a 3 o T volta).
     pub(crate) head_min: f64,
     pub(crate) head_max: f64,
     /// O traço da ponta fica junto do V (as duas farpas e a corda entre elas): resíduo rms em
-    /// fracção da farpa média, `0,09–0,13` (a 0,08 as de 400 px caem a 98 %; a 0,15 o rabisco 17 %).
+    /// fracção da farpa média, `0,09–0,10` (a 0,08 as de 400 px caem a 98 %; a 0,11 o rabisco).
     pub(crate) head_rms: f64,
     /// A farpa mais curta tem pelo menos isto (px de tela): `5,5–6` — abaixo, o repouso de ±3 px
-    /// faz a 2.ª farpa de uma farpa só, de um gancho, de um L; a 7 as setas de 24 px caem a 11 %.
+    /// faz a 2.ª farpa de uma farpa só, de um L, de uma linha; a 7 as setas de 24 px caem a 9 %.
     pub(crate) barb_min_px: f64,
-    /// A forma do cabo tem pelo menos esta fracção do comprimento do traço dele, `0,6–0,97`: um
+    /// A forma do cabo tem pelo menos esta fracção do comprimento do traço dele, `0,9–0,95`: um
     /// rabisco que vai e volta sobre a mesma recta lia-se polilinha curta (7 px de forma para 93 px
-    /// de traço), e o triângulo de 24 px seta (33 % a 0,5); a 0,99 as setas caem a 69 %.
+    /// de traço); a 0,875 o T de 400 px passa, a 0,97 as setas de 32 px caem.
     pub(crate) shaft_fill: f64,
-    /// As duas farpas saem DA PONTA: depois da primeira, o traço volta a esta fracção da farpa
-    /// média da ponta (no meio, o V aberto; no fim, o V fechado). Sem isto os dois últimos lados de
-    /// um polígono — ponta, farpa, outra farpa, e acaba — liam-se V fechado (a estrela pequena).
+    /// As duas farpas saem DA PONTA: depois da primeira, o traço volta a esta fracção da farpa média
+    /// da ponta (no meio, o V aberto; no fim, o V fechado), `0,1–0,3`. Sem isto os dois últimos lados
+    /// de um polígono — ponta, farpa, outra farpa, e acaba — liam-se V fechado (a estrela pequena);
+    /// a 0,35 o T volta, a 0,05 as de 400 px caem a 95 %.
     pub(crate) tip_return: f64,
 }
 

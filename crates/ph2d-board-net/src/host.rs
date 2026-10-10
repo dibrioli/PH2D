@@ -219,6 +219,19 @@ impl Host {
         Ok(())
     }
 
+    /// Fecha a sala DE PROPÓSITO: `last` (o adeus do protocolo) sai para todos ANTES de os fios
+    /// fecharem — o `Drop` sozinho corta o que ainda está na fila.
+    pub fn close(self, last: Vec<u8>) {
+        let _ = self.broadcast(last, None);
+        let threads = {
+            let mut st = self.shared.state();
+            st.senders.clear();
+            std::mem::take(&mut st.threads)
+        };
+        // Sem canal, cada escritor escreve o que tinha na fila e fecha o fio; o leitor dele acaba.
+        join_until(threads, Instant::now() + JOIN_DEADLINE);
+    }
+
     /// Expulsa: o fio fecha e chega o `Left`.
     pub fn kick(&self, id: ConnId) {
         if let Some(w) = self.shared.state().wires.get(&id) {

@@ -22,7 +22,12 @@ fn rect(b: &mut Board, x: f64) -> ElementId {
         style: Style::new(Some(ink), None, ink),
         text: RichText::plain("x"),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, [x, 0.0, 10.0, 10.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        shape,
+        [x, 0.0, 10.0, 10.0],
+    );
     let id = el.id;
     let _ = BoardOp::Put(el).apply(&mut b.doc);
     id
@@ -38,7 +43,12 @@ fn presence(x: f64, sel: Vec<ElementId>) -> Presence {
 }
 
 /// O ecrã de mentira de um convidado: guarda o quadro que chega no 1.º `Welcome`.
-fn deliver(g: &mut Guest, slot: &mut Option<Board>, bytes: &[u8], now: u64) -> (Vec<Msg>, Vec<Event>) {
+fn deliver(
+    g: &mut Guest,
+    slot: &mut Option<Board>,
+    bytes: &[u8],
+    now: u64,
+) -> (Vec<Msg>, Vec<Event>) {
     let (out, mut ev) = g.frame(slot.as_mut(), bytes, now);
     ev.retain(|e| match e {
         Event::Arrived(b) => {
@@ -111,7 +121,11 @@ fn presence_is_capped_and_the_last_one_is_never_lost() {
     assert!(host.presence(10, presence(2.0, vec![])).is_empty());
     let id = rect(&mut hb, 0.0);
     let _ = host.tick(&mut hb, 11);
-    assert_eq!(host.presence(12, presence(3.0, vec![id])).len(), 1, "selecção");
+    assert_eq!(
+        host.presence(12, presence(3.0, vec![id])).len(),
+        1,
+        "selecção"
+    );
     assert!(host.presence(20, presence(4.0, vec![id])).is_empty());
     assert!(host.tick(&mut hb, 30).is_empty(), "ainda não");
     let out = host.tick(&mut hb, 12 + SEND_EVERY_MS);
@@ -133,7 +147,11 @@ fn the_others_cursor_glides_between_samples() {
     assert_eq!(t.at(1000 + RENDER_DELAY_MS + 999), Some([33.0, 0.0]));
     assert_eq!(t.at(0), Some([0.0, 0.0]));
     t.push(5, [99.0, 0.0]);
-    assert_eq!(t.at(5000), Some([33.0, 0.0]), "uma amostra velha não volta atrás");
+    assert_eq!(
+        t.at(5000),
+        Some([33.0, 0.0]),
+        "uma amostra velha não volta atrás"
+    );
 }
 
 /// «Trazer todos»: quem chama não se chama a si; o anfitrião e os outros recebem a câmara.
@@ -151,10 +169,32 @@ fn summon_reaches_everyone_but_the_caller() {
         zoom: 2.0,
     };
     let (out, ev) = host.frame(&mut hb, 7, &b.summon(cam).encode(), 1);
-    assert_eq!(ev, vec![Event::Summoned { from: 2, camera: cam }]);
+    assert_eq!(
+        ev,
+        vec![Event::Summoned {
+            from: 2,
+            camera: cam
+        }]
+    );
     assert_eq!(out[0].0, To::AllBut(7));
     let (_, ev) = deliver(&mut b, &mut bb, &out[0].1.encode(), 2);
     assert!(ev.is_empty(), "quem chamou não se chama");
+}
+
+/// O anfitrião fecha a sala de propósito: o convidado sabe-o (e não confunde com uma queda), e o
+/// adeus é o ÚLTIMO byte da enumeração (um índice que viaja não se reordena).
+#[test]
+fn the_host_ending_the_room_is_told_to_the_guest() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let mut b = Guest::new(2, "Bia".into(), 2);
+    let mut bb = None;
+    let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 0);
+    deliver(&mut b, &mut bb, &out[0].1.encode(), 0);
+    let (_, ev) = deliver(&mut b, &mut bb, &Msg::End.encode(), 1);
+    assert_eq!(ev, vec![Event::Ended]);
+    assert_eq!(Msg::End.encode(), vec![8], "o adeus mudou de byte");
+    assert!(bb.is_some(), "a cópia fica");
 }
 
 /// O transporte de mentira: cada sentido de cada ligação é uma fila FIFO (como o TCP) com atraso
@@ -235,7 +275,13 @@ fn a_star_room_with_drops_ends_with_one_board() {
         let mut hh = History::default();
         let n = 3;
         let mut guests: Vec<(Guest, Option<Board>, History)> = (0..n)
-            .map(|i| (Guest::new(10 + i, format!("p{i}"), seed * 7 + i), None, History::default()))
+            .map(|i| {
+                (
+                    Guest::new(10 + i, format!("p{i}"), seed * 7 + i),
+                    None,
+                    History::default(),
+                )
+            })
             .collect();
         let mut links: Vec<Link> = (0..n)
             .map(|i| Link {
@@ -325,14 +371,18 @@ fn a_star_room_with_drops_ends_with_one_board() {
                 while let Some((_, bytes)) = links[i].down.pop_front() {
                     let (g, b, _) = &mut guests[i];
                     let (out, _) = deliver(g, b, &bytes, now);
-                    links[i].up.extend(out.into_iter().map(|m| (now, m.encode())));
+                    links[i]
+                        .up
+                        .extend(out.into_iter().map(|m| (now, m.encode())));
                 }
             }
             let out = host.tick(&mut hb, now);
             send_from_host(&mut links, out, now);
             for (i, (g, b, _)) in guests.iter_mut().enumerate() {
                 if let Some(b) = b {
-                    links[i].up.extend(g.tick(b, now).into_iter().map(|m| (now, m.encode())));
+                    links[i]
+                        .up
+                        .extend(g.tick(b, now).into_iter().map(|m| (now, m.encode())));
                 }
             }
             if links.iter().all(|l| l.up.is_empty() && l.down.is_empty()) {
@@ -371,7 +421,10 @@ fn measure_the_bytes_of_dragging_1_10_and_50_shapes() {
                 let _ = BoardOp::Put(el).apply(&mut hb.doc);
             }
             let out = host.tick(&mut hb, k * 16);
-            total += out.iter().map(|(_, m)| m.encode().len() + 20).sum::<usize>();
+            total += out
+                .iter()
+                .map(|(_, m)| m.encode().len() + 20)
+                .sum::<usize>();
         }
         eprintln!(
             "{n} formas: {} B por imagem · {:.1} KB/s a 60 Hz",

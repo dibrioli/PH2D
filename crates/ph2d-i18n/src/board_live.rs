@@ -70,6 +70,34 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.reconnecting" => "Connection lost — reconnecting…",
         "board.live.reconnected" => "Back in the live session",
         "board.live.locked" => "Too many wrong codes — try again in {s} s",
+        // ── a cena 12 (PH2D_BOARD_SMOKE=12) ──
+        "board.smoke.live.title" => "Live: draw on this board together with another window or computer",
+        "board.smoke.live.board" => "Retro",
+        "board.smoke.live.frame" => "Retro",
+        "board.smoke.live.n_well" => "Went well: the demo",
+        "board.smoke.live.n_better" => "Better: shorter meetings",
+        "board.smoke.live.n_idea" => "Idea: a shared board",
+        "board.smoke.live.plan" => "Plan",
+        "board.smoke.live.draw" => "Draw together",
+        "board.smoke.live.share" => "Share",
+        "board.smoke.live.l1" => {
+            "1. This board is already open: the Live panel (button Live, bottom right) shows its code."
+        }
+        "board.smoke.live.l2" => {
+            "2. If the panel says the firewall blocks: Allow on home network, then your system password."
+        }
+        "board.smoke.live.l3" => {
+            "3. 2nd window: PH2D with PH2D_BOARD_SMOKE=1, Live, click Retro in the list, type the code, Join."
+        }
+        "board.smoke.live.l4" => {
+            "4. Draw or move a note in one window: it moves in the other. You see their arrow and name."
+        }
+        "board.smoke.live.l5" => {
+            "5. Click a person's circle next to Live to follow their view. The × on Following stops."
+        }
+        "board.smoke.live.l6" => {
+            "6. Bring everyone here: all views jump to yours. End session: the others keep a copy."
+        }
         _ => return None,
     })
 }

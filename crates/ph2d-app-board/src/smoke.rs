@@ -13,6 +13,7 @@
 //! | 9 | FACILITAR (W7): uma retrospectiva com sete ideias num frame «Ideas» (cores e etiquetas variadas, os selos de uma votação anterior — 3 e 1 —, carimbos) e cinco notas com as lições na ordem real (o cronómetro · votar com os `+` · «I'm done»/«End for all» · os carimbos · agrupar por cor, etiqueta ou palavra); o cartão do cronómetro abre armado a 5:00 |
 //! | 10 | a EQUIPA e a SAÍDA (W8): um lançamento em três frames-diapositivo, um comentário por ler e um resolvido, uma versão guardada, e as cinco lições (comentar · versões · apresentar · exportar · abrir um `.excalidraw`) |
 //! | 11 | a FIDELIDADE ao Excalidraw (W9): o `bv.excalidraw` do dono aberto pelo leitor (setas rectas, paradas a 5 + traço/2 das formas — compare com a foto `docs/MiroClone/bv_excalidraw.png`), setas curtas de 10 a 60 (a ponta encolhe para metade), duas caixas para desenhar uma seta que pára antes da forma, e as quatro lições |
+//! | 12 | o QUADRO AO VIVO (W11): a retrospectiva «Retro» (três notas num frame e um fluxo de três caixas) JÁ ABERTA à rede, o painel Live aberto com o código, e as seis lições (o código · a firewall · a 2.ª janela entra · desenhar junto · seguir · trazer todos e fechar); a 2.ª janela é outro PH2D com a cena 1 |
 
 use ph2d_board_model::{
     Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Mark, Rgba,
@@ -52,10 +53,14 @@ mod team;
 #[path = "smoke_fidelity.rs"]
 mod fidelity;
 
+/// A cena 12 (W11), num ficheiro filho.
+#[path = "smoke_live.rs"]
+mod live;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 11,
+    max_level: 12,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -78,7 +83,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         9 => facilitate::scene_facilitate(hero),
         10 => _ = team::scene_team(hero),
         11 => _ = fidelity::scene_fidelity(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=11)"),
+        12 => _ = live::scene_live(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=12)"),
     }
 }
 

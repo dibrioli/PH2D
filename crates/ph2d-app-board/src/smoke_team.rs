@@ -39,19 +39,19 @@ const FRAME: [f64; 2] = [520.0, 320.0];
 const GAP: f64 = 40.0;
 /// As notas dos frames (menores que a de nascença: três cabem num frame).
 const SMALL: f64 = 150.0;
-const INK: Rgba = Rgba([30, 30, 30, 255]);
+pub(super) const INK: Rgba = Rgba([30, 30, 30, 255]);
 
-fn tr(key: &str) -> String {
+pub(super) fn tr(key: &str) -> String {
     ph2d_i18n::tr(key).to_owned()
 }
 
-fn put(b: &mut Board, el: Element) -> ElementId {
+pub(super) fn put(b: &mut Board, el: Element) -> ElementId {
     let id = el.id;
     BoardOp::Put(el).apply(&mut b.doc);
     id
 }
 
-fn note(
+pub(super) fn note(
     b: &mut Board,
     key: &str,
     color: usize,
@@ -74,7 +74,7 @@ fn note(
     put(b, el)
 }
 
-fn boxed(b: &mut Board, key: &str, bx: [f64; 4], home: ElementId) -> ElementId {
+pub(super) fn boxed(b: &mut Board, key: &str, bx: [f64; 4], home: ElementId) -> ElementId {
     let shape = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(Some(Rgba(STICKY_COLORS[12])), Some(INK), INK),
@@ -85,7 +85,7 @@ fn boxed(b: &mut Board, key: &str, bx: [f64; 4], home: ElementId) -> ElementId {
     put(b, el)
 }
 
-fn arrow(b: &mut Board, from: ElementId, to: ElementId) {
+pub(super) fn arrow(b: &mut Board, from: ElementId, to: ElementId) {
     let c = Connector::new(
         End::Bound {
             target: from,

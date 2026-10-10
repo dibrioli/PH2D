@@ -194,7 +194,11 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             }
         }
         LiveRequest::Leave => {
-            st.live = None;
+            // O anfitrião diz adeus antes de fechar (numa thread: esvaziar as filas não prende o
+            // ecrã); o convidado só fecha o fio.
+            if let Some(Live::Host { net, .. }) = st.live.take() {
+                std::thread::spawn(move || net.close(Msg::End.encode()));
+            }
             stop(hero);
         }
         LiveRequest::Summon => match &mut st.live {
@@ -400,6 +404,11 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                                 hero.documents.tell(tr("board.live.refused").to_owned());
                                 return None;
                             }
+                            // Fechou de propósito: a cópia fica, sem o minuto a tentar voltar.
+                            Event::Ended => {
+                                hero.documents.tell(tr("board.live.host_left").to_owned());
+                                return None;
+                            }
                             e => {
                                 if let Some(id) = board {
                                     event(hero, id, e, &names);
@@ -518,7 +527,7 @@ fn event(hero: &mut HeroScreen, board: BoardId, e: Event, names: &[(u64, String)
             hero.documents
                 .tell(tr_with("board.live.summoned", &[("name", &name(from))]));
         }
-        Event::Welcomed | Event::Refused { .. } | Event::Arrived(_) => {}
+        Event::Welcomed | Event::Refused { .. } | Event::Arrived(_) | Event::Ended => {}
     }
 }
 
@@ -575,6 +584,21 @@ fn stop(hero: &mut HeroScreen) {
     if let Some(b) = board.and_then(|id| hero.documents.board_mut(id)) {
         b.set_session(None);
     }
+}
+
+/// Para os testes da família: a firewall desta thread lê-se como `probe` sobre `subnets`, e nada
+/// corre (pedir a senha num teste é um defeito).
+#[cfg(test)]
+pub(crate) fn fake_firewall_for_tests(
+    probe: ph2d_board_net::firewall::Probe,
+    subnets: Vec<ph2d_board_net::Subnet>,
+) {
+    STATE.with_borrow_mut(|st| {
+        st.fw.env.probe = Arc::new(move || probe.clone());
+        st.fw.env.subnets = Arc::new(move || subnets.clone());
+        st.fw.env.run = Arc::new(|cmd| panic!("um teste pediu a senha: {cmd:?}"));
+        st.fw.env.file = None;
+    });
 }
 
 /// Para os testes da família: a sessão desta thread acaba.

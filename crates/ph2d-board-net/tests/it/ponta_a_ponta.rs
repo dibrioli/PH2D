@@ -443,3 +443,32 @@ fn o_silencio_derruba_quem_se_calou_e_o_sinal_de_vida_segura_quem_so_nao_fala() 
         "o vazio é o sinal de vida"
     );
 }
+
+/// Fechar a sala DE PROPÓSITO: o adeus chega a cada convidado ANTES de o fio fechar (o `Drop`
+/// sozinho cortava o que estava na fila).
+#[test]
+fn fechar_a_sala_entrega_o_adeus_antes_de_cortar() {
+    let (h, hb) = host();
+    let addr = local(h.port());
+    let (w1, b1) = bell();
+    let (w2, b2) = bell();
+    let g1 = Guest::connect(addr, &h.code(), T, w1).expect("entra");
+    let g2 = Guest::connect(addr, &h.code(), T, w2).expect("entra");
+    let _ = gather(|| h.poll(), &hb, T, |e| joined(e).len() == 2);
+    h.close(b"adeus".to_vec());
+    for (g, b) in [(&g1, &b1), (&g2, &b2)] {
+        let ev = gather(
+            || g.poll(),
+            b,
+            T,
+            |e| e.iter().any(|e| matches!(e, NetEvent::Left(_))),
+        );
+        let at = |want: &dyn Fn(&NetEvent) -> bool| ev.iter().position(|e| want(e));
+        let bye = at(&|e| matches!(e, NetEvent::Frame(_, b) if b == b"adeus"));
+        let left = at(&|e| matches!(e, NetEvent::Left(_)));
+        assert!(
+            bye.is_some() && bye < left,
+            "o adeus não chegou antes do fim: {ev:?}"
+        );
+    }
+}

@@ -50,6 +50,9 @@ pub enum Msg {
         from: PeerId,
         camera: Camera,
     },
+    /// O anfitrião fechou a sala DE PROPÓSITO: quem está fica com a cópia, sem tentar voltar (uma
+    /// queda tenta voltar). ⛔ Só se ACRESCENTA no fim: o índice da variante é o byte que viaja.
+    End,
 }
 
 impl Msg {
@@ -81,11 +84,18 @@ pub enum Event {
     /// O quadro da sala, na 1.ª entrada: o ecrã abre-o numa aba e passa-o daí em diante.
     Arrived(Box<Board>),
     /// O anfitrião fala outra versão.
-    Refused { theirs: u32 },
+    Refused {
+        theirs: u32,
+    },
     Joined(PeerInfo),
     Left(PeerId),
     /// Alguém chamou todos para a vista dele.
-    Summoned { from: PeerId, camera: Camera },
+    Summoned {
+        from: PeerId,
+        camera: Camera,
+    },
+    /// O anfitrião fechou a sala.
+    Ended,
 }
 
 /// O que é comum às duas pontas: quem está, o que se vê deles, e a minha presença por enviar.
@@ -186,9 +196,7 @@ impl Host {
             }
             // Quem volta guarda a cor; quem chega leva a seguinte.
             let color = self.room.peers.get(&peer).map_or_else(
-                || {
-                    u8::try_from(self.room.peers.len()).unwrap_or(u8::MAX)
-                },
+                || u8::try_from(self.room.peers.len()).unwrap_or(u8::MAX),
                 |p| p.color,
             );
             let info = PeerInfo { peer, name, color };
@@ -278,7 +286,11 @@ impl Host {
 
     #[must_use]
     pub fn peers(&self) -> Vec<&PeerInfo> {
-        self.room.peers.values().filter(|p| self.is_here(p.peer)).collect()
+        self.room
+            .peers
+            .values()
+            .filter(|p| self.is_here(p.peer))
+            .collect()
     }
 
     fn is_here(&self, peer: PeerId) -> bool {
@@ -386,6 +398,7 @@ impl Guest {
             Msg::Summon { from, camera } if from != self.peer => {
                 events.push(Event::Summoned { from, camera });
             }
+            Msg::End => events.push(Event::Ended),
             _ => {}
         }
         (out, events)

@@ -31,8 +31,10 @@ const PORTA: &str = "paint_dropdown_list(";
 /// chamam a porta — os catorze que rolavam por cópia, os dois que já usavam o núcleo (o filtro da
 /// Hierarquia e as fontes da Timeline) e os três que nem rolavam (Color Equalization, a barra do
 /// Flip Frames, a animação da Timeline). O Inspector fica no núcleo: o passe dele não tem o store
-/// mutável.
-const PISO_PORTA: usize = 19;
+/// mutável. ⚠️ **Recontado na integração da `line/UIUX` (10/10): 18** — a nova UI do Vetor (D10)
+/// apagou o popover das famílias do catálogo (`ph2d-panel-vector/src/paint_catalog.rs`), que era um
+/// dos 19. Um chamador APAGADO, não um que saiu da porta.
+const PISO_PORTA: usize = 18;
 
 fn raiz_das_crates() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")

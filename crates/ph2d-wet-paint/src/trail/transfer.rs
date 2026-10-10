@@ -86,7 +86,7 @@ impl Trail {
                     continue;
                 }
                 let i = cx as usize + cy as usize * s;
-                let w_s = alpha_of_mass(g.sett[i] as f64) * 0.5;
+                let w_s = alpha_of_mass(g.sett[i] as f64) * p.pickup_assentado;
                 let w_f = alpha_of_mass(g.susp[i] as f64);
                 let fe = w_s + w_f;
                 if fe <= 0.0 {

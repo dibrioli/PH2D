@@ -49,8 +49,10 @@ impl PainterTool {
         // corre só depois do Up (dono 10/10): a 4096² o quadro a pintar com ela a correr ia de 2–4 ms a
         // 14–45 ms no pior. ⛔ A lei da gota (`drip_head`) fica DESLIGADA: era ela que cortava o
         // escorrimento em rectângulos (W1f, 05 §4b). O motor nasce com o port.
+        // O pincel sujo só apanha tinta MOLHADA (prompt 15): com o assentado o amarelo nunca cobria o azul seco.
         engine.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
         engine.sim.glaze_filme = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
+        engine.sim.pickup_assentado = 0.0;
         self.paint.wetpaint.session = Some(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,

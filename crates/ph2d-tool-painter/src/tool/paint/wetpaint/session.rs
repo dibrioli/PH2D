@@ -198,6 +198,13 @@ impl WetSession {
         }
         if f.km_mixing != a.km_mixing {
             e.sim.km_mixing = f.km_mixing;
+            // A K–M já é subtractiva: a velatura por cima dela contava a absorção duas vezes, e o ciclo
+            // assenta ↔ re-molha levava um miolo molhado a PRETO (prompt 15, 05 §4b «Mistura»).
+            e.sim.glaze = if f.km_mixing {
+                0.0
+            } else {
+                ph2d_wet_paint::colorops::VELATURA_MEDIDA
+            };
         }
         if f.agua_viva != a.agua_viva {
             e.sim.sim_while_painting = f.agua_viva;

@@ -813,8 +813,78 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     dentro da tinta — o detetor de LINHA COMPRIDA (14 §2 passo 5).
   - **Smoke do dono sobre `711513d42`: OK** — e um defeito novo para a PRÓXIMA janela: a mistura de pigmentos
     (amarelo sobre azul seco dá PRETO e nunca cobre; [captura](fixtures/smoke_dono_w1g/amarelo_sobre_azul_seco.png)).
-    Prompt: [15](15_PROMPT_janela_auditoria_mistura.md).
-- **Falta (só com ordem do dono):** a auditoria da mistura (prompt 15) e o fecho da linha (`/pd-linha-fechar`, handoff).
+    Prompt: [15](15_PROMPT_janela_auditoria_mistura.md) — auditada e curada na entrada «Mistura» abaixo.
+- 🔎✅ **Mistura — amarelo sobre azul seco (10/10, prompt [15](15_PROMPT_janela_auditoria_mistura.md)).**
+  Sonda `wetpaint/mistura_camadas_tests.rs::sonda_camadas` (a cena da bancada: referência amarela no branco,
+  mancha azul (30, 100, 220) de 9 traços + Dry canvas, 10 passadas de amarelo (245, 205, 25) em serpentina,
+  molhado = 0,5 s entre passadas, seco = Dry canvas entre passadas; miolo x 285–315, y 185–215; «escuro» = 2.º
+  percentil da luminância em x 240–360, y 155–245; «→amarelo» = fracção azul → tinta em luz linear, R e G).
+  Oráculo: Rebelle 8.3.4 pela porta WebSocket, a MESMA cena (+200, +120): `ferramentas/camadas.py`,
+  `camadas_tela.sh`, `camadas_regua.py`; fotos em [fixtures/rebelle_camadas/](fixtures/rebelle_camadas/).
+  - **O que o Rebelle faz:** nunca escurece; molhado o miolo vai (201,203,134) → (235,206,56) à 3.ª → a cor
+    da tinta (245,205,25) à 9.ª; seco (camada a camada) (214,217,169) → (244,225,127) à 3.ª → creme
+    (249,226,120) estável desde a 5.ª. O amarelo COBRE o azul por volta da 3.ª passada nos dois modos.
+  - **A causa do PRETO é a «Pigment mixing (K-M)» do Tuning ligada.** O preto da captura é (14,14,14) — o
+    chão de reflectância da K–M, que a sonda alcança — e os fios verdes (41,180,12) são a cor da K–M. Com a
+    mistura de fábrica NENHUMA das 8 condições (tela direita/meia/máxima, Heavy Edge 1, Live Water, esfregar a
+    60 px, tudo junto) põe o miolo ou o 2.º percentil abaixo do azul. Com a K–M + a cena do dono (Live
+    Water, Tilt meia, Heavy Edge 1, Smooth Edges 1, 60 px, 3 idas por traço) o assentado do miolo vai
+    (12,98,43) → (12,80,18) → (12,12,13) → **(2,3,12)** — e o próprio traço amarelo no BRANCO acaba (86,122,19).
+
+    | hipótese | medida (molhado salvo dito) | veredicto |
+    |---|---|---|
+    | **H1** a velatura compõe-se | K–M, cena do dono: desligar a velatura SÓ na junção «assenta» (drying) → (237,203,25); só no pouso, só no re-molha ou só no render → o mesmo preto. De fábrica nunca desce abaixo do azul | ✅ **sob a K–M**: a K–M já é subtractiva, a velatura por cima conta a absorção duas vezes e o ciclo assenta ↔ re-molha realimenta-a |
+    | **H2** sRGB sem tecto | a velatura com tecto no mínimo dos dois por canal = o produto ±2 níveis; a média geométrica em luz linear também | ⛔ não é a causa |
+    | **H3** o pincel sujo | de fábrica, simples: o suspenso (189,177,75) contra a tinta (245,205,25); com o pincel a apanhar só o MOLHADO (244,205,25), o miolo à 10.ª 0,63 → **0,81**; cena do dono 1.ª passada 0,53 → **0,79** | ✅ **é o «nunca cobre»**: o bico apanhava o azul ASSENTADO (peso `0,5·α(sett)`) a cada dab |
+    | **H4** a cobertura | a massa azul do miolo 1984 → 1707 em 10 passadas (a re-molha tira 14 %); sem re-molha o miolo de fábrica sobe só +7 níveis; com a K–M é decisivo (seco final 0,35 → 0,98 com Staining 1) | ✅ residual, só sob a K–M — é a lei do **Staining** (doc 23: «quão permanente é a tinta seca», 0,5 de fábrica) |
+    | **H5** o render | sem a velatura do render o ecrã molhado sobe (157 → 182 no 1.º) mas o ASSENTADO preto é o mesmo | ⛔ o preto é pigmento, não render |
+
+  - **A cura (duas leis, as duas no produto; o port e a impressão digital não mudam):**
+    1. **Com a K–M não há velatura** — `WetSession::reconcile_facts` troca `sim.glaze` com a caixa
+       (`VELATURA_MEDIDA` ↔ 0), como a W1g troca a do filme com a Live Water. A velatura do render fica (não
+       se guarda, não realimenta).
+    2. **O pincel sujo só apanha tinta MOLHADA** — `Sim::pickup_assentado` (o peso do assentado no que o
+       bico recolhe, `trail/transfer.rs::tip_rows`): port 0,5 (ao bit: a mesma multiplicação), produto 0.
+       O Rebelle já o dizia na W1e (rasto − azul ≈ 0 sobre o seco).
+
+    | miolo, passadas 1 · 3 · 10 · seco (→amarelo) | antes | depois | Rebelle |
+    |---|---|---|---|
+    | de fábrica, molhado | (157,157,79) · (173,165,62) · (199,177,44) · (180,166,53) — 0,39 · 0,48 · 0,63 · 0,50 | (197,177,32) · (206,181,26) · (224,190,27) · (205,178,36) — 0,62 · 0,68 · **0,81** · 0,66 | (201,203,134) · (235,206,56) · (245,205,25) · (245,205,26) |
+    | de fábrica, cena do dono | 0,53 · 0,82 · 0,96 · 0,97 | **0,79 · 0,99 · 1,00 · 1,00** | idem |
+    | de fábrica, seco | (128,138,73) · (229,192,25) · (245,205,25) — 0,24 · 0,84 · 1,00 | (149,148,28) · (244,203,24) · (245,205,25) — 0,33 · **0,98** · 1,00 | (214,217,169) · (244,225,127) · (249,226,120) |
+    | K–M, cena do dono | (98,151,35) · (102,140,20) · (99,92,17) · **(2,3,12)** | (161,182,21) · (223,200,23) · (243,205,25) · (244,205,25) — 0,54 · 0,87 · **0,99** · 0,99 | — |
+    | K–M, molhado simples | (148,158,75) · (97,162,40) · (57,153,22) · (30,134,23) — escurece a cada passada | (175,180,26) · (131,182,23) · (133,185,24) · (94,173,27) — 0,57 · 0,47 · 0,49 · 0,35, **nunca abaixo do azul** | — |
+    | K–M, seco | (63,135,64) · (180,181,21) · (227,202,24), orla 2.º percentil 0,10 < azul | (138,192,25) · (243,205,25) · (245,205,25) — 0,54 · 0,99 · 1,00 | — |
+
+  - **Portão** `n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto` (6 cenas: de fábrica e K–M ×
+    molhado simples · cena do dono · seco). Barra do Rebelle: (a) o miolo nunca abaixo da luminância do azul
+    e o 2.º percentil nunca abaixo de 0,8× dela; (b) à 10.ª passada `≥ 0,70` do caminho para o amarelo e
+    não recuou da 1.ª. **Nasceu VERMELHO** no produto de hoje («de fábrica, molhado: 0,63»; «K–M, cena do
+    dono: (2,3,12)»; «K–M, seco: 2.º percentil 0,10»). Controlos DENTRO: a velatura por cima da K–M na
+    cena do dono e o pincel que apanha o assentado (de fábrica, molhado) reprovam. Mutações no produto
+    (restauro por cópia + `touch`): «a K–M volta a levar a velatura» (`reconcile_facts`) ⇒ VERMELHO (K–M,
+    cena do dono, miolo (104,103,17) à 3.ª); «o pincel volta a apanhar o assentado» (`pickup_assentado`
+    0,5 no nascimento da sessão) ⇒ VERMELHO (de fábrica, molhado: 0,63); restaurado ⇒ verde.
+    ⚠️ Custa ~86 s no perfil smoke (9 cenas de 600×400 a 10 passadas) — o portão mais caro da família.
+  - **Cercas, verdes depois:** `cerca.sh` · `os_outros_meios_nao_mudam` + miniaturas de fábrica · a suíte de
+    `ph2d-wet-paint` (as impressões do port) · o censo dos controlos (4 features) · a ponte do preview
+    (`--features panel-painter-layers`) · `--lib wetpaint` inteiro (158, com `opcoes_tests` — os bytes do
+    S e da bancada NÃO mudaram: num traço de uma cor o bico apanha a própria cor, e as miniaturas idem) ·
+    `mistura_tests` (a barra de uma camada: γ seco 0,59·0,42, sangria +2,7 · molhado +13 — igual com e sem
+    as curas, medido no mesmo processo). «Antes»: as cercas fecharam verdes na W1g (`711513d42`) e o rebase
+    sobre `782f90b69` não tocou no Painter; não as re-corri antes da cura.
+  - ⛔ **Recusas medidas:** o tecto da velatura no mínimo dos dois por canal (= produto, não cura nada) · a
+    velatura pela média geométrica em luz linear (100 % e 200 %: = produto de fábrica) · zerar a re-molha no
+    produto (de fábrica +7 níveis; é a lei do Staining, o controlo do artista desde o doc 23, e mexer-lhe
+    move os lavados molhados) · desligar a velatura de fábrica (o seco da W1e volta a 0,06).
+  - **Aberto — decisão do dono:** com a K–M ligada, a tinta MOLHADA sobre o azul seco re-dissolve ~14 % dele e
+    a K–M (um pouco de azul domina o amarelo) segura o miolo verde-amarelado (0,35–0,49, nunca abaixo do azul);
+    com a Live Water ou camada a camada cobre (0,99). **Staining 1** faz cobrir também ali (0,98). Subir o
+    Staining de fábrica quando a K–M liga seria uma lei nova — não pedida, não construída.
+  - Pranchas: [1:1](prancha_mistura_camadas.png) · [8× no miolo](prancha_mistura_camadas_8x.png) (Rebelle ·
+    de fábrica antes · depois · K–M cena do dono antes · depois; colunas azul · 1 · 2 · 3 · 5 · 10 · seco).
+    Gerador `ferramentas/prancha_camadas.py`.
+- **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 
 ## §5 — A próxima janela (a W2)

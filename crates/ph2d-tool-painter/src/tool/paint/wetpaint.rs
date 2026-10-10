@@ -431,6 +431,8 @@ mod gota_tests;
 #[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
 #[cfg(test)]
+mod mistura_camadas_tests; // N camadas de amarelo sobre azul seco convergem sem preto (prompt 15)
+#[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte

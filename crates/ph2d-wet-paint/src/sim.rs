@@ -45,6 +45,8 @@ pub struct Params {
     pub(crate) gota: Option<crate::solver::Gota>,
     /// O pigmento que desce mais que a água ([`Sim::sedimenta`]).
     pub sedimenta: f64,
+    /// O peso do ASSENTADO no que o pincel sujo apanha ([`Sim::pickup_assentado`]).
+    pub pickup_assentado: f64,
 }
 
 impl Params {
@@ -75,7 +77,8 @@ pub struct Sim {
     /// Experimental color routing (K–M pigment mixing checkbox).
     pub km_mixing: bool,
     /// A transparência do pigmento ([`crate::colorops::velatura`]): `0` = o port (junção por cima), o
-    /// produto liga [`crate::colorops::VELATURA_MEDIDA`].
+    /// produto liga [`crate::colorops::VELATURA_MEDIDA`] — só com a mistura de fábrica: a K–M já é
+    /// subtractiva, e somar-lhe a velatura leva um miolo molhado a PRETO (05 §4b «Mistura»).
     pub glaze: f64,
     /// A velatura do filme MOLHADO sobre o assentado, no render ([`crate::colorops::VELATURA_DO_FILME`]):
     /// `0` = o port.
@@ -90,6 +93,11 @@ pub struct Sim {
     /// **O pigmento DESCE mais que a água** (W1g, «Heavy Edge», [`crate::solver::sedimenta`]): a fracção
     /// por passo, por unidade de `|g|`, que o pigmento em suspensão passa à vizinha de baixo. `0` = o port.
     pub sedimenta: f64,
+    /// **O pincel sujo apanha a tinta ASSENTADA?** O peso dela na cor que o bico recolhe, ao lado do
+    /// suspenso (peso 1): `0,5` = o port; o produto `0` — o pincel só apanha tinta MOLHADA, como no
+    /// Rebelle (W1e: rasto − azul ≈ 0 sobre o seco). Com `0,5` o amarelo apanhava o azul seco a cada dab e
+    /// nunca o cobria (prompt 15, 05 §4b «Mistura»).
+    pub pickup_assentado: f64,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -162,6 +170,7 @@ impl Default for Sim {
             sim_while_painting: false,
             drip_head: 0.0,
             sedimenta: 0.0,
+            pickup_assentado: 0.5,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -238,6 +247,7 @@ impl Sim {
                 crate::solver::Gota::new(self.drip_head, gx, gy)
             },
             sedimenta: self.sedimenta,
+            pickup_assentado: self.pickup_assentado,
         }
     }
 }

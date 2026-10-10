@@ -1,0 +1,108 @@
+//! O convidado: liga-se ao anfitrião, prova o código e troca quadros só com ele.
+
+use std::net::{Shutdown, SocketAddr, TcpStream};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
+
+use crate::code::Code;
+use crate::handshake;
+use crate::host::{JOIN_DEADLINE, Out, WRITE_TIMEOUT, join_until, read_loop, write_loop};
+use crate::lan::is_lan;
+use crate::wire::MAX_FRAME;
+use crate::{JoinError, NetEvent, SendError, Waker};
+
+pub struct Guest {
+    tx: Option<Sender<Out>>,
+    /// Desliga quando a leitura acaba (o escritor só o descobriria na próxima escrita).
+    alive: Arc<AtomicBool>,
+    events: Receiver<NetEvent>,
+    wire: TcpStream,
+    threads: Vec<JoinHandle<()>>,
+}
+
+impl Guest {
+    /// Entra na sala em `addr` com o código que a pessoa escreveu (minúsculas, espaços e hífen
+    /// aceites). `timeout` vale para ligar e para o aperto de mão.
+    ///
+    /// # Errors
+    /// Ver [`JoinError`].
+    pub fn connect(
+        addr: SocketAddr,
+        code: &str,
+        timeout: Duration,
+        waker: Waker,
+    ) -> Result<Self, JoinError> {
+        let code = Code::parse(code).ok_or(JoinError::InvalidCode)?;
+        if !is_lan(addr.ip()) {
+            return Err(JoinError::NotLan);
+        }
+        let mut stream = TcpStream::connect_timeout(&addr, timeout)
+            .map_err(|e| JoinError::Unreachable(e.kind()))?;
+        let _ = stream.set_nodelay(true);
+        let _ = stream.set_read_timeout(Some(timeout));
+        let _ = stream.set_write_timeout(Some(timeout));
+        let keys = handshake::guest(&mut stream, &code)?;
+        let _ = stream.set_read_timeout(None);
+        let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
+        let (Ok(rd), Ok(wr)) = (stream.try_clone(), stream.try_clone()) else {
+            return Err(JoinError::Broken);
+        };
+
+        let (ev_tx, events) = mpsc::channel();
+        let (tx, rx) = mpsc::channel::<Out>();
+        let seal = keys.seal;
+        let open = keys.open;
+        let alive = Arc::new(AtomicBool::new(true));
+        let up = Arc::clone(&alive);
+        let writer = thread::spawn(move || write_loop(wr, seal, &rx));
+        let reader = thread::spawn(move || {
+            read_loop(&rd, open, |bytes| {
+                let _ = ev_tx.send(NetEvent::Frame(0, bytes));
+                waker();
+            });
+            up.store(false, Ordering::Release);
+            let _ = ev_tx.send(NetEvent::Left(0));
+            waker();
+        });
+        Ok(Self {
+            tx: Some(tx),
+            alive,
+            events,
+            wire: stream,
+            threads: vec![writer, reader],
+        })
+    }
+
+    #[must_use]
+    pub fn poll(&self) -> Vec<NetEvent> {
+        self.events.try_iter().collect()
+    }
+
+    /// # Errors
+    /// Acima de [`MAX_FRAME`], ou a ligação caiu.
+    pub fn send(&self, bytes: Vec<u8>) -> Result<(), SendError> {
+        if bytes.len() > MAX_FRAME {
+            return Err(SendError::TooBig {
+                len: bytes.len(),
+                max: MAX_FRAME,
+            });
+        }
+        let tx = self.tx.as_ref().ok_or(SendError::Gone)?;
+        if !self.alive.load(Ordering::Acquire) {
+            return Err(SendError::Gone);
+        }
+        tx.send(Arc::new(bytes)).map_err(|_| SendError::Gone)
+    }
+}
+
+impl Drop for Guest {
+    fn drop(&mut self) {
+        let deadline = Instant::now() + JOIN_DEADLINE;
+        let _ = self.wire.shutdown(Shutdown::Both);
+        self.tx = None;
+        join_until(std::mem::take(&mut self.threads), deadline);
+    }
+}

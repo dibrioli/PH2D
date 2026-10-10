@@ -378,3 +378,53 @@ fn medida_custo_por_lampada() {
         );
     }
 }
+
+/// ⭐⭐⭐ **GATE — a borda da sombra é RETA na placa** (smoke do dono, 09–10/10). A ondulação do
+/// ponto de 50 % ao longo da borda de cima da sombra da cena 1, pela luz DIRETA (C3). Medido
+/// (1920×1080, vista de fábrica): Low 0,46 px · Medium 0,17 px rms; antes da C3: 4,08 · 1,19.
+#[test]
+fn a_borda_da_sombra_e_reta_na_placa() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let (com, sem) = cena1_com_e_sem();
+    let (cc, cs) = (
+        ph2d_light2d_ecs::coleta::cena_de_luz(&com),
+        ph2d_light2d_ecs::coleta::cena_de_luz(&sem),
+    );
+    let [a, b, ..] = afim().as_coeffs();
+    let ppm = a.hypot(b);
+    for (c0_px, teto_px) in [(4.0, 0.6), (2.0, 0.25)] {
+        let degrau = ph2d_app_light2d::Degrau {
+            c0_px,
+            ..ph2d_app_light2d::DEGRAU_PADRAO
+        };
+        let g = ph2d_app_light2d::grade_do_quadro(afim(), FHD, degrau).expect("grade");
+        let cfg = ph2d_light2d_gpu::Config::padrao_para(&gpu.device, g);
+        let flu = |cena: &ph2d_light2d_ecs::CenaDeLuz| {
+            let mut s = ph2d_light2d_gpu::Solver::novo(&gpu, cfg).expect("solver");
+            s.quadro(&gpu, cena);
+            crate::comum::fluencia_lida(&gpu, &s)
+        };
+        let (fc, fs) = (flu(&cc), flu(&cs));
+        let pts = borda_de_cima(&|p| {
+            crate::comum::amostra(&fc, g, p) / crate::comum::amostra(&fs, g, p).max(1e-9)
+        });
+        assert!(
+            pts.len() >= 50,
+            "a régua achou só {} pontos da borda",
+            pts.len()
+        );
+        let (r, _) = ondulacao(&pts);
+        eprintln!(
+            "borda reta · {c0_px} px: {:.2} px rms (teto {teto_px})",
+            r * ppm
+        );
+        assert!(
+            r * ppm <= teto_px,
+            "a borda da sombra ondula {:.2} px (teto {teto_px}) no nível de {c0_px} px",
+            r * ppm
+        );
+    }
+}

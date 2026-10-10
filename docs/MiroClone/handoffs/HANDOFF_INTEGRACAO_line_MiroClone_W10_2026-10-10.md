@@ -16,7 +16,7 @@
 | base (merge-base) | `2a925859d` — **o `main` não andou** desde a W9 ⇒ `--ff-only` se ninguém aterrar antes |
 | commits da W10 | `83138a1df` (3/3 a letra) · `0747a4a16` (oráculo) · `69a40b461` (1/3 o legado do 0.18.1) · `702b8a2f5` (2/3 o realce) · `4fd466d2a` (curas do portão e da auditoria) · `202b389fc` (mutação) · `e11be3aa8` (portão 2.ª) · `156d43c0a` (foto) + este handoff — `git log --oneline d34b0b5fb..HEAD` |
 | diff da W10 | `git diff --shortstat d34b0b5fb..HEAD -- crates/`: 16 ficheiros, +1 019 / −54; o resto são as entradas e saídas do oráculo (a varredura `w10_F_*` compacta: 3,1 MB de saídas + 3,3 MB de entrada) e a foto |
-| smoke | **por fazer pelo dono** (§8) |
+| smoke | **OK do dono (10/10)** — §12 |
 
 O que a W10 trouxe — as três pontas da W9 (handoff W9 §9), escolha do dono 10/10:
 
@@ -170,3 +170,8 @@ target/*/incremental`: **31 GB** recuperados (debug 27 G, smoke 4,1 G); disco 47
 ```text
     Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
+
+## 12. Smoke do dono — OK (10/10)
+
+*«smoke ok.»* — a lição 5 (a letra segue o botão) e o realce sem o ponto no foco. A pergunta das notas
+importadas com a letra fixa (§9) ficou sem resposta.

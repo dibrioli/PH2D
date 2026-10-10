@@ -76,6 +76,32 @@
 pub struct PencilHand {
     /// A posição FILTRADA corrente, em px de tela.
     stab: [f32; 2],
+    /// O gesto é um nó do Edit Shape (F7e): o nó segue o ponteiro CRU — o estabilizador é do
+    /// traço, e um nó atrasado do dedo é um nó que mente onde está.
+    raw: bool,
+}
+
+/// **O press do lápis** (a shell chama-o com o ponteiro em mundo): com os nós do Edit Shape à
+/// vista, um nó ou o contorno debaixo dele é AGARRADO; senão o Edit Shape fecha e é um traço novo.
+pub fn press(
+    vec: &mut crate::state::VecState,
+    scene: &mut ph2d_vec_scene::VecScene,
+    w: [f64; 2],
+    px_to_world: f64,
+    dyn_in: ph2d_vec_edit::pencil_width::PenDynamics,
+    shift: bool,
+) {
+    let xf = vec
+        .pencil
+        .shape_edit_path()
+        .map_or(ph2d_vec_scene::Xform::IDENTITY, |id| vec.pen.xf(id));
+    let grabbed = vec
+        .pencil
+        .shape_edit_press(scene, w, px_to_world, xf, shift);
+    vec.pencil_hand.raw = grabbed;
+    if !grabbed {
+        vec.pencil.on_press(scene, w, px_to_world, dyn_in);
+    }
 }
 
 impl PencilHand {
@@ -94,6 +120,10 @@ impl PencilHand {
     /// exata — o `lazy_mouse_step` faz early-return), então o slider no mínimo é o produto de
     /// antes desta wave, ao bit.
     pub fn filter(&mut self, px: (f32, f32), strength: f32) -> (f32, f32) {
+        if self.raw {
+            self.stab = [px.0, px.1];
+            return px;
+        }
         self.stab = ph2d_painter_brush::lazy_mouse_step(self.stab, [px.0, px.1], strength);
         (self.stab[0], self.stab[1])
     }

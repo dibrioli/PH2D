@@ -218,6 +218,10 @@ thread_local! {
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
     /// habilita o botão "Convert to Curves". Publicado pela shell.
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
+    /// ④ o Edit Shape (F7e): `(oferecido, aberto)`, publicado pelo quadro do lápis.
+    static SHAPE_EDIT: Cell<(bool, bool)> = const { Cell::new((false, false)) };
+    /// O clique no botão do Edit Shape, à espera de que o quadro do lápis o consuma.
+    static SHAPE_EDIT_CLICK: Cell<bool> = const { Cell::new(false) };
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
     /// A forma cujos PARÂMETROS o painel desenha: a da forma VIVA selecionada, quando há
@@ -402,6 +406,26 @@ pub fn set_current_convertible(v: bool) {
 
 pub(crate) fn convertible() -> bool {
     CURRENT_CONVERTIBLE.with(Cell::get)
+}
+
+/// Publica o Edit Shape do lápis (F7e): a forma acabou de nascer (`offered`) e os nós estão à
+/// vista (`open`).
+pub fn set_current_shape_edit(offered: bool, open: bool) {
+    SHAPE_EDIT.with(|c| c.set((offered, open)));
+}
+
+pub(crate) fn shape_edit() -> (bool, bool) {
+    SHAPE_EDIT.with(Cell::get)
+}
+
+/// O clique no botão do Edit Shape (o painel chama-o; os gates do quadro do lápis também).
+pub fn request_shape_edit_toggle() {
+    SHAPE_EDIT_CLICK.with(|c| c.set(true));
+}
+
+/// O clique no botão do Edit Shape desde a última pergunta (o quadro do lápis abre/fecha os nós).
+pub fn take_shape_edit_toggle() -> bool {
+    SHAPE_EDIT_CLICK.with(|c| c.replace(false))
 }
 
 /// O estado dos **Effects** (ADR-0132) — módulo irmão pelo teto de 600 LOC deste arquivo.

@@ -339,6 +339,11 @@ pub(crate) fn apply_event(
             host.store_mut().open_picker_on(swatch);
             true
         }
+        // ④ o Edit Shape (F7e): o lápis é do quadro, não da tool — o clique fica à espera dele.
+        WidgetEvent::Click(id) if id == crate::ids::VECTOR_PENCIL_EDIT_SHAPE => {
+            crate::state::request_shape_edit_toggle();
+            true
+        }
         WidgetEvent::Click(id) if forwards_plain_click(id) => {
             seam_reset_button(host, id);
             host.bus_mut()

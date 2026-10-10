@@ -118,6 +118,8 @@ mod width_handle;
 pub use width_handle::draw_width_handle;
 mod weld_mark;
 pub use weld_mark::draw_weld_marks;
+mod shape_nodes;
+pub use shape_nodes::draw_shape_nodes;
 
 /// O realce das FACES do Shape Builder — módulo irmão (LOC cap). É a feature: sem ele o
 /// artista arrasta às cegas e só descobre o que pegou depois de soltar.

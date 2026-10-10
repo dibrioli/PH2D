@@ -32,6 +32,11 @@ pub const VECTOR_PIVOT_EDIT: NodeId = hash_node_id("vector.pivot.edit");
 /// crus: texto explode num grupo de paths por-letra; formas descartam só o `VecShape`.
 pub const VECTOR_CONVERT_TO_CURVES: NodeId = hash_node_id("vector.convert_to_curves");
 
+/// ④ «Edit Shape» (F7e): os nós PRÓPRIOS da forma que o QuickShape acabou de fazer — o botão do
+/// Procreate. O clique NÃO vai à tool: o lápis é do quadro, que o consome
+/// (`take_shape_edit_toggle`).
+pub const VECTOR_PENCIL_EDIT_SHAPE: NodeId = hash_node_id("vector.pencil.edit_shape");
+
 // ── Expand: Outline Stroke + Offset Path ─────────────────────────────────────
 // Os dois são COMANDOS destrutivos sobre a seleção, irmãos das booleanas acima e
 // pelo mesmo motor (`ph2d_vec_boolean::expand`). O `join` é do OFFSET, não do

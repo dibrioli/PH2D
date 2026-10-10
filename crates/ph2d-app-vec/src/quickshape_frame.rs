@@ -2,6 +2,7 @@
 //! e o `Esc`. A lei mora em `ph2d_vec_edit::quickshape`, o gatilho em `ph2d_vec_edit::quickshape_hold`.
 
 use crate::state::VecState;
+use ph2d_vec_edit::pencil::ShapeEditState;
 use ph2d_vec_edit::quickshape_hold::HoldTick;
 use ph2d_vec_scene::VecScene;
 
@@ -9,6 +10,7 @@ use ph2d_vec_scene::VecScene;
 /// `regular` (o 2.º dedo do Procreate, que o toque já entrega como `Shift`). `true` = a forma
 /// NASCEU agora (a shell toca o clique: foi a mão que segurou).
 pub fn frame(vec: &mut VecState, scene: &mut VecScene, now_ns: u128, shift: bool) -> bool {
+    shape_edit(vec, scene, shift);
     vec.pencil.is_active()
         && vec
             .pencil
@@ -16,17 +18,44 @@ pub fn frame(vec: &mut VecState, scene: &mut VecScene, now_ns: u128, shift: bool
             == HoldTick::Recognised
 }
 
+/// ⭐ **O Edit Shape** (F7e) a cada quadro: o botão da ④ abre e fecha os nós; o `Shift` refaz o
+/// arrasto ao vivo; a forma só vale com o lápis na mão, o caminho dela selecionado e a geometria
+/// que ela escreveu (o afim é o que a caneta recebeu neste quadro, DEPOIS do assentamento); e a ④
+/// e a dica ⑤ são TOLD.
+fn shape_edit(vec: &mut VecState, scene: &mut VecScene, shift: bool) {
+    if ph2d_panel_vector::take_shape_edit_toggle() {
+        vec.pencil.toggle_shape_edit();
+    }
+    vec.pencil.shape_edit_regular(scene, shift);
+    if let Some(id) = vec.pencil.shape_edit_path() {
+        let in_hand = vec.draw_config.mode == ph2d_tool_vector::DrawMode::Pencil;
+        let xf = vec.pen.xf(id);
+        vec.pencil
+            .shape_edit_tick(scene, xf, vec.pen.selected(), in_hand);
+    }
+    let state = vec.pencil.shape_edit_state();
+    ph2d_panel_vector::set_current_shape_edit(
+        state != ShapeEditState::None,
+        state == ShapeEditState::Open,
+    );
+}
+
 /// O `Esc` com o lápis aberto: com a forma, devolve o traço livre; sem ela, desiste do traço (o
-/// que a dica do Lápis sempre prometeu e ninguém fazia). `true` = consumido.
+/// que a dica do Lápis sempre prometeu e ninguém fazia). Com os nós do Edit Shape à vista e sem
+/// arrasto, fecha-os. `true` = consumido.
 pub fn escape(vec: &mut VecState, scene: &mut VecScene) -> bool {
     if !vec.pencil.is_active() {
-        return false;
+        return vec.pencil.shape_edit_escape();
     }
     if !vec.pencil.quick_dismiss(scene) {
         vec.pencil.cancel(scene);
     }
     true
 }
+
+#[cfg(test)]
+#[path = "quickshape_frame_edit_tests.rs"]
+mod edit_tests;
 
 #[cfg(test)]
 mod tests {

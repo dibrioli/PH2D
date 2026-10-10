@@ -6,6 +6,11 @@
 //! mede o segurar é a SHELL, a cada quadro, com o relógio do ponteiro (o `clock_ns` do chrome é esse
 //! relógio): a cena só carimba as amostras e espera. No fim os oito ficam seleccionados com o
 //! Lápis ainda na mão: os nós à vista, o QuickShape aceso, a dica no ⑤.
+//!
+//! ⭐ **A cena 13** (`=13`, F7e — 10/10): o EDIT SHAPE. Só o rectângulo tosco, seguro (vira o
+//! rectângulo perfeito); o botão «Edit Shape» da barra ④ pelo MESMO clique que o rato dá; e o canto
+//! de baixo-direita arrastado pelo MESMO press que a shell chama — o rectângulo cresce e continua
+//! rectângulo, com os nós dele à vista e a dica do Edit Shape no ⑤.
 
 use crate::state::VecState;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -24,6 +29,9 @@ const GIVE_UP_NS: u128 = 3_000_000_000;
 const STROKES: usize = 8;
 /// Os primeiros `HELD` traços são SEGUROS (QuickShape); o último é solto logo — o traço livre.
 const HELD: usize = 7;
+
+/// O arrasto do canto na cena 13 (mundo): para a direita e para baixo, num passo de mão.
+const EDIT_DRAG: [f64; 2] = [0.45, -0.3];
 
 thread_local! {
     static STROKE: Cell<usize> = const { Cell::new(0) };
@@ -153,14 +161,16 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
     }
 }
 
-/// Um passo da cena 12; devolve o próximo estágio, se mudou. `50` = o Lápis pelo botão · `51` =
-/// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` =
-/// os oito seleccionados, com o Lápis ainda na mão · `9` = feito.
+/// Um passo da cena 12 (ou da 13, `edit`); devolve o próximo estágio, se mudou. `50` = o Lápis
+/// pelo botão · `51` = aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma,
+/// depois solta · `54` = os oito seleccionados, com o Lápis ainda na mão · `55` = o botão Edit
+/// Shape · `56` = os nós à vista, o canto arrastado · `9` = feito.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
     hero: &mut HeroScreen,
+    edit: bool,
 ) -> Option<u8> {
     let lit = |hero: &HeroScreen, id| {
         hero.store
@@ -208,7 +218,43 @@ pub fn step(
                 s.set(s.get() + 1);
                 s.get()
             });
-            Some(if k < STROKES { 52 } else { 54 })
+            Some(if edit {
+                55
+            } else if k < STROKES {
+                52
+            } else {
+                54
+            })
+        }
+        // A cena 13: o botão da ④ — o clique é o do rato (o painel guarda-o; o quadro do lápis
+        // abre os nós no quadro seguinte).
+        55 => {
+            hero.apply_event(WidgetEvent::Click(
+                ph2d_panel_vector::ids::VECTOR_PENCIL_EDIT_SHAPE,
+            ));
+            Some(56)
+        }
+        56 if vec.pencil.shape_edit_state() == ph2d_vec_edit::pencil::ShapeEditState::Open => {
+            let dyn_at = |t_ns| PenDynamics {
+                pressure: 1.0,
+                t_ns,
+            };
+            // O canto de baixo-direita (y para cima: o de menor y entre os de maior x).
+            let nodes = vec.pencil.shape_edit_nodes().0;
+            let corner = nodes
+                .iter()
+                .copied()
+                .max_by(|a, b| (a[0] - a[1]).total_cmp(&(b[0] - b[1])))?;
+            crate::pencil_input::press(vec, scene, corner, PX_TO_WORLD, dyn_at(now), false);
+            for i in 1..=8 {
+                let f = f64::from(i) / 8.0;
+                let p = [corner[0] + EDIT_DRAG[0] * f, corner[1] + EDIT_DRAG[1] * f];
+                vec.pencil.on_drag(scene, p, dyn_at(now));
+            }
+            if vec.pencil.on_release(scene) {
+                vec.pen.select(vec.pencil.selected());
+            }
+            Some(9)
         }
         // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); os oito
         // seleccionados mostram os nós.

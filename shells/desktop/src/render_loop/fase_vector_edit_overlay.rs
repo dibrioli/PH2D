@@ -40,39 +40,23 @@ impl crate::App {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     &vec_view,
-                    self.vec.pen.selected(),
+                    ph2d_app_vec::edit_marks::node_overlay_selected(&self.vec),
                     self.vec.pen.selected_paths(),
                     self.vec.pen.selected_verts(),
                     &vec_xf,
                     cam_affine,
                     vector_scene,
                 );
-                // ⭐⭐⭐ **A MARCA DO NÓ SOLDADO** (plano 39). Report do Enio (2026-09-01):
-                // *"as linhas não compartilham o mesmo nó"* — e ele **não tinha como ver**:
-                // duas pontas coincidentes e duas pontas a um pixel pintam o mesmo quadrado.
-                //
-                // ⚠️ **A LEI é a do arrasto** (`welded_nodes`, mesma `WELD_TOL` e mesmo
-                // predicado do `welded_with`); o que se decide AQUI é só o que se vê: um
-                // caminho escondido não mostra marca, como não mostra âncora.
-                //
-                // ⚠️ **E a projecção é a MESMA do overlay** (`overlay_transform`) — um segundo
-                // caminho poria o anel ao lado da âncora que ele afirma abraçar, e justamente
-                // sob auto layout, onde conferir a olho é mais difícil.
-                let marcas: Vec<[f64; 2]> = self
-                    .vec
-                    .pen
-                    .welded_nodes(vec_scene)
-                    .into_iter()
-                    .filter(|(id, _)| !vec_view.is_hidden(*id))
-                    .filter_map(|(id, i)| {
-                        let v = vec_scene.path(id)?.vert(i)?;
-                        let t =
-                            ph2d_vec_render::overlay_transform(&vec_view, &vec_xf, id, cam_affine);
-                        let p = t * ph2d_vector::Point::new(v.anchor[0], v.anchor[1]);
-                        Some([p.x, p.y])
-                    })
-                    .collect();
-                ph2d_vec_render::draw_weld_marks(&marcas, hero.theme, vector_scene);
+                // ⭐⭐⭐ O anel do nó SOLDADO (plano 39) e os nós do Edit Shape (F7e).
+                ph2d_app_vec::edit_marks::draw(
+                    &self.vec,
+                    vec_scene,
+                    &vec_view,
+                    &vec_xf,
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
             }
             // NOTA: as alças de raio de quina (Live Corners) não são mais desenhadas — o
             // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de

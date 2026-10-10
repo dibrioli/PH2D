@@ -353,6 +353,7 @@ impl ModeFamily for Family<'_> {
 /// `PH2D_OBJECT_MODE_SMOKE=10` (F4, 08/10): a 9, e depois a PALETA a fazer piscar o pulldown Snap —
 /// ver [`crate::vector_mode_reach`]. `=11` (F6): dois dedos navegam — [`crate::vector_mode_nav`].
 /// `=12` (F7): o QuickShape — quatro traços SEGUROS viram formas, um livre guarda as quinas.
+/// `=13` (F7e): o Edit Shape — o rectângulo seguro, o botão da ④ e um canto arrastado.
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -369,23 +370,30 @@ pub fn smoke_step(
     static REACH: AtomicU8 = AtomicU8::new(0);
     // A cena 11 (F6): os dedos navegam — estágios 40–41 em `vector_mode_nav`.
     static NAV: AtomicU8 = AtomicU8::new(0);
-    // A cena 12 (F7): o QuickShape — estágios 50–55 em `vector_mode_quick`.
+    // A cena 12 (F7): o QuickShape — estágios 50–56 em `vector_mode_quick`; 2 = a 13 (F7e).
     static QUICK: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
             let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
             let want = match scene.as_deref() {
-                Ok("6" | "7" | "9" | "10" | "11" | "12") => 1,
+                Ok("6" | "7" | "9" | "10" | "11" | "12" | "13") => 1,
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
             BARS.store(
-                u8::from(matches!(scene.as_deref(), Ok("9" | "10" | "11" | "12"))),
+                u8::from(matches!(scene.as_deref(), Ok("9" | "10" | "11" | "12" | "13"))),
                 Ordering::Relaxed,
             );
             REACH.store(u8::from(scene.as_deref() == Ok("10")), Ordering::Relaxed);
             NAV.store(u8::from(scene.as_deref() == Ok("11")), Ordering::Relaxed);
-            QUICK.store(u8::from(scene.as_deref() == Ok("12")), Ordering::Relaxed);
+            QUICK.store(
+                match scene.as_deref() {
+                    Ok("12") => 1,
+                    Ok("13") => 2,
+                    _ => 0,
+                },
+                Ordering::Relaxed,
+            );
             STAGE.store(want, Ordering::Relaxed);
             want
         }
@@ -414,7 +422,7 @@ pub fn smoke_step(
         // de Object, e nesse quadro este passo não corre — o `armed` nasce e morre sem ser visto.
         2 if hero.image_edit.active_tool_id == Some(VECTOR) => go(if weld {
             13
-        } else if QUICK.load(Ordering::Relaxed) == 1 {
+        } else if QUICK.load(Ordering::Relaxed) != 0 {
             50
         } else {
             3
@@ -488,8 +496,9 @@ pub fn smoke_step(
             }
         }
         // A cena 12 (F7): o QuickShape e o lápis com quinas — `vector_mode_quick`.
-        s @ 50..=54 => {
-            if let Some(next) = crate::vector_mode_quick::step(s, vec, scene, hero) {
+        s @ 50..=56 => {
+            let edit = QUICK.load(Ordering::Relaxed) == 2;
+            if let Some(next) = crate::vector_mode_quick::step(s, vec, scene, hero, edit) {
                 go(next);
             }
         }

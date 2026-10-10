@@ -400,18 +400,16 @@ impl crate::App {
             }
             return true;
         }
-        // **Modo Lápis**: a pressão abre um traço de mão livre. O gesto é INTEIRO
-        // dele (press/move/release), como o Build e o Connect — não há hit-test a
-        // fazer: um lápis desenha onde você encostou.
+        // **Modo Lápis**: a pressão abre um traço de mão livre — ou agarra um nó do Edit
+        // Shape (F7e). O gesto é INTEIRO dele (press/move/release), como o Build e o Connect.
         if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Pencil {
-            let px_to_world = self.vec_px_to_world();
-            let dyn_in = self.pointer_dynamics();
+            let (px_to_world, dyn_in) = (self.vec_px_to_world(), self.pointer_dynamics());
+            let shift = self.modifiers.shift_key();
             if let Some(w) = self.vec_world_at(self.last_pointer)
                 && let Some(gfx) = self.gfx.as_mut()
             {
-                self.vec
-                    .pencil
-                    .on_press(&mut gfx.vec_scene, w, px_to_world, dyn_in);
+                let scene = &mut gfx.vec_scene;
+                ph2d_app_vec::pencil_input::press(&mut self.vec, scene, w, px_to_world, dyn_in, shift);
             }
             // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
             // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um

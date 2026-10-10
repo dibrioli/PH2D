@@ -12,6 +12,8 @@ use ph2d_editor_core::interaction::WidgetStore;
 /// `DrawMode::Shape` e a fileira de modos ficava TODA apagada.
 pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, crate::ids::VECTOR_CONVERT_TO_CURVES);
+    // ④ o Edit Shape (F7e) — o botão que o lápis oferece ao soltar uma forma do QuickShape.
+    button(store, crate::ids::VECTOR_PENCIL_EDIT_SHAPE);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_SELECT);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_NODE);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_PEN);

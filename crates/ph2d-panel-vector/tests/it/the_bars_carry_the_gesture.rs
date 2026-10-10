@@ -571,3 +571,36 @@ fn the_quickshape_switch_and_its_hint_follow_the_tool() {
         off.hint
     );
 }
+
+/// ⭐ **O Edit Shape (F7e) na ④**: o botão só existe com a forma do QuickShape OFERECIDA (o quadro
+/// do lápis publica-a), vai À FRENTE, acende com os nós à vista — e então a dica ⑤ é a dele; o
+/// clique real é consumido pelo painel e fica à espera do quadro do lápis, UMA vez.
+#[test]
+fn the_edit_shape_button_is_offered_after_a_quickshape_and_its_click_waits_for_the_pencil() {
+    let barras = |offered: bool, open: bool| {
+        ph2d_panel_vector::set_current_shape_edit(offered, open);
+        Retrato {
+            sel: 1,
+            ..Retrato::em(DrawMode::Pencil)
+        }
+        .barras()
+        .0
+    };
+    let first = |b: &ToolBars| b.actions.first().and_then(|g| g.first()).map(|x| (x.id, x.on));
+    assert!(!action_ids(&barras(false, false)).contains(&p::VECTOR_PENCIL_EDIT_SHAPE));
+    let offered = barras(true, false);
+    assert_eq!(first(&offered), Some((p::VECTOR_PENCIL_EDIT_SHAPE, false)));
+    assert!(!offered.hint.contains("node"), "{}", offered.hint);
+    let open = barras(true, true);
+    assert_eq!(first(&open), Some((p::VECTOR_PENCIL_EDIT_SHAPE, true)));
+    assert!(open.hint.contains("Drag a node"), "{}", open.hint);
+    let mut host = crate::host_aberto();
+    let mut st = VectorPanelState;
+    let out = host.apply_panel_event::<VectorPanel>(
+        &mut st,
+        WidgetEvent::Click(p::VECTOR_PENCIL_EDIT_SHAPE),
+    );
+    assert_eq!(out, EventOutcome::Consumed);
+    assert!(ph2d_panel_vector::take_shape_edit_toggle(), "o clique espera o lápis");
+    assert!(!ph2d_panel_vector::take_shape_edit_toggle(), "e consome-se uma vez");
+}

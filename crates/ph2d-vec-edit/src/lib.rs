@@ -272,8 +272,8 @@ impl PenTool {
         self.xforms = xforms;
     }
 
-    /// O afim local→mundo de `id` (identidade se o path não tem entidade ainda).
-    fn xf(&self, id: VecPathId) -> ph2d_vec_scene::Xform {
+    /// O afim local→mundo de `id` (identidade se o path não tem entidade ainda) — o do quadro.
+    pub fn xf(&self, id: VecPathId) -> ph2d_vec_scene::Xform {
         ph2d_vec_scene::xform_of(&self.xforms, id)
     }
 

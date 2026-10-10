@@ -160,6 +160,9 @@ pub fn mode_id(mode: DrawMode) -> Option<NodeId> {
 /// ⑤ A dica do estado: a do modo, e a do Lápis diz o «segurar» só com o QuickShape ligado.
 #[must_use]
 pub fn hint_key_for(snap: &VectorStyleSnapshot) -> &'static str {
+    if snap.mode == DrawMode::Pencil && crate::state::shape_edit().1 {
+        return "panel.vector.hint.pencil_edit_shape";
+    }
     if snap.mode == DrawMode::Pencil && snap.pencil_quickshape {
         return "panel.vector.hint.pencil_quickshape";
     }
@@ -342,6 +345,18 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
     }
     let b = |id, icon, key: &str| button(id, icon, tr(key).to_owned(), false, BarFamily::Neutral);
     let mut out = Vec::new();
+    // ⭐ O Edit Shape (F7e) À FRENTE: é o «a seguir» de uma forma que acabou de nascer (o botão que
+    // o Procreate mostra ao soltar). Aceso com os nós à vista.
+    let (offered, open) = crate::state::shape_edit();
+    if offered {
+        out.push(vec![button(
+            crate::ids::VECTOR_PENCIL_EDIT_SHAPE,
+            IconId::VectorNode,
+            tr("panel.vector.pencil.edit_shape").to_owned(),
+            open,
+            BarFamily::Neutral,
+        )]);
+    }
     if sel >= 2 {
         out.push(vec![
             b(

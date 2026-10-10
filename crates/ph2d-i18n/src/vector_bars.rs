@@ -24,6 +24,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.hint.pencil_quickshape" => {
             "Drag: draw \u{00b7} Hold at the end: perfect shape \u{00b7} Right-click or Esc: cancel"
         }
+        "panel.vector.hint.pencil_edit_shape" => {
+            "Drag a node: adjust \u{00b7} Shift: even \u{00b7} Drag the outline: scale \u{00b7} Click away or Esc: done"
+        }
+        "panel.vector.pencil.edit_shape" => "Edit Shape",
         "panel.vector.hint.shape" => {
             "Drag: size \u{00b7} Shift: even \u{00b7} Alt: from the centre \u{00b7} Esc: cancel"
         }

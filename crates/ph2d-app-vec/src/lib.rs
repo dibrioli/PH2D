@@ -173,6 +173,8 @@ pub use ph2d_vec_entities::entity_map;
 /// usa `ph2d_panel_vector::FontPreview`, logo ela não existe num build sem painel vectorial.
 pub mod font_preview;
 pub mod overlay;
+/// As marcas por cima dos nós: a do nó soldado e os nós do Edit Shape (F7e).
+pub mod edit_marks;
 pub mod overlay_diag;
 pub mod paint_stack;
 /// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`

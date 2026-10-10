@@ -59,6 +59,13 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
   a cova fecha-se e ficam os dois passos de sempre. Timeline: `TimelineHistory.graveyard`, `ressuscita` antes
   da cura no upkeep; Motion: `ObjetoState.cemiterio`, `ressuscita` antes das `mortes`, `Manutencao.ressuscitados`.
   Recusado: «passo ligado» entre filas (parte quando uma fila é desfeita fora de ordem).
+  ⭐ **E o Ctrl+Z que encontra a purga enterrada no topo é do undo GLOBAL** (`8d249c881`): com a timeline
+  aberta a fila dela consumia-o (repunha os clipes de um dono morto, a purga tirava-os — laço) e, com a
+  ferramenta Motion, a fila do Motion repunha os nós e a migração dava-os a OUTRO objecto — o objecto nunca
+  voltava (defeito anterior à onda 4). `Graveyard::holds`, `TimelineHistory::top_is_buried` (o
+  `keyboard_timeline` larga a tecla), `MotionHistory::top` + `motion_objeto::undo_e_do_global` (o
+  `keyboard_cadeia` manda-a DIRETO ao `undo_or_redo`, sem passar pela timeline). Portão dos ganchos:
+  `a_buried_purge_sends_ctrl_z_to_the_global_undo`.
 - **Item 4 — recusa visível** de Add Clip/Duplicate acima do tecto (`ClipRefusal::{AnimationFull, DocumentFull}`,
   i18n `timeline.clip.animation_full`/`document_full` com `{max}`; `TimelineState.refusals` drenado por
   `ph2d_panel_timeline::speak_clip_refusals`); verificada ANTES da edição (nenhum undo vazio); o `+` não fica
@@ -137,9 +144,9 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
 - Censos da árvore combinada: 12/12 censos, 114/114 testes ✓. `nextest-impacted` **18974/18974** ✓ (104,7 s,
   load 23→36). `PH2D_GPU=1 cargo test -p ph2d-gpu-cook dono -- --ignored` 1/1 ✓.
 
-## 6. Provas de mutação (23/23 SANGRARAM nas leis da janela principal + as dos agentes)
+## 6. Provas de mutação (27/27 SANGRARAM nas leis da janela principal + as dos agentes)
 
-- Janela principal (23): espaço no `EvalCtx` · push da chave espaçada · `Fingerprint.space` · `publica` no
+- Janela principal (27 — as 4 últimas: `holds`, `top_is_buried`, `undo_e_do_global`, o gancho do `keyboard_timeline`): espaço no `EvalCtx` · push da chave espaçada · `Fingerprint.space` · `publica` no
   `publish_all` · Pontos · `pose_em` · zoom · `pose_de_mundo` · `ressuscita` (timeline) · `take_top_if` ·
   `ressuscita` (Motion) · `Graveyard` all→any · `entry_clip_of` · `arranged_owners` · `clip_local_time` ·
   pedido · futuro · `UnknownClip` · despacho v19 · «Duplicate não rouba» · `toca_os_objectos` · `push_intent`
@@ -166,6 +173,8 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
 5. «O pedido ao Inspector pode levar `StableId`» — o Inspector só tem os bits da entidade.
 6. «A recusa do Paint deixa a camada pendente» — a recusa não chega a escrever; os casos rançosos eram `leave` e outra imagem.
 7. «Um undo composto entre filas» — recusado; o cemitério dispara o 2.º Ctrl+Z de sempre só quando é seguro.
+8. «Ctrl+Z global e depois o da timeline» (o caminho documentado de recuperação) — com a timeline ABERTA o
+   1.º Ctrl+Z nunca chegava ao global: a fila da timeline consumia-o sempre que tinha passo (laço com a purga).
 
 ## 9. Smokes (binário `smoke` compilado na worktree; fotografados com `fotografa_cena.sh` em 09/10)
 

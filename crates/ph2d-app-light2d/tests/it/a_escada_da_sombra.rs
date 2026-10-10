@@ -62,9 +62,18 @@ pub(crate) fn luz_do_quadro(gpu: &GpuContext, degrau: Degrau, w: &World) -> crat
     crate::comum::fluencia_lida(gpu, l.solver().expect("solver"))
 }
 
-/// Os três contornos da penumbra que a régua segue: o escuro, o meio e o claro. A escada que o dono
-/// viu vive nos de 10 % e 90 % (o de 50 % de uma degrau interpolado quase não ondula).
-pub(crate) const NIVEIS: [f64; 3] = [0.1, 0.5, 0.9];
+/// Os contornos da penumbra que a régua segue. A escada que o dono viu vive nos de 10 % e 90 % (o de
+/// 50 % de um degrau interpolado quase não ondula); as MANCHAS da interpolação junto ao preto vivem
+/// abaixo de 10 % (a foto da W4b viu-as e a régua de três contornos não): por isso os de 2 % e 98 %.
+pub(crate) const NIVEIS: [f64; 5] = [0.02, 0.1, 0.5, 0.9, 0.98];
+
+/// Uma coluna por contorno de [`NIVEIS`], para as sondas.
+pub(crate) fn por_contorno(e: &[Escada], f: impl Fn(&Escada) -> f64) -> String {
+    e.iter()
+        .map(|x| format!("{:.3}", f(x)))
+        .collect::<Vec<_>>()
+        .join(" · ")
+}
 
 fn cruza(ts: &[f64], f: &[f64], nivel: f64) -> Option<f64> {
     f.windows(2)
@@ -92,7 +101,7 @@ fn resumo(desvios: &[(f64, f64)]) -> Escada {
 /// ⭐ **A régua**: de 4 px depois do canto até a linha de medida da penumbra, a cada píxel de tela,
 /// o perfil perpendicular à borda (passo de 1/20 de píxel); em cada contorno de [`NIVEIS`], o
 /// desvio do cruzamento da placa (fração com/sem parede) ao da geometria (`comum::visivel`).
-pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia) -> [Escada; 3] {
+pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia) -> [Escada; 5] {
     let [a, b, ..] = afim().as_coeffs();
     let ppm = a.hypot(b);
     let (lampada, canto, linha) = smoke::geometria_da_sala(smoke::SALAS_X[0]);
@@ -103,7 +112,7 @@ pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia
     let u = [d[0] / dist, d[1] / dist];
     let nrm = [-u[1], u[0]];
     let s_fim = (f64::from(linha) - c[0]) / u[0];
-    let mut desvios: [Vec<(f64, f64)>; 3] = Default::default();
+    let mut desvios: [Vec<(f64, f64)>; 5] = Default::default();
     let mut k = 4.0;
     while k / ppm <= s_fim {
         let s = k / ppm;
@@ -131,7 +140,7 @@ pub(crate) fn escada_de(fc: &crate::comum::Fluencia, fs: &crate::comum::Fluencia
 }
 
 /// A régua sobre o caminho do PRODUTO com `degrau`.
-pub(crate) fn escada(gpu: &GpuContext, degrau: Degrau) -> [Escada; 3] {
+pub(crate) fn escada(gpu: &GpuContext, degrau: Degrau) -> [Escada; 5] {
     let (com, sem) = cena4_com_e_sem();
     escada_de(
         &luz_do_quadro(gpu, degrau, &com),
@@ -150,13 +159,16 @@ pub(crate) fn degraus() -> [(&'static str, Degrau); 3] {
     .map(|(nome, n)| (nome, ph2d_app_light2d::qualidade::degrau_do(n)))
 }
 
-/// O teto da escada — pelo MEDIDO (W4b, `medida_luz2d_w4b` B): com a grade fina de 1 px o degrau
-/// dos três contornos é 0,108 · 0,064 · 0,135 px no Low e 0,12 · 0,06 · 0,12 no Medium (= o High:
-/// 0,107 · 0,049 · 0,120); sem ela 0,65 · 0,43 · 0,68 (Low) e 0,31 · 0,17 · 0,30 (Medium).
-const TETO_DO_DEGRAU_PX: f64 = 0.2;
+/// O teto da escada — o MEDIDO + 10 % (W4b, `medida_luz2d_w4b` B), degrau dos contornos 2 · 10 · 50 ·
+/// 90 · 98 %: com a grade fina de 1 px, Low 0,165 · 0,108 · 0,064 · 0,134 · 0,181 px e Medium 0,169 ·
+/// 0,123 · 0,060 · 0,124 · 0,184 (= o High: 0,182 · 0,107 · 0,049 · 0,120 · 0,174); sem ela Low 0,715 ·
+/// 0,646 · 0,434 · 0,675 · 1,202 e Medium 0,472 · 0,311 · 0,168 · 0,296 · 0,487; sem o joelho, o de 2 %
+/// no Low 0,352 (as manchas da foto).
+const TETO_DO_DEGRAU_PX: f64 = 0.21;
 /// O deslocamento da borda inteira, em texels da grade GROSSA: a captura arredonda o canto do
-/// oclusor (medido 0,50 · 0,50 · 0,57 texel; a marcha mais fina só tira ~16 % dele, ABERTO da W4b).
-const TETO_DA_MEDIA_EM_TEXELS: f64 = 0.75;
+/// oclusor (medido 0,44–0,77 texel conforme o contorno e o nível; a marcha mais fina só tira ~16 %
+/// dele — ABERTO da W4b).
+const TETO_DA_MEDIA_EM_TEXELS: f64 = 0.85;
 
 /// ⭐⭐⭐ **GATE — a sombra nítida não tem ESCADA** em nenhum nível (os três contornos da penumbra,
 /// a cada píxel de tela), e a borda não sai do lugar mais do que a captura explica.
@@ -237,13 +249,9 @@ fn medida_causa_do_desvio() {
             };
             let e = escada_de(&flu(&cc), &flu(&cs));
             eprintln!(
-                "causa · {nome} · passo {passo} · {refino:?}: média {:.3} · {:.3} · {:.3} · degrau {:.3} · {:.3} · {:.3} px (10 · 50 · 90 %)",
-                e[0].media_px,
-                e[1].media_px,
-                e[2].media_px,
-                e[0].degrau_px,
-                e[1].degrau_px,
-                e[2].degrau_px
+                "causa · {nome} · passo {passo} · {refino:?}: média {} · degrau {} px (2 · 10 · 50 · 90 · 98 %)",
+                por_contorno(&e, |x| x.media_px),
+                por_contorno(&e, |x| x.degrau_px)
             );
         }
     }

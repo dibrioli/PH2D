@@ -113,17 +113,20 @@ pub struct Config {
 /// O refino por omissão — MEDIDO (rodada `medida_luz2d_w4b`, RTX 5060 Ti, 1920×1080, grade fina de
 /// 1 px; tabela no handoff W4b). Escada da cena 4 (contornos 10 · 50 · 90 %) e ms por lâmpada no Low:
 /// - o limiar 0,1 refina onde a interpolação erra (0,25 deixava o meio da penumbra ao passo grosso:
-///   0,18 px no de 50 %); com ele o joelho já cai no limiar (erro ≤ ~1 %): `joelho` só custava (+8 %);
+///   0,18 px no de 50 %);
+/// - o `joelho`: sem ele uma célula de cantos «0, 0, 0, 0,08» era interpolada e desenhava MANCHAS de
+///   até 8 % de luz sobre o preto (vistas na FOTO; a régua de 10 · 50 · 90 % não as via): contorno de
+///   2 % no Low 0,352 → 0,165 px (o exato: 0,163), por +2 % de custo;
 /// - a visibilidade no passo GROSSO: o fino custava 2,6× no passe grosso pela mesma escada;
 /// - 4 raios + 5 bissecções: 8+5 custava +35 % no passe fino por 0,005 px; 2+6 o mesmo que 4+5 mas
 ///   mais frágil com vários oclusores numa abertura;
 /// - certificar: custo empatado (0,665 × 0,660 ms) — fica, de graça, contra o oclusor fino.
 ///
-/// Resultado: 0,108 · 0,064 · 0,135 px a 0,49 ms por lâmpada (o exato em todo texel: 0,103 · 0,056 ·
-/// 0,128 px a 1,13 ms).
+/// Resultado (contornos 2 · 10 · 50 · 90 · 98 %): 0,165 · 0,108 · 0,064 · 0,134 · 0,181 px a 0,55 ms por
+/// lâmpada (o exato em todo texel: 0,163 · 0,103 · 0,056 · 0,128 · 0,177 px a 1,12 ms).
 pub const REFINO_PADRAO: Refino = Refino::Bordas(Bordas {
     limiar: 0.1,
-    joelho: false,
+    joelho: true,
     certificar: true,
     visibilidade_no_passo_fino: false,
     raios: 4,

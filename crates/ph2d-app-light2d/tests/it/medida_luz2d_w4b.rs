@@ -231,8 +231,8 @@ fn custo(gpu: &GpuContext) {
 /// B. A escada por célula fina (a régua do gate, no caminho de configuração do produto).
 fn escada(gpu: &GpuContext) {
     eprintln!("\n## B. Escada (cena 4, lâmpada pequena): degrau rms (px) · média (px)");
-    eprintln!("| variante | 10 % | 50 % | 90 % | média 50 % |");
-    eprintln!("|---|---|---|---|---|");
+    eprintln!("| variante | degrau 2 · 10 · 50 · 90 · 98 % | média 50 % |");
+    eprintln!("|---|---|---|");
     let (com, sem) = crate::a_escada_da_sombra::cena4_com_e_sem();
     let (cc, cs) = (cena_de_luz(&com), cena_de_luz(&sem));
     for (nome, nivel) in [
@@ -258,8 +258,9 @@ fn escada(gpu: &GpuContext) {
             };
             let e = crate::a_escada_da_sombra::escada_de(&flu(&cc), &flu(&cs));
             eprintln!(
-                "| {nome} · {vnome} | {:.3} | {:.3} | {:.3} | {:.2} |",
-                e[0].degrau_px, e[1].degrau_px, e[2].degrau_px, e[1].media_px
+                "| {nome} · {vnome} | {} | {:.2} |",
+                crate::a_escada_da_sombra::por_contorno(&e, |x| x.degrau_px),
+                e[2].media_px
             );
         }
     }

@@ -177,3 +177,135 @@ fn penumbra(gpu: &GpuContext) {
         }
     }
 }
+
+/// O ponto onde a fração da luz cruza `nivel` ao longo de `ts` (curva crescente ou decrescente).
+fn cruza(ts: &[f64], f: &[f64], nivel: f64) -> Option<f64> {
+    let i = f
+        .windows(2)
+        .position(|w| (w[0] - nivel) * (w[1] - nivel) <= 0.0 && w[0] != w[1])?;
+    let t = (nivel - f[i]) / (f[i + 1] - f[i]);
+    Some(ts[i] + t * (ts[i + 1] - ts[i]))
+}
+
+/// A ondulação de uma borda: os desvios `d(s)` depois de tirar a reta de mínimos quadrados —
+/// `(rms, máx)` em metros.
+fn ondulacao(pts: &[(f64, f64)]) -> (f64, f64) {
+    let n = pts.len() as f64;
+    let (sx, sy) = pts.iter().fold((0.0, 0.0), |a, p| (a.0 + p.0, a.1 + p.1));
+    let (mx, my) = (sx / n, sy / n);
+    let (sxy, sxx) = pts.iter().fold((0.0, 0.0), |a, p| {
+        (a.0 + (p.0 - mx) * (p.1 - my), a.1 + (p.0 - mx).powi(2))
+    });
+    let b = sxy / sxx;
+    let r: Vec<f64> = pts.iter().map(|p| p.1 - (my + b * (p.0 - mx))).collect();
+    let rms = (r.iter().map(|x| x * x).sum::<f64>() / n).sqrt();
+    (rms, r.iter().fold(0.0_f64, |m, x| m.max(x.abs())))
+}
+
+/// A cena 1 sem a ambiente (a fração é só da lâmpada) — com e sem a parede.
+fn cena1_com_e_sem() -> (World, World) {
+    let tira = |w: &mut World, nome: &str| {
+        let e = w
+            .query::<(bevy_ecs::entity::Entity, &Name)>()
+            .iter(w)
+            .find(|(_, n)| n.0 == nome)
+            .map(|(e, _)| e)
+            .expect("existe");
+        w.despawn(e);
+    };
+    let (mut com, mut sem) = (cena(1), cena(1));
+    tira(&mut com, "Luz ambiente");
+    tira(&mut sem, "Luz ambiente");
+    tira(&mut sem, "Parede");
+    (com, sem)
+}
+
+/// A borda de CIMA da sombra da cena 1: a lâmpada `(−3, 0,4)` e o canto de cima-esquerda da parede
+/// `(−0,95, 1,4)`. Devolve, para cada `s` (m depois do canto, ao longo da reta), o desvio
+/// perpendicular do ponto de 50 % de luz — medido por `frac(p)`.
+fn borda_de_cima(frac: &dyn Fn([f64; 2]) -> f64) -> Vec<(f64, f64)> {
+    let (l, c) = ([-3.0_f64, 0.4], [-0.95_f64, 1.4]);
+    let d = [c[0] - l[0], c[1] - l[1]];
+    let n_ = d[0].hypot(d[1]);
+    let u = [d[0] / n_, d[1] / n_];
+    let nrm = [-u[1], u[0]];
+    let ts: Vec<f64> = (0..=240).map(|k| -0.6 + 0.005 * f64::from(k)).collect();
+    (5..=60)
+        .filter_map(|k| {
+            let s = 0.1 * f64::from(k);
+            let p0 = [c[0] + s * u[0], c[1] + s * u[1]];
+            let f: Vec<f64> = ts
+                .iter()
+                .map(|&t| frac([p0[0] + t * nrm[0], p0[1] + t * nrm[1]]))
+                .collect();
+            cruza(&ts, &f, 0.5).map(|t| (s, t))
+        })
+        .collect()
+}
+
+/// C. **A borda da sombra é RETA?** (smoke do dono, 2026-10-09: *«mesmo com alta qualidade, a
+/// sombra não fica lisa/reta»*.) A ondulação do ponto de 50 % ao longo da borda, no gabarito e na
+/// placa, por degrau × fusão × intervalo da c0.
+#[test]
+#[ignore = "sonda da borda: corre-se à mão"]
+fn medida_borda_reta() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let perfil = if cfg!(debug_assertions) {
+        "DEBUG"
+    } else {
+        "smoke"
+    };
+    eprintln!("# Borda reta · perfil {perfil} · loadavg {}", loadavg());
+    let (com, sem) = cena1_com_e_sem();
+    let (cc, cs) = (
+        ph2d_light2d_ecs::coleta::cena_de_luz(&com),
+        ph2d_light2d_ecs::coleta::cena_de_luz(&sem),
+    );
+    // A escala da tela: px por metro na vista de fábrica a 1920×1080.
+    let [a, b, ..] = afim().as_coeffs();
+    let ppm = a.hypot(b);
+    let gab = borda_de_cima(&|p| {
+        ph2d_light2d_ref::fluencia(&cc, p)[1] / ph2d_light2d_ref::fluencia(&cs, p)[1]
+    });
+    let (r, m) = ondulacao(&gab);
+    eprintln!("| variante | texel na tela (px) | ondulação rms (px) | máx (px) | placa ms |");
+    eprintln!("|---|---|---|---|---|");
+    eprintln!("| gabarito | — | {:.2} | {:.2} | — |", r * ppm, m * ppm);
+    use ph2d_light2d_gpu::{Config, Fusao, Solver};
+    for c0_px in [4.0, 2.0, 1.0] {
+        for (fusao, intervalo) in [(Fusao::CorrecaoBilinear, 1.0), (Fusao::Classica, 1.0)] {
+            let degrau = ph2d_app_light2d::Degrau {
+                c0_px,
+                ..ph2d_app_light2d::DEGRAU_PADRAO
+            };
+            let g = ph2d_app_light2d::grade_do_quadro(afim(), FHD, degrau).expect("grade");
+            let cfg = Config {
+                fusao,
+                intervalo_c0: intervalo,
+                ..Config::padrao_para(&gpu.device, g)
+            };
+            let flu = |cena: &ph2d_light2d_ecs::CenaDeLuz| {
+                let mut s = Solver::novo(&gpu, cfg).expect("solver");
+                let mut ms = f64::INFINITY;
+                for _ in 0..5 {
+                    s.quadro(&gpu, cena);
+                    ms = ms.min(s.tempos(&gpu).map_or(f64::NAN, |t| t.total()));
+                }
+                (crate::comum::fluencia_lida(&gpu, &s), ms)
+            };
+            let ((fc, ms), (fs, _)) = (flu(&cc), flu(&cs));
+            let pts = borda_de_cima(&|p| {
+                crate::comum::amostra(&fc, g, p) / crate::comum::amostra(&fs, g, p).max(1e-9)
+            });
+            let (r, m) = ondulacao(&pts);
+            eprintln!(
+                "| {c0_px} px · {fusao:?} | {:.2} | {:.2} | {:.2} | {ms:.2} |",
+                g.texel_m * ppm,
+                r * ppm,
+                m * ppm
+            );
+        }
+    }
+}

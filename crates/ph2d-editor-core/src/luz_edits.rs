@@ -76,14 +76,17 @@ impl InspectorLuzInfo {
 }
 
 /// ⭐ **A nitidez da luz no editor** (pedido do dono, 2026-10-09): o tamanho da célula da grade da
-/// luz, em px de TELA. Mais fina = mais nítida e mais cara (custo ∝ 1/célula², medido na W3).
+/// luz, em px de TELA. ⚠️ Os níveis estão a uma OITAVA um do outro: a grade arredonda a célula para a
+/// potência de 2 (em metros) acima (G11 — a luz não treme com o zoom), e com 4 · 3 · 2 px a Média e
+/// a Alta caíam na MESMA célula (medido no smoke do dono, 09/10). Por oitava, cada nível tem metade
+/// da célula e 4× o custo, em qualquer zoom.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NivelDaLuz {
-    /// Células de 4 px.
+    /// Células de 4–8 px.
     Baixa,
-    /// Células de 3 px.
+    /// Células de 2–4 px.
     Media,
-    /// Células de 2 px.
+    /// Células de 1–2 px.
     #[default]
     Alta,
 }
@@ -97,8 +100,8 @@ impl NivelDaLuz {
     pub fn celula_px(self) -> f32 {
         match self {
             Self::Baixa => 4.0, // LITERAL-PX-OK: o degrau da W3 (K7 a 1080p)
-            Self::Media => 3.0, // LITERAL-PX-OK: célula da grade da luz
-            Self::Alta => 2.0,  // LITERAL-PX-OK: célula da grade da luz
+            Self::Media => 2.0, // LITERAL-PX-OK: uma oitava abaixo
+            Self::Alta => 1.0,  // LITERAL-PX-OK: duas oitavas abaixo
         }
     }
 

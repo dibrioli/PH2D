@@ -13,7 +13,7 @@ use crate::comum::{H, W, afim, gpu, renderer};
 fn cada_nivel_tem_a_sua_celula() {
     assert_eq!(
         N::ALL.map(|n| degrau_do(n).c0_px),
-        [4.0, 3.0, 2.0],
+        [4.0, 2.0, 1.0],
         "Baixa · Média · Alta"
     );
 }
@@ -31,9 +31,9 @@ fn o_governador_desce_sobe_e_respeita_o_teto() {
         N::Media,
         "três seguidas descem um nível"
     );
-    // Na Média, a Alta prevista é ×(3/2)² = 2,25: só sobe se 2,25·ms < 0,75·orçamento.
-    let barato = ORCAMENTO_MS * 0.75 / 2.25 * 0.9;
-    let quase = ORCAMENTO_MS * 0.75 / 2.25 * 1.1;
+    // Na Média, a Alta prevista é ×(2/1)² = 4: só sobe se 4·ms < 0,75·orçamento.
+    let barato = ORCAMENTO_MS * 0.75 / 4.0 * 0.9;
+    let quase = ORCAMENTO_MS * 0.75 / 4.0 * 1.1;
     for _ in 0..100 {
         assert_eq!(
             g.ler(quase, N::Alta),
@@ -109,4 +109,25 @@ fn o_automatico_le_o_custo_da_placa_sem_esperar() {
         luz.leituras_de_custo()
     );
     assert!(ms > 0.0 && ms < 1000.0);
+}
+
+/// ⭐ **Os níveis são DISTINTOS em qualquer zoom** (smoke do dono, 09/10: *«mesmo com alta qualidade
+/// …»* — com 4 · 3 · 2 px a Média e a Alta caíam na MESMA célula, porque a grade arredonda para a
+/// potência de 2 acima). Varre 64 zooms de 3 oitavas: cada nível tem metade da célula do anterior.
+#[test]
+fn cada_nivel_tem_metade_da_celula_do_anterior_em_todo_zoom() {
+    let janela = ph2d_host::WindowSize::new(1920, 1080);
+    for k in 0..64 {
+        let altura = 2.5 * 2f32.powf(k as f32 / 21.0);
+        let afim = ph2d_render::Camera2d::new([0.0, 0.0], altura).world_to_screen_affine(janela);
+        let t = N::ALL.map(|n| {
+            ph2d_app_light2d::grade_do_quadro(afim, (1920, 1080), degrau_do(n))
+                .expect("grade")
+                .texel_m
+        });
+        assert!(
+            (t[0] - 2.0 * t[1]).abs() < 1e-12 && (t[1] - 2.0 * t[2]).abs() < 1e-12,
+            "a {altura:.2} m de altura as células são {t:?}"
+        );
+    }
 }

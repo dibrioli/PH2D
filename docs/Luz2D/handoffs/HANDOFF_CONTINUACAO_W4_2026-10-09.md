@@ -195,3 +195,34 @@ Smoke recompilado depois das curas (regra I), 2.ª saída:
 ```
     Finished `smoke` profile [optimized] target(s) in 0.33s
 ```
+
+## Smoke do dono (09/10, 2.ª volta) — «mesmo com alta qualidade, a sombra não fica lisa/reta»
+
+Sonda `medida_luz2d_w4::medida_borda_reta` (ignorada): a borda de CIMA da sombra da cena 1, o ponto de
+50 % de luz a cada 10 cm ao longo dela, reta de mínimos quadrados, ondulação. 1920×1080, vista de fábrica,
+`smoke`, `loadavg` 9,8, placa pelo relógio dela:
+
+| variante | célula na tela | ondulação rms | máx | placa |
+|---|---|---|---|---|
+| gabarito | — | 0,00 px | 0,00 px | — |
+| Low (4 px) · correção bilinear | 6,75 px | 4,08 | 9,49 | 1,32 ms |
+| Low · fusão clássica | 6,75 | 13,94 | 36,55 | 0,44 |
+| Medium (2 px) · bilinear | 3,38 | 1,19 | 2,91 | 5,40 |
+| High (1 px) · bilinear | 1,69 | 0,77 | 1,58 | 21,06 |
+
+(Intervalo da c0 ½ e 2 medidos com 4/3/2 px: pioram — 1 continua o melhor.)
+
+**Dois achados:**
+1. **Bug meu, curado:** com níveis 4 · 3 · 2 px a Média e a Alta caíam na MESMA célula (a grade arredonda
+   para a potência de 2 acima — G11); o «High» do dono era o «Medium». Níveis agora por OITAVA (4 · 2 · 1 px):
+   cada um tem metade da célula e 4× o custo, em qualquer zoom — gate
+   `cada_nivel_tem_metade_da_celula_do_anterior_em_todo_zoom` (vermelho com 3 px: `[0,0156, 0,0156, 0,0039]`
+   a 2,85 m).
+2. **O limite do método:** afinar a grade reduz a ondulação devagar (×0,65 por 4× o custo); as cascatas
+   NUNCA dão a borda reta a custo aceitável — é a resolução das sondas das cascatas de longe, que a correção
+   bilinear só atenua. ⇒ **W5, nº 1 (antes do rebote):** a luz DIRETA das `Luz` por um passe próprio (o C3
+   do plano, agora para TODA lâmpada, não só as minúsculas): visibilidade do disco por raios para a lâmpada
+   através da cena capturada (a mesma marcha da C2), as cascatas ficando com o céu, os sprites que brilham e
+   o rebote. Alvo medido nesta sonda: **ondulação ≤ 0,2 px rms** e penumbra = geometria (`smoke_cenas_w4`)
+   em QUALQUER nível, com o custo por lâmpada na rodada. Cura junto o ABERTO 2 (lâmpada pequena) e 3 (some
+   no zoom).

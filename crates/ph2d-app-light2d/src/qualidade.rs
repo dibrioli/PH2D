@@ -1,11 +1,12 @@
 //! ⭐ **A nitidez da luz e o governador** (pedido do dono, 2026-10-09: *«escolha no editor,
-//! automática em runtime»*). Baixa · Média · Alta = células de 4 · 3 · 2 px de tela; com o
-//! «Automático», o nível escolhido é o TETO e o editor desce quando a placa não aguenta.
+//! automática em runtime»*). Baixa · Média · Alta = células de 4 · 2 · 1 px (uma OITAVA entre
+//! níveis — ver `NivelDaLuz`); com o «Automático», o nível escolhido é o TETO e o editor desce
+//! quando a placa não aguenta.
 //!
 //! O recurso que limita é o TEMPO DE PLACA por quadro: a luz leva no máximo [`ORCAMENTO_MS`], um
-//! terço do quadro a 60 Hz. Medido na W3 a 1080p (RTX 5060 Ti, `smoke`): células de 4 · 3 · 2 px =
-//! 2,29 · 4,16 · 8,82 ms (margem 12,5 %) — o custo segue `1/célula²` (×1,82 e ×3,85 contra 1,78 e
-//! 4). A subida é PREVISTA por essa lei a partir do custo medido, com folga, para não oscilar.
+//! terço do quadro a 60 Hz. Medido (sonda `medida_borda_reta`, 1920×1080, vista de fábrica, RTX
+//! 5060 Ti, `smoke`): célula na tela 6,8 · 3,4 · 1,7 px = 1,32 · 5,40 · 21,06 ms — ×4 por nível,
+//! a lei `1/célula²`. A subida é PREVISTA por ela a partir do custo medido, com folga.
 
 use ph2d_editor_core::luz_edits::NivelDaLuz;
 

@@ -247,7 +247,7 @@ número de cada uma vem da sonda headless (molde: `crates/ph2d-board-render/test
 | **W2 — o solver** | `ph2d-light2d-gpu`: C0, C1, C2, `PassList` + bytes, timestamps; sonda headless | G3, G4, G5, G10, G12 |
 | **W3 — receber** | sprite forward + vetor no compositor; ponto neutro; ancoragem | G6, G7, G11 |
 | **W4 — o artista** | `ph2d-app-light2d`: menu Add, Inspector, gizmo, paleta, undo, i18n; cenas 1–4 fotografadas | G8 + censos; **smoke do dono** |
-| **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada |
+| **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada — W5a/W5b (fila do dono F1–F4), **W5c** (rebote; a holográfica em todo nível), W5d (governador acima de 1080p com a memória, Flip/Motion, S1–S8, o rebote de fora da grade) |
 | depois | celular (iPhone 13/16, POCO X5) — **adiado pelo dono** | K1–K9 do relatório |
 
 ### 7.1 Fila de implementação (ordem do dono, 10/10: «coloque na fila o que ainda não está bom»)
@@ -270,6 +270,13 @@ subir (6 → 7, medido).
 **F4 fechado na W5b** ([handoff W5b](handoffs/HANDOFF_CONTINUACAO_W5b_2026-10-10.md)): a luz direta vê o
 mundo FORA da grade (polígonos exatos; sprites e vetores por máscaras na moldura deles); a C3 em par
 (sem/com), a vista sem objeto distante custa o mesmo que antes.
+
+**W5c fechada** ([handoff W5c](handoffs/HANDOFF_CONTINUACAO_W5c_2026-10-10.md)): o REBOTE (a lei no §2.4; o gabarito
+com a série; a placa com um rebote por quadro, a fonte lida no mundo — G9 ≤ 1,5 % com a holográfica) e a CASCATA
+HOLOGRÁFICA (HRC, do artigo) como a cascata do produto em TODO nível — mais exata em todos (junto a uma face ≤ 1,1 %,
+o ABERTO 1 da W5a fechado) e mais barata no Baixo e no Médio, ao preço da memória (148 · 309 · 894 MB a 1080p); o
+«Ultra» como nível próprio foi recusado pela medida. Aberto o maior: o rebote de FORA da grade (com zoom forte os
+refletores fora dela não refletem: −55 a −64 % junto à borda).
 
 Também abertos (técnicos, sem queixa do dono): as cascatas ainda calculam a grade inteira (81,5 % fora
 da janela) e a região C3 pode encolher ao canvas; o G4 (K3) segue com pouca margem (3,98–4,64 % de 5 %,

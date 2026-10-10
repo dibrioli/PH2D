@@ -93,3 +93,19 @@ pub fn apply_all(sim: &mut SimWorld, edits: &[(u64, LuzFieldEdit)]) -> bool {
     }
     mudou
 }
+
+impl crate::LuzDoQuadro {
+    /// ⭐ **O que a luz publica no fim do quadro** (W5c: saiu da shell, a função dela passava o teto):
+    /// aplica a preferência do editor e devolve a ficha da secção LUZ do escolhido (`(entidade,
+    /// quantos)`) e a recusa NOVA do solver em palavras (recusa que só o terminal vê é botão mudo).
+    pub fn publicar(
+        &mut self,
+        preferencia: ph2d_editor_core::luz_edits::PreferenciaDaLuz,
+        world: &World,
+        (escolhido, quantos): (Option<u64>, usize),
+    ) -> (Option<InspectorLuzInfo>, Option<String>) {
+        self.preferir(preferencia);
+        let info = build_info(world, escolhido, quantos, self);
+        (info, self.recusa_nova())
+    }
+}

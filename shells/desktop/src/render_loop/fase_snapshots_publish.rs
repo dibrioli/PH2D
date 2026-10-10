@@ -219,16 +219,11 @@ impl crate::App {
                 mapa: &hero.input_map,
             },
         );
-        // ⭐ **A LUZ** (Luz 2D, W4): a secção e a recusa do solver, que sobe como aviso na
-        // transição (recusa que só o terminal vê é botão mudo).
-        luz2d.preferir(hero.view.luz2d);
-        ph2d_panel_inspector::set_current_inspector_luz(ph2d_app_light2d::inspector::build_info(
-            sim.world(),
-            hero.gizmo.selection,
-            hero.gizmo.selected_len(),
-            luz2d,
-        ));
-        if let Some(m) = luz2d.recusa_nova() {
+        // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
+        let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
+        let (info, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);
+        ph2d_panel_inspector::set_current_inspector_luz(info);
+        if let Some(m) = recusa {
             toasts.push(Toast::warning(m));
         }
         // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — fase-filha própria; ver o `mod sequencia`.

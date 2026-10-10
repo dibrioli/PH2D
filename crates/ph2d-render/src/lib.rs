@@ -20,6 +20,7 @@
 pub mod atlas;
 pub mod band_blit;
 pub mod camera;
+pub mod camera_frame;
 pub(crate) mod clip_pass;
 pub mod compositor;
 /// Compressed cooked-texture upload path (KTX2 Fase 2, W2.T3). One

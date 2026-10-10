@@ -8119,6 +8119,7 @@ dependencies = [
  "postcard",
  "rect_packer",
  "serde",
+ "serde_json",
  "vello",
  "wgpu",
 ]

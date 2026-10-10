@@ -121,7 +121,7 @@ impl Camera2d {
         if !factor.is_finite() || factor <= 0.0 {
             return height_world;
         }
-        (height_world * factor).clamp(Self::ZOOM_MIN_HEIGHT_WORLD, Self::ZOOM_MAX_HEIGHT_WORLD)
+        Self::clamp_height(height_world * factor)
     }
 
     /// Um entalhe da roda em pixels (`16 px` por linha).

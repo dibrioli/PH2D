@@ -316,9 +316,9 @@ amostra do fim do traço é candidata a ponta `T`; o eixo do cabo é a tangente 
 ajustada ao fim dele; as farpas são as amostras seguintes mais longe de `T` de cada lado do eixo; o
 traço da ponta tem de passar junto do V (as duas farpas e a corda), as farpas saem da ponta (o traço
 volta a ela), e a ponta é o **primeiro** mínimo do resíduo (o cabo acaba onde a ponta começa). O
-mesmo no INÍCIO (o traço ao contrário). As razões farpa/cabo re-medem-se contra o cabo REAL (entre as
-pontas); o cabo é reconhecido pela lei que já existe — linha, polilinha, arco, biarco — e a forma dele
-tem de ter 92,5 % do comprimento do traço dele. `QuickShape::Arrow(ArrowShape { shaft, heads })`; o
+mesmo no INÍCIO (o traço ao contrário). O cabo é reconhecido pela lei que já existe — linha,
+polilinha, arco, biarco — e a forma dele tem de ter 92,5 % do comprimento do traço dele (uma forma
+FECHADA mede 0: é também a lei «o cabo é aberto», que um caminho fechado não leva ponta). `QuickShape::Arrow(ArrowShape { shaft, heads })`; o
 lápis põe as pontas no traço vivo (o tamanho põe o alcance da ponta igual à farpa média), recua o
 caminho o que a ponta avança para lá do nó (`Marker::inset`), e devolve as do estilo fora da seta.
 
@@ -364,7 +364,10 @@ percorre dois lados do V mais perto do modelo — o L de duas pontas a 50 %); a 
 (vira metade do arco: 15–24° num cabo curvo, que saía livre); a seta só em traço ABERTO (as farpas de
 40 % nas duas pontas liam-se fechadas); a SIMETRIA das farpas como guarda (|θ₁ − θ₂| ≤ 25° matava a mão
 assimétrica e a volta à ponta já segura o triângulo); o TECTO de quinas do cabo (não separava nada); a
-RAZÃO entre as farpas (no ponto final 0 dá o mesmo que 0,7 — saiu do código); e um instrumento: o
+RAZÃO entre as farpas (no ponto final 0 dá o mesmo que 0,7 — saiu do código); e, pela prova de
+mutação (base × mutante sobre os 6 775 traços de `measure_arrow_witness`, 0 diferentes), a re-medida
+das razões contra o cabo REAL (a volta à ponta já segura a estrela) e a cláusula «o cabo é aberto» (o
+preenchimento já a faz) — saíram; e um instrumento: o
 repouso aplicado DEPOIS do estabilizador (75 traços antigos mudavam; o lápis filtra na entrada — 3).
 
 **A ponta não passa ao traço seguinte.** A foto da cena 12 apanhou-o: ao soltar, a seta é selecionada,

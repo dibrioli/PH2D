@@ -27,7 +27,7 @@ pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
 pub use connector::{Anchor, Connector, End, Head, ORBIT_GAP, Route};
 pub use element::{
-    BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Rgba, Shape,
+    BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, LIVE_ID_BIT, Letter, Look, Rgba, Shape,
     ShapeType, Style, TextAlign, VAlign, rotate_about,
 };
 pub use facilitate::{

@@ -967,3 +967,6 @@ mod cluster;
 
 #[path = "w9_tests.rs"]
 mod w9;
+
+#[path = "w11_tests.rs"]
+mod w11;

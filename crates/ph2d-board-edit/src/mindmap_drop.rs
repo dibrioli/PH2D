@@ -184,7 +184,7 @@ impl Editor {
         };
         let lo = order_of(doc, prev.as_ref());
         let hi = order_of(doc, next.as_ref()).filter(|h| lo.as_ref().is_none_or(|l| h > l));
-        m.order = FracKey::between(lo.as_ref(), hi.as_ref());
+        m.order = doc.key_between(lo.as_ref(), hi.as_ref());
         let moved_home = m.parent != Some(parent);
         m.parent = Some(parent);
         // A cor do ramo: debaixo de um nó, a dele; na raiz (vindo de outro pai), a seguinte da paleta.

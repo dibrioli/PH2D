@@ -74,7 +74,7 @@ struct Build<'a> {
 
 impl Build<'_> {
     fn next_z(&mut self) -> FracKey {
-        self.z = FracKey::between(Some(&self.z), None);
+        self.z = self.doc.key_between(Some(&self.z), None);
         self.z.clone()
     }
 
@@ -275,7 +275,7 @@ impl Editor {
         let mut order = FracKey::between(None, None);
         let mut first = None;
         for (i, color) in MIND_COLORS.iter().take(4).enumerate() {
-            order = FracKey::between(Some(&order), None);
+            order = b.doc.key_between(Some(&order), None);
             let side = if i % 2 == 0 {
                 Side::After
             } else {
@@ -288,7 +288,7 @@ impl Editor {
         let first = first.expect("quatro tópicos");
         let mut order = FracKey::between(None, None);
         for i in 0..2 {
-            order = FracKey::between(Some(&order), None);
+            order = b.doc.key_between(Some(&order), None);
             let m = Mind::new(
                 Some(first),
                 order.clone(),

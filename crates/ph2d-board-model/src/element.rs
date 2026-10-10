@@ -361,10 +361,7 @@ impl Element {
         if let Some(s) = self.org.as_ref().and_then(|o| o.seed) {
             return s;
         }
-        let mut z = self.id.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-        ((z ^ (z >> 31)) as u32 & 0x7fff_ffff).max(1)
+        (splitmix64(self.id.0) as u32 & 0x7fff_ffff).max(1)
     }
 
     #[must_use]
@@ -521,6 +518,9 @@ pub struct BoardDoc {
     /// W6 — os filhos de cada nó de mapa mental, mantidos pelas ops (refaz-se ao ler).
     #[serde(skip)]
     pub(crate) minds: crate::mind::MindIndex,
+    /// Em sessão ao vivo: ids sorteados e chaves com cauda ([`BoardDoc::set_live`]).
+    #[serde(skip)]
+    pub(crate) live: Live,
 }
 
 /// ⭐ **Revisão de um documento nesta sessão** — o «mudou alguma coisa?» em O(1) dos caches
@@ -551,6 +551,44 @@ impl PartialEq for Rev {
     }
 }
 
+/// O bit alto de um id nascido numa sessão ao vivo (ADR-0181 §5): os sorteados nunca colidem com os
+/// do contador local, que os ficheiros de hoje usam.
+pub const LIVE_ID_BIT: u64 = 1 << 63;
+
+/// O passo do splitmix64 (Steele, Lea & Flood, 2014).
+pub(crate) fn splitmix64(x: u64) -> u64 {
+    let mut z = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
+}
+
+/// A sessão ao vivo de um documento: o gerador dos ids sorteados e das caudas das chaves de z. Não é
+/// conteúdo (o `PartialEq` do documento ignora-o) nem vai para o ficheiro.
+#[derive(Debug, Default)]
+pub(crate) struct Live(Option<std::sync::atomic::AtomicU64>);
+
+impl Live {
+    fn next(&self) -> Option<u64> {
+        use std::sync::atomic::Ordering::Relaxed;
+        let s = self.0.as_ref()?;
+        Some(splitmix64(s.fetch_add(0x9e37_79b9_7f4a_7c15, Relaxed)))
+    }
+}
+
+impl Clone for Live {
+    fn clone(&self) -> Self {
+        use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+        Self(self.0.as_ref().map(|s| AtomicU64::new(s.load(Relaxed))))
+    }
+}
+
+impl PartialEq for Live {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
 impl BoardDoc {
     /// A revisão desta sessão: muda a cada operação aplicada (e só então).
     #[must_use]
@@ -558,10 +596,40 @@ impl BoardDoc {
         self.rev.0
     }
 
-    /// Um id ainda não usado neste quadro.
+    /// Um id ainda não usado neste quadro: o contador local; numa sessão ao vivo, sorteado com o
+    /// [`LIVE_ID_BIT`] (duas máquinas nunca fabricam o mesmo).
     pub fn mint_id(&mut self) -> ElementId {
+        while let Some(r) = self.live.next() {
+            let id = ElementId(r | LIVE_ID_BIT);
+            if !self.elements.contains_key(&id) {
+                return id;
+            }
+        }
         self.next_id += 1;
         ElementId(self.next_id)
+    }
+
+    /// Entra (`Some(semente)`, do sistema) ou sai (`None`) de uma sessão ao vivo (ADR-0181 §5).
+    pub fn set_live(&mut self, seed: Option<u64>) {
+        self.live = Live(seed.map(std::sync::atomic::AtomicU64::new));
+    }
+
+    /// Está numa sessão ao vivo?
+    #[must_use]
+    pub fn is_live(&self) -> bool {
+        self.live.0.is_some()
+    }
+
+    /// ⭐ A porta ÚNICA das chaves novas de z e de ordem entre irmãos: a chave entre `lo` e `hi`, com
+    /// a cauda desta sessão se está ao vivo (duas pessoas a criar no mesmo sítio ao mesmo tempo não
+    /// empatam — `colab_oracle` c05, c06).
+    #[must_use]
+    pub fn key_between(&self, lo: Option<&FracKey>, hi: Option<&FracKey>) -> FracKey {
+        let k = FracKey::between(lo, hi);
+        match self.live.next() {
+            Some(salt) => k.salted(salt, hi),
+            None => k,
+        }
     }
 
     /// O elemento vivo (não apagado) com este id.
@@ -601,6 +669,6 @@ impl BoardDoc {
     /// A chave de z para pôr um elemento novo à frente de todos.
     #[must_use]
     pub fn z_on_top(&self) -> FracKey {
-        FracKey::between(self.top_z.as_ref(), None)
+        self.key_between(self.top_z.as_ref(), None)
     }
 }

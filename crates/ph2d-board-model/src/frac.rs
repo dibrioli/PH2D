@@ -22,17 +22,24 @@ const MAX_DIGIT: u8 = b'z';
 pub struct FracKey(String);
 
 impl FracKey {
-    /// A chave estritamente entre `lo` e `hi` (`None` = a ponta aberta).
+    /// A chave estritamente entre `lo` e `hi` (`None` = a ponta aberta). `lo == hi` é um EMPATE
+    /// legítimo (duas pessoas criaram ao mesmo tempo no mesmo sítio — ADR-0181): devolve a chave logo
+    /// acima de `lo`, abaixo do inteiro seguinte.
     ///
     /// # Panics
-    /// Se `lo >= hi`, ou se uma das duas não é uma chave válida — os dois são defeitos de quem chama.
+    /// Se `lo > hi`, ou se uma das duas não é uma chave válida — os dois são defeitos de quem chama.
     #[must_use]
     pub fn between(lo: Option<&FracKey>, hi: Option<&FracKey>) -> FracKey {
         if let (Some(a), Some(b)) = (lo, hi) {
             assert!(
-                a < b,
+                a <= b,
                 "FracKey::between: lo ({a:?}) não é menor que hi ({b:?})"
             );
+            if a == b {
+                let (ia, fa) = split(a.0.as_bytes());
+                let out = [ia, &midpoint(fa, None)].concat();
+                return FracKey(String::from_utf8(out).expect("base 62 é ASCII"));
+            }
         }
         let a = lo.map(|k| k.0.as_bytes());
         let b = hi.map(|k| k.0.as_bytes());
@@ -72,6 +79,28 @@ impl FracKey {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Esta chave com uma CAUDA de `salt` (4 dígitos, o último nunca zero): continua acima do que
+    /// estava abaixo dela e, se cabe, abaixo de `hi` — duas pessoas com caudas diferentes nunca
+    /// geram a mesma chave no mesmo sítio. Não cabe ⇒ a chave tal como está.
+    #[must_use]
+    pub fn salted(self, salt: u64, hi: Option<&FracKey>) -> FracKey {
+        let mut s = salt;
+        let mut tail = [0u8; 4];
+        for d in &mut tail {
+            *d = DIGITS[usize::try_from(s % 62).expect("< 62")];
+            s /= 62;
+        }
+        if tail[3] == ZERO {
+            tail[3] = DIGITS[1];
+        }
+        let out = FracKey(format!("{}{}", self.0, std::str::from_utf8(&tail).expect("ASCII")));
+        if hi.is_none_or(|h| out < *h) {
+            out
+        } else {
+            self
+        }
     }
 }
 

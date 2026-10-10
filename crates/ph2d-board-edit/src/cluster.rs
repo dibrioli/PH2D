@@ -109,11 +109,6 @@ impl Editor {
             .fold(f64::INFINITY, f64::min);
         let home = common_home(doc, notes);
         let mut z = doc.z_on_top();
-        let mut next_z = || {
-            let k = z.clone();
-            z = FracKey::between(Some(&k), None);
-            k
-        };
         let (mut ops, mut frames, mut x) = (Vec::new(), BTreeSet::new(), x0);
         for g in groups {
             let n = g.notes.len();
@@ -131,7 +126,7 @@ impl Editor {
                 f.name.clone_from(&g.title);
             }
             frame.frame = home;
-            frame.z = next_z();
+            frame.z = next_key(doc, &mut z);
             frames.insert(frame.id);
             let fid = frame.id;
             ops.push(BoardOp::Put(frame));
@@ -142,7 +137,7 @@ impl Editor {
                     if *copy {
                         el.id = doc.mint_id();
                         el.version = 0;
-                        el.z = next_z();
+                        el.z = next_key(doc, &mut z);
                         el.set_votes(0);
                     }
                     let to = [x + px + c as f64 * (col_w + gx), y];
@@ -359,4 +354,11 @@ fn most_frequent<'a>(forms: &[&'a str]) -> &'a str {
 
 fn note_text(el: &Element) -> &str {
     el.shape().map_or("", |s| s.text.as_str())
+}
+
+/// A chave `z` e, para a seguinte, a que vem logo acima dela (pela porta do documento).
+fn next_key(doc: &BoardDoc, z: &mut FracKey) -> FracKey {
+    let k = z.clone();
+    *z = doc.key_between(Some(&k), None);
+    k
 }

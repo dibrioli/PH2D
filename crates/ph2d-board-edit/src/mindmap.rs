@@ -202,7 +202,7 @@ pub(crate) fn rehome_copy(
         return false;
     }
     if doc.get(p).and_then(Element::mind).is_some() {
-        let order = FracKey::between(Some(&m.order), after(doc, p, &m.order).as_ref());
+        let order = doc.key_between(Some(&m.order), after(doc, p, &m.order).as_ref());
         if let Some(mm) = el.mind_mut() {
             mm.order = order;
         }
@@ -364,7 +364,7 @@ impl Editor {
             return false;
         };
         let kids = doc.mind_children(parent);
-        let order = FracKey::between(order_of(doc, kids.last()).as_ref(), None);
+        let order = doc.key_between(order_of(doc, kids.last()).as_ref(), None);
         let is_root = doc.mind_parent(parent).is_none();
         let (side, color) = if is_root {
             let s = side.unwrap_or_else(|| lighter_side(doc, parent));
@@ -415,7 +415,7 @@ impl Editor {
         let Some(m) = el.mind().cloned() else {
             return false;
         };
-        let order = FracKey::between(Some(&m.order), after(doc, parent, &m.order).as_ref());
+        let order = doc.key_between(Some(&m.order), after(doc, parent, &m.order).as_ref());
         let node = self.mind_node(
             doc,
             ts,

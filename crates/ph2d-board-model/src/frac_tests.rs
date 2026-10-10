@@ -112,5 +112,33 @@ fn inserting_between_adjacent_digits_descends_a_level() {
 #[should_panic(expected = "não é menor")]
 fn out_of_order_neighbours_are_a_caller_bug() {
     let a = FracKey::between(None, None);
-    let _ = FracKey::between(Some(&a), Some(&a));
+    let b = FracKey::between(Some(&a), None);
+    let _ = FracKey::between(Some(&b), Some(&a));
+}
+
+/// ADR-0181 — duas chaves IGUAIS (duas pessoas criaram no mesmo sítio ao mesmo tempo) são um empate
+/// legítimo: a chave «entre» elas fica logo acima, abaixo do inteiro seguinte (antes: pânico).
+#[test]
+fn a_tie_gives_the_key_just_above_it() {
+    let k = FracKey::between(None, None);
+    let up = FracKey::between(Some(&k), Some(&k));
+    assert!(up > k && up < FracKey::between(Some(&k), None), "{up:?}");
+}
+
+/// A cauda de uma sessão deixa a chave acima da de antes e abaixo do tecto; caudas diferentes, chaves
+/// diferentes; e se não cabe, a chave fica como estava.
+#[test]
+fn a_salted_key_stays_in_its_gap_and_differs_by_salt() {
+    let lo = FracKey::between(None, None);
+    let hi = FracKey::between(Some(&lo), None);
+    let k = FracKey::between(Some(&lo), Some(&hi));
+    let (a, b) = (k.clone().salted(1, Some(&hi)), k.clone().salted(2, Some(&hi)));
+    for s in [&a, &b] {
+        assert!(*s > k && *s < hi && !s.as_str().ends_with('0'), "{s:?}");
+    }
+    assert_ne!(a, b);
+    let tight = FracKey::between(Some(&k), None);
+    let just = FracKey::between(Some(&k), Some(&tight));
+    assert!(just.clone().salted(u64::MAX, Some(&just)) == just);
+    assert!(FracKey::between(Some(&a), Some(&b.clone().max(a.clone()))) >= a.clone().min(b));
 }

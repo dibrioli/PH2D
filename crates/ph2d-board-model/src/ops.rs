@@ -33,11 +33,13 @@ impl BoardOp {
                     .as_ref()
                     .map_or(el.version, |p| p.version.max(el.version))
                     + 1;
-                doc.next_id = doc.next_id.max(el.id.0);
                 // Os ids de grupo partilham o contador (`mint_group`): um grupo que chega com o elemento
-                // (um ficheiro lido, uma colagem) também o sobe.
-                if let Some(g) = el.groups().iter().map(|g| g.0).max() {
-                    doc.next_id = doc.next_id.max(g);
+                // (um ficheiro lido, uma colagem) também o sobe. Um id sorteado numa sessão ao vivo não.
+                let local = |id: u64| id & crate::LIVE_ID_BIT == 0;
+                for id in std::iter::once(el.id.0).chain(el.groups().iter().map(|g| g.0)) {
+                    if local(id) {
+                        doc.next_id = doc.next_id.max(id);
+                    }
                 }
                 if doc.top_z.as_ref().is_none_or(|t| el.z > *t) {
                     doc.top_z = Some(el.z.clone());

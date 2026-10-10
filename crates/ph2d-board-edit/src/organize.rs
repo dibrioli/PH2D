@@ -256,7 +256,7 @@ impl Editor {
                 (lo, hi)
             }
         };
-        let keys = keys_between(lo.as_ref(), hi.as_ref(), sel.len());
+        let keys = keys_between(doc, lo.as_ref(), hi.as_ref(), sel.len());
         let ops = sel
             .into_iter()
             .zip(keys)
@@ -515,10 +515,15 @@ pub(crate) fn with_descendants(doc: &BoardDoc, ids: &[ElementId]) -> BTreeSet<El
 }
 
 /// `n` chaves de z crescentes estritamente entre `lo` e `hi`.
-fn keys_between(lo: Option<&FracKey>, hi: Option<&FracKey>, n: usize) -> Vec<FracKey> {
+fn keys_between(
+    doc: &BoardDoc,
+    lo: Option<&FracKey>,
+    hi: Option<&FracKey>,
+    n: usize,
+) -> Vec<FracKey> {
     let mut out: Vec<FracKey> = Vec::with_capacity(n);
     for _ in 0..n {
-        let k = FracKey::between(out.last().or(lo), hi);
+        let k = doc.key_between(out.last().or(lo), hi);
         out.push(k);
     }
     out

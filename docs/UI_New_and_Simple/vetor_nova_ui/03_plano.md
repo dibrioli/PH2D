@@ -226,6 +226,12 @@ ir ao Enio.
   corda a 15°. [`00_resultados.md`](oraculo_quickshape/00_resultados.md) §3g; foto
   [`fotos/f7c_01`](fotos/f7c_01_cena12_um_arco_seguro_vira_arco_perfeito.png). Fora: setas, arcos de
   elipse, «Edit Shape».
+- **F7e (10/10, escolha do dono):** o **Edit Shape** — ao soltar uma forma do QuickShape o botão
+  *Edit Shape* aparece À FRENTE da barra de ações ④; ele abre os nós PRÓPRIOS da forma (cantos do
+  rectângulo, extremos dos eixos da elipse, início · ápice · fim do arco, o cabo da seta) e arrastar
+  um nunca muda o tipo; o contorno escala; tocar fora, outro traço, `Esc` ou outra ferramenta fecham.
+  Lei medida no Excalidraw e no tldraw ([`00_resultados.md`](oraculo_quickshape/00_resultados.md)
+  §3i); cena `=13`, foto [`fotos/f7e_01`](fotos/f7e_01_cena13_o_edit_shape_aberto_e_um_canto_arrastado.png).
 
 ## §5 — O que NÃO entra (e porquê)
 

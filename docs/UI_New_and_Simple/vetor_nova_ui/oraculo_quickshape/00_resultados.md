@@ -382,6 +382,54 @@ próximo caminho, que só o painel escreve, campo a campo); a ponte dá aos cami
 só (a volta fica por baixo do traço), e lê-se seta em 40–50 % a 48–160 px, 10 % a 400 px: o ângulo
 mínimo que a separaria (≥ 8°) mata as farpas assimétricas de 10°. Medida, não gateada.
 
+## §3i — O EDIT SHAPE (F7e, 10/10, escolha do dono: *«ajustar a forma depois»*)
+
+**O produto do dono** (o manual do Procreate, R4 L165–169 e a página *QuickShape* do handbook, lida a
+10/10): ao soltar, o botão *Edit Shape* aparece na barra de cima; continuar a pintar ou tocar fora
+dispensa-o; dentro, *«transform nodes appear on your shape … drag a node to adjust that part»*;
+arrastar a forma ENTRE os nós escala-a por igual; tocar fora sai. O manual não diz que nós cada tipo
+tem nem se o tipo se guarda — isso mediu-se nos oráculos.
+
+**Os oráculos, corridos com o rato** (Playwright, sem janela; `corre_excalidraw_edita.mjs`,
+`corre_tldraw_edita.mjs` → `fixtures_excalidraw_edita/` 13, `fixtures_tldraw_edita/` 9). Triagem: o
+Excalidraw `next` é MIT (§3h); o **tldraw 5.5.2 é «tldraw license» — NÃO permissiva: corre-se, nunca
+se lê nem se porta**. O Excalidraw edita a forma que o PRÓPRIO reconhecedor dele fez (o traço entra
+pela ferramenta `autoshape` do editor montado); o tldraw não reconhece traços, mas as formas nativas
+dele são as nossas (rectângulo, elipse, triângulo, linha de vários nós, seta curva).
+
+| pergunta | Excalidraw | tldraw | a nossa lei |
+|---|---|---|---|
+| ao soltar | a ferramenta FICA, **nada selecionado**; um arrasto num canto com ela na mão desenha OUTRA forma | — | a forma fica selecionada (o lápis já o fazia) e o botão é OFERECIDO na ④; o press só agarra um nó com os nós ABERTOS |
+| rectângulo / losango / elipse | 4 cantos + rotação; o tipo NUNCA muda; o canto oposto fixo; Shift = proporção pela MAIOR razão | 4 cantos + 4 lados; o mesmo, e rodado: na base dele | rectângulo: os 4 cantos, o oposto fixo, a rotação guardada, Shift pela maior razão — **32 arrastos dos dois a 0,01 px** |
+| círculo | vira elipse; Shift guarda | idem; os LADOS (= os extremos dos eixos) movem só um lado, o arrasto através não conta | os 4 nós nos extremos dos eixos (= os lados do tldraw); Shift escala à volta do oposto — **16 arrastos a 0,01 px** |
+| linha / seta recta | as pontas livres; Shift = 15° à volta da outra, o mesmo comprimento; o MEIO acrescenta um nó (vira curva) | idem; a linha acrescenta vértices | as pontas livres, Shift a 15° (**ao centésimo do Excalidraw**); o meio NÃO acrescenta (o Edit Shape guarda o tipo) |
+| seta curva (arco) | arco e L não viram forma (recusados) | início/fim: a flecha (`bend`) FICA; a alça do meio só mexe a flecha e cai na MEDIATRIZ | início · ápice · fim; as pontas guardam a flecha, o ápice só a mexe — **o ápice cai na alça do tldraw a 0,01 px** |
+| a ponta da seta | vai com o ponto final | idem | é do traço: vai onde o bico for |
+
+**Repetibilidade:** duas passagens completas, as 22 fixtures com as FORMAS resultantes iguais; 5
+diferem só em ids aleatórios (tldraw) e na posição das alças de caixa INERTES das lineares do
+Excalidraw (±0,3 px, a semente do traço à mão). ⚠️ **Instrumento:** o corredor do tldraw arredondava a
+rotação a 1e-3 rad — 0,02 px de erro num lado de 300 rodado 25°; passou a gravá-la inteira.
+
+**A lei** ([`quickshape_edit.rs`](../../../../crates/ph2d-vec-edit/src/quickshape_edit.rs)) — onde o
+oráculo não chega, decidida e dita: o polígono que não é rectângulo e a polilinha têm os cantos
+LIVRES (o «como desenhado» do Procreate), o Shift a 15° pelo lado que chega; o arco de CÍRCULO
+continua de círculo (o que passa pelas pontas e pelo ápice: `4·atan(2h/l)`); o de elipse e o
+BIARCO seguem a afinidade da corda (exacta: a SVD fechada 2×2; a tangência dos dois arcos
+sobrevive, os arcos podem deixar de ser de círculo); o corpo escala por igual à volta do pivô do
+gesto de segurar. Nenhuma constante de produto: `MIN_FRACTION` (1e-6) e `RIGHT_COS` (1e-6) são
+guardas numéricas, não faixas.
+
+**A forma sobrevive ao soltar** no próprio lápis (`pencil_edit.rs`), só até ao gesto seguinte (o do
+Procreate): não há componente novo nem schema; a geometria do caminho é a prova de que ela vale —
+outro escritor (a edição de nós, um flip) acaba-a, e o UNDO reencontra a forma que tinha escrito
+aquela geometria. Escreve em LOCAL pelo afim da caneta (o caminho já foi assentado).
+
+**⛔ Recusas:** reconstruir a forma a partir do caminho (o caminho não sabe se era rectângulo ou
+quadrilátero); os nós SEMPRE à vista ao soltar (o Excalidraw mediu o preço: o traço seguinte começa
+num canto e agarra-o — o Procreate pede o botão); o nó do meio que acrescenta um vértice (o
+Excalidraw e a linha do tldraw: muda o tipo).
+
 ## §4 — O que isto decide para o PH2D (e o que NÃO decide)
 
 - **Copia-se a lei:** linha ⇒ 2 pontos; rectângulo ⇒ 4 cantos a 90° com a rotação do traço;

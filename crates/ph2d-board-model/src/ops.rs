@@ -28,14 +28,24 @@ impl BoardOp {
     fn apply_inner(self, doc: &mut BoardDoc) -> Option<BoardOp> {
         match self {
             BoardOp::Put(mut el) => {
+                // Um `org` todo por omissão é o mesmo que nenhum: guarda-se UMA forma (numa sessão ao
+                // vivo, dois pares que chegam ao mesmo valor por caminhos diferentes ficam iguais).
+                if el
+                    .org
+                    .as_deref()
+                    .is_some_and(|o| *o == crate::Org::default())
+                {
+                    el.org = None;
+                }
                 let prev = doc.elements.get(&el.id).cloned();
+                doc.session.note(el.id, prev.as_ref());
                 el.version = prev
                     .as_ref()
                     .map_or(el.version, |p| p.version.max(el.version))
                     + 1;
                 // Os ids de grupo partilham o contador (`mint_group`): um grupo que chega com o elemento
                 // (um ficheiro lido, uma colagem) também o sobe. Um id sorteado numa sessão ao vivo não.
-                let local = |id: u64| id & crate::LIVE_ID_BIT == 0;
+                let local = |id: u64| id & crate::SESSION_ID_BIT == 0;
                 for id in std::iter::once(el.id.0).chain(el.groups().iter().map(|g| g.0)) {
                     if local(id) {
                         doc.next_id = doc.next_id.max(id);
@@ -68,6 +78,7 @@ impl BoardOp {
             BoardOp::Delete(id) => {
                 let el = doc.elements.get_mut(&id).filter(|e| !e.deleted)?;
                 let before = el.clone();
+                doc.session.note(id, Some(&before));
                 el.deleted = true;
                 el.version += 1;
                 doc.frames.remove(&id);

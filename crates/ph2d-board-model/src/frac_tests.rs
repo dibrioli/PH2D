@@ -132,7 +132,10 @@ fn a_salted_key_stays_in_its_gap_and_differs_by_salt() {
     let lo = FracKey::between(None, None);
     let hi = FracKey::between(Some(&lo), None);
     let k = FracKey::between(Some(&lo), Some(&hi));
-    let (a, b) = (k.clone().salted(1, Some(&hi)), k.clone().salted(2, Some(&hi)));
+    let (a, b) = (
+        k.clone().salted(1, Some(&hi)),
+        k.clone().salted(2, Some(&hi)),
+    );
     for s in [&a, &b] {
         assert!(*s > k && *s < hi && !s.as_str().ends_with('0'), "{s:?}");
     }

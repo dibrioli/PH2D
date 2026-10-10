@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-board-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O quadro AO VIVO (ADR-0181) — PURO: o protocolo, os carimbos, a fusão por registo e as sessões de
+# anfitrião e convidado como máquinas de estado. Sem IO: o transporte é a `ph2d-board-net`.
+ph2d-board-model = { path = "../ph2d-board-model" }
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

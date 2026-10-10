@@ -5299,6 +5299,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-board-sync"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-model",
+ "postcard",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-board-words"
 version = "0.0.0"
 dependencies = [

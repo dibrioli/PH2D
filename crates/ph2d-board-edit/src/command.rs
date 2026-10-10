@@ -231,7 +231,10 @@ impl Editor {
                 el
             })
             .collect::<Vec<_>>();
-        history.record(ops.iter().rev().map(|el| BoardOp::Delete(el.id)).collect(), doc);
+        history.record(
+            ops.iter().rev().map(|el| BoardOp::Delete(el.id)).collect(),
+            doc,
+        );
         for el in &ops {
             crate::mindmap::settle_live(doc, el.id);
         }

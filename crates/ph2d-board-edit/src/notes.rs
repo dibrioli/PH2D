@@ -351,7 +351,10 @@ impl Editor {
         if made.is_empty() {
             return false;
         }
-        history.record(made.iter().rev().map(|id| BoardOp::Delete(*id)).collect(), doc);
+        history.record(
+            made.iter().rev().map(|id| BoardOp::Delete(*id)).collect(),
+            doc,
+        );
         self.selection = made.into_iter().collect();
         true
     }

@@ -19,7 +19,8 @@ fn no_tool_mints_a_key_outside_the_documents_door() {
         seen += 1;
         let src = std::fs::read_to_string(&p).unwrap();
         for (i, line) in src.lines().enumerate() {
-            if line.contains("FracKey::between(") && !line.contains("FracKey::between(None, None)") {
+            if line.contains("FracKey::between(") && !line.contains("FracKey::between(None, None)")
+            {
                 bad.push(format!("{name}:{}", i + 1));
             }
         }
@@ -36,8 +37,8 @@ fn two_live_editors_create_on_top_without_tying() {
     a.rect([0.0, 0.0, 10.0, 10.0]);
     let mut b = world();
     b.doc = a.doc.clone();
-    a.doc.set_live(Some(7));
-    b.doc.set_live(Some(8));
+    a.doc.set_session(Some(7));
+    b.doc.set_session(Some(8));
     let ra = a.rect([0.0, 0.0, 10.0, 10.0]);
     let rb = b.rect([0.0, 0.0, 10.0, 10.0]);
     assert_ne!(ra, rb);

@@ -95,7 +95,11 @@ impl FracKey {
         if tail[3] == ZERO {
             tail[3] = DIGITS[1];
         }
-        let out = FracKey(format!("{}{}", self.0, std::str::from_utf8(&tail).expect("ASCII")));
+        let out = FracKey(format!(
+            "{}{}",
+            self.0,
+            std::str::from_utf8(&tail).expect("ASCII")
+        ));
         if hi.is_none_or(|h| out < *h) {
             out
         } else {

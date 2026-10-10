@@ -209,7 +209,7 @@ pub(super) fn doc_old<E>(d: DocOld<E>, element: &impl Fn(E) -> Element) -> Board
         // Os formatos 1–4 não tinham frames.
         frames: Default::default(),
         minds: Default::default(),
-        live: Default::default(),
+        session: Default::default(),
     }
 }
 

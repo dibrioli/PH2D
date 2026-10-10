@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use crate::{Element, ElementKind, Org, Style};
+use crate::{Element, ElementKind, Org};
 
 /// Um registo de um [`Element`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -98,11 +98,12 @@ impl Field {
         Field::Seed,
     ];
 
-    /// Uma contagem que SOMA entre pessoas (dois votos ao mesmo tempo são dois): a sessão ao vivo
-    /// transmite a diferença, não o valor.
+    /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
+    /// transmite a diferença, não o valor. Os votos NÃO: são o resultado de uma votação, que o
+    /// facilitador escreve (V4).
     #[must_use]
     pub fn is_counter(self) -> bool {
-        matches!(self, Field::Votes | Field::Stamps)
+        matches!(self, Field::Stamps)
     }
 }
 

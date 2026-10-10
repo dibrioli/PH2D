@@ -178,6 +178,22 @@ impl BoardSet {
         Some(self.boards.remove(at))
     }
 
+    /// O quadro `id` em bytes, para quem entra numa sessão ao vivo (o protocolo tem a versão dele).
+    #[must_use]
+    pub fn board_bytes(board: &Board) -> Vec<u8> {
+        postcard::to_allocvec(board).expect("postcard escreve qualquer quadro")
+    }
+
+    /// Lê o que [`Self::board_bytes`] escreveu, com os índices refeitos.
+    ///
+    /// # Errors
+    /// Bytes corrompidos.
+    pub fn board_from_bytes(bytes: &[u8]) -> Result<Board, String> {
+        let mut b: Board = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+        b.doc.reindex();
+        Ok(b)
+    }
+
     /// Os bytes do campo `boards` do projecto.
     ///
     /// # Errors

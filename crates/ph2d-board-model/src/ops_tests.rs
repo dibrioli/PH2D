@@ -169,14 +169,14 @@ fn live_ids_are_drawn_apart_from_the_local_counter() {
     let first = a.mint_id();
     assert_eq!(first.0, 1);
     let mut b = a.clone();
-    a.set_live(Some(1));
-    b.set_live(Some(2));
+    a.set_session(Some(1));
+    b.set_session(Some(2));
     let (ia, ib) = (a.mint_id(), b.mint_id());
-    assert!(ia.0 & crate::LIVE_ID_BIT != 0 && ib.0 & crate::LIVE_ID_BIT != 0);
+    assert!(ia.0 & crate::SESSION_ID_BIT != 0 && ib.0 & crate::SESSION_ID_BIT != 0);
     assert_ne!(ia, ib);
     let el = rect(&mut a, 0.0);
     BoardOp::Put(el).apply(&mut a);
-    a.set_live(None);
+    a.set_session(None);
     assert_eq!(a.mint_id().0, 2, "o contador não saltou para o sorteado");
 }
 
@@ -187,8 +187,8 @@ fn two_live_sessions_put_their_new_top_keys_apart() {
     let el = rect(&mut a, 0.0);
     BoardOp::Put(el).apply(&mut a);
     let mut b = a.clone();
-    a.set_live(Some(10));
-    b.set_live(Some(11));
+    a.set_session(Some(10));
+    b.set_session(Some(11));
     let (za, zb) = (a.z_on_top(), b.z_on_top());
     assert_ne!(za, zb);
     let top = a.live_in_z_order().last().unwrap().z.clone();

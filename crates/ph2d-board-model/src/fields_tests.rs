@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     Anchor, Connector, Dash, ElementId, End, FillStyle, FracKey, Frame, GroupId, Head, Ink, Letter,
-    Look, Mind, Pen, Rgba, RichText, Route, Shape, ShapeType, Side, Stamp, StampCount, Tag,
+    Look, Mind, Pen, Rgba, RichText, Route, Shape, ShapeType, Side, Stamp, StampCount, Style, Tag,
     TextAlign, VAlign,
 };
 
@@ -89,7 +89,11 @@ fn pairs() -> Vec<(Element, Element)> {
             [Head::None, Head::Arrow]
         },
         style: st,
-        label: if rich { "rótulo".into() } else { String::new() },
+        label: if rich {
+            "rótulo".into()
+        } else {
+            String::new()
+        },
         waypoints: if rich { vec![[4.0, 5.0]] } else { vec![] },
     };
     let ink = |st: Style, rich: bool| Ink {
@@ -160,7 +164,10 @@ fn a_register_of_another_kind_is_absent() {
     let mut el = shape.clone();
     let start = pairs()[1].1.read(Field::Start).unwrap();
     assert!(!el.write(Field::Start, &start));
-    assert!(!el.write(Field::Box, &[1, 2, 3]), "bytes que não são uma caixa");
+    assert!(
+        !el.write(Field::Box, &[1, 2, 3]),
+        "bytes que não são uma caixa"
+    );
     assert_eq!(el, shape);
 }
 

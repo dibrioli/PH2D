@@ -263,3 +263,128 @@ cura: a luz direta numa grade FINA própria (≈ 1–2 px, independente do níve
 (suave) somada por interpolação — os receptores leem uma textura só, como hoje. Custo previsto ~1 ms/lâmpada a
 1080p (medir). E a grade inteira é montada para a JANELA, não para a área da cena: ~40 % de texels sob os
 painéis (medir antes de cortar).
+
+## W4b — a grade FINA da luz direta (10/10)
+
+- **HEAD:** o commit deste doc · commits `9752e21f7` (placa) · `3313e42da` (família) · `0d1618f6a` (clippy) · `b51e0991f`
+  (o joelho) · `6bbabce40` (sondas no passo fino, teto 6) · `5fde2af7c` (os sobreviventes da mutação) · este doc + fotos.
+- **Estado:** W4b FECHADA (onda). Próxima: **W5 — janela NOVA** (rebote, HRC, governador acima de 1080p, Flip
+  receber/bloquear, e os ABERTOS abaixo). Merge-base `2a925859d`
+  (sem rebase pendente). **Delta da shell: 0** (nenhum ficheiro da shell, de `ph2d-render` ou de `ph2d-editor-core`).
+- **Desenho** (o do briefing, medido): a c0 deixa de somar a luz direta; `c3_visibilidade` grava em cada sonda da
+  c0 a fração à vista de cada lâmpada direta (8 × u8, `Rg32Uint`; `CERTA` = cone livre de uma célula inteira);
+  `c3_fina` escreve cada texel fino (texel ÷ `Config::fina`, a MESMA origem ⇒ G11 herdado) = a c0 bilinear +
+  Σ parte SUAVE analítica × visibilidade — interpolada onde os cantos diferem ≤ 0,1 e não misturam o fim da
+  penumbra com o meio dela (o joelho), medida no texel fino onde não. Os raios diretos marcham no passo FINO
+  (nas sondas também). A `LuzRecebida` aponta a fina (API igual). `Degrau::fino_px = 1` ⇒ célula fina de 1–2 px
+  em todo nível e zoom. **Só a região da janela se calcula** (`Solver::regiao_fina`, `regiao_da_janela`).
+
+**Antes → depois** (RTX 5060 Ti, `smoke`, 1920×1080, vista de fábrica; rodada `medida_luz2d_w4b`, mínimo de 9
+intercaladas; a régua da escada segue os contornos 2 · 10 · 50 · 90 · 98 %, píxel a píxel, do canto até o muro):
+
+| régua | antes | W4b |
+|---|---|---|
+| escada (degrau rms dos 5 contornos, cena 4, lâmpada pequena) Low | 0,67 · 0,74 · 0,47 · 0,66 · 1,12 px | **0,16 · 0,11 · 0,09 · 0,14 · 0,18** |
+| idem Medium | 0,44 · 0,34 · 0,20 · 0,31 · 0,42 | **0,18 · 0,12 · 0,08 · 0,12 · 0,17** |
+| idem High (fina = grossa) | 0,18 · 0,11 · 0,06 · 0,12 · 0,18 | igual |
+| borda reta da cena 1 (gate, caminho do PRODUTO) Low · Medium | 0,46 · 0,17 px | **0,11 · 0,09** |
+| penumbra da lâmpada pequena (geometria 0,3283 m) | 0,330 | 0,337 (2,7 %) |
+| o que o receptor lê × gabarito no texel fino (Baixo) penumbra · faísca · céu e vidro | 0,523 · 1,866 · 0,057 | **0,053 · 0,080 · 0,028** |
+| custo Low: 0 · 1 · 8 lâmpadas | 1,30 · 1,56 · 2,87 ms (C3 grossa, com a região) | 1,32 · 2,10 · 6,81 ms |
+| ms por lâmpada Low · Medium | 0,20 · 0,49 (W4 sem região: 0,42 · 1,64) | **0,69 · 0,67** |
+| memória da luz Low | 9,3 MB | 40,8 MB (a fluência fina inteira: 31,5 MB) |
+
+**`LAMPADAS_DIRETAS_MAX` 8 → 6** (medido): `1,32 + 0,686·N ≤ 5,56` no Low a 1080p ⇒ N ≤ 6,2 — a 7.ª lâmpada mais
+fraca fica nas cascatas (sombra macia) e o Inspector avisa. O governador vê o custo TOTAL (`TemposMs::total` inclui
+C3 vis + fina) e prevê a subida por `por_nivel·r² + fixo` (a fina não muda com o nível).
+
+Fotos (`fotografa_cena.sh`, `HOME` próprio com `light_quality`, `light_auto=0`): `fotos_W4b/cena{1,2,4}_{low,medium,high}.png`
+e o recorte junto ao canto `fotos_W4b/cena4_low_medium_high.png`; antes (W4, em cima) × depois:
+`fotos_W4b/cena4_antes_depois_W4b.png`.
+
+### Duas voltas que a FOTO deu à régua (lição)
+
+1. Depois do 1.º verde a foto em Low mostrou **manchas claras de uma célula** no lado ESCURO da borda: células de
+   cantos «0, 0, 0, 0,08» abaixo do limiar eram interpoladas (até 8 % de luz sobre o preto). A régua de 10 · 50 ·
+   90 % não as via — vivem abaixo de 10 %. Contornos de 2 % e 98 % (vermelho: 0,352 px) e o joelho ligado (0,165).
+2. Depois, um **salto da borda junto ao muro**, além do fim da régua (que parava na linha de medida). Estendida até
+   o muro (parando o perfil antes dele: dentro, 0 ÷ 0 dava cruzamentos falsos de 8 px), mediu o Medium em 0,26 ·
+   0,31 · 0,22: onde a penumbra é larga a visibilidade das sondas é INTERPOLADA e, no passo grosso, traz o tremor
+   da marcha. Sondas no passo fino: 0,18 · 0,12 · 0,08 (o exato: 0,17 · 0,11 · 0,06).
+
+### ⛔ Recusas MEDIDAS (W4b)
+
+| tentativa | número | por quê |
+|---|---|---|
+| célula fina de 2 px | escada Low 0,29 · 0,12 · 0,30 (10 · 50 · 90) | é o Medium de hoje — os «degraus finos» do dono |
+| visibilidade exata em todo texel fino | 1,22 ms/lâmpada (Low), 11,0 ms com 8 | 1,8× o padrão pela mesma escada |
+| grade fina sem a região da janela | 1,77 ms/lâmpada | 82 % da grade fica fora da janela na vista de fábrica |
+| raios diretos finos no passo das CASCATAS | 0,53 px no contorno de 50 % (Low) | as amostras entram e saem do canto conforme o texel fino anda |
+| sondas no passo grosso | Medium 0,26 · 0,31 · 0,22 px | o tremor da marcha onde a penumbra se interpola |
+| limiar 0,25 | Low 0,51 px no de 10 % | o meio da penumbra fica interpolado |
+| sem o joelho | Low 0,35 px no de 2 % | as manchas sobre o preto |
+| 8+5 raios | +50 % | a mesma régua |
+| 2+6 raios | −20 %, a mesma régua | 3 raios fixos deixam passar sem sombra um oclusor mais fino que meia abertura (com 4+5, um quarto) |
+| 7 ou 9 bissecções | +20 · +45 % | não curavam o Medium (a causa era o passo, não a bissecção) |
+| certificar a sonda (cone livre com a folga de uma célula) | empate de custo E de resposta (fio 0,515 · 0,515) | o `livre` já é conservador em ~2 texels; a mutação dele sobrevivia — saiu |
+
+### Prova de mutação (agente `mutacao`)
+
+Pré-voo: 14 âncoras casaram 1× cada; filtros povoados (placa 7 testes · família 18); restauro por `checkout` +
+`touch` (e `shaders.rs` depois de cada `.wgsl`); árvore = HEAD no fim.
+
+| # | mutação | resultado |
+|---|---|---|
+| M1 | nunca refinar | **sangra** — bordas × tudo 0,0376 (teto 0,0014); escada 0,486 px; penumbra 0,3451 |
+| M2 | sem o joelho | **sangra** — escada Low 0,442 px |
+| M3 | raios do passe fino no passo grosso | **sangra** — escada Low 0,524 px |
+| M4 | sondas no passo grosso | **sangra** — escada Medium 0,258 px |
+| M5 | `fina` sempre 1 | **sangra** — texel fino 6,75 px; a régua acha só 101 pontos |
+| M6 | região sem a folga de 1 texel | **sangra** — o píxel (0, 0) lê 710..=711, fora de [711, 1850) |
+| M7 | sondas da região sem a folga | **sangra** — um texel dentro da região muda de bit |
+| M8 | texel fino sem o ½ | **sangra** — 0,519 × 0,943; ponto `I/r` 0,25 |
+| M9 | a subida prevê o custo inteiro ×4 | **sangra** — `o_governador_preve_a_subida_com_a_grade_fina_fixa` |
+| M10 | `LuzRecebida` com a grade das cascatas | sobreviveu — **equivalente** (o receptor amostra em UV e as duas cobrem o mesmo retângulo); a paridade passa a afirmar a lei (`5fde2af7c`) |
+| M11 | G11 sem o encaixe da origem | **sangra** — a ancorada tremeu 12,8 |
+| M12 | código das lâmpadas trocado de palavra | **sangra** — bordas × tudo 2,43 |
+| M13 | sem certificar a sonda | sobreviveu — numa cena feita para ela (o fio de sombra de 0,8 texel entre as sondas) dá 0,515 com, sem e no exato ⇒ **saiu** (`5fde2af7c`); a cena fica como gate (sangra com M1: 0,085 × 0,515) |
+| C1 | `>` → `>=` no limiar | sobreviveu — equivalente, certo |
+
+### Portão de fecho
+
+`fmt --check` ✓ · clippy `-D warnings` (`ph2d-light2d-gpu`, `ph2d-app-light2d`, `ph2d-render`, `ph2d-host-desktop`)
+✓ (1 lint num teste, curado em `0d1618f6a`) · `machete` ✓ · `CARGO_BUILD_WARNINGS=deny check --workspace
+--all-targets` ✓ · `nextest-impacted` **16 908 / 16 908** ✓.
+2.ª corrida, depois dos commits do joelho, das sondas no passo fino e dos sobreviventes (`5fde2af7c`): fmt ✓ ·
+clippy ✓ · machete ✓ · deny-check ✓ · `nextest-impacted` **16 909 / 16 909** ✓. Suítes da família: placa 20 + 3
+ignorados · família 37 + 6 · ECS verde. Smoke recompilado (regra I, depois do `rm -rf target/*/incremental`),
+2.ª saída: `Finished \`smoke\` profile [optimized] target(s) in 0.20s`.
+
+### ⚠️ ABERTO (W4b → W5)
+
+1. **A borda inteira desloca-se ~½–¾ de texel GROSSO** para o lado da sombra (Low −4,2 px · Medium −2,1 · High
+   −1,2 no contorno de 50 %; gate: ≤ 0,95 texel). Causa medida: a captura grossa ARREDONDA o canto do oclusor
+   (`meio` = cobertura bilinear ≥ ½); a marcha com passo ¼ só tira ~16 %. Cura: uma captura FINA para a luz
+   direta (2.ª C0 + JFA na grade fina, com sprites e a camada do vetor desenhados também nela) — custo por medir.
+2. **Oclusor mais fino que ~1 texel grosso some da captura** (Low: uma barra de 5 cm não faz sombra; Medium faz) — a
+   mesma cura do 1.
+3. **A faixa escura na face acesa da parede** (o interior do opaco recebe 0 e a bilinear mistura-o): agora 1 px em
+   TODO nível (Low antes 1,25 px a 0,73 do gabarito; agora 1,0 px a 0,45 = o High). Não curou — é o ABERTO 1 da W4
+   (o passe de preenchimento).
+4. **As cascatas ainda calculam a grade inteira**: 81,5 % dela fica fora da janela na vista de fábrica (cobre o pior
+   zoom da oitava + a margem); fora do CANVAS 87,7 %. A região C3 pelo canvas tiraria mais ~⅓ — o retângulo só
+   existe do quadro anterior (`HeroScreen.last_canvas`, escrito no paint depois do `codificar`).
+5. **O teto de lâmpadas diretas caiu para 6** (era 8): o custo do Low com a grade fina. As curas do 4 devolvem-no.
+6. **`PassList::bytes_por_quadro` (K7) conta a textura fina inteira** (31,5 MB lidos + escritos); a região move
+   ~5,8 MB. Governador > 1080p (W5).
+
+### O que a W5 precisa saber (W4b)
+
+- Um passe novo que precise da fluência final lê `luz2d/tex/fluencia` (`Solver::fluencia`, grade
+  `Solver::grade_da_fluencia`); a das cascatas é `PassList::indice_da_c0`.
+- Os testes leem a fluência COM a grade dela (`comum::Fluencia`); toda régua que compara com um solver feito à mão
+  dá-lhe a MESMA configuração e a MESMA região (`regiao_da_janela`) — senão compara outro programa (as réguas de
+  captura mudaram de população por isso: a fenda mede 0,0247 sem a fina e 0,0233 com ela; teto 0,026).
+- A rodada `medida_luz2d_w4b` (custo · escada · painéis · faixa) é a régua dos ABERTOS 1–5; as variantes do refino
+  são `Bordas` (configuração em execução, nunca `const`).
+- **Fotografe antes de acreditar na régua**: as duas voltas acima.

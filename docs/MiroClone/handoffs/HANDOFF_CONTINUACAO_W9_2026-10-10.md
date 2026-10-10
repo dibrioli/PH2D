@@ -28,7 +28,11 @@
 
 Na ordem do estudo §5, num bloco (CLAUDE.md §0.10):
 
-1. **M3** a «redonda» de 2 pontos é recta; 3+ pontos ⇒ `Route::Spline` (Catmull-Rom 1/6, XA1).
+1. **M3 — SÓ NA IMPORTAÇÃO** (ordem do dono, 10/10: *«não quero que a seta "redonda" de dois pontos fique
+   reta. quero apenas que a importação seja fiel»*): a seta «redonda» de 2 pontos que VEM de um
+   `.excalidraw` desenha-se recta como lá, e a de 3+ pontos com a curva dele (`Route::Spline`, Catmull-Rom 1/6,
+   XA1). ⛔ A curva que o artista desenha NO NOSSO quadro (`Route::Curve`, a do Miro) NÃO muda. A volta
+   (nosso → `.excalidraw`) devolve o `roundness` original.
 2. **M1/M6/M4** `Anchor::Orbit` + o vão (XB1) no roteador, no leitor, no escritor (as DUAS gramáticas de
    ligação, XV3) e no gesto de ligar do quadro (a decisão do §2).
 3. **M2** a ponta que encolhe `min(base, último trecho/2)` em TODO o quadro (hoje uma seta ≤ 20 px fica sem

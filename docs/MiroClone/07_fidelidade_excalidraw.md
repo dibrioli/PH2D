@@ -156,7 +156,7 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
 |---|---|---|---|---|
 | **M1** | ⭐ **A seta que pára ANTES da forma** (`Anchor::Orbit` + o vão) | XB1 em 20 casos `B_*` e nos pontos do ficheiro do dono | vão **5 + sw/2** (5,5 com o traço fino de nascença); erro ≤ 0,04 px | **FAZER JÁ** — ✅ **DECIDIDO pelo dono (10/10): o quadro INTEIRO adopta o vão, como o Excalidraw** (*«like Excalidraw»*): as setas que o artista desenha no nosso quadro também param 5 + sw/2 antes da forma, não só as importadas. O Miro encosta; recusado por ordem do dono |
 | **M2** | ⭐ **A ponta que encolhe** | XA2 (`P_comprimento` 39 setas, `P_tipos_comprimento` 63) | **min(base, trecho/2)**, sem espessura | **FAZER JÁ** em todo o quadro: hoje uma seta curta fica SEM ponta (L ≤ 20 ⇒ zero pontas) — defeito, não estilo |
-| **M3** | ⭐ **A «redonda» de 2 pontos é recta**; a de 3+ é a curva DELE | XA1 (`F_fuste`) | afastamento 0,00 / Catmull-Rom 1/6 | FAZER JÁ no leitor (sintoma 1); `Route::Spline` para 3+ |
+| **M3** | ⭐ **A «redonda» de 2 pontos é recta**; a de 3+ é a curva DELE | XA1 (`F_fuste`) | afastamento 0,00 / Catmull-Rom 1/6 | FAZER JÁ **só na importação** (sintoma 1); `Route::Spline` para 3+. ⛔ **Decisão do dono (10/10): a curva do NOSSO quadro não muda** (*«não quero que a seta redonda de dois pontos fique reta, quero apenas que a importação seja fiel»*): o `Route::Curve` desenhado no quadro continua a curva do Miro; só a seta que VEM de um `.excalidraw` se desenha como lá. E a volta guarda a forma dele: a «redonda» de 2 pontos lida como recta volta a sair `roundness {type:2}` (o `customData.ph2d` leva o `roundness` original) |
 | **M4** | O gesto de ligar do next: largar DENTRO ⇒ ponto exacto (`inside`); perto por FORA ⇒ órbita encaixada no meio do lado; `Ctrl` desliga | XB5 (rato, 23 sondas) | 23/23 dentro ⇒ `inside`; por fora liga a 6 e 10, não a 20 | o nosso `anchor_for` já é parecido (centro × ponto fixo numa faixa); trocar «miolo ⇒ Centro» por «miolo ⇒ Orbit no ponto» quando M1 entrar; manter o `Ctrl` |
 | **M5** | Ler o `stickynote` | XV4 | 200×200, `#ffdf6b`, raio 8 | ler ⇒ a nossa nota; escrever continua `rectangle` |
 | **M6** | Escrever as DUAS gramáticas de ligação | XV3 | — | FAZER com M1: o ficheiro nosso fica certo no excalidraw.com e no 0.18.1 |
@@ -178,7 +178,7 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
   recortada no vão; foco fora ⇒ o foco); `ORBIT_GAP = 5.0` (+ sw da forma / 2) com a tabela §2 ao lado;
   `Spline` (Catmull-Rom 1/6, XA1); o tamanho da ponta `min(base, último trecho / 2)` em `drawn_at`/`stems`
   (`HEAD_BASE` por tipo: 25 · 15 · 15 · 24 · 15).
-- `crates/ph2d-board-excalidraw/src/read.rs`: 2 pontos redondos ⇒ `Straight`; 3+ ⇒ `Spline`; `mode` ⇒
+- `crates/ph2d-board-excalidraw/src/read.rs` (⛔ SÓ a importação — o `Route::Curve` do quadro não muda, §5 M3): 2 pontos redondos ⇒ `Straight` com o `roundness` dele guardado para a volta; 3+ ⇒ `Spline`; `mode` ⇒
   `Orbit`/`Fixed`; legado ⇒ `Orbit` com o foco da ponta gravada; `stickynote` ⇒ `Sticky`; `triangle_outline`;
   `strokeOptions.variability`.
 - `crates/ph2d-board-excalidraw/src/write.rs`: ligações com as duas gramáticas; as pontas com o vão; `Spline` ⇒

@@ -38,7 +38,7 @@ Nada: `DOC_VERSION` 20, `PROJECT_SCHEMA` 187, registos, ids e i18n sem diff. Nen
 ## 5. Portão de fecho
 
 `clippy -p ph2d-editor-core -p ph2d-host-desktop --all-targets -D warnings` ✓ · `fmt` ✓ · gizmo: fundação
-85/85, shell 71/71 · `the_shell_only_shrinks` ✓ · `file_loc_caps` ✓ · `nextest-impacted` sobre `76ef418e6..HEAD`: ver §8.
+85/85, shell 71/71 · `the_shell_only_shrinks` ✓ · `file_loc_caps` ✓ · `nextest-impacted` 16094/16094 (§8).
 
 ## 6. Provas de mutação — 5/5 sangraram
 
@@ -61,4 +61,13 @@ inclinação da Bandeira fica mais deitada — como o desenho esticado. Errado: 
 
 ## 8. Fecho
 
-FECHO6
+- `BASE=76ef418e6 nextest-impacted.sh`: **16094/16094** ✓ (114 s, load 12→35).
+- `rm -rf target/*/incremental` feito; build `smoke` 1.ª `27.51s`, 2.ª corrida:
+
+```text
+    Finished `smoke` profile [optimized] target(s) in 0.28s
+```
+
+- `PH2D_ANIMACAO_SMOKE=6` fotografado (1930×1040): as duas seleccionadas e a caixa do grupo a envolver os
+  cantos DESENHADOS. O arrasto não se fotografa (a tela virtual não aceita eventos) — é o passo do dono.
+- **O que fica aberto:** nada desta linha. Próxima onda ou integração: decisão do DONO.

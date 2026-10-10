@@ -384,7 +384,7 @@ mod tests {
     use ph2d_ecs::{Name, Transform};
     use ph2d_flip::{FlipStroke, Hold, KeyKind};
 
-    fn doc_with_segment(
+    pub(super) fn doc_with_segment(
         a: [f32; 2],
         b: [f32; 2],
     ) -> (FlipDoc, SimWorld, FlipEntityMap, FlipObjectId, Entity) {
@@ -536,3 +536,8 @@ mod tests {
         assert!(outline_world(&sim, &doc, other).is_none());
     }
 }
+
+/// F8: as caixas do *Enquadrar tudo* (irmão pelo tecto de LOC).
+#[cfg(test)]
+#[path = "gizmo_view_frame_tests.rs"]
+mod frame_tests;

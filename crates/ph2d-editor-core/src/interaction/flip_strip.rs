@@ -26,14 +26,6 @@ use super::types::{GestureMods, GesturePhase};
 use ph2d_a11y::NodeId;
 use ph2d_host::PointerButton;
 
-/// Percurso do ponteiro (px lógicos, Chebyshev) a partir do Down antes de um gesto da tira
-/// contar como ARRASTO em vez de toque.
-///
-/// Sem a folga, um pixel de tremor entre apertar e soltar faz o Up escolher `End` sobre
-/// `Click`, e **selecionar uma chave vira cara-ou-coroa** — o mesmo motivo (e o mesmo
-/// número) do irmão da timeline.
-pub const FLIP_STRIP_DRAG_SLOP_PX: f32 = 4.0;
-
 /// O que estava sob o ponteiro na tira de frames.
 ///
 /// Os índices são **opacos** ao editor-core: são posições na lista de células que o painel
@@ -85,10 +77,8 @@ pub struct FlipStripGesture {
 pub struct FlipStripChannel {
     /// Gestos deste frame (dispatch escreve, painel drena).
     gestures: Vec<FlipStripGesture>,
-    /// Ponto do Down — a origem de onde a folga é medida.
-    press: (f32, f32),
-    /// Já passou da folga? (uma vez arrasto, sempre arrasto até o Up).
-    moved: bool,
+    /// O aperto e a folga ([`crate::interaction::PressSlop`], a porta das três superfícies).
+    slop: crate::interaction::PressSlop,
 }
 
 impl WidgetStore {
@@ -119,23 +109,18 @@ impl WidgetStore {
     /// Arma uma captura nova no ponto do Down: ainda não é arrasto, e é daqui que a folga é
     /// medida.
     pub fn begin_flip_strip_press(&mut self, x: f32, y: f32) {
-        self.flip_strip.press = (x, y);
-        self.flip_strip.moved = false;
+        self.flip_strip.slop.begin(x, y);
     }
 
-    /// Promove a captura a ARRASTO quando o ponteiro passa de [`FLIP_STRIP_DRAG_SLOP_PX`].
+    /// Promove a captura a ARRASTO quando o ponteiro passa de [`crate::interaction::PRESS_SLOP_PX`].
     /// Chamado em todo Move.
     pub fn note_flip_strip_pointer(&mut self, x: f32, y: f32) {
-        if !self.flip_strip.moved {
-            let (px, py) = self.flip_strip.press;
-            let travel = (x - px).abs().max((y - py).abs());
-            self.flip_strip.moved = travel > FLIP_STRIP_DRAG_SLOP_PX;
-        }
+        self.flip_strip.slop.note(x, y);
     }
 
     /// Lê e zera o "a captura andou" (o Up escolhe `End` contra `Click`).
     pub fn take_flip_strip_moved(&mut self) -> bool {
-        std::mem::take(&mut self.flip_strip.moved)
+        self.flip_strip.slop.take_moved()
     }
 }
 
@@ -163,7 +148,7 @@ mod tests {
     fn travelling_past_the_slop_makes_it_a_drag_for_good() {
         let mut s = store();
         s.begin_flip_strip_press(100.0, 50.0);
-        s.note_flip_strip_pointer(100.0 + FLIP_STRIP_DRAG_SLOP_PX + 0.1, 50.0);
+        s.note_flip_strip_pointer(100.0 + crate::interaction::PRESS_SLOP_PX + 0.1, 50.0);
         // Voltar para dentro da folga NÃO rebaixa: arrasto é arrasto até o Up.
         s.note_flip_strip_pointer(100.0, 50.0);
         assert!(s.take_flip_strip_moved());

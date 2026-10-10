@@ -40,6 +40,7 @@ pub mod event;
 pub mod fling;
 pub mod flip_strip;
 pub mod hit;
+pub mod press_slop;
 pub mod state;
 mod tool_bars;
 pub mod touch;
@@ -48,9 +49,7 @@ mod types_blender;
 mod types_menu;
 pub mod util;
 
-pub use flip_strip::{
-    FLIP_STRIP_DRAG_SLOP_PX, FlipStripChannel, FlipStripGesture, FlipStripHitKind,
-};
+pub use flip_strip::{FlipStripChannel, FlipStripGesture, FlipStripHitKind};
 
 pub use dispatch::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
@@ -67,6 +66,7 @@ pub use drag::{
 };
 pub use event::{PanelRowDrop, PanelRowFamily, WidgetEvent};
 pub use hit::HitIndex;
+pub use press_slop::{PRESS_SLOP_PX, PressSlop};
 pub use state::{
     InteractiveState, NamedPalette, NoteDrag, SECCOES_FIXAS, SectionDrag, TAB_DRAG_THRESHOLD_PX,
     TabDragAnchor, WidgetStore, alvo_da_queda, capture_if_listening, fracao_para_pista,

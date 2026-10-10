@@ -531,6 +531,7 @@ fn apply_node(
         }
         GesturePhase::Click => {
             state.interaction = Interaction::Idle;
+            param_row::tap_on_a_readable_row(state, g, node, rect, snap);
         }
     }
 }

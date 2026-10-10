@@ -254,9 +254,17 @@ fn a_second_derivation_in_the_same_tick_keeps_the_pulse() {
     conta(&mut pump, 0.0);
     scrub(&mut pump, &g, c, 0);
     conta(&mut pump, 1.0);
-    assert_eq!(scrub(&mut pump, &g, c, 1), 1.0, "o disparo pulsa no tique 1");
+    assert_eq!(
+        scrub(&mut pump, &g, c, 1),
+        1.0,
+        "o disparo pulsa no tique 1"
+    );
     pump.mark_dirty_keeping_ring();
     // O mesmo tique outra vez: o estado já somou o tique 1 (a lei do re-cozimento), e o pulso
     // continua a ser 1 — senão o disparo seria engolido por quem coze duas vezes.
-    assert_eq!(scrub(&mut pump, &g, c, 1), 2.0, "o pulso do tique 1 continua 1");
+    assert_eq!(
+        scrub(&mut pump, &g, c, 1),
+        2.0,
+        "o pulso do tique 1 continua 1"
+    );
 }

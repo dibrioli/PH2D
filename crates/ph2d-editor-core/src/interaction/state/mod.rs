@@ -655,9 +655,9 @@ pub struct WidgetStore {
     /// when the motion tool is active + the graph is hovered/focused), so
     /// `dispatch_key` routes graph shortcuts. `None` = no graph focus.
     pub(super) graph_focused: Option<NodeId>,
-    /// Whether the active graph capture has moved since Down — decides End vs
-    /// Click on Up (mirror of the NumberInput drag's threshold flag).
-    pub(super) graph_moved: bool,
+    /// The active graph capture's press and whether it passed the slop — decides End vs Click
+    /// on Up, and holds the Updates back until the hand really drags ([`PressSlop`]).
+    pub(super) graph_slop: crate::interaction::PressSlop,
     /// Whether the active graph capture began as the SECOND Down of a double-click
     /// (mirror of `timeline_double`). The Up reads it back to choose `DoubleClick`
     /// over `Click` — without it a graph surface can never see a double-click at all,
@@ -666,12 +666,9 @@ pub struct WidgetStore {
     /// Timeline dope-sheet pointer gestures stashed by dispatch, drained by the
     /// timeline panel each frame (mirror of `graph_gestures`).
     pub(super) timeline_gestures: Vec<TimelineGesture>,
-    /// Whether the active timeline capture has moved past the drag slop since
-    /// Down — decides End vs Click on Up (mirror of `graph_moved`).
-    pub(super) timeline_moved: bool,
-    /// Pointer position at the timeline capture's Down, the origin the drag slop
-    /// is measured from.
-    pub(super) timeline_press: (f32, f32),
+    /// The active timeline capture's press and whether it passed the slop — decides End vs
+    /// Click on Up (the same [`PressSlop`] as the graph's).
+    pub(super) timeline_slop: crate::interaction::PressSlop,
     /// Whether the active timeline capture began as the second Down of a
     /// double-click — read on Up so a marker tap can open its rename field.
     pub(super) timeline_double: bool,

@@ -174,9 +174,9 @@ verdes (doc 128 §5.1).
 | a fita, 3 entradas a mexer | 14 383 B em 421 tiques = 34,2 B/tique (`FITA_BYTES` 32 MiB ⇒ ~1 M tiques) |
 | scrub (5 alvos) | 0,117 / 0,167 ms |
 
-## §6 — Smoke do dono (⏳ por fazer)
+## §6 — Smoke do dono (✅ APROVADO, 10/10: *«o smoke está ok»*)
 
-⏳ **Smoke do dono PENDENTE.** Tutorial 12 — `docs/Motion Nodes/tutoriais/12_o_jogo_manda.pdf` (5
+✅ **Smoke do dono APROVADO (10/10).** No mesmo report, um defeito de TODO o módulo, fora do ciclo: *«apertar botões em todo módulo desde os botões da barra inferior até os campos dentro dos nós é impreciso e inconsistente»* — aberto como BUGS do Motion (a precisão do clique). Tutorial 12 — `docs/Motion Nodes/tutoriais/12_o_jogo_manda.pdf` (5
 páginas, gate `every_step_of_the_game_tutorial_is_reachable`) — sobre a cena `=134`:
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=134 cargo run -p ph2d-host-desktop --profile smoke`

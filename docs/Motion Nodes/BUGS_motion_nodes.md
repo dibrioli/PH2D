@@ -20,6 +20,7 @@
 | [12](#bug-12--o-fio-agia-num-ramo-e-não-no-outro-e-o-cartão-mentia-nos-dois) | **"Number no Strength do Vortex não tem efeito"** + **"Number não aceita negativos"** | o ramo HÍBRIDO do `cook_gpu` (não entregava os valores do fio) + o CARTÃO (desenhava o override) + a faixa `0..40` das forças com sentido | ✅ **CURADO** (aguarda smoke, cena `=128`) | 2026-10-03 |
 | [13](#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
+| [18](#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ⏳ cura feita, smoke do dono | 2026-10-10 |
 ---
 
 ## Bug #1 — O nó acusado estava INOCENTE: o campo gateia o pulso, e não gateia a MEMÓRIA
@@ -1489,3 +1490,47 @@ mutação sem o filtro sangra-o (doc 125 §6, M5).
 ⛔ **Uma lei do colisor tem de chegar a TODO leitor da declaração** — e o censo que a encontrou foi o
 que liga cada botão sozinho e mede o DESENHO (doc 125 §2), não um gate do motor.
 
+
+
+## Bug #18 — um toque que TREME virava arrasto no grafo, e um campo LEGÍVEL não respondia
+
+**Estado:** ⏳ cura feita e gateada em 2026-10-10 — por smoke do dono.
+
+### O que se via
+Report do dono (10/10, no smoke do ciclo 19): *«apertar botões em todo módulo desde os botões da
+barra inferior até os campos dentro dos nós é impreciso e inconsistente»*.
+
+### Mecanismo (três exploradores, o código lido; nenhuma geometria divergente)
+- Pintor e alvo do clique saem das MESMAS funções (os chips da barra: o mesmo `chip`; as fileiras:
+  `param_row_rect`/`param_track_rect`); a escala física → lógica é uma porta só. ⛔ NÃO era isso.
+- **A superfície capturada do grafo não tinha FOLGA** (`pointer_move.rs`: todo `Move` marcava
+  «moveu»; `pointer_up.rs`: «moveu» ⇒ `End`). Um pixel de tremor entre apertar e soltar: o chip da
+  barra não disparava (só age no `Click`), o número ESCREVIA um valor (o `Update` escreve) e a caixa
+  não abria, o toggle não trocava. A timeline e a tira do Flip TINHAM a folga (`4 px`, duas cópias
+  da mesma lei) — o grafo era o único sem ela, e o comentário da timeline descrevia o defeito.
+- **A faixa de zoom `0,655 ≤ z < 0,818`**: a fileira desenha-se inteira (número, barra, setas) e
+  não regista alvo (a decisão MEDIDA de 19/09: a `14,4 px` uma fileira agarrável é uma armadilha no
+  arrasto do cartão) — um toque nela caía no corpo e não fazia nada: um controlo que se vê e não
+  responde.
+- **Os gates de gesto empurravam `Click` sintéticos** e saltavam o despacho real — exactamente a
+  metade onde o defeito morava.
+
+### A cura
+- `ph2d-editor-core/src/interaction/press_slop.rs`: **uma porta** (`PressSlop`, `PRESS_SLOP_PX` =
+  `DRAG_THRESHOLD_PX` = 4 px lógicos) para as TRÊS superfícies — o grafo, a timeline e o Flip (as
+  duas cópias saem). No grafo os `Update` só correm DEPOIS da folga: o tremor não escreve um valor
+  nem arrasta um cartão; um arrasto real começa com o percurso inteiro (sem movimento perdido).
+- **Ler é clicar; agarrar é arrastar** (`interact_param_row.rs`, `tap_on_a_readable_row`): na faixa
+  em que a fileira se lê e não se agarra, o TOQUE que o corpo recebe sobre ela faz o que o toque
+  faria nela; o arrasto continua a mover o cartão.
+- O comentário do limiar dizia «px físicos» — são LÓGICOS (o despacho corre depois do `to_logical`).
+
+### Gates (pelo caminho REAL: pintar → `Down/Move/Up` no despacho → pintar)
+`interact_tremor_tests.rs`: um toque que treme 2 px num número ABRE a caixa e não escreve (controlo:
+12 px escreve e não abre); um toggle troca com tremor `(0,0) (2,−2) (−3,3) (4,0)`; a `0,72` de zoom
+um toque troca e um arrasto move o cartão. Mutações: sem folga (`> 0`) os três sangram; sem o toque
+na faixa, o terceiro sangra. Timeline, Flip e Motion: as suites inteiras verdes.
+
+### Lição
+Uma lei copiada em duas superfícies e esquecida na terceira é o mesmo defeito à espera — *uma
+porta*, não três cópias. E um gate que empurra o gesto sintético já assumiu a resposta do despacho.

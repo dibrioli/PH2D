@@ -117,7 +117,7 @@ pub(super) fn dispatch_down<'frame>(
     {
         store.set_active(Some(id));
         store.set_active_rect(Some(rect));
-        store.set_graph_moved(false);
+        store.begin_graph_press(event.x, event.y);
         // Record the Down for double-click detection HERE: this capture returns early,
         // past the general path at the bottom, so the graph would otherwise never see a
         // double-click (the Up reads the flag back to upgrade `Click` → `DoubleClick`).

@@ -32,15 +32,20 @@ impl WidgetStore {
         }
     }
 
-    /// Mark whether the active graph capture has moved (set on Update; read on
-    /// Up to choose End vs Click).
-    pub fn set_graph_moved(&mut self, moved: bool) {
-        self.graph_moved = moved;
+    /// Arm a new graph capture at the Down point: still a tap ([`crate::interaction::PressSlop`]).
+    pub fn begin_graph_press(&mut self, x: f32, y: f32) {
+        self.graph_slop.begin(x, y);
     }
 
-    /// Read + reset the "graph capture moved" flag.
+    /// The pointer moved under a graph capture: has it passed the slop? Until it has, the
+    /// dispatch holds the Updates back — a tremble neither writes a value nor drags a card.
+    pub fn note_graph_pointer(&mut self, x: f32, y: f32) -> bool {
+        self.graph_slop.note(x, y)
+    }
+
+    /// Read + reset the "graph capture dragged" flag (Up chooses End vs Click).
     pub fn take_graph_moved(&mut self) -> bool {
-        std::mem::take(&mut self.graph_moved)
+        self.graph_slop.take_moved()
     }
 
     /// Arm the double-click flag on a graph Down (from

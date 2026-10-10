@@ -304,10 +304,14 @@ pub(super) fn dispatch_move<'frame>(
     }
     if let Some(active) = store.active_id() {
         // Motion Nodes M0.T3 — a captured graph surface streams an Update on
-        // every move (even once the pointer has left its rect: a node drag
-        // continues past the panel edge). The panel drains + interprets it.
+        // every move PAST THE SLOP (even once the pointer has left its rect: a node
+        // drag continues past the panel edge). Inside the slop the press is still a
+        // tap: nothing streams, so a tremble neither writes a value nor drags a card
+        // (BUGS do Motion #18). The panel drains + interprets it.
         if let Some((surface, kind)) = store.graph_surface_at_id(active) {
-            store.set_graph_moved(true);
+            if !store.note_graph_pointer(event.x, event.y) {
+                return;
+            }
             let mods = store.gesture_mods();
             store.push_graph_gesture(GraphGesture {
                 surface,

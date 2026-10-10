@@ -19,6 +19,52 @@ use super::*;
 /// ⚠️ **A edição sai pela porta que já existe** (`GraphIntent::SetParam` → `Graph::set_param`),
 /// a mesma da row do painel — o undo, o memo do cook e os limites são os mesmos nas duas
 /// superfícies. Nada de um segundo caminho de escrita.
+/// ⭐ **LER É CLICAR; AGARRAR É ARRASTAR** (BUGS do Motion #18, report do dono de 10/10).
+///
+/// Entre `param_text_is_drawn` (`zoom ≥ 0,655`) e `param_row_is_grabbable` (`≥ 0,818`) a fileira
+/// desenha-se inteira — o número, a barra, as setas do selector — e não regista alvo: o corpo do
+/// cartão fica com o arrasto (a razão MEDIDA de 19/09: a `14,4 px` uma fileira agarrável é uma
+/// armadilha no caminho do arrasto do cartão). Mas um TOQUE ali caía no corpo e não fazia nada — um
+/// controlo que se vê e não responde. ⇒ o toque (um `Click`, sem arrasto) que o corpo recebe sobre
+/// uma fileira LEGÍVEL faz o que o toque faria nela; o arrasto continua a ser do cartão.
+pub(super) fn tap_on_a_readable_row(
+    state: &mut MotionGraphPanelState,
+    g: GraphGesture,
+    node: u32,
+    rect: Rect,
+    snap: &GraphViewSnapshot,
+) {
+    let view = View::new(rect, state.view);
+    if !crate::geom::param_text_is_drawn(&view) || crate::geom::param_row_is_grabbable(&view) {
+        return;
+    }
+    let Some(n) = snap.nodes.iter().find(|n| n.id == node) else {
+        return;
+    };
+    let Some(row) = (0..crate::geom::band_len(n))
+        .find(|&i| crate::geom::param_row_rect(n, &view, i).contains(g.x, g.y))
+    else {
+        return;
+    };
+    // Um cabeçalho de secção dobra no `Begin` (o seu gesto de sempre); o resto responde ao `Click`.
+    let fase = match crate::geom::band_at(n, row) {
+        Some(crate::geom::BandRow::Header(_)) => GesturePhase::Begin,
+        _ => GesturePhase::Click,
+    };
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "um indice de faixa de um cartao"
+    )]
+    apply_param_row(
+        state,
+        GraphGesture { phase: fase, ..g },
+        node,
+        row as u16,
+        rect,
+        snap,
+    );
+}
+
 pub(super) fn apply_param_row(
     state: &mut MotionGraphPanelState,
     g: GraphGesture,
@@ -359,3 +405,8 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         | ph2d_node_registry::ParamWidget::Seed => ClickDoes::Nothing,
     }
 }
+
+/// Os gates do toque que treme, pelo caminho REAL do rato (BUGS do Motion #18).
+#[cfg(test)]
+#[path = "interact_tremor_tests.rs"]
+mod tremor_tests;

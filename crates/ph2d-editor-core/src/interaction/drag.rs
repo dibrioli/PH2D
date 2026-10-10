@@ -125,7 +125,7 @@ pub const STEPPER_REPEAT_INTERVAL_NS: u128 = 30_000_000;
 /// decisão que alguém escreve, e não uma deriva.
 pub const DRAG_THRESHOLD_PX: f32 = 4.0;
 
-/// Distance (in physical px) the cursor must move from the Down
+/// Distance (in LOGICAL px — the dispatch works after `to_logical`) the cursor must move from the Down
 /// position before a NumberInput drag flips into slider mode.
 ///
 /// ⚠️ **É o [`DRAG_THRESHOLD_PX`]** — ver o doc dele.

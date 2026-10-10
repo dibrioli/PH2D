@@ -28,6 +28,10 @@
 > **F7c (10/10)**: o ARCO — um arco de mão seguro vira um arco de círculo perfeito (§3g do oráculo;
 > foto [`fotos/f7c_01`](fotos/f7c_01_cena12_um_arco_seguro_vira_arco_perfeito.png)) —
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7c_QUICKSHAPE_ARCOS.md).
+> **F8 (10/10)**: *Ver ▸ Enquadrar tudo / seleção* e o beliscão rápido — a vista voa até tudo caber na
+> área visível; o «Frame All» que já existia (só imagens, na janela, a saltar) foi curado. Lei e
+> oráculos em [`11_enquadrar_tudo.md`](11_enquadrar_tudo.md); cena `=14`, foto
+> [`fotos/f8_01`](fotos/f8_01_cena14_tres_formas_fora_da_tela_e_ver_enquadrar_tudo.png).
 
 ## O roteador
 
@@ -41,6 +45,7 @@
 | ⭐ **O oráculo do QuickShape** — o Xournal++ corrido sobre 43 traços nossos: triagem de licença, o roteiro, as leis medidas, o que o Procreate manda a mais | [`oraculo_quickshape/00_resultados.md`](oraculo_quickshape/00_resultados.md) |
 | O prompt de F7 — o QuickShape no PH2D (a lei pura, o gesto de segurar, a porta visível, a cena 12) | [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md) |
 | ⭐ **O prompt da próxima janela** — F7c: o QuickShape com ARCOS (pedido do dono, 10/10) | [`07_prompt_F7c_arcos.md`](07_prompt_F7c_arcos.md) |
+| ⭐ **Enquadrar tudo (F8)** — o tldraw e o Excalidraw corridos (a mesma lei com parâmetros diferentes), a margem derivada das barras, o voo pelo ponto fixo, o beliscão rápido, as recusas | [`11_enquadrar_tudo.md`](11_enquadrar_tudo.md) · [`oraculo_enquadrar/`](oraculo_enquadrar/) |
 | As fontes, com URL por afirmação | [`referencias/R1_affinity.md`](referencias/R1_affinity.md) · [`R2_figma_sketch_penpot_graphite.md`](referencias/R2_figma_sketch_penpot_graphite.md) · [`R3_illustrator_curve_rive_inkscape.md`](referencias/R3_illustrator_curve_rive_inkscape.md) · [`R4_apps_de_ipad.md`](referencias/R4_apps_de_ipad.md) |
 | As fotos do «antes» e o precedente interno (a barra curta e a barra de estilo do Quadro) | [`fotos/`](fotos/) |
 

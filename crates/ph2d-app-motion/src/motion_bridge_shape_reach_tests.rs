@@ -40,6 +40,12 @@ fn registry() -> NodeRegistry {
 /// sempre»* e *«ninguém olhou»*, e é a única coisa que a próxima pessoa consegue conferir.
 const ALWAYS_READ: &[(&str, &str, &str)] = &[
     (
+        "value.input",
+        "name",
+        "o NOME é a morada da entrada (`$input:<nome>`): todo tipo o lê, e sem ele o nó só tem o \
+         número do cartão",
+    ),
+    (
         "source.table",
         "file",
         "o nó É a tabela: sem ficheiro ele não tem o que desenhar, e não há modo nenhum",

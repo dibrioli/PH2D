@@ -117,7 +117,10 @@ const WRAPPING_DOORS: &[&str] = &["paint_text", "paint_text_title", "paint_text_
 /// ⭐ **`16 → 17` em 2026-09-19:** a CÁPSULA (o desenho de um nó abaixo do limiar do texto, ordem
 /// do dono) escreve o nome do nó com a mesma porta que corta — e tem de o cortar, porque um nome
 /// que transborde uma pastilha de `190` unidades sai por cima do pino de saída.
-const ELIDED_TODAY: usize = 17;
+/// ⭐ **`17 → 18` (ciclo 17 do Motion, 09/10, `c7ef7e7e0`; achado no fecho do ciclo 19):** o
+/// cabeçalho do editor do `Ease` (`ph2d-param-editors/src/ease.rs`) escreve *«rótulo · família»*
+/// numa janela flutuante de largura FIXA (`205,5 px` do painel) — e corta pela mesma razão do cartão.
+const ELIDED_TODAY: usize = 18;
 
 fn crates_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

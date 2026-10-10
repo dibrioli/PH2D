@@ -412,7 +412,7 @@ pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
 const GRAFICO_ASPECTO: f32 = 2.6; // LITERAL-PX-OK: PROPORÇÃO adimensional do gráfico, não medida
 /// A faixa vertical do gráfico: a curva sai de `0..1` (o `Back`, o `Elastic`, a mola), e o
 /// gráfico guarda folga para a ultrapassagem.
-const GRAFICO_Y: (f32, f32) = (-0.35, 1.35);
+const GRAFICO_Y: (f32, f32) = (-0.35, 1.35); // LITERAL-PX-OK: faixa do VALOR da curva, adimensional
 const GRAFICO_GRADE_W: f32 = 1.0; // LITERAL-PX-OK: traco das linhas do 0 e do 1
 const GRAFICO_CURVA_W: f32 = 1.5; // LITERAL-PX-OK: traco da curva
 

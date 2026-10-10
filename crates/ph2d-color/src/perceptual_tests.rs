@@ -282,11 +282,24 @@ fn the_wgsl_carries_the_same_matrix_bits() {
 #[ignore = "sonda: imprime o meio de azul -> amarelo em cada espaco (doc 127, o texto do tutorial 11)"]
 fn sonda_o_meio_do_azul_ao_amarelo() {
     let (a, b) = (cor("azul"), cor("amarelo"));
-    for esp in [MixSpace::Linear, MixSpace::Oklab, MixSpace::OklchShorter, MixSpace::OklchLonger] {
+    for esp in [
+        MixSpace::Linear,
+        MixSpace::Oklab,
+        MixSpace::OklchShorter,
+        MixSpace::OklchLonger,
+    ] {
         for t in [0.25_f32, 0.5, 0.75] {
             let m = mix(a, b, t, esp);
             let l = oklab_to_oklch(to_oklab([m[0], m[1], m[2]]));
-            eprintln!("{esp:?} t {t}: rgb {:.2} {:.2} {:.2} · L {:.2} C {:.3} h {:.0}°", m[0], m[1], m[2], l[0], l[1], l[2] * 360.0);
+            eprintln!(
+                "{esp:?} t {t}: rgb {:.2} {:.2} {:.2} · L {:.2} C {:.3} h {:.0}°",
+                m[0],
+                m[1],
+                m[2],
+                l[0],
+                l[1],
+                l[2] * 360.0
+            );
         }
     }
 }

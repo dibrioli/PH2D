@@ -180,7 +180,7 @@ fn a_fire_count_becomes_a_pulse_of_exactly_one_tick() {
     let mut pump = MotionCookPump::new();
     pump.define_a_lei(false);
     let scopes = TimeScopes::new();
-    let mut tique = |pump: &mut MotionCookPump, t: u64| {
+    let tique = |pump: &mut MotionCookPump, t: u64| {
         pump.advance_or_scrub_scoped(&g, &Ops, &[c], t, |k| k as f64 * DT, UV, SIZE, &scopes);
         pump.instances[0].world_pos[0]
     };

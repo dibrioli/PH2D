@@ -197,13 +197,11 @@ impl NodeOp for ValueInput {
         let publicado = publicado.filter(|s| s.count() > 0);
         let linhas = ler(kind, publicado, |p| ctx.param(p));
         let n = linhas.len();
-        let col = |f: &dyn Fn(&(f32, [f32; 4])) -> f32| {
-            Stream::new(n).with(VALUE_COL, Column::Scalar(linhas.iter().map(f).collect()))
-        };
+        let col = |v: Vec<f32>| Stream::new(n).with(VALUE_COL, Column::Scalar(v));
         // Na ORDEM das saídas do manifesto (o contrato do `emit`).
-        ctx.emit(col(&|l| l.0));
+        ctx.emit(col(linhas.iter().map(|l| l.0).collect()));
         for k in 0..4 {
-            ctx.emit(col(&|l| l.1[k]));
+            ctx.emit(col(linhas.iter().map(|l| l.1[k]).collect()));
         }
         // O pulso viaja na coluna da família `pulse.*`.
         let pulso = linhas.iter().map(|l| l.0).collect();

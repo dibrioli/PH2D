@@ -85,7 +85,7 @@ fn publica(c: &mut Cook, v: f32) {
 }
 
 #[test]
-#[ignore = "sonda de medição: corre com --release --ignored --nocapture"]
+#[ignore = "sonda: o relógio do grupo, corre com --release --ignored --nocapture"]
 fn measure_the_game_group() {
     let m = MotionState::new();
     let reg = &m.registry;

@@ -57,6 +57,10 @@ const MEMBRANES: &[&str] = &[
     // params de um nó, e uma chave cunhada do valor estático não encontra a que o nó procura
     // quando um fio conduz aquele param — a planta desaparece **em silêncio**.
     "motion_lsystem_gen.rs",
+    // ⭐ **A sexta, nascida em 2026-10-10** (ciclo 19, doc 128 §3.6) — as entradas do jogo. A
+    // chave sai do NOME (`$input:<nome>`), e o `kind`/`fire` de um `value.input` decidem o que se
+    // publica: um `fire` conduzido por fio lido pelo cartão perderia o disparo.
+    "motion_entradas.rs",
 ];
 
 /// **Os LEITORES da escada que NÃO cunham chave** — resolvem os params de um nó para DECIDIR,

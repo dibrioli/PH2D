@@ -54,7 +54,7 @@ fn a_name_that_stops_being_published_is_absent_at_its_tick() {
     let mut f = Fita::new();
     f.grava(0, &pub_(&[("a", 1.0), ("b", 2.0)]));
     f.grava(1, &pub_(&[("a", 1.0)]));
-    assert!(f.estado_em(1).unwrap().get("b").is_none());
+    assert!(!f.estado_em(1).unwrap().contains_key("b"));
     assert_eq!(v(&f.estado_em(0).unwrap(), "b"), Some(2.0));
 }
 

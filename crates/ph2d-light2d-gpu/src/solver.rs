@@ -472,7 +472,7 @@ impl Solver {
         let distantes =
             distantes::Distantes::novo(NOMES_DISTANTES.map(buffer), texturas[atlas].clone());
         let lampadas_grupo =
-            Self::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
+            distantes::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
         let rc_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("luz2d c2"),
             bind_group_layouts: &[Some(&rc_layout), Some(&lampadas_layout)],
@@ -610,25 +610,6 @@ impl Solver {
             c3,
             fina,
             tempos,
-        })
-    }
-
-    /// O grupo 1 da C3: as lâmpadas e o mundo fora da grade.
-    fn grupo_das_lampadas(
-        device: &wgpu::Device,
-        layout: &wgpu::BindGroupLayout,
-        lampadas: &wgpu::Buffer,
-        distantes: &distantes::Distantes,
-    ) -> wgpu::BindGroup {
-        let mut entradas = vec![wgpu::BindGroupEntry {
-            binding: 0,
-            resource: lampadas.as_entire_binding(),
-        }];
-        entradas.extend(distantes.entradas());
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("luz2d c3 lampadas"),
-            layout,
-            entries: &entradas,
         })
     }
 

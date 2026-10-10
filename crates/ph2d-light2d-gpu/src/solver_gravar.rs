@@ -119,7 +119,7 @@ impl Solver {
             &distante,
             (&sprites.texturas, self.tempos.as_ref()),
         ) {
-            self.lampadas_grupo = Self::grupo_das_lampadas(
+            self.lampadas_grupo = distantes::grupo_das_lampadas(
                 &gpu.device,
                 &self.lampadas_layout,
                 &self.lampadas,

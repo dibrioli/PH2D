@@ -396,3 +396,22 @@ impl Distantes {
         buffers + atlas + pintor
     }
 }
+
+/// O grupo 1 da C3: as lâmpadas e o mundo fora da grade.
+pub(super) fn grupo_das_lampadas(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    lampadas: &wgpu::Buffer,
+    distantes: &Distantes,
+) -> wgpu::BindGroup {
+    let mut entradas = vec![wgpu::BindGroupEntry {
+        binding: 0,
+        resource: lampadas.as_entire_binding(),
+    }];
+    entradas.extend(distantes.entradas());
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("luz2d c3 lampadas"),
+        layout,
+        entries: &entradas,
+    })
+}

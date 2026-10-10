@@ -303,12 +303,12 @@ impl LuzDoQuadro {
                 .texturas
                 .push((vista, ph2d_light2d_gpu::Amostragem::Exata));
             let t = sprites.texturas.len() - 1;
-            sprites.distantes.extend(
-                distantes
-                    .iter()
-                    .cloned()
-                    .map(|s| ph2d_light2d_gpu::SpriteNaC0 { textura: t, ..s }),
-            );
+            sprites
+                .distantes
+                .extend(distantes.iter().map(|s| ph2d_light2d_gpu::SpriteNaC0 {
+                    textura: t,
+                    ..s.clone()
+                }));
         }
         self.sprites_por_texel = (sprites.substituidos.len(), self.cena.sprites.len());
         self.relatorio = Some(

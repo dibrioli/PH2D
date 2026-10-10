@@ -7,7 +7,8 @@
 //!   intensidade. ⚠️ Os texels não estão no `World` (só o `AssetId`); a cor do quad é a do tint.
 //!   A captura por texel é da C0 (W2).
 //! - `Sprite` + `BloqueiaLuz`: o quad, com a opacidade. Um sprite que emite NÃO entra também como
-//!   oclusor (o emissor já é opaco).
+//!   oclusor (o emissor já é opaco). ⭐ W5c: o OPACO que recebe luz reflete com o albedo
+//!   `tint∘self_tint` (rgb) — a lei do rebote, plano §2.4.
 //!
 //! Fora: objetos escondidos na árvore; valores não finitos (um NaN apaga, nunca envenena — a lei do
 //! `SpriteEmissive::clamped`); intensidade, raio ou alcance que não iluminam nada.
@@ -63,6 +64,11 @@ fn acende(c: Rgb) -> bool {
     finito(c) && c.iter().all(|&x| x >= 0.0) && c.iter().any(|&x| x > 0.0)
 }
 
+/// Um canal de albedo: NaN, infinito e negativo não refletem (o teto `A_MAX` é da lei, no solver).
+fn albedo_valido(x: f32) -> f32 {
+    if x.is_finite() { x.max(0.0) } else { 0.0 }
+}
+
 /// O alcance útil: `> 0` ou `+∞`; NaN e `≤ 0` apagam a luz.
 fn alcance(a: f32) -> Option<f32> {
     (a > 0.0).then_some(a)
@@ -75,8 +81,13 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     let mut oclusores: BTreeMap<Chave, Oclusor> = BTreeMap::new();
     let mut ceu = [0.0_f32; 3];
     let mut luzes = 0_u32;
-    // O que cada sprite da cena É para a luz: `(é emissor, emissão, opacidade)`, pela chave.
-    let mut de_sprite: BTreeMap<Chave, (bool, Rgb, f32)> = BTreeMap::new();
+    // O que cada sprite da cena É para a luz: `(é emissor, emissão, opacidade, albedo)`, pela chave.
+    let mut de_sprite: BTreeMap<Chave, (bool, Rgb, f32, Rgb)> = BTreeMap::new();
+    // ⭐ W5c: quem não recebe luz também não a devolve.
+    let sem_luz: std::collections::BTreeSet<Entity> = world
+        .try_query_filtered::<Entity, bevy_ecs::query::With<NaoRecebeLuz>>()
+        .map(|mut q| q.iter(world).collect())
+        .unwrap_or_default();
     let mut de_luz: Vec<Chave> = Vec::new();
     let mut scratch = Vec::new();
 
@@ -138,7 +149,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
                 let alfa = t[3] * s[3];
                 let radiancia = [0, 1, 2].map(|i| t[i] * s[i] * alfa * k);
                 if acende(radiancia) {
-                    de_sprite.insert(chave(world, e), (true, radiancia, 1.0));
+                    de_sprite.insert(chave(world, e), (true, radiancia, 1.0, [0.0; 3]));
                     emissores.insert(
                         chave(world, e),
                         Emissor::Poligono {
@@ -153,12 +164,20 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
             if let Some(b) = world.get::<BloqueiaLuz>(e)
                 && b.opacidade > 0.0
             {
-                de_sprite.insert(chave(world, e), (false, [0.0; 3], b.opacidade.min(1.0)));
+                let opacidade = b.opacidade.min(1.0);
+                let albedo = if opacidade >= 1.0 && !sem_luz.contains(&e) {
+                    let (t, s) = (sprite.tint, sprite.self_tint);
+                    [0, 1, 2].map(|i| albedo_valido(t[i] * s[i]))
+                } else {
+                    [0.0; 3]
+                };
+                de_sprite.insert(chave(world, e), (false, [0.0; 3], opacidade, albedo));
                 oclusores.insert(
                     chave(world, e),
                     Oclusor {
                         vertices: quad(g, sprite),
-                        opacidade: b.opacidade.min(1.0),
+                        opacidade,
+                        albedo,
                     },
                 );
             }
@@ -178,6 +197,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
                     entidade: e,
                     caminho: caminho.0,
                     opacidade: b.opacidade.min(1.0),
+                    reflete: b.opacidade >= 1.0 && !sem_luz.contains(&e),
                 },
             );
         }
@@ -197,7 +217,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     let (pos_e, pos_o) = (posicoes(&emissores), posicoes(&oclusores));
     let sprites = de_sprite
         .iter()
-        .filter_map(|(k, &(emite, emissao, opacidade))| {
+        .filter_map(|(k, &(emite, emissao, opacidade, albedo))| {
             let forma = if emite {
                 FormaDoSprite::Emissor(*pos_e.get(k)?)
             } else {
@@ -208,6 +228,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
                 forma,
                 emissao,
                 opacidade,
+                albedo,
             })
         })
         .collect();

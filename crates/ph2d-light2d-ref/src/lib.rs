@@ -17,12 +17,14 @@
 mod geometria;
 mod integra;
 pub mod queda;
+mod rebote;
 
 use std::f64::consts::TAU;
 
 use geometria::{Fronteira, angulo, cruzamentos, intersecoes};
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 use queda::queda;
+pub use rebote::{ALBEDO_MAX, OpcoesDoRebote, Rebote};
 
 struct Objeto {
     fronteira: Fronteira,
@@ -32,6 +34,8 @@ struct Objeto {
     opaco: bool,
     /// `1 − opacidade` (só para oclusores).
     transmissao: f64,
+    /// ⭐ W5c — o albedo com que o corpo devolve a luz (só um oclusor opaco reflete).
+    albedo: [f64; 3],
 }
 
 struct Pontual {
@@ -68,6 +72,7 @@ fn montar(cena: &CenaDeLuz) -> (Vec<Objeto>, Vec<Pontual>) {
                 emissao: Some((rgb(*radiancia), f64::from(*alcance_m))),
                 opaco: false,
                 transmissao: 1.0,
+                albedo: [0.0; 3],
             }),
             Emissor::Poligono {
                 vertices,
@@ -78,6 +83,7 @@ fn montar(cena: &CenaDeLuz) -> (Vec<Objeto>, Vec<Pontual>) {
                 emissao: Some((rgb(*radiancia), f64::from(*alcance_m))),
                 opaco: true,
                 transmissao: 0.0,
+                albedo: [0.0; 3],
             }),
             Emissor::Ponto {
                 centro,
@@ -96,6 +102,7 @@ fn montar(cena: &CenaDeLuz) -> (Vec<Objeto>, Vec<Pontual>) {
             emissao: None,
             opaco: false,
             transmissao: 1.0 - f64::from(o.opacidade),
+            albedo: rgb(o.albedo),
         });
     }
     (objetos, pontuais)
@@ -236,22 +243,49 @@ fn fora_dos_opacos(objetos: &[Objeto], p: [f64; 2]) -> [f64; 2] {
 }
 
 /// A fluência (radiância integrada sobre o ângulo) que chega a `ponto`, por canal. Dentro de um
-/// corpo opaco, a do exterior mais próximo ([`fora_dos_opacos`]).
+/// corpo opaco, a do exterior mais próximo ([`fora_dos_opacos`]). Sem rebote (o corpo opaco é preto
+/// para a luz que chega a ele): a série está em [`Rebote`].
 #[must_use]
 pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
     let (objetos, pontuais) = montar(cena);
-    let ponto = fora_dos_opacos(&objetos, ponto);
-    let ceu = rgb(cena.ceu);
+    linha(
+        &objetos,
+        &pontuais,
+        rgb(cena.ceu),
+        &rebote::Elementos::vazio(),
+        ponto,
+    )
+    .direto
+}
+
+/// ⭐ W5c — o que `ponto` recebe, partido em duas: a parte que não depende do rebote (`direto`: céu,
+/// corpos que brilham, lâmpadas) e, por elemento refletor que o raio acerta, o peso (ângulo ×
+/// transmissão até ele) que multiplica a radiância desse elemento.
+pub(crate) struct Linha {
+    pub(crate) direto: [f64; 3],
+    pub(crate) pesos: Vec<(usize, f64)>,
+}
+
+pub(crate) fn linha(
+    objetos: &[Objeto],
+    pontuais: &[Pontual],
+    ceu: [f64; 3],
+    refletores: &rebote::Elementos,
+    ponto: [f64; 2],
+) -> Linha {
+    let ponto = fora_dos_opacos(objetos, ponto);
     let mut buf = Vec::new();
     let mut total = [0.0_f64; 3];
+    let mut pesos: Vec<(usize, f64)> = Vec::new();
 
-    for intervalo in eventos(&objetos, ponto).windows(2) {
+    for intervalo in eventos(objetos, ponto, &refletores.pontos).windows(2) {
         let (a, b) = (intervalo[0], intervalo[1]);
         if b <= a {
             continue;
         }
         let meio = 0.5 * (a + b);
-        let raio = lancar(&objetos, ponto, [meio.cos(), meio.sin()], &mut buf);
+        let d = [meio.cos(), meio.sin()];
+        let raio = lancar(objetos, ponto, d, &mut buf);
         // O fundo (o céu, ou o corpo que termina o raio) e cada lâmpada atravessada antes dele.
         let (fundo, peso) = match raio.acerto {
             None => (ceu, b - a),
@@ -267,9 +301,27 @@ pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
             let (l, peso) = peso_do_emissor(&objetos[k], ponto, a, b);
             somar(l, tr * peso);
         }
+        // ⭐ O corpo refletor acertado ANTES do que termina o raio: a radiância do elemento da
+        // entrada, × a transmissão até ela (um opaco mais perto já a zera).
+        let limite = raio.acerto.map_or(f64::INFINITY, |(_, t)| t);
+        for (r, refl) in refletores.refletores.iter().enumerate() {
+            if buf[refl.objeto].len() % 2 == 1 {
+                continue;
+            }
+            let Some((t, aresta, u)) = geometria::primeira_entrada(&refl.vertices, ponto, d) else {
+                continue;
+            };
+            if t >= limite {
+                continue;
+            }
+            let w = transmissao_ate(objetos, &buf, t) * (b - a);
+            if w > 0.0 {
+                pesos.push((refletores.elemento(r, aresta, u), w));
+            }
+        }
     }
 
-    for q in &pontuais {
+    for q in pontuais {
         let v = [q.centro[0] - ponto[0], q.centro[1] - ponto[1]];
         let r = v[0].hypot(v[1]);
         if r == 0.0 {
@@ -280,22 +332,36 @@ pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
             }
             continue;
         }
-        let raio = lancar(&objetos, ponto, [v[0] / r, v[1] / r], &mut buf);
+        let raio = lancar(objetos, ponto, [v[0] / r, v[1] / r], &mut buf);
         if raio.acerto.is_some_and(|(_, t)| t < r) {
             continue;
         }
         // Até ao ponto, só contam as entradas ANTES dele.
-        let w = transmissao_ate(&objetos, &buf, r) * queda(r, q.alcance) / r;
+        let w = transmissao_ate(objetos, &buf, r) * queda(r, q.alcance) / r;
         for (tot, &i) in total.iter_mut().zip(&q.intensidade) {
             *tot += i * w;
         }
     }
-    total
+    pesos.sort_unstable_by_key(|&(e, _)| e);
+    pesos.dedup_by(|b, a| {
+        if a.0 == b.0 {
+            a.1 += b.1;
+            true
+        } else {
+            false
+        }
+    });
+    Linha {
+        direto: total,
+        pesos,
+    }
 }
 
 /// Os ângulos-evento vistos de `p`, ordenados em `[0, 2π]`, com `0` e `2π` nas pontas.
-fn eventos(objetos: &[Objeto], p: [f64; 2]) -> Vec<f64> {
+fn eventos(objetos: &[Objeto], p: [f64; 2], extras: &[[f64; 2]]) -> Vec<f64> {
     let mut ang = vec![0.0, TAU];
+    // ⭐ W5c: os extremos dos elementos refletores (a radiância muda neles).
+    ang.extend(extras.iter().map(|&q| angulo(p, q)));
     for obj in objetos {
         match &obj.fronteira {
             Fronteira::Poligono(v) => ang.extend(v.iter().map(|&q| angulo(p, q))),

@@ -320,6 +320,7 @@ fn precisao(gpu: &GpuContext) {
     let ret = |a: f32, b: f32| Oclusor {
         vertices: vec![[-5.2, a], [-4.8, a], [-4.8, b], [-5.2, b]],
         opacidade: 1.0,
+        albedo: [0.0; 3],
     };
     let gabarito = CenaDeLuz {
         emissores: vec![lampada.clone()],
@@ -382,6 +383,7 @@ fn dilatado(o: &Oclusor, h: f32) -> Oclusor {
     Oclusor {
         vertices: vec![lo, [hi[0], lo[1]], hi, [lo[0], hi[1]]],
         opacidade: o.opacidade,
+        albedo: [0.0; 3],
     }
 }
 
@@ -542,6 +544,7 @@ fn medida_luz2d_w5b_muitos() {
                     [x - l, y + l],
                 ],
                 opacidade: 1.0,
+                albedo: [0.0; 3],
             });
         }
         c

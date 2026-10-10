@@ -45,10 +45,12 @@ fn cena_cheia() -> CenaDeLuz {
                     [-0.9, 1.3],
                 ],
                 opacidade: 0.6,
+                albedo: [0.0; 3],
             },
             Oclusor {
                 vertices: vec![[-1.2, -1.8], [-0.4, -2.0], [-0.6, -1.1]],
                 opacidade: 1.0,
+                albedo: [0.0; 3],
             },
         ],
         ceu: [0.05, 0.06, 0.1],

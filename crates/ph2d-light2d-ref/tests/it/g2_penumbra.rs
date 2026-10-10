@@ -46,6 +46,7 @@ fn fixture(a: f32, alfa: f32) -> Fixture {
             vec![Oclusor {
                 vertices: quadrante.iter().map(|&v| para_mundo(PHI, E, v)).collect(),
                 opacidade: alfa,
+                albedo: [0.0; 3],
             }],
         ),
         c: f64x2(c),

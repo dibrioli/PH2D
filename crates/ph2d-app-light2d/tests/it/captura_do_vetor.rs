@@ -81,6 +81,7 @@ pub fn medir(gpu: &ph2d_gpu::GpuContext, d: Degrau) -> (f64, f64) {
             canto(-0.25, 0.75),
         ],
         opacidade: 1.0,
+        albedo: [0.0; 3],
     }];
     // A MESMA configuração do quadro (grade, grade fina): só a forma do oclusor muda.
     let mut sol = Solver::novo(gpu, cfg).expect("solver");

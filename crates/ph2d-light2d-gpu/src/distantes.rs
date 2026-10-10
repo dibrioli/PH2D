@@ -472,6 +472,7 @@ mod testes {
         Oclusor {
             vertices: vec![[x0, y0], [x1, y0], [x1, y1], [x0, y1]],
             opacidade: 1.0,
+            albedo: [0.0; 3],
         }
     }
 

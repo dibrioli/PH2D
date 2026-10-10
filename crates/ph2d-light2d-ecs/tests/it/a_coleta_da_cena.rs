@@ -162,6 +162,7 @@ fn esperado() -> CenaDeLuz {
         oclusores: vec![Oclusor {
             vertices: cantos(0.5, -2.0, -0.3, [1.0, 3.0], [0.0, 0.0]),
             opacidade: 0.75,
+            albedo: [0.0; 3],
         }],
         ceu: [0.1, 0.1, 0.2],
         ..Default::default()

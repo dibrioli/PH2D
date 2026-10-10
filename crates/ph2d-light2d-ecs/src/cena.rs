@@ -34,6 +34,9 @@ pub enum Emissor {
 pub struct Oclusor {
     pub vertices: Vec<[f32; 2]>,
     pub opacidade: f32,
+    /// ⭐ W5c — o albedo LINEAR com que o corpo devolve a luz (o rebote, plano §2.4): só num corpo
+    /// OPACO que recebe luz; zero = não reflete (o translúcido, o `NaoRecebeLuz`).
+    pub albedo: Rgb,
 }
 
 /// A cena, em ordem estável (a da coleta: `StableId`, depois `Entity`).
@@ -68,6 +71,9 @@ pub struct VetorDeLuz {
     pub caminho: u64,
     /// A opacidade por entrada (`BloqueiaLuz`).
     pub opacidade: f32,
+    /// ⭐ W5c — o caminho devolve a luz (opaco e recebe luz); o albedo é a cor DELE, que a camada do
+    /// Vello já traz.
+    pub reflete: bool,
 }
 
 /// Um sprite que entra na luz (W3) — a ponte entre o quad da cena e a textura que a C0 amostra.
@@ -81,6 +87,9 @@ pub struct SpriteDeLuz {
     pub emissao: Rgb,
     /// A opacidade por entrada (1 num emissor, que é opaco; a do `BloqueiaLuz` num oclusor).
     pub opacidade: f32,
+    /// ⭐ W5c — o multiplicador da cor do texel no ALBEDO do rebote (`tint∘self_tint`); zero = não
+    /// reflete (emissor, translúcido, `NaoRecebeLuz`).
+    pub albedo: Rgb,
 }
 
 /// O índice do quad de um sprite em [`CenaDeLuz::emissores`] ou [`CenaDeLuz::oclusores`].

@@ -69,6 +69,46 @@ pub(crate) fn cruzamentos(f: &Fronteira, o: [f64; 2], d: [f64; 2], out: &mut Vec
     }
 }
 
+/// ⭐ W5c — o PRIMEIRO cruzamento do raio com o polígono `v`: `(t, aresta, u)`, com a MESMA
+/// aritmética de [`cruzamentos`] (o `t` sai igual ao bit).
+pub(crate) fn primeira_entrada(
+    v: &[[f64; 2]],
+    o: [f64; 2],
+    d: [f64; 2],
+) -> Option<(f64, usize, f64)> {
+    let mut melhor: Option<(f64, usize, f64)> = None;
+    if v.len() < 3 {
+        return None;
+    }
+    for (i, (a, b)) in arestas(v).enumerate() {
+        let e = sub(b, a);
+        let den = cruz(d, e);
+        if den == 0.0 {
+            continue;
+        }
+        let w = sub(a, o);
+        let t = cruz(w, e) / den;
+        let u = cruz(w, d) / den;
+        if t > 0.0 && (0.0..1.0).contains(&u) && melhor.is_none_or(|(tm, _, _)| t < tm) {
+            melhor = Some((t, i, u));
+        }
+    }
+    melhor
+}
+
+/// ⭐ W5c — a normal de cada aresta do polígono que aponta para FORA (qualquer orientação).
+pub(crate) fn normais_para_fora(v: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let area: f64 = arestas(v).map(|(a, b)| cruz(a, b)).sum();
+    let s = if area >= 0.0 { 1.0 } else { -1.0 };
+    arestas(v)
+        .map(|(a, b)| {
+            let e = sub(b, a);
+            let n = e[0].hypot(e[1]).max(1e-300);
+            [s * e[1] / n, -s * e[0] / n]
+        })
+        .collect()
+}
+
 /// `p` está dentro da fronteira (Jordan: a contagem de cruzamentos de um raio é ímpar)?
 pub(crate) fn dentro(f: &Fronteira, p: [f64; 2], buf: &mut Vec<f64>) -> bool {
     cruzamentos(f, p, [1.0, 0.0], buf);

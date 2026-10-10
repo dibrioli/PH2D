@@ -166,6 +166,7 @@ fn g5_o_mundo_fora_da_grade_e_contado() {
         oclusores: vec![Oclusor {
             vertices: vec![[4.5, 1.5], [4.8, 1.5], [4.8, 2.5], [4.5, 2.5]],
             opacidade: 1.0,
+            albedo: [0.0; 3],
         }],
         luzes: 1,
         ..Default::default()

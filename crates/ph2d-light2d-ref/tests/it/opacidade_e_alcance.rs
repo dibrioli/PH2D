@@ -27,6 +27,7 @@ fn uma_entrada_num_oclusor_parcial_multiplica_por_1_menos_alfa() {
                 vec![Oclusor {
                     vertices: barra(1.0, 1.4),
                     opacidade: alfa,
+                    albedo: [0.0; 3],
                 }],
             ),
             p,
@@ -63,6 +64,7 @@ fn duas_entradas_no_mesmo_oclusor_concavo_multiplicam_duas_vezes() {
             vec![Oclusor {
                 vertices: u,
                 opacidade: alfa,
+                albedo: [0.0; 3],
             }],
         ),
         p,

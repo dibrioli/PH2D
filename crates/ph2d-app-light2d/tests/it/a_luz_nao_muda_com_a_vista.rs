@@ -362,6 +362,7 @@ fn gabarito_da_fenda(w: &World) -> CenaDeLuz {
     let ret = |x0: f32, a: f32, x1: f32, b: f32| Oclusor {
         vertices: vec![[x0, a], [x1, a], [x1, b], [x0, b]],
         opacidade: 1.0,
+        albedo: [0.0; 3],
     };
     let outro = c.oclusores.len() > 1;
     c.oclusores = vec![ret(x0, y0, x1, -f), ret(x0, f, x1, y1)];

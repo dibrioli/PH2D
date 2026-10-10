@@ -24,6 +24,7 @@ fn cena(opacidade: f32) -> CenaDeLuz {
         oclusores: vec![Oclusor {
             vertices: caixa([2.0, 0.0], [0.5, 0.5]),
             opacidade,
+            albedo: [0.0; 3],
         }],
         ceu: [0.0; 3],
         ..Default::default()

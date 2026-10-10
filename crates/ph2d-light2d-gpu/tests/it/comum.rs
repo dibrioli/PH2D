@@ -209,6 +209,7 @@ pub fn oclusor(vertices: Vec<[f32; 2]>, opacidade: f32) -> Oclusor {
     Oclusor {
         vertices,
         opacidade,
+        albedo: [0.0; 3],
     }
 }
 

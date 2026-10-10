@@ -215,6 +215,7 @@ fn uma_fenda_transparente_deixa_a_luz_passar_e_o_quad_nao() {
     .map(|vertices| Oclusor {
         vertices,
         opacidade: 1.0,
+        albedo: [0.0; 3],
     })
     .collect();
     let referencia = fluencia_de_poligonos(&gpu, &duas_metades, cfg);

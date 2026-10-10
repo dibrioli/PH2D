@@ -387,6 +387,8 @@ mod offthread_tests; // os gates da sim FORA da thread do frame
 mod showwet_tests;
 #[cfg(test)]
 mod sonda_papel_seco; // o pincel seco nos picos do papel (dono 09/10)
+#[cfg(test)]
+mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
 
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)

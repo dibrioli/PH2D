@@ -106,10 +106,35 @@ F4 O PRESET NÃO GUARDA O TILT (wet_preset_capturar/aplicar ignoram tilt_on/ring
    ligar); Wet Drip — o único que promete escorrer — LIGADO, no anel que a F1 calibrar para «escorre como o
    Rebelle no máximo», para baixo. Regere a fábrica (PH2D_REGERA_PRESETS=1) no commit da lei.
 
+F6 ⭐ A MISTURA DE PIGMENTO não é realista (dono: «não acontece em tempo real mas apenas no mouse up… acontece da
+   mesma maneira sobre tinta seca e tinta úmida. Isso precisa ser auditado»). Sonda
+   src/tool/paint/wetpaint/sonda_mistura.rs (--lib): vermelho horizontal, azul vertical por cima, com o vermelho
+   MOLHADO (0,5 s) ou SECO (Dry canvas); lido DURANTE o azul e depois do Up:
+   | | cruzamento durante | depois do Up | rasto do azul após o cruzamento | azul limpo |
+   |---|---|---|---|---|
+   | vermelho molhado | (57, 56, 183) | (66, 65, 185) | (56, 78, 209) | (51, 78, 214) |
+   | vermelho seco | (53, 57, 186) | (43, 58, 196) | (57, 78, 208) | (51, 78, 214) |
+   ⇒ o azul COBRE o vermelho como tinta opaca nos dois casos (nem velatura sobre o seco — na aquarela real azul
+   sobre vermelho seco escurece para violeta —, nem mistura sobre o molhado); molhado ≈ seco; o pincel quase não
+   arrasta tinta (+5 de vermelho no rasto). Mecanismo (leitura, file:line):
+   - tempo real: o depósito entra a cada ~2 dabs durante o arrasto (painter/doors.rs:114-154, trail.rs:339), mas a
+     SIM pára com o traço aberto (painter.rs:455 `sim_should_run = !stroke_down`; offthread.rs:255/418): a água
+     só corre e mistura depois do Up. Os métodos não incrementais (Line, Arc, Ellipse, …) depositam tudo no Up
+     (wetpaint_commit.rs:58-88).
+   - molhado × seco: nem o depósito (trail/deposit.rs:88-127, só lê `film` no ExtWetSoften) nem a pickup
+     (trail/transfer.rs:41-50: assentado com metade do peso, sem porta de `film`/`wet`) olham a humidade; Pickup
+     de fábrica 0,005 (quase nada); a mistura é `ColorMix::Plain` por omissão (sim.rs:199-205; o K–M é a caixa
+     experimental km_mixing/km_glaze, desligada).
+   BARRA: meça o MESMO cruzamento no Rebelle (molhado e seco, a porta WebSocket, ferramentas/gotas_*.sh) e use-o:
+   sobre o seco uma VELATURA (o cruzamento mais escuro que as duas cores, o vermelho não se move, o pincel não o
+   apanha); sobre o molhado MISTURA (o cruzamento entre as duas, o pincel arrasta cor, a mancha mexe-se) — e a
+   mistura VISÍVEL enquanto se pinta (o cruzamento durante ≈ o de depois). Cuidado: deixar a sim correr com o
+   traço aberto muda o custo por quadro (meça, MEDIR_VELOCIDADE.md) e as cercas.
+
 JÁ FEITO NESTA LINHA (não refaça): o menu de presets lista cada pincel UMA vez (3d8e40be1); o Smooth Edges do
 Wet Paint (opção, desligado).
 
-ORDEM: F2+F3 (o papel: muda o traço de todos os pincéis — meça antes/depois a olho a 8×) → F1+F5 (a física do
+ORDEM: F6 (a mistura e o tempo real: muda o que todo traço faz sobre outro) → F2+F3 (o papel: muda o traço de todos os pincéis — meça antes/depois a olho a 8×) → F1+F5 (a física do
 escorrimento e a constante) → F4 (o Tilt no preset e os valores de fábrica). Medições de cada passo numa rodada
 (variantes no MESMO processo); série só porque o resultado de F1 decide os valores de F4.
 

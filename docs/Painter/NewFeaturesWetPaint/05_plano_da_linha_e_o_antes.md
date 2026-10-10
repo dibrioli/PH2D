@@ -511,8 +511,9 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   (7–10 dedos por traço) onde o Rebelle não escorre (a meio) ou faz UM fio (no máximo); o Wet Paint tem dois
   papéis (o do painel quando armado, o procedural do motor sem Kind — o dono: obedecer ao painel); o pincel
   seco não pega nos picos com o papel do motor (picos ÷ vales 1,06; com o do painel 1,81); o preset não guarda
-  o Tilt. ✅ Feito: o menu de presets lista cada pincel uma vez (`3d8e40be1`). Sondas:
-  `tests/it/sonda_tilt_do_preset.rs`, `wetpaint/sonda_papel_seco.rs`, régua `ferramentas/tilt_rebelle.py`.
+  o Tilt; a MISTURA: azul sobre vermelho dá azul (molhado ≈ seco), a água só corre depois do Up. ✅ Feito: o
+  menu de presets lista cada pincel uma vez (`3d8e40be1`). Sondas:
+  `tests/it/sonda_tilt_do_preset.rs`, `wetpaint/sonda_papel_seco.rs`, `wetpaint/sonda_mistura.rs`, régua `ferramentas/tilt_rebelle.py`.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

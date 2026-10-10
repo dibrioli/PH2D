@@ -51,7 +51,10 @@ alheia (c11), ressuscita (c12) e um cliente prende-se numa reordenação (c17).
    anfitrião e de convidado como máquinas de estado PURAS (entradas → saídas, sem IO; testadas com uma rede
    simulada com atraso, reordenação, duplicação e queda); `ph2d-board-net` — o transporte da rede local
    atrás de uma porta (`Link`: enviar/receber quadros de bytes), que a internet implementará depois. A
-   família liga-as em `ph2d-app-board`; a shell só compõe.
+   família liga-as em `ph2d-app-board`; a shell só compõe. O transporte tem SINAL DE VIDA (`Liveness`):
+   sem nada a mandar em 2 s manda um quadro vazio (20 B), e nada recebido em 10 s (o prazo da escrita) é
+   ligação caída dos dois lados — sem ele quem se calava sem fechar o fio (portátil fechado) só caía
+   quando uma escrita passasse o prazo, e com ninguém a mexer nunca.
 8. **Rede local**: o anfitrião é também o retransmissor (estrela). Quem entra encontra o quadro pelo nome
    anunciado na rede (mDNS) e escreve um **código curto** que o anfitrião mostra; o código autentica por
    PAKE (SPAKE2) e a chave que dele sai cifra tudo (ChaCha20-Poly1305) — quem está no mesmo Wi-Fi e não tem

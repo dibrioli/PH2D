@@ -38,7 +38,7 @@ pub use code::{ALPHABET, CODE_LEN, LOCKOUT, MAX_FAILS};
 pub use discover::{Discovery, Found, SERVICE, discover};
 pub use firewall::Subnet;
 pub use guest::Guest;
-pub use host::{Host, HostConfig, PORT, PORT_TRIES};
+pub use host::{Host, HostConfig, Liveness, PORT, PORT_TRIES};
 pub use lan::{is_lan, lan_addrs, lan_subnets};
 pub use wire::MAX_FRAME;
 
@@ -73,6 +73,8 @@ pub struct Announce {
 pub enum SendError {
     /// Acima de [`MAX_FRAME`].
     TooBig { len: usize, max: usize },
+    /// Um quadro vazio: é o sinal de vida do transporte ([`Liveness`]), nunca chegaria.
+    Empty,
     /// A ligação já não existe.
     Gone,
 }

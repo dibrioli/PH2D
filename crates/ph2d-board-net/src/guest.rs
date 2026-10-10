@@ -9,9 +9,10 @@ use std::time::{Duration, Instant};
 
 use crate::code::Code;
 use crate::handshake;
-use crate::host::{JOIN_DEADLINE, Out, WRITE_TIMEOUT, join_until, read_loop, write_loop};
+use crate::host::{
+    JOIN_DEADLINE, Liveness, Out, WRITE_TIMEOUT, check, join_until, read_loop, write_loop,
+};
 use crate::lan::is_lan;
-use crate::wire::MAX_FRAME;
 use crate::{JoinError, NetEvent, SendError, Waker};
 
 pub struct Guest {
@@ -35,6 +36,20 @@ impl Guest {
         timeout: Duration,
         waker: Waker,
     ) -> Result<Self, JoinError> {
+        Self::connect_with(addr, code, timeout, Liveness::default(), waker)
+    }
+
+    /// [`Guest::connect`] com o sinal de vida dado.
+    ///
+    /// # Errors
+    /// Ver [`JoinError`].
+    pub fn connect_with(
+        addr: SocketAddr,
+        code: &str,
+        timeout: Duration,
+        live: Liveness,
+        waker: Waker,
+    ) -> Result<Self, JoinError> {
         let code = Code::parse(code).ok_or(JoinError::InvalidCode)?;
         if !is_lan(addr.ip()) {
             return Err(JoinError::NotLan);
@@ -45,7 +60,6 @@ impl Guest {
         let _ = stream.set_read_timeout(Some(timeout));
         let _ = stream.set_write_timeout(Some(timeout));
         let keys = handshake::guest(&mut stream, &code)?;
-        let _ = stream.set_read_timeout(None);
         let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
         let (Ok(rd), Ok(wr)) = (stream.try_clone(), stream.try_clone()) else {
             return Err(JoinError::Broken);
@@ -57,9 +71,9 @@ impl Guest {
         let open = keys.open;
         let alive = Arc::new(AtomicBool::new(true));
         let up = Arc::clone(&alive);
-        let writer = thread::spawn(move || write_loop(wr, seal, &rx));
+        let writer = thread::spawn(move || write_loop(wr, seal, &rx, live.beat));
         let reader = thread::spawn(move || {
-            read_loop(&rd, open, |bytes| {
+            read_loop(&rd, open, live.silence, |bytes| {
                 let _ = ev_tx.send(NetEvent::Frame(0, bytes));
                 waker();
             });
@@ -82,14 +96,9 @@ impl Guest {
     }
 
     /// # Errors
-    /// Acima de [`MAX_FRAME`], ou a ligação caiu.
+    /// Vazio ou acima de [`crate::MAX_FRAME`], ou a ligação caiu.
     pub fn send(&self, bytes: Vec<u8>) -> Result<(), SendError> {
-        if bytes.len() > MAX_FRAME {
-            return Err(SendError::TooBig {
-                len: bytes.len(),
-                max: MAX_FRAME,
-            });
-        }
+        check(bytes.len())?;
         let tx = self.tx.as_ref().ok_or(SendError::Gone)?;
         if !self.alive.load(Ordering::Acquire) {
             return Err(SendError::Gone);

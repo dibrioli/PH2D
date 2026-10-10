@@ -34,6 +34,7 @@ pub fn host() -> (Host, Receiver<()>) {
         port: 0,
         tries: 1,
         mdns: false,
+        ..HostConfig::default()
     };
     (Host::open_with(&announce("Q"), &cfg, w).unwrap(), rx)
 }
@@ -45,6 +46,7 @@ pub fn host_mdns(board: &str) -> (Host, Receiver<()>) {
         port: 0,
         tries: 1,
         mdns: true,
+        ..HostConfig::default()
     };
     let h = Host::open_with(&announce(board), &cfg, w).unwrap();
     assert_eq!(h.mdns_error(), None);

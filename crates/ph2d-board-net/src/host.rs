@@ -28,6 +28,26 @@ pub(crate) const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 /// O `Drop` espera as threads até aqui (fios fechados: acabam em milissegundos).
 pub(crate) const JOIN_DEADLINE: Duration = Duration::from_secs(2);
 
+/// O SINAL DE VIDA da ligação: sem ele, quem se cala sem fechar (portátil fechado, Wi-Fi caído) só
+/// caía quando uma escrita passasse [`WRITE_TIMEOUT`] — e com ninguém a mexer, nunca.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Liveness {
+    /// Sem nada a mandar há este tempo, manda-se um quadro VAZIO (20 B na rede).
+    pub beat: Duration,
+    /// Nada chegou há este tempo (nem o sinal de vida) ⇒ a ligação caiu. É o mesmo prazo da escrita:
+    /// o que o Wi-Fi de casa pode calar-se sem a sessão cair; 5 sinais perdidos seguidos.
+    pub silence: Duration,
+}
+
+impl Default for Liveness {
+    fn default() -> Self {
+        Self {
+            beat: Duration::from_secs(2),
+            silence: WRITE_TIMEOUT,
+        }
+    }
+}
+
 pub(crate) type Out = Arc<Vec<u8>>;
 
 /// Onde e como abrir.
@@ -38,6 +58,7 @@ pub struct HostConfig {
     pub tries: u16,
     /// Anunciar por mDNS (os testes ponta-a-ponta não anunciam).
     pub mdns: bool,
+    pub live: Liveness,
 }
 
 impl Default for HostConfig {
@@ -46,6 +67,7 @@ impl Default for HostConfig {
             port: PORT,
             tries: PORT_TRIES,
             mdns: true,
+            live: Liveness::default(),
         }
     }
 }
@@ -66,6 +88,7 @@ struct Shared {
     code: Code,
     events: Mutex<Sender<NetEvent>>,
     waker: Waker,
+    live: Liveness,
 }
 
 impl Shared {
@@ -123,6 +146,7 @@ impl Host {
             code: Code::random(),
             events: Mutex::new(tx),
             waker,
+            live: cfg.live,
         });
         let sh = Arc::clone(&shared);
         let accept = thread::spawn(move || accept_loop(&listener, &sh));
@@ -203,7 +227,10 @@ impl Host {
     }
 }
 
-fn check(len: usize) -> Result<(), SendError> {
+pub(crate) fn check(len: usize) -> Result<(), SendError> {
+    if len == 0 {
+        return Err(SendError::Empty);
+    }
     if len > MAX_FRAME {
         return Err(SendError::TooBig {
             len,
@@ -274,7 +301,6 @@ fn serve(sh: &Arc<Shared>, id: ConnId, mut stream: TcpStream, peer: SocketAddr) 
             return;
         }
     };
-    let _ = stream.set_read_timeout(None);
     let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
     let Ok(out) = stream.try_clone() else {
         forget(sh, id);
@@ -288,10 +314,10 @@ fn serve(sh: &Arc<Shared>, id: ConnId, mut stream: TcpStream, peer: SocketAddr) 
         }
         st.senders.insert(id, tx);
     }
-    let seal = keys.seal;
-    sh.spawn(move || write_loop(out, seal, &rx));
+    let (seal, live) = (keys.seal, sh.live);
+    sh.spawn(move || write_loop(out, seal, &rx, live.beat));
     sh.emit(NetEvent::Joined(id, peer));
-    read_loop(&stream, keys.open, |bytes| {
+    read_loop(&stream, keys.open, live.silence, |bytes| {
         sh.emit(NetEvent::Frame(id, bytes))
     });
     forget(sh, id);
@@ -307,20 +333,43 @@ fn forget(sh: &Shared, id: ConnId) {
     }
 }
 
-/// Lê até o fio fechar ou chegar um quadro que não abre; fecha o fio ao sair.
-pub(crate) fn read_loop(stream: &TcpStream, mut open: Open, mut on: impl FnMut(Vec<u8>)) {
+/// Lê até o fio fechar, chegar um quadro que não abre, ou nada chegar em `silence`; fecha o fio ao
+/// sair. O quadro vazio é o sinal de vida: conta como chegada e não se entrega.
+pub(crate) fn read_loop(
+    stream: &TcpStream,
+    mut open: Open,
+    silence: Duration,
+    mut on: impl FnMut(Vec<u8>),
+) {
+    let _ = stream.set_read_timeout(Some(silence));
     let mut r = BufReader::with_capacity(64 << 10, stream);
     while let Ok(bytes) = open.read(&mut r) {
-        on(bytes);
+        if !bytes.is_empty() {
+            on(bytes);
+        }
     }
     let _ = stream.shutdown(Shutdown::Both);
 }
 
-/// Escreve o que chega pelo canal; sai quando o canal fecha ou o fio falha.
-pub(crate) fn write_loop(mut stream: TcpStream, mut seal: Seal, rx: &Receiver<Out>) {
-    for bytes in rx {
-        let ok = seal.seal(&bytes).and_then(|w| stream.write_all(&w));
-        if ok.is_err() {
+/// Escreve o que chega pelo canal, e o sinal de vida quando nada chega em `beat`; sai quando o canal
+/// fecha ou o fio falha.
+pub(crate) fn write_loop(
+    mut stream: TcpStream,
+    mut seal: Seal,
+    rx: &Receiver<Out>,
+    beat: Duration,
+) {
+    loop {
+        let bytes = match rx.recv_timeout(beat) {
+            Ok(b) => b,
+            Err(mpsc::RecvTimeoutError::Timeout) => Arc::new(Vec::new()),
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        };
+        if seal
+            .seal(&bytes)
+            .and_then(|w| stream.write_all(&w))
+            .is_err()
+        {
             break;
         }
     }

@@ -248,6 +248,7 @@ fn porta_ocupada_tenta_as_seguintes() {
         port: p,
         tries: 10,
         mdns: false,
+        ..HostConfig::default()
     };
     if let Ok(h) = ph2d_board_net::Host::open_with(&crate::announce("Q"), &cfg, w.clone()) {
         assert!(h.port() > p && h.port() < p + 10, "{} sobre {p}", h.port());
@@ -256,6 +257,7 @@ fn porta_ocupada_tenta_as_seguintes() {
         port: p,
         tries: 1,
         mdns: false,
+        ..HostConfig::default()
     };
     let e = ph2d_board_net::Host::open_with(&crate::announce("Q"), &cfg, w)
         .err()
@@ -368,5 +370,76 @@ fn um_retrato_grande_de_ponta_a_ponta() {
         ms[0],
         ms[2],
         loadavg()
+    );
+}
+
+/// O SINAL DE VIDA: quem se cala sem fechar o fio (portátil fechado, Wi-Fi caído) cai pelo
+/// SILÊNCIO, dos dois lados; quem só não tem nada a dizer fica, porque o sinal de vida corre.
+#[test]
+fn o_silencio_derruba_quem_se_calou_e_o_sinal_de_vida_segura_quem_so_nao_fala() {
+    use ph2d_board_net::Liveness;
+    let quick = Liveness {
+        beat: Duration::from_millis(100),
+        silence: Duration::from_millis(500),
+    };
+    let mute = Liveness {
+        beat: Duration::from_secs(3600),
+        silence: Duration::from_secs(3600),
+    };
+    let left = |ev: &[NetEvent]| ev.iter().any(|e| matches!(e, NetEvent::Left(_)));
+
+    // O anfitrião vigia: um convidado vivo e calado fica, um mudo cai.
+    let (w, hb) = bell();
+    let cfg = HostConfig {
+        port: 0,
+        tries: 1,
+        mdns: false,
+        live: quick,
+    };
+    let h = ph2d_board_net::Host::open_with(&crate::announce("Q"), &cfg, w).unwrap();
+    let addr = local(h.port());
+    let (wq, bq) = bell();
+    let quiet = Guest::connect_with(addr, &h.code(), T, quick, wq).expect("entra");
+    let ev = gather(|| h.poll(), &hb, T, |e| joined(e).len() == 1);
+    let quiet_id = joined(&ev)[0];
+    let ev = gather(|| h.poll(), &hb, Duration::from_millis(1500), |_| false);
+    assert!(
+        !left(&ev),
+        "o calado caiu com o sinal de vida a correr: {ev:?}"
+    );
+    let ev = gather(|| quiet.poll(), &bq, Duration::from_millis(10), |_| false);
+    assert!(!left(&ev), "o calado viu o anfitrião cair: {ev:?}");
+    let (wm, _bm) = bell();
+    let _mudo = Guest::connect_with(addr, &h.code(), T, mute, wm).expect("entra");
+    let ev = gather(|| h.poll(), &hb, T, |e| left(e));
+    let gone: Vec<u64> = ev
+        .iter()
+        .filter_map(|e| match e {
+            NetEvent::Left(id) => Some(*id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(gone.len(), 1, "o mudo não caiu pelo silêncio: {ev:?}");
+    assert_ne!(gone[0], quiet_id, "caiu o calado em vez do mudo");
+    drop(h);
+
+    // O convidado vigia: um anfitrião mudo cai do lado de cá (e a sessão tenta voltar).
+    let (w, _hb) = bell();
+    let cfg = HostConfig {
+        port: 0,
+        tries: 1,
+        mdns: false,
+        live: mute,
+    };
+    let h = ph2d_board_net::Host::open_with(&crate::announce("Q"), &cfg, w).unwrap();
+    let (wg, bg) = bell();
+    let g = Guest::connect_with(local(h.port()), &h.code(), T, quick, wg).expect("entra");
+    let ev = gather(|| g.poll(), &bg, T, |e| left(e));
+    assert!(left(&ev), "o convidado não deu pelo anfitrião mudo: {ev:?}");
+    assert_eq!(g.send(b"x".to_vec()), Err(SendError::Gone));
+    assert_eq!(
+        g.send(Vec::new()),
+        Err(SendError::Empty),
+        "o vazio é o sinal de vida"
     );
 }

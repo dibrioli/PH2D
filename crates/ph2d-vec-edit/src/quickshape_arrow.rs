@@ -118,17 +118,9 @@ pub(crate) fn recognise(
     };
     let shaft = recognise_with(&plain, &body, px_to_world, regular)?;
     let drawn: f64 = body.windows(2).map(|w| dist(w[0], w[1])).sum();
-    if length_of(&shaft) < a.shaft_fill * drawn {
-        return None;
-    }
-    matches!(
-        shaft,
-        QuickShape::Line { .. }
-            | QuickShape::Arc(_)
-            | QuickShape::Biarc(_)
-            | QuickShape::Polygon { closed: false, .. }
-    )
-    .then(|| {
+    // Um cabo FECHADO mede 0 (`length_of`): o preenchimento é também a lei «o cabo é aberto» — um
+    // caminho fechado não leva ponta.
+    (length_of(&shaft) >= a.shaft_fill * drawn).then(|| {
         QuickShape::Arrow(ArrowShape {
             shaft: Box::new(shaft),
             heads: [start.map(|s| s.1), end.map(|e| e.1)],
@@ -210,7 +202,8 @@ fn tip_at(a: &ArrowLaw, r: &[P2], i: usize, ds: f64, px_to_world: f64) -> Option
     (rms <= a.head_rms).then_some((rms, h))
 }
 
-/// O comprimento do caminho de uma forma aberta (o arco amostrado a 64 passos por troço).
+/// O comprimento do caminho de uma forma ABERTA (o arco amostrado a 64 passos por troço); uma forma
+/// fechada não é cabo e mede 0.
 fn length_of(q: &QuickShape) -> f64 {
     let arc = |a: &crate::quickshape::ArcShape| {
         (0..64)
@@ -222,7 +215,10 @@ fn length_of(q: &QuickShape) -> f64 {
     };
     match q {
         QuickShape::Line { a, b } => dist(*a, *b),
-        QuickShape::Polygon { corners, .. } => corners.windows(2).map(|w| dist(w[0], w[1])).sum(),
+        QuickShape::Polygon {
+            corners,
+            closed: false,
+        } => corners.windows(2).map(|w| dist(w[0], w[1])).sum(),
         QuickShape::Arc(a) => arc(a),
         QuickShape::Biarc(b) => arc(&b[0]) + arc(&b[1]),
         _ => 0.0,

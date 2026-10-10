@@ -28,7 +28,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -65,7 +65,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[],
+    // ⭐ CICLO 18 (doc 127) — o espaço em que a COR (`tint`) faz o crossfade: `0` RGB linear (o de
+    // sempre, e o que um documento gravado lê) · `1` OKLab · `2`/`3` OKLCH curto/longo. Um morph
+    // NOVO nasce em OKLab (`register_param_defaults`).
+    params: &[ParamSpec {
+        name: "tint_space",
+        default: 0.0,
+    }],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -191,10 +197,35 @@ fn nearest_col(a: &Column, b: &Column, blend: &[f32], n: usize) -> Column {
 /// exatamente o defeito que esta wave conserta, e a alternativa (inventar a identidade do
 /// lado ausente) escolheria por um artista que não pediu nada.
 fn morph_stream(a: &Stream, b: &Stream, blend: &[f32]) -> Stream {
+    morph_stream_no_espaco(a, b, blend, ph2d_color::perceptual::MixSpace::Linear)
+}
+
+/// [`morph_stream`] com a COR num espaço perceptual (ciclo 18): só a coluna `tint`, quando os dois
+/// lados a trazem em RGBA; tudo o resto como sempre.
+fn morph_stream_no_espaco(
+    a: &Stream,
+    b: &Stream,
+    blend: &[f32],
+    espaco: ph2d_color::perceptual::MixSpace,
+) -> Stream {
     let n = a.count().min(b.count());
     let mut out = Stream::new(n);
     for (name, ca) in a.columns() {
         let col = match b.get(name) {
+            Some(Column::Vec4(y))
+                if name == "tint" && espaco != ph2d_color::perceptual::MixSpace::Linear =>
+            {
+                match ca {
+                    Column::Vec4(x) => Column::Vec4(
+                        (0..n)
+                            .map(|i| {
+                                ph2d_color::perceptual::mix(x[i], y[i], blend_at(blend, i), espaco)
+                            })
+                            .collect(),
+                    ),
+                    _ => trunc(ca, n),
+                }
+            }
             Some(cb) if LERPED.contains(&name.as_str()) => {
                 lerp_col(ca, cb, blend, n).unwrap_or_else(|| nearest_col(ca, cb, blend, n))
             }
@@ -223,7 +254,10 @@ impl NodeOp for MotionMorph {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
-        let out = morph_stream(ctx.input(0), ctx.input(1), &blend);
+        #[expect(clippy::cast_possible_truncation, reason = "indice de enum")]
+        let espaco =
+            ph2d_color::perceptual::MixSpace::from_index(ctx.param("tint_space").round() as i32);
+        let out = morph_stream_no_espaco(ctx.input(0), ctx.input(1), &blend, espaco);
         ctx.emit(out);
     }
 }
@@ -241,9 +275,27 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
-    // No params — the crossfade is a value input, so it can be animated.
+    // O crossfade é uma entrada de valor (animável); o único param é o espaço da COR (ciclo 18).
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_defaults(MANIFEST.id, &[("tint_space", 1.0)]);
     Ok(())
 }
+
+static PARAM_HINTS: &[ph2d_node_registry::ParamUiHint] = &[ph2d_node_registry::ParamUiHint {
+    param: "tint_space",
+    label: "node.motion.morph.param.tint_space",
+    min: 0.0,
+    max: 3.0,
+    step: 1.0,
+    widget: ph2d_node_registry::ParamWidget::Enum {
+        labels: &[
+            "node.motion.morph.param.tint_space.0",
+            "node.motion.morph.param.tint_space.1",
+            "node.motion.morph.param.tint_space.2",
+            "node.motion.morph.param.tint_space.3",
+        ],
+    },
+}];
 
 #[cfg(test)]
 mod tests {
@@ -546,3 +598,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "cor_tests.rs"]
+mod cor_tests;

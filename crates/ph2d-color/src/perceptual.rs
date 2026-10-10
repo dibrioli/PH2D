@@ -110,7 +110,11 @@ pub fn oklab_to_oklch(o: [f32; 3]) -> [f32; 3] {
 /// OKLCH → OKLab.
 #[must_use]
 pub fn oklch_to_oklab(p: [f32; 3]) -> [f32; 3] {
-    [p[0], p[1] * ph2d_ease::cos_turn(p[2]), p[1] * ph2d_ease::sin_turn(p[2])]
+    [
+        p[0],
+        p[1] * ph2d_ease::cos_turn(p[2]),
+        p[1] * ph2d_ease::sin_turn(p[2]),
+    ]
 }
 
 fn na_gama(c: [f32; 3]) -> bool {

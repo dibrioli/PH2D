@@ -56,7 +56,8 @@ fn linhas(prefixo: &str) -> Vec<(String, String, Vec<f32>)> {
 /// cor que vem de RGB, guarda o ângulo do resto de arredondamento. Nesses pares a mistura OKLCH
 /// difere POR DESENHO e não se compara.
 fn tem_cinza(par: &str) -> bool {
-    par.split('-').any(|c| matches!(c, "branco" | "preto" | "cinza"))
+    par.split('-')
+        .any(|c| matches!(c, "branco" | "preto" | "cinza"))
 }
 
 #[test]
@@ -69,13 +70,23 @@ fn the_conversions_match_the_oracle() {
         let c = cor(nome);
         let o = to_oklab([c[0], c[1], c[2]]);
         for k in 0..3 {
-            assert!((o[k] - lab[k]).abs() < 2e-5, "{nome} oklab[{k}]: {} × {}", o[k], lab[k]);
+            assert!(
+                (o[k] - lab[k]).abs() < 2e-5,
+                "{nome} oklab[{k}]: {} × {}",
+                o[k],
+                lab[k]
+            );
         }
         let h = oklab_to_oklch(o);
         assert!((h[1] - lch[1]).abs() < 2e-5, "{nome} C");
         if h[1] > 1e-3 {
             let d = (h[2] * 360.0 - lch[2]).rem_euclid(360.0);
-            assert!(d.min(360.0 - d) < 0.01, "{nome} h: {} × {}", h[2] * 360.0, lch[2]);
+            assert!(
+                d.min(360.0 - d) < 0.01,
+                "{nome} h: {} × {}",
+                h[2] * 360.0,
+                lch[2]
+            );
         }
     }
 }
@@ -99,7 +110,11 @@ fn the_mix_before_the_gamut_matches_the_oracle() {
             };
             for c in 0..3 {
                 let o = v[usize::from(k) * 3 + c];
-                assert!((r[c] - o).abs() < 5e-5, "{par} {e} t {t} canal {c}: {} × {o}", r[c]);
+                assert!(
+                    (r[c] - o).abs() < 5e-5,
+                    "{par} {e} t {t} canal {c}: {} × {o}",
+                    r[c]
+                );
             }
             n += 1;
         }
@@ -127,7 +142,10 @@ fn the_gamut_mapping_matches_the_oracle() {
         }
     }
     eprintln!("gama: pior |nosso − culori| = {pior:e}");
-    assert!(pior < 2e-3, "o mapeamento de gama diverge do oraculo: {pior:e}");
+    assert!(
+        pior < 2e-3,
+        "o mapeamento de gama diverge do oraculo: {pior:e}"
+    );
 }
 
 #[test]
@@ -187,7 +205,10 @@ fn the_ramp_modes_are_the_perceptual_mix_and_survive_the_text() {
         }
         let texto = crate::serialize_gradient(&ramp);
         let volta = crate::parse_gradient(&texto).expect("o texto relê");
-        assert_eq!(volta.color_mode, modo, "o modo sobrevive ao texto `{texto}`");
+        assert_eq!(
+            volta.color_mode, modo,
+            "o modo sobrevive ao texto `{texto}`"
+        );
     }
 }
 
@@ -247,7 +268,10 @@ fn the_wgsl_carries_the_same_matrix_bits() {
         .flatten()
         .chain(M_LMS_DE_LAB.iter().flatten())
     {
-        assert!(w.contains(&format!("0x{b:08x}u")), "o WGSL perdeu 0x{b:08x}");
+        assert!(
+            w.contains(&format!("0x{b:08x}u")),
+            "o WGSL perdeu 0x{b:08x}"
+        );
     }
     for f in ["pc_mix", "pc_gamut_map", "pe_cbrt", "pe_atan_turn"] {
         assert!(w.contains(f), "o WGSL perdeu {f}");

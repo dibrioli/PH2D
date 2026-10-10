@@ -260,7 +260,10 @@ fn the_polynomial_atan_and_cbrt_hold_their_measured_error() {
     for k in 0..=3600_u32 {
         let ang = std::f64::consts::TAU * f64::from(k) / 3600.0;
         for raio in [1e-4_f64, 0.3, 2.0] {
-            #[expect(clippy::cast_possible_truncation, reason = "a entrada e' f32 por desenho")]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "a entrada e' f32 por desenho"
+            )]
             let (y, x) = ((raio * ang.sin()) as f32, (raio * ang.cos()) as f32);
             let r = f64::from(y).atan2(f64::from(x)) / std::f64::consts::TAU;
             let d = (f64::from(atan_turn(y, x)) - r).rem_euclid(1.0);
@@ -270,7 +273,10 @@ fn the_polynomial_atan_and_cbrt_hold_their_measured_error() {
     let mut pior_c = 0.0_f64;
     for k in 1..=20_000_u32 {
         let x = -2.0 + 4.0 * f64::from(k) / 20_000.0;
-        #[expect(clippy::cast_possible_truncation, reason = "a entrada e' f32 por desenho")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a entrada e' f32 por desenho"
+        )]
         let xf = x as f32;
         let r = f64::from(xf).cbrt();
         if r != 0.0 {

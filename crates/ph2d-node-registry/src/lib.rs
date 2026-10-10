@@ -355,7 +355,11 @@ impl NodeRegistry {
     /// este é o que o artista recebe ao largar o nó.
     ///
     /// Aditivo; last write wins. Ausente ⇒ nada é semeado.
-    pub fn register_param_defaults(&mut self, id: NodeTypeId, pairs: &'static [(&'static str, f32)]) {
+    pub fn register_param_defaults(
+        &mut self,
+        id: NodeTypeId,
+        pairs: &'static [(&'static str, f32)],
+    ) {
         self.param_defaults.insert(id, pairs);
     }
 

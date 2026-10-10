@@ -6837,6 +6837,7 @@ dependencies = [
 name = "ph2d-node-motion-mixer"
 version = "0.0.0"
 dependencies = [
+ "ph2d-color",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6845,6 +6846,7 @@ dependencies = [
 name = "ph2d-node-motion-morph"
 version = "0.0.0"
 dependencies = [
+ "ph2d-color",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

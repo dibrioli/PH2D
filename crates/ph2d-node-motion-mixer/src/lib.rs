@@ -104,6 +104,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "weight_3",
             default: 1.0,
         },
+        // ⭐ CICLO 18 (doc 127) — o espaço em que a COR (`tint`) mistura no `Blend` e no `Avg`:
+        // `0` RGB linear (o de sempre, e o que um documento gravado lê) · `1` OKLab · `2`/`3`
+        // OKLCH curto/longo. ⚠️ No `Avg` (média de N) não há caminho de matiz: os três perceptuais
+        // fazem a média em OKLab. Um mixer NOVO nasce em OKLab (`register_param_defaults`).
+        ParamSpec {
+            name: "tint_space",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -367,15 +375,82 @@ fn common_columns(snaps: &[&Snap]) -> Vec<String> {
         .collect()
 }
 
+/// ⭐ **A cor misturada num espaço perceptual** (ciclo 18): o `Blend` pela mistura da casa
+/// ([`ph2d_color::perceptual::mix`]), o `Avg` pela média ponderada em OKLab e volta à gama.
+/// `None` (outros modos, ou uma coluna que não é RGBA) ⇒ a mistura de sempre.
+fn cor_perceptual(
+    mode: i64,
+    cols: &[Column],
+    blend: &[f32],
+    weights: &[f32],
+    total_w: f32,
+    count: usize,
+    espaco: ph2d_color::perceptual::MixSpace,
+) -> Option<Column> {
+    use ph2d_color::perceptual as pc;
+    let vs: Vec<&Vec<[f32; 4]>> = cols
+        .iter()
+        .map(|c| match c {
+            Column::Vec4(v) => Some(v),
+            _ => None,
+        })
+        .collect::<Option<_>>()?;
+    match mode {
+        MODE_BLEND if vs.len() >= 2 => Some(Column::Vec4(
+            (0..count)
+                .map(|i| pc::mix(vs[0][i], vs[1][i], blend_at(blend, i), espaco))
+                .collect(),
+        )),
+        MODE_BLEND | MODE_AVG if total_w != 0.0 => Some(Column::Vec4(
+            (0..count)
+                .map(|i| {
+                    let (mut lab, mut alfa) = ([0.0_f32; 3], 0.0_f32);
+                    for (v, w) in vs.iter().zip(weights) {
+                        let o = pc::to_oklab([v[i][0], v[i][1], v[i][2]]);
+                        for k in 0..3 {
+                            lab[k] += o[k] * *w;
+                        }
+                        alfa += v[i][3] * *w;
+                    }
+                    let lab = lab.map(|x| x / total_w);
+                    let rgb = pc::gamut_map(pc::oklab_to_oklch(lab));
+                    [rgb[0], rgb[1], rgb[2], alfa / total_w]
+                })
+                .collect(),
+        )),
+        _ => None,
+    }
+}
+
 /// Reduce the contributing inputs into one stream. `blend` is only used in Blend mode;
 /// `weights` is aligned to `contributing` and carries **each snapshot's own port weight**
 /// ([`WEIGHTS`]).
+/// O atalho dos testes: a mistura no espaço de sempre (RGB linear).
+#[cfg(test)]
 fn mix(
     mode: i64,
     contributing: &[&Snap],
     blend: &[f32],
     weights: &[f32],
     geom_from: Option<&Snap>,
+) -> Stream {
+    mix_no_espaco(
+        mode,
+        contributing,
+        blend,
+        weights,
+        geom_from,
+        ph2d_color::perceptual::MixSpace::Linear,
+    )
+}
+
+fn mix_no_espaco(
+    mode: i64,
+    contributing: &[&Snap],
+    blend: &[f32],
+    weights: &[f32],
+    geom_from: Option<&Snap>,
+    espaco: ph2d_color::perceptual::MixSpace,
 ) -> Stream {
     if contributing.is_empty() {
         return Stream::new(0);
@@ -410,6 +485,14 @@ fn mix(
             && let Some(c) = src.column(&name)
         {
             out.set(name, trunc(c, count));
+            continue;
+        }
+        // ⭐ A COR num espaço perceptual (ciclo 18) — só a coluna `tint`, só quando escolhido.
+        if name == "tint"
+            && espaco != ph2d_color::perceptual::MixSpace::Linear
+            && let Some(c) = cor_perceptual(mode, &cols, blend, weights, total_w, count, espaco)
+        {
+            out.set(name, c);
             continue;
         }
         let mixed = match mode {
@@ -482,7 +565,17 @@ impl NodeOp for MotionMixer {
                     .map(|(_, s, _)| s)
             })
             .flatten();
-        ctx.emit(mix(mode, &contributing, &blend, &weights, geom_from));
+        #[expect(clippy::cast_possible_truncation, reason = "indice de enum")]
+        let espaco =
+            ph2d_color::perceptual::MixSpace::from_index(ctx.param("tint_space").round() as i32);
+        ctx.emit(mix_no_espaco(
+            mode,
+            &contributing,
+            &blend,
+            &weights,
+            geom_from,
+            espaco,
+        ));
     }
 }
 
@@ -499,6 +592,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⭐ Um mixer NOVO mistura a cor em OKLab (ciclo 18); o gravado lê o default (linear).
+    reg.register_param_defaults(MANIFEST.id, &[("tint_space", 1.0)]);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
@@ -564,6 +659,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     weight_hint!(WEIGHTS[1], "node.motion.mixer.param.weight_1"),
     weight_hint!(WEIGHTS[2], "node.motion.mixer.param.weight_2"),
     weight_hint!(WEIGHTS[3], "node.motion.mixer.param.weight_3"),
+    // ⭐ Ciclo 18: o espaço da COR no Blend e no Avg (a escada de `MixSpace`).
+    ParamUiHint {
+        param: "tint_space",
+        label: "node.motion.mixer.param.tint_space",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &[
+                "node.motion.mixer.param.tint_space.0",
+                "node.motion.mixer.param.tint_space.1",
+                "node.motion.mixer.param.tint_space.2",
+                "node.motion.mixer.param.tint_space.3",
+            ],
+        },
+    },
 ];
 
 /// Os pesos só aparecem onde são lidos — ver [`WEIGHTS`]: no `Blend` quem responde
@@ -590,6 +701,12 @@ static PARAM_GATES: &[ParamGate] = &[
         when: "mode",
         values: &[MODE_AVG as i32, MODE_ADD as i32],
     },
+    // A cor só se MISTURA no Blend e no Avg (o Add, o Sub… somam ou dobram, não misturam).
+    ParamGate {
+        param: "tint_space",
+        when: "mode",
+        values: &[MODE_AVG as i32, MODE_BLEND as i32],
+    },
 ];
 
 #[cfg(test)]
@@ -603,3 +720,7 @@ mod blend_field_tests;
 #[cfg(test)]
 #[path = "weights_tests.rs"]
 mod weights_tests;
+
+#[cfg(test)]
+#[path = "cor_tests.rs"]
+mod cor_tests;

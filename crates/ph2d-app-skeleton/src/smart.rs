@@ -78,7 +78,7 @@ pub fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
 /// documento inteiro já não cabe no pool de [`ph2d_timeline::MAX_CLIPS`] ids — uma animação cabe.
 #[must_use]
 pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Vec<String> {
-    let animacao = animation_of(world, doc, osso);
+    let animacao = doc.animation_of(world, osso);
     let nome = |i: usize| doc.clips()[i].name.clone();
     let todas = || doc.clips_of(animacao).map(nome).collect::<Vec<_>>();
     if sb.target.is_empty() {
@@ -136,23 +136,6 @@ pub fn action_at(
     actions_for(world, doc, sb, osso).into_iter().nth(i)
 }
 
-/// A animação onde `osso` vive: a do primeiro da cadeia (ele incluído) que tenha uma, ou a da Cena.
-/// Pára num ciclo em vez de num número escolhido.
-fn animation_of(world: &World, doc: &TimelineDoc, osso: Entity) -> u64 {
-    let mut visto: Vec<Entity> = Vec::new();
-    let mut cur = Some(osso);
-    while let Some(e) = cur.filter(|e| !visto.contains(e)) {
-        if doc.has_animation(e.to_bits()) {
-            return e.to_bits();
-        }
-        visto.push(e);
-        cur = world
-            .get::<ph2d_ecs::ChildOf>(e)
-            .map(ph2d_ecs::ChildOf::parent);
-    }
-    ph2d_timeline::SCENE
-}
-
 /// ⭐⭐⭐ **O CLIP QUE ESTE OSSO PERCORRE** — o nome dele DENTRO da animação onde o osso vive.
 ///
 /// ⛔ O nome é único por animação, não no documento (onda 4, item 2): a cópia de um Prefab tem o
@@ -160,7 +143,7 @@ fn animation_of(world: &World, doc: &TimelineDoc, osso: Entity) -> u64 {
 /// Sem esse nome ali o controlo fica inerte — nunca cai para o homónimo de outro dono.
 #[must_use]
 pub fn clip_of(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Option<usize> {
-    doc.clip_named(animation_of(world, doc, osso), &sb.clip)
+    doc.clip_named(doc.animation_of(world, osso), &sb.clip)
 }
 
 /// ⭐⭐⭐ **ESCOLHER A ACÇÃO NA POSIÇÃO `i` DA LISTA PINTADA** — a porta que o dreno do painel chama.

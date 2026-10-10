@@ -197,14 +197,14 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
         );
     }
     // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
-    // sobre o mundo que já está na mão, e só quando não sobra binding nenhuma (ver o `purge`).
-    let nomeados: std::collections::BTreeSet<String> = world
+    // sobre o mundo que já está na mão; o nome resolve-se no `purge`, depois da purga dos donos.
+    let ossos: Vec<(Entity, String)> = world
         .iter_entities()
-        .filter_map(|er| er.get::<ph2d_skeleton_ecs::SmartBone>())
-        .filter(|sb| !sb.clip.is_empty())
-        .map(|sb| sb.clip.clone())
+        .filter_map(|er| Some((er.id(), er.get::<ph2d_skeleton_ecs::SmartBone>()?)))
+        .filter(|(_, sb)| !sb.clip.is_empty())
+        .map(|(e, sb)| (e, sb.clip.clone()))
         .collect();
-    purge_the_dead(timeline, &by_wire, &nomeados)
+    purge_the_dead(timeline, &by_wire, (&*world, &ossos))
 }
 
 /// ⭐ Abre as covas cujos donos vivem outra vez ([`ph2d_ecs::graveyard`]).
@@ -262,7 +262,7 @@ fn dead_wire_ids(
 fn purge_the_dead(
     timeline: &mut TimelineState,
     by_wire: &std::collections::BTreeMap<u64, Option<u64>>,
-    nomeados: &std::collections::BTreeSet<String>,
+    (world, ossos): (&World, &[(Entity, String)]),
 ) -> bool {
     // Still missing after the heal ⇒ dead, EXCEPT the ambiguous tie (a live
     // duplicate exists — `Some(None)` in the map), which stays dormant. A NULL
@@ -325,7 +325,14 @@ fn purge_the_dead(
     // continua inteira: ele existe para o objecto SEGUINTE não abrir a timeline com composição
     // rançosa de um objecto morto. Um controlo vivo a nomear um clip **não é** estado rançoso — é
     // uma dependência, e ela é a única coisa que o reset não sabia perguntar.
-    if !nomeados.is_empty() {
+    //
+    // ⚠️ O nome resolve-se NA ANIMAÇÃO onde o osso vive (onda 5): um homónimo de outro dono — o
+    // que acabou de sair — não é dependência nenhuma, e conservava a composição rançosa.
+    let doc = &timeline.doc;
+    if ossos
+        .iter()
+        .any(|(osso, clip)| doc.clip_named(doc.animation_of(world, *osso), clip).is_some())
+    {
         return false;
     }
     // Last animated object gone ⇒ the timeline resets to a fresh **4 s composition** — the
@@ -474,3 +481,8 @@ mod publish_tests;
 #[cfg(test)]
 #[path = "timeline_owner_tests.rs"]
 mod owner_tests;
+
+/// ⚠️ Irmão de [`tests`] pelo mesmo teto — a guarda do reset (o osso que ainda nomeia um clip).
+#[cfg(test)]
+#[path = "timeline_reset_guard_tests.rs"]
+mod reset_guard_tests;

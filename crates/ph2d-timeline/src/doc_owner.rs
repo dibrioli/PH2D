@@ -88,6 +88,25 @@ impl TimelineDoc {
         entity != SCENE && self.clips_of(entity).next().is_some()
     }
 
+    /// ⭐ **A animação onde `e` vive**: a do primeiro da cadeia `ChildOf` (ele incluído) que tenha
+    /// uma, ou a da Cena. A porta de quem resolve um clip pelo NOME a partir de um objecto (o osso
+    /// inteligente, a guarda do reset). Pára num ciclo em vez de num número escolhido.
+    #[must_use]
+    pub fn animation_of(&self, world: &bevy_ecs::world::World, e: ph2d_ecs::Entity) -> u64 {
+        let mut visto: Vec<ph2d_ecs::Entity> = Vec::new();
+        let mut cur = Some(e);
+        while let Some(e) = cur.filter(|e| !visto.contains(e)) {
+            if self.has_animation(e.to_bits()) {
+                return e.to_bits();
+            }
+            visto.push(e);
+            cur = world
+                .get::<ph2d_ecs::ChildOf>(e)
+                .map(ph2d_ecs::ChildOf::parent);
+        }
+        SCENE
+    }
+
     /// Os objectos vivos que têm Animação (com repetições — um por clip).
     pub fn animation_owners(&self) -> impl Iterator<Item = u64> + '_ {
         self.clips

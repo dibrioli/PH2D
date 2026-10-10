@@ -32,6 +32,14 @@ O QUE FAZER, NESTA ORDEM:
 3. Depois os ciclos 19 (O JOGO MANDA — `value.input` sobre o `cook.set_external` já existente,
    `ph2d-nodegraph/src/external.rs`) … 23, como no doc 126 §0.
 
+⭐ DEPOIS DO SMOKE (09/10, «smoke OK, mas o ease deveria ser com gráficos como na timeline»): o
+   `Ease` virou GRÁFICO — `ParamWidget::Ease`/`EasePart`, editor `ph2d-param-editors::ease`
+   ([doc 126 §6](../126_ciclo_17_o_ritmo.md)). ⏳ O dono ainda não viu o editor aberto: no smoke
+   seguinte, confirme com ele a janela (miniaturas + alças). Todo nó novo com curva de easing usa
+   os nomes de `ph2d_ease::nomes` e ganha o gráfico de graça.
+⛔ Uma janela flutuante do cartão tem de caber nos `205,5 px` de altura do painel do grafo (medido;
+   o gate `the_window_paints_every_tile_and_the_shape_handle_inside_the_panel` mostra como medir).
+
 LIÇÕES DO 17 QUE VALEM PARA OS SEGUINTES (não as repague):
 - ⛔ **A régua da cena lê a SAÍDA** (o que se desenha), nunca um nó do meio: o `Duplicator` tem
   `point_scale = 0` por omissão e engolia a onda inteira com o `Stagger` a variar (doc 126 §5.3).

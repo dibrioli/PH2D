@@ -440,3 +440,44 @@ fn sonda_hrc_escolhas() {
         eprintln!("{nome}: {}", linha.join(" · "));
     }
 }
+
+/// ⭐ **G4 (K3) na holográfica** — gate de RELÓGIO (a faixa dos flakes de carga): o custo das
+/// cascatas com 1 · 10 · 100 · 1 000 · 10 000 luzes na MESMA geometria varia ≤ 5 %.
+#[test]
+fn g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes() {
+    use crate::cenas::enxame_de_luzes;
+    use crate::medicao::{Caso, loadavg, rodadas};
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[0];
+    let mut casos: Vec<Caso> = [1u32, 10, 100, 1_000, 10_000]
+        .iter()
+        .map(|&n| Caso {
+            nome: format!("{n} luzes"),
+            solver: Solver::novo(
+                &gpu,
+                com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO)),
+            )
+            .expect("solver"),
+            cena: enxame_de_luzes(n),
+        })
+        .collect();
+    let carga = loadavg();
+    let Some(r) = rodadas(&gpu, &mut casos, 15) else {
+        eprintln!("G4 holográfica: sem TIMESTAMP_QUERY — saltado");
+        return;
+    };
+    let rc: Vec<f64> = r.iter().map(|x| x.rc[0]).collect();
+    let (min, max) = rc
+        .iter()
+        .fold((f64::INFINITY, 0.0_f64), |(a, b), &v| (a.min(v), b.max(v)));
+    eprintln!(
+        "G4 holográfica · loadavg {carga} · {:?} ms · variação {:.2} %",
+        rc,
+        100.0 * (max - min) / min
+    );
+    assert!(
+        (max - min) / min <= 0.05,
+        "K3 na holográfica: {:.2} %",
+        100.0 * (max - min) / min
+    );
+}

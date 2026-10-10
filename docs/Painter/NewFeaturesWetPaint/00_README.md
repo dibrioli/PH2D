@@ -21,6 +21,8 @@
 
 | Doc | O que tem |
 |---|---|
+| [14_smooth_edges_a_borda_suave.md](14_smooth_edges_a_borda_suave.md) | **O Smooth Edges do Wet Paint** (W1g, aprovado pelo dono 10/10): a lei da borda suave por raio, as três tentativas recusadas e a lição (a dureza que se vê é o contorno escuro por DENTRO da mancha), os portões e o custo |
+| [13_PROMPT_janela_W1g_opcoes.md](13_PROMPT_janela_W1g_opcoes.md) | O prompt da W1g (Live Water, Heavy Edge, fios finos) — o estado no 05 §4b «W1g» |
 | [11_PROMPT_janela_W1e_agua_papel_tilt.md](11_PROMPT_janela_W1e_agua_papel_tilt.md) | **O prompt da PRÓXIMA janela** (W1e — escorrimento realista só com água, pigmento e Tilt; um só papel, o do painel; o pincel seco nos picos; o Tilt no preset), com as medições de 09/10 |
 | [10_PROMPT_janela_W1d_cura.md](10_PROMPT_janela_W1d_cura.md) | ⛔ OBSOLETO — as gotas foram DESFEITAS a 09/10 (05 §4b «⏪ DESFEITO»; ficou só o Smooth Edges, desligado). Registo da auditoria de 09/10 ([09](09_PROMPT_janela_auditoria_W1c.md)) |
 | [07_PROMPT_janela_W1b_gotas.md](07_PROMPT_janela_W1b_gotas.md) · [08](08_PROMPT_janela_W1c_borda.md) | Os prompts das janelas W1b (as gotas pela lei do Rebelle) e W1c (a borda e as gotas pela auditoria de 08/10) |

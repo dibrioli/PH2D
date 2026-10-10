@@ -141,6 +141,7 @@
 - 📚 [Padrões de código (gotchas silenciosos): mais (39) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais (37) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais (34) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (36) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)

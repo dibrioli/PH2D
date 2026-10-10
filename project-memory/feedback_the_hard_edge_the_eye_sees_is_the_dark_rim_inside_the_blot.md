@@ -1,0 +1,18 @@
+---
+name: feedback_the_hard_edge_the_eye_sees_is_the_dark_rim_inside_the_blot
+description: Num meio com escurecimento de orla, a «borda dura» que o olho vê é o contorno escuro POR DENTRO da mancha — alisar a silhueta (AA, forma) não se vê; amaciar a TINTA numa faixa da orla sim
+metadata:
+  type: feedback
+---
+
+O Smooth Edges do Wet Paint passou por três leis que mexiam só na SILHUETA da mancha (`pa ≥ SS0`): o AA 3×3
+da Aquarela, o slider a misturá-lo, e um raio a alisar a FORMA (contorno −55 % medido) — o dono: «no máximo
+não vi benefício». O que se via duro era o contorno ESCURO (o `EdgeDarkening`), por dentro da mancha, com
+escadinha de pixel. A lei aprovada («maravilhoso», 10/10) desfoca a tinta premultiplicada por uma tenda de
+raio `r` numa faixa à volta da orla, com peso `4·B·(1−B)` (`B` = a mancha desfocada).
+Doc: `docs/Painter/NewFeaturesWetPaint/14_smooth_edges_a_borda_suave.md`.
+
+**Why:** uma régua de forma (contorno, área) aprovou a 3.ª lei e ela era invisível; a métrica que acompanhou o
+olho foi a ASPEREZA (soma das diferenças de escuro entre vizinhos).
+**How to apply:** antes de construir um «suavizar bordas», fotografe a borda a 8× e pergunte ONDE está o
+salto de tom que se vê — na silhueta ou num contorno interno; meça pela aspereza, não pelo contorno.

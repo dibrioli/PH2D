@@ -55,6 +55,38 @@ fn enquanto_a_cena_nova_nao_tem_quadros_fica_o_que_estava() {
     assert_eq!(a.quadro(ms(t0, 3030)), Some(q(1)));
 }
 
+/// **O preview não espera a água parar** (dono 10/10: «demora até 10 s para aparecer ou iniciar o
+/// traço»): a simulação exata leva 4–8 s até a água parar, mas o traço sai em 0,2–0,4 s
+/// (`medida_o_relogio_do_preview`). No arrasto vê-se o quadro MAIS RECENTE que já chegou, e quando o
+/// gesto sossega a animação começa — sem esperar o fim da cena.
+#[test]
+fn o_preview_nao_espera_a_agua_parar() {
+    let t0 = Instant::now();
+    let mut a = Apresentacao::nova();
+    let _ = a.mudou(t0);
+    let g = a.mudou(ms(t0, 20)); // seguida: é um arrasto
+    a.chegou(g, q(0));
+    a.chegou(g, q(1));
+    assert_eq!(
+        a.quadro(ms(t0, 60)),
+        Some(q(1)),
+        "no arrasto vê-se o quadro mais recente, sem esperar o fim"
+    );
+    let sossego = 20 + SOSSEGO.as_millis() as u64;
+    assert_eq!(
+        a.quadro(ms(t0, sossego + 1)),
+        Some(q(0)),
+        "sossegou: a animação começa mesmo com a água ainda a correr"
+    );
+    a.chegou(g, q(2));
+    let passo = QUADRO_DA_ANIMACAO.as_millis() as u64;
+    assert_eq!(
+        a.quadro(ms(t0, sossego + 1 + 5 * passo)),
+        Some(q(2)),
+        "e segue os quadros à medida que chegam"
+    );
+}
+
 #[test]
 fn um_arrasto_mostra_o_traco_final_e_anima_quando_para() {
     let t0 = Instant::now();

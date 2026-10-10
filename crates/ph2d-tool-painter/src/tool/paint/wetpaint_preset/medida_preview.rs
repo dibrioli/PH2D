@@ -221,3 +221,40 @@ fn sonda_a_tela_escorre() {
         }
     }
 }
+
+/// **O relógio do preview vivo** (dono 10/10: «demora até 10 s para aparecer ou iniciar o traço»): o
+/// tempo até ao 1.º quadro, até ao fim do traço (o 24.º) e até a água parar, por pincel — perfil smoke.
+#[test]
+#[ignore = "medicao — corre-se à mão no perfil smoke"]
+fn medida_o_relogio_do_preview() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    for nome in ["Wet Round", "Wet Wash", "Wet Dry Brush", "Wet Drip"] {
+        let p = &b
+            .entradas
+            .iter()
+            .find(|e| e.preset.parametros.name == nome)
+            .expect("o pincel de fábrica")
+            .preset;
+        for d in [60.0f32, 120.0] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+            t.set_paint_media(PaintMedia::WetPaint);
+            assert!(t.wet_preset_aplicar(p).is_empty());
+            t.set_brush_size_px(d * 0.5);
+            let cena = t.wet_preview_cena();
+            let t0 = Instant::now();
+            let mut marcas: Vec<f64> = Vec::new();
+            super::preview::pintar_preview(&cena, &|| false, &mut |_, _, _| {
+                marcas.push(t0.elapsed().as_secs_f64());
+            });
+            let fim = t0.elapsed().as_secs_f64();
+            println!(
+                "[relógio] {nome} {d} px: 1.º quadro {:.2} s · fim do traço {:.2} s · a água parou {fim:.2} s ({} quadros)",
+                marcas.first().copied().unwrap_or(f64::NAN),
+                marcas.get(23).copied().unwrap_or(f64::NAN),
+                marcas.len()
+            );
+        }
+    }
+}

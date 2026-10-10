@@ -8,8 +8,8 @@
 //! os quadros tocam-se ao ritmo [`QUADRO_DA_ANIMACAO`].
 //!
 //! A lei da apresentação ([`Apresentacao`]): uma mudança ISOLADA anima assim que os quadros chegam;
-//! mudanças seguidas (um arrasto de slider, menos de [`SOSSEGO`] entre elas) mostram o traço FINAL de
-//! cada uma, ao vivo, e animam uma vez quando o arrasto pára.
+//! mudanças seguidas (um arrasto de slider, menos de [`SOSSEGO`] entre elas) mostram o quadro mais
+//! recente de cada uma, ao vivo, e animam uma vez quando o arrasto pára — nunca à espera da água parar.
 
 use ph2d_panel_painter_layers::set_current_wet_preview;
 use ph2d_tool_painter::{
@@ -35,7 +35,7 @@ pub(crate) type Quadro = Arc<Vec<u8>>;
 enum Modo {
     /// Toca os quadros desde `inicio` (posto quando o primeiro quadro chega).
     Animar { inicio: Option<Instant> },
-    /// Mudanças seguidas: mostra o último quadro da última cena até o gesto sossegar.
+    /// Mudanças seguidas: mostra o quadro MAIS RECENTE da última cena até o gesto sossegar.
     Arrasto,
 }
 
@@ -94,18 +94,18 @@ impl Apresentacao {
 
     /// O quadro a mostrar `agora`. Enquanto a cena nova não tem quadros, fica o que estava.
     pub(crate) fn quadro(&mut self, agora: Instant) -> Option<Quadro> {
+        // ⚠️ Nem o arrasto nem a animação esperam o FIM da cena (dono 10/10: «demora até 10 s»): a água
+        // do preview exato leva 4–8 s até parar, o traço sai em 0,2–0,4 s (`medida_o_relogio_do_preview`).
         if let Modo::Arrasto = self.modo
-            && self.completo
             && self
                 .ultima_mudanca
                 .is_some_and(|t| agora.saturating_duration_since(t) >= SOSSEGO)
         {
-            // O gesto sossegou: a animação, uma vez.
+            // O gesto sossegou: a animação, uma vez, a seguir os quadros à medida que chegam.
             self.modo = Modo::Animar { inicio: None };
         }
         let escolhido = match &mut self.modo {
-            Modo::Arrasto if self.completo => self.quadros.last().cloned(),
-            Modo::Arrasto => None,
+            Modo::Arrasto => self.quadros.last().cloned(),
             Modo::Animar { inicio } if !self.quadros.is_empty() => {
                 let t0 = *inicio.get_or_insert(agora);
                 let i = (agora.saturating_duration_since(t0).as_millis()

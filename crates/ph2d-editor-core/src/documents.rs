@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 
 #[path = "documents_fac.rs"]
 pub(crate) mod fac;
+#[path = "documents_live.rs"]
+pub mod live;
 #[path = "documents_nav.rs"]
 pub(crate) mod nav;
 #[path = "documents_team.rs"]
@@ -34,6 +36,8 @@ pub struct Documents {
     pub(crate) tab_drag: Option<TabDrag>,
     /// O que vive enquanto se edita um quadro (editor, desfazer por quadro, texto moldado).
     pub(crate) live: BoardLive,
+    /// O quadro ao vivo (ADR-0181): o que o painel mostra e pede.
+    pub(crate) live_view: live::LiveView,
 }
 
 /// ⭐ **O estado de SESSÃO dos quadros** — nada disto vai para o ficheiro.

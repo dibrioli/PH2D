@@ -30,6 +30,9 @@ ph2d-board-route = { path = "../ph2d-board-route" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-render = { path = "../ph2d-render" }
 rfd = "0.17"
+# W11 — o quadro ao vivo (`live.rs`, ADR-0181): a sessão PURA e o transporte da rede local.
+ph2d-board-sync = { path = "../ph2d-board-sync" }
+ph2d-board-net = { path = "../ph2d-board-net" }
 
 [dev-dependencies]
 # O gate da cena 10 conduz o ecrã real (os eventos do ponteiro e do teclado do hero).

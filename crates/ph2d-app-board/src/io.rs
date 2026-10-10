@@ -58,6 +58,7 @@ fn author(hero: &mut HeroScreen) {
 /// ⭐ Uma vez por quadro (a shell chama-o): o nome de quem escreve e o pedido por servir.
 pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSystem) {
     author(hero);
+    crate::live::service(hero);
     let Some(req) = hero.documents.take_io() else {
         return;
     };

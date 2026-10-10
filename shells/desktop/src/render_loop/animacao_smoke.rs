@@ -4,7 +4,8 @@
 //! A Timeline e a Hierarquia abrem com o Herói seleccionado (`=1`), ou com o Inimigo e o ▾ da
 //! Timeline aberto (`=2`: «Animation: Scene» e «Add animation to Inimigo»). `=4` (onda 5): o Herói
 //! com uma Signal Action «Play Clip» — o parâmetro é o ▾ com «andar» e «pular» — e a «Bandeira»,
-//! uma sprite com SKEW cuja caixa de gizmo é o paralelogramo desenhado.
+//! uma sprite com SKEW cuja caixa de gizmo é o paralelogramo desenhado (`=5`: a mesma cena, com a
+//! Bandeira seleccionada).
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
@@ -63,7 +64,8 @@ impl crate::App {
             ))
             .id()
             .to_bits();
-        if nivel == "4" {
+        let mut bandeira = None;
+        if nivel == "4" || nivel == "5" {
             world
                 .entity_mut(heroi)
                 .insert(ph2d_ecs::SignalActions(vec![ph2d_ecs::SignalAction {
@@ -72,14 +74,19 @@ impl crate::App {
                     arg: "pular".into(),
                     ..Default::default()
                 }]));
-            let mut torta = Transform::from_translation(Vec2::new(0.5, -2.0));
+            let mut torta = Transform::from_translation(Vec2::new(0.5, -1.2));
             torta.skew_x = 0.5;
             torta.rotation = 0.3;
-            world.spawn((
-                torta,
-                sprite(2.0, 1.0, [0.2, 0.7, 0.4, 1.0]),
-                Name::new("Bandeira"),
-            ));
+            bandeira = Some(
+                world
+                    .spawn((
+                        torta,
+                        sprite(2.0, 1.0, [0.2, 0.7, 0.4, 1.0]),
+                        Name::new("Bandeira"),
+                    ))
+                    .id()
+                    .to_bits(),
+            );
         }
         let heroi = heroi.to_bits();
 
@@ -109,8 +116,12 @@ impl crate::App {
 
         if let Some(hero) = gfx.hero_screen.as_mut() {
             let segundo = nivel == "2";
-            hero.gizmo
-                .replace_selection(Some(if segundo { inimigo } else { heroi }));
+            let alvo = match (segundo, bandeira) {
+                (true, _) => inimigo,
+                (false, Some(b)) if nivel == "5" => b,
+                _ => heroi,
+            };
+            hero.gizmo.replace_selection(Some(alvo));
             // O ▾ aberto: o estado do chip vive no `store` do ecrã (o `populate` regista-o no arranque).
             if segundo
                 && let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {

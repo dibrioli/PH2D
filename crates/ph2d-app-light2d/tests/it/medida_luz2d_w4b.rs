@@ -94,13 +94,6 @@ fn variantes_do_refino() -> Vec<(&'static str, Refino)> {
         b("limiar 0,25", Bordas { limiar: 0.25, ..p }),
         b("com joelho", Bordas { joelho: true, ..p }),
         b(
-            "sem certificar",
-            Bordas {
-                certificar: false,
-                ..p
-            },
-        ),
-        b(
             "visibilidade no passo fino",
             Bordas {
                 visibilidade_no_passo_fino: true,

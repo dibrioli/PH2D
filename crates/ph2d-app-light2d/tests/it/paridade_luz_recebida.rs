@@ -162,6 +162,15 @@ fn paridade_no_degrau(gpu: &ph2d_gpu::GpuContext, nome: &str, degrau: ph2d_app_l
     luz.gravar(&gpu, &mut PresentWorld::new(), &renderer);
     // A grade da FLUÊNCIA (a fina da luz direta, W4b) — a que o receptor amostra.
     let g = luz.solver().expect("solver").grade_da_fluencia();
+    {
+        // ⭐ O receptor recebe a grade DA textura que lê (a fina): origem, texel e tamanho dela.
+        let r = luz.recebida().expect("acesa");
+        assert_eq!(
+            (r.origem_m, r.texel_m, r.tamanho),
+            (g.origem_m, g.texel_m, [g.largura, g.altura]),
+            "a LuzRecebida não descreve a fluência que aponta ({nome})"
+        );
+    }
     let branco = renderer
         .acquire_individual(1, 1, &[255, 255, 255, 255])
         .expect("branco");

@@ -53,18 +53,18 @@ struct Fina {
 // e reto (a borda é achada a 1/(RAIOS·2^BISSECOES) da abertura).
 override RAIOS_DIRETOS: u32 = 8u;
 override BISSECOES: u32 = 5u;
-// O refino também nos JOELHOS da penumbra; a sonda só se diz certa com o cone livre de uma célula.
+// O refino também nos JOELHOS da penumbra.
 override JOELHO: bool = true;
-override CERTIFICAR: bool = true;
 // Quanto antes do disco a marcha para (a lâmpada direta não está na captura; meio texel de folga
 // contra o que estiver colado a ela).
 const ANTES_DO_DISCO: f32 = 0.5;
 // Um texel fino interpola as QUATRO sondas da célula dele: está a menos de √2 texels de cada uma.
 const UMA_CELULA: f32 = 1.4142136;
-// O cone livre «sem folga» (a sonda à vista conta como certa).
+// O cone livre «sem folga» (pedir uma folga de uma célula não mudou nada: o `livre` já é
+// conservador em ~2 texels — medido na W4b, o fio de sombra entre as sondas).
 const SEM_FOLGA: f32 = 1e-6;
-// O código de uma sonda: 0..=254 = a fração à vista × 254; `CERTA` = à vista com o cone livre de
-// uma célula inteira em volta (todo texel fino da célula vê a lâmpada inteira).
+// O código de uma sonda: 0..=254 = a fração à vista × 254; `CERTA` = à vista com o cone LIVRE (sem
+// nada perto do caminho: os texels finos da célula interpolam-na sem medir).
 const INTEIRA: u32 = 254u;
 const CERTA: u32 = 255u;
 
@@ -187,7 +187,7 @@ fn sem_sombra(P: vec2<f32>, L: Lampada) -> vec3<f32> {
 }
 
 // A fração À VISTA da lâmpada `k` de P (o ponto: a transmissão do raio até ele). `folga` > 0 pede o
-// cone livre com essa folga; sem ela devolve -1 (o passe grosso usa-o para CERTIFICAR a célula).
+// cone livre com essa folga; sem ele devolve -1 (o passe grosso: a sonda à vista sem obstáculo perto).
 fn visibilidade(P: vec2<f32>, k: u32, folga: f32) -> f32 {
     let L = lampadas.itens[k];
     let v = L.centro - P;
@@ -244,11 +244,10 @@ fn c3_visibilidade(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let Q = vec2<f32>(id) + 0.5;
-    let folga = select(SEM_FOLGA, UMA_CELULA, CERTIFICAR);
     var w = vec2<u32>(0u);
     for (var k = 0u; k < lampadas.n; k++) {
         var codigo = CERTA;
-        if alcanca(Q, lampadas.itens[k], UMA_CELULA) && visibilidade(Q, k, folga) < 0.0 {
+        if alcanca(Q, lampadas.itens[k], UMA_CELULA) && visibilidade(Q, k, SEM_FOLGA) < 0.0 {
             codigo = u32(round(clamp(visibilidade(Q, k, 0.0), 0.0, 1.0) * f32(INTEIRA)));
         }
         let b = codigo << (8u * (k % 4u));

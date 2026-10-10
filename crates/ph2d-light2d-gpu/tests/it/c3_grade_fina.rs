@@ -3,7 +3,7 @@
 //! texel fino; o refino pelas bordas contra a visibilidade medida em todo texel; a região; o G10.
 
 use ph2d_light2d_ecs::CenaDeLuz;
-use ph2d_light2d_gpu::{Config, Grade, Refino, Solver};
+use ph2d_light2d_gpu::{Config, Grade, REFINO_PADRAO, Refino, Solver};
 
 use crate::cenas::{DEGRAUS, ceu_e_vidro, faisca, penumbra};
 use crate::comum::{gabarito, gpu, grade, ler_bytes, ler_fluencia, rmse_rel};
@@ -175,4 +175,76 @@ fn g10_a_grade_fina_e_bit_identica() {
     assert!(a.iter().any(|&x| x != 0), "a fluência não pode ser zero");
     assert!(a == b, "dois quadros da mesma cena diferem");
     assert!(a == c, "dois solvers da mesma configuração diferem");
+}
+
+/// O fio de sombra de um oclusor-PONTO de 0,8 texel (centrado num texel: a captura vê-o) diante de
+/// uma lâmpada pontual na diagonal: a sombra é mais estreita que o espaço entre as sondas e corre de
+/// viés, então passa ENTRE elas. A fração das amostras da linha do meio dela, de 0,2 a 1,2 m atrás,
+/// que a placa põe na sombra (com ÷ sem < ½).
+fn fio_na_sombra(gpu: &ph2d_gpu::GpuContext, refino: Refino) -> f64 {
+    let (lado, texel) = (128, 0.04);
+    let cfg = Config {
+        fina: FINA,
+        refino,
+        ..Config::padrao(grade(lado, texel))
+    };
+    let c = [60.5 * texel as f32, 70.5 * texel as f32];
+    let m = 0.4 * texel as f32;
+    let dir = [0.8_f32, 0.6];
+    let lampada = ph2d_light2d_ecs::Emissor::Ponto {
+        centro: [c[0] - 1.5 * dir[0], c[1] - 1.5 * dir[1]],
+        intensidade: [5.0; 3],
+        alcance_m: f32::INFINITY,
+    };
+    let com = CenaDeLuz {
+        emissores: vec![lampada.clone()],
+        oclusores: vec![crate::comum::oclusor(
+            vec![
+                [c[0] - m, c[1] - m],
+                [c[0] + m, c[1] - m],
+                [c[0] + m, c[1] + m],
+                [c[0] - m, c[1] + m],
+            ],
+            1.0,
+        )],
+        ceu: [0.0; 3],
+        ..Default::default()
+    };
+    let sem = CenaDeLuz {
+        oclusores: vec![],
+        ..com.clone()
+    };
+    let (fc, g) = rodar(gpu, cfg, &com);
+    let (fs, _) = rodar(gpu, cfg, &sem);
+    let n = 200;
+    let escuras = (0..n)
+        .filter(|&k| {
+            let t = 0.2 + f64::from(k) / f64::from(n);
+            let p = [
+                f64::from(c[0]) + t * f64::from(dir[0]),
+                f64::from(c[1]) + t * f64::from(dir[1]),
+            ];
+            bilinear(&fc, &g, p)[0] < 0.5 * bilinear(&fs, &g, p)[0]
+        })
+        .count();
+    escuras as f64 / f64::from(n)
+}
+
+/// ⭐⭐ **O fio de sombra mais estreito que o espaço entre as sondas** sai como no exato em todo texel
+/// (o refino pelas bordas não o perde). Medido (W4b): 0,515 das amostras na sombra pelas bordas e pelo
+/// exato — e 0,515 também com a sonda «certificada» por uma célula de folga (por isso ela saiu).
+#[test]
+fn o_fio_de_sombra_entre_as_sondas_e_o_do_exato() {
+    let Some(gpu) = gpu() else { return };
+    let bordas = fio_na_sombra(&gpu, REFINO_PADRAO);
+    let tudo = fio_na_sombra(&gpu, Refino::Tudo);
+    eprintln!("fio de sombra: na sombra {bordas:.3} (exato em todo texel {tudo:.3})");
+    assert!(
+        tudo > 0.3,
+        "controlo: o fio tem de existir na captura ({tudo:.3})"
+    );
+    assert!(
+        (bordas - tudo).abs() <= 0.02,
+        "o refino perde o fio: {bordas:.3} × {tudo:.3}"
+    );
 }

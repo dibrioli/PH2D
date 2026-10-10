@@ -73,9 +73,6 @@ pub struct Bordas {
     /// A célula mistura o fim da penumbra (0 ou 1) com o meio dela: o JOELHO que a interpolação
     /// corta.
     pub joelho: bool,
-    /// A sonda só conta como «à vista» com o cone livre de uma CÉLULA inteira em volta (um oclusor
-    /// fino pode passar entre as sondas).
-    pub certificar: bool,
     /// O passe grosso marcha no passo FINO (senão no das cascatas).
     pub visibilidade_no_passo_fino: bool,
     /// Os raios fixos da abertura (nas sondas e no texel refinado).
@@ -125,14 +122,15 @@ pub struct Config {
 /// - 4 raios + 5 bissecções: 8+5 custava +50 % pela mesma régua (o exato); 2+6 mede igual e custa
 ///   −20 %, mas com 3 raios fixos um oclusor mais fino que MEIA abertura da lâmpada passa sem sombra
 ///   (com 5, um quarto) — fica a robustez;
-/// - certificar: custo empatado — fica, de graça, contra o oclusor fino entre as sondas.
+/// - certificar a sonda (cone livre com a folga de uma célula): empate de custo E de resposta — o fio de
+///   sombra de um oclusor de 0,8 texel entre as sondas dá 0,515 com, sem, e no exato (o `livre` já é
+///   conservador em ~2 texels). Saiu: a mutação dele sobrevivia.
 ///
 /// Resultado: Low 0,163 · 0,105 · 0,085 · 0,139 · 0,182 px · Medium 0,176 · 0,123 · 0,079 · 0,122 ·
 /// 0,170 a 0,69 · 0,67 ms por lâmpada (o exato em todo texel: a mesma régua a 1,22 · 1,11 ms).
 pub const REFINO_PADRAO: Refino = Refino::Bordas(Bordas {
     limiar: 0.1,
     joelho: true,
-    certificar: true,
     visibilidade_no_passo_fino: true,
     raios: 4,
     bissecoes: 5,

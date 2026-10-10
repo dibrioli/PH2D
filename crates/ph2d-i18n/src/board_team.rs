@@ -12,11 +12,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.menu.versions" => "Versions…",
         "board.menu.export" => "Export…",
         "board.menu.import" => "Open an Excalidraw file…",
-        "board.comment.resolve" => "Resolve (hide it from the board) or reopen",
+        "board.comment.resolve" => {
+            "Resolve hides the thread from the board (Comments, Show resolved shows it again); Ctrl+Z reverses it"
+        }
+        "board.comment.resolve_long" => "Resolve thread",
+        "board.comment.reopen_long" => "Reopen thread",
         "board.comment.close" => "Close",
         "board.comment.show_resolved" => "Show resolved",
         "board.comment.author_tip" => "Your name on the comments you write (kept on this computer)",
-        "board.comment.open" => "Open the thread",
+        "board.comment.open" => {
+            "Click to open the thread; drag to move it (drop it on an object to pin it there)"
+        }
         "board.comment.resolved" => "Resolved",
         "board.comment.thread" => "Comments",
         "board.comment.new" => "New comment",

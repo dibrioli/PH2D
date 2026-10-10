@@ -354,3 +354,145 @@ fn present_with_every_frame_hidden_says_so() {
         Some("board.present.all_hidden")
     );
 }
+
+impl T {
+    /// Arrasta pela ordem da shell: o carregar num controlo (não é quadro), o rato a andar, o largar.
+    fn shell_drag(&mut self, a: (f32, f32), b: (f32, f32)) {
+        let on_canvas = self.hero.chrome_panel_at(a.0, a.1).is_none()
+            && self.hero.chrome_hit(a.0, a.1).is_none();
+        let p = PointerButton::Primary;
+        let (h, ts, c) = (&mut self.hero, &mut self.ts, &mut self.clock);
+        assert!(
+            board_view::pointer(h, inp(ts, c), PointerKind::Down, p, a.0, a.1, on_canvas),
+            "o carregar na bolha é do quadro"
+        );
+        for i in 1..=8 {
+            let k = i as f32 / 8.0;
+            let at = (a.0 + (b.0 - a.0) * k, a.1 + (b.1 - a.1) * k);
+            assert!(board_view::pointer_move(h, inp(ts, c), at.0, at.1));
+        }
+        assert!(board_view::pointer(
+            h,
+            inp(ts, c),
+            PointerKind::Up,
+            p,
+            b.0,
+            b.1,
+            false
+        ));
+        self.paint();
+    }
+
+    fn undo(&mut self, redo: bool) {
+        let mods = Modifiers {
+            ctrl: true,
+            shift: redo,
+            ..Modifiers::default()
+        };
+        self.key(BoardKey::Char('z'), mods, None);
+    }
+}
+
+/// ⭐ O dono (10/10): *«não é possível mover o balão de comentário»*. Arrastar a bolha para OUTRA nota
+/// prende-a lá (anda com ela); largar no vazio prende-a ao ponto; `Ctrl+Z` devolve-a, um passo de cada
+/// vez, e um carregar sem arrastar continua a abrir o fio.
+#[test]
+fn a_bubble_drags_to_another_note_and_ctrl_z_takes_it_back() {
+    let mut t = T::new();
+    let a = t.note_at([-300.0, -100.0], "A");
+    let b = t.note_at([100.0, -100.0], "B");
+    let id = {
+        let board = t.hero.documents.active_board_mut().unwrap();
+        let pin = Pin::at(&board.doc, Some(a), [-200.0, 0.0]);
+        board.team.open(pin, "Rui", "x", 0).unwrap()
+    };
+    t.paint();
+    let bubble = team_node(Hit::Bubble(id));
+    let from = t.find(bubble).expect("a bolha");
+    let to = t.screen([200.0, 0.0]);
+    t.shell_drag(
+        from,
+        (
+            to.0 + (from.0 - t.screen([-200.0, 0.0]).0),
+            to.1 + (from.1 - t.screen([-200.0, 0.0]).1),
+        ),
+    );
+    let pin = t.team().thread(id).unwrap().pin;
+    assert!(matches!(pin, Pin::Element { id, .. } if id == b), "{pin:?}");
+    assert!(
+        t.hero.documents.live.team.open.is_empty(),
+        "arrastar não abre o fio"
+    );
+    // Largar no vazio: preso ao ponto.
+    let from = t.find(bubble).unwrap();
+    t.shell_drag(from, (from.0, from.1 + 300.0));
+    assert!(matches!(t.team().thread(id).unwrap().pin, Pin::Point(_)));
+    t.undo(false);
+    assert!(matches!(t.team().thread(id).unwrap().pin, Pin::Element { id, .. } if id == b));
+    t.undo(false);
+    assert!(matches!(t.team().thread(id).unwrap().pin, Pin::Element { id, .. } if id == a));
+    t.undo(true);
+    assert!(matches!(t.team().thread(id).unwrap().pin, Pin::Element { id, .. } if id == b));
+    // Um clique com a mão a tremer (2 px, abaixo do limiar) é um clique: abre o fio e não o move.
+    let before = t.team().thread(id).unwrap().pin;
+    let at = t.find(bubble).unwrap();
+    t.shell_drag(at, (at.0 + 2.0, at.1));
+    assert_eq!(t.team().thread(id).unwrap().pin, before, "tremer não move");
+    assert_eq!(t.hero.documents.live.team.open.len(), 1, "e abre o fio");
+}
+
+/// ⭐ O dono (10/10): o visto do cabeçalho lia-se como «fechar» e escondia o fio. Resolver é agora um
+/// botão POR EXTENSO e da largura do cartão, por baixo do compositor; e `Ctrl+Z` desfaz-o (o menu
+/// Editar também, pela mesma porta).
+#[test]
+fn resolve_is_a_wide_button_under_the_composer_and_undoes() {
+    let mut t = T::new();
+    let id = {
+        let b = t.hero.documents.active_board_mut().unwrap();
+        b.team.open(Pin::Point([0.0, 0.0]), "Rui", "x", 0).unwrap()
+    };
+    t.paint();
+    t.shell_click_id(team_node(Hit::Bubble(id)), "a bolha");
+    let res = t
+        .extent(team_node(Hit::Button(TeamButton::CardResolve)))
+        .expect("o botão");
+    let field = t.extent(crate::ids::BOARD_COMMENT_INPUT).expect("o campo");
+    let close = t
+        .extent(team_node(Hit::Button(TeamButton::CardClose)))
+        .unwrap();
+    assert!(
+        res[1] > field[3],
+        "por baixo do compositor: {res:?} {field:?}"
+    );
+    assert!(
+        res[2] - res[0] >= 0.9 * (field[2] - field[0]),
+        "da largura do cartão: {res:?} {field:?}"
+    );
+    assert!(
+        res[2] - res[0] > 4.0 * (close[2] - close[0]),
+        "não é um ícone"
+    );
+    t.btn(TeamButton::CardResolve);
+    assert!(t.team().thread(id).unwrap().resolved);
+    assert!(
+        t.find(team_node(Hit::Bubble(id))).is_none(),
+        "resolvido sai do quadro"
+    );
+    t.undo(false);
+    assert!(!t.team().thread(id).unwrap().resolved, "Ctrl+Z reabre");
+    assert!(t.find(team_node(Hit::Bubble(id))).is_some());
+    t.undo(true);
+    assert!(
+        t.team().thread(id).unwrap().resolved,
+        "Ctrl+Shift+Z volta a resolver"
+    );
+    assert!(board_keys::board_command(
+        &mut t.hero,
+        &mut t.ts,
+        board_keys::Command::Undo
+    ));
+    assert!(
+        !t.team().thread(id).unwrap().resolved,
+        "o Editar -> Desfazer da shell também"
+    );
+}

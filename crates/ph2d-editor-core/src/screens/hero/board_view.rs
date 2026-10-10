@@ -180,6 +180,8 @@ pub fn pointer(
     let area = area_of(hero.last_canvas);
     let theme = hero.theme;
     match kind {
+        // K2 — uma bolha de comentário (um controlo, não o quadro) arrasta-se para outro sítio.
+        PointerKind::Down if super::board_nav::team::bubble_down(hero, x, y, button) => true,
         PointerKind::Down if on_canvas && super::board_nav::pointer_down(hero, x, y, button) => {
             true
         }
@@ -244,7 +246,8 @@ pub fn pointer(
             false
         }
         PointerKind::Up => {
-            if hero.documents.pan_from.take().is_some() || super::board_nav::pointer_up(hero) {
+            if hero.documents.pan_from.take().is_some() || super::board_nav::pointer_up(hero, x, y)
+            {
                 return true;
             }
             let Some((board, live)) = hero.documents.active_parts() else {

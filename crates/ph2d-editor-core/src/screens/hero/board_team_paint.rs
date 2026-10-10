@@ -1,8 +1,10 @@
-//! O desenho dos comentários (módulo filho de [`super`]): as bolhas no quadro (K6/K7), o cartão do fio
-//! aberto (K4/K5), a lista (K8/K10), e a frase dos pedidos servidos. Os painéis das versões e do
-//! exportar estão em `board_team_panels.rs`; a apresentação em `board_team_show.rs`.
+//! O desenho dos comentários (módulo filho de [`super`]): o cartão do fio aberto (K4/K5), a lista
+//! (K8/K10), e a frase dos pedidos servidos. As bolhas (desenhar e arrastar) estão em
+//! `board_team_bubbles.rs`, os painéis das versões e do exportar em `board_team_panels.rs`, a
+//! apresentação em `board_team_show.rs`.
 
 use super::super::super::HeroScreen;
+use super::bubbles::{bubble_rect, dragged};
 use super::{Hit, TeamButton, ago, me, node, now_unix, register, text_y};
 use crate::documents::team::{Confirm, OpenThread};
 use crate::icons::IconId;
@@ -15,16 +17,13 @@ use ph2d_a11y::NodeId;
 use ph2d_board_model::{Board, Message, ThreadId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O lado de uma bolha e de um botão (K7: tamanho de INTERFACE, o de um botão da barra).
-fn btn() -> f32 {
+pub(super) fn btn() -> f32 {
     super::super::facilitate::btn()
 }
-
-/// K7 — o selo da contagem: 0,47 do Ø da bolha (medido, `21016057338514`).
-const BADGE: f32 = 0.47; // LITERAL-PX-OK: fracção medida da bolha
 
 /// A largura do cartão do fio e dos painéis, em botões.
 const CARD_BTNS: f32 = 10.0; // LITERAL-PX-OK: largura em botões (uma mensagem curta numa linha)
@@ -33,38 +32,8 @@ const CARD_BTNS: f32 = 10.0; // LITERAL-PX-OK: largura em botões (uma mensagem 
 const SMALL: f32 = 0.75; // LITERAL-PX-OK: fracção de um botão
 
 /// O quadro activo, para ler.
-fn board(hero: &HeroScreen) -> Option<&Board> {
+pub(super) fn board(hero: &HeroScreen) -> Option<&Board> {
     hero.documents.active_board()
-}
-
-/// ⭐ K7 — a bolha do fio cuja ponta (o canto de baixo à esquerda) está em `at` (px de ecrã).
-#[must_use]
-pub fn bubble_rect(at: [f32; 2]) -> Rect {
-    let d = btn();
-    Rect::new(at[0], at[1] - d, d, d)
-}
-
-/// Os fios à vista no quadro: os não resolvidos (e os resolvidos com «Show resolved») cujo alvo
-/// existe (K3), com a ponta em px de ecrã.
-fn visible(hero: &HeroScreen, area: Rect) -> Vec<(ThreadId, [f32; 2])> {
-    let Some(b) = board(hero) else {
-        return Vec::new();
-    };
-    let t = &hero.documents.live.team;
-    if t.hide_comments {
-        return Vec::new();
-    }
-    let a = super::super::super::board_view::area_of(area);
-    b.team
-        .threads
-        .iter()
-        .filter(|th| !th.resolved || t.show_resolved)
-        .filter_map(|th| {
-            let p = b.camera.to_screen(a, th.anchor(&b.doc)?);
-            Some((th.id, [p[0] as f32, p[1] as f32]))
-        })
-        .filter(|(_, p)| area.contains(p[0], p[1]))
-        .collect()
 }
 
 /// Um botão de ícone desenhado e registado depois (o fundo do cartão regista-se ANTES dele).
@@ -93,74 +62,10 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     if hero.documents.live.team.show.is_some() {
         return;
     }
-    paint_bubbles(hero, area, scene, ts);
+    super::bubbles::paint(hero, area, scene, ts);
     paint_card(hero, area, scene, ts);
     super::panels::paint(hero, area, scene, ts);
     paint_message(hero, area, scene, ts);
-}
-
-fn paint_bubbles(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
-    let theme = hero.theme;
-    let mine = me(hero);
-    let d = btn();
-    // O contorno da gota é um ANEL: pela porta do tema (o plano não o tem em repouso).
-    let ring = crate::paint::fill_ring(
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    for (id, at) in visible(hero, area) {
-        let Some(th) = board(hero).and_then(|b| b.team.thread(id)) else {
-            continue;
-        };
-        let (resolved, unread, count) = (th.resolved, th.unread_for(&mine), th.messages.len());
-        let initial: String = th
-            .messages
-            .first()
-            .and_then(|m| m.author.chars().next())
-            .map(|c| c.to_uppercase().collect())
-            .unwrap_or_default();
-        let r = bubble_rect(at);
-        // K6 — novo azul, lido branco, resolvido com o visto.
-        let (bg, fg) = if resolved {
-            (ColorToken::Bg2, ColorToken::Text2)
-        } else if unread {
-            (ColorToken::Accent, ColorToken::AccentFg)
-        } else {
-            (ColorToken::BgElev, ColorToken::Text1)
-        };
-        // A gota: um círculo e o quadrante de baixo à esquerda em ponta (a ponta está no alvo).
-        let inset = ring.map_or(0.0, |(w, c)| {
-            fill_rounded_rect(scene, r, d / 2.0, c);
-            w
-        });
-        let inner = Rect::new(r.x + inset, r.y + inset, d - 2.0 * inset, d - 2.0 * inset);
-        fill_rounded_rect(scene, inner, inner.w / 2.0, resolve(bg, theme));
-        let tail = Rect::new(r.x, r.y + d / 2.0, d / 2.0, d / 2.0);
-        fill_rounded_rect(scene, tail, 0.0, resolve(bg, theme));
-        if resolved {
-            let i = Spacing::Sm.px();
-            let ir = Rect::new(r.x + i, r.y + i, d - 2.0 * i, d - 2.0 * i);
-            let stroke = StrokeToken::Thick.px();
-            crate::paint::paint_icon(scene, IconId::Check, ir, resolve(fg, theme), stroke);
-        } else {
-            let font = TypeToken::Sm.px();
-            paint_text_centered(ts, scene, &initial, r, font, resolve(fg, theme));
-        }
-        if count > 1 {
-            // K7 — o selo da contagem centrado no canto de cima à direita.
-            let s = d * BADGE;
-            let br = Rect::new(r.x + d - s / 2.0, r.y - s / 2.0, s, s);
-            fill_rounded_rect(scene, br, s / 2.0, resolve(ColorToken::Accent, theme));
-            let fg = resolve(ColorToken::AccentFg, theme);
-            paint_text_centered(ts, scene, &count.to_string(), br, TypeToken::Xs.px(), fg);
-        }
-        let id = node(Hit::Bubble(id));
-        register(&mut hero.store, id);
-        hero.store.set_tooltip(id, tr("board.comment.open"));
-        hero.hit_index.register(id, r);
-    }
 }
 
 /// O alvo do cartão aberto em px de ecrã (a ponta da bolha), se há cartão.
@@ -173,7 +78,11 @@ fn card_anchor(hero: &HeroScreen, area: Rect) -> Option<(OpenThread, [f32; 2])> 
     };
     let a = super::super::super::board_view::area_of(area);
     let p = b.camera.to_screen(a, world);
-    Some((open, [p[0] as f32, p[1] as f32]))
+    let at = match (open, dragged(hero)) {
+        (OpenThread::Thread(t), Some(d)) if d.thread == t => d.tip(),
+        _ => [p[0] as f32, p[1] as f32],
+    };
+    Some((open, at))
 }
 
 /// O x do cartão de largura `w` que quer começar em `want`: nunca passa a borda direita da área (com
@@ -241,7 +150,9 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
             small + body + pad
         })
         .collect();
-    let fixed = pad + s + g + s + pad;
+    // O cabeçalho, o compositor e — num fio que existe — «Resolve thread» por baixo dele.
+    let resolve_row = if thread.is_some() { g + s } else { 0.0 };
+    let fixed = pad + s + g + s + resolve_row + pad;
     let max_h = area.h - 2.0 * m;
     let (mut first, mut used) = (msgs.len(), fixed);
     while first > 0 {
@@ -264,7 +175,8 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         .register(node(Hit::Button(TeamButton::CardSurface)), card);
     let mut later = Deferred::new();
     let mut cy = y + pad;
-    // A fila de cima: resolver (só num fio que existe) e fechar.
+    // A fila de cima: o título e fechar (resolver é o botão grande de baixo: no cabeçalho um visto
+    // lia-se como «fechar», e escondia o fio — o dono, 10/10).
     let close = Rect::new(x + w - pad - s, cy, s, s);
     icon_button(
         scene,
@@ -276,27 +188,10 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         false,
         theme,
     );
-    let mut title_end = close.x;
+    let title_end = close.x;
     let title = match &thread {
-        Some(th) => {
-            let res = Rect::new(close.x - s - g, cy, s, s);
-            icon_button(
-                scene,
-                &mut hero.store,
-                &mut later,
-                node(Hit::Button(TeamButton::CardResolve)),
-                IconId::Check,
-                res,
-                th.resolved,
-                theme,
-            );
-            title_end = res.x;
-            if th.resolved {
-                tr("board.comment.resolved")
-            } else {
-                tr("board.comment.thread")
-            }
-        }
+        Some(th) if th.resolved => tr("board.comment.resolved"),
+        Some(_) => tr("board.comment.thread"),
         None => tr("board.comment.new"),
     };
     let text2 = resolve(ColorToken::Text2, theme);
@@ -422,6 +317,27 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
             sm,
             field.w - 2.0 * pad,
             text3,
+        );
+    }
+    // K5 — resolver ou reabrir, por extenso e da largura do cartão (desfaz-se com `Ctrl+Z`).
+    if let Some(th) = &thread {
+        let r = Rect::new(x + pad, field.y + s + g, w - 2.0 * pad, s);
+        let key = if th.resolved {
+            "board.comment.reopen_long"
+        } else {
+            "board.comment.resolve_long"
+        };
+        let id = node(Hit::Button(TeamButton::CardResolve));
+        text_button(
+            scene,
+            ts,
+            &mut hero.hit_index,
+            &hero.store,
+            id,
+            tr(key),
+            r,
+            false,
+            theme,
         );
     }
 }

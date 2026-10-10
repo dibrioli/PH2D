@@ -289,3 +289,52 @@ fn a_put_group_raises_the_counter_past_it() {
     BoardOp::Put(el).apply(&mut b.doc);
     assert!(b.doc.mint_group().0 > 50);
 }
+
+/// ⭐ O dono (10/10): *«não temos undo para Resolve»*. Resolver e mover a bolha entram na MESMA pilha
+/// do desenho, pela ordem em que se fizeram: o desfazer do documento pára diante de um passo da
+/// equipa (que o `undo_team` desfaz), e o refazer devolve-os pela ordem inversa.
+#[test]
+fn resolve_and_move_undo_in_order_with_the_drawing() {
+    let mut set = BoardSet::default();
+    let (a, id) = note(&mut set);
+    let b = set.get_mut(a).unwrap();
+    let t = b.team.open(Pin::Point([0.0, 0.0]), "Ana", "x", 0).unwrap();
+    let mut h = History::default();
+    let mut moved = b.doc.get(id).unwrap().clone();
+    moved.x += 10.0;
+    h.apply(&mut b.doc, vec![BoardOp::Put(moved)]);
+    assert!(h.apply_team(&mut b.team, crate::TeamOp::Resolve(t, true)));
+    assert!(
+        !h.apply_team(&mut b.team, crate::TeamOp::Resolve(t, true)),
+        "nada mudou: não é passo"
+    );
+    let to = Pin::Element { id, at: [0.5, 0.5] };
+    assert!(h.apply_team(&mut b.team, crate::TeamOp::Pin(t, to)));
+    // Desfazer: o documento não passa por cima dos passos da equipa.
+    assert!(!h.undo(&mut b.doc));
+    assert!(h.undo_team(&mut b.team));
+    assert_eq!(b.team.thread(t).unwrap().pin, Pin::Point([0.0, 0.0]));
+    assert!(!h.undo(&mut b.doc));
+    assert!(h.undo_team(&mut b.team));
+    assert!(!b.team.thread(t).unwrap().resolved);
+    assert!(!h.undo_team(&mut b.team), "o seguinte é do documento");
+    assert!(h.undo(&mut b.doc));
+    assert_eq!(b.doc.get(id).unwrap().x, 100.0);
+    // Refazer pela ordem inversa.
+    assert!(h.redo(&mut b.doc) && h.redo_team(&mut b.team) && h.redo_team(&mut b.team));
+    let th = b.team.thread(t).unwrap();
+    assert!(th.resolved && th.pin == to);
+    assert!(!h.can_redo());
+}
+
+/// Um passo da equipa cujo fio já saiu (apagar a 1.ª mensagem não se desfaz) gasta-se sem efeito.
+#[test]
+fn a_team_step_of_a_gone_thread_is_spent() {
+    let mut team = Team::default();
+    let t = team.open(Pin::Point([0.0, 0.0]), "Ana", "x", 0).unwrap();
+    let mut h = History::default();
+    assert!(h.apply_team(&mut team, crate::TeamOp::Resolve(t, true)));
+    assert!(team.delete(t, 0, "Ana"));
+    assert!(h.undo_team(&mut team));
+    assert!(!h.can_undo() && !h.can_redo());
+}

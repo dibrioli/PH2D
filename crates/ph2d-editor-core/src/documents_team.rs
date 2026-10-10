@@ -64,6 +64,25 @@ pub enum IoRequest {
     Import,
 }
 
+/// K2 — a bolha a ser arrastada (px de ecrã): o fio, o desvio do ponteiro à ponta, onde o
+/// carregar foi, onde o ponteiro está, e se já andou mais que o limiar (senão o largar é um clique).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BubbleDrag {
+    pub thread: ThreadId,
+    pub grab: [f32; 2],
+    pub from: [f32; 2],
+    pub at: [f32; 2],
+    pub moved: bool,
+}
+
+impl BubbleDrag {
+    /// A ponta da bolha agora (o ponteiro menos o desvio).
+    #[must_use]
+    pub fn tip(&self) -> [f32; 2] {
+        [self.at[0] - self.grab[0], self.at[1] - self.grab[1]]
+    }
+}
+
 /// O fio aberto no cartão: um novo (ainda sem mensagem, preso em `Pin`) ou um que existe.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum OpenThread {
@@ -138,6 +157,8 @@ pub struct Team {
     pub author_dirty: bool,
     /// O pedido por drenar.
     pub io: Option<IoRequest>,
+    /// K2 — a bolha a ser arrastada.
+    pub drag: Option<BubbleDrag>,
     /// K10 — o campo do nome está aberto na lista.
     pub editing_author: bool,
     /// A frase de um pedido servido (o ficheiro gravado, o que a importação saltou) e quando chegou —

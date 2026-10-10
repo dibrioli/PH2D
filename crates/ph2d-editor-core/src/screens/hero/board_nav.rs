@@ -598,10 +598,10 @@ pub fn pointer_down(
 
 /// Minimapa: o arrasto. `true` = consumido.
 pub fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    minimap::drag(hero, x, y)
+    minimap::drag(hero, x, y) || team::bubble_drag(hero, x, y)
 }
 
 /// Minimapa: o largar. `true` = era dele.
-pub fn pointer_up(hero: &mut HeroScreen) -> bool {
-    std::mem::take(&mut hero.documents.live.nav.minimap_drag)
+pub fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
+    std::mem::take(&mut hero.documents.live.nav.minimap_drag) || team::bubble_up(hero, x, y)
 }

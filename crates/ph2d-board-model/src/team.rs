@@ -13,6 +13,17 @@ use crate::{Board, BoardDoc, ElementId, ElementKind};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ThreadId(pub u64);
 
+/// Um passo da equipa que se desfaz com o quadro (o dono, 10/10: *«não temos undo para Resolve»*):
+/// resolver/reabrir e mover a bolha. Escrever, responder e apagar mensagens continuam fora do desfazer
+/// (o idioma do Miro: um comentário é conversa, não desenho).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TeamOp {
+    /// O fio fica resolvido (`true`) ou aberto.
+    Resolve(ThreadId, bool),
+    /// O fio passa a estar preso aqui.
+    Pin(ThreadId, Pin),
+}
+
 /// Onde um fio está preso (K2).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Pin {
@@ -208,6 +219,23 @@ impl Team {
     /// Resolve ou reabre (K5).
     pub fn set_resolved(&mut self, id: ThreadId, resolved: bool) -> bool {
         self.thread_mut(id).map(|t| t.resolved = resolved).is_some()
+    }
+
+    /// ⭐ Aplica um passo DESFAZÍVEL da equipa e devolve o inverso (`None` = o fio não existe ou nada
+    /// mudou — não é passo). O histórico do quadro guarda-o ao lado dos lotes do documento
+    /// ([`crate::History::record_team`]): o `Ctrl+Z` desfaz resolver e mover pela ordem em que se fez.
+    pub fn apply(&mut self, op: TeamOp) -> Option<TeamOp> {
+        match op {
+            TeamOp::Resolve(id, to) => {
+                let t = self.thread_mut(id)?;
+                (t.resolved != to)
+                    .then(|| TeamOp::Resolve(id, std::mem::replace(&mut t.resolved, to)))
+            }
+            TeamOp::Pin(id, to) => {
+                let t = self.thread_mut(id)?;
+                (t.pin != to).then(|| TeamOp::Pin(id, std::mem::replace(&mut t.pin, to)))
+            }
+        }
     }
 
     /// Esconde (ou volta a mostrar) um frame na apresentação (P1).

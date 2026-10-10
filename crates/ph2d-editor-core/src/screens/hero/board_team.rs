@@ -10,9 +10,11 @@ use crate::documents::team::{Confirm, ExportChoice, Format, IoRequest, OpenThrea
 use crate::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use crate::widget::ButtonState;
 use ph2d_a11y::NodeId;
-use ph2d_board_model::{BoardId, Pin, ThreadId};
+use ph2d_board_model::{BoardId, Pin, TeamOp, ThreadId};
 use ph2d_host::PointerButton;
 
+#[path = "board_team_bubbles.rs"]
+mod bubbles;
 #[path = "board_team_paint.rs"]
 mod paint;
 #[path = "board_team_panels.rs"]
@@ -20,7 +22,8 @@ mod panels;
 #[path = "board_team_show.rs"]
 pub mod show;
 
-pub use paint::{bubble_rect, paint};
+pub use bubbles::{bubble_down, bubble_drag, bubble_rect, bubble_up};
+pub use paint::paint;
 
 /// Um botão de tamanho fixo da equipa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -592,11 +595,13 @@ fn button(hero: &mut HeroScreen, b: TeamButton) {
         TeamButton::CardResolve => {
             let open = active.and_then(|id| t.open.get(&id).copied());
             let show = t.show_resolved;
-            if let (Some(OpenThread::Thread(th)), Some(board)) =
-                (open, hero.documents.active_board_mut())
+            if let (Some(OpenThread::Thread(th)), Some((board, live))) =
+                (open, hero.documents.active_parts())
             {
                 let now = !board.team.thread(th).is_some_and(|x| x.resolved);
-                board.team.set_resolved(th, now);
+                // Um passo do desfazer do quadro (o dono, 10/10: «não temos undo para Resolve»).
+                let history = live.histories.entry(board.id).or_default();
+                history.apply_team(&mut board.team, TeamOp::Resolve(th, now));
                 // K5 — resolvido esconde-se do quadro: o cartão fecha (a não ser com «Show resolved»).
                 if now && !show {
                     close_card(hero);

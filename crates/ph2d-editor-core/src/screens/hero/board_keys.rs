@@ -163,7 +163,7 @@ pub fn key(
                 }
                 BoardKey::Char('z' | 'y') => {
                     ed.text_key(doc, history, ts, TextKey::Commit);
-                    ed.command(doc, history, ts, chord_undo(k, mods));
+                    step(ed, doc, &mut board.team, history, ts, chord_undo(k, mods));
                     taken()
                 }
                 _ => KeyOutcome::default(),
@@ -245,7 +245,7 @@ pub fn key(
         }
         // ⚠️ Um atalho de uma tecla que o quadro reconhece é SEMPRE dele — mesmo sem efeito
         // (`Esc` sem nada seleccionado): deixá-lo cair faria a cena reagir por baixo.
-        let _ = ed.command(doc, history, ts, c);
+        let _ = step(ed, doc, &mut board.team, history, ts, c);
         return taken();
     }
     // ⚠️ Numa FORMA uma letra solta é ATALHO, nunca texto (o idioma do Excalidraw): para escrever,
@@ -343,7 +343,26 @@ pub fn board_command(hero: &mut HeroScreen, ts: &mut TextSystem, c: Command) -> 
     };
     let history = live.histories.entry(board.id).or_default();
     let ed = super::board_view::editor(&mut live.editor, theme);
-    ed.command(&mut board.doc, history, ts, c)
+    step(ed, &mut board.doc, &mut board.team, history, ts, c)
+}
+
+/// ⭐ Um comando do editor; o desfazer/refazer que pára diante de um passo da EQUIPA (resolver, mover
+/// a bolha — a mesma pilha, pela ordem em que se fez) desfá-lo na equipa. ⛔ Todos os caminhos do
+/// `Ctrl+Z` do quadro passam aqui (a escrever, fora do texto, e o menu Editar da shell).
+fn step(
+    ed: &mut ph2d_board_edit::Editor,
+    doc: &mut ph2d_board_model::BoardDoc,
+    team: &mut ph2d_board_model::Team,
+    history: &mut ph2d_board_model::History,
+    ts: &mut TextSystem,
+    c: Command,
+) -> bool {
+    ed.command(doc, history, ts, c)
+        || match c {
+            Command::Undo => history.undo_team(team),
+            Command::Redo => history.redo_team(team),
+            _ => false,
+        }
 }
 
 fn text_move(k: BoardKey, ctrl: bool) -> Move {

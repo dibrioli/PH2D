@@ -37,6 +37,21 @@ pub struct CardSection {
     pub hidden: u16,
 }
 
+/// Quantas amostras da curva de easing a shell manda para a row desenhar (`t = k/(N−1)`).
+pub const EASE_AMOSTRAS: usize = 25;
+
+/// ⭐ **A CURVA DE EASING de uma row [`ph2d_node_registry::ParamWidget::Ease`]** (ciclo 17, doc
+/// 126 §6), resolvida pela SHELL: a família, a direção e a forma (o que o editor precisa para as
+/// miniaturas e as alças) e a curva AMOSTRADA (o que a row desenha — inclui a `Custom`, cuja
+/// forma vive num text param que só a shell lê).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EaseView {
+    pub curve: i32,
+    pub dir: i32,
+    pub shape: ph2d_ease::Shape,
+    pub samples: [f32; EASE_AMOSTRAS],
+}
+
 /// ⭐ **UM PARAM NO CARTÃO** — o hint `&'static` do registry mais o valor vivo.
 ///
 /// `Copy` de propósito: [`ph2d_node_registry::ParamUiHint`] já é `Copy` (os seus `param` e
@@ -141,6 +156,8 @@ pub struct CardParam {
     /// [`CardParam::to_stored`].
     pub face_scale: f32,
     pub face_suffix: &'static str,
+    /// A curva, quando o widget é [`ph2d_node_registry::ParamWidget::Ease`] — a row desenha-a.
+    pub ease: Option<EaseView>,
 }
 
 impl CardParam {
@@ -173,6 +190,7 @@ impl CardParam {
             driven: false,
             swatch: None,
             swatch_id: None,
+            ease: None,
             text: RowText::default(),
             min: hint.min,
             max: hint.max,

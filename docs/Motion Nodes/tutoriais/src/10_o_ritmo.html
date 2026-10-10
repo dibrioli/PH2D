@@ -69,7 +69,7 @@ outra, e o artista escolhe <b>de onde</b> a onda parte e <b>com que ritmo</b> el
 
 <div class="note"><b>As duas perguntas, nos dois cartões:</b> <code>Order</code> diz <b>por onde</b>
 a onda corre (fila a fila, do centro, ao acaso, numa grelha, ou a partir de um ponto do mundo);
-<code>Ease</code> diz <b>com que ritmo</b> (devagar no começo, com salto, com mola, aos degraus…).
+<code>Ease</code> diz <b>com que ritmo</b> — e mostra-o como um GRÁFICO, como a timeline.
 As curvas são as MESMAS da timeline: uma chave <code>Back Out</code> e uma onda <code>Back
 Out</code> desenham a mesma curva.</div>
 
@@ -125,22 +125,28 @@ Elas são iguais menos um botão: o <code>Order</code> dos cartões <code>Time</
 </ol>
 
 <h2>3 · O ritmo da onda</h2>
-<p>Ainda no cartão <code>Time</code> da laranja, a linha <code>Ease</code> escolhe a curva com que
-o atraso se espalha. Experimente uma de cada vez:</p>
+<p>Ainda no cartão <code>Time</code> da laranja, a linha <code>Ease</code> mostra o <b>gráfico</b>
+da curva com que o atraso se espalha — o mesmo desenho do gráfico da timeline. <b>Clique no
+gráfico</b>: abre uma janela com as quinze curvas desenhadas, as três direções e, em baixo, a
+curva escolhida em grande.</p>
 <ol class="steps">
-  <li><b><code>Ease = Steps</code></b>, <code>Steps = 4</code>.
-      <div class="out">A onda anda aos <b>saltos</b>: quatro grupos de estrelas acordam juntos, um
-      depois do outro.</div></li>
-  <li><b><code>Ease = Elastic</code></b>.
-      <div class="out">As de dentro acordam em sequência; as de fora acordam quase juntas, num
-      tremor — a curva passa do fim e volta.</div></li>
-  <li><b><code>Ease = Spring</code></b>, depois mexa em <code>Damping</code>.
-      <div class="out">Uma <b>mola</b>: com <code>Damping</code> baixo a onda vai e volta antes de
-      assentar; com <code>Damping</code> acima de 1 ela chega devagar, sem passar.</div></li>
-  <li><b><code>Ease = Bezier</code></b>.
-      <div class="out">As quatro linhas <code>Handle 1 X</code> · <code>Handle 1 Y</code> ·
-      <code>Handle 2 X</code> · <code>Handle 2 Y</code> são as alças de uma curva do CSS. As de
-      fábrica (<code>0,25 · 0,1 · 0,25 · 1</code>) são o <code>ease</code> dos browsers.</div></li>
+  <li><b>Clique na miniatura <code>Steps</code>.</b>
+      <div class="out">A onda anda aos <b>saltos</b>. No gráfico grande há uma bolinha no canto
+      do primeiro degrau: <b>arraste-a para os lados</b> — mais estreita, mais degraus.</div></li>
+  <li><b>Clique em <code>Elastic</code>.</b>
+      <div class="out">As de fora acordam quase juntas, num tremor. Arraste a bolinha para os
+      lados: muda o lugar do tremor.</div></li>
+  <li><b>Clique em <code>Spring</code></b> e arraste a bolinha do pico para <b>cima e para
+      baixo</b>.
+      <div class="out">Uma <b>mola</b>: com o pico alto ela vai e volta antes de assentar; com a
+      bolinha dentro da faixa ela chega devagar, sem passar.</div></li>
+  <li><b>Clique em <code>Bezier</code></b> e arraste as <b>duas alças</b>.
+      <div class="out">São as alças de uma curva do CSS, como as de uma chave no gráfico da
+      timeline. As de fábrica são o <code>ease</code> dos browsers.</div></li>
+  <li><b>Clique numa das três miniaturas de direção</b> (<code>In</code> · <code>Out</code> ·
+      <code>In-Out</code>).
+      <div class="out">A mesma curva, virada: devagar no começo, devagar no fim, ou nos dois.
+      Elas só aparecem nas curvas em que a direção muda alguma coisa.</div></li>
 </ol>
 
 <div class="note"><b>Delay a zero esconde tudo.</b> Com <code>Delay = 0</code> o cartão
@@ -149,29 +155,25 @@ o atraso se espalha. Experimente uma de cada vez:</p>
 
 <h2>4 · O que cada botão faz</h2>
 <table>
-  <tr><th>linha</th><th>cartão</th><th>o que faz</th><th>faixa</th></tr>
-  <tr><td><code>Delay</code></td><td>Time</td><td>o atraso da ÚLTIMA peça da onda; as outras
-      esperam uma parte dele</td><td>0 – 10 s</td></tr>
+  <tr><th>linha / gesto</th><th>cartão</th><th>o que faz</th></tr>
+  <tr><td><code>Delay</code></td><td>Time</td><td>o atraso da ÚLTIMA peça da onda (0 – 10 s); as
+      outras esperam uma parte dele</td></tr>
   <tr><td><code>Order</code></td><td>os dois</td><td>Index · From Center · Random · Grid · From
-      Point</td><td>—</td></tr>
-  <tr><td><code>Ease</code> · <code>Direction</code></td><td>os dois</td><td>a curva (15) e o lado
-      dela (In · Out · In-Out)</td><td>—</td></tr>
-  <tr><td><code>Overshoot</code></td><td>os dois</td><td>quanto o <code>Back</code> passa do
-      fim</td><td>0 – 5</td></tr>
-  <tr><td><code>Period</code></td><td>os dois</td><td>o tremor do <code>Elastic</code> (menor =
-      mais rápido)</td><td>0,05 – 1</td></tr>
-  <tr><td><code>Steps</code></td><td>os dois</td><td>os degraus do <code>Steps</code></td>
-      <td>1 – 64</td></tr>
-  <tr><td><code>Damping</code></td><td>os dois</td><td>a mola: &lt; 1 oscila, 1 crítico, &gt; 1
-      lenta</td><td>0,05 – 2</td></tr>
-  <tr><td><code>Handle 1/2 X/Y</code></td><td>os dois</td><td>as alças do
-      <code>Bezier</code></td><td>X 0–1 · Y −1–2</td></tr>
+      Point</td></tr>
+  <tr><td><code>Ease</code> (o gráfico)</td><td>os dois</td><td>clique: as 15 curvas, as 3
+      direções e a curva em grande</td></tr>
+  <tr><td>a bolinha do <code>Back</code> / <code>Spring</code></td><td>no gráfico</td><td>para
+      cima e para baixo: quanto a curva passa do fim</td></tr>
+  <tr><td>a bolinha do <code>Elastic</code> / <code>Steps</code></td><td>no gráfico</td><td>para
+      os lados: o lugar do tremor / a largura dos degraus</td></tr>
+  <tr><td>as alças do <code>Bezier</code></td><td>no gráfico</td><td>a forma da curva, como na
+      timeline</td></tr>
   <tr><td><code>Columns</code> · <code>From</code> · <code>Cell</code></td><td>os dois</td><td>a
-      grelha do <code>Grid</code> e a célula de onde parte</td><td>—</td></tr>
+      grelha do <code>Grid</code> e a célula de onde parte</td></tr>
   <tr><td><code>Axis</code></td><td>os dois</td><td>a distância conta nos dois eixos, só em X, ou
-      só em Y</td><td>—</td></tr>
+      só em Y</td></tr>
   <tr><td><code>Origin X/Y</code> · <code>Reach</code></td><td>os dois</td><td>o ponto do
-      <code>From Point</code> e onde a onda chega ao fim</td><td>metros</td></tr>
+      <code>From Point</code> e onde a onda chega ao fim (metros)</td></tr>
 </table>
 
 <h2>5 · Vá além</h2>

@@ -234,6 +234,8 @@ fn what_species_of_control_the_catalogue_has() {
                 ph2d_node_registry::ParamWidget::PickSelection => "PickSelection",
                 ph2d_node_registry::ParamWidget::Text => "Text",
                 ph2d_node_registry::ParamWidget::Curve => "Curve",
+                ph2d_node_registry::ParamWidget::Ease => "Ease",
+                ph2d_node_registry::ParamWidget::EasePart => "EasePart",
                 ph2d_node_registry::ParamWidget::Gradient => "Gradient",
                 ph2d_node_registry::ParamWidget::Palette => "Palette",
                 ph2d_node_registry::ParamWidget::File { .. } => "File",
@@ -278,7 +280,7 @@ fn what_the_open_cycle_group_needs() {
         "motion.clone",
     ];
     let ricos = [
-        "Color", "Text", "Curve", "Gradient", "Palette", "File", "Source", "Channels",
+        "Color", "Text", "Curve", "Ease", "Gradient", "Palette", "File", "Source", "Channels",
     ];
     let mut total_ricos = 0usize;
     eprintln!(
@@ -310,6 +312,8 @@ fn what_the_open_cycle_group_needs() {
                 ph2d_node_registry::ParamWidget::PickSelection => "PickSelection",
                 ph2d_node_registry::ParamWidget::Text => "Text",
                 ph2d_node_registry::ParamWidget::Curve => "Curve",
+                ph2d_node_registry::ParamWidget::Ease => "Ease",
+                ph2d_node_registry::ParamWidget::EasePart => "EasePart",
                 ph2d_node_registry::ParamWidget::Gradient => "Gradient",
                 ph2d_node_registry::ParamWidget::Palette => "Palette",
                 ph2d_node_registry::ParamWidget::File { .. } => "File",

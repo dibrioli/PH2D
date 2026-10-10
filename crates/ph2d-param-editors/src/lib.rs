@@ -18,6 +18,7 @@
 use ph2d_a11y::NodeId;
 
 pub mod curve;
+pub mod ease;
 pub mod gradient;
 pub mod palette;
 

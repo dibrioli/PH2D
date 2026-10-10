@@ -64,6 +64,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim.easing.family.expo" => "Expo",
         "anim.easing.family.circ" => "Circ",
         "anim.easing.family.elastic" => "Elastic",
+        // As quatro que só o editor gráfico do easing dos nós tem (ciclo 17, doc 126 §6).
+        "editor.ease.family.custom" => "Custom",
+        "editor.ease.family.steps" => "Steps",
+        "editor.ease.family.spring" => "Spring",
+        "editor.ease.family.bezier" => "Bezier",
         // ⚠️ Curtos de propósito: quem os pinta é uma fileira de três chips AO LADO do nome da
         // família, e ali *"Ease In"* repetiria a palavra que a linha inteira já diz.
         "anim.easing.mode.in" => "In",

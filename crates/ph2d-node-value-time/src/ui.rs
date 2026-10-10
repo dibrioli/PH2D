@@ -71,25 +71,8 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 14.0,
         step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &[
-                "node.value.time.param.ease_curve.0",
-                "node.value.time.param.ease_curve.1",
-                "node.value.time.param.ease_curve.2",
-                "node.value.time.param.ease_curve.3",
-                "node.value.time.param.ease_curve.4",
-                "node.value.time.param.ease_curve.5",
-                "node.value.time.param.ease_curve.6",
-                "node.value.time.param.ease_curve.7",
-                "node.value.time.param.ease_curve.8",
-                "node.value.time.param.ease_curve.9",
-                "node.value.time.param.ease_curve.10",
-                "node.value.time.param.ease_curve.11",
-                "node.value.time.param.ease_curve.12",
-                "node.value.time.param.ease_curve.13",
-                "node.value.time.param.ease_curve.14",
-            ],
-        },
+        // ⭐ O GRÁFICO da curva (ciclo 17, doc 126 §6 — «com gráficos como na timeline»).
+        widget: ParamWidget::Ease,
     },
     // A curva DESENHADA da `Custom` — um TEXT param, não um `ParamSpec`.
     ParamUiHint {
@@ -106,13 +89,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &[
-                "node.value.time.param.ease_dir.0",
-                "node.value.time.param.ease_dir.1",
-                "node.value.time.param.ease_dir.2",
-            ],
-        },
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "overshoot",
@@ -120,7 +97,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 5.0,
         step: 0.05,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "period",
@@ -128,7 +105,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.05,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "steps",
@@ -136,7 +113,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 1.0,
         max: 64.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "damping",
@@ -144,7 +121,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.05,
         max: 2.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_x1",
@@ -152,7 +129,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_y1",
@@ -160,7 +137,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 2.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_x2",
@@ -168,7 +145,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_y2",
@@ -176,7 +153,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 2.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "grid_cols",

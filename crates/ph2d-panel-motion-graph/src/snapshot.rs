@@ -239,7 +239,7 @@ pub struct GraphNodeView {
 
 #[path = "snapshot_card.rs"]
 mod card;
-pub use card::{CardParam, CardSection, RowText};
+pub use card::{CardParam, CardSection, EASE_AMOSTRAS, EaseView, RowText};
 
 #[path = "snapshot_thumb.rs"]
 mod thumb;
@@ -453,6 +453,27 @@ pub(crate) fn card_choices_of(node: u32, param: &str) -> Option<(Vec<String>, u1
 /// [`CARD_TEXTS`]: o cartão desenha o truncado e a caixa de edição abre com este.
 pub fn set_card_texts(texts: Vec<(u32, &'static str, String)>) {
     CARD_TEXTS.with(|c| *c.borrow_mut() = texts);
+}
+
+thread_local! {
+    /// ⭐ As CURVAS de easing de cada cartão (shell → painel, ciclo 17) — o editor gráfico lê-as
+    /// para desenhar e para saber de onde parte um arrasto, como a caixa de texto lê os textos.
+    static CARD_EASES: RefCell<Vec<(u32, &'static str, EaseView)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Publica a curva de easing de cada row `Ease` dos cartões (shell → painel).
+pub fn set_card_eases(eases: Vec<(u32, &'static str, EaseView)>) {
+    CARD_EASES.with(|c| *c.borrow_mut() = eases);
+}
+
+/// A curva de `(nó, param)` — `None` quando a shell não a publicou.
+pub(crate) fn card_ease_of(node: u32, param: &str) -> Option<EaseView> {
+    CARD_EASES.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(n, p, _)| *n == node && *p == param)
+            .map(|(_, _, v)| *v)
+    })
 }
 
 /// O texto inteiro de `(nó, param)` — `None` quando a shell não o publicou.

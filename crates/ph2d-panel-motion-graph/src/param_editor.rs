@@ -50,6 +50,10 @@ pub(crate) enum EditorKind {
     Gradient,
     /// Uma paleta: tira de amostras que embrulha, com `+` e `−`.
     Palette,
+    /// ⭐ Uma CURVA DE EASING (ciclo 17): a grelha das famílias, as direções e o gráfico com as
+    /// alças da forma. ⚠️ A única espécie que escreve NÚMEROS (`SetParam`), não texto — a curva
+    /// vive em vários params do nó, e a vista dela vem do canal [`crate::snapshot::card_ease_of`].
+    Ease,
 }
 
 /// **O editor aberto.** Um de cada vez, e é a lei: ele é uma janela modal-por-costume (o clique
@@ -100,6 +104,7 @@ pub(crate) fn kind_of(p: &CardParam) -> Option<EditorKind> {
         ph2d_node_registry::ParamWidget::Curve => Some(EditorKind::Curve),
         ph2d_node_registry::ParamWidget::Gradient => Some(EditorKind::Gradient),
         ph2d_node_registry::ParamWidget::Palette => Some(EditorKind::Palette),
+        ph2d_node_registry::ParamWidget::Ease => Some(EditorKind::Ease),
         _ => None,
     }
 }
@@ -111,7 +116,13 @@ pub(crate) fn kind_of(p: &CardParam) -> Option<EditorKind> {
 /// publica `""`, e nesse caso o editor abre na identidade — que é o que a folha já faz.
 pub(crate) fn arm(state: &mut MotionGraphPanelState, node: u32, p: &CardParam, row: Rect) {
     let Some(kind) = kind_of(p) else { return };
-    if crate::snapshot::card_text_of(node, p.hint.param).is_none() {
+    // O valor de partida tem de existir: o TEXTO (curva, gradiente, paleta) ou a CURVA de easing.
+    let publicado = if kind == EditorKind::Ease {
+        crate::snapshot::card_ease_of(node, p.hint.param).is_some()
+    } else {
+        crate::snapshot::card_text_of(node, p.hint.param).is_some()
+    };
+    if !publicado {
         return;
     }
     state.editor = Some(Open {
@@ -126,7 +137,7 @@ pub(crate) fn arm(state: &mut MotionGraphPanelState, node: u32, p: &CardParam, r
 /// A janela, em ecrã — recortada para caber no canvas. `None` quando nada está aberto.
 pub(crate) fn window(state: &MotionGraphPanelState, canvas: Rect) -> Option<Rect> {
     let open = state.editor.as_ref()?;
-    let w = PANEL_MIN_W_PX * JANELA;
+    let w = largura(open.kind);
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
     let h = 2.0f32.mul_add(
         PANEL_HEAD_PAD_PX * JANELA,
@@ -147,6 +158,18 @@ pub(crate) fn window(state: &MotionGraphPanelState, canvas: Rect) -> Option<Rect
     Some(Rect::new(x, y, w, h))
 }
 
+/// ⭐ A largura da janela. O `Ease` tem DUAS colunas (a grelha das famílias e o gráfico) para caber
+/// nos `205,5 px` de altura que o painel do grafo tem no app — ver `ph2d_param_editors::ease`.
+fn largura(kind: EditorKind) -> f32 {
+    let base = PANEL_MIN_W_PX * JANELA;
+    if kind == EditorKind::Ease {
+        base * LARGURA_EASE
+    } else {
+        base
+    }
+}
+const LARGURA_EASE: f32 = 2.0; // LITERAL-PX-OK: FACTOR adimensional — duas colunas
+
 /// A altura do CONTEÚDO — a folha é quem a sabe, porque é ela que desenha.
 fn content_h(open: &Open, value: &str, w: f32) -> f32 {
     match open.kind {
@@ -155,6 +178,7 @@ fn content_h(open: &Open, value: &str, w: f32) -> f32 {
         // ⚠️ Só a paleta depende do VALOR: a tira dela embrulha, e a caixa cresce com o número
         // de cores.
         EditorKind::Palette => ph2d_param_editors::palette::height(value, w, JANELA),
+        EditorKind::Ease => ph2d_param_editors::ease::height(w, JANELA),
     }
 }
 
@@ -194,6 +218,7 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
     let fonte = ph2d_tokens::TypeToken::Base.px() * JANELA;
     let mut curva = ph2d_param_editors::curve::CurveWidgets::new();
     let mut cor = ph2d_param_editors::gradient::ColourRowWidgets::new();
+    let mut ease = ph2d_param_editors::ease::EaseWidgets::default();
     match open.kind {
         EditorKind::Curve => {
             ph2d_param_editors::curve::paint(
@@ -229,6 +254,25 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
                 &mut cor,
             );
         }
+        EditorKind::Ease => {
+            if let Some(v) = crate::snapshot::card_ease_of(open.node, open.param) {
+                ph2d_param_editors::ease::paint(
+                    open.title,
+                    &atual_de(&v),
+                    key,
+                    x,
+                    w,
+                    y,
+                    fonte,
+                    JANELA,
+                    ctx.host.hit_index_mut(),
+                    ctx.scene,
+                    ctx.text_system,
+                    theme,
+                    &mut ease,
+                );
+            }
+        }
         EditorKind::Palette => {
             ph2d_param_editors::palette::paint(
                 open.title,
@@ -247,7 +291,24 @@ pub(crate) fn paint(state: &MotionGraphPanelState, ctx: &mut PaintCtx, canvas: R
             );
         }
     }
-    register(ctx.host.store_mut(), &curva, &cor);
+    register(ctx.host.store_mut(), &curva, &cor, &ease);
+}
+
+/// A curva aberta, como o editor gráfico a lê.
+fn atual_de(v: &crate::snapshot::EaseView) -> ph2d_param_editors::ease::Atual<'_> {
+    ph2d_param_editors::ease::Atual {
+        curve: v.curve,
+        dir: v.dir,
+        shape: v.shape,
+        custom: (v.curve == ph2d_ease::CUSTOM).then_some(&v.samples[..]),
+    }
+}
+
+/// As escritas do editor de easing saem pela porta dos NÚMEROS, uma por param.
+fn escreve(node: u32, escritas: Vec<(&'static str, f32)>) {
+    for (param, value) in escritas {
+        push_intent(GraphIntent::SetParam { node, param, value });
+    }
 }
 
 /// A fase MUTÁVEL: as alças viram `CurvePoint` (o despacho normaliza o arrasto contra a tela) e
@@ -257,6 +318,7 @@ fn register(
     store: &mut WidgetStore,
     curva: &ph2d_param_editors::curve::CurveWidgets,
     cor: &ph2d_param_editors::gradient::ColourRowWidgets,
+    ease: &ph2d_param_editors::ease::EaseWidgets,
 ) {
     // ⭐⭐ **Uma AMOSTRA de parada abre o selector OKLCH** — e a marca é a mesma que a amostra
     // de uma cor simples do cartão usa. ⚠️ **Ela é semeada com a cor de agora**, senão o
@@ -266,7 +328,12 @@ fn register(
         store.set_widget_color(id, srgb);
         store.register_picker_swatch(id);
     }
-    for &(id, parent, index, canvas) in curva.points.iter().chain(cor.markers.iter()) {
+    for &(id, parent, index, canvas) in curva
+        .points
+        .iter()
+        .chain(cor.markers.iter())
+        .chain(ease.handles.iter())
+    {
         store.register(
             id,
             InteractiveState::CurvePoint {
@@ -277,7 +344,12 @@ fn register(
             },
         );
     }
-    for &id in curva.buttons.iter().chain(cor.buttons.iter()) {
+    for &id in curva
+        .buttons
+        .iter()
+        .chain(cor.buttons.iter())
+        .chain(ease.buttons.iter())
+    {
         store.register(
             id,
             InteractiveState::Button {
@@ -307,13 +379,21 @@ pub(crate) fn on_drag(
     if id != key.root() {
         return false;
     }
+    if open.kind == EditorKind::Ease {
+        if let Some(v) = crate::snapshot::card_ease_of(open.node, open.param)
+            && let Some(w) = ph2d_param_editors::ease::drain_drag(store, key, &atual_de(&v))
+        {
+            escreve(open.node, w);
+        }
+        return true;
+    }
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
     let novo = match open.kind {
         EditorKind::Curve => ph2d_param_editors::curve::drain_drag(store, key, &valor),
         EditorKind::Gradient => ph2d_param_editors::gradient::drain_drag(store, key, &valor),
         // ⛔ Uma paleta não tem POSIÇÕES para arrastar — ela é uma lista ordenada, e as
         // amostras dela abrem o selector. Não há arrasto para drenar.
-        EditorKind::Palette => None,
+        EditorKind::Palette | EditorKind::Ease => None,
     };
     if let Some(novo) = novo {
         push_intent(GraphIntent::SetTextParam {
@@ -335,6 +415,15 @@ pub(crate) fn on_click(state: &MotionGraphPanelState, id: ph2d_a11y::NodeId) -> 
         own: &own,
         swatch: &swatch,
     };
+    if open.kind == EditorKind::Ease {
+        return match ph2d_param_editors::ease::click(key, id) {
+            Some(w) => {
+                escreve(open.node, w);
+                true
+            }
+            None => false,
+        };
+    }
     let valor = crate::snapshot::card_text_of(open.node, open.param).unwrap_or_default();
     // ⚠️ **Os NOMES dos botões são partilhados entre as espécies** (`add`, `remove`, `interp`) —
     // e as leis não: acrescentar uma parada não é acrescentar um ponto. A espécie decide, e é
@@ -373,6 +462,7 @@ pub(crate) fn on_click(state: &MotionGraphPanelState, id: ph2d_a11y::NodeId) -> 
         }
         // ⚠️ A paleta não tem `interp` nem espaço: ela é uma lista de cores, não uma
         // interpolação entre elas.
+        EditorKind::Ease => return false,
         EditorKind::Palette => {
             if id == key.sub("add") {
                 ph2d_param_editors::palette::add_color(&valor)
@@ -394,3 +484,7 @@ pub(crate) fn on_click(state: &MotionGraphPanelState, id: ph2d_a11y::NodeId) -> 
 #[cfg(test)]
 #[path = "param_editor_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "param_editor_ease_tests.rs"]
+mod ease_tests;

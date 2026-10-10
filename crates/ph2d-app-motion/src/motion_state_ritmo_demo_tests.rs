@@ -222,18 +222,13 @@ fn every_row_the_rhythm_tutorial_names_is_on_the_card() {
     let mut m = MotionState::new();
     let [laranja, _] = monta(&mut m.doc, &m.registry).expect("a cena monta");
     let t = laranja.tempo;
+    // ⚠️ Desde o report do dono (09/10) a forma da curva NÃO é linha do cartão: ela arrasta-se no
+    // gráfico do `Ease` (os gates das alças vivem em `ph2d-param-editors::ease`).
     let passos: &[Passo] = &[
-        (&[], &["Delay", "Order", "Ease", "Direction"]),
+        (&[], &["Delay", "Order", "Ease"]),
         (&[("order", 4.0)], &["Origin X", "Origin Y", "Reach"]),
         (&[("order", 3.0)], &["Columns", "From", "Axis"]),
         (&[("order", 2.0)], &["Seed"]),
-        (&[("ease_curve", 12.0)], &["Steps"]),
-        (&[("ease_curve", 11.0)], &["Period"]),
-        (&[("ease_curve", 13.0)], &["Damping"]),
-        (
-            &[("ease_curve", 14.0)],
-            &["Handle 1 X", "Handle 1 Y", "Handle 2 X", "Handle 2 Y"],
-        ),
     ];
     for (estado, pedidas) in passos {
         let mut mm = MotionState::new();
@@ -279,4 +274,48 @@ fn the_rhythm_tutorial_opens_this_scene_and_its_figures_exist() {
     assert_eq!(n, 2, "duas figuras, achei {n}");
     assert!(TUTORIAL.contains("PH2D_GPU_COOK_DEMO=132"));
     assert!(crate::motion_state::demo_router::is_cycle_scene("132"));
+}
+
+/// ⭐⭐ **A ROW `Ease` É UM GRÁFICO, e os números da curva não são rows** (report do dono, 09/10:
+/// *«o ease deveria ser com gráficos como na timeline e não com números»*). A row traz a curva
+/// AMOSTRADA — a mesma que o nó coze — e nenhuma das linhas de forma aparece no cartão, em
+/// nenhuma família.
+#[test]
+fn the_ease_row_is_a_graph_and_its_numbers_are_not_rows() {
+    let mut m = MotionState::new();
+    let [laranja, _] = monta(&mut m.doc, &m.registry).expect("a cena monta");
+    for no in [laranja.tempo, laranja.stagger] {
+        for f in 0..=ph2d_ease::LAST {
+            m.doc.graph.set_param(no, "ease_curve", f as f32);
+            let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+            crate::motion_bridge::params::card::stamp_card_params(
+                &m,
+                ph2d_editor_core::ProjectSettings::default(),
+                &mut snap,
+            );
+            let v = snap.nodes.iter().find(|v| v.id == no.0).expect("o cartao");
+            let ease = v
+                .params
+                .iter()
+                .find(|c| c.hint.param == "ease_curve")
+                .and_then(|c| c.ease)
+                .expect("a row Ease traz a curva");
+            assert_eq!(ease.curve, f);
+            let dir = ease.dir;
+            for (k, s) in ease.samples.iter().enumerate() {
+                let t = k as f32 / (ph2d_panel_motion_graph::EASE_AMOSTRAS - 1) as f32;
+                if f != ph2d_ease::CUSTOM {
+                    let e = ph2d_ease::ease(f, dir, t, &ease.shape);
+                    assert!((s - e).abs() < 1e-6, "familia {f} t {t}: {s} × {e}");
+                }
+            }
+            for c in &v.params {
+                assert!(
+                    !matches!(c.hint.widget, ph2d_node_registry::ParamWidget::EasePart),
+                    "`{}` e' parte da curva e apareceu como row (familia {f})",
+                    c.hint.param
+                );
+            }
+        }
+    }
 }

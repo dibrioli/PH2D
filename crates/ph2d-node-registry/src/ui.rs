@@ -158,6 +158,18 @@ pub enum ParamWidget {
     /// `field.remap` **Curve** contour, and (later) `value.curve` / `force.curve`.
     /// `min/max/step` are inert.
     Curve,
+    /// ⭐ **A CURVA DE EASING, como GRÁFICO** (ciclo 17, doc 126 §6 — report do dono, 09/10:
+    /// *«o ease deveria ser com gráficos como na timeline e não com números»*). O `param` é o
+    /// índice da família (`ease_curve`, `0..=ph2d_ease::LAST`); a row desenha a CURVA escolhida
+    /// (família + direção + forma, amostrada pela shell) e o clique abre o editor com a grelha de
+    /// miniaturas e o gráfico grande onde a forma se arrasta. Os outros números da curva são
+    /// [`Self::EasePart`]. `min/max/step` são os da escada da família.
+    Ease,
+    /// **Um número da curva de easing editado DENTRO do [`Self::Ease`]** (a direção, o
+    /// `overshoot`, o `period`, os `steps`, o `damping`, as alças do `Bezier`): o cartão não lhe
+    /// pinta row — ele arrasta-se no gráfico do editor. Os gates dele continuam a dizer de que
+    /// família ele é.
+    EasePart,
     /// An interactive **gradient editor** — the colour sibling of [`Self::Curve`],
     /// on the SAME text channel: the hint's `param` names a text-param key whose
     /// value is a `ph2d_color::ColorRamp` serialized with `serialize_gradient`

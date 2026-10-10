@@ -63,15 +63,16 @@ pub use geom::{
 /// ⭐ A porta que o censo do catálogo pergunta — ver `paint_capsula::nome_cabe_na_capsula`.
 pub use paint::paint_capsula::nome_cabe_na_capsula;
 pub use snapshot::{
-    CardChoices, CardParam, CardSection, ChoiceTarget, Crumb, GraphBackdropView, GraphEdgeView,
-    GraphIntent, GraphNodeView, GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind,
-    PROBE_SAMPLES, Piscada, PortChoice, PortView, PreviewThumb, ProbeView, RenameTarget, RowText,
-    SUBGRAPH_VIEW_TAG, card_hidden_ports, current_graph_backdrop_selection, current_graph_flash,
-    current_graph_param_scrub, current_graph_selection, drain_intents, is_subgraph_view,
-    library_pick, pending_graph_selection, push_intent, request_graph_selection, set_card_choices,
-    set_card_hidden_ports, set_card_texts, set_current_motion_graph, set_current_node_catalog,
-    set_graph_backdrop_selection, set_graph_flash, set_graph_param_scrub, set_graph_selection,
-    set_node_help, snapshot_from,
+    CardChoices, CardParam, CardSection, ChoiceTarget, Crumb, EASE_AMOSTRAS, EaseView,
+    GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, HiddenPorts,
+    NodeChoice, NodeViewKind, PROBE_SAMPLES, Piscada, PortChoice, PortView, PreviewThumb,
+    ProbeView, RenameTarget, RowText, SUBGRAPH_VIEW_TAG, card_hidden_ports,
+    current_graph_backdrop_selection, current_graph_flash, current_graph_param_scrub,
+    current_graph_selection, drain_intents, is_subgraph_view, library_pick,
+    pending_graph_selection, push_intent, request_graph_selection, set_card_choices,
+    set_card_eases, set_card_hidden_ports, set_card_texts, set_current_motion_graph,
+    set_current_node_catalog, set_graph_backdrop_selection, set_graph_flash, set_graph_param_scrub,
+    set_graph_selection, set_node_help, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 

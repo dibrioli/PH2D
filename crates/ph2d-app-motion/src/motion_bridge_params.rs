@@ -223,9 +223,7 @@ pub fn build_params_snapshot(
     motion: &MotionState,
     project: ph2d_editor_core::ProjectSettings,
 ) -> Option<crate::ParamsSnapshot> {
-    use crate::{
-        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow,
-    };
+    use crate::{AngleRow, ColorRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow};
     use ph2d_node_registry::ParamWidget;
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
@@ -347,15 +345,25 @@ pub fn build_params_snapshot(
                     }));
                     continue;
                 }
-                ParamWidget::Enum { labels } => {
-                    let selected = (value_of(spec.name).round().max(0.0) as usize)
-                        .min(labels.len().max(1) - 1);
-                    rows.push(ParamRow::Enum(EnumRow {
-                        name: spec.name,
-                        label: ph2d_i18n::tr(h.label).to_string(),
-                        selected,
-                        labels,
-                    }));
+                // ⭐ O `Ease` (ciclo 17) é um GRÁFICO no cartão; no painel lateral (que vai sair)
+                // ele lê-se como a lista NOMEADA das famílias — nunca o índice cru.
+                ParamWidget::Ease | ParamWidget::Enum { .. } => {
+                    let labels: &'static [&'static str] = match h.widget {
+                        ParamWidget::Enum { labels } => labels,
+                        _ => &ph2d_ease::CHAVES_FAMILIA,
+                    };
+                    rows.push(enum_row(spec.name, h.label, labels, value_of(spec.name)));
+                    continue;
+                }
+                // A DIREÇÃO da curva lê-se pelos nomes; os outros números da curva são sliders
+                // neste painel (no cartão eles arrastam-se no gráfico do `Ease`).
+                ParamWidget::EasePart if spec.name == ph2d_ease::nomes::DIR => {
+                    rows.push(enum_row(
+                        spec.name,
+                        h.label,
+                        &ph2d_ease::CHAVES_DIRECAO,
+                        value_of(spec.name),
+                    ));
                     continue;
                 }
                 ParamWidget::Angle => {
@@ -532,5 +540,26 @@ pub fn build_params_snapshot(
         modified,
         sections,
         folded_by_default,
+    })
+}
+
+/// Uma row de escolha nomeada do painel lateral.
+fn enum_row(
+    name: &'static str,
+    label: &str,
+    labels: &'static [&'static str],
+    v: f32,
+) -> crate::ParamRow {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "indice de enum"
+    )]
+    let selected = (v.round().max(0.0) as usize).min(labels.len().max(1) - 1);
+    crate::ParamRow::Enum(crate::EnumRow {
+        name,
+        label: ph2d_i18n::tr(label).to_string(),
+        selected,
+        labels,
     })
 }

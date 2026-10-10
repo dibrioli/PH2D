@@ -179,17 +179,13 @@ fn the_panel_offers_the_custom_family_and_hides_the_direction_in_it() {
         .iter()
         .find(|h| h.param == "ease_curve")
         .expect("a linha da ease");
-    let ParamWidget::Enum { labels } = row.widget else {
-        panic!("a ease é um seletor nomeado")
-    };
-    // ⭐ Ciclo 17: a escada cresceu para quinze (a `Custom` FICA no 8 — um documento guarda o
-    // NÚMERO); o selector oferece todas, até à última da casa.
-    assert_eq!(
-        labels.len() as i32 - 1,
-        ph2d_ease::LAST,
-        "uma etiqueta por família"
+    // ⭐ Ciclo 17 (doc 126 §6, report do dono): a ease é um GRÁFICO — a row desenha a curva e o
+    // editor oferece as quinze famílias em miniatura (a `Custom` FICA no 8: um documento guarda
+    // o NÚMERO). O hint vai até à última da casa.
+    assert!(
+        matches!(row.widget, ParamWidget::Ease),
+        "a ease e' o grafico"
     );
-    assert_eq!(ph2d_i18n::tr(labels[ease::EASE_CUSTOM as usize]), "Custom");
     assert!((row.max - ph2d_ease::LAST as f32).abs() < f32::EPSILON);
 
     // A linha da CURVA existe — senão a família nova nasce sem como ser desenhada.

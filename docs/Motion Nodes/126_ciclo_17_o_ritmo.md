@@ -219,3 +219,44 @@ caíram no intervalo sem onda — *uma foto num instante prova o instante*. O PD
 `tutoriais/10_o_ritmo.pdf` (fonte `src/10_o_ritmo.html`, figuras recortadas das fotos do app). Gates:
 cada linha que o texto manda mexer está no cartão `Time` NO ESTADO em que o passo a pede
 (`every_row_the_rhythm_tutorial_names_is_on_the_card`), as figuras existem e o texto abre a `=132`.
+
+## §6 — O report do dono: o `Ease` como GRÁFICO (09/10)
+
+> *«Smoke OK, mas o easy deveria ser com gráficos como na time line e não com números»*.
+
+**O que estava:** a linha `Ease` era um seletor de NOMES (clique = ciclo de 15 palavras) e a forma
+da curva vivia em nove linhas numéricas (`Direction`, `Overshoot`, `Period`, `Steps`, `Damping`,
+`Handle 1/2 X/Y`). Medido antes de desenhar: a timeline também não tem miniaturas (os presets são um
+menu de texto); o GRÁFICO dela é o editor de curvas com alças (`ph2d-panel-timeline/src/graph.rs`),
+preso ao `TrackView` — não reutilizável. O cartão não desenhava curva nenhuma (o `Curve` abre uma
+janela flutuante).
+
+**O desenho:**
+- dois widgets novos no registo: `ParamWidget::Ease` (a linha da família) e `ParamWidget::EasePart`
+  (um número da curva editado DENTRO do `Ease` — sem linha no cartão; os gates dele continuam a dizer
+  de que família ele é, por isso o censo de alcance continua verdadeiro);
+- a linha `Ease` DESENHA a curva (25 amostras da família + direção + forma, a `Custom` incluída),
+  calculadas pela shell (`ease_view`) e levadas no `CardParam::ease` — o painel só pinta;
+- o clique abre o editor flutuante `ph2d-param-editors::ease`: à esquerda as 15 famílias em
+  miniatura (com a direção e a forma de agora), à direita as 3 direções e o gráfico da curva com as
+  ALÇAS — `Bezier` as duas alças (como na timeline), `Back`/`Spring` o pico que passa do fim (para
+  cima e para baixo), `Elastic` o lugar do tremor e `Steps` a largura do degrau (para os lados);
+- o editor escreve NÚMEROS (`GraphIntent::SetParam`, um por param, pelos nomes de
+  `ph2d_ease::nomes`), ao contrário das outras janelas, que escrevem texto. A vista da curva chega-lhe
+  pelo canal `set_card_eases` (o irmão do `set_card_texts`).
+
+⚠️ **A medida que mudou o desenho:** o painel do grafo tem `205,5 px` de altura no app; a 1.ª
+redacção empilhava grelha, direções e gráfico em `~400 px` e o gráfico ficava fora do painel. ⇒ duas
+colunas numa janela de largura dupla; o gate pinta o painel com o retângulo medido e exige que cada
+miniatura e cada alça caiam dentro dele.
+
+**Gates:** ida e volta de cada alça (arrastar a alça para onde ela está devolve a forma —
+`dragging_a_handle_onto_itself_gives_back_its_shape`, nas 3 direções); só as famílias com forma
+têm alça; a miniatura escreve a família como número; a alça do `Bezier` chega ao nó pelo
+`apply_event` REAL; a janela pinta tudo DENTRO do painel medido; a row `Ease` traz a curva que o nó
+coze (`< 1e-6` nas 15 famílias, nos dois nós) e nenhuma `EasePart` vira row. O painel lateral (que
+vai sair) lê o `Ease` e a direção como listas NOMEADAS (`ph2d_ease::CHAVES_FAMILIA`/`CHAVES_DIRECAO`,
+a mesma tabela das miniaturas).
+
+⏳ **Sem foto do editor aberto:** a ferramenta de fotos não clica (o XTest é ignorado na sessão
+virtual), e abrir um cartão pede um clique — o smoke do dono é a primeira vez que o editor é visto.

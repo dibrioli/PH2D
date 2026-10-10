@@ -77,6 +77,9 @@ pub(crate) enum Shown {
     /// Um EDITOR RICO (curva, gradiente, paleta, texto, ficheiro, fonte). O cartão diz que o
     /// controlo existe; abri-lo é obra do passo seguinte do ciclo 1. ⛔ **Não inventa valor.**
     Editor,
+    /// ⭐ Uma CURVA DE EASING: o gráfico dela, nunca um nome nem um número (report do dono,
+    /// 09/10 — *«com gráficos como na timeline»*).
+    Graph([f32; crate::snapshot::EASE_AMOSTRAS]),
 }
 
 pub(crate) fn shown(p: &CardParam) -> Shown {
@@ -135,6 +138,10 @@ pub(crate) fn shown(p: &CardParam) -> Shown {
         // [`Shown::Editor`] diz de si — *«o cartão diz que o controlo existe … não inventa
         // valor»* —, e mostrar ali o nome escolhido duplicaria a row `Shape`, que já o mostra.
         ParamWidget::PickSelection => Shown::Editor,
+        // Sem curva publicada (uma sonda sem shell) a row diz que há um editor, não uma curva
+        // errada. ⚠️ Um `EasePart` não chega aqui na shell (ela não lhe pinta row).
+        ParamWidget::Ease => p.ease.map_or(Shown::Editor, |e| Shown::Graph(e.samples)),
+        ParamWidget::EasePart => Shown::Editor,
         ParamWidget::Channels { .. }
         | ParamWidget::Source
         | ParamWidget::Text
@@ -370,6 +377,17 @@ pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
                 );
                 vw
             }
+            Shown::Graph(amostras) => {
+                let gw = track.h * GRAFICO_ASPECTO;
+                let caixa = Rect::new(
+                    track.x + track.w - TEXT_PAD_X * z - gw,
+                    track.y + SWATCH_INSET * z,
+                    gw,
+                    track.h - 2.0 * SWATCH_INSET * z,
+                );
+                draw_ease_graph(ctx, caixa, amostras, theme);
+                gw
+            }
             Shown::Editor => 0.0,
         };
         // E o rótulo, elidido no espaço que SOBRA — quando os dois disputam o pixel, quem
@@ -388,4 +406,51 @@ pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
             resolve(label_tone, theme),
         );
     }
+}
+
+/// Quantas alturas de row o gráfico de easing ocupa na horizontal.
+const GRAFICO_ASPECTO: f32 = 2.6; // LITERAL-PX-OK: PROPORÇÃO adimensional do gráfico, não medida
+/// A faixa vertical do gráfico: a curva sai de `0..1` (o `Back`, o `Elastic`, a mola), e o
+/// gráfico guarda folga para a ultrapassagem.
+const GRAFICO_Y: (f32, f32) = (-0.35, 1.35);
+const GRAFICO_GRADE_W: f32 = 1.0; // LITERAL-PX-OK: traco das linhas do 0 e do 1
+const GRAFICO_CURVA_W: f32 = 1.5; // LITERAL-PX-OK: traco da curva
+
+/// ⭐ **O gráfico da curva de easing** dentro da row — a linha de `0` e de `1` discretas e a
+/// curva no acento, como o gráfico da timeline.
+fn draw_ease_graph(
+    ctx: &mut PaintCtx,
+    caixa: Rect,
+    amostras: &[f32; crate::snapshot::EASE_AMOSTRAS],
+    theme: Theme,
+) {
+    let (lo, hi) = GRAFICO_Y;
+    let y_de = |v: f32| caixa.y + caixa.h * (1.0 - ((v - lo) / (hi - lo)).clamp(0.0, 1.0));
+    let grade = resolve(ColorToken::GridLine, theme);
+    for nivel in [0.0, 1.0] {
+        let y = y_de(nivel);
+        ph2d_editor_core::paint::stroke_polyline(
+            ctx.scene,
+            &[(caixa.x, y), (caixa.x + caixa.w, y)],
+            GRAFICO_GRADE_W,
+            grade,
+        );
+    }
+    #[expect(clippy::cast_precision_loss, reason = "25 amostras")]
+    let ultimo = (crate::snapshot::EASE_AMOSTRAS - 1) as f32;
+    let linha: Vec<(f32, f32)> = amostras
+        .iter()
+        .enumerate()
+        .map(|(k, &v)| {
+            #[expect(clippy::cast_precision_loss, reason = "25 amostras")]
+            let t = k as f32 / ultimo;
+            (caixa.x + t * caixa.w, y_de(v))
+        })
+        .collect();
+    ph2d_editor_core::paint::stroke_polyline(
+        ctx.scene,
+        &linha,
+        GRAFICO_CURVA_W,
+        resolve(ColorToken::Accent, theme),
+    );
 }

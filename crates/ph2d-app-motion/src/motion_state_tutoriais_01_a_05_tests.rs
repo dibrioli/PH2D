@@ -176,6 +176,13 @@ fn opcoes(m: &MotionState, tipo: &str, param: &str) -> Vec<&'static str> {
             ph2d_node_registry::ParamWidget::Enum { labels } => {
                 Some(labels.iter().map(|l| ph2d_i18n::tr(l)).collect())
             }
+            // ⭐ O `Ease` (ciclo 17): as miniaturas do editor gráfico, uma por família.
+            ph2d_node_registry::ParamWidget::Ease => Some(
+                ph2d_ease::CHAVES_FAMILIA
+                    .iter()
+                    .map(|l| ph2d_i18n::tr(l))
+                    .collect(),
+            ),
             _ => None,
         })
         .unwrap_or_default()

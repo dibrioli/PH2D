@@ -188,6 +188,8 @@ pub fn unit_of(widget: ParamWidget, declared: Option<ParamUnit>) -> ParamUnit {
         | ParamWidget::PickSelection
         | ParamWidget::Text
         | ParamWidget::Curve
+        | ParamWidget::Ease
+        | ParamWidget::EasePart
         | ParamWidget::Gradient
         | ParamWidget::Palette
         | ParamWidget::File { .. } => ParamUnit::None,

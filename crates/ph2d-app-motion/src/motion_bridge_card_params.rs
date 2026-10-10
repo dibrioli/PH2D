@@ -68,6 +68,69 @@ fn publish_card_texts(motion: &MotionState, snap: &ph2d_panel_motion_graph::Grap
     ph2d_panel_motion_graph::set_card_texts(fora);
 }
 
+/// ⭐ **A CURVA DE EASING de um nó, como o cartão e o editor a leem** (ciclo 17, doc 126 §6): a
+/// família, a direção e a forma pelos nomes da casa ([`ph2d_ease::nomes`]), e a curva AMOSTRADA —
+/// a `Custom` pela curva desenhada (o text param `curve`), que só aqui se lê.
+pub(crate) fn ease_view(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+) -> ph2d_panel_motion_graph::EaseView {
+    use ph2d_ease::nomes;
+    let v = |n: &str| param_value(motion, nid, n);
+    #[expect(clippy::cast_possible_truncation, reason = "indices de enum")]
+    let (curve, dir) = (v(nomes::CURVE).round() as i32, v(nomes::DIR).round() as i32);
+    let shape = ph2d_ease::Shape {
+        overshoot: v(nomes::OVERSHOOT),
+        period: v(nomes::PERIOD),
+        steps: v(nomes::STEPS),
+        damping: v(nomes::DAMPING),
+        bezier: nomes::BEZIER.map(v),
+    };
+    let desenhada = (curve == ph2d_ease::CUSTOM)
+        .then(|| {
+            motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get("curve"))
+                .and_then(|t| ph2d_curve::parse(t))
+        })
+        .flatten();
+    let mut samples = [0.0_f32; ph2d_panel_motion_graph::EASE_AMOSTRAS];
+    for (k, s) in samples.iter_mut().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "25 amostras")]
+        let t = k as f32 / (ph2d_panel_motion_graph::EASE_AMOSTRAS - 1) as f32;
+        *s = match (curve == ph2d_ease::CUSTOM, &desenhada) {
+            (true, Some(c)) => c.eval(t),
+            (true, None) => t,
+            _ => ph2d_ease::ease(curve, dir, t, &shape),
+        };
+    }
+    ph2d_panel_motion_graph::EaseView {
+        curve,
+        dir,
+        shape,
+        samples,
+    }
+}
+
+/// Publica a curva de cada row `Ease` dos cartões — o editor gráfico lê-a ao abrir e ao arrastar.
+fn publish_card_eases(motion: &MotionState, snap: &ph2d_panel_motion_graph::GraphViewSnapshot) {
+    let mut fora = Vec::new();
+    for node in &snap.nodes {
+        let nid = ph2d_nodegraph::graph::NodeId(node.id);
+        let Some(type_id) = motion.doc.graph.node(nid).map(|i| i.type_id()) else {
+            continue;
+        };
+        for h in motion.registry.param_ui(type_id).unwrap_or(&[]) {
+            if matches!(h.widget, ph2d_node_registry::ParamWidget::Ease) {
+                fora.push((node.id, h.param, ease_view(motion, nid)));
+            }
+        }
+    }
+    ph2d_panel_motion_graph::set_card_eases(fora);
+}
+
 pub fn stamp_card_params(
     motion: &MotionState,
     project: ph2d_editor_core::ProjectSettings,
@@ -127,7 +190,10 @@ pub fn stamp_card_params(
         let dobradas = motion.registry.param_groups_folded(type_id);
         let mut linhas: Vec<(Option<&'static str>, ph2d_panel_motion_graph::CardParam)> = hints
             .iter()
-            .filter(|h| shown(h.param))
+            // ⭐ Um `EasePart` não tem row: ele arrasta-se dentro do gráfico do `Ease` (ciclo 17).
+            .filter(|h| {
+                shown(h.param) && !matches!(h.widget, ph2d_node_registry::ParamWidget::EasePart)
+            })
             .map(|h| {
                 // ⭐⭐ **A FACE do artista** — a MESMA de `build_params_snapshot`: um comprimento
                 // do mundo guarda-se em metros e mostra-se em px. Sem ela o cartão leria `0.94`
@@ -232,6 +298,8 @@ pub fn stamp_card_params(
                         _ => None,
                     },
                     text: card_text(motion, nid, h),
+                    ease: matches!(h.widget, ph2d_node_registry::ParamWidget::Ease)
+                        .then(|| ease_view(motion, nid)),
                 }
             })
             .map(|c| (motion.registry.param_group(type_id, c.hint.param), c))
@@ -290,6 +358,7 @@ pub fn stamp_card_params(
     }
     // ⭐ E o texto INTEIRO ao lado, para a caixa de edição do cartão nunca abrir com o truncado.
     publish_card_texts(motion, snap);
+    publish_card_eases(motion, snap);
     // ⭐ E as OPÇÕES de cada selector, para as setas e a lista do dropdown (report 07/09).
     super::choices::publish_card_choices(motion, snap);
 }

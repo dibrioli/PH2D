@@ -162,25 +162,8 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         // estavam — um documento autorado guarda o NÚMERO, não o nome.
         max: 14.0,
         step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &[
-                "node.motion.stagger.param.ease_curve.0",
-                "node.motion.stagger.param.ease_curve.1",
-                "node.motion.stagger.param.ease_curve.2",
-                "node.motion.stagger.param.ease_curve.3",
-                "node.motion.stagger.param.ease_curve.4",
-                "node.motion.stagger.param.ease_curve.5",
-                "node.motion.stagger.param.ease_curve.6",
-                "node.motion.stagger.param.ease_curve.7",
-                "node.motion.stagger.param.ease_curve.8",
-                "node.motion.stagger.param.ease_curve.9",
-                "node.motion.stagger.param.ease_curve.10",
-                "node.motion.stagger.param.ease_curve.11",
-                "node.motion.stagger.param.ease_curve.12",
-                "node.motion.stagger.param.ease_curve.13",
-                "node.motion.stagger.param.ease_curve.14",
-            ],
-        },
+        // ⭐ O GRÁFICO da curva (ciclo 17, doc 126 §6 — «com gráficos como na timeline»).
+        widget: ParamWidget::Ease,
     },
     // A FORMA da ease `Custom` — um TEXT param (`CURVE_KEY`), não um `ParamSpec`.
     // Não-setada = `t`, ou seja o `Linear`. Ver `ease::EASE_CUSTOM`.
@@ -198,13 +181,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &[
-                "node.motion.stagger.param.ease_dir.0",
-                "node.motion.stagger.param.ease_dir.1",
-                "node.motion.stagger.param.ease_dir.2",
-            ],
-        },
+        widget: ParamWidget::EasePart,
     },
     // ⚠️ **A faixa é um ciclo INTEIRO** (`0..1`): a rampa fecha em si mesma, e um
     // deslize de `1` é o mesmo que nenhum. Um teto maior seria uma volta a mais
@@ -258,7 +235,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 5.0,
         step: 0.05,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "period",
@@ -266,7 +243,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.05,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "steps",
@@ -274,7 +251,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 1.0,
         max: 64.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "damping",
@@ -282,7 +259,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.05,
         max: 2.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_x1",
@@ -290,7 +267,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_y1",
@@ -298,7 +275,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 2.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_x2",
@@ -306,7 +283,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "bez_y2",
@@ -314,7 +291,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 2.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::EasePart,
     },
     ParamUiHint {
         param: "grid_cols",

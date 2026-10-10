@@ -55,6 +55,48 @@ pub const USES_DIRECTION: &[i32] = &[
     QUAD, CUBIC, QUART, QUINT, CIRC, BACK, BOUNCE, SINE, EXPO, ELASTIC, STEPS,
 ];
 
+/// **Os nomes dos params de uma curva de easing num nó** — os mesmos em todo nó que a usa
+/// (`motion.stagger`, `value.time`), para o editor gráfico ler e escrever pela mesma lista.
+pub mod nomes {
+    /// A família (`0..=LAST`).
+    pub const CURVE: &str = "ease_curve";
+    /// A direção (`0` In · `1` Out · `2` In-Out).
+    pub const DIR: &str = "ease_dir";
+    pub const OVERSHOOT: &str = "overshoot";
+    pub const PERIOD: &str = "period";
+    pub const STEPS: &str = "steps";
+    pub const DAMPING: &str = "damping";
+    /// As alças do `Bezier`, `[x1, y1, x2, y2]`.
+    pub const BEZIER: [&str; 4] = ["bez_x1", "bez_y1", "bez_x2", "bez_y2"];
+}
+
+/// **As chaves de i18n dos nomes das famílias**, pela ordem da escada — quem as traduz é quem
+/// pinta (esta folha não depende da tabela de textos).
+pub const CHAVES_FAMILIA: [&str; 15] = [
+    "anim.easing.family.linear",
+    "anim.easing.family.quad",
+    "anim.easing.family.cubic",
+    "anim.easing.family.quart",
+    "anim.easing.family.quint",
+    "anim.easing.family.circ",
+    "anim.easing.family.back",
+    "anim.easing.family.bounce",
+    "editor.ease.family.custom",
+    "anim.easing.family.sine",
+    "anim.easing.family.expo",
+    "anim.easing.family.elastic",
+    "editor.ease.family.steps",
+    "editor.ease.family.spring",
+    "editor.ease.family.bezier",
+];
+
+/// As chaves dos nomes das três direções (`0` In · `1` Out · `2` In-Out).
+pub const CHAVES_DIRECAO: [&str; 3] = [
+    "anim.easing.mode.in",
+    "anim.easing.mode.out",
+    "anim.easing.mode.in_out",
+];
+
 /// Os números de forma que algumas famílias leem. Os defaults são os das referências.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shape {

@@ -28,6 +28,7 @@ ph2d-curve = { path = "../ph2d-curve" }
 # Idem: os gates leem a rampa e a paleta de volta.
 ph2d-color = { path = "../ph2d-color" }
 ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-ease = { path = "../ph2d-ease" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # `PointerButton` — the add-node menu opens on a right-click (Secondary) on empty
 # canvas, so the gesture interpreter distinguishes the button (M1.E7).

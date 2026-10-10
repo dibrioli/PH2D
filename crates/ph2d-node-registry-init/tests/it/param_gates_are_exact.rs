@@ -130,9 +130,18 @@ fn every_enum_gate_covers_exactly_the_modes_where_the_knob_acts() {
             "`{node}::{param}`: o gate decide pelo eixo errado"
         );
 
-        let n_modes = match hint_of(&reg, m, when).widget {
+        let h = hint_of(&reg, m, when);
+        let n_modes = match h.widget {
             ParamWidget::Enum { labels } => labels.len(),
             ParamWidget::Toggle => 2,
+            // ⭐ O `Ease` (ciclo 17) é um seletor de FAMÍLIAS desenhado como gráfico: os modos
+            // são os índices `0..=max` do hint.
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "indice"
+            )]
+            ParamWidget::Ease => h.max as usize + 1,
             w => panic!("`{node}::{when}` devia ser um seletor, e' {w:?}"),
         };
 

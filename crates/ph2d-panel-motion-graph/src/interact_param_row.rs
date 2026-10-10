@@ -334,8 +334,11 @@ pub fn click_does(p: &crate::CardParam) -> ClickDoes {
         // ⚠️ **As três espécies com a MESMA resposta**, e é o que a janela flutuante comprou:
         // a curva, o gradiente e a paleta são superfícies de desenho, não cliques.
         ph2d_node_registry::ParamWidget::Curve
+        | ph2d_node_registry::ParamWidget::Ease
         | ph2d_node_registry::ParamWidget::Gradient
         | ph2d_node_registry::ParamWidget::Palette => ClickDoes::OpensEditor,
+        // ⚠️ Um `EasePart` não tem row no cartão — ele arrasta-se DENTRO do editor do `Ease`.
+        ph2d_node_registry::ParamWidget::EasePart => ClickDoes::Nothing,
         // ⭐ Uma row que é um VERBO: o clique pede à shell que ligue o que está seleccionado.
         ph2d_node_registry::ParamWidget::PickSelection => ClickDoes::PickSelection,
         // ⛔⛔ **AQUI HAVIA UM `_ => ClickDoes::Nothing`, e ele fabricava controlos MORTOS.**

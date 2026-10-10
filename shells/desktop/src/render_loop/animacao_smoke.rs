@@ -64,16 +64,22 @@ impl crate::App {
             .id()
             .to_bits();
         if nivel == "4" {
-            world.entity_mut(heroi).insert(ph2d_ecs::SignalActions(vec![ph2d_ecs::SignalAction {
-                on: "pulo".into(),
-                verb: ph2d_ecs::SignalVerb::PlayClip,
-                arg: "pular".into(),
-                ..Default::default()
-            }]));
+            world
+                .entity_mut(heroi)
+                .insert(ph2d_ecs::SignalActions(vec![ph2d_ecs::SignalAction {
+                    on: "pulo".into(),
+                    verb: ph2d_ecs::SignalVerb::PlayClip,
+                    arg: "pular".into(),
+                    ..Default::default()
+                }]));
             let mut torta = Transform::from_translation(Vec2::new(0.5, -2.0));
             torta.skew_x = 0.5;
             torta.rotation = 0.3;
-            world.spawn((torta, sprite(2.0, 1.0, [0.2, 0.7, 0.4, 1.0]), Name::new("Bandeira")));
+            world.spawn((
+                torta,
+                sprite(2.0, 1.0, [0.2, 0.7, 0.4, 1.0]),
+                Name::new("Bandeira"),
+            ));
         }
         let heroi = heroi.to_bits();
 

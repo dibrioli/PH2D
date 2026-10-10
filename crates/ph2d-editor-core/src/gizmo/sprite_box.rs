@@ -7,9 +7,7 @@
 //! (doc ObjectsAndComponents 01 §15, onda 5 item a).
 
 use super::model::{MODEL_IDENTITY, model_apply, model_inverse, skew_about};
-use super::{
-    GizmoCamera, GizmoDragKind, GizmoDragState, GizmoTarget, GizmoView, compose_snapshot,
-};
+use super::{GizmoCamera, GizmoDragKind, GizmoDragState, GizmoTarget, GizmoView, compose_snapshot};
 
 /// A geometria de uma caixa de sprite — os campos de mundo da [`GizmoView`].
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -76,7 +74,9 @@ pub fn drag_skew_model(drag: &GizmoDragState, skew: [f32; 2]) -> [f32; 6] {
     );
     let pede = matches!(
         drag.kind,
-        GizmoDragKind::ScaleCorner { .. } | GizmoDragKind::ScaleEdge { .. } | GizmoDragKind::MovePivot
+        GizmoDragKind::ScaleCorner { .. }
+            | GizmoDragKind::ScaleEdge { .. }
+            | GizmoDragKind::MovePivot
     );
     if !(individual && pede) {
         return MODEL_IDENTITY;
@@ -121,7 +121,10 @@ impl GizmoView {
         let mut max = [f32::NEG_INFINITY; 2];
         for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
             let (lx, ly) = (sx * h[0], sy * h[1]);
-            let w = model_apply(&self.model, [c[0] + lx * co - ly * s, c[1] + lx * s + ly * co]);
+            let w = model_apply(
+                &self.model,
+                [c[0] + lx * co - ly * s, c[1] + lx * s + ly * co],
+            );
             for k in 0..2 {
                 min[k] = min[k].min(w[k]);
                 max[k] = max[k].max(w[k]);

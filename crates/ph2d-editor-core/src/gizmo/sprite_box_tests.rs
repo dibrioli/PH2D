@@ -5,8 +5,8 @@
 use super::super::camera::world_to_screen_px;
 use super::super::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget,
-    TransformSnapshot, anchor_pivot_world, compose_snapshot, compute_gizmo_transform,
-    model_apply, skew_translation_out,
+    TransformSnapshot, anchor_pivot_world, compose_snapshot, compute_gizmo_transform, model_apply,
+    skew_translation_out,
 };
 use super::*;
 use ph2d_ecs::{GlobalTransform, Transform};
@@ -48,8 +48,9 @@ fn cantos_da_caixa(b: &SpriteBox) -> [[f32; 2]; 4] {
 }
 
 fn cantos_desenhados(a: &[f32; 6], anchor: [f32; 2], half: [f32; 2]) -> [[f32; 2]; 4] {
-    [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)]
-        .map(|(sx, sy): (f32, f32)| desenhado(a, [anchor[0] + sx * half[0], anchor[1] + sy * half[1]]))
+    [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)].map(|(sx, sy): (f32, f32)| {
+        desenhado(a, [anchor[0] + sx * half[0], anchor[1] + sy * half[1]])
+    })
 }
 
 fn perto(a: [f32; 2], b: [f32; 2], tol: f32) -> bool {
@@ -68,7 +69,10 @@ fn a_non_uniform_parent_does_not_shear_a_rotated_child() {
     assert!(dot.abs() < 1e-5, "o motor desenha um retângulo: {dot}");
     let b = sprite_box(a, [0.0, 0.0], [0.0, 0.0], [1.0, 0.5]);
     assert_eq!(b.model, MODEL_IDENTITY);
-    for (g, d) in cantos_da_caixa(&b).iter().zip(cantos_desenhados(&a, [0.0, 0.0], [1.0, 0.5])) {
+    for (g, d) in cantos_da_caixa(&b)
+        .iter()
+        .zip(cantos_desenhados(&a, [0.0, 0.0], [1.0, 0.5]))
+    {
         assert!(perto(*g, d, 1e-4), "caixa {g:?} ≠ desenho {d:?}");
     }
     // Controlo: o produto exacto pai·filho NÃO é perpendicular — a lei é do motor, não da álgebra.
@@ -107,7 +111,8 @@ fn a_skewed_sprite_box_is_the_drawn_parallelogram() {
 /// Sem skew: `model` identidade e a mesma conta de antes, bit a bit.
 #[test]
 fn without_skew_the_box_is_the_old_one_bit_for_bit() {
-    let a = GlobalTransform::from_transform(pose([2.0, 1.0], 25.0, [1.5, 0.8], [0.0, 0.0])).affine();
+    let a =
+        GlobalTransform::from_transform(pose([2.0, 1.0], 25.0, [1.5, 0.8], [0.0, 0.0])).affine();
     let b = sprite_box(a, [0.0, 0.0], [0.2, -0.1], [1.0, 0.5]);
     let (sx, sy) = (
         (a[0] * a[0] + a[1] * a[1]).sqrt(),
@@ -132,7 +137,10 @@ fn a_corner_drag_on_a_skewed_sprite_pins_the_drawn_opposite_corner() {
     let half = [1.0_f32, 0.5];
     let a0 = GlobalTransform::from_transform(start).affine();
     let [o, _, _, canto] = cantos_desenhados(&a0, [0.0, 0.0], half);
-    let alvo = [o[0] + 1.3 * (canto[0] - o[0]), o[1] + 1.3 * (canto[1] - o[1])];
+    let alvo = [
+        o[0] + 1.3 * (canto[0] - o[0]),
+        o[1] + 1.3 * (canto[1] - o[1]),
+    ];
     let cam = GizmoCamera {
         center: [2.0, 1.0],
         height_world: 12.0,
@@ -159,7 +167,13 @@ fn a_corner_drag_on_a_skewed_sprite_pins_the_drawn_opposite_corner() {
         start_screen: ecra(canto),
         cursor_screen: ecra(alvo),
         start_transform: snap,
-        pivot_world: anchor_pivot_world(kind, [0.0, 0.0], half, compose_snapshot(parent, snap), false),
+        pivot_world: anchor_pivot_world(
+            kind,
+            [0.0, 0.0],
+            half,
+            compose_snapshot(parent, snap),
+            false,
+        ),
         start_cursor_world: canto,
         sprite_half_intrinsic: half,
         anchor_is_center: false,
@@ -179,13 +193,26 @@ fn a_corner_drag_on_a_skewed_sprite_pins_the_drawn_opposite_corner() {
         let p = pose(tr, t.rotation.to_degrees(), t.scale, skew);
         let mut p = p;
         p.rotation = t.rotation;
-        cantos_desenhados(&GlobalTransform::from_transform(p).affine(), [0.0, 0.0], half)
+        cantos_desenhados(
+            &GlobalTransform::from_transform(p).affine(),
+            [0.0, 0.0],
+            half,
+        )
     };
     let [o1, _, _, c1] = desenha(skew_translation_out(&m, parent, t.translation));
-    assert!(perto(o1, o, 1e-3), "o canto oposto pintado andou: {o1:?} ≠ {o:?}");
-    assert!(perto(c1, alvo, 1e-3), "o canto arrastado não foi ao cursor: {c1:?} ≠ {alvo:?}");
+    assert!(
+        perto(o1, o, 1e-3),
+        "o canto oposto pintado andou: {o1:?} ≠ {o:?}"
+    );
+    assert!(
+        perto(c1, alvo, 1e-3),
+        "o canto arrastado não foi ao cursor: {c1:?} ≠ {alvo:?}"
+    );
     let [o_sem, _, _, _] = desenha(t.translation);
-    assert!(!perto(o_sem, o, 1e-2), "sem a volta pela afim o canto anda — senão nada é medido");
+    assert!(
+        !perto(o_sem, o, 1e-2),
+        "sem a volta pela afim o canto anda — senão nada é medido"
+    );
 }
 
 /// Transladar, rodar e o gizmo GLOBAL não pedem `model`: são rígidos sobre o desenho.

@@ -364,8 +364,11 @@ impl crate::App {
                         ]
                     })
                     .unwrap_or([0.0, 0.0]);
-                let cands =
-                    ph2d_editor_core::pivot_snap_candidates(drag.pivot_world, mundo.rotation, half_world);
+                let cands = ph2d_editor_core::pivot_snap_candidates(
+                    drag.pivot_world,
+                    mundo.rotation,
+                    half_world,
+                );
                 // Snap when within ~14 px of a candidate, converted
                 // to world units at the current zoom.
                 let thresh = 14.0 * gfx.camera.height_world / window_size.height as f32;
@@ -388,8 +391,9 @@ impl crate::App {
             } else {
                 raw_world
             };
-            let target = ph2d_editor_core::gizmo::model_inverse(&skew_m)
-                .map_or(target, |inv| ph2d_editor_core::gizmo::model_apply(&inv, target));
+            let target = ph2d_editor_core::gizmo::model_inverse(&skew_m).map_or(target, |inv| {
+                ph2d_editor_core::gizmo::model_apply(&inv, target)
+            });
             let (new_translation, new_anchor) = ph2d_editor_core::move_pivot_transform(
                 drag.start_transform,
                 drag.pivot_world,

@@ -105,9 +105,17 @@ fn a_skewed_sprite_gizmo_is_the_drawn_parallelogram() {
     let t = pose([2.0, 1.0], [0.35, -0.2]);
     let (sim, mut present, es) = cena(&[t]);
     let hero = passe(&sim, &mut present, &es);
-    let v = hero.gizmo.view.expect("a sprite seleccionada publica caixa");
+    let v = hero
+        .gizmo
+        .view
+        .expect("a sprite seleccionada publica caixa");
     assert_ne!(v.model, MODEL_IDENTITY, "o skew vai no model");
-    assert!(iguais(da_caixa(&v), desenhados(t)), "{:?} ≠ {:?}", da_caixa(&v), desenhados(t));
+    assert!(
+        iguais(da_caixa(&v), desenhados(t)),
+        "{:?} ≠ {:?}",
+        da_caixa(&v),
+        desenhados(t)
+    );
 }
 
 /// Controlo: sem skew a fixtura dá a caixa de sempre — prova que a meia-extensão `(1, 0.5)` é a que

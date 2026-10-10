@@ -137,7 +137,8 @@ sorriso por baixo da linha é um arco de três nós; o gelado continua livre (sm
 simétricos). [`f7c_02`](../vetor_nova_ui/fotos/f7c_02_cena12_o_gancho_assimetrico_vira_biarco.png) — o
 gancho do dono, em cima, é um biarco de cinco nós; o sorriso continua círculo.
 
-**Smoke do dono (10/10, 2.ª volta): OK** — *«Muito bom. Smoke OK.»* Integração ainda NÃO (ordem do dono).
+**Smoke do dono (10/10, 2.ª volta): OK** — *«Muito bom. Smoke OK.»* Integração ainda NÃO (ordem do dono). Próxima janela (escolha do dono): **F7d — setas**, prompt
+[`08_prompt_F7d_setas.md`](../vetor_nova_ui/08_prompt_F7d_setas.md).
 
 ## §7 — O que fica ABERTO
 

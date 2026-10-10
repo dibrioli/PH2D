@@ -84,6 +84,18 @@ pub(crate) fn pick_objects_at(
     flip_entities: &ph2d_flip_entities::entities::FlipEntityMap,
     pointer: (f32, f32),
 ) -> Vec<u64> {
+    // ⭐ **O ícone da LÂMPADA ganha o clique** (smoke do dono, 10/10): pequeno e por cima da arte —
+    // quem clica nele quer a luz. A área é a mesma conta do desenho (`gizmo::glifos`).
+    let luzes = ph2d_app_light2d::gizmo::pick_at(
+        w.sim.world(),
+        pointer,
+        w.pixels_per_meter,
+        w.camera,
+        w.window_size,
+    );
+    if !luzes.is_empty() {
+        return luzes;
+    }
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
@@ -281,3 +293,7 @@ pub(crate) fn hover_outline_world(
 #[cfg(test)]
 #[path = "hover_highlight_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "hover_highlight_luz_tests.rs"]
+mod luz_tests;

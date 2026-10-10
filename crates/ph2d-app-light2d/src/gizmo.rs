@@ -84,23 +84,22 @@ pub fn glifo(
     }
 }
 
-/// **Desenha o gizmo de toda `Luz` visível**. `pixels_per_meter` é o do PROJETO (o anel do objeto
-/// vazio mede `EMPTY_HALF_PX` px de arte); `selecionada` é o objeto ativo.
-pub fn desenhar(
+/// ⭐ **O glifo de toda `Luz` visível, na tela** — a ÚNICA conta do gizmo: o desenho ([`desenhar`]) e o
+/// clique ([`pick_at`]) leem-na, para o que se vê ser o que se pega. `pixels_per_meter` é o do
+/// PROJETO (o anel do objeto vazio mede `EMPTY_HALF_PX` px de arte).
+#[must_use]
+pub fn glifos(
     world: &World,
     selecionada: Option<u64>,
     pixels_per_meter: f32,
-    theme: Theme,
     camera: &Camera2d,
     window: ph2d_host::WindowSize,
-    cena: &mut VectorScene,
-) {
+) -> Vec<(Entity, Glifo, f32)> {
     let Some(mut q) = world.try_query::<(Entity, &Luz)>() else {
-        return;
+        return Vec::new();
     };
-    let contorno = ph2d_editor_core::paint::resolve(ColorToken::Bg0, theme);
-    let selecao = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
     let mut scratch = Vec::new();
+    let mut out = Vec::new();
     for (e, luz) in q.iter(world) {
         if ph2d_ecs::is_hidden_in_tree(world, e) {
             continue;
@@ -113,12 +112,12 @@ pub fn desenhar(
         let (sx, sy) = camera.world_to_screen(c, window);
         let (ex, ey) = camera.world_to_screen([c[0] + 1.0, c[1]], window);
         let ppm_tela = (ex - sx).hypot(ey - sy);
-        let anel_px = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX / pixels_per_meter.max(f32::EPSILON)
-            * (t.scale.x * t.scale.y).abs().sqrt()
-            * ppm_tela;
         if !(ppm_tela.is_finite() && ppm_tela > 0.0) {
             continue;
         }
+        let anel_px = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX / pixels_per_meter.max(f32::EPSILON)
+            * (t.scale.x * t.scale.y).abs().sqrt()
+            * ppm_tela;
         let g = glifo(
             luz,
             [sx, sy],
@@ -126,8 +125,48 @@ pub fn desenhar(
             anel_px,
             selecionada == Some(e.to_bits()),
         );
+        out.push((e, g, anel_px));
+    }
+    out
+}
+
+/// **Desenha o gizmo de toda `Luz` visível.**
+pub fn desenhar(
+    world: &World,
+    selecionada: Option<u64>,
+    pixels_per_meter: f32,
+    theme: Theme,
+    camera: &Camera2d,
+    window: ph2d_host::WindowSize,
+    cena: &mut VectorScene,
+) {
+    let contorno = ph2d_editor_core::paint::resolve(ColorToken::Bg0, theme);
+    let selecao = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
+    for (_, g, _) in glifos(world, selecionada, pixels_per_meter, camera, window) {
         pintar(&g, contorno, selecao, cena);
     }
+}
+
+/// ⭐ **O clique no gizmo** (smoke do dono, 2026-10-10: *«o gizmo da lâmpada deve ter prioridade
+/// quando o mouse seleciona objetos sobrepostos»*): as luzes cujo ícone — a lâmpada ou o anel, o
+/// que for maior — está sob o ponteiro `tela` (px), da mais próxima do centro à mais longe.
+#[must_use]
+pub fn pick_at(
+    world: &World,
+    tela: (f32, f32),
+    pixels_per_meter: f32,
+    camera: &Camera2d,
+    window: ph2d_host::WindowSize,
+) -> Vec<u64> {
+    let mut hits: Vec<(f32, u64)> = glifos(world, None, pixels_per_meter, camera, window)
+        .into_iter()
+        .filter_map(|(e, g, anel_px)| {
+            let d = (tela.0 - g.centro[0]).hypot(tela.1 - g.centro[1]);
+            (d <= g.lampada_px.max(anel_px)).then_some((d, e.to_bits()))
+        })
+        .collect();
+    hits.sort_by(|a, b| a.0.total_cmp(&b.0));
+    hits.into_iter().map(|(_, b)| b).collect()
 }
 
 fn pintar(g: &Glifo, contorno: Color, selecao: Color, cena: &mut VectorScene) {

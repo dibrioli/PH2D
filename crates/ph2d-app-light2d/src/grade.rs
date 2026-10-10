@@ -42,8 +42,8 @@ pub struct Degrau {
 /// ⭐ W5a — a captura FINA dos opacos de ½ px (rodada `medida_luz2d_w5a`, nível Baixo): a borda da
 /// sombra sai do lugar −0,79 px no contorno de 50 % (a das cascatas −4,21; a de 1 px −1,16) e a barra
 /// de 5 cm faz a sombra do gabarito (massa 2,6 % · fundo 0,027; a das cascatas não a via; a de 1 px
-/// alargava a lasca 11 %), por 0,06 ms de captura, 0,20 ms da marca no campo, +65 MB e o Vello da
-/// camada do vetor a 8 px por texel (0,50 ms contra 0,23).
+/// alargava a lasca 11 %), por 0,06 ms de captura, +65 MB e o Vello da camada do vetor a 8 px por
+/// texel (0,50 ms contra 0,23).
 pub const DEGRAU_PADRAO: Degrau = Degrau {
     c0_px: 4.0,
     margem: 0.125,

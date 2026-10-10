@@ -45,12 +45,14 @@ pub(crate) fn lift_settled(
     susp_rgb: &mut [f32; 3],
     sett_rgb: [f32; 3],
     mix: ColorMix,
+    glaze: f64,
     out: &mut [f64; 3],
 ) {
     let st = *sett as f64;
     let lift = st * b;
     let a_in = alpha_of_mass(st) * b;
-    let u = alpha_of_mass(*susp as f64) * (1.0 - a_in);
+    let a_susp = alpha_of_mass(*susp as f64);
+    let u = a_susp * (1.0 - a_in);
     if u + a_in > 0.0 {
         let w = a_in / (u + a_in);
         mix.mix(
@@ -62,6 +64,14 @@ pub(crate) fn lift_settled(
             sett_rgb[2] as f64,
             w,
             out,
+        );
+        crate::colorops::velatura(
+            out,
+            w,
+            glaze,
+            a_susp,
+            susp_rgb.map(f64::from),
+            sett_rgb.map(f64::from),
         );
         *susp_rgb = [out[0] as f32, out[1] as f32, out[2] as f32];
     } else {
@@ -83,6 +93,7 @@ pub(crate) struct DryConst {
     pub rewet_base: f64,
     pub ext_bypass: bool,
     pub mix: ColorMix,
+    pub glaze: f64,
 }
 
 impl DryConst {
@@ -97,6 +108,7 @@ impl DryConst {
             rewet_base,
             ext_bypass,
             mix: p.mix,
+            glaze: p.glaze,
         }
     }
 }
@@ -184,6 +196,14 @@ pub(crate) fn dry_cell(
                 w,
                 out,
             );
+            crate::colorops::velatura(
+                out,
+                w,
+                c.glaze,
+                a_sett,
+                sett_rgb_c.map(f64::from),
+                susp_rgb_c.map(f64::from),
+            );
             sett_rgb_c = [out[0] as f32, out[1] as f32, out[2] as f32];
         } else {
             sett_rgb_c = susp_rgb_c;
@@ -212,6 +232,7 @@ pub(crate) fn dry_cell(
                 &mut susp_rgb_c,
                 sett_rgb_c,
                 mix,
+                c.glaze,
                 out,
             );
         }

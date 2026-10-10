@@ -46,7 +46,7 @@ pub fn wet_canvas(g: &mut Grid) {
 /// Dry canvas: one-shot O(area) — settle every cell's suspended mass into the
 /// settled layer (opacity-composite color, same as the dry pass), zero water,
 /// both velocity fields and wetness, and empty the bbox.
-pub fn dry_canvas(g: &mut Grid, mix: ColorMix) {
+pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64) {
     let s = g.s;
     let mut out = [0.0f64; 3];
     for y in 1..=g.h {
@@ -54,7 +54,7 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix) {
         for _x in 1..=g.w {
             let dm = g.susp[i] as f64;
             if dm > 0.0 {
-                settle_composite(g, i, dm, mix, &mut out);
+                settle_composite(g, i, dm, mix, glaze, &mut out);
                 g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                 g.susp[i] = 0.0;
             }
@@ -80,9 +80,17 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix) {
 
 /// Opacity-composite `dm` of suspended pigment into the settled layer's color
 /// at cell i (SPEC §6.2 step 3). NOT mass-weighted: coverage-weighted, so a
-/// thin new glaze barely shifts an already-opaque settled color.
+/// thin new glaze barely shifts an already-opaque settled color. `glaze` > 0: the settling pigment
+/// is a transparent layer over the settled one ([`crate::colorops::velatura`]).
 #[inline]
-pub fn settle_composite(g: &mut Grid, i: usize, dm: f64, mix: ColorMix, out: &mut [f64; 3]) {
+pub fn settle_composite(
+    g: &mut Grid,
+    i: usize,
+    dm: f64,
+    mix: ColorMix,
+    glaze: f64,
+    out: &mut [f64; 3],
+) {
     let a_sett = alpha_of_mass(g.sett[i] as f64);
     let a_in = alpha_of_mass(dm);
     if a_sett > 0.0 {
@@ -99,6 +107,14 @@ pub fn settle_composite(g: &mut Grid, i: usize, dm: f64, mix: ColorMix, out: &mu
             uc[2] as f64,
             w,
             out,
+        );
+        crate::colorops::velatura(
+            out,
+            w,
+            glaze,
+            a_sett,
+            sc.map(f64::from),
+            uc.map(f64::from),
         );
         g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
     } else {

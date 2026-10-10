@@ -369,6 +369,7 @@ pub fn render_pigment_row_visual(
     let s = g0.s;
     let paper_on = visual.paper && p.is_some();
     let glaze_on = visual.km_glaze;
+    let glaze = p.map_or(0.0, |p| p.glaze);
     let (paper_vis, grain_vis, emboss_k) = match (paper_on, p) {
         (true, Some(p)) => (
             p.k(Knob::PaperVisibility),
@@ -428,6 +429,18 @@ pub fn render_pigment_row_visual(
                         cr = cr * (1.0 - a_f) + uc[0] as f64 * a_f;
                         cg = cg * (1.0 - a_f) + uc[1] as f64 * a_f;
                         cb = cb * (1.0 - a_f) + uc[2] as f64 * a_f;
+                        // A tinta molhada é transparente sobre a seca (W1e, F6): o mesmo termo das
+                        // junções do motor, com o peso que esta mistura dá ao suspenso (`a_f / la`).
+                        let mut c = [cr, cg, cb];
+                        crate::colorops::velatura(
+                            &mut c,
+                            a_f / la,
+                            glaze,
+                            a_s,
+                            [sc[0], sc[1], sc[2]].map(f64::from),
+                            [uc[0], uc[1], uc[2]].map(f64::from),
+                        );
+                        [cr, cg, cb] = c;
                     }
                 }
                 if paper_on {

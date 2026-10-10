@@ -219,6 +219,8 @@ impl PainterTool {
     /// Pen-up: close the engine's direct stroke (the sim resumes). Called from
     /// `paint_end`; the session itself stays alive — the water is still wet.
     pub(super) fn wetpaint_stroke_end(&mut self) {
+        // A fila pousa ANTES de o gesto deixar de ser vivo (a rota recusa um lote de um gesto morto).
+        self.wetpaint_pousa_adiados();
         self.paint.wetpaint.live_gesture = false;
         if let Some(sess) = self.paint.wetpaint.session.as_mut()
             && sess.stroke_open
@@ -228,6 +230,30 @@ impl PainterTool {
             sess.stroke_open = false;
             sess.lanes.clear();
         }
+    }
+
+    /// **Pousa os lotes adiados** ([`session::LoteAdiado`]) pela rota de sempre, com o estado por lote
+    /// de cada um — trazendo o motor (bloqueia ≤ um estágio: quem chama já decidiu que é a hora).
+    pub(super) fn wetpaint_pousa_adiados(&mut self) {
+        let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+            return;
+        };
+        if sess.adiados.is_empty() {
+            return;
+        }
+        sess.bring_home();
+        let lotes = std::mem::take(&mut sess.adiados);
+        let (grupos, semente) = (
+            std::mem::take(&mut self.paint.dab_groups),
+            self.paint.tex_rng,
+        );
+        for l in lotes {
+            self.paint.dab_groups = l.groups;
+            self.paint.tex_rng = l.tex_rng;
+            self.stamp_dabs_wetpaint(&l.dabs, &l.brush);
+        }
+        self.paint.dab_groups = grupos;
+        self.paint.tex_rng = semente;
     }
 
     /// Per-frame heartbeat: **MOSTRA o que o worker já simulou** e devolve o
@@ -302,7 +328,8 @@ impl PainterTool {
         // Facts land while the water SITS too (Dry Speed / Gravity / the
         // tilt are sim forces): the tick reconciles with the stamp's door.
         let facts_moved = sess.applied != facts;
-        if fresh || facts_moved {
+        let adiados = !sess.adiados.is_empty();
+        if fresh || facts_moved || adiados {
             // ⚠️ **PEDE e não espera.** O tick é a única porta que pode voltar
             // de mãos vazias (a água corre a ~33 Hz, o display a 60 ⇒ mostrar
             // um passo no frame seguinte é invisível), e bloquear aqui custava
@@ -324,6 +351,9 @@ impl PainterTool {
             if got {
                 sess.seen_steps = done;
                 sess.reconcile_facts(facts);
+                if adiados {
+                    self.wetpaint_pousa_adiados();
+                }
                 if fresh {
                     let t_comp = std::time::Instant::now();
                     self.wetpaint_composite();
@@ -389,6 +419,8 @@ mod showwet_tests;
 mod sonda_papel_seco; // o pincel seco nos picos do papel (dono 09/10)
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
+#[cfg(test)]
+mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)

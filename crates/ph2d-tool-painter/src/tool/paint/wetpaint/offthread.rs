@@ -333,6 +333,26 @@ impl super::WetSession {
         }
     }
 
+    /// **Pede o motor sem esperar NADA** — a porta do evento de ponteiro com o traço aberto (W1e, F6):
+    /// esperar o estágio em voo custava o quadro a pintar `1,3 → 11,9 ms` (pior `19`) na poça pesada a
+    /// 4096²; o lote que não o encontra espera na fila da sessão e pousa no tick.
+    pub(in crate::tool::paint) fn try_bring_home_now(&mut self) -> bool {
+        if !matches!(self.engine, EngineSlot::Away) {
+            return true;
+        }
+        let Some(w) = self.worker.as_ref() else {
+            return false;
+        };
+        w.want.store(true, Ordering::Release);
+        match w.back.try_recv() {
+            Ok(engine) => {
+                self.engine = EngineSlot::Here(engine);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
     /// **Quantos passos a sim completou** — `0` quando nunca houve worker.
     pub(in crate::tool::paint) fn sim_steps(&self) -> u64 {
         self.worker
@@ -343,12 +363,13 @@ impl super::WetSession {
     /// **Devolve o engine ao worker** — o tick faz isto no FIM, uma vez. No-op
     /// se ele já está lá.
     ///
-    /// ⚠️ **Nunca entrega com um traço ABERTO:** durante o gesto a UI precisa do
-    /// motor a cada evento de ponteiro, e a viagem de ida e volta por dab
-    /// custaria mais que o passo que ela compra — e a sim está pausada ali de
-    /// qualquer forma (o gate do próprio engine), então não há nada a ganhar.
+    /// Com o traço ABERTO entrega só se o motor anda com ele (`sim_while_painting`, o produto desde a
+    /// W1e): a viagem é uma por QUADRO (o primeiro evento de ponteiro do quadro traz o motor, o tick
+    /// devolve-o), não uma por dab. Com o port (sim pausada no traço) não há nada a ganhar.
     pub(in crate::tool::paint) fn hand_off_sim(&mut self) {
-        if self.stroke_open || !matches!(self.engine, EngineSlot::Here(_)) {
+        if !matches!(self.engine, EngineSlot::Here(_))
+            || (self.stroke_open && !self.engine.sim.sim_while_painting)
+        {
             return;
         }
         let w = self.worker.get_or_insert_with(SimWorker::spawn);

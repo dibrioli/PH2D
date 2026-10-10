@@ -79,6 +79,36 @@ pub use ph2d_pigment::{ks_of_srgb255, linear_to_srgb, srgb_to_linear, srgb255_of
 // byte-idêntico; ⛔ nada de reescrever `ColorMix` aqui, que é a segunda cópia que diverge. ──
 pub use ph2d_pigment::{ColorMix, reflectance_of_ks};
 
+/// **A transparência do pigmento que o PRODUTO usa** (W1e, F6), medida no Rebelle 8.3.4: azul sobre
+/// vermelho SECO cai a `0,42–0,51` do caminho entre «o azul por cima» e «multiplicar as duas»
+/// (régua `docs/Painter/NewFeaturesWetPaint/ferramentas/velatura.py`, tabela no 05 §4b). O motor nasce
+/// com `0` (o port, que a impressão digital fixa); o produto liga este valor.
+pub const VELATURA_MEDIDA: f64 = 0.47;
+
+/// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos
+/// TRANSPARENTES: a cor de cima perde, na fração `glaze`, a luz que a de baixo já absorveu.
+///
+/// `out` chega com a junção por cima (`mix(baixo, cima, w)`, `w = a_cima / A`, `A = 1 − (1−a_b)(1−a_c)`,
+/// que é exactamente `alpha_of_mass(m_b + m_c)`). Sobre o branco, `glaze = 1` dá `O_b · O_c` (a lei de
+/// Beer–Lambert: absorbâncias somam-se) e `glaze = 0` não toca em `out` — a aritmética de antes ao bit.
+///
+/// ⚠️ **O termo é da DIFERENÇA de pigmento** (× a distância RGB normalizada entre as duas, até 1): a
+/// MESMA tinta não se filtra a si mesma — a cobertura `alpha_of_mass` já a escurece pela massa, e uma
+/// mancha de uma cor assenta aos BOCADOS (cada passe de secagem é uma junção). Sem o factor, um traço
+/// vermelho sozinho escurecia de `(202, 37, 37)` para `(156, 25, 25)` (sonda `sonda_mistura`, 09/10).
+#[inline]
+pub fn velatura(out: &mut [f64; 3], w: f64, glaze: f64, a_baixo: f64, baixo: [f64; 3], cima: [f64; 3]) {
+    if glaze <= 0.0 || a_baixo <= 0.0 {
+        return;
+    }
+    let d2 = (0..3).map(|c| (cima[c] - baixo[c]).powi(2)).sum::<f64>();
+    let dif = (d2.sqrt() / 255.0).min(1.0);
+    let k = w * glaze * a_baixo * dif;
+    for c in 0..3 {
+        out[c] = (out[c] - k * cima[c] * (1.0 - baixo[c] / 255.0)).max(0.0);
+    }
+}
+
 /// K–M weighted mean of up to 4 engine colors (the advection's incoming-color
 /// mean when pigment mixing is ON): mixtures are linear in K/S, so average
 /// the corners' K/S ratios with the pull weights.
@@ -161,6 +191,40 @@ mod tests {
             km_dominance > plain_dominance,
             "K-M green dominance {km_dominance:.3} !> plain {plain_dominance:.3}"
         );
+    }
+
+    /// A VELATURA: `γ = 0` não toca em nada · a MESMA tinta não se vela · cores opostas a `γ = 1` dão
+    /// exactamente a multiplicação sobre o branco (Beer–Lambert: `O_baixo · O_cima`).
+    #[test]
+    fn a_velatura_e_a_multiplicacao_da_diferenca_de_pigmento() {
+        let (a_b, a_c) = (0.6, 0.7);
+        let big_a = 1.0 - (1.0 - a_b) * (1.0 - a_c);
+        let w = a_c / big_a;
+        let (baixo, cima) = ([255.0, 0.0, 0.0], [0.0, 255.0, 255.0]);
+        let por_cima = |b: [f64; 3], c: [f64; 3]| {
+            let mut o = [0.0; 3];
+            ColorMix::Plain.mix(b[0], b[1], b[2], c[0], c[1], c[2], w, &mut o);
+            o
+        };
+        let mut o = por_cima(baixo, cima);
+        let antes = o;
+        velatura(&mut o, w, 0.0, a_b, baixo, cima);
+        assert_eq!(o, antes, "γ = 0 tem de ser a junção de antes ao bit");
+        let mut igual = por_cima(cima, cima);
+        let antes = igual;
+        velatura(&mut igual, w, 1.0, a_b, cima, cima);
+        assert_eq!(igual, antes, "a mesma tinta não se vela");
+        velatura(&mut o, w, 1.0, a_b, baixo, cima);
+        for c in 0..3 {
+            let sobre_branco = 1.0 - big_a + big_a * o[c] / 255.0;
+            let ob = 1.0 - a_b + a_b * baixo[c] / 255.0;
+            let oc = 1.0 - a_c + a_c * cima[c] / 255.0;
+            assert!(
+                (sobre_branco - ob * oc).abs() < 1e-12,
+                "canal {c}: {sobre_branco} contra Beer–Lambert {}",
+                ob * oc
+            );
+        }
     }
 
     #[test]

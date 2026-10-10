@@ -188,19 +188,30 @@ impl Trail {
                     // Opacity composite of the (possibly dirty) tip over the
                     // resident. (Sub-unit masses read alpha 0 from the table;
                     // guard the 0/0 case.)
-                    let e9 = alpha_of_mass(old) * (1.0 - in_a);
+                    let a_old = alpha_of_mass(old);
+                    let e9 = a_old * (1.0 - in_a);
                     if e9 + in_a > 0.0 {
                         let wgt = in_a / (e9 + in_a);
                         let uc = g.susp_rgb[i];
+                        let tip = [self.tip_r[l], self.tip_g[l], self.tip_b[l]].map(f64::from);
                         mix.mix(
                             uc[0] as f64,
                             uc[1] as f64,
                             uc[2] as f64,
-                            self.tip_r[l] as f64,
-                            self.tip_g[l] as f64,
-                            self.tip_b[l] as f64,
+                            tip[0],
+                            tip[1],
+                            tip[2],
                             wgt,
                             &mut out,
+                        );
+                        // Duas tintas na MESMA água: os pigmentos somam a absorção (W1e, F6).
+                        crate::colorops::velatura(
+                            &mut out,
+                            wgt,
+                            p.glaze,
+                            a_old,
+                            uc.map(f64::from),
+                            tip,
                         );
                         g.susp_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
                     }
@@ -445,6 +456,7 @@ impl Trail {
                             &mut g.susp_rgb[i],
                             sett_c,
                             mix,
+                            p.glaze,
                             &mut out,
                         );
                     }

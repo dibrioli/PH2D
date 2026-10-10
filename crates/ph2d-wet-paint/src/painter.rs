@@ -453,7 +453,12 @@ impl Engine {
 
     /// Should the fixed-step loop advance the sim right now?
     pub fn sim_should_run(&self) -> bool {
-        !self.stroke_down || self.tool == Tool::Blow
+        !self.stroke_down || self.tool == Tool::Blow || self.sim.sim_while_painting
+    }
+
+    /// O traço está aberto? (o produto decide se a água anda com ele — [`crate::sim::Sim::sim_while_painting`]).
+    pub fn stroke_is_down(&self) -> bool {
+        self.stroke_down
     }
 
     pub fn step_simulation(&mut self) -> bool {
@@ -505,9 +510,9 @@ impl Engine {
     /// [`Self::action_dry_canvas`] without the history capture (product door).
     pub fn dry_canvas_now(&mut self) {
         self.drain_step();
-        let mix = self.sim.gather_params(&self.tuning).mix;
+        let p = self.sim.gather_params(&self.tuning);
         let g = self.active_grid_mut();
-        dry_canvas(g, mix);
+        dry_canvas(g, p.mix, p.glaze);
         g.bloom.fill(0); // backrun budgets recharge on dry
         self.mark_dirty_full();
     }

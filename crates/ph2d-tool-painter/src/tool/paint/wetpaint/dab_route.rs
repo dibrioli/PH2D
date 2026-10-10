@@ -34,6 +34,23 @@ impl PainterTool {
             return;
         }
         self.wetpaint_guard();
+        // A água corre com o traço aberto (W1e, F6): o lote que chega com o motor na simulação NÃO
+        // espera o estágio em voo — fica na fila e pousa no tick; com o motor em casa, a fila pousa
+        // primeiro (a ordem dos dabs é a da mão).
+        if live && let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            if sess.stroke_open && !sess.try_bring_home_now() {
+                sess.adiados.push(session::LoteAdiado {
+                    dabs: dabs.to_vec(),
+                    brush: brush.clone(),
+                    groups: self.paint.dab_groups.clone(),
+                    tex_rng: self.paint.tex_rng,
+                });
+                return;
+            }
+            if !sess.adiados.is_empty() {
+                self.wetpaint_pousa_adiados();
+            }
+        }
         // The wet ERASER (W2.6) erases the FLUID and only the fluid: with no
         // live session there is nothing wet, and the routing predicate
         // (`wet_owns_the_dabs`) already sent those dabs to the normal
@@ -309,14 +326,23 @@ impl PainterTool {
             // sempre, ao bit.
             let (aa_n, aa_step) = grid_map::cell_subsamples(ratio);
             let aa_inv = 1.0 / f32::from(u16::from(aa_n) * u16::from(aa_n));
+            // ⚠️ **Um carimbo REDONDO não roda** (W1e): rodar `(u, v)` e medir o comprimento muda o
+            // último bit do raio, e com a água a correr no traço esse bit vira píxeis (o censo mediu o
+            // Jitter Rotate e o ângulo a «mudar a tinta» de um carimbo sem ângulo). O Shape e o Grain
+            // seguem a pegada rodada (`fp`): neles o ângulo é real.
+            let fp_raio = if spec.dab_flatten <= 0.0 && spec.dab_curve.is_flat() {
+                ph2d_painter_brush::FootprintDeform::new(0.0, 0)
+            } else {
+                fp
+            };
             let sil = |cx: i32, cy: i32| -> f64 {
                 let mut acc = 0.0f32;
                 for j in 0..aa_n {
                     let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
                     for i in 0..aa_n {
                         let sx = grid_map::cell_subsample_px(cx, ratio, i, aa_step);
-                        let t =
-                            fp.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
+                        let t = fp_raio
+                            .falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
                         acc += ph2d_painter_brush::dab::silhouette_at(
                             &spec,
                             shape_input,

@@ -5,7 +5,9 @@
 //! cruzamento e o rasto do azul DEPOIS do cruzamento (o pincel sujo arrasta vermelho ⇒ roxo) DURANTE o traço
 //! (antes do Up) e depois do Up + 2 s.
 //!
-//! `cargo test -p ph2d-tool-painter --profile smoke --lib sonda_mistura -- --ignored --nocapture`
+//! `PH2D_SONDA_OUT=/tmp/x cargo test -p ph2d-tool-painter --profile smoke --lib sonda_mistura -- --ignored
+//! --nocapture` e `python3 -I docs/Painter/NewFeaturesWetPaint/ferramentas/velatura.py
+//! /tmp/x/mistura_seco_durante.ppm /tmp/x/mistura_seco_depois.ppm` (e o molhado).
 use crate::tool::PainterTool;
 use ph2d_brush_presets::Biblioteca;
 use ph2d_editor_core::Tool;
@@ -23,6 +25,18 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
         tilt: [0.0, 0.0],
         phase,
     }
+}
+
+/// A tela em PPM (`PH2D_SONDA_OUT`) para a régua `ferramentas/velatura.py`.
+fn grava(t: &PainterTool, nome: &str) {
+    let Ok(dir) = std::env::var("PH2D_SONDA_OUT") else {
+        return;
+    };
+    let mut px = format!("P6 {W} {H} 255\n").into_bytes();
+    for k in 0..W * H {
+        px.extend_from_slice(&t.canvas_rgba[k * 4..k * 4 + 3]);
+    }
+    std::fs::write(format!("{dir}/mistura_{nome}.ppm"), px).expect("grava a tela");
 }
 
 fn media(t: &PainterTool, x0: usize, x1: usize, y0: usize, y1: usize) -> [f64; 3] {
@@ -60,6 +74,19 @@ fn sonda_mistura() {
         t.wet_preset_aplicar_volumes(&p.parametros.volumes);
         t.paint.wetpaint.tilt_on = false;
         t.set_brush_size_px(30.0);
+        // As VARIANTES (W1e): `PH2D_SONDA_VELATURA=<γ>` e `PH2D_SONDA_NO_TRACO=0|1` sobrepõem-se ao produto.
+        assert!(t.ensure_wet_session());
+        if let Some(s) = t.paint.wetpaint.session.as_mut() {
+            if let Some(g) = std::env::var("PH2D_SONDA_VELATURA")
+                .ok()
+                .and_then(|v| v.parse().ok())
+            {
+                s.engine.sim.glaze = g;
+            }
+            if let Ok(v) = std::env::var("PH2D_SONDA_NO_TRACO") {
+                s.engine.sim.sim_while_painting = v == "1";
+            }
+        }
         // O vermelho, horizontal.
         t.set_brush_color_srgb8([200, 30, 30]);
         t.on_canvas_pointer(cp([100.0, 150.0], PointerPhase::Down));
@@ -92,6 +119,8 @@ fn sonda_mistura() {
         for _ in 0..6 {
             t.on_tick(1000.0 / 60.0);
         }
+        let estado = if seco { "seco" } else { "molhado" };
+        grava(&t, &format!("{estado}_durante"));
         let (cruz_vivo, rasto_vivo, azul_vivo) = (
             media(&t, 295, 306, 145, 156),
             media(&t, 295, 306, 185, 225),
@@ -101,6 +130,7 @@ fn sonda_mistura() {
         for _ in 0..120 {
             t.on_tick(1000.0 / 60.0);
         }
+        grava(&t, &format!("{estado}_depois"));
         let (cruz_fim, rasto_fim, azul_fim) = (
             media(&t, 295, 306, 145, 156),
             media(&t, 295, 306, 185, 225),

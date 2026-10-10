@@ -41,8 +41,13 @@ impl PainterTool {
         // e a pressão ficam `flow` vezes mais grossas que o pigmento.
         let flow =
             ph2d_wet_paint::flow::clamp_ratio(usize::from(self.paint.wetpaint.flow_ratio.max(1)));
+        let mut engine = Engine::with_flow_ratio(gw, gh, flow);
+        // O PRODUTO (W1e, F6): o pigmento é transparente nas junções (a velatura medida no Rebelle) e a
+        // água corre com o traço aberto — a mistura e a sangria vêem-se a pintar. O motor nasce com o port.
+        engine.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
+        engine.sim.sim_while_painting = true;
         self.paint.wetpaint.session = Some(WetSession {
-            engine: EngineSlot::new_here(Engine::with_flow_ratio(gw, gh, flow)),
+            engine: EngineSlot::new_here(engine),
             ratio,
             grid: (gw, gh),
             worker: None,
@@ -60,6 +65,7 @@ impl PainterTool {
             paper_key: None,
             applied: WetEngineFacts::BOOT,
             preview: None,
+            adiados: Vec::new(),
         });
         true
     }

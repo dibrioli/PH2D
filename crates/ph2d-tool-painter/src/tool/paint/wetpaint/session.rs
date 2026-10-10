@@ -118,6 +118,18 @@ pub(in crate::tool::paint) struct WetSession {
     /// água que não existe mais e morre com ela. Guardá-lo fora seria a lista
     /// de sítios de limpeza que o §13.13 já pagou uma vez.
     pub(super) preview: Option<ph2d_wet_paint::grid::GridPatch>,
+    /// **Os lotes que chegaram com o motor na simulação** e o traço aberto (W1e, F6): pousam pela
+    /// mesma rota, pela ordem, no tick seguinte (ou no lote seguinte, ou no fim do traço). Moram na
+    /// sessão porque descrevem a água DELA.
+    pub(super) adiados: Vec<LoteAdiado>,
+}
+
+/// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
+pub(super) struct LoteAdiado {
+    pub(super) dabs: Vec<Dab>,
+    pub(super) brush: BrushSpec,
+    pub(super) groups: Vec<u32>,
+    pub(super) tex_rng: u64,
 }
 
 /// Everything the paper seed reads — the reconcile re-seeds exactly when one

@@ -44,6 +44,12 @@ impl PainterTool {
             brush.accumulate = false;
             brush.space_attenuation = false;
         }
+        // O Wet Paint não lê o PUSH do Impasto (o preset declara-o), mas o motor de traço lê-o para
+        // AQUECER (reter os primeiros dabs até ter direcção): com a água a correr no traço (W1e, F6) o
+        // MOMENTO em que um dab pousa muda a tinta — medido, 3 093 px num pincel guardado.
+        if matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
+            brush.impasto_push = 0.0;
+        }
         if self.papel_como_grain() {
             brush.texture = brush.paper;
             brush.grain_depth =

@@ -302,7 +302,7 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 
 | | escolha |
 |---|---|
-| 4.1 Play | cada Animação tem um **clipe de entrada** que começa sozinho no Play (por omissão o 1.º), como o *Autoplay* do Godot; os outros tocam quando algo pedir (estado, sinal, script) |
+| 4.1 Play | cada Animação pode ter um clipe com **Autoplay** que começa sozinho no Play, como no Godot — ⛔ ~~por omissão o 1.º~~ → **por omissão nenhum**, o interruptor liga e desliga em qualquer clipe (dono, 10/10); os outros tocam quando algo pedir (estado, sinal, script) |
 | 4.1b onde toca (smokes, 09/10) | ⛔ o Arrange vazio **não toca nada** (*«como pode tocar alguma coisa?»*); o Autoplay toca no **Play da barra de cima** (*«na Godot os marcados com Autoplay tocam no Play do runtime»*) — a cena inteira (cada objecto a sua Animação, o Arrange ou, vazio, o clipe da Cena, as cutscenes), em qualquer aba; o transporte da timeline é de edição. ⛔ Recusado: um 2.º botão «Play All» na timeline |
 | 4.2 Motion fora do centro | o que vem do mundo (rato, colisores da cena, câmara, poses de objectos) é convertido **sozinho** para o espaço do objecto Motion — nada a configurar |
 | 4.3 Caminhos | uma curva usada como CAMINHO (`motion.path`, spline-wrap) **fica onde está** — é guia visível; só a forma COPIADA vira molde |
@@ -327,7 +327,7 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 
 | # | plano | o que ficou | porquê medido |
 |---|---|---|---|
-| 1 | clipe de entrada + cada objecto toca a sua | `NamedClip.autoplay` (`DOC_VERSION` 19→20, migração contra fixtura v19 gravada antes); `toca_os_objectos`; interruptor «Autoplay» (rádio); verbo `Play Clip` | o Play só tocava o Arrange da Cena; o molde era o das cutscenes (relógio por objecto) |
+| 1 | clipe de entrada + cada objecto toca a sua | `NamedClip.autoplay` (`DOC_VERSION` 19→20, migração contra fixtura v19 gravada antes); `toca_os_objectos`; interruptor «Autoplay» (liga/desliga, por omissão nenhum); verbo `Play Clip` | o Play só tocava o Arrange da Cena; o molde era o das cutscenes (relógio por objecto) |
 | 2 | nomes de clip únicos por animação | `same_animation`/`clip_named(owner,name)`; osso inteligente resolve dentro da sua animação | a cópia tocava o «andar» do original |
 | 3 | UM Ctrl+Z devolve objecto + clipes + nós | `Graveyard<D>` (fundo 256 = `UNDO_CAP`, gate); a fila desfaz o passo sozinha só se ainda é o topo | «undo composto entre filas» recusado: parte quando uma fila é desfeita fora de ordem |
 | 4 | Add Clip acima do tecto: recusa visível | `ClipRefusal::{AnimationFull, DocumentFull}` em toast, verificada antes da edição | botão desabilitado calaria a recusa |

@@ -26,10 +26,14 @@ Escolhas do DONO (09/10, doc 01 §14): **4.1** clipe de entrada por Animação (
 o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminhos ficam onde estão (nada a construir).
 
 - **Item 1 — clipe de entrada (Autoplay).** `NamedClip.autoplay` (apêndice ⇒ `DOC_VERSION` 19→20);
-  `doc_v19.rs` = imagem congelada + migração (nenhuma marcada ⇒ a 1.ª), provada contra
+  `doc_v19.rs` = imagem congelada + migração (nenhuma marcada), provada contra
   `crates/ph2d-timeline/tests/fixtures/timeline_doc_v19.{bin,json}` (tests/it/clip_entry.rs). API em
-  `crates/ph2d-timeline/src/doc_entry.rs`: `entry_clip_of`, `set_entry_clip` (rádio; o Duplicate não rouba),
-  `arranged_owners` (a Cena dirige quem arranjou, recursivo nos containers), `autoplay_entries`,
+  `crates/ph2d-timeline/src/doc_entry.rs`: ⭐ **o Autoplay do Godot** (`a7d7107e4`, dono 10/10: *«por que o
+  Autoplay vem sempre checado?»* → «mude»): `entry_clip_of` = só o MARCADO (por omissão nenhum),
+  `set_autoplay(index, on)` liga (desliga os irmãos) ou desliga, na Cena também; o Duplicate não rouba;
+  `arranged_owners` (a Cena dirige quem arranjou, recursivo nos containers); `runtime_owners` (quem PODE
+  tocar com a cena a correr, com o marcado ou nenhum — sem marca só toca o que for PEDIDO) e
+  `autoplay_entries` (os marcados);
   `clip_local_time` (loop do Keys dobrado por `ClipStrip::fold`; corte de duração vale).
   `ph2d_ecs::ClipPlayback{clip,desde}` = execução, **NÃO registado** (não grava, não entra no undo).
   `ph2d_timeline::apply_autoplay` + `apply_one_clip_except` (respeita o skip/a mão do artista): pedido > entrada;
@@ -47,12 +51,12 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
   · `take_runtime` drena ANTES de o dreno escolher o relógio da vista (com ela ligada a vista avaliada é a da
   cena; o ▶/⏸ do painel lê o relógio da cena) · `toca_os_objectos(.., (t, refusals, runtime), ..)`. O
   `transport_row.rs` saiu do `transport.rs` (599/600). ⛔ Recusado (pelo dono): um 2.º botão «Play All» na
-  timeline (`acd61634c`→`a23de0f63`, retirado em `2d335bf72`). UI: interruptor «Autoplay» no grupo de clipes (`transport_entry.rs`, id
-  `TIMELINE_CLIP_AUTOPLAY` em `ids/timeline_entry.rs`, i18n `panel.timeline.autoplay`): rádio — no clipe que já
-  é a entrada pinta-se ligado e MORTO (Disabled, sem registo de clique); nos outros emite
-  `TimelineIntent::SetEntryClip` (um passo do undo da timeline); só na vista de um OBJECTO
-  (`AnimationHeader.entry`). `toggle_vivo` generaliza o pintor de toggles; o rótulo entra na família medida por
-  `toggle_label_w`. Verbo de sinal `SignalVerb::PlayClip` (apendado, tag 14, `ArgKind::ClipName`; postcard lê
+  timeline (`acd61634c`→`a23de0f63`, retirado em `2d335bf72`). UI: interruptor «Autoplay» no grupo de clipes
+  (`transport_entry.rs`, id `TIMELINE_CLIP_AUTOPLAY` em `ids/timeline_entry.rs`, i18n `panel.timeline.autoplay`),
+  sempre vivo, em toda animação (a da Cena incluída): ligado = o clipe em edição está marcado; o clique emite
+  `TimelineIntent::SetAutoplay { index, on }` (um passo do undo da timeline). ⛔ Recusado (pelo dono): o
+  «rádio» com «por omissão o 1.º» (o visto vinha sempre marcado e morto no clipe escolhido — lia-se
+  desligado). O rótulo entra na família medida por `toggle_label_w`. Verbo de sinal `SignalVerb::PlayClip` (apendado, tag 14, `ArgKind::ClipName`; postcard lê
   enum apendado ⇒ `PROJECT_SCHEMA` NÃO sobe; tag fixada na tabela GRAVADAS 14→15): põe/substitui
   `ClipPlayback{clip, desde: t}` nos alvos; `signal_actions_bridge::apply` ganhou `t: f64` (a shell passa
   `self.playhead.time()`, gate textual em `fase_signal_outbox_tests`); i18n `ecs.signal_verb.play_clip`,
@@ -133,7 +137,7 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
 | `TimelineHistory.graveyard` · `ObjetoState.cemiterio` | campos novos |
 | `Dono` | perdeu `pose` · `motion_objeto::pai_em_edicao` saiu |
 | `Caption.no: Option<NodeId>` | campo novo |
-| `TimelineIntent::SetEntryClip` · `ClipRefusal::UnknownClip` (+`AnimationFull`/`DocumentFull`) | variantes novas |
+| `TimelineIntent::SetAutoplay { index, on }` · `ClipRefusal::UnknownClip` (+`AnimationFull`/`DocumentFull`) | variantes novas |
 | `signal_actions_bridge::apply(.., t)` · `SignalVerb::PlayClip` | assinatura / variante |
 | `toca_os_objectos(world, doc, (t, refusals, runtime), drive, skip)` · `apply_autoplay(.., refusals)` · `TimelineState.runtime` · `TimelineIntent::{RunScene, StopScene}` (variantes novas — `match` exaustivo noutra linha reprova) · `TimelineViewSnapshot.runtime` · `ph2d_transport::runtime_intent` (+ aresta ph2d-transport → ph2d-timeline) | assinaturas |
 | `InspectorReveal.entity` · `HierarchyEntity.entity` | campos novos |
@@ -199,11 +203,10 @@ PH2D_MOTION_OBJETO_SMOKE=3 ./target/smoke/ph2d-host-desktop  # item 6: o íman s
 PH2D_VIDA_SMOKE=1 ./target/smoke/ph2d-host-desktop           # item 9: ▾ «All» ao lado da busca
 ```
 
-- `PH2D_ANIMACAO_SMOKE=1|3` (`=3` abre como o Play de cima; fotografado: o Herói a andar e o Inimigo a
-  subir): interruptor «Autoplay» ligado no «andar» do Herói. Com o **Play da barra de cima** (em qualquer aba)
-  o Herói anda sozinho enquanto o Inimigo salta pela Animação da Cena. Errado: o Herói parado com o Play de
-  cima, ou a mexer-se num Arrange vazio com o Play da timeline, ou o interruptor clicável no clipe que já é a
-  entrada.
+- `PH2D_ANIMACAO_SMOKE=1|3` (fotografados): `=1` abre sem nada marcado (o «Autoplay» desmarcado); `=3` marca
+  o «andar» do Herói e o «Main» da Cena e corre a cena como o Play de cima — o Herói anda e o Inimigo sobe.
+  Errado: um clipe a tocar sozinho sem estar marcado, o Herói parado com o «andar» marcado e o Run ▸ Play, ou
+  o interruptor que não desmarca.
 - `=1` (Motion): Pilha + Enxame; legendas sob as taças (item 8). `=3`: sem rato na tela virtual o cursor fica
   na origem do MUNDO e o enxame correu para lá — não para a origem do objecto em (400,150), como antes desta onda.
 - `PH2D_VIDA_SMOKE=1`: ▾ «All» ao lado da busca.

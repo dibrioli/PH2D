@@ -158,7 +158,8 @@ fn regular(n: usize) -> Vec<P2> {
 }
 
 fn own(name: &str) -> Option<Own> {
-    let arrow = |shaft: Own, both: bool| Own::Arrow(Box::new(shaft), [both.then_some(60.0), Some(60.0)]);
+    let arrow =
+        |shaft: Own, both: bool| Own::Arrow(Box::new(shaft), [both.then_some(60.0), Some(60.0)]);
     let skew = |deg: f64| {
         let dx = 250.0 * deg.to_radians().tan() / 2.0;
         Own::Closed(vec![
@@ -216,10 +217,13 @@ fn own(name: &str) -> Option<Own> {
         "arco_meio" => Own::Arc([800.0, 500.0], 200.0, 180.0, 180.0),
         "arco_quarto" => Own::Arc([800.0, 500.0], 200.0, 180.0, 90.0),
         // `gera_entradas.py`, 3.ª leva: o cabo recto de (500, 500) a (1000, 500), farpas de 60 px.
-        "seta_recta_v_aberto" | "seta_recta_v_ida_volta" | "seta_recta_v_fechado"
-        | "seta_farpa_20" | "seta_farpa_45" | "seta_farpa_60" | "seta_tremor_03" => {
-            arrow(Own::Line([500.0, 500.0], [1000.0, 500.0]), false)
-        }
+        "seta_recta_v_aberto"
+        | "seta_recta_v_ida_volta"
+        | "seta_recta_v_fechado"
+        | "seta_farpa_20"
+        | "seta_farpa_45"
+        | "seta_farpa_60"
+        | "seta_tremor_03" => arrow(Own::Line([500.0, 500.0], [1000.0, 500.0]), false),
         "seta_recta_duas_pontas" => arrow(Own::Line([500.0, 500.0], [1000.0, 500.0]), true),
         "seta_diagonal_v_aberto" => arrow(Own::Line([500.0, 400.0], [846.410, 600.0]), false),
         "seta_pequena_v_aberto" => Own::Arrow(

@@ -16,8 +16,8 @@
 //! um ARCO ([`crate::quickshape_arc`]); senão não é forma.
 
 pub use crate::quickshape_arc::{ArcShape, OWNERS_HOOK_PX};
-pub use crate::quickshape_arrow::ArrowShape;
 use crate::quickshape_arrow::ArrowLaw;
+pub use crate::quickshape_arrow::ArrowShape;
 pub use crate::quickshape_geom::snap;
 use crate::quickshape_geom::{
     Fit, P2, add, angle, bow, centroid, dist, dot, gap, intersect, mul, project, rdp, resample,
@@ -185,9 +185,10 @@ pub(crate) fn recognise_with(
     let closed = gap(samples, length, law.close_window) <= law.close_of_length * length;
     let corner = (law.corner_px * px_to_world).min(law.corner_of_diag * diag);
     let r = resample(samples, RESAMPLE);
-    if !closed
-        && let Some(arrow) =
-            crate::quickshape_arrow::recognise(law, samples, &r, length, px_to_world, regular)
+    // A seta antes do fecho: farpas grandes nas duas pontas ficam perto umas das outras e liam-se
+    // um traço FECHADO (sonda `measure_arrows`); um cabo que fecha é recusado lá dentro.
+    if let Some(arrow) =
+        crate::quickshape_arrow::recognise(law, samples, &r, length, px_to_world, regular)
     {
         return Some(arrow);
     }

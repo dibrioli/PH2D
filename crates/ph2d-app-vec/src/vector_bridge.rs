@@ -286,6 +286,8 @@ pub fn dispatch(
         marker_scale,
         marker_round,
     };
+    // ⚠️ As pontas que a SETA do QuickShape pôs não são estilo AUTORADO (`Pencil::next_style`).
+    let style = pencil.next_style(style, pen.selected());
     pen.set_style(style);
     shape.set_style(style);
     pencil.set_style(style);

@@ -15,7 +15,7 @@
 //! e as duas pontas são a lei do dono (o pedido), não a do oráculo.
 
 use crate::quickshape::{Law, QuickShape, recognise_with};
-use crate::quickshape_geom::{P2, cross, dist, dot, seg_dist, sub};
+use crate::quickshape_geom::{P2, cross, dist, dot, seg_dist, solve, sub};
 
 /// A seta reconhecida, em MUNDO.
 #[derive(Clone, Debug, PartialEq)]
@@ -38,35 +38,48 @@ impl ArrowShape {
 }
 
 /// **As constantes da seta** — campo de [`Law`] para as sondas as varrerem no mesmo processo
-/// (`quickshape_arrow_probe_tests.rs`). Cada uma com a FAIXA em que as setas de mão (20–400 px,
-/// farpas de 20–60°, tremor ±0,5–2 px, o estabilizador) e os «não é seta» (o gancho, zigue-zague,
-/// L, V, taco, S, rabisco, o tremor do repouso) continuam certos — `measure_arrow_ranges`.
+/// (`quickshape_arrow_probe_tests.rs`, tabelas em `00_resultados.md` §3h). Cada FAIXA é onde as
+/// fixtures dos dois oráculos continuam certas, as setas de 400 px saem ≥ 99 %, as de 24 px ≥ 20 %
+/// e nenhum «não é seta» (gancho, zigue-zague, L, V, taco, farpa só, S, rabisco, as formas das
+/// sondas; 24–400 px, ±0,5–2, o repouso de ±1–3 px) passa de 10 % — e o valor é o MEIO dela.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ArrowLaw {
-    /// O ângulo de cada farpa com o cabo (graus, medido da ponta para TRÁS).
+    /// O ângulo de cada farpa com o cabo (graus, da ponta para TRÁS): mínimo `2–4` (a 0 o
+    /// zigue-zague e o gancho viram seta; a 5 a farpa de 20° desenhada a 10° cai), máximo `80–120`
+    /// (a 75 a farpa de 60° desenhada a 70° cai; a 150 o zigue-zague é seta).
     pub(crate) barb_min_deg: f64,
     pub(crate) barb_max_deg: f64,
-    /// A farpa mais curta é pelo menos esta fracção da mais comprida.
-    pub(crate) barb_ratio: f64,
-    /// A farpa média, em fracção do cabo.
+    /// A farpa média em fracção do cabo: mínimo `0,04–0,05` (abaixo, a farpa de 4 % que os DOIS
+    /// oráculos chamam linha vira seta; a 0,055 a seta comprida de ponta pequena, 8 %, cai), máximo
+    /// `0,4–0,6` (a 0,35 a ponta grande, 40 %, cai; a 0,8 o triângulo e o rabisco viram seta).
     pub(crate) head_min: f64,
     pub(crate) head_max: f64,
     /// O traço da ponta fica junto do V (as duas farpas e a corda entre elas): resíduo rms em
-    /// fracção da farpa média.
+    /// fracção da farpa média, `0,09–0,13` (a 0,08 as de 400 px caem a 98 %; a 0,15 o rabisco 17 %).
     pub(crate) head_rms: f64,
-    /// A farpa mais curta tem pelo menos isto (px de tela): abaixo, o tremor da mão em repouso.
+    /// A farpa mais curta tem pelo menos isto (px de tela): `5,5–6` — abaixo, o repouso de ±3 px
+    /// faz a 2.ª farpa de uma farpa só, de um gancho, de um L; a 7 as setas de 24 px caem a 11 %.
     pub(crate) barb_min_px: f64,
+    /// A forma do cabo tem pelo menos esta fracção do comprimento do traço dele, `0,6–0,97`: um
+    /// rabisco que vai e volta sobre a mesma recta lia-se polilinha curta (7 px de forma para 93 px
+    /// de traço), e o triângulo de 24 px seta (33 % a 0,5); a 0,99 as setas caem a 69 %.
+    pub(crate) shaft_fill: f64,
+    /// As duas farpas saem DA PONTA: depois da primeira, o traço volta a esta fracção da farpa
+    /// média da ponta (no meio, o V aberto; no fim, o V fechado). Sem isto os dois últimos lados de
+    /// um polígono — ponta, farpa, outra farpa, e acaba — liam-se V fechado (a estrela pequena).
+    pub(crate) tip_return: f64,
 }
 
 impl ArrowLaw {
     pub(crate) const MEASURED: Self = Self {
-        barb_min_deg: 10.0,
-        barb_max_deg: 80.0,
-        barb_ratio: 0.4,
-        head_min: 0.04,
-        head_max: 0.8,
-        head_rms: 0.15,
-        barb_min_px: 6.0,
+        barb_min_deg: 4.0,
+        barb_max_deg: 82.5,
+        head_min: 0.0475,
+        head_max: 1.2,
+        head_rms: 0.095,
+        barb_min_px: 5.75,
+        shaft_fill: 0.925,
+        tip_return: 0.2,
     };
 }
 
@@ -86,13 +99,30 @@ pub(crate) fn recognise(
     let stop = end.map_or(r.len() - 1, |(i, _)| i);
     let back: Vec<P2> = r[..=stop].iter().rev().copied().collect();
     let start = head(&a, &back, ds, px_to_world).map(|(i, h)| (stop - i, h));
-    if end.is_none() && start.is_none() {
+    // Cada ponta achou-se contra TUDO o que vinha antes dela; o cabo é só o meio. A pentagrama lia-se
+    // seta de duas pontas com farpas maiores que o cabo (gate `regular_keeps_a_star_a_star`).
+    let from = start.map_or(0, |(i, _)| i);
+    let shaft = (stop - from) as f64 * ds;
+    let fits = |h: &(usize, f64)| (a.head_min * shaft..=a.head_max * shaft).contains(&h.1);
+    if !start.iter().chain(end.iter()).all(fits) || (end.is_none() && start.is_none()) {
         return None;
     }
-    let from = start.map_or(0, |(i, _)| i);
-    let body = between(samples, r[from], r[stop], from as f64 * ds, stop as f64 * ds);
-    let plain = Law { arrow: None, ..*law };
+    let body = between(
+        samples,
+        r[from],
+        r[stop],
+        from as f64 * ds,
+        stop as f64 * ds,
+    );
+    let plain = Law {
+        arrow: None,
+        ..*law
+    };
     let shaft = recognise_with(&plain, &body, px_to_world, regular)?;
+    let drawn: f64 = body.windows(2).map(|w| dist(w[0], w[1])).sum();
+    if length_of(&shaft) < a.shaft_fill * drawn {
+        return None;
+    }
     matches!(
         shaft,
         QuickShape::Line { .. }
@@ -132,17 +162,12 @@ pub(crate) fn head(a: &ArrowLaw, r: &[P2], ds: f64, px_to_world: f64) -> Option<
 fn tip_at(a: &ArrowLaw, r: &[P2], i: usize, ds: f64, px_to_world: f64) -> Option<(f64, f64)> {
     let n = r.len();
     let (tip, shaft, tail) = (r[i], i as f64 * ds, (n - 1 - i) as f64 * ds);
-    // A corda do cabo mede-se sobre o tamanho de uma farpa (a ponta anda ~3 farpas).
+    // O fim do cabo mede-se sobre o tamanho de uma farpa (a ponta anda ~3 farpas).
     let win = (tail / 3.0).min(shaft / 2.0);
     let j = i - ((win / ds).round() as usize).clamp(1, i);
-    let back = sub(r[j], tip);
-    let nb = back[0].hypot(back[1]);
-    if nb <= f64::MIN_POSITIVE {
-        return None;
-    }
-    let u = [back[0] / nb, back[1] / nb];
-    let (mut left, mut right) = ((0.0, tip), (0.0, tip));
-    for &p in &r[i + 1..] {
+    let u = shaft_end(&r[j..=i])?;
+    let (mut left, mut right) = ((0.0, tip, i), (0.0, tip, i));
+    for (k, &p) in r.iter().enumerate().skip(i + 1) {
         let (v, d) = (sub(p, tip), dist(p, tip));
         let side = if cross(u, v) > 0.0 {
             &mut left
@@ -150,22 +175,26 @@ fn tip_at(a: &ArrowLaw, r: &[P2], i: usize, ds: f64, px_to_world: f64) -> Option
             &mut right
         };
         if d > side.0 {
-            *side = (d, p);
+            *side = (d, p, k);
         }
     }
-    let ((h1, b1), (h2, b2)) = (left, right);
-    let (lo, hi, h) = (h1.min(h2), h1.max(h2), (h1 + h2) / 2.0);
+    let ((h1, b1, k1), (h2, b2, k2)) = (left, right);
+    let (lo, h) = (h1.min(h2), (h1 + h2) / 2.0);
     let barb = |b: P2| {
         let v = sub(b, tip);
         cross(u, v).abs().atan2(dot(u, v)).to_degrees()
     };
     if lo < a.barb_min_px * px_to_world
-        || lo < a.barb_ratio * hi
         || h < a.head_min * shaft
         || h > a.head_max * shaft
         || ![barb(b1), barb(b2)]
             .iter()
             .all(|t| (a.barb_min_deg..=a.barb_max_deg).contains(t))
+        || r[k1.min(k2)..]
+            .iter()
+            .map(|&p| dist(p, tip))
+            .fold(f64::MAX, f64::min)
+            > a.tip_return * h
     {
         return None;
     }
@@ -181,6 +210,57 @@ fn tip_at(a: &ArrowLaw, r: &[P2], i: usize, ds: f64, px_to_world: f64) -> Option
         / (n - i) as f64;
     let rms = ms.sqrt() / h;
     (rms <= a.head_rms).then_some((rms, h))
+}
+
+/// O comprimento do caminho de uma forma aberta (o arco amostrado a 64 passos por troço).
+fn length_of(q: &QuickShape) -> f64 {
+    let arc = |a: &crate::quickshape::ArcShape| {
+        (0..64)
+            .map(|k| {
+                let t = |k: i32| a.start + a.sweep * f64::from(k) / 64.0;
+                dist(a.at(t(k)), a.at(t(k + 1)))
+            })
+            .sum::<f64>()
+    };
+    match q {
+        QuickShape::Line { a, b } => dist(*a, *b),
+        QuickShape::Polygon { corners, .. } => corners.windows(2).map(|w| dist(w[0], w[1])).sum(),
+        QuickShape::Arc(a) => arc(a),
+        QuickShape::Biarc(b) => arc(&b[0]) + arc(&b[1]),
+        _ => 0.0,
+    }
+}
+
+/// A direcção do cabo para TRÁS na ponta (o último ponto de `w`): a tangente na ponta da parábola
+/// `y = a·x² + b·x + c` ajustada a `w` no referencial da corda. ⚠️ A corda sozinha vira metade do
+/// arco que abarca: num cabo curvo de raio 190 px e farpas de 100 px eram 15°, e as farpas de 20° e
+/// de 60° saíam da faixa (sonda `measure_arrows`: o cabo em arco ficava livre).
+fn shaft_end(w: &[P2]) -> Option<P2> {
+    let tip = w[w.len() - 1];
+    let chord = sub(w[0], tip);
+    let len = chord[0].hypot(chord[1]);
+    if len <= f64::MIN_POSITIVE {
+        return None;
+    }
+    let u = [chord[0] / len, chord[1] / len];
+    let n = [-u[1], u[0]];
+    let mut m = [[0.0; 3]; 3];
+    let mut v = [0.0; 3];
+    for &p in w {
+        let q = sub(p, tip);
+        let (x, y) = (dot(q, u) / len, dot(q, n) / len);
+        let row = [x * x, x, 1.0];
+        for a in 0..3 {
+            v[a] += row[a] * y;
+            for b in 0..3 {
+                m[a][b] += row[a] * row[b];
+            }
+        }
+    }
+    let b = solve(m, v).map_or(0.0, |s| s[1]);
+    let d = [u[0] + b * n[0], u[1] + b * n[1]];
+    let nd = d[0].hypot(d[1]);
+    Some([d[0] / nd, d[1] / nd])
 }
 
 /// As amostras cruas entre os comprimentos de arco `s0` e `s1`, com as pontas `p0` e `p1` (os

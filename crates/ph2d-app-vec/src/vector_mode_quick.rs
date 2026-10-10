@@ -1,9 +1,10 @@
 //! ⭐ **A cena 12** (`PH2D_OBJECT_MODE_SMOKE=12`, D10 F7 — 08/10): o QUICKSHAPE. No layout *Vetor*,
-//! o Lápis pelo botão dele na coluna ① e sete traços de mão SINTÉTICOS: um rectângulo tosco, um
+//! o Lápis pelo botão dele na coluna ① e oito traços de mão SINTÉTICOS: um rectângulo tosco, um
 //! círculo tosco, uma linha trémula, um círculo PEQUENO (F7b), um ARCO e o gancho ASSIMÉTRICO da
-//! captura do dono (F7c), cada um SEGURADO no fim — e um gelado SOLTO sem segurar, o traço livre com quinas vivas e a bola curva (F7b). Quem
+//! captura do dono (F7c), uma SETA de cabo curvo (F7d), cada um SEGURADO no fim — e um gelado SOLTO
+//! sem segurar, o traço livre com quinas vivas e a bola curva (F7b). Quem
 //! mede o segurar é a SHELL, a cada quadro, com o relógio do ponteiro (o `clock_ns` do chrome é esse
-//! relógio): a cena só carimba as amostras e espera. No fim os sete ficam seleccionados com o
+//! relógio): a cena só carimba as amostras e espera. No fim os oito ficam seleccionados com o
 //! Lápis ainda na mão: os nós à vista, o QuickShape aceso, a dica no ⑤.
 
 use crate::state::VecState;
@@ -20,9 +21,9 @@ const STEP_NS: u128 = 8_000_000;
 const STEP_WORLD: f64 = 4.0 * PX_TO_WORLD;
 /// Se a forma não nascer em 3 s (o segurar é 0,5 s), a cena solta na mesma: a foto mostra a falha.
 const GIVE_UP_NS: u128 = 3_000_000_000;
-const STROKES: usize = 7;
+const STROKES: usize = 8;
 /// Os primeiros `HELD` traços são SEGUROS (QuickShape); o último é solto logo — o traço livre.
-const HELD: usize = 6;
+const HELD: usize = 7;
 
 thread_local! {
     static STROKE: Cell<usize> = const { Cell::new(0) };
@@ -53,7 +54,7 @@ fn hand(poly: &[[f64; 2]], amp: f64) -> Vec<[f64; 2]> {
         .collect()
 }
 
-/// Os cinco traços (mundo, y para cima).
+/// Os oito traços (mundo, y para cima).
 fn stroke(k: usize) -> Vec<[f64; 2]> {
     match k {
         // Um rectângulo tosco: os cantos fora do sítio e o fim a 20 px do início.
@@ -114,6 +115,25 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
                 .collect();
             hand(&hook, 0.002)
         }
+        // Uma SETA de cabo CURVO (F7d, o dono 10/10: «uma linha ou um arco com um bico no fim e
+        // SEGURAR»): um arco de 140° por cima do rectângulo e, na ponta, o V aberto — farpa,
+        // ponta, farpa — de ~20 px a 30°. Segurada, vira o arco perfeito com a ponta do traço.
+        6 => {
+            let mut arrow: Vec<[f64; 2]> = (0..=40)
+                .map(|i| {
+                    let a = (160.0 - 140.0 * f64::from(i) / 40.0_f64).to_radians();
+                    [-1.3 + 0.75 * a.cos(), 1.55 + 0.75 * a.sin()]
+                })
+                .collect();
+            let (tip, prev) = (arrow[40], arrow[39]);
+            let back = (prev[1] - tip[1]).atan2(prev[0] - tip[0]);
+            let barb = |turn: f64| {
+                let a = back + turn.to_radians();
+                [tip[0] + 0.2 * a.cos(), tip[1] + 0.2 * a.sin()]
+            };
+            arrow.extend([barb(30.0), tip, barb(-30.0)]);
+            hand(&arrow, 0.002)
+        }
         // Um GELADO SOLTO sem segurar (F7b): a aba, a ponta do cone, a outra aba e o começo da
         // bola são quatro quinas vivas; a bola continua uma curva suave — o lápis com quinas.
         _ => {
@@ -135,7 +155,7 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
 
 /// Um passo da cena 12; devolve o próximo estágio, se mudou. `50` = o Lápis pelo botão · `51` =
 /// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` =
-/// os sete seleccionados, com o Lápis ainda na mão · `9` = feito.
+/// os oito seleccionados, com o Lápis ainda na mão · `9` = feito.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
@@ -190,7 +210,7 @@ pub fn step(
             });
             Some(if k < STROKES { 52 } else { 54 })
         }
-        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); os sete
+        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); os oito
         // seleccionados mostram os nós.
         54 => {
             let all: Vec<ph2d_vec_scene::VecPathId> = vec.entities.keys().copied().collect();
@@ -239,6 +259,13 @@ mod tests {
             matches!(&got[5], Some(QuickShape::Biarc(_))),
             "o gancho: {:?}",
             got[5]
+        );
+        assert!(
+            matches!(&got[6], Some(QuickShape::Arrow(a))
+                if a.heads[0].is_none() && a.heads[1].is_some()
+                    && matches!(*a.shaft, QuickShape::Arc(_) | QuickShape::Biarc(_))),
+            "a seta de cabo curvo: {:?}",
+            got[6]
         );
     }
 

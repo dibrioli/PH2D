@@ -90,6 +90,19 @@ pub struct Pencil {
     fidelity_px: f64,
     /// O QuickShape do gesto em curso ([`crate::quickshape_hold`]).
     hold: crate::quickshape_hold::Hold,
+    /// As pontas que o estilo tinha ARMADAS no press (antes de a seta lhe pôr as dela).
+    armed: ([Marker; 2], f64),
+    /// A última SETA que o QuickShape cometeu ([`Self::next_style`]).
+    drawn_arrow: Option<DrawnArrow>,
+}
+
+/// **A seta que o QuickShape cometeu**: o caminho, as pontas e o tamanho que ELE lhe pôs, e as que
+/// o estilo tinha armadas antes dela.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DrawnArrow {
+    id: VecPathId,
+    ends: ([Marker; 2], f64),
+    armed: ([Marker; 2], f64),
 }
 
 impl Pencil {
@@ -143,6 +156,10 @@ impl Pencil {
         self.samples.clear();
         self.dyns.clear();
         self.hold.reset();
+        self.armed = (
+            [self.style.marker_start, self.style.marker_end],
+            self.style.marker_scale,
+        );
         self.samples.push(p);
         self.dyns.push(dyn_in);
         self.px_to_world = px_to_world.max(f64::MIN_POSITIVE);
@@ -188,10 +205,48 @@ impl Pencil {
             return false;
         }
         self.committed = Some(id);
+        let heads = self.hold.shape().map_or([None; 2], |s| s.heads());
+        self.drawn_arrow = (heads != [None; 2]).then(|| {
+            let e = arrow_ends(
+                &self.style,
+                heads,
+                self.style.stroke_w_px * self.px_to_world,
+            );
+            DrawnArrow {
+                id,
+                ends: (e.markers, e.scale),
+                armed: self.armed,
+            }
+        });
         self.samples.clear();
         self.dyns.clear();
         self.hold.reset();
         true
+    }
+
+    /// **O estilo do PRÓXIMO caminho** (a ponte chama a cada quadro, para o lápis, a caneta e as
+    /// formas): o `style` da tool — excepto as pontas que a SETA do QuickShape pôs. Ao soltar, a seta
+    /// fica selecionada e a tool ADOTA o traço dela (o painel mostra a verdade, e editá-lo aplica-se
+    /// à seta); sem isto o «último usado» passava a ponta ao traço seguinte — o gelado da cena 12
+    /// nascia com seta (foto de 10/10). Desenhar nunca mudou o estilo da tool. Enquanto a seta
+    /// estiver selecionada com as pontas que o QuickShape lhe deu, o próximo caminho nasce com as
+    /// que estavam ARMADAS antes dela; mexer nas pontas ou selecionar outra coisa devolve a lei.
+    #[must_use]
+    pub fn next_style(&self, style: PenStyle, selected: Option<VecPathId>) -> PenStyle {
+        match self.drawn_arrow {
+            Some(d)
+                if selected == Some(d.id)
+                    && ([style.marker_start, style.marker_end], style.marker_scale) == d.ends =>
+            {
+                PenStyle {
+                    marker_start: d.armed.0[0],
+                    marker_end: d.armed.0[1],
+                    marker_scale: d.armed.1,
+                    ..style
+                }
+            }
+            _ => style,
+        }
     }
 
     /// **Aborta** o traço em curso (o botão direito, o Esc) — o path vivo some sem deixar rastro.
@@ -298,7 +353,11 @@ impl Pencil {
         };
         let shape = self.hold.shape();
         let heads = shape.as_ref().map_or([None; 2], |s| s.heads());
-        let ends = arrow_ends(&self.style, heads, self.style.stroke_w_px * self.px_to_world);
+        let ends = arrow_ends(
+            &self.style,
+            heads,
+            self.style.stroke_w_px * self.px_to_world,
+        );
         let (verts, closed) = match shape {
             Some(s) => {
                 let p = s.to_path();

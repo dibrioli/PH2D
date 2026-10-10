@@ -243,10 +243,20 @@ impl LuzDoQuadro {
             return;
         };
         let (fina, captura) = (self.fina, self.captura);
+        // ⭐ W5c: o Ultra (a cascata holográfica) tem a grade da Alta — a troca recria o solver.
+        let holografica = self
+            .degrau
+            .holografica
+            .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
         let mesmas = self.resolvido.as_ref().is_some_and(|r| {
             let c = r.solver.config();
-            (c.grade.largura, c.grade.altura, c.fina, c.captura)
-                == (g.largura, g.altura, fina, captura)
+            (
+                c.grade.largura,
+                c.grade.altura,
+                c.fina,
+                c.captura,
+                c.holografica,
+            ) == (g.largura, g.altura, fina, captura, holografica)
         });
         let pronto = if mesmas {
             let r = self.resolvido.as_mut().expect("verificado acima");
@@ -255,9 +265,14 @@ impl LuzDoQuadro {
             self.resolvido = None;
             // A grade nova (outro nível, outra janela) tem outro custo: o lido era da anterior.
             self.custo_ms = None;
+            // ⭐ W5c: o rebote em todo nível (sem nenhum corpo que reflita, os passes dele saltam);
+            // `PH2D_LIGHT2D_REBOTE=0` desliga-o (a comparação da cena 3).
+            let rebote = std::env::var("PH2D_LIGHT2D_REBOTE").map_or(true, |v| v.trim() != "0");
             let cfg = Config {
                 fina,
                 captura,
+                holografica,
+                rebote,
                 ..Config::padrao_para(&gpu.device, g)
             };
             Solver::novo(gpu, cfg).map(|solver| {

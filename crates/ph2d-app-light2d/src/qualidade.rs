@@ -27,6 +27,7 @@ const LEITURAS_PARA_SUBIR: u32 = 30;
 pub fn degrau_do(nivel: NivelDaLuz) -> Degrau {
     Degrau {
         c0_px: f64::from(nivel.celula_px()),
+        holografica: nivel == NivelDaLuz::Ultra,
         ..DEGRAU_PADRAO
     }
 }

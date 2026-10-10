@@ -493,7 +493,7 @@ impl C3 {
         &self,
         gpu: &GpuContext,
         enc: &mut wgpu::CommandEncoder,
-        (lampadas, distantes): (&wgpu::BindGroup, bool),
+        (lampadas, distantes, reflete): (&wgpu::BindGroup, bool, bool),
         tempos: Option<&Tempos>,
     ) {
         gpu.queue
@@ -547,7 +547,7 @@ impl C3 {
                 label: Some("luz2d C3 rebote"),
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_REBOTE)),
             });
-            if let Some((pipe, [g2, g3])) = &self.rebote {
+            if let Some((pipe, [g2, g3])) = self.rebote.as_ref().filter(|_| reflete) {
                 p.set_pipeline(pipe.de(distantes));
                 p.set_bind_group(0, &self.cena, &[]);
                 p.set_bind_group(1, lampadas, &[]);

@@ -51,7 +51,7 @@ fn o_submenu_da_luz_escreve_no_dono_e_marca_a_linha_certa() {
             hero.store.context_menu().is_none(),
             "a escolha fecha o menu"
         );
-        let acesas: Vec<usize> = (0..3)
+        let acesas: Vec<usize> = (0..NivelDaLuz::ALL.len())
             .filter(|&k| acesa(ids::CTX_MENU_LIGHT_NIVEL[k], &hero.view.luz2d))
             .collect();
         assert_eq!(acesas, vec![i], "o rádio acende só o nível em uso");

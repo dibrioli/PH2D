@@ -80,8 +80,13 @@ fn variacoes(gpu: &GpuContext) -> (f64, f64) {
     for passo in 0..24 {
         // 0,37 de texel por quadro: sub-texel, e atravessa vários blocos da cascata de topo.
         let centro = [0.37 * 0.0625 * passo as f32, 0.11 * 0.0625 * passo as f32];
+        // ⭐ W5c: a parede branca REFLETE (o rebote, um por quadro): o pan mede-se depois de a série
+        // convergir — antes disso a luz muda de quadro para quadro sem pan nenhum.
+        let quadros = if passo == 0 { 60 } else { 1 };
         assert!(ancorada.preparar(&w, afim(centro), ALVO));
-        ancorada.gravar(gpu, &mut ph2d_ecs::PresentWorld::new(), &renderer);
+        for _ in 0..quadros {
+            ancorada.gravar(gpu, &mut ph2d_ecs::PresentWorld::new(), &renderer);
+        }
         let fa = fluencia_lida(gpu, ancorada.solver().expect("solver"));
 
         // A MESMA grade com a origem a seguir a câmera (sem encaixe).
@@ -98,7 +103,9 @@ fn variacoes(gpu: &GpuContext) -> (f64, f64) {
         let s = solta.get_or_insert_with(|| Solver::novo(gpu, cfg).expect("solver solto"));
         s.reposicionar(gs.origem_m, gs.texel_m)
             .expect("reposicionar");
-        s.quadro(gpu, ancorada.cena());
+        for _ in 0..quadros {
+            s.quadro(gpu, ancorada.cena());
+        }
         let fs = fluencia_lida(gpu, s);
 
         let va: Vec<f64> = pontos().iter().map(|&p| fa.amostra(p)).collect();

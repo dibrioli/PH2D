@@ -260,15 +260,24 @@ impl Solver {
             });
         }
         // ⭐ W5c: a emissão ganha a luz que cada superfície refletora recebeu no quadro anterior.
-        match &self.rebote {
-            Some(r) => r.gravar(
-                gpu,
-                enc,
-                &self.cfg.grade,
-                &self.alvos_c0[0],
-                self.tempos.as_ref(),
-            ),
-            None => rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::C0_REBOTE),
+        // Sem nenhum corpo que reflita, os dois passes do rebote saltam (e a fonte esquece-se).
+        let reflete = self.rebote.is_some() && rebote::ha_refletor(cena, sprites);
+        match self.rebote.as_mut() {
+            Some(r) if reflete => {
+                r.gravar(
+                    gpu,
+                    enc,
+                    &self.cfg.grade,
+                    &self.alvos_c0[0],
+                    self.tempos.as_ref(),
+                );
+            }
+            r => {
+                if let Some(r) = r {
+                    r.anterior = None;
+                }
+                rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::C0_REBOTE);
+            }
         }
         {
             let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -324,11 +333,11 @@ impl Solver {
         self.c3.gravar(
             gpu,
             enc,
-            (&self.lampadas_grupo, !distante.indices.is_empty()),
+            (&self.lampadas_grupo, !distante.indices.is_empty(), reflete),
             self.tempos.as_ref(),
         );
         // A fonte que a C3 acabou de escrever está nesta grade: o quadro seguinte lê-a no mundo.
-        if let Some(r) = &mut self.rebote {
+        if let Some(r) = self.rebote.as_mut().filter(|_| reflete) {
             r.anterior = Some(self.cfg.grade);
         }
         if let Some(t) = &self.tempos {

@@ -434,11 +434,12 @@ pub(super) const SETTINGS_MOTION_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_MOTION_REDUCED, "chrome.menu.reduced_motion"),
 ];
 
-/// As linhas de `ContextMenuKind::SettingsLightSubmenu` — os três níveis e o «Automatic».
+/// As linhas de `ContextMenuKind::SettingsLightSubmenu` — os níveis e o «Automatic».
 pub(super) const SETTINGS_LIGHT_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_LIGHT_NIVEL[0], "chrome.menu.light_low"),
     menu_row(ids::CTX_MENU_LIGHT_NIVEL[1], "chrome.menu.light_medium"),
     menu_row(ids::CTX_MENU_LIGHT_NIVEL[2], "chrome.menu.light_high"),
+    menu_row(ids::CTX_MENU_LIGHT_NIVEL[3], "chrome.menu.light_ultra"),
     menu_row(ids::CTX_MENU_LIGHT_AUTO, "chrome.menu.light_automatic"),
 ];
 

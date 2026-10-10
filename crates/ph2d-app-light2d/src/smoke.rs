@@ -4,7 +4,7 @@
 //! |---|---|
 //! | 1 | **Uma luz** — uma sala escura (luz ambiente fraca), uma lâmpada à esquerda, uma parede que BLOQUEIA a luz e três quadrados coloridos: o Vermelho (à frente) e o Azul (rente à borda da sombra) acendem, o Verde (atrás da parede) fica na sombra, e a sombra alarga longe da parede |
 //! | 2 | **Vaga-lumes** — 1 000 sprites que BRILHAM, em quatro enxames nos cantos de um chão escuro, cada um com uma árvore ao lado: cada enxame acende o chão em volta e a árvore faz sombra; o custo da luz é o de uma lâmpada só (a sonda mede 1 × 1 000) |
-//! | 3 | **Rebote** — ⚠️ AINDA NÃO: depende do rebote (W5); o roteador responde que não há esta cena |
+//! | 3 | **Rebote** (W5c) — uma sala fechada: chão e teto brancos, parede esquerda VERMELHA, direita VERDE, uma lâmpada branca perto do teto, um fundo que só RECEBE luz e uma caixa branca no chão: a luz que bate nas paredes volta tingida — o fundo avermelha junto à vermelha e esverdeia junto à verde, e cada face da caixa toma a cor da parede que a olha (`PH2D_LIGHT2D_REBOTE=0` desliga o rebote, para comparar) |
 //! | 4 | **Tamanho da lâmpada** — duas salas iguais separadas por um muro: à esquerda uma lâmpada PEQUENA, à direita uma GRANDE, cada uma atrás da mesma parede: a pequena faz sombra nítida, a grande macia (a sonda mede a penumbra × a geometria) |
 //!
 //! Os vaga-lumes estão PARADOS: o que a cena ensina é a luz (e o custo), não o voo.
@@ -44,13 +44,16 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
             vaga_lumes(world, VAGA_LUMES);
             true
         }
+        3 => {
+            rebote(world);
+            true
+        }
         4 => {
             tamanho_da_lampada(world);
             true
         }
         _ => {
-            // ⚠️ A 3 (Rebote) é da W5: fingi-la ensinaria o contrário do que acontece.
-            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1, 2, 4)");
+            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–4)");
             false
         }
     }
@@ -210,6 +213,70 @@ pub fn vaga_lumes(world: &mut World, n: usize) {
         world
             .entity_mut(e)
             .insert(ph2d_ecs::SpriteEmissive(BRILHO_DO_VAGA_LUME));
+    }
+}
+
+/// Cena 3 — o interior da sala (metros): `x ∈ [−3, 3]`, `y ∈ [−1,8, 1,8]`; as paredes têm 0,3 m.
+pub const SALA_DO_REBOTE: [f32; 2] = [6.0, 3.6];
+/// A espessura das paredes da sala do rebote (metros).
+pub const PAREDE_DO_REBOTE_M: f32 = 0.3;
+
+/// Cena 3 — **Rebote** (W5c, a lei do plano §2.4). As paredes BLOQUEIAM e RECEBEM a luz — é isso que
+/// as faz devolvê-la, × a cor delas.
+pub fn rebote(world: &mut World) {
+    let [w, h] = SALA_DO_REBOTE;
+    let e = PAREDE_DO_REBOTE_M;
+    // O fundo da sala: só recebe a luz (não bloqueia) — é nele que se vê a cor das paredes a escorrer.
+    quadrado(world, "Fundo", [0.0, 0.0], [w, h], [0.8, 0.8, 0.8, 1.0]);
+    ambiente(world, 0.01, [0.6, 0.7, 1.0]);
+    let (t, g) = pose(0.0, 0.5 * h - 0.6);
+    world.spawn((
+        Name::new("Lâmpada"),
+        Luz {
+            cor: [1.0, 1.0, 1.0],
+            intensidade: std::f32::consts::TAU * 1.2,
+            tamanho_m: 0.15,
+            alcance_m: f32::INFINITY,
+            tipo: TipoDeLuz::Ponto,
+        },
+        t,
+        g,
+    ));
+    let opaca = BloqueiaLuz { opacidade: 1.0 };
+    for (nome, centro, lado, cor) in [
+        (
+            "Chão",
+            [0.0, -0.5 * (h + e)],
+            [w + 2.0 * e, e],
+            [0.95, 0.95, 0.95, 1.0],
+        ),
+        (
+            "Teto",
+            [0.0, 0.5 * (h + e)],
+            [w + 2.0 * e, e],
+            [0.95, 0.95, 0.95, 1.0],
+        ),
+        (
+            "Parede vermelha",
+            [-0.5 * (w + e), 0.0],
+            [e, h],
+            [0.9, 0.1, 0.1, 1.0],
+        ),
+        (
+            "Parede verde",
+            [0.5 * (w + e), 0.0],
+            [e, h],
+            [0.1, 0.8, 0.15, 1.0],
+        ),
+        (
+            "Caixa branca",
+            [0.0, -0.5 * h + 0.5],
+            [0.8, 1.0],
+            [0.95, 0.95, 0.95, 1.0],
+        ),
+    ] {
+        let q = quadrado(world, nome, centro, lado, cor);
+        world.entity_mut(q).insert(opaca);
     }
 }
 

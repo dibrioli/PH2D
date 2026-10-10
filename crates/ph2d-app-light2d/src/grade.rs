@@ -30,6 +30,8 @@ pub struct Degrau {
     /// ⭐ O lado de um texel da captura FINA dos opacos (onde a luz direta marcha, W5a) em píxeis no
     /// zoom mais fino da oitava. Mais grosso que o `c0_px`, a captura é a das cascatas.
     pub captura_px: f64,
+    /// ⭐ W5c: a CASCATA HOLOGRÁFICA (o nível Ultra) no lugar das cascatas.
+    pub holografica: bool,
 }
 
 /// O degrau por omissão — MEDIDO (rodada W3, RTX 5060 Ti, 1920×1080; tabela no handoff W3): o K7
@@ -50,6 +52,7 @@ pub const DEGRAU_PADRAO: Degrau = Degrau {
     vetor_px_por_texel: 1,
     fino_px: 1.0,
     captura_px: 0.5,
+    holografica: false,
 };
 
 /// O texel de `px` píxeis no zoom mais fino da oitava: a potência de 2 em metros (G11).

@@ -186,6 +186,13 @@ impl SomaDoRebote {
     }
 }
 
+/// Algum corpo da cena reflete (um oclusor ou um sprite — a camada do vetor incluída — com albedo)?
+pub(super) fn ha_refletor(cena: &CenaDeLuz, sprites: &CapturaDeSprites<'_>) -> bool {
+    let com_albedo = |a: &[f32; 3]| a.iter().any(|&x| x > 0.0);
+    cena.oclusores.iter().any(|o| com_albedo(&o.albedo))
+        || sprites.sprites.iter().any(|s| com_albedo(&s.albedo))
+}
+
 /// Sem o rebote, um passe vazio escreve os carimbos dele (valem 0; nenhum fica por escrever).
 pub(super) fn carimbos_vazios(enc: &mut wgpu::CommandEncoder, tempos: Option<&Tempos>, par: u32) {
     if let Some(t) = tempos {

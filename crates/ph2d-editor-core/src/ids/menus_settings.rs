@@ -101,11 +101,12 @@ pub const CTX_MENU_MOTION_DISCRETE: NodeId = hash_node_id("ctx_menu_motion_discr
 pub const CTX_MENU_MOTION_REDUCED: NodeId = hash_node_id("ctx_menu_motion_reduced");
 /// ⭐ Settings ▸ Light — a nitidez da luz 2D no editor (Luz 2D, W4).
 pub const CTX_MENU_SETTINGS_LIGHT: NodeId = hash_node_id("ctx_menu_settings_light");
-/// As três nitidezes — um RÁDIO (a posição é a de `NivelDaLuz::ALL`).
-pub const CTX_MENU_LIGHT_NIVEL: [NodeId; 3] = [
+/// As nitidezes — um RÁDIO (a posição é a de `NivelDaLuz::ALL`; ⭐ W5c: a 4.ª, o Ultra).
+pub const CTX_MENU_LIGHT_NIVEL: [NodeId; 4] = [
     hash_node_id("ctx_menu_light_low"),
     hash_node_id("ctx_menu_light_medium"),
     hash_node_id("ctx_menu_light_high"),
+    hash_node_id("ctx_menu_light_ultra"),
 ];
 /// «Automatic» — um TOGGLE: o nível escolhido vira o teto e o editor desce quando a placa não
 /// aguenta.

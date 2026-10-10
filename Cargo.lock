@@ -5200,6 +5200,7 @@ dependencies = [
  "flate2",
  "pdf-writer",
  "ph2d-board-edit",
+ "ph2d-board-excalidraw",
  "ph2d-board-model",
  "ph2d-board-render",
  "ph2d-board-route",

@@ -362,5 +362,6 @@ pub fn write(board: &Board) -> String {
         "appState": { "gridSize": 20, "gridStep": 5, "gridModeEnabled": false, "viewBackgroundColor": "#ffffff" },
         "files": {},
     });
-    serde_json::to_string_pretty(&file).unwrap_or_default()
+    // Compacto: o Excalidraw lê-o igual, e o `customData` de cada elemento não paga a indentação.
+    serde_json::to_string(&file).unwrap_or_default()
 }

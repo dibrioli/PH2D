@@ -227,9 +227,31 @@ MP); ler e escrever `.excalidraw`.
 Restaurar (ler os bytes): 22–28 ms a 100 mil. ⇒ **deflate 1**: 5× menos bytes que o cru por mais 8 ms, e o
 nível 6 custa 3,6× o tempo por 33 % menos. Nenhum tecto (R5).
 
-### §4.2 — Exportar e `.excalidraw`
+### §4.2 — Exportar e `.excalidraw` (09/10, `--release`, `load` 3: placa AMD, tecto de textura 8 192 px)
 
-Ver §4.3, escrita depois da implementação com a MESMA régua.
+Régua `crates/ph2d-board-export/tests/it/measure_export_cost.rs` — o quadro INTEIRO de N notas (uma frase
+cada), mínimo de 3 rodadas:
+
+| | 10 mil notas | 100 mil notas |
+|---|---|---|
+| gravar a página (o `paint` vector, o detalhe inteiro) | 86 ms · 40 003 operações | 883 ms · 400 003 |
+| SVG | **96 ms · 16 MB** | **1,0 s · 161 MB** |
+| PDF (uma página) | **51 ms · 0,49 MB** | **0,54 s · 4,6 MB** |
+| PNG 4 / 16 / 49 MP (placa, ladrilhos) | 13 / 34 / 224 ms | 118 / 134 / 201 ms |
+| escrever `.excalidraw` · ler | 277 ms · 15,6 MB · 163 ms | 2,6 s · 156 MB · 1,75 s |
+| guardar uma versão · lê-la | 1,3 ms · 168 KB · 2,0 ms | 15,7 ms · 1,6 MB · 23,6 ms |
+
+⛔ **Medido e curado na mesma rodada:** a 1.ª versão escrevia o CONTORNO de cada letra em cada ocorrência —
+10 mil notas davam um SVG de **144 MB em 1,4 s** e um PDF de **90 MB em 3,1 s** (100 mil: 1,44 GB em 14 s e
+900 MB em 30 s). Cada glifo de cada face passou a definir-se UMA vez e a reusar-se (SVG `<defs>` + `<use>`;
+PDF um Form XObject por contorno, pintado com a cor do estado): 15× e 60× menos tempo, 9× e 180× menos bytes,
+o MESMO desenho (os oráculos dão os mesmos números ao píxel). E o `.excalidraw` passou a JSON compacto (o
+Excalidraw lê-o igual): a entrada do oráculo de 34 KB para 15,6 KB.
+
+⇒ **nenhum tecto.** O mais pesado é o `.excalidraw` de 100 mil elementos (o `customData` de cada um viaja
+inteiro — é o que faz a volta ser exacta); o próprio Excalidraw não abre um quadro desses à mão. O PNG
+Large de um quadro inteiro de 100 mil notas sai em 0,2 s porque o nível de detalhe do ecrã à escala (E3)
+desenha as notas de longe como blocos — o vector desenha tudo, por isso pesa mais.
 
 ## §5 — O que o dono vê (cena 10)
 

@@ -36,3 +36,7 @@ png = "0.18"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# A régua da saída (`tests/it/measure_export_cost.rs`) mede também o `.excalidraw`.
+ph2d-board-excalidraw = { path = "../ph2d-board-excalidraw" }

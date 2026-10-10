@@ -148,6 +148,8 @@ struct Doc {
     forms: Vec<(Ref, Vec<u8>, [f64; 2])>,
     form_names: Vec<(String, Ref)>,
     glyphs: Glyphs,
+    /// O XObject de cada contorno de glifo já escrito (índice da cache → nome).
+    glyph_forms: BTreeMap<usize, String>,
 }
 
 impl Doc {
@@ -167,6 +169,30 @@ impl Doc {
             self.alphas.insert(key, (format!("A{key}"), r));
         }
         Some(self.alphas[&key].0.clone())
+    }
+
+    /// O XObject do contorno `i` (escrito uma vez): só o caminho e o `f` — a cor é a do estado.
+    fn glyph_form(&mut self, i: usize) -> String {
+        if let Some(n) = self.glyph_forms.get(&i) {
+            return n.clone();
+        }
+        let r = self.id();
+        let p = self.glyphs.path(i).clone();
+        let mut c = Content::new();
+        path(&mut c, &p, Affine::IDENTITY);
+        c.fill_nonzero();
+        let body = c.finish();
+        let bb = p.elements().is_empty().then(|| [0.0; 4]).unwrap_or_else(|| {
+            let b = ph2d_vector::Shape::bounding_box(&p);
+            [b.x0, b.y0, b.x1, b.y1]
+        });
+        let mut form = self.pdf.form_xobject(r, &body);
+        form.bbox(Rect::new(f(bb[0]), f(bb[1]), f(bb[2]), f(bb[3])));
+        form.finish();
+        let name = format!("H{i}");
+        self.glyph_forms.insert(i, name.clone());
+        self.form_names.push((name.clone(), r));
+        name
     }
 
     fn mask(&mut self, w: f64, h: f64, sigma: f64, color: Color) -> String {
@@ -323,13 +349,28 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> Vec<u8> {
                     .restore_state();
             }
             DrawOp::Glyphs(run) => {
-                let p = doc.glyphs.run_path(run);
-                let a = doc.alpha(rgb(run.brush).1);
+                let placed = doc.glyphs.place(run);
+                let names: Vec<String> = placed.iter().map(|(i, _)| doc.glyph_form(*i)).collect();
+                let ([r, g, b], alpha) = rgb(run.brush);
+                let a = doc.alpha(alpha);
                 let c = &mut stack.last_mut().expect("a página").content;
                 c.begin_marked_content_with_properties(Name(b"Span"))
                     .properties()
                     .actual_text(TextStr(&run.text));
-                fill(c, &p, Fill::NonZero, run.transform, run.brush, a.as_deref());
+                // Cada letra é o XObject do seu contorno (tirado uma vez), pintado com a cor do estado.
+                c.save_state();
+                cm(c, run.transform);
+                c.set_fill_rgb(r, g, b);
+                if let Some(a) = &a {
+                    c.set_parameters(Name(a.as_bytes()));
+                }
+                for (name, (_, [x, y])) in names.iter().zip(&placed) {
+                    c.save_state();
+                    c.transform([1.0, 0.0, 0.0, 1.0, f(*x), f(*y)]);
+                    c.x_object(Name(name.as_bytes()));
+                    c.restore_state();
+                }
+                c.restore_state();
                 if let Some(g) = run.glyphs.first() {
                     let tm = run.transform
                         * Affine::translate((f64::from(g.x), f64::from(g.y)))
@@ -399,6 +440,7 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
         forms: Vec::new(),
         form_names: Vec::new(),
         glyphs: Glyphs::default(),
+        glyph_forms: BTreeMap::new(),
     };
     let (catalog, tree, font) = (doc.id(), doc.id(), doc.id());
     let page_ids: Vec<Ref> = pages.iter().map(|_| doc.id()).collect();

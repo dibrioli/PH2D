@@ -180,9 +180,28 @@ pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
             }
             DrawOp::Pop => out.push_str("</g>\n"),
             DrawOp::Glyphs(run) => {
-                let label = format!(" aria-label=\"{}\"", escape(&run.text));
-                let path = glyphs.run_path(run);
-                fill(&mut out, &d(&path), Fill::NonZero, run.transform, run.brush, Some(&label));
+                let before = glyphs.len();
+                let placed = glyphs.place(run);
+                // Os contornos novos definem-se uma vez; cada letra é um `<use>`.
+                if glyphs.len() > before {
+                    out.push_str("<defs>");
+                    for i in before..glyphs.len() {
+                        let _ = write!(out, "<path id=\"g{i}\" d=\"{}\"/>", d(glyphs.path(i)));
+                    }
+                    out.push_str("</defs>\n");
+                }
+                let (hex, a) = paint(run.brush);
+                let a = a.map_or(String::new(), |a| format!(" fill-opacity=\"{a}\""));
+                let _ = write!(
+                    out,
+                    "<g fill=\"{hex}\"{a}{} aria-label=\"{}\">",
+                    transform(run.transform),
+                    escape(&run.text)
+                );
+                for (i, [x, y]) in placed {
+                    let _ = write!(out, "<use href=\"#g{i}\" x=\"{}\" y=\"{}\"/>", num(x), num(y));
+                }
+                out.push_str("</g>\n");
             }
             DrawOp::BlurredRect {
                 transform: t,

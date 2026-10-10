@@ -36,54 +36,75 @@ impl OutlinePen for Pen {
     }
 }
 
-/// A chave de um contorno: a fonte (o endereço dos bytes + o índice), o glifo, o tamanho e a
-/// variação.
-type Key = (usize, u32, u32, u32, Vec<i16>);
+/// A face de uma corrida: os bytes da fonte (o endereço) e o índice, o tamanho, a variação e a
+/// inclinação — tudo o que muda o contorno de um glifo além do id dele.
+type Face = (usize, u32, u32, Vec<i16>, Option<[u64; 6]>);
 
-/// Os contornos já tirados (um quadro grande repete as mesmas letras milhares de vezes).
+/// ⭐ Cada glifo de cada face tirado UMA vez e reusado (o SVG por `<use>`, o PDF por um XObject) —
+/// medido 09/10: com o contorno repetido em cada letra, 10 mil notas davam um SVG de 144 MB e um PDF
+/// de 90 MB.
 #[derive(Default)]
 pub(crate) struct Glyphs {
-    cache: BTreeMap<Key, BezPath>,
+    faces: BTreeMap<Face, u32>,
+    index: BTreeMap<(u32, u32), usize>,
+    paths: Vec<BezPath>,
 }
 
 impl Glyphs {
-    /// A corrida inteira num caminho, no espaço da CORRIDA (falta só o `run.transform`): cada glifo na
-    /// sua posição, com a inclinação sintética e o y virado (a fonte sobe, o ecrã desce) — o que o
-    /// Vello faz ao desenhar a corrida.
-    pub(crate) fn run_path(&mut self, run: &GlyphRun) -> BezPath {
+    /// Os glifos da corrida: o índice de cada contorno (já com a inclinação e o y virado, na origem) e
+    /// a posição dele no espaço da corrida (falta só o `run.transform`).
+    pub(crate) fn place(&mut self, run: &GlyphRun) -> Vec<(usize, [f64; 2])> {
         let data = run.font.data.data();
-        let font = FontRef::from_index(data, run.font.index).ok();
+        let face = (
+            data.as_ptr() as usize,
+            run.font.index,
+            run.size.to_bits(),
+            run.coords.clone(),
+            run.skew.map(|a| a.as_coeffs().map(f64::to_bits)),
+        );
+        let next = u32::try_from(self.faces.len()).unwrap_or(u32::MAX);
+        let face = *self.faces.entry(face).or_insert(next);
+        let mut font = None;
         let coords: Vec<NormalizedCoord> = run
             .coords
             .iter()
             .map(|&c| NormalizedCoord::from_bits(c))
             .collect();
-        let mut out = BezPath::new();
+        let mut out = Vec::with_capacity(run.glyphs.len());
         for g in &run.glyphs {
-            let key = (
-                data.as_ptr() as usize,
-                run.font.index,
-                g.id,
-                run.size.to_bits(),
-                run.coords.clone(),
-            );
-            let path = self.cache.entry(key).or_insert_with(|| {
-                let mut pen = Pen::default();
-                if let Some(glyph) = font
-                    .as_ref()
-                    .and_then(|f| f.outline_glyphs().get(GlyphId::new(g.id)))
-                {
-                    let at = DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&coords));
-                    let _ = glyph.draw(at, &mut pen);
+            let at = match self.index.get(&(face, g.id)) {
+                Some(&i) => i,
+                None => {
+                    let f = font.get_or_insert_with(|| FontRef::from_index(data, run.font.index).ok());
+                    let mut pen = Pen::default();
+                    if let Some(glyph) = f
+                        .as_ref()
+                        .and_then(|f| f.outline_glyphs().get(GlyphId::new(g.id)))
+                    {
+                        let at = DrawSettings::unhinted(Size::new(run.size), LocationRef::new(&coords));
+                        let _ = glyph.draw(at, &mut pen);
+                    }
+                    let local = run.skew.unwrap_or(Affine::IDENTITY) * Affine::FLIP_Y;
+                    let path: BezPath = pen.0.elements().iter().map(|&e| map(local, e)).collect();
+                    self.paths.push(path);
+                    let i = self.paths.len() - 1;
+                    self.index.insert((face, g.id), i);
+                    i
                 }
-                pen.0
-            });
-            let place = Affine::translate((f64::from(g.x), f64::from(g.y)))
-                * run.skew.unwrap_or(Affine::IDENTITY)
-                * Affine::FLIP_Y;
-            out.extend(path.elements().iter().map(|&e| map(place, e)));
+            };
+            out.push((at, [f64::from(g.x), f64::from(g.y)]));
         }
         out
+    }
+
+    /// O contorno `i` (na origem do glifo, no espaço da corrida).
+    pub(crate) fn path(&self, i: usize) -> &BezPath {
+        &self.paths[i]
+    }
+
+    /// Quantos contornos há (o próximo índice novo).
+    pub(crate) fn len(&self) -> usize {
+        self.paths.len()
     }
 }
 

@@ -42,13 +42,13 @@ impl PainterTool {
         let flow =
             ph2d_wet_paint::flow::clamp_ratio(usize::from(self.paint.wetpaint.flow_ratio.max(1)));
         let mut engine = Engine::with_flow_ratio(gw, gh, flow);
-        // O PRODUTO (W1e): o pigmento é transparente nas junções (a velatura medida no Rebelle, F6), a
-        // água corre com o traço aberto — a mistura e a sangria vêem-se a pintar (F6) — e a conta de baixo
-        // só se solta do papel seco acima da altura crítica (F1). O motor nasce com o port.
+        // O PRODUTO: o pigmento é transparente nas junções (a velatura medida no Rebelle, W1e F6) e o
+        // filme molhado vela o seco no render (W1f) — a mistura vê-se a pintar, no pouso do dab. A água
+        // corre só depois do Up (dono 10/10): a 4096² o quadro a pintar com ela a correr ia de 2–4 ms a
+        // 14–45 ms no pior. ⛔ A lei da gota (`drip_head`) fica DESLIGADA: era ela que cortava o
+        // escorrimento em rectângulos (W1f, 05 §4b). O motor nasce com o port.
         engine.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
-        engine.sim.sim_while_painting = true;
-        // E a conta de baixo só se solta do papel seco acima da altura crítica (W1e, F1).
-        engine.sim.drip_head = ph2d_wet_paint::solver::ALTURA_DA_GOTA;
+        engine.sim.glaze_filme = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
         self.paint.wetpaint.session = Some(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,

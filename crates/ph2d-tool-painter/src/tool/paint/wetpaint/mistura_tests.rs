@@ -55,6 +55,7 @@ fn lin(c: f64) -> f64 {
 /// aí não mede a velatura) e a sangria: quanto o vermelho a 15 px do cruzamento ganhou de azul desde
 /// ANTES do azul (o MESMO sítio — a textura do papel não entra; comparar com o vermelho longe lia −3
 /// só pelo papel).
+#[derive(Clone)]
 struct Leitura {
     gama: f64,
     sangria: f64,
@@ -77,6 +78,11 @@ fn le(px: &[u8], antes: &[u8]) -> Leitura {
 
 /// A cena: devolve as telas ANTES do azul, DURANTE o azul (ponteiro em baixo) e 2 s DEPOIS do Up.
 fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+    cena_com(seco, produto, None)
+}
+
+/// [`cena`] com a velatura do filme no render forçada (`filme`).
+fn cena_com(seco: bool, produto: bool, filme: Option<f64>) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     let p = &b
@@ -97,7 +103,18 @@ fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
     if !produto {
         let s = t.paint.wetpaint.session.as_mut().expect("sessão");
         s.engine.sim.glaze = 0.0;
+        s.engine.sim.glaze_filme = 0.0;
         s.engine.sim.sim_while_painting = false;
+    }
+    if let Some(f) = filme {
+        t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("sessão")
+            .engine
+            .sim
+            .glaze_filme = f;
     }
     t.set_brush_color_srgb8([200, 30, 30]);
     t.on_canvas_pointer(cp([100.0, 150.0], PointerPhase::Down));
@@ -185,5 +202,29 @@ fn azul_sobre_vermelho_vela_no_seco_e_sangra_no_molhado_como_no_rebelle() {
     );
     if let Err(e) = produto {
         panic!("a mistura do produto falhou a barra do Rebelle: {e}");
+    }
+}
+
+/// **Sonda (W1f): a velatura do filme no render**, com a água só depois do Up — o γ e a sangria por
+/// valor, no MESMO processo.
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_velatura_do_filme() {
+    for f in [0.47, 0.35, 0.25, 0.20, 0.15, 0.0] {
+        let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
+        let (s, m) = (
+            ler(cena_com(true, true, Some(f))),
+            ler(cena_com(false, true, Some(f))),
+        );
+        println!(
+            "[filme {f:.2}] seco γ durante {:.2} depois {:.2} sangria {:+.0} · molhado γ durante {:.2} depois {:.2} sangria {:+.0} · barra {:?}",
+            s.0.gama,
+            s.1.gama,
+            s.1.sangria,
+            m.0.gama,
+            m.1.gama,
+            m.1.sangria,
+            barra((s.0.clone(), s.1.clone()), (m.0.clone(), m.1.clone())).err()
+        );
     }
 }

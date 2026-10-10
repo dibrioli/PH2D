@@ -56,6 +56,13 @@ fn clamp_sym(v: f64, m: f64) -> f64 {
 /// (Bancada do doc 06 §2, Wet Round, água 1 · 0,7 · 0,4 · 0,2, 30 s — `sonda_gota` +
 /// `ferramentas/fios.py`, 05 §4b.) O fio único e longo do máximo NÃO sai desta lei: precisa de um
 /// mecanismo não local (a conta a equalizar ao longo da orla, para o primeiro fio drenar os outros).
+///
+/// ⛔ **O PRODUTO NÃO A USA (W1f, 10/10):** ela cortava o escorrimento em RECTÂNGULOS (pontas de fio
+/// quadradas, orla de baixo recta — o smoke do dono). A frente quase nunca passa pela altura crítica:
+/// avança por um degrau binário (a célula «seca» destrava com `film > 1e-3`), e a linha nova enche-se
+/// de LADO sem trava (a lei só trava a componente que desce) — uma fila inteira de cada vez. ~40
+/// variantes medidas e recusadas no 05 §4b (fonte da conta, papel, limiar, pino, coluna, fluxo inteiro,
+/// lei na gravidade, transição suave). Fica aqui como instrumento das sondas (`sonda_gota`).
 pub const ALTURA_DA_GOTA: f64 = 0.2;
 
 #[derive(Clone, Copy)]

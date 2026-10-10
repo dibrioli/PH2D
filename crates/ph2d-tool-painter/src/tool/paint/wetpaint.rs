@@ -413,12 +413,16 @@ mod offthread_tests; // os gates da sim FORA da thread do frame
 
 // o veu do Show Wet e VIVO (report do Enio, 2026-08-07)
 #[cfg(test)]
+mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
+#[cfg(test)]
 mod gota_tests;
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
 #[path = "wetpaint/showwet_tests.rs"]
 mod showwet_tests;
+#[cfg(test)]
+mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
 #[cfg(test)]

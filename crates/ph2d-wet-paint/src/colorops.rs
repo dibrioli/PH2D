@@ -85,6 +85,18 @@ pub use ph2d_pigment::{ColorMix, reflectance_of_ks};
 /// com `0` (o port, que a impressão digital fixa); o produto liga este valor.
 pub const VELATURA_MEDIDA: f64 = 0.47;
 
+/// **A velatura do filme MOLHADO sobre o assentado, no render** (W1f): o azul ainda em suspensão leva o
+/// termo inteiro de uma vez (peso ≈ 1), enquanto ao assentar entra aos bocados — com `VELATURA_MEDIDA`
+/// aqui, e a água só a correr depois do Up, o azul sobre vermelho SECO a pintar caía a γ 0,76 (Rebelle
+/// 0,42–0,49). Varrido no MESMO processo (`sonda_velatura_do_filme`; seco durante · depois):
+///
+/// | filme | 0,47 | 0,35 | 0,25 | **0,20** | 0,15 | 0 |
+/// |---|---|---|---|---|---|---|
+/// | γ | 0,76 · 0,62 | 0,67 · 0,54 | 0,59 · 0,47 | **≈ 0,54 · 0,43** | 0,50 · 0,38 | 0,35 · 0,25 |
+///
+/// (Rebelle 0,42–0,49 · 0,44–0,51; a sangria no molhado não muda: +25 a +26.)
+pub const VELATURA_DO_FILME: f64 = 0.20;
+
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos
 /// TRANSPARENTES: a cor de cima perde, na fração `glaze`, a luz que a de baixo já absorveu.
 ///

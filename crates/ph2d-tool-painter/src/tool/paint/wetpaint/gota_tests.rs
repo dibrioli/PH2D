@@ -1,9 +1,9 @@
-//! **A lei da gota no produto** (W1e, F1+F5 — a bancada do doc 06 §2, [`super::sonda_gota::bancada`]).
+//! **A meia inclinação e a lei da gota** (W1e, F1+F5; W1f — a bancada do doc 06 §2,
+//! [`super::sonda_gota::bancada`]).
 //!
-//! O Rebelle a meia inclinação: nada escorre e a orla de BAIXO escurece (1,6 na água 100). O port, com a
-//! gravidade de fábrica, deixa a orla de baixo MAIS CLARA que a de cima (0,76) — a água rasteja para o
-//! seco em vez de assentar — e com mais gravidade abre o pente. ⚠️ O controlo está DENTRO: o port na
-//! mesma bancada tem de reprovar.
+//! O Rebelle a meia inclinação: nada escorre e a orla de BAIXO escurece (1,6 na água 100). A lei da gota
+//! da W1e dava a orla escura (1,32) mas cortava o escorrimento em rectângulos; a W1f tirou-a do produto
+//! (05 §4b). ⚠️ O controlo está DENTRO de cada gate.
 use super::sonda_gota::bancada;
 use ph2d_wet_paint::solver::ALTURA_DA_GOTA;
 
@@ -43,43 +43,28 @@ fn le(px: &[u8], i: usize) -> (f64, usize) {
     (orla, desce)
 }
 
+/// O PRODUTO a meia inclinação: nada escorre (≤ 20 px abaixo da orla em todas as águas; Rebelle 0).
+///
+/// ⚠️ **A W1f tirou a lei da gota do produto** (ela cortava o escorrimento em rectângulos —
+/// `achatamento_tests`), e com ela foi a cláusula «a orla de baixo escurece» (com a lei 1,32; sem ela
+/// 0,77; Rebelle 1,6 — 05 §4b, o aberto da W1f). O controlo: o dobro da gravidade no máximo escorre.
 #[test]
-fn a_meia_inclinacao_nao_escorre_e_a_orla_de_baixo_escurece() {
-    const G: f64 = 0.005;
+fn a_meia_inclinacao_nao_escorre() {
     let aguas = [1.0, 0.7, 0.4, 0.2];
-    let produto = bancada(G, ALTURA_DA_GOTA, &[], Some(4), aguas);
-    let port = bancada(G, 0.0, &[], Some(4), aguas);
-    let barra = |px: &[u8]| -> Result<(), String> {
-        let (orla, _) = le(px, 0);
-        let mut f = Vec::new();
-        if orla <= 1.0 {
-            f.push(format!(
-                "água 1: orla de baixo ÷ de cima {orla:.2} ≤ 1 (Rebelle 1,6)"
-            ));
-        }
-        for (i, agua) in aguas.iter().enumerate() {
-            let (_, d) = le(px, i);
-            if d > 20 {
-                f.push(format!("água {agua}: tinta {d} px abaixo da orla"));
-            }
-        }
-        if f.is_empty() {
-            Ok(())
-        } else {
-            Err(f.join(" · "))
-        }
-    };
-    for (nome, px) in [("port", &port), ("produto", &produto)] {
-        let l: Vec<(f64, usize)> = (0..4).map(|i| le(px, i)).collect();
-        eprintln!("[gota] {nome}: (orla, desce) por traço {l:?}");
-    }
+    let desce = |px: &[u8]| (0..4).map(|i| le(px, i).1).max().unwrap_or(0);
+    let produto = bancada(0.005, 0.0, &[], Some(4), aguas);
+    let controlo = bancada(0.01, 0.0, &[], Some(8), aguas);
+    let l: Vec<(f64, usize)> = (0..4).map(|i| le(&produto, i)).collect();
+    eprintln!("[gota] produto a meia: (orla, desce) por traço {l:?}");
     assert!(
-        barra(&port).is_err(),
-        "CONTROLO: o port passou a barra da meia inclinação — a régua não discrimina"
+        desce(&controlo) > 20,
+        "CONTROLO: o dobro da gravidade no máximo não escorreu — a régua não discrimina"
     );
-    if let Err(e) = barra(&produto) {
-        panic!("a meia inclinação do produto: {e}");
-    }
+    assert!(
+        desce(&produto) <= 20,
+        "a meia inclinação do produto escorre {} px abaixo da orla (Rebelle 0)",
+        desce(&produto)
+    );
 }
 
 /// Com a tela DIREITA a lei não existe (`|g| = 0`): o traço é o de antes, ao byte.

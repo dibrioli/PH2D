@@ -29,6 +29,18 @@ pub(super) fn bancada(
     anel: Option<u8>,
     aguas: [f64; 4],
 ) -> Vec<u8> {
+    bancada_com(gravidade, gota, knobs, anel, aguas, &|_| {})
+}
+
+/// [`bancada`] com `ajusta` sobre o motor da sessão antes dos traços (as variantes da W1f).
+pub(super) fn bancada_com(
+    gravidade: f64,
+    gota: f64,
+    knobs: &[(Knob, f64)],
+    anel: Option<u8>,
+    aguas: [f64; 4],
+    ajusta: &dyn Fn(&mut ph2d_wet_paint::sim::Sim),
+) -> Vec<u8> {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     let p = &b
@@ -62,6 +74,16 @@ pub(super) fn bancada(
         .engine
         .sim
         .drip_head = gota;
+    ajusta(
+        &mut t
+            .paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("sessão")
+            .engine
+            .sim,
+    );
     // `PH2D_SONDA_POCA=n`: cada traço passa n vezes no mesmo sítio (a POÇA de muitos traços).
     let passes: usize = std::env::var("PH2D_SONDA_POCA")
         .ok()

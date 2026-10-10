@@ -369,7 +369,7 @@ pub fn render_pigment_row_visual(
     let s = g0.s;
     let paper_on = visual.paper && p.is_some();
     let glaze_on = visual.km_glaze;
-    let glaze = p.map_or(0.0, |p| p.glaze);
+    let glaze = p.map_or(0.0, |p| p.glaze_filme);
     let (paper_vis, grain_vis, emboss_k) = match (paper_on, p) {
         (true, Some(p)) => (
             p.k(Knob::PaperVisibility),

@@ -39,6 +39,8 @@ pub struct Params {
     pub km_mixing: bool,
     /// A transparência do pigmento nas junções de duas tintas ([`crate::colorops::velatura`]).
     pub glaze: f64,
+    /// A velatura do filme em suspensão sobre o assentado, no render ([`crate::render`]).
+    pub glaze_filme: f64,
     /// A lei da gota deste passo ([`crate::solver::Gota`]) — `None` no port ou com a tela direita.
     pub(crate) gota: Option<crate::solver::Gota>,
 }
@@ -73,9 +75,12 @@ pub struct Sim {
     /// A transparência do pigmento ([`crate::colorops::velatura`]): `0` = o port (junção por cima), o
     /// produto liga [`crate::colorops::VELATURA_MEDIDA`].
     pub glaze: f64,
+    /// A velatura do filme MOLHADO sobre o assentado, no render ([`crate::colorops::VELATURA_DO_FILME`]):
+    /// `0` = o port.
+    pub glaze_filme: f64,
     /// **A água corre com o traço ABERTO** (W1e, F6): o port pausa a sim enquanto o ponteiro está em
-    /// baixo (só o Blow corre); o produto liga isto, como o Rebelle — a mistura e a sangria vêem-se a
-    /// pintar, não só no Up.
+    /// baixo (só o Blow corre). A W1e ligou-o; a W1f DESLIGOU-o no produto — a 4096² o pior quadro a
+    /// pintar ia de 2–4 ms a 14–45 ms (05 §4b); a mistura vê-se a pintar pelo pouso do dab.
     pub sim_while_painting: bool,
     /// **A lei da GOTA** (W1e, F1, [`crate::solver::Gota`]): a altura crítica da conta de baixo vezes
     /// `|g|` — `0` = o port (o freio de sempre); o produto liga o valor calibrado contra o Rebelle.
@@ -148,6 +153,7 @@ impl Default for Sim {
             gravity_override: None,
             km_mixing: false,
             glaze: 0.0,
+            glaze_filme: 0.0,
             sim_while_painting: false,
             drip_head: 0.0,
             ext_bypass: false,
@@ -220,6 +226,7 @@ impl Sim {
             },
             km_mixing: self.km_mixing,
             glaze: self.glaze,
+            glaze_filme: self.glaze_filme,
             gota: {
                 let [gx, gy] = self.gravity(tuning);
                 crate::solver::Gota::new(self.drip_head, gx, gy)

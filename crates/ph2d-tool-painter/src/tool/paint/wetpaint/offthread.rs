@@ -363,8 +363,8 @@ impl super::WetSession {
     /// **Devolve o engine ao worker** — o tick faz isto no FIM, uma vez. No-op
     /// se ele já está lá.
     ///
-    /// Com o traço ABERTO entrega só se o motor anda com ele (`sim_while_painting`, o produto desde a
-    /// W1e): a viagem é uma por QUADRO (o primeiro evento de ponteiro do quadro traz o motor, o tick
+    /// Com o traço ABERTO entrega só se o motor anda com ele (`sim_while_painting`; o produto desligou-o
+    /// na W1f — a 4096² custava o pior quadro a pintar): a viagem é uma por QUADRO (o primeiro evento de ponteiro do quadro traz o motor, o tick
     /// devolve-o), não uma por dab. Com o port (sim pausada no traço) não há nada a ganhar.
     pub(in crate::tool::paint) fn hand_off_sim(&mut self) {
         if !matches!(self.engine, EngineSlot::Here(_))

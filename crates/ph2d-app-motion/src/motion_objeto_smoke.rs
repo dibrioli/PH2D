@@ -9,6 +9,9 @@
 //!
 //! `=1`: modo Object, ferramenta Motion DESLIGADA — os dois desenham na mesma (sempre visível), o
 //! Enxame seleccionado. `=2`: o Enxame em **Edit** — o editor de nós abre só com o grafo dele.
+//! `=3`: o íman do Enxame segue o RATO (`value.cursor` dirige o alvo dele) — com o objecto deslocado
+//! e rodado, as cópias correm para onde o rato está NA TELA (onda 4, item 6: o mundo chega ao grafo
+//! no espaço do objecto).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, MotionGenerator, Name, StableId, Transform};
@@ -113,7 +116,17 @@ pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
     for n in novos {
         cx.motion.doc.set_owner(n, s_pilha);
     }
-    for n in enxame(&mut cx.motion.doc.graph) {
+    let nos = enxame(&mut cx.motion.doc.graph);
+    if nivel == "3" {
+        let g = &mut cx.motion.doc.graph;
+        let rato = g.add_node("value.cursor");
+        g.set_pos(rato, Pos { x: 600.0, y: 320.0 });
+        let iman = nos[3];
+        let _ = g.drive_param(iman, "target_x", (rato, 0));
+        let _ = g.drive_param(iman, "target_y", (rato, 1));
+        cx.motion.doc.set_owner(rato, s_enxame);
+    }
+    for n in nos {
         cx.motion.doc.set_owner(n, s_enxame);
     }
     cx.motion.doc.adopt_unowned(s_pilha);
@@ -134,6 +147,7 @@ pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
          two bowls) and 'Swarm' (copies of 'Ball' pulled by force fields), moved right and rotated 20° — \
          the swarm goes with it. 'Ball' is Swarm's child (the template) and does not draw by itself. \
          =1: Object mode, Motion tool OFF, both still draw. =2: Swarm in Edit — the node editor shows \
-         ONLY Swarm's nodes."
+         ONLY Swarm's nodes. =3: Swarm's magnet follows the MOUSE — the copies run to where the \
+         pointer is on screen, although the object is moved and rotated."
     );
 }

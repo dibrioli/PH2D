@@ -399,7 +399,10 @@ fn a_format_8_file_still_opens_with_the_default_look() {
     use crate::{Anchor, End, Head, Look, Route};
     let set = BoardSet::from_bytes(V8_BYTES).expect("o formato 8 lê-se");
     let b = &set.boards()[0];
-    assert_eq!((b.name.as_str(), b.camera.zoom, b.sketch), ("Retro8", 0.5, true));
+    assert_eq!(
+        (b.name.as_str(), b.camera.zoom, b.sketch),
+        ("Retro8", 0.5, true)
+    );
     let els = b.doc.live_in_z_order();
     assert_eq!(els.len(), 5);
     assert_eq!(els[0].as_frame().unwrap().name, "Sprint");
@@ -413,13 +416,28 @@ fn a_format_8_file_still_opens_with_the_default_look() {
     assert_eq!(c.heads, [Head::Bar, Head::Triangle]);
     assert_eq!(c.label, "sim");
     assert_eq!(c.waypoints, vec![[260.0, 30.0]]);
-    assert!(matches!(c.start, End::Bound { anchor: Anchor::Fixed([1.0, 0.5]), .. }));
-    assert!(matches!(c.end, End::Bound { anchor: Anchor::Center, .. }));
+    assert!(matches!(
+        c.start,
+        End::Bound {
+            anchor: Anchor::Fixed([1.0, 0.5]),
+            ..
+        }
+    ));
+    assert!(matches!(
+        c.end,
+        End::Bound {
+            anchor: Anchor::Center,
+            ..
+        }
+    ));
     assert!(els[4].ink().unwrap().pressure);
     assert_eq!(b.team.threads.len(), 1);
     assert!(els.iter().all(|e| e.style().look == Look::default()));
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
 }
 
 /// Gravados pelo build do formato 8 (`3b4ec7784`).

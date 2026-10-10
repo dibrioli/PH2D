@@ -212,6 +212,8 @@ impl Editor {
                 el.id = doc.mint_id();
                 map.insert(o.id, el.id);
                 el.version = 0;
+                // Uma cópia treme de outra maneira (a semente importada fica no original, W9).
+                el.set_imported_seed(None);
                 el.translate([off, off]);
                 ids.insert(el.id);
                 el

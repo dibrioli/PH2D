@@ -41,7 +41,6 @@
                         "cartoonist": true,
                         "fill_style": "CrossHatch",
                         "letter": "Sans",
-                        "seed": 4242,
                         "valign": "Top"
                       },
                       "opacity": 100,
@@ -68,8 +67,17 @@
                   }
                 },
                 "nonce": 0,
-                "org": null,
-                "version": 1,
+                "org": {
+                  "groups": [],
+                  "link": null,
+                  "locked": false,
+                  "mind": null,
+                  "seed": 4242,
+                  "stamps": [],
+                  "tags": [],
+                  "votes": 0
+                },
+                "version": 2,
                 "w": 160.0,
                 "x": 0.0,
                 "y": 0.0,
@@ -94,7 +102,7 @@
           "strokeWidth": 0.5,
           "type": "rectangle",
           "updated": 1,
-          "version": 1,
+          "version": 2,
           "versionNonce": 0,
           "width": 160.0,
           "x": 0.0,
@@ -134,12 +142,12 @@
           "textAlign": "left",
           "type": "text",
           "updated": 1,
-          "version": 1,
+          "version": 2,
           "versionNonce": 0,
           "verticalAlign": "top",
           "width": 160.0,
           "x": 0.0,
-          "y": 32.5
+          "y": 5.0
         },
         {
           "angle": 0.0,
@@ -183,7 +191,6 @@
                         "cartoonist": false,
                         "fill_style": "Solid",
                         "letter": "Auto",
-                        "seed": null,
                         "valign": "Middle"
                       },
                       "opacity": 100,
@@ -325,7 +332,6 @@
                         "cartoonist": false,
                         "fill_style": "Solid",
                         "letter": "Auto",
-                        "seed": null,
                         "valign": "Middle"
                       },
                       "opacity": 100,
@@ -476,7 +482,6 @@
                         "cartoonist": false,
                         "fill_style": "Solid",
                         "letter": "Auto",
-                        "seed": null,
                         "valign": "Middle"
                       },
                       "opacity": 100,
@@ -628,7 +633,6 @@
                         "cartoonist": false,
                         "fill_style": "Solid",
                         "letter": "Auto",
-                        "seed": null,
                         "valign": "Middle"
                       },
                       "opacity": 100,
@@ -778,7 +782,6 @@
                         "cartoonist": false,
                         "fill_style": "Solid",
                         "letter": "Auto",
-                        "seed": null,
                         "valign": "Middle"
                       },
                       "opacity": 100,

@@ -41,6 +41,10 @@ pub struct Org {
     pub votes: u32,
     /// W7 — os carimbos ([`Element::stamps`]).
     pub stamps: Vec<crate::StampCount>,
+    /// W9 — a semente do tremor que veio de um `.excalidraw` ([`Element::seed`]); `None` = a do id.
+    /// `serde(default)`: o elemento do `customData` de um ficheiro anterior lê-se igual.
+    #[serde(default)]
+    pub seed: Option<u32>,
 }
 
 /// A cor de nascença de um frame (o Miro: *«The default color of a frame is white»*).
@@ -114,6 +118,13 @@ impl Element {
 
     pub fn groups_mut(&mut self) -> &mut Vec<GroupId> {
         &mut self.org_mut().groups
+    }
+
+    /// A semente importada (W9). Uma CÓPIA esquece-a: treme de outra maneira, como no Excalidraw.
+    pub fn set_imported_seed(&mut self, seed: Option<u32>) {
+        if seed.is_some() || self.org.is_some() {
+            self.org_mut().seed = seed;
+        }
     }
 
     pub fn set_locked(&mut self, on: bool) {

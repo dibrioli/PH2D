@@ -584,7 +584,10 @@ fn an_end_dropped_near_the_outline_orbits_a_point_of_it() {
     );
     let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
     let g = ph2d_board_route::gap(w.el(b));
-    assert!((tip[0] - (400.0 - g)).abs() < 1e-6, "pára a `g` da forma: {tip:?}");
+    assert!(
+        (tip[0] - (400.0 - g)).abs() < 1e-6,
+        "pára a `g` da forma: {tip:?}"
+    );
     let _ = a;
 }
 
@@ -636,7 +639,10 @@ fn moving_a_box_moves_the_arrow_end_with_it() {
     let after = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
     assert_ne!(before, after);
     let g = ph2d_board_route::gap(w.el(b));
-    assert!(after[1] >= 300.0 - g - 1e-9, "a ponta foi com a caixa: {after:?}");
+    assert!(
+        after[1] >= 300.0 - g - 1e-9,
+        "a ponta foi com a caixa: {after:?}"
+    );
     assert_eq!(
         w.el(id).connector(),
         saved.connector(),
@@ -964,3 +970,6 @@ mod facilitate;
 
 #[path = "cluster_tests.rs"]
 mod cluster;
+
+#[path = "w9_tests.rs"]
+mod w9;

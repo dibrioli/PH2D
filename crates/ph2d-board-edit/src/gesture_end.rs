@@ -67,6 +67,7 @@ impl Editor {
             map.insert(el.id, id);
             el.id = id;
             el.version = 0;
+            el.set_imported_seed(None);
         }
         crate::wire::remap(&mut copies, &map);
         let roots = crate::command::remap_organize(doc, &mut copies, &map);

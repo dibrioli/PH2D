@@ -243,8 +243,13 @@ fn the_board_trembles_more_than_the_artist_and_keeps_its_corners() {
     st.sketch = true;
     assert_eq!(hand_roughness(&st, 160.0, 120.0, false, false), 1.5);
     assert!(
-        hand_options(1, hand_roughness(&st, 160.0, 120.0, false, false), &st, false)
-            .preserve_vertices
+        hand_options(
+            1,
+            hand_roughness(&st, 160.0, 120.0, false, false),
+            &st,
+            false
+        )
+        .preserve_vertices
     );
 }
 

@@ -32,7 +32,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -113,7 +112,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -203,7 +201,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -230,6 +227,7 @@
               "link": null,
               "locked": false,
               "mind": null,
+              "seed": null,
               "stamps": [
                 {
                   "count": 2,
@@ -365,7 +363,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -399,6 +396,7 @@
               "link": null,
               "locked": false,
               "mind": null,
+              "seed": null,
               "stamps": [],
               "tags": [],
               "votes": 0
@@ -517,7 +515,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -551,6 +548,7 @@
               "link": null,
               "locked": false,
               "mind": null,
+              "seed": null,
               "stamps": [],
               "tags": [],
               "votes": 0
@@ -792,7 +790,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -824,6 +821,7 @@
               "link": null,
               "locked": true,
               "mind": null,
+              "seed": null,
               "stamps": [],
               "tags": [],
               "votes": 0
@@ -948,7 +946,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -1196,7 +1193,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -1253,7 +1249,7 @@
         "elementId": "ph2d-8",
         "fixedPoint": [
           0.5001,
-          4.0602442043434295e-16
+          0
         ],
         "focus": 0,
         "gap": 1
@@ -1348,7 +1344,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,
@@ -1535,7 +1530,6 @@
                     "cartoonist": false,
                     "fill_style": "Solid",
                     "letter": "Auto",
-                    "seed": null,
                     "valign": "Middle"
                   },
                   "opacity": 100,

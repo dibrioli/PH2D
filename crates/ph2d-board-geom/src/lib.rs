@@ -384,12 +384,9 @@ fn ellipse_entry(el: &Element, from: [f64; 2], to: [f64; 2], gap: f64) -> Option
         return None;
     }
     let t = (-qb - disc.sqrt()) / (2.0 * qa);
-    (0.0..=1.0).contains(&t).then(|| {
-        el.rotate([
-            fx + (tx - fx) * t,
-            fy + (ty - fy) * t,
-        ])
-    })
+    (0.0..=1.0)
+        .contains(&t)
+        .then(|| el.rotate([fx + (tx - fx) * t, fy + (ty - fy) * t]))
 }
 
 /// ⭐ **Onde o raio `from + t·dir` SAI de vez da faixa de `gap` à volta de `el`** — a ponta presa ao
@@ -407,7 +404,10 @@ pub fn ray_exit_band(el: &Element, from: [f64; 2], dir: [f64; 2], gap: f64) -> O
     let [x0, y0, x1, y1] = el.aabb();
     let c = el.center();
     let reach = (x1 - x0).hypot(y1 - y0) + (from[0] - c[0]).hypot(from[1] - c[1]) + 2.0 * gap + 1.0;
-    let far = [from[0] + dir[0] / len * reach, from[1] + dir[1] / len * reach];
+    let far = [
+        from[0] + dir[0] / len * reach,
+        from[1] + dir[1] / len * reach,
+    ];
     world_outline(el)?;
     Some(band_entry(el, far, from, gap))
 }
@@ -437,7 +437,10 @@ pub fn outline_normal(el: &Element, p: [f64; 2]) -> Option<[f64; 2]> {
         let l = v.hypot();
         (l > 1e-12).then(|| ph2d_vector::Vec2::new(v.x / l, v.y / l))
     };
-    let at = |pt: Point| (pt - q).hypot() < 1e-6;
+    // As junções medem-se a partir do ponto DO CONTORNO (a auditoria W9: com a ponta a `g` da forma, a
+    // comparação com `p` nunca casava e a curva entrava pelo eixo do ecrã numa elipse rodada).
+    let on = segs[i].eval(t);
+    let at = |pt: Point| (pt - on).hypot() < 1e-6;
     let tan = if t > H && t < 1.0 - H {
         tangent(&segs[i], t)?
     } else {
@@ -455,7 +458,6 @@ pub fn outline_normal(el: &Element, p: [f64; 2]) -> Option<[f64; 2]> {
     // Para FORA: um passo ao longo da normal, a partir do ponto DO CONTORNO, sai do preenchimento.
     // ⛔ A partir de `p` não: uma ponta parada a `g` da forma (W9) já está fora, e os dois lados dela
     // também — a curva saía para dentro.
-    let on = segs[i].eval(t);
     let probe = Point::new(
         on.x + n[0] * 1e-3 * (1.0 + el.w.max(el.h)),
         on.y + n[1] * 1e-3 * (1.0 + el.w.max(el.h)),

@@ -24,6 +24,10 @@ extend-ignore-identifiers-re = [
     # escritor do exportar do quadro (`ph2d-board-export`, `pdf_writer::Filter::FlateDecode`). O
     # typos quer `Flat`: é o nome do padrão, não uma palavra.
     "^FlateDecode$",
+    # `t_hach` — o id do rectângulo «hachure» na entrada do oráculo Excalidraw da W9
+    # (`gera_w9_casos.py`, `T_formato`), lido pelas saídas gravadas e pelo gate que as lê. O typos
+    # quer `hatch`: é um id da fixture, não uma palavra.
+    "^t_hach$",
     # `DIRECCIONAL` — pt-PT de «direcional», no doc do `ph2d-material`: *«a radiância que uma
     # luz DIRECCIONAL devolve»*. O typos quer `DIRECTIONAL`.
     "^DIRECCIONAL$",

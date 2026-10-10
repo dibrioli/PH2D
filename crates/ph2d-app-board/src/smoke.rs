@@ -3,7 +3,7 @@
 //! | n | o que ensina |
 //! |---|---|
 //! | 1 | as abas: dois quadros já criados e o 1.º aberto, com uma grelha de rectângulos coloridos — a roda dá zoom à volta do cursor, arrastar move a vista, `Scene` devolve a cena |
-//! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas CURVAS (as do Miro: presas ao centro, seguem as caixas), o «sim» com rótulo, o «não» que volta por baixo e o «saltar» em arco por cima (presas a pontos fixos, com rótulo), e uma nota ligada a «mais tarde» por uma seta com UM ponto de ajuste, seleccionada — o ponto oco arrasta-se, a bolinha a meio de cada trecho cria outro, duplo-clique apaga; numa caixa, os pontos azuis criam a seguinte já ligada (`Ctrl+→` também) |
+//! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas CURVAS (as do Miro: presas ao centro, seguem as caixas), o «sim» com rótulo, o «não» que volta por baixo e o «saltar» em arco por cima (presas a pontos do contorno, paradas antes dele como todas, com rótulo), e uma nota ligada a «mais tarde» por uma seta com UM ponto de ajuste, seleccionada — o ponto oco arrasta-se, a bolinha a meio de cada trecho cria outro, duplo-clique apaga; numa caixa, os pontos azuis criam a seguinte já ligada (`Ctrl+→` também) |
 //! | 4 | as NOTAS (W3): uma fila de ideias (a do meio com negrito, itálico, sublinhado e riscado), uma nota que CRESCEU com o texto, os tamanhos P · M · G e a larga, as 16 cores do Miro, uma PILHA de onde se arrastam notas, uma forma com uma palavra a vermelho, e um monte desarrumado SELECCIONADO — a pega de quatro pontos (canto de cima à direita) arruma-o em grelha; `N` é a ferramenta Nota, escrever com uma nota seleccionada escreve nela, `Tab` faz a seguinte |
 //! | 5 | a CANETA e o RASCUNHO (W4): o fluxograma num quadro em RASCUNHO (formas e setas à mão, preenchimentos às riscas) com desenhos da caneta por cima — uma volta vermelha, o marcador amarelo, um visto — e a caneta já na mão (o painel dela aberto: caneta, marcador, as duas borrachas, o laser, as três predefinições, a cor e a espessura); o botão ondulado ao fundo da barra da esquerda troca o quadro inteiro (ou a selecção) para FINAL e de volta; `P` caneta · `E` borracha · `K` laser |
 //! | 6 | ORGANIZAR um quadro grande (W5): quatro frames de trabalho (Pesquisa com uma nota TRAVADA e duas «cliente» · Ideias com duas «urgente» e uma com LINK para o Plano · Votação com três caixas AGRUPADAS · Plano com «Semana 1» DENTRO) e o frame gigante «Todas as ideias» com 2 000 notas; abre com o quadro inteiro enquadrado (de longe, só os títulos dos frames e blocos de cor), o minimapa e o painel de Frames abertos — `M`, `Ctrl+F`, `Alt+1`/`Alt+2`, `F`, `Ctrl+G`, `Ctrl+Shift+L`, `PgUp`/`PgDn` |
@@ -306,9 +306,11 @@ fn scene_arrows(hero: &mut HeroScreen) {
         target,
         anchor: Anchor::Center,
     };
+    // Presas a um ponto do contorno como o gesto as prende (em ÓRBITA, a `g` da forma — W9): a cena
+    // ensina o que a mão consegue fazer (o ponto fixo que encosta só chega por ficheiro).
     let fixed = |target, uv| End::Bound {
         target,
-        anchor: Anchor::Fixed(uv),
+        anchor: Anchor::Orbit(uv),
     };
     for (i, w) in ids.windows(2).enumerate() {
         let label = if i == 2 { "board.smoke.yes" } else { "" };

@@ -9,8 +9,10 @@
 //! `customData`; um ficheiro de fora entra pelo mapeamento directo. ⇒ nosso → Excalidraw → nosso =
 //! IGUAL, a menos da ordem das chaves de z.
 
+mod bind;
 mod embed;
 mod read;
+mod style;
 mod write;
 
 pub use embed::scene_from_bytes;
@@ -125,8 +127,8 @@ pub(crate) fn letter_of(family: Option<u64>) -> ph2d_board_model::Letter {
 }
 
 #[cfg(test)]
-#[path = "lib_tests.rs"]
-mod tests;
-#[cfg(test)]
 #[path = "fidelity_tests.rs"]
 mod fidelity_tests;
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

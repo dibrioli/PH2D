@@ -86,7 +86,10 @@ impl Screen {
             let w = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
             let p = cam.to_screen(r, w);
             let (x, y) = (p[0] as f32, p[1] as f32);
-            assert!(self.hero.chrome_hit(x, y).is_none(), "nenhum controlo em {w:?}");
+            assert!(
+                self.hero.chrome_hit(x, y).is_none(),
+                "nenhum controlo em {w:?}"
+            );
             self.clock += 50_000_000;
             let inp = Input {
                 text: &mut self.ts,
@@ -101,7 +104,15 @@ impl Screen {
             if kind == PointerKind::Move {
                 board_view::pointer_move(&mut self.hero, inp, x, y);
             } else {
-                board_view::pointer(&mut self.hero, inp, kind, PointerButton::Primary, x, y, true);
+                board_view::pointer(
+                    &mut self.hero,
+                    inp,
+                    kind,
+                    PointerButton::Primary,
+                    x,
+                    y,
+                    true,
+                );
             }
         }
         self.paint();
@@ -115,7 +126,12 @@ fn the_lessons_fit_and_the_scene_is_in_view() {
     let s = Screen::new();
     let b = s.board();
     for id in s.l.lessons {
-        assert_eq!(b.doc.get(id).unwrap().h, STICKY_SIDE, "a lição {} cresceu", id.0);
+        assert_eq!(
+            b.doc.get(id).unwrap().h,
+            STICKY_SIDE,
+            "a lição {} cresceu",
+            id.0
+        );
     }
     let a = area(s.hero.last_canvas);
     let v = s.l.view;
@@ -181,7 +197,13 @@ fn lesson_1_the_owners_arrows_are_straight_and_stop_where_his_did() {
         let r = routes.get(*id).unwrap();
         for (k, want) in [(0, at(0)), (1, at(pts.len() - 1))] {
             assert!(
-                matches!(c.ends()[k], End::Bound { anchor: Anchor::Orbit(_), .. }),
+                matches!(
+                    c.ends()[k],
+                    End::Bound {
+                        anchor: Anchor::Orbit(_),
+                        ..
+                    }
+                ),
                 "{:?}",
                 c.ends()[k]
             );
@@ -195,9 +217,7 @@ fn lesson_1_the_owners_arrows_are_straight_and_stop_where_his_did() {
 #[test]
 fn lesson_2_the_tab_menu_opens_the_same_drawing() {
     let s = Screen::new();
-    let path = std::path::PathBuf::from(format!(
-        "{ROOT}/docs/MiroClone/bv.excalidraw"
-    ));
+    let path = std::path::PathBuf::from(format!("{ROOT}/docs/MiroClone/bv.excalidraw"));
     let (name, imp) = crate::io::import_file(&path).unwrap();
     assert_eq!(name, "bv");
     let opened: Vec<&Element> = imp
@@ -263,18 +283,35 @@ fn lesson_4_a_drawn_arrow_stops_before_the_box_and_ctrl_leaves_it_loose() {
         .find(|e| e.connector().is_some())
         .unwrap();
     let c = arrow.connector().unwrap();
-    assert!(matches!(c.end, End::Bound { target, .. } if target == s.l.to), "{:?}", c.end);
+    assert!(
+        matches!(c.end, End::Bound { target, .. } if target == s.l.to),
+        "{:?}",
+        c.end
+    );
     let mut routes = RouteCache::default();
     routes.sync(&b.doc);
     let tip = routes.get(arrow.id).unwrap().ends()[1];
     let to_el = b.doc.get(s.l.to).unwrap();
     let (_, d) = ph2d_board_geom::nearest_on_outline(to_el, tip).unwrap();
     let g = ph2d_board_route::gap(to_el);
-    assert!(!ph2d_board_geom::inside(to_el, tip), "a ponta fica FORA da caixa");
-    assert!((d - g).abs() < 1e-3, "pára a {d:.3} da caixa, a lei diz {g}");
+    assert!(
+        !ph2d_board_geom::inside(to_el, tip),
+        "a ponta fica FORA da caixa"
+    );
+    assert!(
+        (d - g).abs() < 1e-3,
+        "pára a {d:.3} da caixa, a lei diz {g}"
+    );
     // Com Ctrl ao largar: solta.
     s.board_key(BoardKey::Char('a'), Some("a"));
-    s.drag_board(from, to, Modifiers { ctrl: true, ..Modifiers::default() });
+    s.drag_board(
+        from,
+        to,
+        Modifiers {
+            ctrl: true,
+            ..Modifiers::default()
+        },
+    );
     let loose = s
         .board()
         .doc
@@ -287,4 +324,36 @@ fn lesson_4_a_drawn_arrow_stops_before_the_box_and_ctrl_leaves_it_loose() {
         .unwrap()
         .end;
     assert!(matches!(loose, End::Free(_)), "{loose:?}");
+}
+
+/// ⭐ A cena 3 ensina o que a mão consegue: TODAS as setas presas param a `g` das formas (auditoria W9:
+/// o «saltar» e o «não» eram pontos fixos a encostar, que o gesto já não faz).
+#[test]
+fn scene_3_teaches_arrows_that_stop_before_their_shapes() {
+    ph2d_editor_core::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    super::super::scene_arrows(&mut hero);
+    let b = hero.documents.active_board().unwrap();
+    let mut routes = RouteCache::default();
+    routes.sync(&b.doc);
+    let mut seen = 0;
+    for el in b.doc.live_in_z_order() {
+        let Some(c) = el.connector() else { continue };
+        let r = routes.get(el.id).unwrap();
+        for (k, end) in c.ends().into_iter().enumerate() {
+            let End::Bound { target, .. } = end else {
+                continue;
+            };
+            let shape = b.doc.get(target).unwrap();
+            let (_, d) = ph2d_board_geom::nearest_on_outline(shape, r.ends()[k]).unwrap();
+            let g = ph2d_board_route::gap(shape);
+            assert!(
+                (d - g).abs() < 1e-3,
+                "a seta {} pára a {d:.3}, a lei diz {g}",
+                el.id.0
+            );
+            seen += 1;
+        }
+    }
+    assert!(seen >= 10, "{seen}");
 }

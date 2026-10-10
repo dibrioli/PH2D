@@ -44,7 +44,10 @@ fn base(board: &Board, el: &Element, kind: &str, groups: &[String]) -> Map<Strin
     m.insert("angle".into(), json!(el.angle));
     m.insert("strokeColor".into(), json!(hex(st.stroke)));
     m.insert("backgroundColor".into(), json!(hex(st.fill)));
-    m.insert("fillStyle".into(), json!(fill_style_name(st.look.fill_style)));
+    m.insert(
+        "fillStyle".into(),
+        json!(fill_style_name(st.look.fill_style)),
+    );
     m.insert("strokeWidth".into(), json!(st.stroke_width));
     let dash = match st.dash {
         Dash::Solid => "solid",
@@ -89,10 +92,18 @@ fn text(
     let (font, color) = (st.font_size, st.text_color);
     let lines = content.split('\n').count().max(1) as f64;
     let h = lines * font * LINE_HEIGHT;
+    // Onde o bloco assenta na caixa: o MESMO `verticalAlign` que escrevemos (auditoria W9: o y era
+    // sempre o do meio e o ficheiro dizia «top»).
+    let pad = ph2d_board_geom::TEXT_PADDING;
+    let y = match st.look.valign {
+        VAlign::Top => rect[1] + pad,
+        VAlign::Middle => rect[1] + (rect[3] - h) / 2.0,
+        VAlign::Bottom => rect[1] + rect[3] - h - pad,
+    };
     let mut m = base(board, owner, "text", groups);
     m.insert("id".into(), json!(format!("{}-text", id(owner.id))));
     m.insert("x".into(), json!(rect[0]));
-    m.insert("y".into(), json!(rect[1] + (rect[3] - h) / 2.0));
+    m.insert("y".into(), json!(y));
     m.insert("width".into(), json!(rect[2]));
     m.insert("height".into(), json!(h));
     m.insert("strokeColor".into(), json!(hex(Some(color))));
@@ -261,7 +272,10 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
         let b = match c.ends()[k] {
             End::Bound { target, anchor } => board.doc.get(target).map(|t| {
                 if elbow {
-                    let fp = ph2d_board_route::normalized(t, *ends[k]);
+                    // O ponto do CONTORNO (a ponta está a `g` dele): num estranho o cotovelo vira um
+                    // ponto fixo, e um ponto fora da caixa escalava o vão com a forma (auditoria W9).
+                    let on = ph2d_board_geom::nearest_on_outline(t, *ends[k]).map_or(*ends[k], |q| q.0);
+                    let fp = ph2d_board_route::normalized(t, on);
                     return json!({ "elementId": id(target), "focus": 0, "gap": 1, "fixedPoint": fp });
                 }
                 binding(t, anchor)
@@ -296,15 +310,7 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
             2.0 * st.font_size,
         ];
         let me = id(el.id);
-        out.push(text(
-            board,
-            el,
-            &c.label,
-            st,
-            rect,
-            Some(&me),
-            &[],
-        ));
+        out.push(text(board, el, &c.label, st, rect, Some(&me), &[]));
     }
 }
 

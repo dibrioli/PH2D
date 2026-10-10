@@ -3,126 +3,22 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_model::{
-    Anchor, BoardDoc, BoardOp, Connector, Dash, Element, ElementId, End, FillStyle, FracKey, Frame,
-    GroupId, Ink, Letter, Pen, Rgba, RichText, Route, Shape, ShapeType, Style, TextAlign, VAlign,
+    BoardDoc, BoardOp, Connector, Element, ElementId, End, FracKey, Frame, GroupId, Ink, Letter,
+    Pen, RichText, Route, Shape, ShapeType, Style,
 };
 use serde_json::Value;
 
-use crate::{ID, PH2D, head_of, hex, letter_of, parse_color};
+use crate::bind::{Links, end_of};
+use crate::style::{
+    Text, dash_of, fill_style_of, num, opacity, seed_of, style_of, text_look, text_of,
+};
+use crate::{ID, PH2D, head_of, hex, parse_color};
 
 /// O que a importação trouxe: o documento e o que SALTOU, contado por tipo (o aviso X3).
 #[derive(Debug, Default)]
 pub struct Import {
     pub doc: BoardDoc,
     pub skipped: BTreeMap<String, usize>,
-}
-
-/// O texto preso a um contentor (ou o texto de uma forma nossa que ele não tem).
-#[derive(Clone)]
-struct Text {
-    text: String,
-    size: f64,
-    color: Option<Rgba>,
-    align: TextAlign,
-    valign: VAlign,
-    letter: Letter,
-}
-
-fn num(v: &Value, k: &str) -> Option<f64> {
-    v[k].as_f64().filter(|x| x.is_finite())
-}
-
-fn text_of(v: &Value) -> Option<Text> {
-    let text = v["originalText"]
-        .as_str()
-        .or_else(|| v["text"].as_str())?
-        .to_owned();
-    Some(Text {
-        text,
-        size: num(v, "fontSize")
-            .filter(|s| *s > 0.0)
-            .unwrap_or(ph2d_board_model::DEFAULT_FONT_SIZE),
-        color: v["strokeColor"].as_str().and_then(parse_color).flatten(),
-        align: match v["textAlign"].as_str() {
-            Some("left") => TextAlign::Left,
-            Some("right") => TextAlign::Right,
-            _ => TextAlign::Center,
-        },
-        valign: match v["verticalAlign"].as_str() {
-            Some("top") => VAlign::Top,
-            Some("bottom") => VAlign::Bottom,
-            _ => VAlign::Middle,
-        },
-        letter: letter_of(v["fontFamily"].as_u64()),
-    })
-}
-
-/// O `fillStyle` dele (desconhecido = cheio).
-fn fill_style_of(v: &Value) -> Option<FillStyle> {
-    Some(match v["fillStyle"].as_str()? {
-        "hachure" => FillStyle::Hachure,
-        "cross-hatch" => FillStyle::CrossHatch,
-        "zigzag" => FillStyle::Zigzag,
-        _ => FillStyle::Solid,
-    })
-}
-
-/// A `seed` dele (o tremor do rascunho), se é uma que a nossa conta aceita.
-fn seed_of(v: &Value) -> Option<u32> {
-    v["seed"]
-        .as_u64()
-        .and_then(|s| u32::try_from(s).ok())
-        .filter(|s| *s > 0)
-}
-
-/// O estilo de um elemento de fora (os valores fora de faixa caem nos de nascença DELE, X3).
-fn style_of(v: &Value) -> Style {
-    let color = |k: &str, dflt: Option<Rgba>| v[k].as_str().and_then(parse_color).unwrap_or(dflt);
-    let ink = Rgba([0x1e, 0x1e, 0x1e, 255]);
-    let mut st = Style::new(
-        color("backgroundColor", None),
-        color("strokeColor", Some(ink)),
-        ink,
-    );
-    st.stroke_width = num(v, "strokeWidth").filter(|w| *w > 0.0).unwrap_or(2.0);
-    st.dash = match v["strokeStyle"].as_str() {
-        Some("dashed") => Dash::Dashed,
-        Some("dotted") => Dash::Dotted,
-        _ => Dash::Solid,
-    };
-    st.opacity = opacity(v).unwrap_or(100);
-    st.round = !v["roundness"].is_null();
-    let rough = num(v, "roughness").unwrap_or(1.0);
-    st.sketch = rough > 0.0;
-    st.look.cartoonist = rough > 1.5;
-    st.look.fill_style = fill_style_of(v).unwrap_or_default();
-    st.look.seed = seed_of(v);
-    st
-}
-
-/// O aspecto do texto `t` no estilo da forma que o leva.
-fn text_look(st: &mut Style, t: &Text) {
-    st.look.align = t.align;
-    st.look.valign = t.valign;
-    st.look.letter = t.letter;
-}
-
-/// A opacidade do ficheiro em `0..=100`; fora da faixa (o `restore` dele não a valida) = `None`, e
-/// quem lê fica com a de nascença dele (100, X3).
-fn opacity(v: &Value) -> Option<u8> {
-    num(v, "opacity")
-        .filter(|o| (0.0..=100.0).contains(o))
-        .map(|o| o.round() as u8)
-}
-
-/// O traço do Excalidraw.
-fn dash_of(v: &Value) -> Option<Dash> {
-    Some(match v["strokeStyle"].as_str()? {
-        "dashed" => Dash::Dashed,
-        "dotted" => Dash::Dotted,
-        "solid" => Dash::Solid,
-        _ => return None,
-    })
 }
 
 /// O elemento nosso que viajou no `customData`, se há.
@@ -343,68 +239,6 @@ pub fn read(json: &str) -> Result<Import, String> {
     Ok(imp)
 }
 
-/// Os ids dele → os nossos, e os elementos dele pelo id.
-type Links<'a, 'v> = (&'a BTreeMap<String, ElementId>, &'a BTreeMap<&'v str, &'v Value>);
-
-/// ⭐ **A ponta de uma seta pela ligação dele** (W9, as duas gramáticas — estudo 07 XV1–XV3), ou solta
-/// no ponto `at`; `next` = a estação vizinha (o outro ponto da recta). `mode "inside"` ⇒ o ponto fixo (a
-/// ponta É o ponto, XB2); `orbit`/`skip` ⇒ em órbita do `fixedPoint` (XB1, XB3); só o legado `{focus,
-/// gap}` (0.18.1) ⇒ em órbita do foco que a recta da estação vizinha pela ponta gravada aponta (o que o
-/// next faz, XV2; o `gap` gravado deita-se fora — recusa §3). O cotovelo continua no ponto fixo/centro.
-fn end_of(v: &Value, key: &str, at: [f64; 2], next: [f64; 2], links: Links<'_, '_>) -> End {
-    let b = &v[key];
-    let Some(target) = b["elementId"].as_str().and_then(|t| links.0.get(t)) else {
-        return End::Free(at);
-    };
-    let fp = b["fixedPoint"]
-        .as_array()
-        .filter(|f| f.len() == 2)
-        .map(|f| [f[0].as_f64().unwrap_or(0.5), f[1].as_f64().unwrap_or(0.5)]);
-    let anchor = if v["elbowed"].as_bool().unwrap_or(false) {
-        fp.map_or(Anchor::Center, Anchor::Fixed)
-    } else {
-        match (b["mode"].as_str(), fp) {
-            (Some("inside"), Some(fp)) => Anchor::Fixed(fp),
-            (_, Some(fp)) => Anchor::Orbit(fp),
-            (_, None) => Anchor::Orbit(
-                b["elementId"]
-                    .as_str()
-                    .and_then(|t| links.1.get(t))
-                    .map_or([0.5, 0.5], |t| focus_through(t, next, at)),
-            ),
-        }
-    };
-    End::Bound {
-        target: *target,
-        anchor,
-    }
-}
-
-/// O foco (fracção da caixa de `shape`, antes de rodar) para onde a recta de `from` pela ponta
-/// gravada `tip` aponta: o ponto dela mais perto do centro da forma, nunca aquém da ponta. A ponta
-/// sobre a recta que vem do centro dá o centro (`focus 0` ⇒ `[0.5, 0.5]`, como o next).
-fn focus_through(shape: &Value, from: [f64; 2], tip: [f64; 2]) -> [f64; 2] {
-    let (x, y) = (num(shape, "x").unwrap_or(0.0), num(shape, "y").unwrap_or(0.0));
-    let (w, h) = (num(shape, "width").unwrap_or(0.0), num(shape, "height").unwrap_or(0.0));
-    if w <= 0.0 || h <= 0.0 {
-        return [0.5, 0.5];
-    }
-    let c = [x + w / 2.0, y + h / 2.0];
-    let d = [tip[0] - from[0], tip[1] - from[1]];
-    let l2 = d[0] * d[0] + d[1] * d[1];
-    let q = if l2 < 1e-18 {
-        c
-    } else {
-        let t = (((c[0] - from[0]) * d[0] + (c[1] - from[1]) * d[1]) / l2).max(1.0);
-        [from[0] + d[0] * t, from[1] + d[1] * t]
-    };
-    let q = ph2d_board_model::rotate_about(q, c, -num(shape, "angle").unwrap_or(0.0));
-    [
-        ((q[0] - x) / w).clamp(0.0, 1.0),
-        ((q[1] - y) / h).clamp(0.0, 1.0),
-    ]
-}
-
 /// Os pontos de uma linha/seta/caneta no mundo (relativos a `x, y`, rodados à volta do centro da
 /// caixa dos pontos — o `angle` dele).
 fn world_points(v: &Value) -> Vec<[f64; 2]> {
@@ -431,13 +265,7 @@ fn world_points(v: &Value) -> Vec<[f64; 2]> {
 
 /// As edições que o Excalidraw sabe fazer, aplicadas ao nosso elemento que viajou (X2): o que mudou
 /// lá ganha; o que ficou igual fica exactamente o nosso.
-fn edits(
-    el: &mut Element,
-    v: &Value,
-    text: Option<&Text>,
-    links: Links<'_, '_>,
-    fresh: bool,
-) {
+fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>, fresh: bool) {
     let (x, y) = (num(v, "x").unwrap_or(el.x), num(v, "y").unwrap_or(el.y));
     let near = |a: f64, b: f64| (a - b).abs() < 1e-6;
     match &el.kind {
@@ -545,7 +373,10 @@ fn edits(
         }
     }
     // O estilo: só o que difere do que escrevemos.
-    let seed = el.seed();
+    // A semente que ELE grava (uma cópia feita lá ganha outra): a nossa só fica se é a que escrevemos.
+    if let Some(s) = seed_of(v).filter(|s| *s != el.seed()) {
+        el.set_imported_seed(Some(s));
+    }
     let st = el.style_mut();
     for (k, slot) in [
         ("strokeColor", &mut st.stroke),
@@ -584,9 +415,7 @@ fn edits(
     if let Some(f) = fill_style_of(v).filter(|f| *f != st.look.fill_style) {
         st.look.fill_style = f;
     }
-    if let Some(s) = seed_of(v).filter(|s| *s != seed) {
-        st.look.seed = Some(s);
-    }
+
     if let Some(t) = text {
         if t.align != st.look.align {
             st.look.align = t.align;
@@ -775,6 +604,7 @@ fn foreign(
         }
         _ => return None,
     };
+    el.set_imported_seed(seed_of(v));
     if !matches!(kind, "freedraw" | "arrow" | "line") {
         el.angle = num(v, "angle").unwrap_or(0.0);
     }

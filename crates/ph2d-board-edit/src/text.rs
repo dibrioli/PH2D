@@ -40,7 +40,13 @@ fn text_of(el: &Element) -> RichText {
 /// mundo (`x = y = 0`, sem rotação) e o bloco centra-se no meio `mid` da rota.
 fn origin(el: &Element, block_h: f64, mid: Option<[f64; 2]>) -> Option<[f64; 2]> {
     match el.shape() {
-        Some(s) => Some(text_origin(s.kind, el.w, el.h, block_h, s.style.look.valign)),
+        Some(s) => Some(text_origin(
+            s.kind,
+            el.w,
+            el.h,
+            block_h,
+            s.style.look.valign,
+        )),
         None => mid.map(|m| label_origin(m, block_h)),
     }
 }
@@ -147,9 +153,7 @@ impl Editor {
         self.editing = Some(Editing {
             id,
             original: el,
-            edit: TextEdit::new(&text, size, width)
-                .hand(hand)
-                .align(align),
+            edit: TextEdit::new(&text, size, width).hand(hand).align(align),
         });
         true
     }

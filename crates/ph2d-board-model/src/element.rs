@@ -189,16 +189,16 @@ pub struct Style {
 }
 
 /// ⭐ **O aspecto que vem do Excalidraw** (W9, [estudo 07](../../../docs/MiroClone/07_fidelidade_excalidraw.md)
-/// §4 e §5 M7–M8): o tipo de preenchimento, a rugosidade 2, a semente do tremor, o alinhamento e a
-/// letra do texto. O de nascença ([`Look::default`]) é o desenho de antes da W9.
+/// §4 e §5 M7–M8): o tipo de preenchimento, a rugosidade 2, o alinhamento e a letra do texto. O de
+/// nascença ([`Look::default`]) é o desenho de antes da W9. ⛔ Cinco campos de UM byte: o `Style`
+/// fica nos 40 bytes de antes (medido 10/10: com a semente aqui ia a 56 e cada `Element` de 208 a 224 —
+/// e os bytes por elemento custam imagem, W5); a semente, rara, vive no [`crate::Org`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Look {
     /// Como o `fill` se pinta (o `fillStyle`).
     pub fill_style: FillStyle,
     /// A rugosidade 2 do Excalidraw («cartoonist») em vez da 1, quando em [`Style::sketch`].
     pub cartoonist: bool,
-    /// A semente do tremor do ficheiro (o `seed`); `None` = a tirada do id ([`Element::seed`]).
-    pub seed: Option<u32>,
     pub align: TextAlign,
     pub valign: VAlign,
     pub letter: Letter,
@@ -355,10 +355,10 @@ impl Element {
     /// ⭐ A **semente** do traço à mão deste elemento (W4): tirada do id (splitmix64), em
     /// `1..2³¹` — a mesma a cada desenho e em cada máquina, sem campo no ficheiro; uma cópia tem
     /// outro id e treme de outra maneira (como no Excalidraw, que sorteia uma semente nova). A semente
-    /// que veio de um `.excalidraw` ([`Look::seed`], W9) manda: o desenho treme como lá.
+    /// que veio de um `.excalidraw` ([`crate::Org::seed`], W9) manda: o desenho treme como lá.
     #[must_use]
     pub fn seed(&self) -> u32 {
-        if let Some(s) = self.style().look.seed {
+        if let Some(s) = self.org.as_ref().and_then(|o| o.seed) {
             return s;
         }
         let mut z = self.id.0.wrapping_add(0x9e37_79b9_7f4a_7c15);

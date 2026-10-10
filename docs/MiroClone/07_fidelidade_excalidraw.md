@@ -109,6 +109,8 @@
 | exportar a nota como `stickynote` | ⛔ o 0.18.1 (o npm `latest`) DESCARTA-A (XV4): a nota continua `rectangle` cheio + texto; o `customData.ph2d` já a devolve igual na volta (X2) |
 | o «hachure» como preenchimento de NASCENÇA do rascunho | ⛔ continua recusado (W4, foto da cena 5): só o elemento IMPORTADO com `fillStyle hachure/cross-hatch` o traz (§5 M7) |
 | pontos editados no Excalidraw numa seta curva ou em cotovelo | ⛔ continua (estudo 06 §3): a curva e o cotovelo NOSSOS são derivados. A seta `Spline` (§5 M3) é outra coisa: a curva DELE pelos pontos dele |
+| o círculo da ponta CENTRADO no bico (o dele: `P_tipos_comprimento`, centro = bico, Ø min(15, L/2)) | ⛔ fecho W9 (auditoria, lente 1): fica o do catálogo, TANGENTE ao bico — a ponta não entra no vão de 5 + sw/2 que acabámos de abrir (centrado, metade do círculo tapava-o); o TAMANHO é o dele (XA2, gate `xa2_every_head_type…`), a posição desvia `tamanho/2` (7,5 no cheio) |
+| o miolo da forma ⇒ `Orbit` no ponto largado (§5 M4, §6.1) | ⛔ fecho W9: o miolo continua `Center` — a face do Miro (a curva de nascença sai perpendicular pelo lado que olha a outra forma, e as paralelas afastam-se, W2), AGORA com o vão (`center_exit`); numa recta o centro É a órbita do foco `[0.5, 0.5]`. A faixa junto ao contorno é `Orbit` (o encaixe XB5) |
 
 ## §4 — O formato inteiro: Excalidraw · nós · lacuna · cura
 

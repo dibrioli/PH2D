@@ -12,7 +12,7 @@ use crate::{BoardDoc, Team};
 /// etiquetas (W5); 6 = o nó de mapa mental (`Org::mind`, W6); 7 = os votos e os carimbos
 /// (`Org::votes`, `Org::stamps`, W7); 8 = a equipa (`Board::team`: comentários, versões, frames fora da
 /// apresentação, W8); 9 = o aspecto que vem do Excalidraw (`Style::look`: preenchimento, rugosidade 2,
-/// semente, alinhamento e letra do texto, W9).
+/// alinhamento e letra do texto; `Org::seed`: a semente do tremor, W9).
 pub const FORMAT_VERSION: u32 = 9;
 
 /// Identidade de um quadro no projecto. Nunca reusada.

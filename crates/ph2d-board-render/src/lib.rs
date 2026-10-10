@@ -365,9 +365,16 @@ fn paint_shape(
     let st = &shape.style;
     let t = v * to_world(el);
     let faded = st.opacity < 100;
+    // O rascunho, ou um final com o preenchimento às riscas que veio de um `.excalidraw` (W9).
+    let hand = st.sketch || st.look.fill_style != ph2d_board_model::FillStyle::Solid;
     if faded {
         let [x0, y0, x1, y1] = el.aabb();
-        let pad = st.stroke_width;
+        let pad = st.stroke_width
+            + if hand {
+                sketch::hand_reach(st, el.w, el.h)
+            } else {
+                0.0
+            };
         let p0 = v * Point::new(x0 - pad, y0 - pad);
         let p1 = v * Point::new(x1 + pad, y1 + pad);
         scene.push_object_layer(
@@ -381,8 +388,6 @@ fn paint_shape(
     }
     let (frame, at) = (cache.frame, (board, el.id.0));
     let o = cached_outline(&mut cache.outlines, frame, at, shape, el.w, el.h);
-    // O rascunho, ou um final com o preenchimento às riscas que veio de um `.excalidraw` (W9).
-    let hand = st.sketch || st.look.fill_style != ph2d_board_model::FillStyle::Solid;
     if hand && !shape.kind.is_note() {
         sketch::paint_shape(scene, &mut cache.sketch, frame, at, el, shape.kind, o, t);
     } else {
@@ -515,7 +520,7 @@ fn paint_connector(
             &[],
             st.font_size as f32,
             LABEL_WRAP as f32,
-            ph2d_board_edit::hand_lettered(el),
+            ph2d_board_edit::face(el),
         );
         let [ox, oy] = label_origin(r.mid, f64::from(layout.height()));
         let at = v * Affine::translate((ox, oy));

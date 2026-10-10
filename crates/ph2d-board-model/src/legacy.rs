@@ -9,7 +9,7 @@
 //! - 5 (W5): sem o nó de mapa mental (`Org::mind`, W6) — nada é mapa.
 //! - 6 (W6): sem os votos nem os carimbos (`Org::votes`, `Org::stamps`, W7) — nenhum.
 //! - 7 (W7): sem a equipa (`Board::team`: comentários, versões, frames fora da apresentação, W8).
-//! - 8 (W8): sem o aspecto do Excalidraw (`Style::look`, W9) — o de nascença. Do 4 ao 8 o estilo
+//! - 8 (W8): sem o aspecto do Excalidraw (`Style::look`, `Org::seed`, W9) — o de nascença. Do 4 ao 8 o estilo
 //!   lê-se com [`StyleV8`] (pelo [`KindV8`]).
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
@@ -435,6 +435,7 @@ fn element_v5(e: ElementV5) -> Element {
             mind: None,
             votes: 0,
             stamps: Vec::new(),
+            seed: None,
         })
     });
     (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
@@ -520,6 +521,7 @@ fn element_v6(e: ElementV6) -> Element {
             mind: o.mind,
             votes: 0,
             stamps: Vec::new(),
+            seed: None,
         })
     });
     (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
@@ -619,7 +621,19 @@ pub(crate) fn read_v7(bytes: &[u8]) -> Result<BoardSet, String> {
     Ok(BoardSet::from_parts(boards, old.next_id))
 }
 
-/// O elemento dos formatos 7–8: o de hoje com o estilo antigo.
+/// O `Org` dos formatos 7–8: sem a semente importada (W9).
+#[derive(Deserialize)]
+struct OrgV8 {
+    groups: Vec<crate::GroupId>,
+    locked: bool,
+    link: Option<ElementId>,
+    tags: Vec<crate::Tag>,
+    mind: Option<crate::Mind>,
+    votes: u32,
+    stamps: Vec<crate::StampCount>,
+}
+
+/// O elemento dos formatos 7–8: o de hoje com o estilo e o `Org` antigos.
 #[derive(Deserialize)]
 struct ElementV8 {
     id: ElementId,
@@ -631,7 +645,7 @@ struct ElementV8 {
     angle: f64,
     z: FracKey,
     frame: Option<ElementId>,
-    org: Option<Box<crate::Org>>,
+    org: Option<Box<OrgV8>>,
     version: u64,
     nonce: u32,
     deleted: bool,
@@ -641,7 +655,18 @@ fn element_v8(e: ElementV8) -> Element {
     let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
     el.angle = e.angle;
     el.frame = e.frame;
-    el.org = e.org;
+    el.org = e.org.map(|o| {
+        Box::new(crate::Org {
+            groups: o.groups,
+            locked: o.locked,
+            link: o.link,
+            tags: o.tags,
+            mind: o.mind,
+            votes: o.votes,
+            stamps: o.stamps,
+            seed: None,
+        })
+    });
     (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
     el
 }

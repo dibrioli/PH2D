@@ -145,3 +145,41 @@ fn the_default_ink_is_near_black_on_light_boards_and_the_themes_text_on_dark_one
         "há temas claros e escuros na régua"
     );
 }
+
+/// ⭐ O traço à mão de uma forma cabe na folga da camada de opacidade ([`hand_reach`]) — também no
+/// «cartoonist» importado (W9: vértices soltos), em muitas sementes (a auditoria W9 viu os cantos
+/// cortados a direito com a folga de só o traço).
+#[test]
+fn a_hand_drawn_shape_stays_inside_its_opacity_layer() {
+    let ink = ph2d_board_model::Rgba([30, 30, 30, 255]);
+    for (cartoonist, w, h) in [
+        (true, 160.0, 100.0),
+        (false, 160.0, 100.0),
+        (true, 600.0, 40.0),
+    ] {
+        let mut st = Style::new(Some(ink), Some(ink), ink);
+        st.sketch = true;
+        st.look.cartoonist = cartoonist;
+        st.stroke_width = 1.0;
+        for id in 1..200 {
+            let el = Element::new_shape(
+                ElementId(id),
+                FracKey::between(None, None),
+                Shape {
+                    kind: ShapeType::Rectangle,
+                    style: st.clone(),
+                    text: Default::default(),
+                },
+                [0.0, 0.0, w, h],
+            );
+            let o = ph2d_board_geom::outline(el.shape().unwrap(), w, h);
+            let r = rough_shape(&el, ShapeType::Rectangle, &st, &o);
+            let b = r.line.bounding_box();
+            let pad = hand_reach(&st, w, h);
+            assert!(
+                b.x0 >= -pad && b.y0 >= -pad && b.x1 <= w + pad && b.y1 <= h + pad,
+                "semente {id}, cartoonist {cartoonist}: {b:?} sai de ±{pad}"
+            );
+        }
+    }
+}

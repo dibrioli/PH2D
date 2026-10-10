@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w9_nosso_casos.json",
-  "casos_sha256": "2acecb1b82b63894dc7ba044315755a53ca0f9d40b405faeb6b2cd680c20057f",
+  "casos_sha256": "a871c59a116b75592d6f6758b7a9873d0cb6764d3b34486b1f173a0095fa35d5",
   "caso": "X_nosso",
   "descricao": "o NOSSO .excalidraw (W9): ponto fixo (inside), órbita e centro (orbit), a curva dele, as pontas novas e o aspecto — escrito por ph2d-board-excalidraw::write",
-  "semente": 3269292472,
+  "semente": 77769958,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -56,7 +56,6 @@
             "cartoonist": true,
             "fill_style": "CrossHatch",
             "letter": "Sans",
-            "seed": 4242,
             "valign": "Top"
            },
            "opacity": 100,
@@ -83,8 +82,17 @@
          }
         },
         "nonce": 0,
-        "org": null,
-        "version": 1,
+        "org": {
+         "groups": [],
+         "link": null,
+         "locked": false,
+         "mind": null,
+         "seed": 4242,
+         "stamps": [],
+         "tags": [],
+         "votes": 0
+        },
+        "version": 2,
         "w": 160,
         "x": 0,
         "y": 0,
@@ -149,7 +157,7 @@
      "verticalAlign": "top",
      "width": 160,
      "x": 0,
-     "y": 32.5,
+     "y": 5,
      "index": "a1"
     },
     {
@@ -194,7 +202,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -332,7 +339,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -479,7 +485,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -629,7 +634,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -777,7 +781,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -942,7 +945,6 @@
             "cartoonist": true,
             "fill_style": "CrossHatch",
             "letter": "Sans",
-            "seed": 4242,
             "valign": "Top"
            },
            "opacity": 100,
@@ -969,8 +971,17 @@
          }
         },
         "nonce": 0,
-        "org": null,
-        "version": 1,
+        "org": {
+         "groups": [],
+         "link": null,
+         "locked": false,
+         "mind": null,
+         "seed": 4242,
+         "stamps": [],
+         "tags": [],
+         "votes": 0
+        },
+        "version": 2,
         "w": 160,
         "x": 0,
         "y": 0,
@@ -1035,7 +1046,7 @@
      "verticalAlign": "top",
      "width": 160,
      "x": 0,
-     "y": 32.5,
+     "y": 5,
      "index": "a1"
     },
     {
@@ -1080,7 +1091,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -1218,7 +1228,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -1365,7 +1374,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -1515,7 +1523,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -1663,7 +1670,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -1828,7 +1834,6 @@
             "cartoonist": true,
             "fill_style": "CrossHatch",
             "letter": "Sans",
-            "seed": 4242,
             "valign": "Top"
            },
            "opacity": 100,
@@ -1855,8 +1860,17 @@
          }
         },
         "nonce": 0,
-        "org": null,
-        "version": 1,
+        "org": {
+         "groups": [],
+         "link": null,
+         "locked": false,
+         "mind": null,
+         "seed": 4242,
+         "stamps": [],
+         "tags": [],
+         "votes": 0
+        },
+        "version": 2,
         "w": 160,
         "x": 0,
         "y": 0,
@@ -1921,7 +1935,7 @@
      "verticalAlign": "top",
      "width": 160,
      "x": 0,
-     "y": 32.5,
+     "y": 5,
      "index": "a1"
     },
     {
@@ -1966,7 +1980,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -2104,7 +2117,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -2251,7 +2263,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -2401,7 +2412,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -2549,7 +2559,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -2719,7 +2728,6 @@
             "cartoonist": true,
             "fill_style": "CrossHatch",
             "letter": "Sans",
-            "seed": 4242,
             "valign": "Top"
            },
            "opacity": 100,
@@ -2746,8 +2754,17 @@
          }
         },
         "nonce": 0,
-        "org": null,
-        "version": 1,
+        "org": {
+         "groups": [],
+         "link": null,
+         "locked": false,
+         "mind": null,
+         "seed": 4242,
+         "stamps": [],
+         "tags": [],
+         "votes": 0
+        },
+        "version": 2,
         "w": 160,
         "x": 0,
         "y": 0,
@@ -2812,7 +2829,7 @@
      "verticalAlign": "top",
      "width": 160,
      "x": 0,
-     "y": 32.5,
+     "y": 5,
      "index": "a1"
     },
     {
@@ -2857,7 +2874,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -2995,7 +3011,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -3142,7 +3157,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -3292,7 +3306,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -3440,7 +3453,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -3605,7 +3617,6 @@
             "cartoonist": true,
             "fill_style": "CrossHatch",
             "letter": "Sans",
-            "seed": 4242,
             "valign": "Top"
            },
            "opacity": 100,
@@ -3632,8 +3643,17 @@
          }
         },
         "nonce": 0,
-        "org": null,
-        "version": 1,
+        "org": {
+         "groups": [],
+         "link": null,
+         "locked": false,
+         "mind": null,
+         "seed": 4242,
+         "stamps": [],
+         "tags": [],
+         "votes": 0
+        },
+        "version": 2,
         "w": 160,
         "x": 0,
         "y": 0,
@@ -3698,7 +3718,7 @@
      "verticalAlign": "top",
      "width": 160,
      "x": 0,
-     "y": 32.5,
+     "y": 5,
      "index": "a1"
     },
     {
@@ -3743,7 +3763,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -3881,7 +3900,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -4028,7 +4046,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -4178,7 +4195,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,
@@ -4326,7 +4342,6 @@
             "cartoonist": false,
             "fill_style": "Solid",
             "letter": "Auto",
-            "seed": null,
             "valign": "Middle"
            },
            "opacity": 100,

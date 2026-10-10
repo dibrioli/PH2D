@@ -105,9 +105,16 @@ pub fn shape(
     layout
 }
 
-/// A altura (mundo) de `text` moldado a `font_size` com quebra em `max_width` — a conta do «a
-/// forma cresce» para quem não guarda o moldado — as NOTAS, que nunca estão à mão.
-pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_width: f32) -> f32 {
+/// A altura (mundo) de `text` moldado a `font_size` com quebra em `max_width` na cara `face` — a conta
+/// do «a forma cresce» para quem não guarda o moldado: as NOTAS (à mão só a que veio de um
+/// `.excalidraw` com a letra dele, W9 — a altura mede-se na letra em que se DESENHA).
+pub fn text_height(
+    ts: &mut TextSystem,
+    text: &RichText,
+    font_size: f32,
+    max_width: f32,
+    face: Face,
+) -> f32 {
     let mut lcx = LayoutContext::new();
     shape(
         ts,
@@ -116,7 +123,7 @@ pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_wid
         text.spans(),
         font_size,
         max_width,
-        Face::default(),
+        face,
     )
     .height()
 }

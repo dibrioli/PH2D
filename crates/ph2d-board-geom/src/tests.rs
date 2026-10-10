@@ -167,3 +167,32 @@ fn the_outline_normal_is_radial_on_a_circle_and_absent_at_a_sharp_corner() {
         "o vértice do losango é um canto"
     );
 }
+
+/// ⭐ A normal pedida num ponto FORA do contorno (a ponta presa, a `g` da forma — W9) é a do ponto do
+/// contorno mais perto, também numa JUNÇÃO lisa de uma elipse rodada (auditoria W9: a junção
+/// comparava-se com o ponto de fora, nunca casava, e a curva entrava pelo eixo do ecrã).
+#[test]
+fn the_normal_off_the_outline_is_the_normal_of_its_nearest_point() {
+    let mut el = Element::new_shape(
+        ElementId(1),
+        FracKey::between(None, None),
+        Shape {
+            kind: ShapeType::Ellipse,
+            style: Style::new(None, Some(Rgba([0, 0, 0, 255])), Rgba([0, 0, 0, 255])),
+            text: ph2d_board_model::RichText::default(),
+        },
+        [0.0, 0.0, 200.0, 100.0],
+    );
+    el.angle = 0.5;
+    let c = el.center();
+    let q = el.rotate([el.x + el.w, el.y + el.h / 2.0]);
+    let n = outline_normal(&el, q).expect("a junção da elipse é lisa");
+    let radial = [q[0] - c[0], q[1] - c[1]];
+    assert!(n[0] * radial[0] + n[1] * radial[1] > 0.0, "para fora");
+    let out = [q[0] + n[0] * 6.0, q[1] + n[1] * 6.0];
+    let m = outline_normal(&el, out).expect("de fora, a do ponto do contorno");
+    assert!(
+        (m[0] - n[0]).abs() < 1e-6 && (m[1] - n[1]).abs() < 1e-6,
+        "{m:?} · {n:?}"
+    );
+}

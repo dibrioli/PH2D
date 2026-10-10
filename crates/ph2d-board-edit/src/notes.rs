@@ -121,7 +121,8 @@ pub(crate) fn fitted_height(ts: &mut TextSystem, el: &Element) -> f64 {
         return base;
     }
     let tw = text_rect(s.kind, el.w, base)[2];
-    let block = ph2d_board_layout::text_height(ts, &s.text, s.style.font_size as f32, tw as f32);
+    let size = s.style.font_size as f32;
+    let block = ph2d_board_layout::text_height(ts, &s.text, size, tw as f32, crate::text::face(el));
     height_for_text(s.kind, base, f64::from(block))
 }
 

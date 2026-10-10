@@ -419,7 +419,10 @@ fn on_a_curve_the_line_is_the_route_cut_at_the_middle_of_the_head_base() {
     cache.sync(&doc);
     let r = cache.get(id).unwrap();
     let w = 2.0;
-    let inset = crate::heads::inset(Head::Triangle, crate::heads::size(Head::Triangle, r.legs[1]));
+    let inset = crate::heads::inset(
+        Head::Triangle,
+        crate::heads::size(Head::Triangle, r.legs[1]),
+    );
     let d = drawn(r, [Head::None, Head::Triangle], w);
     let full = ph2d_vec_render::build_bezpath(&r.path);
     let on_route = |p: Point| {

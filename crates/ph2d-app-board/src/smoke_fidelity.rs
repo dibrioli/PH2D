@@ -122,13 +122,27 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
             let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), c);
             let id = put(b, el);
             // O número centrado por baixo da seta (a 1.ª foto tinha-o à direita dela).
-            label(b, &format!("{l}"), [x + l / 2.0 - 40.0, ROW[1] + 15.0, 80.0, 30.0]);
+            label(
+                b,
+                &format!("{l}"),
+                [x + l / 2.0 - 40.0, ROW[1] + 15.0, 80.0, 30.0],
+            );
             id
         })
         .collect();
     // As duas caixas da lição de desenhar.
-    let from = boxed(b, "board.smoke.fidelity.from", 1, [800.0, 60.0, 180.0, 90.0]);
-    let to = boxed(b, "board.smoke.fidelity.to", 12, [1060.0, 300.0, 180.0, 110.0]);
+    let from = boxed(
+        b,
+        "board.smoke.fidelity.from",
+        1,
+        [800.0, 60.0, 180.0, 90.0],
+    );
+    let to = boxed(
+        b,
+        "board.smoke.fidelity.to",
+        12,
+        [1060.0, 300.0, 180.0, 110.0],
+    );
     // As lições, por baixo, na ordem real.
     let y = ROW[1] + 100.0;
     let (w, h) = (STICKY_WIDE, STICKY_SIDE);
@@ -144,14 +158,23 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         put(b, el)
     });
     let right = 4.0 * w + 3.0 * GAP;
-    label(b, &tr("board.smoke.fidelity.title"), [0.0, -80.0, right, 40.0]);
+    label(
+        b,
+        &tr("board.smoke.fidelity.title"),
+        [0.0, -80.0, right, 40.0],
+    );
     Lessons {
         owner,
         short,
         from,
         to,
         lessons,
-        view: [-MARGIN_X, -80.0 - MARGIN_Y, right + MARGIN_X, y + h + MARGIN_Y],
+        view: [
+            -MARGIN_X,
+            -80.0 - MARGIN_Y,
+            right + MARGIN_X,
+            y + h + MARGIN_Y,
+        ],
     }
 }
 

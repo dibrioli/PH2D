@@ -435,6 +435,7 @@ impl Editor {
         next.id = doc.mint_id();
         next.z = doc.z_on_top();
         next.version = 0;
+        next.set_imported_seed(None);
         if let Some(sh) = next.shape_mut() {
             sh.text = Default::default();
         }

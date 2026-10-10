@@ -265,6 +265,18 @@ pub fn hand_shape(
     }
 }
 
+/// ⭐ Até onde o traço À MÃO de uma forma `w × h` sai da caixa dela (mundo): o vértice mexe até
+/// `rugosidade · max_randomness_offset` e o arco do meio de uma aresta até `bowing ·
+/// max_randomness_offset · L / 200` vezes a rugosidade (o `line_ops` do porto, ganho ≤ 1) — a folga da
+/// camada de opacidade. ⛔ Só o traço não chegava: no «cartoonist» importado (W9, vértices soltos) os
+/// cantos e as barrigas saíam da camada e eram cortados a direito (auditoria W9).
+#[must_use]
+pub fn hand_reach(st: &Style, w: f64, h: f64) -> f64 {
+    let o = rough::Options::default();
+    let rough = hand_roughness(st, w, h, st.round, false);
+    rough * o.max_randomness_offset * (1.0 + o.bowing * w.abs().max(h.abs()) / 200.0)
+}
+
 /// O rascunho de uma forma, na caixa LOCAL dela.
 fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough {
     let mut r = Rough::default();

@@ -5,8 +5,8 @@
 use super::*;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{Anchor, STICKY_SIDE};
-use ph2d_editor_core::screens::hero::board_bar;
 use ph2d_board_route::RouteCache;
+use ph2d_editor_core::screens::hero::board_bar;
 use ph2d_editor_core::screens::hero::board_keys::{self, BoardKey};
 use ph2d_editor_core::screens::hero::board_view::{self, Input};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
@@ -336,6 +336,17 @@ fn lesson_5_the_sketch_button_gives_the_files_letter_back_to_the_mode() {
     let el = s.board().doc.get(s.l.letter).unwrap();
     assert_eq!(el.style().look.letter, Letter::Sans);
     assert!(el.style().sketch && !ph2d_board_edit::hand_lettered(el));
+    // Pela ordem das lições: a seta da lição 4 fica seleccionada — o Esc solta-a, como a lição manda.
+    s.board_key(BoardKey::Char('a'), Some("a"));
+    let (from, to) = {
+        let b = s.board();
+        (
+            b.doc.get(s.l.from).unwrap().center(),
+            b.doc.get(s.l.to).unwrap().center(),
+        )
+    };
+    s.drag_board(from, to, Modifiers::default());
+    s.board_key(BoardKey::Escape, None);
     let id = board_bar::node(board_bar::Item::Sketch);
     let vp = s.hero.last_viewport;
     let mut at = None;
@@ -361,15 +372,25 @@ fn lesson_5_the_sketch_button_gives_the_files_letter_back_to_the_mode() {
         button: PointerButton::Primary,
         timestamp_ns: 0,
     };
-    let mut events = s.hero.handle_pointer(ev(PointerKind::Down), &arena).to_vec();
+    let mut events = s
+        .hero
+        .handle_pointer(ev(PointerKind::Down), &arena)
+        .to_vec();
     events.extend_from_slice(s.hero.handle_pointer(ev(PointerKind::Up), &arena));
     for e in events {
         s.hero.apply_event(e);
     }
     s.paint();
     let el = s.board().doc.get(s.l.letter).unwrap();
-    assert_eq!(el.style().look.letter, Letter::Auto, "a letra do ficheiro ficou");
-    assert!(ph2d_board_edit::hand_lettered(el), "a lição promete a letra à mão");
+    assert_eq!(
+        el.style().look.letter,
+        Letter::Auto,
+        "a letra do ficheiro ficou"
+    );
+    assert!(
+        ph2d_board_edit::hand_lettered(el),
+        "a lição promete a letra à mão"
+    );
 }
 
 /// ⭐ A cena 3 ensina o que a mão consegue: TODAS as setas presas param a `g` das formas (auditoria W9:

@@ -118,7 +118,7 @@ fn the_w9_board_round_trips() {
 }
 
 /// ⭐⭐ §6.2-5 (a nossa metade) — XV3: o que escrevemos fala as DUAS gramáticas — o ponto fixo é
-/// `inside`, a órbita e o centro são `orbit`, o legado o do 0.18.1 ao re-ligar (W10, XV4) — e lido
+/// `inside`, a órbita e o centro são `orbit`, o legado o do 0.18.1 ao re-ligar (W10, XV7) — e lido
 /// como ficheiro DE FORA (sem o nosso `customData`) dá as mesmas âncoras; as pontas que gravamos são as
 /// roteadas (com o vão), a verdade ao abrir (XB7); a curva dele sai com `roundness` e os pontos dela.
 #[test]
@@ -135,7 +135,7 @@ fn xv3_we_write_both_grammars_and_a_stranger_reads_the_same_anchors() {
     assert_eq!(a0["startBinding"]["mode"], "orbit");
     assert_eq!(a0["startBinding"]["fixedPoint"], json!([0.75, 0.3]));
     let r1 = b.doc.live_in_z_order()[0].clone();
-    // O legado é o do 0.18.1 ao re-ligar (W10, XV4): a ponta em órbita a `g` da face ⇒ `gap` = `g`; o
+    // O legado é o do 0.18.1 ao re-ligar (W10, XV7): a ponta em órbita a `g` da face ⇒ `gap` = `g`; o
     // ponto fixo NO contorno ⇒ o menor `|gap|` (o `gap 0` dele põe a ponta dentro).
     let g1 = a0["startBinding"]["gap"].as_f64().unwrap();
     assert!((g1 - ph2d_board_route::gap(&r1)).abs() < 1e-6, "{g1}");

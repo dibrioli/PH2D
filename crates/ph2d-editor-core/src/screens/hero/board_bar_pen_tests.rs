@@ -151,21 +151,37 @@ fn the_sketch_button_gives_an_imported_letter_back_to_the_mode() {
         el.style_mut().look.letter = l;
         BoardOp::Put(el).apply(doc);
     }
-    let letters = |t: &T| -> Vec<Letter> {
-        t.elements().iter().map(|e| e.style().look.letter).collect()
-    };
+    let letters =
+        |t: &T| -> Vec<Letter> { t.elements().iter().map(|e| e.style().look.letter).collect() };
     t.click_bar(Item::Sketch);
     assert!(t.elements().iter().all(|e| e.style().sketch));
-    assert_eq!(letters(&t), [Letter::Auto; 2], "a letra do ficheiro ficou fixa");
+    assert_eq!(
+        letters(&t),
+        [Letter::Auto; 2],
+        "a letra do ficheiro ficou fixa"
+    );
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
-    assert_eq!(letters(&t), [Letter::Hand, Letter::Sans], "UM passo desfaz as duas");
+    assert_eq!(
+        letters(&t),
+        [Letter::Hand, Letter::Sans],
+        "UM passo desfaz as duas"
+    );
     // Com selecção: só a seleccionada volta ao modo. (Outro botão antes: dois cliques seguidos no
     // mesmo são um duplo-clique no relógio do teste.)
     t.click_bar(Item::Tool(Tool::Select));
     let p = t.at(0.275, 0.2);
     t.drag(p, p);
     assert_eq!(
-        t.hero.documents.live.editor.as_ref().unwrap().selection().iter().copied().collect::<Vec<_>>(),
+        t.hero
+            .documents
+            .live
+            .editor
+            .as_ref()
+            .unwrap()
+            .selection()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>(),
         [ids[0]]
     );
     t.click_bar(Item::Sketch);

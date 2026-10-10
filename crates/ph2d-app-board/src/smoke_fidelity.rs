@@ -160,7 +160,7 @@ pub(crate) fn build(b: &mut Board) -> Lessons {
         b.doc.mint_id(),
         b.doc.z_on_top(),
         shape,
-        [800.0, 450.0, 440.0, 130.0],
+        [800.0, 440.0, 440.0, 150.0],
     );
     let letter = put(b, el);
     // As lições, por baixo, na ordem real.

@@ -412,3 +412,36 @@ mudam — esse fica o da W8.
   `orbit` com o `fixedPoint` tirado da ponta gravada e IGNORA o `gap` (usa a lei XB1). Com as DUAS
   gramáticas na mesma ligação cada versão usa a sua (`B_ambos_orbit_e_legado`). O 0.18.1 DESCARTA o
   `stickynote`; o next renomeia `dot` → `circle` e `crowfoot_*` → `cardinality_*`.
+
+### W10 — a lei do legado no 0.18.1 e o realce do next: `corre_fidelidade.mjs --prefixo w10`
+
+```bash
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_w10_casos.py docs/MiroClone/ferramentas/excalidraw_oracle/entradas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_fidelidade.mjs --prefixo w10 --versao 0181 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w10_focus_casos.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_fidelidade.mjs --prefixo w10 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w10_realce_casos.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+cargo test -p ph2d-board-excalidraw grava_a_entrada_w10_nosso -- --ignored   # o NOSSO ficheiro (entradas/w10_nosso_casos.json)
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_fidelidade.mjs --prefixo w10 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w10_nosso_casos.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/mede_w10.py
+```
+
+**Novidades do corredor:** `--prefixo <p>` (o prefixo dos ficheiros de saída); o passo
+`captura` no `desenhar` grava um PNG `<prefixo>_<caso>.<versao>.<nome>.png` e o appState de ligação/realce
+ANTES de largar (sem os voláteis, também dentro do appState); `"guardar": false` num passo (não entra na
+saída); `"compacto": true` num caso (JSON sem indentação).
+
+**Casos:** 34 `F_*` (só o passo `empurrar` guardado, sem indentação: 3,1 MB) — forma × vão 0/0,01/1/6/15/−10/−40/−47
+× rotação × cantos × espessura × proporção × foco além de ±1 × rectas paralelas aos eixos (12 ângulos × 7 focos,
+presas pelo fim e pelo início), só no 0.18.1 — e 9 `R_*` (a ponta arrastada ou desenhada para a faixa, dentro,
+o miolo, a diagonal) nas duas versões.
+
+**Determinismo:** duas corridas iguais, 34/34 e 18/18 ficheiros; mais 2 corridas X10 idênticas (10/10).
+
+**O que mediu** (estudo [07](../../07_fidelidade_excalidraw.md) §2 XV7, §3): ao re-ligar, o 0.18.1 põe a ponta na
+recta do ponto vizinho por \|focus\|·K (focus = d/h(n)) a `gap` da forma — \|Δfocus\| 0,00000, gap rect/elipse
+0,0000 —; `gap 0` põe a ponta DENTRO; rectas paralelas aos eixos saem espelhadas; o vão do losango e do rectângulo
+redondo não tem lei (resíduo até 3,7 px). No next, o arrasto de uma ponta NÃO marca o foco: só o contorno azul e
+a seta já parada a g (os pontos mostrados são o encaixe no meio do lado), e o foco do gesto na faixa é o cursor.
+
+**Quando o escritor muda, regravam-se as TRÊS entradas nossas:** W8 (`grava_a_entrada_do_oraculo` +
+`corre_esquema.mjs entradas/w8_ph2d_quadro.excalidraw`, devolvendo o `w8_sondas.json` ao da W8); W9
+(`grava_a_entrada_w9_nosso` + `corre_fidelidade.mjs entradas/w9_nosso_casos.json`); W10 (os comandos acima).

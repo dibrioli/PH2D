@@ -616,10 +616,7 @@ fn the_shape_under_the_dragged_end_is_highlighted() {
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(300.0, 50.0, NONE));
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(480.0, 50.0, NONE));
     let o = w.ed.overlay(&mut w.doc, &mut w.ts);
-    assert_eq!(
-        o.target,
-        Some(Target { element: b })
-    );
+    assert_eq!(o.target, Some(Target { element: b }));
 }
 
 /// ⭐ Mover uma caixa: a seta presa a ela segue-a (a rota refaz-se, o documento da seta não muda).

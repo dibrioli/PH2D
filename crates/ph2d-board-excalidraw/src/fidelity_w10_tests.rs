@@ -1,4 +1,4 @@
-//! W10 — o legado `{focus, gap}` do 0.18.1 DEPOIS de mexer uma forma (estudo 07 §2, XV4): o NOSSO
+//! W10 — o legado `{focus, gap}` do 0.18.1 DEPOIS de mexer uma forma (estudo 07 §2, XV7): o NOSSO
 //! ficheiro passado pelas duas versões e as formas EMPURRADAS (o editor re-liga as setas pela lei
 //! dele). Módulo filho de `fidelity_tests` (os ajudantes do oráculo são de lá); as saídas são
 //! `saidas/w10_*` (`corre_fidelidade.mjs --prefixo w10`).
@@ -41,13 +41,55 @@ fn sample_w10() -> Board {
         el.angle = angle;
         put(b, el)
     };
-    let r = shape(b, ShapeType::Rectangle, [0.0, 0.0, 200.0, 120.0], 0.0, false);
-    let e = shape(b, ShapeType::Ellipse, [400.0, 0.0, 200.0, 120.0], 0.0, false);
-    let d = shape(b, ShapeType::Diamond, [800.0, 0.0, 200.0, 120.0], 0.0, false);
-    let rr = shape(b, ShapeType::Rectangle, [0.0, 300.0, 200.0, 120.0], 0.5, false);
-    let er = shape(b, ShapeType::Ellipse, [400.0, 300.0, 200.0, 120.0], 0.5, false);
-    let ro = shape(b, ShapeType::Rectangle, [800.0, 300.0, 200.0, 120.0], 0.0, true);
-    let dr = shape(b, ShapeType::Diamond, [1200.0, 0.0, 200.0, 120.0], 0.3, false);
+    let r = shape(
+        b,
+        ShapeType::Rectangle,
+        [0.0, 0.0, 200.0, 120.0],
+        0.0,
+        false,
+    );
+    let e = shape(
+        b,
+        ShapeType::Ellipse,
+        [400.0, 0.0, 200.0, 120.0],
+        0.0,
+        false,
+    );
+    let d = shape(
+        b,
+        ShapeType::Diamond,
+        [800.0, 0.0, 200.0, 120.0],
+        0.0,
+        false,
+    );
+    let rr = shape(
+        b,
+        ShapeType::Rectangle,
+        [0.0, 300.0, 200.0, 120.0],
+        0.5,
+        false,
+    );
+    let er = shape(
+        b,
+        ShapeType::Ellipse,
+        [400.0, 300.0, 200.0, 120.0],
+        0.5,
+        false,
+    );
+    let ro = shape(
+        b,
+        ShapeType::Rectangle,
+        [800.0, 300.0, 200.0, 120.0],
+        0.0,
+        true,
+    );
+    let dr = shape(
+        b,
+        ShapeType::Diamond,
+        [1200.0, 0.0, 200.0, 120.0],
+        0.3,
+        false,
+    );
     let bound = |target, anchor| End::Bound { target, anchor };
     let arrow = |b: &mut Board, s: End, t: End, route: Route, via: Vec<[f64; 2]>| {
         let mut c = Connector::new(s, t, route, Style::new(None, Some(ink), ink));
@@ -57,18 +99,129 @@ fn sample_w10() -> Board {
         put(b, el);
     };
     let st = Route::Straight;
-    arrow(b, bound(r, Anchor::Orbit([0.8, 0.2])), bound(e, Anchor::Orbit([0.3, 0.7])), st, vec![]);
+    arrow(
+        b,
+        bound(r, Anchor::Orbit([0.8, 0.2])),
+        bound(e, Anchor::Orbit([0.3, 0.7])),
+        st,
+        vec![],
+    );
     // Rectas PARALELAS aos eixos fora do centro (o 0.18.1 espelhava-as): horizontal entre R e E,
     // vertical de baixo para R.
-    arrow(b, bound(r, Anchor::Orbit([1.0, 0.3])), bound(e, Anchor::Orbit([0.0, 0.3])), st, vec![]);
-    arrow(b, End::Free([60.0, 250.0]), bound(r, Anchor::Orbit([0.3, 1.0])), st, vec![]);
-    arrow(b, bound(e, Anchor::Center), bound(d, Anchor::Orbit([0.5, 0.0])), st, vec![]);
-    arrow(b, End::Free([100.0, -150.0]), bound(r, Anchor::Fixed([0.75, 0.3])), st, vec![]);
-    arrow(b, End::Free([520.0, -150.0]), bound(e, Anchor::Fixed([0.6, 0.4])), st, vec![]);
-    arrow(b, End::Free([700.0, -150.0]), bound(e, Anchor::Fixed([1.0, 0.5])), st, vec![]);
-    arrow(b, bound(d, Anchor::Orbit([0.9, 0.5])), bound(rr, Anchor::Orbit([0.2, 0.2])), st, vec![]);
-    arrow(b, bound(rr, Anchor::Center), bound(er, Anchor::Orbit([0.7, 0.9])), st, vec![]);
-    arrow(b, End::Free([1150.0, 500.0]), bound(ro, Anchor::Orbit([0.1, 0.1])), st, vec![]);
+    arrow(
+        b,
+        bound(r, Anchor::Orbit([1.0, 0.3])),
+        bound(e, Anchor::Orbit([0.0, 0.3])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([60.0, 250.0]),
+        bound(r, Anchor::Orbit([0.3, 1.0])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        bound(e, Anchor::Center),
+        bound(d, Anchor::Orbit([0.5, 0.0])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([100.0, -150.0]),
+        bound(r, Anchor::Fixed([0.75, 0.3])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([520.0, -150.0]),
+        bound(e, Anchor::Fixed([0.6, 0.4])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([700.0, -150.0]),
+        bound(e, Anchor::Fixed([1.0, 0.5])),
+        st,
+        vec![],
+    );
+    // Pontos fixos que o 0.18.1 NÃO exprime (auditoria W10, lente 1): do lado de LÁ da recta, e na
+    // elipse fundo junto ao eixo maior; e dentro do losango e do rectângulo redondo.
+    arrow(
+        b,
+        End::Free([-200.0, 100.0]),
+        bound(r, Anchor::Fixed([0.9, 0.5])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([-200.0, 100.0]),
+        bound(r, Anchor::Fixed([0.75, 0.3])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([200.0, 100.0]),
+        bound(e, Anchor::Fixed([0.8, 0.5])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([200.0, 200.0]),
+        bound(e, Anchor::Fixed([0.6, 0.4])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([200.0, 64.0]),
+        bound(e, Anchor::Fixed([0.55, 0.5])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([900.0, -150.0]),
+        bound(d, Anchor::Fixed([0.5, 0.3])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1150.0, 500.0]),
+        bound(ro, Anchor::Fixed([0.3, 0.6])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        bound(d, Anchor::Orbit([0.9, 0.5])),
+        bound(rr, Anchor::Orbit([0.2, 0.2])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        bound(rr, Anchor::Center),
+        bound(er, Anchor::Orbit([0.7, 0.9])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1150.0, 500.0]),
+        bound(ro, Anchor::Orbit([0.1, 0.1])),
+        st,
+        vec![],
+    );
     arrow(
         b,
         bound(er, Anchor::Orbit([0.5, 0.5])),
@@ -76,7 +229,13 @@ fn sample_w10() -> Board {
         Route::Spline,
         vec![[700.0, 560.0]],
     );
-    arrow(b, End::Free([1300.0, -150.0]), bound(dr, Anchor::Orbit([0.3, 0.3])), st, vec![]);
+    arrow(
+        b,
+        End::Free([1300.0, -150.0]),
+        bound(dr, Anchor::Orbit([0.3, 0.3])),
+        st,
+        vec![],
+    );
     arrow(
         b,
         bound(r, Anchor::Orbit([0.5, 1.0])),
@@ -116,82 +275,125 @@ fn grava_a_entrada_w10_nosso() {
     .unwrap();
 }
 
-/// A forma de cada ponta presa das setas que escrevemos, pela ordem do ficheiro.
-fn targets(b: &Board) -> Vec<[Option<Element>; 2]> {
+/// A forma e a âncora de cada ponta presa das setas que escrevemos, pela ordem do ficheiro.
+fn targets(b: &Board) -> Vec<[Option<(Element, Anchor)>; 2]> {
     setas(&b.doc)
         .into_iter()
         .map(|a| {
             a.connector().unwrap().ends().map(|e| match e {
-                End::Bound { target, .. } => b.doc.get(target).cloned(),
+                End::Bound { target, anchor } => b.doc.get(target).cloned().map(|t| (t, anchor)),
                 End::Free(_) => None,
             })
         })
         .collect()
 }
 
-/// ⭐⭐ XV4 — o NOSSO ficheiro no 0.18.1: ao abrir nada mexe, e ao EMPURRAR as formas (o editor re-liga
-/// cada seta pelo legado `{focus, gap}` que escrevemos) as pontas ficam onde as escrevemos — a ≤ 0,05 px
-/// no rectângulo e na elipse (medido ≤ 0,044: com as DUAS pontas presas ele re-liga uma de cada vez, a
-/// partir da outra ainda deslocada). O losango e o rectângulo de cantos redondos: o vão dele não tem lei
-/// medida (estudo 07 §3) — ≤ [`UNMEASURED_GAP`] (medido 3,875 e 3,513; antes da W10, até 106).
+/// Onde a lei não está medida (o losango e o rectângulo redondo), o vão dele: até onde a ponta mexe
+/// (medido 3,876 em órbita/centro).
+const UNMEASURED_GAP: f64 = 4.0;
+/// …e com um ponto fixo DENTRO delas (medido 4,70 no losango, 85,6 no rectângulo redondo do lado de LÁ).
+const UNMEASURED_INSIDE: f64 = 86.0;
+/// Um ponto fixo DENTRO que o 0.18.1 não exprime (do lado de LÁ da recta): até onde fica a ponta que
+/// a lei dá ao par que escrevemos (medido 70,12).
+const UNEXPRESSIBLE: f64 = 71.0;
+
+/// ⭐⭐ XV7 — o NOSSO ficheiro no 0.18.1. Ao abrir nada mexe e o legado gravado é o que o escritor de
+/// HOJE escreve; ao EMPURRAR as formas (ele re-liga cada seta pelo legado) cada ponta cai onde a lei
+/// medida diz ([`crate::legacy_focus::landing`], ≤ 0,05 no rectângulo e na elipse — com as DUAS pontas
+/// presas ele re-liga uma de cada vez, a partir da outra ainda deslocada), e essa é a que escrevemos
+/// (órbita e centro ≤ 0,05). Um ponto fixo do lado de LÁ da recta não se exprime: fica o par que cai
+/// mais perto (≤ [`UNEXPRESSIBLE`]). O losango e o rectângulo redondo: ≤ [`UNMEASURED_GAP`] da nossa.
 #[test]
-fn xv4_the_0181_moves_no_tip_when_it_rebinds_our_arrows() {
-    const UNMEASURED_GAP: f64 = 4.0;
+fn xv7_the_0181_moves_no_tip_when_it_rebinds_our_arrows() {
     let b = sample_w10();
-    let ours: Value = serde_json::from_str(&write(&b)).unwrap();
-    let wrote: Vec<Vec<[f64; 2]>> = ours["elements"]
+    let ours: Vec<Value> = serde_json::from_str::<Value>(&write(&b)).unwrap()["elements"]
         .as_array()
         .unwrap()
         .iter()
         .filter(|e| e["type"] == "arrow")
-        .map(world)
+        .cloned()
         .collect();
-    let tg = targets(&b);
     let d = saida10("X10_nosso", "0181");
-    for (a, w) in passo(&d, "restore").iter().filter(|e| e["type"] == "arrow").zip(&wrote) {
-        assert_eq!(&world(a), w, "o 0.18.1 mexeu ao ABRIR");
-    }
+    let opened: Vec<&Value> = passo(&d, "restore")
+        .iter()
+        .filter(|e| e["type"] == "arrow")
+        .collect();
     let after: Vec<&Value> = passo(&d, "empurrar")
         .iter()
         .filter(|e| e["type"] == "arrow")
         .collect();
-    assert_eq!(after.len(), wrote.len());
+    assert_eq!((opened.len(), after.len()), (ours.len(), ours.len()));
+    const KEYS: [&str; 2] = ["startBinding", "endBinding"];
     let mut fails = Vec::new();
-    for ((a, w), t) in after.iter().zip(&wrote).zip(&tg) {
-        let p = world(a);
-        for k in 0..2 {
-            let Some(shape) = &t[k] else { continue };
-            let (got, want) = if k == 0 {
-                (p[0], w[0])
+    for (((o, a), w), t) in opened.iter().zip(&after).zip(&ours).zip(targets(&b)) {
+        let (wp, op, ap) = (world(w), world(o), world(a));
+        for (q, r) in op.iter().zip(&wp) {
+            assert!(dist(*q, *r) < 1e-9, "{}: o 0.18.1 mexeu ao ABRIR", w["id"]);
+        }
+        for (k, end) in t.iter().enumerate() {
+            let Some((shape, anchor)) = end else { continue };
+            let (wb, ob) = (&w[KEYS[k]], &o[KEYS[k]]);
+            for f in ["focus", "gap"] {
+                let (x, y) = (wb[f].as_f64().unwrap(), ob[f].as_f64().unwrap());
+                assert!(
+                    (x - y).abs() <= 1e-9 * x.abs().max(1.0),
+                    "{} {f}: o oráculo correu {y}, o escritor escreve {x} — corra-o outra vez",
+                    w["id"]
+                );
+            }
+            let n = wp.len();
+            let (tip, from, got) = if k == 0 {
+                (wp[0], wp[1], ap[0])
             } else {
-                (p[p.len() - 1], w[w.len() - 1])
+                (wp[n - 1], wp[n - 2], ap[ap.len() - 1])
             };
-            let e = dist(got, want);
-            let s = shape.shape().unwrap();
-            let bound = if s.kind == ShapeType::Diamond || s.style.round {
-                UNMEASURED_GAP
-            } else {
-                0.05
-            };
-            if e > bound {
-                fails.push(format!(
-                    "{} ponta {k} ({:?}): {e:.3}",
-                    a["id"],
-                    shape.shape().unwrap().kind
-                ));
+            let (focus, gap) = (wb["focus"].as_f64().unwrap(), wb["gap"].as_f64().unwrap());
+            let label = format!(
+                "{} ponta {k} ({:?}, {anchor:?})",
+                w["id"],
+                shape.shape().unwrap().kind
+            );
+            match crate::legacy_focus::landing(shape, from, focus, gap) {
+                Some(land) => {
+                    let law = dist(got, land);
+                    let ours = dist(land, tip);
+                    let bound = if matches!(anchor, Anchor::Fixed(_)) {
+                        UNEXPRESSIBLE
+                    } else {
+                        0.05
+                    };
+                    eprintln!("{label}: lei {law:.4} · nossa {ours:.4}");
+                    if law > 0.05 || ours > bound {
+                        fails.push(format!(
+                            "{label}: a lei erra {law:.3}, a nossa fica a {ours:.3}"
+                        ));
+                    }
+                }
+                None => {
+                    let e = dist(got, tip);
+                    eprintln!("{label}: sem lei · {e:.4}");
+                    let bound = if matches!(anchor, Anchor::Fixed(_)) {
+                        UNMEASURED_INSIDE
+                    } else {
+                        UNMEASURED_GAP
+                    };
+                    if e > bound {
+                        fails.push(format!("{label}: {e:.3}"));
+                    }
+                }
             }
         }
     }
-    assert!(fails.is_empty(), "o 0.18.1 mexeu: {fails:#?}");
+    assert!(fails.is_empty(), "o 0.18.1: {fails:#?}");
 }
 
-/// ⭐ A LEI do legado (XV4) contra a varredura do oráculo (`saidas/w10_F_*.0181.json`: forma × vão ×
+/// ⭐ A LEI do legado (XV7) contra a varredura do oráculo (`saidas/w10_F_*.0181.json`: forma × vão ×
 /// rotação × cantos × espessura × proporção, 12 ângulos × 7 focos, presas pelo fim e pelo início):
 /// de cada ponta que o 0.18.1 re-ligou, [`crate::legacy_focus::legacy`] devolve o `focus` gravado — e
 /// o `gap` no rectângulo de cantos vivos e na elipse (o losango e o rectângulo redondo não têm a lei do
 /// vão medida).
 #[test]
-fn xv4_the_legacy_law_reproduces_the_0181_sweep() {
+fn xv7_the_legacy_law_reproduces_the_0181_sweep() {
     let mut casos = 0;
     let mut pontas = 0;
     let mut espelhadas = 0;
@@ -225,7 +427,8 @@ fn xv4_the_legacy_law_reproduces_the_0181_sweep() {
         );
         shape.angle = num("angle");
         let c = shape.center();
-        let gap_law = kind == ShapeType::Ellipse || (kind == ShapeType::Rectangle && !shape.style().round);
+        let gap_law =
+            kind == ShapeType::Ellipse || (kind == ShapeType::Rectangle && !shape.style().round);
         for a in els.iter().filter(|e| e["type"] == "arrow") {
             let p = world(a);
             let end = a["id"].as_str().unwrap().starts_with('e');
@@ -245,18 +448,32 @@ fn xv4_the_legacy_law_reproduces_the_0181_sweep() {
             let tol = if shape.style().round { 1e-4 } else { 1e-5 };
             // Nas rectas paralelas a um eixo dois cantos empatam e ele escolhe o do OUTRO lado: a
             // recta que ele traça já não é paralela (por isso escrevemos `|focus|·UNTIE`).
-            if caso.contains("eixos") && (tip[0] - from[0]).abs() > 1e-6 && (tip[1] - from[1]).abs() > 1e-6 {
+            if caso.contains("eixos")
+                && (tip[0] - from[0]).abs() > 1e-6
+                && (tip[1] - from[1]).abs() > 1e-6
+            {
                 espelhadas += 1;
                 continue;
             }
-            assert!((focus - want).abs() < tol, "{caso} {}: focus {focus} ≠ {want}", a["id"]);
+            assert!(
+                (focus - want).abs() < tol,
+                "{caso} {}: focus {focus} ≠ {want}",
+                a["id"]
+            );
             let g = b["gap"].as_f64().unwrap();
             if gap_law && g != 0.0 && !caso.contains("eixos") {
-                assert!((gap - g).abs() < 1e-6, "{caso} {}: gap {gap} ≠ {g}", a["id"]);
+                assert!(
+                    (gap - g).abs() < 1e-6,
+                    "{caso} {}: gap {gap} ≠ {g}",
+                    a["id"]
+                );
             }
         }
     }
     assert_eq!(casos, 34, "a varredura inteira");
     assert!(pontas > 3000, "{pontas}");
-    assert!(espelhadas > 0, "o empate das rectas paralelas aos eixos já não aparece");
+    assert!(
+        espelhadas > 0,
+        "o empate das rectas paralelas aos eixos já não aparece"
+    );
 }

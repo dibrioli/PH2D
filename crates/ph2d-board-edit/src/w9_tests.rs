@@ -107,7 +107,13 @@ fn dragging_an_end_into_the_band_highlights_the_shape_and_the_arrow_shows_where_
     let mut w = world();
     let r = w.rect([500.0, 100.0, 200.0, 120.0]);
     let id = w.arrow_drag([330.0, 380.0], [460.0, 380.0], NONE).unwrap();
-    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(460.0, 380.0, NONE), VIEW);
+    w.ed.pointer_down(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(460.0, 380.0, NONE),
+        VIEW,
+    );
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(478.0, 255.0, NONE));
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(497.0, 130.0, NONE));
     let o = w.ed.overlay(&mut w.doc, &mut w.ts);
@@ -119,10 +125,41 @@ fn dragging_an_end_into_the_band_highlights_the_shape_and_the_arrow_shows_where_
     let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
     let el = w.el(r);
     let (_, d) = ph2d_board_geom::nearest_on_outline(el, tip).unwrap();
-    assert!(!ph2d_board_geom::inside(el, tip), "a ponta ao vivo entrou na forma");
+    assert!(
+        !ph2d_board_geom::inside(el, tip),
+        "a ponta ao vivo entrou na forma"
+    );
     assert!(
         (d - ph2d_board_route::gap(el)).abs() < 1e-3,
         "a seta ao vivo pára a {d:.3}, a lei diz {}",
         ph2d_board_route::gap(el)
+    );
+}
+
+/// ⭐ W10 (auditoria, lente 2) — o botão «Rascunho ↔ Final» com um texto ABERTO fecha-o primeiro: a
+/// escrita é um passo e a troca outro (antes o 1.º desfazer levava os dois e a edição aberta media-se
+/// na letra velha).
+#[test]
+fn the_sketch_button_closes_the_open_text_first() {
+    let mut w = world();
+    let id = w.rect([0.0, 0.0, 160.0, 100.0]);
+    let mut el = w.el(id).clone();
+    el.style_mut().look.letter = ph2d_board_model::Letter::Sans;
+    BoardOp::Put(el).apply(&mut w.doc);
+    w.ed.select(&w.doc, []);
+    assert!(w.ed.open_text(&w.doc, id));
+    assert!(w.ed.text_input(&mut w.doc, &mut w.ts, "x"));
+    w.ed.toggle_sketch(&mut w.doc, &mut w.h, false);
+    assert!(
+        w.ed.overlay(&mut w.doc, &mut w.ts).text.is_none(),
+        "o texto ficou aberto"
+    );
+    assert_eq!(w.el(id).style().look.letter, ph2d_board_model::Letter::Auto);
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(w.el(id).style().look.letter, ph2d_board_model::Letter::Sans);
+    assert_eq!(
+        w.el(id).shape().unwrap().text.as_str(),
+        "x",
+        "o 1.º desfazer levou também a escrita"
     );
 }

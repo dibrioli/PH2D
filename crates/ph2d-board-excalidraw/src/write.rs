@@ -319,7 +319,7 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
 /// (`mode` + `fixedPoint`) e a do 0.18.1 (`focus` + `gap`). O ponto fixo é o `inside` dele (a ponta É o
 /// ponto); a órbita e o centro são `orbit` — o centro com o foco do next (`[0.5001, 0.5001]`, XV2). O
 /// legado é o par que faz o 0.18.1, ao re-ligar a partir do ponto vizinho `from`, pôr a ponta em `tip`
-/// (W10, XV4: [`crate::legacy_focus`]).
+/// (W10, XV7: [`crate::legacy_focus`]).
 fn binding(t: &Element, anchor: Anchor, from: [f64; 2], tip: [f64; 2]) -> Value {
     let (focus, gap) = crate::legacy_focus::legacy(t, from, tip, ph2d_board_route::gap(t));
     let (mode, fp) = match anchor {

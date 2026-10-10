@@ -475,13 +475,16 @@ impl Editor {
     /// selecção, o quadro INTEIRO — e devolve o modo novo do quadro (`Some`), que é também o das
     /// formas que nascerem. Fica tudo à mão se havia alguma final, e final se já estava tudo à mão.
     /// As notas e os traços da caneta não entram: são papel e mão por natureza. UM passo. A letra
-    /// fixa de um `.excalidraw` (`Letter::Hand`/`Sans`) volta ao modo (`Auto`) em todo o alcançado.
+    /// fixa de um `.excalidraw` (`Letter::Hand`/`Sans`) volta ao modo (`Auto`) em todo o alcançado. Um
+    /// texto aberto fecha-se primeiro, no seu próprio passo.
     pub fn toggle_sketch(
         &mut self,
         doc: &mut BoardDoc,
         history: &mut History,
         board: bool,
     ) -> Option<bool> {
+        // O texto em edição fecha-se antes (é o passo dele): a letra nova não se mede no que está aberto.
+        self.commit_text(doc, history);
         let whole = self.selection.is_empty();
         let targets: Vec<&Element> = if whole {
             doc.live_in_z_order()

@@ -22,7 +22,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. Draw: press A, drag from Start here and drop inside Drop inside. The arrow stops a few pixels before the box. Hold Ctrl while dropping to leave it loose."
         }
         "board.smoke.fidelity.l5" => {
-            "5. This box came from a file with the plain letter. Press Sketch ↔ Final (top bar, nothing selected): its words take the hand letter, like the whole board."
+            "5. This box came from a file with the plain letter. Press Esc so nothing is selected, then Sketch ↔ Final (top bar): its words take the hand letter, like the shapes and arrows."
         }
         _ => return None,
     })

@@ -547,5 +547,7 @@ pub fn paint_hero_screen(
         text_system,
         hero.theme,
     );
+    // W8 — a apresentação por cima de TUDO (a janela inteira).
+    super::board_nav::team::show::paint(hero, viewport, scene, text_system);
     hero.store.end_scroll_frame();
 }

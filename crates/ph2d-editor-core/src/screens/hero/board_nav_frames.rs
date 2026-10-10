@@ -16,15 +16,17 @@ use ph2d_vector::VectorScene;
 /// A largura do painel em passos de `Spacing::Xl4`.
 const WIDTH_STEPS: f32 = 5.0; // LITERAL-PX-OK: proporção do painel
 
-/// O que se carrega numa linha: ela (ir ao frame), subir, descer.
+/// O que se carrega numa linha: ela (ir ao frame), subir, descer, e (W8, P1) o olho «Hide from
+/// presentation» dos frames de topo.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Part {
     Row,
     Up,
     Down,
+    Eye,
 }
 
-const PARTS: [Part; 3] = [Part::Row, Part::Up, Part::Down];
+const PARTS: [Part; 4] = [Part::Row, Part::Up, Part::Down, Part::Eye];
 
 /// O id da parte `part` da linha do frame `f`.
 #[must_use]
@@ -74,7 +76,8 @@ pub(super) fn paint(
     let Some(board) = hero.documents.active_board() else {
         return;
     };
-    let frames: Vec<(ElementId, String)> = board
+    // (o id, o nome, é de topo — um diapositivo —, está fora da apresentação)
+    let frames: Vec<(ElementId, String, bool, bool)> = board
         .doc
         .frames_in_panel_order()
         .iter()
@@ -82,6 +85,8 @@ pub(super) fn paint(
             (
                 f.id,
                 f.as_frame().map(|x| x.name.clone()).unwrap_or_default(),
+                f.frame.is_none(),
+                board.team.hidden_slides.contains(&f.id),
             )
         })
         .collect();
@@ -118,17 +123,27 @@ pub(super) fn paint(
     }
     let renaming = hero.documents.live.nav.renaming;
     let s = row_h();
-    for (i, (id, name)) in frames.iter().enumerate() {
+    for (i, (id, name, top, hidden)) in frames.iter().enumerate() {
         let y = p.y + (i as f32 + 1.0) * s;
         if y + s > p.y + p.h {
             break;
         }
-        let row = Rect::new(p.x, y, p.w - 2.0 * s, s);
+        let row = Rect::new(p.x, y, p.w - 3.0 * s, s);
+        let eye = Rect::new(p.x + p.w - 3.0 * s, y, s, s);
         let up = Rect::new(p.x + p.w - 2.0 * s, y, s, s);
         let down = Rect::new(p.x + p.w - s, y, s, s);
         for (part, r) in [(Part::Row, row), (Part::Up, up), (Part::Down, down)] {
             super::register(&mut hero.store, row_node(*id, part));
             hero.hit_index.register(row_node(*id, part), r);
+        }
+        if *top {
+            let eid = row_node(*id, Part::Eye);
+            super::register(&mut hero.store, eid);
+            let tip = if *hidden { "board.present.show_frame" } else { "board.present.hide_frame" };
+            hero.store.set_tooltip(eid, ph2d_i18n::tr(tip));
+            let icon = if *hidden { IconId::EyeClosed } else { IconId::Eye };
+            let (hit, store) = (&mut hero.hit_index, &hero.store);
+            super::button(scene, hit, store, eid, icon, eye, false, theme);
         }
         if renaming == Some(*id) {
             let (hit, store) = (&mut hero.hit_index, &hero.store);
@@ -150,7 +165,7 @@ pub(super) fn paint(
                 text_y(y),
                 font,
                 row.w - 2.0 * pad,
-                resolve(ColorToken::Text1, theme),
+                resolve(if *hidden { ColorToken::Text3 } else { ColorToken::Text1 }, theme),
             );
         }
         let (hit, store) = (&mut hero.hit_index, &hero.store);
@@ -219,6 +234,10 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 crate::ids::BOARD_FRAME_RENAME_INPUT,
                 name.unwrap_or_default(),
             );
+        }
+        Part::Eye => {
+            let hidden = board.team.hidden_slides.contains(&frame);
+            board.team.set_slide_hidden(frame, !hidden);
         }
         Part::Row => {
             super::go_to(board, area, frame, 1.0);

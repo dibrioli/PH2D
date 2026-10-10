@@ -53,6 +53,7 @@ mod blend_modes;
 mod board;
 /// O QUADRO — facilitar (W7): cronómetro, votação, carimbos, agrupar.
 mod board_facilitate;
+mod board_team;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
@@ -517,6 +518,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| hier_rows::tr(k))
             .or_else(|| board::tr(k))
             .or_else(|| board_facilitate::tr(k))
+            .or_else(|| board_team::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

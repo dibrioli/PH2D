@@ -225,6 +225,10 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let rows = [
         ids::CTX_MENU_BOARD_RENAME,
         ids::CTX_MENU_BOARD_DUPLICATE,
+        ids::CTX_MENU_BOARD_PRESENT,
+        ids::CTX_MENU_BOARD_VERSIONS,
+        ids::CTX_MENU_BOARD_EXPORT,
+        ids::CTX_MENU_BOARD_IMPORT,
         ids::CTX_MENU_BOARD_DELETE,
         ids::CTX_MENU_BOARD_DELETE_CONFIRM,
         ids::CTX_MENU_BOARD_DELETE_CANCEL,
@@ -246,6 +250,8 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         if let Some(copy) = hero.documents.duplicate(board, name) {
             register_board(&mut hero.store, copy);
         }
+    } else if super::board_nav::team::menu(hero, board, id) {
+        // W8 — apresentar, versões, exportar, importar: o módulo da equipa.
     } else if id == ids::CTX_MENU_BOARD_DELETE {
         hero.store.open_context_menu(ContextMenuRequest {
             x: 0.0,
@@ -272,6 +278,10 @@ pub(super) fn populate(store: &mut WidgetStore) {
     for id in [
         ids::CTX_MENU_BOARD_RENAME,
         ids::CTX_MENU_BOARD_DUPLICATE,
+        ids::CTX_MENU_BOARD_PRESENT,
+        ids::CTX_MENU_BOARD_VERSIONS,
+        ids::CTX_MENU_BOARD_EXPORT,
+        ids::CTX_MENU_BOARD_IMPORT,
         ids::CTX_MENU_BOARD_DELETE,
         ids::CTX_MENU_BOARD_DELETE_CONFIRM,
         ids::CTX_MENU_BOARD_DELETE_CANCEL,

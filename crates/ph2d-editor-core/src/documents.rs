@@ -17,6 +17,8 @@ use std::collections::BTreeMap;
 pub(crate) mod fac;
 #[path = "documents_nav.rs"]
 pub(crate) mod nav;
+#[path = "documents_team.rs"]
+pub mod team;
 
 /// Os quadros e a aba activa.
 #[derive(Debug, Default)]
@@ -61,6 +63,8 @@ pub(crate) struct BoardLive {
     pub(crate) nav: nav::Nav,
     /// A facilitação (W7): cronómetros, votações, painéis.
     pub(crate) fac: fac::Fac,
+    /// A equipa e a saída (W8): comentar, versões, apresentar, exportar.
+    pub(crate) team: team::Team,
 }
 
 impl std::fmt::Debug for BoardLive {
@@ -158,6 +162,7 @@ impl Documents {
         // W7 — os ids de quadro recomeçam em cada projecto: nada da facilitação do anterior (um
         // relógio, uma sessão de voto) pode cair sobre o quadro novo com o mesmo id (auditoria W7).
         self.live.fac = fac::Fac::default();
+        self.live.team.reset();
         if let Some(ed) = self.live.editor.as_mut() {
             ed.put_vote(None);
         }
@@ -196,6 +201,7 @@ impl Documents {
         {
             ed.put_vote(None);
         }
+        self.live.team.forget(id);
         if self.renaming == Some(id) {
             self.renaming = None;
         }

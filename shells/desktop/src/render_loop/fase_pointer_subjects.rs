@@ -30,6 +30,12 @@ impl crate::App {
         {
             audio.play_chime();
         }
+        // W8 — os ficheiros do quadro (exportar, abrir um `.excalidraw`, o nome de quem comenta).
+        if let Some(g) = self.gfx.as_mut()
+            && let Some(h) = g.hero_screen.as_mut()
+        {
+            ph2d_app_board::io::service(h, Some(g.surface.gpu()), &mut g.text_system);
+        }
         // ⭐ **O dedo do jogador, resolvido do mapa** (plano 30 W5) — no TOPO do quadro, e num
         // local, porque ele lê o `HeroScreen` (onde o mapa mora) e escreve no estado resolvido da
         // `App`: fazê-lo no sítio do consumo emprestaria `self` duas vezes.

@@ -7,6 +7,9 @@
 /// As cenas de smoke (`PH2D_BOARD_SMOKE`).
 pub mod smoke;
 
+/// Os ficheiros do quadro (W8): exportar, importar, o nome de quem escreve.
+pub mod io;
+
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "board",

@@ -33,10 +33,13 @@ pub enum FacItem {
     Cluster,
     /// A opção `i` de [`CLUSTER_BY`].
     ClusterBy(usize),
+    /// W8 (K1) — a ferramenta de comentar (`C`).
+    Comment,
 }
 
 pub(super) const TIMER: Item = Item::Fac(FacItem::Timer);
 pub(super) const VOTE: Item = Item::Fac(FacItem::Vote);
+pub(super) const COMMENT: Item = Item::Fac(FacItem::Comment);
 const STAMPS: Item = Item::Fac(FacItem::Stamps);
 const CLUSTER: Item = Item::Fac(FacItem::Cluster);
 
@@ -94,6 +97,7 @@ pub(super) struct Now {
     vote: bool,
     stamps: bool,
     cluster: bool,
+    comment: bool,
 }
 
 impl Now {
@@ -104,6 +108,7 @@ impl Now {
             vote: super::super::board_nav::facilitate::vote_open(hero),
             stamps: f.stamps_open,
             cluster: f.cluster_open,
+            comment: hero.documents.live.team.commenting,
         }
     }
 
@@ -114,6 +119,7 @@ impl Now {
             VOTE => self.vote,
             STAMPS => self.stamps,
             CLUSTER => self.cluster,
+            COMMENT => self.comment,
             Item::Fac(_) => false,
             _ => return None,
         })
@@ -132,6 +138,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         FacItem::Stamp(i) => stamp_key(*Stamp::ALL.get(i)?),
         FacItem::Cluster => "board.fac.cluster",
         FacItem::ClusterBy(i) => CLUSTER_BY.get(i)?.1,
+        FacItem::Comment => "board.tool.comment",
     })
 }
 
@@ -167,6 +174,7 @@ pub(super) fn paint_icon(
         FacItem::Timer => icon(scene, IconId::Timer, inner, fg, w),
         FacItem::Vote => icon(scene, IconId::Vote, inner, fg, w),
         FacItem::Cluster => icon(scene, IconId::LayoutGrid, inner, fg, w),
+        FacItem::Comment => icon(scene, IconId::MessageSquare, inner, fg, w),
         // O carimbo é o MESMO desenho do quadro (`ph2d_board_render::paint_stamp`), nunca um segundo.
         FacItem::Stamps => {
             ph2d_board_render::paint_stamp(
@@ -269,6 +277,7 @@ pub(super) fn apply(hero: &mut HeroScreen, it: Item) -> bool {
     match f {
         FacItem::Timer => super::super::board_nav::facilitate::toggle_timer(hero),
         FacItem::Vote => super::super::board_nav::facilitate::toggle_vote(hero),
+        FacItem::Comment => super::super::board_nav::team::toggle_comment_tool(hero),
         FacItem::Stamps | FacItem::Cluster => {}
         FacItem::Stamp(i) => {
             let theme = hero.theme;

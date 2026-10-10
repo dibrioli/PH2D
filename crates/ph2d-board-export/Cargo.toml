@@ -30,9 +30,14 @@ pdf-writer = "0.15"
 flate2 = "1"
 # O PNG pela PLACA (o `VelloPass` do produto, o dono do anti-aliasing), em ladrilhos do tecto do
 # dispositivo — e os bytes PNG (a mesma versão que o `image` já traz no lock).
-ph2d-gpu = { path = "../ph2d-gpu" }
-ph2d-render = { path = "../ph2d-render" }
+# ⚠️ Atrás da feature `gpu`: o `ph2d-editor-core` usa as PÁGINAS (o tamanho em píxeis do diálogo) e
+# o `ph2d-render` tem o editor como dev-dep — sem a feature não há ciclo no grafo dos testes.
+ph2d-gpu = { path = "../ph2d-gpu", optional = true }
+ph2d-render = { path = "../ph2d-render", optional = true }
 png = "0.18"
+
+[features]
+gpu = ["dep:ph2d-gpu", "dep:ph2d-render"]
 
 [lints]
 workspace = true
@@ -40,3 +45,8 @@ workspace = true
 [dev-dependencies]
 # A régua da saída (`tests/it/measure_export_cost.rs`) mede também o `.excalidraw`.
 ph2d-board-excalidraw = { path = "../ph2d-board-excalidraw" }
+# O oráculo e a régua desenham pela placa: os testes ligam a feature `gpu` (o `--features` não é
+# preciso à mão).
+ph2d-board-export = { path = ".", features = ["gpu"] }
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }

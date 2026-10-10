@@ -21,6 +21,15 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 # A cena 8 (W6) faz o mapa mental com o editor do quadro, que mede o texto dos nós; o gate da cena 7
 # também conduz o editor.
 ph2d-text = { path = "../ph2d-text" }
+# W8 — os ficheiros do quadro (`io.rs`): o exportar (o PNG pela placa: a feature `gpu`), o `.excalidraw`,
+# o diálogo da casa (`ph2d_app_host::modal`, que embrulha o `rfd`).
+ph2d-board-export = { path = "../ph2d-board-export", features = ["gpu"] }
+ph2d-board-excalidraw = { path = "../ph2d-board-excalidraw" }
+ph2d-board-render = { path = "../ph2d-board-render" }
+ph2d-board-route = { path = "../ph2d-board-route" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
+rfd = "0.17"
 
 [lints]
 workspace = true

@@ -4620,11 +4620,18 @@ version = "0.0.0"
 dependencies = [
  "ph2d-app-host",
  "ph2d-board-edit",
+ "ph2d-board-excalidraw",
+ "ph2d-board-export",
  "ph2d-board-model",
+ "ph2d-board-render",
+ "ph2d-board-route",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-i18n",
+ "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
+ "rfd",
 ]
 
 [[package]]
@@ -5201,6 +5208,7 @@ dependencies = [
  "pdf-writer",
  "ph2d-board-edit",
  "ph2d-board-excalidraw",
+ "ph2d-board-export",
  "ph2d-board-model",
  "ph2d-board-render",
  "ph2d-board-route",
@@ -5382,6 +5390,7 @@ dependencies = [
  "libm",
  "ph2d-a11y",
  "ph2d-board-edit",
+ "ph2d-board-export",
  "ph2d-board-geom",
  "ph2d-board-model",
  "ph2d-board-render",

@@ -64,6 +64,14 @@ pub fn key(
     if hero.documents.active().is_none() {
         return KeyOutcome::default();
     }
+    // W8 — a apresentação toma TODAS as teclas (e as soltas também não chegam ao quadro).
+    if super::board_nav::team::show::showing(hero) {
+        return if pressed {
+            super::board_nav::team::show::key(hero, k).unwrap_or_default()
+        } else {
+            KeyOutcome { consumed: true, copy: None }
+        };
+    }
     if pressed && let Some(out) = super::board_nav::key(hero, k, mods) {
         return out;
     }

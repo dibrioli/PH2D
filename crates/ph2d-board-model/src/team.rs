@@ -75,7 +75,15 @@ impl Thread {
     /// e volta com o desfazer).
     #[must_use]
     pub fn anchor(&self, doc: &BoardDoc) -> Option<[f64; 2]> {
-        match self.pin {
+        self.pin.anchor(doc)
+    }
+}
+
+impl Pin {
+    /// Onde o pino aponta, no mundo; `None` = o objecto apagado ou escondido.
+    #[must_use]
+    pub fn anchor(&self, doc: &BoardDoc) -> Option<[f64; 2]> {
+        match *self {
             Pin::Point(p) => Some(p),
             Pin::Element { id, at } => {
                 let el = doc.get(id).filter(|e| !e.is_hidden())?;
@@ -83,9 +91,7 @@ impl Thread {
             }
         }
     }
-}
 
-impl Pin {
     /// O pino de um clique em `p` sobre `on` (o objecto de cima sob ele, se há): numa seta (sem caixa:
     /// a geometria é a rota) fica no ponto.
     #[must_use]

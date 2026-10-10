@@ -26,6 +26,9 @@ mod frames;
 mod minimap;
 #[path = "board_nav_search.rs"]
 mod search;
+/// A equipa e a saída (W8): comentários, versões, apresentação, exportar.
+#[path = "board_team.rs"]
+pub mod team;
 
 pub(crate) use frames::panel_width as frames_panel_width;
 pub use frames::{Part as RowPart, row_node};
@@ -44,13 +47,19 @@ pub fn show(hero: &mut HeroScreen, frames: bool, minimap: bool) {
 /// Os botões do canto.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NavButton {
+    /// W8 — apresentar (P1).
+    Present,
+    /// W8 — a lista dos comentários (K8).
+    Comments,
     Frames,
     Search,
     Minimap,
     Fit,
 }
 
-const BUTTONS: [NavButton; 4] = [
+const BUTTONS: [NavButton; 6] = [
+    NavButton::Present,
+    NavButton::Comments,
     NavButton::Frames,
     NavButton::Search,
     NavButton::Minimap,
@@ -108,10 +117,13 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_tooltip(id, ph2d_i18n::tr(key));
     }
     facilitate::populate(store);
+    team::populate(store);
 }
 
 fn button_key(b: NavButton) -> &'static str {
     match b {
+        NavButton::Present => "board.nav.present",
+        NavButton::Comments => "board.nav.comments",
         NavButton::Frames => "board.nav.frames",
         NavButton::Search => "board.nav.search",
         NavButton::Minimap => "board.nav.minimap",
@@ -189,6 +201,9 @@ pub fn key(
     if editing {
         return None;
     }
+    if let Some(out) = team::key(hero, k, mods) {
+        return Some(out);
+    }
     let taken = Some(super::board_keys::KeyOutcome {
         consumed: true,
         copy: None,
@@ -245,6 +260,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if search::apply_event(hero, event)
         || frames::apply_event(hero, event)
         || facilitate::apply_event(hero, event)
+        || team::apply_event(hero, event)
     {
         return true;
     }
@@ -255,6 +271,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if let Some(b) = button_of(id) {
         let n = &mut hero.documents.live.nav;
         match b {
+            NavButton::Present => team::show::start(hero),
+            NavButton::Comments => team::toggle_list(hero),
             NavButton::Frames => n.frames_open = !n.frames_open,
             NavButton::Minimap => n.minimap_open = !n.minimap_open,
             NavButton::Search => {
@@ -299,10 +317,12 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     minimap::paint(hero, area, scene, theme);
     frames::paint(hero, area, scene, ts, theme);
     facilitate::paint(hero, area, scene, ts);
+    team::paint(hero, area, scene, ts);
     search::paint_fields(hero, area, scene, ts, theme);
     let open = {
         let n = &hero.documents.live.nav;
-        [n.frames_open, n.search_open, n.minimap_open, false]
+        let list = hero.documents.live.team.list_open;
+        [false, list, n.frames_open, n.search_open, n.minimap_open, false]
     };
     let rects = button_rects(area);
     panel(
@@ -312,6 +332,8 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     );
     for ((b, r), on) in rects.into_iter().zip(open) {
         let icon = match b {
+            NavButton::Present => IconId::Presentation,
+            NavButton::Comments => IconId::MessageSquare,
             NavButton::Frames => IconId::Layers,
             NavButton::Search => IconId::Search,
             NavButton::Minimap => IconId::Grid,
@@ -526,7 +548,7 @@ pub(crate) fn field_text_for_tests(hero: &HeroScreen, id: NodeId) -> String {
 
 /// Minimapa: o carregar no quadro, antes do editor. `true` = era no minimapa.
 pub fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    minimap::down(hero, x, y)
+    minimap::down(hero, x, y) || team::pointer_down(hero, x, y)
 }
 
 /// Minimapa: o arrasto. `true` = consumido.

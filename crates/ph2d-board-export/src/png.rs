@@ -4,12 +4,18 @@
 //! recorte do `paint` poupa o resto); as fronteiras caem em píxeis inteiros, e a mesma afinidade
 //! mundo → px atravessa os ladrilhos sem costura.
 
+#[cfg(feature = "gpu")]
 use ph2d_board_model::Board;
+#[cfg(feature = "gpu")]
 use ph2d_gpu::GpuContext;
+#[cfg(feature = "gpu")]
 use ph2d_render::VelloPass;
+#[cfg(feature = "gpu")]
 use ph2d_text::TextSystem;
+#[cfg(feature = "gpu")]
 use ph2d_vector::Color;
 
+#[cfg(feature = "gpu")]
 use crate::{Page, paint_page};
 
 /// Uma imagem RGBA8 (alfa directo, sRGB), linha a linha.
@@ -20,6 +26,7 @@ pub struct Image {
 }
 
 /// O lado de um ladrilho: o tecto de textura do dispositivo.
+#[cfg(feature = "gpu")]
 #[must_use]
 pub fn tile_side(gpu: &GpuContext) -> u32 {
     gpu.device.limits().max_texture_dimension_2d.max(1)
@@ -29,6 +36,7 @@ pub fn tile_side(gpu: &GpuContext) -> u32 {
 ///
 /// # Errors
 /// O que a placa recusar (a mensagem do `VelloPass`).
+#[cfg(feature = "gpu")]
 #[allow(clippy::too_many_arguments)]
 pub fn render(
     gpu: &GpuContext,

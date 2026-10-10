@@ -33,6 +33,8 @@ mod soak_tests;
 /// as três o consomem: a de áudio porque as bandas são função dele, e as de forma e
 /// texto porque um param conduzido por fio só tem valor num INSTANTE ([`driven_params`]).
 pub fn publish_all(motion: &mut MotionState, seconds: f64) {
+    // ⭐ As entradas do JOGO (ciclo 19) — e os disparos de teste dos cartões.
+    super::motion_entradas::publica(motion);
     // ADR-0154: a forma vetorial VIVA.
     super::motion_shape_gen::publish(motion, seconds);
     // O texto, uma instância por GLIFO.

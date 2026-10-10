@@ -207,13 +207,20 @@ pub fn is_spaced(name: &str) -> bool {
 /// cor, [`INPUT_COLOR`].
 #[must_use]
 pub fn input_of(name: &str) -> String {
-    format!("{RESERVED_PREFIX}input:{}", name.trim())
+    format!("{INPUT_PREFIX}{}", name.trim())
 }
+
+/// O prefixo de toda entrada publicada.
+pub const INPUT_PREFIX: &str = "$input:";
 
 /// A coluna do número de uma entrada publicada.
 pub const INPUT_VALUE: &str = "v";
 /// A coluna da cor (`Vec4`, RGBA linear) de uma entrada publicada.
 pub const INPUT_COLOR: &str = "c";
+/// A CONTAGEM de disparos de um gatilho — o que o escritor publica. A bomba deriva dela o pulso
+/// (`INPUT_VALUE = 1` no tique em que a conta mudou), tique a tique, para o pulso não depender de
+/// quantos tiques um quadro coze (doc 128 §3.2).
+pub const INPUT_COUNT: &str = "n";
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {

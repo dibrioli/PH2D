@@ -27,6 +27,8 @@ pub mod io;
 pub mod lateral;
 pub mod messaging;
 pub mod module;
+/// Ciclo 19: a tabela `motion` (as entradas do grafo do Motion).
+pub mod motion_api;
 pub mod props;
 pub mod registry;
 pub mod scene;

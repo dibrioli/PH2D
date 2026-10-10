@@ -308,6 +308,8 @@ pub struct MotionState {
     /// varredura sobre a selecção podia devolver uma forma sem nome, e o botão ligaria o nó a
     /// nada.
     pub selected_shape: FormaEscolhida,
+    /// ⭐ As entradas do JOGO (ciclo 19, doc 128 §3.6) — o que se publica como `$input:<nome>`.
+    pub entradas: crate::motion_entradas::EntradasDoJogo,
     /// Terminal nodes whose output streams are lowered to instances — every
     /// `motion.output` node in the document, in node-id order. Several sinks
     /// compose into one draw, so a document *can* hold independent scenes without

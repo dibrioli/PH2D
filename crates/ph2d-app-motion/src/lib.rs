@@ -196,6 +196,8 @@ pub mod collider_gizmo_overlay;
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
 pub mod motion_audio_gen;
 pub mod motion_bridge;
+/// Ciclo 19: as entradas que o jogo publica para o grafo (`value.input`).
+pub mod motion_entradas;
 pub mod motion_externals;
 /// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
 /// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas

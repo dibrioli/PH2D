@@ -522,3 +522,64 @@ end
         "o valor PROPRIO nao chegou, ou os canais da cor leem-se noutra ordem"
     );
 }
+
+// ── ciclo 19: a tabela `motion` ────────────────────────────────────────────────
+
+const MOTION_WRITES: &str = r#"
+function update(self, dt)
+  motion.set("vida", 0.25)
+  motion.set("ligado", true)
+  motion.color("time", 1, 0.5, 0)
+  motion.fire("dano")
+end
+"#;
+
+/// ⭐ O que o script escreve na tabela `motion` chega ao recurso do jogo no fim do tique — e cada
+/// `fire` é um disparo (a contagem sobe uma vez por tique).
+#[test]
+fn a_script_writes_the_motion_inputs_of_the_game() {
+    use ph2d_ecs::MotionInputs;
+    use ph2d_ecs::motion_inputs::{Escritor, Valor};
+    let mut host = ScriptHost::new().expect("vm");
+    let mut sim = SimWorld::new();
+    let path = script_file("motion", MOTION_WRITES);
+    actor(sim.world_mut(), 1, &path, &[]);
+    let r = frame(&mut host, &mut sim, 1.0 / 60.0);
+    assert!(r.failed.is_empty(), "{:?}", r.failed);
+    frame(&mut host, &mut sim, 1.0 / 60.0);
+    let m = sim
+        .world()
+        .get_resource::<MotionInputs>()
+        .expect("o recurso nasceu");
+    assert_eq!(
+        m.valor_de("vida", &Escritor::Script),
+        Some(Valor::Numero(0.25))
+    );
+    assert_eq!(
+        m.valor_de("ligado", &Escritor::Script),
+        Some(Valor::Numero(1.0))
+    );
+    assert_eq!(
+        m.valor_de("time", &Escritor::Script),
+        Some(Valor::Cor([1.0, 0.5, 0.0, 1.0]))
+    );
+    assert_eq!(m.disparos().collect::<Vec<_>>(), vec![("dano", vec![2])]);
+}
+
+/// Um nome vazio ou um valor que não é número PARA o objecto, com a mensagem (a lei do
+/// `ph2d.emit`), e as escritas do gancho que falhou não chegam.
+#[test]
+fn a_blank_motion_name_stops_the_object_and_its_writes_do_not_land() {
+    use ph2d_ecs::MotionInputs;
+    let mut host = ScriptHost::new().expect("vm");
+    let mut sim = SimWorld::new();
+    let path = script_file(
+        "motion_mau",
+        "function update(self, dt)\n  motion.set(\"vida\", 0.5)\n  motion.set(\"\", 1)\nend\n",
+    );
+    actor(sim.world_mut(), 1, &path, &[]);
+    let r = frame(&mut host, &mut sim, 1.0 / 60.0);
+    assert_eq!(r.failed.len(), 1);
+    assert!(r.failed[0].1.contains("needs a name"), "{}", r.failed[0].1);
+    assert!(sim.world().get_resource::<MotionInputs>().is_none());
+}

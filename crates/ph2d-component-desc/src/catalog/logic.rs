@@ -108,6 +108,14 @@ const LIFETIME_FIELDS: &[FieldDesc] = &[
     f(2, "component.field.lifetime_fields.2", K::Text),
 ];
 
+/// ⭐ Ciclo 19 do Motion (doc 128 §3.6): os campos do `Motion Input`, na ordem da struct.
+const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
+    f(1, "component.field.motion_input_fields.1", K::Text),
+    f(2, "component.field.motion_input_fields.2", K::Enum),
+    f(3, "component.field.motion_input_fields.3", K::Scalar),
+    f(4, "component.field.motion_input_fields.4", K::Color),
+];
+
 /// O campo do fora-do-ecrã: a folga, em metros, antes de a morte valer.
 const OUTSIDE_FIELDS: &[FieldDesc] = &[f(1, "component.field.outside_fields.1", K::Scalar)];
 
@@ -330,6 +338,15 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         LIFETIME_FIELDS,
+    ),
+    // ⭐ Ciclo 19 do Motion: o objecto que PUBLICA uma entrada para o grafo (o `value.input` com o
+    // mesmo nome). Entre o `Lifetime` e o `PathFollow` (a busca binária).
+    D::authored(
+        "ph2d::ecs::MotionInput",
+        "component.motion_input.name",
+        C::Logic,
+        O::ANY,
+        MOTION_INPUT_FIELDS,
     ),
     // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — este objecto anda sobre a curva desenhada.
     //

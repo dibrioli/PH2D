@@ -72,6 +72,7 @@ pub mod masking;
 pub mod master;
 /// ⭐ O objecto Motion (doc ObjectsAndComponents 01 §13, F5).
 pub mod motion_generator;
+pub mod motion_input;
 pub mod name;
 /// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
 pub mod named_anchor;
@@ -79,6 +80,9 @@ pub mod painted_doc;
 /// ⭐⭐⭐ **O emissor de partículas de um objecto** (TOP-20 #18) — só CONFIG; a lei é do
 /// `ph2d-particles`.
 pub mod particle_emitter;
+pub use motion_input::{MotionInput, MotionSource};
+pub mod motion_inputs;
+pub use motion_inputs::MotionInputs;
 pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 pub mod clip_playback;
 pub mod present;

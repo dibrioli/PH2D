@@ -37,6 +37,7 @@ impl MotionState {
             pump: Self::pump_do_motion(),
             registry,
             selected_shape: FormaEscolhida::Nada,
+            entradas: Default::default(),
             sinks,
             signal_taps: Vec::new(),
             signals_out: Vec::new(),

@@ -100,6 +100,8 @@ pub struct SceneReport {
     pub failed: Vec<(Entity, String)>,
     /// Quantos ganchos correram.
     pub calls: usize,
+    /// ⭐ Ciclo 19: o que os scripts escreveram na tabela `motion` (já aplicado ao recurso).
+    pub motion: Vec<crate::motion_api::MotionWrite>,
 }
 
 /// **O tempo que UMA chamada de gancho pode levar: um quadro.**
@@ -396,6 +398,7 @@ impl SceneScripts {
             }
         }
         apply_writes(world, &writes, &mut report);
+        crate::motion_api::apply(world, &report.motion);
         report.wrote.sort_by_key(|e| e.to_bits());
         report.wrote.dedup();
         report
@@ -452,6 +455,7 @@ impl SceneScripts {
             }
         }
         apply_writes(world, &writes, &mut report);
+        crate::motion_api::apply(world, &report.motion);
         report.wrote.sort_by_key(|e| e.to_bits());
         report.wrote.dedup();
         report
@@ -517,6 +521,7 @@ fn settle_call(
     report: &mut SceneReport,
 ) -> bool {
     let (mine, emitted) = drain_queues(lua);
+    let motion = crate::motion_api::drain(lua);
     let failure = match ran {
         Err(e) => Some(runtime_message(&e)),
         Ok(()) => mine
@@ -540,6 +545,7 @@ fn settle_call(
         return false;
     }
     writes.extend(mine);
+    report.motion.extend(motion);
     report
         .emitted
         .extend(emitted.into_iter().map(|n| (entity, n)));
@@ -560,6 +566,7 @@ fn drain_queues(lua: &Lua) -> (Vec<EntityWrite>, Vec<String>) {
 
 fn discard_queues(lua: &Lua) {
     let _ = drain_queues(lua);
+    let _ = crate::motion_api::drain(lua);
 }
 
 /// Aplica as escritas validadas ao `Transform` — **só quando o valor muda** (o `bevy` marca a

@@ -157,3 +157,53 @@ fn playing_on_after_a_scrub_with_a_new_input_writes_a_new_future() {
     publica(&mut pump, 2.0);
     assert_eq!(scrub(&mut pump, &g, c, 30), 60.0);
 }
+
+// ── o gatilho: a contagem vira pulso, tique a tique ─────────────────────────────
+
+const GATILHO: &str = "$input:g";
+
+fn conta(pump: &mut MotionCookPump, n: f32) {
+    pump.cook.set_external(
+        GATILHO,
+        Stream::new(1).with(
+            ph2d_nodegraph::external::INPUT_COUNT,
+            Column::Scalar(vec![n]),
+        ),
+    );
+}
+
+/// ⭐ O pulso é de UM tique, conte o quadro quantos tiques contar: com o acumulador, a soma é o
+/// número de disparos — e um quadro que coze dois tiques não dispara duas vezes.
+#[test]
+fn a_fire_count_becomes_a_pulse_of_exactly_one_tick() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    let scopes = TimeScopes::new();
+    let mut tique = |pump: &mut MotionCookPump, t: u64| {
+        pump.advance_or_scrub_scoped(&g, &Ops, &[c], t, |k| k as f64 * DT, UV, SIZE, &scopes);
+        pump.instances[0].world_pos[0]
+    };
+    conta(&mut pump, 0.0);
+    assert_eq!(tique(&mut pump, 0), 0.0);
+    conta(&mut pump, 1.0); // um disparo
+    assert_eq!(tique(&mut pump, 1), 1.0, "pulsa no tique em que chega");
+    assert_eq!(
+        tique(&mut pump, 2),
+        1.0,
+        "e só nesse: o mesmo quadro coze outro tique"
+    );
+    assert_eq!(tique(&mut pump, 3), 1.0);
+    conta(&mut pump, 3.0); // dois disparos entre tiques: um pulso (o Trigger do Rive)
+    assert_eq!(tique(&mut pump, 4), 2.0);
+    assert_eq!(tique(&mut pump, 5), 2.0);
+    conta(&mut pump, 4.0);
+    for t in 6..=10 {
+        tique(&mut pump, t);
+    }
+    let visto_8 = 3.0;
+    // O scrub repete os pulsos da fita no tique certo.
+    assert_eq!(scrub(&mut pump, &g, c, 8), visto_8);
+    assert_eq!(scrub(&mut pump, &g, c, 1), 1.0);
+    assert_eq!(scrub(&mut pump, &g, c, 0), 0.0);
+}

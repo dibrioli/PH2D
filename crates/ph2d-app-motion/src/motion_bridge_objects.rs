@@ -500,6 +500,8 @@ pub fn publish_objects(
     // sprite faria o objeto SUMIR — que é a forma mais cara de um param novo estar
     // errado, porque ela parece a feature funcionando em outro objeto.
     publish_shifted(motion, seconds);
+    // Ciclo 19: o recurso das entradas do jogo — escrito neste quadro, antes do Motion.
+    crate::motion_entradas::le_do_jogo(motion, sim);
 }
 
 /// **Bake the named vector shapes to tiles** (doc 86 §2 A2) — at the fx phase, where

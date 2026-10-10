@@ -89,6 +89,7 @@ impl MotionCookPump {
         // ⚠️ Com `t`, não com `target_tick`: depois do laço `t` É o último tique COZIDO, e os
         // dois só coincidem quando o alvo tem trabalho. Ver [`Self::record_tap_fires`].
         self.record_tap_fires(t);
+        self.pulsos_depois_do_scrub(target_tick);
         self.last_cooked_tick = Some(target_tick);
         self.dirty = false;
         true

@@ -112,6 +112,8 @@ pub struct MotionCookPump {
     ring: CheckpointRing,
     /// As entradas publicadas em cada tique cozido para a frente — o scrub repete-as (doc 128 §3.3).
     fita: Fita,
+    /// As contagens dos gatilhos, para derivar o pulso de cada tique (doc 128 §3.2).
+    pulsos: entradas::Pulsos,
     /// The output streams of the nodes cooked by
     /// [`Self::advance_or_scrub_to_nodes_scoped`] (the GPU/M5 boundary hand-off),
     /// held so the caller can upload them after the tick march. Empty until that
@@ -233,6 +235,7 @@ impl MotionCookPump {
             last_error: None,
             ring: CheckpointRing::new(),
             fita: Fita::new(),
+            pulsos: entradas::Pulsos::default(),
             boundary_streams: Vec::new(),
             tap_streams: Vec::new(),
             taps: Vec::new(),

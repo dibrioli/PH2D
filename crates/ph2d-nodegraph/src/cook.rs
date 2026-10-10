@@ -200,6 +200,11 @@ impl Cook {
         self.externals.clear();
     }
 
+    /// Forget ONE published name (an input nobody writes any more, doc 128 §3.6).
+    pub fn remove_external(&mut self, name: &str) {
+        self.externals.remove(name);
+    }
+
     /// What is published right now (read-only — the tests and the panel's readout).
     pub fn externals(&self) -> &crate::external::All {
         &self.externals

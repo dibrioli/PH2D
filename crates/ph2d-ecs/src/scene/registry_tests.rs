@@ -239,7 +239,9 @@ fn register_ecs_components_populates_registry() {
     //   volta: o dono retira o contentor; cada forma é um objecto). Conte o DELTA, nunca o literal.
     // ⚠️ **2026-10-08: `105` -> `106`, delta +1** -- o `MotionGenerator` (o objecto Motion, doc
     //   ObjectsAndComponents 01 §13, F5). Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 106);
+    // ⚠️ **2026-10-10: `106` -> `107`, delta +1** -- o `MotionInput` (ciclo 19 do Motion, doc 128
+    //   §3.6). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 107);
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());

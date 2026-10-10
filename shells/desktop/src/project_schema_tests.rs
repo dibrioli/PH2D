@@ -303,7 +303,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // documento pintado: `PaintedDocument::papel` e `::vidros` no fim. A tripla NÃO vê este degrau.
         // ⚠️ **`187` em 2026-10-07** (`line/Vector`, A14, escrito `185` a 05/10) — o ESQUELETO é um objecto: `Skeleton`
         // REGISTADO (esqueleto `7 → 8`, ECS e espelhos `0`). A tripla NÃO vê este degrau.
-        (187, 13, 22),
+        // ⚠️ **`188` em 2026-10-10** (`line/motion-value`, ciclo 19) — o `MotionInput` REGISTADO (ECS
+        // `+1`, espelhos `0`). A tripla NÃO vê este degrau.
+        (188, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

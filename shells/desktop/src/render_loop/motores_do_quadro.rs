@@ -78,6 +78,9 @@ pub(super) fn correm(
     // antes, cada tiro chegava um quadro atrasado — a lei que o cabeçalho do outbox já escreve.
     armas(sim, signals, &mut leitores.weapon, relogio);
     barras(sim, health_bars, relogio);
+    // Ciclo 19 do Motion: as entradas do grafo (o `Motion Input`, a vida, o dano e os sinais) —
+    // DEPOIS de todos os que falam, e antes do Motion, que coze neste mesmo quadro.
+    ph2d_app_components::motion_input_bridge::frame(sim, signals);
 }
 
 /// ⭐ **AS BARRAS DE VIDA** (plano 28, W4) — elas só LÊEM (a vida, a pose) e não falam no

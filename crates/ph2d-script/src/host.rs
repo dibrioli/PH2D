@@ -347,7 +347,7 @@ fn wire_scene_api(runtime: &ScriptRuntime, emit_queue: &EmitQueue) -> mlua::Resu
     })?;
     let ph2d: mlua::Table = lua.globals().get("ph2d")?;
     ph2d.set("emit", emit_fn)?;
-    Ok(())
+    crate::motion_api::wire(lua)
 }
 
 /// ⭐ **A interrupção que impede um laço sem saída de congelar o app** (§3.8 do plano).

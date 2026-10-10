@@ -430,4 +430,12 @@
 /// é essa a porta, como a das formas soltas no `182`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 187;
+///
+/// # `187 → 188` — **o `Motion Input`** (`line/motion-value`, ciclo 19, 2026-10-10)
+///
+/// `ph2d_ecs::MotionInput` REGISTADO (ECS `+1`; os dois espelhos chamam o registador do ECS e não
+/// se mexem): o objecto que publica uma entrada para o grafo do Motion (doc 128 §3.6). ⛔ **Sem
+/// degrau de migração**, pela decisão de sempre — um v187 é recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 188;

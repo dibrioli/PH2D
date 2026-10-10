@@ -633,6 +633,84 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     sangria +25 (Rebelle +12…+21). `azul_sobre_vermelho…` verde.
   - Pranchas: [1:1](prancha_w1f_achatamento.png) · [8× nas pontas](prancha_w1f_achatamento_8x.png)
     (antes · depois · Rebelle · a captura do dono).
+- ✅ **W1g — OPÇÕES NOVAS, desligadas de fábrica (10/10, prompt [13](13_PROMPT_janela_W1g_opcoes.md))**
+  (dono 10/10: *«se vc sabe como melhorar sem danificar e sem provocar limitações e sim criando novas
+  opções»*). Duas opções entregues na secção Wet Paint, uma recusada pelo número.
+  - **A cerca: desligadas = o traço de hoje AO BYTE.** `opcoes_tests::com_as_opcoes_desligadas_o_s_e_a_bancada_sao_os_de_hoje_ao_byte`
+    fixa o FNV do S e da bancada nas três inclinações, gravados em `fcc685e43` ANTES do primeiro
+    commit (verde antes e depois). Miniaturas de fábrica (`a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`),
+    `os_outros_meios_nao_mudam`, `cerca.sh`, a suíte de `ph2d-wet-paint` (impressões do port) e o censo
+    dos controlos: verdes antes e depois.
+  - **O1 «Live Water»** (caixa, `PAINTER_WETPAINT_LIVE_WATER`): a água corre com o traço aberto
+    (`Sim::sim_while_painting`, levado ao motor vivo pelo `reconcile_facts`). Dica no painel com o custo
+    MEDIDO na W1f (4096²: pior quadro 2–4 ms → 14–45 ms). ⚠️ **A velatura do filme depende do modo**:
+    com a água ao vivo o `VELATURA_DO_FILME` 0,20 sangrava o azul `+3,2` sobre o vermelho seco (barra
+    ≤ 3) ⇒ `VELATURA_DO_FILME_VIVA` = 0,35 (tabela no doc da constante, `colorops.rs`), trocada pelo
+    reconcile com a opção.
+
+    | mistura (seco γ durante · depois · sangria; molhado sangria) | água parada (fábrica) | Live Water | Rebelle |
+    |---|---|---|---|
+    | velatura 0,20 | 0,55 · 0,43 · +3 · +26 | 0,42 · 0,41 · **+3,2 ✗** · +28 | 0,42–0,49 · 0,44–0,51 · +1…+2 · +12…+21 |
+    | velatura 0,35 | 0,67 · 0,54 · +2 · +25 | **0,57 · 0,51 · +2,9** · +28 | idem |
+
+    Portões: `com_a_live_water_a_agua_corre_com_o_traco` (pelo autorado: fábrica 0 passos com o traço
+    aberto, ligada > 0) · `com_a_live_water_a_mistura_continua_na_barra_do_rebelle` (controlo DENTRO: a
+    velatura da água parada com a água ao vivo reprova). ⚠️ Aberto: a melhoria do custo (simular só a
+    janela perto do pincel durante o traço) é um item à parte, não medido.
+  - **O2 «Heavy Edge»** (linha `0..1`, `PAINTER_WETPAINT_HEAVY_EDGE`, logo abaixo do disco do Tilt;
+    esmaece com a dica «Acts when Tilt is on» — `Dependente::BordaSemTilt`): **o pigmento desce mais que
+    a água** — `solver::sedimenta` (filho de `solver/`), um passo depois da advecção: a fracção
+    `a·|ĝ_eixo|` do pigmento EM SUSPENSÃO passa à vizinha de baixo, pesada por `min(f_c, f_d)/f_c` (a
+    água das duas a tocar-se; seca = 0 ⇒ o pigmento acumula-se na última água da orla). Não move ÁGUA,
+    nenhuma decisão por célula (contínua no filme), conservativa (gather), independente de ordem;
+    `a = 0` ou `|g| = 0` não entra. `a = k·|g|`, `k = slider × SEDIMENTA_DA_BORDA` (10).
+    Rodada única (`sonda_opcoes`, bancada Wet Round + S, água parada × ao vivo), orla de baixo ÷ de cima
+    do traço de água 1:
+
+    | `k` no motor | 0 (fábrica) | 1 | 2 | **5 (slider 0,5)** | 10 (slider 1) | 20 | 40 |
+    |---|---|---|---|---|---|---|---|
+    | meia | 0,77 | 0,85 | 1,07 | **1,56** (ao vivo 1,81) | 4,14 | 5,08 | 5,78 |
+    | máxima | 0,78 | 0,97 | 1,30 | 2,88 | 2,95 | 3,49 | 0,72 (drena) |
+    | direita | 0,81 | = | = | = | = | = | = |
+    | S meia: plano · fios · quadrados | 13 · 3 · 0 | 13 · 3 · 0 | 13 · 3 · 0 | 13 · 3 · 0 | 14 · 3 · 0 | 12 · 3 · 0 | 20 · 6 · 0 |
+    | S máxima: plano · fios · quadrados | 10 · 24 · 1 | 10 · 23 · 1 | 10 · 23 · 3 | 10 · 23 · 2 | 10 · 22 · 2 | 10 · 22 · 2 | 11 · 21 · 1 |
+
+    Rebelle a meia: 1,6. Portão `a_heavy_edge_a_meio_pesa_na_orla_de_baixo_como_no_rebelle` (slider 0,5
+    pelo autorado: barra 1,3–1,6; controlo DENTRO: a fábrica 0,77 reprova; a régua do recto verde no S a
+    meia e no máximo; a tela DIREITA com o slider a 1 = o hash de hoje). ⚠️ Os traços de água 0,4 descem
+    a 0,75 com k 5 (o pigmento sai do topo E da orla de baixo, que é fina) — a barra do Rebelle é a da
+    água 1.
+  - **Painel e preset:** as duas no painel (i18n + tokens), no Reset (voltam ao neutro), no preset
+    (`Parametros::live_water` / `heavy_edge`, opcionais: um preset de antes delas NÃO mexe — a regra do
+    Tilt; `um_preset_sem_as_opcoes_da_w1g_nao_mexe_nelas`, e `o_pincel_guardado_pinta_o_mesmo_traco`
+    agora com as duas ligadas). Costura: `tests/it/seam_wetpaint_opcoes.rs` (presentes só armado, vivas
+    sob o ponteiro, o clique real liga/desliga na ferramenta, a edição vira `SetValue` e prende-se a
+    `0..1`, as duas dicas).
+  - **⛔ O3 «fios finos e compridos no máximo» — NÃO ENTREGUE** (a regra do prompt: nenhuma lei passou
+    (a)–(c) numa rodada). Antes de construir lei, medida a COMPOSIÇÃO: 14 variantes dos knobs que o
+    motor já tem (`sonda_fios`), S a meia e no máximo, régua nova `ferramentas/fios_s.py` (fios = colunas
+    cuja tinta passa a base da orla por ≥ 20 px), calibrada no Rebelle: `s_inclinado` 11 fios, largura
+    mediana 5 (máx 7), comprimento mediano 306; `s_inclinado_1` 8 · 5 · 273; `s_zoom100` 8 · 5 · 292;
+    `s_plano` 0.
+
+    | variante | máxima: fios · largura · comprimento · finos-e-longos | meia: fios (fábrica 3) | veredicto |
+    |---|---|---|---|
+    | fábrica | 22 · 10 · 51 · 0 | 3 | a referência |
+    | `extFingering` 0,3 · 1,0 · 1,0 + `extRivulets` 8 / 40 | 22–23 · 10 · 48–51 · 0 | 2–3 | ⛔ não afina nem alonga |
+    | `leveling` 0,2 · 0,1 | 25 · 10 · 53 · 0 / 33 · 8 · 48 · 0 | **10 / 16** | ⛔ fios a mais a meia |
+    | `levelClamp` 0,05 | 30 · 8 · 42 · 0 | **16** | ⛔ fios a mais a meia |
+    | `viscosity` 0,05 | 23 · 10 · 60 · 0 | 3 | ⛔ não afina |
+    | `capillary` 0,6 · `maxVelocity` 2 | 22 · 10 · 51 · 0 | 3 | ⛔ nada muda |
+    | `brake` 0,5 | 24 · 10 · 66 · **1** | **10** | ⛔ 1 fio fino, fios a mais a meia |
+    | fingering 1 + rivulets 10 + leveling 0,2 · leveling 0,1 + viscosity 0,05 | 25 · 10 · 46 · 0 / 36 · 8 · 45 · 0 | 7 / 19 | ⛔ |
+
+    Nenhuma variante passa de 1 fio fino e longo (Rebelle 8–11), e todas as que afinam acrescentam fios
+    a meia. Confirma a W1e: o fio único/longo é NÃO LOCAL (a conta de baixo a equalizar a pressão ao
+    longo da orla) — um mecanismo novo, a medir numa onda própria; os vetos continuam (canal, linha de
+    contacto, Create/Easy Drips, DripLaw, trava célula a célula na entrada do seco).
+  - Pranchas: [1:1](prancha_w1g_opcoes.png) · [8×](prancha_w1g_opcoes_8x.png) (cada opção desligada ·
+    ligada · Rebelle; a linha da Live Water é o S no instante do Up — o Rebelle não tem foto no Up, a
+    coluna dele é 1 min depois). Gerador `ferramentas/prancha_w1g.py`.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

@@ -271,3 +271,106 @@ fn giro(antes: &[[f32; 2]], agora: &[[f32; 2]], centro: [f32; 2]) -> f32 {
         * 60.0
         / std::f32::consts::TAU
 }
+
+const TUTORIAL: &str =
+    include_str!("../../../docs/Motion Nodes/tutoriais/src/12_o_jogo_manda.html");
+
+/// As linhas que o cartão de `no` mostra, pelos rótulos que o artista lê.
+fn linhas(m: &MotionState, no: NodeId) -> Vec<String> {
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    crate::motion_bridge::params::card::stamp_card_params(
+        m,
+        ph2d_editor_core::ProjectSettings::default(),
+        &mut snap,
+    );
+    let v = snap.nodes.iter().find(|v| v.id == no.0).expect("o cartao");
+    v.params
+        .iter()
+        .map(|c| {
+            if c.hint.label.starts_with("node.") {
+                ph2d_i18n::tr(c.hint.label).to_string()
+            } else {
+                c.hint.label.to_string()
+            }
+        })
+        .collect()
+}
+
+fn tem(rows: &[String], quais: &[&str]) {
+    for q in quais {
+        assert!(
+            rows.iter().any(|r| r == q),
+            "falta `{q}` no cartao: {rows:?}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **CADA PASSO DO TUTORIAL 12 É POSSÍVEL NO APP**: as linhas que o texto manda mexer estão
+/// nos cartões que ele nomeia (e só onde o tipo as lê), os fios que ele descreve existem, as
+/// figuras existem e o texto abre a `=134`.
+#[test]
+fn every_step_of_the_game_tutorial_is_reachable() {
+    let r = Corrida::nova();
+    let (m, c) = (&r.m, &r.c);
+    let g = &m.doc.graph;
+    // Os quatro Input: o nome de cada um e o botão de teste do tipo dele.
+    let nome = |n: NodeId| {
+        g.node_text_param_overrides(n)
+            .and_then(|t| t.get("name"))
+            .cloned()
+            .unwrap_or_default()
+    };
+    for (n, esperado, botao, nao) in [
+        (c.vida, "vida", "Value", "Fire"),
+        (c.estado, "estado", "On", "Value"),
+        (c.boom, "boom", "Fire", "On"),
+        (c.time, "time", "Color", "Value"),
+    ] {
+        assert_eq!(nome(n), esperado);
+        let rows = linhas(m, n);
+        tem(&rows, &["Name", "Kind", botao]);
+        assert!(
+            !rows.iter().any(|x| x == nao),
+            "`{nao}` em {esperado}: {rows:?}"
+        );
+        assert!(TUTORIAL.contains(&format!("<code>{esperado}</code>")));
+    }
+    // O Time Remap em Driven: a Position (com o fio da vida), a Curve, a Duration; sem a Speed.
+    let rows = linhas(m, c.remap);
+    tem(&rows, &["Mode", "Position", "Curve", "Duration", "Offset"]);
+    assert!(!rows.iter().any(|x| x == "Speed"), "{rows:?}");
+    assert_eq!(
+        g.param_sources(c.remap)
+            .and_then(|s| s.get("drive"))
+            .map(|s| s.0),
+        Some(c.vida)
+    );
+    // O Follow: Mode e Duration; o Bounce só na mola.
+    tem(&linhas(m, c.seguir), &["Mode", "Duration"]);
+    assert!(!linhas(m, c.seguir).iter().any(|x| x == "Bounce"));
+    // O Mixer em Blend, com o fio do Follow; o Vortex com o fio do envelope.
+    assert_eq!(g.input_edge(c.mixer, 4).map(|e| e.0), Some(c.seguir));
+    assert!(
+        g.param_sources(c.redemoinho)
+            .is_some_and(|s| s.contains_key("strength"))
+    );
+    for palavra in [
+        "<code>Driven</code>",
+        "<code>Position</code>",
+        "<code>Fire</code>",
+        "<code>Follow</code>",
+        "<code>Spring</code>",
+        "<code>Motion Input</code>",
+        "PH2D_GPU_COOK_DEMO=134",
+        "PH2D_MOTION_INPUTS=",
+    ] {
+        assert!(TUTORIAL.contains(palavra), "o tutorial perdeu {palavra}");
+    }
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Motion Nodes/tutoriais/fig");
+    for pedaco in TUTORIAL.split("src=\"../fig/").skip(1) {
+        let nome = pedaco.split('"').next().expect("o nome");
+        assert!(dir.join(nome).is_file(), "falta a figura `{nome}`");
+    }
+    assert!(crate::motion_state::demo_router::is_cycle_scene("134"));
+}

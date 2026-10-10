@@ -29,7 +29,8 @@ pub struct EntradasDoJogo {
     da_linha: Vec<(String, Valor)>,
 }
 
-/// ⭐ **As entradas pela linha de comando** — `PH2D_MOTION_INPUTS="vida=0.25;estado=1;time=0.2,0.5,1"`:
+/// ⭐ **As entradas pela linha de comando** — `PH2D_MOTION_INPUTS=vida=0.25:estado=1:time=0.2,0.5,1`
+/// (pares separados por `:`, a convenção do `PATH`; um `;` partiria a linha de um script):
 /// um número (ou `true`/`false`) ou uma cor `r,g,b[,a]` por nome. O jogo lançado já com valores, e a
 /// porta das FOTOS de uma cena com outras entradas (a ferramenta não clica).
 pub const VAR_DA_LINHA: &str = "PH2D_MOTION_INPUTS";
@@ -38,7 +39,7 @@ pub const VAR_DA_LINHA: &str = "PH2D_MOTION_INPUTS";
 #[must_use]
 pub fn le_a_linha(texto: &str) -> Vec<(String, Valor)> {
     let mut out = Vec::new();
-    for par in texto.split(';').map(str::trim).filter(|p| !p.is_empty()) {
+    for par in texto.split(':').map(str::trim).filter(|p| !p.is_empty()) {
         let Some((nome, valor)) = par.split_once('=') else {
             eprintln!("[{VAR_DA_LINHA}] sem `=`: `{par}`");
             continue;
@@ -112,34 +113,50 @@ pub fn nomes_que_o_grafo_le(motion: &MotionState) -> Vec<String> {
 
 /// ⭐ O disparo de TESTE: cada mudança do `fire` de um `value.input` Trigger é um disparo no
 /// nome dele (o cartão é o jogo de quem ainda não tem jogo).
-fn disparos_dos_cartoes(motion: &mut MotionState) {
-    let g = &motion.doc.graph;
-    let e = &mut motion.entradas;
+fn disparos_dos_cartoes(motion: &mut MotionState, seconds: f64) {
+    let ids: Vec<NodeId> = motion
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == ph2d_node_value_input::MANIFEST.name)
+        .map(|n| n.id)
+        .collect();
     let mut vistos = BTreeMap::new();
-    for n in g.nodes() {
-        if n.type_name != ph2d_node_value_input::MANIFEST.name {
+    for id in ids {
+        // ⚠️ Pela PORTA da escada (fio → cartão → padrão): um `fire` dirigido por fio só existe
+        // durante o cozimento, e lê-lo pelo cartão perderia os disparos.
+        let p = super::motion_externals::resolved_params(
+            motion,
+            id,
+            seconds,
+            &ph2d_node_value_input::MANIFEST,
+        );
+        if p[ph2d_node_value_input::KIND].round() as i32 != ph2d_node_value_input::KIND_TRIGGER {
             continue;
         }
-        let params = g.node_param_overrides(n.id);
-        let p = |k: &str| params.and_then(|o| o.get(k).copied()).unwrap_or(0.0);
-        if p(ph2d_node_value_input::KIND).round() as i32 != ph2d_node_value_input::KIND_TRIGGER {
-            continue;
-        }
-        let fire = p(ph2d_node_value_input::FIRE);
-        if e.fire_visto.get(&n.id).is_some_and(|&antes| antes != fire) {
-            let nome = g
-                .node_text_param_overrides(n.id)
+        let fire = p[ph2d_node_value_input::FIRE];
+        if motion
+            .entradas
+            .fire_visto
+            .get(&id)
+            .is_some_and(|&antes| antes != fire)
+        {
+            let nome = motion
+                .doc
+                .graph
+                .node_text_param_overrides(id)
                 .and_then(|t| t.get(ph2d_node_value_input::NAME_KEY))
                 .map_or(ph2d_node_value_input::FACTORY_NAME, String::as_str)
                 .trim()
                 .to_string();
             if !nome.is_empty() {
-                *e.disparos_do_editor.entry(nome).or_insert(0) += 1;
+                *motion.entradas.disparos_do_editor.entry(nome).or_insert(0) += 1;
             }
         }
-        vistos.insert(n.id, fire);
+        vistos.insert(id, fire);
     }
-    e.fire_visto = vistos;
+    motion.entradas.fire_visto = vistos;
 }
 
 fn coluna_de_valores(linhas: &[Valor]) -> Stream {
@@ -173,8 +190,8 @@ fn mesmas_colunas(velho: &Stream, novo: &Stream) -> bool {
 
 /// Publica cada entrada como `$input:<nome>`; um nome com disparos publica a CONTAGEM (a bomba
 /// deriva o pulso de cada tique), os outros os valores. Um nome que deixou de ser escrito sai.
-pub fn publica(motion: &mut MotionState) {
-    disparos_dos_cartoes(motion);
+pub fn publica(motion: &mut MotionState, seconds: f64) {
+    disparos_dos_cartoes(motion, seconds);
     let e = &mut motion.entradas;
     for (nome, v) in &e.da_linha {
         e.jogo.set(nome, Escritor::Linha, *v);

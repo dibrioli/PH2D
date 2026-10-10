@@ -192,13 +192,28 @@ no instante em que aconteceu.</p>
   <li><b>Um sinal.</b> Um sinal do jogo com o nome <code>boom</code> (por exemplo de um
       <code>ph2d.emit("boom")</code>) dispara o <code>Trigger</code> com esse nome.</li>
   <li><b>Pela linha de comando.</b> Abra a cena já com valores:
-      <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=134 'PH2D_MOTION_INPUTS=vida=0.25;estado=1;time=0.2,0.5,1' cargo run -p ph2d-host-desktop --profile smoke</div></li>
+      <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=134 PH2D_MOTION_INPUTS=vida=0.25:estado=1:time=0.2,0.5,1 cargo run -p ph2d-host-desktop --profile smoke</div></li>
   <li><b>Uma barra com ritmo.</b> No <code>Time Remap</code>, desenhe uma <code>Curve</code> que
       sobe devagar e acelera no fim: a vida baixa passa a encher pouco a barra.</li>
 </ol>
 
 <h2>9 · O que isto custa</h2>
-<p id="custo">(preenchido com a medição do ciclo)</p>
+<p>Medido nesta máquina (a sonda do ciclo, com o computador ocupado por outros trabalhos — vale
+como ordem de grandeza):</p>
+<table>
+  <tr><th>o quê</th><th>quanto custa</th></tr>
+  <tr><td>um <code>Follow</code> com 32 761 linhas</td><td class="n">0,08 ms (<code>Linear</code>) ·
+      0,14 ms (<code>Spring</code>)</td></tr>
+  <tr><td>uma parte do grafo em <code>Driven</code>, com a entrada <b>parada</b></td><td class="n">0,002 ms
+      — o resultado fica guardado e não se recalcula</td></tr>
+  <tr><td>a mesma, com a entrada a <b>mexer</b> a cada quadro (32 761 linhas)</td><td class="n">0,5 ms</td></tr>
+  <tr><td>a cena deste tutorial, um quadro inteiro</td><td class="n">0,12 ms</td></tr>
+  <tr><td>gravar o que o jogo manda (três entradas a mexer)</td><td class="n">34 bytes por quadro</td></tr>
+  <tr><td>voltar a fita</td><td class="n">0,17 ms</td></tr>
+</table>
+<p>As entradas e o <code>Follow</code> correm no processador (o valor vem do jogo); quando um
+<code>Input</code> manda num número de um nó que corre na placa de vídeo, o número vai para a placa
+a cada quadro. Uma cena com um <code>Time Remap</code> corre toda no processador.</p>
 
 <h2>10 · Se algo não bater</h2>
 <table>

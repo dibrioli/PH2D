@@ -21,11 +21,11 @@ pub(crate) const PECAS_DA_BARRA: f32 = 24.0;
 const ONDA: f32 = 2.0;
 const SOBE: f32 = 0.2;
 /// O lado de uma peça da barra (cheia).
-pub(crate) const PECA: f32 = 0.26;
+pub(crate) const PECA: f32 = 0.12;
 /// O `duration` do `Driven`: a vida `1` mostra o fim da cascata.
 pub(crate) const DURACAO: f32 = ONDA + SOBE;
 /// Onde cada quadro fica no mundo.
-pub(crate) const BARRA_Y: f32 = 3.4;
+pub(crate) const BARRA_Y: f32 = 2.6;
 pub(crate) const COL_X: f32 = super::ritmo_demo::COL_X;
 const QUADROS_Y: f32 = -0.6;
 /// O crossfade: `0,6 s` de um estado ao outro (o `xfade_time`).
@@ -156,6 +156,8 @@ fn barra(g: &mut Graph) -> Option<(NodeId, NodeId, NodeId)> {
         0.0,
         120.0,
     )?;
+    // Peças ALTAS e separadas (a foto de 10/10: quadradas de 0,26 com vão de 0,3 eram uma faixa).
+    g.set_param(f, ph2d_node_motion_shape::param::ASPECT, 2.2);
     let pecas = no(g, "motion.duplicator", 0.0, 0.0);
     g.set_param(pecas, "point_scale", 1.0);
     liga(g, (f, 0), pecas, 0, false)?;
@@ -221,7 +223,7 @@ fn cruzamento(g: &mut Graph) -> Option<[NodeId; 5]> {
         g,
         &no,
         ph2d_node_motion_shape::ShapeKind::Circle,
-        0.3,
+        0.2,
         [1.0, 1.0, 1.0],
         -220.0,
         120.0,
@@ -371,7 +373,7 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     vec![
         ficha(
             0.0,
-            BARRA_Y + 0.7,
+            BARRA_Y - 0.6,
             "vida: o tempo da barra e' a vida (Time Remap = Driven)",
         ),
         ficha(

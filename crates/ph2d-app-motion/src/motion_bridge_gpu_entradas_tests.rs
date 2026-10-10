@@ -52,8 +52,8 @@ fn the_device_route_replays_the_published_inputs_on_a_scrub() {
     let (mut m, ig) = cena();
     m.gpu_cook.retain_streams_for_debug(true);
     let scopes = ph2d_nodegraph::cook::TimeScopes::new();
-    let mut quadro = |m: &mut MotionState, t: u64| -> Vec<[f32; 2]> {
-        crate::motion_entradas::publica(m);
+    let quadro = |m: &mut MotionState, t: u64| -> Vec<[f32; 2]> {
+        crate::motion_entradas::publica(m, t as f64 / 60.0);
         let o = super::super::gpu::cook_gpu(m, &gpu, t, 1.0 / 60.0, &scopes);
         assert!(
             matches!(o, super::super::gpu::GpuOutcome::Handled) && m.gpu_live,

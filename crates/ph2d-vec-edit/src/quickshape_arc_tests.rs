@@ -451,3 +451,150 @@ fn measure_arc_constants() {
         }
     }
 }
+
+// ── BUSCA TEMPORÁRIA de testemunhas para as sobreviventes da mutação (sai depois) ──────────────
+
+fn kind(q: &Option<QuickShape>) -> String {
+    match q {
+        None => "livre".into(),
+        Some(QuickShape::Line { .. }) => "linha".into(),
+        Some(QuickShape::Polygon { corners, closed }) => format!("poli{}{}", corners.len(), if *closed { "F" } else { "A" }),
+        Some(QuickShape::Ellipse { .. }) => "elipse".into(),
+        Some(QuickShape::Arc { sweep, .. }) => format!("ARCO{:.0}", sweep.to_degrees()),
+    }
+}
+
+#[test]
+#[ignore = "busca"]
+fn search_witnesses() {
+    let mut cands: Vec<(String, Vec<P2>)> = Vec::new();
+    for t in [60.0_f64, 90.0, 120.0, 180.0] {
+        // espiral de Euler: curvatura de 0 a k, comprimento 300
+        let (n, len) = (300, 300.0);
+        let k = 2.0 * t.to_radians() / len;
+        let (mut p, mut a) = ([0.0, 0.0], 0.0_f64);
+        let mut v = vec![p];
+        for i in 0..n {
+            let s = len * f64::from(i) / f64::from(n);
+            a += k * s / len * (len / f64::from(n));
+            p = add(p, mul(unit(a), len / f64::from(n)));
+            v.push(p);
+        }
+        cands.push((format!("euler {t}"), v));
+    }
+    for b in [30.0, 60.0, 100.0] {
+        let mut v: Vec<P2> = vec![[-200.0, b], [0.0, b]];
+        v.extend(arc_poly(b, 90.0, -90.0).iter().skip(1));
+        cands.push((format!("taco {b}"), v));
+    }
+    for a in [0.03, 0.06, 0.1] {
+        for per in [1.0, 1.5, 2.0] {
+            let v: Vec<P2> = (0..=200)
+                .map(|i| {
+                    let t = f64::from(i) / 200.0;
+                    [300.0 * t, 300.0 * a * (TAU * per * t).sin()]
+                })
+                .collect();
+            cands.push((format!("onda a{a} p{per}"), v));
+        }
+    }
+    for k in [3, 4, 5] {
+    for t in [30.0_f64, 35.0, 40.0, 45.0, 50.0] {
+        for phi in [3.0_f64, 5.0, 7.0, 11.0] {
+            let mut v = vec![[0.0, 0.0]];
+            for j in 0..k {
+                let q = v[v.len() - 1];
+                v.push(add(q, mul(unit((phi + t * f64::from(j)).to_radians()), 150.0)));
+            }
+            cands.push((format!("poli{k} t{t} phi{phi}"), v));
+        }
+    }
+    }
+    for (n, p) in not_arcs(160.0, 0) {
+        cands.push((n.into(), p));
+    }
+    let m1 = Law { arc_bend_back: 1.0, ..Law::MEASURED };
+    for (name, poly) in &cands {
+        for seed in 0..10 {
+            let pts = stroke(poly, 1.0, seed);
+            let (r0, r1, b) = (
+                kind(&recognise(&pts, 1.0, false)),
+                kind(&recognise(&pts, 1.0, true)),
+                kind(&recognise_with(&m1, &pts, 1.0, false)),
+            );
+            println!("C {name} s{seed}: {r0} {r1} {b}");
+        }
+    }
+}
+
+fn kasa(p: &[P2]) -> (P2, f64) {
+    let (mut m, mut v) = ([[0.0; 3]; 3], [0.0; 3]);
+    for &[x, y] in p {
+        let row = [x, y, 1.0];
+        let z = -(x * x + y * y);
+        for i in 0..3 {
+            v[i] += row[i] * z;
+            for j in 0..3 {
+                m[i][j] += row[i] * row[j];
+            }
+        }
+    }
+    let s = solve(m, v).unwrap();
+    let c = [-s[0] / 2.0, -s[1] / 2.0];
+    (c, (c[0] * c[0] + c[1] * c[1] - s[2]).sqrt())
+}
+
+#[test]
+#[ignore = "sonda"]
+fn measure_taubin_against_kasa() {
+    println!("\n| varrido | r | tremor | erro médio do raio Taubin | Kåsa |");
+    for sweep in [30.0, 45.0, 60.0, 90.0] {
+        for r in [80.0, 300.0] {
+            for amp in [1.0, 2.0] {
+                let (mut t, mut k) = (0.0, 0.0);
+                for seed in 0..40 {
+                    let pts = stroke(&arc_poly(r, 0.0, sweep), amp, seed);
+                    t += taubin(&pts).unwrap().1 - r;
+                    k += kasa(&pts).1 - r;
+                }
+                println!("| {sweep}° | {r} | ±{amp} | {:+.2} | {:+.2} |", t / 40.0, k / 40.0);
+            }
+        }
+    }
+}
+
+/// Arcos de ELIPSE (fora do escopo, a menos que o círculo não chegue): o que a lei faz deles.
+#[test]
+#[ignore = "sonda"]
+fn measure_elliptic_arcs() {
+    println!("\n| razão | arco | eixo | arco de círculo | livre | outra | pior desvio do traço ao arco (px) |");
+    for ratio in [1.25, 1.5, 2.0, 3.0] {
+        for sweep in [90.0_f64, 180.0] {
+            for (axis, a0) in [("maior", 180.0_f64), ("menor", 90.0)] {
+                let (rx, ry) = (160.0, 160.0 / ratio);
+                let n = 200;
+                let poly: Vec<P2> = (0..=n)
+                    .map(|i| {
+                        let a = (a0 + sweep * f64::from(i) / f64::from(n)).to_radians();
+                        [rx * a.cos(), ry * a.sin()]
+                    })
+                    .collect();
+                let (mut arc, mut free, mut other, mut worst) = (0, 0, 0, 0.0_f64);
+                for seed in 0..20 {
+                    let pts = stroke(&poly, 1.0, seed);
+                    match recognise(&pts, 1.0, false) {
+                        Some(QuickShape::Arc { centre, radius, .. }) => {
+                            arc += 1;
+                            for &p in &poly {
+                                worst = worst.max((dist(p, centre) - radius).abs());
+                            }
+                        }
+                        None => free += 1,
+                        _ => other += 1,
+                    }
+                }
+                println!("| {ratio}:1 | {sweep}° | {axis} | {arc}/20 | {free} | {other} | {worst:.1} |");
+            }
+        }
+    }
+}

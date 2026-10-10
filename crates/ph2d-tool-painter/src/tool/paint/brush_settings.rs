@@ -465,8 +465,8 @@ pub struct BrushSettings {
     pub wet_show_wet: bool,
     /// Paper checkbox — the tooth is visually part of the painting.
     pub wet_paper_visual: bool,
-    /// Smooth Edges do Wet Paint — a silhueta da mancha com meio-tom (a lei do Watercolor).
-    pub wet_smooth_edges: bool,
+    /// Smooth Edges do Wet Paint — a intensidade (`0..1`) do meio-tom na silhueta (a lei do Watercolor).
+    pub wet_smooth_edges: f32,
     /// **Live Water** (W1g): a água corre com o traço aberto.
     pub wet_live_water: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento pesa na orla de baixo da tela inclinada.

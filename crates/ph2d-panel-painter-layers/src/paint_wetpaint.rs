@@ -316,7 +316,7 @@ fn paint_resolution_readout(
     y + font + ph2d_tokens::control_gap_px()
 }
 
-/// As caixas do fim da secção — Show Wet, Smooth Edges, Live Water (W1g) e Tuning. Partida de
+/// O fim da secção — Show Wet, Smooth Edges (a intensidade, `0..1`), Live Water (W1g) e Tuning. Partida de
 /// [`paint_wetpaint_section`] pelo tecto de 200 LOC de função dos painéis.
 fn paint_display_toggles(
     ctx: &mut PaintCtx,
@@ -338,16 +338,20 @@ fn paint_display_toggles(
         brush.wet_show_wet,
     );
     // (O «Paper» que morava aqui é a Texture on Paint da secção Paper desde a W1e: um papel, uma secção.)
-    // Smooth Edges — a silhueta da mancha com meio-tom (a lei do Watercolor; desligado de fábrica).
-    y = crate::paint_brush_top::paint_checkbox_row(
+    // Smooth Edges — a intensidade do meio-tom na silhueta (a lei do Watercolor; `0` de fábrica).
+    y = card_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         "panel.painter_layers.wetpaint.smooth_edges",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         brush.wet_smooth_edges,
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
     );
     // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
     y = crate::paint_brush_top::paint_checkbox_row(

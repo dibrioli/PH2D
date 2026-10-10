@@ -116,7 +116,7 @@ fn over_as_it_shipped(pigment: &[u8], base: &[u8], px: usize, py: usize) -> [u8;
 fn ratio_one_composites_exactly_what_the_old_over_produced() {
     let mut t = wet_tool(1);
     // A lei do `over` da razão 1, sem o Smooth Edges (que só mexe na silhueta — o gate abaixo).
-    t.paint.wetpaint.smooth_edges = false;
+    t.paint.wetpaint.smooth_edges = 0.0;
     stroke(&mut t);
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
@@ -490,11 +490,12 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = wet_tool(1);
-    assert!(!t.paint.wetpaint.smooth_edges, "desligado de fábrica");
-    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(
-        crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES
+    assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "desligado de fábrica");
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+        crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+        1.0
     )));
-    assert!(t.paint.wetpaint.smooth_edges, "o clique liga");
+    assert_eq!(t.paint.wetpaint.smooth_edges, 1.0, "o slider no máximo");
     stroke(&mut t);
     composite_all(&mut t);
     let (mut fora_da_silhueta, mut na_silhueta) = (0usize, 0usize);
@@ -528,10 +529,11 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
         fora_da_silhueta, 0,
         "o Smooth Edges mexeu em {fora_da_silhueta} pixels longe da silhueta ({na_silhueta} nela)"
     );
-    assert!(t.route_brush_wetpaint_event(&PanelEvent::Click(
-        crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES
+    assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
+        crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+        0.0
     )));
-    assert!(!t.paint.wetpaint.smooth_edges, "o clique desliga");
+    assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "o slider no zero");
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
     let (pig, base) = (&sess.pigment, &sess.base);
@@ -545,5 +547,76 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     assert_eq!(
         diff, 0,
         "desligado: {diff} pixels divergem do over de antes"
+    );
+}
+
+/// **O Smooth Edges com INTENSIDADE (dono 10/10): os dois extremos são os de antes AO BYTE.** O FNV da tela
+/// (razão 1 e 2 — a identidade e o amostrador) com o Smooth Edges desligado e ligado foi gravado com o
+/// código do CHECKBOX (`362938a99`), antes do slider: 0 tem de dar o desligado, 1 o ligado.
+#[test]
+fn smooth_edges_nos_extremos_e_o_checkbox_de_antes_ao_byte() {
+    let fnv = |b: &[u8]| {
+        b.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &x| {
+            (h ^ u64::from(x)).wrapping_mul(0x0000_0100_0000_01b3)
+        })
+    };
+    let mut mudou = Vec::new();
+    for (ratio, forca, esperado) in [
+        (1u8, 0.0f32, 0x8c89_a5f7_4e97_bde1u64),
+        (1, 1.0, 0x0a66_4458_aa04_fed6),
+        (2, 0.0, 0xd256_55cf_a012_9cd9),
+        (2, 1.0, 0x5d68_986d_c2c8_eeae),
+    ] {
+        let mut t = wet_tool(ratio);
+        t.paint.wetpaint.smooth_edges = forca;
+        stroke(&mut t);
+        composite_all(&mut t);
+        let h = fnv(&t.canvas_rgba);
+        eprintln!("[smooth] razão {ratio} força {forca}: {h:#018x}");
+        if h != esperado {
+            mudou.push(format!("razão {ratio} força {forca}: {h:#018x}"));
+        }
+    }
+    assert!(mudou.is_empty(), "{}", mudou.join("\n"));
+}
+
+/// **A intensidade a meio fica ENTRE o desligado e o ligado, e só na borda** (dono 10/10: «ajustar a
+/// intensidade deste smooth»). A 0,5 cada canal de cada pixel está entre o de 0 e o de 1 (±1 do
+/// arredondamento), há pixels estritamente no meio, e nenhum pixel muda onde 0 e 1 concordam.
+#[test]
+fn smooth_edges_a_meio_fica_entre_o_desligado_e_o_ligado() {
+    let tela = |forca: f32| {
+        let mut t = wet_tool(1);
+        t.paint.wetpaint.smooth_edges = forca;
+        stroke(&mut t);
+        composite_all(&mut t);
+        t.canvas_rgba.to_vec()
+    };
+    let (zero, meio, um) = (tela(0.0), tela(0.5), tela(1.0));
+    let (mut no_meio, mut fora) = (0usize, 0usize);
+    for ((&a, &m), &b) in zero.iter().zip(&meio).zip(&um) {
+        let (lo, hi) = (a.min(b), a.max(b));
+        if a == b {
+            assert_eq!(
+                m, a,
+                "a intensidade mexeu num byte onde desligado e ligado concordam"
+            );
+            continue;
+        }
+        let (m, lo, hi) = (i32::from(m), i32::from(lo), i32::from(hi));
+        if m + 1 < lo || m > hi + 1 {
+            fora += 1;
+        }
+        if m > lo && m < hi {
+            no_meio += 1;
+        }
+    }
+    assert_eq!(
+        fora, 0,
+        "{fora} bytes a 0,5 saem do intervalo entre o desligado e o ligado"
+    );
+    assert!(
+        no_meio > 0,
+        "a 0,5 nenhum byte ficou entre os dois — o slider é um interruptor"
     );
 }

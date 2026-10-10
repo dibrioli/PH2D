@@ -57,7 +57,11 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    (nesta máquina a `NotoSans-Medium` instalada) — o número antigo era da Noto e de mais nenhuma
     //    máquina. Hoje as fontes embutidas registam-se com o nome forçado e a régua mede a Inter, a
     //    mesma em toda máquina (`ph2d_tokens::UiFont::Inter` diz porquê).
-    (220.0, 12),
+    // ⚠️ **12 → 13 em 2026-10-10, e NÃO por regressão: uma linha ENTROU na população** — o Smooth Edges
+    //    do Wet Paint deixou de ser caixa e virou linha numérica (pedido do dono: «ajustar a intensidade»).
+    //    O nome é o que o dono conhece; corta só aqui, no mínimo do dock (o piso da caixa); de `245` para
+    //    cima a escada não muda.
+    (220.0, 13),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),

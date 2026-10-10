@@ -69,8 +69,8 @@ pub const PAINTER_WETPAINT_SHOWWET: NodeId = hash_node_id("painter_brush.wetpain
 pub const PAINTER_WETPAINT_PAPER_VISUAL: NodeId =
     hash_node_id("painter_brush.wetpaint_paper_visual");
 
-/// **Smooth Edges** checkbox (dono 09/10) — a silhueta da mancha com meio-tom, pela lei do Watercolor
-/// (render-only; desligado de fábrica).
+/// **Smooth Edges** (dono 09/10; slider `0..1` desde 10/10) — a silhueta da mancha com meio-tom, pela lei
+/// do Watercolor (render-only; `0` de fábrica, `1` = o checkbox ligado de antes).
 pub const PAINTER_WETPAINT_SMOOTH_EDGES: NodeId =
     hash_node_id("painter_brush.wetpaint_smooth_edges");
 
@@ -88,7 +88,7 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 21] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],
@@ -103,7 +103,6 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 21] = [
     PAINTER_WETPAINT_FASTDRY,
     PAINTER_WETPAINT_SHOWWET,
     PAINTER_WETPAINT_PAPER_VISUAL,
-    PAINTER_WETPAINT_SMOOTH_EDGES,
     PAINTER_WETPAINT_LIVE_WATER,
     PAINTER_WETPAINT_TUNING,
     super::PAINTER_WETPAINT_PRESET_BUTTONS[0],
@@ -161,7 +160,7 @@ pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 11] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 12] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -173,4 +172,5 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 11] = [
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
     PAINTER_WETPAINT_HEAVY_EDGE,
+    PAINTER_WETPAINT_SMOOTH_EDGES,
 ];

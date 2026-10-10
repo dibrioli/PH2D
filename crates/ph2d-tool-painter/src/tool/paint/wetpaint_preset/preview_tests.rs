@@ -95,7 +95,7 @@ fn o_preview_mostra_o_dente_do_papel() {
 fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
     let base = molhado();
     let ultimo_base = quadros(&base).pop().unwrap();
-    let casos: [Caso<'_>; 10] = [
+    let casos: [Caso<'_>; 13] = [
         (
             "pigmento",
             &|t| t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 1500.0),
@@ -124,6 +124,14 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
             "forma",
             &|t| t.set_brush_shape_image(vec![255; 9 * 9], 9, 9),
             false,
+        ),
+        // As opções da W1g (smoke do dono 10/10: «o Preview não obedece Heavy Edge»).
+        ("heavy edge", &|t| t.set_wet_borda_que_pesa(1.0), true),
+        ("live water", &|t| t.set_wet_agua_viva(true), true),
+        (
+            "smooth edges",
+            &|t| t.paint.wetpaint.smooth_edges = 0.5,
+            true,
         ),
     ];
     for (nome, mexe, pinta_diferente) in casos {

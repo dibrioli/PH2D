@@ -117,9 +117,10 @@ pub(crate) struct WetPaintState {
     /// painting (granulation + emboss into the pigment colours). Baked on
     /// purpose — it is part of the painting, unlike the show-wet veil.
     pub(super) paper_visual: bool,
-    /// **Smooth Edges** (dono 09/10): a silhueta da mancha com meio-tom, pela lei do Watercolor
-    /// ([`smooth_edges`]). Desligado de fábrica (dono 09/10, ao desfazer as gotas) = o composite de antes, ao byte.
-    pub(super) smooth_edges: bool,
+    /// **Smooth Edges** (dono 09/10; intensidade `0..1` desde 10/10): a silhueta da mancha com meio-tom,
+    /// pela lei do Watercolor ([`smooth_edges`]). `0` de fábrica = o composite de antes, ao byte; `1` = o
+    /// checkbox ligado de antes, ao byte; no meio, a cobertura da orla entre os dois.
+    pub(super) smooth_edges: f32,
     /// **Live Water** (W1g): a água corre com o traço aberto. Desligado de fábrica = a W1f, ao byte.
     pub(super) agua_viva: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento desce mais que a água na tela inclinada. `0` = a W1f, ao byte.
@@ -173,7 +174,7 @@ impl Default for WetPaintState {
             tilt_spoke: 3,
             show_wet: false,
             paper_visual: false,
-            smooth_edges: false,
+            smooth_edges: 0.0,
             agua_viva: false,
             borda_que_pesa: 0.0,
             km_mixing: false,
@@ -427,6 +428,8 @@ mod offthread_tests; // os gates da sim FORA da thread do frame
 mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod gota_tests;
+#[cfg(test)]
+mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]

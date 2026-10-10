@@ -273,7 +273,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_tilt_spoke: 3,
     wet_show_wet: false,
     wet_paper_visual: false,
-    wet_smooth_edges: false,
+    wet_smooth_edges: 0.0,
     wet_live_water: false,
     wet_heavy_edge: 0.0,
     wet_km_mixing: false,

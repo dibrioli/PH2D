@@ -133,6 +133,44 @@ fn a_edicao_da_heavy_edge_chega_a_ferramenta() {
     );
 }
 
+/// O **Smooth Edges** é uma linha numérica desde 10/10 (dono: «ajustar a intensidade»): viva sob o
+/// ponteiro, a edição vira `SetValue`, e a ferramenta guarda a intensidade presa a `0..1`.
+#[test]
+fn o_smooth_edges_e_um_slider_que_chega_a_ferramenta() {
+    use ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES as ID;
+    let mut tool = molhado();
+    let (mut host, mut st, rects) = pinta(&tool);
+    let r = rect_de(&rects, ID).expect("Smooth Edges pintado");
+    assert_eq!(
+        host.hit_at(r.x + r.w * 0.5, r.y + r.h * 0.5),
+        Some(ID),
+        "a linha Smooth Edges não responde ao ponteiro"
+    );
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(ID));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o Smooth Edges morreu no painel"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == ID
+        )),
+        "o Smooth Edges nunca virou SetValue. drained = {actions:?}"
+    );
+    tool.handle_panel_event(PanelEvent::SetValue(ID, 0.35));
+    assert!((tool.wet_smooth_edges() - 0.35).abs() < 1e-6);
+    tool.handle_panel_event(PanelEvent::SetValue(ID, -2.0));
+    assert_eq!(
+        tool.wet_smooth_edges(),
+        0.0,
+        "o Smooth Edges não se prende a 0..1"
+    );
+}
+
 /// A dica da Live Water diz o custo; a Heavy Edge, com a tela direita, diz que precisa do Tilt — e com
 /// o Tilt ligado não tem dica de inércia (o controlo).
 #[test]

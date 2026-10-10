@@ -45,12 +45,14 @@ pub struct CenaDoPreview {
     substrate_depth: f32,
     substrate_rough: f32,
     paper_visual: bool,
-    smooth_edges: bool,
+    smooth_edges: f32,
     km_mixing: bool,
     km_glaze: bool,
     show_wet: bool,
     tilt: (bool, u8, u8),
     grids: (u8, u8),
+    /// As opções da W1g (Live Water, Heavy Edge) — o fluido do preview é o da obra.
+    opcoes: (bool, f64),
 }
 
 /// «Mudou alguma coisa que o preview mostra?» — os mesmos ingredientes da [`CenaDoPreview`], com as
@@ -62,9 +64,11 @@ pub struct ChaveDoPreview {
     versoes: (u64, u64, u64),
     papel: Option<[u8; 3]>,
     substrato: (f32, f32),
-    flags: (bool, bool, bool, bool, bool),
+    flags: (bool, bool, bool, bool),
+    suave: f32,
     tilt: (bool, u8, u8),
     grids: (u8, u8),
+    opcoes: (bool, f64),
 }
 
 impl PainterTool {
@@ -88,6 +92,7 @@ impl PainterTool {
             show_wet: w.show_wet,
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
+            opcoes: (w.agua_viva, w.borda_que_pesa),
         }
     }
 
@@ -105,15 +110,11 @@ impl PainterTool {
             ),
             papel: self.papel,
             substrato: (self.paint.substrate_depth, self.paint.substrate_rough),
-            flags: (
-                w.paper_visual,
-                w.km_mixing,
-                w.km_glaze,
-                w.show_wet,
-                w.smooth_edges,
-            ),
+            flags: (w.paper_visual, w.km_mixing, w.km_glaze, w.show_wet),
+            suave: w.smooth_edges,
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
+            opcoes: (w.agua_viva, w.borda_que_pesa),
         }
     }
 
@@ -147,6 +148,7 @@ impl PainterTool {
         w.show_wet = c.show_wet;
         (w.tilt_on, w.tilt_ring, w.tilt_spoke) = c.tilt;
         (w.grid_ratio, w.flow_ratio) = c.grids;
+        (w.agua_viva, w.borda_que_pesa) = c.opcoes;
         self.paint.eraser = false;
         self.invalidate_composite();
     }

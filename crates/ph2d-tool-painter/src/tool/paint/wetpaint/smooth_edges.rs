@@ -240,7 +240,7 @@ mod medida {
         t.on_canvas_pointer(cp([2800.0, y], PointerPhase::Up));
         let mut minimo = [[f64::MAX; 2]; 2]; // [tela, retângulo][desligado, ligado]
         for _ in 0..7 {
-            for (k, suave) in [false, true].into_iter().enumerate() {
+            for (k, suave) in [0.0f32, 1.0].into_iter().enumerate() {
                 t.paint.wetpaint.smooth_edges = suave;
                 for (q, rect) in [None, Some((1700, 1800, 2000, 2100))]
                     .into_iter()

@@ -210,10 +210,10 @@ impl PainterTool {
         w.km_mixing = false;
         w.agua_viva = false;
         w.borda_que_pesa = 0.0;
-        let need_recomposite = w.show_wet || w.paper_visual || w.km_glaze || w.smooth_edges;
+        let need_recomposite = w.show_wet || w.paper_visual || w.km_glaze || w.smooth_edges > 0.0;
         w.show_wet = false;
         w.paper_visual = false;
-        w.smooth_edges = false;
+        w.smooth_edges = 0.0;
         w.km_glaze = false;
         w.tuning_open = false;
         if need_recomposite {
@@ -221,17 +221,22 @@ impl PainterTool {
         }
     }
 
-    /// O **Smooth Edges** do Wet Paint (o mesmo facto do checkbox): ligar/desligar recompõe a tela inteira.
-    pub fn set_wet_smooth_edges(&mut self, ligado: bool) {
-        if self.paint.wetpaint.smooth_edges != ligado {
-            self.paint.wetpaint.smooth_edges = ligado;
+    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`): mudá-la recompõe a tela inteira.
+    pub fn set_wet_smooth_edges(&mut self, forca: f32) {
+        let forca = if forca.is_nan() {
+            0.0
+        } else {
+            forca.clamp(0.0, 1.0)
+        };
+        if self.paint.wetpaint.smooth_edges != forca {
+            self.paint.wetpaint.smooth_edges = forca;
             self.wet_recomposite_full();
         }
     }
 
-    /// O **Smooth Edges** do Wet Paint está ligado?
+    /// A intensidade do **Smooth Edges** do Wet Paint (`0` = desligado).
     #[must_use]
-    pub fn wet_smooth_edges(&self) -> bool {
+    pub fn wet_smooth_edges(&self) -> f32 {
         self.paint.wetpaint.smooth_edges
     }
 
@@ -342,6 +347,10 @@ impl PainterTool {
             self.set_wet_flow_ratio(v);
             return true;
         }
+        if id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES {
+            self.set_wet_smooth_edges(v as f32);
+            return true;
+        }
         if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {
             self.set_wet_borda_que_pesa(v);
             return true;
@@ -423,11 +432,6 @@ impl PainterTool {
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_PAPER_VISUAL => {
                 // A Texture on Paint da secção Paper (W1e, F2).
                 self.paint.wetpaint.paper_visual = !self.paint.wetpaint.paper_visual;
-                self.wet_recomposite_full();
-                true
-            }
-            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES => {
-                self.paint.wetpaint.smooth_edges = !self.paint.wetpaint.smooth_edges;
                 self.wet_recomposite_full();
                 true
             }

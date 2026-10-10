@@ -711,6 +711,36 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - Pranchas: [1:1](prancha_w1g_opcoes.png) · [8×](prancha_w1g_opcoes_8x.png) (cada opção desligada ·
     ligada · Rebelle; a linha da Live Water é o S no instante do Up — o Rebelle não tem foto no Up, a
     coluna dele é 1 min depois). Gerador `ferramentas/prancha_w1g.py`.
+  - **Smoke do dono (10/10): OK**, com dois achados e um pedido, curados na mesma janela:
+    - ⛔ **O preview do painel ignorava a Heavy Edge** (e a Live Water): `CenaDoPreview`/`ChaveDoPreview`
+      copiam o estado do fluido para o pintor do preview, e as opções novas ficaram de fora — a família
+      «copiar um componente deixa os irmãos». Cura: `opcoes` na cena e na chave. Red-first:
+      `a_chave_muda_com_cada_parametro_e_o_traco_tambem` com os casos novos deu «heavy edge: a chave não
+      viu» antes da cura.
+    - **O Undo com as opções** (`medida_undo`, 4096², quatro ferramentas no MESMO processo, 7 rodadas
+      de ordem rodada, mínimo · mediana, load ~37 — o relógio absoluto vale pouco, a comparação vale):
+
+      | | Ctrl+Z | 1.º quadro do traço seguinte | undo guardado |
+      |---|---|---|---|
+      | fábrica | 55,7 · 69,4 ms | 63,5 · 72,3 ms | 3,1 MB |
+      | Heavy Edge 1 | 48,5 · 68,5 | 64,3 · 67,4 | 3,1 MB |
+      | Live Water | 53,5 · 66,4 | 66,4 · 78,8 | 3,1 MB |
+      | as duas | 49,2 · 70,8 | 62,5 · 82,5 | 3,1 MB |
+
+      ⇒ as opções não pesam no Undo (o Undo não passa por elas: restaura a tela e a água renasce no
+      traço seguinte). ⚠️ O Ctrl+Z de ~50 ms a 4096² é anterior à W1g — um item à parte, por medir sem
+      carga.
+    - **Smooth Edges com intensidade** (pedido do dono: «ajustar a intensidade deste smooth»): a caixa
+      virou uma linha `0..1` (o mesmo id, de `CLICKS` para `FIELDS`). A lei: a cobertura premultiplicada
+      do pixel da borda entre o desligado (o `dele`) e o ligado, `d + (l − d)·força`; `0` não monta a
+      silhueta (o desligado de antes) e `1` é o ligado sem conta nenhuma — os dois AO BYTE contra o FNV
+      gravado com o código do checkbox em `362938a99` (`smooth_edges_nos_extremos_e_o_checkbox_de_antes_ao_byte`,
+      razão 1 e 2); `smooth_edges_a_meio_fica_entre_o_desligado_e_o_ligado` (a 0,5 cada byte entre os
+      dois, nenhum muda onde eles concordam). O Smooth Edges do Watercolor não muda (a cerca). ⚠️ Mais
+      forte que o ligado de antes (um pé maior que 3×3) seria outra lei — não pedida, não construída. Mutação «o
+      slider vira interruptor» (`forca > 0` = ligado) ⇒ o gate do meio VERMELHO. Como linha numérica o
+      nome corta no mínimo do dock (220 px): a catraca `cada_nome_deste_painel_cabe_na_coluna_da_seccao`
+      sobe 12 → 13 pelo precedente de 23/09 (linha que ENTRA na população; de 245 px para cima nada muda).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

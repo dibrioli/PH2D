@@ -47,7 +47,8 @@ impl PainterTool {
             paper: self.paint.wetpaint.paper_visual,
             km_glaze: self.paint.wetpaint.km_glaze,
         };
-        let suave = self.paint.wetpaint.smooth_edges;
+        let forca = self.paint.wetpaint.smooth_edges;
+        let suave = forca > 0.0;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -246,7 +247,22 @@ impl PainterTool {
                     let (premul, pa) = match (&silhueta, &mascara) {
                         (Some(s), Some(m)) if pode_misturar && m.mista(px, py) => {
                             let (p, a, f) = s.aplica(px, py, dele);
-                            ([p[0] * f, p[1] * f, p[2] * f], a * f)
+                            let ligado = ([p[0] * f, p[1] * f, p[2] * f], a * f);
+                            // A intensidade: a cobertura da orla entre o desligado (`dele`) e o ligado;
+                            // `1` é o ligado sem conta nenhuma (o checkbox de antes, ao byte).
+                            if forca >= 1.0 {
+                                ligado
+                            } else {
+                                let l = |d: f32, o: f32| d + (o - d) * forca;
+                                (
+                                    [
+                                        l(dele.0[0], ligado.0[0]),
+                                        l(dele.0[1], ligado.0[1]),
+                                        l(dele.0[2], ligado.0[2]),
+                                    ],
+                                    l(dele.1, ligado.1),
+                                )
+                            }
                         }
                         _ => dele,
                     };

@@ -127,8 +127,25 @@ o *Frame All* curado na cena das mídias presas a ossos.
 
 ## §8 — Binário de smoke (2.ª corrida)
 
-(preenchido no fecho)
+Depois do `rm -rf target/*/incremental` (29 GB debug + 3,5 GB smoke) — `bash scripts/ph2d-run.sh
+cargo build -p ph2d-host-desktop --profile smoke`: 1.ª corrida 0,23 s (já estava atual); a 2.ª:
+
+```
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
+```
+
+Varredura no fecho: zero processos meus, ninguém meu na placa (os vivos são de outras sessões:
+`line-PainterWatercolor`, o oráculo do MiroClone).
 
 ## §9 — `agent-loop-profile.sh`
 
-(preenchido no fecho)
+```
+  ✗ paralelismo de ferramenta              1.11/passo   alvo: >= 1,5  (8% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                184   alvo: <= 800  (uma janela nova por onda de trabalho)
+  ✗ cargo test : cargo check                738 : 185   alvo: <= 1,0  razao 4.0x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  30%   alvo: >= 80%  (1044 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         434 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✓ contexto no inicio da sessao               62 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
+```
+(Edições em lote por `python3` com `assert` de contagem — vários sítios da mesma peça de uma vez.)

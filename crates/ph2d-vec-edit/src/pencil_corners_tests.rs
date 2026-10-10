@@ -156,3 +156,64 @@ fn measure_pencil_corners() {
         }
     }
 }
+
+#[test]
+fn small_circles_turn_fast_but_have_no_corners() {
+    // Num círculo de raio 10–20 px a janela de 14 px já vira mais que a viragem mínima: só a
+    // CONCENTRAÇÃO o separa de uma quina (na janela tripla ele vira o triplo).
+    for r in [10.0, 15.0, 20.0] {
+        for seed in 0..10 {
+            let cuts = corners(&Corners::MEASURED, &drawn(&ring(r, 0.9), 0.5, seed), 1.0);
+            assert!(
+                cuts.is_empty(),
+                "círculo de raio {r}: quinas falsas {cuts:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_flick_at_the_end_of_the_stroke_is_not_a_corner() {
+    // A mão que levanta faz um gancho de poucos px: dentro da janela da ponta, não é quina.
+    let p = drawn(&[[0.0, 0.0], [200.0, 0.0], [200.0, 8.0]], 0.3, 4);
+    let cuts = corners(&Corners::MEASURED, &p, 1.0);
+    assert!(
+        cuts.is_empty(),
+        "o gancho virou quina em {:?}",
+        cuts.first().map(|&i| p[i])
+    );
+}
+
+#[test]
+fn a_sixty_degree_corner_survives_the_stabiliser_in_every_hand() {
+    // O estabilizador arredonda a quina; uma janela curta (8 px) já a perde em ~1/3 das mãos.
+    for seed in 0..20 {
+        let p = drawn(&bend(60.0, 60.0), 1.0, seed);
+        let cuts = corners(&Corners::MEASURED, &p, 1.0);
+        assert!(
+            cuts.len() == 1 && dist(p[cuts[0]], [0.0, 0.0]) < 8.0,
+            "mão {seed}: {cuts:?}"
+        );
+    }
+}
+
+#[test]
+fn a_trembling_hand_does_not_put_corners_in_a_smooth_curve() {
+    // Com tremor de ±2 px, uma janela curta (8 px) lê o tremor como quina; a de 14 não.
+    let curves = [
+        ring(10.0, 0.9),
+        ring(40.0, 0.9),
+        ring(160.0, 0.9),
+        s_curve(120.0),
+        s_curve(400.0),
+    ];
+    for (k, c) in curves.iter().enumerate() {
+        for seed in 0..20 {
+            let cuts = corners(&Corners::MEASURED, &drawn(c, 2.0, seed), 1.0);
+            assert!(
+                cuts.is_empty(),
+                "curva {k}, mão {seed}: quinas falsas {cuts:?}"
+            );
+        }
+    }
+}

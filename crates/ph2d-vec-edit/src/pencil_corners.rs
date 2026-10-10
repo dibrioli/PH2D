@@ -109,10 +109,6 @@ pub(crate) fn corners(c: &Corners, samples: &[[f64; 2]], px_to_world: f64) -> Ve
     let min_turn = c.min_turn_deg.to_radians();
     let mut cuts: Vec<(usize, f64)> = Vec::new();
     for i in 1..n - 1 {
-        // A janela tem de caber dos dois lados: um gancho na ponta não é quina.
-        if cum[i] < w || total - cum[i] < w {
-            continue;
-        }
         let t = turn(i, w);
         if t < min_turn || turn(i, 3.0 * w) > c.spread * t {
             continue;
@@ -128,7 +124,13 @@ pub(crate) fn corners(c: &Corners, samples: &[[f64; 2]], px_to_world: f64) -> Ve
             _ => cuts.push((i, t)),
         }
     }
-    cuts.into_iter().map(|(i, _)| i).collect()
+    // A janela tem de caber dos dois lados: um gancho na ponta não é quina. ⚠️ Descarta-se DEPOIS
+    // do máximo local — antes, o pico do gancho saía da corrida e o vizinho, que via metade do
+    // gancho na janela da frente, ganhava o lugar dele.
+    cuts.into_iter()
+        .filter(|&(i, _)| cum[i] >= w && total - cum[i] >= w)
+        .map(|(i, _)| i)
+        .collect()
 }
 
 fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {

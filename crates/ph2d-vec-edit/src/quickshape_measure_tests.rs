@@ -613,3 +613,64 @@ fn measure_sensitivity_ab() {
         }
     }
 }
+
+/// **Estrelas de mão** (o smoke do dono, 09/10): pentagramas irregulares (pontas ±15°, raios ±20 %),
+/// começados numa ponta ou a meio de um lado, com o fim aberto ou a passar do início, tremor e o
+/// estabilizador por omissão — a fracção que sai com as 5 pontas.
+#[test]
+#[ignore = "sonda"]
+fn measure_hand_stars() {
+    println!("\n| começo | fim | tremor | 5 pontas | outra forma | traço livre |");
+    for start_mid in [false, true] {
+        for end in [-12.0_f64, 0.0, 15.0] {
+            for amp in [0.5, 1.0, 2.0] {
+                let (mut five, mut other, mut free) = (0, 0, 0);
+                for seed in 0..60u64 {
+                    let mut g = crate::test_hand::Lcg(seed * 7 + 3);
+                    let tips: Vec<P2> = (0..5)
+                        .map(|k| {
+                            let a = (90.0 + 72.0 * k as f64 + 15.0 * g.next()).to_radians();
+                            let r = 150.0 * (1.0 + 0.2 * g.next());
+                            [r * a.cos(), r * a.sin()]
+                        })
+                        .collect();
+                    let mut poly: Vec<P2> = (0..=5).map(|i| tips[(2 * i) % 5]).collect();
+                    if start_mid {
+                        // [m, t2, t4, t1, t3, t0, m]: começa e acaba a meio do lado t0 → t2.
+                        let m = mul(add(poly[0], poly[1]), 0.5);
+                        poly = vec![m, tips[2], tips[4], tips[1], tips[3], tips[0], m];
+                    }
+                    // O fim: aberto (−) ou a passar (+) ao longo do primeiro lado, em px.
+                    let (a, b) = (poly[poly.len() - 2], poly[poly.len() - 1]);
+                    let d = sub(b, a);
+                    let u = mul(d, 1.0 / d[0].hypot(d[1]));
+                    let f0 = sub(poly[1], poly[0]);
+                    let fu = mul(f0, 1.0 / f0[0].hypot(f0[1]));
+                    let last = poly.len() - 1;
+                    if end < 0.0 {
+                        poly[last] = add(b, mul(u, end));
+                    } else if end > 0.0 {
+                        poly.push(add(b, mul(fu, end)));
+                    }
+                    let pts = crate::test_hand::stabilise(&hand(&poly, 2.0, amp, seed), 0.5);
+                    match recognise(&pts, 1.0, false) {
+                        Some(QuickShape::Polygon {
+                            corners,
+                            closed: true,
+                        }) if corners.len() == 5 => five += 1,
+                        None => free += 1,
+                        _ => other += 1,
+                    }
+                }
+                println!(
+                    "| {} | {end} px | ±{amp} | {five}/60 | {other} | {free} |",
+                    if start_mid {
+                        "meio de um lado"
+                    } else {
+                        "ponta"
+                    }
+                );
+            }
+        }
+    }
+}

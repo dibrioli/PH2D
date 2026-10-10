@@ -281,3 +281,40 @@ fn regular_keeps_a_star_a_star() {
         .to_degrees();
     assert!((t - 144.0).abs() < 10.0, "{t}°");
 }
+
+#[test]
+fn a_hand_drawn_star_with_sharp_tips_keeps_all_five() {
+    // Pentagrama de MÃO: pontas irregulares, algumas mais finas que 29° (a fusão de viragens).
+    // Começa numa ponta — o primeiro e o último lado encontram-se nela em sentidos OPOSTOS e não
+    // são «o mesmo lado» (a fusão do início lia-os como rectas, sem sentido, e a estrela perdia uma
+    // ponta: o smoke do dono, 09/10).
+    let jitter = [0.0, -12.0, 10.0, -8.0, 6.0];
+    let radius = [150.0, 175.0, 130.0, 165.0, 140.0];
+    let tip = |k: usize| {
+        let a = (90.0 + 72.0 * k as f64 + jitter[k]).to_radians();
+        [radius[k] * a.cos(), radius[k] * a.sin()]
+    };
+    let poly: Vec<P2> = (0..=5).map(|i| tip((2 * i) % 5)).collect();
+    // O controlo: a estrela tem mesmo pontas mais finas que a fusão.
+    let sharp = (0..5)
+        .filter(|&i| {
+            let (a, v, b) = (poly[(i + 4) % 5], poly[i], poly[(i + 1) % 5]);
+            let (u, w) = (sub(a, v), sub(b, v));
+            (dot(u, w) / (u[0].hypot(u[1]) * w[0].hypot(w[1])))
+                .acos()
+                .to_degrees()
+                < 29.0
+        })
+        .count();
+    assert!(sharp >= 1, "a fixtura não tem ponta fina");
+    for amp in [0.5, 1.5] {
+        let Some(QuickShape::Polygon {
+            corners,
+            closed: true,
+        }) = recognise(&hand(&poly, amp), 1.0, false)
+        else {
+            panic!("±{amp}: {:?}", recognise(&hand(&poly, amp), 1.0, false))
+        };
+        assert_eq!(corners.len(), 5, "±{amp}: {corners:?}");
+    }
+}

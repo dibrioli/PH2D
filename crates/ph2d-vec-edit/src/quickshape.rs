@@ -277,12 +277,15 @@ fn polygonal(
         .collect::<Option<_>>()?;
     // Fechado a começar a meio de um lado (ou a passar do início): o último lado e o primeiro são
     // o MESMO lado.
+    // ⚠️ Com SENTIDO (o último lado tem de CONTINUAR o primeiro): como rectas, os dois lados de uma
+    // ponta fina de estrela (< 29°) liam-se paralelos e fundiam-se — a estrela perdia uma ponta.
+    let (la, lb) = sides[sides.len() - 1];
+    let (fa, fb) = sides[0];
+    let (last, first) = (sub(r[lb], r[la]), sub(r[fb], r[fa]));
     if closed
         && fits.len() > 3
-        && turn(fits[fits.len() - 1].d, fits[0].d) < law.merge_turn_deg.to_radians()
+        && wrap_pi(angle(first) - angle(last)).abs() < law.merge_turn_deg.to_radians()
     {
-        let (la, lb) = sides[sides.len() - 1];
-        let (fa, fb) = sides[0];
         let mut q = r[la..=lb].to_vec();
         q.extend_from_slice(&r[fa..=fb]);
         fits[0] = trimmed_fit(&q, law.fit_trim)?;

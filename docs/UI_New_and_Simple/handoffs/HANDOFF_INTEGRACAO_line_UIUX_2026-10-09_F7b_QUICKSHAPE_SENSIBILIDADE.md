@@ -50,6 +50,13 @@ com linhas cruzadas viram pentágonos.»*
 | **cena 12** | um 5.º traço SOLTO (sem segurar): um gelado — duas abas, a ponta do cone e o começo da bola são 4 quinas vivas, a bola é curva (foto [`f7b_02`](../vetor_nova_ui/fotos/f7b_02_cena12_o_lapis_guarda_as_quinas.png)). ⛔ A escala da cena estava errada: 0,0045 mundo/px copiado do `pencil_smoke`, medido na foto 0,0103 — o «círculo de 15 px» tinha 7 | `vector_mode_quick.rs` |
 | organização | `test_hand.rs`: a mão sintética das sondas, partilhada (a do QuickShape mudou-se para lá — uma cópia só) | `ph2d-vec-edit/src/` |
 
+**E a estrela de MÃO (captura do dono):** saía QUADRILÁTERO — a fusão «o último lado continua o
+primeiro» (para o traço começado a meio de um lado) comparava RECTAS sem sentido, e numa ponta de
+estrela mais fina que 29° os dois lados liam-se paralelos e fundiam-se. Agora compara as direcções COM
+sentido. Sonda `measure_hand_stars` (1 080 pentagramas irregulares, começo na ponta ou a meio, fim aberto
+ou a passar, tremor ±0,5–2, estabilizador): **1 080 / 1 080** com 5 pontas; com a fusão antiga ~20 % das
+começadas numa ponta perdiam uma. Gate `a_hand_drawn_star_with_sharp_tips_keeps_all_five`.
+
 **Em silêncio para o integrador:** todo traço de lápis com quinas passa a ter nós `Corner` no meio
 (antes: só `Smooth`). Quem leia os nós de um traço de lápis esperando `Smooth` (nenhum consumidor no
 workspace o faz — o `Node` edita os dois) vê a diferença.

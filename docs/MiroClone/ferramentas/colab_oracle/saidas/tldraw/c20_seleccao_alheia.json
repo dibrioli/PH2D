@@ -1,0 +1,272 @@
+{
+ "caso": "c20_seleccao_alheia",
+ "o_que": "A selecciona X; B olha",
+ "pergunta": "B vê a selecção de A? com que cor/nome?",
+ "existe": true,
+ "resposta": "B VÊ a selecção de A (presença selectedShapeIds=[\"shape:X\"]); contorno desenhado: 1012 píxeis mudam quando A larga, cor média rgb(131,38,38) (A = #e03131) — ver c20_B.png; nome «A» só na presença/cursor",
+ "subcorridas": [
+  {
+   "subcorrida": "seq",
+   "sala": "c20-seq-mv2rw50c",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "X",
+     "type": "geo",
+     "x": 400,
+     "y": 250,
+     "props": {
+      "w": 160,
+      "h": 100,
+      "geo": "rectangle",
+      "fill": "solid",
+      "color": "black"
+     }
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "A clica X (selecciona) e leva o rato para fora do recorte"
+    },
+    {
+     "t": 858,
+     "gesto": "controlo: A clica no vazio e carrega Escape (larga a selecção)"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1VOX",
+       "id": "X",
+       "type": "geo",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "index": "a1VOX",
+       "id": "X",
+       "type": "geo",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "servidor": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1VOX",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "B_ve": {
+     "presenca": {
+      "userName": "A",
+      "color": "#e03131",
+      "selectedShapeIds": [
+       "shape:X"
+      ]
+     },
+     "elementos_collaborator": [
+      {
+       "tag": "DIV",
+       "classe": "tl-collaborators__item tl-collaborator__cursor",
+       "stroke": "none",
+       "cor": "rgb(0, 0, 0)"
+      }
+     ],
+     "elementos_com_a_cor_de_A": []
+    },
+    "pixeis_que_mudam_no_recorte": {
+     "pixeis": 1012,
+     "cor_media_com_seleccao": [
+      131,
+      38,
+      38
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 70,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 3,
+      "bytes": 413,
+      "com_documento": 0
+     },
+     "S→A": {
+      "mensagens": 3,
+      "bytes": 291,
+      "com_documento": 0
+     },
+     "S→B": {
+      "mensagens": 3,
+      "bytes": 611,
+      "com_documento": 0
+     }
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 209,
+      "t": 21,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 22,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 275,
+      "t": 22,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[instance_presence:IBUltx11Md3onFGAaU_Ba:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 120,
+      "t": 53,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 55,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 186,
+      "t": 55,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[instance_presence:IBUltx11Md3onFGAaU_Ba:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 84,
+      "t": 870,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 872,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 150,
+      "t": 872,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[instance_presence:IBUltx11Md3onFGAaU_Ba:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "X": 4
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  }
+ ]
+}

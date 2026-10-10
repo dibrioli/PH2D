@@ -1,0 +1,625 @@
+{
+ "caso": "c15_rede_cai_a_meio_do_arrasto",
+ "o_que": "A arrasta X; a rede de A cai a meio; A larga; a rede volta",
+ "pergunta": "B acaba com a posição final de A?",
+ "existe": true,
+ "resposta": "B acaba com X em (700,350) — a posição FINAL de A; converge (a meio B via 550)",
+ "subcorridas": [
+  {
+   "subcorrida": "seq",
+   "sala": "c15-seq-mv2rv4hu",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "X",
+     "type": "geo",
+     "x": 400,
+     "y": 250,
+     "props": {
+      "w": 160,
+      "h": 100,
+      "geo": "rectangle",
+      "fill": "solid",
+      "color": "black"
+     }
+    }
+   ],
+   "gestos": [
+    {
+     "t": 1,
+     "gesto": "A agarra X e arrasta metade (+150,0)"
+    },
+    {
+     "t": 580,
+     "gesto": "a rede de A cai (setOffline(true)); A continua até (+300,+100) e larga"
+    },
+    {
+     "t": 1655,
+     "gesto": "a rede volta (setOffline(false))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1pdQ",
+       "id": "X",
+       "type": "geo",
+       "x": 700,
+       "y": 350,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "index": "a1pdQ",
+       "id": "X",
+       "type": "geo",
+       "x": 700,
+       "y": 350,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "servidor": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1pdQ",
+       "x": 700,
+       "y": 350,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "B_a_meio": {
+     "id": "X",
+     "type": "geo",
+     "index": "a1pdQ",
+     "x": 550,
+     "y": 250,
+     "rot": 0,
+     "w": 160,
+     "h": 100,
+     "cor": "black",
+     "fill": "solid",
+     "texto": "",
+     "z": 0
+    },
+    "durante": {
+     "A": {
+      "id": "X",
+      "type": "geo",
+      "index": "a1pdQ",
+      "x": 700,
+      "y": 350,
+      "rot": 0,
+      "w": 160,
+      "h": 100,
+      "cor": "black",
+      "fill": "solid",
+      "texto": "",
+      "z": 0
+     },
+     "B": {
+      "id": "X",
+      "type": "geo",
+      "index": "a1pdQ",
+      "x": 550,
+      "y": 250,
+      "rot": 0,
+      "w": 160,
+      "h": 100,
+      "cor": "black",
+      "fill": "solid",
+      "texto": "",
+      "z": 0
+     }
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 516,
+    "preparo_convergiu_ms": 133,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 11,
+      "bytes": 2996,
+      "com_documento": 9
+     },
+     "S→B": {
+      "mensagens": 10,
+      "bytes": 2309,
+      "com_documento": 9
+     },
+     "S→A": {
+      "mensagens": 11,
+      "bytes": 2415,
+      "com_documento": 0
+     }
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 3,
+      "eventos": [
+       {
+        "t": 580,
+        "ev": "fecha-página",
+        "conn": 1
+       },
+       {
+        "t": 1082,
+        "ev": "abre",
+        "conn": 2,
+        "fase": "caso"
+       },
+       {
+        "t": 1083,
+        "ev": "fecha-servidor",
+        "conn": 2,
+        "codigo": 1006
+       },
+       {
+        "t": 2082,
+        "ev": "fecha-página",
+        "conn": 2
+       },
+       {
+        "t": 2082,
+        "ev": "abre",
+        "conn": 3,
+        "fase": "caso"
+       }
+      ]
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 165,
+      "t": 14,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 231,
+      "t": 23,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 34,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 213,
+      "t": 43,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",418.75]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 46,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 270,
+      "t": 46,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 167,
+      "t": 78,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",437.5]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 79,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 224,
+      "t": 80,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 169,
+      "t": 110,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",456.25]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 112,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 226,
+      "t": 112,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 144,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",475]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 145,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 146,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@7:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 169,
+      "t": 177,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",493.75]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 178,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 226,
+      "t": 179,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 167,
+      "t": 210,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",512.5]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 212,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 224,
+      "t": 212,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 170,
+      "t": 243,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 10,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",531.25]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 246,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:10"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 227,
+      "t": 246,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 277,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 11,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",550]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 279,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:11"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 279,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@11:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 877,
+      "t": 2084,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": null
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 1439,
+      "t": 2088,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": "wipe_presence",
+      "diff": 1
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 572,
+      "t": 2095,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 12,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",700],\"y\":[\"put\",350]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 2098,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:12"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 240,
+      "t": 2099,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@12:[X:patch,instance_presence:_l_xw0Ge9-Ux7LbHSaeow:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "X": 12
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": [
+    "A error: WebSocket connection to 'ws://127.0.0.1:5202/connect/c15-seq-mv2rv4hu?sessionId=TLDRAW_INSTANCE_STATE_V1_TpN6mh081bLSEfFhrk0TK&storeId=IvcVM-H-7I8M6sc74ZWpw' failed: Error in connection establishment:"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2188 @@
+{
+ "caso": "c13_entrar_a_meio",
+ "o_que": "A desenha 50 formas; B entra na sala",
+ "pergunta": "B vê tudo? quantos bytes e mensagens custa a entrada? quanto tempo até B estar igual?",
+ "existe": true,
+ "resposta": "B vê tudo (50 formas); entrada: 6 mensagens, 27181 B recebidos (connect 26985 B), 1674 B enviados; igual em 643 ms",
+ "subcorridas": [
+  {
+   "subcorrida": "seq",
+   "sala": "c13-seq-mv2run5k",
+   "pares": [
+    "A"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 1,
+     "gesto": "A desenha 50 rectângulos (tecla r + arrasto cada), grelha 10×5"
+    },
+    {
+     "t": 16046,
+     "gesto": "B entra na sala (página nova)"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1HY2",
+       "id": "A#1",
+       "type": "geo",
+       "x": 150,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a2Flr",
+       "id": "A#2",
+       "type": "geo",
+       "x": 230,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      },
+      {
+       "index": "a3zUpV",
+       "id": "A#3",
+       "type": "geo",
+       "x": 310,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 2
+      },
+      {
+       "index": "a4PEI",
+       "id": "A#4",
+       "type": "geo",
+       "x": 390,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 3
+      },
+      {
+       "index": "a5aLA",
+       "id": "A#5",
+       "type": "geo",
+       "x": 470,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 4
+      },
+      {
+       "index": "a6zcH",
+       "id": "A#6",
+       "type": "geo",
+       "x": 550,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 5
+      },
+      {
+       "index": "a72L2",
+       "id": "A#7",
+       "type": "geo",
+       "x": 630,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 6
+      },
+      {
+       "index": "a8iWf",
+       "id": "A#8",
+       "type": "geo",
+       "x": 710,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 7
+      },
+      {
+       "index": "a9YpU",
+       "id": "A#9",
+       "type": "geo",
+       "x": 790,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 8
+      },
+      {
+       "index": "aARI2",
+       "id": "A#10",
+       "type": "geo",
+       "x": 870,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 9
+      },
+      {
+       "index": "aBwGQ",
+       "id": "A#11",
+       "type": "geo",
+       "x": 150,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 10
+      },
+      {
+       "index": "aCXMj",
+       "id": "A#12",
+       "type": "geo",
+       "x": 230,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 11
+      },
+      {
+       "index": "aD5fU",
+       "id": "A#13",
+       "type": "geo",
+       "x": 310,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 12
+      },
+      {
+       "index": "aEroE",
+       "id": "A#14",
+       "type": "geo",
+       "x": 390,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 13
+      },
+      {
+       "index": "aFPUe",
+       "id": "A#15",
+       "type": "geo",
+       "x": 470,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 14
+      },
+      {
+       "index": "aGZM2",
+       "id": "A#16",
+       "type": "geo",
+       "x": 550,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 15
+      },
+      {
+       "index": "aHwZj",
+       "id": "A#17",
+       "type": "geo",
+       "x": 630,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 16
+      },
+      {
+       "index": "aImrr",
+       "id": "A#18",
+       "type": "geo",
+       "x": 710,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 17
+      },
+      {
+       "index": "aJju2",
+       "id": "A#19",
+       "type": "geo",
+       "x": 790,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 18
+      },
+      {
+       "index": "aKEbf",
+       "id": "A#20",
+       "type": "geo",
+       "x": 870,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 19
+      },
+      {
+       "index": "aLDNj",
+       "id": "A#21",
+       "type": "geo",
+       "x": 150,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 20
+      },
+      {
+       "index": "aMJJI",
+       "id": "A#22",
+       "type": "geo",
+       "x": 230,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 21
+      },
+      {
+       "index": "aNhFI",
+       "id": "A#23",
+       "type": "geo",
+       "x": 310,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 22
+      },
+      {
+       "index": "aOyZb",
+       "id": "A#24",
+       "type": "geo",
+       "x": 390,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 23
+      },
+      {
+       "index": "aPbwQ",
+       "id": "A#25",
+       "type": "geo",
+       "x": 470,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 24
+      },
+      {
+       "index": "aQaoI",
+       "id": "A#26",
+       "type": "geo",
+       "x": 550,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 25
+      },
+      {
+       "index": "aRSqz",
+       "id": "A#27",
+       "type": "geo",
+       "x": 630,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 26
+      },
+      {
+       "index": "aSobI",
+       "id": "A#28",
+       "type": "geo",
+       "x": 710,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 27
+      },
+      {
+       "index": "aTBQU",
+       "id": "A#29",
+       "type": "geo",
+       "x": 790,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 28
+      },
+      {
+       "index": "aUVgz",
+       "id": "A#30",
+       "type": "geo",
+       "x": 870,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 29
+      },
+      {
+       "index": "aVPvz",
+       "id": "A#31",
+       "type": "geo",
+       "x": 150,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 30
+      },
+      {
+       "index": "aWQ6z",
+       "id": "A#32",
+       "type": "geo",
+       "x": 230,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 31
+      },
+      {
+       "index": "aX2rn",
+       "id": "A#33",
+       "type": "geo",
+       "x": 310,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 32
+      },
+      {
+       "index": "aYgXU",
+       "id": "A#34",
+       "type": "geo",
+       "x": 390,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 33
+      },
+      {
+       "index": "aZyzW",
+       "id": "A#35",
+       "type": "geo",
+       "x": 470,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 34
+      },
+      {
+       "index": "aaW3M",
+       "id": "A#36",
+       "type": "geo",
+       "x": 550,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 35
+      },
+      {
+       "index": "abVvz",
+       "id": "A#37",
+       "type": "geo",
+       "x": 630,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 36
+      },
+      {
+       "index": "acLK6",
+       "id": "A#38",
+       "type": "geo",
+       "x": 710,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 37
+      },
+      {
+       "index": "ad6Yf",
+       "id": "A#39",
+       "type": "geo",
+       "x": 790,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 38
+      },
+      {
+       "index": "aeII2",
+       "id": "A#40",
+       "type": "geo",
+       "x": 870,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 39
+      },
+      {
+       "index": "af2hI",
+       "id": "A#41",
+       "type": "geo",
+       "x": 150,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 40
+      },
+      {
+       "index": "agDRj",
+       "id": "A#42",
+       "type": "geo",
+       "x": 230,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 41
+      },
+      {
+       "index": "ahtfv",
+       "id": "A#43",
+       "type": "geo",
+       "x": 310,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 42
+      },
+      {
+       "index": "ai2aA",
+       "id": "A#44",
+       "type": "geo",
+       "x": 390,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 43
+      },
+      {
+       "index": "ajh5X",
+       "id": "A#45",
+       "type": "geo",
+       "x": 470,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 44
+      },
+      {
+       "index": "akQBf",
+       "id": "A#46",
+       "type": "geo",
+       "x": 550,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 45
+      },
+      {
+       "index": "allVM",
+       "id": "A#47",
+       "type": "geo",
+       "x": 630,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 46
+      },
+      {
+       "index": "amwUP",
+       "id": "A#48",
+       "type": "geo",
+       "x": 710,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 47
+      },
+      {
+       "index": "anUbT",
+       "id": "A#49",
+       "type": "geo",
+       "x": 790,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 48
+      },
+      {
+       "index": "ao2HE",
+       "id": "A#50",
+       "type": "geo",
+       "x": 870,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 49
+      }
+     ],
+     "servidor": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1HY2",
+       "x": 150,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#2",
+       "type": "geo",
+       "index": "a2Flr",
+       "x": 230,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#3",
+       "type": "geo",
+       "index": "a3zUpV",
+       "x": 310,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#4",
+       "type": "geo",
+       "index": "a4PEI",
+       "x": 390,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#5",
+       "type": "geo",
+       "index": "a5aLA",
+       "x": 470,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#6",
+       "type": "geo",
+       "index": "a6zcH",
+       "x": 550,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#7",
+       "type": "geo",
+       "index": "a72L2",
+       "x": 630,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#8",
+       "type": "geo",
+       "index": "a8iWf",
+       "x": 710,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#9",
+       "type": "geo",
+       "index": "a9YpU",
+       "x": 790,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#10",
+       "type": "geo",
+       "index": "aARI2",
+       "x": 870,
+       "y": 150,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#11",
+       "type": "geo",
+       "index": "aBwGQ",
+       "x": 150,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#12",
+       "type": "geo",
+       "index": "aCXMj",
+       "x": 230,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#13",
+       "type": "geo",
+       "index": "aD5fU",
+       "x": 310,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#14",
+       "type": "geo",
+       "index": "aEroE",
+       "x": 390,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#15",
+       "type": "geo",
+       "index": "aFPUe",
+       "x": 470,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#16",
+       "type": "geo",
+       "index": "aGZM2",
+       "x": 550,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#17",
+       "type": "geo",
+       "index": "aHwZj",
+       "x": 630,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#18",
+       "type": "geo",
+       "index": "aImrr",
+       "x": 710,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#19",
+       "type": "geo",
+       "index": "aJju2",
+       "x": 790,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#20",
+       "type": "geo",
+       "index": "aKEbf",
+       "x": 870,
+       "y": 220,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#21",
+       "type": "geo",
+       "index": "aLDNj",
+       "x": 150,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#22",
+       "type": "geo",
+       "index": "aMJJI",
+       "x": 230,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#23",
+       "type": "geo",
+       "index": "aNhFI",
+       "x": 310,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#24",
+       "type": "geo",
+       "index": "aOyZb",
+       "x": 390,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#25",
+       "type": "geo",
+       "index": "aPbwQ",
+       "x": 470,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#26",
+       "type": "geo",
+       "index": "aQaoI",
+       "x": 550,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#27",
+       "type": "geo",
+       "index": "aRSqz",
+       "x": 630,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#28",
+       "type": "geo",
+       "index": "aSobI",
+       "x": 710,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#29",
+       "type": "geo",
+       "index": "aTBQU",
+       "x": 790,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#30",
+       "type": "geo",
+       "index": "aUVgz",
+       "x": 870,
+       "y": 290,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#31",
+       "type": "geo",
+       "index": "aVPvz",
+       "x": 150,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#32",
+       "type": "geo",
+       "index": "aWQ6z",
+       "x": 230,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#33",
+       "type": "geo",
+       "index": "aX2rn",
+       "x": 310,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#34",
+       "type": "geo",
+       "index": "aYgXU",
+       "x": 390,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#35",
+       "type": "geo",
+       "index": "aZyzW",
+       "x": 470,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#36",
+       "type": "geo",
+       "index": "aaW3M",
+       "x": 550,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#37",
+       "type": "geo",
+       "index": "abVvz",
+       "x": 630,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#38",
+       "type": "geo",
+       "index": "acLK6",
+       "x": 710,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#39",
+       "type": "geo",
+       "index": "ad6Yf",
+       "x": 790,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#40",
+       "type": "geo",
+       "index": "aeII2",
+       "x": 870,
+       "y": 360,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#41",
+       "type": "geo",
+       "index": "af2hI",
+       "x": 150,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#42",
+       "type": "geo",
+       "index": "agDRj",
+       "x": 230,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#43",
+       "type": "geo",
+       "index": "ahtfv",
+       "x": 310,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#44",
+       "type": "geo",
+       "index": "ai2aA",
+       "x": 390,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#45",
+       "type": "geo",
+       "index": "ajh5X",
+       "x": 470,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#46",
+       "type": "geo",
+       "index": "akQBf",
+       "x": 550,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#47",
+       "type": "geo",
+       "index": "allVM",
+       "x": 630,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#48",
+       "type": "geo",
+       "index": "amwUP",
+       "x": 710,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#49",
+       "type": "geo",
+       "index": "anUbT",
+       "x": 790,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#50",
+       "type": "geo",
+       "index": "ao2HE",
+       "x": 870,
+       "y": 430,
+       "rot": 0,
+       "w": 60,
+       "h": 40,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "entrada": {
+     "formas_de_A": 50,
+     "B_ve_tudo": true
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 12,
+    "preparo_convergiu_ms": 3,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 22,
+      "bytes": 26934,
+      "com_documento": 18
+     },
+     "S→A": {
+      "mensagens": 24,
+      "bytes": 2830,
+      "com_documento": 0
+     },
+     "B→S": {
+      "mensagens": 3,
+      "bytes": 1674,
+      "com_documento": 0
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 27539,
+      "com_documento": 0
+     }
+    },
+    "entrada": {
+     "ms_ate_synced_remote": 625,
+     "ms_ate_B_igual_a_A": 643,
+     "ate_igual": {
+      "mensagens": 6,
+      "bytes_recebidos": 27181,
+      "bytes_enviados": 1674
+     },
+     "primeira_resposta_connect_bytes": 26985,
+     "ate_1_5s_depois": {
+      "mensagens": 7,
+      "bytes": 29213
+     }
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1192,
+      "t": 610,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:B0_iJHm_j6LIQZa-BCBoz:put",
+       "A#1:put",
+       "shape:IPDzT9VrykANY_-HJjjsw:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 613,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1553,
+      "t": 1511,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "A#3:put",
+       "A#4:put",
+       "shape:M0MazX_uX40UZL992mD1b:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1513,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1552,
+      "t": 2421,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "A#6:put",
+       "A#7:put",
+       "shape:k0TaPASIj5i0-QQj3Pojk:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 2434,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1568,
+      "t": 3331,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "A#9:put",
+       "A#10:put",
+       "shape:9BYvR6_quLKUN7oRLsJzB:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 3352,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1140,
+      "t": 4245,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "A#12:put",
+       "A#13:put",
+       "A#11:patch"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 4251,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 15,
+      "t": 4618,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "ping"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 15,
+      "t": 4620,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "pong"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1552,
+      "t": 5144,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "A#14:put",
+       "A#15:put",
+       "shape:pCTwy-T1XgrfmSQCLGTrd:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 5147,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1552,
+      "t": 6044,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "A#17:put",
+       "A#18:put",
+       "shape:bLRFKP6j3Wx8Q-GRRSAf_:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 6046,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1552,
+      "t": 6943,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "A#20:put",
+       "A#21:put",
+       "shape:J0VYKTXEcrJ5dtXYgoQKZ:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 6945,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1552,
+      "t": 7843,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [
+       "A#23:put",
+       "A#24:put",
+       "shape:7eXhy4uvA-J4sECmO-1KY:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 7845,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1569,
+      "t": 8748,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 10,
+      "diff": [
+       "A#26:put",
+       "A#27:put",
+       "shape:LHecWY_VK21zGXkUBRBDs:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 8754,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:10"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 15,
+      "t": 9608,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "ping"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 15,
+      "t": 9610,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "pong"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1645,
+      "t": 9664,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 11,
+      "diff": [
+       "A#29:put",
+       "A#30:put",
+       "shape:OqTL3-hWWDK-Os54UXojZ:put",
+       "A#28:patch"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 9669,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:11"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1660,
+      "t": 10578,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 12,
+      "diff": [
+       "A#32:put",
+       "A#33:put",
+       "shape:lfaFZ5R6e4BWXlrd_x8pD:put",
+       "A#31:patch"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 10582,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:12"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1141,
+      "t": 11497,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 13,
+      "diff": [
+       "A#35:put",
+       "A#36:put",
+       "A#34:patch"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 11502,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:13"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1553,
+      "t": 12410,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 14,
+      "diff": [
+       "A#37:put",
+       "A#38:put",
+       "A#39:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 12432,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:14"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1553,
+      "t": 13309,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 15,
+      "diff": [
+       "A#40:put",
+       "A#41:put",
+       "shape:u3tNLZv3bI3Y5jc6vtr4N:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 13314,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:15"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1553,
+      "t": 14213,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 16,
+      "diff": [
+       "A#43:put",
+       "A#44:put",
+       "shape:lxvIVkrKVlJ68nSeqy1dn:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 14218,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:16"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 15,
+      "t": 14610,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "ping"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 15,
+      "t": 14618,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "pong"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1569,
+      "t": 15111,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 17,
+      "diff": [
+       "A#46:put",
+       "A#47:put",
+       "shape:DbeKWijeoYwss9BtDd_1X:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 15118,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:17"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 1141,
+      "t": 16016,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 18,
+      "diff": [
+       "A#49:put",
+       "A#50:put",
+       "A#48:patch"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 16021,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:18"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 877,
+      "t": 16266,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": null
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 26985,
+      "t": 16270,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": "wipe_all",
+      "diff": 54
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 482,
+      "t": 16277,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 0,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 549,
+      "t": 16292,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@18:[instance_presence:iMcB13fNH6q8l5s7ENyIb:put]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 16370,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:0"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 315,
+      "t": 16370,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:AeB-8y17eroHOlWFJjlN8:put"
+      ],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 373,
+      "t": 16380,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@19:[user:AeB-8y17eroHOlWFJjlN8:put,instance_presence:iMcB13fNH6q8l5s7ENyIb:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 16393,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 292,
+      "t": 16943,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 19,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 16945,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:19"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 358,
+      "t": 16950,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@19:[instance_presence:pzeDhZjrvufISgqSvZSPe:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "A#1": 1,
+     "A#2": 1,
+     "A#3": 2,
+     "A#4": 2,
+     "A#5": 2,
+     "A#6": 3,
+     "A#7": 3,
+     "A#8": 3,
+     "A#9": 4,
+     "A#10": 4,
+     "A#11": 5,
+     "A#12": 5,
+     "A#13": 5,
+     "A#14": 6,
+     "A#15": 6,
+     "A#16": 6,
+     "A#17": 7,
+     "A#18": 7,
+     "A#19": 7,
+     "A#20": 8,
+     "A#21": 8,
+     "A#22": 8,
+     "A#23": 9,
+     "A#24": 9,
+     "A#25": 9,
+     "A#26": 10,
+     "A#27": 10,
+     "A#28": 11,
+     "A#29": 11,
+     "A#30": 11,
+     "A#31": 12,
+     "A#32": 12,
+     "A#33": 12,
+     "A#34": 13,
+     "A#35": 13,
+     "A#36": 13,
+     "A#37": 14,
+     "A#38": 14,
+     "A#39": 14,
+     "A#40": 15,
+     "A#41": 15,
+     "A#42": 15,
+     "A#43": 16,
+     "A#44": 16,
+     "A#45": 16,
+     "A#46": 17,
+     "A#47": 17,
+     "A#48": 18,
+     "A#49": 18,
+     "A#50": 18
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  }
+ ]
+}

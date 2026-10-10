@@ -1,0 +1,1129 @@
+{
+ "caso": "c14_sair_e_voltar",
+ "o_que": "B fica sem rede; A move X e cria W; B, sem rede, muda a cor de X e cria V; B volta",
+ "pergunta": "o que cada um acaba a ver; o que se perde",
+ "existe": true,
+ "resposta": "converge: X em (600,250) cor red; W(A) fica; V(B offline) fica",
+ "subcorridas": [
+  {
+   "subcorrida": "seq",
+   "sala": "c14-seq-mv2rv1mr",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "X",
+     "type": "geo",
+     "x": 400,
+     "y": 250,
+     "props": {
+      "w": 160,
+      "h": 100,
+      "geo": "rectangle",
+      "fill": "solid",
+      "color": "black"
+     }
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "B fica sem rede (context.setOffline(true))"
+    },
+    {
+     "t": 802,
+     "gesto": "A arrasta X por (+200,0) e cria W"
+    },
+    {
+     "t": 1478,
+     "gesto": "B (sem rede) clica X (onde o vê) e escolhe red; cria V"
+    },
+    {
+     "t": 2456,
+     "gesto": "B volta (setOffline(false))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1UIW",
+       "id": "X",
+       "type": "geo",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "red",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a2M82",
+       "id": "B#1",
+       "type": "geo",
+       "x": 700,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "red",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      },
+      {
+       "index": "a2XaM",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 2
+      }
+     ],
+     "B": [
+      {
+       "index": "a1UIW",
+       "id": "X",
+       "type": "geo",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "red",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a2M82",
+       "id": "B#1",
+       "type": "geo",
+       "x": 700,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "red",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      },
+      {
+       "index": "a2XaM",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 2
+      }
+     ],
+     "servidor": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1UIW",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "red",
+       "fill": "solid",
+       "texto": ""
+      },
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a2M82",
+       "x": 700,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "red",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a2XaM",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "durante": {
+     "A": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1UIW",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a2XaM",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1UIW",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "red",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a2M82",
+       "x": 700,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "red",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B_estado": [
+      "synced-remote",
+      "offline"
+     ]
+    },
+    "rotulos": {
+     "W": "A#1",
+     "V": "B#1"
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 75,
+    "preparo_convergiu_ms": 68,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 19,
+      "bytes": 4002,
+      "com_documento": 16
+     },
+     "S→A": {
+      "mensagens": 20,
+      "bytes": 2684,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 21,
+      "bytes": 7670,
+      "com_documento": 16
+     },
+     "B→S": {
+      "mensagens": 2,
+      "bytes": 1968,
+      "com_documento": 1
+     }
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 3,
+      "eventos": [
+       {
+        "t": 1,
+        "ev": "fecha-página",
+        "conn": 1
+       },
+       {
+        "t": 502,
+        "ev": "abre",
+        "conn": 2,
+        "fase": "caso"
+       },
+       {
+        "t": 504,
+        "ev": "fecha-servidor",
+        "conn": 2,
+        "codigo": 1006
+       },
+       {
+        "t": 2458,
+        "ev": "fecha-página",
+        "conn": 2
+       },
+       {
+        "t": 2458,
+        "ev": "abre",
+        "conn": 3,
+        "fase": "caso"
+       }
+      ]
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 165,
+      "t": 824,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 846,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 207,
+      "t": 854,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",420]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 856,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 888,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",440]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 890,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 921,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",460]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 923,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 955,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",480]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 956,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 987,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",500]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 989,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 1021,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",520]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1023,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 1054,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 10,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",540]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1056,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:10"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 1088,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 11,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",560]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1090,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:11"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 1121,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 12,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",580]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1123,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:12"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 1154,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 13,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",600]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 118,
+      "t": 1188,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 14,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1211,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:13"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1212,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:14"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 733,
+      "t": 1221,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 15,
+      "diff": [
+       "shape:EP6YQi6HF3y5FxiYL0qOH:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:EP6YQi6HF3y5FxiYL0qOH\":[\"put\",{\"x\":300,\"y\":500,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:EP6YQi6HF3y5FxiYL0qOH\",\"type\":\"geo\",\"props\":{\"w\":20,\"h\":13.33331298828125,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a2XaM\",\"typeName\":\"shape\"}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1223,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:15"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 248,
+      "t": 1255,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 16,
+      "diff": [
+       "shape:EP6YQi6HF3y5FxiYL0qOH:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:EP6YQi6HF3y5FxiYL0qOH\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",40],\"h\":[\"put\",26.66668701171875]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1257,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:16"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 219,
+      "t": 1288,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 17,
+      "diff": [
+       "shape:EP6YQi6HF3y5FxiYL0qOH:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:EP6YQi6HF3y5FxiYL0qOH\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",60],\"h\":[\"put\",40]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1290,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:17"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 248,
+      "t": 1321,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 18,
+      "diff": [
+       "shape:EP6YQi6HF3y5FxiYL0qOH:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:EP6YQi6HF3y5FxiYL0qOH\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",53.33331298828125]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1323,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:18"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 249,
+      "t": 1354,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 19,
+      "diff": [
+       "shape:EP6YQi6HF3y5FxiYL0qOH:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:EP6YQi6HF3y5FxiYL0qOH\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",100],\"h\":[\"put\",66.66668701171875]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1356,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:19"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 1388,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 20,
+      "diff": [
+       "shape:EP6YQi6HF3y5FxiYL0qOH:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:EP6YQi6HF3y5FxiYL0qOH\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",120],\"h\":[\"put\",80]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1406,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:20"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 124,
+      "t": 1421,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 21,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1423,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:21"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 231,
+      "t": 2457,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 264,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@7:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 2458,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 2459,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@11:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 2459,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@12:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 2459,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@13:[X:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 184,
+      "t": 2459,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@13:[instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 790,
+      "t": 2459,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@14:[A#1:put,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 305,
+      "t": 2459,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@15:[A#1:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 276,
+      "t": 2460,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@16:[A#1:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 305,
+      "t": 2460,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@17:[A#1:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 306,
+      "t": 2460,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@18:[A#1:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 277,
+      "t": 2460,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@19:[A#1:patch,instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 190,
+      "t": 2460,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@19:[instance_presence:HVqvcFMgiUMmSpAPaEmHd:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 876,
+      "t": 2462,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": null
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 2460,
+      "t": 2466,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": "wipe_presence",
+      "diff": 3
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 1092,
+      "t": 2473,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "B#1:put",
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"B#1\":[\"put\",{\"x\":700,\"y\":500,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"B#1\",\"type\":\"geo\",\"props\":{\"w\":120,\"h\":80,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"red\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a2M82\",\"typeName\":\"shape\"}],\"X\":[\"patch\",{\"props\":[\"patch\",{\"color\":[\"put\",\"red\"]}]}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 2476,
+      "conn": 3,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 817,
+      "t": 2476,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@20:[B#1:put,X:patch,instance_presence:qR9_EB6sKsseBQYYwc0ZR:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "X": 20,
+     "B#1": 20,
+     "A#1": 19
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": [
+    "B error: WebSocket connection to 'ws://127.0.0.1:5202/connect/c14-seq-mv2rv1mr?sessionId=TLDRAW_INSTANCE_STATE_V1_3cNzic0V_9wC8f6Enfzp3&storeId=l8oOY41L1_XHxxDIccft-' failed: Error in connection establishment:"
+   ]
+  }
+ ]
+}

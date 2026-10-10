@@ -1,0 +1,3823 @@
+{
+ "caso": "c05_criar_no_mesmo_z",
+ "o_que": "A e B criam cada um um rectângulo novo, sobrepostos, ao mesmo tempo",
+ "pergunta": "qual fica por cima; A e B concordam na ordem de z?",
+ "existe": true,
+ "resposta": "por cima = maior índice local em 6/6, = última libertada em 5/6; A e B concordam em 6/6; índices mantidos em 6/6 — AB-s1: por cima B (índices locais A=a1Avr B=a1O3z, mantidos) · AB-s2: por cima A (índices locais A=a1gkU B=a1THM, mantidos) · AB-s3: por cima B (índices locais A=a17Zf B=a1A5E, mantidos) · BA-s1: por cima A (índices locais A=a1d9I B=a1bGj, mantidos) · BA-s2: por cima A (índices locais A=a1Uxa B=a1THf, mantidos) · BA-s3: por cima A (índices locais A=a1jFA B=a13Zf, mantidos)",
+ "subcorridas": [
+  {
+   "subcorrida": "AB-s1",
+   "sala": "c05-AB-s1-mv2rtdp0",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A cria um rectângulo (tecla r, arrasto (300,300)→(460,400)); B cria outro ((350,330)→(510,430))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1Avr",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1O3z",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a1Avr",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1O3z",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1Avr",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1O3z",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1Avr",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1O3z",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "A→B",
+    "criados": {
+     "A": [
+      "A#1"
+     ],
+     "B": [
+      "B#1"
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 8,
+    "preparo_convergiu_ms": 5,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 7,
+      "bytes": 2327,
+      "com_documento": 6
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2306,
+      "com_documento": 6
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 3201,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 3222,
+      "com_documento": 2
+     }
+    },
+    "retidas": {
+     "A": 7,
+     "B": 8
+    },
+    "libertacoes": [
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 7,
+      "enviadas": 7,
+      "t": 1029
+     },
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1530
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 720,
+      "t": 51,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:T2s8mXTt1MEPO3Nh57_wa:put",
+       "shape:tA4AuXMsCoZoQClY7urQK:put"
+      ],
+      "presenca": false,
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 331,
+      "t": 69,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 278,
+      "t": 101,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:tA4AuXMsCoZoQClY7urQK:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:tA4AuXMsCoZoQClY7urQK\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 135,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:tA4AuXMsCoZoQClY7urQK:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:tA4AuXMsCoZoQClY7urQK\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 168,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:tA4AuXMsCoZoQClY7urQK:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:tA4AuXMsCoZoQClY7urQK\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 202,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:tA4AuXMsCoZoQClY7urQK:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:tA4AuXMsCoZoQClY7urQK\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 226,
+      "t": 235,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:tA4AuXMsCoZoQClY7urQK:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:tA4AuXMsCoZoQClY7urQK\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1029
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 321,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 754,
+      "t": 358,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:YCAz-ERE_Ai4JfvVP3DYq:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:YCAz-ERE_Ai4JfvVP3DYq\":[\"put\",{\"x\":350,\"y\":330,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:YCAz-ERE_Ai4JfvVP3DYq\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1O3z\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 278,
+      "t": 401,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:YCAz-ERE_Ai4JfvVP3DYq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:YCAz-ERE_Ai4JfvVP3DYq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 435,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:YCAz-ERE_Ai4JfvVP3DYq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:YCAz-ERE_Ai4JfvVP3DYq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 468,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:YCAz-ERE_Ai4JfvVP3DYq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:YCAz-ERE_Ai4JfvVP3DYq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 502,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:YCAz-ERE_Ai4JfvVP3DYq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:YCAz-ERE_Ai4JfvVP3DYq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 535,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:YCAz-ERE_Ai4JfvVP3DYq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:YCAz-ERE_Ai4JfvVP3DYq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 568,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1530
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1030,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 746,
+      "t": 1030,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[user:T2s8mXTt1MEPO3Nh57_wa:put,A#1:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 462,
+      "t": 1046,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2",
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 1838,
+      "t": 1046,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[instance_presence:ZeKBWRceynApFvAi2gvi_:patch]",
+       "patch@4:[A#1:patch,instance_presence:ZeKBWRceynApFvAi2gvi_:patch]",
+       "patch@5:[A#1:patch,instance_presence:ZeKBWRceynApFvAi2gvi_:patch]",
+       "patch@6:[A#1:patch,instance_presence:ZeKBWRceynApFvAi2gvi_:patch]",
+       "patch@7:[A#1:patch,instance_presence:ZeKBWRceynApFvAi2gvi_:patch]",
+       "patch@8:[A#1:patch,instance_presence:ZeKBWRceynApFvAi2gvi_:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 1532,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 1532,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[instance_presence:PObtITVGCDnWwSuCuEWT-:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 541,
+      "t": 1548,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8",
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2417,
+      "t": 1549,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[B#1:put,instance_presence:PObtITVGCDnWwSuCuEWT-:patch]",
+       "patch@10:[B#1:patch,instance_presence:PObtITVGCDnWwSuCuEWT-:patch]",
+       "patch@11:[B#1:patch,instance_presence:PObtITVGCDnWwSuCuEWT-:patch]",
+       "patch@12:[B#1:patch,instance_presence:PObtITVGCDnWwSuCuEWT-:patch]",
+       "patch@13:[B#1:patch,instance_presence:PObtITVGCDnWwSuCuEWT-:patch]",
+       "patch@14:[B#1:patch,instance_presence:PObtITVGCDnWwSuCuEWT-:patch]",
+       "patch@14:[instance_presence:PObtITVGCDnWwSuCuEWT-:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "A#1": 8,
+     "B#1": 14
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "AB-s2",
+   "sala": "c05-AB-s2-mv2rtg5k",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A cria um rectângulo (tecla r, arrasto (300,300)→(460,400)); B cria outro ((350,330)→(510,430))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1THM",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1gkU",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a1THM",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1gkU",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1THM",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1gkU",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1gkU",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1THM",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "A→B",
+    "criados": {
+     "A": [
+      "A#1"
+     ],
+     "B": [
+      "B#1"
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 4,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 8,
+      "bytes": 2485,
+      "com_documento": 6
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2306,
+      "com_documento": 6
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 3274,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 3413,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 8,
+     "B": 8
+    },
+    "libertacoes": [
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1023
+     },
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1526
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 184,
+      "t": 16,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:_u0_RoYR6SsvD8HTbWDKO:put"
+      ],
+      "presenca": false,
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 908,
+      "t": 38,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "shape:d3S_RU1zP8rnoeuWD97Aq:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:d3S_RU1zP8rnoeuWD97Aq\":[\"put\",{\"x\":300,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:d3S_RU1zP8rnoeuWD97Aq\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1gkU\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 278,
+      "t": 81,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:d3S_RU1zP8rnoeuWD97Aq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:d3S_RU1zP8rnoeuWD97Aq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 114,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:d3S_RU1zP8rnoeuWD97Aq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:d3S_RU1zP8rnoeuWD97Aq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 148,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:d3S_RU1zP8rnoeuWD97Aq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:d3S_RU1zP8rnoeuWD97Aq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 181,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:d3S_RU1zP8rnoeuWD97Aq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:d3S_RU1zP8rnoeuWD97Aq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 214,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:d3S_RU1zP8rnoeuWD97Aq:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:d3S_RU1zP8rnoeuWD97Aq\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 123,
+      "t": 248,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1023
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 315,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 754,
+      "t": 355,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:LBgPtubO-sjl6sIP57_bA:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:LBgPtubO-sjl6sIP57_bA\":[\"put\",{\"x\":350,\"y\":330,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:LBgPtubO-sjl6sIP57_bA\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1THM\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 278,
+      "t": 398,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:LBgPtubO-sjl6sIP57_bA:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:LBgPtubO-sjl6sIP57_bA\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 431,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:LBgPtubO-sjl6sIP57_bA:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:LBgPtubO-sjl6sIP57_bA\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 464,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:LBgPtubO-sjl6sIP57_bA:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:LBgPtubO-sjl6sIP57_bA\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 498,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:LBgPtubO-sjl6sIP57_bA:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:LBgPtubO-sjl6sIP57_bA\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 531,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:LBgPtubO-sjl6sIP57_bA:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:LBgPtubO-sjl6sIP57_bA\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 565,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1526
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1025,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 210,
+      "t": 1025,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@2:[user:_u0_RoYR6SsvD8HTbWDKO:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 535,
+      "t": 1041,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2",
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 2565,
+      "t": 1041,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[A#1:put,instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]",
+       "patch@4:[A#1:patch,instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]",
+       "patch@5:[A#1:patch,instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]",
+       "patch@6:[A#1:patch,instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]",
+       "patch@7:[A#1:patch,instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]",
+       "patch@8:[A#1:patch,instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]",
+       "patch@8:[instance_presence:iRVJeHhKAGlN0vajxK1kp:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 1529,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 1529,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 541,
+      "t": 1544,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8",
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2417,
+      "t": 1545,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[B#1:put,instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]",
+       "patch@10:[B#1:patch,instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]",
+       "patch@11:[B#1:patch,instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]",
+       "patch@12:[B#1:patch,instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]",
+       "patch@13:[B#1:patch,instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]",
+       "patch@14:[B#1:patch,instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]",
+       "patch@14:[instance_presence:-wwnGQa5HgwJ0hY8THWpt:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "B#1": 14,
+     "A#1": 8
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "AB-s3",
+   "sala": "c05-AB-s3-mv2rtij1",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A cria um rectângulo (tecla r, arrasto (300,300)→(460,400)); B cria outro ((350,330)→(510,430))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a17Zf",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1A5E",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a17Zf",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1A5E",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a17Zf",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1A5E",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a17Zf",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1A5E",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "A→B",
+    "criados": {
+     "A": [
+      "A#1"
+     ],
+     "B": [
+      "B#1"
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 4,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 8,
+      "bytes": 2485,
+      "com_documento": 6
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2306,
+      "com_documento": 6
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 3275,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 3414,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 8,
+     "B": 8
+    },
+    "libertacoes": [
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1040
+     },
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1542
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 184,
+      "t": 33,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:MNc57iPVMibmg_JnM148y:put"
+      ],
+      "presenca": false,
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 908,
+      "t": 55,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "shape:X0OOd4a8icuvG8vaecpfP:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:X0OOd4a8icuvG8vaecpfP\":[\"put\",{\"x\":300,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:X0OOd4a8icuvG8vaecpfP\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a17Zf\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 278,
+      "t": 98,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:X0OOd4a8icuvG8vaecpfP:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:X0OOd4a8icuvG8vaecpfP\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 131,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:X0OOd4a8icuvG8vaecpfP:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:X0OOd4a8icuvG8vaecpfP\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 165,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:X0OOd4a8icuvG8vaecpfP:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:X0OOd4a8icuvG8vaecpfP\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 198,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:X0OOd4a8icuvG8vaecpfP:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:X0OOd4a8icuvG8vaecpfP\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 231,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:X0OOd4a8icuvG8vaecpfP:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:X0OOd4a8icuvG8vaecpfP\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 123,
+      "t": 265,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1040
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 334,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 754,
+      "t": 372,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:PwCAlOm1WbCuV1METVuSI:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:PwCAlOm1WbCuV1METVuSI\":[\"put\",{\"x\":350,\"y\":330,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:PwCAlOm1WbCuV1METVuSI\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1A5E\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 278,
+      "t": 415,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:PwCAlOm1WbCuV1METVuSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:PwCAlOm1WbCuV1METVuSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 448,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:PwCAlOm1WbCuV1METVuSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:PwCAlOm1WbCuV1METVuSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 481,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:PwCAlOm1WbCuV1METVuSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:PwCAlOm1WbCuV1METVuSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 515,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:PwCAlOm1WbCuV1METVuSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:PwCAlOm1WbCuV1METVuSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 548,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:PwCAlOm1WbCuV1METVuSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:PwCAlOm1WbCuV1METVuSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 581,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1542
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1042,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 210,
+      "t": 1042,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[user:MNc57iPVMibmg_JnM148y:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 535,
+      "t": 1059,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2",
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 2565,
+      "t": 1059,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[A#1:put,instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]",
+       "patch@5:[A#1:patch,instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]",
+       "patch@6:[A#1:patch,instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]",
+       "patch@7:[A#1:patch,instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]",
+       "patch@8:[A#1:patch,instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]",
+       "patch@9:[A#1:patch,instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]",
+       "patch@9:[instance_presence:2OfZQep4k2lPQb5AvLK4h:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 1545,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 1545,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 542,
+      "t": 1562,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8",
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2418,
+      "t": 1563,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[B#1:put,instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]",
+       "patch@11:[B#1:patch,instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]",
+       "patch@12:[B#1:patch,instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]",
+       "patch@13:[B#1:patch,instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]",
+       "patch@14:[B#1:patch,instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]",
+       "patch@15:[B#1:patch,instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]",
+       "patch@15:[instance_presence:ti0Kcg4_sJvGBAvCOU_Yx:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "A#1": 9,
+     "B#1": 15
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "BA-s1",
+   "sala": "c05-BA-s1-mv2rtkx6",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A cria um rectângulo (tecla r, arrasto (300,300)→(460,400)); B cria outro ((350,330)→(510,430))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1bGj",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1d9I",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a1bGj",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1d9I",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1bGj",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1d9I",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1d9I",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1bGj",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "B→A",
+    "criados": {
+     "A": [
+      "A#1"
+     ],
+     "B": [
+      "B#1"
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 3,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 8,
+      "bytes": 2485,
+      "com_documento": 6
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2306,
+      "com_documento": 6
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 3414,
+      "com_documento": 1
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 3275,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 8,
+     "B": 8
+    },
+    "libertacoes": [
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1035
+     },
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1537
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 184,
+      "t": 26,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:b3hVI9pTwGavlp-1qQW76:put"
+      ],
+      "presenca": false,
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 908,
+      "t": 48,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "shape:jtyTUyYmZX1Q4o1-Q2ngd:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:jtyTUyYmZX1Q4o1-Q2ngd\":[\"put\",{\"x\":300,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:jtyTUyYmZX1Q4o1-Q2ngd\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1d9I\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 278,
+      "t": 91,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:jtyTUyYmZX1Q4o1-Q2ngd:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:jtyTUyYmZX1Q4o1-Q2ngd\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 124,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:jtyTUyYmZX1Q4o1-Q2ngd:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:jtyTUyYmZX1Q4o1-Q2ngd\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 158,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:jtyTUyYmZX1Q4o1-Q2ngd:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:jtyTUyYmZX1Q4o1-Q2ngd\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 191,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:jtyTUyYmZX1Q4o1-Q2ngd:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:jtyTUyYmZX1Q4o1-Q2ngd\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 224,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:jtyTUyYmZX1Q4o1-Q2ngd:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:jtyTUyYmZX1Q4o1-Q2ngd\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 123,
+      "t": 258,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 325,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 754,
+      "t": 365,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:nr2_vJpbfJrpLLNmavOCS:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:nr2_vJpbfJrpLLNmavOCS\":[\"put\",{\"x\":350,\"y\":330,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:nr2_vJpbfJrpLLNmavOCS\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1bGj\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 278,
+      "t": 408,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:nr2_vJpbfJrpLLNmavOCS:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:nr2_vJpbfJrpLLNmavOCS\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 441,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:nr2_vJpbfJrpLLNmavOCS:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:nr2_vJpbfJrpLLNmavOCS\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 474,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:nr2_vJpbfJrpLLNmavOCS:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:nr2_vJpbfJrpLLNmavOCS\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 508,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:nr2_vJpbfJrpLLNmavOCS:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:nr2_vJpbfJrpLLNmavOCS\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 541,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:nr2_vJpbfJrpLLNmavOCS:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:nr2_vJpbfJrpLLNmavOCS\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 575,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1035
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 1036,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 1036,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@2:[instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 535,
+      "t": 1053,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8",
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2411,
+      "t": 1053,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[B#1:put,instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]",
+       "patch@4:[B#1:patch,instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]",
+       "patch@5:[B#1:patch,instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]",
+       "patch@6:[B#1:patch,instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]",
+       "patch@7:[B#1:patch,instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]",
+       "patch@8:[B#1:patch,instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]",
+       "patch@8:[instance_presence:Abr4wQuPEuPlQzbNQExvX:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1539,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 210,
+      "t": 1539,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[user:b3hVI9pTwGavlp-1qQW76:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 542,
+      "t": 1556,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2",
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 2572,
+      "t": 1556,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[A#1:put,instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]",
+       "patch@11:[A#1:patch,instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]",
+       "patch@12:[A#1:patch,instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]",
+       "patch@13:[A#1:patch,instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]",
+       "patch@14:[A#1:patch,instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]",
+       "patch@15:[A#1:patch,instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]",
+       "patch@15:[instance_presence:Qy3Pe738UGi7QfKN3a7Ul:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "B#1": 8,
+     "A#1": 15
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "BA-s2",
+   "sala": "c05-BA-s2-mv2rtnat",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A cria um rectângulo (tecla r, arrasto (300,300)→(460,400)); B cria outro ((350,330)→(510,430))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1THf",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1Uxa",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a1THf",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1Uxa",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1THf",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1Uxa",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1Uxa",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a1THf",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "B→A",
+    "criados": {
+     "A": [
+      "A#1"
+     ],
+     "B": [
+      "B#1"
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 4,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 8,
+      "bytes": 2485,
+      "com_documento": 6
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2306,
+      "com_documento": 6
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 3275,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 3414,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 8,
+     "B": 8
+    },
+    "libertacoes": [
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1034
+     },
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1537
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 184,
+      "t": 42,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:ZIG9teNnpWwG-oqBDq7bg:put"
+      ],
+      "presenca": false,
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 862,
+      "t": 59,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "shape:k08ysPqKI2Z05IRfHJdgb:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:k08ysPqKI2Z05IRfHJdgb\":[\"put\",{\"x\":300,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:k08ysPqKI2Z05IRfHJdgb\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1Uxa\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 324,
+      "t": 91,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:k08ysPqKI2Z05IRfHJdgb:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:k08ysPqKI2Z05IRfHJdgb\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 125,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:k08ysPqKI2Z05IRfHJdgb:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:k08ysPqKI2Z05IRfHJdgb\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 158,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:k08ysPqKI2Z05IRfHJdgb:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:k08ysPqKI2Z05IRfHJdgb\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 191,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:k08ysPqKI2Z05IRfHJdgb:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:k08ysPqKI2Z05IRfHJdgb\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 225,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:k08ysPqKI2Z05IRfHJdgb:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:k08ysPqKI2Z05IRfHJdgb\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 123,
+      "t": 258,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1537
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 327,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 754,
+      "t": 366,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:7eafIdHzjdNAaQNM3SgEG:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:7eafIdHzjdNAaQNM3SgEG\":[\"put\",{\"x\":350,\"y\":330,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:7eafIdHzjdNAaQNM3SgEG\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1THf\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 278,
+      "t": 408,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:7eafIdHzjdNAaQNM3SgEG:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:7eafIdHzjdNAaQNM3SgEG\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 441,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:7eafIdHzjdNAaQNM3SgEG:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:7eafIdHzjdNAaQNM3SgEG\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 475,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:7eafIdHzjdNAaQNM3SgEG:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:7eafIdHzjdNAaQNM3SgEG\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 508,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:7eafIdHzjdNAaQNM3SgEG:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:7eafIdHzjdNAaQNM3SgEG\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 541,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:7eafIdHzjdNAaQNM3SgEG:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:7eafIdHzjdNAaQNM3SgEG\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 575,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1034
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 1036,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@2:[instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 1036,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 535,
+      "t": 1052,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8",
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2411,
+      "t": 1052,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[B#1:put,instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]",
+       "patch@4:[B#1:patch,instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]",
+       "patch@5:[B#1:patch,instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]",
+       "patch@6:[B#1:patch,instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]",
+       "patch@7:[B#1:patch,instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]",
+       "patch@8:[B#1:patch,instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]",
+       "patch@8:[instance_presence:ZVmq7C9w2NpF4nt4qd-EH:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1540,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 210,
+      "t": 1540,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[user:ZIG9teNnpWwG-oqBDq7bg:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 542,
+      "t": 1555,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2",
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 2572,
+      "t": 1556,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[A#1:put,instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]",
+       "patch@11:[A#1:patch,instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]",
+       "patch@12:[A#1:patch,instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]",
+       "patch@13:[A#1:patch,instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]",
+       "patch@14:[A#1:patch,instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]",
+       "patch@15:[A#1:patch,instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]",
+       "patch@15:[instance_presence:qS40KJgJ7Wl2bjAXIe6p7:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "B#1": 8,
+     "A#1": 15
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "BA-s3",
+   "sala": "c05-BA-s3-mv2rtpog",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A cria um rectângulo (tecla r, arrasto (300,300)→(460,400)); B cria outro ((350,330)→(510,430))"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a13Zf",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1jFA",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a13Zf",
+       "id": "B#1",
+       "type": "geo",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a1jFA",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a13Zf",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1jFA",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a1jFA",
+       "x": 300,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a13Zf",
+       "x": 350,
+       "y": 330,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "B→A",
+    "criados": {
+     "A": [
+      "A#1"
+     ],
+     "B": [
+      "B#1"
+     ]
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 5,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 8,
+      "bytes": 2485,
+      "com_documento": 6
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2306,
+      "com_documento": 6
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 3413,
+      "com_documento": 1
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 3274,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 8,
+     "B": 8
+    },
+    "libertacoes": [
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1024
+     },
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 8,
+      "enviadas": 8,
+      "t": 1527
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 184,
+      "t": 33,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:vzm6UkjrlyxLMKjyWI4jj:put"
+      ],
+      "presenca": false,
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 862,
+      "t": 49,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "shape:sAofxoShj6mAN8UdwhkoX:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sAofxoShj6mAN8UdwhkoX\":[\"put\",{\"x\":300,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:sAofxoShj6mAN8UdwhkoX\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1jFA\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 324,
+      "t": 83,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:sAofxoShj6mAN8UdwhkoX:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sAofxoShj6mAN8UdwhkoX\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 116,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:sAofxoShj6mAN8UdwhkoX:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sAofxoShj6mAN8UdwhkoX\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 149,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:sAofxoShj6mAN8UdwhkoX:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sAofxoShj6mAN8UdwhkoX\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 183,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:sAofxoShj6mAN8UdwhkoX:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sAofxoShj6mAN8UdwhkoX\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 216,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:sAofxoShj6mAN8UdwhkoX:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sAofxoShj6mAN8UdwhkoX\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 123,
+      "t": 250,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1527
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 316,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 754,
+      "t": 356,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:ZPYSR4yBwuvNZx6lvWLdR:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:ZPYSR4yBwuvNZx6lvWLdR\":[\"put\",{\"x\":350,\"y\":330,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:ZPYSR4yBwuvNZx6lvWLdR\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a13Zf\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 278,
+      "t": 399,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:ZPYSR4yBwuvNZx6lvWLdR:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:ZPYSR4yBwuvNZx6lvWLdR\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}",
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 432,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:ZPYSR4yBwuvNZx6lvWLdR:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:ZPYSR4yBwuvNZx6lvWLdR\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}",
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 466,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:ZPYSR4yBwuvNZx6lvWLdR:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:ZPYSR4yBwuvNZx6lvWLdR\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}",
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 499,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:ZPYSR4yBwuvNZx6lvWLdR:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:ZPYSR4yBwuvNZx6lvWLdR\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}",
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 533,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:ZPYSR4yBwuvNZx6lvWLdR:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:ZPYSR4yBwuvNZx6lvWLdR\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}",
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 566,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1024
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 1026,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 1026,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@1:[instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 535,
+      "t": 1043,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8",
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2411,
+      "t": 1043,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@2:[B#1:put,instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]",
+       "patch@3:[B#1:patch,instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]",
+       "patch@4:[B#1:patch,instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]",
+       "patch@5:[B#1:patch,instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]",
+       "patch@6:[B#1:patch,instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]",
+       "patch@7:[B#1:patch,instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]",
+       "patch@7:[instance_presence:3I4XPRHtZA6ZVEQEBkXqg:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 210,
+      "t": 1530,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[user:vzm6UkjrlyxLMKjyWI4jj:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1530,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 541,
+      "t": 1545,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2",
+       "push_result:commit:3",
+       "push_result:commit:4",
+       "push_result:commit:5",
+       "push_result:commit:6",
+       "push_result:commit:7",
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 2571,
+      "t": 1545,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[A#1:put,instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]",
+       "patch@10:[A#1:patch,instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]",
+       "patch@11:[A#1:patch,instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]",
+       "patch@12:[A#1:patch,instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]",
+       "patch@13:[A#1:patch,instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]",
+       "patch@14:[A#1:patch,instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]",
+       "patch@14:[instance_presence:o4cZxQEmKF5oJ6B4kaQR9:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "B#1": 7,
+     "A#1": 14
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  }
+ ]
+}

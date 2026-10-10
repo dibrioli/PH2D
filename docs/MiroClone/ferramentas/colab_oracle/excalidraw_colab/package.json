@@ -1,0 +1,11 @@
+{
+  "name": "ph2d-excalidraw-colab-oracle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Oráculo da colaboração ao vivo do Excalidraw (app do excalidraw.com + excalidraw-room em 127.0.0.1), corrido por Playwright. Nunca se lê o fonte.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

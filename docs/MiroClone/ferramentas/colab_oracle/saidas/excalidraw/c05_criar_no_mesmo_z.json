@@ -1,0 +1,495 @@
+{
+ "id": "c05_criar_no_mesmo_z",
+ "o_que": "A e B criam cada um um rectângulo novo, sobrepostos, ao mesmo tempo",
+ "pergunta": "qual fica por cima; A e B concordam na ordem de z?",
+ "existe": true,
+ "resposta": "A→B: por cima em A=XB, em B=XB (concordam; index XA:a0 XB:a1); B→A: por cima em A=XB, em B=XB (concordam; index XA:a0 XB:a1)",
+ "resposta_corrida2": "A→B: por cima em A=XB, em B=XB (concordam; index XA:a0 XB:a1); B→A: por cima em A=XB, em B=XB (concordam; index XA:a0 XB:a1)",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": [
+  {
+   "ordem": "A→B",
+   "convergiu": true,
+   "concordam": true
+  },
+  {
+   "ordem": "B→A",
+   "convergiu": true,
+   "concordam": true
+  }
+ ],
+ "variavel": {
+  "por_cima": [
+   {
+    "A": "XB",
+    "B": "XB"
+   },
+   {
+    "A": "XB",
+    "B": "XB"
+   }
+  ],
+  "index": [
+   [
+    "XA:a0",
+    "XB:a1"
+   ],
+   [
+    "XA:a0",
+    "XB:a1"
+   ]
+  ],
+  "ms_ate_convergir_por_rodada": [
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    18989
+   ]
+  ]
+ },
+ "medidas_faixa_das_duas": null,
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": [
+  {
+   "ordem": "A→B",
+   "convergiu": true,
+   "ms_ate_convergir": 2,
+   "local_antes": {
+    "A": [
+     "XA:a0"
+    ],
+    "B": [
+     "XB:a0"
+    ]
+   },
+   "z_A": [
+    "XA",
+    "XB"
+   ],
+   "z_B": [
+    "XA",
+    "XB"
+   ],
+   "index": [
+    "XA:a0",
+    "XB:a1"
+   ],
+   "por_cima": {
+    "A": "XB",
+    "B": "XB"
+   }
+  },
+  {
+   "ordem": "B→A",
+   "convergiu": true,
+   "ms_ate_convergir": 18989,
+   "local_antes": {
+    "A": [
+     "XA:a0"
+    ],
+    "B": [
+     "XB:a0"
+    ]
+   },
+   "z_A": [
+    "XA",
+    "XB"
+   ],
+   "z_B": [
+    "XA",
+    "XB"
+   ],
+   "index": [
+    "XA:a0",
+    "XB:a1"
+   ],
+   "por_cima": {
+    "A": "XB",
+    "B": "XB"
+   }
+  }
+ ],
+ "prova": null,
+ "estado_final": {
+  "A": [
+   {
+    "papel": "XA",
+    "z": 0,
+    "id": "GktMEhcULxyRZ_hm7QmqV",
+    "type": "rectangle",
+    "x": 400,
+    "y": 300,
+    "width": 160,
+    "height": 100,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#ffc9c9",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a0",
+    "version": 7,
+    "versionNonce": 1389558671,
+    "updated": 1791659976163,
+    "boundElements": null,
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   },
+   {
+    "papel": "XB",
+    "z": 1,
+    "id": "TyCc1yPgTo3ZCSJA2XTtl",
+    "type": "rectangle",
+    "x": 450,
+    "y": 340,
+    "width": 160,
+    "height": 100,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#b2f2bb",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a1",
+    "version": 8,
+    "versionNonce": 621827360,
+    "updated": 1791659977137,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ],
+  "B": [
+   {
+    "papel": "XA",
+    "z": 0,
+    "id": "GktMEhcULxyRZ_hm7QmqV",
+    "type": "rectangle",
+    "x": 400,
+    "y": 300,
+    "width": 160,
+    "height": 100,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#ffc9c9",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a0",
+    "version": 7,
+    "versionNonce": 1389558671,
+    "updated": 1791659976163,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   },
+   {
+    "papel": "XB",
+    "z": 1,
+    "id": "TyCc1yPgTo3ZCSJA2XTtl",
+    "type": "rectangle",
+    "x": 450,
+    "y": 340,
+    "width": 160,
+    "height": 100,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#b2f2bb",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a1",
+    "version": 8,
+    "versionNonce": 621827360,
+    "updated": 1791659977137,
+    "boundElements": null,
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ]
+ },
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 319,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 737,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 1661,
+   "par": "A",
+   "ev": "liberta",
+   "n": 9
+  },
+  {
+   "t": 1863,
+   "par": "B",
+   "ev": "liberta",
+   "n": 11
+  },
+  {
+   "t": 2063,
+   "par": "A",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 2063,
+   "par": "B",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 2066,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 2066,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 2068,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 2068,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 2368,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 2771,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 3729,
+   "par": "B",
+   "ev": "liberta",
+   "n": 11
+  },
+  {
+   "t": 3930,
+   "par": "A",
+   "ev": "liberta",
+   "n": 10
+  },
+  {
+   "t": 4130,
+   "par": "A",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 4130,
+   "par": "B",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 23120,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 23120,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 23122,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 23122,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 138,
+  "linhas": [
+   [344,"A","recebe","engine:0{",107],
+   [346,"A","envia","engine:40",2],
+   [351,"A","recebe","engine:40",32],
+   [351,"A","recebe","init-room",15],
+   [352,"A","envia","join-room",38],
+   [352,"A","recebe","first-in-room",19],
+   [353,"A","recebe","room-user-change",47],
+   [744,"B","recebe","engine:0{",107],
+   [745,"B","envia","engine:40",2],
+   [745,"B","recebe","engine:40",32],
+   [745,"B","recebe","init-room",15],
+   [746,"A","recebe","new-user",37],
+   [746,"A","recebe","room-user-change",70],
+   [746,"B","envia","join-room",38],
+   [746,"B","recebe","room-user-change",70],
+   [747,"A","envia","server-broadcast",182],
+   [755,"B","recebe","client-broadcast",159],
+   [801,"A","envia","server-volatile-broadcast",325],
+   [806,"A","envia","server-broadcast",184],
+   [821,"A","envia","server-broadcast",657],
+   [837,"A","envia","server-broadcast",658],
+   [837,"A","envia","server-volatile-broadcast",327],
+   [851,"A","envia","server-broadcast",659],
+   [868,"A","envia","server-broadcast",661],
+   [875,"A","envia","server-volatile-broadcast",353],
+   [905,"A","envia","server-broadcast",657],
+   [950,"B","envia","server-volatile-broadcast",328],
+   [956,"B","envia","server-broadcast",184],
+   [956,"B","envia","server-broadcast",184],
+   [970,"B","envia","server-broadcast",658],
+   [983,"B","envia","server-volatile-broadcast",330],
+   [988,"B","envia","server-broadcast",658],
+   [1002,"B","envia","server-broadcast",659],
+   [1016,"B","envia","server-volatile-broadcast",330],
+   [1019,"B","envia","server-broadcast",660],
+   [1048,"B","envia","server-volatile-broadcast",356],
+   [1054,"B","envia","server-broadcast",656],
+   [1664,"B","recebe","client-broadcast",293],
+   [1664,"B","recebe","client-broadcast",161],
+   [1665,"B","recebe","client-broadcast",634],
+   [1665,"B","recebe","client-broadcast",635],
+   [1665,"B","recebe","client-broadcast",295],
+   [1665,"B","recebe","client-broadcast",636],
+   [1665,"B","recebe","client-broadcast",638],
+   [1666,"B","recebe","client-broadcast",634],
+   [1865,"A","recebe","client-broadcast",296],
+   [1866,"A","recebe","client-broadcast",161],
+   [1866,"A","recebe","client-broadcast",161],
+   [1867,"A","recebe","client-broadcast",635],
+   [1867,"A","recebe","client-broadcast",635],
+   [1867,"A","recebe","client-broadcast",636],
+   [1867,"A","recebe","client-broadcast",637],
+   [1867,"A","recebe","client-broadcast",633],
+   [2391,"A","recebe","engine:0{",107],
+   [2393,"A","envia","engine:40",2],
+   [2401,"A","recebe","engine:40",32],
+   [2401,"A","recebe","init-room",15],
+   [2402,"A","envia","join-room",38],
+   [2403,"A","recebe","first-in-room",19],
+   [2403,"A","recebe","room-user-change",47],
+   [2782,"B","recebe","engine:0{",107],
+   [2786,"B","envia","engine:40",2],
+   [2787,"B","recebe","engine:40",32],
+   [2787,"B","recebe","init-room",15],
+   [2788,"A","recebe","new-user",37],
+   [2788,"A","recebe","room-user-change",70],
+   [2788,"B","envia","join-room",38],
+   [2788,"B","recebe","room-user-change",70],
+   [2789,"A","envia","server-broadcast",182],
+   [2794,"B","recebe","client-broadcast",159],
+   [2867,"A","envia","server-volatile-broadcast",324],
+   [2872,"A","envia","server-broadcast",184],
+   [2887,"A","envia","server-broadcast",658],
+   [2900,"A","envia","server-volatile-broadcast",326],
+   [2905,"A","envia","server-broadcast",657],
+   [2919,"A","envia","server-broadcast",658],
+   [2933,"A","envia","server-volatile-broadcast",326],
+   [2935,"A","envia","server-broadcast",660],
+   [2966,"A","envia","server-volatile-broadcast",352],
+   [2971,"A","envia","server-broadcast",656],
+   [3017,"B","envia","server-volatile-broadcast",328],
+   [3023,"B","envia","server-broadcast",184],
+   [3023,"B","envia","server-broadcast",184],
+   [3037,"B","envia","server-broadcast",658],
+   [3049,"B","envia","server-volatile-broadcast",330],
+   [3054,"B","envia","server-broadcast",659],
+   [3068,"B","envia","server-broadcast",660],
+   [3083,"B","envia","server-volatile-broadcast",330],
+   [3085,"B","envia","server-broadcast",660],
+   [3116,"B","envia","server-volatile-broadcast",356],
+   [3121,"B","envia","server-broadcast",657],
+   [3732,"A","recebe","client-broadcast",296],
+   [3732,"A","recebe","client-broadcast",161],
+   [3733,"A","recebe","client-broadcast",161],
+   [3733,"A","recebe","client-broadcast",635],
+   [3735,"A","recebe","client-broadcast",298],
+   [3736,"A","recebe","client-broadcast",636],
+   [3736,"A","recebe","client-broadcast",637],
+   [3736,"A","recebe","client-broadcast",298],
+   [3736,"A","recebe","client-broadcast",637],
+   [3736,"A","recebe","client-broadcast",324],
+   [3737,"A","recebe","client-broadcast",634],
+   [3932,"B","recebe","client-broadcast",292],
+   [3936,"B","recebe","client-broadcast",161],
+   [3936,"B","recebe","client-broadcast",635],
+   [3936,"B","recebe","client-broadcast",294],
+   [3936,"B","recebe","client-broadcast",634],
+   [3937,"B","recebe","client-broadcast",635],
+   [3937,"B","recebe","client-broadcast",637],
+   [3937,"B","recebe","client-broadcast",633],
+   [5393,"A","envia","server-volatile-broadcast",259],
+   [5395,"B","recebe","client-broadcast",227],
+   [6002,"B","envia","server-volatile-broadcast",263],
+   [6003,"A","recebe","client-broadcast",231],
+   [8393,"A","envia","server-volatile-broadcast",259],
+   [8394,"B","recebe","client-broadcast",227],
+   [9001,"B","envia","server-volatile-broadcast",263],
+   [9002,"A","recebe","client-broadcast",231],
+   [11393,"A","envia","server-volatile-broadcast",259],
+   [11395,"B","recebe","client-broadcast",227],
+   [12002,"B","envia","server-volatile-broadcast",263],
+   [12003,"A","recebe","client-broadcast",231],
+   [14393,"A","envia","server-volatile-broadcast",259],
+   [14395,"B","recebe","client-broadcast",227],
+   [15001,"B","envia","server-volatile-broadcast",263],
+   [15003,"A","recebe","client-broadcast",231],
+   [17393,"A","envia","server-volatile-broadcast",259],
+   [17395,"B","recebe","client-broadcast",227],
+   [18001,"B","envia","server-volatile-broadcast",263],
+   [18003,"A","recebe","client-broadcast",231],
+   [20393,"A","envia","server-volatile-broadcast",259],
+   [20395,"B","recebe","client-broadcast",227],
+   [21002,"B","envia","server-volatile-broadcast",263],
+   [21003,"A","recebe","client-broadcast",231],
+   [22355,"A","envia","server-broadcast",1131],
+   [22357,"B","recebe","client-broadcast",1108],
+   [23022,"B","envia","server-broadcast",1127],
+   [23023,"A","recebe","client-broadcast",1104]
+  ]
+ }
+}

@@ -1,0 +1,187 @@
+{
+ "id": "c20_seleccao_alheia",
+ "o_que": "A selecciona X; B olha",
+ "pergunta": "B vê a selecção de A? com que cor/nome?",
+ "existe": true,
+ "resposta": "B VÊ a selecção de A: contorno tracejado desenhado (0→736 px, cor média rgb(168,255,168) vs avatar de A rgb(168,255,168) — a MESMA cor); o nome «Considerate Pigeon» aparece na etiqueta do cursor e no avatar",
+ "resposta_corrida2": "B VÊ a selecção de A: contorno tracejado desenhado (0→736 px, cor média rgb(168,226,255) vs avatar de A rgb(168,226,255) — a MESMA cor); o nome «Vital Partridge» aparece na etiqueta do cursor e no avatar",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": {
+  "B_ve_seleccao_no_estado": true,
+  "B_desenha_contorno": true,
+  "contorno_na_cor_do_avatar_de_A": true
+ },
+ "variavel": {
+  "pixels_cor_A_antes": {
+   "n": 0,
+   "rgb_medio": null
+  },
+  "pixels_cor_A_depois": {
+   "n": 736,
+   "rgb_medio": [
+    168,
+    [
+     226,
+     255
+    ],
+    [
+     168,
+     255
+    ]
+   ]
+  },
+  "cor_rgb": [
+   168,
+   [
+    226,
+    255
+   ],
+   [
+    168,
+    255
+   ]
+  ],
+  "nome": {
+   "corrida1": "Considerate Pigeon",
+   "corrida2": "Vital Partridge"
+  }
+ },
+ "medidas_faixa_das_duas": null,
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": null,
+ "prova": null,
+ "estado_final": {
+  "B_collaborators": [
+   {
+    "socketId": "<id>",
+    "username": "Considerate Pigeon",
+    "isCurrentUser": false,
+    "pointer": {
+     "x": 1100,
+     "y": 750,
+     "tool": "pointer"
+    },
+    "button": "up",
+    "selectedElementIds": [
+     "X"
+    ],
+    "userState": null,
+    "color": null
+   },
+   {
+    "socketId": "<id>",
+    "username": "Brave Locust",
+    "isCurrentUser": true,
+    "pointer": null,
+    "button": null,
+    "selectedElementIds": [],
+    "userState": null,
+    "color": null
+   }
+  ]
+ },
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 313,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 717,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 2682,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 2682,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 2683,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 2684,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 45,
+  "linhas": [
+   [336,"A","recebe","engine:0{",107],
+   [338,"A","envia","engine:40",2],
+   [345,"A","recebe","engine:40",32],
+   [346,"A","recebe","init-room",15],
+   [346,"A","envia","join-room",38],
+   [347,"A","recebe","first-in-room",19],
+   [347,"A","recebe","room-user-change",47],
+   [732,"B","recebe","engine:0{",107],
+   [732,"B","envia","engine:40",2],
+   [733,"B","recebe","engine:40",32],
+   [733,"B","recebe","init-room",15],
+   [734,"B","envia","join-room",38],
+   [734,"B","recebe","room-user-change",70],
+   [735,"A","recebe","new-user",37],
+   [735,"A","recebe","room-user-change",70],
+   [736,"A","envia","server-broadcast",182],
+   [741,"B","recebe","client-broadcast",159],
+   [811,"A","envia","server-volatile-broadcast",330],
+   [817,"A","envia","server-broadcast",184],
+   [818,"B","recebe","client-broadcast",298],
+   [818,"B","recebe","client-broadcast",161],
+   [833,"A","envia","server-broadcast",658],
+   [834,"B","recebe","client-broadcast",635],
+   [844,"A","envia","server-volatile-broadcast",332],
+   [850,"A","envia","server-broadcast",658],
+   [850,"B","recebe","client-broadcast",300],
+   [853,"B","recebe","client-broadcast",635],
+   [864,"A","envia","server-broadcast",659],
+   [865,"B","recebe","client-broadcast",636],
+   [877,"A","envia","server-volatile-broadcast",332],
+   [881,"A","envia","server-broadcast",661],
+   [881,"B","recebe","client-broadcast",300],
+   [888,"B","recebe","client-broadcast",638],
+   [911,"A","envia","server-volatile-broadcast",358],
+   [912,"B","recebe","client-broadcast",326],
+   [917,"A","envia","server-broadcast",657],
+   [919,"B","recebe","client-broadcast",634],
+   [923,"A","envia","server-volatile-broadcast",331],
+   [927,"B","recebe","client-broadcast",299],
+   [957,"A","envia","server-volatile-broadcast",331],
+   [958,"B","recebe","client-broadcast",299],
+   [1441,"A","envia","server-volatile-broadcast",330],
+   [1449,"B","recebe","client-broadcast",298],
+   [1474,"A","envia","server-volatile-broadcast",359],
+   [1475,"B","recebe","client-broadcast",327]
+  ]
+ }
+}

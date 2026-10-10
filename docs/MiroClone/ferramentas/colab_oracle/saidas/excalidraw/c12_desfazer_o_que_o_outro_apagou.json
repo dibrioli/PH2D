@@ -1,0 +1,309 @@
+{
+ "id": "c12_desfazer_o_que_o_outro_apagou",
+ "o_que": "A move X; B apaga X; A faz Ctrl+Z",
+ "pergunta": "X ressuscita?",
+ "existe": true,
+ "resposta": "Ctrl+Z ×4 de A: X†@(400,300)transparent → X†@(400,300)transparent → X†@(400,300)transparent → X†@(400,300)transparent ⇒ X NÃO ressuscita; Ctrl+Shift+Z ×2: X†@(600,300)#a5d8ff → X†@(600,300)#a5d8ff",
+ "resposta_corrida2": "Ctrl+Z ×4 de A: X†@(400,300)transparent → X†@(400,300)transparent → X†@(400,300)transparent → X†@(400,300)transparent ⇒ X NÃO ressuscita; Ctrl+Shift+Z ×2: X†@(600,300)#a5d8ff → X†@(600,300)#a5d8ff",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": [
+  {
+   "convergiu": true,
+   "mexeu_elementos": true,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": true,
+   "elementos": [
+    "X†@(600,300)#a5d8ff"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(600,300)#a5d8ff"
+   ]
+  }
+ ],
+ "variavel": null,
+ "medidas_faixa_das_duas": null,
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": [
+  {
+   "tecla": "Ctrl+Z",
+   "n": 1,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": true,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 2,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 3,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 4,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(400,300)transparent"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Shift+Z",
+   "n": 1,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": true,
+   "elementos": [
+    "X†@(600,300)#a5d8ff"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Shift+Z",
+   "n": 2,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(600,300)#a5d8ff"
+   ]
+  }
+ ],
+ "prova": null,
+ "estado_final": {
+  "A": [
+   {
+    "papel": "X",
+    "z": 0,
+    "id": "4tNgOMSgE8EdrJkUNsqFy",
+    "type": "rectangle",
+    "x": 600,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#a5d8ff",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": true,
+    "index": "a0",
+    "version": 22,
+    "versionNonce": 568392604,
+    "updated": 1791660017204,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ],
+  "B": [
+   {
+    "papel": "X",
+    "z": 0,
+    "id": "4tNgOMSgE8EdrJkUNsqFy",
+    "type": "rectangle",
+    "x": 600,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#a5d8ff",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": true,
+    "index": "a0",
+    "version": 22,
+    "versionNonce": 568392604,
+    "updated": 1791660017204,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ]
+ },
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 303,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 707,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 1421,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 1421,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 1423,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 1423,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 77,
+  "linhas": [
+   [326,"A","recebe","engine:0{",107],
+   [328,"A","envia","engine:40",2],
+   [334,"A","recebe","engine:40",32],
+   [335,"A","recebe","init-room",15],
+   [336,"A","envia","join-room",38],
+   [337,"A","recebe","first-in-room",19],
+   [337,"A","recebe","room-user-change",47],
+   [722,"B","recebe","engine:0{",107],
+   [722,"B","envia","engine:40",2],
+   [723,"B","recebe","engine:40",32],
+   [723,"B","recebe","init-room",15],
+   [724,"A","recebe","new-user",37],
+   [724,"B","envia","join-room",38],
+   [724,"B","recebe","room-user-change",70],
+   [725,"A","recebe","room-user-change",70],
+   [725,"A","envia","server-broadcast",182],
+   [730,"B","recebe","client-broadcast",159],
+   [800,"A","envia","server-volatile-broadcast",324],
+   [806,"A","envia","server-broadcast",184],
+   [807,"B","recebe","client-broadcast",292],
+   [807,"B","recebe","client-broadcast",161],
+   [821,"A","envia","server-broadcast",658],
+   [822,"B","recebe","client-broadcast",635],
+   [833,"A","envia","server-volatile-broadcast",326],
+   [839,"A","envia","server-broadcast",658],
+   [839,"B","recebe","client-broadcast",294],
+   [841,"B","recebe","client-broadcast",635],
+   [853,"A","envia","server-broadcast",659],
+   [855,"B","recebe","client-broadcast",636],
+   [866,"A","envia","server-volatile-broadcast",326],
+   [870,"A","envia","server-broadcast",660],
+   [872,"B","recebe","client-broadcast",294],
+   [872,"B","recebe","client-broadcast",637],
+   [900,"A","envia","server-volatile-broadcast",352],
+   [901,"B","recebe","client-broadcast",320],
+   [906,"A","envia","server-broadcast",656],
+   [907,"B","recebe","client-broadcast",633],
+   [917,"A","envia","server-volatile-broadcast",324],
+   [924,"B","recebe","client-broadcast",292],
+   [936,"A","envia","server-broadcast",654],
+   [938,"B","recebe","client-broadcast",631],
+   [950,"A","envia","server-volatile-broadcast",354],
+   [952,"A","envia","server-broadcast",656],
+   [953,"B","recebe","client-broadcast",322],
+   [953,"B","recebe","client-broadcast",633],
+   [969,"A","envia","server-broadcast",656],
+   [970,"B","recebe","client-broadcast",633],
+   [983,"A","envia","server-volatile-broadcast",354],
+   [986,"A","envia","server-broadcast",656],
+   [986,"B","recebe","client-broadcast",322],
+   [987,"B","recebe","client-broadcast",633],
+   [1003,"A","envia","server-broadcast",656],
+   [1005,"B","recebe","client-broadcast",633],
+   [1016,"A","envia","server-volatile-broadcast",354],
+   [1019,"B","recebe","client-broadcast",322],
+   [1020,"A","envia","server-broadcast",657],
+   [1022,"B","recebe","client-broadcast",634],
+   [1036,"A","envia","server-broadcast",657],
+   [1037,"B","recebe","client-broadcast",634],
+   [1048,"A","envia","server-volatile-broadcast",354],
+   [1049,"B","recebe","client-broadcast",322],
+   [1052,"A","envia","server-broadcast",656],
+   [1056,"B","recebe","client-broadcast",633],
+   [1081,"A","envia","server-volatile-broadcast",352],
+   [1082,"B","recebe","client-broadcast",320],
+   [1162,"B","envia","server-volatile-broadcast",326],
+   [1180,"B","envia","server-broadcast",653],
+   [1180,"B","envia","server-broadcast",653],
+   [1182,"A","recebe","client-broadcast",294],
+   [1184,"A","recebe","client-broadcast",630],
+   [1184,"A","recebe","client-broadcast",630],
+   [1195,"B","envia","server-volatile-broadcast",326],
+   [1196,"A","recebe","client-broadcast",294],
+   [1291,"A","envia","server-broadcast",658],
+   [1295,"B","recebe","client-broadcast",635],
+   [1413,"A","envia","server-broadcast",653],
+   [1414,"B","recebe","client-broadcast",630]
+  ]
+ }
+}

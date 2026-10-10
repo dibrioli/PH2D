@@ -1,0 +1,2025 @@
+{
+ "caso": "c22_trazer_todos",
+ "o_que": "A pede «trazer todos» (se o produto tem)",
+ "pergunta": "existe? o que acontece à câmara de B e C?",
+ "existe": false,
+ "resposta": "NÃO existe: nenhum item que case /bring (every|all)|summon|everyone|gather|all users|to me|follow me|ask .*follow|come here/i em 18 menus/diálogos (586 itens)",
+ "subcorridas": [
+  {
+   "subcorrida": "seq",
+   "sala": "c22-seq-mv2rwfsh",
+   "pares": [
+    "A",
+    "B",
+    "C"
+   ],
+   "cena": [
+    {
+     "nome": "X",
+     "type": "geo",
+     "x": 400,
+     "y": 250,
+     "props": {
+      "w": 160,
+      "h": 100,
+      "geo": "rectangle",
+      "fill": "solid",
+      "color": "black"
+     }
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "A abre cada menu e submenu e lista os itens: menu principal (+ cada submenu), menu de pessoas (+ linhas de B e C), menu de contexto sobre X e sobre o vazio, menu de acções, diálogo de atalhos"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a16Y6",
+       "id": "X",
+       "type": "geo",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "index": "a16Y6",
+       "id": "X",
+       "type": "geo",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "C": [
+      {
+       "index": "a16Y6",
+       "id": "X",
+       "type": "geo",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "servidor": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a16Y6",
+       "x": 400,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": [],
+      "C": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "procura": {
+     "padrao": "/bring (every|all)|summon|everyone|gather|all users|to me|follow me|ask .*follow|come here/i",
+     "achados": [],
+     "itens_por_menu": {
+      "menu_principal": 8,
+      "main-menu-sub.edit-button": 18,
+      "main-menu-sub.view-button": 18,
+      "main-menu-sub.export-all-as-button": 11,
+      "main-menu-sub.preferences-button": 20,
+      "main-menu-sub.help menu language-button": 20,
+      "menu_pessoas": 6,
+      "menu_pessoas_hover": 6,
+      "contexto_forma": 13,
+      "context-menu-sub.edit-button": 17,
+      "context-menu-sub.arrange-button": 17,
+      "context-menu-sub.reorder-button": 17,
+      "context-menu-sub.move-to-page-button": 17,
+      "context-menu-sub.copy-as-button": 16,
+      "context-menu-sub.export-as-button": 16,
+      "contexto_vazio": 5,
+      "menu_accoes": 20,
+      "atalhos": 341
+     }
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 70,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 25,
+      "bytes": 3205,
+      "com_documento": 0
+     },
+     "S→A": {
+      "mensagens": 25,
+      "bytes": 2361,
+      "com_documento": 0
+     },
+     "S→B": {
+      "mensagens": 25,
+      "bytes": 4771,
+      "com_documento": 0
+     },
+     "S→C": {
+      "mensagens": 25,
+      "bytes": 4771,
+      "com_documento": 0
+     },
+     "B→S": {
+      "mensagens": 1,
+      "bytes": 15,
+      "com_documento": 0
+     },
+     "C→S": {
+      "mensagens": 1,
+      "bytes": 15,
+      "com_documento": 0
+     }
+    },
+    "itens": {
+     "menu_principal": [
+      "main-menu-sub.edit-button|Edit|",
+      "main-menu-sub.view-button|View|",
+      "main-menu-sub.export-all-as-button|Export|",
+      "main-menu.insert-embed|Insert embed…Ctrl+I|",
+      "main-menu.insert-media|Upload media…Ctrl+U|",
+      "main-menu-sub.preferences-button|Preferences|",
+      "main-menu-sub.help menu language-button|Language|",
+      "main-menu.keyboard-shortcuts-button|Keyboard shortcuts|"
+     ],
+     "main-menu-sub.edit-button": [
+      "main-menu-sub.edit-button|Edit|",
+      "main-menu-sub.view-button|View|",
+      "main-menu-sub.export-all-as-button|Export|",
+      "main-menu.insert-embed|Insert embed…Ctrl+I|",
+      "main-menu.insert-media|Upload media…Ctrl+U|",
+      "main-menu-sub.preferences-button|Preferences|",
+      "main-menu-sub.help menu language-button|Language|",
+      "main-menu.keyboard-shortcuts-button|Keyboard shortcuts|",
+      "main-menu.undo|UndoCtrl+Z|",
+      "main-menu.redo|RedoCtrl+⇧+Z|",
+      "main-menu.cut|CutCtrl+X|",
+      "main-menu.copy|CopyCtrl+C|",
+      "main-menu.paste|PasteCtrl+V|",
+      "main-menu.delete|Delete⌫|",
+      "main-menu-sub.copy-as-button|Copy as|",
+      "main-menu-sub.export-as-button|Export as|",
+      "main-menu.unlock-all|Unlock all|",
+      "main-menu.select-all|Select allCtrl+A|"
+     ],
+     "main-menu-sub.view-button": [
+      "main-menu-sub.edit-button|Edit|",
+      "main-menu-sub.view-button|View|",
+      "main-menu-sub.export-all-as-button|Export|",
+      "main-menu.insert-embed|Insert embed…Ctrl+I|",
+      "main-menu.insert-media|Upload media…Ctrl+U|",
+      "main-menu-sub.preferences-button|Preferences|",
+      "main-menu-sub.help menu language-button|Language|",
+      "main-menu.keyboard-shortcuts-button|Keyboard shortcuts|",
+      "main-menu.undo|UndoCtrl+Z|",
+      "main-menu.redo|RedoCtrl+⇧+Z|",
+      "main-menu.cut|CutCtrl+X|",
+      "main-menu.copy|CopyCtrl+C|",
+      "main-menu.paste|PasteCtrl+V|",
+      "main-menu.delete|Delete⌫|",
+      "main-menu-sub.copy-as-button|Copy as|",
+      "main-menu-sub.export-as-button|Export as|",
+      "main-menu.unlock-all|Unlock all|",
+      "main-menu.select-all|Select allCtrl+A|"
+     ],
+     "main-menu-sub.export-all-as-button": [
+      "main-menu-sub.edit-button|Edit|",
+      "main-menu-sub.view-button|View|",
+      "main-menu-sub.export-all-as-button|Export|",
+      "main-menu.insert-embed|Insert embed…Ctrl+I|",
+      "main-menu.insert-media|Upload media…Ctrl+U|",
+      "main-menu-sub.preferences-button|Preferences|",
+      "main-menu-sub.help menu language-button|Language|",
+      "main-menu.keyboard-shortcuts-button|Keyboard shortcuts|",
+      "main-menu.export-all-as-svg|SVG|",
+      "main-menu.export-all-as-png|PNG|",
+      "|Transparent|"
+     ],
+     "main-menu-sub.preferences-button": [
+      "main-menu-sub.edit-button|Edit|",
+      "main-menu-sub.view-button|View|",
+      "main-menu-sub.export-all-as-button|Export|",
+      "main-menu.insert-embed|Insert embed…Ctrl+I|",
+      "main-menu.insert-media|Upload media…Ctrl+U|",
+      "main-menu-sub.preferences-button|Preferences|",
+      "main-menu-sub.help menu language-button|Language|",
+      "main-menu.keyboard-shortcuts-button|Keyboard shortcuts|",
+      "|Always snap|",
+      "|Tool lockQ|",
+      "|Show gridCtrl+'|",
+      "|Select on wrap|",
+      "|Focus modeCtrl+.|",
+      "|Edge scrolling|",
+      "|Dynamic size|",
+      "|Paste at cursor|",
+      "|Debug mode|",
+      "main-menu-sub.help menu accessibility-button|Accessibility|",
+      "main-menu-sub.help menu input-mode-button|Input device|",
+      "main-menu-sub.help menu color-scheme-button|Theme|"
+     ],
+     "main-menu-sub.help menu language-button": [
+      "main-menu-sub.edit-button|Edit|",
+      "main-menu-sub.view-button|View|",
+      "main-menu-sub.export-all-as-button|Export|",
+      "main-menu.insert-embed|Insert embed…Ctrl+I|",
+      "main-menu.insert-media|Upload media…Ctrl+U|",
+      "main-menu-sub.preferences-button|Preferences|",
+      "main-menu-sub.help menu language-button|Language|",
+      "main-menu.keyboard-shortcuts-button|Keyboard shortcuts|",
+      "|Always snap|",
+      "|Tool lockQ|",
+      "|Show gridCtrl+'|",
+      "|Select on wrap|",
+      "|Focus modeCtrl+.|",
+      "|Edge scrolling|",
+      "|Dynamic size|",
+      "|Paste at cursor|",
+      "|Debug mode|",
+      "main-menu-sub.help menu accessibility-button|Accessibility|",
+      "main-menu-sub.help menu input-mode-button|Input device|",
+      "main-menu-sub.help menu color-scheme-button|Theme|"
+     ],
+     "menu_pessoas": [
+      "||Change color",
+      "people-menu.change-name||Change name",
+      "|C|",
+      "||Following",
+      "|B|",
+      "||Following"
+     ],
+     "menu_pessoas_hover": [
+      "||Change color",
+      "people-menu.change-name||Change name",
+      "|C|",
+      "||Following",
+      "|B|",
+      "||Following"
+     ],
+     "contexto_forma": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|"
+     ],
+     "context-menu-sub.edit-button": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|",
+      "context-menu.flatten-to-image|Flatten⇧+F|",
+      "context-menu.frame-selection|Frame selectionCtrl+Alt+G|",
+      "context-menu.edit-link|Edit link…|",
+      "context-menu.toggle-lock|Toggle locked⇧+L|"
+     ],
+     "context-menu-sub.arrange-button": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|",
+      "context-menu.flatten-to-image|Flatten⇧+F|",
+      "context-menu.frame-selection|Frame selectionCtrl+Alt+G|",
+      "context-menu.edit-link|Edit link…|",
+      "context-menu.toggle-lock|Toggle locked⇧+L|"
+     ],
+     "context-menu-sub.reorder-button": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|",
+      "context-menu.bring-to-front|Bring to front]|",
+      "context-menu.bring-forward|Bring forwardAlt+]|",
+      "context-menu.send-backward|Send backwardAlt+[|",
+      "context-menu.send-to-back|Send to back[|"
+     ],
+     "context-menu-sub.move-to-page-button": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|",
+      "context-menu.bring-to-front|Bring to front]|",
+      "context-menu.bring-forward|Bring forwardAlt+]|",
+      "context-menu.send-backward|Send backwardAlt+[|",
+      "context-menu.send-to-back|Send to back[|"
+     ],
+     "context-menu-sub.copy-as-button": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|",
+      "context-menu.copy-as-svg|SVG|",
+      "context-menu.copy-as-png|PNGCtrl+⇧+C|",
+      "|Transparent|"
+     ],
+     "context-menu-sub.export-as-button": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu-sub.edit-button|Edit|",
+      "context-menu-sub.arrange-button|Arrange|",
+      "context-menu-sub.reorder-button|Reorder|",
+      "context-menu-sub.move-to-page-button|Move to page|",
+      "context-menu.cut|CutCtrl+X|",
+      "context-menu.copy|CopyCtrl+C|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu.duplicate|DuplicateCtrl+D|",
+      "context-menu.delete|Delete⌫|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|",
+      "context-menu.copy-as-svg|SVG|",
+      "context-menu.copy-as-png|PNGCtrl+⇧+C|",
+      "|Transparent|"
+     ],
+     "contexto_vazio": [
+      "context-menu.open-cursor-chat|Cursor chat/|",
+      "context-menu.paste|PasteCtrl+V|",
+      "context-menu-sub.copy-as-button|Copy as|",
+      "context-menu-sub.export-as-button|Export as|",
+      "context-menu.select-all|Select allCtrl+A|"
+     ],
+     "menu_accoes": [
+      "actions-menu.align-left||",
+      "actions-menu.align-center-horizontal||",
+      "actions-menu.align-right||",
+      "actions-menu.stretch-horizontal||",
+      "actions-menu.align-top||",
+      "actions-menu.align-center-vertical||",
+      "actions-menu.align-bottom||",
+      "actions-menu.stretch-vertical||",
+      "actions-menu.distribute-horizontal||",
+      "actions-menu.distribute-vertical||",
+      "actions-menu.stack-horizontal||",
+      "actions-menu.stack-vertical||",
+      "actions-menu.send-to-back||",
+      "actions-menu.send-backward||",
+      "actions-menu.bring-forward||",
+      "actions-menu.bring-to-front||",
+      "actions-menu.rotate-ccw||",
+      "actions-menu.rotate-cw||",
+      "actions-menu.edit-link||",
+      "actions-menu.group||"
+     ],
+     "atalhos": [
+      "Keyboard shortcuts",
+      "Tools",
+      "Toggle tool lock",
+      "Q",
+      "Upload media…",
+      "Ctrl",
+      "+",
+      "U",
+      "Insert embed…",
+      "Ctrl",
+      "+",
+      "I",
+      "Select",
+      "V",
+      "Draw",
+      "D",
+      "Highlight",
+      "⇧",
+      "+",
+      "D",
+      "Eraser",
+      "E",
+      "Hand",
+      "H",
+      "Rectangle",
+      "R",
+      "Ellipse",
+      "O",
+      "Arrow",
+      "A",
+      "Line",
+      "L",
+      "Text",
+      "T",
+      "Frame",
+      "F",
+      "Note",
+      "N",
+      "Laser",
+      "K",
+      "Pointer down",
+      ",",
+      "Preferences",
+      "Toggle dark mode",
+      "Ctrl",
+      "+",
+      "/",
+      "Toggle focus mode",
+      "Ctrl",
+      "+",
+      ".",
+      "Toggle grid",
+      "Ctrl",
+      "+",
+      "'",
+      "Edit",
+      "Undo",
+      "Ctrl",
+      "+",
+      "Z",
+      "Redo",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "Z",
+      "Cut",
+      "Ctrl",
+      "+",
+      "X",
+      "Copy",
+      "Ctrl",
+      "+",
+      "C",
+      "Copy as PNG",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "C",
+      "Copy hovered styles",
+      "⇧",
+      "+",
+      "Q",
+      "Paste",
+      "Ctrl",
+      "+",
+      "V",
+      "Select all",
+      "Ctrl",
+      "+",
+      "A",
+      "Delete",
+      "⌫",
+      "Duplicate",
+      "Ctrl",
+      "+",
+      "D",
+      "Print…",
+      "Ctrl",
+      "+",
+      "P",
+      "View",
+      "Zoom",
+      "Z",
+      "Zoom in",
+      "Ctrl",
+      "+",
+      "=",
+      "Zoom out",
+      "Ctrl",
+      "+",
+      "-",
+      "Zoom to 100%",
+      "⇧",
+      "+",
+      "0",
+      "Zoom to fit",
+      "⇧",
+      "+",
+      "1",
+      "Zoom to selection",
+      "⇧",
+      "+",
+      "2",
+      "Quick zoom",
+      "⇧",
+      "+",
+      "Z",
+      "Transform",
+      "Bring to front",
+      "]",
+      "Bring forward",
+      "Alt",
+      "+",
+      "]",
+      "Send backward",
+      "Alt",
+      "+",
+      "[",
+      "Send to back",
+      "[",
+      "Group",
+      "Ctrl",
+      "+",
+      "G",
+      "Ungroup",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "G",
+      "Frame selection",
+      "Ctrl",
+      "+",
+      "Alt",
+      "+",
+      "G",
+      "Flatten",
+      "⇧",
+      "+",
+      "F",
+      "Toggle locked",
+      "⇧",
+      "+",
+      "L",
+      "Flip horizontally",
+      "⇧",
+      "+",
+      "H",
+      "Flip vertically",
+      "⇧",
+      "+",
+      "V",
+      "Align top",
+      "Alt",
+      "+",
+      "W",
+      "Align vertically",
+      "Alt",
+      "+",
+      "V",
+      "Align bottom",
+      "Alt",
+      "+",
+      "S",
+      "Align left",
+      "Alt",
+      "+",
+      "A",
+      "Align horizontally",
+      "Alt",
+      "+",
+      "H",
+      "Align right",
+      "Alt",
+      "+",
+      "D",
+      "Distribute horizontally",
+      "Alt",
+      "+",
+      "⇧",
+      "+",
+      "H",
+      "Distribute vertically",
+      "Alt",
+      "+",
+      "⇧",
+      "+",
+      "V",
+      "Text formatting",
+      "Bold",
+      "Ctrl",
+      "+",
+      "B",
+      "Italic",
+      "Ctrl",
+      "+",
+      "I",
+      "Code",
+      "Ctrl",
+      "+",
+      "E",
+      "Highlight",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "H",
+      "Strikethrough",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "S",
+      "Link",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "K",
+      "Header",
+      "Ctrl",
+      "+",
+      "Alt",
+      "+",
+      "1-6",
+      "Ordered list",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "7",
+      "Bulleted list",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "8",
+      "Accessibility",
+      "Select next shape",
+      "Tab",
+      "Select shape in direction",
+      "Ctrl",
+      "+",
+      "↑→↓←",
+      "Enter/leave container",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "↑↓",
+      "Pan camera",
+      "Space",
+      "+",
+      "↑→↓←",
+      "Adjust shape styles",
+      "Ctrl",
+      "+",
+      "Enter",
+      "Context menu…",
+      "Ctrl",
+      "+",
+      "⇧",
+      "+",
+      "Enter",
+      "Move shape",
+      "↑→↓←",
+      "Move shape faster",
+      "⇧",
+      "+",
+      "↑→↓←",
+      "Rotate shape clockwise",
+      "⇧",
+      "+",
+      "﹥",
+      "Rotate shape clockwise (fine)",
+      "⇧",
+      "+",
+      "Alt",
+      "+",
+      "﹥",
+      "Rotate shape counterclockwise",
+      "⇧",
+      "+",
+      "﹤",
+      "Rotate shape counterclockwise (fine)",
+      "⇧",
+      "+",
+      "Alt",
+      "+",
+      "﹤",
+      "Enlarge shape",
+      "Ctrl",
+      "+",
+      "Alt",
+      "+",
+      "⇧",
+      "+",
+      "=",
+      "Shrink shape",
+      "Ctrl",
+      "+",
+      "Alt",
+      "+",
+      "⇧",
+      "+",
+      "-",
+      "Repeat shape",
+      "Alt",
+      "+",
+      "R",
+      "Keyboard shortcuts",
+      "Ctrl",
+      "+",
+      "Alt",
+      "+",
+      "/",
+      "Collaboration",
+      "Cursor chat",
+      "/"
+     ]
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "C": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 61,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 64,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 229,
+      "t": 65,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 229,
+      "t": 65,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 132,
+      "t": 426,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 427,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 198,
+      "t": 428,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 198,
+      "t": 428,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 133,
+      "t": 776,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 778,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 778,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 778,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 179,
+      "t": 1115,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1116,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 245,
+      "t": 1117,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 245,
+      "t": 1117,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 133,
+      "t": 1477,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1478,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 1478,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 1478,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 133,
+      "t": 1826,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1827,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 1828,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 1828,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 101,
+      "t": 2127,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 10,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 2129,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:10"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 166,
+      "t": 2129,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 166,
+      "t": 2129,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 122,
+      "t": 2360,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 11,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 2362,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:11"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 187,
+      "t": 2363,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 187,
+      "t": 2363,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 120,
+      "t": 2810,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 12,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 2811,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:12"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 185,
+      "t": 2811,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 185,
+      "t": 2811,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 121,
+      "t": 3060,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 13,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 3061,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:13"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 186,
+      "t": 3062,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 186,
+      "t": 3062,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 101,
+      "t": 3260,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 14,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 3261,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:14"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 166,
+      "t": 3261,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 166,
+      "t": 3262,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 3470,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 15,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 3473,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:15"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 229,
+      "t": 3473,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 229,
+      "t": 3474,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 15,
+      "t": 3474,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "ping"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 15,
+      "t": 3475,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "pong"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 3814,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 16,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 3816,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 3816,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 3817,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:16"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 15,
+      "t": 4003,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "ping"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 15,
+      "t": 4004,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "pong"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 4126,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 17,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 4128,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:17"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 4128,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 4129,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 180,
+      "t": 4415,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 18,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 4416,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:18"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 245,
+      "t": 4417,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 245,
+      "t": 4417,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "C→S",
+      "bytes": 15,
+      "t": 4535,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "ping"
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 15,
+      "t": 4536,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "pong"
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 4726,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 19,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 4727,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:19"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 4728,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 4728,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 5026,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 20,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 5028,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:20"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 5028,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 5028,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 5326,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 21,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 5327,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:21"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 5327,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 5328,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 101,
+      "t": 5577,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 22,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 5579,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:22"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 166,
+      "t": 5580,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 166,
+      "t": 5580,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 150,
+      "t": 5779,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 23,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 5782,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:23"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 215,
+      "t": 5782,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 215,
+      "t": 5782,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 6326,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 24,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 6328,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:24"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 6328,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 6328,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 101,
+      "t": 6627,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 25,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 166,
+      "t": 6629,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 166,
+      "t": 6629,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 6644,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:25"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 118,
+      "t": 6693,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 26,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 6694,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:26"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 183,
+      "t": 6695,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 183,
+      "t": 6695,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 6976,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 27,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 6977,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:27"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 199,
+      "t": 6978,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     },
+     {
+      "par": "C",
+      "dir": "S→C",
+      "bytes": 199,
+      "t": 6978,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[instance_presence:fGHaAOib1403USXAFU0MW:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "X": 6
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  }
+ ]
+}

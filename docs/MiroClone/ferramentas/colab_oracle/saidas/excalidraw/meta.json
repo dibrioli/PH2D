@@ -1,0 +1,482 @@
+{
+ "oraculo": "excalidraw_colab — o app do excalidraw.com (excalidraw-app/) + excalidraw-room, tudo em 127.0.0.1",
+ "sha256_casos_json": "2d4831d0340d0794cb3899de693883b55cdafd3936b2f33a988adf660fccada6",
+ "corridas": [
+  {
+   "quando": "2026-10-10T19:23:07.522Z",
+   "chromium": "153.0.8010.12"
+  },
+  {
+   "quando": "2026-10-10T19:27:09.412Z",
+   "chromium": "153.0.8010.12"
+  }
+ ],
+ "excalidraw": {
+  "repo": "https://github.com/excalidraw/excalidraw",
+  "commit": "4c00f31ddcc20086bac1020428819fe0b9a30bce",
+  "data_do_commit": "2026-10-08 11:11:53 +0200",
+  "app": "excalidraw-app/ (build de produção, vite)",
+  "pacote_editor": "0.18.0"
+ },
+ "excalidraw_room": {
+  "repo": "https://github.com/excalidraw/excalidraw-room",
+  "commit": "03ff435860b508d7cd9e005cfc90f7977ae2a593",
+  "data_do_commit": "2023-12-15 15:16:35 +0100"
+ },
+ "versoes": {
+  "node": "v24.19.0",
+  "playwright": "1.63.0",
+  "socket.io-client (app)": "4.7.2",
+  "socket.io (sala)": "4.6.1",
+  "yarn": "1.22.22"
+ },
+ "local": {
+  "app": "http://127.0.0.1:5101 (serve_app.mjs sobre o build)",
+  "sala": "127.0.0.1:3102 (node -r so_local.cjs dist/index.js, PORT=3102, CORS_ORIGIN=http://127.0.0.1:5101)",
+  "env_do_build": "VITE_APP_WS_SERVER_URL=http://127.0.0.1:3102; BACKEND_V2/LIBRARY/PLUS/AI = http://127.0.0.1:9 (porta fechada); VITE_APP_FIREBASE_CONFIG = projecto fictício ph2d-oracle-offline; SENTRY off, TRACKING off, PWA off",
+  "rede": "context.route: tudo o que não é 127.0.0.1/localhost é abortado e registado; as fontes do CDN são servidas do próprio build local; serviceWorkers: block"
+ },
+ "licencas": {
+  "rows": [
+   {
+    "pacote": "excalidraw (monorepo, clone)",
+    "versao": null,
+    "license": null,
+    "license_ficheiro": "MIT License",
+    "papel": "o app do excalidraw.com (excalidraw-app/)",
+    "onde": "excalidraw"
+   },
+   {
+    "pacote": "excalidraw-room (clone)",
+    "versao": null,
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "servidor de salas",
+    "onde": "excalidraw-room"
+   },
+   {
+    "pacote": "@excalidraw/excalidraw",
+    "versao": "0.18.0",
+    "license": "MIT",
+    "license_ficheiro": "",
+    "papel": "editor (bundled no app)",
+    "onde": "excalidraw/packages/excalidraw"
+   },
+   {
+    "pacote": "@excalidraw/common",
+    "versao": "0.18.0",
+    "license": "MIT",
+    "license_ficheiro": "",
+    "papel": "bundled",
+    "onde": "excalidraw/packages/common"
+   },
+   {
+    "pacote": "@excalidraw/element",
+    "versao": "0.18.0",
+    "license": "MIT",
+    "license_ficheiro": "",
+    "papel": "bundled",
+    "onde": "excalidraw/packages/element"
+   },
+   {
+    "pacote": "@excalidraw/math",
+    "versao": "0.18.0",
+    "license": "MIT",
+    "license_ficheiro": "",
+    "papel": "bundled",
+    "onde": "excalidraw/packages/math"
+   },
+   {
+    "pacote": "@excalidraw/utils",
+    "versao": "0.1.2",
+    "license": "MIT",
+    "license_ficheiro": "",
+    "papel": "bundled",
+    "onde": "excalidraw/packages/utils"
+   },
+   {
+    "pacote": "socket.io-client",
+    "versao": "4.7.2",
+    "license": "MIT",
+    "license_ficheiro": "The MIT License (MIT)",
+    "papel": "cliente da sala (o que o app embarca)",
+    "onde": "excalidraw/excalidraw-app/node_modules/socket.io-client"
+   },
+   {
+    "pacote": "engine.io-client",
+    "versao": "6.5.4",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "transporte do cliente",
+    "onde": "excalidraw/node_modules/engine.io-client"
+   },
+   {
+    "pacote": "socket.io-parser",
+    "versao": "4.2.4",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "protocolo",
+    "onde": "excalidraw/node_modules/socket.io-parser"
+   },
+   {
+    "pacote": "firebase",
+    "versao": "11.3.1",
+    "license": "Apache-2.0",
+    "license_ficheiro": "",
+    "papel": "persistência (bundled; bloqueado)",
+    "onde": "excalidraw/node_modules/firebase"
+   },
+   {
+    "pacote": "react",
+    "versao": "19.0.0",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "UI",
+    "onde": "excalidraw/node_modules/react"
+   },
+   {
+    "pacote": "react-dom",
+    "versao": "19.0.0",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "UI",
+    "onde": "excalidraw/node_modules/react-dom"
+   },
+   {
+    "pacote": "jotai",
+    "versao": "2.11.0",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "estado",
+    "onde": "excalidraw/node_modules/jotai"
+   },
+   {
+    "pacote": "idb-keyval",
+    "versao": "6.0.3",
+    "license": "Apache-2.0",
+    "license_ficheiro": "",
+    "papel": "IndexedDB",
+    "onde": "excalidraw/node_modules/idb-keyval"
+   },
+   {
+    "pacote": "@excalidraw/random-username",
+    "versao": "1.0.0",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "nome do colaborador",
+    "onde": "excalidraw/node_modules/@excalidraw/random-username"
+   },
+   {
+    "pacote": "roughjs",
+    "versao": "4.6.4",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "desenho",
+    "onde": "excalidraw/node_modules/roughjs"
+   },
+   {
+    "pacote": "perfect-freehand",
+    "versao": "1.2.0",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "traço",
+    "onde": "excalidraw/node_modules/perfect-freehand"
+   },
+   {
+    "pacote": "uqr",
+    "versao": "0.1.2",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "QR do link",
+    "onde": "excalidraw/node_modules/uqr"
+   },
+   {
+    "pacote": "i18next-browser-languagedetector",
+    "versao": "6.1.4",
+    "license": "MIT",
+    "license_ficheiro": "The MIT License (MIT)",
+    "papel": "idioma",
+    "onde": "excalidraw/node_modules/i18next-browser-languagedetector"
+   },
+   {
+    "pacote": "@sentry/browser",
+    "versao": "9.0.1",
+    "license": "MIT",
+    "license_ficheiro": "MIT License",
+    "papel": "bundled, desligado",
+    "onde": "excalidraw/node_modules/@sentry/browser"
+   },
+   {
+    "pacote": "pako",
+    "versao": "2.0.3",
+    "license": "(MIT AND Zlib)",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "compressão",
+    "onde": "excalidraw/node_modules/pako"
+   },
+   {
+    "pacote": "dompurify",
+    "versao": "3.3.1",
+    "license": "(MPL-2.0 OR Apache-2.0)",
+    "license_ficheiro": "DOMPurify",
+    "papel": "sanitização",
+    "onde": "excalidraw/node_modules/dompurify"
+   },
+   {
+    "pacote": "khroma",
+    "versao": "2.1.0",
+    "license": null,
+    "license_ficheiro": "The MIT License (MIT)",
+    "papel": "mermaid (bundled)",
+    "onde": "excalidraw/node_modules/khroma"
+   },
+   {
+    "pacote": "vite",
+    "versao": "5.0.12",
+    "license": "MIT",
+    "license_ficheiro": "# Vite core license",
+    "papel": "build/preview",
+    "onde": "excalidraw/node_modules/vite"
+   },
+   {
+    "pacote": "socket.io",
+    "versao": "4.6.1",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "servidor",
+    "onde": "excalidraw-room/node_modules/socket.io"
+   },
+   {
+    "pacote": "engine.io",
+    "versao": "6.4.2",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "transporte do servidor",
+    "onde": "excalidraw-room/node_modules/engine.io"
+   },
+   {
+    "pacote": "socket.io-parser",
+    "versao": "4.2.2",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "protocolo",
+    "onde": "excalidraw-room/node_modules/socket.io-parser"
+   },
+   {
+    "pacote": "ws",
+    "versao": "8.11.0",
+    "license": "MIT",
+    "license_ficheiro": "Copyright (c) 2011 Einar Otto Stangvik <einaros@gmail.com>",
+    "papel": "WebSocket",
+    "onde": "excalidraw-room/node_modules/ws"
+   },
+   {
+    "pacote": "express",
+    "versao": "4.17.1",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "HTTP",
+    "onde": "excalidraw-room/node_modules/express"
+   },
+   {
+    "pacote": "debug",
+    "versao": "4.3.1",
+    "license": "MIT",
+    "license_ficheiro": "(The MIT License)",
+    "papel": "log",
+    "onde": "excalidraw-room/node_modules/debug"
+   },
+   {
+    "pacote": "dotenv",
+    "versao": "10.0.0",
+    "license": "BSD-2-Clause",
+    "license_ficheiro": "Copyright (c) 2015, Scott Motte",
+    "papel": "env",
+    "onde": "excalidraw-room/node_modules/dotenv"
+   },
+   {
+    "pacote": "playwright",
+    "versao": "1.63.0",
+    "license": "Apache-2.0",
+    "license_ficheiro": "                                 Apache License\r",
+    "papel": "harness/ferramenta",
+    "onde": "node_modules/playwright"
+   },
+   {
+    "pacote": "playwright-core",
+    "versao": "1.63.0",
+    "license": "Apache-2.0",
+    "license_ficheiro": "                                 Apache License\r",
+    "papel": "harness/ferramenta",
+    "onde": "node_modules/playwright-core"
+   },
+   {
+    "pacote": "yarn",
+    "versao": "1.22.22",
+    "license": "BSD-2-Clause",
+    "license_ficheiro": "BSD 2-Clause License",
+    "papel": "harness/ferramenta",
+    "onde": "tools/node_modules/yarn"
+   }
+  ],
+  "varridos": 1666,
+  "a_triar": [
+   "axe-core@4.10.2: MPL-2.0 | ficheiro: Mozilla Public License, version 2.0",
+   "dompurify@3.3.1: (MPL-2.0 OR Apache-2.0) | ficheiro: DOMPurify",
+   "excalidraw-app@1.0.0: null | ficheiro: ",
+   "json-schema@0.4.0: (AFL-2.1 OR BSD-3-Clause) | ficheiro: Dojo is available under *either* the terms of the BSD 3-Clau",
+   "khroma@2.1.0: null | ficheiro: The MIT License (MIT)",
+   "opener@1.5.2: (WTFPL OR MIT) | ficheiro: Dual licensed under WTFPL and MIT:",
+   "union@0.5.0: null | ficheiro: Copyright (c) 2010 Charlie Robbins & the Contributors.",
+   "vite-plugin-sitemap@0.7.1: null | ficheiro: MIT License",
+   "with-nextjs@0.1.0: null | ficheiro: ",
+   "with-script-in-browser@1.0.0: null | ficheiro: "
+  ]
+ },
+ "como_reproduzir": [
+  "cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone",
+  "bash docs/MiroClone/ferramentas/colab_oracle/excalidraw_colab/instala.sh",
+  "bash docs/MiroClone/ferramentas/colab_oracle/excalidraw_colab/corre_tudo.sh"
+ ],
+ "resumo_das_duas_corridas": [
+  {
+   "id": "c01_mesmo_campo",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c02_campos_diferentes_cor",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c03_campos_diferentes_texto",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c04_apagar_x_editar",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c05_criar_no_mesmo_z",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c06_trazer_para_a_frente",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c07_seta_e_forma_apagada",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c08_seta_segue_forma_alheia",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c09_texto_a_dois",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c10_desfazer_so_o_meu",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c11_desfazer_depois_do_outro",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c12_desfazer_o_que_o_outro_apagou",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c13_entrar_a_meio",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c14_sair_e_voltar",
+   "igual": false,
+   "divergencias": 3,
+   "erro": false
+  },
+  {
+   "id": "c15_rede_cai_a_meio_do_arrasto",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c16_mensagem_duplicada",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c17_mensagens_reordenadas",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c18_cursor",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c19_arrastar_custo",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c20_seleccao_alheia",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c21_seguir",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c22_trazer_todos",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  },
+  {
+   "id": "c23_tres_pares",
+   "igual": true,
+   "divergencias": 0,
+   "erro": false
+  }
+ ],
+ "nota_c14": "c14 reforçado depois das duas corridas completas (3 repetições por regime, estado por repetição); as DUAS corridas de c14 (c14_extra_1/2) substituem as da corrida completa. Antes do reforço, em 2 de 5 repetições 'offline' o V de B (verde em B antes de voltar) acabou ROSA nos dois pares; depois do reforço 0/6. Em 1 de 6 repetições 'buraco' o X acabou em (575,300) — posição intermédia do arrasto de A — nos dois pares, depois de A o ter a (600,300)."
+}

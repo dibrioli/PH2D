@@ -1,0 +1,321 @@
+{
+ "id": "c21_seguir",
+ "o_que": "B segue A (se o produto tem); A faz pan e zoom",
+ "pergunta": "a câmara de B acompanha? com que atraso? o que interrompe o seguir?",
+ "existe": true,
+ "resposta": "existe (clicar no avatar ⇒ selo «Following Mysterious Turtle»); a câmara de B acompanha (pan e zoom); atraso mediano 17 ms (máx 17); interrompem: B faz pan (roda do rato), B clica no canvas, B carrega em Zoom in, B carrega no × do selo, B arrasta no canvas",
+ "resposta_corrida2": "existe (clicar no avatar ⇒ selo «Following Purple Butterfly»); a câmara de B acompanha (pan e zoom); atraso mediano 16 ms (máx 17); interrompem: B faz pan (roda do rato), B clica no canvas, B carrega em Zoom in, B carrega no × do selo, B arrasta no canvas",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": {
+  "existe": true,
+  "camara_final_igual": true,
+  "interrompe": {
+   "B faz pan (roda do rato)": true,
+   "B clica no canvas": true,
+   "B carrega em Zoom in": true,
+   "B carrega no × do selo": true,
+   "B arrasta no canvas": true,
+   "A selecciona/desenha (B continua?)": false
+  }
+ },
+ "variavel": {
+  "selo": {
+   "corrida1": "Following Mysterious Turtle",
+   "corrida2": "Following Purple Butterfly"
+  },
+  "camara_A": {
+   "sx": -416.66666666666663,
+   "sy": -475,
+   "z": 1.2
+  },
+  "camara_B": {
+   "sx": -416.66666666666663,
+   "sy": -475,
+   "z": 1.2
+  },
+  "A_ve_texto_follow": [],
+  "interrompe": {
+   "B faz pan (roda do rato)": {
+    "antes": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "depois": null,
+    "interrompeu": true,
+    "erro": null
+   },
+   "B clica no canvas": {
+    "antes": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "depois": null,
+    "interrompeu": true,
+    "erro": null
+   },
+   "B carrega em Zoom in": {
+    "antes": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "depois": null,
+    "interrompeu": true,
+    "erro": null
+   },
+   "B carrega no × do selo": {
+    "antes": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "depois": null,
+    "interrompeu": true,
+    "erro": null
+   },
+   "B arrasta no canvas": {
+    "antes": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "depois": null,
+    "interrompeu": true,
+    "erro": null
+   },
+   "A selecciona/desenha (B continua?)": {
+    "antes": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "depois": {
+     "corrida1": "Following Mysterious Turtle",
+     "corrida2": "Following Purple Butterfly"
+    },
+    "interrompeu": false,
+    "erro": null
+   }
+  }
+ },
+ "medidas_faixa_das_duas": {
+  "mudancas_de_camara_A": 12,
+  "atraso_ms_mediano": [
+   16,
+   17
+  ],
+  "atraso_ms_max": 17,
+  "mudancas_acompanhadas": 12
+ },
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": null,
+ "prova": null,
+ "estado_final": null,
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 311,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 712,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 9336,
+   "par": "A",
+   "ev": "dialogo_inesperado",
+   "texto": "Error\nCouldn't save to the backend database. If problems persist, you should save your file locally to ensure you don't lose your work."
+  },
+  {
+   "t": 10141,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 10141,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 10142,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 10142,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 146,
+  "linhas": [
+   [332,"A","recebe","engine:0{",107],
+   [334,"A","envia","engine:40",2],
+   [343,"A","recebe","engine:40",32],
+   [344,"A","recebe","init-room",15],
+   [344,"A","envia","join-room",38],
+   [345,"A","recebe","first-in-room",19],
+   [345,"A","recebe","room-user-change",47],
+   [718,"B","recebe","engine:0{",107],
+   [719,"B","envia","engine:40",2],
+   [719,"B","recebe","engine:40",32],
+   [720,"B","recebe","init-room",15],
+   [721,"B","envia","join-room",38],
+   [722,"A","recebe","new-user",37],
+   [722,"A","recebe","room-user-change",70],
+   [722,"B","recebe","room-user-change",70],
+   [723,"A","envia","server-broadcast",182],
+   [731,"B","recebe","client-broadcast",159],
+   [776,"A","envia","server-volatile-broadcast",329],
+   [782,"A","envia","server-broadcast",184],
+   [783,"B","recebe","client-broadcast",297],
+   [783,"B","recebe","client-broadcast",161],
+   [798,"A","envia","server-broadcast",659],
+   [799,"B","recebe","client-broadcast",636],
+   [809,"A","envia","server-volatile-broadcast",331],
+   [814,"B","recebe","client-broadcast",299],
+   [815,"A","envia","server-broadcast",659],
+   [818,"B","recebe","client-broadcast",636],
+   [829,"A","envia","server-broadcast",659],
+   [830,"B","recebe","client-broadcast",636],
+   [842,"A","envia","server-volatile-broadcast",331],
+   [845,"A","envia","server-broadcast",661],
+   [845,"B","recebe","client-broadcast",299],
+   [853,"B","recebe","client-broadcast",638],
+   [875,"A","envia","server-volatile-broadcast",357],
+   [876,"B","recebe","client-broadcast",325],
+   [882,"A","envia","server-broadcast",657],
+   [883,"B","recebe","client-broadcast",634],
+   [1412,"B","envia","user-follow",119],
+   [1416,"A","recebe","user-follow-room-change",54],
+   [1417,"A","envia","server-volatile-broadcast",293],
+   [1426,"B","recebe","client-broadcast",254],
+   [1826,"A","envia","server-volatile-broadcast",329],
+   [1827,"B","recebe","client-broadcast",297],
+   [1876,"A","envia","server-volatile-broadcast",295],
+   [1877,"B","recebe","client-broadcast",256],
+   [1926,"A","envia","server-volatile-broadcast",295],
+   [1927,"B","recebe","client-broadcast",256],
+   [1976,"A","envia","server-volatile-broadcast",297],
+   [1978,"B","recebe","client-broadcast",258],
+   [2026,"A","envia","server-volatile-broadcast",298],
+   [2027,"B","recebe","client-broadcast",259],
+   [2076,"A","envia","server-volatile-broadcast",298],
+   [2077,"B","recebe","client-broadcast",259],
+   [2126,"A","envia","server-volatile-broadcast",298],
+   [2127,"B","recebe","client-broadcast",259],
+   [2176,"A","envia","server-volatile-broadcast",298],
+   [2179,"B","recebe","client-broadcast",259],
+   [2226,"A","envia","server-volatile-broadcast",298],
+   [2228,"B","recebe","client-broadcast",259],
+   [2276,"A","envia","server-volatile-broadcast",298],
+   [2277,"B","recebe","client-broadcast",259],
+   [2325,"A","envia","server-volatile-broadcast",298],
+   [2327,"B","recebe","client-broadcast",259],
+   [3192,"A","envia","server-volatile-broadcast",355],
+   [3194,"B","recebe","client-broadcast",316],
+   [3335,"A","envia","server-volatile-broadcast",264],
+   [3338,"B","recebe","client-broadcast",232],
+   [3525,"A","envia","server-volatile-broadcast",327],
+   [3527,"B","recebe","client-broadcast",288],
+   [4412,"B","envia","server-volatile-broadcast",265],
+   [4413,"A","recebe","client-broadcast",233],
+   [4526,"B","envia","server-volatile-broadcast",331],
+   [4528,"A","recebe","client-broadcast",299],
+   [4559,"B","envia","user-follow",121],
+   [4563,"A","recebe","user-follow-room-change",32],
+   [4563,"A","envia","server-volatile-broadcast",327],
+   [5077,"B","envia","user-follow",119],
+   [5080,"A","recebe","user-follow-room-change",54],
+   [5081,"A","envia","server-volatile-broadcast",327],
+   [5093,"B","recebe","client-broadcast",288],
+   [5482,"B","envia","server-volatile-broadcast",360],
+   [5483,"B","envia","user-follow",121],
+   [5490,"A","recebe","client-broadcast",328],
+   [5490,"A","recebe","user-follow-room-change",32],
+   [5491,"A","envia","server-volatile-broadcast",327],
+   [5515,"B","envia","server-volatile-broadcast",360],
+   [5517,"A","recebe","client-broadcast",328],
+   [6010,"B","envia","user-follow",119],
+   [6014,"A","recebe","user-follow-room-change",54],
+   [6015,"A","envia","server-volatile-broadcast",327],
+   [6026,"B","recebe","client-broadcast",288],
+   [6335,"A","envia","server-volatile-broadcast",264],
+   [6337,"B","recebe","client-broadcast",232],
+   [6428,"B","envia","user-follow",121],
+   [6431,"A","recebe","user-follow-room-change",32],
+   [6431,"A","envia","server-volatile-broadcast",327],
+   [6944,"B","envia","user-follow",119],
+   [6947,"A","recebe","user-follow-room-change",54],
+   [6947,"A","envia","server-volatile-broadcast",327],
+   [6960,"B","recebe","client-broadcast",288],
+   [7352,"B","envia","user-follow",121],
+   [7356,"A","recebe","user-follow-room-change",32],
+   [7357,"A","envia","server-volatile-broadcast",327],
+   [7412,"B","envia","server-volatile-broadcast",265],
+   [7413,"A","recebe","client-broadcast",233],
+   [7877,"B","envia","user-follow",119],
+   [7880,"A","recebe","user-follow-room-change",54],
+   [7880,"A","envia","server-volatile-broadcast",327],
+   [7893,"B","recebe","client-broadcast",288],
+   [8284,"B","envia","server-volatile-broadcast",360],
+   [8285,"B","envia","user-follow",121],
+   [8288,"A","recebe","client-broadcast",328],
+   [8289,"A","recebe","user-follow-room-change",32],
+   [8290,"A","envia","server-volatile-broadcast",327],
+   [8317,"B","envia","server-volatile-broadcast",362],
+   [8318,"A","recebe","client-broadcast",330],
+   [8358,"B","envia","server-volatile-broadcast",350],
+   [8361,"A","recebe","client-broadcast",318],
+   [8392,"B","envia","server-volatile-broadcast",362],
+   [8393,"A","recebe","client-broadcast",330],
+   [8426,"B","envia","server-volatile-broadcast",360],
+   [8427,"A","recebe","client-broadcast",328],
+   [8927,"B","envia","user-follow",119],
+   [8930,"A","recebe","user-follow-room-change",54],
+   [8930,"A","envia","server-volatile-broadcast",327],
+   [8943,"B","recebe","client-broadcast",288],
+   [9336,"A","envia","server-volatile-broadcast",264],
+   [9337,"B","recebe","client-broadcast",232],
+   [9559,"A","envia","server-volatile-broadcast",358],
+   [9562,"A","envia","server-broadcast",184],
+   [9563,"B","recebe","client-broadcast",326],
+   [9563,"B","recebe","client-broadcast",161],
+   [9580,"A","envia","server-broadcast",702],
+   [9581,"B","recebe","client-broadcast",679],
+   [9592,"A","envia","server-volatile-broadcast",346],
+   [9596,"B","recebe","client-broadcast",314],
+   [9597,"A","envia","server-broadcast",698],
+   [9600,"B","recebe","client-broadcast",675],
+   [9611,"A","envia","server-broadcast",686],
+   [9613,"B","recebe","client-broadcast",663],
+   [9625,"A","envia","server-volatile-broadcast",346],
+   [9628,"A","envia","server-broadcast",698],
+   [9629,"B","recebe","client-broadcast",314],
+   [9630,"B","recebe","client-broadcast",675],
+   [9659,"A","envia","server-volatile-broadcast",344],
+   [9660,"B","recebe","client-broadcast",312]
+  ]
+ }
+}

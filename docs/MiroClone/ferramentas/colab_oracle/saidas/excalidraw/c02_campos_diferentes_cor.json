@@ -1,0 +1,477 @@
+{
+ "id": "c02_campos_diferentes_cor",
+ "o_que": "A move o rectângulo, B muda-lhe a cor de fundo, ao mesmo tempo",
+ "pergunta": "funde por campo (fica movido E com a cor nova) ou um dos dois perde a edição INTEIRA?",
+ "existe": true,
+ "resposta": "A→B: fica só o MOVER (a cor de B perde-se inteira); B→A: fica só o MOVER (a cor de B perde-se inteira)",
+ "resposta_corrida2": "A→B: fica só o MOVER (a cor de B perde-se inteira); B→A: fica só o MOVER (a cor de B perde-se inteira)",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": [
+  {
+   "ordem": "A→B",
+   "convergiu": true,
+   "final": {
+    "x": 600,
+    "y": 300,
+    "bg": "#a5d8ff"
+   }
+  },
+  {
+   "ordem": "B→A",
+   "convergiu": true,
+   "final": {
+    "x": 600,
+    "y": 300,
+    "bg": "#a5d8ff"
+   }
+  }
+ ],
+ "variavel": {
+  "ms_ate_convergir_por_rodada": [
+   [
+    1,
+    2
+   ],
+   1
+  ]
+ },
+ "medidas_faixa_das_duas": null,
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": [
+  {
+   "ordem": "A→B",
+   "convergiu": true,
+   "ms_ate_convergir": 2,
+   "local_antes_de_libertar": {
+    "A": {
+     "final": {
+      "x": 600,
+      "y": 300,
+      "bg": "#a5d8ff"
+     },
+     "movido": true,
+     "cor_nova": false,
+     "versoes": {
+      "X": 15
+     }
+    },
+    "B": {
+     "final": {
+      "x": 400,
+      "y": 300,
+      "bg": "#ffc9c9"
+     },
+     "movido": false,
+     "cor_nova": true,
+     "versoes": {
+      "X": 8
+     }
+    }
+   },
+   "fiaveis_retidas": {
+    "A": 8,
+    "B": 2
+   },
+   "final": {
+    "x": 600,
+    "y": 300,
+    "bg": "#a5d8ff"
+   },
+   "movido": true,
+   "cor_nova": false,
+   "versoes": {
+    "A": {
+     "X": 15
+    },
+    "B": {
+     "X": 15
+    }
+   }
+  },
+  {
+   "ordem": "B→A",
+   "convergiu": true,
+   "ms_ate_convergir": 1,
+   "local_antes_de_libertar": {
+    "A": {
+     "final": {
+      "x": 600,
+      "y": 300,
+      "bg": "#a5d8ff"
+     },
+     "movido": true,
+     "cor_nova": false,
+     "versoes": {
+      "X": 15
+     }
+    },
+    "B": {
+     "final": {
+      "x": 400,
+      "y": 300,
+      "bg": "#ffc9c9"
+     },
+     "movido": false,
+     "cor_nova": true,
+     "versoes": {
+      "X": 8
+     }
+    }
+   },
+   "fiaveis_retidas": {
+    "A": 8,
+    "B": 2
+   },
+   "final": {
+    "x": 600,
+    "y": 300,
+    "bg": "#a5d8ff"
+   },
+   "movido": true,
+   "cor_nova": false,
+   "versoes": {
+    "A": {
+     "X": 15
+    },
+    "B": {
+     "X": 15
+    }
+   }
+  }
+ ],
+ "prova": null,
+ "estado_final": {
+  "A": [
+   {
+    "papel": "X",
+    "z": 0,
+    "id": "PwtnnfWI1wmils3kbs52p",
+    "type": "rectangle",
+    "x": 600,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#a5d8ff",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a0",
+    "version": 15,
+    "versionNonce": 1733048706,
+    "updated": 1791659963278,
+    "boundElements": null,
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ],
+  "B": [
+   {
+    "papel": "X",
+    "z": 0,
+    "id": "PwtnnfWI1wmils3kbs52p",
+    "type": "rectangle",
+    "x": 600,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#a5d8ff",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a0",
+    "version": 15,
+    "versionNonce": 1733048706,
+    "updated": 1791659963278,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ]
+ },
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 322,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 739,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 1750,
+   "par": "A",
+   "ev": "liberta",
+   "n": 14
+  },
+  {
+   "t": 1951,
+   "par": "B",
+   "ev": "liberta",
+   "n": 4
+  },
+  {
+   "t": 2151,
+   "par": "A",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 2151,
+   "par": "B",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 2154,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 2154,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 2156,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 2156,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 2472,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 2873,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 3881,
+   "par": "B",
+   "ev": "liberta",
+   "n": 4
+  },
+  {
+   "t": 4083,
+   "par": "A",
+   "ev": "liberta",
+   "n": 14
+  },
+  {
+   "t": 4284,
+   "par": "A",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 4284,
+   "par": "B",
+   "ev": "liberta",
+   "n": 0
+  },
+  {
+   "t": 4286,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 4286,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 4287,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 4287,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 141,
+  "linhas": [
+   [350,"A","recebe","engine:0{",107],
+   [351,"A","envia","engine:40",2],
+   [355,"A","recebe","engine:40",32],
+   [356,"A","recebe","init-room",15],
+   [358,"A","envia","join-room",38],
+   [359,"A","recebe","first-in-room",19],
+   [359,"A","recebe","room-user-change",47],
+   [751,"B","recebe","engine:0{",107],
+   [752,"B","envia","engine:40",2],
+   [755,"B","recebe","engine:40",32],
+   [755,"B","recebe","init-room",15],
+   [756,"B","envia","join-room",38],
+   [757,"A","recebe","new-user",37],
+   [757,"A","recebe","room-user-change",70],
+   [757,"B","recebe","room-user-change",70],
+   [758,"A","envia","server-broadcast",182],
+   [763,"B","recebe","client-broadcast",159],
+   [837,"A","envia","server-volatile-broadcast",328],
+   [843,"A","envia","server-broadcast",184],
+   [844,"B","recebe","client-broadcast",296],
+   [845,"B","recebe","client-broadcast",161],
+   [858,"A","envia","server-broadcast",657],
+   [860,"B","recebe","client-broadcast",634],
+   [870,"A","envia","server-volatile-broadcast",330],
+   [877,"B","recebe","client-broadcast",298],
+   [878,"A","envia","server-broadcast",659],
+   [881,"B","recebe","client-broadcast",636],
+   [889,"A","envia","server-broadcast",658],
+   [890,"B","recebe","client-broadcast",635],
+   [903,"A","envia","server-volatile-broadcast",330],
+   [907,"A","envia","server-broadcast",660],
+   [907,"B","recebe","client-broadcast",298],
+   [911,"B","recebe","client-broadcast",637],
+   [936,"A","envia","server-volatile-broadcast",356],
+   [937,"B","recebe","client-broadcast",324],
+   [942,"A","envia","server-broadcast",656],
+   [944,"B","recebe","client-broadcast",633],
+   [954,"A","envia","server-volatile-broadcast",328],
+   [974,"A","envia","server-broadcast",655],
+   [985,"A","envia","server-volatile-broadcast",358],
+   [988,"A","envia","server-broadcast",655],
+   [1005,"A","envia","server-broadcast",657],
+   [1020,"A","envia","server-volatile-broadcast",358],
+   [1022,"A","envia","server-broadcast",654],
+   [1038,"A","envia","server-broadcast",655],
+   [1053,"A","envia","server-volatile-broadcast",358],
+   [1055,"A","envia","server-broadcast",657],
+   [1072,"A","envia","server-broadcast",655],
+   [1086,"A","envia","server-volatile-broadcast",358],
+   [1088,"A","envia","server-broadcast",656],
+   [1096,"B","envia","server-volatile-broadcast",336],
+   [1121,"A","envia","server-volatile-broadcast",356],
+   [1128,"B","envia","server-volatile-broadcast",364],
+   [1143,"B","envia","server-broadcast",653],
+   [1143,"B","envia","server-broadcast",653],
+   [1754,"B","recebe","client-broadcast",296],
+   [1754,"B","recebe","client-broadcast",632],
+   [1754,"B","recebe","client-broadcast",326],
+   [1754,"B","recebe","client-broadcast",632],
+   [1756,"B","recebe","client-broadcast",634],
+   [1756,"B","recebe","client-broadcast",326],
+   [1756,"B","recebe","client-broadcast",631],
+   [1756,"B","recebe","client-broadcast",632],
+   [1756,"B","recebe","client-broadcast",326],
+   [1757,"B","recebe","client-broadcast",634],
+   [1758,"B","recebe","client-broadcast",632],
+   [1758,"B","recebe","client-broadcast",326],
+   [1758,"B","recebe","client-broadcast",633],
+   [1952,"A","recebe","client-broadcast",304],
+   [1953,"A","recebe","client-broadcast",332],
+   [1953,"A","recebe","client-broadcast",630],
+   [1953,"A","recebe","client-broadcast",630],
+   [2496,"A","recebe","engine:0{",107],
+   [2498,"A","envia","engine:40",2],
+   [2504,"A","recebe","engine:40",32],
+   [2504,"A","recebe","init-room",15],
+   [2505,"A","envia","join-room",38],
+   [2506,"A","recebe","first-in-room",19],
+   [2506,"A","recebe","room-user-change",47],
+   [2884,"B","recebe","engine:0{",107],
+   [2885,"B","envia","engine:40",2],
+   [2889,"B","recebe","engine:40",32],
+   [2890,"B","recebe","init-room",15],
+   [2891,"B","envia","join-room",38],
+   [2891,"B","recebe","room-user-change",70],
+   [2892,"A","recebe","new-user",37],
+   [2892,"A","recebe","room-user-change",70],
+   [2892,"A","envia","server-broadcast",182],
+   [2898,"B","recebe","client-broadcast",159],
+   [2970,"A","envia","server-volatile-broadcast",332],
+   [2976,"A","envia","server-broadcast",184],
+   [2977,"B","recebe","client-broadcast",300],
+   [2977,"B","recebe","client-broadcast",161],
+   [2990,"A","envia","server-broadcast",658],
+   [2993,"B","recebe","client-broadcast",635],
+   [3003,"A","envia","server-volatile-broadcast",334],
+   [3008,"B","recebe","client-broadcast",302],
+   [3009,"A","envia","server-broadcast",657],
+   [3012,"B","recebe","client-broadcast",634],
+   [3022,"A","envia","server-broadcast",658],
+   [3023,"B","recebe","client-broadcast",635],
+   [3036,"A","envia","server-volatile-broadcast",334],
+   [3039,"A","envia","server-broadcast",659],
+   [3039,"B","recebe","client-broadcast",302],
+   [3046,"B","recebe","client-broadcast",636],
+   [3069,"A","envia","server-volatile-broadcast",360],
+   [3071,"B","recebe","client-broadcast",328],
+   [3075,"A","envia","server-broadcast",654],
+   [3077,"B","recebe","client-broadcast",631],
+   [3087,"A","envia","server-volatile-broadcast",332],
+   [3106,"A","envia","server-broadcast",655],
+   [3119,"A","envia","server-volatile-broadcast",362],
+   [3121,"A","envia","server-broadcast",655],
+   [3137,"A","envia","server-broadcast",655],
+   [3152,"A","envia","server-volatile-broadcast",362],
+   [3154,"A","envia","server-broadcast",656],
+   [3170,"A","envia","server-broadcast",655],
+   [3186,"A","envia","server-volatile-broadcast",362],
+   [3188,"A","envia","server-broadcast",655],
+   [3204,"A","envia","server-broadcast",656],
+   [3219,"A","envia","server-volatile-broadcast",362],
+   [3221,"A","envia","server-broadcast",656],
+   [3228,"B","envia","server-volatile-broadcast",330],
+   [3253,"A","envia","server-volatile-broadcast",360],
+   [3261,"B","envia","server-volatile-broadcast",358],
+   [3276,"B","envia","server-broadcast",653],
+   [3276,"B","envia","server-broadcast",653],
+   [3882,"A","recebe","client-broadcast",298],
+   [3883,"A","recebe","client-broadcast",630],
+   [3883,"A","recebe","client-broadcast",630],
+   [4087,"B","recebe","client-broadcast",300],
+   [4087,"B","recebe","client-broadcast",632],
+   [4088,"B","recebe","client-broadcast",632],
+   [4088,"B","recebe","client-broadcast",632],
+   [4088,"B","recebe","client-broadcast",330],
+   [4089,"B","recebe","client-broadcast",633],
+   [4089,"B","recebe","client-broadcast",632],
+   [4090,"B","recebe","client-broadcast",330],
+   [4091,"B","recebe","client-broadcast",632],
+   [4093,"B","recebe","client-broadcast",633],
+   [4093,"B","recebe","client-broadcast",633]
+  ]
+ }
+}

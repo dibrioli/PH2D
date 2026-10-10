@@ -1,0 +1,34 @@
+{
+  "_cabecalho": {
+    "o_que": "Casos da colaboração ao vivo (W11, Etapa 2 do 02_plano). A MESMA lista corre em cada oráculo (excalidraw_colab/, tldraw_sync/); cada corrida grava saidas/<oraculo>/<caso>.json com o seu meta.json (versão/commit de cada artefacto, data, sha256 desta lista). Duas corridas iguais antes de gravar.",
+    "pares": "A e B = dois contextos do Playwright na MESMA sala, servidor local (nada fora do localhost). C = um terceiro, só onde o caso o pede.",
+    "concorrencia": "«ao mesmo tempo» = as duas edições feitas ANTES de qualquer uma chegar ao outro lado: a entrega retida pelo harness (page.routeWebSocket a reter as mensagens de saída) e libertada pela ordem do caso. A ordem de libertação VARIA (A→B e B→A): o caso regista as duas.",
+    "o_que_se_grava": "o estado FINAL de cada par depois de convergir (por elemento: id, tipo, x, y, w, h, cor, texto, apagado, ordem de z, e os campos de versão que o produto expuser), se A e B convergiram, e as mensagens trocadas (direcção, bytes, instante relativo). Encriptado: só tamanho e cadência.",
+    "regra": "Os gestos são os do PRODUTO (rato e teclado); a leitura do estado pode ser por API observável em execução. Nunca se lê o fonte (CLAUDE.md §0.9)."
+  },
+  "casos": [
+    {"id": "c01_mesmo_campo", "o_que": "A e B movem o MESMO rectângulo para sítios diferentes ao mesmo tempo", "pergunta": "quem ganha; é determinista; A e B acabam iguais?"},
+    {"id": "c02_campos_diferentes_cor", "o_que": "A move o rectângulo, B muda-lhe a cor de fundo, ao mesmo tempo", "pergunta": "funde por campo (fica movido E com a cor nova) ou um dos dois perde a edição INTEIRA?"},
+    {"id": "c03_campos_diferentes_texto", "o_que": "A move uma forma com texto, B reescreve o texto dela, ao mesmo tempo", "pergunta": "idem c02 com texto"},
+    {"id": "c04_apagar_x_editar", "o_que": "A apaga o rectângulo, B move-o ao mesmo tempo (as duas ordens de entrega)", "pergunta": "o apagado ressuscita? depende da ordem?"},
+    {"id": "c05_criar_no_mesmo_z", "o_que": "A e B criam cada um um rectângulo novo, sobrepostos, ao mesmo tempo", "pergunta": "qual fica por cima; A e B concordam na ordem de z?"},
+    {"id": "c06_trazer_para_a_frente", "o_que": "três formas X Y Z; A traz X para a frente, B traz Y para a frente, ao mesmo tempo", "pergunta": "ordem final de z nos dois"},
+    {"id": "c07_seta_e_forma_apagada", "o_que": "seta presa de P a Q; B apaga Q enquanto A arrasta a ponta da seta (ao mesmo tempo)", "pergunta": "a seta fica presa a nada, solta-se, ou desaparece?"},
+    {"id": "c08_seta_segue_forma_alheia", "o_que": "seta presa de P a Q criada por A; B move Q", "pergunta": "do lado de A a seta segue Q? quem recalcula a seta — e a seta muda de versão?"},
+    {"id": "c09_texto_a_dois", "o_que": "A e B escrevem no MESMO texto ao mesmo tempo (A acrescenta 'aaa', B acrescenta 'bbb')", "pergunta": "fica um dos dois inteiro, ou intercala?"},
+    {"id": "c10_desfazer_so_o_meu", "o_que": "A cria X, B cria Y; A faz Ctrl+Z", "pergunta": "desfaz só o X de A?"},
+    {"id": "c11_desfazer_depois_do_outro", "o_que": "A move X; depois B muda a cor de X; depois A faz Ctrl+Z (e depois Ctrl+Shift+Z)", "pergunta": "X volta ao sítio e mantém a cor de B? ou o desfazer de A salta/perde-se?"},
+    {"id": "c12_desfazer_o_que_o_outro_apagou", "o_que": "A move X; B apaga X; A faz Ctrl+Z", "pergunta": "X ressuscita?"},
+    {"id": "c13_entrar_a_meio", "o_que": "A desenha 50 formas; B entra na sala", "pergunta": "B vê tudo? quantos bytes e mensagens custa a entrada? quanto tempo até B estar igual?"},
+    {"id": "c14_sair_e_voltar", "o_que": "B fica sem rede; A move X e cria W; B, sem rede, muda a cor de X e cria V; B volta", "pergunta": "o que cada um acaba a ver; o que se perde"},
+    {"id": "c15_rede_cai_a_meio_do_arrasto", "o_que": "A arrasta X; a rede de A cai a meio; A larga; a rede volta", "pergunta": "B acaba com a posição final de A?"},
+    {"id": "c16_mensagem_duplicada", "o_que": "uma mensagem de A entregue DUAS vezes a B (o harness duplica)", "pergunta": "idempotente?"},
+    {"id": "c17_mensagens_reordenadas", "o_que": "A move X duas vezes; as duas mensagens chegam a B pela ordem inversa", "pergunta": "B fica com a posição final de A ou com a do meio?"},
+    {"id": "c18_cursor", "o_que": "A move o rato (sem arrastar nada) num círculo durante 2 s", "pergunta": "mensagens por segundo, bytes por mensagem; do lado de B o cursor de A anda suave ou aos saltos (amostrar a posição desenhada em B a 60 Hz); que nome/cor B vê de A"},
+    {"id": "c19_arrastar_custo", "o_que": "A arrasta um rectângulo durante 2 s; repetir com 1, 10 e 50 formas seleccionadas", "pergunta": "mensagens por segundo e bytes por segundo enviados; o que B vê durante o arrasto (só o fim, ou o caminho)"},
+    {"id": "c20_seleccao_alheia", "o_que": "A selecciona X; B olha", "pergunta": "B vê a selecção de A? com que cor/nome?"},
+    {"id": "c21_seguir", "o_que": "B segue A (se o produto tem); A faz pan e zoom", "pergunta": "a câmara de B acompanha? com que atraso? o que interrompe o seguir?"},
+    {"id": "c22_trazer_todos", "o_que": "A pede «trazer todos» (se o produto tem)", "pergunta": "existe? o que acontece à câmara de B e C?"},
+    {"id": "c23_tres_pares", "o_que": "A, B e C: cada um move o MESMO X ao mesmo tempo, libertados por ordens diferentes", "pergunta": "convergem os três para o mesmo?"}
+  ]
+}

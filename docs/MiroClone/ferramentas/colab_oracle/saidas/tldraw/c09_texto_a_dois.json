@@ -1,0 +1,689 @@
+{
+ "caso": "c09_texto_a_dois",
+ "o_que": "A e B escrevem no MESMO texto ao mesmo tempo (A acrescenta 'aaa', B acrescenta 'bbb')",
+ "pergunta": "fica um dos dois inteiro, ou intercala?",
+ "existe": true,
+ "resposta": "A→B: «hellobbb» · B→A: «helloaaa»",
+ "subcorridas": [
+  {
+   "subcorrida": "AB",
+   "sala": "c09-AB-mv2rucjs",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "T",
+     "type": "text",
+     "x": 400,
+     "y": 300,
+     "props": {},
+     "texto": "hello"
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A duplo-clique em T, seta para a direita (fim), escreve «aaa», Escape; B o mesmo com «bbb»"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1hdj",
+       "id": "T",
+       "type": "text",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 106,
+       "cor": "black",
+       "texto": "hellobbb",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "index": "a1hdj",
+       "id": "T",
+       "type": "text",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 106,
+       "cor": "black",
+       "texto": "hellobbb",
+       "z": 0
+      }
+     ],
+     "servidor": [
+      {
+       "id": "T",
+       "type": "text",
+       "index": "a1hdj",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 106,
+       "cor": "black",
+       "texto": "hellobbb"
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "T",
+       "type": "text",
+       "index": "a1hdj",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 111,
+       "cor": "black",
+       "texto": "helloaaa",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "T",
+       "type": "text",
+       "index": "a1hdj",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 106,
+       "cor": "black",
+       "texto": "hellobbb",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "A→B"
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 6,
+    "preparo_convergiu_ms": 68,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 2,
+      "bytes": 466,
+      "com_documento": 1
+     },
+     "B→S": {
+      "mensagens": 2,
+      "bytes": 466,
+      "com_documento": 1
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 752,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 752,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 2,
+     "B": 2
+    },
+    "libertacoes": [
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 2,
+      "enviadas": 2,
+      "t": 2030
+     },
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 2,
+      "enviadas": 2,
+      "t": 2532
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 209,
+      "t": 24,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       2030
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 257,
+      "t": 710,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "T:patch"
+      ],
+      "presenca": false,
+      "corpo": "{\"T\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",111],\"richText\":[\"put\",{\"type\":\"doc\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"paragraph\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"text\",\"text\":\"helloaaa\"}]}]}]}]}]}",
+      "retida": true,
+      "libertada": [
+       2030
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 209,
+      "t": 840,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       2532
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 257,
+      "t": 1526,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "T:patch"
+      ],
+      "presenca": false,
+      "corpo": "{\"T\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106],\"richText\":[\"put\",{\"type\":\"doc\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"paragraph\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"text\",\"text\":\"hellobbb\"}]}]}]}]}]}",
+      "retida": true,
+      "libertada": [
+       2532
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 2032,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 275,
+      "t": 2033,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[instance_presence:MWpVQlpcaoreaYVQJZQn2:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 2047,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 283,
+      "t": 2048,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[T:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 2534,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 275,
+      "t": 2534,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[instance_presence:ZdO4zmBDPovsuP_PRuQnL:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 2550,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 283,
+      "t": 2550,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[T:patch]"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "T": 5
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "BA",
+   "sala": "c09-BA-mv2rufrn",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "T",
+     "type": "text",
+     "x": 400,
+     "y": 300,
+     "props": {},
+     "texto": "hello"
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retido: A duplo-clique em T, seta para a direita (fim), escreve «aaa», Escape; B o mesmo com «bbb»"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1sLb",
+       "id": "T",
+       "type": "text",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 111,
+       "cor": "black",
+       "texto": "helloaaa",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "index": "a1sLb",
+       "id": "T",
+       "type": "text",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 111,
+       "cor": "black",
+       "texto": "helloaaa",
+       "z": 0
+      }
+     ],
+     "servidor": [
+      {
+       "id": "T",
+       "type": "text",
+       "index": "a1sLb",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 111,
+       "cor": "black",
+       "texto": "helloaaa"
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "antes_de_libertar": {
+     "A": [
+      {
+       "id": "T",
+       "type": "text",
+       "index": "a1sLb",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 111,
+       "cor": "black",
+       "texto": "helloaaa",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "id": "T",
+       "type": "text",
+       "index": "a1sLb",
+       "x": 400,
+       "y": 300,
+       "rot": 0,
+       "w": 106,
+       "cor": "black",
+       "texto": "hellobbb",
+       "z": 0
+      }
+     ]
+    },
+    "ordem_de_libertacao": "B→A"
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 3,
+    "preparo_convergiu_ms": 68,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 2,
+      "bytes": 466,
+      "com_documento": 1
+     },
+     "B→S": {
+      "mensagens": 2,
+      "bytes": 466,
+      "com_documento": 1
+     },
+     "S→B": {
+      "mensagens": 4,
+      "bytes": 752,
+      "com_documento": 1
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 752,
+      "com_documento": 1
+     }
+    },
+    "retidas": {
+     "A": 2,
+     "B": 2
+    },
+    "libertacoes": [
+     {
+      "par": "B",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 2,
+      "enviadas": 2,
+      "t": 2010
+     },
+     {
+      "par": "A",
+      "dir": "out",
+      "ordem": "fifo",
+      "duplica": false,
+      "mensagens": 2,
+      "enviadas": 2,
+      "t": 2511
+     }
+    ],
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 209,
+      "t": 22,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       2511
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 257,
+      "t": 711,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "T:patch"
+      ],
+      "presenca": false,
+      "corpo": "{\"T\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",111],\"richText\":[\"put\",{\"type\":\"doc\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"paragraph\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"text\",\"text\":\"helloaaa\"}]}]}]}]}]}",
+      "retida": true,
+      "libertada": [
+       2511
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 209,
+      "t": 824,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       2010
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 257,
+      "t": 1511,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "T:patch"
+      ],
+      "presenca": false,
+      "corpo": "{\"T\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106],\"richText\":[\"put\",{\"type\":\"doc\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"paragraph\",\"attrs\":{\"dir\":\"auto\"},\"content\":[{\"type\":\"text\",\"text\":\"hellobbb\"}]}]}]}]}]}",
+      "retida": true,
+      "libertada": [
+       2010
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 2011,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 275,
+      "t": 2011,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[instance_presence:MvUyiR-XsZth0323wX0QD:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 2030,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 283,
+      "t": 2031,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[T:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 2513,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 275,
+      "t": 2513,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[instance_presence:k-wwzr_7C3Lme72beG2Mm:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 283,
+      "t": 2530,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[T:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 2532,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "T": 5
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  }
+ ]
+}

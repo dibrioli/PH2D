@@ -1,0 +1,22 @@
+{
+  "name": "ph2d-tldraw-sync-oracle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "tldraw sync (colaboração ao vivo) como oráculo de CONTRASTE corrido por script: servidor local com TLSocketRoom (@tldraw/sync-core) + ws, página <Tldraw> com useSync (@tldraw/sync). Só API pública de uso.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "tldraw": "5.5.2",
+    "@tldraw/assets": "5.5.2",
+    "@tldraw/sync": "5.5.2",
+    "@tldraw/sync-core": "5.5.2",
+    "@tldraw/tlschema": "5.5.2",
+    "ws": "8.21.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
+  }
+}

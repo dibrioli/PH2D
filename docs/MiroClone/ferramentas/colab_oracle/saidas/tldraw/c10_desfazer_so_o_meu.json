@@ -1,0 +1,845 @@
+{
+ "caso": "c10_desfazer_so_o_meu",
+ "o_que": "A cria X, B cria Y; A faz Ctrl+Z",
+ "pergunta": "desfaz só o X de A?",
+ "existe": true,
+ "resposta": "depois do Ctrl+Z de A: A#1 (de A) desfeito, B#1 (de B) fica — desfazer é por par",
+ "subcorridas": [
+  {
+   "subcorrida": "seq",
+   "sala": "c10-seq-mv2ruiyo",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "A cria X (tecla r, arrasto)"
+    },
+    {
+     "t": 327,
+     "gesto": "B cria Y"
+    },
+    {
+     "t": 643,
+     "gesto": "A carrega Ctrl+Z"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a2yiQ",
+       "id": "B#1",
+       "type": "geo",
+       "x": 600,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "B": [
+      {
+       "index": "a2yiQ",
+       "id": "B#1",
+       "type": "geo",
+       "x": 600,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 0
+      }
+     ],
+     "servidor": [
+      {
+       "id": "B#1",
+       "type": "geo",
+       "index": "a2yiQ",
+       "x": 600,
+       "y": 300,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": [
+      "A#1"
+     ]
+    },
+    "passos": [
+     {
+      "depois_de": "A cria X",
+      "convergiu": true,
+      "servidor": [
+       {
+        "id": "A#1",
+        "type": "geo",
+        "index": "a1Jbz",
+        "x": 300,
+        "y": 300,
+        "rot": 0,
+        "w": 160,
+        "h": 100,
+        "cor": "black",
+        "fill": "none",
+        "texto": ""
+       }
+      ]
+     },
+     {
+      "depois_de": "B cria Y",
+      "convergiu": true,
+      "servidor": [
+       {
+        "id": "A#1",
+        "type": "geo",
+        "index": "a1Jbz",
+        "x": 300,
+        "y": 300,
+        "rot": 0,
+        "w": 160,
+        "h": 100,
+        "cor": "black",
+        "fill": "none",
+        "texto": ""
+       },
+       {
+        "id": "B#1",
+        "type": "geo",
+        "index": "a2yiQ",
+        "x": 600,
+        "y": 300,
+        "rot": 0,
+        "w": 160,
+        "h": 100,
+        "cor": "black",
+        "fill": "none",
+        "texto": ""
+       }
+      ]
+     }
+    ],
+    "rotulos": {
+     "X": "A#1",
+     "Y": "B#1"
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 69,
+    "preparo_convergiu_ms": 5,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 9,
+      "bytes": 2619,
+      "com_documento": 7
+     },
+     "S→A": {
+      "mensagens": 17,
+      "bytes": 3659,
+      "com_documento": 6
+     },
+     "S→B": {
+      "mensagens": 17,
+      "bytes": 3894,
+      "com_documento": 7
+     },
+     "B→S": {
+      "mensagens": 8,
+      "bytes": 2304,
+      "com_documento": 6
+     }
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 184,
+      "t": 33,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 1,
+      "diff": [
+       "user:QJy3E6a9y_YrU8BYdiAOI:put"
+      ],
+      "presenca": false
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 48,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:1"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 210,
+      "t": 49,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@3:[user:QJy3E6a9y_YrU8BYdiAOI:put]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 862,
+      "t": 50,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [
+       "shape:n5wZHOfN_h-7pS6f1maGp:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:n5wZHOfN_h-7pS6f1maGp\":[\"put\",{\"x\":300,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:n5wZHOfN_h-7pS6f1maGp\",\"type\":\"geo\",\"props\":{\"w\":26.666656494140625,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a1Jbz\",\"typeName\":\"shape\"}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 65,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 919,
+      "t": 65,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[shape:n5wZHOfN_h-7pS6f1maGp:put,instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 324,
+      "t": 84,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:n5wZHOfN_h-7pS6f1maGp:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:n5wZHOfN_h-7pS6f1maGp\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.333343505859375],\"h\":[\"put\",33.333343505859375]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 86,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 381,
+      "t": 87,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[shape:n5wZHOfN_h-7pS6f1maGp:patch,instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 218,
+      "t": 117,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:n5wZHOfN_h-7pS6f1maGp:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:n5wZHOfN_h-7pS6f1maGp\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 119,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 275,
+      "t": 119,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[shape:n5wZHOfN_h-7pS6f1maGp:patch,instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 150,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:n5wZHOfN_h-7pS6f1maGp:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:n5wZHOfN_h-7pS6f1maGp\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66665649414062],\"h\":[\"put\",66.66665649414062]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 152,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 334,
+      "t": 152,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@7:[shape:n5wZHOfN_h-7pS6f1maGp:patch,instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 277,
+      "t": 184,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:n5wZHOfN_h-7pS6f1maGp:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:n5wZHOfN_h-7pS6f1maGp\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33334350585938],\"h\":[\"put\",83.33334350585938]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 186,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 334,
+      "t": 186,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[shape:n5wZHOfN_h-7pS6f1maGp:patch,instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 217,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:n5wZHOfN_h-7pS6f1maGp:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:n5wZHOfN_h-7pS6f1maGp\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 219,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 277,
+      "t": 219,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[shape:n5wZHOfN_h-7pS6f1maGp:patch,instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 123,
+      "t": 250,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 252,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 189,
+      "t": 253,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 159,
+      "t": 341,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 2,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 225,
+      "t": 344,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 97,
+      "t": 372,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:2"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 753,
+      "t": 382,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [
+       "shape:sst0A2VltZ0sfWg7uolvE:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sst0A2VltZ0sfWg7uolvE\":[\"put\",{\"x\":600,\"y\":300,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:sst0A2VltZ0sfWg7uolvE\",\"type\":\"geo\",\"props\":{\"w\":26.66668701171875,\"h\":16.666656494140625,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a2yiQ\",\"typeName\":\"shape\"}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 385,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 811,
+      "t": 385,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[shape:sst0A2VltZ0sfWg7uolvE:put,instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 416,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "shape:sst0A2VltZ0sfWg7uolvE:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sst0A2VltZ0sfWg7uolvE\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",53.33331298828125],\"h\":[\"put\",33.333343505859375]}]}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 418,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 335,
+      "t": 419,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@11:[shape:sst0A2VltZ0sfWg7uolvE:patch,instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 218,
+      "t": 449,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "shape:sst0A2VltZ0sfWg7uolvE:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sst0A2VltZ0sfWg7uolvE\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",50]}]}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 451,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 276,
+      "t": 452,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@12:[shape:sst0A2VltZ0sfWg7uolvE:patch,instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 483,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "shape:sst0A2VltZ0sfWg7uolvE:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sst0A2VltZ0sfWg7uolvE\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",106.66668701171875],\"h\":[\"put\",66.66665649414062]}]}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 485,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 335,
+      "t": 485,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@13:[shape:sst0A2VltZ0sfWg7uolvE:patch,instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 277,
+      "t": 516,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "shape:sst0A2VltZ0sfWg7uolvE:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sst0A2VltZ0sfWg7uolvE\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",133.33331298828125],\"h\":[\"put\",83.33334350585938]}]}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 517,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 335,
+      "t": 518,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@14:[shape:sst0A2VltZ0sfWg7uolvE:patch,instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 220,
+      "t": 549,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "shape:sst0A2VltZ0sfWg7uolvE:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:sst0A2VltZ0sfWg7uolvE\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",160],\"h\":[\"put\",100]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 278,
+      "t": 551,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@15:[shape:sst0A2VltZ0sfWg7uolvE:patch,instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 567,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "B→S",
+      "bytes": 123,
+      "t": 582,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 98,
+      "t": 585,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 190,
+      "t": 585,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@15:[instance_presence:Na6q9ikjzhiCvxiEht75g:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 134,
+      "t": 649,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [
+       "A#1:remove"
+      ],
+      "presenca": true,
+      "corpo": "{\"A#1\":[\"remove\"]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 192,
+      "t": 651,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@16:[instance_presence:rdtXwaUxp2Kwwh6T4R68G:patch,A#1:remove]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 665,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "B#1": 15
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  }
+ ]
+}

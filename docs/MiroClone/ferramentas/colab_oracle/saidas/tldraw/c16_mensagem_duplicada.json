@@ -1,0 +1,1662 @@
+{
+ "caso": "c16_mensagem_duplicada",
+ "o_que": "uma mensagem de A entregue DUAS vezes a B (o harness duplica)",
+ "pergunta": "idempotente?",
+ "existe": true,
+ "resposta": "S_para_B: converge, formas=2, B=2, reconexões A=0 B=0 · A_para_S: converge, formas=2, B=2, reconexões A=1 B=0",
+ "subcorridas": [
+  {
+   "subcorrida": "S_para_B",
+   "sala": "c16-S_para_B-mv2rv73u",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "X",
+     "type": "geo",
+     "x": 400,
+     "y": 250,
+     "props": {
+      "w": 160,
+      "h": 100,
+      "geo": "rectangle",
+      "fill": "solid",
+      "color": "black"
+     }
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retida a ENTRADA de B; A arrasta X por (+200,0) e cria W"
+    },
+    {
+     "t": 1065,
+     "gesto": "liberta com cada mensagem com documento DUPLICADA"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1yXf",
+       "id": "X",
+       "type": "geo",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a26HM",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a1yXf",
+       "id": "X",
+       "type": "geo",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a26HM",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1yXf",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a26HM",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "rotulos": {
+     "W": "A#1"
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 4,
+    "preparo_convergiu_ms": 74,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 18,
+      "bytes": 3838,
+      "com_documento": 15
+     },
+     "S→B": {
+      "mensagens": 18,
+      "bytes": 4892,
+      "com_documento": 15
+     },
+     "S→A": {
+      "mensagens": 18,
+      "bytes": 1769,
+      "com_documento": 0
+     }
+    },
+    "libertacao": {
+     "par": "B",
+     "dir": "in",
+     "ordem": "fifo",
+     "duplica": true,
+     "mensagens": 18,
+     "enviadas": 33,
+     "t": 1065
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 1,
+      "eventos": []
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 165,
+      "t": 13,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 3,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 231,
+      "t": 23,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@4:[instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 34,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:3"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 207,
+      "t": 60,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",440]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 62,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 264,
+      "t": 63,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 94,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",460]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 96,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:5"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 96,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 127,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",480]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 128,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:6"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 129,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@7:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 160,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",500]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 161,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:7"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 162,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@8:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 193,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",520]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 195,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:8"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 220,
+      "t": 195,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@9:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 227,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",540]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 98,
+      "t": 228,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:9"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 228,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@10:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 260,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 10,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",560]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 261,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:10"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 261,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@11:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 293,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 11,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",580]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 295,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:11"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 295,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@12:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 326,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 12,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",600]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 328,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:12"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 221,
+      "t": 328,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@13:[X:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 118,
+      "t": 361,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 13,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 364,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:13"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 184,
+      "t": 364,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@13:[instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 733,
+      "t": 397,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 14,
+      "diff": [
+       "shape:bREClaRFhuOUcjYnjWw4b:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:bREClaRFhuOUcjYnjWw4b\":[\"put\",{\"x\":300,\"y\":500,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:bREClaRFhuOUcjYnjWw4b\",\"type\":\"geo\",\"props\":{\"w\":20,\"h\":13.33331298828125,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a26HM\",\"typeName\":\"shape\"}]}"
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 790,
+      "t": 400,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@14:[shape:bREClaRFhuOUcjYnjWw4b:put,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 401,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:14"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 248,
+      "t": 427,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 15,
+      "diff": [
+       "shape:bREClaRFhuOUcjYnjWw4b:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:bREClaRFhuOUcjYnjWw4b\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",40],\"h\":[\"put\",26.66668701171875]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 429,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:15"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 305,
+      "t": 430,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@15:[shape:bREClaRFhuOUcjYnjWw4b:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 219,
+      "t": 460,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 16,
+      "diff": [
+       "shape:bREClaRFhuOUcjYnjWw4b:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:bREClaRFhuOUcjYnjWw4b\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",60],\"h\":[\"put\",40]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 462,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:16"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 276,
+      "t": 462,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@16:[shape:bREClaRFhuOUcjYnjWw4b:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 248,
+      "t": 493,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 17,
+      "diff": [
+       "shape:bREClaRFhuOUcjYnjWw4b:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:bREClaRFhuOUcjYnjWw4b\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",53.33331298828125]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 495,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:17"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 305,
+      "t": 495,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@17:[shape:bREClaRFhuOUcjYnjWw4b:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 249,
+      "t": 526,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 18,
+      "diff": [
+       "shape:bREClaRFhuOUcjYnjWw4b:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:bREClaRFhuOUcjYnjWw4b\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",100],\"h\":[\"put\",66.66668701171875]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 529,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:18"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 306,
+      "t": 529,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@18:[shape:bREClaRFhuOUcjYnjWw4b:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 559,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 19,
+      "diff": [
+       "shape:bREClaRFhuOUcjYnjWw4b:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:bREClaRFhuOUcjYnjWw4b\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",120],\"h\":[\"put\",80]}]}]}"
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 561,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:19"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 277,
+      "t": 561,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@19:[shape:bREClaRFhuOUcjYnjWw4b:patch,instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065,
+       1065
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 124,
+      "t": 593,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 20,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 596,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:20"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 190,
+      "t": 597,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@19:[instance_presence:uXLaNNbkwtlvkUS5Tm98z:patch]"
+      ],
+      "retida": true,
+      "libertada": [
+       1065
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "X": 13,
+     "A#1": 19
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": []
+  },
+  {
+   "subcorrida": "A_para_S",
+   "sala": "c16-A_para_S-mv2rv9gn",
+   "pares": [
+    "A",
+    "B"
+   ],
+   "cena": [
+    {
+     "nome": "X",
+     "type": "geo",
+     "x": 400,
+     "y": 250,
+     "props": {
+      "w": 160,
+      "h": 100,
+      "geo": "rectangle",
+      "fill": "solid",
+      "color": "black"
+     }
+    }
+   ],
+   "gestos": [
+    {
+     "t": 0,
+     "gesto": "retida a SAÍDA de A; A arrasta X por (+200,0) e cria W"
+    },
+    {
+     "t": 1061,
+     "gesto": "liberta com cada mensagem com documento DUPLICADA"
+    }
+   ],
+   "deterministico": {
+    "convergiu": true,
+    "final": {
+     "A": [
+      {
+       "index": "a1xMz",
+       "id": "X",
+       "type": "geo",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a2e2v",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "B": [
+      {
+       "index": "a1xMz",
+       "id": "X",
+       "type": "geo",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": "",
+       "z": 0
+      },
+      {
+       "index": "a2e2v",
+       "id": "A#1",
+       "type": "geo",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": "",
+       "z": 1
+      }
+     ],
+     "servidor": [
+      {
+       "id": "X",
+       "type": "geo",
+       "index": "a1xMz",
+       "x": 600,
+       "y": 250,
+       "rot": 0,
+       "w": 160,
+       "h": 100,
+       "cor": "black",
+       "fill": "solid",
+       "texto": ""
+      },
+      {
+       "id": "A#1",
+       "type": "geo",
+       "index": "a2e2v",
+       "x": 300,
+       "y": 500,
+       "rot": 0,
+       "w": 120,
+       "h": 80,
+       "cor": "black",
+       "fill": "none",
+       "texto": ""
+      }
+     ],
+     "bindings": {
+      "A": [],
+      "B": []
+     },
+     "bindings_servidor": [],
+     "lapides_servidor": []
+    },
+    "rotulos": {
+     "W": "A#1"
+    }
+   },
+   "variavel": {
+    "ms_ate_convergir_depois_do_ultimo_gesto": 5,
+    "preparo_convergiu_ms": 68,
+    "mensagens_por_direccao": {
+     "A→S": {
+      "mensagens": 20,
+      "bytes": 5292,
+      "com_documento": 16
+     },
+     "S→A": {
+      "mensagens": 4,
+      "bytes": 5102,
+      "com_documento": 0
+     },
+     "S→B": {
+      "mensagens": 2,
+      "bytes": 4544,
+      "com_documento": 2
+     }
+    },
+    "libertacao": {
+     "par": "A",
+     "dir": "out",
+     "ordem": "fifo",
+     "duplica": true,
+     "mensagens": 18,
+     "enviadas": 34,
+     "t": 1061
+    },
+    "conexoes": {
+     "A": {
+      "conexoes": 2,
+      "eventos": [
+       {
+        "t": 1105,
+        "ev": "fecha-página",
+        "conn": 1
+       },
+       {
+        "t": 1110,
+        "ev": "abre",
+        "conn": 2,
+        "fase": "caso"
+       }
+      ]
+     },
+     "B": {
+      "conexoes": 1,
+      "eventos": []
+     }
+    },
+    "mensagens": [
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 253,
+      "t": 24,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 4,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",420]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 71,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 5,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",440]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 104,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 6,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",460]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 137,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 7,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",480]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 171,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 8,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",500]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 163,
+      "t": 204,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 9,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",520]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 237,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 10,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",540]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 271,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 11,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",560]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 304,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 12,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",580]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 164,
+      "t": 337,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 13,
+      "diff": [
+       "X:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"X\":[\"patch\",{\"x\":[\"put\",600]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 118,
+      "t": 371,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 14,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 733,
+      "t": 404,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 15,
+      "diff": [
+       "shape:TG2r8fhHI4uKc1SSZmiSI:put"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:TG2r8fhHI4uKc1SSZmiSI\":[\"put\",{\"x\":300,\"y\":500,\"rotation\":0,\"isLocked\":false,\"opacity\":1,\"meta\":{},\"id\":\"shape:TG2r8fhHI4uKc1SSZmiSI\",\"type\":\"geo\",\"props\":{\"w\":20,\"h\":13.33331298828125,\"geo\":\"rectangle\",\"dash\":\"draw\",\"growY\":0,\"url\":\"\",\"scale\":1,\"flipX\":false,\"flipY\":false,\"color\":\"black\",\"labelColor\":\"black\",\"fill\":\"none\",\"size\":\"m\",\"font\":\"draw\",\"align\":\"middle\",\"verticalAlign\":\"middle\",\"richText\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}},\"parentId\":\"page:page\",\"index\":\"a2e2v\",\"typeName\":\"shape\"}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 248,
+      "t": 437,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 16,
+      "diff": [
+       "shape:TG2r8fhHI4uKc1SSZmiSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:TG2r8fhHI4uKc1SSZmiSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",40],\"h\":[\"put\",26.66668701171875]}]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 219,
+      "t": 471,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 17,
+      "diff": [
+       "shape:TG2r8fhHI4uKc1SSZmiSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:TG2r8fhHI4uKc1SSZmiSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",60],\"h\":[\"put\",40]}]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 248,
+      "t": 504,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 18,
+      "diff": [
+       "shape:TG2r8fhHI4uKc1SSZmiSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:TG2r8fhHI4uKc1SSZmiSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",80],\"h\":[\"put\",53.33331298828125]}]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 249,
+      "t": 537,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 19,
+      "diff": [
+       "shape:TG2r8fhHI4uKc1SSZmiSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:TG2r8fhHI4uKc1SSZmiSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",100],\"h\":[\"put\",66.66668701171875]}]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 220,
+      "t": 570,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 20,
+      "diff": [
+       "shape:TG2r8fhHI4uKc1SSZmiSI:patch"
+      ],
+      "presenca": true,
+      "corpo": "{\"shape:TG2r8fhHI4uKc1SSZmiSI\":[\"patch\",{\"props\":[\"patch\",{\"w\":[\"put\",120],\"h\":[\"put\",80]}]}]}",
+      "retida": true,
+      "libertada": [
+       1061,
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 124,
+      "t": 604,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 21,
+      "diff": [],
+      "presenca": true,
+      "retida": true,
+      "libertada": [
+       1061
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 97,
+      "t": 1064,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:4"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 310,
+      "t": 1064,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@5:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2495,
+      "t": 1080,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:discard:4",
+       "push_result:commit:5",
+       "push_result:discard:5",
+       "push_result:commit:6",
+       "push_result:discard:6",
+       "push_result:commit:7",
+       "push_result:discard:7",
+       "push_result:commit:8",
+       "push_result:discard:8",
+       "push_result:commit:9",
+       "push_result:discard:9",
+       "push_result:commit:10",
+       "push_result:discard:10",
+       "push_result:commit:11",
+       "push_result:discard:11",
+       "push_result:commit:12",
+       "push_result:discard:12",
+       "push_result:commit:13",
+       "push_result:discard:13",
+       "push_result:commit:14",
+       "push_result:commit:15",
+       "push_result:discard:15",
+       "push_result:commit:16",
+       "push_result:discard:16",
+       "push_result:commit:17",
+       "push_result:discard:17",
+       "push_result:commit:18",
+       "push_result:discard:18",
+       "push_result:commit:19",
+       "push_result:discard:19",
+       "push_result:commit:20",
+       "push_result:discard:20",
+       "push_result:commit:21"
+      ]
+     },
+     {
+      "par": "B",
+      "dir": "S→B",
+      "bytes": 4234,
+      "t": 1080,
+      "conn": 1,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "patch@6:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@7:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@8:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@9:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@10:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@11:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@12:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@13:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@14:[X:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@14:[instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@15:[A#1:put,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@16:[A#1:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@17:[A#1:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@18:[A#1:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@19:[A#1:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@20:[A#1:patch,instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]",
+       "patch@20:[instance_presence:6AOVq3Z8a-5iU7Q8g6b0d:patch]"
+      ]
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 876,
+      "t": 1113,
+      "conn": 2,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": null
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 2411,
+      "t": 1116,
+      "conn": 2,
+      "fase": "caso",
+      "tipo": "connect",
+      "hydration": "wipe_presence",
+      "diff": 3
+     },
+     {
+      "par": "A",
+      "dir": "A→S",
+      "bytes": 533,
+      "t": 1125,
+      "conn": 2,
+      "fase": "caso",
+      "tipo": "push",
+      "clientClock": 22,
+      "diff": [],
+      "presenca": true
+     },
+     {
+      "par": "A",
+      "dir": "S→A",
+      "bytes": 99,
+      "t": 1128,
+      "conn": 2,
+      "fase": "caso",
+      "tipo": "data",
+      "itens": [
+       "push_result:commit:22"
+      ]
+     }
+    ],
+    "clocks_servidor": {
+     "X": 14,
+     "A#1": 20
+    }
+   },
+   "externos_bloqueados": [],
+   "consola": [
+    "A error: Error: Received push_result for a push request that is not at the front of the queue\n    at http://127.0.0.1:5201/oracle.js:478:26560\n    at http://127.0.0.1:5201/oracle.js:27:38329\n    at iA (http://"
+   ]
+  }
+ ]
+}

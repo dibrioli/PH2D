@@ -1,0 +1,769 @@
+{
+  "oraculo": "tldraw sync (contraste)",
+  "data": "2026-10-10T19:14:54.845Z",
+  "versoes": {
+    "tldraw": "5.5.2",
+    "@tldraw/sync": "5.5.2",
+    "@tldraw/sync-core": "5.5.2",
+    "@tldraw/tlschema": "5.5.2",
+    "@tldraw/assets": "5.5.2",
+    "ws": "8.21.3",
+    "react": "19.2.8",
+    "playwright": "1.63.0",
+    "chromium": "153.0.8010.12",
+    "node": "v24.19.0"
+  },
+  "casos_json_sha256": "2d4831d0340d0794cb3899de693883b55cdafd3936b2f33a988adf660fccada6",
+  "corredor_sha256": "b5cf8fda6afee37488fa0bcb944904b7045f299341e0fc962c03a319028ba8cf",
+  "servidor_sha256": "462467f8f13b98b48f2ceb00c811e77b0d8c8eb914254c076f4e2672c07632f8",
+  "pagina_sha256": "e0b19d66e68ee0c87ef8aceb37294333cdcd55820f68fd1aa37387f3fa8a2625",
+  "maquina": {
+    "loadavg_no_fim": [
+      12.32,
+      11.33,
+      12.82
+    ],
+    "cpus": 32
+  },
+  "reproduzir": "cd <worktree> && bash docs/MiroClone/ferramentas/colab_oracle/tldraw_sync/instala.sh && PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/colab_oracle/tldraw_sync/corre_colab.mjs <saida>",
+  "casos": {
+    "c01_mesmo_campo": {
+      "resposta": "A→B: ganha B, converge · B→A: ganha A, converge",
+      "ms": 6628
+    },
+    "c02_campos_diferentes_cor": {
+      "resposta": "A→B: X em (700,300) cor red — FUNDE por campo · B→A: X em (700,300) cor red — FUNDE por campo",
+      "ms": 6335
+    },
+    "c03_campos_diferentes_texto": {
+      "resposta": "A→B: X em (700,300) texto «mundo novo» — FUNDE por campo · B→A: X em (700,300) texto «mundo novo» — FUNDE por campo",
+      "ms": 7029
+    },
+    "c04_apagar_x_editar": {
+      "resposta": "A→B: X apagado · B→A: X apagado",
+      "ms": 6016
+    },
+    "c05_criar_no_mesmo_z": {
+      "resposta": "por cima = maior índice local em 6/6, = última libertada em 5/6; A e B concordam em 6/6; índices mantidos em 6/6 — AB-s1: por cima B (índices locais A=a1Avr B=a1O3z, mantidos) · AB-s2: por cima A (índices locais A=a1gkU B=a1THM, mantidos) · AB-s3: por cima B (índices locais A=a17Zf B=a1A5E, mantidos) · BA-s1: por cima A (índices locais A=a1d9I B=a1bGj, mantidos) · BA-s2: por cima A (índices locais A=a1Uxa B=a1THf, mantidos) · BA-s3: por cima A (índices locais A=a1jFA B=a13Zf, mantidos)",
+      "ms": 18598
+    },
+    "c06_trazer_para_a_frente": {
+      "resposta": "por cima = maior índice local em 6/6, = última libertada em 3/6; A e B concordam em 6/6; índices mantidos em 6/6 — AB-s1: por cima B (índices locais A=a4Euz B=a4OR2, mantidos) · AB-s2: por cima B (índices locais A=a49j6 B=a4Fjf, mantidos) · AB-s3: por cima A (índices locais A=a4UjW B=a49Vz, mantidos) · BA-s1: por cima A (índices locais A=a4k72 B=a4M1j, mantidos) · BA-s2: por cima B (índices locais A=a4Elf B=a4d3f, mantidos) · BA-s3: por cima B (índices locais A=a47iX B=a4ppj, mantidos)",
+      "ms": 17049
+    },
+    "c07_seta_e_forma_apagada": {
+      "resposta": "A→B: Q apagado; seta existe, bindings=[\"start→P\"] · B→A: Q apagado; seta existe, bindings=[\"start→P\"]",
+      "ms": 7382
+    },
+    "c08_seta_segue_forma_alheia": {
+      "resposta": "em A a seta SEGUE Q; registo da seta NÃO muda (clock da seta parado, o de Q sobe); push da seta por: []",
+      "ms": 2143
+    },
+    "c09_texto_a_dois": {
+      "resposta": "A→B: «hellobbb» · B→A: «helloaaa»",
+      "ms": 8312
+    },
+    "c10_desfazer_so_o_meu": {
+      "resposta": "depois do Ctrl+Z de A: A#1 (de A) desfeito, B#1 (de B) fica — desfazer é por par",
+      "ms": 1767
+    },
+    "c11_desfazer_depois_do_outro": {
+      "resposta": "Ctrl+Z de A: X em (400,250) cor black; Ctrl+Shift+Z: X em (600,250) cor black",
+      "ms": 1826
+    },
+    "c12_desfazer_o_que_o_outro_apagou": {
+      "resposta": "X RESSUSCITA em (400,250)",
+      "ms": 1839
+    },
+    "c13_entrar_a_meio": {
+      "resposta": "B vê tudo (50 formas); entrada: 6 mensagens, 27181 B recebidos (connect 26985 B), 1674 B enviados; igual em 643 ms",
+      "ms": 18763
+    },
+    "c14_sair_e_voltar": {
+      "resposta": "converge: X em (600,250) cor red; W(A) fica; V(B offline) fica",
+      "ms": 3711
+    },
+    "c15_rede_cai_a_meio_do_arrasto": {
+      "resposta": "B acaba com X em (700,350) — a posição FINAL de A; converge (a meio B via 550)",
+      "ms": 3384
+    },
+    "c16_mensagem_duplicada": {
+      "resposta": "S_para_B: converge, formas=2, B=2, reconexões A=0 B=0 · A_para_S: converge, formas=2, B=2, reconexões A=1 B=0",
+      "ms": 6185
+    },
+    "c17_mensagens_reordenadas": {
+      "resposta": "S_para_B: B fica em x=475 (A acabou em 700; meio 550), NÃO converge em 15 s; depois de uma edição nova de A: B x=701, converge · A_para_S: B fica em x=700 (A acabou em 700; meio 550), converge",
+      "ms": 19921
+    },
+    "c18_cursor": {
+      "resposta": "A envia 29.309 msg/s, 149.627 B/msg; B redesenha 23.077 pos/s (amostra 60.385 Hz, salto mediano 15.544 px); B vê nome «A» cor #e03131",
+      "ms": 4326
+    },
+    "c19_arrastar_custo": {
+      "resposta": "N=1: 30.216 msg/s, 7089.209 B/s (234.619 B/msg); B vê o CAMINHO (61 posições) · N=10: 31.144 msg/s, 30506.083 B/s (979.531 B/msg); B vê o CAMINHO (61 posições) · N=50: 30.702 msg/s, 132541.423 B/s (4317.063 B/msg); B vê o CAMINHO (59 posições)",
+      "ms": 13506
+    },
+    "c20_seleccao_alheia": {
+      "resposta": "B VÊ a selecção de A (presença selectedShapeIds=[\"shape:X\"]); contorno desenhado: 1012 píxeis mudam quando A larga, cor média rgb(131,38,38) (A = #e03131) — ver c20_B.png; nome «A» só na presença/cursor",
+      "ms": 2992
+    },
+    "c21_seguir": {
+      "resposta": "B segue A; câmara de B alcança a de A (atraso 49 ms); interrompem: B roda o rato (pan); B faz zoom (Ctrl + roda); não interrompem: B clica no canvas vazio; B carrega Escape; B escolhe uma ferramenta (tecla r); B arrasta X (que vê)",
+      "ms": 10981
+    },
+    "c22_trazer_todos": {
+      "resposta": "NÃO existe: nenhum item que case /bring (every|all)|summon|everyone|gather|all users|to me|follow me|ask .*follow|come here/i em 18 menus/diálogos (586 itens)",
+      "ms": 9170
+    },
+    "c23_tres_pares": {
+      "resposta": "os três convergem sempre; ganha: A→B→C: C · A→C→B: B · B→A→C: C · B→C→A: A · C→A→B: B · C→B→A: A",
+      "ms": 27694
+    }
+  },
+  "duas_corridas": {
+    "comparado_em": "2026-10-10T19:18:29.084Z",
+    "corrida2": "/home/enio/Apps/tldraw-sync-oracle/corrida2",
+    "casos": 23,
+    "subcorridas_com_deterministico_diferente": 0,
+    "por_caso": {
+      "c01_mesmo_campo": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              5
+            ]
+          },
+          {
+            "subcorrida": "BA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              4
+            ]
+          }
+        ]
+      },
+      "c02_campos_diferentes_cor": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "BA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              6
+            ]
+          }
+        ]
+      },
+      "c03_campos_diferentes_texto": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "BA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              5
+            ]
+          }
+        ]
+      },
+      "c04_apagar_x_editar": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              3,
+              4
+            ]
+          },
+          {
+            "subcorrida": "BA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              4
+            ]
+          }
+        ]
+      },
+      "c05_criar_no_mesmo_z": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB-s1",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              8,
+              10
+            ]
+          },
+          {
+            "subcorrida": "AB-s2",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "AB-s3",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "BA-s1",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "BA-s2",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              14
+            ]
+          },
+          {
+            "subcorrida": "BA-s3",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              31
+            ]
+          }
+        ]
+      },
+      "c06_trazer_para_a_frente": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB-s1",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              12
+            ]
+          },
+          {
+            "subcorrida": "AB-s2",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              6,
+              354
+            ]
+          },
+          {
+            "subcorrida": "AB-s3",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              7
+            ]
+          },
+          {
+            "subcorrida": "BA-s1",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              9
+            ]
+          },
+          {
+            "subcorrida": "BA-s2",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              16,
+              21
+            ]
+          },
+          {
+            "subcorrida": "BA-s3",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              8
+            ]
+          }
+        ]
+      },
+      "c07_seta_e_forma_apagada": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              6,
+              11
+            ]
+          },
+          {
+            "subcorrida": "BA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              5
+            ]
+          }
+        ]
+      },
+      "c08_seta_segue_forma_alheia": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      "c09_texto_a_dois": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "AB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              3,
+              6
+            ]
+          },
+          {
+            "subcorrida": "BA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      "c10_desfazer_so_o_meu": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              68,
+              69
+            ]
+          }
+        ]
+      },
+      "c11_desfazer_depois_do_outro": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              66,
+              69
+            ]
+          }
+        ]
+      },
+      "c12_desfazer_o_que_o_outro_apagou": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              68,
+              70
+            ]
+          }
+        ]
+      },
+      "c13_entrar_a_meio": {
+        "existe_igual": true,
+        "resposta_igual": false,
+        "resposta1": "B vê tudo (50 formas); entrada: 6 mensagens, 27181 B recebidos (connect 26985 B), 1674 B enviados; igual em 643 ms",
+        "resposta2": "B vê tudo (50 formas); entrada: 6 mensagens, 27181 B recebidos (connect 26985 B), 1674 B enviados; igual em 599 ms",
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              12,
+              13
+            ],
+            "entrada.ms_ate_synced_remote": [
+              579,
+              625
+            ],
+            "entrada.ms_ate_B_igual_a_A": [
+              599,
+              643
+            ],
+            "entrada.ate_igual.mensagens": [
+              6,
+              6
+            ],
+            "entrada.ate_igual.bytes_recebidos": [
+              27181,
+              27181
+            ],
+            "entrada.ate_igual.bytes_enviados": [
+              1674,
+              1674
+            ],
+            "entrada.primeira_resposta_connect_bytes": [
+              26985,
+              26985
+            ]
+          }
+        ]
+      },
+      "c14_sair_e_voltar": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              75,
+              89
+            ]
+          }
+        ]
+      },
+      "c15_rede_cai_a_meio_do_arrasto": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              458,
+              516
+            ]
+          }
+        ]
+      },
+      "c16_mensagem_duplicada": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "S_para_B",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "A_para_S",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              8
+            ]
+          }
+        ]
+      },
+      "c17_mensagens_reordenadas": {
+        "existe_igual": true,
+        "resposta_igual": false,
+        "resposta1": "S_para_B: B fica em x=475 (A acabou em 700; meio 550), NÃO converge em 15 s; depois de uma edição nova de A: B x=701, converge · A_para_S: B fica em x=700 (A acabou em 700; meio 550), converge",
+        "resposta2": "S_para_B: B fica em x=550 (A acabou em 700; meio 550), NÃO converge em 15 s; depois de uma edição nova de A: B x=701, converge · A_para_S: B fica em x=700 (A acabou em 700; meio 550), converge",
+        "subcorridas": [
+          {
+            "subcorrida": "S_para_B",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              66,
+              67
+            ]
+          },
+          {
+            "subcorrida": "A_para_S",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              2,
+              5
+            ]
+          }
+        ]
+      },
+      "c18_cursor": {
+        "existe_igual": true,
+        "resposta_igual": false,
+        "resposta1": "A envia 29.309 msg/s, 149.627 B/msg; B redesenha 23.077 pos/s (amostra 60.385 Hz, salto mediano 15.544 px); B vê nome «A» cor #e03131",
+        "resposta2": "A envia 30.243 msg/s, 147.246 B/msg; B redesenha 23.462 pos/s (amostra 60.385 Hz, salto mediano 15.545 px); B vê nome «A» cor #e03131",
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              2,
+              5
+            ],
+            "cursor.A_envia.mensagens": [
+              59,
+              61
+            ],
+            "cursor.A_envia.por_s": [
+              29.309,
+              30.243
+            ],
+            "cursor.A_envia.bytes_por_mensagem": [
+              147.246,
+              149.627
+            ],
+            "cursor.A_envia.bytes_por_s": [
+              4385.494,
+              4453.148
+            ],
+            "cursor.posicoes_distintas_por_s": [
+              23.077,
+              23.462
+            ],
+            "cursor.hz_de_amostragem": [
+              60.385,
+              60.385
+            ],
+            "cursor.salto_px.mediana": [
+              15.544,
+              15.545
+            ],
+            "cursor.intervalo_entre_mudancas_ms.mediana": [
+              33.3,
+              33.3
+            ]
+          }
+        ]
+      },
+      "c19_arrastar_custo": {
+        "existe_igual": true,
+        "resposta_igual": false,
+        "resposta1": "N=1: 30.216 msg/s, 7089.209 B/s (234.619 B/msg); B vê o CAMINHO (61 posições) · N=10: 31.144 msg/s, 30506.083 B/s (979.531 B/msg); B vê o CAMINHO (61 posições) · N=50: 30.702 msg/s, 132541.423 B/s (4317.063 B/msg); B vê o CAMINHO (59 posições)",
+        "resposta2": "N=1: 31.204 msg/s, 7287.177 B/s (233.531 B/msg); B vê o CAMINHO (61 posições) · N=10: 30.888 msg/s, 30446.911 B/s (985.719 B/msg); B vê o CAMINHO (62 posições) · N=50: 30.897 msg/s, 134996.077 B/s (4369.159 B/msg); B vê o CAMINHO (61 posições)",
+        "subcorridas": [
+          {
+            "subcorrida": "N1",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              3,
+              3
+            ],
+            "arrasto.A_envia.por_s": [
+              30.216,
+              31.204
+            ],
+            "arrasto.A_envia.bytes_por_s": [
+              7089.209,
+              7287.177
+            ],
+            "arrasto.A_envia.bytes_por_mensagem": [
+              233.531,
+              234.619
+            ],
+            "arrasto.B_ve.posicoes_x_distintas_de_S0": [
+              61,
+              61
+            ]
+          },
+          {
+            "subcorrida": "N10",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              6,
+              10
+            ],
+            "arrasto.A_envia.por_s": [
+              30.888,
+              31.144
+            ],
+            "arrasto.A_envia.bytes_por_s": [
+              30446.911,
+              30506.083
+            ],
+            "arrasto.A_envia.bytes_por_mensagem": [
+              979.531,
+              985.719
+            ],
+            "arrasto.B_ve.posicoes_x_distintas_de_S0": [
+              61,
+              62
+            ]
+          },
+          {
+            "subcorrida": "N50",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              22,
+              25
+            ],
+            "arrasto.A_envia.por_s": [
+              30.702,
+              30.897
+            ],
+            "arrasto.A_envia.bytes_por_s": [
+              132541.423,
+              134996.077
+            ],
+            "arrasto.A_envia.bytes_por_mensagem": [
+              4317.063,
+              4369.159
+            ],
+            "arrasto.B_ve.posicoes_x_distintas_de_S0": [
+              59,
+              61
+            ]
+          }
+        ]
+      },
+      "c20_seleccao_alheia": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      "c21_seguir": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              2,
+              4
+            ],
+            "camara.atraso_ms_B_alcanca_a_camara_final_de_A": [
+              49,
+              49
+            ]
+          }
+        ]
+      },
+      "c22_trazer_todos": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "seq",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      "c23_tres_pares": {
+        "existe_igual": true,
+        "resposta_igual": true,
+        "subcorridas": [
+          {
+            "subcorrida": "ABC",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              5
+            ]
+          },
+          {
+            "subcorrida": "ACB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              8
+            ]
+          },
+          {
+            "subcorrida": "BAC",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          },
+          {
+            "subcorrida": "BCA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              5
+            ]
+          },
+          {
+            "subcorrida": "CAB",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              5,
+              5
+            ]
+          },
+          {
+            "subcorrida": "CBA",
+            "deterministico_igual": true,
+            "ms_ate_convergir": [
+              4,
+              5
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

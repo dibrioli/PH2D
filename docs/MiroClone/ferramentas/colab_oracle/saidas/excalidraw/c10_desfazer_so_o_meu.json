@@ -1,0 +1,370 @@
+{
+ "id": "c10_desfazer_so_o_meu",
+ "o_que": "A cria X, B cria Y; A faz Ctrl+Z",
+ "pergunta": "desfaz só o X de A?",
+ "existe": true,
+ "resposta": "A carrega Ctrl+Z 6× (A criou X e pintou-o; B criou Y depois): X(rosa)+Y → X(sem fundo)+Y → Y → Y → Y → Y; Y de B NUNCA é tocado — desfaz só o de A",
+ "resposta_corrida2": "A carrega Ctrl+Z 6× (A criou X e pintou-o; B criou Y depois): X(rosa)+Y → X(sem fundo)+Y → Y → Y → Y → Y; Y de B NUNCA é tocado — desfaz só o de A",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": [
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X@(300,300)#ffc9c9",
+    "Y@(600,300)#b2f2bb"
+   ],
+   "seleccao_A": [
+    "X"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": true,
+   "elementos": [
+    "X@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ],
+   "seleccao_A": [
+    "X"
+   ]
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": true,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ],
+   "seleccao_A": []
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ],
+   "seleccao_A": []
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ],
+   "seleccao_A": []
+  },
+  {
+   "convergiu": true,
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ],
+   "seleccao_A": []
+  }
+ ],
+ "variavel": null,
+ "medidas_faixa_das_duas": null,
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": [
+  {
+   "tecla": "Ctrl+Z",
+   "n": 1,
+   "convergiu": true,
+   "seleccao_A": [
+    "X"
+   ],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X@(300,300)#ffc9c9",
+    "Y@(600,300)#b2f2bb"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 2,
+   "convergiu": true,
+   "seleccao_A": [
+    "X"
+   ],
+   "mexeu_elementos": true,
+   "elementos": [
+    "X@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 3,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": true,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 4,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 5,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ]
+  },
+  {
+   "tecla": "Ctrl+Z",
+   "n": 6,
+   "convergiu": true,
+   "seleccao_A": [],
+   "mexeu_elementos": false,
+   "elementos": [
+    "X†@(300,300)transparent",
+    "Y@(600,300)#b2f2bb"
+   ]
+  }
+ ],
+ "prova": null,
+ "estado_final": {
+  "A": [
+   {
+    "papel": "X",
+    "z": 0,
+    "id": "POKYHD7itVYgg9FXys4sF",
+    "type": "rectangle",
+    "x": 300,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": true,
+    "index": "a0",
+    "version": 9,
+    "versionNonce": 955476263,
+    "updated": 1791660014062,
+    "boundElements": null,
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   },
+   {
+    "papel": "Y",
+    "z": 1,
+    "id": "YRDGT4x3eFmE5nMq-apT0",
+    "type": "rectangle",
+    "x": 600,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#b2f2bb",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a1",
+    "version": 7,
+    "versionNonce": 2106345413,
+    "updated": 1791660013929,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ],
+  "B": [
+   {
+    "papel": "X",
+    "z": 0,
+    "id": "POKYHD7itVYgg9FXys4sF",
+    "type": "rectangle",
+    "x": 300,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": true,
+    "index": "a0",
+    "version": 9,
+    "versionNonce": 955476263,
+    "updated": 1791660014062,
+    "boundElements": [],
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   },
+   {
+    "papel": "Y",
+    "z": 1,
+    "id": "YRDGT4x3eFmE5nMq-apT0",
+    "type": "rectangle",
+    "x": 600,
+    "y": 300,
+    "width": 120,
+    "height": 80,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "#b2f2bb",
+    "text": null,
+    "originalText": null,
+    "containerId": null,
+    "isDeleted": false,
+    "index": "a1",
+    "version": 7,
+    "versionNonce": 2106345413,
+    "updated": 1791660013929,
+    "boundElements": null,
+    "startBinding": null,
+    "endBinding": null,
+    "points": null
+   }
+  ]
+ },
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 307,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 707,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 1612,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 1612,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 1614,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 1614,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 64,
+  "linhas": [
+   [332,"A","recebe","engine:0{",107],
+   [336,"A","envia","engine:40",2],
+   [339,"A","recebe","engine:40",32],
+   [339,"A","recebe","init-room",15],
+   [340,"A","envia","join-room",38],
+   [340,"A","recebe","first-in-room",19],
+   [341,"A","recebe","room-user-change",47],
+   [719,"B","recebe","engine:0{",107],
+   [719,"B","envia","engine:40",2],
+   [720,"B","recebe","engine:40",32],
+   [720,"B","recebe","init-room",15],
+   [720,"B","envia","join-room",38],
+   [724,"A","recebe","new-user",37],
+   [724,"A","recebe","room-user-change",70],
+   [724,"B","recebe","room-user-change",70],
+   [725,"A","envia","server-broadcast",182],
+   [730,"B","recebe","client-broadcast",159],
+   [805,"A","envia","server-volatile-broadcast",332],
+   [810,"A","envia","server-broadcast",184],
+   [812,"B","recebe","client-broadcast",300],
+   [812,"B","recebe","client-broadcast",161],
+   [826,"A","envia","server-broadcast",658],
+   [827,"B","recebe","client-broadcast",635],
+   [838,"A","envia","server-volatile-broadcast",334],
+   [842,"B","recebe","client-broadcast",302],
+   [843,"A","envia","server-broadcast",657],
+   [845,"B","recebe","client-broadcast",634],
+   [857,"A","envia","server-broadcast",657],
+   [858,"B","recebe","client-broadcast",634],
+   [871,"A","envia","server-volatile-broadcast",334],
+   [874,"A","envia","server-broadcast",658],
+   [881,"B","recebe","client-broadcast",302],
+   [881,"B","recebe","client-broadcast",635],
+   [905,"A","envia","server-volatile-broadcast",360],
+   [906,"B","recebe","client-broadcast",328],
+   [911,"A","envia","server-broadcast",654],
+   [912,"B","recebe","client-broadcast",631],
+   [1255,"B","envia","server-volatile-broadcast",325],
+   [1262,"B","envia","server-broadcast",652],
+   [1262,"B","envia","server-broadcast",652],
+   [1263,"A","recebe","client-broadcast",293],
+   [1263,"A","recebe","client-broadcast",629],
+   [1263,"A","recebe","client-broadcast",629],
+   [1276,"B","envia","server-broadcast",659],
+   [1278,"A","recebe","client-broadcast",636],
+   [1288,"B","envia","server-volatile-broadcast",327],
+   [1292,"B","envia","server-broadcast",659],
+   [1293,"A","recebe","client-broadcast",295],
+   [1293,"A","recebe","client-broadcast",636],
+   [1307,"B","envia","server-broadcast",659],
+   [1308,"A","recebe","client-broadcast",636],
+   [1321,"B","envia","server-volatile-broadcast",327],
+   [1325,"B","envia","server-broadcast",660],
+   [1326,"A","recebe","client-broadcast",295],
+   [1326,"A","recebe","client-broadcast",637],
+   [1354,"B","envia","server-volatile-broadcast",353],
+   [1356,"A","recebe","client-broadcast",321],
+   [1362,"B","envia","server-broadcast",656],
+   [1363,"A","recebe","client-broadcast",633],
+   [1384,"A","envia","server-broadcast",1130],
+   [1387,"B","recebe","client-broadcast",1107],
+   [1492,"A","envia","server-broadcast",657],
+   [1495,"B","recebe","client-broadcast",634],
+   [1613,"B","recebe","room-user-change",47]
+  ]
+ }
+}

@@ -1,0 +1,197 @@
+{
+ "id": "c22_trazer_todos",
+ "o_que": "A pede «trazer todos» (se o produto tem)",
+ "pergunta": "existe? o que acontece à câmara de B e C?",
+ "existe": false,
+ "resposta": "NÃO existe: a paleta de comandos (10 termos), a lista de utilizadores, o menu principal, o menu de contexto e o próprio avatar não têm «trazer todos»; só existe SEGUIR (c21), iniciado por quem segue",
+ "resposta_corrida2": "NÃO existe: a paleta de comandos (10 termos), a lista de utilizadores, o menu principal, o menu de contexto e o próprio avatar não têm «trazer todos»; só existe SEGUIR (c21), iniciado por quem segue",
+ "deterministico_igual_nas_duas": true,
+ "divergencias_entre_corridas": [],
+ "deterministico": {
+  "existe": false
+ },
+ "variavel": null,
+ "medidas_faixa_das_duas": null,
+ "erro": null,
+ "erro_corrida2": null,
+ "rodadas": null,
+ "prova": {
+  "procurado_por": "/summon|bring (all|every)|gather|trazer|everyone to me/i",
+  "achados": [],
+  "paleta:summon": [],
+  "paleta:bring": [],
+  "paleta:everyone": [],
+  "paleta:all users": [
+   "Sign up",
+   "Export to Excalidraw+"
+  ],
+  "paleta:gather": [],
+  "paleta:follow": [
+   "Follow us"
+  ],
+  "paleta:present": [
+   "Live collaboration...",
+   "Discord chat"
+  ],
+  "paleta:collab": [
+   "Live collaboration...",
+   "Share",
+   "Stop session"
+  ],
+  "paleta:viewport": [
+   "Zoom to fit in viewportShift2"
+  ],
+  "paleta:camera": [
+   "Live collaboration..."
+  ],
+  "lista_de_utilizadores": [
+   "P",
+   "Click on user to follow",
+   "P",
+   "Productive Guanaco",
+   "(You)"
+  ],
+  "menu_principal": [
+   "OpenCtrl+O",
+   "Save to...",
+   "Export image...Ctrl+Shift+E",
+   "Live collaboration...",
+   "Command paletteCtrl+/",
+   "Find on canvasCtrl+F",
+   "Help?",
+   "Reset the canvas",
+   "Excalidraw+",
+   "GitHub",
+   "Follow us",
+   "Discord chat",
+   "Sign up",
+   "Preferences"
+  ],
+  "menu_contexto_canvas": [],
+  "clicar_no_proprio_avatar": []
+ },
+ "estado_final": null,
+ "pedidos_bloqueados": [
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Bold.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Medium.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-Regular.woff2",
+  "GET https://excalidraw.nyc3.cdn.digitaloceanspaces.com/oss/fonts/Assistant/Assistant-SemiBold.woff2",
+  "GET https://scripts.simpleanalyticscdn.com/latest.js",
+  "POST https://firestore.googleapis.com/v1/projects/ph2d-oracle-offline/databases/(default)/documents:batchGet"
+ ],
+ "polling_http": 0,
+ "erros_pagina": [],
+ "eventos_ws": [
+  {
+   "t": 302,
+   "par": "A",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 720,
+   "par": "B",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 922,
+   "par": "C",
+   "ev": "ws_abre",
+   "n": 1
+  },
+  {
+   "t": 9918,
+   "par": "A",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 9918,
+   "par": "A",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 9922,
+   "par": "B",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 9922,
+   "par": "B",
+   "ev": "ws_fecha_servidor"
+  },
+  {
+   "t": 9923,
+   "par": "C",
+   "ev": "ws_fecha_pagina"
+  },
+  {
+   "t": 9923,
+   "par": "C",
+   "ev": "ws_fecha_servidor"
+  }
+ ],
+ "link_forma": "http://127.0.0.1:5101/#room=<id20hex>,<chave22b64>",
+ "mensagens": {
+  "campos": [
+   "t_ms",
+   "par",
+   "dir",
+   "evento",
+   "bytes"
+  ],
+  "n": 50,
+  "linhas": [
+   [327,"A","recebe","engine:0{",107],
+   [331,"A","envia","engine:40",2],
+   [333,"A","recebe","engine:40",32],
+   [334,"A","recebe","init-room",15],
+   [334,"A","envia","join-room",38],
+   [335,"A","recebe","first-in-room",19],
+   [335,"A","recebe","room-user-change",47],
+   [726,"B","recebe","engine:0{",107],
+   [727,"B","envia","engine:40",2],
+   [728,"B","recebe","engine:40",32],
+   [728,"B","recebe","init-room",15],
+   [729,"B","envia","join-room",38],
+   [730,"A","recebe","new-user",37],
+   [730,"A","recebe","room-user-change",70],
+   [730,"B","recebe","room-user-change",70],
+   [731,"A","envia","server-broadcast",182],
+   [739,"B","recebe","client-broadcast",159],
+   [928,"C","recebe","engine:0{",107],
+   [929,"C","envia","engine:40",2],
+   [929,"C","recebe","engine:40",32],
+   [929,"C","recebe","init-room",15],
+   [930,"C","envia","join-room",38],
+   [931,"A","recebe","new-user",37],
+   [931,"A","recebe","room-user-change",93],
+   [931,"A","envia","server-broadcast",182],
+   [931,"B","recebe","new-user",37],
+   [931,"B","recebe","room-user-change",93],
+   [931,"C","recebe","room-user-change",93],
+   [933,"B","envia","server-broadcast",182],
+   [936,"A","recebe","client-broadcast",159],
+   [937,"B","recebe","client-broadcast",159],
+   [940,"C","recebe","client-broadcast",159],
+   [941,"C","recebe","client-broadcast",159],
+   [943,"A","envia","server-volatile-broadcast",331],
+   [973,"B","recebe","client-broadcast",299],
+   [974,"C","recebe","client-broadcast",299],
+   [984,"A","envia","server-volatile-broadcast",331],
+   [986,"B","recebe","client-broadcast",299],
+   [986,"C","recebe","client-broadcast",299],
+   [3329,"A","envia","server-volatile-broadcast",265],
+   [3330,"B","recebe","client-broadcast",233],
+   [3331,"C","recebe","client-broadcast",233],
+   [6329,"A","envia","server-volatile-broadcast",265],
+   [6330,"B","recebe","client-broadcast",233],
+   [6331,"C","recebe","client-broadcast",233],
+   [9329,"A","envia","server-volatile-broadcast",265],
+   [9330,"B","recebe","client-broadcast",233],
+   [9330,"C","recebe","client-broadcast",233],
+   [9921,"B","recebe","room-user-change",70],
+   [9921,"C","recebe","room-user-change",70]
+  ]
+ }
+}

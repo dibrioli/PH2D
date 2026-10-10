@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-lens"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O OKLab da saturação (a mesma conta, nas duas línguas, do ciclo 18) e a transferência sRGB.
+ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

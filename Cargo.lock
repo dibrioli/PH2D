@@ -6321,6 +6321,13 @@ name = "ph2d-layer-ops"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-lens"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+]
+
+[[package]]
 name = "ph2d-light"
 version = "0.0.0"
 dependencies = [

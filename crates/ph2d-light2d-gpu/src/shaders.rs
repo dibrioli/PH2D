@@ -32,7 +32,8 @@ macro_rules! rc {
             include_str!("wgsl/c2_rc.wgsl"),
             include_str!("wgsl/c3_direta.wgsl"),
             include_str!("wgsl/c3_preenche.wgsl"),
-            include_str!("wgsl/c4_rebote.wgsl")
+            include_str!("wgsl/c4_rebote.wgsl"),
+            include_str!("wgsl/c2_hrc.wgsl")
         )
     };
 }

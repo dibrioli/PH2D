@@ -295,6 +295,10 @@ impl PassList {
                 usos: uniforme,
             });
         }
+        // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).
+        if cfg.holografica.is_some() {
+            buffers.extend(crate::hrc::buffers(fino, crate::hrc::n_passes(fino)));
+        }
         if op.rebote.is_some() {
             buffers.push(Buffer {
                 nome: "luz2d/buf/rebote",
@@ -352,7 +356,15 @@ impl PassList {
             });
         }
         let sementes_finais = SEMENTES[saltos.len() % 2];
-        for i in (0..n).rev() {
+        // ⭐ W5c: a holográfica escreve a c0 direto (os T e os R vivem em buffers).
+        if cfg.holografica.is_some() {
+            passes.push(Passe {
+                nome: "C2 holográfica".into(),
+                le: vec![EMISSAO, COBERTURA, TAU_DENTRO],
+                escreve: vec![Self::indice_da_c0(cfg)],
+            });
+        }
+        for i in (0..n).rev().filter(|_| cfg.holografica.is_none()) {
             let saida = CASCATAS[((n - 1 - i) % 2) as usize];
             let mut le = vec![EMISSAO, COBERTURA, TAU_DENTRO, sementes_finais];
             if i + 1 < n {

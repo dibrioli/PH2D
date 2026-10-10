@@ -290,7 +290,25 @@ impl Solver {
             self.cfg.grade.largura.div_ceil(8),
             self.cfg.grade.altura.div_ceil(8),
         ];
+        // ⭐ W5c: a holográfica escreve a c0 num passe só (os carimbos da cascata 0); os das outras
+        // cascatas ficam em passes vazios.
+        if let Some(h) = &self.hrc {
+            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("luz2d C2 holográfica"),
+                timestamp_writes: self
+                    .tempos
+                    .as_ref()
+                    .map(|t| t.escrita_compute(tempos::da_cascata(0))),
+            });
+            h.gravar(&mut p);
+        }
         for i in (0..self.n).rev() {
+            if self.hrc.is_some() {
+                if i > 0 {
+                    rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::da_cascata(i));
+                }
+                continue;
+            }
             let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("luz2d C2 cascata"),
                 timestamp_writes: self

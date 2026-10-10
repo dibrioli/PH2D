@@ -33,7 +33,7 @@ fn cena(baixo: f32, cima: f32) -> CenaDeLuz {
 }
 
 /// O pior erro relativo nos pontos a menos de 1,5 texel das duas faces: `(longe, próprio)`.
-fn pior_junto_as_faces(
+pub fn pior_junto_as_faces(
     gpu: &ph2d_gpu::GpuContext,
     cfg: Config,
     baixo: f32,
@@ -117,6 +117,33 @@ fn sonda_junto_a_face() {
             }
             eprintln!(
                 "{degrau} {mascara:?} início {inicio} (longe/próprio): {}",
+                linha.join(" · ")
+            );
+        }
+    }
+}
+
+/// Sonda (à mão): junto à face, a cascata holográfica × a clássica, por degrau e desvio.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_junto_a_face_holografica() {
+    let Some(gpu) = gpu() else { return };
+    for (degrau, lado, texel) in DEGRAUS {
+        let t = texel as f32;
+        for h in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
+            let mut linha = Vec::new();
+            for desvio in [0.0_f32, 0.25, 0.5, 0.75, 1.0, 1.5] {
+                let cfg = Config {
+                    holografica: h,
+                    ..Config::padrao(grade(lado, texel))
+                };
+                let (l, p) =
+                    pior_junto_as_faces(&gpu, cfg, (40.0 + desvio) * t, (100.0 + desvio) * t);
+                linha.push(format!("{desvio}: {l:.3}/{p:.3}"));
+            }
+            eprintln!(
+                "{degrau} holográfica {} (longe/próprio): {}",
+                h.is_some(),
                 linha.join(" · ")
             );
         }

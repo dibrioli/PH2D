@@ -11,18 +11,31 @@ fn g10_dois_quadros_da_mesma_cena_sao_bit_identicos() {
     let Some(gpu) = gpu() else { return };
     let (_, lado, texel) = DEGRAUS[0];
     let cena = ceu_e_vidro();
-    let mut s = Solver::novo(&gpu, Config::padrao(grade(lado, texel))).expect("solver");
-    s.quadro(&gpu, &cena);
-    let a = ler_bytes(&gpu, s.fluencia());
-    s.quadro(&gpu, &cena);
-    let b = ler_bytes(&gpu, s.fluencia());
-    let mut outro = Solver::novo(&gpu, Config::padrao(grade(lado, texel))).expect("solver");
-    outro.quadro(&gpu, &cena);
-    let c = ler_bytes(&gpu, outro.fluencia());
-    assert!(
-        a.iter().any(|&x| x != 0),
-        "a fluência não pode ser toda zero"
-    );
-    assert!(a == b, "dois quadros da mesma cena diferem");
-    assert!(a == c, "dois solvers da mesma configuração diferem");
+    // ⭐ W5c: e a cascata holográfica (o nível Ultra).
+    for holografica in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
+        let cfg = Config {
+            holografica,
+            ..Config::padrao(grade(lado, texel))
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        s.quadro(&gpu, &cena);
+        let a = ler_bytes(&gpu, s.fluencia());
+        s.quadro(&gpu, &cena);
+        let b = ler_bytes(&gpu, s.fluencia());
+        let mut outro = Solver::novo(&gpu, cfg).expect("solver");
+        outro.quadro(&gpu, &cena);
+        let c = ler_bytes(&gpu, outro.fluencia());
+        assert!(
+            a.iter().any(|&x| x != 0),
+            "a fluência não pode ser toda zero"
+        );
+        assert!(
+            a == b,
+            "{holografica:?}: dois quadros da mesma cena diferem"
+        );
+        assert!(
+            a == c,
+            "{holografica:?}: dois solvers da mesma configuração diferem"
+        );
+    }
 }

@@ -142,7 +142,29 @@ pub struct Config {
     /// `c2_rc.wgsl`): uma sonda de cima dentro de um opaco (ou sobre a face) zerava a fusão inteira e o
     /// raio de baixo que acaba dentro da face perdia a entrada nela.
     pub fronteira_na_face: bool,
+    /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, o nível Ultra) no lugar das cascatas de Sannikov: a mesma
+    /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
+    pub holografica: Option<Holografica>,
 }
+
+/// ⭐ W5c — as escolhas da cascata holográfica.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Holografica {
+    /// O passo dos traços curtos (T0–T2), em texels.
+    pub passo: f32,
+    /// O filtro em cruz da Eq. 21 (sondas de v par e ímpar não conversam).
+    pub borrao: bool,
+    /// O «+1» da Fig. 12 do artigo: a fluência do texel lê-se na sonda um adiante na direção do
+    /// quadrante (salvo quando ela cai dentro de um opaco).
+    pub mais_um: bool,
+}
+
+/// A cascata holográfica por omissão — ver a rodada `medida_luz2d_w5c`.
+pub const HOLOGRAFICA_PADRAO: Holografica = Holografica {
+    passo: 0.5,
+    borrao: true,
+    mais_um: true,
+};
 
 /// ⭐ W5c — que raios bilineares a fusão deixa de fora junto a um opaco (o `MASCARA_DA_FUSAO` do
 /// `c2_rc.wgsl`); os pesos dos que ficam renormalizam-se.
@@ -268,6 +290,7 @@ impl Config {
             rebote: false,
             mascara_da_fusao: MascaraDaFusao::PeloFim,
             fronteira_na_face: true,
+            holografica: None,
         }
     }
 

@@ -15,3 +15,4 @@ mod g9_rebote;
 mod junto_a_face;
 mod medicao;
 mod medida_luz2d;
+mod ultra_hrc;

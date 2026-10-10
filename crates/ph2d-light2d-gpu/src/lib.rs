@@ -18,6 +18,7 @@ mod config;
 mod direta;
 mod distantes;
 mod erro;
+mod hrc;
 mod passlist;
 mod shaders;
 mod solver;
@@ -27,8 +28,9 @@ mod tempos;
 pub use captura::{ForaDaC0, Motivo, Quem, RelatorioC0, o_que_fica_fora};
 pub use captura_sprite::{Amostragem, CapturaDeSprites, SpriteNaC0};
 pub use config::{
-    Bordas, Config, Fusao, Grade, MASCARA_PX_PADRAO, MascaraDaFusao, PASSO_DIRETO_PADRAO,
-    PASSO_NA_BORDA_PADRAO, PREENCHIMENTO_PADRAO, Precisao, REFINO_PADRAO, Refino,
+    Bordas, Config, Fusao, Grade, HOLOGRAFICA_PADRAO, Holografica, MASCARA_PX_PADRAO,
+    MascaraDaFusao, PASSO_DIRETO_PADRAO, PASSO_NA_BORDA_PADRAO, PREENCHIMENTO_PADRAO, Precisao,
+    REFINO_PADRAO, Refino,
 };
 pub use direta::{LAMPADAS_DIRETAS_MAX, lampadas_diretas};
 pub use distantes::tapa_fora_da_grade;

@@ -560,3 +560,31 @@ fn sonda_perfil_do_chao() {
         }
     }
 }
+
+/// Sonda (à mão): o G9 com a cascata holográfica, por degrau.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_g9_holografica() {
+    let Some(gpu) = gpu() else { return };
+    let cena = sala();
+    let serie = Rebote::resolver(
+        &cena,
+        OpcoesDoRebote {
+            passo_m: 0.01,
+            rebotes: 300,
+        },
+    );
+    let gab = pontos().map(|p| serie.luz_em(p));
+    for (degrau, lado, texel) in DEGRAUS {
+        let cfg = Config {
+            holografica: Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+            ..com_rebote(grade(lado, texel), true)
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        let placa = depois_de(&gpu, &mut s, &cena, QUADROS);
+        let e: Vec<String> = (0..4)
+            .map(|i| format!("{:.4}", erro(placa[i], gab[i])))
+            .collect();
+        eprintln!("G9 holográfica {degrau}: {}", e.join(" · "));
+    }
+}

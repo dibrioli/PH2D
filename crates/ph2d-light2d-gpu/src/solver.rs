@@ -31,6 +31,9 @@ mod distantes;
 /// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_fina.rs"]
 mod fina;
+/// ⭐ A cascata holográfica (W5c, o nível Ultra) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_hrc.rs"]
+mod holo;
 /// ⭐ O rebote (W5c) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_rebote.rs"]
 mod rebote;
@@ -148,6 +151,7 @@ pub struct Solver {
     /// ⭐ A captura fina dos opacos (W5a), com [`Config::usa_captura_fina`].
     fina: Option<fina::CapturaFina>,
     rebote: Option<rebote::SomaDoRebote>,
+    hrc: Option<holo::Holografica>,
     tempos: Option<Tempos>,
 }
 
@@ -478,6 +482,20 @@ impl Solver {
             sementes_finais,
             vizinhos: &vizinhos,
         });
+        let hrc = cfg.holografica.map(|escolhas| {
+            holo::Holografica::novo(&holo::Entradas {
+                device,
+                queue: &gpu.queue,
+                cfg: &cfg,
+                escolhas,
+                lista: &lista,
+                vistas: &vistas,
+                modulo: &rc_modulo,
+                uni_cascatas: &uni_cascatas,
+                vizinhos: &vizinhos,
+                buffer: &buffer,
+            })
+        });
         let c3 = c3::C3::novo(&c3::Entradas {
             gpu,
             cfg: &cfg,
@@ -547,6 +565,7 @@ impl Solver {
             c3,
             fina,
             rebote,
+            hrc,
             tempos,
         })
     }

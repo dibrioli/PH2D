@@ -74,6 +74,16 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
                 captura: 4,
                 ..Config::padrao(grade(DEGRAUS[2].1, DEGRAUS[2].2))
             },
+        )))
+        // ⭐ W5c: o rebote (o albedo, a fonte, o uniforme) e a cascata holográfica (os T, o par R,
+        // o acumulado, o uniforme, os vazios).
+        .chain(std::iter::once((
+            "Médio com o rebote e a cascata holográfica",
+            Config {
+                rebote: true,
+                holografica: Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+                ..Config::padrao(grade(DEGRAUS[1].1, DEGRAUS[1].2))
+            },
         )));
     for (degrau, cfg) in configs {
         let antes = alocacoes(&gpu).expect("relatório");

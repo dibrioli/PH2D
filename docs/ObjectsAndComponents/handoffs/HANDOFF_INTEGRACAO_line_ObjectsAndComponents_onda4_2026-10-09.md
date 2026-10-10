@@ -38,8 +38,11 @@ o mundo é convertido sozinho para o espaço do objecto Motion · **4.3** caminh
   as cutscenes, com UM censo do ledger do undo. ⭐ **A Animação de cada objecto só toca no PLAY ALL**
   (`acd61634c`, dono no smoke de 09/10: *«se o Arrange ainda não tem nada, como pode tocar alguma coisa? Um
   segundo Play na Timeline para Play All»*): o Play de sempre toca o que a aba mostra (Keys: o clipe; Arrange:
-  só o arranjado + cutscenes, como antes da onda 4); o Play All toca a cena inteira no relógio da CENA, em
-  qualquer aba, e acaba quando esse relógio pára. `TimelineState.play_all` · `TimelineIntent::PlayAll` drenado
+  só o arranjado + cutscenes, como antes da onda 4); o Play All é um MODO (2.º smoke, `a23de0f63`: *«ao
+  apertar Play, o Play All é desmarcado»* era defeito) — marcado, a cena inteira toca no relógio da CENA, em
+  qualquer aba, e o Play/Pause comandam-no; só o próprio botão o desmarca. A CENA também toca: com o Arrange
+  vazio, o clipe de entrada dela (o 1.º) entra primeiro em `autoplay_entries` (o objecto escreve por último);
+  com o modo marcado o ▶/⏸ do painel é o do relógio da cena. `TimelineState.play_all` · `TimelineIntent::PlayAll` drenado
   por `ph2d_timeline::take_play_all` ANTES de o dreno escolher o relógio da vista (com ele ligado a vista
   avaliada é a da cena) · `toca_os_objectos(.., (t, refusals, play_all), ..)` · botão «Play All» ao lado do
   transporte (`transport_row.rs`, saído do `transport.rs` que estava em 599/600; acende `Accent`) · linha
@@ -196,7 +199,8 @@ PH2D_MOTION_OBJETO_SMOKE=3 ./target/smoke/ph2d-host-desktop  # item 6: o íman s
 PH2D_VIDA_SMOKE=1 ./target/smoke/ph2d-host-desktop           # item 9: ▾ «All» ao lado da busca
 ```
 
-- `PH2D_ANIMACAO_SMOKE=1`: interruptor «Autoplay» ligado no «andar» do Herói; botão «Play All» ao lado do
+- `PH2D_ANIMACAO_SMOKE=1|3` (`=3` abre com o Play All marcado; fotografado: o Herói de x −250 a −147 e o
+  Inimigo a subir em 1 s): interruptor «Autoplay» ligado no «andar» do Herói; botão «Play All» ao lado do
   transporte. Com **Play All** (em qualquer aba) o Herói anda sozinho enquanto o Inimigo salta pela Animação da
   Cena. Errado: o Herói parado em Play All, ou a mexer-se num Arrange vazio com o Play normal, ou o interruptor
   clicável no clipe que já é a entrada.

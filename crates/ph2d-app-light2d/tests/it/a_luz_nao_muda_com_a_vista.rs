@@ -7,7 +7,7 @@
 //! vistas (pan e zoom), contra o gabarito.
 
 use bevy_ecs::world::World;
-use ph2d_app_light2d::{LuzDoQuadro, smoke};
+use ph2d_app_light2d::LuzDoQuadro;
 use ph2d_host::WindowSize;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
 use ph2d_render::Camera2d;

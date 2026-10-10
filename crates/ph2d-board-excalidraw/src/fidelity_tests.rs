@@ -777,3 +777,99 @@ fn a_w8_file_still_carries_our_elements() {
     );
 }
 
+
+/// Grava a entrada do oráculo da W9 com o NOSSO ficheiro (`entradas/w9_nosso_casos.json`, à parte do
+/// `w9_casos.json` — as 220 saídas gravadas levam o sha dele): o quadro [`sample_w9`] escrito por nós,
+/// corrido nas duas versões (`restore`, `montar`, `empurrar` as formas). Corre-se à mão quando o
+/// escritor muda — e a seguir o `corre_fidelidade.mjs` com este ficheiro (README do oráculo §W9).
+#[test]
+#[ignore = "grava a entrada do oráculo (à mão, quando o escritor muda)"]
+fn grava_a_entrada_w9_nosso() {
+    let file: Value = serde_json::from_str(&write(&sample_w9())).unwrap();
+    let els = file["elements"].as_array().unwrap();
+    let shapes: Vec<&Value> = els
+        .iter()
+        .filter(|e| e["type"] != "arrow" && e["type"] != "text")
+        .map(|e| &e["id"])
+        .collect();
+    let casos = json!({ "casos": [{
+        "nome": "X_nosso",
+        "descricao": "o NOSSO .excalidraw (W9): ponto fixo (inside), órbita e centro (orbit), a curva dele, as pontas novas e o aspecto — escrito por ph2d-board-excalidraw::write",
+        "elementos": els,
+        "passos": [
+            { "tipo": "restore" }, { "tipo": "svg" }, { "tipo": "montar" },
+            { "tipo": "empurrar", "ids": shapes }, { "tipo": "svg" }
+        ]
+    }]});
+    std::fs::write(
+        format!("{DIR}/entradas/w9_nosso_casos.json"),
+        serde_json::to_string_pretty(&casos).unwrap() + "\n",
+    )
+    .unwrap();
+}
+
+/// ⭐⭐ §6.2-5 (a metade do oráculo) — o NOSSO ficheiro ([`sample_w9`], `entradas/w9_nosso_casos.json`)
+/// passado pelas DUAS versões: ao abrir nenhuma mexe nas pontas (XB7); o next, depois de RE-LIGAR as
+/// setas (`empurrar` as formas), deixa cada ponta presa onde a escrevemos — o ponto fixo é o `inside`
+/// dele, a órbita e o centro a XB1 dele (≤ 0,05 px); o 0.18.1 guarda as chaves do next tal e qual (XV1).
+#[test]
+fn xv3_both_versions_keep_the_tips_we_wrote() {
+    let ours: Value = serde_json::from_str(&write(&sample_w9())).unwrap();
+    let wrote: Vec<Vec<[f64; 2]>> = ours["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["type"] == "arrow")
+        .map(world)
+        .collect();
+    let arrows = |d: &Value, tipo: &str| -> Vec<Value> {
+        passo(d, tipo)
+            .iter()
+            .filter(|e| e["type"] == "arrow")
+            .cloned()
+            .collect()
+    };
+    let next = saida("X_nosso", "next");
+    let old = saida("X_nosso", "0181");
+    for (versao, d) in [("next", &next), ("0181", &old)] {
+        let opened = arrows(d, "restore");
+        assert_eq!(opened.len(), wrote.len(), "{versao}");
+        for (a, w) in opened.iter().zip(&wrote) {
+            let p = world(a);
+            assert!(
+                dist(p[0], w[0]) < 1e-6 && dist(p[p.len() - 1], w[w.len() - 1]) < 1e-6,
+                "{versao} mexeu ao abrir: {p:?} · {w:?}"
+            );
+        }
+    }
+    for a in arrows(&old, "restore") {
+        for key in ["startBinding", "endBinding"] {
+            if a[key].is_object() {
+                assert!(a[key]["mode"].is_string() && a[key]["fixedPoint"].is_array(), "{a}");
+            }
+        }
+    }
+    let after = arrows(&next, "empurrar");
+    let mut medidos = 0;
+    for (a, w) in after.iter().zip(&wrote) {
+        let p = world(a);
+        for (k, key) in ["startBinding", "endBinding"].into_iter().enumerate() {
+            if !a[key].is_object() {
+                continue;
+            }
+            medidos += 1;
+            let (got, want) = if k == 0 {
+                (p[0], w[0])
+            } else {
+                (p[p.len() - 1], w[w.len() - 1])
+            };
+            assert!(
+                dist(got, want) <= 0.05,
+                "{} {key}: o next pôs {got:?}, escrevemos {want:?} ({:.3})",
+                a["id"],
+                dist(got, want)
+            );
+        }
+    }
+    assert_eq!(medidos, 5);
+}

@@ -386,6 +386,18 @@ decide a ligação por um temporizador (`bindModeHandler`) e o relógio fixo con
 a `seed` e o `created` dos elementos novos são normalizados (`novo1…`, 7919·(i+1), sem `created`).
 **Determinismo:** duas corridas dos 70 casos × 2 versões = **220/220 ficheiros idênticos** (10/10, `load` 79).
 
+**O NOSSO ficheiro (W9, a cura):** `entradas/w9_nosso_casos.json` — à PARTE do `w9_casos.json` (as 220 saídas
+levam o sha dele no cabeçalho) — é o `sample_w9` de `ph2d-board-excalidraw/src/fidelity_tests.rs` escrito pelo
+nosso escritor (ponto fixo ⇒ `inside`, órbita e centro ⇒ `orbit`, as duas gramáticas, a curva dele, as pontas
+novas, o aspecto). Grava-o o teste ignorado `grava_a_entrada_w9_nosso`; corre-se com o MESMO `corre_fidelidade.mjs`
+passando este ficheiro em vez do `w9_casos.json`. Saídas `saidas/w9_X_nosso.{0181,next}.{json,svg}`; o gate
+`xv3_both_versions_keep_the_tips_we_wrote` (as duas versões não mexem ao abrir; o next re-liga as 5 pontas presas
+a ≤ 0,05 px de onde as escrevemos; o 0.18.1 guarda `mode`/`fixedPoint`). ⚠️ 10/10: a página `www/` instalada
+era de 07/10 (sem o `serializeAsJSON` da W8 — o `corre_esquema.mjs` esperava 60 s e caía); reconstrói-se com a
+secção «Página» do `instala.sh` (os `package*.json` iguais aos instalados ⇒ sem `npm ci`). Ao regravar
+`w8_ph2d_quadro.*` o `corre_esquema` também reescreve `w8_sondas.json`: só ids/sementes sorteados pela entrada
+mudam — esse fica o da W8.
+
 - **A ponta presa em `orbit`** (XB1): fica na recta entre os dois FOCOS (o `fixedPoint` de cada ponta no
   mundo, ou a ponta solta), no 1.º ponto a **5 + strokeWidth(da FORMA)/2** do contorno — 5,5 · 6 · 7 para
   1 · 2 · 4 (a espessura da SETA não entra: seta 4 em forma 1 ⇒ 5,5); elipse = semi-eixos + vão; segue os

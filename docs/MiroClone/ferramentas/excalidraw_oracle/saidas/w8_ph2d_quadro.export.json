@@ -1,11 +1,11 @@
 {
   "svg": {
     "base": {
-      "sha256": "c5831841c47f6c59c5a821a739e1dfd4cf99b59e48a4f44a83af1cd523a44046",
+      "sha256": "93a130d19d0aacfbdf29a6abc85cf1e4dc4e4e8dfee982087bf879e2cdb2a4c2",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 20354,
+      "bytes": 20488,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -15,11 +15,11 @@
       "foreignObjects": 0
     },
     "padding0": {
-      "sha256": "ae9d626390de878b43ec689b7d3aa30fd064e4a31a7fb3c6f1c7a0edd1f92155",
+      "sha256": "784beb592ea627d86bf0a3cf634ff4754d1d07830408f98159e36bdf713c5f19",
       "width": "1000",
       "height": "620.5",
       "viewBox": "0 0 1000 620.5",
-      "bytes": 20350,
+      "bytes": 20484,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1000\" height=\"620.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -29,11 +29,11 @@
       "foreignObjects": 0
     },
     "padding50": {
-      "sha256": "10e53ef4e2070d9c41b52669e3c08e6c520237754a92fb0b0652c5d975c87210",
+      "sha256": "71ee6e878c38ebc1aaca20298f1a222fdefd88bff1f1fa2393f0051e1861ce99",
       "width": "1100",
       "height": "720.5",
       "viewBox": "0 0 1100 720.5",
-      "bytes": 20357,
+      "bytes": 20492,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1100\" height=\"720.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -43,11 +43,11 @@
       "foreignObjects": 0
     },
     "sem_fundo": {
-      "sha256": "1aa4d515c01b5b24dc660583ebdc77e2737a094eab08bd14c92af92ea22350c3",
+      "sha256": "22e582ad57a4ffb81a6db4dcc89d81c79d32c2a027f1c201be1f77b17eafc6aa",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 20292,
+      "bytes": 20426,
       "font_faces": 1,
       "rect_fundo": "<rect transform=\"translate(10 30.5) rotate(0 450 300)\" width=\"900px\" height=\"600px\" rx=\"8\" ry=\"8\" fill=\"none\" stroke=\"#bbb\" stroke-width=\"2\"/>",
       "metadata_inicio": null,
@@ -57,12 +57,12 @@
       "foreignObjects": 0
     },
     "escuro": {
-      "sha256": "9137e095e1b05384398d8bd57533701f361664fc3e3b155c7511866b502f661f",
+      "sha256": "98016658a4a24f8766f447ed5ac070b38940381937eaeb34ddffe4d2736e98e6",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
       "filter": "invert(93%) hue-rotate(180deg)",
-      "bytes": 20394,
+      "bytes": 20528,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -72,11 +72,11 @@
       "foreignObjects": 0
     },
     "fundo_cor": {
-      "sha256": "3fadb49cbec0dcc5f71ec4aaf4edf5d908ec550e266fc08cff1315ea53b40e82",
+      "sha256": "e1294b44069c1ee546d05b742f52ceccb9a8298bdc5269b9b4a0d5a08d36912b",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 20354,
+      "bytes": 20488,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffec99\"/>",
       "metadata_inicio": null,
@@ -86,25 +86,25 @@
       "foreignObjects": 0
     },
     "embed": {
-      "sha256": "7b366572c0e46eb99b9e1c8489d3a9df2b10ef66071f7261bc9c06046e90e042",
+      "sha256": "18601078d23b74e733f3a8ad7f28e6f49ac54d984857fa4b67a718842eba475a",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 29065,
+      "bytes": 29051,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
-      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/bOFx1MDAxNn7Pryg8r7WGh3fOW6+YXHUwMDAyu4tiMsA+7Fx1MDAwZVx1MDAwNkqiJkJcdTAwMWQ7kJWm3UH/+1x1MDAxZcpcdTAwMTe",
-      "metadata_bytes": 8701,
+      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/jNlx1MDAxNn6fX1x1MDAxMbivY5X3S9/milx1MDAxNtguXHUwMDA2TYF92Fx1MDAxZFxmlFiTXGJxrMBWJpNcdTAwMTbz3/dQvoikSFm",
+      "metadata_bytes": 8553,
       "clipPaths": 2,
       "images": 0,
       "foreignObjects": 0
     },
     "sem_fontes_inline": {
-      "sha256": "11e3ec38af787859438c4ef468e5df207996ff6ab14d2c7f9362403b088b9b6d",
+      "sha256": "eb035187999c9107bfbd9f88910b3ac54d0bf0c42381f117ca28ad56cc4c3993",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 17868,
+      "bytes": 18002,
       "font_faces": 0,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -114,11 +114,11 @@
       "foreignObjects": 0
     },
     "so_moldura": {
-      "sha256": "24f36b4bc976e35765f2e2d60c0191bf8bf258e7594ea1286021f8cb9a5dce88",
+      "sha256": "fe1f9f0805a1a65a1dc8f2ccc95ed06d6f37c3f32be1f9301694789432512923",
       "width": "900",
       "height": "600",
       "viewBox": "0 0 900 600",
-      "bytes": 19458,
+      "bytes": 19553,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"900\" height=\"600\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -128,11 +128,11 @@
       "foreignObjects": 0
     },
     "render_embeddables": {
-      "sha256": "c5831841c47f6c59c5a821a739e1dfd4cf99b59e48a4f44a83af1cd523a44046",
+      "sha256": "93a130d19d0aacfbdf29a6abc85cf1e4dc4e4e8dfee982087bf879e2cdb2a4c2",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 20354,
+      "bytes": 20488,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
       "metadata_inicio": null,
@@ -145,8 +145,8 @@
   "png": {
     "base": {
       "type": "image/png",
-      "bytes": 57685,
-      "sha256": "6b55d015c87e3843fd02db3dd78c8ec24c1785f03b6bb838e3e1ab5541f45880",
+      "bytes": 57632,
+      "sha256": "6f671caccf1afded6b796d03997aa99c111b39d6cd71ab856001a1523f55cdb6",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -214,7 +214,7 @@
         },
         {
           "type": "IDAT",
-          "len": 98
+          "len": 45
         },
         {
           "type": "IDAT",
@@ -228,8 +228,8 @@
     },
     "escala1": {
       "type": "image/png",
-      "bytes": 57806,
-      "sha256": "c9903dfbdbc769df599ee9c39a7423d0e90daeb36b7219ed25a5386532f70e8e",
+      "bytes": 57783,
+      "sha256": "6a2a4929fa0a8ef1a8139b0535a80a68de33f5c18c0d7daf861c03a94d4e074c",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -297,7 +297,7 @@
         },
         {
           "type": "IDAT",
-          "len": 219
+          "len": 196
         },
         {
           "type": "IDAT",
@@ -311,8 +311,8 @@
     },
     "escala3": {
       "type": "image/png",
-      "bytes": 57693,
-      "sha256": "dc5ec3dff921d8fc64fedd0dee1b7de34f84a72ff3c0911b5b1bcbba248c23c4",
+      "bytes": 57616,
+      "sha256": "dec65b5a9c068b1fac8807159d0d4cdd1230e6551be040855d4e5138eb752abb",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -380,7 +380,7 @@
         },
         {
           "type": "IDAT",
-          "len": 106
+          "len": 29
         },
         {
           "type": "IDAT",
@@ -394,8 +394,8 @@
     },
     "sem_fundo": {
       "type": "image/png",
-      "bytes": 60728,
-      "sha256": "ffcc6bba8d32c61be2a567ab10480f513fd5c10a9f817dd8a02ddef7b23f7296",
+      "bytes": 60695,
+      "sha256": "0f39efdec2dc8880233e70061b466f19c154084cab435919d44e3396c8f5e2ee",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -463,7 +463,7 @@
         },
         {
           "type": "IDAT",
-          "len": 3141
+          "len": 3108
         },
         {
           "type": "IDAT",
@@ -477,8 +477,8 @@
     },
     "escuro": {
       "type": "image/png",
-      "bytes": 58179,
-      "sha256": "c407301d04b50e67720059450604e1904049c78eed6f79f7ef51cc23a9c5ff65",
+      "bytes": 58132,
+      "sha256": "6a8c476544e1f894d7e1b68ff655be9e7fbc29bbcc480581a3aa24ee900d1b33",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -546,7 +546,7 @@
         },
         {
           "type": "IDAT",
-          "len": 592
+          "len": 545
         },
         {
           "type": "IDAT",
@@ -560,8 +560,8 @@
     },
     "embed": {
       "type": "image/png",
-      "bytes": 64058,
-      "sha256": "10836c70a1bb1aca5d029e484b38ae67153ce59d5b1f5b1f25232ef12ca931b6",
+      "bytes": 63976,
+      "sha256": "921d6b4b01aab452b0bde7b15dc37bfc6883c7842dc1b0a335bc8e74a6b46e44",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -629,7 +629,7 @@
         },
         {
           "type": "IDAT",
-          "len": 98
+          "len": 45
         },
         {
           "type": "IDAT",
@@ -637,9 +637,9 @@
         },
         {
           "type": "tEXt",
-          "len": 6361,
+          "len": 6332,
           "keyword": "application/vnd.excalidraw+json",
-          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯(<¯µwÎ[¯\\u0002E1\\u0019`\\u001fv\\u0007\\u0003ÕQ\\u0013£\\u001dÈJÓÌ ÿ}\\u000fåD"
+          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯\\b<¯µ÷Ë¼õ)°»(&\\u0003ìÃnQ¨\\u0018q¬@Vf\\u0007ýï{(_DR¤,[vìd¬,vj¢(ò\\\\¾ïèúëìü"
         },
         {
           "type": "IEND",
@@ -649,8 +649,8 @@
     },
     "maxWidthOrHeight300": {
       "type": "image/png",
-      "bytes": 11606,
-      "sha256": "355382ec3966dc4b4e7dfb732bc6b3ed74be91be2e99bc463b9e531910a59e39",
+      "bytes": 11685,
+      "sha256": "4769dfc62a71891ed6a76e3f6b6f09b3d288c383d9a9f4f2a77e5d2d422cb452",
       "width": 300,
       "height": 188,
       "chunks": [
@@ -670,7 +670,7 @@
         },
         {
           "type": "IDAT",
-          "len": 3315
+          "len": 3394
         },
         {
           "type": "IDAT",
@@ -684,8 +684,8 @@
     },
     "getDimensions_fixo": {
       "type": "image/png",
-      "bytes": 20255,
-      "sha256": "0d9b615daf0117a3c51b980b4ae9cac6fe627e72f6bd423d2fb860f286c58424",
+      "bytes": 20308,
+      "sha256": "2ee6b121ac9859ace04076bfcd77a8200cf30da98221f621ded80b015ca26092",
       "width": 400,
       "height": 300,
       "chunks": [
@@ -713,7 +713,7 @@
         },
         {
           "type": "IDAT",
-          "len": 3748
+          "len": 3801
         },
         {
           "type": "IDAT",
@@ -727,8 +727,8 @@
     },
     "getDimensions_escala2": {
       "type": "image/png",
-      "bytes": 148575,
-      "sha256": "f7ffbd44e15a8a2e68c35a4d85e5623a8096773e863b9274eded5ca28a6f70b8",
+      "bytes": 148635,
+      "sha256": "023ec104d20250e502e81a031a3c2a779a6f6c423f2dc35a8742d3eacf800e97",
       "width": 2040,
       "height": 1281,
       "chunks": [
@@ -884,7 +884,7 @@
         },
         {
           "type": "IDAT",
-          "len": 612
+          "len": 672
         },
         {
           "type": "IDAT",
@@ -898,8 +898,8 @@
     },
     "so_moldura": {
       "type": "image/png",
-      "bytes": 50415,
-      "sha256": "033a77087a295d7af29391eacac99ce4cfd364ed9c8ad5b3eaab863d885bb1b0",
+      "bytes": 50379,
+      "sha256": "2a36c293ca04b1ff8eba3df08efffb43add2c8d0798c690480d8e8616afa9f0c",
       "width": 900,
       "height": 600,
       "chunks": [
@@ -959,7 +959,7 @@
         },
         {
           "type": "IDAT",
-          "len": 1044
+          "len": 1008
         },
         {
           "type": "IDAT",
@@ -973,8 +973,8 @@
     },
     "jpeg": {
       "type": "image/jpeg",
-      "bytes": 34186,
-      "sha256": "db5f5e9c32c7f0e257507f15c1ac6f25d6eace2e91819ec9c039feff7f25ec42",
+      "bytes": 34294,
+      "sha256": "5b45a0829f615c6fcf8df3a14a5d9c6a17b2758c10ff46aaf6561631fb07f5d6",
       "formato": "ffd8ffe0"
     }
   },

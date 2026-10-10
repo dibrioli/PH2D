@@ -37,6 +37,19 @@ fn presence(x: f64, sel: Vec<ElementId>) -> Presence {
     }
 }
 
+/// O ecrã de mentira de um convidado: guarda o quadro que chega no 1.º `Welcome`.
+fn deliver(g: &mut Guest, slot: &mut Option<Board>, bytes: &[u8], now: u64) -> (Vec<Msg>, Vec<Event>) {
+    let (out, mut ev) = g.frame(slot.as_mut(), bytes, now);
+    ev.retain(|e| match e {
+        Event::Arrived(b) => {
+            *slot = Some((**b).clone());
+            false
+        }
+        _ => true,
+    });
+    (out, ev)
+}
+
 fn shared(b: &Board) -> Vec<u8> {
     let els: Vec<&Element> = b.doc.live_with_hidden().collect();
     postcard::to_allocvec(&(els, &b.name, b.sketch)).unwrap()
@@ -56,7 +69,7 @@ fn another_protocol_is_refused_with_a_reason() {
     assert_eq!(out, vec![(To::One(7), Msg::Refused { protocol: PROTOCOL })]);
     let mut g = Guest::new(2, "Bia".into(), 2);
     let mut gb = None;
-    let (_, ev) = g.frame(&mut gb, &out[0].1.encode(), 0);
+    let (_, ev) = deliver(&mut g, &mut gb, &out[0].1.encode(), 0);
     assert_eq!(ev, vec![Event::Refused { theirs: PROTOCOL }]);
     assert!(gb.is_none());
 }
@@ -77,7 +90,7 @@ fn joining_gives_the_hosts_board_and_the_next_colour() {
     assert_eq!(out[1].0, To::AllBut(7));
     let mut g = g;
     let mut gb = None;
-    let (_, ev) = g.frame(&mut gb, &out[0].1.encode(), 0);
+    let (_, ev) = deliver(&mut g, &mut gb, &out[0].1.encode(), 0);
     assert_eq!(ev, vec![Event::Welcomed]);
     assert_eq!(shared(gb.as_ref().unwrap()), shared(&hb));
     host.left(7);
@@ -131,7 +144,7 @@ fn summon_reaches_everyone_but_the_caller() {
     let mut b = Guest::new(2, "Bia".into(), 2);
     let mut bb = None;
     let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 0);
-    b.frame(&mut bb, &out[0].1.encode(), 0);
+    deliver(&mut b, &mut bb, &out[0].1.encode(), 0);
     let cam = Camera {
         center_x: 500.0,
         center_y: -20.0,
@@ -140,7 +153,7 @@ fn summon_reaches_everyone_but_the_caller() {
     let (out, ev) = host.frame(&mut hb, 7, &b.summon(cam).encode(), 1);
     assert_eq!(ev, vec![Event::Summoned { from: 2, camera: cam }]);
     assert_eq!(out[0].0, To::AllBut(7));
-    let (_, ev) = b.frame(&mut bb, &out[0].1.encode(), 2);
+    let (_, ev) = deliver(&mut b, &mut bb, &out[0].1.encode(), 2);
     assert!(ev.is_empty(), "quem chamou não se chama");
 }
 
@@ -274,7 +287,7 @@ fn a_star_room_with_drops_ends_with_one_board() {
                 while links[i].online && links[i].down.front().is_some_and(|(t, _)| *t <= now) {
                     let (_, bytes) = links[i].down.pop_front().unwrap();
                     let (g, b, _) = &mut guests[i];
-                    let (out, _) = g.frame(b, &bytes, now);
+                    let (out, _) = deliver(g, b, &bytes, now);
                     for m in out {
                         links[i].up.push_back((now + rng.below(20), m.encode()));
                     }
@@ -311,7 +324,7 @@ fn a_star_room_with_drops_ends_with_one_board() {
                 }
                 while let Some((_, bytes)) = links[i].down.pop_front() {
                     let (g, b, _) = &mut guests[i];
-                    let (out, _) = g.frame(b, &bytes, now);
+                    let (out, _) = deliver(g, b, &bytes, now);
                     links[i].up.extend(out.into_iter().map(|m| (now, m.encode())));
                 }
             }

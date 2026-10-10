@@ -78,6 +78,8 @@ pub enum To {
 pub enum Event {
     /// Entrei (ou voltei) na sala.
     Welcomed,
+    /// O quadro da sala, na 1.ª entrada: o ecrã abre-o numa aba e passa-o daí em diante.
+    Arrived(Box<Board>),
     /// O anfitrião fala outra versão.
     Refused { theirs: u32 },
     Joined(PeerInfo),
@@ -323,10 +325,11 @@ impl Guest {
         }
     }
 
-    /// Bytes que chegaram do anfitrião. `board` nasce no 1.º `Welcome`.
+    /// Bytes que chegaram do anfitrião. Antes de entrar não há `board`: o 1.º `Welcome` devolve-o
+    /// em [`Event::Arrived`].
     pub fn frame(
         &mut self,
-        board: &mut Option<Board>,
+        mut board: Option<&mut Board>,
         bytes: &[u8],
         now_ms: u64,
     ) -> (Vec<Msg>, Vec<Event>) {
@@ -342,31 +345,31 @@ impl Guest {
                 snapshot,
             } => {
                 let seed = self.seed;
-                match (&mut self.replica, board.as_mut()) {
+                self.me = Some(you);
+                self.room.peers = peers.into_iter().map(|p| (p.peer, p)).collect();
+                self.room.sent = None;
+                match (&mut self.replica, board) {
                     (Some(r), Some(b)) => {
                         if r.rejoin(b, &snapshot, seed).is_err() {
                             return (out, events);
                         }
+                        events.push(Event::Welcomed);
+                        out.extend(self.tick(b, now_ms));
                     }
                     _ => {
-                        let Ok((r, b)) = Replica::join(self.peer, &snapshot, seed) else {
+                        let Ok((r, mut b)) = Replica::join(self.peer, &snapshot, seed) else {
                             return (out, events);
                         };
                         self.replica = Some(r);
-                        *board = Some(b);
+                        events.push(Event::Welcomed);
+                        out.extend(self.tick(&mut b, now_ms));
+                        events.push(Event::Arrived(Box::new(b)));
                     }
-                }
-                self.me = Some(you);
-                self.room.peers = peers.into_iter().map(|p| (p.peer, p)).collect();
-                self.room.sent = None;
-                events.push(Event::Welcomed);
-                if let Some(b) = board.as_mut() {
-                    out.extend(self.tick(b, now_ms));
                 }
             }
             Msg::Refused { protocol } => events.push(Event::Refused { theirs: protocol }),
             Msg::Writes(ws) => {
-                if let (Some(r), Some(b)) = (&mut self.replica, board.as_mut()) {
+                if let (Some(r), Some(b)) = (&mut self.replica, board.as_deref_mut()) {
                     r.receive(b, &ws);
                 }
             }

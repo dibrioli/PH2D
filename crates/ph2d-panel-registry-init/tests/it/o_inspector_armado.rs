@@ -588,6 +588,7 @@ fn arma_o_top20() {
             arg: "open".to_string(),
             uses_arg: true,
             arg_hint: Default::default(),
+            arg_options: None,
             // ⭐ Os TRÊS campos do suplente #24, que a `line/components` acrescentou no mesmo dia
             //    em que esta fixtura nasceu. ⚠️ Eles são postos ACESOS de propósito: esta fixtura
             //    existe para a varredura de elisões MEDIR os rótulos, e um controlo desligado não

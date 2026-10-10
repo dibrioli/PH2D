@@ -106,6 +106,24 @@ pub(crate) fn apply_action_event(
             demote(host, id);
             return true;
         }
+        // ⭐ Uma opção do ▾ do *Play Clip* (onda 5, item c): o NOME sai da lista da linha aberta, no
+        // retrato que o pintor usou — a posição só significa algo ao lado da lista que a produziu.
+        if let Some(i) = crate::ids::INSP_ACTION_CLIP.iter().position(|&o| o == id)
+            && let Some(nome) = info
+                .rows
+                .get(sel)
+                .and_then(|r| r.arg_options.as_ref())
+                .and_then(|nomes| nomes.get(i))
+        {
+            push(
+                host,
+                info.entity_bits,
+                ActionFieldEdit::Arg(sel_u8, nome.clone()),
+            );
+            fecha(host, crate::ids::INSP_ACTION_CLIP_PICK);
+            demote(host, id);
+            return true;
+        }
         // ⚠️ **A POSIÇÃO no array É a tag** — reordenar aquele array faria um clique escrever
         // outro verbo, e compila. Há gate na lei pura (`the_verb_tag_is_its_position…`).
         if let Some(i) = crate::ids::INSP_ACTION_VERB.iter().position(|&o| o == id)
@@ -160,9 +178,12 @@ fn fecha_tag_popover(host: &mut dyn PanelHostInternal) {
 }
 
 fn close_verb_popover(host: &mut dyn PanelHostInternal) {
-    if let Some(InteractiveState::Dropdown { open, .. }) =
-        host.store_mut().get_mut(crate::ids::INSP_ACTION_VERB_PICK)
-    {
+    fecha(host, crate::ids::INSP_ACTION_VERB_PICK);
+}
+
+/// Fecha o popover do chip `chip` depois de uma escolha (a lei do [`close_verb_popover`]).
+fn fecha(host: &mut dyn PanelHostInternal, chip: ph2d_a11y::NodeId) {
+    if let Some(InteractiveState::Dropdown { open, .. }) = host.store_mut().get_mut(chip) {
         *open = false;
     }
 }

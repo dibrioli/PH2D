@@ -618,7 +618,7 @@ pub fn resolve(world: &mut World, tree: &TagTree, fired: &[Disparo<'_>]) -> Vec<
 /// ⛔ Resolver o alvo na shell seria a segunda resposta, e é a que envelhece.
 ///
 /// ⚠️ **O outro lado é CONFERIDO contra o mundo** (`get_entity`) pela mesma razão que
-/// o [`target_of`] o faz: entre o quadro em que o sinal foi publicado e este, um dreno de morte pode
+/// o [`alvo_nomeado`] o faz: entre o quadro em que o sinal foi publicado e este, um dreno de morte pode
 /// ter levado a entidade — e um efeito sobre bits reciclados escreveria no objecto errado.
 #[must_use]
 pub fn targets_of(
@@ -629,9 +629,11 @@ pub fn targets_of(
     disparo: Disparo<'_>,
 ) -> Vec<Entity> {
     match action.target_by {
-        SignalTarget::Named => target_of(world, source, &action.target)
-            .into_iter()
-            .collect(),
+        SignalTarget::Named => {
+            crate::assign_missing_stable_ids(world);
+            let alvo = alvo_nomeado(world, source, &action.target);
+            alvo.into_iter().collect()
+        }
         SignalTarget::Tagged(id) => crate::tags::tagged(world, tree, TagId(id)),
         SignalTarget::Other => vivo(world, disparo.outro).into_iter().collect(),
     }
@@ -642,16 +644,14 @@ fn vivo(world: &World, e: Option<Entity>) -> Option<Entity> {
     e.filter(|&e| world.get_entity(e).is_ok())
 }
 
-/// O alvo de uma acção: `source` quando o nome é vazio, senão quem tiver aquele [`Name`].
-///
-/// ⚠️ **Ele confere que a entidade AINDA existe.** Entre o quadro em que o artista escreveu o nome
-/// e este, um `Ctrl+Z` pode tê-la levado.
-fn target_of(world: &mut World, source: Entity, name: &str) -> Option<Entity> {
+/// O alvo [`SignalTarget::Named`]: `source` com o nome vazio, senão quem tiver aquele [`Name`] — e
+/// só se AINDA existe (um `Ctrl+Z` pode tê-lo levado). Só LEITURA: o retrato do Inspector também a usa.
+#[must_use]
+pub fn alvo_nomeado(world: &World, source: Entity, name: &str) -> Option<Entity> {
     if name.is_empty() {
-        return world.get_entity(source).ok().map(|_| source);
+        return vivo(world, Some(source));
     }
-    let id = crate::stable_id_for_name(world, name);
-    crate::entity_of_stable_id(world, crate::StableId(id))
+    crate::entity_with_stable_id(world, crate::StableId(crate::stable_id_named(world, name)))
 }
 
 /// **O nome do objecto que este efeito atinge**, para um diagnóstico legível. `None` = sem `Name`.

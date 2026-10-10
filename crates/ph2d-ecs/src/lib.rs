@@ -94,7 +94,7 @@ pub mod scroll_limits;
 pub mod scroll_motion;
 pub mod scroll_repeat;
 pub mod sequence;
-pub use clip_playback::ClipPlayback;
+pub use clip_playback::{ClipNames, ClipPlayback};
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
 pub mod signal_actions;
@@ -139,8 +139,8 @@ pub mod tween;
 pub mod weapon;
 
 pub use crate::transform_inverse::{
-    parent_world_transform, parent_world_transform_into, parent_world_transform_with,
-    world_skew, world_transform, world_transform_into, world_transform_with,
+    parent_world_transform, parent_world_transform_into, parent_world_transform_with, world_skew,
+    world_transform, world_transform_into, world_transform_with,
 };
 pub use audio_2d::{
     AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Spatial,
@@ -241,8 +241,8 @@ pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
 pub use stable_id::{
-    StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_for_name,
-    stable_id_of,
+    StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
+    entity_with_stable_id, stable_id_for_name, stable_id_named, stable_id_of,
 };
 pub use subtree_copies::{CopyReader, SubtreeCopies, announce_copy, take_copies};
 pub use tags::Tags;

@@ -51,6 +51,7 @@ pub fn build_action_info(
             arg: a.arg.clone(),
             uses_arg: a.verb.uses_arg(),
             arg_hint: crate::signal_actions_bridge::dica_do_argumento(a.verb),
+            arg_options: escolhas_do_argumento(world, entity, a),
             uses_target: a.verb.uses_target(),
             // ⭐⭐⭐ **Os dois campos do suplente #24** — o modo do alvo e a cerca. ⚠️ **A tradução
             // mora AQUI e nos dois sentidos** (ver o dreno abaixo): o painel é chrome e não vê o
@@ -86,6 +87,26 @@ pub fn build_action_info(
             .collect(),
         selected_count,
     })
+}
+
+/// ⭐ **As escolhas do parâmetro de uma linha** (onda 5, item c) — o ▾ do *Play Clip*: os clipes da
+/// Animação do alvo, lidos de [`ph2d_ecs::ClipNames`] (sem o recurso, nenhum).
+///
+/// ⚠️ **Fronteira:** só com UM alvo conhecido na edição — [`SignalTarget::Named`] (vazio = este
+/// objecto), resolvido pela porta da ponte ([`ph2d_ecs::signal_actions::alvo_nomeado`]). Por TAG
+/// ou QUEM BATEU os alvos são muitos ou só existem no Play ⇒ `None`: fica o texto livre, e o nome
+/// errado é dito no Play (o toast do `ClipRefusal::UnknownClip`).
+fn escolhas_do_argumento(world: &World, eu: Entity, a: &SignalAction) -> Option<Vec<String>> {
+    if a.verb != SignalVerb::PlayClip || a.target_by != SignalTarget::Named {
+        return None;
+    }
+    let nomes = world.get_resource::<ph2d_ecs::ClipNames>();
+    Some(
+        ph2d_ecs::signal_actions::alvo_nomeado(world, eu, &a.target)
+            .zip(nomes)
+            .map(|(alvo, n)| n.of(alvo.to_bits()).map(str::to_string).collect())
+            .unwrap_or_default(),
+    )
 }
 
 /// Aplica uma [`ActionFieldEdit`]. Devolve um aviso quando a edição foi **recusada**.
@@ -179,3 +200,8 @@ pub fn apply_action_edit(
 #[cfg(test)]
 #[path = "signal_actions_inspector_tests.rs"]
 mod tests;
+
+/// O ▾ do *Play Clip* (onda 5, item c) — irmão por assunto.
+#[cfg(test)]
+#[path = "signal_actions_inspector_clip_tests.rs"]
+mod clip_tests;

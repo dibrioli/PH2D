@@ -204,7 +204,38 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
         .filter(|(_, sb)| !sb.clip.is_empty())
         .map(|(e, sb)| (e, sb.clip.clone()))
         .collect();
-    purge_the_dead(timeline, &by_wire, (&*world, &ossos))
+    let reset = purge_the_dead(timeline, &by_wire, (&*world, &ossos));
+    // ⭐ Depois da purga e da ressurreição: os bits publicados são os DESTE quadro.
+    publica_os_nomes(&timeline.doc, world);
+    reset
+}
+
+/// Os `(dono, nome)` de cada clip vivo, na ordem do documento — `SCENE` para a Cena.
+fn nomes_vivos(doc: &ph2d_timeline::TimelineDoc) -> impl Iterator<Item = (u64, &str)> {
+    doc.clips().iter().filter_map(|c| match c.owner {
+        None => Some((ph2d_ecs::ClipNames::SCENE, c.name.as_str())),
+        Some(o) if !o.missing => Some((o.entity, c.name.as_str())),
+        Some(_) => None,
+    })
+}
+
+/// ⭐ **Publica [`ph2d_ecs::ClipNames`]** — os clipes de cada Animação, para o ▾ do *Play Clip* no
+/// Inspector (onda 5, item c). ⚠️ HR-3: compara por iteração e só reescreve quando o documento
+/// difere — o regime não aloca nem marca o recurso como mudado.
+fn publica_os_nomes(doc: &ph2d_timeline::TimelineDoc, world: &mut World) {
+    let igual = match world.get_resource::<ph2d_ecs::ClipNames>() {
+        Some(r) => {
+            r.0.iter()
+                .map(|(b, n)| (*b, n.as_str()))
+                .eq(nomes_vivos(doc))
+        }
+        None => nomes_vivos(doc).next().is_none(),
+    };
+    if !igual {
+        world.insert_resource(ph2d_ecs::ClipNames(
+            nomes_vivos(doc).map(|(b, n)| (b, n.to_string())).collect(),
+        ));
+    }
 }
 
 /// ⭐ Abre as covas cujos donos vivem outra vez ([`ph2d_ecs::graveyard`]).
@@ -329,10 +360,10 @@ fn purge_the_dead(
     // ⚠️ O nome resolve-se NA ANIMAÇÃO onde o osso vive (onda 5): um homónimo de outro dono — o
     // que acabou de sair — não é dependência nenhuma, e conservava a composição rançosa.
     let doc = &timeline.doc;
-    if ossos
-        .iter()
-        .any(|(osso, clip)| doc.clip_named(doc.animation_of(world, *osso), clip).is_some())
-    {
+    if ossos.iter().any(|(osso, clip)| {
+        doc.clip_named(doc.animation_of(world, *osso), clip)
+            .is_some()
+    }) {
         return false;
     }
     // Last animated object gone ⇒ the timeline resets to a fresh **4 s composition** — the
@@ -486,3 +517,8 @@ mod owner_tests;
 #[cfg(test)]
 #[path = "timeline_reset_guard_tests.rs"]
 mod reset_guard_tests;
+
+/// ⚠️ Irmão de [`tests`] pelo mesmo teto — os nomes dos clipes publicados no mundo (`ClipNames`).
+#[cfg(test)]
+#[path = "timeline_clip_names_tests.rs"]
+mod clip_names_tests;

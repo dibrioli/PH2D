@@ -342,6 +342,7 @@ fn accao(target_tag: Option<u64>, path: &str) -> InspectorActionInfo {
             arg: String::new(),
             uses_arg: false,
             arg_hint: Default::default(),
+            arg_options: None,
             uses_target: true,
             // ⚠️ O modo sai do PAYLOAD nesta fixtura — ela é sobre a tag, e um modo escrito à mão
             // ao lado de uma tag presente daria dois estados para a mesma linha.

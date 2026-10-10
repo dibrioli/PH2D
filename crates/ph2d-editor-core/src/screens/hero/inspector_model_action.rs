@@ -88,6 +88,11 @@ pub struct InspectorActionRow {
     pub uses_arg: bool,
     /// ⭐ **O que o campo é**, quando o verbo o lê — ver [`ActionArgHint`].
     pub arg_hint: ActionArgHint,
+    /// ⭐ **As escolhas do parâmetro** (onda 5, item c): `None` = texto livre; `Some(lista)` = um ▾
+    /// com estes nomes (vazia = o alvo não tem nada a oferecer). Hoje só o *Play Clip* com UM alvo
+    /// conhecido na edição — os clipes da Animação dele. ⚠️ A posição de uma opção só significa
+    /// algo ao lado DESTA lista: o despacho lê o nome daqui, nunca de outra.
+    pub arg_options: Option<Vec<String>>,
     /// ⭐⭐⭐ **Este verbo tem ALVO?** — `false` só no `Restart Run`, que age sobre a CORRIDA e não
     /// sobre uma entidade.
     ///

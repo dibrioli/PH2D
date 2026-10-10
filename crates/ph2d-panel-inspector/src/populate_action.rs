@@ -53,6 +53,16 @@ pub(crate) fn populate_action(store: &mut WidgetStore) {
             selected_index: None,
         },
     );
+    // ⭐ O ▾ do *Play Clip* (onda 5, item c) — o mesmo par do verbo: opções BOTÕES, chip `Dropdown`.
+    register_button_ids(store, &crate::ids::INSP_ACTION_CLIP);
+    store.register(
+        crate::ids::INSP_ACTION_CLIP_PICK,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     for id in [
         crate::ids::INSP_ACTION_ON,
         crate::ids::INSP_ACTION_TARGET,

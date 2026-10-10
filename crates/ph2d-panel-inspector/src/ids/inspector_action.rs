@@ -195,6 +195,33 @@ pub const INSP_ACTION_VERB: [NodeId; 15] = [
     hash_node_id("insp_action_verb_play_clip"),
 ];
 
+/// ⭐ **O parâmetro do *Play Clip* — o CHIP do ▾** (onda 5, item c). As entradas são
+/// [`INSP_ACTION_CLIP`]; como o do verbo, o store guarda só o `open`, e o nome vem do snapshot.
+pub const INSP_ACTION_CLIP_PICK: NodeId = hash_node_id("insp_action_clip_pick");
+
+/// **Os clipes da Animação do alvo**, uma OPÇÃO por posição na lista do snapshot
+/// (`InspectorActionRow::arg_options`). ⚠️ O comprimento é o `ph2d_timeline::MAX_CLIPS` (o tecto
+/// POR animação) — este painel não vê a timeline, e o gate que prende os dois mora no
+/// `ph2d-app-components` (`os_ids_do_seletor_de_clipe_cobrem_o_tecto_da_animacao`).
+pub const INSP_ACTION_CLIP: [NodeId; 16] = [
+    hash_node_id("insp_action_clip_00"),
+    hash_node_id("insp_action_clip_01"),
+    hash_node_id("insp_action_clip_02"),
+    hash_node_id("insp_action_clip_03"),
+    hash_node_id("insp_action_clip_04"),
+    hash_node_id("insp_action_clip_05"),
+    hash_node_id("insp_action_clip_06"),
+    hash_node_id("insp_action_clip_07"),
+    hash_node_id("insp_action_clip_08"),
+    hash_node_id("insp_action_clip_09"),
+    hash_node_id("insp_action_clip_10"),
+    hash_node_id("insp_action_clip_11"),
+    hash_node_id("insp_action_clip_12"),
+    hash_node_id("insp_action_clip_13"),
+    hash_node_id("insp_action_clip_14"),
+    hash_node_id("insp_action_clip_15"),
+];
+
 /// **As opções do filtro por tag da §11 Physics** (TOP-20 #9, W3c).
 ///
 /// ⛔ **Ids PRÓPRIOS**, pela razão que o [`INSP_ACTION_TAG_OPT`] já escreve: o despacho resolve a

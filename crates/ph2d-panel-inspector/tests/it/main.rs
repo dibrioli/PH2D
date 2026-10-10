@@ -27,6 +27,7 @@ mod a_seccao_topdown_mostra_o_objecto;
 mod a_seccao_tween_diz_onde_mora_o_tempo;
 mod a_seccao_vida_esta_viva;
 mod a_seccao_weapon_esta_viva;
+mod action_clip_is_a_dropdown;
 mod action_verb_is_a_dropdown;
 mod as_caixas_que_encurtaram_guardam_a_explicacao;
 mod as_notas_tem_pega_e_menu;

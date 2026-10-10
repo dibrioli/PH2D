@@ -43,6 +43,13 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// SIGNAL ACTIONS: o ▾ do *Play Clip* (onda 5, item c) — `(índice da LINHA, rect do chip)`.
+    /// ⚠️ A linha e não a escolha, como o [`PENDING_SCRIPT_ENUM`]: as opções são da LINHA aberta, e
+    /// o passe diferido relê-as do snapshot por ela.
+    pub(crate) static PENDING_ACTION_CLIP_DD:
+        std::cell::Cell<Option<(usize, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
     /// TAGS: quando a caixa de escolha está aberta, a secção guarda aqui o **rect do chip** para o
     /// popover se pintar POR ÚLTIMO.
     ///
@@ -159,6 +166,14 @@ pub(crate) fn set_pending_action_dd(chip: Option<(u8, ph2d_editor_core::zones::R
 
 pub(crate) fn take_pending_action_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_ACTION_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_action_clip_dd(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {
+    PENDING_ACTION_CLIP_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_action_clip_dd() -> Option<(usize, ph2d_editor_core::zones::Rect)> {
+    PENDING_ACTION_CLIP_DD.with(|c| c.take())
 }
 
 pub(crate) fn set_pending_tags_dd(chip: Option<ph2d_editor_core::zones::Rect>) {

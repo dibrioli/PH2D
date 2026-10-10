@@ -249,12 +249,21 @@ pub fn stable_id_of(world: &World, entity: Entity) -> Option<StableId> {
 #[must_use]
 pub fn stable_id_for_name(world: &mut World, name: &str) -> u64 {
     assign_missing_stable_ids(world);
+    stable_id_named(world, name)
+}
+
+/// A metade de LEITURA de [`stable_id_for_name`]: a mesma resposta, sem atribuir ids — quem lê
+/// com `&World` (um retrato do Inspector) aceita que um objecto ainda sem id não responda.
+#[must_use]
+pub fn stable_id_named(world: &World, name: &str) -> u64 {
     world
-        .query::<(&crate::Name, &StableId)>()
-        .iter(world)
-        .filter(|(n, _)| n.as_str() == name)
-        .map(|(_, s)| s.0)
-        .min()
+        .try_query::<(&crate::Name, &StableId)>()
+        .and_then(|mut q| {
+            q.iter(world)
+                .filter(|(n, _)| n.as_str() == name)
+                .map(|(_, s)| s.0)
+                .min()
+        })
         .unwrap_or(StableId::NONE.0)
 }
 
@@ -267,11 +276,17 @@ pub fn stable_id_for_name(world: &mut World, name: &str) -> u64 {
 /// uma vez e passa-o adiante — a F4 fá-lo-á para o sync.
 #[must_use]
 pub fn entity_of_stable_id(world: &mut World, id: StableId) -> Option<Entity> {
+    entity_with_stable_id(world, id)
+}
+
+/// [`entity_of_stable_id`] com `&World` — a mesma varredura (ela nunca escreveu nada).
+#[must_use]
+pub fn entity_with_stable_id(world: &World, id: StableId) -> Option<Entity> {
     if id.is_none() {
         return None;
     }
     world
-        .query::<(Entity, &StableId)>()
+        .try_query::<(Entity, &StableId)>()?
         .iter(world)
         .find(|(_, s)| **s == id)
         .map(|(e, _)| e)

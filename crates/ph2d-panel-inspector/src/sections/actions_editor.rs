@@ -42,7 +42,7 @@ pub(super) fn editor(
     x: f32,
     w: f32,
     y: f32,
-    row: &InspectorActionRow,
+    (linha, row): (usize, &InspectorActionRow),
     labels: &[String],
 ) -> f32 {
     let seccao = seccao_da_acao(text_system);
@@ -107,7 +107,18 @@ pub(super) fn editor(
     );
     // ⚠️ **O campo do parâmetro só existe onde o verbo o LÊ.** Mostrá-lo sempre seria um controlo
     // morto em três dos cinco verbos — a família que a caça de 30/08 mediu.
-    if row.uses_arg {
+    // ⭐ Com escolhas no snapshot (o *Play Clip* com UM alvo) o parâmetro é um ▾, nunca texto.
+    if let (true, Some(nomes)) = (row.uses_arg, row.arg_options.as_deref()) {
+        cur_y = clip_row(
+            scene,
+            text_system,
+            theme,
+            (hit_index, store),
+            (x, w, cur_y),
+            (linha, row, nomes),
+            seccao,
+        );
+    } else if row.uses_arg {
         cur_y = super::anim_rows::text_row(
             scene,
             text_system,
@@ -140,6 +151,105 @@ pub(super) fn editor(
         cur_y += font + ph2d_tokens::control_gap_px();
     }
     cur_y
+}
+
+/// **As opções do ▾ do *Play Clip*** — uma por nome da lista do snapshot, na ordem dela.
+///
+/// ⚠️ O valor é a POSIÇÃO, e o despacho lê o nome da MESMA lista por ela (`event_action`). `zip`
+/// com os ids: uma lista maior que o tecto perde as excedentes em vez de as pintar sem id.
+pub(crate) fn clip_options(nomes: &[String]) -> Vec<DropdownOption<usize>> {
+    ids::INSP_ACTION_CLIP
+        .iter()
+        .zip(nomes)
+        .enumerate()
+        .map(|(i, (&id, nome))| DropdownOption::new(id, i, nome.clone()))
+        .collect()
+}
+
+/// ⭐ **O parâmetro do *Play Clip* como ▾** (onda 5, item c) — no molde do seletor do verbo.
+///
+/// | estado | chip | linha por baixo |
+/// |---|---|---|
+/// | nome na lista | o nome | — |
+/// | nome vazio | a dica do parâmetro | — |
+/// | nome FORA da lista | o nome, como dica | WARN: o clipe não existe na Animação do alvo |
+/// | lista vazia | desabilitado, sem hit | WARN: o alvo não tem Animação |
+///
+/// ⚠️ O nome fora da lista vai na dica (`Text3`) e o tom de aviso na linha: o chip partilhado não
+/// tem um estado de aviso, e a dica já diz «isto não é uma escolha da lista».
+fn clip_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    (hit_index, store): (&mut HitIndex, &WidgetStore),
+    (x, w, y): (f32, f32, f32),
+    (linha, row, nomes): (usize, &InspectorActionRow, &[String]),
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let rotulo = ph2d_editor_core::property_row::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H,
+        tr("panel.inspector.actions.arg_label"),
+        seccao,
+    );
+    let (rect, dot) = (rotulo.control, rotulo.dot);
+    let vazia = nomes.is_empty();
+    let atual = nomes.iter().position(|n| *n == row.arg);
+    let open = !vazia
+        && matches!(
+            store.get(ids::INSP_ACTION_CLIP_PICK),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+    let dica = if row.arg.is_empty() {
+        tr(dica_do_parametro(row.arg_hint)).to_string()
+    } else {
+        row.arg.clone()
+    };
+    let mut dd = Dropdown::new(ids::INSP_ACTION_CLIP_PICK, "", clip_options(nomes))
+        .placeholder(dica)
+        .open(open)
+        .visual(store.dropdown_visual(ids::INSP_ACTION_CLIP_PICK));
+    if vazia {
+        dd = dd.state(ph2d_editor_core::widget::DropdownState::Disabled);
+    } else {
+        hit_index.register(ids::INSP_ACTION_CLIP_PICK, rect);
+    }
+    if let Some(i) = atual {
+        dd.select(i);
+    }
+    paint_dropdown_chip(&dd, rect, scene, text_system, theme);
+    if open {
+        crate::state_popovers::set_pending_action_clip_dd(Some((linha, rect)));
+    }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    let cur_y = y + ph2d_tokens::row_pitch_px();
+    let aviso = if vazia {
+        tr("panel.inspector.actions.target_has_no_animation").to_string()
+    } else if atual.is_none() && !row.arg.trim().is_empty() {
+        tr_with(
+            "panel.inspector.actions.clip_not_in_target_animation",
+            &[("clip", &row.arg)],
+        )
+    } else {
+        return cur_y;
+    };
+    let font = TypeToken::Sm.px();
+    paint_text(
+        text_system,
+        scene,
+        &aviso,
+        x,
+        cur_y,
+        font,
+        w,
+        resolve(ColorToken::Warn, theme),
+    );
+    cur_y + font + ph2d_tokens::control_gap_px()
 }
 
 /// ⭐⭐⭐ **DE QUEM o sinal tem de vir** — a TERCEIRA pergunta de uma linha (suplente #24).
@@ -285,7 +395,7 @@ pub(crate) fn paint_action_section(
             x,
             w,
             cur_y,
-            row,
+            (selected, row),
             &info.verb_labels,
         );
     }

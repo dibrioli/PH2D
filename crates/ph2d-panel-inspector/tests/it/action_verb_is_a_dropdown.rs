@@ -70,6 +70,7 @@ fn actions() -> InspectorActionInfo {
             arg: String::new(),
             uses_arg: false,
             arg_hint: Default::default(),
+            arg_options: None,
             uses_target: true,
             target_mode: 0,
             from_tag: 0,

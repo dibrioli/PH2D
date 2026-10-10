@@ -213,6 +213,9 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
+    // SIGNAL ACTIONS — o ▾ do *Play Clip* (onda 5, item c), na função irmã (tecto de 200 LOC).
+    action_clip_popover(scene, text_system, theme, hit_index, store, region);
+
     // AUDIO — o seletor do BARRAMENTO, mesmo passe diferido, slot próprio.
     if let Some((sel, chip)) = state_popovers::take_pending_audio_dd()
         && let Some(info) = crate::state_components::current_inspector_audio()
@@ -252,6 +255,43 @@ pub(crate) fn paint_deferred_popovers(
     // objecto (amostragem, camada, âncora, verbo); estes três escolhem uma **tag da árvore do
     // projecto**, e as opções deles saem de outra porta. ⛔ Subir o número seria adiar com juros.
     tags::paint_deferred_tag_popovers(scene, text_system, theme, hit_index, store, region);
+}
+
+/// O ▾ do *Play Clip* da secção SIGNAL ACTIONS (onda 5, item c): a LINHA vem no slot, e as opções
+/// relêem-se do snapshot por ela — a lei do passe diferido.
+fn action_clip_popover(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    region: Rect,
+) {
+    if let Some((linha, chip)) = state_popovers::take_pending_action_clip_dd()
+        && let Some(info) = crate::state_components::current_inspector_action()
+        && let Some(row) = info.rows.get(linha)
+    {
+        let nomes = row.arg_options.as_deref().unwrap_or_default();
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_ACTION_CLIP_PICK,
+            "",
+            sections::actions::clip_options(nomes),
+        )
+        .open(true);
+        if let Some(i) = nomes.iter().position(|n| *n == row.arg) {
+            dd.select(i);
+        }
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
 }
 
 /// ⭐ **Os três popovers de TAG** — irmão por `#[path]`; ver a chamada acima.

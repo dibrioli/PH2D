@@ -461,6 +461,7 @@ pub fn paint_hero_screen(
         &hero.store,
         &hero.project,
         &hero.motion,
+        &hero.view.luz2d,
         viewport,
     );
     // A pergunta antes de apagar um quadro: um diálogo do overlay que precisa do NOME do quadro.

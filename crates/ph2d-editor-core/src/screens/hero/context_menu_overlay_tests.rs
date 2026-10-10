@@ -21,7 +21,14 @@ use ph2d_tokens::Theme;
 fn lit(id: ph2d_a11y::NodeId, motion: &UiMotion) -> bool {
     let store = WidgetStore::default();
     let project = ProjectSettings::default();
-    id_is_currently_selected(id, Theme::Forge, &store, &project, motion)
+    id_is_currently_selected(
+        id,
+        Theme::Forge,
+        &store,
+        &project,
+        motion,
+        &crate::luz_edits::PreferenciaDaLuz::default(),
+    )
 }
 
 /// O carácter é um RÁDIO: exactamente UMA das duas linhas acende, e ela segue o estado.

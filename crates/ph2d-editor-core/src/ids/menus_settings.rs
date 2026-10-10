@@ -99,6 +99,17 @@ pub const CTX_MENU_SETTINGS_MOTION: NodeId = hash_node_id("ctx_menu_settings_mot
 pub const CTX_MENU_MOTION_EXPRESSIVE: NodeId = hash_node_id("ctx_menu_motion_expressive");
 pub const CTX_MENU_MOTION_DISCRETE: NodeId = hash_node_id("ctx_menu_motion_discrete");
 pub const CTX_MENU_MOTION_REDUCED: NodeId = hash_node_id("ctx_menu_motion_reduced");
+/// ⭐ Settings ▸ Light — a nitidez da luz 2D no editor (Luz 2D, W4).
+pub const CTX_MENU_SETTINGS_LIGHT: NodeId = hash_node_id("ctx_menu_settings_light");
+/// As três nitidezes — um RÁDIO (a posição é a de `NivelDaLuz::ALL`).
+pub const CTX_MENU_LIGHT_NIVEL: [NodeId; 3] = [
+    hash_node_id("ctx_menu_light_low"),
+    hash_node_id("ctx_menu_light_medium"),
+    hash_node_id("ctx_menu_light_high"),
+];
+/// «Automatic» — um TOGGLE: o nível escolhido vira o teto e o editor desce quando a placa não
+/// aguenta.
+pub const CTX_MENU_LIGHT_AUTO: NodeId = hash_node_id("ctx_menu_light_auto");
 
 /// ⭐ Os três eixos do TEXTO da interface ([`ph2d_tokens::UiTextStyle`], ordem do dono 2026-10-01) —
 /// três categorias do Settings, cada uma com o seu submenu de escolha. ⚠️ A ligação entre cada

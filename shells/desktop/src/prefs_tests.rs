@@ -174,3 +174,27 @@ fn left_handed_round_trips_and_an_old_file_is_right_handed() {
     }
     assert!(!parse("ui_sound=1\n").left_handed);
 }
+
+/// ⭐ **A nitidez da luz ATRAVESSA o ficheiro** (Settings ▸ 2D Light), todo nível × automático; um
+/// valor desconhecido cai na fábrica (Alta, automático).
+#[test]
+fn every_light_quality_survives_a_round_trip() {
+    use ph2d_editor_core::luz_edits::{NivelDaLuz, PreferenciaDaLuz};
+    for nivel in NivelDaLuz::ALL {
+        for automatica in [false, true] {
+            let p = Prefs {
+                luz2d: PreferenciaDaLuz { nivel, automatica },
+                ..Prefs::default()
+            };
+            assert_eq!(
+                parse(&serialize(&p)),
+                p,
+                "{nivel:?}/{automatica} tem de voltar igual"
+            );
+        }
+    }
+    assert_eq!(
+        parse("light_quality=ultra\n").luz2d,
+        PreferenciaDaLuz::default()
+    );
+}

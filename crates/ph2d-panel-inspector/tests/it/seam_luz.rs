@@ -31,6 +31,11 @@ fn ponto() -> InspectorLuzInfo {
         tipo: 0,
         luz_a_1m: 1.0,
         avisos: vec![],
+        qualidade: Some((
+            ph2d_editor_core::luz_edits::NivelDaLuz::Alta,
+            true,
+            Some(3.2),
+        )),
         selected_count: 1,
     }
 }

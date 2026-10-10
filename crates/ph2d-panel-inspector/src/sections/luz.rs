@@ -89,7 +89,7 @@ fn avisos(
             &[("d", &format!("{:.2}", i.luz_a_1m))],
         )
     };
-    super::rows::aviso(
+    y = super::rows::aviso(
         scene,
         text_system,
         theme,
@@ -98,6 +98,38 @@ fn avisos(
         y,
         &pleno,
         ColorToken::Text2,
+    );
+    let Some((nivel, auto, custo)) = i.qualidade else {
+        return y;
+    };
+    let modo = tr(if auto {
+        "panel.inspector.luz.automatic"
+    } else {
+        "panel.inspector.luz.manual"
+    });
+    let texto = match custo {
+        Some(ms) => tr_with(
+            "panel.inspector.luz.quality_cost",
+            &[
+                ("nivel", &tr(nivel.chave())),
+                ("modo", &modo),
+                ("ms", &format!("{ms:.1}")),
+            ],
+        ),
+        None => tr_with(
+            "panel.inspector.luz.quality",
+            &[("nivel", &tr(nivel.chave())), ("modo", &modo)],
+        ),
+    };
+    super::rows::aviso(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        &texto,
+        ColorToken::Text3,
     )
 }
 

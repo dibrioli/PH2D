@@ -6,7 +6,9 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use kurbo::Affine;
 use ph2d_ecs::PresentWorld;
-use ph2d_editor_core::luz_edits::AvisoDaLuz;
+use ph2d_editor_core::luz_edits::{AvisoDaLuz, NivelDaLuz, PreferenciaDaLuz};
+
+use crate::qualidade::Governador;
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
@@ -44,6 +46,11 @@ pub struct LuzDoQuadro {
     /// A re-coleta ([`Self::recolher`]) achou a cena SEM `Luz` depois da codificação: este quadro
     /// fica apagado (receptores neutros), nunca preto.
     sem_luz_no_quadro: bool,
+    /// ⭐ A preferência do editor (`None` = degrau fixo, o da sonda/dos gates) e o governador.
+    preferencia: Option<PreferenciaDaLuz>,
+    governador: Governador,
+    /// O último custo de placa que o governador leu (ms, o solver inteiro).
+    custo_ms: Option<f64>,
 }
 
 impl Default for LuzDoQuadro {
@@ -75,6 +82,9 @@ impl LuzDoQuadro {
             smoke_encenado: false,
             recusa_dita: false,
             sem_luz_no_quadro: false,
+            preferencia: None,
+            governador: Governador::novo(NivelDaLuz::Baixa),
+            custo_ms: None,
         }
     }
 
@@ -137,6 +147,42 @@ impl LuzDoQuadro {
             self.vetores
                 .desenhar(gpu, (g, fator), &self.cena, doc, xforms);
         }
+    }
+
+    /// ⭐ **A preferência do editor** (Settings ▸ Light), a cada quadro: o nível e o
+    /// «Automático». Muda o degrau no próximo `preparar` (a grade nova recria o solver).
+    pub fn preferir(&mut self, p: PreferenciaDaLuz) {
+        if self.preferencia != Some(p) {
+            self.preferencia = Some(p);
+            self.governador = Governador::novo(p.nivel);
+        }
+        let nivel = if p.automatica {
+            self.governador.nivel
+        } else {
+            p.nivel
+        };
+        self.degrau = crate::qualidade::degrau_do(nivel);
+    }
+
+    /// O último custo de placa que o «Automático» leu (ms); `None` antes da 1.ª leitura ou sem
+    /// `TIMESTAMP_QUERY` (aí o automático fica no teto).
+    #[must_use]
+    pub fn custo_ms(&self) -> Option<f64> {
+        self.custo_ms
+    }
+
+    /// O nível em uso e se é automático (`None` = degrau fixo).
+    #[must_use]
+    pub fn qualidade(&self) -> Option<(NivelDaLuz, bool)> {
+        let p = self.preferencia?;
+        Some((
+            if p.automatica {
+                self.governador.nivel
+            } else {
+                p.nivel
+            },
+            p.automatica,
+        ))
     }
 
     /// ⭐ **Porta 2a** — re-coleta a cena logo antes do solver. As edições do quadro (o Inspector, o
@@ -218,6 +264,13 @@ impl LuzDoQuadro {
                 .gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites),
         );
         gpu.queue.submit([enc.finish()]);
+        // ⭐ O governador lê o custo de placa SEM ESPERAR (de há poucos quadros) e decide o nível.
+        if let Some(p) = self.preferencia.filter(|p| p.automatica)
+            && let Some(t) = r.solver.tempos_sem_esperar(gpu)
+        {
+            self.custo_ms = Some(t.total());
+            self.governador.ler(t.total(), p.nivel);
+        }
     }
 
     /// O que os receptores leem; `None` = apagada.

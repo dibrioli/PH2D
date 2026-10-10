@@ -66,6 +66,7 @@ pub fn paint_context_menu_overlay(
     store: &WidgetStore,
     project: &crate::project::ProjectSettings,
     motion: &crate::motion::UiMotion,
+    luz: &crate::luz_edits::PreferenciaDaLuz,
     viewport: Rect,
 ) {
     let Some(req) = store.context_menu() else {
@@ -224,7 +225,7 @@ pub fn paint_context_menu_overlay(
         // um MÓDULO contribui respondem pelo `ButtonState` que ele próprio publica — ver
         // [`contributed_row_is_current`]. ⛔ Uma tabela só teria de conhecer os ids de todo editor
         // do app, que é o acoplamento que a **D2** existe para não ter.
-        let is_current = id_is_currently_selected(*id, theme, store, project, motion)
+        let is_current = id_is_currently_selected(*id, theme, store, project, motion, luz)
             || contributed_row_is_current(*id, contrib, store);
         let bullet_x = r.x + pad_x;
         if is_current {

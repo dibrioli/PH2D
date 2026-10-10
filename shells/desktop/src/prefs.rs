@@ -41,6 +41,8 @@ pub struct Prefs {
     pub ui_scale: ph2d_tokens::UiScale,
     /// F5: **canhoto** (*Look ▸ Left-handed*) — da MÃO do artista, não do projecto.
     pub left_handed: bool,
+    /// ⭐ A nitidez da luz 2D (Settings ▸ Light) — do artista e da máquina dele, nunca do projeto.
+    pub luz2d: ph2d_editor_core::luz_edits::PreferenciaDaLuz,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -55,7 +57,7 @@ fn prefs_file() -> Option<PathBuf> {
 pub fn serialize(p: &Prefs) -> String {
     format!(
         "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\nui_font={}\n\
-         ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\n",
+         ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\nlight_quality={}\nlight_auto={}\n",
         p.character.wire(),
         u8::from(p.reduced_motion),
         u8::from(p.ui_sound),
@@ -64,6 +66,8 @@ pub fn serialize(p: &Prefs) -> String {
         p.text.size.wire(),
         p.ui_scale.wire(),
         u8::from(p.left_handed),
+        p.luz2d.nivel.token(),
+        u8::from(p.luz2d.automatica),
     )
 }
 
@@ -108,6 +112,12 @@ pub fn parse(text: &str) -> Prefs {
                     p.text.size = z;
                 }
             }
+            "light_quality" => {
+                if let Some(n) = ph2d_editor_core::luz_edits::NivelDaLuz::de_token(value.trim()) {
+                    p.luz2d.nivel = n;
+                }
+            }
+            "light_auto" => p.luz2d.automatica = value.trim() == "1",
             "ui_scale" => {
                 if let Some(z) = ph2d_tokens::UiScale::from_wire(value.trim()) {
                     p.ui_scale = z;

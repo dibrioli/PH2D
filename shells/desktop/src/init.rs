@@ -356,6 +356,7 @@ fn boot_hero_screen(
         hero.text_style = prefs.text;
         hero.ui_scale = prefs.ui_scale;
         hero.view.ui_mirrored = prefs.left_handed;
+        hero.view.luz2d = prefs.luz2d;
         // ⭐⭐ **A ARRUMAÇÃO do artista** (`~/.ph2d/layout.txt`, decisão D4): que painel está em
         // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e

@@ -564,6 +564,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         .map(|(_, id)| *id)
         .chain(ids::CTX_MENU_NEW_IMAGE_BGS.iter().map(|(_, id)| *id))
         .chain(ids::CTX_MENU_SHEET_SIZES.iter().map(|(_, id)| *id))
+        .chain([ids::CTX_MENU_SETTINGS_LIGHT, ids::CTX_MENU_LIGHT_AUTO])
+        .chain(ids::CTX_MENU_LIGHT_NIVEL)
     {
         store.register(id, InteractiveState::Plain);
     }

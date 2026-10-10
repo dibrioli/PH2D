@@ -43,6 +43,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{n} of {total} glowing or shadow-casting sprites use their box, not their pixels \
              (mesh, tiling or baked texture)."
         }
+        "panel.inspector.luz.quality" => {
+            "Quality: {nivel} ({modo}) \u{2014} Settings \u{25b8} 2D Light."
+        }
+        "panel.inspector.luz.quality_cost" => {
+            "Quality: {nivel} ({modo}), {ms} ms of GPU per frame \u{2014} Settings \u{25b8} 2D Light."
+        }
+        "panel.inspector.luz.automatic" => "automatic",
+        "panel.inspector.luz.manual" => "manual",
         "light2d.toast.grid_too_big" => {
             "2D light is off: its grid ({lado} px) is larger than this GPU allows ({limite} px)."
         }

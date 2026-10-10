@@ -60,6 +60,9 @@ pub struct InspectorLuzInfo {
     pub luz_a_1m: f32,
     /// Da mais grave para a mais branda.
     pub avisos: Vec<AvisoDaLuz>,
+    /// ⭐ A nitidez em uso (Settings ▸ Light), se é a do «Automatic», e o custo de placa que ele
+    /// leu (ms por quadro). `None` = a luz do quadro ainda não recebeu a preferência.
+    pub qualidade: Option<(NivelDaLuz, bool, Option<f32>)>,
     /// Quantos objetos estão escolhidos — a secção edita o primário, e di-lo.
     pub selected_count: usize,
 }
@@ -69,5 +72,77 @@ impl InspectorLuzInfo {
     #[must_use]
     pub fn ambiente(&self) -> bool {
         self.tipo == 1
+    }
+}
+
+/// ⭐ **A nitidez da luz no editor** (pedido do dono, 2026-10-09): o tamanho da célula da grade da
+/// luz, em px de TELA. Mais fina = mais nítida e mais cara (custo ∝ 1/célula², medido na W3).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NivelDaLuz {
+    /// Células de 4 px.
+    Baixa,
+    /// Células de 3 px.
+    Media,
+    /// Células de 2 px.
+    #[default]
+    Alta,
+}
+
+impl NivelDaLuz {
+    /// Do mais barato ao mais nítido.
+    pub const ALL: [Self; 3] = [Self::Baixa, Self::Media, Self::Alta];
+
+    /// O lado da célula, em px de tela.
+    #[must_use]
+    pub fn celula_px(self) -> f32 {
+        match self {
+            Self::Baixa => 4.0, // LITERAL-PX-OK: o degrau da W3 (K7 a 1080p)
+            Self::Media => 3.0, // LITERAL-PX-OK: célula da grade da luz
+            Self::Alta => 2.0,  // LITERAL-PX-OK: célula da grade da luz
+        }
+    }
+
+    /// A chave do nome.
+    #[must_use]
+    pub fn chave(self) -> &'static str {
+        match self {
+            Self::Baixa => "chrome.menu.light_low",
+            Self::Media => "chrome.menu.light_medium",
+            Self::Alta => "chrome.menu.light_high",
+        }
+    }
+
+    /// O nome da preferência gravada (`~/.ph2d/prefs.txt`).
+    #[must_use]
+    pub fn token(self) -> &'static str {
+        match self {
+            Self::Baixa => "low",
+            Self::Media => "medium",
+            Self::Alta => "high",
+        }
+    }
+
+    /// A inversa de [`Self::token`].
+    #[must_use]
+    pub fn de_token(t: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|n| n.token() == t)
+    }
+}
+
+/// ⭐ **A preferência da luz do editor**: o nível escolhido e o «Automático». Com o automático, o
+/// nível escolhido é o TETO e o editor desce quando a placa não aguenta (o governador da família).
+/// Preferência do EDITOR (o `prefs.txt`), nunca dado do projeto.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PreferenciaDaLuz {
+    pub nivel: NivelDaLuz,
+    pub automatica: bool,
+}
+
+impl Default for PreferenciaDaLuz {
+    fn default() -> Self {
+        Self {
+            nivel: NivelDaLuz::Alta,
+            automatica: true,
+        }
     }
 }

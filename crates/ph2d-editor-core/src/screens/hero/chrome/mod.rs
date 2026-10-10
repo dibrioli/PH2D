@@ -79,6 +79,7 @@ mod selection_actions;
 mod settings_angle;
 mod settings_filter;
 mod settings_font;
+mod settings_luz;
 mod settings_motion;
 mod settings_ppm;
 mod settings_present;
@@ -173,6 +174,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_font::apply(hero, event)
         || settings_motion::apply(hero, event)
         || settings_text::apply(hero, event)
+        || settings_luz::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
         || sheet_size::apply(hero, event)

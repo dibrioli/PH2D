@@ -284,6 +284,7 @@ impl Solver {
             leitura: buffer("luz2d/buf/tempos_leitura"),
             n,
             periodo_ns: f64::from(gpu.queue.get_timestamp_period()),
+            pedido: None,
         });
 
         let vistas: Vec<wgpu::TextureView> = texturas
@@ -627,5 +628,11 @@ impl Solver {
     #[must_use]
     pub fn tempos(&self, gpu: &GpuContext) -> Option<TemposMs> {
         self.tempos.as_ref()?.ler(&gpu.device)
+    }
+
+    /// ⭐ Os tempos de placa SEM ESPERAR (o governador do editor): chamada depois de cada submit,
+    /// devolve os de um quadro de há poucos quadros quando a placa os entregou; `None` no resto.
+    pub fn tempos_sem_esperar(&mut self, gpu: &GpuContext) -> Option<TemposMs> {
+        self.tempos.as_mut()?.ler_sem_esperar(&gpu.device)
     }
 }

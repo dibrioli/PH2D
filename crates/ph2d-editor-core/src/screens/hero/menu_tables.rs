@@ -323,6 +323,7 @@ pub(super) const SETTINGS_MENU_ROWS: &[MenuRow] = &[
     // ⭐ E a interface INTEIRA (2026-10-02), ao lado do tamanho do texto.
     menu_row(ids::CTX_MENU_SETTINGS_SCALE, "chrome.menu.interface_scale"),
     menu_row(ids::CTX_MENU_SETTINGS_MOTION, "chrome.menu.motion"),
+    menu_row(ids::CTX_MENU_SETTINGS_LIGHT, "chrome.menu.light_2d"),
     // ⚠️ **Esta entrada NÃO é uma categoria** — ela abre a janela flutuante do Input Map,
     // não um submenu. Fica aqui porque é a casa que o Godot lhe dá (*Project Settings >
     // Input Map*) e a equivalência era o pedido; as reticências dizem *"isto abre uma
@@ -431,6 +432,14 @@ pub(super) const SETTINGS_MOTION_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_MOTION_EXPRESSIVE, "chrome.menu.expressive"),
     menu_row(ids::CTX_MENU_MOTION_DISCRETE, "chrome.menu.discrete"),
     menu_row(ids::CTX_MENU_MOTION_REDUCED, "chrome.menu.reduced_motion"),
+];
+
+/// As linhas de `ContextMenuKind::SettingsLightSubmenu` — os três níveis e o «Automatic».
+pub(super) const SETTINGS_LIGHT_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_LIGHT_NIVEL[0], "chrome.menu.light_low"),
+    menu_row(ids::CTX_MENU_LIGHT_NIVEL[1], "chrome.menu.light_medium"),
+    menu_row(ids::CTX_MENU_LIGHT_NIVEL[2], "chrome.menu.light_high"),
+    menu_row(ids::CTX_MENU_LIGHT_AUTO, "chrome.menu.light_automatic"),
 ];
 
 // M14.6 F + M14.7: per-row Hierarchy actions. Order follows

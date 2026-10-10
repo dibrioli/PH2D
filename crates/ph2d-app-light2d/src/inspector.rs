@@ -48,6 +48,10 @@ pub fn build_info(
         tipo: tag_do_tipo(l.tipo),
         luz_a_1m: l.intensidade * l.cor.iter().copied().fold(0.0, f32::max) / std::f32::consts::TAU,
         avisos: luz.avisos_de(e),
+        #[allow(clippy::cast_possible_truncation)]
+        qualidade: luz
+            .qualidade()
+            .map(|(n, a)| (n, a, luz.custo_ms().map(|ms| ms as f32))),
         selected_count: quantos,
     })
 }

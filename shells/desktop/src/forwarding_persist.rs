@@ -53,6 +53,7 @@ pub(super) fn prefs_if_changed(hero: &ph2d_editor_core::HeroScreen) {
         text: hero.text_style,
         ui_scale: hero.ui_scale,
         left_handed: hero.view.ui_mirrored,
+        luz2d: hero.view.luz2d,
     };
     let previous = LAST_PREFS.with(|c| c.replace(Some(now)));
     if crate::prefs::should_save(previous, now) {

@@ -221,6 +221,7 @@ impl crate::App {
         );
         // ⭐ **A LUZ** (Luz 2D, W4): a secção e a recusa do solver, que sobe como aviso na
         // transição (recusa que só o terminal vê é botão mudo).
+        luz2d.preferir(hero.view.luz2d);
         ph2d_panel_inspector::set_current_inspector_luz(ph2d_app_light2d::inspector::build_info(
             sim.world(),
             hero.gizmo.selection,

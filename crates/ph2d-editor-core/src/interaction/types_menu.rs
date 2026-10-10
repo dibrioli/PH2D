@@ -162,6 +162,9 @@ pub enum ContextMenuKind {
     /// (um toggle que se sobrepõe aos dois). Escolher escreve em `HeroScreen.motion`; a shell
     /// persiste ao notar a diferença (ver `shells/desktop/src/prefs.rs`).
     SettingsMotionSubmenu,
+    /// ⭐ Settings ▸ Light — a nitidez da luz 2D (Baixa · Média · Alta, um rádio) e o «Automatic» (um
+    /// toggle). Escolher escreve em `HeroScreen.luz2d`; a shell persiste e aplica.
+    SettingsLightSubmenu,
     /// ⭐ Settings ▸ Interface font — a FONTE do texto da interface ([`ph2d_tokens::UiFont`]).
     SettingsFontSubmenu,
     /// ⭐ Settings ▸ Font weight — o PESO ([`ph2d_tokens::UiWeight`]).
@@ -396,6 +399,7 @@ impl ContextMenuKind {
         Self::SettingsDisplaySubmenu,
         Self::SettingsTextSubmenu,
         Self::SettingsMotionSubmenu,
+        Self::SettingsLightSubmenu,
         Self::SettingsFontSubmenu,
         Self::SettingsWeightSubmenu,
         Self::SettingsSizeSubmenu,

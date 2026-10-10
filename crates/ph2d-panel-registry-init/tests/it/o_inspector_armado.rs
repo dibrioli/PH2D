@@ -892,6 +892,11 @@ fn arma_o_top20() {
                 total: 5,
             },
         ],
+        qualidade: Some((
+            ph2d_editor_core::luz_edits::NivelDaLuz::Media,
+            true,
+            Some(3.2),
+        )),
         selected_count: selecionados(),
     }));
     insp::set_current_inspector_shake(Some(InspectorShakeInfo {

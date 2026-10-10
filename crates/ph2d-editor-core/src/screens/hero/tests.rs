@@ -2158,6 +2158,7 @@ fn every_choice_submenu_marks_the_active_pick() {
         K::SettingsDisplaySubmenu,
         K::SettingsTextSubmenu,
         K::SettingsMotionSubmenu,
+        K::SettingsLightSubmenu,
         K::SettingsFontSubmenu,
         K::SettingsWeightSubmenu,
         K::SettingsSizeSubmenu,
@@ -2179,7 +2180,12 @@ fn every_choice_submenu_marks_the_active_pick() {
             .iter()
             .filter(|(id, _, _)| {
                 crate::screens::hero::menu_row_mark::id_is_currently_selected(
-                    *id, theme, &store, &project, &motion,
+                    *id,
+                    theme,
+                    &store,
+                    &project,
+                    &motion,
+                    &crate::luz_edits::PreferenciaDaLuz::default(),
                 )
             })
             .count();
@@ -2220,6 +2226,7 @@ fn every_settings_submenu_is_classified_as_choice_or_action() {
         K::SettingsDisplaySubmenu,
         K::SettingsTextSubmenu,
         K::SettingsMotionSubmenu,
+        K::SettingsLightSubmenu,
         K::SettingsFontSubmenu,
         K::SettingsWeightSubmenu,
         K::SettingsSizeSubmenu,

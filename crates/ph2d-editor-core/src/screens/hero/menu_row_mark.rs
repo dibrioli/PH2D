@@ -66,6 +66,7 @@ pub(super) fn id_is_currently_selected(
     store: &WidgetStore,
     project: &crate::project::ProjectSettings,
     motion: &crate::motion::UiMotion,
+    luz: &crate::luz_edits::PreferenciaDaLuz,
 ) -> bool {
     use crate::project::{DisplayAngle, DisplayUnit, ImageFilterMode};
     use crate::widget::RailButtonSize;
@@ -195,6 +196,14 @@ pub(super) fn id_is_currently_selected(
         return true;
     }
     if id == ids::CTX_MENU_MOTION_REDUCED && motion.reduced_motion() {
+        return true;
+    }
+    // A luz — o nível é um RÁDIO (uma linha acesa das três), o «Automatic» um TOGGLE.
+    let nivel = crate::luz_edits::NivelDaLuz::ALL
+        .iter()
+        .position(|&n| n == luz.nivel)
+        .map(|i| ids::CTX_MENU_LIGHT_NIVEL[i]);
+    if Some(id) == nivel || (id == ids::CTX_MENU_LIGHT_AUTO && luz.automatica) {
         return true;
     }
     false

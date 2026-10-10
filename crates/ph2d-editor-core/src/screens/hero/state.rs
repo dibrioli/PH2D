@@ -105,6 +105,9 @@ pub struct ViewState {
     /// (default `Horizontal { t: 0.55 }`) on tool-activate and back to `None` on
     /// deactivate; the graph toolbar's SplitH/SplitV chips flip the orientation.
     pub center_split: crate::screens::layout::CenterSplit,
+    /// ⭐ A nitidez da luz 2D (Settings ▸ 2D Light) — preferência do EDITOR: a shell persiste-a em
+    /// `~/.ph2d/prefs.txt` e aplica-a à luz do quadro. Ver [`crate::luz_edits`].
+    pub luz2d: crate::luz_edits::PreferenciaDaLuz,
 }
 
 impl Default for ViewState {
@@ -116,6 +119,7 @@ impl Default for ViewState {
             rulers_visible: true,
             legacy_chrome: false,
             center_split: crate::screens::layout::CenterSplit::None,
+            luz2d: crate::luz_edits::PreferenciaDaLuz::default(),
         }
     }
 }

@@ -178,6 +178,48 @@ fn a_version_delete_asks_twice_and_the_rename_follows_its_version() {
     assert_eq!(names, ["b", "C2"]);
 }
 
+/// W11 — ao vivo, uma versão alheia chega ANTES das minhas (a ordem é por instante) e mexe nas
+/// posições: o apagar armado não salta para a fila vizinha (que se apagaria com UM clique) e o
+/// renomear não cai noutra versão. Os dois seguem a versão pelo id.
+#[test]
+fn a_version_arriving_live_moves_neither_the_armed_delete_nor_the_rename() {
+    let mut t = T::new();
+    {
+        let b = t.hero.documents.active_board_mut().unwrap();
+        for n in ["a", "b", "c"] {
+            b.save_version(n.into(), 10);
+        }
+    }
+    t.tab_menu(crate::ids::CTX_MENU_BOARD_VERSIONS);
+    t.hero
+        .apply_event(WidgetEvent::DoubleClick(team_node(Hit::RenameVersion(2))));
+    t.paint();
+    t.shell_click_id(team_node(Hit::DropVersion(1)), "armar «b»");
+    {
+        let b = t.hero.documents.active_board_mut().unwrap();
+        let mut z = b.team.versions[0].clone();
+        z.id = ph2d_board_model::VersionId(0xfeed);
+        z.name = "z".into();
+        z.at = 1;
+        b.team.versions.insert(0, z);
+    }
+    t.paint();
+    t.shell_click_id(team_node(Hit::DropVersion(1)), "a fila de «a»");
+    assert_eq!(t.team().versions.len(), 4, "«a» apagou-se com UM clique");
+    t.shell_click_id(team_node(Hit::DropVersion(2)), "armar «b» outra vez");
+    t.shell_click_id(team_node(Hit::DropVersion(2)), "confirmar «b»");
+    let names: Vec<_> = t.team().versions.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names, ["z", "a", "c"]);
+    board_nav::open_field(
+        &mut t.hero.store,
+        crate::ids::BOARD_VERSION_INPUT,
+        String::new(),
+    );
+    t.write_and_enter("C2");
+    let names: Vec<_> = t.team().versions.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names, ["z", "a", "C2"], "o renomear caiu noutra versão");
+}
+
 /// K4 — um fio comprido num alvo perto do canto: o cartão fica DENTRO da área e mostra as últimas
 /// mensagens (a primeira, minha, fica acima de «N earlier» — sem botões pintados).
 #[test]

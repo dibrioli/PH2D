@@ -356,7 +356,10 @@ fn the_firewall_buttons_show_when_the_family_says_and_ask_it() {
     let mut t = T::new();
     t.open_live();
     t.paint();
-    assert!(t.find(allow).is_none() && t.find(remove).is_none(), "sem firewall, sem botão");
+    assert!(
+        t.find(allow).is_none() && t.find(remove).is_none(),
+        "sem firewall, sem botão"
+    );
     let set = |t: &mut T, can_allow, can_remove, busy| {
         t.hero.documents.live_view_mut().firewall = LiveFirewall {
             can_allow,
@@ -386,7 +389,11 @@ fn the_firewall_buttons_show_when_the_family_says_and_ask_it() {
     });
     t.asked();
     t.live_click(Hit::Button(LiveButton::FirewallAllow));
-    assert_eq!(t.asked(), vec![LiveRequest::FirewallAllow], "na sala do anfitrião");
+    assert_eq!(
+        t.asked(),
+        vec![LiveRequest::FirewallAllow],
+        "na sala do anfitrião"
+    );
     t.room(LiveRole::Guest { host: "Ana".into() });
     assert!(t.find(allow).is_none(), "o convidado não abre a firewall");
 }

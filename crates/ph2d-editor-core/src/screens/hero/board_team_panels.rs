@@ -8,6 +8,7 @@ use super::{Hit, TeamButton, ago, node, now_unix, register, text_y};
 use crate::documents::team::{Confirm, ExportChoice, Format, IoRequest, Scope};
 use crate::icons::IconId;
 use crate::zones::Rect;
+use ph2d_board_model::VersionId;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, TypeToken};
@@ -178,8 +179,11 @@ pub(super) fn version_submit(hero: &mut HeroScreen) {
     let Some(b) = hero.documents.active_board_mut() else {
         return;
     };
-    // O renomear é do quadro onde começou: noutro quadro o campo guarda uma versão nova.
-    let renaming = renaming.filter(|(id, _)| *id == b.id).map(|(_, i)| i);
+    // O renomear é do quadro onde começou: noutro quadro o campo guarda uma versão nova. Uma versão
+    // que entretanto se apagou (aqui ou ao vivo) não leva o nome de outra: guarda uma nova.
+    let renaming = renaming
+        .filter(|(id, _)| *id == b.id)
+        .and_then(|(_, v)| b.team.versions.iter().position(|x| x.id == v));
     let name = name.trim().to_owned();
     let n = b.team.versions.len();
     let name = if name.is_empty() {
@@ -222,8 +226,18 @@ pub(super) fn version_click(
     let Some(id) = hero.documents.active() else {
         return;
     };
+    // A fila `n` lê-se como o ID da versão já no clique: o 2.º clique e o renomear seguem ESSA versão,
+    // mesmo que outra chegue da rede e mude as posições.
+    let Some(ver) = hero
+        .documents
+        .active_board()
+        .and_then(|b| b.team.versions.get(n))
+        .map(|v| v.id)
+    else {
+        return;
+    };
     match h {
-        Hit::Restore(_) => match hero.documents.restore_version(id, n) {
+        Hit::Restore(_) => match hero.documents.restore_version(id, ver) {
             Some(new) => {
                 super::super::super::document_tabs::register_board(&mut hero.store, new);
                 hero.documents.live.team.versions_open = false;
@@ -232,26 +246,18 @@ pub(super) fn version_click(
             None => super::notice(hero, "board.version.unreadable"),
         },
         Hit::DropVersion(_) => {
-            if armed != Some(Confirm::Version(id, n)) {
-                hero.documents.live.team.confirm = Some(Confirm::Version(id, n));
+            if armed != Some(Confirm::Version(id, ver)) {
+                hero.documents.live.team.confirm = Some(Confirm::Version(id, ver));
                 return;
             }
             let Some(b) = hero.documents.active_board_mut() else {
                 return;
             };
-            if n >= b.team.versions.len() {
-                return;
-            }
-            b.team.versions.remove(n);
-            // O renomear segue a SUA versão: a apagada larga-o, uma de cima desce-lhe o índice.
+            b.team.versions.retain(|v| v.id != ver);
+            // O renomear da versão apagada larga-se (o das outras segue-as pelo id).
             let t = &mut hero.documents.live.team;
-            let was = t.renaming_version;
-            t.renaming_version = match t.renaming_version {
-                Some((bid, m)) if bid == id && m == n => None,
-                Some((bid, m)) if bid == id && m > n => Some((bid, m - 1)),
-                r => r,
-            };
-            if was.is_some() && t.renaming_version.is_none() {
+            if t.renaming_version == Some((id, ver)) {
+                t.renaming_version = None;
                 let fresh = hero
                     .documents
                     .active_board()
@@ -271,7 +277,7 @@ pub(super) fn version_click(
                 .and_then(|b| b.team.versions.get(n))
                 .map(|v| v.name.clone())
                 .unwrap_or_default();
-            hero.documents.live.team.renaming_version = Some((id, n));
+            hero.documents.live.team.renaming_version = Some((id, ver));
             super::super::super::board_nav::open_field(
                 &mut hero.store,
                 crate::ids::BOARD_VERSION_INPUT,
@@ -288,8 +294,8 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
     let Some(bid) = hero.documents.active() else {
         return;
     };
-    // R2 — da mais nova à mais velha: `(índice, nome, quando)`.
-    let list: Vec<(usize, String, i64)> = hero
+    // R2 — da mais nova à mais velha: `(índice, id, nome, quando)`.
+    let list: Vec<(usize, VersionId, String, i64)> = hero
         .documents
         .active_board()
         .map(|b| {
@@ -298,7 +304,7 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
                 .iter()
                 .enumerate()
                 .rev()
-                .map(|(i, v)| (i, v.name.clone(), v.at))
+                .map(|(i, v)| (i, v.id, v.name.clone(), v.at))
                 .collect()
         })
         .unwrap_or_default();
@@ -377,7 +383,7 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
             crate::paint::resolve(ColorToken::Text3, theme),
         );
     }
-    for (n, name, when) in list.iter().skip(from).take(shown) {
+    for (n, ver, name, when) in list.iter().skip(from).take(shown) {
         let n = *n;
         let del = Rect::new(at.x + at.w - pad - s, y, s, s);
         let restore_w = s * 3.0; // LITERAL-PX-OK: «Restore» a `Sm`, em botões
@@ -414,7 +420,7 @@ fn paint_versions(hero: &mut HeroScreen, at: Rect, scene: &mut VectorScene, ts: 
         );
         // R2 — o 1.º clique arma (o lixo aceso), o 2.º apaga.
         let d = node(Hit::DropVersion(n));
-        let armed = confirm == Some(Confirm::Version(bid, n));
+        let armed = confirm == Some(Confirm::Version(bid, *ver));
         register(&mut hero.store, d);
         let tip = if armed {
             "board.version.confirm"

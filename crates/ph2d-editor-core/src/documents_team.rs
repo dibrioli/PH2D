@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use ph2d_board_model::{BoardId, Camera, ElementId, MessageId, Pin, ThreadId};
+use ph2d_board_model::{BoardId, Camera, ElementId, MessageId, Pin, ThreadId, VersionId};
 
 use super::Documents;
 
@@ -111,8 +111,8 @@ pub struct Show {
 pub enum Confirm {
     /// Uma mensagem do fio (pelo id: a posição muda quando outra se apaga).
     Message(ThreadId, MessageId),
-    /// A versão `n` do quadro.
-    Version(BoardId, usize),
+    /// Uma versão do quadro (pelo id: ao vivo, uma versão alheia que chega muda as posições).
+    Version(BoardId, VersionId),
 }
 
 /// O estado de sessão da equipa.
@@ -133,8 +133,9 @@ pub struct Team {
     pub editing: Option<(ThreadId, MessageId)>,
     /// R2 — o painel das versões do quadro activo está aberto.
     pub versions_open: bool,
-    /// R2 — a versão que se está a renomear: o quadro E o índice.
-    pub renaming_version: Option<(BoardId, usize)>,
+    /// R2 — a versão que se está a renomear: o quadro E o id dela (um índice passava a apontar
+    /// outra versão quando uma chegava da rede ou se apagava).
+    pub renaming_version: Option<(BoardId, VersionId)>,
     /// K4/R2 — apagar pede um 2.º clique no MESMO alvo (o 1.º arma; qualquer outro clique desarma).
     pub confirm: Option<Confirm>,
     /// A 1.ª linha da lista ou das versões à vista (os painéis paginam quando não cabem).
@@ -235,12 +236,12 @@ impl Documents {
         id
     }
 
-    /// R3 — restaura a versão `n` do quadro `id` como um quadro NOVO à direita dele, já activo.
+    /// R3 — restaura a versão `ver` do quadro `id` como um quadro NOVO à direita dele, já activo.
     /// `None` = não há essa versão, ou ela não se lê (bytes corrompidos, ou de um formato que este
     /// build não lê) — quem chama avisa.
-    pub fn restore_version(&mut self, id: BoardId, n: usize) -> Option<BoardId> {
+    pub fn restore_version(&mut self, id: BoardId, ver: VersionId) -> Option<BoardId> {
         let b = self.boards.get(id)?;
-        let v = b.team.versions.get(n)?;
+        let v = b.team.versions.iter().find(|v| v.id == ver)?;
         let saved = v.read().ok()?;
         let name = format!("{} — {}", b.name, v.name);
         let new = self

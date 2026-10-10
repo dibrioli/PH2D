@@ -79,9 +79,11 @@ fn a_grade_fina_e_o_gabarito_no_texel_fino() {
 /// O teto da razão fina ÷ grossa por cena = o MEDIDO + 10 % (W4b, RTX 5060 Ti, `fina` ×4 no Baixo):
 /// penumbra 0,0533 ÷ 0,5226 = 0,102 · faísca 0,0804 ÷ 1,8661 = 0,043 · céu e vidro 0,0275 ÷ 0,0568 =
 /// 0,484 (as cascatas pesam mais nela: o céu e os vidros não são luz direta). ⚠️ W5a: a população é
-/// a de FORA dos opacos (dentro, o gabarito deixou de ser 0 — o F3; gate próprio): penumbra 0,0446 ÷
-/// 0,5207 = 0,086 com o passo junto à borda e a curvatura.
-const TETO_GANHO: [f64; 3] = [0.112, 0.048, 0.533];
+/// a de FORA dos opacos (dentro, o gabarito deixou de ser 0 — o F3; gate próprio), e o teto é o
+/// MEDIDO + 10 % de hoje: penumbra 0,0446 ÷ 0,5207 = 0,086 · faísca 0,0739 ÷ 1,8647 = 0,040 · céu e
+/// vidro 0,0194 ÷ 0,0561 = 0,347 (sem a c0 só das sondas de FORA dos opacos 0,433 — o teto da W4b,
+/// 0,533, deixava-a sobreviver à mutação).
+const TETO_GANHO: [f64; 3] = [0.095, 0.044, 0.382];
 
 /// ⭐⭐ **O refino pelas BORDAS dá a visibilidade medida em todo texel** (`Refino::Tudo`), a menos
 /// do que a interpolação das sondas deixa onde a visibilidade é suave.
@@ -367,9 +369,11 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
 
 /// Texels finos de dentro, a partir da borda, que a régua mede.
 const FAIXA_INTERIOR: f64 = 2.0;
-/// O MEDIDO + 10 % (W5a): o erro médio do interior FUNDO, do máximo do gabarito — penumbra 0,0043 ·
-/// faísca 0,0007 · parede grossa 0,0011.
-const TETO_FUNDO: [f64; 3] = [0.0047, 0.0008, 0.0013];
+/// O MEDIDO + 10 % (W5a): o erro médio do interior FUNDO, do máximo do gabarito — penumbra 0,0016 ·
+/// faísca 0,0001 · parede grossa 0,0005, e o desempate da semente trocado (o controlo equivalente da
+/// mutação) 0,0014 · 0,0002 · 0,0006. Com a semente MAIS PERTO em vez do ponto de fronteira mais
+/// perto: 0,0043 · 0,0007 · 0,0011 (e o desempate decidia a face: 0,0035).
+const TETO_FUNDO: [f64; 3] = [0.0018, 0.00025, 0.0007];
 /// O MEDIDO + 10 % (W5a, captura 2 × fina, a faixa de 2 texels): penumbra 0,3135 · faísca 0,0032 ·
 /// parede grossa 0,0759; sem o preenchimento 1,67 · 2,00 · 1,58. Com a captura GROSSA a penumbra dava 0,80 (o canto arredondado
 /// troca a face mais próxima); escolhendo o texel exterior mais perto em vez do ponto de FRONTEIRA

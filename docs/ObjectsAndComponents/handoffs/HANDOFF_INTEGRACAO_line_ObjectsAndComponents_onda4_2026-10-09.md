@@ -205,9 +205,22 @@ PH2D_VIDA_SMOKE=1 ./target/smoke/ph2d-host-desktop           # item 9: ▾ «All
 
 ## 11. Fecho
 
-A correr pela janela principal (a saída é preenchida depois):
+- `rm -rf target/*/incremental` feito; `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 1.ª `31.22s`, 2.ª corrida:
 
-- `rm -rf target/*/incremental`
-- build `smoke` 2×: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` (registar a 2.ª saída)
-- `bash scripts/agent-loop-profile.sh`
+```text
+    Finished `smoke` profile [optimized] target(s) in 0.23s
+```
+
+- `bash scripts/agent-loop-profile.sh`:
+
+```text
+  ✗ paralelismo de ferramenta              1.14/passo   alvo: >= 1,5  (9% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                248   alvo: <= 800  (uma janela nova por onda de trabalho)
+  ✗ cargo test : cargo check                562 : 278   alvo: <= 1,0  razao 2.0x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  35%   alvo: >= 80%  (1083 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         416 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
+```
+
+- Máquina limpa do lado desta linha (o único `ph2d-host-desktop` vivo no fecho era o da `line-PainterWatercolor`, no ecrã real — não tocado).
 - Integrar não é aprovar: smoke é do Enio; integração e ship só por ordem dele.

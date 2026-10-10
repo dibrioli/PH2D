@@ -388,3 +388,16 @@ ignorados · família 37 + 6 · ECS verde. Smoke recompilado (regra I, depois do
 - A rodada `medida_luz2d_w4b` (custo · escada · painéis · faixa) é a régua dos ABERTOS 1–5; as variantes do refino
   são `Bordas` (configuração em execução, nunca `const`).
 - **Fotografe antes de acreditar na régua**: as duas voltas acima.
+
+### Smoke do dono da W4b (10/10) — «demais SMOKE OK» e um defeito
+
+**Report:** *«Cor escura na lâmpada faz com que a lâmpada se comporte como um objeto que gera sombra de outra
+lâmpada.»* Mecanismo: a lei do gabarito desde a W1 fazia todo emissor com área OPACO; uma lâmpada clara escondia
+com a sua luz a sombra que fazia, uma escura não. Lei nova, no gabarito e na placa (`4f590e1c8`): **uma lâmpada é
+luz, não corpo** — o raio que a atravessa soma a radiância dela e segue; os CORPOS que brilham (polígonos) continuam
+opacos. Vermelho-primeiro: a placa respondia igual à lâmpada-corpo (0,9924); agora 0,0003 (direta) · 0,0004 (fina
+×4) · 0,0019 (pelas cascatas, além do teto). ⚠️ O G4 (K3) passou de 0,93 % para 4,12 % (limite 5 %): lâmpadas
+capturadas são atravessadas em vez de pararem o raio — sob `load` 27 ele reprovou uma vez fora da faixa isolada.
+
+**Ordem do dono:** «coloque na fila de implementação o que ainda não está bom» ⇒ `01_plano.md` §7.1 (F1–F3), a
+próxima janela começa por ela.

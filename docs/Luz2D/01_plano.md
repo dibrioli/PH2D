@@ -232,6 +232,22 @@ número de cada uma vem da sonda headless (molde: `crates/ph2d-board-render/test
 | **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada |
 | depois | celular (iPhone 13/16, POCO X5) — **adiado pelo dono** | K1–K9 do relatório |
 
+### 7.1 Fila de implementação (ordem do dono, 10/10: «coloque na fila o que ainda não está bom»)
+
+O que o smoke da W4b deixou — a próxima janela começa por AQUI, antes do resto da W5. Números e causas
+medidas: [handoff W4b](handoffs/HANDOFF_CONTINUACAO_W4_2026-10-09.md) (secção «W4b — a grade FINA»).
+
+| # | o que o dono vê | causa medida | cura candidata (medir antes) |
+|---|---|---|---|
+| F1 | Em Low a sombra inteira sai uns 3–4 px deslocada para o lado da sombra (Medium ~2 · High ~1) | a captura GROSSA arredonda o canto do oclusor (`meio` = cobertura bilinear ≥ ½): ½–¾ de texel grosso; a marcha mais fina só tira ~16 % | uma captura FINA para a luz direta (2.ª C0 + JFA na grade fina, com sprites e a camada do vetor desenhados nela) — régua: a média da `a_escada_da_sombra` |
+| F2 | Em Low, objetos muito finos (~5 cm na vista de fábrica) não fazem sombra | a mesma captura grossa: um oclusor mais fino que ~1 texel some dela | a mesma do F1 (um bloco só, §0.10) |
+| F3 | Uma linha escura de 1 px junto à face iluminada das paredes, em todo nível | o interior de um opaco recebe 0 e a bilinear do receptor mistura-o na borda (o ABERTO 1 da W4: paredes que recebem luz saem pretas) | o passe de PREENCHIMENTO (o interior recebe a fluência do exterior mais próximo — um JFA do complemento) e a mesma regra no gabarito |
+
+Também abertos (técnicos, sem queixa do dono): o teto de lâmpadas diretas caiu de 8 para 6 (o custo do
+Low com a grade fina) — as cascatas ainda calculam a grade inteira (81,5 % fora da janela) e a região
+C3 pode encolher ao canvas; o G4 (K3) gastou margem (4,12 % de 5 %) desde que as lâmpadas são luz e não
+corpo.
+
 Kill-criteria (definidos antes, do relatório): K3 — se o custo entre 1 e 10 000 emissores variar
 > 5 %, há um caminho dependente do conteúdo e a W2 não fecha; K6 — se o *bilinear fix* custar > 2× o
 RC sem ele, mede-se *nearest-interlaced* antes de aceitar. Regra de duas tentativas: na 2.ª

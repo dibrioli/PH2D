@@ -1,7 +1,7 @@
 //! Gates do GESTO da seta, pelo [`crate::Pencil`] (F7d) — irmão de `quickshape_arrow_tests.rs` (a
 //! lei) pelo tecto de 700 LOC: segurar põe a ponta, soltar guarda-a, `Esc` tira-a, o arrasto escala
-//! e roda a seta inteira, o `Shift` a meio mantém-na, a ponta armada manda, e a ponta da seta não
-//! passa ao traço seguinte.
+//! e roda a seta inteira, o `Shift` a meio mantém-na, a ponta armada manda (a ponta da seta não
+//! passa ao traço seguinte: as pontas ARMADAS da tool, `ph2d-tool-vector/src/tool_armed_tests.rs`).
 
 use super::arrow_tests::{Kind, arrow_poly, held_with};
 use super::pencil_tests::draw;
@@ -189,76 +189,5 @@ fn the_ends_go_back_to_the_style_when_the_shape_stops_being_an_arrow() {
         plain.markers,
         [Marker::Open; 2],
         "sem ponta armada: a Open nas duas"
-    );
-}
-
-/// ⭐ **A ponta da seta não passa ao traço seguinte** (a foto da cena 12, 10/10: o gelado solto
-/// nascia com seta). Ao soltar, a seta é selecionada e a tool ADOTA o traço dela; o próximo caminho
-/// nasce com as pontas armadas ANTES da seta — até o artista mexer nas pontas ou selecionar outra
-/// coisa, e aí volta o «último usado».
-#[test]
-fn the_arrows_head_does_not_pass_to_the_next_stroke() {
-    use crate::PenStyle;
-    let (mut scene, mut pencil, _, t) = held_pencil(PenStyle::default());
-    let id = pencil.active_path().unwrap();
-    assert!(pencil.on_release(&mut scene));
-    let s = scene.path(id).unwrap().stroke.clone().unwrap();
-    let adopted = PenStyle {
-        marker_start: s.marker_start,
-        marker_end: s.marker_end,
-        marker_scale: s.marker_scale,
-        ..PenStyle::default()
-    };
-    assert_eq!(
-        adopted.marker_end,
-        Marker::Open,
-        "controlo: a tool adotou a seta"
-    );
-    let next = pencil.next_style(adopted, Some(id));
-    assert_eq!(
-        (next.marker_start, next.marker_end, next.marker_scale),
-        (Marker::None, Marker::None, 1.0),
-        "o próximo caminho nasce com as pontas de antes"
-    );
-    assert_eq!(
-        pencil.next_style(adopted, None),
-        adopted,
-        "outra seleção: a lei"
-    );
-    let edited = PenStyle {
-        marker_end: Marker::Triangle,
-        ..adopted
-    };
-    assert_eq!(
-        pencil.next_style(edited, Some(id)),
-        edited,
-        "o artista mexeu: a lei"
-    );
-    // E o traço seguinte, com esse estilo, nasce sem ponta — e um traço livre não arma nada.
-    pencil.set_style(next);
-    let line = held_with(&[[0.0, 0.0], [200.0, 80.0]], 1.0, 3, 0.5, 1.0);
-    let dy = |i: usize| crate::pencil_width::PenDynamics {
-        pressure: 1.0,
-        t_ns: t + (i as u128 + 1) * 4_000_000,
-    };
-    let free = pencil.on_press(&mut scene, line[0], 1.0, dy(0));
-    for (i, &p) in line.iter().enumerate().skip(1) {
-        pencil.on_drag(&mut scene, p, dy(i));
-    }
-    assert!(pencil.on_release(&mut scene));
-    assert_eq!(
-        scene
-            .path(free)
-            .unwrap()
-            .stroke
-            .as_ref()
-            .unwrap()
-            .marker_end,
-        Marker::None
-    );
-    assert_eq!(
-        pencil.next_style(adopted, Some(free)),
-        adopted,
-        "um traço livre não é seta"
     );
 }

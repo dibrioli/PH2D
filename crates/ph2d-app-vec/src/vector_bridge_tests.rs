@@ -574,22 +574,28 @@ fn the_stroke_opacity_reaches_a_patterned_stroke() {
     );
 }
 
-/// **A ponte entrega aos três produtores o estilo SEM a ponta da seta do QuickShape** (F7d). O
-/// `dispatch` exige janela e tool — nenhum teste o conduz —, por isso a costura lê-se no FONTE: o
-/// `PenStyle` passa por `Pencil::next_style` (a lei, gateada em `ph2d-vec-edit`) antes de chegar à
-/// caneta, às formas e ao lápis. Sem isto a foto da cena 12 tinha o gelado solto com seta.
+/// **A ponte dá aos caminhos NOVOS as pontas ARMADAS** (F7d, o dono 10/10: *«todo traço está
+/// herdando uma ponta pequena»*). O `dispatch` exige janela e tool — nenhum teste o conduz —, por isso
+/// a costura lê-se no FONTE: o `PenStyle` (caneta, formas, lápis) leva `armed_markers`, e as pontas
+/// MOSTRADAS (as da seleção) só vão ao reestilo do selecionado. A lei da tool: `tool_armed_tests.rs`.
 #[test]
-fn the_bridge_gives_new_paths_the_style_without_the_arrows_head() {
+fn new_paths_get_the_armed_heads_not_the_selections() {
     let src = include_str!("vector_bridge.rs");
-    let gate = src
-        .find("let style = pencil.next_style(style, pen.selected());")
-        .expect("a ponte passa o estilo por next_style");
-    for set in [
-        "pen.set_style(style);",
-        "shape.set_style(style);",
-        "pencil.set_style(style);",
+    let style = src
+        .find("let style = PenStyle {")
+        .expect("o estilo dos caminhos novos");
+    let end = style + src[style..].find("};").unwrap();
+    let block = &src[style..end];
+    for want in [
+        "marker_start: armed[0]",
+        "marker_end: armed[1]",
+        "marker_scale: armed_scale",
+        "marker_round: armed_round",
     ] {
-        let at = src.find(set).unwrap_or_else(|| panic!("{set} sumiu"));
-        assert!(gate < at, "{set} antes do next_style");
+        assert!(block.contains(want), "o PenStyle não leva {want}:\n{block}");
     }
+    assert!(
+        src.contains("tool.armed_markers()"),
+        "a ponte lê as pontas armadas"
+    );
 }

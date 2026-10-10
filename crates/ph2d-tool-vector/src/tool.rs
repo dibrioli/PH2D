@@ -182,6 +182,11 @@ pub struct VectorTool {
     /// duas pontas ([`VectorStyleSnapshot::both_ends`]).
     marker_scale: f64,
     marker_round: f64,
+    /// **As pontas ARMADAS** — as do PRÓXIMO caminho desenhado: só o painel as escreve, campo a
+    /// campo (o que o artista mexeu). Selecionar um caminho ADOTA as pontas dele nos campos acima
+    /// (o painel mostra a verdade e a edição aplica-se a ele) mas NÃO as arma: o dono, 10/10, depois
+    /// das setas do QuickShape — *«todo traço está herdando uma ponta pequena. Não deveria»*.
+    armed: ArmedHead,
     /// Set when a colour changes → the shell recolours the selected path.
     /// Drained by [`Self::take_apply_to_selected`].
     apply_to_selected: bool,
@@ -236,6 +241,7 @@ impl Default for VectorTool {
             marker_end: Marker::None,
             marker_scale: crate::params::DEFAULT_MARKER_SCALE,
             marker_round: crate::params::DEFAULT_MARKER_ROUND,
+            armed: ArmedHead::default(),
             apply_to_selected: false,
             width_authored: false,
             colour_authored: (false, false),
@@ -390,6 +396,13 @@ impl VectorTool {
         self.marker_round
     }
 
+    /// As pontas ARMADAS para o próximo caminho: `([começo, fim], tamanho, arredondamento)`.
+    #[must_use]
+    pub fn armed_markers(&self) -> ([Marker; 2], f64, f64) {
+        let a = self.armed;
+        ([a.start, a.end], a.scale, a.round)
+    }
+
     /// **Dupla via — o estado é DERIVADO**: há ponta nos dois extremos.
     #[must_use]
     pub fn both_ends(&self) -> bool {
@@ -418,6 +431,7 @@ impl VectorTool {
             self.marker_start = head;
             self.marker_end = head;
         }
+        (self.armed.start, self.armed.end) = (self.marker_start, self.marker_end);
         self.apply_to_selected = true;
     }
 
@@ -425,10 +439,12 @@ impl VectorTool {
     /// registra na caixa) + marca a seleção para reestilizar — são Style, como as pontas.
     fn set_marker_scale(&mut self, v: f64) {
         self.marker_scale = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v);
+        self.armed.scale = self.marker_scale;
         self.apply_to_selected = true;
     }
     fn set_marker_round(&mut self, v: f64) {
         self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, v);
+        self.armed.round = self.marker_round;
         self.apply_to_selected = true;
     }
 
@@ -455,10 +471,12 @@ impl VectorTool {
     /// não só para o próximo desenhado).
     fn set_marker_start(&mut self, m: Marker) {
         self.marker_start = m;
+        self.armed.start = m;
         self.apply_to_selected = true;
     }
     fn set_marker_end(&mut self, m: Marker) {
         self.marker_end = m;
+        self.armed.end = m;
         self.apply_to_selected = true;
     }
 
@@ -598,6 +616,10 @@ impl Tool for VectorTool {
 #[path = "tool_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "tool_armed_tests.rs"]
+mod armed_tests;
+
 /// A família que LÊ o documento — ver o cabeçalho do módulo.
 #[path = "tool_adopt.rs"]
 mod adopt;
@@ -605,3 +627,23 @@ mod adopt;
 /// O router de eventos do PAINEL — ver o cabeçalho do módulo.
 #[path = "tool_panel_event.rs"]
 mod panel_event;
+
+/// As pontas armadas para o próximo caminho (ver `VectorTool::armed`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct ArmedHead {
+    start: Marker,
+    end: Marker,
+    scale: f64,
+    round: f64,
+}
+
+impl Default for ArmedHead {
+    fn default() -> Self {
+        Self {
+            start: Marker::None,
+            end: Marker::None,
+            scale: crate::params::DEFAULT_MARKER_SCALE,
+            round: crate::params::DEFAULT_MARKER_ROUND,
+        }
+    }
+}

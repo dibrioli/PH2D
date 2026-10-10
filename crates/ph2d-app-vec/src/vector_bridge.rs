@@ -267,6 +267,7 @@ pub fn dispatch(
     // Tamanho da cabeça + arredondamento das quinas dela: Style, como as pontas — valem para
     // o próximo caminho desenhado (via `PenStyle`) E para TODOS os selecionados (abaixo).
     let (marker_scale, marker_round) = (tool.marker_scale(), tool.marker_round());
+    let (armed, armed_scale, armed_round) = tool.armed_markers();
     // Dash + gap are MULTIPLES of the stroke width (width-aware) — the render
     // scales them by the path's own width, so no px→world conversion here.
     // `dash = 0` ⇒ solid; otherwise `(dash, gap)` sizes the dash and the space.
@@ -281,13 +282,14 @@ pub fn dispatch(
         join,
         align,
         dash,
-        marker_start,
-        marker_end,
-        marker_scale,
-        marker_round,
+        // ⚠️ As pontas do PRÓXIMO caminho são as ARMADAS no painel, nunca as que a seleção mostra
+        // (`VectorTool::armed_markers`): selecionar uma seta do QuickShape fazia todo traço seguinte
+        // nascer com a ponta dela (o dono, 10/10).
+        marker_start: armed[0],
+        marker_end: armed[1],
+        marker_scale: armed_scale,
+        marker_round: armed_round,
     };
-    // ⚠️ As pontas que a SETA do QuickShape pôs não são estilo AUTORADO (`Pencil::next_style`).
-    let style = pencil.next_style(style, pen.selected());
     pen.set_style(style);
     shape.set_style(style);
     pencil.set_style(style);

@@ -114,7 +114,10 @@ pub fn pdf_pages(board: &Board, routes: &RouteCache, selection: &[ElementId]) ->
         if slides.is_empty() {
             return board_page(board, routes).into_iter().collect();
         }
-        return slides.into_iter().filter_map(|id| frame_page(board, id)).collect();
+        return slides
+            .into_iter()
+            .filter_map(|id| frame_page(board, id))
+            .collect();
     }
     let chosen: Vec<ElementId> = board
         .doc
@@ -124,7 +127,9 @@ pub fn pdf_pages(board: &Board, routes: &RouteCache, selection: &[ElementId]) ->
         .map(|f| f.id)
         .collect();
     if chosen.is_empty() {
-        return selection_page(board, routes, selection).into_iter().collect();
+        return selection_page(board, routes, selection)
+            .into_iter()
+            .collect();
     }
     chosen
         .into_iter()

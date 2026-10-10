@@ -76,7 +76,7 @@ fn the_pdf_has_a_page_per_frame_and_the_link_between_them() {
         &path,
     )
     .unwrap();
-    assert_eq!(files, [path.clone()]);
+    assert_eq!(files, std::slice::from_ref(&path));
     let bytes = std::fs::read(&path).unwrap();
     let text = String::from_utf8_lossy(&bytes);
     assert!(bytes.starts_with(b"%PDF-"));
@@ -107,7 +107,7 @@ fn svg_writes_one_file_or_one_per_frame() {
         &one,
     )
     .unwrap();
-    assert_eq!(files, [one.clone()]);
+    assert_eq!(files, std::slice::from_ref(&one));
     assert!(std::fs::read_to_string(&one).unwrap().starts_with("<svg"));
     let many = write_export(
         &b,

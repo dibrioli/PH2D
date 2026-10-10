@@ -198,14 +198,48 @@ fn grava_a_entrada_do_oraculo() {
     std::fs::write(path, write(&sample())).unwrap();
 }
 
-/// ⭐ X4: o escritor é determinístico e continua a escrever a ENTRADA que o oráculo correu.
+/// A mesma árvore JSON: chaves, ordem, textos e tipos iguais; os números a 1e-12 relativos. ⚠️ Medido no
+/// fecho da W8: o contorno de uma forma (seno/cosseno) sai com o último dígito diferente noutro
+/// perfil de compilação (`114.47324588220454` contra `…46` no nextest do portão) — o byte a byte
+/// acusava o escritor por um ULP da conta.
+fn same_tree(a: &serde_json::Value, b: &serde_json::Value, at: &str) -> Result<(), String> {
+    use serde_json::Value as V;
+    match (a, b) {
+        (V::Number(x), V::Number(y)) => {
+            let (x, y) = (
+                x.as_f64().unwrap_or(f64::NAN),
+                y.as_f64().unwrap_or(f64::NAN),
+            );
+            if x == y || (x - y).abs() <= 1e-12 * x.abs().max(y.abs()) {
+                Ok(())
+            } else {
+                Err(format!("{at}: {x} ≠ {y}"))
+            }
+        }
+        (V::Array(x), V::Array(y)) if x.len() == y.len() => x
+            .iter()
+            .zip(y)
+            .enumerate()
+            .try_for_each(|(i, (p, q))| same_tree(p, q, &format!("{at}[{i}]"))),
+        (V::Object(x), V::Object(y)) if x.keys().eq(y.keys()) => x
+            .iter()
+            .zip(y.values())
+            .try_for_each(|((k, p), q)| same_tree(p, q, &format!("{at}.{k}"))),
+        _ if a == b => Ok(()),
+        _ => Err(format!("{at}: {a} ≠ {b}")),
+    }
+}
+
+/// ⭐ X4: o escritor é determinístico (byte a byte no mesmo build) e continua a escrever a ENTRADA que
+/// o oráculo correu (a mesma árvore, a menos do último dígito de uma conta de vírgula flutuante).
 #[test]
 fn our_writer_still_writes_the_oracle_input() {
-    assert_eq!(
-        write(&sample()),
-        INPUT,
-        "o escritor mudou: corra o oráculo outra vez"
-    );
+    let ours = write(&sample());
+    assert_eq!(ours, write(&sample()), "o escritor não é determinístico");
+    let parse = |s: &str| serde_json::from_str::<serde_json::Value>(s).expect("JSON");
+    if let Err(e) = same_tree(&parse(&ours), &parse(INPUT), "") {
+        panic!("o escritor mudou ({e}): corra o oráculo outra vez");
+    }
 }
 
 /// ⭐⭐ X2: o nosso quadro → `.excalidraw` → o Excalidraw (`restore` + `serializeAsJSON`) → o nosso
@@ -378,7 +412,11 @@ fn a_copy_of_a_line_shape_keeps_its_own_text() {
         .doc
         .live_in_z_order()
         .iter()
-        .filter_map(|e| e.shape().filter(|s| s.kind == ShapeType::Cylinder).map(|s| s.text.as_str().to_owned()))
+        .filter_map(|e| {
+            e.shape()
+                .filter(|s| s.kind == ShapeType::Cylinder)
+                .map(|s| s.text.as_str().to_owned())
+        })
         .collect();
     assert_eq!(cyl, ["DB", "Copy"]);
 }
@@ -397,7 +435,8 @@ fn style_resize_and_straight_points_edited_there_come_back() {
         let a = at(els, "ph2d-12");
         let pts = els[a]["points"].as_array().unwrap().clone();
         let last = pts.last().unwrap().clone();
-        els[a]["points"] = serde_json::json!([pts[0], [last[0].as_f64().unwrap() / 2.0, 0.0], last]);
+        els[a]["points"] =
+            serde_json::json!([pts[0], [last[0].as_f64().unwrap() / 2.0, 0.0], last]);
         let e = at(els, "ph2d-9");
         els[e]["opacity"] = serde_json::json!(-5);
     });
@@ -405,7 +444,20 @@ fn style_resize_and_straight_points_edited_there_come_back() {
     let rect = doc.get(ElementId(4)).unwrap().shape().unwrap();
     assert_eq!(rect.style.dash, ph2d_board_model::Dash::Dotted);
     assert!(!rect.style.round, "os cantos tirados lá");
-    assert!((doc.get(ElementId(8)).unwrap().w - 240.0).abs() < 1.0, "o cilindro escalou: {}", doc.get(ElementId(8)).unwrap().w);
-    assert_eq!(doc.get(ElementId(12)).unwrap().connector().unwrap().waypoints.len(), 1, "o ponto novo");
+    assert!(
+        (doc.get(ElementId(8)).unwrap().w - 240.0).abs() < 1.0,
+        "o cilindro escalou: {}",
+        doc.get(ElementId(8)).unwrap().w
+    );
+    assert_eq!(
+        doc.get(ElementId(12))
+            .unwrap()
+            .connector()
+            .unwrap()
+            .waypoints
+            .len(),
+        1,
+        "o ponto novo"
+    );
     assert_eq!(doc.get(ElementId(9)).unwrap().style().opacity, 100);
 }

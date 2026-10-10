@@ -146,14 +146,20 @@ fn win_ansi(s: &str) -> Vec<u8> {
         .collect()
 }
 
+/// A chave de uma máscara de sombra (o rect em bits e a cor) e o nome e objecto dela.
+type MaskKey = (u64, u64, u64, [u8; 4]);
+
+/// Um grupo de transparência por escrever: a ref, o conteúdo, o tamanho da página, os nomes que usa.
+type PendingForm = (Ref, Vec<u8>, [f64; 2], BTreeSet<String>);
+
 /// O que um documento partilha entre páginas: as refs, os estados de alfa, as máscaras, os grupos.
 struct Doc {
     pdf: Pdf,
     next: i32,
     alphas: BTreeMap<u8, (String, Ref)>,
-    masks: BTreeMap<(u64, u64, u64, [u8; 4]), (String, Ref)>,
-    /// Os grupos de transparência por escrever (ref, conteúdo, tamanho da página, os nomes que usam).
-    forms: Vec<(Ref, Vec<u8>, [f64; 2], BTreeSet<String>)>,
+    masks: BTreeMap<MaskKey, (String, Ref)>,
+    /// Os grupos de transparência por escrever.
+    forms: Vec<PendingForm>,
     /// O objecto de cada nome de recurso (estados de alfa, máscaras, grupos, glifos): ⛔ cada conteúdo
     /// declara SÓ os nomes que usa — com o dicionário inteiro em cada grupo, N objectos translúcidos
     /// davam N grupos × N entradas (auditoria W8: 2 000 rectângulos a 50 % = 85 MB).
@@ -195,14 +201,12 @@ impl Doc {
         path(&mut c, &p, Affine::IDENTITY);
         c.fill_nonzero();
         let body = c.finish();
-        let bb = p
-            .elements()
-            .is_empty()
-            .then(|| [0.0; 4])
-            .unwrap_or_else(|| {
-                let b = ph2d_vector::Shape::bounding_box(&p);
-                [b.x0, b.y0, b.x1, b.y1]
-            });
+        let bb = if p.elements().is_empty() {
+            [0.0; 4]
+        } else {
+            let b = ph2d_vector::Shape::bounding_box(&p);
+            [b.x0, b.y0, b.x1, b.y1]
+        };
         let mut form = self.pdf.form_xobject(r, &body);
         form.bbox(Rect::new(f(bb[0]), f(bb[1]), f(bb[2]), f(bb[3])));
         form.finish();
@@ -302,7 +306,14 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> (Vec<u8>, BTre
                 let a = doc.alpha(rgb(solid(brush)).1);
                 let top = stack.last_mut().expect("a página");
                 top.used.extend(a.clone());
-                fill(&mut top.content, p, *rule, *transform, solid(brush), a.as_deref());
+                fill(
+                    &mut top.content,
+                    p,
+                    *rule,
+                    *transform,
+                    solid(brush),
+                    a.as_deref(),
+                );
             }
             DrawOp::Stroke {
                 style,

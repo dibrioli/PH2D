@@ -364,7 +364,10 @@ fn edits(
             let poly = crate::write::polygon(el, s);
             let p0 = poly.first().copied().unwrap_or([el.x, el.y]);
             let (pw, ph) = extent(&poly);
-            let (w, h) = (num(v, "width").unwrap_or(pw), num(v, "height").unwrap_or(ph));
+            let (w, h) = (
+                num(v, "width").unwrap_or(pw),
+                num(v, "height").unwrap_or(ph),
+            );
             if !(near(w, pw) && near(h, ph)) && pw > 0.0 && ph > 0.0 {
                 let (kx, ky) = (w / pw, h / ph);
                 let (dx, dy) = (p0[0] - el.x, p0[1] - el.y);
@@ -393,7 +396,10 @@ fn edits(
                 .collect();
             let first = pts.first().copied().unwrap_or([el.x, el.y]);
             let (pw, ph) = extent(&pts);
-            let (w, h) = (num(v, "width").unwrap_or(pw), num(v, "height").unwrap_or(ph));
+            let (w, h) = (
+                num(v, "width").unwrap_or(pw),
+                num(v, "height").unwrap_or(ph),
+            );
             if !(near(w, pw) && near(h, ph)) && pw > 0.0 && ph > 0.0 {
                 // Redimensionado lá: a caixa do traço escala (os pontos são relativos a ela).
                 let (kx, ky) = (w / pw, h / ph);
@@ -505,7 +511,11 @@ fn extent(pts: &[[f64; 2]]) -> (f64, f64) {
     for p in pts {
         (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
     }
-    if pts.is_empty() { (0.0, 0.0) } else { (x1 - x0, y1 - y0) }
+    if pts.is_empty() {
+        (0.0, 0.0)
+    } else {
+        (x1 - x0, y1 - y0)
+    }
 }
 
 fn frame_mut(el: &mut Element) -> Option<&mut Frame> {

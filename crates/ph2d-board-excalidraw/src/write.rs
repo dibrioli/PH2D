@@ -141,7 +141,11 @@ fn points_rel(pts: &[[f64; 2]]) -> (f64, f64, Value, f64, f64) {
             json!([p[0] - x0, p[1] - y0])
         })
         .collect();
-    let (w, h) = if pts.is_empty() { (0.0, 0.0) } else { (hi[0] - lo[0], hi[1] - lo[1]) };
+    let (w, h) = if pts.is_empty() {
+        (0.0, 0.0)
+    } else {
+        (hi[0] - lo[0], hi[1] - lo[1])
+    };
     (x0, y0, Value::Array(rel), w, h)
 }
 
@@ -264,7 +268,10 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     let custom = serde_json::to_value(el).unwrap_or(Value::Null);
     // Os pontos que ESCREVEMOS (a leitura sabe se foram mexidos lá: uma recta com pontos novos).
     let wrote = json!({ "x": x0, "y": y0, "points": rel });
-    m.insert("customData".into(), json!({ PH2D: { "element": custom, "wrote": wrote } }));
+    m.insert(
+        "customData".into(),
+        json!({ PH2D: { "element": custom, "wrote": wrote } }),
+    );
     if !c.label.is_empty() {
         m.insert(
             "boundElements".into(),

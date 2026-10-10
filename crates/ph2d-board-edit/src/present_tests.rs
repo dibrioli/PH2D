@@ -121,6 +121,9 @@ fn the_margin_is_of_the_limiting_side() {
     let area = [0.0, 0.0, 1000.0, 2000.0];
     let c = slide_camera(b, three, area).unwrap();
     let w = 400.0 * c.zoom;
-    assert!((w - (1000.0 - 2.0 * 1000.0 * SLIDE_MARGIN)).abs() < 1e-9, "{w}");
+    assert!(
+        (w - (1000.0 - 2.0 * 1000.0 * SLIDE_MARGIN)).abs() < 1e-9,
+        "{w}"
+    );
     assert_eq!(travel(f64::NAN), 0.0);
 }

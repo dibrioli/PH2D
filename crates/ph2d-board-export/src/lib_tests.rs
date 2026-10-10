@@ -25,7 +25,7 @@ fn shape(
         b.doc.z_on_top(),
         Shape {
             kind,
-            style: Style::new(fill, Some(INK).filter(|_| !kind.is_note()), INK),
+            style: Style::new(fill, (!kind.is_note()).then_some(INK), INK),
             text: RichText::plain(text),
         },
         bx,
@@ -312,9 +312,15 @@ fn svg_and_pdf_carry_the_text() {
 #[test]
 fn svg_stays_xml_and_carries_links() {
     assert_eq!(svg::escape("a\u{1}b<&\""), "a b&lt;&amp;&quot;");
-    let s = svg::write_linked(&[], [100.0, 50.0], &[([1.0, 2.0, 11.0, 12.0], [50.0, 0.0, 90.0, 40.0])]);
+    let s = svg::write_linked(
+        &[],
+        [100.0, 50.0],
+        &[([1.0, 2.0, 11.0, 12.0], [50.0, 0.0, 90.0, 40.0])],
+    );
     assert!(s.contains("<view id=\"link0\" viewBox=\"50 0 40 40\"/>"));
-    assert!(s.contains("<a xlink:href=\"#link0\"><rect x=\"1\" y=\"2\" width=\"10\" height=\"10\""));
+    assert!(
+        s.contains("<a xlink:href=\"#link0\"><rect x=\"1\" y=\"2\" width=\"10\" height=\"10\"")
+    );
     assert!(s.contains("xmlns:xlink"));
 }
 
@@ -328,7 +334,13 @@ fn the_pdf_grows_linearly_with_faded_objects() {
         let a = set.create("Faded".into());
         let b = set.get_mut(a).unwrap();
         for i in 0..n {
-            let id = shape(b, ShapeType::Rectangle, "abc", [(i % 40) as f64 * 60.0, (i / 40) as f64 * 60.0, 50.0, 40.0], None);
+            let id = shape(
+                b,
+                ShapeType::Rectangle,
+                "abc",
+                [(i % 40) as f64 * 60.0, (i / 40) as f64 * 60.0, 50.0, 40.0],
+                None,
+            );
             let mut el = b.doc.get(id).unwrap().clone();
             el.style_mut().opacity = 50;
             BoardOp::Put(el).apply(&mut b.doc);
@@ -339,8 +351,17 @@ fn the_pdf_grows_linearly_with_faded_objects() {
         let mut ts = TextSystem::without_system_fonts();
         let (mut s, size) = paint_page(&b, &board_page(&b, &r).unwrap(), 1.0, None, true, &mut ts);
         let ops = s.take_record();
-        pdf::write(&[pdf::PdfPage { ops: &ops, size, links: Vec::new() }]).len() as f64
+        pdf::write(&[pdf::PdfPage {
+            ops: &ops,
+            size,
+            links: Vec::new(),
+        }])
+        .len() as f64
     };
     let (small, big) = (size_for(200), size_for(800));
-    assert!(big / small < 6.0, "4× os objectos deu {:.1}× os bytes", big / small);
+    assert!(
+        big / small < 6.0,
+        "4× os objectos deu {:.1}× os bytes",
+        big / small
+    );
 }

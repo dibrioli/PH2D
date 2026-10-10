@@ -110,3 +110,20 @@ fn a_module_icon_draws_half_again_bigger_inside_the_same_button() {
         "o botão não muda de tamanho"
     );
 }
+
+/// ⭐ **A margem do enquadramento (F8) livra as DUAS barras flutuantes** — a coluna de ferramentas
+/// cabe na faixa da esquerda, e a ④ cabe por CIMA de uma seleção enquadrada encostada à margem de
+/// cima (senão ela salta para baixo e tapa a arte). E cai dentro da faixa medida nos oráculos
+/// (`oraculo_enquadrar/`: Excalidraw 24 px, tldraw 64 px).
+#[test]
+fn the_frame_margin_clears_both_floating_bars() {
+    let m = frame_margin();
+    let a = area();
+    let col = panel_of(column_rects(a, &[3, 2])).unwrap();
+    assert!(col.x + col.w - a.x <= m, "a coluna ({}) passa da margem {m}", col.x + col.w - a.x);
+    let sel = Rect::new(a.x + m, a.y + m, 200.0, 120.0);
+    let strip = panel_of(strip_rects(a, sel, &[4, 2], button_px())).unwrap();
+    assert!(strip.y >= a.y, "a ④ sai da área por cima: {strip:?}");
+    assert!(strip.y + strip.h <= sel.y, "a ④ não cabe por cima da seleção: {strip:?}");
+    assert!((24.0..=64.0).contains(&m), "{m} fora da faixa dos oráculos");
+}

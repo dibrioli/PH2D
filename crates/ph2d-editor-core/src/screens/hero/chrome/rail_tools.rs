@@ -32,6 +32,16 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.set_tool_view_mode(next);
         return true;
     }
+    // F8: *Ver ▸ Enquadrar tudo / seleção* — os mesmos pedidos do VIEW e do `F`, pela mesma porta.
+    let menu = [
+        (ids::MENUBAR_VIEW_FRAME_ALL, ViewFocusKind::All),
+        (ids::MENUBAR_VIEW_FRAME_SELECTED, ViewFocusKind::Selected),
+    ];
+    if let Some(&(_, kind)) = menu.iter().find(|(m, _)| *m == id) {
+        hero.bus.push(EditorAction::SetViewFocus { kind });
+        hero.store.close_context_menu();
+        return true;
+    }
     // Transform tools are an EXCLUSIVE toggle group (a radio group with
     // no off-state): clicking any one activates it and de-activates the
     // others. Mirrors Blender / Unity convention — only one transform

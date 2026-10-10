@@ -94,7 +94,7 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 11] = [
+pub const OWN_ROWS: [NodeId; 13] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
@@ -106,6 +106,8 @@ pub const OWN_ROWS: [NodeId; 11] = [
     ids::MENUBAR_VIEW_COLUMN_RIGHT,
     ids::MENUBAR_VIEW_FOCUS,
     ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM,
+    ids::MENUBAR_VIEW_FRAME_ALL,
+    ids::MENUBAR_VIEW_FRAME_SELECTED,
 ];
 
 /// Recuo da barra à esquerda, para o primeiro título não nascer colado à borda da janela.

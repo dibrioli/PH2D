@@ -107,6 +107,10 @@ pub enum TouchOut {
     },
     /// A navegação acabou (ficou menos de dois dedos): o botão do meio levanta.
     NavEnd,
+    /// ⭐ O **beliscão RÁPIDO** (F8, o *Quick-Pinch* do Procreate): uma navegação que acabou antes de
+    /// um toque-e-segurar e cujo afastamento mudou mais do que a folga e mais do que o ponto médio
+    /// andou. `closing` = os dedos juntaram-se (*enquadrar tudo*); afastaram-se = a vista anterior.
+    QuickPinch { closing: bool },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -138,6 +142,9 @@ pub struct TouchGestures {
     seen: bool,
     nav: Option<Nav>,
     navigating: bool,
+    /// O afastamento quando a navegação arrancou e o último com dois dedos ou mais no vidro — os
+    /// dois extremos do beliscão rápido.
+    pinch: Option<(Nav, Nav)>,
     /// Um dedo andou desde o último quadro: a navegação publica-se no `tick`.
     nav_dirty: bool,
     /// O que os contactos SINTÉTICOS (uma cena de smoke) pediram e o `tick` ainda não entregou.
@@ -233,8 +240,12 @@ impl TouchGestures {
                 return Vec::new();
             }
             self.navigating = true;
+            self.pinch = Some((cur, cur));
             return vec![TouchOut::NavBegin(cur.mid)];
         };
+        if let Some((_, last)) = self.pinch.as_mut() {
+            *last = cur;
+        }
         let mut out = Vec::new();
         let d = [cur.mid[0] - prev.mid[0], cur.mid[1] - prev.mid[1]];
         if d != [0.0, 0.0] {
@@ -285,6 +296,14 @@ impl TouchGestures {
             }
             return Vec::new();
         }
+        // O último afastamento conta com o dedo que levanta ainda no sítio (o `tick` pode não ter
+        // corrido desde o último movimento dele).
+        if self.navigating && self.fingers.len() >= 2 && self.fingers.contains_key(&id) {
+            let cur = self.cloud();
+            if let Some((_, last)) = self.pinch.as_mut() {
+                *last = cur;
+            }
+        }
         let Some(f) = self.fingers.remove(&id) else {
             return Vec::new();
         };
@@ -314,6 +333,16 @@ impl TouchGestures {
                     _ => None,
                 });
             }
+            if let Some((a, b)) = self.pinch
+                && quick
+                && phase == TouchPhase::End
+            {
+                let ds = b.spread - a.spread;
+                let dm = (b.mid[0] - a.mid[0]).hypot(b.mid[1] - a.mid[1]);
+                if ds.abs() > SLOP_PT && ds.abs() > dm {
+                    out.push(TouchOut::QuickPinch { closing: ds < 0.0 });
+                }
+            }
             self.reset();
         }
         out
@@ -329,6 +358,7 @@ impl TouchGestures {
         self.nav = None;
         self.navigating = false;
         self.nav_dirty = false;
+        self.pinch = None;
     }
 
     /// O relógio, em todo quadro: entrega o que os contactos sintéticos pediram, e um dedo parado

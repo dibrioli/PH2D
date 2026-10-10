@@ -90,3 +90,34 @@ fn a_click_locks_a_modifier_and_the_focus_row_asks_for_focus() {
         "a linha do modo foco não chegou à shell"
     );
 }
+
+/// ⭐ **F8: *Ver ▸ Enquadrar tudo / seleção* pedem o enquadramento à shell** — pela MESMA variante
+/// que o `F`, o botão VIEW e o beliscão rápido, e fecham o menu. As linhas vivem na tabela do *Ver*
+/// e no registo da barra (sem `InteractiveState` uma linha nasce morta).
+#[test]
+fn the_view_menu_rows_ask_the_shell_to_frame() {
+    use crate::screens::hero::ViewFocusKind;
+    let rows: Vec<_> = crate::screens::hero::menu_rows::menu_rows(
+        crate::interaction::ContextMenuKind::MenuBarView,
+    )
+    .iter()
+    .map(|r| r.0)
+    .collect();
+    for (id, kind) in [
+        (ids::MENUBAR_VIEW_FRAME_ALL, ViewFocusKind::All),
+        (ids::MENUBAR_VIEW_FRAME_SELECTED, ViewFocusKind::Selected),
+    ] {
+        assert!(rows.contains(&id), "a linha não está no menu *Ver*");
+        assert!(
+            crate::screens::hero::menu_bar::OWN_ROWS.contains(&id),
+            "a linha não está registada"
+        );
+        let mut hero = HeroScreen::new(crate::NodeId(1));
+        assert!(hero.apply_event(WidgetEvent::Click(id)));
+        let got: Vec<_> = hero.bus.drain().collect();
+        assert!(
+            got.iter().any(|a| *a == EditorAction::SetViewFocus { kind }),
+            "{kind:?}: {got:?}"
+        );
+    }
+}

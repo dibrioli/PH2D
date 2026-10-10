@@ -84,6 +84,10 @@ pub const MENUBAR_VIEW_SELECTION_ACTIONS: NodeId = hash_node_id("menubar_view_se
 pub const MENUBAR_VIEW_RESET_LAYOUT: NodeId = hash_node_id("menubar_view_reset_layout");
 /// F5: *Ver ▸ Modo foco* — a porta VISÍVEL do toque de 4 dedos e do `Ctrl+Space` (um verbo).
 pub const MENUBAR_VIEW_FOCUS: NodeId = hash_node_id("menubar_view_focus");
+/// F8: *Ver ▸ Enquadrar tudo* — a porta VISÍVEL do beliscão rápido (um verbo).
+pub const MENUBAR_VIEW_FRAME_ALL: NodeId = hash_node_id("menubar_view_frame_all");
+/// F8: *Ver ▸ Enquadrar seleção* — a porta visível do `F`/`Home` (um verbo).
+pub const MENUBAR_VIEW_FRAME_SELECTED: NodeId = hash_node_id("menubar_view_frame_selected");
 /// F5 (D10 decisão 2): *Ver ▸ Opções da ferramenta embaixo* — a fila ② passa para baixo da área (um
 /// ALTERNADOR, por layout).
 pub const MENUBAR_VIEW_TOOL_ROW_BOTTOM: NodeId = hash_node_id("menubar_view_tool_row_bottom");

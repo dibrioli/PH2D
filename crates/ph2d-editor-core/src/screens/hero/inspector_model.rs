@@ -540,21 +540,22 @@ pub enum RequestedSpriteStrategy {
     HandPacked,
 }
 
-/// Which framing action the VIEW button (TOOL_HOME) + F/Home key
-/// should run when the user triggers a reframe.
+/// Que enquadramento pedir à câmera (o botão VIEW, `F`/`Home`, o menu *Ver*, o beliscão rápido).
+/// A lei é `ph2d_render::camera_frame` (F8); todos VOAM pela mola `Role::Viewpoint`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ViewFocusKind {
-    /// Focus on the currently selected sprite. Falls back to (0,0)
-    /// when no selection. Doesn't change zoom.
+    /// *Enquadrar seleção*: a seleção inteira (a primária e as extras) cabe na área visível.
+    /// Sem seleção nada se move.
     Selected,
     /// Focus the active camera. No camera-object exists yet, so the
     /// host pans to (0,0). Doesn't change zoom.
     Camera,
-    /// Frame all sprites in the scene. Walks PresentWorld for every
-    /// `(GlobalTransform, RenderInstance)` and adjusts both center +
-    /// height_world so they all fit (with a 10% padding margin).
-    /// Empty scene falls back to (0,0) + default zoom.
+    /// *Enquadrar tudo*: tudo o que a cena DESENHA cabe na área visível (o escondido não conta, o
+    /// trancado conta). Cena vazia ⇒ a vista de omissão. Lembra a vista de partida.
     All,
+    /// O beliscão rápido AO CONTRÁRIO: a vista de antes do último *Enquadrar tudo*, se a câmera
+    /// ainda está onde ele a deixou.
+    Previous,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the

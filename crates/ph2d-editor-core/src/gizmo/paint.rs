@@ -121,6 +121,10 @@ pub struct GizmoView {
     pub model: [f32; 6],
 }
 
+#[cfg(test)]
+#[path = "aabb_tests.rs"]
+mod aabb_tests;
+
 /// Side length of the square handle hit + visual rects.
 ///
 /// **Public** because it is the floor of "two handles must never overlap": the handles

@@ -320,3 +320,91 @@ fn the_widget_holds_while_pressed_and_locks_on_a_tap() {
     t.toggle_lock(shift);
     assert!(!t.locked().shift, "o clique não destravou");
 }
+
+/// A MÃO sintética da F8: dois dedos em volta de `(400, 300)`, afastados `d0` → `d1` pt e com o meio
+/// a andar `andar`, em `dur` ms (um quadro a cada 16 ms, o `tick` em cada um); levantam no fim, o
+/// segundo 8 ms depois do primeiro. Devolve tudo o que o reconhecedor pediu.
+fn mao(dur: u128, d0: f32, d1: f32, andar: [f32; 2]) -> Vec<TouchOut> {
+    let mut t = g();
+    let mut out = Vec::new();
+    let em = |k: f32| {
+        let d = d0 + (d1 - d0) * k;
+        let m = [400.0 + andar[0] * k, 300.0 + andar[1] * k];
+        ([m[0] - d / 2.0, m[1]], [m[0] + d / 2.0, m[1]])
+    };
+    let (a, b) = em(0.0);
+    out.extend(t.feed(1, TouchPhase::Start, a, 0, None));
+    out.extend(t.feed(2, TouchPhase::Start, b, MS, None));
+    let mut ms = 16;
+    while ms <= dur {
+        #[allow(clippy::cast_precision_loss)]
+        let (a, b) = em(ms as f32 / dur as f32);
+        out.extend(t.feed(1, TouchPhase::Move, a, ms * MS, None));
+        out.extend(t.feed(2, TouchPhase::Move, b, ms * MS, None));
+        out.extend(t.tick(ms * MS));
+        ms += 16;
+    }
+    let (a, b) = em(1.0);
+    out.extend(t.feed(1, TouchPhase::End, a, dur * MS, None));
+    out.extend(t.feed(2, TouchPhase::End, b, (dur + 8) * MS, None));
+    out.extend(t.tick((dur + 16) * MS));
+    out
+}
+
+fn rapido(out: &[TouchOut]) -> Option<bool> {
+    out.iter().find_map(|o| match o {
+        TouchOut::QuickPinch { closing } => Some(*closing),
+        _ => None,
+    })
+}
+
+/// ⭐ **O beliscão RÁPIDO enquadra; a pinça LENTA continua a zoomar** (F8). O rápido é a MESMA pinça
+/// (o zoom vivo acontece igual) com um pedido a mais no fim; juntar os dedos = *enquadrar tudo*,
+/// afastá-los = a vista anterior. E nunca desfaz.
+#[test]
+fn a_quick_pinch_asks_for_the_frame_and_a_slow_one_only_zooms() {
+    let r = mao(200, 200.0, 60.0, [0.0, 0.0]);
+    assert_eq!(rapido(&r), Some(true), "{r:?}");
+    assert!(r.iter().any(|o| matches!(o, TouchOut::Zoom { .. })), "a pinça viva sumiu");
+    assert!(!r.contains(&TouchOut::Undo));
+    assert_eq!(rapido(&mao(200, 60.0, 200.0, [0.0, 0.0])), Some(false));
+    // A pinça da cena 11 (F6): 1 s — só zoom.
+    let lenta = mao(1000, 200.0, 60.0, [0.0, 0.0]);
+    assert_eq!(rapido(&lenta), None);
+    assert!(lenta.iter().any(|o| matches!(o, TouchOut::Zoom { .. })));
+}
+
+/// Os inimigos do gesto novo: um pan rápido com um pouco de pinça (o meio andou mais do que o
+/// afastamento mudou), uma pinça rápida que não passou da folga, e um contacto cancelado.
+#[test]
+fn a_quick_pan_or_a_pinch_inside_the_slop_is_not_a_quick_pinch() {
+    assert_eq!(rapido(&mao(200, 100.0, 140.0, [200.0, 0.0])), None, "pan rápido");
+    assert_eq!(rapido(&mao(200, 100.0, 115.0, [0.0, 0.0])), None, "dentro da folga");
+    let mut t = g();
+    t.feed(1, TouchPhase::Start, [300.0, 300.0], 0, None);
+    t.feed(2, TouchPhase::Start, [500.0, 300.0], MS, None);
+    t.feed(1, TouchPhase::Move, [360.0, 300.0], 16 * MS, None);
+    t.feed(2, TouchPhase::Move, [440.0, 300.0], 16 * MS, None);
+    t.tick(16 * MS);
+    t.feed(1, TouchPhase::Move, [380.0, 300.0], 32 * MS, None);
+    t.feed(2, TouchPhase::Move, [420.0, 300.0], 32 * MS, None);
+    t.tick(32 * MS);
+    t.feed(1, TouchPhase::Cancel, [380.0, 300.0], 40 * MS, None);
+    let out = t.feed(2, TouchPhase::Cancel, [420.0, 300.0], 48 * MS, None);
+    assert_eq!(rapido(&out), None, "um contacto cancelado enquadrou");
+}
+
+/// ⭐ **A fronteira rápido × lento é a do toque-e-segurar** (`LONG_PRESS_NS`, o `minimumPressDuration`
+/// do UIKit — a mesma que já separa o toque de 2 dedos de um segurar): medida com a mão sintética,
+/// varrendo a duração do gesto inteiro. Nenhum número novo.
+#[test]
+fn the_quick_slow_border_is_the_long_press() {
+    let mut tabela = Vec::new();
+    for dur in (100..=1200).step_by(50) {
+        let q = rapido(&mao(dur, 200.0, 60.0, [0.0, 0.0])).is_some();
+        tabela.push((dur, q));
+        // O gesto acaba no 2.º dedo, 8 ms depois do `dur`.
+        assert_eq!(q, (dur + 8) * MS < LONG_PRESS_NS, "{dur} ms: {tabela:?}");
+    }
+    assert!(tabela.iter().any(|&(_, q)| q) && tabela.iter().any(|&(_, q)| !q));
+}

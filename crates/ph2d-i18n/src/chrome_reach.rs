@@ -18,6 +18,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "chrome.menu.focus_mode" => "Focus mode \u{00b7} Ctrl+Space",
         "chrome.menu.tool_row_bottom" => "Tool options at the bottom",
+        "chrome.menu.frame_all" => "Frame All \u{00b7} quick pinch",
+        "chrome.menu.frame_selected" => "Frame Selection \u{00b7} F",
         // ph2d-migrar-texto:end
         _ => return None,
     })

@@ -39,6 +39,16 @@ pub fn gap() -> f32 {
     ph2d_tokens::control_gap_px()
 }
 
+/// ⭐ **A margem de um ENQUADRAMENTO** (F8, px lógicos): a faixa que a barra de ações ④ ocupa por
+/// cima da seleção (o afastamento `Lg`, uma linha de botões e o ar `Xs` do painel dela) mais o mesmo
+/// ar até à borda — o que se enquadra nunca fica por baixo de uma barra flutuante. Derivada, não
+/// escolhida: dá 44, o meio da faixa medida nos oráculos (Excalidraw 24, tldraw 64), e cobre a
+/// coluna de ferramentas (gate `the_frame_margin_clears_both_floating_bars`).
+#[must_use]
+pub fn frame_margin() -> f32 {
+    Spacing::Lg.px() + button_px() + 2.0 * Spacing::Xs.px()
+}
+
 /// O espaço entre dois GRUPOS.
 #[must_use]
 pub fn group_sep() -> f32 {

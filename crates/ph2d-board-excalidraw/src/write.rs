@@ -268,6 +268,7 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
     let elbow = c.route == Route::Elbow;
     m.insert("elbowed".into(), json!(elbow));
     let ends = [&pts[0], &pts[pts.len() - 1]];
+    let near = [pts[1], pts[pts.len() - 2]];
     for (k, key) in ["startBinding", "endBinding"].into_iter().enumerate() {
         let b = match c.ends()[k] {
             End::Bound { target, anchor } => board.doc.get(target).map(|t| {
@@ -278,7 +279,7 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
                     let fp = ph2d_board_route::normalized(t, on);
                     return json!({ "elementId": id(target), "focus": 0, "gap": 1, "fixedPoint": fp });
                 }
-                binding(t, anchor)
+                binding(t, anchor, near[k], *ends[k])
             }),
             End::Free(_) => None,
         };
@@ -316,22 +317,17 @@ fn arrow(board: &Board, el: &Element, routes: &RouteCache, out: &mut Vec<Value>)
 
 /// ⭐ **Uma ligação nas DUAS gramáticas** (W9, XV3: cada versão lê a sua e preserva a outra): a do next
 /// (`mode` + `fixedPoint`) e a do 0.18.1 (`focus` + `gap`). O ponto fixo é o `inside` dele (a ponta É o
-/// ponto); a órbita e o centro são `orbit` com o vão da forma — o centro com o foco do next
-/// (`[0.5001, 0.5001]`, XV2).
-fn binding(t: &Element, anchor: Anchor) -> Value {
-    let g = ph2d_board_route::gap(t);
-    match anchor {
-        Anchor::Fixed(fp) => json!({
-            "elementId": id(t.id), "mode": "inside", "fixedPoint": fp, "focus": 0, "gap": 1
-        }),
-        Anchor::Orbit(fp) => json!({
-            "elementId": id(t.id), "mode": "orbit", "fixedPoint": fp, "focus": 0, "gap": g
-        }),
-        Anchor::Center => json!({
-            "elementId": id(t.id), "mode": "orbit", "fixedPoint": [CENTER_FOCUS, CENTER_FOCUS],
-            "focus": 0, "gap": g
-        }),
-    }
+/// ponto); a órbita e o centro são `orbit` — o centro com o foco do next (`[0.5001, 0.5001]`, XV2). O
+/// legado é o par que faz o 0.18.1, ao re-ligar a partir do ponto vizinho `from`, pôr a ponta em `tip`
+/// (W10, XV4: [`crate::legacy_focus`]).
+fn binding(t: &Element, anchor: Anchor, from: [f64; 2], tip: [f64; 2]) -> Value {
+    let (focus, gap) = crate::legacy_focus::legacy(t, from, tip, ph2d_board_route::gap(t));
+    let (mode, fp) = match anchor {
+        Anchor::Fixed(fp) => ("inside", fp),
+        Anchor::Orbit(fp) => ("orbit", fp),
+        Anchor::Center => ("orbit", [CENTER_FOCUS, CENTER_FOCUS]),
+    };
+    json!({ "elementId": id(t.id), "mode": mode, "fixedPoint": fp, "focus": focus, "gap": gap })
 }
 
 /// O `fillStyle` dele.

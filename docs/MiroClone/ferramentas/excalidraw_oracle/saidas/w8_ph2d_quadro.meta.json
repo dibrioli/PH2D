@@ -4,9 +4,9 @@
   "package_license": "MIT",
   "chromium_version": "153.0.8010.12",
   "playwright_version": "1.63.0",
-  "date": "2026-10-10T12:57:01.946Z",
+  "date": "2026-10-10T14:50:08.332Z",
   "input": "w8_ph2d_quadro.excalidraw",
-  "input_sha256": "b96da72baab3c312b9f14c71b72f915cae30b215671e875763c6befc76ed92f9",
+  "input_sha256": "ba7a19a26e4ddb365800415100df30a6286fc04100ef8e8cd0801bf77113b5ab",
   "sondas": "w8_sondas.json",
   "sondas_sha256": "ae2fad17a3b10435bb18adcae35e6eadf1b20eb551a3c24b7b9fd8e51fc594e5",
   "deterministic_env": {
@@ -24,17 +24,17 @@
   "external_requests_blocked": [],
   "console": [],
   "outputs_sha256": {
-    "w8_ph2d_quadro.restored.json": "78172163c2e675074d99ec09431f80b5adee8842cea45652cae1b0317400a716",
-    "w8_ph2d_quadro.serialized.excalidraw": "e54d705bc4e216a4bbb215a7e0274793a1926a45b8553416389e0755e389d04f",
-    "w8_ph2d_quadro.serialized_database.json": "32be4b7d00d2b0d33328395cb30f0b1da960c9996e8a54b72194af034ffae645",
-    "w8_ph2d_quadro.svg": "e551b21bea1b9d1b3db4110cd1efe6f7c78b5b615608e3d808f625b980b37be2",
-    "w8_ph2d_quadro.embed.svg": "a579cbbce9d58d32bcced82b393b3d019614c880906a2af94d25e6854ea9a159",
+    "w8_ph2d_quadro.restored.json": "90133a1ac53f78c03fd8258867d65f97b96b512da49d745b41fad8ebef528369",
+    "w8_ph2d_quadro.serialized.excalidraw": "d0d8d1cdd707b214da4b9057498ddd21c3ffb4f58cdf729414e76105db3e6d09",
+    "w8_ph2d_quadro.serialized_database.json": "580a36ac984efd88596b21ffb2698bc63d4739a0121220ff6124973d82a188ae",
+    "w8_ph2d_quadro.svg": "b808f53d6a084f33753fe9680619d698cc0029791026c24d4effe75dd1179b21",
+    "w8_ph2d_quadro.embed.svg": "b53e7b3b1d8bf8195c3ec37d59c25763a6257eb32a0d4c2942d080e43835c334",
     "w8_ph2d_quadro.png": "6f671caccf1afded6b796d03997aa99c111b39d6cd71ab856001a1523f55cdb6",
     "w8_ph2d_quadro.sem_fundo.png": "0f39efdec2dc8880233e70061b466f19c154084cab435919d44e3396c8f5e2ee",
     "w8_ph2d_quadro.escuro.png": "6a8c476544e1f894d7e1b68ff655be9e7fbc29bbcc480581a3aa24ee900d1b33",
-    "w8_ph2d_quadro.embed.png": "be16883be8a5bb593a365124ae49a2cffbd1f974fe4272de65b70438b0830244",
-    "w8_ph2d_quadro.export.json": "462dd7208df18acddde1093acb8ab4e3ed37cac0b63df0e5bad100546b63d2d0",
-    "w8_sondas.json": "86f0f2f6389fcee3644cf613db9b5057aa9c20c9ea5a9bf9adb123dda43c1bef",
+    "w8_ph2d_quadro.embed.png": "2afd72e839c0452b4c50a3246c0858636b5fd4caf9bd38eded434ca436956eb9",
+    "w8_ph2d_quadro.export.json": "cc99baab13530ddb0d48f77c0055752fefdedc228eb4789cdf2c153800fa2ec1",
+    "w8_sondas.json": "5664d77a7d89345e4c4f7a54ba326af29819642df70a0cb68d6a626cfea65e14",
     "w8_appstate_restaurado.json": "47abb04d5c031807f53588acd1c68f0beb95f1ec74c6ae87e2d88fd79d23a308"
   }
 }

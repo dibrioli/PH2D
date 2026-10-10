@@ -1,0 +1,2755 @@
+{
+  "casos": [
+    {
+      "descricao": "o NOSSO .excalidraw (W10): rectângulo, elipse e losango (direitos, rodados, de cantos redondos), órbita fora do centro, centro e ponto fixo, recta, a curva dele e a do Miro — escrito por ph2d-board-excalidraw::write",
+      "elementos": [
+        {
+          "angle": 0.0,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-8",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-9",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-10",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-12",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-20",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 1,
+                "kind": {
+                  "Shape": {
+                    "kind": "Rectangle",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "a0"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-1",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": null,
+          "seed": 151149761,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "rectangle",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-8",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-9",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-11",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-13",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-14",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 2,
+                "kind": {
+                  "Shape": {
+                    "kind": "Ellipse",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 400.0,
+                "y": 0.0,
+                "z": "a1"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-2",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": null,
+          "seed": 479680206,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "ellipse",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 400.0,
+          "y": 0.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-11",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-15",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 3,
+                "kind": {
+                  "Shape": {
+                    "kind": "Diamond",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 800.0,
+                "y": 0.0,
+                "z": "a2"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-3",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": null,
+          "seed": 1526829037,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "diamond",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 800.0,
+          "y": 0.0
+        },
+        {
+          "angle": 0.5,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-15",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-16",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.5,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 4,
+                "kind": {
+                  "Shape": {
+                    "kind": "Rectangle",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 0.0,
+                "y": 300.0,
+                "z": "a3"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-4",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": null,
+          "seed": 1647545034,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "rectangle",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 0.0,
+          "y": 300.0
+        },
+        {
+          "angle": 0.5,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-16",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-18",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-20",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.5,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 5,
+                "kind": {
+                  "Shape": {
+                    "kind": "Ellipse",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 400.0,
+                "y": 300.0,
+                "z": "a4"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-5",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": null,
+          "seed": 596231002,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "ellipse",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 400.0,
+          "y": 300.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-17",
+              "type": "arrow"
+            },
+            {
+              "id": "ph2d-18",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 6,
+                "kind": {
+                  "Shape": {
+                    "kind": "Rectangle",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": true,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 800.0,
+                "y": 300.0,
+                "z": "a5"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-6",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": {
+            "type": 3
+          },
+          "seed": 770695168,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "rectangle",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 800.0,
+          "y": 300.0
+        },
+        {
+          "angle": 0.3,
+          "backgroundColor": "#a5d8ff",
+          "boundElements": [
+            {
+              "id": "ph2d-19",
+              "type": "arrow"
+            }
+          ],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.3,
+                "deleted": false,
+                "frame": null,
+                "h": 120.0,
+                "id": 7,
+                "kind": {
+                  "Shape": {
+                    "kind": "Diamond",
+                    "style": {
+                      "dash": "Solid",
+                      "fill": [
+                        165,
+                        216,
+                        255,
+                        255
+                      ],
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "text": {
+                      "spans": [],
+                      "text": ""
+                    }
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 200.0,
+                "x": 1200.0,
+                "y": 0.0,
+                "z": "a6"
+              }
+            }
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 120.0,
+          "id": "ph2d-7",
+          "isDeleted": false,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "roughness": 0,
+          "roundness": null,
+          "seed": 1496452567,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "diamond",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 200.0,
+          "x": 1200.0,
+          "y": 0.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 8,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.3,
+                            0.7
+                          ]
+                        },
+                        "target": 2
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.8,
+                            0.2
+                          ]
+                        },
+                        "target": 1
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "a7"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    191.0807204789685,
+                    38.2161440957937
+                  ]
+                ],
+                "x": 205.2500007035335,
+                "y": 33.05000014070669
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-2",
+            "fixedPoint": [
+              0.3,
+              0.7
+            ],
+            "focus": -0.4000003999999999,
+            "gap": 5.250000000000107,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 38.2161440957937,
+          "id": "ph2d-8",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              191.0807204789685,
+              38.2161440957937
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 1872049718,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-1",
+            "fixedPoint": [
+              0.8,
+              0.2
+            ],
+            "focus": -0.6000006,
+            "gap": 5.2500007035334875,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 191.0807204789685,
+          "x": 205.2500007035335,
+          "y": 33.05000014070669
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 9,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.0,
+                            0.3
+                          ]
+                        },
+                        "target": 2
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            1.0,
+                            0.3
+                          ]
+                        },
+                        "target": 1
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "a8"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    194.75,
+                    0.0
+                  ]
+                ],
+                "x": 205.25,
+                "y": 36.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-2",
+            "fixedPoint": [
+              0.0,
+              0.3
+            ],
+            "focus": 0.4000004,
+            "gap": 7.087058276913474,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 0.0,
+          "id": "ph2d-9",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              194.75,
+              0.0
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 1047552100,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-1",
+            "fixedPoint": [
+              1.0,
+              0.3
+            ],
+            "focus": -0.4000004,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 194.75,
+          "x": 205.25,
+          "y": 36.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 10,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.3,
+                            1.0
+                          ]
+                        },
+                        "target": 1
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Free": [
+                        60.0,
+                        250.0
+                      ]
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "a9"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    0.0,
+                    -124.75
+                  ]
+                ],
+                "x": 60.0,
+                "y": 250.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-1",
+            "fixedPoint": [
+              0.3,
+              1.0
+            ],
+            "focus": 0.4000004,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 124.75,
+          "id": "ph2d-10",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              -124.75
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 173551562,
+          "startArrowhead": null,
+          "startBinding": null,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 0.0,
+          "x": 60.0,
+          "y": 250.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 11,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.5,
+                            0.0
+                          ]
+                        },
+                        "target": 3
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Bound": {
+                        "anchor": "Center",
+                        "target": 2
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aA"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    284.09621629407354,
+                    -42.614432444111046
+                  ]
+                ],
+                "x": 602.2982274890907,
+                "y": 44.6552658766364
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-3",
+            "fixedPoint": [
+              0.5,
+              0.0
+            ],
+            "focus": 1.0000010000000001,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 42.614432444111046,
+          "id": "ph2d-11",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              284.09621629407354,
+              -42.614432444111046
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 595603613,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-2",
+            "fixedPoint": [
+              0.5001,
+              0.5001
+            ],
+            "focus": 0.0,
+            "gap": 5.249999999999979,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 284.09621629407354,
+          "x": 602.2982274890907,
+          "y": 44.6552658766364
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 12,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Fixed": [
+                            0.75,
+                            0.3
+                          ]
+                        },
+                        "target": 1
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Free": [
+                        100.0,
+                        -150.0
+                      ]
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aB"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    50.0,
+                    186.0
+                  ]
+                ],
+                "x": 100.0,
+                "y": -150.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-1",
+            "fixedPoint": [
+              0.75,
+              0.3
+            ],
+            "focus": 0.48611159722222214,
+            "gap": -36.0,
+            "mode": "inside"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 186.0,
+          "id": "ph2d-12",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              50.0,
+              186.0
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 434016003,
+          "startArrowhead": null,
+          "startBinding": null,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 50.0,
+          "x": 100.0,
+          "y": -150.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 13,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Fixed": [
+                            0.6,
+                            0.4
+                          ]
+                        },
+                        "target": 2
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Free": [
+                        520.0,
+                        -150.0
+                      ]
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aC"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    0.0,
+                    198.0
+                  ]
+                ],
+                "x": 520.0,
+                "y": -150.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-2",
+            "fixedPoint": [
+              0.6,
+              0.4
+            ],
+            "focus": 0.2000002,
+            "gap": -47.04033815843759,
+            "mode": "inside"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 198.0,
+          "id": "ph2d-13",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              198.0
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 2024639231,
+          "startArrowhead": null,
+          "startBinding": null,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 0.0,
+          "x": 520.0,
+          "y": -150.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 14,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Fixed": [
+                            1.0,
+                            0.5
+                          ]
+                        },
+                        "target": 2
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Free": [
+                        700.0,
+                        -150.0
+                      ]
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aD"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    -100.0,
+                    210.0
+                  ]
+                ],
+                "x": 700.0,
+                "y": -150.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-2",
+            "fixedPoint": [
+              1.0,
+              0.5
+            ],
+            "focus": 0.7777785555555555,
+            "gap": -0.01,
+            "mode": "inside"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 210.0,
+          "id": "ph2d-14",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              -100.0,
+              210.0
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 903603774,
+          "startArrowhead": null,
+          "startBinding": null,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 100.0,
+          "x": 700.0,
+          "y": -150.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 15,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.2,
+                            0.2
+                          ]
+                        },
+                        "target": 4
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.9,
+                            0.5
+                          ]
+                        },
+                        "target": 3
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aE"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    -741.7251736700259,
+                    194.17629183554794
+                  ]
+                ],
+                "x": 847.5750590882561,
+                "y": 94.6675357471733
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-4",
+            "fixedPoint": [
+              0.2,
+              0.2
+            ],
+            "focus": -0.6000005999999999,
+            "gap": 5.2500005516764645,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 194.17629183554794,
+          "id": "ph2d-15",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              -741.7251736700259,
+              194.17629183554794
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 737497093,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-3",
+            "fixedPoint": [
+              0.9,
+              0.5
+            ],
+            "focus": -0.34905378776357643,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 741.7251736700259,
+          "x": 847.5750590882561,
+          "y": 94.6675357471733
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 16,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.7,
+                            0.9
+                          ]
+                        },
+                        "target": 5
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Bound": {
+                        "anchor": "Center",
+                        "target": 4
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aF"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    252.0938852044299,
+                    37.50047436107508
+                  ]
+                ],
+                "x": 210.91790757823048,
+                "y": 376.4997026641423
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-5",
+            "fixedPoint": [
+              0.7,
+              0.9
+            ],
+            "focus": -0.6480196718506456,
+            "gap": 5.250000000000078,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 37.50047436107508,
+          "id": "ph2d-16",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              252.0938852044299,
+              37.50047436107508
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 980914695,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-4",
+            "fixedPoint": [
+              0.5001,
+              0.5001
+            ],
+            "focus": -3.1432693491714967e-16,
+            "gap": 5.250000328588726,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 252.0938852044299,
+          "x": 210.91790757823048,
+          "y": 376.4997026641423
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 17,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.1,
+                            0.1
+                          ]
+                        },
+                        "target": 6
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Free": [
+                        1150.0,
+                        500.0
+                      ]
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aG"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    -151.54647803613523,
+                    -86.33556930543466
+                  ]
+                ],
+                "x": 1150.0,
+                "y": 500.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-6",
+            "fixedPoint": [
+              0.1,
+              0.1
+            ],
+            "focus": -0.020725409326425477,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 86.33556930543466,
+          "id": "ph2d-17",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              -151.54647803613523,
+              -86.33556930543466
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 786658147,
+          "startArrowhead": null,
+          "startBinding": null,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 151.54647803613523,
+          "x": 1150.0,
+          "y": 500.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 18,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": "Center",
+                        "target": 6
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Spline",
+                    "start": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.5,
+                            0.5
+                          ]
+                        },
+                        "target": 5
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": [
+                      [
+                        700.0,
+                        560.0
+                      ]
+                    ]
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aH"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    129.8946965756519,
+                    129.89469657565195
+                  ],
+                  [
+                    264.64469627125936,
+                    -4.855303119955579
+                  ]
+                ],
+                "x": 570.1053034243481,
+                "y": 430.10530342434805
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-6",
+            "fixedPoint": [
+              0.5001,
+              0.5001
+            ],
+            "focus": 5.062127717933922e-16,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 134.74999969560753,
+          "id": "ph2d-18",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              129.8946965756519,
+              129.89469657565195
+            ],
+            [
+              264.64469627125936,
+              -4.855303119955579
+            ]
+          ],
+          "roughness": 0,
+          "roundness": {
+            "type": 2
+          },
+          "seed": 156626994,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-5",
+            "fixedPoint": [
+              0.5,
+              0.5
+            ],
+            "focus": -9.240530329722176e-16,
+            "gap": 5.250000000000092,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 264.64469627125936,
+          "x": 570.1053034243481,
+          "y": 430.10530342434805
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 19,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.3,
+                            0.3
+                          ]
+                        },
+                        "target": 7
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Straight",
+                    "start": {
+                      "Free": [
+                        1300.0,
+                        -150.0
+                      ]
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aI"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    -28.1503587699342,
+                    158.52272792448733
+                  ]
+                ],
+                "x": 1300.0,
+                "y": -150.0
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-7",
+            "fixedPoint": [
+              0.3,
+              0.3
+            ],
+            "focus": -0.37002529047132987,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 158.52272792448733,
+          "id": "ph2d-19",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              -28.1503587699342,
+              158.52272792448733
+            ]
+          ],
+          "roughness": 0,
+          "roundness": null,
+          "seed": 1866668612,
+          "startArrowhead": null,
+          "startBinding": null,
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 28.1503587699342,
+          "x": 1300.0,
+          "y": -150.0
+        },
+        {
+          "angle": 0.0,
+          "backgroundColor": "transparent",
+          "boundElements": [],
+          "customData": {
+            "ph2d": {
+              "element": {
+                "angle": 0.0,
+                "deleted": false,
+                "frame": null,
+                "h": 0.0,
+                "id": 20,
+                "kind": {
+                  "Connector": {
+                    "end": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.0,
+                            0.5
+                          ]
+                        },
+                        "target": 5
+                      }
+                    },
+                    "heads": [
+                      "None",
+                      "Arrow"
+                    ],
+                    "label": "",
+                    "route": "Curved",
+                    "start": {
+                      "Bound": {
+                        "anchor": {
+                          "Orbit": [
+                            0.5,
+                            1.0
+                          ]
+                        },
+                        "target": 1
+                      }
+                    },
+                    "style": {
+                      "dash": "Solid",
+                      "fill": null,
+                      "font_size": 20.0,
+                      "look": {
+                        "align": "Center",
+                        "cartoonist": false,
+                        "fill_style": "Solid",
+                        "letter": "Auto",
+                        "valign": "Middle"
+                      },
+                      "opacity": 100,
+                      "round": false,
+                      "sketch": false,
+                      "stroke": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ],
+                      "stroke_width": 0.5,
+                      "text_color": [
+                        30,
+                        30,
+                        30,
+                        255
+                      ]
+                    },
+                    "waypoints": []
+                  }
+                },
+                "nonce": 0,
+                "org": null,
+                "version": 1,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": "aJ"
+              },
+              "wrote": {
+                "points": [
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    1.43452258588556,
+                    23.542408994808596
+                  ],
+                  [
+                    5.220356754721195,
+                    42.42905197969574
+                  ],
+                  [
+                    11.48845768374153,
+                    58.926865980762614
+                  ],
+                  [
+                    19.914578675825183,
+                    72.98167675003319
+                  ],
+                  [
+                    30.82885045693982,
+                    84.99047226954471
+                  ],
+                  [
+                    44.97983162722659,
+                    95.83746567845463
+                  ],
+                  [
+                    62.87122584177038,
+                    105.17725748598627
+                  ],
+                  [
+                    86.51659091475295,
+                    113.84852747592353
+                  ],
+                  [
+                    124.47241442002218,
+                    123.41305801932853
+                  ],
+                  [
+                    187.96566467621028,
+                    137.07367433751358
+                  ],
+                  [
+                    225.95744262062067,
+                    147.5091279580147
+                  ],
+                  [
+                    257.79220448328306,
+                    159.02798832590167
+                  ],
+                  [
+                    287.0179889225925,
+                    173.0276460407975
+                  ],
+                  [
+                    307.6344353610426,
+                    184.29046206189975
+                  ]
+                ],
+                "x": 100.0,
+                "y": 125.25
+              }
+            }
+          },
+          "elbowed": false,
+          "endArrowhead": "arrow",
+          "endBinding": {
+            "elementId": "ph2d-5",
+            "fixedPoint": [
+              0.0,
+              0.5
+            ],
+            "focus": -2.855412064972802e-12,
+            "gap": 5.249999999999936,
+            "mode": "orbit"
+          },
+          "fillStyle": "solid",
+          "frameId": null,
+          "groupIds": [],
+          "height": 184.29046206189975,
+          "id": "ph2d-20",
+          "isDeleted": false,
+          "lastCommittedPoint": null,
+          "link": null,
+          "locked": false,
+          "opacity": 100,
+          "points": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              1.43452258588556,
+              23.542408994808596
+            ],
+            [
+              5.220356754721195,
+              42.42905197969574
+            ],
+            [
+              11.48845768374153,
+              58.926865980762614
+            ],
+            [
+              19.914578675825183,
+              72.98167675003319
+            ],
+            [
+              30.82885045693982,
+              84.99047226954471
+            ],
+            [
+              44.97983162722659,
+              95.83746567845463
+            ],
+            [
+              62.87122584177038,
+              105.17725748598627
+            ],
+            [
+              86.51659091475295,
+              113.84852747592353
+            ],
+            [
+              124.47241442002218,
+              123.41305801932853
+            ],
+            [
+              187.96566467621028,
+              137.07367433751358
+            ],
+            [
+              225.95744262062067,
+              147.5091279580147
+            ],
+            [
+              257.79220448328306,
+              159.02798832590167
+            ],
+            [
+              287.0179889225925,
+              173.0276460407975
+            ],
+            [
+              307.6344353610426,
+              184.29046206189975
+            ]
+          ],
+          "roughness": 0,
+          "roundness": {
+            "type": 2
+          },
+          "seed": 1209434508,
+          "startArrowhead": null,
+          "startBinding": {
+            "elementId": "ph2d-1",
+            "fixedPoint": [
+              0.5,
+              1.0
+            ],
+            "focus": 0.03835685050299859,
+            "gap": 5.25,
+            "mode": "orbit"
+          },
+          "strokeColor": "#1e1e1e",
+          "strokeStyle": "solid",
+          "strokeWidth": 0.5,
+          "type": "arrow",
+          "updated": 1,
+          "version": 1,
+          "versionNonce": 0,
+          "width": 307.6344353610426,
+          "x": 100.0,
+          "y": 125.25
+        }
+      ],
+      "nome": "X10_nosso",
+      "passos": [
+        {
+          "tipo": "restore"
+        },
+        {
+          "tipo": "montar"
+        },
+        {
+          "ids": [
+            "ph2d-1",
+            "ph2d-2",
+            "ph2d-3",
+            "ph2d-4",
+            "ph2d-5",
+            "ph2d-6",
+            "ph2d-7"
+          ],
+          "tipo": "empurrar"
+        },
+        {
+          "tipo": "svg"
+        }
+      ]
+    }
+  ]
+}

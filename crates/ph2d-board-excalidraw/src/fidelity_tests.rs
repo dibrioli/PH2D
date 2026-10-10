@@ -537,3 +537,6 @@ fn ph2d_vec_render_bez(r: &ph2d_board_route::Routed) -> ph2d_vector::BezPath {
 
 #[path = "fidelity_file_tests.rs"]
 mod file;
+
+#[path = "fidelity_w10_tests.rs"]
+mod w10;

@@ -11,6 +11,7 @@
 
 mod bind;
 mod embed;
+mod legacy_focus;
 mod read;
 mod style;
 mod write;

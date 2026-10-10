@@ -90,12 +90,19 @@ pub const VELATURA_MEDIDA: f64 = 0.47;
 /// aqui, e a água só a correr depois do Up, o azul sobre vermelho SECO a pintar caía a γ 0,76 (Rebelle
 /// 0,42–0,49). Varrido no MESMO processo (`sonda_velatura_do_filme`; seco durante · depois):
 ///
-/// | filme | 0,47 | 0,35 | 0,25 | **0,20** | 0,15 | 0 |
+/// | filme | 0,47 | 0,35 | 0,25 | 0,20 | 0,15 | 0 |
 /// |---|---|---|---|---|---|---|
-/// | γ | 0,76 · 0,62 | 0,67 · 0,54 | 0,59 · 0,47 | **≈ 0,54 · 0,43** | 0,50 · 0,38 | 0,35 · 0,25 |
+/// | γ (W1f) | 0,76 · 0,62 | 0,67 · 0,54 | 0,59 · 0,47 | ≈ 0,54 · 0,43 | 0,50 · 0,38 | 0,35 · 0,25 |
 ///
-/// (Rebelle 0,42–0,49 · 0,44–0,51; a sangria no molhado não muda: +25 a +26.)
-pub const VELATURA_DO_FILME: f64 = 0.20;
+/// ⚠️ **Re-medido com «assentar não muda o que se vê»** ([`crate::assenta`], 10/10): o seco passou a ficar com
+/// a cor do ecrã, então esta constante vale também DEPOIS. Seco durante · depois · sangria:
+///
+/// | filme | 0 | 0,10 | 0,15 | 0,20 | **0,25** | 0,35 |
+/// |---|---|---|---|---|---|---|
+/// | água parada | 0,39 · 0,20 · +3,8 | 0,49 · 0,33 · +3,5 | 0,53 · 0,39 · +3,3 | 0,58 · 0,45 · +3,1 ✗ | **0,62 · 0,50 · +2,9** | 0,69 · 0,60 · +2,6 |
+///
+/// (Rebelle 0,42–0,49 · 0,44–0,51 · +1…+2, barra da sangria ≤ 3; o molhado não muda: +13.)
+pub const VELATURA_DO_FILME: f64 = 0.25;
 
 /// **A mesma velatura com a água A CORRER no traço** (W1g, «Live Water»): a água que assenta durante o
 /// traço muda a conta, e o `0,20` deixava o azul sangrar `+3,2` sobre o vermelho SECO (barra `≤ 3`,
@@ -106,6 +113,8 @@ pub const VELATURA_DO_FILME: f64 = 0.20;
 /// | seco | 0,42 · 0,41 · +3,2 | 0,47 · 0,44 · +3,2 | 0,52 · 0,48 · +3,1 | 0,54 · 0,49 · +3,0 | **0,57 · 0,51 · +2,9** | 0,61 · 0,55 · +2,8 | 0,67 · 0,59 · +3 |
 ///
 /// (molhado: γ durante 0,40–0,44, sangria +27…+28 em todos; Rebelle seco 0,42–0,49 · 0,44–0,51.)
+/// Com [`crate::assenta`] (10/10), sem papel: 0,20 · 0,25 · **0,35** → seco 0,44·0,45 · 0,50·0,51 ·
+/// **0,60·0,61**, sangria +5,8 · +5,4 · **+4,7** (tecto +5 sem papel); com o Cold a barra inteira continua verde.
 pub const VELATURA_DO_FILME_VIVA: f64 = 0.35;
 
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos

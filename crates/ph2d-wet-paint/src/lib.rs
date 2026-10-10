@@ -28,6 +28,7 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::should_implement_trait)]
 
+pub mod assenta;
 pub mod brush;
 pub mod colorops;
 pub mod drying;

@@ -903,6 +903,36 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   escorre. Round, Dry Brush e Drip conferem com o nome (o Dry Brush é fios partidos onde o do Rebelle é
   estriado e cheio; os fios do Drip são grossos e curtos — o «fio único» aberto da W1e). ⚠️ Os quatro
   carregam 3–4× a tinta do Rebelle e saem 25–30 px a 40 (a largura prometida, W2). Decisão do dono pendente.
+- ✅ **Assentar não muda o que se vê (dono 10/10: «Pigment mixing + Glaze layering pintando sobre tinta seca
+  ainda tem uma aparência em 2 etapas — isso não pode acontecer»).** Sonda e portão em
+  `wetpaint/mistura_camadas_tests.rs` (`duas_etapas`: uma passada de amarelo sobre o azul seco, o miolo com o
+  rato em baixo contra +1 · +30 · +120 · +600 ticks e o Dry canvas).
+  - **Causa medida:** o ecrã mostra o filme molhado sobre o assentado por UMA lei (o `lerp` + a velatura do
+    filme, ou a camada K–M com o «Glaze layering»), e o motor, ao assentar e ao re-molhar, recalculava a cor
+    por OUTRA (a junção mistura + velatura, ou a K–M com o «Pigment mixing»). Pior Δ (níveis sRGB), antes:
+    fábrica 29–35 · K–M 81 · Glaze 28 · as duas **126** (o miolo (230,194,45) → (106,180,26)); com a Live
+    Water 45 · 49 · 37 · 103. O «Glaze layering» nem chegava ao motor (só ao ecrã).
+  - **Cura** (`crates/ph2d-wet-paint/src/assenta.rs`): as transferências VERTICAIS (assentar, Dry canvas,
+    re-molhar — o mesmo ponto, a mesma coluna de tinta) resolvem a cor nova pela inversa da lei do ecrã
+    (`assenta::cor`, que é agora a porta do render: ⛔ uma só). Palpite físico (a parte que assenta é uma
+    camada do filme por baixo do filme que fica — exacto para o `lerp`), afinado por Newton com derivada
+    numérica onde o ecrã vê a cor (sensibilidade ≥ 0,1); a camada K–M por fórmula fechada (assentar) e pela
+    raiz da quadrática (re-molhar). `Sim::lei` (port `Porto` ao bit; produto `PorCima`, `Camada` com a caixa,
+    levada pelo reconcile como facto novo `km_glaze`). A mistura fica onde acontece: na água (o pouso, a
+    advecção). ⛔ Duas armadilhas medidas: assumir a derivada `1 − a` dava passos 4× grandes e o miolo ia a
+    PRETO; corrigir onde o filme grosso esconde o assentado escrevia uma cor ESCONDIDA que aparecia quando o
+    filme afinava (+24 de verde ao secar) — por isso o limiar.
+  - **Depois:** com a Live Water ≤ 7 nas 4 combinações (fábrica 6 · K–M 6 · Glaze 5 · as duas 5); sem ela a
+    água só nivela depois do Up (a escolha da W1f para a 4K) e todas mudam ~20 nos primeiros 0,5 s — a
+    mesma em todas, não é a mistura. A K–M deixa de mudar o que quer que seja ao secar (linhas iguais).
+  - **A velatura do filme passou a valer também depois** (o seco fica com a cor do ecrã): `VELATURA_DO_FILME`
+    0,20 → **0,25** (seco 0,62 · 0,50, sangria +2,9; a 0,20 a sangria seca dava +3,1 ✗; tabela no doc da
+    constante). Live Water 0,35 continua (com o Cold verde; sem papel +4,7, tecto +5).
+  - **Portão** `o_traco_nao_muda_de_aparencia_ao_secar` (Live: ≤ 12 nas 4; sem Live, as duas da K–M ≤ 30),
+    CONTROLO dentro (a lei de antes com as duas caixas reprova). O portão das camadas ganhou o controlo das
+    DUAS leis de antes (cada cura sozinha já tira o preto). Unidade `assenta::tests` (≤ 1,5 níveis em 7
+    estados, incluindo filme a 99 % e opaco). Cercas verdes: suíte de `ph2d-wet-paint` (impressões),
+    `--lib wetpaint` 159 (bytes do S e da bancada, `mistura_tests`, Live Water), miniaturas, ponte do preview.
 - **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

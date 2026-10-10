@@ -243,6 +243,7 @@ pub fn apply_wet(
                         sett_rgb[i],
                         mix,
                         p.glaze,
+                        p.ecra,
                         &mut out,
                     );
                 }
@@ -607,6 +608,7 @@ pub fn apply_smear(
                             sett_rgb[i],
                             mix,
                             p.glaze,
+                            p.ecra,
                             &mut out,
                         );
                     }

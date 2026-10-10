@@ -457,6 +457,7 @@ impl Trail {
                             sett_c,
                             mix,
                             p.glaze,
+                            p.ecra,
                             &mut out,
                         );
                     }

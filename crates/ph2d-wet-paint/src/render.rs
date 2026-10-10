@@ -397,52 +397,15 @@ pub fn render_pigment_row_visual(
                 // alpha) — or by K–M reflectance under the glaze flag.
                 let sc = lg.sett_rgb[i];
                 let uc = lg.susp_rgb[i];
-                let (mut cr, mut cg, mut cb) = (sc[0] as f64, sc[1] as f64, sc[2] as f64);
-                if a_s <= 0.0 {
-                    cr = uc[0] as f64;
-                    cg = uc[1] as f64;
-                    cb = uc[2] as f64;
-                } else if a_f > 0.0 {
-                    if glaze_on {
-                        // The wet film GLAZES the dried paint: suspended over
-                        // settled by reflectance, per channel, in linear
-                        // light — [`render_region`]'s stacking law with the
-                        // settled colour as the base.
-                        // The 0..255 doors carry `clamp_byte(..)/255` inside
-                        // the table lookup (`colorops::transfer`).
-                        cr = srgb255_of_linear(km_glaze_channel_linear(
-                            srgb255_to_linear(cr),
-                            srgb255_to_linear(uc[0] as f64),
-                            a_f,
-                        ));
-                        cg = srgb255_of_linear(km_glaze_channel_linear(
-                            srgb255_to_linear(cg),
-                            srgb255_to_linear(uc[1] as f64),
-                            a_f,
-                        ));
-                        cb = srgb255_of_linear(km_glaze_channel_linear(
-                            srgb255_to_linear(cb),
-                            srgb255_to_linear(uc[2] as f64),
-                            a_f,
-                        ));
-                    } else {
-                        cr = cr * (1.0 - a_f) + uc[0] as f64 * a_f;
-                        cg = cg * (1.0 - a_f) + uc[1] as f64 * a_f;
-                        cb = cb * (1.0 - a_f) + uc[2] as f64 * a_f;
-                        // A tinta molhada é transparente sobre a seca (W1e, F6): o mesmo termo das
-                        // junções do motor, com o peso que esta mistura dá ao suspenso (`a_f / la`).
-                        let mut c = [cr, cg, cb];
-                        crate::colorops::velatura(
-                            &mut c,
-                            a_f / la,
-                            glaze,
-                            a_s,
-                            [sc[0], sc[1], sc[2]].map(f64::from),
-                            [uc[0], uc[1], uc[2]].map(f64::from),
-                        );
-                        [cr, cg, cb] = c;
-                    }
-                }
+                // A cor da camada: o assentado e o filme por cima dele — pela MESMA porta que assentar e
+                // re-molhar preservam ([`crate::assenta::cor`]).
+                let lei = if glaze_on {
+                    crate::assenta::Ecra::Camada
+                } else {
+                    crate::assenta::Ecra::PorCima(glaze)
+                };
+                let [mut cr, mut cg, mut cb] =
+                    crate::assenta::cor(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
                 if paper_on {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,

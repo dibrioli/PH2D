@@ -46,7 +46,7 @@ pub fn wet_canvas(g: &mut Grid) {
 /// Dry canvas: one-shot O(area) — settle every cell's suspended mass into the
 /// settled layer (opacity-composite color, same as the dry pass), zero water,
 /// both velocity fields and wetness, and empty the bbox.
-pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64) {
+pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64, ecra: crate::assenta::Ecra) {
     let s = g.s;
     let mut out = [0.0f64; 3];
     for y in 1..=g.h {
@@ -54,7 +54,7 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64) {
         for _x in 1..=g.w {
             let dm = g.susp[i] as f64;
             if dm > 0.0 {
-                settle_composite(g, i, dm, mix, glaze, &mut out);
+                settle_composite(g, i, dm, mix, glaze, ecra, &mut out);
                 g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                 g.susp[i] = 0.0;
             }
@@ -89,11 +89,24 @@ pub fn settle_composite(
     dm: f64,
     mix: ColorMix,
     glaze: f64,
+    ecra: crate::assenta::Ecra,
     out: &mut [f64; 3],
 ) {
     let a_sett = alpha_of_mass(g.sett[i] as f64);
     let a_in = alpha_of_mass(dm);
-    if a_sett > 0.0 {
+    if ecra != crate::assenta::Ecra::Porto {
+        let sm = g.susp[i] as f64;
+        g.sett_rgb[i] = crate::assenta::assenta(
+            ecra,
+            g.sett_rgb[i].map(f64::from),
+            g.susp_rgb[i].map(f64::from),
+            a_sett,
+            alpha_of_mass(sm),
+            alpha_of_mass(g.sett[i] as f64 + dm),
+            alpha_of_mass(sm - dm),
+        )
+        .map(|v| v as f32);
+    } else if a_sett > 0.0 {
         let u = a_sett * (1.0 - a_in);
         let w = a_in / (u + a_in);
         let sc = g.sett_rgb[i];

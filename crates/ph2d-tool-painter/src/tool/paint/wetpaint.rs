@@ -450,9 +450,9 @@ mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
 #[cfg(test)]
 mod sonda_opcoes; // as opções da W1g numa rodada só
 #[cfg(test)]
-mod sonda_presets; // os 4 pincéis de fábrica na bancada do Rebelle (conferência do dono 10/10)
+mod sonda_papel_seco;
 #[cfg(test)]
-mod sonda_papel_seco; // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
+mod sonda_presets; // os 4 pincéis de fábrica na bancada do Rebelle (conferência do dono 10/10) // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
 
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)

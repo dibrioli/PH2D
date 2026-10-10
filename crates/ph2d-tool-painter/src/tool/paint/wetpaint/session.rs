@@ -13,6 +13,8 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) knobs: WetKnobs,
     pub(in crate::tool::paint) tilt: (bool, u8, u8),
     pub(in crate::tool::paint) km_mixing: bool,
+    /// O «Glaze layering (K-M)»: a lei do ECRÃ, que assentar e re-molhar preservam ([`ph2d_wet_paint::assenta`]).
+    pub(in crate::tool::paint) km_glaze: bool,
     /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
     /// re-assar quando só ele mexe (o papel do artista re-semeia pela [`PaperKey`]).
     pub(in crate::tool::paint) tooth: f32,
@@ -29,6 +31,7 @@ impl WetEngineFacts {
         knobs: WetKnobs::ENGINE_BOOT,
         tilt: (true, 4, 3),
         km_mixing: false,
+        km_glaze: false,
         tooth: 1.0,
         agua_viva: false,
         borda_que_pesa: 0.0,
@@ -204,6 +207,14 @@ impl WetSession {
                 0.0
             } else {
                 ph2d_wet_paint::colorops::VELATURA_MEDIDA
+            };
+        }
+        if f.km_glaze != a.km_glaze {
+            // O ecrã mudou de lei: assentar e re-molhar passam a preservar a nova (prompt 15b).
+            e.sim.lei = if f.km_glaze {
+                ph2d_wet_paint::assenta::Lei::Camada
+            } else {
+                ph2d_wet_paint::assenta::Lei::PorCima
             };
         }
         if f.agua_viva != a.agua_viva {

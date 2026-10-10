@@ -47,6 +47,8 @@ pub struct Params {
     pub sedimenta: f64,
     /// O peso do ASSENTADO no que o pincel sujo apanha ([`Sim::pickup_assentado`]).
     pub pickup_assentado: f64,
+    /// A lei do ecrã que assentar e re-molhar preservam ([`crate::assenta`]), com a velatura do filme.
+    pub ecra: crate::assenta::Ecra,
 }
 
 impl Params {
@@ -98,6 +100,9 @@ pub struct Sim {
     /// Rebelle (W1e: rasto − azul ≈ 0 sobre o seco). Com `0,5` o amarelo apanhava o azul seco a cada dab e
     /// nunca o cobria (prompt 15, 05 §4b «Mistura»).
     pub pickup_assentado: f64,
+    /// **Assentar e re-molhar preservam o ecrã?** ([`crate::assenta`]) `Porto` = as junções de antes; o
+    /// produto liga a lei do render (`PorCima`, ou `Camada` com o «Glaze layering»).
+    pub lei: crate::assenta::Lei,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -171,6 +176,7 @@ impl Default for Sim {
             drip_head: 0.0,
             sedimenta: 0.0,
             pickup_assentado: 0.5,
+            lei: crate::assenta::Lei::Porto,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -248,6 +254,11 @@ impl Sim {
             },
             sedimenta: self.sedimenta,
             pickup_assentado: self.pickup_assentado,
+            ecra: match self.lei {
+                crate::assenta::Lei::Porto => crate::assenta::Ecra::Porto,
+                crate::assenta::Lei::PorCima => crate::assenta::Ecra::PorCima(self.glaze_filme),
+                crate::assenta::Lei::Camada => crate::assenta::Ecra::Camada,
+            },
         }
     }
 }

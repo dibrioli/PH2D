@@ -512,7 +512,7 @@ impl Engine {
         self.drain_step();
         let p = self.sim.gather_params(&self.tuning);
         let g = self.active_grid_mut();
-        dry_canvas(g, p.mix, p.glaze);
+        dry_canvas(g, p.mix, p.glaze, p.ecra);
         g.bloom.fill(0); // backrun budgets recharge on dry
         self.mark_dirty_full();
     }

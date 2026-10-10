@@ -383,8 +383,11 @@ const TUDO: Cond = Cond {
 #[test]
 fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
     let nada = |_: &mut ph2d_wet_paint::painter::Engine| {};
+    // As DUAS leis de antes: a velatura por cima da K–M e o assentar que não preserva o ecrã (cada cura
+    // sozinha já tira o preto).
     let antes = |e: &mut ph2d_wet_paint::painter::Engine| {
         e.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
+        e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
     };
     let km = |c: Cond| Cond { km: true, ..c };
     let sujo = |e: &mut ph2d_wet_paint::painter::Engine| e.sim.pickup_assentado = 0.5;
@@ -552,6 +555,185 @@ fn sonda_camadas() {
                     );
                 }
             }
+        }
+    }
+}
+
+/// Uma passada de amarelo sobre o azul seco: o miolo com o rato EM BAIXO e depois do Up (+1 · +30 · +120 ·
+/// +600 ticks · Dry canvas), com as caixas do Tuning «Pigment mixing (K-M)» (`km`) e «Glaze layering (K-M)»
+/// (`glaze`) e a Live Water (`viva`). `ajusta` mexe no motor depois do reconcile.
+pub(super) fn duas_etapas(
+    km: bool,
+    glaze: bool,
+    viva: bool,
+    ajusta: &dyn Fn(&mut ph2d_wet_paint::painter::Engine),
+) -> Vec<[f64; 3]> {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o pincel de fábrica")
+        .preset;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.wet_preset_aplicar_volumes(&p.parametros.volumes);
+    t.paint.wetpaint.tilt_on = false;
+    t.set_brush_size_px(30.0);
+    t.set_wet_agua_viva(viva);
+    t.paint.wetpaint.km_mixing = km;
+    t.paint.wetpaint.km_glaze = glaze;
+    assert!(t.ensure_wet_session());
+    ticks(&mut t, 1);
+    ajusta(&mut t.paint.wetpaint.session.as_mut().expect("sessão").engine);
+    t.set_brush_color_srgb8(AZUL);
+    for y in (120..=280).step_by(20) {
+        traco(&mut t, &linha([150.0, y as f32], [450.0, y as f32]));
+        ticks(&mut t, 4);
+    }
+    seca(&mut t);
+    t.set_brush_color_srgb8(AMARELO);
+    let s = serpentina();
+    t.on_canvas_pointer(cp(s[0], PointerPhase::Down));
+    for &q in &s[1..] {
+        t.on_canvas_pointer(cp(q, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    for _ in 0..6 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let miolo = |t: &PainterTool| media(&t.canvas_rgba, 285, 315, 185, 215);
+    let mut out = vec![miolo(&t)];
+    t.on_canvas_pointer(cp(s[s.len() - 1], PointerPhase::Up));
+    let mut feito = 0;
+    for alvo in [1, 30, 120, 240, 360, 480, 600] {
+        ticks(&mut t, alvo - feito);
+        feito = alvo;
+        if std::env::var("PH2D_SONDA_DIAG").is_ok() {
+            let m = le_motor(&t);
+            println!(
+                "    +{alvo} ecrã {:?} | sett {:?} m {:.0} | susp {:?} m {:.0}",
+                r(miolo(&t)),
+                r(m.sett_rgb),
+                m.sett,
+                r(m.susp_rgb),
+                m.susp
+            );
+        }
+        if [1, 30, 120, 600].contains(&alvo) {
+            out.push(miolo(&t));
+        }
+    }
+    seca(&mut t);
+    out.push(miolo(&t));
+    out
+}
+
+fn delta(a: [f64; 3], b: [f64; 3]) -> f64 {
+    (0..3).map(|c| (a[c] - b[c]).powi(2)).sum::<f64>().sqrt()
+}
+
+/// **O traço não muda de aparência ao secar** (dono 10/10: «Pigment mixing + Glaze layering pintando sobre
+/// tinta seca ainda tem uma aparência em 2 etapas — isso não pode acontecer»). Amarelo sobre azul seco, o
+/// miolo com o rato em baixo contra +1 · +30 · +120 · +600 ticks e o Dry canvas, nas 4 combinações das caixas.
+/// Com a Live Water (a água corre no traço) a barra é `≤ 12` níveis em todas (medido 1–9; o Rebelle: γ durante
+/// 0,42–0,49 · depois 0,44–0,51); sem ela a água só nivela depois do Up (a escolha da W1f para a 4K) e as
+/// combinações com a K–M ficam `≤ 30` (medido 19–26 em todas; antes 81 e 126). ⚠️ O CONTROLO está dentro: a
+/// lei de antes (`Lei::Porto`) com as duas caixas reprova.
+#[test]
+fn o_traco_nao_muda_de_aparencia_ao_secar() {
+    let porto =
+        |e: &mut ph2d_wet_paint::painter::Engine| e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
+    let pior = |v: &[[f64; 3]]| v[1..].iter().map(|c| delta(v[0], *c)).fold(0.0, f64::max);
+    assert!(
+        pior(&duas_etapas(true, true, true, &porto)) > 12.0,
+        "CONTROLO: a lei de antes passou a barra — a régua não discrimina"
+    );
+    let mut f = Vec::new();
+    for (km, glaze, viva, barra) in [
+        (false, false, true, 12.0),
+        (true, false, true, 12.0),
+        (false, true, true, 12.0),
+        (true, true, true, 12.0),
+        (true, false, false, 30.0),
+        (true, true, false, 30.0),
+    ] {
+        let v = duas_etapas(km, glaze, viva, &|_| {});
+        let p = pior(&v);
+        if p > barra {
+            f.push(format!(
+                "K–M {km} · Glaze {glaze} · Live {viva}: em baixo {:?} → seco {:?}, pior Δ{p:.0} (barra {barra})",
+                r(v[0]),
+                r(v[5])
+            ));
+        }
+    }
+    assert!(
+        f.is_empty(),
+        "o traço muda de aparência ao secar: {}",
+        f.join(" | ")
+    );
+}
+
+/// **Sonda: o traço muda de aparência no Up?** (dono 10/10: «Pigment mixing + Glaze layering pintando
+/// sobre tinta seca ainda tem uma aparência em 2 etapas»). As 4 combinações das caixas × Live Water.
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_duas_etapas() {
+    let st1 = |e: &mut ph2d_wet_paint::painter::Engine| {
+        e.tuning.set(ph2d_wet_paint::tuning::Knob::ExtStaining, 1.0);
+    };
+    let porto =
+        |e: &mut ph2d_wet_paint::painter::Engine| e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
+    let sem_secar = |e: &mut ph2d_wet_paint::painter::Engine| {
+        e.tuning.set(ph2d_wet_paint::tuning::Knob::Evaporation, 0.0);
+        e.tuning
+            .set(ph2d_wet_paint::tuning::Knob::BaseEvaporation, 0.0);
+    };
+    let sem_orla = |e: &mut ph2d_wet_paint::painter::Engine| {
+        e.tuning
+            .set(ph2d_wet_paint::tuning::Knob::EdgeDarkening, 0.0);
+    };
+    let so: Option<String> = std::env::var("PH2D_SONDA_SO").ok();
+    for viva in [false, true] {
+        for (km, glaze, nome, aj) in [
+            (
+                false,
+                false,
+                "",
+                &(|_: &mut ph2d_wet_paint::painter::Engine| {}) as &dyn Fn(&mut _),
+            ),
+            (true, false, "", &|_| {}),
+            (false, true, "", &|_| {}),
+            (true, true, "", &|_| {}),
+            (false, false, "Staining 1", &st1),
+            (false, true, "Staining 1", &st1),
+            (true, true, "lei de antes", &porto),
+            (false, false, "sem secar", &sem_secar),
+            (false, false, "sem orla", &sem_orla),
+        ] {
+            if so.as_deref().is_some_and(|s| s != nome) {
+                continue;
+            }
+            let v = duas_etapas(km, glaze, viva, aj);
+            println!(
+                "[K–M {km:5} · Glaze {glaze:5} · Live {viva:5} {nome}] em baixo {:?} | +1 {:?} Δ{:.0} | +30 {:?} Δ{:.0} | +120 {:?} Δ{:.0} | +600 {:?} Δ{:.0} | seco {:?} Δ{:.0}",
+                r(v[0]),
+                r(v[1]),
+                delta(v[0], v[1]),
+                r(v[2]),
+                delta(v[0], v[2]),
+                r(v[3]),
+                delta(v[0], v[3]),
+                r(v[4]),
+                delta(v[0], v[4]),
+                r(v[5]),
+                delta(v[0], v[5])
+            );
         }
     }
 }

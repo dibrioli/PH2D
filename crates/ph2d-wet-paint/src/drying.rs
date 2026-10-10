@@ -46,10 +46,27 @@ pub(crate) fn lift_settled(
     sett_rgb: [f32; 3],
     mix: ColorMix,
     glaze: f64,
+    ecra: crate::assenta::Ecra,
     out: &mut [f64; 3],
 ) {
     let st = *sett as f64;
     let lift = st * b;
+    if ecra != crate::assenta::Ecra::Porto && lift > 0.0 {
+        let sf = *susp as f64;
+        *susp_rgb = crate::assenta::levanta(
+            ecra,
+            sett_rgb.map(f64::from),
+            susp_rgb.map(f64::from),
+            alpha_of_mass(st),
+            alpha_of_mass(sf),
+            alpha_of_mass(st - lift),
+            alpha_of_mass(sf + lift),
+        )
+        .map(|v| v as f32);
+        *susp = (sf + lift) as f32;
+        *sett = (st - lift) as f32;
+        return;
+    }
     let a_in = alpha_of_mass(st) * b;
     let a_susp = alpha_of_mass(*susp as f64);
     let u = a_susp * (1.0 - a_in);
@@ -94,6 +111,7 @@ pub(crate) struct DryConst {
     pub ext_bypass: bool,
     pub mix: ColorMix,
     pub glaze: f64,
+    pub ecra: crate::assenta::Ecra,
 }
 
 impl DryConst {
@@ -109,6 +127,7 @@ impl DryConst {
             ext_bypass,
             mix: p.mix,
             glaze: p.glaze,
+            ecra: p.ecra,
         }
     }
 }
@@ -183,7 +202,18 @@ pub(crate) fn dry_cell(
         // SPEC §6.2 step 3 (the shared settle composite, on locals).
         let a_sett = alpha_of_mass(sett_c as f64);
         let a_in = alpha_of_mass(dm);
-        if a_sett > 0.0 {
+        if c.ecra != crate::assenta::Ecra::Porto {
+            sett_rgb_c = crate::assenta::assenta(
+                c.ecra,
+                sett_rgb_c.map(f64::from),
+                susp_rgb_c.map(f64::from),
+                a_sett,
+                alpha_of_mass(s_mass),
+                alpha_of_mass(sett_c as f64 + dm),
+                alpha_of_mass(s_mass - dm),
+            )
+            .map(|v| v as f32);
+        } else if a_sett > 0.0 {
             let u = a_sett * (1.0 - a_in);
             let w = a_in / (u + a_in);
             mix.mix(
@@ -233,6 +263,7 @@ pub(crate) fn dry_cell(
                 sett_rgb_c,
                 mix,
                 c.glaze,
+                c.ecra,
                 out,
             );
         }

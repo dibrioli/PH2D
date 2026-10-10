@@ -12,6 +12,7 @@ impl PainterTool {
             knobs: w.knobs,
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             km_mixing: w.km_mixing,
+            km_glaze: w.km_glaze,
             tooth: self
                 .paint
                 .brush
@@ -53,6 +54,8 @@ impl PainterTool {
         engine.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
         engine.sim.glaze_filme = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
         engine.sim.pickup_assentado = 0.0;
+        // Assentar e re-molhar não mudam o que se vê (dono 10/10: «o traço muda de aparência no mouse up»).
+        engine.sim.lei = ph2d_wet_paint::assenta::Lei::PorCima;
         self.paint.wetpaint.session = Some(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,

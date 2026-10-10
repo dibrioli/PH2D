@@ -70,8 +70,12 @@ a página da Adobe recusa o robô); o perfil do Illustrator que o Inkscape traz 
   ~0,38 s; o tldraw anda ~0,33 s), e a única que sobrevive ao *reduced motion* (o corte desorienta
   mais). Zoom em `ln(h)` linear, centro pelo **ponto fixo** (o ponto do mundo que está no mesmo sítio
   do ecrã nas duas vistas não se mexe — gate). Parte da câmera do 1.º tique; uma escrita alheia
-  (roda, pan, dedo) larga-o; assentado, publica o destino verbatim. Não é passo de undo: a câmera
+  (pan, dedo) larga-o; assentado, publica o destino verbatim. Não é passo de undo: a câmera
   não está no `ProjectState`.
+- **A roda × o voo: o gesto mais NOVO ganha** (`ViewFlight::arbitrate`, chamada no
+  `canvas_zoom::publish`): um voo pedido e ainda sem tique manda a roda largar; uma roda girada
+  durante um voo larga o voo. ⛔ Sem isto o 1.º entalhe da roda a meio de um voo PERDIA-SE (a mola
+  da roda nasce parada, o voo escrevia por cima e a roda largava) — apanhado por um gate da shell.
 - **O pedido resolve-se UM quadro depois** de feito: uma cena que monta e enquadra no mesmo quadro
   media o mundo desenhado do quadro anterior (fotos `media1` → `media1b`, as três mídias cortadas →
   inteiras).

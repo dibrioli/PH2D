@@ -394,7 +394,7 @@ fn post(hero: &mut HeroScreen) {
             }
         }
         Some(OpenThread::Thread(t)) => match editing {
-            Some((th, n)) if th == t => _ = board.team.edit(t, n, &author, &text),
+            Some((th, m)) if th == t => _ = board.team.edit(t, m, &author, &text),
             _ => _ = board.team.reply(t, &author, &text, now),
         },
         None => return,
@@ -550,8 +550,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     true
 }
 
-/// K4 — o 1.º clique no lixo arma, o 2.º apaga. A edição em curso segue a SUA mensagem: a apagada
-/// larga-a, uma de cima desce-lhe o índice.
+/// K4 — o 1.º clique no lixo da linha `n` arma a mensagem que lá está, o 2.º apaga-a. A edição em
+/// curso segue a SUA mensagem pelo id: só a apagada a larga.
 fn delete_message(hero: &mut HeroScreen, n: usize, armed: Option<Confirm>) {
     let author = me(hero);
     let open = hero
@@ -561,14 +561,22 @@ fn delete_message(hero: &mut HeroScreen, n: usize, armed: Option<Confirm>) {
     let Some(OpenThread::Thread(t)) = open else {
         return;
     };
-    if armed != Some(Confirm::Message(t, n)) {
-        hero.documents.live.team.confirm = Some(Confirm::Message(t, n));
-        return;
-    }
     let Some(board) = hero.documents.active_board_mut() else {
         return;
     };
-    if !board.team.delete(t, n, &author) {
+    let Some(msg) = board
+        .team
+        .thread(t)
+        .and_then(|th| th.messages.get(n))
+        .map(|m| m.id)
+    else {
+        return;
+    };
+    if armed != Some(Confirm::Message(t, msg)) {
+        hero.documents.live.team.confirm = Some(Confirm::Message(t, msg));
+        return;
+    }
+    if !board.team.delete(t, msg, &author) {
         return;
     }
     if board.team.thread(t).is_none() {
@@ -576,11 +584,9 @@ fn delete_message(hero: &mut HeroScreen, n: usize, armed: Option<Confirm>) {
         return;
     }
     let team = &mut hero.documents.live.team;
-    team.editing = match team.editing {
-        Some((th, m)) if th == t && m == n => None,
-        Some((th, m)) if th == t && m > n => Some((th, m - 1)),
-        e => e,
-    };
+    if team.editing == Some((t, msg)) {
+        team.editing = None;
+    }
 }
 
 fn button(hero: &mut HeroScreen, b: TeamButton) {

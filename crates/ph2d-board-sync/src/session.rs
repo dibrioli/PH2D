@@ -36,7 +36,7 @@ pub enum Msg {
     Welcome {
         you: PeerInfo,
         peers: Vec<PeerInfo>,
-        snapshot: Snapshot,
+        snapshot: Box<Snapshot>,
     },
     Refused {
         protocol: u32,
@@ -201,7 +201,7 @@ impl Host {
                 Msg::Welcome {
                     you: info.clone(),
                     peers: self.room.peers.values().cloned().collect(),
-                    snapshot: self.replica.snapshot(board),
+                    snapshot: Box::new(self.replica.snapshot(board)),
                 },
             ));
             out.push((To::AllBut(conn), Msg::Joined(info.clone())));

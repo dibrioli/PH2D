@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ph2d_board_model::{Board, BoardOp, BoardSet, Element, ElementId, Field, Stamp};
 use serde::{Deserialize, Serialize};
 
+use crate::team::{Shadow, TeamState, TeamWrite};
 use crate::tokens::Tokens;
 
 /// Quem é quem numa sessão (sorteado por quem entra).
@@ -53,12 +54,17 @@ pub enum Write {
         value: Vec<u8>,
         at: Lamport,
     },
+    /// Os comentários, as versões e a apresentação.
+    Team { w: TeamWrite, at: Lamport },
 }
 
 impl Write {
     fn at(&self) -> Lamport {
         match self {
-            Write::Born { at, .. } | Write::Set { at, .. } | Write::Board { at, .. } => *at,
+            Write::Born { at, .. }
+            | Write::Set { at, .. }
+            | Write::Board { at, .. }
+            | Write::Team { at, .. } => *at,
             Write::Stamp { op, .. } => *op,
         }
     }
@@ -67,7 +73,7 @@ impl Write {
         match self {
             Write::Born { el, .. } => Some(el.id),
             Write::Set { id, .. } | Write::Stamp { id, .. } => Some(*id),
-            Write::Board { .. } => None,
+            Write::Board { .. } | Write::Team { .. } => None,
         }
     }
 }
@@ -80,6 +86,7 @@ pub struct Snapshot {
     board_stamps: Vec<(BoardField, Lamport)>,
     tokens: Tokens,
     tops: Vec<(ElementId, Lamport)>,
+    team: TeamState,
     clock: u64,
 }
 
@@ -90,6 +97,7 @@ enum OutKey {
     Set(ElementId, Field),
     Stamp(Lamport),
     Board(BoardField),
+    Team(Lamport),
 }
 
 #[derive(Clone, Debug)]
@@ -108,6 +116,8 @@ pub struct Replica {
     /// As minhas, para reenviar depois de uma queda.
     outbox: BTreeMap<OutKey, Write>,
     shadow: (String, bool),
+    team: TeamState,
+    team_shadow: Shadow,
 }
 
 impl Replica {
@@ -123,13 +133,19 @@ impl Replica {
             outgoing: Vec::new(),
             outbox: BTreeMap::new(),
             shadow: (board.name.clone(), board.sketch),
+            team: TeamState::default(),
+            team_shadow: Shadow::of(&board.team),
         }
     }
 
     /// Abre uma sessão sobre `board` (o anfitrião). `seed` (do sistema) sorteia os ids novos.
     pub fn host(peer: PeerId, board: &mut Board, seed: u64) -> Self {
-        board.doc.set_session(Some(seed));
-        Self::blank(peer, board)
+        board.set_session(Some(seed));
+        let mut r = Self::blank(peer, board);
+        r.team.seed(&board.team);
+        r.team.settle(&mut board.team);
+        r.team_shadow = Shadow::of(&board.team);
+        r
     }
 
     /// Entra numa sessão a partir do retrato do anfitrião.
@@ -138,7 +154,7 @@ impl Replica {
     /// Um retrato corrompido.
     pub fn join(peer: PeerId, snap: &Snapshot, seed: u64) -> Result<(Self, Board), String> {
         let mut board = BoardSet::board_from_bytes(&snap.board)?;
-        board.doc.set_session(Some(seed));
+        board.set_session(Some(seed));
         let mut r = Self::blank(peer, &board);
         r.adopt(snap);
         Ok((r, board))
@@ -154,7 +170,7 @@ impl Replica {
         let _ = self.local(board);
         *board = BoardSet::board_from_bytes(&snap.board)?;
         board.camera = camera;
-        board.doc.set_session(Some(seed));
+        board.set_session(Some(seed));
         let mine: Vec<Write> = self.outbox.values().cloned().collect();
         // O meu relógio nunca volta atrás: dois carimbos meus iguais seriam a mesma ficha.
         *self = Self {
@@ -174,6 +190,7 @@ impl Replica {
         self.board_stamps = snap.board_stamps.iter().copied().collect();
         self.tokens = snap.tokens.clone();
         self.tops = snap.tops.iter().copied().collect();
+        self.team = snap.team.clone();
     }
 
     /// O retrato para quem entra.
@@ -185,6 +202,7 @@ impl Replica {
             board_stamps: self.board_stamps.iter().map(|(k, v)| (*k, *v)).collect(),
             tokens: self.tokens.clone(),
             tops: self.tops.iter().map(|(k, v)| (*k, *v)).collect(),
+            team: self.team.clone(),
             clock: self.clock,
         }
     }
@@ -212,6 +230,7 @@ impl Replica {
             Write::Set { id, field, .. } => OutKey::Set(*id, *field),
             Write::Stamp { op, .. } => OutKey::Stamp(*op),
             Write::Board { field, .. } => OutKey::Board(*field),
+            Write::Team { at, .. } => OutKey::Team(*at),
         };
         self.outbox.insert(key, w.clone());
     }
@@ -294,6 +313,14 @@ impl Replica {
             }
         }
         self.shadow = (board.name.clone(), board.sketch);
+        let (mut clock, peer) = (self.clock, self.peer);
+        let team = self.team.capture(&mut board.team, &self.team_shadow, || {
+            clock += 1;
+            Lamport { n: clock, peer }
+        });
+        self.clock = clock;
+        self.team_shadow = Shadow::of(&board.team);
+        out.extend(team.into_iter().map(|(at, w)| Write::Team { w, at }));
         for id in lists {
             self.settle_list(board, id);
         }
@@ -313,8 +340,22 @@ impl Replica {
         let mine = self.local(board);
         self.outgoing.extend(mine);
         let mut cache: BTreeMap<ElementId, Element> = BTreeMap::new();
+        let (team, writes): (Vec<&Write>, Vec<&Write>) =
+            writes.iter().partition(|w| matches!(w, Write::Team { .. }));
+        let team: Vec<_> = team
+            .into_iter()
+            .filter_map(|w| match w {
+                Write::Team { w, at } => {
+                    self.clock = self.clock.max(at.n);
+                    Some((*at, w.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        self.team.receive(&mut board.team, &team);
+        self.team_shadow = Shadow::of(&board.team);
         let mut todo: Vec<Write> = std::mem::take(&mut self.pending);
-        todo.extend_from_slice(writes);
+        todo.extend(writes.into_iter().cloned());
         loop {
             let before = todo.len();
             let mut again = Vec::new();
@@ -363,10 +404,10 @@ impl Replica {
             return true;
         }
         let id = w.id().expect("uma escrita de elemento");
-        if !cache.contains_key(&id) {
+        if let std::collections::btree_map::Entry::Vacant(slot) = cache.entry(id) {
             match board.doc.get_any(id) {
                 Some(el) => {
-                    cache.insert(id, el.clone());
+                    slot.insert(el.clone());
                 }
                 None => {
                     let Write::Born { el, at } = w else {
@@ -377,7 +418,7 @@ impl Replica {
                     }
                     self.tokens.seed(el);
                     self.touch(id, *at);
-                    cache.insert(id, el.clone());
+                    slot.insert(el.clone());
                     return true;
                 }
             }
@@ -415,7 +456,7 @@ impl Replica {
                     el.org = None;
                 }
             }
-            Write::Board { .. } => unreachable!("tratado acima"),
+            Write::Board { .. } | Write::Team { .. } => unreachable!("tratado acima"),
         }
         self.touch(id, at);
         true
@@ -454,7 +495,7 @@ impl Replica {
     /// Escritas à espera de um elemento que ainda não nasceu aqui.
     #[must_use]
     pub fn pending(&self) -> usize {
-        self.pending.len()
+        self.pending.len() + self.team.pending()
     }
 }
 

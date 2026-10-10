@@ -124,6 +124,7 @@ fn delete_asks_twice_and_the_edit_follows_its_message() {
         [0.0, 0.0],
         &[("Ana", "one"), ("Ana", "two"), ("Ana", "three")],
     );
+    let third = t.team().thread(id).unwrap().messages[2].id;
     t.shell_click_id(team_node(Hit::Bubble(id)), "a bolha");
     t.shell_click_id(team_node(Hit::Edit(2)), "editar a 3.ª");
     t.shell_click_id(team_node(Hit::Delete(1)), "apagar a 2.ª");
@@ -136,8 +137,8 @@ fn delete_asks_twice_and_the_edit_follows_its_message() {
     assert_eq!(t.team().thread(id).unwrap().messages.len(), 2);
     assert_eq!(
         t.hero.documents.live.team.editing,
-        Some((id, 1)),
-        "a 3.ª é agora a 2.ª"
+        Some((id, third)),
+        "a edição segue a 3.ª (agora na 2.ª linha)"
     );
     // O clique no lixo levou o foco: o artista volta ao campo e publica.
     let field = crate::ids::BOARD_COMMENT_INPUT;

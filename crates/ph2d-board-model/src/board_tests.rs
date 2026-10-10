@@ -201,7 +201,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 9);
+    assert_eq!(FORMAT_VERSION, 10);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -442,3 +442,85 @@ fn a_format_8_file_still_opens_with_the_default_look() {
 
 /// Gravados pelo build do formato 8 (`3b4ec7784`).
 const V8_BYTES: &[u8] = include_bytes!("../fixtures/format_v8.bin");
+
+/// ⭐ Um ficheiro do formato 9 (W9: mensagens e versões sem id) continua a abrir — gravado pelo build
+/// de `c9f29c3e6` (teste temporário que escreveu `to_bytes`, apagado): «Retro9» (zoom 0,5) com um
+/// frame «Sprint» escondido da apresentação e uma nota dentro; três fios abertos e o do meio apagado
+/// (o contador antigo ia em 3 para 2 fios), um de 3 mensagens com a 3.ª editada, um resolvido de 2;
+/// duas versões. «Outro»: um fio de 2 e uma versão. Os ids saem do contador: cada fio, as mensagens
+/// dele pela ordem, as versões no fim.
+#[test]
+fn a_format_9_file_still_opens_and_its_team_gets_ids() {
+    use crate::{ElementId, MessageId, ThreadId, VersionId};
+    let set = BoardSet::from_bytes(V9_BYTES).expect("o formato 9 lê-se");
+    let [a, b] = set.boards() else {
+        panic!("dois quadros");
+    };
+    assert_eq!((a.name.as_str(), a.camera.zoom), ("Retro9", 0.5));
+    assert_eq!(a.doc.live_len(), 2);
+    let frame = ElementId(1);
+    assert_eq!(a.doc.get(frame).unwrap().as_frame().unwrap().name, "Sprint");
+    assert!(a.team.hidden_slides.contains(&frame));
+    let ids = |t: &crate::Thread| -> Vec<u64> { t.messages.iter().map(|m| m.id.0).collect() };
+    let [t1, t3] = &a.team.threads[..] else {
+        panic!("dois fios");
+    };
+    assert_eq!((t1.id, ids(t1)), (ThreadId(1), vec![2, 3, 4]));
+    let texts: Vec<_> = t1
+        .messages
+        .iter()
+        .map(|m| (m.author.as_str(), m.text.as_str(), m.at, m.edited))
+        .collect();
+    assert_eq!(
+        texts,
+        [
+            ("Ana", "aqui", 1000, false),
+            ("Rui", "sim", 1010, false),
+            ("Ana", "ok!", 1020, true)
+        ]
+    );
+    assert_eq!(t1.read_by, ["Ana", "Rui"]);
+    assert!(matches!(
+        t1.pin,
+        crate::Pin::Element {
+            id: ElementId(2),
+            ..
+        }
+    ));
+    assert_eq!((t3.id, ids(t3)), (ThreadId(5), vec![6, 7]));
+    assert!(t3.resolved);
+    let vs: Vec<_> = a
+        .team
+        .versions
+        .iter()
+        .map(|v| (v.id, v.name.as_str(), v.at))
+        .collect();
+    assert_eq!(vs, [(VersionId(8), "v1", 2000), (VersionId(9), "v2", 2100)]);
+    let saved = a.team.versions[0]
+        .read()
+        .expect("a versão do formato 9 abre");
+    assert_eq!(saved.doc.live_len(), 2);
+    assert!(saved.team.hidden_slides.contains(&frame) && saved.team.threads.is_empty());
+    assert_eq!(b.team.threads[0].id, ThreadId(1));
+    assert_eq!(b.team.threads[0].messages[1].id, MessageId(3));
+    assert_eq!(b.team.versions[0].id, VersionId(4));
+    assert_eq!(
+        (a.team.clone().mint(), b.team.clone().mint()),
+        (10, 5),
+        "o contador fica acima de todos"
+    );
+    let bytes = set.to_bytes().unwrap();
+    assert_eq!(
+        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
+        10,
+        "regrava-se como 10"
+    );
+    assert_eq!(
+        BoardSet::from_bytes(&bytes).unwrap(),
+        set,
+        "relido e regravado no formato actual, fica igual"
+    );
+}
+
+/// Gravados pelo build do formato 9 (`c9f29c3e6`).
+const V9_BYTES: &[u8] = include_bytes!("../fixtures/format_v9.bin");

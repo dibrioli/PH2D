@@ -21,14 +21,15 @@ mod mind;
 mod ops;
 mod organize;
 mod rich;
+mod session;
 mod team;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
 pub use connector::{Anchor, Connector, End, Head, ORBIT_GAP, Route};
 pub use element::{
-    BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Rgba, SESSION_ID_BIT,
-    Shape, ShapeType, Style, TextAlign, VAlign, rotate_about,
+    BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Rgba, Shape,
+    ShapeType, Style, TextAlign, VAlign, rotate_about,
 };
 pub use facilitate::{
     STAMP_CHIP_BASE, STAMP_CHIP_DIGIT, STAMP_CHIP_GAP, STAMP_CHIP_H, Stamp, StampCount, VOTE_BADGE,
@@ -48,7 +49,8 @@ pub use mind::{
 pub use ops::{BoardOp, apply_batch};
 pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag};
 pub use rich::{Mark, Marks, RichText, Span};
-pub use team::{Message, Pin, Team, TeamOp, Thread, ThreadId, Version};
+pub use session::SESSION_ID_BIT;
+pub use team::{Message, MessageId, Pin, Team, TeamOp, Thread, ThreadId, Version, VersionId};
 
 /// Espessura do contorno de uma forma nova, em unidades do mundo: a MAIS FINA que o quadro oferece,
 /// 0,5 — ordens do dono (07/10): *«a espessura padrão deve ser a mais fina»* (captura

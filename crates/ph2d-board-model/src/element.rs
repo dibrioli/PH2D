@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::session::{Session, splitmix64};
 use crate::{Connector, End, FracKey, Frame, Ink, Org, RichText};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
@@ -551,63 +552,6 @@ impl PartialEq for Rev {
     }
 }
 
-/// O bit alto de um id nascido numa sessão ao vivo (ADR-0181 §5): os sorteados nunca colidem com os
-/// do contador local, que os ficheiros de hoje usam.
-pub const SESSION_ID_BIT: u64 = 1 << 63;
-
-/// O passo do splitmix64 (Steele, Lea & Flood, 2014).
-pub(crate) fn splitmix64(x: u64) -> u64 {
-    let mut z = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^ (z >> 31)
-}
-
-/// A sessão ao vivo de um documento: o gerador dos ids sorteados e das caudas das chaves de z, e o
-/// caderno do que mudou desde a última leitura ([`BoardDoc::take_changes`]). Não é conteúdo (o
-/// `PartialEq` do documento ignora-o) nem vai para o ficheiro.
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Session(Option<Box<SessionState>>);
-
-#[derive(Debug)]
-pub(crate) struct SessionState {
-    rng: std::sync::atomic::AtomicU64,
-    /// O estado de cada elemento tocado ANTES da 1.ª mudança desde a última leitura (`None` = não
-    /// existia).
-    changes: BTreeMap<ElementId, Option<Element>>,
-}
-
-impl Clone for SessionState {
-    fn clone(&self) -> Self {
-        use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
-        Self {
-            rng: AtomicU64::new(self.rng.load(Relaxed)),
-            changes: self.changes.clone(),
-        }
-    }
-}
-
-impl Session {
-    fn next(&self) -> Option<u64> {
-        use std::sync::atomic::Ordering::Relaxed;
-        let s = self.0.as_ref()?;
-        Some(splitmix64(s.rng.fetch_add(0x9e37_79b9_7f4a_7c15, Relaxed)))
-    }
-
-    /// Anota o estado de `id` antes de uma mudança (só a 1.ª desde a última leitura conta).
-    pub(crate) fn note(&mut self, id: ElementId, before: Option<&Element>) {
-        if let Some(s) = &mut self.0 {
-            s.changes.entry(id).or_insert_with(|| before.cloned());
-        }
-    }
-}
-
-impl PartialEq for Session {
-    fn eq(&self, _: &Self) -> bool {
-        true
-    }
-}
-
 impl BoardDoc {
     /// A revisão desta sessão: muda a cada operação aplicada (e só então).
     #[must_use]
@@ -615,69 +559,10 @@ impl BoardDoc {
         self.rev.0
     }
 
-    /// Um id ainda não usado neste quadro: o contador local; numa sessão ao vivo, sorteado com o
-    /// [`SESSION_ID_BIT`] (duas máquinas nunca fabricam o mesmo).
-    pub fn mint_id(&mut self) -> ElementId {
-        while let Some(r) = self.session.next() {
-            let id = ElementId(r | SESSION_ID_BIT);
-            if !self.elements.contains_key(&id) {
-                return id;
-            }
-        }
-        self.next_id += 1;
-        ElementId(self.next_id)
-    }
-
-    /// Entra (`Some(semente)`, do sistema) ou sai (`None`) de uma sessão ao vivo (ADR-0181 §5).
-    pub fn set_session(&mut self, seed: Option<u64>) {
-        self.session = Session(seed.map(|seed| {
-            Box::new(SessionState {
-                rng: std::sync::atomic::AtomicU64::new(seed),
-                changes: BTreeMap::new(),
-            })
-        }));
-    }
-
-    /// O que mudou desde a última leitura, em sessão: cada id tocado com o estado ANTES da 1.ª
-    /// mudança (`None` = nasceu). O estado de agora é [`Self::get_any`]. Fora de sessão, nada.
-    pub fn take_changes(&mut self) -> Vec<(ElementId, Option<Element>)> {
-        self.session
-            .0
-            .as_mut()
-            .map(|s| std::mem::take(&mut s.changes).into_iter().collect())
-            .unwrap_or_default()
-    }
-
-    /// A `version`/`nonce` que a sessão ao vivo deriva dos carimbos (ADR-0181 §5) — não é uma
-    /// mudança (não passa pelas operações nem pelo caderno).
-    pub fn set_mark(&mut self, id: ElementId, version: u64, nonce: u32) {
-        if let Some(el) = self.elements.get_mut(&id) {
-            (el.version, el.nonce) = (version, nonce);
-        }
-    }
-
     /// O elemento com este id, APAGADO incluído (a lápide é estado partilhado numa sessão).
     #[must_use]
     pub fn get_any(&self, id: ElementId) -> Option<&Element> {
         self.elements.get(&id)
-    }
-
-    /// Está numa sessão ao vivo?
-    #[must_use]
-    pub fn in_session(&self) -> bool {
-        self.session.0.is_some()
-    }
-
-    /// ⭐ A porta ÚNICA das chaves novas de z e de ordem entre irmãos: a chave entre `lo` e `hi`, com
-    /// a cauda desta sessão se está ao vivo (duas pessoas a criar no mesmo sítio ao mesmo tempo não
-    /// empatam — `colab_oracle` c05, c06).
-    #[must_use]
-    pub fn key_between(&self, lo: Option<&FracKey>, hi: Option<&FracKey>) -> FracKey {
-        let k = FracKey::between(lo, hi);
-        match self.session.next() {
-            Some(salt) => k.salted(salt, hi),
-            None => k,
-        }
     }
 
     /// O elemento vivo (não apagado) com este id.

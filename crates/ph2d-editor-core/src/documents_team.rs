@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use ph2d_board_model::{BoardId, Camera, ElementId, Pin, ThreadId};
+use ph2d_board_model::{BoardId, Camera, ElementId, MessageId, Pin, ThreadId};
 
 use super::Documents;
 
@@ -109,8 +109,8 @@ pub struct Show {
 /// O apagar armado à espera do 2.º clique.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Confirm {
-    /// A mensagem `n` do fio.
-    Message(ThreadId, usize),
+    /// Uma mensagem do fio (pelo id: a posição muda quando outra se apaga).
+    Message(ThreadId, MessageId),
     /// A versão `n` do quadro.
     Version(BoardId, usize),
 }
@@ -128,9 +128,9 @@ pub struct Team {
     pub list_open: bool,
     /// O fio aberto no cartão, por quadro.
     pub open: BTreeMap<BoardId, OpenThread>,
-    /// K4 — a mensagem que se está a editar: o fio E o índice (um índice sozinho apontava para outra
-    /// mensagem depois de um apagar, auditoria W8).
-    pub editing: Option<(ThreadId, usize)>,
+    /// K4 — a mensagem que se está a editar: o fio E o id dela (um índice apontava para outra mensagem
+    /// depois de um apagar, auditoria W8).
+    pub editing: Option<(ThreadId, MessageId)>,
     /// R2 — o painel das versões do quadro activo está aberto.
     pub versions_open: bool,
     /// R2 — a versão que se está a renomear: o quadro E o índice.

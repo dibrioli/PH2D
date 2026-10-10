@@ -2,7 +2,9 @@
 //! `08_ao_vivo.md` §1) e a convergência com uma rede que atrasa, reordena e duplica.
 
 use super::*;
-use ph2d_board_model::{BoardSet, History, Rgba, RichText, Shape, ShapeType, Stamp, Style};
+use ph2d_board_model::{
+    BoardSet, History, MessageId, Pin, Rgba, RichText, Shape, ShapeType, Stamp, Style, ThreadId,
+};
 
 const RED: Rgba = Rgba([200, 0, 0, 255]);
 const BLUE: Rgba = Rgba([0, 0, 200, 255]);
@@ -74,7 +76,7 @@ fn state(p: &Peer) -> Vec<u8> {
     );
     els.sort_by_key(|e| e.id);
     els.dedup_by_key(|e| e.id);
-    postcard::to_allocvec(&(els, &p.b.name, p.b.sketch)).unwrap()
+    postcard::to_allocvec(&(els, &p.b.name, p.b.sketch, &p.b.team)).unwrap()
 }
 
 /// Igual byte a byte; senão, o 1.º elemento que difere (e não os bytes todos).
@@ -106,6 +108,34 @@ fn same(a: &Peer, b: &Peer, ctx: &str) {
             };
             panic!("{ctx}: o elemento {id:?} difere: {what}");
         }
+    }
+    let (ta, tb) = (&a.b.team, &b.b.team);
+    let brief = |t: &ph2d_board_model::Team| {
+        format!(
+            "fios {:?}; versões {:?}; slides {:?}",
+            t.threads
+                .iter()
+                .map(|t| (t.id.0 % 1000, t.resolved, t.messages.iter().map(|m| (m.id.0 % 1000, m.text.clone(), m.at)).collect::<Vec<_>>(), t.read_by.clone()))
+                .collect::<Vec<_>>(),
+            t.versions.iter().map(|v| (v.id.0 % 1000, v.name.clone(), v.at)).collect::<Vec<_>>(),
+            t.hidden_slides
+        )
+    };
+    if ta != tb {
+        let ids: std::collections::BTreeSet<_> =
+            ta.threads.iter().chain(&tb.threads).map(|t| t.id).collect();
+        for id in ids {
+            let (x, y) = (ta.thread(id), tb.thread(id));
+            if x != y {
+                panic!(
+                    "{ctx}: o fio {} difere (apagado/pendentes A {:?} B {:?}):\nA {x:?}\nB {y:?}",
+                    id.0 % 1000,
+                    a.r.team.probe(id),
+                    b.r.team.probe(id)
+                );
+            }
+        }
+        panic!("{ctx}: a equipa difere:\nA {}\nB {}", brief(ta), brief(tb));
     }
     panic!(
         "{ctx}: difere fora dos elementos ({:?}/{} × {:?}/{})",
@@ -304,6 +334,10 @@ impl Rng {
 fn random_edit(p: &mut Peer, rng: &mut Rng) {
     let ids: Vec<ElementId> = p.b.doc.live().map(|e| e.id).collect();
     let pick = (!ids.is_empty()).then(|| ids[rng.below(ids.len())]);
+    if rng.below(4) == 0 {
+        team_edit(p, rng);
+        return;
+    }
     match (rng.below(9), pick) {
         (0, _) | (_, None) => {
             rect(&mut p.b, rng.below(500) as f64, "n");
@@ -386,11 +420,105 @@ fn every_peer_ends_with_the_same_board_whatever_the_network_does() {
             }
         }
         for (i, p) in peers.iter().enumerate() {
-            assert!(
-                p.r.pending.is_empty(),
-                "semente {seed}: par {i} com pendentes"
-            );
+            assert_eq!(p.r.pending(), 0, "semente {seed}: par {i} com pendentes");
             same(&peers[0], p, &format!("semente {seed}: o par {i}"));
         }
     }
+}
+
+const WHO: [&str; 3] = ["ana", "bia", "caio"];
+
+/// Uma mudança sorteada na equipa: abrir, responder, ler, editar, apagar, resolver, versão, slide.
+fn team_edit(p: &mut Peer, rng: &mut Rng) {
+    let me = WHO[rng.below(3)];
+    let at = 1_000 + rng.below(50) as i64;
+    let threads: Vec<ThreadId> = p.b.team.threads.iter().map(|t| t.id).collect();
+    let t = (!threads.is_empty()).then(|| threads[rng.below(threads.len())]);
+    match (rng.below(8), t) {
+        (0, _) | (_, None) => {
+            p.b.team.open(Pin::Point([1.0, 2.0]), me, "oi", at);
+        }
+        (1, Some(t)) => {
+            p.b.team.reply(t, me, &format!("r{}", rng.below(9)), at);
+        }
+        (2, Some(t)) => p.b.team.mark_read(t, me),
+        (3, Some(t)) => {
+            let msgs: Vec<(MessageId, String)> = p.b.team.thread(t).unwrap().messages.iter().map(|m| (m.id, m.author.clone())).collect();
+            let (m, author) = msgs[rng.below(msgs.len())].clone();
+            if rng.below(2) == 0 {
+                p.b.team.edit(t, m, &author, &format!("e{}", rng.below(9)));
+            } else {
+                p.b.team.delete(t, m, &author);
+            }
+        }
+        (4, Some(t)) => {
+            p.b.team.set_resolved(t, rng.below(2) == 0);
+        }
+        (5, _) => p.b.save_version(format!("v{}", rng.below(9)), at),
+        (6, _) => {
+            if let Some(v) = p.b.team.versions.first_mut() {
+                v.name = format!("n{}", rng.below(9));
+            }
+        }
+        _ => {
+            let f = ElementId(rng.below(3) as u64 + 1);
+            p.b.team.set_slide_hidden(f, rng.below(2) == 0);
+        }
+    }
+}
+
+/// Duas respostas ao mesmo fio ao mesmo tempo ficam AS DUAS, pela mesma ordem nos dois.
+#[test]
+fn two_replies_at_once_both_stay_in_one_order() {
+    let (mut a, mut b, _) = two();
+    let t = a.b.team.open(Pin::Point([0.0, 0.0]), "ana", "pergunta", 10).unwrap();
+    concurrently(&mut a, &mut b);
+    a.b.team.reply(t, "ana", "eu", 20);
+    b.b.team.reply(t, "bia", "eu também", 20);
+    concurrently(&mut a, &mut b);
+    let texts: Vec<String> = b.b.team.thread(t).unwrap().messages.iter().map(|m| m.text.clone()).collect();
+    assert_eq!(texts.len(), 3, "{texts:?}");
+}
+
+/// Apagar o fio (a 1.ª mensagem) enquanto outro responde: o fio fica apagado nos dois.
+#[test]
+fn a_thread_deleted_while_another_replies_stays_deleted() {
+    let (mut a, mut b, _) = two();
+    let t = a.b.team.open(Pin::Point([0.0, 0.0]), "ana", "x", 10).unwrap();
+    concurrently(&mut a, &mut b);
+    let first = a.b.team.thread(t).unwrap().messages[0].id;
+    assert!(a.b.team.delete(t, first, "ana"));
+    b.b.team.reply(t, "bia", "y", 11);
+    concurrently(&mut a, &mut b);
+    assert!(a.b.team.thread(t).is_none() && b.b.team.thread(t).is_none());
+}
+
+/// Duas pessoas a ler ao mesmo tempo ficam as duas como «leu»; uma resposta nova volta a pôr por ler
+/// quem não a escreveu.
+#[test]
+fn two_readers_at_once_both_count_and_a_reply_resets_the_others() {
+    let (mut a, mut b, _) = two();
+    let t = a.b.team.open(Pin::Point([0.0, 0.0]), "caio", "x", 10).unwrap();
+    concurrently(&mut a, &mut b);
+    a.b.team.mark_read(t, "ana");
+    b.b.team.mark_read(t, "bia");
+    concurrently(&mut a, &mut b);
+    let read = |p: &Peer| p.b.team.thread(t).unwrap().read_by.clone();
+    assert_eq!(read(&a), vec!["ana", "bia", "caio"]);
+    b.b.team.reply(t, "bia", "y", 11);
+    concurrently(&mut a, &mut b);
+    assert_eq!(read(&a), vec!["bia"]);
+}
+
+/// Uma versão guardada por A chega a B; renomear e apagar ao mesmo tempo: fica apagada.
+#[test]
+fn a_saved_version_travels_and_a_delete_beats_a_rename() {
+    let (mut a, mut b, _) = two();
+    a.b.save_version("antes".into(), 5);
+    concurrently(&mut a, &mut b);
+    assert_eq!(b.b.team.versions.len(), 1);
+    a.b.team.versions[0].name = "outro".into();
+    b.b.team.versions.clear();
+    concurrently(&mut a, &mut b);
+    assert!(a.b.team.versions.is_empty());
 }

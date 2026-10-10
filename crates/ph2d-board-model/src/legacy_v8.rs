@@ -3,10 +3,10 @@
 
 use serde::Deserialize;
 
-use super::{DocOld, doc_old};
+use super::{DocOld, TeamV9, doc_old};
 use crate::{
     Board, BoardId, BoardSet, Camera, Connector, Dash, Element, ElementId, ElementKind, End,
-    FracKey, Head, Rgba, RichText, Route, Shape, ShapeType, Style, Team,
+    FracKey, Head, Rgba, RichText, Route, Shape, ShapeType, Style,
 };
 
 /// O `Style` dos formatos 4–8 (sem o `look` da W9).
@@ -178,7 +178,7 @@ struct BoardV8 {
     camera: Camera,
     doc: DocOld<ElementV8>,
     sketch: bool,
-    team: Team,
+    team: TeamV9,
 }
 
 #[derive(Deserialize)]
@@ -203,7 +203,7 @@ pub(crate) fn read_v8(bytes: &[u8]) -> Result<BoardSet, String> {
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
-                team: b.team,
+                team: b.team.into(),
             }
         })
         .collect();

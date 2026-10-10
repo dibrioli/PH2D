@@ -1,8 +1,8 @@
 //! A equipa no documento (W8, `docs/MiroClone/06_equipa_e_saida.md` §2 K, R, P).
 
 use crate::{
-    BoardId, BoardOp, BoardSet, Connector, Element, End, History, Pin, Rgba, RichText, Route,
-    Shape, ShapeType, Style, Team,
+    BoardId, BoardOp, BoardSet, Connector, Element, End, History, MessageId, Pin, Rgba, RichText,
+    Route, SESSION_ID_BIT, Shape, ShapeType, Style, Team,
 };
 
 fn note(set: &mut BoardSet) -> (BoardId, crate::ElementId) {
@@ -122,22 +122,133 @@ fn a_thread_opens_replies_and_tracks_who_read_it() {
     assert!(th.unread_for("Ana") && !th.unread_for("Rui"));
 }
 
-/// ⭐ K4: só o autor edita e apaga a SUA mensagem; apagar a 1.ª apaga o fio.
+fn msg_ids(t: &Team, id: crate::ThreadId) -> Vec<MessageId> {
+    t.thread(id)
+        .unwrap()
+        .messages
+        .iter()
+        .map(|m| m.id)
+        .collect()
+}
+
+/// ⭐ K4: só o autor edita e apaga a SUA mensagem — pelo id dela; apagar a 1.ª apaga o fio.
 #[test]
 fn only_the_author_edits_or_deletes_and_the_first_takes_the_thread() {
     let mut t = Team::default();
     let id = t.open(Pin::Point([0.0; 2]), "Ana", "a", 0).unwrap();
     t.reply(id, "Rui", "b", 1);
-    assert!(!t.edit(id, 0, "Rui", "x"), "a do outro não");
-    assert!(t.edit(id, 0, "Ana", "a"), "igual não marca editada");
+    let [m0, m1] = msg_ids(&t, id)[..] else {
+        panic!("duas mensagens");
+    };
+    assert!(!t.edit(id, m0, "Rui", "x"), "a do outro não");
+    assert!(t.edit(id, m0, "Ana", "a"), "igual não marca editada");
     assert!(!t.thread(id).unwrap().messages[0].edited);
-    assert!(t.edit(id, 0, "Ana", "c"));
+    assert!(t.edit(id, m0, "Ana", "c"));
     assert!(t.thread(id).unwrap().messages[0].edited);
-    assert!(!t.delete(id, 1, "Ana"));
-    assert!(t.delete(id, 1, "Rui"));
+    assert!(!t.delete(id, m1, "Ana"));
+    assert!(t.delete(id, m1, "Rui"));
     assert_eq!(t.thread(id).unwrap().messages.len(), 1);
-    assert!(t.delete(id, 0, "Ana"));
+    assert!(t.delete(id, m0, "Ana"));
     assert!(t.thread(id).is_none());
+}
+
+/// ⭐ A mensagem é o ID, nunca a posição: apagar uma de cima não desloca a edição de outra; um id
+/// que não existe (ou de outro fio) não faz nada.
+#[test]
+fn a_message_is_its_id_not_its_place() {
+    let mut t = Team::default();
+    let a = t.open(Pin::Point([0.0; 2]), "Ana", "a", 0).unwrap();
+    t.reply(a, "Rui", "b", 1);
+    t.reply(a, "Ana", "c", 2);
+    let b = t.open(Pin::Point([9.0; 2]), "Ana", "outro", 3).unwrap();
+    let [_, m1, m2] = msg_ids(&t, a)[..] else {
+        panic!("três mensagens");
+    };
+    let other = msg_ids(&t, b)[0];
+    assert!(t.delete(a, m1, "Rui"));
+    assert!(t.edit(a, m2, "Ana", "c!"));
+    assert_eq!(t.thread(a).unwrap().messages[1].text, "c!");
+    let before = t.clone();
+    let ghost = MessageId(999);
+    assert!(!t.edit(a, ghost, "Ana", "x") && !t.delete(a, ghost, "Ana"));
+    assert!(!t.edit(a, other, "Ana", "x") && !t.delete(a, other, "Ana"));
+    assert!(!t.delete(a, m1, "Rui"), "a apagada já não existe");
+    assert_eq!(t, before);
+}
+
+/// ⭐ Fora de sessão os ids de fios, mensagens e versões saem do MESMO contador, por ordem; ele
+/// grava-se, e a leitura continua acima dele.
+#[test]
+fn ids_out_of_a_session_are_one_counter_and_it_survives_the_file() {
+    let mut set = BoardSet::default();
+    let (a, _) = note(&mut set);
+    let b = set.get_mut(a).unwrap();
+    let t1 = b.team.open(Pin::Point([0.0; 2]), "Ana", "x", 0).unwrap();
+    b.team.reply(t1, "Rui", "y", 1);
+    let t2 = b.team.open(Pin::Point([1.0; 2]), "Rui", "z", 2).unwrap();
+    b.save_version("v".into(), 3);
+    assert_eq!((t1, t2), (crate::ThreadId(1), crate::ThreadId(4)));
+    assert_eq!(msg_ids(&b.team, t1), [MessageId(2), MessageId(3)]);
+    assert_eq!(msg_ids(&b.team, t2), [MessageId(5)]);
+    assert_eq!(b.team.versions[0].id, crate::VersionId(6));
+    let mut back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(
+        back.get_mut(a).unwrap().team.mint(),
+        7,
+        "o contador viaja no ficheiro"
+    );
+}
+
+/// ⭐ Em sessão (ADR-0181 §5): duas máquinas com sementes diferentes cunham ids DIFERENTES, com o bit
+/// alto; o contador local não anda (ao sair, continua onde estava).
+#[test]
+fn two_sessions_mint_different_ids_with_the_high_bit_and_the_counter_stays() {
+    let mut teams = [Team::default(), Team::default()];
+    let mut ids = Vec::new();
+    for (seed, t) in teams.iter_mut().enumerate() {
+        t.set_session(Some(seed as u64 + 1));
+        let th = t.open(Pin::Point([0.0; 2]), "Ana", "x", 0).unwrap();
+        t.reply(th, "Rui", "y", 1);
+        ids.push(th.0);
+        ids.extend(msg_ids(t, th).iter().map(|m| m.0));
+    }
+    assert!(ids.iter().all(|id| id & SESSION_ID_BIT != 0), "{ids:x?}");
+    let unique: std::collections::BTreeSet<_> = ids.iter().collect();
+    assert_eq!(unique.len(), ids.len(), "{ids:x?}");
+    teams[0].set_session(None);
+    assert_eq!(teams[0].mint(), 1, "o contador não saltou");
+}
+
+/// ⭐ O sorteio da sessão nunca devolve um id que a equipa já tem (o que chegou de outra máquina).
+#[test]
+fn a_session_never_mints_an_id_the_team_already_has() {
+    let mut a = Team::default();
+    a.set_session(Some(5));
+    let mut b = a.clone();
+    let th = a.open(Pin::Point([0.0; 2]), "Ana", "x", 0).unwrap();
+    b.threads = a.threads.clone();
+    let taken = [th.0, msg_ids(&a, th)[0].0];
+    let fresh = [b.mint(), b.mint()];
+    assert!(
+        fresh.iter().all(|f| !taken.contains(f)),
+        "{fresh:x?} {taken:x?}"
+    );
+}
+
+/// O quadro entra em sessão com o documento E a equipa, e os dois sorteios não andam juntos.
+#[test]
+fn a_board_session_draws_the_doc_and_the_team_apart() {
+    let mut set = BoardSet::default();
+    let (a, _) = note(&mut set);
+    let b = set.get_mut(a).unwrap();
+    b.set_session(Some(7));
+    assert!(b.doc.in_session());
+    let (el, team) = (b.doc.mint_id().0, b.team.mint());
+    assert!(team & SESSION_ID_BIT != 0);
+    assert_ne!(el, team, "a mesma semente nos dois daria o mesmo número");
+    b.set_session(None);
+    assert!(!b.doc.in_session());
+    assert_eq!(b.team.mint(), 1);
 }
 
 /// K5 resolver e reabrir; P1 os frames fora da apresentação.
@@ -334,7 +445,8 @@ fn a_team_step_of_a_gone_thread_is_spent() {
     let t = team.open(Pin::Point([0.0, 0.0]), "Ana", "x", 0).unwrap();
     let mut h = History::default();
     assert!(h.apply_team(&mut team, crate::TeamOp::Resolve(t, true)));
-    assert!(team.delete(t, 0, "Ana"));
+    let first = team.thread(t).unwrap().messages[0].id;
+    assert!(team.delete(t, first, "Ana"));
     assert!(h.undo_team(&mut team));
     assert!(!h.can_undo() && !h.can_redo());
 }

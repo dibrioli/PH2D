@@ -244,7 +244,7 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         if let (true, Some(t)) = (own, tid) {
             let del = Rect::new(x + w - pad - small, cy, small, small);
             let edit = Rect::new(del.x - small, cy, small, small);
-            let armed = confirm == Some(Confirm::Message(t, n));
+            let armed = confirm == Some(Confirm::Message(t, msg.id));
             icon_button(
                 scene,
                 &mut hero.store,
@@ -359,8 +359,8 @@ pub(super) fn begin_edit(hero: &mut HeroScreen, n: usize) {
     else {
         return;
     };
-    let text = m.text.clone();
-    hero.documents.live.team.editing = Some((t, n));
+    let (text, msg) = (m.text.clone(), m.id);
+    hero.documents.live.team.editing = Some((t, msg));
     // Editar continua o texto (o cursor no fim, nada seleccionado): uma tecla nunca apaga a mensagem.
     let id = crate::ids::BOARD_COMMENT_INPUT;
     let caret = text.len();

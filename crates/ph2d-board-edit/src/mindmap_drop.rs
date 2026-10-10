@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, FracKey, History, Side};
+use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, Side};
 use ph2d_text::TextSystem;
 
 use crate::mindmap::{across, order_of, settle_live};

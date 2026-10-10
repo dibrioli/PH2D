@@ -11,6 +11,8 @@
 //! - 7 (W7): sem a equipa (`Board::team`: comentários, versões, frames fora da apresentação, W8).
 //! - 8 (W8): sem o aspecto do Excalidraw (`Style::look`, `Org::seed`, W9) — o de nascença. Do 4 ao 8 o estilo
 //!   lê-se com [`StyleV8`] (pelo [`KindV8`]).
+//! - 9 (W9): mensagens e versões sem id (W11) — o leitor dá-lhos pelo contador ([`TeamV9`], que o 8
+//!   também usa).
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -26,8 +28,12 @@ use crate::{
 
 #[path = "legacy_v8.rs"]
 mod v8;
+#[path = "legacy_v9.rs"]
+mod v9;
 pub(crate) use v8::read_v8;
 use v8::{ElementV8, KindV8, element_v8};
+use v9::TeamV9;
+pub(crate) use v9::read_v9;
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]

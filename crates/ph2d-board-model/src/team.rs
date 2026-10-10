@@ -7,11 +7,25 @@ use std::io::Write as _;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Board, BoardDoc, ElementId, ElementKind};
+use crate::{Board, BoardDoc, ElementId, ElementKind, SESSION_ID_BIT};
 
 /// Identidade de um fio dentro do seu quadro. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ThreadId(pub u64);
+
+/// Identidade de uma mensagem dentro do seu quadro (formato 10): a posição na lista não serve — duas
+/// respostas ao mesmo tempo colidem —, nem `(at, autor)` (segundos, e o nome é texto livre). O
+/// `Default` (0) é «nenhuma»: o [`Team::mint`] nunca o cunha.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+pub struct MessageId(pub u64);
+
+/// Identidade de uma versão nomeada dentro do seu quadro (formato 10). O `Default` (0) é «nenhuma».
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+pub struct VersionId(pub u64);
 
 /// Um passo da equipa que se desfaz com o quadro (o dono, 10/10: *«não temos undo para Resolve»*):
 /// resolver/reabrir e mover a bolha. Escrever, responder e apagar mensagens continuam fora do desfazer
@@ -37,6 +51,7 @@ pub enum Pin {
 /// UNIX — a vista mostra «há quanto tempo», que não pede fuso).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Message {
+    pub id: MessageId,
     pub author: String,
     pub text: String,
     pub at: i64,
@@ -60,6 +75,7 @@ pub struct Thread {
 /// para 100 mil elementos).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Version {
+    pub id: VersionId,
     pub name: String,
     pub at: i64,
     pub bytes: Vec<u8>,
@@ -72,7 +88,11 @@ pub struct Team {
     pub versions: Vec<Version>,
     /// Os frames marcados «Hide from presentation» (P1).
     pub hidden_slides: BTreeSet<ElementId>,
-    next_thread: u64,
+    /// O contador dos ids de fios, mensagens e versões fora de sessão ([`Team::mint`]).
+    next_id: u64,
+    /// Em sessão ao vivo: os ids sorteados ([`Team::set_session`]).
+    #[serde(skip)]
+    session: crate::session::Lottery,
 }
 
 impl Thread {
@@ -122,18 +142,47 @@ impl Pin {
 }
 
 impl Team {
+    /// ⭐ A porta ÚNICA dos ids da equipa (fios, mensagens e versões partilham-na): o contador local;
+    /// numa sessão ao vivo, sorteado com o [`SESSION_ID_BIT`] e sem colidir com nenhum que já exista
+    /// (o idioma de [`BoardDoc::mint_id`]).
+    pub fn mint(&mut self) -> u64 {
+        while let Some(r) = self.session.draw() {
+            let id = r | SESSION_ID_BIT;
+            if !self.uses(id) {
+                return id;
+            }
+        }
+        self.next_id += 1;
+        self.next_id
+    }
+
+    fn uses(&self, id: u64) -> bool {
+        self.versions.iter().any(|v| v.id.0 == id)
+            || self
+                .threads
+                .iter()
+                .any(|t| t.id.0 == id || t.messages.iter().any(|m| m.id.0 == id))
+    }
+
+    /// Entra (`Some(semente)`) ou sai (`None`) de uma sessão ao vivo (ADR-0181 §5). O
+    /// [`Board::set_session`] liga o documento e a equipa juntos.
+    pub fn set_session(&mut self, seed: Option<u64>) {
+        self.session = crate::session::Lottery::new(seed);
+    }
+
     /// Abre um fio novo com a 1.ª mensagem; quem o escreve já o leu. Texto vazio (só espaços) não abre.
     pub fn open(&mut self, pin: Pin, author: &str, text: &str, at: i64) -> Option<ThreadId> {
         let text = text.trim();
         if text.is_empty() {
             return None;
         }
-        self.next_thread += 1;
-        let id = ThreadId(self.next_thread);
+        let id = ThreadId(self.mint());
+        let msg = MessageId(self.mint());
         self.threads.push(Thread {
             id,
             pin,
             messages: vec![Message {
+                id: msg,
                 author: author.to_owned(),
                 text: text.to_owned(),
                 at,
@@ -157,10 +206,15 @@ impl Team {
     /// Responde a um fio; os outros passam a tê-lo por ler (só quem responde o leu).
     pub fn reply(&mut self, id: ThreadId, author: &str, text: &str, at: i64) -> bool {
         let text = text.trim();
-        let Some(t) = self.thread_mut(id).filter(|_| !text.is_empty()) else {
+        if text.is_empty() || self.thread(id).is_none() {
+            return false;
+        }
+        let msg = MessageId(self.mint());
+        let Some(t) = self.thread_mut(id) else {
             return false;
         };
         t.messages.push(Message {
+            id: msg,
             author: author.to_owned(),
             text: text.to_owned(),
             at,
@@ -179,12 +233,12 @@ impl Team {
         }
     }
 
-    /// Edita a mensagem `n` — só a do próprio autor (K4). Vazio não edita.
-    pub fn edit(&mut self, id: ThreadId, n: usize, me: &str, text: &str) -> bool {
+    /// Edita a mensagem `msg` — só a do próprio autor (K4). Vazio não edita.
+    pub fn edit(&mut self, id: ThreadId, msg: MessageId, me: &str, text: &str) -> bool {
         let text = text.trim();
         let Some(m) = self
             .thread_mut(id)
-            .and_then(|t| t.messages.get_mut(n))
+            .and_then(|t| t.messages.iter_mut().find(|m| m.id == msg))
             .filter(|m| m.author == me && !text.is_empty())
         else {
             return false;
@@ -196,16 +250,16 @@ impl Team {
         true
     }
 
-    /// Apaga a mensagem `n` (só a do próprio autor); apagar a 1.ª apaga o fio inteiro (K4).
-    pub fn delete(&mut self, id: ThreadId, n: usize, me: &str) -> bool {
+    /// Apaga a mensagem `msg` (só a do próprio autor); apagar a 1.ª apaga o fio inteiro (K4).
+    pub fn delete(&mut self, id: ThreadId, msg: MessageId, me: &str) -> bool {
         let Some(at) = self.threads.iter().position(|t| t.id == id) else {
             return false;
         };
-        if self.threads[at]
-            .messages
-            .get(n)
-            .is_none_or(|m| m.author != me)
-        {
+        let messages = &self.threads[at].messages;
+        let Some(n) = messages.iter().position(|m| m.id == msg) else {
+            return false;
+        };
+        if messages[n].author != me {
             return false;
         }
         if n == 0 {
@@ -270,6 +324,13 @@ struct SetRef<'a> {
 }
 
 impl Board {
+    /// Entra (`Some(semente)`) ou sai (`None`) de uma sessão ao vivo: o documento e a equipa, com
+    /// sementes distintas derivadas da mesma (os dois sorteios nunca andam juntos).
+    pub fn set_session(&mut self, seed: Option<u64>) {
+        self.doc.set_session(seed);
+        self.team.set_session(seed.map(crate::session::splitmix64));
+    }
+
     /// Guarda uma versão (R1) com `name` e o instante `at`. ⚠️ Comprime: 14,5 ms a 100 mil elementos.
     pub fn save_version(&mut self, name: String, at: i64) {
         // R4/P1 — a versão leva o documento, o rascunho e «não apresentar» (é do documento); nunca os
@@ -297,7 +358,13 @@ impl Board {
             .write_all(&raw)
             .and_then(|()| z.finish())
             .unwrap_or_default();
-        self.team.versions.push(Version { name, at, bytes });
+        let id = VersionId(self.team.mint());
+        self.team.versions.push(Version {
+            id,
+            name,
+            at,
+            bytes,
+        });
     }
 }
 

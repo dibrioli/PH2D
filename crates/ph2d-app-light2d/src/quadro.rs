@@ -49,8 +49,9 @@ pub struct LuzDoQuadro {
     /// ⭐ A preferência do editor (`None` = degrau fixo, o da sonda/dos gates) e o governador.
     preferencia: Option<PreferenciaDaLuz>,
     governador: Governador,
-    /// O último custo de placa que o governador leu (ms, o solver inteiro).
+    /// O último custo de placa que o governador leu (ms, o solver inteiro) e quantas leituras.
     custo_ms: Option<f64>,
+    leituras: u32,
 }
 
 impl Default for LuzDoQuadro {
@@ -85,6 +86,7 @@ impl LuzDoQuadro {
             preferencia: None,
             governador: Governador::novo(NivelDaLuz::Baixa),
             custo_ms: None,
+            leituras: 0,
         }
     }
 
@@ -169,6 +171,13 @@ impl LuzDoQuadro {
     #[must_use]
     pub fn custo_ms(&self) -> Option<f64> {
         self.custo_ms
+    }
+
+    /// Quantas leituras de custo o «Automático» já colheu — o governador lê CONTINUAMENTE, não uma
+    /// vez.
+    #[must_use]
+    pub fn leituras_de_custo(&self) -> u32 {
+        self.leituras
     }
 
     /// O nível em uso e se é automático (`None` = degrau fixo).
@@ -269,6 +278,7 @@ impl LuzDoQuadro {
             && let Some(t) = r.solver.tempos_sem_esperar(gpu)
         {
             self.custo_ms = Some(t.total());
+            self.leituras += 1;
             self.governador.ler(t.total(), p.nivel);
         }
     }

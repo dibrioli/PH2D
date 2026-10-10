@@ -51,6 +51,11 @@ fn o_governador_desce_sobe_e_respeita_o_teto() {
         N::Baixa,
         "baixar o teto obedece na hora"
     );
+    // Subir com o teto na MÉDIA: chega lá e não passa.
+    let mut g = Governador::novo(N::Baixa);
+    let niveis: Vec<N> = (0..200).map(|_| g.ler(0.01, N::Media)).collect();
+    assert!(niveis.contains(&N::Media), "com folga sobe até o teto");
+    assert!(!niveis.contains(&N::Alta), "e nunca acima dele");
 }
 
 /// Na PLACA: com o «Automático», o custo chega ao governador SEM ESPERAR (em poucos quadros), e o
@@ -89,7 +94,7 @@ fn o_automatico_le_o_custo_da_placa_sem_esperar() {
         luz.preferir(PreferenciaDaLuz::default());
         assert!(luz.preparar(&w, afim(), (W, H)));
         luz.gravar(&gpu, &mut PresentWorld::new(), &r);
-        if luz.custo_ms().is_some() {
+        if luz.leituras_de_custo() >= 3 {
             break;
         }
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -98,5 +103,10 @@ fn o_automatico_le_o_custo_da_placa_sem_esperar() {
         .custo_ms()
         .expect("em 60 quadros o automático nunca leu o custo");
     eprintln!("custo lido sem esperar: {ms:.3} ms");
+    assert!(
+        luz.leituras_de_custo() >= 3,
+        "o automático leu {} vez(es) e parou — o pedido não foi libertado",
+        luz.leituras_de_custo()
+    );
     assert!(ms > 0.0 && ms < 1000.0);
 }

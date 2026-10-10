@@ -48,4 +48,14 @@ fn o_glifo_mostra_o_tamanho_os_raios_e_o_alcance() {
     assert_eq!((amb.lampada_px, amb.alcance_px), (0.0, None));
     assert!(amb.raios.len() > 8, "a Ambiente lê-se diferente da lâmpada");
     assert_eq!(g.cor, [255; 3], "a cor da luz em sRGB");
+    // Uma lâmpada MAIOR que o anel: os raios começam fora dela, não dentro.
+    let grande = Luz {
+        tamanho_m: 0.6,
+        ..Luz::default()
+    };
+    let gg = glifo(&grande, [0.0; 2], 100.0, 24.0, false);
+    assert!(
+        gg.raios.iter().all(|(a, _)| a[0].hypot(a[1]) > 60.0),
+        "os raios de uma lâmpada de 60 px começam dentro dela"
+    );
 }

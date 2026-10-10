@@ -6,5 +6,6 @@ mod g12_queda;
 mod g1_disco_no_vazio;
 mod g2_penumbra;
 mod luz_em_de_frente;
+mod o_interior_de_um_opaco;
 mod opacidade_e_alcance;
 mod uma_lampada_e_luz_nao_corpo;

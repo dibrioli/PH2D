@@ -69,6 +69,21 @@ pub(crate) fn cruzamentos(f: &Fronteira, o: [f64; 2], d: [f64; 2], out: &mut Vec
     }
 }
 
+/// `p` está dentro da fronteira (Jordan: a contagem de cruzamentos de um raio é ímpar)?
+pub(crate) fn dentro(f: &Fronteira, p: [f64; 2], buf: &mut Vec<f64>) -> bool {
+    cruzamentos(f, p, [1.0, 0.0], buf);
+    buf.len() % 2 == 1
+}
+
+/// O ponto de cada aresta do polígono mais perto de `p` (um por aresta).
+pub(crate) fn pes_nas_arestas(v: &[[f64; 2]], p: [f64; 2]) -> impl Iterator<Item = [f64; 2]> + '_ {
+    arestas(v).map(move |(a, b)| {
+        let e = sub(b, a);
+        let t = (dot(sub(p, a), e) / dot(e, e).max(1e-300)).clamp(0.0, 1.0);
+        [a[0] + t * e[0], a[1] + t * e[1]]
+    })
+}
+
 fn seg_seg(a: [f64; 2], b: [f64; 2], p: [f64; 2], q: [f64; 2], out: &mut Vec<[f64; 2]>) {
     let r = sub(b, a);
     let s = sub(q, p);

@@ -193,10 +193,54 @@ pub fn luz_em(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
     fluencia(cena, ponto).map(|f| f / TAU)
 }
 
-/// A fluência (radiância integrada sobre o ângulo) que chega a `ponto`, por canal.
+/// O objeto é um corpo OPACO (τ dentro = 0): um que brilha (polígono) ou um oclusor de opacidade 1.
+fn opaco(o: &Objeto) -> bool {
+    o.opaco || (o.emissao.is_none() && o.transmissao <= 0.0)
+}
+
+/// ⭐ **O interior de um opaco recebe a luz do EXTERIOR mais próximo** (F3, W5a): dentro de um corpo
+/// opaco a resposta é a do ponto de fora mais perto — logo além do pé de `p` na aresta opaca mais
+/// próxima cujo pé não cai dentro de outro opaco. Fora de todo opaco, `p`.
+fn fora_dos_opacos(objetos: &[Objeto], p: [f64; 2]) -> [f64; 2] {
+    let mut buf = Vec::new();
+    let mut dentro_de_algum = |q: [f64; 2]| {
+        objetos
+            .iter()
+            .filter(|o| opaco(o))
+            .any(|o| geometria::dentro(&o.fronteira, q, &mut buf))
+    };
+    if !dentro_de_algum(p) {
+        return p;
+    }
+    let mut melhor: Option<(f64, [f64; 2])> = None;
+    for o in objetos.iter().filter(|o| opaco(o)) {
+        let Fronteira::Poligono(v) = &o.fronteira else {
+            continue;
+        };
+        for pe in geometria::pes_nas_arestas(v, p) {
+            let d = (pe[0] - p[0]).hypot(pe[1] - p[1]);
+            if d <= 0.0 || melhor.is_some_and(|(m, _)| m <= d) {
+                continue;
+            }
+            // 1 nm além da fronteira, para o lado de fora.
+            let q = [
+                pe[0] + 1e-9 * (pe[0] - p[0]) / d,
+                pe[1] + 1e-9 * (pe[1] - p[1]) / d,
+            ];
+            if !dentro_de_algum(q) {
+                melhor = Some((d, q));
+            }
+        }
+    }
+    melhor.map_or(p, |(_, q)| q)
+}
+
+/// A fluência (radiância integrada sobre o ângulo) que chega a `ponto`, por canal. Dentro de um
+/// corpo opaco, a do exterior mais próximo ([`fora_dos_opacos`]).
 #[must_use]
 pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
     let (objetos, pontuais) = montar(cena);
+    let ponto = fora_dos_opacos(&objetos, ponto);
     let ceu = rgb(cena.ceu);
     let mut buf = Vec::new();
     let mut total = [0.0_f64; 3];

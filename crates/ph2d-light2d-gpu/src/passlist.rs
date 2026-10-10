@@ -10,6 +10,11 @@ pub(crate) const COBERTURA: usize = 1;
 pub(crate) const TAU_DENTRO: usize = 2;
 pub(crate) const SEMENTES: [usize; 2] = [3, 4];
 pub(crate) const CASCATAS: [usize; 2] = [5, 6];
+/// ⭐ C3 (W4b): a fluência FINAL, na grade fina — a que os receptores leem.
+pub(crate) const FLUENCIA: usize = 7;
+/// ⭐ C3: a visibilidade de cada lâmpada direta nas sondas da c0 (8 × u8); só existe com
+/// [`Config::usa_visibilidade`].
+pub(crate) const VISIBILIDADE: usize = 8;
 
 /// O passo entre as entradas de um buffer de uniformes por passe (o alinhamento de offset que o
 /// WebGPU garante, `min_uniform_buffer_offset_alignment`).
@@ -74,6 +79,7 @@ impl PassList {
         use wgpu::TextureUsages as T;
         let g = cfg.grade_efetiva();
         let fino = [g.largura, g.altura];
+        let gf = cfg.grade_da_fluencia();
         let jfa = cfg.grade_jfa();
         let n = cfg.n_cascatas();
         let saltos = cfg.saltos_jfa();
@@ -121,7 +127,22 @@ impl PassList {
                 tamanho: fino,
                 usos: T::STORAGE_BINDING | amostrada,
             },
+            Textura {
+                nome: "luz2d/tex/fluencia",
+                formato: formato_cascata(cfg.armazenamento),
+                tamanho: [gf.largura, gf.altura],
+                usos: T::STORAGE_BINDING | amostrada,
+            },
         ];
+        let mut texturas = texturas;
+        if cfg.usa_visibilidade() {
+            texturas.push(Textura {
+                nome: "luz2d/tex/visibilidade",
+                formato: wgpu::TextureFormat::Rg32Uint,
+                tamanho: fino,
+                usos: T::STORAGE_BINDING | amostrada,
+            });
+        }
 
         use wgpu::BufferUsages as B;
         let uniforme = B::UNIFORM | B::COPY_DST;
@@ -146,6 +167,12 @@ impl PassList {
                 nome: "luz2d/buf/lampadas",
                 bytes: crate::direta::BYTES_DO_BUFFER,
                 usos: B::STORAGE | B::COPY_DST,
+            },
+            // ⭐ C3 — a grade fina e a região do quadro (`Fina` do `c3_direta.wgsl`).
+            Buffer {
+                nome: "luz2d/buf/c3",
+                bytes: 48,
+                usos: uniforme,
             },
         ];
         if com_tempos {
@@ -194,6 +221,24 @@ impl PassList {
                 escreve: vec![saida],
             });
         }
+        // ⭐ C3: a visibilidade nas sondas da c0 e a grade fina (c0 interpolada + a luz direta).
+        let cena = [EMISSAO, COBERTURA, TAU_DENTRO, sementes_finais];
+        let c0 = Self::indice_da_c0(cfg);
+        let mut le_fina = vec![c0];
+        if cfg.usa_visibilidade() {
+            passes.push(Passe {
+                nome: "C3 visibilidade".into(),
+                le: cena.to_vec(),
+                escreve: vec![VISIBILIDADE],
+            });
+            le_fina.push(VISIBILIDADE);
+        }
+        le_fina.extend(cena);
+        passes.push(Passe {
+            nome: "C3 fina".into(),
+            le: le_fina,
+            escreve: vec![FLUENCIA],
+        });
         Self {
             texturas,
             buffers,
@@ -226,9 +271,9 @@ impl PassList {
         Self::de(cfg, false).bytes_movidos()
     }
 
-    /// A textura onde a c0 escreve a fluência (o par de cascatas alterna desde o topo).
+    /// A textura onde a c0 escreve a fluência das CASCATAS (o par alterna desde o topo).
     #[must_use]
-    pub fn indice_da_fluencia(cfg: &Config) -> usize {
+    pub fn indice_da_c0(cfg: &Config) -> usize {
         CASCATAS[((cfg.n_cascatas() - 1) % 2) as usize]
     }
 }

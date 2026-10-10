@@ -215,6 +215,8 @@ impl Solver {
             p.set_bind_group(1, &self.lampadas_grupo, &[]);
             p.dispatch_workgroups(grupos[0], grupos[1], 1);
         }
+        self.c3
+            .gravar(gpu, enc, &self.lampadas_grupo, self.tempos.as_ref());
         if let Some(t) = &self.tempos {
             t.resolver(enc);
         }
@@ -231,9 +233,16 @@ impl Solver {
         let mut cfg = self.cfg;
         cfg.grade.origem_m = origem_m;
         cfg.grade.texel_m = texel_m;
-        validar(&cfg)?;
+        cfg.validar()?;
         self.cfg = cfg;
         Ok(())
+    }
+
+    /// ⭐ Só a REGIÃO `[inicio, fim)` da grade FINA (em texels dela) se calcula a partir do
+    /// próximo quadro — a da janela (W4b: na vista de fábrica 82 % da grade fica fora dela); o
+    /// resto guarda o último valor. Por omissão, a grade inteira.
+    pub fn regiao_fina(&mut self, inicio: [u32; 2], fim: [u32; 2]) {
+        self.c3.regiao(&self.cfg, inicio, fim);
     }
 
     /// Um quadro: grava e submete.

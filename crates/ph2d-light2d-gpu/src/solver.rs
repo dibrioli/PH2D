@@ -17,6 +17,9 @@ use crate::shaders;
 use crate::solver_sprite;
 use crate::tempos::{self, Tempos, TemposMs};
 
+/// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_c3.rs"]
+mod c3;
 /// O lado de GRAVAR um quadro (subida da geometria, C0 → C1 → C2, `reposicionar`) — um ficheiro
 /// irmão, módulo-filho para ver os campos do [`Solver`] sem os abrir (tecto de 700 LOC).
 #[path = "solver_gravar.rs"]
@@ -152,6 +155,7 @@ pub struct Solver {
     /// ⭐ C3 — as lâmpadas DIRETAS (o grupo 1 das cascatas; a c0 soma-as).
     lampadas: wgpu::Buffer,
     lampadas_grupo: wgpu::BindGroup,
+    c3: c3::C3,
     tempos: Option<Tempos>,
 }
 
@@ -204,43 +208,12 @@ fn fatia_uniforme(buf: &wgpu::Buffer, indice: u64, bytes: u64) -> wgpu::BindingR
     })
 }
 
-fn validar(cfg: &Config) -> Result<(), ErroSolver> {
-    let g = &cfg.grade;
-    if !(g.texel_m.is_finite() && g.texel_m > 0.0) {
-        return Err(ErroSolver::ConfigInvalida(
-            "texel_m tem de ser finito e > 0",
-        ));
-    }
-    if !(g.origem_m[0].is_finite() && g.origem_m[1].is_finite()) {
-        return Err(ErroSolver::ConfigInvalida("origem_m tem de ser finita"));
-    }
-    if g.largura == 0 || g.altura == 0 {
-        return Err(ErroSolver::ConfigInvalida(
-            "a grade tem de ter ao menos um texel",
-        ));
-    }
-    if !(cfg.intervalo_c0.is_finite() && cfg.intervalo_c0 > 0.0) {
-        return Err(ErroSolver::ConfigInvalida(
-            "intervalo_c0 tem de ser finito e > 0",
-        ));
-    }
-    if cfg.fator_jfa == 0 {
-        return Err(ErroSolver::ConfigInvalida("fator_jfa tem de ser ≥ 1"));
-    }
-    if !(cfg.passo_perto.is_finite() && cfg.passo_perto > 0.0) {
-        return Err(ErroSolver::ConfigInvalida(
-            "passo_perto tem de ser finito e > 0",
-        ));
-    }
-    Ok(())
-}
-
 impl Solver {
     /// # Errors
     /// [`ErroSolver`] se a configuração é inválida, pede f16 sem `SHADER_F16`, ou a grade passa o
     /// limite de textura do dispositivo.
     pub fn novo(gpu: &GpuContext, pedido: Config) -> Result<Self, ErroSolver> {
-        validar(&pedido)?;
+        pedido.validar()?;
         let device = &gpu.device;
         if pedido.aritmetica == Precisao::F16
             && !device.features().contains(wgpu::Features::SHADER_F16)
@@ -252,7 +225,8 @@ impl Solver {
             ..pedido
         };
         let limite = device.limits().max_texture_dimension_2d;
-        let lado = cfg.grade.largura.max(cfg.grade.altura);
+        let gf = cfg.grade_da_fluencia();
+        let lado = gf.largura.max(gf.altura);
         if lado > limite {
             return Err(ErroSolver::GradeGrandeDemais { lado, limite });
         }
@@ -278,6 +252,7 @@ impl Solver {
         let uni_jfa = buffer("luz2d/buf/jfa");
         let uni_cascatas = buffer("luz2d/buf/cascatas");
         let lampadas = buffer("luz2d/buf/lampadas");
+        let uni_c3 = buffer("luz2d/buf/c3");
         let tempos = com_tempos.then(|| Tempos {
             set: device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("luz2d/carimbos"),
@@ -570,6 +545,18 @@ impl Solver {
                 })
             })
             .collect();
+        let c3 = c3::C3::novo(&c3::Entradas {
+            gpu,
+            cfg: &cfg,
+            lista: &lista,
+            vistas: &vistas,
+            modulo: &rc_modulo,
+            lampadas_layout: &lampadas_layout,
+            uni_cascatas: &uni_cascatas,
+            uni_c3: &uni_c3,
+            sementes_finais,
+            vizinhos: &vizinhos,
+        });
 
         gpu.queue.write_buffer(
             &uni_c0,
@@ -605,6 +592,7 @@ impl Solver {
             rc_grupos,
             lampadas,
             lampadas_grupo,
+            c3,
             tempos,
         })
     }
@@ -625,10 +613,17 @@ impl Solver {
         self.n
     }
 
-    /// A FLUÊNCIA (rgb) do último quadro, um texel por sonda da c0, na grade efetiva.
+    /// A FLUÊNCIA (rgb) do último quadro — as cascatas interpoladas mais a luz direta — na grade
+    /// FINA ([`Self::grade_da_fluencia`]).
     #[must_use]
     pub fn fluencia(&self) -> &wgpu::Texture {
-        &self.texturas[PassList::indice_da_fluencia(&self.cfg)]
+        &self.texturas[crate::passlist::FLUENCIA]
+    }
+
+    /// ⭐ A grade da [`Self::fluencia`] (origem, texel e tamanho DELA).
+    #[must_use]
+    pub fn grade_da_fluencia(&self) -> crate::config::Grade {
+        self.cfg.grade_da_fluencia()
     }
 
     /// A cena como a C0 a capturou: `[emissão, cobertura, τ dentro]` — para quem precisa de a medir.

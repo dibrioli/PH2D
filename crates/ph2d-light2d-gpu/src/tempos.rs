@@ -1,16 +1,19 @@
-//! Carimbos `TIMESTAMP_QUERY` por passe: C0, C1 (todos os saltos do JFA num passe) e cada cascata.
+//! Carimbos `TIMESTAMP_QUERY` por passe: C0, C1 (todos os saltos do JFA num passe), os dois da
+//! luz direta (C3) e cada cascata.
 
-/// Dois carimbos (início, fim) por passe: C0, C1 e as `n` cascatas.
+/// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina e as `n` cascatas.
 pub(crate) fn n_carimbos(n_cascatas: u32) -> u32 {
-    2 * (2 + n_cascatas)
+    2 * (4 + n_cascatas)
 }
 
 pub(crate) const C0: u32 = 0;
 pub(crate) const C1: u32 = 2;
+pub(crate) const C3_VISIBILIDADE: u32 = 4;
+pub(crate) const C3_FINA: u32 = 6;
 
 /// O par de carimbos da cascata `nivel`.
 pub(crate) fn da_cascata(nivel: u32) -> u32 {
-    4 + 2 * nivel
+    8 + 2 * nivel
 }
 
 /// Milissegundos de placa do último quadro, por passe.
@@ -20,6 +23,10 @@ pub struct TemposMs {
     pub c1: f64,
     /// Por nível (índice = cascata).
     pub c2: Vec<f64>,
+    /// ⭐ C3: a visibilidade das lâmpadas nas sondas da c0 (0 sem a grade fina).
+    pub c3_visibilidade: f64,
+    /// ⭐ C3: a grade fina (as cascatas interpoladas + a luz direta).
+    pub c3_fina: f64,
 }
 
 impl TemposMs {
@@ -36,7 +43,14 @@ impl TemposMs {
 
     #[must_use]
     pub fn total(&self) -> f64 {
-        self.c0 + self.rc()
+        self.c0 + self.rc() + self.c3_visibilidade + self.c3_fina
+    }
+
+    /// ⭐ A parte que segue a célula do NÍVEL (`1/célula²`): tudo menos a grade fina, que tem o
+    /// mesmo tamanho em todo nível (o governador prevê a subida por ela).
+    #[must_use]
+    pub fn por_nivel(&self) -> f64 {
+        self.total() - self.c3_fina
     }
 }
 
@@ -122,6 +136,8 @@ impl Tempos {
             c0: ms(C0),
             c1: ms(C1),
             c2: (0..self.n).map(|i| ms(da_cascata(i))).collect(),
+            c3_visibilidade: ms(C3_VISIBILIDADE),
+            c3_fina: ms(C3_FINA),
         }
     }
 

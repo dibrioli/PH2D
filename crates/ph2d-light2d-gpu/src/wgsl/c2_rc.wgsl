@@ -250,9 +250,8 @@ fn cascata(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     var valor = vec3<f32>(soma) * 0.25;
     if i == 0u {
+        // A c0 é a fluência das CASCATAS; a luz direta das lâmpadas soma-se na grade fina (C3).
         valor *= TAU;
-        // ⭐ C3: a luz DIRETA das lâmpadas (`c3_direta.wgsl`, concatenado depois deste).
-        valor += direta(P);
     }
     textureStore(saida, id.xy, vec4<f32>(valor, 1.0));
 }

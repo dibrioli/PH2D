@@ -1,5 +1,7 @@
 //! A configuração do solver: a grade ANCORADA NO MUNDO e as escolhas que a rodada de medição fixou.
 
+use crate::solver::ErroSolver;
+
 /// A grade da luz. O texel `(i, j)` cobre `origem + [i, i+1)·texel × [j, j+1)·texel` em metros do
 /// mundo; a sonda da c0 é o centro dele. A linha `j` cresce com o `y` do mundo.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -53,6 +55,34 @@ impl Fusao {
     }
 }
 
+/// ⭐ Como a luz DIRETA (C3) chega à grade fina (W4b).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Refino {
+    /// A visibilidade de cada lâmpada medida em TODO texel fino (uma marcha por texel e lâmpada).
+    Tudo,
+    /// A visibilidade das sondas da c0 interpolada; medida no texel fino só nas BORDAS.
+    Bordas(Bordas),
+}
+
+/// Onde o refino pelas bordas mede a visibilidade no texel fino em vez de a interpolar — as
+/// escolhas que a rodada da W4b fixou ([`REFINO_PADRAO`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bordas {
+    /// Os quatro cantos da célula diferem mais que isto.
+    pub limiar: f32,
+    /// A célula mistura o fim da penumbra (0 ou 1) com o meio dela: o JOELHO que a interpolação
+    /// corta.
+    pub joelho: bool,
+    /// A sonda só conta como «à vista» com o cone livre de uma CÉLULA inteira em volta (um oclusor
+    /// fino pode passar entre as sondas).
+    pub certificar: bool,
+    /// O passe grosso marcha no passo FINO (senão no das cascatas).
+    pub visibilidade_no_passo_fino: bool,
+    /// Os raios fixos e as bissecções da abertura no texel fino refinado.
+    pub raios: u32,
+    pub bissecoes: u32,
+}
+
 /// Precisão de um caminho do solver.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Precisao {
@@ -74,7 +104,31 @@ pub struct Config {
     pub aritmetica: Precisao,
     /// O formato das cascatas: `Rgba16Float` ou `Rgba32Float`.
     pub armazenamento: Precisao,
+    /// ⭐ Texels FINOS por texel das cascatas (potência de 2): a fluência final — as cascatas
+    /// interpoladas mais a luz direta das lâmpadas — vive na grade fina ([`Self::grade_da_fluencia`]).
+    pub fina: u32,
+    pub refino: Refino,
 }
+
+/// O refino por omissão — MEDIDO (rodada `medida_luz2d_w4b`, RTX 5060 Ti, 1920×1080, grade fina de
+/// 1 px; tabela no handoff W4b). Escada da cena 4 (contornos 10 · 50 · 90 %) e ms por lâmpada no Low:
+/// - o limiar 0,1 refina onde a interpolação erra (0,25 deixava o meio da penumbra ao passo grosso:
+///   0,18 px no de 50 %); com ele o joelho já cai no limiar (erro ≤ ~1 %): `joelho` só custava (+8 %);
+/// - a visibilidade no passo GROSSO: o fino custava 2,6× no passe grosso pela mesma escada;
+/// - 4 raios + 5 bissecções: 8+5 custava +35 % no passe fino por 0,005 px; 2+6 o mesmo que 4+5 mas
+///   mais frágil com vários oclusores numa abertura;
+/// - certificar: custo empatado (0,665 × 0,660 ms) — fica, de graça, contra o oclusor fino.
+///
+/// Resultado: 0,108 · 0,064 · 0,135 px a 0,49 ms por lâmpada (o exato em todo texel: 0,103 · 0,056 ·
+/// 0,128 px a 1,13 ms).
+pub const REFINO_PADRAO: Refino = Refino::Bordas(Bordas {
+    limiar: 0.1,
+    joelho: false,
+    certificar: true,
+    visibilidade_no_passo_fino: false,
+    raios: 4,
+    bissecoes: 5,
+});
 
 /// Onde a cascata `i` começa, em múltiplos de `intervalo_c0`: `(4^i − 1)/3`.
 fn inicio_relativo(i: u32) -> f64 {
@@ -114,6 +168,8 @@ impl Config {
             fusao: Fusao::CorrecaoBilinear,
             aritmetica: Precisao::F32,
             armazenamento: Precisao::F16,
+            fina: 1,
+            refino: REFINO_PADRAO,
         }
     }
 
@@ -145,6 +201,74 @@ impl Config {
             }
             (g.largura, g.altura) = (w, h);
         }
+    }
+
+    /// ⭐ A grade onde a FLUÊNCIA final vive (a que os receptores leem): a efetiva, com o texel
+    /// ÷ [`Self::fina`] e a MESMA origem — a âncora do G11 vale para as duas.
+    #[must_use]
+    pub fn grade_da_fluencia(&self) -> Grade {
+        let g = self.grade_efetiva();
+        Grade {
+            origem_m: g.origem_m,
+            texel_m: g.texel_m / f64::from(self.fina),
+            largura: g.largura * self.fina,
+            altura: g.altura * self.fina,
+        }
+    }
+
+    /// A configuração é aceitável? (o solver recusa-a antes de alocar nada)
+    ///
+    /// # Errors
+    /// [`ErroSolver::ConfigInvalida`] com o campo que a recusa.
+    pub(crate) fn validar(&self) -> Result<(), ErroSolver> {
+        let cfg = self;
+        let g = &cfg.grade;
+        if !(g.texel_m.is_finite() && g.texel_m > 0.0) {
+            return Err(ErroSolver::ConfigInvalida(
+                "texel_m tem de ser finito e > 0",
+            ));
+        }
+        if !(g.origem_m[0].is_finite() && g.origem_m[1].is_finite()) {
+            return Err(ErroSolver::ConfigInvalida("origem_m tem de ser finita"));
+        }
+        if g.largura == 0 || g.altura == 0 {
+            return Err(ErroSolver::ConfigInvalida(
+                "a grade tem de ter ao menos um texel",
+            ));
+        }
+        if !(cfg.intervalo_c0.is_finite() && cfg.intervalo_c0 > 0.0) {
+            return Err(ErroSolver::ConfigInvalida(
+                "intervalo_c0 tem de ser finito e > 0",
+            ));
+        }
+        if cfg.fator_jfa == 0 {
+            return Err(ErroSolver::ConfigInvalida("fator_jfa tem de ser ≥ 1"));
+        }
+        if !(cfg.passo_perto.is_finite() && cfg.passo_perto > 0.0) {
+            return Err(ErroSolver::ConfigInvalida(
+                "passo_perto tem de ser finito e > 0",
+            ));
+        }
+        if !cfg.fina.is_power_of_two() {
+            return Err(ErroSolver::ConfigInvalida(
+                "fina tem de ser uma potência de 2",
+            ));
+        }
+        if let Refino::Bordas(b) = cfg.refino
+            && (!(0.0..=1.0).contains(&b.limiar) || b.raios == 0)
+        {
+            return Err(ErroSolver::ConfigInvalida(
+                "refino: limiar fora de [0, 1] ou sem raios",
+            ));
+        }
+        Ok(())
+    }
+
+    /// O passe grosso da visibilidade corre? Só com a grade fina MAIS fina que a das cascatas e o
+    /// refino pelas bordas (com `fina = 1` o passe fino mede cada texel: é a sonda da c0).
+    #[must_use]
+    pub fn usa_visibilidade(&self) -> bool {
+        self.fina > 1 && matches!(self.refino, Refino::Bordas(_))
     }
 
     #[must_use]

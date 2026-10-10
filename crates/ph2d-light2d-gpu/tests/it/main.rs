@@ -2,6 +2,7 @@
 //! Os de placa saltam (com aviso) numa máquina sem GPU; correm com `PH2D_GPU=1`.
 
 mod c0_o_que_fica_fora;
+mod c3_grade_fina;
 mod cenas;
 mod comum;
 mod diagnostico;

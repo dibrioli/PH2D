@@ -49,30 +49,37 @@ fn o_ponto_alem_do_teto_fica_fora_e_o_relatorio_o_diz() {
     );
 }
 
-/// ⭐ Na placa, um ponto sozinho ACENDE pela luz direta, e é o gabarito (`F = I/r`).
+/// ⭐ Na placa, um ponto sozinho ACENDE pela luz direta, e é o gabarito (`F = I/r`) — na grade das
+/// cascatas e na FINA (W4b: a parte suave é analítica no texel fino).
 #[test]
 fn na_placa_um_ponto_sozinho_acende_pela_luz_direta() {
     let Some(gpu) = gpu() else { return };
-    let g = grade(64, 0.1);
     let cena = so(vec![ponto([3.2, 3.2])]);
-    let mut s = Solver::novo(&gpu, Config::padrao(g)).expect("solver");
-    let rel = s.quadro(&gpu, &cena);
-    assert!(rel.fora.is_empty(), "o ponto direto não é «fora»");
-    let f = ler_fluencia(&gpu, &s);
-    let r = crate::comum::gabarito(&cena, &g);
-    let mut pior = 0.0_f64;
-    for (k, (a, b)) in f.iter().zip(&r).enumerate() {
-        let (i, j) = ((k % 64) as f64 + 0.5, (k / 64) as f64 + 0.5);
-        if (i * 0.1 - 3.2).hypot(j * 0.1 - 3.2) < 0.3 {
-            continue; // a 1/r explode perto do ponto
+    for fina in [1, 4] {
+        let cfg = Config {
+            fina,
+            ..Config::padrao(grade(64, 0.1))
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        let rel = s.quadro(&gpu, &cena);
+        assert!(rel.fora.is_empty(), "o ponto direto não é «fora»");
+        let f = ler_fluencia(&gpu, &s);
+        let g = s.grade_da_fluencia();
+        let r = crate::comum::gabarito(&cena, &g);
+        let mut pior = 0.0_f64;
+        for (k, (a, b)) in f.iter().zip(&r).enumerate() {
+            let c = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+            if (c[0] - 3.2).hypot(c[1] - 3.2) < 0.3 {
+                continue; // a 1/r explode perto do ponto
+            }
+            pior = pior.max((f64::from(a[0]) - b[0]).abs() / b[0]);
         }
-        pior = pior.max((f64::from(a[0]) - b[0]).abs() / b[0]);
+        eprintln!("ponto direto × gabarito (fina ×{fina}): pior erro relativo {pior:.4}");
+        assert!(
+            pior < 0.01,
+            "o ponto direto não é o I/r do gabarito (fina ×{fina}): {pior:.4}"
+        );
     }
-    eprintln!("ponto direto × gabarito: pior erro relativo {pior:.4}");
-    assert!(
-        pior < 0.01,
-        "o ponto direto não é o I/r do gabarito: {pior:.4}"
-    );
 }
 
 #[test]
@@ -129,36 +136,45 @@ fn a_forma_menor_que_o_texel_e_a_de_fora_da_grade_vem_ditas() {
 #[test]
 fn uma_lampada_direta_faz_sombra_na_luz_de_outra() {
     let Some(gpu) = gpu() else { return };
-    let g = grade(64, 0.1);
     let cena = so(vec![
         disco([1.0, 3.2], 0.3, [4.0; 3], f32::INFINITY),
         disco([3.0, 3.2], 0.25, [0.05; 3], f32::INFINITY),
     ]);
-    let mut s = Solver::novo(&gpu, Config::padrao(g)).expect("solver");
-    s.quadro(&gpu, &cena);
-    let f = ler_fluencia(&gpu, &s);
-    let r = crate::comum::gabarito(&cena, &g);
-    let atras = |k: usize| {
-        let (x, y) = ((k % 64) as f64 * 0.1 + 0.05, (k / 64) as f64 * 0.1 + 0.05);
-        x > 3.6 && x < 6.0 && (y - 3.2).abs() < 0.12
-    };
-    let e = crate::comum::rmse_rel(&f, &r, atras);
-    let sem_sombra = crate::comum::gabarito(&so(vec![cena.emissores[0].clone()]), &g);
-    let controlo = crate::comum::rmse_rel(
-        &sem_sombra
-            .iter()
-            .map(|c| c.map(|x| x as f32))
-            .collect::<Vec<_>>(),
-        &r,
-        atras,
-    );
-    eprintln!("sombra de lâmpada em lâmpada: RMSE {e:.4} (sem a sombra: {controlo:.4})");
-    assert!(
-        e < 0.1,
-        "a lâmpada do meio não faz a sombra do gabarito: {e:.4}"
-    );
-    assert!(
-        controlo > 0.5,
-        "controlo: sem a sombra a resposta tinha de ser outra ({controlo:.4})"
-    );
+    // Na grade das cascatas e na FINA (W4b: a visibilidade das sondas e o refino pelas bordas).
+    for fina in [1, 4] {
+        let cfg = Config {
+            fina,
+            ..Config::padrao(grade(64, 0.1))
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        s.quadro(&gpu, &cena);
+        let f = ler_fluencia(&gpu, &s);
+        let g = s.grade_da_fluencia();
+        let r = crate::comum::gabarito(&cena, &g);
+        let atras = |k: usize| {
+            let [x, y] = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+            x > 3.6 && x < 6.0 && (y - 3.2).abs() < 0.12
+        };
+        let e = crate::comum::rmse_rel(&f, &r, atras);
+        let sem_sombra = crate::comum::gabarito(&so(vec![cena.emissores[0].clone()]), &g);
+        let controlo = crate::comum::rmse_rel(
+            &sem_sombra
+                .iter()
+                .map(|c| c.map(|x| x as f32))
+                .collect::<Vec<_>>(),
+            &r,
+            atras,
+        );
+        eprintln!(
+            "sombra de lâmpada em lâmpada (fina ×{fina}): RMSE {e:.4} (sem a sombra: {controlo:.4})"
+        );
+        assert!(
+            e < 0.1,
+            "a lâmpada do meio não faz a sombra do gabarito (fina ×{fina}): {e:.4}"
+        );
+        assert!(
+            controlo > 0.5,
+            "controlo: sem a sombra a resposta tinha de ser outra ({controlo:.4})"
+        );
+    }
 }

@@ -11,11 +11,11 @@ use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 
 use crate::config::Grade;
 
-/// O teto de lâmpadas pelo caminho direto (as mais fortes). O recurso é o TEMPO DE PLACA: medido
-/// (`medida_custo_por_lampada`, 1920×1080, RTX 5060 Ti, `smoke`) 0,42 ms por lâmpada no nível Baixo
-/// (1,64 no Médio) sobre 1,23 ms da cena sem lâmpada ⇒ no Baixo `1,23 + 0,42·N ≤ 5,56` (o orçamento
-/// do governador, ⅓ do quadro a 60 Hz) dá N ≤ 10 → 8. Acima disto as mais fracas ficam nas cascatas
-/// (e o Inspector avisa delas).
+/// O teto de lâmpadas pelo caminho direto (as mais fortes). Os recursos: o TEMPO DE PLACA — medido
+/// na W4b (`medida_luz2d_w4b`, 1920×1080, RTX 5060 Ti, `smoke`, grade fina de 1 px, região da janela)
+/// 0,49 ms por lâmpada no nível Baixo sobre 1,31 ms da cena sem lâmpada ⇒ `1,31 + 0,49·N ≤ 5,56` (o
+/// orçamento do governador, ⅓ do quadro a 60 Hz) dá N ≤ 8,6; e o CÓDIGO da visibilidade nas sondas
+/// (8 × u8 num `Rg32Uint`). Acima disto as mais fracas ficam nas cascatas (e o Inspector avisa delas).
 pub const LAMPADAS_DIRETAS_MAX: usize = 8;
 
 /// Uma lâmpada como o `c3_direta.wgsl` a lê (32 bytes).

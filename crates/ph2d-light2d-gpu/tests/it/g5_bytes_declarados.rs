@@ -63,9 +63,20 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         return;
     }
     let mut enchimento: BTreeMap<String, Vec<i64>> = BTreeMap::new();
-    for (degrau, lado, texel) in DEGRAUS {
+    // Cada degrau, e o Baixo com a grade FINA da luz direta (W4b: a fluência fina e a visibilidade).
+    let configs = DEGRAUS
+        .into_iter()
+        .map(|(degrau, lado, texel)| (degrau, Config::padrao(grade(lado, texel))))
+        .chain(std::iter::once((
+            "Baixo com a grade fina ×4",
+            Config {
+                fina: 4,
+                ..Config::padrao(grade(DEGRAUS[2].1, DEGRAUS[2].2))
+            },
+        )));
+    for (degrau, cfg) in configs {
         let antes = alocacoes(&gpu).expect("relatório");
-        let mut s = Solver::novo(&gpu, Config::padrao(grade(lado, texel))).expect("solver");
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
         let decl = declarado(s.pass_list());
         let criado = novas(&antes, &alocacoes(&gpu).expect("relatório"));
         eprintln!("G5 {degrau}: recurso | declarado | alocado | enchimento do driver");

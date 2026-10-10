@@ -108,14 +108,7 @@ pub fn settle_composite(
             w,
             out,
         );
-        crate::colorops::velatura(
-            out,
-            w,
-            glaze,
-            a_sett,
-            sc.map(f64::from),
-            uc.map(f64::from),
-        );
+        crate::colorops::velatura(out, w, glaze, a_sett, sc.map(f64::from), uc.map(f64::from));
         g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
     } else {
         g.sett_rgb[i] = g.susp_rgb[i];

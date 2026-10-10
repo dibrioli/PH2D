@@ -134,7 +134,6 @@ pub const SECTIONS: [Section; 4] = [
     },
 ];
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -154,8 +154,11 @@ fn sonda_papel_seco() {
                     ppm.extend_from_slice(&px[k * 4..k * 4 + 3]);
                 }
                 let painel = if armado { "painel" } else { "fabrica" };
-                std::fs::write(format!("{dir}/papel_{}_{painel}.ppm", nome.replace(' ', "_")), ppm)
-                    .expect("grava a tela");
+                std::fs::write(
+                    format!("{dir}/papel_{}_{painel}.ppm", nome.replace(' ', "_")),
+                    ppm,
+                )
+                .expect("grava a tela");
             }
             let mut pares: Vec<(f64, f64)> = Vec::new();
             for y in 135..165 {

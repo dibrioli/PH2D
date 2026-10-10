@@ -84,7 +84,11 @@ fn a_paint_texture_e_o_tooth_do_wet_paint_vivem_na_seccao_paper() {
         let mut tool = PainterTool::default();
         tool.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
         tool.handle_panel_event(PanelEvent::SelectOption(PAINTER_BRUSH_MEDIA, meio.into()));
-        assert_eq!(tool.brush_settings().paper_kind, 0, "a fixture começa sem Kind");
+        assert_eq!(
+            tool.brush_settings().paper_kind,
+            0,
+            "a fixture começa sem Kind"
+        );
         set_current_brush(Some(tool.brush_settings()));
         set_current_dock_shows_layers(false);
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();

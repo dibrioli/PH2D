@@ -191,7 +191,11 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
             .filter(|d| d.group == ph2d_wet_paint::tuning::KnobGroup::Paper)
         {
             let id = ph2d_tool_painter::ids::wet_tuning_slider_id(def.key);
-            assert!(!has(&rects, id), "a linha de papel {} vive fora da secção Paper", def.key);
+            assert!(
+                !has(&rects, id),
+                "a linha de papel {} vive fora da secção Paper",
+                def.key
+            );
         }
     }
     set_current_brush(None);

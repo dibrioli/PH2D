@@ -33,8 +33,8 @@ fn media(px: &[u8], x0: usize, x1: usize, y0: usize, y1: usize) -> [f64; 3] {
     let mut n = 0.0;
     for y in y0..y1 {
         for x in x0..x1 {
-            for c in 0..3 {
-                s[c] += f64::from(px[(y * W + x) * 4 + c]);
+            for (c, v) in s.iter_mut().enumerate() {
+                *v += f64::from(px[(y * W + x) * 4 + c]);
             }
             n += 1.0;
         }
@@ -143,19 +143,35 @@ fn barra(seco: (Leitura, Leitura), molhado: (Leitura, Leitura)) -> Result<(), St
     let mut f = Vec::new();
     for (nome, l) in [("seco durante", &seco.0), ("seco depois", &seco.1)] {
         if !(0.30..=0.70).contains(&l.gama) {
-            f.push(format!("{nome}: γ {:.2} fora de 0,30–0,70 (Rebelle 0,42–0,51)", l.gama));
+            f.push(format!(
+                "{nome}: γ {:.2} fora de 0,30–0,70 (Rebelle 0,42–0,51)",
+                l.gama
+            ));
         }
     }
     if seco.1.sangria.abs() > 3.0 {
-        f.push(format!("seco: sangria {:+.0} (Rebelle +1…+2)", seco.1.sangria));
+        f.push(format!(
+            "seco: sangria {:+.0} (Rebelle +1…+2)",
+            seco.1.sangria
+        ));
     }
     if molhado.1.sangria < 8.0 {
-        f.push(format!("molhado: sangria {:+.0} < +8 (Rebelle +12…+21)", molhado.1.sangria));
+        f.push(format!(
+            "molhado: sangria {:+.0} < +8 (Rebelle +12…+21)",
+            molhado.1.sangria
+        ));
     }
     if molhado.0.gama < 0.30 {
-        f.push(format!("molhado durante: γ {:.2} < 0,30 (Rebelle 0,62)", molhado.0.gama));
+        f.push(format!(
+            "molhado durante: γ {:.2} < 0,30 (Rebelle 0,62)",
+            molhado.0.gama
+        ));
     }
-    if f.is_empty() { Ok(()) } else { Err(f.join(" · ")) }
+    if f.is_empty() {
+        Ok(())
+    } else {
+        Err(f.join(" · "))
+    }
 }
 
 #[test]

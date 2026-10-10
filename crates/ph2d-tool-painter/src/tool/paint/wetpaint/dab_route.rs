@@ -41,7 +41,7 @@ impl PainterTool {
             if sess.stroke_open && !sess.try_bring_home_now() {
                 sess.adiados.push(session::LoteAdiado {
                     dabs: dabs.to_vec(),
-                    brush: brush.clone(),
+                    brush: *brush,
                     groups: self.paint.dab_groups.clone(),
                     tex_rng: self.paint.tex_rng,
                 });

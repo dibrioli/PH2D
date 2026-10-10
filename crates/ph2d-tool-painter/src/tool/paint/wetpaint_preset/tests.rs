@@ -258,10 +258,15 @@ fn ferramenta_mexida() -> PainterTool {
 /// versão). Mutação que sangra: aplicar um Tilt de fábrica quando o ficheiro não o traz.
 #[test]
 fn um_preset_sem_tilt_nao_mexe_na_inclinacao() {
-    let mut p = ferramenta_mexida().wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "T", "Antigo")).0;
+    let mut p = ferramenta_mexida()
+        .wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "T", "Antigo"))
+        .0;
     p.tilt = None;
     let lido = pelo_ficheiro(p, BTreeMap::new());
-    assert_eq!(lido.parametros.tilt, None, "o ficheiro sem tilt lê-se sem tilt");
+    assert_eq!(
+        lido.parametros.tilt, None,
+        "o ficheiro sem tilt lê-se sem tilt"
+    );
     let mut t = ferramenta();
     let w = &mut t.paint.wetpaint;
     (w.tilt_on, w.tilt_ring, w.tilt_spoke) = (false, 2, 5);

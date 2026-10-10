@@ -45,8 +45,8 @@ fn media(t: &PainterTool, x0: usize, x1: usize, y0: usize, y1: usize) -> [f64; 3
     for y in y0..y1 {
         for x in x0..x1 {
             let i = (y * W + x) * 4;
-            for c in 0..3 {
-                s[c] += f64::from(t.canvas_rgba[i + c]);
+            for (c, v) in s.iter_mut().enumerate() {
+                *v += f64::from(t.canvas_rgba[i + c]);
             }
             n += 1.0;
         }

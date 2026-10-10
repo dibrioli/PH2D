@@ -377,6 +377,10 @@ Comuns: `accumulate=false`, `use_AA=false` nos ásperos, `paper_depth` 0,9 com c
 
 ### 6.9 Wet Paint (`WetPaint`, o fluido) — 4 presets
 
+> ✅ **W1e (09/10):** a coluna **Gravity** já não vale — a gravidade é a de fábrica (0,005) nos quatro (F5);
+> e cada preset guarda o **Tilt** (F4): Round, Wash e Dry Brush com a tela direita, Wet Drip no máximo, para
+> baixo. A nota abaixo (08/10) descreve a W1b, que foi desfeita; a água continua a desta tabela. 05 §4b.
+
 > ⚠️ **Corrigido pela bancada das gotas** ([06](06_gotas_rebelle_x_ph2d.md), decisão do dono 08/10): a
 > coluna **Gravity sai do preset** (no Rebelle a gravidade é da TELA e as gotas do PAPEL — 0 de 281 presets a
 > têm) e a coluna **Water desce** para a faixa de fábrica da aquarela do Rebelle (9–49 %: Round 29, Wash

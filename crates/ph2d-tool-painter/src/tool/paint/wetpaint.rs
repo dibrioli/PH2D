@@ -413,18 +413,18 @@ mod offthread_tests; // os gates da sim FORA da thread do frame
 
 // o veu do Show Wet e VIVO (report do Enio, 2026-08-07)
 #[cfg(test)]
-#[path = "wetpaint/showwet_tests.rs"]
-mod showwet_tests;
-#[cfg(test)]
-mod sonda_papel_seco; // o pincel seco nos picos do papel (dono 09/10)
-#[cfg(test)]
-mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
+mod gota_tests;
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
+#[path = "wetpaint/showwet_tests.rs"]
+mod showwet_tests;
+#[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
 #[cfg(test)]
-mod gota_tests; // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
+mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
+#[cfg(test)]
+mod sonda_papel_seco; // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
 
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)

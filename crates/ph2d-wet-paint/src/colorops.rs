@@ -97,7 +97,14 @@ pub const VELATURA_MEDIDA: f64 = 0.47;
 /// mancha de uma cor assenta aos BOCADOS (cada passe de secagem é uma junção). Sem o factor, um traço
 /// vermelho sozinho escurecia de `(202, 37, 37)` para `(156, 25, 25)` (sonda `sonda_mistura`, 09/10).
 #[inline]
-pub fn velatura(out: &mut [f64; 3], w: f64, glaze: f64, a_baixo: f64, baixo: [f64; 3], cima: [f64; 3]) {
+pub fn velatura(
+    out: &mut [f64; 3],
+    w: f64,
+    glaze: f64,
+    a_baixo: f64,
+    baixo: [f64; 3],
+    cima: [f64; 3],
+) {
     if glaze <= 0.0 || a_baixo <= 0.0 {
         return;
     }

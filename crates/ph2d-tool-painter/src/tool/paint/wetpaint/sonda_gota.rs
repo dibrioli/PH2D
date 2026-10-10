@@ -67,7 +67,11 @@ pub(super) fn bancada(
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);
-    for (i, agua) in aguas.iter().enumerate().flat_map(|e| std::iter::repeat_n(e, passes)) {
+    for (i, agua) in aguas
+        .iter()
+        .enumerate()
+        .flat_map(|e| std::iter::repeat_n(e, passes))
+    {
         t.wet_preset_aplicar_volumes(&Volumes {
             size_px: Some(40.0),
             water: Some(*agua),
@@ -149,7 +153,11 @@ fn sonda_gota() {
                 (def.knob, v.parse().expect("valor"))
             })
             .collect();
-        let rotulo = if extra.is_empty() { String::new() } else { format!("_{}", extra.replace('/', "_")) };
+        let rotulo = if extra.is_empty() {
+            String::new()
+        } else {
+            format!("_{}", extra.replace('/', "_"))
+        };
         for (nome, anel) in [("off", None), ("meio", Some(4)), ("max", Some(8))] {
             let px = bancada(g, h, &knobs, anel, [1.0, 0.7, 0.4, 0.2]);
             let mut f = format!("P6\n{W} {H}\n255\n").into_bytes();

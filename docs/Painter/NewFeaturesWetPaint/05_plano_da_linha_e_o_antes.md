@@ -514,6 +514,63 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   o Tilt; a MISTURA: azul sobre vermelho dá azul (molhado ≈ seco), a água só corre depois do Up. ✅ Feito: o
   menu de presets lista cada pincel uma vez (`3d8e40be1`). Sondas:
   `tests/it/sonda_tilt_do_preset.rs`, `wetpaint/sonda_papel_seco.rs`, `wetpaint/sonda_mistura.rs`, régua `ferramentas/tilt_rebelle.py`.
+- ✅/⚠️ **W1e (09/10, prompt [11](11_PROMPT_janela_W1e_agua_papel_tilt.md))** — `2e92420be` (F6) · `0b64130fa`
+  (F2+F3) · `c91dade9c` (F1+F4+F5). Rebelle 8.3.4 pela porta WebSocket (`ferramentas/mistura_papel*.{py,sh}`),
+  réguas `ferramentas/velatura.py` (γ em luz linear) e `ferramentas/fios.py`. Pranchas 1:1 e 8×:
+  [escorrimento](prancha_w1e_escorrimento.png) · [8×](prancha_w1e_escorrimento_8x.png) ·
+  [mistura](prancha_w1e_mistura.png) · [8×](prancha_w1e_mistura_8x.png) · [pincel seco](prancha_w1e_papel_seco.png).
+
+  | | antes | depois | Rebelle |
+  |---|---|---|---|
+  | **F6** seco: γ durante · depois (0 = por cima, 1 = multiplicar) | 0,17 · 0,06 | **0,47 · 0,58** | 0,42–0,49 · 0,44–0,51 |
+  | F6 molhado: γ G/B durante · sangria no vermelho a 15 px | 0,48/0,31 · +7 | 0,47/0,42 · **+19** | 0,67/0,49 · +12…+21 |
+  | F6 seco: sangria · pincel sujo (rasto − azul) | +6 · (5, 0, −5) | **−3…0** · (6, −1, −7) | +1…+2 · ≈ 0 |
+  | F6 a água corre com o traço (quadro a pintar, 4096², poça pesada, pior) | 1,6 ms, água parada | **11,7 ms** (sem pintar: 11,1) | corre |
+  | **F2** fontes de papel do Wet Paint | 2 (motor sem Kind · painel) | **1** (sem Kind = o Cold de fábrica do painel) | 1 (o papel) |
+  | F2 controlos de papel fora da secção Paper | 6 (grupo PAPER do Tuning + «Paper») | **0** («Paint Texture» na secção Paper) | — |
+  | **F3** Wet Dry Brush sem Kind: picos ÷ vales · r(escuro, altura) | 1,06 · +0,05 | **1,34 · +0,28** | sem barra (ver abaixo) |
+  | F3 molhados (Round · Wash · Drip) picos ÷ vales | 0,95 · 0,98 · 0,94 | 0,95 · 0,98 · 0,94 | — |
+  | **F1** Wet Round, bancada: tela direita · meia · máxima (fios ≥ 20 px) | 0 · 0 · 1 | **0 (ao bit) · 0 · 0** | 0 · 0 · 1 fio fino de 250–300 px |
+  | F1 orla de baixo ÷ de cima a meia (água 1) | 0,76 | **1,30** | 1,6 |
+  | F1 pincéis de fábrica, meia (Round · Wash · Dry · Drip) | 0 · 0 · 0 · 4 | 0 · **4** · 0 · **0** | — |
+  | F1 pincéis de fábrica, máxima | 1 · 4 · 0 · 6 | **0 · 1–6 · 0 · 3** (dentinhos < 20 px no Round) | Round 1 fio |
+  | **F5** gravidade dos pincéis (Round · Wash · Dry · Drip) | 0,005 · 0,003 · 0,002 · 0,01 | **0,005 em todos** | não existe por pincel |
+  | **F4** o preset guarda o Tilt | não | **sim** (preset antigo não mexe; Round/Wash/Dry direitos, Drip no máximo) | a tela nasce direita |
+
+  - **F6:** `colorops::velatura` — a junção «por cima» ganha o termo de Beer–Lambert na fração γ = 0,47
+    (`VELATURA_MEDIDA`), × a distância entre as cores (a MESMA tinta não se vela: sem o factor um traço de
+    uma cor escurecia 202 → 156). Em todas as junções (pouso sobre suspenso, assentamento, Dry canvas,
+    re-wet, render). `Sim::sim_while_painting`: a água corre com o traço; o lote que chega com o motor na
+    simulação espera numa fila e pousa no tick (sem ela o quadro esperava o estágio: 19 ms). Duas fugas
+    que a água viva expôs, curadas: o push do Impasto ligava o aquecimento do motor de traço no Wet Paint;
+    um carimbo redondo rodava o último bit do raio. ⛔ γ = 1 escurece demais (0,80–0,91) e mata a sangria.
+  - **F2/F3:** sem Kind, o motor é semeado pelo `papel_de_fabrica()` do painel (o Cold que o Relief arma e
+    acende) pela mesma lei do Kind armado; o papel procedural do motor deixou de ser fonte no produto e o
+    grupo PAPER do Tuning saiu inteiro; o «Paper» do Wet Paint é a **Paint Texture** da secção Paper (o nome
+    do Rebelle, `paint_texture`); o Tooth aparece sem Kind no Wet Paint. Relief/Roughness já iluminavam o Wet
+    Paint (a luz é da tela; o censo dos controlos o prova). Custo: semear o papel a 4096² 11 ms (re-assar o
+    do motor: 1 ms), uma vez por sessão. ⛔ Recusa medida: o ruído de recurso da Aquarela como papel sem
+    Kind (o Tooth deixava de ser monótono: halo 81 / 60 / 91).
+  - ⚠️ **F3 sem barra do Rebelle:** pela porta, sob o Wine, o papel não se desenha (branco com desvio 0), o
+    tamanho do Flat Dry não pega depois de um `SET_ENGINE_PARAMS` (saiu um fio de 12 px numa faixa de 30 —
+    os «73 % de papel branco» eram faixa vazia) e o registo da altura do papel é ambíguo (|r| 0,20 em duas
+    posições de sinais opostos). A barra ficou a lei física (seco > 1 nos picos, molhados < 1). ⛔ Não
+    reabra por esta porta: `SET_PAPER` derruba o 8.3.4 («bad optional access»).
+  - **F1 (PARCIAL):** `solver::Gota` — numa célula SECA (a advecção é por recolha: é ela que puxa), a
+    componente que desce leva `min(1, 2·hill(h/h_c))`, `hill = q⁸/(1+q⁸)`, `h` = a conta logo acima,
+    `h_c = 0,2/|g|` (`ALTURA_DA_GOTA`); nos construtores travado e suavizado. Tira o pente do Round e do Drip
+    a meia inclinação e escurece a orla de baixo como o Rebelle; uma poça de 4 passadas continua a correr.
+    ⛔ **Recusas medidas** (bancada Round, `sonda_gota`): a lei só no FREIO (morde 1 quadro em 4: nada muda) ·
+    pela altura da própria célula seca (zero — uma barreira, prende tudo) · o fluxo INTEIRO da célula seca
+    (8–9 dedos e riscos brancos no topo do traço) · `q⁴` (a conta do Wash, 17,7 contra a crítica 40, fugia
+    7 %) · mais nivelamento (2 dedos mas largos, e muda a tela direita) · `extFingering` está a 0 nos 4
+    pincéis (não é a origem do pente).
+  - **Aberto (F1, a próxima onda):** o fio ÚNICO, fino e longo do Rebelle no máximo não sai de nenhuma lei
+    local — 3 topologias medidas, parei pela regra dos dois tropeços. Precisa de um mecanismo NÃO local (a
+    conta de baixo a equalizar a pressão ao longo da orla, para o primeiro fio drenar os outros). E o Wet
+    Wash e o Wet Drip (água de fábrica 1,0; o Rebelle usa ~0,24) fazem contas de 40–60 de altura e ainda
+    abrem 3–6 dedos no máximo — o Wash também a meia, desde que a F5 lhe subiu a gravidade de 0,003 para
+    0,005. A água de fábrica foi revertida com a W1b; decidir com o dono.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

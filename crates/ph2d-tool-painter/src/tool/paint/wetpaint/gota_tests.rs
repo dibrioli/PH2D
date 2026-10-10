@@ -53,7 +53,9 @@ fn a_meia_inclinacao_nao_escorre_e_a_orla_de_baixo_escurece() {
         let (orla, _) = le(px, 0);
         let mut f = Vec::new();
         if orla <= 1.0 {
-            f.push(format!("água 1: orla de baixo ÷ de cima {orla:.2} ≤ 1 (Rebelle 1,6)"));
+            f.push(format!(
+                "água 1: orla de baixo ÷ de cima {orla:.2} ≤ 1 (Rebelle 1,6)"
+            ));
         }
         for (i, agua) in aguas.iter().enumerate() {
             let (_, d) = le(px, i);
@@ -61,7 +63,11 @@ fn a_meia_inclinacao_nao_escorre_e_a_orla_de_baixo_escurece() {
                 f.push(format!("água {agua}: tinta {d} px abaixo da orla"));
             }
         }
-        if f.is_empty() { Ok(()) } else { Err(f.join(" · ")) }
+        if f.is_empty() {
+            Ok(())
+        } else {
+            Err(f.join(" · "))
+        }
     };
     for (nome, px) in [("port", &port), ("produto", &produto)] {
         let l: Vec<(f64, usize)> = (0..4).map(|i| le(px, i)).collect();

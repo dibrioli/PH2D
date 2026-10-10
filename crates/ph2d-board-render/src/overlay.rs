@@ -80,10 +80,6 @@ pub fn paint_overlay(
     {
         let thick = f64::from(StrokeToken::Thick.px());
         line(scene, &(v * o.fill), accent, thick);
-        if let Some(p) = t.fixed {
-            let dot = ph2d_vector::Circle::new(v * point(p), metrics.handle / 2.0).to_path(0.1);
-            scene.fill_path(&dot, &Brush::Solid(accent), Affine::IDENTITY);
-        }
     }
     let paper = Brush::Solid(token(ColorToken::Bg1, theme));
     for w in &overlay.wires {

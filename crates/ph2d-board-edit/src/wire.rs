@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ph2d_board_model::{
     Anchor, BoardDoc, BoardOp, Connector, Element, ElementId, End, History, Style,
 };
-use ph2d_board_route::{Routed, fixed_world};
+use ph2d_board_route::Routed;
 
 use crate::gesture::Gesture;
 use crate::{Editor, Frame, NEXT_GAP, Pointer, Target, live};
@@ -26,18 +26,12 @@ pub(crate) enum WireHandle {
 impl Gesture {
     /// O realce do alvo de uma ligação em curso.
     pub(crate) fn target(&self, doc: &BoardDoc) -> Option<Target> {
-        let (id, anchor) = match self {
+        let (id, _) = match self {
             Gesture::Connect { target, .. } | Gesture::EndDrag { target, .. } => (*target)?,
             _ => return None,
         };
-        let el = doc.get(id)?;
-        Some(Target {
-            element: id,
-            fixed: match anchor {
-                Anchor::Center => None,
-                Anchor::Fixed(uv) | Anchor::Orbit(uv) => Some(fixed_world(el, uv)),
-            },
-        })
+        doc.get(id)?;
+        Some(Target { element: id })
     }
 }
 

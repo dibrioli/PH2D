@@ -1,6 +1,7 @@
 //! W9 (a fidelidade ao Excalidraw) no editor: o que a auditoria de 2 lentes achou, cada um com o teste
 //! que o via vermelho — a ponta presa com o vão continua presa ao agarrá-la com zoom, a cópia de um
-//! elemento importado treme de outra maneira, a nota com a letra importada mede-se nessa letra.
+//! elemento importado treme de outra maneira, a nota com a letra importada mede-se nessa letra; e
+//! (W10) o realce do arrasto de uma ponta sem o ponto no foco.
 
 use super::*;
 
@@ -93,5 +94,35 @@ fn a_note_with_the_imported_hand_letter_measures_in_that_letter() {
     assert!(
         (got - want).abs() < 1e-6,
         "mediu {got}, a letra desenhada pede {want}"
+    );
+}
+
+/// ⭐ W10 — o REALCE ao arrastar uma ponta para a faixa junto de uma forma é o do Excalidraw (medido no
+/// next a meio do arrasto: `saidas/w10_R_ponta_banda_diag.next.meio.png`, `w10_R_ponta_fora10`): o
+/// contorno realçado e a seta já parada onde vai ficar, a `g` do contorno — e NENHUM ponto no foco
+/// (o nosso marcava-o no contorno e a ponta parava a `g` dali: dois sítios para uma ponta, auditoria
+/// W9, lente 2). Os pontos que o next mostra são os do encaixe no meio do lado, outra coisa.
+#[test]
+fn dragging_an_end_into_the_band_highlights_the_shape_and_the_arrow_shows_where_it_stops() {
+    let mut w = world();
+    let r = w.rect([500.0, 100.0, 200.0, 120.0]);
+    let id = w.arrow_drag([330.0, 380.0], [460.0, 380.0], NONE).unwrap();
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(460.0, 380.0, NONE), VIEW);
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(478.0, 255.0, NONE));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(497.0, 130.0, NONE));
+    let o = w.ed.overlay(&mut w.doc, &mut w.ts);
+    assert_eq!(
+        o.target,
+        Some(Target { element: r }),
+        "só a forma: nenhum ponto no foco"
+    );
+    let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    let el = w.el(r);
+    let (_, d) = ph2d_board_geom::nearest_on_outline(el, tip).unwrap();
+    assert!(!ph2d_board_geom::inside(el, tip), "a ponta ao vivo entrou na forma");
+    assert!(
+        (d - ph2d_board_route::gap(el)).abs() < 1e-3,
+        "a seta ao vivo pára a {d:.3}, a lei diz {}",
+        ph2d_board_route::gap(el)
     );
 }

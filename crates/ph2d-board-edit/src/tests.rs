@@ -618,10 +618,7 @@ fn the_shape_under_the_dragged_end_is_highlighted() {
     let o = w.ed.overlay(&mut w.doc, &mut w.ts);
     assert_eq!(
         o.target,
-        Some(Target {
-            element: b,
-            fixed: None
-        })
+        Some(Target { element: b })
     );
 }
 

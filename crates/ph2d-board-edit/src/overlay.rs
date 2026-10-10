@@ -61,12 +61,11 @@ pub struct Wire {
     pub mids: Vec<[f64; 2]>,
 }
 
-/// A forma alvo de uma ligação em curso.
+/// A forma alvo de uma ligação em curso: realça-se o contorno dela, e a seta ao vivo mostra onde a
+/// ponta pára — nenhum ponto no foco (o idioma do Excalidraw, medido na W10).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Target {
     pub element: ElementId,
-    /// `Some` = presa a um ponto fixo (mundo); `None` = ao centro.
-    pub fixed: Option<[f64; 2]>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

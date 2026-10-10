@@ -608,3 +608,7 @@ mod hand_tests;
 #[cfg(test)]
 #[path = "quickshape_measure_tests.rs"]
 mod measure_tests;
+
+#[cfg(test)]
+#[path = "quickshape_sensitivity_tests.rs"]
+mod sensitivity_tests;

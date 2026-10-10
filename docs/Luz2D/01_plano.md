@@ -147,6 +147,24 @@ desenho: **gate G7** (um sprite e uma forma vetorial da mesma cor, sob a mesma l
 O rebote: fluência do quadro anterior × albedo realimenta a emissão da C0 (um rebote por quadro;
 gate G9 contra o gabarito com 2+ rebotes).
 
+**A lei do rebote (fixada na W5c, ANTES da placa):**
+- **Quem reflete:** um corpo OPACO (`BloqueiaLuz` de opacidade 1 — sprite ou caminho vetorial) que
+  RECEBE luz. Não refletem: o corpo que brilha (a radiância dele é a do autor), a lâmpada (luz, não
+  corpo), o translúcido (absorve o que intercepta), o que não bloqueia (não intercepta a luz do plano)
+  e o `NaoRecebeLuz`. ⇒ as paredes das cenas 1 e 4 (`NaoRecebeLuz`, decisão do dono) não mudam.
+- **Quanto:** cada ponto `x` da fronteira devolve ao plano, igual em toda direção, a radiância
+  `L_r(x) = min(a, A_MAX) · luz_em(x⁺)` — o albedo linear `a` (cor do texel × tint; do caminho, a cor
+  dele) vezes a luz que a câmera MOSTRA ali (a superfície vista de frente, §2.3; pelo F3, a do exterior
+  mais próximo `x⁺`). O que se vê é o que volta. `x⁺` vê o próprio corpo (a meia-volta dele, com a
+  própria `L_r`): é a mesma pergunta que a placa faz numa sonda junto à face.
+- **A série:** o rebote `k` usa a luz do rebote `k − 1`. O gabarito resolve-a por ELEMENTOS de
+  fronteira de comprimento `≤ h` com radiância constante — os extremos são ângulos-evento, logo cada
+  linha da matriz (os pesos angulares × a transmissão) é exata para a discretização; o `h` converge-se
+  num gate. A placa dá UM rebote por quadro (converge ao longo dos quadros).
+- **`A_MAX = 0,9`:** o recurso é a CONVERGÊNCIA — numa sala fechada o resíduo depois de `n` rebotes é
+  `≤ A_MAX^n`; com `a = 1` a série diverge (a luz cresceria quadro a quadro até estourar o f16). O
+  número é o teto físico dos materiais (neve fresca ≈ 0,8–0,9; nenhum material real passa de ~0,9).
+
 ### 2.5 Orçamento
 
 O guia de stack declara **2,5 ms a 60 Hz** e **80 MB** de luz no iPad/iPhone. São **metas**, não

@@ -167,6 +167,18 @@ pub fn mix_lch(a: [f32; 4], b: [f32; 4], t: f32, space: MixSpace) -> [f32; 3] {
             } else {
                 RampHue::Far
             };
+            mix_lch_hue(a, b, t, hue)
+        }
+    }
+}
+
+/// A mistura em OKLCH com QUALQUER sentido de matiz da crate (curto · longo · horário ·
+/// anti-horário) — a do gradiente, antes de voltar à gama.
+#[must_use]
+pub fn mix_lch_hue(a: [f32; 4], b: [f32; 4], t: f32, hue: RampHue) -> [f32; 3] {
+    let lerp = |x: f32, y: f32| x + (y - x) * t;
+    {
+        {
             let p = oklab_to_oklch(to_oklab([a[0], a[1], a[2]]));
             let q = oklab_to_oklch(to_oklab([b[0], b[1], b[2]]));
             [

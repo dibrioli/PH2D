@@ -33,6 +33,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "color.ramp.space.rgb" => "RGB",
         "color.ramp.space.hsv" => "HSV",
         "color.ramp.space.hsl" => "HSL",
+        "color.ramp.space.oklab" => "OKLab",
+        "color.ramp.space.oklch" => "OKLCH",
         "color.ramp.interp.ease" => "Ease",
         "color.ramp.interp.cardinal" => "Cardinal",
         "color.ramp.interp.linear" => "Linear",

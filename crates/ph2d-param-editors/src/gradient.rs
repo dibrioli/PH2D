@@ -207,7 +207,8 @@ pub fn paint(
     // `Rgb` do `mix2` nunca chama `lerp_hue`, então em RGB ele seria um controle que gira
     // e não muda um pixel.
     let mut buttons: Vec<(f32, &'static str, NodeId)> = Vec::with_capacity(5);
-    if ramp.color_mode != RampColorMode::Rgb {
+    // ⚠️ E também não no OKLab (ciclo 18): ele mistura `a`/`b` em linha recta e nunca lê a matiz.
+    if !matches!(ramp.color_mode, RampColorMode::Rgb | RampColorMode::Oklab) {
         buttons.push((mode_w, tr(ramp.hue.label_key()), key.sub("hue")));
     }
     buttons.push((mode_w, tr(ramp.color_mode.label_key()), key.sub("space")));
@@ -489,7 +490,7 @@ pub fn cycle_interp(value: &str, key: EditorKey<'_>) -> String {
     serialize_gradient(&ramp)
 }
 
-/// Cicla o ESPAÇO de interpolação da rampa (RGB → HSV → HSL).
+/// Cicla o ESPAÇO de interpolação da rampa (RGB → HSV → HSL → OKLab → OKLCH, ciclo 18).
 ///
 /// ⚠️ Sair do RGB muda a versão que o `serialize_gradient` emite (`g3`), e voltar ao RGB
 /// **não a devolve** enquanto o matiz não for o `Near` — de propósito: a escolha do artista
@@ -499,7 +500,9 @@ pub fn cycle_space(value: &str) -> String {
     ramp.color_mode = match ramp.color_mode {
         RampColorMode::Rgb => RampColorMode::Hsv,
         RampColorMode::Hsv => RampColorMode::Hsl,
-        RampColorMode::Hsl => RampColorMode::Rgb,
+        RampColorMode::Hsl => RampColorMode::Oklab,
+        RampColorMode::Oklab => RampColorMode::Oklch,
+        RampColorMode::Oklch => RampColorMode::Rgb,
     };
     serialize_gradient(&ramp)
 }

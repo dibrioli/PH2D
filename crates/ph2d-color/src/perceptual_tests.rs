@@ -162,3 +162,31 @@ fn the_perceptual_spaces_keep_the_colour_and_the_even_steps() {
     assert!(l_lin > 0.7, "o linear clareia cedo: {l_lin}");
     assert!((l_lab - 0.5).abs() < 0.01, "o oklab fica a meio: {l_lab}");
 }
+
+/// ⭐ O GRADIENTE em OKLab/OKLCH dá a MESMA mistura da porta perceptual (uma lei, um sítio), e o modo
+/// sobrevive à ida e volta pelo texto que o documento grava.
+#[test]
+fn the_ramp_modes_are_the_perceptual_mix_and_survive_the_text() {
+    use crate::color_ramp::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    let (a, b) = (cor("laranja"), cor("roxo"));
+    for (modo, esp) in [
+        (RampColorMode::Oklab, MixSpace::Oklab),
+        (RampColorMode::Oklch, MixSpace::OklchShorter),
+    ] {
+        let ramp = ColorRamp::new(
+            vec![RampStop::new(0.0, a), RampStop::new(1.0, b)],
+            modo,
+            RampInterp::Linear,
+        );
+        for k in 0..=16_u8 {
+            let t = f32::from(k) / 16.0;
+            let (r, m) = (ramp.eval(t), mix(a, b, t, esp));
+            for c in 0..4 {
+                assert!((r[c] - m[c]).abs() < 1e-6, "{modo:?} t {t}: {r:?} × {m:?}");
+            }
+        }
+        let texto = crate::serialize_gradient(&ramp);
+        let volta = crate::parse_gradient(&texto).expect("o texto relê");
+        assert_eq!(volta.color_mode, modo, "o modo sobrevive ao texto `{texto}`");
+    }
+}

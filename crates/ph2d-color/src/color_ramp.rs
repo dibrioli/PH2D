@@ -34,6 +34,10 @@ pub enum RampColorMode {
     Hsv,
     /// Interpolate in Hue / Saturation / Lightness (hue takes the [`RampHue`] path).
     Hsl,
+    /// ⭐ OKLab (ciclo 18, doc 127) — a luminosidade percebida em linha recta.
+    Oklab,
+    /// ⭐ OKLCH (ciclo 18) — a matiz roda no sentido do [`RampHue`] do gradiente.
+    Oklch,
 }
 
 /// How the factor between two bracketing stops is shaped (and, for the cubic modes, how four
@@ -70,7 +74,7 @@ pub enum RampHue {
 
 impl RampColorMode {
     /// Number of modes (drives a dropdown's decode range).
-    pub const COUNT: u8 = 3;
+    pub const COUNT: u8 = 5;
     /// Stable wire discriminant.
     #[must_use]
     pub fn to_u8(self) -> u8 {
@@ -78,6 +82,8 @@ impl RampColorMode {
             Self::Rgb => 0,
             Self::Hsv => 1,
             Self::Hsl => 2,
+            Self::Oklab => 3,
+            Self::Oklch => 4,
         }
     }
     /// Inverse of [`Self::to_u8`]; unknown → [`Self::Rgb`].
@@ -86,6 +92,8 @@ impl RampColorMode {
         match v {
             1 => Self::Hsv,
             2 => Self::Hsl,
+            3 => Self::Oklab,
+            4 => Self::Oklch,
             _ => Self::Rgb,
         }
     }
@@ -101,6 +109,8 @@ impl RampColorMode {
             Self::Rgb => "color.ramp.space.rgb",
             Self::Hsv => "color.ramp.space.hsv",
             Self::Hsl => "color.ramp.space.hsl",
+            Self::Oklab => "color.ramp.space.oklab",
+            Self::Oklch => "color.ramp.space.oklch",
         }
     }
 }
@@ -460,6 +470,15 @@ impl ColorRamp {
     fn mix2(&self, a: [f32; 4], b: [f32; 4], fac: f32) -> [f32; 4] {
         match self.color_mode {
             RampColorMode::Rgb => lerp4(a, b, fac),
+            RampColorMode::Oklab => {
+                crate::perceptual::mix(a, b, fac, crate::perceptual::MixSpace::Oklab)
+            }
+            RampColorMode::Oklch => {
+                let rgb = crate::perceptual::gamut_map(crate::perceptual::mix_lch_hue(
+                    a, b, fac, self.hue,
+                ));
+                [rgb[0], rgb[1], rgb[2], lerp(a[3], b[3], fac)]
+            }
             RampColorMode::Hsv => {
                 let (h1, s1, v1) = rgb_to_hsv(a);
                 let (h2, s2, v2) = rgb_to_hsv(b);
@@ -495,6 +514,26 @@ impl ColorRamp {
         w: [f32; 4],
     ) -> [f32; 4] {
         match self.color_mode {
+            RampColorMode::Oklab => {
+                use crate::perceptual::{gamut_map, oklab_to_oklch, to_oklab};
+                let p = [c0, c1, c2, c3].map(|c| to_oklab([c[0], c[1], c[2]]));
+                let o = [0, 1, 2].map(|k| cub(w, p[0][k], p[1][k], p[2][k], p[3][k]));
+                let rgb = gamut_map(oklab_to_oklch(o));
+                [rgb[0], rgb[1], rgb[2], cub(w, c0[3], c1[3], c2[3], c3[3])]
+            }
+            RampColorMode::Oklch => {
+                use crate::perceptual::{gamut_map, oklab_to_oklch, to_oklab};
+                let p = [c0, c1, c2, c3].map(|c| oklab_to_oklch(to_oklab([c[0], c[1], c[2]])));
+                let hs = unwrap_hues([p[0][2], p[1][2], p[2][2], p[3][2]]);
+                let h = w[0] * hs[0] + w[1] * hs[1] + w[2] * hs[2] + w[3] * hs[3];
+                let lch = [
+                    cub(w, p[0][0], p[1][0], p[2][0], p[3][0]),
+                    cub(w, p[0][1], p[1][1], p[2][1], p[3][1]).max(0.0),
+                    h.rem_euclid(1.0),
+                ];
+                let rgb = gamut_map(lch);
+                [rgb[0], rgb[1], rgb[2], cub(w, c0[3], c1[3], c2[3], c3[3])]
+            }
             RampColorMode::Rgb => [
                 cub(w, c0[0], c1[0], c2[0], c3[0]),
                 cub(w, c0[1], c1[1], c2[1], c3[1]),

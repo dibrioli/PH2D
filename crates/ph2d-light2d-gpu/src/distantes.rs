@@ -425,6 +425,7 @@ pub(crate) fn montar(
 #[cfg(test)]
 mod testes {
     use super::*;
+    use ph2d_light2d_ecs::Oclusor;
 
     #[test]
     fn o_fecho_e_o_toque() {
@@ -441,5 +442,147 @@ mod testes {
         let longe = [[5.0, 4.0], [6.0, 4.0], [6.0, 5.0], [5.0, 5.0]];
         assert!(tocam(&h, &perto));
         assert!(!tocam(&h, &longe));
+    }
+
+    /// A grade [0, 4]² a 1/16 m; uma lâmpada em `centro`.
+    fn grade() -> Grade {
+        Grade {
+            origem_m: [0.0, 0.0],
+            texel_m: 1.0 / 16.0,
+            largura: 64,
+            altura: 64,
+        }
+    }
+
+    fn cena(centro: [f32; 2], oclusores: Vec<Oclusor>) -> CenaDeLuz {
+        CenaDeLuz {
+            emissores: vec![Emissor::Disco {
+                centro,
+                raio: 0.2,
+                radiancia: [1.0; 3],
+                alcance_m: f32::INFINITY,
+            }],
+            oclusores,
+            luzes: 1,
+            ..Default::default()
+        }
+    }
+
+    fn ret(x0: f32, y0: f32, x1: f32, y1: f32) -> Oclusor {
+        Oclusor {
+            vertices: vec![[x0, y0], [x1, y0], [x1, y1], [x0, y1]],
+            opacidade: 1.0,
+        }
+    }
+
+    fn sprite(origem: [f64; 2]) -> SpriteNaC0 {
+        SpriteNaC0 {
+            origem,
+            eixo_s: [0.3, 0.0],
+            eixo_t: [0.0, -1.0],
+            uv: [0.0, 0.0, 1.0, 1.0],
+            emissao: [0.0; 3],
+            opacidade: 1.0,
+            premultiplicada: false,
+            textura: 0,
+        }
+    }
+
+    #[test]
+    fn so_entra_o_que_esta_fora_da_grade_no_caminho_de_uma_lampada_fora_dela() {
+        let g = grade();
+        let oclusores = vec![
+            ret(4.5, 1.5, 4.8, 2.5), // fora, no caminho
+            ret(1.0, 1.0, 1.5, 1.5), // inteiro na grade: a captura tem-no
+            ret(3.8, 1.8, 4.3, 2.2), // atravessa a borda: entra
+            ret(4.5, 8.0, 4.8, 9.0), // fora, longe do caminho
+        ];
+        let m = montar(
+            &cena([6.0, 2.0], oclusores.clone()),
+            &g,
+            &[0],
+            &CapturaDeSprites::default(),
+            256,
+        );
+        assert_eq!(m.listas, vec![[0, 2]], "{m:?}");
+        assert_eq!(m.objetos.len(), 2);
+        assert!(m.objetos.iter().all(|o| o.tipo == POLIGONO));
+        // A lâmpada dentro da grade: nada.
+        let m = montar(
+            &cena([2.0, 2.0], oclusores),
+            &g,
+            &[0],
+            &CapturaDeSprites::default(),
+            256,
+        );
+        assert_eq!(m.listas, vec![[0, 0]]);
+        assert!(m.objetos.is_empty());
+    }
+
+    #[test]
+    fn as_arestas_tem_o_interior_a_esquerda() {
+        let g = grade();
+        // O mesmo retângulo nos dois sentidos.
+        let mut horario = ret(4.5, 1.5, 4.8, 2.5);
+        horario.vertices.reverse();
+        for o in [ret(4.5, 1.5, 4.8, 2.5), horario] {
+            let m = montar(
+                &cena([6.0, 2.0], vec![o]),
+                &g,
+                &[0],
+                &CapturaDeSprites::default(),
+                256,
+            );
+            let area: f32 = m.arestas.iter().map(|a| a[0] * a[3] - a[2] * a[1]).sum();
+            assert!(area > 0.0, "anti-horário: {:?}", m.arestas);
+        }
+    }
+
+    #[test]
+    fn sprites_da_mesma_textura_e_uv_partilham_a_mascara() {
+        let g = grade();
+        let sprites = CapturaDeSprites {
+            sprites: vec![sprite([4.5, 2.5]), sprite([5.0, 2.5])],
+            ..Default::default()
+        };
+        let m = montar(&cena([6.0, 2.0], vec![]), &g, &[0], &sprites, 256);
+        assert_eq!((m.objetos.len(), m.mascaras.len()), (2, 1), "{m:?}");
+        assert!(
+            m.objetos
+                .iter()
+                .all(|o| o.quad_b_janela[2..] == m.objetos[0].quad_b_janela[2..])
+        );
+    }
+
+    #[test]
+    fn quando_as_mascaras_nao_cabem_o_lado_desce_e_as_janelas_nao_se_sobrepoem() {
+        let g = grade();
+        // 300 UVs distintos: a 256 só cabem 256 numa atlas de 4096.
+        let sprites = CapturaDeSprites {
+            sprites: (0..300)
+                .map(|k| SpriteNaC0 {
+                    uv: [k as f32 / 300.0, 0.0, 1.0, 1.0],
+                    ..sprite([4.5, 2.5])
+                })
+                .collect(),
+            ..Default::default()
+        };
+        let m = montar(&cena([6.0, 2.0], vec![]), &g, &[0], &sprites, 256);
+        assert_eq!(m.mascaras.len(), 300);
+        assert_eq!(
+            (m.lado, m.lado_da_atlas),
+            (128, 4096),
+            "{:?}",
+            (m.lado, m.lado_da_atlas)
+        );
+        let mut janelas: Vec<[u32; 2]> = m.mascaras.iter().map(|k| k.janela).collect();
+        assert!(
+            janelas
+                .iter()
+                .all(|j| j[0] + m.lado <= m.lado_da_atlas && j[1] + m.lado <= m.lado_da_atlas)
+        );
+        janelas.sort_unstable();
+        janelas.dedup();
+        assert_eq!(janelas.len(), 300, "janelas repetidas");
     }
 }

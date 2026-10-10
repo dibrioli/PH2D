@@ -63,6 +63,9 @@ struct Caso<'a> {
     /// Os sprites por texel (vazio = os quads como polígonos).
     present: PresentWorld,
     vetores: Option<(&'a VecScene, &'a VecXforms)>,
+    /// Quantas MÁSCARAS (sprites por texel, caminhos vetoriais) o quadro tem de ter, no mínimo, nas
+    /// vistas com o opaco fora da grade (0 = o opaco chega como arestas).
+    mascaras: usize,
     /// O gabarito (o vetor e a fenda do sprite como os polígonos deles).
     gabarito: CenaDeLuz,
     /// Cenas de controlo: cada uma tem de mudar a resposta nos pontos. A 1.ª é a sem o opaco: a
@@ -72,6 +75,8 @@ struct Caso<'a> {
     vistas: Vec<([f32; 2], f32)>,
     /// A caixa (x0, y0, x1, y1, metros) do opaco e o centro da lâmpada que saem da grade.
     opaco: [f64; 4],
+    /// O opaco fica INTEIRO na grade (só a lâmpada sai): a captura tem-no, e nada pode ser distante.
+    opaco_dentro: bool,
     lampada: [f64; 2],
 }
 
@@ -100,6 +105,8 @@ fn medir(gpu: &ph2d_gpu::GpuContext, r: &SpriteRenderer, mut c: Caso<'_>) -> f64
     }
     let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
     let (mut pior, mut fora, mut onde) = (0.0_f64, 0, String::new());
+    // Quantas vezes cada ponto foi medido numa vista com o opaco e a lâmpada fora da grade.
+    let mut medidos = vec![0; c.pontos.len()];
     for &(centro, altura) in &c.vistas {
         let afim =
             Camera2d::new(centro, altura).world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
@@ -116,17 +123,40 @@ fn medir(gpu: &ph2d_gpu::GpuContext, r: &SpriteRenderer, mut c: Caso<'_>) -> f64
         );
         let dentro = |p: [f64; 2]| (x0..=x1).contains(&p[0]) && (y0..=y1).contains(&p[1]);
         let o = c.opaco;
-        if !(dentro([o[0], o[1]]) && dentro([o[2], o[3]])) && !dentro(c.lampada) {
+        let opaco_na_grade = dentro([o[0], o[1]]) && dentro([o[2], o[3]]);
+        let fora_da_grade = opaco_na_grade == c.opaco_dentro && !dentro(c.lampada);
+        if fora_da_grade {
             fora += 1;
             let rel = l.relatorio().expect("relatório");
-            assert!(
-                rel.distantes > 0,
-                "{}: vista {centro:?} × {altura}: nenhum objeto distante",
-                c.nome
-            );
+            if c.opaco_dentro {
+                assert_eq!(
+                    rel.distantes, 0,
+                    "{}: vista {centro:?} × {altura}: o opaco inteiro na grade foi tomado por distante",
+                    c.nome
+                );
+            } else {
+                assert!(
+                    rel.mascaras >= c.mascaras,
+                    "{}: vista {centro:?} × {altura}: o opaco não chegou como máscara ({rel:?})",
+                    c.nome
+                );
+                assert!(
+                    rel.distantes > 0,
+                    "{}: vista {centro:?} × {altura}: nenhum objeto distante",
+                    c.nome
+                );
+            }
         }
         let f = fluencia_lida(gpu, l.solver().expect("solver"));
+        // ⚠️ Só a JANELA se calcula (o resto da grade guarda o valor velho): mede-se o que se vê.
+        let meia = [altura * FHD.0 as f32 / FHD.1 as f32 / 2.0, altura / 2.0];
+        let na_janela =
+            |p: [f64; 2]| (0..2).all(|e| (p[e] - f64::from(centro[e])).abs() <= f64::from(meia[e]));
         for (k, (&p, q)) in c.pontos.iter().zip(&gab).enumerate() {
+            if !na_janela(p) {
+                continue;
+            }
+            medidos[k] += usize::from(fora_da_grade);
             let v = f.amostra(p);
             let e = (v - q).abs() / max;
             if e > pior {
@@ -138,13 +168,18 @@ fn medir(gpu: &ph2d_gpu::GpuContext, r: &SpriteRenderer, mut c: Caso<'_>) -> f64
         }
     }
     eprintln!(
-        "{}: {} vistas, {fora} com o opaco e a lâmpada fora da grade · pior {pior:.4} do máximo ({onde})",
+        "{}: {} vistas, {fora} com o opaco e a lâmpada fora da grade · medidos {medidos:?} · pior {pior:.4} do máximo ({onde})",
         c.nome,
         c.vistas.len()
     );
     assert!(
         fora > 0,
         "{}: nenhuma vista tirou o opaco e a lâmpada da grade",
+        c.nome
+    );
+    assert!(
+        medidos.iter().all(|&n| n > 0),
+        "{}: pontos nunca medidos na janela com o opaco fora da grade: {medidos:?}",
         c.nome
     );
     pior
@@ -215,11 +250,13 @@ fn casos_da_cena4(gpu: &ph2d_gpu::GpuContext, por_texel: bool) -> Vec<f64> {
                 mundo: &w,
                 present,
                 vetores: None,
+                mascaras: usize::from(por_texel),
                 gabarito: cena_de_luz(&w),
                 controlos: vec![("sem o muro", cena_de_luz(&cena4(ponto, Some("Muro"))))],
                 pontos: vec![[-2.8, -1.0], [-2.5, -1.8], [-2.2, -2.3], [-1.2, -2.0]],
                 vistas: pan(-3.4, -1.8, -2.0, &[1.5, 2.5]),
                 opaco: [-0.1, -4.25, 0.1, 4.25],
+                opaco_dentro: false,
                 lampada: [1.1, 1.5],
             },
         ));
@@ -240,6 +277,7 @@ fn casos_da_cena4(gpu: &ph2d_gpu::GpuContext, por_texel: bool) -> Vec<f64> {
                 mundo: &w,
                 present,
                 vetores: None,
+                mascaras: usize::from(por_texel),
                 gabarito: cena_de_luz(&w),
                 controlos: vec![(
                     "sem a parede",
@@ -254,6 +292,7 @@ fn casos_da_cena4(gpu: &ph2d_gpu::GpuContext, por_texel: bool) -> Vec<f64> {
                 ],
                 vistas: pan(4.7, 5.9, -1.6, &[1.5, 2.0]),
                 opaco: [2.4, -2.5, 2.6, 0.5],
+                opaco_dentro: false,
                 lampada: [1.1, 1.5],
             },
         ));
@@ -311,16 +350,26 @@ fn lampada_da_fenda(w: &mut World) {
     ));
 }
 
-/// O gabarito da fenda: os dois retângulos opacos.
+/// O centro do outro sprite da cena da fenda (0,3 × 0,2 m): dentro do caminho até a lâmpada, abaixo
+/// dos raios dos pontos.
+const OUTRO: [f32; 2] = [-6.5, -0.5];
+
+/// O gabarito da fenda: os dois retângulos opacos (e o outro sprite, se a cena o tem).
 fn gabarito_da_fenda(w: &World) -> CenaDeLuz {
     let mut c = cena_de_luz(w);
     let [x0, y0, x1, y1] = OPACO.map(|v| v as f32);
     let f = FENDA_Y as f32;
-    let ret = |a: f32, b: f32| Oclusor {
+    let ret = |x0: f32, a: f32, x1: f32, b: f32| Oclusor {
         vertices: vec![[x0, a], [x1, a], [x1, b], [x0, b]],
         opacidade: 1.0,
     };
-    c.oclusores = vec![ret(y0, -f), ret(f, y1)];
+    let outro = c.oclusores.len() > 1;
+    c.oclusores = vec![ret(x0, y0, x1, -f), ret(x0, f, x1, y1)];
+    if outro {
+        let [ox, oy] = OUTRO;
+        c.oclusores
+            .push(ret(ox - 0.15, oy - 0.1, ox + 0.15, oy + 0.1));
+    }
     c.sprites.clear();
     c.vetores.clear();
     c
@@ -350,6 +399,21 @@ fn um_sprite_com_fenda_fora_da_tela_tapa_pelo_alfa() {
     let mut r = crate::comum::renderer(&gpu);
     let mut w = World::new();
     lampada_da_fenda(&mut w);
+    let mut present = PresentWorld::new();
+    // ⭐ Outro sprite, outra textura, no caminho mas fora dos raios dos pontos — ele pega a 1.ª janela
+    // da atlas e a fenda a 2.ª (a janela de cada máscara conta).
+    let mut t = Transform::IDENTITY;
+    t.translation.x = OUTRO[0];
+    t.translation.y = OUTRO[1];
+    let g = GlobalTransform::from_transform(t);
+    let outro = Sprite::atlas(0, [0.3, 0.2], [1.0; 4]);
+    let e = w.spawn((outro, BloqueiaLuz { opacidade: 1.0 }, t, g)).id();
+    let tex = r
+        .acquire_individual(1, 1, &[200, 0, 0, 255])
+        .expect("textura");
+    present
+        .world_mut()
+        .spawn((instancia(tex, &outro, &g), SimRef(e)));
     let mut t = Transform::IDENTITY;
     t.translation.x = -5.0;
     let g = GlobalTransform::from_transform(t);
@@ -360,7 +424,6 @@ fn um_sprite_com_fenda_fora_da_tela_tapa_pelo_alfa() {
         .flat_map(|j| [90, 90, 90, if j == 7 { 0 } else { 255 }])
         .collect();
     let tex = r.acquire_individual(1, 15, &rgba).expect("textura");
-    let mut present = PresentWorld::new();
     present
         .world_mut()
         .spawn((instancia(tex, &sprite, &g), SimRef(e)));
@@ -373,11 +436,13 @@ fn um_sprite_com_fenda_fora_da_tela_tapa_pelo_alfa() {
             mundo: &w,
             present,
             vetores: None,
+            mascaras: 2,
             gabarito: gabarito_da_fenda(&w),
-            controlos: vec![("sem o sprite", so_a_lampada()), ("o quad inteiro", quad)],
+            controlos: vec![("sem os sprites", so_a_lampada()), ("o quad inteiro", quad)],
             pontos: PONTOS_DA_FENDA.to_vec(),
             vistas: pan(0.9, 2.1, 0.0, &[1.5, 2.0]),
             opaco: OPACO,
+            opaco_dentro: false,
             lampada: LAMPADA_DA_FENDA,
         },
     );
@@ -411,16 +476,156 @@ fn um_caminho_vetorial_fora_da_tela_tapa() {
             mundo: &w,
             present: PresentWorld::new(),
             vetores: Some((&doc, &xforms)),
+            mascaras: 2,
             gabarito: gabarito_da_fenda(&w),
             controlos: vec![("sem o caminho", so_a_lampada())],
             pontos: PONTOS_DA_FENDA.to_vec(),
             vistas: pan(0.9, 2.1, 0.0, &[1.5, 2.0]),
             opaco: OPACO,
+            opaco_dentro: false,
             lampada: LAMPADA_DA_FENDA,
         },
     );
     assert!(
         pior <= TETO_FENDA,
         "o caminho vetorial fora da tela: {pior:.4} (teto {TETO_FENDA})"
+    );
+}
+
+/// ⭐ Um opaco TRANSLÚCIDO fora da tela deixa passar a sua parte: o muro da cena 4 com `BloqueiaLuz`
+/// ½ — cada ENTRADA multiplica por `1 − opacidade` (a lei do gabarito), pelos quads (as arestas) e
+/// pelos sprites por texel (a máscara).
+#[test]
+fn um_opaco_translucido_fora_da_tela_deixa_passar_a_sua_parte() {
+    let Some(gpu) = crate::comum::gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut r = crate::comum::renderer(&gpu);
+    let tex = r.acquire_individual(1, 1, &[255; 4]).expect("textura");
+    let translucido = || {
+        let mut w = cena4(false, None);
+        let muro = w
+            .query::<(Entity, &Name)>()
+            .iter(&w)
+            .find(|(_, n)| n.0 == "Muro")
+            .map(|(e, _)| e)
+            .expect("o muro");
+        w.entity_mut(muro).insert(BloqueiaLuz { opacidade: 0.5 });
+        w
+    };
+    let mut piores = Vec::new();
+    for por_texel in [false, true] {
+        let mut w = translucido();
+        let present = if por_texel {
+            instancias(&mut w, tex)
+        } else {
+            PresentWorld::new()
+        };
+        let nome = format!(
+            "o muro a ½ · {}",
+            if por_texel {
+                "sprites por texel"
+            } else {
+                "quads"
+            }
+        );
+        piores.push(medir(
+            &gpu,
+            &r,
+            Caso {
+                nome: &nome,
+                mundo: &w,
+                present,
+                vetores: None,
+                mascaras: usize::from(por_texel),
+                gabarito: cena_de_luz(&w),
+                controlos: vec![
+                    ("sem o muro", cena_de_luz(&cena4(false, Some("Muro")))),
+                    ("o muro opaco", cena_de_luz(&cena4(false, None))),
+                ],
+                pontos: vec![[-2.8, -1.0], [-2.5, -1.8], [-2.2, -2.3], [-1.2, -2.0]],
+                vistas: pan(-3.4, -1.8, -2.0, &[1.5, 2.5]),
+                opaco: [-0.1, -4.25, 0.1, 4.25],
+                opaco_dentro: false,
+                lampada: [1.1, 1.5],
+            },
+        ));
+    }
+    let pior = piores.iter().copied().fold(0.0, f64::max);
+    assert!(
+        pior <= TETO_CENA4,
+        "o muro translúcido fora da tela: {piores:.4?} (teto {TETO_CENA4})"
+    );
+}
+
+/// ⭐ Um opaco translúcido INTEIRO na grade, com a lâmpada fora dela: a captura tem-no, e ele não
+/// pode ser contado outra vez como distante (cada entrada × `1 − opacidade` UMA vez).
+#[test]
+fn um_opaco_inteiro_na_grade_nao_conta_duas_vezes() {
+    let Some(gpu) = crate::comum::gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut r = crate::comum::renderer(&gpu);
+    let tex = r.acquire_individual(1, 1, &[255; 4]).expect("textura");
+    let cena = |opacidade: Option<f32>| {
+        let mut w = World::new();
+        lampada_da_fenda(&mut w);
+        if let Some(o) = opacidade {
+            let mut t = Transform::IDENTITY;
+            t.translation.x = 0.5;
+            let g = GlobalTransform::from_transform(t);
+            w.spawn((
+                Sprite::atlas(0, [0.2, 3.0], [1.0; 4]),
+                BloqueiaLuz { opacidade: o },
+                t,
+                g,
+            ));
+        }
+        w
+    };
+    let mut piores = Vec::new();
+    for por_texel in [false, true] {
+        let mut w = cena(Some(0.5));
+        let present = if por_texel {
+            instancias(&mut w, tex)
+        } else {
+            PresentWorld::new()
+        };
+        let nome = format!(
+            "translúcido inteiro na grade · {}",
+            if por_texel {
+                "sprites por texel"
+            } else {
+                "quads"
+            }
+        );
+        piores.push(medir(
+            &gpu,
+            &r,
+            Caso {
+                nome: &nome,
+                mundo: &w,
+                present,
+                vetores: None,
+                mascaras: 0,
+                gabarito: cena_de_luz(&w),
+                controlos: vec![
+                    ("sem ele", cena_de_luz(&cena(None))),
+                    ("opaco", cena_de_luz(&cena(Some(1.0)))),
+                ],
+                pontos: vec![[1.2, -0.5], [1.5, 0.0], [1.8, 0.5]],
+                vistas: pan(0.9, 2.1, 0.0, &[1.5, 2.0]),
+                opaco: [0.4, -1.5, 0.6, 1.5],
+                opaco_dentro: true,
+                lampada: LAMPADA_DA_FENDA,
+            },
+        ));
+    }
+    let pior = piores.iter().copied().fold(0.0, f64::max);
+    assert!(
+        pior <= TETO_CENA4,
+        "o translúcido inteiro na grade: {piores:.4?} (teto {TETO_CENA4})"
     );
 }

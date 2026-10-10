@@ -179,13 +179,16 @@ verdes (doc 128 §5.1).
 ⏳ **Smoke do dono PENDENTE.** Tutorial 12 — `docs/Motion Nodes/tutoriais/12_o_jogo_manda.pdf` (5
 páginas, gate `every_step_of_the_game_tutorial_is_reachable`) — sobre a cena `=134`:
 
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && PH2D_GPU_COOK_DEMO=134 cargo run --release -p ph2d-host-desktop`
-   (a 2.ª compilação já não recompila).
-2. Siga o PDF: no cartão do `Motion Input` mude o número da vida e veja a barra encher; dispare o
-   boom e veja a galáxia sacudir e voltar à calma; peça o outro estado e veja o cruzamento (36 tiques, 0,6 s a 60 Hz);
-   arraste a fita para trás e veja tudo repetir o que já viu.
-3. Deu errado se: a barra não responde ao número, o boom empurra a galáxia para fora do ecrã, ou o
-   scrub mostra outra coisa do que se viu. Fotos de controlo: `target/prova/c19/fotos/`.
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=134 cargo run -p ph2d-host-desktop --profile smoke`
+   (o comando do tutorial; `env` porque o shell do dono é o `fish`).
+2. Siga o PDF, secções 1–6: no cartão `Input` do grafo com `Name` = `vida`, arraste `Value` e veja a
+   barra encher; no `estado`, ligue `On` e veja a grelha virar anel em 0,6 s; no `time`, mude a cor;
+   no `boom`, clique `Fire` e veja as estrelas incharem e o redemoinho acelerar e acalmar em 2 s;
+   pare e arraste a fita para trás e para a frente — tudo repete; depois crie um objecto, junte-lhe
+   o componente `Motion Input` no Inspector, escolha `vida` e `Value` 0,25 — a barra vai a 25%.
+3. Deu errado se: a barra não segue o `Value`, a grelha salta de uma vez para o anel, o `Fire` não
+   mexe na galáxia (ou ela não acalma), voltar a fita mostra outra coisa, ou o `Motion Input` não
+   mexe na barra. Fotos de controlo: `target/prova/c19/fotos/`.
 4. Porta de teste sem clicar: `PH2D_MOTION_INPUTS=vida=0.25:estado=1:time=0.2,0.5,1`.
 
 ## §7 — O que fica ABERTO

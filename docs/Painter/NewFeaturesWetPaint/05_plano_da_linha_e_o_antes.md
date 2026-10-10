@@ -571,6 +571,68 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     Wash e o Wet Drip (água de fábrica 1,0; o Rebelle usa ~0,24) fazem contas de 40–60 de altura e ainda
     abrem 3–6 dedos no máximo — o Wash também a meia, desde que a F5 lhe subiu a gravidade de 0,003 para
     0,005. A água de fábrica foi revertida com a W1b; decidir com o dono.
+- 🔎✅ **W1f — auditoria do ACHATAMENTO (10/10, prompt [12](12_PROMPT_janela_auditoria_achatamento.md))**
+  (smoke do dono sobre `a9ce1a4c6`: *«áreas retas, parece que retângulos virtuais influenciam»* —
+  [captura](fixtures/smoke_dono_w1e/achatamento_s_vermelho.png)). Cena: o S do oráculo a 1:1 (Wet Round
+  100 px, água 1, 30 s; `wetpaint/sonda_achatamento.rs`), tela direita · meia · máxima · diagonal (raio 2).
+  Régua NOVA `ferramentas/recto.py`, portada em `wetpaint/achatamento_tests.rs` (a mesma conta): a orla de
+  baixo plana mais longa (±0 px) e a fracção de fios LARGOS (≥ 8 colunas) com a ponta cortada a direito
+  (≥ 70 % das colunas na mesma última linha ±1). Calibrada no Rebelle (5 telas `s_*.png`): plano 19–22,
+  pontas quadradas 0 (os fios dele têm 3–7 colunas); a captura do dono: plano **62** (e 33, 27, 24 nos
+  três sítios marcados).
+  - **Causa (medida célula a célula, `sonda_ponta`): a lei da gota da W1e.** Na ponta de um fio a água
+    está no MEIO (filme 10–19 no centro, 0–3 nas bordas), mas todas as colunas descem juntas, uma linha de
+    cada vez: (1) a altura crítica (`h_c` 40–80) quase nunca é atingida — a frente avança porque a célula
+    «seca» destrava com `film > 1e-3` (um degrau binário); (2) a lei só trava a componente que DESCE, a
+    de lado fica livre — a linha nova enche-se de lado até à largura do fio antes de a seguinte abrir.
+    Resultado: fundo plano, cantos a 90°, paredes verticais. Aos 8–15 s as pontas ainda são redondas; o
+    corte aparece no rastejar final (a 30 s).
+
+    | H | teste | resultado | veredicto |
+    |---|---|---|---|
+    | **H1** a lei da gota | S com `drip_head` 0 × 0,2 | com a lei: meia plano 33 (com a água no traço) / 20, pontas quadradas 3 de 3; máxima 20 de 22. Sem ela: 13 · 0; 10 · 1 de 24 | **a causa** |
+    | H1 «ĝ arredondado» | fonte bilinear ao longo do fluxo · máximo dos 3 de cima · máximo de 4 na coluna | meia plano 33 / 33 / 20, pontas iguais | ⛔ não é o arredondamento |
+    | **H2** recorte por eixo | `maxVelocity` 3 (e + `levelClamp` 1) | 33 (76 com o nivelamento) — pontas quadradas iguais | ⛔ morta |
+    | **H3** rectângulos reais | `spans_enabled = false`; ecrã × recomposição inteira; `rf` | byte-idêntico; 0 px de diferença em 60 cenas; `rf = 1` de fábrica | ⛔ morta |
+    | **H4** o fio que parou | a ponta ao longo do tempo (`PH2D_SONDA_X`) | redonda a correr, cortada no rastejar (o mecanismo acima) | ✅ sintoma da H1 |
+
+  - **⛔ Recusas MEDIDAS (curas da lei que mantêm a trava na entrada do seco — ~40 variantes, 6 rodadas):**
+    altura crítica modulada pelo papel (`h_c·(1 ± 0,5…1)`: plano 33 → 23, pontas quadradas iguais) ·
+    limiar de «seca» relativo (`0,05–0,25·h_c`: a orla vira ESCADA, cantos 49–50) · conta presa abaixo de
+    `0,6·h_c` (plano 36) · o fluxo INTEIRO da célula seca com `h_c/cos θ` (escadas; em todas as direcções
+    os riscos brancos e 9–10 fios no máximo da bancada) · transição seco→molhado contínua (escadas e fios
+    na MEIA) · a lei na GRAVIDADE em vez da entrada (piso 0: nada se move, igual à tela direita mesmo no
+    máximo; piso 0,25–0,5: a orla de baixo deixa de escurecer, 0,76–0,93). ⇒ uma porta célula a célula na
+    entrada do papel seco imprime a grelha; não há variante dela sem rectângulos ou escadas.
+  - **Decisão (pelo número): a lei sai do produto** (`drip_head = 0` no nascimento da sessão; o código
+    fica no motor como instrumento das sondas, o porquê no doc de `ALTURA_DA_GOTA`). Portão novo
+    `o_escorrimento_do_s_nao_se_corta_em_rectangulos` (meia e máxima; controlo DENTRO: com a lei reprova;
+    mutação «a lei de volta no produto» ⇒ VERMELHO). `a_meia_inclinacao_nao_escorre_e_a_orla_de_baixo_escurece`
+    passou a `a_meia_inclinacao_nao_escorre` (o produto, ≤ 20 px; controlo: G 0,01 no máximo escorre).
+
+    | S / bancada | antes (W1e) | depois (W1f) | Rebelle |
+    |---|---|---|---|
+    | S meia: orla plana · pontas quadradas | 33 · 2 de 3 (com a água no traço) | **13 · 0 de 3** | 19–22 · 0 |
+    | S máxima: pontas quadradas | 19 de 21 | **1 de 24** (redondas) | 0 (fios de 3–7 px) |
+    | bancada Round: direita · meia · máxima (fios ≥ 20 px) | 0 · 0 · 0 | **0 · 0 · 1** (21 px) | 0 · 0 · 1 (250–300 px) |
+    | ⚠️ orla de baixo ÷ de cima a meia (água 1) | 1,30 | **0,77** | 1,6 |
+    | pincéis de fábrica, meia (Round · Wash · Dry · Drip), fios ≥ 20 px | 0 · 4 · 0 · 0 | 0 · 5 · 0 · 0 | — |
+    | pincéis de fábrica, máxima | 0 · 1–6 · 0 · 3 | 1 · 5 · 0 · 3 | Round 1 |
+
+    ⚠️ **O que se perdeu** (aberto, a decidir com o dono): a orla de baixo a meia já não escurece (a lei
+    prendia a água na orla; sem ela rasteja, como no port). E o S no MÁXIMO continua com ~20 fios
+    grossos (antes e depois; o Rebelle 10–11 finos e longos) — o «fio único» da W1e continua aberto.
+  - **A água só corre depois do Up (dono, 10/10: *«prefiro tudo em tempo real, mas precisamos pintar
+    imagens de até 4k»*).** Medido a 4096² (poça pesada, `measure_a_painting_frame_with_the_water_running`,
+    7 blocos intercalados, load 25–40): o quadro a pintar com a água parada p50 1,2–1,6 ms · pior 2,1–4,0;
+    com ela a correr no traço p50 4,1–4,7 · pior **14,1–44,6 ms** ⇒ `sim_while_painting` desligado no
+    produto. A mistura continua a ver-se a pintar (o pouso do dab vela), mas o render do filme MOLHADO
+    sobre o seco velava demais sem a água a assentar no traço (seco durante γ 0,76): ganhou constante
+    própria, `VELATURA_DO_FILME` = 0,20 (`Sim::glaze_filme`; varrida em `sonda_velatura_do_filme`):
+    seco γ durante · depois 0,76 · 0,62 → **0,55 · 0,43** (Rebelle 0,42–0,49 · 0,44–0,51), molhado
+    sangria +25 (Rebelle +12…+21). `azul_sobre_vermelho…` verde.
+  - Pranchas: [1:1](prancha_w1f_achatamento.png) · [8× nas pontas](prancha_w1f_achatamento_8x.png)
+    (antes · depois · Rebelle · a captura do dono).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

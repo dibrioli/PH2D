@@ -307,6 +307,17 @@ fn copias(motion: &mut MotionState, world: &mut World, feito: &mut Manutencao) {
     motion.pump.mark_dirty();
 }
 
+/// ⭐ O Ctrl+Z da ferramenta Motion pertence ao undo GLOBAL? Sim quando o topo da fila do Motion é a
+/// purga de um objecto apagado, enterrada à espera dele ([`ph2d_ecs::Graveyard::holds`]): desfazê-la
+/// ali daria os nós a outro objecto (a migração), e o objecto nunca voltaria.
+#[must_use]
+pub fn undo_e_do_global(motion: &MotionState) -> bool {
+    motion
+        .history
+        .top()
+        .is_some_and(|t| motion.objeto.cemiterio.holds(t))
+}
+
 /// ⭐ O objecto que o undo global devolveu traz os nós dele de volta, no mesmo Ctrl+Z (o cemitério).
 fn ressuscita(motion: &mut MotionState, feito: &mut Manutencao) {
     if motion.objeto.cemiterio.is_empty() {

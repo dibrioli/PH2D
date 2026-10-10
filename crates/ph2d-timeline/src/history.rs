@@ -89,6 +89,13 @@ impl TimelineHistory {
             .chain(self.pending.iter_mut())
     }
 
+    /// ⭐ O passo do topo é uma purga enterrada ([`ph2d_ecs::Graveyard::holds`])? Então o Ctrl+Z é do
+    /// undo global (ele devolve o objecto, e a cova devolve os clipes) — a fila não o consome.
+    #[must_use]
+    pub fn top_is_buried(&self) -> bool {
+        self.undo.last().is_some_and(|t| self.graveyard.holds(t))
+    }
+
     /// Tira o passo do topo se ele for `pre` — o cemitério a desfazer a purga sozinho, quando o undo
     /// global devolveu o dono. Não vai para o redo: o redo global volta a apagar, e a purga a enterrar.
     pub fn take_top_if(&mut self, pre: &TimelineDoc) -> Option<TimelineDoc> {

@@ -43,7 +43,8 @@ impl App {
                     .push(ph2d_timeline::TimelineIntent::Redo);
                 return true;
             }
-            if undo && self.timeline.history.can_undo() {
+            // ⭐ Uma purga enterrada no topo é do undo GLOBAL (ele devolve o objecto e os clipes).
+            if undo && self.timeline.history.can_undo() && !self.timeline.history.top_is_buried() {
                 self.timeline_intents
                     .push(ph2d_timeline::TimelineIntent::Undo);
                 return true;

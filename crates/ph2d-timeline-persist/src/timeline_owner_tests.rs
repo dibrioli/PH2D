@@ -172,6 +172,10 @@ fn um_ctrl_z_global_devolve_o_objecto_com_a_animacao() {
         1,
         "a animação saiu com o objecto"
     );
+    assert!(
+        timeline.history.top_is_buried(),
+        "o Ctrl+Z com a timeline aberta passa ao undo global (ela não o consome)"
+    );
 
     let volta = renasce(&mut sim, id);
     upkeep(&mut timeline, sim.world_mut());
@@ -179,6 +183,7 @@ fn um_ctrl_z_global_devolve_o_objecto_com_a_animacao() {
         timeline.doc.has_animation(volta),
         "voltou com o objecto, sem 2.º Ctrl+Z"
     );
+    assert!(!timeline.history.top_is_buried());
     assert_eq!(
         timeline.history.can_undo(),
         passos,
@@ -246,6 +251,10 @@ fn editado_depois_de_apagar_volta_em_dois_passos() {
     let pre = timeline.doc.clone();
     timeline.doc.add_clip_for("novo".into(), SCENE).unwrap();
     timeline.history.push(pre);
+    assert!(
+        !timeline.history.top_is_buried(),
+        "uma edição por cima: o Ctrl+Z volta a ser da timeline"
+    );
     let volta = renasce(&mut sim, id);
     upkeep(&mut timeline, sim.world_mut());
     assert!(

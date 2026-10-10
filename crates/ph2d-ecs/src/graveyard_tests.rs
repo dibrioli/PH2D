@@ -77,3 +77,16 @@ fn sem_id_nao_ha_cova_e_a_fundura_tem_tecto() {
     }
     assert_eq!(g.graves.len(), GRAVEYARD_DEPTH);
 }
+
+/// ⭐ `holds`: o passo enterrado é reconhecido (o Ctrl+Z que o encontra no topo é do undo global);
+/// aberta a cova, deixa de o ser.
+#[test]
+fn a_cova_reconhece_o_passo_que_guarda() {
+    let mut g = Graveyard::default();
+    g.bury(vec![1], "com A");
+    assert!(g.holds(&"com A"));
+    assert!(!g.holds(&"outro"));
+    let (mut fila, mut doc) = (vec!["com A"], "sem A");
+    assert!(g.rise(|_| true, fila_desfaz(&mut fila, &mut doc)));
+    assert!(!g.holds(&"com A"));
+}

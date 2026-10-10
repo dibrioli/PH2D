@@ -435,3 +435,29 @@ mod library;
 fn the_graveyard_is_as_deep_as_the_global_undo() {
     assert_eq!(ph2d_ecs::GRAVEYARD_DEPTH, UNDO_CAP);
 }
+
+/// ⭐⭐ **Com a timeline aberta ou a ferramenta Motion na mão, o Ctrl+Z que encontra uma purga
+/// enterrada vai ao undo GLOBAL** (onda 4, item 3). Antes: a fila própria consumia-o, repunha os
+/// clipes/nós de um dono morto, a purga tirava-os outra vez (timeline) ou a migração dava-os a outro
+/// objecto (Motion) — e o objecto nunca voltava. As leis estão provadas nas crates
+/// (`top_is_buried`, `undo_e_do_global`); este portão tranca os dois GANCHOS do teclado.
+#[test]
+fn a_buried_purge_sends_ctrl_z_to_the_global_undo() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/input_dispatch");
+    let tl = std::fs::read_to_string(raiz.join("keyboard_timeline.rs")).unwrap();
+    assert!(
+        tl.contains("&& !self.timeline.history.top_is_buried()"),
+        "o Ctrl+Z da timeline tem de largar a purga enterrada"
+    );
+    let mo = std::fs::read_to_string(raiz.join("keyboard_cadeia.rs")).unwrap();
+    let braco = mo
+        .find("KeyCode::KeyZ if self.motion_undo_e_do_global()")
+        .expect("o Ctrl+Z do Motion tem de perguntar se é do global");
+    assert!(
+        mo[braco..]
+            .lines()
+            .take(4)
+            .any(|l| l.contains("self.undo_or_redo(false)")),
+        "e mandá-lo DIRETO ao undo global"
+    );
+}

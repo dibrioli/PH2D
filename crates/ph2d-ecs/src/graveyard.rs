@@ -68,6 +68,17 @@ impl<D> Graveyard<D> {
     }
 }
 
+impl<D: PartialEq> Graveyard<D> {
+    /// ⭐ `doc` é o passo de uma purga ENTERRADA (à espera dos donos)? Então o Ctrl+Z que o encontra
+    /// no topo da fila própria pertence ao undo GLOBAL: desfazê-lo ali repunha os clipes/nós de um
+    /// dono que continua morto — a purga seguinte tirava-os outra vez (a timeline) ou a migração
+    /// dava-os a outro objecto (o Motion), e o undo global nunca era alcançado.
+    #[must_use]
+    pub fn holds(&self, doc: &D) -> bool {
+        self.graves.iter().any(|g| &g.before == doc)
+    }
+}
+
 #[cfg(test)]
 #[path = "graveyard_tests.rs"]
 mod tests;

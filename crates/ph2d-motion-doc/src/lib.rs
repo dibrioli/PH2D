@@ -339,6 +339,12 @@ impl MotionHistory {
         }
     }
 
+    /// O passo que um Ctrl+Z desfaria agora (o topo da fila).
+    #[must_use]
+    pub fn top(&self) -> Option<&MotionDoc> {
+        self.undo.last()
+    }
+
     /// Tira o passo do topo se ele for `pre` — o cemitério do objecto Motion a desfazer a purga
     /// sozinho, quando o undo global devolveu o dono. Não vai para o redo.
     pub fn take_top_if(&mut self, pre: &MotionDoc) -> Option<MotionDoc> {

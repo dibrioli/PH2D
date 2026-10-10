@@ -238,6 +238,12 @@ impl crate::App {
                     self.motion_redo();
                     true
                 }
+                // ⭐ A purga de um objecto apagado é do undo GLOBAL (ele devolve o objecto e os nós) —
+                // direto, sem passar pela timeline, que podia ter um passo antigo sem relação.
+                KeyCode::KeyZ if self.motion_undo_e_do_global() => {
+                    self.undo_or_redo(false);
+                    true
+                }
                 KeyCode::KeyZ => {
                     self.motion_undo();
                     true

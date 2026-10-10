@@ -55,6 +55,9 @@ pub(super) fn toggle_label_w(ctx: &mut PaintCtx) -> f32 {
         super::ITEMS
             .iter()
             .filter_map(|&i| toggle_key(i).or_else(|| chip_key(i)))
+            // ⭐ E o «Autoplay» do grupo de clipes (onda 4, item 1) — da mesma família, mesmo que
+            // não seja um `Item`: alinha com os outros interruptores quando empilham.
+            .chain(std::iter::once(crate::transport_entry::LABEL_KEY))
             .map(ph2d_i18n::tr),
     )
 }

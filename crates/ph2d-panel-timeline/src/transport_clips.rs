@@ -30,7 +30,11 @@ fn botoes_do_grupo(snap: &TimelineViewSnapshot) -> u8 {
     if snap.clips.len() > 1 { 4 } else { 3 }
 }
 
-pub(crate) fn width(snap: &TimelineViewSnapshot, _tab: Tab) -> f32 {
+pub(crate) fn width(snap: &TimelineViewSnapshot, _tab: Tab, label_col: f32) -> f32 {
+    crate::transport_entry::extra(snap, label_col) + width_sem_entrada(snap)
+}
+
+fn width_sem_entrada(snap: &TimelineViewSnapshot) -> f32 {
     let half = Spacing::Sm.px() * 0.5;
     // [ Main v ] [+] [copy] [pencil] [trash] — the trash only exists above one clip.
     // Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16): they are the
@@ -56,7 +60,7 @@ pub(crate) fn cluster(
     x: f32,
     y: f32,
     snap: &TimelineViewSnapshot,
-    view: crate::transport::BarView,
+    (view, label_col): (crate::transport::BarView, f32),
 ) -> Option<ClipChip> {
     let gap = Spacing::Xs.px();
     let mut x = x;
@@ -94,6 +98,8 @@ pub(crate) fn cluster(
         };
         x = icon_button_in(ctx, theme, x, y, id, glyph, cell) + fio;
     }
+    let x = x - fio + Spacing::Sm.px() * 0.5;
+    crate::transport_entry::paint(ctx, theme, (x, y), snap, label_col);
 
     Some(ClipChip {
         id: ids::TIMELINE_CLIP_DD,
@@ -220,6 +226,9 @@ pub(crate) fn source_at(id: ph2d_a11y::NodeId) -> Option<Result<usize, usize>> {
 /// direction that matters: an event CLAIMED and not handled is a control that clicks and
 /// does nothing. The seam gate clicks each of them for exactly that reason.
 pub(crate) fn owns(ev: &WidgetEvent) -> bool {
+    if crate::transport_entry::owns(ev) {
+        return true;
+    }
     let id = match *ev {
         WidgetEvent::Click(id)
         | WidgetEvent::Submit(id)
@@ -244,6 +253,9 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if crate::transport_entry::owns(&ev) {
+        return crate::transport_entry::apply_event();
+    }
     match ev {
         // ── Clip selector (W5) ──────────────────────────────────────────────
         // Picking a clip from the open list. The store's `selected_index` is set
@@ -450,10 +462,10 @@ mod tests {
     #[test]
     fn the_clip_cluster_is_the_same_width_on_every_tab() {
         let s = snap();
-        let w = width(&s, Tab::Keys);
+        let w = width(&s, Tab::Keys, 0.0);
         for tab in crate::tab::ALL {
             assert!(
-                (width(&s, tab) - w).abs() < f32::EPSILON,
+                (width(&s, tab, 0.0) - w).abs() < f32::EPSILON,
                 "{tab:?} pinta um controle a mais"
             );
         }

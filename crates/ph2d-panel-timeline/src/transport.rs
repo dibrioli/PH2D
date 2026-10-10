@@ -230,7 +230,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView, label_col: f32)
         // whether it starts empty.
         Item::Crumbs => crate::breadcrumb::width(snap),
         Item::Animation => crate::transport_animation::width(snap),
-        Item::Clips => crate::transport_clips::width(snap, view.tab),
+        Item::Clips => crate::transport_clips::width(snap, view.tab, label_col),
         // |< < >/|| > >| — five buttons, ONE body: four hairlines between them (2026-09-30).
         Item::Transport => {
             let n = TRANSPORT_BTNS as f32;
@@ -398,7 +398,9 @@ fn paint_item(
         Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab, snap),
         Item::Crumbs => crate::breadcrumb::paint(ctx, theme, x, y, snap),
         Item::Animation => return crate::transport_animation::chip(ctx, theme, x, y, snap),
-        Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap, view),
+        Item::Clips => {
+            return crate::transport_clips::cluster(ctx, theme, x, y, snap, (view, label_col));
+        }
         Item::Transport => transport_row(ctx, theme, x, y, snap, view),
         // **I** — the active clip's keys, played backwards. Beside the transport it
         // reads as what it is: a thing you do to the whole clip, not to a selection.
@@ -572,7 +574,8 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
 /// what a playhead is, which is exactly why they were the honest slice to cut.
 #[path = "transport_widgets.rs"]
 mod widgets;
-pub(crate) use widgets::{chip, icon_button, icon_button_in, label, mirror_number, toggle};
+pub(crate) use widgets::{chip, icon_button, icon_button_in, label, mirror_number};
+pub(crate) use widgets::{toggle, toggle_vivo};
 
 /// Os RÓTULOS dos toggles e a coluna que eles partilham — a lista de que a régua se mede e o
 /// pintor pinta, num sítio só. Irmão por RESPONSABILIDADE: este ficheiro dispõe a barra, aquele

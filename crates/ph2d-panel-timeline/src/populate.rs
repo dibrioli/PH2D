@@ -115,6 +115,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, InteractiveState::Plain);
     }
     toggle(store, crate::ids::TIMELINE_LOOP, false);
+    toggle(store, crate::ids::TIMELINE_CLIP_AUTOPLAY, false);
     toggle(store, crate::ids::TIMELINE_PINGPONG, false);
     toggle(store, crate::ids::TIMELINE_PHYSICS, false);
     toggle(store, crate::ids::TIMELINE_AUTOKEY, false);

@@ -414,6 +414,12 @@ pub enum TimelineIntent {
         /// Index into [`crate::TimelineDoc::clips`].
         index: usize,
     },
+    /// ⭐ Faz do clip `index` a ENTRADA da animação dele — o que toca sozinho no Play (onda 4,
+    /// item 1). A Cena não tem entrada: no-op.
+    SetEntryClip {
+        /// Index into [`crate::TimelineDoc::clips`].
+        index: usize,
+    },
     /// Append a new, empty clip and make it active. Refused past
     /// [`crate::MAX_CLIPS`].
     AddClip,

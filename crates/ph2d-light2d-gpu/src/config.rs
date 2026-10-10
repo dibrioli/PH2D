@@ -127,7 +127,16 @@ pub struct Config {
     /// O preenchimento corre na grade fina INTEIRA (senão só na região da janela: o interior de um
     /// opaco cortado pela borda dela acha o exterior mais próximo só do lado de dentro).
     pub preenche_a_grade_inteira: bool,
+    /// ⭐ W5b (F4): a luz DIRETA vê os opacos FORA da grade no caminho até uma lâmpada que não cabe
+    /// nela (`crate::distantes`); `false` = só a captura (o raio atravessa o que está fora).
+    pub distantes: bool,
+    /// ⭐ W5b (F4): o lado, em texels, da MÁSCARA do alfa de um sprite distante na moldura dele
+    /// (potência de 2; desce sozinho quando as máscaras não cabem na atlas).
+    pub mascara_px: u32,
 }
+
+/// O lado da máscara de um sprite distante por omissão (W5b) — ver a rodada `medida_luz2d_w5b`.
+pub const MASCARA_PX_PADRAO: u32 = 256;
 
 /// O refino por omissão — MEDIDO (rodada `medida_luz2d_w4b`, RTX 5060 Ti, 1920×1080, grade fina de
 /// 1 px; tabela no handoff W4b). Régua: a escada da cena 4 (degrau dos contornos 2 · 10 · 50 · 90 ·
@@ -222,6 +231,8 @@ impl Config {
             passo_na_borda: PASSO_NA_BORDA_PADRAO,
             preenchimento: PREENCHIMENTO_PADRAO,
             preenche_a_grade_inteira: true,
+            distantes: true,
+            mascara_px: MASCARA_PX_PADRAO,
         }
     }
 
@@ -370,6 +381,11 @@ impl Config {
         if cfg.preenchimento.is_some_and(|f| !f.is_power_of_two()) {
             return Err(ErroSolver::ConfigInvalida(
                 "preenchimento: a célula tem de ser uma potência de 2",
+            ));
+        }
+        if !cfg.mascara_px.is_power_of_two() || !(8..=4096).contains(&cfg.mascara_px) {
+            return Err(ErroSolver::ConfigInvalida(
+                "mascara_px tem de ser uma potência de 2 entre 8 e 4096",
             ));
         }
         if let Refino::Bordas(b) = cfg.refino

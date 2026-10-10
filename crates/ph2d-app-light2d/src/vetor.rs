@@ -29,7 +29,22 @@ pub(crate) struct CamadaVetorial {
     /// Quantas camadas o último quadro desenhou (as primeiras `n` de `camadas`).
     n: usize,
     grade: Option<Grade>,
+    /// ⭐ W5b (F4): os caminhos que tapam FORA da grade, cada um na moldura da sua caixa numa
+    /// janela de um desenho só (a C3 tira dele a máscara de cada um).
+    distante: Distante,
 }
+
+#[derive(Default)]
+struct Distante {
+    vello: Option<VelloPass>,
+    camada: Option<Camada>,
+    sprites: Vec<SpriteNaC0>,
+}
+
+/// O lado de cada janela do desenho dos caminhos distantes — o da máscara da C3 (cópia 1:1).
+const LADO_DISTANTE: u32 = ph2d_light2d_gpu::MASCARA_PX_PADRAO;
+/// O lado máximo do desenho (o da atlas das máscaras).
+const DESENHO_DISTANTE_MAX: u32 = 4096;
 
 impl CamadaVetorial {
     /// Desenha os caminhos que bloqueiam (`cena.vetores`) para a grade `g`. Sem nenhum, não faz nada.
@@ -43,9 +58,11 @@ impl CamadaVetorial {
     ) {
         self.n = 0;
         self.grade = Some(g);
+        self.distante.sprites.clear();
         if cena.vetores.is_empty() {
             return;
         }
+        self.distante.desenhar(gpu, g, cena, doc, xforms);
         // Uma camada por opacidade (quase sempre uma: opaco).
         let mut por_opacidade: BTreeMap<u32, Vec<u64>> = BTreeMap::new();
         for v in &cena.vetores {
@@ -124,6 +141,103 @@ impl CamadaVetorial {
                 },
             ))
         })
+    }
+}
+
+impl Distante {
+    /// Desenha, numa janela cada, os caminhos que tapam uma lâmpada direta FORA da grade `g`.
+    fn desenhar(
+        &mut self,
+        gpu: &GpuContext,
+        g: Grade,
+        cena: &CenaDeLuz,
+        doc: &VecScene,
+        xforms: &VecXforms,
+    ) {
+        // A caixa de cada um (a lei de limites do desenho avulso: o traço transborda o fill), com
+        // dois texels da janela de folga de cada lado para o antisserrilhado.
+        let mut caixas: Vec<(u64, f32, Affine, [f64; 4])> = Vec::new();
+        for v in &cena.vetores {
+            let Some(path) = doc.path(v.caminho) else {
+                continue;
+            };
+            let xf = Affine::new(xform_of(xforms, v.caminho).0);
+            let Some(r) = ph2d_vec_render::path_bounds_under(path, xf) else {
+                continue;
+            };
+            let folga = 2.0 / f64::from(LADO_DISTANTE - 4);
+            let (fx, fy) = (r.width() * folga, r.height() * folga);
+            let c = [r.x0 - fx, r.y0 - fy, r.x1 + fx, r.y1 + fy];
+            if !(c[2] - c[0] > 1e-9 && c[3] - c[1] > 1e-9)
+                || !ph2d_light2d_gpu::tapa_fora_da_grade(cena, &g, [c[0], c[1]], [c[2], c[3]])
+            {
+                continue;
+            }
+            caixas.push((v.caminho, v.opacidade, xf, c));
+        }
+        if caixas.is_empty() {
+            return;
+        }
+        let n = caixas.len() as u32;
+        let por_lado = n.isqrt() + u32::from(n.isqrt() * n.isqrt() < n);
+        let mut lado = LADO_DISTANTE;
+        while lado > 8 && por_lado * lado > DESENHO_DISTANTE_MAX {
+            lado /= 2;
+        }
+        let total = (por_lado * lado).next_power_of_two();
+        let por_linha = total / lado;
+        let Some(vello) = vello_para(&mut self.vello, gpu, (total, total)) else {
+            return;
+        };
+        let mut cena_vello = VectorScene::new();
+        let a = f64::from(total);
+        for (j, &(id, opacidade, xf, c)) in caixas.iter().enumerate() {
+            let Some(path) = doc.path(id) else { continue };
+            let j = j as u32;
+            let (x, y) = (f64::from((j % por_linha) * lado), f64::from((j / por_linha) * lado));
+            let l = f64::from(lado);
+            let (kx, ky) = (l / (c[2] - c[0]), l / (c[3] - c[1]));
+            // Mundo → píxel do desenho: x para a direita, y para BAIXO a partir do topo da caixa.
+            let mundo_para_janela = Affine::new([kx, 0.0, 0.0, -ky, x - c[0] * kx, y + c[3] * ky]);
+            ph2d_vec_render::draw_path_standalone(path, mundo_para_janela * xf, &mut cena_vello);
+            self.sprites.push(SpriteNaC0 {
+                origem: [c[0], c[3]],
+                eixo_s: [c[2] - c[0], 0.0],
+                eixo_t: [0.0, -(c[3] - c[1])],
+                uv: [
+                    (x / a) as f32,
+                    (y / a) as f32,
+                    ((x + l) / a) as f32,
+                    ((y + l) / a) as f32,
+                ],
+                emissao: [0.0; 3],
+                opacidade,
+                premultiplicada: false,
+                textura: 0,
+            });
+        }
+        if let Err(e) = vello.render_to_intermediate(
+            gpu,
+            cena_vello.inner(),
+            (total, total),
+            VelloColor::TRANSPARENT,
+        ) {
+            eprintln!("[luz2d] o desenho dos caminhos distantes falhou: {e}");
+            self.sprites.clear();
+            return;
+        }
+        let mut uma = self.camada.take().into_iter().collect::<Vec<_>>();
+        copiar(gpu, &mut uma, 0, 1.0, vello.intermediate_texture(), (total, total));
+        self.camada = uma.pop();
+    }
+}
+
+impl CamadaVetorial {
+    /// ⭐ Os caminhos que tapam FORA da grade (W5b, F4), como sprites só para a luz direta:
+    /// `(desenho, sprites)` — cada sprite lê a sua janela do desenho.
+    pub(crate) fn distantes(&self) -> Option<(&wgpu::TextureView, &[SpriteNaC0])> {
+        let c = self.distante.camada.as_ref()?;
+        (!self.distante.sprites.is_empty()).then_some((&c.vista, self.distante.sprites.as_slice()))
     }
 }
 

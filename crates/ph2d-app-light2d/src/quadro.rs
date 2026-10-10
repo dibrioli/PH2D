@@ -297,6 +297,16 @@ impl LuzDoQuadro {
             s.textura = sprites.texturas.len() - 1;
             sprites.sprites.push(s);
         }
+        // ⭐ W5b (F4): os caminhos que tapam FORA da grade — só para a luz direta.
+        if let Some((vista, distantes)) = self.vetores.distantes() {
+            sprites
+                .texturas
+                .push((vista, ph2d_light2d_gpu::Amostragem::Exata));
+            let t = sprites.texturas.len() - 1;
+            sprites
+                .distantes
+                .extend(distantes.iter().cloned().map(|s| ph2d_light2d_gpu::SpriteNaC0 { textura: t, ..s }));
+        }
         self.sprites_por_texel = (sprites.substituidos.len(), self.cena.sprites.len());
         self.relatorio = Some(
             r.solver

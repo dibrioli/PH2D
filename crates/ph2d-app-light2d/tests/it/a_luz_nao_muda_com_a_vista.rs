@@ -41,7 +41,6 @@ const TETO: f64 = 0.02;
 /// · 0; 0,176 do máximo) — o muro do meio cruza o raio FORA da grade. É o F4 da fila
 /// (`docs/Luz2D/01_plano.md` §7.1): a W5 tira o `ignore` com a cura.
 #[test]
-#[ignore = "F4 da fila do dono: vermelho até a cura (W5)"]
 fn a_luz_num_ponto_nao_muda_com_a_vista() {
     let Some(gpu) = crate::comum::gpu() else {
         eprintln!("sem GPU — gate saltado");

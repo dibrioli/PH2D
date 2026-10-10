@@ -25,6 +25,13 @@ mod c3;
 /// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_fina.rs"]
 mod fina;
+/// ⭐ O mundo fora da grade na placa (W5b, F4) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_distantes.rs"]
+mod distantes;
+pub(crate) use distantes::{
+    FORMATO_DA_ATLAS, MINIMOS as MINIMOS_DISTANTES, NOME_DA_ATLAS, NOMES as NOMES_DISTANTES,
+    USOS_DA_ATLAS,
+};
 /// O lado de GRAVAR um quadro (subida da geometria, C0 → C1 → C2, `reposicionar`) — um ficheiro
 /// irmão, módulo-filho para ver os campos do [`Solver`] sem os abrir (tecto de 700 LOC).
 #[path = "solver_gravar.rs"]
@@ -127,7 +134,10 @@ pub struct Solver {
     rc_grupos: Vec<wgpu::BindGroup>,
     /// ⭐ C3 — as lâmpadas DIRETAS (o grupo 1 das cascatas; a c0 soma-as).
     lampadas: wgpu::Buffer,
+    lampadas_layout: wgpu::BindGroupLayout,
     lampadas_grupo: wgpu::BindGroup,
+    /// ⭐ O mundo fora da grade (W5b, F4): o resto do grupo das lâmpadas.
+    distantes: distantes::Distantes,
     c3: c3::C3,
     /// ⭐ A captura fina dos opacos (W5a), com [`Config::usa_captura_fina`].
     fina: Option<fina::CapturaFina>,
@@ -432,28 +442,38 @@ impl Solver {
             label: Some("luz2d c2_rc.wgsl"),
             source: wgpu::ShaderSource::Wgsl(shaders::rc(cfg.aritmetica, cfg.armazenamento).into()),
         });
-        // ⭐ C3 — as lâmpadas diretas, no grupo 1 (o buffer é fixo: o teto de lâmpadas).
+        // ⭐ C3 — as lâmpadas diretas, no grupo 1 (o buffer é fixo: o teto de lâmpadas), e o mundo
+        // fora da grade (W5b, F4: objetos, arestas, índices e a atlas das máscaras).
+        let armazenado = |binding| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
         let lampadas_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c3 lampadas"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
+            entries: &[
+                armazenado(0),
+                armazenado(1),
+                armazenado(2),
+                armazenado(3),
+                entrada_textura(4, FLOAT),
+            ],
         });
-        let lampadas_grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("luz2d c3 lampadas"),
-            layout: &lampadas_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: lampadas.as_entire_binding(),
-            }],
-        });
+        let atlas = lista
+            .texturas
+            .iter()
+            .position(|t| t.nome == NOME_DA_ATLAS)
+            .expect("a PassList declara a atlas");
+        let distantes = distantes::Distantes::novo(
+            NOMES_DISTANTES.map(buffer),
+            texturas[atlas].clone(),
+        );
+        let lampadas_grupo = Self::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
         let rc_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("luz2d c2"),
             bind_group_layouts: &[Some(&rc_layout), Some(&lampadas_layout)],
@@ -585,10 +605,31 @@ impl Solver {
             rc,
             rc_grupos,
             lampadas,
+            lampadas_layout,
             lampadas_grupo,
+            distantes,
             c3,
             fina,
             tempos,
+        })
+    }
+
+    /// O grupo 1 da C3: as lâmpadas e o mundo fora da grade.
+    fn grupo_das_lampadas(
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        lampadas: &wgpu::Buffer,
+        distantes: &distantes::Distantes,
+    ) -> wgpu::BindGroup {
+        let mut entradas = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: lampadas.as_entire_binding(),
+        }];
+        entradas.extend(distantes.entradas());
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("luz2d c3 lampadas"),
+            layout,
+            entries: &entradas,
         })
     }
 
@@ -644,6 +685,7 @@ impl Solver {
                 .fina
                 .as_ref()
                 .map_or(0, fina::CapturaFina::bytes_residentes)
+            + self.distantes.bytes_residentes()
     }
 
     /// Os tempos de placa do último quadro submetido; `None` sem `TIMESTAMP_QUERY`.

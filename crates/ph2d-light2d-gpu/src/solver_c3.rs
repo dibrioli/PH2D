@@ -158,6 +158,7 @@ impl C3 {
             ),
             ("PREENCHE", f64::from(u8::from(cfg.preenchimento.is_some()))),
             ("CELULA_PREENCHE", f64::from(cfg.preenchimento.unwrap_or(1))),
+            ("DISTANTES", f64::from(u8::from(cfg.distantes))),
         ];
         let bordas = match cfg.refino {
             Refino::Bordas(b) => Some(b),

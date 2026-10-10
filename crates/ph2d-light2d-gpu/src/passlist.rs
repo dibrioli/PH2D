@@ -207,6 +207,15 @@ impl PassList {
             }
         }
 
+        // ⭐ W5b (F4): a atlas das máscaras dos sprites distantes — a de 1 × 1 (cresce com elas,
+        // contada na geometria residente).
+        texturas.push(Textura {
+            nome: crate::solver::NOME_DA_ATLAS,
+            formato: crate::solver::FORMATO_DA_ATLAS,
+            tamanho: [1, 1],
+            usos: crate::solver::USOS_DA_ATLAS,
+        });
+
         use wgpu::BufferUsages as B;
         let uniforme = B::UNIFORM | B::COPY_DST;
         let mut buffers = vec![
@@ -238,6 +247,18 @@ impl PassList {
                 usos: uniforme,
             },
         ];
+        // ⭐ W5b (F4): os objetos distantes, as arestas e os índices — um elemento cada (crescem
+        // com o mundo fora da grade, contados na geometria residente).
+        for (nome, bytes) in crate::solver::NOMES_DISTANTES
+            .into_iter()
+            .zip(crate::solver::MINIMOS_DISTANTES)
+        {
+            buffers.push(Buffer {
+                nome,
+                bytes,
+                usos: B::STORAGE | B::COPY_DST,
+            });
+        }
         if op.captura.is_some() {
             buffers.push(Buffer {
                 nome: "luz2d/buf/c0_fina",

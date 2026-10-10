@@ -24,6 +24,8 @@ struct Lampada {
     inv_alcance: f32,
     // rgb: a radiância do disco (r > 0) ou a intensidade do ponto (r = 0).
     radiancia: vec4<f32>,
+    // ⭐ W5b (F4): os objetos FORA da grade no caminho até ela — `[primeiro, quantos]` em `indices`.
+    lista: vec4<u32>,
 }
 
 struct Lampadas {
@@ -48,6 +50,30 @@ struct Fina {
 }
 
 @group(1) @binding(0) var<storage, read> lampadas: Lampadas;
+
+// ⭐ W5b (F4) — o mundo FORA da grade (`distantes.rs`): por lâmpada, os opacos do caminho até ela que
+// a captura não tem inteiros, cada um na sua moldura; testados só no trecho do raio fora da grade.
+struct Distante {
+    // O paralelogramo que o envolve (texels das cascatas): o, a | b, e o canto da janela na atlas.
+    quad_o_a: vec4<f32>,
+    quad_b_janela: vec4<f32>,
+    // Texel das cascatas → moldura [0, 1]² da máscara (`w`: o lado da janela · τ dentro).
+    s_: vec4<f32>,
+    t_: vec4<f32>,
+    tipo: u32,
+    primeira: u32,
+    n: u32,
+    _p: u32,
+}
+const MASCARA: u32 = 0u;
+// O passo da marcha numa máscara, em texels dela (a captura marcha a meio texel junto à borda).
+const PASSO_DA_MASCARA: f32 = 0.5;
+
+@group(1) @binding(1) var<storage, read> distantes: array<Distante>;
+// a.xy, b.xy: o interior à ESQUERDA de a → b.
+@group(1) @binding(2) var<storage, read> arestas: array<vec4<f32>>;
+@group(1) @binding(3) var<storage, read> indices: array<u32>;
+@group(1) @binding(4) var mascaras: texture_2d<f32>;
 @group(2) @binding(0) var<uniform> fina: Fina;
 @group(2) @binding(1) var c0_fluencia: texture_2d<f32>;
 @group(2) @binding(2) var visibilidades: texture_2d<u32>;
@@ -68,6 +94,8 @@ const SEM_SEMENTE: u32 = 0xffffffffu;
 // e reto (a borda é achada a 1/(RAIOS·2^BISSECOES) da abertura).
 override RAIOS_DIRETOS: u32 = 8u;
 override BISSECOES: u32 = 5u;
+// ⭐ W5b (F4): a luz direta vê o mundo FORA da grade (`fora_da_grade`).
+override DISTANTES: bool = true;
 // O refino também nos JOELHOS da penumbra.
 override JOELHO: bool = true;
 // ⭐ W5a (F2): e onde a visibilidade das sondas CURVA (o vale de um oclusor fino).
@@ -85,30 +113,213 @@ const SEM_FOLGA: f32 = 1e-6;
 const INTEIRA: u32 = 254u;
 const CERTA: u32 = 255u;
 
-// A transmissão de P até B (o meio entre eles; o emissor de chegada fica de fora).
-fn transmissao(P: vec2<f32>, B: vec2<f32>) -> f32 {
-    return f32(marchar(P, P, B).t);
+// ⭐ Onde o segmento A + u·(B − A) sai da grade (A dentro dela): u ≥ 1 = não sai.
+fn saida_da_grade(A: vec2<f32>, B: vec2<f32>) -> f32 {
+    let n = vec2<f32>(cas.tamanho);
+    let d = B - A;
+    var u = 1.0;
+    for (var e = 0; e < 2; e++) {
+        if d[e] > 0.0 {
+            u = min(u, (n[e] - A[e]) / d[e]);
+        } else if d[e] < 0.0 {
+            u = min(u, -A[e] / d[e]);
+        }
+    }
+    return max(u, 0.0);
+}
+
+// A transmissão do segmento E → B por um POLÍGONO: × τ a cada ENTRADA (o interior à esquerda da
+// aresta: entra onde o raio cruza contra a normal de fora).
+fn pelo_poligono(o: Distante, E: vec2<f32>, B: vec2<f32>) -> f32 {
+    let d = B - E;
+    var t = 1.0;
+    for (var i = 0u; i < o.n; i++) {
+        let ar = arestas[o.primeira + i];
+        let e = ar.zw - ar.xy;
+        let den = d.x * e.y - d.y * e.x;
+        // Entra ⟺ o raio vai para a esquerda da aresta: cross(e, d) > 0 ⟺ den < 0.
+        if den >= 0.0 {
+            continue;
+        }
+        let w = ar.xy - E;
+        let u = (w.x * e.y - w.y * e.x) / den;
+        let v = (w.x * d.y - w.y * d.x) / den;
+        if u > 0.0 && u <= 1.0 && v >= 0.0 && v < 1.0 {
+            t *= o.t_.w;
+            if t <= 0.0 {
+                return 0.0;
+            }
+        }
+    }
+    return t;
+}
+
+// A cobertura da máscara em `st` (a moldura [0, 1]²): bilinear entre os centros, presa à janela.
+fn cobertura_da_mascara(o: Distante, st: vec2<f32>) -> f32 {
+    let lado = o.s_.w;
+    let p = st * lado - 0.5;
+    let b = floor(p);
+    let f = p - b;
+    let ultimo = vec2<i32>(i32(lado) - 1);
+    let q = clamp(vec2<i32>(b), vec2<i32>(0), ultimo) + vec2<i32>(o.quad_b_janela.zw);
+    let r = clamp(vec2<i32>(b) + 1, vec2<i32>(0), ultimo) + vec2<i32>(o.quad_b_janela.zw);
+    let c00 = textureLoad(mascaras, q, 0).r;
+    let c10 = textureLoad(mascaras, vec2<i32>(r.x, q.y), 0).r;
+    let c01 = textureLoad(mascaras, vec2<i32>(q.x, r.y), 0).r;
+    let c11 = textureLoad(mascaras, r, 0).r;
+    return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
+}
+
+// A transmissão do segmento E → B por uma MÁSCARA: a lei da captura (dentro ⟺ cobertura ≥ ½, × τ a
+// cada entrada) na moldura do objeto. Partindo de dentro (E na borda da grade), a entrada já contou.
+fn pela_mascara(o: Distante, E: vec2<f32>, B: vec2<f32>) -> f32 {
+    let a = vec2<f32>(dot(o.s_.xy, E) + o.s_.z, dot(o.t_.xy, E) + o.t_.z);
+    let b = vec2<f32>(dot(o.s_.xy, B) + o.s_.z, dot(o.t_.xy, B) + o.t_.z);
+    let d = b - a;
+    var lo = 0.0;
+    var hi = 1.0;
+    for (var e = 0; e < 2; e++) {
+        if abs(d[e]) < 1e-12 {
+            if a[e] < 0.0 || a[e] > 1.0 {
+                return 1.0;
+            }
+        } else {
+            let u0 = (0.0 - a[e]) / d[e];
+            let u1 = (1.0 - a[e]) / d[e];
+            lo = max(lo, min(u0, u1));
+            hi = min(hi, max(u0, u1));
+        }
+    }
+    if lo >= hi {
+        return 1.0;
+    }
+    let n = max(u32(ceil(length(d) * o.s_.w * (hi - lo) / PASSO_DA_MASCARA)), 1u);
+    var t = 1.0;
+    var dentro_ant = lo <= 0.0 && cobertura_da_mascara(o, a) >= 0.5;
+    for (var j = 0u; j <= n; j++) {
+        let dentro = cobertura_da_mascara(o, a + d * mix(lo, hi, f32(j) / f32(n))) >= 0.5;
+        if dentro && !dentro_ant {
+            t *= o.t_.w;
+            if t <= 0.0 {
+                return 0.0;
+            }
+        }
+        dentro_ant = dentro;
+    }
+    return t;
+}
+
+// ⭐ A transmissão do trecho de P → B FORA da grade, pelos objetos distantes da lâmpada `k`.
+fn fora_da_grade(P: vec2<f32>, B: vec2<f32>, k: u32) -> f32 {
+    let lista = lampadas.itens[k].lista;
+    if lista.y == 0u {
+        return 1.0;
+    }
+    let u = saida_da_grade(P, B);
+    if u >= 1.0 {
+        return 1.0;
+    }
+    let E = mix(P, B, u);
+    var t = 1.0;
+    for (var i = 0u; i < lista.y; i++) {
+        let o = distantes[indices[lista.x + i]];
+        if o.tipo == MASCARA {
+            t *= pela_mascara(o, E, B);
+        } else {
+            t *= pelo_poligono(o, E, B);
+        }
+        if t <= 0.0 {
+            return 0.0;
+        }
+    }
+    return t;
+}
+
+// ⭐ O cone de P (eixo `dir`, até `fim`, meia-largura `s·tg + folga`) não toca nenhum objeto
+// distante da lâmpada `k`? Conservador (o trapézio do cone contra o paralelogramo de cada um, pelos
+// eixos separadores): tocar só obriga a medir.
+fn cone_livre_fora(P: vec2<f32>, dir: vec2<f32>, fim: f32, tg: f32, folga: f32, k: u32) -> bool {
+    let lista = lampadas.itens[k].lista;
+    if lista.y == 0u {
+        return true;
+    }
+    let lado = vec2<f32>(-dir.y, dir.x);
+    let largo = fim * tg + folga;
+    var cone = array<vec2<f32>, 4>(
+        P - lado * folga,
+        P + dir * fim - lado * largo,
+        P + dir * fim + lado * largo,
+        P + lado * folga,
+    );
+    for (var i = 0u; i < lista.y; i++) {
+        let o = distantes[indices[lista.x + i]];
+        let q0 = o.quad_o_a.xy;
+        let a = o.quad_o_a.zw;
+        let b = o.quad_b_janela.xy;
+        var quad = array<vec2<f32>, 4>(q0, q0 + a, q0 + a + b, q0 + b);
+        var eixos = array<vec2<f32>, 5>(
+            vec2<f32>(-a.y, a.x),
+            vec2<f32>(-b.y, b.x),
+            dir,
+            vec2<f32>(-(cone[1] - cone[0]).y, (cone[1] - cone[0]).x),
+            vec2<f32>(-(cone[3] - cone[2]).y, (cone[3] - cone[2]).x),
+        );
+        var separa = false;
+        for (var e = 0u; e < 5u; e++) {
+            let n = eixos[e];
+            var c_lo = 3.4e38;
+            var c_hi = -3.4e38;
+            var q_lo = 3.4e38;
+            var q_hi = -3.4e38;
+            for (var j = 0u; j < 4u; j++) {
+                let x = dot(n, cone[j]);
+                c_lo = min(c_lo, x);
+                c_hi = max(c_hi, x);
+                let y = dot(n, quad[j]);
+                q_lo = min(q_lo, y);
+                q_hi = max(q_hi, y);
+            }
+            if c_hi < q_lo || q_hi < c_lo {
+                separa = true;
+                break;
+            }
+        }
+        if !separa {
+            return false;
+        }
+    }
+    return true;
+}
+
+// A transmissão de P até B (o meio entre eles; o emissor de chegada fica de fora), e o trecho fora
+// da grade pelos objetos distantes da lâmpada `k`.
+fn transmissao(P: vec2<f32>, B: vec2<f32>, k: u32) -> f32 {
+    let t = f32(marchar(P, P, B).t);
+    if t <= 0.0 || !DISTANTES {
+        return t;
+    }
+    return t * fora_da_grade(P, B, k);
 }
 
 // A transmissão de P até o DISCO pelo ângulo `a` (a marcha para antes dele).
-fn ate_o_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, a: f32) -> f32 {
+fn ate_o_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, a: f32, k: u32) -> f32 {
     let dj = vec2<f32>(cos(a), sin(a));
     let b = dot(dj, v);
     let t = b - sqrt(max(b * b - (d * d - raio * raio), 0.0));
-    return transmissao(P, P + dj * max(t - ANTES_DO_DISCO, 0.0));
+    return transmissao(P, P + dj * max(t - ANTES_DO_DISCO, 0.0), k);
 }
 
 // A fração VISÍVEL da abertura [base − α, base + α]: raios fixos nas fronteiras das fatias e, onde
 // a transmissão muda, a bissecção da borda.
-fn visivel_do_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, base: f32, alfa: f32) -> f32 {
+fn visivel_do_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, base: f32, alfa: f32, k: u32) -> f32 {
     let n = RAIOS_DIRETOS;
     let largura = 2.0 * alfa / f32(n);
     var a0 = base - alfa;
-    var t0 = ate_o_disco(P, v, d, raio, a0);
+    var t0 = ate_o_disco(P, v, d, raio, a0, k);
     var soma = 0.0;
     for (var i = 0u; i < n; i++) {
         let a1 = a0 + largura;
-        let t1 = ate_o_disco(P, v, d, raio, a1);
+        let t1 = ate_o_disco(P, v, d, raio, a1, k);
         if abs(t1 - t0) < 1e-4 {
             soma += 0.5 * (t0 + t1) * largura;
         } else {
@@ -116,7 +327,7 @@ fn visivel_do_disco(P: vec2<f32>, v: vec2<f32>, d: f32, raio: f32, base: f32, al
             var hi = a1;
             for (var k = 0u; k < BISSECOES; k++) {
                 let m = 0.5 * (lo + hi);
-                let tm = ate_o_disco(P, v, d, raio, m);
+                let tm = ate_o_disco(P, v, d, raio, m, k);
                 if abs(tm - t0) <= abs(tm - t1) {
                     lo = m;
                 } else {
@@ -175,9 +386,13 @@ fn visibilidade(P: vec2<f32>, k: u32, folga: f32) -> f32 {
     let d = length(v);
     if L.raio <= 0.0 {
         if folga > 0.0 {
-            return select(-1.0, 1.0, cone_livre(P, v / max(d, 1e-6), max(d - ANTES_DO_DISCO, 0.0), 0.0, folga));
+            let dir = v / max(d, 1e-6);
+            let fim = max(d - ANTES_DO_DISCO, 0.0);
+            let livre = cone_livre(P, dir, fim, 0.0, folga)
+                && (!DISTANTES || cone_livre_fora(P, dir, fim, 0.0, folga, k));
+            return select(-1.0, 1.0, livre);
         }
-        return transmissao(P, L.centro);
+        return transmissao(P, L.centro, k);
     }
     if d <= L.raio {
         return select(1.0, -1.0, folga > 0.0);
@@ -185,13 +400,14 @@ fn visibilidade(P: vec2<f32>, k: u32, folga: f32) -> f32 {
     let alfa = asin(min(L.raio / d, 1.0));
     let dir = v / d;
     let fim = max(d - L.raio - ANTES_DO_DISCO, 0.0);
-    if cone_livre(P, dir, fim, tan(alfa), folga) {
+    if cone_livre(P, dir, fim, tan(alfa), folga)
+        && (!DISTANTES || cone_livre_fora(P, dir, fim, tan(alfa), folga, k)) {
         return 1.0;
     }
     if folga > 0.0 {
         return -1.0;
     }
-    return visivel_do_disco(P, v, d, L.raio, atan2(dir.y, dir.x), alfa);
+    return visivel_do_disco(P, v, d, L.raio, atan2(dir.y, dir.x), alfa, k);
 }
 
 // A lâmpada `k` alcança algum ponto a menos de `folga` de P?

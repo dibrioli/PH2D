@@ -16,6 +16,7 @@ mod captura;
 mod captura_sprite;
 mod config;
 mod direta;
+mod distantes;
 mod erro;
 mod passlist;
 mod shaders;
@@ -26,10 +27,11 @@ mod tempos;
 pub use captura::{ForaDaC0, Motivo, Quem, RelatorioC0, o_que_fica_fora};
 pub use captura_sprite::{Amostragem, CapturaDeSprites, SpriteNaC0};
 pub use config::{
-    Bordas, Config, Fusao, Grade, PASSO_DIRETO_PADRAO, PASSO_NA_BORDA_PADRAO, PREENCHIMENTO_PADRAO,
+    Bordas, Config, Fusao, Grade, MASCARA_PX_PADRAO, PASSO_DIRETO_PADRAO, PASSO_NA_BORDA_PADRAO, PREENCHIMENTO_PADRAO,
     Precisao, REFINO_PADRAO, Refino,
 };
 pub use direta::{LAMPADAS_DIRETAS_MAX, lampadas_diretas};
+pub use distantes::tapa_fora_da_grade;
 pub use passlist::{Buffer, PassList, Passe, Textura};
 pub use shaders::{C0_DONO_WGSL, QUEDA_WGSL, rc as fonte_do_rc};
 pub use solver::{ErroSolver, Solver};

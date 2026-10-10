@@ -20,7 +20,7 @@ use crate::config::Grade;
 /// a média das 8 — a 7.ª é barata, a 8.ª cara) e 8 antes da grade fina.
 pub const LAMPADAS_DIRETAS_MAX: usize = 7;
 
-/// Uma lâmpada como o `c3_direta.wgsl` a lê (32 bytes).
+/// Uma lâmpada como o `c3_direta.wgsl` a lê (48 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub(crate) struct Lampada {
@@ -31,6 +31,9 @@ pub(crate) struct Lampada {
     pub inv_alcance: f32,
     /// rgb: a radiância do disco, ou a intensidade do ponto.
     pub radiancia: [f32; 4],
+    /// ⭐ W5b (F4): os objetos FORA da grade no caminho até ela, `[primeiro, quantos, 0, 0]` nos
+    /// índices do [`crate::distantes::MundoDistante`].
+    pub lista: [u32; 4],
 }
 
 /// O buffer das lâmpadas: um cabeçalho (`n`) e o teto de itens.
@@ -74,8 +77,14 @@ fn inverso_do_alcance(alcance_m: f32) -> f32 {
     }
 }
 
-/// O conteúdo do buffer para `diretas` na grade `g`: o cabeçalho e as lâmpadas.
-pub(crate) fn bytes_na_grade(cena: &CenaDeLuz, diretas: &[usize], g: &Grade) -> Vec<u8> {
+/// O conteúdo do buffer para `diretas` na grade `g`: o cabeçalho e as lâmpadas, com a lista de
+/// objetos distantes de cada uma (`listas`, na mesma ordem; vazia = nenhum).
+pub(crate) fn bytes_na_grade(
+    cena: &CenaDeLuz,
+    diretas: &[usize],
+    g: &Grade,
+    listas: &[[u32; 2]],
+) -> Vec<u8> {
     let itens: Vec<Lampada> = diretas
         .iter()
         .filter_map(|&i| {
@@ -100,7 +109,13 @@ pub(crate) fn bytes_na_grade(cena: &CenaDeLuz, diretas: &[usize], g: &Grade) -> 
                 raio: (f64::from(raio) / g.texel_m) as f32,
                 inv_alcance: inverso_do_alcance(alcance),
                 radiancia: [cor[0], cor[1], cor[2], 0.0],
+                lista: [0; 4],
             })
+        })
+        .zip(listas.iter().chain(std::iter::repeat(&[0, 0])))
+        .map(|(l, &[primeiro, n])| Lampada {
+            lista: [primeiro, n, 0, 0],
+            ..l
         })
         .collect();
     let n = u32::try_from(itens.len()).unwrap_or(0);

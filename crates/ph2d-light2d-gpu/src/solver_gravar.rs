@@ -96,11 +96,25 @@ impl Solver {
     ) -> RelatorioC0 {
         let diretas = crate::direta::lampadas_diretas(cena);
         let cap = capturar_sem(cena, &self.cfg.grade, &sprites.substituidos, &diretas);
+        // ⭐ W5b (F4): o mundo fora da grade no caminho até cada lâmpada direta.
+        let distante = if self.cfg.distantes {
+            crate::distantes::montar(cena, &self.cfg.grade, &diretas, sprites, self.cfg.mascara_px)
+        } else {
+            crate::distantes::MundoDistante::default()
+        };
         gpu.queue.write_buffer(
             &self.lampadas,
             0,
-            &crate::direta::bytes_na_grade(cena, &diretas, &self.cfg.grade),
+            &crate::direta::bytes_na_grade(cena, &diretas, &self.cfg.grade, &distante.listas),
         );
+        if self.distantes.subir(gpu, enc, &distante, &sprites.texturas) {
+            self.lampadas_grupo = Self::grupo_das_lampadas(
+                &gpu.device,
+                &self.lampadas_layout,
+                &self.lampadas,
+                &self.distantes,
+            );
+        }
         subir_geometria(
             gpu,
             (&self.c0_layout, &self.uni_c0),
@@ -262,6 +276,9 @@ impl Solver {
         }
         let mut r = cap.relatorio;
         r.bytes_da_geometria += bytes_finos;
+        r.distantes = distante.objetos.len();
+        r.mascaras = distante.mascaras.len();
+        r.lado_da_mascara = distante.lado;
         r
     }
 

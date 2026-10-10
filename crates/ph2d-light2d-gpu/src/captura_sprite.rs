@@ -49,6 +49,9 @@ pub struct CapturaDeSprites<'a> {
     pub sprites: Vec<SpriteNaC0>,
     /// As formas da `CenaDeLuz` que estes sprites SUBSTITUEM (o quad deles).
     pub substituidos: BTreeSet<Quem>,
+    /// ⭐ W5b (F4): os que só existem FORA da grade, para a luz direta (um caminho vetorial que tapa,
+    /// sobre o desenho do Vello na moldura dele) — nenhuma captura os desenha.
+    pub distantes: Vec<SpriteNaC0>,
 }
 
 /// Um sprite como o `c0_sprite.wgsl` o lê (96 bytes).

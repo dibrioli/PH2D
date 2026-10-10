@@ -18,6 +18,8 @@ pub(crate) const C0_SPRITE: &str = concat!(
 /// O texto da lei do dono — o censo (um texto, dois consumidores) lê-o.
 pub const C0_DONO_WGSL: &str = include_str!("wgsl/c0_dono.wgsl");
 pub(crate) const C1: &str = include_str!("wgsl/c1_jfa.wgsl");
+/// ⭐ W5b (F4): as máscaras dos sprites distantes.
+pub(crate) const C3_MASCARA: &str = include_str!("wgsl/c3_mascara.wgsl");
 
 macro_rules! rc {
     ($real:literal, $saida:literal) => {

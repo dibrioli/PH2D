@@ -61,6 +61,11 @@ pub struct RelatorioC0 {
     pub fora: Vec<ForaDaC0>,
     /// Bytes de geometria que sobem à placa neste quadro (formas + vértices).
     pub bytes_da_geometria: u64,
+    /// ⭐ W5b (F4): os opacos FORA da grade que a luz direta testa no caminho até as lâmpadas que
+    /// não cabem nela, as máscaras distintas deles e o lado de cada uma (desce quando não cabem).
+    pub distantes: usize,
+    pub mascaras: usize,
+    pub lado_da_mascara: u32,
 }
 
 pub(crate) struct Captura {
@@ -305,6 +310,7 @@ pub(crate) fn capturar_opacos(
         relatorio: RelatorioC0 {
             fora: m.fora,
             bytes_da_geometria,
+            ..Default::default()
         },
     }
 }
@@ -384,6 +390,7 @@ pub(crate) fn capturar_sem(
         relatorio: RelatorioC0 {
             fora: m.fora,
             bytes_da_geometria,
+            ..Default::default()
         },
     }
 }

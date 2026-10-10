@@ -15,8 +15,10 @@ fn vistas() -> Vec<Affine> {
     let mut out = Vec::new();
     for zoom in [1.0_f32, 1.37, 0.61, 2.9, 0.23] {
         for centro in [[0.0_f32, 0.0], [3.17, -1.41], [-12.05, 7.3]] {
-            let mut c = Camera2d::default();
-            c.center = centro;
+            let mut c = Camera2d {
+                center: centro,
+                ..Camera2d::default()
+            };
             c.zoom(zoom);
             out.push(c.world_to_screen_affine(WindowSize::new(FHD.0, FHD.1)));
         }

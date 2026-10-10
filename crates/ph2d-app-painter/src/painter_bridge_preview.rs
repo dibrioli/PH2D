@@ -153,7 +153,7 @@ fn trabalhador(pedido: Pedido, viva: Arc<AtomicU64>, envia: Sender<Mensagem>) {
             }
         };
         let parar = || viva.load(Ordering::Relaxed) != geracao;
-        let completo = pintar_preview(&cena, &parar, &mut |px, w, h| {
+        let completo = pintar_preview(&cena, &parar, &mut |px, _w, _h| {
             let _ = envia.send(Mensagem::Quadro(geracao, Arc::new(px.to_vec())));
         });
         if completo && envia.send(Mensagem::Fim(geracao)).is_err() {

@@ -24,6 +24,8 @@ pub enum Escritor {
     Script,
     /// Um sinal do runtime com o nome da entrada.
     Sinal,
+    /// A linha de comando (`PH2D_MOTION_INPUTS`): o jogo lançado já com valores.
+    Linha,
     /// Um objecto com o componente `Motion Input` — pelo NOME do objecto, e os bits da entidade
     /// só desempatam (a ordem não muda de uma sessão para outra).
     Objeto { nome: String, bits: u64 },

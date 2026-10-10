@@ -13,6 +13,7 @@ pub(crate) fn coze_o_quadro(
     fixed_dt: f64,
 ) {
     crate::motion_externals::publish_all(motion, playhead.time());
+    motion.pump.define_a_tocar(playhead.is_playing());
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
     // empty for a graph with no remapper (the common case), so the cook takes

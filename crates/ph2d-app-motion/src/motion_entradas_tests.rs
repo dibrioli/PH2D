@@ -1,5 +1,4 @@
 use super::*;
-use ph2d_ecs::motion_inputs::Escritor;
 
 fn valor(m: &MotionState, nome: &str, col: &str) -> Option<Vec<f32>> {
     match m
@@ -91,4 +90,23 @@ fn republishing_the_same_inputs_does_not_dirty_the_pump() {
         m.pump.is_dirty(),
         "um valor novo com o relógio parado tem de se ver"
     );
+}
+
+/// A linha de comando: números, booleanos e cores; o que não se entende salta-se.
+#[test]
+fn the_command_line_reads_numbers_booleans_and_colours() {
+    let l = le_a_linha(" vida=0.25; ligado=true ;time=0.2,0.5,1; mau=x; sem; alfa=1,0,0,0.5");
+    assert_eq!(
+        l,
+        vec![
+            ("vida".to_string(), Valor::Numero(0.25)),
+            ("ligado".to_string(), Valor::Numero(1.0)),
+            ("time".to_string(), Valor::Cor([0.2, 0.5, 1.0, 1.0])),
+            ("alfa".to_string(), Valor::Cor([1.0, 0.0, 0.0, 0.5])),
+        ]
+    );
+    let mut m = MotionState::new();
+    m.entradas.da_linha = l;
+    publica(&mut m);
+    assert_eq!(valor(&m, "vida", INPUT_VALUE), Some(vec![0.25]));
 }

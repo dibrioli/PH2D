@@ -411,9 +411,9 @@ pub(super) fn cook_gpu(
                 .comeca_o_replay(ticks.first().and_then(|r| r.1).unwrap_or(target));
             motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
                 let t = tick.unwrap_or(target);
-                if ja_cozido.is_some_and(|u| t < u) {
-                    motion.pump.entradas_do_replay(&mut replay, t);
-                } else if motion.pump.grava_entradas(t) == ph2d_eval_motion::Gravacao::Ramo {
+                if motion.pump.entradas_do_tique(&mut replay, t, ja_cozido)
+                    == Some(ph2d_eval_motion::Gravacao::Ramo)
+                {
                     motion.gpu_cook.forget_after(t);
                 }
                 // ⚠️ **POR TIQUE**: um `value.lfo` dá outro número a cada sub-passo, e reutilizar
@@ -624,6 +624,11 @@ pub(super) fn edit_renumbers_emitter(type_name: &str, param: &str) -> bool {
 #[cfg(test)]
 #[path = "motion_bridge_gpu_tests.rs"]
 mod tests;
+
+/// Ciclo 19: a fita das entradas pela rota da placa.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_entradas_tests.rs"]
+mod entradas_tests;
 
 /// ⭐ **O PORTÃO DA COSTURA** — a rota `FullyGpu` cozinha as TOMADAS que nunca marchou.
 /// Vive aqui, e não ao lado do gizmo, porque o sujeito é esta ponte: `GpuOutcome` é

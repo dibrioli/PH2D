@@ -114,6 +114,8 @@ pub struct MotionCookPump {
     fita: Fita,
     /// As contagens dos gatilhos, para derivar o pulso de cada tique (doc 128 §3.2).
     pulsos: entradas::Pulsos,
+    /// O relógio está a tocar (o shell diz-o); parado, arrastar a fita para a frente repete.
+    a_tocar: bool,
     /// The output streams of the nodes cooked by
     /// [`Self::advance_or_scrub_to_nodes_scoped`] (the GPU/M5 boundary hand-off),
     /// held so the caller can upload them after the tick march. Empty until that
@@ -236,6 +238,7 @@ impl MotionCookPump {
             ring: CheckpointRing::new(),
             fita: Fita::new(),
             pulsos: entradas::Pulsos::default(),
+            a_tocar: true,
             boundary_streams: Vec::new(),
             tap_streams: Vec::new(),
             taps: Vec::new(),
@@ -395,7 +398,8 @@ impl MotionCookPump {
         if self.last_cooked_tick != Some(tick) {
             self.ring.regista(tick, &self.cook);
         }
-        self.grava_entradas(tick);
+        let mut replay = self.comeca_o_replay(tick);
+        self.entradas_do_tique(&mut replay, tick, self.last_cooked_tick);
         self.substep_declared_zones(graph, ops, playhead);
         self.cook_target_into(graph, ops, target, playhead, scopes);
         // ⚠️ E com TOMADAS só (sem fronteiras): o cone delas também é estado (doc 110 §14.2 —

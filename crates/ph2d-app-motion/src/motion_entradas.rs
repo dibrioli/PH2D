@@ -7,7 +7,7 @@
 //! [`EntradasDoJogo::jogo`] à mão e passam pelo mesmo [`publica`].
 
 use crate::motion_state::MotionState;
-use ph2d_ecs::motion_inputs::Valor;
+use ph2d_ecs::motion_inputs::{Escritor, Valor};
 use ph2d_ecs::{MotionInputs, SimWorld};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::external::{INPUT_COLOR, INPUT_COUNT, INPUT_VALUE, input_of};
@@ -25,6 +25,59 @@ pub struct EntradasDoJogo {
     disparos_do_editor: BTreeMap<String, u64>,
     /// Os nomes publicados no quadro anterior (para esquecer os que sumiram).
     publicados: BTreeSet<String>,
+    /// O que a linha de comando publica ([`VAR_DA_LINHA`]), lido uma vez.
+    da_linha: Vec<(String, Valor)>,
+}
+
+/// ⭐ **As entradas pela linha de comando** — `PH2D_MOTION_INPUTS="vida=0.25;estado=1;time=0.2,0.5,1"`:
+/// um número (ou `true`/`false`) ou uma cor `r,g,b[,a]` por nome. O jogo lançado já com valores, e a
+/// porta das FOTOS de uma cena com outras entradas (a ferramenta não clica).
+pub const VAR_DA_LINHA: &str = "PH2D_MOTION_INPUTS";
+
+/// Lê o texto da [`VAR_DA_LINHA`]; o que não se entende é dito no terminal e saltado.
+#[must_use]
+pub fn le_a_linha(texto: &str) -> Vec<(String, Valor)> {
+    let mut out = Vec::new();
+    for par in texto.split(';').map(str::trim).filter(|p| !p.is_empty()) {
+        let Some((nome, valor)) = par.split_once('=') else {
+            eprintln!("[{VAR_DA_LINHA}] sem `=`: `{par}`");
+            continue;
+        };
+        let nums: Vec<Option<f32>> = valor
+            .split(',')
+            .map(|x| match x.trim() {
+                "true" => Some(1.0),
+                "false" => Some(0.0),
+                x => x.parse().ok().filter(|v: &f32| v.is_finite()),
+            })
+            .collect();
+        let v = match nums.as_slice() {
+            [Some(x)] => Valor::Numero(*x),
+            [Some(r), Some(g), Some(b)] => Valor::Cor([*r, *g, *b, 1.0]),
+            [Some(r), Some(g), Some(b), Some(a)] => Valor::Cor([*r, *g, *b, *a]),
+            _ => {
+                eprintln!(
+                    "[{VAR_DA_LINHA}] `{nome}`: um número ou uma cor r,g,b[,a] — veio `{valor}`"
+                );
+                continue;
+            }
+        };
+        out.push((nome.trim().to_string(), v));
+    }
+    out
+}
+
+impl EntradasDoJogo {
+    /// O publicador do app: lê a [`VAR_DA_LINHA`] uma vez.
+    #[must_use]
+    pub fn do_ambiente() -> Self {
+        Self {
+            da_linha: std::env::var(VAR_DA_LINHA)
+                .map(|t| le_a_linha(&t))
+                .unwrap_or_default(),
+            ..Self::default()
+        }
+    }
 }
 
 /// Copia o recurso do mundo (ausente = nada publicado).
@@ -122,6 +175,10 @@ fn mesmas_colunas(velho: &Stream, novo: &Stream) -> bool {
 /// deriva o pulso de cada tique), os outros os valores. Um nome que deixou de ser escrito sai.
 pub fn publica(motion: &mut MotionState) {
     disparos_dos_cartoes(motion);
+    let e = &mut motion.entradas;
+    for (nome, v) in &e.da_linha {
+        e.jogo.set(nome, Escritor::Linha, *v);
+    }
     let mut streams: BTreeMap<String, Stream> = motion
         .entradas
         .jogo

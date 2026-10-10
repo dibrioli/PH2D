@@ -411,3 +411,8 @@ pub(super) fn announce() {
 #[cfg(test)]
 #[path = "motion_state_jogo_demo_tests.rs"]
 mod tests;
+
+/// A sonda do relógio do grupo (doc 128 §5.4).
+#[cfg(test)]
+#[path = "motion_state_jogo_relogio.rs"]
+mod relogio;

@@ -122,6 +122,10 @@ pub struct Cook {
     /// **What the app published** (doc 65). Keyed by name; the revision IS the content, so
     /// republishing the same curve every frame invalidates nothing.
     externals: crate::external::All,
+    /// ⭐ **O que um REPLAY mostra por cima do publicado** (doc 128 §3.3): o conjunto que estava
+    /// publicado no tique que o scrub repete. Enquanto existe, é ELE que os nós leem (e o memo
+    /// chaveia); o publicado continua intacto por baixo, para quando se voltar a tocar.
+    externals_replay: Option<crate::external::All>,
     /// Keyed by `(node, scope)`: the same node cooked under two different time
     /// scopes in one frame holds two independent memo entries. Without a scope,
     /// every key is `(node, SCOPE_ROOT)`.
@@ -210,11 +214,22 @@ impl Cook {
         &self.externals
     }
 
-    /// Put back a whole published set, revisions included — the scrub's replay of what was
-    /// published at a past tick (doc 128 §3.3). Nothing is rehashed: the revisions are the ones the
-    /// memo already keyed on when that tick was first cooked.
-    pub fn replace_externals(&mut self, all: crate::external::All) {
-        self.externals = all;
+    /// Show a recorded set OVER the published one while a scrub replays a past tick (doc 128
+    /// §3.3); `None` goes back to what is published. Nothing is rehashed: the revisions are the
+    /// ones the memo keyed on when that tick was first cooked.
+    pub fn set_externals_replay(&mut self, all: Option<crate::external::All>) {
+        self.externals_replay = all;
+    }
+
+    /// Is a scrub replaying a recorded set right now?
+    #[must_use]
+    pub fn externals_replaying(&self) -> bool {
+        self.externals_replay.is_some()
+    }
+
+    /// What the nodes read right now: the replayed set if a scrub put one, else the published.
+    pub fn visible_externals(&self) -> &crate::external::All {
+        self.externals_replay.as_ref().unwrap_or(&self.externals)
     }
 
     pub fn new() -> Self {
@@ -581,7 +596,7 @@ impl Cook {
             // has never cooked has read nothing, so this is the hash of the empty list — and its
             // first cook happens for the ordinary reason (no cache entry).
             externals: crate::external::revs_of(
-                &self.externals,
+                self.visible_externals(),
                 self.cache
                     .get(&(node, key))
                     .map_or(&[][..], |c| &c.read_externals),
@@ -598,7 +613,7 @@ impl Cook {
             inputs: &input_values,
             fan: &fan_values,
             fan_driven: &fan_driven,
-            externals: &self.externals,
+            externals: self.externals_replay.as_ref().unwrap_or(&self.externals),
             read_externals: Vec::new(),
             playhead,
             manifest,
@@ -654,7 +669,10 @@ impl Cook {
                 // ([[feedback_a_snapshot_must_be_a_fixed_point_of_the_systems]]): if the next pass
                 // would derive something different from the same inputs, you have not converged.
                 fingerprint: Fingerprint {
-                    externals: crate::external::revs_of(&self.externals, &ctx.read_externals),
+                    externals: crate::external::revs_of(
+                        self.externals_replay.as_ref().unwrap_or(&self.externals),
+                        &ctx.read_externals,
+                    ),
                     ..fingerprint
                 },
                 read_externals: ctx.read_externals,

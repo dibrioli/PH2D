@@ -1,0 +1,215 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · O jogo manda</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .wide figcaption { font-size:11px; color:var(--t2); margin-top:6px; text-align:center; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>O jogo manda
+  <small>PH2D · Motion Nodes · tutorial 12 — o grafo do Motion <b>ouve o jogo</b>: a vida enche
+  uma barra, um estado cruza em outro, um golpe sacode uma simulação</small></h1>
+
+<p>Até aqui o grafo só ouvia o <b>relógio</b>. Num jogo quem manda é o <b>jogo</b>: a vida do
+herói, se ele está a correr ou parado, o golpe que acabou de levar. Agora o grafo tem
+<b>entradas</b>: o cartão <code>Input</code> tem um <b>nome</b> (por exemplo <code>vida</code>), e
+quem souber esse nome escreve nele — um <b>componente</b> num objecto, um <b>script</b> Luau, um
+<b>sinal</b> do jogo. Enquanto ninguém escreve, manda o número do próprio cartão: é o seu
+<b>botão de teste</b>.</p>
+
+<table>
+  <tr><th>tipo do Input</th><th>o que ele dá ao grafo</th></tr>
+  <tr><td><code>Number</code></td><td>um número (a vida de 0 a 1, a velocidade…)</td></tr>
+  <tr><td><code>Toggle</code></td><td>sim ou não — 0 ou 1 (está a correr? está no chão?)</td></tr>
+  <tr><td><code>Trigger</code></td><td>um <b>disparo</b>: 1 num instante só, depois 0 (levou um golpe,
+      apanhou uma moeda)</td></tr>
+  <tr><td><code>Color</code></td><td>uma cor (a cor da equipa) — pelas saídas <code>r g b a</code></td></tr>
+</table>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=134 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Olhe a tela</b> (se nada se mexer, carregue em <kbd>Play</kbd>).
+      <div class="out">Três quadros. Em <b>cima</b>, uma <b>barra verde</b> de 24 peças, cheia até
+      60%. À <b>esquerda</b>, uma grelha de discos <b>laranja</b>. À <b>direita</b>, uma
+      <b>galáxia</b> de estrelas azuis a girar devagar — uma <b>simulação</b> (um redemoinho e um
+      íman, como no tutorial 10).</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/jogo_cena.png" alt="a barra verde a 60%, a grelha laranja e a galaxia azul">
+  <figcaption>A cena como abre: manda o número de cada cartão <code>Input</code>.</figcaption></figure>
+
+<h2>2 · A barra que enche (o tempo é a vida)</h2>
+<p>No grafo, a fila de <b>cima</b> é a da barra. A barra é uma animação de 2 segundos (as peças
+nascem uma a uma), mas o cartão <code>Time Remap</code> está no modo <code>Driven</code>: o tempo
+dela não anda com o relógio — <b>é a vida</b>. Vida 0 é o início da animação, vida 1 é o fim.</p>
+<ol class="steps">
+  <li><b>No cartão <code>Input</code> que tem <code>Name</code> = <code>vida</code>, arraste
+      <code>Value</code></b> de 0 a 1.
+      <div class="out">A barra <b>enche e esvazia</b> com o número: 0 vazia, 0,5 metade, 1 cheia.
+      Com o relógio a andar ou parado, é igual.</div>
+      <div class="bad">Se a barra se mexer sozinha com o relógio, avise.</div></li>
+  <li><b>Clique no cartão <code>Time Remap</code>.</b>
+      <div class="out"><code>Mode</code> = <code>Driven</code>, e a linha <code>Position</code> tem
+      um fio a chegar do <code>Input</code>: é a vida a escolher o instante. As linhas
+      <code>Curve</code> e <code>Duration</code> dizem como a vida vira tempo.</div></li>
+</ol>
+
+<h2>3 · Dois estados que se cruzam</h2>
+<p>A fila do <b>meio</b> é a da grelha. Um <code>Mixer</code> em <code>Blend</code> mistura uma
+grelha e um anel; quem decide quanto de cada um é o estado, passado por um <code>Follow</code> que
+o leva de 0 a 1 em <b>0,6 segundos</b> (em vez de saltar).</p>
+<ol class="steps">
+  <li><b>No cartão <code>Input</code> com <code>Name</code> = <code>estado</code>, ligue
+      <code>On</code>.</b>
+      <div class="out">Em meio segundo a grelha <b>vira um anel</b>, as peças a deslizar.</div>
+      <div class="bad">Se ela saltar de uma vez para o anel, avise.</div></li>
+  <li><b>Desligue <code>On</code>.</b>
+      <div class="out">O anel volta a grelha, pelo mesmo tempo.</div></li>
+  <li><b>No cartão <code>Follow</code>, mude <code>Mode</code> para <code>Spring</code></b> e
+      ligue/desligue <code>On</code> outra vez.
+      <div class="out">O cruzamento passa a ser uma <b>mola</b>: passa um pouco do anel e volta.
+      <code>Duration</code> é o tempo da mola, <code>Bounce</code> o salto.</div></li>
+  <li><b>No cartão <code>Input</code> com <code>Name</code> = <code>time</code>, mude a cor.</b>
+      <div class="out">Os discos ficam dessa cor: as saídas <code>r g b</code> do cartão estão
+      ligadas às linhas de cor do <code>Tint</code>.</div></li>
+</ol>
+
+<h2>4 · O golpe que sacode a simulação</h2>
+<p>A fila de <b>baixo</b> é a da galáxia. O cartão <code>Input</code> com
+<code>Name</code> = <code>boom</code> é um <code>Trigger</code>: um disparo. Ele acende um
+<code>ADSR</code> (um envelope: sobe depressa, desce devagar), e o envelope mexe num
+<b>campo da simulação</b> — a força do <code>Vortex</code> — e no tamanho das estrelas.</p>
+<ol class="steps">
+  <li><b>No cartão <code>boom</code>, clique em <code>Fire</code>.</b> (Cada clique é um disparo.)
+      <div class="out">As estrelas <b>incham</b> e o redemoinho <b>acelera</b>; em dois segundos
+      tudo volta à calma.</div>
+      <div class="bad">Se nada acontecer, ou se a galáxia não voltar à calma, avise.</div></li>
+</ol>
+
+<h2>5 · Voltar a fita</h2>
+<p>O que o jogo mandou fica <b>gravado</b> com a animação: voltar a fita mostra o que aconteceu,
+no instante em que aconteceu.</p>
+<ol class="steps">
+  <li><b>Com o relógio a andar</b>, mexa na <code>vida</code>, ligue o <code>estado</code> e
+      clique <code>Fire</code>. Depois <b>pare</b> e <b>arraste a fita para trás</b>.
+      <div class="out">A barra, o cruzamento e o golpe <b>repetem-se iguais</b>, nos mesmos
+      instantes.</div>
+      <div class="bad">Se ao voltar a fita a cena fizer outra coisa (por exemplo, a barra ficar no
+      valor de agora), avise.</div></li>
+</ol>
+
+<h2>6 · Quem escreve: um objecto do jogo</h2>
+<p>O cartão é o botão de teste. No jogo, quem escreve é um <b>objecto</b>, pelo componente
+<code>Motion Input</code>.</p>
+<ol class="steps">
+  <li><b>Crie um objecto</b> (menu <code>Add</code> → <code>Empty</code>) e, no
+      <b>Inspector</b>, carregue em <kbd>+</kbd> e escolha <code>Motion Input</code>.
+      <div class="out">Aparece a secção <code>Motion Input</code> com <code>Input</code>,
+      <code>Source</code> e <code>Value</code>. Por baixo de <code>Input</code>, os nomes que o
+      grafo lê (<code>boom</code>, <code>estado</code>, <code>time</code>, <code>vida</code>).</div></li>
+  <li><b>Escolha <code>vida</code></b> e ponha <code>Value</code> em <code>0,25</code>.
+      <div class="out">A barra passa a <b>25%</b>, mesmo que o cartão diga outra coisa: quem
+      escreve manda sobre o botão de teste.</div></li>
+  <li><b>Mude <code>Source</code></b>.
+      <div class="out"><code>Value</code> = o número da linha; <code>Color</code> = uma cor;
+      <code>Health</code> = a vida do objecto, de 0 a 1 (ele precisa do componente
+      <code>Health</code>); <code>Damage</code> = um <b>disparo</b> cada vez que essa vida desce.</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/jogo_entradas.png" alt="a barra a 25% e o anel azul">
+  <figcaption>A mesma cena com o jogo a publicar <code>vida = 0,25</code>, <code>estado = 1</code> e
+  <code>time</code> azul (pela linha de comando, abaixo).</figcaption></figure>
+
+<h2>7 · O que cada botão faz</h2>
+<table>
+  <tr><th>linha</th><th>cartão</th><th>o que faz</th></tr>
+  <tr><td><code>Name</code></td><td>Input</td><td>o nome da entrada — quem escreve usa este nome</td></tr>
+  <tr><td><code>Kind</code></td><td>Input</td><td><code>Number</code> · <code>Toggle</code> ·
+      <code>Trigger</code> · <code>Color</code></td></tr>
+  <tr><td><code>Value</code> · <code>On</code> · <code>Fire</code> · <code>Color</code></td><td>Input</td>
+      <td>o botão de teste de cada tipo (vale enquanto ninguém escreve)</td></tr>
+  <tr><td><code>Mode</code> = <code>Driven</code></td><td>Time Remap</td><td>o tempo da parte de cima
+      do grafo deixa de andar: é a <code>Position</code> (0 a 1) vezes <code>Duration</code>, mais
+      <code>Offset</code>, pela <code>Curve</code></td></tr>
+  <tr><td><code>Mode</code></td><td>Follow</td><td><code>Linear</code> (chega em
+      <code>Duration</code> segundos) · <code>Smooth</code> (a meio caminho a cada
+      <code>Duration</code>) · <code>Spring</code> (uma mola; <code>Bounce</code> o salto)</td></tr>
+  <tr><td><code>Input</code> · <code>Source</code> · <code>Value</code> · <code>Color</code></td>
+      <td>Motion Input (Inspector)</td><td>o objecto que escreve, e o quê</td></tr>
+</table>
+
+<h2>8 · Vá além</h2>
+<ol class="steps">
+  <li><b>Um script.</b> Num script Luau de um objecto:
+      <code>motion.set("vida", 0.3)</code>, <code>motion.color("time", 0.2, 0.5, 1)</code>,
+      <code>motion.fire("boom")</code>.</li>
+  <li><b>Um sinal.</b> Um sinal do jogo com o nome <code>boom</code> (por exemplo de um
+      <code>ph2d.emit("boom")</code>) dispara o <code>Trigger</code> com esse nome.</li>
+  <li><b>Pela linha de comando.</b> Abra a cena já com valores:
+      <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=134 'PH2D_MOTION_INPUTS=vida=0.25;estado=1;time=0.2,0.5,1' cargo run -p ph2d-host-desktop --profile smoke</div></li>
+  <li><b>Uma barra com ritmo.</b> No <code>Time Remap</code>, desenhe uma <code>Curve</code> que
+      sobe devagar e acelera no fim: a vida baixa passa a encher pouco a barra.</li>
+</ol>
+
+<h2>9 · O que isto custa</h2>
+<p id="custo">(preenchido com a medição do ciclo)</p>
+
+<h2>10 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que reportar</th></tr>
+  <tr><td>a barra não segue o <code>Value</code></td><td>o número e uma foto</td></tr>
+  <tr><td>a grelha salta de uma vez para o anel</td><td>o <code>Mode</code> do <code>Follow</code></td></tr>
+  <tr><td>o <code>Fire</code> não mexe na galáxia</td><td>se o relógio estava a andar</td></tr>
+  <tr><td>ao voltar a fita a cena faz outra coisa</td><td>o que fez e o que devia ter feito</td></tr>
+  <tr><td>o <code>Motion Input</code> não mexe na barra</td><td>o <code>Input</code> e o
+      <code>Source</code> escolhidos</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 19 (doc 128) · cena <code>PH2D_GPU_COOK_DEMO=134</code> ·
+o cruzamento conferido contra o Godot 4.7 (MIT), corrido sobre as nossas entradas</footer>

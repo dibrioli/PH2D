@@ -207,3 +207,38 @@ fn a_fire_count_becomes_a_pulse_of_exactly_one_tick() {
     assert_eq!(scrub(&mut pump, &g, c, 1), 1.0);
     assert_eq!(scrub(&mut pump, &g, c, 0), 0.0);
 }
+
+/// ⭐ **Parado, arrastar a fita para a FRENTE repete** — o quadro do produto marcha tique a tique
+/// (`ticks_owed`), e cada tique já gravado tem de mostrar a entrada da época, não a de agora; a
+/// TOCAR, o mesmo caminho grava o que se publica (o ramo novo do teste acima).
+#[test]
+fn with_the_clock_stopped_dragging_forward_replays_the_recorded_inputs() {
+    let (g, c) = grafo();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    let visto = toca(&mut pump, &g, c, 0, 40, entrada_da_corrida);
+    publica(&mut pump, 99.0);
+    scrub(&mut pump, &g, c, 10);
+    pump.define_a_tocar(false);
+    for t in 11..=35u64 {
+        publica(&mut pump, 99.0);
+        let x = scrub(&mut pump, &g, c, t);
+        assert_eq!(x, visto[t as usize], "parado, tique {t}");
+    }
+    // E editar no MESMO tique, parado, vale o publicado (um ramo): o re-cozimento do mesmo tique
+    // parte do estado já avançado (a lei de sempre da bomba) e soma o publicado — `0`, não o `5`
+    // da fita.
+    publica(&mut pump, 0.0);
+    pump.mark_dirty_keeping_ring();
+    assert_eq!(
+        scrub(&mut pump, &g, c, 35),
+        visto[35],
+        "a edição parada pesa o publicado"
+    );
+    assert!(
+        pump.fita()
+            .estado_em(35)
+            .is_some_and(|e| e[ENTRADA].value.get("v") == Some(&Column::Scalar(vec![0.0]))),
+        "a fita guardou o ramo"
+    );
+}

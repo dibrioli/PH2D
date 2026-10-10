@@ -25,11 +25,11 @@ fn contagens(all: &All) -> BTreeMap<String, Vec<f32>> {
         .collect()
 }
 
-/// O que o replay de um scrub põe no cozimento, tique a tique.
+/// O replay de um scrub, tique a tique: o estado da fita no tique corrente.
 pub struct Replay {
-    vivas: All,
     estado: Option<All>,
-    na_fita: Option<bool>,
+    /// Já pôs a sua camada? (a de um scrub anterior pode estar lá, e é de outro tique.)
+    posto: bool,
 }
 
 impl MotionCookPump {
@@ -71,7 +71,7 @@ impl MotionCookPump {
     /// Depois de um scrub para `alvo`: as contagens voltam às da época (as de `alvo` e as do tique
     /// antes dele), para o próximo tique pulsar contra a história certa.
     pub(crate) fn pulsos_depois_do_scrub(&mut self, alvo: u64) {
-        self.pulsos.agora = contagens(self.cook.externals());
+        self.pulsos.agora = contagens(self.cook.visible_externals());
         self.pulsos.antes = alvo
             .checked_sub(1)
             .and_then(|t| self.fita.estado_em(t))
@@ -86,18 +86,17 @@ impl MotionCookPump {
         &self.fita
     }
 
-    /// Começa um replay: guarda o publicado agora (o que vale para lá do que foi gravado).
+    /// Começa um replay em `anchor`.
     #[must_use]
     pub fn comeca_o_replay(&self, anchor: u64) -> Replay {
         Replay {
-            vivas: self.cook.externals().clone(),
             estado: self.fita.estado_em(anchor),
-            na_fita: None,
+            posto: false,
         }
     }
 
-    /// Põe no cozimento as entradas de `t` — as da fita onde ela cobre, as vivas fora dela. Só
-    /// troca o conjunto quando ele muda (uma entrada parada não custa nada no replay).
+    /// Mostra no cozimento as entradas de `t` — as da fita onde ela cobre (POR CIMA do publicado,
+    /// que fica intacto), as publicadas fora dela. Só troca quando muda.
     pub fn entradas_do_replay(&mut self, replay: &mut Replay, t: u64) {
         if self.fita.cobre(t) {
             let mudou = match replay.estado.as_mut() {
@@ -107,15 +106,39 @@ impl MotionCookPump {
                     true
                 }
             };
-            if mudou || replay.na_fita != Some(true) {
-                if let Some(e) = &replay.estado {
-                    self.cook.replace_externals(e.clone());
-                }
-                replay.na_fita = Some(true);
+            if mudou || !replay.posto {
+                self.cook.set_externals_replay(replay.estado.clone());
+                replay.posto = true;
             }
-        } else if replay.na_fita != Some(false) {
-            self.cook.replace_externals(replay.vivas.clone());
-            replay.na_fita = Some(false);
+        } else if self.cook.externals_replaying() || !replay.posto {
+            self.cook.set_externals_replay(None);
+            replay.posto = true;
         }
+    }
+
+    /// ⭐ **A regra de cada tique** (doc 128 §3.3), a MESMA nas duas rotas: um tique antes do último
+    /// cozido, ou — com o relógio PARADO — um tique já gravado que não é o último (arrastar a fita
+    /// para a frente) REPETE a fita; o resto (tocar, e editar no mesmo tique) GRAVA o publicado,
+    /// e um ramo novo esquece o futuro. Devolve a gravação, se gravou.
+    pub fn entradas_do_tique(
+        &mut self,
+        replay: &mut Replay,
+        tick: u64,
+        ultimo: Option<u64>,
+    ) -> Option<Gravacao> {
+        let repete = ultimo.is_some_and(|u| tick < u)
+            || (!self.a_tocar && ultimo != Some(tick) && self.fita.cobre(tick));
+        if repete {
+            self.entradas_do_replay(replay, tick);
+            self.pulsos_depois_do_scrub(tick);
+            return None;
+        }
+        self.cook.set_externals_replay(None);
+        Some(self.grava_entradas(tick))
+    }
+
+    /// O relógio está a TOCAR? (o shell diz-o a cada quadro; parado, arrastar a fita repete).
+    pub fn define_a_tocar(&mut self, a_tocar: bool) {
+        self.a_tocar = a_tocar;
     }
 }

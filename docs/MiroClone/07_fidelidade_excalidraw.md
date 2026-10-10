@@ -154,7 +154,7 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
 
 | # | o quê | como se mediu | o valor | recomendação |
 |---|---|---|---|---|
-| **M1** | ⭐ **A seta que pára ANTES da forma** (`Anchor::Orbit` + o vão) | XB1 em 20 casos `B_*` e nos pontos do ficheiro do dono | vão **5 + sw/2** (5,5 com o traço fino de nascença); erro ≤ 0,04 px | **FAZER JÁ** na importação (cura o sintoma 3). E perguntar ao dono se o quadro inteiro adopta o vão: o Miro encosta, o Excalidraw não — é decisão de PRODUTO (a lei é uma constante e uma flag) |
+| **M1** | ⭐ **A seta que pára ANTES da forma** (`Anchor::Orbit` + o vão) | XB1 em 20 casos `B_*` e nos pontos do ficheiro do dono | vão **5 + sw/2** (5,5 com o traço fino de nascença); erro ≤ 0,04 px | **FAZER JÁ** — ✅ **DECIDIDO pelo dono (10/10): o quadro INTEIRO adopta o vão, como o Excalidraw** (*«like Excalidraw»*): as setas que o artista desenha no nosso quadro também param 5 + sw/2 antes da forma, não só as importadas. O Miro encosta; recusado por ordem do dono |
 | **M2** | ⭐ **A ponta que encolhe** | XA2 (`P_comprimento` 39 setas, `P_tipos_comprimento` 63) | **min(base, trecho/2)**, sem espessura | **FAZER JÁ** em todo o quadro: hoje uma seta curta fica SEM ponta (L ≤ 20 ⇒ zero pontas) — defeito, não estilo |
 | **M3** | ⭐ **A «redonda» de 2 pontos é recta**; a de 3+ é a curva DELE | XA1 (`F_fuste`) | afastamento 0,00 / Catmull-Rom 1/6 | FAZER JÁ no leitor (sintoma 1); `Route::Spline` para 3+ |
 | **M4** | O gesto de ligar do next: largar DENTRO ⇒ ponto exacto (`inside`); perto por FORA ⇒ órbita encaixada no meio do lado; `Ctrl` desliga | XB5 (rato, 23 sondas) | 23/23 dentro ⇒ `inside`; por fora liga a 6 e 10, não a 20 | o nosso `anchor_for` já é parecido (centro × ponto fixo numa faixa); trocar «miolo ⇒ Centro» por «miolo ⇒ Orbit no ponto» quando M1 entrar; manter o `Ctrl` |
@@ -184,6 +184,11 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
 - `crates/ph2d-board-excalidraw/src/write.rs`: ligações com as duas gramáticas; as pontas com o vão; `Spline` ⇒
   `roundness {type:2}` com os pontos dela (não achatada).
 - `docs/MiroClone/ferramentas/excalidraw_oracle/`: os gates leem as fixtures `saidas/w9_*` (nada a re-correr).
+
+- `crates/ph2d-board-edit` (`anchor_for` e o gesto de ligar): ⭐ por decisão do dono (§5 M1) a seta DESENHADA
+  no quadro nasce `Orbit` (o vão de XB1) quando a ponta cai numa forma — o gesto de M4: largar dentro ⇒ o
+  ponto exacto em órbita, `Ctrl` desliga a ligação. As setas que já existem nos ficheiros (`Fixed`/`Centre`)
+  continuam a ler-se como estão.
 
 ### §6.2 — Os testes que têm de nascer VERMELHOS (e ver-se vermelhos antes da cura)
 

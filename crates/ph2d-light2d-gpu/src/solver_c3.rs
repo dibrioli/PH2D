@@ -157,10 +157,7 @@ impl C3 {
                 f64::from(u8::from(cfg.preenche_a_grade_inteira)),
             ),
             ("PREENCHE", f64::from(u8::from(cfg.preenchimento.is_some()))),
-            (
-                "CELULA_PREENCHE",
-                f64::from(cfg.preenchimento.unwrap_or(1)),
-            ),
+            ("CELULA_PREENCHE", f64::from(cfg.preenchimento.unwrap_or(1))),
         ];
         let bordas = match cfg.refino {
             Refino::Bordas(b) => Some(b),
@@ -170,8 +167,7 @@ impl C3 {
                            grupos: &[Option<&wgpu::BindGroupLayout>],
                            entrada: &str,
                            constantes: &[(&str, f64)]| {
-            let constantes: Vec<(&str, f64)> =
-                constantes.iter().chain(&comuns).copied().collect();
+            let constantes: Vec<(&str, f64)> = constantes.iter().chain(&comuns).copied().collect();
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(rotulo),
                 bind_group_layouts: grupos,
@@ -335,8 +331,18 @@ impl C3 {
                     gs.push(grupo(j + 1, p[j % 2], p[(j + 1) % 2]));
                 }
                 Preenchimento {
-                    semente: pipeline_em("luz2d c3 preenche semente", &grupos, "c3_preenche_semente", &[]),
-                    salto: pipeline_em("luz2d c3 preenche salto", &grupos, "c3_preenche_salto", &[]),
+                    semente: pipeline_em(
+                        "luz2d c3 preenche semente",
+                        &grupos,
+                        "c3_preenche_semente",
+                        &[],
+                    ),
+                    salto: pipeline_em(
+                        "luz2d c3 preenche salto",
+                        &grupos,
+                        "c3_preenche_salto",
+                        &[],
+                    ),
                     grupos: gs,
                     uniforme: uniforme.clone(),
                     saltos,
@@ -421,10 +427,14 @@ impl C3 {
             if let Some(pr) = &self.preenchimento {
                 // Os uniformes de cada passo: a região deste quadro e o salto.
                 let mut uni = vec![0u8; PASSO_UNIFORME as usize * pr.grupos.len()];
-                for (j, salto) in std::iter::once(0).chain(pr.saltos.iter().copied()).enumerate() {
+                for (j, salto) in std::iter::once(0)
+                    .chain(pr.saltos.iter().copied())
+                    .enumerate()
+                {
                     let u = UniformePreenche { salto, ..pr.u };
                     let o = j * PASSO_UNIFORME as usize;
-                    uni[o..o + size_of::<UniformePreenche>()].copy_from_slice(bytemuck::bytes_of(&u));
+                    uni[o..o + size_of::<UniformePreenche>()]
+                        .copy_from_slice(bytemuck::bytes_of(&u));
                 }
                 gpu.queue.write_buffer(&pr.uniforme, 0, &uni);
                 let celulas = grupos(pr.u.inicio, pr.u.fim);

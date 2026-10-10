@@ -158,8 +158,9 @@ pub fn dentro_de_opaco_a_menos_de(
                     [f64::from(b[0] - a[0]), f64::from(b[1] - a[1])],
                     [f64::from(p[0] - a[0]), f64::from(p[1] - a[1])],
                 );
-                let t = ((ap[0] * ab[0] + ap[1] * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-30))
-                    .clamp(0.0, 1.0);
+                let t = ((ap[0] * ab[0] + ap[1] * ab[1])
+                    / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-30))
+                .clamp(0.0, 1.0);
                 d = d.min((ap[0] - ab[0] * t).hypot(ap[1] - ab[1] * t));
                 j = i;
             }

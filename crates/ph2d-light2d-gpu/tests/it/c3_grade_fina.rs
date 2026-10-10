@@ -301,8 +301,13 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
                 piores.len()
             );
         }
-        eprintln!("F3 interior · {nome}: RMSE relativo {ec:.4} (sem o preenchimento {es:.4}; teto {teto})");
-        assert!(es > 0.9, "controlo: sem o preenchimento o interior é 0 ({es:.4})");
+        eprintln!(
+            "F3 interior · {nome}: RMSE relativo {ec:.4} (sem o preenchimento {es:.4}; teto {teto})"
+        );
+        assert!(
+            es > 0.9,
+            "controlo: sem o preenchimento o interior é 0 ({es:.4})"
+        );
         assert!(ec <= teto, "F3 interior · {nome}: {ec:.4} > {teto}");
     }
 }

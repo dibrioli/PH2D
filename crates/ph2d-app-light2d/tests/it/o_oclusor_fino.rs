@@ -76,7 +76,12 @@ fn luz(gpu: &GpuContext, degrau: Degrau, w: &World) -> Fluencia {
 }
 
 /// A sombra através de `x` (de `y0` a `y1`, a cada ¼ px): `(massa em m, fundo)`.
-pub(crate) fn sombra(f: impl Fn([f64; 2]) -> f64, x: f64, (y0, y1): (f64, f64), ppm: f64) -> (f64, f64) {
+pub(crate) fn sombra(
+    f: impl Fn([f64; 2]) -> f64,
+    x: f64,
+    (y0, y1): (f64, f64),
+    ppm: f64,
+) -> (f64, f64) {
     let dy = 0.25 / ppm;
     let n = ((y1 - y0) / dy) as usize;
     let mut massa = 0.0;

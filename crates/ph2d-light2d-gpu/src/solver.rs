@@ -30,7 +30,6 @@ mod fina;
 #[path = "solver_gravar.rs"]
 mod gravar;
 
-
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct UniformeC0 {
@@ -231,9 +230,7 @@ impl Solver {
         let uni_cascatas = buffer("luz2d/buf/cascatas");
         let lampadas = buffer("luz2d/buf/lampadas");
         let uni_c3 = buffer("luz2d/buf/c3");
-        let uni_preenche = cfg
-            .preenchimento
-            .map(|_| buffer("luz2d/buf/preenche"));
+        let uni_preenche = cfg.preenchimento.map(|_| buffer("luz2d/buf/preenche"));
         let tempos = com_tempos.then(|| Tempos {
             set: device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("luz2d/carimbos"),
@@ -424,13 +421,11 @@ impl Solver {
             ));
         }
         // ⭐ W5a: zerar e marcar a marca da captura fina (o uniforme da semente).
-        let jfa_marca = op.captura.zip(op.marca).map(|(c, m)| {
-            fina::Marca {
-                zera: compute("luz2d c1 zera", &jfa_pl, &jfa_modulo, "zera", &[]),
-                marca: compute("luz2d c1 marca", &jfa_pl, &jfa_modulo, "marca", &[]),
-                grupo_zera: jfa_grupo(0, (COBERTURA, SEMENTES[1], m)),
-                grupo_marca: jfa_grupo(0, (c[0], SEMENTES[1], m)),
-            }
+        let jfa_marca = op.captura.zip(op.marca).map(|(c, m)| fina::Marca {
+            zera: compute("luz2d c1 zera", &jfa_pl, &jfa_modulo, "zera", &[]),
+            marca: compute("luz2d c1 marca", &jfa_pl, &jfa_modulo, "marca", &[]),
+            grupo_zera: jfa_grupo(0, (COBERTURA, SEMENTES[1], m)),
+            grupo_marca: jfa_grupo(0, (c[0], SEMENTES[1], m)),
         });
         let sementes_finais = SEMENTES[saltos.len() % 2];
 

@@ -263,7 +263,11 @@ fn medida_causa_do_desvio() {
             eprintln!(
                 "causa · {nome} · captura ×{} · passo {passo} · {}: média {} · degrau {} px (2 · 10 · 50 · 90 · 98 %)",
                 cfg.captura,
-                if matches!(refino, ph2d_light2d_gpu::Refino::Tudo) { "tudo" } else { "bordas" },
+                if matches!(refino, ph2d_light2d_gpu::Refino::Tudo) {
+                    "tudo"
+                } else {
+                    "bordas"
+                },
                 por_contorno(&e, |x| x.media_px),
                 por_contorno(&e, |x| x.degrau_px)
             );

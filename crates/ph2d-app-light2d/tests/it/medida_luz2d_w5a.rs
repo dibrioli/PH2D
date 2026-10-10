@@ -21,10 +21,10 @@ use bevy_ecs::world::World;
 use ph2d_app_light2d::{
     Degrau, LuzDoQuadro, captura_do_quadro, fina_do_quadro, grade_do_quadro, qualidade::degrau_do,
 };
+use ph2d_ecs::VecPathRef;
 use ph2d_editor_core::luz_edits::NivelDaLuz;
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
-use ph2d_ecs::VecPathRef;
 use ph2d_light2d_ecs::{BloqueiaLuz, CenaDeLuz};
 use ph2d_light2d_gpu::{Bordas, Config, Refino, Solver, TemposMs};
 use ph2d_vec_scene::{VecScene, VecXforms, rectangle};
@@ -337,7 +337,14 @@ fn vello(gpu: &GpuContext) {
         w.spawn((VecPathRef(id), BloqueiaLuz { opacidade: 1.0 }));
     }
     let um_px = v("1 px", Some(1.0), 1.0, 1.0);
-    for v in [&VARIANTES[0], &um_px, &VARIANTES[1], &VARIANTES[0], &um_px, &VARIANTES[1]] {
+    for v in [
+        &VARIANTES[0],
+        &um_px,
+        &VARIANTES[1],
+        &VARIANTES[0],
+        &um_px,
+        &VARIANTES[1],
+    ] {
         let d = degrau(NivelDaLuz::Baixa, v);
         let mut l = LuzDoQuadro::com_degrau(d);
         let mut ms = Vec::new();

@@ -7,7 +7,7 @@
 
 - **Branch** `line/UIUX` · **base (merge-base = `main`)** `2a925859d` (o `main` não andou — sem rebase)
   · F0–F7 continuam por integrar e vão JUNTAS com esta jornada.
-- Commits desta jornada: `393e874c6..HEAD`.
+- Commits desta jornada: `393e874c6..HEAD` (três pedidos do dono: formas pequenas · mais sensível · o lápis com quinas e a estrela).
 - **O pedido (smoke do dono, 09/10):** *«Funciona, sem muita sensibilidade, mas funciona. Formas
   pequenas devem funcionar.»*
 
@@ -36,6 +36,32 @@ em ~2 % das mãos (era 0,6 %). Tabela e escolha (de três candidatas, A × B no 
 `measure_sensitivity`, `measure_sensitivity_of_each_constant`, `measure_sensitivity_ab`. Só valores
 mudaram (nenhuma regra nova): clippy e os testes das crates re-corridos verdes; o gate batched NÃO foi
 re-corrido para esta parte.
+
+### §1c — O lápis com quinas e a estrela (3.º pedido do dono, 09/10)
+
+*«O lápis transforma quinas em curvas muito suaves — permitir quinas sem estragar as curvas. Estrelas
+com linhas cruzadas viram pentágonos.»*
+
+| peça | o que é | onde mora |
+|---|---|---|
+| ⭐ **o lápis com quinas** | o Hobby é suave em TODO nó interior por construção — por isso arredondava cada quina. A cura é a do próprio MetaPost (`p & q`): o traço parte-se nas QUINAS e cada troço é um `fit_hobby_open`; na junção o nó é `Corner` com a chegada de um troço e a partida do outro. Quina = as cordas de ±14 px viram ≥ 30° e essa viragem está CONCENTRADA (na janela tripla não cresce mais que 1,3×): a quina vira toda num ponto, a curva vai virando | `ph2d-vec-edit/src/pencil_corners.rs`; `Pencil::fit` |
+| **a sonda das quinas** | `measure_pencil_corners`: 20 mãos × tremor ±0,5–2 px × o estabilizador por omissão (0,5). Planalto janela 12–16 / viragem 25–35° / concentração 1,2–1,4 com **100 %** das quinas de 45–150° (lados 25–200 px) achadas e **zero** quinas falsas em círculos de 10–400 px e em S; fixado no centro. Com janela 8 a quina arredondada pelo estabilizador escapa (60° achada a 69–96 %); com concentração 2 os círculos pequenos ganham quinas | `pencil_corners_tests.rs` |
+| ⛔ **ACHADO e curado: a estrela regular virava pentágono** | sem `Shift` a lei já devolvia o pentagrama (40/40 mãos, até ±2 px; e a app desenha-o — foto da cena com uma estrela); COM `Shift` o `regularise` usava o passo 360°/k e construía o polígono convexo. Agora o passo é a volta que o desenho dá à volta do centro (pentagrama: 2 voltas, 144°) | `quickshape.rs` (`regularise`), gate `regular_keeps_a_star_a_star` |
+| **cena 12** | um 5.º traço SOLTO (sem segurar): um gelado — duas abas, a ponta do cone e o começo da bola são 4 quinas vivas, a bola é curva (foto [`f7b_02`](../vetor_nova_ui/fotos/f7b_02_cena12_o_lapis_guarda_as_quinas.png)). ⛔ A escala da cena estava errada: 0,0045 mundo/px copiado do `pencil_smoke`, medido na foto 0,0103 — o «círculo de 15 px» tinha 7 | `vector_mode_quick.rs` |
+| organização | `test_hand.rs`: a mão sintética das sondas, partilhada (a do QuickShape mudou-se para lá — uma cópia só) | `ph2d-vec-edit/src/` |
+
+**Em silêncio para o integrador:** todo traço de lápis com quinas passa a ter nós `Corner` no meio
+(antes: só `Smooth`). Quem leia os nós de um traço de lápis esperando `Smooth` (nenhum consumidor no
+workspace o faz — o `Node` edita os dois) vê a diferença.
+
+**Gate** (`verificador`, HEAD `85b15b130`, `BASE=2a925859d`): fmt · warnings-deny · clippy do ship · machete ·
+standalone-optional · workflow-packages · censos 12/12 · doc-index ✓; `nextest-impacted` **17 015 / 17 015**;
+catracas ✓. Depois dele só `pencil_corners` (a guarda da ponta) e testes, corridos à parte (201 + 2 verdes).
+
+**Mutação** (`mutacao` + a 2.ª volta à mão): **7 de 11** à primeira (a viragem mínima, o máximo local, os dois
+handles da junção, o lápis sem quinas, a estrela regular — dois sítios); as 4 sobreviventes eram buracos
+reais e os testes que as fecham **acharam um defeito**: a guarda das pontas corria ANTES do máximo local e
+um gancho de 8 px virava quina 14,6 px antes da ponta (`0496a4cca`). Agora as quatro sangram.
 
 ## §2 — Medido e decidido (técnico, delegado)
 

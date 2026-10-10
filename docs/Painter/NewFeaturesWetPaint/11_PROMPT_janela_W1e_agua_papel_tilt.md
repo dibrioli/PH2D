@@ -19,7 +19,8 @@ do Tilt; o Wet Paint obedece ao Paper do PAINEL; o pincel seco pega nos picos; o
 FASE 0 — ONDE VOCÊ ESTÁ (antes de ler QUALQUER ficheiro):
 1. cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && pwd && git branch --show-current
    → .../line-PainterWatercolor e line/PainterWatercolor. Outra coisa: PARE e reporte.
-2. git log --oneline -5 && git status --short → a ponta é «docs(Painter 09/10): o prompt da W1e aponta a ponta…» (logo abaixo «audit(Painter 09/10): a mistura do Wet Paint…»); árvore limpa.
+2. git log --oneline -5 && git status --short → as pontas são commits «docs(Painter 09/10): o prompt da W1e …», com «audit(Painter 09/10): a mistura do Wet
+   Paint…» logo abaixo deles; árvore limpa.
 3. git fetch -q origin; se o main andou: git rebase main (conflito fora dos seus ficheiros: PARE e reporte).
 4. bash scripts/hw-profile.sh · bash scripts/btrfs-health.sh. Comando pesado SEMPRE por bash scripts/ph2d-run.sh;
    um hook recusa todo texto de Bash com «cargo test» fora da porta (inclusive heredoc): escreva o script num

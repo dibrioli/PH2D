@@ -97,28 +97,30 @@ impl PainterTool {
             .paper_depth
             .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX);
         sess.engine.set_paper_tooth(tooth);
-        // ⚠️ **UM papel, o do PAINEL (W1e, F2 — ordem do dono 09/10).** Com um Kind armado, o do artista;
-        // SEM Kind, o papel de FÁBRICA do painel (`substrate_relief::papel_de_fabrica`, o Cold que o Relief
-        // arma e acende) — pela mesma lei, nunca mais o papel procedural do MOTOR (`ph2d_wet_paint::paper`),
-        // cujos três knobs viviam no Tuning, fora da secção Paper. A chave existe nos dois casos, então o
-        // motor nunca re-assa o dele no produto. (O ruído de recurso da Aquarela foi medido e recusado:
-        // o Tooth deixava de ser monótono, halo 81 / 60 / 91 a Tooth 0 / 1 / 2 — 05 §4b.)
+        // ⚠️ **UM papel, o do PAINEL (W1e, F2; dono 10/10).** Com um Kind armado, o do artista; SEM Kind,
+        // um papel SEM DESENHO (escolha do dono, 10/10 — `prancha_w1g_sem_papel.png`): as alturas do papel
+        // de fábrica, ao acaso célula a célula. A água comporta-se como num papel (o limiar do depósito
+        // por célula é o que a faz sangrar no molhado); o desenho do papel — as manchas — some. Nunca o
+        // papel procedural do MOTOR: a chave existe nos dois casos, então o motor não re-assa o dele.
         let want = Some(PaperKey {
             tex: brush.paper,
             image_version: self.paint.paper_image_version,
             period,
             tooth,
         });
+        if sess.paper_key != want && !brush.paper.is_active() {
+            let q = super::super::substrate_relief::alturas_do_papel_de_fabrica();
+            // O Tooth esculpe um papel; sem papel não age (as alturas entram inteiras, `dente(h, 1) = h`).
+            sess.engine.set_paper_tooth(1.0);
+            sess.engine.seed_paper_with(&|cx, cy| {
+                f64::from(q[super::super::substrate_relief::celula_ao_acaso(cx, cy, q.len())])
+            });
+            sess.engine.set_paper_tooth(tooth);
+            sess.paper_key = want;
+        }
         if sess.paper_key != want {
-            let armado = brush.paper.is_active();
-            let paper_tex = if armado {
-                brush.paper
-            } else {
-                super::super::substrate_relief::papel_de_fabrica()
-            };
-            let paper_img = armado
-                .then(|| self.paint.paper_image.as_ref().map(|i| i.as_mask()))
-                .flatten();
+            let paper_tex = brush.paper;
+            let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
             let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
             // ⚠️ O `seed_paper_with` fala em CÉLULAS (ele passa `cell − 1`),
             // e o papel é uma lei de CANVAS — sob razão > 1 amostrá-lo na

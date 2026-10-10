@@ -12,33 +12,24 @@
 //! cada uma, ao vivo, e animam uma vez quando o arrasto pára.
 
 use ph2d_panel_painter_layers::set_current_wet_preview;
-use ph2d_tool_painter::{CenaDoPreview, ChaveDoPreview, PainterTool, pintar_preview};
+use ph2d_tool_painter::{
+    ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, PainterTool,
+    pintar_preview,
+};
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
-/// O intervalo entre dois quadros tocados: ~30 por segundo, ~1,2 s para os 36 quadros do S e da água.
+/// O intervalo entre dois quadros tocados: ~30 por segundo — o S (24 quadros) e um quadro por segundo
+/// de água até ela parar (Wet Round ~33, Wet Wash ~60): ~2–3 s de animação.
 pub(crate) const QUADRO_DA_ANIMACAO: Duration = Duration::from_millis(33);
 /// Duas mudanças mais próximas que isto são UM gesto (o arrasto de um slider dá uma a cada quadro).
 pub(crate) const SOSSEGO: Duration = Duration::from_millis(180);
 
-/// Um quadro já recortado à faixa do traço (o painel mostra a faixa, não o quadrado).
+/// Um quadro do preview (`LARGURA_DO_PREVIEW × ALTURA_DO_PREVIEW`, a faixa 2:1 do S e dos fios).
 pub(crate) type Quadro = Arc<Vec<u8>>;
-
-/// A faixa do meio de um quadro quadrado: as linhas por onde o S passa.
-fn faixa(rgba: &[u8], w: u32, h: u32) -> (Quadro, u32, u32) {
-    let alto = h / 2;
-    let topo = (h - alto) / 2;
-    let linha = w as usize * 4;
-    let ini = topo as usize * linha;
-    (
-        Arc::new(rgba[ini..ini + alto as usize * linha].to_vec()),
-        w,
-        alto,
-    )
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Modo {
@@ -163,7 +154,7 @@ fn trabalhador(pedido: Pedido, viva: Arc<AtomicU64>, envia: Sender<Mensagem>) {
         };
         let parar = || viva.load(Ordering::Relaxed) != geracao;
         let completo = pintar_preview(&cena, &parar, &mut |px, w, h| {
-            let _ = envia.send(Mensagem::Quadro(geracao, faixa(px, w, h).0));
+            let _ = envia.send(Mensagem::Quadro(geracao, Arc::new(px.to_vec())));
         });
         if completo && envia.send(Mensagem::Fim(geracao)).is_err() {
             return;
@@ -217,8 +208,10 @@ impl PreviewVivo {
             (a, b) => a.is_some() != b.is_some(),
         };
         if mudou {
-            let lado = ph2d_brush_presets::LADO_MINIATURA;
-            set_current_wet_preview(q.clone().map(|px| (px, lado, lado / 2)));
+            set_current_wet_preview(
+                q.clone()
+                    .map(|px| (px, LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW)),
+            );
             self.publicado = q;
         }
     }

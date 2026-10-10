@@ -363,3 +363,19 @@ pub fn measure_tile_stats(t: &[f32]) -> TileStats {
         grad: grad_sum / t.len() as f64,
     }
 }
+
+/// Quantas alturas descrevem a distribuição de um papel ([`quantis_do_papel`]).
+pub const QUANTIS_DO_PAPEL: usize = 64;
+/// As alturas de um papel (os quantis da distribuição dele), de [`quantis_do_papel`].
+pub type Quantis = [f32; QUANTIS_DO_PAPEL];
+
+/// Os [`QUANTIS_DO_PAPEL`] quantis (os pontos médios de cada fatia) das alturas `amostras`.
+#[must_use]
+pub fn quantis_do_papel(mut amostras: Vec<f32>) -> Quantis {
+    amostras.sort_by(f32::total_cmp);
+    let n = amostras.len().max(1);
+    std::array::from_fn(|k| {
+        let i = ((2 * k + 1) * n) / (2 * QUANTIS_DO_PAPEL);
+        amostras.get(i.min(n - 1)).copied().unwrap_or(0.5)
+    })
+}

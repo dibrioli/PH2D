@@ -65,6 +65,10 @@ pub(super) struct Variante {
     /// As opções da W1g pelo caminho do PRODUTO (a ferramenta): a Heavy Edge e a Live Water.
     pub heavy_edge: Option<f64>,
     pub live_water: Option<bool>,
+    /// O Smooth Edges (`0..1`).
+    pub smooth: Option<f32>,
+    /// O papel Cold ESCOLHIDO (a W1f mediu o S com o Cold, que era o papel sem Kind até 10/10).
+    pub cold: bool,
 }
 
 impl Variante {
@@ -120,6 +124,12 @@ pub(super) fn cena(
     }
     if let Some(v) = v.live_water {
         t.set_wet_agua_viva(v);
+    }
+    if let Some(v) = v.smooth {
+        t.paint.wetpaint.smooth_edges = v;
+    }
+    if v.cold {
+        t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
     }
     assert!(t.ensure_wet_session());
     {

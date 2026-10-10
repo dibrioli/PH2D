@@ -44,11 +44,13 @@ impl PainterTool {
         #[cfg(test)]
         let camada = camada.filter(|_| !self.sem_vidro);
         let visual = ph2d_wet_paint::render::PigmentVisual {
-            paper: self.paint.wetpaint.paper_visual,
+            // A Texture on Paint imprime o PAPEL: sem papel escolhido não há o que imprimir (dono 10/10).
+            paper: self.paint.wetpaint.paper_visual && self.paint.brush.paper.is_active(),
             km_glaze: self.paint.wetpaint.km_glaze,
         };
-        let forca = self.paint.wetpaint.smooth_edges;
-        let suave = forca > 0.0;
+        // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`); `0` = desligado.
+        let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
+        let suave = raio > 0.0;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -76,13 +78,14 @@ impl PainterTool {
         if px1 <= px0 || py1 <= py0 {
             return;
         }
-        // Smooth Edges: o pixel de papel ao lado da orla também muda, logo o retângulo cresce 1 px.
+        // Smooth Edges: um pixel até ao alcance do raio também muda, logo o retângulo cresce por ele.
         let (px0, py0, px1, py1) = if suave {
+            let a = super::smooth_edges::alcance(raio);
             (
-                px0.saturating_sub(1),
-                py0.saturating_sub(1),
-                (px1 + 1).min(w),
-                (py1 + 1).min(h),
+                px0.saturating_sub(a),
+                py0.saturating_sub(a),
+                (px1 + a).min(w),
+                (py1 + a).min(h),
             )
         } else {
             (px0, py0, px1, py1)
@@ -213,14 +216,16 @@ impl PainterTool {
         // sorte numérica, por ser literalmente a mesma expressão.
         let sampler = grid_map::SampleU::new(ratio, gw, gh);
         let one_cell_per_pixel = sampler.is_identity();
-        let silhueta = suave.then_some(super::smooth_edges::Silhueta {
-            sampler,
-            pigment,
-            stride,
-            w,
-            h,
+        let suavizada = suave.then(|| {
+            super::smooth_edges::Suave::nova(
+                sampler,
+                pigment,
+                stride,
+                (w, h),
+                (px0, py0, px1, py1),
+                raio,
+            )
         });
-        let mascara = silhueta.map(|s| s.mascara((px0, py0, px1, py1)));
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .zip(vlinhas.into_par_iter())
@@ -230,7 +235,6 @@ impl PainterTool {
                 let gb = py * stride;
                 // A metade-`y` do amostrador, resolvida UMA vez por linha.
                 let srow = sampler.row(py);
-                let pode_misturar = mascara.as_ref().is_some_and(|m| m.linha_pode_misturar(py));
                 for px in px0..px1 {
                     let lo = px * 4; // dentro da linha
                     let o = gb + lo; // global, para os planos e os gates
@@ -241,30 +245,11 @@ impl PainterTool {
                     } else {
                         super::smooth_edges::premul_amostrado(srow.at(pigment, px))
                     };
-                    // Smooth Edges: o pigmento que o pixel mostra, com a fração da silhueta na COBERTURA
-                    // (a lei do Watercolor: o alfa acrescentado escala por ela — exacto também sobre uma
-                    // camada transparente, onde misturar a cor straight com a base escurecia a orla).
-                    let (premul, pa) = match (&silhueta, &mascara) {
-                        (Some(s), Some(m)) if pode_misturar && m.mista(px, py) => {
-                            let (p, a, f) = s.aplica(px, py, dele);
-                            let ligado = ([p[0] * f, p[1] * f, p[2] * f], a * f);
-                            // A intensidade: a cobertura da orla entre o desligado (`dele`) e o ligado;
-                            // `1` é o ligado sem conta nenhuma (o checkbox de antes, ao byte).
-                            if forca >= 1.0 {
-                                ligado
-                            } else {
-                                let l = |d: f32, o: f32| d + (o - d) * forca;
-                                (
-                                    [
-                                        l(dele.0[0], ligado.0[0]),
-                                        l(dele.0[1], ligado.0[1]),
-                                        l(dele.0[2], ligado.0[2]),
-                                    ],
-                                    l(dele.1, ligado.1),
-                                )
-                            }
-                        }
-                        _ => dele,
+                    // Smooth Edges: o pigmento que o pixel mostra, com a cobertura da borda alisada (a
+                    // fração na COBERTURA premultiplicada — exacta também sobre uma camada transparente).
+                    let (premul, pa) = match &suavizada {
+                        Some(sv) => sv.aplica(px, py, dele),
+                        None => dele,
                     };
                     if pa <= 0.0 {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so

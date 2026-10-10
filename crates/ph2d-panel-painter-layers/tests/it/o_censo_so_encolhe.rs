@@ -123,13 +123,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     ));
     v.push((
         WetPaint,
-        painter_paper_kind_option_id(26),
-        "o Wet Paint SEM Kind já pinta no Cold de FÁBRICA do painel (W1e F2, um papel só: o que o Relief \
-         arma e acende) — escolher o Cold de fábrica a partir de None não muda a tinta; muda o painel, que \
-         passa a oferecer Size, Angle e Params",
-    ));
-    v.push((
-        WetPaint,
         PAINTER_WETPAINT_TUNING,
         "não-pixel: mostra o painel lateral dos números da água",
     ));

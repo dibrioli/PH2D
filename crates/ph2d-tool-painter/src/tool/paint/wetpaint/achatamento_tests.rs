@@ -153,15 +153,28 @@ pub(super) fn barra((plano, fios, quadrados): (usize, usize, usize)) -> Result<(
 
 #[test]
 fn o_escorrimento_do_s_nao_se_corta_em_rectangulos() {
+    // No Cold escolhido — o papel da W1f (o sem Kind até 10/10), onde a lei da gota cortava em rectângulos.
+    let cold = Variante {
+        cold: true,
+        ..Variante::default()
+    };
     let lei = Variante {
         gota: Some(ph2d_wet_paint::solver::ALTURA_DA_GOTA),
+        cold: true,
         ..Variante::default()
     };
     let mut falhas = Vec::new();
     for (nome, tilt) in [("meia", (3, 4)), ("máxima", (3, 8))] {
-        let produto = le(&cena(&Variante::default(), Some(tilt), 30, &mut |_, _| {}).0);
+        let produto = le(&cena(&cold, Some(tilt), 30, &mut |_, _| {}).0);
         let controlo = le(&cena(&lei, Some(tilt), 30, &mut |_, _| {}).0);
-        eprintln!("[recto] {nome}: produto {produto:?} · com a lei da gota {controlo:?}");
+        // E sem papel (o grão sem desenho, dono 10/10): a mesma régua.
+        let sem = le(&cena(&Variante::default(), Some(tilt), 30, &mut |_, _| {}).0);
+        eprintln!(
+            "[recto] {nome}: Cold {produto:?} · com a lei da gota {controlo:?} · sem papel {sem:?}"
+        );
+        if let Err(e) = barra(sem) {
+            falhas.push(format!("sem papel, inclinação {nome}: {e}"));
+        }
         assert!(
             barra(controlo).is_err(),
             "CONTROLO: a lei da gota passou a régua do recto a {nome} — a régua não discrimina"

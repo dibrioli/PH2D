@@ -481,10 +481,10 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
     );
 }
 
-/// **O Smooth Edges do Wet Paint (dono 09/10) só toca a SILHUETA, e desligado pelo checkbox é o `over` de
-/// antes ao byte.** Desligado de fábrica; ligado pelo checkbox: os bytes que divergem do oráculo estão todos num pixel cuja
-/// vizinhança 3×3 tem mancha e papel (`pa ≥ SS0` e `< SS0`) — o miolo e o papel aberto ficam iguais; e há
-/// divergência (o meio-tom existe). O clique desliga-o e recompõe: 0 bytes contra o oráculo.
+/// **O Smooth Edges do Wet Paint só toca a ORLA, e no zero é o `over` de antes ao byte.** `0` de fábrica;
+/// no máximo, os bytes que divergem do oráculo estão todos num pixel com mancha E papel (`pa ≥ SS0` e
+/// `< SS0`) a menos do [`alcance`](super::smooth_edges::alcance) do raio — o miolo e o papel aberto ficam
+/// iguais; e há divergência. Voltar a `0` recompõe: 0 bytes contra o oráculo.
 #[test]
 fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
@@ -496,6 +496,7 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
         1.0
     )));
     assert_eq!(t.paint.wetpaint.smooth_edges, 1.0, "o slider no máximo");
+    let a = super::smooth_edges::alcance(super::smooth_edges::RAIO_MAX);
     stroke(&mut t);
     composite_all(&mut t);
     let (mut fora_da_silhueta, mut na_silhueta) = (0usize, 0usize);
@@ -509,8 +510,12 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
                 if t.canvas_rgba[o..o + 4] == over_as_it_shipped(pig, base, px, py) {
                     continue;
                 }
-                let viz: Vec<bool> = (py - 1..=py + 1)
-                    .flat_map(|y| (px - 1..=px + 1).map(move |x| (x, y)))
+                let (xs, ys) = (
+                    px.saturating_sub(a)..=(px + a).min(W - 1),
+                    py.saturating_sub(a)..=(py + a).min(H - 1),
+                );
+                let viz: Vec<bool> = ys
+                    .flat_map(|y| xs.clone().map(move |x| (x, y)))
                     .map(|(x, y)| dentro(x, y))
                     .collect();
                 if viz.iter().any(|&d| d) && viz.iter().any(|&d| !d) {
@@ -527,7 +532,7 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     );
     assert_eq!(
         fora_da_silhueta, 0,
-        "o Smooth Edges mexeu em {fora_da_silhueta} pixels longe da silhueta ({na_silhueta} nela)"
+        "o Smooth Edges mexeu em {fora_da_silhueta} pixels longe da orla ({na_silhueta} nela)"
     );
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
@@ -550,73 +555,76 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     );
 }
 
-/// **O Smooth Edges com INTENSIDADE (dono 10/10): os dois extremos são os de antes AO BYTE.** O FNV da tela
-/// (razão 1 e 2 — a identidade e o amostrador) com o Smooth Edges desligado e ligado foi gravado com o
-/// código do CHECKBOX (`362938a99`), antes do slider: 0 tem de dar o desligado, 1 o ligado.
+/// **O Smooth Edges no ZERO é o desligado AO BYTE** (o FNV da tela, razão 1 e 2 — a identidade e o
+/// amostrador). Gravado com o código do checkbox em `362938a99`; regravado UMA vez a 10/10 pela ordem do
+/// dono sobre o papel (sem Kind, o grão sem desenho em vez do Cold — o traço sem papel mudou de propósito).
 #[test]
-fn smooth_edges_nos_extremos_e_o_checkbox_de_antes_ao_byte() {
+fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
     let fnv = |b: &[u8]| {
         b.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &x| {
             (h ^ u64::from(x)).wrapping_mul(0x0000_0100_0000_01b3)
         })
     };
-    let mut mudou = Vec::new();
-    for (ratio, forca, esperado) in [
-        (1u8, 0.0f32, 0x8c89_a5f7_4e97_bde1u64),
-        (1, 1.0, 0x0a66_4458_aa04_fed6),
-        (2, 0.0, 0xd256_55cf_a012_9cd9),
-        (2, 1.0, 0x5d68_986d_c2c8_eeae),
-    ] {
+    for (ratio, esperado) in [(1u8, 0x1eb9_ede3_4caa_4c15u64), (2, 0xe1b3_24a2_1daf_4c34)] {
         let mut t = wet_tool(ratio);
-        t.paint.wetpaint.smooth_edges = forca;
+        t.paint.wetpaint.smooth_edges = 0.0;
         stroke(&mut t);
         composite_all(&mut t);
         let h = fnv(&t.canvas_rgba);
-        eprintln!("[smooth] razão {ratio} força {forca}: {h:#018x}");
-        if h != esperado {
-            mudou.push(format!("razão {ratio} força {forca}: {h:#018x}"));
-        }
+        eprintln!("[smooth] razão {ratio}: {h:#018x}");
+        assert_eq!(h, esperado, "razão {ratio}: o zero mudou a tela");
     }
-    assert!(mudou.is_empty(), "{}", mudou.join("\n"));
 }
 
-/// **A intensidade a meio fica ENTRE o desligado e o ligado, e só na borda** (dono 10/10: «ajustar a
-/// intensidade deste smooth»). A 0,5 cada canal de cada pixel está entre o de 0 e o de 1 (±1 do
-/// arredondamento), há pixels estritamente no meio, e nenhum pixel muda onde 0 e 1 concordam.
+/// A aspereza da tela (a soma das diferenças de escuro entre vizinhos) e a tinta total (a soma do escuro).
+fn aspereza_e_tinta(px: &[u8]) -> (u64, u64) {
+    let escuro = |i: usize| 255 - u64::from(*px[i * 4..i * 4 + 3].iter().min().unwrap_or(&255));
+    let (mut tv, mut tinta) = (0u64, 0u64);
+    for y in 0..H {
+        for x in 0..W {
+            let i = y * W + x;
+            tinta += escuro(i);
+            if x + 1 < W {
+                tv += escuro(i).abs_diff(escuro(i + 1));
+            }
+            if y + 1 < H {
+                tv += escuro(i).abs_diff(escuro(i + W));
+            }
+        }
+    }
+    (tv, tinta)
+}
+
+/// **Mais intensidade = borda mais SUAVE** (dono 10/10: «não vi benefício no máximo»): a aspereza da tela
+/// cai a cada degrau do slider (0 → ¼ → ½ → 1), no máximo pelo menos 15 %, e a tinta total muda menos de
+/// 3 % (a borda amacia, não some nem engorda). Mutação que sangra: o raio ignorado (a força fixa).
 #[test]
-fn smooth_edges_a_meio_fica_entre_o_desligado_e_o_ligado() {
+fn mais_smooth_edges_e_uma_borda_mais_suave() {
     let tela = |forca: f32| {
         let mut t = wet_tool(1);
         t.paint.wetpaint.smooth_edges = forca;
         stroke(&mut t);
         composite_all(&mut t);
-        t.canvas_rgba.to_vec()
+        aspereza_e_tinta(&t.canvas_rgba)
     };
-    let (zero, meio, um) = (tela(0.0), tela(0.5), tela(1.0));
-    let (mut no_meio, mut fora) = (0usize, 0usize);
-    for ((&a, &m), &b) in zero.iter().zip(&meio).zip(&um) {
-        let (lo, hi) = (a.min(b), a.max(b));
-        if a == b {
-            assert_eq!(
-                m, a,
-                "a intensidade mexeu num byte onde desligado e ligado concordam"
-            );
-            continue;
-        }
-        let (m, lo, hi) = (i32::from(m), i32::from(lo), i32::from(hi));
-        if m + 1 < lo || m > hi + 1 {
-            fora += 1;
-        }
-        if m > lo && m < hi {
-            no_meio += 1;
-        }
+    let l: Vec<(u64, u64)> = [0.0, 0.25, 0.5, 1.0].map(tela).to_vec();
+    eprintln!("[smooth] (aspereza, tinta) a 0 · ¼ · ½ · 1: {l:?}");
+    for k in 1..l.len() {
+        assert!(
+            l[k].0 < l[k - 1].0,
+            "a aspereza não caiu do degrau {} para o {k}: {l:?}",
+            k - 1
+        );
     }
-    assert_eq!(
-        fora, 0,
-        "{fora} bytes a 0,5 saem do intervalo entre o desligado e o ligado"
-    );
     assert!(
-        no_meio > 0,
-        "a 0,5 nenhum byte ficou entre os dois — o slider é um interruptor"
+        (l[3].0 as f64) <= 0.85 * l[0].0 as f64,
+        "no máximo a aspereza só caiu {:.0} %",
+        100.0 * (1.0 - l[3].0 as f64 / l[0].0 as f64)
+    );
+    let dt = (l[3].1 as f64 / l[0].1 as f64 - 1.0).abs();
+    assert!(
+        dt <= 0.03,
+        "a tinta total mudou {:.1} % no máximo",
+        100.0 * dt
     );
 }

@@ -23,7 +23,7 @@ fn quadros(t: &PainterTool) -> Vec<Vec<u8>> {
         &t.wet_preview_cena(),
         &|| false,
         &mut |px, w, h| {
-            assert_eq!((w, h), (LADO_MINIATURA, LADO_MINIATURA));
+            assert_eq!((w, h), (LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW));
             v.push(px.to_vec());
         }
     ));
@@ -43,11 +43,7 @@ fn tinta(px: &[u8]) -> usize {
 #[test]
 fn o_preview_anima_o_traco_e_a_agua() {
     let q = quadros(&molhado());
-    assert!(
-        q.len() >= (QUADROS_DO_TRACO + TICKS_DEPOIS / TICKS_POR_QUADRO) as usize - 2,
-        "{} quadros",
-        q.len()
-    );
+    assert!(q.len() > QUADROS_DO_TRACO as usize, "{} quadros", q.len());
     let cobertura: Vec<usize> = q.iter().map(|p| tinta(p)).collect();
     assert!(cobertura[0] > 0, "o primeiro quadro já tem traço");
     assert!(
@@ -195,13 +191,13 @@ fn sonda_do_preview_sobre_a_obra() {
             t.paint.substrate_depth = 1.0;
         },
     ];
-    let l = LADO_MINIATURA as usize;
-    let mut tira = vec![0u8; l * 4 * l * 3];
+    let (l, a) = (LARGURA_DO_PREVIEW as usize, ALTURA_DO_PREVIEW as usize);
+    let mut tira = vec![0u8; l * 4 * a * 3];
     for (i, obra) in obras.iter().enumerate() {
         let mut t = molhado();
         obra(&mut t);
         let px = quadros(&t).pop().unwrap();
-        for y in 0..l {
+        for y in 0..a {
             for x in 0..l {
                 let s = (y * l + x) * 4;
                 let d = (y * l * 4 + i * l + x) * 3;
@@ -209,7 +205,67 @@ fn sonda_do_preview_sobre_a_obra() {
             }
         }
     }
-    let mut f = format!("P6\n{} {l}\n255\n", l * 4).into_bytes();
+    let mut f = format!("P6\n{} {a}\n255\n", l * 4).into_bytes();
     f.extend_from_slice(&tira);
     std::fs::write(format!("{out}/preview_obras.ppm"), f).unwrap();
+}
+
+/// **O preview escorre como a tela** (smoke do dono 10/10: «o preview não escorre como o brush real —
+/// tem que ser exato»). O Wet Round a 60 px, água 1, a tela no máximo: o último quadro do preview tem
+/// tinta abaixo da faixa do S (os fios), a água correu até parar (o motor sem fluido) e o quadro é a
+/// tela 1:1 reduzida. O controlo: a receita da miniatura (2 s, o pincel preso) não mostra fio nenhum.
+#[test]
+fn o_preview_escorre_como_a_tela() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    let p = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o pincel de fábrica")
+        .preset;
+    let mut t = molhado();
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(30.0);
+    t.paint.wetpaint.knobs.water = 1.0;
+    t.paint.wetpaint.tilt_on = true;
+    t.paint.wetpaint.tilt_ring = 8;
+    t.set_brush_color_srgb8([200, 25, 25]);
+    let cena = t.wet_preview_cena();
+    // A faixa do S: no preview vai até 0,3·altura + amplitude + raio; abaixo disso, só os fios.
+    let fios = |px: &[u8], w: usize, h: usize, de: usize| {
+        (de..h)
+            .flat_map(|y| (0..w).map(move |x| (x, y)))
+            .filter(|&(x, y)| {
+                let i = (y * w + x) * 4;
+                let (mx, mn) = (px[i..i + 3].iter().max(), px[i..i + 3].iter().min());
+                mx.zip(mn).is_some_and(|(a, b)| a - b > 24)
+            })
+            .count()
+    };
+    let mut ultimo = Vec::new();
+    assert!(pintar_preview(&cena, &|| false, &mut |px, _, _| ultimo = px.to_vec()));
+    let (w, h) = (LARGURA_DO_PREVIEW as usize, ALTURA_DO_PREVIEW as usize);
+    // 600×300 a 1:1 (10 × 60 px): o S acaba em 0,22·300 + 30 + 30 = 126 ⇒ no quadro, 126·192/300 ≈ 81.
+    let abaixo = fios(&ultimo, w, h, 86);
+    let mut mini = Vec::new();
+    assert!(super::pintar_miniatura(
+        &cena,
+        &|| false,
+        &mut |px, _, _| mini = px.to_vec()
+    ));
+    let l = LADO_MINIATURA as usize;
+    // A miniatura: o S em 128 ± 40, raio ≤ 48 ⇒ abaixo de 216 só fios.
+    let mini_abaixo = fios(&mini, l, l, 216);
+    eprintln!(
+        "[preview] tinta abaixo do S: preview exato {abaixo} px · receita da miniatura {mini_abaixo} px"
+    );
+    assert_eq!(
+        mini_abaixo, 0,
+        "CONTROLO: a receita de 2 s já mostra fios — a régua não discrimina"
+    );
+    assert!(
+        abaixo > 20,
+        "o preview não mostra os fios que a tela inclinada faz ({abaixo} px)"
+    );
 }

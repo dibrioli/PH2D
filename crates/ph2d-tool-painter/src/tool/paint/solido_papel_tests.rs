@@ -281,9 +281,21 @@ fn o_solid_enche_o_que_o_rabisco_cerca() {
                     && y + 1 < LADO
                     && (0..3).all(|dy| (0..3).all(|dx| vazio((y + dy - 1) * LADO + x + dx - 1)))
             };
+            // Só os buracos DENTRO do polígono do rabisco (regra não-zero) — a promessa do Solid. ⚠️ No
+            // Wet Paint sem papel (o grão sem desenho, dono 10/10) a franja macia da orla do próprio traço
+            // pode fechar um bolso de 3×3 fora do polígono (medido: `(21, 105)`, o caminho começa em
+            // x = 25), que é a orla da água e não o preenchimento.
+            let poligono = rabisco();
             let buracos = onde_cercados(LADO, LADO, vazio)
                 .into_iter()
-                .filter(|&i| vazio8(i))
+                .filter(|&i| {
+                    vazio8(i)
+                        && dentro_nao_zero(
+                            &poligono,
+                            (i % LADO) as f32 + 0.5,
+                            (i / LADO) as f32 + 0.5,
+                        )
+                })
                 .count();
             assert_eq!(
                 buracos, 0,
@@ -425,4 +437,21 @@ fn diag_de_que_sao_os_vazios() {
             vazios.len()
         );
     }
+}
+
+/// O ponto `(x, y)` está dentro do polígono `pts` pela regra NÃO-ZERO (o número de voltas)?
+fn dentro_nao_zero(pts: &[[f32; 2]], x: f32, y: f32) -> bool {
+    let mut voltas = 0i32;
+    for k in 0..pts.len() {
+        let (a, b) = (pts[k], pts[(k + 1) % pts.len()]);
+        let lado = (b[0] - a[0]) * (y - a[1]) - (x - a[0]) * (b[1] - a[1]);
+        if a[1] <= y {
+            if b[1] > y && lado > 0.0 {
+                voltas += 1;
+            }
+        } else if b[1] <= y && lado < 0.0 {
+            voltas -= 1;
+        }
+    }
+    voltas != 0
 }

@@ -368,8 +368,47 @@ impl crate::tool::PainterTool {
     }
 }
 
-/// **O papel de FÁBRICA do painel** — o que o Relief arma quando não há Kind, e o que o Wet Paint sente
-/// sem Kind (W1e, F2: um papel só — o que a luz acende é o que a água morde).
+/// **O papel de FÁBRICA do painel** — o que o Relief arma quando não há Kind (as sondas de medida usam-no
+/// como «um papel Cold»; o Wet Paint sem Kind pinta sobre as alturas DELE sem o desenho, desde 10/10).
+#[cfg(test)]
 pub(super) fn papel_de_fabrica() -> TextureSettings {
     default_paper()
+}
+
+/// **As alturas do papel de fábrica** (os quantis de uma janela de 512²) — o papel SEM DESENHO do Wet
+/// Paint sem Kind (dono 10/10) espalha-as ao acaso pelas células. Calculadas uma vez.
+pub(super) fn alturas_do_papel_de_fabrica() -> std::sync::Arc<ph2d_wet_paint::paper::Quantis> {
+    static Q: std::sync::OnceLock<std::sync::Arc<ph2d_wet_paint::paper::Quantis>> =
+        std::sync::OnceLock::new();
+    std::sync::Arc::clone(Q.get_or_init(|| {
+        let tex = default_paper();
+        let rot = ph2d_painter_brush::texture::angle_basis(tex.angle_deg);
+        let n = 512u32;
+        let amostras = (0..n * n)
+            .map(|i| {
+                ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+                    &tex,
+                    i64::from(i % n),
+                    i64::from(i / n),
+                    None,
+                    rot,
+                    [0.0, 0.0],
+                )
+                .clamp(0.0, 1.0)
+            })
+            .collect();
+        std::sync::Arc::new(ph2d_wet_paint::paper::quantis_do_papel(amostras))
+    }))
+}
+
+/// O índice `0..n` de uma célula, ao acaso mas determinístico (o mesmo papel em cada sessão e em cada
+/// máquina): um misturador de 64 bits das duas coordenadas.
+#[must_use]
+pub(super) fn celula_ao_acaso(cx: i64, cy: i64, n: usize) -> usize {
+    let mut h = (cx as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+        ^ (cy as u64).wrapping_mul(0xc2b2_ae3d_27d4_eb4f);
+    h ^= h >> 31;
+    h = h.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    h ^= h >> 29;
+    ((h >> 11) as f64 / (1u64 << 53) as f64 * n as f64).min((n - 1) as f64) as usize
 }

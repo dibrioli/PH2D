@@ -16,13 +16,17 @@ use ph2d_wet_paint::tuning::KNOB_DEFS;
 use std::collections::BTreeMap;
 
 mod json;
+#[cfg(test)]
+mod medida_preview;
 mod miniatura;
 mod preview;
 #[cfg(test)]
 mod tests;
 
 pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
-pub use preview::{CenaDoPreview, ChaveDoPreview, pintar_preview};
+pub use preview::{
+    ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, pintar_preview,
+};
 
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";

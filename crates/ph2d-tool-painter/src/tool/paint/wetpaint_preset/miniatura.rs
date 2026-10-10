@@ -1,9 +1,9 @@
-//! **A miniatura de um preset** — o último quadro do [`super::preview::pintar_preview`] com a obra
+//! **A miniatura de um preset** — o último quadro do [`super::preview::pintar_miniatura`] com a obra
 //! NEUTRA (tela branca, sem papel), na cor da bancada, no relógio FIXO: o mesmo preset dá os mesmos
 //! bytes, e por isso as miniaturas da fábrica são o corpus de regressão do motor (uma mudança de lei
 //! acusa em todos de uma vez). O preview vivo do painel é o mesmo pintor sobre a obra de AGORA.
 
-use super::preview::{DIAMETRO_MAX, DIAMETRO_MIN, pintar_preview};
+use super::preview::{DIAMETRO_MAX, DIAMETRO_MIN, pintar_miniatura};
 use crate::{PaintMedia, PainterTool};
 use ph2d_brush_presets::{Miniatura, Preset};
 
@@ -33,7 +33,7 @@ pub fn miniatura_do_preset(p: &Preset) -> Miniatura {
         altura: 0,
         rgba: Vec::new(),
     };
-    pintar_preview(&t.wet_preview_cena(), &|| false, &mut |px, w, h| {
+    pintar_miniatura(&t.wet_preview_cena(), &|| false, &mut |px, w, h| {
         ultimo = Miniatura {
             largura: w,
             altura: h,

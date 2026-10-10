@@ -48,6 +48,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
         "panel.painter_layers.inerte.tilt_on" => "Acts when Tilt is on",
+        "panel.painter_layers.inerte.paper_chosen" => "Acts when a Paper is chosen",
         // ── As opções da W1g do Wet Paint (à mão, fora dos marcadores) ─────────────────────────────
         "panel.painter_layers.wetpaint.live_water" => "Live Water",
         "panel.painter_layers.wetpaint.live_water_tip" => {

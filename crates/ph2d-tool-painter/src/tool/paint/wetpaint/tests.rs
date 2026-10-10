@@ -631,12 +631,16 @@ fn the_artists_paper_drives_the_wet_tooth() {
     };
     let r_control = ratio_of(&control);
     let r_papered = ratio_of(&papered);
+    eprintln!("[papel do artista] vale ÷ pico: sem papel {r_control:.4} · Checker {r_papered:.4}");
     assert!(
         r_control > 0.5,
         "fixture: the preset run must NOT align with my checker (ratio {r_control:.2})"
     );
+    // ⚠️ 0,65 e não 0,6 (10/10): o Checker rejeita os vales a 0,602 desde sempre; o controlo era o Cold
+    // escondido (~1,01) e passou a ser o papel sem desenho (1,002, «sem alinhamento» por construção) —
+    // a barra de 0,6 estava na beira. A mutação (sem a semeadura) dá ~1,0: sangra com folga.
     assert!(
-        r_papered < r_control * 0.6,
+        r_papered < r_control * 0.65,
         "the paper never reached the tooth — no valley rejection \
          (papered {r_papered:.2} vs control {r_control:.2})"
     );

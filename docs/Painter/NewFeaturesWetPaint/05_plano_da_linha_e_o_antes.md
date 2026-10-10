@@ -730,7 +730,8 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
       ⇒ as opções não pesam no Undo (o Undo não passa por elas: restaura a tela e a água renasce no
       traço seguinte). ⚠️ O Ctrl+Z de ~50 ms a 4096² é anterior à W1g — um item à parte, por medir sem
       carga.
-    - **Smooth Edges com intensidade** (pedido do dono: «ajustar a intensidade deste smooth»): a caixa
+    - **Smooth Edges com intensidade** (pedido do dono: «ajustar a intensidade deste smooth»; ⚠️ a LEI
+      abaixo foi substituída no 2.º smoke — «no máximo não se vê» — pela borda suave por raio): a caixa
       virou uma linha `0..1` (o mesmo id, de `CLICKS` para `FIELDS`). A lei: a cobertura premultiplicada
       do pixel da borda entre o desligado (o `dele`) e o ligado, `d + (l − d)·força`; `0` não monta a
       silhueta (o desligado de antes) e `1` é o ligado sem conta nenhuma — os dois AO BYTE contra o FNV
@@ -741,6 +742,69 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
       slider vira interruptor» (`forca > 0` = ligado) ⇒ o gate do meio VERMELHO. Como linha numérica o
       nome corta no mínimo do dock (220 px): a catraca `cada_nome_deste_painel_cabe_na_coluna_da_seccao`
       sobe 12 → 13 pelo precedente de 23/09 (linha que ENTRA na população; de 245 px para cima nada muda).
+  - **2.º smoke do dono (10/10), três pedidos:**
+    - **O preview tem de ser EXATO** («não escorre como o brush real»). O preview pintava num quadrado de
+      256 px, o diâmetro preso a 96 px, pressão a subir e a descer, e só **2 s** de água — o escorrimento
+      real leva dezenas de segundos (medido, `medida_preview`, perfil smoke, até o motor ficar sem
+      fluido: Wet Round 33 s, Wet Wash 60 s; custo 1–8 s numa thread). O preview vivo (`pintar_preview`)
+      passou a: o pincel no tamanho REAL numa tela 2:1 de `clamp(10·d, 512, 1024)` px (1:1 com a obra),
+      o S no terço de cima (por baixo cabem ~2,9 d de fios: na tela 1:1, Tilt no máximo, água 1, os fios
+      descem 0,7–0,8 d no Wet Round e 2,4–2,8 d no Wet Wash), pressão 1 (a do rato), a água até PARAR
+      (tecto 120 s) e cada quadro reduzido pela média a 384×192. A receita antiga ficou só para a
+      miniatura dos ficheiros (`pintar_miniatura`). Portão `o_preview_escorre_como_a_tela` (Wet Round
+      60 px, Tilt máximo: 444 px de fios no último quadro; controlo: a receita de 2 s, 0 px). ⚠️ A
+      sonda tinha dado 0 porque o preset traz a tela DIREITA (F4) — o portão liga o Tilt.
+    - **O Smooth Edges no máximo não se via.** A 1.ª lei (o 3×3 do Watercolor) é um anti-serrilhado de
+      1 px; a 2.ª tentativa (o raio a alisar a FORMA da mancha) também quase não se via — no S a
+      silhueta já é lisa; o que se vê duro é o contorno ESCURO, por dentro da mancha. Lei entregue
+      (`Suave`): a mancha desfocada por uma tenda de meia largura `raio = slider × 6` dá a faixa da orla
+      (`B ∈ (0,1)`); nela a tinta (premultiplicada) é desfocada pela mesma tenda com peso `4·B·(1−B)`. No
+      S: ¼ tira a escadinha, ½ amacia, 1 dá uma borda suave. Portões: o zero ao byte (razão 1 e 2);
+      `mais_smooth_edges_e_uma_borda_mais_suave` (a aspereza — soma das diferenças entre vizinhos — cai
+      27 % → 37 % → 45 % a ¼ · ½ · 1; a tinta total dentro de 2,3 %; mutação «raio fixo» ⇒ VERMELHO); só
+      a orla muda (o pé do alcance). ⛔ Recusada: o raio a alisar só a forma (contorno −55 % mas sem efeito
+      visível no S). **Custo** (`medida_do_smooth_edges`, perfil smoke, no máximo, mínimo de 7): a tela
+      4096² inteira (a recomposição ao mexer no slider) 9,5 → 82 ms na 1.ª versão (load 42) → 45 ms
+      saltando as linhas longe da tinta (o desfocado ali é exatamente zero) → **31 ms** guardando o
+      pigmento da região num plano (load 9,9); o retângulo de 300² (o quadro normal) 0,13 → **1,1 ms**.
+    - **«Paper: None» e Relief 0 ainda mexiam no traço:** sem Kind o motor era semeado com o Cold de
+      fábrica (F2), e ligar o Relief arma um papel — então None nunca era «nenhum». Rodada de leis
+      (`prancha_w1g_sem_papel.png`; orla de baixo a meia · tinta da bancada · mistura):
+
+      | sem Kind | aspeto | orla meia | tinta | molhado sangra | veredicto |
+      |---|---|---|---|---|---|
+      | plano a 1 | liso | 2,36 | +65 % | — | ⛔ deixa passar tudo (o Solid e o «pincel menor que a célula» mudam) |
+      | plano à média (0,5) | liso | 0,98 | +1,4 % | — | ⛔ o Solid ganha 3 buracos (o limiar come os toques fracos) |
+      | plano + lei ESPERADA (depósito e humidade) | liso, vêem-se as cerdas | 3,2 | −8 % | **−5** | ⛔ a água deixa de sangrar |
+      | relevo do Cold só na água + lei esperada | idem | 3,2 | −8 % | −4 | ⛔ não é a capilaridade: é o limiar por célula |
+      | Cold (o de antes) | as manchas do papel | 0,77 | — | +26 | o pedido do dono |
+      | **as alturas do Cold ao acaso por célula** | grão fino, sem desenho | **1,45** | −1 % | **+13** | ✅ **escolha do dono** |
+
+      Entregue: sem Kind, `seed_paper_with` com `alturas_do_papel_de_fabrica()` (64 quantis de uma janela
+      512² do Cold) em `celula_ao_acaso` (misturador de 64 bits, determinístico); o Tooth não age sem papel
+      (`Dependente::ToothSemPapel`, a dica «Acts when a Paper is chosen»); o «Texture on Paint» só imprime
+      um papel escolhido. Portão `sem_papel_o_traco_nao_tem_o_desenho_de_um_papel` (correlação com o
+      vizinho: Cold 0,96 · sem papel 0,001; o Tooth não muda um byte; tinta 1,017 da do Cold). O motor
+      não mudou (só `paper::quantis_do_papel`).
+      **Consequências medidas:** a mistura com a água parada continua na barra (γ 0,59·0,42, sangria seca
+      +2,7, molhada +13); a orla a meia sem papel nasce a 1,45 (Rebelle 1,6) — a Heavy Edge foi calibrada
+      com o Cold escolhido (0,77 → 1,56) e sem papel leva 1,45 → 2,99; o Solid deixa um bolso de 3×3 na
+      FRANJA da orla fora do polígono do rabisco (21, 105) — o portão do Solid passou a contar só dentro
+      do polígono (regra não-zero), que é a promessa dele. ⚠️ **Aberto:** com a Live Water e sem papel a
+      sangria no seco fica em +3,4…+5 para qualquer velatura (Rebelle +1…+2; com o Cold +2,9) — a água ao
+      vivo corre sobre o grão; o portão exige a barra inteira com o Cold e, sem papel, tecto +5.
+      As cercas de bytes (`opcoes_tests`, o zero do Smooth Edges) e as 4 miniaturas + tabelas de largura
+      de fábrica foram regravadas UMA vez por esta ordem; os presets de fábrica não fixam a Live Water nem
+      a Heavy Edge.
+      Testes antigos que liam o Cold escondido: `paper_visual_prints_grain…` passa a escolher o Cold; o S
+      dos rectângulos corre a régua no Cold (com o controlo) E sem papel (meia 21·2·0, máxima 10·15·1 —
+      verde); `the_artists_paper_drives_the_wet_tooth`: o Checker rejeita os vales a 0,602 desde sempre e
+      o controlo passou de ~1,01 a 1,002 — a barra 0,6× estava na beira, ficou 0,65×. Na Aquarela
+      (`watercolor_papel_nos_vales.rs`, protegido) os dois testes do Tooth do WET PAINT perdem o caso sem
+      Kind — 2 linhas, a cerca ganhou `ferramentas/cerca_isencoes.tsv` (o caminho, o número EXATO, a
+      razão: uma linha a mais volta a reprovar). O censo dos controlos: o Texture on Paint sem papel
+      esmaece com o Tooth (`Dependente::SemPapel`); saiu a exceção «escolher o Cold a partir de None não
+      muda a tinta» (agora muda).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

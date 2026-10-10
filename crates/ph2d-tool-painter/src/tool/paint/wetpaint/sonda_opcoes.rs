@@ -108,3 +108,18 @@ fn sonda_live_water_no_up() {
         }
     }
 }
+
+/// O Smooth Edges no S do dono (Wet Round 100 px, água 1, tela a meia, 30 s): 0 · ¼ · ½ · 1 — as fotos
+/// da prancha que escolhe o `RAIO_MAX`.
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_smooth_edges_no_s() {
+    for s in [0.0f32, 0.25, 0.5, 1.0] {
+        let v = Variante {
+            smooth: Some(s),
+            ..Variante::default()
+        };
+        let px = cena(&v, Some((3, 4)), 30, &mut |_, _| {}).1;
+        grava(&format!("smooth_{s}"), 1000, 640, &px);
+    }
+}

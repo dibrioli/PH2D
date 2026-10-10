@@ -29,10 +29,11 @@ pub enum Dependente {
     EraseDaAgua,
     ToothDoDigital,
     BordaSemTilt,
+    SemPapel,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 15] = [
+    pub const TODOS: [Dependente; 16] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -48,6 +49,7 @@ impl Dependente {
         Dependente::EraseDaAgua,
         Dependente::ToothDoDigital,
         Dependente::BordaSemTilt,
+        Dependente::SemPapel,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -71,6 +73,10 @@ impl Dependente {
             Dependente::EraseDaAgua => &[ids::PAINTER_WETPAINT_ERASE],
             Dependente::ToothDoDigital => &[ids::PAINTER_WATERCOLOR_PAPER_DEPTH],
             Dependente::BordaSemTilt => &[ids::PAINTER_WETPAINT_HEAVY_EDGE],
+            Dependente::SemPapel => &[
+                ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+                ids::PAINTER_WETPAINT_PAPER_VISUAL,
+            ],
         }
     }
 
@@ -94,6 +100,7 @@ impl Dependente {
             Dependente::EraseDaAgua => "panel.painter_layers.inerte.eraser_on",
             Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
             Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
+            Dependente::SemPapel => "panel.painter_layers.inerte.paper_chosen",
         }
     }
 
@@ -220,6 +227,9 @@ impl PainterTool {
                 Dependente::BordaSemTilt,
                 agua && !(self.paint.wetpaint.tilt_on && self.paint.wetpaint.tilt_ring > 0),
             ),
+            // Sem Kind o Wet Paint pinta sem desenho de papel (dono 10/10): o Tooth não tem relevo para
+            // esculpir e o Texture on Paint não tem papel para imprimir.
+            (Dependente::SemPapel, agua && !b.paper.is_active()),
         ];
         Inercias {
             dependentes: leis

@@ -97,15 +97,11 @@ fn a_thread_pinta_e_o_painel_recebe_a_faixa() {
         p.apresentacao.completo,
         "a thread não acabou a cena em 20 s"
     );
-    let lado = ph2d_brush_presets::LADO_MINIATURA as usize;
+    let area =
+        (ph2d_tool_painter::LARGURA_DO_PREVIEW * ph2d_tool_painter::ALTURA_DO_PREVIEW) as usize;
     let n = p.apresentacao.quadros.len();
     assert!(n >= 30, "{n} quadros");
-    assert!(
-        p.apresentacao
-            .quadros
-            .iter()
-            .all(|q| q.len() == lado * lado / 2 * 4)
-    );
+    assert!(p.apresentacao.quadros.iter().all(|q| q.len() == area * 4));
     // Uma mudança: a geração nova pinta OUTRO traço.
     let antes = p.apresentacao.quadros.last().cloned().unwrap();
     t.set_brush_size_px(8.0);

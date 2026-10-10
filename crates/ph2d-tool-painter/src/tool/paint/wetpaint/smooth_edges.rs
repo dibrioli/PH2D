@@ -1,14 +1,11 @@
-//! **Smooth Edges do Wet Paint** (dono 09/10: o NOSSO Smooth Edges do Watercolor também no Wet Paint; ficou
-//! como OPÇÃO, desligado de fábrica, quando as gotas foram desfeitas). A lei é a do Watercolor — [`aa_coverage`] (`watercolor_aa.rs`), uma porta só:
-//! a cobertura endurecida amostrada 3×3 à volta do pixel e a fração aplicada como alfa LINEAR sobre o pixel
-//! acabado. O campo de cobertura do Wet Paint é a MANCHA (`pa ≥ SS0`, 0/1 por pixel): o miolo e o papel
-//! aberto ficam iguais ao byte; só a silhueta ganha meio-tom (a orla 0/1 da linha de contacto e os pontinhos
-//! do carimbo — auditoria de 09/10, docs/Painter/NewFeaturesWetPaint/05 §4b). Nenhuma água nem pigmento se
-//! move: é aparência, como o Paper. Desligado = o composite de antes, ao byte.
+//! **Smooth Edges do Wet Paint** (dono 09/10; a INTENSIDADE desde 10/10). O slider é o RAIO de um
+//! alisamento da MANCHA (`pa ≥ SS0`): [`Suave`]. O miolo longe da borda e o papel aberto ficam iguais ao
+//! byte; só a orla muda (forma mais lisa, borda com meio-tom). Nenhuma água nem pigmento se move: é
+//! aparência, como o Paper. `0` = o composite de antes, ao byte. O 1.º Smooth Edges (o 3×3 do Watercolor,
+//! `aa_coverage`) era fraco demais no máximo (smoke do dono 10/10) — o porquê e as medições: 05 §4b W1g.
 
 use super::grid_map::{SampleU, SampleURow};
-use crate::tool::paint::watercolor_field::aa_coverage;
-use crate::tool::paint::watercolor_render::{SS0, SS1};
+use crate::tool::paint::watercolor_render::SS0;
 use rayon::prelude::*;
 
 /// O pigmento de um pixel na razão 1 (`o` = o offset do pixel no plano), em premultiplicado normalizado
@@ -61,138 +58,192 @@ pub(super) fn premul_do_pixel(
     }
 }
 
-/// A máscara (`pa ≥ SS0`) da região do composite com 1 px de margem — montada UMA vez, em paralelo por
-/// linha, antes do laço; o pixel só faz a conta se o pé 3×3 dele mistura dentro e fora.
-pub(super) struct Mascara {
+/// O raio do alisamento no máximo do slider, px (medido na prancha de 10/10, 05 §4b).
+pub(super) const RAIO_MAX: f32 = 6.0;
+
+/// Quantos px à volta de uma mudança um pixel do Smooth Edges pode mudar com `raio` — a tenda tem meia
+/// largura `raio`, e a orla anti-serrilhada mais um.
+#[must_use]
+pub(super) fn alcance(raio: f32) -> usize {
+    raio.ceil() as usize + 1
+}
+
+/// Uma passada de caixa de meia largura FRACIONÁRIA `h` (as pontas `⌊h⌋ + 1` pesam `h − ⌊h⌋`), lida em
+/// `ler(i)` com o índice preso a `0..n` (a borda repete-se, como na tela).
+#[inline]
+fn caixa(n: usize, h: f32, i: usize, ler: impl Fn(usize) -> f32) -> f32 {
+    let (k, f) = (h.floor() as isize, h - h.floor());
+    let em = |d: isize| ler((i as isize + d).clamp(0, n as isize - 1) as usize);
+    let mut s = 0.0;
+    for d in -k..=k {
+        s += em(d);
+    }
+    if f > 0.0 {
+        s += f * (em(-k - 1) + em(k + 1));
+    }
+    s / (2.0 * k as f32 + 1.0 + 2.0 * f)
+}
+
+/// A tenda 1D: a caixa de meia largura fracionária `h` convolvida consigo mesma (o mesmo núcleo que as
+/// duas passadas de [`caixa`] aplicam ao campo da mancha).
+fn tenda(h: f32) -> Vec<f32> {
+    let (k, f) = (h.floor() as usize, h - h.floor());
+    let mut cx = vec![1.0f32; 2 * k + 3];
+    (cx[0], cx[2 * k + 2]) = (f, f);
+    let n: f32 = cx.iter().sum();
+    cx.iter_mut().for_each(|v| *v /= n);
+    let mut t = vec![0.0f32; 2 * cx.len() - 1];
+    for (i, a) in cx.iter().enumerate() {
+        for (j, b) in cx.iter().enumerate() {
+            t[i + j] += a * b;
+        }
+    }
+    t
+}
+
+/// **O Smooth Edges de uma região do composite** (dono 10/10: «não vi benefício no máximo»): uma BORDA
+/// SUAVE de largura ajustável. A mancha (`pa ≥ SS0`) desfocada por uma tenda de meia largura `raio` (duas
+/// caixas de `raio/2`, separáveis) diz onde fica a orla: `B ∈ (0, 1)`. Nessa faixa o pixel mostra a tinta
+/// (cor e cobertura, premultiplicadas) desfocada pela MESMA tenda, com peso `4·B·(1 − B)` — inteiro na
+/// orla, zero no miolo e no papel aberto (o caminho de antes). O contorno escuro e a silhueta amaciam
+/// juntos e a tinta conserva-se. `raio = 0` ⇒ `B` é a própria mancha ⇒ peso 0 ⇒ o desligado, ao byte.
+pub(super) struct Suave {
     x0: usize,
     y0: usize,
     rw: usize,
     w: usize,
     h: usize,
-    m: Vec<bool>,
-    /// Por linha da região: (tem pixel dentro, tem pixel fora).
-    linhas: Vec<(bool, bool)>,
+    b: Vec<f32>,
+    /// A tenda 1D (meia largura `alcance − 1`, soma 1).
+    tenda: Vec<f32>,
+    /// O pigmento da região (premultiplicado + `pa`), lido UMA vez nas linhas a `2 × alcance` da tinta
+    /// (as que a convolução da orla pode ler); o resto fica a zero e nunca se lê.
+    pre: Vec<[f32; 4]>,
 }
 
-impl Mascara {
-    /// A linha `py` pode ter um pixel misto? Não, se as três linhas do pé são todas papel ou todas mancha
-    /// (a maior parte de uma tela recomposta inteira): o laço salta a linha sem olhar pixel a pixel.
-    #[inline]
-    pub(super) fn linha_pode_misturar(&self, py: usize) -> bool {
-        let rows = [py.saturating_sub(1), py, (py + 1).min(self.h - 1)];
-        let (dentro, fora) = rows.iter().fold((false, false), |(d, f), &y| {
-            let l = self.linhas[y - self.y0];
-            (d || l.0, f || l.1)
-        });
-        dentro && fora
-    }
-
-    /// O pé 3×3 de `(px, py)` tem pixels dentro E fora da mancha (os vizinhos fora da tela repetem a borda)?
-    #[inline]
-    pub(super) fn mista(&self, px: usize, py: usize) -> bool {
-        let cols = [px.saturating_sub(1), px, (px + 1).min(self.w - 1)];
-        let rows = [py.saturating_sub(1), py, (py + 1).min(self.h - 1)];
-        let em = |x: usize, y: usize| self.m[(y - self.y0) * self.rw + (x - self.x0)];
-        let primeiro = em(cols[0], rows[0]);
-        rows.iter()
-            .any(|&y| cols.iter().any(|&x| em(x, y) != primeiro))
-    }
-}
-
-/// A silhueta da mancha à volta de um pixel: o pé 3×3 do [`aa_coverage`] (as amostras a ±0,667 só leem
-/// os oito vizinhos; nas bordas da tela o vizinho repete-se, como o `clamp` da amostra), lido do plano de
-/// pigmento só onde é preciso. ⚠️ Medido 09/10: uma máscara da região inteira, montada antes do laço,
-/// levava a recomposição de uma tela de 4096² de 10 a 106 ms (em série, 16 B por pixel); o pé local corre
-/// dentro do laço paralelo do composite, e um pé todo dentro ou todo fora sai logo (o caminho de antes).
-#[derive(Clone, Copy)]
-pub(super) struct Silhueta<'a> {
-    pub(super) sampler: SampleU,
-    pub(super) pigment: &'a [u8],
-    pub(super) stride: usize,
-    pub(super) w: usize,
-    pub(super) h: usize,
-}
-
-impl Silhueta<'_> {
-    /// A [`Mascara`] da região `(x0, y0, x1, y1)` do composite.
-    pub(super) fn mascara(&self, (x0, y0, x1, y1): (usize, usize, usize, usize)) -> Mascara {
-        let (a, b) = (x0.saturating_sub(1), (x1 + 1).min(self.w));
-        let (c, d) = (y0.saturating_sub(1), (y1 + 1).min(self.h));
-        let rw = b - a;
-        let mut m = vec![false; rw * (d - c)];
+impl Suave {
+    /// Monta a mancha e o alisado da região `(x0, y0, x1, y1)` (px) com a margem que o raio lê.
+    pub(super) fn nova(
+        sampler: SampleU,
+        pigment: &[u8],
+        stride: usize,
+        (w, h): (usize, usize),
+        (x0, y0, x1, y1): (usize, usize, usize, usize),
+        raio: f32,
+    ) -> Self {
+        let a = alcance(raio) * 2;
+        let (rx0, ry0) = (x0.saturating_sub(a), y0.saturating_sub(a));
+        let (rx1, ry1) = ((x1 + a).min(w), (y1 + a).min(h));
+        let (rw, rh) = (rx1 - rx0, ry1 - ry0);
+        let mut m = vec![false; rw * rh];
         m.par_chunks_mut(rw).enumerate().for_each(|(k, linha)| {
-            let y = c + k;
-            if self.sampler.is_identity() {
-                for (v, x) in linha.iter_mut().zip(a..b) {
-                    *v = premul_da_celula(self.pigment, y * self.stride + x * 4).1 >= SS0;
-                }
-            } else {
-                let r = self.sampler.row(y);
-                for (v, x) in linha.iter_mut().zip(a..b) {
-                    *v = premul_do_pixel(self.sampler, Some(r), self.pigment, self.stride, x, y).1
-                        >= SS0;
-                }
+            let y = ry0 + k;
+            let r = (!sampler.is_identity()).then(|| sampler.row(y));
+            for (v, x) in linha.iter_mut().zip(rx0..rx1) {
+                *v = premul_do_pixel(sampler, r, pigment, stride, x, y).1 >= SS0;
             }
         });
-        let linhas = m
-            .par_chunks(rw)
-            .map(|l| (l.iter().any(|&v| v), l.iter().any(|&v| !v)))
+        let hb = raio * 0.5;
+        // As passadas só onde há tinta perto: longe dela o desfocado é EXACTAMENTE zero (a mancha é
+        // zero em toda a janela), e a maior parte de uma tela grande está longe da tinta.
+        let tem: Vec<bool> = m.par_chunks(rw).map(|l| l.contains(&true)).collect();
+        let mut acc = vec![0u32; rh + 1];
+        for y in 0..rh {
+            acc[y + 1] = acc[y] + u32::from(tem[y]);
+        }
+        let al = alcance(raio);
+        let perto: Vec<bool> = (0..rh)
+            .map(|y| acc[(y + al + 1).min(rh)] > acc[y.saturating_sub(al)])
             .collect();
-        Mascara {
-            linhas,
-            x0: a,
-            y0: c,
+        let mut pre = vec![[0.0f32; 4]; rw * rh];
+        pre.par_chunks_mut(rw).enumerate().for_each(|(k, linha)| {
+            if acc[(k + 2 * al + 1).min(rh)] == acc[k.saturating_sub(2 * al)] {
+                return;
+            }
+            let y = ry0 + k;
+            let r = (!sampler.is_identity()).then(|| sampler.row(y));
+            for (v, x) in linha.iter_mut().zip(rx0..rx1) {
+                let (p, pa) = premul_do_pixel(sampler, r, pigment, stride, x, y);
+                *v = [p[0], p[1], p[2], pa];
+            }
+        });
+        let mut t = vec![0.0f32; rw * rh];
+        let mut b = vec![0.0f32; rw * rh];
+        // Duas caixas horizontais (m → t → b), depois duas verticais (b → t → b); o resultado fica em `b`.
+        t.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if !tem[y] {
+                return;
+            }
+            let fonte = &m[y * rw..(y + 1) * rw];
+            for (x, v) in l.iter_mut().enumerate() {
+                *v = caixa(rw, hb, x, |i| f32::from(u8::from(fonte[i])));
+            }
+        });
+        b.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if !tem[y] {
+                return;
+            }
+            let fonte = &t[y * rw..(y + 1) * rw];
+            for (x, v) in l.iter_mut().enumerate() {
+                *v = caixa(rw, hb, x, |i| fonte[i]);
+            }
+        });
+        t.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if !perto[y] {
+                return;
+            }
+            for (x, v) in l.iter_mut().enumerate() {
+                *v = caixa(rh, hb, y, |j| b[j * rw + x]);
+            }
+        });
+        b.par_chunks_mut(rw).enumerate().for_each(|(y, l)| {
+            if !perto[y] {
+                return;
+            }
+            for (x, v) in l.iter_mut().enumerate() {
+                *v = caixa(rh, hb, y, |j| t[j * rw + x]);
+            }
+        });
+        Suave {
+            x0: rx0,
+            y0: ry0,
             rw,
-            w: self.w,
-            h: self.h,
-            m,
+            w,
+            h,
+            b,
+            tenda: tenda(hb),
+            pre,
         }
     }
 
-    fn pixel(&self, x: usize, y: usize) -> ([f32; 3], f32) {
-        premul_do_pixel(self.sampler, None, self.pigment, self.stride, x, y)
-    }
-
-    /// O pigmento que o pixel `(px, py)` mostra e o alfa linear do Smooth Edges sobre ele: dentro da mancha
-    /// o dele; fora, o do vizinho de dentro com mais tinta (o sombreado «um pouco para dentro» da lei do
-    /// Watercolor); longe da silhueta, `(o dele, 1)` — o caminho de antes.
-    pub(super) fn aplica(
-        &self,
-        px: usize,
-        py: usize,
-        dele: ([f32; 3], f32),
-    ) -> ([f32; 3], f32, f32) {
-        let xs = [px.saturating_sub(1), px, (px + 1).min(self.w - 1)];
-        let ys = [py.saturating_sub(1), py, (py + 1).min(self.h - 1)];
-        let mut pa = [0.0f32; 9];
-        for (j, &y) in ys.iter().enumerate() {
-            for (i, &x) in xs.iter().enumerate() {
-                pa[j * 3 + i] = if i == 1 && j == 1 {
-                    dele.1
-                } else if self.sampler.is_identity() {
-                    premul_da_celula(self.pigment, y * self.stride + x * 4).1
-                } else {
-                    self.pixel(x, y).1
-                };
+    /// O pigmento que o pixel `(px, py)` mostra: `dele` longe da orla (o caminho de antes); na orla, a
+    /// mistura dele com a tinta desfocada.
+    pub(super) fn aplica(&self, px: usize, py: usize, dele: ([f32; 3], f32)) -> ([f32; 3], f32) {
+        let b = self.b[(py - self.y0) * self.rw + (px - self.x0)];
+        let peso = 4.0 * b * (1.0 - b);
+        if peso < 1e-3 {
+            return dele;
+        }
+        let r = (self.tenda.len() / 2) as isize;
+        let (mut s, mut sa) = ([0.0f32; 3], 0.0f32);
+        for (j, wy) in self.tenda.iter().enumerate() {
+            let y = (py as isize + j as isize - r).clamp(0, self.h as isize - 1) as usize;
+            let base = (y - self.y0) * self.rw;
+            for (i, wx) in self.tenda.iter().enumerate() {
+                let x = (px as isize + i as isize - r).clamp(0, self.w as isize - 1) as usize;
+                let q = self.pre[base + x - self.x0];
+                let k = wx * wy;
+                for c in 0..3 {
+                    s[c] += q[c] * k;
+                }
+                sa += q[3] * k;
             }
         }
-        let campo = pa.map(|a| if a >= SS0 { 1.0f32 } else { 0.0 });
-        if campo.iter().all(|&c| c == campo[0]) {
-            return (dele.0, dele.1, 1.0);
-        }
-        let (_, alfa) = aa_coverage(&campo, 3, 3, |ox, oy| (1.0 + ox, 1.0 + oy), SS0, SS1);
-        if alfa >= 1.0 {
-            return (dele.0, dele.1, 1.0);
-        }
-        if dele.1 >= SS0 {
-            return (dele.0, dele.1, alfa);
-        }
-        let k = (0..9)
-            .filter(|&k| campo[k] > 0.0)
-            .max_by(|&a, &b| pa[a].total_cmp(&pa[b]).then(b.cmp(&a)))
-            .unwrap_or(4);
-        let p = self.pixel(xs[k % 3], ys[k / 3]);
-        (p.0, p.1, alfa)
+        let l = |d: f32, o: f32| d + (o - d) * peso;
+        (
+            [l(dele.0[0], s[0]), l(dele.0[1], s[1]), l(dele.0[2], s[2])],
+            l(dele.1, sa),
+        )
     }
 }
 

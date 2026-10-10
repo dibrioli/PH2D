@@ -122,6 +122,8 @@ fn parametros(r: &Receita) -> Parametros {
     p.volumes.opacity = None;
     p.volumes.water = Some(r.water);
     p.tilt = Some(r.tilt);
+    // As opções da W1g não são do pincel de fábrica: aplicá-lo não mexe nelas (a regra do preset antigo).
+    (p.live_water, p.heavy_edge) = (None, None);
     let d = WetKnobs::DEFAULT;
     for (chave, v) in [
         ("pigmentPerDab", r.pigment),

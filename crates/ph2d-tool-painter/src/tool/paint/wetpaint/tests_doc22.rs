@@ -536,6 +536,8 @@ fn the_show_wet_veil_shows_and_never_bakes() {
 #[test]
 fn paper_visual_prints_grain_into_the_paint_and_bakes() {
     let mut t = wet_tool_fixture();
+    // Um papel ESCOLHIDO: sem Kind não há papel para imprimir (dono 10/10).
+    t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
     stroke(&mut t, 60.0);
     let plain = t.canvas_rgba.as_ref().clone();
     click(&mut t, crate::ids::PAINTER_WETPAINT_PAPER_VISUAL);

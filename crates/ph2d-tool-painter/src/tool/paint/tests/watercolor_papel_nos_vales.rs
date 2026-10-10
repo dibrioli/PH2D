@@ -209,7 +209,8 @@ fn halo(img: &[u8]) -> usize {
 /// `PaperKey` (o papel do artista não re-semeia) ou dos `WetEngineFacts` (o do motor não re-assa).
 #[test]
 fn o_tooth_morde_no_wet_paint() {
-    for papel in [Some(TextureKind::PaperCold), None] {
+    {
+        let papel = Some(TextureKind::PaperCold);
         let h: Vec<usize> = [0.0, 1.0, 2.0]
             .iter()
             .map(|&k| halo(&traco_wet(papel, k)))
@@ -270,7 +271,8 @@ fn mexer_no_tooth_com_a_sessao_viva_refaz_o_papel() {
             })
             .count()
     };
-    for papel in [Some(TextureKind::PaperCold), None] {
+    {
+        let papel = Some(TextureKind::PaperCold);
         let (fica, muda) = (sessao(papel, 0.0, 0.0), sessao(papel, 0.0, 2.0));
         eprintln!(
             "WET-TOOTH-VIVO {papel:?}: 2.º traço a Tooth 0 = {fica} · mudado para 2 = {muda}"

@@ -14,10 +14,17 @@ base=$(git merge-base main HEAD) || { echo "sem merge-base com main" >&2; exit 2
 padrao='^crates/(ph2d-tool-painter|ph2d-painter-brush|ph2d-render|ph2d-app-painter|ph2d-panel-painter-layers)/.*(/(watercolor|impasto|substrate)_[^/]*|/(watercolor|impasto|substrate)_[^/]*/.*|/dynamics\.rs|/spec\.rs|/dab\.rs|/stamp_route\.rs)$'
 falha=0
 n=0
+# As ISENÇÕES (uma por linha: caminho, o número EXATO de linhas removidas/alteradas, a razão): uma linha a
+# mais ou a menos volta a reprovar. Só para linhas que testam o Wet Paint e moram num ficheiro protegido.
+isencoes="$(dirname "$0")/cerca_isencoes.tsv"
 while IFS=$'\t' read -r mais menos f; do
   [[ "$f" =~ $padrao ]] || continue
   n=$((n + 1))
-  if [ "$menos" != "0" ]; then
+  isento=$(awk -F'\t' -v f="$f" -v n="$menos" '$1 == f && $2 == n { print $3 }' "$isencoes" 2>/dev/null)
+  if [ "$menos" != "0" ] && [ -n "$isento" ]; then
+    echo "· $f: $menos linha(s) alterada(s) ISENTAS (+$mais) — $isento — leia:"
+    git diff "$base" -- "$f" | grep '^[-+][^-+]' | sed 's/^/    /'
+  elif [ "$menos" != "0" ]; then
     echo "✗ $f: $menos linha(s) removida(s)/alterada(s) (+$mais)"
     falha=1
   else

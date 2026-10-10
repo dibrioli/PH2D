@@ -82,8 +82,8 @@ fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 }
 
 /// [`cena`] pelo PRODUTO com a Live Water autorada (`viva`): o reconcile põe a água e a velatura.
-fn cena_produto(seco: bool, viva: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    cena_toda(seco, true, None, false, viva)
+fn cena_produto(seco: bool, viva: bool, cold: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+    cena_toda(seco, true, None, false, viva, cold)
 }
 
 /// [`cena`] com a velatura do filme no render forçada (`filme`) e a Água ao vivo (`viva`, W1g).
@@ -93,7 +93,7 @@ fn cena_com(
     filme: Option<f64>,
     viva: bool,
 ) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    cena_toda(seco, produto, filme, viva, false)
+    cena_toda(seco, produto, filme, viva, false, false)
 }
 
 /// A cena inteira: `viva` liga a água no traço DIRECTAMENTE no motor (as sondas); `opcao` liga a Live
@@ -104,6 +104,7 @@ fn cena_toda(
     filme: Option<f64>,
     viva: bool,
     opcao: bool,
+    cold: bool,
 ) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
@@ -122,6 +123,9 @@ fn cena_toda(
     t.paint.wetpaint.tilt_on = false;
     t.set_brush_size_px(30.0);
     t.set_wet_agua_viva(opcao);
+    if cold {
+        t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
+    }
     assert!(t.ensure_wet_session());
     if viva {
         t.paint
@@ -238,31 +242,48 @@ fn azul_sobre_vermelho_vela_no_seco_e_sangra_no_molhado_como_no_rebelle() {
     }
 }
 
-/// **Sonda (W1f): a velatura do filme no render**, com a água só depois do Up — o γ e a sangria por
-/// valor, no MESMO processo.
 /// **Com a Live Water (W1g) a mistura continua na barra do Rebelle** — pelo produto (a opção autorada,
-/// que troca a velatura do filme para [`ph2d_wet_paint::colorops::VELATURA_DO_FILME_VIVA`]). O controlo:
-/// a água ao vivo com a velatura da água PARADA reprova (a sangria no seco passa de 3).
+/// que troca a velatura do filme para [`ph2d_wet_paint::colorops::VELATURA_DO_FILME_VIVA`]), com o papel
+/// Cold escolhido (onde a constante foi medida). O controlo: a água ao vivo com a velatura da água PARADA
+/// reprova (a sangria no seco passa de 3). ⚠️ SEM papel (o grão sem desenho, dono 10/10) a sangria no seco
+/// fica em +3,4…+5 para qualquer velatura (medido; Rebelle +1…+2): a água ao vivo corre sobre o grão —
+/// aberto no 05 §4b; ali o resto da barra vale e a sangria no seco tem tecto +5.
 #[test]
 fn com_a_live_water_a_mistura_continua_na_barra_do_rebelle() {
     let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
     let parada = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
     let controlo = barra(
-        ler(cena_com(true, true, Some(parada), true)),
-        ler(cena_com(false, true, Some(parada), true)),
+        ler(cena_toda(true, true, Some(parada), true, false, true)),
+        ler(cena_toda(false, true, Some(parada), true, false, true)),
     );
     assert!(
         controlo.is_err(),
         "CONTROLO: a velatura da água parada passou a barra com a água ao vivo — a régua não discrimina"
     );
     if let Err(e) = barra(
-        ler(cena_produto(true, true)),
-        ler(cena_produto(false, true)),
+        ler(cena_produto(true, true, true)),
+        ler(cena_produto(false, true, true)),
     ) {
-        panic!("a mistura com a Live Water falhou a barra do Rebelle: {e}");
+        panic!("a mistura com a Live Water (papel Cold) falhou a barra do Rebelle: {e}");
     }
+    let (seco, molhado) = (
+        ler(cena_produto(true, true, false)),
+        ler(cena_produto(false, true, false)),
+    );
+    let mut sem_a_sangria_seca = seco.clone();
+    sem_a_sangria_seca.1.sangria = 0.0;
+    if let Err(e) = barra(sem_a_sangria_seca, molhado) {
+        panic!("a mistura com a Live Water sem papel falhou a barra do Rebelle: {e}");
+    }
+    assert!(
+        seco.1.sangria.abs() <= 5.0,
+        "sem papel a Live Water sangra {:+.1} no seco (tecto +5; Rebelle +1…+2)",
+        seco.1.sangria
+    );
 }
 
+/// **Sonda (W1f): a velatura do filme no render**, com a água só depois do Up — o γ e a sangria por
+/// valor, no MESMO processo.
 #[test]
 #[ignore = "sonda: corre-se à mão"]
 fn sonda_velatura_do_filme() {

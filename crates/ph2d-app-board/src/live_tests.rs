@@ -143,3 +143,111 @@ fn a_wrong_code_is_said_and_nothing_opens() {
     host.documents.ask_live(LiveRequest::Leave);
     service(&mut host);
 }
+
+/// 📏 Medição (à mão, `--ignored --nocapture`, perfil smoke): a latência ponta-a-ponta de um ARRASTO
+/// com 2, 4 e 8 pessoas na rede local real — um convidado mexe uma forma a cada 16 ms (60 Hz) durante
+/// 2 s; cada um dos outros regista quando viu cada posição. Resumo: mínimo, mediana, p95, máximo.
+#[test]
+#[ignore = "medição: corre-se à mão"]
+fn measure_drag_latency_with_2_4_and_8_people() {
+    for n in [2usize, 4, 8] {
+        let mut host = hero("Ana");
+        let id = host.documents.create("Medida".into());
+        host.documents.activate(Some(id));
+        rect(host.documents.board_mut(id).unwrap(), 0.0);
+        host.documents.ask_live(LiveRequest::Host);
+        service(&mut host);
+        let LiveRole::Hosting { code, addrs } = host.documents.live_view().role.clone() else {
+            panic!();
+        };
+        let port = addrs[0].parse::<SocketAddr>().unwrap().port();
+        let sent: Arc<std::sync::Mutex<Vec<Instant>>> = Arc::default();
+        let seen: Arc<std::sync::Mutex<Vec<Duration>>> = Arc::default();
+        let go = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let mut threads = Vec::new();
+        for g in 1..n {
+            let (code, sent, seen, go) = (code.clone(), sent.clone(), seen.clone(), go.clone());
+            threads.push(std::thread::spawn(move || {
+                let mut h = hero(&format!("p{g}"));
+                h.documents.ask_live(LiveRequest::Join {
+                    addr: Some(format!("127.0.0.1:{port}")),
+                    code,
+                });
+                assert!(until(&mut h, 15, |h| shapes(h) == 1));
+                go.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                while go.load(std::sync::atomic::Ordering::SeqCst) < n {
+                    service(&mut h);
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                let b = h.documents.live_view().board.unwrap();
+                let x_of = |h: &HeroScreen| {
+                    h.documents.boards().get(b).unwrap().doc.live().next().map_or(0.0, |e| e.x)
+                };
+                let mut last = 0.0;
+                let end = Instant::now() + Duration::from_secs(4);
+                let mut k = 0;
+                let mut next = Instant::now();
+                while Instant::now() < end {
+                    if g == 1 && k < 120 && Instant::now() >= next {
+                        k += 1;
+                        let bd = h.documents.board_mut(b).unwrap();
+                        let mut el = bd.doc.live().next().unwrap().clone();
+                        el.x = f64::from(k);
+                        let _ = BoardOp::Put(el).apply(&mut bd.doc);
+                        sent.lock().unwrap().push(Instant::now());
+                        next += Duration::from_millis(16);
+                    }
+                    service(&mut h);
+                    let x = x_of(&h);
+                    if g != 1 && x > last {
+                        let k = x as usize;
+                        let t = Instant::now();
+                        if let Some(s) = sent.lock().unwrap().get(k - 1) {
+                            seen.lock().unwrap().push(t - *s);
+                        }
+                        last = x;
+                    }
+                    std::thread::sleep(Duration::from_micros(500));
+                }
+            }));
+        }
+        let end = Instant::now() + Duration::from_secs(30);
+        let mut last = 0.0;
+        while threads.iter().any(|t| !t.is_finished()) && Instant::now() < end {
+            if go.load(std::sync::atomic::Ordering::SeqCst) == n - 1 {
+                go.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
+            service(&mut host);
+            // O anfitrião também observa (com 2 pessoas é o único).
+            let x = host.documents.boards().get(id).unwrap().doc.live().next().map_or(0.0, |e| e.x);
+            if x > last {
+                let t = Instant::now();
+                if let Some(s) = sent.lock().unwrap().get(x as usize - 1) {
+                    seen.lock().unwrap().push(t - *s);
+                }
+                last = x;
+            }
+            std::thread::sleep(Duration::from_micros(500));
+        }
+        for t in threads {
+            t.join().unwrap();
+        }
+        let mut v = seen.lock().unwrap().clone();
+        v.sort();
+        let ms = |d: Duration| d.as_secs_f64() * 1e3;
+        if v.is_empty() {
+            eprintln!("{n} pessoas: nenhuma amostra");
+        } else {
+            eprintln!(
+                "{n} pessoas: {} amostras · mín {:.2} ms · mediana {:.2} · p95 {:.2} · máx {:.2}",
+                v.len(),
+                ms(v[0]),
+                ms(v[v.len() / 2]),
+                ms(v[v.len() * 95 / 100]),
+                ms(v[v.len() - 1])
+            );
+        }
+        host.documents.ask_live(LiveRequest::Leave);
+        service(&mut host);
+    }
+}

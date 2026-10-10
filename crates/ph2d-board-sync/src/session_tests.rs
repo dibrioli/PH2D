@@ -350,3 +350,33 @@ fn a_star_room_with_drops_ends_with_one_board() {
         }
     }
 }
+
+/// 📏 Medição (à mão, `--ignored --nocapture`): os BYTES de arrastar 1, 10 e 50 formas — o que sai a
+/// cada imagem (60 Hz) e por segundo, sem a cifra (+20 B por quadro: 4 do comprimento e 16 da
+/// etiqueta). Comparar com o oráculo (c19): Excalidraw 681 B / 5,2 KB / 25 KB por mensagem.
+#[test]
+#[ignore = "medição: corre-se à mão"]
+fn measure_the_bytes_of_dragging_1_10_and_50_shapes() {
+    for n in [1usize, 10, 50] {
+        let mut hb = board();
+        let ids: Vec<ElementId> = (0..n).map(|i| rect(&mut hb, i as f64 * 20.0)).collect();
+        let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+        let _ = host.tick(&mut hb, 0);
+        let mut total = 0usize;
+        let frames = 60;
+        for k in 1..=frames {
+            for id in &ids {
+                let mut el = hb.doc.get(*id).unwrap().clone();
+                el.translate([1.0, 0.0]);
+                let _ = BoardOp::Put(el).apply(&mut hb.doc);
+            }
+            let out = host.tick(&mut hb, k * 16);
+            total += out.iter().map(|(_, m)| m.encode().len() + 20).sum::<usize>();
+        }
+        eprintln!(
+            "{n} formas: {} B por imagem · {:.1} KB/s a 60 Hz",
+            total / frames as usize,
+            total as f64 / 1024.0
+        );
+    }
+}

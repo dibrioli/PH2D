@@ -78,6 +78,18 @@ alheia (c11), ressuscita (c12) e um cliente prende-se numa reordenação (c17).
 - `BoardDoc` passa a juntar os ids tocados (só enquanto há sessão) — a sessão lê ali o que mandar.
 - O canal rede → ecrã é o primeiro do quadro: a sessão drena-se no tique do ecrã.
 
-## Medições
+## Medições (10/10, esta máquina: Linux, Wi-Fi 192.168.15.0/24, `loadavg` 1,4–4,8)
 
-*(preenchidas à medida que cada peça entra — dependências, descoberta, latência, bytes por segundo)*
+| o quê | número | como |
+|---|---|---|
+| dependências novas | 21 crates, todas permissivas; 0 duplicados novos (61 → 61) | `cargo deny check licenses bans` ok; diff do `Cargo.lock` |
+| build a frio da `ph2d-board-net` + deps | dev 1,9 s · smoke 2,1 s de parede | target vazio, sem sccache |
+| descoberta mDNS (`mdns-sd`) com `avahi` e `systemd-resolved` activos | sala já anunciada: 9 / 61 / 1 050 ms (mín/med/máx); sai da lista em ~1 s | 5 corridas, dois processos; o `avahi-browse` vê a sala e o código nunca aparece |
+| ida-e-volta cifrada (smoke) | 100 B: 17–19 µs · 25 KB: 88–93 µs | convidado → anfitrião → convidado, 7×30 intercalado |
+| retrato de quem entra | 193 B/elemento ao vivo (129 do quadro, 63 dos carimbos compactados; eram 603) · 100 mil elementos ≈ 57 MiB antes de compactar, 104 ms em smoke | `the_snapshot_packs_the_stamps_and_gives_them_back_equal` |
+| bytes a ARRASTAR (sem cursor) | 1 forma 60 B/imagem (3,5 KB/s a 60 Hz) · 10: 409 B (24 KB/s) · 50: 1 969 B (115 KB/s) | `measure_the_bytes_of_dragging_1_10_and_50_shapes`; o Excalidraw manda 681 B / 5,2 KB / 25 KB por mensagem (c19) |
+| latência ponta-a-ponta de um ARRASTO (rede local real, smoke) | 2 pessoas: med 0,47 · p95 0,59 · máx 0,59 ms · 4: 0,64 / 1,00 / 1,13 · 8: 0,57 / 0,98 / 1,19 | `measure_drag_latency_with_2_4_and_8_people` (60 Hz, 2 s, todos observam) |
+| tecto de um quadro do fio | `MAX_FRAME` 256 MiB — RAM de quem recebe, 4,4× o maior retrato medido | um cabeçalho de 4 GiB sem bytes não aloca (teste) |
+
+Nenhum tecto entrou sem a linha dele nesta tabela. A presença sai a ≤ 30 Hz (os dois oráculos, c18); as
+escritas a cada imagem (na rede local o custo acima é desprezável; a internet pode agrupá-las a 30 Hz).

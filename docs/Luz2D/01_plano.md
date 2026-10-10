@@ -239,14 +239,19 @@ medidas: [handoff W4b](handoffs/HANDOFF_CONTINUACAO_W4_2026-10-09.md) (secção 
 
 | # | o que o dono vê | causa medida | cura candidata (medir antes) |
 |---|---|---|---|
-| F1 | Em Low a sombra inteira sai uns 3–4 px deslocada para o lado da sombra (Medium ~2 · High ~1) | a captura GROSSA arredonda o canto do oclusor (`meio` = cobertura bilinear ≥ ½): ½–¾ de texel grosso; a marcha mais fina só tira ~16 % | uma captura FINA para a luz direta (2.ª C0 + JFA na grade fina, com sprites e a camada do vetor desenhados nela) — régua: a média da `a_escada_da_sombra` |
-| F2 | Em Low, objetos muito finos (~5 cm na vista de fábrica) não fazem sombra | a mesma captura grossa: um oclusor mais fino que ~1 texel some dela | a mesma do F1 (um bloco só, §0.10) |
-| F3 | Uma linha escura de 1 px junto à face iluminada das paredes, em todo nível | o interior de um opaco recebe 0 e a bilinear do receptor mistura-o na borda (o ABERTO 1 da W4: paredes que recebem luz saem pretas) | o passe de PREENCHIMENTO (o interior recebe a fluência do exterior mais próximo — um JFA do complemento) e a mesma regra no gabarito |
+| ~~F1~~ ✅ W5a | ~~Em Low a sombra inteira sai uns 3–4 px deslocada para o lado da sombra (Medium ~2 · High ~1)~~ — agora −0,8 px em todo nível | a captura GROSSA arredonda o canto do oclusor (`meio` = cobertura bilinear ≥ ½): ½–¾ de texel grosso; a marcha mais fina só tira ~16 % | uma captura FINA para a luz direta (2.ª C0 + JFA na grade fina, com sprites e a camada do vetor desenhados nela) — régua: a média da `a_escada_da_sombra` |
+| ~~F2~~ ✅ W5a | ~~Em Low, objetos muito finos (~5 cm na vista de fábrica) não fazem sombra~~ — a barra de 5 cm faz a sombra do gabarito (2,6 %) | a mesma captura grossa: um oclusor mais fino que ~1 texel some dela | a mesma do F1 (um bloco só, §0.10) |
+| ~~F3~~ ✅ W5a | ~~Uma linha escura de 1 px junto à face iluminada das paredes, em todo nível~~ — a face sai a 0,98–0,99 do gabarito | o interior de um opaco recebe 0 e a bilinear do receptor mistura-o na borda (o ABERTO 1 da W4: paredes que recebem luz saem pretas) | o passe de PREENCHIMENTO (o interior recebe a fluência do exterior mais próximo — um JFA do complemento) e a mesma regra no gabarito |
 
-Também abertos (técnicos, sem queixa do dono): o teto de lâmpadas diretas caiu de 8 para 6 (o custo do
-Low com a grade fina) — as cascatas ainda calculam a grade inteira (81,5 % fora da janela) e a região
-C3 pode encolher ao canvas; o G4 (K3) gastou margem (4,12 % de 5 %) desde que as lâmpadas são luz e não
-corpo.
+**F1–F3 fechados na W5a** ([handoff W5a](handoffs/HANDOFF_CONTINUACAO_W5a_2026-10-10.md)): a captura FINA
+dos opacos (½ px), o passo da luz direta ½ junto à borda, o refino pela curvatura das sondas e o
+PREENCHIMENTO do interior dos opacos (a mesma regra no gabarito). O teto de lâmpadas diretas voltou a
+subir (6 → 7, medido).
+
+Também abertos (técnicos, sem queixa do dono): as cascatas ainda calculam a grade inteira (81,5 % fora
+da janela) e a região C3 pode encolher ao canvas; o G4 (K3) segue com pouca margem (3,98–4,64 % de 5 %,
+sozinho); a luz das CASCATAS (céu, ambiente) sai baixa junto a um opaco por ~2 texels grossos (medido
+na W5a: 0,17 → 0,01 contra 0,25) — do território do HRC.
 
 Kill-criteria (definidos antes, do relatório): K3 — se o custo entre 1 e 10 000 emissores variar
 > 5 %, há um caminho dependente do conteúdo e a W2 não fecha; K6 — se o *bilinear fix* custar > 2× o

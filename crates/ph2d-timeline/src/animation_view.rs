@@ -53,8 +53,7 @@ pub struct AnimationHeader {
     /// grupo por dono (a Cena primeiro). Vazio fora da vista da Cena — ali o seletor é o da
     /// animação em vista.
     pub sources: Vec<SourceGroup>,
-    /// ⭐ O clipe de ENTRADA da animação em vista (onda 4, item 1) — `None` na Cena, que toca o
-    /// Arrange e não tem entrada.
+    /// ⭐ O clipe marcado com **Autoplay** na animação em vista (onda 4, item 1), ou nenhum.
     pub entry: Option<usize>,
 }
 
@@ -186,9 +185,7 @@ pub(crate) fn fill_clips(snap: &mut TimelineViewSnapshot, state: &TimelineState)
         snap.clip_index.push(i);
     }
     snap.active_clip = state.doc.active_index();
-    snap.animation.entry = (state.view.owner != SCENE)
-        .then(|| state.doc.entry_clip_of(state.view.owner))
-        .flatten();
+    snap.animation.entry = state.doc.entry_clip_of(state.view.owner);
     fill_sources(&mut snap.animation.sources, state);
 }
 

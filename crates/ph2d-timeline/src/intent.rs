@@ -420,11 +420,13 @@ pub enum TimelineIntent {
         /// Index into [`crate::TimelineDoc::clips`].
         index: usize,
     },
-    /// ⭐ Faz do clip `index` a ENTRADA da animação dele — o que toca sozinho no Play (onda 4,
-    /// item 1). A Cena não tem entrada: no-op.
-    SetEntryClip {
+    /// ⭐ Liga/desliga o **Autoplay** do clip `index` — o que toca sozinho quando a cena corre (onda 4,
+    /// item 1; ligar desliga os irmãos).
+    SetAutoplay {
         /// Index into [`crate::TimelineDoc::clips`].
         index: usize,
+        /// Ligar (desliga os irmãos) ou desligar.
+        on: bool,
     },
     /// Append a new, empty clip and make it active. Refused past
     /// [`crate::MAX_CLIPS`].

@@ -374,8 +374,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
             sync_loop(&state.doc, playhead, state.keys_mode);
         }
-        I::SetEntryClip { index } => edit(state, |doc, _| {
-            doc.set_entry_clip(index);
+        I::SetAutoplay { index, on } => edit(state, |doc, _| {
+            doc.set_autoplay(index, on);
         }),
         I::AddClip => {
             // O clip novo é da animação EM VISTA (doc ObjectsAndComponents 01 §6).

@@ -115,7 +115,7 @@ fn x_de(sim: &SimWorld, e: Entity) -> f32 {
         .x
 }
 
-/// ⭐⭐⭐ **De ponta a ponta com a timeline:** o Herói toca a entrada (`andar`, x 0→10) sozinho; o
+/// ⭐⭐⭐ **De ponta a ponta com a timeline:** o Herói toca o clipe com Autoplay (`andar`, x 0→10) sozinho; o
 /// sinal em `t = 1` pede `pular` (x 0→−10), e a partir dali ele toca `pular` no relógio DO PEDIDO
 /// (`t = 1.5` ⇒ 0,5 s de `pular`). Um scrub para antes do pedido volta à entrada.
 ///
@@ -140,6 +140,8 @@ fn o_alvo_passa_a_tocar_o_clipe_pedido_a_partir_do_instante_do_sinal() {
             );
         }
     }
+    // O «andar» com Autoplay (por omissão nenhum — o do Godot).
+    doc.set_autoplay(andar, true);
     let toca = |sim: &mut SimWorld, t: f64| {
         assert_eq!(
             ph2d_timeline::apply_autoplay(sim.world_mut(), &doc, t, |_| false, &mut Vec::new()),

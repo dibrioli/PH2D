@@ -33,33 +33,35 @@ fn um_ficheiro_v19_abre_sem_entrada_marcada_e_sem_perda() {
     assert_eq!(de_novo, doc);
 }
 
-/// A entrada é a marcada, ou a 1.ª; marcar uma desmarca as irmãs; a Cena não tem entrada; uma
-/// variação (Duplicate) não rouba a entrada.
+/// ⭐ **O Autoplay do Godot** (dono, 10/10): por omissão NENHUM clipe toca sozinho; ligar um desliga os
+/// irmãos; desligar deixa a animação sem nenhum; a Cena também tem o seu; uma variação (Duplicate) não
+/// rouba a marca. (Mutações: ligar sem desligar os irmãos; o «por omissão o 1.º» de volta ⇒ RED.)
 #[test]
-fn a_entrada_e_a_marcada_ou_a_primeira() {
+fn o_autoplay_liga_e_desliga_e_por_omissao_nenhum() {
     let heroi = 7;
     let mut doc = TimelineDoc::new();
     let andar = doc.add_clip_for("andar".into(), heroi).unwrap();
     let pular = doc.add_clip_for("pular".into(), heroi).unwrap();
-    assert_eq!(doc.entry_clip_of(heroi), Some(andar), "por omissão, a 1.ª");
-    assert!(doc.set_entry_clip(pular));
+    assert_eq!(doc.entry_clip_of(heroi), None, "por omissão, nenhum");
+    assert!(doc.autoplay_entries().is_empty(), "nada toca sozinho");
+    assert!(doc.set_autoplay(pular, true));
     assert_eq!(doc.entry_clip_of(heroi), Some(pular));
-    assert!(!doc.set_entry_clip(pular), "já era");
-    assert!(doc.set_entry_clip(andar));
-    assert!(!doc.clips()[pular].autoplay, "desmarca a irmã");
+    assert!(!doc.set_autoplay(pular, true), "já era");
+    assert!(doc.set_autoplay(andar, true));
+    assert!(!doc.clips()[pular].autoplay, "desliga a irmã");
     let copia = doc.duplicate_clip(andar).unwrap();
-    assert!(
-        !doc.clips()[copia].autoplay,
-        "a variação não rouba a entrada"
-    );
-    assert!(
-        !doc.set_entry_clip(0),
-        "a Cena toca o Arrange, não tem entrada"
-    );
+    assert!(!doc.clips()[copia].autoplay, "a variação não rouba a marca");
+    assert!(doc.set_autoplay(0, true), "a Cena também tem o seu");
     assert_eq!(
         doc.autoplay_entries(),
         vec![(SCENE, 0), (heroi, andar)],
         "a Cena (Arrange vazio: o clipe dela) e depois o objecto"
+    );
+    assert!(doc.set_autoplay(andar, false));
+    assert_eq!(
+        doc.entry_clip_of(heroi),
+        None,
+        "desligado: o Herói não toca nada"
     );
 }
 
@@ -70,7 +72,9 @@ fn um_objecto_arranjado_pela_cena_nao_toca_a_entrada() {
     let (heroi, vilao) = (7, 8);
     let mut doc = TimelineDoc::new();
     let andar = doc.add_clip_for("andar".into(), heroi).unwrap();
-    doc.add_clip_for("rir".into(), vilao).unwrap();
+    let rir = doc.add_clip_for("rir".into(), vilao).unwrap();
+    doc.set_autoplay(andar, true);
+    doc.set_autoplay(rir, true);
     let lane = doc.add_lane("Base".into()).expect("uma lane");
     doc.add_strip(lane, andar, 0.0, 2.0)
         .expect("o clipe do Herói no Arrange");
@@ -137,6 +141,7 @@ fn cada_objecto_toca_a_sua_animacao_e_um_pedido_troca_o_clipe() {
             Interp::Linear,
         );
     }
+    doc.set_autoplay(andar, true);
 
     assert_eq!(
         ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false, &mut Vec::new()),
@@ -213,6 +218,7 @@ fn com_o_arrange_vazio_a_cena_a_correr_toca_o_clipe_da_cena() {
     let inimigo = e.to_bits();
     let mut doc = TimelineDoc::new();
     doc.set_active(0);
+    doc.set_autoplay(0, true);
     doc.insert_key(
         inimigo,
         PropKind::TranslationY,
@@ -237,4 +243,44 @@ fn com_o_arrange_vazio_a_cena_a_correr_toca_o_clipe_da_cena() {
         doc.autoplay_entries().iter().all(|e| e.0 != SCENE),
         "com Arrange, é o Arrange que toca"
     );
+}
+
+/// ⭐ Sem Autoplay, o objecto não toca nada com a cena a correr — mas um clipe PEDIDO (Play Clip) toca
+/// na mesma. (Mutação: só percorrer quem tem Autoplay ⇒ RED.)
+#[test]
+fn sem_autoplay_so_toca_o_que_alguem_pedir() {
+    let mut world = bevy_ecs::world::World::new();
+    let e = world.spawn(ph2d_ecs::Transform::IDENTITY).id();
+    let heroi = e.to_bits();
+    let mut doc = TimelineDoc::new();
+    let pular = doc.add_clip_for("pular".into(), heroi).unwrap();
+    doc.set_active(pular);
+    doc.insert_key(
+        heroi,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        heroi,
+        PropKind::TranslationX,
+        s(1.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
+    assert_eq!(
+        ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false, &mut Vec::new()),
+        0,
+        "sem Autoplay, parado"
+    );
+    world.entity_mut(e).insert(ph2d_ecs::ClipPlayback {
+        clip: "pular".into(),
+        desde: 0.0,
+    });
+    assert_eq!(
+        ph2d_timeline::apply_autoplay(&mut world, &doc, 0.5, |_| false, &mut Vec::new()),
+        1
+    );
+    assert!((x_de(&world, e) - 5.0).abs() < 1e-4, "o pedido toca");
 }

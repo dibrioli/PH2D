@@ -1,8 +1,7 @@
 //! ⭐ **O clipe de ENTRADA** (v20, doc ObjectsAndComponents 01 §14, item 1 — escolha 4.1 do dono: o
-//! *Autoplay* do Godot). Cada Animação de objecto tem um clipe que começa sozinho no Play — o
-//! marcado, ou o 1.º; os outros tocam quando algo os pede. A Cena não tem entrada: ela toca o
-//! Arrange dela, como sempre, e um objecto cujos clipes a Cena ARRANJOU é dirigido por ela (não toca
-//! a entrada por cima do que a Cena compôs).
+//! *Autoplay* do Godot). No máximo um clipe por Animação toca sozinho quando a cena corre — o marcado,
+//! e por omissão nenhum; os outros tocam quando algo os pede. A Cena toca o Arrange dela (ou, vazio,
+//! o seu clipe marcado), e um objecto cujos clipes a Cena ARRANJOU é dirigido por ela.
 
 use std::collections::BTreeSet;
 
@@ -10,30 +9,28 @@ use super::*;
 use crate::stack::StripSource;
 
 impl TimelineDoc {
-    /// ⭐ O clipe de entrada da animação de `owner`: o marcado ([`NamedClip::autoplay`]), ou o 1.º.
+    /// ⭐ O clipe marcado com **Autoplay** na animação de `owner` (`SCENE` = a da Cena), ou nenhum —
+    /// como no Godot (dono, 10/10: *«por que o Autoplay vem sempre checado?»* ⇒ por omissão, nenhum).
     #[must_use]
     pub fn entry_clip_of(&self, owner: u64) -> Option<usize> {
-        self.clips_of(owner)
-            .find(|&i| self.clips[i].autoplay)
-            .or_else(|| self.clips_of(owner).next())
+        self.clips_of(owner).find(|&i| self.clips[i].autoplay)
     }
 
-    /// Marca `index` como a entrada da animação dele e desmarca os irmãos. A Cena e um dono por
-    /// resolver não têm entrada: `false`, nada muda. Devolve se o documento mudou.
-    pub fn set_entry_clip(&mut self, index: usize) -> bool {
-        let Some(owner) = self
-            .clips
-            .get(index)
-            .and_then(|c| c.owner)
-            .filter(|o| !o.missing && o.entity != SCENE)
-            .map(|o| o.entity)
-        else {
+    /// Liga (`on`) ou desliga o **Autoplay** do clip `index`. Ligar desliga os irmãos: no máximo um
+    /// por animação. Um dono por resolver não muda. Devolve se o documento mudou.
+    pub fn set_autoplay(&mut self, index: usize, on: bool) -> bool {
+        let Some(c) = self.clips.get(index) else {
             return false;
+        };
+        let owner = match c.owner {
+            None => SCENE,
+            Some(o) if !o.missing && o.entity != SCENE => o.entity,
+            Some(_) => return false,
         };
         let irmaos: Vec<usize> = self.clips_of(owner).collect();
         let mut mudou = false;
         for i in irmaos {
-            let v = i == index;
+            let v = on && i == index;
             if self.clips[i].autoplay != v {
                 self.clips[i].autoplay = v;
                 mudou = true;
@@ -98,27 +95,35 @@ impl TimelineDoc {
         self.clip_cut(index, local)
     }
 
-    /// ⭐ **Quem toca a entrada com a cena a correr** (o Play da barra superior): a CENA primeiro — o clipe de entrada dela (o 1.º) quando
-    /// o Arrange está vazio (com Arrange, é ele que toca) —, depois cada objecto vivo com Animação que a
-    /// Cena não dirige, com o clipe de entrada dele, por ordem do 1.º clipe, sem repetições. O objecto
+    /// ⭐ **Quem PODE tocar com a cena a correr** (o Play da barra superior), com o clipe marcado com
+    /// Autoplay de cada um (ou nenhum): a CENA primeiro, quando o Arrange está vazio (com Arrange, é ele
+    /// que toca), depois cada objecto vivo com Animação que a Cena não dirige, por ordem do 1.º clipe,
+    /// sem repetições. Sem marca, um objecto só toca o que alguém lhe PEDIR (`ClipPlayback`). O objecto
     /// escreve por último: a animação PRÓPRIA dele manda sobre a da Cena.
     #[must_use]
-    pub fn autoplay_entries(&self) -> Vec<(u64, usize)> {
+    pub fn runtime_owners(&self) -> Vec<(u64, Option<usize>)> {
         let cena = self
             .stack
             .iter()
             .all(|l| l.strips.is_empty())
-            .then(|| self.entry_clip_of(SCENE))
-            .flatten()
-            .map(|c| (SCENE, c));
+            .then(|| (SCENE, self.entry_clip_of(SCENE)));
         let dirigidos = self.arranged_owners();
         let mut vistos = BTreeSet::new();
         cena.into_iter()
             .chain(
                 self.animation_owners()
                     .filter(|o| !dirigidos.contains(o) && vistos.insert(*o))
-                    .filter_map(|o| Some((o, self.entry_clip_of(o)?))),
+                    .map(|o| (o, self.entry_clip_of(o))),
             )
+            .collect()
+    }
+
+    /// O que toca SEM pedido com a cena a correr: os de [`Self::runtime_owners`] com Autoplay.
+    #[must_use]
+    pub fn autoplay_entries(&self) -> Vec<(u64, usize)> {
+        self.runtime_owners()
+            .into_iter()
+            .filter_map(|(o, c)| Some((o, c?)))
             .collect()
     }
 }

@@ -184,22 +184,6 @@ pub(crate) fn toggle(
     on: bool,
     label_col: f32,
 ) -> f32 {
-    toggle_vivo(ctx, theme, (x, y), id, text, on, label_col, true)
-}
-
-/// [`toggle`] que pode estar MORTO (`vivo = false`): pinta-se `Disabled` (o «ligado» continua
-/// visível) e **não regista o clique** — um interruptor que não age não despacha.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn toggle_vivo(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    (x, y): (f32, f32),
-    id: ph2d_a11y::NodeId,
-    text: &str,
-    on: bool,
-    label_col: f32,
-    vivo: bool,
-) -> f32 {
     let sw = TypeToken::Xl3.px();
     let sh = Density::Compact.row_h_px();
     let pad = Spacing::Xs.px();
@@ -232,19 +216,11 @@ pub(crate) fn toggle_vivo(
         }
     }
     // Gallery builder form (label rendered separately, above).
-    let visual = if vivo {
-        ctx.host.store().toggle_visual(id)
-    } else {
-        (
-            ph2d_editor_core::widget::ToggleState::Disabled,
-            ph2d_editor_core::motion::SETTLED,
-        )
-    };
-    let widget = Toggle::new(id, "").visual(visual).on(on);
+    let widget = Toggle::new(id, "")
+        .visual(ctx.host.store().toggle_visual(id))
+        .on(on);
     paint_toggle(&widget, rect, ctx.scene, theme);
-    if vivo {
-        ctx.host.hit_index_mut().register(id, rect);
-    }
+    ctx.host.hit_index_mut().register(id, rect);
     x + cell_w
 }
 

@@ -107,8 +107,11 @@ impl crate::App {
         self.playhead.rewind();
         self.playhead.set_loop(0.0, 2.0);
         self.playhead.play();
-        // `=3`: abre como o Play da barra de CIMA — a cena a CORRER (onda 4, item 1).
+        // `=3`: o «andar» do Herói e o «Main» da Cena com Autoplay, e a cena a CORRER como pelo Play
+        // da barra de cima (onda 4, item 1). Em `=1` nada vem marcado — como no Godot.
         if nivel == "3" {
+            self.timeline.doc.set_autoplay(andar, true);
+            self.timeline.doc.set_autoplay(0, true);
             self.timeline_intents
                 .push(ph2d_timeline::TimelineIntent::RunScene);
         }

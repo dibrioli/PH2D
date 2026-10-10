@@ -246,6 +246,7 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
     let bits = e.to_bits();
     let mut doc = TimelineDoc::new();
     let andar = doc.add_clip_for("andar".into(), bits).expect("cabe");
+    doc.set_autoplay(andar, true);
     doc.set_active(andar);
     for (t, v) in [(0.0, 0.0), (2.0, 10.0)] {
         doc.upsert_key(
@@ -283,6 +284,7 @@ fn a_animacao_de_um_objecto_toca_a_entrada_sozinha() {
     assert!(y(&w, e).abs() < 1e-4, "sem a cena a correr, parado");
 
     let mut cena = TimelineDoc::new();
+    cena.set_autoplay(0, true);
     cena.upsert_key(
         bits,
         PropKind::TranslationY,

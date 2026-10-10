@@ -1,6 +1,6 @@
-//! ⭐⭐ O interruptor **«Autoplay»** (onda 4, item 1): com o clique REAL, o clipe em edição passa a ser
-//! a ENTRADA da animação do objecto — um passo do undo da timeline. No clipe que já é a entrada ele
-//! pinta-se ligado e não regista clique (há sempre uma); na Cena não existe.
+//! ⭐⭐ O interruptor **«Autoplay»** (onda 4, item 1 — o do Godot, dono 10/10): com o clique REAL, liga
+//! e desliga o Autoplay do clipe em edição — um passo do undo da timeline cada; por omissão, nenhum;
+//! a Cena também o tem.
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_timeline::state::{TimelinePanelState, set_current_timeline};
@@ -42,46 +42,52 @@ fn pinta(st: &mut TimelineState) -> (MockPanelHost, TimelinePanelState, Option<R
     (host, panel, r)
 }
 
-/// ⭐⭐ Clicar o «Autoplay» do «pular» fá-lo a entrada (um passo de undo); e lá ele já não regista.
-/// (Mutação: o `apply_event` sem o `push_intent` ⇒ RED.)
-#[test]
-fn ligar_o_autoplay_faz_do_clipe_a_entrada() {
-    let mut st = heroi("pular");
-    let andar = st.doc.clip_named(HEROI, "andar").unwrap();
-    let pular = st.doc.clip_named(HEROI, "pular").unwrap();
-    assert_eq!(
-        st.doc.entry_clip_of(HEROI),
-        Some(andar),
-        "por omissão, o 1.º"
-    );
-    let (mut host, mut panel, r) = pinta(&mut st);
-    let r = r.expect("o interruptor do clipe que NÃO é a entrada está vivo");
+/// Clica o interruptor e aplica o que o painel pediu.
+fn clica(st: &mut TimelineState) {
+    let (mut host, mut panel, r) = pinta(st);
+    let r = r.expect("o interruptor está pintado e registado");
     for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
         host.apply_panel_event::<TimelinePanel>(&mut panel, ev);
     }
     let mut ph = playhead();
     for p in ph2d_panel_timeline::drain_intents() {
-        apply_intent(&mut st, &mut ph, p);
+        apply_intent(st, &mut ph, p);
     }
-    assert_eq!(st.doc.entry_clip_of(HEROI), Some(pular));
+}
+
+/// ⭐⭐ Por omissão desligado; um clique liga (um passo do undo), outro desliga, o Ctrl+Z desfaz. Ligar
+/// o «pular» desliga o «andar». (Mutações: o `apply_event` sem o `push_intent`; o `on` sem negar ⇒ RED.)
+#[test]
+fn o_autoplay_liga_e_desliga_com_o_clique() {
+    let mut st = heroi("pular");
+    let andar = st.doc.clip_named(HEROI, "andar").unwrap();
+    let pular = st.doc.clip_named(HEROI, "pular").unwrap();
+    assert_eq!(st.doc.entry_clip_of(HEROI), None, "por omissão, nenhum");
+    clica(&mut st);
+    assert_eq!(st.doc.entry_clip_of(HEROI), Some(pular), "ligado");
     assert!(st.history.can_undo(), "um passo do undo");
+    clica(&mut st);
+    assert_eq!(st.doc.entry_clip_of(HEROI), None, "outro clique desliga");
+    let mut ph = playhead();
     apply_intent(&mut st, &mut ph, I::Undo);
     assert_eq!(
         st.doc.entry_clip_of(HEROI),
-        Some(andar),
-        "o Ctrl+Z devolve a entrada"
+        Some(pular),
+        "o Ctrl+Z volta a ligar"
     );
-
-    st.doc.set_entry_clip(pular);
-    assert!(
-        pinta(&mut st).2.is_none(),
-        "na entrada, morto: desligar não teria resposta"
+    st.doc.set_active(andar);
+    clica(&mut st);
+    assert_eq!(
+        st.doc.entry_clip_of(HEROI),
+        Some(andar),
+        "ligar um desliga o outro"
     );
 }
 
-/// Na Cena (que toca o Arrange) não há interruptor nenhum — nem pintado nem registado.
+/// A Cena também tem o interruptor: o clipe dela toca quando a cena corre com o Arrange vazio.
 #[test]
-fn a_cena_nao_tem_autoplay() {
+fn a_cena_tem_autoplay() {
     let mut st = TimelineState::new();
-    assert!(pinta(&mut st).2.is_none());
+    clica(&mut st);
+    assert_eq!(st.doc.entry_clip_of(ph2d_timeline::SCENE), Some(0));
 }

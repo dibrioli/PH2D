@@ -498,8 +498,7 @@ mod row;
 
 #[path = "transport_widgets.rs"]
 mod widgets;
-pub(crate) use widgets::{chip, icon_button, icon_button_in, label, mirror_number};
-pub(crate) use widgets::{toggle, toggle_vivo};
+pub(crate) use widgets::{chip, icon_button, icon_button_in, label, mirror_number, toggle};
 
 /// Os RÓTULOS dos toggles e a coluna que eles partilham — a lista de que a régua se mede e o
 /// pintor pinta, num sítio só. Irmão por RESPONSABILIDADE: este ficheiro dispõe a barra, aquele

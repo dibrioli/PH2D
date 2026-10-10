@@ -81,10 +81,10 @@ pub fn apply_one_clip_except(
 }
 
 /// ⭐⭐ **A ANIMAÇÃO de cada objecto, no relógio dele** (doc ObjectsAndComponents 01 §14, item 1):
-/// o clipe que ele pediu ([`ph2d_ecs::ClipPlayback`]) desde o pedido, ou o de ENTRADA desde o
-/// início — dobrado pelo loop do clipe ([`TimelineDoc::clip_local_time`]). Os objectos que a Cena
-/// arranjou ficam com o que a Cena compôs ([`TimelineDoc::autoplay_entries`]). Devolve quantos
-/// objectos tocaram.
+/// o clipe que ele pediu ([`ph2d_ecs::ClipPlayback`]) desde o pedido, ou o marcado com Autoplay desde
+/// o início (sem os dois, nada) — dobrado pelo loop do clipe ([`TimelineDoc::clip_local_time`]). Os
+/// objectos que a Cena arranjou ficam com o que a Cena compôs ([`TimelineDoc::runtime_owners`]).
+/// Devolve quantos objectos tocaram.
 pub fn apply_autoplay(
     world: &mut World,
     doc: &TimelineDoc,
@@ -93,7 +93,7 @@ pub fn apply_autoplay(
     refusals: &mut Vec<crate::ClipRefusal>,
 ) -> usize {
     let mut tocaram = 0;
-    for (dono, entrada) in doc.autoplay_entries() {
+    for (dono, entrada) in doc.runtime_owners() {
         let e = ph2d_ecs::Entity::try_from_bits(dono).filter(|e| world.get_entity(*e).is_ok());
         // ⚠️ Um pedido do FUTURO — o relógio voltou para antes dele (rewind, scrub, recomeçar) — é
         // largado: senão revivia ao passar outra vez pelo instante, sem o sinal ter disparado. E um
@@ -114,7 +114,10 @@ pub fn apply_autoplay(
             .and_then(|e| world.get::<ph2d_ecs::ClipPlayback>(e))
             .and_then(|p| p.em(t))
             .and_then(|(nome, desde)| Some((doc.clip_named(dono, nome)?, desde)));
-        let (clip, local) = pedido.unwrap_or((entrada, t));
+        // O pedido manda; sem pedido, o clipe com Autoplay; sem os dois, o objecto não toca.
+        let Some((clip, local)) = pedido.or(entrada.map(|c| (c, t))) else {
+            continue;
+        };
         let escritas =
             apply_one_clip_except(world, doc, clip, doc.clip_local_time(clip, local), skip);
         tocaram += usize::from(escritas > 0);

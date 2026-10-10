@@ -18,6 +18,76 @@ fn tmap(mode: TimeMode, duration: f64, offset: f64) -> TimeMap {
         scale: 1.0,
         offset,
         duration,
+        drive: 0.0,
+    }
+}
+
+/// ⭐ `Driven` (ciclo 19, doc 128 §3.4): o instante da sub-árvore é uma POSIÇÃO — `offset +
+/// duration · clamp(drive)` —, qualquer que seja o relógio de fora; e uma posição parada custa UM
+/// cozimento, como o `Freeze`.
+#[test]
+fn a_driven_scope_places_the_upstream_at_a_position_and_a_still_one_costs_one_cook() {
+    let mut g = Graph::new();
+    let clock = g.add_node("test.clock");
+    let remap = g.add_node("test.delay");
+    g.connect(Edge {
+        from: (clock, 0),
+        to: (remap, 0),
+        delayed: false,
+    })
+    .unwrap();
+    let o = ops();
+    let mut cook = Cook::new();
+    let mut map = tmap(TimeMode::Driven, 4.0, 1.0);
+    for (drive, t) in [
+        (0.25, 2.0f32),
+        (0.0, 1.0),
+        (1.0, 5.0),
+        (7.0, 5.0),
+        (-3.0, 1.0),
+    ] {
+        map.drive = drive;
+        let scopes: TimeScopes = [(remap, map)].into();
+        let out = cook.cook_scoped(&g, &o, remap, 123.0, &scopes).unwrap();
+        assert_eq!(out_scalars(&out[0]), vec![t], "drive {drive}");
+    }
+    map.drive = 0.5;
+    let scopes: TimeScopes = [(remap, map)].into();
+    let antes = o.clock.calls.load(Ordering::Relaxed);
+    for frame in 0..10 {
+        cook.cook_scoped(&g, &o, remap, f64::from(frame) / 60.0, &scopes)
+            .unwrap();
+    }
+    assert_eq!(
+        o.clock.calls.load(Ordering::Relaxed) - antes,
+        1,
+        "uma posição parada coze uma vez"
+    );
+}
+
+/// ⭐ O `drive` DIRIGIDO por fio lê o relógio de FORA: o condutor (aqui um relógio) é cozido no
+/// playhead real e só depois o de dentro é reescrito — com o condutor no relógio de dentro, o
+/// instante seria função de si próprio.
+#[test]
+fn a_wired_drive_is_cooked_on_the_outer_clock() {
+    let mut g = Graph::new();
+    let clock = g.add_node("test.clock");
+    let remap = g.add_node("test.delay");
+    let driver = g.add_node("test.clock");
+    g.connect(Edge {
+        from: (clock, 0),
+        to: (remap, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.drive_param(remap, crate::time::TIME_DRIVE_PARAM, (driver, 0))
+        .unwrap();
+    let o = ops();
+    let mut cook = Cook::new();
+    let scopes: TimeScopes = [(remap, tmap(TimeMode::Driven, 2.0, 0.0))].into();
+    for (playhead, t) in [(0.3f64, 0.6f32), (0.75, 1.5), (1.7, 2.0)] {
+        let out = cook.cook_scoped(&g, &o, remap, playhead, &scopes).unwrap();
+        assert_eq!(out_scalars(&out[0]), vec![t], "playhead {playhead}");
     }
 }
 

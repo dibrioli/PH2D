@@ -387,6 +387,7 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.motion.sub_uv.param.speed", "Cells / Second"),
     ("node.motion.sub_uv.param.stagger", "Stagger"),
     ("node.motion.time_remap.param.curve", "Curve"),
+    ("node.motion.time_remap.param.drive", "Position"),
     ("node.motion.time_remap.param.duration", "Duration"),
     ("node.motion.time_remap.param.mode", "Mode"),
     ("node.motion.time_remap.param.offset", "Offset"),

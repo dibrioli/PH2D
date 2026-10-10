@@ -174,6 +174,15 @@ impl GpuCheckpointRing {
 
     /// Drop every checkpoint — the cached sim is invalid once the graph changes
     /// (the CPU ring's `clear`, same trigger). Releases the pinned VRAM.
+    /// Esquece os checkpoints DEPOIS de `tick` — o futuro que um ramo novo de entradas reescreveu
+    /// (doc 128 §3.3), a mesma lei do anel da CPU.
+    pub fn forget_after(&mut self, tick: u64) {
+        let at = self.entries.partition_point(|(t, _, _)| *t <= tick);
+        for (_, old, _) in self.entries.drain(at..) {
+            self.bytes = self.bytes.saturating_sub(state_bytes(&old));
+        }
+    }
+
     pub fn clear(&mut self) {
         self.entries.clear();
         self.bytes = 0;

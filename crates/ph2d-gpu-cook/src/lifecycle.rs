@@ -90,6 +90,16 @@ impl GpuCook {
         }
     }
 
+    /// Forget the scrub checkpoints after `tick` — an input branch rewrote that future (doc 128
+    /// §3.3). If the device already marched past `tick`, its live state is that old future too, so
+    /// the next cook re-anchors.
+    pub fn forget_after(&mut self, tick: u64) {
+        self.ring.forget_after(tick);
+        if self.last_tick.is_some_and(|t| t > tick) {
+            self.last_tick = None;
+        }
+    }
+
     /// Retune the scrub ring's VRAM cap (default [`ring::RING_BYTES`]).
     pub fn set_ring_budget(&mut self, bytes: u64) {
         self.ring.set_budget(bytes);

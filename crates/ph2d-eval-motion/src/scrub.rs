@@ -62,8 +62,10 @@ impl MotionCookPump {
     ) -> bool {
         let (anchor, cp) = self.ring.anchor_at_or_before(target_tick);
         self.cook.restore(&cp);
+        let mut replay = self.comeca_o_replay(anchor);
         let mut t = anchor;
         loop {
+            self.entradas_do_replay(&mut replay, t);
             let playhead = playhead_of(t);
             // Record the state that reproduces frame `t` (before its cook), so a
             // re-sim past the window rebuilds the ring; a within-window tick is

@@ -49,6 +49,9 @@ use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
 
 mod checkpoint;
+mod fita;
+pub use fita::{FITA_BYTES, Fita, Gravacao};
+mod entradas;
 pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, MEMO_A_CADA, RECENT_DENSE};
 
 mod sink_style;
@@ -107,6 +110,8 @@ pub struct MotionCookPump {
     /// future. Cleared on a graph edit (the cached sim is invalid for the new
     /// graph). See [`Self::scrub_to_scoped`].
     ring: CheckpointRing,
+    /// As entradas publicadas em cada tique cozido para a frente — o scrub repete-as (doc 128 §3.3).
+    fita: Fita,
     /// The output streams of the nodes cooked by
     /// [`Self::advance_or_scrub_to_nodes_scoped`] (the GPU/M5 boundary hand-off),
     /// held so the caller can upload them after the tick march. Empty until that
@@ -227,6 +232,7 @@ impl MotionCookPump {
             dirty: true,
             last_error: None,
             ring: CheckpointRing::new(),
+            fita: Fita::new(),
             boundary_streams: Vec::new(),
             tap_streams: Vec::new(),
             taps: Vec::new(),
@@ -386,6 +392,7 @@ impl MotionCookPump {
         if self.last_cooked_tick != Some(tick) {
             self.ring.regista(tick, &self.cook);
         }
+        self.grava_entradas(tick);
         self.substep_declared_zones(graph, ops, playhead);
         self.cook_target_into(graph, ops, target, playhead, scopes);
         // ⚠️ E com TOMADAS só (sem fronteiras): o cone delas também é estado (doc 110 §14.2 —
@@ -640,6 +647,10 @@ mod passe_no_pump_tests;
 #[cfg(test)]
 #[path = "scrub_tests.rs"]
 mod scrub_tests;
+
+#[cfg(test)]
+#[path = "scrub_entradas_tests.rs"]
+mod scrub_entradas_tests;
 
 #[cfg(test)]
 #[path = "tap_tests.rs"]

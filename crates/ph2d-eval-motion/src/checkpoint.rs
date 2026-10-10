@@ -178,6 +178,15 @@ impl CheckpointRing {
     /// (a `mark_dirty` edit). A subsequent scrub re-sims from the tick-0 seed
     /// under the new graph (the Blender/Houdini "edit invalidates the cache"
     /// semantics).
+    /// Esquece os checkpoints DEPOIS de `tick` — os de um futuro que um ramo novo reescreveu (as
+    /// entradas mudaram, doc 128 §3.3). O de `tick` fica: é o estado antes de o cozer.
+    pub fn esquece_depois_de(&mut self, tick: u64) {
+        let at = self.entries.partition_point(|e| e.tick <= tick);
+        for e in self.entries.drain(at..) {
+            self.bytes = self.bytes.saturating_sub(e.bytes);
+        }
+    }
+
     pub fn clear(&mut self) {
         self.entries.clear();
         self.bytes = 0;

@@ -68,7 +68,15 @@ pub enum TimeMode {
     /// é. Uma curva com `duration` não-positiva degrada para [`TimeMode::Scale`],
     /// como o `Loop` já faz.
     Curve,
+    /// **O tempo é uma POSIÇÃO** (ciclo 19, doc 128 §3.4): `t' = offset + duration ·
+    /// curve(clamp(drive, 0, 1))` — o relógio de fora não conta; quem decide o instante é um VALOR
+    /// (o Blend 1D do Rive, o `TimeSeek` do Godot). Uma entrada parada é um instante parado: memo.
+    Driven,
 }
+
+/// O param do remapeador que dirige o [`TimeMode::Driven`]. Dirigido por fio, o cozimento resolve-o
+/// no relógio de FORA antes de reescrever o de dentro — o condutor não lê o tempo que ele decide.
+pub const TIME_DRIVE_PARAM: &str = "drive";
 
 /// Quantas amostras a tabela do [`TimeMode::Curve`] carrega.
 ///
@@ -132,6 +140,7 @@ impl TimeMode {
             3 => TimeMode::Freeze,
             4 => TimeMode::Reverse,
             5 => TimeMode::Curve,
+            6 => TimeMode::Driven,
             _ => TimeMode::Scale,
         }
     }
@@ -147,6 +156,7 @@ impl TimeMode {
             TimeMode::Freeze => 3,
             TimeMode::Reverse => 4,
             TimeMode::Curve => 5,
+            TimeMode::Driven => 6,
         }
     }
 }
@@ -166,6 +176,8 @@ pub struct TimeMap {
     /// A tabela do [`TimeMode::Curve`] — ver [`TIME_CURVE_SAMPLES`]. Lida **só**
     /// naquele modo; nos outros ela viaja e ninguém a consulta.
     pub curve: [f32; TIME_CURVE_SAMPLES],
+    /// A posição do [`TimeMode::Driven`] (`0..1`, fora disso encosta). Lida só por ele.
+    pub drive: f64,
 }
 
 impl Default for TimeMap {
@@ -176,6 +188,7 @@ impl Default for TimeMap {
             offset: 0.0,
             duration: 1.0,
             curve: identity_curve_lut(),
+            drive: 0.0,
         }
     }
 }
@@ -197,6 +210,14 @@ impl TimeMap {
         match self.mode {
             TimeMode::Scale => scaled + self.offset,
             TimeMode::Freeze => self.offset,
+            TimeMode::Driven => {
+                let u = if self.drive.is_nan() {
+                    0.0
+                } else {
+                    self.drive.clamp(0.0, 1.0)
+                };
+                self.offset + self.duration * f64::from(sample_curve_lut(&self.curve, u as f32))
+            }
             TimeMode::Reverse => self.offset - scaled,
             // A curva mapeia a JANELA em si mesma: com a tabela da identidade isto
             // reduz a `offset + t·scale` (o `Scale`) a menos do arredondamento da
@@ -246,7 +267,10 @@ impl TimeMap {
         // que ninguém consulta — um miss, não um erro, mas um miss de graça; e
         // NÃO misturá-la no modo `Curve` serviria a sub-árvore de uma curva
         // ANTERIOR, que é o erro.
-        if self.mode == TimeMode::Curve {
+        if self.mode == TimeMode::Driven {
+            mix(&self.drive.to_bits().to_le_bytes());
+        }
+        if matches!(self.mode, TimeMode::Curve | TimeMode::Driven) {
             for v in &self.curve {
                 mix(&v.to_bits().to_le_bytes());
             }
@@ -305,6 +329,7 @@ mod tests {
             offset: 0.0,
             duration: 2.0,
             curve: ease_lut(),
+            drive: 0.0,
         };
         let bend = curvature(&curved, 0.2, 1.8);
         assert!(
@@ -416,6 +441,7 @@ mod tests {
             offset: 0.0,
             duration: 6.0,
             curve: tri,
+            drive: 0.0,
         };
         let pinged = map(TimeMode::PingPong, 1.0, 0.0, 3.0);
         let mut worst = 0.0f64;
@@ -455,6 +481,7 @@ mod tests {
             offset: 0.0,
             duration: 6.0,
             curve: paused_lut(),
+            drive: 0.0,
         };
         // A 37ª janela — bem longe de qualquer coisa que um autor tenha desenhado.
         let base = 36.0 * m.duration;
@@ -499,6 +526,7 @@ mod tests {
                 offset: 0.5,
                 duration,
                 curve: ease_lut(),
+                drive: 0.0,
             };
             assert_eq!(
                 m.apply(1.0),
@@ -524,10 +552,12 @@ mod tests {
         let a = TimeMap {
             mode: TimeMode::Curve,
             curve: identity_curve_lut(),
+            drive: 0.0,
             ..TimeMap::default()
         };
         let b = TimeMap {
             curve: ease_lut(),
+            drive: 0.0,
             ..a
         };
         assert_ne!(key(&a), key(&b), "duas curvas distintas sao duas pistas");
@@ -535,10 +565,12 @@ mod tests {
         let c = TimeMap {
             mode: TimeMode::Scale,
             curve: identity_curve_lut(),
+            drive: 0.0,
             ..TimeMap::default()
         };
         let d = TimeMap {
             curve: ease_lut(),
+            drive: 0.0,
             ..c
         };
         assert_eq!(key(&c), key(&d), "fora do Curve a tabela nao parte a pista");
@@ -547,6 +579,7 @@ mod tests {
     fn map(mode: TimeMode, scale: f64, offset: f64, duration: f64) -> TimeMap {
         TimeMap {
             curve: identity_curve_lut(),
+            drive: 0.0,
             mode,
             scale,
             offset,

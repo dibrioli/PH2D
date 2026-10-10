@@ -30,7 +30,7 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
-use ph2d_nodegraph::time::{TimeMap, TimeMode, identity_curve_lut};
+use ph2d_nodegraph::time::{TIME_DRIVE_PARAM, TimeMap, TimeMode, identity_curve_lut};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -44,6 +44,7 @@ pub const MODE_LABELS: &[&str] = &[
     "node.opts.node_motion_time_remap.mode_labels.3",
     "node.opts.node_motion_time_remap.mode_labels.4",
     "node.opts.node_motion_time_remap.mode_labels.5",
+    "node.opts.node_motion_time_remap.mode_labels.6",
 ];
 
 /// A chave do text param que carrega a FORMA da curva (uma string do
@@ -89,6 +90,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "duration",
             default: 2.0,
         },
+        // APENDADO (ciclo 19): a posição do `Driven`, `0..1` — dirige-se por fio (doc 128 §3.4).
+        ParamSpec {
+            name: TIME_DRIVE_PARAM,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -112,6 +118,7 @@ pub fn time_map_from<'t>(
         offset: f64::from(param("offset")),
         duration: f64::from(param("duration")),
         curve: curve_lut(text(CURVE_KEY)),
+        drive: f64::from(param(TIME_DRIVE_PARAM)),
     }
 }
 
@@ -251,11 +258,24 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 /// A linha da CURVA pertence ao modo que a lê, e a mais nenhum — o precedente do
 /// `column` do `motion.drive`. Um editor de curva pintado sob `Loop` seria um
 /// controle que não move um quadro.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: CURVE_KEY,
-    when: "mode",
-    values: &[5], // Curve
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: CURVE_KEY,
+        when: "mode",
+        values: &[5, 6], // Curve · Driven
+    },
+    // O `Driven` não conta o relógio: a velocidade não tem o que multiplicar.
+    ParamGate {
+        param: "scale",
+        when: "mode",
+        values: &[0, 1, 2, 3, 4, 5],
+    },
+    ParamGate {
+        param: TIME_DRIVE_PARAM,
+        when: "mode",
+        values: &[6], // Driven
+    },
+];
 
 /// Param rows: a named mode selector (never a number the artist must decode),
 /// then the three scalars the modes read. Seconds, matching the playhead.
@@ -264,7 +284,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "node.motion.time_remap.param.mode",
         min: 0.0,
-        max: 5.0,
+        max: 6.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: MODE_LABELS,
@@ -305,6 +325,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: TIME_DRIVE_PARAM,
+        label: "node.motion.time_remap.param.drive",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -338,6 +366,7 @@ mod tests {
             TimeMode::Freeze,
             TimeMode::Reverse,
             TimeMode::Curve,
+            TimeMode::Driven,
         ];
         assert_eq!(MODE_LABELS.len(), modes.len());
         for (i, mode) in modes.into_iter().enumerate() {
@@ -377,6 +406,7 @@ mod tests {
             "duration" => 2.0,
             "scale" => 1.0,
             "offset" => 0.0,
+            "drive" => 0.0,
             _ => panic!("undeclared param {name}"),
         };
         // Um ease de dois pontos com tangentes chatas, na serializacao do editor.
@@ -438,7 +468,13 @@ mod tests {
             .find(|g| g.param == CURVE_KEY)
             .expect("a curva e' gateada");
         assert_eq!(gate.when, "mode");
-        assert_eq!(gate.values, &[i32::from(TimeMode::Curve.index())]);
+        assert_eq!(
+            gate.values,
+            &[
+                i32::from(TimeMode::Curve.index()),
+                i32::from(TimeMode::Driven.index())
+            ]
+        );
     }
 
     /// **Uma string malformada é a identidade, nunca um relógio inventado.**
@@ -456,6 +492,7 @@ mod tests {
                 "scale" => 2.0,
                 "offset" => 0.5,
                 "duration" => 3.0,
+                "drive" => 0.0,
                 _ => panic!("undeclared param {name}"),
             },
             |_| None,
@@ -463,6 +500,27 @@ mod tests {
         assert_eq!(map.mode, TimeMode::Loop);
         // t=2 → scaled 4 → 4 mod 3 = 1 → +0.5.
         assert_eq!(map.apply(2.0), 1.5);
+    }
+
+    /// ⭐ `Driven` (ciclo 19): a POSIÇÃO decide o instante — `offset + duration · curva(drive)` —,
+    /// e o relógio de fora não conta.
+    #[test]
+    fn a_driven_remap_reads_its_position_and_ignores_the_clock() {
+        let map = time_map_from(
+            |name| match name {
+                "mode" => 6.0,
+                "scale" => 3.0,
+                "offset" => 0.5,
+                "duration" => 2.0,
+                "drive" => 0.25,
+                _ => panic!("undeclared param {name}"),
+            },
+            |_| None,
+        );
+        assert_eq!(map.mode, TimeMode::Driven);
+        for t in [0.0, 1.0, 99.0] {
+            assert_eq!(map.apply(t), 1.0, "t = {t}");
+        }
     }
 
     /// The node is a passthrough: it forwards its input verbatim (the cook did

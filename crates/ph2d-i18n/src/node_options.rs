@@ -485,6 +485,7 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.opts.node_motion_time_remap.mode_labels.3", "Freeze"),
     ("node.opts.node_motion_time_remap.mode_labels.4", "Reverse"),
     ("node.opts.node_motion_time_remap.mode_labels.5", "Curve"),
+    ("node.opts.node_motion_time_remap.mode_labels.6", "Driven"),
     ("node.opts.node_motion_tint.labels.0", "Mix"),
     ("node.opts.node_motion_tint.labels.1", "Add"),
     ("node.opts.node_motion_tint.labels.2", "Subtract"),

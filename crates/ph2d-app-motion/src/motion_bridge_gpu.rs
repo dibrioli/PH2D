@@ -397,12 +397,25 @@ pub(super) fn cook_gpu(
             // from. It replaces `ticks_owed` here rather than wrapping it —
             // `ticks_owed` answers `target..=target` for a backwards jump, which
             // for a sim means "cook the past against the future's state".
+            // ⚠️ Lido ANTES do `rewind_for`, que o apaga ao rebobinar.
+            let ja_cozido = motion.gpu_cook.last_cooked_tick();
             let ticks: Vec<u64> = match plan.drives_a_loop() {
                 true => (motion.gpu_cook.rewind_for(target)..=target).collect(),
                 false => vec![target],
             };
             let ticks = substep_clocks(&ticks, sub, fixed_dt, plan.drives_a_loop());
+            // ⭐ AS ENTRADAS DE CADA TIQUE (doc 128 §3.3): o que já foi cozido repete o que a fita
+            // gravou; o novo grava-se, e um ramo esquece também o futuro do anel da placa.
+            let mut replay = motion
+                .pump
+                .comeca_o_replay(ticks.first().and_then(|r| r.1).unwrap_or(target));
             motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
+                let t = tick.unwrap_or(target);
+                if ja_cozido.is_some_and(|u| t < u) {
+                    motion.pump.entradas_do_replay(&mut replay, t);
+                } else if motion.pump.grava_entradas(t) == ph2d_eval_motion::Gravacao::Ramo {
+                    motion.gpu_cook.forget_after(t);
+                }
                 // ⚠️ **POR TIQUE**: um `value.lfo` dá outro número a cada sub-passo, e reutilizar
                 // o do plano congelaria a animação no primeiro deles.
                 let dirigidos = valores_dirigidos(motion, playhead);
@@ -508,9 +521,19 @@ pub(super) fn cook_gpu(
             // encenava o nó com fio e o cozedor resolvia o `strength` sem o mapa, caindo no
             // override. ⚠️ Derivados ANTES do empréstimo abaixo: `valores_dirigidos` coze o
             // condutor na bomba, e o `handed` empresta-a.
+            // ⭐ E as ENTRADAS de cada tique (doc 128 §3.3): a bomba já as gravou ao marchar até à
+            // fronteira; o condutor de cada tique lê as da fita.
+            let mut replay = motion
+                .pump
+                .comeca_o_replay(relogios.first().and_then(|r| r.1).unwrap_or(target));
             let dirigidos: Vec<ph2d_gpu_cook::DrivenParams> = relogios
                 .iter()
-                .map(|&(playhead, _)| valores_dirigidos(motion, playhead))
+                .map(|&(playhead, tick)| {
+                    motion
+                        .pump
+                        .entradas_do_replay(&mut replay, tick.unwrap_or(target));
+                    valores_dirigidos(motion, playhead)
+                })
                 .collect();
             // Borrow-splitting: the cook takes `&motion.gpu_cook` mutably while the
             // streams live in `motion.pump`, so the hand-off is materialised first.

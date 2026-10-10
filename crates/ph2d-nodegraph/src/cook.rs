@@ -205,6 +205,13 @@ impl Cook {
         &self.externals
     }
 
+    /// Put back a whole published set, revisions included — the scrub's replay of what was
+    /// published at a past tick (doc 128 §3.3). Nothing is rehashed: the revisions are the ones the
+    /// memo already keyed on when that tick was first cooked.
+    pub fn replace_externals(&mut self, all: crate::external::All) {
+        self.externals = all;
+    }
+
     pub fn new() -> Self {
         Self::default()
     }
@@ -398,8 +405,24 @@ impl Cook {
         // A remapper rewrites the clock of everything it pulls. An identity map
         // is dropped so its subtree shares the unscoped memo lane (a remapper
         // left at its defaults costs nothing).
-        let (in_playhead, in_key) = match scopes.get(&node) {
-            Some(map) if !map.is_identity() => (map.apply(playhead), push_scope(key, node, map)),
+        // ⭐ `Driven` (doc 128 §3.4): o `drive` dirigido por fio coze-se no relógio de FORA, antes
+        // de reescrever o de dentro.
+        let mut scope_map = scopes.get(&node).copied();
+        let mut drive_rev = None;
+        if let Some(map) = scope_map.as_mut()
+            && map.mode == crate::time::TimeMode::Driven
+            && let Some(&(src, src_port)) = graph
+                .param_sources(node)
+                .and_then(|s| s.get(crate::time::TIME_DRIVE_PARAM))
+        {
+            drive_rev = Some(self.cook_node(graph, ops, src, playhead, key, scopes, fans)?);
+            let out = self.cur_output(src, key, src_port as usize);
+            if let Some(v) = crate::param_source::driven_value(&out) {
+                map.drive = f64::from(v);
+            }
+        }
+        let (in_playhead, in_key) = match scope_map {
+            Some(map) if !map.is_identity() => (map.apply(playhead), push_scope(key, node, &map)),
             _ => (playhead, key),
         };
 
@@ -442,8 +465,14 @@ impl Cook {
         //     from a stale memo lane (or never cooked at all, since nothing else pulls it).
         let sources = graph.param_sources(node);
         let mut driven: BTreeMap<&str, f32> = BTreeMap::new();
+        if let Some(rev) = drive_rev {
+            input_revs.push(rev);
+        }
         if let Some(sources) = sources {
             for (name, (src, src_port)) in sources {
+                if drive_rev.is_some() && name == crate::time::TIME_DRIVE_PARAM {
+                    continue; // já resolvido no relógio de fora, acima
+                }
                 let rev = self.cook_node(graph, ops, *src, in_playhead, in_key, scopes, fans)?;
                 input_revs.push(rev);
                 if let Some(v) = crate::param_source::driven_value(&self.cur_output(

@@ -71,3 +71,26 @@ inclinação da Bandeira fica mais deitada — como o desenho esticado. Errado: 
 - `PH2D_ANIMACAO_SMOKE=6` fotografado (1930×1040): as duas seleccionadas e a caixa do grupo a envolver os
   cantos DESENHADOS. O arrasto não se fotografa (a tela virtual não aceita eventos) — é o passo do dono.
 - **O que fica aberto:** nada desta linha. Próxima onda ou integração: decisão do DONO.
+
+## 9. Integração no `main` (10/10, ordem do dono: «vc mesmo pode integrar ao main. Faça»)
+
+- **Uma linha só, ordem trivial.** merge-base == `main` (`2a925859d`): rebase vazio, **`--ff-only`**, zero
+  conflitos, zero marcadores. Os passos do `foundational-integrate.sh` corridos à mão: o script recusa
+  porque o primário tem ficheiros por registar FORA da `project-memory/` que NÃO são desta linha
+  (`crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs`, `docs/Painter/NewFeaturesWetPaint/` — de
+  outra janela; nenhum caminho no diff da linha, não tocados).
+- Codegen (`tool`/`node`/`app`/`panel-sync`): nada a regenerar. Staleness dos registos ✓.
+- Árvore combinada (== a ponta da linha): `CARGO_BUILD_WARNINGS=deny check --workspace --all-targets` ✓ ·
+  `clippy -D warnings` ✓ · `fmt` ✓ · `machete` ✓ · `check-standalone-optional` ✓ · `check-workflow-packages` ✓ ·
+  censos 12/12, 114/114 ✓ · `BASE=main nextest-impacted` **19030**, 3 ✗ de razão de relógio do
+  `ph2d-tool-painter` (`mask_gate_tests::…follows_the_footprint…`, `mask_tests::the_mask_stroke_cost…`,
+  `wetpaint::tests::a_wet_move_costs…`) a load ~24 — os três na tabela de `FLAKES_DE_CARGA.md`, 3/3 verdes
+  sozinhos, e a linha não toca máscara nem wet paint · `the_shell_only_shrinks`, tectos de LOC,
+  `ph2d-panel-registry-init` 124/124 ✓.
+- Números que somam: `PROJECT_SCHEMA` **187** (sem degrau nas seis ondas; tripla `(187, 13, 22)`), registos de
+  componentes da onda 3 (ecs 106 / render 107 / script 107), `DOC_VERSION` da timeline 18 → 20, nenhum ADR.
+- **Para as linhas vivas** (motion-value, UIUX, PainterWatercolor, components, MiroClone, Luz2D): o §4 de cada
+  handoff das ondas 1–6 é a lista do que o rebase delas encontra — em especial a porta única da lista que rola
+  (`widget::paint_dropdown_popover_scrolled` agora `pub(crate)` + gate `architecture_dropdown_lists_use_the_door`)
+  e `motion_state_demo_router.rs` (687/700, tecto SOMADO) com a motion-value.
+- Push: **não** — só por ordem do dono.

@@ -41,6 +41,15 @@ pub(crate) fn alvos_c0(formatos: [wgpu::TextureFormat; 3]) -> [Option<wgpu::Colo
     ]
 }
 
+/// ⭐ Os alvos da captura FINA dos opacos (W5a): os MESMOS da C0 sem a emissão (a saída do fragmento
+/// para ela é descartada).
+pub(crate) fn alvos_c0_opacos(
+    formatos: [wgpu::TextureFormat; 3],
+) -> [Option<wgpu::ColorTargetState>; 3] {
+    let [_, cobertura, tau] = alvos_c0(formatos);
+    [None, cobertura, tau]
+}
+
 struct Residente {
     buffer: wgpu::Buffer,
     cap: usize,
@@ -54,10 +63,16 @@ pub(crate) struct C0Sprites {
     amostra: wgpu::Sampler,
     amostra_exata: wgpu::Sampler,
     residente: Option<Residente>,
+    /// O rótulo do buffer das formas (o G5 conta a geometria por ele).
+    rotulo_do_buffer: &'static str,
 }
 
 impl C0Sprites {
-    pub(crate) fn novo(device: &wgpu::Device, formatos: [wgpu::TextureFormat; 3]) -> Self {
+    pub(crate) fn novo(
+        device: &wgpu::Device,
+        alvos: &[Option<wgpu::ColorTargetState>; 3],
+        rotulo_do_buffer: &'static str,
+    ) -> Self {
         let layout_formas = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c0 sprites"),
             entries: &[
@@ -126,7 +141,7 @@ impl C0Sprites {
                 module: &modulo,
                 entry_point: Some("fs"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &alvos_c0(formatos),
+                targets: alvos,
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -156,6 +171,7 @@ impl C0Sprites {
             amostra,
             amostra_exata,
             residente: None,
+            rotulo_do_buffer,
         }
     }
 
@@ -177,7 +193,7 @@ impl C0Sprites {
             let cap = formas.len().next_power_of_two();
             let buffer = crate::solver::criar_buffer(
                 device,
-                "luz2d/buf/sprites",
+                self.rotulo_do_buffer,
                 (cap * size_of::<FormaSprite>()) as u64,
                 wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             );

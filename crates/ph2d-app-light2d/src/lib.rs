@@ -21,7 +21,8 @@ pub mod smoke;
 mod vetor;
 
 pub use grade::{
-    DEGRAU_PADRAO, Degrau, fina_do_quadro, grade_do_quadro, regiao_da_janela, tela_para_mundo,
+    DEGRAU_PADRAO, Degrau, captura_do_quadro, fina_do_quadro, grade_do_quadro, regiao_da_janela,
+    tela_para_mundo,
 };
 pub use quadro::LuzDoQuadro;
 

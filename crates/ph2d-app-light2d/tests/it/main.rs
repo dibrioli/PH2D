@@ -2,6 +2,7 @@
 //! placa precisam de `PH2D_GPU=1` (exclusão na placa) e saltam sem adaptador.
 
 mod a_escada_da_sombra;
+mod a_face_acesa_da_parede;
 mod a_grade_fina;
 mod a_nitidez_da_luz;
 mod captura_do_vetor;
@@ -14,7 +15,9 @@ mod g6_ponto_neutro;
 mod medida_luz2d_w3;
 mod medida_luz2d_w4;
 mod medida_luz2d_w4b;
+mod medida_luz2d_w5a;
 mod o_gizmo_da_luz;
+mod o_oclusor_fino;
 mod paridade_luz_recebida;
 mod smoke_cena_1;
 mod smoke_cenas_w4;

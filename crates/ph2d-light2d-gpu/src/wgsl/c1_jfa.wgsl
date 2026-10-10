@@ -1,14 +1,19 @@
 // C1 — o campo de distância por JFA (Rong & Tan, 2006), em resolução reduzida (`fator` texels
 // finos por célula), mais um passo de 1 a fechar (JFA+1). Cada célula guarda a semente mais
 // próxima empacotada em r32uint (`x | y << 16`); VAZIO = nenhuma.
-// Sólido = cobertura > 0 (emissor ou oclusor, inteiro ou em parte): o que a marcha não salta.
+// Sólido = cobertura > 0 (emissor ou oclusor, inteiro ou em parte): o que a marcha não salta — na
+// captura das cascatas OU na captura FINA dos opacos (W5a: o campo serve as duas marchas, e um
+// oclusor mais fino que o texel grosso só existe na fina). A fina chega pela MARCA: `zera` e
+// `marca` (um fio por texel fino) deixam 1 em cada célula com cobertura fina; a `semente` lê-a.
 
 struct Jfa {
     fino: vec2<u32>,
     tamanho: vec2<u32>,
     fator: u32,
     salto: u32,
-    _pad: vec2<u32>,
+    // Texels da captura fina por texel das cascatas; 0 = sem ela (a semente não lê a marca).
+    escala: u32,
+    _pad: u32,
 }
 
 @group(0) @binding(0) var<uniform> jfa: Jfa;
@@ -33,7 +38,32 @@ fn semente(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
     }
+    // A marca da captura fina (ligada em `entrada`).
+    if jfa.escala > 0u && textureLoad(entrada, id.xy, 0).x != 0u {
+        s = id.x | (id.y << 16u);
+    }
     textureStore(saida, id.xy, vec4<u32>(s, 0u, 0u, 0u));
+}
+
+// ⭐ W5a: a marca a zeros (`saida` = a marca), por célula.
+@compute @workgroup_size(8, 8)
+fn zera(@builtin(global_invocation_id) id: vec3<u32>) {
+    if id.x >= jfa.tamanho.x || id.y >= jfa.tamanho.y {
+        return;
+    }
+    textureStore(saida, id.xy, vec4<u32>(0u));
+}
+
+// ⭐ W5a: um fio por texel da captura fina (`cobertura` = a fina, `saida` = a marca): 1 na célula de
+// quem tem cobertura.
+@compute @workgroup_size(8, 8)
+fn marca(@builtin(global_invocation_id) id: vec3<u32>) {
+    if any(id.xy >= jfa.fino * jfa.escala) {
+        return;
+    }
+    if textureLoad(cobertura, id.xy, 0).r > 0.0 {
+        textureStore(saida, id.xy / (jfa.fator * jfa.escala), vec4<u32>(1u));
+    }
 }
 
 @compute @workgroup_size(8, 8)

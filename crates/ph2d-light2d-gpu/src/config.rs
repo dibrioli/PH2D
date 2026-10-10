@@ -73,6 +73,9 @@ pub struct Bordas {
     /// A célula mistura o fim da penumbra (0 ou 1) com o meio dela: o JOELHO que a interpolação
     /// corta.
     pub joelho: bool,
+    /// ⭐ W5a (F2): a visibilidade das sondas CURVA mais que o limiar em volta da célula (a 2.ª
+    /// diferença): o vale de um oclusor mais estreito que a célula, com os cantos iguais.
+    pub curvatura: bool,
     /// O passe grosso marcha no passo FINO (senão no das cascatas).
     pub visibilidade_no_passo_fino: bool,
     /// Os raios fixos da abertura (nas sondas e no texel refinado).
@@ -107,6 +110,23 @@ pub struct Config {
     /// interpoladas mais a luz direta das lâmpadas — vive na grade fina ([`Self::grade_da_fluencia`]).
     pub fina: u32,
     pub refino: Refino,
+    /// ⭐ W5a (F1, F2): texels da captura onde a luz DIRETA marcha por texel das cascatas
+    /// (potência de 2). Com mais de 1, uma 2.ª captura só dos OPACOS (cobertura e τ dentro): a das
+    /// cascatas arredonda o canto do oclusor em ½–¾ do texel dela e perde o oclusor mais fino que
+    /// ~1 texel. 1 = a das cascatas.
+    pub captura: u32,
+    /// ⭐ W5a (F1): o passo da marcha da luz DIRETA, em texels FINOS (× o `passo_perto`), e a fração
+    /// dele onde a captura tem cobertura (a menos de um texel de uma borda — o raio que roça o canto
+    /// não o salta).
+    pub passo_direto: f32,
+    pub passo_na_borda: f32,
+    /// ⭐ W5a (F3): o INTERIOR de um opaco recebe a fluência do texel fino exterior mais próximo — um
+    /// JFA do complemento em células de `n` texels finos (potência de 2); `None` = o interior fica 0
+    /// e a bilinear do receptor mistura-o na face acesa.
+    pub preenchimento: Option<u32>,
+    /// O preenchimento corre na grade fina INTEIRA (senão só na região da janela: o interior de um
+    /// opaco cortado pela borda dela acha o exterior mais próximo só do lado de dentro).
+    pub preenche_a_grade_inteira: bool,
 }
 
 /// O refino por omissão — MEDIDO (rodada `medida_luz2d_w4b`, RTX 5060 Ti, 1920×1080, grade fina de
@@ -128,13 +148,34 @@ pub struct Config {
 ///
 /// Resultado: Low 0,163 · 0,105 · 0,085 · 0,139 · 0,182 px · Medium 0,176 · 0,123 · 0,079 · 0,122 ·
 /// 0,170 a 0,69 · 0,67 ms por lâmpada (o exato em todo texel: a mesma régua a 1,22 · 1,11 ms).
+///
+/// ⭐ W5a — a `curvatura` (F2): o vale de um oclusor de 5 cm mais estreito que a célula das sondas
+/// saía com o fundo a 0,425 em vez de 0,168 (Low, a lâmpada pequena); com ela 0,172, a custo ~0.
 pub const REFINO_PADRAO: Refino = Refino::Bordas(Bordas {
     limiar: 0.1,
     joelho: true,
+    curvatura: true,
     visibilidade_no_passo_fino: true,
     raios: 4,
     bissecoes: 5,
 });
+
+/// O passo da luz direta por omissão (W5a) — MEDIDO (rodada `medida_luz2d_w5a`, 1920×1080, nível
+/// Baixo; tabela no handoff W5a): o DEGRAU da sombra é do passo (com a captura fina e o passo de 1
+/// texel fino em tudo, o contorno de 2 % ia a 0,237 px e o de 10 % a 0,194); o passo de ½ texel em
+/// tudo cura-o (0,168 · 0,103) a +75 % por lâmpada; o de ½ só JUNTO À BORDA, a +7 %; ¼ junto à borda
+/// não melhora (0,164 · 0,103) e custa +28 %.
+pub const PASSO_DIRETO_PADRAO: f32 = 1.0;
+/// Ver [`PASSO_DIRETO_PADRAO`].
+pub const PASSO_NA_BORDA_PADRAO: f32 = 0.5;
+
+/// O preenchimento por omissão (W5a, F3) — MEDIDO: a face acesa da parede da cena 1 sai 0,983 (Low) ·
+/// 0,992 do gabarito com células de 1, 2, 4 ou 8 (sem ele 0,446: a linha escura); o custo do JFA na
+/// grade inteira 0,29 (célula 2) · 0,17 (4) · 0,19 (8) ms, só na região 0,05. A célula serve só o
+/// interior FUNDO: junto à borda o texel acha o ponto de fronteira mais perto numa janela de 5×5.
+/// Corre na grade INTEIRA ([`Config::preenche_a_grade_inteira`]): só na região, o interior de um
+/// opaco cortado pela borda da janela acharia o exterior só do lado de dentro e mudaria de cor no pan.
+pub const PREENCHIMENTO_PADRAO: Option<u32> = Some(4);
 
 /// Onde a cascata `i` começa, em múltiplos de `intervalo_c0`: `(4^i − 1)/3`.
 fn inicio_relativo(i: u32) -> f64 {
@@ -176,7 +217,55 @@ impl Config {
             armazenamento: Precisao::F16,
             fina: 1,
             refino: REFINO_PADRAO,
+            captura: 1,
+            passo_direto: PASSO_DIRETO_PADRAO,
+            passo_na_borda: PASSO_NA_BORDA_PADRAO,
+            preenchimento: PREENCHIMENTO_PADRAO,
+            preenche_a_grade_inteira: true,
         }
+    }
+
+    /// ⭐ Texels da captura onde a luz direta marcha por texel das cascatas ([`Self::captura`]).
+    #[must_use]
+    pub fn escala_da_captura(&self) -> u32 {
+        self.captura
+    }
+
+    /// A luz direta marcha numa captura PRÓPRIA (mais fina que a das cascatas)?
+    #[must_use]
+    pub fn usa_captura_fina(&self) -> bool {
+        self.escala_da_captura() > 1
+    }
+
+    /// A grade da captura fina (a efetiva, com o texel ÷ [`Self::escala_da_captura`] e a MESMA
+    /// origem).
+    #[must_use]
+    pub fn grade_da_captura(&self) -> Grade {
+        let g = self.grade_efetiva();
+        let e = self.escala_da_captura();
+        Grade {
+            origem_m: g.origem_m,
+            texel_m: g.texel_m / f64::from(e),
+            largura: g.largura * e,
+            altura: g.altura * e,
+        }
+    }
+
+    /// As células do JFA do preenchimento (F3) sobre a grade fina, e os saltos dele (do maior ao 1,
+    /// mais um de 1 a fechar).
+    #[must_use]
+    pub fn grade_do_preenchimento(&self) -> Option<([u32; 2], Vec<u32>)> {
+        let f = self.preenchimento?;
+        let g = self.grade_da_fluencia();
+        let celulas = [g.largura.div_ceil(f), g.altura.div_ceil(f)];
+        let mut k = celulas[0].max(celulas[1]).next_power_of_two() / 2;
+        let mut saltos = Vec::new();
+        while k >= 1 {
+            saltos.push(k);
+            k /= 2;
+        }
+        saltos.push(1);
+        Some((celulas, saltos))
     }
 
     /// O padrão com aritmética f16 onde o dispositivo tem `SHADER_F16` (o caminho f32 é o mesmo
@@ -258,6 +347,25 @@ impl Config {
         if !cfg.fina.is_power_of_two() {
             return Err(ErroSolver::ConfigInvalida(
                 "fina tem de ser uma potência de 2",
+            ));
+        }
+        if !(cfg.passo_direto.is_finite()
+            && cfg.passo_direto > 0.0
+            && cfg.passo_na_borda.is_finite()
+            && cfg.passo_na_borda > 0.0)
+        {
+            return Err(ErroSolver::ConfigInvalida(
+                "passo_direto e passo_na_borda têm de ser finitos e > 0",
+            ));
+        }
+        if !cfg.captura.is_power_of_two() {
+            return Err(ErroSolver::ConfigInvalida(
+                "captura tem de ser uma potência de 2",
+            ));
+        }
+        if cfg.preenchimento.is_some_and(|f| !f.is_power_of_two()) {
+            return Err(ErroSolver::ConfigInvalida(
+                "preenchimento: a célula tem de ser uma potência de 2",
             ));
         }
         if let Refino::Bordas(b) = cfg.refino

@@ -3,70 +3,78 @@
 
 use super::*;
 
-impl Solver {
-    fn subir_geometria(&mut self, gpu: &GpuContext, formas: &[Forma], vertices: &[[f32; 2]]) {
-        let device = &gpu.device;
-        let precisa = |cap: usize, n: usize| cap < n.max(1);
-        let refazer = self.geometria.as_ref().is_none_or(|g| {
-            precisa(g.cap_formas, formas.len()) || precisa(g.cap_vertices, vertices.len())
+/// Sobe `formas` e `vertices` para `geo` — cresce por potências de dois, nunca encolhe —, com os
+/// rótulos `nomes` (o G5 conta a geometria por eles). A da C0 e a da captura fina (W5a).
+pub(super) fn subir_geometria(
+    gpu: &GpuContext,
+    (layout, uni): (&wgpu::BindGroupLayout, &wgpu::Buffer),
+    geo: &mut Option<Geometria>,
+    nomes: [&'static str; 2],
+    formas: &[Forma],
+    vertices: &[[f32; 2]],
+) {
+    let device = &gpu.device;
+    let precisa = |cap: usize, n: usize| cap < n.max(1);
+    let refazer = geo.as_ref().is_none_or(|g| {
+        precisa(g.cap_formas, formas.len()) || precisa(g.cap_vertices, vertices.len())
+    });
+    if refazer {
+        let (cf, cv) = geo
+            .as_ref()
+            .map_or((1, 1), |g| (g.cap_formas, g.cap_vertices));
+        let cap_formas = cf.max(formas.len().next_power_of_two());
+        let cap_vertices = cv.max(vertices.len().next_power_of_two());
+        let usos = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
+        let b_formas = criar_buffer(
+            device,
+            nomes[0],
+            (cap_formas * size_of::<Forma>()) as u64,
+            usos,
+        );
+        let b_vertices = criar_buffer(
+            device,
+            nomes[1],
+            (cap_vertices * size_of::<[f32; 2]>()) as u64,
+            usos,
+        );
+        let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("luz2d c0"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uni.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: b_formas.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: b_vertices.as_entire_binding(),
+                },
+            ],
         });
-        if refazer {
-            let (cf, cv) = self
-                .geometria
-                .as_ref()
-                .map_or((1, 1), |g| (g.cap_formas, g.cap_vertices));
-            let cap_formas = cf.max(formas.len().next_power_of_two());
-            let cap_vertices = cv.max(vertices.len().next_power_of_two());
-            let usos = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
-            let b_formas = criar_buffer(
-                device,
-                "luz2d/buf/formas",
-                (cap_formas * size_of::<Forma>()) as u64,
-                usos,
-            );
-            let b_vertices = criar_buffer(
-                device,
-                "luz2d/buf/vertices",
-                (cap_vertices * size_of::<[f32; 2]>()) as u64,
-                usos,
-            );
-            let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("luz2d c0"),
-                layout: &self.c0_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.uni_c0.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: b_formas.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: b_vertices.as_entire_binding(),
-                    },
-                ],
-            });
-            self.geometria = Some(Geometria {
-                formas: b_formas,
-                vertices: b_vertices,
-                cap_formas,
-                cap_vertices,
-                grupo,
-            });
-        }
-        let g = self.geometria.as_ref().expect("geometria criada acima");
-        if !formas.is_empty() {
-            gpu.queue
-                .write_buffer(&g.formas, 0, bytemuck::cast_slice(formas));
-        }
-        if !vertices.is_empty() {
-            gpu.queue
-                .write_buffer(&g.vertices, 0, bytemuck::cast_slice(vertices));
-        }
+        *geo = Some(Geometria {
+            formas: b_formas,
+            vertices: b_vertices,
+            cap_formas,
+            cap_vertices,
+            grupo,
+        });
     }
+    let g = geo.as_ref().expect("geometria criada acima");
+    if !formas.is_empty() {
+        gpu.queue
+            .write_buffer(&g.formas, 0, bytemuck::cast_slice(formas));
+    }
+    if !vertices.is_empty() {
+        gpu.queue
+            .write_buffer(&g.vertices, 0, bytemuck::cast_slice(vertices));
+    }
+}
 
+impl Solver {
     /// Grava um quadro inteiro em `enc` (as subidas vão pela fila, antes do submit de `enc`).
     pub fn gravar(
         &mut self,
@@ -93,14 +101,27 @@ impl Solver {
             0,
             &crate::direta::bytes_na_grade(cena, &diretas, &self.cfg.grade),
         );
-        self.subir_geometria(gpu, &cap.formas, &cap.vertices);
+        subir_geometria(
+            gpu,
+            (&self.c0_layout, &self.uni_c0),
+            &mut self.geometria,
+            ["luz2d/buf/formas", "luz2d/buf/vertices"],
+            &cap.formas,
+            &cap.vertices,
+        );
         let (formas_sprite, lotes) = captura_sprite::na_grade(sprites, &self.cfg.grade);
         let lotes = if formas_sprite.is_empty() {
             Vec::new()
         } else {
             let formatos = self.formatos_c0;
             self.c0_sprites
-                .get_or_insert_with(|| solver_sprite::C0Sprites::novo(&gpu.device, formatos))
+                .get_or_insert_with(|| {
+                    solver_sprite::C0Sprites::novo(
+                        &gpu.device,
+                        &solver_sprite::alvos_c0(formatos),
+                        "luz2d/buf/sprites",
+                    )
+                })
                 .preparar(gpu, &self.uni_c0, &formas_sprite, &lotes, &sprites.texturas)
         };
 
@@ -182,6 +203,25 @@ impl Solver {
                 s.desenhar(&mut p, &lotes);
             }
         }
+        // ⭐ W5a: a captura FINA dos opacos (a luz direta marcha nela).
+        let mut bytes_finos = 0;
+        if let Some(f) = &mut self.fina {
+            bytes_finos = f.gravar(
+                gpu,
+                enc,
+                &self.c0_layout,
+                cena,
+                sprites,
+                self.cfg.grade_da_captura(),
+                self.tempos.as_ref(),
+            );
+        } else if let Some(t) = &self.tempos {
+            // Sem ela, um passe vazio escreve os carimbos dela (valem 0; nenhum fica por escrever).
+            enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("luz2d C0 captura fina (vazia)"),
+                timestamp_writes: Some(t.escrita_compute(tempos::C0_FINA)),
+            });
+        }
         {
             let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("luz2d C1 campo"),
@@ -189,6 +229,9 @@ impl Solver {
             });
             let [w, h] = self.cfg.grade_jfa();
             let grupos = [w.div_ceil(8), h.div_ceil(8)];
+            if let Some(f) = &self.fina {
+                f.marcar(&mut p);
+            }
             p.set_pipeline(&self.jfa_semente);
             p.set_bind_group(0, &self.jfa_grupos[0], &[]);
             p.dispatch_workgroups(grupos[0], grupos[1], 1);
@@ -220,7 +263,9 @@ impl Solver {
         if let Some(t) = &self.tempos {
             t.resolver(enc);
         }
-        cap.relatorio
+        let mut r = cap.relatorio;
+        r.bytes_da_geometria += bytes_finos;
+        r
     }
 
     /// Move a grade no MUNDO (pan, oitava de zoom) SEM realocar: as dimensões ficam, e a origem e o

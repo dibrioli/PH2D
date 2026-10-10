@@ -1,19 +1,22 @@
 //! Carimbos `TIMESTAMP_QUERY` por passe: C0, C1 (todos os saltos do JFA num passe), os dois da
-//! luz direta (C3) e cada cascata.
+//! luz direta (C3), a captura fina e o preenchimento (W5a) e cada cascata.
 
-/// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina e as `n` cascatas.
+/// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina, C0 fina, C3 preenche
+/// e as `n` cascatas.
 pub(crate) fn n_carimbos(n_cascatas: u32) -> u32 {
-    2 * (4 + n_cascatas)
+    2 * (6 + n_cascatas)
 }
 
 pub(crate) const C0: u32 = 0;
 pub(crate) const C1: u32 = 2;
 pub(crate) const C3_VISIBILIDADE: u32 = 4;
 pub(crate) const C3_FINA: u32 = 6;
+pub(crate) const C0_FINA: u32 = 8;
+pub(crate) const C3_PREENCHE: u32 = 10;
 
 /// O par de carimbos da cascata `nivel`.
 pub(crate) fn da_cascata(nivel: u32) -> u32 {
-    8 + 2 * nivel
+    12 + 2 * nivel
 }
 
 /// Milissegundos de placa do último quadro, por passe.
@@ -27,6 +30,10 @@ pub struct TemposMs {
     pub c3_visibilidade: f64,
     /// ⭐ C3: a grade fina (as cascatas interpoladas + a luz direta).
     pub c3_fina: f64,
+    /// ⭐ W5a: a captura fina dos opacos (0 sem ela).
+    pub c0_fina: f64,
+    /// ⭐ W5a (F3): o JFA do complemento (0 sem o preenchimento).
+    pub c3_preenche: f64,
 }
 
 impl TemposMs {
@@ -43,14 +50,20 @@ impl TemposMs {
 
     #[must_use]
     pub fn total(&self) -> f64 {
-        self.c0 + self.rc() + self.c3_visibilidade + self.c3_fina
+        self.c0 + self.rc() + self.c3_visibilidade + self.c3_fina + self.c0_fina + self.c3_preenche
     }
 
-    /// ⭐ A parte que segue a célula do NÍVEL (`1/célula²`): tudo menos a grade fina, que tem o
-    /// mesmo tamanho em todo nível (o governador prevê a subida por ela).
+    /// ⭐ A parte do tamanho da grade FINA, o mesmo em todo nível: ela, a captura fina e o
+    /// preenchimento (o governador prevê a subida sem a multiplicar).
+    #[must_use]
+    pub fn fixo(&self) -> f64 {
+        self.c3_fina + self.c0_fina + self.c3_preenche
+    }
+
+    /// ⭐ A parte que segue a célula do NÍVEL (`1/célula²`): tudo menos o [`Self::fixo`].
     #[must_use]
     pub fn por_nivel(&self) -> f64 {
-        self.total() - self.c3_fina
+        self.total() - self.fixo()
     }
 }
 
@@ -138,6 +151,8 @@ impl Tempos {
             c2: (0..self.n).map(|i| ms(da_cascata(i))).collect(),
             c3_visibilidade: ms(C3_VISIBILIDADE),
             c3_fina: ms(C3_FINA),
+            c0_fina: ms(C0_FINA),
+            c3_preenche: ms(C3_PREENCHE),
         }
     }
 

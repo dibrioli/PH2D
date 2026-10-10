@@ -16,7 +16,9 @@ use ph2d_light2d_gpu::{Config, ErroSolver, Grade, Motivo, Quem, RelatorioC0, Sol
 use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
-use crate::grade::{DEGRAU_PADRAO, Degrau, fina_do_quadro, grade_do_quadro, tela_para_mundo};
+use crate::grade::{
+    DEGRAU_PADRAO, Degrau, captura_do_quadro, fina_do_quadro, grade_do_quadro, tela_para_mundo,
+};
 
 struct Resolvido {
     solver: Solver,
@@ -33,6 +35,8 @@ pub struct LuzDoQuadro {
     grade: Option<Grade>,
     /// ⭐ Texels finos por texel da grade (a luz direta, W4b).
     fina: u32,
+    /// ⭐ Texels da captura fina dos opacos por texel da grade (W5a).
+    captura: u32,
     mundo_para_tela: Affine,
     alvo_px: (u32, u32),
     resolvido: Option<Resolvido>,
@@ -78,6 +82,7 @@ impl LuzDoQuadro {
             sem_luz: BTreeSet::new(),
             grade: None,
             fina: 1,
+            captura: 1,
             mundo_para_tela: Affine::IDENTITY,
             alvo_px: (0, 0),
             resolvido: None,
@@ -114,6 +119,7 @@ impl LuzDoQuadro {
             grade_do_quadro(mundo_para_tela, alvo_px, self.degrau)
         };
         self.fina = fina_do_quadro(mundo_para_tela, self.degrau);
+        self.captura = captura_do_quadro(mundo_para_tela, self.degrau);
         self.sem_luz.clear();
         if self.grade.is_some() {
             self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
@@ -152,7 +158,9 @@ impl LuzDoQuadro {
         xforms: &ph2d_vec_scene::VecXforms,
     ) {
         if let Some(g) = self.grade {
-            let fator = self.degrau.vetor_px_por_texel;
+            // ⭐ Na resolução da captura FINA dos opacos (W5a): a C0 das cascatas lê-a também (cada
+            // subamostra cai num píxel cuja área já é a cobertura).
+            let fator = self.degrau.vetor_px_por_texel * self.captura;
             self.vetores
                 .desenhar(gpu, (g, fator), &self.cena, doc, xforms);
         }
@@ -234,10 +242,11 @@ impl LuzDoQuadro {
         let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
             return;
         };
-        let fina = self.fina;
+        let (fina, captura) = (self.fina, self.captura);
         let mesmas = self.resolvido.as_ref().is_some_and(|r| {
             let c = r.solver.config();
-            (c.grade.largura, c.grade.altura, c.fina) == (g.largura, g.altura, fina)
+            (c.grade.largura, c.grade.altura, c.fina, c.captura)
+                == (g.largura, g.altura, fina, captura)
         });
         let pronto = if mesmas {
             let r = self.resolvido.as_mut().expect("verificado acima");
@@ -246,6 +255,7 @@ impl LuzDoQuadro {
             self.resolvido = None;
             let cfg = Config {
                 fina,
+                captura,
                 ..Config::padrao_para(&gpu.device, g)
             };
             Solver::novo(gpu, cfg).map(|solver| {
@@ -299,7 +309,7 @@ impl LuzDoQuadro {
             self.leituras += 1;
             let custo = crate::qualidade::Custo {
                 por_nivel: t.por_nivel(),
-                fixo: t.c3_fina,
+                fixo: t.fixo(),
             };
             self.governador.ler(custo, p.nivel);
         }

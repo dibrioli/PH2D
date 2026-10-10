@@ -12,9 +12,52 @@ pub(crate) const SEMENTES: [usize; 2] = [3, 4];
 pub(crate) const CASCATAS: [usize; 2] = [5, 6];
 /// ⭐ C3 (W4b): a fluência FINAL, na grade fina — a que os receptores leem.
 pub(crate) const FLUENCIA: usize = 7;
-/// ⭐ C3: a visibilidade de cada lâmpada direta nas sondas da c0 (8 × u8); só existe com
-/// [`Config::usa_visibilidade`].
-pub(crate) const VISIBILIDADE: usize = 8;
+
+/// ⭐ Os índices das texturas que só existem com certas configurações — depois das fixas, nesta
+/// ordem.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Opcionais {
+    /// C3: a visibilidade de cada lâmpada direta nas sondas da c0 (8 × u8), com
+    /// [`Config::usa_visibilidade`].
+    pub visibilidade: Option<usize>,
+    /// ⭐ W5a (F1, F2): a captura FINA dos opacos `[cobertura, τ dentro]`, com
+    /// [`Config::usa_captura_fina`].
+    pub captura: Option<[usize; 2]>,
+    /// ⭐ W5a: a MARCA, por célula do campo, de cobertura na captura fina (a semente lê-a).
+    pub marca: Option<usize>,
+    /// ⭐ W5a (F3): o par do JFA do complemento (o preenchimento do interior dos opacos).
+    pub preenche: Option<[usize; 2]>,
+}
+
+impl Opcionais {
+    pub(crate) fn de(cfg: &Config) -> Self {
+        let mut i = FLUENCIA + 1;
+        let mut proxima = |n: usize| {
+            let k = i;
+            i += n;
+            k
+        };
+        Self {
+            visibilidade: cfg.usa_visibilidade().then(|| proxima(1)),
+            captura: cfg.usa_captura_fina().then(|| {
+                let k = proxima(2);
+                [k, k + 1]
+            }),
+            marca: cfg.usa_captura_fina().then(|| proxima(1)),
+            preenche: cfg.preenchimento.map(|_| {
+                let k = proxima(2);
+                [k, k + 1]
+            }),
+        }
+    }
+
+    /// A textura onde o JFA do preenchimento acaba (a semente escreve a 1.ª; o salto `j` lê `j % 2`).
+    pub(crate) fn preenche_final(&self, cfg: &Config) -> Option<usize> {
+        let p = self.preenche?;
+        let (_, saltos) = cfg.grade_do_preenchimento()?;
+        Some(p[saltos.len() % 2])
+    }
+}
 
 /// O passo entre as entradas de um buffer de uniformes por passe (o alinhamento de offset que o
 /// WebGPU garante, `min_uniform_buffer_offset_alignment`).
@@ -135,13 +178,44 @@ impl PassList {
             },
         ];
         let mut texturas = texturas;
-        if cfg.usa_visibilidade() {
+        let op = Opcionais::de(cfg);
+        if op.visibilidade.is_some() {
             texturas.push(Textura {
                 nome: "luz2d/tex/visibilidade",
                 formato: wgpu::TextureFormat::Rg32Uint,
                 tamanho: fino,
                 usos: T::STORAGE_BINDING | amostrada,
             });
+        }
+        if op.captura.is_some() {
+            let gc = cfg.grade_da_captura();
+            for nome in ["luz2d/tex/cobertura_fina", "luz2d/tex/tau_dentro_fina"] {
+                texturas.push(Textura {
+                    nome,
+                    formato: wgpu::TextureFormat::R16Float,
+                    tamanho: [gc.largura, gc.altura],
+                    usos: T::RENDER_ATTACHMENT | amostrada,
+                });
+            }
+        }
+        if op.marca.is_some() {
+            texturas.push(Textura {
+                nome: "luz2d/tex/marca_fina",
+                formato: wgpu::TextureFormat::R32Uint,
+                tamanho: jfa,
+                usos: T::STORAGE_BINDING | amostrada,
+            });
+        }
+        let preenche = cfg.grade_do_preenchimento();
+        if let Some((celulas, _)) = &preenche {
+            for nome in ["luz2d/tex/preenche_a", "luz2d/tex/preenche_b"] {
+                texturas.push(Textura {
+                    nome,
+                    formato: wgpu::TextureFormat::R32Uint,
+                    tamanho: *celulas,
+                    usos: T::STORAGE_BINDING | amostrada,
+                });
+            }
         }
 
         use wgpu::BufferUsages as B;
@@ -175,6 +249,20 @@ impl PassList {
                 usos: uniforme,
             },
         ];
+        if op.captura.is_some() {
+            buffers.push(Buffer {
+                nome: "luz2d/buf/c0_fina",
+                bytes: 16,
+                usos: uniforme,
+            });
+        }
+        if let Some((_, saltos)) = &preenche {
+            buffers.push(Buffer {
+                nome: "luz2d/buf/preenche",
+                bytes: PASSO_UNIFORME * (saltos.len() as u64 + 1),
+                usos: uniforme,
+            });
+        }
         if com_tempos {
             let bytes = 8 * u64::from(crate::tempos::n_carimbos(n));
             buffers.push(Buffer {
@@ -189,18 +277,35 @@ impl PassList {
             });
         }
 
-        let mut passes = vec![
-            Passe {
-                nome: "C0 captura".into(),
+        let mut passes = vec![Passe {
+            nome: "C0 captura".into(),
+            le: vec![],
+            escreve: vec![EMISSAO, COBERTURA, TAU_DENTRO],
+        }];
+        let mut le_sementes = vec![COBERTURA];
+        if let (Some(c), Some(m)) = (op.captura, op.marca) {
+            passes.push(Passe {
+                nome: "C0 captura fina".into(),
                 le: vec![],
-                escreve: vec![EMISSAO, COBERTURA, TAU_DENTRO],
-            },
-            Passe {
-                nome: "C1 sementes".into(),
-                le: vec![COBERTURA],
-                escreve: vec![SEMENTES[0]],
-            },
-        ];
+                escreve: c.to_vec(),
+            });
+            passes.push(Passe {
+                nome: "C1 zera a marca".into(),
+                le: vec![],
+                escreve: vec![m],
+            });
+            passes.push(Passe {
+                nome: "C1 marca fina".into(),
+                le: vec![c[0]],
+                escreve: vec![m],
+            });
+            le_sementes.push(m);
+        }
+        passes.push(Passe {
+            nome: "C1 sementes".into(),
+            le: le_sementes,
+            escreve: vec![SEMENTES[0]],
+        });
         for (j, k) in saltos.iter().enumerate() {
             passes.push(Passe {
                 nome: format!("C1 salto {k}"),
@@ -221,17 +326,36 @@ impl PassList {
                 escreve: vec![saida],
             });
         }
-        // ⭐ C3: a visibilidade nas sondas da c0 e a grade fina (c0 interpolada + a luz direta).
-        let cena = [EMISSAO, COBERTURA, TAU_DENTRO, sementes_finais];
+        // ⭐ C3: a visibilidade nas sondas da c0 e a grade fina (c0 interpolada + a luz direta). A
+        // luz direta marcha na captura fina quando há (W5a) e não lê a emissão (só a transmissão).
+        let [cob, tau] = op.captura.unwrap_or([COBERTURA, TAU_DENTRO]);
+        let cena = [cob, tau, sementes_finais];
         let c0 = Self::indice_da_c0(cfg);
         let mut le_fina = vec![c0];
-        if cfg.usa_visibilidade() {
+        if let Some(v) = op.visibilidade {
             passes.push(Passe {
                 nome: "C3 visibilidade".into(),
                 le: cena.to_vec(),
-                escreve: vec![VISIBILIDADE],
+                escreve: vec![v],
             });
-            le_fina.push(VISIBILIDADE);
+            le_fina.push(v);
+        }
+        // ⭐ W5a (F3): o JFA do complemento — cada célula do interior de um opaco aponta o texel
+        // fino exterior mais próximo.
+        if let (Some(p), Some((_, saltos))) = (op.preenche, &preenche) {
+            passes.push(Passe {
+                nome: "C3 preenche sementes".into(),
+                le: vec![cob, tau],
+                escreve: vec![p[0]],
+            });
+            for (j, k) in saltos.iter().enumerate() {
+                passes.push(Passe {
+                    nome: format!("C3 preenche salto {k}"),
+                    le: vec![p[j % 2]],
+                    escreve: vec![p[(j + 1) % 2]],
+                });
+            }
+            le_fina.push(p[saltos.len() % 2]);
         }
         le_fina.extend(cena);
         passes.push(Passe {

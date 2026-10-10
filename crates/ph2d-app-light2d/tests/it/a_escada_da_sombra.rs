@@ -173,10 +173,11 @@ pub(crate) fn degraus() -> [(&'static str, Degrau); 3] {
 /// 0,420; sem o joelho, o de 2 % no Low 0,352 (as manchas da foto); com a visibilidade das sondas no
 /// passo grosso, Medium 0,258 · 0,307 · 0,221.
 const TETO_DO_DEGRAU_PX: f64 = 0.21;
-/// O deslocamento da borda inteira, em texels da grade GROSSA: a captura arredonda o canto do
-/// oclusor (medido 0,57–0,87 texel conforme o contorno e o nível — o maior é o de 2 % no High; a
-/// marcha mais fina só tira ~16 % dele — ABERTO da W4b).
-const TETO_DA_MEDIA_EM_TEXELS: f64 = 0.95;
+/// ⭐ F1 (W5a) — o deslocamento da borda inteira, em PÍXEIS DE TELA: o MEDIDO + 10 % (rodada
+/// `medida_luz2d_w5a`, a captura fina dos opacos de ½ px): o pior é o contorno de 2 % no High, −0,949
+/// px (Low −0,938 · −0,821 · −0,785 · −0,657 · −0,514). Na W4b a captura das cascatas arredondava o
+/// canto do oclusor: Low −4,2 · Medium −2,1 · High −1,2 px no contorno de 50 % (teto 0,95 texel GROSSO).
+const TETO_DA_MEDIA_PX: f64 = 1.05;
 
 /// ⭐⭐⭐ **GATE — a sombra nítida não tem ESCADA** em nenhum nível (os três contornos da penumbra,
 /// a cada píxel de tela), e a borda não sai do lugar mais do que a captura explica.
@@ -211,10 +212,9 @@ fn a_sombra_nitida_nao_tem_escada() {
                 e.degrau_px
             );
             assert!(
-                e.media_px.abs() <= TETO_DA_MEDIA_EM_TEXELS * texel_px,
-                "{nome}, contorno de {nivel}: a borda saiu do lugar {:.2} px (teto {TETO_DA_MEDIA_EM_TEXELS} texel = {:.2} px)",
-                e.media_px,
-                TETO_DA_MEDIA_EM_TEXELS * texel_px
+                e.media_px.abs() <= TETO_DA_MEDIA_PX,
+                "{nome}, contorno de {nivel}: a borda saiu do lugar {:.2} px (teto {TETO_DA_MEDIA_PX} px)",
+                e.media_px
             );
         }
     }
@@ -234,19 +234,23 @@ fn medida_causa_do_desvio() {
         ph2d_light2d_ecs::coleta::cena_de_luz(&com),
         ph2d_light2d_ecs::coleta::cena_de_luz(&sem),
     );
-    for (nome, degrau) in degraus() {
+    for (nome, degrau) in degraus().into_iter().take(2) {
         let g = ph2d_app_light2d::grade_do_quadro(afim(), FHD, degrau).expect("grade");
         let fina = ph2d_app_light2d::fina_do_quadro(afim(), degrau);
-        for (passo, refino) in [
-            (1.0_f32, ph2d_light2d_gpu::REFINO_PADRAO),
-            (0.25, ph2d_light2d_gpu::REFINO_PADRAO),
-            (0.125, ph2d_light2d_gpu::REFINO_PADRAO),
-            (1.0, ph2d_light2d_gpu::Refino::Tudo),
-            (0.25, ph2d_light2d_gpu::Refino::Tudo),
+        // (passo perto, refino, captura por texel fino)
+        for (passo, refino, por) in [
+            (1.0_f32, ph2d_light2d_gpu::REFINO_PADRAO, 1),
+            (0.5, ph2d_light2d_gpu::REFINO_PADRAO, 1),
+            (1.0, ph2d_light2d_gpu::Refino::Tudo, 1),
+            (0.5, ph2d_light2d_gpu::Refino::Tudo, 1),
+            (1.0, ph2d_light2d_gpu::REFINO_PADRAO, 2),
+            (2.0, ph2d_light2d_gpu::REFINO_PADRAO, 2),
+            (2.0, ph2d_light2d_gpu::Refino::Tudo, 2),
         ] {
             let cfg = ph2d_light2d_gpu::Config {
                 passo_perto: passo,
                 fina,
+                captura: fina * por,
                 refino,
                 ..ph2d_light2d_gpu::Config::padrao_para(&gpu.device, g)
             };
@@ -257,7 +261,9 @@ fn medida_causa_do_desvio() {
             };
             let e = escada_de(&flu(&cc), &flu(&cs));
             eprintln!(
-                "causa · {nome} · passo {passo} · {refino:?}: média {} · degrau {} px (2 · 10 · 50 · 90 · 98 %)",
+                "causa · {nome} · captura ×{} · passo {passo} · {}: média {} · degrau {} px (2 · 10 · 50 · 90 · 98 %)",
+                cfg.captura,
+                if matches!(refino, ph2d_light2d_gpu::Refino::Tudo) { "tudo" } else { "bordas" },
                 por_contorno(&e, |x| x.media_px),
                 por_contorno(&e, |x| x.degrau_px)
             );

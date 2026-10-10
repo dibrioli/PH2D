@@ -4,7 +4,7 @@
 //! gabarito (paridade de cruzamentos; disco: `|p − c| < r`), e o seu material nos texels que POSSUI
 //! (cobertura ≥ ½). O que não possui texel nenhum sai no [`RelatorioC0`] — nunca some em silêncio:
 //! o `Ponto` (`tamanho_m = 0`) é o caminho analítico C3 (W5); uma forma menor que meio texel, ou
-//! fora da grade, não existe para a C0.
+//! fora da grade, não existe para a C0 das cascatas (W5a: a captura fina dos opacos vê-a).
 
 use bytemuck::{Pod, Zeroable};
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
@@ -40,8 +40,9 @@ pub enum Quem {
 pub enum Motivo {
     /// `Emissor::Ponto`: sem área, não cabe num texel. É o caminho analítico C3 (W5).
     PontoSemArea,
-    /// A forma não POSSUI texel nenhum (cobertura própria ≥ ½ em 8×8 subamostras): a marcha, que
-    /// diz «dentro» onde a cobertura interpolada passa de ½, nunca a vê.
+    /// A forma não POSSUI texel nenhum (cobertura própria ≥ ½ em 8×8 subamostras): a marcha das
+    /// CASCATAS, que diz «dentro» onde a cobertura interpolada passa de ½, nunca a vê. (W5a: a luz
+    /// direta, sim — marcha na captura fina dos opacos.)
     MenorQueOTexel,
     /// A forma está toda fora da grade (a margem é escolha de quem monta a grade).
     ForaDaGrade,
@@ -267,6 +268,44 @@ pub fn o_que_fica_fora(cena: &CenaDeLuz, g: &Grade) -> RelatorioC0 {
 pub(crate) fn capturar(cena: &CenaDeLuz, g: &Grade) -> Captura {
     let diretas = crate::direta::lampadas_diretas(cena);
     capturar_sem(cena, g, &std::collections::BTreeSet::new(), &diretas)
+}
+
+/// ⭐ **Só o que TAPA a luz** (W5a), para a captura fina dos opacos: os oclusores com opacidade e os
+/// corpos que brilham (polígonos, opacos). As lâmpadas são luz, não corpo, e a luz direta só precisa
+/// da transmissão (a emissão fica de fora: o alvo dela não existe na captura fina).
+pub(crate) fn capturar_opacos(
+    cena: &CenaDeLuz,
+    g: &Grade,
+    substituidas: &std::collections::BTreeSet<Quem>,
+) -> Captura {
+    let mut m = Montagem {
+        g,
+        formas: Vec::new(),
+        vertices: Vec::new(),
+        fora: Vec::new(),
+    };
+    for (k, o) in cena.oclusores.iter().enumerate() {
+        if o.opacidade > 0.0 && !substituidas.contains(&Quem::Oclusor(k)) {
+            m.poligono(Quem::Oclusor(k), &o.vertices, [0.0; 4], o.opacidade);
+        }
+    }
+    for (k, e) in cena.emissores.iter().enumerate() {
+        if let Emissor::Poligono { vertices, .. } = e
+            && !substituidas.contains(&Quem::Emissor(k))
+        {
+            m.poligono(Quem::Emissor(k), vertices, [0.0; 4], 1.0);
+        }
+    }
+    let bytes_da_geometria =
+        (m.formas.len() * size_of::<Forma>() + m.vertices.len() * size_of::<[f32; 2]>()) as u64;
+    Captura {
+        formas: m.formas,
+        vertices: m.vertices,
+        relatorio: RelatorioC0 {
+            fora: m.fora,
+            bytes_da_geometria,
+        },
+    }
 }
 
 /// A captura sem as formas `substituidas` (o quad de um sprite que a C0 captura pela textura).

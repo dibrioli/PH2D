@@ -59,13 +59,15 @@ fn a_grade_fina_e_o_gabarito_no_texel_fino() {
             .flat_map(|j| (0..gf.largura).map(move |i| (i, j)))
             .map(|(i, j)| bilinear(&fg, &gg, gf.centro(i, j)))
             .collect();
+        // Fora dos opacos: dentro a lei é a do preenchimento (gate próprio, abaixo).
+        let dentro = crate::comum::dentro_de_opaco(&cena, &gf);
         let (e_fina, e_grossa) = (
-            rmse_rel(&ff, &r, |_| true),
-            rmse_rel(&lida_da_grossa, &r, |_| true),
+            rmse_rel(&ff, &r, |k| !dentro(k)),
+            rmse_rel(&lida_da_grossa, &r, |k| !dentro(k)),
         );
         eprintln!(
-            "C3 fina · {nome}: RMSE relativo no texel fino {e_fina:.4} (a grossa interpolada {e_grossa:.4}; razão {:.3}, teto {ganho})",
-            e_fina / e_grossa
+            "C3 fina · {nome}: RMSE relativo no texel fino, fora dos opacos, {e_fina:.4} (a grossa interpolada {e_grossa:.4}; razão {:.3}, teto {ganho})",
+            e_fina / e_grossa,
         );
         assert!(
             e_fina <= ganho * e_grossa,
@@ -76,7 +78,9 @@ fn a_grade_fina_e_o_gabarito_no_texel_fino() {
 
 /// O teto da razão fina ÷ grossa por cena = o MEDIDO + 10 % (W4b, RTX 5060 Ti, `fina` ×4 no Baixo):
 /// penumbra 0,0533 ÷ 0,5226 = 0,102 · faísca 0,0804 ÷ 1,8661 = 0,043 · céu e vidro 0,0275 ÷ 0,0568 =
-/// 0,484 (as cascatas pesam mais nela: o céu e os vidros não são luz direta).
+/// 0,484 (as cascatas pesam mais nela: o céu e os vidros não são luz direta). ⚠️ W5a: a população é
+/// a de FORA dos opacos (dentro, o gabarito deixou de ser 0 — o F3; gate próprio): penumbra 0,0446 ÷
+/// 0,5207 = 0,086 com o passo junto à borda e a curvatura.
 const TETO_GANHO: [f64; 3] = [0.112, 0.048, 0.533];
 
 /// ⭐⭐ **O refino pelas BORDAS dá a visibilidade medida em todo texel** (`Refino::Tudo`), a menos
@@ -248,3 +252,65 @@ fn o_fio_de_sombra_entre_as_sondas_e_o_do_exato() {
         "o refino perde o fio: {bordas:.3} × {tudo:.3}"
     );
 }
+
+/// ⭐⭐⭐ **F3 — o INTERIOR de um opaco é o exterior mais próximo** (W5a; a regra do gabarito,
+/// `ph2d-light2d-ref`): nos texels finos dentro dos opacos a até [`FAIXA_INTERIOR`] texels da borda,
+/// a placa contra o gabarito. Sem o preenchimento o interior é 0. ⚠️ Mais fundo, no EIXO MEDIAL do
+/// opaco, «a face mais próxima» troca de lado num salto (acesa ↔ sombra) e qualquer discretização
+/// erra por inteiro num fio de texels (medido: os 6 piores da penumbra todos na diagonal, placa ~0,27
+/// × gabarito 0) — fica fora da régua. ⚠️ Só luz DIRETA: com céu (a «céu e vidro») o EXTERIOR junto à
+/// parede já sai baixo pelas cascatas (0,17 → 0,01 contra 0,25 em ~2 texels grossos, sem o
+/// preenchimento — ABERTO da W5a, território das cascatas/HRC) e o interior copia-o fielmente.
+#[test]
+fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[2];
+    for (nome, cena, teto) in [
+        ("penumbra", penumbra(), TETO_INTERIOR[0]),
+        ("faísca", faisca(), TETO_INTERIOR[1]),
+    ] {
+        // A captura do PRODUTO: duas vezes mais fina que a grade fina (a grossa arredonda o canto em
+        // ~1 texel fino e troca a face mais próxima junto a ele).
+        let com = Config {
+            fina: FINA,
+            captura: 2 * FINA,
+            ..Config::padrao(grade(lado, texel))
+        };
+        let sem = Config {
+            preenchimento: None,
+            ..com
+        };
+        let (fc, g) = rodar(&gpu, com, &cena);
+        let (fs, _) = rodar(&gpu, sem, &cena);
+        let r = gabarito(&cena, &g);
+        let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
+        let (ec, es) = (rmse_rel(&fc, &r, &dentro), rmse_rel(&fs, &r, &dentro));
+        let mut piores: Vec<(f64, usize)> = (0..r.len())
+            .filter(|&k| dentro(k))
+            .map(|k| ((f64::from(fc[k][1]) - r[k][1]).abs(), k))
+            .collect();
+        piores.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let w = g.largura as usize;
+        for &(d, k) in piores.iter().take(6) {
+            eprintln!(
+                "  pior ({}, {}): placa {:.4} · gabarito {:.4} · |Δ| {d:.4} · de {} texels de dentro",
+                k % w,
+                k / w,
+                fc[k][1],
+                r[k][1],
+                piores.len()
+            );
+        }
+        eprintln!("F3 interior · {nome}: RMSE relativo {ec:.4} (sem o preenchimento {es:.4}; teto {teto})");
+        assert!(es > 0.9, "controlo: sem o preenchimento o interior é 0 ({es:.4})");
+        assert!(ec <= teto, "F3 interior · {nome}: {ec:.4} > {teto}");
+    }
+}
+
+/// Texels finos de dentro, a partir da borda, que a régua mede.
+const FAIXA_INTERIOR: f64 = 2.0;
+/// O MEDIDO + 10 % (W5a, captura 2 × fina, a faixa de 2 texels): penumbra 0,3135 · faísca 0,0032;
+/// sem o preenchimento 1,67 · 2,00. Com a captura GROSSA a penumbra dava 0,80 (o canto arredondado
+/// troca a face mais próxima); escolhendo o texel exterior mais perto em vez do ponto de FRONTEIRA
+/// mais perto, 0,83; só com as sementes do JFA de células de 4, 1,15.
+const TETO_INTERIOR: [f64; 2] = [0.345, 0.0036];

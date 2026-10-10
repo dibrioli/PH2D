@@ -113,6 +113,61 @@ pub fn gabarito(cena: &CenaDeLuz, g: &Grade) -> Vec<[f64; 3]> {
     out
 }
 
+/// ⭐ W5a (F3): o centro do texel `k` de `g` cai DENTRO de um corpo opaco (oclusor de opacidade 1 ou
+/// polígono que brilha)? Lá a resposta é a do exterior mais próximo (o preenchimento).
+pub fn dentro_de_opaco(cena: &CenaDeLuz, g: &Grade) -> impl Fn(usize) -> bool + use<> {
+    dentro_de_opaco_a_menos_de(cena, g, f64::INFINITY)
+}
+
+/// [`dentro_de_opaco`] a menos de `texels` texels de `g` da borda dele — a faixa que a bilinear do
+/// receptor alcança e a face que a parede mostra, longe do EIXO MEDIAL (onde «a face mais próxima»
+/// troca de lado num salto).
+pub fn dentro_de_opaco_a_menos_de(
+    cena: &CenaDeLuz,
+    g: &Grade,
+    texels: f64,
+) -> impl Fn(usize) -> bool + use<> {
+    let mut opacos: Vec<Vec<[f32; 2]>> = cena
+        .oclusores
+        .iter()
+        .filter(|o| o.opacidade >= 1.0)
+        .map(|o| o.vertices.clone())
+        .collect();
+    opacos.extend(cena.emissores.iter().filter_map(|e| match e {
+        Emissor::Poligono { vertices, .. } => Some(vertices.clone()),
+        _ => None,
+    }));
+    let g = *g;
+    move |k| {
+        let w = g.largura as usize;
+        let p = g.centro((k % w) as u32, (k / w) as u32);
+        let p = [p[0] as f32, p[1] as f32];
+        let limite = texels * g.texel_m;
+        opacos.iter().any(|v| {
+            let mut dentro = false;
+            let mut d = f64::INFINITY;
+            let mut j = v.len() - 1;
+            for i in 0..v.len() {
+                let (a, b) = (v[i], v[j]);
+                if (a[1] > p[1]) != (b[1] > p[1])
+                    && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]
+                {
+                    dentro = !dentro;
+                }
+                let (ab, ap) = (
+                    [f64::from(b[0] - a[0]), f64::from(b[1] - a[1])],
+                    [f64::from(p[0] - a[0]), f64::from(p[1] - a[1])],
+                );
+                let t = ((ap[0] * ab[0] + ap[1] * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1]).max(1e-30))
+                    .clamp(0.0, 1.0);
+                d = d.min((ap[0] - ab[0] * t).hypot(ap[1] - ab[1] * t));
+                j = i;
+            }
+            dentro && d <= limite
+        })
+    }
+}
+
 /// `√(média (gpu − ref)²) / média(ref)` sobre os texels de `mascara`, nos três canais.
 pub fn rmse_rel(gpu: &[[f32; 3]], r: &[[f64; 3]], mascara: impl Fn(usize) -> bool) -> f64 {
     let (mut se, mut soma, mut n) = (0.0_f64, 0.0_f64, 0_usize);

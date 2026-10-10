@@ -36,21 +36,23 @@ const RODADAS: usize = 9;
 /// 22), em píxeis da janela.
 const CANVAS: [f64; 4] = [312.0, 22.0, 1612.0, 1080.0];
 
-fn afim() -> Affine {
+pub(crate) fn afim() -> Affine {
     Camera2d::default().world_to_screen_affine(WindowSize::new(FHD.0, FHD.1))
 }
 
-fn loadavg() -> String {
+pub(crate) fn loadavg() -> String {
     std::fs::read_to_string("/proc/loadavg")
         .map(|s| s.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
         .unwrap_or_else(|_| "?".into())
 }
 
 /// O degrau do nível com a célula fina `fino` (`None` = sem grade fina: a das cascatas).
-fn degrau(nivel: NivelDaLuz, fino: Option<f64>) -> Degrau {
+pub(crate) fn degrau(nivel: NivelDaLuz, fino: Option<f64>) -> Degrau {
     let d = degrau_do(nivel);
     Degrau {
         fino_px: fino.unwrap_or(d.c0_px),
+        // A rodada da W4b media a captura das CASCATAS (a captura fina é da W5a).
+        captura_px: d.c0_px,
         ..d
     }
 }
@@ -60,13 +62,16 @@ fn config(gpu: &GpuContext, degrau: Degrau, refino: Refino) -> Config {
     let g = grade_do_quadro(afim(), FHD, degrau).expect("grade");
     Config {
         fina: fina_do_quadro(afim(), degrau),
+        captura: ph2d_app_light2d::captura_do_quadro(afim(), degrau),
         refino,
+        // A rodada da W4b media sem o preenchimento (W5a).
+        preenchimento: None,
         ..Config::padrao_para(&gpu.device, g)
     }
 }
 
 /// O solver do PRODUTO: a configuração e a região da janela.
-fn solver(gpu: &GpuContext, cfg: Config) -> Solver {
+pub(crate) fn solver(gpu: &GpuContext, cfg: Config) -> Solver {
     let mut s = Solver::novo(gpu, cfg).expect("solver");
     let (a, b) = regiao_da_janela(s.grade_da_fluencia(), afim(), FHD);
     s.regiao_fina(a, b);
@@ -123,7 +128,7 @@ fn variantes_do_refino() -> Vec<(&'static str, Refino)> {
 }
 
 /// A cena 1 com `n` lâmpadas (as da `medida_custo_por_lampada`, espalhadas) e a ambiente.
-fn cena_com(n: usize) -> CenaDeLuz {
+pub(crate) fn cena_com(n: usize) -> CenaDeLuz {
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 1));
     let fora: Vec<_> = w

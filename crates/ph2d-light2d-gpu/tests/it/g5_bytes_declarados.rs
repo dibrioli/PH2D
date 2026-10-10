@@ -68,9 +68,10 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         .into_iter()
         .map(|(degrau, lado, texel)| (degrau, Config::padrao(grade(lado, texel))))
         .chain(std::iter::once((
-            "Baixo com a grade fina ×4",
+            "Baixo com a grade fina ×4 e a captura fina ×4",
             Config {
                 fina: 4,
+                captura: 4,
                 ..Config::padrao(grade(DEGRAUS[2].1, DEGRAUS[2].2))
             },
         )));
@@ -107,11 +108,18 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         s.quadro(&gpu, &ceu_e_vidro());
         let geo = novas(&antes, &alocacoes(&gpu).expect("relatório"));
         let nomes: Vec<&str> = geo.keys().map(String::as_str).collect();
-        assert_eq!(
-            nomes,
-            ["luz2d/buf/formas", "luz2d/buf/vertices"],
-            "G5 geometria: {geo:?}"
-        );
+        // ⭐ W5a: a captura fina dos opacos sobe a sua própria geometria (com rótulos próprios).
+        let esperados: &[&str] = if cfg.usa_captura_fina() {
+            &[
+                "luz2d/buf/formas",
+                "luz2d/buf/formas_fina",
+                "luz2d/buf/vertices",
+                "luz2d/buf/vertices_fina",
+            ]
+        } else {
+            &["luz2d/buf/formas", "luz2d/buf/vertices"]
+        };
+        assert_eq!(nomes, esperados, "G5 geometria: {geo:?}");
         let alocado: u64 = geo.values().map(|v| v.1).sum();
         eprintln!(
             "  geometria | {} | {alocado}",

@@ -23,6 +23,9 @@ use crate::comum::{gabarito, gpu, grade, ler_fluencia, rmse_rel, tem_f16};
 //
 // O piso da CAPTURA (força bruta pela mesma grade, `diagnostico.rs`) na penumbra: 0,018 · 0,052 ·
 // 0,134 — o resto é das cascatas (o vazamento na sombra de luz pequena, o que o HRC ataca).
+// ⚠️ W5a: a população é a de FORA dos opacos (dentro, o gabarito deixou de ser 0 — o F3, com gate
+// próprio em `c3_grade_fina`). Fora, com a W5a: penumbra 0,0162 · 0,0264 · 0,0594 · céu e vidro
+// 0,0121 (Alto) — dentro dos tetos da W2.
 const TOL_PENUMBRA: [f64; 3] = [0.100, 0.155, 0.257];
 const TOL_FAISCA_ALTO: f64 = 0.310;
 const TOL_CEU_E_VIDRO: [f64; 3] = [0.014, 0.022, 0.042];
@@ -47,9 +50,11 @@ fn por_degrau(nome: &str, cena: &CenaDeLuz, tol: [f64; 3]) {
     let Some(gpu) = gpu() else { return };
     for (k, (degrau, lado, texel)) in DEGRAUS.into_iter().enumerate() {
         let (g, r) = rodar(&gpu, Config::padrao(grade(lado, texel)), cena);
-        let e = rmse_rel(&g, &r, |_| true);
+        // Fora dos opacos: dentro, a lei é a do preenchimento (W5a, F3 — gate em `c3_grade_fina`).
+        let dentro = crate::comum::dentro_de_opaco(cena, &grade(lado, texel));
+        let e = rmse_rel(&g, &r, |k| !dentro(k));
         eprintln!(
-            "G3 {nome} · {degrau}: RMSE relativo {e:.4} (tolerância {})",
+            "G3 {nome} · {degrau}: RMSE relativo {e:.4} fora dos opacos (tolerância {})",
             tol[k]
         );
         assert!(e <= tol[k], "G3 {nome} · {degrau}: {e:.4} > {}", tol[k]);

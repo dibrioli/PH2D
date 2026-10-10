@@ -21,6 +21,16 @@
 override FUSAO: u32 = 1u;
 // O passo perto do conteúdo, em texels finos.
 override PASSO: f32 = 1.0;
+// ⭐ W5a: texels da captura ligada (`cobertura`, `tau_dentro`) por texel das cascatas — a luz direta
+// marcha numa captura dos opacos mais fina (F1, F2); as cascatas, na delas (1).
+override ESCALA_DA_CAPTURA: f32 = 1.0;
+// O meio lê a EMISSÃO (a luz direta só precisa da transmissão: a captura fina não a tem).
+override COM_LUZ: bool = true;
+// ⭐ W5a (F3): a c0 marca no alfa (0) a sonda que cai DENTRO de um opaco — a C3 não a mistura.
+override MASCARA_C0: bool = false;
+// ⭐ W5a (F1): o passo onde a captura tem cobertura (a menos de um texel de uma borda), em fração
+// do `PASSO` — o raio que roça o canto do oclusor não o salta.
+override PASSO_NA_BORDA: f32 = 1.0;
 
 struct Cascata {
     tamanho: vec2<u32>,
@@ -56,15 +66,19 @@ struct Traco {
 
 struct Meio {
     tau: f32,
+    // A cobertura interpolada em `p` (0 longe de tudo).
+    c: f32,
     texel: vec2<i32>,
     // Dentro de um EMISSOR (o texel dono tem radiância).
     luz: bool,
 }
 
-// O meio em `p`: fora da grade, nada; dentro ⟺ cobertura interpolada ≥ ½.
-fn meio(p: vec2<f32>) -> Meio {
-    var m = Meio(1.0, vec2<i32>(0), false);
-    let n = vec2<f32>(cas.tamanho);
+// O meio em `pc` (texels das cascatas): fora da grade, nada; dentro ⟺ cobertura interpolada ≥ ½ —
+// na captura ligada, na escala dela.
+fn meio(pc: vec2<f32>) -> Meio {
+    var m = Meio(1.0, 0.0, vec2<i32>(0), false);
+    let p = pc * ESCALA_DA_CAPTURA;
+    let n = vec2<f32>(cas.tamanho) * ESCALA_DA_CAPTURA;
     if p.x < 0.0 || p.y < 0.0 || p.x >= n.x || p.y >= n.y {
         return m;
     }
@@ -73,6 +87,7 @@ fn meio(p: vec2<f32>) -> Meio {
     // x = (u0, v1), y = (u1, v1), z = (u1, v0), w = (u0, v0); bordas presas ao texel da borda.
     let g = textureGather(0, cobertura, vizinhos, (base + 1.0) / n);
     let c = mix(mix(g.w, g.z, fr.x), mix(g.x, g.y, fr.x), fr.y);
+    m.c = c;
     if c < 0.5 {
         return m;
     }
@@ -89,9 +104,11 @@ fn meio(p: vec2<f32>) -> Meio {
     if g.y > melhor {
         o = vec2<i32>(1, 1);
     }
-    m.texel = clamp(vec2<i32>(base) + o, vec2<i32>(0), vec2<i32>(cas.tamanho) - 1);
+    m.texel = clamp(vec2<i32>(base) + o, vec2<i32>(0), vec2<i32>(n) - 1);
     m.tau = textureLoad(tau_dentro, m.texel, 0).r;
-    m.luz = any(textureLoad(emissao, m.texel, 0).rgb > vec3<f32>(0.0));
+    if COM_LUZ {
+        m.luz = any(textureLoad(emissao, m.texel, 0).rgb > vec3<f32>(0.0));
+    }
     return m;
 }
 
@@ -164,6 +181,9 @@ fn marchar(P: vec2<f32>, A: vec2<f32>, B: vec2<f32>) -> Traco {
             }
             tau_ant = m.tau;
             luz_ant = m.luz;
+            if m.c > 0.0 {
+                passo = PASSO * PASSO_NA_BORDA;
+            }
         }
         if s >= s_fim {
             break;
@@ -252,9 +272,13 @@ fn cascata(@builtin(global_invocation_id) id: vec3<u32>) {
         soma += radiancia(P, sonda, vec2<f32>(cos(ang), sin(ang)), k, s);
     }
     var valor = vec3<f32>(soma) * 0.25;
+    var fora = 1.0;
     if i == 0u {
         // A c0 é a fluência das CASCATAS; a luz direta das lâmpadas soma-se na grade fina (C3).
         valor *= TAU;
+        if MASCARA_C0 && meio(P).tau <= 0.0 {
+            fora = 0.0;
+        }
     }
-    textureStore(saida, id.xy, vec4<f32>(valor, 1.0));
+    textureStore(saida, id.xy, vec4<f32>(valor, fora));
 }

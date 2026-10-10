@@ -21,6 +21,7 @@ pub const ALTO: ph2d_app_light2d::Degrau = ph2d_app_light2d::Degrau {
     margem: 0.25,
     vetor_px_por_texel: 1,
     fino_px: 1.0,
+    captura_px: 1.0,
 };
 
 pub const W: u32 = 64;

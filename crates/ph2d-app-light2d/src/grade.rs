@@ -27,6 +27,9 @@ pub struct Degrau {
     /// — independente do nível (W4b). Mais grosso que o `c0_px` não afina nada (a grade fina é a
     /// das cascatas).
     pub fino_px: f64,
+    /// ⭐ O lado de um texel da captura FINA dos opacos (onde a luz direta marcha, W5a) em píxeis no
+    /// zoom mais fino da oitava. Mais grosso que o `c0_px`, a captura é a das cascatas.
+    pub captura_px: f64,
 }
 
 /// O degrau por omissão — MEDIDO (rodada W3, RTX 5060 Ti, 1920×1080; tabela no handoff W3): o K7
@@ -35,11 +38,18 @@ pub struct Degrau {
 /// limita é a BANDA de memória; em janelas maiores o governador (W5) sobe o `c0_px`. Camada do vetor:
 /// 1 px por texel, lida EXATA (o píxel do Vello já é a cobertura de área), mede `0,0012` contra o
 /// polígono a `0,34 ms` (20 caminhos); lida bilinear, a mesma camada media `0,066`.
+///
+/// ⭐ W5a — a captura FINA dos opacos de ½ px (rodada `medida_luz2d_w5a`, nível Baixo): a borda da
+/// sombra sai do lugar −0,79 px no contorno de 50 % (a das cascatas −4,21; a de 1 px −1,16) e a barra
+/// de 5 cm faz a sombra do gabarito (massa 2,6 % · fundo 0,027; a das cascatas não a via; a de 1 px
+/// alargava a lasca 11 %), por 0,06 ms de captura, 0,20 ms da marca no campo, +65 MB e o Vello da
+/// camada do vetor a 8 px por texel (0,50 ms contra 0,23).
 pub const DEGRAU_PADRAO: Degrau = Degrau {
     c0_px: 4.0,
     margem: 0.125,
     vetor_px_por_texel: 1,
     fino_px: 1.0,
+    captura_px: 0.5,
 };
 
 /// O texel de `px` píxeis no zoom mais fino da oitava: a potência de 2 em metros (G11).
@@ -47,16 +57,27 @@ fn texel_de(px: f64, ppm: f64) -> f64 {
     (px / ppm).log2().ceil().exp2()
 }
 
-/// ⭐ **Texels finos por texel das cascatas** (`Config::fina`) para a vista: a razão entre os dois
-/// texels, ambos potências de 2 em metros — a grade fina herda a âncora e a oitava da grossa.
-#[must_use]
-pub fn fina_do_quadro(mundo_para_tela: Affine, degrau: Degrau) -> u32 {
+/// Texels de `px` píxeis por texel das cascatas: a razão entre os dois texels, ambos potências de 2
+/// em metros — herdam a âncora e a oitava da grade.
+fn por_texel_das_cascatas(mundo_para_tela: Affine, degrau: Degrau, px: f64) -> u32 {
     let ppm = mundo_para_tela.determinant().abs().sqrt();
     if !(ppm.is_finite() && ppm > 0.0) {
         return 1;
     }
-    let razao = texel_de(degrau.c0_px, ppm) / texel_de(degrau.fino_px, ppm);
+    let razao = texel_de(degrau.c0_px, ppm) / texel_de(px, ppm);
     (razao.round() as u32).max(1)
+}
+
+/// ⭐ **Texels finos por texel das cascatas** (`Config::fina`) para a vista.
+#[must_use]
+pub fn fina_do_quadro(mundo_para_tela: Affine, degrau: Degrau) -> u32 {
+    por_texel_das_cascatas(mundo_para_tela, degrau, degrau.fino_px)
+}
+
+/// ⭐ **Texels da captura fina dos opacos por texel das cascatas** (`Config::captura`, W5a).
+#[must_use]
+pub fn captura_do_quadro(mundo_para_tela: Affine, degrau: Degrau) -> u32 {
+    por_texel_das_cascatas(mundo_para_tela, degrau, degrau.captura_px)
 }
 
 /// O afim píxel → mundo: o INVERSO do mundo → tela que o Vello usou, nas duas linhas que o

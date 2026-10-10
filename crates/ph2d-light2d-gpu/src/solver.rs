@@ -17,45 +17,19 @@ use crate::shaders;
 use crate::solver_sprite;
 use crate::tempos::{self, Tempos, TemposMs};
 
+pub use crate::erro::ErroSolver;
+
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
+/// ⭐ A captura FINA dos opacos (W5a, F1 + F2) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_fina.rs"]
+mod fina;
 /// O lado de GRAVAR um quadro (subida da geometria, C0 → C1 → C2, `reposicionar`) — um ficheiro
 /// irmão, módulo-filho para ver os campos do [`Solver`] sem os abrir (tecto de 700 LOC).
 #[path = "solver_gravar.rs"]
 mod gravar;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum ErroSolver {
-    /// `aritmetica: F16` num dispositivo sem `SHADER_F16`.
-    SemShaderF16,
-    ConfigInvalida(&'static str),
-    /// A grade passa o `max_texture_dimension_2d` do dispositivo (um limite do HARDWARE).
-    GradeGrandeDemais {
-        lado: u32,
-        limite: u32,
-    },
-}
-
-impl std::fmt::Display for ErroSolver {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SemShaderF16 => write!(
-                f,
-                "aritmética f16 pedida e o dispositivo não tem SHADER_F16"
-            ),
-            Self::ConfigInvalida(o) => write!(f, "configuração inválida: {o}"),
-            Self::GradeGrandeDemais { lado, limite } => {
-                write!(
-                    f,
-                    "grade de {lado} texels passa o limite do dispositivo ({limite})"
-                )
-            }
-        }
-    }
-}
-
-impl std::error::Error for ErroSolver {}
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -71,7 +45,9 @@ struct UniformeJfa {
     tamanho: [u32; 2],
     fator: u32,
     salto: u32,
-    _pad: [u32; 2],
+    /// Texels da captura fina por texel das cascatas (W5a); 0 = sem ela (a semente não lê a marca).
+    escala: u32,
+    _pad: u32,
 }
 
 #[repr(C)]
@@ -156,6 +132,8 @@ pub struct Solver {
     lampadas: wgpu::Buffer,
     lampadas_grupo: wgpu::BindGroup,
     c3: c3::C3,
+    /// ⭐ A captura fina dos opacos (W5a), com [`Config::usa_captura_fina`].
+    fina: Option<fina::CapturaFina>,
     tempos: Option<Tempos>,
 }
 
@@ -253,6 +231,9 @@ impl Solver {
         let uni_cascatas = buffer("luz2d/buf/cascatas");
         let lampadas = buffer("luz2d/buf/lampadas");
         let uni_c3 = buffer("luz2d/buf/c3");
+        let uni_preenche = cfg
+            .preenchimento
+            .map(|_| buffer("luz2d/buf/preenche"));
         let tempos = com_tempos.then(|| Tempos {
             set: device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("luz2d/carimbos"),
@@ -383,6 +364,7 @@ impl Solver {
         let jfa_salto = compute("luz2d c1 salto", &jfa_pl, &jfa_modulo, "salto", &[]);
         let jfa_tamanho = cfg.grade_jfa();
         let fino = [cfg.grade.largura, cfg.grade.altura];
+        let op = crate::passlist::Opcionais::de(&cfg);
         let mut uni = vec![0u8; (PASSO_UNIFORME * (saltos.len() as u64 + 1)) as usize];
         for (j, salto) in std::iter::once(0).chain(saltos.iter().copied()).enumerate() {
             let u = UniformeJfa {
@@ -390,13 +372,18 @@ impl Solver {
                 tamanho: jfa_tamanho,
                 fator: cfg.fator_jfa,
                 salto,
-                _pad: [0; 2],
+                escala: if op.marca.is_some() {
+                    cfg.escala_da_captura()
+                } else {
+                    0
+                },
+                _pad: 0,
             };
             let o = j * PASSO_UNIFORME as usize;
             uni[o..o + size_of::<UniformeJfa>()].copy_from_slice(bytemuck::bytes_of(&u));
         }
         gpu.queue.write_buffer(&uni_jfa, 0, &uni);
-        let jfa_grupo = |j: usize, entrada: usize, saida: usize| {
+        let jfa_grupo = |j: usize, (cobertura, entrada, saida): (usize, usize, usize)| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("luz2d c1"),
                 layout: &jfa_layout,
@@ -411,7 +398,7 @@ impl Solver {
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&vistas[COBERTURA]),
+                        resource: wgpu::BindingResource::TextureView(&vistas[cobertura]),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
@@ -424,11 +411,27 @@ impl Solver {
                 ],
             })
         };
-        // A semente escreve A (e liga B como entrada, que ela não lê); o salto j lê j%2 e escreve o outro.
-        let mut jfa_grupos = vec![jfa_grupo(0, SEMENTES[1], SEMENTES[0])];
+        // A semente escreve A e lê a marca da captura fina como entrada (sem ela liga B, que não
+        // lê); o salto j lê j%2 e escreve o outro.
+        let mut jfa_grupos = vec![jfa_grupo(
+            0,
+            (COBERTURA, op.marca.unwrap_or(SEMENTES[1]), SEMENTES[0]),
+        )];
         for j in 0..saltos.len() {
-            jfa_grupos.push(jfa_grupo(j + 1, SEMENTES[j % 2], SEMENTES[(j + 1) % 2]));
+            jfa_grupos.push(jfa_grupo(
+                j + 1,
+                (COBERTURA, SEMENTES[j % 2], SEMENTES[(j + 1) % 2]),
+            ));
         }
+        // ⭐ W5a: zerar e marcar a marca da captura fina (o uniforme da semente).
+        let jfa_marca = op.captura.zip(op.marca).map(|(c, m)| {
+            fina::Marca {
+                zera: compute("luz2d c1 zera", &jfa_pl, &jfa_modulo, "zera", &[]),
+                marca: compute("luz2d c1 marca", &jfa_pl, &jfa_modulo, "marca", &[]),
+                grupo_zera: jfa_grupo(0, (COBERTURA, SEMENTES[1], m)),
+                grupo_marca: jfa_grupo(0, (c[0], SEMENTES[1], m)),
+            }
+        });
         let sementes_finais = SEMENTES[saltos.len() % 2];
 
         // ── C2 ──
@@ -490,6 +493,10 @@ impl Solver {
             &[
                 ("FUSAO", cfg.fusao.codigo()),
                 ("PASSO", f64::from(cfg.passo_perto)),
+                (
+                    "MASCARA_C0",
+                    f64::from(u8::from(cfg.preenchimento.is_some())),
+                ),
             ],
         );
         // O `textureGather` dos 4 vizinhos da cobertura; a borda prende-se ao texel da borda.
@@ -554,8 +561,23 @@ impl Solver {
             lampadas_layout: &lampadas_layout,
             uni_cascatas: &uni_cascatas,
             uni_c3: &uni_c3,
+            uni_preenche: uni_preenche.as_ref(),
             sementes_finais,
             vizinhos: &vizinhos,
+        });
+        let fina = op.captura.zip(jfa_marca).map(|(c, marca)| {
+            fina::CapturaFina::novo(
+                device,
+                &c0_modulo,
+                &c0_pl,
+                buffer("luz2d/buf/c0_fina"),
+                [vistas[c[0]].clone(), vistas[c[1]].clone()],
+                formatos_c0,
+                cfg.grade_da_captura(),
+                &gpu.queue,
+                marca,
+                jfa_tamanho,
+            )
         });
 
         gpu.queue.write_buffer(
@@ -593,6 +615,7 @@ impl Solver {
             lampadas,
             lampadas_grupo,
             c3,
+            fina,
             tempos,
         })
     }
@@ -645,6 +668,10 @@ impl Solver {
             .c0_sprites
             .as_ref()
             .map_or(0, solver_sprite::C0Sprites::bytes_residentes)
+            + self
+                .fina
+                .as_ref()
+                .map_or(0, fina::CapturaFina::bytes_residentes)
     }
 
     /// Os tempos de placa do último quadro submetido; `None` sem `TIMESTAMP_QUERY`.

@@ -122,3 +122,43 @@ fn a_forma_menor_que_o_texel_e_a_de_fora_da_grade_vem_ditas() {
         ]
     );
 }
+
+/// ⭐ **Uma lâmpada direta faz SOMBRA na luz de outra** (a lei do gabarito: emissores são opacos).
+/// Elas não estão na captura: o cone livre e a marcha testam os discos analiticamente. A região
+/// medida é a faixa ATRÁS da lâmpada do meio, onde só a sombra dela muda a resposta.
+#[test]
+fn uma_lampada_direta_faz_sombra_na_luz_de_outra() {
+    let Some(gpu) = gpu() else { return };
+    let g = grade(64, 0.1);
+    let cena = so(vec![
+        disco([1.0, 3.2], 0.3, [4.0; 3], f32::INFINITY),
+        disco([3.0, 3.2], 0.25, [0.05; 3], f32::INFINITY),
+    ]);
+    let mut s = Solver::novo(&gpu, Config::padrao(g)).expect("solver");
+    s.quadro(&gpu, &cena);
+    let f = ler_fluencia(&gpu, &s);
+    let r = crate::comum::gabarito(&cena, &g);
+    let atras = |k: usize| {
+        let (x, y) = ((k % 64) as f64 * 0.1 + 0.05, (k / 64) as f64 * 0.1 + 0.05);
+        x > 3.6 && x < 6.0 && (y - 3.2).abs() < 0.12
+    };
+    let e = crate::comum::rmse_rel(&f, &r, atras);
+    let sem_sombra = crate::comum::gabarito(&so(vec![cena.emissores[0].clone()]), &g);
+    let controlo = crate::comum::rmse_rel(
+        &sem_sombra
+            .iter()
+            .map(|c| c.map(|x| x as f32))
+            .collect::<Vec<_>>(),
+        &r,
+        atras,
+    );
+    eprintln!("sombra de lâmpada em lâmpada: RMSE {e:.4} (sem a sombra: {controlo:.4})");
+    assert!(
+        e < 0.1,
+        "a lâmpada do meio não faz a sombra do gabarito: {e:.4}"
+    );
+    assert!(
+        controlo > 0.5,
+        "controlo: sem a sombra a resposta tinha de ser outra ({controlo:.4})"
+    );
+}

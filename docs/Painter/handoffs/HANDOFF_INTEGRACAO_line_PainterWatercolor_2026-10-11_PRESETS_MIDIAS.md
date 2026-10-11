@@ -129,6 +129,14 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && ./tar
 
 ## §8 — ABERTO
 
+00. ⛔ **Smoke do dono (11/10), por corrigir:** (a) *«quando pinta com relevo e depois muda o pincel para um que não tem
+    relevo, o relevo de todos desaparece»* — causa (lida no código): o Emboss é um knob do RENDER aplicado a TODA a tinta
+    da sessão com o valor do pincel de AGORA (`render.rs`, `p.k(Knob::Emboss)`), não uma propriedade guardada com a
+    tinta; a cura é o relevo viajar com a massa (uma altura por célula, como o `impasto` do Impasto), não o knob. (b)
+    *«os pincéis com relevo não chegam nem perto da qualidade rebelle … acho que não ficaram similares»* — as métricas
+    do recto passaram, o olho do dono não: a régua (cobertura, textura, borda, orla) não mede o que faz o óleo do
+    Rebelle (as estrias de cerdas com luz, o relevo direcional). Antes de afinar presets, a régua tem de reprovar os
+    nossos (18 §2) — senão afina-se para o número errado. O dono mandou deixar para depois.
 0. **2.ª rodada:** (a) os pincéis com grão variam de largura com a posição (até 9,6 %) — um grão sem estrutura grande;
    (b) a tinta molhada ainda se alisa ao secar (miolo −16 %, massa conservada) — se o dono quiser zero, é física
    (o espalhamento), não ecrã; (c) aerógrafo (o pó fino), tinta/caneta/marcador (o cruzamento), guache/Flat (forma).

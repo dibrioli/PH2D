@@ -91,3 +91,4 @@ metadata:
 - ⛔⛔⛔ [Plano CUMPRIDO que não diz que deixou de ser a FILA responde com confiança à pergunta «qual a próxima etapa?» — e responde a wave errada](feedback_a_fulfilled_plan_that_does_not_say_it_was_superseded.md): o estado de cada wave estava CERTO (auditado dois dias antes), logo *«audite a lista contra o código»* passa; o que faltava era **qual das páginas é a fila**, e quem me corrigiu foi o dono.
 
 - ⛔⛔ [O dono reclamou do passo a passo sem fim — planeie TODAS as variantes e ablações à partida e meça numa só rodada intercalada (04/10: 4 rodadas em série, ~2 h de espera)](feedback_plan_every_measurement_upfront_and_batch_it.md)
+- ⛔⛔ [«Não é possível» só depois de varrer o eixo INTEIRO do knob e ler o código do controlo (dono 11/10)](feedback_impossible_needs_the_whole_knob_axis_and_the_code.md)

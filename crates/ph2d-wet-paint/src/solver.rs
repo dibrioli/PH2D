@@ -654,4 +654,4 @@ pub use advect::advect;
 pub use advect_jacobi::{advect_jacobi, advect_jacobi_rows, destination_reach};
 pub use flow_jacobi::{build_flow_field_jacobi, build_flow_field_jacobi_rows};
 pub use project::{apply_boundaries, project, project_rows};
-pub use sedimenta::{SEDIMENTA_MAX, sedimenta};
+pub use sedimenta::{SEDIMENTA_MAX, sedimenta, sedimenta_rows};

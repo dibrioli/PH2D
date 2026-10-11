@@ -36,3 +36,4 @@ metadata:
 - ⛔ [`ph2d-field-render --test it`: 7-8 vermelhos são contadores GLOBAIS do próprio binário — `24/24` VERDE com `--test-threads=1` a load 75; pré-existente, confirme antes de culpar o seu diff](project_field_render_it_suite_is_green_single_threaded.md)
 - ⛔ [Um cargo MORTO pode deixar um zombie a segurar o flock do target («Blocking waiting for file lock») — ver `/proc/locks`; cura: `CARGO_TARGET_DIR` próprio na MESMA worktree](feedback_a_killed_cargo_can_leave_a_zombie_that_holds_the_build_lock.md)
 - ⛔ [Crate apagada deixa a PASTA com ignorados noutro checkout → `crates/*` morre](feedback_a_deleted_crate_leaves_ignored_files_that_break_the_workspace_glob.md)
+- ⛔⛔ [Portão série × paralelo verde em `dev` não prova o `ci-test`: o LLVM 21–22 vectoriza `tile[base + ((x−1) & mask)]` como cópia contígua com overflow-checks a o2 (o `paper_rows`, 11/10) — copie os troços](feedback_a_serial_parallel_gate_must_run_in_the_ship_profile.md)

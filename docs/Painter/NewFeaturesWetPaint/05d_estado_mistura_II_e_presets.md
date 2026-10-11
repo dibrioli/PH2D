@@ -267,3 +267,11 @@
   acima de 10 s, já paralelos: camadas 44,7 · largura 24,7 · mídias 14,8 s. ⛔ Medidos: o «ponto fixo» das mídias
   (os quadros depois de secar já custam 0 ms) e menos quadros na largura (a do Wet Round anda até ao q480).
   [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_VELOCIDADE_2.md).
+
+- ✅ **O código mau do compilador no bake do papel (11/10, prompt [21](21_PROMPT_janela_compilador.md)).** O `paper_rows`
+  reprovava no `ci-test` porque o LLVM 21–22 (rustc 1.92–1.98) vectoriza `tile[ty + ((x − 1) & 511)]` como cópia
+  contígua quando há `overflow-checks` a o2 e perde a volta do ladrilho (7 texels por volta da linha seguinte); o
+  LLVM 23 acerta. Cura no laço: o bake copia troços da linha do tile, sem índice mascarado — verde em `ci-test`,
+  `dev` e `release`, nenhum bit mudou. Censo do código gerado: nenhum outro laço vectorizado com a máscara. O
+  `sedimenta` ganhou o portão série × paralelo que faltava. Reprodutor de 40 linhas pronto para o dono decidir se
+  reporta. [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_COMPILADOR.md).

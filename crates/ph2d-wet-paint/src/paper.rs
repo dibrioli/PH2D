@@ -318,12 +318,21 @@ pub fn bake_paper(grid: &mut Grid, tile: &[f32]) {
 /// [`bake_paper`] pela rota `mode` — a porta do gate e da sonda
 /// (`tests/it/paper_rows.rs`, ADR-0175 §3-bis). Cada linha escreve só a própria linha e lê só o
 /// `tile`, que ninguém escreve: byte-idêntica por construção.
+///
+/// A célula `x` lê o texel `(x − 1) mod TS` da linha: a 0 é o último, e da 1 em diante a linha do
+/// tile repete-se em troços de `TS`. ⛔ Sem `tile[ty + wrap_mask(x − 1)]` por célula: com
+/// `overflow-checks` a o2 o LLVM 21–22 vectoriza esse laço como cópia contígua e perde a volta
+/// (os 7 texels depois de cada volta saem da linha seguinte; HANDOFF_CONTINUACAO_…_COMPILADOR §2).
 pub fn bake_paper_rows(grid: &mut Grid, tile: &[f32], mode: crate::par::Rows) {
     let s = grid.s;
     crate::par::walk_rows(mode, &mut grid.paper[..grid.rows * s], s, |y, row| {
         let ty = wrap_mask(y as i32 - 1, TMASK) * TS;
-        for (x, cell) in row.iter_mut().enumerate() {
-            *cell = tile[ty + wrap_mask(x as i32 - 1, TMASK)];
+        let linha = &tile[ty..ty + TS];
+        if let Some((primeira, resto)) = row.split_first_mut() {
+            *primeira = linha[TS - 1];
+            for troco in resto.chunks_mut(TS) {
+                troco.copy_from_slice(&linha[..troco.len()]);
+            }
         }
     });
 }

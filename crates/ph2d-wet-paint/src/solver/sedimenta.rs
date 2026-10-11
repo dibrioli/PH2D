@@ -76,6 +76,20 @@ impl Passo {
 
 /// Um passo: `a` = a fracção por passo ao longo de `ĝ`, `(gx, gy)` a gravidade do passo.
 pub fn sedimenta(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool) {
+    let rows = (g.by1 - g.by0 + 1).max(0) as usize;
+    let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
+    sedimenta_rows(
+        g,
+        a,
+        gx,
+        gy,
+        km,
+        Rows::pick(rows, span, par::MIN_CELLS_ADVECT),
+    );
+}
+
+/// [`sedimenta`] pela rota `mode` — a porta do gate série × paralelo (`tests/it/parallel_rows.rs`).
+pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Rows) {
     let n = (gx * gx + gy * gy).sqrt();
     if a <= 0.0 || n <= 0.0 || g.by0 > g.by1 {
         return;
@@ -92,9 +106,6 @@ pub fn sedimenta(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool) {
     };
     g.scratch.ensure(g.cells);
     let s = g.s;
-    let rows = (g.by1 - g.by0 + 1).max(0) as usize;
-    let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
-    let mode = Rows::pick(rows, span, par::MIN_CELLS_ADVECT);
     let (by0, by1) = (g.by0, g.by1);
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     {

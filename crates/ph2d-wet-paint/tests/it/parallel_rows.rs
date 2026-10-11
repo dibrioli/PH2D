@@ -72,6 +72,8 @@ fn diff(a: &Grid, b: &Grid) -> Vec<String> {
     };
     f32s("film", &a.film, &b.film);
     f32s("susp", &a.susp, &b.susp);
+    let rgb = |g: &Grid| g.susp_rgb.iter().flatten().copied().collect::<Vec<f32>>();
+    f32s("susp_rgb", &rgb(a), &rgb(b));
     f32s("sett", &a.sett, &b.sett);
     f32s("vel_x", &a.vel_x, &b.vel_x);
     f32s("vel_y", &a.vel_y, &b.vel_y);
@@ -112,8 +114,24 @@ fn diff(a: &Grid, b: &Grid) -> Vec<String> {
 /// Monta duas poças, confere que nascem IDÊNTICAS, roda `f` com cada rota e
 /// devolve a lista de divergências.
 fn both_routes(f: impl Fn(&mut Grid, &Params, Rows)) -> Vec<String> {
-    let mut a = puddle();
-    let mut b = puddle();
+    both_routes_on(puddle, f)
+}
+
+/// [`puddle`] com a segunda faixa de OUTRA cor: a mistura de cores só tem o que fazer onde elas se tocam.
+fn puddle_of_two_colours() -> Engine {
+    let mut e = Engine::new(SIDE, SIDE);
+    e.sliders.water = 1.0;
+    e.sliders.size = 1.0;
+    e.color = [190.0, 40.0, 30.0];
+    drive_stroke(&mut e, 200.0, 380.0, 1000.0, 420.0, 24.0, 2);
+    e.color = [30.0, 60.0, 200.0];
+    drive_stroke(&mut e, 560.0, 120.0, 640.0, 1080.0, 24.0, 2);
+    e
+}
+
+fn both_routes_on(fixture: fn() -> Engine, f: impl Fn(&mut Grid, &Params, Rows)) -> Vec<String> {
+    let mut a = fixture();
+    let mut b = fixture();
     let pa = params(&a);
     let pb = params(&b);
     let pre = diff(a.active_grid(), b.active_grid());
@@ -315,6 +333,32 @@ fn the_parallel_gather_advect_does_not_depend_on_the_scheduling() {
         }
         let d = diff(a.active_grid(), b.active_grid());
         assert!(d.is_empty(), "corrida {pass}: o agendamento vazou: {d:?}");
+    }
+}
+
+/// **O pigmento que desce (Heavy Edge): paralelo == serial, ao byte**, com a mistura linear e com a
+/// K–M, e a gravidade nos dois eixos. A precondição: o passe MUDA a poça (senão a identidade é vácuo).
+#[test]
+fn the_parallel_sedimentation_is_the_serial_one_to_the_byte() {
+    let nascida = puddle_of_two_colours();
+    for km in [false, true] {
+        let passo = |g: &mut Grid, _: &Params, mode: Rows| {
+            solver::sedimenta_rows(g, 0.3, 0.4, 0.9, km, mode);
+        };
+        let mut so = puddle_of_two_colours();
+        let p = params(&so);
+        passo(so.active_grid_mut(), &p, Rows::Serial);
+        let mudou = diff(nascida.active_grid(), so.active_grid());
+        assert!(
+            mudou.iter().any(|m| m.starts_with("susp:"))
+                && mudou.iter().any(|m| m.starts_with("susp_rgb:")),
+            "km = {km}: o passe não mexeu no pigmento nem na cor — a fixtura não exercita o sedimenta: {mudou:?}"
+        );
+        let d = both_routes_on(puddle_of_two_colours, passo);
+        assert!(
+            d.is_empty(),
+            "km = {km}: as rotas do sedimenta divergiram: {d:?}"
+        );
     }
 }
 

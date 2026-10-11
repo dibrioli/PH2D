@@ -64,11 +64,15 @@ fn the_boid_demo_plans_as_a_fully_gpu_neighbour_loop() {
 }
 
 /// The **breathing packing** (`PH2D_GPU_COOK_DEMO=8`, ADR-0140 Fase 5) must plan
-/// as a fully-GPU chain — and, unlike every scene before it, one whose kernel is
+/// the packing on the GPU — and, unlike every scene before it, one whose kernel is
 /// ITERATED. A silent CPU fallback would look identical (the CPU has packed discs
 /// since M3, just at `O(N²·iterations)`), so the plan is what has to be pinned.
+///
+/// ⚠️ Since 11/10 the scene stamps a SQUARE on every disc (owner's report: *«não há shapes ou
+/// objetos na cena»*), and the one CPU boundary is that `source.shape` — a single template row,
+/// uploaded; the grid, the breath and the packing stay staged.
 #[test]
-fn the_breathing_packing_demo_plans_as_a_fully_gpu_chain() {
+fn the_breathing_packing_demo_plans_the_packing_on_the_gpu() {
     let mut registry = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
     let mut doc = MotionDoc::new();
@@ -76,9 +80,14 @@ fn the_breathing_packing_demo_plans_as_a_fully_gpu_chain() {
     let out = *sinks.first().expect("one sink");
 
     let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    let tipo = |id: ph2d_nodegraph::graph::NodeId| doc.graph.node(id).map(|n| n.type_name.clone());
     assert!(
-        plan.is_fully_gpu(),
-        "the packing + its LFO must leave no boundary: {:?}",
+        !plan.boundaries.is_empty()
+            && plan
+                .boundaries
+                .iter()
+                .all(|(n, _)| tipo(*n).as_deref() == Some("source.shape")),
+        "only the square's template may be a CPU boundary: {:?}",
         plan.boundaries
     );
     let node = |ty: &str| {
@@ -96,8 +105,12 @@ fn the_breathing_packing_demo_plans_as_a_fully_gpu_chain() {
         plan.stages.iter().any(|s| s.node == node("value.lfo")),
         "the breath must be claimed, not pushed to a CPU boundary"
     );
-    // grid + lfo + collide dispatch; `output` is pass-through.
-    assert_eq!(plan.dispatching_stages(&registry), 3);
+    assert!(
+        plan.stages.iter().any(|s| s.node == node("motion.collide")),
+        "the packing itself must be claimed"
+    );
+    // grid + lfo + collide + the duplicator's stamp dispatch; `output` is pass-through.
+    assert_eq!(plan.dispatching_stages(&registry), 4);
 }
 
 /// The packing demo really SWEEPS — `iterations` > 1 is the whole of Fase 5 (the
@@ -345,39 +358,38 @@ fn the_boid_count_ceiling_quotes_the_device_not_the_reference_path() {
 #[ignore = "sonda: relógio"]
 fn sonda_quadro_lento_da_cena_8() {
     use crate::motion_bridge::ticks_owed;
-    use ph2d_eval_motion::MotionCookPump;
     let tiques: u64 = std::env::var("PH2D_SONDA_TIQUES")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(10);
-    let mut registry = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
-    let mut doc = MotionDoc::new();
-    let sinks = build_gpu_collide_demo_document(&mut doc, &registry).expect("well-typed demo");
-    let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &registry);
-    let mut bombas: [(MotionCookPump, u64, f64); 2] = std::array::from_fn(|_| {
-        let mut p = MotionCookPump::new();
-        p.define_a_lei(false);
-        (p, 0, f64::INFINITY)
+    // Pelo estado do Motion: a `source.shape` lê o molde que a shell PUBLICA, sem ele não há quadrados.
+    let mut cenas: [(MotionState, Vec<NodeId>, u64, f64); 2] = std::array::from_fn(|_| {
+        let mut state = MotionState::new();
+        let sinks = build_gpu_collide_demo_document(&mut state.doc, &state.registry)
+            .expect("well-typed demo");
+        crate::motion_shape_gen::publish(&mut state, 0.0);
+        (state, sinks, 0, f64::INFINITY)
     });
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!("CENA8 load {}", carga().trim());
     for bloco in 0..8usize {
         for k in 0..2usize {
             let v = (k + bloco) % 2;
-            let (pump, alvo, minimo) = &mut bombas[v];
+            let (state, sinks, alvo, minimo) = &mut cenas[v];
+            let scopes =
+                ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
             let t0 = std::time::Instant::now();
             let fim = *alvo;
-            for tick in ticks_owed(pump.last_cooked_tick(), fim) {
-                pump.set_separa_o_desenho(v == 0 || tick == fim);
-                pump.advance_or_scrub_scoped(
-                    &doc.graph,
-                    &registry,
-                    &sinks,
+            for tick in ticks_owed(state.pump.last_cooked_tick(), fim) {
+                state.pump.set_separa_o_desenho(v == 0 || tick == fim);
+                state.pump.advance_or_scrub_scoped(
+                    &state.doc.graph,
+                    &state.registry,
+                    sinks,
                     tick,
                     |t| t as f64 / 60.0,
-                    [0.0, 0.0, 1.0, 1.0],
-                    [1.0, 1.0],
+                    state.default_uv_rect,
+                    state.default_size,
                     &scopes,
                 );
             }
@@ -389,19 +401,15 @@ fn sonda_quadro_lento_da_cena_8() {
             *alvo += tiques;
         }
     }
-    let (a, b) = (&bombas[0], &bombas[1]);
-    let iguais = a.0.instances.len() == b.0.instances.len()
-        && a.0.instances.iter().zip(&b.0.instances).all(|(x, y)| {
-            x.world_pos[0].to_bits() == y.world_pos[0].to_bits()
-                && x.world_pos[1].to_bits() == y.world_pos[1].to_bits()
-        });
+    let (a, b) = (&cenas[0].0.pump, &cenas[1].0.pump);
+    let iguais = a.vector_instances == b.vector_instances;
     eprintln!(
-        "CENA8 {tiques} tiques/quadro · antes {:.1} ms · depois {:.1} ms · {} instancias · \
+        "CENA8 {tiques} tiques/quadro · antes {:.1} ms · depois {:.1} ms · {} quadrados · \
          tiques so-estado {} · mesmos bits {iguais} · load {}",
-        a.2,
-        b.2,
-        b.0.instances.len(),
-        b.0.cozimentos_so_do_estado(),
+        cenas[0].3,
+        cenas[1].3,
+        b.vector_instances.len(),
+        b.cozimentos_so_do_estado(),
         carga().trim()
     );
     assert!(iguais, "o quadro desenhado mudou");

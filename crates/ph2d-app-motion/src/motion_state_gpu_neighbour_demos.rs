@@ -169,8 +169,8 @@ pub(super) fn build_gpu_boids_demo_document(
 /// SECOND neighbourhood client, and the one that proves the grid is a reusable
 /// service rather than a boids-shaped detour.
 ///
-/// `grid(360×360) → collide → output`, with a `value.lfo` driving the collider's
-/// `spread`. 129.600 discs start on a lattice whose pitch (0.25) is far tighter
+/// `grid(360×360) → collide → duplicator ← source.shape (Square) → output`, with a
+/// `value.lfo` driving the collider's `spread` (the squares since 11/10). 129.600 discs start on a lattice whose pitch (0.25) is far tighter
 /// than the contact distance (`2·radius` = 0.6), so essentially every disc begins
 /// overlapping several neighbours and the whole field shoves itself apart into a
 /// packing. The LFO then makes the discs grow and shrink, so the packing
@@ -244,8 +244,23 @@ pub(super) fn build_gpu_collide_demo_document(
     g.set_param(lfo, "amplitude", 0.35);
     g.set_param(lfo, "offset", 1.0);
 
+    // ⭐ UM QUADRADO EM CADA DISCO (report do dono, 11/10: *«não há shapes ou objetos na cena»*):
+    // sem forma, a lei do dono não desenha posições e só o gizmo aparecia. ⚠️ O lado (`2·size`)
+    // mede-se pelo MIOLO, não pelo contacto: o colisor afasta as bordas e o miolo fica no passo de
+    // partida (medido no app, `PH2D_PAN_DIAG`: canto a −22,7 ⇒ `0,252`). Com `size 0,18` os
+    // quadrados cobriam-se e a vista era branca; `0,1` deixa ~3 px de vão a 55 px/unidade.
+    let forma = g.add_node("source.shape");
+    let quadrado = ph2d_node_motion_shape::ALL_KINDS
+        .iter()
+        .position(|k| *k == ph2d_node_motion_shape::ShapeKind::Square)
+        .expect("o `Square` tem de estar no `ALL_KINDS`");
+    g.set_param(forma, ph2d_node_motion_shape::param::KIND, quadrado as f32);
+    g.set_param(forma, ph2d_node_motion_shape::param::SIZE, 0.1);
+    // O carimbo: a forma na porta `0`, os pontos na `1` (a ordem do manifesto do duplicador).
+    let dup = g.add_node("motion.duplicator");
+
     let out = g.add_node("motion.output");
-    for (i, n) in [src, col, out].into_iter().enumerate() {
+    for (i, n) in [src, col, dup, out].into_iter().enumerate() {
         g.set_pos(
             n,
             Pos {
@@ -255,8 +270,15 @@ pub(super) fn build_gpu_collide_demo_document(
         );
     }
     g.set_pos(lfo, Pos { x: 80.0, y: 300.0 });
+    g.set_pos(forma, Pos { x: 480.0, y: 300.0 });
 
-    for (from, to, port) in [(src, col, 0), (lfo, col, 1), (col, out, 0)] {
+    for (from, to, port) in [
+        (src, col, 0),
+        (lfo, col, 1),
+        (forma, dup, 0),
+        (col, dup, 1),
+        (dup, out, 0),
+    ] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, port),

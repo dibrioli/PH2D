@@ -11,6 +11,7 @@ use crate::documents::fac::{PrivateSetup, VotePanel};
 use crate::documents::live::{LiveFac, LiveRequest, LiveRole};
 use ph2d_board_edit::{Notice, VoteSession};
 use ph2d_board_model::BoardId;
+use ph2d_i18n::tr_with;
 
 /// O quadro activo, se é o da sala e estou nela.
 pub(super) fn live_board(hero: &HeroScreen) -> Option<BoardId> {
@@ -80,6 +81,12 @@ pub(super) fn follow(hero: &mut HeroScreen) {
         Some(v) if !v.ended => {
             // Uma votação nova da sala: o painel abre a todos (o Miro avisa todos ao começar).
             if f.live_round.get(&id) != Some(&v.round) {
+                // Uma votação de UM ecrã aberta antes da sala: acaba (o resultado dela vai para o
+                // quadro), em vez de os votos dela se perderem por baixo da da sala.
+                if ed.vote().is_some() && !f.live_round.contains_key(&id) {
+                    let history = live.histories.entry(id).or_default();
+                    ed.end_vote(&mut board.doc, history);
+                }
                 ed.put_vote(Some(VoteSession::live(v.setup, v.targets.clone())));
                 f.live_round.insert(id, v.round);
                 f.live_done.remove(&id);
@@ -102,6 +109,7 @@ pub(super) fn follow(hero: &mut HeroScreen) {
         // Acabou: os totais já chegaram ao quadro; a sessão sai e o painel mostra o resultado.
         Some(v) if f.live_round.get(&id) == Some(&v.round) && ed.vote().is_some() => {
             ed.put_vote(None);
+            f.live_round.remove(&id);
             f.live_done.remove(&id);
             f.live_sent.remove(&id);
             f.panels.insert(id, VotePanel::Results { all: false });
@@ -127,6 +135,16 @@ pub(super) fn click(hero: &mut HeroScreen, b: FacButton) -> bool {
         return false;
     };
     let live = live_board(hero).is_some();
+    // Os botões da votação só são pedidos à sala com uma votação DA SALA aberta (uma de um ecrã,
+    // aberta antes de entrar, continua a de sempre).
+    let room = live
+        && hero
+            .documents
+            .live_view()
+            .fac
+            .vote
+            .as_ref()
+            .is_some_and(|v| !v.ended);
     let fac = &mut hero.documents.live.fac;
     let ask = match b {
         FacButton::PrivateClose => {
@@ -143,12 +161,15 @@ pub(super) fn click(hero: &mut HeroScreen, b: FacButton) -> bool {
             }
             None
         }
-        FacButton::PrivateOn => fac.private.get(&id).filter(|_| live).map(|s| {
-            LiveRequest::PrivateOn {
-                anonymous: s.anonymous,
-                anyone_can_end: s.anyone_can_end,
-            }
-        }),
+        FacButton::PrivateOn => {
+            fac.private
+                .get(&id)
+                .filter(|_| live)
+                .map(|s| LiveRequest::PrivateOn {
+                    anonymous: s.anonymous,
+                    anyone_can_end: s.anyone_can_end,
+                })
+        }
         FacButton::PrivateAnyoneReveal => {
             let on = hero
                 .documents
@@ -162,13 +183,13 @@ pub(super) fn click(hero: &mut HeroScreen, b: FacButton) -> bool {
         FacButton::PrivateRevealMine => Some(LiveRequest::RevealMine),
         FacButton::PrivateOff => Some(LiveRequest::PrivateOff),
         FacButton::VoteStart if live => return start_vote(hero, id),
-        FacButton::VoteDone if live => {
+        FacButton::VoteDone if room => {
             fac.live_done.insert(id);
             None
         }
-        FacButton::VoteEnd if live => Some(LiveRequest::VoteEnd),
+        FacButton::VoteEnd if room => Some(LiveRequest::VoteEnd),
         // O relógio da sala é do anfitrião: o «+1 min» não se pinta ao vivo.
-        FacButton::VoteAdd1 if live => None,
+        FacButton::VoteAdd1 if room => None,
         _ => return false,
     };
     if let Some(a) = ask.filter(|_| live) {
@@ -197,4 +218,61 @@ fn start_vote(hero: &mut HeroScreen, id: BoardId) -> bool {
         None => live.notice = Some((Notice::NothingToVote.key(), Instant::now())),
     }
     true
+}
+
+/// O que o painel da votação mostra numa votação DA SALA.
+pub(super) struct RoomSession {
+    /// «n of m done».
+    pub(super) voted: String,
+    /// O relógio da sala, `MM:SS`.
+    pub(super) clock: Option<String>,
+    /// «I'm done» ainda por dizer.
+    pub(super) done: bool,
+    /// Posso acabá-la.
+    pub(super) end: bool,
+    /// A quem iniciou: uma linha por pessoa (as que cabem em `fit`, e «…and n more»).
+    pub(super) people: Vec<String>,
+}
+
+/// A votação da sala aberta neste quadro, como o painel a mostra. `None` = não há (a de um ecrã).
+pub(super) fn room_session(hero: &HeroScreen, id: BoardId, fit: usize) -> Option<RoomSession> {
+    live_board(hero)?;
+    let v = hero
+        .documents
+        .live_view()
+        .fac
+        .vote
+        .as_ref()
+        .filter(|v| !v.ended)?;
+    let mut people: Vec<String> = v
+        .used
+        .iter()
+        .map(|(name, n, done)| {
+            let key = if *done {
+                "board.livevote.person_done"
+            } else {
+                "board.livevote.person"
+            };
+            tr_with(key, &[("name", name), ("n", n)])
+        })
+        .collect();
+    let room = fit.saturating_sub(1).max(1);
+    if people.len() > room {
+        let more = people.len() - (room - 1);
+        people.truncate(room - 1);
+        people.push(tr_with("board.vote.more_rows", &[("n", &more)]));
+    }
+    Some(RoomSession {
+        voted: tr_with(
+            "board.livevote.done_count",
+            &[("done", &v.done), ("people", &v.people)],
+        ),
+        clock: v.left_ms.map(|ms| {
+            let s = ms.div_ceil(1000);
+            format!("{:02}:{:02}", s / 60, s % 60)
+        }),
+        done: !hero.documents.live.fac.live_done.contains(&id),
+        end: v.may_end,
+        people,
+    })
 }

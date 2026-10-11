@@ -459,7 +459,7 @@ impl Editor {
             return true;
         }
         let texts: Vec<&Element> = self
-            .editable(doc)
+            .text_editable(doc)
             .into_iter()
             .filter(|el| el.shape().is_some_and(|s| !s.text.is_empty()))
             .collect();

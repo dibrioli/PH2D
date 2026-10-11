@@ -1,4 +1,4 @@
-// Normalização para ler e comparar corridas: ids aleatórios → rótulos estáveis; datas → "<ts>".
+// Normalização para ler e comparar corridas: ids aleatórios → rótulos estáveis; carimbos de tempo → "<ts>".
 //   · id de utilizador → M/A/B/C · quadro → BOARD · votação → VOT1, VOT2 (ordem de criação)
 //   · nota → a chave de casos.json (n1…n5, h1, h2) · coluna → c1/c2/nome
 //   · qualquer outro UUID → UUID#k pela ordem da 1.ª aparição no ficheiro

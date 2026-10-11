@@ -26,7 +26,10 @@ pub enum LiveRequest {
     /// Desfazer o que o PH2D liberou.
     FirewallRemove,
     /// ADR-0182 — ligar o modo privado para todos.
-    PrivateOn { anonymous: bool, anyone_can_end: bool },
+    PrivateOn {
+        anonymous: bool,
+        anyone_can_end: bool,
+    },
     /// «Turn off private mode for all» (revela depois da contagem).
     PrivateOff,
     /// «Anyone can reveal their stickies» (só quem ligou).
@@ -132,8 +135,9 @@ pub struct LivePrivate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LiveVote {
     pub round: u32,
-    /// Quem a iniciou (o nome).
+    /// Quem a iniciou (o nome) e se fui eu.
     pub by: String,
+    pub by_me: bool,
     /// Posso acabá-la («End for all»).
     pub may_end: bool,
     pub setup: VoteSetup,

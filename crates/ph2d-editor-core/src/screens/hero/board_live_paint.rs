@@ -131,7 +131,17 @@ fn paint_avatars(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
         }
         let id = node(Hit::Avatar(i));
         register(&mut hero.store, id);
-        let tip = if following == Some(p.peer) {
+        // W12 — com os nomes anónimos não se segue ninguém (Miro PM: «Follow is no longer available»).
+        let anon = hero
+            .documents
+            .live_view()
+            .fac
+            .private
+            .as_ref()
+            .is_some_and(|p| p.anonymous);
+        let tip = if anon {
+            tr("board.private.no_follow").to_owned()
+        } else if following == Some(p.peer) {
             tr("board.live.unfollow_tip").to_owned()
         } else {
             tr_with("board.live.follow_tip", &[("name", &p.name)])

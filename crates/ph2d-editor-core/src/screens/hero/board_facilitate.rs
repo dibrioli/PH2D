@@ -22,8 +22,8 @@ mod paint;
 pub use paint::paint;
 
 #[path = "board_facilitate_live.rs"]
-mod live;
-pub use live::{private_open, toggle_private};
+mod fac_live;
+pub use fac_live::{private_open, toggle_private};
 
 /// Um botão do cartão ou do painel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -319,7 +319,7 @@ pub fn follow(hero: &mut HeroScreen) {
         ed.end_vote(&mut board.doc, history);
         f.panels.insert(board.id, VotePanel::Results { all: false });
     }
-    live::follow(hero);
+    fac_live::follow(hero);
 }
 
 /// ⭐ Os cliques do cartão e do painel. Corre no pré-despacho (ids derivados).
@@ -331,7 +331,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     // W12 — numa sessão ao vivo, votar e o modo privado são pedidos à sala.
-    if live::click(hero, b) {
+    if fac_live::click(hero, b) {
         return true;
     }
     let now = Instant::now();

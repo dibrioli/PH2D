@@ -8,9 +8,7 @@ use ph2d_board_model::{
     VoteSetup,
 };
 
-use crate::{
-    Ask, Ballot, ConnId, Event, Fac, Guest, Host, Msg, REVEAL_COUNTDOWN_MS, Refusal, To,
-};
+use crate::{Ask, Ballot, ConnId, Event, Fac, Guest, Host, Msg, REVEAL_COUNTDOWN_MS, Refusal, To};
 
 const ANA: u64 = 1;
 
@@ -27,7 +25,12 @@ fn note(b: &mut Board, text: &str, x: f64) -> ElementId {
         style: Style::new(Some(ink), None, ink),
         text: RichText::plain(text),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, [x, 0.0, 10.0, 10.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        shape,
+        [x, 0.0, 10.0, 10.0],
+    );
     let id = el.id;
     let _ = BoardOp::Put(el).apply(&mut b.doc);
     id
@@ -40,7 +43,14 @@ fn write(b: &mut Board, id: ElementId, text: &str) {
 }
 
 fn text(b: &Board, id: ElementId) -> String {
-    b.doc.get_any(id).unwrap().shape().unwrap().text.as_str().to_owned()
+    b.doc
+        .get_any(id)
+        .unwrap()
+        .shape()
+        .unwrap()
+        .text
+        .as_str()
+        .to_owned()
 }
 
 fn shared(b: &Board) -> Vec<u8> {
@@ -254,26 +264,42 @@ fn a_private_note_reaches_nobody_until_the_reveal() {
     let old = note(&mut hb, "antes", 0.0);
     let mut r = Room::new(hb, &["Bia", "Caio"]);
     r.ask(0, private_on());
-    assert!(r.fac(1).private.is_some(), "o Caio sabe que o modo está ligado");
+    assert!(
+        r.fac(1).private.is_some(),
+        "o Caio sabe que o modo está ligado"
+    );
     let new = note(r.b(0), "segredo da Bia", 20.0);
     write(r.b(0), old, "outro segredo");
     r.at(10);
     for needle in ["segredo da Bia", "outro segredo"] {
         assert!(!r.heard(1, needle), "o Caio ouviu «{needle}»");
-        assert!(!has(&shared(&r.hb), needle), "o quadro da Ana tem «{needle}»");
+        assert!(
+            !has(&shared(&r.hb), needle),
+            "o quadro da Ana tem «{needle}»"
+        );
     }
     assert_eq!(text(&r.hb, new), "", "nasce vazia para os outros");
-    assert_eq!(text(r.b(1), old), "antes", "o Caio fica com o texto de antes");
+    assert_eq!(
+        text(r.b(1), old),
+        "antes",
+        "o Caio fica com o texto de antes"
+    );
     assert_eq!(text(r.b(0), new), "segredo da Bia", "a autora lê o seu");
     assert_eq!(r.fac(1).hidden, BTreeSet::from([old, new]));
-    assert_eq!(r.host.fac(10).hidden, BTreeSet::from([old, new]));
+    assert_eq!(r.host.fac(10, &r.hb).hidden, BTreeSet::from([old, new]));
     assert_eq!(r.peers[0].g.my_sealed(), BTreeSet::from([old, new]));
     let d = r.join("Dani");
-    assert!(!r.heard(d, "segredo"), "quem entra a meio não recebe o selado");
+    assert!(
+        !r.heard(d, "segredo"),
+        "quem entra a meio não recebe o selado"
+    );
     assert_eq!(r.fac(d).hidden.len(), 2);
     // Só a Bia (quem ligou) desliga; a contagem é do relógio do anfitrião.
     r.ask(0, Ask::PrivateOff);
-    assert_eq!(r.fac(1).private.unwrap().reveal_in_ms, Some(REVEAL_COUNTDOWN_MS));
+    assert_eq!(
+        r.fac(1).private.unwrap().reveal_in_ms,
+        Some(REVEAL_COUNTDOWN_MS)
+    );
     r.at(10 + REVEAL_COUNTDOWN_MS - 1);
     assert!(!r.heard(1, "segredo da Bia"), "antes dos 5 s");
     r.at(10 + REVEAL_COUNTDOWN_MS);
@@ -316,7 +342,11 @@ fn reveal_mine_needs_the_option_and_releases_only_the_authors_notes() {
     let caio = note(r.b(1), "nota do Caio", 20.0);
     r.at(1);
     r.ask(1, Ask::RevealMine);
-    assert!(r.peers[1].events.contains(&Event::Denied(Refusal::RevealMineOff)));
+    assert!(
+        r.peers[1]
+            .events
+            .contains(&Event::Denied(Refusal::RevealMineOff))
+    );
     r.ask(1, Ask::AnyoneCanReveal(true));
     assert!(
         r.peers[1]
@@ -338,10 +368,17 @@ fn only_the_starter_or_the_host_turns_it_off_unless_anyone_may() {
     let mut r = Room::new(board(), &["Bia", "Caio"]);
     r.ask(0, private_on());
     r.ask(1, Ask::PrivateOff);
-    assert!(r.peers[1].events.contains(&Event::Denied(Refusal::OnlyStarterEndsPrivate)));
+    assert!(
+        r.peers[1]
+            .events
+            .contains(&Event::Denied(Refusal::OnlyStarterEndsPrivate))
+    );
     assert_eq!(r.fac(1).private.unwrap().reveal_in_ms, None);
     r.host_ask(Ask::PrivateOff);
-    assert!(r.fac(1).private.unwrap().reveal_in_ms.is_some(), "o anfitrião pode");
+    assert!(
+        r.fac(1).private.unwrap().reveal_in_ms.is_some(),
+        "o anfitrião pode"
+    );
     r.at(REVEAL_COUNTDOWN_MS);
     r.ask(
         0,
@@ -351,7 +388,10 @@ fn only_the_starter_or_the_host_turns_it_off_unless_anyone_may() {
         },
     );
     r.ask(1, Ask::PrivateOff);
-    assert!(r.fac(1).private.unwrap().reveal_in_ms.is_some(), "com a opção, qualquer um");
+    assert!(
+        r.fac(1).private.unwrap().reveal_in_ms.is_some(),
+        "com a opção, qualquer um"
+    );
 }
 
 /// Só o comando de revelar solta (o p07 do Scrumlr: tirar um destaque revelava tudo): mover, pintar e
@@ -411,7 +451,11 @@ fn a_drop_sends_the_sealed_text_back_to_the_vault() {
     r.back(0);
     r.at(2);
     assert!(!r.heard(1, "primeiro") && !r.heard(1, "escrito sem rede"));
-    assert_eq!(text(r.b(0), id), "escrito sem rede", "a autora volta com o seu");
+    assert_eq!(
+        text(r.b(0), id),
+        "escrito sem rede",
+        "a autora volta com o seu"
+    );
     assert_eq!(r.fac(1).hidden, BTreeSet::from([id]));
     r.ask(0, Ask::PrivateOff);
     r.at(2 + REVEAL_COUNTDOWN_MS);
@@ -493,7 +537,11 @@ fn no_one_hears_a_vote_before_the_end_and_a_leavers_vote_counts() {
     assert!(caio.used.is_empty(), "só quem iniciou vê os votos usados");
     assert_eq!(caio.done, BTreeSet::from([10]), "quem acabou é público");
     assert_eq!(r.fac(0).vote.unwrap().used, BTreeMap::from([(10, 3)]));
-    assert_eq!(r.hb.doc.get(a).unwrap().votes(), 0, "nada no quadro até ao fim");
+    assert_eq!(
+        r.hb.doc.get(a).unwrap().votes(),
+        0,
+        "nada no quadro até ao fim"
+    );
     // O Caio vota e sai; o Dani entra a meio e vota.
     r.vote(1, ballot(round, &[(b, 1)], false));
     r.drop(1);
@@ -507,10 +555,18 @@ fn no_one_hears_a_vote_before_the_end_and_a_leavers_vote_counts() {
     r.pump();
     // Só quem iniciou (ou o anfitrião) acaba.
     r.ask(d, Ask::VoteEnd);
-    assert!(r.peers[d].events.contains(&Event::Denied(Refusal::OnlyStarterEndsVote)));
+    assert!(
+        r.peers[d]
+            .events
+            .contains(&Event::Denied(Refusal::OnlyStarterEndsVote))
+    );
     r.ask(0, Ask::VoteEnd);
     assert_eq!(r.hb.doc.get(a).unwrap().votes(), 3);
-    assert_eq!(r.hb.doc.get(b).unwrap().votes(), 5, "o voto de quem saiu conta");
+    assert_eq!(
+        r.hb.doc.get(b).unwrap().votes(),
+        5,
+        "o voto de quem saiu conta"
+    );
     assert!(r.fac(d).vote.unwrap().ended);
     assert!(r.fac(d).vote.unwrap().used.is_empty());
     assert_eq!(r.b(d).doc.get(b).unwrap().votes(), 5);
@@ -573,7 +629,11 @@ fn the_vault_refuses_a_ballot_out_of_the_rules() {
             targets: BTreeSet::from([a]),
         },
     );
-    assert!(r.peers[1].events.contains(&Event::Denied(Refusal::VoteRunning)));
+    assert!(
+        r.peers[1]
+            .events
+            .contains(&Event::Denied(Refusal::VoteRunning))
+    );
     let used = |r: &Room| r.fac(0).vote.unwrap().used.get(&11).copied();
     r.vote(1, ballot(1, &[(a, 1), (b, 1), (hidden, 0)], false));
     assert_eq!(used(&r), Some(2));
@@ -587,7 +647,11 @@ fn the_vault_refuses_a_ballot_out_of_the_rules() {
         assert_eq!(used(&r), Some(2), "aceitou {bad:?}");
     }
     r.vote(0, ballot(1, &[(hidden, 1)], false));
-    assert_eq!(r.fac(0).vote.unwrap().used.get(&10), Some(&1), "a autora lê a sua");
+    assert_eq!(
+        r.fac(0).vote.unwrap().used.get(&10),
+        Some(&1),
+        "a autora lê a sua"
+    );
 }
 
 /// ⭐ Convergência com o modo privado: anfitrião + 3, edições de texto e de posição ao acaso com o
@@ -604,7 +668,9 @@ fn a_private_room_with_drops_ends_with_one_board_and_no_early_text() {
             s % n
         };
         let mut hb = board();
-        let ids: Vec<ElementId> = (0..4).map(|i| note(&mut hb, "", f64::from(i) * 20.0)).collect();
+        let ids: Vec<ElementId> = (0..4)
+            .map(|i| note(&mut hb, "", f64::from(i) * 20.0))
+            .collect();
         let mut r = Room::new(hb, &["p0", "p1", "p2"]);
         r.ask(0, private_on());
         let mut written: Vec<(usize, String)> = Vec::new();
@@ -659,4 +725,176 @@ fn a_private_room_with_drops_ends_with_one_board_and_no_early_text() {
         r.all_same();
         assert!(r.fac(0).hidden.is_empty());
     }
+}
+
+/// ⛔ Auditoria W12 (rede, F1): uma VERSÃO guardada com o modo ligado levava o quadro inteiro da autora
+/// — comprimido, e por isso o gate de fuga (bytes crus) não a via. Leva o quadro como todos o vêem.
+#[test]
+fn a_version_saved_in_private_mode_does_not_carry_the_sealed_text() {
+    let mut r = Room::new(board(), &["Bia", "Caio"]);
+    r.ask(0, private_on());
+    let id = note(r.b(0), "segredo na versão", 0.0);
+    r.at(1);
+    r.b(0).save_version("v".into(), 0);
+    r.at(2);
+    let v = r.b(1).team.versions[0].read().unwrap();
+    assert!(
+        !has(&shared(&v), "segredo na versão"),
+        "a versão levou o selado"
+    );
+    let own = r.b(0).team.versions[0].read().unwrap();
+    assert_eq!(
+        text(&own, id),
+        "",
+        "a da autora é a mesma (a versão é do quadro da sala)"
+    );
+    let c = r.join("Dani");
+    let v = r.b(c).team.versions[0].read().unwrap();
+    assert!(!has(&shared(&v), "segredo na versão"));
+}
+
+/// ⛔ Auditoria W12 (rede, F2): a nota CRESCIA para os outros enquanto a autora escrevia (o comprimento
+/// do texto). A caixa da minha nota escondida sai com a posição nova e o tamanho de antes; o tamanho
+/// verdadeiro chega ao revelar.
+#[test]
+fn a_hidden_note_does_not_grow_for_the_others_but_still_moves() {
+    let mut r = Room::new(board(), &["Bia", "Caio"]);
+    r.ask(0, private_on());
+    let id = note(r.b(0), "uma linha", 0.0);
+    r.at(1);
+    let mut el = r.b(0).doc.get(id).unwrap().clone();
+    el.shape_mut().unwrap().text = RichText::plain("muitas\nlinhas\nde\nsegredo");
+    el.h = 40.0;
+    let _ = BoardOp::Put(el).apply(&mut r.b(0).doc);
+    r.at(2);
+    let seen = r.b(1).doc.get(id).unwrap().clone();
+    assert_eq!(seen.h, 10.0, "a nota cresceu para o Caio");
+    let mut el = r.b(0).doc.get(id).unwrap().clone();
+    el.translate([30.0, 0.0]);
+    let _ = BoardOp::Put(el).apply(&mut r.b(0).doc);
+    r.at(3);
+    let seen = r.b(1).doc.get(id).unwrap().clone();
+    assert_eq!((seen.x, seen.h), (30.0, 10.0), "mexeu-se, sem crescer");
+    let c = r.join("Dani");
+    assert_eq!(r.b(c).doc.get(id).unwrap().h, 10.0, "o retrato também");
+    r.ask(0, Ask::PrivateOff);
+    r.at(3 + REVEAL_COUNTDOWN_MS);
+    assert_eq!(r.b(1).doc.get(id).unwrap().h, 40.0);
+    r.all_same();
+}
+
+/// ⛔ Auditoria W12 (rede, F3; interface, F1): quem NÃO lê uma nota escondida não lhe escreve o texto
+/// por caminho nenhum (o desfazer, o negrito — aqui uma escrita directa no documento): a escrita
+/// desfaz-se ao ser capturada, nunca vai ao cofre, e o texto da autora sai ao revelar.
+#[test]
+fn someone_who_cannot_read_a_note_cannot_overwrite_its_text() {
+    let mut hb = board();
+    let id = note(&mut hb, "", 0.0);
+    let mut r = Room::new(hb, &["Bia", "Caio"]);
+    write(r.b(1), id, "do Caio");
+    r.at(1);
+    r.ask(0, private_on());
+    write(r.b(0), id, "segredo da Bia");
+    r.at(2);
+    write(r.b(1), id, "");
+    r.at(3);
+    assert_eq!(text(r.b(1), id), "do Caio", "a escrita do Caio desfez-se");
+    write(&mut r.hb, id, "da Ana");
+    r.at(4);
+    assert_eq!(text(&r.hb, id), "do Caio", "e a da anfitriã também");
+    r.ask(0, Ask::PrivateOff);
+    r.at(4 + REVEAL_COUNTDOWN_MS);
+    assert_eq!(text(&r.hb, id), "segredo da Bia");
+    r.all_same();
+}
+
+/// ⛔ Auditoria W12 (rede, F4): um voto dado ANTES de a nota se esconder não congela o boletim — fica,
+/// pode sair, e os votos seguintes contam; só um voto NOVO nela é recusado (e quem votou sabe).
+#[test]
+fn a_vote_cast_before_a_note_was_hidden_does_not_freeze_the_ballot() {
+    let mut hb = board();
+    let (n, m) = (note(&mut hb, "n", 0.0), note(&mut hb, "m", 20.0));
+    let mut r = Room::new(hb, &["Bia", "Caio"]);
+    r.ask(
+        0,
+        Ask::VoteStart {
+            setup: VoteSetup {
+                votes: 3,
+                one_per_object: false,
+                minutes: 0,
+            },
+            targets: BTreeSet::from([n, m]),
+        },
+    );
+    r.vote(1, ballot(1, &[(n, 1)], false));
+    r.ask(0, private_on());
+    write(r.b(0), n, "agora privada");
+    r.at(1);
+    r.vote(1, ballot(1, &[(n, 1), (m, 1)], true));
+    assert!(
+        r.fac(0).vote.unwrap().done.contains(&11),
+        "o boletim congelou"
+    );
+    r.vote(1, ballot(1, &[(n, 2), (m, 1)], true));
+    assert!(
+        r.peers[1]
+            .events
+            .contains(&Event::Denied(Refusal::BallotRefused))
+    );
+    assert_eq!(r.fac(0).vote.unwrap().used.get(&11), Some(&2));
+    r.vote(1, ballot(1, &[(m, 1)], true));
+    assert_eq!(
+        r.fac(0).vote.unwrap().used.get(&11),
+        Some(&1),
+        "o voto antigo sai"
+    );
+}
+
+/// ⛔ Auditoria W12 (rede, F5): um texto às claras (de quem ainda não sabia do modo) que passa à frente
+/// do selado da anfitriã: quem entra depois converge, e depois de revelar todos têm o mesmo.
+#[test]
+fn a_newcomer_converges_when_a_clear_text_overtakes_the_hosts_sealed_one() {
+    let mut hb = board();
+    let id = note(&mut hb, "", 0.0);
+    let mut r = Room::new(hb, &["Bia"]);
+    if let Some(e) = r.host.ask(&mut r.hb, private_on(), 0) {
+        panic!("{e:?}");
+    }
+    write(&mut r.hb, id, "da Ana");
+    let out = r.host.tick(&mut r.hb, 0);
+    let p = &mut r.peers[0];
+    let b = p.b.as_mut().unwrap();
+    write(b, id, "da Bia às claras");
+    let up = p.g.tick(b, 0);
+    p.up.extend(up.into_iter().map(|m| m.encode()));
+    r.route(out);
+    r.pump();
+    let c = r.join("Caio");
+    r.all_same();
+    assert!(!r.heard(c, "da Ana"));
+    r.host_ask(Ask::PrivateOff);
+    r.at(REVEAL_COUNTDOWN_MS);
+    r.all_same();
+}
+
+/// ⛔ Auditoria W12 (rede, F7): um boletim cuja soma não cabe (dava a volta e passava) é recusado.
+#[test]
+fn a_ballot_whose_sum_overflows_is_refused() {
+    let mut hb = board();
+    let (a, b) = (note(&mut hb, "a", 0.0), note(&mut hb, "b", 20.0));
+    let mut r = Room::new(hb, &["Bia"]);
+    r.ask(
+        0,
+        Ask::VoteStart {
+            setup: VoteSetup::default(),
+            targets: BTreeSet::from([a, b]),
+        },
+    );
+    r.vote(0, ballot(1, &[(a, u32::MAX), (b, 2)], false));
+    assert_eq!(r.host.fac(0, &r.hb).vote.unwrap().used.get(&10), None);
+    assert!(
+        r.peers[0]
+            .events
+            .contains(&Event::Denied(Refusal::BallotRefused))
+    );
 }

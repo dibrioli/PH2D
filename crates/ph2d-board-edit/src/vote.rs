@@ -272,7 +272,8 @@ impl Editor {
 
     /// V2 — um clique no `+` (ou no `−`) de `id`. A recusa fica no aviso.
     pub(crate) fn vote_click(&mut self, id: ElementId, minus: bool) {
-        if self.unread.contains(&id) {
+        // Um voto NOVO numa nota que não leio, não (o que já lá estava pode sair).
+        if !minus && self.unread.contains(&id) {
             self.notice = Some(Notice::Private);
             return;
         }

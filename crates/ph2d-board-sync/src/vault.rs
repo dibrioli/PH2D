@@ -11,49 +11,53 @@ use std::collections::{BTreeMap, BTreeSet};
 use ph2d_board_model::{ElementId, Field, VoteSetup};
 
 use crate::fac::Ballot;
-use crate::{PeerId, Write};
+use crate::replica::sealed_field;
+use crate::{Lamport, PeerId, Write};
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Vault {
-    /// Por nota: o autor e a última escrita selada do texto dela.
-    notes: BTreeMap<ElementId, (PeerId, Write)>,
+    /// Por (nota, registo — o texto e a caixa): o autor e a última escrita selada.
+    notes: BTreeMap<(ElementId, Field), (PeerId, Write)>,
     ballots: BTreeMap<PeerId, Ballot>,
 }
 
-/// O texto de uma nota numa escrita selada (a única forma que se sela).
-pub(crate) fn sealed_text(w: &Write) -> Option<(ElementId, crate::Lamport)> {
-    match w {
-        Write::Set {
-            id,
-            field: Field::Text,
-            at,
-            ..
-        } => Some((*id, *at)),
-        _ => None,
-    }
-}
-
 impl Vault {
-    /// Guarda uma escrita selada de `author`. Fica a de carimbo maior (reenviar é idempotente).
-    /// `false` = não era uma escrita selável.
+    /// Guarda uma escrita selada de `author`. Fica a de carimbo maior (reenviar é idempotente); uma nota
+    /// tem UM dono até revelar — o selado de outra pessoa sobre ela (que não a lê) não entra. `false`
+    /// = não entrou.
     pub(crate) fn keep(&mut self, author: PeerId, w: Write) -> bool {
-        let Some((id, at)) = sealed_text(&w) else {
+        let Some((id, f, at)) = sealed_field(&w) else {
             return false;
         };
+        if self
+            .notes
+            .iter()
+            .any(|((n, _), (a, _))| *n == id && *a != author)
+        {
+            return false;
+        }
         let newer = self
             .notes
-            .get(&id)
-            .and_then(|(_, old)| sealed_text(old))
-            .is_none_or(|(_, old)| at > old);
+            .get(&(id, f))
+            .and_then(|(_, old)| sealed_field(old))
+            .is_none_or(|(_, _, old)| at > old);
         if newer {
-            self.notes.insert(id, (author, w));
+            self.notes.insert((id, f), (author, w));
         }
         true
     }
 
+    /// Uma escrita às claras mais nova passou à frente do selado deste registo: ele já não sai.
+    pub(crate) fn overtaken(&mut self, id: ElementId, f: Field, at: Lamport) {
+        let old = self.notes.get(&(id, f)).and_then(|(_, w)| sealed_field(w));
+        if old.is_some_and(|(_, _, old)| at > old) {
+            self.notes.remove(&(id, f));
+        }
+    }
+
     /// As notas escondidas (sem autor — é o que vai a todos).
     pub(crate) fn hidden(&self) -> BTreeSet<ElementId> {
-        self.notes.keys().copied().collect()
+        self.notes.keys().map(|(id, _)| *id).collect()
     }
 
     /// As notas escondidas que `peer` não escreveu (não as lê).
@@ -61,20 +65,20 @@ impl Vault {
         self.notes
             .iter()
             .filter(|(_, (a, _))| *a != peer)
-            .map(|(id, _)| *id)
+            .map(|((id, _), _)| *id)
             .collect()
     }
 
     /// PUBLICAR: solta as notas de todos (`None`) ou só as de `author`.
     pub(crate) fn release(&mut self, author: Option<PeerId>) -> Vec<Write> {
-        let ids: Vec<ElementId> = self
+        let keys: Vec<(ElementId, Field)> = self
             .notes
             .iter()
             .filter(|(_, (a, _))| author.is_none_or(|x| x == *a))
-            .map(|(id, _)| *id)
+            .map(|(k, _)| *k)
             .collect();
-        ids.into_iter()
-            .filter_map(|id| self.notes.remove(&id).map(|(_, w)| w))
+        keys.into_iter()
+            .filter_map(|k| self.notes.remove(&k).map(|(_, w)| w))
             .collect()
     }
 
@@ -87,10 +91,22 @@ impl Vault {
         setup: VoteSetup,
         targets: &BTreeSet<ElementId>,
     ) -> bool {
-        let ok = b.used() <= setup.votes
-            && b.votes
-                .iter()
-                .all(|(id, n)| targets.contains(id) && (!setup.one_per_object || *n <= 1));
+        // Um voto NOVO numa nota que não leio não entra; o que lá estava antes de ela se esconder fica
+        // (e pode sair).
+        let unread = self.hidden_to(peer);
+        let before = |id: &ElementId| {
+            self.ballots
+                .get(&peer)
+                .and_then(|o| o.votes.get(id))
+                .copied()
+                .unwrap_or(0)
+        };
+        let ok = b.used().is_some_and(|n| n <= setup.votes)
+            && b.votes.iter().all(|(id, n)| {
+                targets.contains(id)
+                    && (!setup.one_per_object || *n <= 1)
+                    && (!unread.contains(id) || *n <= before(id))
+            });
         if ok {
             self.ballots.insert(peer, b);
         }
@@ -106,7 +122,10 @@ impl Vault {
     }
 
     pub(crate) fn used(&self) -> BTreeMap<PeerId, u32> {
-        self.ballots.iter().map(|(p, b)| (*p, b.used())).collect()
+        self.ballots
+            .iter()
+            .map(|(p, b)| (*p, b.used().unwrap_or(0)))
+            .collect()
     }
 
     /// SOMAR: os totais por alvo (de todos os boletins — quem saiu conta, Scrumlr v03) e o cofre dos
@@ -115,7 +134,8 @@ impl Vault {
         let mut t: BTreeMap<ElementId, u32> = BTreeMap::new();
         for b in std::mem::take(&mut self.ballots).into_values() {
             for (id, n) in b.votes {
-                *t.entry(id).or_default() += n;
+                let s = t.entry(id).or_default();
+                *s = s.saturating_add(n);
             }
         }
         t.retain(|_, n| *n > 0);

@@ -88,14 +88,25 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         return;
     };
     let id = board.id;
+    // As linhas que cabem por baixo do que já ocupa a coluna (o cronómetro, o modo privado): um
+    // painel nunca sai do ecrã nem passa por cima do seguinte.
+    let gap = ph2d_tokens::section_gap_px();
+    let private_view = private::view(hero, id);
+    let timer = hero.documents.live.fac.timers.get(&id).cloned();
+    let taken = timer.as_ref().map_or(0.0, |_| timer_height() + gap)
+        + private_view
+            .as_ref()
+            .map_or(0.0, |p| private::height(p) + gap);
+    let step = btn() + ph2d_tokens::control_gap_px();
+    let fit = (((area.y + area.h - y - taken - gap) / step).floor() as usize)
+        .saturating_sub(3)
+        .max(3);
     let view = match hero.documents.live.fac.panels.get(&id).copied() {
         None => None,
         Some(VotePanel::Setup(s)) => Some(VoteView::Setup(s)),
         Some(VotePanel::Session) => {
             let fac = &hero.documents.live.fac;
-            let room = super::live::live_board(hero)
-                .and_then(|_| hero.documents.live_view().fac.vote.clone())
-                .filter(|v| !v.ended);
+            let room = super::fac_live::room_session(hero, id, fit);
             hero.documents
                 .live
                 .editor
@@ -103,28 +114,14 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
                 .and_then(|e| e.vote())
                 .map(|s| match room {
                     // W12 — ao vivo: quantos acabaram, o relógio da sala, e (a quem iniciou) cada um.
-                    Some(v) => VoteView::Session {
+                    Some(r) => VoteView::Session {
                         left: s.left(),
-                        voted: tr_with(
-                            "board.livevote.done_count",
-                            &[("done", &v.done), ("people", &v.people)],
-                        ),
-                        clock: v.left_ms.map(ms_clock),
-                        done: !fac.live_done.contains(&id),
-                        end: v.may_end,
+                        voted: r.voted,
+                        clock: r.clock,
+                        done: r.done,
+                        end: r.end,
                         add1: false,
-                        people: v
-                            .used
-                            .iter()
-                            .map(|(name, n, done)| {
-                                let key = if *done {
-                                    "board.livevote.person_done"
-                                } else {
-                                    "board.livevote.person"
-                                };
-                                tr_with(key, &[("name", name), ("n", n)])
-                            })
-                            .collect(),
+                        people: r.people,
                     },
                     None => {
                         // O relógio da votação só se mostra (e o «+1 min» só se pinta) a andar.
@@ -149,16 +146,6 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         }
         Some(VotePanel::Results { all }) => {
             let res = ph2d_board_edit::vote_results(&board.doc);
-            // As linhas que cabem: a área por baixo da coluna, menos o título e a fila dos botões
-            // (e o cartão do cronómetro, se está aberto).
-            let card = if hero.documents.live.fac.timers.contains_key(&id) {
-                timer_height() + Spacing::Md.px()
-            } else {
-                0.0
-            };
-            let room = area.y + area.h - y - card - Spacing::Md.px();
-            let step = btn() + ph2d_tokens::control_gap_px();
-            let fit = ((room / step).floor() as usize).saturating_sub(3).max(3);
             let n = if all {
                 res.len().min(fit)
             } else {
@@ -177,33 +164,17 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             })
         }
     };
-    let private_view = private::view(hero, id);
-    let timer = hero.documents.live.fac.timers.get(&id).cloned();
     let (hit, store) = (&mut hero.hit_index, &hero.store);
     if let Some(t) = timer {
-        y += paint_timer(
-            scene,
-            ts,
-            hit,
-            store,
-            theme,
-            &t,
-            now,
-            Rect::new(x, y, w, 0.0),
-        ) + Spacing::Md.px();
+        let at = Rect::new(x, y, w, 0.0);
+        y += paint_timer(scene, ts, hit, store, theme, &t, now, at) + gap;
     }
     if let Some(v) = view {
-        y += paint_vote(scene, ts, hit, store, theme, &v, Rect::new(x, y, w, 0.0)) + Spacing::Md.px();
+        y += paint_vote(scene, ts, hit, store, theme, &v, Rect::new(x, y, w, 0.0)) + gap;
     }
     if let Some(p) = private_view {
         private::paint(scene, ts, hit, store, theme, &p, Rect::new(x, y, w, 0.0));
     }
-}
-
-/// `MM:SS` de milissegundos (o relógio da sala).
-fn ms_clock(ms: u64) -> String {
-    let s = ms.div_ceil(1000);
-    format!("{:02}:{:02}", s / 60, s % 60)
 }
 
 /// O fundo de um cartão.
@@ -570,7 +541,16 @@ fn paint_vote(
                 // Ao vivo, depois de «I'm done» e sem poder acabar: espera-se pelo fim.
                 let wait = tr("board.livevote.waiting");
                 let w = r.w - 2.0 * pad;
-                paint_text_elided(ts, scene, wait, x0, label_y(3), TypeToken::Sm.px(), w, text2);
+                paint_text_elided(
+                    ts,
+                    scene,
+                    wait,
+                    x0,
+                    label_y(3),
+                    TypeToken::Sm.px(),
+                    w,
+                    text2,
+                );
             }
             for (k, (b, key, on)) in both.iter().enumerate() {
                 list.push((*b, wide(3, k, both.len()), Face::Text(tr(key).into()), *on));

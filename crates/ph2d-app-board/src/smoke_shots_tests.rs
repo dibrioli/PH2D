@@ -19,7 +19,8 @@ impl Shots {
     /// As fotos vão para `<temp>/<folder>/`.
     pub(crate) fn new(folder: &str) -> Self {
         ph2d_editor_core::test_support::ensure_panel_registry();
-        let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).unwrap();
+        let gpu =
+            ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).unwrap();
         let size = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
         let pass =
             ph2d_render::VelloPass::new(&gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, size).unwrap();

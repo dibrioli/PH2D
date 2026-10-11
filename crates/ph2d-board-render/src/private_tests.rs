@@ -97,5 +97,8 @@ fn the_eye_is_the_whole_lucide_eye_closed() {
         .count();
     assert_eq!(moves, file.len());
     let b = p.bounding_box();
-    assert!(b.x0 >= 0.0 && b.y0 >= 0.0 && b.x1 <= 24.0 && b.y1 <= 24.0, "{b:?}");
+    assert!(
+        b.x0 >= 0.0 && b.y0 >= 0.0 && b.x1 <= 24.0 && b.y1 <= 24.0,
+        "{b:?}"
+    );
 }

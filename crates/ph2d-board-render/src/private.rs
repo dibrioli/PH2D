@@ -28,6 +28,13 @@ const EYE_BOX_ALPHA: f32 = 0.14;
 const EYE_ICON_ALPHA: f32 = 0.6;
 /// O traço dos ícones Lucide no quadrado de 24.
 const LUCIDE_STROKE: f64 = 2.0;
+const LUCIDE_BOX: f64 = 24.0;
+/// O selo: o raio dos cantos e o ícone dentro dele, em fracções do lado do selo (o ícone a 70 %, ao
+/// centro — a figura pm_04).
+const EYE_ROUND: f64 = 0.2;
+const EYE_ICON: f64 = 0.7;
+/// A tolerância de achatar o canto redondo em curvas (unidades do mundo).
+const FLATTEN: f64 = 0.1;
 
 /// ⭐ O ícone **Lucide** `eye-closed` (ISC, `docs/design/icons/eye-closed.svg`), num quadrado de 24.
 pub(crate) const EYE_CLOSED_SVG: [&str; 5] = [
@@ -72,14 +79,15 @@ pub(crate) fn paint(scene: &mut VectorScene, el: &Element, t: Affine, unread: bo
     let side = el.w.min(el.h);
     let b = side * EYE_BOX;
     let at = side * EYE_INSET;
-    let boxr = RoundedRect::from_rect(Rect::new(at, at, at + b, at + b), b * 0.2);
+    let boxr = RoundedRect::from_rect(Rect::new(at, at, at + b, at + b), b * EYE_ROUND);
     scene.fill_path(
-        &boxr.to_path(0.1),
+        &boxr.to_path(FLATTEN),
         &Brush::Solid(ink.with_alpha(EYE_BOX_ALPHA)),
         t,
     );
-    let k = b * 0.7 / 24.0;
-    let icon = t * Affine::translate((at + b * 0.15, at + b * 0.15)) * Affine::scale(k);
+    let k = b * EYE_ICON / LUCIDE_BOX;
+    let inset = at + b * (1.0 - EYE_ICON) / 2.0;
+    let icon = t * Affine::translate((inset, inset)) * Affine::scale(k);
     let s = Stroke::new(LUCIDE_STROKE)
         .with_caps(Cap::Round)
         .with_join(Join::Round);

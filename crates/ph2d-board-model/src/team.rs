@@ -333,6 +333,19 @@ impl Board {
 
     /// Guarda uma versão (R1) com `name` e o instante `at`. ⚠️ Comprime: 14,5 ms a 100 mil elementos.
     pub fn save_version(&mut self, name: String, at: i64) {
+        let bytes = self.version_bytes();
+        let id = VersionId(self.team.mint());
+        self.team.versions.push(Version {
+            id,
+            name,
+            at,
+            bytes,
+        });
+    }
+
+    /// Os bytes de uma versão deste quadro (o que [`Version::read`] lê de volta).
+    #[must_use]
+    pub fn version_bytes(&self) -> Vec<u8> {
         // R4/P1 — a versão leva o documento, o rascunho e «não apresentar» (é do documento); nunca os
         // comentários nem as outras versões.
         let kept = Team {
@@ -354,17 +367,9 @@ impl Board {
         };
         let raw = postcard::to_allocvec(&set).unwrap_or_default();
         let mut z = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::new(1));
-        let bytes = z
-            .write_all(&raw)
+        z.write_all(&raw)
             .and_then(|()| z.finish())
-            .unwrap_or_default();
-        let id = VersionId(self.team.mint());
-        self.team.versions.push(Version {
-            id,
-            name,
-            at,
-            bytes,
-        });
+            .unwrap_or_default()
     }
 }
 

@@ -15,10 +15,7 @@ use ph2d_editor_core::screens::hero::board_nav::team::live_board;
 use ph2d_editor_core::screens::hero::{board_nav, document_tabs};
 
 /// O que o gate conduz.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "só o gate da cena lê os ids")
-)]
+#[cfg_attr(not(test), expect(dead_code, reason = "só o gate da cena lê os ids"))]
 pub(crate) struct Lessons {
     pub board: BoardId,
     pub ideas: [ElementId; 4],
@@ -49,7 +46,14 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     let ideas: [ElementId; 4] = std::array::from_fn(|i| {
         let key = format!("board.smoke.faclive.n{}", i + 1);
         let x = GAP + i as f64 * (SMALL + GAP);
-        note(b, &key, [12, 5, 1, 8][i], [x, 90.0, SMALL, SMALL], false, Some(ideas_frame))
+        note(
+            b,
+            &key,
+            [12, 5, 1, 8][i],
+            [x, 90.0, SMALL, SMALL],
+            false,
+            Some(ideas_frame),
+        )
     });
     let px = ideas_w + 2.0 * GAP;
     let private_w = 3.0 * SMALL + 4.0 * GAP;
@@ -63,14 +67,26 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     let y = h + GAP;
     let lessons: [ElementId; 6] = std::array::from_fn(|i| {
         let key = format!("board.smoke.faclive.l{}", i + 1);
-        note(b, &key, 1, [i as f64 * (side + GAP), y, side, side], false, None)
+        note(
+            b,
+            &key,
+            1,
+            [i as f64 * (side + GAP), y, side, side],
+            false,
+            None,
+        )
     });
     let title = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, None, INK),
         text: RichText::plain(&tr("board.smoke.faclive.title")),
     };
-    let t = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, width, 40.0]);
+    let t = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        title,
+        [0.0, -80.0, width, 40.0],
+    );
     super::team::put(b, t);
     let lessons_w = 6.0 * side + 5.0 * GAP;
     let view = [

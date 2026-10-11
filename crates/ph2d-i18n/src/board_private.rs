@@ -16,12 +16,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.private.on" => "{name} turned on private mode — new notes are hidden from others",
         "board.private.revealed" => "Private mode ended — every note is revealed",
         "board.private.someone" => "Someone",
+        "board.private.no_follow" => "Following is off while names are anonymous",
+        "board.livevote.refused" => {
+            "That vote didn't count — a hidden note takes no new votes until it's revealed"
+        }
         "board.livevote.started" => "{name} started a vote — {n} votes each",
         // ── a barra e o painel do modo privado ──
-        "board.fac.private" => "Private mode — write notes nobody else reads until they're revealed",
+        "board.fac.private" => {
+            "Private mode — write notes nobody else reads until they're revealed"
+        }
         "board.private.title" => "Private mode",
-        "board.private.needs_live" => "Private mode works in a live session.",
-        "board.private.needs_live_how" => "Open Live (bottom right), then come back here.",
+        "board.private.needs_live" => "Works in a live session.",
+        "board.private.needs_live_how" => "Open Live (bottom right) first.",
+        "board.private.other_board" => "Works on the live board.",
+        "board.private.other_board_how" => "Switch to that board's tab.",
         "board.private.explain" => "Others can't read new notes",
         "board.private.explain_2" => "until private mode is turned off.",
         "board.private.anonymous" => "Anonymous names",

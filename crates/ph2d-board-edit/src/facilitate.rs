@@ -42,11 +42,12 @@ impl Editor {
             return Vec::new();
         };
         // Um nó escondido por um ramo recolhido não mostra o `+` (nem o aceita): volta ao expandir.
-        // W12 — nem uma nota cujo texto não leio (volta ao revelar).
+        // W12 — nem uma nota cujo texto não leio (volta ao revelar), salvo se já lá tenho votos: o
+        // `−` tira-os (um voto novo nela é recusado).
         let mut els: Vec<&Element> = s
             .targets()
             .iter()
-            .filter(|id| !self.unread.contains(id))
+            .filter(|id| !self.unread.contains(id) || s.mine(**id) > 0)
             .filter_map(|id| doc.get(*id))
             .filter(|e| !e.is_hidden())
             .collect();

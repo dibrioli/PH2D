@@ -227,8 +227,11 @@ pub fn key(
         && !ctrl
         && !mods.alt
         && let Some(t) = text.filter(|t| !t.chars().any(char::is_control))
-        && ed.type_into_note(doc, ts, t)
+        && ed.would_type_into_note(doc)
     {
+        // Uma nota que recusa (travada; ou escondida de mim — W12) diz porquê no aviso, e a letra
+        // NÃO vira atalho de ferramenta.
+        let _ = ed.type_into_note(doc, ts, t);
         return taken();
     }
     let command = command.or(match k {

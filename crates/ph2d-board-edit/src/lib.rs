@@ -439,6 +439,18 @@ impl Editor {
         v
     }
 
+    /// W12 — os editáveis cujo TEXTO se pode mudar (marcas, cor das letras): nunca o de uma nota que
+    /// não leio — o aviso diz porquê (a cor e o resto da nota continuam de todos).
+    pub(crate) fn text_editable<'a>(&mut self, doc: &'a BoardDoc) -> Vec<&'a Element> {
+        let mut v = self.editable(doc);
+        let n = v.len();
+        v.retain(|el| !self.unread.contains(&el.id));
+        if v.len() < n {
+            self.notice = Some(Notice::Private);
+        }
+        v
+    }
+
     /// A moldura das pegas: a caixa rodada de uma forma (ou traço) só, ou a caixa alinhada de
     /// várias. As setas não entram (têm as pegas das pontas).
     #[must_use]

@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_board_model::{Board, BoardOp, BoardSet, Element, ElementId, Field, RichText, Stamp};
+use ph2d_board_model::{Board, BoardOp, BoardSet, Element, ElementId, Field, Stamp};
 use serde::{Deserialize, Serialize};
 
 use crate::team::{Shadow, TeamState, TeamWrite};
@@ -59,7 +59,7 @@ pub enum Write {
 }
 
 impl Write {
-    fn at(&self) -> Lamport {
+    pub(crate) fn at(&self) -> Lamport {
         match self {
             Write::Born { at, .. }
             | Write::Set { at, .. }
@@ -126,22 +126,10 @@ pub struct Replica {
     sealed: Sealed,
 }
 
-/// O modo privado nesta ponta (ADR-0182 §2): o texto das notas escrito com ele ligado sai SELADO
-/// (só para o cofre do anfitrião), nunca numa escrita para todos.
-#[derive(Clone, Debug, Default)]
-struct Sealed {
-    on: bool,
-    /// Por enviar ao cofre.
-    out: Vec<Write>,
-    /// As minhas notas com texto por revelar, e o carimbo do último texto selado de cada uma.
-    mine: BTreeMap<ElementId, Lamport>,
-    /// O que os OUTROS têm do texto delas (o valor e o carimbo): o retrato do anfitrião mostra isto.
-    public: BTreeMap<ElementId, (Vec<u8>, Lamport)>,
-}
-
-fn is_note(el: &Element) -> bool {
-    el.shape().is_some_and(|s| s.kind.is_note())
-}
+#[path = "replica_sealed.rs"]
+mod sealed;
+pub(crate) use sealed::sealed_field;
+use sealed::{Seal, Sealed};
 
 impl Replica {
     fn blank(peer: PeerId, board: &Board) -> Self {
@@ -160,50 +148,6 @@ impl Replica {
             team_shadow: Shadow::of(&board.team),
             sealed: Sealed::default(),
         }
-    }
-
-    /// Liga/desliga a selagem (o modo privado da sala).
-    pub fn set_sealing(&mut self, on: bool) {
-        self.sealed.on = on;
-    }
-
-    /// As escritas seladas por enviar ao cofre.
-    pub fn take_sealed(&mut self) -> Vec<Write> {
-        std::mem::take(&mut self.sealed.out)
-    }
-
-    /// As minhas notas com texto por revelar.
-    #[must_use]
-    pub fn my_sealed(&self) -> BTreeSet<ElementId> {
-        self.sealed.mine.keys().copied().collect()
-    }
-
-    /// Estas notas foram reveladas: o texto delas já é de todos.
-    pub fn released(&mut self, ids: impl IntoIterator<Item = ElementId>) {
-        for id in ids {
-            // O selado já não se reenvia depois de uma queda: ou saiu, ou perdeu para um mais novo
-            // e nunca se mostra.
-            if let Some(at) = self.sealed.mine.remove(&id) {
-                let key = OutKey::Set(id, Field::Text);
-                if self.outbox.get(&key).and_then(crate::vault::sealed_text) == Some((id, at)) {
-                    self.outbox.remove(&key);
-                }
-            }
-            self.sealed.public.remove(&id);
-        }
-    }
-
-    /// O carimbo de um registo como os OUTROS o têm (o do texto de uma nota minha selada é o de antes
-    /// dela): o anfitrião compara-o com uma escrita selada que chega.
-    #[must_use]
-    pub fn public_stamp(&self, id: ElementId, f: Field) -> Lamport {
-        if f == Field::Text
-            && self.sealed.mine.contains_key(&id)
-            && let Some((_, at)) = self.sealed.public.get(&id)
-        {
-            return *at;
-        }
-        self.stamp(id, f)
     }
 
     /// Abre uma sessão sobre `board` (o anfitrião). `seed` (do sistema) sorteia os ids novos.
@@ -251,7 +195,7 @@ impl Replica {
         self.receive(board, &mine);
         // O que era selado volta ao cofre, nunca a todos.
         let (sealed, public): (Vec<Write>, Vec<Write>) = mine.into_iter().partition(|w| {
-            crate::vault::sealed_text(w).is_some_and(|(id, at)| self.sealed.mine.get(&id) == Some(&at))
+            sealed_field(w).is_some_and(|(id, f, at)| self.sealed.mine.get(&(id, f)) == Some(&at))
         });
         self.outgoing.extend(public);
         self.sealed.out.extend(sealed);
@@ -283,29 +227,17 @@ impl Replica {
         self.team = snap.team.clone();
     }
 
-    /// O retrato para quem entra. O texto das MINHAS notas seladas sai com o valor e o carimbo que os
-    /// outros têm (ADR-0182 §3) — sem o carimbo, a escrita solta depois empataria e não entraria.
+    /// O retrato para quem entra. Os MEUS registos selados saem com o valor e o carimbo que os outros
+    /// têm (ADR-0182 §3) — sem o carimbo, a escrita solta depois empataria e não entraria.
     #[must_use]
     pub fn snapshot(&self, board: &Board) -> Snapshot {
-        let hide: Vec<(ElementId, &(Vec<u8>, Lamport))> = self
-            .sealed
-            .mine
-            .keys()
-            .filter_map(|id| self.sealed.public.get(id).map(|p| (*id, p)))
-            .collect();
         let mut stamps = self.stamps.clone();
-        let bytes = if hide.is_empty() {
-            BoardSet::board_bytes(board)
-        } else {
-            let mut b = board.clone();
-            for (id, (value, at)) in &hide {
-                if let Some(mut el) = b.doc.get_any(*id).cloned() {
-                    el.write(Field::Text, value);
-                    let _ = BoardOp::Put(el).apply(&mut b.doc);
-                }
-                stamps.insert((*id, Field::Text), *at);
+        let bytes = match self.masked(board) {
+            None => BoardSet::board_bytes(board),
+            Some((b, at)) => {
+                stamps.extend(at);
+                BoardSet::board_bytes(&b)
             }
-            BoardSet::board_bytes(&b)
         };
         Snapshot {
             board: bytes,
@@ -351,6 +283,7 @@ impl Replica {
     pub fn local(&mut self, board: &mut Board) -> Vec<Write> {
         let mut out = std::mem::take(&mut self.outgoing);
         let mut sealed = Vec::new();
+        let mut reverts: Vec<(ElementId, Vec<u8>)> = Vec::new();
         let mut lists = Vec::new();
         for (id, before) in board.doc.take_changes() {
             let Some(now) = board.doc.get_any(id).cloned() else {
@@ -358,36 +291,19 @@ impl Replica {
             };
             let Some(before) = before else {
                 let at = self.tick();
-                // Uma nota que nasce com texto no modo privado: nasce vazia para todos, e o texto
-                // segue selado com o carimbo seguinte.
                 let mut born = now;
-                let text = (self.sealed.on
-                    && is_note(&born)
-                    && born.shape().is_some_and(|s| !s.text.is_empty()))
-                .then(|| born.read(Field::Text))
-                .flatten();
-                if text.is_some()
-                    && let Some(s) = born.shape_mut()
-                {
-                    s.text = RichText::default();
-                }
+                let text = self.seal_born(&mut born, at);
                 for f in Field::ALL.into_iter().filter(|f| born.read(*f).is_some()) {
                     self.stamps.insert((id, f), at);
                 }
                 self.tokens.seed(&born);
                 self.touch(id, at);
-                if let Some(value) = text {
-                    let blank = born.read(Field::Text).unwrap_or_default();
-                    self.sealed.public.entry(id).or_insert((blank, at));
-                    let at = self.tick();
+                if let Some(w) = text {
+                    let at = w.at();
                     self.stamps.insert((id, Field::Text), at);
                     self.touch(id, at);
-                    sealed.push(Write::Set {
-                        id,
-                        field: Field::Text,
-                        value,
-                        at,
-                    });
+                    self.sealed.mine.insert((id, Field::Text), at);
+                    sealed.push(w);
                 }
                 out.push(Write::Born { el: born, at });
                 continue;
@@ -429,24 +345,42 @@ impl Replica {
                     }
                     lists.push(id);
                 } else if let Some(value) = now.read(f) {
-                    let seal = self.sealed.on && f == Field::Text && is_note(&now);
-                    if seal && !self.sealed.public.contains_key(&id) {
-                        let old = before.read(Field::Text).unwrap_or_default();
-                        let stamp = self.stamp(id, Field::Text);
-                        self.sealed.public.insert(id, (old, stamp));
-                    }
-                    self.stamps.insert((id, f), at);
-                    self.touch(id, at);
-                    let w = Write::Set {
-                        id,
-                        field: f,
-                        value,
-                        at,
+                    let (public, hidden) = match self.seal_set(&before, &now, f, value, at) {
+                        Seal::Public(w) => (Some(w), None),
+                        Seal::Sealed(w) => (None, Some(w)),
+                        Seal::Split(p, w) => (Some(p), Some(w)),
+                        Seal::Revert => {
+                            reverts.push((id, before.read(Field::Text).unwrap_or_default()));
+                            (None, None)
+                        }
                     };
-                    if seal { sealed.push(w) } else { out.push(w) }
+                    if let Some(w) = public {
+                        // Um registo meu escrito às claras substitui o selado no reenvio.
+                        if hidden.is_none() {
+                            self.sealed.mine.remove(&(id, f));
+                        }
+                        self.stamps.insert((id, f), at);
+                        self.touch(id, at);
+                        out.push(w);
+                    }
+                    if let Some(w) = hidden {
+                        let at = w.at();
+                        self.stamps.insert((id, f), at);
+                        self.touch(id, at);
+                        self.sealed.mine.insert((id, f), at);
+                        sealed.push(w);
+                    }
                 }
             }
         }
+        // O texto de uma nota que não leio volta ao que era (a escrita não sai).
+        for (id, old) in reverts {
+            if let Some(mut el) = board.doc.get_any(id).cloned() {
+                el.write(Field::Text, &old);
+                let _ = BoardOp::Put(el).apply(&mut board.doc);
+            }
+        }
+        let _ = board.doc.take_changes();
         for (field, value, old) in [
             (BoardField::Name, enc(&board.name), enc(&self.shadow.0)),
             (BoardField::Sketch, enc(&board.sketch), enc(&self.shadow.1)),
@@ -459,10 +393,19 @@ impl Replica {
         }
         self.shadow = (board.name.clone(), board.sketch);
         let (mut clock, peer) = (self.clock, self.peer);
-        let team = self.team.capture(&mut board.team, &self.team_shadow, || {
+        let mut team = self.team.capture(&mut board.team, &self.team_shadow, || {
             clock += 1;
             Lamport { n: clock, peer }
         });
+        // Uma versão guardada com algo meu selado leva o quadro como todos o vêem (aqui também).
+        for (_, w) in &mut team {
+            if let TeamWrite::Version(v) = w {
+                self.mask_version(v);
+                if let Some(mine) = board.team.versions.iter_mut().find(|m| m.id == v.id) {
+                    mine.bytes.clone_from(&v.bytes);
+                }
+            }
+        }
         self.clock = clock;
         self.team_shadow = Shadow::of(&board.team);
         out.extend(team.into_iter().map(|(at, w)| Write::Team { w, at }));
@@ -473,17 +416,7 @@ impl Replica {
         for id in ids {
             self.mark(board, id);
         }
-        for w in &out {
-            // Um texto meu escrito às claras depois substitui o selado no reenvio.
-            if let Some((id, _)) = crate::vault::sealed_text(w) {
-                self.sealed.mine.remove(&id);
-            }
-            self.remember(w);
-        }
-        for w in &sealed {
-            if let Some((id, at)) = crate::vault::sealed_text(w) {
-                self.sealed.mine.insert(id, at);
-            }
+        for w in out.iter().chain(&sealed) {
             self.remember(w);
         }
         self.sealed.out.extend(sealed);
@@ -598,6 +531,7 @@ impl Replica {
                     el.write(*field, value);
                     self.stamps.insert((id, *field), *at);
                 }
+                self.overtaken(id, *field, *at);
             }
             Write::Stamp {
                 stamp, op, take, ..

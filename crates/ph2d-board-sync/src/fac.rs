@@ -66,9 +66,12 @@ pub struct Ballot {
 }
 
 impl Ballot {
+    /// Os votos usados (`None` = uma soma que não cabe: um boletim que ninguém fez à mão).
     #[must_use]
-    pub fn used(&self) -> u32 {
-        self.votes.values().sum()
+    pub fn used(&self) -> Option<u32> {
+        self.votes
+            .values()
+            .try_fold(0u32, |acc, n| acc.checked_add(*n))
     }
 }
 
@@ -106,6 +109,8 @@ pub enum Refusal {
     OnlyStarterEndsVote,
     /// Nada a votar.
     NothingToVote,
+    /// O boletim não cumpre as regras (ex.: um voto novo numa nota que ficou escondida) — fica o anterior.
+    BallotRefused,
 }
 
 #[cfg(test)]

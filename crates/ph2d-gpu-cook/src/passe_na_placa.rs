@@ -84,7 +84,10 @@ struct Pipes {
 fn modulo(ligacoes: &[(&str, &str)], corpo: &str, extra: &str) -> String {
     let mut s = String::from("@group(0) @binding(0) var<uniform> u: U;\n");
     for (k, (nome, tipo)) in ligacoes.iter().enumerate() {
-        s += &format!("@group(0) @binding({}) var<storage, {tipo}> {nome};\n", k + 1);
+        s += &format!(
+            "@group(0) @binding({}) var<storage, {tipo}> {nome};\n",
+            k + 1
+        );
     }
     let graus = ph2d_contact::GRAUS;
     let por_grau = core::f32::consts::PI / 180.0;
@@ -280,7 +283,11 @@ impl Pipes {
     }
 }
 
-fn grupo(gpu: &GpuContext, pipe: &wgpu::ComputePipeline, buffers: &[&wgpu::Buffer]) -> wgpu::BindGroup {
+fn grupo(
+    gpu: &GpuContext,
+    pipe: &wgpu::ComputePipeline,
+    buffers: &[&wgpu::Buffer],
+) -> wgpu::BindGroup {
     let entries: Vec<wgpu::BindGroupEntry> = buffers
         .iter()
         .enumerate()
@@ -296,7 +303,12 @@ fn grupo(gpu: &GpuContext, pipe: &wgpu::ComputePipeline, buffers: &[&wgpu::Buffe
     })
 }
 
-fn despacha(enc: &mut wgpu::CommandEncoder, pipe: &wgpu::ComputePipeline, g: &wgpu::BindGroup, n: u32) {
+fn despacha(
+    enc: &mut wgpu::CommandEncoder,
+    pipe: &wgpu::ComputePipeline,
+    g: &wgpu::BindGroup,
+    n: u32,
+) {
     let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
         label: Some("ph2d-passe"),
         timestamp_writes: None,
@@ -313,7 +325,8 @@ impl GpuCook {
         self.passe.varreduras = varreduras;
     }
 
-    /// Quantos sinks o último cozimento separou na placa (o leitor é a cerca da rota).
+    /// Quantos sinks do último cozimento a placa VIU sem divergir da CPU (o leitor é a cerca da rota):
+    /// os que chegaram com colisor declarado e os vazios.
     #[must_use]
     pub fn passe_correu(&self) -> u32 {
         self.passe.correu
@@ -331,11 +344,23 @@ impl GpuCook {
         repouso: f32,
     ) -> Option<GpuStream> {
         let n = stream.count;
+        // Uma saída VAZIA não tem o que separar nem o que perder: a CPU também não mexe (um
+        // objecto sem imagem nem declara — `com_colisor` não põe coluna de zero linhas).
+        if n == 0 {
+            self.passe.correu += 1;
+            return None;
+        }
         let col = |nome: &str, dim: Dim| stream.get(nome).filter(|c| c.dim == dim);
         let p = col("P", Dim::Vec2)?;
         let declara = col(COLLIDER_COLUMN, Dim::Scalar).is_some()
             || col(COLLIDER_BOX_COLUMN, Dim::Vec2).is_some();
-        if varreduras == 0 || n == 0 || !declara || n > 65_535 * WG {
+        if !declara || n > 65_535 * WG {
+            return None;
+        }
+        // A placa VIU a declaração (o leitor é a cerca da rota): uma corrente vazia ou zero
+        // varreduras não têm nada a separar, como na CPU.
+        self.passe.correu += 1;
+        if varreduras == 0 {
             return None;
         }
         let ligados = col("rest", Dim::Vec2).is_some() && col("body", Dim::Scalar).is_some();
@@ -387,9 +412,15 @@ impl GpuCook {
         enc.clear_buffer(&ctrl, 0, None);
         let pb = &p.buffer;
         let g = |pipe, bufs: &[&wgpu::Buffer]| grupo(gpu, pipe, bufs);
-        let gf = g(&pipes.forma, &[&uni, pb, &raio, &caixa, &desvio, &size, &rot, &dec, &ctrl]);
+        let gf = g(
+            &pipes.forma,
+            &[&uni, pb, &raio, &caixa, &desvio, &size, &rot, &dec, &ctrl],
+        );
         despacha(enc, &pipes.forma, &gf, n);
-        let gm = g(&pipes.massa, &[&uni, pb, &w, &ii, &fall, &rest, &body, &dec, &est_a]);
+        let gm = g(
+            &pipes.massa,
+            &[&uni, pb, &w, &ii, &fall, &rest, &body, &dec, &est_a],
+        );
         despacha(enc, &pipes.massa, &gm, n);
         let gi = g(&pipes.inicia, &[&uni, &ctrl]);
         despacha(enc, &pipes.inicia, &gi, 1);
@@ -397,8 +428,14 @@ impl GpuCook {
         let fases = [(&est_a, &est_b), (&est_b, &est_a)].map(|(a, b)| {
             (
                 g(&pipes.gira, &[&uni, &dec, a, &ago, &starts, &ctrl]),
-                g(&pipes.espalha, &[&uni, &dec, a, &starts, &cursor, &sorted, &ctrl]),
-                g(&pipes.corrige, &[&uni, &dec, &ago, a, b, &starts, &sorted, &ctrl]),
+                g(
+                    &pipes.espalha,
+                    &[&uni, &dec, a, &starts, &cursor, &sorted, &ctrl],
+                ),
+                g(
+                    &pipes.corrige,
+                    &[&uni, &dec, &ago, a, b, &starts, &sorted, &ctrl],
+                ),
             )
         });
         let go = g(&pipes.ordena, &[&uni, &starts, &sorted, &ctrl]);
@@ -409,23 +446,39 @@ impl GpuCook {
             enc.clear_buffer(&starts, 0, None);
             enc.clear_buffer(&cursor, 0, None);
             despacha(enc, &pipes.gira, gg, n);
-            pipes.scan.exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
+            pipes
+                .scan
+                .exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
             despacha(enc, &pipes.espalha, ge, n);
             despacha(enc, &pipes.ordena, &go, nb);
             despacha(enc, &pipes.corrige, gc, n);
             despacha(enc, &pipes.decide, &gd, 1);
         }
         let fim = if varreduras % 2 == 1 { &est_b } else { &est_a };
-        let gw = g(&pipes.escreve, &[&uni, pb, &rot, &dec, fim, &p_out, &rot_out]);
+        let gw = g(
+            &pipes.escreve,
+            &[&uni, pb, &rot, &dec, fim, &p_out, &rot_out],
+        );
         despacha(enc, &pipes.escreve, &gw, n);
         self.passe.hold_uni.push(uni);
         self.passe.hold_scan.push(scratch);
         self.passe.ctrl = Some(ctrl);
-        self.passe.correu += 1;
 
         let mut out = stream.clone();
-        out.cols.insert("P".into(), GpuColumn { buffer: p_out, dim: Dim::Vec2 });
-        out.cols.insert("rot".into(), GpuColumn { buffer: rot_out, dim: Dim::Scalar });
+        out.cols.insert(
+            "P".into(),
+            GpuColumn {
+                buffer: p_out,
+                dim: Dim::Vec2,
+            },
+        );
+        out.cols.insert(
+            "rot".into(),
+            GpuColumn {
+                buffer: rot_out,
+                dim: Dim::Scalar,
+            },
+        );
         Some(out)
     }
 }
@@ -437,7 +490,9 @@ fn le_bytes(gpu: &GpuContext, buf: &wgpu::Buffer, bytes: u64) -> Vec<u8> {
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
-    let mut enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     enc.copy_buffer_to_buffer(buf, 0, &staging, 0, bytes.max(4));
     gpu.queue.submit(Some(enc.finish()));
     let slice = staging.slice(..);
@@ -465,7 +520,9 @@ impl GpuCook {
         self.pool.reclaim();
         self.passe.larga();
         let up = crate::stream::upload_stream(gpu, &mut self.pool, stream);
-        let mut enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         let out = self.separa_na_placa(gpu, &mut enc, &up, varreduras, repouso)?;
         gpu.queue.submit(Some(enc.finish()));
         let n = u64::from(up.count);
@@ -474,6 +531,10 @@ impl GpuCook {
         let c = le_bytes(gpu, self.passe.ctrl.as_ref()?, 16);
         let p: Vec<f32> = bytemuck::pod_collect_to_vec(&p);
         let c: Vec<u32> = bytemuck::pod_collect_to_vec(&c);
-        Some((p.as_chunks::<2>().0.to_vec(), bytemuck::pod_collect_to_vec(&r), c[3]))
+        Some((
+            p.as_chunks::<2>().0.to_vec(),
+            bytemuck::pod_collect_to_vec(&r),
+            c[3],
+        ))
     }
 }

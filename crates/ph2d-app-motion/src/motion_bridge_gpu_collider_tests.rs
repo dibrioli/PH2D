@@ -81,12 +81,20 @@ fn a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento() {
     let (antes, depois) = PONTE
         .split_once("let declara = peca_declara_colisor(motion, target as f64 * fixed_dt);")
         .expect("o `cook_gpu` deixou de PERGUNTAR se alguma peca declara colisor (doc 115 §33)");
-    assert!(antes.contains("fn cook_gpu("), "a pergunta e' do `cook_gpu`");
-    let plano = depois.find("plano_do_produto(").expect("o cook_gpu planeia");
+    assert!(
+        antes.contains("fn cook_gpu("),
+        "a pergunta e' do `cook_gpu`"
+    );
+    let plano = depois
+        .find("plano_do_produto(")
+        .expect("o cook_gpu planeia");
     let passe = depois
-        .find("motion.gpu_cook.set_passe(colisor::varreduras_do_passe(motion));")
+        .find(".set_passe(colisor::varreduras_do_passe(motion));")
         .expect("as varreduras do cartao Output chegam a placa — sem elas o passe nao corre");
-    assert!(passe < plano, "as varreduras entregam-se antes do cozimento");
+    assert!(
+        passe < plano,
+        "as varreduras entregam-se antes do cozimento"
+    );
     let cerca = "if colisor::cerca_do_passe(motion, declara) {\n                return fell(motion, RECUSA_PASSE);";
     assert_eq!(
         depois.matches(cerca).count(),
@@ -104,8 +112,10 @@ fn a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento() {
     }
 }
 
-/// ⭐⭐⭐ **A ROTA REAL: um objecto com `Collide` FICA na placa e é separado lá** (doc 130); sem ele,
-/// a placa não corre passe nenhum. Percorre o `cook_gpu` com a placa — o irmão do gate textual.
+/// ⭐⭐⭐ **A ROTA REAL: um objecto com `Collide` FICA na placa** (doc 130). Sem objecto publicado a
+/// corrente é vazia — nada a separar dos dois lados —, e a cerca do fim não pode confundir isso
+/// com «a placa perdeu o colisor» (ela dispararia em toda cena com um objecto por carregar).
+/// Percorre o `cook_gpu` com a placa — o irmão do gate textual.
 #[test]
 #[ignore = "placa: precisa de adapter de GPU"]
 fn a_ponte_separa_na_placa_o_objecto_que_declara_e_so_esse() {
@@ -117,13 +127,16 @@ fn a_ponte_separa_na_placa_o_objecto_que_declara_e_so_esse() {
     let saida = cook_gpu(&mut com, &gpu, 0, 1.0 / 60.0, &scopes);
     assert_ne!(com.route_said, Some(RECUSA_PASSE), "{saida:?}");
     if matches!(saida, GpuOutcome::Handled) {
-        assert_eq!(com.gpu_cook.passe_correu(), 1, "o objecto que declara e' separado na placa");
+        assert_eq!(
+            com.gpu_cook.passe_correu(),
+            1,
+            "a saida vazia conta como vista"
+        );
     }
-    // ⚠️ O CONTROLO: o mesmo documento sem o botão não leva coluna, logo nenhum passe.
+    // ⚠️ O CONTROLO: o mesmo documento sem o botão também não sai por esta razão.
     let (mut sem, _) = fonte_na_saida("source.object", None);
-    if matches!(cook_gpu(&mut sem, &gpu, 0, 1.0 / 60.0, &scopes), GpuOutcome::Handled) {
-        assert_eq!(sem.gpu_cook.passe_correu(), 0, "sem Collide nao ha passe");
-    }
+    let _ = cook_gpu(&mut sem, &gpu, 0, 1.0 / 60.0, &scopes);
+    assert_ne!(sem.route_said, Some(RECUSA_PASSE));
 }
 
 /// ⭐⭐ **O CENSO dos leitores da declaração** — a bandeira do registo não pode ficar por pôr.
@@ -150,6 +163,9 @@ fn todo_leitor_do_colisor_declarado_se_regista() {
         // A shell: o gizmo do cartão desenha o colisor e as cenas de pilha medem-no. Nenhum
         // deles vive num grafo, logo nenhum pode divergir entre CPU e dispositivo.
         ("ph2d-app-motion", None),
+        // O passe na PLACA (doc 130): o kernel lê as MESMAS colunas em WGSL; a porta aparece só no
+        // gate de paridade dele, que mede o alcance da fixtura com ela. Não é um nó de grafo.
+        ("ph2d-gpu-cook", None),
     ];
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

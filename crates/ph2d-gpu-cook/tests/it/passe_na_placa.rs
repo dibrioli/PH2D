@@ -7,7 +7,8 @@
 use ph2d_contact::passe::separa_com_relatorio;
 use ph2d_gpu_cook::GpuCook;
 use ph2d_nodegraph::attr::{
-    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN, Stream,
+    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
+    Stream,
 };
 
 use crate::placa::try_headless_gpu;
@@ -42,7 +43,11 @@ fn lcg(semente: &mut u32) -> f32 {
 fn fixturas() -> Vec<(&'static str, Stream)> {
     let mut v = Vec::new();
     // Discos em fila, sobrepostos.
-    let mut s = corrente((0..6).map(|i| [i as f32 * 0.6, 0.05 * (i % 2) as f32]).collect());
+    let mut s = corrente(
+        (0..6)
+            .map(|i| [i as f32 * 0.6, 0.05 * (i % 2) as f32])
+            .collect(),
+    );
     esc(&mut s, COLLIDER_COLUMN, vec![0.5; 6]);
     v.push(("discos", s));
     // Caixas alinhadas empilhadas: o TRECHO de dois pontos.
@@ -52,21 +57,54 @@ fn fixturas() -> Vec<(&'static str, Stream)> {
     // Caixas rodadas, com desvio e tamanho — a forma rodada e o centro deslocado.
     let mut s = corrente(vec![[0.0, 0.0], [0.7, 0.2], [1.3, -0.1], [0.4, 0.9]]);
     par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.5, 0.3]; 4]);
-    par(&mut s, COLLIDER_OFFSET_COLUMN, vec![[0.1, 0.0], [0.0, 0.0], [-0.05, 0.1], [0.0, 0.2]]);
-    par(&mut s, "size", vec![[1.0, 1.0], [1.2, 0.8], [0.9, 0.9], [-1.0, 1.0]]);
+    par(
+        &mut s,
+        COLLIDER_OFFSET_COLUMN,
+        vec![[0.1, 0.0], [0.0, 0.0], [-0.05, 0.1], [0.0, 0.2]],
+    );
+    par(
+        &mut s,
+        "size",
+        vec![[1.0, 1.0], [1.2, 0.8], [0.9, 0.9], [-1.0, 1.0]],
+    );
     esc(&mut s, "rot", vec![0.0, 30.0, 90.0, 210.0]);
     v.push(("caixas_rodadas", s));
     // Coincidentes: o desempate por paridade do par.
-    let mut s = corrente(vec![[0.0, 0.0], [0.0, 0.0], [2.0, 2.0], [2.0, 2.0], [2.0, 2.0]]);
+    let mut s = corrente(vec![
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [2.0, 2.0],
+        [2.0, 2.0],
+        [2.0, 2.0],
+    ]);
     esc(&mut s, COLLIDER_COLUMN, vec![0.5, 0.5, 0.0, 0.0, 0.0]);
-    par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.0, 0.0], [0.0, 0.0], [0.4, 0.4], [0.4, 0.4], [0.4, 0.4]]);
+    par(
+        &mut s,
+        COLLIDER_BOX_COLUMN,
+        vec![[0.0, 0.0], [0.0, 0.0], [0.4, 0.4], [0.4, 0.4], [0.4, 0.4]],
+    );
     v.push(("coincidentes", s));
     // Obstáculo (`inv_mass = 0`), inércia por coluna e `falloff`.
     let mut s = corrente((0..6).map(|i| [i as f32 * 0.5, 0.1 * i as f32]).collect());
     esc(&mut s, COLLIDER_COLUMN, vec![0.4, 0.4, 0.4, 0.0, 0.4, 0.4]);
-    par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.3, 0.2], [0.0, 0.0], [0.0, 0.0]]);
+    par(
+        &mut s,
+        COLLIDER_BOX_COLUMN,
+        vec![
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.3, 0.2],
+            [0.0, 0.0],
+            [0.0, 0.0],
+        ],
+    );
     esc(&mut s, "inv_mass", vec![1.0, 0.0, 2.0, 1.0, f32::NAN, 0.5]);
-    esc(&mut s, INV_INERTIA_COLUMN, vec![f32::NAN, 0.0, 3.0, f32::NAN, 1.0, f32::NAN]);
+    esc(
+        &mut s,
+        INV_INERTIA_COLUMN,
+        vec![f32::NAN, 0.0, 3.0, f32::NAN, 1.0, f32::NAN],
+    );
     esc(&mut s, "falloff", vec![1.0, 1.0, 0.3, 0.0, 1.5, 0.7]);
     v.push(("obstaculo_inercia_falloff", s));
     // A inércia DA COLUNA numa CAIXA: num disco a alavanca da normal é zero e a inércia não conta
@@ -86,20 +124,40 @@ fn fixturas() -> Vec<(&'static str, Stream)> {
     // O filtro do repouso: o mesmo corpo junto no REPOUSO não colide.
     let mut s = corrente((0..6).map(|i| [i as f32 * 0.5, 0.0]).collect());
     esc(&mut s, COLLIDER_COLUMN, vec![0.4; 6]);
-    par(&mut s, "rest", (0..6).map(|i| [i as f32 * 0.5, 0.0]).collect());
+    par(
+        &mut s,
+        "rest",
+        (0..6).map(|i| [i as f32 * 0.5, 0.0]).collect(),
+    );
     esc(&mut s, "body", vec![1.0, 1.0, 1.0, 2.0, 2.0, 0.0]);
     v.push(("ligados", s));
     // A nuvem mista: 300 peças (a CPU parte em blocos a partir de 128), discos e caixas.
     let mut semente = 7u32;
     let n = 300;
-    let p: Vec<[f32; 2]> = (0..n).map(|_| [lcg(&mut semente) * 8.0, lcg(&mut semente) * 8.0]).collect();
+    let p: Vec<[f32; 2]> = (0..n)
+        .map(|_| [lcg(&mut semente) * 8.0, lcg(&mut semente) * 8.0])
+        .collect();
     let mut s = corrente(p);
     let caixa: Vec<[f32; 2]> = (0..n)
-        .map(|i| if i % 3 == 0 { [0.2 + 0.1 * lcg(&mut semente), 0.15] } else { [0.0, 0.0] })
+        .map(|i| {
+            if i % 3 == 0 {
+                [0.2 + 0.1 * lcg(&mut semente), 0.15]
+            } else {
+                [0.0, 0.0]
+            }
+        })
         .collect();
     par(&mut s, COLLIDER_BOX_COLUMN, caixa);
-    esc(&mut s, COLLIDER_COLUMN, (0..n).map(|_| 0.15 + 0.1 * lcg(&mut semente)).collect());
-    esc(&mut s, "rot", (0..n).map(|_| 360.0 * lcg(&mut semente)).collect());
+    esc(
+        &mut s,
+        COLLIDER_COLUMN,
+        (0..n).map(|_| 0.15 + 0.1 * lcg(&mut semente)).collect(),
+    );
+    esc(
+        &mut s,
+        "rot",
+        (0..n).map(|_| 360.0 * lcg(&mut semente)).collect(),
+    );
     v.push(("nuvem_mista", s));
     v
 }
@@ -150,7 +208,10 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
             for i in 0..s.count() {
                 let (a, b) = (cp[i], gp[i]);
                 if a[0].is_nan() {
-                    assert!(b[0].is_nan(), "{nome}[{i}] v={v}: NaN na CPU, {b:?} na placa");
+                    assert!(
+                        b[0].is_nan(),
+                        "{nome}[{i}] v={v}: NaN na CPU, {b:?} na placa"
+                    );
                     continue;
                 }
                 pior = pior.max((a[0] - b[0]).abs().max((a[1] - b[1]).abs()));
@@ -161,10 +222,16 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
                 pior / alc,
                 rel.varreduras,
             );
-            assert!(pior <= TOL * alc, "{nome} v={v}: |ΔP| = {pior} > {TOL}·{alc}");
+            assert!(
+                pior <= TOL * alc,
+                "{nome} v={v}: |ΔP| = {pior} > {TOL}·{alc}"
+            );
             assert!(pior_rot <= TOL_GRAUS, "{nome} v={v}: |Δrot| = {pior_rot}°");
             // Medido: iguais em todas as fixturas (a paragem cai do mesmo lado).
-            assert_eq!(rel.varreduras, gv as usize, "{nome} v={v}: varreduras CPU × placa");
+            assert_eq!(
+                rel.varreduras, gv as usize,
+                "{nome} v={v}: varreduras CPU × placa"
+            );
         }
     }
 }
@@ -181,8 +248,15 @@ fn a_placa_de_facto_afasta_os_discos() {
         .separa_e_le(&gpu, &s, 8, ph2d_contact::REPOUSO_VISIVEL)
         .expect("corre");
     let antes = coluna_p(&s);
-    let mexeu = antes.iter().zip(&gp).filter(|(a, b)| (a[0] - b[0]).abs() > 1e-3).count();
-    assert!(mexeu >= 4 && gv >= 1, "{mexeu} discos mexeram em {gv} varreduras");
+    let mexeu = antes
+        .iter()
+        .zip(&gp)
+        .filter(|(a, b)| (a[0] - b[0]).abs() > 1e-3)
+        .count();
+    assert!(
+        mexeu >= 4 && gv >= 1,
+        "{mexeu} discos mexeram em {gv} varreduras"
+    );
 }
 
 /// Sem coluna de colisor ⇒ nenhum passe — a mesma resposta (`None`) que a CPU dá.
@@ -223,9 +297,13 @@ fn measure_o_passe_cpu_contra_placa() {
     for n in [1_000usize, 10_000, 32_761] {
         let lado = (n as f32).sqrt() * 0.42;
         let mut semente = 11u32;
-        let p: Vec<[f32; 2]> = (0..n).map(|_| [lcg(&mut semente) * lado, lcg(&mut semente) * lado]).collect();
+        let p: Vec<[f32; 2]> = (0..n)
+            .map(|_| [lcg(&mut semente) * lado, lcg(&mut semente) * lado])
+            .collect();
         let mut s = corrente(p);
-        let caixa: Vec<[f32; 2]> = (0..n).map(|i| if i % 2 == 0 { [0.25, 0.2] } else { [0.0, 0.0] }).collect();
+        let caixa: Vec<[f32; 2]> = (0..n)
+            .map(|i| if i % 2 == 0 { [0.25, 0.2] } else { [0.0, 0.0] })
+            .collect();
         par(&mut s, COLLIDER_BOX_COLUMN, caixa);
         esc(&mut s, COLLIDER_COLUMN, vec![0.25; n]);
         let (mut cpu, mut placa) = (f64::MAX, f64::MAX);
@@ -239,6 +317,11 @@ fn measure_o_passe_cpu_contra_placa() {
             placa = placa.min(t.elapsed().as_secs_f64());
             std::hint::black_box(g);
         }
-        eprintln!("n = {n:>6}: CPU {:>8.2} ms · placa {:>7.2} ms · {:.1}×", cpu * 1e3, placa * 1e3, cpu / placa);
+        eprintln!(
+            "n = {n:>6}: CPU {:>8.2} ms · placa {:>7.2} ms · {:.1}×",
+            cpu * 1e3,
+            placa * 1e3,
+            cpu / placa
+        );
     }
 }

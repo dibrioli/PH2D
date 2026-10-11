@@ -283,7 +283,9 @@ pub(super) fn cook_gpu(
     // cada sink — a pergunta deixou de recusar e passou a ARMAR a cerca do fim. Ver
     // [`peca_declara_colisor`] e [`colisor::cerca_do_passe`].
     let declara = peca_declara_colisor(motion, target as f64 * fixed_dt);
-    motion.gpu_cook.set_passe(colisor::varreduras_do_passe(motion));
+    motion
+        .gpu_cook
+        .set_passe(colisor::varreduras_do_passe(motion));
     // ⭐⭐⭐ **Um sink que mistura EM GRUPO desenha-se no Vello** (doc 118 W3/W4): o device entrega
     // as imagens ao passe de sprites, que só sabe a mistura de hardware — em luz linear e sem
     // alcance nenhum. ⇒ a rota da placa desenharia o tom e o alcance ERRADOS, e cai para a CPU,

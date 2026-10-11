@@ -35,7 +35,9 @@ fn estado(cena: u32, colide: bool) -> MotionState {
         .collect();
     assert!(!formas.is_empty(), "a cena {cena} tem formas");
     for f in formas {
-        m.doc.graph.set_param(f, param::COLLIDE, if colide { 1.0 } else { 0.0 });
+        m.doc
+            .graph
+            .set_param(f, param::COLLIDE, if colide { 1.0 } else { 0.0 });
     }
     m.sinks = super::super::remove::output_nodes(&m.doc.graph);
     m
@@ -56,7 +58,12 @@ fn formas_da_cpu(m: &mut MotionState) -> Vec<[f32; 2]> {
             &scopes,
         );
     }
-    let mut v: Vec<[f32; 2]> = m.pump.vector_instances.iter().map(|i| i.world_pos).collect();
+    let mut v: Vec<[f32; 2]> = m
+        .pump
+        .vector_instances
+        .iter()
+        .map(|i| i.world_pos)
+        .collect();
     v.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
     v
 }
@@ -106,7 +113,10 @@ fn as_cenas_do_passe_com_collide_correm_na_placa_e_dao_o_que_a_cpu_da() {
             m.route_said
         );
         assert_ne!(m.route_said, Some(RECUSA_PASSE), "={cena}");
-        assert!(m.gpu_cook.passe_correu() >= 1, "={cena}: a placa nao separou");
+        assert!(
+            m.gpu_cook.passe_correu() >= 1,
+            "={cena}: a placa nao separou"
+        );
         let (fp, fc, fs) = (
             formas_da_placa(&gpu, &m),
             formas_da_cpu(&mut cpu),
@@ -120,7 +130,10 @@ fn as_cenas_do_passe_com_collide_correm_na_placa_e_dao_o_que_a_cpu_da() {
         );
         assert_eq!(fp.len(), fc.len(), "={cena}: o numero de formas");
         if cena != 114 {
-            assert!(controlo > MEXE, "={cena}: o Collide nao mexeu na cena — gate vazio");
+            assert!(
+                controlo > MEXE,
+                "={cena}: o Collide nao mexeu na cena — gate vazio"
+            );
         }
         assert!(d <= EPS, "={cena}: a placa desenha a {d} da CPU");
     }

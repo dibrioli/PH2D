@@ -214,3 +214,12 @@ Depois: só o tique desenhado compõe (`70a5b6a24`, `c2521297b`; detalhe em
 recuperados e o scrub cozem só o estado (nós não-`Pure`, fontes de `pre`, tomadas de sinal); as
 tomadas de gizmo só no tique desenhado (`set_taps_por_tique`, APENDADO à bomba). Cena `=8` sem
 placa: HUD `2 fps · 402 ms → 23 fps · 41,9 ms`, mesmos bits.
+
+Depois: o `Collide` da forma corre na placa (`ef52ffe7e`, `26195b539`; espec no
+[doc 130](../130_o_passe_na_placa.md), detalhe em
+[`…_COLLIDE_NA_PLACA.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_COLLIDE_NA_PLACA.md)). O
+passe de separação ganha kernel na `ph2d-gpu-cook` (`passe_na_placa.rs` + cinco `.wgsl`) e a ponte
+deixa de recusar a cena: a `=114` e as `=121`–`=123` com `Collide` vão à rota híbrida, iguais à CPU
+a `6e-8`. ⚠️ **Para o integrador:** a `ph2d-gpu-cook` ganha a dependência `ph2d-contact` (aresta
+interna, nenhum pacote externo); `GpuCook` ganha um campo APENDADO (`passe`) e duas portas públicas
+(`set_passe`, `passe_correu`); `lib.rs` fica a `695/700` linhas.

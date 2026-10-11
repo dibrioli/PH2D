@@ -1617,7 +1617,7 @@ impossível.*
   referência a `ph2d-contact`.** Hoje isso é invisível porque toda cena com forma cai no caminho da
   CPU (a fronteira é o `motion.duplicator`) — *mas é o tecto real do «milhares de objectos»*: o
   caminho rápido e a colisão são **mutuamente exclusivos**. Fechar isto é um kernel, com espec
-  própria.
+  própria. ✅ **Fechado em 11/10 pelo [doc 130](130_o_passe_na_placa.md)** (o passe corre na placa).
 - ⏳ **O DESENHO de N formas vectoriais não foi medido** — ele vive noutro subsistema (o renderer), e
   toda a tabela acima é do cozimento. Se sobrar engasgo depois desta wave, é ali que se procura.
 - ⏳ A `1000` objectos com o cursor no topo ainda são `22,4 ms` (`1,3` quadros). Daqui para baixo é

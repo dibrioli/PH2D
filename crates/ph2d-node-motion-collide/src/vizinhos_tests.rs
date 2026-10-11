@@ -38,7 +38,9 @@ fn cena(n: usize, caixa: f32, semente: u64, com_corpos: bool) -> Cena {
         p[k] = p[k - 1];
     }
     let radii = (0..n).map(|_| 0.2 + r.f()).collect();
-    let w = (0..n).map(|k| if k % 11 == 0 { 0.0 } else { 0.5 + r.f() }).collect();
+    let w = (0..n)
+        .map(|k| if k % 11 == 0 { 0.0 } else { 0.5 + r.f() })
+        .collect();
     let fall = (0..n)
         .map(|k| match k % 9 {
             0 => 0.0,
@@ -87,9 +89,16 @@ fn grelha_usada(c: &Cena) -> bool {
 fn a_grelha_da_os_mesmos_bits_que_todos_os_pares() {
     for (semente, corpos) in [(1, false), (2, true), (3, true)] {
         let c = cena(800, 40.0, semente, corpos);
-        assert!(grelha_usada(&c), "semente {semente}: a grelha não serviu — o gate mediria nada");
+        assert!(
+            grelha_usada(&c),
+            "semente {semente}: a grelha não serviu — o gate mediria nada"
+        );
         let (a, b) = (corre(&c, 8, true), corre(&c, 8, false));
-        assert_ne!(bits(&a), bits(&c.p), "semente {semente}: nada se moveu — a cena não colide");
+        assert_ne!(
+            bits(&a),
+            bits(&c.p),
+            "semente {semente}: nada se moveu — a cena não colide"
+        );
         assert_eq!(bits(&a), bits(&b), "semente {semente}: a grelha mudou bits");
     }
 }
@@ -115,8 +124,14 @@ fn o_raio_grande_volta_a_todos_os_pares() {
         .collect();
     let serve = |raio: f32| grelha_serve(&mut GrelhaDeDiscos::default(), &p, lado_da_celula(raio));
     assert!(serve(0.6), "raio 0,6: a grelha tem de correr");
-    assert!(serve(2.0), "raio 2: a grelha tem de correr (8× mais rápida)");
-    assert!(!serve(12.0), "raio 12: a grelha é mais lenta e tem de ser recusada");
+    assert!(
+        serve(2.0),
+        "raio 2: a grelha tem de correr (8× mais rápida)"
+    );
+    assert!(
+        !serve(12.0),
+        "raio 12: a grelha é mais lenta e tem de ser recusada"
+    );
 }
 
 /// SONDA (não afirma nada): o relógio das duas passadas a `16 384` discos numa grelha de lado 1
@@ -178,7 +193,10 @@ fn longe_da_origem_a_grelha_corre_com_os_mesmos_bits() {
         for q in &mut c.p {
             (q[0], q[1]) = (q[0] + longe, q[1] - longe);
         }
-        assert!(grelha_usada(&c), "a {longe}: a grelha não serviu — o gate mediria nada");
+        assert!(
+            grelha_usada(&c),
+            "a {longe}: a grelha não serviu — o gate mediria nada"
+        );
         let (a, b) = (corre(&c, 6, true), corre(&c, 6, false));
         assert_ne!(bits(&a), bits(&c.p), "a {longe}: nada se moveu");
         assert_eq!(bits(&a), bits(&b), "a {longe}: a grelha mudou bits");

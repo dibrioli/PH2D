@@ -406,7 +406,7 @@ impl Discos<'_> {
             // corner left, and it is irreducible: two EXACTLY coincident points carry nothing
             // intrinsic to break the symmetry with, so the index is the only handle there is.
             // Measure-zero — any jitter escapes it.
-            if (i + j) % 2 == 0 {
+            if (i + j).is_multiple_of(2) {
                 (1.0, 0.0, min_dist)
             } else {
                 (0.0, 1.0, min_dist)

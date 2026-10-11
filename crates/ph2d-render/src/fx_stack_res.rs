@@ -104,6 +104,9 @@ pub(crate) struct Globals {
     /// ⚠️ **Empacotadas de propósito:** o WGSL dá stride **16** a um `array<f32>` no address space
     /// de uniform, então oito floats soltos custariam 128 bytes para carregar 32.
     pub(crate) stop_pos: [[f32; 4]; 2],
+    /// Os passes da PIRÂMIDE do borrão (`fx_stack_piramide`): as dimensões de entrada/de baixo, o
+    /// fator, e as marcas «1.º nível» / «já é a fonte». Zeros = o caminho de sempre.
+    pub(crate) aux: [i32; 4],
 }
 
 impl Globals {
@@ -149,6 +152,7 @@ impl Globals {
             src_premul: 0,
             stops: op.stops,
             stop_pos: op.stop_pos,
+            aux: [0; 4],
         }
     }
 }

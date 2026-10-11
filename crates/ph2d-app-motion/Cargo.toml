@@ -94,6 +94,8 @@ ph2d-motion-doc = { path = "../ph2d-motion-doc" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
+# O `fx.filter` em CADA forma (ciclo 20 W3b, doc 129 §3.4): as células do átlas.
+ph2d-fx-cells = { path = "../ph2d-fx-cells" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }

@@ -88,7 +88,7 @@ pub(super) fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
          FAIXA azul-escura do cenario passa por baixo de cada sombra. (1) A coluna da ESQUERDA e' o \
          controlo: a sombra em 'Sink' TAPA a faixa. (2) A da DIREITA e' a mesma sombra em \
          'Multiply': ela ESCURECE o que esta' por baixo, e a faixa ve'-se atraves dela. (3) A imagem e a \
-         forma da mesma coluna tem de fazer o MESMO. Clique no cartao 'Drop Shadow' de uma coluna e \
+         forma da mesma coluna tem de fazer o MESMO. Clique no cartao 'Shadow Copies' de uma coluna e \
          troque o 'Shadow Blend' para ver a sombra mudar."
     );
 }

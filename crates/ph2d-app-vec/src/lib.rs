@@ -112,7 +112,9 @@ pub mod expand;
 pub mod frame_boxes;
 pub mod frame_labels;
 pub mod frame_spans;
-pub mod fx_atlas;
+/// O empacotador mora no `ph2d-render` desde o ciclo 20 W3b do Motion (a camada filtrada em cada
+/// forma usa a mesma porta, com a ordem de z preservada).
+pub use ph2d_render::fx_atlas;
 pub mod fx_bridge;
 pub mod fx_bridge_dispatch;
 pub mod fx_dump;

@@ -78,7 +78,9 @@ pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
     if spec.radius_label.is_none() {
         return Plan::Point;
     }
-    Plan::Blur
+    Plan::Blur {
+        niveis: crate::fx_stack_piramide::niveis(op.sigma_px),
+    }
 }
 
 /// **Quanto ESTE degrau espalha para fora do que recebeu**, em pixels.
@@ -127,7 +129,7 @@ pub fn op_reach(op: &FxOpGpu) -> u32 {
         };
         return (span.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
     }
-    kernel_half(op.sigma_px)
+    crate::fx_stack_piramide::alcance(op.sigma_px)
 }
 
 /// **Quanto a pilha inteira espalha, em pixels, para cada lado.** Devolve
@@ -162,4 +164,35 @@ pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
         }
     }
     (l, t, r, b)
+}
+
+/// **Quanto ESTE degrau LÊ em volta de um pixel que escreve**, em pixels — a pergunta irmã do
+/// [`op_reach`] (quanto ele ESPALHA), e diferente dela: a sombra interna não espalha nada (desenha
+/// só dentro) mas lê o alfa invertido borrado e deslocado. Quem separa formas que não se podem ver
+/// (as células do `fx.filter` em cada forma, doc 129 §3.4) precisa desta.
+///
+/// - pontual: zero;
+/// - a turbulência: o que ela desloca, mais o vizinho da bilinear (o mesmo que espalha);
+/// - o borrão: o suporte do kernel, mais o deslocamento (o pixel lê o halo em `p − off`), mais o tap
+///   da fração sub-pixel;
+/// - o campo: a banda (além dela a distância já não muda nada), mais o deslocamento, mais o
+///   crescimento da morfologia, mais os dois texels do Sobel da semente.
+#[must_use]
+pub fn op_read(op: &FxOpGpu) -> u32 {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let px = |v: f32| v.abs().ceil() as u32;
+    let desloca = px(op.offset_px[0]).max(px(op.offset_px[1]));
+    match plan_of(op, true) {
+        Plan::Point => 0,
+        Plan::Warp => op_reach(op),
+        Plan::Blur { .. } => crate::fx_stack_piramide::alcance(op.sigma_px) + desloca + 1,
+        Plan::Field { .. } => px(op.sigma_px) + px(op.grow_px) + desloca + 2,
+    }
+}
+
+/// **Quanto a pilha inteira LÊ em volta de um pixel** — as leituras somam ao longo dela, como as
+/// reaches do [`stack_reach`].
+#[must_use]
+pub fn stack_read(ops: &[FxOpGpu]) -> u32 {
+    ops.iter().map(op_read).sum()
 }

@@ -20,8 +20,8 @@
 
 use ph2d_fx_op::FxOp;
 use ph2d_node_registry::{
-    NodeRegistry, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamUiHint,
-    ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
+    NodeRegistry, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamHardMax,
+    ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
 };
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -41,20 +41,16 @@ const OUTPUT: &str = "motion.output";
 /// **A régua de COMPRIMENTO do nó, em unidades de MUNDO** — raio, deslocamento, tamanho do ruído e
 /// crescimento partilham-na (a mesma grandeza, a mesma régua, como no painel vetorial).
 ///
-/// ⚠️ **Medida, não escolhida:** é o raio em que o passe SATURA na câmera do produto. O kernel do
-/// `FxStackPass` pára em `MAX_HALF = 96` px de meia-largura (`σ ≤ 32` px com suporte de 3σ — o
-/// limite de CUSTO do passe); a câmera do Motion mostra `height_world = 10` unidades na altura da cena
-/// (`534` px na janela `1600×972` medida no doc 129 §5.3):
-///
-/// | grandeza | valor |
-/// |---|---:|
-/// | px por unidade (`534 / 10`) | `53,4` |
-/// | `σ` máximo do passe | `32` px |
-/// | raio de saturação (`32 / 53,4`) | **`0,60`** |
-///
-/// Um slider além disto ANDA e o borrão pára (controlo que mente). O gate que refaz a conta mora no
-/// `ph2d-app-motion`, que alcança o `MAX_HALF`.
+/// É o alcance do ARRASTO (o máximo suave): até ao ciclo 20 W3 era o raio em que o passe saturava
+/// na janela medida (`σ = 32` px a `53,4` px/unidade), e numa janela 4K a mesma régua saturava em
+/// ~0,27 (doc 129 §5.5 A8). Com a pirâmide o borrão honra qualquer σ até ao
+/// `ph2d_render::fx_stack::SIGMA_ALCANCAVEL`, e o valor DIGITADO vai até [`COMPRIMENTO_DIGITADO`].
 pub const COMPRIMENTO_MAX: f32 = 0.6;
+
+/// **O tecto do valor digitado** — a altura que a câmera do produto mostra (`height_world = 10`):
+/// um raio maior que a vista inteira já só tinge a camada por igual. O passe honra-o em qualquer
+/// janela e zoom (gate `the_typed_length_ceiling_is_honoured_at_8k_and_max_zoom`).
+pub const COMPRIMENTO_DIGITADO: f32 = 10.0;
 
 /// Os nomes dos params (a ordem do manifesto é a ordem das linhas do cartão).
 pub mod param {
@@ -638,6 +634,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
@@ -775,6 +772,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         0.01,
         ParamWidget::Slider,
     ),
+];
+
+const fn digitado(param: &'static str) -> ParamHardMax {
+    ParamHardMax {
+        param,
+        max: COMPRIMENTO_DIGITADO,
+    }
+}
+
+/// O valor digitado vai além do arrasto nos comprimentos (o passe honra-o, [`COMPRIMENTO_DIGITADO`]).
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    digitado(param::RADIUS),
+    digitado(param::OFFSET_X),
+    digitado(param::OFFSET_Y),
+    digitado(param::SIZE),
+    digitado(param::GROW),
 ];
 
 const fn unidade(param: &'static str, unit: ParamUnit) -> ParamUnitDecl {

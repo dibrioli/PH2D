@@ -164,7 +164,7 @@ impl GeometriasDaPlaca {
     }
 
     /// As geometrias prontas, para o passe.
-    fn prontas(&self) -> impl Iterator<Item = (u32, &ShapeGeometry)> {
+    pub(crate) fn prontas(&self) -> impl Iterator<Item = (u32, &ShapeGeometry)> {
         self.cache.iter().filter_map(|(h, e)| match e {
             Entrada::Pronta { geometria, .. } => Some((*h, &**geometria)),
             _ => None,
@@ -256,6 +256,9 @@ pub struct PlacaDeFormas {
     variante: ph2d_shape_gpu::VarianteDoPasse,
     /// O [`Self::desenha`] DESTE quadro desenhou a camada — o que o [`Self::redesenha_em`] repete.
     desenhou: bool,
+    /// As cópias que o [`Self::desenha`] deste quadro desenhou: o buffer, quantas e a vista — o
+    /// `fx.filter` em cada forma (doc 129 §3.4) redesenha-as, uma por célula.
+    ultimas: Option<(wgpu::Buffer, u32, ShapeView)>,
 }
 
 impl PlacaDeFormas {
@@ -394,6 +397,7 @@ impl PlacaDeFormas {
         // ⚠️ **A decisão vale UM quadro** e é consumida aqui: um quadro que não a tome (sem o ecrã
         // do herói, que é onde ela corre) volta ao caminho de sempre em vez de colar as cópias velhas.
         self.desenhou = false;
+        self.ultimas = None;
         if !std::mem::take(&mut self.ativa) {
             return None;
         }
@@ -457,7 +461,32 @@ impl PlacaDeFormas {
         );
         gpu.queue.submit([enc.finish()]);
         self.desenhou = true;
-        Some(&g.vista)
+        self.ultimas = Some((buffer, count, vista));
+        self.gpu.as_ref().map(|g| &g.vista)
+    }
+
+    /// As cópias que o [`Self::desenha`] deste quadro desenhou (o buffer, quantas, a vista).
+    #[must_use]
+    pub fn copias_do_quadro(&self) -> Option<(&wgpu::Buffer, u32, ShapeView)> {
+        self.ultimas.as_ref().map(|(b, n, v)| (b, *n, *v))
+    }
+
+    /// Um passe IRMÃO do desta placa — a mesma variante —, para as células do `fx.filter`.
+    #[must_use]
+    pub fn passe_irmao(&self, gpu: &GpuContext) -> ShapePass {
+        let variante = if self.variante.constantes.is_empty() {
+            ph2d_shape_gpu::VarianteDoPasse::do_ambiente()
+        } else {
+            self.variante.clone()
+        };
+        let mut p = ShapePass::da_variante(gpu, FORMATO_DA_CAMADA, &variante);
+        self.afina(&mut p);
+        p
+    }
+
+    /// O contorno pela ordem, como o do passe desta placa (a cada quadro: o `sem_contorno` muda).
+    pub fn afina(&self, passe: &mut ShapePass) {
+        passe.com_contorno(contorno_por_ordem() && !self.sem_contorno);
     }
 
     /// ⭐ doc 121 §9.14 (c) — **as formas deste quadro outra vez, sobre `alvo`** (o RT `Rgba16Float` do

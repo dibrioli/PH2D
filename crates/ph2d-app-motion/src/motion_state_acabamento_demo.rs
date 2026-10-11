@@ -1,10 +1,11 @@
 //! A cena `=135` — **O ACABAMENTO** (ciclo 20, [doc 129](../../../docs/Motion%20Nodes/129_ciclo_20_o_acabamento.md)).
 //!
 //! Uma galáxia de discos coloridos (a SIMULAÇÃO com campos da `=132`, [`super::ritmo_demo::galaxia`],
-//! pintada pelo degradê OKLCH da `=133`) que passa por um `Filter` (a sombra projectada da CAMADA)
-//! e por um `Lens` antes da saída. A lente nasce com a VINHETA ligada (os cantos escurecem) e o
-//! resto neutro: o artista liga, secção a secção, a aberração, o grade, a LUT e o grão, e troca o
-//! filtro (borrão, brilho, contorno…), e vê a cena ganhar a cara de um plano de cinema.
+//! pintada pelo degradê OKLCH da `=133`) que passa por DOIS `Filter` e por um `Lens` antes da saída:
+//! o primeiro é o relevo (`Bevel`) em CADA disco, o segundo a sombra projectada da galáxia INTEIRA
+//! (doc 129 §3.4 — as duas opções do `Apply To`). A lente nasce com a VINHETA ligada e o resto
+//! neutro: o artista troca cada filtro de opção, liga secção a secção a aberração, o grade, a LUT e
+//! o grão, e vê a cena ganhar a cara de um plano de cinema.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -31,7 +32,10 @@ pub(crate) struct Cena {
     pub saida: NodeId,
     pub lente: NodeId,
     pub tint: NodeId,
-    pub filtro: NodeId,
+    /// O relevo, em CADA disco (`Each Shape`).
+    pub forma: NodeId,
+    /// A sombra projectada da galáxia INTEIRA (`Whole Layer`).
+    pub camada: NodeId,
 }
 
 pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
@@ -73,25 +77,27 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
         g.set_param(tint, chave, v);
     }
     liga(g, pecas, tint, 0)?;
-    // ⭐ UM FILTRO DA CAMADA (W3): a sombra projectada, com os defaults do nó.
-    let filtro = no(g, ph2d_node_fx_filter::TYPE_NAME, 440.0, 60.0);
-    g.set_param(
-        filtro,
-        ph2d_node_fx_filter::param::KIND,
-        f32::from(ph2d_ecs::FxOp::DROP_SHADOW),
-    );
-    liga(g, tint, filtro, 0)?;
+    // ⭐ OS DOIS FILTROS (W3b): o relevo em cada disco, a sombra da galáxia inteira — o tipo pelo
+    // MESMO gesto do cartão (os defaults do tipo, `switch_kind`).
+    let forma = no(g, ph2d_node_fx_filter::TYPE_NAME, 440.0, 60.0);
+    ph2d_node_fx_filter::switch_kind(g, forma, ph2d_ecs::FxOp::BEVEL);
+    liga(g, tint, forma, 0)?;
+    let camada = no(g, ph2d_node_fx_filter::TYPE_NAME, 660.0, 60.0);
+    ph2d_node_fx_filter::switch_kind(g, camada, ph2d_ecs::FxOp::DROP_SHADOW);
+    g.set_param(camada, ph2d_node_fx_filter::param::SCOPE, 1.0);
+    liga(g, forma, camada, 0)?;
     // ⭐ A LENTE, com os defaults de quem a larga: só a vinheta.
-    let lente = no(g, ph2d_node_fx_lens::TYPE_NAME, 660.0, 60.0);
-    liga(g, filtro, lente, 0)?;
-    let saida = no(g, "motion.output", 880.0, 60.0);
+    let lente = no(g, ph2d_node_fx_lens::TYPE_NAME, 880.0, 60.0);
+    liga(g, camada, lente, 0)?;
+    let saida = no(g, "motion.output", 1100.0, 60.0);
     liga(g, lente, saida, 0)?;
     g.validate(reg).ok()?;
     Some(Cena {
         saida,
         lente,
         tint,
-        filtro,
+        forma,
+        camada,
     })
 }
 
@@ -111,31 +117,36 @@ pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
 pub(super) fn announce() {
     eprintln!(
         "\n[o acabamento] UMA GALAXIA de discos coloridos (azul para laranja) a girar devagar —\n\
-         uma SIMULACAO com campos de forca. Antes da saida ha um no `Filter` (um filtro da\n\
+         uma SIMULACAO com campos de forca. Antes da saida ha DOIS nos `Filter` (filtros da\n\
          CAMADA do Motion) e um no `Lens`: a camera.\n\
          \n\
-         (0) Cada disco tem uma SOMBRA escura para baixo e para a direita: e' o `Filter`, em\n    \
-         `Drop Shadow`. No cartao `Filter`, `Offset X`/`Offset Y` movem a sombra; `Radius`\n    \
-         amacia-a. Troque `Filter` para `Blur`: os discos borram; `Glow` (com `Color` clara):\n    \
-         um brilho a volta; `Outline`: um contorno. A camada filtrada fica POR CIMA do mundo.\n\
-         (1) Os CANTOS da cena estao mais escuros que o centro: e' a vinheta, que o `Lens`\n    \
+         (0) Cada disco tem RELEVO: a borda de cima-esquerda clara, a de baixo-direita escura. E' o\n    \
+         1.o `Filter` (`Effect` = `Bevel`), com `Apply To` = `Each Shape`: cada disco por si — onde\n    \
+         dois se tocam, cada um guarda a sua borda inteira. A galaxia gira: o relevo fica FIRME.\n\
+         (1) No 1.o `Filter`, troque `Apply To` para `Whole Layer`: os discos que se tocam viram UMA\n    \
+         peca e a borda some onde eles se encostam. Volte para `Each Shape`.\n\
+         (2) Ainda no 1.o, troque `Effect` para `Inner Shadow`: cada disco ganha uma sombra POR\n    \
+         DENTRO, igual nos do meio e nos da beira da galaxia.\n\
+         (3) O 2.o `Filter` e' a SOMBRA da galaxia inteira (`Drop Shadow`, `Whole Layer`), para baixo\n    \
+         e para a direita. Troque o `Apply To` dele para `Each Shape`: cada disco projecta a sua, e a\n    \
+         sombra de um cai em cima do vizinho. `Radius` amacia; `Offset X`/`Offset Y` movem-na.\n\
+         (4) Ponha o 1.o em `Whole Layer` e o 2.o em `Each Shape`: o cartao do 2.o diz, em baixo do\n    \
+         titulo, que ele ja' corre na camada inteira (os discos foram juntos antes dele).\n\
+         (5) Os CANTOS da cena estao mais escuros que o centro: e' a vinheta, que o `Lens`\n    \
          liga sozinho. No cartao `Lens`, seccao `Vignette`, arraste `Vignette` para 0: os\n    \
          cantos voltam ao normal. Para -0,5: os cantos CLAREIAM.\n\
-         (2) Abra `Chromatic Aberration` e ponha `Aberration` em 0,03: perto das BORDAS cada\n    \
+         (6) Abra `Chromatic Aberration` e ponha `Aberration` em 0,03: perto das BORDAS cada\n    \
          disco ganha uma franja vermelha de um lado e azul do outro; no CENTRO nada muda.\n\
-         (3) Abra `Color Grade`: `Temperature` 0,5 esquenta tudo (puxa para o laranja);\n    \
-         `Saturation` -1 deixa a cena cinzenta; `Exposure` 1 dobra a luz.\n\
-         (4) Ainda em `Color Grade`, `LUT File`: escolha `docs/Motion Nodes/tutoriais/luts/\n    \
-         quente.cube` — sombras puxam para o azul-petroleo e as luzes para o laranja, e\n    \
-         aparece o `LUT Mix` para dosear. Escolha `lut_1d.cube`: o cartao diz em baixo do\n    \
-         titulo porque a recusou, e a cena fica como estava.\n\
-         (5) Abra `Film Grain` e ponha `Grain` em 0,4: um chuvisco fino que mexe a cada\n    \
-         quadro. Pare o tempo: o grao PARA (o mesmo quadro tem sempre o mesmo grao).\n\
+         (7) Abra `Color Grade`: `Temperature` 0,5 esquenta tudo; `Saturation` -1 deixa a cena\n    \
+         cinzenta; `Exposure` 1 dobra a luz. `LUT File`: `docs/Motion Nodes/tutoriais/luts/\n    \
+         quente.cube` puxa as sombras para o azul-petroleo e as luzes para o laranja.\n\
+         (8) Abra `Film Grain` e ponha `Grain` em 0,4: um chuvisco fino que mexe a cada\n    \
+         quadro. Pare o tempo: o grao PARA.\n\
          \n\
-         DEU ERRADO se: os discos abrirem sem sombra; se os cantos nao escurecerem ao abrir a\n\
-         cena; se o efeito sair por cima\n\
-         dos paineis ou do grafo; se a franja aparecer no centro; ou se o grao continuar a\n\
-         mexer com o tempo parado.\n"
+         DEU ERRADO se: o relevo tremer com a galaxia a girar; se em `Each Shape` os discos do meio\n\
+         tiverem sombra interna diferente dos da beira; se em `Whole Layer` a borda continuar entre\n\
+         discos que se tocam; se o efeito sair por cima dos paineis ou do grafo; se a franja\n\
+         aparecer no centro; ou se o grao continuar a mexer com o tempo parado.\n"
     );
 }
 

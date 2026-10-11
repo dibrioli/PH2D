@@ -47,7 +47,8 @@ fn the_filter_and_the_lens_sit_on_the_wire_and_pass_it_through() {
     let (m, cena) = cozida(30);
     let g = &m.doc.graph;
     let liga = |de, para| g.edges().iter().any(|e| e.from.0 == de && e.to.0 == para);
-    assert!(liga(cena.tint, cena.filtro) && liga(cena.filtro, cena.lente));
+    assert!(liga(cena.tint, cena.forma) && liga(cena.forma, cena.camada));
+    assert!(liga(cena.camada, cena.lente));
     assert!(
         g.edges()
             .iter()
@@ -62,20 +63,32 @@ fn the_filter_and_the_lens_sit_on_the_wire_and_pass_it_through() {
     assert_eq!(n(cena.saida), n(cena.tint));
 }
 
-/// ⭐ O passo do filtro: a cena abre com UMA sombra projectada na pilha, e os filtros correm.
+/// ⭐ Os passos dos filtros: a cena abre com o RELEVO em cada disco e a SOMBRA da camada inteira,
+/// pela ordem do fio — a pilha parte-se entre os dois — e os filtros correm.
 #[test]
-fn the_scene_opens_with_a_drop_shadow_on_the_layer() {
+fn the_scene_opens_with_a_bevel_on_each_shape_and_a_shadow_on_the_layer() {
     let (mut m, cena) = cozida(2);
     m.filtro.prepara(&m.doc.graph);
     let pilha = m.filtro.pilha();
-    assert_eq!(pilha.len(), 1);
-    assert_eq!(pilha[0].no, cena.filtro);
-    assert_eq!(pilha[0].op.kind, ph2d_ecs::FxOp::DROP_SHADOW);
-    assert!(
-        m.filtro.liga(true),
-        "os filtros correm com o Motion na cena"
-    );
-    assert!(m.filtro.queixa(cena.filtro).is_none());
+    assert_eq!(pilha.iter().map(|d| d.no).collect::<Vec<_>>(), vec![cena.forma, cena.camada]);
+    assert_eq!(pilha[0].op, ph2d_ecs::FxOp::new(ph2d_ecs::FxOp::BEVEL));
+    assert_eq!(pilha[1].op.kind, ph2d_ecs::FxOp::DROP_SHADOW);
+    let (forma, camada) = ph2d_node_fx_filter::partition(pilha);
+    assert_eq!((forma.len(), camada.len()), (1, 1));
+    assert!(m.filtro.liga(true), "os filtros correm com o Motion na cena");
+    assert!(m.filtro.queixa(cena.forma).is_none() && m.filtro.queixa(cena.camada).is_none());
+}
+
+/// O passo (4): o 1.º na camada inteira e o 2.º em cada forma ⇒ o cartão do 2.º di-lo.
+#[test]
+fn an_each_shape_after_a_whole_layer_says_so_on_its_card() {
+    let (mut m, cena) = cozida(2);
+    m.doc.graph.set_param(cena.forma, ph2d_node_fx_filter::param::SCOPE, 1.0);
+    m.doc.graph.set_param(cena.camada, ph2d_node_fx_filter::param::SCOPE, 0.0);
+    m.filtro.prepara(&m.doc.graph);
+    assert!(m.filtro.queixa(cena.forma).is_none());
+    let q = m.filtro.queixa(cena.camada).expect("o cartão diz");
+    assert!(q.contains("Whole Layer"), "{q}");
 }
 
 /// O roteiro só nomeia rows que o cartão do `Lens` pinta (o nome que aparece NA TELA).
@@ -120,7 +133,7 @@ fn every_row_the_script_names_is_on_the_filter_card() {
     let hints = m.registry.param_ui(id).unwrap_or(&[]);
     let rotulos: Vec<&str> = hints.iter().map(|h| ph2d_i18n::tr(h.label)).collect();
     for nome in [
-        "Filter", "Radius", "Offset X", "Offset Y", "Color", "Opacity",
+        "Effect", "Apply To", "Radius", "Offset X", "Offset Y", "Opacity",
     ] {
         assert!(rotulos.contains(&nome), "{nome} ∉ {rotulos:?}");
     }
@@ -128,7 +141,12 @@ fn every_row_the_script_names_is_on_the_filter_card() {
         .iter()
         .map(|c| ph2d_i18n::tr(c))
         .collect();
-    for tipo in ["Drop Shadow", "Blur", "Glow", "Outline"] {
+    for tipo in ["Bevel", "Inner Shadow", "Drop Shadow"] {
         assert!(tipos.contains(&tipo), "{tipo} ∉ {tipos:?}");
     }
+    let opcoes: Vec<&str> = ph2d_node_fx_filter::SCOPE_LABELS
+        .iter()
+        .map(|c| ph2d_i18n::tr(c))
+        .collect();
+    assert_eq!(opcoes, ["Each Shape", "Whole Layer"]);
 }

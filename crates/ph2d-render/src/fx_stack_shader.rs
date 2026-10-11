@@ -36,6 +36,7 @@ struct Globals {
     src_premul: u32,
     stops: array<vec4<f32>, 8>,
     stop_pos: array<vec4<f32>, 2>,
+    aux: vec4<i32>,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
@@ -274,6 +275,18 @@ fn shift_split(off: f32) -> vec2<f32> {
     return vec2<f32>(oi, off - oi);
 }
 
+// A fonte do borrão horizontal: a IMAGEM passada pela `source_of` — ou, num passe de baixo da
+// pirâmide (`aux.z == 1`), a textura reduzida, que JÁ É a fonte.
+fn tap_fonte(t: texture_2d<f32>, x: i32, y: i32) -> vec4<f32> {
+    if (g.aux.z == 1) {
+        if (x < 0 || y < 0 || x >= i32(g.dims.x) || y >= i32(g.dims.y)) {
+            return source_of(vec4<f32>(0.0));
+        }
+        return textureLoad(t, vec2<i32>(x, y), 0);
+    }
+    return source_of(tap_img(t, x, y));
+}
+
 fn blur_h_at(id: vec3<u32>) -> vec4<f32> {
     var acc = vec4<f32>(0.0);
     var wsum = 0.0;
@@ -283,12 +296,12 @@ fn blur_h_at(id: vec3<u32>) -> vec4<f32> {
     let k0 = select(-h, -h - 1, s.y > 0.0);
     for (var k = k0; k <= h; k = k + 1) {
         let wt = gauss(f32(k) + s.y);
-        acc = acc + source_of(tap_img(t0, base + k, i32(id.y))) * wt;
+        acc = acc + tap_fonte(t0, base + k, i32(id.y)) * wt;
         wsum = wsum + wt;
     }
     if (wsum < 1.0e-6) {
-        let a = source_of(tap_img(t0, base, i32(id.y)));
-        let b = source_of(tap_img(t0, base - 1, i32(id.y)));
+        let a = tap_fonte(t0, base, i32(id.y));
+        let b = tap_fonte(t0, base - 1, i32(id.y));
         return mix(a, b, s.y);
     }
     return acc / wsum;
@@ -379,7 +392,11 @@ fn cs_blur_h(@builtin(global_invocation_id) id: vec3<u32>) {
 @compute @workgroup_size(8, 8, 1)
 fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    let b = blur_v_at(id);
+    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), compose_blur(id, blur_v_at(id)));
+}
+
+// O FECHO do borrão — porta única do passe vertical e da volta da pirâmide (`cs_op_up`).
+fn compose_blur(id: vec3<u32>, b: vec4<f32>) -> vec4<f32> {
     // A entrada, intacta — é ela que faz o op ser imagem -> imagem.
     let over = tap_img(t0, i32(id.x), i32(id.y));
     var outc: vec4<f32>;
@@ -401,7 +418,7 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
         let halo = vec4<f32>(tint_lin() * a, a);
         outc = over + halo * (1.0 - over.a);
     }
-    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), outc);
+    return outc;
 }
 
 // **O op PONTUAL** (Color Overlay): um dispatch, sem vizinho nenhum. Repinta o RGB e **não move um

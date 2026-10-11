@@ -31,8 +31,9 @@ pub struct Engrenagem<'a> {
     pub camera: &'a ph2d_render::Camera2d,
     pub window: ph2d_host::WindowSize,
     pub scene_viewport: Option<[f32; 4]>,
-    /// A camada da placa das formas deste quadro (`PlacaDeFormas::camada`).
-    pub formas: Option<&'a wgpu::TextureView>,
+    /// A placa das formas deste quadro: a camada dela (a camada inteira) e as cópias que desenhou
+    /// (cada forma, doc 129 §3.4).
+    pub formas: Option<&'a crate::motion_shape_placa::PlacaDeFormas>,
     pub mundo: &'a ph2d_render::WorldRt,
     /// A colagem do mundo (alvo `WorldRt::FORMAT`).
     pub band_blit: &'a BandBlit,
@@ -55,6 +56,8 @@ struct Placa {
     /// A colagem sobre a CAMADA (meio-float).
     colagem: BandBlit,
     alvos: Option<Alvos>,
+    /// As células dos degraus `Each Shape` — nascem no primeiro quadro que as pede.
+    celulas: Option<ph2d_fx_cells::Celulas>,
 }
 
 /// O estado dos filtros entre quadros.
@@ -118,6 +121,7 @@ impl MotionFiltro {
             pilha: FxStackPass::new(gpu),
             colagem: BandBlit::new(gpu, FORMATO_DA_CAMADA),
             alvos: None,
+            celulas: None,
         });
         if placa.alvos.as_ref().is_none_or(|a| a.tamanho != tamanho) {
             placa.alvos = Some(Alvos::new(gpu, tamanho));
@@ -186,19 +190,15 @@ fn limpa(gpu: &ph2d_gpu::GpuContext, alvo: &wgpu::TextureView) {
     gpu.queue.submit(Some(enc.finish()));
 }
 
-/// **A parte linear de mundo → pixel da cena** — a projecção da câmera (`world_to_screen_affine`,
-/// porta única) no tamanho em que o passe de sprites a usa: o sub-rect da cena, ou a janela.
-/// Sem a matriz de modelo: o passe de sprites nunca a põe.
+/// **A parte linear de mundo → pixel da cena** — a projecção da câmera no sub-rect da cena, sem a
+/// matriz de modelo (porta única: [`ph2d_fx_cells::afim_das_sprites`], a mesma das células).
 #[must_use]
 pub fn mundo_para_pixel(
     camera: &ph2d_render::Camera2d,
     window: ph2d_host::WindowSize,
     scene_viewport: Option<[f32; 4]>,
 ) -> [f64; 4] {
-    let (_, alvo) = sub_rect(window, scene_viewport);
-    let mut cam = *camera;
-    cam.model = ph2d_render::Camera2d::MODEL_IDENTITY;
-    let [a, b, c, d, _, _] = cam.world_to_screen_affine(alvo).as_coeffs();
+    let [a, b, c, d, _, _] = ph2d_fx_cells::afim_das_sprites(camera, window, scene_viewport);
     [a, b, c, d]
 }
 
@@ -210,34 +210,9 @@ pub fn origem_do_mundo(
     window: ph2d_host::WindowSize,
     scene_viewport: Option<[f32; 4]>,
 ) -> [f32; 2] {
-    let (canto, alvo) = sub_rect(window, scene_viewport);
-    let mut cam = *camera;
-    cam.model = ph2d_render::Camera2d::MODEL_IDENTITY;
-    let [_, _, _, _, e, f] = cam.world_to_screen_affine(alvo).as_coeffs();
+    let [_, _, _, _, e, f] = ph2d_fx_cells::afim_das_sprites(camera, window, scene_viewport);
     #[expect(clippy::cast_possible_truncation, reason = "pixels de ecrã cabem num f32")]
-    [(f64::from(canto[0]) + e) as f32, (f64::from(canto[1]) + f) as f32]
-}
-
-/// O canto e o tamanho do rectângulo onde o passe de sprites projecta: o sub-rect da cena, ou a
-/// janela.
-fn sub_rect(
-    window: ph2d_host::WindowSize,
-    scene_viewport: Option<[f32; 4]>,
-) -> ([f32; 2], ph2d_host::WindowSize) {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "o split dá pixels inteiros e não negativos"
-    )]
-    scene_viewport.map_or(([0.0, 0.0], window), |v| {
-        (
-            [v[0], v[1]],
-            ph2d_host::WindowSize {
-                width: v[2].max(1.0) as u32,
-                height: v[3].max(1.0) as u32,
-            },
-        )
-    })
+    [e as f32, f as f32]
 }
 
 impl MotionState {
@@ -257,52 +232,90 @@ impl MotionState {
 
     /// **A camada filtrada, colada no mundo** — no lugar da colagem da placa. `false` = os filtros
     /// não correm neste quadro, e a shell cola a placa como sempre.
+    ///
+    /// A pilha parte-se pela ordem do fio ([`ph2d_node_fx_filter::partition`]): os degraus `Each
+    /// Shape` correm nas CÉLULAS (cada instância sozinha, devolvida no seu lugar), e a camada que
+    /// elas devolvem recebe os `Whole Layer` (vazios = só a conversão para o mundo).
     pub fn filtra_a_camada(&mut self, e: Engrenagem<'_>) -> bool {
         if !self.filtro.ligada {
             return false;
         }
         let arte = crate::lei_da_aparencia::a_arte_desenha(self, self.pump.a_lei());
         let linear = mundo_para_pixel(e.camera, e.window, e.scene_viewport);
-        let ops: Vec<FxOpGpu> = self
-            .filtro
-            .pilha
-            .iter()
-            .filter(|d| d.op.is_active())
-            .map(|d| FxOpGpu::resolve(&d.op, linear))
-            .collect();
+        let resolve = |pilha: &[NoDoFiltro]| -> Vec<FxOpGpu> {
+            pilha
+                .iter()
+                .filter(|d| d.op.is_active())
+                .map(|d| FxOpGpu::resolve(&d.op, linear))
+                .collect()
+        };
+        let (por_forma, da_camada) = ph2d_node_fx_filter::partition(&self.filtro.pilha);
+        let (ops_forma, ops_camada) = (resolve(por_forma), resolve(da_camada));
         let tamanho = e.mundo.size();
         let (gpu_sprites, cpu) =
             sprites_de(&self.gpu_cook, &self.pump.instances, self.gpu_live, arte);
-        let placa = self.filtro.placa(e.gpu, tamanho);
-        let Some(alvos) = placa.alvos.as_ref() else {
+        let geometrias = &self.placa_geometrias;
+        let Placa {
+            pilha,
+            colagem,
+            alvos,
+            celulas,
+        } = self.filtro.placa(e.gpu, tamanho);
+        let Some(alvos) = alvos.as_ref() else {
             return false;
         };
-        limpa(e.gpu, &alvos.camada_view);
-        e.renderer.render_instances_only(
-            &alvos.linear,
-            e.camera,
-            e.window,
-            wgpu::Color::TRANSPARENT,
-            cpu,
-            gpu_sprites,
-            e.scene_viewport,
-        );
-        placa.colagem.blit(
-            e.gpu,
-            &alvos.camada_view,
-            &alvos.linear,
-            BandSource::Sprites,
-        );
-        if let Some(formas) = e.formas {
-            placa
-                .colagem
-                .blit(e.gpu, &alvos.camada_view, formas, BandSource::Formas);
+        if ops_forma.is_empty() {
+            limpa(e.gpu, &alvos.camada_view);
+            e.renderer.render_instances_only(
+                &alvos.linear,
+                e.camera,
+                e.window,
+                wgpu::Color::TRANSPARENT,
+                cpu,
+                gpu_sprites,
+                e.scene_viewport,
+            );
+            colagem.blit(e.gpu, &alvos.camada_view, &alvos.linear, BandSource::Sprites);
+            if let Some(formas) = e.formas.and_then(|p| p.camada()) {
+                colagem.blit(e.gpu, &alvos.camada_view, formas, BandSource::Formas);
+            }
+        } else {
+            let celulas = celulas.get_or_insert_with(|| {
+                let passe = e.formas.map_or_else(
+                    || ph2d_shape_gpu::ShapePass::new(e.gpu, FORMATO_DA_CAMADA),
+                    |p| p.passe_irmao(e.gpu),
+                );
+                ph2d_fx_cells::Celulas::new(e.gpu, passe)
+            });
+            celulas.formas_mut().set_geometries(e.gpu, geometrias.prontas());
+            if let Some(p) = e.formas {
+                p.afina(celulas.formas_mut());
+            }
+            let formas = e
+                .formas
+                .and_then(|p| p.copias_do_quadro())
+                .map(|(buffer, n, vista)| ph2d_fx_cells::Formas { buffer, n, vista });
+            let sprites = match gpu_sprites {
+                Some((buffer, n, runs)) => ph2d_fx_cells::Sprites::Placa { buffer, n, runs },
+                None => ph2d_fx_cells::Sprites::Cpu(cpu),
+            };
+            celulas.corre(ph2d_fx_cells::Entrada {
+                gpu: e.gpu,
+                renderer: e.renderer,
+                camera: e.camera,
+                window: e.window,
+                scene_viewport: e.scene_viewport,
+                sprites,
+                formas,
+                ops: &ops_forma,
+                pilha,
+                camada: &alvos.camada_view,
+                tamanho,
+            });
         }
         let (w, h) = tamanho;
         let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
-        placa
-            .pilha
-            .run_layer(e.gpu, &alvos.camada, &alvos.saida, w, h, &ops, origem);
+        pilha.run_layer(e.gpu, &alvos.camada, &alvos.saida, w, h, &ops_camada, origem);
         e.band_blit.blit(
             e.gpu,
             e.mundo.blend_view(),

@@ -4934,6 +4934,7 @@ dependencies = [
  "ph2d-flip",
  "ph2d-flip-entities",
  "ph2d-flip-render",
+ "ph2d-fx-cells",
  "ph2d-gpu",
  "ph2d-gpu-cook",
  "ph2d-host",
@@ -5752,6 +5753,20 @@ version = "0.0.0"
 dependencies = [
  "ph2d-core",
  "ph2d-flip",
+]
+
+[[package]]
+name = "ph2d-fx-cells"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-fx-op",
+ "ph2d-gpu",
+ "ph2d-host",
+ "ph2d-render",
+ "ph2d-shape-gpu",
+ "ph2d-vector",
+ "wgpu",
 ]
 
 [[package]]

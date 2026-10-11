@@ -223,6 +223,27 @@ fn caixa_estimada(cp: Copia, rec: Record) -> vec4<f32> {
     return vec4<f32>(lo, hi);
 }
 
+// ⭐ doc 129 §3.4 (o `fx.filter` em CADA forma) — **as caixas das cópias no ecrã**: a MESMA
+// `caixa_estimada` que o quad desenha, e o pixel da âncora (`pos`). Dois `vec4` por cópia; sem
+// geometria, a caixa VAZIA (`lo > hi`).
+@group(3) @binding(0) var<storage, read_write> caixas_out: array<vec4<f32>>;
+@group(3) @binding(1) var<uniform> caixas_n: vec4<u32>;
+
+@compute @workgroup_size(64)
+fn cs_caixas(@builtin(global_invocation_id) id: vec3<u32>) {
+    let ii = id.x;
+    if ii >= caixas_n.x {
+        return;
+    }
+    let cp = copia_de(ii);
+    var caixa = vec4<f32>(1.0e30, 1.0e30, -1.0e30, -1.0e30);
+    if cp.r != 0xffffffffu {
+        caixa = caixa_estimada(cp, records[cp.r]);
+    }
+    caixas_out[2u * ii] = caixa;
+    caixas_out[2u * ii + 1u] = vec4<f32>(aplica(view.lin, view.t, instances[ii].pos), 0.0, 0.0);
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
     var out: VsOut;

@@ -136,7 +136,7 @@ fn kinds_table() -> Vec<FilterKindView> {
     const NOISE: Option<(&str, &str, &str)> = Some(("Size", "Detail", "Seed"));
     vec![
         k("Blur", Some("Radius"), None, None, &[], false),
-        k("Glow", Some("Radius"), None, COL, &[], false),
+        k("Outer Glow", Some("Radius"), None, COL, &[], false),
         k("Drop Shadow", Some("Radius"), OFF, COL, &[], false),
         k("Inner Shadow", Some("Radius"), OFF, COL, INNER, true),
         k("Inner Glow", Some("Radius"), None, COL, INNER, true),

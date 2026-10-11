@@ -44,23 +44,34 @@ pub struct Batch {
 /// chamador já a limitou (`MAX_FX_SIDE`), e devolver "não coube" faria a forma **desaparecer** —
 /// que é o modo de falha errado para um limite de recurso.
 pub fn pack(sizes: &[(u32, u32)], max_side: u32) -> Vec<Batch> {
-    if sizes.is_empty() {
-        return Vec::new();
-    }
-    let max_side = max_side.max(1);
     let mut order: Vec<usize> = (0..sizes.len()).collect();
     order.sort_by_key(|&i| {
         let (w, h) = sizes[i];
         (std::cmp::Reverse(h), std::cmp::Reverse(w), i)
     });
+    shelves(&order, sizes, max_side)
+}
 
+/// **O mesmo empacotamento, NA ORDEM DADA** (ciclo 20 W3b do Motion, doc 129 §3.4): cada lote é um
+/// trecho CONTÍGUO da lista — as células voltam à camada lote a lote, e a ordem de z das instâncias
+/// sobrevive à partição. Desperdiça mais área que o [`pack`] com tamanhos variados; as cópias de um
+/// Motion costumam ter o mesmo tamanho.
+pub fn pack_in_order(sizes: &[(u32, u32)], max_side: u32) -> Vec<Batch> {
+    let order: Vec<usize> = (0..sizes.len()).collect();
+    shelves(&order, sizes, max_side)
+}
+
+/// As prateleiras sobre `order` — a porta única dos dois empacotamentos.
+fn shelves(order: &[usize], sizes: &[(u32, u32)], max_side: u32) -> Vec<Batch> {
+    if sizes.is_empty() {
+        return Vec::new();
+    }
+    let max_side = max_side.max(1);
     let mut batches: Vec<Batch> = Vec::new();
     let mut cells: Vec<Placement> = Vec::new();
-    // O cursor das prateleiras: onde a linha corrente começa em Y, quanto já se andou em X, e a
-    // altura dela (a da primeira forma, porque a lista vem ordenada por altura decrescente).
     let (mut shelf_y, mut x, mut shelf_h) = (0u32, 0u32, 0u32);
 
-    for &i in &order {
+    for &i in order {
         let (w, h) = (sizes[i].0.max(1), sizes[i].1.max(1));
         // ⚠️ **Uma forma maior que o teto vai SOZINHA**, e este ramo é o que impede o modo de falha
         // que o gate apanhou: sem ele ela era posta na prateleira corrente e ESPALHAVA o próprio

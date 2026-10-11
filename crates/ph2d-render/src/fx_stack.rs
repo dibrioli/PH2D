@@ -59,14 +59,16 @@ use ph2d_gpu::GpuContext;
 
 use crate::fx_stack_field::FIELD_WGSL;
 use crate::fx_stack_noise::{NOISE_WGSL, WARP_WGSL};
+use crate::fx_stack_piramide::{PIRAMIDE_WGSL, sigma_baixo};
+pub use crate::fx_stack_piramide::SIGMA_ALCANCAVEL;
 use crate::fx_stack_res::{Globals, Tex, make_tex, write_at};
 use crate::fx_stack_shader::{
     FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, kind_consts_wgsl,
 };
 
 /// Meia-largura MÁXIMA do kernel (o laço do shader é limitado por ela). `96` cobre `sigma ≈ 32`
-/// px com suporte de 3σ — um borrão bem forte na tela. Acima disso o kernel satura no cap (o
-/// borrão para de crescer), o que é um limite de CUSTO honesto do passe, não um teto de produto.
+/// px com suporte de 3σ. Acima disso o borrão desce na PIRÂMIDE ([`crate::fx_stack_piramide`],
+/// doc 129 §5.5 A8) — o tecto do σ é o [`SIGMA_ALCANCAVEL`], não este.
 pub const MAX_HALF: u32 = 96;
 
 /// O alinhamento mínimo de offset dinâmico de uniform buffer no WebGPU. A pilha escreve os
@@ -82,7 +84,9 @@ pub(crate) const UNIFORM_STRIDE: u64 = 512;
 
 pub use crate::fx_stack_op::FxOpGpu;
 use crate::fx_stack_plan::plan_of;
-pub use crate::fx_stack_plan::{jump_count, kernel_half, op_reach, stack_reach};
+pub use crate::fx_stack_plan::{
+    jump_count, kernel_half, op_reach, op_read, stack_reach, stack_read,
+};
 
 /// **Como este degrau é executado.** Porta única: quem ESCREVE os globals e quem os DESPACHA
 /// perguntam à mesma — as duas varreduras andam em lockstep sobre a mesma lista, e um `if`
@@ -91,8 +95,9 @@ pub use crate::fx_stack_plan::{jump_count, kernel_half, op_reach, stack_reach};
 pub(crate) enum Plan {
     /// Um dispatch, sem vizinho nenhum (Color Overlay).
     Point,
-    /// Gaussiana separável: H, depois V+finalize+composite.
-    Blur,
+    /// Gaussiana separável: H, depois V+finalize+composite. Com `niveis > 0` (σ acima do que o
+    /// kernel percorre) corre na PIRÂMIDE: `niveis` reduções, H e V lá em baixo, e a volta com o fecho.
+    Blur { niveis: u32 },
     /// Campo de distância: semente + `n` saltos do JFA + finalize. Serve os degraus de dentro em
     /// modo Contour **e o CONTORNO** — os dois pedem uma distância, não um borrão.
     Field { jumps: usize, raster_seed: bool },
@@ -106,7 +111,8 @@ impl Plan {
     fn passes(self) -> usize {
         match self {
             Self::Point | Self::Warp => 1,
-            Self::Blur => 2,
+            Self::Blur { niveis: 0 } => 2,
+            Self::Blur { niveis } => niveis as usize + 3,
             // Com geometria não há semente nem saltos: só o finalize.
             Self::Field { jumps, raster_seed } => jumps + usize::from(raster_seed) + 1,
         }
@@ -132,6 +138,10 @@ pub struct FxStackPass {
     pipeline_ingest: wgpu::ComputePipeline,
     pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
+    /// A pirâmide do borrão: a média 2×2, o vertical sem fecho, a volta com o fecho.
+    pipeline_halve: wgpu::ComputePipeline,
+    pipeline_v_only: wgpu::ComputePipeline,
+    pipeline_up: wgpu::ComputePipeline,
     pipeline_point: wgpu::ComputePipeline,
     pipeline_warp: wgpu::ComputePipeline,
     pipeline_seed: wgpu::ComputePipeline,
@@ -174,7 +184,7 @@ fn module_sources() -> [(&'static str, String); 2] {
             // ⚠️ O RUÍDO entra ANTES do fold (o `cs_op_warp` do `WARP_WGSL` chama o `fbm`) e o
             // WARP depois dele (ele chama o `tap_img`). A ordem é a das dependências, não gosto.
             format!(
-                "{blend}\n{adjust}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}"
+                "{blend}\n{adjust}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}{PIRAMIDE_WGSL}"
             ),
         ),
         (
@@ -228,6 +238,9 @@ impl FxStackPass {
         let pipeline_ingest = make_pipe(&layout_mid, &shader_mid, "cs_ingest");
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
+        let pipeline_halve = make_pipe(&layout_mid, &shader_mid, "cs_halve");
+        let pipeline_v_only = make_pipe(&layout_mid, &shader_mid, "cs_blur_v_only");
+        let pipeline_up = make_pipe(&layout_mid, &shader_mid, "cs_op_up");
         let pipeline_point = make_pipe(&layout_mid, &shader_mid, "cs_op_point");
         let pipeline_warp = make_pipe(&layout_mid, &shader_mid, "cs_op_warp");
         let pipeline_seed = make_pipe(&layout_mid, &shader_mid, "cs_sdf_seed");
@@ -253,6 +266,9 @@ impl FxStackPass {
             pipeline_ingest,
             pipeline_h,
             pipeline_v,
+            pipeline_halve,
+            pipeline_v_only,
+            pipeline_up,
             pipeline_point,
             pipeline_warp,
             pipeline_seed,
@@ -446,6 +462,7 @@ impl FxStackPass {
             src_premul: 0,
             stops: [[0.0; 4]; 8],
             stop_pos: [[0.0; 4]; 2],
+            aux: [0; 4],
         };
         // ⚠️ O INGEST leva a origem da célula; o RESOLVE, não. Os dois compartilham este `edges`
         // porque nenhum lê tint/sigma/banda — mas o resolve lê `work[cur]`, que já é local, e
@@ -503,7 +520,10 @@ impl FxStackPass {
                     write_at(&mut blob, slot, &g);
                     slot += 1;
                 }
-                Plan::Blur => {
+                Plan::Blur { niveis } if niveis > 0 => {
+                    slot = escreve_piramide(&mut blob, slot, g, [w, h], niveis);
+                }
+                Plan::Blur { .. } => {
                     // O passe H leva o deslocamento em X; o V leva o de Y. Juntos, amostram o halo
                     // em `(x - off_x, y - off_y)` — a sombra cai deslocada DENTRO da imagem.
                     let mut gh = g;
@@ -584,7 +604,30 @@ impl FxStackPass {
                     dispatch(&mut encoder, &self.pipeline_warp, &bg, slot, gx, gy);
                     slot += 1;
                 }
-                Plan::Blur => {
+                Plan::Blur { niveis } if niveis > 0 => {
+                    // A cadeia de baixo vive em `work[2]`/`work[3]` (do tamanho da imagem: cabe).
+                    let mut a = 2usize;
+                    let mut d = [w, h];
+                    for k in 1..=niveis {
+                        d = crate::fx_stack_piramide::dims_do_nivel([w, h], k);
+                        let (de, para) = if k == 1 { (input, 2) } else { (&work[a].view, 5 - a) };
+                        let bg = self.bind(gpu, &self.bgl_mid, de, de, &work[para].view);
+                        let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
+                        dispatch(&mut encoder, &self.pipeline_halve, &bg, slot, x, y);
+                        slot += 1;
+                        a = para;
+                    }
+                    let b = 5 - a;
+                    let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
+                    let bg_h = self.bind(gpu, &self.bgl_mid, &work[a].view, &work[a].view, &work[b].view);
+                    dispatch(&mut encoder, &self.pipeline_h, &bg_h, slot, x, y);
+                    let bg_v = self.bind(gpu, &self.bgl_mid, &work[b].view, &work[b].view, &work[a].view);
+                    dispatch(&mut encoder, &self.pipeline_v_only, &bg_v, slot + 1, x, y);
+                    let bg_up = self.bind(gpu, &self.bgl_mid, input, &work[a].view, &work[next].view);
+                    dispatch(&mut encoder, &self.pipeline_up, &bg_up, slot + 2, gx, gy);
+                    slot += 3;
+                }
+                Plan::Blur { .. } => {
                     let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
                     let bg_v =
                         self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
@@ -747,3 +790,34 @@ fn dispatch(
 #[cfg(test)]
 #[path = "fx_stack_tests.rs"]
 mod tests;
+
+/// Os globals da PIRÂMIDE (`niveis` reduções · H · V · a volta) a partir de `slot`; devolve o slot
+/// seguinte. O deslocamento é dividido pelo fator (o A7 tornou-o fraccionário: cabe).
+fn escreve_piramide(blob: &mut [u8], mut slot: usize, g: Globals, dims: [u32; 2], niveis: u32) -> usize {
+    let f = 1u32 << niveis;
+    let mut d = dims;
+    for k in 1..=niveis {
+        let entrada = d;
+        d = crate::fx_stack_piramide::dims_do_nivel(dims, k);
+        #[allow(clippy::cast_possible_wrap)]
+        let aux = [entrada[0] as i32, entrada[1] as i32, 0, i32::from(k == 1)];
+        write_at(blob, slot, &Globals { dims: d, aux, off_x: 0.0, off_y: 0.0, ..g });
+        slot += 1;
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let fator = f as f32;
+    let baixo = sigma_baixo(g.band, f).max(1e-4);
+    let de_baixo = Globals {
+        dims: d,
+        half: kernel_half(baixo),
+        inv_two_sigma2: 1.0 / (2.0 * baixo * baixo),
+        aux: [0, 0, 1, 0],
+        ..g
+    };
+    write_at(blob, slot, &Globals { off_x: g.off_x / fator, off_y: 0.0, ..de_baixo });
+    write_at(blob, slot + 1, &Globals { off_x: 0.0, off_y: g.off_y / fator, ..de_baixo });
+    #[allow(clippy::cast_possible_wrap)]
+    let aux = [d[0] as i32, d[1] as i32, f as i32, 0];
+    write_at(blob, slot + 2, &Globals { aux, ..g });
+    slot + 3
+}

@@ -65,6 +65,8 @@ pub struct ShapePass {
     contorno: crate::contorno::Contorno,
     /// O grupo de ligação e as cópias do último desenho — o que o [`Self::redesenha`] repete.
     ultimo: Option<(wgpu::BindGroup, u32)>,
+    /// O passe das CAIXAS das cópias ([`Self::caixas`]) e o layout do grupo `3` dele.
+    caixas: (wgpu::ComputePipeline, wgpu::BindGroupLayout),
 }
 
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
@@ -255,6 +257,7 @@ impl ShapePass {
             wgpu::BufferUsages::UNIFORM,
         );
         let vazio = |l| buffer_com(gpu, l, &[], wgpu::BufferUsages::STORAGE);
+        let caixas = pipeline_das_caixas(device, &module, &layout);
         Self {
             pipeline,
             tracejado: false,
@@ -269,7 +272,60 @@ impl ShapePass {
             carregadas: Vec::new(),
             contorno,
             ultimo: None,
+            caixas,
         }
+    }
+
+    /// ⭐ doc 129 §3.4 (o `fx.filter` em CADA forma) — **as caixas no ecrã das `copias`**, pela vista
+    /// `view`: a MESMA `caixa_estimada` com que o quad as desenha, e o pixel da âncora. Escreve dois
+    /// `vec4` por cópia em `saida` (`lo.xy, hi.xy` · `âncora.xy, 0, 0`); uma cópia sem geometria sai
+    /// com a caixa VAZIA (`lo > hi`). O `encoder` tem de ser submetido antes do próximo desenho
+    /// deste passe (a vista é o mesmo buffer).
+    pub fn caixas(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        view: ShapeView,
+        copias: Copias<'_>,
+        saida: &wgpu::Buffer,
+    ) {
+        if copias.count == 0 {
+            return;
+        }
+        gpu.queue
+            .write_buffer(&self.view_buf, 0, bytemuck::bytes_of(&view));
+        let n = buffer_com(
+            gpu,
+            "ph2d-shape-gpu caixas n",
+            bytemuck::bytes_of(&[copias.count, 0, 0, 0]),
+            wgpu::BufferUsages::UNIFORM,
+        );
+        let g0 = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-shape-gpu caixas 0"),
+            layout: &self.layout,
+            entries: &[
+                entrada(0, &self.view_buf),
+                entrada(1, copias.buffer),
+                entrada(2, &self.records),
+                entrada(3, &self.segs),
+                entrada(4, &self.handles),
+                entrada(5, &self.eixo),
+                entrada(6, &self.blocos),
+            ],
+        });
+        let g3 = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-shape-gpu caixas 3"),
+            layout: &self.caixas.1,
+            entries: &[entrada(0, saida), entrada(1, &n)],
+        });
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("ph2d-shape-gpu caixas"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.caixas.0);
+        pass.set_bind_group(0, &g0, &[]);
+        pass.set_bind_group(3, &g3, &[]);
+        pass.dispatch_workgroups(copias.count.div_ceil(64), 1, 1);
     }
 
     /// **As geometrias carregadas têm algum troço tracejado** — o passe desenha com a variante
@@ -596,5 +652,51 @@ impl ShapePass {
             pass.set_pipeline(self.pipeline.de(false));
             pass.draw(0..6, 0..count);
         }
+    }
+}
+
+/// O pipeline do [`ShapePass::caixas`]: o grupo `0` do desenho e o grupo `3` da saída.
+fn pipeline_das_caixas(
+    device: &wgpu::Device,
+    module: &wgpu::ShaderModule,
+    layout: &wgpu::BindGroupLayout,
+) -> (wgpu::ComputePipeline, wgpu::BindGroupLayout) {
+    let entrada = |binding, ty| wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    };
+    let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("ph2d-shape-gpu caixas"),
+        entries: &[
+            entrada(0, wgpu::BufferBindingType::Storage { read_only: false }),
+            entrada(1, wgpu::BufferBindingType::Uniform),
+        ],
+    });
+    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("ph2d-shape-gpu caixas"),
+        bind_group_layouts: &[Some(layout), None, None, Some(&bgl)],
+        immediate_size: 0,
+    });
+    let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: Some("ph2d-shape-gpu caixas"),
+        layout: Some(&pl),
+        module,
+        entry_point: Some("cs_caixas"),
+        compilation_options: wgpu::PipelineCompilationOptions::default(),
+        cache: None,
+    });
+    (pipeline, bgl)
+}
+
+fn entrada(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
+    wgpu::BindGroupEntry {
+        binding,
+        resource: buffer.as_entire_binding(),
     }
 }

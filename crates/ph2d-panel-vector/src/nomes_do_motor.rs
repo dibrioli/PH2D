@@ -182,7 +182,7 @@ pub fn chave_do_filtro(fonte: &str) -> Option<&'static str> {
         "Drop Shadow" => "panel.vector.engine.filtro.drop_shadow",
         "Duotone" => "panel.vector.engine.filtro.duotone",
         "Feather" => "panel.vector.engine.filtro.feather",
-        "Glow" => "panel.vector.engine.filtro.glow",
+        "Outer Glow" => "panel.vector.engine.filtro.glow",
         "Gradient Map" => "panel.vector.engine.filtro.gradient_map",
         "Grow / Shrink" => "panel.vector.engine.filtro.grow_shrink",
         "Inner Glow" => "panel.vector.engine.filtro.inner_glow",

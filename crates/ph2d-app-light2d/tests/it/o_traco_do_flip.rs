@@ -276,6 +276,50 @@ fn a_cena_7_ensina_o_traco_do_flip() {
     assert!(falhas.is_empty(), "{}", falhas.join(" · "));
 }
 
+/// ⭐ **A onda à mão da cena 7 diz qual desenho é do Flip sem tapar a régua** (smoke do dono 11/10: «não
+/// tem desenho Flip» — viu as quatro bolas, iguais). A onda fica no chão, acima da lâmpada, e o leque
+/// que ela tapa visto da lâmpada não cruza o de nenhum disco nem o de nenhuma imagem gêmea: a luz que
+/// chega a cada bola é a mesma com ou sem ela. E a largura varia (é um traço à mão, não um bastão).
+#[test]
+fn a_onda_da_cena_7_nao_tapa_os_discos() {
+    let lampada = smoke::LAMPADA_DO_VOLUME.map(f64::from);
+    let angulo = |p: [f64; 2]| (p[1] - lampada[1]).atan2(p[0] - lampada[0]);
+    let onda = smoke::onda_a_mao();
+    let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+    for &(c, largura) in &onda {
+        let d = ((c[0] - lampada[0]).powi(2) + (c[1] - lampada[1]).powi(2)).sqrt();
+        let meia = (0.5 * largura / d).asin();
+        lo = lo.min(angulo(c) - meia);
+        hi = hi.max(angulo(c) + meia);
+        assert!(
+            c[0].abs() < 5.75 && c[1].abs() < 4.25,
+            "a onda sai do chão em {c:?}"
+        );
+        assert!(
+            c[1] - 0.5 * largura > lampada[1] + 1.0,
+            "a onda cobre a lâmpada em {c:?}"
+        );
+    }
+    for d in &smoke::DISCOS_DE_TINTA {
+        for centro in [d.centro, [d.centro[0], -d.centro[1]]] {
+            let dist = ((centro[0] - lampada[0]).powi(2) + (centro[1] - lampada[1]).powi(2)).sqrt();
+            let meia = (d.raio / dist).asin();
+            let (a, b) = (angulo(centro) - meia, angulo(centro) + meia);
+            assert!(
+                b < lo || a > hi,
+                "a onda [{lo:.3}, {hi:.3}] rad tapa {} em {centro:?} [{a:.3}, {b:.3}]",
+                d.nome
+            );
+        }
+    }
+    let larguras = onda.iter().map(|o| o.1);
+    let (fina, grossa) = larguras.fold((f64::INFINITY, 0.0_f64), |(f, g), l| (f.min(l), g.max(l)));
+    assert!(
+        grossa > 2.0 * fina,
+        "a onda é um bastão ({fina:.3} → {grossa:.3} m)"
+    );
+}
+
 /// O erro relativo do blit do Flip contra a conta na CPU — MEDIDO + 10 % (RTX 5060 Ti, a cena 7 a
 /// 480×270): `1,34e-3` em 1 680 canais; o do sprite é `1,21e-3` (`paridade_luz_recebida`): o alvo é
 /// `f16` e o filtro bilinear da placa tem 8 bits de fração.

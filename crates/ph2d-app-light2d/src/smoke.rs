@@ -24,7 +24,9 @@ const PAREDE: (BloqueiaLuz, NaoRecebeLuz) = (BloqueiaLuz { opacidade: 1.0 }, Nao
 /// ⭐ W5e — a cena 7, o traço do Flip (ficheiro irmão).
 #[path = "smoke_flip.rs"]
 mod flip;
-pub use flip::{DISCOS_DE_TINTA, DiscoDeTinta, NOME_DO_TRACO, marcar_flip, semear_flip};
+pub use flip::{
+    COR_DA_ONDA, DISCOS_DE_TINTA, DiscoDeTinta, NOME_DO_TRACO, marcar_flip, onda_a_mao, semear_flip,
+};
 /// ⭐ W5e — a cena 8, as formas do Motion (ficheiro irmão).
 #[path = "smoke_motion.rs"]
 mod motion;

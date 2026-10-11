@@ -614,3 +614,47 @@ fn medida_luz2d_w5e_s2_por_passe() {
         eprintln!("- {nome}: {:?}", melhor.expect("TIMESTAMP_QUERY"));
     }
 }
+
+/// O quadro da luz como o APP o faz (a preferência de fábrica: Alta com o «Automático»), na cena 6 a
+/// 1930×1012: o relógio de parede de cada quadro (preparar + gravar + a espera da placa), o custo de
+/// placa que o governador lê e o nível que ele escolhe.
+#[test]
+#[ignore = "rodada de medição W5e (placa): o quadro do app com o Automático"]
+fn medida_luz2d_w5e_quadro_do_app() {
+    use ph2d_app_light2d::LuzDoQuadro;
+    use ph2d_editor_core::luz_edits::PreferenciaDaLuz;
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let alvo = (1930, 1012);
+    let a = fabrica(alvo);
+    let mut w = bevy_ecs::world::World::new();
+    assert!(ph2d_app_light2d::smoke::encenar(&mut w, 3));
+    let r = crate::comum::renderer(&gpu);
+    let mut l = LuzDoQuadro::new();
+    eprintln!(
+        "## O quadro do app · loadavg {}",
+        crate::medida_luz2d_w4b::loadavg()
+    );
+    for q in 0..120 {
+        l.preferir(PreferenciaDaLuz {
+            nivel: NivelDaLuz::Alta,
+            automatica: true,
+        });
+        let t0 = std::time::Instant::now();
+        assert!(l.preparar(&w, a, alvo));
+        l.gravar(&gpu, &mut ph2d_ecs::PresentWorld::new(), &r);
+        gpu.device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .expect("poll");
+        if q % 10 == 0 || q < 12 {
+            eprintln!(
+                "q{q}: {:.1} ms de parede · placa {:?} ms · {:?} · fina {:?}",
+                t0.elapsed().as_secs_f64() * 1e3,
+                l.custo_ms(),
+                l.qualidade(),
+                l.fina_engrossada()
+            );
+        }
+    }
+}

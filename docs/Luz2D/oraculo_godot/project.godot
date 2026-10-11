@@ -1,0 +1,22 @@
+; Oráculo Godot da Luz 2D (W5e, Bloco C) — projecto GERADO para ser CORRIDO por script
+; (`bash docs/Luz2D/oraculo_godot/corre.sh`). Nenhum asset do Godot entra: as cenas são
+; montadas por `oraculo.gd` a partir de sementes fixas. Método: docs/_ComoInvestigarApps/.
+
+config_version=5
+
+[application]
+
+config/name="PH2D oraculo luz 2D"
+run/low_processor_mode=false
+run/max_fps=0
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/vsync/vsync_mode=0
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+rendering_device/driver.linuxbsd="vulkan"

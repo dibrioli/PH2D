@@ -1,0 +1,132 @@
+# Oráculo Godot — Luz 2D W5e (Bloco C). Fixture gerada por docs/Luz2D/oraculo_godot/corre.sh
+# data: 2026-10-11T13:36:57-03:00
+# godot: 4.7.2.stable.arch_linux.ed1daf0bf · pacote godot 4.7.2-2.1 · licença MIT
+# gpu (nvidia-smi, antes): NVIDIA GeForce RTX 5060 Ti, 615.71.09, 0 %, 2872 MHz, 41
+# gpu (nvidia-smi, depois: util, clock, temp): 24 %, 840 MHz, 35
+# loadavg antes:  19.45 17.27 24.25 25/1739 1803497
+# loadavg depois: 28.32 19.41 23.06 22/1752 1818061
+#   ⚠️ acima de load ~5 o relógio da CPU não vale (CLAUDE.md §5.0); o tempo de GPU sofre menos, mas registe-se.
+# comando: cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_GPU=1 PH2D_PRAZO=1200 bash scripts/ph2d-run.sh godot --path /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D/docs/Luz2D/oraculo_godot --rendering-driver vulkan --rendering-method forward_plus --script res://oraculo.gd --
+# exit: 0
+# Cenas (oraculo.gd, semente 20261011, tudo numa SubViewport UPDATE_ALWAYS; 1920x1080 salvo S7):
+#   S1 retângulo de tela cheia + sprite 128 px (com oclusor) + 1 PointLight2D raio 512 px
+#   S2 N sprites emissivos (unshaded) + N PointLight2D raio 48 px, posições uniformes, sem oclusores
+#   S3 1 PointLight2D com sombra (cobre a tela) + K oclusores retangulares 8–32 px rodados
+#   S6 S2 a N=100 com Camera2D em pan subpixel (+0.37, +0.23) px/quadro — parede_media é o quadro médio
+#   S7 S2 a N=100 em 720p/1080p/1440p/2160p (size_2d_override_stretch: a mesma cena escalada)
+# Tempo: viewport_get_measured_render_time_gpu/cpu da SubViewport, ms; MÍNIMO sobre rodadas×quadros
+#   (rodadas intercaladas com início rodado); gpu_min_por_rodada mostra a banda.
+# PROVA: grelha 100×100 de células de 40 px, N luzes raio 16 px, uma por célula; 'acesas' = células
+#   cujo pixel central sobe acima do fundo; 'sombra_efectiva' = acesas cujo pixel a +10 px, atrás de um muro
+#   (oclusor 2×12 px a +5 px), fica no fundo. Fundo = um retângulo só, ou um retângulo por célula.
+#
+META|godot|4.7.2-stable (arch_linux)
+META|adaptador|NVIDIA GeForce RTX 5060 Ti
+META|fabricante|NVIDIA
+META|api|1.4.351
+META|tipo_adaptador|2
+META|driver_render|vulkan
+META|metodo_render|forward_plus
+META|servidor_janela|X11
+META|vsync|0
+META|rodadas|3|aquecer|20|quadros|60|semente|20261011
+META|ps|rendering/limits/time/time_rollover_secs|3600
+META|ps|rendering/2d/shadow_atlas/size|2048
+META|ps|rendering/2d/batching/item_buffer_size|16384
+META|ps|rendering/2d/batching/uniform_set_cache_size|4096
+META|ps|rendering/viewport/hdr_2d|false
+META|ps|rendering/anti_aliasing/quality/msaa_2d|0
+META|ps|rendering/limits/global_shader_variables/buffer_size|65536
+META|ps|rendering/limits/spatial_indexer/update_iterations_per_frame|10
+META|ps|rendering/limits/spatial_indexer/threaded_cull_minimum_instances|1000
+META|ps|rendering/limits/cluster_builder/max_clustered_elements|512
+META|ps|rendering/limits/opengl/max_renderable_elements|65536
+META|ps|rendering/limits/opengl/max_renderable_lights|32
+META|ps|rendering/limits/opengl/max_lights_per_object|8
+META|ps|rendering/2d/snap/snap_2d_transforms_to_pixel|false
+META|ps|rendering/2d/snap/snap_2d_vertices_to_pixel|false
+META|ps|rendering/2d/sdf/oversize|1
+META|ps|rendering/2d/sdf/scale|1
+COLUNAS|PROVA|fundo|sombra|n_luzes|acesas|sombra_efectiva|celulas_fora_acesas
+PROVA|um_retangulo|sem_sombra|1|1|0|0
+PROVA|um_retangulo|sem_sombra|10|10|0|0
+PROVA|um_retangulo|sem_sombra|15|15|0|0
+PROVA|um_retangulo|sem_sombra|16|15|0|0
+PROVA|um_retangulo|sem_sombra|17|15|0|0
+PROVA|um_retangulo|sem_sombra|100|15|0|0
+PROVA|um_retangulo|sem_sombra|255|15|0|0
+PROVA|um_retangulo|sem_sombra|256|15|0|0
+PROVA|um_retangulo|sem_sombra|257|15|0|0
+PROVA|um_retangulo|sem_sombra|500|15|0|0
+PROVA|um_retangulo|sem_sombra|1000|15|0|0
+PROVA|um_retangulo|sem_sombra|10000|15|0|0
+PROVA|um_retangulo|com_sombra|1|1|1|0
+PROVA|um_retangulo|com_sombra|10|10|10|0
+PROVA|um_retangulo|com_sombra|15|15|15|0
+PROVA|um_retangulo|com_sombra|16|15|15|0
+PROVA|um_retangulo|com_sombra|17|15|15|0
+PROVA|um_retangulo|com_sombra|100|15|15|0
+PROVA|um_retangulo|com_sombra|255|15|15|0
+PROVA|um_retangulo|com_sombra|256|15|15|0
+PROVA|um_retangulo|com_sombra|257|15|15|0
+PROVA|um_retangulo|com_sombra|500|15|15|0
+PROVA|um_retangulo|com_sombra|1000|15|15|0
+PROVA|um_retangulo|com_sombra|10000|15|15|0
+PROVA|retangulo_por_celula|sem_sombra|1|1|0|0
+PROVA|retangulo_por_celula|sem_sombra|10|10|0|0
+PROVA|retangulo_por_celula|sem_sombra|15|15|0|0
+PROVA|retangulo_por_celula|sem_sombra|16|16|0|0
+PROVA|retangulo_por_celula|sem_sombra|17|17|0|0
+PROVA|retangulo_por_celula|sem_sombra|100|100|0|0
+PROVA|retangulo_por_celula|sem_sombra|255|255|0|0
+PROVA|retangulo_por_celula|sem_sombra|256|256|0|0
+PROVA|retangulo_por_celula|sem_sombra|257|256|0|0
+PROVA|retangulo_por_celula|sem_sombra|500|256|0|0
+PROVA|retangulo_por_celula|sem_sombra|1000|256|0|0
+PROVA|retangulo_por_celula|sem_sombra|10000|256|0|0
+PROVA|retangulo_por_celula|com_sombra|1|1|1|0
+PROVA|retangulo_por_celula|com_sombra|10|10|10|0
+PROVA|retangulo_por_celula|com_sombra|15|15|15|0
+PROVA|retangulo_por_celula|com_sombra|16|16|16|0
+PROVA|retangulo_por_celula|com_sombra|17|17|17|0
+PROVA|retangulo_por_celula|com_sombra|100|100|100|0
+PROVA|retangulo_por_celula|com_sombra|255|255|255|0
+PROVA|retangulo_por_celula|com_sombra|256|256|256|0
+PROVA|retangulo_por_celula|com_sombra|257|256|256|0
+PROVA|retangulo_por_celula|com_sombra|500|256|256|0
+PROVA|retangulo_por_celula|com_sombra|1000|256|256|0
+PROVA|retangulo_por_celula|com_sombra|10000|256|256|0
+COLUNAS|MEDIDA|cena|n|variante|resolucao|amostras_gpu|gpu_min_ms|gpu_mediana_ms|gpu_media_ms|cpu_min_ms|cpu_mediana_ms|parede_media_ms|gpu_min_por_rodada
+MEDIDA|S1|1|sem_sombra|1920x1080|180|0.0380|0.0390|0.0408|0.0060|0.0100|0.199|0.0400/0.0380/0.0380
+MEDIDA|S1|1|com_sombra|1920x1080|180|0.0520|0.0530|0.0558|0.0070|0.0120|0.159|0.0560/0.0520/0.0520
+MEDIDA|S2|1|sem_sombra|1920x1080|180|0.0330|0.0340|0.0352|0.0060|0.0110|0.158|0.0350/0.0330/0.0330
+MEDIDA|S2|1|com_sombra|1920x1080|180|0.0360|0.0370|0.0409|0.0060|0.0120|0.195|0.0400/0.0360/0.0360
+MEDIDA|S2|10|sem_sombra|1920x1080|180|0.1450|0.1460|0.1465|0.0070|0.0090|0.201|0.1450/0.1460/0.1450
+MEDIDA|S2|10|com_sombra|1920x1080|180|0.1560|0.1580|0.1583|0.0100|0.0170|0.220|0.1560/0.1570/0.1580
+MEDIDA|S2|100|sem_sombra|1920x1080|180|0.2090|0.2130|0.2123|0.0320|0.0370|0.255|0.2090/0.2120/0.2110
+MEDIDA|S2|100|com_sombra|1920x1080|180|0.2930|0.2970|0.2971|0.0660|0.0790|0.417|0.2950/0.2930/0.2970
+MEDIDA|S2|1000|sem_sombra|1920x1080|180|0.2170|0.2190|0.2195|1.8210|2.0860|2.373|0.2180/0.2170/0.2170
+MEDIDA|S2|1000|com_sombra|1920x1080|180|0.4160|0.4220|0.4250|27.7840|41.1990|41.482|0.4190/0.4160/0.4160
+MEDIDA|S2|10000|sem_sombra|1920x1080|180|0.5200|0.7040|0.7136|130.6920|143.9930|146.649|0.5200/0.6850/0.5690
+MEDIDA|S2|10000|com_sombra|1920x1080|180|0.8880|0.9710|0.9729|467.2570|615.2930|624.948|0.9490/0.8880/0.9510
+MEDIDA|S3|0|com_sombra|1920x1080|180|0.0670|0.0710|0.0727|0.0060|0.0110|0.277|0.0670/0.0680/0.0680
+MEDIDA|S3|10|com_sombra|1920x1080|180|0.0690|0.0720|0.0720|0.0080|0.0140|0.191|0.0700/0.0700/0.0690
+MEDIDA|S3|100|com_sombra|1920x1080|180|0.0710|0.0910|0.0859|0.0190|0.0220|0.204|0.0890/0.0900/0.0710
+MEDIDA|S3|1000|com_sombra|1920x1080|180|0.1230|0.3010|0.2532|0.1520|0.2600|0.797|0.2980/0.2980/0.1230
+MEDIDA|S6|100|pan_subpixel|1920x1080|180|0.2020|0.2100|0.2098|0.0290|0.0340|0.309|0.2090/0.2080/0.2020
+MEDIDA|S7|100|sem_sombra|1280x720|180|0.0970|0.1030|0.1017|0.0320|0.0560|0.245|0.1020/0.0970/0.0980
+MEDIDA|S7|100|sem_sombra|1920x1080|180|0.2090|0.2120|0.2128|0.0290|0.0530|0.283|0.2140/0.2090/0.2090
+MEDIDA|S7|100|sem_sombra|2560x1440|180|0.3670|0.3720|0.3714|0.0330|0.0570|0.453|0.3670/0.3670/0.3720
+MEDIDA|S7|100|sem_sombra|3840x2160|180|0.8190|0.8310|0.8314|0.0310|0.0570|0.912|0.8190/0.8300/0.8300
+FIM|ok
+COLUNAS|ERROS|chave|linhas_ERROR_do_godot_no_stderr (somadas nas rodadas; >0 = a config NÃO rendeu o que se pediu)
+ERROS|PROVA_um_retangulo_com_sombra_n257|144
+ERROS|PROVA_um_retangulo_com_sombra_n500|35136
+ERROS|PROVA_um_retangulo_com_sombra_n1000|107136
+ERROS|PROVA_um_retangulo_com_sombra_n10000|1403136
+ERROS|PROVA_retangulo_por_celula_com_sombra_n257|144
+ERROS|PROVA_retangulo_por_celula_com_sombra_n500|35136
+ERROS|PROVA_retangulo_por_celula_com_sombra_n1000|107136
+ERROS|PROVA_retangulo_por_celula_com_sombra_n10000|1403136
+ERROS|S2_n1000_com_sombra_1920x1080|1428480
+ERROS|S2_n10000_com_sombra_1920x1080|18708480

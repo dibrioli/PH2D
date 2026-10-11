@@ -49,7 +49,14 @@ pub struct FlipComposite {
     /// **A frescura do Pass A** (doc 12 §22.3): o que já foi rasterizado em cada fatia. É o que faz
     /// arte commitada e fantasma de onion custarem **zero** enquanto ninguém mexe neles.
     stage: crate::pass_stage::StageMemo,
+    /// ⭐ W5e: o rasterizador da camada da LUZ 2D ([`luz`]) — próprio, para a profundidade do tamanho
+    /// da grade não disputar a do ecrã.
+    luz: Option<FlipRenderer>,
 }
+
+/// ⭐ W5e — o traço do Flip na luz 2D (ficheiro irmão).
+#[path = "pass_luz.rs"]
+pub mod luz;
 
 impl FlipComposite {
     fn new(gpu: &GpuContext) -> Self {
@@ -58,6 +65,7 @@ impl FlipComposite {
             dummy: Vec::new(),
             tess: TessCache::default(),
             stage: crate::pass_stage::StageMemo::default(),
+            luz: None,
         }
     }
 
@@ -352,6 +360,19 @@ pub(super) fn draw_overlay(
     (w, h): (u32, u32),
     gpu: &GpuContext,
 ) {
+    rasterizar_em(flip_render, data, cam, game_rt.view(), (w, h), gpu);
+}
+
+/// Rasteriza `data` em `alvo` (premult-over, `LoadOp::Load`) com o depth próprio do `flip_render` —
+/// o overlay do preview e a camada da luz 2D ([`luz`]).
+pub(crate) fn rasterizar_em(
+    flip_render: &mut FlipRenderer,
+    data: &FlipGpuData,
+    cam: &CameraRaw,
+    alvo: &wgpu::TextureView,
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) {
     if data.is_empty() {
         return;
     }
@@ -366,7 +387,7 @@ pub(super) fn draw_overlay(
         let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("ph2d-flip preview overlay pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: game_rt.view(),
+                view: alvo,
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {

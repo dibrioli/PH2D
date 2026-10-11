@@ -20,6 +20,7 @@ mod distantes;
 mod erro;
 mod fabrica;
 mod hrc;
+mod oclusao;
 mod passlist;
 mod shaders;
 mod solver;
@@ -36,6 +37,7 @@ pub use config::{
 pub use direta::{LAMPADAS_DIRETAS_MAX, lampadas_diretas};
 pub use distantes::tapa_fora_da_grade;
 pub use fabrica::{Fabrica, Placa};
+pub use oclusao::{CamadaDeOclusao, FORMATO_DA_OCLUSAO};
 pub use passlist::{Buffer, PassList, Passe, Textura};
 pub use shaders::{C0_DONO_WGSL, QUEDA_WGSL, rc as fonte_do_rc};
 pub use solver::{ErroSolver, Solver};

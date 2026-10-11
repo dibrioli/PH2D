@@ -13,7 +13,8 @@ pub mod coleta;
 mod componentes;
 
 pub use cena::{
-    ALBEDO_MAX, CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz, VetorDeLuz,
+    ALBEDO_MAX, CenaDeLuz, Emissor, FormaDoSprite, Oclusor, OutroDeLuz, Rgb, SpriteDeLuz,
+    VetorDeLuz,
 };
 pub use componentes::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 use ph2d_ecs::scene::ComponentRegistry;

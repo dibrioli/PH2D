@@ -15,6 +15,7 @@ pub mod gizmo;
 mod grade;
 pub mod inspector;
 pub mod object_add;
+mod outras;
 mod quadro;
 pub mod qualidade;
 pub mod smoke;

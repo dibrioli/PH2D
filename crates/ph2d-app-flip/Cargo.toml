@@ -92,6 +92,9 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-render = { path = "../ph2d-render" }
 # O `SurfaceContext`/`WindowSize` — só o TAMANHO da janela atravessa, que a câmera precisa.
 ph2d-gpu = { path = "../ph2d-gpu" }
+# ⭐ W5e: só o CONTRATO da camada de oclusão da luz 2D (`CamadaDeOclusao`) — o traço que bloqueia
+# a luz desenha-se aqui; a luz não depende do Flip.
+ph2d-light2d-gpu = { path = "../ph2d-light2d-gpu" }
 ph2d-host = { path = "../ph2d-host" }
 # ⚠️ INVISÍVEL até a crate existir (HOWTO §1.3): o passe de render nomeia tipos do `wgpu`
 # (o `TextureFormat`/`LoadOp` do encoder). Dentro da shell era dependência do binário.

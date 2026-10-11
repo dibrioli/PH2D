@@ -6,13 +6,13 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use kurbo::Affine;
 use ph2d_ecs::PresentWorld;
-use ph2d_editor_core::luz_edits::{AvisoDaLuz, NivelDaLuz, PreferenciaDaLuz};
+use ph2d_editor_core::luz_edits::{NivelDaLuz, PreferenciaDaLuz};
 
 use crate::qualidade::Governador;
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
-use ph2d_light2d_gpu::{Config, ErroSolver, Grade, Motivo, Quem, RelatorioC0, Solver};
+use ph2d_light2d_gpu::{Config, ErroSolver, Grade, RelatorioC0, Solver};
 use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
@@ -20,6 +20,10 @@ use crate::grade::{
     DEGRAU_PADRAO, Degrau, MARGEM_DO_ENTORNO, captura_do_quadro, fina_do_quadro, grade_do_quadro,
     tela_para_mundo,
 };
+
+/// Os avisos ao artista — ficheiro irmão pelo tecto de 700 LOC (W5e).
+#[path = "quadro_avisos.rs"]
+mod avisos;
 
 struct Resolvido {
     solver: Solver,
@@ -58,6 +62,8 @@ pub struct LuzDoQuadro {
     sprites_por_texel: (usize, usize),
     /// ⭐ Os caminhos vetoriais que bloqueiam, desenhados na grade (W3).
     vetores: crate::vetor::CamadaVetorial,
+    /// ⭐ W5e: os OUTROS que bloqueiam (o Flip, o Motion), desenhados pela família dona.
+    outros: crate::outras::CamadaDeOutros,
     /// ⭐ A fábrica das pipelines, partilhada pelos solvers de cada grade: a janela redimensionada (o
     /// maximizar muda o tamanho a cada quadro) só realoca — recompilar custava ~2 s por quadro.
     fabrica: ph2d_light2d_gpu::Fabrica,
@@ -65,6 +71,8 @@ pub struct LuzDoQuadro {
     smoke_encenado: bool,
     /// ⭐ W5d: as formas que o smoke pôs no documento e cuja entidade ainda não foi marcada.
     semeadas: Vec<(ph2d_vec_scene::VecPathId, &'static str)>,
+    /// ⭐ W5e: o objeto Flip que o smoke pôs no documento e cuja entidade ainda não foi marcada.
+    semeado_flip: Option<ph2d_flip::FlipObjectId>,
     /// A recusa do solver já foi DITA ao artista (o aviso sai na transição, não a cada quadro).
     recusa_dita: bool,
     /// A re-coleta ([`Self::recolher`]) achou a cena SEM `Luz` depois da codificação: este quadro
@@ -112,9 +120,11 @@ impl LuzDoQuadro {
             erro: None,
             sprites_por_texel: (0, 0),
             vetores: crate::vetor::CamadaVetorial::default(),
+            outros: crate::outras::CamadaDeOutros::default(),
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
             smoke_encenado: false,
             semeadas: Vec::new(),
+            semeado_flip: None,
             recusa_dita: false,
             sem_luz_no_quadro: false,
             preferencia: None,
@@ -162,14 +172,23 @@ impl LuzDoQuadro {
         world: &mut World,
         superficie: &ph2d_gpu::SurfaceContext,
         mundo_para_tela: Affine,
-        vetores: (&mut ph2d_vec_scene::VecScene, &ph2d_vec_scene::VecXforms),
+        (vetores, xforms, flip): (
+            &mut ph2d_vec_scene::VecScene,
+            &ph2d_vec_scene::VecXforms,
+            &mut ph2d_flip::FlipDoc,
+        ),
     ) -> bool {
+        let vetores = (vetores, xforms);
         if !self.smoke_encenado {
             self.smoke_encenado = true;
             if let Some(n) = crate::smoke::nivel_armado() {
                 crate::smoke::encenar(world, n);
                 self.semeadas = crate::smoke::semear_documento(vetores.0, n);
+                self.semeado_flip = crate::smoke::semear_flip(flip, n);
             }
+        }
+        if let Some(id) = self.semeado_flip {
+            self.semeado_flip = crate::smoke::marcar_flip(world, flip, id);
         }
         if !self.semeadas.is_empty() {
             let pendentes = std::mem::take(&mut self.semeadas);
@@ -331,6 +350,18 @@ impl LuzDoQuadro {
         present: &mut PresentWorld,
         renderer: &SpriteRenderer,
     ) {
+        self.gravar_com(gpu, present, renderer, &mut []);
+    }
+
+    /// ⭐ W5e — [`Self::gravar`] com as `familias` que desenham os OUTROS que bloqueiam (o traço do
+    /// Flip, as formas do Motion — [`ph2d_light2d_gpu::CamadaDeOclusao`]).
+    pub fn gravar_com(
+        &mut self,
+        gpu: &GpuContext,
+        present: &mut PresentWorld,
+        renderer: &SpriteRenderer,
+        familias: &mut [&mut dyn ph2d_light2d_gpu::CamadaDeOclusao],
+    ) {
         self.lado_max = gpu.device.limits().max_texture_dimension_2d;
         let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
             return;
@@ -400,6 +431,7 @@ impl LuzDoQuadro {
             eprintln!("[luz2d] o solver recusou a grade {g:?}: {e:?}");
             return;
         }
+        self.outros.desenhar(gpu, (g, fina), &self.cena, familias);
         let r = self
             .resolvido
             .as_mut()
@@ -416,6 +448,14 @@ impl LuzDoQuadro {
                 label: Some("luz2d quadro do editor"),
             });
         let mut sprites = crate::captura::sprites_da_cena(&self.cena, present, renderer);
+        // ⭐ W5e: os outros — sprites que a C0 lê pelo meio (a área do alfa ≥ ½).
+        for (vista, mut s) in self.outros.sprites() {
+            sprites
+                .texturas
+                .push((vista, ph2d_light2d_gpu::Amostragem::Bilinear));
+            s.textura = sprites.texturas.len() - 1;
+            sprites.sprites.push(s);
+        }
         for (vista, mut s) in self.vetores.sprites() {
             // A camada está alinhada à grade e o píxel dela já é a cobertura de área: lida EXATA.
             sprites
@@ -596,83 +636,6 @@ impl LuzDoQuadro {
     #[must_use]
     pub fn erro(&self) -> Option<&ErroSolver> {
         self.erro.as_ref()
-    }
-
-    /// ⭐ **O que o artista precisa de saber sobre a lâmpada `e`** no último quadro (W4), do mais
-    /// grave para o mais brando: a recusa do solver (a cena inteira apagada), o que a captura fez
-    /// com ESTA lâmpada, e os sprites que entraram pelo quad. Recusa que só o terminal vê é botão
-    /// mudo — cada caso aqui era um `eprintln!` ou nada.
-    #[must_use]
-    pub fn avisos_de(&self, e: Entity) -> Vec<AvisoDaLuz> {
-        let mut out = Vec::new();
-        if let Some(erro) = &self.erro {
-            out.push(match erro {
-                ErroSolver::GradeGrandeDemais { lado, limite } => AvisoDaLuz::GradeGrandeDemais {
-                    lado: *lado,
-                    limite: *limite,
-                },
-                ErroSolver::SemShaderF16 | ErroSolver::ConfigInvalida(_) => {
-                    AvisoDaLuz::SolverIndisponivel
-                }
-                ErroSolver::SemMemoria { bytes } => AvisoDaLuz::SemMemoria {
-                    mb: bytes / 1_000_000,
-                },
-            });
-        }
-        if let (k @ 1.., true) = self.fina_engrossada()
-            && self.acesa()
-        {
-            out.push(AvisoDaLuz::SombraEngrossada { vezes: 1 << k });
-        }
-        let indice = self
-            .cena
-            .luzes_emissoras
-            .iter()
-            .find(|(quem, _)| *quem == e)
-            .map(|&(_, i)| i);
-        if let (Some(k), Some(r)) = (indice, &self.relatorio) {
-            for f in r.fora.iter().filter(|f| f.quem == Quem::Emissor(k)) {
-                out.push(match f.motivo {
-                    Motivo::PontoSemArea => AvisoDaLuz::PontoSemTamanho,
-                    Motivo::MenorQueOTexel => AvisoDaLuz::PequenaDemaisParaOZoom,
-                    Motivo::ForaDaGrade => AvisoDaLuz::ForaDaVista,
-                });
-            }
-        }
-        let (por_texel, total) = self.sprites_por_texel;
-        if self.acesa() && por_texel < total {
-            out.push(AvisoDaLuz::SpritesPeloQuad {
-                com_quad: total - por_texel,
-                total,
-            });
-        }
-        out
-    }
-
-    /// ⭐ **A recusa NOVA deste quadro**, já em palavras (o aviso que sobe na tela): `Some` só no
-    /// quadro em que o solver passa a recusar; enquanto a recusa dura, `None`.
-    pub fn recusa_nova(&mut self) -> Option<String> {
-        let Some(erro) = &self.erro else {
-            self.recusa_dita = false;
-            return None;
-        };
-        if self.recusa_dita {
-            return None;
-        }
-        self.recusa_dita = true;
-        Some(match erro {
-            ErroSolver::GradeGrandeDemais { lado, limite } => ph2d_i18n::tr_with(
-                "light2d.toast.grid_too_big",
-                &[("lado", lado), ("limite", limite)],
-            ),
-            ErroSolver::SemShaderF16 | ErroSolver::ConfigInvalida(_) => {
-                ph2d_i18n::tr("light2d.toast.solver_unavailable").to_string()
-            }
-            ErroSolver::SemMemoria { bytes } => ph2d_i18n::tr_with(
-                "light2d.toast.out_of_memory",
-                &[("mb", &(bytes / 1_000_000))],
-            ),
-        })
     }
 
     /// O solver vivo (a sonda lê os tempos dele).

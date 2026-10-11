@@ -28,6 +28,7 @@ mod o_interior_do_opaco;
 mod o_oclusor_fino;
 mod o_rebote_assenta;
 mod o_rebote_de_fora_da_grade;
+mod o_traco_do_flip;
 mod os_tetos_da_placa;
 mod paridade_luz_recebida;
 mod redimensionar;

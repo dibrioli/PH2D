@@ -64,9 +64,23 @@ pub struct CenaDeLuz {
     /// ⭐ Os caminhos VETORIAIS que bloqueiam (W3) — a geometria não está no `World` (vive na
     /// `VecScene`): a C0 da placa desenha-os pelo Vello na grade; o gabarito NÃO os vê.
     pub vetores: Vec<VetorDeLuz>,
+    /// ⭐ W5e — os OUTROS que bloqueiam (nem sprite nem caminho do documento: o traço do Flip, as
+    /// formas do Motion): só a identidade — a família dona desenha-os para a C0 pela
+    /// `CamadaDeOclusao`; o gabarito NÃO os vê.
+    pub outros: Vec<OutroDeLuz>,
     /// ⭐ Cada `Luz` que virou emissor, com o índice dela em [`Self::emissores`] (W4): a UI diz o
     /// que a captura fez com ESTA lâmpada.
     pub luzes_emissoras: Vec<(bevy_ecs::entity::Entity, usize)>,
+}
+
+/// ⭐ W5e — um objeto de OUTRA família que bloqueia a luz (o traço do Flip, as formas do Motion).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OutroDeLuz {
+    pub entidade: bevy_ecs::entity::Entity,
+    /// A opacidade por entrada (`BloqueiaLuz`).
+    pub opacidade: f32,
+    /// O objeto devolve a luz (opaco e recebe luz); o albedo é a cor que a família desenha.
+    pub reflete: bool,
 }
 
 /// Um caminho vetorial que bloqueia a luz (W3).

@@ -20,7 +20,9 @@ use bevy_ecs::world::World;
 use ph2d_ecs::{GlobalTransform, SpriteEmissive, StableId, is_hidden_in_tree};
 use ph2d_render::Sprite;
 
-use crate::cena::{CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz, VetorDeLuz};
+use crate::cena::{
+    CenaDeLuz, Emissor, FormaDoSprite, Oclusor, OutroDeLuz, Rgb, SpriteDeLuz, VetorDeLuz,
+};
 use crate::componentes::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 
 /// Chave de ordem: o `StableId` (sobrevive a undo e save), depois a `Entity`.
@@ -203,6 +205,33 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         }
     }
 
+    // ⭐ W5e — os OUTROS que bloqueiam: o que não é sprite nem caminho (a família desenha-os).
+    let mut outros: BTreeMap<Chave, OutroDeLuz> = BTreeMap::new();
+    // ⚠️ Perguntado a cada entidade, não por `Without<…>`: o `try_query` devolve NADA quando um tipo
+    // do filtro nunca foi registado no mundo (um mundo sem caminhos não veria o Flip).
+    if let Some(mut q) = world.try_query::<(Entity, &BloqueiaLuz)>() {
+        for (e, b) in q.iter(world) {
+            let de_outra_porta = world.get::<Sprite>(e).is_some()
+                || world.get::<ph2d_ecs::VecPathRef>(e).is_some()
+                || world.get::<Luz>(e).is_some();
+            if de_outra_porta
+                || is_hidden_in_tree(world, e)
+                || b.opacidade.is_nan()
+                || b.opacidade <= 0.0
+            {
+                continue;
+            }
+            outros.insert(
+                chave(world, e),
+                OutroDeLuz {
+                    entidade: e,
+                    opacidade: b.opacidade.min(1.0),
+                    reflete: b.opacidade >= 1.0 && !sem_luz.contains(&e),
+                },
+            );
+        }
+    }
+
     let mut nao_recebem: BTreeMap<Chave, Entity> = BTreeMap::new();
     if let Some(mut q) = world.try_query_filtered::<Entity, bevy_ecs::query::With<NaoRecebeLuz>>() {
         for e in q.iter(world) {
@@ -246,6 +275,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         nao_recebem: nao_recebem.into_values().collect(),
         sprites,
         vetores: vetores.into_values().collect(),
+        outros: outros.into_values().collect(),
         luzes_emissoras,
     }
 }

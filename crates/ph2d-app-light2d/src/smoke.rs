@@ -21,10 +21,15 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// luz sairia PRETA. «Não recebe luz» é o que o artista faz hoje; a face acesa é da W5.
 const PAREDE: (BloqueiaLuz, NaoRecebeLuz) = (BloqueiaLuz { opacidade: 1.0 }, NaoRecebeLuz);
 
+/// ⭐ W5e — a cena 7, o traço do Flip (ficheiro irmão).
+#[path = "smoke_flip.rs"]
+mod flip;
+pub use flip::{DISCOS_DE_TINTA, DiscoDeTinta, NOME_DO_TRACO, marcar_flip, semear_flip};
+
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_LIGHT2D_SMOKE",
-    max_level: 6,
+    max_level: 7,
 }];
 
 /// O nível armado por variável de ambiente (`None` = inerte).
@@ -62,8 +67,12 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
             redondas(world);
             true
         }
+        7 => {
+            flip::traco_do_flip(world);
+            true
+        }
         _ => {
-            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–6)");
+            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–7)");
             false
         }
     }
@@ -531,6 +540,26 @@ fn linear(c: u8) -> f32 {
 /// Cena 6 — **Formas desenhadas.** O mundo: o chão, a luz ambiente, a lâmpada e as IMAGENS gêmeas; as
 /// formas desenhadas entram pelo documento ([`semear_documento`]).
 fn redondas(world: &mut World) {
+    let gemeas: Vec<_> = REDONDAS
+        .iter()
+        .map(|r| {
+            (
+                r.nome,
+                [r.centro[0], r.centro[1] - ABAIXO_DA_IMAGEM],
+                r.semi,
+                r.cor,
+            )
+        })
+        .collect();
+    chao_lampada_e_gemeas(world, &gemeas);
+}
+
+/// As cenas 6 e 7: o chão no fundo, a luz ambiente, a lâmpada e as IMAGENS gêmeas `(nome, centro,
+/// semi-eixos, cor sRGB)` das formas desenhadas (o disco do atlas, «bloqueia a luz»).
+fn chao_lampada_e_gemeas(
+    world: &mut World,
+    gemeas: &[(&'static str, [f64; 2], [f64; 2], [u8; 3])],
+) {
     let chao = quadrado(
         world,
         "Chão",
@@ -555,14 +584,14 @@ fn redondas(world: &mut World) {
         t,
         g,
     ));
-    for r in &REDONDAS {
-        let (t, g) = pose(r.centro[0] as f32, (r.centro[1] - ABAIXO_DA_IMAGEM) as f32);
+    for &(nome, centro, semi, cor) in gemeas {
+        let (t, g) = pose(centro[0] as f32, centro[1] as f32);
         world.spawn((
-            Name::new(format!("{} (imagem)", r.nome)),
+            Name::new(format!("{nome} (imagem)")),
             Sprite::atlas(
                 DISC_TILE_KEY,
-                [2.0 * r.semi[0] as f32, 2.0 * r.semi[1] as f32],
-                [linear(r.cor[0]), linear(r.cor[1]), linear(r.cor[2]), 1.0],
+                [2.0 * semi[0] as f32, 2.0 * semi[1] as f32],
+                [linear(cor[0]), linear(cor[1]), linear(cor[2]), 1.0],
             ),
             t,
             g,

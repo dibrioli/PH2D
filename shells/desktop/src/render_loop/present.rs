@@ -201,6 +201,8 @@ impl crate::App {
             hero_screen,
             grid_behind_scene,
             luz2d,
+            flip,
+            flip_composite,
             ..
         } = gfx;
         // M14.5 — viewport / RT pipeline. Four GPU submissions
@@ -304,7 +306,15 @@ impl crate::App {
         //    passe de sprite, e os dois receptores. ⛔ Sem `Luz`: nada disto muda o quadro.
         plan.banded |= luz2d.grade().is_some();
         luz2d.recolher(sim.world());
-        luz2d.gravar(surface.gpu(), present, renderer);
+        let flip_models = ph2d_flip_entities::transform::build(sim, &self.flip_state.entities);
+        let mut flip_luz = ph2d_app_flip::pass::luz::OclusaoDoFlip {
+            doc: flip,
+            composite: flip_composite,
+            models: &flip_models,
+            playhead: &self.playhead,
+            entidades: &self.flip_state.entities,
+        };
+        luz2d.gravar_com(surface.gpu(), present, renderer, &mut [&mut flip_luz]);
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
         plan.banded |= lente || filtrada;

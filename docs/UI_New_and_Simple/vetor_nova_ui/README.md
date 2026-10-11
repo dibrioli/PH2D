@@ -32,6 +32,11 @@
 > área visível; o «Frame All» que já existia (só imagens, na janela, a saltar) foi curado. Lei e
 > oráculos em [`11_enquadrar_tudo.md`](11_enquadrar_tudo.md); cena `=14`, foto
 > [`fotos/f8_01`](fotos/f8_01_cena14_tres_formas_fora_da_tela_e_ver_enquadrar_tudo.png).
+> **F9 (11/10)**: os parâmetros de cada forma saem do Inspector para ALÇAS no canvas (o pedido do
+> dono: *«como o Affinity»*) — o raio do canto, o vale da estrela, os ângulos da pizza, as voltas da
+> espiral, a cabeça da seta… em todas as formas do catálogo; o número exacto na fila ②. A lei bate o
+> Inkscape corrido (107 arrastos) e segue o manual do Affinity — [`13_alcas_das_formas.md`](13_alcas_das_formas.md);
+> cena `=15`, foto [`fotos/f9_01`](fotos/f9_01_cena15_um_canto_um_vale_e_o_fim_da_pizza_pelas_alcas.png).
 
 ## O roteador
 

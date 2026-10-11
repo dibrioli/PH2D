@@ -65,6 +65,14 @@ pub enum Law {
     /// o `start` do Inkscape deixa o `end` em 270,00 nos 10 arrastos. Com `pairs` (Ctrl) o fim
     /// acompanha e o arco RODA inteiro (o Shift do Inkscape; aqui Ctrl = «em pares», Affinity).
     ArcStart { sweep: usize },
+    /// Um PONTO da caixa (campos `[u, v]`, frações da esquerda e do TOPO): os dois campos andam
+    /// o que a mão anda, em frações da caixa, desde o press — o bico de um balão (*Tail end position
+    /// + Tail height* do Affinity, um ponto 2D). Sem busca: o `cook` cola o bico à aresta e troca de
+    /// sector num SALTO, e uma métrica sobre o vértice prendia-se na diagonal (8 de 60 arrastos a
+    /// ≥ 7e-3; uma grelha conjunta 24×24 também, e regrediu a cabeça da seta). RELATIVO e não a
+    /// posição absoluta da mão: com o bico colado, o vértice que se desenha não é o ponto do
+    /// parâmetro, e agarrá-lo saltaria.
+    BoxPoint,
     /// Contagem por VOLTAS: cada volta inteira do ponteiro à volta do centro soma (ou tira) uma;
     /// a distância não conta — as `revolution` do Inkscape só mudam com o ângulo (150 e 70 px a
     /// 0° deixam 3,000; +90° dá 3,250).
@@ -272,6 +280,8 @@ pub struct HandleDrag {
     pub handle: usize,
     pub at_press: ShapeValues,
     grip: [f64; 2],
+    /// Onde a alça estava no press (local) — o zero do [`Law::BoxPoint`].
+    origin: [f64; 2],
     last_angle: f64,
     wound: f64,
 }
@@ -301,6 +311,7 @@ impl HandleDrag {
             handle,
             at_press,
             grip: [grip[0] - p[0], grip[1] - p[1]],
+            origin: grip,
             last_angle: norm_angle(grip, half),
             wound: 0.0,
         }
@@ -396,6 +407,17 @@ pub fn drag(
                 v[i] = (s - lo).rem_euclid(hi - lo + 1.0) + lo;
             }
         }
+        Law::BoxPoint => {
+            if let [iu, iv] = fields
+                && let Some((ulo, uhi, _)) = range_world(kind, *iu, px_to_world)
+                && let Some((vlo, vhi, _)) = range_world(kind, *iv, px_to_world)
+            {
+                let (hx, hy) = (half[0].max(1e-12), half[1].max(1e-12));
+                let (dx, dy) = (p[0] - d.origin[0], p[1] - d.origin[1]);
+                v[*iu] = (d.at_press[*iu] + dx / (2.0 * hx)).clamp(ulo, uhi);
+                v[*iv] = (d.at_press[*iv] - dy / (2.0 * hy)).clamp(vlo, vhi);
+            }
+        }
         Law::Nearest | Law::Radial | Law::Count => {
             let metric = |vals: &ShapeValues| {
                 let Some(q) = handle_point(h, vals, half, cook) else {
@@ -414,12 +436,6 @@ pub fn drag(
             };
             let rounds = if fields.len() > 1 { 3 } else { 1 };
             let before = fields.first().map(|&i| v[i]);
-            // Dois campos: primeiro a GRELHA conjunta — um ponto 2D (o bico de um balão) pode
-            // saltar de lado da caixa, e a descida campo a campo não atravessa o salto (19 de 60
-            // arrastos presos, medido). Depois a descida refina a partir do melhor da grelha.
-            if let [a, b] = fields {
-                grid_2d(kind, &mut v, *a, *b, px_to_world, &metric);
-            }
             for _ in 0..rounds {
                 for &i in fields {
                     if let Some((lo, hi, int)) = range_world(kind, i, px_to_world) {
@@ -436,51 +452,6 @@ pub fn drag(
         }
     }
     v
-}
-
-/// Pontos por eixo da grelha conjunta de dois campos.
-const GRID: usize = 24;
-
-/// O melhor par `(v[a], v[b])` numa grelha da faixa dos dois (contagens nos inteiros).
-fn grid_2d(
-    kind: ShapeKind,
-    v: &mut ShapeValues,
-    a: usize,
-    b: usize,
-    px_to_world: f64,
-    metric: &dyn Fn(&ShapeValues) -> f64,
-) {
-    let (Some(ra), Some(rb)) = (
-        range_world(kind, a, px_to_world),
-        range_world(kind, b, px_to_world),
-    ) else {
-        return;
-    };
-    let axis = |(lo, hi, int): (f64, f64, bool)| -> Vec<f64> {
-        #[expect(clippy::cast_precision_loss, reason = "GRID é pequeno")]
-        let xs = (0..=GRID).map(|k| lo + (hi - lo) * k as f64 / GRID as f64);
-        if int {
-            let mut r: Vec<f64> = xs.map(f64::round).collect();
-            r.dedup();
-            r
-        } else {
-            xs.collect()
-        }
-    };
-    let mut best = (metric(v), v[a], v[b]);
-    for x in axis(ra) {
-        for y in axis(rb) {
-            let mut w = *v;
-            w[a] = x;
-            w[b] = y;
-            let d = metric(&w);
-            if d < best.0 {
-                best = (d, x, y);
-            }
-        }
-    }
-    v[a] = best.1;
-    v[b] = best.2;
 }
 
 /// O valor do campo `i` em `[lo, hi]` com a menor métrica: varredura do trilho inteiro e

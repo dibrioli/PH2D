@@ -97,7 +97,10 @@ fn the_hand_takes_the_handle_where_it_is_dropped() {
     for &kind in ALL_SHAPES {
         let ck = cooker(kind, HALF);
         for (k, h) in handles_of(kind).iter().enumerate() {
-            if !matches!(h.law, Law::Nearest | Law::Radial | Law::Count) {
+            if !matches!(
+                h.law,
+                Law::Nearest | Law::Radial | Law::Count | Law::BoxPoint
+            ) {
                 continue;
             }
             let def = kind.defaults();
@@ -115,6 +118,18 @@ fn the_hand_takes_the_handle_where_it_is_dropped() {
                         h.fields.iter().map(|&i| b[i]).collect::<Vec<_>>(),
                         "{kind:?} alça {k}: a contagem não seguiu o ângulo"
                     ),
+                    // O ponto da caixa: os campos andam o que a mão andou, em frações da caixa.
+                    Law::BoxPoint => {
+                        let f = |i: usize| range_world(kind, h.fields[i], PX).unwrap();
+                        let (fu, fv) = (f(0), f(1));
+                        let u = def[h.fields[0]] + (qb[0] - q0[0]) / (2.0 * HALF[0]);
+                        let w = def[h.fields[1]] - (qb[1] - q0[1]) / (2.0 * HALF[1]);
+                        assert!(
+                            (r[h.fields[0]] - u.clamp(fu.0, fu.1)).abs() < 1e-12
+                                && (r[h.fields[1]] - w.clamp(fv.0, fv.1)).abs() < 1e-12,
+                            "{kind:?} alça {k}: o ponto da caixa não andou o que a mão andou"
+                        );
+                    }
                     Law::Radial => {
                         let rr = |x: [f64; 2]| (x[0] / HALF[0]).hypot(x[1] / HALF[1]);
                         assert!(
@@ -346,11 +361,40 @@ fn a_double_click_resets_only_that_handle() {
 #[test]
 fn the_fields_without_a_gesture_are_counted_not_listed() {
     let none = |k: ShapeKind| fields_without_handle(k).collect::<Vec<_>>();
-    assert_eq!(none(ShapeKind::RoundRect), vec![4], "a suavização do canto");
-    assert!(none(ShapeKind::Star).is_empty());
-    assert!(none(ShapeKind::Polygon).is_empty());
-    assert!(none(ShapeKind::Ellipse).is_empty());
-    assert!(none(ShapeKind::Spiral).is_empty());
+    use ShapeKind as K;
+    // A lista EXACTA por forma; toda forma fora dela tem alça para todo campo.
+    let without: &[(ShapeKind, &[usize])] = &[
+        // A suavização do canto: um perfil, não um ponto.
+        (K::RoundRect, &[4]),
+        // A faixa do rabo encolhe a elipse inteira: nenhum vértice anda só com ela.
+        (K::SpeechOval, &[3]),
+        // O número de bolhas: a bolha 0 não muda com ele, as outras somem com uma só.
+        (K::Thought, &[2]),
+        // A desordem radial e angular: nenhum ponto a representa.
+        (K::Burst, &[2, 3]),
+        // O fofo: o `refit` normaliza a nuvem e o vale estável quase não anda; a suavização dos
+        // vales e a irregularidade: nenhum ponto as representa.
+        (K::Cloud, &[1, 2, 3]),
+        // O ponto de vista é uma ESCOLHA (fila ②).
+        (K::IsoCube, &[2]),
+        (K::IsoCone, &[1]),
+        (K::IsoPyramid, &[2]),
+    ];
+    for &k in ALL_SHAPES {
+        let want = without.iter().find(|w| w.0 == k).map_or(&[][..], |w| w.1);
+        assert_eq!(none(k), want, "{k:?}: os campos sem alça");
+    }
+    // As formas sem campo não têm alça nenhuma.
+    for k in [
+        K::Rectangle,
+        K::Line,
+        K::Diamond,
+        K::Pill,
+        K::Delay,
+        K::Junction,
+    ] {
+        assert!(handles_of(k).is_empty(), "{k:?}");
+    }
 }
 
 // ── O ORÁCULO: o Inkscape 1.4.4 corrido sobre formas nossas (doc 13 §2) ─────────────────────────

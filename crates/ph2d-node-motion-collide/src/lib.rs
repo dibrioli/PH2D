@@ -291,6 +291,22 @@ fn push_apart(
         // ── gather pass: every pair reads the SAME snapshot `q` ──
         for i in 0..n {
             for j in (i + 1)..n {
+                // Each disc brings its OWN radius (`r_i + r_j`, symmetric — and
+                // exactly `2·radius` when the sizes are uniform, since `x + x` is
+                // exact in IEEE-754).
+                let min_dist = radii[i] + radii[j];
+                if min_dist <= 0.0 {
+                    continue;
+                }
+                let min_d2 = min_dist * min_dist;
+                let dx = q[j][0] - q[i][0];
+                let dy = q[j][1] - q[i][1];
+                let d2 = dx * dx + dy * dy;
+                // The distance test FIRST: most pairs are apart, and every guard here is a
+                // side-effect-free `continue`, so their order cannot change a bit.
+                if d2 >= min_d2 {
+                    continue;
+                }
                 // Two immovable discs (or two infinitely heavy ones) have no
                 // correction to share — the constraint simply cannot be met.
                 let sum_w = w[i] + w[j];
@@ -308,21 +324,7 @@ fn push_apart(
                 if fw <= 0.0 {
                     continue;
                 }
-                // Each disc brings its OWN radius (`r_i + r_j`, symmetric — and
-                // exactly `2·radius` when the sizes are uniform, since `x + x` is
-                // exact in IEEE-754).
-                let min_dist = radii[i] + radii[j];
-                if min_dist <= 0.0 {
-                    continue;
-                }
-                let min_d2 = min_dist * min_dist;
                 if estrutura.is_some_and(|e| e.segura(i, j, min_d2)) {
-                    continue;
-                }
-                let dx = q[j][0] - q[i][0];
-                let dy = q[j][1] - q[i][1];
-                let d2 = dx * dx + dy * dy;
-                if d2 >= min_d2 {
                     continue;
                 }
                 let (nx, ny, penetration) = if d2 > EPS {

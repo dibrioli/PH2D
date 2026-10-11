@@ -124,6 +124,18 @@ opt-level = 2
 [profile.dev.package.ph2d-poly2d]
 opt-level = 2
 
+# Motion (11/10, A/B intercalado, o mínimo de 2): `nenhum_no_emite_mais_do_que_o_tecto` 87,7 s (o0) ·
+# 12,9 s (só collide) · 9,7 s (os quatro) — o collide é O(n²) sobre 16 384 pontos na CPU de
+# referência. Remontar após 1 edição no collide: 18,0 → 2,4 s. Doc: handoff da linha rápida.
+[profile.dev.package.ph2d-node-motion-collide]
+opt-level = 2
+[profile.dev.package.ph2d-node-motion-proximity]
+opt-level = 2
+[profile.dev.package.ph2d-node-field-shape]
+opt-level = 2
+[profile.dev.package.ph2d-node-force-attractor]
+opt-level = 2
+
 [profile.release]
 opt-level = 3
 lto = "thin"

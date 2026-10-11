@@ -55,11 +55,16 @@
 
 O que sobra por quadro é UM `collide` (~42 ms no smoke): é o custo do nó, não da repetição.
 
-⛔ **A cena `=8` NÃO serve de smoke ao dono** (report dele: *«não há shapes ou objetos na cena»*):
-são posições sem forma, e o que se vê é o gizmo. Smoke com FORMAS + SIMULAÇÃO, sem placa,
-fotografado depois da cura: `=114` com `PH2D_PILHA_LADO=10` (200 quadrados, as duas taças,
-`61 fps · 16,3 ms`) e `=126` (32 761 estrelas com forças, `51 fps · 19,3 ms`). Nelas o quadro não
-fica lento, logo não há tiques recuperados — provam que a simulação continua certa, não o ganho.
+⛔ **Report do dono:** *«não há shapes ou objetos na cena»* — a `=8` eram posições sem forma (só o
+gizmo). `809266bb0`: ela carimba um **quadrado** em cada disco (`size 0,1`: o miolo fica no passo
+de partida `0,252`, medido por `PH2D_PAN_DIAG`; `0,18` dava a vista toda branca). Com placa a única
+fronteira é o molde (gate `the_breathing_packing_demo_plans_the_packing_on_the_gpu`, 4 estágios):
+HUD `60 fps · 16,5 ms` (era 38). Sem placa: `20 fps · 48,2 ms` a load ~30; a sonda com os quadrados
+dá `496 → 54,5 ms` por quadro de 10 tiques. ⚠️ No miolo os quadrados quase não se mexem (o fôlego
+vê-se nas bordas, fora do enquadramento de arranque) — se o dono pedir movimento visível, é a
+câmara ou o tamanho da grade, não a bomba.
+Smoke de controlo (FORMAS + SIMULAÇÃO, sem tiques recuperados — provam que a simulação continua
+certa): `=114` com `PH2D_PILHA_LADO=10` (`61 fps`) e `=126` (32 761 estrelas, `51 fps`).
 
 ## Gates e provas
 
@@ -76,8 +81,9 @@ fica lento, logo não há tiques recuperados — provam que a simulação contin
 **Portão de fecho** (`verificador`, sobre `5a3e47c0d..c2521297b`): `nextest-impacted` 4 642/4 642;
 clippy `-D warnings` e fmt limpos nas duas crates; gate-fonte da shell
 `the_graph_only_shouts_while_the_clock_plays_forward` 4/4; tectos de LOC ok (`ph2d-eval-motion/src/lib.rs`
-698/700 — **2 de folga**: o próximo campo da bomba tem de ir para um irmão); censos 117/117. Binário
-do smoke refeito por último, sem o registo temporário.
+698/700 — **2 de folga**: o próximo campo da bomba tem de ir para um irmão); censos 117/117. Depois de `809266bb0`
+(os quadrados): `nextest-impacted` 3 497/3 497, clippy/fmt limpos, censos 117/117. Binário do smoke
+refeito por último, sem o registo temporário.
 
 ## ABERTO (nomeado)
 

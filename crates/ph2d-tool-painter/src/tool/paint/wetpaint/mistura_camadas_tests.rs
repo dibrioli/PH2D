@@ -390,42 +390,53 @@ pub(super) const TUDO: Cond = Cond {
 /// dono tem de reprovar.
 #[test]
 fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
-    let nada = |_: &mut ph2d_wet_paint::painter::Engine| {};
-    // As DUAS leis de antes: a velatura por cima da K–M e o assentar que não preserva o ecrã (cada cura
-    // sozinha já tira o preto).
-    let antes = |e: &mut ph2d_wet_paint::painter::Engine| {
-        e.sim.glaze = 0.47;
-        e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
-        e.sim.molhada_escurece = 1.0;
-        e.tuning
-            .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
-    };
     let km = |c: Cond| Cond { km: true, ..c };
     // O produto de antes pintava com a cor CHEIA (sem a Opacity).
     let cheia = |c: Cond| Cond {
         opacidade: Some(1.0),
         ..c
     };
+    // As cenas são independentes: uma por thread (140 s em série no `ci-test` passava o tecto de 180 s do
+    // nextest sob a suíte inteira, 11/10).
+    let (controlo, f) = std::thread::scope(|s| {
+        let controlo = s.spawn(|| {
+            // As DUAS leis de antes: a velatura por cima da K–M e o assentar que não preserva o ecrã (cada
+            // cura sozinha já tira o preto).
+            let antes = |e: &mut ph2d_wet_paint::painter::Engine| {
+                e.sim.glaze = 0.47;
+                e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
+                e.sim.molhada_escurece = 1.0;
+                e.tuning
+                    .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
+            };
+            barra("controlo", &cena(false, 10, cheia(km(TUDO)), &antes), true)
+        });
+        // ⚠️ O controlo «o pincel apanha o assentado» saiu (10/10): a régua do canal VERMELHO contra o
+        // amarelo como sai sozinho já não separa esse caso (o pincel sujo fica justificado pela medição da
+        // W1e: rasto − azul ≈ 0 no Rebelle).
+        let cenas: Vec<_> = [
+            ("fábrica, molhado", false, SIMPLES, false),
+            ("fábrica, cena do dono", false, TUDO, false),
+            ("fábrica, seco", true, SIMPLES, false),
+            ("K–M, molhado", false, km(SIMPLES), true),
+            ("K–M, cena do dono", false, km(TUDO), false),
+            ("K–M, seco", true, km(SIMPLES), false),
+        ]
+        .into_iter()
+        .map(|(nome, seco, cond, so_a)| {
+            s.spawn(move || barra(nome, &cena(seco, 10, cond, &|_| {}), so_a))
+        })
+        .collect();
+        let f: Vec<String> = cenas
+            .into_iter()
+            .filter_map(|h| h.join().expect("a cena entrou em pânico").err())
+            .collect();
+        (controlo.join().expect("o controlo entrou em pânico"), f)
+    });
     assert!(
-        barra("controlo", &cena(false, 10, cheia(km(TUDO)), &antes), true).is_err(),
+        controlo.is_err(),
         "CONTROLO: a velatura por cima da K–M passou a barra — a régua não discrimina"
     );
-    // ⚠️ O controlo «o pincel apanha o assentado» saiu (10/10): a régua do canal VERMELHO contra o amarelo
-    // como sai sozinho já não separa esse caso (o pincel sujo fica justificado pela medição da W1e: rasto −
-    // azul ≈ 0 no Rebelle).
-    let mut f = Vec::new();
-    for (nome, seco, cond, so_a) in [
-        ("fábrica, molhado", false, SIMPLES, false),
-        ("fábrica, cena do dono", false, TUDO, false),
-        ("fábrica, seco", true, SIMPLES, false),
-        ("K–M, molhado", false, km(SIMPLES), true),
-        ("K–M, cena do dono", false, km(TUDO), false),
-        ("K–M, seco", true, km(SIMPLES), false),
-    ] {
-        if let Err(e) = barra(nome, &cena(seco, 10, cond, &nada), so_a) {
-            f.push(e);
-        }
-    }
     assert!(
         f.is_empty(),
         "a mistura em camadas falhou a barra do Rebelle: {}",
@@ -538,25 +549,39 @@ fn o_traco_nao_muda_de_tom_ao_secar() {
             .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
     };
     let pior = |v: &[[f64; 3]]| v[1..].iter().map(|c| tom(v[0], *c)).fold(0.0, f64::max);
-    let c = pior(&duas_etapas(true, true, false, &antes));
+    // Uma condição por thread (independentes; o gancho `CAIXAS` é por thread).
+    let (c, f) = std::thread::scope(|s| {
+        let controlo = s.spawn(|| pior(&duas_etapas(true, true, false, &antes)));
+        let conds: Vec<_> = [false, true]
+            .into_iter()
+            .flat_map(|viva| {
+                [(false, false), (true, false), (false, true), (true, true)]
+                    .map(|(km, glaze)| (km, glaze, viva))
+            })
+            .map(|(km, glaze, viva)| {
+                s.spawn(move || {
+                    let v = duas_etapas(km, glaze, viva, &|_| {});
+                    let p = pior(&v);
+                    (p > 0.15).then(|| {
+                        format!(
+                            "K–M {km} · Glaze {glaze} · Live {viva}: em baixo {:?} → seco {:?}, tom {p:.3}",
+                            r(v[0]),
+                            r(v[5])
+                        )
+                    })
+                })
+            })
+            .collect();
+        let f: Vec<String> = conds
+            .into_iter()
+            .filter_map(|h| h.join().expect("a condição entrou em pânico"))
+            .collect();
+        (controlo.join().expect("o controlo entrou em pânico"), f)
+    });
     assert!(
         c > 0.15,
         "CONTROLO: a lei de antes ficou no tom ({c:.3}) — a régua não discrimina"
     );
-    let mut f = Vec::new();
-    for viva in [false, true] {
-        for (km, glaze) in [(false, false), (true, false), (false, true), (true, true)] {
-            let v = duas_etapas(km, glaze, viva, &|_| {});
-            let p = pior(&v);
-            if p > 0.15 {
-                f.push(format!(
-                    "K–M {km} · Glaze {glaze} · Live {viva}: em baixo {:?} → seco {:?}, tom {p:.3}",
-                    r(v[0]),
-                    r(v[5])
-                ));
-            }
-        }
-    }
     assert!(
         f.is_empty(),
         "o traço muda de tom ao secar: {}",

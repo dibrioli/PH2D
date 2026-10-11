@@ -86,6 +86,15 @@ filter = 'test(/orcamento::the_fit_/) + test(apply_from_doc_is_zero_alloc_steady
 threads-required = 'num-cpus'
 priority = -100
 
+# Os portões de CENA do Wet Paint (prompt 16, 11/10): cada um pinta várias telas de 600×400 até
+# 10 passadas, já uma por thread. Medido no `ci-test`, sozinhos a load 1,5–6: as camadas 140 s em
+# série → 69 s em paralelo (a cena do dono, Live Water, é a mais longa e é sequencial); o
+# `sem_celulas_soltas` 29–40 s. Sob a suíte inteira o de 140 s passou o tecto de 180 s
+# (`nextest-impacted`, 18 107 testes). Tecto pedido: 6 × 60 s, ~5× o medido sozinho.
+[[profile.default.overrides]]
+filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(sem_celulas_soltas)'
+slow-timeout = { period = "60s", terminate-after = 6 }
+
 # ── Tecto GLOBAL e as três regras que viviam em scripts ─────────────────────────
 #
 # Medido 2026-09-10 (auditoria §3.3): nos dois últimos logs completos da suíte (20 041 testes)

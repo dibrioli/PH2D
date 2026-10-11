@@ -434,29 +434,44 @@ fn soltas(c: &Cena) -> (usize, f64) {
 #[test]
 fn uma_mistura_nunca_e_mais_clara_que_as_tintas() {
     let b = biblioteca();
-    let mut falhas = Vec::new();
-    for (km, glaze) in [(true, true), (true, false), (false, true)] {
-        for seco in [false, true] {
-            let v = Var {
-                km,
-                glaze,
-                seco,
-                ..Var::DUAS
-            };
-            let (exc, cone) = mais_claro_e_cone(&cena_partilhada(&b, v));
-            println!("km {km} glaze {glaze} seco {seco}: mais clara {exc:+.4} · cone {cone:.3}");
-            if exc > TOL_MAIS_CLARA || cone > TECTO_CONE {
-                falhas.push(format!(
-                    "km {km} glaze {glaze} seco {seco}: mais clara {exc:+.4} (tol {TOL_MAIS_CLARA}) · cone {cone:.3} (tecto {TECTO_CONE})"
-                ));
-            }
-        }
-    }
     let ctl = Var {
         lei_de_antes: true,
         ..Var::DUAS
     };
-    let (exc, cone) = mais_claro_e_cone(&cena_partilhada(&b, ctl));
+    // Uma variante por thread (independentes).
+    let ((exc, cone), falhas) = std::thread::scope(|s| {
+        let b = &b;
+        let controlo = s.spawn(move || mais_claro_e_cone(&cena_partilhada(b, ctl)));
+        let vars: Vec<_> = [(true, true), (true, false), (false, true)]
+            .into_iter()
+            .flat_map(|(km, glaze)| [false, true].map(|seco| (km, glaze, seco)))
+            .map(|(km, glaze, seco)| {
+                s.spawn(move || {
+                    let v = Var {
+                        km,
+                        glaze,
+                        seco,
+                        ..Var::DUAS
+                    };
+                    let (exc, cone) = mais_claro_e_cone(&cena_partilhada(b, v));
+                    println!("km {km} glaze {glaze} seco {seco}: mais clara {exc:+.4} · cone {cone:.3}");
+                    (exc > TOL_MAIS_CLARA || cone > TECTO_CONE).then(|| {
+                        format!(
+                            "km {km} glaze {glaze} seco {seco}: mais clara {exc:+.4} (tol {TOL_MAIS_CLARA}) · cone {cone:.3} (tecto {TECTO_CONE})"
+                        )
+                    })
+                })
+            })
+            .collect();
+        let falhas: Vec<String> = vars
+            .into_iter()
+            .filter_map(|h| h.join().expect("a variante entrou em pânico"))
+            .collect();
+        (
+            controlo.join().expect("o controlo entrou em pânico"),
+            falhas,
+        )
+    });
     println!("CONTROLO (a lei de antes): mais clara {exc:+.4} · cone {cone:.3}");
     assert!(
         exc > TOL_MAIS_CLARA && cone > TECTO_CONE,

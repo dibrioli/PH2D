@@ -152,8 +152,11 @@ impl PainterTool {
     pub(crate) fn wet_recomposite_full(&mut self) {
         self.wetpaint_guard();
         let hold = self.wet_authoring_hold();
+        let facts = self.wet_facts();
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
             sess.bring_home();
+            // O «Glaze layering» é uma lei da SESSÃO: o composite lê-a do motor, então ela entra antes.
+            sess.reconcile_facts(facts);
             sess.engine.mark_dirty_full();
             if !hold {
                 self.wetpaint_composite();

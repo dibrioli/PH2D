@@ -1043,6 +1043,42 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - **Aberto:** (a) a largura (W2); (b) o Wash molhado mais escuro que o do Rebelle aos 2 s (64 → 38 contra
     46 → 39); (c) os fios finos e longos do Drip; (d) o Smooth Edges no máximo amacia o grão da tinta clara
     molhada (−10 %); (e) o Shape Noise no Wet Paint (#47).
+- ✅ **Mistura — Wet Drip: o azul-claro com as duas caixas K–M (11/10, prompt [16](16_PROMPT_janela_auditoria_mistura_simplificacao.md), Fases B–E).**
+  - **Causa (Fases B–C, `sonda_mistura_wet_drip`):** a lei de ecrã do «Glaze layering» (`Ecra::Camada`: o assentado
+    como fundo OPACO qualquer que seja a cobertura dele) e a sua inversa fechada ao assentar escreviam, sob filme
+    grosso, um assentado ciano/lilás preso a 255 e ESCONDIDO; o escorrimento destapava-o (pontos e faixas claras).
+  - ⛔ **Recusas MEDIDAS (Fase D, `faseD_tabelas.txt` da sessão):** a representação única por densidade óptica
+    (perde a W1e seca, γ 1,07–1,17 contra 0,30–0,70, e as camadas: o miolo a `[9, 4, 0]`, sem ordem de camadas
+    não há «tapar») · `CAMADA_CONTINUA` (sangria seca +0,129, camadas seco 0,54, molhada 1,25×) · trocar a K–M do
+    «Pigment mixing» pela média da densidade (decisão da janela principal: a mesma porta `ColorMix` nos três meios).
+  - **A cura (Fase E):** (1) o «Glaze layering» é a lei `Cobre` com a camada a tapar menos —
+    `Sim::camadas_transparentes` → `colorops::TINTA_ESCONDE_EM_VELATURA` = **2** no lugar de 5, lida SÓ por
+    `Sim::gather_params` (o ecrã e as transferências verticais vêem a mesma lei; `PigmentVisual::km_glaze` saiu e o
+    clique recompõe depois do reconcile). Esconde 1 contra 2, no mesmo processo: W1e seco γ 0,98·1,00 · **0,78·0,81**
+    (sem a caixa 0,44); camadas 0,82·0,86 ✗ · **0,85·0,87**; Δ +600 → Dry 26,7 · **20,8** (o produto 13,2).
+    (2) **A caixa das tintas só no RE-MOLHAR** (`assenta::levanta`): o filme que a água leva fica, por canal, entre as
+    duas tintas. ⛔ **Recusada no ASSENTAR, medida:** a caixa inteira e só o tecto viram o cruzamento azul sobre
+    vermelho SECO em malva — tetraedro do Rebelle `0,000 % → 15,3 %` (o Rebelle 0,000 % nas quatro capturas), com o
+    produto SEM caixas; a tinta clara que tapa a escura (a lei do Rebelle) guarda-se mais clara que a escura.
+    (3) `Lei::Camada` fica só como o CONTROLO dos portões (é a lei de antes ao byte: `cmp` dos PPM contra a Fase D).
+  - **Antes → depois (as duas caixas, molhado | vermelho seco):** índice fora do cone 9 001 → 511 | 5 844 → 0 ·
+    mais clara à mesma massa (luz linear) +0,565 → +0,043 | +0,633 → +0,100 · pontilhado 3 010 → 94 | 2 568 → 54 ·
+    tetraedro 19,2 % → 0,05 % | 16,8 % → 0,000 % · ciano 0,080 % → 0 | 0,132 % → 0. Sem caixas o produto não muda de
+    bytes no Wet Drip além do re-molhar (tetraedro 0,000 %); as barras (W1e, sangria, camadas, acumulação 1,79,
+    molhada 1,80×, tom ao secar 0,061 / 0,122) ficam as do produto.
+  - **Portões novos (controlo DENTRO):** `mistura_wet_drip_tests::uma_mistura_nunca_e_mais_clara_que_as_tintas`
+    (tolerância = o produto sem caixas, +0,148; cone ≤ 0,20; vermelho no produto de antes: +0,646 / 0,557) ·
+    `sem_celulas_soltas` (miolo > 25 níveis ≤ 150 e N32 ≤ 0,13 %; antes 2 778) ·
+    `o_glaze_layering_deixa_ver_a_camada_de_baixo` (γ 0,44 → 0,78·0,81; verde também na lei de antes, 0,86 — o
+    vermelho dele é uma caixa que não chega à tela) · `assenta::tests::as_transferencias_verticais_ficam_na_caixa_das_tintas`
+    (4 480 re-molhares, o pior do adversário por nome; sem a caixa sai 44,6 níveis). `km_flags_reach_the_sim_and_the_composite`:
+    o 2.º traço passou a OUTRO pigmento (a mesma tinta sobre si é uma camada só — o Glaze age onde o pigmento muda).
+  - **Regravado com a razão escrita:** as impressões do S e da bancada (`opcoes_tests`) e as 4 miniaturas de fábrica
+    (o re-molhar com a caixa). O censo dos controlos: a pega do ângulo do carimbo no Wet Paint passou a inerte (era
+    «viva» por arredondamento que saía pela inversa do re-molhar) — linha com o motivo, ao lado do Rotate.
+  - **Aberto:** o estado pior do adversário (filme lilás `[231, 186, 222]` re-molhando azul escuro sob quase branco)
+    está DENTRO da caixa por canal e fora do casco subtractivo (+0,135): a caixa não o apanha; o salto no Dry canvas
+    com o Glaze (20,8) é maior que o do produto (13,2).
 - **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

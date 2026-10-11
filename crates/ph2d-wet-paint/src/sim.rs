@@ -113,7 +113,7 @@ pub struct Sim {
     /// nunca o cobria (prompt 15, 05 §4b «Mistura»).
     pub pickup_assentado: f64,
     /// **Assentar e re-molhar preservam o ecrã?** ([`crate::assenta`]) `Porto` = as junções de antes; o
-    /// produto liga a lei do render (`PorCima`, ou `Camada` com o «Glaze layering»).
+    /// produto liga a lei do Rebelle (`Cobre`).
     pub lei: crate::assenta::Lei,
     /// **A tinta molhada parece mais forte e clareia ao secar** (o Rebelle e a aguarela real; dono 10/10):
     /// a densidade óptica do pigmento em SUSPENSÃO vale este múltiplo no render (`a = 1 − (1 − a)^k`).
@@ -122,6 +122,10 @@ pub struct Sim {
     pub molhada_escurece: f64,
     /// **Quanto uma camada tapa a de baixo** na [`crate::assenta::Lei::Cobre`] (`h = 1 − (1 − a)^esconde`).
     pub esconde: f64,
+    /// **«Glaze layering (K-M)»: camadas transparentes** — a camada tapa só a sua força
+    /// ([`crate::colorops::TINTA_ESCONDE_EM_VELATURA`] no lugar de [`Sim::esconde`]). Lido só por
+    /// [`Sim::gather_params`]: o ecrã e as transferências verticais vêem a MESMA lei.
+    pub camadas_transparentes: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -198,6 +202,7 @@ impl Default for Sim {
             lei: crate::assenta::Lei::Porto,
             molhada_escurece: 1.0,
             esconde: 1.0,
+            camadas_transparentes: false,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -281,7 +286,11 @@ impl Sim {
                 crate::assenta::Lei::Camada => crate::assenta::Ecra::Camada,
                 crate::assenta::Lei::Cobre => crate::assenta::Ecra::Cobre {
                     filme: self.glaze_filme,
-                    esconde: self.esconde,
+                    esconde: if self.camadas_transparentes {
+                        crate::colorops::TINTA_ESCONDE_EM_VELATURA
+                    } else {
+                        self.esconde
+                    },
                     molhada: self.molhada_escurece,
                 },
             },

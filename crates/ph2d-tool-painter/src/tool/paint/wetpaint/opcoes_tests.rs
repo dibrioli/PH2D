@@ -18,14 +18,16 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// continuam a não mexer um byte); e outra vez a 10/10 pela ordem do dono «aproxime do Rebelle» (o Wet
 /// Round ganhou a Opacity 0,26 e a velatura foi re-medida: o traço de fábrica mudou de propósito); e o S
 /// outra vez a 10/10 pela escolha do dono «como o Rebelle» (a claridade é o PIGMENTO — os presets de fábrica
-/// e o pincel sem preset com o pigmento do Rebelle — e a lei do ecrã `Cobre`).
+/// e o pincel sem preset com o pigmento do Rebelle — e a lei do ecrã `Cobre`); e outra vez a 11/10 pela
+/// caixa das tintas no RE-MOLHAR (prompt 16, Fase E: o filme que a água leva nunca sai, por canal, das duas
+/// tintas que se juntam — o traço de fábrica mudou de propósito, as opções continuam a não mexer um byte).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0xf650_3793_75cd_1f6e),
-    ("S", Some(4), 0x45cb_214a_6fe2_b2d4),
-    ("S", Some(8), 0x70f9_929d_fc66_6508),
-    ("bancada", None, 0xfacf_bcb6_4edb_339a),
-    ("bancada", Some(4), 0x9ef7_47c7_c706_8c13),
-    ("bancada", Some(8), 0xb859_4fa5_9f37_a7c0),
+    ("S", None, 0x6264_cc0e_4042_0415),
+    ("S", Some(4), 0x16f6_15d8_a798_e353),
+    ("S", Some(8), 0x3d6f_a977_793a_62c0),
+    ("bancada", None, 0xed7c_3419_06ab_6dd4),
+    ("bancada", Some(4), 0x40a9_0441_898a_29b2),
+    ("bancada", Some(8), 0xb433_1e32_b585_1a9b),
 ];
 
 #[test]

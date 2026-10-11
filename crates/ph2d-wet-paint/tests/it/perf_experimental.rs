@@ -94,10 +94,13 @@ fn pigment_mixing_costs_a_ratio_not_an_order_of_magnitude() {
     );
 }
 
+/// The «Glaze layering» box is a law of the session (`Sim::camadas_transparentes`, read by
+/// `gather_params` — the composite and the vertical transfers see the same one): the product composite
+/// with it on must cost a ratio, not an order of magnitude.
 #[test]
 fn glaze_layering_costs_a_ratio_not_an_order_of_magnitude() {
-    let e = scene();
-    let params = e.sim.gather_params(&e.tuning);
+    let mut e = scene();
+    e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
     let layers: Vec<RenderLayer<'_>> = e
         .layers
         .iter()
@@ -109,10 +112,9 @@ fn glaze_layering_costs_a_ratio_not_an_order_of_magnitude() {
         .collect();
     let mut out = vec![0u8; W * H * 4];
     let mut run = |glaze: bool| {
-        let visual = PigmentVisual {
-            paper: false,
-            km_glaze: glaze,
-        };
+        e.sim.camadas_transparentes = glaze;
+        let params = e.sim.gather_params(&e.tuning);
+        let visual = PigmentVisual { paper: false };
         let mut s = Vec::new();
         for _ in 0..9 {
             let t = Instant::now();
@@ -125,12 +127,11 @@ fn glaze_layering_costs_a_ratio_not_an_order_of_magnitude() {
     let on = run(true);
     let ratio = on / off.max(1e-9);
     println!("glaze layering: OFF {off:.3} ms, ON {on:.3} ms, ratio {ratio:.2}x");
-    // Measured 2.84x release, 2.60x ci-test. The pre-table implementation
-    // measured 20.7x on the full sheet.
+    // The bar is the one of the reflectance stack it replaced (measured 2.84x release, 20.7x before the
+    // tabulated transfer); the same law with another exponent should sit near 1x.
     assert!(
         ratio < 8.0,
-        "glaze layering costs {ratio:.2}x a plain composite (bar 8x) — the \
-         sRGB transfer is back on the per-call `libm::pow` path"
+        "glaze layering costs {ratio:.2}x a plain composite (bar 8x)"
     );
 }
 

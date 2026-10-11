@@ -1,0 +1,12 @@
+== 1_pontas_dos_fios_ciano.png
+  gama (tela inteira, 399241 células de tinta): fora e mais clara 16.768 % (tol 0,03) · 10.266 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 10.226 % · pior [115, 78,150] coord (Rd, Bl, Rd⊙Bl) [ 0.49  1.27 -0.76] W 0.00
+  pontos mais claros que a mediana 3×3, interior: % N16 · N32 · N48 = 0.00 · 0.00 · 0.00
+== 2_faixa_ciano_na_orla_de_baixo.png
+  gama (tela inteira, 374179 células de tinta): fora e mais clara 17.588 % (tol 0,03) · 11.048 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 11.006 % · pior [143,110,167] coord (Rd, Bl, Rd⊙Bl) [ 0.41  1.   -0.61] W 0.19
+  pontos mais claros que a mediana 3×3, interior: % N16 · N32 · N48 = 0.00 · 0.00 · 0.00
+== 3_fios_ciano_pixelados.png
+  gama (tela inteira, 362839 células de tinta): fora e mais clara 23.297 % (tol 0,03) · 14.494 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 14.474 % · pior [ 82,180,188] coord (Rd, Bl, Rd⊙Bl) [-0.62  0.06  0.79] W 0.76
+  pontos mais claros que a mediana 3×3, interior: % N16 · N32 · N48 = 0.07 · 0.01 · 0.00
+== 4_halo_claro_na_fronteira.png
+  gama (tela inteira, 346267 células de tinta): fora e mais clara 38.444 % (tol 0,03) · 19.253 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 19.253 % · pior [125,195,202] coord (Rd, Bl, Rd⊙Bl) [-0.44  0.07  0.57] W 0.80
+  pontos mais claros que a mediana 3×3, interior: % N16 · N32 · N48 = 0.00 · 0.00 · 0.00

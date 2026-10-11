@@ -173,6 +173,19 @@ pub const TINTA_MOLHADA_ESCURECE: f64 = 3.0;
 /// (Rebelle: seco 0,42–0,49 · 0,44–0,51, sangria molhada 0,27 — a nossa 0,26–0,28; camadas 0,89 · 0,96.)
 pub const TINTA_ESCONDE: f64 = 5.0;
 
+/// **«Glaze layering (K-M)»: camadas transparentes — a de baixo vê-se através da de cima** (o
+/// [`TINTA_ESCONDE`] da [`crate::assenta::Ecra::Cobre`] com a caixa ligada). Medido no MESMO processo (sem
+/// papel; W1e seco γ · camadas molhado/seco · o salto no Dry canvas, o produto sem a caixa 13,2):
+///
+/// | esconde | 1 | **2** | (sem a caixa: 5) |
+/// |---|---|---|---|
+/// | W1e seco γ | 0,98·1,00 | **0,78·0,81** | 0,44·0,44 |
+/// | camadas | 0,82 · 0,86 ✗ (o miolo a 0,81 do azul) | **0,85 · 0,87** | 0,86 · 0,88 |
+/// | Δ +600 → Dry | 26,7 | **20,8** | 13,2 |
+///
+/// (`05 §4b` «Mistura — Wet Drip»; a lei de antes, a `Camada`, dava γ 0,86 e camadas 0,78 · 0,44 ✗.)
+pub const TINTA_ESCONDE_EM_VELATURA: f64 = 2.0;
+
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos
 /// TRANSPARENTES: a cor de cima perde, na fração `glaze`, a luz que a de baixo já absorveu.
 ///

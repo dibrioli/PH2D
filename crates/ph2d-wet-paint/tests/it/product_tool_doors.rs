@@ -212,10 +212,7 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     let mut e = seeded_engine([220.0, 45.0, 40.0]);
     let params = e.sim.gather_params(&e.tuning);
     let layers = layers_of(&e);
-    let paper_on = PigmentVisual {
-        paper: true,
-        km_glaze: false,
-    };
+    let paper_on = PigmentVisual { paper: true };
     let mut off = vec![0u8; W * H * 4];
     let mut on = vec![0u8; W * H * 4];
     render_pigment_only_region(&layers, 1, 1, W, H, &mut off);
@@ -246,9 +243,10 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     assert_eq!(off, on_zeroed, "grain 0 + emboss 0 must be an exact no-op");
 }
 
-/// Glaze ON stacks the wet film over the dried paint by reflectance — the
-/// colour changes exactly where suspension sits OVER settled paint; alpha is
-/// untouched everywhere.
+/// The «Glaze layering» (`Sim::camadas_transparentes`, a law of the session the
+/// composite reads from `gather_params`) lets the dried paint show through the
+/// wet film — the colour changes exactly where suspension sits OVER settled
+/// paint, and nowhere else (bare paper and paint without film keep their bytes).
 #[test]
 fn the_glaze_stacks_the_film_over_the_dried_paint() {
     let mut e = seeded_engine([220.0, 45.0, 40.0]);
@@ -263,25 +261,31 @@ fn the_glaze_stacks_the_film_over_the_dried_paint() {
         e.dispatch_pressure_dab_lane(0, x, 48.0, 5.0, 1.0, 0.0, 10.0, None, None);
     }
     e.end_direct_stroke();
-    let params = e.sim.gather_params(&e.tuning);
+    e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+    e.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
+    let plain = e.sim.gather_params(&e.tuning);
+    e.sim.camadas_transparentes = true;
+    let glaze = e.sim.gather_params(&e.tuning);
     let layers = layers_of(&e);
-    let glaze = PigmentVisual {
-        paper: false,
-        km_glaze: true,
-    };
+    let visual = PigmentVisual::default();
     let mut off = vec![0u8; W * H * 4];
     let mut on = vec![0u8; W * H * 4];
-    render_pigment_only_region(&layers, 1, 1, W, H, &mut off);
-    render_pigment_region_visual(Some(&params), &layers, glaze, 1, 1, W, H, &mut on);
+    render_pigment_region_visual(Some(&plain), &layers, visual, 1, 1, W, H, &mut off);
+    render_pigment_region_visual(Some(&glaze), &layers, visual, 1, 1, W, H, &mut on);
     let g = e.active_grid();
     let mut moved = false;
     for cy in 1..=H {
         for cx in 1..=W {
             let i = cx + cy * g.s;
             let o = ((cy - 1) * W + (cx - 1)) * 4;
-            assert_eq!(off[o + 3], on[o + 3], "alpha must not move under glaze");
-            if g.sett[i] > 0.0 && g.susp[i] > 0.0 && off[o..o + 3] != on[o..o + 3] {
-                moved = true;
+            if g.sett[i] > 0.0 && g.susp[i] > 0.0 {
+                moved |= off[o..o + 3] != on[o..o + 3];
+            } else {
+                assert_eq!(
+                    off[o..o + 4],
+                    on[o..o + 4],
+                    "only film over dried paint moves"
+                );
             }
         }
     }

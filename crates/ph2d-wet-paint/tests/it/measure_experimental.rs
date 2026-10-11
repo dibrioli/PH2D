@@ -180,8 +180,8 @@ fn measure_km_pass_breakdown() {
 #[test]
 #[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
 fn measure_glaze_layering_cost() {
-    let e = painted_engine();
-    let params = e.sim.gather_params(&e.tuning);
+    let mut e = painted_engine();
+    e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
     let layers: Vec<RenderLayer<'_>> = e
         .layers
         .iter()
@@ -193,36 +193,16 @@ fn measure_glaze_layering_cost() {
         .collect();
     let mut out = vec![0u8; 900 * 450 * 4];
     println!("\n  GLAZE LAYERING — product composite, full 900x450 sheet");
-    for (label, visual) in [
-        (
-            "paper OFF glaze OFF",
-            PigmentVisual {
-                paper: false,
-                km_glaze: false,
-            },
-        ),
-        (
-            "paper ON  glaze OFF",
-            PigmentVisual {
-                paper: true,
-                km_glaze: false,
-            },
-        ),
-        (
-            "paper OFF glaze ON ",
-            PigmentVisual {
-                paper: false,
-                km_glaze: true,
-            },
-        ),
-        (
-            "paper ON  glaze ON ",
-            PigmentVisual {
-                paper: true,
-                km_glaze: true,
-            },
-        ),
+    for (label, paper, glaze) in [
+        ("paper OFF glaze OFF", false, false),
+        ("paper ON  glaze OFF", true, false),
+        ("paper OFF glaze ON ", false, true),
+        ("paper ON  glaze ON ", true, true),
     ] {
+        // The «Glaze layering» is a law of the session (`Sim::camadas_transparentes`).
+        e.sim.camadas_transparentes = glaze;
+        let params = e.sim.gather_params(&e.tuning);
+        let visual = PigmentVisual { paper };
         let mut samples = Vec::new();
         for _ in 0..20 {
             let t = Instant::now();
@@ -389,6 +369,8 @@ fn measure_the_products_frame() {
             }
             let step = median(steps);
             // The composite the tool runs, over the rect the engine dirtied.
+            e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+            e.sim.camadas_transparentes = km;
             let params = e.sim.gather_params(&e.tuning);
             let layers: Vec<RenderLayer<'_>> = e
                 .layers
@@ -400,10 +382,7 @@ fn measure_the_products_frame() {
                 })
                 .collect();
             let mut out = vec![0u8; w * h * 4];
-            let visual = PigmentVisual {
-                paper: false,
-                km_glaze: km,
-            };
+            let visual = PigmentVisual { paper: false };
             let mut cs = Vec::new();
             for _ in 0..12 {
                 let t = Instant::now();
@@ -451,6 +430,8 @@ fn measure_row_parallel_composite() {
             }
             g.expand_bbox(1, 1, W as i32, H as i32);
         }
+        e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+        e.sim.camadas_transparentes = glaze;
         let params = e.sim.gather_params(&e.tuning);
         let layers: Vec<RenderLayer<'_>> = e
             .layers
@@ -461,10 +442,7 @@ fn measure_row_parallel_composite() {
                 visible: l.visible,
             })
             .collect();
-        let visual = PigmentVisual {
-            paper: false,
-            km_glaze: glaze,
-        };
+        let visual = PigmentVisual { paper: false };
         let mut out = vec![0u8; W * H * 4];
         let mut serial = Vec::new();
         for _ in 0..9 {

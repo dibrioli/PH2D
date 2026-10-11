@@ -568,8 +568,11 @@ fn km_flags_reach_the_sim_and_the_composite() {
         let sess = t.paint.wetpaint.session.as_ref().expect("session");
         assert!(sess.engine.sim.km_mixing, "mixing must reach the sim");
     }
-    // Glaze: dried paint + a fresh wash over it, then flip the flag.
+    // Glaze: dried paint + a fresh wash of ANOTHER pigment over it, then flip the flag. (The same ink over
+    // itself is one layer with the mass of both — `assenta::tests::a_mesma_tinta_nao_muda` — so the
+    // «Glaze layering» acts where the pigment changes.)
     click(&mut t, crate::ids::PAINTER_WETPAINT_DRYCANVAS);
+    t.set_brush_color_srgb8([30, 60, 210]);
     stroke(&mut t, 60.0);
     let plain = t.canvas_rgba.as_ref().clone();
     click(&mut t, crate::ids::WET_TUNING_KM_GLAZE);

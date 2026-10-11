@@ -1,0 +1,94 @@
+== mol_b.png
+  fio E x149 fim y554 ponta [156,159,183] lum 0.351 corpo [183,192,210] lum 0.524 | junção [240,219,220] lum 0.743 · vermelho dos lados [244,227,228] lum 0.797
+  fio E x245 fim y428 ponta [239,188,188] lum 0.579 corpo [180,190,209] lum 0.511 | junção [244,223,224] lum 0.773 · vermelho dos lados [242,211,212] lum 0.702
+  fio E x322 fim y564 ponta [184,189,207] lum 0.510 corpo [154,150,178] lum 0.317 | junção [236,220,223] lum 0.742 · vermelho dos lados [241,224,226] lum 0.775
+  fio E x350 fim y486 ponta [213,214,225] lum 0.678 corpo [211,216,227] lum 0.685 | junção [244,221,221] lum 0.762 · vermelho dos lados [247,228,228] lum 0.809
+  fio E x411 fim y610 ponta [177,181,201] lum 0.467 corpo [210,213,224] lum 0.667 | junção [236,190,190] lum 0.582 · vermelho dos lados [236,191,191] lum 0.589
+  fio D x550 fim y638 (sai da tela) corpo [ 86, 96,138] lum 0.122
+  fio D x601 fim y638 (sai da tela) corpo [201,208,221] lum 0.627
+  fio D x625 fim y639 (sai da tela) corpo [ 99,114,153] lum 0.170
+  fio D x640 fim y639 (sai da tela) corpo [ 96,115,155] lum 0.171
+  fio D x671 fim y634 (sai da tela) corpo [126,142,174] lum 0.268
+  fio D x708 fim y637 (sai da tela) corpo [ 66, 88,135] lum 0.098
+  fio D x731 fim y564 ponta [202,208,220] lum 0.627 corpo [201,207,220] lum 0.622
+  fio D x766 fim y637 (sai da tela) corpo [ 84,105,148] lum 0.142
+  orla de baixo E: y 210–245 · 3 de baixo [179,188,208] lum 0.503 · miolo [204,211,224] lum 0.648 · escuro baixo/miolo 1.50
+  orla de baixo D: y 395–424 · 3 de baixo [152,162,188] lum 0.362 · miolo [210,214,225] lum 0.672 · escuro baixo/miolo 2.30
+  linha mais escura D (y 360–430): mediana y 423 [111,129,165] lum 0.218 · vermelho de baixo (y 422–427) [214,219,229] lum 0.706
+  fronteira esq x537: patamares lum 0.533 · 0.499, pico 0.600 em x536 [212,200,209] → acima dos dois por +0.066
+  fronteira dir x865: patamares lum 0.865 · 0.964, pico 0.890 em x883 [250,240,241] → acima dos dois por -0.074
+  perfil vertical D (y 330–449, lum a cada 6): 0.95 0.93 0.91 0.91 0.90 0.89 0.88 0.86 0.85 0.84 0.82 0.80 0.74 0.69 0.58 0.47 1.00 1.00 1.00 1.00
+  pontilhado E azul só: % N16  3.72/ 0.38 · N32  2.13/ 0.00 · N48  0.77/ 0.00 (máscara/interior; 10653 células) · só mais claras, interior:  0.00 ·  0.00 ·  0.00
+  pontilhado D azul/vermelho: % N16  3.56/ 0.60 · N32  1.78/ 0.10 · N48  0.76/ 0.00 (máscara/interior; 11781 células) · só mais claras, interior:  0.07 ·  0.00 ·  0.00
+  pontilhado vermelho só: % N16  3.48/ 0.04 · N32  1.41/ 0.00 · N48  0.21/ 0.00 (máscara/interior; 2902 células) · só mais claras, interior:  0.00 ·  0.00 ·  0.00
+  gama (tela, 52382 células de tinta): fora e mais clara 0.036 % (tol 0,03) · 0.000 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 0.000 % · pior [170,139,160] coord (Rd, Bl, Rd⊙Bl) [ 0.25  0.35 -0.05] W 0.45
+== seco_b.png
+  fio E x184 fim y507 ponta [174,171,190] lum 0.418 corpo [147,161,188] lum 0.353 | junção [163,122,142] lum 0.237 · vermelho dos lados [233,164,165] lum 0.466
+  fio E x196 fim y639 (sai da tela) corpo [152,164,188] lum 0.369 | junção [145,145,172] lum 0.293 · vermelho dos lados [233,164,164] lum 0.466
+  fio E x239 fim y528 ponta [218,216,225] lum 0.694 corpo [222,225,233] lum 0.753 | junção [203,145,153] lum 0.352 · vermelho dos lados [232,161,161] lum 0.452
+  fio E x315 fim y565 ponta [168,167,188] lum 0.396 corpo [172,172,195] lum 0.422 | junção [142,110,135] lum 0.187 · vermelho dos lados [232,160,160] lum 0.448
+  fio E x333 fim y425 ponta [244,208,208] lum 0.689 corpo [163,175,198] lum 0.425 | junção [216,149,154] lum 0.384 · vermelho dos lados [232,160,160] lum 0.448
+  fio E x359 fim y596 ponta [173,172,192] lum 0.422 corpo [177,178,197] lum 0.452 | junção [158,119,139] lum 0.222 · vermelho dos lados [231,159,159] lum 0.443
+  fio E x446 fim y603 ponta [216,216,225] lum 0.691 corpo [223,224,233] lum 0.749 | junção [202,142,150] lum 0.342 · vermelho dos lados [231,159,159] lum 0.443
+  fio D x570 fim y637 (sai da tela) corpo [232,220,224] lum 0.735
+  fio D x611 fim y579 ponta [246,219,219] lum 0.756 corpo [246,217,217] lum 0.742
+  fio D x651 fim y637 (sai da tela) corpo [214,212,221] lum 0.666
+  fio D x692 fim y637 (sai da tela) corpo [157,165,190] lum 0.378
+  fio D x793 fim y595 ponta [237,206,208] lum 0.666 corpo [239,211,212] lum 0.697
+  orla de baixo E: y 199–245 · 3 de baixo [139,154,183] lum 0.319 · miolo [195,203,218] lum 0.594 · escuro baixo/miolo 1.93
+  orla de baixo D: y 352–424 · 3 de baixo [236,176,176] lum 0.519 · miolo [206,173,192] lum 0.467 · escuro baixo/miolo 0.96
+  linha mais escura D (y 360–430): mediana y 394 [ 64, 80,128] lum 0.083 · vermelho de baixo (y 422–427) [252,244,244] lum 0.916
+  fronteira esq x569: patamares lum 0.442 · 0.445, pico 0.452 em x554 [232,161,161] → acima dos dois por +0.007
+  fronteira dir: sem troca de R − B em x 800–880
+  perfil vertical D (y 330–449, lum a cada 6): 0.95 0.92 0.88 0.85 0.77 0.74 0.65 0.56 0.49 0.45 0.40 0.46 0.46 0.46 0.46 0.46 1.00 1.00 1.00 1.00
+  pontilhado E azul só: % N16  2.85/ 0.26 · N32  1.75/ 0.02 · N48  0.43/ 0.00 (máscara/interior; 14810 células) · só mais claras, interior:  0.00 ·  0.00 ·  0.00
+  pontilhado D azul/vermelho: % N16  3.96/ 2.94 · N32  1.87/ 1.34 · N48  0.94/ 0.85 (máscara/interior; 22701 células) · só mais claras, interior:  0.13 ·  0.03 ·  0.02
+  pontilhado vermelho só: % N16  2.29/ 0.04 · N32  0.89/ 0.00 · N48  0.34/ 0.00 (máscara/interior; 2931 células) · só mais claras, interior:  0.00 ·  0.00 ·  0.00
+  gama (tela, 67144 células de tinta): fora e mais clara 0.083 % (tol 0,03) · 0.000 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 0.000 % · pior [231,164,167] coord (Rd, Bl, Rd⊙Bl) [ 0.41  0.05 -0.05] W 0.58
+== mol100_b.png
+  fio E x180 fim y504 ponta [166,166,189] lum 0.392 corpo [ 68, 92,140] lum 0.107 | junção [222,199,206] lum 0.611 · vermelho dos lados [225,206,212] lum 0.649
+  fio E x236 fim y638 (sai da tela) corpo [138,151,180] lum 0.309 | junção [194,184,199] lum 0.500 · vermelho dos lados [201,189,202] lum 0.531
+  fio E x295 fim y486 ponta [169,172,194] lum 0.419 corpo [159,171,195] lum 0.404 | junção [221,186,191] lum 0.541 · vermelho dos lados [225,189,194] lum 0.563
+  fio E x351 fim y520 ponta [199,192,205] lum 0.540 corpo [200,206,220] lum 0.619 | junção [238,202,203] lum 0.646 · vermelho dos lados [239,205,206] lum 0.665
+  fio E x366 fim y524 ponta [206,208,220] lum 0.637 corpo [ 96,118,158] lum 0.178 | junção [234,196,198] lum 0.612 · vermelho dos lados [237,200,201] lum 0.633
+  fio D x553 fim y637 (sai da tela) corpo [ 47, 71,123] lum 0.065
+  fio D x581 fim y637 (sai da tela) corpo [ 42, 62,117] lum 0.052
+  fio D x603 fim y637 (sai da tela) corpo [ 37, 62,117] lum 0.051
+  fio D x623 fim y603 ponta [208,214,226] lum 0.668 corpo [209,215,227] lum 0.677
+  fio D x691 fim y637 (sai da tela) corpo [ 32, 55,113] lum 0.042
+  fio D x834 fim y637 (sai da tela) corpo [189,196,213] lum 0.551
+  orla de baixo E: y 181–245 · 3 de baixo [116,133,169] lum 0.235 · miolo [169,180,202] lum 0.454 · escuro baixo/miolo 1.62
+  orla de baixo D: y 333–425 · 3 de baixo [153,164,190] lum 0.371 · miolo [203,209,222] lum 0.636 · escuro baixo/miolo 1.97
+  linha mais escura D (y 360–430): mediana y 423 [ 97,114,155] lum 0.169 · vermelho de baixo (y 422–427) [184,192,211] lum 0.528
+  fronteira esq x522: patamares lum 0.570 · 0.432, pico 0.588 em x517 [221,196,201] → acima dos dois por +0.019
+  fronteira dir x862: patamares lum 0.440 · 0.863, pico 0.735 em x882 [240,218,218] → acima dos dois por -0.128
+  perfil vertical D (y 330–449, lum a cada 6): 0.84 0.78 0.74 0.73 0.71 0.69 0.68 0.66 0.64 0.62 0.60 0.54 0.47 0.42 0.39 0.35 1.00 1.00 1.00 1.00
+  pontilhado E azul só: % N16  2.76/ 0.09 · N32  1.69/ 0.00 · N48  0.80/ 0.00 (máscara/interior; 21186 células) · só mais claras, interior:  0.01 ·  0.00 ·  0.00
+  pontilhado D azul/vermelho: % N16  1.21/ 0.07 · N32  0.67/ 0.00 · N48  0.21/ 0.00 (máscara/interior; 30757 células) · só mais claras, interior:  0.01 ·  0.00 ·  0.00
+  pontilhado vermelho só: % N16  3.20/ 0.13 · N32  1.87/ 0.00 · N48  0.42/ 0.00 (máscara/interior; 2625 células) · só mais claras, interior:  0.00 ·  0.00 ·  0.00
+  gama (tela, 83778 células de tinta): fora e mais clara 0.279 % (tol 0,03) · 0.000 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 0.000 % · pior [153, 69, 91] coord (Rd, Bl, Rd⊙Bl) [ 0.56  0.37 -0.07] W 0.13
+== seco100_b.png
+  fio E x185 fim y518 ponta [187,170,185] lum 0.427 corpo [169,174,189] lum 0.424 | junção [153, 62, 80] lum 0.108 · vermelho dos lados [210, 70, 71] lum 0.185
+  fio E x197 fim y564 ponta [174,161,180] lum 0.378 corpo [175,173,189] lum 0.427 | junção [151, 61, 79] lum 0.105 · vermelho dos lados [209, 69, 70] lum 0.183
+  fio E x211 fim y542 ponta [205,196,208] lum 0.573 corpo [216,211,220] lum 0.664 | junção [185, 65, 73] lum 0.145 · vermelho dos lados [209, 69, 69] lum 0.182
+  fio E x247 fim y566 ponta [170,156,175] lum 0.354 corpo [182,168,186] lum 0.416 | junção [130, 56, 81] lum 0.081 · vermelho dos lados [209, 65, 65] lum 0.177
+  fio E x288 fim y426 ponta [179, 90,102] lum 0.179 corpo [141,155,184] lum 0.326 | junção [137, 54, 75] lum 0.084 · vermelho dos lados [208, 64, 64] lum 0.174
+  fio E x319 fim y476 ponta [223,211,218] lum 0.673 corpo [224,227,235] lum 0.768 | junção [179, 60, 69] lum 0.132 · vermelho dos lados [208, 64, 64] lum 0.174
+  fio E x366 fim y454 ponta [215,199,208] lum 0.599 corpo [194,201,217] lum 0.582 | junção [171, 59, 71] lum 0.123 · vermelho dos lados [208, 64, 64] lum 0.174
+  fio E x430 fim y488 ponta [202,188,200] lum 0.527 corpo [ 82,104,148] lum 0.137 | junção [150, 56, 74] lum 0.098 · vermelho dos lados [208, 61, 61] lum 0.171
+  fio D x557 fim y639 (sai da tela) corpo [181,173,190] lum 0.434
+  fio D x577 fim y621 ponta [217,202,210] lum 0.618 corpo [218,204,212] lum 0.628
+  fio D x641 fim y637 (sai da tela) corpo [181,175,193] lum 0.443
+  fio D x685 fim y637 (sai da tela) corpo [217,206,214] lum 0.637
+  fio D x726 fim y626 ponta [194,182,196] lum 0.490 corpo [194,181,195] lum 0.485
+  fio D x847 fim y544 ponta [169,136,155] lum 0.285 corpo [167,135,153] lum 0.278
+  orla de baixo E: y 182–245 · 3 de baixo [ 92,112,154] lum 0.163 · miolo [160,172,196] lum 0.410 · escuro baixo/miolo 1.72
+  orla de baixo D: y 331–425 · 3 de baixo [214, 89, 89] lum 0.222 · miolo [164,142,170] lum 0.301 · escuro baixo/miolo 1.47
+  linha mais escura D (y 360–430): mediana y 395 [ 40, 62,117] lum 0.052 · vermelho de baixo (y 422–427) [222,122,122] lum 0.311
+  fronteira esq x554: patamares lum 0.164 · 0.144, pico 0.167 em x554 [206, 60, 61] → acima dos dois por +0.003
+  fronteira dir: sem troca de R − B em x 800–880
+  perfil vertical D (y 330–449, lum a cada 6): 0.81 0.74 0.57 0.48 0.35 0.33 0.32 0.30 0.28 0.26 0.18 0.16 0.17 0.17 0.17 0.17 1.00 1.00 1.00 1.00
+  pontilhado E azul só: % N16  3.05/ 0.22 · N32  1.98/ 0.00 · N48  1.25/ 0.00 (máscara/interior; 21893 células) · só mais claras, interior:  0.02 ·  0.00 ·  0.00
+  pontilhado D azul/vermelho: % N16  4.32/ 2.90 · N32  1.66/ 0.95 · N48  0.95/ 0.61 (máscara/interior; 31159 células) · só mais claras, interior:  0.02 ·  0.00 ·  0.00
+  pontilhado vermelho só: % N16  3.24/ 0.04 · N32  1.81/ 0.00 · N48  0.99/ 0.00 (máscara/interior; 2931 células) · só mais claras, interior:  0.00 ·  0.00 ·  0.00
+  gama (tela, 83828 células de tinta): fora e mais clara 1.491 % (tol 0,03) · 0.000 % (tol 0,10) · das quais CIANO (coord. do vermelho < −0,10) 0.000 % · pior [136,119,151] coord (Rd, Bl, Rd⊙Bl) [ 0.2   0.54 -0.08] W 0.34

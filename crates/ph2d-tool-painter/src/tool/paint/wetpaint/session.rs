@@ -216,12 +216,9 @@ impl WetSession {
             };
         }
         if f.km_glaze != a.km_glaze {
-            // O ecrã mudou de lei: assentar e re-molhar passam a preservar a nova (prompt 15b).
-            e.sim.lei = if f.km_glaze {
-                ph2d_wet_paint::assenta::Lei::Camada
-            } else {
-                ph2d_wet_paint::assenta::Lei::Cobre
-            };
+            // «Glaze layering»: camadas transparentes. O ecrã e as transferências verticais lêem a lei da
+            // sessão pela mesma porta (`Sim::gather_params`).
+            e.sim.camadas_transparentes = f.km_glaze;
         }
         if f.agua_viva != a.agua_viva {
             e.sim.sim_while_painting = f.agua_viva;

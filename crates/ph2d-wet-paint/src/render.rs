@@ -315,11 +315,6 @@ pub struct PigmentVisual {
     /// [`render_region`], scaled by the `PaperVisibility` master. "The
     /// texture becomes visually part of the painting."
     pub paper: bool,
-    /// Stack suspended over settled by K–M reflectance
-    /// ([`km_glaze_channel_linear`]) instead of alpha-over — the
-    /// layer-integration half of the model's glaze (there the base is the
-    /// sheet; here the wet film glazes the dried paint).
-    pub km_glaze: bool,
 }
 
 /// [`render_pigment_only_region`]'s single per-cell body, with the optional
@@ -368,8 +363,13 @@ pub fn render_pigment_row_visual(
     let g0 = layers[0].grid;
     let s = g0.s;
     let paper_on = visual.paper && p.is_some();
-    let glaze_on = visual.km_glaze;
     let glaze = p.map_or(0.0, |p| p.glaze_filme);
+    // A cor da camada: o assentado e o filme por cima dele — pela MESMA porta que assentar e re-molhar
+    // preservam ([`crate::assenta::cor`]), com a lei que a sessão escolheu ([`crate::sim::Sim::gather_params`]).
+    let lei = match p.map(|p| p.ecra) {
+        Some(e @ (crate::assenta::Ecra::Cobre { .. } | crate::assenta::Ecra::Camada)) => e,
+        _ => crate::assenta::Ecra::PorCima(glaze),
+    };
     let (paper_vis, grain_vis, emboss_k) = match (paper_on, p) {
         (true, Some(p)) => (
             p.k(Knob::PaperVisibility),
@@ -392,17 +392,8 @@ pub fn render_pigment_row_visual(
                 if a_s + a_f * (1.0 - a_s) <= 0.0 {
                     continue;
                 }
-                // Layer color: settled, then suspended over it (straight
-                // alpha) — or by K–M reflectance under the glaze flag.
                 let sc = lg.sett_rgb[i];
                 let uc = lg.susp_rgb[i];
-                // A cor da camada: o assentado e o filme por cima dele — pela MESMA porta que assentar e
-                // re-molhar preservam ([`crate::assenta::cor`]).
-                let lei = match p.map(|p| p.ecra) {
-                    Some(e @ crate::assenta::Ecra::Cobre { .. }) if !glaze_on => e,
-                    _ if glaze_on => crate::assenta::Ecra::Camada,
-                    _ => crate::assenta::Ecra::PorCima(glaze),
-                };
                 let ([mut cr, mut cg, mut cb], la) =
                     crate::assenta::cor_e_alfa(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
                 if paper_on {

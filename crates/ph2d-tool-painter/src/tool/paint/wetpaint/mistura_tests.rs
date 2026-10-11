@@ -28,7 +28,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     }
 }
 
-fn media(px: &[u8], x0: usize, x1: usize, y0: usize, y1: usize) -> [f64; 3] {
+pub(super) fn media(px: &[u8], x0: usize, x1: usize, y0: usize, y1: usize) -> [f64; 3] {
     let mut s = [0.0; 3];
     let mut n = 0.0;
     for y in y0..y1 {
@@ -86,6 +86,8 @@ thread_local! {
     pub(super) static SONDA_VELATURA: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
     pub(super) static SONDA_ESCONDE: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
     pub(super) static SONDA_MOLHADA: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+    /// As caixas «Pigment mixing (K-M)» e «Glaze layering (K-M)» da cena (`(false, false)` = de fábrica).
+    pub(super) static CAIXAS: std::cell::Cell<(bool, bool)> = const { std::cell::Cell::new((false, false)) };
 }
 
 /// A cena: devolve as telas ANTES do azul, DURANTE o azul (ponteiro em baixo) e 2 s DEPOIS do Up.
@@ -138,6 +140,7 @@ pub(super) fn cena_toda(
     if cold {
         t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
     }
+    (t.paint.wetpaint.km_mixing, t.paint.wetpaint.km_glaze) = CAIXAS.get();
     assert!(t.ensure_wet_session());
     if viva {
         t.paint

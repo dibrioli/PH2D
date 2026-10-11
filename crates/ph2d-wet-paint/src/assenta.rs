@@ -19,7 +19,8 @@ pub enum Lei {
     Porto,
     /// O filme por cima do assentado (`lerp` pela cobertura) com a velatura do filme — o render de fábrica.
     PorCima,
-    /// «Glaze layering (K-M)»: o filme como camada de reflectância sobre o assentado.
+    /// O filme como camada de reflectância sobre o assentado (o assentado como fundo OPACO). ⛔ Fora do
+    /// produto: a lei de antes do «Glaze layering», só o CONTROLO dos portões (`mistura_wet_drip_tests`).
     Camada,
     /// **A lei do Rebelle** (dono 10/10, [`Ecra::Cobre`]): a claridade é a quantidade de pigmento, a
     /// camada de cima tapa a de baixo mais do que a sua força, e molhada parece mais forte.
@@ -32,6 +33,7 @@ pub enum Ecra {
     #[default]
     Porto,
     PorCima(f64),
+    /// [`Lei::Camada`] — ⛔ só o controlo dos portões.
     Camada,
     /// O filme é uma TINTA da cor guardada com a força da sua cobertura `a_f` (a claridade vem do
     /// pigmento: acumula até à cor escolhida), que TAPA o assentado com `h = 1 − (1 − a_f)^esconde`
@@ -176,7 +178,9 @@ fn resolve(mut x: [f64; 3], alvo: [f64; 3], ecra: impl Fn([f64; 3]) -> [f64; 3])
 }
 
 /// **ASSENTAR:** a cor nova do assentado quando a cobertura do assentado passa de `a_s` a `a_s2` e a do
-/// filme de `a_f` a `a_f2` (o filme `uc` não muda de cor) — a que mantém [`cor`].
+/// filme de `a_f` a `a_f2` (o filme `uc` não muda de cor) — a que mantém [`cor`]. Sem a caixa das tintas de
+/// [`levanta`]: a tinta clara que TAPA a escura (a lei do Rebelle) guarda-se mais clara que a escura, e com o
+/// tecto o cruzamento seco ficava malva (`05 §4b` «Mistura — Wet Drip», tetraedro 0 → 15 %, o Rebelle 0).
 pub fn assenta(
     e: Ecra,
     sc: [f64; 3],
@@ -239,6 +243,39 @@ pub fn assenta(
     }
 }
 
+/// [`levanta`] na [`Ecra::Cobre`], antes da caixa das tintas.
+fn levanta_cobre(
+    e: Ecra,
+    sc: [f64; 3],
+    uc: [f64; 3],
+    a_s: f64,
+    a_f: f64,
+    a_s2: f64,
+    a_f2: f64,
+) -> [f64; 3] {
+    if a_f2 <= 0.0 {
+        return uc;
+    }
+    let alvo = sobre_branco(e, sc, uc, a_s, a_f);
+    let x0 = if a_f <= 0.0 {
+        sc
+    } else {
+        let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
+        [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
+    };
+    resolve(x0, alvo, |x| sobre_branco(e, sc, x, a_s2, a_f2))
+}
+
+/// **A caixa das tintas** do re-molhar: o filme que a água leva fica, por canal, entre a cor dele (`fica`) e a
+/// do assentado que sobe (`vem`, quando o filme já tinha tinta). Sem ela a inversa escrevia, sob filme grosso,
+/// uma cor mais clara que as duas, que a água carregava para onde não havia nada a tapar.
+fn na_caixa(x: [f64; 3], fica: [f64; 3], vem: [f64; 3], tem_vem: bool) -> [f64; 3] {
+    if !tem_vem {
+        return fica;
+    }
+    [0, 1, 2].map(|c| x[c].clamp(fica[c].min(vem[c]), fica[c].max(vem[c])))
+}
+
 /// **RE-MOLHAR:** a cor nova do filme quando ele recebe pigmento do assentado (`sc` não muda de cor; as
 /// coberturas passam a `a_s2`, `a_f2`) — a que mantém [`cor`].
 pub fn levanta(
@@ -252,17 +289,12 @@ pub fn levanta(
 ) -> [f64; 3] {
     let e = e.seco();
     if let Ecra::Cobre { .. } = e {
-        if a_f2 <= 0.0 {
-            return uc;
-        }
-        let alvo = sobre_branco(e, sc, uc, a_s, a_f);
-        let x0 = if a_f <= 0.0 {
-            sc
-        } else {
-            let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
-            [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
-        };
-        return resolve(x0, alvo, |x| sobre_branco(e, sc, x, a_s2, a_f2));
+        return na_caixa(
+            levanta_cobre(e, sc, uc, a_s, a_f, a_s2, a_f2),
+            uc,
+            sc,
+            a_f > 0.0,
+        );
     }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_s2 <= 0.0 || a_f2 <= 0.0 {
@@ -401,5 +433,68 @@ mod tests {
         // A massa conserva-se: (1 − 0,95)(1 − 0,2) = (1 − 0,9)(1 − 0,6).
         let u2 = levanta(e, AM, AM, 0.95, 0.2, 0.9, 0.6);
         assert!(perto(u2, AM, 0.5), "a mesma tinta: {u2:?}");
+    }
+
+    /// Quanto `x` sai, por canal, da caixa de `a` e `b` (níveis; `0` dentro).
+    fn fora_da_caixa(x: [f64; 3], a: [f64; 3], b: [f64; 3]) -> f64 {
+        (0..3)
+            .map(|c| (x[c] - a[c].max(b[c])).max(a[c].min(b[c]) - x[c]))
+            .fold(0.0, f64::max)
+    }
+
+    /// **O re-molhar fica na caixa das tintas** (prompt 16, Fase E — o adversário da Fase D′): em 2 240
+    /// estados (4 tintas × 4, `a_s` 1e-4–0,95, `a_f` 0,05–0,999, `d` 0,5–5 %), com o tapar do produto e o do
+    /// «Glaze layering», o filme que a água leva fica, por canal, entre as duas tintas que se juntam. O estado
+    /// pior do adversário (azul escuro sob quase branco, `a_s` 0,2, `a_f` 0,3, `d` 0,05) entra por nome.
+    /// CONTROLO: sem a caixa reprova.
+    #[test]
+    fn as_transferencias_verticais_ficam_na_caixa_das_tintas() {
+        const AZUL: [f64; 3] = [20.0, 50.0, 110.0];
+        const VERMELHO: [f64; 3] = [220.0, 60.0, 60.0];
+        const QUASE_BRANCO: [f64; 3] = [248.0, 246.0, 240.0];
+        let tintas = [AZUL, AM, VERMELHO, QUASE_BRANCO];
+        let ecra = |esconde| Ecra::Cobre {
+            filme: crate::colorops::VELATURA_DO_FILME,
+            esconde,
+            molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
+        };
+        let (mut n, mut pior, mut livre) = (0usize, 0.0f64, 0.0f64);
+        for esconde in [
+            crate::colorops::TINTA_ESCONDE,
+            crate::colorops::TINTA_ESCONDE_EM_VELATURA,
+        ] {
+            let e = ecra(esconde);
+            for sc in tintas {
+                for uc in tintas {
+                    for a_s in [1e-4, 1e-3, 1e-2, 0.05, 0.2, 0.6, 0.95] {
+                        for a_f in [0.05, 0.3, 0.6, 0.9, 0.96, 0.99, 0.999] {
+                            for d in [0.005, 0.02, 0.05] {
+                                if a_f <= d + 1e-6 {
+                                    continue;
+                                }
+                                let a_s2 = 1.0 - (1.0 - a_s) * (1.0 - d);
+                                let a_f2 = 1.0 - (1.0 - a_f) / (1.0 - d);
+                                let u2 = levanta(e, sc, uc, a_s2, a_f2, a_s, a_f);
+                                let solto = levanta_cobre(e, sc, uc, a_s2, a_f2, a_s, a_f);
+                                n += 1;
+                                pior = pior.max(fora_da_caixa(u2, sc, uc));
+                                livre = livre.max(fora_da_caixa(solto, sc, uc));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(n, 2 * 2240);
+        assert!(pior <= 1e-9, "o filme saiu da caixa das tintas: {pior:.3}");
+        assert!(
+            livre > 1.0,
+            "CONTROLO: sem a caixa o filme nunca saiu dela ({livre:.3}) — a varredura não discrimina"
+        );
+        let e = ecra(crate::colorops::TINTA_ESCONDE);
+        let (a_s, a_f, d) = (0.2, 0.3, 0.05);
+        let (a_s2, a_f2) = (1.0 - (1.0 - a_s) * (1.0 - d), 1.0 - (1.0 - a_f) / (1.0 - d));
+        let u2 = levanta(e, AZUL, QUASE_BRANCO, a_s2, a_f2, a_s, a_f);
+        assert!(fora_da_caixa(u2, AZUL, QUASE_BRANCO) <= 1e-9, "{u2:?}");
     }
 }

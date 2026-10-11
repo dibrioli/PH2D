@@ -444,6 +444,8 @@ mod mistura_camadas_tests; // N camadas de amarelo sobre azul seco convergem sem
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
+mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o Wet Drip, prompt 16)
+#[cfg(test)]
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
 #[path = "wetpaint/showwet_tests.rs"]
@@ -451,11 +453,15 @@ mod showwet_tests;
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
+mod sonda_camadas; // as sondas das camadas de amarelo sobre azul (prompt 15)
+#[cfg(test)]
 mod sonda_fios; // O3: os fios finos do Rebelle saem dos knobs que o motor já tem?
 #[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
+#[cfg(test)]
+mod sonda_mistura_wet_drip; // o Wet Drip com as caixas K–M e a lei de antes (prompt 16, Fases B–E)
 #[cfg(test)]
 mod sonda_opcoes; // as opções da W1g numa rodada só
 #[cfg(test)]

@@ -78,9 +78,24 @@ fn the_two_shadows_carry_the_same_ink() {
 /// quebrado quando o quebrado seria o cenário.
 #[test]
 fn the_glow_source_is_actually_above_white() {
-    let b = bands();
-    let t = tints(&b[2]);
-    let peak = t
+    // ⚠️ As estrelas são `source.shape`: a geometria é publicada pela shell
+    // (`motion_shape_gen::publish`), então coze-se como o app coze, não pelo `Cook` cru.
+    let mut m = crate::motion_state::MotionState::new();
+    let sinks = build_fx_demo_document(&mut m.doc, &m.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let st = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sinks[2], 0.0)
+        .expect("coze")[0]
+        .as_stream()
+        .clone();
+    assert_eq!(
+        st.count(),
+        4,
+        "uma estrela em cada uma das quatro peças do vórtice"
+    );
+    let peak = tints(&st)
         .iter()
         .map(|c| c[0].max(c[1]).max(c[2]))
         .fold(0.0, f32::max);

@@ -361,3 +361,36 @@ fn mede_o_corpo_maximo_da_capsula() {
     }
     eprintln!("  PIOR: {:?} a {:.4} por caractere", pior.1, pior.0);
 }
+
+/// ⭐ **TODO PARAM QUE O CARTÃO ESCONDE DE FÁBRICA TEM UM DONO QUE A SONDA CONHECE.**
+///
+/// ⚠️ Sem dono conhecido a sonda dá o param por alcançável sem perguntar ao `shows` — e uma
+/// espécie de gate nova esquecida em [`super::quem_gateia`] passaria o censo do alcance verde
+/// (mutação SOBREVIVENTE de 11/10, o `ParamGateAway` do `fx.glow`). Os gates de TEXTO ficam de
+/// fora: a sonda trata-os à parte.
+#[test]
+fn every_param_hidden_at_factory_has_a_gate_the_probe_knows() {
+    let m = crate::motion_state::MotionState::new();
+    let mut escondidos = 0usize;
+    for man in m.registry.manifests() {
+        let vis = super::Visibility::of(&m.registry, man.id);
+        let texto = m.registry.param_gates_text(man.id).unwrap_or(&[]);
+        let fabrica = |q: &str| man.param_default(q).unwrap_or(0.0);
+        for p in man.params {
+            if texto.iter().any(|g| g.param == p.name) || vis.shows(p.name, &fabrica, &|_| false) {
+                continue;
+            }
+            escondidos += 1;
+            assert!(
+                !super::quem_gateia(&m.registry, man.id, p.name).is_empty(),
+                "`{}::{}` está escondido de fábrica e a sonda não sabe quem o gateia",
+                man.name,
+                p.name
+            );
+        }
+    }
+    assert!(
+        escondidos >= 20,
+        "controlo: só {escondidos} escondidos de fábrica"
+    );
+}

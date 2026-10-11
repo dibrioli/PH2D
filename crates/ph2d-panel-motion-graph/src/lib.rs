@@ -19,6 +19,8 @@ mod geom;
 
 mod hits;
 mod interact;
+#[cfg(test)]
+mod mao_real;
 /// **O custo de um CARTÃO pintado** — a medição do ciclo 1 (doc 103), irmã do
 /// `measure_row_cost` do painel de params: sem os dois números não há orçamento para pôr
 /// rows dentro dos cartões.

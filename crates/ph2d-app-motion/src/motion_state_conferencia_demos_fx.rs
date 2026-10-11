@@ -14,7 +14,7 @@
 //! | banda | o que mostra |
 //! |---|---|
 //! | 1 e 2 | `fx.drop_shadow` — a sombra DURA de sempre contra a **`Softness`** nova |
-//! | 3 | a fonte emissiva do glow (`tint` > 1), com o **`Anamorphic`** ligado |
+//! | 3 | estrelas emissivas (`tint` > 1) a rodar num vórtice, com o **`Anamorphic`** ligado |
 //! | 4 | UMA peça-vagalume (`tint` 40×) — o alvo do **`Clamp`** |
 //! | 5 | uma FORMA paramétrica emissiva — o caso do report *"Glow não funciona com shape"* |
 //!
@@ -122,11 +122,50 @@ pub fn build_fx_demo_document(
 
     // ── Banda 3: a fonte do glow. `tint` acima de 1 é o que faz um pixel florescer
     // (o passe é HDR — doc 67), e sem isso o `Anamorphic` não teria o que esticar.
+    // ⭐ FORMAS numa SIMULAÇÃO (a lei do smoke do Motion): as peças rodam num vórtice e cada
+    // uma leva uma estrela — o risco anamórfico tem de seguir formas em movimento.
     let ey = 480.0;
     let src = grid(g, 4.0, 1.0, 0.42, [-4.6, -1.6], ey);
+    let integ = g.add_node("motion.integrate");
+    g.set_pos(integ, Pos { x: 140.0, y: ey });
+    wire(g, src, 0, integ, 0)?;
+    let vortex = g.add_node("force.vortex");
+    g.set_pos(
+        vortex,
+        Pos {
+            x: 140.0,
+            y: ey + 140.0,
+        },
+    );
+    g.set_param(vortex, "strength", 6.0);
+    g.set_param(vortex, "radius", 2.4);
+    g.connect(Edge {
+        from: (integ, 0),
+        to: (vortex, 0),
+        delayed: true,
+    })
+    .ok()?;
+    wire(g, vortex, 0, integ, 1)?;
+    let estrela = g.add_node("source.shape");
+    g.set_pos(
+        estrela,
+        Pos {
+            x: 140.0,
+            y: ey - 120.0,
+        },
+    );
+    let kind = ph2d_node_motion_shape::ALL_KINDS
+        .iter()
+        .position(|k| *k == ph2d_node_motion_shape::ShapeKind::Star)?;
+    g.set_param(estrela, ph2d_node_motion_shape::param::KIND, kind as f32);
+    g.set_param(estrela, ph2d_node_motion_shape::param::SIZE, 0.18);
+    let dup = g.add_node("motion.duplicator");
+    g.set_pos(dup, Pos { x: 280.0, y: ey });
+    wire(g, estrela, 0, dup, 0)?;
+    wire(g, integ, 0, dup, 1)?;
     let hot = push(
         g,
-        src,
+        dup,
         "motion.tint",
         &[("r", 3.2), ("g", 2.4), ("b", 6.0)],
         ey,
@@ -201,7 +240,7 @@ pub fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
         "SOMBRA dura -- a borda do fantasma e' tao nitida quanto a da peca",
         "SOMBRA com Softness -- a mesma sombra com penumbra, e a MESMA densidade no miolo",
-        "GLOW anamorfico -- o halo estica num eixo e aperta no outro",
+        "GLOW anamorfico -- estrelas a rodar num vortice; o halo estica num eixo e aperta no outro",
         "VAGALUME -- uma peca 40x mais brilhante que o branco: o alvo do Clamp",
         "FORMA emissiva -- vetor VIVO, e ate' hoje o glow nao a alcancava",
     ]

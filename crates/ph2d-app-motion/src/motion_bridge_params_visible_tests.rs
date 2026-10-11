@@ -355,3 +355,111 @@ fn the_lsystem_shows_exactly_one_authoring_half_per_mode() {
         );
     }
 }
+
+/// **BUGS #19 — o ângulo do `fx.glow` aparece onde o NÚCLEO o deixa rodar o halo, e só aí.**
+///
+/// O oráculo é a conta do passe (`BloomParams::upsample_basis`), não a tabela: o gate antigo
+/// (`ParamGate { values: &[1] }`) mostrava o ângulo só em `stretch = 1`, o único ponto em que
+/// ele não faz nada. E o gate de PONTO é contínuo: nunca é «o modo não tem este controle».
+#[test]
+fn the_glow_angle_shows_exactly_where_the_kernel_lets_it_turn_the_halo() {
+    let reg = registry();
+    let m = manifest_of(&reg, "fx.glow");
+    let vis = Visibility::of(&reg, m.id);
+    let h = reg
+        .param_ui(m.id)
+        .and_then(|hs| hs.iter().find(|h| h.param == "stretch"))
+        .expect("o glow tem o slider `stretch`");
+    let (mut escondido, mut visivel) = (0, 0);
+    for stretch in [h.min, 0.5, 0.95, 1.0, 1.05, 2.0, h.max] {
+        let value_of = |p: &str| {
+            if p == "stretch" {
+                stretch
+            } else {
+                m.param_default(p).unwrap_or(0.0)
+            }
+        };
+        let base = |angle: f32| {
+            ph2d_render::BloomParams {
+                stretch,
+                angle,
+                ..ph2d_render::BloomParams::default()
+            }
+            .upsample_basis(1.6)
+        };
+        let roda = base(0.0) != base(37.0);
+        assert_eq!(
+            vis.shows("angle", &value_of, &|_| false),
+            roda,
+            "`stretch = {stretch}`: o painel e o núcleo discordam sobre o ângulo"
+        );
+        assert!(
+            !vis.mode_hides("angle", &value_of),
+            "`stretch = {stretch}`: o gate de ponto é contínuo, nunca de modo"
+        );
+        if roda {
+            visivel += 1;
+        } else {
+            escondido += 1;
+        }
+    }
+    assert_eq!(
+        (escondido, visivel),
+        (1, 6),
+        "só `1` é inerte, os dois lados mordem"
+    );
+}
+
+/// **TODO GATE DE PONTO DO CATÁLOGO ESCONDE NO PONTO E MOSTRA DOS DOIS LADOS** — com o ponto
+/// dentro da faixa do slider (fora dela o gate nunca esconderia nada).
+#[test]
+fn every_point_gate_hides_at_its_point_and_shows_on_both_sides() {
+    let reg = registry();
+    let mut checked = 0usize;
+    for m in reg.manifests() {
+        let Some(gates) = reg.param_gates_away(m.id) else {
+            continue;
+        };
+        let vis = Visibility::of(&reg, m.id);
+        for g in gates {
+            let h = reg
+                .param_ui(m.id)
+                .and_then(|hs| hs.iter().find(|h| h.param == g.when))
+                .unwrap_or_else(|| panic!("`{}::{}` sem slider", m.name, g.when));
+            assert!(
+                g.from > h.min && g.from < h.max,
+                "`{}::{}`: o ponto {} está fora de ({}, {})",
+                m.name,
+                g.when,
+                g.from,
+                h.min,
+                h.max
+            );
+            let at = |v: f32| {
+                vis.shows(
+                    g.param,
+                    &|p: &str| {
+                        if p == g.when {
+                            v
+                        } else {
+                            m.param_default(p).unwrap_or(0.0)
+                        }
+                    },
+                    &|_| false,
+                )
+            };
+            assert!(!at(g.from), "`{}::{}` aparece no ponto", m.name, g.param);
+            assert!(
+                at(h.min) && at(h.max),
+                "`{}::{}` some fora do ponto",
+                m.name,
+                g.param
+            );
+            checked += 1;
+        }
+    }
+    assert_eq!(
+        checked, 1,
+        "o `fx.glow::angle` é o único gate de ponto do catálogo"
+    );
+}

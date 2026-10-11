@@ -262,10 +262,11 @@ pub fn fx_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
         "  (!) Em cima (par): a MESMA sombra, so' que a da direita tem `Softness {softness}`.
   A borda ganha penumbra e o miolo continua com a MESMA densidade -- ligar a maciez nao
   pode clarear a sombra.
-  (!) No meio (roxo): o halo esta' com `Anamorphic {stretch}`. Clique no no' Glow e
-  arraste esse controle ate' 1: o halo volta a ser redondo. O `Streak Angle` gira o
-  risco -- e ele so' aparece quando o Anamorphic sai de 1, porque num circulo ele
-  nao faria nada.
+  (!) No meio (roxo): estrelas rodam num vortice, e o halo delas esta' com
+  `Anamorphic {stretch}`. No cartao do no' Glow, arraste esse controle ate' 1: o halo
+  volta a ser redondo e o `Streak Angle` SOME do cartao (num circulo ele nao faria
+  nada). Tire-o de 1 para qualquer lado (0,5 ou 2): o `Streak Angle` VOLTA e gira o
+  risco.
   (!) Embaixo a` direita: UMA peca {firefly}x mais brilhante que o branco. Ela lava a
   tela de proposito. Arraste o `Clamp` do no' Glow para cima de 1 e o estouro cede,
   sem a cena inteira apagar.

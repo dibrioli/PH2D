@@ -1,21 +1,21 @@
-//! **QUANDO um param aparece** — as três famílias de gate de visibilidade, numa porta só.
+//! **QUANDO um param aparece** — as quatro famílias de gate de visibilidade, numa porta só.
 //!
 //! Irmã de `params_channel` (o que a row É), `params_range` (até onde ela alcança) e
 //! `params_stream` (o que os fios carregam). Cortada aqui pelo teto de 600 LOC da shell,
-//! por ASSUNTO: as três perguntam a mesma coisa — *este controle faz alguma coisa agora?* —
-//! e a resposta é uma conjunção, não três testes espalhados pelo construtor.
+//! por ASSUNTO: as quatro perguntam a mesma coisa — *este controle faz alguma coisa agora?* —
+//! e a resposta é uma conjunção, não quatro testes espalhados pelo construtor.
 //!
-//! ⚠️ **Uma porta só, e não três `any` no meio do laço.** O construtor filtra as rows
+//! ⚠️ **Uma porta só, e não quatro `any` no meio do laço.** O construtor filtra as rows
 //! escalares e as de enum pelo MESMO predicado; se ele o reimplementasse duas vezes, uma
 //! família de gate nova entraria numa e não na outra — e o defeito seria um controle que
 //! aparece num sítio do painel e não noutro.
 
 use crate::motion_state::MotionState;
-use ph2d_node_registry::{NodeRegistry, ParamGate, ParamGateAbove, ParamGateText};
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamGateAbove, ParamGateAway, ParamGateText};
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_nodegraph::node::NodeTypeId;
 
-/// As três tabelas do tipo, lidas UMA vez.
+/// As quatro tabelas do tipo, lidas UMA vez.
 pub(crate) struct Visibility {
     /// A condição é o valor de outro param **f32 arredondado a inteiro** — exato para um
     /// `Enum` (que guarda o índice): é o que faz um `source.shape` mostrar só os controles
@@ -32,15 +32,18 @@ pub(crate) struct Visibility {
     /// traço, aparar a forma faz a forma DESAPARECER** (um contorno aberto não tem
     /// interior).
     above: Option<&'static [ParamGateAbove]>,
+    /// A condição é uma grandeza contínua SAIR de um ponto (o `stretch` do `fx.glow` fora de `1`).
+    away: Option<&'static [ParamGateAway]>,
 }
 
 impl Visibility {
-    /// Lê as três tabelas do registry. Um tipo sem entrada nenhuma não gateia nada.
+    /// Lê as quatro tabelas do registry. Um tipo sem entrada nenhuma não gateia nada.
     pub(crate) fn of(reg: &NodeRegistry, id: NodeTypeId) -> Self {
         Self {
             gates: reg.param_gates(id),
             text: reg.param_gates_text(id),
             above: reg.param_gates_above(id),
+            away: reg.param_gates_away(id),
         }
     }
 
@@ -67,6 +70,11 @@ impl Visibility {
                 .into_iter()
                 .flatten()
                 .any(|g| g.param == param && value_of(g.when) <= g.above)
+            && !self
+                .away
+                .into_iter()
+                .flatten()
+                .any(|g| g.param == param && !g.shows(value_of(g.when)))
     }
 
     /// **O MODO deste nó não tem este controle** — só a família [`ParamGate`], nunca as
@@ -122,7 +130,7 @@ pub fn shown_params(motion: &MotionState, nid: NodeId) -> impl Fn(&str) -> bool 
 }
 
 /// **OS PARAMS QUE O MODO DESTE NÓ NÃO TEM** — a metade discreta, para a lei que solta um fio
-/// órfão. Ver [`Visibility::mode_hides`] para porque não são as três famílias.
+/// órfão. Ver [`Visibility::mode_hides`] para porque não são as quatro famílias.
 pub fn mode_hidden(motion: &MotionState, nid: NodeId) -> impl Fn(&str) -> bool + '_ {
     let vis = motion
         .doc

@@ -231,3 +231,11 @@ públicas APENDADAS em `taps.rs` (`set_sinks_do_desenho`, `publica_relatorio`). 
 `nextest-impacted` `4 647/4 647`, clippy/fmt limpos, censos `117/117`, machete limpo.
 
 A fila que falta para ZERAR o módulo (ordem do dono, 11/10): [`…_ZERAR_PENDENCIAS.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_PENDENCIAS.md).
+
+**ZERAR — família A fechada (11/10):** BUGS #19 (espécie `ParamGateAway`; o `fx.glow` mostra o
+ângulo fora de `stretch = 1`) e BUGS #18 (arnês `mao_real::Mao` + catraca exacta dos gestos
+sintéticos). ⚠️ **Para o integrador:** `ph2d-node-registry` ganha a espécie pública `ParamGateAway`
+e duas portas APENDADAS (`register_param_gates_away`, `param_gates_away`); o `lib.rs` fica em
+`695/700`. A cena `=70` mudou a banda 3 (estrelas num vórtice). Portão: `nextest-impacted`
+`19 364` (1 falha — o `no_magic_numeric` no arnês novo — curada e reconferida), clippy/fmt/machete
+limpos. Fila viva: [`…_ZERAR_FAMILIA_A.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_A.md).

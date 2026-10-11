@@ -350,7 +350,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates_away(MANIFEST.id, PARAM_GATES_AWAY);
     reg.register_param_gates_text(MANIFEST.id, dirt::GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
@@ -499,17 +499,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 ];
 
 /// **A direção do *streak* não existe num halo redondo** — um círculo rodado é o
-/// mesmo círculo, e um controle que não faz nada não é pintado. O `1` é o único
-/// valor de `stretch` que esconde o ângulo, e é o default.
-///
-/// ⚠️ **Um `ParamGate` compara INTEIROS** (`values: &[i32]`), então ele esconde o
-/// ângulo exactamente em `stretch = 1` — que é onde a anamorfose é a identidade.
-/// Entre `1` e `2` o gate deixa o ângulo visível, e tem de deixar: ali ele morde.
-static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
-    param: "angle",
-    when: "stretch",
-    values: &[1],
-}];
+/// mesmo círculo. O ângulo esconde-se só com `stretch` exactamente em `1` (o default)
+/// e aparece dos dois lados (BUGS #19: o `ParamGate` de inteiros mostrava-o SÓ em `1`).
+static PARAM_GATES_AWAY: &[ph2d_node_registry::ParamGateAway] =
+    &[ph2d_node_registry::ParamGateAway {
+        param: "angle",
+        when: "stretch",
+        from: 1.0,
+    }];
 
 /// **O que cada número É** (doc 88, Wave A · doc 89 folha 11) — o terceiro membro da
 /// família a declarar a unidade, e o que fecha a lacuna que a folha mediu.

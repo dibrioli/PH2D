@@ -1,7 +1,7 @@
 # Bugs do módulo Motion Nodes — registro + soluções
 
 > **Índice** — partido em 2026-10-11 (`doc-split`, sha256: nenhuma linha perdida). Fica aqui a tabela-resumo
-> e o único bug ABERTO (#19); os fechados vivem verbatim em `archive/BUGS_motion_nodes/` (≤ 40 KB cada).
+> e o #19 (fechado em 11/10, à espera do smoke); os fechados vivem verbatim em `archive/BUGS_motion_nodes/` (≤ 40 KB cada).
 > Não há tabela «Recusas MEDIDAS» neste doc.
 
 | Bug | Onde |
@@ -33,7 +33,7 @@
 | [13](archive/BUGS_motion_nodes/parte_3.md#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
 | [18](archive/BUGS_motion_nodes/parte_3.md#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ✅ FECHADO (smoke do dono 10/10) | 2026-10-10 |
-| [19](#bug-19--o-ângulo-do-glow-aparece-só-onde-não-faz-nada) | **O ângulo do *streak* do Glow aparece só onde não faz nada** (achado do agente, ciclo 20, sem report) | `fx.glow` (`PARAM_GATES`) + `motion_bridge_params_visible.rs` | ⏳ aberto — mecanismo medido | 2026-10-10 |
+| [19](#bug-19--o-ângulo-do-glow-aparece-só-onde-não-faz-nada) | **O ângulo do *streak* do Glow aparece só onde não faz nada** (achado do agente, ciclo 20, sem report) | `fx.glow` (`PARAM_GATES`) + `motion_bridge_params_visible.rs` | ✅ **CURADO** (aguarda smoke, cena `=70`) — espécie `ParamGateAway` | 2026-10-10 |
 ---
 
 ## Bug #19 — o ângulo do Glow aparece só onde não faz nada
@@ -53,14 +53,22 @@ appear»*; `motion_bridge_params_visible.rs::shows`: esconde se `!values.contain
 semântica está invertida. E é um gate de MODO (`mode_hides`): cruzar `1,5` com o ângulo ligado
 por fio é a travessia em que o painel trata a row como *«não existe»*.
 
-### A cura (por fazer — precisa de uma espécie de gate)
+### A cura (11/10)
 
-O `stretch` vai de `0,2` a `6` e o ângulo morde dos DOIS lados de `1`: nenhum dos três gates
-existentes (`ParamGate` inteiro, `ParamGateText`, `ParamGateAbove` estrito) exprime *«≠ 1»*. As
-duas saídas honestas: (a) uma espécie `ParamGateAway { param, when, from }` (mostra quando
-`|when − from| > ε`, contínua como o `Above`, logo NÃO `mode_hides`), ou (b) tirar o gate e
-aceitar o ângulo inerte no default. Gate a escrever: o ângulo visível em `stretch ∈ {0,5; 2}` e
-escondido em `1`.
+O ponto inerte de uma grandeza contínua é uma pergunta que nenhuma das três espécies sabia fazer
+(os gates combinam por E, então dois `Above` não dão «≠ 1»). Quarta espécie no registo:
+`ParamGateAway { param, when, from }` (`ph2d-node-registry/src/ui.rs`), com a lei num método só
+(`shows(v) = v != from`) — a desigualdade EXACTA, a mesma do braço literal do núcleo
+(`ph2d-bloom` `upsample_basis`: `s == 1.0`). Contínua, logo nunca `mode_hides`. O `fx.glow`
+regista-a; os quatro leitores de espécies a conhecem (`Visibility::shows`, a sonda de alcance,
+a sonda dos escondidos, a nota do tutorial). Fechar sem gate (saída b) deixaria um controlo morto
+no valor de omissão.
+
+**Gates** (`motion_bridge_params_visible_tests.rs`): o painel e o NÚCLEO concordam em
+`stretch ∈ {min; 0,5; 0,95; 1; 1,05; 2; max}` — o oráculo é a base da tenda calculada com dois
+ângulos, não a tabela (1 escondido, 6 visíveis) — e o censo de toda espécie de ponto do catálogo
+(esconde no ponto, mostra nos dois extremos, ponto dentro da faixa). A cena `=70` já dizia ao dono
+*«ele só aparece quando o Anamorphic sai de 1»*: até hoje ela ensinava o contrário do que se via.
 
 ### Lição
 

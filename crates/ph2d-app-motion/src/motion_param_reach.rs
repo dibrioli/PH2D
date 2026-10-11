@@ -63,6 +63,36 @@ fn dominio(reg: &NodeRegistry, id: NodeTypeId, param: &str, default: f32) -> Vec
     v
 }
 
+/// Os params cujo valor decide se `param` aparece — as espécies NUMÉRICAS de gate (a de TEXTO é
+/// tratada à parte, permissiva). ⚠️ Uma espécie esquecida aqui faz a sonda dar o param por
+/// alcançável SEM perguntar ao `shows` (gate `every_param_hidden_at_factory_has_a_gate_the_probe_knows`).
+fn quem_gateia(reg: &NodeRegistry, id: NodeTypeId, param: &str) -> Vec<&'static str> {
+    let enums = reg
+        .param_gates(id)
+        .unwrap_or(&[])
+        .iter()
+        .filter(|g| g.param == param)
+        .map(|g| g.when);
+    let acima = reg
+        .param_gates_above(id)
+        .unwrap_or(&[])
+        .iter()
+        .filter(|g| g.param == param)
+        .map(|g| g.when);
+    let ponto = reg
+        .param_gates_away(id)
+        .unwrap_or(&[])
+        .iter()
+        .filter(|g| g.param == param)
+        .map(|g| g.when);
+    enums
+        .chain(acima)
+        .chain(ponto)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 /// O relatório de um nó: os params que **nenhuma** combinação revela.
 fn inalcancaveis(m: &MotionState, man: &NodeManifest, id: NodeTypeId) -> Vec<&'static str> {
     let vis = Visibility::of(&m.registry, id);
@@ -91,24 +121,7 @@ fn inalcancaveis(m: &MotionState, man: &NodeManifest, id: NodeTypeId) -> Vec<&'s
             // acusou o `source.shape::collider_radius`, que precisa de `Collide` ligado **E** de
             // `Collider Shape = Circle` ao mesmo tempo. *Uma condição com duas metades não se
             // verifica uma metade de cada vez.*
-            let quem_gateia: Vec<&str> = m
-                .registry
-                .param_gates(id)
-                .unwrap_or(&[])
-                .iter()
-                .filter(|g| g.param == p.name)
-                .map(|g| g.when)
-                .chain(
-                    m.registry
-                        .param_gates_above(id)
-                        .unwrap_or(&[])
-                        .iter()
-                        .filter(|g| g.param == p.name)
-                        .map(|g| g.when),
-                )
-                .collect::<BTreeSet<&str>>()
-                .into_iter()
-                .collect();
+            let quem_gateia = quem_gateia(&m.registry, id, p.name);
             // O gate de TEXTO conta como satisfazível: esta sonda não sabe se o artista consegue
             // pôr um nome ali, e o lado permissivo é o que não fabrica dívida.
             let tem_texto = |t: &str| {
@@ -199,6 +212,11 @@ pub fn censo() -> Censo {
             || !m
                 .registry
                 .param_gates_text(man.id)
+                .unwrap_or(&[])
+                .is_empty()
+            || !m
+                .registry
+                .param_gates_away(man.id)
                 .unwrap_or(&[])
                 .is_empty();
         if tem_gate {

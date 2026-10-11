@@ -195,6 +195,7 @@ fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
         let gates = m.registry.param_gates(tid).unwrap_or(&[]);
         let gates_txt = m.registry.param_gates_text(tid).unwrap_or(&[]);
         let gates_acima = m.registry.param_gates_above(tid).unwrap_or(&[]);
+        let gates_ponto = m.registry.param_gates_away(tid).unwrap_or(&[]);
         // ⚠️ Uma COR ancora quatro params e mostra UMA row: os canais dela não são "escondidos",
         // são **consumidos** — a mesma lei que o bridge do cartão já escreve.
         let canais: Vec<&str> = hints
@@ -225,11 +226,13 @@ fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
                 Some(format!("gate: `{}` em {:?}", g.when, g.values))
             } else if let Some(g) = gates_txt.iter().find(|g| g.param == h.param) {
                 Some(format!("gate de TEXTO: `{}`", g.when_text))
+            } else if let Some(g) = gates_acima.iter().find(|g| g.param == h.param) {
+                Some(format!("gate de LIMIAR: `{}`", g.when))
             } else {
-                gates_acima
+                gates_ponto
                     .iter()
                     .find(|g| g.param == h.param)
-                    .map(|g| format!("gate de LIMIAR: `{}`", g.when))
+                    .map(|g| format!("gate de PONTO: `{}` em {}", g.when, g.from))
             };
             match porque {
                 Some(p) => linhas.push(format!("  {nome}::{:<16} {p}", h.param)),

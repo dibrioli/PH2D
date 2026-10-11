@@ -535,6 +535,29 @@ pub struct ParamGateAbove {
     pub above: f32,
 }
 
+/// **Um gate que esconde num PONTO e mostra dos DOIS lados dele** — o quarto irmão, para a
+/// identidade de uma grandeza contínua (BUGS #19: o ângulo do `fx.glow` só é inerte com o
+/// `stretch` exactamente em `1`, e morde abaixo e acima). Contínuo como o [`ParamGateAbove`],
+/// logo NUNCA um gate de modo. Side-metadata, nunca campo do `NodeManifest` congelado.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParamGateAway {
+    /// O `ParamSpec::name` que este gate condicionalmente MOSTRA.
+    pub param: &'static str,
+    /// O `ParamSpec::name` cuja grandeza decide.
+    pub when: &'static str,
+    /// O ponto inerte: `param` aparece quando `when != from`.
+    pub from: f32,
+}
+
+impl ParamGateAway {
+    /// A lei, num sítio só: a desigualdade EXACTA, a mesma do braço literal do núcleo
+    /// (`ph2d-bloom` `upsample_basis`: `s == 1.0`), que é onde o param deixa de morder.
+    #[must_use]
+    pub fn shows(&self, when_value: f32) -> bool {
+        when_value != self.from
+    }
+}
+
 /// **What a node PRODUCES, CONSUMES, REQUIRES, or GENERATES on its instance
 /// stream** — the semantic side-channel (ADR-0155) that lets the editor detect a
 /// node placed where its output is INERT. The canonical case: a `force.*` node is

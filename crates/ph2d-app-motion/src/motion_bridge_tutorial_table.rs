@@ -220,6 +220,16 @@ fn so_noutro_modo(
         };
         junta(g.param, quando);
     }
+    for g in aux.registry.param_gates_away(tid).unwrap_or(&[]) {
+        if !mostrados.contains(&g.param) {
+            let quando = format!(
+                "<b>{}</b> sai de {}",
+                rotulo(g.when),
+                fmt_num(g.from.into())
+            );
+            junta(g.param, quando);
+        }
+    }
     let linhas: Vec<String> = notas
         .iter()
         .map(|(p, conds)| format!("<b>{}</b> aparece quando {}", rotulo(p), conds.join(" e ")))
@@ -262,6 +272,15 @@ fn one_unit_one_word_in_a_generated_table() {
              calhou usar"
         );
     }
+}
+
+/// **O ÂNGULO DO GLOW ENTRA NA NOTA «sai de 1»** — a 4.ª espécie de gate (`ParamGateAway`, BUGS
+/// #19): de fábrica o `Anamorphic` está em `1` e o ângulo está escondido; sem a nota, o tutorial
+/// prometia «o que existe» e calava um controlo inteiro.
+#[test]
+fn the_glow_table_says_when_the_streak_angle_appears() {
+    let html = derive(&[("glow", "fx.glow")]);
+    assert!(html.contains("sai de 1"), "a nota do ângulo sumiu:\n{html}");
 }
 
 #[cfg(test)]

@@ -46,8 +46,8 @@ pub use port_landing::landing_port;
 pub use ui::table_external_key;
 pub use ui::{
     Coupling, FileKind, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange,
-    ParamGate, ParamGateAbove, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget,
-    ReadChannel, RequiredTextParam, card_title,
+    ParamGate, ParamGateAbove, ParamGateAway, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint,
+    ParamWidget, ReadChannel, RequiredTextParam, card_title,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more
@@ -100,6 +100,8 @@ pub struct NodeRegistry {
     /// para *"apareça quando aquela grandeza sair do zero"*. Mesmo molde: ausente
     /// ⇒ nada gateado.
     param_gates_above: BTreeMap<NodeTypeId, &'static [ParamGateAbove]>,
+    /// Gates de PONTO ([`ParamGateAway`]): esconde só na identidade de uma grandeza.
+    param_gates_away: BTreeMap<NodeTypeId, &'static [ParamGateAway]>,
     /// **Qual porta de entrada é o FIO PRINCIPAL deste tipo** — ver
     /// [`NodeRegistry::register_primary_input`]. Ausente ⇒ `0`, que é o que todo chamador
     /// cravava antes ⇒ nenhum tipo que não a declare muda de comportamento.
@@ -452,6 +454,17 @@ impl NodeRegistry {
     #[must_use]
     pub fn param_gates_above(&self, id: NodeTypeId) -> Option<&'static [ParamGateAbove]> {
         self.param_gates_above.get(&id).copied()
+    }
+
+    /// Declare the **point** visibility gates of `id` ([`ParamGateAway`]).
+    pub fn register_param_gates_away(&mut self, id: NodeTypeId, gates: &'static [ParamGateAway]) {
+        self.param_gates_away.insert(id, gates);
+    }
+
+    /// The point visibility gates of `id`, if any.
+    #[must_use]
+    pub fn param_gates_away(&self, id: NodeTypeId) -> Option<&'static [ParamGateAway]> {
+        self.param_gates_away.get(&id).copied()
     }
 
     /// Register a node type's semantic [`Coupling`]s (ADR-0155). Additive; last

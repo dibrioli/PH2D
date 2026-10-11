@@ -201,7 +201,7 @@ fn pontos_da_cena_3() -> [[f64; 2]; 5] {
 }
 
 /// B. A convergência do rebote em quadros (um rebote por quadro).
-fn convergencia(gpu: &GpuContext) {
+pub(crate) fn convergencia(gpu: &GpuContext) {
     eprintln!(
         "\n## B. Convergência do rebote (cena 3): o quadro em que o PIOR ponto fica a 5 % · 1 % do convergido (120 quadros)"
     );
@@ -305,7 +305,7 @@ fn erro(gpu: &GpuContext) {
 /// D. O rebote de FORA da grade: a cena 3 vista com a câmera deslocada para a direita até a parede
 /// vermelha sair da grade (a margem é o desenho das cascatas; o mundo fora da grade da W5b não tem
 /// albedo). Um ponto da sala junto à borda esquerda da vista, contra o gabarito (que vê a sala toda).
-fn fora_da_grade(gpu: &GpuContext) {
+pub(crate) fn fora_da_grade(gpu: &GpuContext) {
     eprintln!(
         "\n## D. O rebote de fora da grade (cena 3, a câmera deslocada; o ponto junto à borda esquerda da vista)"
     );

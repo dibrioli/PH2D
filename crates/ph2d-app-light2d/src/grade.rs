@@ -33,7 +33,15 @@ pub struct Degrau {
     /// ⭐ W5c: a CASCATA HOLOGRÁFICA (HRC) no lugar das cascatas de Sannikov — ver o
     /// [`DEGRAU_PADRAO`].
     pub holografica: bool,
+    /// ⭐ W5d: o ENTORNO — um 2.º solver este tanto × mais grosso e [`MARGEM_DO_ENTORNO`] de cada lado
+    /// (4× a vista), sem céu e com a emissão da grade da vista apagada: a luz que vem de FORA dela (o
+    /// rebote de refletores fora da grade), somada às cascatas da vista. 0 = sem (só com a
+    /// holográfica).
+    pub entorno: f64,
 }
+
+/// ⭐ W5d — a margem do entorno, em fração da vista de cada lado: 1,5 ⇒ 4× a vista em cada eixo.
+pub const MARGEM_DO_ENTORNO: f64 = 1.5;
 
 /// O degrau por omissão — MEDIDO (rodada W3, RTX 5060 Ti, 1920×1080; tabela no handoff W3): o K7
 /// (≤ 3 GB/s a 60 Hz) só passa com o texel de 4 px e margem ≤ 12,5 % — `2,96 GB/s`, `49 MB/quadro`,
@@ -61,7 +69,14 @@ pub const DEGRAU_PADRAO: Degrau = Degrau {
     fino_px: 1.0,
     captura_px: 0.5,
     holografica: true,
+    entorno: ENTORNO_PADRAO,
 };
+
+/// ⭐ W5d — o fator do entorno — MEDIDO (rodada `medida_luz2d_w5d`, a cena 3 na vista de 2 m no nível
+/// Médio, o vermelho junto à borda esquerda contra a série do gabarito, câmera em x = −2 · 0 · 2): sem
+/// ele −58,8 · −63,6 · −53,7 %; 4× −10,5 · +0,5 · −0,4 %; 8× −11,3 · −0,3 · −0,9 % — o mesmo a um quarto
+/// da memória e do trabalho.
+pub const ENTORNO_PADRAO: f64 = 8.0;
 
 /// O texel de `px` píxeis no zoom mais fino da oitava: a potência de 2 em metros (G11).
 fn texel_de(px: f64, ppm: f64) -> f64 {

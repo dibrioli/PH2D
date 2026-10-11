@@ -17,7 +17,8 @@ use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
 use crate::grade::{
-    DEGRAU_PADRAO, Degrau, captura_do_quadro, fina_do_quadro, grade_do_quadro, tela_para_mundo,
+    DEGRAU_PADRAO, Degrau, MARGEM_DO_ENTORNO, captura_do_quadro, fina_do_quadro, grade_do_quadro,
+    tela_para_mundo,
 };
 
 struct Resolvido {
@@ -40,6 +41,8 @@ pub struct LuzDoQuadro {
     mundo_para_tela: Affine,
     alvo_px: (u32, u32),
     resolvido: Option<Resolvido>,
+    /// ⭐ W5d: o ENTORNO — o 2.º solver, mais grosso e mais largo, da luz que vem de FORA da grade.
+    entorno: Option<Solver>,
     relatorio: Option<RelatorioC0>,
     erro: Option<ErroSolver>,
     /// `(por texel, sprites da cena)` no último quadro — os outros ficaram com o quad.
@@ -91,6 +94,7 @@ impl LuzDoQuadro {
             mundo_para_tela: Affine::IDENTITY,
             alvo_px: (0, 0),
             resolvido: None,
+            entorno: None,
             relatorio: None,
             erro: None,
             sprites_por_texel: (0, 0),
@@ -277,9 +281,7 @@ impl LuzDoQuadro {
             self.resolvido = None;
             // A grade nova (outro nível, outra janela) tem outro custo: o lido era da anterior.
             self.custo_ms = None;
-            // ⭐ W5c: o rebote em todo nível (sem nenhum corpo que reflita, os passes dele saltam);
-            // `PH2D_LIGHT2D_REBOTE=0` desliga-o (a comparação da cena 3).
-            let rebote = std::env::var("PH2D_LIGHT2D_REBOTE").map_or(true, |v| v.trim() != "0");
+            let rebote = rebote_ligado();
             let cfg = Config {
                 fina,
                 captura,
@@ -295,6 +297,7 @@ impl LuzDoQuadro {
             })
         };
         self.erro = pronto.err();
+        self.preparar_entorno(gpu, holografica);
         if let Some(e) = &self.erro {
             // ⚠️ Fica DITO (a W4 leva-o à UI): a luz apaga-se neste quadro em vez de mentir.
             eprintln!("[luz2d] o solver recusou a grade {g:?}: {e:?}");
@@ -338,6 +341,25 @@ impl LuzDoQuadro {
                 }));
         }
         self.sprites_por_texel = (sprites.substituidos.len(), self.cena.sprites.len());
+        // ⭐ W5d: o ENTORNO grava ANTES (no mesmo codificador): a c0 dele soma-se à desta.
+        if let Some(e) = self.entorno.as_mut() {
+            let gv = r.solver.config().grade;
+            e.mascarar_miolo(
+                gpu,
+                Some([
+                    gv.origem_m[0],
+                    gv.origem_m[1],
+                    gv.origem_m[0] + f64::from(gv.largura) * gv.texel_m,
+                    gv.origem_m[1] + f64::from(gv.altura) * gv.texel_m,
+                ]),
+            );
+            let sem_ceu = CenaDeLuz {
+                ceu: [0.0; 3],
+                ..self.cena.clone()
+            };
+            e.gravar_com_sprites(gpu, &mut enc, &sem_ceu, &sprites);
+        }
+        r.solver.somar_entorno(gpu, self.entorno.as_ref());
         self.relatorio = Some(
             r.solver
                 .gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites),
@@ -349,16 +371,71 @@ impl LuzDoQuadro {
         if let Some(p) = self.preferencia
             && let Some(t) = r.solver.tempos_sem_esperar(gpu)
         {
-            self.custo_ms = Some(t.total());
+            // ⭐ W5d: o entorno faz parte do custo (fixo: não muda com o nível).
+            let extra = self
+                .entorno
+                .as_mut()
+                .and_then(|e| e.tempos_sem_esperar(gpu))
+                .map_or(0.0, |t| t.total());
+            self.custo_ms = Some(t.total() + extra);
             self.leituras += 1;
             if p.automatica {
                 let custo = crate::qualidade::Custo {
                     por_nivel: t.por_nivel(),
-                    fixo: t.fixo(),
+                    fixo: t.fixo() + extra,
                 };
                 self.governador.ler(custo, p.nivel);
             }
         }
+    }
+
+    /// ⭐ W5d — o ENTORNO deste quadro: criado na grade dele ([`Degrau::entorno`] × o texel,
+    /// [`MARGEM_DO_ENTORNO`] de cada lado), reposicionado se ela só andou, apagado sem ele (o degrau, a
+    /// holográfica, `PH2D_LIGHT2D_ENTORNO=0` para comparar).
+    fn preparar_entorno(
+        &mut self,
+        gpu: &GpuContext,
+        holografica: Option<ph2d_light2d_gpu::Holografica>,
+    ) {
+        let ligado = self.degrau.entorno > 0.0
+            && holografica.is_some()
+            && std::env::var("PH2D_LIGHT2D_ENTORNO").map_or(true, |v| v.trim() != "0");
+        let de = Degrau {
+            c0_px: self.degrau.c0_px * self.degrau.entorno,
+            margem: MARGEM_DO_ENTORNO,
+            ..self.degrau
+        };
+        let Some(ge) = ligado
+            .then(|| grade_do_quadro(self.mundo_para_tela, self.alvo_px, de))
+            .flatten()
+        else {
+            self.entorno = None;
+            return;
+        };
+        let mesma = self.entorno.as_ref().is_some_and(|e| {
+            let c = e.config();
+            (c.grade.largura, c.grade.altura) == (ge.largura, ge.altura)
+        });
+        if mesma {
+            let e = self.entorno.as_mut().expect("verificado acima");
+            if e.reposicionar(ge.origem_m, ge.texel_m).is_err() {
+                self.entorno = None;
+            }
+            return;
+        }
+        let cfg = Config {
+            holografica,
+            rebote: rebote_ligado(),
+            ..Config::padrao_para(&gpu.device, ge)
+        };
+        self.entorno = Solver::novo_com(gpu, cfg, &self.fabrica)
+            .map(|mut s| {
+                // Só as cascatas e a fonte do rebote: a grade fina dele não se lê.
+                s.regiao_fina([0; 2], [0; 2]);
+                s
+            })
+            .map_err(|e| eprintln!("[luz2d] o entorno recusou a grade {ge:?}: {e:?}"))
+            .ok();
     }
 
     /// O que os receptores leem; `None` = apagada.
@@ -494,4 +571,10 @@ impl LuzDoQuadro {
     pub fn solver(&self) -> Option<&Solver> {
         self.resolvido.as_ref().map(|r| &r.solver)
     }
+}
+
+/// ⭐ W5c: o rebote em todo nível (sem nenhum corpo que reflita, os passes dele saltam);
+/// `PH2D_LIGHT2D_REBOTE=0` desliga-o (a comparação da cena 3).
+fn rebote_ligado() -> bool {
+    std::env::var("PH2D_LIGHT2D_REBOTE").map_or(true, |v| v.trim() != "0")
 }

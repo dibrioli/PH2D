@@ -21,7 +21,18 @@ struct UniformeHrc {
     topo: u32,
     total: u32,
     _p: [u32; 3],
+    /// O `vec4` seguinte alinha-se a 16 bytes (o `Hrc` do `c2_hrc.wgsl` tem 96).
+    _q: [u32; 2],
+    /// ⭐ W5d: o miolo cuja emissão não se recolhe (texels da grade) e a c0 do entorno somada na
+    /// saída (`desloc, escala, ligado`) — o `Hrc` do `c2_hrc.wgsl`.
+    miolo: [f32; 4],
+    entorno: [f32; 4],
 }
+
+/// O miolo VAZIO (nenhum texel cai nele).
+const SEM_MIOLO: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
+
+const _: () = assert!(size_of::<UniformeHrc>() == 96, "o `Hrc` do `c2_hrc.wgsl`");
 
 #[derive(Clone, Copy)]
 enum Etapa {
@@ -59,6 +70,14 @@ pub(super) struct Holografica {
     pipelines: Vec<wgpu::ComputePipeline>,
     /// `(etapa, grupo 3, grupos de trabalho)`, na ordem.
     passos: Vec<(Etapa, wgpu::BindGroup, [u32; 2])>,
+    /// ⭐ W5d: o uniforme de cada passo (o miolo e o entorno reescrevem-se neles) e o buffer.
+    uniformes: Vec<UniformeHrc>,
+    uniforme: wgpu::Buffer,
+    /// ⭐ W5d: o grupo 2 da saída — a c0 do entorno (ou, sem ele, a emissão, que não se lê) e a amostra.
+    g2_layout: wgpu::BindGroupLayout,
+    g2: wgpu::BindGroup,
+    amostra: wgpu::Sampler,
+    vazia: wgpu::TextureView,
 }
 
 fn armazenado(binding: u32, leitura: bool) -> wgpu::BindGroupLayoutEntry {
@@ -155,6 +174,34 @@ impl Holografica {
             bind_group_layouts: &[Some(&cena_layout), None, None, Some(&g3_layout)],
             immediate_size: 0,
         });
+        // ⭐ W5d: a saída lê a c0 do entorno (grupo 2) — só ela.
+        let g2_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("luz2d c2 holográfica entorno"),
+            entries: &[
+                entrada_textura(14, wgpu::TextureSampleType::Float { filterable: true }),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 15,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let pl_saida = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("luz2d c2 holográfica saída"),
+            bind_group_layouts: &[Some(&cena_layout), None, Some(&g2_layout), Some(&g3_layout)],
+            immediate_size: 0,
+        });
+        let amostra = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("luz2d c2 holográfica entorno"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        // Sem entorno a saída liga a EMISSÃO (o `entorno.w = 0` não a lê): uma textura vazia a mais mudava
+        // o enchimento que o alocador dá às vizinhas (o G5).
+        let vazia = e.vistas[EMISSAO].clone();
+        let g2 = g2_de(device, &g2_layout, &vazia, &amostra);
         let constantes = [
             ("PASSO_HRC", f64::from(e.escolhas.passo)),
             ("BORRAO_HRC", f64::from(u8::from(e.escolhas.borrao))),
@@ -169,7 +216,11 @@ impl Holografica {
             .map(|entrada| {
                 device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some(entrada),
-                    layout: Some(&pl),
+                    layout: Some(if *entrada == "hrc_saida" {
+                        &pl_saida
+                    } else {
+                        &pl
+                    }),
                     module: e.modulo,
                     entry_point: Some(entrada),
                     compilation_options: wgpu::PipelineCompilationOptions {
@@ -189,14 +240,12 @@ impl Holografica {
         let uniforme = (e.buffer)(hrc::NOME_UNIFORME);
         let [vazio_l, vazio_t, vazio_r] = hrc::NOMES_VAZIOS.map(|nome| (e.buffer)(nome));
 
-        let mut uni = Vec::new();
+        let mut uniformes = Vec::new();
         let mut passos = Vec::new();
         let mut passo =
             |etapa: Etapa, u: UniformeHrc, ligados: [&wgpu::Buffer; 5], grupos: [u32; 2]| {
                 let k = passos.len() as u64;
-                uni.resize(((k + 1) * PASSO_UNIFORME) as usize, 0);
-                let o = (k * PASSO_UNIFORME) as usize;
-                uni[o..o + size_of::<UniformeHrc>()].copy_from_slice(bytemuck::bytes_of(&u));
+                uniformes.push(u);
                 let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("luz2d c2 holográfica"),
                     layout: &g3_layout,
@@ -229,6 +278,9 @@ impl Holografica {
                 topo: 0,
                 total: 0,
                 _p: [0; 3],
+                _q: [0; 2],
+                miolo: SEM_MIOLO,
+                entorno: [0.0; 4],
             };
             let nx = |n: u32| quad.nx(n);
             for n in 0..=quad.n {
@@ -305,6 +357,9 @@ impl Holografica {
             topo: 0,
             total: 0,
             _p: [0; 3],
+            _q: [0; 2],
+            miolo: SEM_MIOLO,
+            entorno: [0.0; 4],
         };
         passo(
             Etapa::Saida,
@@ -312,12 +367,63 @@ impl Holografica {
             [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
             [grade[0].div_ceil(8), grade[1].div_ceil(8)],
         );
-        e.queue.write_buffer(&uniforme, 0, &uni);
-        Self {
+        let h = Self {
             cena,
             pipelines,
             passos,
+            uniformes,
+            uniforme,
+            g2_layout,
+            g2,
+            amostra,
+            vazia,
+        };
+        h.escrever(e.queue);
+        h
+    }
+
+    /// Os uniformes de todos os passos para a placa.
+    fn escrever(&self, queue: &wgpu::Queue) {
+        let mut uni = vec![0u8; self.uniformes.len() * PASSO_UNIFORME as usize];
+        for (k, u) in self.uniformes.iter().enumerate() {
+            let o = k * PASSO_UNIFORME as usize;
+            uni[o..o + size_of::<UniformeHrc>()].copy_from_slice(bytemuck::bytes_of(u));
         }
+        queue.write_buffer(&self.uniforme, 0, &uni);
+    }
+
+    /// ⭐ W5d — o miolo (texels da grade) cuja emissão este solver não recolhe; `None` = nenhum.
+    pub(super) fn miolo(&mut self, queue: &wgpu::Queue, miolo: Option<[f32; 4]>) {
+        let m = miolo.unwrap_or(SEM_MIOLO);
+        if self.uniformes.first().is_some_and(|u| u.miolo == m) {
+            return;
+        }
+        for u in &mut self.uniformes {
+            u.miolo = m;
+        }
+        self.escrever(queue);
+    }
+
+    /// ⭐ W5d — a c0 do entorno (a vista dela e `desloc, escala` do texel desta grade para o dela)
+    /// somada na saída; `None` = nenhuma.
+    pub(super) fn entorno(
+        &mut self,
+        device: crate::Placa<'_>,
+        queue: &wgpu::Queue,
+        entorno: Option<(&wgpu::TextureView, [f32; 3])>,
+    ) {
+        let (vista, e) = match entorno {
+            Some((v, [dx, dy, s])) => (v.clone(), [dx, dy, s, 1.0]),
+            None => (self.vazia.clone(), [0.0; 4]),
+        };
+        self.g2 = g2_de(device, &self.g2_layout, &vista, &self.amostra);
+        if self.uniformes.first().is_some_and(|u| u.entorno == e) {
+            return;
+        }
+        for u in &mut self.uniformes {
+            u.entorno = e;
+        }
+        self.escrever(queue);
     }
 
     /// Grava a cascata holográfica inteira no passe `p` (a c0 sai dela).
@@ -325,8 +431,30 @@ impl Holografica {
         p.set_bind_group(0, &self.cena, &[]);
         for (etapa, grupo, [x, y]) in &self.passos {
             p.set_pipeline(&self.pipelines[*etapa as usize]);
+            if matches!(etapa, Etapa::Saida) {
+                p.set_bind_group(2, &self.g2, &[]);
+            }
             p.set_bind_group(3, grupo, &[]);
             p.dispatch_workgroups(*x, *y, 1);
         }
     }
+}
+
+fn g2_de(
+    device: crate::Placa<'_>,
+    layout: &wgpu::BindGroupLayout,
+    v: &wgpu::TextureView,
+    amostra: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("luz2d c2 holográfica entorno"),
+        layout,
+        entries: &[
+            vista(14, v),
+            wgpu::BindGroupEntry {
+                binding: 15,
+                resource: wgpu::BindingResource::Sampler(amostra),
+            },
+        ],
+    })
 }

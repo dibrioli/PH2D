@@ -33,6 +33,12 @@ struct Hrc {
     _p0: u32,
     _p1: u32,
     _p2: u32,
+    // ⭐ W5d — o MIOLO (texels da grade, `[x0, y0, x1, y1]`) cuja emissão este solver NÃO recolhe: ele é
+    // o ENTORNO de outro, e só a luz que vem de fora da grade daquele entra nas cascatas dele.
+    miolo: vec4<f32>,
+    // ⭐ W5d — a c0 do ENTORNO somada na saída: `(desloc, escala, ligado)` — o texel da grade daquele
+    // é `P · escala + desloc`.
+    entorno: vec4<f32>,
 }
 
 @group(3) @binding(4) var<uniform> hrc: Hrc;
@@ -42,6 +48,9 @@ struct Hrc {
 @group(3) @binding(8) var<storage, read> r_cima: array<vec2<u32>>;
 @group(3) @binding(9) var<storage, read_write> r_saida: array<vec2<u32>>;
 @group(3) @binding(10) var<storage, read_write> acumulado: array<vec4<f32>>;
+// ⭐ W5d: a c0 do entorno (só a saída a lê).
+@group(2) @binding(14) var entorno_c0: texture_2d<f32>;
+@group(2) @binding(15) var entorno_amostra: sampler;
 // (o binding 11, a c0 de saída, vem do prelúdio `saida_*`: o formato segue o armazenamento.)
 
 // O passo do traço curto, em texels.
@@ -92,6 +101,11 @@ fn texel_da_grade(u: u32, v: u32) -> vec2<u32> {
     return vec2<u32>(floor(na_grade(f32(u), f32(v))));
 }
 
+// ⭐ W5d — `x` (texels da grade) cai no miolo cuja emissão não se recolhe.
+fn no_miolo(x: vec2<f32>) -> bool {
+    return all(x >= hrc.miolo.xy) && all(x < hrc.miolo.zw);
+}
+
 // Traço(A, B) na lei do meio, as entradas em (A, B]; a queda conta-se de A.
 fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
     var par = VACUO;
@@ -108,7 +122,7 @@ fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
     loop {
         let x = A + dir * s;
         let m = meio(x);
-        if m.luz && !luz_ant {
+        if m.luz && !luz_ant && !no_miolo(x) {
             var l = m.e.rgb;
             if m.e.a > 0.0 {
                 l *= queda(s * cas.texel_m, m.e.a);
@@ -324,6 +338,12 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
             peso += 1.0;
         }
         f = soma / peso;
+    }
+    // ⭐ W5d — a luz que vem de FORA desta grade (a c0 do entorno, que não recolhe a emissão daqui):
+    // os refletores e os corpos que brilham fora da grade da vista (o rebote de fora da grade).
+    if hrc.entorno.w > 0.5 {
+        let q = (P * hrc.entorno.z + hrc.entorno.xy) / vec2<f32>(textureDimensions(entorno_c0));
+        f += textureSampleLevel(entorno_c0, entorno_amostra, q, 0.0).rgb;
     }
     var alfa = 1.0;
     if MASCARA_C0 && !fora {

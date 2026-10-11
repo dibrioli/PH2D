@@ -23,8 +23,8 @@ mod vetor;
 /// ⭐ W5d: a captura dos sprites do produto — para quem mede a luz pelo caminho dele.
 pub use captura::sprites_da_cena;
 pub use grade::{
-    DEGRAU_PADRAO, Degrau, captura_do_quadro, fina_do_quadro, grade_do_quadro, regiao_da_janela,
-    tela_para_mundo,
+    DEGRAU_PADRAO, Degrau, ENTORNO_PADRAO, MARGEM_DO_ENTORNO, captura_do_quadro, fina_do_quadro,
+    grade_do_quadro, regiao_da_janela, tela_para_mundo,
 };
 pub use quadro::LuzDoQuadro;
 

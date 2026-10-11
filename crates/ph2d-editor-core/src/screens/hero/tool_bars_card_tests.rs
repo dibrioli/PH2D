@@ -200,3 +200,20 @@ fn the_card_never_trades_an_obstacle_for_the_selection() {
     assert!(!overlaps(sel, r), "o cartão {r:?} cobre a seleção");
     assert!(inside(area, r));
 }
+
+/// ⭐ **O cartão deixa à vista uma alça na borda da seleção** (o ⇕ das pontas, F10, mora na borda
+/// direita da caixa): entre a seleção e o painel cabe a alça INTEIRA mais a folga — a foto da estrela
+/// nova mostrou o cartão por cima do ⇕ com a folga só de espaçamento.
+#[test]
+fn the_card_leaves_a_whole_handle_free_at_the_selection_edge() {
+    let mut ts = TextSystem::without_system_fonts();
+    let mid = Rect::new(AREA.x + 400.0, AREA.y + 300.0, 120.0, 90.0);
+    let b = bars(mid, 3, 0);
+    let all = placed(&b, AREA, false, false, false);
+    let c = placed_in_bars(&b, AREA, &all, RailButtonSize::Small, &mut ts).expect("cartão");
+    let free = c.panel.x - (mid.x + mid.w);
+    assert!(
+        free >= crate::HANDLE_SIZE_PX + ph2d_tokens::Spacing::Sm.px() - 1e-3,
+        "só {free} px entre a seleção e o cartão — a alça da borda fica por baixo"
+    );
+}

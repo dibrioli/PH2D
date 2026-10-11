@@ -142,6 +142,14 @@ O agente B (o cartão) correu 6/6 (a M6 sobrevivia → gate
 `the_card_never_trades_an_obstacle_for_the_selection`); o A, 1 (as alças de volta ao Select ⇒ os 4
 `shape_mode_tests` falham).
 
+**A 2.ª redacção da estrela** (HEAD `413592ee0`, agente `mutacao`): **8/10 sangram** à 1.ª — o ⇕
+(sinal, degrau, caixa visível: `the_points_widget_steps_the_count_up_and_down`), o ponto da ponta
+desenhado para dentro (`the_tip_handle_slides_down_…`), o vale só radial (`the_star_valley_never_twists`
++ o do Inkscape), a estrela regular (`a_new_star_is_born_regular`), arredondar que não engorda e a junção
+lisa (`the_rounding_never_grows_past_the_sharp_corner`). As 2 sobreviventes pediram teste, vistos
+VERMELHOS sobre a mutação: N1 (o cruzamento do eixo mais LONGE) ⇒ `the_apex_is_the_crossing_nearest_its_corner`;
+N10 (a folga do cartão sem a alça) ⇒ `the_card_leaves_a_whole_handle_free_at_the_selection_edge`.
+
 ## §6 — Smoke (do dono)
 
 1. `cd ~/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_OBJECT_MODE_SMOKE=16 ./target/smoke/ph2d-host-desktop`

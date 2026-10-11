@@ -508,3 +508,38 @@ fn the_corner_handle_still_rides_a_curved_edge() {
         "um raio maior desce o ponto pelo eixo: {q:?} {p:?}"
     );
 }
+
+/// ⭐ **O eixo pode cortar o contorno DUAS vezes** (uma estrela muito curva ou torcida, uma ponta que
+/// dobra): o ponto da quina é o cruzamento mais PERTO dela em distância ao centro, não outro.
+#[test]
+fn the_apex_is_the_crossing_nearest_its_corner() {
+    use ph2d_vec_scene::VecVertex;
+    // Um contorno que cruza o eixo +y a 0,5 e a 1,0 (um «M» fechado por baixo).
+    let p = VecPath {
+        verts: [
+            [-1.0, -1.0],
+            [1.0, -1.0],
+            [1.0, 1.5],
+            [0.2, 1.0],
+            [-0.2, 1.0],
+            [0.2, 0.5],
+            [-1.0, 0.5],
+        ]
+        .into_iter()
+        .map(VecVertex::corner)
+        .collect(),
+        closed: true,
+        ..VecPath::default()
+    };
+    let near = |q: [f64; 2]| super::spots::spoke_hit(&p, q).unwrap();
+    assert!(
+        (near([0.0, 1.0])[1] - 1.0).abs() < 1e-9,
+        "a quina a 1,0: {:?}",
+        near([0.0, 1.0])
+    );
+    assert!(
+        (near([0.0, 0.5])[1] - 0.5).abs() < 1e-9,
+        "a quina a 0,5: {:?}",
+        near([0.0, 0.5])
+    );
+}

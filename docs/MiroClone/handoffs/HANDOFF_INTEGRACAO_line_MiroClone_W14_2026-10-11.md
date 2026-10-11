@@ -16,7 +16,7 @@
 | base (merge-base) | `8f20c60de` (o `main` de 11/10) — se o `main` não andou, `--ff-only` |
 | commits | 43 sobre a base (+ este handoff): W12+W13 até `a269acab2`; a W14 de `109f722af` a `76da061f3` (14) |
 | diff em `crates/`+`shells/` | `git diff --shortstat 8f20c60de..HEAD -- crates shells`: 167 ficheiros, +14 705 / −966 (só a W14, `a269acab2..`: 95 ficheiros, +6 405 / −282) |
-| smoke | «Forma»: **OK do dono** (11/10). Soltar no Wayland: **OK do dono** (11/10). A imagem no quadro: **por fazer** (§8) |
+| smoke | «Forma»: **OK do dono** (11/10). Soltar no Wayland: **OK do dono** (11/10). A imagem no quadro (cena 15): **OK do dono** (11/10) |
 
 O que a W14 trouxe (ordem do dono 11/10: *«ainda não podemos arrastar imagens nem para os quadros nem para o canvas»*):
 

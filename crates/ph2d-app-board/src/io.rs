@@ -97,7 +97,13 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
             hero.documents.tell(text);
         }
         IoRequest::Import => {
+            // O 1.º filtro é o que o diálogo mostra: tudo o que se abre (um `.jpg` à vista logo).
+            let all: Vec<&str> = ["excalidraw", "json", "png", "svg"]
+                .into_iter()
+                .chain(ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.iter().copied())
+                .collect();
             let dialog = rfd::FileDialog::new()
+                .add_filter(tr("board.io.filter_all"), &all)
                 .add_filter(
                     tr("board.io.filter_excalidraw"),
                     &["excalidraw", "json", "png", "svg"],

@@ -435,12 +435,16 @@ impl Editor {
         }
         let free = |el: &Element, doc: &BoardDoc| {
             let b = el.aabb();
-            !doc.live().filter(|o| o.shape().is_some()).any(|o| {
+            // As imagens ocupam lugar como as formas (W14).
+            !doc.live().filter(|o| ph2d_board_geom::shape_of(o).is_some()).any(|o| {
                 let a = o.aabb();
                 a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]
             })
         };
-        let shapes = doc.live().filter(|o| o.shape().is_some()).count();
+        let shapes = doc
+            .live()
+            .filter(|o| ph2d_board_geom::shape_of(o).is_some())
+            .count();
         for k in 1..=shapes + 1 {
             next.x = src.x + dir[0] * step * k as f64;
             next.y = src.y + dir[1] * step * k as f64;

@@ -139,3 +139,31 @@ fn an_arrow_dropped_on_an_image_binds_to_it() {
         arrow.end
     );
 }
+
+/// Auditoria W14 — a forma seguinte (`Ctrl+seta`) não nasce por cima de uma imagem: salta-a.
+#[test]
+fn the_next_shape_does_not_land_on_an_image() {
+    let (mut ed, mut doc, mut h) = (editor(), BoardDoc::default(), History::default());
+    let shape = ph2d_board_model::Shape {
+        kind: ph2d_board_model::ShapeType::Rectangle,
+        style: Style::new(None, Some(Rgba([0, 0, 0, 255])), Rgba([0, 0, 0, 255])),
+        text: ph2d_board_model::RichText::default(),
+    };
+    let rect = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [0.0, 0.0, 100.0, 100.0]);
+    let rid = rect.id;
+    let _ = BoardOp::Put(rect).apply(&mut doc);
+    // A imagem exactamente onde a seguinte nasceria (à direita, a um passo).
+    let img = ed.insert_images(&mut doc, &mut h, &[(key(1), [100, 100])], [210.0, 50.0], [1e6, 1e6])[0];
+    ed.select(&doc, [rid]);
+    let mut ts = TextSystem::without_system_fonts();
+    ed.command(&mut doc, &mut h, &mut ts, Command::Grow([1.0, 0.0]));
+    let b = doc.get(img).unwrap().aabb();
+    let made: Vec<_> = doc
+        .live()
+        .filter(|e| e.shape().is_some() && e.id != rid)
+        .collect();
+    assert_eq!(made.len(), 1, "a seguinte nasceu");
+    let a = made[0].aabb();
+    let overlap = a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+    assert!(!overlap, "nasceu por cima da imagem: {a:?} × {b:?}");
+}

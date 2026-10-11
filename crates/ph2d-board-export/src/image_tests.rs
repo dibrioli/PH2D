@@ -24,15 +24,84 @@ fn png_3x2() -> Vec<u8> {
 /// O descodificador do app, para estes testes: só PNG.
 fn install() {
     ph2d_board_render::install_decoder(Arc::new(|b: &[u8]| {
-        let mut r = ::png::Decoder::new(std::io::Cursor::new(b)).read_info().ok()?;
-        let mut buf = vec![0; r.output_buffer_size()?];
-        let info = r.next_frame(&mut buf).ok()?;
-        buf.truncate(info.buffer_size());
-        (info.color_type == ::png::ColorType::Rgba).then_some(Pixels {
-            size: [info.width, info.height],
-            rgba: buf,
+        let img = image::load_from_memory(b).ok()?.to_rgba8();
+        Some(Pixels {
+            size: [img.width(), img.height()],
+            rgba: img.into_raw(),
         })
     }));
+}
+
+/// Um JPEG RGB `w × h` (ruído suave: comprime como uma fotografia).
+fn jpeg(w: u32, h: u32) -> Vec<u8> {
+    let img = image::RgbImage::from_fn(w, h, |x, y| {
+        image::Rgb([(x * 7 % 256) as u8, (y * 5 % 256) as u8, ((x ^ y) % 256) as u8])
+    });
+    let mut out = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 85)
+        .encode_image(&img)
+        .unwrap();
+    out
+}
+
+/// ⭐ Auditoria W14 — a MESMA fotografia em duas páginas (dois frames) vai UMA vez no PDF, e um JPEG
+/// entra como chegou (`DCTDecode`, os bytes dele): o PDF não cresce para os píxeis brutos.
+#[test]
+fn a_jpeg_goes_into_the_pdf_once_and_as_it_arrived() {
+    install();
+    let bytes = jpeg(400, 300);
+    let mut set = BoardSet::default();
+    let id = set.create("Fotos".into());
+    let b = set.get_mut(id).unwrap();
+    let file = b.put_file(ImageFile::new(bytes.clone(), [400, 300]));
+    let st = Style::new(None, None, Rgba([0, 0, 0, 255]));
+    for k in 0..2 {
+        let x = f64::from(k) * 1000.0;
+        let f = Element::new_frame(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            ph2d_board_model::Frame {
+                name: format!("F{k}"),
+                style: st.clone(),
+            },
+            [x, 0.0, 500.0, 400.0],
+        );
+        let fid = f.id;
+        BoardOp::Put(f).apply(&mut b.doc);
+        let mut el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), Image::new(file, st.clone()), [x + 50.0, 50.0, 400.0, 300.0]);
+        el.frame = Some(fid);
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let b = set.boards()[0].clone();
+    let mut routes = RouteCache::default();
+    routes.sync(&b.doc);
+    let mut ts = TextSystem::without_system_fonts();
+    let pages = pdf_pages(&b, &routes, &[]);
+    assert_eq!(pages.len(), 2);
+    let recs: Vec<_> = pages
+        .iter()
+        .map(|p| {
+            let (mut s, size) = paint_page(&b, p, 1.0, None, true, &BTreeSet::new(), &mut ts);
+            (s.take_record(), size)
+        })
+        .collect();
+    let pdf_pages: Vec<pdf::PdfPage<'_>> = recs
+        .iter()
+        .map(|(ops, size)| pdf::PdfPage {
+            ops,
+            size: *size,
+            links: Vec::new(),
+        })
+        .collect();
+    let out = pdf::write(&pdf_pages);
+    let text = String::from_utf8_lossy(&out);
+    assert_eq!(text.matches("/Subtype /Image").count(), 1, "uma vez para as duas páginas");
+    assert!(text.contains("/DCTDecode"));
+    assert!(
+        out.windows(bytes.len()).any(|w| w == &bytes[..]),
+        "os bytes do JPEG não estão no PDF"
+    );
+    assert!(out.len() < bytes.len() + 20_000, "{} B para um JPEG de {} B", out.len(), bytes.len());
 }
 
 /// Duas imagens do MESMO ficheiro, uma em `(0, 0)` de `30 × 20` e outra em `(100, 0)` de `60 × 40`.

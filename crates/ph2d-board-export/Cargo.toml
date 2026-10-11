@@ -51,4 +51,6 @@ ph2d-board-excalidraw = { path = "../ph2d-board-excalidraw" }
 # preciso à mão).
 ph2d-board-export = { path = ".", features = ["gpu"] }
 ph2d-gpu = { path = "../ph2d-gpu" }
+# W14 — o descodificador dos testes das imagens (PNG e JPEG) e o JPEG de amostra.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 ph2d-render = { path = "../ph2d-render" }

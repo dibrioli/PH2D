@@ -28,14 +28,26 @@ pub fn decode(bytes: &[u8]) -> Option<Pixels> {
 /// ⭐ A porta de entrada: os bytes viram um ficheiro do quadro com o tamanho natural; os de um formato
 /// que um navegador não mostra (TIFF, PSD, ORA…) entram já em PNG — o SVG, o `.excalidraw` e o par
 /// ao vivo mostram-nos.
+/// O que o navegador mostra entra pelo tamanho do CABEÇALHO (o fio da janela não descodifica os
+/// píxeis — o desenho descodifica-os fora dele); sem cabeçalho legível, descodifica.
 #[must_use]
 pub fn ingest(bytes: &[u8]) -> Option<ImageFile> {
-    let px = decode(bytes)?;
     if mime_of(bytes).is_some() {
-        return Some(ImageFile::new(bytes.to_vec(), px.size));
+        let size = header_size(bytes).or_else(|| decode(bytes).map(|p| p.size))?;
+        return Some(ImageFile::new(bytes.to_vec(), size));
     }
+    let px = decode(bytes)?;
     let png = encode_png(&px)?;
     Some(ImageFile::new(png, px.size))
+}
+
+/// O tamanho que o cabeçalho declara.
+fn header_size(bytes: &[u8]) -> Option<[u32; 2]> {
+    let r = image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()?;
+    let (w, h) = r.into_dimensions().ok()?;
+    (w > 0 && h > 0).then_some([w, h])
 }
 
 pub(crate) fn encode_png(px: &Pixels) -> Option<Vec<u8>> {
@@ -43,6 +55,8 @@ pub(crate) fn encode_png(px: &Pixels) -> Option<Vec<u8>> {
     let mut e = png::Encoder::new(&mut out, px.size[0], px.size[1]);
     e.set_color(png::ColorType::Rgba);
     e.set_depth(png::BitDepth::Eight);
+    // No fio da janela (colar uma captura): a compressão rápida.
+    e.set_compression(png::Compression::Fast);
     e.write_header().ok()?.write_image_data(&px.rgba).ok()?;
     Some(out)
 }

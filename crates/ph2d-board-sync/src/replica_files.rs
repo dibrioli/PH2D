@@ -40,14 +40,16 @@ impl Replica {
         true
     }
 
-    /// ⭐ Todos os ficheiros do quadro, um por escrita — o que o anfitrião manda a quem entra, logo a
-    /// seguir ao retrato magro.
+    /// ⭐ Os ficheiros que o quadro refere ([`Board::files_referenced`]), um por escrita — o que o
+    /// anfitrião manda a quem entra, logo a seguir ao retrato magro.
     #[must_use]
     pub fn all_files(&mut self, board: &Board) -> Vec<Write> {
+        let used = board.files_referenced();
         board
             .files
-            .values()
-            .map(|f| Write::File {
+            .iter()
+            .filter(|(k, _)| used.contains(*k))
+            .map(|(_, f)| Write::File {
                 file: f.clone(),
                 at: self.tick(),
             })

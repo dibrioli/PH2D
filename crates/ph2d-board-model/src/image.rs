@@ -217,6 +217,23 @@ impl Board {
         self.files.get(&id)
     }
 
+    /// Os ficheiros que algum elemento refere — os APAGADOS incluídos (um desfazer, ao vivo, trá-lo de
+    /// volta) — e as versões: o que o anfitrião manda a quem entra (os restos de colagens e de imagens
+    /// que nunca ficaram não viajam).
+    #[must_use]
+    pub fn files_referenced(&self) -> BTreeSet<FileId> {
+        let mut used: BTreeSet<FileId> = self
+            .doc
+            .elements
+            .values()
+            .filter_map(|e| e.image().map(|i| i.file))
+            .collect();
+        for v in &self.team.versions {
+            used.extend(v.files.iter().copied());
+        }
+        used
+    }
+
     /// Os ficheiros que alguma coisa do quadro ainda mostra: os elementos não apagados e as versões.
     #[must_use]
     pub fn files_in_use(&self) -> BTreeSet<FileId> {

@@ -110,3 +110,29 @@ fn a_guest_image_reaches_the_others_through_the_host() {
     assert!(rb.file(key).is_some(), "o Rui não tem os bytes");
     assert!(rb.doc.live().any(|e| e.image().is_some_and(|i| i.file == key)));
 }
+
+/// Auditoria W14 — quem entra não recebe os bytes que nenhum elemento refere (o resto de uma colagem,
+/// de uma imagem que nunca ficou); recebe os de uma imagem APAGADA (um desfazer trá-la de volta).
+#[test]
+fn a_joiner_gets_only_the_files_something_refers_to() {
+    let mut hb = board();
+    let gone = image(&mut hb, 1);
+    let id = hb.doc.live().find(|e| e.image().is_some()).unwrap().id;
+    let _ = BoardOp::Delete(id).apply(&mut hb.doc);
+    let stray = hb.put_file(ImageFile::new(vec![9; 16], [4, 4]));
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let g = Guest::new(2, "Bia".into(), 2, 2);
+    let (out, _) = host.frame(&mut hb, 7, &g.hello().encode(), 0);
+    let sent: Vec<FileId> = to_conn(&out, 7)
+        .iter()
+        .flat_map(|m| match m {
+            Msg::Writes(ws) => ws.clone(),
+            _ => Vec::new(),
+        })
+        .filter_map(|w| match w {
+            Write::File { file, .. } => Some(file.id()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(sent, [gone], "o resto ({stray:?}) viajou, ou o apagado não");
+}

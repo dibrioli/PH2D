@@ -33,8 +33,8 @@ pub struct Pixels {
 /// quem tem a porta de entrada das imagens (`ph2d-app-board`).
 pub type Decode = Arc<dyn Fn(&[u8]) -> Option<Pixels> + Send + Sync>;
 
-/// O descodificador do APP, instalado uma vez ao arrancar ([`install_decoder`]): toda [`Images`]
-/// nasce com ele — a do ecrã, a de cada export, a de cada miniatura.
+/// O descodificador do APP, instalado uma vez ao arrancar ([`install_decoder`]): toda [`Images`] o usa
+/// quando precisa de descodificar (não quando nasce — uma cache feita antes da instalação também o vê).
 static DECODER: OnceLock<Decode> = OnceLock::new();
 
 /// Instala o descodificador do app (a 2.ª chamada não muda nada). Quem tem a porta de entrada das
@@ -54,6 +54,9 @@ const KEEP_FRAMES: u64 = 120;
 /// A pirâmide de uma imagem: do maior (≤ [`ATLAS_SIDE`]) ao miniatura, cada nível metade do anterior.
 struct Entry {
     levels: Vec<Level>,
+    /// O nível mais fino pedido desde a última descodificação: ao chegar ela, os mais finos do que
+    /// ele não ficam (uma fotografia de 8192² vista a 500 px não guarda os 256 MiB do 1.º nível).
+    want: usize,
     pending: bool,
     failed: bool,
 }
@@ -87,7 +90,7 @@ impl Default for Images {
     fn default() -> Self {
         let (tx, rx) = channel();
         Self {
-            decode: DECODER.get().cloned(),
+            decode: None,
             entries: BTreeMap::new(),
             tx,
             rx,
@@ -144,21 +147,31 @@ fn halve(src: &[u8], [w, h]: [u32; 2], to: [u32; 2]) -> Vec<u8> {
 /// A pirâmide inteira de uns píxeis (o 1.º nível já reduzido ao atlas, se preciso).
 fn pyramid(px: Pixels) -> Option<Vec<(StableImage, [u32; 2])>> {
     let sizes = level_sizes(px.size);
-    let (mut cur, mut at) = (px.rgba, px.size);
-    if cur.len() != at[0] as usize * at[1] as usize * 4 {
+    let at0 = px.size;
+    if px.rgba.len() != at0[0] as usize * at0[1] as usize * 4 {
         return None;
     }
+    // Cada nível é o `Arc` do anterior meio: nenhuma cópia dos píxeis.
+    let (mut cur, mut at) = (Arc::new(px.rgba), at0);
     let mut out = Vec::with_capacity(sizes.len());
     for s in sizes {
         while at != s {
             let next = at.map(|v| v.div_ceil(2));
-            cur = halve(&cur, at, next);
+            cur = Arc::new(halve(&cur, at, next));
             at = next;
         }
-        let img = StableImage::from_rgba(Arc::new(cur.clone()), s[0], s[1])?;
+        let img = StableImage::from_rgba(cur.clone(), s[0], s[1])?;
         out.push((img, s));
     }
     Some(out)
+}
+
+/// Descodifica e faz a pirâmide; um descodificador que entra em pânico é uma imagem que falhou (o fio
+/// continua, e a imagem não fica no cinzento à espera para sempre).
+fn decode_pyramid(decode: &Decode, bytes: &[u8]) -> Option<Vec<(StableImage, [u32; 2])>> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| decode(bytes).and_then(pyramid)))
+        .ok()
+        .flatten()
 }
 
 impl Images {
@@ -167,7 +180,13 @@ impl Images {
         self.decode = Some(decode);
     }
 
-    /// Há imagens a descodificar: quem desenha pede outro quadro.
+    /// O descodificador desta cache, ou o do app.
+    fn decoder(&self) -> Option<Decode> {
+        self.decode.clone().or_else(|| DECODER.get().cloned())
+    }
+
+    /// Há imagens a descodificar: quem desenha só a pedido pede outro quadro (a shell desenha
+    /// sempre, `ControlFlow::Poll`).
     #[must_use]
     pub fn pending(&self) -> bool {
         self.entries.values().any(|e| e.pending)
@@ -185,10 +204,12 @@ impl Images {
             return;
         };
         e.pending = false;
+        let (want, last) = (e.want, e.levels.len().saturating_sub(1));
+        e.want = usize::MAX;
         match levels {
             Some(ls) if ls.len() == e.levels.len() => {
-                for (slot, (img, size)) in e.levels.iter_mut().zip(ls) {
-                    if slot.image.is_none() {
+                for (k, (slot, (img, size))) in e.levels.iter_mut().zip(ls).enumerate() {
+                    if slot.image.is_none() && (k >= want || k == last) {
                         *slot = Level {
                             size,
                             image: Some(img),
@@ -202,7 +223,7 @@ impl Images {
     }
 
     fn spawn(&mut self, id: FileId, bytes: Arc<[u8]>) {
-        let Some(decode) = self.decode.clone() else {
+        let Some(decode) = self.decoder() else {
             return;
         };
         let jobs = self.jobs.get_or_insert_with(|| {
@@ -219,7 +240,7 @@ impl Images {
                             Err(_) => return,
                         };
                         let Ok(job) = job else { return };
-                        let out = decode(&job.bytes).and_then(pyramid);
+                        let out = decode_pyramid(&decode, &job.bytes);
                         if tx.send((job.id, out)).is_err() {
                             return;
                         }
@@ -242,7 +263,9 @@ impl Images {
         sync: bool,
     ) -> Option<(StableImage, [u32; 2])> {
         let frame = self.frame;
+        let decoder = self.decoder();
         let e = self.entries.entry(id).or_insert_with(|| Entry {
+            want: usize::MAX,
             levels: level_sizes(file.size)
                 .into_iter()
                 .map(|size| Level {
@@ -262,23 +285,23 @@ impl Images {
             .iter()
             .rposition(|l| f64::from(l.size[0]) >= need[0] && f64::from(l.size[1]) >= need[1])
             .unwrap_or(0);
+        if e.levels[want].image.is_none() {
+            e.want = e.want.min(want);
+        }
         if e.levels[want].image.is_none() && !e.pending {
             if sync {
-                let out = self
-                    .decode
-                    .as_ref()
-                    .and_then(|d| d(&file.bytes.0))
-                    .and_then(pyramid);
+                let out = decoder.and_then(|d| decode_pyramid(&d, &file.bytes.0));
                 self.adopt(id, out);
-            } else if self.decode.is_some() {
+            } else if decoder.is_some() {
                 e.pending = true;
                 self.spawn(id, file.bytes.0.clone());
             }
         }
         let e = self.entries.get_mut(&id)?;
-        // O certo, senão o mais fino que houver (nítido), senão o mais grosso.
-        let pick = (want..e.levels.len())
+        // O certo, senão o mais fino mais perto (nítido), senão o mais grosso mais perto.
+        let pick = std::iter::once(want)
             .chain((0..want).rev())
+            .chain(want + 1..e.levels.len())
             .find(|&k| e.levels[k].image.is_some())?;
         let l = &mut e.levels[pick];
         l.used = frame;

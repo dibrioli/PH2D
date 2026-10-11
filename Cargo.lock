@@ -4765,6 +4765,7 @@ name = "ph2d-app-board"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "image",
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-asset",
@@ -5407,6 +5408,7 @@ version = "0.0.0"
 dependencies = [
  "base64",
  "flate2",
+ "image",
  "pdf-writer",
  "ph2d-board-edit",
  "ph2d-board-excalidraw",

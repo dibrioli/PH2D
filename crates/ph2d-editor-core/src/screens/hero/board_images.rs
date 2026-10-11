@@ -7,18 +7,20 @@ use super::HeroScreen;
 use super::board_view::{area, area_of, editor};
 use ph2d_board_model::ImageFile;
 
-/// Um `Ctrl+V` com uma imagem na área de transferência é para pôr a IMAGEM? Não a escrever num texto,
-/// nem quando o texto da área de transferência (`text`) é a última cópia de elementos do quadro (essa
-/// cola-se a si mesma); e só com um quadro activo.
+/// Um `Ctrl+V` com uma imagem na área de transferência é para pôr a IMAGEM? Só com um quadro activo,
+/// sem estar a escrever num texto, e quando a área de transferência NÃO traz texto: uma folha de
+/// cálculo copiada traz as células E uma imagem delas (as células viram notas), e a cópia do próprio
+/// quadro traz o texto dela (cola-se a si). Uma captura de ecrã ou a imagem de um navegador não trazem.
 #[must_use]
 pub fn takes_image_paste(hero: &HeroScreen, text: Option<&str>) -> bool {
-    if hero.documents.active().is_none() {
+    if hero.documents.active().is_none() || text.is_some_and(|t| !t.trim().is_empty()) {
         return false;
     }
-    hero.documents.live.editor.as_ref().is_none_or(|ed| {
-        let ours = text.is_some_and(|t| !t.trim().is_empty() && !ed.is_foreign_paste(t));
-        !ed.is_editing_text() && !ours
-    })
+    hero.documents
+        .live
+        .editor
+        .as_ref()
+        .is_none_or(|ed| !ed.is_editing_text())
 }
 
 /// Põe `files` no quadro activo, à volta do píxel de ecrã `at` (ou do meio da vista). Devolve

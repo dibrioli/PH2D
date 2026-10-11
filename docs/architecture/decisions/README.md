@@ -197,10 +197,11 @@
 | [0181](0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O quadro ao vivo FUNDE POR CAMPO, e o transporte é uma porta |
 | [0182](0182-o-que-e-de-uma-pessoa-mora-no-cofre-do-anfitriao.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O que é de UMA pessoa mora no COFRE do anfitrião até alguém mandar revelar |
 | [0183](0183-o-historico-das-votacoes-e-um-instantaneo-da-equipa.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O histórico das votações é um INSTANTÂNEO na equipa do quadro, e o selo deriva da sessão mostrada |
+| [0184](0184-a-imagem-do-quadro-e-um-ficheiro-por-conteudo-que-viaja-sozinho.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | A imagem do quadro é um FICHEIRO por conteúdo, guardado no quadro e que viaja sozinho |
 
 ---
 
-**188 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**189 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

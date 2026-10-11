@@ -48,3 +48,18 @@ fn what_is_not_an_image_is_refused() {
     assert!(ingest(b"not an image").is_none());
     assert!(ingest(b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>").is_none());
 }
+
+/// ⭐ Auditoria W14 — o tamanho de uma PNG vem do CABEÇALHO: uns bytes com um cabeçalho válido e os
+/// dados estragados entram com o tamanho declarado (a descodificação, que falharia, fica para o
+/// desenho, fora do fio da janela).
+#[test]
+fn the_size_comes_from_the_header_without_decoding() {
+    let mut b = png(300, 200, [9, 9, 9, 255]);
+    let n = b.len();
+    for x in &mut b[n - 20..n - 12] {
+        *x ^= 0xa5;
+    }
+    assert!(decode(&b).is_none(), "a descodificação inteira falha");
+    let f = ingest(&b).expect("o cabeçalho chega");
+    assert_eq!(f.size, [300, 200]);
+}

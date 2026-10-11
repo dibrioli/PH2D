@@ -220,3 +220,62 @@ fn the_export_decodes_at_once_and_skips_a_missing_file() {
         "nem o cinzento: {before:?}"
     );
 }
+
+/// ⭐ Auditoria W14 — uma imagem vista PEQUENA não guarda os níveis finos que a descodificação fez de
+/// passagem (só os do pedido para baixo e a miniatura).
+#[test]
+fn a_small_view_keeps_only_the_levels_it_asked_for() {
+    let b = board_with(file(4096, 4096), [0.0, 0.0, 100.0, 100.0], |_| {});
+    let mut cache = RenderCache::default();
+    cache.images.set_decoder(test_decode());
+    let _ = settled(&b, &mut cache);
+    let e = cache.images.entries.values().next().unwrap();
+    let kept: Vec<u32> = e
+        .levels
+        .iter()
+        .filter(|l| l.image.is_some())
+        .map(|l| l.size[0])
+        .collect();
+    assert_eq!(kept, [128], "{kept:?}");
+}
+
+/// ⭐ Auditoria W14 — um descodificador que entra em PÂNICO não deixa a imagem pendente para sempre
+/// (fica no cinzento, sem ficar «a descodificar»), e o fio continua a servir a seguinte.
+#[test]
+fn a_panicking_decoder_fails_the_image_and_the_pool_survives() {
+    let b = board_with(file(8, 8), [0.0, 0.0, 80.0, 80.0], |_| {});
+    let good = test_decode();
+    let mut cache = RenderCache::default();
+    cache.images.set_decoder(Arc::new(move |bytes: &[u8]| {
+        assert!(bytes[0] != 8, "pânico de teste");
+        good(bytes)
+    }));
+    let t0 = Instant::now();
+    loop {
+        let ops = paint_ops(&b, &mut cache);
+        if !cache.images.pending() && t0.elapsed() > Duration::from_millis(20) {
+            assert!(images(&ops).is_empty());
+            break;
+        }
+        assert!(t0.elapsed() < Duration::from_secs(20), "ficou pendente");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let other = board_with(file(16, 16), [0.0, 0.0, 80.0, 80.0], |_| {});
+    let ops = settled(&other, &mut cache);
+    assert_eq!(images(&ops).len(), 1, "o fio morreu com o pânico");
+}
+
+/// Sem o nível pedido, desenha o mais FINO mais perto (nítido), não a miniatura.
+#[test]
+fn without_the_wanted_level_the_nearest_finer_one_draws() {
+    let f = file(512, 512);
+    let mut imgs = Images::default();
+    imgs.set_decoder(test_decode());
+    // A pirâmide inteira por um pedido síncrono do nível 0, e depois esquece-se o nível 1.
+    let _ = imgs.level(f.id(), &f, [512.0, 512.0], true).unwrap();
+    let e = imgs.entries.get_mut(&f.id()).unwrap();
+    assert!(e.levels.len() >= 3);
+    e.levels[1].image = None;
+    let (_, size) = imgs.level(f.id(), &f, [200.0, 200.0], false).unwrap();
+    assert_eq!(size, [512, 512], "foi à miniatura em vez do fino");
+}

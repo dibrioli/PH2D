@@ -5,7 +5,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "board.images.skipped" => "Skipped {count}: not an image",
         "board.io.filter_images" => "Image",
+        "board.io.filter_all" => "Excalidraw drawing or picture",
         "board.io.image_added" => "Added {name}",
+        "board.live.too_big" => "A picture is too big to share live (over {max} MB)",
         "board.smoke.images.board" => "Pictures",
         "board.smoke.images.title" => "Pictures on the board: drop, paste, resize, export",
         "board.smoke.images.frame" => "Moodboard",

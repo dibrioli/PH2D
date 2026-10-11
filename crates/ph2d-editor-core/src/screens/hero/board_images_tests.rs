@@ -74,3 +74,14 @@ fn copy_paste_into_another_board_carries_the_bytes() {
     let b = t.hero.documents.active_board().unwrap();
     assert!(b.file(key).is_some(), "colou sem os bytes");
 }
+
+/// ⭐ Auditoria W14 — uma folha de cálculo copiada traz as células E uma imagem delas: o texto ganha
+/// (uma nota por célula); só sem texto (uma captura, a imagem de um navegador) a imagem entra.
+#[test]
+fn text_on_the_clipboard_wins_over_an_image() {
+    use crate::screens::hero::board_images::takes_image_paste;
+    let t = T::new();
+    assert!(!takes_image_paste(&t.hero, Some("a\tb\nc\td")), "a folha de cálculo");
+    assert!(takes_image_paste(&t.hero, None), "a captura de ecrã");
+    assert!(takes_image_paste(&t.hero, Some("  ")));
+}

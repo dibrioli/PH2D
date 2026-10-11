@@ -129,6 +129,36 @@ fn blur_mask(w: f64, h: f64, sigma: f64) -> (u32, u32, Vec<u8>) {
     (n, m, out)
 }
 
+/// Um JPEG de 8 bits que o PDF lê como está: `Some(true)` cinzento (1 componente), `Some(false)` RGB
+/// (3); outro (CMYK, 12 bits) ou ilegível = `None` (vai pelos píxeis). Lê o marcador SOF.
+fn jpeg_gray(b: &[u8]) -> Option<bool> {
+    let mut i = 2;
+    if b.get(..2)? != [0xff, 0xd8] {
+        return None;
+    }
+    while i + 4 <= b.len() {
+        if b[i] != 0xff {
+            return None;
+        }
+        let m = b[i + 1];
+        if m == 0xff {
+            i += 1;
+            continue;
+        }
+        let len = usize::from(u16::from_be_bytes([b[i + 2], b[i + 3]]));
+        if matches!(m, 0xc0..=0xc3 | 0xc5..=0xc7 | 0xc9..=0xcb | 0xcd..=0xcf) {
+            let (bits, comps) = (*b.get(i + 4)?, *b.get(i + 9)?);
+            return match (bits, comps) {
+                (8, 1) => Some(true),
+                (8, 3) => Some(false),
+                _ => None,
+            };
+        }
+        i += 2 + len;
+    }
+    None
+}
+
 fn deflate(bytes: &[u8]) -> Vec<u8> {
     let mut z = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::new(6));
     let _ = z.write_all(bytes);
@@ -220,13 +250,39 @@ impl Doc {
 
     /// W14 — o XObject de uns píxeis (escrito uma vez): o RGB comprimido e, se algum píxel não é
     /// opaco, o alfa numa `SMask`; suavizado ao ampliar (`Interpolate`, como o ecrã).
-    fn image(&mut self, img: &ph2d_vector::StableImage) -> String {
+    ///
+    /// A chave é o FICHEIRO de onde veio (o mesmo em todas as páginas, cada uma com a sua cache), e um
+    /// JPEG do tamanho desenhado entra como chegou (`DCTDecode`: o PDF de uma fotografia não cresce 10×).
+    fn image(&mut self, op: &ph2d_vector::ImageOp) -> String {
+        let img = &op.image;
         let px = img.rgba();
-        let key = (px.as_ptr() as usize, px.len());
+        let key = op.source.as_ref().map_or((px.as_ptr() as usize, px.len()), |s| {
+            (s.bytes.as_ptr() as usize, s.bytes.len())
+        });
         if let Some(n) = self.images.get(&key) {
             return n.clone();
         }
         let (w, h) = (img.width() as i32, img.height() as i32);
+        let jpeg = op.source.as_ref().filter(|s| {
+            s.mime == "image/jpeg" && s.size == [img.width(), img.height()]
+        });
+        if let Some((s, gray)) = jpeg.and_then(|s| Some((s, jpeg_gray(&s.bytes)?))) {
+            let r = self.id();
+            let mut im = self.pdf.image_xobject(r, &s.bytes);
+            im.filter(Filter::DctDecode);
+            im.width(w).height(h).bits_per_component(8);
+            if gray {
+                im.color_space().device_gray();
+            } else {
+                im.color_space().device_rgb();
+            }
+            im.interpolate(true);
+            im.finish();
+            let name = format!("I{}", self.images.len());
+            self.images.insert(key, name.clone());
+            self.refs.insert(name.clone(), r);
+            return name;
+        }
         let rgb: Vec<u8> = px.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect();
         let alpha: Vec<u8> = px.chunks_exact(4).map(|p| p[3]).collect();
         let r = self.id();
@@ -466,7 +522,7 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> (Vec<u8>, BTre
                 c.end_marked_content();
             }
             DrawOp::Image(op) => {
-                let name = doc.image(&op.image);
+                let name = doc.image(op);
                 let (w, h) = (f64::from(op.image.width()), f64::from(op.image.height()));
                 let top = stack.last_mut().expect("a página");
                 top.used.insert(name.clone());

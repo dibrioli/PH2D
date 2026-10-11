@@ -300,16 +300,9 @@ fn discover(st: &mut State, hero: &mut HeroScreen) {
         .collect();
 }
 
-fn send_host(net: &net::Host, out: Vec<(To, Msg)>) {
-    for (to, m) in out {
-        let bytes = m.encode();
-        let _ = match to {
-            To::One(c) => net.send(c, bytes),
-            To::All => net.broadcast(bytes, None),
-            To::AllBut(c) => net.broadcast(bytes, Some(c)),
-        };
-    }
-}
+#[path = "live_send.rs"]
+mod send;
+use send::{host as send_host, tell_too_big};
 
 /// A minha presença no quadro da sala.
 fn my_presence(hero: &HeroScreen, board: BoardId) -> Option<Presence> {
@@ -366,7 +359,7 @@ fn host_tick(
     let b = hero.documents.board_mut(board)?;
     // W13 — o fim de uma votação da sala data-se pelo relógio de parede do anfitrião.
     s.set_wall(ph2d_editor_core::screens::hero::board_nav::team::now_unix());
-    send_host(&net, s.tick(b, now));
+    let big = send_host(&net, s.tick(b, now));
     let me = s.me.peer;
     let mut peers: Vec<LivePeer> = s
         .peers()
@@ -379,6 +372,7 @@ fn host_tick(
         })
         .collect();
     let room = s.fac(now, b);
+    tell_too_big(hero, big);
     fac::hide_names(&room, &mut peers);
     let fac = fac_view(&room, me, me, s.my_sealed(), &peers);
     announce(hero, fac);
@@ -499,9 +493,8 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             }
         }
         if let Some(b) = hero.documents.board_mut(id) {
-            for m in s.tick(b, now) {
-                let _ = n.send(m.encode());
-            }
+            let big = send::guest(n, s.tick(b, now));
+            tell_too_big(hero, big);
         }
         let me = s.me.as_ref().map(|m| m.peer);
         let mut peers: Vec<LivePeer> = s

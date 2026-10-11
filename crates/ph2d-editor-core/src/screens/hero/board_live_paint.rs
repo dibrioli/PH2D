@@ -47,11 +47,13 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         return;
     }
     super::yield_to_team(hero);
-    paint_avatars(hero, area, scene, ts);
     paint_badge(hero, area, scene, ts);
     if hero.documents.live_view.panel.open {
         paint_panel(hero, area, scene, ts);
     }
+    // Os avatares DEPOIS do cartão: numa janela baixa (ou com muitos endereços) o cartão desce até à
+    // fila deles, e o índice dá o clique ao último registado — antes o cartão engolia «seguir».
+    paint_avatars(hero, area, scene, ts);
 }
 
 /// Um círculo na cor da pessoa com a inicial dela, com o contorno em `person-ink`.
@@ -356,7 +358,7 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     let room = (super::super::panels::bottom(area) - y0).max(0.0);
     let (s, pad, g) = (btn(), Spacing::Sm.px(), ph2d_tokens::control_gap_px());
     let inner = w - 2.0 * pad;
-    let mut all = rows(hero);
+    let all = rows(hero);
     let fixed: f32 = pad * 2.0
         + s
         + g

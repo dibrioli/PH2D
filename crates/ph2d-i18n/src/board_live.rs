@@ -47,7 +47,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Others can't reach this computer — the firewall may be blocking port {port}"
         }
         // ── a firewall (o botão pede a senha do sistema) ──
-        "board.live.fw_blocked" => "The firewall stops other computers from reaching your boards",
+        "board.live.fw_blocked" => {
+            "The firewall is on: other computers may not find or reach boards here"
+        }
         "board.live.fw_allow" => "Allow on home network",
         "board.live.fw_allow_tip" => {
             "Let computers on this network reach your live boards (asks for the system password)"
@@ -58,7 +60,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "board.live.fw_busy" => "Waiting for the system password…",
         "board.live.fw_hint" => {
-            "Other computers can't reach this one yet — press «Allow on home network» in Live"
+            "The firewall may block other computers — press «Allow on home network» in Live"
         }
         "board.live.fw_allowed" => "Computers on this network can now reach your live boards",
         "board.live.fw_removed" => "Permission removed — the firewall blocks other computers again",
@@ -71,7 +73,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.live.reconnected" => "Back in the live session",
         "board.live.locked" => "Too many wrong codes — try again in {s} s",
         // ── a cena 12 (PH2D_BOARD_SMOKE=12) ──
-        "board.smoke.live.title" => "Live: draw on this board together with another window or computer",
+        "board.smoke.live.title" => {
+            "Live: draw on this board together with another window or computer"
+        }
         "board.smoke.live.board" => "Retro",
         "board.smoke.live.frame" => "Retro",
         "board.smoke.live.n_well" => "Went well: the demo",

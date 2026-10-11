@@ -78,7 +78,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         // A etiqueta com o nome, logo abaixo e à direita da ponta (a do Excalidraw).
         let w = crate::paint::rect_for_label(ts.prefix_width(&o.name, font));
         let lh = font + pad;
-        let r = Rect::new(x as f32 + (h as f32) * 0.5, y as f32 + h as f32, w, lh);
+        let r = Rect::new(x as f32 + (h as f32) * 0.5, y as f32 + h as f32, w, lh); // LITERAL-PX-OK: metade da ponta
         let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
         fill_rounded_rect(scene, r, radius, fill);
         paint_text_centered(ts, scene, &o.name, r, font, edge);

@@ -379,6 +379,18 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                 hero.documents.tell(join_error(&e));
                 return None;
             }
+            // A voltar: a porta RECUSADA (a máquina responde, ninguém ouve: a sala fechou), ou um
+            // código errado/travado (ali abriu OUTRA sala) — acaba já, com a cópia. Antes gastava o
+            // minuto, e os códigos velhos travavam a sala nova a quem trazia o código certo.
+            Err(
+                net::JoinError::WrongCode
+                | net::JoinError::Locked(_)
+                | net::JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused),
+            ) => {
+                hero.documents.tell(tr("board.live.host_left").to_owned());
+                return None;
+            }
+            // Sem rede, prazo: o Wi-Fi que soluça — tenta outra vez.
             Err(_) => {}
         }
     }

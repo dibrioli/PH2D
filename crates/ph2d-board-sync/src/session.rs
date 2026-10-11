@@ -210,7 +210,14 @@ impl Host {
                 To::One(conn),
                 Msg::Welcome {
                     you: info.clone(),
-                    peers: self.room.peers.values().cloned().collect(),
+                    // Só quem ESTÁ (o `peers` guarda quem saiu, para a cor de quem volta).
+                    peers: self
+                        .room
+                        .peers
+                        .values()
+                        .filter(|p| self.is_here(p.peer))
+                        .cloned()
+                        .collect(),
                     snapshot: Box::new(self.replica.snapshot(board)),
                 },
             ));

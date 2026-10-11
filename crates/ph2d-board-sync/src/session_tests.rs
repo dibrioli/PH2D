@@ -231,6 +231,27 @@ fn a_newcomer_sees_where_everyone_already_is() {
     );
 }
 
+/// Quem já saiu não aparece a quem entra depois (o anfitrião guarda-o só para a cor de quem volta).
+#[test]
+fn a_newcomer_is_not_told_about_who_already_left() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let b = Guest::new(2, "Bia".into(), 2);
+    let _ = host.frame(&mut hb, 7, &b.hello().encode(), 0);
+    let _ = host.left(7);
+    let mut c = Guest::new(3, "Caio".into(), 3);
+    let mut cb = None;
+    let (out, _) = host.frame(&mut hb, 8, &c.hello().encode(), 10);
+    for (to, m) in &out {
+        if *to == To::One(8) {
+            deliver(&mut c, &mut cb, &m.encode(), 10);
+        }
+    }
+    let here: Vec<u64> = c.peers().iter().map(|p| p.peer).collect();
+    assert!(!here.contains(&2), "a Bia saiu e o Caio vê-a: {here:?}");
+    assert!(here.contains(&1) && here.contains(&3), "{here:?}");
+}
+
 /// O anfitrião fecha a sala de propósito: o convidado sabe-o (e não confunde com uma queda), e o
 /// adeus é o ÚLTIMO byte da enumeração (um índice que viaja não se reordena).
 #[test]

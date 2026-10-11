@@ -430,3 +430,18 @@ fn a_list_that_does_not_fit_ends_in_plus_n() {
         "o que cabe mostra-se todo"
     );
 }
+
+/// O cartão que desce até à fila do canto (muitos endereços, janela baixa) não engole o clique nos
+/// avatares: eles registam-se DEPOIS dele (auditoria W11 — antes «seguir» morria calado).
+#[test]
+fn a_tall_panel_never_swallows_the_avatar_click() {
+    let mut t = T::new();
+    t.open_live();
+    t.room(LiveRole::Hosting {
+        code: "ABCDEF".into(),
+        addrs: (0..40).map(|i| format!("10.0.{i}.7:47320")).collect(),
+    });
+    t.paint();
+    t.live_click(Hit::Avatar(1));
+    assert_eq!(t.following(), Some(2), "o clique no avatar caiu no cartão");
+}

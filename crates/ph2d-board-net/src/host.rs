@@ -222,6 +222,8 @@ impl Host {
     /// Fecha a sala DE PROPÓSITO: `last` (o adeus do protocolo) sai para todos ANTES de os fios
     /// fecharem — o `Drop` sozinho corta o que ainda está na fila.
     pub fn close(self, last: Vec<u8>) {
+        // Ninguém mais entra (um aperto a acabar agora levaria o fio sem o adeus).
+        self.shared.state().stop = true;
         let _ = self.broadcast(last, None);
         let threads = {
             let mut st = self.shared.state();

@@ -172,6 +172,102 @@ fn a_wrong_code_is_said_and_nothing_opens() {
     service(&mut host);
 }
 
+/// O anfitrião CAI sem o adeus (o programa morreu) e abre logo outra sala: quem estava a voltar acaba
+/// em segundos com a cópia (a porta recusa, ou ali já há outro código), e quem traz o código NOVO
+/// entra sem «travado» — antes eram 60 s de tentativas com o código velho, e elas travavam a sala nova.
+#[test]
+fn a_vanished_host_ends_the_guest_soon_and_its_old_code_never_locks_the_next_room() {
+    reset_for_tests();
+    let open = |name: &str| {
+        let mut h = hero(name);
+        let id = h.documents.create("Retro".into());
+        h.documents.activate(Some(id));
+        rect(h.documents.board_mut(id).unwrap(), 0.0);
+        h.documents.ask_live(LiveRequest::Host);
+        service(&mut h);
+        let LiveRole::Hosting { code, addrs } = h.documents.live_view().role.clone() else {
+            panic!("não abriu");
+        };
+        let port = addrs[0].parse::<SocketAddr>().unwrap().port();
+        (h, code, port)
+    };
+    let join = |code: String, port: u16, joined: mpsc::Sender<()>| {
+        std::thread::spawn(move || {
+            let mut g = hero("Bia");
+            g.documents.ask_live(LiveRequest::Join {
+                addr: Some(format!("127.0.0.1:{port}")),
+                code,
+            });
+            let inside = until(&mut g, 10, |g| shapes(g) == 1);
+            let _ = joined.send(());
+            let t0 = Instant::now();
+            let off = until(&mut g, 20, |g| {
+                g.documents.live_view().role == LiveRole::Off
+            });
+            (
+                inside,
+                off.then(|| t0.elapsed()),
+                g.documents.told().map(str::to_owned),
+            )
+        })
+    };
+    let (mut ana, code, port) = open("Ana");
+    let (tx, rx) = mpsc::channel();
+    let bia = join(code, port, tx);
+    let end = Instant::now() + Duration::from_secs(10);
+    while rx.try_recv().is_err() && Instant::now() < end {
+        service(&mut ana);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    // A queda: a sessão desta thread some sem o adeus (o transporte fecha os fios no Drop).
+    reset_for_tests();
+    drop(ana);
+    let (mut ana2, code2, port2) = open("Ana");
+    let (tx, _rx) = mpsc::channel();
+    let caio_after = Instant::now() + Duration::from_secs(8);
+    let mut caio = None;
+    let end = Instant::now() + Duration::from_secs(25);
+    while !(bia.is_finished()
+        && caio
+            .as_ref()
+            .is_some_and(|c: &std::thread::JoinHandle<_>| c.is_finished()))
+        && Instant::now() < end
+    {
+        service(&mut ana2);
+        if caio.is_none() && Instant::now() > caio_after {
+            // O Caio chega com o código NOVO depois de a Bia ter tido tempo de bater com o velho.
+            caio = Some(std::thread::spawn({
+                let (code2, tx) = (code2.clone(), tx.clone());
+                move || {
+                    let mut c = hero("Caio");
+                    c.documents.ask_live(LiveRequest::Join {
+                        addr: Some(format!("127.0.0.1:{port2}")),
+                        code: code2,
+                    });
+                    let ok = until(&mut c, 10, |c| {
+                        matches!(c.documents.live_view().role, LiveRole::Guest { .. })
+                    });
+                    let _ = tx.send(());
+                    (ok, c.documents.told().map(str::to_owned))
+                }
+            }));
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let (inside, ended, told) = bia.join().unwrap();
+    assert!(inside, "a Bia não entrou");
+    let ended = ended.expect("a Bia ficou a tentar voltar");
+    assert!(
+        ended < Duration::from_secs(6),
+        "a Bia levou {ended:?} a saber"
+    );
+    assert_eq!(told.as_deref(), Some(tr("board.live.host_left")));
+    let (ok, said) = caio.expect("o Caio não chegou").join().unwrap();
+    assert!(ok, "o Caio, com o código certo, não entrou: {said:?}");
+    ana2.documents.ask_live(LiveRequest::Leave);
+    service(&mut ana2);
+}
+
 /// 📏 Medição (à mão, `--ignored --nocapture`, perfil smoke): a latência ponta-a-ponta de um ARRASTO
 /// com 2, 4 e 8 pessoas na rede local real — um convidado mexe uma forma a cada 16 ms (60 Hz) durante
 /// 2 s; cada um dos outros regista quando viu cada posição. Resumo: mínimo, mediana, p95, máximo.

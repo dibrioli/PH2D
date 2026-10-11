@@ -107,6 +107,38 @@ alvo próprio (sprites + formas pela mesma lista do quadro), `FxStackPass` com i
 LINEAR premultiplicada (o alvo é `Rgba16Float`, não sRGB 8 bits), e o passe de composição «esta
 textura sobre aquele alvo» — a metade B que o doc 94 §2 mediu como ausente.
 
+### §3.4 — W3b: CADA FORMA ou a CAMADA INTEIRA (decisão do dono, 10/10, depois da auditoria §5.5)
+
+*«Ambas as opções devem estar disponíveis no nó.»* ⇒ o `fx.filter` ganha o param **`scope`**
+(Enum: **Each Shape** · **Whole Layer**; nasce **Each Shape**, o que o dono esperava).
+
+- **A pilha parte-se em DOIS estágios pela ordem do fio:** os degraus `Each Shape` do início do fio
+  correm por forma; o primeiro `Whole Layer` junta as formas e tudo o que vem depois corre na camada.
+  Um `Each Shape` DEPOIS de um `Whole Layer` já não vê as formas: corre na camada e o cartão di-lo
+  (a mesma porta da queixa «fora do fio»). Gate da partição.
+- **Cada forma = um ÁTLAS de células com valas.** Cada instância do Motion desenha-se na SUA célula
+  (o `RenderInstance.world_pos` e o `ShapeInstance.pos` são translação pura — relocar é somar;
+  a fração da posição no ecrã fica DENTRO da célula, logo a volta é exacta ao pixel); as células
+  separam-se por valas ≥ `stack_reach` + 1, e então UMA corrida da pilha sobre o átlas = uma corrida
+  por célula (nenhum degrau alcança além do `reach`). A volta: cada célula como sprite no lugar da
+  instância, na ordem de z do stream — a sombra do disco de cima cai sobre o de baixo.
+  ⚠️ A medir/decidir na wave: o tamanho da célula na rota do DISPOSITIVO (as caixas das instâncias
+  não estão na CPU: passe de compute de limites com `atomicMax` + o tecto do átlas MEDIDO no
+  dispositivo); a relocação das sprites e das formas no buffer do dispositivo (cópia + translação por
+  compute); o custo contra a `Whole Layer` (MEDIR_VELOCIDADE.md) a 256 e a 4 096 instâncias.
+- **O bevel e o campo semeado pelo raster (A3) — nas DUAS escalas:** a semente sub-pixel a partir
+  da cobertura (a transformada de distância anti-aliased de Gustavson & Strand 2011, publicada) em
+  vez do limiar; gate de estabilidade sob deslocamento de ¼ px (a sonda §5.5: raster 16–43 níveis
+  contra o exacto 3,5–10,7 — o alvo é o exacto).
+- **O resto da auditoria no MESMO bloco** (§0.10): A4 a cor do cartão (linear) convertida para a
+  sRGB reta da `FxOp` na fronteira do nó; A2/A5 os defaults de cada tipo = o `FxOp::new(tipo)`
+  (o gate compara o nó com a lei do Vector, nunca consigo próprio) — ⚠️ um default por tipo num
+  manifesto único pede desenho: ou o nó escreve os defaults do tipo ao trocar de tipo (gesto do
+  cartão, com undo), ou o tipo vira o default e os knobs «não tocados» seguem o `FxOp::new`; meça
+  qual o cartão mostra sem mentir; A6 a origem do ruído na forma (Each Shape: a célula; Whole Layer:
+  o mundo, pela câmera); A7 o deslocamento sub-pixel da luz; A8 a régua na janela do produto; U1 os
+  nomes únicos.
+
 ## §4 — Waves
 
 | wave | o quê | estado |
@@ -115,6 +147,7 @@ textura sobre aquele alvo» — a metade B que o doc 94 §2 mediu como ausente.
 | W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | ✅ §5.2 |
 | W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | ✅ §5.3 (+ a cena `=135` com a lente; o filtro entra na W3) |
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | ✅ §5.4 (+ a `=135` com uma sombra projectada) |
+| W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | — (§3.4) |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
 | W5 | provas de mutação · o handoff | — |
 

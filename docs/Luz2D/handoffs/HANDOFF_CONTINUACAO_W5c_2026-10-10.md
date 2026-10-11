@@ -206,7 +206,27 @@ só sem nenhuma o bilinear cru. Gate: 4 zooms em duas passagens de oitava, o pio
 quando as quatro sondas de cima estão mascaradas — não é o caminho do produto (a holográfica) e a clássica erra o
 rebote desta cena por outro lado (a face 0,071, −74 %); fica anotado no item 7 abaixo.
 
+## Cena 5 — Volume (11/10, pedido do dono depois da integração)
+
+`PH2D_LIGHT2D_SMOKE=5`: uma lâmpada no meio de um chão e oito sprites que bloqueiam E recebem a luz — disco e elipse
+(o `DISC_TILE_KEY` do atlas: a máscara do disco), losango (quadrado a 45°), barra inclinada, «L» e cruz (dois
+retângulos sobrepostos cada: a lei olha a borda do CONJUNTO). Gate `a_cena_5_ensina_o_volume` pelo caminho do produto
+(as instâncias com a imagem de cada um): a face da lâmpada ≥ 10 × a de trás em todo corpo — medido 18,5 × (a cruz) a
+63 × (a elipse); o censo das cenas (não há 6; `max_level` 5) passou da cena 4 para ela. Foto:
+`fotos_W5c/cena5_volume.png` (o app, `fotografa_cena.sh`).
+
+⚠️ **O que a foto mostrou e fica ABERTO (item 0 abaixo):** nas formas CURVAS o interior sai em facetas — o disco é um
+cone em fatias com a aresta da sombra serrilhada; a elipse tem degraus nas pontas da aresta do meio (a aresta em si
+é a lei: o eixo medial de uma elipse é o segmento do eixo maior). Medido: ler a luz no PÉ da perpendicular em todo
+texel do interior NÃO muda a foto (recusado: custo sem efeito); a causa provável é a c0 junto a uma borda curva — o
+bilinear mascarado salta quando o conjunto de sondas de fora muda ao longo da borda, e a lei projeta cada salto para
+dentro como uma fatia —, mais o serrilhado da passagem luz/sombra da lâmpada na borda.
+
 ## ⚠️ ABERTO (W5c → W5d)
+
+0. **As facetas das formas curvas** (a cena 5): a c0 contínua ao longo de uma borda curva (o peso de cada sonda de
+   fora pela fração de fora, não 0/1) e a passagem luz/sombra na borda sem degrau — junto com o item 5 (a borda do
+   `meio`), é a mesma família: a precisão junto à borda.
 
 1. **O rebote de FORA da grade (o maior):** com zoom forte o rebote enfraquece — na vista de 2 m da cena 3, −55 a
    −64 % junto à borda, porque os refletores fora da grade não refletem (o mundo fora da grade da W5b só tapa a luz

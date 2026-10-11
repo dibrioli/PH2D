@@ -85,8 +85,6 @@ fn sem_parede(sala: usize) -> CenaDeLuz {
 fn a_cena_4_mede_a_penumbra_contra_a_geometria() {
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 4));
-    assert!(!smoke::encenar(&mut World::new(), 5), "não há cena 5");
-    assert_eq!(smoke::ROUTERS[0].max_level, 4, "o maior nível do `match`");
     let mut com = cena_de_luz(&w);
     com.ceu = [0.0; 3];
     let ys = alturas();
@@ -273,3 +271,94 @@ fn a_cena_3_ensina_o_rebote() {
         );
     }
 }
+
+/// ⭐⭐ **Cena 5:** o que a cena ensina é o que acontece — pelo caminho do PRODUTO (os sprites com a
+/// imagem deles: o disco e a elipse pela máscara do disco do atlas), cada corpo recebe a luz com
+/// FACES: o ponto de dentro do lado da lâmpada mais claro que o do lado de trás. A régua: em cada
+/// corpo, dois pontos de dentro sobre a reta centro → lâmpada, a `PROFUNDIDADE` do menor lado.
+#[test]
+fn a_cena_5_ensina_o_volume() {
+    use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro};
+    use ph2d_ecs::{GlobalTransform, PresentWorld, SimRef};
+    use ph2d_render::{DISC_TILE_KEY, DISC_TILE_PX, RenderInstance, Sprite, disc_tile_pixels};
+    let Some(gpu) = crate::comum::gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    assert!(!smoke::encenar(&mut World::new(), 6), "não há cena 6");
+    assert_eq!(smoke::ROUTERS[0].max_level, 5, "o maior nível do `match`");
+    let cena = cena_de_luz(&w);
+    assert_eq!(
+        cena.oclusores.len(),
+        smoke::CORPOS_DO_VOLUME.len(),
+        "os corpos bloqueiam"
+    );
+    assert!(
+        cena.oclusores
+            .iter()
+            .all(|o| o.albedo.iter().any(|&a| a > 0.0)),
+        "os corpos recebem a luz (refletem): nenhum tem «não recebe luz»"
+    );
+    let mut r = crate::comum::renderer(&gpu);
+    let branca = r.acquire_individual(1, 1, &[255; 4]).expect("textura");
+    let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)
+        .into_iter()
+        .flat_map(|p| p.0)
+        .collect();
+    let disco = r
+        .acquire_individual(DISC_TILE_PX, DISC_TILE_PX, &disco)
+        .expect("textura do disco");
+    let mut present = PresentWorld::new();
+    let mut q = w.query_filtered::<(bevy_ecs::entity::Entity, &Sprite, &GlobalTransform), bevy_ecs::query::With<ph2d_light2d_ecs::BloqueiaLuz>>();
+    for (e, s, g) in q.iter(&w) {
+        let [ax, ay, bx, by, tx, ty] = g.affine();
+        let e_disco =
+            matches!(s.source, ph2d_render::SpriteSource::Atlas { key } if key == DISC_TILE_KEY);
+        let tex = if e_disco { disco } else { branca };
+        let mut i = crate::comum::quad(tex, [tx, ty]);
+        i.size = s.size;
+        i.anchor = s.anchor;
+        i.basis = [ax, ay, bx, by];
+        let _: &RenderInstance = &i;
+        present.world_mut().spawn((i, SimRef(e)));
+    }
+    let afim = ph2d_render::Camera2d::default()
+        .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
+    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+    for _ in 0..30 {
+        assert!(l.preparar(&w, afim, (1920, 1080)));
+        l.gravar(&gpu, &mut present, &r);
+    }
+    let f = crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"));
+    let lampada = smoke::LAMPADA_DO_VOLUME.map(f64::from);
+    let mut falhas = Vec::new();
+    for corpo in smoke::CORPOS_DO_VOLUME {
+        let (nome, lado) = (corpo.nome, corpo.lado);
+        let c = corpo.centro.map(f64::from);
+        let d = [lampada[0] - c[0], lampada[1] - c[1]];
+        let n = d[0].hypot(d[1]);
+        let u = [d[0] / n, d[1] / n];
+        let k = PROFUNDIDADE * f64::from(lado[0].min(lado[1]));
+        let (frente, tras) = (
+            f.amostra([c[0] + u[0] * k, c[1] + u[1] * k]),
+            f.amostra([c[0] - u[0] * k, c[1] - u[1] * k]),
+        );
+        eprintln!("cena 5 · {nome}: a face da lâmpada {frente:.3} · a de trás {tras:.3}");
+        if frente < CONTRASTE_DAS_FACES * tras {
+            falhas.push(format!("{nome}: {frente:.3} × {tras:.3}"));
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "um corpo sem faces: {}",
+        falhas.join(" · ")
+    );
+}
+
+/// Os pontos lidos ficam a esta fração do menor lado do corpo, de cada lado do centro.
+const PROFUNDIDADE: f64 = 0.35;
+/// A face virada para a lâmpada é pelo menos isto × a de trás — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`):
+/// o menor 18,5 × (a cruz), o maior 63 × (a elipse).
+const CONTRASTE_DAS_FACES: f64 = 10.0;

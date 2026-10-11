@@ -6,13 +6,14 @@
 //! | 2 | **Vaga-lumes** — 1 000 sprites que BRILHAM, em quatro enxames nos cantos de um chão escuro, cada um com uma árvore ao lado: cada enxame acende o chão em volta e a árvore faz sombra; o custo da luz é o de uma lâmpada só (a sonda mede 1 × 1 000) |
 //! | 3 | **Rebote** (W5c) — uma sala fechada: chão e teto claros, parede esquerda VERMELHA, direita VERDE, uma lâmpada branca perto do teto e um fundo que só RECEBE luz: a luz que bate nas paredes volta tingida — a sala clareia, o fundo avermelha junto à vermelha e esverdeia junto à verde (`PH2D_LIGHT2D_REBOTE=0` desliga o rebote, para comparar) |
 //! | 4 | **Tamanho da lâmpada** — duas salas iguais separadas por um muro: à esquerda uma lâmpada PEQUENA, à direita uma GRANDE, cada uma atrás da mesma parede: a pequena faz sombra nítida, a grande macia (a sonda mede a penumbra × a geometria) |
+//! | 5 | **Volume** — uma lâmpada no meio de um chão e seis corpos à volta que bloqueiam E recebem a luz (disco, elipse, losango, barra inclinada, «L» e cruz): o interior de cada um mostra a luz do exterior mais próximo, logo cada lado vira uma FACE — acesa a virada para a lâmpada, escura a de trás — e as faces encontram-se em arestas (o disco vira um cone que aponta a luz; o «L» e a cruz dobram as faces no canto, porque a lei olha a borda do CONJUNTO) |
 //!
 //! Os vaga-lumes estão PARADOS: o que a cena ensina é a luz (e o custo), não o voo.
 
 use bevy_ecs::world::World;
 use ph2d_ecs::{GlobalTransform, Name, Transform};
 use ph2d_light2d_ecs::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
-use ph2d_render::{Sprite, WHITE_TILE_KEY};
+use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 
 /// ⭐ O que faz de um quadrado uma PAREDE: bloqueia a luz e NÃO a recebe. ⚠️ Medido (W4): o interior
 /// de um corpo opaco recebe zero (a lei da W1, no gabarito e na placa) — uma parede que recebesse a
@@ -22,7 +23,7 @@ const PAREDE: (BloqueiaLuz, NaoRecebeLuz) = (BloqueiaLuz { opacidade: 1.0 }, Nao
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_LIGHT2D_SMOKE",
-    max_level: 4,
+    max_level: 5,
 }];
 
 /// O nível armado por variável de ambiente (`None` = inerte).
@@ -52,8 +53,12 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
             tamanho_da_lampada(world);
             true
         }
+        5 => {
+            volume(world);
+            true
+        }
         _ => {
-            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–4)");
+            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–5)");
             false
         }
     }
@@ -339,6 +344,146 @@ pub fn tamanho_da_lampada(world: &mut World) {
 }
 
 /// A luz ambiente de uma cena: `fracao` do forno branco, na cor dada.
+/// Cena 5 — a lâmpada (no centro do chão).
+pub const LAMPADA_DO_VOLUME: [f32; 2] = [0.0, 0.0];
+
+/// Cena 5 — um corpo: a imagem (o quadrado ou o disco do atlas), o centro e o lado (metros), a
+/// rotação (radianos) e a cor.
+pub struct Corpo {
+    pub nome: &'static str,
+    pub imagem: u32,
+    pub centro: [f32; 2],
+    pub lado: [f32; 2],
+    pub rotacao: f32,
+    pub cor: [f32; 3],
+}
+
+const fn corpo(
+    nome: &'static str,
+    imagem: u32,
+    centro: [f32; 2],
+    lado: [f32; 2],
+    rotacao: f32,
+    cor: [f32; 3],
+) -> Corpo {
+    Corpo {
+        nome,
+        imagem,
+        centro,
+        lado,
+        rotacao,
+        cor,
+    }
+}
+
+/// Cena 5 — os corpos. O «L» e a cruz são dois retângulos sobrepostos cada (a lei do interior olha a
+/// borda do CONJUNTO).
+pub const CORPOS_DO_VOLUME: [Corpo; 8] = [
+    corpo(
+        "Disco",
+        DISC_TILE_KEY,
+        [-3.0, 1.7],
+        [1.4, 1.4],
+        0.0,
+        [0.85, 0.25, 0.2],
+    ),
+    corpo(
+        "Elipse",
+        DISC_TILE_KEY,
+        [0.0, 2.6],
+        [2.6, 1.1],
+        0.0,
+        [0.9, 0.75, 0.2],
+    ),
+    corpo(
+        "Losango",
+        WHITE_TILE_KEY,
+        [3.0, 1.7],
+        [1.2, 1.2],
+        std::f32::consts::FRAC_PI_4,
+        [0.25, 0.45, 0.9],
+    ),
+    corpo(
+        "Barra",
+        WHITE_TILE_KEY,
+        [3.1, -1.7],
+        [2.4, 0.55],
+        0.5,
+        [0.2, 0.75, 0.35],
+    ),
+    corpo(
+        "L — base",
+        WHITE_TILE_KEY,
+        [-2.8, -2.3],
+        [1.8, 0.6],
+        0.0,
+        [0.75, 0.4, 0.85],
+    ),
+    corpo(
+        "L — haste",
+        WHITE_TILE_KEY,
+        [-3.4, -1.6],
+        [0.6, 2.0],
+        0.0,
+        [0.75, 0.4, 0.85],
+    ),
+    corpo(
+        "Cruz — braço",
+        WHITE_TILE_KEY,
+        [0.0, -2.6],
+        [2.0, 0.55],
+        0.0,
+        [0.9, 0.9, 0.9],
+    ),
+    corpo(
+        "Cruz — tronco",
+        WHITE_TILE_KEY,
+        [0.0, -2.6],
+        [0.55, 2.0],
+        0.0,
+        [0.9, 0.9, 0.9],
+    ),
+];
+
+/// Cena 5 — **Volume.** Os corpos RECEBEM a luz (sem «não recebe luz»): o interior de cada um é o
+/// exterior mais próximo, e cada lado vira uma face com a luz que bate nele.
+pub fn volume(world: &mut World) {
+    quadrado(
+        world,
+        "Chão",
+        [0.0, 0.0],
+        [11.5, 8.5],
+        [0.6, 0.6, 0.62, 1.0],
+    );
+    ambiente(world, 0.03, [0.6, 0.7, 1.0]);
+    let (t, g) = pose(LAMPADA_DO_VOLUME[0], LAMPADA_DO_VOLUME[1]);
+    world.spawn((
+        Name::new("Lâmpada"),
+        Luz {
+            cor: [1.0, 0.92, 0.8],
+            intensidade: std::f32::consts::TAU * 1.2,
+            tamanho_m: 0.2,
+            alcance_m: f32::INFINITY,
+            tipo: TipoDeLuz::Ponto,
+        },
+        t,
+        g,
+    ));
+    for c in CORPOS_DO_VOLUME {
+        let mut t = Transform::IDENTITY;
+        t.translation.x = c.centro[0];
+        t.translation.y = c.centro[1];
+        t.rotation = c.rotacao;
+        world.spawn((
+            Name::new(c.nome),
+            Sprite::atlas(c.imagem, c.lado, [c.cor[0], c.cor[1], c.cor[2], 1.0]),
+            t,
+            GlobalTransform::from_transform(t),
+            BloqueiaLuz { opacidade: 1.0 },
+        ));
+    }
+}
+
 fn ambiente(world: &mut World, fracao: f32, cor: [f32; 3]) {
     let (t, g) = pose(0.0, 0.0);
     world.spawn((

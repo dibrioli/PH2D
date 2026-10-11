@@ -82,6 +82,7 @@ pub const MAX_HALF: u32 = 96;
 /// máquina**; o teto de stops teria nascido errado se eu não a tivesse repetido.
 pub(crate) const UNIFORM_STRIDE: u64 = 512;
 
+pub use crate::fx_stack_camada::retangulo_da_camada;
 pub use crate::fx_stack_op::{FxOpGpu, Origem};
 use crate::fx_stack_plan::plan_of;
 pub use crate::fx_stack_plan::{
@@ -401,7 +402,7 @@ impl FxStackPass {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn run_with(
+    pub(crate) fn run_with(
         &mut self,
         gpu: &GpuContext,
         src: &wgpu::Texture,

@@ -101,6 +101,73 @@ fn an_each_shape_after_a_whole_layer_says_so_on_its_card() {
     assert!(q.contains("Whole Layer"), "{q}");
 }
 
+/// ⭐ **Cada foto é o passo que diz ser** (`PH2D_ACABAMENTO_PASSO`): a variante muda o que o
+/// roteiro manda mudar, e só isso — o passo desconhecido deixa a cena AO BIT.
+#[test]
+fn every_photo_variant_is_the_step_it_names() {
+    let lido = |passo_: &str| {
+        let mut m = MotionState::new();
+        let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+        assert!(passo(&mut m.doc.graph, &cena, passo_), "{passo_}");
+        m.filtro.prepara(&m.doc.graph);
+        let pilha = m.filtro.pilha().to_vec();
+        let (f, c) = ph2d_node_fx_filter::partition(&pilha);
+        let partes = (f.len(), c.len());
+        let queixa = m.filtro.queixa(cena.camada);
+        let lente = ph2d_node_fx_lens::from_graph(&m.doc.graph).expect("a lente");
+        (pilha, partes, queixa, lente)
+    };
+    let (base, partes, queixa, lente0) = lido("0");
+    assert_eq!(partes, (1, 1));
+    assert!(queixa.is_none());
+    assert!(!lente0.lente.vinheta.neutra() && lente0.lut.is_none());
+    // Os filtros: o `Apply To` parte a pilha noutro sítio; o `Effect` é o gesto do cartão.
+    assert_eq!(lido("1").1, (0, 2));
+    assert_eq!(
+        lido("2").0[0].op,
+        ph2d_ecs::FxOp::new(ph2d_ecs::FxOp::INNER_SHADOW)
+    );
+    assert_eq!(lido("2").0[1].op, base[1].op);
+    assert_eq!(lido("3").1, (2, 0));
+    let (_, partes, queixa, _) = lido("4");
+    assert_eq!(partes, (0, 2));
+    assert!(queixa.is_some_and(|q| q.contains("Whole Layer")));
+    // A lente: cada passo mexe na SUA secção, e as outras ficam como abriram.
+    let l = |p: &str| lido(p).3;
+    assert!(l("5").lente.vinheta.neutra());
+    assert!(l("5b").lente.vinheta.amount < 0.0);
+    let mut m = MotionState::new();
+    let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+    assert!(passo(&mut m.doc.graph, &cena, "mistura"));
+    assert_eq!(
+        ph2d_eval_motion::sink_blend_tag(&m.doc.graph, cena.saida),
+        1,
+        "a medição põe a saída em Add"
+    );
+    assert!(!l("6").lente.aberracao.neutra() && l("6").lente.vinheta == lente0.lente.vinheta);
+    assert!(l("7a").lente.grade.temperatura > 0.0);
+    assert!((l("7b").lente.grade.saturacao + 1.0).abs() < 1e-6);
+    assert!((l("7c").lente.grade.exposure - 1.0).abs() < 1e-6);
+    assert_eq!(l("7d").lut.as_deref(), Some(LUT_QUENTE));
+    assert!(!l("8").lente.grao.neutra());
+    for p in PASSOS.iter().filter(|p| !p.starts_with('5')) {
+        assert_eq!(
+            l(p).lente.vinheta,
+            lente0.lente.vinheta,
+            "o passo {p} mexeu na vinheta"
+        );
+    }
+    // O passo desconhecido: a cena de sempre.
+    let mut m = MotionState::new();
+    let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+    let antes = m.doc.graph.clone();
+    assert!(!passo(&mut m.doc.graph, &cena, "9"));
+    assert_eq!(format!("{:?}", m.doc.graph), format!("{antes:?}"));
+    // E o `.cube` que o passo (7) nomeia existe, onde o app o procura (a raiz do repo).
+    let raiz = concat!(env!("CARGO_MANIFEST_DIR"), "/../../");
+    assert!(std::path::Path::new(raiz).join(LUT_QUENTE).is_file());
+}
+
 /// O roteiro só nomeia rows que o cartão do `Lens` pinta (o nome que aparece NA TELA).
 #[test]
 fn every_row_the_script_names_is_on_the_lens_card() {

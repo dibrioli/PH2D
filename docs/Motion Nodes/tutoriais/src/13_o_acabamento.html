@@ -1,0 +1,222 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · O acabamento</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .wide figcaption { font-size:11px; color:var(--t2); margin-top:6px; text-align:center; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+<h1>O acabamento
+  <small>PH2D · Motion Nodes · tutorial 13 — os <b>filtros</b> da camada (relevo, sombras, brilho)
+  e a <b>lente</b> da câmera (vinheta, franja de cor, cor de cinema, grão)</small></h1>
+
+<p>O Motion já sabe <b>onde</b> pôr cada peça e de que <b>cor</b>. Falta o acabamento: o que um
+programa de imagem faria por cima. Para isso há dois cartões, e cada um responde a uma pergunta:</p>
+
+<table>
+  <tr><th>cartão</th><th>a pergunta</th><th>sobre o quê</th></tr>
+  <tr><td><code>Filter</code></td><td>que efeito as <b>formas</b> do Motion levam? (relevo, sombra
+      projectada, sombra interna, brilho, contorno, desfoque…)</td><td>as peças do Motion</td></tr>
+  <tr><td><code>Lens</code></td><td>como a <b>câmera</b> vê a cena?</td><td>a cena inteira, tudo o que
+      está na tela de desenho</td></tr>
+</table>
+
+<p>Os dois vão no <b>fio</b> que chega ao <code>Output</code>, e o fio passa por eles sem mudar: as
+peças continuam as mesmas, o que muda é como saem pintadas. Podem pôr-se vários <code>Filter</code>
+em fila — eles correm pela ordem do fio.</p>
+
+<h3>Cada forma ou a camada inteira</h3>
+<p>Cada <code>Filter</code> tem a linha <code>Apply To</code>, com duas opções:</p>
+<table>
+  <tr><th>Apply To</th><th>o que faz</th><th>quando usar</th></tr>
+  <tr><td><code>Each Shape</code></td><td>o efeito corre em <b>cada forma sozinha</b>, como se as outras
+      não existissem. Duas formas que se tocam guardam cada uma a sua borda inteira.</td>
+      <td>relevo e sombra interna em cada peça; cada peça com a sua sombra</td></tr>
+  <tr><td><code>Whole Layer</code></td><td>o efeito corre <b>uma vez</b> sobre todas as formas juntas,
+      como se fossem um desenho só. Onde duas se tocam, viram uma peça.</td>
+      <td>a sombra de um grupo inteiro; um brilho à volta de tudo</td></tr>
+</table>
+<p>A ordem conta: depois de um <code>Whole Layer</code> as formas já foram juntas, logo um
+<code>Each Shape</code> a seguir a ele <b>não consegue</b> voltar a separá-las. O cartão diz isso
+por escrito.</p>
+
+<div class="note"><b>Por cima do mundo.</b> Com um <code>Filter</code> no fio, as peças do Motion
+viram uma <b>camada</b> à parte (como uma camada no After Effects) e essa camada vai <b>por cima</b> do
+resto da cena. Sem filtro, as peças do Motion misturam-se com os outros objectos pela ordem de
+profundidade; com filtro, ficam todas à frente. Tire o filtro e elas voltam ao seu lugar.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=135 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Olhe a tela</b> (se nada se mexer, carregue em <kbd>Play</kbd>).
+      <div class="out">Uma <b>galáxia</b> de discos, do azul ao laranja, a girar devagar — uma
+      <b>simulação</b> com campos de força. Cada disco tem <b>relevo</b>: a borda de cima e da
+      esquerda clara, a de baixo e da direita escura. Por baixo da galáxia toda há uma
+      <b>sombra</b>, para baixo e para a direita. E os <b>cantos</b> da cena estão mais escuros que
+      o centro.</div></li>
+  <li><b>Olhe o grafo.</b>
+      <div class="out">Depois do <code>Tint</code> (a cor) vêm dois cartões <code>Filter</code> e um
+      <code>Lens</code>, e só então o <code>Output</code>. O 1.º <code>Filter</code> tem
+      <code>Effect</code> = <code>Bevel</code> (o relevo) e <code>Apply To</code> =
+      <code>Each Shape</code>. O 2.º tem <code>Effect</code> = <code>Drop Shadow</code> (a sombra
+      projectada) e <code>Apply To</code> = <code>Whole Layer</code>.</div></li>
+</ol>
+
+<figure class="wide"><img src="../fig/acabamento_cena.png" alt="a galaxia de discos com relevo e sombra">
+  <figcaption>A cena como abre: relevo em cada disco, a sombra da galáxia inteira, a vinheta nos
+  cantos.</figcaption></figure>
+
+<h2>2 · Cada forma ou a camada inteira</h2>
+<ol class="steps">
+  <li><b>No 1.º <code>Filter</code>, troque <code>Apply To</code> para <code>Whole Layer</code>.</b>
+      <div class="out">Os discos que se tocam viram <b>uma peça só</b>: a borda some onde eles se
+      encostam, e o relevo passa a contornar o grupo.</div>
+      <div class="bad">Se a borda continuar entre discos que se tocam, avise.</div></li>
+  <li><b>Volte para <code>Each Shape</code>.</b>
+      <div class="out">Cada disco volta a ter a sua borda inteira, mesmo os do meio da galáxia,
+      apertados entre vizinhos. A galáxia gira e o relevo fica <b>firme</b>, sem tremer.</div>
+      <div class="bad">Se o relevo tremer com a galáxia a girar, avise.</div></li>
+</ol>
+
+<div class="pair">
+<figure class="wide"><img src="../fig/acabamento_cada.png" alt="cada disco com o seu relevo">
+  <figcaption><code>Each Shape</code>: cada disco com a sua borda.</figcaption></figure>
+<figure class="wide"><img src="../fig/acabamento_inteira.png" alt="os discos juntos numa peca">
+  <figcaption><code>Whole Layer</code>: os discos juntos.</figcaption></figure>
+</div>
+
+<h2>3 · Trocar o efeito</h2>
+<ol class="steps">
+  <li><b>Ainda no 1.º <code>Filter</code>, troque <code>Effect</code> para
+      <code>Inner Shadow</code>.</b>
+      <div class="out">Cada disco ganha uma sombra <b>por dentro</b>. É igual nos discos do meio e
+      nos da beira da galáxia, porque cada um corre sozinho.</div>
+      <div class="bad">Se os do meio tiverem sombra diferente dos da beira, avise.</div></li>
+  <li><b>Experimente as outras opções de <code>Effect</code></b>: <code>Outer Glow</code> (um
+      brilho à volta), <code>Inner Glow</code>, <code>Outline</code> (contorno), <code>Blur</code>
+      (desfoque)…
+      <div class="out">Ao trocar, as linhas do cartão mudam para as que esse efeito usa, já com
+      valores que dão um resultado visível. Uma linha que você já tinha mexido fica como
+      deixou.</div></li>
+</ol>
+
+<h2>4 · A sombra da galáxia</h2>
+<ol class="steps">
+  <li><b>Olhe o 2.º <code>Filter</code></b> (<code>Drop Shadow</code>, <code>Whole Layer</code>).
+      <div class="out">É a sombra da galáxia <b>inteira</b>, para baixo e para a direita.
+      <code>Radius</code> amacia a sombra; <code>Offset X</code> e <code>Offset Y</code> movem-na;
+      <code>Opacity</code> diz quão escura.</div></li>
+  <li><b>Troque o <code>Apply To</code> dele para <code>Each Shape</code>.</b>
+      <div class="out">Cada disco projecta a sua sombra, e a sombra de um cai <b>em cima</b> do
+      vizinho.</div></li>
+</ol>
+
+<h2>5 · A ordem conta</h2>
+<ol class="steps">
+  <li><b>Ponha o 1.º em <code>Whole Layer</code> e o 2.º em <code>Each Shape</code>.</b>
+      <div class="out">O cartão do 2.º diz, por baixo do título, que ele já corre na camada
+      inteira: os discos foram juntos pelo 1.º, antes de chegarem a ele.</div>
+      <div class="bad">Se o cartão não disser nada, avise.</div></li>
+</ol>
+
+<h2>6 · A lente: a vinheta</h2>
+<p>O <code>Lens</code> é a câmera. Ele nasce só com a vinheta ligada; as outras secções estão
+fechadas e neutras — abra cada uma para a ligar.</p>
+<ol class="steps">
+  <li><b>No cartão <code>Lens</code>, secção <code>Vignette</code>, arraste <code>Vignette</code>
+      para 0.</b>
+      <div class="out">Os cantos voltam ao normal.</div></li>
+  <li><b>Arraste para -0,5.</b>
+      <div class="out">Os cantos <b>clareiam</b>.</div></li>
+</ol>
+
+<h2>7 · A franja de cor</h2>
+<ol class="steps">
+  <li><b>Abra <code>Chromatic Aberration</code> e ponha <code>Aberration</code> em 0,03.</b>
+      <div class="out">Perto das <b>bordas</b> da cena cada disco ganha uma franja vermelha de um lado
+      e azul do outro. No <b>centro</b> nada muda — como numa lente de verdade.</div>
+      <div class="bad">Se a franja aparecer no centro, avise.</div></li>
+</ol>
+
+<h2>8 · A cor de cinema</h2>
+<ol class="steps">
+  <li><b>Abra <code>Color Grade</code>.</b> <code>Temperature</code> 0,5 esquenta tudo;
+      <code>Saturation</code> -1 deixa a cena cinzenta; <code>Exposure</code> 1 dobra a luz.</li>
+  <li><b>Em <code>LUT File</code>, escreva
+      <code>docs/Motion Nodes/tutoriais/luts/quente.cube</code>.</b>
+      <div class="out">As sombras vão para o azul-petróleo e as luzes para o laranja. A linha
+      <code>LUT Mix</code> aparece: ela diz quanto da LUT entra.</div>
+      <div class="bad">Se o cartão disser que não leu o ficheiro, confira o caminho.</div></li>
+</ol>
+
+<h2>9 · O grão</h2>
+<ol class="steps">
+  <li><b>Abra <code>Film Grain</code> e ponha <code>Grain</code> em 0,4.</b>
+      <div class="out">Um chuvisco fino por cima da cena, que mexe a cada quadro.</div></li>
+  <li><b>Pare o tempo.</b>
+      <div class="out">O grão <b>para</b> também.</div>
+      <div class="bad">Se o grão continuar a mexer com o tempo parado, avise.</div></li>
+</ol>
+
+<!--CUSTO-->
+
+<h2>11 · Se algo não bater</h2>
+<table>
+  <tr><th>o que você vê</th><th>o que reportar</th></tr>
+  <tr><td>o relevo treme com a galáxia a girar</td><td>uma foto e o <code>Effect</code></td></tr>
+  <tr><td>em <code>Each Shape</code>, os discos do meio diferentes dos da beira</td><td>o
+      <code>Effect</code> e uma foto</td></tr>
+  <tr><td>em <code>Whole Layer</code>, a borda continua entre discos que se tocam</td><td>uma foto</td></tr>
+  <tr><td>o efeito sai por cima dos painéis ou do grafo</td><td>uma foto da janela inteira</td></tr>
+  <tr><td>a franja aparece no centro</td><td>o valor de <code>Aberration</code></td></tr>
+  <tr><td>o grão mexe com o tempo parado</td><td>se o relógio estava parado mesmo</td></tr>
+</table>
+
+<footer>PH2D · Motion Nodes · ciclo 20 (doc 129) · cena <code>PH2D_GPU_COOK_DEMO=135</code> · a lente
+conferida contra o ffmpeg e o ImageMagick, corridos sobre as nossas entradas</footer>

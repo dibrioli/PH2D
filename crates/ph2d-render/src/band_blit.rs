@@ -267,6 +267,20 @@ impl BandBlit {
         src: &wgpu::TextureView,
         source: BandSource,
     ) {
+        self.blit_rect(gpu, target, src, source, None);
+    }
+
+    /// O [`Self::blit`] com `src` INTEIRO esticado sobre o retângulo `[x, y, w, h]` do alvo (o resto
+    /// do alvo fica intacto) — a camada filtrada do Motion, que só corre na área da cena.
+    /// `None` = o alvo inteiro.
+    pub fn blit_rect(
+        &self,
+        gpu: &GpuContext,
+        target: &wgpu::TextureView,
+        src: &wgpu::TextureView,
+        source: BandSource,
+        rect: Option<[u32; 4]>,
+    ) {
         let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-render band blit bg"),
             layout: &self.bgl,
@@ -309,6 +323,11 @@ impl BandBlit {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+            if let Some([x, y, w, h]) = rect {
+                #[allow(clippy::cast_precision_loss)]
+                pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
+                pass.set_scissor_rect(x, y, w, h);
+            }
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bg, &[]);
             pass.set_bind_group(3, self.luz.ligar(source.recebe_luz()), &[]);

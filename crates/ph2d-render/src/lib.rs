@@ -35,6 +35,8 @@ pub mod cooked_texture;
 pub mod frost;
 pub mod fx_atlas;
 pub mod fx_stack;
+/// A pilha sobre um RETÂNGULO da camada (o da cena) — irmão pelo LOC cap.
+mod fx_stack_camada;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
 mod fx_stack_field;
 mod fx_stack_noise;
@@ -122,7 +124,7 @@ pub use compressed_pipeline::{
 };
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use frost::{FROST_VEIL_ALPHA, FROST_VEIL_DIM, FrostPass};
-pub use fx_stack::{FxOpGpu, FxStackPass, Origem, stack_reach, stack_read};
+pub use fx_stack::{FxOpGpu, FxStackPass, Origem, retangulo_da_camada, stack_reach, stack_read};
 pub use fx_stack_res::make_output_texture;
 pub use game_rt::GameRt;
 pub use image_filter::{

@@ -5774,6 +5774,7 @@ dependencies = [
  "ph2d-fx-op",
  "ph2d-gpu",
  "ph2d-host",
+ "ph2d-lens",
  "ph2d-render",
  "ph2d-shape-gpu",
  "ph2d-vector",

@@ -46,7 +46,8 @@ struct Alvos {
     /// A camada no espaço do DESENHISTA, pré-multiplicada (sprites + formas).
     camada: wgpu::Texture,
     camada_view: wgpu::TextureView,
-    /// A saída da pilha: sRGB reto, `Rgba8Unorm`.
+    /// A saída da pilha: sRGB reto, `Rgba8Unorm`, do tamanho do RETÂNGULO em que ela corre
+    /// ([`ph2d_render::retangulo_da_camada`]).
     saida: wgpu::Texture,
     saida_view: wgpu::TextureView,
 }
@@ -152,7 +153,7 @@ impl Alvos {
         let vista = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
         let linear = vista(&alvo("motion_filtro_linear"));
         let camada = alvo("motion_filtro_camada");
-        let saida = ph2d_render::make_output_texture(gpu, w, h);
+        let saida = ph2d_render::make_output_texture(gpu, w.max(1), h.max(1));
         Self {
             tamanho: (w, h),
             linear,
@@ -160,6 +161,18 @@ impl Alvos {
             camada,
             saida_view: vista(&saida),
             saida,
+        }
+    }
+}
+
+impl Alvos {
+    /// A saída da pilha com `w × h` (o retângulo da camada muda com os painéis, raramente).
+    fn saida_para(&mut self, gpu: &ph2d_gpu::GpuContext, (w, h): (u32, u32)) {
+        if (self.saida.width(), self.saida.height()) != (w, h) {
+            self.saida = ph2d_render::make_output_texture(gpu, w, h);
+            self.saida_view = self
+                .saida
+                .create_view(&wgpu::TextureViewDescriptor::default());
         }
     }
 }
@@ -264,7 +277,7 @@ impl MotionState {
             alvos,
             celulas,
         } = self.filtro.placa(e.gpu, tamanho);
-        let Some(alvos) = alvos.as_ref() else {
+        let Some(alvos) = alvos.as_mut() else {
             return false;
         };
         if ops_forma.is_empty() {
@@ -323,22 +336,32 @@ impl MotionState {
                 tamanho,
             });
         }
+        // A pilha só no que se VÊ: o retângulo da cena, alargado pelo que ela lê e espalha (doc
+        // 129 §5.7 — a 4K, 2,01 → 0,77 ms).
         let (w, h) = tamanho;
+        let cena = e
+            .scene_viewport
+            .map_or([0, 0, w, h], crate::motion_lens::rect_em_pixels);
+        let rect = ph2d_render::retangulo_da_camada(cena, tamanho, &ops_camada);
+        if rect[2] == 0 || rect[3] == 0 {
+            return true;
+        }
+        alvos.saida_para(e.gpu, (rect[2], rect[3]));
         let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
-        pilha.run_layer(
+        pilha.run_layer_rect(
             e.gpu,
             &alvos.camada,
+            rect,
             &alvos.saida,
-            w,
-            h,
             &ops_camada,
             origem,
         );
-        e.band_blit.blit(
+        e.band_blit.blit_rect(
             e.gpu,
             e.mundo.blend_view(),
             &alvos.saida_view,
             BandSource::Vector,
+            Some(rect),
         );
         true
     }

@@ -19,7 +19,7 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 /// Estrelas por lado de cada galáxia.
 pub(crate) const LADO: f32 = 16.0;
 /// O vão da grelha de partida (metros).
-const VAO: f32 = 0.32;
+pub(crate) const VAO: f32 = 0.32;
 /// O tamanho da estrela desenhada.
 const ESTRELA: f32 = 0.13;
 /// Onde cada galáxia fica no mundo (`± COL_X`).

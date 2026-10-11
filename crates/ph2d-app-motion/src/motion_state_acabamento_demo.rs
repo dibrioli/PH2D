@@ -11,7 +11,10 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
-const ESTRELA: f32 = 0.15;
+/// O RAIO do disco: o diâmetro `0,4` passa o vão da grelha (`0,32` entre centros) ⇒ os vizinhos SE
+/// TOCAM, e o passo (1) mostra a diferença entre `Each Shape` e `Whole Layer` (a `0,15` sobrava um
+/// vão de `0,02` e a foto dos dois saía igual, W4).
+const ESTRELA: f32 = 0.2;
 const AZUL: [f32; 4] = [0.05, 0.2, 1.0, 1.0];
 const LARANJA: [f32; 4] = [1.0, 0.55, 0.05, 1.0];
 /// O `Color Space` OKLCH Shorter do `Tint` (o da `=133`).
@@ -102,7 +105,54 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
 }
 
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    monta(doc, reg).map(|c| vec![c.saida])
+    let cena = monta(doc, reg)?;
+    if let Some(n) = std::env::var("PH2D_ACABAMENTO_PASSO").ok() {
+        if !passo(&mut doc.graph, &cena, n.trim()) {
+            eprintln!(
+                "[o acabamento] PH2D_ACABAMENTO_PASSO={n}: passo desconhecido, cena de sempre"
+            );
+        }
+    }
+    Some(vec![cena.saida])
+}
+
+/// O caminho do `.cube` que o passo (7) nomeia, relativo à raiz do repo.
+pub(crate) const LUT_QUENTE: &str = "docs/Motion Nodes/tutoriais/luts/quente.cube";
+
+/// Os passos que [`passo`] reconhece, pela ordem do roteiro (`0` = a cena como abre).
+pub(crate) const PASSOS: [&str; 13] = [
+    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8",
+];
+
+/// **Um passo do roteiro já feito** — `PH2D_ACABAMENTO_PASSO=<passo>`, a porta das FOTOS: os
+/// eventos sintéticos não chegam à tela virtual, logo cada foto é a cena com o param do passo
+/// escrito pelo MESMO gesto do cartão (o `switch_kind` no `Effect`). `false` = passo
+/// desconhecido, e a cena fica a de sempre ao bit.
+pub(crate) fn passo(g: &mut Graph, c: &Cena, n: &str) -> bool {
+    use ph2d_node_fx_filter::param::SCOPE;
+    use ph2d_node_fx_lens::param as l;
+    match n {
+        "0" => {}
+        "1" => g.set_param(c.forma, SCOPE, 1.0),
+        "2" => ph2d_node_fx_filter::switch_kind(g, c.forma, ph2d_ecs::FxOp::INNER_SHADOW),
+        "3" => g.set_param(c.camada, SCOPE, 0.0),
+        "4" => {
+            g.set_param(c.forma, SCOPE, 1.0);
+            g.set_param(c.camada, SCOPE, 0.0);
+        }
+        "5" => g.set_param(c.lente, l::VIN, 0.0),
+        "5b" => g.set_param(c.lente, l::VIN, -0.5),
+        "6" => g.set_param(c.lente, l::AB, 0.03),
+        "7a" => g.set_param(c.lente, l::TEMPERATURE, 0.5),
+        "7b" => g.set_param(c.lente, l::SATURATION, -1.0),
+        "7c" => g.set_param(c.lente, l::EXPOSURE, 1.0),
+        "7d" => g.set_text_param(c.lente, ph2d_node_fx_lens::LUT, LUT_QUENTE),
+        "8" => g.set_param(c.lente, l::GRAIN, 0.4),
+        // Fora do roteiro, uma MEDIÇÃO (doc 129 §7): a saída em `Add` manda as formas ao Vello.
+        "mistura" => g.set_param(c.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0),
+        _ => return false,
+    }
+    true
 }
 
 /// A ficha, por baixo da galáxia.
@@ -153,3 +203,6 @@ pub(super) fn announce() {
 #[cfg(test)]
 #[path = "motion_state_acabamento_demo_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "motion_state_acabamento_tutorial_tests.rs"]
+mod tutorial_tests;

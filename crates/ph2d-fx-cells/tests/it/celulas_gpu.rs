@@ -566,130 +566,227 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
     }
 }
 
-/// **O RELÓGIO** (doc 129 §3.4, `MEDIR_VELOCIDADE.md`): «cada forma» contra «a camada inteira»,
-/// a 256 e a 4 096 discos que se tocam, a sombra interna (σ 5,3 px, deslocada 6 px) — numa camada
-/// de 1600×972. As duas variantes no MESMO processo, intercaladas em blocos, o MÍNIMO de cada.
-/// Inclui a leitura das caixas (a espera pela placa). Imprime; não reprova.
+/// A lente com as QUATRO secções ligadas (o pior caso do passe: a aberração amostra 16 nós).
+fn lente_cheia() -> ph2d_lens::Lente {
+    use ph2d_lens::{Aberracao, Grade, Grao, Lente, Vinheta};
+    Lente {
+        aberracao: Aberracao {
+            amount: 0.03,
+            linear: false,
+            angle: 0.0,
+        },
+        vinheta: Vinheta {
+            amount: 0.5,
+            midpoint: 0.9,
+            roundness: 0.0,
+            feather: 0.5,
+            center: [0.0; 2],
+            cor: [0.0; 3],
+        },
+        grade: Grade {
+            exposure: 0.2,
+            temperatura: 0.3,
+            matiz: 0.1,
+            contraste: 0.2,
+            saturacao: 0.25,
+            lut_mix: 0.0,
+        },
+        grao: Grao {
+            amount: 0.4,
+            size: 2.0,
+            response: 0.5,
+            colorido: true,
+            animado: true,
+            semente: 77,
+        },
+    }
+}
+
+/// **O RELÓGIO** (doc 129 §3.4 e §4 W4, `MEDIR_VELOCIDADE.md`): «cada forma» contra «a camada
+/// inteira», a 256 e a 4 096 discos que se tocam, a sombra interna (σ 5,3 px, deslocada 6 px) — a
+/// 1600×972 e a 4K. Ao lado, o que custaria a cura do sub-rect (a camada inteira num retângulo de
+/// 55 % × 55 %, a fração da cena na foto de 1600×972) e a lente com as quatro secções na janela
+/// inteira. As variantes no MESMO processo, intercaladas em blocos, o MÍNIMO de cada. Inclui a
+/// leitura das caixas (a espera pela placa). Imprime; não reprova.
+///
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-fx-cells --test it relogio -- --ignored --nocapture`
 #[test]
 #[ignore = "medição de GPU"]
+#[expect(
+    clippy::too_many_lines,
+    reason = "uma bancada: as variantes lado a lado"
+)]
 fn relogio_cada_forma_contra_camada_inteira() {
-    const LW: u32 = 1600;
-    const LH: u32 = 972;
     let Some(gpu) = gpu() else {
         return;
     };
     let mut b = Banca::new(gpu);
+    let mut lente = ph2d_render::LensPass::new(&b.gpu, ph2d_render::WorldRt::FORMAT);
+    let cheia = lente_cheia();
     let ops = [sombra_interna(false)];
-    let alvo = |gpu: &GpuContext| {
-        gpu.device.create_texture(&wgpu::TextureDescriptor {
+    for (lw, lh) in [(1600u32, 972u32), (3840, 2160)] {
+        let (sw, sh) = (lw * 55 / 100, lh * 55 / 100);
+        let mundo = b.gpu.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: wgpu::Extent3d {
-                width: LW,
-                height: LH,
+                width: lw,
+                height: lh,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: FORMATO,
+            format: ph2d_render::WorldRt::FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_SRC,
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
-        })
-    };
-    let k = 12.0f32;
-    let vista = ShapeView {
-        lin: [k, 0.0, 0.0, -k],
-        t: [LW as f32 * 0.5, LH as f32 * 0.5],
-        alvo: [LW as f32, LH as f32],
-    };
-    let cam = Camera2d {
-        height_world: LH as f32 / k,
-        ..Camera2d::default()
-    };
-    for lado in [16i32, 64] {
-        let ds: Vec<ShapeInstance> = (0..lado)
-            .flat_map(|j| {
-                (0..lado).map(move |i| ShapeInstance {
-                    size: [1.0, 1.0],
-                    ..disco((i - lado / 2) as f32, (j - lado / 2) as f32)
-                })
+        });
+        let vm = mundo.create_view(&wgpu::TextureViewDescriptor::default());
+        let alvo = |gpu: &GpuContext| {
+            gpu.device.create_texture(&wgpu::TextureDescriptor {
+                label: None,
+                size: wgpu::Extent3d {
+                    width: lw,
+                    height: lh,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: FORMATO,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
             })
-            .collect();
-        let buf = b.copias(&ds);
-        let (camada, saida, formas) = (
-            alvo(&b.gpu),
-            make_output_texture(&b.gpu, LW, LH),
-            alvo(&b.gpu),
-        );
-        let (vc, vf) = (
-            camada.create_view(&wgpu::TextureViewDescriptor::default()),
-            formas.create_view(&wgpu::TextureViewDescriptor::default()),
-        );
-        let n = ds.len() as u32;
-        let mut cada = f64::MAX;
-        let mut inteira = f64::MAX;
-        let mut paginas = 0;
-        for _bloco in 0..12 {
-            let t0 = std::time::Instant::now();
-            b.celulas.corre(Entrada {
-                gpu: &b.gpu,
-                renderer: &mut b.renderer,
-                camera: &cam,
-                window: WindowSize {
-                    width: LW,
-                    height: LH,
-                },
-                scene_viewport: None,
-                sprites: Sprites::Cpu(&[]),
-                formas: Some(Formas {
-                    buffer: &buf,
-                    n,
-                    vista,
-                }),
-                ops: &ops,
-                pilha: &mut b.pilha,
-                camada: &vc,
-                tamanho: (LW, LH),
-            });
-            b.pilha
-                .run_layer(&b.gpu, &camada, &saida, LW, LH, &[], Origem::Margem);
-            let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
-            cada = cada.min(t0.elapsed().as_secs_f64() * 1e3);
-            paginas = b.celulas.ultimas_paginas().len();
-
-            let t0 = std::time::Instant::now();
-            let mut enc = b
-                .gpu
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-            b.placa.draw(
-                &b.gpu,
-                &mut enc,
-                &vf,
-                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                vista,
-                Copias {
-                    buffer: &buf,
-                    count: n,
-                },
+        };
+        let k = 12.0f32;
+        let vista = ShapeView {
+            lin: [k, 0.0, 0.0, -k],
+            t: [lw as f32 * 0.5, lh as f32 * 0.5],
+            alvo: [lw as f32, lh as f32],
+        };
+        let cam = Camera2d {
+            height_world: lh as f32 / k,
+            ..Camera2d::default()
+        };
+        for lado in [16i32, 64] {
+            let ds: Vec<ShapeInstance> = (0..lado)
+                .flat_map(|j| {
+                    (0..lado).map(move |i| ShapeInstance {
+                        size: [1.0, 1.0],
+                        ..disco((i - lado / 2) as f32, (j - lado / 2) as f32)
+                    })
+                })
+                .collect();
+            let buf = b.copias(&ds);
+            let (camada, saida, formas) = (
+                alvo(&b.gpu),
+                make_output_texture(&b.gpu, lw, lh),
+                alvo(&b.gpu),
             );
-            b.gpu.queue.submit([enc.finish()]);
-            b.colagem.blit(&b.gpu, &vc, &vf, BandSource::Formas);
-            b.pilha
-                .run_layer(&b.gpu, &camada, &saida, LW, LH, &ops, Origem::Margem);
-            let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
-            inteira = inteira.min(t0.elapsed().as_secs_f64() * 1e3);
+            let (vc, vf) = (
+                camada.create_view(&wgpu::TextureViewDescriptor::default()),
+                formas.create_view(&wgpu::TextureViewDescriptor::default()),
+            );
+            let n = ds.len() as u32;
+            let mut cada = f64::MAX;
+            let mut inteira = f64::MAX;
+            let mut sub = f64::MAX;
+            let mut janela = f64::MAX;
+            let mut pilha_sub = FxStackPass::new(&b.gpu);
+            let mut paginas = 0;
+            for _bloco in 0..12 {
+                let t0 = std::time::Instant::now();
+                b.celulas.corre(Entrada {
+                    gpu: &b.gpu,
+                    renderer: &mut b.renderer,
+                    camera: &cam,
+                    window: WindowSize {
+                        width: lw,
+                        height: lh,
+                    },
+                    scene_viewport: None,
+                    sprites: Sprites::Cpu(&[]),
+                    formas: Some(Formas {
+                        buffer: &buf,
+                        n,
+                        vista,
+                    }),
+                    ops: &ops,
+                    pilha: &mut b.pilha,
+                    camada: &vc,
+                    tamanho: (lw, lh),
+                });
+                b.pilha
+                    .run_layer(&b.gpu, &camada, &saida, lw, lh, &[], Origem::Margem);
+                let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                cada = cada.min(t0.elapsed().as_secs_f64() * 1e3);
+                paginas = b.celulas.ultimas_paginas().len();
+
+                let t0 = std::time::Instant::now();
+                let mut enc = b
+                    .gpu
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+                b.placa.draw(
+                    &b.gpu,
+                    &mut enc,
+                    &vf,
+                    wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    vista,
+                    Copias {
+                        buffer: &buf,
+                        count: n,
+                    },
+                );
+                b.gpu.queue.submit([enc.finish()]);
+                b.colagem.blit(&b.gpu, &vc, &vf, BandSource::Formas);
+                b.pilha
+                    .run_layer(&b.gpu, &camada, &saida, lw, lh, &ops, Origem::Margem);
+                let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                inteira = inteira.min(t0.elapsed().as_secs_f64() * 1e3);
+
+                // A cura do sub-rect: a MESMA camada, a pilha só sobre o retângulo da cena (uma
+                // pilha à parte — alternar o tamanho na mesma realocaria o trabalho a cada bloco).
+                let t0 = std::time::Instant::now();
+                let mut enc = b
+                    .gpu
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+                b.placa.draw(
+                    &b.gpu,
+                    &mut enc,
+                    &vf,
+                    wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    vista,
+                    Copias {
+                        buffer: &buf,
+                        count: n,
+                    },
+                );
+                b.gpu.queue.submit([enc.finish()]);
+                b.colagem.blit(&b.gpu, &vc, &vf, BandSource::Formas);
+                pilha_sub.run_layer(&b.gpu, &camada, &saida, sw, sh, &ops, Origem::Margem);
+                let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                sub = sub.min(t0.elapsed().as_secs_f64() * 1e3);
+
+                let t0 = std::time::Instant::now();
+                assert!(lente.aplica(&b.gpu, &mundo, &vm, [0, 0, lw, lh], &cheia, 3));
+                let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                janela = janela.min(t0.elapsed().as_secs_f64() * 1e3);
+            }
+            eprintln!(
+                "[relógio] {lw}×{lh} · {n} discos: cada forma {cada:.2} ms ({paginas} página(s)) · camada inteira \
+             {inteira:.2} ms · camada no sub-rect {sw}×{sh} {sub:.2} ms · lente (4 secções) {janela:.2} ms · load {}",
+                std::fs::read_to_string("/proc/loadavg")
+                    .unwrap_or_default()
+                    .split(' ')
+                    .next()
+                    .unwrap_or("?")
+            );
         }
-        eprintln!(
-            "[relógio] {n} discos: cada forma {cada:.2} ms ({paginas} página(s)) · camada inteira {inteira:.2} ms · \
-             load {}",
-            std::fs::read_to_string("/proc/loadavg")
-                .unwrap_or_default()
-                .split(' ')
-                .next()
-                .unwrap_or("?")
-        );
     }
 }

@@ -190,7 +190,7 @@ Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illu
 | W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | ✅ §5.2 |
 | W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | ✅ §5.3 (+ a cena `=135` com a lente; o filtro entra na W3) |
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | ✅ §5.4 (+ a `=135` com uma sombra projectada) |
-| W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | ✅ §5.6 |
+| W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | ✅ §5.6 · smoke do dono APROVADO 11/10 |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
 | W5 | provas de mutação · o handoff | — |
 

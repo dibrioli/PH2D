@@ -161,7 +161,7 @@ impl MotionLente {
     clippy::cast_sign_loss,
     reason = "o split dá pixels inteiros e não negativos"
 )]
-fn rect_em_pixels(v: [f32; 4]) -> [u32; 4] {
+pub(crate) fn rect_em_pixels(v: [f32; 4]) -> [u32; 4] {
     v.map(|c| c.max(0.0) as u32)
 }
 

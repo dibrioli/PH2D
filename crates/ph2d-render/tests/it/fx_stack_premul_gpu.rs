@@ -10,67 +10,7 @@
 use ph2d_fx_op::FxOp;
 use ph2d_render::{FxStackPass, Origem, make_output_texture};
 
-use crate::fx_stack_common::{make_src, op, readback, try_headless_gpu};
-
-/// `f32` → meio-float (arredondado ao mais próximo), para escrever a camada `Rgba16Float`.
-fn f16(v: f32) -> u16 {
-    let b = v.to_bits();
-    let sinal = ((b >> 16) & 0x8000) as u16;
-    let exp = ((b >> 23) & 0xff) as i32 - 127 + 15;
-    let man = b & 0x007f_ffff;
-    if exp <= 0 {
-        if exp < -10 {
-            return sinal;
-        }
-        let m = (man | 0x0080_0000) >> (14 - exp);
-        return sinal | m as u16;
-    }
-    let h = (exp as u32) << 10 | man >> 13;
-    sinal | (h + ((man >> 12) & 1)) as u16
-}
-
-/// A CAMADA como o Motion a monta: `Rgba16Float`, sRGB codificado e PRÉ-multiplicado.
-fn camada(gpu: &ph2d_gpu::GpuContext, w: u32, h: u32, reto: &[[f32; 4]]) -> wgpu::Texture {
-    let bytes: Vec<u8> = reto
-        .iter()
-        .flat_map(|&[r, g, b, a]| [r * a, g * a, b * a, a])
-        .flat_map(|v| f16(v).to_le_bytes())
-        .collect();
-    let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("test camada do motion"),
-        size: wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba16Float,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
-    });
-    gpu.queue.write_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture: &tex,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        &bytes,
-        wgpu::TexelCopyBufferLayout {
-            offset: 0,
-            bytes_per_row: Some(w * 8),
-            rows_per_image: Some(h),
-        },
-        wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-    );
-    tex
-}
+use crate::fx_stack_common::{camada, make_src, op, readback, try_headless_gpu};
 
 /// ⭐ **A mesma imagem, reta ou pré-multiplicada, sai igual** — sob a pilha vazia, um borrão, uma
 /// sombra e um ajuste de cor, numa rampa de cobertura colorida (onde des-pré-multiplicar no sítio

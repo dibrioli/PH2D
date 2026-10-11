@@ -23,6 +23,8 @@ bytemuck = { version = "1", features = ["derive"] }
 [dev-dependencies]
 # O disco da fixtura (o `Circle` do kurbo, pela porta única).
 ph2d-vector = { path = "../ph2d-vector" }
+# A lente do relógio (o passe da lente ao lado da camada, no MESMO processo).
+ph2d-lens = { path = "../ph2d-lens" }
 
 [lints]
 workspace = true

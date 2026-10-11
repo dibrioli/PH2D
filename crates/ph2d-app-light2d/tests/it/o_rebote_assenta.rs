@@ -59,17 +59,33 @@ fn o_rebote_assenta_em_dez_quadros() {
             historia.push(pts.iter().map(|&p| fl.amostra(p)).collect());
         }
         let fim = historia.last().expect("120 quadros").clone();
-        historia
+        let q = historia
             .iter()
             .position(|h| {
                 h.iter()
                     .zip(&fim)
                     .all(|(x, y)| (x - y).abs() <= 0.01 * y.abs())
             })
-            .map_or(usize::MAX, |q| q + 1)
+            .map_or(usize::MAX, |q| q + 1);
+        (q, fim)
     };
-    let (produto, controlo) = (quadros(d.rebotes_por_quadro), quadros(1));
-    eprintln!("K9 · Baixo: 1 % no quadro {produto} (um rebote por quadro: {controlo})");
+    let ((produto, fim), (controlo, fim1)) = (quadros(d.rebotes_por_quadro), quadros(1));
+    // O mesmo ponto fixo: o 2.º rebote repõe a emissão de BASE (a soma é aditiva) — sem a reposição
+    // ele convergia, depressa, para OUTRO valor.
+    let dif = fim
+        .iter()
+        .zip(&fim1)
+        .map(|(x, y)| (x - y).abs() / y.abs().max(1e-9))
+        .fold(0.0, f64::max);
+    eprintln!(
+        "K9 · Baixo: 1 % no quadro {produto} (um rebote por quadro: {controlo}) · o convergido difere {:.2} %",
+        100.0 * dif
+    );
+    assert!(
+        dif <= 0.005,
+        "dois rebotes por quadro convergem para OUTRO valor ({:.2} %)",
+        100.0 * dif
+    );
     assert!(
         controlo > K9,
         "o controlo de um rebote por quadro assenta em {controlo} — a régua não vê o K9"

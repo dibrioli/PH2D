@@ -423,6 +423,17 @@ fn a_cena_6_ensina_as_formas_desenhadas() {
         ["Círculo", "Elipse"],
         "o nome que aparece na Hierarchy"
     );
+    // O chão no FUNDO: sem `RootOrder` uma raiz desenha na frente e cobria os desenhos (a foto).
+    let chao = w
+        .query::<(&Name, &ph2d_ecs::RootOrder)>()
+        .iter(&w)
+        .find(|(n, _)| n.as_str() == "Chão")
+        .map(|(_, o)| o.0);
+    assert_eq!(
+        chao,
+        Some(0),
+        "o chão da cena 6 desenha por baixo dos desenhos"
+    );
 
     let mut r = crate::comum::renderer(&gpu);
     let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)

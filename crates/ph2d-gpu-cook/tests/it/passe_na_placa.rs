@@ -194,13 +194,21 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
         return;
     };
     let mut cook = GpuCook::default();
+    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo.
+    for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+        cook.passe_um_grupo_ate(Some(tecto));
+        compara_por_passo(&gpu, &mut cook, caminho);
+    }
+}
+
+fn compara_por_passo(gpu: &ph2d_gpu::GpuContext, cook: &mut GpuCook, caminho: &str) {
     for (nome, s) in fixturas() {
         let alc = alcance_max(&s);
         for v in PASSOS {
             let (cpu, rel) = separa_com_relatorio(&s, v as usize);
             let cpu = cpu.unwrap_or_else(|| s.clone());
             let (gp, gr, gv) = cook
-                .separa_e_le(&gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
+                .separa_e_le(gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
                 .unwrap_or_else(|| panic!("{nome}: a placa recusou um passe que a CPU corre"));
             let (cp, cr) = (coluna_p(&cpu), coluna_rot(&cpu));
             let mut pior = 0.0_f32;
@@ -218,7 +226,7 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
                 pior_rot = pior_rot.max((cr[i] - gr[i]).abs());
             }
             eprintln!(
-                "{nome:<28} v={v}: |ΔP|/alc = {:.2e} · |Δrot| = {pior_rot:.2e}° · varreduras CPU {} placa {gv}",
+                "{caminho:<9} {nome:<28} v={v}: |ΔP|/alc = {:.2e} · |Δrot| = {pior_rot:.2e}° · varreduras CPU {} placa {gv}",
                 pior / alc,
                 rel.varreduras,
             );
@@ -323,5 +331,115 @@ fn measure_o_passe_cpu_contra_placa() {
             placa * 1e3,
             cpu / placa
         );
+    }
+}
+
+/// Sonda (não afirma nada): o preço de ENCOMENDAR muitas varreduras — o tecto do cartão é `4096`.
+/// `cargo test --release -p ph2d-gpu-cook --test it measure_o_encode -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: mede, não julga"]
+fn measure_o_encode_por_varreduras() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut cook = GpuCook::default();
+    for n in [256usize, 1_000, 2_048, 4_096, 32_761] {
+        let lado = (n as f32).sqrt() * 0.42;
+        let mut semente = 11u32;
+        let p: Vec<[f32; 2]> = (0..n)
+            .map(|_| [lcg(&mut semente) * lado, lcg(&mut semente) * lado])
+            .collect();
+        let mut s = corrente(p);
+        esc(&mut s, COLLIDER_COLUMN, vec![0.25; n]);
+        for (caminho, v, tecto) in [8u32, 64, 512]
+            .into_iter()
+            .flat_map(|v| [("despachos", v, 0), ("um grupo", v, u32::MAX)])
+        {
+            cook.passe_um_grupo_ate(Some(tecto));
+            let (mut enc, mut tot) = (f64::MAX, f64::MAX);
+            let mut corridas = 0;
+            for _ in 0..3 {
+                let t = std::time::Instant::now();
+                let r = cook.separa_e_le(&gpu, &s, v, 0.0).expect("corre");
+                tot = tot.min(t.elapsed().as_secs_f64());
+                enc = enc.min(cook.passe_encode().as_secs_f64());
+                corridas = r.2;
+            }
+            eprintln!(
+                "{caminho:<9} n = {n:>6} · {v:>4} varreduras ({corridas} correram): encomenda {:>8.2} ms · total {:>8.2} ms",
+                enc * 1e3,
+                tot * 1e3
+            );
+        }
+    }
+}
+
+/// Sonda (não afirma nada): a CADEIA — o regime das muitas varreduras (`~n²`, doc 115 §18) —,
+/// CPU × placa com a paragem do produto, mínimo de 3.
+/// `cargo test --release -p ph2d-gpu-cook --test it measure_a_cadeia -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: mede, não julga"]
+fn measure_a_cadeia_cpu_contra_placa() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut cook = GpuCook::default();
+    for n in [16usize, 32, 256] {
+        let mut s = corrente((0..n).map(|i| [i as f32 * 0.5, 0.0]).collect());
+        par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.5, 0.5]; n]);
+        for v in [64u32, 1024, 4096] {
+            let (mut cpu, mut desp, mut uno) = (f64::MAX, f64::MAX, f64::MAX);
+            let (mut vc, mut vg) = (0, 0);
+            for _ in 0..3 {
+                let t = std::time::Instant::now();
+                let (_, r) = separa_com_relatorio(&s, v as usize);
+                cpu = cpu.min(t.elapsed().as_secs_f64());
+                vc = r.varreduras;
+                for (tecto, melhor) in [(0, &mut desp), (u32::MAX, &mut uno)] {
+                    cook.passe_um_grupo_ate(Some(tecto));
+                    let t = std::time::Instant::now();
+                    let g = cook
+                        .separa_e_le(&gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
+                        .expect("corre");
+                    *melhor = melhor.min(t.elapsed().as_secs_f64());
+                    vg = g.2;
+                }
+            }
+            eprintln!(
+                "cadeia n = {n:>3} · tecto {v:>4}: CPU {:>8.2} ms ({vc} varr.) · despachos {:>8.2} · um grupo {:>8.2} ms ({vg} varr.)",
+                cpu * 1e3,
+                desp * 1e3,
+                uno * 1e3
+            );
+        }
+    }
+}
+
+/// ⭐ **O `Relatorio` sai da placa SEM espera e diz o que a CPU diz** (doc 130 §5): as varreduras
+/// que correram e as peças, nos dois caminhos; os vizinhos são os da grelha da placa (`> 0`).
+#[test]
+fn o_relatorio_da_placa_diz_o_que_a_cpu_diz() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut cook = GpuCook::default();
+    for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+        cook.passe_um_grupo_ate(Some(tecto));
+        for (nome, s) in fixturas() {
+            let (_, rel) = separa_com_relatorio(&s, 8);
+            // Uma leitura antiga em voo não pode responder por esta: esvazia-a primeiro.
+            let mut lido = None;
+            for _ in 0..2 {
+                let _ = cook.separa_e_le(&gpu, &s, 8, ph2d_contact::REPOUSO_VISIVEL);
+                for _ in 0..20 {
+                    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                    lido = cook.relatorio_do_passe(&gpu);
+                }
+            }
+            let r = lido.unwrap_or_else(|| panic!("{caminho} {nome}: nenhuma leitura"));
+            assert_eq!(r.varreduras, rel.varreduras, "{caminho} {nome}: varreduras");
+            assert_eq!(r.pecas, s.count(), "{caminho} {nome}: pecas");
+            assert!(r.candidatos > 0, "{caminho} {nome}: a grelha viu vizinhos");
+        }
     }
 }

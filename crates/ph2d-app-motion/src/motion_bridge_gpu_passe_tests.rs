@@ -129,6 +129,22 @@ fn as_cenas_do_passe_com_collide_correm_na_placa_e_dao_o_que_a_cpu_da() {
             fp.len()
         );
         assert_eq!(fp.len(), fc.len(), "={cena}: o numero de formas");
+        // O painel de medição lê a rota que DESENHOU (doc 130 §5): a placa publica o `Relatorio`
+        // sem espera, num quadro seguinte.
+        for t in 1..=4 {
+            let _ = cook_gpu(&mut m, &gpu, TIQUE + t, DT, &scopes);
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        }
+        let r = m.pump.ultimo_relatorio();
+        assert_eq!(
+            r.pecas,
+            cpu.pump.ultimo_relatorio().pecas,
+            "={cena}: pecas do relatorio"
+        );
+        assert!(
+            r.varreduras >= 1,
+            "={cena}: o relatorio da placa chegou ao painel"
+        );
         if cena != 114 {
             assert!(
                 controlo > MEXE,

@@ -71,22 +71,38 @@ entra no MESMO `submit` do cozimento.
   linhas (`com_colisor`), e a CPU também não separa nada — sem isto a cerca mandava para a CPU toda
   cena com um objecto por carregar (apanhado pelo irmão `#[ignore]` da ponte no portão de fecho).
 
+## Depois do smoke («smoke OK. vamos seguir») — os dois abertos, num bloco
+
+6. **As muitas varreduras.** Medido: encomendar é barato (`2,4 µs`/varredura), mas a placa paga
+   `~0,2 ms` FIXOS por varredura no caminho de despachos — a cadeia de 16 peças a 1024 varreduras
+   custava `116 ms` contra `1,9 ms` da CPU (regressão que esta onda tinha criado). Cura: até `1 024`
+   peças o passe inteiro corre num SÓ GRUPO (`passe_na_placa_uno.wgsl`, as fases por barreira, a
+   paragem sai do laço) → `11,3 ms`; tabela e limite medido no [doc 130 §3.1](../130_o_passe_na_placa.md).
+   ⛔ «todos os pares» sem grelha foi construído, medido intercalado e RECUSADO (perde sempre).
+7. **O `Relatorio` lido da placa**: varreduras e candidatos no `ctrl`, cópia mapeada SEM espera no
+   quadro seguinte (`GpuCook::relatorio_do_passe`), publicada na bomba (`publica_relatorio`) — o
+   perfilador do quadro lê a rota que desenhou. Gates: `o_relatorio_da_placa_diz_o_que_a_cpu_diz`
+   (os dois caminhos, varreduras e peças iguais à CPU) e o das cenas (o painel recebe-o).
+   Mutações 4/4: a cópia final do grupo, os candidatos, a publicação na híbrida, a paragem do grupo.
+
 ## ABERTO (nomeado)
 
-- O `Relatorio` (varreduras · peças · vizinhos do perfilador do quadro) não é lido da placa: sob a
-  rota da placa o perfilador mostra o último da CPU. Ler de volta é uma leitura assíncrona por medir.
-- Cada varredura são ~6 despachos + o `scan`; a `4096` (o tecto do cartão) são ~30 mil despachos por
-  quadro, a maioria vazios depois da paragem — o custo de CPU do encode a esse tecto está por medir.
-  Os grupos de ligação e o uniform do passe recriam-se por cozimento (não usam as `Ligacoes`).
+- A cadeia pequena com muitas varreduras ainda custa `1,7`–`6×` a CPU na placa (o piso é a latência
+  de um multiprocessador, ~20 barreiras por varredura, metade no `scan`). Candidato: o `scan` por
+  subgrupos. Os grupos de ligação e o uniform do passe recriam-se por cozimento (não usam as `Ligacoes`).
 - A grelha é de UMA camada (`2·alcance_max`): uma peça grande infla a célula de todas, como o
   caminho de omissão da CPU (as duas camadas da CPU estão desligadas por omissão).
 - `RECUSA_COLISOR` (o colisor escrito PELO NOME num text param) continua na CPU — fora desta ordem.
 - Os abertos anteriores continuam (ver o handoff anterior).
 
+## Smoke do dono
+
+✅ **11/10: «smoke OK»** — a `=122` pela placa, com o gizmo alinhado (depois do item 5).
+
 ## Próxima janela
 
-Por decidir pelo Enio (o smoke desta onda é dele). Candidatos: o `Relatorio` lido da placa; medir o
-encode a `4096` varreduras; o `Boundaries` híbrido do handoff anterior.
+Por decidir pelo Enio. Candidatos: o `scan` do grupo por subgrupos (a cadeia pequena); o
+`Boundaries` híbrido do handoff anterior.
 
 ## Portão de fecho (`verificador`, sobre `0e75bf12e..HEAD`)
 

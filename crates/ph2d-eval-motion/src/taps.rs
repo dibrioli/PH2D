@@ -256,4 +256,10 @@ impl MotionCookPump {
     pub fn ultimo_relatorio(&self) -> ph2d_contact::passe::Relatorio {
         self.ultimo_relatorio
     }
+
+    /// **O `Relatorio` de um passe que correu FORA da bomba** — o da placa (doc 130 §5), para o
+    /// perfilador do quadro ler a rota que de facto desenhou.
+    pub fn publica_relatorio(&mut self, r: ph2d_contact::passe::Relatorio) {
+        self.ultimo_relatorio = r;
+    }
 }

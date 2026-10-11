@@ -21,6 +21,10 @@ use ph2d_nodegraph::port::Dim;
 use std::sync::Arc;
 
 const WG: u32 = crate::codegen::WORKGROUP_SIZE;
+/// Até quantas peças o passe corre num só grupo (doc 130 §3.1). MEDIDO (11/10, release, as duas
+/// variantes no mesmo processo): a `1 000` peças empatam (`14,4` × `14,4 ms` a 64 varreduras); a
+/// `2 048` os despachos ganham (`15,7` × `29,1 ms`). O recurso é o de UM multiprocessador.
+const PECAS_PARA_UM_GRUPO: u32 = 1024;
 const LEI: &str = include_str!("passe_na_placa_lei.wgsl");
 
 /// As colunas que o passe lê, com a dimensão que a CPU exige e o bit no `U.tem`.
@@ -37,6 +41,13 @@ const COLUNAS: [(&str, Dim, u32); 10] = [
     ("body", Dim::Scalar, 256),
 ];
 
+/// Uma leitura do `ctrl` em voo: o buffer, o aviso do mapeamento e as peças.
+type Leitura = (
+    wgpu::Buffer,
+    std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>,
+    u32,
+);
+
 /// O estado do passe entre cozimentos: as varreduras por sink, os pipelines e o que segura os
 /// buffers até ao `submit`.
 #[derive(Default)]
@@ -49,8 +60,19 @@ pub(crate) struct Passe {
     hold: Vec<Arc<wgpu::Buffer>>,
     hold_uni: Vec<wgpu::Buffer>,
     hold_scan: Vec<crate::scan::ScanScratch>,
-    /// O `ctrl` do último passe (`[alcance_max, andou, parado, varreduras]`) — só o gate o lê.
+    /// O tecto do caminho de UM grupo — `None` = [`PECAS_PARA_UM_GRUPO`]; só a sonda o muda (as
+    /// duas variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
+    pub(crate) um_grupo_ate: Option<u32>,
+    /// Quanto o processador levou a ENCOMENDAR o último passe (a sonda lê).
+    pub(crate) encode: std::time::Duration,
+    /// O `ctrl` do último passe (`[alcance_max, andou, parado, varreduras, candidatos]`).
     pub(crate) ctrl: Option<Arc<wgpu::Buffer>>,
+    /// A cópia do `ctrl` encomendada no cozimento, por mapear (o `submit` ainda não correu).
+    copia: Option<(wgpu::Buffer, u32)>,
+    /// A leitura em voo: o buffer, o aviso do mapeamento e as peças.
+    leitura: Option<Leitura>,
+    /// O último `Relatorio` lido da placa.
+    ultimo: Option<ph2d_contact::passe::Relatorio>,
 }
 
 impl Passe {
@@ -77,11 +99,12 @@ struct Pipes {
     ordena: wgpu::ComputePipeline,
     corrige: wgpu::ComputePipeline,
     decide: wgpu::ComputePipeline,
+    uno: wgpu::ComputePipeline,
     escreve: wgpu::ComputePipeline,
     scan: crate::scan::Scan,
 }
 
-fn modulo(ligacoes: &[(&str, &str)], corpo: &str, extra: &str) -> String {
+fn cabeca(ligacoes: &[(&str, &str)]) -> String {
     let mut s = String::from("@group(0) @binding(0) var<uniform> u: U;\n");
     for (k, (nome, tipo)) in ligacoes.iter().enumerate() {
         s += &format!(
@@ -92,16 +115,34 @@ fn modulo(ligacoes: &[(&str, &str)], corpo: &str, extra: &str) -> String {
     let graus = ph2d_contact::GRAUS;
     let por_grau = core::f32::consts::PI / 180.0;
     format!(
-        "{LEI}\nconst PNP_GRAUS: f32 = {graus:?};\nconst PNP_POR_GRAU: f32 = {por_grau:?};\n{s}{extra}\n\
-         @compute @workgroup_size({WG})\n\
-         fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n    let i = gid.x;\n{corpo}\n}}\n"
+        "{LEI}\nconst PNP_GRAUS: f32 = {graus:?};\nconst PNP_POR_GRAU: f32 = {por_grau:?};\n{s}"
+    )
+}
+
+fn modulo(ligacoes: &[(&str, &str)], corpo: &str, extra: &str) -> String {
+    format!(
+        "{}{extra}\n@compute @workgroup_size({WG})\n\
+         fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{\n    let i = gid.x;\n{corpo}\n}}\n",
+        cabeca(ligacoes)
     )
 }
 
 const R: &str = "read";
 const RW: &str = "read_write";
 
-fn fontes() -> [(&'static str, String); 9] {
+/// As ligações de toda a VARREDURA — o mesmo leiaute nos dois caminhos (ver `pnp_toca`).
+const VARREDURA: [(&str, &str); 7] = [
+    ("dec: array<vec4<f32>>", R),
+    ("ago: array<vec4<f32>>", RW),
+    ("est: array<vec4<f32>>", RW),
+    ("starts: array<atomic<u32>>", RW),
+    ("cursor: array<atomic<u32>>", RW),
+    ("sorted: array<u32>", RW),
+    ("ctrl: array<atomic<u32>>", RW),
+];
+const FNS: &str = include_str!("passe_na_placa_varredura.wgsl");
+
+fn fontes() -> [(&'static str, String); 10] {
     let forma = modulo(
         &[
             ("c_p: array<vec2<f32>>", R),
@@ -139,75 +180,34 @@ fn fontes() -> [(&'static str, String); 9] {
          \x20   atomicStore(&ctrl[2], select(1u, 0u, alc > 0.0));",
         "",
     );
-    let gira = modulo(
-        &[
-            ("dec: array<vec4<f32>>", R),
-            ("est_in: array<vec4<f32>>", R),
-            ("ago: array<vec4<f32>>", RW),
-            ("starts: array<atomic<u32>>", RW),
-            ("ctrl: array<u32>", R),
-        ],
-        "    if (i >= u.n || ctrl[2] != 0u) { return; }\n\
-         \x20   let d0 = dec[4u * i];\n\
-         \x20   if (u32(d0.x) == 0u) { return; }\n\
-         \x20   let d1 = dec[4u * i + 1u];\n\
-         \x20   let s = est_in[i];\n\
-         \x20   var a = d1;\n\
-         \x20   if (s.z != 0.0) {\n\
-         \x20       let e = pnp_eixo_de(s.z);\n\
-         \x20       a = vec4<f32>(pnp_gira(d1.xy, e), a.zw);\n\
-         \x20       if (!pnp_zero(d1.zw)) { a = vec4<f32>(a.xy, pnp_gira(d1.zw, e)); }\n\
+    // Os passos de UMA varredura no caminho de vários despachos: cada um sai se o passe parou.
+    let passo = |corpo: &str| {
+        modulo(
+            &VARREDURA,
+            &format!(
+                "    pnp_toca();\n    let alc_max = bitcast<f32>(atomicLoad(&ctrl[0]));\n\
+                 \x20   let lado = 2.0 * alc_max;\n{corpo}"
+            ),
+            FNS,
+        )
+    };
+    let gira = passo(
+        "    if (i >= u.n || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_gira_conta(i, u.bi, lado);",
+    );
+    let espalha = passo(
+        "    if (i >= u.n || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_espalha(i, u.bi, lado);",
+    );
+    let ordena = passo(
+        "    if (i >= u.num_buckets || atomicLoad(&ctrl[2]) != 0u) { return; }\n    pnp_ordena(i);",
+    );
+    let corrige = passo(
+        "    if (i >= u.n) { return; }\n\
+         \x20   if (atomicLoad(&ctrl[2]) != 0u) {\n\
+         \x20       est[u.bo + i] = est[u.bi + i];\n\
+         \x20       return;\n\
          \x20   }\n\
-         \x20   ago[i] = a;\n\
-         \x20   let lado = 2.0 * bitcast<f32>(ctrl[0]);\n\
-         \x20   atomicAdd(&starts[pnp_balde(pnp_celula(s.xy, lado), u.num_buckets)], 1u);",
-        "",
-    );
-    let espalha = modulo(
-        &[
-            ("dec: array<vec4<f32>>", R),
-            ("est_in: array<vec4<f32>>", R),
-            ("starts: array<u32>", R),
-            ("cursor: array<atomic<u32>>", RW),
-            ("sorted: array<u32>", RW),
-            ("ctrl: array<u32>", R),
-        ],
-        "    if (i >= u.n || ctrl[2] != 0u) { return; }\n\
-         \x20   if (u32(dec[4u * i].x) == 0u) { return; }\n\
-         \x20   let lado = 2.0 * bitcast<f32>(ctrl[0]);\n\
-         \x20   let b = pnp_balde(pnp_celula(est_in[i].xy, lado), u.num_buckets);\n\
-         \x20   sorted[starts[b] + atomicAdd(&cursor[b], 1u)] = i;",
-        "",
-    );
-    let ordena = modulo(
-        &[
-            ("starts: array<u32>", R),
-            ("sorted: array<u32>", RW),
-            ("ctrl: array<u32>", R),
-        ],
-        "    if (i >= u.num_buckets || ctrl[2] != 0u) { return; }\n\
-         \x20   let lo = starts[i];\n\
-         \x20   let hi = starts[i + 1u];\n\
-         \x20   for (var a = lo + 1u; a < hi; a = a + 1u) {\n\
-         \x20       let x = sorted[a];\n\
-         \x20       var b = a;\n\
-         \x20       while (b > lo && sorted[b - 1u] > x) { sorted[b] = sorted[b - 1u]; b = b - 1u; }\n\
-         \x20       sorted[b] = x;\n\
-         \x20   }",
-        "",
-    );
-    let corrige = modulo(
-        &[
-            ("dec: array<vec4<f32>>", R),
-            ("ago: array<vec4<f32>>", R),
-            ("est_in: array<vec4<f32>>", R),
-            ("est_out: array<vec4<f32>>", RW),
-            ("starts: array<u32>", R),
-            ("sorted: array<u32>", R),
-            ("ctrl: array<atomic<u32>>", RW),
-        ],
-        include_str!("passe_na_placa_corrige.wgsl"),
-        include_str!("passe_na_placa_corrige_fns.wgsl"),
+         \x20   let a = pnp_corrige(i, u.bi, u.bo, alc_max);\n\
+         \x20   if (a >= 0.0) { atomicMax(&ctrl[1], pnp_bits(a)); }",
     );
     let decide = modulo(
         &[("ctrl: array<atomic<u32>>", RW)],
@@ -218,6 +218,11 @@ fn fontes() -> [(&'static str, String); 9] {
          \x20   atomicStore(&ctrl[1], 0u);\n\
          \x20   if (m == 0.0 || m < u.repouso * alc) { atomicStore(&ctrl[2], 1u); }",
         "",
+    );
+    let uno = format!(
+        "{}{FNS}\n{}",
+        cabeca(&VARREDURA),
+        include_str!("passe_na_placa_uno.wgsl")
     );
     let escreve = modulo(
         &[
@@ -230,7 +235,7 @@ fn fontes() -> [(&'static str, String); 9] {
         ],
         "    if (i >= u.n) { return; }\n\
          \x20   let p = c_p[i];\n\
-         \x20   let s = est[i];\n\
+         \x20   let s = est[u.bi + i];\n\
          \x20   let k = dec[4u * i + 2u].z;\n\
          \x20   var pos = s.xy;\n\
          \x20   var giro = s.z;\n\
@@ -253,6 +258,7 @@ fn fontes() -> [(&'static str, String); 9] {
         ("ordena", ordena),
         ("corrige", corrige),
         ("decide", decide),
+        ("uno", uno),
         ("escreve", escreve),
     ]
 }
@@ -266,7 +272,7 @@ pub fn fontes_wgsl() -> Vec<(&'static str, String)> {
 
 impl Pipes {
     fn new(gpu: &GpuContext) -> Self {
-        let [f, m, i, g, e, o, c, d, w] = fontes();
+        let [f, m, i, g, e, o, c, d, un, w] = fontes();
         let p = |(nome, src): (&str, String)| create_pipeline(gpu, &src, nome);
         Self {
             forma: p(f),
@@ -277,6 +283,7 @@ impl Pipes {
             ordena: p(o),
             corrige: p(c),
             decide: p(d),
+            uno: p(un),
             escreve: p(w),
             scan: crate::scan::Scan::new(gpu),
         }
@@ -323,6 +330,60 @@ impl GpuCook {
     /// default) = nenhum passe — o que toda chamada anterior ao doc 130 pedia.
     pub fn set_passe(&mut self, varreduras: Vec<u32>) {
         self.passe.varreduras = varreduras;
+    }
+
+    /// Força o tecto do caminho de um grupo (`None` = o do produto) — só a sonda.
+    #[doc(hidden)]
+    pub fn passe_um_grupo_ate(&mut self, n: Option<u32>) {
+        self.passe.um_grupo_ate = n;
+    }
+
+    /// ⭐ **O `Relatorio` do passe na placa** (doc 130 §5) — o que o perfilador do quadro mostra
+    /// (varreduras · peças · vizinhos), lido SEM espera: chame depois de cada cozimento; a cópia
+    /// encomendada nele é mapeada aqui e lida num quadro seguinte. `None` até à 1.ª leitura.
+    /// ⚠️ Os vizinhos são os da grelha da PLACA (célula `2·alcance_max`), não os da da CPU.
+    pub fn relatorio_do_passe(
+        &mut self,
+        gpu: &GpuContext,
+    ) -> Option<ph2d_contact::passe::Relatorio> {
+        let _ = gpu.device.poll(wgpu::PollType::Poll);
+        if let Some((staging, pronto, pecas)) = &self.passe.leitura {
+            match pronto.try_recv() {
+                Ok(Ok(())) => {
+                    let c: Vec<u32> =
+                        bytemuck::pod_collect_to_vec(&staging.slice(..).get_mapped_range());
+                    staging.unmap();
+                    self.passe.ultimo = Some(ph2d_contact::passe::Relatorio {
+                        varreduras: c[3] as usize,
+                        pecas: *pecas as usize,
+                        candidatos: c[4] as usize,
+                        ..Default::default()
+                    });
+                    self.passe.leitura = None;
+                }
+                Ok(Err(_)) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.passe.leitura = None;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {}
+            }
+        }
+        if self.passe.leitura.is_none()
+            && let Some((staging, pecas)) = self.passe.copia.take()
+        {
+            let (tx, rx) = std::sync::mpsc::channel();
+            staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
+            self.passe.leitura = Some((staging, rx, pecas));
+        }
+        self.passe.ultimo
+    }
+
+    /// Quanto o processador levou a encomendar o último passe — só a sonda.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn passe_encode(&self) -> std::time::Duration {
+        self.passe.encode
     }
 
     /// Quantos sinks do último cozimento a placa VIU sem divergir da CPU (o leitor é a cerca da rota):
@@ -380,13 +441,12 @@ impl GpuCook {
         let pool = &mut self.pool;
         let nulo = novo(pool, 16);
         let dec = novo(pool, n64 * 64);
-        let est_a = novo(pool, n64 * 16);
-        let est_b = novo(pool, n64 * 16);
+        let est = novo(pool, n64 * 32);
         let ago = novo(pool, n64 * 16);
         let starts = novo(pool, (u64::from(nb) + 1) * 4);
         let cursor = novo(pool, u64::from(nb) * 4);
         let sorted = novo(pool, n64 * 4);
-        let ctrl = novo(pool, 16);
+        let ctrl = novo(pool, 32);
         let p_out = novo(pool, n64 * 8);
         let rot_out = novo(pool, n64 * 4);
         let ler = |nome: &str, dim: Dim| -> Arc<wgpu::Buffer> {
@@ -395,74 +455,98 @@ impl GpuCook {
         let [raio, caixa, desvio, size, rot, w, ii, fall, rest, body] =
             COLUNAS.map(|(nome, dim, _)| ler(nome, dim));
 
-        let uni = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-passe u"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let mut ub = [0u8; 16];
-        ub[0..4].copy_from_slice(&n.to_le_bytes());
-        ub[4..8].copy_from_slice(&nb.to_le_bytes());
-        ub[8..12].copy_from_slice(&repouso.to_le_bytes());
-        ub[12..16].copy_from_slice(&tem.to_le_bytes());
-        gpu.queue.write_buffer(&uni, 0, &ub);
+        // ⭐ O caminho: poucas peças ⇒ TODAS as varreduras num despacho de um só grupo (§3.1).
+        let um_grupo = n <= self.passe.um_grupo_ate.unwrap_or(PECAS_PARA_UM_GRUPO);
+        let fim = if um_grupo || varreduras.is_multiple_of(2) {
+            0
+        } else {
+            n
+        };
+        let uni = |bi: u32, bo: u32| {
+            let b = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-passe u"),
+                size: 32,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let campos = [n, nb, repouso.to_bits(), tem, bi, bo, varreduras, 0];
+            gpu.queue.write_buffer(&b, 0, bytemuck::cast_slice(&campos));
+            b
+        };
+        let (u0, u1, uf) = (uni(0, n), uni(n, 0), uni(fim, 0));
 
+        let t0 = std::time::Instant::now();
         let pipes = self.passe.pipes.get_or_insert_with(|| Pipes::new(gpu));
         enc.clear_buffer(&ctrl, 0, None);
         let pb = &p.buffer;
         let g = |pipe, bufs: &[&wgpu::Buffer]| grupo(gpu, pipe, bufs);
         let gf = g(
             &pipes.forma,
-            &[&uni, pb, &raio, &caixa, &desvio, &size, &rot, &dec, &ctrl],
+            &[&u0, pb, &raio, &caixa, &desvio, &size, &rot, &dec, &ctrl],
         );
         despacha(enc, &pipes.forma, &gf, n);
         let gm = g(
             &pipes.massa,
-            &[&uni, pb, &w, &ii, &fall, &rest, &body, &dec, &est_a],
+            &[&u0, pb, &w, &ii, &fall, &rest, &body, &dec, &est],
         );
         despacha(enc, &pipes.massa, &gm, n);
-        let gi = g(&pipes.inicia, &[&uni, &ctrl]);
+        let gi = g(&pipes.inicia, &[&u0, &ctrl]);
         despacha(enc, &pipes.inicia, &gi, 1);
-        // As duas fases do ping-pong, ligadas UMA vez por passe.
-        let fases = [(&est_a, &est_b), (&est_b, &est_a)].map(|(a, b)| {
-            (
-                g(&pipes.gira, &[&uni, &dec, a, &ago, &starts, &ctrl]),
-                g(
-                    &pipes.espalha,
-                    &[&uni, &dec, a, &starts, &cursor, &sorted, &ctrl],
-                ),
-                g(
-                    &pipes.corrige,
-                    &[&uni, &dec, &ago, a, b, &starts, &sorted, &ctrl],
-                ),
-            )
-        });
-        let go = g(&pipes.ordena, &[&uni, &starts, &sorted, &ctrl]);
-        let gd = g(&pipes.decide, &[&uni, &ctrl]);
         let mut scratch = crate::scan::ScanScratch::default();
-        for v in 0..varreduras as usize {
-            let (gg, ge, gc) = &fases[v % 2];
-            enc.clear_buffer(&starts, 0, None);
-            enc.clear_buffer(&cursor, 0, None);
-            despacha(enc, &pipes.gira, gg, n);
-            pipes
-                .scan
-                .exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
-            despacha(enc, &pipes.espalha, ge, n);
-            despacha(enc, &pipes.ordena, &go, nb);
-            despacha(enc, &pipes.corrige, gc, n);
-            despacha(enc, &pipes.decide, &gd, 1);
+        let varre = |pipe, u: &wgpu::Buffer| {
+            grupo(
+                gpu,
+                pipe,
+                &[u, &dec, &ago, &est, &starts, &cursor, &sorted, &ctrl],
+            )
+        };
+        if um_grupo {
+            despacha(enc, &pipes.uno, &varre(&pipes.uno, &u0), 1);
+        } else {
+            // As duas fases do ping-pong, ligadas UMA vez por passe.
+            let fases = [&u0, &u1].map(|u| {
+                (
+                    varre(&pipes.gira, u),
+                    varre(&pipes.espalha, u),
+                    varre(&pipes.ordena, u),
+                    varre(&pipes.corrige, u),
+                )
+            });
+            let gd = g(&pipes.decide, &[&u0, &ctrl]);
+            for v in 0..varreduras as usize {
+                let (gg, ge, go, gc) = &fases[v % 2];
+                enc.clear_buffer(&starts, 0, None);
+                enc.clear_buffer(&cursor, 0, None);
+                despacha(enc, &pipes.gira, gg, n);
+                pipes
+                    .scan
+                    .exclusive(gpu, enc, &starts, nb + 1, &mut scratch);
+                despacha(enc, &pipes.espalha, ge, n);
+                despacha(enc, &pipes.ordena, go, nb);
+                despacha(enc, &pipes.corrige, gc, n);
+                despacha(enc, &pipes.decide, &gd, 1);
+            }
         }
-        let fim = if varreduras % 2 == 1 { &est_b } else { &est_a };
         let gw = g(
             &pipes.escreve,
-            &[&uni, pb, &rot, &dec, fim, &p_out, &rot_out],
+            &[&uf, pb, &rot, &dec, &est, &p_out, &rot_out],
         );
         despacha(enc, &pipes.escreve, &gw, n);
-        self.passe.hold_uni.push(uni);
+        self.passe.hold_uni.extend([u0, u1, uf]);
         self.passe.hold_scan.push(scratch);
+        // O `Relatorio` sai da placa SEM espera: uma cópia por vez, mapeada no quadro seguinte.
+        if self.passe.copia.is_none() && self.passe.leitura.is_none() {
+            let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-passe relatorio"),
+                size: 32,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            enc.copy_buffer_to_buffer(&ctrl, 0, &staging, 0, 32);
+            self.passe.copia = Some((staging, n));
+        }
         self.passe.ctrl = Some(ctrl);
+        self.passe.encode = t0.elapsed();
 
         let mut out = stream.clone();
         out.cols.insert(

@@ -52,6 +52,19 @@ pub(crate) fn estagios_que_despacham(
     plan.dispatching_stages(kernels) + usize::from(declara)
 }
 
+/// ⭐ **O `Relatorio` da rota da placa** (doc 130 §5): o perfilador do quadro lê o da bomba, e
+/// sob a placa quem separou foi o dispositivo. Sem passe neste cozimento, o vazio — como a CPU.
+pub(super) fn publica_o_relatorio_da_placa(motion: &mut MotionState, gpu: &ph2d_gpu::GpuContext) {
+    let r = if motion.gpu_cook.passe_correu() == 0 {
+        Some(ph2d_contact::passe::Relatorio::default())
+    } else {
+        motion.gpu_cook.relatorio_do_passe(gpu)
+    };
+    if let Some(r) = r {
+        motion.pump.publica_relatorio(r);
+    }
+}
+
 /// ⭐ **A cerca do fim** (doc 130 §5): a CPU disse que alguma peça declara, o cozimento na placa
 /// correu, e nenhum sink chegou lá com a coluna — a placa desenharia sobreposto o que a CPU separa.
 pub(super) fn cerca_do_passe(motion: &MotionState, declara: bool) -> bool {

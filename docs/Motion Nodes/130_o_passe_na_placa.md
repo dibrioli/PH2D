@@ -46,6 +46,33 @@ SUPERCONJUNTO — a resposta não depende da grelha (a mesma promessa da `grelha
 ⚠️ **Sem leitura de volta.** A paragem é uma bandeira na placa; varreduras depois dela saem logo.
 ⇒ o `Relatorio` (perfilador do quadro) não é lido da placa — ver §5.
 
+### §3.1 — Dois caminhos, escolhidos por MEDIÇÃO (11/10, depois do smoke)
+
+A placa paga **~0,2 ms fixos por varredura** no caminho de vários despachos (~11 despachos e as
+barreiras entre eles), seja qual for `n` — e o regime das muitas varreduras é a CADEIA, que é
+pequena (`~n²` varreduras, doc 115 §18). Medido antes da cura: 16 peças a 1024 varreduras, CPU
+`1,9 ms` × placa `116 ms`. ⇒ **até `1 024` peças o passe inteiro corre num SÓ GRUPO**
+(`passe_na_placa_uno.wgsl`): todas as varreduras num despacho, as fases por barreira, e a paragem
+SAI do laço. Os dois caminhos partilham as funções (`passe_na_placa_varredura.wgsl`) e o gate de
+paridade corre os dois.
+
+| release, load ~5, mínimo de 3 | CPU | vários despachos | um grupo |
+|---|---|---|---|
+| cadeia 16 peças · tecto 1024 | `1,94 ms` | `116–190 ms` | **`11,3 ms`** |
+| cadeia 16 · tecto 4096 (1725 correm) | `3,43` | `538–667` | **`19,3`** |
+| cadeia 32 · tecto 4096 | `15,1` | `483–572` | **`47,5`** |
+| cadeia 256 · tecto 1024 | `14,3` | `142–150` | **`23,7`** |
+| nuvem 1 000 · 64 varreduras | — | `14,4` | `14,4` (empate) |
+| nuvem 2 048 · 64 varreduras | — | **`15,7`** | `29,1` |
+| nuvem 32 761 · 8 varreduras (produto: despachos) | `20,0` | **`8,5`** | `75,8` |
+
+⚠️ A cadeia pequena com muitas varreduras ainda custa `1,7`–`6×` a CPU na placa: o piso é a
+latência de UM multiprocessador por varredura (~10 µs, ~20 barreiras, metade delas no `scan`).
+
+⛔ **Recusa MEDIDA — «todos os pares» no grupo, sem grelha (até 256 peças).** Construído e
+medido no mesmo processo, intercalado: perde SEMPRE para a grelha (16 peças a 1024: `15,7` ×
+`11,3 ms`; 256 a 4096: `249` × `75 ms`). Saiu.
+
 ## §4 — Diferenças admitidas, e a tolerância
 
 1. **ULPs**: `cos/sin` da placa ≠ `trig::cos_sin_cycles`; `sqrt`/FMA. A ordem de soma é a mesma.
@@ -59,7 +86,10 @@ SUPERCONJUNTO — a resposta não depende da grelha (a mesma promessa da `grelha
   corrente de sink chegou à placa com coluna de colisor (`collider` ou `collider_box`), a placa
   devolve erro e a rota cai para a CPU (*nunca* uma cena sobreposta num lado e separada no outro).
 - `RECUSA_COLISOR` (o colisor escrito PELO NOME num text param) **fica**: fora desta ordem.
-- O `Relatorio` sob a rota da placa: o perfilador continua a ler o último da CPU. Nomeado no handoff.
+- O `Relatorio` sob a rota da placa: a placa conta as varreduras e os candidatos da 1.ª varredura
+  no `ctrl`, uma cópia sai SEM espera (mapeada no quadro seguinte) e a ponte publica-a na bomba
+  (`publica_relatorio`), que é o que o perfilador do quadro lê. Os vizinhos são os da grelha da
+  PLACA (célula `2·alcance_max`), não os da CPU.
 
 ## §6 — Gates
 

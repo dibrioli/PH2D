@@ -476,6 +476,7 @@ pub(super) fn cook_gpu(
                     }
                 }
                 say_route(motion, "device: o plano inteiro (fully-GPU)");
+                colisor::publica_o_relatorio_da_placa(motion, gpu);
                 forma::anota_as_formas(motion, vivas);
                 GpuOutcome::Handled
             } else {
@@ -588,6 +589,7 @@ pub(super) fn cook_gpu(
             );
             if motion.gpu_live {
                 forma::anota_as_formas(motion, vivas);
+                colisor::publica_o_relatorio_da_placa(motion, gpu);
             }
             GpuOutcome::Handled
         }

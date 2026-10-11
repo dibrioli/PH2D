@@ -7,7 +7,7 @@
 > recusas: [`15_mais_parametros_das_formas.md`](../vetor_nova_ui/15_mais_parametros_das_formas.md).
 
 - **Branch** `line/UIUX` · **base (merge-base = `main`)** `8f20c60de` (o `main` não andou — sem rebase).
-- Commits desta jornada: `68929b338..HEAD` (7 de código/teste + docs). A F9 é `b541e1b0a..68929b338`.
+- Commits desta jornada: `68929b338..HEAD` (12 de código/teste + docs). A F9 é `b541e1b0a..68929b338`.
 - **O pedido (dono, 11/10):** *«Não podemos reduzir parâmetros… precisamos de mais. Se algum
   parâmetro não pode ser colocado no gizmo… um modal que aparece na lateral.»* · *«os controles devem
   aparecer imediatamente… ainda no modo shape; no modo select não»* · *«clicar nos controles ou gizmo
@@ -70,19 +70,60 @@ Tabelas no doc 15 §1–§3 e §6.
 
 ## §4 — O que só a árvore combinada / o `ship.sh` pega
 
-- A shell (F10): `git diff --shortstat 68929b338 HEAD -- shells/` = **+63 −41** (o `src` +5 líquidas;
-  os testes de texto +17). Desde o merge-base (F9 + F10): **+211 −300**. O tecto recontado é do
-  integrador.
+- A shell (F10): `git diff --shortstat 68929b338 HEAD -- shells/desktop/src` = **+32 −34** (−2
+  líquidas); com os testes de texto, +17. O tecto recontado é do integrador.
+- ⛔ **Um gate lê a condição da caixa NA SHELL pelo caminho** (`the_object_box_condition_names_every_
+  authoring_tool` exige `ToolId::new("vector")` em `fase_snapshots_publish.rs`): mover essa conta
+  para a app-vec partiu-o — a ferramenta continua nomeada lá (`b8ece64df`).
 - Os gates de TEXTO da shell que liam o cluster do Select foram REESCRITOS para a regra nova
   (`the_shape_handles_belong_to_shape_mode_alone`, `the_shape_hint_teaches_…`,
   `the_pointer_and_the_keyboard_wire_the_shape_handle_gesture`, `joint_draw_gesture`) — se outra linha
   mexeu no `despacho_clique_select.rs`, o conflito resolve-se a favor do press da alça FORA do portão do
   Select.
-- **Gate batched**: _por preencher (§8)._
+- **Gate batched (1×, HEAD `af76cb758`, `verificador`)**: `nextest-impacted` (`BASE=8f20c60de`)
+  **19 554 / 19 560** · `CARGO_BUILD_WARNINGS=deny check --workspace --all-targets` ✓ · `machete` ✓ ·
+  `check-standalone-optional` ✓ · `check-workflow-packages` ✓ · clippy do `ship.sh` ✗ · fmt ✗. Os
+  vermelhos e a cura (`e551c461a`, `b8ece64df`):
+  - `every_declared_field_of_every_shape_moves_its_geometry` — o *Corner* do polígono só age com raio:
+    a conta procura um outro campo no máximo que o acorde (sem lista à mão);
+  - `fn_loc_caps` — `fase_snapshots_publish` 204 > 200: paga com um comentário que repetia o HR-8;
+  - `joint_anchor_gizmo` e `the_node_overlay_hangs_off_the_envelope_gate` — agulhas de TEXTO (a porta
+    nova da caixa; o guard dos nós com o `hides_the_nodes`, que o gate passa a aceitar e só a ele);
+  - `the_palette_reaches_the_vector_bars` — o 1.º chip de ESCOLHA nos modos que ele percorre: cicla e
+    sai como `SetValue` no id gémeo do campo (a porta certa), o teste aceita-a;
+  - `g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` (Luz 2D) — flake de carga: sozinho 1/1 a load 25;
+  - clippy `redundant_guards` (`CornerStyle::of`); fmt (a ordem dos `mod`, dois `main.rs`).
+  **2.ª varredura inteira** (`e551c461a`): 19 558 / 19 560 — `the_object_box_condition_names_every_
+  authoring_tool` (curado em `b8ece64df`, verde) e `motion_path_perf::the_cost_of_sampling_a_path_is_
+  flat_in_its_anchors` (a timeline, intocada: sozinho verde a load 40 — flake). clippy do `ship.sh` e
+  fmt ✓ depois.
 
 ## §5 — Provas de mutação
 
-_Por preencher (§8)._ O agente B (o cartão) correu 6/6 (a M6 sobrevivia → gate
+Agente `mutacao`, HEAD `b4e74c6e2`, controlos verdes com população em cada filtro, cada âncora 1×,
+árvore limpa. **17/20 sangram** à 1.ª; das 3 sobreviventes, 2 pediram teste (vistos VERMELHOS sobre a
+mutação, `af76cb758`) e 1 é equivalente:
+
+| # | mutação | sangra em |
+|---|---|---|
+| M1 | o côncavo vira recta | **sobreviveu** ⇒ `concave_bites_inside_the_straight_chamfer` |
+| M2 | o entalhe vira recta | `concave_bites_in_round_stays_out_and_the_cutout_is_a_notch` |
+| M3 | os valores 2 e 3 do tipo trocados | **sobreviveu** ⇒ `the_field_value_picks_the_corner_style_in_the_descriptor_order` |
+| M4 | o liso perpendicular ao raio | `twist_draws_the_inkscape_arg2_star` |
+| M5 | o liso a metade | `smooth_draws_the_inkscape_rounded_star_and_polygon` |
+| M6 | a envergadura para dentro | `the_curve_pushes_the_edge_middle_by_half_a_chord` |
+| M7 | sem torção | `twist_draws_the_inkscape_arg2_star` |
+| M8–M10 | a espiral sem expoente / sem `t0` / sem a reparametrização | `spiral_ex_matches_the_inkscape_divergence_and_inner_radius` |
+| M11 | sem o retorno antecipado da identidade | **equivalente**: o caminho genérico dá o MESMO `VecPath` nas entradas medidas — o atalho é a garantia por construção, o gate `the_new_fields_at_zero_are_the_old_shapes_byte_for_byte` a observável |
+| M12–M13 | o vale não torce / o Ctrl também torce | `the_star_valley_twists_with_the_hand_like_inkscape` |
+| M14 | o ângulo polar não conta como alça | `the_fields_without_a_gesture_are_counted_not_listed` |
+| M15 | o losango sem `inset` | `the_diamond_middle_handle_is_drawn_inside_the_box_edge` |
+| M16 | o canto só na corda | `the_corner_handle_still_rides_a_curved_edge` |
+| M17 | o Alt do trapézio sem `keep` | `alt_moves_only_the_grabbed_side_of_the_trapezoid` |
+| M18–M19 | o dente / o lado direito ignorados | `the_f10_fields_are_neutral_at_zero_and_each_one_moves_the_shape` |
+| M20 | os nós nunca somem | `the_nodes_hide_only_while_the_shape_handles_show` |
+
+O agente B (o cartão) correu 6/6 (a M6 sobrevivia → gate
 `the_card_never_trades_an_obstacle_for_the_selection`); o A, 1 (as alças de volta ao Select ⇒ os 4
 `shape_mode_tests` falham).
 
@@ -116,4 +157,23 @@ _Por preencher (§8)._ O agente B (o cartão) correu 6/6 (a M6 sobrevivia → ga
 
 ## §8 — Portão, binário e `agent-loop-profile.sh`
 
-_Por preencher no fecho._
+Depois do `rm -rf target/*/incremental` (29 GB debug + 4,1 GB smoke) — `bash scripts/ph2d-run.sh
+cargo build -p ph2d-host-desktop --profile smoke`: 1.ª corrida 36,1 s; a 2.ª:
+
+```
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.23s
+```
+
+O commit deste handoff é só documentação: o binário continua o do código.
+
+```
+  ✗ paralelismo de ferramenta              1.13/passo   alvo: >= 1,5  (10% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                180   alvo: <= 800  (uma janela nova por onda de trabalho)
+  ✗ cargo test : cargo check                568 : 187   alvo: <= 1,0  razao 3.0x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  30%   alvo: >= 80%  (890 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         396 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✓ contexto no inicio da sessao               62 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
+```
+(Edições em lote por `python3` com `assert` de contagem; três agentes de implementação em paralelo —
+a parte A (portas), a B (cartão) e esta janela (parâmetros) —, o `mutacao` e o `verificador`.)

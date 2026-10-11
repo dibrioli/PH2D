@@ -10,7 +10,8 @@
   `935aed878` (botão «Forma», smoke OK do dono) e **`f8ee5309b`** (soltar no Wayland, abaixo). Base = `main` `8f20c60de`.
   O handoff de INTEGRAÇÃO desta onda escreve-se no fecho da Parte 3 e inclui os três.
 - Binário `--profile smoke` compilado com `f8ee5309b` (2.ª corrida: `Finished … in 0.29s`, zero `Compiling`). Smoke do
-  dono da Parte 2: **por fazer** (passos no fim).
+  dono da Parte 2: **OK (11/10)** — soltar do Dolphin na aba Scene importa no ponto; com um quadro, a recusa
+  «Boards don't take files yet» aparece (o dono mandou a captura).
 - O gate de confinamento do `unsafe` passou a varrer todo alvo (`src`, `tests`, `benches`, `examples`): vermelho com
   o `tests/kwin_drop.rs` antes da cura, verde depois — sem prova de mutação formal.
 

@@ -19,14 +19,19 @@ pub struct Grid {
 
 impl Grid {
     /// A grelha de `n` pixels no lado maior que cobre `[min, max]` com uma margem de 2 pixels.
+    ///
+    /// ⚠️ A origem desloca-se por frações IRRACIONAIS de pixel, diferentes em x e y: ancorada na
+    /// caixa, a grelha punha cada aresta a 45° do losango EXATAMENTE num centro de pixel, e o
+    /// empate da meia-abertura tirava um pixel por linha a um lado só (0,72 % de diferença entre
+    /// dois losangos iguais, BUGS #39).
     pub fn covering(min: Point, max: Point, n: usize) -> Self {
         let span = (max.x - min.x).max(max.y - min.y).max(1e-9);
-        let px = span / (n as f64 - 4.0);
-        let w = ((max.x - min.x) / px).ceil() as usize + 4;
-        let h = ((max.y - min.y) / px).ceil() as usize + 4;
+        let px = span / (n as f64 - 5.0);
+        let w = ((max.x - min.x) / px).ceil() as usize + 5;
+        let h = ((max.y - min.y) / px).ceil() as usize + 5;
         Self {
-            x0: min.x - 2.0 * px,
-            y0: min.y - 2.0 * px,
+            x0: min.x - (2.0 + (std::f64::consts::SQRT_2 - 1.0)) * px,
+            y0: min.y - (2.0 + (5f64.sqrt() - 1.0) / 2.0) * px,
             px,
             w,
             h,

@@ -118,3 +118,7 @@ impl std::fmt::Display for SweepFailed {
         f.write_str(&self.0)
     }
 }
+
+#[cfg(test)]
+#[path = "engine_tests.rs"]
+mod tests;

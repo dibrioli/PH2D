@@ -33,7 +33,7 @@
 //! Origem: o estudo `docs/Vector Module/Estudos/ESTUDO_vectorcraft_comparado_2026-10-11.md` §3 e o
 //! prompt 49 (W2). Nenhum código portado.
 
-use kurbo::{BezPath, PathEl, Point, Vec2};
+use kurbo::{BezPath, PathEl, Point, Shape, Vec2};
 use ph2d_vec_scene::LineJoin;
 
 /// A banda de `flat` (a fronteira da base: polilinhas fechadas, só retas) com meia-largura
@@ -63,12 +63,17 @@ fn pieces_with(
     out
 }
 
-/// As polilinhas fechadas de `flat`, sem vértice repetido.
+/// As polilinhas fechadas de `flat`, sem vértice repetido — nem QUASE repetido: o `flatten` da
+/// kurbo emite às vezes um ponto a `1e-17` do fim da curva, e a direção dessa aresta é ruído de
+/// arredondamento (saía horizontal e punha uma caixa de `d` na cúspide do balão, BUGS #39).
 fn polylines(flat: &BezPath) -> Vec<Vec<Point>> {
+    let bb = flat.bounding_box();
+    let eps = bb.width().hypot(bb.height()) * 1e-9;
+    let same = |a: Point, b: Point| (a - b).hypot() <= eps;
     let mut all: Vec<Vec<Point>> = Vec::new();
     let mut cur: Vec<Point> = Vec::new();
     let mut flush = |cur: &mut Vec<Point>| {
-        while cur.len() > 1 && cur.first() == cur.last() {
+        while cur.len() > 1 && same(cur[0], cur[cur.len() - 1]) {
             cur.pop();
         }
         if cur.len() >= 2 {
@@ -83,7 +88,7 @@ fn polylines(flat: &BezPath) -> Vec<Vec<Point>> {
                 cur.push(p);
             }
             PathEl::LineTo(p) => {
-                if cur.last() != Some(&p) {
+                if cur.last().is_none_or(|&l| !same(l, p)) {
                     cur.push(p);
                 }
             }

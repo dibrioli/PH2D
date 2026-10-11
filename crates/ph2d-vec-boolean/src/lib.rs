@@ -323,7 +323,8 @@ pub(crate) fn to_bez_with(path: &VecPath, closing: Closing) -> BezPath {
 }
 
 /// kurbo `BezPath` (um contorno) → vértices (âncoras + handles reconstruídos dos
-/// elementos), **podado** por [`prune_contour`]. `None` se degenerar em < 3.
+/// elementos), **podado** por [`prune_contour`]. `None` só se o contorno não cerca nada
+/// ([`encloses`]) — uma lente de DUAS âncoras (uma reta e um arco) é região (BUGS #39).
 pub(crate) fn verts_from_bez(bp: &BezPath) -> Option<Vec<VecVertex>> {
     let mut verts: Vec<VecVertex> = Vec::new();
     for el in bp.elements() {
@@ -353,10 +354,19 @@ pub(crate) fn verts_from_bez(bp: &BezPath) -> Option<Vec<VecVertex>> {
         }
     }
     let verts = prune_contour(verts);
-    (verts.len() >= 3).then_some(verts)
+    encloses(&verts).then_some(verts)
 }
 
-/// Piso de vértices de um contorno — nunca podamos abaixo de um triângulo.
+/// O contorno fechado cerca uma região? Três âncoras, ou duas com um lado CURVO: o motor parte
+/// as curvas em peças monótonas, e a calota que uma reta corta de um arco volta assim.
+fn encloses(verts: &[VecVertex]) -> bool {
+    match verts {
+        [a, b] => !is_line(a, b) || !is_line(b, a),
+        _ => verts.len() >= 3,
+    }
+}
+
+/// Piso da poda de colineares — ela nunca desce abaixo de um triângulo.
 const MIN_CONTOUR_VERTS: usize = 3;
 
 /// Remove os vértices que o sweep produziu mas a FORMA não precisa, e reclassifica

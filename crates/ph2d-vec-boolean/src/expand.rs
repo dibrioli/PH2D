@@ -61,6 +61,10 @@ pub use ring::offset_ring;
 #[path = "expand_band.rs"]
 mod band;
 
+/// **A tangente honesta nas quinas** que a banda Bevel/Miter mede — módulo irmão (teto de LOC).
+#[path = "expand_corner.rs"]
+mod corner;
+
 /// **O caçador de fantasmas** do Offset Round — módulo irmão (teto de LOC).
 #[path = "expand_phantom.rs"]
 mod phantom;
@@ -573,7 +577,14 @@ fn flat_lines(bez: &BezPath) -> BezPath {
 /// ⚠️ Tudo que entra num sweep aqui passa por [`flat_lines`] — este caminho roda POR FRAME
 /// no arrasto do slider, e cúbica no sweep não cabe num frame (ver o doc do `flat_lines`).
 fn loop_region(loop_bez: &BezPath, offset: bool, d: f64, join: LineJoin) -> Option<Region> {
-    let base = Region::of(&flat_lines(loop_bez), LsFillRule::NonZero)?;
+    // Bevel/Miter medem a junção pelas retas vizinhas: junto às quinas elas seguem a tangente
+    // com erro `≤ tol/|d|`, ou a junção erraria `|d|·θ` (ver `expand_corner.rs`).
+    let honest = (offset && join != LineJoin::Round)
+        .then(|| corner::split_at_corners(loop_bez, tolerance(loop_bez) / d.abs()));
+    let base = Region::of(
+        &flat_lines(honest.as_ref().unwrap_or(loop_bez)),
+        LsFillRule::NonZero,
+    )?;
     if !offset {
         return Some(base);
     }

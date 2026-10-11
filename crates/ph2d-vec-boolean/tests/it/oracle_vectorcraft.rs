@@ -293,8 +293,11 @@ fn compare(theirs: &[(FillRule, String)], ours: &[VecPath], refs: &[&VecPath]) -
     )
 }
 
+/// Um passo do corpus: `(kind, caso, op, param)`.
+type Step = (String, String, String, String);
+
 /// Cada passo do corpus: `(kind, caso, op, param) → (diff %, área dele, área nossa)`.
-pub fn measure_all() -> BTreeMap<(String, String, String, String), (f64, f64, f64)> {
+pub fn measure_all() -> BTreeMap<Step, (f64, f64, f64)> {
     let bools: BTreeMap<String, (VecPath, VecPath)> = boolean_corpus()
         .into_iter()
         .map(|(n, a, b)| (n, (a, b)))
@@ -326,15 +329,8 @@ pub fn measure_all() -> BTreeMap<(String, String, String, String), (f64, f64, f6
 /// Os passos em que os dois DISCORDAM (`xor > 0,5 %` da área da fonte), com quem está certo —
 /// medido 11/10 pelo juiz `resvg` (`ferramentas/vectorcraft_2026-10-11/juiz_resvg_offset.py`: cada
 /// lado contra `fill ∪/∖ stroke(2d)`, em % da verdade) e, nas booleanas, pela máscara do `resvg`.
-/// 578 dos 592 passos concordam.
+/// 582 dos 592 passos concordam.
 const DISAGREE: &[(&str, &str, &str, &str, &str)] = &[
-    (
-        "bool",
-        "Star",
-        "exclude",
-        "-",
-        "PH2D ERRA: perde 0,68 % (VC 0,035 % da máscara); igual na 0.4 — BUGS #39, aberto",
-    ),
     (
         "offset",
         "ArrowBent",
@@ -358,13 +354,6 @@ const DISAGREE: &[(&str, &str, &str, &str, &str)] = &[
     ),
     (
         "offset",
-        "ArrowDouble",
-        "round",
-        "0.4",
-        "os dois perto: VC 0,081 · PH2D 0,099 %",
-    ),
-    (
-        "offset",
         "ArrowRight",
         "bevel",
         "0.1",
@@ -379,25 +368,10 @@ const DISAGREE: &[(&str, &str, &str, &str, &str)] = &[
     ),
     (
         "offset",
-        "ArrowRight",
-        "round",
-        "0.4",
-        "os dois perto: VC 0,103 · PH2D 0,126 %",
-    ),
-    (
-        "offset",
-        "Diamond",
-        "miter",
-        "0.1",
-        "o juiz vê os dois IGUAIS à verdade; a diferença é da régua deste gate — aberto",
-    ),
-    ("offset", "Diamond", "miter", "0.4", "idem"),
-    (
-        "offset",
         "Moon",
         "bevel",
         "0.4",
-        "PH2D CERTO: é a união das normais (W2); VC e resvg cancelam a dobra da ponta (3,29 %)",
+        "PH2D CERTO: é a união das normais (W2); VC e resvg cancelam a dobra da ponta (3,01 %)",
     ),
     ("offset", "Moon", "miter", "0.4", "idem"),
     (
@@ -405,14 +379,22 @@ const DISAGREE: &[(&str, &str, &str, &str, &str)] = &[
         "SpeechRect",
         "bevel",
         "0.4",
-        "VC 0,403 · PH2D 0,577 % — a cauda do balão, aberto",
+        "PH2D CERTO: a cúspide da cauda — 334 dos 363 px a mais são da união das normais, o \
+         resto na linha da normal; VC (0,403) e resvg cancelam a dobra, como na Lua (BUGS #39)",
     ),
     (
         "offset",
         "SpeechRect",
         "miter",
         "0.4",
-        "VC 0,000 · PH2D 0,560 % — a cauda do balão, aberto",
+        "idem (VC 0,000 · PH2D 0,492 %)",
+    ),
+    (
+        "offset",
+        "Star",
+        "round",
+        "0.4",
+        "os dois perto: VC 0,132 · PH2D 0,159 % da verdade (este gate divide pela FONTE)",
     ),
 ];
 

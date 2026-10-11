@@ -30,5 +30,6 @@ mod silhouette_of_a_stroked_shape;
 mod the_chain_folds_with_a_verb_per_step;
 mod the_dilate_floor_matches_the_engine;
 mod the_offset_never_takes_the_app_down;
+mod the_offset_of_a_convex_shape_follows_steiner;
 mod the_offset_sweep_matches_the_table;
 mod the_ring_matches_the_booleana;

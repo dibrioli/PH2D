@@ -17,8 +17,12 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
-/// Duas peças de lado `1` com metade de cada uma dentro da outra, cada uma a DECLARAR a caixa dela
-/// pela convenção do objecto (geometria mais o `size` que a converte — doc 115 §12.1).
+/// O botão da fixtura: ligado, as duas peças DECLARAM a caixa delas — o espelho do `Collide` da
+/// forma e do objecto (doc 115 §33). Desligado, a corrente não traz colisor nenhum.
+const DECLARA: &str = "declara";
+
+/// Duas peças de lado `1` com metade de cada uma dentro da outra; com [`DECLARA`] ligado cada uma
+/// declara a caixa dela pela convenção do objecto (geometria mais o `size` — doc 115 §12.1).
 static SRC_MAN: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.test.duas_sobrepostas"),
     name: "motion.test.duas_sobrepostas",
@@ -29,11 +33,11 @@ static SRC_MAN: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    // Os dois params do sink que esta wave acrescenta — declarados aqui para o nó de teste poder
-    // ser ele próprio o sink, que é como o pump os lê.
+    // O botão que declara e as varreduras do sink — o nó de teste é ele próprio o sink, que é
+    // como o pump lê as varreduras.
     params: &[
         ParamSpec {
-            name: SINK_COLLIDE_PARAM,
+            name: DECLARA,
             default: 0.0,
         },
         ParamSpec {
@@ -50,12 +54,14 @@ impl NodeOp for Src {
         &SRC_MAN
     }
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        ctx.emit(
-            Stream::new(2)
-                .with("P", Column::Vec2(vec![[0.0, 0.0], [0.5, 0.0]]))
-                .with("size", Column::Vec2(vec![[1.0, 1.0]; 2]))
-                .with(COLLIDER_BOX_COLUMN, Column::Vec2(vec![[0.5, 0.5]; 2])),
-        );
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [0.5, 0.0]]))
+            .with("size", Column::Vec2(vec![[1.0, 1.0]; 2]));
+        if ctx.param(DECLARA) >= 0.5 {
+            ctx.emit(s.with(COLLIDER_BOX_COLUMN, Column::Vec2(vec![[0.5, 0.5]; 2])));
+        } else {
+            ctx.emit(s);
+        }
     }
 }
 
@@ -66,12 +72,13 @@ impl OpResolver for Ops {
     }
 }
 
-/// Corre um quadro e devolve as posições que o renderer vai desenhar.
-fn desenhado(armado: Option<f32>) -> Vec<[f32; 2]> {
+/// Corre um quadro e devolve as posições que o renderer vai desenhar. `declara` = as peças
+/// declaram a caixa, com estas varreduras no sink; `None` = nenhuma declaração.
+fn desenhado(declara: Option<f32>) -> Vec<[f32; 2]> {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    if let Some(varreduras) = armado {
-        g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    if let Some(varreduras) = declara {
+        g.set_param(sink, DECLARA, 1.0);
         g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, varreduras);
     }
     let mut pump = MotionCookPump::new();
@@ -87,18 +94,19 @@ fn desenhado(armado: Option<f32>) -> Vec<[f32; 2]> {
     pump.instances.iter().map(|i| i.world_pos).collect()
 }
 
-/// ⛔⛔ **DESARMADO, o quadro é o de sempre — AO BIT.** É esta metade que torna honesta a frase
-/// *«esta wave não muda um pixel de nenhuma cena que já existe»*: a corrente que o cozimento
-/// devolveu chega ao lowering sem passar por lado nenhum.
+/// ⛔⛔ **SEM DECLARAÇÃO, o quadro é o de sempre — AO BIT** (doc 115 §33). O passe corre em todo
+/// sink, e é a corrente sem colisor que o mantém mudo: o que o cozimento devolveu chega ao lowering
+/// sem passar por lado nenhum.
 #[test]
-fn desarmado_o_pump_desenha_o_que_o_cozimento_deu() {
+fn sem_declaracao_o_pump_desenha_o_que_o_cozimento_deu() {
     assert_eq!(desenhado(None), vec![[0.0, 0.0], [0.5, 0.0]]);
 }
 
-/// ⭐⭐⭐ **ARMADO, as peças chegam ao renderer SEPARADAS** — a rota inteira: o cozimento, o passe, o
-/// lowering, e as instâncias que o desenho recebe.
+/// ⭐⭐⭐ **O PASSE AUTOMÁTICO: as peças que declaram chegam ao renderer SEPARADAS, sem interruptor
+/// nenhum no sink** (doc 115 §33) — a rota inteira: o cozimento, o passe, o lowering, e as
+/// instâncias que o desenho recebe.
 #[test]
-fn armado_o_pump_desenha_as_pecas_separadas() {
+fn com_declaracao_o_pump_desenha_as_pecas_separadas_sem_interruptor() {
     let p = desenhado(Some(32.0));
     let vao = (p[1][0] - p[0][0]).abs();
     assert!(
@@ -107,20 +115,31 @@ fn armado_o_pump_desenha_as_pecas_separadas() {
     );
 }
 
-/// ⚠️ **O interruptor manda, e o número é só o quanto** — com o `collide` desligado, pôr as
-/// varreduras no máximo continua a não separar nada.
+/// ⚠️ **O número é só o QUANTO, e a declaração é que manda** (doc 115 §33) — sem peça nenhuma a
+/// declarar, pôr as varreduras no alto continua a não separar nada; e a porta lê-as SEMPRE, sem
+/// interruptor nenhum a zerá-las.
 ///
-/// ⛔ Sem esta metade, um `sink_collide_sweeps` que devolvesse as varreduras sem olhar ao
-/// interruptor passaria nos dois gates acima.
+/// ⛔ Sem a 1.ª metade, um passe que inventasse um colisor para quem não o declarou passaria nos
+/// gates acima; sem a 2.ª, uma porta que ainda esperasse o interruptor antigo devolveria `0`.
 #[test]
-fn o_numero_de_varreduras_nao_arma_nada_sozinho() {
+fn sem_declaracao_as_varreduras_nao_separam_nada() {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 64.0);
     assert_eq!(
         sink_collide_sweeps(&g, sink),
-        0,
-        "as varreduras sem o interruptor sao zero"
+        64,
+        "as varreduras leem-se sem interruptor"
+    );
+    let mut pump = MotionCookPump::new();
+    // ⚠️ A lei do dono DESLIGADA: este arnês mede o PASSE (ver `MotionCookPump::so_com_forma`).
+    pump.define_a_lei(false);
+    assert!(pump.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
+    let p: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
+    assert_eq!(
+        p,
+        vec![[0.0, 0.0], [0.5, 0.0]],
+        "sem declaracao nada se mexe"
     );
 }
 
@@ -128,14 +147,14 @@ fn o_numero_de_varreduras_nao_arma_nada_sozinho() {
 /// [`sink_collide_sweeps`]).
 ///
 /// O leitor de params deste módulo devolve `0.0` quando não há **override** — ele nunca consulta o
-/// `ParamSpec::default`. Os quatro params antigos do sink têm todos default `0`, logo ninguém tinha
-/// reparado; este é o primeiro com default `≠ 0`, e lido pela porta de sempre ele valeria `0` num
-/// documento acabado de criar ⇒ *o artista ligava o interruptor e não acontecia nada*.
+/// `ParamSpec::default`. Este é o primeiro param do sink com default `≠ 0`, e lido pela porta de
+/// sempre ele valeria `0` num documento acabado de criar ⇒ *o artista ligava o `Collide` da peça e
+/// não acontecia nada*.
 #[test]
-fn armar_sem_tocar_no_numero_corre_as_varreduras_de_fabrica() {
+fn declarar_sem_tocar_no_numero_corre_as_varreduras_de_fabrica() {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, DECLARA, 1.0);
     assert_eq!(
         sink_collide_sweeps(&g, sink),
         SINK_COLLIDE_ITERATIONS_DEFAULT as usize,
@@ -155,7 +174,7 @@ fn armar_sem_tocar_no_numero_corre_as_varreduras_de_fabrica() {
     let p: Vec<[f32; 2]> = pump.instances.iter().map(|i| i.world_pos).collect();
     assert!(
         (p[1][0] - p[0][0]).abs() > 0.9,
-        "armar e nao tocar no numero tem de separar: {p:?}"
+        "declarar e nao tocar no numero tem de separar: {p:?}"
     );
 }
 
@@ -173,7 +192,7 @@ fn armar_sem_tocar_no_numero_corre_as_varreduras_de_fabrica() {
 fn as_varreduras_sao_coagidas_na_porta() {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, DECLARA, 1.0);
     for (pedido, esperado) in [
         // ⚠️⚠️ **A PREMISSA DESTA CÉLULA MORREU, e a morte fica visível no diff** (doc 115 §18):
         // ela era `(1000.0, MAX)` — com o tecto herdado em `64`, mil estava ACIMA dele. O tecto
@@ -204,11 +223,11 @@ fn as_varreduras_sao_coagidas_na_porta() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Corre um quadro com uma TOMADA no sink e devolve `(o que se desenha, o que a tomada viu)`.
-fn desenhado_e_tomada(armado: Option<f32>) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+fn desenhado_e_tomada(declara: Option<f32>) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    if let Some(varreduras) = armado {
-        g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    if let Some(varreduras) = declara {
+        g.set_param(sink, DECLARA, 1.0);
         g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, varreduras);
     }
     let mut pump = MotionCookPump::new();
@@ -264,27 +283,26 @@ fn a_tomada_num_sink_ve_o_que_o_sink_desenha() {
     );
 }
 
-/// ⚠️ **E DESARMADO as duas continuam a concordar, no estado NÃO separado** — a metade que impede
-/// a cura de virar *«a tomada separa sempre»*.
+/// ⚠️ **E SEM DECLARAÇÃO as duas continuam a concordar, no estado NÃO separado** — a metade que
+/// impede a cura de virar *«a tomada separa sempre»*.
 #[test]
-fn desarmado_a_tomada_e_o_desenho_concordam_no_estado_cru() {
+fn sem_declaracao_a_tomada_e_o_desenho_concordam_no_estado_cru() {
     let (desenho, tomada) = desenhado_e_tomada(None);
     assert_eq!(tomada, desenho);
     assert_eq!(
         desenho,
         vec![[0.0, 0.0], [0.5, 0.0]],
-        "desarmado, as duas leem a corrente do cozimento AO BIT"
+        "sem declaracao, as duas leem a corrente do cozimento AO BIT"
     );
 }
 
 /// ⛔⛔⛔ **UMA TOMADA QUE NÃO É SINK NUNCA É SEPARADA — e a armadilha tem nome.**
 ///
-/// O interruptor do sink chama-se `"collide"`… e a **`source.shape` tem um param com o MESMO
-/// nome** (`ph2d_node_motion_shape::param::COLLIDE`, o botão que faz a forma declarar a caixa
-/// dela). O gizmo do colisor toma os DOIS nós — a forma e o sink —, logo uma cura que perguntasse
-/// o param à cega separaria também a corrente da **geometria da própria forma**.
+/// O gizmo do colisor toma os DOIS nós — a `source.shape` com o `Collide` ligado e o sink —, e a
+/// corrente da forma também traz a caixa declarada. Uma cura que separasse toda tomada com colisor
+/// desarrumaria a **geometria da própria forma**.
 ///
-/// ⇒ o discriminador é *«este nó é um dos SINKS deste quadro?»*, e não o param.
+/// ⇒ o discriminador é *«este nó é um dos SINKS deste quadro?»*, e não a declaração.
 ///
 /// ⚠️⚠️ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE:** apagar a cerca dos sinks (separar toda
 /// tomada) passava a suíte inteira, porque a única tomada da fixtura ao lado **é** o sink. *Uma
@@ -292,9 +310,9 @@ fn desarmado_a_tomada_e_o_desenho_concordam_no_estado_cru() {
 #[test]
 fn uma_tomada_que_nao_e_sink_nunca_e_separada() {
     let mut g = Graph::new();
-    // O nó TAPADO: armado como se fosse a `source.shape` com o `Collide` dela ligado.
+    // O nó TAPADO: a declarar, como a `source.shape` com o `Collide` dela ligado.
     let forma = g.add_node(SRC_MAN.name);
-    g.set_param(forma, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(forma, DECLARA, 1.0);
     g.set_param(forma, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
     // E o SINK, que é outro nó.
     let sink = g.add_node(SRC_MAN.name);
@@ -323,8 +341,8 @@ fn uma_tomada_que_nao_e_sink_nunca_e_separada() {
     assert_eq!(
         p,
         vec![[0.0, 0.0], [0.5, 0.0]],
-        "a tomada de um no' que NAO e' sink tem de trazer a corrente crua, mesmo com um param \
-         `collide` armado — senao a geometria da propria forma sai separada"
+        "a tomada de um no' que NAO e' sink tem de trazer a corrente crua, mesmo a declarar \
+         colisor — senao a geometria da propria forma sai separada"
     );
 }
 
@@ -341,7 +359,7 @@ fn uma_tomada_que_nao_e_sink_nunca_e_separada() {
 fn um_quadro_separa_uma_vez_mesmo_com_o_sink_tapado() {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, DECLARA, 1.0);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
     let mut pump = MotionCookPump::new();
     // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
@@ -387,7 +405,7 @@ fn um_quadro_separa_uma_vez_mesmo_com_o_sink_tapado() {
 fn um_quadro_que_recupera_tiques_separa_uma_vez() {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, DECLARA, 1.0);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
     let mut pump = MotionCookPump::new();
     // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
@@ -469,7 +487,7 @@ fn um_quadro_que_recupera_tiques_separa_uma_vez() {
 fn a_bomba_publica_quantas_varreduras_correram() {
     let mut g = Graph::new();
     let sink = g.add_node(SRC_MAN.name);
-    g.set_param(sink, SINK_COLLIDE_PARAM, 1.0);
+    g.set_param(sink, DECLARA, 1.0);
     g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 1024.0);
     let mut pump = MotionCookPump::new();
     // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver
@@ -495,7 +513,7 @@ fn a_bomba_publica_quantas_varreduras_correram() {
     // num número plausível passaria a de cima.
     let mut g1 = Graph::new();
     let s1 = g1.add_node(SRC_MAN.name);
-    g1.set_param(s1, SINK_COLLIDE_PARAM, 1.0);
+    g1.set_param(s1, DECLARA, 1.0);
     g1.set_param(s1, SINK_COLLIDE_ITERATIONS_PARAM, 1.0);
     let mut p1 = MotionCookPump::new();
     // ⚠️ **A lei do dono DESLIGADA: este arnês mede o COZIMENTO** — ver

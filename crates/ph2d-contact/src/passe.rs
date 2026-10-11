@@ -142,8 +142,7 @@ pub fn separa_o_que_se_desenha(entrada: &Stream, varreduras: usize) -> Option<St
 /// nenhuma delas podia dizer se o cursor estava em `64` ou em `1024`). ⭐ E ele não é um contador
 /// novo: o [`crate::separate`] **já devolvia** o número — era a porta que o deitava fora.
 ///
-/// `0` quer dizer *não houve separação nenhuma* (nada declarou colisor, o interruptor está
-/// desarmado, ou ninguém se mexeu).
+/// `0` quer dizer *não houve separação nenhuma* (nada declarou colisor, ou ninguém se mexeu).
 #[must_use]
 pub fn separa_com_relatorio(entrada: &Stream, varreduras: usize) -> (Option<Stream>, Relatorio) {
     let mut r = Relatorio::default();

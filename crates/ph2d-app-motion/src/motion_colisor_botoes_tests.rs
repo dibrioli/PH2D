@@ -1,9 +1,10 @@
 //! ⭐⭐⭐ **NENHUM `Collide` VISÍVEL FICA MUDO SEM O ARTISTA SABER PORQUÊ** (doc 125 §2) — o censo
-//! que liga cada botão SOZINHO, pela bomba do produto, e exige EFEITO no que se desenha OU um
-//! conselho ([`Deficit::ColisorMudo`]) no cartão dele.
+//! que liga o botão, pela bomba do produto, e exige EFEITO no que se desenha OU um conselho
+//! ([`Deficit::ColisorMudo`]) no cartão dele.
 //!
-//! As montagens são as que o artista faz com as peças que se sobrepõem (o CONTROLO de cada uma:
-//! com as duas chaves certas o desenho muda — senão «sem efeito» seria verdade por vácuo).
+//! ⭐ Desde o doc 115 §33 há UMA chave só: o `Collide` da forma. O passe do fim arma-se sozinho em
+//! todo sink, logo o `Output` já não tem botão — e um `Collide` que chega a um sink tem sempre
+//! leitor. As montagens são as que o artista faz com as peças que se sobrepõem.
 
 use super::corda_com_colisor_demo_tests::{pior_solto, quadro};
 use crate::motion_state::MotionState;
@@ -39,7 +40,7 @@ fn grelha(g: &mut Graph) -> NodeId {
     n
 }
 
-/// Uma montagem: o grafo, o Shape e o Output cujos `Collide` se ligam.
+/// Uma montagem: o grafo, o Shape cujo `Collide` se liga e o Output.
 struct Montagem {
     nome: &'static str,
     g: Graph,
@@ -178,9 +179,10 @@ fn corda(dentro: bool) -> Montagem {
     }
 }
 
-/// O que o Output DESENHA ao fim de `tiques` quadros, com os dois `Collide` dados — pela porta do
-/// produto (`o_que_o_sink_desenha`, o passe do fim incluído).
-fn desenho(m: &Montagem, shape_on: bool, saida_on: bool, tiques: u64) -> Stream {
+/// O que o Output DESENHA ao fim de `tiques` quadros, com o `Collide` do Shape dado — pela porta do
+/// produto (`o_que_o_sink_desenha`, o passe do fim incluído). `passe = false` devolve a corrente
+/// COZIDA, antes do passe (a régua do «o passe não incha o corpo»).
+fn desenho(m: &Montagem, shape_on: bool, passe: bool, tiques: u64) -> Stream {
     let mut st = MotionState::new();
     st.doc.graph = m.g.clone();
     let g = &mut st.doc.graph;
@@ -189,11 +191,6 @@ fn desenho(m: &Montagem, shape_on: bool, saida_on: bool, tiques: u64) -> Stream 
         ph2d_node_motion_shape::param::COLLIDE,
         f32::from(u8::from(shape_on)),
     );
-    g.set_param(
-        m.saida,
-        ph2d_node_motion_output::COLLIDE_PARAM,
-        f32::from(u8::from(saida_on)),
-    );
     st.sinks = vec![m.saida];
     for t in 0..tiques {
         quadro(&mut st, t);
@@ -201,6 +198,9 @@ fn desenho(m: &Montagem, shape_on: bool, saida_on: bool, tiques: u64) -> Stream 
     let cozido = st.pump.cook.peek(m.saida).expect("o output cozeu")[0]
         .as_stream()
         .clone();
+    if !passe {
+        return cozido;
+    }
     ph2d_eval_motion::o_que_o_sink_desenha(&st.doc.graph, m.saida, &cozido)
         .0
         .unwrap_or(cozido)
@@ -221,18 +221,13 @@ fn muda(a: &Stream, b: &Stream) -> bool {
             .any(|(p, q)| (p[0] - q[0]).abs() > 1e-5 || (p[1] - q[1]).abs() > 1e-5)
 }
 
-fn conselho(m: &Montagem, shape_on: bool, saida_on: bool, no: NodeId) -> Option<Deficit> {
+fn conselho(m: &Montagem, shape_on: bool, no: NodeId) -> Option<Deficit> {
     let st = MotionState::new();
     let mut g = m.g.clone();
     g.set_param(
         m.shape,
         ph2d_node_motion_shape::param::COLLIDE,
         f32::from(u8::from(shape_on)),
-    );
-    g.set_param(
-        m.saida,
-        ph2d_node_motion_output::COLLIDE_PARAM,
-        f32::from(u8::from(saida_on)),
     );
     ph2d_motion_diagnose::diagnose(&g, &st.registry)
         .into_iter()
@@ -252,40 +247,39 @@ fn every_collide_alone_has_an_effect_or_an_advice() {
     ];
     let mut linhas = Vec::new();
     for m in &montagens {
-        let base = desenho(m, false, false, TIQUES);
-        // O CONTROLO: as duas chaves certas mudam o desenho — a montagem contém sobreposição.
+        let base = desenho(m, false, true, TIQUES);
+        // ⭐ O botão SOZINHO — e desde a §33 ele é o único: o Output arma o passe por si.
+        let efeito = muda(&base, &desenho(m, true, true, TIQUES));
+        let aviso = conselho(m, true, m.shape);
+        linhas.push(format!(
+            "{:24} Shape : efeito {efeito:5} · conselho {aviso:?}",
+            m.nome
+        ));
         assert!(
-            muda(&base, &desenho(m, true, true, TIQUES)),
-            "CONTROLO `{}`: com os dois Collide o desenho tem de mudar",
+            efeito || aviso.is_some(),
+            "`{}`: o Collide do Shape nao faz nada e o cartao nao diz porque",
             m.nome
         );
-        for (botao, no, (s_on, o_on)) in [
-            ("Shape", m.shape, (true, false)),
-            ("Output", m.saida, (false, true)),
-        ] {
-            let efeito = muda(&base, &desenho(m, s_on, o_on, TIQUES));
-            let aviso = conselho(m, s_on, o_on, no);
-            linhas.push(format!(
-                "{:24} {botao:6}: efeito {efeito:5} · conselho {aviso:?}",
-                m.nome
-            ));
-            assert!(
-                efeito || aviso.is_some(),
-                "`{}`: o Collide do {botao} sozinho nao faz nada e o cartao nao diz porque",
-                m.nome
-            );
-        }
+        // ⚠️ O CONTROLO de que a montagem contém sobreposição: ligado, o desenho MUDA — senão «sem
+        // efeito» seria verdade por vácuo. Desde a §33 isto vale em TODA montagem que chega a um
+        // sink, com ou sem conselho (o passe do fim separa o desenho sozinho).
+        assert!(
+            efeito,
+            "CONTROLO `{}`: com o Collide do Shape o desenho tem de mudar",
+            m.nome
+        );
     }
     eprintln!("{}", linhas.join("\n"));
 }
 
-/// ⭐ **E nenhum conselho onde o botão FUNCIONA** — as peças dentro de um corpo, e as duas chaves
-/// numa montagem estática: o aviso a soar num grafo certo seria ruído (a lição do `NeverDrawn`).
+/// ⭐ **E nenhum conselho onde o botão FUNCIONA** — as peças dentro de um corpo, e o botão numa
+/// montagem estática (o passe do fim lê-o sozinho): o aviso a soar num grafo certo seria ruído (a
+/// lição do `NeverDrawn`).
 #[test]
 fn a_working_collide_is_never_advised() {
     for m in [corpo(true, RAIO_DO_CORPO), corda(true)] {
         assert_eq!(
-            conselho(&m, true, false, m.shape),
+            conselho(&m, true, m.shape),
             None,
             "`{}`: o Shape funciona",
             m.nome
@@ -293,19 +287,15 @@ fn a_working_collide_is_never_advised() {
     }
     let m = estatica();
     assert_eq!(
-        conselho(&m, true, true, m.shape),
+        conselho(&m, true, m.shape),
         None,
-        "estatica: o Shape tem leitor"
-    );
-    assert_eq!(
-        conselho(&m, true, true, m.saida),
-        None,
-        "estatica: o Output tem declarante"
+        "estatica: o Shape tem leitor — o passe automatico do Output"
     );
 }
 
 /// ⭐⭐ **O passe do fim não incha um corpo de peças** (doc 125 §2, o filtro do Bug #15 no passe):
-/// com as duas chaves ligadas, o desenho guarda os vizinhos de repouso onde o corpo os pôs. O raio
+/// com o `Collide` ligado (o passe do fim arma-se sozinho), o desenho guarda os vizinhos de repouso
+/// onde o corpo os pôs — comparado com a corrente cozida ANTES do passe. O raio
 /// é o do Bug #15 (`0,28`, MAIOR que meio passo): os vizinhos sobrepõem-se no repouso.
 #[test]
 fn the_end_pass_does_not_swell_a_body_of_pieces() {

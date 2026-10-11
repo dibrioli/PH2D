@@ -70,7 +70,11 @@ const MEMBRANES: &[&str] = &[
 /// `Branches` fica na CPU, e o modo tem de ser lido pela escada inteira, senão um fio que
 /// conduza o `geometry` poria a cerca a julgar um modo que o nó não está a cozer. Ele entra aqui
 /// e NÃO nas membranas porque não publica nada — e o censo de baixo exige-o.
-const LEITORES: &[&str] = &["motion_bridge_gpu_forma.rs"];
+///
+/// ⚠️ **Mudou de endereço no doc 115 §33 (2026-10-11):** a pergunta *«alguma peça declara o
+/// colisor?»* (o `Collide` RESOLVIDO, um fio conta) saiu da cerca das formas para a cerca única do
+/// passe automático (`peca_declara_colisor`), que pergunta à forma E ao objecto.
+const LEITORES: &[&str] = &["motion_bridge_gpu_colisor.rs"];
 
 /// **Tira comentários antes de contar** — e sem isto este censo MENTE.
 ///

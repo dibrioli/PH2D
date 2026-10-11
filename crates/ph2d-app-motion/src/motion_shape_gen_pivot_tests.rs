@@ -328,16 +328,14 @@ fn nenhuma_linha_da_forma_se_chama_como_uma_do_sink() {
         da_forma.len(),
         do_sink.len()
     );
-    // ⚠️⚠️ **UMA isenção NOMEADA, e ela é PRÉ-EXISTENTE — não é desta wave.** O `Collide` do
-    // cartão da forma DECLARA um colisor nas peças dela; o do cartão do sink LIGA o passe de
-    // separação que os consome. *São as duas metades de uma coisa só, e o artista precisa das
-    // duas ligadas* — mas continuam a ser dois controlos com o mesmo nome, e a decisão de os
-    // separar é de quem desenhou aquele par (doc 115), não desta linha.
+    // ⭐ **A isenção `Collide` MORREU no doc 115 §33** (2026-10-11): o `Collide` do sink saiu — o
+    // passe arma-se sozinho — e a única linha com esse nome é a da forma. O censo de obsolescência
+    // abaixo é quem o disse. A lista fica, vazia, para a próxima isenção ter de se nomear.
     //
-    // ⛔ **E a isenção tem a metade da OBSOLESCÊNCIA:** se alguém renomear um dos dois, esta
-    // entrada deixa de descrever alguma coisa e o gate manda apagá-la. *Uma lista de dívida
-    // tolerada sem censo de obsolescência não desce: vira licença.*
-    const ISENTOS: &[&str] = &["Collide"];
+    // ⛔ **E a isenção tem a metade da OBSOLESCÊNCIA:** se uma entrada deixar de descrever alguma
+    // coisa, o gate manda apagá-la. *Uma lista de dívida tolerada sem censo de obsolescência não
+    // desce: vira licença.*
+    const ISENTOS: &[&str] = &[];
     let colisoes: Vec<&str> = da_forma
         .iter()
         .filter(|l| do_sink.contains(l))

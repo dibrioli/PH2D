@@ -3,15 +3,16 @@
 //!
 //! # O que ela mostra, e porque a metade que IMPORTA é o grafo estar VAZIO de colisão
 //!
-//! Uma fileira de formas com o botão **`Collide`** ligado, carimbadas por um duplicador num
-//! amontoado onde elas se atravessam — e **nenhum nó de colisão em lado nenhum**. O artista abre o
-//! cartão do **Output** e liga **`Collide`**: elas assentam.
+//! Uma fileira de formas carimbadas por um duplicador num amontoado onde elas se atravessam — e
+//! **nenhum nó de colisão em lado nenhum**. O artista abre o cartão da **Shape** e liga
+//! **`Collide`**: elas assentam (doc 115 §33 — o passe do fim arma-se sozinho quando a forma
+//! declara; o Output não tem botão).
 //!
 //! ⛔⛔ **É por isso que ela não podia ser a `=48`.** Aquela cena é o demo do `motion.collide` e as
 //! peças dela são uma `motion.grid` de pontos — **elas não DECLARAM forma nenhuma** e vivem do
 //! recuo de raio do cartão daquele nó, que o passe automático deliberadamente não tem
 //! (`ph2d_contact::passe`: *inventar um raio seria afirmar que uma peça colide quando ninguém o
-//! disse*). Ligar o interruptor ali não separaria nada, e a cena ensinaria o contrário do que
+//! disse*). Ligar o passe ali não separaria nada, e a cena ensinaria o contrário do que
 //! acontece — a espécie que o `CLAUDE.md` §5.0 chama de **pior que uma cena ausente**.
 //!
 //! ⭐ E esse mesmo facto é o preço da W6 já medido: *a `=48` não migra por troca directa*.
@@ -19,7 +20,7 @@
 //! # ⚠️ A cena nasce DESARMADA, de propósito
 //!
 //! O primeiro quadro tem de mostrar o amontoado. Se ela abrisse já separada, o artista veria o
-//! resultado e não a CAUSA — e o interruptor, que é o assunto inteiro da wave, seria invisível.
+//! resultado e não a CAUSA — e o botão, que é o assunto inteiro da wave, seria invisível.
 
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
@@ -76,11 +77,10 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         n
     };
 
-    // A FORMA, com o botão que o dono nomeou. ⚠️ É ele que faz a forma DECLARAR a caixa dela —
-    // sem ele a corrente não traz colisor e o passe não teria o que separar.
+    // A FORMA. ⚠️ O botão que o dono nomeou (`Collide`) NÃO se escreve: é ele que faz a forma
+    // DECLARAR a caixa e o passe armar-se sozinho (doc 115 §33), e quem o liga é o artista.
     let forma = no(g, "source.shape", 0.0, 0.0);
     g.set_param(forma, ph2d_node_motion_shape::param::KIND, quadrado);
-    g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
     g.set_param(forma, ph2d_node_motion_shape::param::SIZE, TAMANHO);
 
     // Os PONTOS: doze colunas bem afastadas, duas linhas que se atravessam ⇒ doze PARES.
@@ -107,7 +107,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         delayed: false,
     })
     .ok()?;
-    // ⚠️⚠️ **O interruptor NÃO se escreve, e isso é mais forte do que escrevê-lo a zero:** a cena
+    // ⚠️⚠️ **O `Collide` NÃO se escreve, e isso é mais forte do que escrevê-lo a zero:** a cena
     // nasce desarmada porque não autora override nenhum, logo ela não pode divergir do valor de
     // fábrica no dia em que ele mudar. O artista é que o liga.
     Some(vec![out])
@@ -121,14 +121,15 @@ pub(super) fn announce() {
          e NENHUM no' de colisao no grafo.\n\
          \n\
          (1) Repare no amontoado: as pecas atravessam-se.\n\
-         (2) Carregue no cartao `Output` (o no' do fim, a direita).\n\
-         (3) Ligue `Collide`. As pecas assentam, cada uma pela CAIXA dela.\n\
-         (4) `Collide Sweeps` (que so' aparece com o `Collide` ligado) diz quantas passagens\n    \
-         por quadro: menos = mais rapido e menos arrumado.\n\
-         (5) Desligue `Collide` outra vez: elas voltam ao amontoado.\n\
+         (2) Carregue no cartao `Shape` (o no' da esquerda, em cima).\n\
+         (3) Ligue `Collide`. As pecas assentam, cada uma pela CAIXA dela — o app separa\n    \
+         sozinho, nao ha' nada para ligar no `Output`.\n\
+         (4) No cartao `Output` (o no' do fim, a direita), `Collide Sweeps` diz quantas\n    \
+         passagens por quadro: menos = mais rapido e menos arrumado.\n\
+         (5) Desligue `Collide` no `Shape` outra vez: elas voltam ao amontoado.\n\
          \n\
-         (!) Se ligar `Collide` e nada se mexer, o defeito e' a forma nao estar a DECLARAR a\n    \
-         caixa dela — abra o cartao `Shape` e confirme que o `Collide` DELE esta' ligado.\n"
+         (!) Se ligar `Collide` e nada se mexer, o defeito e' a forma nao chegar ao `Output`\n    \
+         — confirme os fios Shape -> Duplicator -> Output.\n"
     );
 }
 

@@ -1,5 +1,6 @@
-//! ⭐ **QUEM DECLARA, QUEM LÊ E QUEM ARMA o colisor** — as três perguntas que o diagnóstico faz a
-//! um botão `Collide` (doc 125 §2): *a declaração deste nó chega a alguém que a leia?*
+//! ⭐ **QUEM DECLARA e QUEM LÊ o colisor** — as perguntas que o diagnóstico e a cerca do dispositivo
+//! fazem a um botão `Collide` (doc 125 §2). Quem ARMA o passe do fim já não é pergunta: desde o
+//! doc 115 §33 ele corre sozinho sobre toda declaração que chega a um sink.
 //!
 //! Os campos ficam no `lib.rs` (são o estado do registry); os acessores moram aqui.
 
@@ -13,8 +14,10 @@ impl NodeRegistry {
     ///
     /// ⚠️ **Whoever writes the next such node registers it here**, and the census
     /// in `ph2d-app-motion` (`todo_leitor_do_colisor_declarado_se_regista`) fails
-    /// until they do: the flag is what a fence reads, and a reader that forgets it
-    /// cooks on the device with a disc kernel while the CPU honours a box.
+    /// until they do: the flag is what the diagnosis (`ColisorMudo`) reads to tell
+    /// a simulation that sees the declared shape from one that does not. (The
+    /// device fence no longer needs it: since doc 115 §33 the sink's pass reads
+    /// every declaration, so a declaration alone keeps the device away.)
     pub fn register_declared_collider_reader(&mut self, id: NodeTypeId) {
         self.declared_collider_readers.insert(id);
     }
@@ -27,7 +30,8 @@ impl NodeRegistry {
     }
 
     /// Este tipo DECLARA o colisor das suas peças enquanto o param `param` estiver ligado
-    /// (`≥ 0,5`) — a `source.shape` e o seu `Collide`. Aditivo; o último registo vence.
+    /// (`≥ 0,5`) — o `Collide` da `source.shape` e o do `source.object`. Aditivo; o último registo
+    /// vence.
     pub fn register_collider_switch(&mut self, id: NodeTypeId, param: &'static str) {
         self.collider_switches.insert(id, param);
     }
@@ -36,17 +40,5 @@ impl NodeRegistry {
     #[must_use]
     pub fn collider_switch(&self, id: NodeTypeId) -> Option<&'static str> {
         self.collider_switches.get(&id).copied()
-    }
-
-    /// Este sink ARMA o passe do fim do cozimento (`ph2d_contact::passe`) enquanto o param
-    /// `param` estiver ligado — o `Collide` do `motion.output`. Aditivo; o último registo vence.
-    pub fn register_contact_pass_switch(&mut self, id: NodeTypeId, param: &'static str) {
-        self.contact_pass_switches.insert(id, param);
-    }
-
-    /// O interruptor com que `id` arma o passe do fim, se o tiver.
-    #[must_use]
-    pub fn contact_pass_switch(&self, id: NodeTypeId) -> Option<&'static str> {
-        self.contact_pass_switches.get(&id).copied()
     }
 }

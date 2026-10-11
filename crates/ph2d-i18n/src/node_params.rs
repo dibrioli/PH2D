@@ -327,6 +327,7 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.source.lsystem.param.variation", "Variation"),
     ("node.source.lsystem.param.width", "Width"),
     ("node.source.lsystem.param.width_scale", "Width Scale"),
+    ("node.source.object.param.collide", "Collide"),
     ("node.source.object.param.object", "Object"),
     ("node.source.object.param.space", "Transform"),
     ("node.source.object.param.time_offset", "Time Offset"),

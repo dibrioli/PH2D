@@ -50,6 +50,13 @@ ao artista o que fazer**: um déficit novo (`ColisorMudo`) no diagnóstico, com 
 declaração: ligue o `Collide` do Output), `"collide"` (o Output arma o passe e nada declara). O
 registo ganha as duas chaves (quem DECLARA por interruptor, quem ARMA o passe), ao lado de quem LÊ.
 
+> ⚠️ **Mudou em 2026-10-11 ([doc 115 §33](115_o_colisor_sai_do_grafo.md), decisão do dono: *«automático
+> é melhor»*):** o `Collide` do Output SAIU — o passe do fim arma-se sozinho em todo sink, e o
+> `source.object` ganhou o seu `Collide`. ⇒ as curas `"output"` e `"collide"` e a chave de quem ARMA
+> (`contact_pass_switch`) foram retiradas; sobra só `"shape"`, e o registo guarda quem DECLARA (a
+> forma **e** o objecto) e quem LÊ. O conselho a dar a quem vê peças sobrepostas é: **ligue o
+> `Collide` da forma ou do objecto** — no Output não há nada para ligar.
+
 **Kill-criteria:** (1) um censo pela bomba do produto que liga CADA `Collide` sozinho, em cada
 montagem que o artista faz, e exige EFEITO no que se desenha OU o conselho no cartão; (2) nenhum
 conselho onde o botão funciona; (3) cada conselho tem frase própria (o censo `Deficit::ALL`).
@@ -220,11 +227,18 @@ repouso centenas de vezes — o custo é o da grelha, não um defeito.
 O CONTROLO de cada montagem (as duas chaves certas mudam o desenho) passa — senão «sem efeito»
 seria verdade por vácuo. E `a_working_collide_is_never_advised`: nenhum aviso onde o botão funciona.
 
+> ⚠️ **Tabela HISTÓRICA (até 2026-10-11).** Desde o [doc 115 §33](115_o_colisor_sai_do_grafo.md) a
+> coluna do Output não existe (o passe é automático) e a 1.ª linha passou a **separar** com o
+> `Collide` do Shape sozinho; o censo liga só o botão do Shape e exige que ele mude o desenho em
+> TODA montagem (com ou sem o conselho `"shape"`).
+
 ⚠️ **O censo das cenas acendeu-se em seis**, e cada uma foi medida antes de decidir: a `=114`/`=115`
 eram um FALSO alarme da régua (numa zona as peças chegam ao `sim.step` pela aresta de ESTADO, e o
-fecho saltava as `delayed` — curado); a `=121`–`=123` nascem desarmadas DE PROPÓSITO (doc 115 W5: o
-passo do dono é ligar o `Collide` do Output, e o conselho diz exactamente isso) e a `=131` é a lição
-do item — as quatro ficam numa lista nomeada (`ENSINAM_A_SEGUNDA_CHAVE`) com a catraca ao contrário.
+fecho saltava as `delayed` — curado); a `=121`–`=123` nasciam desarmadas DE PROPÓSITO (doc 115 W5: o
+passo do dono era ligar o `Collide` do Output, e o conselho dizia exactamente isso) e a `=131` é a
+lição do item — as quatro ficaram numa lista nomeada (`ENSINAM_A_SEGUNDA_CHAVE`) com a catraca ao
+contrário. ⚠️ Desde o doc 115 §33 a `=121`–`=123` nascem com o `Collide` da FORMA desligado (o passo
+do dono é ligá-lo), não acusam nada, e saíram da lista; fica só a `=131`.
 
 **O que o dono vê:** o selo ⚠ no cartão do Shape (`inert_reaching_output`, a porta que o painel
 pinta) e, ao clicá-lo, a frase do `explain`. ⚠️ O selo só se desenha com os cartões em detalhe

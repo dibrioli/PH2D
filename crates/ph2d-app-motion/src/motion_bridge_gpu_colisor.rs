@@ -1,138 +1,79 @@
-//! ⭐⭐⭐ **AS CERCAS DO COLISOR** — as três perguntas que decidem se um documento com contacto
-//! entre peças pode cozer no DISPOSITIVO (docs 109 W2 e 115 W1/W4).
+//! ⭐⭐⭐ **AS CERCAS DO COLISOR** — as perguntas que decidem se um documento com contacto entre
+//! peças pode cozer no DISPOSITIVO (docs 109 W2 e 115 W5/§33).
 //!
 //! # Porque elas são um ASSUNTO e vivem num ficheiro só
 //!
-//! As três respondem à MESMA razão de motor — *o kernel de WGSL separa DISCOS e a CPU honra a
-//! CAIXA declarada*, logo a mesma cena daria uma pilha num lado e um borrão no outro, sem erro
-//! nenhum — por **rotas diferentes**: o nome escrito num text param, a coluna que atravessa pela
-//! tabela de externos, e o nó que a LÊ. Ler uma sem as outras duas dá sempre a conclusão errada
-//! sobre o que o produto recusa.
+//! As duas respondem à MESMA razão de motor — *o contacto e o passe do fim só existem na CPU*, logo
+//! a mesma cena daria uma pilha num lado e um borrão no outro, sem erro nenhum — por **rotas
+//! diferentes**: o nome escrito num text param, e o botão `Collide` de uma peça (a `source.shape` e,
+//! desde a §33, o `source.object`).
 //!
 //! ⚠️ **O DESPACHO fica no [`super`]**, de propósito: o que este ficheiro tem são as PERGUNTAS, e
 //! quem decide a ordem do cozimento é o `cook_gpu`. O gate
-//! `a_cerca_dos_externos_esta_de_facto_ligada_ao_cozimento` lê aquele ficheiro por `include_str!`
+//! `a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento` lê aquele ficheiro por `include_str!`
 //! justamente porque *um gate que chama a função em vez de percorrer a rota afirma que a lei
 //! existe, nunca que o produto a usa*.
 
-use ph2d_node_registry::NodeRegistry;
+use crate::motion_state::MotionState;
+use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::Graph;
-use ph2d_nodegraph::node::NodeTypeId;
+use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 
-/// ⭐⭐ **Um documento que escreve o colisor PELO NOME cozinha na CPU** (doc 109 W2).
-///
-/// O contacto entre peças mora no `sim.step` de CPU e o dispositivo ainda **não** o resolve (W5, sem
-/// cliente). Deixar a coluna `collider` chegar a um `sim.step` no dispositivo daria a MESMA cena com
-/// uma pilha na CPU e um borrão na placa — sem erro nenhum.
-///
-/// ⚠️ **Quem a escreve:** o `source.shape` com `Collide` — já recusado pela porta da forma viva, logo
-/// acima — e **qualquer nó que escreva uma coluna pelo NOME** (o canal `Custom…` do `motion.drive`
-/// escreve a que o artista digitar). Esse recua para a CPU sozinho, mas numa rota HÍBRIDA a coluna
-/// que ele escreveu antes da fronteira atravessa-a e chega ao dispositivo.
-///
-/// ⚠️ **A pergunta é sobre o NOME e não sobre o nó**, de propósito: uma lista de «nós que escrevem por
-/// nome» envelheceria no dia do próximo. O preço de um falso positivo (um texto que diga
-/// exactamente `collider` noutro sentido) é cozinhar na CPU, nunca uma cena errada.
-/// A frase da recusa — uma constante, para o gate que prova a LIGAÇÃO ler a frase do produto e não
-/// uma cópia dela.
+/// A frase da recusa do colisor escrito PELO NOME ([`graph_declares_collider`]) — uma constante,
+/// para o gate que prova a LIGAÇÃO ler a frase do produto e não uma cópia dela.
 pub(super) const RECUSA_COLISOR: &str =
     "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contatos (doc 109)";
 
-/// A frase da recusa da porta de EXTERNOS — irmã da acima, e separada de propósito: as duas
-/// recusam pela mesma razão de motor e por **rotas diferentes**, e um smoke que leia *«pelo
-/// nome»* sobre um objecto da cena procuraria o defeito no sítio errado.
-pub(super) const RECUSA_COLISOR_EXTERNO: &str =
-    "CPU: um objecto da cena traz colisor -- o dispositivo ainda nao resolve contatos (doc 115)";
-
-/// A frase da recusa do PASSE automático (doc 115 W5) — a terceira rota, e a única em que a
-/// divergência não é entre dois kernels mas entre *haver um passe* e *não haver nenhum*.
+/// A frase da recusa do PASSE automático (doc 115 W5/§33) — a única em que a divergência não é
+/// entre dois kernels mas entre *haver um passe* e *não haver nenhum*.
 pub(super) const RECUSA_PASSE: &str =
-    "CPU: o sink tem a separacao ARMADA -- o passe automatico corre na CPU (doc 115 W5)";
+    "CPU: uma peca declara colisor (Collide) -- a separacao automatica corre na CPU (doc 115)";
 
-/// ⭐⭐⭐ **A SEPARAÇÃO ESTÁ ARMADA?** (doc 115 W5) — a pergunta que a §10.3 daquele doc prescreveu
-/// por escrito, meses antes de haver um passe: *«a pergunta certa da cerca deixa de ser «alguém
-/// declara?» e passa a ser «a separação está ARMADA?»»*.
+/// ⭐⭐⭐ **ALGUMA PEÇA DECLARA O COLISOR NESTE QUADRO?** (doc 115 §33) — o `Collide` RESOLVIDO (um
+/// fio conta) de todo nó que o registo diz declarar por interruptor
+/// ([`ph2d_node_registry::NodeRegistry::collider_switch`]: a `source.shape` e o `source.object`).
 ///
-/// # Porque ela é uma cerca e não só uma leitura
+/// # Porque a pergunta é só «alguém declara?»
 ///
-/// O passe corre **no fim do cozimento da CPU**, sobre a corrente que o pump baixa. Na rota do
-/// dispositivo não existe corrente de CPU nenhuma para separar — o cozimento é residente e o
-/// lowering acontece lá. ⇒ com o interruptor ligado, o MESMO documento sairia separado num lado e
-/// sobreposto no outro, que é a divergência que as duas cercas irmãs já existem para impedir.
+/// Desde a §33 o passe do fim do cozimento arma-se SOZINHO: o sink lê toda declaração que lhe
+/// chega. ⇒ uma declaração tem sempre um leitor, e a metade «e alguém a lê?» que as cercas antigas
+/// perguntavam (`graph_reads_declared_collider`) passou a ser sempre verdade. O passe corre **no
+/// fim do cozimento da CPU**; na rota do dispositivo não existe corrente de CPU para separar ⇒ a
+/// MESMA cena sairia separada num lado e sobreposta no outro.
 ///
-/// ⚠️ **E a recusa é barata por MEDIÇÃO, não por esperança:** a W2 deste doc fechou numa recusa
-/// medida — à população que o dono nomeou (*«centenas»*) a separação custa `12,4 %` de um quadro a
-/// `8` varreduras, e o cozimento inteiro na CPU custa `0,02 %` (§11). *O dispositivo não é preciso
-/// aqui*, e quem armar isto numa cena de milhares tem o número do §9.5 para o avisar.
-pub(super) fn sink_arma_a_separacao(
-    graph: &Graph,
-    sinks: &[ph2d_nodegraph::graph::NodeId],
-) -> bool {
-    sinks
+/// ⚠️ **E um objecto SEM o botão continua a cozer no dispositivo** — a membrana já não declara
+/// nada, e é o cartão que decide. A recusa é barata por MEDIÇÃO: a `8` varreduras a separação de
+/// centenas de peças custa `12,4 %` de um quadro e o cozimento inteiro na CPU `0,02 %` (doc 115 §11).
+pub(super) fn peca_declara_colisor(motion: &mut MotionState, seconds: f64) -> bool {
+    let declarantes: Vec<(
+        ph2d_nodegraph::graph::NodeId,
+        &'static NodeManifest,
+        &'static str,
+    )> = motion
+        .doc
+        .graph
+        .nodes()
         .iter()
-        .any(|&s| ph2d_eval_motion::sink_collide_sweeps(graph, s) > 0)
-}
-
-/// ⭐⭐⭐ **A METADE QUE A DECLARAÇÃO PELO NOME NÃO ALCANÇA: um EXTERNO que traz colisor**
-/// (doc 115 W1).
-///
-/// # O buraco, e porque ele é LATENTE e não teórico
-///
-/// A irmã acima varre `graph.node_text_params()` — ela vê o artista a **escrever** o nome de uma
-/// coluna. ⛔ Um objecto da cena publicado pela membrana não escreve texto nenhum: ele entra pela
-/// tabela de externos do cozedor, que aquela varredura **não olha**. ⇒ no dia em que o Sprite, o
-/// vector e o Flip nascerem com o colisor deles (doc 115 W3/W4), a coluna atravessa a fronteira
-/// **sem cerca nenhuma** — e o modo de falha é o que o doc da irmã já nomeia: *a MESMA cena com
-/// uma pilha na CPU e um borrão na placa, sem erro nenhum*.
-///
-/// ⚠️⚠️ **Ela nasce INERTE, e isso é a ordem certa e não um descuido.** Medido em 2026-09-17: a
-/// membrana publica `(P, size, tint, uv_rect, texture_id)` e mais nada, logo hoje nenhum externo
-/// traz estas colunas e esta porta responde `false` em toda cena do produto. *Escrever a cerca
-/// ANTES de abrir a rota é o que impede que cada wave a seguir torne mais cenas silenciosamente
-/// erradas* — a mesma razão pela qual a W1 das lanes vem primeiro no doc 102.
-///
-/// ⚠️ **O molde é a [`cook_publishes_live_geometry`]**, não a irmã de texto: a membrana publica os
-/// externos ANTES de o cozimento correr (pós-dreno, pré-cook), logo uma varredura por quadro
-/// responde à pergunta REAL. Custo: um punhado de externos, três sondas de coluna cada.
-pub(super) fn cook_publishes_collider(cook: &ph2d_nodegraph::cook::Cook) -> bool {
-    use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
-    cook.externals().values().any(|e| {
-        [COLLIDER_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN]
-            .iter()
-            .any(|c| e.value.get(c).is_some())
+        .filter_map(|n| {
+            let ty = NodeTypeId::of(n.type_name.as_str());
+            let chave = motion.registry.collider_switch(ty)?;
+            let manifest = motion.registry.resolve(ty)?.manifest();
+            Some((n.id, manifest, chave))
+        })
+        .collect();
+    declarantes.into_iter().any(|(id, manifest, chave)| {
+        crate::motion_externals::resolved_params(motion, id, seconds, manifest)
+            .get(chave)
+            .is_some_and(|&v| v >= 0.5)
     })
 }
 
-/// ⭐⭐⭐ **A METADE DO CONSUMIDOR** (doc 115 W4) — *a declaração chega a alguém que a LEIA?*
+/// ⭐⭐ **Um documento que escreve o colisor PELO NOME cozinha na CPU** (doc 109 W2) — a rota que o
+/// botão não cobre: um nó que escreve uma coluna pelo NOME (o canal `Custom…` do `motion.drive`).
 ///
-/// # Porque ela é obrigatória, e não um refinamento
-///
-/// Desde a W4 **todo** objecto da cena declara a caixa dele, e a membrana publica TODO sprite com
-/// nome — inclusive os que o grafo nunca nomeia. ⇒ a metade de cima sozinha responderia `true` em
-/// qualquer cena com um objecto, e o preço não é o `0,02 %` de um quadro que a §11 do doc 115
-/// mediu à população do dono: é o `50,9×` do doc 98 numa cena que carimbe um objecto aos milhares,
-/// que é exactamente o caso que a §9.5 daquele doc deixou **nomeado a vigiar**.
-///
-/// ⚠️ **O CONTROLO desta lei já estava escrito, por mim, no gate da W1**: *«um objecto SEM colisor
-/// tem de continuar a cozer no dispositivo — senão esta cerca derruba toda cena com um Sprite e o
-/// §0.0 deixa o caminho lento definir o produto»*. A W4 tornou a premissa dele falsa (hoje todo
-/// objecto traz colisor) e a frase continua verdadeira: o que mudou de sítio foi **qual** das duas
-/// metades a garante.
-///
-/// # A bandeira, e não uma lista de nomes na shell
-///
-/// A pergunta é *«este tipo de nó lê o colisor DECLARADO?»*, e a resposta é side-metadata do
-/// registo ([`NodeRegistry::reads_declared_collider`]), registada por cada nó que chama
-/// `ph2d_contact::colisores`. ⛔ Uma lista escrita aqui envelheceria no dia do quarto leitor, em
-/// silêncio e do lado errado — o lado que deixa a divergência passar. O censo
-/// `todo_leitor_do_colisor_declarado_se_regista` é quem impede a bandeira de ficar por pôr.
-pub(super) fn graph_reads_declared_collider(graph: &Graph, reg: &NodeRegistry) -> bool {
-    graph
-        .nodes()
-        .iter()
-        .any(|n| reg.reads_declared_collider(NodeTypeId::of(n.type_name.as_str())))
-}
-
+/// ⚠️ **A pergunta é sobre o NOME e não sobre o nó**: uma lista de «nós que escrevem por nome»
+/// envelheceria no dia do próximo. O preço de um falso positivo é cozinhar na CPU, nunca uma cena
+/// errada.
 pub(super) fn graph_declares_collider(graph: &Graph) -> bool {
     use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
     // As TRÊS colunas da declaração (doc 109 §5): a caixa e o centro também só a CPU resolve.

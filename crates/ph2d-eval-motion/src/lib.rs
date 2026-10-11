@@ -58,9 +58,9 @@ mod sink_style;
 pub use sink_style::{
     BlendWith, MisturaDoSink, SINK_BLEND_PARAM, SINK_BLEND_WITH_PARAM,
     SINK_COLLIDE_ITERATIONS_DEFAULT, SINK_COLLIDE_ITERATIONS_MAX, SINK_COLLIDE_ITERATIONS_PARAM,
-    SINK_COLLIDE_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT, SINK_PIVOT_X_PARAM,
-    SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM, o_que_o_sink_desenha, sink_blend_tag, sink_blend_with,
-    sink_collide_sweeps, sink_style, so_com_forma_por_ordem,
+    SINK_FILTER_PARAM, SINK_PIVOT_LIMIT, SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM, SINK_SORT_PARAM,
+    o_que_o_sink_desenha, sink_blend_tag, sink_blend_with, sink_collide_sweeps, sink_style,
+    so_com_forma_por_ordem,
 };
 
 mod lower;
@@ -195,15 +195,10 @@ pub struct MotionCookPump {
     /// para o estilo. ⚠️ **Um segundo consumidor desta bomba herda o neutro por construção**, e é
     /// isso que o gate `uma_bomba_nasce_neutra_e_o_motion_e_que_liga` afirma.
     so_com_forma: bool,
-    /// ⭐ **A camada filtrada do Motion está ligada** (doc 129 §3.5): um sink que mistura só com o
-    /// CENÁRIO (`Scene`) não agrupa — as cópias juntam-se em `Normal` na camada e o modo aplica-se
-    /// quando ela pousa. Ver [`Self::isola_na_camada`].
+    /// A camada filtrada do Motion está ligada: o `Scene` não agrupa (doc 129 §3.5).
     camada_isolada: bool,
-    /// ⭐ **O último cozimento marchou só o CONE da rota híbrida** (`marcha.rs`): os laços fora dele são
-    /// do dispositivo e a CPU não tem o estado deles — nem o anel, que guardou esse estado parcial.
-    /// A 1.ª vez que a bomba volta a cozer o grafo INTEIRO (a rota caiu da placa a meio) re-simula do
-    /// tique 0 até ao alvo, em vez de avançar um laço a partir da semente (o salto medido em 11/10:
-    /// `0,86` de uma vez, contra `0,011` por quadro).
+    /// O último cozimento marchou só o CONE da híbrida (`marcha.rs`): o grafo inteiro a seguir
+    /// re-simula da semente (doc 129 §5.10).
     so_o_cone: bool,
 }
 
@@ -492,8 +487,8 @@ impl MotionCookPump {
                             if let Some(v) = outputs.first() {
                                 let cozido = v.as_stream();
                                 // ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5): o acabamento que
-                                // separa o que vai ser desenhado, armado pelo interruptor do
-                                // próprio sink. ⚠️ **AQUI e não dentro de cada lowering**: as duas
+                                // separa o que vai ser desenhado, armado sozinho pela corrente
+                                // que declara colisor (doc 115 §33). ⚠️ **AQUI e não dentro de cada lowering**: as duas
                                 // mídias lêem a MESMA corrente (a lei do `geometry_id`), e separar
                                 // em dois sítios poria um vector e uma sprite do mesmo grupo em
                                 // posições diferentes. ⛔ E ele devolve `None` — sem clonar nada —

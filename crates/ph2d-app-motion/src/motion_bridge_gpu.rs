@@ -118,10 +118,7 @@ pub(super) use objecto::{
 mod colisor;
 #[path = "motion_bridge_gpu_forma.rs"]
 pub(crate) mod forma;
-use colisor::{
-    RECUSA_COLISOR, RECUSA_COLISOR_EXTERNO, RECUSA_PASSE, cook_publishes_collider,
-    graph_declares_collider, graph_reads_declared_collider, sink_arma_a_separacao,
-};
+use colisor::{RECUSA_COLISOR, RECUSA_PASSE, graph_declares_collider, peca_declara_colisor};
 
 /// O motivo de um documento de várias saídas não ir à placa quando uma delas não pode ser encenada
 /// (doc 119 W3): ela ficaria fronteira, e o estilo de uma saída iria para as linhas de outra.
@@ -266,16 +263,12 @@ pub(super) fn cook_gpu(
     // plano, pela razão de sempre: a bomba da CPU tem de ser dona do tique desde o início.
     motion.formas_no_dispositivo.clear();
     let vivas = forma::handles_publicados(&motion.pump.cook);
-    let com_colisor_lido = !vivas.is_empty()
-        && graph_reads_declared_collider(&motion.doc.graph, &motion.registry)
-        && forma::forma_declara_colisor(motion, target as f64 * fixed_dt);
     if !vivas.is_empty() && forma::saida_com_mistura_em_formas(motion) {
         return fell(motion, forma::RECUSA_FORMA_COM_MISTURA);
     }
     if let Err(porque) = forma::formas_para_a_placa(
         crate::motion_shape_placa::por_ordem(),
         &vivas,
-        com_colisor_lido,
         &motion.shape_store,
         &mut motion.placa_geometrias,
     ) {
@@ -285,20 +278,10 @@ pub(super) fn cook_gpu(
     if graph_declares_collider(&motion.doc.graph) {
         return fell(motion, RECUSA_COLISOR);
     }
-    // Doc 115 W1+W4: a MESMA razão de motor por uma rota que a varredura de texto não vê — um
-    // objecto da cena que traz a forma dele. ⚠️ **As DUAS metades**, pela mesma razão pela qual o
-    // molde de baixo (`graph_has_object_source && cook_publishes_live_geometry`) as tem: desde a
-    // W4 **todo** objecto declara a caixa dele, logo perguntar só pelo externo recusaria toda
-    // cena com um Sprite — e o §0.0 do `CLAUDE.md` proíbe deixar o caminho lento definir o
-    // produto. Ver [`cook_publishes_collider`] e [`graph_reads_declared_collider`].
-    if cook_publishes_collider(&motion.pump.cook)
-        && graph_reads_declared_collider(&motion.doc.graph, &motion.registry)
-    {
-        return fell(motion, RECUSA_COLISOR_EXTERNO);
-    }
-    // Doc 115 W5: o passe automático corre no fim do cozimento da CPU, e na rota do dispositivo não
-    // existe corrente de CPU para separar. Ver [`sink_arma_a_separacao`].
-    if sink_arma_a_separacao(&motion.doc.graph, &motion.sinks) {
+    // Doc 115 §33: o passe automático corre no fim do cozimento da CPU, e na rota do dispositivo
+    // não existe corrente de CPU para separar. ⚠️ A pergunta é só «alguma peça declara?» — o sink
+    // lê toda declaração, e um objecto sem o botão continua na placa. Ver [`peca_declara_colisor`].
+    if peca_declara_colisor(motion, target as f64 * fixed_dt) {
         return fell(motion, RECUSA_PASSE);
     }
     // ⭐⭐⭐ **Um sink que mistura EM GRUPO desenha-se no Vello** (doc 118 W3/W4): o device entrega

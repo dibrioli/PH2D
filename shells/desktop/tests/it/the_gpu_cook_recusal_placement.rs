@@ -5,7 +5,7 @@
 //!
 //! - **As FORMAS vivas** (`source.shape`, os glifos, a fita do L-System) — desde o doc 121 W3
 //!   VÃO à placa pelo passe de formas, e o que ainda recusa (a placa desligada, um traço, uma
-//!   tinta própria, um colisor lido, a mistura por linha) recusa ANTES de
+//!   tinta própria, a mistura por linha) recusa ANTES de
 //!   `ph2d_gpu_cook::plan(...)`, para o pump da CPU possuir o tick do zero. Sinal: por CONTEÚDO
 //!   (`forma::formas_para_a_placa`, `forma::saida_com_mistura_em_formas`). ⛔ Era a cerca do
 //!   TIPO (`graph_has_live_vector_source`) e a da instância condicional, que recusavam SEMPRE.
@@ -81,6 +81,16 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     assert!(
         substeps < plan,
         "o ritmo do grafo tem de ser lido ANTES do plano (substeps@{substeps} vs plan@{plan})"
+    );
+    // ⭐ doc 115 §33: a peça que declara colisor (o `Collide` da forma ou do objecto) arma o passe
+    // da CPU — e recusa ANTES do plano, pela mesma razão das formas.
+    let colisor = body.find("peca_declara_colisor(").expect(
+        "cook_gpu consulta a cerca do passe automatico — sem ela a mesma cena sairia separada na \
+         CPU e sobreposta na placa",
+    );
+    assert!(
+        colisor < plan,
+        "a cerca do passe tem de rodar ANTES do plano (colisor@{colisor} vs plan@{plan})"
     );
     assert!(
         live_vector < plan && live_geo < plan && live_conditional < plan,

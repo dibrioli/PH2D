@@ -22,7 +22,7 @@ pub fn appearance_tile(
     texture_id: u32,
     premultiplied: bool,
 ) -> Stream {
-    let s = Stream::new(1)
+    Stream::new(1)
         .with("P", Column::Vec2(vec![[0.0, 0.0]]))
         .with("size", Column::Vec2(vec![size]))
         .with("tint", Column::Vec4(vec![tint]))
@@ -40,9 +40,7 @@ pub fn appearance_tile(
         .with(
             "premultiplied",
             Column::Scalar(vec![f32::from(u8::from(premultiplied))]),
-        );
-    // doc 115 W4: e a FORMA dele, pela porta única — ver `super::colisor`.
-    super::colisor::com_colisor(s)
+        )
 }
 
 /// The one-instance appearance stream for a LIVE VECTOR (a `source.object` that
@@ -69,11 +67,9 @@ pub fn pose_stream(t: &ph2d_ecs::Transform) -> Stream {
 }
 
 pub fn appearance_vector(size: [f32; 2], tint: [f32; 4], geometry_id: u32) -> Stream {
-    let s = Stream::new(1)
+    Stream::new(1)
         .with("P", Column::Vec2(vec![[0.0, 0.0]]))
         .with("size", Column::Vec2(vec![size]))
         .with("tint", Column::Vec4(vec![tint]))
-        .with("geometry_id", Column::Scalar(vec![geometry_id as f32]));
-    // doc 115 W4: e a FORMA dele, pela porta única — ver `super::colisor`.
-    super::colisor::com_colisor(s)
+        .with("geometry_id", Column::Scalar(vec![geometry_id as f32]))
 }

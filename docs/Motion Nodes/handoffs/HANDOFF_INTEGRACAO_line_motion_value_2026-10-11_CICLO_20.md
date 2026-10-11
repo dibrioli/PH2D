@@ -169,3 +169,27 @@ Doc 129 §7, mais o que a W4b deixou:
   dois objectos · `Bezier`/`Tint` OKLCH caros na CPU de reserva · gate de gesto pelo caminho REAL do rato
   (BUGS #18).
 - Aberto de processo: o smoke do Enio da W4b ainda NÃO foi feito (integrar não é aprovar).
+
+## §9 — Depois do fecho: o report do `Collide` (11/10)
+
+Dois commits a mais na linha, pedidos pelo dono depois do fecho (detalhe e números no doc 129
+§5.10 e no doc 115 §33):
+
+- **`e30104881` — a cena não salta quando a rota cai da placa a meio.** `MotionCookPump::so_o_cone`
+  (`ph2d-eval-motion`, aditivo: campo privado + 6 linhas no despacho do `scrub.rs`). Gate
+  `the_scene_does_not_jump_when_the_route_leaves_the_device` (placa). Preço medido: `0,115 ms` por
+  tique re-simulado, UMA vez por troca. Aberto: sem engasgo pediria o estado do dispositivo na CPU.
+- **O `Collide` automático** (commit seguinte a este texto). ⚠️ **Para o integrador:** muda o
+  `motion.output` (sai o param `collide`; o `collide_iterations` fica sempre visível), o
+  `source.object` (param `collide` APENDADO, default 0), a membrana dos objectos (deixa de declarar
+  `collider_box`), o registo (`register_contact_pass_switch` sai; o `source.object` regista-se em
+  `register_collider_switch`) e o `ph2d-motion-diagnose`. Projectos antigos migram no
+  `MotionState::load_text` (`migra_o_collide_da_saida`, idempotente) — ⛔ sem `PROJECT_SCHEMA` (o
+  grafo guarda overrides por nome). Cenas `=121`/`=122`/`=123` passam a ensinar o `Collide` da forma.
+  Gate de fecho re-corrido sobre isto: clippy/fmt limpos, shell 798/798, placa app-motion 119/119,
+  render 106/106, eval-motion 92/92, censos 117/117; o tecto de LOC do `ph2d-eval-motion/src/lib.rs`
+  (701/700) curado por corte de comentário (696).
+
+**Smoke do `Collide`:** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env
+PH2D_GPU_COOK_DEMO=122 cargo run -p ph2d-host-desktop --profile smoke` — Play; no cartão `Shape` de
+cima ligue `Collide` (o `Output` já não o tem): a fileira de cima separa-se.

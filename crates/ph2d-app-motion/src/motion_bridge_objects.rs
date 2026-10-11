@@ -89,10 +89,10 @@ mod appearance_tests;
 pub(super) mod streams;
 pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 
-/// ⭐⭐⭐ **A FORMA que o objecto declara** (doc 115 W4) — a porta única dos três construtores
-/// acima. Ver o cabeçalho dele: a caixa é o quadrado UNITÁRIO, e não `size / 2`.
+/// ⭐⭐⭐ **O colisor de um objecto da cena** (doc 115 §33) — a declaração mora no `Collide` do
+/// `source.object`; aqui fica a migração dos documentos que o ligavam no `Output`.
 #[path = "motion_bridge_objects_collider.rs"]
-pub(super) mod colisor;
+pub mod colisor;
 
 /// ⭐ A pose que os canais `$at:`/`$pose:` publicam: a de MUNDO, com os pais compostos — um filho
 /// publicado com o `Transform` local respondia onde está em relação ao pai (onda 4, item 6).
@@ -438,7 +438,7 @@ fn leaf_from_flip(acc: &Transform, tile: FlipTile) -> LeafInstance {
 /// Build the N-instance appearance stream from the group's leaves — the same
 /// columns the single-object tile publishes, one row per leaf.
 fn group_stream(leaves: &[LeafInstance]) -> Stream {
-    let s = Stream::new(leaves.len())
+    Stream::new(leaves.len())
         .with("P", Column::Vec2(leaves.iter().map(|l| l.p).collect()))
         .with(
             "size",
@@ -466,10 +466,7 @@ fn group_stream(leaves: &[LeafInstance]) -> Stream {
         .with(
             "geometry_id",
             Column::Scalar(leaves.iter().map(|l| l.gid as f32).collect()),
-        );
-    // doc 115 W4: cada folha traz a forma dela. Pela PORTA, e não por um `.with` repetido —
-    // ver [`colisor::com_colisor`].
-    colisor::com_colisor(s)
+        )
 }
 
 /// **Publish the engine objects into the cook** (doc 86 §2) — the sibling of

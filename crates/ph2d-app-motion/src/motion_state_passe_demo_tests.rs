@@ -2,14 +2,14 @@
 //!
 //! ⚠️⚠️ **Eles medem o BARRO e não o documento.** Uma cena está certa como DADOS e é impossível
 //! como GESTO — foi o que o `#15` da `line/components` pagou com o report *«não apareceu a secção»*
-//! —, e aqui o defeito simétrico seria uma cena cujas peças **não se sobrepõem**: o interruptor não
+//! —, e aqui o defeito simétrico seria uma cena cujas peças **não se sobrepõem**: o `Collide` não
 //! faria nada, e ela ensinaria o contrário do que acontece.
 
 use crate::motion_state::MotionState;
 use ph2d_contact::Colisor;
 use ph2d_nodegraph::attr::{Column, Stream};
 
-/// Coze a cena e devolve a corrente que o sink desenha.
+/// Coze a cena — com o `Collide` da forma ligado se `ligado` — e devolve a corrente cozida do sink.
 ///
 /// ⛔⛔ **A 1.ª redacção lia ZERO peças, e a causa está escrita no cabeçalho da cena irmã:** o
 /// `source.shape` não carrega a geometria dele — ela é um EXTERNO que a shell publica
@@ -18,9 +18,12 @@ use ph2d_nodegraph::attr::{Column, Stream};
 ///
 /// ⚠️ É a mesma família da 1.ª mentira do arnês do §11.2 — *um documento vazio lê-se como um
 /// documento barato*, e as duas vezes o que a curou foi o **piso de população** abaixo.
-fn cozida(m: &mut MotionState) -> Stream {
+fn cozida(m: &mut MotionState, ligado: bool) -> Stream {
     let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
     let sink = *sinks.first().expect("um sink");
+    if ligado {
+        super::super::passe_cadeia_demo::tests::liga_o_collide_das_formas(m);
+    }
     crate::motion_shape_gen::publish(m, 0.0);
     m.pump
         .cook
@@ -57,15 +60,15 @@ fn posicoes(s: &Stream) -> Vec<[f32; 2]> {
     }
 }
 
-/// ⭐⭐⭐ **A CENA ENSINA O QUE DIZ: desarmada as peças ATRAVESSAM-SE, armada elas ASSENTAM.**
+/// ⭐⭐⭐ **A CENA ENSINA O QUE DIZ: as peças ATRAVESSAM-SE, e com o `Collide` da forma ASSENTAM.**
 ///
 /// ⚠️ **As duas metades, e a primeira é a que uma leitura rápida salta:** sem o amontoado a cena
-/// não tem nada para o interruptor curar, e o passo (1) do roteiro seria uma mentira. *Uma cena de
+/// não tem nada para o botão curar, e o passo (1) do roteiro seria uma mentira. *Uma cena de
 /// smoke que ensina o contrário do que acontece é pior que uma cena ausente* (§5.0).
 #[test]
-fn a_cena_amontoa_as_pecas_e_o_interruptor_separa_as() {
+fn a_cena_amontoa_as_pecas_e_o_collide_da_forma_separa_as() {
     let mut m = MotionState::new();
-    let s = cozida(&mut m);
+    let s = cozida(&mut m, true);
     let n = s.count();
     assert_eq!(
         n,
@@ -83,7 +86,7 @@ fn a_cena_amontoa_as_pecas_e_o_interruptor_separa_as() {
     );
 
     // ⭐⭐⭐ **As varreduras são as de FÁBRICA e não um número escolhido para o gate passar.** É o
-    // que o artista recebe ao ligar o interruptor sem tocar em mais nada, e é a única barra que diz
+    // que o artista recebe ao ligar o `Collide` sem tocar em mais nada, e é a única barra que diz
     // alguma coisa sobre o smoke. ⛔ Uma cena que só assenta com o knob no máximo é uma cena que o
     // dono reprova.
     #[expect(
@@ -120,20 +123,21 @@ fn o_grafo_da_cena_nao_tem_no_de_colisao_nenhum() {
 }
 
 /// ⚠️ **A cena nasce DESARMADA** — o primeiro quadro é o amontoado, senão o artista vê o resultado
-/// e nunca a causa.
+/// e nunca a causa. Com o `Collide` da forma desligado a corrente não declara nada, e o passe do
+/// sink (que se arma sozinho) não tem o que separar.
 #[test]
-fn a_cena_nasce_com_o_interruptor_desligado() {
+fn a_cena_nasce_com_o_collide_da_forma_desligado() {
     let mut m = MotionState::new();
-    let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
-    assert_eq!(
-        ph2d_eval_motion::sink_collide_sweeps(&m.doc.graph, sinks[0]),
-        0,
+    let s = cozida(&mut m, false);
+    assert_eq!(s.count(), super::PECAS, "o controlo: as pecas existem");
+    assert!(
+        ph2d_contact::colisores(&s).is_none(),
         "a cena tem de abrir desarmada"
     );
 }
 
-/// ⭐ **O roteiro nomeia controlos que EXISTEM.** *Um passo que manda ligar `Collide` no cartão do
-/// Output AFIRMA que essa linha está lá*, e ela envelhece sozinha no dia em que o param mudar de
+/// ⭐ **O roteiro nomeia controlos que EXISTEM.** *Um passo que manda ligar `Collide` no cartão da
+/// Shape AFIRMA que essa linha está lá*, e ela envelhece sozinha no dia em que o param mudar de
 /// rótulo — a lei que o tutorial do `#15` já paga na `line/components`.
 #[test]
 fn o_roteiro_nomeia_controlos_que_existem() {
@@ -141,19 +145,97 @@ fn o_roteiro_nomeia_controlos_que_existem() {
     let m = MotionState::new();
     // ⭐ Os rótulos saem do REGISTO, que é de onde o painel os pinta — uma lista escrita à mão
     // aqui seria a segunda resposta à mesma pergunta, e divergiria no dia do renome.
-    let hints = m
-        .registry
-        .param_ui(ph2d_nodegraph::node::NodeTypeId::of("motion.output"))
-        .expect("o Output declara hints");
-    let rotulos: Vec<&str> = hints.iter().map(|h| ph2d_i18n::tr(h.label)).collect();
-    for citado in ["Collide", "Collide Sweeps"] {
+    for (tipo, citado) in [
+        ("source.shape", "Collide"),
+        ("motion.output", "Collide Sweeps"),
+    ] {
+        let rotulos: Vec<&str> = m
+            .registry
+            .param_ui(ph2d_nodegraph::node::NodeTypeId::of(tipo))
+            .map(|h| h.iter().map(|x| ph2d_i18n::tr(x.label)).collect())
+            .unwrap_or_default();
         assert!(
             rotulos.contains(&citado),
-            "o roteiro manda ligar `{citado}` e o cartao do Output nao tem essa linha: {rotulos:?}"
+            "o roteiro manda mexer em `{citado}` e o cartao de `{tipo}` nao tem essa linha: \
+             {rotulos:?}"
         );
         assert!(
             ROTEIRO.contains(citado),
             "o gate cita `{citado}` e o roteiro nao — a regua deixou de medir o roteiro"
         );
     }
+    // ⛔ E o Output já não tem `Collide` (doc 115 §33): um roteiro que o mandasse ligar mentiria.
+    let saida: Vec<&str> = m
+        .registry
+        .param_ui(ph2d_nodegraph::node::NodeTypeId::of("motion.output"))
+        .map(|h| h.iter().map(|x| ph2d_i18n::tr(x.label)).collect())
+        .unwrap_or_default();
+    assert!(
+        !saida.contains(&"Collide"),
+        "o Output voltou a ter um `Collide`: {saida:?}"
+    );
+}
+
+/// Monta a `=121`, liga (ou não) o `Collide` da forma, e corre UM quadro pela BOMBA do produto.
+/// Devolve `(o que a bomba desenhou, a corrente cozida do sink)`.
+fn pela_bomba(ligado: bool) -> (Vec<[f32; 2]>, Stream) {
+    let mut m = MotionState::new();
+    let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
+    if ligado {
+        super::super::passe_cadeia_demo::tests::liga_o_collide_das_formas(&mut m);
+    }
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let g = m.doc.graph.clone();
+    assert!(m.pump.pump(
+        &g,
+        &m.registry,
+        &sinks,
+        0,
+        0.0,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0]
+    ));
+    let desenho = m
+        .pump
+        .vector_instances
+        .iter()
+        .map(|v| v.world_pos)
+        .collect();
+    let cozido = m.pump.cook.peek(sinks[0]).expect("o sink cozeu")[0]
+        .as_stream()
+        .clone();
+    (desenho, cozido)
+}
+
+/// ⭐⭐⭐ **O PASSE ARMA-SE SOZINHO: o `Collide` da forma separa o que a BOMBA desenha, sem tocar no
+/// Output** (doc 115 §33, gate (c)). E desligado, a bomba desenha a corrente cozida AO BIT.
+///
+/// ⚠️ A rota inteira — a forma declara, o cozimento, o passe do fim no `pump`, o lowering das formas
+/// — e não a porta chamada à mão, que os outros gates desta cena já medem.
+#[test]
+fn o_collide_da_forma_arma_o_passe_na_bomba_sem_tocar_no_output() {
+    let (desenho, cozido) = pela_bomba(true);
+    assert_eq!(
+        desenho.len(),
+        super::PECAS,
+        "o controlo: a bomba desenhou as pecas"
+    );
+    let c = ph2d_contact::colisores(&cozido).expect("a forma ligada DECLARA a caixa");
+    let antes = pares_atravessados(&posicoes(&cozido), &c);
+    assert!(
+        antes >= super::PECAS / 2,
+        "o controlo: a corrente cozida tem de vir amontoada ({antes} pares)"
+    );
+    assert_eq!(
+        pares_atravessados(&desenho, &c),
+        0,
+        "o que a bomba desenha tem de vir separado — o passe arma-se sozinho (eram {antes})"
+    );
+    // ⚠️ E desligado: nada declara, e a bomba desenha exactamente o que o cozimento deu.
+    let (desenho, cozido) = pela_bomba(false);
+    assert_eq!(
+        desenho,
+        posicoes(&cozido),
+        "sem Collide a bomba desenha o cozido AO BIT"
+    );
 }

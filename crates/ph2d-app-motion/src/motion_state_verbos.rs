@@ -114,7 +114,9 @@ impl MotionState {
     /// **Install a saved document** (the project's Ctrl+O path) — parse the canonical text
     /// and replace the current one, runtime and all.
     pub fn load_text(&mut self, text: &str) -> Result<(), ParseError> {
-        let doc = MotionDoc::from_text(text)?;
+        let mut doc = MotionDoc::from_text(text)?;
+        // doc 115 §33: o `Collide` que morava no `Output` passa aos objectos a montante.
+        crate::migra_o_collide_da_saida(&mut doc.graph);
         self.install(doc);
         Ok(())
     }

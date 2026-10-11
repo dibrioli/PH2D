@@ -485,6 +485,32 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
   (`motion_active` de `present_world_sprites` recebe `motion_draws`); «virar o isolamento não suja o
   pump» = real, gate `turning_the_layer_on_in_the_same_tick_relowers`.
 
+### §5.10 — O `Collide` do Output e a cena que saltava (report do dono, 11/10)
+
+*«Por que temos collide em output, e por que muda a imagem se ON mesmo sem colliders?»*
+
+- **Medido na `=135`** (sonda de 180 quadros, posições de cada disco): o passe de separação não
+  mexe em NADA sem colisores (ligado desde o quadro 1 = desligado, ao bit), e as duas rotas pintam
+  igual ao bit por quadro. O que mudava a imagem era a **troca de rota**: a cerca manda o sink à
+  CPU, e a rota HÍBRIDA só marcha na CPU o cone das fronteiras (`ph2d-eval-motion/src/marcha.rs`) —
+  ao passar a cozer o grafo inteiro a bomba avançava os laços do dispositivo A PARTIR DA SEMENTE:
+  **salto de `0,86`** de uma vez (um quadro anda `0,011`) e `~1` de desfasagem para sempre. A mesma
+  família: toda queda da placa a meio (p. ex. `Blend = Add` com `Everything`).
+- **Cura (`e30104881`)**: `MotionCookPump::so_o_cone` — depois de uma marcha só do cone, o 1.º
+  cozimento inteiro limpa o anel e re-simula da semente até ao tique. Gate
+  `the_scene_does_not_jump_when_the_route_leaves_the_device` (placa→CPU no quadro 90 = CPU de ponta a
+  ponta, `0,000000`), VERMELHO sem a cura. **Preço**, uma vez por troca (`--release`, `load 56`):
+  `0,115 ms` por tique — `0,07 s` a 10 s de animação, `0,4 s` a 1 min, `2 s` a 5 min. ⚠️ Sem engasgo
+  pediria trazer o estado do dispositivo à CPU, que não existe (aberto).
+- **O `Collide` passa a AUTOMÁTICO** (decisão do dono: *«automático é melhor»*; doc 115 §33): sai
+  do `Output`; o `source.object` ganha o seu `Collide` (default desligado, o espelho do da forma) e
+  a membrana deixa de declarar; o passe corre sempre (sem colisor é a identidade ao bit); a cerca
+  da placa é UMA porta (`peca_declara_colisor`: algum `Collide` resolvido ligado); um projecto antigo
+  com o `Collide` do Output ligado abre com os objectos a montante ligados
+  (`migra_o_collide_da_saida`, no `MotionState::load_text`). Foto na `=122`: com o `Collide` das
+  formas ligado (e o Output intocado) a fileira de cima separa-se e a de baixo, que um campo
+  declara «não colide», fica metida.
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo

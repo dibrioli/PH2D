@@ -58,12 +58,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_heal.this_collide_only_tidies_the_drawing_the_simulat" => {
             "This Collide only tidies the drawing — the simulation upstream never sees these shapes. Wire the Shape into the 'shape' input of the Soft Body or Verlet Rope so its pieces hold"
         }
-        "app.motion.motion_bridge_heal.collide_declares_this_shape_s_collider_but_nothi" => {
-            "Collide declares this Shape's collider, but nothing reads it — turn on Collide in the Output to keep the drawn pieces apart, or wire the pieces into a Soft Body or Verlet Rope"
-        }
-        "app.motion.motion_bridge_heal.collide_is_on_but_nothing_upstream_declares_a_co" => {
-            "Collide is on, but nothing upstream declares a collider — turn on Collide in the Shape whose pieces should keep apart"
-        }
         "app.motion.motion_bridge_heal.this_node_needs_a_stream_wired_into_its_input" => {
             "This node needs a stream wired into its '{port}' input"
         }

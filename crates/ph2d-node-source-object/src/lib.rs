@@ -94,6 +94,14 @@ pub const SPACE_PARAM: &str = "space";
 /// O valor de [`SPACE_PARAM`] que herda a pose.
 pub const SPACE_OBJECT_POSE: f32 = 1.0;
 
+/// **O objecto DECLARA o colisor dele?** — o espelho do `Collide` da `source.shape` (doc 115 §33).
+/// Ligado (`≥ 0,5`), a corrente leva a caixa ([`colisor::com_colisor`]) e o passe do fim do
+/// cozimento separa a peça sozinho. Default `0`: um objecto não colide até o artista o pedir.
+pub const COLLIDE_PARAM: &str = "collide";
+
+pub mod colisor;
+pub use colisor::MEIA_DO_OBJECTO;
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("source.object"),
@@ -116,6 +124,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // template de sempre ao bit. Ver [`SPACE_PARAM`].
         ParamSpec {
             name: SPACE_PARAM,
+            default: 0.0,
+        },
+        // APENDADO (a ordem é o contrato). Ver [`COLLIDE_PARAM`].
+        ParamSpec {
+            name: COLLIDE_PARAM,
             default: 0.0,
         },
     ],
@@ -189,15 +202,21 @@ impl NodeOp for SourceObject {
         // this key. Clone is refcount, not a copy (columns are `Arc`); a key
         // with no published object is the empty external → an empty stream.
         let stream = ctx.external(&key).clone();
-        if ctx.param(SPACE_PARAM) < SPACE_OBJECT_POSE - 0.5 {
-            ctx.emit(stream);
-            return;
-        }
         // **Object Pose**: a rotação e a escala do objeto entram no template.
-        let pose = ctx
-            .external(&ph2d_nodegraph::external::pose_of(&name))
-            .clone();
-        ctx.emit(with_pose(&stream, &pose));
+        let stream = if ctx.param(SPACE_PARAM) < SPACE_OBJECT_POSE - 0.5 {
+            stream
+        } else {
+            let pose = ctx
+                .external(&ph2d_nodegraph::external::pose_of(&name))
+                .clone();
+            with_pose(&stream, &pose)
+        };
+        // doc 115 §33: o `Collide` do cartão declara a caixa; desligado, a corrente sai intacta.
+        if ctx.param(COLLIDE_PARAM) >= 0.5 {
+            ctx.emit(colisor::com_colisor(stream));
+        } else {
+            ctx.emit(stream);
+        }
     }
 }
 
@@ -224,6 +243,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // count-changing cerca: an object graph whose GPU suffix reorders / changes
     // count recuses (the texture-run partition would mis-bind).
     reg.register_object_source(MANIFEST.id);
+    // doc 115 §33: o `Collide` declara o colisor — a mesma bandeira da `source.shape`, que a cerca
+    // do dispositivo e o diagnóstico leem.
+    reg.register_collider_switch(MANIFEST.id, COLLIDE_PARAM);
     Ok(())
 }
 
@@ -286,6 +308,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
                 "node.source.object.param.space.1",
             ],
         },
+    },
+    // O espelho do `Collide` da `source.shape` (doc 115 §33).
+    ParamUiHint {
+        param: COLLIDE_PARAM,
+        label: "node.source.object.param.collide",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 

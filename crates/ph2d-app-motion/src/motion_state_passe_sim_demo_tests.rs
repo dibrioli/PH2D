@@ -16,7 +16,8 @@ use ph2d_nodegraph::attr::{Column, Stream};
 /// quadro**, sobre peças que nunca param. Um gate num instante só não distinguiria as duas.
 const INSTANTES: [f64; 5] = [0.0, 0.1, 0.6, 1.5, 3.0];
 
-/// Corre a cena até `secs` e devolve a corrente final de cada fileira.
+/// Corre a cena até `secs`, com o `Collide` das formas LIGADO (os passos (3) e (4) do roteiro), e
+/// devolve a corrente final de cada fileira.
 fn corre(secs: f64) -> Vec<Stream> {
     let mut m = MotionState::new();
     assert!(
@@ -24,6 +25,7 @@ fn corre(secs: f64) -> Vec<Stream> {
         "o `MotionState` nasceu com nos: desligue o PH2D_GPU_COOK_DEMO para correr estes gates"
     );
     let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
+    super::super::passe_cadeia_demo::tests::liga_o_collide_das_formas(&mut m);
     crate::motion_shape_gen::publish(&mut m, 0.0);
     #[expect(
         clippy::cast_sign_loss,
@@ -87,7 +89,7 @@ fn pares_atravessados(s: &Stream) -> usize {
     n
 }
 
-/// As varreduras de FÁBRICA — o que o artista recebe ao ligar o interruptor e não tocar em mais
+/// As varreduras de FÁBRICA — o que o artista recebe ao ligar o `Collide` e não tocar em mais
 /// nada. ⛔ Uma cena que só assenta com o knob no máximo é uma cena que o dono reprova.
 fn de_fabrica() -> usize {
     #[expect(
@@ -123,7 +125,7 @@ fn as_pecas_tremem_com_o_relogio() {
 ///
 /// ⚠️ **As duas metades, e a segunda é a wave inteira** (o §10.4, aberto desde a W5): a primeira
 /// sozinha provaria só que o passe funciona — que a `=121` já prova. O que esta cena acrescenta é
-/// que uma fileira com `falloff = 0` fica **por separar com o interruptor LIGADO**, que é a forma
+/// que uma fileira com `falloff = 0` fica **por separar com o `Collide` LIGADO**, que é a forma
 /// de um objecto dizer *«eu não colido»*.
 ///
 /// ⚠️ E mede-se nos **cinco** instantes: a promessa não é *«separou»*, é *«fica separada»*.
@@ -137,7 +139,7 @@ fn armada_a_fileira_livre_separa_se_em_todo_quadro_e_a_protegida_nao() {
         assert_eq!(
             antes,
             super::PECAS / 2,
-            "t = {t}: TODO par tem de nascer atravessado, senao o interruptor nao tem o que curar"
+            "t = {t}: TODO par tem de nascer atravessado, senao o Collide nao tem o que curar"
         );
 
         let sep = ph2d_contact::passe::separa_o_que_se_desenha(livre, de_fabrica())
@@ -200,22 +202,35 @@ fn a_cena_nao_tem_colisor_nenhum_nem_um_solver_de_contacto() {
                 "motion.collide" | "sim.collide" | "sim.step"
             ),
             "a cena do passe EM MOVIMENTO nao pode ter `{}` — o assunto dela e' que quem separa \
-             e' o interruptor do sink, e mais nada",
+             e' o passe automatico do sink, e mais nada",
             n.type_name
         );
     }
 }
 
-/// ⚠️ **As duas fileiras nascem DESARMADAS** — o primeiro quadro são os pares atravessados.
+/// ⚠️ **As duas fileiras nascem DESARMADAS** — o primeiro quadro são os pares atravessados: sem o
+/// `Collide` das formas a corrente não declara nada e o passe não tem o que separar.
 #[test]
-fn as_duas_fileiras_nascem_com_o_interruptor_desligado() {
+fn as_duas_fileiras_nascem_com_o_collide_desligado() {
     let mut m = MotionState::new();
     let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
     assert_eq!(sinks.len(), 2, "a cena tem DUAS fileiras");
+    crate::motion_shape_gen::publish(&mut m, 0.0);
     for (i, s) in sinks.iter().enumerate() {
+        let cru = m
+            .pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, *s, 0.0)
+            .expect("a cena cozinha")[0]
+            .as_stream()
+            .clone();
         assert_eq!(
-            ph2d_eval_motion::sink_collide_sweeps(&m.doc.graph, *s),
-            0,
+            cru.count(),
+            super::PECAS,
+            "o controlo: a fileira {i} existe"
+        );
+        assert!(
+            ph2d_contact::colisores(&cru).is_none(),
             "a fileira {i} tem de abrir desarmada"
         );
     }
@@ -228,7 +243,7 @@ fn o_roteiro_nomeia_controlos_que_existem() {
     const ROTEIRO: &str = include_str!("motion_state_passe_sim_demo.rs");
     let m = MotionState::new();
     for (tipo, citado) in [
-        ("motion.output", "Collide"),
+        ("source.shape", "Collide"),
         ("motion.falloff", "Center X"),
         ("motion.falloff", "Center Y"),
     ] {

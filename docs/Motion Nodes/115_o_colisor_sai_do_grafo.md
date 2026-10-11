@@ -2760,3 +2760,47 @@ por PROPAGAÇÃO quando a cadeia começa numa fonte que as escreve.
 ⏳ **E fica NOMEADO o que esta wave não mediu:** o custo do gizmo **na cena do dono** (a tabela acima
 é sintética, um grupo só), e o que acontece quando um sink tem `102 400` posições e o tecto corta —
 *o artista vê `4 096` cruzes e a legenda não lhe diz que há mais*.
+
+## §33 — O automático (11/10, decisão do dono: *«automático é melhor»*)
+
+> ⚠️ **Número:** a ordem pedia «§19», mas a §19 deste doc já é a do report *«com 1024 FPS cai para
+> 7»*. Esta secção é a §33 e o código cita-a como tal.
+
+**O que mudou.** A frase do topo deste doc — *«o botão `Collide` da forma e dos objectos liga, e não
+há nada para ligar no grafo»* — passa a ser literal:
+
+1. **O `Collide` do `motion.output` saiu** (param, dica, `ParamGateAbove` das varreduras e a chave
+   `contact_pass_switch` do registo). O passe do fim (`ph2d_contact::passe`) corre em **todo** sink:
+   `sink_collide_sweeps` devolve sempre as varreduras (override ou `8`, o mesmo clamp `1..=4096`), e
+   o que o faz não fazer nada é a corrente — sem colisor declarado ele devolve `None` e o quadro é o
+   de sempre, ao bit. `Collide Sweeps` fica no cartão, sempre visível.
+2. **O `source.object` ganhou o seu `Collide`** (param APENDADO, default `0`, registado como
+   `collider_switch` como o da forma). Ligado, o `eval` declara `collider_box = [0,5; 0,5]` — a lei
+   da §12.1 mudou de casa para `ph2d_node_source_object::colisor` (uma definição de
+   `MEIA_DO_OBJECTO`).
+3. **A membrana deixou de declarar** — a aparência (sprite, vector vivo, grupo) não leva colisor
+   nenhum. Um objecto só colide quando o artista o pede. ⚠️ Conferido: nenhum outro leitor dos
+   externos de aparência (as folhas do L-System, o `shift`) dependia da caixa.
+4. **As cercas do dispositivo viraram UMA:** `peca_declara_colisor` — algum nó com `collider_switch`
+   tem o botão RESOLVIDO (um fio conta) `≥ 0,5`? ⇒ `RECUSA_PASSE`. Morreram a cerca da forma com
+   colisor lido (`RECUSA_FORMA_COM_COLISOR`), a do externo (`cook_publishes_collider`, sempre `false`
+   sem a membrana a declarar) e a metade «e alguém a lê?» (`graph_reads_declared_collider`): com o
+   passe automático uma declaração tem sempre leitor. Fica a do nome escrito num text param
+   (`RECUSA_COLISOR`). Um objecto **sem** o botão continua a cozer no dispositivo.
+5. **O diagnóstico:** `ColisorMudo` guarda só a cura `"shape"` (a forma veste uma simulação que não a
+   vê); `"output"` e `"collide"` e as duas frases i18n delas saíram.
+6. **As cenas `=121`–`=123`** nascem com o `Collide` da FORMA desligado e o roteiro manda ligá-lo
+   (o Output só tem `Collide Sweeps`); saíram do `ENSINAM_A_SEGUNDA_CHAVE`.
+
+**A migração.** Um documento gravado antes desta secção pode trazer `collide = 1` num `motion.output`.
+`ph2d_app_motion::migra_o_collide_da_saida` liga o `Collide` de todo `source.object` a montante dessa
+saída (pelo fecho das arestas, as de estado incluídas — as formas já tinham o botão delas) e apaga o
+override legado de toda saída (senão ele era um `UnknownParam`). Idempotente; corre no
+`MotionState::load_text` (o Ctrl+O do projecto), dentro da crate — a shell não cresce. Gates:
+`a_migracao_*` e `o_carregamento_do_projecto_migra_o_collide_da_saida`.
+
+**Gates novos:** `objectos_sem_o_botao_nao_declaram_e_o_passe_e_identidade` (a) ·
+`o_collide_do_objecto_separa_as_copias_sozinho` + `uma_peca_que_declara_recusa_o_dispositivo` +
+`a_ponte_manda_para_a_cpu_o_objecto_que_declara_e_so_esse` (placa) (b) ·
+`com_declaracao_o_pump_desenha_as_pecas_separadas_sem_interruptor` (c) ·
+`a_membrana_nao_escreve_colisor_nenhum` · `the_collide_toggle_declares_the_unit_box_and_nothing_else`.

@@ -20,8 +20,10 @@
 //! # ⚠️ Ela nasce DESARMADA, como as duas irmãs
 //!
 //! O primeiro quadro tem de mostrar a cadeia encavalitada, senão o artista vê o resultado e nunca
-//! a causa. E o `Collide Sweeps` fica no valor de fábrica (`8`) de propósito: o passo (3) do
-//! roteiro é ele **não chegar**, que é o que dá sentido ao passo (4).
+//! a causa. ⭐ Desde o doc 115 §33 o passe arma-se SOZINHO quando a forma declara — logo a cena nasce
+//! com o `Collide` da FORMA desligado, e é ele que o artista liga. E o `Collide Sweeps` fica no
+//! valor de fábrica (`8`) de propósito: o passo (3) do roteiro é ele **não chegar**, que é o que dá
+//! sentido ao passo (4).
 //!
 //! # ⛔ Porque ela NÃO treme
 //!
@@ -56,10 +58,10 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let g = &mut doc.graph;
     let no = |g: &mut ph2d_nodegraph::graph::Graph, tipo: &str| g.add_node(tipo.to_string());
 
-    // A FORMA, com o botão que faz a peça DECLARAR a caixa dela (doc 115 W4).
+    // A FORMA. ⚠️ O `Collide` dela NÃO se escreve: é o botão que o artista liga (doc 115 §33) —
+    // ligado, a forma declara a caixa e o passe do fim arma-se sozinho.
     let forma = no(g, "source.shape");
     g.set_param(forma, ph2d_node_motion_shape::param::KIND, quadrado);
-    g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
     g.set_param(forma, ph2d_node_motion_shape::param::SIZE, MEIA);
     g.set_label(forma, "Shape");
 
@@ -99,9 +101,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         .ok()?;
     }
     doc.graph.validate(reg).ok()?;
-    // ⚠️⚠️ **Nenhum override no sink** — a cena nasce desarmada e com o `Collide Sweeps` de
-    // fábrica, logo não pode divergir do valor de fábrica no dia em que ele mudar. Quem liga e quem
-    // sobe o número é o artista, e é isso que o roteiro ensina.
+    // ⚠️⚠️ **Nenhum override no sink nem no `Collide` da forma** — a cena nasce desarmada e com o
+    // `Collide Sweeps` de fábrica, logo não pode divergir do valor de fábrica no dia em que ele
+    // mudar. Quem liga e quem sobe o número é o artista, e é isso que o roteiro ensina.
     Some(vec![saida])
 }
 
@@ -112,9 +114,10 @@ pub(super) fn announce() {
          vizinhos. Isto e' uma CADEIA, e nao uma fila de pares: por isso ela e' o unico sitio\n\
          onde o numero de varreduras se VE'.\n\
          \n\
-         (1) Carregue no cartao `Output` (o ultimo no' da fila).\n\
+         (1) Carregue no cartao `Shape` (o primeiro no' da fila).\n\
          (2) Ligue `Collide`. A cadeia abre-se um pouco — e continua encavalitada.\n\
-         (3) Repare que `Collide Sweeps` esta' em 8. Suba para 64 e veja: ela abre MAIS, e\n    \
+         (3) Carregue no cartao `Output` (o ultimo no' da fila): `Collide Sweeps` esta' em 8.\n    \
+         Suba para 64 e veja: ela abre MAIS, e\n    \
          ainda nao chega. Era aqui que o sistema parava ate' 18/09.\n\
          (4) Arraste `Collide Sweeps` ate' ao fim (1024). A cadeia abre-se INTEIRA: os\n    \
          quadrados ficam encostados, sem nenhum metido dentro do outro.\n\
@@ -125,11 +128,11 @@ pub(super) fn announce() {
          (i) Quanto custa: 1024 varreduras nesta fila custam ~a quinta parte de um quadro.\n    \
          4096 custam ~um quadro e meio, e fecham uma cadeia do DOBRO do comprimento.\n\
          \n\
-         (!) Se ligar `Collide` e nada se mexer, o defeito e' a forma nao estar a DECLARAR a\n    \
-         caixa dela — abra o cartao `Shape` e confirme que o `Collide` DELE esta' ligado.\n"
+         (!) Se ligar `Collide` no `Shape` e nada se mexer, o defeito e' a forma nao chegar ao\n    \
+         `Output` — confirme os fios Shape -> Duplicator -> Output.\n"
     );
 }
 
 #[cfg(test)]
 #[path = "motion_state_passe_cadeia_demo_tests.rs"]
-mod tests;
+pub(crate) mod tests;

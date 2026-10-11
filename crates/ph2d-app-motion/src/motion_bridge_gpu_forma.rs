@@ -12,8 +12,6 @@
 //! início (nada de marchar um prefixo sequencial duas vezes).
 
 use crate::motion_state::MotionState;
-use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 
 // ════════════════════════════════════════════════════════════════════════════════════════════
 // ⭐⭐⭐ **A CERCA POR CONTEÚDO** (doc 121 W3) — as formas vivas VÃO à placa.
@@ -40,39 +38,11 @@ pub(crate) const RECUSA_FORMA_DO_VELLO: &str =
     "CPU: uma forma viva so' o Vello a desenha (tinta propria, traco de padrao ou de pincel)";
 // ⭐ doc 121 §9.14 (c) — saiu a recusa do `fx.glow` com formas: o halo lia as cópias da CPU, que a
 // rota do dispositivo não tem; hoje vem do buffer dela e da camada do passe de formas.
-/// Uma forma declara o colisor pelo cartão e alguém o lê — o contacto só existe na CPU (doc 109).
-/// ⚠️ Era a cerca do TIPO que o apanhava; sem ela, a pergunta tem de ser feita aqui.
-pub(crate) const RECUSA_FORMA_COM_COLISOR: &str =
-    "CPU: uma forma viva declara colisor e o grafo le'-o -- o contacto so' existe na CPU (doc 109)";
+// ⭐ doc 115 §33 — saiu a recusa da forma COM COLISOR: o `Collide` arma o passe automático, e a
+// cerca única é a de qualquer peça que declara (`super::colisor::peca_declara_colisor`).
 /// Uma saída com formas traz a mistura POR LINHA — a recusa que o cozimento devolve
 /// (`GpuCookError::FormaComMistura`), dita pelo nome.
 pub(crate) const RECUSA_FORMA_COM_MISTURA: &str = "CPU: uma saida com formas traz a mistura POR LINHA (coluna blend) -- so' a cena vectorial a sabe";
-
-/// **Alguma `source.shape` declara o colisor NESTE quadro?** — o `Collide` resolvido (um fio
-/// conta). ⚠️ A declaração mora no cartão da forma e sai na CORRENTE que o nó emite, que a cerca de
-/// externos ([`super::colisor`]) não vê: era a cerca do TIPO que a apanhava.
-pub(crate) fn forma_declara_colisor(motion: &mut MotionState, seconds: f64) -> bool {
-    let formas: Vec<(ph2d_nodegraph::graph::NodeId, &'static NodeManifest)> = motion
-        .doc
-        .graph
-        .nodes()
-        .iter()
-        .filter(|n| n.type_name == "source.shape")
-        .filter_map(|n| {
-            let manifest = motion
-                .registry
-                .resolve(NodeTypeId::of(n.type_name.as_str()))?
-                .manifest();
-            Some((n.id, manifest))
-        })
-        .collect();
-    formas.into_iter().any(|(id, manifest)| {
-        let resolved = crate::motion_externals::resolved_params(motion, id, seconds, manifest);
-        resolved
-            .get(ph2d_node_motion_shape::param::COLLIDE)
-            .is_some_and(|&v| v >= 0.5)
-    })
-}
 
 /// **Uma saída leva formas COM a mistura por linha?** — a pergunta que o cozimento responde com
 /// [`ph2d_gpu_cook::GpuCookError::FormaComMistura`], feita ANTES de cozinhar.
@@ -151,7 +121,6 @@ pub(crate) fn handles_publicados(cook: &ph2d_nodegraph::cook::Cook) -> Vec<u32> 
 pub(crate) fn formas_para_a_placa(
     ligada: bool,
     vivas: &[u32],
-    com_colisor_lido: bool,
     store: &crate::motion_shape_gen::VecPathStore,
     geometrias: &mut crate::motion_shape_placa::GeometriasDaPlaca,
 ) -> Result<(), &'static str> {
@@ -161,9 +130,6 @@ pub(crate) fn formas_para_a_placa(
     }
     if !ligada {
         return Err(RECUSA_FORMAS_DESLIGADAS);
-    }
-    if com_colisor_lido {
-        return Err(RECUSA_FORMA_COM_COLISOR);
     }
     for &h in vivas {
         match geometrias.veredito(h, store) {

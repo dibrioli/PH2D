@@ -338,18 +338,11 @@ fn explain(d: &Diagnostic) -> String {
             "app.motion.motion_bridge_heal.this_node_only_gives_positions_add_a_duplicator",
         )
         .into(),
-        // ⭐⭐ **Um `Collide` que a outra chave não ouve** (doc 125 §2). Cada frase diz o que o
-        // botão faz AGORA (nada, ou só o desenho) e o gesto que o faz segurar.
-        (Deficit::ColisorMudo("shape"), _) => ph2d_i18n::tr(
-            "app.motion.motion_bridge_heal.this_collide_only_tidies_the_drawing_the_simulat",
-        )
-        .into(),
-        (Deficit::ColisorMudo("collide"), _) => ph2d_i18n::tr(
-            "app.motion.motion_bridge_heal.collide_is_on_but_nothing_upstream_declares_a_co",
-        )
-        .into(),
+        // ⭐⭐ **Um `Collide` que a simulação não ouve** (doc 125 §2): a frase diz o que o botão
+        // faz AGORA (só o desenho) e o gesto que o faz segurar. ⚠️ É a única cura que sobrou —
+        // desde o doc 115 §33 o passe do sink lê toda declaração sozinho.
         (Deficit::ColisorMudo(_), _) => ph2d_i18n::tr(
-            "app.motion.motion_bridge_heal.collide_declares_this_shape_s_collider_but_nothi",
+            "app.motion.motion_bridge_heal.this_collide_only_tidies_the_drawing_the_simulat",
         )
         .into(),
         _ => ph2d_i18n::tr(

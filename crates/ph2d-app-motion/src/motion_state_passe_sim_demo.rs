@@ -1,8 +1,8 @@
 //! ⭐⭐⭐ **A CENA DO PASSE EM MOVIMENTO** (doc 115 W6, cena `=122`) — ordem do dono (2026-09-17):
 //! *«resolva o que está em aberto»* + *«crie uma cena de simulação para smoke»*.
 //!
-//! Duas fileiras de PARES de quadrados que tremem sem parar. Na de cima, com o interruptor ligado,
-//! eles nunca se atravessam — quadro após quadro. Na de baixo atravessam-se com o interruptor
+//! Duas fileiras de PARES de quadrados que tremem sem parar. Na de cima, com o `Collide` da forma
+//! ligado, eles nunca se atravessam — quadro após quadro. Na de baixo atravessam-se com o `Collide`
 //! igualmente ligado, porque um campo lhes disse que eles não colidem.
 //!
 //! # ⛔⛔⛔ Porque ela NÃO é uma simulação de física, e a medição é que o decidiu
@@ -29,7 +29,8 @@
 //! # ⚠️ Ela nasce DESARMADA, como a `=121`
 //!
 //! O primeiro quadro tem de mostrar os pares a atravessarem-se, senão o artista vê o resultado e
-//! nunca a causa.
+//! nunca a causa. ⭐ Desde o doc 115 §33 o passe arma-se sozinho quando a forma declara, logo o que
+//! nasce desligado é o `Collide` de cada FORMA — e é ele que o artista liga.
 
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
@@ -79,10 +80,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let g = &mut doc.graph;
         let no = |g: &mut ph2d_nodegraph::graph::Graph, tipo: &str| g.add_node(tipo.to_string());
 
-        // A FORMA, com o botão que faz a peça DECLARAR a caixa dela (doc 115 W4).
+        // A FORMA. ⚠️ O `Collide` dela NÃO se escreve: é o botão que o artista liga (doc 115 §33).
         let forma = no(g, "source.shape");
         g.set_param(forma, ph2d_node_motion_shape::param::KIND, quadrado);
-        g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
         g.set_param(forma, ph2d_node_motion_shape::param::SIZE, MEIA);
 
         // Os PONTOS: duas linhas que se atravessam, `PARES` colunas bem afastadas ⇒ pares.
@@ -171,7 +171,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let cima = fileira(ALTURA_DA_FILEIRA, false, 80.0, 1.0)?;
     let baixo = fileira(-ALTURA_DA_FILEIRA, true, 620.0, 7.0)?;
     doc.graph.validate(reg).ok()?;
-    // ⚠️⚠️ **O interruptor NÃO se escreve em NENHUM dos dois sinks** — a cena nasce desarmada
+    // ⚠️⚠️ **O `Collide` NÃO se escreve em NENHUMA das duas formas** — a cena nasce desarmada
     // porque não autora override nenhum, logo não pode divergir do valor de fábrica no dia em que
     // ele mudar. Quem liga é o artista.
     Some(vec![cima, baixo])
@@ -185,10 +185,10 @@ pub(super) fn announce() {
          \n\
          (1) Carregue em PLAY. Sem isto nada treme. Repare: em cada par, um quadrado esta'\n    \
          metido dentro do outro, e eles continuam metidos enquanto tremem.\n\
-         (2) Carregue no cartao `Output` de CIMA (o ultimo no' da fileira de cima).\n\
+         (2) Carregue no cartao `Shape` de CIMA (o primeiro no' da fileira de cima).\n\
          (3) Ligue `Collide`. A fileira DE CIMA separa-se e fica separada — quadro apos quadro,\n    \
          com as pecas a tremer o tempo todo. A de baixo continua metida uma na outra.\n\
-         (4) Ligue `Collide` tambem no `Output` de BAIXO. A fileira de baixo NAO muda — e e'\n    \
+         (4) Ligue `Collide` tambem no `Shape` de BAIXO. A fileira de baixo NAO muda — e e'\n    \
          esse o assunto do passo seguinte.\n\
          (5) Na fileira de baixo, clique no cartao `Falloff (esta fileira NAO colide)` e ponha\n    \
          `Center X` e `Center Y` a zero. Agora ela tambem se separa.\n    \
@@ -196,8 +196,7 @@ pub(super) fn announce() {
          mudaram — mudou um campo, que e' a mesma coisa que um Sprite ou um vector podem ter.\n\
          \n\
          (!) Se ligar `Collide` e a fileira de cima nao se separar, o defeito e' a forma nao\n    \
-         estar a DECLARAR a caixa dela — abra o cartao `Shape` e confirme que o `Collide` DELE\n    \
-         esta' ligado.\n"
+         chegar ao `Output` — confirme os fios da fileira, do `Shape` ao ultimo no'.\n"
     );
 }
 

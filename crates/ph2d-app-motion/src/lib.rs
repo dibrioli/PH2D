@@ -196,6 +196,8 @@ pub mod collider_gizmo_overlay;
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
 pub mod motion_audio_gen;
 pub mod motion_bridge;
+/// doc 115 §33: o `Collide` do `Output` (pré-§33) migra para os objectos a montante.
+pub use motion_bridge::objects::colisor::migra_o_collide_da_saida;
 /// Ciclo 19: as entradas que o jogo publica para o grafo (`value.input`).
 pub mod motion_entradas;
 pub mod motion_externals;

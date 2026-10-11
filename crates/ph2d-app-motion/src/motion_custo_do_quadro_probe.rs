@@ -62,10 +62,8 @@ fn sonda_a_cena_do_dono_corre_na_placa() {
             g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
         }
         let dup = g.add_node("motion.duplicator");
+        // doc 115 §33: o `Collide` da forma arma o passe sozinho — o Output não tem botão.
         let saida = g.add_node("motion.output");
-        if com_colisao {
-            g.set_param(saida, ph2d_eval_motion::SINK_COLLIDE_PARAM, 1.0);
-        }
         // O laço de estado do boids, que é como toda simulação desta casa fecha.
         for (a, ap, b, bp, atrasada) in [
             (boids, 2u16, boids, 2u16, true),
@@ -140,7 +138,6 @@ fn sonda_o_quadro_da_cena_do_dono() {
                 g.set_param(forma, ph2d_node_motion_shape::param::SIZE, 0.09);
                 if com_colisao {
                     g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
-                    g.set_param(saida, ph2d_eval_motion::SINK_COLLIDE_PARAM, 1.0);
                 }
                 let dup = g.add_node("motion.duplicator");
                 arestas.push((forma, 0, dup, 0, false));
@@ -264,7 +261,6 @@ fn sonda_o_quadro_da_foto() {
         g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
         let dup = g.add_node("motion.duplicator");
         let saida = g.add_node("motion.output");
-        g.set_param(saida, ph2d_eval_motion::SINK_COLLIDE_PARAM, 1.0);
         g.set_param(
             saida,
             ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM,

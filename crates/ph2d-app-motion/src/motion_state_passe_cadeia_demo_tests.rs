@@ -7,7 +7,26 @@
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::{Column, Stream};
 
-/// Cozinha a cena uma vez e devolve a corrente do sink. ⭐ **Um instante só, e é de propósito:**
+/// Liga o `Collide` de toda forma da cena — o passo (2) do roteiro (doc 115 §33: é o botão da forma
+/// que arma o passe).
+pub(crate) fn liga_o_collide_das_formas(m: &mut MotionState) {
+    let formas: Vec<_> = m
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == "source.shape")
+        .map(|n| n.id)
+        .collect();
+    assert!(!formas.is_empty(), "a cena tem de ter formas");
+    for f in formas {
+        m.doc
+            .graph
+            .set_param(f, ph2d_node_motion_shape::param::COLLIDE, 1.0);
+    }
+}
+
+/// Cozinha a cena uma vez, com o `Collide` da forma LIGADO, e devolve a corrente do sink. ⭐ **Um instante só, e é de propósito:**
 /// esta cena não se mexe (ver o cabeçalho do módulo) — o que ela afirma é a ESCADA, e medir cinco
 /// instantes de uma cena parada mediria a mesma coisa cinco vezes.
 fn corre() -> Stream {
@@ -17,6 +36,7 @@ fn corre() -> Stream {
         "o `MotionState` nasceu com nos: desligue o PH2D_GPU_COOK_DEMO para correr estes gates"
     );
     let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
+    liga_o_collide_das_formas(&mut m);
     crate::motion_shape_gen::publish(&mut m, 0.0);
     m.pump
         .cook
@@ -58,7 +78,7 @@ fn pares_atravessados(s: &Stream) -> usize {
 }
 
 /// ⭐⭐⭐ **A ESCADA — que é a cena inteira.** O que o dono vê nos passos (2) a (4) do roteiro:
-/// ligar o interruptor abre a cadeia um pouco, o tecto HERDADO não a fecha, e o tecto do SLIDER
+/// ligar o `Collide` da forma abre a cadeia um pouco, o tecto HERDADO não a fecha, e o tecto do SLIDER
 /// fecha-a.
 ///
 /// ⚠️⚠️ **As quatro metades são o gate, e nenhuma sobra:**
@@ -106,7 +126,7 @@ fn a_escada_das_varreduras_e_o_que_esta_cena_mostra() {
     let de_fabrica = fica(fabrica);
     assert!(
         de_fabrica < antes,
-        "ligar o interruptor tem de ABRIR a cadeia: {antes} -> {de_fabrica}"
+        "ligar o Collide da forma tem de ABRIR a cadeia: {antes} -> {de_fabrica}"
     );
     assert!(
         de_fabrica > 0,
@@ -125,25 +145,31 @@ fn a_escada_das_varreduras_e_o_que_esta_cena_mostra() {
     );
 }
 
-/// ⚠️ **A cena nasce DESARMADA** — nenhum override no sink. Sem isto o primeiro quadro mostrava o
-/// resultado e nunca a causa, e a cena deixava de poder divergir do valor de fábrica no dia em que
-/// ele mudasse.
+/// ⚠️ **A cena nasce DESARMADA** — o `Collide` da forma desligado e nenhum override no sink. Sem
+/// isto o primeiro quadro mostrava o resultado e nunca a causa, e a cena deixava de poder divergir
+/// do valor de fábrica no dia em que ele mudasse.
 #[test]
-fn a_cadeia_nasce_com_o_interruptor_desligado_e_com_as_varreduras_de_fabrica() {
+fn a_cadeia_nasce_com_a_forma_desligada_e_com_as_varreduras_de_fabrica() {
     let mut m = MotionState::new();
     let sinks = super::build(&mut m.doc, &m.registry).expect("a cena monta");
-    assert_eq!(
-        ph2d_eval_motion::sink_collide_sweeps(&m.doc.graph, sinks[0]),
-        0,
-        "a cena nao pode autorar o interruptor — quem liga e' o artista"
+    crate::motion_shape_gen::publish(&mut m, 0.0);
+    let cru = m
+        .pump
+        .cook
+        .cook(&m.doc.graph, &m.registry, sinks[0], 0.0)
+        .expect("a cena cozinha")[0]
+        .as_stream()
+        .clone();
+    assert_eq!(cru.count(), super::PECAS, "o controlo: a cadeia existe");
+    assert!(
+        ph2d_eval_motion::o_que_o_sink_desenha(&m.doc.graph, sinks[0], &cru)
+            .0
+            .is_none(),
+        "a cena nao pode nascer armada — quem liga o Collide da forma e' o artista"
     );
-    // ⚠️ **E o CONTROLO: armado, o número que corre é o de FÁBRICA** — é isso que prova que a cena
-    // não autorou as varreduras. Sem esta metade, uma cena que escrevesse `collide_iterations`
-    // passaria na de cima (o interruptor continua desligado) e mentiria no dia em que o valor de
-    // fábrica mudasse.
-    m.doc
-        .graph
-        .set_param(sinks[0], ph2d_eval_motion::SINK_COLLIDE_PARAM, 1.0);
+    // ⚠️ **E o número que corre é o de FÁBRICA** — a cena não autorou as varreduras. Sem esta
+    // metade, uma cena que escrevesse `collide_iterations` mentiria no dia em que o valor de fábrica
+    // mudasse.
     #[expect(
         clippy::cast_sign_loss,
         clippy::cast_possible_truncation,
@@ -153,7 +179,7 @@ fn a_cadeia_nasce_com_o_interruptor_desligado_e_com_as_varreduras_de_fabrica() {
     assert_eq!(
         ph2d_eval_motion::sink_collide_sweeps(&m.doc.graph, sinks[0]),
         fabrica,
-        "armada, a cena tem de correr as varreduras de FABRICA — ela nao pode autorar o numero"
+        "a cena tem de correr as varreduras de FABRICA — ela nao pode autorar o numero"
     );
 }
 
@@ -178,7 +204,7 @@ fn o_roteiro_nomeia_controlos_que_existem() {
     const ROTEIRO: &str = include_str!("motion_state_passe_cadeia_demo.rs");
     let m = MotionState::new();
     for (tipo, citado) in [
-        ("motion.output", "Collide"),
+        ("source.shape", "Collide"),
         ("motion.output", "Collide Sweeps"),
     ] {
         let tem: Vec<&str> = m

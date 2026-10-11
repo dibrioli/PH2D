@@ -32,7 +32,9 @@ const FORA: &[Isento] = &[
         // ficheiro acima e saíram para o irmão quando o tecto de LOC obrigou ao corte (doc 115
         // W4). *Uma isenção de censo é propriedade do CÓDIGO e viaja com ele* — e a prova de que
         // é mudança de endereço e não texto novo é o `isentos_mortos` deste mesmo gate NÃO ter
-        // acusado a entrada de cima, porque as outras razões da rota ficaram lá.
+        // acusado a entrada de cima, porque as outras razões da rota ficaram lá. (Desde o doc 115
+        // §33 as duas são `RECUSA_COLISOR` · `RECUSA_PASSE`: a do externo morreu com a membrana a
+        // deixar de declarar.)
         "motion_bridge_gpu_colisor.rs",
         "as duas RAZÕES de recusa do colisor, irmãs das de cima e pela mesma porta `say_route` — \
          impressas atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",

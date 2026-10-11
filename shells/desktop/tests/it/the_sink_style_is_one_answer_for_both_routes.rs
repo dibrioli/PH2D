@@ -225,13 +225,9 @@ fn the_node_and_the_substrate_agree_on_every_style_param_name() {
             ph2d_node_motion_output::SORT_PARAM,
             ph2d_eval_motion::SINK_SORT_PARAM,
         ),
-        // doc 115 W5: os dois do PASSE de separação. ⚠️ Eles não são estilo — não entram no
-        // `SinkStyle` —, mas a armadilha do renome é EXACTAMENTE a mesma, e é por isso que estão
-        // nesta lista e não numa segunda.
-        (
-            ph2d_node_motion_output::COLLIDE_PARAM,
-            ph2d_eval_motion::SINK_COLLIDE_PARAM,
-        ),
+        // doc 115 W5: as varreduras do PASSE de separação (o interruptor saiu na §33 — o passe
+        // arma-se sozinho). ⚠️ Não são estilo — não entram no `SinkStyle` —, mas a armadilha do
+        // renome é EXACTAMENTE a mesma, e é por isso que estão nesta lista e não numa segunda.
         (
             ph2d_node_motion_output::COLLIDE_ITERATIONS_PARAM,
             ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM,
@@ -324,7 +320,6 @@ fn the_manifest_declares_every_param_the_hints_paint() {
         ph2d_node_motion_output::PIVOT_Y_PARAM,
         ph2d_node_motion_output::FILTER_PARAM,
         ph2d_node_motion_output::SORT_PARAM,
-        ph2d_node_motion_output::COLLIDE_PARAM,
         ph2d_node_motion_output::COLLIDE_ITERATIONS_PARAM,
     ] {
         assert!(declared(name), "o manifesto nao declara `{name}`");

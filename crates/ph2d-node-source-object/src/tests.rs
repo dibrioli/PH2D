@@ -144,3 +144,67 @@ fn two_offsets_are_two_channels() {
         "o pedido de 0.5 nao pode ser servido pela tile de 0.25"
     );
 }
+
+/// Cozinha o nó com o `Collide` em `collide` (e o `Space` em `space`) sobre a tile publicada.
+fn source_collide(collide: Option<f32>, space: f32) -> Stream {
+    let mut g = Graph::new();
+    let n = g.add_node("source.object");
+    g.set_text_param(n, OBJECT_PARAM, "Ball");
+    if let Some(v) = collide {
+        g.set_param(n, COLLIDE_PARAM, v);
+    }
+    g.set_param(n, SPACE_PARAM, space);
+    let mut cook = Cook::new();
+    cook.set_external("Ball", tile(5.0));
+    cook.set_external(
+        ph2d_nodegraph::external::pose_of("Ball"),
+        Stream::new(1).with("size", Column::Vec2(vec![[2.0, 2.0]])),
+    );
+    cook.cook(&g, &Ops, n, 0.0).unwrap()[0].as_stream().clone()
+}
+
+/// ⭐⭐⭐ **O `Collide` DO OBJECTO declara a caixa — o quadrado UNITÁRIO** (doc 115 §33), nos dois
+/// modos de `Space`; desligado (ou sem override), a corrente sai como a membrana a publicou.
+#[test]
+fn the_collide_toggle_declares_the_unit_box_and_nothing_else() {
+    use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
+    for space in [0.0, SPACE_OBJECT_POSE] {
+        let on = source_collide(Some(1.0), space);
+        assert_eq!(
+            on.get(COLLIDER_BOX_COLUMN),
+            Some(&Column::Vec2(vec![MEIA_DO_OBJECTO])),
+            "space={space}: ligado declara a caixa unitaria"
+        );
+        for c in [COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN] {
+            assert!(
+                on.get(c).is_none(),
+                "space={space}: so' a caixa, nunca `{c}`"
+            );
+        }
+        for off in [None, Some(0.0)] {
+            let s = source_collide(off, space);
+            assert_eq!(s.count(), 1, "o controlo: a corrente existe");
+            assert!(
+                s.get(COLLIDER_BOX_COLUMN).is_none(),
+                "space={space}, collide={off:?}: desligado nao declara nada"
+            );
+        }
+    }
+    // E o default do manifesto é DESLIGADO — um objecto não colide até o artista o pedir.
+    let d = MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name == COLLIDE_PARAM)
+        .expect("o param existe")
+        .default;
+    assert_eq!(d, 0.0);
+}
+
+/// ⭐ **O botão é um DECLARANTE no registo** — a bandeira que a cerca do dispositivo e o
+/// diagnóstico leem (a mesma da `source.shape`).
+#[test]
+fn the_collide_toggle_is_registered_as_a_collider_switch() {
+    let mut reg = NodeRegistry::new();
+    register(&mut reg).unwrap();
+    assert_eq!(reg.collider_switch(MANIFEST.id), Some(COLLIDE_PARAM));
+}

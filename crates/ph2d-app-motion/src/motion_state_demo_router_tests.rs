@@ -7,15 +7,11 @@
 use super::*;
 
 /// ⭐ **As cenas que ENSINAM a segunda chave do colisor** (doc 125 §2): nascem com um `Collide`
-/// ligado e o outro por ligar, porque o passo do dono é ligá-lo — o conselho no cartão É a lição
-/// (a `=121`–`=123` nascem desarmadas, doc 115 W5; a `=131` é o Shape depois da corda). ⚠️ A
-/// catraca ao contrário: uma cena que deixe de o acusar sai daqui.
-const ENSINAM_A_SEGUNDA_CHAVE: &[(&str, &str)] = &[
-    ("121", "output"),
-    ("122", "output"),
-    ("123", "output"),
-    ("131", "shape"),
-];
+/// ligado que a simulação não ouve, porque o passo do dono é ligar a forma ao corpo — o conselho no
+/// cartão É a lição (a `=131` é o Shape depois da corda). ⚠️ A `=121`–`=123` saíram no doc 115 §33:
+/// o passe arma-se sozinho e elas nascem com o `Collide` da FORMA desligado, sem conselho nenhum.
+/// A catraca ao contrário: uma cena que deixe de o acusar sai daqui.
+const ENSINAM_A_SEGUNDA_CHAVE: &[(&str, &str)] = &[("131", "shape")];
 
 #[test]
 fn no_conference_scene_ships_a_setup_hole() {

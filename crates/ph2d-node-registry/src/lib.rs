@@ -212,23 +212,16 @@ pub struct NodeRegistry {
     /// (`ph2d_contact::colisores`: `ph2d_collider` · `ph2d_collider_box` ·
     /// `ph2d_collider_offset`).
     ///
-    /// ⚠️ **It is the CONSUMER half of a fence, and that is why it is here and
-    /// not derived.** The declaration crosses the membrane as data (an object of
-    /// the scene carries its own box); whether it MATTERS to the device depends
-    /// on whether anything in the graph reads it. A node-type flag answers that
-    /// without a hand-written list in the shell going stale — the flag travels
-    /// with the node, like `live_vector_sources`.
-    ///
-    /// ⛔ **Why the fence exists at all:** these readers honour an oriented BOX
-    /// on the CPU and their WGSL kernels separate DISCS, so a graph that reads a
-    /// declared collider must not cook on the device — it would be the same
-    /// scene as a pile on the CPU and a blur on the card, with no error.
+    /// ⚠️ **It is the CONSUMER half of the diagnosis** (`ColisorMudo`): whether a
+    /// simulation SEES a declared shape. A node-type flag answers that without a
+    /// hand-written list going stale — the flag travels with the node, like
+    /// `live_vector_sources`. (Since doc 115 §33 the sink's pass reads every
+    /// declaration, so the device fence asks only «does anything declare?».)
     /// Opt-in and default-empty.
     declared_collider_readers: std::collections::BTreeSet<NodeTypeId>,
-    /// Quem DECLARA o colisor por um interruptor, e quem ARMA o passe do fim — ver o módulo
-    /// `colisor_declarado` (doc 125 §2).
+    /// Quem DECLARA o colisor por um interruptor — ver o módulo `colisor_declarado` (doc 125 §2;
+    /// o passe do fim arma-se sozinho desde o doc 115 §33).
     collider_switches: BTreeMap<NodeTypeId, &'static str>,
-    contact_pass_switches: BTreeMap<NodeTypeId, &'static str>,
     /// Node types that are **registered and fully working, and that the Add-Node
     /// catalogue does NOT offer** (doc 115 W6).
     ///

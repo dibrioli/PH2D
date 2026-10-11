@@ -253,7 +253,6 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.motion.oscillator.param.wave", "Wave"),
     ("node.motion.output.param.blend", "Blend"),
     ("node.motion.output.param.blend_with", "Blend With"),
-    ("node.motion.output.param.collide", "Collide"),
     ("node.motion.output.param.collide_iterations", "Collide Sweeps"),
     ("node.motion.output.param.filter", "Filter"),
     ("node.motion.output.param.pivot_x", "Pivot X"),

@@ -1,21 +1,16 @@
-//! ⭐⭐ **UM `Collide` LIGADO QUE NINGUÉM OUVE** (doc 125 §2) — a régua do
+//! ⭐⭐ **UM `Collide` QUE A SIMULAÇÃO NÃO OUVE** (doc 125 §2) — a régua do
 //! [`Deficit::ColisorMudo`](crate::Deficit::ColisorMudo).
 //!
-//! O colisor tem duas chaves: quem o DECLARA (o `Collide` da `source.shape`) e quem o LÊ (um
-//! simulador que o lê dentro do passo — o corpo mole, a corda, o `sim.step` — ou o passe do fim,
-//! armado pelo `Collide` do Output). Uma chave sozinha não faz nada, e o botão que o artista ligou
-//! fica mudo. As três perguntas, uma por cura:
-//!
-//! - `"shape"` — a forma VESTE uma simulação (o corpo está a montante da junção) e nenhum leitor a
-//!   recebe: depois do corpo o `Collide` só arruma o desenho (doc 115 §15.3). A cura é ligar a
-//!   forma à porta `shape` do corpo.
-//! - `"output"` — a forma declara e nada a lê: ligar o `Collide` do Output.
-//! - `"collide"` — o Output arma o passe e nada a montante declara: ligar o `Collide` de um Shape.
+//! O colisor tem quem o DECLARA (o `Collide` da `source.shape` e do `source.object`) e quem o LÊ:
+//! um simulador dentro do passo (o corpo mole, a corda, o `sim.step`) ou o passe do fim do
+//! cozimento, que desde o doc 115 §33 se arma SOZINHO em todo sink. ⇒ uma declaração que chega a
+//! um sink nunca é muda; o que sobra é a forma que VESTE uma simulação (o corpo está a montante da
+//! junção) sem que nenhum leitor a receba: depois do corpo o `Collide` só arruma o desenho (doc 115
+//! §15.3). A cura (`"shape"`) é ligar a forma à porta `shape` do corpo.
 
 use std::collections::BTreeSet;
 
 use ph2d_node_registry::NodeRegistry;
-use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeTypeId;
 
@@ -30,46 +25,24 @@ pub(crate) fn colisor_mudo(
     node: NodeId,
     ty: NodeTypeId,
 ) -> Option<&'static str> {
-    let ligado = |n: NodeId, t: NodeTypeId, p: &str| param_reader(graph, reg, n, t)(p) >= 0.5;
-    if let Some(chave) = reg.collider_switch(ty) {
-        if !ligado(node, ty, chave) {
-            return None;
-        }
-        let jusante = fecho(graph, node, true);
-        if jusante
-            .iter()
-            .any(|n| reg.reads_declared_collider(tipo(graph, *n)))
-        {
-            return None;
-        }
-        let corpo_a_montante = graph.nodes().iter().any(|b| {
-            let t = NodeTypeId::of(&b.type_name);
-            reg.reads_declared_collider(t)
-                && tem_porta_das_pecas(reg, t)
-                && fecho(graph, b.id, true).iter().any(|n| jusante.contains(n))
-        });
-        if corpo_a_montante {
-            return Some("shape");
-        }
-        let passe_armado = jusante.iter().any(|n| {
-            let t = tipo(graph, *n);
-            reg.contact_pass_switch(t).is_some_and(|c| ligado(*n, t, c))
-        });
-        return (!passe_armado).then_some("output");
+    let chave = reg.collider_switch(ty)?;
+    if param_reader(graph, reg, node, ty)(chave) < 0.5 {
+        return None;
     }
-    if let Some(chave) = reg.contact_pass_switch(ty) {
-        if !ligado(node, ty, chave) {
-            return None;
-        }
-        let declara = fecho(graph, node, false).iter().any(|n| {
-            let t = tipo(graph, *n);
-            reg.is_object_source(t)
-                || reg.collider_switch(t).is_some_and(|c| ligado(*n, t, c))
-                || nomeia_uma_coluna_do_colisor(graph, *n)
-        });
-        return (!declara).then_some("collide");
+    let jusante = fecho(graph, node, true);
+    if jusante
+        .iter()
+        .any(|n| reg.reads_declared_collider(tipo(graph, *n)))
+    {
+        return None;
     }
-    None
+    let corpo_a_montante = graph.nodes().iter().any(|b| {
+        let t = NodeTypeId::of(&b.type_name);
+        reg.reads_declared_collider(t)
+            && tem_porta_das_pecas(reg, t)
+            && fecho(graph, b.id, true).iter().any(|n| jusante.contains(n))
+    });
+    corpo_a_montante.then_some("shape")
 }
 
 fn tipo(graph: &Graph, n: NodeId) -> NodeTypeId {
@@ -84,18 +57,6 @@ fn tem_porta_das_pecas(reg: &NodeRegistry, t: NodeTypeId) -> bool {
     reg.manifests()
         .find(|m| m.id == t)
         .is_some_and(|m| m.inputs.iter().any(|p| p.name == PORTA_DAS_PECAS))
-}
-
-/// Um param de TEXTO que escreve uma coluna do colisor (um `attr.*` que a declara à mão).
-fn nomeia_uma_coluna_do_colisor(graph: &Graph, n: NodeId) -> bool {
-    graph.node_text_params().get(&n).is_some_and(|ps| {
-        ps.values().any(|v| {
-            matches!(
-                v.trim(),
-                COLLIDER_COLUMN | COLLIDER_BOX_COLUMN | COLLIDER_OFFSET_COLUMN
-            )
-        })
-    })
 }
 
 /// O fecho pelas arestas, para a frente ou para trás, sem `de`.

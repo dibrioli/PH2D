@@ -8,7 +8,7 @@
 //!
 //! ⭐ E desde o doc 115 §16 ele responde a segunda metade da MESMA pergunta — *o que o sink
 //! DESENHA* (`o_que_o_sink_desenha`), que é a corrente já com o passe do fim aplicado. As duas
-//! moram juntas porque as duas se lêem dos params `collide` do sink, e porque o `lib.rs` estava
+//! moram juntas porque as duas se lêem dos params do sink, e porque o `lib.rs` estava
 //! no tecto de LOC: o corte é pela responsabilidade que já estava escrita neste cabeçalho.
 //!
 //! The reference is unanimous and it decided the shape: Niagara puts blend on the
@@ -143,10 +143,9 @@ pub fn sink_blend_with(graph: &Graph, sink: NodeId) -> BlendWith {
 /// que o nó publica como `PIVOT_LIMIT`, e o gate da shell pina que são iguais.
 pub const SINK_PIVOT_LIMIT: f32 = 1.0;
 
-/// ⭐⭐⭐ **O interruptor do PASSE de separação** (doc 115 W5) — o mesmo nome que o nó declara como
-/// `COLLIDE_PARAM`, com o mesmo gate da shell a pinar que concordam.
-pub const SINK_COLLIDE_PARAM: &str = "collide";
-/// Ver [`SINK_COLLIDE_PARAM`].
+/// ⭐⭐⭐ **As varreduras do PASSE de separação** (doc 115 W5) — o mesmo nome que o nó declara como
+/// `COLLIDE_ITERATIONS_PARAM`, com o gate da shell a pinar que concordam. ⚠️ Não há interruptor:
+/// desde o doc 115 §33 o passe arma-se sozinho quando alguma peça declara colisor.
 pub const SINK_COLLIDE_ITERATIONS_PARAM: &str = "collide_iterations";
 /// O default das varreduras — **o número que o `motion.collide` já ship**, herdado de propósito
 /// para uma cena migrada não mudar de qualidade em silêncio.
@@ -274,31 +273,26 @@ pub fn sink_blend_tag(graph: &Graph, sink: NodeId) -> u8 {
     sink_style(graph, sink).blend
 }
 
-/// ⭐⭐⭐ **QUANTAS VARREDURAS este sink pede ao passe de separação** (doc 115 W5) — `0` quer dizer
-/// *«o passe não corre»*, e é o que todo documento que já existe devolve.
+/// ⭐⭐⭐ **QUANTAS VARREDURAS este sink pede ao passe de separação** (doc 115 W5) — sempre `≥ 1`.
+///
+/// ⭐⭐⭐ **O passe é AUTOMÁTICO** (doc 115 §33, decisão do dono de 2026-10-11: *«automático é
+/// melhor»*): não há interruptor no sink. O que decide se ele faz alguma coisa é a CORRENTE — sem
+/// colisor declarado o [`ph2d_contact::passe`] devolve `None` e o quadro é o de sempre, ao bit.
 ///
 /// # ⛔⛔ Porque ela NÃO vive no [`SinkStyle`], e o motivo é de MOTOR
 ///
-/// Os cinco params deste sink são lidos no fim, por quem baixa a corrente — mas os quatro do
-/// `SinkStyle` são **ESTILO** (o que a peça parece) e este muda **POSIÇÕES**. O `SinkStyle` viaja
-/// para as duas rotas de lowering, e a do dispositivo ignoraria uma grandeza que não sabe honrar:
-/// isso daria a MESMA cena separada na CPU e sobreposta na placa, sem erro nenhum — a espécie de
-/// divergência que a cerca do doc 115 W1 existe para impedir. ⇒ porta própria, e a cerca do shell
-/// recusa o dispositivo enquanto ela devolver `> 0`.
+/// O `SinkStyle` é ESTILO (o que a peça parece) e viaja para as duas rotas de lowering; isto muda
+/// POSIÇÕES, e a rota do dispositivo ignoraria uma grandeza que não sabe honrar — a MESMA cena
+/// separada na CPU e sobreposta na placa. ⇒ porta própria, e a cerca do shell recusa o dispositivo
+/// enquanto alguma peça declarar.
 ///
-/// # ⚠️⚠️ O DEFAULT não vem do manifesto, e isso quase shipou um botão mudo
+/// # ⚠️⚠️ O DEFAULT não vem do manifesto
 ///
-/// O [`param`] acima lê o **override** do documento e devolve `0.0` quando não há — ele nunca
-/// consulta o `ParamSpec::default`. Os quatro params antigos deste sink têm todos default `0`, logo
-/// ninguém tinha reparado; o `collide_iterations` é **o primeiro com default ≠ 0** desta casa, e
-/// lido pela porta de sempre ele valeria `0` num documento acabado de criar. *O artista ligava o
-/// interruptor e nada acontecia.* ⇒ a ausência de override lê-se aqui como
-/// [`SINK_COLLIDE_ITERATIONS_DEFAULT`], que é o número que o nó declara.
+/// O [`param`] acima devolve `0.0` quando não há override — ele nunca consulta o
+/// `ParamSpec::default`. ⇒ a ausência lê-se aqui como [`SINK_COLLIDE_ITERATIONS_DEFAULT`], o
+/// número que o nó declara (senão um documento novo correria zero varreduras).
 #[must_use]
 pub fn sink_collide_sweeps(graph: &Graph, sink: NodeId) -> usize {
-    if param(graph, sink, SINK_COLLIDE_PARAM) < 0.5 {
-        return 0;
-    }
     let autorado = graph
         .node_param_overrides(sink)
         .and_then(|p| p.get(SINK_COLLIDE_ITERATIONS_PARAM))
@@ -310,8 +304,8 @@ pub fn sink_collide_sweeps(graph: &Graph, sink: NodeId) -> usize {
 
 /// ⭐⭐⭐ **O QUE UM SINK DESENHA** — a corrente cozida com o passe do fim aplicado (doc 115 §16).
 ///
-/// `None` quando nada há a separar (a corrente não declara colisor, o interruptor está desarmado,
-/// ou ninguém se mexeu) — e é isso que mantém toda cena de hoje **byte-idêntica**, sem clonar.
+/// `None` quando nada há a separar (a corrente não declara colisor, ou ninguém se mexeu) — e é
+/// isso que mantém toda cena sem colisor declarado **byte-idêntica**, sem clonar.
 ///
 /// ⭐ O segundo membro é o [`ph2d_contact::passe::Relatorio`] — varreduras, peças e candidatos —,
 /// que é o que dá ao artista o preço do knob sem ele ter de o ler no relógio de parede (report do

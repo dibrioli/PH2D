@@ -148,9 +148,8 @@ impl MotionCookPump {
         // *As formas saíam certas e o contorno azul ficava onde elas estavam* — duas respostas à
         // mesma pergunta, e o artista vê as duas ao mesmo tempo.
         //
-        // ⚠️ **Só para quem é SINK neste quadro**, e o discriminador não pode ser o param: a
-        // `source.shape` declara um `collide` com o MESMO nome do interruptor do sink (o botão
-        // dela), logo perguntar o param à cega separaria a corrente da própria forma.
+        // ⚠️ **Só para quem é SINK neste quadro**: a tomada de uma `source.shape` com o `Collide`
+        // ligado também traz a caixa declarada, e separá-la desarrumaria a geometria da forma.
         let sinks_do_quadro: &[NodeId] = match *target {
             CookTarget::Sinks { sinks, .. } => sinks,
             CookTarget::Boundaries(_) => &[],

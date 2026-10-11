@@ -152,30 +152,19 @@ pub const SORT_LABELS: [&str; 2] = [
     "node.opts.node_motion_output.sort_labels.1",
 ];
 
-/// ⭐⭐⭐ **O INTERRUPTOR QUE ARMA A SEPARAÇÃO** — doc 115 W5, ordem do dono (2026-09-17):
-/// *«o app separa sozinho»*.
+/// ⭐⭐⭐ **A SEPARAÇÃO É AUTOMÁTICA** (doc 115 §33, decisão do dono de 2026-10-11: *«automático é
+/// melhor»*). O que este sink desenha passa sempre pelo [`ph2d_contact::passe`] depois do
+/// cozimento: as peças que DECLARAM uma forma — a `source.shape` e o `source.object` com o
+/// `Collide` deles ligado — deixam de se sobrepor. Sem declaração o passe não faz nada, ao bit.
 ///
-/// Ligado, o que este sink desenha é passado pelo [`ph2d_contact::passe`] **depois** do cozimento:
-/// as peças que declaram uma forma — a `source.shape` com `Collide`, e desde a W4 **todo objecto da
-/// cena** — deixam de se sobrepor.
+/// ⚠️ **Não há interruptor neste cartão** (o `collide` que aqui esteve saiu; um documento antigo
+/// migra-o para os objectos a montante — `ph2d_app_motion::migra_o_collide_da_saida`). Fica só o
+/// QUANTO: as varreduras, lidas no fim por quem baixa a corrente e nunca pelo `eval` (este nó é
+/// `GpuKernel::PASSTHROUGH`). Elas mudam POSIÇÕES e por isso **não** entram no `SinkStyle`: a porta
+/// é `ph2d_eval_motion::sink_collide_sweeps`, e a cerca do shell recusa o dispositivo enquanto
+/// alguma peça declarar.
 ///
-/// # Porque ele mora AQUI, e não num nó novo nem em cada objecto
-///
-/// A frase do dono é *«o interruptor arma o PASSE»* (§11.3), no singular, e um passe é uma
-/// propriedade do que se DESENHA — que é exactamente o que este nó é. ⛔ Um nó `collide` no meio da
-/// cadeia é o que a ordem dele manda tirar; ⛔ um interruptor por objecto é `PROJECT_SCHEMA` mais
-/// uma secção do Inspector, que é superfície de outra linha (§10.4).
-///
-/// ⚠️ **E ele é irmão dos quatro acima, não um estranho:** os cinco são lidos **no fim**, por quem
-/// baixa a corrente, e nunca pelo `eval` — este nó é `GpuKernel::PASSTHROUGH`, logo uma coluna
-/// escrita aqui nunca chegaria a lado nenhum. A diferença é que os quatro primeiros são ESTILO (o
-/// que a peça parece) e este muda POSIÇÕES, e é por isso que ele **não** entra no `SinkStyle`: uma
-/// grandeza que a rota do dispositivo ignorasse em silêncio daria a mesma cena separada na CPU e
-/// sobreposta na placa. Ele tem porta própria (`ph2d_eval_motion::sink_collide`) e a cerca do
-/// shell recusa o dispositivo enquanto ele estiver ligado.
-pub const COLLIDE_PARAM: &str = "collide";
-
-/// Quantas varreduras o passe faz por quadro.
+/// **Este param:** quantas varreduras o passe faz por quadro.
 ///
 /// ⭐⭐ **O default é `8` porque é o número que o `motion.collide` JÁ SHIP** — a wave que o
 /// substitui não pode entregar outra qualidade em silêncio, e herdar o número é o que faz uma cena
@@ -275,12 +264,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 0.0,
         },
         ParamSpec {
-            // doc 115 W5. `0` = desligado = o que este app sempre fez: nenhum passe corre e a
-            // corrente que se desenha é a que o cozimento devolveu, ao bit.
-            name: COLLIDE_PARAM,
-            default: 0.0,
-        },
-        ParamSpec {
             // O número que o `motion.collide` já ship — ver [`COLLIDE_ITERATIONS_PARAM`].
             name: COLLIDE_ITERATIONS_PARAM,
             default: 8.0,
@@ -363,14 +346,6 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         },
     },
     ParamUiHint {
-        param: COLLIDE_PARAM,
-        label: "node.motion.output.param.collide",
-        min: 0.0,
-        max: 1.0,
-        step: 1.0,
-        widget: ParamWidget::Toggle,
-    },
-    ParamUiHint {
         param: COLLIDE_ITERATIONS_PARAM,
         label: "node.motion.output.param.collide_iterations",
         min: 1.0,
@@ -393,14 +368,6 @@ static PARAM_SHOW_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry
     param: BLEND_WITH_PARAM,
     when: BLEND_PARAM,
     values: &[1, 3, 4],
-}];
-
-/// ⚠️ **As varreduras só se pintam com o passe LIGADO.** Um número que não faz nada é a espécie de
-/// knob morto que o `CLAUDE.md` §5.0 caça — e aqui a cura é a que o `ParamGateAbove` já dá.
-static PARAM_GATES: &[ph2d_node_registry::ParamGateAbove] = &[ph2d_node_registry::ParamGateAbove {
-    param: COLLIDE_ITERATIONS_PARAM,
-    when: COLLIDE_PARAM,
-    above: 0.5,
 }];
 
 struct MotionOutput;
@@ -429,8 +396,6 @@ impl NodeOp for MotionOutput {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionOutput))?;
-    // doc 125 §2: o `Collide` arma o passe do fim — o diagnóstico pergunta se alguém o declara.
-    reg.register_contact_pass_switch(MANIFEST.id, COLLIDE_PARAM);
     // M1.R1 — UI metadata (the render sink → red Output, circle terminal).
     reg.register_ui(
         MANIFEST.id,
@@ -441,24 +406,16 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES);
     reg.register_param_gates(MANIFEST.id, PARAM_SHOW_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
-    // ⭐⭐ **O SINK CONSOME `falloff` desde a W6 do doc 115** (§15.1): com o `Collide` deste cartão
-    // armado, o passe do fim do cozimento (`ph2d_contact::passe`) lê aquela coluna e mistura a
-    // correcção termo a termo — é a mesma lei do `motion.collide`, e é o que dá a um objecto a
-    // forma de NÃO colidir.
+    // ⭐⭐ **O SINK CONSOME `falloff`** (doc 115 §15.1): o passe do fim do cozimento
+    // (`ph2d_contact::passe`) lê aquela coluna e mistura a correcção termo a termo — é o que dá a
+    // um objecto a forma de NÃO colidir. Sem esta linha o diagnosticador acusaria um
+    // `InertProducer("falloff")` em toda cena com um campo antes do sink.
     //
-    // ⚠️ **Sem esta linha o diagnosticador acusa um `InertProducer("falloff")`** em toda cena que
-    // ponha um campo antes do sink: ele pergunta ao REGISTO quem consome a coluna a jusante, e o
-    // sink passou a consumi-la sem o dizer. *Um canal novo é side-metadata no registo, e quem lhe
-    // ganha um consumidor tem de o declarar no mesmo commit.*
-    //
-    // ⛔ **O preço, nomeado:** a tabela de acoplamentos é ESTÁTICA e o consumo é CONDICIONAL (só
-    // com o interruptor ligado). Declará-lo cala o aviso também para um sink **desarmado** — o que
-    // se perde é a acusação a um campo que hoje ninguém lê. É o mesmo desenho que o
-    // `motion.collide` já ship (ele declara `Consumes("falloff")` sem saber se vai separar algo), e
-    // a alternativa — acusar toda cena com campo antes do sink — é pior.
+    // ⚠️ Desde a §33 (o passe automático) o consumo é INCONDICIONAL: o sink lê-a sempre que alguma
+    // peça declara colisor. Sem declaração nenhuma o campo não muda nada — o preço, nomeado, é o
+    // aviso calado nessa cena; é o mesmo desenho do `motion.collide`.
     reg.register_couplings(
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Consumes("falloff")],

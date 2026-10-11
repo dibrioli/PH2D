@@ -239,6 +239,30 @@ Desenho que a W1 decidiu (e porquê):
 - ⚠️ **Sem tonemap:** ele está em bypass (`clamp`); o gate `the_layer_skips_a_tonemap_that_is_a_bypass`
   reprova se o AgX ligar — a camada terá de o seguir.
 
+### §5.5 — Auditoria do `fx.filter` (10/10, depois do smoke do dono)
+
+O dono: *«a sombra interna não se aplica em cada forma individual; o bevel tem qualidade ruim — as
+linhas parecem um ruído animado»*. Duas lentes (correcção · costura de UI) e uma SONDA na placa
+(`ph2d-render/tests/it/fx_stack_camada_sonda.rs`, `PH2D_GPU=1 … --ignored --nocapture`): discos de
+raio 7 px, sombra σ 5,3 px deslocada (6, 6), bevel de profundidade 5,3 px.
+
+| # | achado | mecanismo | medido / reproduzir | o gate que faltava · e o verde que o escondia |
+|---|---|---|---|---|
+| A1 | **Sombra interna, brilho interno, bevel, contorno, feather e grow veem a UNIÃO das formas** | a pilha corre UMA vez sobre a camada inteira (`motion_filter.rs`), e esses tipos leem a vizinhança (alfa invertido ou campo de distância); o Vector corre POR FORMA, numa célula | miolo do disco central (255 = sem sombra), modo Proximity: **sozinho 128 · cercado com vão 2 px 200 · a tocar 228**; modo Contour: sozinho 30 · a tocar 79 | um gate «a forma cercada recebe o MESMO efeito que sozinha» · verde: `a_premultiplied_layer_filters_like_the_straight_image` compara dois caminhos da MESMA camada (razão entre dois doentes) e o oráculo do borrão é uma cena sem formas vizinhas |
+| A2 | **O default do nó é OUTRO algoritmo que o do Vector** na sombra/brilho interno e no Glow | o nó nasce com `falloff = 0` (Proximity = borrão do alfa invertido) para todo tipo; o `FxOp::new` do Vector herda `MODE_CONTOUR` do `BLANK` (campo de distância) | o mesmo disco sozinho: Proximity 128 contra Contour 30 | gate «um tipo escolhido no nó = o `FxOp::new(tipo)` do Vector» · verde: `a_dropped_filter_is_the_manifest_defaults` confere o nó contra o PRÓPRIO manifesto |
+| A3 | **O bevel do Motion vai sempre pelo campo SEMEADO PELO RASTER, e ele treme sob movimento sub-pixel** | sem geometria (`geom = &[]`) o campo é JFA sobre a cobertura limiarizada; o normal do relevo é o gradiente desse campo, quantizado ao texel — a galáxia anda frações de pixel por quadro | o mesmo ponto do disco, deslocado ¼–¾ px: **raster muda 16–43 níveis · exacto 3,5–10,7** | gate de estabilidade sub-pixel do caminho raster · verde: `fx_stack_bevel_gpu` mede a constância só com `oblique_segments` (o caminho EXACTO); `both_paths_actually_light_the_rim` só afirma presença |
+| A4 | **As cores do nó entram na pilha no espaço ERRADO** | o cartão do Motion guarda a cor em RGBA LINEAR (`motion_bridge_color.rs:81/290`, `srgb8_to_linear_rgba`); a `FxOp.color` é sRGB RETO e o shader lineariza-a (`tint_lin`, `fx_stack_shader.rs:80`) ⇒ linearizada DUAS vezes: toda cor intermédia sai escura e saturada | escolher um cinzento médio (sRGB 128) para a sombra: chega à pilha como sRGB 55 | gate «a cor escolhida no cartão chega à pilha como o artista a vê» · verde: `the_ramp_is_the_two_colours` usa preto e branco, que a transferência não move (fixtura sem o fenómeno) |
+| A5 | **Defaults por tipo ausentes**: Glow, Inner Glow e Color Overlay nascem PRETOS, Duotone preto→branco; a luz do bevel nasce espelhada (`0,12, −0,12` contra o `−0,1, 0,1` do Vector) | o manifesto tem UM conjunto de defaults; o `FxOp::new(tipo)` tem um por tipo | escolher Glow: um halo preto; Color Overlay: tudo preto. O roteiro da `=135` já ensinava o contorno («Glow com Color clara») | o mesmo gate do A2 |
+| A6 | **A turbulência ancora o ruído na JANELA** | `org` = a margem da pilha, que no Vector é a caixa da forma e no Motion é a janela inteira | as formas andam e o padrão fica parado no ecrã (efeito «vidro de chuveiro»); um pan da câmera idem | gate «o padrão anda com a forma» |
+| A7 | **A luz do bevel e o deslocamento arredondam a pixel INTEIRO** | `FxOpGpu::resolve` arredonda `offset_px`; com `|offset| < 0,5` px a luz cai no fallback `(0, −1)` | zoom-out: a direcção da luz salta | os fixtures passam `offset_px` inteiro e contornam o `resolve` |
+| A8 | **A régua `COMPRIMENTO_MAX` é verde por construção** | o gate alimenta os `534` px como ENTRADA; a saturação depende da altura da cena (`k = viewport_h / height_world`) | numa janela de 4K a mesma régua satura em ~0,27 | um gate que meça a janela do produto, ou a régua por px de ecrã |
+| U1 | **Três «Filter» e dois «Glow»** | o nó chama-se Filter, a linha do tipo também, e há o componente `vec_filter` «Filter»; a opção Glow tem o nome do nó `fx.glow` | buscar «glow» no menu de adicionar | gate de rótulos únicos por superfície |
+| U2 | **O cartão mostra a régua de comprimento em px do PROJECTO** | `display_face` multiplica pelo `pixels_per_meter` do projecto (`motion_bridge_params_wire.rs:179`), não pela câmera | o máximo «0,6» aparece como px que não são os do ecrã | — (menor) |
+
+Costura OK (lente 2): o seletor de 15 tipos alcança-se por clique (as bordas andam, o centro abre a
+lista); os gates escondem as linhas no cartão e no painel pela MESMA função; o aviso «fora do fio»
+chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem dar a volta.
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo

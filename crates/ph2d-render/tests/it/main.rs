@@ -21,6 +21,7 @@ mod fx_scene_scale_cost;
 mod fx_stack_adjust_gpu;
 mod fx_stack_atlas_gpu;
 mod fx_stack_bevel_gpu;
+mod fx_stack_camada_sonda;
 mod fx_stack_blend_gpu;
 mod fx_stack_duotone_gpu;
 mod fx_stack_feather_gpu;

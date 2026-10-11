@@ -157,6 +157,8 @@ pub enum Selected {
     Frames,
     /// Um nó de mapa mental (W6).
     Mind,
+    /// Só imagens (W14).
+    Images,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
@@ -199,6 +201,7 @@ pub fn items() -> Vec<Item> {
         Selected::Ink,
         Selected::Frames,
         Selected::Mind,
+        Selected::Images,
     ]
     .into_iter()
     .flat_map(style_groups)
@@ -279,6 +282,8 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         Selected::Ink => pen::ink_groups(),
         Selected::Frames => vec![organize::frame_fill_group(), fac::frame_group()],
         Selected::Mind => return mind::groups(),
+        // Os cantos e a opacidade (o que o Excalidraw oferece numa imagem: «Edges» e «Opacity»).
+        Selected::Images => vec![vec![Item::Round(false), Item::Round(true)], opacity],
     };
     groups.extend(org);
     groups

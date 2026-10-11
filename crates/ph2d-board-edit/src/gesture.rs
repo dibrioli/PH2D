@@ -490,10 +490,10 @@ impl Editor {
                 targets,
                 guides,
             } => {
-                // As notas escalam inteiras, com a letra (o Miro): a proporção não muda.
+                // As notas (com a letra, o Miro) e as imagens (W14) escalam inteiras.
                 let uniform = (originals.len() > 1
                     && originals.iter().any(|o| !axis_angle(o.angle)))
-                    || originals.iter().any(is_note);
+                    || originals.iter().any(|o| is_note(o) || o.image().is_some());
                 let mut world = p.world;
                 guides.clear();
                 // Em proporção a pega não fica onde o ponteiro a pôs: a guia mentiria.

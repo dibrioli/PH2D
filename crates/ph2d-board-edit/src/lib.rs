@@ -15,6 +15,7 @@ mod frame_box;
 mod gesture;
 mod gesture_end;
 mod guides;
+mod images;
 mod ink;
 mod links_tags;
 mod mindmap;
@@ -45,6 +46,7 @@ pub use cluster::{
 };
 pub use facilitate::{VOTE_MINUS_STEP, VoteMark, chip_at};
 pub use frame_box::Frame;
+pub use images::birth_size;
 pub use gesture::Down;
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
 pub use mindmap::{digits, node_size};
@@ -288,6 +290,8 @@ pub struct Editor {
     gesture: Option<gesture::Gesture>,
     editing: Option<text::Editing>,
     clipboard: Vec<Element>,
+    /// W14 — os bytes das imagens da cópia (para colar noutro quadro).
+    clip_files: ph2d_board_model::Files,
     pastes: u32,
     /// Como nasce a próxima nota.
     pub notes: NoteStyle,
@@ -340,6 +344,7 @@ impl Editor {
             gesture: None,
             editing: None,
             clipboard: Vec::new(),
+            clip_files: ph2d_board_model::Files::new(),
             pastes: 0,
             notes: NoteStyle::default(),
             bulk: None,

@@ -11,7 +11,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.menu.present" => "Present",
         "board.menu.versions" => "Versions…",
         "board.menu.export" => "Export…",
-        "board.menu.import" => "Open an Excalidraw file…",
+        "board.menu.import" => "Open an Excalidraw file or a picture…",
         "board.comment.resolve" => {
             "Resolve hides the thread from the board (Comments, Show resolved shows it again); Ctrl+Z reverses it"
         }
@@ -127,7 +127,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. Export: right-click the tab, Export…, pick PNG, SVG or PDF, then Export…"
         }
         "board.smoke.team.l5" => {
-            "5. Excalidraw: right-click the tab, Open an Excalidraw file…, pick docs/MiroClone/example.excalidraw"
+            "5. Excalidraw: right-click the tab, Open an Excalidraw file or a picture…, pick docs/MiroClone/example.excalidraw"
         }
         _ => return None,
     })

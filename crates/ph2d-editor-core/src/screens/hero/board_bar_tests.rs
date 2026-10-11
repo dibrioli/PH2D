@@ -510,3 +510,6 @@ mod team;
 
 #[path = "board_live_tests.rs"]
 mod live_board;
+
+#[path = "board_images_tests.rs"]
+mod images;

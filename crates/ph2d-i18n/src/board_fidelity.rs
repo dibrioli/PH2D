@@ -13,7 +13,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "1. Your bv.excalidraw (top left): the three arrows are straight and stop just before the shapes. Compare it with docs/MiroClone/bv_excalidraw.png, the picture Excalidraw draws."
         }
         "board.smoke.fidelity.l2" => {
-            "2. Open it yourself: right-click this tab, Open an Excalidraw file…, pick docs/MiroClone/bv.excalidraw. A new tab opens with the same drawing."
+            "2. Open it yourself: right-click this tab, Open an Excalidraw file or a picture…, pick docs/MiroClone/bv.excalidraw. A new tab opens with the same drawing."
         }
         "board.smoke.fidelity.l3" => {
             "3. Short arrows (10 to 60 long, bottom left): the head shrinks to half the arrow. Before, an arrow shorter than 24 had no head."

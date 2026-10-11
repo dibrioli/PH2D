@@ -615,7 +615,10 @@ pub(crate) fn resolve<'a>(
 ) -> Resolved<'a> {
     match end {
         End::Free(p) => Resolved::Point(p),
-        End::Bound { target, anchor } => match doc.get(target).filter(|el| el.shape().is_some()) {
+        End::Bound { target, anchor } => match doc
+            .get(target)
+            .filter(|el| ph2d_board_geom::shape_of(el).is_some())
+        {
             Some(el) => Resolved::Shape(el, anchor),
             None => Resolved::Point(fallback.unwrap_or([0.0, 0.0])),
         },

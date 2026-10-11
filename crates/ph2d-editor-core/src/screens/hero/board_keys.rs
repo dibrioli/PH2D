@@ -193,6 +193,7 @@ pub fn key(
                 Command::Cut
             };
             ed.command(doc, history, ts, c);
+            ed.keep_clip_files(&board.files);
             // O texto dos elementos vai também para fora do app (e marca a cópia como do quadro).
             return KeyOutcome {
                 consumed: true,
@@ -205,6 +206,8 @@ pub fn key(
                 ed.paste_cells(doc, history, ts, p, center);
                 return taken();
             }
+            // W14 — as imagens da cópia levam os bytes (de outro quadro, se foi lá que se copiou).
+            ed.give_clip_files(&mut board.files);
             Some(Command::Paste)
         }
         (BoardKey::Delete | BoardKey::Backspace, false) => Some(Command::Delete),

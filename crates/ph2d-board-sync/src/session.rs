@@ -13,8 +13,9 @@ use crate::{PeerId, Replica, Snapshot, Write};
 
 /// A versão do protocolo: quem fala outra é recusado com uma frase (nunca uma fusão às cegas).
 /// 2 = a facilitação ao vivo (ADR-0182); 3 = o histórico das votações (`TeamWrite::Poll…`, o `Field`
-/// sem `Votes`, ADR-0183); 4 = a identidade presa à chave do `Hello` (ADR-0182 §10).
-pub const PROTOCOL: u32 = 4;
+/// sem `Votes`, ADR-0183); 4 = a identidade presa à chave do `Hello` (ADR-0182 §10); 5 = as imagens
+/// (`Write::File`, o retrato sem os bytes delas, W14).
+pub const PROTOCOL: u32 = 5;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;
@@ -285,6 +286,10 @@ impl Host {
             }
             // Quem entra a meio sabe já do modo privado e da votação (Scrumlr v02, Miro VO).
             out.push((To::One(conn), Msg::Fac(self.fac_for(peer, now_ms, board))));
+            // W14 — os bytes das imagens, um ficheiro por mensagem, a seguir ao retrato magro.
+            for w in self.replica.all_files(board) {
+                out.push((To::One(conn), Msg::Writes(vec![w])));
+            }
             out.push((To::AllBut(conn), Msg::Joined(info.clone())));
             events.push(Event::Joined(info));
             return (out, events);
@@ -559,10 +564,7 @@ impl Guest {
     pub fn tick(&mut self, board: &mut Board, now_ms: u64) -> Vec<Msg> {
         let mut out = Vec::new();
         if let Some(r) = &mut self.replica {
-            let ws = r.local(board);
-            if !ws.is_empty() {
-                out.push(Msg::Writes(ws));
-            }
+            out.extend(crate::replica::by_file(r.local(board)));
             let sealed = r.take_sealed();
             if !sealed.is_empty() {
                 out.push(Msg::Sealed(sealed));
@@ -604,3 +606,6 @@ impl Guest {
 #[cfg(test)]
 #[path = "session_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "session_files_tests.rs"]
+mod files_tests;

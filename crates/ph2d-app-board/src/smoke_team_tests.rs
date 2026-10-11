@@ -361,10 +361,10 @@ fn every_team_lesson_does_what_it_says() {
         3,
         "um frame por página"
     );
-    // 5 — Open an Excalidraw file…: o pedido, e o exemplo da lição abre.
+    // 5 — Open an Excalidraw file or a picture…: o pedido, e o exemplo da lição abre.
     s.tab_menu(
         ph2d_editor_core::ids::CTX_MENU_BOARD_IMPORT,
-        "Open an Excalidraw file…",
+        "Open an Excalidraw file or a picture…",
     );
     assert_eq!(s.hero.documents.take_io(), Some(IoRequest::Import));
     let example = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -372,11 +372,10 @@ fn every_team_lesson_does_what_it_says() {
     let (name, imp) = crate::io::import_file(&example).unwrap();
     assert_eq!(name, "example");
     assert!(imp.doc.live_len() >= 10);
-    assert_eq!(
-        imp.skipped.get("image"),
-        Some(&1),
-        "a imagem salta e conta-se"
-    );
+    // W14 — a imagem do exemplo (uma PNG) entra, com os bytes.
+    assert!(imp.skipped.is_empty(), "{:?}", imp.skipped);
+    assert_eq!(imp.files.len(), 1);
+    assert!(imp.doc.live().any(|e| e.image().is_some()));
 }
 
 /// 📷 As fotografias dos ESTADOS da cena 10 que a foto da janela não alcança (a tela virtual não aceita

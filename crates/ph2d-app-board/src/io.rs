@@ -97,10 +97,15 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
             hero.documents.tell(text);
         }
         IoRequest::Import => {
-            let dialog = rfd::FileDialog::new().add_filter(
-                tr("board.io.filter_excalidraw"),
-                &["excalidraw", "json", "png", "svg"],
-            );
+            let dialog = rfd::FileDialog::new()
+                .add_filter(
+                    tr("board.io.filter_excalidraw"),
+                    &["excalidraw", "json", "png", "svg"],
+                )
+                .add_filter(
+                    tr("board.io.filter_images"),
+                    ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS,
+                );
             let Some(path) = ph2d_app_host::modal::pick_file(dialog) else {
                 return;
             };
@@ -110,7 +115,7 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                     let skipped = skipped_list(&imp.skipped);
                     let id = hero
                         .documents
-                        .import_board(name.clone(), imp.doc, imp.votes);
+                        .import_board(name.clone(), imp.doc, imp.votes, imp.files);
                     document_tabs::register_board(&mut hero.store, id);
                     let mut t = tr_with(
                         "board.io.imported",
@@ -122,7 +127,11 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                     }
                     t
                 }
-                Err(e) => tr_with("board.io.import_failed", &[("error", &e)]),
+                // W14 — uma imagem sem cena do Excalidraw entra no quadro aberto (o «Upload» do Miro).
+                Err(e) => match crate::images::insert_paths(hero, &[path.clone()], None) {
+                    p if p.placed > 0 => tr_with("board.io.image_added", &[("name", &display(&path))]),
+                    _ => tr_with("board.io.import_failed", &[("error", &e)]),
+                },
             };
             hero.documents.tell(text);
         }
@@ -373,7 +382,7 @@ pub fn write_export(
 pub fn import_file(path: &Path) -> Result<(String, ph2d_board_excalidraw::Import), String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
     let scene = ph2d_board_excalidraw::scene_from_bytes(&bytes)?;
-    let imp = ph2d_board_excalidraw::read(&scene)?;
+    let imp = ph2d_board_excalidraw::read_with(&scene, &crate::images::ingest)?;
     let name = path
         .file_name()
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned());

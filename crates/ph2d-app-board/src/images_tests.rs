@@ -1,0 +1,50 @@
+//! W14 — a porta de entrada das imagens: o que a cena lê, o quadro lê; o que um navegador não mostra
+//! entra em PNG; o resto é recusado.
+
+use super::*;
+
+/// Uma PNG RGBA `w × h` com a cor `c`.
+fn png(w: u32, h: u32, c: [u8; 4]) -> Vec<u8> {
+    let px = Pixels {
+        size: [w, h],
+        rgba: c.repeat((w * h) as usize),
+    };
+    encode_png(&px).unwrap()
+}
+
+/// Uma QOI 2×1 escrita à mão (a especificação: cabeçalho `qoif`, um `QOI_OP_RGBA` por píxel, o
+/// marcador do fim) — um formato que a cena lê e nenhum navegador mostra.
+fn qoi_2x1() -> Vec<u8> {
+    let mut b = b"qoif".to_vec();
+    b.extend(2u32.to_be_bytes());
+    b.extend(1u32.to_be_bytes());
+    b.extend([4, 0]);
+    b.extend([0xff, 10, 20, 30, 255, 0xff, 40, 50, 60, 128]);
+    b.extend([0, 0, 0, 0, 0, 0, 0, 1]);
+    b
+}
+
+/// Uma PNG entra como chegou (os mesmos bytes, a mesma chave), com o tamanho natural.
+#[test]
+fn a_png_comes_in_as_it_arrived() {
+    let b = png(5, 3, [1, 2, 3, 255]);
+    let f = ingest(&b).unwrap();
+    assert_eq!((&*f.bytes.0, f.size), (&b[..], [5, 3]));
+    assert_eq!(f.mime(), Some("image/png"));
+}
+
+/// ⭐ Uma QOI (a cena lê-a; um navegador não) entra em PNG, com os mesmos píxeis.
+#[test]
+fn a_format_the_browser_does_not_show_comes_in_as_png() {
+    let f = ingest(&qoi_2x1()).expect("a cena lê QOI");
+    assert_eq!((f.mime(), f.size), (Some("image/png"), [2, 1]));
+    let px = decode(&f.bytes.0).unwrap();
+    assert_eq!(px.rgba, [10, 20, 30, 255, 40, 50, 60, 128]);
+}
+
+/// O que não é uma imagem que o app lê é recusado.
+#[test]
+fn what_is_not_an_image_is_refused() {
+    assert!(ingest(b"not an image").is_none());
+    assert!(ingest(b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>").is_none());
+}

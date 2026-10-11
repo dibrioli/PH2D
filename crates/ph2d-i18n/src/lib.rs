@@ -55,6 +55,7 @@ mod board;
 mod board_facilitate;
 /// O QUADRO — a fidelidade ao Excalidraw (W9): a cena 11.
 mod board_fidelity;
+mod board_images;
 mod board_live;
 /// O QUADRO — o que é de uma pessoa (W12): o modo privado e a votação ao vivo.
 mod board_private;
@@ -528,6 +529,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| board_live::tr(k))
             .or_else(|| board_private::tr(k))
             .or_else(|| board_fidelity::tr(k))
+            .or_else(|| board_images::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

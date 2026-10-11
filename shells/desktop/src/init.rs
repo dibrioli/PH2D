@@ -316,6 +316,8 @@ fn boot_hero_screen(
     // calls from re-init paths in tests get false and silently drop
     // the second registry (safe — the manifests are identical).
     ph2d_editor_core::install_registry(registry);
+    // W14 — as imagens do Quadro descodificam pela mesma porta que a cena.
+    ph2d_app_board::images::install();
     println!(
         "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
         handler.elapsed_ms(),

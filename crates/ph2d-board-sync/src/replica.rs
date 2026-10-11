@@ -56,6 +56,11 @@ pub enum Write {
     },
     /// Os comentários, as versões e a apresentação.
     Team { w: TeamWrite, at: Lamport },
+    /// W14 — os bytes de uma imagem (uma vez; `replica_files.rs`).
+    File {
+        file: ph2d_board_model::ImageFile,
+        at: Lamport,
+    },
 }
 
 impl Write {
@@ -64,7 +69,8 @@ impl Write {
             Write::Born { at, .. }
             | Write::Set { at, .. }
             | Write::Board { at, .. }
-            | Write::Team { at, .. } => *at,
+            | Write::Team { at, .. }
+            | Write::File { at, .. } => *at,
             Write::Stamp { op, .. } => *op,
         }
     }
@@ -73,7 +79,7 @@ impl Write {
         match self {
             Write::Born { el, .. } => Some(el.id),
             Write::Set { id, .. } | Write::Stamp { id, .. } => Some(*id),
-            Write::Board { .. } | Write::Team { .. } => None,
+            Write::Board { .. } | Write::Team { .. } | Write::File { .. } => None,
         }
     }
 }
@@ -103,6 +109,7 @@ enum OutKey {
     Stamp(Lamport),
     Board(BoardField),
     Team(Lamport),
+    File(ph2d_board_model::FileId),
 }
 
 #[derive(Clone, Debug)]
@@ -124,10 +131,15 @@ pub struct Replica {
     team: TeamState,
     team_shadow: Shadow,
     sealed: Sealed,
+    /// W14 — os ficheiros de imagem que este par já mandou ou recebeu.
+    files: BTreeSet<ph2d_board_model::FileId>,
 }
 
 #[path = "replica_sealed.rs"]
 mod sealed;
+#[path = "replica_files.rs"]
+mod files;
+pub use files::by_file;
 pub(crate) use sealed::sealed_field;
 use sealed::{Seal, Sealed};
 
@@ -147,6 +159,7 @@ impl Replica {
             team: TeamState::default(),
             team_shadow: Shadow::of(&board.team),
             sealed: Sealed::default(),
+            files: board.files.keys().copied().collect(),
         }
     }
 
@@ -180,8 +193,10 @@ impl Replica {
     pub fn rejoin(&mut self, board: &mut Board, snap: &Snapshot, seed: u64) -> Result<(), String> {
         let camera = board.camera;
         let _ = self.local(board);
+        // O retrato não leva os bytes das imagens: os que já tinha ficam (o anfitrião manda-os outra vez).
+        let files = std::mem::take(&mut board.files);
         *board = BoardSet::board_from_bytes(&snap.board)?;
-        board.camera = camera;
+        (board.camera, board.files) = (camera, files);
         board.set_session(Some(seed));
         let mine: Vec<Write> = self.outbox.values().cloned().collect();
         // O meu relógio nunca volta atrás: dois carimbos meus iguais seriam a mesma ficha.
@@ -233,10 +248,10 @@ impl Replica {
     pub fn snapshot(&self, board: &Board) -> Snapshot {
         let mut stamps = self.stamps.clone();
         let bytes = match self.masked(board) {
-            None => BoardSet::board_bytes(board),
+            None => BoardSet::board_bytes_lean(board),
             Some((b, at)) => {
                 stamps.extend(at);
-                BoardSet::board_bytes(&b)
+                BoardSet::board_bytes_lean(&b)
             }
         };
         Snapshot {
@@ -274,6 +289,7 @@ impl Replica {
             Write::Stamp { op, .. } => OutKey::Stamp(*op),
             Write::Board { field, .. } => OutKey::Board(*field),
             Write::Team { at, .. } => OutKey::Team(*at),
+            Write::File { file, .. } => OutKey::File(file.id()),
         };
         self.outbox.insert(key, w.clone());
     }
@@ -282,6 +298,7 @@ impl Replica {
     /// receber).
     pub fn local(&mut self, board: &mut Board) -> Vec<Write> {
         let mut out = std::mem::take(&mut self.outgoing);
+        out.extend(self.new_files(board));
         let mut sealed = Vec::new();
         let mut reverts: Vec<(ElementId, Vec<u8>)> = Vec::new();
         let mut lists = Vec::new();
@@ -444,7 +461,7 @@ impl Replica {
         self.team.receive(&mut board.team, &team);
         self.team_shadow = Shadow::of(&board.team);
         let mut todo: Vec<Write> = std::mem::take(&mut self.pending);
-        todo.extend(writes.into_iter().cloned());
+        todo.extend(writes.into_iter().filter(|w| !self.file_in(board, w)).cloned());
         loop {
             let before = todo.len();
             let mut again = Vec::new();
@@ -546,7 +563,9 @@ impl Replica {
                     el.org = None;
                 }
             }
-            Write::Board { .. } | Write::Team { .. } => unreachable!("tratado acima"),
+            Write::Board { .. } | Write::Team { .. } | Write::File { .. } => {
+                unreachable!("tratado acima")
+            }
         }
         self.touch(id, at);
         true

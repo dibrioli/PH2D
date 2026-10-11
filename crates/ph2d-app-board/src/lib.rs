@@ -13,6 +13,9 @@ pub mod io;
 /// O quadro ao vivo (W11, ADR-0181): a sessão e a rede local, servidas a cada imagem.
 pub mod live;
 
+/// As imagens a entrar no quadro (W14): a porta de entrada e o descodificador do desenho.
+pub mod images;
+
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "board",

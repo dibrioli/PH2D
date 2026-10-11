@@ -150,7 +150,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.import_router.vector_svg" => "Vector (SVG)",
         "shell.import_router.aseprite" => "Aseprite",
         "shell.import_router.all_supported" => "All supported",
-        "shell.input_drop.board_takes_no_files_yet" => "Boards don't take files yet",
         "shell.input_drop.not_files" => "Skipped {count}: not a file",
         "shell.input_drop.drop_failed" => "Drop failed: {error}",
         "shell.input_drop.imported" => "Imported {label}",

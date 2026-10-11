@@ -33,6 +33,10 @@ rfd = "0.17"
 # W11 — o quadro ao vivo (`live.rs`, ADR-0181): a sessão PURA e o transporte da rede local.
 ph2d-board-sync = { path = "../ph2d-board-sync" }
 ph2d-board-net = { path = "../ph2d-board-net" }
+# W14 — as imagens entram pela descodificação da cena (`decode_image`); o que o navegador não mostra
+# vira PNG (a mesma versão do `png` que o `image` já traz no lock).
+ph2d-asset = { path = "../ph2d-asset" }
+png = "0.18"
 
 [dev-dependencies]
 # O gate da cena 10 conduz o ecrã real (os eventos do ponteiro e do teclado do hero).

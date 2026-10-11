@@ -392,9 +392,11 @@ impl Host {
             }
         }
         self.replica.released(gone);
-        if !ws.is_empty() {
-            out.push((To::All, Msg::Writes(ws)));
-        }
+        out.extend(
+            crate::replica::by_file(ws)
+                .into_iter()
+                .map(|m| (To::All, m)),
+        );
         if std::mem::take(&mut self.chair.dirty) {
             for (conn, peer) in &self.guests {
                 out.push((To::One(*conn), Msg::Fac(self.fac_for(*peer, now_ms, board))));

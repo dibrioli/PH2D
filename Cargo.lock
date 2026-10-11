@@ -4767,6 +4767,7 @@ dependencies = [
  "bumpalo",
  "ph2d-a11y",
  "ph2d-app-host",
+ "ph2d-asset",
  "ph2d-board-edit",
  "ph2d-board-excalidraw",
  "ph2d-board-export",
@@ -4784,6 +4785,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
+ "png",
  "rfd",
  "serde_json",
 ]

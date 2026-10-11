@@ -10,7 +10,7 @@ use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
 use crate::image_import::ImportItemResult;
 use ph2d_editor_core::Toast;
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr_with;
 
 impl App {
     /// Imports each dropped path that resolves to an image, anchoring
@@ -23,17 +23,23 @@ impl App {
         if paths.is_empty() {
             return;
         }
+        let at = self
+            .host
+            .as_ref()
+            .and_then(|h| live_cursor_in_window(h.window()))
+            .unwrap_or(self.last_cursor);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let Some(hero) = gfx.hero_screen.as_ref() else {
+        let Some(hero) = gfx.hero_screen.as_mut() else {
             return;
         };
-        // Com um QUADRO na aba, os ficheiros iam para a cena escondida atrás dela.
+        // Com um QUADRO na aba, as imagens vão para ele (W14), onde se largou.
         if hero.documents.active().is_some() {
-            gfx.toasts.push(Toast::warning(tr(
-                "shell.input_drop.board_takes_no_files_yet",
-            )));
+            let at = [f64::from(at.0), f64::from(at.1)];
+            if let Some(t) = ph2d_app_board::images::drop_files(hero, paths, at) {
+                gfx.toasts.push(t);
+            }
             self.title_dirty = true;
             return;
         }

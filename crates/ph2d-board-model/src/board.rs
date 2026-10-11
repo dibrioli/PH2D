@@ -201,6 +201,33 @@ impl BoardSet {
         postcard::to_allocvec(board).expect("postcard escreve qualquer quadro")
     }
 
+    /// [`Self::board_bytes`] SEM os bytes das imagens (W14): o retrato de quem entra numa sessão ao
+    /// vivo — os ficheiros seguem um a um, cada um na sua mensagem (o tecto de uma é o do transporte).
+    #[must_use]
+    pub fn board_bytes_lean(board: &Board) -> Vec<u8> {
+        /// O MESMO desenho de campos que [`Board`] (gate `the_lean_board_is_the_board_without_files`).
+        #[derive(Serialize)]
+        struct Lean<'a> {
+            id: BoardId,
+            name: &'a str,
+            camera: Camera,
+            doc: &'a BoardDoc,
+            sketch: bool,
+            team: &'a Team,
+            files: &'a Files,
+        }
+        let lean = Lean {
+            id: board.id,
+            name: &board.name,
+            camera: board.camera,
+            doc: &board.doc,
+            sketch: board.sketch,
+            team: &board.team,
+            files: &Files::new(),
+        };
+        postcard::to_allocvec(&lean).expect("postcard escreve qualquer quadro")
+    }
+
     /// Lê o que [`Self::board_bytes`] escreveu, com os índices refeitos.
     ///
     /// # Errors

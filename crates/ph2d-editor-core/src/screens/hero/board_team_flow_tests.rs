@@ -413,7 +413,7 @@ fn present_without_frames_tells_and_does_not_start() {
 }
 
 /// ⭐ E1–E4 — «Export…» do menu da aba abre o diálogo; escolher o PDF e «Export…» faz o pedido à
-/// família do quadro; sem selecção a área «Selection» não se pinta. «Open an Excalidraw file…» pede a
+/// família do quadro; sem selecção a área «Selection» não se pinta. «Open an Excalidraw file or a picture…» pede a
 /// importação.
 #[test]
 fn export_and_import_ask_the_family_for_a_file() {

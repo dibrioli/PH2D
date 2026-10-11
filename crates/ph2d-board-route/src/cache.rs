@@ -67,7 +67,7 @@ fn end_key(r: &Resolved<'_>) -> EndKey {
     match *r {
         Resolved::Point(p) => EndKey::Point(p),
         Resolved::Shape(el, anchor) => {
-            let s = el.shape().expect("resolve só devolve formas");
+            let s = ph2d_board_geom::shape_of(el).expect("resolve só devolve formas");
             EndKey::Shape {
                 anchor,
                 geo: [el.x, el.y, el.w, el.h, el.angle],
@@ -134,7 +134,7 @@ impl RouteCache {
                 continue;
             }
             changed.insert(el.id);
-            if el.shape().is_some() {
+            if ph2d_board_geom::shape_of(el).is_some() {
                 self.index.insert(el.id, aabb(el));
             } else {
                 self.index.remove(el.id);
@@ -242,7 +242,7 @@ impl RouteCache {
 }
 
 fn missing(doc: &BoardDoc, end: End) -> bool {
-    matches!(end, End::Bound { target, .. } if doc.get(target).and_then(Element::shape).is_none())
+    matches!(end, End::Bound { target, .. } if doc.get(target).and_then(ph2d_board_geom::shape_of).is_none())
 }
 
 /// O afastamento de cada seta que liga o MESMO par de formas (sem ordem) pelo CENTRO: `(i −

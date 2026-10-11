@@ -232,10 +232,13 @@ impl Documents {
         name: String,
         doc: ph2d_board_model::BoardDoc,
         old_votes: std::collections::BTreeMap<ph2d_board_model::ElementId, u32>,
+        files: ph2d_board_model::Files,
     ) -> BoardId {
         let id = self.create(name);
         if let Some(b) = self.boards.get_mut(id) {
             b.doc = doc;
+            // W14 — os bytes das imagens que o ficheiro trazia.
+            b.files = files;
             // W13 (ADR-0183 §9): os votos de um ficheiro de antes do histórico viram UMA sessão.
             b.team.adopt_old_votes(old_votes);
         }

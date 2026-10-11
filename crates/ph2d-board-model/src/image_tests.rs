@@ -215,3 +215,19 @@ fn a_format_11_file_still_opens_and_rewrites_in_the_current_format() {
 
 /// Gravados pelo build do formato 11 (`72b26c071`).
 const V11_BYTES: &[u8] = include_bytes!("../fixtures/format_v11.bin");
+
+/// ⭐ Gate de desenho: o retrato magro é o quadro com os ficheiros vazios (os campos de [`Board`] pela
+/// mesma ordem), e lê-se pelo leitor de sempre.
+#[test]
+fn the_lean_board_is_the_board_without_files() {
+    let mut set = BoardSet::default();
+    let a = set.create("A".into());
+    let b = set.get_mut(a).unwrap();
+    put(b, file(7), [0.0, 0.0, 10.0, 10.0]);
+    b.save_version("v".into(), 3);
+    let mut bare = b.clone();
+    bare.files.clear();
+    let lean = BoardSet::board_bytes_lean(b);
+    assert_eq!(lean, BoardSet::board_bytes(&bare));
+    assert_eq!(BoardSet::board_from_bytes(&lean).unwrap(), bare);
+}

@@ -128,6 +128,16 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
     "png", "webp", "jpg", "jpeg", "gif", "tiff", "tif", "ora", "apng", "psd", "ph2d",
 ];
 
+/// ⭐ W14 do Quadro — **a mesma descodificação que a cena usa** ao largar ou importar (com os tectos
+/// e as recusas auditadas do registo `imageio`), para quem só quer os píxeis de uns bytes sem os
+/// guardar num [`crate::AssetDb`]: as imagens do Quadro.
+///
+/// # Errors
+/// Bytes que não são uma imagem que o app lê, ou que passam os tectos.
+pub fn decode_image(bytes: &[u8]) -> Result<Asset, AssetError> {
+    decode_image_bytes(bytes, None)
+}
+
 /// Decode an in-memory image buffer (PNG / WEBP / JPEG) to
 /// [`Asset::ImageRgba8`]. Format is auto-detected by `image::guess_format`.
 /// `path_hint` only annotates error messages.

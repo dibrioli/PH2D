@@ -339,7 +339,7 @@ impl Editor {
         }
         let sel: Vec<&Element> = self.selected(doc);
         let el = match sel.as_slice() {
-            [one] if one.shape().is_some() => *one,
+            [one] if ph2d_board_geom::shape_of(one).is_some() => *one,
             [] => match self.hover.and_then(|h| doc.get(h)) {
                 Some(h) => h,
                 None => return Vec::new(),

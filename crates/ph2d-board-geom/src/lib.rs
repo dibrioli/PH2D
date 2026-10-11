@@ -239,6 +239,24 @@ pub fn text_origin(t: ShapeType, w: f64, h: f64, block_h: f64, valign: VAlign) -
     [x, y + room * k]
 }
 
+/// ⭐ W14 — a forma que um elemento OCUPA: a dele, ou, numa imagem, o rectângulo da caixa (com os
+/// cantos redondos dela) — clicar, prender uma seta e a faixa da seta tratam a imagem como uma caixa
+/// (o Excalidraw prende setas a imagens). `None` = não ocupa uma forma (seta, traço, frame).
+#[must_use]
+pub fn shape_of(el: &Element) -> Option<std::borrow::Cow<'_, Shape>> {
+    if let Some(s) = el.shape() {
+        return Some(std::borrow::Cow::Borrowed(s));
+    }
+    let img = el.image()?;
+    let mut style = img.style.clone();
+    (style.fill, style.stroke) = (None, None);
+    Some(std::borrow::Cow::Owned(Shape {
+        kind: ShapeType::Rectangle,
+        style,
+        text: ph2d_board_model::RichText::default(),
+    }))
+}
+
 /// Local → mundo: a caixa no sítio dela, rodada à volta do centro.
 #[must_use]
 pub fn to_world(el: &Element) -> Affine {
@@ -251,8 +269,8 @@ pub fn to_world(el: &Element) -> Affine {
 /// O contorno de `el` já no mundo.
 #[must_use]
 pub fn world_outline(el: &Element) -> Option<Outline> {
-    let shape = el.shape()?;
-    let o = outline(shape, el.w, el.h);
+    let shape = shape_of(el)?;
+    let o = outline(&shape, el.w, el.h);
     let t = to_world(el);
     Some(Outline {
         fill: t * o.fill,
@@ -264,12 +282,12 @@ pub fn world_outline(el: &Element) -> Option<Outline> {
 /// borda de uma forma sem preenchimento continua agarrável.
 #[must_use]
 pub fn hit(el: &Element, p: [f64; 2], tol: f64) -> bool {
-    let Some(shape) = el.shape() else {
+    let Some(shape) = shape_of(el) else {
         return false;
     };
     let [ux, uy] = el.unrotate(p);
     let local = Point::new(ux - el.x, uy - el.y);
-    let o = outline(shape, el.w, el.h);
+    let o = outline(&shape, el.w, el.h);
     if o.fill.contains(local) {
         return true;
     }
@@ -317,7 +335,7 @@ pub fn ray_exit(el: &Element, from: [f64; 2], dir: [f64; 2]) -> Option<[f64; 2]>
 /// entra (o caminho chega a `to` por fora, ou `from` já está na faixa) ⇒ `to`.
 #[must_use]
 pub fn band_entry(el: &Element, from: [f64; 2], to: [f64; 2], gap: f64) -> [f64; 2] {
-    let Some(shape) = el.shape() else {
+    let Some(shape) = shape_of(el) else {
         return to;
     };
     if shape.kind == ShapeType::Ellipse {

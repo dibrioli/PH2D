@@ -63,3 +63,38 @@ fn the_size_comes_from_the_header_without_decoding() {
     let f = ingest(&b).expect("o cabeçalho chega");
     assert_eq!(f.size, [300, 200]);
 }
+
+/// RÉGUA (à mão, máquina calma, perfil `smoke`/release): o custo no fio da janela da entrada de uma
+/// fotografia JPEG de 4000 × 3000 (o cabeçalho) contra a descodificação inteira que o desenho faz fora
+/// dele (o tempo do cinzento). Imprime o MÍNIMO de 5 corridas intercaladas.
+#[test]
+#[ignore = "régua de tempo (à mão)"]
+fn mede_a_entrada_e_a_descodificacao_de_uma_fotografia() {
+    let (w, h) = (4000u32, 3000u32);
+    let img = image::RgbImage::from_fn(w, h, |x, y| {
+        image::Rgb([
+            (x * 7 % 256) as u8,
+            (y * 5 % 256) as u8,
+            ((x ^ y) % 256) as u8,
+        ])
+    });
+    let mut jpg = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpg, 85)
+        .encode_image(&img)
+        .unwrap();
+    let (mut entrada, mut inteira) = (f64::MAX, f64::MAX);
+    for _ in 0..5 {
+        let t = std::time::Instant::now();
+        let f = ingest(&jpg).unwrap();
+        entrada = entrada.min(t.elapsed().as_secs_f64() * 1e3);
+        assert_eq!(f.size, [w, h]);
+        let t = std::time::Instant::now();
+        let px = decode(&jpg).unwrap();
+        inteira = inteira.min(t.elapsed().as_secs_f64() * 1e3);
+        assert_eq!(px.size, [w, h]);
+    }
+    println!(
+        "JPEG {} KB: entrada {entrada:.3} ms · descodificação {inteira:.1} ms",
+        jpg.len() / 1024
+    );
+}

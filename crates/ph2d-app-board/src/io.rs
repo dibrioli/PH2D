@@ -134,12 +134,14 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                     t
                 }
                 // W14 — uma imagem sem cena do Excalidraw entra no quadro aberto (o «Upload» do Miro).
-                Err(e) => match crate::images::insert_paths(hero, &[path.clone()], None) {
-                    p if p.placed > 0 => {
-                        tr_with("board.io.image_added", &[("name", &display(&path))])
+                Err(e) => {
+                    match crate::images::insert_paths(hero, std::slice::from_ref(&path), None) {
+                        p if p.placed > 0 => {
+                            tr_with("board.io.image_added", &[("name", &display(&path))])
+                        }
+                        _ => tr_with("board.io.import_failed", &[("error", &e)]),
                     }
-                    _ => tr_with("board.io.import_failed", &[("error", &e)]),
-                },
+                }
             };
             hero.documents.tell(text);
         }

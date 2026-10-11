@@ -288,10 +288,12 @@ impl Doc {
             return name;
         }
         let rgb: Vec<u8> = px
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|p| [p[0], p[1], p[2]])
             .collect();
-        let alpha: Vec<u8> = px.chunks_exact(4).map(|p| p[3]).collect();
+        let alpha: Vec<u8> = px.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
         let r = self.id();
         let sm = alpha.iter().any(|&a| a < 255).then(|| self.id());
         let packed = deflate(&rgb);

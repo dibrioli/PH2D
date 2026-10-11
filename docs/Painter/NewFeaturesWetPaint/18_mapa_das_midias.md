@@ -4,7 +4,14 @@
 > (óleo, acrílica, lápis, caneta, aquarela, nanquim, giz de cera…) — no Wet Paint (decisão de 07/10: só ele
 > evolui). Antes de construir, **meça se a composição já o exprime** (CLAUDE.md §5.0): para cada mídia, a
 > melhor composição dos knobs de HOJE contra a foto do Rebelle da mesma mídia, à largura medida igual.
-> Resultado em uma linha: **hoje o motor só pinta a família aquarela; o resto pede motor** (tabela §3).
+> ⛔ **CORRIGIDO no mesmo dia pelo dono (11/10):** *«toda sua avaliação sobre o que não é possível é falsa … basta
+> aumentar pigment e o pincel deixa quanta tinta quisermos … em tuning havia … parâmetros de relevo … é só trazer de
+> volta»*. A 1.ª versão desta tabela varreu os secos com pigmento 80–600 (nunca alto) e o óleo sem o relevo, que
+> estava inalcançável (o slider saíra a 09/10 com o grupo Paper e o render só o desenhava com papel escolhido,
+> 10/10). Refeita com pigmento até 2000, o relevo de volta (secção **Relief** do Tuning) e o grão do pincel no
+> lugar das cerdas — 428 receitas em 4 rodadas, secas, contra as fotos: **óleo, acrílica, Express Oil, lápis,
+> carvão, pastel seco e pastel de óleo ENTRAM**. Ficam de fora a tinta/caneta/marcador (o cruzamento) e o
+> aerógrafo (o pó fino). A lição: §4.5.
 
 ## §1 — Os dados
 
@@ -53,12 +60,14 @@ melhor candidato. O que falta e a onda que o entrega são os do [01 §4](01_o_qu
 | **nanquim** (tinta com água) | Ink › Brush · Brush 1–3; Watercolor › Sumi-e | escuro, liso, **escurece onde cruza** | Brush: cob 0,79 · 0,72 · 0,19, textura 2,8 · 1,3 · 8,1, borda 0,85 · 0,79 · 1,00 ✓ — **cruzamento 0,87 · 0,24 · 0,95 ✗**. Com as caixas K–M da TELA ligadas: **0,245 ✓** (todas as métricas dentro) | ✗ FORA por defeito: o escurecer do cruzamento só existe com a mistura de pigmentos da OBRA ligada — o preset não a guarda (decisão do dono, §5). Sumi-e: borda macia sai manchada (orla 8–25 · 9, textura 11–24 · 3,4) |
 | **caneta** | Ink › Pen · Bullet, Dip Pen, Fountain, Reed, Wood | linha limpa, escura, borda dura, escurece no cruzamento | Dip Pen: cob 0,91 · 0,86 · 0,20, textura 0,3 · 1,4 · 7,8, borda 0,87 · 0,91 · 1,00 ✓ — **cruzamento 1,01 · 0,22 · 0,96 ✗** (com K–M também 1,00: o traço seco tapa) | ✗ FORA: a lei da tinta por preset (W5: Paint & Mix com o limiar da queda; Glaze) |
 | **marcador** | Marker · Bullet, Chisel, Liner, Dry, Effect | sobreposição ESCURECE (glaze multiplicativo), grão preso à tela | Bullet: cob 0,91 · 0,91, textura 0,8 · 0,7, orla 1 · 1 ✓ — **cruzamento 1,01 · 0,016 ✗** (com K–M também) | ✗ FORA: o glaze multiplicativo por preset (W5.4) — um «Marcador» que tapa ensina o contrário |
-| **óleo · acrílica** | Oil & Acrylic (a ferramenta do Rebelle é «Oil & Acrylic»; a acrílica é ela, não o Express Oil — óleo de secagem rápida) · Bristle Flat, Round Hard, Flat, Knife… | fios com física própria, relevo (HEIGHT), a tinta acaba | Bristle Flat: cob 0,91 · 0,91, borda 0,95 · 0,87 ✓ — **textura 1,0 · 5,9 ✗, CV 0,001 · 0,011 ✗** (um tubo liso, sem estrias); Round Hard: textura 9,0 · 3,1 ✗, borda 0,53 · 0,60 ✗ | ✗ FORA: os fios (resto da W2) + a altura (W3) + a tinta finita (W5) |
-| **lápis · grafite · carvão** | Pencil · Graphite 2H–8B, Colored, Charcoal, Dry Media | o papel fura nos vales (borda/miolo 0,32), grão 9 %, orla 7 | sem água o depósito quase some (traços de 1–2 px de largura em r 5–14; textura sem miolo) | ✗ FORA: o caminho sem água (W7) + o papel × pressão (W4) + o Shape Noise (#47) |
-| **pastel seco · giz · pastel de óleo · giz de cera** | Pastel · Dry Thin, Soft, Square; Oil Pastel 2, Wax Pencil, Wax Soft; Scrape | bastão com grão aleatório, pó (dual brush), orla 6–11 | Dry Thin: textura 18 · 7,2, borda 0,60 · 0,44, orla 10 · 6 ✗; Oil Pastel 2: o traço não aparece | ✗ FORA: idem lápis + dual brush (W3) |
-| **aerógrafo** | Airbrush · Spray 1–5 | névoa de pontos, orla larga (12), textura 23 % | orla 17 · 12, textura 8,9 · 22,7 ✗ (cob 0,34 · 0,38 ✓) | ✗ FORA: fluxo por pressão + cone por inclinação, caminho sem água (W7) |
+| **óleo · acrílica** | Oil & Acrylic (a ferramenta do Rebelle é «Oil & Acrylic»; a acrílica é ela, não o Express Oil — óleo de secagem rápida) · Bristle Flat, Round Hard; Express Oil › Hairy | estrias das cerdas, relevo, corpo cheio | **Oil Bristle**: textura 6,1 · 5,9, borda 0,83 · 0,87, cob 0,92 · 0,91 ✓ (pigmento 2000, água 0,05, cerdas 4 × 1 500 força 2, **Emboss 2**) · **Acrylic Round**: textura 3,8 · 3,1, borda 0,79 · 0,60, cob 0,91 · 0,88 ✓ · **Express Oil**: textura 8,5 · 9,0, borda 0,84 · 0,80, cob 0,88 · 0,70 ✓ (o «período 47 %» do Hairy é o carimbo dele — 01 §2 L2 —, não a mídia: não conta) | ✅ **DENTRO** (2.º lote) |
+| **lápis · grafite · carvão** | Pencil · Graphite 2H–8B, Colored, Charcoal, Dry Media | o grão abre na orla (borda/miolo 0,32), grão 9 %, orla 7 | **Graphite 8B**: textura 9,1 · 9,1, borda 0,60 · 0,32, orla 7 · 7, cob 0,85 · 0,80 ✓ (água 0, pigmento 500, grão Noise 0,4) · **Charcoal**: borda 0,49 · 0,38, orla 12 · 15, cob 0,44 · 0,38 ✓ (pigmento 100, Noise 0,15) | ✅ **DENTRO** (2.º lote). ⚠️ O grão Stucci apaga o traço (o mecanismo do #47) |
+| **pastel seco · giz · pastel de óleo · giz de cera** | Pastel · Dry Thin, Soft, Square; Oil Pastel 2, Wax Pencil, Wax Soft; Scrape | bastão com grão, pó, orla 6–11 | **Soft Pastel**: borda 0,61 · 0,44, orla 5 · 6, cob 0,85 · 0,75 ✓ (Noise 0,4) · **Oil Pastel**: textura 15,4 · 17,4, borda 0,56 · 0,42, orla 13 · 11, cob 0,76 · 0,65 ✓ (Noise 0,15 — o grão mais fino que o do seco; o Voronoi passava mas a largura variava até 42 % com a posição) — receitas DIFERENTES (a mesma passava nos dois: seria um preset com dois nomes) | ✅ **DENTRO** (2.º lote; o giz de cera é o Oil Pastel) |
+| **aerógrafo** | Airbrush · Spray 1–5 | névoa de pontos finos, orla larga (12), textura 23 % | grão Noise + dispersão: orla 13 · 12, cob 0,33 · 0,38, borda 0,38 · 0,54 ✓ — **textura 7,2 · 22,7 ✗** (manchas, não pó; o lado do grão 0,02 = 0,05 dá o mesmo) | ✗ FORA: o pó fino (o grão do motor não desce abaixo da célula) |
 
-**A tabela é o que impede um preset de mentir** (⛔ «feature pior que não existir»): só o Liner entrou no 1.º lote.
+**A tabela é o que impede um preset de mentir** (⛔ «feature pior que não existir»): o Liner no 1.º lote; óleo,
+acrílica, Express Oil, grafite, carvão, pastel seco e pastel de óleo no 2.º (cada um com o portão
+`cada_preset_parece_a_sua_midia`, o Wet Round dentro como controlo). As receitas: `tests/it/receitas_de_fabrica.rs`.
 
 ## §4 — O que se aprendeu (lições com número)
 
@@ -70,22 +79,21 @@ melhor candidato. O que falta e a onda que o entrega são os do [01 §4](01_o_qu
    nome seria um nome, não uma mídia.
 4. **O teto de 345 px que a sonda leu era o slider** (`BRUSH_SIZE_MAX_PX = 512` no `set_brush_size_px`), não o
    motor: mede-se além dele com a lei crua × 2.
+5. ⛔⛔ **«Não é possível» sem varrer o eixo inteiro é um palpite.** A 1.ª versão concluiu que sem água «o depósito
+   quase some» depois de varrer pigmento 80–600; o dono, com pigmento alto, pintava traços cheios. E concluiu que
+   o óleo não tinha relevo sem perguntar ao CÓDIGO onde o relevo estava (vivo no motor, sem slider e preso ao
+   papel). Antes de declarar uma mídia fora: o eixo do knob inteiro (do mínimo ao máximo) e o código do controlo
+   que a faria (quem escreve, quem lê, o leitor decide?).
 
 ## §5 — As mídias que ficam de fora: a onda, a barra e a ordem proposta
 
-A barra de cada uma já está nas fotos de `fixtures/rebelle/` (a régua `midias_regua.py`, o vale com o controlo
-dentro, o portão `cada_preset_parece_a_sua_midia` ganha uma linha por mídia).
-
-| ordem | bloco (§0.10: uma família, uma janela) | desbloqueia | a barra (fotos) | o que a mede |
+| ordem | bloco | desbloqueia | a barra (fotos) | o que a mede |
 |---|---|---|---|---|
-| **A** | **A lei da tinta POR PRESET** (W5 reduzida): Glaze multiplicativo e Paint & Mix por preset — o que hoje só existe como caixas da OBRA | caneta (Bullet, Dip Pen), nanquim (Ink Brush), marcador (Bullet, Liner) | `ink` · `dippen` · `inkbrush` · `marker` · `markerbullet` | o cruzamento: 0,016 (marcador) · 0,12–0,24 (tinta) contra 1,00 hoje |
-| **B** | **O caminho sem água + o papel × pressão** (W7 + W4 + o Shape Noise #47) | lápis, grafite, carvão, pastel seco, giz, pastel de óleo, giz de cera, aerógrafo | `pencil` · `penciltilt` · `charcoal` · `pastel` · `oilpastel2` · `airbrush` | borda/miolo 0,32–0,44, textura 7–23 %, orla 6–15 px |
-| **C** | **Os fios com física própria + a altura** (resto da W2 + W3) | óleo, acrílica, Express Oil; o Flat de pontas retas da aquarela (W3 formas) | `oil` · `oilround` · `express` · `wcflat` | textura 5–10 % com CV ≤ 0,02, período < 15 %; borda/miolo 0,8–0,9 |
-
-A ordem é do dono (o que ele vê primeiro): **A** é a mais curta e dá três mídias que ele pediu pelo nome (caneta,
-nanquim, marcador); **B** dá o maior número de mídias (oito); **C** é a maior (≈ 2 janelas) e dá óleo e acrílica.
+| **A** | **A lei da tinta POR PRESET**: Glaze multiplicativo e Paint & Mix por preset — o que hoje só existe como as caixas K–M da OBRA | caneta (Bullet, Dip Pen), nanquim (Ink Brush), marcador (Bullet, Liner) | `ink` · `dippen` · `inkbrush` · `marker` · `markerbullet` | o cruzamento: 0,016 (marcador) · 0,12–0,24 (tinta) contra 1,00 hoje |
+| **B** | **O pó fino** (o grão abaixo da célula do motor, ou pontos por carimbo) | aerógrafo | `airbrush` | textura 23 % com orla 12 |
+| **C** | **Formas** (a ponta reta do Flat; o corpo que cobre da guache) | aquarela Flat, guache | `wcflat` · `gouache` · `gouacheflat` | a extensão nas pontas; cobertura × borda |
 
 ⚠️ **Decisão do dono que A pede:** a tinta e a caneta do Rebelle escurecem no cruzamento SEM nenhuma opção ligada;
 as nossas só escurecem com a «mistura de pigmentos» da obra ligada (medido: o Ink Brush entra na barra inteira com
-ela). Ou (1) o preset de tinta liga a mistura da obra ao ser escolhido, ou (2) a lei vai para o pincel (a W5 reduzida
-acima) e a obra fica como está. (2) é o padrão-ouro técnico; (1) é imediato mas muda a obra inteira por um pincel.
+ela). Ou (1) o preset de tinta liga a mistura da obra ao ser escolhido, ou (2) a lei vai para o pincel (A acima) e a
+obra fica como está. (2) é o padrão-ouro técnico; (1) é imediato mas muda a obra inteira por um pincel.

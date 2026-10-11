@@ -401,6 +401,26 @@ Comuns: `accumulate=false`, `use_AA=false` nos ásperos, `paper_depth` 0,9 com c
 | Wet Drip | 1,0 | 1,0 | **63** | 0,8 | 0,2 | 0,6 | **20** | máximo, para baixo | 2 / 2000 |
 | **Wet Liner** (11/10) | 1,0 | **0,5** | **100** | 1,0 | **0,05** | 1,0 | **100** | direita | 2 / 2000 · dureza **0,9** · **29 px** |
 
+> ✅ **11/10, 2.º lote (05 §4b «A cor real, o relevo de volta e o 2.º lote»; 18 §3):** sete mídias no Wet Paint, cada
+> uma medida contra a foto do seu preset-oráculo do Rebelle (seco, à largura dela) — receitas em
+> `tests/it/receitas_de_fabrica.rs`. Unidades do motor; «grão» = o slot Grain do pincel (`Noise`, lado).
+>
+> | preset (pasta) | oráculo | Water | Pigment/dab | Paper Gate | cerdas (lado × n · força) | Emboss | dureza | grão | px |
+> |---|---|---|---|---|---|---|---|---|---|
+> | Oil Bristle (`Oil/Bristle`) | Bristle Flat | 0,05 | 2000 | 0 | 4 × 1500 · 2 | **2** | 0,9 | — | 103 |
+> | Acrylic Round (`Oil/Round`) | Round Hard | 0,05 | 2000 | 0 | 3 × 800 · 4 | 0 | 0,5 | — | 78 |
+> | Express Oil (`ExpressOil/Round`) | Hairy | 0,1 | 800 | 0 | 1,2 × 900 · 4 | 1 | 0,9 | — | 64 |
+> | Graphite 8B (`Pencil/Graphite`) | Graphite 8B | **0** | 500 | 0,8 | — | 0 | 0 | Noise 0,4 | 6,5 |
+> | Charcoal (`Pencil/Charcoal`) | Charcoal | **0** | 100 | 0,8 | — | 0 | 0 | Noise 0,15 | 37 |
+> | Soft Pastel (`Pastel/Dry`) | Dry Thin | **0** | 400 | 0,8 | — | 0 | 0 | Noise 0,4 | 29 |
+> | Oil Pastel (`Pastel/Oil`) | Oil Pastel 2 | **0** | 400 | 0,8 | — | 0 | 0 | Noise 0,15 | 77 |
+>
+> Todos: Edge Darkening 0, Felt 0, tela direita. Nosso · Rebelle (o portão `cada_preset_parece_a_sua_midia`):
+> Oil Bristle cob 0,92 · 0,91, textura 6,1 · 5,9, borda 0,84 · 0,87 · Acrylic Round 0,90 · 0,88, 3,2 · 3,1, 0,64 · 0,60 ·
+> Express Oil 0,87 · 0,70, borda 0,86 · 0,80 · Graphite 8B 0,85 · 0,80, 9,3 · 9,1, 0,60 · 0,32, orla 7 · 7 · Charcoal
+> 0,44 · 0,38, 0,49 · 0,38, orla 11 · 15 · Soft Pastel 0,84 · 0,75, 0,62 · 0,44, orla 4,5 · 6 · Oil Pastel 0,76 · 0,65, 14,9 ·
+> 17,4, 0,56 · 0,42, orla 12 · 11.
+
 > ✅ **11/10 (prompt 17, 05 §4b «Presets de todas as mídias»):** o **Wet Liner** é o 1.º preset de mídia do mapa
 > ([18](18_mapa_das_midias.md)): o Liner do Rebelle (`Watercolor/Liner`: duro, carregado, papel 0,10, 28,86 px), medido à largura 38
 > seco — cobertura 0,72 · 0,65 (Round 0,18), textura 3,9 · 1,7 % (Round 8,5). E a **W2**: o número do Size é a largura que se vê

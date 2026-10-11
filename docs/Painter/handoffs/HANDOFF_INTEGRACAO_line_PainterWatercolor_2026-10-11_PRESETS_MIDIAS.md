@@ -6,7 +6,10 @@
 > vivem em [`05_plano_da_linha_e_o_antes.md` §4b «Presets de todas as mídias»](../NewFeaturesWetPaint/05_plano_da_linha_e_o_antes.md)
 > e no [`18_mapa_das_midias.md`](../NewFeaturesWetPaint/18_mapa_das_midias.md); aqui só o que decide a integração. Aberto: §8.
 >
-> ⚠️ **Estado no momento de escrever:** o trabalho está na árvore **por comitar** (ver §1); o commit leva o hash que o integrador lê em `git log`.
+> ⭐ **2.ª rodada (mesmo dia, ordens do dono):** a cor real (a tinta molhada já é a que fica), o relevo de volta (secção
+> **Relief** do Tuning) e a reavaliação que o dono pediu — a fábrica passou de 5 para **12** (óleo, acrílica, Express Oil,
+> grafite, carvão, pastel seco, pastel de óleo). Ver §3.1 e o 05 §4b «A cor real, o relevo de volta e o 2.º lote». Commits:
+> `cd67d04f5` · `7a7fb3c4d` · `b98d12e5d` (1.ª rodada) + os da 2.ª (ler em `git log`).
 
 ---
 
@@ -40,6 +43,25 @@ não há ficheiros tocados pelos dois lados nem rebase; os deltas esperados são
 | **B — a física passa à lei crua** | **21 pontos de inserção em 8 ficheiros**: `grid_ratio_tests`, `mistura_tests`, `mistura_camadas_tests`, `opcoes_tests`, `mistura_wet_drip_tests`, `sonda_achatamento`, `sonda_gota`, `sonda_presets` (env `PH2D_SONDA_CRUA` / `PH2D_SONDA_TAMANHOS`) — chamam `set_wet_largura_crua(1.0)` depois de aplicar o preset. Sem isso 9 reprovavam (a cena estava desenhada para o carimbo antigo) | os portões de física, 148/0 |
 | **C — o 1.º lote** | **5 presets de fábrica** (o **Wet Liner** é novo, `Watercolor/Fluid`); os cinco regerados (miniaturas + tabelas) | `cada_preset_parece_a_sua_midia`: cobertura **0,716** (Rebelle 0,653 · Round 0,184), textura **3,9 %** (1,7 · 8,5), com o Round como controlo |
 | **HR-15** | `rotulo_da_pasta` em `painter_bridge_presets.rs` + chaves `app.painter.presets.folder.{watercolor,fluid}` em `ph2d-i18n/src/app_painter.rs`; o teste da ponte conta a fábrica | `cada_pasta_de_fabrica_tem_rotulo` |
+
+### §3.1 — A 2.ª rodada
+
+- **A cor real** — `ph2d-wet-paint/src/render.rs`: a célula molhada desenha-se com `Ecra::seco()`; a sessão
+  (`wetpaint/authored_actions.rs`) já não põe o `molhada_escurece`; `TINTA_MOLHADA_ESCURECE` documentada como
+  fora do produto. Round 2 s ÷ seco 1,8 → 1,19 (o resto é massa a deslocar-se; a soma conserva-se). Portão
+  `a_tinta_molhada_ja_e_a_cor_que_fica` substitui `a_tinta_molhada_parece_mais_forte_e_clareia_ao_secar`.
+  Hashes regravados com a razão: `opcoes_tests` (3 de 6), `grid_ratio_tests::smooth_edges_no_zero…` (os 2).
+- **O relevo de volta** — `PigmentVisual::relevo` (o render desenha o emboss sem papel; o produto liga-o);
+  `WetKnobs::DEFAULT` Emboss = 0; secção Relief do Tuning (ids append-only `group_relief` = cabeçalho [5],
+  `reset_relief` = reset [4]; `WET_TUNING_RELEVO` partilhado); i18n `panel.wet_tuning.group.relief`/`knob.emboss`;
+  catraca `wet_tuning` 14 → 16; `the_wet_paint_knob_defaults_are_the_ones_enio_chose` ganha o Emboss;
+  `paint_offers_the_table_and_no_paper_row_lives_here` exclui o relevo; portão `o_emboss_morde_sem_papel_e_nasce_desligado`.
+  Testes do motor com `PigmentVisual {…}` literal ganham `relevo: false`.
+- **A fábrica de 12** — receitas em `tests/it/receitas_de_fabrica.rs` (saíram do gerador por LOC; campos `meio`,
+  `grupo`, `extras`, `grao`); pastas novas `Oil/{Bristle,Round}`, `ExpressOil/Round`, `Pencil/{Graphite,Charcoal}`,
+  `Pastel/{Dry,Oil}` com rótulos pela tabela de texto; `cada_preset_parece_a_sua_midia` com 8 mídias (a régua Rust
+  ganhou borda e orla); a W2 dá ± 10 % aos pincéis com grão (regra de classe nomeada: a largura deles varia com a
+  posição, medido). Fábrica regerada (ao byte em duas gerações).
 
 ## §4 — Crates e ficheiros tocados (fora de `docs/` e `assets/`)
 
@@ -76,6 +98,17 @@ Ferramentas (`docs/Painter/NewFeaturesWetPaint/ferramentas/`): `midias_regua.py`
 
 resultado: **5 de 5 vermelhas**, cada portão visto verde antes na árvore limpa; restauro por cópia + `touch`, os 5 ficheiros iguais ao byte depois (`cmp`).
 
+**2.ª rodada — 4 de 4 vermelhas** (cada portão verde antes; restauro por cópia + `touch`, `cmp` ao byte):
+M6 a lei molhada de volta no render (+ o `molhada_escurece` na sessão) → `a_tinta_molhada_ja_e_a_cor_que_fica` (1,65) ·
+M7 `relevo: false` → `o_emboss_morde_sem_papel_e_nasce_desligado` (0 px) · M8 o grão ignorado no Wet Paint →
+`cada_preset_parece_a_sua_midia` (Graphite textura 14,7 fora de 9,1; Charcoal cobertura 0,29) · M9 `WET_TUNING_RELEVO`
+vazio → o portão do Emboss e `every_visible_knob_has_a_row` (36 contra 37).
+Bateria do fecho da 2.ª rodada: cerca VERDE; fmt; clippy `-D warnings` (tool-painter, i18n, wet-paint, wet-tuning,
+app-painter); ph2d-wet-paint 148/0; fábrica ao byte depois de regerar; tool lib wetpaint 165 + 2 → as 2 resolvidas
+(o portão dos valores de omissão ganhou o Emboss; `the_water_runs_at_a_usable_rate…` flake de carga, 2/2 sozinho a
+load 6); tool `--test it` 9/0; censos 134/0 · 237/0; app-painter 103/0; i18n 24/0; wet-tuning 17/0; censos do
+editor-core 23/0.
+
 ## §6 — O que só o `ship.sh` pega
 
 O gate batched (`nextest-impacted` sobre o diff acumulado, `ship.sh`) **não foi corrido** nesta janela; a bateria do §5 é dirigida. O integrador corre 1× na árvore combinada: `foundational-integrate.sh` → `censos-da-arvore-combinada.sh` → `./scripts/ship.sh` (só por ordem do dono). Atenção aos dois portões lentos do §5 e a `typos` (texto novo em PT nos docs e nos nomes das fotos).
@@ -95,6 +128,10 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && ./tar
 4. Os outros três continuam com a mesma carga de tinta; o Dry Brush passou a mostrar a nuvem de fios até à largura do anel.
 
 ## §8 — ABERTO
+
+0. **2.ª rodada:** (a) os pincéis com grão variam de largura com a posição (até 9,6 %) — um grão sem estrutura grande;
+   (b) a tinta molhada ainda se alisa ao secar (miolo −16 %, massa conservada) — se o dono quiser zero, é física
+   (o espalhamento), não ecrã; (c) aerógrafo (o pó fino), tinta/caneta/marcador (o cruzamento), guache/Flat (forma).
 
 1. **Decisões do dono** ([18 §5](../NewFeaturesWetPaint/18_mapa_das_midias.md)): (a) a **ordem** dos blocos **A** (a lei da tinta por preset: caneta, nanquim, marcador) · **B** (o caminho sem água + o papel: lápis, carvão, pastéis, aerógrafo) · **C** (os fios + a altura: óleo, acrílica) · (b) a **tinta**: ou o preset de tinta liga a mistura de pigmentos da OBRA (imediato, muda a obra inteira) ou a lei vai para o pincel (a W5 reduzida, padrão-ouro) · (c) o **Staining com K–M** do [handoff anterior §8.1](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-11.md) segue por decidir.
 2. **As duas bancadas do Rebelle discordam do Round** (tinta 54 nas gotas, cobertura 0,78 nos gestos; 18 §2).

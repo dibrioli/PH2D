@@ -11,7 +11,7 @@ for par in "$@"; do
   p=${par%%|*}; f=${par##*|}
   magick "$src/midia_$p.ppm" -crop 1000x380+0+40 +repage -gravity northwest -pointsize 18 -annotate +8+4 "PH2D: $p" "$tmp/a.png"
   magick "$F/$f.png" -crop 1000x380+0+40 +repage -gravity northwest -pointsize 18 -annotate +8+4 "Rebelle: $f" "$tmp/b.png"
-  magick "$src/midia_Wet Round.ppm" -crop 1000x380+0+40 +repage -gravity northwest -pointsize 18 -annotate +8+4 "controlo: Wet Round" "$tmp/c.png"
+  magick "$src/midia_${p}_controlo.ppm" -crop 1000x380+0+40 +repage -gravity northwest -pointsize 18 -annotate +8+4 "controlo: Wet Round" "$tmp/c.png"
   magick "$tmp/a.png" "$tmp/b.png" "$tmp/c.png" +append "$tmp/l_$p.png"
   linhas+=("$tmp/l_$p.png")
 done

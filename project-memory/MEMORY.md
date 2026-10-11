@@ -34,6 +34,7 @@
 
 ## Comunicação & decisão
 - ⭐ [Decisões TÉCNICAS são delegadas (padrão-ouro); produto e envio são do Enio](feedback_architecture_decisions_are_delegated_to_the_gold_standard.md)
+- ⛔⛔ [«Não é possível» só depois de varrer o eixo INTEIRO do knob e ler o código do controlo (dono 11/10)](feedback_impossible_needs_the_whole_knob_axis_and_the_code.md)
 - ⛔ [A linha acaba no HANDOFF — ordem das linhas e árvore suja são do INTEGRADOR](feedback_the_line_ends_at_the_handoff_never_ask_the_owner_an_integrators_question.md)
 - ⭐ [**Como um CONTROLO mente** — a família (25)](reference_topic_control_design_hazards.md)
 - ⛔ [O produto de referência do DONO decide a lei, não o oráculo; capturas dele MEDEM-SE](feedback_the_owners_reference_product_decides_the_law.md)

@@ -1248,6 +1248,44 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     Round (tinta 54 nas gotas, cobertura 0,78 nos gestos; 18 §2) · (c) o Dry Brush longe do Rebelle (orla, estrias) — os fios ·
     (d) a W2 prometida a ±2 px até 100 px e ±2 % acima (a lei ondula; a cura é a franja determinística dos fios).
 
+- ✅ **A cor real, o relevo de volta e o 2.º lote de mídias (11/10, a seguir ao 17; ordens do dono).**
+  O dono corrigiu a avaliação do 18: *«toda sua avaliação sobre o que não é possível é falsa … basta aumentar pigment
+  … em tuning havia uma seção paper e dentro dela parâmetros de relevo … é só trazer de volta»* e pediu, antes:
+  *«atualmente nossos traços clareiam após se secarem. isso não é legal. melhor pintar com a tinta já em sua cor real»*.
+  - **A cor real** (`ph2d_wet_paint::render`): a célula molhada desenha-se com a lei SECA (`Ecra::seco()`); a sessão
+    deixa o `molhada_escurece` no neutro e `TINTA_MOLHADA_ESCURECE` fica só para os testes da lei (doc no `colorops`).
+    **Substitui a escolha de 10/10** («a tinta molhada parece mais forte e clareia ao secar, como o Rebelle»). Medido
+    (miolo, 2 s → 30 s): Round 99 → 55 (1,8×) **→ 57 → 48 (1,19)**, Wash 1,32, Drip 1,16. O que sobra é MASSA que se
+    desloca, não ecrã: a soma do pigmento conserva-se (0,97–1,00) e o perfil molhado, mais carregado no miolo,
+    alisa-se ao secar (sem a orla escura: 1,16 contra 1,19 — não é ela). Portão novo
+    `a_tinta_molhada_ja_e_a_cor_que_fica` (≤ 1,35; antes 1,8–2,1) no lugar de
+    `a_tinta_molhada_parece_mais_forte_e_clareia_ao_secar`; regravados, com a razão escrita: os hashes do S e da
+    bancada molhados (`opcoes_tests`, 3 de 6) e do Smooth Edges no zero (`grid_ratio_tests`).
+  - **O relevo de volta** (secção **Relief** do Tuning, o knob `emboss`): saíra a 09/10 com o grupo Paper (W1e F2) e
+    o render só o desenhava com papel escolhido e «Paint Texture» ligada (10/10, `a5e025cb3`). O relevo é da TINTA:
+    `PigmentVisual::relevo` (o produto liga-o) desenha o emboss sem papel; o grão do papel continua preso ao papel.
+    Nasce a **0** (o traço de hoje não muda: `WetKnobs::DEFAULT`). «Visual grain» e «Paper visibility» são do papel
+    impresso e ficam fora do Tuning (ordem de 09/10). Ids append-only (`group_relief` = cabeçalho 6, `reset_relief` =
+    reset 5), `WET_TUNING_RELEVO` partilhado pelo painel e pela ferramenta; catraca de comandos `wet_tuning` 14 → 16
+    (com a razão); portão `o_emboss_morde_sem_papel_e_nasce_desligado` (o slider pelo evento real).
+  - **A reavaliação** (18 §3, refeita): 428 receitas em 4 rodadas (`tests/it/sonda_midias.rs` por JSON), secas, contra
+    as fotos, com a régua do vale e o ruído do Rebelle: **entram óleo, acrílica, Express Oil, grafite, carvão, pastel
+    seco e pastel de óleo** — pigmento até 2000, o relevo, e o grão do pincel (Noise/Voronoi no slot Grain) no lugar
+    das cerdas para os secos. Ficam de fora: tinta/caneta/marcador (o cruzamento), aerógrafo (o pó fino: textura 7
+    contra 23) e guache/Flat. ⛔ O grão Stucci apaga o traço (o mecanismo do #47). Lição: 18 §4.5 e a memória
+    `feedback_impossible_needs_the_whole_knob_axis_and_the_code`.
+  - **O 2.º lote** (`tests/it/receitas_de_fabrica.rs`, as receitas saíram do gerador por LOC; fábrica = **12**):
+    `Oil/Bristle/Oil Bristle` · `Oil/Round/Acrylic Round` · `ExpressOil/Round/Express Oil` · `Pencil/Graphite/Graphite
+    8B` · `Pencil/Charcoal/Charcoal` · `Pastel/Dry/Soft Pastel` · `Pastel/Oil/Oil Pastel`, o tamanho de cada um o do
+    preset do Rebelle; `cada_preset_parece_a_sua_midia` com 8 mídias e a régua Rust com borda e orla. Rótulos das
+    pastas novas pela tabela de texto.
+  - ⚠️ **A largura dos pincéis com GRÃO depende de onde o traço cai** (`sonda_ruido_da_largura`, o traço a descer
+    30 px de cada vez): Graphite a «52» lê 49 · 51 · 52 · 53 · 53, Charcoal 47 · 49 · 50 · 51 · 53 (até 9,6 %), 3,8 % a
+    240; os sem grão ±1 px. O grão e o papel de fábrica têm estrutura grande. ⇒ o portão da W2 dá a esses pincéis
+    **± 10 %** (regra de classe nomeada: o slot Grain armado), os outros ± 2 px / 2 %. ⛔ Medido e recusado: medir
+    numa tela de ≥ 480 px (trocava um viés por outro e o Round a 4 px passava a ler 0) e o grão Voronoi no Oil
+    Pastel (passava as métricas, mas a largura variava até 42 % com a posição). Aberto: um grão sem estrutura grande.
+
 ## §5 — A próxima janela (a W2)
 
 > ⭐⭐ **11/10, depois do 17:** a W2 (a largura) e o 1.º lote (o Wet Liner) fecharam (§4b «Presets de todas as mídias»).

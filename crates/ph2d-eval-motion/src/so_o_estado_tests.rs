@@ -271,3 +271,59 @@ fn o_scrub_compoe_so_o_alvo() {
     assert_eq!(PURO.with(Cell::get), 1, "o scrub compôs tiques intermédios");
     assert_eq!(pump.cozimentos_so_do_estado(), 10);
 }
+
+/// Um scrub que sai cedo (sem sinks nem tomadas) devolve a bandeira: o quadro seguinte compõe.
+#[test]
+fn o_scrub_que_sai_cedo_devolve_a_bandeira() {
+    let (g, sink) = grafo("t.relogio", Fio::Directo);
+    let scopes = TimeScopes::new();
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    pump.scrub_to_scoped(&g, &Ops, &[], 5, |k| k as f64 * DT, UV, SIZE, &scopes);
+    pump.advance_or_scrub_scoped(&g, &Ops, &[sink], 6, |k| k as f64 * DT, UV, SIZE, &scopes);
+    assert_eq!(
+        pump.instances.len(),
+        1,
+        "o quadro depois do scrub não compôs"
+    );
+}
+
+/// ⭐⭐⭐ **A causa medida no app** (cena `=8` sem placa): o gizmo de posições pede o SINK como
+/// tomada, e a tomada cozia em todo tique. Uma tomada só do desenho coze só no tique desenhado.
+#[test]
+fn uma_tomada_de_gizmo_so_coze_no_tique_desenhado() {
+    let quadros = |por_tique: usize| {
+        let (g, sink) = grafo("t.relogio", Fio::Directo);
+        let mut pump = MotionCookPump::new();
+        pump.define_a_lei(false);
+        pump.set_taps(&[sink]);
+        pump.set_taps_por_tique(por_tique);
+        let scopes = TimeScopes::new();
+        PURO.with(|c| c.set(0));
+        for t in 0..=8u64 {
+            pump.set_separa_o_desenho(t % 4 == 0);
+            pump.advance_or_scrub_scoped(
+                &g,
+                &Ops,
+                &[sink],
+                t,
+                |k| k as f64 * DT,
+                UV,
+                SIZE,
+                &scopes,
+            );
+        }
+        let publicada = pump.tap_streams().iter().any(|(n, _)| *n == sink);
+        (PURO.with(Cell::get), publicada)
+    };
+    assert_eq!(
+        quadros(0),
+        (3, true),
+        "a tomada de gizmo cozeu tiques que não se desenham"
+    );
+    assert_eq!(
+        quadros(1).0,
+        9,
+        "controlo: uma tomada por tique coze-o em cada tique"
+    );
+}

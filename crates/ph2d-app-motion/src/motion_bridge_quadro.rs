@@ -103,9 +103,9 @@ pub(crate) fn coze_o_quadro(
     // 3 FPS»*). Um quadro lento recupera vários tiques de simulação de uma vez, e cada um enche o
     // `instances`/`vector_instances` que o seguinte **sobrescreve** — só o último chega ao ecrã.
     //
-    // ⇒ o passe de separação é um **ACABAMENTO SOBRE O QUE SE DESENHA** (doc 115 §3 W0: ele não
-    // realimenta a simulação), logo pagá-lo nos tiques intermédios é trabalho para o lixo. ⚠️ E o
-    // preço disso REALIMENTA: um quadro lento recupera mais tiques, que o tornam mais lento ainda.
+    // ⇒ um tique intermédio não compõe nem separa: coze só o ESTADO (`ph2d_eval_motion::so_o_estado`,
+    // 11/10 — a cena `=8` sem placa cozinhava o `collide` em cada um). ⚠️ E o preço disso
+    // REALIMENTA: um quadro lento recupera mais tiques, que o tornam mais lento ainda.
     let tiques = ticks_owed(motion.pump.last_cooked_tick(), target);
     let ultimo = *tiques.end();
     let relogio = relogio::comeca(tiques.clone().count());

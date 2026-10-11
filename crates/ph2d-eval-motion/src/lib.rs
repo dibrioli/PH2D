@@ -136,14 +136,12 @@ pub struct MotionCookPump {
     /// host lê para saber que algo aconteceu no grafo. Um nome, um significado — os
     /// dois numa lista só obrigariam todo leitor a perguntar de qual metade veio.
     tap_streams: Vec<(NodeId, Stream)>,
-    /// **As TOMADAS são estado da BOMBA, não argumento de chamada** — e a diferença é a
-    /// única razão de este campo existir.
-    ///
-    /// ⚠️ Como argumento, elas só existiam na porta que o chamador lembrasse de usar: a rota
-    /// **híbrida** marcha por [`Self::advance_or_scrub_to_nodes_scoped`] e ficava MUDA, com
-    /// os gates verdes (eles dirigem a porta de sinks) e o produto sem gritar nada. Aqui a
-    /// tomada cavalga QUALQUER marcha, e uma rota nova nasce coberta.
+    /// **As TOMADAS são estado da BOMBA, não argumento de chamada:** como argumento só existiam
+    /// na porta que o chamador lembrasse (a rota **híbrida** ficava MUDA, com os gates verdes).
+    /// Aqui a tomada cavalga QUALQUER marcha, e uma rota nova nasce coberta.
     taps: Vec<NodeId>,
+    /// Quantas das [`Self::taps`] (as primeiras) cozem em todo tique — ver `set_taps_por_tique`.
+    taps_por_tique: usize,
     /// O que as tomadas disseram em cada tique MARCHADO deste quadro — o livro-razão que o
     /// host lê UMA vez, depois de qualquer rota.
     ///
@@ -245,6 +243,7 @@ impl MotionCookPump {
             boundary_streams: Vec::new(),
             tap_streams: Vec::new(),
             taps: Vec::new(),
+            taps_por_tique: 0,
             tap_fires: Vec::new(),
             separa_o_desenho: true,
             separacoes: 0,

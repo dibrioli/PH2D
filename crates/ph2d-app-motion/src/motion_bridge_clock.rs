@@ -122,4 +122,19 @@ mod tests {
             "a shell marca TODO tique como desenhado — o defeito do report de 18/09"
         );
     }
+
+    /// ⭐ **As tomadas de GIZMO são só do desenho** (11/10): sem esta linha o gizmo de posições
+    /// pede o sink da cena `=8` como tomada por tique, e o `collide` recoze-se em cada tique
+    /// recuperado (HUD sem placa `2 fps · 402 ms` → `23 fps · 41,9 ms`). A lei tem o gate dela na
+    /// bomba (`uma_tomada_de_gizmo_so_coze_no_tique_desenhado`).
+    #[test]
+    fn a_ponte_diz_quais_tomadas_sao_por_tique() {
+        const PONTE: &str = include_str!("motion_bridge.rs");
+        assert!(
+            PONTE.contains("motion.pump.set_taps_por_tique(motion.signal_taps.len())"),
+            "a ponte deixou de separar as tomadas dos sinais (por tique) das dos gizmos"
+        );
+        // E a lista armada continua a COMEÇAR pelas dos sinais — é isso que torna o `len` certo.
+        assert!(PONTE.contains("let mut taps = motion.signal_taps.clone();"));
+    }
 }

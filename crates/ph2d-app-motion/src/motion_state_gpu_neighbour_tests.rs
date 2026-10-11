@@ -334,3 +334,75 @@ fn the_boid_count_ceiling_quotes_the_device_not_the_reference_path() {
          `gpu_boids_scale::where_the_flock_leaves_the_frame_budget`."
     );
 }
+
+/// **SONDA — o quadro LENTO da cena `=8` sem placa** (handoff COLLIDE_VIZINHOS, 11/10): um quadro
+/// que recupera `PH2D_SONDA_TIQUES` tiques (omissão 10) pela porta da shell (`ticks_owed`).
+/// `antes` compõe todo tique (o que a bomba fazia); `depois` só o último (`so_o_estado`). Mesmo
+/// processo, intercalado, o MÍNIMO de cada um.
+///
+/// `cargo test --release -p ph2d-app-motion --lib sonda_quadro_lento_da_cena_8 -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: relógio"]
+fn sonda_quadro_lento_da_cena_8() {
+    use crate::motion_bridge::ticks_owed;
+    use ph2d_eval_motion::MotionCookPump;
+    let tiques: u64 = std::env::var("PH2D_SONDA_TIQUES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(10);
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_collide_demo_document(&mut doc, &registry).expect("well-typed demo");
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&doc.graph, &registry);
+    let mut bombas: [(MotionCookPump, u64, f64); 2] = std::array::from_fn(|_| {
+        let mut p = MotionCookPump::new();
+        p.define_a_lei(false);
+        (p, 0, f64::INFINITY)
+    });
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("CENA8 load {}", carga().trim());
+    for bloco in 0..8usize {
+        for k in 0..2usize {
+            let v = (k + bloco) % 2;
+            let (pump, alvo, minimo) = &mut bombas[v];
+            let t0 = std::time::Instant::now();
+            let fim = *alvo;
+            for tick in ticks_owed(pump.last_cooked_tick(), fim) {
+                pump.set_separa_o_desenho(v == 0 || tick == fim);
+                pump.advance_or_scrub_scoped(
+                    &doc.graph,
+                    &registry,
+                    &sinks,
+                    tick,
+                    |t| t as f64 / 60.0,
+                    [0.0, 0.0, 1.0, 1.0],
+                    [1.0, 1.0],
+                    &scopes,
+                );
+            }
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            // O 1.º quadro é um tique só (`None` → 0); a régua começa no 2.º.
+            if bloco > 0 {
+                *minimo = minimo.min(ms);
+            }
+            *alvo += tiques;
+        }
+    }
+    let (a, b) = (&bombas[0], &bombas[1]);
+    let iguais = a.0.instances.len() == b.0.instances.len()
+        && a.0.instances.iter().zip(&b.0.instances).all(|(x, y)| {
+            x.world_pos[0].to_bits() == y.world_pos[0].to_bits()
+                && x.world_pos[1].to_bits() == y.world_pos[1].to_bits()
+        });
+    eprintln!(
+        "CENA8 {tiques} tiques/quadro · antes {:.1} ms · depois {:.1} ms · {} instancias · \
+         tiques so-estado {} · mesmos bits {iguais} · load {}",
+        a.2,
+        b.2,
+        b.0.instances.len(),
+        b.0.cozimentos_so_do_estado(),
+        carga().trim()
+    );
+    assert!(iguais, "o quadro desenhado mudou");
+}

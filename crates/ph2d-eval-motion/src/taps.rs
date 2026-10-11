@@ -36,6 +36,15 @@ impl MotionCookPump {
     pub fn set_taps(&mut self, taps: &[NodeId]) {
         self.taps.clear();
         self.taps.extend_from_slice(taps);
+        self.taps_por_tique = taps.len();
+    }
+
+    /// **Só as primeiras `n` tomadas cozem em todo tique** (as dos SINAIS: o livro-razão é por
+    /// tique); as restantes são de GIZMO e só servem ao desenho, logo um tique que não vai ser
+    /// desenhado salta-as. Medido (11/10): o gizmo de posições pede o sink da cena `=8`, e sem
+    /// isto o `motion.collide` recozia-se em cada tique recuperado. Chame depois de `set_taps`.
+    pub fn set_taps_por_tique(&mut self, n: usize) {
+        self.taps_por_tique = n.min(self.taps.len());
     }
 
     /// O que as tomadas disseram em cada tique MARCHADO desde a última limpeza — o livro-razão.
@@ -158,7 +167,11 @@ impl MotionCookPump {
         // e o braço `Boundaries`, que não tem rota de desenho. Limpar aqui apagaria a publicação.
         for i in 0..self.taps.len() {
             let node = self.taps[i];
-            if self.tap_streams.iter().any(|(n, _)| *n == node) {
+            // Uma tomada de gizmo não coze num tique que não vai ser desenhado (`set_taps_por_tique`).
+            let so_do_desenho = i >= self.taps_por_tique;
+            if (so_do_desenho && !self.separa_o_desenho)
+                || self.tap_streams.iter().any(|(n, _)| *n == node)
+            {
                 continue;
             }
             // Uma tomada que falha ao cozinhar simplesmente NÃO APARECE — o chamador lê uma

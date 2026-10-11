@@ -400,6 +400,8 @@ pub fn dispatch(
         }
     }
     motion.pump.set_taps(&taps);
+    // Só as dos sinais cozem em todo tique; as dos gizmos, só no tique desenhado.
+    motion.pump.set_taps_por_tique(motion.signal_taps.len());
     // O que este quadro gritou, e o livro-razão de onde isso sai. Limpos aqui, não no dreno:
     // um quadro em que o shell não drena (a ferramenta saiu de foco) não pode deixar o grito
     // de ontem para amanhã.

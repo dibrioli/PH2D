@@ -135,6 +135,16 @@ pub mod corners;
 /// (`VecPath::cooked`) é derivada dela. Módulo irmão de `corners` (LOC cap).
 pub mod corner_live;
 
+/// **O TIPO da quina** (F10): arredondada · reta · côncava · entalhe — módulo irmão do
+/// `corner_live` (LOC cap), que acha os cortes; aqui só a ligação entre eles.
+pub mod corner_style;
+pub use corner_style::CornerStyle;
+
+/// **Polígono, estrela e espiral com os parâmetros da F10** (liso, envergadura, torção, tipo do
+/// canto; divergência e raio interno) — irmão de `shapes`, que continua a ser o neutro.
+mod polystar;
+pub use polystar::{PolyStar, polystar, round_rect_styled, spiral_ex};
+
 /// **Comprimento de arco de uma cúbica, e o inverso dele** — o motor que a pilha de efeitos
 /// (ADR-0132) precisa. Mora na crate-folha [`ph2d_arclen`] (zero dependências) e é re-exportado
 /// aqui: ele ganhou um SEGUNDO consumidor — o motion path da timeline (ADR-0141), cuja track
@@ -251,15 +261,15 @@ pub use arrows::{arrow_bent, arrow_block, arrow_double, chevron};
 /// Módulo irmão de `shapes`.
 mod flow;
 pub use flow::{
-    cylinder, delay, diamond, display, document, hexagon_flat, junction, note_bracket, offpage,
-    parallelogram, pill, predefined_process, trapezoid,
+    cylinder, delay, diamond, diamond_mid, display, document, hexagon_flat, junction, note_bracket,
+    offpage, parallelogram, pill, predefined_process, trapezoid, trapezoid_asym,
 };
 
 /// Os SÍMBOLOS (coração, lua, gota, escudo, engrenagem, tag, raio, cruz, check, banner).
 /// Módulo irmão de `shapes`.
 mod symbols;
 mod symbols_rig;
-pub use symbols::{banner, bolt, check, cross, drop, gear, heart, moon, shield, tag};
+pub use symbols::{banner, bolt, check, cross, drop, gear, gear_ex, heart, moon, shield, tag};
 pub use symbols_rig::{bone, rope_segment};
 
 /// Os BALÕES (fala · pensamento · nuvem · explosão · chave). Família própria: o que os

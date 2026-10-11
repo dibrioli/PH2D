@@ -410,16 +410,30 @@ const GEAR_PHASE: f64 = -90.0;
 /// seria um disco dentado.
 #[must_use]
 pub fn gear(a: [f64; 2], b: [f64; 2], teeth: f64, depth: f64, hole: f64) -> VecPath {
+    gear_ex(a, b, teeth, depth, hole, 0.0, 0.0)
+}
+
+/// [`gear`] com a LARGURA do dente (`tooth`, desvio da fração do passo; `0` = o `gear6`) e a
+/// ENVERGADURA dos flancos (`curvature`, o *Curvature* do Cog do Affinity; `0` = recto, `> 0` =
+/// o flanco enverga para o vão) — F10, os dois neutros em zero.
+#[must_use]
+pub fn gear_ex(
+    a: [f64; 2],
+    b: [f64; 2],
+    teeth: f64,
+    depth: f64,
+    hole: f64,
+    tooth: f64,
+    curvature: f64,
+) -> VecPath {
     let u = Unit::of(a, b);
     let n = teeth.clamp(3.0, 64.0).round() as usize;
     let d = depth.clamp(0.05, 0.60);
     let c: Uv = (0.5, 0.5);
     let (r_tip, r_root) = (0.5, 0.5 * (1.0 - d));
     let step = 360.0 / n as f64;
-    let (ar, at) = (
-        0.5 * step * GEAR_TOOTH_WIDTH,
-        0.5 * step * GEAR_TOOTH_WIDTH * GEAR_TOOTH_TAPER,
-    );
+    let width = (GEAR_TOOTH_WIDTH + tooth).clamp(0.1, 0.95);
+    let (ar, at) = (0.5 * step * width, 0.5 * step * width * GEAR_TOOTH_TAPER);
 
     let mut verts: Vec<VecVertex> = Vec::with_capacity(n * 4);
     let mut seams: Vec<usize> = Vec::with_capacity(n * 2);
@@ -432,11 +446,14 @@ pub fn gear(a: [f64; 2], b: [f64; 2], teeth: f64, depth: f64, hole: f64) -> VecP
         seams.push(verts.len() + root.len() - 1); // fim do vale → flanco RETO
         verts.extend(root);
     }
-    for s in seams {
+    for &s in &seams {
         straighten(&mut verts, s);
     }
     if let Some(first) = verts.first_mut() {
         first.in_handle = first.anchor; // o flanco que FECHA o contorno também é reto
+    }
+    if curvature != 0.0 {
+        crate::space::bend_edges(&mut verts, &seams, curvature);
     }
 
     let mut path = closed(verts);

@@ -93,6 +93,17 @@ impl VecVertex {
 /// que cozinhar uma. Ver o módulo para a construção e a saturação.
 #[must_use]
 pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<VecVertex>> {
+    round_authored_corners_styled(verts, closed, crate::CornerStyle::Round)
+}
+
+/// Como [`round_authored_corners`], com o TIPO da quina (F10, [`crate::corner_style`]) para as
+/// que não são chanfro pelo sinal do raio. `Round` = a função de sempre, byte a byte.
+#[must_use]
+pub fn round_authored_corners_styled(
+    verts: &[VecVertex],
+    closed: bool,
+    style: crate::CornerStyle,
+) -> Option<Vec<VecVertex>> {
     let n = verts.len();
     if n < 3 || !verts.iter().any(|v| v.corner_size() > EPS) {
         return None; // nada a arredondar → a fonte é a saída
@@ -145,22 +156,20 @@ pub fn round_authored_corners(verts: &[VecVertex], closed: bool) -> Option<Vec<V
             // (chanfro). O recuo, os handles de chegada/saída e o resto são idênticos.
             (Some(_), Some(a), Some(b)) => {
                 let (p_in, p_out) = (a[3], b[0]);
-                let mut mid = None;
-                let (out1, in2) = if verts[i].is_chamfer() {
-                    // Chanfro: a reta na forma canônica (⅓, ⅔) — afim em `t`, sem curvatura,
-                    // e a mesma forma que o resto do motor usa para um segmento reto.
-                    let third = [(p_out[0] - p_in[0]) / 3.0, (p_out[1] - p_in[1]) / 3.0];
-                    (
-                        [p_in[0] + third[0], p_in[1] + third[1]],
-                        [p_out[0] - third[0], p_out[1] - third[1]],
-                    )
+                // O chanfro pelo sinal do raio, senão o tipo pedido; o arredondado é o arco de
+                // handle `(4/3)·tan(α/4)·r` de sempre (em DUAS cúbicas acima de `90°`), e os
+                // outros (a reta (⅓, ⅔), o côncavo, o entalhe) vêm do `corner_style`.
+                let (t_in, t_out) = (tangent_at_end(a), tangent_at_start(b));
+                let kind = if verts[i].is_chamfer() {
+                    crate::CornerStyle::Straight
                 } else {
-                    // Arredondado: o arco de handle `(4/3)·tan(α/4)·r` de sempre — em DUAS
-                    // cúbicas quando a quina vira mais de `90°` (`corners::circular_fillet`).
-                    let (t_in, t_out) = (tangent_at_end(a), tangent_at_start(b));
+                    style
+                };
+                let (out1, mid, in2) = if kind == crate::CornerStyle::Round {
                     let f = fillet_handles(p_in, t_in, p_out, t_out);
-                    mid = f.mid;
-                    (f.out1, f.in2)
+                    (f.out1, f.mid.into_iter().collect(), f.in2)
+                } else {
+                    crate::corner_style::link(kind, p_in, t_in, p_out, t_out)
                 };
                 out.push(VecVertex {
                     anchor: p_in,

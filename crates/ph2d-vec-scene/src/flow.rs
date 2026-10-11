@@ -17,6 +17,37 @@
 use crate::VecPath;
 use crate::space::{Unit, Uv, add_sub, closed, open, poly, straighten};
 
+/// [`diamond`] com os vértices do MEIO deslocados (`mid`, fração da altura; `0` = o losango, ≠ 0
+/// = a pipa) — o *Mid point* do Diamond do Affinity (F10, neutro em zero).
+#[must_use]
+pub fn diamond_mid(a: [f64; 2], b: [f64; 2], mid: f64) -> VecPath {
+    if mid == 0.0 {
+        return diamond(a, b);
+    }
+    let u = Unit::of(a, b);
+    let v = (0.5 + mid).clamp(0.05, 0.95);
+    poly(&u, &[(0.5, 0.0), (1.0, v), (0.5, 1.0), (0.0, v)])
+}
+
+/// [`trapezoid`] com o lado DIREITO solto (`right` = o desvio do recuo dele em relação ao do
+/// esquerdo; `0` = simétrico) — o *Left/Right point* do Trapezoid do Affinity (F10, neutro em
+/// zero). Os dois recuos nunca se cruzam: sobra sempre `2 %` do lado curto.
+#[must_use]
+pub fn trapezoid_asym(a: [f64; 2], b: [f64; 2], slant: f64, right: f64, flip: bool) -> VecPath {
+    if right == 0.0 {
+        return trapezoid(a, b, slant, flip);
+    }
+    let u = Unit::of(a, b);
+    let s = slant.clamp(0.0, 0.49);
+    let r = (s + right).clamp(0.0, 0.98 - s);
+    let pts = if flip {
+        [(0.0, 0.0), (1.0, 0.0), (1.0 - r, 1.0), (s, 1.0)]
+    } else {
+        [(s, 0.0), (1.0 - r, 0.0), (1.0, 1.0), (0.0, 1.0)]
+    };
+    poly(&u, &pts)
+}
+
 /// **Decisão** — o losango. Quatro pontos nos meios das bordas.
 #[must_use]
 pub fn diamond(a: [f64; 2], b: [f64; 2]) -> VecPath {

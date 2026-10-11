@@ -101,139 +101,7 @@ pub struct ShapeDesc {
     pub fields: &'static [FieldDesc],
 }
 
-const SIDES: FieldDesc = FieldDesc {
-    label: "Sides",
-    min: 3.0,
-    max: 60.0,
-    step: 1.0,
-    unit: FieldUnit::Count,
-};
-const POINTS: FieldDesc = FieldDesc {
-    label: "Points",
-    min: 3.0,
-    max: 60.0,
-    step: 1.0,
-    unit: FieldUnit::Count,
-};
-const INNER_RATIO: FieldDesc = FieldDesc {
-    label: "Inner",
-    min: 0.05,
-    max: 0.95,
-    step: 0.01,
-    unit: FieldUnit::Ratio,
-};
-const TURNS: FieldDesc = FieldDesc {
-    label: "Turns",
-    min: 1.0,
-    max: 8.0,
-    step: 1.0,
-    unit: FieldUnit::Count,
-};
-/// Quanto o corte ABRE (graus). É o parâmetro que leva a elipse a pizza / anel parcial.
-const SWEEP: FieldDesc = FieldDesc {
-    label: "Sweep",
-    min: 1.0,
-    max: 360.0,
-    step: 1.0,
-    unit: FieldUnit::Degrees,
-};
-/// ONDE o corte começa (graus, 0 = 3h) — gira a fatia sem girar a caixa. O teto é 359:
-/// 360° é o MESMO ângulo que 0°, e um campo cujos extremos dão a mesma forma é um campo
-/// que não faz nada (o gate do catálogo pega isso).
-const START: FieldDesc = FieldDesc {
-    label: "Start",
-    min: 0.0,
-    max: 359.0,
-    step: 1.0,
-    unit: FieldUnit::Degrees,
-};
-/// Quantas bolhas tem a nuvem. A nuvem do ECMA-376 tem 11 arcos — daí o default; abaixo de
-/// 5 ela deixa de ler como nuvem. Compartilhada pela nuvem e pelo balão de pensamento (que
-/// é a mesma nuvem + a corrente de bolhas).
-const BUMPS: FieldDesc = FieldDesc {
-    label: "Bumps",
-    min: 5.0,
-    max: 24.0,
-    step: 1.0,
-    unit: FieldUnit::Count,
-};
-/// Quanto do miolo é FURO (fração do raio). `0` = cheio; `>0` = rosquinha / anel.
-const HOLE: FieldDesc = FieldDesc {
-    label: "Hole",
-    min: 0.0,
-    max: 0.95,
-    step: 0.01,
-    unit: FieldUnit::Ratio,
-};
-/// Uma fração da caixa (`0..1`) — as medidas das setas são relativas, não absolutas.
-const fn frac(label: &'static str, min: f64, max: f64) -> FieldDesc {
-    FieldDesc {
-        label,
-        min,
-        max,
-        step: 0.01,
-        unit: FieldUnit::Ratio,
-    }
-}
-
-/// **O ponto de vista** de um sólido isométrico — e ele MUDA a geometria, não é cosmético.
-///
-/// A câmera acima ou abaixo do plano da base decide **quais arestas existem**:
-///
-/// - o cone visto de CIMA tem o corpo tapando a borda de trás da base (ela some); visto de
-///   BAIXO, vê-se a face inferior do disco, que fica *na frente* do cone — e a borda de trás
-///   aparece cruzando o corpo;
-/// - o cubo é a **ambiguidade de Necker**: o mesmo hexágono lê dos dois jeitos, e o que
-///   decide é para onde apontam as três arestas internas — para o vértice `(skew, rise)` ou
-///   para o OPOSTO, `(1 − skew, 1 − rise)`. (Nos defaults `0,5/0,5` os dois coincidem no
-///   centro; é exatamente por isso que um cubo em traço puro é ambíguo.)
-const VIEWED: FieldDesc = FieldDesc {
-    label: "Viewed",
-    min: 0.0,
-    max: 1.0,
-    step: 1.0,
-    unit: FieldUnit::Choice(&["From above", "From below"]),
-};
-
-/// Raio de canto (px). A faixa vai a 500 porque o teto antigo (40) não alcançava formas
-/// grandes; o arredondamento satura na geometria, então pedir demais achata, nunca inverte.
-const fn radius(label: &'static str) -> FieldDesc {
-    FieldDesc {
-        label,
-        min: 0.0,
-        max: 500.0,
-        step: 1.0,
-        unit: FieldUnit::Px,
-    }
-}
-
-/// **Desvio** do raio de um canto do round-rect (px, COM SINAL) — `0` = o canto segue o raio
-/// base. Não é raio absoluto de propósito: o vetor de parâmetros é posicional e campo ausente
-/// lê ZERO, então um campo apendado só é seguro se zero for o seu NEUTRO — e o neutro de "o
-/// raio deste canto" é "o mesmo dos outros", não "canto vivo" (senão todo save anterior
-/// passaria a desenhar três cantos vivos). Ver `ph2d_vec_scene::round_rect_radii`. A faixa
-/// espelha a do raio, então qualquer quádrupla de cantos é alcançável.
-const fn corner_offset(label: &'static str) -> FieldDesc {
-    FieldDesc {
-        label,
-        min: -500.0,
-        max: 500.0,
-        step: 1.0,
-        unit: FieldUnit::Px,
-    }
-}
-
-/// **Suavização de canto** (o *corner smoothing* do Figma / o canto contínuo da Apple): `0` =
-/// o arco de círculo de sempre (a curvatura SALTA da reta para o arco); `1` = o squircle
-/// cheio (o arco some e duas asas de Bézier fazem a curvatura subir em rampa). É neutro em
-/// zero — obrigatório, para um campo apendado.
-const SMOOTHING: FieldDesc = FieldDesc {
-    label: "Smoothing",
-    min: 0.0,
-    max: 1.0,
-    step: 0.01,
-    unit: FieldUnit::Ratio,
-};
+use crate::shapes_fields::*;
 
 /// **O catálogo.** Uma linha por forma; a ordem dos `fields` é a ordem dos valores.
 pub const SHAPES: &[ShapeDesc] = &[
@@ -257,6 +125,7 @@ pub const SHAPES: &[ShapeDesc] = &[
             corner_offset("BR offset"),
             corner_offset("BL offset"),
             SMOOTHING,
+            CORNER_STYLE,
         ],
     },
     // A elipse carrega a FAMÍLIA inteira: fechar o `Sweep` faz a pizza, abrir o `Hole`
@@ -271,7 +140,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Polygon,
         label: "Poly",
         group: ShapeGroup::Basic,
-        fields: &[SIDES, radius("Radius")],
+        fields: &[SIDES, radius("Radius"), CORNER_STYLE, CURVE, SMOOTH_VERTS],
     },
     ShapeDesc {
         kind: ShapeKind::Star,
@@ -282,13 +151,17 @@ pub const SHAPES: &[ShapeDesc] = &[
             INNER_RATIO,
             radius("Tip round"),
             radius("Notch round"),
+            CORNER_STYLE,
+            CURVE,
+            SMOOTH_VERTS,
+            TWIST,
         ],
     },
     ShapeDesc {
         kind: ShapeKind::Spiral,
         label: "Spiral",
         group: ShapeGroup::Basic,
-        fields: &[TURNS],
+        fields: &[TURNS, EXPANSION, frac("Inner", 0.0, 0.9)],
     },
     ShapeDesc {
         kind: ShapeKind::Line,
@@ -361,7 +234,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Diamond,
         label: "Decision",
         group: ShapeGroup::Flow,
-        fields: &[],
+        fields: &[frac("Mid", -0.45, 0.45)],
     },
     ShapeDesc {
         kind: ShapeKind::Pill,
@@ -379,13 +252,13 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Trapezoid,
         label: "Manual in",
         group: ShapeGroup::Flow,
-        fields: &[frac("Slant", 0.0, 0.49)],
+        fields: &[frac("Slant", 0.0, 0.49), frac("Right", -0.49, 0.49)],
     },
     ShapeDesc {
         kind: ShapeKind::TrapezoidFlip,
         label: "Manual op",
         group: ShapeGroup::Flow,
-        fields: &[frac("Slant", 0.0, 0.49)],
+        fields: &[frac("Slant", 0.0, 0.49), frac("Right", -0.49, 0.49)],
     },
     ShapeDesc {
         kind: ShapeKind::HexagonFlat,
@@ -589,6 +462,8 @@ pub const SHAPES: &[ShapeDesc] = &[
             },
             frac("Depth", 0.05, 0.5),
             frac("Hole", 0.0, 0.8),
+            frac("Tooth", -0.35, 0.4),
+            frac("Curvature", -0.5, 0.5),
         ],
     },
     ShapeDesc {

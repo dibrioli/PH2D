@@ -40,6 +40,9 @@ pub enum Spot {
         mid: bool,
         scale: Option<usize>,
     },
+    /// O MEIO (`t = ½`) da aresta que sai do vértice `i` (F10: a envergadura — numa aresta curva o
+    /// meio da corda não está no contorno).
+    EdgeMid(usize),
 }
 
 /// Como o arrasto escreve nos campos — a MÉTRICA com que o ponto da alça persegue a mão. Todas
@@ -77,6 +80,10 @@ pub enum Law {
     /// a distância não conta — as `revolution` do Inkscape só mudam com o ângulo (150 e 70 px a
     /// 0° deixam 3,000; +90° dá 3,250).
     Winding,
+    /// O RAIO pela métrica [`Law::Radial`] e o ÂNGULO do campo `angle` pelo ângulo da mão,
+    /// desenrolado desde o press (F10: o vale da estrela do Inkscape — `r2` e `arg2` juntos; com
+    /// Ctrl, como lá, só o raio).
+    Polar { angle: usize },
 }
 
 /// O que o Alt (`alone`) faz numa alça partilhada: escreve OUTROS campos e devolve a soma aos
@@ -102,6 +109,9 @@ pub struct HandleDesc {
     /// A alça ESTACIONA a uma distância mínima de onde os campos a põem no mínimo — ver
     /// [`handle_grip`].
     pub park: bool,
+    /// A alça desenha-se `park_at` para DENTRO (para o centro da caixa): o ponto dela vive SEMPRE
+    /// sobre uma aresta da caixa, onde mora uma alça de escala (F10: o meio do losango).
+    pub inset: bool,
 }
 
 /// Os modificadores do arrasto (teclas do Illustrator; Ctrl = «em pares», Affinity).
@@ -130,8 +140,11 @@ pub fn handles_of(kind: ShapeKind) -> &'static [HandleDesc] {
 pub fn fields_without_handle(kind: ShapeKind) -> impl Iterator<Item = usize> {
     let hs = handles_of(kind);
     (0..shapes::desc(kind).fields.len()).filter(move |i| {
-        !hs.iter()
-            .any(|h| h.fields.contains(i) || h.alone.is_some_and(|a| a.fields.contains(i)))
+        !hs.iter().any(|h| {
+            h.fields.contains(i)
+                || h.alone.is_some_and(|a| a.fields.contains(i))
+                || h.law == Law::Polar { angle: *i }
+        })
     })
 }
 
@@ -163,6 +176,14 @@ fn spot_at(
             Some([(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5])
         }
         Spot::Sub(c, i) => p.subpaths.get(c)?.verts.get(i).map(|v| v.anchor),
+        Spot::EdgeMid(i) => {
+            let n = p.verts.len();
+            let (a, b) = (p.verts.get(i)?, p.verts.get((i + 1) % n.max(1))?);
+            Some(cubic_at(
+                &[a.anchor, a.out_handle, b.in_handle, b.anchor],
+                0.5,
+            ))
+        }
         Spot::Ellipse {
             start,
             sweep,
@@ -192,6 +213,23 @@ fn spot_at(
             let len = ex.hypot(ey);
             if len <= 0.0 {
                 return None;
+            }
+            // Numa aresta CURVA (a envergadura, o liso) o corte pousa na curva, não na corda.
+            let (vq, vo) = (
+                &sharp.verts[corner],
+                &sharp.verts[if next {
+                    (corner + 1) % n
+                } else {
+                    (corner + n - 1) % n
+                }],
+            );
+            let seg = if next {
+                [q, vq.out_handle, vo.in_handle, o]
+            } else {
+                [q, vq.in_handle, vo.out_handle, o]
+            };
+            if seg[1] != q || seg[2] != o {
+                return on_curve_nearest_corner(&seg, p, len);
             }
             let tol = len * 1e-7;
             p.verts
@@ -263,6 +301,15 @@ pub fn handle_grip(
             return Some(at);
         }
         let k = (r - park_at.min(r * 0.5)) / r;
+        return Some([at[0] * k, at[1] * k]);
+    }
+    if h.inset {
+        let r = at[0].hypot(at[1]);
+        let k = if r > 0.0 {
+            (r - park_at.min(r * 0.5)) / r
+        } else {
+            1.0
+        };
         return Some([at[0] * k, at[1] * k]);
     }
     if !h.park {
@@ -442,13 +489,19 @@ pub fn drag(
                 v[*iv] = (d.at_press[*iv] - dy / (2.0 * hy)).clamp(vlo, vhi);
             }
         }
-        Law::Nearest | Law::Radial | Law::Count => {
+        Law::Nearest | Law::Radial | Law::Count | Law::Polar { .. } => {
+            if let Law::Polar { angle } = h.law
+                && !mods.pairs
+                && let Some((lo, hi, _)) = range_world(kind, angle, px_to_world)
+            {
+                v[angle] = snap(d.at_press[angle] + d.wound).clamp(lo, hi);
+            }
             let metric = |vals: &ShapeValues| {
                 let Some(q) = handle_point(h, vals, half, cook) else {
                     return f64::INFINITY;
                 };
                 match h.law {
-                    Law::Radial => {
+                    Law::Radial | Law::Polar { .. } => {
                         let r = |x: [f64; 2]| {
                             (x[0] / half[0].max(1e-12)).hypot(x[1] / half[1].max(1e-12))
                         };
@@ -598,6 +651,44 @@ pub fn reset(kind: ShapeKind, handle: usize, values: &ShapeValues) -> ShapeValue
     v
 }
 
+/// O ponto da cúbica `c` em `t`.
+fn cubic_at(c: &[[f64; 2]; 4], t: f64) -> [f64; 2] {
+    let u = 1.0 - t;
+    let w = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
+    [
+        w.iter().zip(c).map(|(k, q)| k * q[0]).sum(),
+        w.iter().zip(c).map(|(k, q)| k * q[1]).sum(),
+    ]
+}
+
+/// O vértice cozido que pousa na cúbica `seg` (do canto, `t = 0`, até meio dela) o mais perto do
+/// canto — o [`Spot::Rounding`] de uma aresta curva.
+fn on_curve_nearest_corner(seg: &[[f64; 2]; 4], p: &VecPath, len: f64) -> Option<[f64; 2]> {
+    const N: usize = 256;
+    let pts: Vec<[f64; 2]> = (0..=N)
+        .map(|k| cubic_at(seg, k as f64 / N as f64))
+        .collect();
+    let tol = len * 2e-3;
+    p.verts
+        .iter()
+        .map(|v| v.anchor)
+        .filter_map(|a| {
+            let (k, d) = pts
+                .iter()
+                .enumerate()
+                .map(|(k, q)| (k, (q[0] - a[0]).hypot(q[1] - a[1])))
+                .min_by(|x, y| x.1.total_cmp(&y.1))?;
+            (d <= tol && k <= N / 2 + 1).then_some((k, a))
+        })
+        .min_by_key(|x| x.0)
+        .map(|(_, a)| a)
+}
+
 #[cfg(test)]
 #[path = "shape_handles_tests.rs"]
 mod tests;
+
+/// O oráculo dos parâmetros da F10 — irmão pelo tecto de LOC.
+#[cfg(test)]
+#[path = "shape_handles_f10_tests.rs"]
+mod f10_tests;

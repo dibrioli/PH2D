@@ -195,7 +195,7 @@ fn the_frame_mode_shows_the_round_rect_fields_not_the_lit_catalog_buttons() {
 /// id do slot que a shell semeia (`vector_shape_field_id(0..4)`), pela ordem do descritor — e à
 /// frente dos botões do gesto (um campo atrás do `⋯` não se edita).
 #[test]
-fn a_star_in_focus_puts_its_four_fields_in_the_row() {
+fn a_star_in_focus_puts_its_number_fields_in_the_row() {
     set_current_connector(None);
     publish(Some(ShapeKind::Star), 1, DrawMode::Select, ShapeKind::Star);
     let b = row(&crate::host_aberto());
@@ -218,6 +218,10 @@ fn a_star_in_focus_puts_its_four_fields_in_the_row() {
             (vector_shape_field_id(1), "Inner"),
             (vector_shape_field_id(2), "Tip round"),
             (vector_shape_field_id(3), "Notch round"),
+            // F10: o 5.º (o tipo do canto) é uma ESCOLHA — um chip que cicla, não um número.
+            (vector_shape_field_id(5), "Curve"),
+            (vector_shape_field_id(6), "Smooth"),
+            (vector_shape_field_id(7), "Twist"),
         ]
     );
     assert!(

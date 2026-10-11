@@ -377,6 +377,16 @@ pub fn chave_do_campo(fonte: &str) -> Option<&'static str> {
         "Waist" => "panel.vector.engine.campo.waist",
         "Wave" => "panel.vector.engine.campo.wave",
         "Weight" => "panel.vector.engine.campo.weight",
+        "Rounded" => "panel.vector.engine.campo.rounded",
+        "Straight" => "panel.vector.engine.campo.straight",
+        "Concave" => "panel.vector.engine.campo.concave",
+        "Cutout" => "panel.vector.engine.campo.cutout",
+        "Twist" => "panel.vector.engine.campo.twist",
+        "Expansion" => "panel.vector.engine.campo.expansion",
+        "Tooth" => "panel.vector.engine.campo.tooth",
+        "Curvature" => "panel.vector.engine.campo.curvature",
+        "Right" => "panel.vector.engine.campo.right",
+        "Mid" => "panel.vector.engine.campo.mid",
         _ => return None,
     })
 }

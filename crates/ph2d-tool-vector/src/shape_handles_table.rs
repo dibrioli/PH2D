@@ -18,6 +18,7 @@ const fn h(fields: &'static [usize], spot: Spot, law: Law) -> HandleDesc {
         sharp: &[],
         alone: None,
         park: false,
+        inset: false,
     }
 }
 
@@ -33,6 +34,18 @@ const fn on_sharp(mut d: HandleDesc, sharp: &'static [usize]) -> HandleDesc {
 
 const fn parked(mut d: HandleDesc) -> HandleDesc {
     d.park = true;
+    d
+}
+
+/// Desenhada para DENTRO da caixa: o ponto dela vive sobre uma aresta da caixa (F10).
+const fn inset(mut d: HandleDesc) -> HandleDesc {
+    d.inset = true;
+    d
+}
+
+/// Com Alt, esta alça escreve só `fields` e devolve a diferença aos `keep` (um lado sozinho).
+const fn alone(mut d: HandleDesc, fields: &'static [usize], keep: &'static [usize]) -> HandleDesc {
+    d.alone = Some(Alone { fields, keep });
     d
 }
 
@@ -56,6 +69,7 @@ const fn round_corner(
             keep,
         }),
         park: true,
+        inset: false,
     }
 }
 
@@ -69,9 +83,11 @@ const ROUND_RECT: &[HandleDesc] = &[
 ];
 
 /// O polígono (`shapes::regular_polygon`, 1.º vértice às 12h, anti-horário): os LADOS pelo
-/// ângulo do 2.º vértice; o raio do canto no 1.º.
+/// ângulo do 2.º vértice; o raio do canto no 1.º; a ENVERGADURA (F10) no meio da 2.ª aresta (a
+/// 1.ª é a do arredondamento, que satura no meio dela). O tipo do canto e o liso: o cartão.
 const POLYGON: &[HandleDesc] = &[
     on_sharp(h(&[0], Spot::Vertex(1), Law::Count), &[1]),
+    on_sharp(h(&[3], Spot::EdgeMid(1), Law::Nearest), &[1]),
     parked(on_sharp(
         h(
             &[1],
@@ -86,11 +102,16 @@ const POLYGON: &[HandleDesc] = &[
 ];
 
 /// A estrela (`shapes::star`, pontas nos pares, vales nos ímpares, 1.ª ponta às 12h): as PONTAS
-/// pelo ângulo da 2.ª ponta; o raio INTERIOR no 1.º vale (distância ao centro); o arredondamento
-/// da ponta e do vale nas arestas que saem deles.
+/// pelo ângulo da 2.ª ponta; o raio INTERIOR e a TORÇÃO (F10) no 1.º vale (a distância e o ângulo,
+/// como o Inkscape; Ctrl = só o raio); o arredondamento da ponta e do vale nas arestas que saem
+/// deles; a ENVERGADURA (F10) no meio da 3.ª aresta.
 const STAR: &[HandleDesc] = &[
     on_sharp(h(&[0], Spot::Vertex(2), Law::Count), &[2, 3]),
-    parked(on_sharp(h(&[1], Spot::Vertex(1), Law::Radial), &[2, 3])),
+    on_sharp(h(&[5], Spot::EdgeMid(2), Law::Nearest), &[2, 3]),
+    parked(on_sharp(
+        h(&[1], Spot::Vertex(1), Law::Polar { angle: 7 }),
+        &[2, 3],
+    )),
     parked(on_sharp(
         h(
             &[2],
@@ -160,7 +181,12 @@ const ROUND: &[HandleDesc] = &[
 const ARC: &[HandleDesc] = &[ARC_START, ARC_END];
 
 /// A espiral (`shapes::spiral`): as VOLTAS na ponta de fora, por volta inteira do ponteiro.
-const SPIRAL: &[HandleDesc] = &[h(&[0], Spot::FromEnd(0), Law::Winding)];
+/// As voltas na ponta de fora; o RAIO INTERNO (F10) na de dentro — a distância ao centro, como a
+/// alça interna do Inkscape (estaciona: no zero ela é o centro). A divergência: o cartão.
+const SPIRAL: &[HandleDesc] = &[
+    h(&[0], Spot::FromEnd(0), Law::Winding),
+    parked(h(&[2], Spot::Vertex(0), Law::Radial)),
+];
 
 /// A seta (`arrows::arrow_block`, autorada em `(u, v)` com `v` do topo): 0 = haste, 1 = comprimento
 /// da cabeça, 2 = largura da cabeça. A espessura da haste no canto de trás dela (vértice 0); a
@@ -198,10 +224,21 @@ const CHEVRON: &[HandleDesc] = &[parked(at(&[0], 1)), parked(at(&[1], 5))];
 const PARALLELOGRAM: &[HandleDesc] = &[parked(at(&[0], 0))];
 
 /// O trapézio (`flow::trapezoid`): as DUAS quinas de cima (vértices 0 e 1) andam na horizontal —
-/// o *Trapezoid* do Affinity; o campo é um só (simétrico), qualquer das duas o escreve.
-const TRAPEZOID: &[HandleDesc] = &[parked(at(&[0], 0)), parked(at(&[0], 1))];
-/// O trapézio invertido: as quinas de BAIXO (vértices 2 e 3).
-const TRAPEZOID_FLIP: &[HandleDesc] = &[parked(at(&[0], 2)), parked(at(&[0], 3))];
+/// o *Trapezoid* do Affinity; sem Alt as duas juntas (simétrico), com Alt só a agarrada (o
+/// *Left/Right point*, F10): a esquerda escreve o recuo e devolve a diferença ao desvio da direita.
+const TRAPEZOID: &[HandleDesc] = &[
+    alone(parked(at(&[0], 0)), &[0], &[1]),
+    alone(parked(at(&[0], 1)), &[1], &[]),
+];
+/// O trapézio invertido: as quinas de BAIXO (vértices 2 = direita e 3 = esquerda).
+const TRAPEZOID_FLIP: &[HandleDesc] = &[
+    alone(parked(at(&[0], 2)), &[1], &[]),
+    alone(parked(at(&[0], 3)), &[0], &[1]),
+];
+
+/// O MEIO do losango (F10, o *Mid point* do Affinity) no vértice da direita — que vive sobre a
+/// aresta da caixa, onde mora a alça de escala: desenha-se para dentro.
+const DIAMOND: &[HandleDesc] = &[inset(at(&[0], 1))];
 
 /// O hexágono achatado (`flow::hexagon_flat`): o corte na quina de cima à direita (vértice 1).
 const HEXAGON_FLAT: &[HandleDesc] = &[parked(at(&[0], 1))];
@@ -315,6 +352,8 @@ const GEAR: &[HandleDesc] = &[
     h(&[0], Spot::Vertex(4), Law::Count),
     h(&[1], Spot::Vertex(2), Law::Radial),
     h(&[2], Spot::Sub(0, 0), Law::Radial),
+    // F10: a LARGURA do dente no fim do topo do 1.º (a envergadura dos flancos: o cartão).
+    at(&[3], 1),
 ];
 
 /// A cruz (`symbols::cross`): o braço na quina INTERIOR de cima à direita (vértice 4), na diagonal
@@ -368,6 +407,7 @@ pub(crate) fn of(kind: ShapeKind) -> &'static [HandleDesc] {
         K::Chevron => CHEVRON,
         K::Parallelogram => PARALLELOGRAM,
         K::Trapezoid => TRAPEZOID,
+        K::Diamond => DIAMOND,
         K::TrapezoidFlip => TRAPEZOID_FLIP,
         K::HexagonFlat => HEXAGON_FLAT,
         K::Cylinder => CYLINDER,

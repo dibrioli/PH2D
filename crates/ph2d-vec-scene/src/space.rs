@@ -171,6 +171,37 @@ pub(crate) fn clamp_window(x: f64, lo: f64, hi: f64) -> f64 {
 /// nasce ao lado de um arco herda a tangente do arco nos handles — a reta continua reta
 /// (os controles ficam colineares), mas o vértice fica com handles fantasmas que o usuário
 /// vê e arrasta ao editar. Aqui a quina é quina.
+/// Enverga as arestas RECTAS que começam nos vértices `starts` (do vértice `i` ao seguinte, o
+/// último dá a volta): o meio de cada uma anda `amount × meia corda` pela normal de FORA do
+/// contorno (`< 0` = para dentro) — as duas alças andam `4/3` disso. A lei do *Curve* (F10).
+pub(crate) fn bend_edges(verts: &mut [VecVertex], starts: &[usize], amount: f64) {
+    let n = verts.len();
+    if n < 3 {
+        return;
+    }
+    // A orientação (shoelace) decide qual das duas normais é a de FORA.
+    let area: f64 = (0..n)
+        .map(|i| {
+            let (p, q) = (verts[i].anchor, verts[(i + 1) % n].anchor);
+            p[0] * q[1] - q[0] * p[1]
+        })
+        .sum();
+    let side = if area >= 0.0 { 1.0 } else { -1.0 };
+    for &i in starts {
+        let j = (i + 1) % n;
+        let (p, q) = (verts[i].anchor, verts[j].anchor);
+        let d = [q[0] - p[0], q[1] - p[1]];
+        let len = d[0].hypot(d[1]);
+        if len <= 1e-12 {
+            continue;
+        }
+        let k = side * amount * len * 0.5 * 4.0 / 3.0 / len;
+        let off = [d[1] * k, -d[0] * k];
+        verts[i].out_handle = [p[0] + d[0] / 3.0 + off[0], p[1] + d[1] / 3.0 + off[1]];
+        verts[j].in_handle = [q[0] - d[0] / 3.0 + off[0], q[1] - d[1] / 3.0 + off[1]];
+    }
+}
+
 pub(crate) fn straighten(verts: &mut [VecVertex], i: usize) {
     if let Some(v) = verts.get_mut(i) {
         v.out_handle = v.anchor;

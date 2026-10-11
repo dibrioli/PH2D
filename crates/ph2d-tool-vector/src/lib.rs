@@ -47,6 +47,7 @@ pub mod shape_handles;
 mod shape_handles_table;
 /// A TRAVESSIA do catálogo (descritor · unidade UI↔mundo · clamp · escolhas) — módulo irmão
 /// de `shapes` (teto de LOC). Re-exportado dali, então quem consome não percebe o corte.
+mod shapes_fields;
 mod shapes_units;
 pub mod tool;
 

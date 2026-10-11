@@ -370,11 +370,13 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         // Os quatro campos novos foram APENDADOS e todos são **neutros em zero**, então um
         // save de ontem (`[r]`) cozinha o round-rect uniforme de sempre — ver
         // `crate::round_rect_radii`.
-        ShapeKind::RoundRect => crate::rounded_rect_corners(
+        // F10: o 6.º campo é o TIPO do canto (`0` = arredondado, o de sempre).
+        ShapeKind::RoundRect => crate::round_rect_styled(
             a,
             b,
             crate::round_rect_radii(f(v, 0), [f(v, 1), f(v, 2), f(v, 3)]),
             f(v, 4),
+            crate::CornerStyle::of(f(v, 5)),
         ),
         // A família do círculo: `sweep` + `start` + `inner` dão elipse, pizza, rosquinha
         // e anel parcial (crate::round). Pie é a mesma forma com outros defaults.
@@ -382,19 +384,39 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
             crate::ellipse_sweep(c, rx, ry, f(v, 1), f(v, 0), f(v, 2))
         }
         ShapeKind::Segment => crate::ellipse_chord(c, rx, ry, f(v, 1), f(v, 0)),
-        ShapeKind::Polygon => {
-            crate::regular_polygon_rounded(c, rx, ry, f(v, 0).round().max(3.0) as u32, f(v, 1))
-        }
-        ShapeKind::Star => crate::star_rounded(
+        // F10: tipo do canto, envergadura, liso (e a torção da estrela) — `crate::polystar`.
+        ShapeKind::Polygon => crate::polystar(
             c,
             rx,
             ry,
-            f(v, 0).round().max(3.0) as u32,
-            f(v, 1),
-            f(v, 2),
-            f(v, 3),
+            &crate::PolyStar {
+                n: f(v, 0).round().max(3.0) as u32,
+                inner: None,
+                twist_deg: 0.0,
+                curve: f(v, 3),
+                smooth: f(v, 4),
+                radii: [f(v, 1), 0.0],
+                style: crate::CornerStyle::of(f(v, 2)),
+            },
         ),
-        ShapeKind::Spiral => crate::spiral(c, rx, ry, f(v, 0).round().max(1.0) as u32),
+        ShapeKind::Star => crate::polystar(
+            c,
+            rx,
+            ry,
+            &crate::PolyStar {
+                n: f(v, 0).round().max(3.0) as u32,
+                inner: Some(f(v, 1)),
+                twist_deg: f(v, 7),
+                curve: f(v, 5),
+                smooth: f(v, 6),
+                radii: [f(v, 2), f(v, 3)],
+                style: crate::CornerStyle::of(f(v, 4)),
+            },
+        ),
+        // F10: a divergência e o raio interno do Inkscape.
+        ShapeKind::Spiral => {
+            crate::spiral_ex(c, rx, ry, f(v, 0).round().max(1.0) as u32, f(v, 1), f(v, 2))
+        }
         // A reta guarda a DIREÇÃO (a caixa com sinal), não a bbox.
         ShapeKind::Line => crate::line(a, b),
         ShapeKind::Arc => crate::arc_open(c, rx, ry, f(v, 1), f(v, 0)),
@@ -402,11 +424,11 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::ArrowDouble => crate::arrow_double(a, b, f(v, 0), f(v, 1), f(v, 2)),
         ShapeKind::ArrowBent => crate::arrow_bent(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
         ShapeKind::Chevron => crate::chevron(a, b, f(v, 0), f(v, 1)),
-        ShapeKind::Diamond => crate::diamond(a, b),
+        ShapeKind::Diamond => crate::diamond_mid(a, b, f(v, 0)),
         ShapeKind::Pill => crate::pill(a, b),
         ShapeKind::Parallelogram => crate::parallelogram(a, b, f(v, 0)),
-        ShapeKind::Trapezoid => crate::trapezoid(a, b, f(v, 0), false),
-        ShapeKind::TrapezoidFlip => crate::trapezoid(a, b, f(v, 0), true),
+        ShapeKind::Trapezoid => crate::trapezoid_asym(a, b, f(v, 0), f(v, 1), false),
+        ShapeKind::TrapezoidFlip => crate::trapezoid_asym(a, b, f(v, 0), f(v, 1), true),
         ShapeKind::HexagonFlat => crate::hexagon_flat(a, b, f(v, 0)),
         ShapeKind::Cylinder => crate::cylinder(a, b, f(v, 0)),
         ShapeKind::Document => crate::document(a, b, f(v, 0)),
@@ -430,7 +452,7 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::Drop => crate::drop(a, b, f(v, 0)),
         ShapeKind::Shield => crate::shield(a, b, f(v, 0)),
         ShapeKind::Tag => crate::tag(a, b, f(v, 0), f(v, 1)),
-        ShapeKind::Gear => crate::gear(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::Gear => crate::gear_ex(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3), f(v, 4)),
         ShapeKind::Cross => crate::cross(a, b, f(v, 0)),
         ShapeKind::Check => crate::check(a, b, f(v, 0)),
         ShapeKind::Banner => crate::banner(a, b, f(v, 0)),
@@ -539,6 +561,80 @@ mod tests {
                 );
             }
             assert_eq!(p.closed, k.is_closed(), "{k:?}: fechamento inconsistente");
+        }
+    }
+
+    /// ⭐ **F10: um save anterior cozinha IGUAL** — com os campos novos a zero (o que um save de
+    /// antes lê), cada forma que os ganhou desenha byte a byte o que a função antiga desenhava; e
+    /// cada campo novo, mexido, MUDA a forma (nenhum controlo morto). O tipo do canto mede-se com
+    /// raio (sem raio não há canto a tipar).
+    #[test]
+    fn the_f10_fields_are_neutral_at_zero_and_each_one_moves_the_shape() {
+        let (a, b) = ([-2.0, -1.0], [2.0, 1.0]);
+        let (c, rx, ry) = ([0.0, 0.0], 2.0, 1.0);
+        let legacy: [(ShapeKind, VecPath); 7] = [
+            (
+                ShapeKind::RoundRect,
+                crate::rounded_rect_corners(a, b, [DEFAULT_CORNER_RADIUS; 4], 0.0),
+            ),
+            (ShapeKind::Polygon, crate::regular_polygon(c, rx, ry, 5)),
+            (
+                ShapeKind::Star,
+                crate::star(c, rx, ry, 5, DEFAULT_STAR_INNER),
+            ),
+            (ShapeKind::Spiral, crate::spiral(c, rx, ry, 3)),
+            (ShapeKind::Gear, crate::gear(a, b, 8.0, 0.2, 0.35)),
+            (ShapeKind::Trapezoid, crate::trapezoid(a, b, 0.2, false)),
+            (ShapeKind::Diamond, crate::diamond(a, b)),
+        ];
+        for (k, old) in &legacy {
+            assert_eq!(
+                &cook(*k, a, b, &k.defaults()),
+                old,
+                "{k:?}: o save de ontem mudou"
+            );
+        }
+        // (forma, campo novo, valor que o mexe, raio de canto a pôr antes)
+        let moves: [(ShapeKind, usize, f64, Option<usize>); 12] = [
+            (ShapeKind::RoundRect, 5, 2.0, None),
+            (ShapeKind::Polygon, 2, 1.0, Some(1)),
+            (ShapeKind::Polygon, 3, 0.4, None),
+            (ShapeKind::Polygon, 4, 0.3, None),
+            (ShapeKind::Star, 4, 3.0, Some(2)),
+            (ShapeKind::Star, 5, 0.4, None),
+            (ShapeKind::Star, 6, 0.3, None),
+            (ShapeKind::Star, 7, 10.0, None),
+            (ShapeKind::Spiral, 1, 1.0, None),
+            (ShapeKind::Spiral, 2, 0.3, None),
+            (ShapeKind::Gear, 3, 0.2, None),
+            (ShapeKind::Gear, 4, 0.3, None),
+        ];
+        for (k, i, x, radius) in moves {
+            let mut v = k.defaults();
+            if let Some(r) = radius {
+                v[r] = 0.2;
+            }
+            let base = cook(k, a, b, &v);
+            v[i] = x;
+            assert_ne!(
+                cook(k, a, b, &v),
+                base,
+                "{k:?}: o campo {i} não mexe a forma"
+            );
+        }
+        for (k, i) in [
+            (ShapeKind::Trapezoid, 1),
+            (ShapeKind::TrapezoidFlip, 1),
+            (ShapeKind::Diamond, 0),
+        ] {
+            let mut v = k.defaults();
+            let base = cook(k, a, b, &v);
+            v[i] = 0.15;
+            assert_ne!(
+                cook(k, a, b, &v),
+                base,
+                "{k:?}: o campo {i} não mexe a forma"
+            );
         }
     }
 

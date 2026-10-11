@@ -349,7 +349,7 @@ fn a_double_click_resets_only_that_handle() {
     v[1] = 0.3;
     let inner = handles_of(k)
         .iter()
-        .position(|h| h.law == Law::Radial)
+        .position(|h| matches!(h.law, Law::Polar { .. }))
         .unwrap();
     let r = reset(k, inner, &v);
     assert_eq!(r[1], k.defaults()[1]);
@@ -364,8 +364,14 @@ fn the_fields_without_a_gesture_are_counted_not_listed() {
     use ShapeKind as K;
     // A lista EXACTA por forma; toda forma fora dela tem alça para todo campo.
     let without: &[(ShapeKind, &[usize])] = &[
-        // A suavização do canto: um perfil, não um ponto.
-        (K::RoundRect, &[4]),
+        // A suavização do canto: um perfil, não um ponto; o tipo do canto (F10) é uma ESCOLHA.
+        (K::RoundRect, &[4, 5]),
+        // F10: o tipo do canto (escolha) e o liso (um perfil) — o cartão lateral.
+        (K::Polygon, &[2, 4]),
+        (K::Star, &[4, 6]),
+        // F10: a divergência da espiral e a envergadura dos flancos da engrenagem.
+        (K::Spiral, &[1]),
+        (K::Gear, &[4]),
         // A faixa do rabo encolhe a elipse inteira: nenhum vértice anda só com ela.
         (K::SpeechOval, &[3]),
         // O número de bolhas: a bolha 0 não muda com ele, as outras somem com uma só.
@@ -385,21 +391,14 @@ fn the_fields_without_a_gesture_are_counted_not_listed() {
         assert_eq!(none(k), want, "{k:?}: os campos sem alça");
     }
     // As formas sem campo não têm alça nenhuma.
-    for k in [
-        K::Rectangle,
-        K::Line,
-        K::Diamond,
-        K::Pill,
-        K::Delay,
-        K::Junction,
-    ] {
+    for k in [K::Rectangle, K::Line, K::Pill, K::Delay, K::Junction] {
         assert!(handles_of(k).is_empty(), "{k:?}");
     }
 }
 
 // ── O ORÁCULO: o Inkscape 1.4.4 corrido sobre formas nossas (doc 13 §2) ─────────────────────────
 
-fn fixture(name: &str) -> serde_json::Value {
+pub(super) fn fixture(name: &str) -> serde_json::Value {
     let p = format!(
         "{}/../../docs/UI_New_and_Simple/vetor_nova_ui/oraculo_alcas/fixtures/{name}.json",
         env!("CARGO_MANIFEST_DIR")
@@ -410,7 +409,12 @@ fn fixture(name: &str) -> serde_json::Value {
 
 /// O ponteiro REAL do oráculo (o ecrã inteiro do `xdotool` pela calibração medida), em
 /// coordenadas do documento dele, desfeita a rotação da forma.
-fn pointer(f: &serde_json::Value, e: &serde_json::Value, key: &str, rot_deg: f64) -> [f64; 2] {
+pub(super) fn pointer(
+    f: &serde_json::Value,
+    e: &serde_json::Value,
+    key: &str,
+    rot_deg: f64,
+) -> [f64; 2] {
     let c = &f["calibracao_tela"];
     let g = |k: &str| c[k].as_f64().unwrap();
     let t = &e[key];
@@ -424,13 +428,13 @@ fn pointer(f: &serde_json::Value, e: &serde_json::Value, key: &str, rot_deg: f64
     ]
 }
 
-fn attr(e: &serde_json::Value, k: &str) -> f64 {
+pub(super) fn attr(e: &serde_json::Value, k: &str) -> f64 {
     e["depois"][k].as_str().unwrap().parse().unwrap()
 }
 
 /// O arrasto de uma alça nossa pelo CAMINHO do oráculo (a recta de 12 passos do `xdotool`), com
 /// o documento dele levado ao nosso espaço por `map`.
-fn replay(
+pub(super) fn replay(
     kind: ShapeKind,
     handle: usize,
     v: ShapeValues,
@@ -516,7 +520,7 @@ fn the_star_inner_radius_is_the_distance_to_the_centre_like_inkscape() {
             v[1] = 0.45;
             let inner = handles_of(ShapeKind::Star)
                 .iter()
-                .position(|h| h.law == Law::Radial);
+                .position(|h| matches!(h.law, Law::Polar { .. }));
             let r = replay(
                 ShapeKind::Star,
                 inner.unwrap(),

@@ -237,6 +237,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.engine.campo.waist" => "Waist",
         "panel.vector.engine.campo.wave" => "Wave",
         "panel.vector.engine.campo.weight" => "Weight",
+        // F10 (11/10): os parâmetros novos e as escolhas do tipo do canto.
+        "panel.vector.engine.campo.rounded" => "Rounded",
+        "panel.vector.engine.campo.straight" => "Straight",
+        "panel.vector.engine.campo.concave" => "Concave",
+        "panel.vector.engine.campo.cutout" => "Cutout",
+        "panel.vector.engine.campo.twist" => "Twist",
+        "panel.vector.engine.campo.expansion" => "Expansion",
+        "panel.vector.engine.campo.tooth" => "Tooth",
+        "panel.vector.engine.campo.curvature" => "Curvature",
+        "panel.vector.engine.campo.right" => "Right",
+        "panel.vector.engine.campo.mid" => "Mid",
         // ⚠️ Estes CINCO foram achados pelo GATE e não pela extracção: eles são `FieldDesc`
         //    escritos em linha dentro de uma forma, e a varredura estática do fonte não os via.
         //    *A tabela viva é o oráculo; um extractor é uma aproximação dela.*

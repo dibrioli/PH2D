@@ -357,6 +357,7 @@ impl ModeFamily for Family<'_> {
 /// `=14` (F8): enquadrar tudo — três formas fora da tela e *Ver ▸ Enquadrar tudo* (`vector_mode_frame`).
 /// `=15` (F9): as alças das formas — um canto, um vale e o fim de uma pizza (`vector_mode_handles`).
 /// `=16` (F10): a estrela do Affinity — pontas e vales macios, o ⇕ a 7 pontas, o cartão (`vector_mode_card`).
+/// `=17` (F11): a caixa por fora do traço grosso e os ⊙ dentro dos cantos (`vector_mode_stroke`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -379,20 +380,21 @@ pub fn smoke_step(
     // A cena 14 (F8): enquadrar tudo — estágios 60–63 em `vector_mode_frame`.
     static FRAME: AtomicU8 = AtomicU8::new(0);
     // A cena 15 (F9): as alças das formas — estágios 70–76 em `vector_mode_handles`; 2 = a 16 (F10,
-    // o cartão lateral — 80–86 em `vector_mode_card`).
+    // o cartão lateral — 80–86 em `vector_mode_card`); 3 = a 17 (F11, o traço — 90–93 em
+    // `vector_mode_stroke`).
     static HANDLES: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
             let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
             let want = match scene.as_deref() {
-                Ok("6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16") => 1,
+                Ok("6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17") => 1,
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
             BARS.store(
                 u8::from(matches!(
                     scene.as_deref(),
-                    Ok("9" | "10" | "11" | "12" | "13" | "14" | "15" | "16")
+                    Ok("9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17")
                 )),
                 Ordering::Relaxed,
             );
@@ -403,6 +405,7 @@ pub fn smoke_step(
                 match scene.as_deref() {
                     Ok("15") => 1,
                     Ok("16") => 2,
+                    Ok("17") => 3,
                     _ => 0,
                 },
                 Ordering::Relaxed,
@@ -445,6 +448,8 @@ pub fn smoke_step(
             13
         } else if QUICK.load(Ordering::Relaxed) != 0 {
             50
+        } else if HANDLES.load(Ordering::Relaxed) == 3 {
+            90
         } else if HANDLES.load(Ordering::Relaxed) == 2 {
             80
         } else if HANDLES.load(Ordering::Relaxed) != 0 {
@@ -537,6 +542,12 @@ pub fn smoke_step(
         // A cena 16 (F10): os parâmetros novos e o cartão lateral — `vector_mode_card`.
         s @ 80..=84 => {
             if let Some(next) = crate::vector_mode_card::step(s, vec, scene, sim, hero) {
+                go(next);
+            }
+        }
+        // A cena 17 (F11): a caixa por fora do traço grosso — `vector_mode_stroke`.
+        s @ 90..=93 => {
+            if let Some(next) = crate::vector_mode_stroke::step(s, vec, scene, sim, hero) {
                 go(next);
             }
         }

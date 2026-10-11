@@ -26,8 +26,8 @@ fn handle_of(field: usize) -> Option<usize> {
         .position(|h| h.fields.first() == Some(&field))
 }
 
-/// Agarra a alça `handle` da estrela pelo press da shell e leva-a por `path(onde ela está)`.
-fn pull(
+/// Agarra a alça `handle` da forma pelo press da shell e leva-a por `path(onde ela está)`.
+pub(crate) fn pull(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
     sim: &mut SimWorld,

@@ -103,7 +103,14 @@ dentro da caixa (§2) a folga real cresce ainda `½w` × zoom. Gate:
 | afastar também a barra do Quadro | outro produto (MiroClone, outra linha); `strip_rects` fica, a ④ do vetor usa a `strip_rects_at` |
 | ficar na geometria como o Affinity | o pedido do dono é explícito; o Affinity foi lido e registado (§1) |
 
-## §6 — As cenas (por fazer nesta linha — ver o handoff de continuação)
+## §6 — As cenas (fotografadas, 1930×1040, perfil `smoke`)
 
-`=15` e `=16` re-fotografar (as caras novas); `=17` nova: uma forma com traço GROSSO e a caixa por
-fora dele, a ④ e o cartão à folga nova.
+| cena | o que mostra | foto | contra o Illustrator (§1) |
+|---|---|---|---|
+| `=15` | a pizza: início às 3h e fim nas HASTES por fora do aro; o furo foi ao cartão (*Hole*) | [f11_01](fotos/f11_01_cena15_a_pizza_com_os_angulos_na_haste.png) | o *pie widget*: ⊙ numa haste fora do aro ✓ (a de 3h fica 17 px além da alça do meio-direito) |
+| `=16` | a estrela de 7 pontas: ⇕ na borda direita da caixa, ⊙ na ponta e no vale, ○ do R2; o cartão *Corner · Curve · Smooth · Twist* | [f11_02](fotos/f11_02_cena16_a_estrela_com_as_caras_do_illustrator.png) | *points* na borda direita ✓, ⊙ para dentro da ponta/vale ✓, ○ sobre o vale ✓ |
+| `=17` (nova, `vector_mode_stroke`) | um rectângulo arredondado de traço 20 px (pelo campo *Width*): a caixa POR FORA do traço, os 4 ⊙ no centro dos arcos, a ④ e o cartão a ~24 px | [f11_03](fotos/f11_03_cena17_a_caixa_por_fora_do_traco_e_os_cantos_dentro.png) | o *corner widget* no centro do arco ✓ (`helpx_livesh_corner-widget_corner-radius.png`, quadro de baixo); a caixa com o traço é a *Use Preview Bounds* |
+
+⚠️ Na cena 17 o traço entra pelo MESMO evento do campo *Width* e pelo valor que o campo guarda —
+a 1.ª foto (traço escrito no documento por baixo do painel) mostrava *Width 3* com 20 px desenhados:
+uma cena que ensinava o contrário.

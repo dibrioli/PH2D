@@ -15,7 +15,7 @@
 - ⏳ Smoke do B4: cena `=135`, passos (10) Gradient Map arco-íris e (11) Multiply (`PH2D_ACABAMENTO_PASSO=10|11`);
   fotografados (discos ciano→azul→violeta; o Multiply escurece). Tutorial 13 com os dois passos (PDF 7→9 páginas).
   Os atalhos de predefinição do editor são tirinhas de cor SEM texto: o roteiro diz «a 1.ª tirinha».
-  binário do smoke: <colar>
+  binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida): `Finished `smoke` profile [optimized] target(s) in 0.23s` — zero `Compiling`.
 
 ## B4 — FEITO (`fx.filter`: lei de mistura + degradê inteiro)
 

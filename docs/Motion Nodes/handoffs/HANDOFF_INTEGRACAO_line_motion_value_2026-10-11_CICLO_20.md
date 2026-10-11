@@ -168,7 +168,7 @@ Doc 129 §7, mais o que a W4b deixou:
   («ABERTOS NOMEADOS»): a fita acima de 32 MiB · uma linha de COR inteira num gesto · vida e dano pedem
   dois objectos · `Bezier`/`Tint` OKLCH caros na CPU de reserva · gate de gesto pelo caminho REAL do rato
   (BUGS #18).
-- Aberto de processo: o smoke do Enio da W4b ainda NÃO foi feito (integrar não é aprovar).
+- ✅ O smoke do Enio da W4b foi feito (11/10, «parece ok»).
 
 ## §9 — Depois do fecho: o report do `Collide` (11/10)
 
@@ -229,3 +229,5 @@ espera para o perfilador. ⚠️ **Para o integrador:** a bomba (`ph2d-eval-moti
 `taps_por_tique` por `armadas: taps::Armadas` (o `lib.rs` fica em `698/700`) e ganha duas portas
 públicas APENDADAS em `taps.rs` (`set_sinks_do_desenho`, `publica_relatorio`). Portão:
 `nextest-impacted` `4 647/4 647`, clippy/fmt limpos, censos `117/117`, machete limpo.
+
+A fila que falta para ZERAR o módulo (ordem do dono, 11/10): [`…_ZERAR_PENDENCIAS.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_PENDENCIAS.md).

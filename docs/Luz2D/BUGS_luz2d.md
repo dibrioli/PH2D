@@ -51,3 +51,14 @@
   Era a ORDEM: o chão da cena (um sprite sem `RootOrder`) desenha na frente (`root_key` = `u32::MAX`) e os
   caminhos que o editor sincroniza recebem a ordem 0 e 1 — por baixo dele.
 - **A cura:** o chão com `RootOrder(0)`; o gate `a_cena_6_ensina_as_formas_desenhadas` exige-o.
+
+## 4. «A 4K a luz apaga sem aviso» (11/10, medido na W5e)
+
+- **O sintoma enganava:** parecia o governador, o nível ou falta de memória. Era a captura FINA (2× mais
+  larga que a fluência) a passar o `max_texture_dimension_2d` 8 192 do dispositivo da casa a 2160p (10 240 /
+  9 984): erro de validação em `luz2d/tex/cobertura_fina`, nos três níveis — a luz a calcular nada.
+- **Por que nenhum gate o via:** todas as réguas eram a 1080p ou em grades de teste; o solver só conferia
+  a largura da fluência, nunca a das outras texturas.
+- **A cura:** `Config::cabe_na_placa` em toda textura da `PassList`; a fina que cede (`teto::fina_que_cabe`);
+  o nascimento do `Solver` sob os escopos OutOfMemory + Validation (`ErroSolver::SemMemoria`). Gates:
+  `os_tetos_da_placa` (6, com o controlo do degrau da W5d e a placa a recusar de verdade). Handoff W5e.

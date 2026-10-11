@@ -234,6 +234,8 @@ Provas de mutação (`mutacao`) em G3, G6, G7 e G12 no fecho — são as leis qu
 | 4 | **Tamanho da lâmpada** — duas Luzes, pequena e grande, mesmo oclusor | a pequena faz sombra nítida, a grande, macia | largura da penumbra medida × prevista pela geometria |
 | 5 | **Volume** — oito corpos (disco, elipse, losango, barra, «L», cruz) em volta de uma lâmpada | cada lado vira uma face: a da lâmpada acesa, a de trás escura | a face da lâmpada ≥ 10 × a de trás em todo corpo |
 | 6 | **Formas desenhadas** (W5d) — um círculo e uma elipse VETORIAIS e, no espelho, as imagens gêmeas | o desenho bloqueia e recebe a luz como a imagem | desenho × imagem na face acesa e a variação nos anéis |
+| 7 | **Traço do Flip** (W5e) — dois discos de tinta num objeto Flip e, no espelho em relação à lâmpada, as imagens gêmeas | o traço bloqueia e recebe a luz como a imagem | traço × imagem na face acesa, anéis, faces (45 × e 38 ×); o blit do Flip contra a conta da luz |
+| 8 | **Formas do Motion** (W5e, com `PH2D_MOTION_OBJETO_SMOKE=1`) — a lâmpada e o chão sobre o smoke do Motion (a Pile cai, o Swarm segue os campos) | as formas que caem fazem sombra | o contrato da camada do Motion (a área das formas) e a cena 7 (a luz com essa área) |
 
 Cada cena é **fotografada** (`docs/Components/ferramentas/fotografa_cena.sh`) antes de ir ao dono, e o
 número de cada uma vem da sonda headless (molde: `crates/ph2d-board-render/tests/it/measure_*.rs`).
@@ -249,7 +251,7 @@ número de cada uma vem da sonda headless (molde: `crates/ph2d-board-render/test
 | **W2 — o solver** | `ph2d-light2d-gpu`: C0, C1, C2, `PassList` + bytes, timestamps; sonda headless | G3, G4, G5, G10, G12 |
 | **W3 — receber** | sprite forward + vetor no compositor; ponto neutro; ancoragem | G6, G7, G11 |
 | **W4 — o artista** | `ph2d-app-light2d`: menu Add, Inspector, gizmo, paleta, undo, i18n; cenas 1–4 fotografadas | G8 + censos; **smoke do dono** |
-| **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada — W5a/W5b (fila do dono F1–F4), **W5c** (rebote; a holográfica em todo nível), **W5d** (a precisão junto à borda; o rebote de fora da grade; K9 no Baixo), W5e (governador acima de 1080p com a memória, Flip/Motion, S1–S8) |
+| **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada — W5a/W5b (fila do dono F1–F4), **W5c** (rebote; a holográfica em todo nível), **W5d** (a precisão junto à borda; o rebote de fora da grade; K9 no Baixo), **W5e** ✅ (os tetos do dispositivo e o governador acima de 1080p; Flip e Motion na luz; S1–S8 contra o Godot) |
 | depois | celular (iPhone 13/16, POCO X5) — **adiado pelo dono** | K1–K9 do relatório |
 
 ### 7.1 Fila de implementação (ordem do dono, 10/10: «coloque na fila o que ainda não está bom»)
@@ -294,6 +296,14 @@ mais largo cuja luz de fora soma-se às cascatas da vista (−63,6 % → −0,3 
 1080p); e o K9 no Baixo com dois rebotes por quadro (11 → 6 quadros por +1,0 ms). Abertos: o disco de
 imagem ampliado, o K9 no Médio e no Alto, a luz pequena e o alcance finito na holográfica (a fusão), a
 memória e o governador acima de 1080p.
+
+**W5e fechada** ([handoff W5e](handoffs/HANDOFF_CONTINUACAO_W5e_2026-10-11.md)): os TETOS DO DISPOSITIVO — a 4K a
+luz já não apaga sem aviso (a fina cede, o governador desce pela fina e pela célula antes do nível, a placa que
+recusa memória vira aviso; BUGS §4); o Flip e o Motion bloqueiam e o Flip recebe a luz (camada exata
+`CamadaDeOclusao`; cenas 7 e 8; G7 do rebote); S1–S8 corridos contra o Godot por script
+([`oraculo_godot/`](oraculo_godot/)) e a rodada nossa nos mesmos cenários. Abertos: a luz direta com geometria
+densa (o maior desvio do piso), a compilação a frio de cada nível (2–3 s), o K9 no Médio e no Alto, o
+`NaoRecebeLuz` por objeto Flip; o F5 segue último.
 
 Também abertos (técnicos, sem queixa do dono): as cascatas ainda calculam a grade inteira (81,5 % fora
 da janela) e a região C3 pode encolher ao canvas; o G4 (K3) segue com pouca margem (3,98–4,64 % de 5 %,

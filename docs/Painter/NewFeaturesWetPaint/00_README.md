@@ -21,6 +21,7 @@
 
 | Doc | O que tem |
 |---|---|
+| [19_PROMPT_janela_linha_rapida.md](19_PROMPT_janela_linha_rapida.md) | **O prompt da PRÓXIMA janela** (dono 11/10): a onda da velocidade — `opt-level` para `ph2d-wet-paint`/`ph2d-pigment`, os testes > 10 s (incluindo os dois portões da fábrica de 11/10), o gerador em paralelo, o 05 partido com o índice no mesmo nome |
 | [18_mapa_das_midias.md](18_mapa_das_midias.md) | **O mapa das mídias** (11/10): cada mídia do dono contra os 281 presets e 25 fotos do Rebelle, medida à largura igual com o controlo dentro (refeita a pedido do dono: pigmento alto, o relevo de volta, o grão do pincel) — aquarela + **Wet Liner**, óleo, acrílica, Express Oil, grafite, carvão, pastel seco e de óleo (fábrica de 12); a métrica do CRUZAMENTO (a tinta e o marcador escurecem, os nossos tapam); o que fica de fora e a decisão do dono |
 | [17_PROMPT_janela_presets_todas_as_midias.md](17_PROMPT_janela_presets_todas_as_midias.md) | O prompt da janela de 11/10 (cumprido: 05 §4b «Presets de todas as mídias») — os presets de TODAS as mídias no Wet Paint: o mapa das mídias medido contra os 281 presets e as fotos do Rebelle, a W2 (a largura prometida, a base de todo preset) e o 1.º lote de presets novos, cada um com um portão que reprova o Wet Round |
 | [16_PROMPT_janela_auditoria_mistura_simplificacao.md](16_PROMPT_janela_auditoria_mistura_simplificacao.md) | O prompt da auditoria multi-agente da mistura (o azul-claro do Wet Drip com as caixas K–M) — o estado no 05 §4b «Mistura II» |

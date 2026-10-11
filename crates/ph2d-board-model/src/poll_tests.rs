@@ -128,11 +128,14 @@ fn a_format_10_file_opens_and_its_votes_become_one_shown_session() {
         "sem votos, sem sessão"
     );
     let bytes = set.to_bytes().unwrap();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 11);
+    assert_eq!(
+        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
+        crate::FORMAT_VERSION
+    );
     assert_eq!(
         BoardSet::from_bytes(&bytes).unwrap(),
         set,
-        "regravado no 11, igual"
+        "regravado no formato actual, igual"
     );
 }
 

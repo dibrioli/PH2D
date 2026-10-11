@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_model::{
-    BoardDoc, BoardOp, Connector, Element, ElementId, End, FracKey, Frame, GroupId, Ink, Letter,
-    Pen, RichText, Route, Shape, ShapeType, Style,
+    BoardDoc, BoardOp, Connector, Element, ElementId, End, Files, FracKey, Frame, GroupId, Ingest,
+    Ink, Letter, Pen, RichText, Route, Shape, ShapeType, Style,
 };
 use serde_json::Value;
 
@@ -23,6 +23,8 @@ pub struct Import {
     /// formato ≤ 10): quem cria o quadro guarda-os como UMA sessão (`Team::adopt_old_votes`,
     /// ADR-0183 §9). Uma cópia feita lá não os leva.
     pub votes: BTreeMap<ElementId, u32>,
+    /// W14 — os ficheiros das imagens que entraram (já pela porta de entrada); vão para o quadro novo.
+    pub files: Files,
 }
 
 /// O elemento nosso que viajou no `customData`, se há.
@@ -30,11 +32,20 @@ fn carried(v: &Value) -> Option<Element> {
     serde_json::from_value(v["customData"][PH2D]["element"].clone()).ok()
 }
 
-/// ⭐ Um ficheiro `.excalidraw` (o texto JSON) → o documento de um quadro novo e o que saltou.
+/// ⭐ Um ficheiro `.excalidraw` (o texto JSON) → o documento de um quadro novo e o que saltou. Sem
+/// descodificador de imagens: as imagens saltam (contadas). Com ele: [`read_with`].
 ///
 /// # Errors
 /// JSON que não se lê, ou sem `elements`.
 pub fn read(json: &str) -> Result<Import, String> {
+    read_with(json, &|_| None)
+}
+
+/// [`read`], com as imagens (W14) a entrar pela porta de entrada `ingest`.
+///
+/// # Errors
+/// JSON que não se lê, ou sem `elements`.
+pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
     let file: Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
     let all = file["elements"]
         .as_array()
@@ -44,6 +55,7 @@ pub fn read(json: &str) -> Result<Import, String> {
         .filter(|v| !v["isDeleted"].as_bool().unwrap_or(false))
         .collect();
     let mut imp = Import::default();
+    let files = crate::image::incoming(&file, ingest);
     let by_id: BTreeMap<&str, &Value> = live
         .iter()
         .filter_map(|v| Some((v["id"].as_str()?, *v)))
@@ -109,6 +121,7 @@ pub fn read(json: &str) -> Result<Import, String> {
                 | "frame"
                 | "magicframe"
                 | "text"
+                | "image"
         );
         if ok {
             kept.push(v);
@@ -174,9 +187,17 @@ pub fn read(json: &str) -> Result<Import, String> {
                 ours.z = key;
                 ours.deleted = false;
                 edits(&mut ours, v, texts.get(me), (&map, &by_id), fresh);
+                if ours.image().is_some() && !crate::image::edits(&mut ours, v, &files) {
+                    *imp.skipped.entry("image".into()).or_default() += 1;
+                    continue;
+                }
                 ours
             }
-            None => match foreign(v, id, key, texts.get(me), (&map, &by_id)) {
+            None => match if v["type"] == "image" {
+                crate::image::foreign(v, id, key, &files)
+            } else {
+                foreign(v, id, key, texts.get(me), (&map, &by_id))
+            } {
                 Some(el) => el,
                 None => {
                     *imp.skipped
@@ -244,7 +265,11 @@ pub fn read(json: &str) -> Result<Import, String> {
             el.frame = excal;
         }
     }
+    let by_key: BTreeMap<_, _> = files.into_values().map(|f| (f.id(), f)).collect();
     for el in out {
+        if let Some(f) = el.image().and_then(|i| by_key.get(&i.file)) {
+            imp.files.insert(f.id(), f.clone());
+        }
         BoardOp::Put(el).apply(&mut imp.doc);
     }
     Ok(imp)
@@ -308,6 +333,15 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>,
                 el.y = y - dy * ky;
             } else if !(near(x, p0[0]) && near(y, p0[1])) {
                 el.translate([x - p0[0], y - p0[1]]);
+            }
+        }
+        ph2d_board_model::ElementKind::Image(_) => {
+            let (w, h) = (
+                num(v, "width").unwrap_or(el.w),
+                num(v, "height").unwrap_or(el.h),
+            );
+            if !(near(x, el.x) && near(y, el.y) && near(w, el.w) && near(h, el.h)) {
+                (el.x, el.y, el.w, el.h) = (x, y, w, h);
             }
         }
         ph2d_board_model::ElementKind::Frame(_) => {

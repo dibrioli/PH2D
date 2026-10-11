@@ -211,6 +211,7 @@ pub(crate) fn read_v8(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team,
+                files: crate::Files::new(),
             }
         })
         .collect();

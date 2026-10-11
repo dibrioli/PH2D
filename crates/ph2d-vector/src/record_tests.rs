@@ -11,6 +11,7 @@ fn kinds(ops: &[DrawOp]) -> Vec<&'static str> {
             DrawOp::Pop => "pop",
             DrawOp::Glyphs(_) => "glyphs",
             DrawOp::BlurredRect { .. } => "blur",
+            DrawOp::Image(_) => "image",
         })
         .collect()
 }
@@ -33,15 +34,22 @@ fn every_recording_door_records_in_order() {
     s.stroke_path(&Stroke::new(2.0), Affine::IDENTITY, &Brush::Solid(red), &r);
     s.push_clip(&r);
     s.blurred_rounded_rect(Affine::IDENTITY, r, red, 1.0, 2.0);
+    let img = crate::StableImage::from_rgba(std::sync::Arc::new(vec![9; 8]), 2, 1).unwrap();
+    let at = Affine::scale(3.0);
+    s.draw_recorded_image(&img, at, crate::ImageQuality::Medium, None);
     s.pop_layer();
     s.pop_layer();
     let ops = s.take_record();
     assert_eq!(
         kinds(&ops),
         [
-            "fill", "layer", "fill", "stroke", "layer", "blur", "pop", "pop"
+            "fill", "layer", "fill", "stroke", "layer", "blur", "image", "pop", "pop"
         ]
     );
+    let DrawOp::Image(i) = &ops[6] else {
+        unreachable!()
+    };
+    assert_eq!((i.transform, i.image.rgba()), (at, &[9u8; 8][..]));
     let DrawOp::Layer { alpha, .. } = &ops[1] else {
         unreachable!()
     };

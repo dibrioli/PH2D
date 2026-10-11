@@ -6,11 +6,13 @@
 //! ⚠️ As portas que gravam são as desta lista; quem desenha por [`VectorScene::inner_mut`] sai da
 //! gravação — o desenho do quadro tem um gate que o proíbe (`board_paint_never_bypasses_the_recording`).
 
+use std::sync::Arc;
+
 use vello::kurbo::{Affine, BezPath, Rect, Shape, Stroke};
-use vello::peniko::{BlendMode, Brush, Color, Fill, FontData};
+use vello::peniko::{BlendMode, Brush, Color, Fill, FontData, ImageQuality};
 use vello::{Glyph, NormalizedCoord};
 
-use crate::VectorScene;
+use crate::{StableImage, VectorScene};
 
 /// Uma operação gravada (coordenadas ANTES do `transform`, como o Vello as recebe).
 #[derive(Clone, Debug)]
@@ -46,6 +48,43 @@ pub enum DrawOp {
         radius: f64,
         std_dev: f64,
     },
+    /// W14 do Quadro — uma imagem ([`VectorScene::draw_recorded_image`]).
+    Image(Box<ImageOp>),
+}
+
+/// Uma imagem gravada: os píxeis desenhados (`transform` leva o píxel deles ao ecrã) e, se há, os
+/// bytes de onde vieram — o SVG embebe-os como chegaram (um JPEG não vira PNG), e o PDF os píxeis.
+#[derive(Clone)]
+pub struct ImageOp {
+    pub transform: Affine,
+    pub image: StableImage,
+    pub quality: ImageQuality,
+    pub source: Option<ImageSource>,
+}
+
+impl std::fmt::Debug for ImageOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImageOp")
+            .field("transform", &self.transform)
+            .field("size", &[self.image.width(), self.image.height()])
+            .field("source", &self.source)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Os bytes de uma imagem como chegaram (PNG, JPEG…), o MIME e o tamanho NATURAL deles — os píxeis
+/// gravados podem ser um nível mais pequeno (o `transform` é o deles).
+#[derive(Clone)]
+pub struct ImageSource {
+    pub bytes: Arc<[u8]>,
+    pub mime: &'static str,
+    pub size: [u32; 2],
+}
+
+impl std::fmt::Debug for ImageSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ImageSource({}, {} B, {:?})", self.mime, self.bytes.len(), self.size)
+    }
 }
 
 /// Uma corrida de glifos de uma fonte, e o TEXTO que ela mostra (o PDF devolve-o à busca e à cópia).
@@ -93,6 +132,26 @@ impl VectorScene {
             transform,
             brush: brush.clone(),
             path: shape.to_path(0.1),
+        });
+    }
+
+    /// ⭐ W14 — uma imagem ESTÁVEL (o Vello reusa a do atlas entre quadros) com `transform` do píxel
+    /// dela ao ecrã: a porta que grava do [`Self::draw_stable_image_transformed`].
+    pub fn draw_recorded_image(
+        &mut self,
+        image: &StableImage,
+        transform: Affine,
+        quality: ImageQuality,
+        source: Option<&ImageSource>,
+    ) {
+        self.draw_stable_image_transformed(image, transform, quality);
+        self.rec(|| {
+            DrawOp::Image(Box::new(ImageOp {
+                transform,
+                image: image.clone(),
+                quality,
+                source: source.cloned(),
+            }))
         });
     }
 

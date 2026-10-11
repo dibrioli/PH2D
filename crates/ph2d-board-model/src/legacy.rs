@@ -39,6 +39,10 @@ use v8::{ElementV8, KindV8, element_v8};
 use v9::TeamV9;
 pub(crate) use v9::read_v9;
 pub(crate) use v10::read_v10;
+#[path = "legacy_v11.rs"]
+mod v11;
+pub(crate) use v11::read_v11;
+use v11::{VersionV11, version_v11};
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]
@@ -202,6 +206,7 @@ fn read_old<E: for<'de> Deserialize<'de>>(
             doc: doc_old(b.doc, &element),
             sketch: false,
             team: Team::default(),
+            files: crate::Files::new(),
         })
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
@@ -272,6 +277,7 @@ pub(crate) fn read_v4(bytes: &[u8]) -> Result<BoardSet, String> {
             doc: doc_old(b.doc, &element_old),
             sketch: b.sketch,
             team: Team::default(),
+            files: crate::Files::new(),
         })
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
@@ -336,6 +342,7 @@ pub(crate) fn read_v5(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team: Team::default(),
+                files: crate::Files::new(),
             }
         })
         .collect();
@@ -421,6 +428,7 @@ pub(crate) fn read_v6(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team: Team::default(),
+                files: crate::Files::new(),
             }
         })
         .collect();
@@ -536,6 +544,7 @@ pub(crate) fn read_v7(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team,
+                files: crate::Files::new(),
             }
         })
         .collect();

@@ -1,0 +1,448 @@
+[
+  {
+    "angle": 0,
+    "backgroundColor": "transparent",
+    "boundElements": [],
+    "customData": {
+      "ph2d": {
+        "element": {
+          "angle": 0,
+          "deleted": false,
+          "frame": null,
+          "h": 300,
+          "id": 1,
+          "kind": {
+            "Frame": {
+              "name": "Moldura",
+              "style": {
+                "dash": "Solid",
+                "fill": null,
+                "font_size": 20,
+                "look": {
+                  "align": "Center",
+                  "cartoonist": false,
+                  "fill_style": "Solid",
+                  "letter": "Auto",
+                  "valign": "Middle"
+                },
+                "opacity": 100,
+                "round": false,
+                "sketch": false,
+                "stroke": null,
+                "stroke_width": 0.5,
+                "text_color": [
+                  30,
+                  30,
+                  30,
+                  255
+                ]
+              }
+            }
+          },
+          "nonce": 0,
+          "org": null,
+          "version": 1,
+          "w": 600,
+          "x": -20,
+          "y": -20,
+          "z": "a0"
+        }
+      }
+    },
+    "fillStyle": "solid",
+    "frameId": null,
+    "groupIds": [],
+    "height": 300,
+    "id": "ph2d-1",
+    "isDeleted": false,
+    "link": null,
+    "locked": false,
+    "name": "Moldura",
+    "opacity": 100,
+    "roughness": 0,
+    "roundness": null,
+    "seed": 151149761,
+    "strokeColor": "transparent",
+    "strokeStyle": "solid",
+    "strokeWidth": 0.5,
+    "type": "frame",
+    "updated": 1767225600000,
+    "version": 2,
+    "versionNonce": 2005129216,
+    "width": 600,
+    "x": -20,
+    "y": -20,
+    "index": "a0"
+  },
+  {
+    "angle": 0,
+    "backgroundColor": "transparent",
+    "boundElements": [],
+    "crop": null,
+    "customData": {
+      "ph2d": {
+        "element": {
+          "angle": 0,
+          "deleted": false,
+          "frame": 1,
+          "h": 80,
+          "id": 2,
+          "kind": {
+            "Image": {
+              "crop": null,
+              "file": [
+                123,
+                142,
+                44,
+                252,
+                127,
+                4,
+                65,
+                79,
+                140,
+                236,
+                206,
+                195,
+                146,
+                18,
+                183,
+                243,
+                214,
+                209,
+                253,
+                183,
+                1,
+                20,
+                17,
+                210,
+                49,
+                231,
+                16,
+                51,
+                43,
+                141,
+                162,
+                140
+              ],
+              "flip": [
+                false,
+                false
+              ],
+              "style": {
+                "dash": "Solid",
+                "fill": null,
+                "font_size": 20,
+                "look": {
+                  "align": "Center",
+                  "cartoonist": false,
+                  "fill_style": "Solid",
+                  "letter": "Auto",
+                  "valign": "Middle"
+                },
+                "opacity": 100,
+                "round": false,
+                "sketch": false,
+                "stroke": null,
+                "stroke_width": 0.5,
+                "text_color": [
+                  30,
+                  30,
+                  30,
+                  255
+                ]
+              }
+            }
+          },
+          "nonce": 0,
+          "org": null,
+          "version": 1,
+          "w": 160,
+          "x": 0,
+          "y": 0,
+          "z": "a1"
+        }
+      }
+    },
+    "fileId": "7b8e2cfc7f04414f8ceccec39212b7f3d6d1fdb7011411d231e710332b8da28c",
+    "fillStyle": "solid",
+    "frameId": "ph2d-1",
+    "groupIds": [],
+    "height": 80,
+    "id": "ph2d-2",
+    "isDeleted": false,
+    "link": null,
+    "locked": false,
+    "opacity": 100,
+    "roughness": 0,
+    "roundness": null,
+    "scale": [
+      1,
+      1
+    ],
+    "seed": 479680206,
+    "status": "saved",
+    "strokeColor": "transparent",
+    "strokeStyle": "solid",
+    "strokeWidth": 0.5,
+    "type": "image",
+    "updated": 1767225600000,
+    "version": 2,
+    "versionNonce": 356886528,
+    "width": 160,
+    "x": 0,
+    "y": 0,
+    "index": "a1"
+  },
+  {
+    "angle": 0,
+    "backgroundColor": "transparent",
+    "boundElements": [],
+    "crop": {
+      "height": 2,
+      "naturalHeight": 2,
+      "naturalWidth": 4,
+      "width": 2,
+      "x": 2,
+      "y": 0
+    },
+    "customData": {
+      "ph2d": {
+        "element": {
+          "angle": 0,
+          "deleted": false,
+          "frame": null,
+          "h": 80,
+          "id": 3,
+          "kind": {
+            "Image": {
+              "crop": {
+                "h": 2,
+                "w": 2,
+                "x": 2,
+                "y": 0
+              },
+              "file": [
+                123,
+                142,
+                44,
+                252,
+                127,
+                4,
+                65,
+                79,
+                140,
+                236,
+                206,
+                195,
+                146,
+                18,
+                183,
+                243,
+                214,
+                209,
+                253,
+                183,
+                1,
+                20,
+                17,
+                210,
+                49,
+                231,
+                16,
+                51,
+                43,
+                141,
+                162,
+                140
+              ],
+              "flip": [
+                true,
+                false
+              ],
+              "style": {
+                "dash": "Solid",
+                "fill": null,
+                "font_size": 20,
+                "look": {
+                  "align": "Center",
+                  "cartoonist": false,
+                  "fill_style": "Solid",
+                  "letter": "Auto",
+                  "valign": "Middle"
+                },
+                "opacity": 100,
+                "round": false,
+                "sketch": false,
+                "stroke": null,
+                "stroke_width": 0.5,
+                "text_color": [
+                  30,
+                  30,
+                  30,
+                  255
+                ]
+              }
+            }
+          },
+          "nonce": 0,
+          "org": null,
+          "version": 1,
+          "w": 80,
+          "x": 200,
+          "y": 0,
+          "z": "a2"
+        }
+      }
+    },
+    "fileId": "7b8e2cfc7f04414f8ceccec39212b7f3d6d1fdb7011411d231e710332b8da28c",
+    "fillStyle": "solid",
+    "frameId": null,
+    "groupIds": [],
+    "height": 80,
+    "id": "ph2d-3",
+    "isDeleted": false,
+    "link": null,
+    "locked": false,
+    "opacity": 100,
+    "roughness": 0,
+    "roundness": null,
+    "scale": [
+      -1,
+      1
+    ],
+    "seed": 1526829037,
+    "status": "saved",
+    "strokeColor": "transparent",
+    "strokeStyle": "solid",
+    "strokeWidth": 0.5,
+    "type": "image",
+    "updated": 1767225600000,
+    "version": 2,
+    "versionNonce": 155768832,
+    "width": 80,
+    "x": 200,
+    "y": 0,
+    "index": "a2"
+  },
+  {
+    "angle": 0.5,
+    "backgroundColor": "transparent",
+    "boundElements": [],
+    "crop": null,
+    "customData": {
+      "ph2d": {
+        "element": {
+          "angle": 0.5,
+          "deleted": false,
+          "frame": null,
+          "h": 80,
+          "id": 4,
+          "kind": {
+            "Image": {
+              "crop": null,
+              "file": [
+                123,
+                142,
+                44,
+                252,
+                127,
+                4,
+                65,
+                79,
+                140,
+                236,
+                206,
+                195,
+                146,
+                18,
+                183,
+                243,
+                214,
+                209,
+                253,
+                183,
+                1,
+                20,
+                17,
+                210,
+                49,
+                231,
+                16,
+                51,
+                43,
+                141,
+                162,
+                140
+              ],
+              "flip": [
+                false,
+                false
+              ],
+              "style": {
+                "dash": "Solid",
+                "fill": null,
+                "font_size": 20,
+                "look": {
+                  "align": "Center",
+                  "cartoonist": false,
+                  "fill_style": "Solid",
+                  "letter": "Auto",
+                  "valign": "Middle"
+                },
+                "opacity": 50,
+                "round": true,
+                "sketch": false,
+                "stroke": null,
+                "stroke_width": 0.5,
+                "text_color": [
+                  30,
+                  30,
+                  30,
+                  255
+                ]
+              }
+            }
+          },
+          "nonce": 0,
+          "org": null,
+          "version": 1,
+          "w": 160,
+          "x": 0,
+          "y": 120,
+          "z": "a3"
+        }
+      }
+    },
+    "fileId": "7b8e2cfc7f04414f8ceccec39212b7f3d6d1fdb7011411d231e710332b8da28c",
+    "fillStyle": "solid",
+    "frameId": null,
+    "groupIds": [],
+    "height": 80,
+    "id": "ph2d-4",
+    "isDeleted": false,
+    "link": null,
+    "locked": false,
+    "opacity": 50,
+    "roughness": 0,
+    "roundness": {
+      "type": 3
+    },
+    "scale": [
+      1,
+      1
+    ],
+    "seed": 1647545034,
+    "status": "saved",
+    "strokeColor": "transparent",
+    "strokeStyle": "solid",
+    "strokeWidth": 0.5,
+    "type": "image",
+    "updated": 1767225600000,
+    "version": 2,
+    "versionNonce": 777037824,
+    "width": 160,
+    "x": 0,
+    "y": 120,
+    "index": "a3"
+  }
+]

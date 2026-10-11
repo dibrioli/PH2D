@@ -35,6 +35,8 @@ flate2 = "1"
 ph2d-gpu = { path = "../ph2d-gpu", optional = true }
 ph2d-render = { path = "../ph2d-render", optional = true }
 png = "0.18"
+# W14 — as imagens do SVG vão embebidas num `data:` (a mesma versão que o `ph2d-board-excalidraw`).
+base64 = "0.22"
 
 [features]
 gpu = ["dep:ph2d-gpu", "dep:ph2d-render"]

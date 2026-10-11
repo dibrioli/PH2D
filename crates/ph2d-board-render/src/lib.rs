@@ -9,6 +9,7 @@
 mod facilitate;
 mod frames;
 mod grid;
+mod image;
 mod mind;
 mod note;
 mod overlay;
@@ -20,6 +21,7 @@ mod theme_ink;
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
 pub use grid::{dot_grid, grid_step_world};
+pub use image::{Decode, Images, Pixels, install_decoder, level_to_box};
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
 
@@ -87,6 +89,8 @@ pub struct RenderCache {
     pub unread: BTreeSet<ElementId>,
     /// W12 — as MINHAS notas escondidas dos outros: o texto e o olho fechado.
     pub mine_private: BTreeSet<ElementId>,
+    /// W14 — os píxeis das imagens (descodificados fora do fio do desenho).
+    pub images: Images,
 }
 
 /// ⭐ W8 — o desenho para EXPORTAR (`docs/MiroClone/06_equipa_e_saida.md` E6/E7): o papel (ou nada:
@@ -146,6 +150,7 @@ impl RenderCache {
     }
 
     fn end_frame(&mut self) {
+        self.images.end_frame();
         self.text.end_frame();
         self.frame += 1;
         self.sketch.end_frame(self.frame);
@@ -220,6 +225,7 @@ pub fn paint(
         None => ThemeInk::of(theme),
     };
     cache.sketch.ink = cache.ink;
+    cache.images.begin_frame();
     scene.push_clip(&clip);
     if cache.export.is_none() {
         scene.fill_rect(clip, token(ColorToken::Bg1, theme));
@@ -300,6 +306,15 @@ pub fn paint(
                 let (t, at) = (v * to_world(el), (board.id.0, el.id.0));
                 sketch::paint_ink(scene, &mut cache.sketch, cache.frame, at, el, ink, t);
             }
+            continue;
+        }
+        if let Some(img) = el.image() {
+            let file = board.file(img.file);
+            let export = cache.export.map(|e| e.vector);
+            image::paint(scene, &mut cache.images, el, img, file, v, theme, export);
+            let marks = badges.and_then(|(p, r)| Some((*p.totals.get(&el.id)?, r)));
+            let t = v * to_world(el);
+            facilitate::paint_marks(scene, ts, &mut cache.text, board.id.0, el, t, marks);
             continue;
         }
         let Some(shape) = el.shape() else {

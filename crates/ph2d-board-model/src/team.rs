@@ -79,6 +79,9 @@ pub struct Version {
     pub name: String,
     pub at: i64,
     pub bytes: Vec<u8>,
+    /// W14 — os ficheiros de imagem que ela mostra: os bytes ficam no quadro enquanto ela existir
+    /// ([`Board::files_in_use`]); a versão não os copia.
+    pub files: BTreeSet<crate::FileId>,
 }
 
 /// O que a equipa guarda num quadro.
@@ -332,6 +335,8 @@ struct BoardRef<'a> {
     doc: &'a BoardDoc,
     sketch: bool,
     team: &'a Team,
+    /// Sempre vazio: os bytes das imagens ficam no quadro ([`Version::files`]).
+    files: &'a crate::Files,
 }
 
 /// Os bytes de um `BoardSet` de um quadro, sem o clonar (o postcard é posicional: o MESMO desenho
@@ -356,11 +361,13 @@ impl Board {
     pub fn save_version(&mut self, name: String, at: i64) {
         let bytes = self.version_bytes();
         let id = VersionId(self.team.mint());
+        let files = self.doc.image_files();
         self.team.versions.push(Version {
             id,
             name,
             at,
             bytes,
+            files,
         });
     }
 
@@ -380,6 +387,7 @@ impl Board {
             doc: &self.doc,
             sketch: self.sketch,
             team: &kept,
+            files: &crate::Files::new(),
         }];
         let set = SetRef {
             version: crate::FORMAT_VERSION,

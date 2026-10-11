@@ -396,6 +396,10 @@ pub fn write(board: &Board) -> String {
             ElementKind::Shape(s) => shape(board, el, s, &mut out),
             ElementKind::Connector(_) => arrow(board, el, &routes, &mut out),
             ElementKind::Ink(_) => freedraw(board, el, &mut out),
+            ElementKind::Image(i) => {
+                let m = base(board, el, "image", &[]);
+                out.push(crate::image::write(board, el, i, m));
+            }
             ElementKind::Frame(f) => {
                 let mut m = base(board, el, "frame", &[]);
                 m.insert("name".into(), json!(f.name));
@@ -439,7 +443,7 @@ pub fn write(board: &Board) -> String {
         "source": "PH2D",
         "elements": out,
         "appState": { "gridSize": 20, "gridStep": 5, "gridModeEnabled": false, "viewBackgroundColor": "#ffffff" },
-        "files": {},
+        "files": crate::image::files(board, &els),
     });
     // Compacto: o Excalidraw lê-o igual, e o `customData` de cada elemento não paga a indentação.
     serde_json::to_string(&file).unwrap_or_default()

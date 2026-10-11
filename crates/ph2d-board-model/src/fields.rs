@@ -52,11 +52,13 @@ pub enum Field {
     Mind,
     Stamps,
     Seed,
+    /// W14 — o ficheiro, o recorte e o espelho de uma imagem (mudam juntos: recortar move a imagem).
+    Image,
 }
 
 impl Field {
     /// Todos, pela ordem do enum.
-    pub const ALL: [Field; 37] = [
+    pub const ALL: [Field; 38] = [
         Field::Box,
         Field::Angle,
         Field::Z,
@@ -94,6 +96,7 @@ impl Field {
         Field::Mind,
         Field::Stamps,
         Field::Seed,
+        Field::Image,
     ];
 
     /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
@@ -161,6 +164,10 @@ impl Element {
             Field::Mind => enc(&org.mind),
             Field::Stamps => enc(&org.stamps),
             Field::Seed => enc(&org.seed),
+            Field::Image => {
+                let i = self.image()?;
+                enc(&(i.file, i.crop, i.flip))
+            }
         })
     }
 
@@ -228,6 +235,11 @@ impl Element {
             Field::Mind => put(&mut self.org_mut().mind, b),
             Field::Stamps => put(&mut self.org_mut().stamps, b),
             Field::Seed => put(&mut self.org_mut().seed, b),
+            Field::Image => {
+                let i = self.image_mut()?;
+                (i.file, i.crop, i.flip) = dec(b)?;
+                Some(())
+            }
         }
     }
 

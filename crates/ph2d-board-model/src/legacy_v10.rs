@@ -6,10 +6,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Deserialize;
 
-use super::{DocOld, doc_old};
+use super::{DocOld, VersionV11, doc_old, version_v11};
 use crate::{
     Board, BoardId, BoardSet, Camera, Element, ElementId, ElementKind, FracKey, Team, Thread,
-    Version,
 };
 
 /// O `Org` dos formatos 9–10: com os votos.
@@ -71,7 +70,7 @@ pub(super) fn votes_v10(d: &DocOld<ElementV10>) -> BTreeMap<ElementId, u32> {
 #[derive(Deserialize)]
 struct TeamV10 {
     threads: Vec<Thread>,
-    versions: Vec<Version>,
+    versions: Vec<VersionV11>,
     hidden_slides: BTreeSet<ElementId>,
     next_id: u64,
 }
@@ -104,7 +103,8 @@ pub(crate) fn read_v10(bytes: &[u8]) -> Result<BoardSet, String> {
             let mut doc = doc_old(b.doc, &element_v10);
             doc.reindex();
             let t = b.team;
-            let mut team = Team::from_v10(t.threads, t.versions, t.hidden_slides, t.next_id);
+            let versions = t.versions.into_iter().map(version_v11).collect();
+            let mut team = Team::from_v10(t.threads, versions, t.hidden_slides, t.next_id);
             team.adopt_old_votes(votes);
             Board {
                 id: b.id,
@@ -113,6 +113,7 @@ pub(crate) fn read_v10(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team,
+                files: crate::Files::new(),
             }
         })
         .collect();

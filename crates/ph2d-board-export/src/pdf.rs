@@ -168,6 +168,8 @@ struct Doc {
     glyphs: Glyphs,
     /// O XObject de cada contorno de glifo já escrito (índice da cache → nome).
     glyph_forms: BTreeMap<usize, String>,
+    /// W14 — o XObject de cada imagem já escrita (os píxeis dela, pelo endereço → nome).
+    images: BTreeMap<(usize, usize), String>,
 }
 
 impl Doc {
@@ -212,6 +214,44 @@ impl Doc {
         form.finish();
         let name = format!("H{i}");
         self.glyph_forms.insert(i, name.clone());
+        self.refs.insert(name.clone(), r);
+        name
+    }
+
+    /// W14 — o XObject de uns píxeis (escrito uma vez): o RGB comprimido e, se algum píxel não é
+    /// opaco, o alfa numa `SMask`; suavizado ao ampliar (`Interpolate`, como o ecrã).
+    fn image(&mut self, img: &ph2d_vector::StableImage) -> String {
+        let px = img.rgba();
+        let key = (px.as_ptr() as usize, px.len());
+        if let Some(n) = self.images.get(&key) {
+            return n.clone();
+        }
+        let (w, h) = (img.width() as i32, img.height() as i32);
+        let rgb: Vec<u8> = px.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect();
+        let alpha: Vec<u8> = px.chunks_exact(4).map(|p| p[3]).collect();
+        let r = self.id();
+        let sm = alpha.iter().any(|&a| a < 255).then(|| self.id());
+        let packed = deflate(&rgb);
+        let mut im = self.pdf.image_xobject(r, &packed);
+        im.filter(Filter::FlateDecode);
+        im.width(w).height(h).bits_per_component(8);
+        im.color_space().device_rgb();
+        im.interpolate(true);
+        if let Some(sm) = sm {
+            im.s_mask(sm);
+        }
+        im.finish();
+        if let Some(sm) = sm {
+            let packed = deflate(&alpha);
+            let mut m = self.pdf.image_xobject(sm, &packed);
+            m.filter(Filter::FlateDecode);
+            m.width(w).height(h).bits_per_component(8);
+            m.color_space().device_gray();
+            m.interpolate(true);
+            m.finish();
+        }
+        let name = format!("I{}", self.images.len());
+        self.images.insert(key, name.clone());
         self.refs.insert(name.clone(), r);
         name
     }
@@ -425,6 +465,19 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> (Vec<u8>, BTre
                 }
                 c.end_marked_content();
             }
+            DrawOp::Image(op) => {
+                let name = doc.image(&op.image);
+                let (w, h) = (f64::from(op.image.width()), f64::from(op.image.height()));
+                let top = stack.last_mut().expect("a página");
+                top.used.insert(name.clone());
+                let c = &mut top.content;
+                c.save_state();
+                cm(c, op.transform);
+                // O quadrado unitário da imagem sobe; os píxeis descem: a linha 0 fica em cima.
+                c.transform([f(w), 0.0, 0.0, f(-h), 0.0, f(h)]);
+                c.x_object(Name(name.as_bytes()));
+                c.restore_state();
+            }
             DrawOp::BlurredRect {
                 transform,
                 rect,
@@ -486,6 +539,7 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
         groups: 0,
         glyphs: Glyphs::default(),
         glyph_forms: BTreeMap::new(),
+        images: BTreeMap::new(),
     };
     let (catalog, tree, font) = (doc.id(), doc.id(), doc.id());
     let page_ids: Vec<Ref> = pages.iter().map(|_| doc.id()).collect();

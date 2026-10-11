@@ -11,13 +11,14 @@
 
 mod bind;
 mod embed;
+mod image;
 mod legacy_focus;
 mod read;
 mod style;
 mod write;
 
 pub use embed::scene_from_bytes;
-pub use read::{Import, read};
+pub use read::{Import, read, read_with};
 pub use write::write;
 
 use ph2d_board_model::{Head, Rgba};
@@ -130,6 +131,9 @@ pub(crate) fn letter_of(family: Option<u64>) -> ph2d_board_model::Letter {
 #[cfg(test)]
 #[path = "fidelity_tests.rs"]
 mod fidelity_tests;
+#[cfg(test)]
+#[path = "image_tests.rs"]
+mod image_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

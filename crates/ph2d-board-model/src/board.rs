@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{BoardDoc, Team};
+use crate::{BoardDoc, Files, Team};
 
 /// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a,
 /// e as anteriores continuam a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1);
@@ -14,8 +14,9 @@ use crate::{BoardDoc, Team};
 /// apresentação, W8); 9 = o aspecto que vem do Excalidraw (`Style::look`: preenchimento, rugosidade 2,
 /// alinhamento e letra do texto; `Org::seed`: a semente do tremor, W9); 10 = a identidade das
 /// mensagens e das versões da equipa (`Message::id`, `Version::id`, W11 — ADR-0181); 11 = o histórico
-/// das votações (`Team::polls`, `Team::shown`) e o elemento sem `Org::votes` (W13 — ADR-0183).
-pub const FORMAT_VERSION: u32 = 11;
+/// das votações (`Team::polls`, `Team::shown`) e o elemento sem `Org::votes` (W13 — ADR-0183); 12 = as
+/// imagens (`Board::files`, `Version::files`, `ElementKind::Image`, W14).
+pub const FORMAT_VERSION: u32 = 12;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -51,6 +52,8 @@ pub struct Board {
     pub sketch: bool,
     /// W8 — comentários, versões e frames fora da apresentação ([`Team`]).
     pub team: Team,
+    /// W14 — os bytes das imagens, uma vez por conteúdo (`image.rs`). Grava-se só o que está em uso.
+    pub files: Files,
 }
 
 /// Todos os quadros do projecto, na ordem das abas.
@@ -111,6 +114,7 @@ impl BoardSet {
             doc: BoardDoc::default(),
             sketch: false,
             team: Team::default(),
+            files: Files::new(),
         });
         id
     }
@@ -151,7 +155,8 @@ impl BoardSet {
     }
 
     /// Restaura uma versão (R3): um quadro NOVO logo à direita de `after`, com o documento e o rascunho
-    /// dela e nada da equipa. `None` se `after` não existe.
+    /// dela e nada da equipa — e os ficheiros de imagem que ela mostra, tirados de `after` (uma versão
+    /// não guarda bytes: o quadro guarda-os enquanto ela existir). `None` se `after` não existe.
     pub fn insert_after(
         &mut self,
         after: BoardId,
@@ -162,6 +167,13 @@ impl BoardSet {
         let at = self.boards.iter().position(|b| b.id == after)?;
         self.next_id += 1;
         let id = BoardId(self.next_id);
+        let used = doc.image_files();
+        let files = self.boards[at]
+            .files
+            .iter()
+            .filter(|(k, _)| used.contains(k))
+            .map(|(k, v)| (*k, v.clone()))
+            .collect();
         self.boards.insert(
             at + 1,
             Board {
@@ -171,6 +183,7 @@ impl BoardSet {
                 doc,
                 sketch,
                 team: Team::default(),
+                files,
             },
         );
         Some(id)
@@ -198,12 +211,48 @@ impl BoardSet {
         Ok(b)
     }
 
-    /// Os bytes do campo `boards` do projecto.
+    /// Os bytes do campo `boards` do projecto. De cada quadro só vão os ficheiros de imagem em uso
+    /// ([`Board::files_in_use`]): uma imagem apagada deixa de pesar no projecto ao gravar.
     ///
     /// # Errors
     /// Só se o postcard falhar a serializar (não acontece com estes tipos).
     pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
-        postcard::to_allocvec(self).map_err(|e| e.to_string())
+        /// O MESMO desenho de campos que [`Board`] (gate `the_saved_set_is_the_set_with_its_files_in_use`).
+        #[derive(Serialize)]
+        struct BoardOut<'a> {
+            id: BoardId,
+            name: &'a str,
+            camera: Camera,
+            doc: &'a BoardDoc,
+            sketch: bool,
+            team: &'a Team,
+            files: crate::image::Kept<'a>,
+        }
+        #[derive(Serialize)]
+        struct SetOut<'a> {
+            version: u32,
+            boards: Vec<BoardOut<'a>>,
+            next_id: u64,
+        }
+        let boards = self
+            .boards
+            .iter()
+            .map(|b| BoardOut {
+                id: b.id,
+                name: &b.name,
+                camera: b.camera,
+                doc: &b.doc,
+                sketch: b.sketch,
+                team: &b.team,
+                files: crate::image::Kept::of(&b.files, &b.files_in_use()),
+            })
+            .collect();
+        let set = SetOut {
+            version: self.version,
+            boards,
+            next_id: self.next_id,
+        };
+        postcard::to_allocvec(&set).map_err(|e| e.to_string())
     }
 
     /// Lê o que [`Self::to_bytes`] escreveu. Bytes vazios = projecto sem quadros.
@@ -235,6 +284,7 @@ impl BoardSet {
             8 => crate::legacy::read_v8(bytes),
             9 => crate::legacy::read_v9(bytes),
             10 => crate::legacy::read_v10(bytes),
+            11 => crate::legacy::read_v11(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

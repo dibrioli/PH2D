@@ -62,6 +62,8 @@ pub enum ElementKind {
     Ink(Box<Ink>),
     /// Um frame (W5): leva os filhos, tem nome e cor, fica atrás dos objectos.
     Frame(Frame),
+    /// Uma imagem (W14): os bytes vivem no quadro ([`crate::Board::files`]); a caixa é a dela.
+    Image(Box<crate::Image>),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -338,6 +340,28 @@ impl Element {
         Self::bare(id, z, ElementKind::Ink(Box::new(ink)), [x, y, w, h])
     }
 
+    /// Uma imagem nova na caixa `[x, y, w, h]`.
+    #[must_use]
+    pub fn new_image(id: ElementId, z: FracKey, image: crate::Image, bx: [f64; 4]) -> Self {
+        Self::bare(id, z, ElementKind::Image(Box::new(image)), bx)
+    }
+
+    /// A imagem, se é uma.
+    #[must_use]
+    pub fn image(&self) -> Option<&crate::Image> {
+        match &self.kind {
+            ElementKind::Image(i) => Some(i),
+            _ => None,
+        }
+    }
+
+    pub fn image_mut(&mut self) -> Option<&mut crate::Image> {
+        match &mut self.kind {
+            ElementKind::Image(i) => Some(i),
+            _ => None,
+        }
+    }
+
     /// O traço da caneta, se é um.
     #[must_use]
     pub fn ink(&self) -> Option<&Ink> {
@@ -454,6 +478,7 @@ impl Element {
             ElementKind::Connector(c) => &c.style,
             ElementKind::Ink(i) => &i.style,
             ElementKind::Frame(f) => &f.style,
+            ElementKind::Image(i) => &i.style,
         }
     }
 
@@ -463,6 +488,7 @@ impl Element {
             ElementKind::Connector(c) => &mut c.style,
             ElementKind::Ink(i) => &mut i.style,
             ElementKind::Frame(f) => &mut f.style,
+            ElementKind::Image(i) => &mut i.style,
         }
     }
 
@@ -470,7 +496,10 @@ impl Element {
     /// presas seguem a forma.
     pub fn translate(&mut self, d: [f64; 2]) {
         match &mut self.kind {
-            ElementKind::Shape(_) | ElementKind::Ink(_) | ElementKind::Frame(_) => {
+            ElementKind::Shape(_)
+            | ElementKind::Ink(_)
+            | ElementKind::Frame(_)
+            | ElementKind::Image(_) => {
                 self.x += d[0];
                 self.y += d[1];
             }

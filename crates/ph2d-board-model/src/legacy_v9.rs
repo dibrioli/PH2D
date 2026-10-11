@@ -77,6 +77,7 @@ impl From<TeamV9> for Team {
                 name: v.name,
                 at: v.at,
                 bytes: v.bytes,
+                files: BTreeSet::new(),
             });
         }
         team
@@ -119,6 +120,7 @@ pub(crate) fn read_v9(bytes: &[u8]) -> Result<BoardSet, String> {
                 doc,
                 sketch: b.sketch,
                 team,
+                files: crate::Files::new(),
             }
         })
         .collect();

@@ -148,6 +148,7 @@ pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4]
         num(h)
     );
     let mut next = 0usize;
+    let mut images = Images::default();
     for op in ops {
         match op {
             DrawOp::Fill {
@@ -199,6 +200,7 @@ pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4]
                 let _ = writeln!(out, "<g clip-path=\"url(#c{next})\"{op}>");
             }
             DrawOp::Pop => out.push_str("</g>\n"),
+            DrawOp::Image(op) => images.place(&mut out, op),
             DrawOp::Glyphs(run) => {
                 let before = glyphs.len();
                 let placed = glyphs.place(run);
@@ -276,6 +278,60 @@ pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4]
         );
     }
     out.push_str("</svg>\n");
+    out
+}
+
+/// W14 — as imagens: cada ficheiro definido UMA vez (`<image>` em `<defs>`, os bytes como chegaram
+/// num `data:`; sem MIME, o nível em PNG), cada desenho um `<use>` com o afim do píxel natural.
+#[derive(Default)]
+struct Images {
+    defined: std::collections::BTreeMap<(usize, usize), usize>,
+}
+
+impl Images {
+    fn place(&mut self, out: &mut String, op: &ph2d_vector::ImageOp) {
+        use base64::Engine as _;
+        let b64 = |b: &[u8]| base64::engine::general_purpose::STANDARD.encode(b);
+        let level = [op.image.width(), op.image.height()];
+        let (key, size, t) = match &op.source {
+            Some(s) => {
+                let k = Affine::scale_non_uniform(
+                    f64::from(level[0]) / f64::from(s.size[0].max(1)),
+                    f64::from(level[1]) / f64::from(s.size[1].max(1)),
+                );
+                ((s.bytes.as_ptr() as usize, s.bytes.len()), s.size, op.transform * k)
+            }
+            None => {
+                let px = op.image.rgba();
+                ((px.as_ptr() as usize, px.len()), level, op.transform)
+            }
+        };
+        let n = self.defined.len();
+        let id = *self.defined.entry(key).or_insert_with(|| {
+            let href = match &op.source {
+                Some(s) => format!("data:{};base64,{}", s.mime, b64(&s.bytes)),
+                None => format!("data:image/png;base64,{}", b64(&png_of(&op.image))),
+            };
+            let _ = writeln!(
+                out,
+                "<defs><image id=\"i{n}\" width=\"{}\" height=\"{}\" preserveAspectRatio=\"none\" xlink:href=\"{href}\"/></defs>",
+                size[0], size[1]
+            );
+            n
+        });
+        let _ = writeln!(out, "<use xlink:href=\"#i{id}\"{}/>", transform(t));
+    }
+}
+
+/// Os píxeis de um nível em PNG (a imagem cujos bytes não são de um MIME que o SVG mostra).
+fn png_of(img: &ph2d_vector::StableImage) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut e = png::Encoder::new(&mut out, img.width(), img.height());
+    e.set_color(png::ColorType::Rgba);
+    e.set_depth(png::BitDepth::Eight);
+    if let Ok(mut w) = e.write_header() {
+        let _ = w.write_image_data(img.rgba());
+    }
     out
 }
 

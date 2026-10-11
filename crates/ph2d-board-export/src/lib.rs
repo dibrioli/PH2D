@@ -249,5 +249,8 @@ pub fn paint_page(
 }
 
 #[cfg(test)]
+#[path = "image_tests.rs"]
+mod image_tests;
+#[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

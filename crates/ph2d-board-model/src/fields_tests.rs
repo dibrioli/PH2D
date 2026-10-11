@@ -110,18 +110,33 @@ fn pairs() -> Vec<(Element, Element)> {
         name: name.into(),
         style: st,
     };
+    let image = |st: Style, rich: bool| {
+        let mut i = crate::Image::new(crate::FileId([u8::from(rich); 32]), st);
+        if rich {
+            i.crop = Some(crate::Crop {
+                x: 1.0,
+                y: 2.0,
+                w: 3.0,
+                h: 4.0,
+            });
+            i.flip = [true, true];
+        }
+        i
+    };
     let bx = [0.0, 0.0, 10.0, 10.0];
     let plain = [
         Element::new_shape(ID, z0(), shape(plain_style(), ShapeType::Rectangle, ""), bx),
         Element::new_connector(ID, z0(), conn(plain_style(), false)),
         Element::new_ink(ID, z0(), ink(plain_style(), false), bx),
         Element::new_frame(ID, z0(), frame(plain_style(), ""), bx),
+        Element::new_image(ID, z0(), image(plain_style(), false), bx),
     ];
     let rich = [
         Element::new_shape(ID, z0(), shape(rich_style(), ShapeType::Hexagon, "olá"), bx),
         Element::new_connector(ID, z0(), conn(rich_style(), true)),
         Element::new_ink(ID, z0(), ink(rich_style(), true), bx),
         Element::new_frame(ID, z0(), frame(rich_style(), "F"), bx),
+        Element::new_image(ID, z0(), image(rich_style(), true), bx),
     ]
     .map(|mut el| {
         (el.x, el.y, el.w, el.h) = (1.5, -2.5, 30.0, 40.0);
@@ -231,6 +246,15 @@ fn every_field_of_the_model_is_named_here() {
                 style
             }
             ElementKind::Frame(Frame { name: _, style }) => style,
+            ElementKind::Image(i) => {
+                let crate::Image {
+                    file: _,
+                    style,
+                    crop: _,
+                    flip: _,
+                } = &**i;
+                style
+            }
         };
         let Style {
             fill: _,

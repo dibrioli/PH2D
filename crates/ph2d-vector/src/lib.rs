@@ -38,7 +38,7 @@ mod atlas_probe_pieces_tests;
 #[cfg(test)]
 mod atlas_probe_tests;
 
-pub use record::{DrawOp, GlyphRun, GlyphStyle};
+pub use record::{DrawOp, GlyphRun, GlyphStyle, ImageOp, ImageSource};
 pub use resolve_cost::{ResolveSize, SceneResolver};
 pub use scene::{CLIPPED_IMAGE_INFO_WORDS, StableImage, VELLO_BIN_DATA_WORDS, VectorScene};
 pub use vector_network::{

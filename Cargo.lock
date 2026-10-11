@@ -5403,6 +5403,7 @@ dependencies = [
 name = "ph2d-board-export"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "flate2",
  "pdf-writer",
  "ph2d-board-edit",
@@ -5447,6 +5448,7 @@ dependencies = [
  "flate2",
  "postcard",
  "serde",
+ "sha2",
 ]
 
 [[package]]

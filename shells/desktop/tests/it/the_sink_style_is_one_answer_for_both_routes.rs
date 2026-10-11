@@ -433,3 +433,18 @@ fn as_formas_do_motion_vao_a_camada_filtrada() {
         "a shell deixou de pedir ao Motion a cena das formas (a camada filtrada)"
     );
 }
+
+/// ⭐ **COM FILTROS, O MOTION SAI DO PASSE FUNDIDO** (ciclo 20 W3) — as sprites dele vão à camada
+/// filtrada e não ao passe de sprites; sem isto eram desenhadas DUAS vezes (por baixo, sem filtro, e
+/// na camada). Gate de TEXTO pela razão dos irmãos (mutação Q23 da W5, sem arnês).
+#[test]
+fn com_filtros_o_motion_sai_do_passe_fundido() {
+    const PRESENT: &str = include_str!("../../src/render_loop/present.rs");
+    assert_eq!(
+        PRESENT
+            .matches("motion.sprites_da_camada(motion_active && !filtrada)")
+            .count(),
+        1,
+        "o passe fundido deixou de tirar o Motion quando a camada filtrada corre"
+    );
+}

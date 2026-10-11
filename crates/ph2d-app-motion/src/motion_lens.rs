@@ -130,8 +130,7 @@ impl MotionLente {
             passe.carrega_lut(gpu, cubo);
             self.geracao_na_placa = geracao;
         }
-        let (w, h) = mundo.size();
-        let rect = scene_viewport.map_or([0, 0, w, h], rect_em_pixels);
+        let rect = quadro_da_cena(mundo.size(), scene_viewport);
         passe.aplica(
             gpu,
             mundo.texture(),
@@ -153,6 +152,13 @@ impl MotionLente {
         };
         Some(frase(e))
     }
+}
+
+/// **O quadro onde a lente e os filtros da camada trabalham**: a área da CENA (o que o artista vê
+/// por baixo dos painéis), ou o alvo inteiro sem ela.
+#[must_use]
+pub(crate) fn quadro_da_cena((w, h): (u32, u32), scene_viewport: Option<[f32; 4]>) -> [u32; 4] {
+    scene_viewport.map_or([0, 0, w, h], rect_em_pixels)
 }
 
 /// O viewport da cena (pixels do alvo, já inteiros pelo `floor` do split) como sub-rect.

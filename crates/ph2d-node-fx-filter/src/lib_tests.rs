@@ -264,6 +264,14 @@ fn the_stack_splits_at_the_first_whole_layer() {
         "um Whole Layer à cabeça = tudo na camada"
     );
     assert_eq!(na_camada_apesar_do_scope(&pilha), vec![b, d]);
+    // Sem nenhum `Whole Layer`: a pilha INTEIRA corre por forma.
+    for no in [a, c] {
+        g.set_param(no, param::SCOPE, 0.0);
+    }
+    let pilha = from_graph(&g);
+    let (forma, camada) = partition(&pilha);
+    assert_eq!(forma.len(), 4, "sem `Whole Layer`, tudo em `Each Shape`");
+    assert!(camada.is_empty());
 }
 
 /// A matiz do cartão é em graus; a `FxOp` guarda voltas. O modo vem do param do tipo escolhido.
@@ -304,4 +312,25 @@ fn it_registers_as_a_device_passthrough() {
     use ph2d_nodegraph::gpu::KernelResolver as _;
     assert!(reg().gpu_kernel(MANIFEST.id).is_some());
     assert_eq!(MANIFEST.effect, Effect::Pure);
+}
+
+/// ⭐ **Trocar de tipo escreve as cores DELE como o cartão as guarda, e elas voltam ao bit** (doc 129
+/// §5.5): o cartão guarda luz LINEAR (`card_color`) e a leitura devolve a sRGB (`read_color`) — sem
+/// a ida, uma cor de meio-tom chegava escurecida. O controlo: algum tipo tem um canal de meio-tom
+/// (nos extremos 0 e 1 a transferência é a identidade e nada se mediria).
+#[test]
+fn every_kind_keeps_its_default_colours_through_the_card() {
+    let mut meio_tom = false;
+    for k in 0..FxOp::KINDS {
+        #[expect(clippy::cast_possible_truncation, reason = "15 tipos")]
+        let kind = k as u8;
+        let (mut g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
+        switch_kind(&mut g, ids[1], kind);
+        let (lido, nasce) = (op_of(&g, ids[1]), FxOp::new(kind));
+        for (c, (a, b)) in lido.color.iter().zip(nasce.color).enumerate() {
+            assert!((a - b).abs() < 1e-5, "tipo {k}, canal {c}: {a} contra {b}");
+            meio_tom |= c < 3 && b > 0.02 && b < 0.98;
+        }
+    }
+    assert!(meio_tom, "controlo: nenhum tipo tem cor de meio-tom");
 }

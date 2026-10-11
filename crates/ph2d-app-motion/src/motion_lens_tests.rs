@@ -123,3 +123,28 @@ fn the_same_file_is_read_once() {
     l.prepara(&g, 3);
     assert_eq!(l.geracoes, 2, "outro caminho relê");
 }
+
+/// ⭐ **O grão anda com o RELÓGIO** (doc 129 §3.2): o tique do quadro chega à lente — e dá a volta
+/// nos 32 bits da semente, sem deixar de andar.
+#[test]
+fn the_grain_follows_the_frame_tick() {
+    let (g, _) = grafo();
+    let mut l = MotionLente::default();
+    l.prepara(&g, 7);
+    assert_eq!(l.tique, 7);
+    l.prepara(&g, 8);
+    assert_eq!(l.tique, 8, "o tique seguinte muda a semente do grão");
+    l.prepara(&g, (1u64 << 32) + 5);
+    assert_eq!(l.tique, 5, "a volta dos 32 bits");
+}
+
+/// ⭐ **A lente e a camada trabalham na área da CENA** (doc 129 §6, «o retângulo onde o mundo se
+/// renderiza não é o que o artista vê»): com o viewport da cena, o quadro é ele; sem, o alvo inteiro.
+#[test]
+fn the_lens_frame_is_the_scene_not_the_window() {
+    assert_eq!(
+        quadro_da_cena((1600, 972), Some([310.0, 90.0, 980.0, 430.0])),
+        [310, 90, 980, 430]
+    );
+    assert_eq!(quadro_da_cena((1600, 972), None), [0, 0, 1600, 972]);
+}

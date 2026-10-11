@@ -494,10 +494,7 @@ impl MotionState {
         }
         // A pilha só no que se VÊ: o retângulo da cena, alargado pelo que ela lê e espalha (doc
         // 129 §5.7 — a 4K, 2,01 → 0,77 ms).
-        let (w, h) = tamanho;
-        let cena = e
-            .scene_viewport
-            .map_or([0, 0, w, h], crate::motion_lens::rect_em_pixels);
+        let cena = crate::motion_lens::quadro_da_cena(tamanho, e.scene_viewport);
         let rect = ph2d_render::retangulo_da_camada(cena, tamanho, &ops_camada);
         if rect[2] == 0 || rect[3] == 0 {
             return true;

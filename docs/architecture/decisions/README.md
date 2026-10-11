@@ -196,10 +196,11 @@
 | [0180](0180-as-procuras-de-caminho-a-meio-avancam-em-paralelo.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | As procuras de caminho A MEIO avançam em paralelo: exceção `rayon` na ponte da física |
 | [0181](0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O quadro ao vivo FUNDE POR CAMPO, e o transporte é uma porta |
 | [0182](0182-o-que-e-de-uma-pessoa-mora-no-cofre-do-anfitriao.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O que é de UMA pessoa mora no COFRE do anfitrião até alguém mandar revelar |
+| [0183](0183-o-historico-das-votacoes-e-um-instantaneo-da-equipa.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O histórico das votações é um INSTANTÂNEO na equipa do quadro, e o selo deriva da sessão mostrada |
 
 ---
 
-**187 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**188 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

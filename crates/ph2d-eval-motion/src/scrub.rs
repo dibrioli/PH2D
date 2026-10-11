@@ -179,10 +179,19 @@ impl MotionCookPump {
         playhead_of: impl Fn(u64) -> f64,
         scopes: &TimeScopes,
     ) -> bool {
-        let forward = match self.last_cooked_tick {
-            None => tick == 0,
-            Some(last) => tick == last || tick == last + 1,
-        };
+        // A rota caiu da placa a meio: o estado (e o anel) são só do cone — re-simula da semente.
+        let inteiro = matches!(target, CookTarget::Sinks { .. });
+        let ressincroniza = inteiro && self.so_o_cone;
+        if ressincroniza {
+            self.last_cooked_tick = None;
+            self.ring.clear();
+        }
+        self.so_o_cone = !inteiro;
+        let forward = !ressincroniza
+            && match self.last_cooked_tick {
+                None => tick == 0,
+                Some(last) => tick == last || tick == last + 1,
+            };
         if forward {
             let playhead = playhead_of(tick);
             self.pump_target_scoped(graph, ops, target, tick, playhead, scopes)

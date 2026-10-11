@@ -15,9 +15,9 @@
 //! logo as tomadas viam estados diferentes consoante se tocava ou se arrastava a régua, e o custo
 //! que a cura tirou voltava em cada scrub.
 //!
-//! ⚠️ **Declarado:** o estado de um laço fora do cone NÃO se guarda na CPU (é do dispositivo). Se a
-//! rota cair da placa para a CPU a meio, esse laço recomeça do tique em que caiu — a mesma
-//! propriedade que a rota totalmente-na-placa sempre teve.
+//! ⚠️ O estado de um laço fora do cone NÃO se guarda na CPU (é do dispositivo). Se a rota cair da
+//! placa para a CPU a meio, a bomba re-simula da semente até ao tique (o `so_o_cone` da bomba, 11/10)
+//! — antes, o laço recomeçava ali e a cena SALTAVA.
 
 use crate::MotionCookPump;
 use crate::cook_target::CookTarget;

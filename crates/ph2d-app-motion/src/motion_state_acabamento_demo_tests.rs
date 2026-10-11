@@ -326,3 +326,80 @@ fn turning_the_layer_on_in_the_same_tick_relowers() {
         "a camada ligou no mesmo tique e as formas ficaram com o modo antigo"
     );
 }
+
+/// ⭐⭐ **A rota cai da placa a meio e a cena NÃO salta** (11/10, report do dono: ligar o `Collide`
+/// mudava a imagem) — a `=135` corre na placa (híbrida) até ao quadro 90, onde a saída passa a `Add`
+/// com tudo (a recusa do grupo manda-a à CPU). Cada quadro tem de ser o da MESMA edição feita numa
+/// corrida toda na CPU. ⚠️ O controlo: o salto que a cura apaga é muito maior que a barra.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn the_scene_does_not_jump_when_the_route_leaves_the_device() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        return;
+    };
+    let corre = |placa: bool| -> (Vec<Vec<[f32; 2]>>, Vec<&'static str>) {
+        let mut m = MotionState::new();
+        m.gpu_enabled = placa;
+        let cena = monta(&mut m.doc, &m.registry).expect("a cena");
+        m.sinks = vec![cena.saida];
+        let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
+        let mut rotas = Vec::new();
+        let quadros = (1..=150u64)
+            .map(|k| {
+                if k == 90 {
+                    m.doc
+                        .graph
+                        .set_param(cena.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+                    m.pump.mark_dirty();
+                }
+                #[expect(clippy::cast_precision_loss, reason = "um quadro")]
+                playhead.seek(k as f64 / 60.0);
+                crate::motion_bridge::quadro::coze_o_quadro(&mut m, &gpu, &playhead, 1.0 / 60.0);
+                rotas.push(m.route_said.unwrap_or(""));
+                let na_placa = m.pump.vector_instances.is_empty() && m.gpu_cook.formas().is_some();
+                if na_placa {
+                    let w = ph2d_gpu_cook::read_formas(&gpu, m.gpu_cook.formas().expect("placa"));
+                    w.chunks(16)
+                        .map(|c| [f32::from_bits(c[0]), f32::from_bits(c[1])])
+                        .collect()
+                } else {
+                    m.pump
+                        .vector_instances
+                        .iter()
+                        .map(|v| v.world_pos)
+                        .collect()
+                }
+            })
+            .collect();
+        (quadros, rotas)
+    };
+    let pior = |a: &[[f32; 2]], b: &[[f32; 2]]| -> f32 {
+        assert_eq!(a.len(), b.len());
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| (p[0] - q[0]).hypot(p[1] - q[1]))
+            .fold(0.0, f32::max)
+    };
+    let (placa, rotas) = corre(true);
+    let (cpu, _) = corre(false);
+    assert!(
+        rotas[88].starts_with("device"),
+        "até ao 89 a cena corre na placa: {}",
+        rotas[88]
+    );
+    assert!(
+        rotas[89].starts_with("CPU"),
+        "o 90 cai para a CPU: {}",
+        rotas[89]
+    );
+    let passo = pior(&cpu[60], &cpu[61]);
+    for k in [88usize, 89, 90, 119, 149] {
+        let d = pior(&placa[k], &cpu[k]);
+        eprintln!(
+            "q{}: placa→CPU contra CPU {d:.6} (um passo normal {passo:.6})",
+            k + 1
+        );
+        assert!(d < 1e-4, "q{}: a cena saltou {d} ao cair da placa", k + 1);
+    }
+    assert!(passo > 1e-3, "controlo: a cena anda");
+}

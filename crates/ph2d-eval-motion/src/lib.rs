@@ -199,6 +199,12 @@ pub struct MotionCookPump {
     /// CENÁRIO (`Scene`) não agrupa — as cópias juntam-se em `Normal` na camada e o modo aplica-se
     /// quando ela pousa. Ver [`Self::isola_na_camada`].
     camada_isolada: bool,
+    /// ⭐ **O último cozimento marchou só o CONE da rota híbrida** (`marcha.rs`): os laços fora dele são
+    /// do dispositivo e a CPU não tem o estado deles — nem o anel, que guardou esse estado parcial.
+    /// A 1.ª vez que a bomba volta a cozer o grafo INTEIRO (a rota caiu da placa a meio) re-simula do
+    /// tique 0 até ao alvo, em vez de avançar um laço a partir da semente (o salto medido em 11/10:
+    /// `0,86` de uma vez, contra `0,011` por quadro).
+    so_o_cone: bool,
 }
 
 mod cook_target;
@@ -252,6 +258,7 @@ impl MotionCookPump {
             ultimo_relatorio: ph2d_contact::passe::Relatorio::default(),
             so_com_forma: false,
             camada_isolada: false,
+            so_o_cone: false,
         }
     }
 

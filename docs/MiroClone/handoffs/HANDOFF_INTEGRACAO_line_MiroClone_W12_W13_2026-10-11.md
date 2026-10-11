@@ -16,7 +16,7 @@
 | base (merge-base) | `8f20c60de` (o `main` de 11/10) — se o `main` não andou, `--ff-only` |
 | commits | 22 sobre a base (`git log --oneline 8f20c60de..HEAD`): W12 `cf254345d` … `4e0283c19` (9), a continuação W13 `a78d56b3f`, a W13 `02f3fc596` … `38cd3d860` (10) e este handoff |
 | diff em `crates/` | `git diff --shortstat 8f20c60de..HEAD -- crates/`: 96 ficheiros, +7 756 / −681 (só a W13: 71 ficheiros, +3 059 / −516) |
-| smoke | W12: **OK do dono** (11/10). W13: **por fazer** (§8); a cena 14 foi vista por fotografia, 11 estados (§7) |
+| smoke | W12: **OK do dono** (11/10). W13 + acabamentos (§12): **OK do dono** (11/10, cena 14: a coluna numa janela baixa e a sala que fecha ao apagar a aba) |
 
 O que a W13 trouxe (escolha do dono 11/10, depois do smoke OK da W12: *«o histórico das votações, como o Miro»* + as
 duas pontas abertas da W12):
@@ -145,7 +145,7 @@ PH2D_BOARD_SMOKE=9  ./target/smoke/ph2d-host-desktop      # a votação de um ec
 
 ## 9. O que fica ABERTO
 
-- **Smoke do dono da W13** (cena 14). O da W11 (descoberta e firewall num 2.º computador) continua por fazer.
+- ~~Smoke do dono da W13~~ — OK 11/10. O da W11 (descoberta e firewall num 2.º computador) continua por fazer.
 - Decisões registadas, não defeitos: apagar a sessão de maior número deixa reusar o «Voting N»; o «Voting N» de duas sessões
   acabadas ao mesmo tempo em pares diferentes pode mudar de número quando uma delas se apaga (`label_number` é do conjunto);
   o fim de uma votação não se desfaz (o lixo é o caminho, ADR-0183 §6).

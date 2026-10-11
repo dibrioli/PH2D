@@ -134,7 +134,8 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
     // ⚠️ O número é MEDIDO, não escolhido: ele é a soma das linhas de 16 bytes que o `vec4` do
     // `tint` impõe. E é ele que obrigou o `UNIFORM_STRIDE` a 512 — dobrá-lo foi medido em **2,345
     // ms contra 2,332** no mesmo frame de 32 formas, ou seja **grátis**.
-    assert_eq!(core::mem::size_of::<Globals>(), 304);
+    // + os 16 do `aux` da PIRÂMIDE do borrão (ciclo 20 W3b do Motion): 320.
+    assert_eq!(core::mem::size_of::<Globals>(), 320);
     assert!(
         core::mem::size_of::<Globals>() as u64 <= crate::fx_stack::UNIFORM_STRIDE,
         "o `Globals` não cabe no stride — o offset dinâmico de um passe pisaria no do seguinte"

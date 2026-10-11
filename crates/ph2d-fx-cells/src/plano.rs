@@ -38,7 +38,8 @@ pub struct Pagina {
 
 /// O conteúdo de uma instância em pixels inteiros: a caixa para fora, mais um de folga.
 fn conteudo(c: &Caixa) -> Option<[i32; 4]> {
-    let ok = c.lo.iter().chain(&c.hi).all(|v| v.is_finite()) && c.lo[0] <= c.hi[0] && c.lo[1] <= c.hi[1];
+    let ok =
+        c.lo.iter().chain(&c.hi).all(|v| v.is_finite()) && c.lo[0] <= c.hi[0] && c.lo[1] <= c.hi[1];
     #[expect(clippy::cast_possible_truncation, reason = "pixels de ecrã")]
     ok.then(|| {
         [
@@ -76,7 +77,12 @@ pub fn planeia(caixas: &[Caixa], janela: [u32; 2], margem: u32, lado_max: u32) -
     #[expect(clippy::cast_sign_loss, reason = "x1 ≥ x0")]
     let tamanhos: Vec<(u32, u32)> = vivas
         .iter()
-        .map(|(_, r)| (((r[2] - r[0]) + 2 * m + 1) as u32, ((r[3] - r[1]) + 2 * m + 1) as u32))
+        .map(|(_, r)| {
+            (
+                ((r[2] - r[0]) + 2 * m + 1) as u32,
+                ((r[3] - r[1]) + 2 * m + 1) as u32,
+            )
+        })
         .collect();
     pack_in_order(&tamanhos, lado_max)
         .into_iter()

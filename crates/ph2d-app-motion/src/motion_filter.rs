@@ -211,7 +211,10 @@ pub fn origem_do_mundo(
     scene_viewport: Option<[f32; 4]>,
 ) -> [f32; 2] {
     let [_, _, _, _, e, f] = ph2d_fx_cells::afim_das_sprites(camera, window, scene_viewport);
-    #[expect(clippy::cast_possible_truncation, reason = "pixels de ecrã cabem num f32")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "pixels de ecrã cabem num f32"
+    )]
     [e as f32, f as f32]
 }
 
@@ -275,7 +278,12 @@ impl MotionState {
                 gpu_sprites,
                 e.scene_viewport,
             );
-            colagem.blit(e.gpu, &alvos.camada_view, &alvos.linear, BandSource::Sprites);
+            colagem.blit(
+                e.gpu,
+                &alvos.camada_view,
+                &alvos.linear,
+                BandSource::Sprites,
+            );
             if let Some(formas) = e.formas.and_then(|p| p.camada()) {
                 colagem.blit(e.gpu, &alvos.camada_view, formas, BandSource::Formas);
             }
@@ -287,7 +295,9 @@ impl MotionState {
                 );
                 ph2d_fx_cells::Celulas::new(e.gpu, passe)
             });
-            celulas.formas_mut().set_geometries(e.gpu, geometrias.prontas());
+            celulas
+                .formas_mut()
+                .set_geometries(e.gpu, geometrias.prontas());
             if let Some(p) = e.formas {
                 p.afina(celulas.formas_mut());
             }
@@ -315,7 +325,15 @@ impl MotionState {
         }
         let (w, h) = tamanho;
         let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
-        pilha.run_layer(e.gpu, &alvos.camada, &alvos.saida, w, h, &ops_camada, origem);
+        pilha.run_layer(
+            e.gpu,
+            &alvos.camada,
+            &alvos.saida,
+            w,
+            h,
+            &ops_camada,
+            origem,
+        );
         e.band_blit.blit(
             e.gpu,
             e.mundo.blend_view(),

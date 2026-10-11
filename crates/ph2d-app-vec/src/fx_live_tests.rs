@@ -280,10 +280,11 @@ fn the_world_radius_becomes_pixels_through_the_camera() {
     );
 }
 
-/// **O deslocamento da sombra também cruza a câmera** (é um vetor de mundo), e chega ao passe em
-/// pixels INTEIROS — o halo é amostrado por `textureLoad`, sem sampler.
+/// **O deslocamento da sombra também cruza a câmera** (é um vetor de mundo), e chega ao passe
+/// SUB-PIXEL — a gaussiana deslocada e o campo interpolado (doc 129 §5.5 A7 do Motion; antes
+/// arredondava ao pixel inteiro e a luz do bevel saltava ao dar zoom-out).
 #[test]
-fn the_shadow_offset_crosses_the_camera_and_lands_on_whole_pixels() {
+fn the_shadow_offset_crosses_the_camera_at_subpixel_precision() {
     let f = VecFilter {
         ops: vec![FxOp {
             offset: [0.1, -0.25],
@@ -291,10 +292,9 @@ fn the_shadow_offset_crosses_the_camera_and_lands_on_whole_pixels() {
         }],
     };
     let at10 = resolve_ops(&f, Affine::scale(10.0))[0].offset_px;
-    assert_eq!(
-        at10,
-        [1, -3],
-        "0.1 e -0.25 de mundo a 10× dão 1 e -2.5 px, arredondados ao pixel"
+    assert!(
+        (at10[0] - 1.0).abs() < 1e-5 && (at10[1] + 2.5).abs() < 1e-5,
+        "0.1 e -0.25 de mundo a 10× dão 1 e -2.5 px, sem arredondar: {at10:?}"
     );
 }
 

@@ -59,9 +59,9 @@ use ph2d_gpu::GpuContext;
 
 use crate::fx_stack_field::FIELD_WGSL;
 use crate::fx_stack_noise::{NOISE_WGSL, WARP_WGSL};
-use crate::fx_stack_piramide::{PIRAMIDE_WGSL, sigma_baixo};
 pub use crate::fx_stack_piramide::SIGMA_ALCANCAVEL;
-use crate::fx_stack_res::{Globals, Tex, make_tex, write_at};
+use crate::fx_stack_piramide::{PIRAMIDE_WGSL, escreve_piramide};
+use crate::fx_stack_res::{Globals, Tex, dispatch, write_at};
 use crate::fx_stack_shader::{
     FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, kind_consts_wgsl,
 };
@@ -82,7 +82,7 @@ pub const MAX_HALF: u32 = 96;
 /// máquina**; o teto de stops teria nascido errado se eu não a tivesse repetido.
 pub(crate) const UNIFORM_STRIDE: u64 = 512;
 
-pub use crate::fx_stack_op::FxOpGpu;
+pub use crate::fx_stack_op::{FxOpGpu, Origem};
 use crate::fx_stack_plan::plan_of;
 pub use crate::fx_stack_plan::{
     jump_count, kernel_half, op_reach, op_read, stack_reach, stack_read,
@@ -119,36 +119,23 @@ impl Plan {
     }
 }
 
-/// **De onde o padrão do ruído (a turbulência) se ancora** — doc 129 §5.5 A6.
-#[derive(Clone, Copy)]
-pub enum Origem<'a> {
-    /// A margem da pilha: a caixa da FORMA (o Vector, uma forma por corrida).
-    Margem,
-    /// Um ponto da imagem, em pixels — a camada inteira do Motion: o pixel da origem do MUNDO, e o
-    /// padrão anda com a câmera.
-    Ponto([f32; 2]),
-    /// POR TEXEL (`Rgba32Float`, `.xy`, do tamanho da imagem): as células do átlas, cada uma com o
-    /// pixel da âncora da SUA instância — o padrão anda com a forma.
-    Mapa(&'a wgpu::TextureView),
-}
-
 /// O passe da pilha. Pipelines build-once; as três texturas de trabalho (ping/pong/mid) são
 /// **grow-only** — uma cena com formas de tamanhos diferentes não realoca por forma por frame.
 pub struct FxStackPass {
     pipeline_ingest: wgpu::ComputePipeline,
-    pipeline_h: wgpu::ComputePipeline,
+    pub(crate) pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
     /// A pirâmide do borrão: a média 2×2, o vertical sem fecho, a volta com o fecho.
-    pipeline_halve: wgpu::ComputePipeline,
-    pipeline_v_only: wgpu::ComputePipeline,
-    pipeline_up: wgpu::ComputePipeline,
+    pub(crate) pipeline_halve: wgpu::ComputePipeline,
+    pub(crate) pipeline_v_only: wgpu::ComputePipeline,
+    pub(crate) pipeline_up: wgpu::ComputePipeline,
     pipeline_point: wgpu::ComputePipeline,
     pipeline_warp: wgpu::ComputePipeline,
     pipeline_seed: wgpu::ComputePipeline,
     pipeline_jump: wgpu::ComputePipeline,
     pipeline_field: wgpu::ComputePipeline,
     pipeline_out: wgpu::ComputePipeline,
-    bgl_mid: wgpu::BindGroupLayout,
+    pub(crate) bgl_mid: wgpu::BindGroupLayout,
     bgl_out: wgpu::BindGroupLayout,
     globals: wgpu::Buffer,
     globals_cap: u64,
@@ -399,7 +386,18 @@ impl FxStackPass {
         ops: &[FxOpGpu],
         geom: &[[f32; 4]],
     ) {
-        self.run_with(gpu, src, src_org, dst, w, h, ops, geom, false, Origem::Margem);
+        self.run_with(
+            gpu,
+            src,
+            src_org,
+            dst,
+            w,
+            h,
+            ops,
+            geom,
+            false,
+            Origem::Margem,
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -432,38 +430,7 @@ impl FxStackPass {
         // Os globals de TODOS os passes, escritos de uma vez e indexados por offset dinâmico.
         let mut blob = vec![0u8; total_slots * UNIFORM_STRIDE as usize];
         // O ingest e o resolve só precisam saber as dimensões — nenhum lê tint, sigma ou banda.
-        let edges = Globals {
-            dims: [w, h],
-            half: 1,
-            kind: 0,
-            tint: [0.0; 4],
-            inv_two_sigma2: 1.0,
-            opacity: 1.0,
-            off_x: 0.0,
-            off_y: 0.0,
-            jump: 0,
-            band: 1.0,
-            n_segs: 0,
-            blend: 0,
-            noise_scale: 1.0,
-            octaves: 1,
-            seed: 0,
-            mode: 0,
-            org: [0.0, 0.0],
-            grow_px: 0.0,
-            org_map: 0,
-            hue: 0.0,
-            sat: 0.0,
-            bright: 0.0,
-            _pad2: [0.0],
-            tint_b: [0.0; 4],
-            src_org: [0, 0],
-            stop_count: 0,
-            src_premul: 0,
-            stops: [[0.0; 4]; 8],
-            stop_pos: [[0.0; 4]; 2],
-            aux: [0; 4],
-        };
+        let edges = Globals::bordas([w, h]);
         // ⚠️ O INGEST leva a origem da célula; o RESOLVE, não. Os dois compartilham este `edges`
         // porque nenhum lê tint/sigma/banda — mas o resolve lê `work[cur]`, que já é local, e
         // dar-lhe a origem seria escrever um número que ninguém lê hoje e que o próximo leitor
@@ -605,27 +572,8 @@ impl FxStackPass {
                     slot += 1;
                 }
                 Plan::Blur { niveis } if niveis > 0 => {
-                    // A cadeia de baixo vive em `work[2]`/`work[3]` (do tamanho da imagem: cabe).
-                    let mut a = 2usize;
-                    let mut d = [w, h];
-                    for k in 1..=niveis {
-                        d = crate::fx_stack_piramide::dims_do_nivel([w, h], k);
-                        let (de, para) = if k == 1 { (input, 2) } else { (&work[a].view, 5 - a) };
-                        let bg = self.bind(gpu, &self.bgl_mid, de, de, &work[para].view);
-                        let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
-                        dispatch(&mut encoder, &self.pipeline_halve, &bg, slot, x, y);
-                        slot += 1;
-                        a = para;
-                    }
-                    let b = 5 - a;
-                    let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
-                    let bg_h = self.bind(gpu, &self.bgl_mid, &work[a].view, &work[a].view, &work[b].view);
-                    dispatch(&mut encoder, &self.pipeline_h, &bg_h, slot, x, y);
-                    let bg_v = self.bind(gpu, &self.bgl_mid, &work[b].view, &work[b].view, &work[a].view);
-                    dispatch(&mut encoder, &self.pipeline_v_only, &bg_v, slot + 1, x, y);
-                    let bg_up = self.bind(gpu, &self.bgl_mid, input, &work[a].view, &work[next].view);
-                    dispatch(&mut encoder, &self.pipeline_up, &bg_up, slot + 2, gx, gy);
-                    slot += 3;
+                    let rede = (input, &work[next].view, [w, h], [gx, gy]);
+                    slot = self.despacha_piramide(gpu, &mut encoder, work, rede, niveis, slot);
                 }
                 Plan::Blur { .. } => {
                     let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
@@ -670,7 +618,7 @@ impl FxStackPass {
         gpu.queue.submit([encoder.finish()]);
     }
 
-    fn bind(
+    pub(crate) fn bind(
         &self,
         gpu: &GpuContext,
         layout: &wgpu::BindGroupLayout,
@@ -710,114 +658,20 @@ impl FxStackPass {
         })
     }
 
-    /// Sobe os segmentos da silhueta. **Grow-only**, como as `work` — uma cena com formas de
-    /// complexidades diferentes não paga uma realocação por forma por frame.
-    ///
-    /// ⚠️ O buffer NUNCA encolhe a zero: um `storage` de tamanho 0 é binding inválido, e o layout
-    /// exige a entrada mesmo nos passes que não a leem. Sem geometria o shader olha `n_segs == 0`
-    /// e cai no caminho da cobertura — o buffer fica lá, intocado.
     fn ensure_segments(&mut self, gpu: &GpuContext, geom: &[[f32; 4]]) {
-        if geom.is_empty() {
-            return;
-        }
-        let need = std::mem::size_of_val(geom) as u64;
-        if need > self.segs_cap {
-            self.segs_cap = need.next_power_of_two();
-            self.segs = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ph2d-render fx_stack segments"),
-                size: self.segs_cap,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-        gpu.queue
-            .write_buffer(&self.segs, 0, bytemuck::cast_slice(geom));
+        crate::fx_stack_res::ensure_segments(gpu, &mut self.segs, &mut self.segs_cap, geom);
     }
 
-    /// As texturas de trabalho, **grow-only**: uma cena com formas de tamanhos diferentes não
-    /// paga uma realocação por forma por frame. O shader escreve só `dims`, então uma textura
-    /// maior que a região é inofensiva.
     fn ensure_work(&mut self, gpu: &GpuContext, w: u32, h: u32) {
-        let big = matches!(&self.work, Some(t) if t[0].w >= w && t[0].h >= h);
-        if big {
-            return;
-        }
-        let (nw, nh) = match &self.work {
-            Some(t) => (t[0].w.max(w), t[0].h.max(h)),
-            None => (w, h),
-        };
-        let f = wgpu::TextureFormat::Rgba16Float;
-        self.work = Some([
-            make_tex(gpu, nw, nh, f),
-            make_tex(gpu, nw, nh, f),
-            make_tex(gpu, nw, nh, f),
-            make_tex(gpu, nw, nh, f),
-        ]);
+        crate::fx_stack_res::ensure_work(gpu, &mut self.work, w, h);
     }
 
     fn ensure_globals(&mut self, gpu: &GpuContext, total_slots: usize) {
         let need = (total_slots as u64) * UNIFORM_STRIDE;
-        if need <= self.globals_cap {
-            return;
-        }
-        self.globals = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-render fx_stack globals"),
-            size: need,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        self.globals_cap = need;
+        crate::fx_stack_res::ensure_uniform(gpu, &mut self.globals, &mut self.globals_cap, need);
     }
-}
-
-fn dispatch(
-    encoder: &mut wgpu::CommandEncoder,
-    pipeline: &wgpu::ComputePipeline,
-    bg: &wgpu::BindGroup,
-    slot: u32,
-    gx: u32,
-    gy: u32,
-) {
-    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-        label: Some("ph2d-render fx_stack pass"),
-        timestamp_writes: None,
-    });
-    pass.set_pipeline(pipeline);
-    pass.set_bind_group(0, bg, &[slot * UNIFORM_STRIDE as u32]);
-    pass.dispatch_workgroups(gx, gy, 1);
 }
 
 #[cfg(test)]
 #[path = "fx_stack_tests.rs"]
 mod tests;
-
-/// Os globals da PIRÂMIDE (`niveis` reduções · H · V · a volta) a partir de `slot`; devolve o slot
-/// seguinte. O deslocamento é dividido pelo fator (o A7 tornou-o fraccionário: cabe).
-fn escreve_piramide(blob: &mut [u8], mut slot: usize, g: Globals, dims: [u32; 2], niveis: u32) -> usize {
-    let f = 1u32 << niveis;
-    let mut d = dims;
-    for k in 1..=niveis {
-        let entrada = d;
-        d = crate::fx_stack_piramide::dims_do_nivel(dims, k);
-        #[allow(clippy::cast_possible_wrap)]
-        let aux = [entrada[0] as i32, entrada[1] as i32, 0, i32::from(k == 1)];
-        write_at(blob, slot, &Globals { dims: d, aux, off_x: 0.0, off_y: 0.0, ..g });
-        slot += 1;
-    }
-    #[allow(clippy::cast_precision_loss)]
-    let fator = f as f32;
-    let baixo = sigma_baixo(g.band, f).max(1e-4);
-    let de_baixo = Globals {
-        dims: d,
-        half: kernel_half(baixo),
-        inv_two_sigma2: 1.0 / (2.0 * baixo * baixo),
-        aux: [0, 0, 1, 0],
-        ..g
-    };
-    write_at(blob, slot, &Globals { off_x: g.off_x / fator, off_y: 0.0, ..de_baixo });
-    write_at(blob, slot + 1, &Globals { off_x: 0.0, off_y: g.off_y / fator, ..de_baixo });
-    #[allow(clippy::cast_possible_wrap)]
-    let aux = [d[0] as i32, d[1] as i32, f as i32, 0];
-    write_at(blob, slot + 2, &Globals { aux, ..g });
-    slot + 3
-}

@@ -11,7 +11,12 @@ fn caixa(x: f32, y: f32, w: f32, h: f32) -> Caixa {
 
 /// O rectângulo do átlas que a célula ocupa (a saída transladada).
 fn no_atlas(c: &Celula) -> [i32; 4] {
-    [c.saida[0] + c.t[0], c.saida[1] + c.t[1], c.saida[2] + c.t[0], c.saida[3] + c.t[1]]
+    [
+        c.saida[0] + c.t[0],
+        c.saida[1] + c.t[1],
+        c.saida[2] + c.t[0],
+        c.saida[3] + c.t[1],
+    ]
 }
 
 /// ⭐ Entre os CONTEÚDOS de duas células da mesma página há pelo menos `2M + 1` pixels — a pilha,
@@ -21,7 +26,14 @@ fn two_cells_never_come_within_twice_the_reach() {
     let m = 7u32;
     // Uma grelha de discos a TOCAR-SE no ecrã: a camada inteira os veria como uma mancha.
     let caixas: Vec<Caixa> = (0..64)
-        .map(|i| caixa(100.0 + (i % 8) as f32 * 14.0, 80.0 + (i / 8) as f32 * 14.0, 14.0, 14.0))
+        .map(|i| {
+            caixa(
+                100.0 + (i % 8) as f32 * 14.0,
+                80.0 + (i / 8) as f32 * 14.0,
+                14.0,
+                14.0,
+            )
+        })
         .collect();
     let paginas = planeia(&caixas, [1600, 900], m, 128);
     assert!(paginas.len() > 1, "a fixtura exerce mais de uma página");
@@ -31,14 +43,22 @@ fn two_cells_never_come_within_twice_the_reach() {
         for (a, ca) in p.celulas.iter().enumerate() {
             let ra = no_atlas(ca);
             assert!(ra[0] >= 0 && ra[1] >= 0, "dentro da página");
-            assert!(ra[2] as u32 <= p.tamanho[0] && ra[3] as u32 <= p.tamanho[1], "dentro da página");
+            assert!(
+                ra[2] as u32 <= p.tamanho[0] && ra[3] as u32 <= p.tamanho[1],
+                "dentro da página"
+            );
             for cb in &p.celulas[a + 1..] {
                 let rb = no_atlas(cb);
                 // O conteúdo é a saída sem a margem; a distância entre conteúdos ≥ 2M + 1.
                 let m = m as i32;
                 let gx = (rb[0] + m - (ra[2] - m)).max(ra[0] + m - (rb[2] - m));
                 let gy = (rb[1] + m - (ra[3] - m)).max(ra[1] + m - (rb[3] - m));
-                assert!(gx.max(gy) >= 2 * m + 1, "células {a} e {} a {} px", cb.instancia, gx.max(gy));
+                assert!(
+                    gx.max(gy) > 2 * m,
+                    "células {a} e {} a {} px",
+                    cb.instancia,
+                    gx.max(gy)
+                );
             }
         }
     }
@@ -47,9 +67,14 @@ fn two_cells_never_come_within_twice_the_reach() {
 /// As páginas são trechos CONTÍGUOS e na ordem — a volta, página a página, preserva a ordem de z.
 #[test]
 fn pages_keep_the_z_order() {
-    let caixas: Vec<Caixa> = (0..40).map(|i| caixa(10.0 * i as f32, 20.0, 30.0, 30.0)).collect();
+    let caixas: Vec<Caixa> = (0..40)
+        .map(|i| caixa(10.0 * i as f32, 20.0, 30.0, 30.0))
+        .collect();
     let paginas = planeia(&caixas, [1600, 900], 10, 200);
-    let ordem: Vec<u32> = paginas.iter().flat_map(|p| p.celulas.iter().map(|c| c.instancia)).collect();
+    let ordem: Vec<u32> = paginas
+        .iter()
+        .flat_map(|p| p.celulas.iter().map(|c| c.instancia))
+        .collect();
     assert_eq!(ordem, (0..40).collect::<Vec<u32>>());
 }
 
@@ -75,7 +100,10 @@ fn what_cannot_reach_the_window_gets_no_cell() {
         ..Caixa::default()
     };
     let p = planeia(&[fora, a_tocar, vazia], [800, 600], 6, 512);
-    let vivas: Vec<u32> = p.iter().flat_map(|p| p.celulas.iter().map(|c| c.instancia)).collect();
+    let vivas: Vec<u32> = p
+        .iter()
+        .flat_map(|p| p.celulas.iter().map(|c| c.instancia))
+        .collect();
     assert_eq!(vivas, vec![1]);
 }
 

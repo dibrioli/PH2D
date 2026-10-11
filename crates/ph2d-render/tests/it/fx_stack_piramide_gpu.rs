@@ -74,10 +74,18 @@ fn the_pyramid_blur_of_a_step_is_the_normal_cdf() {
         let parado = (0..W)
             .map(|x| (lei(x, H / 2, f64::from(sigma)) - lei(x, H / 2, 32.0)).abs())
             .fold(0.0f64, f64::max);
-        eprintln!("[pirâmide] σ {sigma}: desvio {d:.2} níveis · a lei antiga (σ 32) desviaria {parado:.1}");
-        assert!(d <= 2.0, "σ {sigma}: o degrau borrado desvia {d:.2} níveis de Φ");
+        eprintln!(
+            "[pirâmide] σ {sigma}: desvio {d:.2} níveis · a lei antiga (σ 32) desviaria {parado:.1}"
+        );
+        assert!(
+            d <= 2.0,
+            "σ {sigma}: o degrau borrado desvia {d:.2} níveis de Φ"
+        );
         if sigma > 32.0 {
-            assert!(parado > 20.0, "controlo: a saturação seria visível ({parado:.1})");
+            assert!(
+                parado > 20.0,
+                "controlo: a saturação seria visível ({parado:.1})"
+            );
         }
     }
 }

@@ -69,8 +69,14 @@ fn the_layer_noise_is_anchored_to_the_world() {
     camera.center[1] += 1.0;
     let o1 = origem_do_mundo(&camera, janela, vp);
     let k = 500.0 / 10.0;
-    assert!((o0[0] - (100.0 + 300.0)).abs() < 1e-3 && (o0[1] - (40.0 + 250.0)).abs() < 1e-3, "{o0:?}");
-    assert!((o1[0] - o0[0] + k).abs() < 1e-3 && (o1[1] - o0[1] - k).abs() < 1e-3, "{o0:?} → {o1:?}");
+    assert!(
+        (o0[0] - (100.0 + 300.0)).abs() < 1e-3 && (o0[1] - (40.0 + 250.0)).abs() < 1e-3,
+        "{o0:?}"
+    );
+    assert!(
+        (o1[0] - o0[0] + k).abs() < 1e-3 && (o1[1] - o0[1] - k).abs() < 1e-3,
+        "{o0:?} → {o1:?}"
+    );
 }
 
 /// ⚠️ A camada não atravessa o tonemap. Hoje ele é `clamp` (bypass) e a conta fecha; se o AgX
@@ -104,23 +110,48 @@ fn the_filter_labels_are_unique_where_they_meet() {
         .collect();
     let id = ph2d_node_fx_filter::MANIFEST.id;
     let nome = ph2d_i18n::tr(reg.ui_manifest(id).expect("ficha").display_key).to_lowercase();
-    let iguais: Vec<&str> = nomes.iter().filter(|(n, _)| *n == nome).map(|(_, t)| *t).collect();
-    assert_eq!(iguais, vec![ph2d_node_fx_filter::TYPE_NAME], "o nome «{nome}» repete-se");
+    let iguais: Vec<&str> = nomes
+        .iter()
+        .filter(|(n, _)| *n == nome)
+        .map(|(_, t)| *t)
+        .collect();
+    assert_eq!(
+        iguais,
+        vec![ph2d_node_fx_filter::TYPE_NAME],
+        "o nome «{nome}» repete-se"
+    );
     let fichas = reg.param_ui(id).expect("fichas");
-    let mut linhas: Vec<String> = fichas.iter().map(|h| ph2d_i18n::tr(h.label).to_lowercase()).collect();
-    assert!(!linhas.contains(&nome), "uma linha do cartão diz o nome do nó: {linhas:?}");
+    let mut linhas: Vec<String> = fichas
+        .iter()
+        .map(|h| ph2d_i18n::tr(h.label).to_lowercase())
+        .collect();
+    assert!(
+        !linhas.contains(&nome),
+        "uma linha do cartão diz o nome do nó: {linhas:?}"
+    );
     linhas.sort();
     let n = linhas.len();
     linhas.dedup();
     assert_eq!(linhas.len(), n, "duas linhas do cartão com o mesmo rótulo");
-    for h in fichas.iter().filter(|h| h.param == ph2d_node_fx_filter::param::KIND) {
+    for h in fichas
+        .iter()
+        .filter(|h| h.param == ph2d_node_fx_filter::param::KIND)
+    {
         let ParamWidget::Enum { labels } = h.widget else {
             continue;
         };
         for chave in labels {
             let opcao = ph2d_i18n::tr(chave).to_lowercase();
-            let outro: Vec<&str> = nomes.iter().filter(|(n, _)| *n == opcao).map(|(_, t)| *t).collect();
-            assert!(outro.is_empty(), "a opção «{opcao}» de `{}` é o nome do nó {outro:?}", h.param);
+            let outro: Vec<&str> = nomes
+                .iter()
+                .filter(|(n, _)| *n == opcao)
+                .map(|(_, t)| *t)
+                .collect();
+            assert!(
+                outro.is_empty(),
+                "a opção «{opcao}» de `{}` é o nome do nó {outro:?}",
+                h.param
+            );
         }
     }
 }

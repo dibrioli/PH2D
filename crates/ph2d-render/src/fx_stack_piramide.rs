@@ -9,7 +9,11 @@
 //! Gate: `the_pyramid_blur_of_a_step_is_the_normal_cdf` (o oráculo é a lei: o borrão gaussiano de
 //! um degrau é `Φ(x/σ)`).
 
+use crate::fx_stack::FxStackPass;
 use crate::fx_stack::MAX_HALF;
+use crate::fx_stack_plan::kernel_half;
+use crate::fx_stack_res::{Globals, Tex, dispatch, write_at};
+use ph2d_gpu::GpuContext;
 
 /// O σ (px) acima do qual o borrão desce na pirâmide — o que o kernel percorre com suporte de 3σ.
 #[allow(clippy::cast_precision_loss)]
@@ -119,3 +123,115 @@ fn cs_op_up(@builtin(global_invocation_id) id: vec3<u32>) {
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), compose_blur(id, mix(top, bot, fr.y)));
 }
 ";
+
+/// Os globals da PIRÂMIDE (`niveis` reduções · H · V · a volta) a partir de `slot`; devolve o slot
+/// seguinte. O deslocamento é dividido pelo fator (o A7 tornou-o fraccionário: cabe).
+pub(crate) fn escreve_piramide(
+    blob: &mut [u8],
+    mut slot: usize,
+    g: Globals,
+    dims: [u32; 2],
+    niveis: u32,
+) -> usize {
+    let f = 1u32 << niveis;
+    let mut d = dims;
+    for k in 1..=niveis {
+        let entrada = d;
+        d = crate::fx_stack_piramide::dims_do_nivel(dims, k);
+        #[allow(clippy::cast_possible_wrap)]
+        let aux = [entrada[0] as i32, entrada[1] as i32, 0, i32::from(k == 1)];
+        write_at(
+            blob,
+            slot,
+            &Globals {
+                dims: d,
+                aux,
+                off_x: 0.0,
+                off_y: 0.0,
+                ..g
+            },
+        );
+        slot += 1;
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let fator = f as f32;
+    let baixo = sigma_baixo(g.band, f).max(1e-4);
+    let de_baixo = Globals {
+        dims: d,
+        half: kernel_half(baixo),
+        inv_two_sigma2: 1.0 / (2.0 * baixo * baixo),
+        aux: [0, 0, 1, 0],
+        ..g
+    };
+    write_at(
+        blob,
+        slot,
+        &Globals {
+            off_x: g.off_x / fator,
+            off_y: 0.0,
+            ..de_baixo
+        },
+    );
+    write_at(
+        blob,
+        slot + 1,
+        &Globals {
+            off_x: 0.0,
+            off_y: g.off_y / fator,
+            ..de_baixo
+        },
+    );
+    #[allow(clippy::cast_possible_wrap)]
+    let aux = [d[0] as i32, d[1] as i32, f as i32, 0];
+    write_at(blob, slot + 2, &Globals { aux, ..g });
+    slot + 3
+}
+
+/// A entrada da pirâmide: a imagem, a saída do degrau, as dimensões e os grupos do despacho.
+pub(crate) type Rede<'a> = (
+    &'a wgpu::TextureView,
+    &'a wgpu::TextureView,
+    [u32; 2],
+    [u32; 2],
+);
+
+impl FxStackPass {
+    /// O despacho da PIRÂMIDE: as `niveis` reduções (a cadeia de baixo vive em `work[2]`/`work[3]`,
+    /// do tamanho da imagem: cabe), o H e o V lá em baixo, e a volta com o fecho. Devolve o slot
+    /// seguinte — em lockstep com o [`escreve_piramide`].
+    pub(crate) fn despacha_piramide(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        work: &[Tex; 4],
+        (input, saida, [w, h], [gx, gy]): Rede<'_>,
+        niveis: u32,
+        mut slot: u32,
+    ) -> u32 {
+        let mut a = 2usize;
+        let mut d = [w, h];
+        for k in 1..=niveis {
+            d = dims_do_nivel([w, h], k);
+            let (de, para) = if k == 1 {
+                (input, 2)
+            } else {
+                (&work[a].view, 5 - a)
+            };
+            let bg = self.bind(gpu, &self.bgl_mid, de, de, &work[para].view);
+            let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
+            dispatch(encoder, &self.pipeline_halve, &bg, slot, x, y);
+            slot += 1;
+            a = para;
+        }
+        let b = 5 - a;
+        let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
+        let (va, vb) = (&work[a].view, &work[b].view);
+        let bg_h = self.bind(gpu, &self.bgl_mid, va, va, vb);
+        dispatch(encoder, &self.pipeline_h, &bg_h, slot, x, y);
+        let bg_v = self.bind(gpu, &self.bgl_mid, vb, vb, va);
+        dispatch(encoder, &self.pipeline_v_only, &bg_v, slot + 1, x, y);
+        let bg_up = self.bind(gpu, &self.bgl_mid, input, va, saida);
+        dispatch(encoder, &self.pipeline_up, &bg_up, slot + 2, gx, gy);
+        slot + 3
+    }
+}

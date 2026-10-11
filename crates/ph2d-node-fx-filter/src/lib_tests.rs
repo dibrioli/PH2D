@@ -145,13 +145,17 @@ fn every_param_has_a_hint_or_is_a_colour_channel() {
 fn the_dropped_filter_is_the_vectors_blur() {
     let (g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
     assert_eq!(op_of(&g, ids[1]), FxOp::new(FxOp::BLUR));
-    assert_eq!(from_graph(&g)[0].scope, Scope::EachShape, "nasce em cada forma");
+    assert_eq!(
+        from_graph(&g)[0].scope,
+        Scope::EachShape,
+        "nasce em cada forma"
+    );
 }
 
 /// Igual a menos do arredondamento da ida-e-volta da cor (linear ↔ sRGB em `f32`).
 fn same_op(a: &FxOp, b: &FxOp) -> bool {
     let perto = |x: &[f32], y: &[f32]| x.iter().zip(y).all(|(p, q)| (p - q).abs() < 1e-5);
-    let (mut a2, mut b2) = (a.clone(), b.clone());
+    let (mut a2, mut b2) = (*a, *b);
     let cores = perto(&a.color, &b.color)
         && perto(&a.color_b, &b.color_b)
         && perto(a.stops.as_flattened(), b.stops.as_flattened());
@@ -171,11 +175,19 @@ fn a_kind_chosen_on_the_card_is_the_vectors_new() {
         let (mut g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
         switch_kind(&mut g, ids[1], k);
         let op = op_of(&g, ids[1]);
-        assert!(same_op(&op, &FxOp::new(k)), "{}: {op:?}", FxOp::kind_name(k));
+        assert!(
+            same_op(&op, &FxOp::new(k)),
+            "{}: {op:?}",
+            FxOp::kind_name(k)
+        );
     }
     let (mut g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
     g.set_param(ids[1], param::KIND, f32::from(FxOp::GLOW));
-    assert_eq!(op_of(&g, ids[1]).color, [0.0, 0.0, 0.0, 1.0], "controlo: o glow preto");
+    assert_eq!(
+        op_of(&g, ids[1]).color,
+        [0.0, 0.0, 0.0, 1.0],
+        "controlo: o glow preto"
+    );
 }
 
 /// O que o artista mexeu SOBREVIVE à troca; o que não mexeu segue o tipo novo — ida e volta.
@@ -188,7 +200,11 @@ fn switching_kind_keeps_what_the_artist_moved() {
     switch_kind(&mut g, no, FxOp::INNER_SHADOW);
     let op = op_of(&g, no);
     assert!((op.radius - 0.3).abs() < 1e-6, "o raio mexido fica");
-    assert_eq!(op.offset, FxOp::new(FxOp::INNER_SHADOW).offset, "o deslocamento segue o tipo");
+    assert_eq!(
+        op.offset,
+        FxOp::new(FxOp::INNER_SHADOW).offset,
+        "o deslocamento segue o tipo"
+    );
     assert!((op.opacity - FxOp::new(FxOp::INNER_SHADOW).opacity).abs() < 1e-6);
     switch_kind(&mut g, no, FxOp::DROP_SHADOW);
     assert_eq!(op_of(&g, no).offset, FxOp::new(FxOp::DROP_SHADOW).offset);
@@ -209,16 +225,30 @@ fn a_card_colour_reaches_the_op_as_the_artist_sees_it() {
     }
     let op = op_of(&g, no);
     for v in &op.color[..3] {
-        assert!((v - cinza).abs() < 1e-5, "sRGB 128 chega como {}", v * 255.0);
+        assert!(
+            (v - cinza).abs() < 1e-5,
+            "sRGB 128 chega como {}",
+            v * 255.0
+        );
     }
-    assert!((lin - cinza).abs() > 0.2, "controlo: a fixtura move-se pela transferência");
+    assert!(
+        (lin - cinza).abs() > 0.2,
+        "controlo: a fixtura move-se pela transferência"
+    );
 }
 
 /// ⭐ **A pilha parte-se no primeiro `Whole Layer`** (doc 129 §3.4): o prefixo `Each Shape` corre
 /// por forma; um `Each Shape` depois dele corre na camada e é nomeado para o cartão o dizer.
 #[test]
 fn the_stack_splits_at_the_first_whole_layer() {
-    let tipos = ["source.grid", TYPE_NAME, TYPE_NAME, TYPE_NAME, TYPE_NAME, "motion.output"];
+    let tipos = [
+        "source.grid",
+        TYPE_NAME,
+        TYPE_NAME,
+        TYPE_NAME,
+        TYPE_NAME,
+        "motion.output",
+    ];
     let (mut g, ids) = cadeia(&tipos);
     let [a, b, c, d] = [ids[1], ids[2], ids[3], ids[4]];
     g.set_param(c, param::SCOPE, 1.0);
@@ -229,7 +259,10 @@ fn the_stack_splits_at_the_first_whole_layer() {
     assert_eq!(na_camada_apesar_do_scope(&pilha), vec![d]);
     g.set_param(a, param::SCOPE, 1.0);
     let pilha = from_graph(&g);
-    assert!(partition(&pilha).0.is_empty(), "um Whole Layer à cabeça = tudo na camada");
+    assert!(
+        partition(&pilha).0.is_empty(),
+        "um Whole Layer à cabeça = tudo na camada"
+    );
     assert_eq!(na_camada_apesar_do_scope(&pilha), vec![b, d]);
 }
 

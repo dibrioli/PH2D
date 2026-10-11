@@ -104,3 +104,16 @@ impl FxOpGpu {
         }
     }
 }
+
+/// **De onde o padrão do ruído (a turbulência) se ancora** — doc 129 §5.5 A6.
+#[derive(Clone, Copy)]
+pub enum Origem<'a> {
+    /// A margem da pilha: a caixa da FORMA (o Vector, uma forma por corrida).
+    Margem,
+    /// Um ponto da imagem, em pixels — a camada inteira do Motion: o pixel da origem do MUNDO, e o
+    /// padrão anda com a câmera.
+    Ponto([f32; 2]),
+    /// POR TEXEL (`Rgba32Float`, `.xy`, do tamanho da imagem): as células do átlas, cada uma com o
+    /// pixel da âncora da SUA instância — o padrão anda com a forma.
+    Mapa(&'a wgpu::TextureView),
+}

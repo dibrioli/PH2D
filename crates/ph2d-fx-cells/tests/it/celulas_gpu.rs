@@ -12,7 +12,9 @@ use ph2d_render::{
     BandBlit, BandSource, Camera2d, FxOpGpu, FxStackPass, Origem, RenderInstance, SpriteRenderer,
     TextureAtlas, make_output_texture,
 };
-use ph2d_shape_gpu::{Copias, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView};
+use ph2d_shape_gpu::{
+    Copias, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView,
+};
 use ph2d_vector::{Circle, Shape};
 
 const W: u32 = 400;
@@ -101,7 +103,9 @@ fn le(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
-    let mut enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     enc.copy_texture_to_buffer(
         tex.as_image_copy(),
         wgpu::TexelCopyBufferInfo {
@@ -139,7 +143,11 @@ fn sombra_interna(contorno: bool) -> FxOpGpu {
         tint: [0.0, 0.0, 0.0, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,
-        mode: if contorno { FxOp::MODE_CONTOUR } else { FxOp::MODE_PROXIMITY },
+        mode: if contorno {
+            FxOp::MODE_CONTOUR
+        } else {
+            FxOp::MODE_PROXIMITY
+        },
         blend: 0,
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
@@ -185,7 +193,9 @@ impl Banca {
         let b = self.gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: std::mem::size_of_val(v) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         self.gpu.queue.write_buffer(&b, 0, bytemuck::cast_slice(v));
@@ -231,7 +241,10 @@ impl Banca {
             gpu: &self.gpu,
             renderer: &mut self.renderer,
             camera: &cam,
-            window: WindowSize { width: W, height: H },
+            window: WindowSize {
+                width: W,
+                height: H,
+            },
             scene_viewport: None,
             sprites,
             formas: Some(Formas {
@@ -245,7 +258,8 @@ impl Banca {
             tamanho: (W, H),
         });
         let out = make_output_texture(&self.gpu, W, H);
-        self.pilha.run_layer(&self.gpu, &camada, &out, W, H, &[], Origem::Margem);
+        self.pilha
+            .run_layer(&self.gpu, &camada, &out, W, H, &[], Origem::Margem);
         le(&self.gpu, &out)
     }
 
@@ -273,7 +287,10 @@ impl Banca {
         self.renderer.render_instances_only(
             &vl,
             &camera(),
-            WindowSize { width: W, height: H },
+            WindowSize {
+                width: W,
+                height: H,
+            },
             wgpu::Color::TRANSPARENT,
             cpu,
             placa.as_ref().map(|b| (b, n, &[][..])),
@@ -286,7 +303,10 @@ impl Banca {
             formas.create_view(&wgpu::TextureViewDescriptor::default()),
             camada.create_view(&wgpu::TextureViewDescriptor::default()),
         );
-        let mut enc = self.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut enc = self
+            .gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         #[expect(clippy::cast_possible_truncation, reason = "poucas cópias")]
         self.placa.draw(
             &self.gpu,
@@ -319,7 +339,8 @@ impl Banca {
         self.colagem.blit(&self.gpu, &vc, &vl, BandSource::Sprites);
         self.colagem.blit(&self.gpu, &vc, &vf, BandSource::Formas);
         let out = make_output_texture(&self.gpu, W, H);
-        self.pilha.run_layer(&self.gpu, &camada, &out, W, H, ops, Origem::Margem);
+        self.pilha
+            .run_layer(&self.gpu, &camada, &out, W, H, ops, Origem::Margem);
         le(&self.gpu, &out)
     }
 }
@@ -380,7 +401,10 @@ fn a_surrounded_shape_gets_the_same_effect_as_alone() {
             );
             assert!(n > 50, "o miolo tem texels");
             assert!(d <= 1, "a forma cercada desvia {d} níveis da sozinha");
-            assert!(dc > 20, "controlo: na camada inteira a união muda o miolo ({dc})");
+            assert!(
+                dc > 20,
+                "controlo: na camada inteira a união muda o miolo ({dc})"
+            );
         }
     }
 }
@@ -407,9 +431,20 @@ fn a_lone_shape_is_the_same_under_both_scopes() {
         let um = [disco(0.33, -0.21)];
         let a = b.cada_forma(&um, &ops);
         let c = b.camada_inteira(&um, &ops);
-        let pior = a.iter().zip(&c).map(|(p, q)| p.abs_diff(*q)).max().unwrap_or(0);
-        eprintln!("[sozinha] tipo {}: cada forma × camada inteira {pior} níveis", ops[0].kind);
-        assert!(pior <= 1, "a mesma forma sozinha desvia {pior} níveis entre os dois scopes");
+        let pior = a
+            .iter()
+            .zip(&c)
+            .map(|(p, q)| p.abs_diff(*q))
+            .max()
+            .unwrap_or(0);
+        eprintln!(
+            "[sozinha] tipo {}: cada forma × camada inteira {pior} níveis",
+            ops[0].kind
+        );
+        assert!(
+            pior <= 1,
+            "a mesma forma sozinha desvia {pior} níveis entre os dois scopes"
+        );
     }
 }
 
@@ -474,7 +509,10 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
             for x in 1..W - 1 {
                 let o = ((y * W + x) * 4) as usize;
                 tinta += usize::from(cada[o + 3] > 0);
-                let d = (0..4).map(|c| cada[o + c].abs_diff(inteira[o + c])).max().unwrap_or(0);
+                let d = (0..4)
+                    .map(|c| cada[o + c].abs_diff(inteira[o + c]))
+                    .max()
+                    .unwrap_or(0);
                 if na_silhueta(x, y) {
                     na_borda += usize::from(d > 1);
                 } else {
@@ -487,14 +525,20 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
              texels mudam ({tinta} pintados)"
         );
         assert!(tinta > 100, "a sprite desenhou");
-        assert!(pior_dentro <= 1, "rota {rota}: a sprite sozinha desvia {pior_dentro} níveis");
+        assert!(
+            pior_dentro <= 1,
+            "rota {rota}: a sprite sozinha desvia {pior_dentro} níveis"
+        );
         // ⚠️ Um quad SEM anti-aliasing inclui o pixel cujo CENTRO cai dentro: a relocação em `f32`
         // move a aresta ~10⁻⁵ px, e um centro que está sobre ela muda de lado — a mesma natureza de
         // qualquer movimento sub-pixel da sprite.
         // ⚠️ E a rota da PLACA do desenhador tem uma sensibilidade própria na silhueta: as duas
         // rotas da camada inteira já diferem em 13 texels desta sprite (doc 129 §7). Medido: CPU 0,
         // placa 17 de 8 716 (0,2 %).
-        assert!(na_borda * 200 <= tinta, "rota {rota}: {na_borda} texels da silhueta mudam");
+        assert!(
+            na_borda * 200 <= tinta,
+            "rota {rota}: {na_borda} texels da silhueta mudam"
+        );
     }
     // A caixa contra os pixels que a sprite REALMENTE desenha (sem filtro).
     let caixa = b.celulas.ultimas_caixas()[0];
@@ -511,11 +555,16 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
     #[expect(clippy::cast_precision_loss, reason = "pixels")]
     let (plo, phi) = ([lo[0] as f32, lo[1] as f32], [hi[0] as f32, hi[1] as f32]);
     for k in 0..2 {
-        assert!(caixa.lo[k].floor() <= plo[k] && caixa.hi[k].ceil() >= phi[k], "a caixa contém a tinta");
-        assert!(plo[k] - caixa.lo[k] <= 2.0 && caixa.hi[k] - phi[k] <= 2.0, "e é apertada");
+        assert!(
+            caixa.lo[k].floor() <= plo[k] && caixa.hi[k].ceil() >= phi[k],
+            "a caixa contém a tinta"
+        );
+        assert!(
+            plo[k] - caixa.lo[k] <= 2.0 && caixa.hi[k] - phi[k] <= 2.0,
+            "e é apertada"
+        );
     }
 }
-
 
 /// **O RELÓGIO** (doc 129 §3.4, `MEDIR_VELOCIDADE.md`): «cada forma» contra «a camada inteira»,
 /// a 256 e a 4 096 discos que se tocam, a sombra interna (σ 5,3 px, deslocada 6 px) — numa camada
@@ -569,7 +618,11 @@ fn relogio_cada_forma_contra_camada_inteira() {
             })
             .collect();
         let buf = b.copias(&ds);
-        let (camada, saida, formas) = (alvo(&b.gpu), make_output_texture(&b.gpu, LW, LH), alvo(&b.gpu));
+        let (camada, saida, formas) = (
+            alvo(&b.gpu),
+            make_output_texture(&b.gpu, LW, LH),
+            alvo(&b.gpu),
+        );
         let (vc, vf) = (
             camada.create_view(&wgpu::TextureViewDescriptor::default()),
             formas.create_view(&wgpu::TextureViewDescriptor::default()),
@@ -584,40 +637,59 @@ fn relogio_cada_forma_contra_camada_inteira() {
                 gpu: &b.gpu,
                 renderer: &mut b.renderer,
                 camera: &cam,
-                window: WindowSize { width: LW, height: LH },
+                window: WindowSize {
+                    width: LW,
+                    height: LH,
+                },
                 scene_viewport: None,
                 sprites: Sprites::Cpu(&[]),
-                formas: Some(Formas { buffer: &buf, n, vista }),
+                formas: Some(Formas {
+                    buffer: &buf,
+                    n,
+                    vista,
+                }),
                 ops: &ops,
                 pilha: &mut b.pilha,
                 camada: &vc,
                 tamanho: (LW, LH),
             });
-            b.pilha.run_layer(&b.gpu, &camada, &saida, LW, LH, &[], Origem::Margem);
+            b.pilha
+                .run_layer(&b.gpu, &camada, &saida, LW, LH, &[], Origem::Margem);
             let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
             cada = cada.min(t0.elapsed().as_secs_f64() * 1e3);
             paginas = b.celulas.ultimas_paginas().len();
 
             let t0 = std::time::Instant::now();
-            let mut enc = b.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            let mut enc = b
+                .gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
             b.placa.draw(
                 &b.gpu,
                 &mut enc,
                 &vf,
                 wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                 vista,
-                Copias { buffer: &buf, count: n },
+                Copias {
+                    buffer: &buf,
+                    count: n,
+                },
             );
             b.gpu.queue.submit([enc.finish()]);
             b.colagem.blit(&b.gpu, &vc, &vf, BandSource::Formas);
-            b.pilha.run_layer(&b.gpu, &camada, &saida, LW, LH, &ops, Origem::Margem);
+            b.pilha
+                .run_layer(&b.gpu, &camada, &saida, LW, LH, &ops, Origem::Margem);
             let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
             inteira = inteira.min(t0.elapsed().as_secs_f64() * 1e3);
         }
         eprintln!(
             "[relógio] {n} discos: cada forma {cada:.2} ms ({paginas} página(s)) · camada inteira {inteira:.2} ms · \
              load {}",
-            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or("?")
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .split(' ')
+                .next()
+                .unwrap_or("?")
         );
     }
 }

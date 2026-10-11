@@ -157,6 +157,102 @@ impl Globals {
     }
 }
 
+impl Globals {
+    /// Os globals do INGEST e do RESOLVE: só as dimensões — nenhum lê tint, sigma ou banda.
+    pub(crate) fn bordas(dims: [u32; 2]) -> Self {
+        Self {
+            dims,
+            half: 1,
+            kind: 0,
+            tint: [0.0; 4],
+            inv_two_sigma2: 1.0,
+            opacity: 1.0,
+            off_x: 0.0,
+            off_y: 0.0,
+            jump: 0,
+            band: 1.0,
+            n_segs: 0,
+            blend: 0,
+            noise_scale: 1.0,
+            octaves: 1,
+            seed: 0,
+            mode: 0,
+            org: [0.0, 0.0],
+            grow_px: 0.0,
+            org_map: 0,
+            hue: 0.0,
+            sat: 0.0,
+            bright: 0.0,
+            _pad2: [0.0],
+            tint_b: [0.0; 4],
+            src_org: [0, 0],
+            stop_count: 0,
+            src_premul: 0,
+            stops: [[0.0; 4]; 8],
+            stop_pos: [[0.0; 4]; 2],
+            aux: [0; 4],
+        }
+    }
+}
+
+/// Os segmentos da silhueta, num buffer grow-only. ⚠️ Ele NUNCA encolhe a zero: um `storage` de
+/// tamanho 0 é binding inválido, e o layout exige a entrada mesmo nos passes que não a leem. Sem
+/// geometria o shader olha `n_segs == 0` e cai no caminho da cobertura — o buffer fica intocado.
+pub(crate) fn ensure_segments(
+    gpu: &GpuContext,
+    segs: &mut wgpu::Buffer,
+    cap: &mut u64,
+    geom: &[[f32; 4]],
+) {
+    if geom.is_empty() {
+        return;
+    }
+    let need = std::mem::size_of_val(geom) as u64;
+    if need > *cap {
+        *cap = need.next_power_of_two();
+        *segs = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render fx_stack segments"),
+            size: *cap,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+    }
+    gpu.queue.write_buffer(segs, 0, bytemuck::cast_slice(geom));
+}
+
+/// As texturas de trabalho, **grow-only**: uma cena com formas de tamanhos diferentes não paga uma
+/// realocação por forma por frame. O shader escreve só `dims`, então uma textura maior é inofensiva.
+pub(crate) fn ensure_work(gpu: &GpuContext, work: &mut Option<[Tex; 4]>, w: u32, h: u32) {
+    if matches!(work, Some(t) if t[0].w >= w && t[0].h >= h) {
+        return;
+    }
+    let (nw, nh) = match work {
+        Some(t) => (t[0].w.max(w), t[0].h.max(h)),
+        None => (w, h),
+    };
+    let f = wgpu::TextureFormat::Rgba16Float;
+    *work = Some([
+        make_tex(gpu, nw, nh, f),
+        make_tex(gpu, nw, nh, f),
+        make_tex(gpu, nw, nh, f),
+        make_tex(gpu, nw, nh, f),
+    ]);
+}
+
+/// O buffer dos globals de todos os passes, grow-only.
+pub(crate) fn ensure_uniform(gpu: &GpuContext, buf: &mut wgpu::Buffer, cap: &mut u64, need: u64) {
+    if need <= *cap {
+        return;
+    }
+    *buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ph2d-render fx_stack globals"),
+        size: need,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    *cap = need;
+}
+
 pub(crate) struct Tex {
     pub(crate) texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
@@ -206,4 +302,21 @@ pub(crate) fn write_at(blob: &mut [u8], slot: usize, g: &Globals) {
     let off = slot * UNIFORM_STRIDE as usize;
     let bytes = bytemuck::bytes_of(g);
     blob[off..off + bytes.len()].copy_from_slice(bytes);
+}
+
+pub(crate) fn dispatch(
+    encoder: &mut wgpu::CommandEncoder,
+    pipeline: &wgpu::ComputePipeline,
+    bg: &wgpu::BindGroup,
+    slot: u32,
+    gx: u32,
+    gy: u32,
+) {
+    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+        label: Some("ph2d-render fx_stack pass"),
+        timestamp_writes: None,
+    });
+    pass.set_pipeline(pipeline);
+    pass.set_bind_group(0, bg, &[slot * UNIFORM_STRIDE as u32]);
+    pass.dispatch_workgroups(gx, gy, 1);
 }

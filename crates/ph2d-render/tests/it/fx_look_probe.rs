@@ -271,9 +271,18 @@ fn probe_fx_render_and_look() {
     };
     let scenes: [(&str, Vec<FxOpGpu>); 14] = [
         ("00_plain", vec![]),
-        ("01_feather", vec![op(FxOp::FEATHER, 24.0, white, [0.0, 0.0])]),
-        ("02_bevel", vec![op(FxOp::BEVEL, 20.0, black, [-12.0, 12.0])]),
-        ("03_outline", vec![op(FxOp::OUTLINE, 8.0, white, [0.0, 0.0])]),
+        (
+            "01_feather",
+            vec![op(FxOp::FEATHER, 24.0, white, [0.0, 0.0])],
+        ),
+        (
+            "02_bevel",
+            vec![op(FxOp::BEVEL, 20.0, black, [-12.0, 12.0])],
+        ),
+        (
+            "03_outline",
+            vec![op(FxOp::OUTLINE, 8.0, white, [0.0, 0.0])],
+        ),
         (
             "04_inner_shadow",
             vec![op(FxOp::INNER_SHADOW, 20.0, black, [0.0, 0.0])],

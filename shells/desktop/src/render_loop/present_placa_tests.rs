@@ -20,7 +20,7 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let em = |agulha: &str| chrome.find(agulha).expect(agulha);
     let (cima, placa, vello) = (
         em("present_bands::draw_upper_bands("),
-        em("self.motion_shell.placa.camada()"),
+        em("let placa = &self.motion_shell.placa;"),
         em("vello_pass.render_to_intermediate("),
     );
     // ⭐ doc 121 §9.14 — a camada DESENHA-SE antes dos passes de luz (o halo redesenha-a).

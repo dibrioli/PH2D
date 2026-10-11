@@ -180,9 +180,18 @@ fn the_raster_bevel_holds_still_under_subpixel_motion() {
                 );
                 let chave = format!("{rota} r={r}");
                 if let Some((_, a)) = anteriores.iter().find(|(k, _)| *k == chave) {
-                    let d = a.iter().zip(&anel).fold(0.0f64, |m, (x, y)| m.max((x - y).abs()));
-                    eprintln!("[sonda bevel]   {chave}: muda {d:.1} níveis contra dx 0 (o mesmo ponto do disco)");
-                    let pior = if rota == "raster" { &mut pior_raster } else { &mut pior_exacto };
+                    let d = a
+                        .iter()
+                        .zip(&anel)
+                        .fold(0.0f64, |m, (x, y)| m.max((x - y).abs()));
+                    eprintln!(
+                        "[sonda bevel]   {chave}: muda {d:.1} níveis contra dx 0 (o mesmo ponto do disco)"
+                    );
+                    let pior = if rota == "raster" {
+                        &mut pior_raster
+                    } else {
+                        &mut pior_exacto
+                    };
                     *pior = pior.max(d);
                 } else {
                     anteriores.push((chave, anel));
@@ -190,8 +199,13 @@ fn the_raster_bevel_holds_still_under_subpixel_motion() {
             }
         }
     }
-    eprintln!("[bevel sub-pixel] pior raster {pior_raster:.1} · pior exacto {pior_exacto:.1} níveis");
-    assert!(pior_exacto > 0.0, "controlo: a régua vê o movimento do caminho exacto");
+    eprintln!(
+        "[bevel sub-pixel] pior raster {pior_raster:.1} · pior exacto {pior_exacto:.1} níveis"
+    );
+    assert!(
+        pior_exacto > 0.0,
+        "controlo: a régua vê o movimento do caminho exacto"
+    );
     assert!(
         pior_raster <= pior_exacto,
         "o bevel do raster muda {pior_raster:.1} níveis ao andar sub-pixel, o exacto {pior_exacto:.1}"

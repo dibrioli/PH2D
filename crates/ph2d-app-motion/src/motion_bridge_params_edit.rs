@@ -183,7 +183,11 @@ pub(super) fn apply_param_edits(
                     if param == ph2d_node_fx_filter::param::KIND
                         && inst.type_name == ph2d_node_fx_filter::TYPE_NAME
                     {
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "código de tipo, < 15")]
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            clippy::cast_sign_loss,
+                            reason = "código de tipo, < 15"
+                        )]
                         let novo = value.round().clamp(0.0, f64::from(u8::MAX)) as u8;
                         ph2d_node_fx_filter::switch_kind(&mut motion.doc.graph, nid, novo);
                     }

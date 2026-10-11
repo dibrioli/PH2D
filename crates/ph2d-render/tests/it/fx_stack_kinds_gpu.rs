@@ -178,7 +178,10 @@ fn every_kind_draws_something() {
         } else {
             [0, 0]
         };
-        let out = render_ramp(&mut pass, &[one(kind, 5.0, RED, offset.map(|v: i32| v as f32))]);
+        let out = render_ramp(
+            &mut pass,
+            &[one(kind, 5.0, RED, offset.map(|v: i32| v as f32))],
+        );
         let differ = plain
             .as_chunks::<4>()
             .0
@@ -948,7 +951,10 @@ fn the_outline_edge_is_a_function_of_distance_alone() {
             let mut dentro = 0u32;
             for sy in 0..16 {
                 for sx in 0..16 {
-                    let (fx, fy) = ((f64::from(sx) + 0.5) / 16.0 - 0.5, (f64::from(sy) + 0.5) / 16.0 - 0.5);
+                    let (fx, fy) = (
+                        (f64::from(sx) + 0.5) / 16.0 - 0.5,
+                        (f64::from(sy) + 0.5) / 16.0 - 0.5,
+                    );
                     if sd_at(x, y) + fx * nx + fy * ny < 0.0 {
                         dentro += 1;
                     }

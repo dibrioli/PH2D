@@ -79,7 +79,10 @@ fn the_shadow_moves_by_quarter_pixels() {
         assert!(par[1] - par[0] > 0.05, "cada ¼ px move a sombra: {c:?}");
     }
     let parados = r.windows(2).filter(|p| (p[1] - p[0]).abs() < 1e-6).count();
-    assert!(parados >= 2, "controlo: arredondado ela pára aos degraus ({r:?})");
+    assert!(
+        parados >= 2,
+        "controlo: arredondado ela pára aos degraus ({r:?})"
+    );
 }
 
 /// ⭐ A luz do bevel é a DIREÇÃO pedida, de qualquer comprimento — `(0,3, 0,2)` acende o mesmo
@@ -98,12 +101,21 @@ fn the_bevel_light_is_a_direction_below_half_a_pixel() {
     let curta = bevel([0.3, 0.2]);
     let longa = bevel([3.0, 2.0]);
     let de_cima = bevel([0.0, -1.0]);
-    let dif = |a: &[u8], b: &[u8]| a.iter().zip(b).map(|(p, q)| p.abs_diff(*q)).max().unwrap_or(0);
+    let dif = |a: &[u8], b: &[u8]| {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| p.abs_diff(*q))
+            .max()
+            .unwrap_or(0)
+    };
     eprintln!(
         "[luz] curta × longa {} níveis · curta × de cima {} níveis",
         dif(&curta, &longa),
         dif(&curta, &de_cima)
     );
     assert!(dif(&curta, &longa) <= 1, "a luz curta acende como a longa");
-    assert!(dif(&curta, &de_cima) > 20, "controlo: a luz de cima acende OUTRO lado");
+    assert!(
+        dif(&curta, &de_cima) > 20,
+        "controlo: a luz de cima acende OUTRO lado"
+    );
 }

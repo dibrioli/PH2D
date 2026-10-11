@@ -209,7 +209,15 @@ fn the_layer_blur_is_the_oracles() {
     let fixture = include_str!("../../../ph2d-lens/tests/fixtures/blur_linear_s3.txt");
     let mut desvio = |sigma: f32| {
         let dst = make_output_texture(&gpu, w, h);
-        pass.run_layer(&gpu, &pre, &dst, w, h, &[op(FxOp::BLUR, sigma, [0.0; 4])], Origem::Margem);
+        pass.run_layer(
+            &gpu,
+            &pre,
+            &dst,
+            w,
+            h,
+            &[op(FxOp::BLUR, sigma, [0.0; 4])],
+            Origem::Margem,
+        );
         let out = readback(&gpu, &dst, w, h);
         let margem = 10;
         let (mut pior, mut n, mut pior_em) = (0.0f64, 0usize, (0, 0));

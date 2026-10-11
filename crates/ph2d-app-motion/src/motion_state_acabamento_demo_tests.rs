@@ -70,12 +70,18 @@ fn the_scene_opens_with_a_bevel_on_each_shape_and_a_shadow_on_the_layer() {
     let (mut m, cena) = cozida(2);
     m.filtro.prepara(&m.doc.graph);
     let pilha = m.filtro.pilha();
-    assert_eq!(pilha.iter().map(|d| d.no).collect::<Vec<_>>(), vec![cena.forma, cena.camada]);
+    assert_eq!(
+        pilha.iter().map(|d| d.no).collect::<Vec<_>>(),
+        vec![cena.forma, cena.camada]
+    );
     assert_eq!(pilha[0].op, ph2d_ecs::FxOp::new(ph2d_ecs::FxOp::BEVEL));
     assert_eq!(pilha[1].op.kind, ph2d_ecs::FxOp::DROP_SHADOW);
     let (forma, camada) = ph2d_node_fx_filter::partition(pilha);
     assert_eq!((forma.len(), camada.len()), (1, 1));
-    assert!(m.filtro.liga(true), "os filtros correm com o Motion na cena");
+    assert!(
+        m.filtro.liga(true),
+        "os filtros correm com o Motion na cena"
+    );
     assert!(m.filtro.queixa(cena.forma).is_none() && m.filtro.queixa(cena.camada).is_none());
 }
 
@@ -83,8 +89,12 @@ fn the_scene_opens_with_a_bevel_on_each_shape_and_a_shadow_on_the_layer() {
 #[test]
 fn an_each_shape_after_a_whole_layer_says_so_on_its_card() {
     let (mut m, cena) = cozida(2);
-    m.doc.graph.set_param(cena.forma, ph2d_node_fx_filter::param::SCOPE, 1.0);
-    m.doc.graph.set_param(cena.camada, ph2d_node_fx_filter::param::SCOPE, 0.0);
+    m.doc
+        .graph
+        .set_param(cena.forma, ph2d_node_fx_filter::param::SCOPE, 1.0);
+    m.doc
+        .graph
+        .set_param(cena.camada, ph2d_node_fx_filter::param::SCOPE, 0.0);
     m.filtro.prepara(&m.doc.graph);
     assert!(m.filtro.queixa(cena.forma).is_none());
     let q = m.filtro.queixa(cena.camada).expect("o cartão diz");

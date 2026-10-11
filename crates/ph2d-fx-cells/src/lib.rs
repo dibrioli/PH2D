@@ -14,6 +14,7 @@
 #![forbid(unsafe_code)]
 
 mod celulas;
+mod passes;
 pub mod plano;
 mod shaders;
 

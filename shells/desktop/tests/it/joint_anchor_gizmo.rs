@@ -243,7 +243,7 @@ fn the_paint_pass_draws_the_point_gizmo_last() {
         "the point gizmo is drawn from something other than `hero.gizmo.point_view`"
     );
     for (what, needle) in [
-        ("the primary sprite gizmo", "paint_sprite_gizmo_with(scene"),
+        ("the primary sprite gizmo", "paint_sprite_gizmo_with("),
         ("the extra / global gizmos", "GizmoTarget::Global"),
     ] {
         let other = paint.find(needle).expect("the box gizmo pass");

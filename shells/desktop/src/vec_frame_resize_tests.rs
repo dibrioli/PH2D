@@ -568,11 +568,11 @@ fn a_proportional_resize_with_the_stroke_in_the_box_keeps_both_visual_edges() {
     apply(&mut sim, &mut scene, &st, pivot, 2.0, 2.0);
     let xf = ph2d_vec_entities::transform::build(&sim, &map);
     let v1 = ph2d_vec_render::path_world_visual_bbox(&scene, &xf, id).expect("visual");
-    for a in 0..2 {
-        let cursor = f64::from(pivot[a]) + 2.0 * (v0.1[a] - f64::from(pivot[a]));
+    for (a, p) in pivot.iter().map(|&p| f64::from(p)).enumerate() {
+        let cursor = p + 2.0 * (v0.1[a] - p);
         assert!(
             (v1.0[a] - v0.0[a]).abs() < 1e-4,
-            "a borda oposta andou: {v0:?} → {v1:?}"
+            "a borda oposta andou: {v0:?} para {v1:?}"
         );
         assert!(
             (v1.1[a] - cursor).abs() < 1e-4,

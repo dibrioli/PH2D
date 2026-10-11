@@ -358,8 +358,10 @@ fn the_pie_angles_ride_a_stem_outside_the_rim() {
 fn the_readout_follows_the_grabbed_handle() {
     let k = ShapeKind::Star;
     let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let mut vec = crate::state::VecState::default();
-    vec.entities = map.clone();
+    let mut vec = crate::state::VecState {
+        entities: map.clone(),
+        ..Default::default()
+    };
     vec.pen.select_many(&[id]);
     vec.draw_config.mode = DrawMode::Shape;
     let display = ph2d_editor_core::LengthDisplay::of(&Default::default());

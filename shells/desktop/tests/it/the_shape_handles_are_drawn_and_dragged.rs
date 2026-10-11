@@ -5,17 +5,19 @@
 //! COSTURA da shell (precisa de janela): que ela desenha, e que o press, o arrasto, o soltar e o
 //! `Esc` estão no fluxo do ponteiro e do teclado, na ordem certa.
 
-/// O desenho: gateado pela política de modo (`overlay.shape_handles`, só no modo Forma desde a F10),
-/// FORA do bloco `if overlay.edit` — depois das alças do conector, como as do padrão.
+/// O desenho: pela porta do motor, com a política de modo (`overlay.shape_handles`, só no modo Forma
+/// desde a F10) como argumento — F11: o portão passou para dentro do `draw` (o `shown` dele) —,
+/// FORA do bloco `if overlay.edit`, depois das alças do conector.
 #[test]
 fn the_render_loop_draws_the_shape_handles_by_the_mode_policy() {
     let rl = crate::frame_text::render_frame();
-    let draw_at = rl
-        .find("if overlay.shape_handles {")
-        .expect("o desenho das alças da forma, gateado pelo modo");
+    let draw_at = rl.find("ph2d_app_vec::shape_handles_live::draw(").expect(
+        "o desenho não passa pela porta do motor — uma 2ª derivação divergiria do hit-test",
+    );
+    let args = &rl[draw_at..rl[draw_at..].find(");").map_or(rl.len(), |e| draw_at + e)];
     assert!(
-        rl[draw_at..].contains("ph2d_app_vec::shape_handles_live::draw("),
-        "o desenho não passa pela porta do motor — uma 2ª derivação divergiria do hit-test"
+        args.contains("overlay.shape_handles"),
+        "o desenho das alças da forma não recebe a política de modo: {args}"
     );
     let conn_at = rl
         .find("draw_connector_handles")

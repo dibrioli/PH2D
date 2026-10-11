@@ -225,7 +225,7 @@ fn the_gizmo_box_wraps_the_stroke_and_the_action_bar_reads_the_same_box() {
         false,
     )
     .unwrap();
-    let m = (0.1 * 3f32.sqrt()) as f32;
+    let m = 0.1 * 3f32.sqrt();
     assert!(
         (v.bbox_max_world[0] - (3.0 + m)).abs() < 1e-3,
         "{:?}",

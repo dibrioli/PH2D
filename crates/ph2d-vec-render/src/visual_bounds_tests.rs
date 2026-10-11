@@ -106,7 +106,10 @@ fn under_unequal_scale_the_pen_stays_round() {
     // Com `|det| ≠ 1` a caneta engrossa `√|det|` (sob `(2, 0,5)` o factor é 1 e não o distingue).
     let m = 5.0 * 2f64.sqrt();
     let (_, hi) = path_intrinsic_visual_bbox(&p, [2.0, 1.0]).expect("caixa");
-    assert!(perto(hi[0], 50.0 + m / 2.0, 1e-2) && perto(hi[1], 25.0 + m, 1e-2), "{hi:?}");
+    assert!(
+        perto(hi[0], 50.0 + m / 2.0, 1e-2) && perto(hi[1], 25.0 + m, 1e-2),
+        "{hi:?}"
+    );
 }
 
 /// A pilha conta: um traço extra de 20 por baixo do de 2 manda; uma camada deslocada leva a caixa.

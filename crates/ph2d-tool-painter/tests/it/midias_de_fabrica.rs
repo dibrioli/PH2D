@@ -143,7 +143,7 @@ fn cada_preset_parece_a_sua_midia() {
             m.preset, m.foto, n, c
         );
         for &(met, r) in m.metricas {
-            let (nv, cv) = (met.de(&n), met.de(&c));
+            let (nv, cv) = (met.de(n), met.de(c));
             if !no_vale(nv, r, cv) {
                 falhas.push(format!(
                     "{}: {met:?} {nv:.3} fora do vale do Rebelle {r} (controlo {cv:.3})",

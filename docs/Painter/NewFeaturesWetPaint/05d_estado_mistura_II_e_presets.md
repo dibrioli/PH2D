@@ -250,3 +250,11 @@
     numa tela de ≥ 480 px (trocava um viés por outro e o Round a 4 px passava a ler 0) e o grão Voronoi no Oil
     Pastel (passava as métricas, mas a largura variava até 42 % com a posição). Aberto: um grão sem estrutura grande.
 
+- ✅ **A onda da VELOCIDADE (11/10, prompt [19](19_PROMPT_janela_linha_rapida.md); `545254755`).** `ph2d-wet-paint` e
+  `ph2d-pigment` a `opt-level = 2` em `dev` (4–7× nos portões de cena; nenhum bit mudou nos portões ao byte); a suíte
+  do `ph2d-tool-painter` 377 s com 9 TIMEOUT → 174 s, 1574/1574. Os dois portões da fábrica correm as cenas de uma
+  vez. O `o_tooth_morde_no_wet_paint` estava vermelho desde a W2 (a largura prometida punha o corpo do traço na
+  faixa do «halo»; a bateria `--lib wetpaint` não o via) — agora mede na lei crua. ⛔ Recusados com medida: o
+  gerador com fila paralela (545 → 577 s) e as mídias com o botão Dry (muda a régua). O que ficou > 10 s e as
+  ideias medidas: [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_VELOCIDADE.md) §4.
+

@@ -42,6 +42,32 @@ que a W5f (tabela inteira no log da rodada; reproduz-se pelo cabeçalho do teste
 Fotos (preferências do dono: Baixa fixa, rebote ligado): [`fotos_W5g/cena7_discos_antes_em_cima_depois_em_baixo.png`](fotos_W5g/cena7_discos_antes_em_cima_depois_em_baixo.png)
 — os degraus somem, a passagem sai em gradiente. `PH2D_LIGHT2D_PE=0 PH2D_LIGHT2D_FACE=0` volta ao antigo (comparar).
 
+## ⛔⛔ 2b. ORDEM NOVA DO DONO (11/10, ~18h55) — a LEI do interior muda: DIFUSÃO (a W5h começa aqui)
+
+O dono viu o resultado da W5g (fotos dele: lâmpada pequena ⇒ aresta dura do centro ao tangente com riscos;
+lâmpada grande ⇒ sombra de fora suave mas a fatia acesa do miolo saturada e de aresta dura — «brilho duro») e
+disse: *sem uma suavização por um bom algoritmo não tem como melhorar*. Correto: o exterior-mais-próximo
+desenha SEMPRE a pizza (cone com arestas radiais), por melhor que seja a borda. Perguntado, escolheu
+**«espalhar suave» em TODOS os corpos** (paredes incluídas: degradê entre a face acesa e a escura).
+
+**Desenho (W5h):** o miolo é a solução do problema de Dirichlet — Δu = 0 dentro do opaco, u = a luz de FORA na
+borda (as *diffusion curves*, Orzan et al., SIGGRAPH 2008; no GPU por multigrid em V ou pela pirâmide
+pull-push + Jacobi de passo variável, Jeschke et al. 2009 «GPU-friendly diffusion curves»). A luz na borda continua
+a do PÉ + face desta onda (a condição de fronteira); a mediana ao longo da face e o eixo medial (`MEDIA_NO_EIXO`)
+deixam de ser precisos dentro. **O gabarito** (`ph2d-light2d-ref::fora_dos_opacos` hoje) passa a resolver o mesmo
+Dirichlet; para o DISCO há a fórmula EXATA de Poisson (o integral do núcleo de Poisson sobre a borda) — régua
+sem grade. Portões a reescrever contra a lei nova: os anéis do `as_formas_redondas`, `o_miolo_das_formas`,
+`o_interior_do_opaco` (a caixa: a diagonal some), `o_interior_com_o_rebote` (os riscos devem cair sozinhos — a
+difusão filtra o ruído da c0 da borda). A F3 (`a_face_acesa_da_parede`: sem linha escura na face) TEM de ficar.
+Medir o custo (C3) contra a W5g antes de escolher multigrid × pull-push; o §3 abaixo pode ficar sem objeto.
+
+**«Com ajustes para o usuário»** (o dono, na mesma conversa): a suavidade é um CONTROLO do artista, não uma
+constante. Proposta a confirmar com ele no smoke: por objeto que bloqueia luz (no cartão dele), **Suavidade**
+(0 = a aresta do exterior-mais-próximo de hoje · 1 = a difusão inteira; mistura das duas) e **Penetração** (a
+difusão *screened* — Δu − κ²u = 0 —: κ = 0 espalha até ao centro; κ grande deixa a luz só junto à borda, o miolo
+escuro de um corpo espesso); o padrão sai da foto que o dono aprovar. Os sete sítios do controlo (DIRETIVA §2),
+texto por `ph2d-i18n`, gate de costura que dirige o slider e lê a luz no miolo.
+
 ## 3. ⚠️ ABERTO — os dois portões vermelhos (o próximo passo da W5g)
 
 A/B por flag (script `target/w5g/ab_portoes.sh` — troca os defaults do `Config::padrao` com `assert` e restaura):

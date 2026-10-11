@@ -93,6 +93,14 @@ cúspides do *Curve* ±1): com o bico cortado ganham um toco de `2 ×` a largura
 o fixture do resvg a 0°). Antes eram chanfro rente. É a mudança MAIS visível do bico cortado — vai
 nas fotos da cena 18 para o dono decidir.
 
+**As fotos da cena 18** (`/var/tmp/ph2d_F12_cena18/`, fora do repo; `lado_a_lado_antes_esq_depois_dir.png`
+= recorte, antes à esquerda): o coração alto e estreito guarda o bico do vale inteiro (antes: chanfro
+rente, o «M» azul); a seta e o coração de caixa larga não mudam (a quina não passa do limite); a lua
+e o rabo do balão ganham o toco rectangular de 2 larguras — feio na foto. Opções para o dono: (a) o
+corte em todo lado (como está); (b) o corte, menos nas pontas que voltam ~180° (chanfro ali — sem
+salto ao arrastar nas formas de cúspide fixa, mas o rabo aberto em V entre 150° e 180° saltaria);
+(c) voltar ao chanfro de antes (`PH2D_MITER_CLIP=0` vira o padrão).
+
 **A placa da GPU do Motion** (`ph2d-shape-gpu/src/contorno_cpu.rs` + `contorno.wgsl` +
 `contorno_subgrupo.wgsl`, `limite_esquadria`) ainda salta para o chanfro nas cópias não conformes.
 Não entra nesta linha: é o motor do Motion e só vale portar depois de o dono aprovar o bico cortado.

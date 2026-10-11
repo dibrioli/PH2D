@@ -99,6 +99,7 @@
 | 2026-10-10 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-10_CICLO_19.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-10_CICLO_19.md) | integração | **CICLO 19 «O JOGO MANDA»** (doc 128) — `value.input`/`value.follow`, `TimeMode::Driven`, a fita das entradas, o componente `Motion Input`, a cena `=134`; ciclos 13–19 por integrar sobre `2a925859d`; ECS `105→106`, `PROJECT_SCHEMA 187→188`; smoke do dono ⏳ |
 | 2026-10-10 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-10_CICLO_20.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-10_CICLO_20.md) | continuação | o prompt do ciclo 20 «O ACABAMENTO» (pós-processamento como nós) |
 | 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-11_CICLO_20.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-11_CICLO_20.md) | integração | ciclo 20 FECHADO (W4–W5): a mistura do Output atravessa a camada filtrada, provas de mutação |
+| 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B.md) | continuação | fila viva ZERAR, família B: B4 feito (mistura + degradê no `fx.filter`), B3/B6 fechados por medição, B5 (mistura por instância na placa) é a próxima onda |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

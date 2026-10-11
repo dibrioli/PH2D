@@ -38,7 +38,7 @@ fn beveled(gpu: &ph2d_gpu::GpuContext, geom: &[[f32; 4]]) -> Vec<u8> {
         &[FxOpGpu {
             kind: FxOp::BEVEL,
             sigma_px: BAND,
-            offset_px: [-8, 8],
+            offset_px: [-8.0, 8.0],
             tint: [0.0, 0.0, 0.0, 1.0],
             tint_b: [1.0; 4],
             opacity: 1.0,

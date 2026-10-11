@@ -28,7 +28,7 @@ fn morph(grow_px: f32) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::MORPHOLOGY,
         sigma_px: 0.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0, 0.0, 0.0, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,
@@ -53,7 +53,7 @@ fn outline(w: f32) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::OUTLINE,
         sigma_px: w,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0, 0.0, 0.0, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,

@@ -28,6 +28,7 @@ mod fx_stack_feather_gpu;
 mod fx_stack_gpu;
 mod fx_stack_gradient_map_gpu;
 mod fx_stack_kinds_gpu;
+mod fx_stack_subpixel_gpu;
 mod fx_stack_linear_gpu;
 mod fx_stack_modes_gpu;
 mod fx_stack_morphology_gpu;

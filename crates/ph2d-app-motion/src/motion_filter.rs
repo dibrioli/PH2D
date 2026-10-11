@@ -19,7 +19,7 @@
 use crate::motion_state::MotionState;
 use ph2d_node_fx_filter::NoDoFiltro;
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use ph2d_render::{BandBlit, BandSource, FxOpGpu, FxStackPass, RenderInstance};
+use ph2d_render::{BandBlit, BandSource, FxOpGpu, FxStackPass, Origem, RenderInstance};
 
 /// As sprites do Motion no DISPOSITIVO: o buffer do cozimento, quantas, e os runs de textura.
 pub type SpritesDaPlaca<'a> = (&'a wgpu::Buffer, u32, &'a [ph2d_render::GpuTexRun]);
@@ -62,6 +62,8 @@ struct Placa {
 pub struct MotionFiltro {
     pilha: Vec<NoDoFiltro>,
     fora: Vec<NodeId>,
+    /// Os `Each Shape` depois de um `Whole Layer` (correm na camada).
+    na_camada: Vec<NodeId>,
     desenha: bool,
     ligada: bool,
     placa: Option<Placa>,
@@ -74,6 +76,7 @@ impl MotionFiltro {
     pub fn prepara(&mut self, graph: &Graph) {
         self.pilha = ph2d_node_fx_filter::from_graph(graph);
         self.fora = ph2d_node_fx_filter::fora_do_fio(graph, &self.pilha);
+        self.na_camada = ph2d_node_fx_filter::na_camada_apesar_do_scope(&self.pilha);
     }
 
     /// A pilha do quadro, na ordem do fio.
@@ -96,12 +99,18 @@ impl MotionFiltro {
         self.ligada
     }
 
-    /// **O que o cartão do nó `no` diz**: um `fx.filter` fora do fio não filtra nada.
+    /// **O que o cartão do nó `no` diz**: um `fx.filter` fora do fio não filtra nada; um `Each Shape`
+    /// depois de um `Whole Layer` corre na camada.
     #[must_use]
     pub fn queixa(&self, no: NodeId) -> Option<String> {
-        self.fora
-            .contains(&no)
-            .then(|| ph2d_i18n::tr("app.motion.motion_filter.off_the_wire").to_string())
+        let chave = if self.fora.contains(&no) {
+            "app.motion.motion_filter.off_the_wire"
+        } else if self.na_camada.contains(&no) {
+            "app.motion.motion_filter.after_whole_layer"
+        } else {
+            return None;
+        };
+        Some(ph2d_i18n::tr(chave).to_string())
     }
 
     fn placa(&mut self, gpu: &ph2d_gpu::GpuContext, tamanho: (u32, u32)) -> &mut Placa {
@@ -186,19 +195,49 @@ pub fn mundo_para_pixel(
     window: ph2d_host::WindowSize,
     scene_viewport: Option<[f32; 4]>,
 ) -> [f64; 4] {
+    let (_, alvo) = sub_rect(window, scene_viewport);
+    let mut cam = *camera;
+    cam.model = ph2d_render::Camera2d::MODEL_IDENTITY;
+    let [a, b, c, d, _, _] = cam.world_to_screen_affine(alvo).as_coeffs();
+    [a, b, c, d]
+}
+
+/// **O pixel da ORIGEM DO MUNDO na camada** — a âncora do ruído da camada inteira (doc 129 §5.5
+/// A6): o padrão anda com o mundo (um pan da câmera leva-o), nunca fica preso à janela.
+#[must_use]
+pub fn origem_do_mundo(
+    camera: &ph2d_render::Camera2d,
+    window: ph2d_host::WindowSize,
+    scene_viewport: Option<[f32; 4]>,
+) -> [f32; 2] {
+    let (canto, alvo) = sub_rect(window, scene_viewport);
+    let mut cam = *camera;
+    cam.model = ph2d_render::Camera2d::MODEL_IDENTITY;
+    let [_, _, _, _, e, f] = cam.world_to_screen_affine(alvo).as_coeffs();
+    #[expect(clippy::cast_possible_truncation, reason = "pixels de ecrã cabem num f32")]
+    [(f64::from(canto[0]) + e) as f32, (f64::from(canto[1]) + f) as f32]
+}
+
+/// O canto e o tamanho do rectângulo onde o passe de sprites projecta: o sub-rect da cena, ou a
+/// janela.
+fn sub_rect(
+    window: ph2d_host::WindowSize,
+    scene_viewport: Option<[f32; 4]>,
+) -> ([f32; 2], ph2d_host::WindowSize) {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "o split dá pixels inteiros e não negativos"
     )]
-    let alvo = scene_viewport.map_or(window, |v| ph2d_host::WindowSize {
-        width: v[2].max(1.0) as u32,
-        height: v[3].max(1.0) as u32,
-    });
-    let mut cam = *camera;
-    cam.model = ph2d_render::Camera2d::MODEL_IDENTITY;
-    let [a, b, c, d, _, _] = cam.world_to_screen_affine(alvo).as_coeffs();
-    [a, b, c, d]
+    scene_viewport.map_or(([0.0, 0.0], window), |v| {
+        (
+            [v[0], v[1]],
+            ph2d_host::WindowSize {
+                width: v[2].max(1.0) as u32,
+                height: v[3].max(1.0) as u32,
+            },
+        )
+    })
 }
 
 impl MotionState {
@@ -260,9 +299,10 @@ impl MotionState {
                 .blit(e.gpu, &alvos.camada_view, formas, BandSource::Formas);
         }
         let (w, h) = tamanho;
+        let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
         placa
             .pilha
-            .run_premultiplied(e.gpu, &alvos.camada, &alvos.saida, w, h, &ops);
+            .run_layer(e.gpu, &alvos.camada, &alvos.saida, w, h, &ops, origem);
         e.band_blit.blit(
             e.gpu,
             e.mundo.blend_view(),

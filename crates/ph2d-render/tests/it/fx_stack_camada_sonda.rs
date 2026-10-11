@@ -1,7 +1,7 @@
-//! SONDA (auditoria do `fx.filter`, 10/10): os defeitos do dono medidos na placa — a sombra
-//! interna de um disco CERCADO na camada contra o mesmo disco SOZINHO, e o bevel de um disco
-//! semeado pelo raster (sem geometria, como o Motion o corre) contra o pé exato, sob movimento
-//! sub-pixel. Só medição: imprime, não reprova.
+//! A auditoria do `fx.filter` (doc 129 §5.5) na placa — a sombra interna de um disco CERCADO na
+//! camada contra o mesmo disco SOZINHO (SONDA: na camada inteira a união É a lei; o gate «cada
+//! forma» mora no `ph2d-fx-cells`), e o bevel de um disco semeado pelo raster (sem geometria, como o
+//! Motion o corre) contra o pé exato, sob movimento sub-pixel (GATE, A3).
 //!
 //! `PH2D_GPU=1 cargo test -p ph2d-render --test it fx_stack_camada_sonda -- --ignored --nocapture`
 
@@ -83,7 +83,7 @@ fn sonda_sombra_interna_cercado_contra_sozinho() {
         }
         for modo in [FxOp::MODE_PROXIMITY, FxOp::MODE_CONTOUR] {
             let mut s = op(FxOp::INNER_SHADOW, 5.3, [0.0, 0.0, 0.0, 1.0]);
-            s.offset_px = [6, 6];
+            s.offset_px = [6.0, 6.0];
             s.mode = modo;
             let cercado = corre(w, h, &camada(w, h, &grelha), &[s], &[]);
             let sozinho = corre(w, h, &camada(w, h, &[(c, c)]), &[s], &[]);
@@ -152,17 +152,22 @@ fn ondulacao(out: &[u8], w: u32, cx: f64, cy: f64, r: f64) -> (f64, Vec<f64>) {
     (max, v)
 }
 
+/// ⭐ **O bevel semeado pelo RASTER não treme sob movimento sub-pixel** (doc 129 §5.5 A3, o
+/// «ruído animado» do dono): o mesmo ponto do disco, andado ¼–¾ px, muda no máximo o que o caminho
+/// EXACTO (o pé nos segmentos) muda. Antes da semente de Gustavson & Strand: raster 16–43 níveis
+/// contra o exacto 3,5–10,7; depois: raster 2,6–6,8.
 #[test]
-#[ignore = "sonda de GPU"]
-fn sonda_bevel_raster_contra_exacto_sob_movimento() {
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_raster_bevel_holds_still_under_subpixel_motion() {
     if try_headless_gpu().is_none() {
         return;
     }
     let (w, h) = (48u32, 48u32);
     let mut b = op(FxOp::BEVEL, 5.3, [0.0, 0.0, 0.0, 1.0]);
-    b.offset_px = [-6, 6];
+    b.offset_px = [-6.0, 6.0];
     b.opacity = 0.9;
     let mut anteriores: Vec<(String, Vec<f64>)> = Vec::new();
+    let (mut pior_raster, mut pior_exacto) = (0.0f64, 0.0f64);
     for dx in [0.0, 0.25, 0.5, 0.75] {
         let (cx, cy) = (24.0 + dx, 24.0 + dx * 0.5);
         let src = camada(w, h, &[(cx, cy)]);
@@ -177,10 +182,18 @@ fn sonda_bevel_raster_contra_exacto_sob_movimento() {
                 if let Some((_, a)) = anteriores.iter().find(|(k, _)| *k == chave) {
                     let d = a.iter().zip(&anel).fold(0.0f64, |m, (x, y)| m.max((x - y).abs()));
                     eprintln!("[sonda bevel]   {chave}: muda {d:.1} níveis contra dx 0 (o mesmo ponto do disco)");
+                    let pior = if rota == "raster" { &mut pior_raster } else { &mut pior_exacto };
+                    *pior = pior.max(d);
                 } else {
                     anteriores.push((chave, anel));
                 }
             }
         }
     }
+    eprintln!("[bevel sub-pixel] pior raster {pior_raster:.1} · pior exacto {pior_exacto:.1} níveis");
+    assert!(pior_exacto > 0.0, "controlo: a régua vê o movimento do caminho exacto");
+    assert!(
+        pior_raster <= pior_exacto,
+        "o bevel do raster muda {pior_raster:.1} níveis ao andar sub-pixel, o exacto {pior_exacto:.1}"
+    );
 }

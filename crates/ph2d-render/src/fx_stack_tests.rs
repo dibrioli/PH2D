@@ -307,7 +307,7 @@ fn the_turbulence_warps_in_both_of_its_modes() {
         let op = FxOpGpu {
             kind: FxOp::TURBULENCE,
             sigma_px: 8.0,
-            offset_px: [0, 0],
+            offset_px: [0.0, 0.0],
             tint: [0.0; 4],
             tint_b: [1.0; 4],
             opacity: 1.0,
@@ -349,7 +349,7 @@ fn a_pointwise_kind_with_its_own_modes_never_falls_into_the_field_plan() {
     let step = |kind: u8, mode: u8| FxOpGpu {
         kind,
         sigma_px: 8.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0; 4],
         tint_b: [1.0; 4],
         opacity: 1.0,
@@ -397,7 +397,7 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
     let op = |amount: f32| FxOpGpu {
         kind: FxOp::TURBULENCE,
         sigma_px: amount,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0; 4],
         tint_b: [1.0; 4],
         opacity: 1.0,
@@ -434,7 +434,7 @@ fn morph_op(grow_px: f32) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::MORPHOLOGY,
         sigma_px: 0.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0; 4],
         tint_b: [1.0; 4],
         opacity: 1.0,

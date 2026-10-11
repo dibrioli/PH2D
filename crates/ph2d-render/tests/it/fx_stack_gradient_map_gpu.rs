@@ -111,7 +111,7 @@ fn blank() -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::BLUR,
         sigma_px: 0.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0; 4],
         tint_b: [0.0; 4],
         opacity: 1.0,

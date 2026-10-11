@@ -96,7 +96,7 @@ fn step(kind: u8, tint: [f32; 4], tint_b: [f32; 4], opacity: f32) -> FxOpGpu {
     FxOpGpu {
         kind,
         sigma_px: 0.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint,
         tint_b,
         opacity,

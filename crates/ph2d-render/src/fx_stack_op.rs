@@ -20,7 +20,7 @@ pub struct FxOpGpu {
     /// ⚠️ **Inteiros de propósito.** O halo é amostrado por `textureLoad` (sem sampler), então um
     /// deslocamento fracionário custaria interpolação dentro do laço do borrão. Uma sombra não
     /// precisa de posição sub-pixel — e a textura inteira já é alinhada ao pixel da tela.
-    pub offset_px: [i32; 2],
+    pub offset_px: [f32; 2],
     /// A cor RETA do halo, `[0,1]`.
     pub tint: [f32; 4],
     /// A SEGUNDA cor RETA — a ponta CLARA da rampa do Duotone (a [`Self::tint`] é a escura). Só ele
@@ -68,8 +68,8 @@ impl FxOpGpu {
     /// da transformação mundo → pixel (a do Vector é a vista do Vello; a do Motion inverte o Y).
     ///
     /// Comprimentos (raio, tamanho do ruído, crescimento) atravessam a ESCALA média da câmera; o
-    /// deslocamento atravessa a matriz e arredonda a pixel INTEIRO (o halo é lido por
-    /// `textureLoad`). ⚠️ **Cores, matiz e frações NÃO cruzam a câmera** — dar zoom não muda a cor.
+    /// deslocamento atravessa a matriz SEM arredondar — o borrão amostra a gaussiana deslocada e o
+    /// finalize interpola o campo (doc 129 §5.5 A7: a luz do bevel saltava ao dar zoom-out). ⚠️ **Cores, matiz e frações NÃO cruzam a câmera** — dar zoom não muda a cor.
     /// O `blend_code`/`detail_clamped` são a metade de HONRAR das portas do `FxOp`.
     #[must_use]
     #[expect(
@@ -84,10 +84,7 @@ impl FxOpGpu {
         Self {
             kind: o.kind,
             sigma_px: (o.radius * cam_scale).max(0.0),
-            offset_px: [
-                (a * ox + c * oy).round() as i32,
-                (b * ox + d * oy).round() as i32,
-            ],
+            offset_px: [(a * ox + c * oy) as f32, (b * ox + d * oy) as f32],
             tint: o.color,
             tint_b: o.color_b,
             opacity: o.opacity,

@@ -136,7 +136,9 @@ fn cs_op_warp(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
     let p = vec2<f32>(f32(id.x), f32(id.y));
     let src = tap_img(t0, i32(id.x), i32(id.y));
-    let np = (p - g.org) / max(g.noise_scale, 1.0e-3);
+    // Nas células do átlas a origem é POR TEXEL (o `t1` deste passe, doc 129 §5.5 A6).
+    let org = select(g.org, textureLoad(t1, vec2<i32>(i32(id.x), i32(id.y)), 0).xy, g.org_map == 1u);
+    let np = (p - org) / max(g.noise_scale, 1.0e-3);
     let d = vec2<f32>(fbm(np, g.seed), fbm(np + vec2<f32>(137.13, 71.77), g.seed + 0x51ed2701u));
     let warped = sample_bilinear(p + d * g.band);
     // A opacidade é *quanto DESTE efeito*, como no Blur: em 0 o degrau é no-op byte-idêntico.

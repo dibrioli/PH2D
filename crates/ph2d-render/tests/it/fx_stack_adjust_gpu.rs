@@ -83,7 +83,7 @@ fn adjust(hue: f32, sat: f32, bright: f32) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::COLOR_ADJUST,
         sigma_px: 0.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0, 0.0, 0.0, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,

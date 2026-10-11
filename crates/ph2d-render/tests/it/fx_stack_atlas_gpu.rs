@@ -59,7 +59,7 @@ fn diamond(w: u32, h: u32, ox: u32, oy: u32, into: &mut [u8], stride: u32) {
 fn stack() -> Vec<FxOpGpu> {
     vec![
         FxOpGpu {
-            offset_px: [5, -4],
+            offset_px: [5.0, -4.0],
             ..op(FxOp::DROP_SHADOW, 4.0, BLACK)
         },
         op(FxOp::OUTLINE, 2.0, [0.1, 0.9, 0.4, 1.0]),

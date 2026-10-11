@@ -78,7 +78,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.engine.filtro.drop_shadow" => "Drop Shadow",
         "panel.vector.engine.filtro.duotone" => "Duotone",
         "panel.vector.engine.filtro.feather" => "Feather",
-        "panel.vector.engine.filtro.glow" => "Glow",
+        "panel.vector.engine.filtro.glow" => "Outer Glow",
         "panel.vector.engine.filtro.gradient_map" => "Gradient Map",
         "panel.vector.engine.filtro.grow_shrink" => "Grow / Shrink",
         "panel.vector.engine.filtro.inner_glow" => "Inner Glow",

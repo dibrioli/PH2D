@@ -39,7 +39,7 @@ fn inner_shadow(blend: u8) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::INNER_SHADOW,
         sigma_px: 10.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.75, 0.60, 0.95, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,
@@ -63,7 +63,7 @@ fn overlay(tint: [f32; 4], blend: u8) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::COLOR_OVERLAY,
         sigma_px: 0.0,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint,
         tint_b: [1.0; 4],
         opacity: 1.0,
@@ -346,7 +346,7 @@ fn a_law_on_a_kind_that_does_not_take_one_moves_nothing_on_the_device() {
         let mut op = FxOpGpu {
             kind,
             sigma_px: authored.radius * 40.0,
-            offset_px: [0, 0],
+            offset_px: [0.0, 0.0],
             tint: authored.color,
             tint_b: [1.0; 4],
             opacity: authored.opacity,
@@ -397,7 +397,7 @@ fn measure_the_smoke_scene_pairs() {
     let bevel = FxOpGpu {
         kind: FxOp::BEVEL,
         sigma_px: 10.0,
-        offset_px: [-6, 6],
+        offset_px: [-6.0, 6.0],
         tint: [0.0, 0.0, 0.0, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,

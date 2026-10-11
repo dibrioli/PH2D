@@ -139,6 +139,49 @@ textura sobre aquele alvo» — a metade B que o doc 94 §2 mediu como ausente.
   o mundo, pela câmera); A7 o deslocamento sub-pixel da luz; A8 a régua na janela do produto; U1 os
   nomes únicos.
 
+#### §3.4.1 — O desenho decidido (W3b, 10/10, depois de ler o código)
+
+**Estado da arte.** Illustrator: um efeito aplicado a cada objecto corre POR objecto; aplicado ao
+grupo, corre na união — as duas leituras existem e o painel Appearance diz qual. Photoshop/After
+Effects: estilos de camada correm na CAMADA (a união); «por forma» exige uma camada por forma.
+Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illustrator.
+
+**Portas únicas.**
+- *Que degraus correm por forma?* `ph2d_node_fx_filter::partition(&[NoDoFiltro])` — o prefixo
+  `Each Shape` do fio; o resto é da camada; um `Each Shape` depois de um `Whole Layer` queixa-se pela
+  porta do `fora_do_fio` (`MotionFiltro::queixa`).
+- *Onde está cada instância no ecrã?* UM passe de compute de LIMITES (WGSL) sobre os buffers das
+  instâncias (sprites, 47 palavras; formas, 16) — as DUAS rotas passam por ele (a da CPU sobe as
+  instâncias para um buffer); a caixa volta à CPU por uma leitura pequena (`n × 16 B`, à espera do
+  índice de submissão do próprio passe). A lei espelhada em Rust só nos gates de paridade.
+- *Que célula é de quem?* `fx_atlas` (sai do `ph2d-app-vec` para o `ph2d-render`, o Vector reexporta),
+  com um empacotamento EM ORDEM: páginas contíguas na ordem de z (sprites, depois formas — a ordem
+  da camada de hoje), célula = caixa + margens do `stack_reach` + 1. Uma instância que não cabe numa
+  página corre SOZINHA numa página do tamanho da janela (translação zero — igual a «sozinha» por
+  construção). Instâncias fora da janela ⊕ alcance não entram.
+- *Como chega lá?* translação INTEIRA `T_i` em pixels; a relocação no mundo é `L⁻¹·T_i` (a mesma
+  parte linear da câmera no ecrã e no átlas), por compute (gather + soma) para as duas famílias; a
+  fração sub-pixel não muda ⇒ a volta é cópia exacta ao texel.
+- *A volta:* um passe de composição instanciado, célula a célula na ordem, `over` pré-multiplicado
+  no espaço do desenhista, para a camada; depois a pilha `Whole Layer` (vazia = só a conversão).
+- *A6:* a pilha recebe a origem do ruído explícita (`f32`): `Whole Layer` = o pixel da origem do
+  mundo; `Each Shape` = um mapa por célula (o pixel da âncora da instância no átlas); o Vector passa
+  a origem EXACTA da caixa (era `floor`).
+- *A7:* `offset_px` em `f32`: o borrão amostra a gaussiana deslocada (`gauss(k + frac)`), o finalize
+  interpola o campo, a luz do bevel é o vector sem arredondar.
+- *A3:* semente de Gustavson & Strand (2011): TODO texel de cobertura parcial semeia, com o gradiente
+  de Sobel ponderado (√2) e a distância `edgedf(g, a)` da aresta recta no quadrado do pixel.
+- *A8:* a régua deixa de ser onde o passe SATURA — o borrão ganha a pirâmide (σ acima de `MAX_HALF/3`
+  corre numa resolução dividida por 2ᵐ e volta por bilinear), o tecto passa a ser o do hardware, e o
+  gate mede contra o ImageMagick a um σ grande.
+- *A2/A5:* trocar o tipo no cartão (o gesto, no MESMO passo de undo — precedente
+  `apply_channel_presets`) reescreve cada knob que ainda vale o default do tipo ANTERIOR com o
+  `FxOp::new(novo)`; o que o artista mexeu fica. O manifesto nasce com o `FxOp::new(tipo inicial)`.
+- *A4:* `op_of` converte a cor linear do cartão para a sRGB reta da `FxOp` (`linear_to_srgb_unit`).
+- *U1:* a linha do tipo chama-se «Effect»; a opção «Glow» passa a «Outer Glow» (o nome do
+  Photoshop, par do «Inner Glow»); gate de rótulos únicos por superfície.
+- U2 (px do projecto) fica nomeado: a unidade é do projecto inteiro, não deste nó.
+
 ## §4 — Waves
 
 | wave | o quê | estado |

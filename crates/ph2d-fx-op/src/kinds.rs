@@ -133,7 +133,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         adjust_labels: None,
     },
     FxKindSpec {
-        name: "Glow",
+        name: "Outer Glow",
         radius_label: Some("Radius"),
         offset_labels: None,
         color_label: Some("Color"),

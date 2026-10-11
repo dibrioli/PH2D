@@ -308,7 +308,7 @@ fn measure_what_the_atlas_saves() {
     const COLS: u32 = 8;
     let ops = [
         FxOpGpu {
-            offset_px: [6, 6],
+            offset_px: [6.0, 6.0],
             ..op(FxOp::DROP_SHADOW, 6.0, [0.0, 0.0, 0.0, 0.6])
         },
         op(FxOp::COLOR_OVERLAY, 0.0, [0.2, 0.5, 1.0, 1.0]),
@@ -385,7 +385,7 @@ fn measure_what_a_scene_of_filtered_shapes_costs() {
     // tem número próprio.
     let ops = [
         FxOpGpu {
-            offset_px: [6, 6],
+            offset_px: [6.0, 6.0],
             ..op(FxOp::DROP_SHADOW, 6.0, [0.0, 0.0, 0.0, 0.6])
         },
         op(FxOp::COLOR_OVERLAY, 0.0, [0.2, 0.5, 1.0, 1.0]),

@@ -8,7 +8,7 @@
 //! Rodar: `PH2D_GPU=1 cargo test -p ph2d-render --test it fx_stack_premul_gpu -- --ignored`.
 
 use ph2d_fx_op::FxOp;
-use ph2d_render::{FxStackPass, make_output_texture};
+use ph2d_render::{FxStackPass, Origem, make_output_texture};
 
 use crate::fx_stack_common::{make_src, op, readback, try_headless_gpu};
 
@@ -108,7 +108,7 @@ fn a_premultiplied_layer_filters_like_the_straight_image() {
     let src = make_src(&gpu, w, h, &bytes);
     let pre = camada(&gpu, w, h, &reto8);
     let mut sombra = op(FxOp::DROP_SHADOW, 2.0, [0.0, 0.0, 0.0, 1.0]);
-    sombra.offset_px = [2, 3];
+    sombra.offset_px = [2.0, 3.0];
     let mut ajuste = op(FxOp::COLOR_ADJUST, 0.0, [0.0; 4]);
     ajuste.hue = 0.2;
     ajuste.sat = 0.3;
@@ -123,7 +123,7 @@ fn a_premultiplied_layer_filters_like_the_straight_image() {
         let a = make_output_texture(&gpu, w, h);
         let b = make_output_texture(&gpu, w, h);
         pass.run(&gpu, &src, &a, w, h, &ops, &[]);
-        pass.run_premultiplied(&gpu, &pre, &b, w, h, &ops);
+        pass.run_layer(&gpu, &pre, &b, w, h, &ops, Origem::Margem);
         let (ra, rb) = (readback(&gpu, &a, w, h), readback(&gpu, &b, w, h));
         let pior = ra
             .iter()
@@ -209,7 +209,7 @@ fn the_layer_blur_is_the_oracles() {
     let fixture = include_str!("../../../ph2d-lens/tests/fixtures/blur_linear_s3.txt");
     let mut desvio = |sigma: f32| {
         let dst = make_output_texture(&gpu, w, h);
-        pass.run_premultiplied(&gpu, &pre, &dst, w, h, &[op(FxOp::BLUR, sigma, [0.0; 4])]);
+        pass.run_layer(&gpu, &pre, &dst, w, h, &[op(FxOp::BLUR, sigma, [0.0; 4])], Origem::Margem);
         let out = readback(&gpu, &dst, w, h);
         let margem = 10;
         let (mut pior, mut n, mut pior_em) = (0.0f64, 0usize, (0, 0));

@@ -178,6 +178,15 @@ pub(super) fn apply_param_edits(
                     // did not change would keep it pinned at the seed.
                     let renumbers_sim = gpu::edit_renumbers_emitter(&inst.type_name, param)
                         && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON;
+                    // ⭐ **O TIPO do `fx.filter`** (doc 129 §5.5 A2/A5): trocar de tipo escreve os
+                    // defaults do novo nos knobs que o artista não mexeu — o mesmo passo de undo.
+                    if param == ph2d_node_fx_filter::param::KIND
+                        && inst.type_name == ph2d_node_fx_filter::TYPE_NAME
+                    {
+                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "código de tipo, < 15")]
+                        let novo = value.round().clamp(0.0, f64::from(u8::MAX)) as u8;
+                        ph2d_node_fx_filter::switch_kind(&mut motion.doc.graph, nid, novo);
+                    }
                     motion.doc.graph.set_param(nid, param, value as f32);
                     if let Some(tn) = type_name {
                         super::apply_channel_presets(motion, nid, &tn, value as f32);

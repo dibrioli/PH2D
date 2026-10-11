@@ -384,7 +384,7 @@ fn the_reach_sums_along_the_stack_and_leans_the_way_the_shadow_falls() {
     );
     // Uma sombra que cai para a direita e para baixo NÃO paga textura à esquerda nem acima.
     let shadow = FxOpGpu {
-        offset_px: [20, 12],
+        offset_px: [20.0, 12.0],
         ..op(2, 1.0, BLACK)
     };
     let (l, t, r, b) = stack_reach(&[shadow]);

@@ -30,7 +30,7 @@ fn turb(amount_px: f32, scale_px: f32, detail: u8, seed: u8, mode: u8) -> FxOpGp
     FxOpGpu {
         kind: FxOp::TURBULENCE,
         sigma_px: amount_px,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [0.0, 0.0, 0.0, 1.0],
         tint_b: [1.0; 4],
         opacity: 1.0,
@@ -58,7 +58,7 @@ fn inert_glow(sigma_px: f32) -> FxOpGpu {
     FxOpGpu {
         kind: FxOp::GLOW,
         sigma_px,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint: [1.0, 1.0, 1.0, 0.0],
         tint_b: [1.0; 4],
         opacity: 0.0,

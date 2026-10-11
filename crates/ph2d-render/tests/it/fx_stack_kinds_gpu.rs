@@ -64,7 +64,7 @@ fn source_ramp(gpu: &ph2d_gpu::GpuContext) -> wgpu::Texture {
     make_src(gpu, W, H, &bytes)
 }
 
-fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu {
+fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [f32; 2]) -> FxOpGpu {
     FxOpGpu {
         kind,
         sigma_px,
@@ -178,7 +178,7 @@ fn every_kind_draws_something() {
         } else {
             [0, 0]
         };
-        let out = render_ramp(&mut pass, &[one(kind, 5.0, RED, offset)]);
+        let out = render_ramp(&mut pass, &[one(kind, 5.0, RED, offset.map(|v: i32| v as f32))]);
         let differ = plain
             .as_chunks::<4>()
             .0
@@ -216,7 +216,7 @@ fn the_inner_shadow_darkens_the_rim_and_never_leaks_outside() {
     let out = render(
         &gpu,
         &mut pass,
-        &[one(FxOp::INNER_GLOW, 5.0, BLACK, [0, 0])],
+        &[one(FxOp::INNER_GLOW, 5.0, BLACK, [0.0, 0.0])],
     );
     let y = (BY0 + BY1) / 2;
     let rim = rgb_at(&out, BX0 + 1, y)[0];
@@ -279,7 +279,7 @@ fn an_inner_op_never_moves_the_coverage() {
     let plain = run(&mut pass, &[]);
     for kind in [FxOp::INNER_SHADOW, FxOp::INNER_GLOW] {
         for strength in [1.0f32, 0.5] {
-            let mut o = one(kind, 5.0, BLACK, [4, -4]);
+            let mut o = one(kind, 5.0, BLACK, [4.0, -4.0]);
             o.opacity = strength;
             let out = run(&mut pass, &[o]);
             let moved: Vec<usize> = (0..(W * H) as usize)
@@ -315,7 +315,7 @@ fn the_outline_reaches_its_width_and_stops_hard() {
     let y = (BY0 + BY1) / 2;
     // Perfil de alfa à DIREITA da fronteira da forma (que fica entre BX1-1 e BX1).
     let profile = |pass: &mut FxStackPass, kind: u8, sigma: f32| -> (f32, usize) {
-        let out = render(&gpu, pass, &[one(kind, sigma, RED, [0, 0])]);
+        let out = render(&gpu, pass, &[one(kind, sigma, RED, [0.0, 0.0])]);
         let last = (BX1..W)
             .rfind(|x| alpha_at(&out, *x, y) > 128)
             .map_or(BX1 as f32 - 1.0, |x| x as f32);
@@ -373,7 +373,7 @@ fn the_colour_overlay_repaints_without_moving_coverage() {
     let plain = render(&gpu, &mut pass, &[]);
     let y = (BY0 + BY1) / 2;
     for strength in [1.0f32, 0.6, 0.25] {
-        let mut op = one(FxOp::COLOR_OVERLAY, 0.0, RED, [0, 0]);
+        let mut op = one(FxOp::COLOR_OVERLAY, 0.0, RED, [0.0, 0.0]);
         op.opacity = strength;
         let out = render(&gpu, &mut pass, &[op]);
         let moved = (0..(W * H) as usize)
@@ -408,7 +408,7 @@ fn the_colour_overlay_repaints_without_moving_coverage() {
 #[test]
 fn the_reach_is_a_fact_of_the_kind() {
     let sigma = 8.0;
-    let reach = |kind: u8| stack_reach(&[one(kind, sigma, RED, [0, 0])]);
+    let reach = |kind: u8| stack_reach(&[one(kind, sigma, RED, [0.0, 0.0])]);
     for kind in [FxOp::INNER_SHADOW, FxOp::INNER_GLOW, FxOp::COLOR_OVERLAY] {
         assert_eq!(
             reach(kind),
@@ -429,9 +429,9 @@ fn the_reach_is_a_fact_of_the_kind() {
     );
     // O deslocamento de uma sombra EXTERNA é assimétrico; o de uma INTERNA não conta (a máscara o
     // corta na borda, então ele não pode empurrar a imagem para lado nenhum).
-    let outer = stack_reach(&[one(FxOp::DROP_SHADOW, sigma, BLACK, [10, -4])]);
+    let outer = stack_reach(&[one(FxOp::DROP_SHADOW, sigma, BLACK, [10.0, -4.0])]);
     assert_eq!(outer, (24, 28, 34, 24), "a sombra externa inclina a margem");
-    let inner = stack_reach(&[one(FxOp::INNER_SHADOW, sigma, BLACK, [10, -4])]);
+    let inner = stack_reach(&[one(FxOp::INNER_SHADOW, sigma, BLACK, [10.0, -4.0])]);
     assert_eq!(
         inner,
         (0, 0, 0, 0),
@@ -469,7 +469,7 @@ fn the_pointwise_op_costs_much_less_than_a_blur() {
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         t.elapsed().as_secs_f64() * 1000.0 / 20.0
     };
-    let six = |kind: u8, sigma: f32| vec![one(kind, sigma, RED, [0, 0]); 6];
+    let six = |kind: u8, sigma: f32| vec![one(kind, sigma, RED, [0.0, 0.0]); 6];
     // ⚠️ **O custo MARGINAL, e a subtração é o que torna o gate honesto.** Toda pilha paga um
     // `ingest` e um `resolve` fixos, então uma razão bruta dilui a diferença que se quer medir — e
     // dilui MAIS quando o overhead cresce, o que é exatamente o que aconteceu quando o ingest
@@ -504,7 +504,7 @@ fn an_op_at_zero_opacity_is_a_no_op_for_every_kind() {
     let mut pass = FxStackPass::new(&gpu);
     let plain = render(&gpu, &mut pass, &[]);
     for kind in 0..FxOp::KINDS as u8 {
-        let mut o = one(kind, 6.0, RED, [5, -5]);
+        let mut o = one(kind, 6.0, RED, [5.0, -5.0]);
         o.opacity = 0.0;
         let out = render(&gpu, &mut pass, &[o]);
         let differ = plain
@@ -557,7 +557,7 @@ fn the_contour_mode_shadows_a_reentrant_corner_and_proximity_barely_does() {
     let mut pass = FxStackPass::new(&gpu);
     // Sem deslocamento: a pergunta é sobre a LEI da banda, não sobre a direção da luz.
     let probe = |pass: &mut FxStackPass, mode: u8| -> (i32, i32) {
-        let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0, 0]);
+        let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0.0, 0.0]);
         o.mode = mode;
         pass.run(&gpu, &src, &dst, cw, ch, &[o], &[]);
         let px = readback(&gpu, &dst, cw, ch);
@@ -644,7 +644,7 @@ fn the_contour_band_is_a_function_of_distance_alone() {
     let src = make_src(&gpu, dw, dh, &bytes);
     let dst = make_output_texture(&gpu, dw, dh);
     let mut pass = FxStackPass::new(&gpu);
-    let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0, 0]);
+    let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0.0, 0.0]);
     o.mode = FxOp::MODE_CONTOUR;
     pass.run(&gpu, &src, &dst, dw, dh, &[o], &[]);
     let px = readback(&gpu, &dst, dw, dh);
@@ -731,7 +731,7 @@ fn the_outline_is_round_at_a_corner_because_a_dilation_cannot_be_anything_else()
         &dst,
         tw,
         th,
-        &[one(FxOp::OUTLINE, w, RED, [0, 0])],
+        &[one(FxOp::OUTLINE, w, RED, [0.0, 0.0])],
         &[],
     );
     let px = readback(&gpu, &dst, tw, th);
@@ -799,8 +799,8 @@ fn the_feather_softens_the_edge_and_leaves_the_interior_alone() {
         readback(&gpu, &dst, W, H)
     };
     let plain = run(&mut pass, &[]);
-    let feathered = run(&mut pass, &[one(FxOp::FEATHER, 8.0, RED, [0, 0])]);
-    let blurred = run(&mut pass, &[one(FxOp::BLUR, 8.0, RED, [0, 0])]);
+    let feathered = run(&mut pass, &[one(FxOp::FEATHER, 8.0, RED, [0.0, 0.0])]);
+    let blurred = run(&mut pass, &[one(FxOp::BLUR, 8.0, RED, [0.0, 0.0])]);
     // O contraste das listras no MIOLO (longe de qualquer borda).
     let contrast = |px: &[u8]| {
         let y = (BY0 + BY1) / 2;
@@ -890,7 +890,7 @@ fn the_bevel_lights_the_rim_that_faces_the_light_and_flips_with_it() {
             &dst,
             W,
             H,
-            &[one(FxOp::BEVEL, 8.0, BLACK, light)],
+            &[one(FxOp::BEVEL, 8.0, BLACK, light.map(|v| v as f32))],
             &[],
         );
         let out = readback(&gpu, &dst, W, H);
@@ -939,11 +939,23 @@ fn the_outline_edge_is_a_function_of_distance_alone() {
     let (dw, dh) = (128u32, 128u32);
     let (nx, ny) = (0.371_4f64, 0.928_5f64);
     let sd_at = |x: u32, y: u32| (f64::from(x) - 64.0).mul_add(nx, (f64::from(y) - 64.0) * ny);
+    // ⚠️ A cobertura é a de ÁREA (16×16 subamostras do quadrado do pixel), a que um rasterizador
+    // anti-aliased escreve. A fixtura antiga era `clamp(0,5 − d)` — uma rampa de 1 px ao longo da
+    // normal, que é a premissa da semente antiga escrita na fixtura dela (doc 129 §5.5 A3).
     let mut bytes = vec![0u8; (dw * dh * 4) as usize];
     for y in 0..dh {
         for x in 0..dw {
+            let mut dentro = 0u32;
+            for sy in 0..16 {
+                for sx in 0..16 {
+                    let (fx, fy) = ((f64::from(sx) + 0.5) / 16.0 - 0.5, (f64::from(sy) + 0.5) / 16.0 - 0.5);
+                    if sd_at(x, y) + fx * nx + fy * ny < 0.0 {
+                        dentro += 1;
+                    }
+                }
+            }
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let a = ((0.5 - sd_at(x, y)).clamp(0.0, 1.0) * 255.0).round() as u8;
+            let a = (f64::from(dentro) / 256.0 * 255.0).round() as u8;
             let o = ((y * dw + x) * 4) as usize;
             bytes[o..o + 4].copy_from_slice(&[a, a, a, a]);
         }
@@ -957,7 +969,7 @@ fn the_outline_edge_is_a_function_of_distance_alone() {
         &dst,
         dw,
         dh,
-        &[one(FxOp::OUTLINE, 8.0, RED, [0, 0])],
+        &[one(FxOp::OUTLINE, 8.0, RED, [0.0, 0.0])],
         &[],
     );
     let px = readback(&gpu, &dst, dw, dh);

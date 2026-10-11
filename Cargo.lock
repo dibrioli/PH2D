@@ -6584,6 +6584,7 @@ dependencies = [
 name = "ph2d-node-fx-filter"
 version = "0.0.0"
 dependencies = [
+ "ph2d-color",
  "ph2d-fx-op",
  "ph2d-i18n",
  "ph2d-node-registry",

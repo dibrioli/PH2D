@@ -17,7 +17,7 @@ pub fn op(kind: u8, sigma_px: f32, tint: [f32; 4]) -> FxOpGpu {
     FxOpGpu {
         kind,
         sigma_px,
-        offset_px: [0, 0],
+        offset_px: [0.0, 0.0],
         tint,
         tint_b: [1.0; 4],
         opacity: 1.0,

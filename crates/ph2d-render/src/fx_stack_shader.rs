@@ -13,8 +13,8 @@ struct Globals {
     tint: vec4<f32>,
     inv_two_sigma2: f32,
     opacity: f32,
-    off_x: i32,
-    off_y: i32,
+    off_x: f32,
+    off_y: f32,
     jump: i32,
     band: f32,
     n_segs: u32,
@@ -25,7 +25,7 @@ struct Globals {
     mode: u32,
     org: vec2<f32>,
     grow_px: f32,
-    _pad: f32,
+    org_map: u32,
     hue: f32,
     sat: f32,
     bright: f32,
@@ -133,25 +133,8 @@ fn ramp_sample(t: f32) -> vec4<f32> {
 
 fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INNER_GLOW; }
 
-// **Quem precisa do campo FORA da forma?** O feather (a rampa é centrada na fronteira) e o contorno
-// (ele mora todo lá fora). Esses semeiam a CASCA — a primeira fileira de dentro —, que dá os dois
-// lados de uma vez. Quem só olha para dentro semeia os texels de FORA, que é a medida exata do que
-// eles perguntam: *a que distância estou de deixar de existir*. ⚠️ A diferença aparece na quina
-// CÔNCAVA — a casca de um lado só a estima ~0,6 px pior, e é justamente ali que o modo Contour
-// existe para acertar.
-// ⚠️ **A pergunta é feita, não ENUMERADA — e a lista de nomes já apodreceu uma vez.** Ela dizia
-// `FEATHER || OUTLINE || BEVEL || GLOW`, uma enumeração dos leitores conhecidos, e a morfologia
-// (que lê o campo dos DOIS lados: crescer olha para fora, encolher olha para dentro) nasceu a cair
-// no `else` — ou seja com o campo definido de um lado só, e nada a dizer. O que distingue os dois
-// grupos é *para onde este degrau olha*, e isso já tem nome uma linha acima: **os de DENTRO** são a
-// exceção, todo o resto quer os dois lados. Escrita assim, o próximo tipo do campo nasce certo.
-//
-// ⚠️ Sobre o conjunto que de facto chega aqui (só os degraus de campo com semente de raster) as
-// duas formas eram EQUIVALENTES no dia desta troca — os gates de contorno, feather, bevel, glow e
-// dos de dentro são a prova de que nada se moveu.
-fn seeds_shell() -> bool {
-    return !is_inner();
-}
+// (A semente do campo é UM conjunto para os dois lados — a fronteira de Gustavson & Strand,
+// `fx_stack_field.rs`; a casca de um lado só, por degrau, saiu na W3b do ciclo 20.)
 
 // **O PÉ EXATO na silhueta**, do centro do texel `p` — o ponto mais próximo sobre os segmentos.
 //
@@ -282,14 +265,31 @@ fn tap_mid(t: texture_2d<f32>, x: i32, y: i32) -> vec4<f32> {
 
 fn gauss(i: f32) -> f32 { return exp(-i * i * g.inv_two_sigma2); }
 
+// **O deslocamento SUB-PIXEL** (doc 129 §5.5 A7): amostrar em `x − off` com `off = oi + of` é a
+// gaussiana centrada em `−of`, logo o tap `x − oi + k` pesa `gauss(k + of)`. Com `of = 0` o laço é
+// o de sempre, byte a byte (o tap a mais só existe com fração). Um σ ínfimo com fração dá pesos
+// todos ~0: aí a resposta é a interpolação linear entre os dois taps vizinhos.
+fn shift_split(off: f32) -> vec2<f32> {
+    let oi = floor(off);
+    return vec2<f32>(oi, off - oi);
+}
+
 fn blur_h_at(id: vec3<u32>) -> vec4<f32> {
     var acc = vec4<f32>(0.0);
     var wsum = 0.0;
     let h = i32(g.half);
-    for (var k = -h; k <= h; k = k + 1) {
-        let wt = gauss(f32(k));
-        acc = acc + source_of(tap_img(t0, i32(id.x) - g.off_x + k, i32(id.y))) * wt;
+    let s = shift_split(g.off_x);
+    let base = i32(id.x) - i32(s.x);
+    let k0 = select(-h, -h - 1, s.y > 0.0);
+    for (var k = k0; k <= h; k = k + 1) {
+        let wt = gauss(f32(k) + s.y);
+        acc = acc + source_of(tap_img(t0, base + k, i32(id.y))) * wt;
         wsum = wsum + wt;
+    }
+    if (wsum < 1.0e-6) {
+        let a = source_of(tap_img(t0, base, i32(id.y)));
+        let b = source_of(tap_img(t0, base - 1, i32(id.y)));
+        return mix(a, b, s.y);
     }
     return acc / wsum;
 }
@@ -298,10 +298,16 @@ fn blur_v_at(id: vec3<u32>) -> vec4<f32> {
     var acc = vec4<f32>(0.0);
     var wsum = 0.0;
     let h = i32(g.half);
-    for (var k = -h; k <= h; k = k + 1) {
-        let wt = gauss(f32(k));
-        acc = acc + tap_mid(t1, i32(id.x), i32(id.y) - g.off_y + k) * wt;
+    let s = shift_split(g.off_y);
+    let base = i32(id.y) - i32(s.x);
+    let k0 = select(-h, -h - 1, s.y > 0.0);
+    for (var k = k0; k <= h; k = k + 1) {
+        let wt = gauss(f32(k) + s.y);
+        acc = acc + tap_mid(t1, i32(id.x), base + k) * wt;
         wsum = wsum + wt;
+    }
+    if (wsum < 1.0e-6) {
+        return mix(tap_mid(t1, i32(id.x), base), tap_mid(t1, i32(id.x), base - 1), s.y);
     }
     return acc / wsum;
 }

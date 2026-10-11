@@ -113,6 +113,19 @@ impl Plan {
     }
 }
 
+/// **De onde o padrão do ruído (a turbulência) se ancora** — doc 129 §5.5 A6.
+#[derive(Clone, Copy)]
+pub enum Origem<'a> {
+    /// A margem da pilha: a caixa da FORMA (o Vector, uma forma por corrida).
+    Margem,
+    /// Um ponto da imagem, em pixels — a camada inteira do Motion: o pixel da origem do MUNDO, e o
+    /// padrão anda com a câmera.
+    Ponto([f32; 2]),
+    /// POR TEXEL (`Rgba32Float`, `.xy`, do tamanho da imagem): as células do átlas, cada uma com o
+    /// pixel da âncora da SUA instância — o padrão anda com a forma.
+    Mapa(&'a wgpu::TextureView),
+}
+
 /// O passe da pilha. Pipelines build-once; as três texturas de trabalho (ping/pong/mid) são
 /// **grow-only** — uma cena com formas de tamanhos diferentes não realoca por forma por frame.
 pub struct FxStackPass {
@@ -133,8 +146,6 @@ pub struct FxStackPass {
     segs: wgpu::Buffer,
     segs_cap: u64,
     work: Option<[Tex; 4]>,
-    /// A fonte da corrida em curso é pré-multiplicada ([`FxStackPass::run_premultiplied`]).
-    premul: bool,
 }
 
 /// **Os dois módulos WGSL que a pilha compila** — porta ÚNICA, com dois consumidores: o
@@ -255,7 +266,6 @@ impl FxStackPass {
             segs,
             segs_cap,
             work: None,
-            premul: false,
         }
     }
 
@@ -336,10 +346,12 @@ impl FxStackPass {
         self.run_from(gpu, src, [0, 0], dst, w, h, ops, geom);
     }
 
-    /// A mesma pilha sobre uma fonte **PRÉ-multiplicada** no espaço do desenhista (a camada do
-    /// Motion, doc 129 §3.3 — sRGB codificado, `rgb·α`), sem geometria: o campo de distância é
-    /// semeado pela imagem. A saída é a de sempre (sRGB reto, `Rgba8Unorm`).
-    pub fn run_premultiplied(
+    /// A mesma pilha sobre uma CAMADA **PRÉ-multiplicada** no espaço do desenhista (a do Motion,
+    /// doc 129 §3.3 — sRGB codificado, `rgb·α`), sem geometria: o campo de distância é semeado pela
+    /// imagem, e a origem do ruído é a que o chamador diz ([`Origem`], doc 129 §5.5 A6). A saída é a
+    /// de sempre (sRGB reto, `Rgba8Unorm`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_layer(
         &mut self,
         gpu: &GpuContext,
         src: &wgpu::Texture,
@@ -347,10 +359,9 @@ impl FxStackPass {
         w: u32,
         h: u32,
         ops: &[FxOpGpu],
+        origem: Origem<'_>,
     ) {
-        self.premul = true;
-        self.run_from(gpu, src, [0, 0], dst, w, h, ops, &[]);
-        self.premul = false;
+        self.run_with(gpu, src, [0, 0], dst, w, h, ops, &[], true, origem);
     }
 
     /// A mesma pilha, lendo a fonte a partir de `src_org` — a forma vive numa **CÉLULA** de uma
@@ -371,6 +382,23 @@ impl FxStackPass {
         h: u32,
         ops: &[FxOpGpu],
         geom: &[[f32; 4]],
+    ) {
+        self.run_with(gpu, src, src_org, dst, w, h, ops, geom, false, Origem::Margem);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn run_with(
+        &mut self,
+        gpu: &GpuContext,
+        src: &wgpu::Texture,
+        src_org: [i32; 2],
+        dst: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        ops: &[FxOpGpu],
+        geom: &[[f32; 4]],
+        premul: bool,
+        origem: Origem<'_>,
     ) {
         if w == 0 || h == 0 {
             return;
@@ -395,8 +423,8 @@ impl FxStackPass {
             tint: [0.0; 4],
             inv_two_sigma2: 1.0,
             opacity: 1.0,
-            off_x: 0,
-            off_y: 0,
+            off_x: 0.0,
+            off_y: 0.0,
             jump: 0,
             band: 1.0,
             n_segs: 0,
@@ -407,7 +435,7 @@ impl FxStackPass {
             mode: 0,
             org: [0.0, 0.0],
             grow_px: 0.0,
-            _pad: [0.0],
+            org_map: 0,
             hue: 0.0,
             sat: 0.0,
             bright: 0.0,
@@ -423,7 +451,7 @@ impl FxStackPass {
         // porque nenhum lê tint/sigma/banda — mas o resolve lê `work[cur]`, que já é local, e
         // dar-lhe a origem seria escrever um número que ninguém lê hoje e que o próximo leitor
         // interpretaria como verdade.
-        let src_premul = u32::from(self.premul);
+        let src_premul = u32::from(premul);
         write_at(
             &mut blob,
             0,
@@ -439,9 +467,16 @@ impl FxStackPass {
         // margem e quem ancora o padrão têm de dar a MESMA resposta, e um argumento a mais seria
         // uma segunda oportunidade de discordar. Assim `(pixel − org)` é a posição relativa à
         // caixa da FORMA, e o padrão não anda quando outro degrau muda de raio.
+        //
+        // A camada do Motion diz a origem ([`Origem`]): a do mundo, ou uma POR CÉLULA do átlas.
         let (ml, mt, _, _) = stack_reach(ops);
         #[allow(clippy::cast_precision_loss)]
-        let org = [ml as f32, mt as f32];
+        let org = match origem {
+            Origem::Margem => [ml as f32, mt as f32],
+            Origem::Ponto(p) => p,
+            Origem::Mapa(_) => [0.0, 0.0],
+        };
+        let org_map = u32::from(matches!(origem, Origem::Mapa(_)));
         let mut slot = 1usize;
         for op in ops {
             let plan = plan_of(op, geom.is_empty());
@@ -459,7 +494,10 @@ impl FxStackPass {
                 } => 0,
                 _ => u32::try_from(geom.len()).unwrap_or(u32::MAX),
             };
-            let g = Globals::for_op(op, [w, h], org, n_segs);
+            let g = Globals {
+                org_map,
+                ..Globals::for_op(op, [w, h], org, n_segs)
+            };
             match plan {
                 Plan::Point | Plan::Warp => {
                     write_at(&mut blob, slot, &g);
@@ -469,9 +507,9 @@ impl FxStackPass {
                     // O passe H leva o deslocamento em X; o V leva o de Y. Juntos, amostram o halo
                     // em `(x - off_x, y - off_y)` — a sombra cai deslocada DENTRO da imagem.
                     let mut gh = g;
-                    gh.off_y = 0;
+                    gh.off_y = 0.0;
                     let mut gv = g;
-                    gv.off_x = 0;
+                    gv.off_x = 0.0;
                     write_at(&mut blob, slot, &gh);
                     write_at(&mut blob, slot + 1, &gv);
                     slot += 2;
@@ -482,8 +520,8 @@ impl FxStackPass {
                     let head = usize::from(raster_seed);
                     if raster_seed {
                         let mut seed = g;
-                        seed.off_x = 0;
-                        seed.off_y = 0;
+                        seed.off_x = 0.0;
+                        seed.off_y = 0.0;
                         write_at(&mut blob, slot, &seed);
                         for i in 0..jumps {
                             let mut gj = seed;
@@ -536,8 +574,13 @@ impl FxStackPass {
                 }
                 Plan::Warp => {
                     // Deforma: lê a entrada numa posição deslocada pelo ruído. Um dispatch, como o
-                    // pontual, mas cada texel lê os VIZINHOS — daí o pipeline próprio.
-                    let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
+                    // pontual, mas cada texel lê os VIZINHOS — daí o pipeline próprio. O `t1` está
+                    // livre: com um mapa, é a origem do ruído POR TEXEL (as células do átlas).
+                    let t1 = match origem {
+                        Origem::Mapa(mapa) => mapa,
+                        _ => input,
+                    };
+                    let bg = self.bind(gpu, &self.bgl_mid, input, t1, &work[next].view);
                     dispatch(&mut encoder, &self.pipeline_warp, &bg, slot, gx, gy);
                     slot += 1;
                 }

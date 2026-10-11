@@ -47,7 +47,7 @@ fn feathered(gpu: &ph2d_gpu::GpuContext) -> Vec<u8> {
         &[FxOpGpu {
             kind: FxOp::FEATHER,
             sigma_px: BAND,
-            offset_px: [0, 0],
+            offset_px: [0.0, 0.0],
             tint: [1.0, 1.0, 1.0, 1.0],
             tint_b: [1.0; 4],
             opacity: 1.0,

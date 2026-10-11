@@ -14,6 +14,8 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 # A tabela dos 15 filtros raster (doc 94 do Motion): o nó DERIVA a ficha dela.
 ph2d-fx-op = { path = "../ph2d-fx-op" }
+# A fronteira de cor do cartão (linear) com a `FxOp` (sRGB reto), doc 129 §5.5 A4.
+ph2d-color = { path = "../ph2d-color" }
 
 [dev-dependencies]
 # Os rótulos do seletor são as chaves do vocabulário do painel vetorial: o gate confere a palavra.

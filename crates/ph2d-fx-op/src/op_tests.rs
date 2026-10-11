@@ -78,7 +78,7 @@ fn the_spec_table_is_indexed_by_the_kind_code() {
     assert_eq!(FxOp::SPECS.len(), FxOp::KINDS);
     for (name, kind) in [
         ("Blur", FxOp::BLUR),
-        ("Glow", FxOp::GLOW),
+        ("Outer Glow", FxOp::GLOW),
         ("Drop Shadow", FxOp::DROP_SHADOW),
         ("Inner Shadow", FxOp::INNER_SHADOW),
         ("Inner Glow", FxOp::INNER_GLOW),

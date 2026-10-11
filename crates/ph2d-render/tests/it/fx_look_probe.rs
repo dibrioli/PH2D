@@ -175,7 +175,7 @@ fn write_ppm(dir: &str, name: &str, px: &[u8]) {
     eprintln!("[fx-look] {path}");
 }
 
-fn op(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu {
+fn op(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [f32; 2]) -> FxOpGpu {
     FxOpGpu {
         kind,
         sigma_px,
@@ -258,25 +258,25 @@ fn probe_fx_render_and_look() {
     // exatamente a figura que um único print não decide — o defeito pode estar no modo, no
     // deslocamento ou no perfil, e só a matriz separa os três.
     let inner = |mode: u8, off: [i32; 2]| {
-        let mut o = op(FxOp::INNER_SHADOW, 20.0, black, off);
+        let mut o = op(FxOp::INNER_SHADOW, 20.0, black, off.map(|v| v as f32));
         o.mode = mode;
         o
     };
     // Os DOIS modos do halo externo, lado a lado: o vão entre pontas da estrela é onde eles
     // discordam, e é a única figura que decide se a escolha vale a pena existir.
     let glow = |mode: u8| {
-        let mut o = op(FxOp::GLOW, 20.0, white, [0, 0]);
+        let mut o = op(FxOp::GLOW, 20.0, white, [0.0, 0.0]);
         o.mode = mode;
         o
     };
     let scenes: [(&str, Vec<FxOpGpu>); 14] = [
         ("00_plain", vec![]),
-        ("01_feather", vec![op(FxOp::FEATHER, 24.0, white, [0, 0])]),
-        ("02_bevel", vec![op(FxOp::BEVEL, 20.0, black, [-12, 12])]),
-        ("03_outline", vec![op(FxOp::OUTLINE, 8.0, white, [0, 0])]),
+        ("01_feather", vec![op(FxOp::FEATHER, 24.0, white, [0.0, 0.0])]),
+        ("02_bevel", vec![op(FxOp::BEVEL, 20.0, black, [-12.0, 12.0])]),
+        ("03_outline", vec![op(FxOp::OUTLINE, 8.0, white, [0.0, 0.0])]),
         (
             "04_inner_shadow",
-            vec![op(FxOp::INNER_SHADOW, 20.0, black, [0, 0])],
+            vec![op(FxOp::INNER_SHADOW, 20.0, black, [0.0, 0.0])],
         ),
         (
             "05_inner_prox_off0",
@@ -296,7 +296,7 @@ fn probe_fx_render_and_look() {
         ),
         (
             "09_inner_glow",
-            vec![op(FxOp::INNER_GLOW, 20.0, white, [0, 0])],
+            vec![op(FxOp::INNER_GLOW, 20.0, white, [0.0, 0.0])],
         ),
         ("10_glow_prox", vec![glow(FxOp::MODE_PROXIMITY)]),
         ("11_glow_cont", vec![glow(FxOp::MODE_CONTOUR)]),
@@ -305,11 +305,11 @@ fn probe_fx_render_and_look() {
         // troca de aresta mais próxima; é o único lugar onde o campo exato tem descontinuidade.
         (
             "12_bevel_big",
-            vec![op(FxOp::BEVEL, 90.0, black, [-12, 12])],
+            vec![op(FxOp::BEVEL, 90.0, black, [-12.0, 12.0])],
         ),
         (
             "13_bevel_huge",
-            vec![op(FxOp::BEVEL, 200.0, black, [-12, 12])],
+            vec![op(FxOp::BEVEL, 200.0, black, [-12.0, 12.0])],
         ),
     ];
     // A FONTE, como o passe a ve^ — se a premultiplicacao dela nao valer, todo o resto herda.

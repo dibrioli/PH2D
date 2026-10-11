@@ -22,8 +22,8 @@ pub(crate) struct Globals {
     pub(crate) tint: [f32; 4],
     pub(crate) inv_two_sigma2: f32,
     pub(crate) opacity: f32,
-    pub(crate) off_x: i32,
-    pub(crate) off_y: i32,
+    pub(crate) off_x: f32,
+    pub(crate) off_y: f32,
     /// O passo do salto do JFA (só os passes de campo de distância o leem).
     pub(crate) jump: i32,
     /// A largura da banda (modo Contour) / do contorno, em pixels.
@@ -57,7 +57,8 @@ pub(crate) struct Globals {
     ///
     /// ⚠️ Esta nota morava, obsoleta, num doc-comment órfão sobre um `use` no `fx_stack_shader` —
     /// ela ainda dizia "64 bytes" com o struct em 112.
-    pub(crate) _pad: [f32; 1],
+    /// `1` = a origem do ruído é POR TEXEL, lida do `t1` do passe de deformação (as células).
+    pub(crate) org_map: u32,
     /// A MATIZ em VOLTAS, a saturação e o brilho em `-1..1` — só o Color Adjust os lê.
     ///
     /// ⚠️ **Voltas, e não o par (sen, cos) precomputado no host.** Precomputar seria mais barato
@@ -136,7 +137,7 @@ impl Globals {
             mode: u32::from(op.mode),
             org,
             grow_px: op.grow_px,
-            _pad: [0.0],
+            org_map: 0,
             hue: op.hue,
             sat: op.sat,
             bright: op.bright,

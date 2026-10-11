@@ -151,11 +151,14 @@ pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
         b += reach;
         let spec = FxOp::spec(op.kind);
         if spec.offset_labels.is_some() && spec.grows {
+            // Sub-pixel: o lado para onde aponta paga o pixel inteiro seguinte (o tap da fração).
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let px = |v: f32| v.max(0.0).ceil() as u32;
             let (ox, oy) = (op.offset_px[0], op.offset_px[1]);
-            l += ox.min(0).unsigned_abs();
-            r += ox.max(0).unsigned_abs();
-            t += oy.min(0).unsigned_abs();
-            b += oy.max(0).unsigned_abs();
+            l += px(-ox);
+            r += px(ox);
+            t += px(-oy);
+            b += px(oy);
         }
     }
     (l, t, r, b)

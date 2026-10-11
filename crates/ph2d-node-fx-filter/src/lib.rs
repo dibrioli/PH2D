@@ -59,6 +59,7 @@ pub const COMPRIMENTO_MAX: f32 = 0.6;
 /// Os nomes dos params (a ordem do manifesto é a ordem das linhas do cartão).
 pub mod param {
     pub const KIND: &str = "kind";
+    pub const SCOPE: &str = "scope";
     pub const RADIUS: &str = "radius";
     pub const OFFSET_X: &str = "offset_x";
     pub const OFFSET_Y: &str = "offset_y";
@@ -92,11 +93,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         name: "out",
         ty: INST_VEC2,
     }],
-    // Os defaults: Blur, e os knobs dos outros tipos nos valores da `FxOp::new` deles (a sombra
-    // projectada, o crescimento do Grow / Shrink), para o tipo escolhido já se ver.
+    // Os defaults: o `FxOp::new(BLUR)` (gate `the_dropped_filter_is_the_vectors_blur`), cada forma
+    // por si, e os knobs dos outros tipos nos valores da `FxOp::new` deles — o que o tipo lê ANTES de
+    // um gesto do cartão (o [`switch_kind`] escreve-os ao trocar de tipo).
     params: &[
         p(param::KIND, 0.0),
-        p(param::RADIUS, 0.1),
+        p(param::SCOPE, 0.0),
+        p(param::RADIUS, 0.12),
         p(param::OFFSET_X, 0.12),
         p(param::OFFSET_Y, -0.12),
         p(param::COLOR[0], 0.0),
@@ -159,6 +162,33 @@ pub static RAMP_LABELS: [&str; 2] = [
     "node.opts.node_fx_filter.ramp_labels.0",
     "node.opts.node_fx_filter.ramp_labels.1",
 ];
+
+/// Onde o degrau corre ([`Scope`]), na ordem dos códigos.
+pub static SCOPE_LABELS: [&str; 2] = [
+    "node.opts.node_fx_filter.scope_labels.0",
+    "node.opts.node_fx_filter.scope_labels.1",
+];
+
+/// **Onde um degrau corre** (doc 129 §3.4, decisão do dono 10/10) — o idioma do Illustrator: um
+/// efeito em CADA objecto corre por objecto; no grupo, corre na união.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Scope {
+    /// Cada instância do Motion filtrada sozinha (a sombra interna, o bevel, o contorno veem só a
+    /// SUA forma) e devolvida no seu lugar, na ordem de z.
+    EachShape,
+    /// A camada inteira (a união das formas) — o estilo de camada do After Effects.
+    WholeLayer,
+}
+
+impl Scope {
+    fn of(code: f32) -> Self {
+        if code.round() >= 1.0 {
+            Self::WholeLayer
+        } else {
+            Self::EachShape
+        }
+    }
+}
 
 /// Os três params de modo e a lista de modos que cada um escolhe — a lista é a do tipo que a
 /// declara na `SPECS`, e o gate de cada param são os tipos com a MESMA lista.
@@ -318,6 +348,31 @@ pub static PARAM_GATES: &[ParamGate] = &[
 pub struct NoDoFiltro {
     pub no: NodeId,
     pub op: FxOp,
+    pub scope: Scope,
+}
+
+/// ⭐ **A pilha partida em DOIS estágios pela ordem do fio** — porta única de *«que degraus correm
+/// por forma?»*: o prefixo `Each Shape` corre em cada forma; do primeiro `Whole Layer` em diante,
+/// tudo corre na camada (as formas já foram juntas).
+#[must_use]
+pub fn partition(pilha: &[NoDoFiltro]) -> (&[NoDoFiltro], &[NoDoFiltro]) {
+    let n = pilha
+        .iter()
+        .position(|d| d.scope == Scope::WholeLayer)
+        .unwrap_or(pilha.len());
+    pilha.split_at(n)
+}
+
+/// Os `Each Shape` DEPOIS de um `Whole Layer`: já não veem as formas, correm na camada — e o cartão
+/// di-lo.
+#[must_use]
+pub fn na_camada_apesar_do_scope(pilha: &[NoDoFiltro]) -> Vec<NodeId> {
+    partition(pilha)
+        .1
+        .iter()
+        .filter(|d| d.scope == Scope::EachShape)
+        .map(|d| d.no)
+        .collect()
 }
 
 fn default_of(name: &str) -> f32 {
@@ -343,51 +398,156 @@ fn read_u8(ov: Option<&BTreeMap<String, f32>>, name: &str, max: u8) -> u8 {
     read(ov, name).round().clamp(0.0, f32::from(max)) as u8
 }
 
+/// ⚠️ **O cartão guarda a cor em RGBA LINEAR** (o seletor do Motion, `motion_bridge_color`); a
+/// `FxOp` é sRGB RETO (o shader lineariza-a). A fronteira é AQUI, nos dois sentidos — sem ela toda
+/// cor intermédia era linearizada duas vezes (doc 129 §5.5 A4: um cinzento sRGB 128 chegava a 55).
 fn read_color(ov: Option<&BTreeMap<String, f32>>, names: [&str; 4]) -> [f32; 4] {
-    names.map(|n| read(ov, n))
+    let [r, g, b, a] = names.map(|n| read(ov, n));
+    let srgb = [r, g, b].map(ph2d_color::srgb::linear_to_srgb_unit);
+    [srgb[0], srgb[1], srgb[2], a]
 }
 
-/// O degrau que o nó `no` declara — os valores do cartão, nunca os defaults escondidos de outro tipo.
+/// A inversa de [`read_color`]: a cor sRGB reta da `FxOp` como o cartão a guarda.
+fn card_color(c: [f32; 4]) -> [f32; 4] {
+    let lin = [c[0], c[1], c[2]].map(ph2d_color::srgb::srgb_to_linear_unit);
+    [lin[0], lin[1], lin[2], c[3]]
+}
+
+/// O param de modo que o tipo `kind` lê, se algum.
+fn mode_param_of(kind: usize) -> Option<(&'static str, &'static [&'static str])> {
+    let modes = FxOp::SPECS[kind].modes;
+    MODE_PARAMS
+        .iter()
+        .find(|(_, lista)| same_list(lista, modes))
+        .copied()
+}
+
+#[expect(clippy::cast_possible_truncation, reason = "KINDS = 15 cabe num u8")]
+fn kind_of(ov: Option<&BTreeMap<String, f32>>) -> u8 {
+    read_u8(ov, param::KIND, (FxOp::KINDS - 1) as u8)
+}
+
+/// **O degrau que o nó `no` declara** — o `FxOp::new(tipo)` do Vector (a mesma lei, doc 129 §5.5
+/// A2/A5), com os knobs que o TIPO lê tirados do cartão. Um knob que o tipo não lê fica no default
+/// do tipo, nunca no valor escondido de outro.
 #[must_use]
 pub fn op_of(graph: &Graph, no: NodeId) -> FxOp {
     let ov = graph.node_param_overrides(no);
-    #[expect(clippy::cast_possible_truncation, reason = "KINDS = 15 cabe num u8")]
-    let kind = read_u8(ov, param::KIND, (FxOp::KINDS - 1) as u8);
-    let color = read_color(ov, param::COLOR);
-    let color_b = read_color(ov, param::COLOR2);
-    let modes = FxOp::SPECS[usize::from(kind)].modes;
-    let mode = MODE_PARAMS
-        .iter()
-        .find(|(_, lista)| same_list(lista, modes))
-        .map_or(0, |(nome, lista)| {
-            #[expect(clippy::cast_possible_truncation, reason = "listas de 2 modos")]
-            read_u8(ov, nome, (lista.len() - 1) as u8)
-        });
+    let kind = kind_of(ov);
+    let k = usize::from(kind);
     let mut op = FxOp::new(kind);
-    op.radius = read(ov, param::RADIUS).max(0.0);
-    op.offset = [read(ov, param::OFFSET_X), read(ov, param::OFFSET_Y)];
-    op.color = color;
-    op.color_b = color_b;
     op.opacity = read(ov, param::OPACITY).clamp(0.0, 1.0);
-    op.mode = mode;
-    op.enabled = true;
-    op.blend = FxOp::BLEND_NORMAL;
-    op.scale = read(ov, param::SIZE).max(0.0);
-    op.detail = read_u8(ov, param::DETAIL, FxOp::MAX_DETAIL);
-    op.seed = read_u8(ov, param::SEED, u8::MAX);
-    op.grow = read(ov, param::GROW);
-    // O cartão fala em GRAUS; a `FxOp` guarda a matiz em VOLTAS.
-    op.hue = read(ov, param::HUE) / 360.0;
-    op.sat = read(ov, param::SATURATION);
-    op.bright = read(ov, param::BRIGHTNESS);
-    if FxOp::SPECS[usize::from(kind)].takes_ramp {
-        op.stops[0] = color;
-        op.stops[1] = color_b;
+    if takes(k, Knob::Radius) {
+        op.radius = read(ov, param::RADIUS).max(0.0);
+    }
+    if takes(k, Knob::Offset) {
+        op.offset = [read(ov, param::OFFSET_X), read(ov, param::OFFSET_Y)];
+    }
+    if takes(k, Knob::Color) {
+        op.color = read_color(ov, param::COLOR);
+    }
+    if takes(k, Knob::Color2) {
+        op.color_b = read_color(ov, param::COLOR2);
+    }
+    if let Some((nome, lista)) = mode_param_of(k) {
+        #[expect(clippy::cast_possible_truncation, reason = "listas de 2 modos")]
+        let max = (lista.len() - 1) as u8;
+        op.mode = read_u8(ov, nome, max);
+    }
+    if takes(k, Knob::Noise) {
+        op.scale = read(ov, param::SIZE).max(0.0);
+        op.detail = read_u8(ov, param::DETAIL, FxOp::MAX_DETAIL);
+        op.seed = read_u8(ov, param::SEED, u8::MAX);
+    }
+    if takes(k, Knob::Grow) {
+        op.grow = read(ov, param::GROW);
+    }
+    if takes(k, Knob::Adjust) {
+        // O cartão fala em GRAUS; a `FxOp` guarda a matiz em VOLTAS.
+        op.hue = read(ov, param::HUE) / 360.0;
+        op.sat = read(ov, param::SATURATION);
+        op.bright = read(ov, param::BRIGHTNESS);
+    }
+    if FxOp::SPECS[k].takes_ramp {
+        op.stops[0] = op.color;
+        op.stops[1] = op.color_b;
         op.stop_pos[0] = 0.0;
         op.stop_pos[1] = 1.0;
         op.stop_count = 2;
     }
+    op.enabled = true;
+    op.blend = FxOp::BLEND_NORMAL;
     op
+}
+
+/// **O que o cartão mostra para o degrau `op`** — a inversa do [`op_of`], só nos knobs que o tipo
+/// LÊ (com a opacidade, que todos leem).
+#[must_use]
+pub fn card_values(op: &FxOp) -> Vec<(&'static str, f32)> {
+    let k = usize::from(op.kind);
+    let mut v = vec![(param::OPACITY, op.opacity)];
+    if takes(k, Knob::Radius) {
+        v.push((param::RADIUS, op.radius));
+    }
+    if takes(k, Knob::Offset) {
+        v.extend([(param::OFFSET_X, op.offset[0]), (param::OFFSET_Y, op.offset[1])]);
+    }
+    let ramp = FxOp::SPECS[k].takes_ramp;
+    if takes(k, Knob::Color) {
+        let c = card_color(if ramp { op.stops[0] } else { op.color });
+        v.extend(param::COLOR.into_iter().zip(c));
+    }
+    if takes(k, Knob::Color2) {
+        let c = card_color(if ramp { op.stops[1] } else { op.color_b });
+        v.extend(param::COLOR2.into_iter().zip(c));
+    }
+    if let Some((nome, _)) = mode_param_of(k) {
+        v.push((nome, f32::from(op.mode)));
+    }
+    if takes(k, Knob::Noise) {
+        v.extend([
+            (param::SIZE, op.scale),
+            (param::DETAIL, f32::from(op.detail)),
+            (param::SEED, f32::from(op.seed)),
+        ]);
+    }
+    if takes(k, Knob::Grow) {
+        v.push((param::GROW, op.grow));
+    }
+    if takes(k, Knob::Adjust) {
+        v.extend([
+            (param::HUE, op.hue * 360.0),
+            (param::SATURATION, op.sat),
+            (param::BRIGHTNESS, op.bright),
+        ]);
+    }
+    v
+}
+
+/// ⭐ **O gesto de TROCAR DE TIPO** (doc 129 §5.5 A2/A5) — o cartão e as cenas passam por aqui, no
+/// MESMO passo de undo do `kind` (o precedente do `apply_channel_presets`). Cada knob que o tipo
+/// NOVO lê recebe o `FxOp::new(novo)` se ainda vale o default do tipo ANTERIOR (ou se o anterior nem
+/// o lia); o que o artista mexeu fica. Assim o Glow nasce branco e em Proximity, como no Vector.
+pub fn switch_kind(graph: &mut Graph, no: NodeId, novo: u8) {
+    let ov = graph.node_param_overrides(no);
+    let velho = kind_of(ov);
+    if velho == novo {
+        return;
+    }
+    let antes = card_values(&FxOp::new(velho));
+    let escritas: Vec<(&str, f32)> = card_values(&FxOp::new(novo))
+        .into_iter()
+        .filter(|(nome, _)| {
+            antes
+                .iter()
+                .find(|(n, _)| n == nome)
+                .is_none_or(|(_, d)| read(ov, nome).to_bits() == d.to_bits())
+        })
+        .collect();
+    graph.set_param(no, param::KIND, f32::from(novo));
+    for (nome, valor) in escritas {
+        graph.set_param(no, nome, valor);
+    }
 }
 
 /// **A pilha do quadro**: os `fx.filter` no fio principal (porta 0) de cada `Output`, em ordem de id
@@ -427,6 +587,7 @@ pub fn from_graph(graph: &Graph) -> Vec<NoDoFiltro> {
         pilha.extend(fio.into_iter().rev().map(|no| NoDoFiltro {
             no,
             op: op_of(graph, no),
+            scope: Scope::of(read(graph.node_param_overrides(no), param::SCOPE)),
         }));
     }
     pilha
@@ -523,6 +684,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &KIND_LABELS,
         },
     ),
+    modos(param::SCOPE, "node.fx.filter.param.scope", &SCOPE_LABELS),
     slider(param::RADIUS, "node.fx.filter.param.radius", 0.0, L),
     slider(param::OFFSET_X, "node.fx.filter.param.offset_x", -L, L),
     slider(param::OFFSET_Y, "node.fx.filter.param.offset_y", -L, L),

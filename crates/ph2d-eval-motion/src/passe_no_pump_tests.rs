@@ -472,6 +472,42 @@ fn um_quadro_que_recupera_tiques_separa_uma_vez() {
     );
 }
 
+/// ⭐ **E COM O SINK COMO TOMADA** (o gizmo do colisor): num tique que não se desenha o braço
+/// `Sinks` não compõe, logo é o laço das tomadas que coze o sink — e ele também não pode separar.
+#[test]
+fn um_sink_tomada_nao_separa_os_tiques_recuperados() {
+    let mut g = Graph::new();
+    let sink = g.add_node(SRC_MAN.name);
+    g.set_param(sink, DECLARA, 1.0);
+    g.set_param(sink, SINK_COLLIDE_ITERATIONS_PARAM, 32.0);
+    let mut pump = MotionCookPump::new();
+    pump.define_a_lei(false);
+    pump.set_taps(&[sink]);
+    let (uv, tam) = ([0.0, 0.0, 1.0, 1.0], [1.0, 1.0]);
+    for tick in 0..4u64 {
+        pump.set_separa_o_desenho(tick == 3);
+        assert!(pump.pump(
+            &g,
+            &Ops,
+            &[sink],
+            tick,
+            f64::from(tick as u32) / 60.0,
+            uv,
+            tam
+        ));
+    }
+    assert_eq!(
+        pump.separacoes(),
+        1,
+        "a tomada separou tiques que não se desenham"
+    );
+    assert_eq!(
+        pump.tap_streams().len(),
+        1,
+        "a tomada do sink tem de ser publicada"
+    );
+}
+
 /// ⭐⭐⭐ **O NÚMERO QUE CORRE NÃO É O NÚMERO QUE O CARTÃO PEDE** — o readout do preço (report do
 /// dono, 2026-09-18).
 ///

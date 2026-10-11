@@ -169,9 +169,12 @@ impl MotionCookPump {
                 && let Some(v) = outputs.first()
             {
                 let cozido = v.as_stream();
-                let desenhado = sinks_do_quadro
-                    .contains(&node)
-                    .then(|| o_que_o_sink_desenha(graph, node, cozido).0)
+                // Um tique que não vai ser desenhado não separa (como o braço `Sinks` antes dele).
+                let desenhado = (self.separa_o_desenho && sinks_do_quadro.contains(&node))
+                    .then(|| {
+                        self.separacoes += 1;
+                        o_que_o_sink_desenha(graph, node, cozido).0
+                    })
                     .flatten();
                 self.tap_streams
                     .push((node, desenhado.unwrap_or_else(|| cozido.clone())));

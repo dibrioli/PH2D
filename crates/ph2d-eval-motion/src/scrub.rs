@@ -64,7 +64,10 @@ impl MotionCookPump {
         self.cook.restore(&cp);
         let mut replay = self.comeca_o_replay(anchor);
         let mut t = anchor;
+        // Só o ALVO é desenhado; os tiques re-simulados até ele cozem só o estado (`so_o_estado`).
+        let desenha = self.separa_o_desenho;
         loop {
+            self.separa_o_desenho = desenha && t == target_tick;
             self.entradas_do_replay(&mut replay, t);
             let playhead = playhead_of(t);
             // Record the state that reproduces frame `t` (before its cook), so a
@@ -86,6 +89,7 @@ impl MotionCookPump {
             }
             t += 1;
         }
+        self.separa_o_desenho = desenha;
         // ⚠️ Com `t`, não com `target_tick`: depois do laço `t` É o último tique COZIDO, e os
         // dois só coincidem quando o alvo tem trabalho. Ver [`Self::record_tap_fires`].
         self.record_tap_fires(t);

@@ -50,7 +50,9 @@ use ph2d_render::RenderInstance;
 
 mod checkpoint;
 mod fita;
+mod so_o_estado;
 pub use fita::{FITA_BYTES, Fita, Gravacao};
+pub use so_o_estado::nos_com_estado;
 mod entradas;
 pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, MEMO_A_CADA, RECENT_DENSE};
 
@@ -156,19 +158,15 @@ pub struct MotionCookPump {
     /// recupera vários tiques de simulação de uma vez, e **só o ÚLTIMO é desenhado** — os
     /// anteriores enchem o `instances`/`vector_instances` e são logo sobrescritos.
     ///
-    /// ⇒ o passe de separação, que é um **ACABAMENTO SOBRE O QUE SE DESENHA** e não uma lei de
-    /// simulação (não realimenta nada — doc 115 §3 W0), estava a correr `N` vezes para desenhar
-    /// **uma**. Com `1024` varreduras num quadro que recupera 11 tiques, isso é onze vezes o preço
-    /// da separação para um desenho só.
-    ///
-    /// ⚠️ Nasce `true`: quem não sabe se está a recuperar (todo chamador que cozinha um tique só)
-    /// continua a separar, exactamente como antes.
+    /// ⇒ `false` não compõe nem separa: coze SÓ o estado (`so_o_estado.rs`, 11/10 — e antes, de
+    /// 18/09, só o passe de separação, um acabamento que não realimenta nada, doc 115 §3 W0).
+    /// ⚠️ Nasce `true`: quem cozinha um tique só continua a compor, exactamente como antes.
     separa_o_desenho: bool,
-    /// Quantas vezes a separação de facto correu — o readout que torna a lei acima OBSERVÁVEL.
-    ///
-    /// ⚠️ **Sem ele a economia é invisível:** as duas rotas entregam o mesmo desenho (o tique
-    /// intermédio ia ser sobrescrito), logo nenhum gate de valor, de bits ou de pixel a vê.
+    /// Quantas vezes a separação de facto correu — o readout que torna a lei acima OBSERVÁVEL
+    /// (o desenho final é o mesmo ao bit, logo nenhum gate de valor a vê).
     separacoes: u64,
+    /// Ver [`MotionCookPump::cozimentos_so_do_estado`].
+    cozimentos_so_do_estado: u64,
     /// Ver [`MotionCookPump::ultimo_relatorio`].
     ultimo_relatorio: ph2d_contact::passe::Relatorio,
     /// ⭐⭐⭐ **A LEI DO DONO, COMO DADO** — *«nós como Grid, rope, etc, não passam de posições do
@@ -250,6 +248,7 @@ impl MotionCookPump {
             tap_fires: Vec::new(),
             separa_o_desenho: true,
             separacoes: 0,
+            cozimentos_so_do_estado: 0,
             ultimo_relatorio: ph2d_contact::passe::Relatorio::default(),
             so_com_forma: false,
             camada_isolada: false,
@@ -454,6 +453,10 @@ impl MotionCookPump {
         // Içado antes do laço: lá dentro o `&mut self.instances` já está tomado.
         let so_com_forma = self.so_com_forma;
         match *target {
+            // Um tique que não vai ser desenhado coze só o estado (`so_o_estado.rs`).
+            CookTarget::Sinks { sinks, .. } if !self.separa_o_desenho => {
+                self.cozinha_so_o_estado(graph, ops, sinks, playhead, scopes);
+            }
             CookTarget::Sinks {
                 sinks,
                 default_uv_rect,

@@ -738,6 +738,8 @@ mis = "mis"
 ambiguidade = "ambiguidade"
 # W11 — português nos doc-comments do quadro ao vivo (os círculos das pessoas).
 avatares = "avatares"
+# UIUX F7 — `nin`/`nout` = pontos de entrada/saída no roteiro do oráculo do QuickShape (`corre_oraculo.sh`).
+nin = "nin"
 implementador = "implementador"
 materializadas = "materializadas"
 pendente = "pendente"

@@ -15,7 +15,10 @@ pub fn toolbar_rects(area: Rect) -> Vec<(Item, Rect)> {
     TOOLBAR
         .iter()
         .copied()
-        .zip(super::super::float_bar::column_rects(area, &[TOOLBAR.len()]))
+        .zip(super::super::float_bar::column_rects(
+            area,
+            &[TOOLBAR.len()],
+        ))
         .collect()
 }
 

@@ -51,9 +51,21 @@ pub(super) fn paint_canvas_overlays(
     // same math the grid uses (so the gizmo and grid stay aligned
     // across pan/zoom).
     // F10: no modo Forma da ferramenta vetorial, só as alças (o miolo continua canvas).
+    // F11: durante o arrasto de uma alça de forma, só o contorno (sem alças nem hits).
     if let Some(view) = hero.gizmo.view {
-        let body = !hero.gizmo.handles_only;
-        crate::gizmo::paint_sprite_gizmo_with(scene, &view, hero.theme, &mut hero.hit_index, body);
+        if hero.gizmo.outline_only {
+            // A espessura do primário (`paint_sprite_gizmo_with`): a caixa não «mexe» ao trocar.
+            crate::gizmo::paint_gizmo_outline(scene, &view, hero.theme, 1.5); // LITERAL-PX-OK
+        } else {
+            let body = !hero.gizmo.handles_only;
+            crate::gizmo::paint_sprite_gizmo_with(
+                scene,
+                &view,
+                hero.theme,
+                &mut hero.hit_index,
+                body,
+            );
+        }
     }
     // Flip W7.5: o gizmo da POSE da chave (modo Edit + quadro instanciado). Pintado
     // como gizmo KEYED — rotate/scale nos ids do espaço `FlipPose`, sem interior
@@ -208,6 +220,12 @@ pub(super) fn paint_canvas_overlays(
             w,
             layout.canvas,
         );
+        crate::readout::paint_chip(text_system, scene, text, at, 0.0, hero.theme);
+    }
+    // F11: a ficha do arrasto de uma ALÇA de forma (`«R: 24 px»`) — a mesma ficha, outro dono.
+    if let Some((text, cursor)) = hero.gizmo.handle_readout.as_ref() {
+        let w = crate::readout::chip_width(text_system, text, 0.0);
+        let at = crate::readout::at_cursor(*cursor, w, layout.canvas);
         crate::readout::paint_chip(text_system, scene, text, at, 0.0, hero.theme);
     }
 }

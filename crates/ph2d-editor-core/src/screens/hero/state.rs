@@ -162,6 +162,13 @@ pub struct GizmoStateGroup {
     /// F10: a caixa do [`Self::view`] pinta-se só com as ALÇAS (sem miolo nem pivô) — a shell
     /// acende-o no modo Forma da ferramenta vetorial (`ph2d_app_vec::overlay::object_box`).
     pub handles_only: bool,
+    /// F11: a caixa do [`Self::view`] pinta-se SÓ o contorno, sem alças nem hits — durante o
+    /// arrasto de uma alça de forma (o Illustrator esconde as alças da caixa). A shell acende-o
+    /// pela `ph2d_app_vec::shape_handles_live::draw`.
+    pub outline_only: bool,
+    /// F11: a ETIQUETA do arrasto de uma alça de forma (`«Points: 7»`) e onde pousa (o cursor, px
+    /// de ecrã) — a mesma ficha do [`Self::readout`], fora de um arrasto da caixa.
+    pub handle_readout: Option<(String, [f32; 2])>,
     /// Onda 2: per-frame views of the multi-selection extras. The
     /// shell rebuilds this from `extra_selection` × PresentWorld each
     /// frame. The painter draws an outline-only gizmo (no interactive

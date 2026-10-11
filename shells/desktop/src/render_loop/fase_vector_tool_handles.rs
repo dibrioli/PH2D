@@ -106,19 +106,17 @@ impl crate::App {
             );
         }
         // **As alças de PARÂMETRO da forma** (F9; F10: no modo Forma) — por cima do gizmo: o raio do
-        // canto, o vale da estrela, os ângulos do arco.
-        if overlay.shape_handles {
-            let theme = hero.theme;
-            ph2d_app_vec::shape_handles_live::draw(
-                &self.vec,
-                sim,
-                px,
-                hover,
-                cam_affine,
-                theme,
-                vector_scene,
-            );
-        }
+        // canto, o vale da estrela, os ângulos do arco. F11: e a caixa só-contorno e a etiqueta.
+        ph2d_app_vec::shape_handles_live::draw(
+            &self.vec,
+            sim,
+            px,
+            hover,
+            overlay.shape_handles,
+            cam_affine,
+            hero,
+            vector_scene,
+        );
         // **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil da forma primária.
         // A ficha fica SOBRE a curva e uma haste sai dela até a borda da fita, que é o que a
         // parada mede: a ficha na borda atravessava a linha vizinha em multiplicador alto, e

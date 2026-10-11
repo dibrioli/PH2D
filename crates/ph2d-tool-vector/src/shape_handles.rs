@@ -292,12 +292,18 @@ pub fn handle_grip(
     // elipse os pontos cardeais SÃO as alças do meio das arestas da caixa (medido na foto da cena
     // 15: o início da pizza às 3h sumia debaixo da de escala). A lei delas só lê o ÂNGULO da mão,
     // então recolhê-las não muda nada do que fazem; até metade do raio, para não cair no pivô.
+    // F11: os ângulos de um ARCO vivem `park_at` por FORA do aro, numa haste — o *pie widget* do
+    // Illustrator (as fotos, doc 17 §1); dentro ficavam colados ao miolo da fatia.
     if reads_only_the_angle(h) {
         let r = at[0].hypot(at[1]);
         if r <= 0.0 {
             return Some(at);
         }
-        let k = (r - park_at.min(r * 0.5)) / r;
+        let k = if is_arc_angle(h) {
+            (r + park_at) / r
+        } else {
+            (r - park_at.min(r * 0.5)) / r
+        };
         return Some([at[0] * k, at[1] * k]);
     }
     if h.inset {
@@ -329,9 +335,15 @@ pub fn handle_grip(
     Some([zero[0] + dx / l * park_at, zero[1] + dy / l * park_at])
 }
 
-/// `true` = a lei da alça só lê o ÂNGULO da mão — ela pode viver recolhida para dentro do aro, e a
-/// pega dela mede-se a partir do ponto DESENHADO (o mesmo ângulo do verdadeiro): segurar parado
-/// não muda nada e a translação não torce o ângulo.
+/// `true` = a alça é o início ou o fim de um ARCO (o *pie widget*: vive por fora do aro).
+#[must_use]
+pub fn is_arc_angle(h: &HandleDesc) -> bool {
+    matches!(h.law, Law::Sweep { .. } | Law::ArcStart { .. })
+}
+
+/// `true` = a lei da alça só lê o ÂNGULO da mão — ela pode viver fora do contorno (recolhida, ou na
+/// haste), e a pega dela mede-se a partir do ponto DESENHADO (o mesmo ângulo do verdadeiro):
+/// segurar parado não muda nada e a translação não torce o ângulo.
 #[must_use]
 pub fn reads_only_the_angle(h: &HandleDesc) -> bool {
     matches!(

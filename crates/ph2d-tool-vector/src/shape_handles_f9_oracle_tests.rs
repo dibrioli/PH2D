@@ -36,10 +36,11 @@ fn the_spiral_turns_follow_the_winding_like_inkscape() {
     assert_eq!(n, 6, "as experiências da ponta de fora");
 }
 
-/// ⭐ As alças de ÂNGULO recolhem-se `park_at` para dentro do aro (nunca em cima das alças do meio
-/// das arestas da caixa), até metade do raio — e o arrasto delas continua a ler só o ângulo.
+/// ⭐ As alças de ÂNGULO de um arco vivem `park_at` por FORA do aro, numa haste (o *pie widget* do
+/// Illustrator, F11 — antes recolhiam-se para dentro): nunca em cima das alças do meio das arestas
+/// da caixa — e o arrasto delas continua a ler só o ângulo.
 #[test]
-fn an_angle_handle_lives_inside_the_rim_off_the_box_handles() {
+fn an_angle_handle_lives_outside_the_rim_off_the_box_handles() {
     let k = ShapeKind::Pie;
     let ck = cooker(k, HALF);
     let v = k.defaults(); // início a 0° (3h): no aro, é o meio da aresta direita da caixa
@@ -52,15 +53,14 @@ fn an_angle_handle_lives_inside_the_rim_off_the_box_handles() {
     assert!((truth[0] - HALF[0]).abs() < 1e-9 && truth[1].abs() < 1e-9);
     let g = handle_grip(k, h, &v, HALF, PX, 0.25, &ck).unwrap();
     assert!(
-        (g[0] - (HALF[0] - 0.25)).abs() < 1e-9 && g[1].abs() < 1e-9,
+        (g[0] - (HALF[0] + 0.25)).abs() < 1e-9 && g[1].abs() < 1e-9,
         "{g:?}"
     );
-    // Até metade do raio: num raio de 0,3 a alça fica a 0,15.
+    // Num raio pequeno também fica fora (a haste não depende do tamanho).
     let tiny = handle_grip(k, h, &v, [0.3, 0.3], PX, 0.25, &cooker(k, [0.3, 0.3])).unwrap();
-    assert!((tiny[0] - 0.15).abs() < 1e-9, "{tiny:?}");
-    // Agarrada no sítio recolhido, a 40° de volta: o início vai a 40°, como do aro.
-    // Agarrada no sítio DESENHADO (a pega mede-se a ele) e levada por um quarto de volta perto do
-    // centro (meio raio): o ângulo da mão é o que conta.
+    assert!((tiny[0] - 0.55).abs() < 1e-9, "{tiny:?}");
+    // Agarrada no sítio DESENHADO (a pega mede-se a ele) e levada a 40° de volta perto do centro
+    // (meio raio): o ângulo da mão é o que conta.
     let mut d = HandleDrag::start(st, v, g, g, HALF);
     let mut r = v;
     for s in 1..=8 {

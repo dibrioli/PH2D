@@ -45,7 +45,7 @@ pub(crate) fn forma(fonte: &'static str) -> &'static str {
 }
 
 /// Os PARÂMETROS de uma forma, traduzido.
-pub(crate) fn campo(fonte: &'static str) -> &'static str {
+pub fn campo(fonte: &'static str) -> &'static str {
     pintar(chave_do_campo(fonte), fonte)
 }
 

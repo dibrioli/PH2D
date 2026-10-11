@@ -395,11 +395,16 @@ fn the_fields_without_a_gesture_are_counted_not_listed() {
     let without: &[(ShapeKind, &[usize])] = &[
         // A suavização do canto: um perfil, não um ponto; o tipo do canto (F10) é uma ESCOLHA.
         (K::RoundRect, &[4, 5]),
-        // F10: o tipo do canto (escolha) e o liso (um perfil) — o cartão lateral.
-        (K::Polygon, &[2, 4]),
-        (K::Star, &[4, 6, 7]),
-        // F10: a divergência da espiral e a envergadura dos flancos da engrenagem.
-        (K::Spiral, &[1]),
+        // F10: o tipo do canto (escolha) e o liso (um perfil) — o cartão lateral. F11: a
+        // envergadura também (o Illustrator não a põe no canvas).
+        (K::Polygon, &[2, 3, 4]),
+        (K::Star, &[4, 5, 6, 7]),
+        // F11: o furo da pizza (o Illustrator só tem os dois ângulos no canvas).
+        (K::Ellipse, &[2]),
+        (K::Pie, &[2]),
+        // F10: a divergência da espiral e a envergadura dos flancos da engrenagem; F11: o raio
+        // interno da espiral (um ponto no centro, colado ao pivô).
+        (K::Spiral, &[1, 2]),
         (K::Gear, &[4]),
         // A faixa do rabo encolhe a elipse inteira: nenhum vértice anda só com ela.
         (K::SpeechOval, &[3]),

@@ -95,3 +95,38 @@ fn a_handles_only_box_leaves_its_middle_to_the_canvas() {
         assert_eq!(centro(&inteira, id), (x, y), "a alça mudou de lugar");
     }
 }
+
+/// ⭐ (F11) **Durante o arrasto de uma alça de forma, a caixa é só CONTORNO** (o Illustrator esconde
+/// as alças dela): nenhum id da caixa registado — nem alça, nem miolo, nem pivô — e a ficha da alça
+/// pinta-se (mais caminhos no quadro). CONTROLO: a mesma caixa só-alças regista as alças.
+#[test]
+fn an_outline_only_box_registers_nothing_and_the_handle_readout_paints() {
+    assert!(
+        pinta(true)
+            .hit_index
+            .rect_for(ids::GIZMO_HANDLE_TL)
+            .is_some()
+    );
+    let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+    hero.gizmo.view = Some(caixa());
+    hero.gizmo.handles_only = true;
+    hero.gizmo.outline_only = true;
+    let mut ts = TextSystem::without_system_fonts();
+    let mut sem = VectorScene::new();
+    paint_hero_screen(&mut hero, JANELA, &mut sem, &mut ts);
+    for id in [
+        ids::GIZMO_HANDLE_TL,
+        ids::GIZMO_HANDLE_R,
+        ids::GIZMO_BBOX_INTERIOR,
+        ids::GIZMO_PIVOT,
+    ] {
+        assert!(hero.hit_index.rect_for(id).is_none(), "{id:?} registado");
+    }
+    hero.gizmo.handle_readout = Some(("Points: 7".to_owned(), [400.0, 300.0]));
+    let mut com = VectorScene::new();
+    paint_hero_screen(&mut hero, JANELA, &mut com, &mut ts);
+    assert!(
+        com.inner().encoding().n_paths > sem.inner().encoding().n_paths,
+        "a ficha da alça não se pintou"
+    );
+}

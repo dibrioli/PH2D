@@ -44,6 +44,8 @@ pub mod shapes;
 /// As ALÇAS de cada forma no canvas (F9): a lei (o ponto do contorno cozido + a métrica medida
 /// no Inkscape) e o arrasto. A tabela forma a forma vive no irmão `shape_handles_table`.
 pub mod shape_handles;
+/// A cara de cada alça, a etiqueta e o círculo do arrasto (F11).
+pub mod shape_handles_face;
 mod shape_handles_table;
 /// A TRAVESSIA do catálogo (descritor · unidade UI↔mundo · clamp · escolhas) — módulo irmão
 /// de `shapes` (teto de LOC). Re-exportado dali, então quem consome não percebe o corte.

@@ -90,11 +90,10 @@ const COUNT_WIDGET: Spot = Spot::Box { u: 8, v: 2 };
 /// do Affinity (F10, a foto do dono): o raio do canto no vértice de CIMA, descendo pelo eixo dele
 /// (desenhado `PARK_PX` para DENTRO: o topo do contorno É a alça do meio-topo da caixa, que abraça
 /// o contorno cozido e desce com ele — estacionar a partir do vértice vivo deixava-a por baixo da
-/// alça azul, medido na foto da cena 16); a envergadura no meio do lado esquerdo dele; os
-/// lados no ⇕. O tipo do canto e o liso: o cartão.
+/// alça azul, medido na foto da cena 16); os lados no ⇕ — o ◇ e o ⊙ do Illustrator, nada mais
+/// (F11). A envergadura, o tipo do canto e o liso: o cartão.
 const POLYGON: &[HandleDesc] = &[
     h(&[0], COUNT_WIDGET, Law::Steps),
-    on_sharp(h(&[3], Spot::EdgeMid(0), Law::Nearest), &[1]),
     inset(on_sharp(h(&[1], Spot::Apex(0), Law::Nearest), &[1])),
 ];
 
@@ -102,11 +101,10 @@ const POLYGON: &[HandleDesc] = &[
 /// (o manual e as fotos, F10): os pontos JUNTO da ponta de cima. A ponta arredonda (o *Outer
 /// circle*: o ponto desce pelo eixo dela; desenhado para DENTRO, fora da alça do meio-topo); o vale da DIREITA é
 /// o raio interior (só radial — nada torce, nem no Affinity nem no Illustrator); o vale da ESQUERDA
-/// arredonda os vales (o *Inner circle*, pelo eixo dele); a envergadura no meio do lado esquerdo da
-/// ponta; as pontas no ⇕ do Illustrator. O tipo do canto, o liso e a torção: o cartão.
+/// arredonda os vales (o *Inner circle*, pelo eixo dele); as pontas no ⇕ — o R2, os dois ⊙ e o ⇕
+/// do Illustrator (F11). A envergadura, o tipo do canto, o liso e a torção: o cartão.
 const STAR: &[HandleDesc] = &[
     h(&[0], COUNT_WIDGET, Law::Steps),
-    on_sharp(h(&[5], Spot::EdgeMid(0), Law::Nearest), &[2, 3]),
     on_sharp(h(&[3], Spot::Apex(1), Law::Nearest), &[2, 3]),
     on_sharp(h(&[1], Spot::FromEnd(0), Law::Radial), &[2, 3]),
     inset(on_sharp(h(&[2], Spot::Apex(0), Law::Nearest), &[2, 3])),
@@ -134,35 +132,18 @@ const ARC_END: HandleDesc = h(
     Law::Sweep { start: 1 },
 );
 
-/// A família do círculo (`round::ellipse_sweep`): 0 = abertura, 1 = início, 2 = furo. O furo no
-/// meio da fatia, a partir do centro (o Affinity: *Hole radius*, radial); o início e o fim sobre
-/// a elipse. Numa elipse INTEIRA o fim está sobre o início e vem por último — puxá-lo abre a pizza
-/// (o *pie widget* do Illustrator).
-const ROUND: &[HandleDesc] = &[
-    parked(h(
-        &[2],
-        Spot::Ellipse {
-            start: 1,
-            sweep: Some(0),
-            mid: true,
-            scale: Some(2),
-        },
-        Law::Radial,
-    )),
-    ARC_START,
-    ARC_END,
-];
+/// A família do círculo (`round::ellipse_sweep`): 0 = abertura, 1 = início, 2 = furo. O início e o
+/// fim sobre a elipse — os dois *pie widgets* do Illustrator. Numa elipse INTEIRA o fim está sobre o
+/// início e vem por último — puxá-lo abre a pizza. O furo (o Illustrator não o põe no canvas; F11):
+/// o cartão.
+const ROUND: &[HandleDesc] = &[ARC_START, ARC_END];
 
 /// O arco aberto e o segmento: só o início e o fim.
 const ARC: &[HandleDesc] = &[ARC_START, ARC_END];
 
-/// A espiral (`shapes::spiral`): as VOLTAS na ponta de fora, por volta inteira do ponteiro.
-/// As voltas na ponta de fora; o RAIO INTERNO (F10) na de dentro — a distância ao centro, como a
-/// alça interna do Inkscape (estaciona: no zero ela é o centro). A divergência: o cartão.
-const SPIRAL: &[HandleDesc] = &[
-    h(&[0], Spot::FromEnd(0), Law::Winding),
-    parked(h(&[2], Spot::Vertex(0), Law::Radial)),
-];
+/// A espiral (`shapes::spiral`): as VOLTAS na ponta de fora, por volta inteira do ponteiro. O raio
+/// interno (um ponto no centro, colado ao pivô — F11) e a divergência: o cartão.
+const SPIRAL: &[HandleDesc] = &[h(&[0], Spot::FromEnd(0), Law::Winding)];
 
 /// A seta (`arrows::arrow_block`, autorada em `(u, v)` com `v` do topo): 0 = haste, 1 = comprimento
 /// da cabeça, 2 = largura da cabeça. A espessura da haste no canto de trás dela (vértice 0); a

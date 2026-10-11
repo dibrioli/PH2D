@@ -14,6 +14,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecShape};
 use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shape_handles::{self as law, HandleDrag, Mods};
+use ph2d_tool_vector::shape_handles_face as face;
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_entities::transform::{world_transform, xform_of_transform};
 use ph2d_vec_scene::{ShapeKind, ShapeValues, VecPath, VecPathId, VecScene, Xform};
@@ -144,13 +145,32 @@ impl Target {
     }
 }
 
-/// O que se desenha: as alças em MUNDO e o trilho da que está quente (agarrada ou sob o cursor).
+/// O que se desenha: as alças em MUNDO (com a cara e a raiz da haste de cada uma — F11), o trilho
+/// da que está quente (agarrada ou sob o cursor) e o círculo tracejado do raio AGARRADO.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ShapeHandlesView {
     pub points: Vec<[f64; 2]>,
+    pub faces: Vec<ph2d_vec_render::HandleFace>,
+    pub stems: Vec<Option<[f64; 2]>>,
     pub hot: Option<usize>,
     pub track: Vec<[f64; 2]>,
+    pub ring: Vec<[f64; 2]>,
 }
+
+/// A cara que se PINTA para a cara que a lei DÁ — o render não conhece a lei (o compilador cobra
+/// uma cara nova dos dois lados).
+fn face_of(g: face::Glyph) -> ph2d_vec_render::HandleFace {
+    use ph2d_vec_render::HandleFace as F;
+    match g {
+        face::Glyph::Corner => F::Corner,
+        face::Glyph::Count => F::Count,
+        face::Glyph::Angle => F::Angle,
+        face::Glyph::Radius => F::Radius,
+    }
+}
+
+/// Os pontos do círculo tracejado do raio.
+const RING_N: usize = 96;
 
 /// As alças da forma seleccionada (fora do `gate`, nenhuma). `grabbed` (o arrasto vivo) manda no
 /// quente; sem ele, a alça sob `hover` (mundo) — a guia aparece ANTES do arrasto, como no Affinity.
@@ -177,11 +197,63 @@ pub fn view(
                 .collect()
         })
         .unwrap_or_default();
+    let (hs, ck) = (law::handles_of(t.kind), t.cook());
+    let truth = |h: &law::HandleDesc| law::handle_point(h, &t.values, t.half(), &ck);
+    let (mut points, mut faces, mut stems) = (Vec::new(), Vec::new(), Vec::new());
+    for (h, g) in hs.iter().zip(&world) {
+        let Some(p) = *g else { continue };
+        points.push(p);
+        faces.push(face_of(face::glyph_of(h)));
+        stems.push(
+            law::is_arc_angle(h)
+                .then(|| truth(h))
+                .flatten()
+                .map(|q| t.xf.apply(q)),
+        );
+    }
+    // O círculo do raio só DURANTE o arrasto (o R2 do Illustrator), pelo ponto verdadeiro.
+    let ring = grabbed
+        .and_then(|k| hs.get(k))
+        .and_then(|h| truth(h).map(|at| face::radius_ring(h, at, t.half(), RING_N)))
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| t.xf.apply(p))
+        .collect();
     Some(ShapeHandlesView {
-        points: world.into_iter().flatten().collect(),
+        points,
+        faces,
+        stems,
         hot,
         track,
+        ring,
     })
+}
+
+/// ⭐ (F11) **A ETIQUETA do arrasto vivo** — `«Points: 7»`, `«Inner: 0.38»`: o campo traduzido e o
+/// número na unidade dele (os comprimentos pela `LengthDisplay` do projecto, a da ficha da caixa).
+/// `None` sem arrasto de alça.
+#[must_use]
+pub fn readout(
+    vec: &crate::state::VecState,
+    sim: &SimWorld,
+    px_to_world: f64,
+    display: ph2d_editor_core::LengthDisplay,
+) -> Option<String> {
+    let g = vec.shape_handles.grab?;
+    let t = Target::of(sim, &vec.entities, vec.pen.selected_paths(), Gate::of(vec))?;
+    let h = law::handles_of(t.kind)
+        .get(g.handle())
+        .filter(|_| t.id == g.id)?;
+    let name = |l: &'static str| ph2d_panel_vector::nomes_do_motor::campo(l).to_owned();
+    let length = |w: f64| {
+        let z = if px_to_world > 0.0 {
+            1.0 / px_to_world
+        } else {
+            1.0
+        };
+        format!("{} {}", display.text_at_zoom(w, z), display.suffix())
+    };
+    Some(face::readout(t.kind, h, &t.values, &name, &length))
 }
 
 /// A alça sob `w` (mundo): a ÚLTIMA da lista que o alcança (é a que se desenha por cima).
@@ -398,29 +470,61 @@ impl ShapeHandleInput {
 }
 
 /// O desenho das alças da forma seleccionada (por cima do gizmo): a quente é a agarrada ou a que
-/// está sob `hover` (mundo), e o trilho dela é a guia. Nada fora do [`Gate`] do `vec`.
+/// está sob `hover` (mundo), e o trilho dela é a guia. Nada fora do [`Gate`] do `vec` — nem com
+/// `shown` apagado (o plano do overlay).
+///
+/// ⭐ (F11) Publica também no `hero` o que o Illustrator faz DURANTE o arrasto de um widget: a caixa
+/// só com o CONTORNO (`outline_only` — as alças dela somem) e a ETIQUETA do número junto do cursor
+/// (`handle_readout`). Fora de um arrasto, os dois apagam-se.
+#[allow(clippy::too_many_arguments)] // o mesmo quadro que a shell parte para cada overlay
 pub fn draw(
     vec: &crate::state::VecState,
     sim: &SimWorld,
     px_to_world: f64,
     hover: Option<[f64; 2]>,
+    shown: bool,
     camera: ph2d_vector::Affine,
-    theme: ph2d_tokens::Theme,
+    hero: &mut ph2d_editor_core::HeroScreen,
     target: &mut ph2d_vector::VectorScene,
 ) {
-    let grabbed = vec.shape_handles.grab.map(|g| g.handle());
+    let grabbed = vec.shape_handles.grab.map(|g| g.handle()).filter(|_| shown);
+    hero.gizmo.outline_only = grabbed.is_some();
+    hero.gizmo.handle_readout = grabbed
+        .and(hover)
+        .zip(readout(
+            vec,
+            sim,
+            px_to_world,
+            ph2d_editor_core::LengthDisplay::of(&hero.project),
+        ))
+        .map(|(w, text)| {
+            let p = camera * ph2d_vector::Point::new(w[0], w[1]);
+            #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
+            (text, [p.x as f32, p.y as f32])
+        });
+    if !shown {
+        return;
+    }
     let selection = vec.pen.selected_paths();
-    let gate = Gate::of(vec);
     if let Some(v) = view(
         sim,
         &vec.entities,
         selection,
-        gate,
+        Gate::of(vec),
         px_to_world,
         grabbed,
         hover,
     ) {
-        ph2d_vec_render::draw_shape_handles(&v.points, v.hot, &v.track, camera, theme, target);
+        let marks: Vec<ph2d_vec_render::HandleMark> = v
+            .points
+            .iter()
+            .zip(&v.faces)
+            .zip(&v.stems)
+            .map(|((&at, &face), &stem)| ph2d_vec_render::HandleMark { at, face, stem })
+            .collect();
+        ph2d_vec_render::draw_shape_handles(
+            &marks, v.hot, &v.track, &v.ring, camera, hero.theme, target,
+        );
     }
 }
 

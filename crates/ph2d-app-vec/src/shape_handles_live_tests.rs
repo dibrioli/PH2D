@@ -291,3 +291,67 @@ fn esc_through_the_input_door_restores_the_press_and_ends_the_drag() {
     assert_eq!(values_of(&sim, &map, id)[1], 0.3, "o Esc não repôs o press");
     assert!(input.grab.is_none(), "o Esc deixou o arrasto vivo");
 }
+
+/// ⭐ (F11) **As caras do Illustrator e o círculo do raio** — a estrela mostra ⇕ ⊙ ○ ⊙ (o R2 e os
+/// dois cantos, sem a envergadura), e o círculo tracejado só existe DURANTE o arrasto do raio,
+/// pelo ponto agarrado (a elipse da caixa, normalizada: `w = 4`, `h = 2`).
+#[test]
+fn a_star_wears_the_illustrator_faces_and_its_radius_drag_draws_the_ring() {
+    use ph2d_vec_render::HandleFace::{Corner, Count, Radius};
+    let k = ShapeKind::Star;
+    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    assert_eq!(v.faces, [Count, Corner, Radius, Corner]);
+    assert!(v.ring.is_empty(), "sem arrasto não há círculo");
+    assert!(
+        v.stems.iter().all(Option::is_none),
+        "a estrela não tem haste"
+    );
+    let inner = 2;
+    let p = v.points[inner];
+    let k0 = (p[0] / 2.0).hypot(p[1] / 1.0);
+    let g = view(&sim, &map, &[id], G, PX, Some(inner), None).unwrap();
+    assert!(g.ring.len() > 32);
+    for q in &g.ring {
+        assert!(((q[0] / 2.0).hypot(q[1] / 1.0) - k0).abs() < 1e-9, "{q:?}");
+    }
+}
+
+/// ⭐ (F11) **A pizza: os ângulos na HASTE, por fora do aro** — a raiz da haste é o ponto do aro e
+/// a alça fica `PARK_PX` além dele.
+#[test]
+fn the_pie_angles_ride_a_stem_outside_the_rim() {
+    let k = ShapeKind::Pie;
+    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    for (p, s) in v.points.iter().zip(&v.stems) {
+        let root = s.expect("haste");
+        let (rp, rr) = ((p[0] / 2.0).hypot(p[1]), (root[0] / 2.0).hypot(root[1]));
+        assert!((rr - 1.0).abs() < 1e-6, "a raiz no aro: {root:?}");
+        assert!(rp > rr, "a alça por fora do aro: {p:?}");
+    }
+}
+
+/// ⭐ (F11) **A etiqueta segue a alça agarrada** — nenhuma sem arrasto; com o ⇕ agarrado, o nome
+/// traduzido das pontas e o número.
+#[test]
+fn the_readout_follows_the_grabbed_handle() {
+    let k = ShapeKind::Star;
+    let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
+    let mut vec = crate::state::VecState::default();
+    vec.entities = map.clone();
+    vec.pen.select_many(&[id]);
+    vec.draw_config.mode = DrawMode::Shape;
+    let display = ph2d_editor_core::LengthDisplay::of(&Default::default());
+    assert_eq!(
+        readout(&vec, &sim, PX, display),
+        None,
+        "sem arrasto, sem etiqueta"
+    );
+    let p = view(&sim, &map, &[id], Gate::of(&vec), PX, None, None)
+        .unwrap()
+        .points[0];
+    vec.shape_handles.grab = press(&sim, &map, &[id], Gate::of(&vec), p, PX);
+    let want = format!("{}: 5", ph2d_panel_vector::nomes_do_motor::campo("Points"));
+    assert_eq!(readout(&vec, &sim, PX, display), Some(want));
+}

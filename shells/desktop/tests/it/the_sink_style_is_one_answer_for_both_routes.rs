@@ -414,3 +414,22 @@ fn o_quadro_le_a_marca_e_poe_o_mundo_por_baixo() {
         "o quadro deixou de chamar a porta que poe o mundo por baixo"
     );
 }
+
+/// ⭐ **COM FILTROS, AS FORMAS DO MOTION VÃO À CAMADA** (ciclo 20 W4b, doc 129 §3.5) — a shell pede
+/// ao Motion a cena onde codificar (`alvo_da_cena`): a da camada filtrada, ou a do quadro.
+///
+/// ⚠️ Gate de TEXTO pela razão dos irmãos (o quadro precisa de uma janela). A lei tem o gate de
+/// placa dela (`the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it`); este prende
+/// o FIO — sem ele, codificar direto na cena do quadro deixava as formas por cima da camada, fora
+/// dos filtros, com toda a suíte verde (mutação P19 da W4b, sobrevivente).
+#[test]
+fn as_formas_do_motion_vao_a_camada_filtrada() {
+    const OVERLAYS: &str = include_str!("../../src/render_loop/fase_vector_overlays.rs");
+    assert_eq!(
+        OVERLAYS
+            .matches("motion.filtro.alvo_da_cena(motion_tool_active, vector_scene),")
+            .count(),
+        1,
+        "a shell deixou de pedir ao Motion a cena das formas (a camada filtrada)"
+    );
+}

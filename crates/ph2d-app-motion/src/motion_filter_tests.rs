@@ -324,3 +324,34 @@ fn two_outputs_that_land_differently_are_named_on_every_filter_card() {
     let q = f.queixa(filtro).expect("o cartão diz");
     assert!(q.contains("different modes"), "{q}");
 }
+
+/// ⭐⭐ **A rota da PLACA pergunta a mesma regra** (doc 129 §3.5): com a camada isolada, um `Output`
+/// em `Add` com o `Scene` não recusa a placa e o estilo dele vai sem modo; o `Everything` continua a
+/// recusar e a levar o modo. ⚠️ O controlo: sem a camada, o grupo de sempre.
+#[test]
+fn the_device_route_asks_the_same_landing_rule() {
+    let mut m = crate::motion_state::MotionState::new();
+    let saida = m.doc.graph.add_node("motion.output".to_string());
+    m.sinks = vec![saida];
+    m.doc
+        .graph
+        .set_param(saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+    for (alcance, isolada, agrupa) in [(2.0, false, true), (2.0, true, false), (0.0, true, true)] {
+        m.doc
+            .graph
+            .set_param(saida, ph2d_eval_motion::SINK_BLEND_WITH_PARAM, alcance);
+        m.pump.isola_na_camada(isolada);
+        let caso = format!("alcance {alcance}, camada {isolada}");
+        assert_eq!(
+            crate::motion_bridge::gpu::sink_mistura_em_grupo(&m.doc.graph, saida, isolada),
+            agrupa,
+            "{caso}: a cerca da placa"
+        );
+        let estilos = crate::motion_bridge::gpu::estilos_das_saidas(&m);
+        assert_eq!(
+            estilos[0].blend,
+            if agrupa { 1 } else { 0 },
+            "{caso}: o estilo da placa"
+        );
+    }
+}

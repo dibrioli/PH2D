@@ -99,8 +99,17 @@ fn pela_camada(
     tag: u8,
     com: BlendWith,
     raio: f32,
+    inteira: bool,
 ) -> ([i32; 4], MotionState) {
     let mut m = motion_com_filtro(tag, com, raio);
+    if inteira {
+        // O degrau em `Whole Layer`: o Vello cola-se na camada sem passar pelos `Each Shape`.
+        let no = m.filtro.pilha()[0].no;
+        m.doc
+            .graph
+            .set_param(no, ph2d_node_fx_filter::param::SCOPE, 1.0);
+        m.filtro.prepara(&m.doc.graph, &m.sinks);
+    }
     let mut mistura = MisturaDoSink {
         blend: tag,
         com,
@@ -178,27 +187,40 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
     );
     let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
     let mut falhas = Vec::new();
-    // ⚠️ O CONTROLO primeiro: sem modo a camada pinta as cópias por cima do cenário.
-    let (normal, _) = pela_camada(&gpu, &mut renderer, &blit, 0, BlendWith::Everything, 0.0);
-    let alvo = esperado(0, None).map(byte);
-    assert!(
-        normal.iter().zip(alvo).all(|(m, e)| (m - e).abs() <= BARRA),
-        "sem mistura a camada leu {normal:?} contra {alvo:?} — a fixtura não pinta o que diz"
-    );
-    for tag in [1u8, 3, 4] {
-        for com in BlendWith::ALL {
-            let (lido, _) = pela_camada(&gpu, &mut renderer, &blit, tag, com, 0.0);
-            let hoje = mede(&mut vello, &gpu, tag, com, false, (1, 1));
-            let tabela = esperado(tag, Some(com)).map(byte);
-            println!(
-                "  tag {tag} {com:?}: camada {lido:?} · sem filtro {hoje:?} · tabela {tabela:?}"
-            );
-            if lido.iter().zip(tabela).any(|(m, e)| (m - e).abs() > BARRA)
-                || lido.iter().zip(hoje).any(|(m, e)| (m - e).abs() > 1)
-            {
-                falhas.push(format!(
-                    "tag {tag} {com:?}: camada {lido:?} · sem filtro {hoje:?} · tabela {tabela:?}"
+    // Os dois ramos da colagem do Vello na camada: com `Each Shape` (a pilha sobre o conjunto) e
+    // sem ele (a colagem directa).
+    for inteira in [false, true] {
+        // ⚠️ O CONTROLO primeiro: sem modo a camada pinta as cópias por cima do cenário.
+        let (normal, _) = pela_camada(
+            &gpu,
+            &mut renderer,
+            &blit,
+            0,
+            BlendWith::Everything,
+            0.0,
+            inteira,
+        );
+        let alvo = esperado(0, None).map(byte);
+        assert!(
+            normal.iter().zip(alvo).all(|(m, e)| (m - e).abs() <= BARRA),
+            "sem mistura a camada leu {normal:?} contra {alvo:?} — a fixtura não pinta o que diz"
+        );
+        for tag in [1u8, 3, 4] {
+            for com in BlendWith::ALL {
+                let (lido, _) = pela_camada(&gpu, &mut renderer, &blit, tag, com, 0.0, inteira);
+                let hoje = mede(&mut vello, &gpu, tag, com, false, (1, 1));
+                let tabela = esperado(tag, Some(com)).map(byte);
+                println!(
+                    "  tag {tag} {com:?}: camada {lido:?} · sem filtro {hoje:?} · tabela {tabela:?}"
+                );
+                if lido.iter().zip(tabela).any(|(m, e)| (m - e).abs() > BARRA)
+                    || lido.iter().zip(hoje).any(|(m, e)| (m - e).abs() > 1)
+                {
+                    falhas.push(format!(
+                    "inteira {inteira} tag {tag} {com:?}: camada {lido:?} · sem filtro {hoje:?} · \
+                     tabela {tabela:?}"
                 ));
+                }
             }
         }
     }
@@ -229,8 +251,16 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
     );
     let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
     // `Screen` em `Copies` (vai ao Vello, e não satura como o `Add`), um borrão largo face às cópias.
-    let (neutro, _) = pela_camada(&gpu, &mut renderer, &blit, 4, BlendWith::Copies, 0.0);
-    let (borrado, m) = pela_camada(&gpu, &mut renderer, &blit, 4, BlendWith::Copies, 20.0);
+    let (neutro, _) = pela_camada(&gpu, &mut renderer, &blit, 4, BlendWith::Copies, 0.0, false);
+    let (borrado, m) = pela_camada(
+        &gpu,
+        &mut renderer,
+        &blit,
+        4,
+        BlendWith::Copies,
+        20.0,
+        false,
+    );
     println!("  neutro {neutro:?} · borrado {borrado:?}");
     assert!(
         neutro
@@ -337,4 +367,32 @@ fn o_preco_do_vello_na_camada() {
             );
         }
     }
+}
+
+/// ⭐ **O passo do quadro liga a camada isolada na bomba** (`coze_o_quadro`): com `fx.filter` no fio
+/// a bomba fica isolada, sem ele não — senão o `Scene` agrupava e ia ao Vello com a camada ligada.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn the_frame_step_isolates_the_pump_when_a_filter_is_on_the_wire() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let playhead = ph2d_core::Playhead::new(1.0 / 60.0);
+    let mut com = motion_com_filtro(1, BlendWith::Scene, 0.0);
+    com.pump.isola_na_camada(false);
+    crate::motion_bridge::quadro::coze_o_quadro(&mut com, &gpu, &playhead, 1.0 / 60.0);
+    assert!(
+        com.pump.camada_isolada(),
+        "com filtro no fio a bomba isola-se"
+    );
+    let mut sem = MotionState::new();
+    let saida = sem.doc.graph.add_node("motion.output".to_string());
+    sem.sinks = vec![saida];
+    sem.pump.isola_na_camada(true);
+    crate::motion_bridge::quadro::coze_o_quadro(&mut sem, &gpu, &playhead, 1.0 / 60.0);
+    assert!(
+        !sem.pump.camada_isolada(),
+        "sem filtro a bomba não se isola"
+    );
 }

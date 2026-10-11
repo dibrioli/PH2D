@@ -153,3 +153,45 @@ fn o_pedaco_compoe_dentro_do_recorte() {
         u
     );
 }
+
+/// ⭐⭐ **Com a camada filtrada ligada, o `Scene` não agrupa e desenha SEM modo** (doc 129 §3.5) —
+/// as imagens nas sprites com os bits de mistura a ZERO (senão o `Add` corria no passe de sprites E
+/// na pousa da camada) e a forma sem grupo. ⚠️ O controlo: o `Everything` continua a agrupar.
+#[test]
+fn com_a_camada_o_scene_desenha_sem_modo_e_o_everything_agrupa() {
+    for tag in [1.0, 3.0, 4.0] {
+        let mut g = Graph::new();
+        let sink = g.add_node(SRC_MAN.name);
+        g.set_param(sink, SINK_BLEND_PARAM, tag);
+        g.set_param(sink, SINK_BLEND_WITH_PARAM, 2.0);
+        let mut p = MotionCookPump::new();
+        p.define_a_lei(false);
+        p.isola_na_camada(true);
+        assert!(p.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
+        assert_eq!(
+            p.instances.len(),
+            2,
+            "tag {tag}: as imagens voltam às sprites"
+        );
+        for i in &p.instances {
+            assert_eq!(
+                RenderInstance::unpack_blend(i.flip_uv),
+                0,
+                "tag {tag}: a sprite leva o modo — correria na camada E na pousa"
+            );
+        }
+        assert_eq!(p.vector_instances.len(), 1);
+        assert!(!p.vector_instances[0].mistura.tem_camada(), "tag {tag}");
+
+        g.set_param(sink, SINK_BLEND_WITH_PARAM, 0.0);
+        let mut p = MotionCookPump::new();
+        p.define_a_lei(false);
+        p.isola_na_camada(true);
+        assert!(p.pump(&g, &Ops, &[sink], 0, 0.0, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0]));
+        assert!(
+            p.instances.is_empty(),
+            "tag {tag}: o Everything agrupa no Vello"
+        );
+        assert!(p.vector_instances.iter().all(|v| v.mistura.tem_camada()));
+    }
+}

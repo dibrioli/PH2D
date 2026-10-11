@@ -69,6 +69,20 @@ fn fixturas() -> Vec<(&'static str, Stream)> {
     esc(&mut s, INV_INERTIA_COLUMN, vec![f32::NAN, 0.0, 3.0, f32::NAN, 1.0, f32::NAN]);
     esc(&mut s, "falloff", vec![1.0, 1.0, 0.3, 0.0, 1.5, 0.7]);
     v.push(("obstaculo_inercia_falloff", s));
+    // A inércia DA COLUNA numa CAIXA: num disco a alavanca da normal é zero e a inércia não conta
+    // (a mutação «ignora a coluna» sobrevivia às fixturas acima por isso).
+    let mut s = corrente(vec![[0.0, 0.0], [0.55, 0.35], [1.0, -0.2]]);
+    par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.4, 0.25]; 3]);
+    esc(&mut s, "rot", vec![10.0, 0.0, -20.0]);
+    esc(&mut s, INV_INERTIA_COLUMN, vec![0.5, 4.0, f32::NAN]);
+    v.push(("inercia_da_coluna_em_caixas", s));
+    // O EMPATE da face incidente: uma caixa a 45° pousada de quina sobre outra — duas faces dão o
+    // mesmo `dot` e o `min_by` da CPU fica com a PRIMEIRA.
+    let mut s = corrente(vec![[0.0, 0.0], [0.0, 0.9], [2.0, 0.0], [2.0, 0.85]]);
+    par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.5, 0.5]; 4]);
+    esc(&mut s, "rot", vec![0.0, 45.0, 0.0, 135.0]);
+    esc(&mut s, INV_INERTIA_COLUMN, vec![0.0; 4]);
+    v.push(("empate_a_45_graus", s));
     // O filtro do repouso: o mesmo corpo junto no REPOUSO não colide.
     let mut s = corrente((0..6).map(|i| [i as f32 * 0.5, 0.0]).collect());
     esc(&mut s, COLLIDER_COLUMN, vec![0.4; 6]);

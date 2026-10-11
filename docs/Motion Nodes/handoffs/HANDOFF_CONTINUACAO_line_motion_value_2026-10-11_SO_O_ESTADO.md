@@ -87,6 +87,12 @@ refeito por último, sem o registo temporário.
 
 ## ABERTO (nomeado)
 
+- ⭐ **O dono perguntou (11/10): «vai levar pra placa?»** Hoje não: com o `Collide` de uma forma
+  ligado, a rota da placa RECUSA a cena inteira antes de planear (`motion_bridge_gpu.rs:277-286`,
+  `RECUSA_PASSE`/`RECUSA_COLISOR`) e tudo corre na CPU — por isso esta onda importa a toda cena com
+  colisão. Fechar é um kernel do passe de separação, com espec própria (doc 115 §20.7). Proposto
+  como próxima onda; decisão do dono.
+
 - O `Boundaries` (rota híbrida) não foi tocado: o sufixo na placa pode precisar de cada tique da
   fronteira — por medir antes de cortar.
 - `cook_taps_only` (rota toda na placa) também coze todas as tomadas; lá não há tiques recuperados.

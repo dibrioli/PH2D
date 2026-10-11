@@ -203,3 +203,63 @@ fn the_spiral_grows_as_t_to_the_e_and_starts_at_the_inner_radius() {
     let last = s.verts.last().unwrap().anchor;
     assert!((last[0].hypot(last[1]) - 1.0).abs() < 1e-12);
 }
+
+/// O CÔNCAVO morde para dentro da RECTA dos cortes (não só do arco): o meio da ligação côncava fica
+/// mais perto do centro que o meio do chanfro — e o arco é o de raio `|corte − quina|`.
+#[test]
+fn concave_bites_inside_the_straight_chamfer() {
+    let sq = |style| PolyStar {
+        n: 4,
+        radii: [0.2, 0.0],
+        style,
+        ..PolyStar::default()
+    };
+    let mid = |p: &VecPath| {
+        let k = p
+            .verts
+            .iter()
+            .position(|v| v.anchor[1] > 0.0 && v.anchor[0] > 0.0)
+            .unwrap();
+        cubic_at(&p.verts[k], &p.verts[(k + 1) % p.verts.len()], 0.5)
+    };
+    let (straight, concave) = (
+        mid(&polystar([0.0; 2], 1.0, 1.0, &sq(CornerStyle::Straight))),
+        mid(&polystar([0.0; 2], 1.0, 1.0, &sq(CornerStyle::Concave))),
+    );
+    assert!(
+        concave[1] < straight[1] - 0.05,
+        "côncavo {concave:?} abaixo da recta {straight:?}"
+    );
+    // O arco centrado na quina (0, 1): o meio dele a |corte − quina| da quina.
+    let p = polystar([0.0; 2], 1.0, 1.0, &sq(CornerStyle::Concave));
+    let cut = p.verts[0].anchor;
+    let r = cut[0].hypot(cut[1] - 1.0);
+    assert!(
+        (concave[0].hypot(concave[1] - 1.0) - r).abs() < 1e-3 * r.max(1.0),
+        "o arco é centrado na quina"
+    );
+}
+
+/// O VALOR do campo escolhe o tipo: 0 arredondado, 1 recta, 2 côncavo, 3 entalhe (a ordem das
+/// escolhas do descritor) — e o catálogo cozinha com ele.
+#[test]
+fn the_field_value_picks_the_corner_style_in_the_descriptor_order() {
+    let want = [
+        CornerStyle::Round,
+        CornerStyle::Straight,
+        CornerStyle::Concave,
+        CornerStyle::Cutout,
+    ];
+    for (i, s) in want.into_iter().enumerate() {
+        assert_eq!(CornerStyle::of(i as f64), s);
+        let mut v = crate::ShapeKind::RoundRect.defaults();
+        v[5] = i as f64;
+        let (a, b) = ([-2.0, -1.0], [2.0, 1.0]);
+        let r = crate::round_rect_radii(v[0], [0.0; 3]);
+        assert_eq!(
+            crate::cook(crate::ShapeKind::RoundRect, a, b, &v),
+            round_rect_styled(a, b, r, 0.0, s),
+            "o campo {i}"
+        );
+    }
+}

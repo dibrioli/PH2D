@@ -736,6 +736,8 @@ importante = "importante"
 eles = "eles"
 mis = "mis"
 ambiguidade = "ambiguidade"
+# W11 — português nos doc-comments do quadro ao vivo (os círculos das pessoas).
+avatares = "avatares"
 implementador = "implementador"
 materializadas = "materializadas"
 pendente = "pendente"
@@ -1050,6 +1052,8 @@ extend-exclude = [
     "docs/MiroClone/ferramentas/tldraw_oracle/saidas/**",
     # E as dos oráculos de mapa mental (W6): textos e ids gerados por eles.
     "docs/MiroClone/ferramentas/mindmap_oracle/saidas/**",
+    # E as do oráculo da colaboração (W11): ids e textos gerados pelo tldraw sync (`…adn…`, `THM`).
+    "docs/MiroClone/ferramentas/colab_oracle/saidas/**",
     # `backups/` is a verbatim snapshot of crates+docs taken before the watercolor v2
     # super-simplification (commit `30ecc096`) — NOT active source. Its pt-BR ADR docs
     # (controle, conservativo, fiel, …) trip the en-US dictionary; never lint a backup.

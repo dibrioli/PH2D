@@ -400,7 +400,7 @@ impl Guest {
             }
             Msg::Refused { protocol } => events.push(Event::Refused { theirs: protocol }),
             Msg::Writes(ws) => {
-                if let (Some(r), Some(b)) = (&mut self.replica, board.as_deref_mut()) {
+                if let (Some(r), Some(b)) = (&mut self.replica, board.as_mut()) {
                     r.receive(b, &ws);
                 }
             }

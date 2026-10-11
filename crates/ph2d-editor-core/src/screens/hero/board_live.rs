@@ -380,7 +380,7 @@ mod unit {
     use super::*;
 
     #[test]
-    fn every_id_reads_back_and_none_is_anothers() {
+    fn every_id_reads_back_and_none_belongs_to_another_family() {
         let mut all: Vec<Hit> = ALL.iter().map(|b| Hit::Button(*b)).collect();
         all.extend((0..40).map(Hit::Avatar));
         all.extend((0..40).map(Hit::Found));

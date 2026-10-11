@@ -18,13 +18,15 @@ use ph2d_i18n::{tr, tr_with};
 /// Uma leitura nova da firewall, no máximo a cada… (o painel aberto pede-a ao ritmo da procura).
 const PROBE_EVERY: Duration = Duration::from_secs(3);
 
+/// Corre um comando: o código de saída e o que escreveu no erro.
+type Runner = Arc<dyn Fn(&[String]) -> (Option<i32>, String) + Send + Sync>;
+
 /// Os acessos ao sistema (trocados nos testes: ninguém corre o `pkexec` num teste).
 #[derive(Clone)]
 pub(super) struct Env {
     pub probe: Arc<dyn Fn() -> Probe + Send + Sync>,
     pub subnets: Arc<dyn Fn() -> Vec<Subnet> + Send + Sync>,
-    /// Corre o comando: o código de saída e o que escreveu no erro.
-    pub run: Arc<dyn Fn(&[String]) -> (Option<i32>, String) + Send + Sync>,
+    pub run: Runner,
     /// Onde se lembra o que se liberou (`None` sem `$HOME`).
     pub file: Option<PathBuf>,
 }

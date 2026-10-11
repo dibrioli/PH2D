@@ -2125,7 +2125,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
     //    `set_collapsed_if_unchosen` de ninguém.
     ("painter_layers", 1605.0),
-    ("tokens", 2866.0),
+    // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
+    //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
+    //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):
+    //    `9 × ROW_H_PX (25) = 225` exactos. ⚠️ Recolher não se aplica; quem mudar isto mude a lista.
+    ("tokens", 3091.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

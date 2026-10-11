@@ -78,13 +78,16 @@ impl Write {
     }
 }
 
+/// Os carimbos de um elemento no retrato: o mais comum dos registos dele e os que diferem.
+type PackedStamps = (ElementId, Lamport, Vec<(Field, Lamport)>);
+
 /// Tudo o que quem entra precisa: o quadro e os carimbos.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Snapshot {
     pub board: Vec<u8>,
     /// Por elemento: o carimbo mais comum dos registos dele e os que diferem (medido: um carimbo por
     /// registo eram ~500 dos 603 B/elemento de um quadro ao vivo).
-    stamps: Vec<(ElementId, Lamport, Vec<(Field, Lamport)>)>,
+    stamps: Vec<PackedStamps>,
     board_stamps: Vec<(BoardField, Lamport)>,
     tokens: Tokens,
     tops: Vec<(ElementId, Lamport)>,
@@ -227,7 +230,7 @@ impl Replica {
 
     /// Os carimbos por elemento: o mais comum e os que diferem dele (os registos sem carimbo — que o
     /// tipo não tem, ou nunca escritos — diferem com o carimbo zero).
-    fn packed_stamps(&self) -> Vec<(ElementId, Lamport, Vec<(Field, Lamport)>)> {
+    fn packed_stamps(&self) -> Vec<PackedStamps> {
         let mut by: BTreeMap<ElementId, BTreeMap<Field, Lamport>> = BTreeMap::new();
         for ((id, f), l) in &self.stamps {
             by.entry(*id).or_default().insert(*f, *l);

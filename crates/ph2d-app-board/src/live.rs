@@ -6,7 +6,6 @@
 //! [ADR-0181]: ../../../docs/architecture/decisions/0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md
 
 use std::cell::RefCell;
-use std::hash::{BuildHasher, Hasher};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::mpsc;
 use std::sync::{Arc, OnceLock};
@@ -70,11 +69,9 @@ fn now_ms() -> u64 {
     u64::try_from(START.get_or_init(Instant::now).elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
-/// Um número ao acaso (a semente do `RandomState` vem do sistema operativo).
+/// Um número ao acaso, do sistema operativo.
 fn random() -> u64 {
-    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-    h.write_u128(Instant::now().elapsed().as_nanos());
-    h.finish()
+    net::random_u64()
 }
 
 fn waker() -> net::Waker {
@@ -306,9 +303,7 @@ fn host_tick(
     for ev in net.poll() {
         match ev {
             net::NetEvent::Frame(c, bytes) => {
-                let Some(b) = hero.documents.board_mut(board) else {
-                    return None;
-                };
+                let b = hero.documents.board_mut(board)?;
                 let (out, events) = s.frame(b, c, &bytes, now);
                 send_host(&net, out);
                 for e in events {
@@ -571,7 +566,7 @@ fn view<'a>(
         })
         .collect();
     let follow = hero.documents.live_view().following;
-    let camera = follow.and_then(|p| seen(p)).and_then(|s| s.camera_at(now));
+    let camera = follow.and_then(&seen).and_then(|s| s.camera_at(now));
     let v = hero.documents.live_view_mut();
     v.board = Some(board);
     v.peers = peers.to_vec();

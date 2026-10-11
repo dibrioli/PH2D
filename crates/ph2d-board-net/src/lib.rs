@@ -42,6 +42,13 @@ pub use host::{Host, HostConfig, Liveness, PORT, PORT_TRIES};
 pub use lan::{is_lan, lan_addrs, lan_subnets};
 pub use wire::MAX_FRAME;
 
+/// Um número ao acaso do sistema operativo (as identidades da sessão: quem sou, as sementes dos ids).
+#[must_use]
+pub fn random_u64() -> u64 {
+    use rand_core::RngCore;
+    rand_core::OsRng.next_u64()
+}
+
 /// Uma ligação no anfitrião (os do convidado vêm todos com `0`: só há o anfitrião).
 pub type ConnId = u64;
 

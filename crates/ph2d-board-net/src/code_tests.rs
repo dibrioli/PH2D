@@ -6,7 +6,7 @@ use crate::code::{Code, Gate};
 use crate::{ALPHABET, CODE_LEN, LOCKOUT, MAX_FAILS};
 
 #[test]
-fn o_alfabeto_nao_tem_ambiguos() {
+fn o_alfabeto_nao_tem_simbolos_que_se_confundem() {
     for c in b"0O1IL" {
         assert!(!ALPHABET.contains(c), "{}", char::from(*c));
     }

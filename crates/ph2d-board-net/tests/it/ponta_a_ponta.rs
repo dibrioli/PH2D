@@ -463,7 +463,7 @@ fn fechar_a_sala_entrega_o_adeus_antes_de_cortar() {
             T,
             |e| e.iter().any(|e| matches!(e, NetEvent::Left(_))),
         );
-        let at = |want: &dyn Fn(&NetEvent) -> bool| ev.iter().position(|e| want(e));
+        let at = |want: &dyn Fn(&NetEvent) -> bool| ev.iter().position(want);
         let bye = at(&|e| matches!(e, NetEvent::Frame(_, b) if b == b"adeus"));
         let left = at(&|e| matches!(e, NetEvent::Left(_)));
         assert!(

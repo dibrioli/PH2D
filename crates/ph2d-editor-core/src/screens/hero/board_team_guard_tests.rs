@@ -178,6 +178,33 @@ fn a_version_delete_asks_twice_and_the_rename_follows_its_version() {
     assert_eq!(names, ["b", "C2"]);
 }
 
+/// Apagar a versão que se está a RENOMEAR larga o renomear: o campo volta ao nome da próxima versão
+/// e guardar cria uma versão nova (nunca o nome de uma que já não existe).
+#[test]
+fn deleting_the_version_being_renamed_lets_go_of_the_rename() {
+    let mut t = T::new();
+    {
+        let b = t.hero.documents.active_board_mut().unwrap();
+        for n in ["a", "b", "c"] {
+            b.save_version(n.into(), 10);
+        }
+    }
+    t.tab_menu(crate::ids::CTX_MENU_BOARD_VERSIONS);
+    t.hero
+        .apply_event(WidgetEvent::DoubleClick(team_node(Hit::RenameVersion(2))));
+    t.paint();
+    assert!(t.hero.documents.live.team.renaming_version.is_some());
+    t.shell_click_id(team_node(Hit::DropVersion(2)), "armar «c»");
+    t.shell_click_id(team_node(Hit::DropVersion(2)), "apagar «c»");
+    assert_eq!(
+        t.hero.documents.live.team.renaming_version, None,
+        "o renomear ficou preso a «c»"
+    );
+    let field = board_nav::field_text(&t.hero.store, crate::ids::BOARD_VERSION_INPUT);
+    let next = ph2d_i18n::tr_with("board.version.default", &[("n", &"3".to_string())]);
+    assert_eq!(field, next, "o campo ficou com o nome da apagada");
+}
+
 /// W11 — ao vivo, uma versão alheia chega ANTES das minhas (a ordem é por instante) e mexe nas
 /// posições: o apagar armado não salta para a fila vizinha (que se apagaria com UM clique) e o
 /// renomear não cai noutra versão. Os dois seguem a versão pelo id.

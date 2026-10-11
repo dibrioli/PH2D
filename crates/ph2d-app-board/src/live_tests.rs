@@ -268,6 +268,29 @@ fn a_vanished_host_ends_the_guest_soon_and_its_old_code_never_locks_the_next_roo
     service(&mut ana2);
 }
 
+/// A voltar, o que diz que a sala JÁ NÃO É ESTA acaba a sessão; o que pode ser o Wi-Fi tenta outra
+/// vez. (A via da porta recusada corre de ponta a ponta no teste acima; a do código errado precisa de
+/// outra sala na MESMA porta, e numa máquina partilhada essa corrida não se ganha — decide-se aqui.)
+#[test]
+fn a_redial_ends_on_a_closed_or_replaced_room_and_retries_on_a_flaky_network() {
+    use std::io::ErrorKind::{ConnectionRefused, HostUnreachable, NetworkUnreachable, TimedOut};
+    for e in [
+        net::JoinError::WrongCode,
+        net::JoinError::Locked(Duration::from_secs(30)),
+        net::JoinError::Unreachable(ConnectionRefused),
+    ] {
+        assert!(room_is_gone(&e), "{e:?}");
+    }
+    for e in [
+        net::JoinError::Unreachable(TimedOut),
+        net::JoinError::Unreachable(HostUnreachable),
+        net::JoinError::Unreachable(NetworkUnreachable),
+        net::JoinError::Broken,
+    ] {
+        assert!(!room_is_gone(&e), "{e:?}");
+    }
+}
+
 /// 📏 Medição (à mão, `--ignored --nocapture`, perfil smoke): a latência ponta-a-ponta de um ARRASTO
 /// com 2, 4 e 8 pessoas na rede local real — um convidado mexe uma forma a cada 16 ms (60 Hz) durante
 /// 2 s; cada um dos outros regista quando viu cada posição. Resumo: mínimo, mediana, p95, máximo.

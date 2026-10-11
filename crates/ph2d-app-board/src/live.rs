@@ -374,14 +374,8 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                 hero.documents.tell(join_error(&e));
                 return None;
             }
-            // A voltar: a porta RECUSADA (a máquina responde, ninguém ouve: a sala fechou), ou um
-            // código errado/travado (ali abriu OUTRA sala) — acaba já, com a cópia. Antes gastava o
-            // minuto, e os códigos velhos travavam a sala nova a quem trazia o código certo.
-            Err(
-                net::JoinError::WrongCode
-                | net::JoinError::Locked(_)
-                | net::JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused),
-            ) => {
+            // Acaba já, com a cópia (antes gastava o minuto e os códigos velhos travavam a sala nova).
+            Err(e) if room_is_gone(&e) => {
                 hero.documents.tell(tr("board.live.host_left").to_owned());
                 return None;
             }
@@ -494,6 +488,17 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         lost,
         last_try,
     })
+}
+
+/// A voltar: a porta RECUSADA (a máquina responde, ninguém ouve — a sala fechou) ou um código
+/// errado/travado (ali abriu OUTRA sala) dizem que a sala já não é esta; o resto pode ser o Wi-Fi.
+fn room_is_gone(e: &net::JoinError) -> bool {
+    matches!(
+        e,
+        net::JoinError::WrongCode
+            | net::JoinError::Locked(_)
+            | net::JoinError::Unreachable(std::io::ErrorKind::ConnectionRefused)
+    )
 }
 
 fn join_error(e: &net::JoinError) -> String {

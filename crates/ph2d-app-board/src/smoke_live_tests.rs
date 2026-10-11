@@ -63,6 +63,8 @@ struct Seen {
     name: String,
     summoned: bool,
     ended_in: Option<Duration>,
+    /// Disse «reconnecting…» depois do fim (o adeus não chegou: tomou-o por uma queda).
+    redialed: bool,
     told: String,
     copy: usize,
 }
@@ -148,7 +150,9 @@ fn the_live_scene_hosts_and_a_second_window_joins_by_its_code() {
         to_host.send(()).unwrap();
         from_host.recv_timeout(Duration::from_secs(10)).unwrap();
         let t0 = Instant::now();
+        let mut redialed = false;
         let ended = until(&mut g, 10, |g| {
+            redialed |= g.documents.told() == Some(tr("board.live.reconnecting").as_str());
             g.documents.live_view().role == LiveRole::Off
         });
         let copy = g
@@ -160,6 +164,7 @@ fn the_live_scene_hosts_and_a_second_window_joins_by_its_code() {
             name,
             summoned,
             ended_in: ended.then(|| t0.elapsed()),
+            redialed,
             told: g.documents.told().unwrap_or_default().to_owned(),
             copy,
         }
@@ -227,6 +232,10 @@ fn the_live_scene_hosts_and_a_second_window_joins_by_its_code() {
         "«Bring everyone here» não levou a vista dela"
     );
     let ended = seen.ended_in.expect("a sessão dela não acabou");
+    assert!(
+        !seen.redialed,
+        "«End session» chegou como QUEDA: o adeus não saiu"
+    );
     assert!(
         ended < Duration::from_secs(3),
         "o fim levou {ended:?}: o outro lado ficou a tentar voltar"

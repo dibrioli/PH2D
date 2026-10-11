@@ -414,13 +414,39 @@ fn a_list_that_does_not_fit_ends_in_plus_n() {
     t.paint();
     let shown = t.hero.documents.live_view.panel.found.len();
     assert!(shown > 0 && shown < 200, "{shown}");
-    let more = format!("+{}", 200 - shown);
+    let more = format!("+{}", 200 - shown).chars().count();
     let xs = ph2d_tokens::TypeToken::Xs.px();
-    assert!(
+    let plus = |t: &mut T| {
         runs(&t.scene())
             .iter()
-            .any(|r| r.0 == xs && r.1 == more.chars().count()),
-        "não pintou «{more}»"
+            .filter(|r| r.0 == xs && r.1 == more)
+            .count()
+    };
+    let cut = plus(&mut t);
+    // O cartão pára ACIMA da fila do canto (o «Live»): a fila do «+n» saiu do que cabe.
+    let live_top = crate::screens::hero::board_nav::button_rects(t.hero.last_canvas)
+        .iter()
+        .find(|(b, _)| *b == NavButton::Live)
+        .map(|(_, r)| r.y)
+        .unwrap();
+    let surface = live_node(Hit::Button(LiveButton::Surface));
+    let x = t.find(surface).unwrap().0;
+    let vp = t.hero.last_viewport;
+    let mut y = vp.y;
+    let mut low = vp.y;
+    while y < vp.y + vp.h {
+        if t.hero
+            .hit_index
+            .hit(x, y)
+            .is_some_and(|id| live_board::hit_of(id).is_some())
+        {
+            low = y;
+        }
+        y += 1.0;
+    }
+    assert!(
+        low < live_top,
+        "o cartão desce a {low} e o «Live» começa a {live_top}"
     );
     t.hero.documents.live_view_mut().found.truncate(2);
     t.paint();
@@ -429,6 +455,7 @@ fn a_list_that_does_not_fit_ends_in_plus_n() {
         2,
         "o que cabe mostra-se todo"
     );
+    assert_eq!(cut, plus(&mut t) + 1, "não pintou a fila do «+n»");
 }
 
 /// O cartão que desce até à fila do canto (muitos endereços, janela baixa) não engole o clique nos

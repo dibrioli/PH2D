@@ -87,11 +87,8 @@ refeito por último, sem o registo temporário.
 
 ## ABERTO (nomeado)
 
-- ⭐ **O dono perguntou (11/10): «vai levar pra placa?»** Hoje não: com o `Collide` de uma forma
-  ligado, a rota da placa RECUSA a cena inteira antes de planear (`motion_bridge_gpu.rs:277-286`,
-  `RECUSA_PASSE`/`RECUSA_COLISOR`) e tudo corre na CPU — por isso esta onda importa a toda cena com
-  colisão. Fechar é um kernel do passe de separação, com espec própria (doc 115 §20.7). Proposto
-  como próxima onda; decisão do dono.
+- ⭐ Com o `Collide` de uma forma ligado a rota da placa recusa a cena inteira e tudo corre na CPU
+  — por isso esta onda importa a toda cena com colisão. O dono mandou fechar: ver «Próxima janela».
 
 - O `Boundaries` (rota híbrida) não foi tocado: o sufixo na placa pode precisar de cada tique da
   fronteira — por medir antes de cortar.
@@ -99,7 +96,18 @@ refeito por último, sem o registo temporário.
 - Os abertos anteriores continuam: `opt-level` da `ph2d-contact` por medir com a máquina livre; docs
   > 40 KB por partir (`115_…`, 170 KB); §8–§9 do handoff de integração do ciclo 20.
 
-## Próxima janela
+## Próxima janela — ⭐ DECIDIDA PELO DONO (11/10): o `Collide` da forma vai à placa
 
-Integrar e enviar só por ordem do Enio. O §10 do
+O passe de separação (o `Collide` do cartão `Shape`/`Object`) ganha kernel na placa, e a rota deixa
+de recusar a cena. Pontos de partida (ler por `grep` + trecho, R7):
+- a recusa: `crates/ph2d-app-motion/src/motion_bridge_gpu.rs:277-286` e
+  `motion_bridge_gpu_colisor.rs` (`peca_declara_colisor`, `RECUSA_PASSE`/`RECUSA_COLISOR`);
+- a lei da CPU que a placa tem de reproduzir: `o_que_o_sink_desenha` (`ph2d-eval-motion/src/lib.rs`)
+  → `ph2d_contact::passe` (+ a `GrelhaDeDiscos` desta linha); o relatório `ultimo_relatorio`;
+- kernels de vizinhança que já existem: `ph2d-node-motion-collide/src/gpu.rs`,
+  `ph2d-node-sim-collide/src/gpu.rs` (grelha reconstruída entre varreduras, ADR-0140);
+- a espec pedida: doc 115 §20.7 (o doc tem 170 KB — só `grep`).
+Ordem: espec curta (oráculo = a CPU, por passo) → kernel → gate de paridade CPU×placa nas cenas
+`=114`/`=121`–`=123` → a rota aceita → smoke com placa e foto. Integrar e enviar só por ordem do
+Enio. O §10 do
 [handoff de integração](HANDOFF_INTEGRACAO_line_motion_value_2026-10-11_CICLO_20.md) já resume esta onda.

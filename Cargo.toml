@@ -148,6 +148,18 @@ opt-level = 2
 [profile.dev.package.ph2d-contact]
 opt-level = 2
 
+# A Luz 2D (11/10, PROMPT_LINHAS_RAPIDAS §3.Luz2D): mínimo de 2 blocos intercalados, `--test-threads 1` —
+# `a_luz_num_ponto_nao_muda_com_a_vista` 58,7 → 20,9 s · `o_rebote_assenta_em_dez_quadros` 98,5 → 17,3 s;
+# só a `-ref` não ganha (84,8 / 102,1 s). Remontar após 1 edição na `-gpu`: 1,7 → 1,5–2,1 s.
+[profile.dev.package.ph2d-light2d-ref]
+opt-level = 2
+[profile.dev.package.ph2d-light2d-ecs]
+opt-level = 2
+[profile.dev.package.ph2d-light2d-gpu]
+opt-level = 2
+[profile.dev.package.ph2d-app-light2d]
+opt-level = 2
+
 [profile.release]
 opt-level = 3
 lto = "thin"

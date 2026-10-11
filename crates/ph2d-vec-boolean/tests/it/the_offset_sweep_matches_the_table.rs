@@ -199,19 +199,14 @@ pub fn counting_panics<T>(f: impl FnOnce() -> T) -> (T, u64) {
 /// |---|---|---|---|---|
 /// | merge-base (0.4) | 87/100 | 35/100 | 94/100 | 104 |
 /// | W1 (`linesweeper` 0.5) | 100/100 | 40/100 (vazio ≥ 164) | 94/100 (vazio 44..64) | 0 |
+/// | W2 (banda Bevel/Miter por peças) | 100/100 | 100/100 | 100/100 | 0 |
 const EXPECTED: &[(&str, &str, &str)] = &[
     ("miter", "fora", ""),
     ("miter", "dentro", ""),
     ("round", "fora", ""),
     ("round", "dentro", ""),
-    (
-        "bevel",
-        "fora",
-        "164 168 172 176 180 184 188 192 196 200 204 208 212 216 220 224 228 232 236 240 244 248 \
-         252 256 260 264 268 272 276 280 284 288 292 296 300 304 308 312 316 320 324 328 332 336 \
-         340 344 348 352 356 360 364 368 372 376 380 384 388 392 396 400",
-    ),
-    ("bevel", "dentro", "44 48 52 56 60 64"),
+    ("bevel", "fora", ""),
+    ("bevel", "dentro", ""),
 ];
 /// Pânicos que o `catch_unwind` do `offset_path` engole na varredura inteira.
 const EXPECTED_PANICS: u64 = 0;
@@ -349,4 +344,3 @@ fn prints_the_sweep_cell_by_cell() {
         }
     }
 }
-

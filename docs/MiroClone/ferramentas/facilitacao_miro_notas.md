@@ -78,3 +78,25 @@ Menu «Facilitation tools»: Reactions · Timer · Voting · Private mode · Not
 natureza:** «Bring everyone to me» / Follow (AM), Private mode (esconde as notas dos outros; ao desligar, contagem de 5 s
 — "A 5-second countdown will appear", PM), quem pode iniciar (CT). **Fazem sentido num só ecrã:** Timer (relógio local
 + campainha), Voting (um votante = o dono; selo de contagem persiste), emoji-na-nota, Cluster.
+
+## 6. Modo privado (Private mode) e o voto entre pessoas — W12 (2026-10-11)
+
+> PM (`updated_at` 2026-09-08) e VO (2026-09-15) relidos pela API Zendesk; figuras medidas em
+> `scratchpad/miro/` (pm_01 menu · pm_02 diálogo de ligar · pm_03/pm_04 notas escondidas · pm_05 «Reveal all my sticky notes»).
+
+| lei | citação | fonte |
+|---|---|---|
+| quem liga: qualquer editor, a qualquer momento; pode ficar preparado no quadro («Add to board») | "Users with edit access can turn on private mode at any time" · figura pm_02 | PM |
+| o que esconde: SÓ notas — as NOVAS e as EDIÇÕES às existentes; o resto (formas, texto solto) fica | "all new sticky notes and any edits to existing sticky notes are hidden" · "Content on sticky notes is hidden from others" | PM, pm_02 |
+| o que os outros veem: a nota inteira (lugar, tamanho, cor, sombra) com o TEXTO trocado por rabiscos e um olho fechado no canto sup. esquerdo | "users can only see their own sticky notes. All other sticky note text is hidden" · "The closed eye icon … visible to the author only" | PM, pm_03/04 |
+| ⚠️ os rabiscos acompanham as LINHAS do texto (figura pm_03: uma nota com 2, as outras com 1) ⇒ o Miro vaza o comprimento | medido na figura | pm_03 |
+| opção «Make names anonymous»: autor, Follow, nomes dos cursores e «Created/Modified by» ficam anónimos **para sempre**, mesmo depois de desligar; os cursores baralham-se | "remains anonymous forever — even after private mode is turned off" · "Cursor positions … reshuffle" | PM |
+| opção «Allow anyone to turn off»: desligada ⇒ só quem ligou (e o dono do quadro) desliga | "When toggled off, only you can end the private mode session" | PM |
+| «Anyone can reveal their stickies» (de quem ligou): aparece a todos «Reveal all my sticky notes» — cada um revela AS SUAS, o resto continua escondido | "reveal their own sticky notes at any time, even while private mode is still active" | PM, pm_05 |
+| desligar: «Turn off private mode» → 2.º diálogo «Turn off for all» → aviso a todos (com quem desligou) → contagem de **5 s** → tudo revelado | "A 5-second countdown will appear … Once the timer ends, the sticky notes are revealed" | PM |
+| a todos ao ligar: aviso + o diálogo abre, com quem ligou | "users will see a pop-up message … who started private mode" | PM |
+| «não é protecção de dados» | "it isn't a data protection feature" | PM |
+| voto: «All votes are anonymous»; os outros veem só QUEM acabou («Participants»); quem conduz vê «the number of votes per person» e se acabou; o resultado (top-3 + «See all results») só no fim | "Participants can see other users' progress (who is done voting)" · "see the number of votes per person" | VO |
+| voto: quem saltou entra depois pelo ícone (que mostra o tempo); entram também não registados | "If a user accidentally skipped voting, they can join it" | VO |
+| voto: reiniciar = acabar e começar outra | "end the session and start a new one" | VO |
+| desfazer depois de revelar · o que acontece a quem sai a meio · se o voto de quem sai conta · se o texto viaja cifrado ou não sai do autor | **CALADO** | — |

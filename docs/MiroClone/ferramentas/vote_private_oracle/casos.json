@@ -1,0 +1,40 @@
+{
+  "_sobre": "Entradas NOSSAS para o oráculo Scrumlr (votação anónima + modo privado). Textos inventados; nada vem do Scrumlr.",
+  "colunas": [
+    { "chave": "c1", "nome": "Bom", "cor": "backlog-blue" },
+    { "chave": "c2", "nome": "Mudar", "cor": "value-violet" }
+  ],
+  "notas": [
+    { "chave": "n1", "autor": "A", "coluna": "c1", "texto": "café na sala" },
+    { "chave": "n2", "autor": "A", "coluna": "c1", "texto": "revisão às sextas" },
+    { "chave": "n3", "autor": "B", "coluna": "c1", "texto": "quadro novo na parede" },
+    { "chave": "n4", "autor": "M", "coluna": "c2", "texto": "reuniões longas demais" },
+    { "chave": "n5", "autor": "B", "coluna": "c2", "texto": "deploy à sexta" }
+  ],
+  "votacao_base": { "voteLimit": 5, "allowMultipleVotes": true, "showVotesOfOthers": false, "isAnonymous": true },
+  "casos": {
+    "v01":  "A vota em n3 durante a votação aberta (showVotesOfOthers=false): o que A, B e M recebem; o que cada um obtém por GET /votes.",
+    "v01b": "igual a v01 mas showVotesOfOthers=true.",
+    "v02":  "C entra no quadro a meio da votação (A já votou): estado do INIT de C; C vota; o que B recebe.",
+    "v03":  "A vota e FECHA o WebSocket; M fecha a votação: o voto de A conta?",
+    "v03b": "A vota e APAGA a própria conta (DELETE /users/{id}); M fecha: o voto conta?",
+    "v03c": "A vota e M EXPULSA A (DELETE participants/{A}); M fecha: o voto conta?",
+    "v03d": "A vota e M BANE A (PUT participants/{A} {banned:true}); M fecha: o voto conta?",
+    "v04":  "Fim pelo botão: M põe status CLOSED; depois M põe board.showVoting = votação (mostrar resultado).",
+    "v04b": "Fim por ABORTED (cancelar): o que cada um recebe.",
+    "v05":  "Fim pelo relógio curto: M põe timerStart/timerEnd (+3 s) por PUT board; a votação fecha sozinha?",
+    "v05b": "Fim pelo relógio do botão (POST /timer minutes=1, espera 65 s): a votação fecha sozinha?",
+    "v06":  "Limites: voteLimit=2 sem múltiplos (repetir nota, exceder) e voteLimit=2 com múltiplos (3 na mesma); retirar voto.",
+    "v07":  "isAnonymous=true: resultado final diz quem votou em quê?",
+    "v07b": "isAnonymous=false: idem, para contraste.",
+    "v08":  "Modo privado + votação: B vota numa nota escondida de A (id conhecido por fora).",
+    "p01":  "Modo privado (showNotesOfOtherUsers=false): A escreve uma nota; o que B e M recebem; GET /notes por B.",
+    "p02":  "Moderador vê as escondidas? M escreve nota em modo privado (B vê?); M promove B a MODERATOR (B passa a ver?).",
+    "p03":  "Revelar: M põe showNotesOfOtherUsers=true; o que B recebe (de uma vez ou nota a nota).",
+    "p04":  "Revelar e esconder de novo: as notas somem para B?",
+    "p05":  "Editar e apagar a própria nota enquanto escondida; desfazer (a API expõe?).",
+    "p06":  "Autor escondido (showAuthors=false), notas visíveis: o que B recebe sobre o autor.",
+    "p07":  "Modo privado + sharedNote: M partilha (foco) uma nota escondida de A — B recebe-a?",
+    "p08":  "Coluna escondida (visible=false): M e A escrevem nela; o que B recebe; M revela a coluna."
+  }
+}

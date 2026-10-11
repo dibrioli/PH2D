@@ -1,0 +1,1926 @@
+{
+ "meta": {
+  "oraculo": "Scrumlr (inovex/scrumlr.io), servidor Go, corrido em 127.0.0.1 sem docker",
+  "scrumlr_tag": "v5.4.2",
+  "scrumlr_commit": "6bae213129563eea946ec58e7a38d068dc53e0c3",
+  "scrumlr_licenca": "MIT (LICENSE do repo na tag, Copyright (c) 2017-2021 inovex GmbH)",
+  "go": "go1.26.9 linux-amd64 (BSD-3-Clause)",
+  "nats_server": "v2.14.4 linux-amd64 (Apache-2.0)",
+  "postgres": "18.4 (io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:18.4.0; PostgreSQL License; empacotamento Apache-2.0)",
+  "flags_servidor": "--insecure --disable-check-origin --enable-swagger --join-rate-limit 1000 --allow-anonymous-board-creation --allow-anonymous-custom-templates",
+  "caso": "p08",
+  "descricao": "Coluna escondida (visible=false): M e A escrevem nela; o que B recebe; M revela a coluna.",
+  "data": "2026-10-11T12:38:35.302Z",
+  "corrida": 1,
+  "servidor": "http://127.0.0.1:58080"
+ },
+ "ids": {
+  "BOARD": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+  "voting": null,
+  "colunas": {
+   "c1": "2042c288-0638-4966-b7c0-b53dfd986726",
+   "c2": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+   "Escondida": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c"
+  },
+  "notas": {
+   "h1": "ccf914ac-9226-428c-bd7e-28bba0848245",
+   "h2": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c"
+  },
+  "users": {
+   "M": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+   "A": "8024cb63-5bda-48dc-a02b-d699208da31c",
+   "B": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810"
+  }
+ },
+ "linha_do_tempo": [
+  {
+   "t": 0,
+   "passo": 1,
+   "tipo": "passo",
+   "texto": "montagem: M cria o quadro; A, B entram"
+  },
+  {
+   "t": 6,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "M"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+    "name": "M",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 21,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards",
+   "corpo": {
+    "name": "oraculo p08",
+    "accessPolicy": "PUBLIC",
+    "columns": [
+     {
+      "name": "Bom",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "name": "Mudar",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     },
+     {
+      "name": "Escondida",
+      "color": "planning-pink",
+      "visible": false,
+      "index": 2
+     }
+    ]
+   },
+   "status": 201,
+   "resposta": {
+    "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+    "name": "oraculo p08",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "2026-10-11T09:38:34.008019-03:00",
+    "createdAt": "2026-10-11T09:38:34.008019-03:00"
+   }
+  },
+  {
+   "t": 27,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "GET",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/columns",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+     "name": "Bom",
+     "description": "",
+     "color": "backlog-blue",
+     "visible": true,
+     "index": 0
+    },
+    {
+     "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+     "name": "Mudar",
+     "description": "",
+     "color": "value-violet",
+     "visible": true,
+     "index": 1
+    },
+    {
+     "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+     "name": "Escondida",
+     "description": "",
+     "color": "planning-pink",
+     "visible": false,
+     "index": 2
+    }
+   ]
+  },
+  {
+   "t": 36,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+      "name": "oraculo p08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:34.016592-03:00",
+      "createdAt": "2026-10-11T09:38:34.008019-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      },
+      {
+       "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "name": "Escondida",
+       "description": "",
+       "color": "planning-pink",
+       "visible": false,
+       "index": 2
+      }
+     ],
+     "notes": null,
+     "reactions": null,
+     "votings": null,
+     "votes": null
+    }
+   }
+  },
+  {
+   "t": 41,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "A"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+    "name": "A",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 47,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/participants",
+   "corpo": {},
+   "status": 201,
+   "resposta": null
+  },
+  {
+   "t": 49,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 55,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 55,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     },
+     {
+      "color": "planning-pink",
+      "description": "",
+      "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "index": 2,
+      "name": "Escondida",
+      "visible": false
+     }
+    ]
+   }
+  },
+  {
+   "t": 56,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 56,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+      "name": "oraculo p08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:34.016592-03:00",
+      "createdAt": "2026-10-11T09:38:34.008019-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": [],
+     "reactions": null,
+     "votings": [],
+     "votes": []
+    }
+   }
+  },
+  {
+   "t": 62,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "B"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+    "name": "B",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 71,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/participants",
+   "corpo": {},
+   "status": 201,
+   "resposta": null
+  },
+  {
+   "t": 71,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 72,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 79,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 79,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     },
+     {
+      "color": "planning-pink",
+      "description": "",
+      "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "index": 2,
+      "name": "Escondida",
+      "visible": false
+     }
+    ]
+   }
+  },
+  {
+   "t": 79,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 79,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 79,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+      "name": "Bom",
+      "description": "",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+      "name": "Mudar",
+      "description": "",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "t": 79,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": []
+   }
+  },
+  {
+   "t": 80,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+      "name": "oraculo p08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:34.016592-03:00",
+      "createdAt": "2026-10-11T09:38:34.008019-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": [],
+     "reactions": null,
+     "votings": [],
+     "votes": []
+    }
+   }
+  },
+  {
+   "t": 332,
+   "passo": 2,
+   "tipo": "passo",
+   "texto": "M escreve na coluna escondida"
+  },
+  {
+   "t": 352,
+   "passo": 2,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/notes",
+   "corpo": {
+    "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+    "text": "plano secreto do moderador"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+    "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+    "text": "plano secreto do moderador",
+    "edited": false,
+    "position": {
+     "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+     "stack": null,
+     "rank": 0
+    }
+   }
+  },
+  {
+   "t": 352,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+      "edited": false,
+      "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "plano secreto do moderador"
+     }
+    ]
+   }
+  },
+  {
+   "t": 352,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": []
+   }
+  },
+  {
+   "t": 352,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": []
+   }
+  },
+  {
+   "t": 654,
+   "passo": 3,
+   "tipo": "passo",
+   "texto": "A tenta escrever na coluna escondida"
+  },
+  {
+   "t": 675,
+   "passo": 3,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/notes",
+   "corpo": {
+    "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+    "text": "A na escondida"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+    "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+    "text": "A na escondida",
+    "edited": false,
+    "position": {
+     "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+     "stack": null,
+     "rank": 1
+    }
+   }
+  },
+  {
+   "t": 675,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+      "edited": false,
+      "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "A na escondida"
+     },
+     {
+      "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+      "edited": false,
+      "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "plano secreto do moderador"
+     }
+    ]
+   }
+  },
+  {
+   "t": 675,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": []
+   }
+  },
+  {
+   "t": 675,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": []
+   }
+  },
+  {
+   "t": 979,
+   "passo": 4,
+   "tipo": "passo",
+   "texto": "B pede GET /notes e GET /columns"
+  },
+  {
+   "t": 982,
+   "passo": 4,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/notes",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+     "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+     "text": "A na escondida",
+     "edited": false,
+     "position": {
+      "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "stack": null,
+      "rank": 1
+     }
+    },
+    {
+     "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+     "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+     "text": "plano secreto do moderador",
+     "edited": false,
+     "position": {
+      "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "stack": null,
+      "rank": 0
+     }
+    }
+   ]
+  },
+  {
+   "t": 986,
+   "passo": 4,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/columns",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+     "name": "Bom",
+     "description": "",
+     "color": "backlog-blue",
+     "visible": true,
+     "index": 0
+    },
+    {
+     "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+     "name": "Mudar",
+     "description": "",
+     "color": "value-violet",
+     "visible": true,
+     "index": 1
+    },
+    {
+     "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+     "name": "Escondida",
+     "description": "",
+     "color": "planning-pink",
+     "visible": false,
+     "index": 2
+    }
+   ]
+  },
+  {
+   "t": 986,
+   "passo": 5,
+   "tipo": "passo",
+   "texto": "M revela a coluna (visible=true)"
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     },
+     {
+      "color": "planning-pink",
+      "description": "",
+      "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "index": 2,
+      "name": "Escondida",
+      "visible": true
+     }
+    ]
+   }
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/columns/9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+   "corpo": {
+    "name": "Escondida",
+    "color": "planning-pink",
+    "visible": true,
+    "index": 2,
+    "description": ""
+   },
+   "status": 200,
+   "resposta": {
+    "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+    "name": "Escondida",
+    "description": "",
+    "color": "planning-pink",
+    "visible": true,
+    "index": 2
+   }
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+      "name": "Bom",
+      "description": "",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+      "name": "Mudar",
+      "description": "",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     },
+     {
+      "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "name": "Escondida",
+      "description": "",
+      "color": "planning-pink",
+      "visible": true,
+      "index": 2
+     }
+    ]
+   }
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+      "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+      "text": "A na escondida",
+      "edited": false,
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+      "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+      "text": "plano secreto do moderador",
+      "edited": false,
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+      "name": "Bom",
+      "description": "",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+      "name": "Mudar",
+      "description": "",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     },
+     {
+      "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "name": "Escondida",
+      "description": "",
+      "color": "planning-pink",
+      "visible": true,
+      "index": 2
+     }
+    ]
+   }
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+      "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+      "text": "A na escondida",
+      "edited": false,
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+      "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+      "text": "plano secreto do moderador",
+      "edited": false,
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 996,
+   "passo": 5,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+      "edited": false,
+      "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "A na escondida"
+     },
+     {
+      "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+      "edited": false,
+      "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+      "position": {
+       "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "plano secreto do moderador"
+     }
+    ]
+   }
+  },
+  {
+   "t": 1299,
+   "passo": 6,
+   "tipo": "passo",
+   "texto": "B pede GET /notes"
+  },
+  {
+   "t": 1303,
+   "passo": 6,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/439dc801-2d76-4d8a-9cc2-15692bc06cf8/notes",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+     "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+     "text": "A na escondida",
+     "edited": false,
+     "position": {
+      "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "stack": null,
+      "rank": 1
+     }
+    },
+    {
+     "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+     "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+     "text": "plano secreto do moderador",
+     "edited": false,
+     "position": {
+      "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+      "stack": null,
+      "rank": 0
+     }
+    }
+   ]
+  },
+  {
+   "t": 1303,
+   "passo": 6,
+   "tipo": "ws-fechado",
+   "quem": "M",
+   "code": 1000,
+   "reason": "sai"
+  },
+  {
+   "t": 1303,
+   "passo": 6,
+   "tipo": "ws-fechado",
+   "quem": "A",
+   "code": 1000,
+   "reason": "sai"
+  },
+  {
+   "t": 1303,
+   "passo": 6,
+   "tipo": "ws-fechado",
+   "quem": "B",
+   "code": 1000,
+   "reason": "sai"
+  }
+ ],
+ "recebido": {
+  "M": [
+   {
+    "t": 36,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+       "name": "oraculo p08",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T09:38:34.016592-03:00",
+       "createdAt": "2026-10-11T09:38:34.008019-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       },
+       {
+        "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "name": "Escondida",
+        "description": "",
+        "color": "planning-pink",
+        "visible": false,
+        "index": 2
+       }
+      ],
+      "notes": null,
+      "reactions": null,
+      "votings": null,
+      "votes": null
+     }
+    }
+   },
+   {
+    "t": 49,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 55,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 55,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      },
+      {
+       "color": "planning-pink",
+       "description": "",
+       "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "index": 2,
+       "name": "Escondida",
+       "visible": false
+      }
+     ]
+    }
+   },
+   {
+    "t": 56,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 71,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 79,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 79,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      },
+      {
+       "color": "planning-pink",
+       "description": "",
+       "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "index": 2,
+       "name": "Escondida",
+       "visible": false
+      }
+     ]
+    }
+   },
+   {
+    "t": 79,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 352,
+    "passo": 2,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "edited": false,
+       "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "plano secreto do moderador"
+      }
+     ]
+    }
+   },
+   {
+    "t": 675,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+       "edited": false,
+       "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "A na escondida"
+      },
+      {
+       "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "edited": false,
+       "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "plano secreto do moderador"
+      }
+     ]
+    }
+   },
+   {
+    "t": 996,
+    "passo": 5,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      },
+      {
+       "color": "planning-pink",
+       "description": "",
+       "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "index": 2,
+       "name": "Escondida",
+       "visible": true
+      }
+     ]
+    }
+   },
+   {
+    "t": 996,
+    "passo": 5,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+       "edited": false,
+       "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "A na escondida"
+      },
+      {
+       "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "edited": false,
+       "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "plano secreto do moderador"
+      }
+     ]
+    }
+   }
+  ],
+  "A": [
+   {
+    "t": 56,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+       "name": "oraculo p08",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T09:38:34.016592-03:00",
+       "createdAt": "2026-10-11T09:38:34.008019-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": [],
+      "reactions": null,
+      "votings": [],
+      "votes": []
+     }
+    }
+   },
+   {
+    "t": 72,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 79,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 79,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ]
+    }
+   },
+   {
+    "t": 79,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": []
+    }
+   },
+   {
+    "t": 352,
+    "passo": 2,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": []
+    }
+   },
+   {
+    "t": 675,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": []
+    }
+   },
+   {
+    "t": 996,
+    "passo": 5,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      },
+      {
+       "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "name": "Escondida",
+       "description": "",
+       "color": "planning-pink",
+       "visible": true,
+       "index": 2
+      }
+     ]
+    }
+   },
+   {
+    "t": 996,
+    "passo": 5,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+       "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+       "text": "A na escondida",
+       "edited": false,
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+       "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "text": "plano secreto do moderador",
+       "edited": false,
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   }
+  ],
+  "B": [
+   {
+    "t": 80,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "439dc801-2d76-4d8a-9cc2-15692bc06cf8",
+       "name": "oraculo p08",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T09:38:34.016592-03:00",
+       "createdAt": "2026-10-11T09:38:34.008019-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "8024cb63-5bda-48dc-a02b-d699208da31c",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "adfa2648-9750-4cc4-a34e-cfcd0ea3c810",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": [],
+      "reactions": null,
+      "votings": [],
+      "votes": []
+     }
+    }
+   },
+   {
+    "t": 352,
+    "passo": 2,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": []
+    }
+   },
+   {
+    "t": 675,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": []
+    }
+   },
+   {
+    "t": 996,
+    "passo": 5,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "id": "2042c288-0638-4966-b7c0-b53dfd986726",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "6ece27c5-dfe6-48e5-adea-3e063e3dca9e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      },
+      {
+       "id": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+       "name": "Escondida",
+       "description": "",
+       "color": "planning-pink",
+       "visible": true,
+       "index": 2
+      }
+     ]
+    }
+   },
+   {
+    "t": 996,
+    "passo": 5,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "id": "fc700dd8-1dd2-42a5-9fe3-4fac3ad6625c",
+       "author": "8024cb63-5bda-48dc-a02b-d699208da31c",
+       "text": "A na escondida",
+       "edited": false,
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "ccf914ac-9226-428c-bd7e-28bba0848245",
+       "author": "89d9a6af-6aca-426a-bc53-99bbd0d1a596",
+       "text": "plano secreto do moderador",
+       "edited": false,
+       "position": {
+        "column": "9bcc0ac2-d9ec-45fd-9c0b-d2e59ced993c",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

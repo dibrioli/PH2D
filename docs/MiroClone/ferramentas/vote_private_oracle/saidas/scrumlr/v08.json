@@ -1,0 +1,2478 @@
+{
+ "meta": {
+  "oraculo": "Scrumlr (inovex/scrumlr.io), servidor Go, corrido em 127.0.0.1 sem docker",
+  "scrumlr_tag": "v5.4.2",
+  "scrumlr_commit": "6bae213129563eea946ec58e7a38d068dc53e0c3",
+  "scrumlr_licenca": "MIT (LICENSE do repo na tag, Copyright (c) 2017-2021 inovex GmbH)",
+  "go": "go1.26.9 linux-amd64 (BSD-3-Clause)",
+  "nats_server": "v2.14.4 linux-amd64 (Apache-2.0)",
+  "postgres": "18.4 (io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:18.4.0; PostgreSQL License; empacotamento Apache-2.0)",
+  "flags_servidor": "--insecure --disable-check-origin --enable-swagger --join-rate-limit 1000 --allow-anonymous-board-creation --allow-anonymous-custom-templates",
+  "caso": "v08",
+  "descricao": "Modo privado + votação: B vota numa nota escondida de A (id conhecido por fora).",
+  "data": "2026-10-11T12:38:18.717Z",
+  "corrida": 1,
+  "servidor": "http://127.0.0.1:58080"
+ },
+ "ids": {
+  "BOARD": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+  "voting": "c71a3499-e931-4f49-8401-377fd00404cc",
+  "colunas": {
+   "c1": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+   "c2": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e"
+  },
+  "notas": {
+   "n1": "19341f49-9642-4f09-bb49-784645806156",
+   "n3": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b"
+  },
+  "users": {
+   "M": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+   "A": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+   "B": "94785401-7da4-49e4-bf1b-346d716edcc6"
+  }
+ },
+ "linha_do_tempo": [
+  {
+   "t": 0,
+   "passo": 1,
+   "tipo": "passo",
+   "texto": "montagem: M cria o quadro; A, B entram"
+  },
+  {
+   "t": 7,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "M"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+    "name": "M",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 25,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards",
+   "corpo": {
+    "name": "oraculo v08",
+    "accessPolicy": "PUBLIC",
+    "columns": [
+     {
+      "name": "Bom",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "name": "Mudar",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     }
+    ]
+   },
+   "status": 201,
+   "resposta": {
+    "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+    "name": "oraculo v08",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "2026-10-11T09:38:16.261329-03:00",
+    "createdAt": "2026-10-11T09:38:16.261329-03:00"
+   }
+  },
+  {
+   "t": 31,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "GET",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/columns",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+     "name": "Bom",
+     "description": "",
+     "color": "backlog-blue",
+     "visible": true,
+     "index": 0
+    },
+    {
+     "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+     "name": "Mudar",
+     "description": "",
+     "color": "value-violet",
+     "visible": true,
+     "index": 1
+    }
+   ]
+  },
+  {
+   "t": 40,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": null,
+     "reactions": null,
+     "votings": null,
+     "votes": null
+    }
+   }
+  },
+  {
+   "t": 44,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "A"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+    "name": "A",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 49,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/participants",
+   "corpo": {},
+   "status": 201,
+   "resposta": null
+  },
+  {
+   "t": 49,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 53,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 53,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     }
+    ]
+   }
+  },
+  {
+   "t": 53,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 54,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": [],
+     "reactions": null,
+     "votings": [],
+     "votes": []
+    }
+   }
+  },
+  {
+   "t": 56,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "B"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+    "name": "B",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 61,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/participants",
+   "corpo": {},
+   "status": 201,
+   "resposta": null
+  },
+  {
+   "t": 61,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 61,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 67,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 67,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     }
+    ]
+   }
+  },
+  {
+   "t": 67,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 67,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+      "name": "Bom",
+      "description": "",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+      "name": "Mudar",
+      "description": "",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "t": 67,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": []
+   }
+  },
+  {
+   "t": 67,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 68,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": [],
+     "reactions": null,
+     "votings": [],
+     "votes": []
+    }
+   }
+  },
+  {
+   "t": 319,
+   "passo": 2,
+   "tipo": "passo",
+   "texto": "M esconde as notas dos outros"
+  },
+  {
+   "t": 331,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+     "name": "oraculo v08",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": false,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+     "createdAt": "2026-10-11T09:38:16.261329-03:00"
+    }
+   }
+  },
+  {
+   "t": 331,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+     "name": "oraculo v08",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": false,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+     "createdAt": "2026-10-11T09:38:16.261329-03:00"
+    }
+   }
+  },
+  {
+   "t": 331,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+     "name": "oraculo v08",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": false,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+     "createdAt": "2026-10-11T09:38:16.261329-03:00"
+    }
+   }
+  },
+  {
+   "t": 332,
+   "passo": 2,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+   "corpo": {
+    "showNotesOfOtherUsers": false
+   },
+   "status": 200,
+   "resposta": {
+    "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+    "name": "oraculo v08",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": false,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+    "createdAt": "2026-10-11T09:38:16.261329-03:00"
+   }
+  },
+  {
+   "t": 332,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 332,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": []
+   }
+  },
+  {
+   "t": 332,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": []
+   }
+  },
+  {
+   "t": 634,
+   "passo": 3,
+   "tipo": "passo",
+   "texto": "A escreve n1; B escreve n3"
+  },
+  {
+   "t": 644,
+   "passo": 3,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/notes",
+   "corpo": {
+    "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+    "text": "café na sala"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "19341f49-9642-4f09-bb49-784645806156",
+    "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+    "text": "café na sala",
+    "edited": false,
+    "position": {
+     "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+     "stack": null,
+     "rank": 0
+    }
+   }
+  },
+  {
+   "t": 644,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "edited": false,
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 644,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 644,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": []
+   }
+  },
+  {
+   "t": 964,
+   "passo": 3,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/notes",
+   "corpo": {
+    "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+    "text": "quadro novo na parede"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+    "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+    "text": "quadro novo na parede",
+    "edited": false,
+    "position": {
+     "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+     "stack": null,
+     "rank": 1
+    }
+   }
+  },
+  {
+   "t": 964,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "edited": false,
+      "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "quadro novo na parede"
+     },
+     {
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "edited": false,
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 964,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 964,
+   "passo": 3,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+      "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1266,
+   "passo": 4,
+   "tipo": "passo",
+   "texto": "M abre a votação"
+  },
+  {
+   "t": 1276,
+   "passo": 4,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/votings",
+   "corpo": {
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "isAnonymous": true
+   },
+   "status": 201,
+   "resposta": {
+    "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "OPEN",
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 1276,
+   "passo": 4,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 1276,
+   "passo": 4,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 1276,
+   "passo": 4,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 1580,
+   "passo": 5,
+   "tipo": "passo",
+   "texto": "B vota na nota escondida de A (n1, id conhecido por fora)"
+  },
+  {
+   "t": 1590,
+   "passo": 5,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/votes",
+   "corpo": {
+    "note": "19341f49-9642-4f09-bb49-784645806156"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "c71a3499-e931-4f49-8401-377fd00404cc",
+    "note": "19341f49-9642-4f09-bb49-784645806156",
+    "user": "94785401-7da4-49e4-bf1b-346d716edcc6"
+   }
+  },
+  {
+   "t": 1843,
+   "passo": 6,
+   "tipo": "passo",
+   "texto": "B pede GET /votes"
+  },
+  {
+   "t": 1847,
+   "passo": 6,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/votes",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "voting": "c71a3499-e931-4f49-8401-377fd00404cc",
+     "note": "19341f49-9642-4f09-bb49-784645806156",
+     "user": "94785401-7da4-49e4-bf1b-346d716edcc6"
+    }
+   ]
+  },
+  {
+   "t": 1847,
+   "passo": 7,
+   "tipo": "passo",
+   "texto": "M revela"
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+     "name": "oraculo v08",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": true,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+     "createdAt": "2026-10-11T09:38:16.261329-03:00"
+    }
+   }
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+     "name": "oraculo v08",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": true,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+     "createdAt": "2026-10-11T09:38:16.261329-03:00"
+    }
+   }
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+     "name": "oraculo v08",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": true,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+     "createdAt": "2026-10-11T09:38:16.261329-03:00"
+    }
+   }
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+   "corpo": {
+    "showNotesOfOtherUsers": true
+   },
+   "status": 200,
+   "resposta": {
+    "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+    "name": "oraculo v08",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+    "createdAt": "2026-10-11T09:38:16.261329-03:00"
+   }
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "edited": false,
+      "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "quadro novo na parede"
+     },
+     {
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "edited": false,
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+      "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1853,
+   "passo": 7,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+      "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "19341f49-9642-4f09-bb49-784645806156",
+      "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 2156,
+   "passo": 8,
+   "tipo": "passo",
+   "texto": "M fecha"
+  },
+  {
+   "t": 2165,
+   "passo": 8,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/2c29a9d8-859c-42f6-9ce8-749f30ae1f95/votings/c71a3499-e931-4f49-8401-377fd00404cc",
+   "corpo": {
+    "status": "CLOSED"
+   },
+   "status": 200,
+   "resposta": {
+    "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "CLOSED",
+    "votes": {
+     "total": 1,
+     "votesPerNote": {
+      "19341f49-9642-4f09-bb49-784645806156": {
+       "total": 1
+      }
+     }
+    },
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 2165,
+   "passo": 8,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ],
+     "voting": {
+      "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+      "voteLimit": 5,
+      "allowMultipleVotes": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "votes": {
+       "total": 1,
+       "votesPerNote": {
+        "19341f49-9642-4f09-bb49-784645806156": {
+         "total": 1
+        }
+       }
+      },
+      "isAnonymous": true
+     }
+    }
+   }
+  },
+  {
+   "t": 2165,
+   "passo": 8,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ],
+     "voting": {
+      "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+      "voteLimit": 5,
+      "allowMultipleVotes": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "votes": {
+       "total": 1,
+       "votesPerNote": {
+        "19341f49-9642-4f09-bb49-784645806156": {
+         "total": 1
+        }
+       }
+      },
+      "isAnonymous": true
+     }
+    }
+   }
+  },
+  {
+   "t": 2165,
+   "passo": 8,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "edited": false,
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "edited": false,
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      }
+     ],
+     "voting": {
+      "allowMultipleVotes": true,
+      "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "voteLimit": 5,
+      "votes": {
+       "total": 1,
+       "votesPerNote": {
+        "19341f49-9642-4f09-bb49-784645806156": {
+         "total": 1
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "t": 2468,
+   "passo": 8,
+   "tipo": "ws-fechado",
+   "quem": "M",
+   "code": 1000,
+   "reason": "sai"
+  },
+  {
+   "t": 2468,
+   "passo": 8,
+   "tipo": "ws-fechado",
+   "quem": "A",
+   "code": 1000,
+   "reason": "sai"
+  },
+  {
+   "t": 2468,
+   "passo": 8,
+   "tipo": "ws-fechado",
+   "quem": "B",
+   "code": 1000,
+   "reason": "sai"
+  }
+ ],
+ "recebido": {
+  "M": [
+   {
+    "t": 40,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+       "name": "oraculo v08",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+       "createdAt": "2026-10-11T09:38:16.261329-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": null,
+      "reactions": null,
+      "votings": null,
+      "votes": null
+     }
+    }
+   },
+   {
+    "t": 49,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 53,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 53,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      }
+     ]
+    }
+   },
+   {
+    "t": 53,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 61,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 67,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 67,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      }
+     ]
+    }
+   },
+   {
+    "t": 67,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 331,
+    "passo": 2,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": false,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     }
+    }
+   },
+   {
+    "t": 332,
+    "passo": 2,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 644,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "edited": false,
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 964,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "edited": false,
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "edited": false,
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 1276,
+    "passo": 4,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 1853,
+    "passo": 7,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     }
+    }
+   },
+   {
+    "t": 1853,
+    "passo": 7,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "edited": false,
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "edited": false,
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 2165,
+    "passo": 8,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+        "edited": false,
+        "id": "19341f49-9642-4f09-bb49-784645806156",
+        "position": {
+         "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "café na sala"
+       },
+       {
+        "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+        "edited": false,
+        "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+        "position": {
+         "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "quadro novo na parede"
+       }
+      ],
+      "voting": {
+       "allowMultipleVotes": true,
+       "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+       "isAnonymous": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "voteLimit": 5,
+       "votes": {
+        "total": 1,
+        "votesPerNote": {
+         "19341f49-9642-4f09-bb49-784645806156": {
+          "total": 1
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  ],
+  "A": [
+   {
+    "t": 54,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+       "name": "oraculo v08",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+       "createdAt": "2026-10-11T09:38:16.261329-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": [],
+      "reactions": null,
+      "votings": [],
+      "votes": []
+     }
+    }
+   },
+   {
+    "t": 61,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 67,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 67,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ]
+    }
+   },
+   {
+    "t": 67,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": []
+    }
+   },
+   {
+    "t": 331,
+    "passo": 2,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": false,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     }
+    }
+   },
+   {
+    "t": 332,
+    "passo": 2,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": []
+    }
+   },
+   {
+    "t": 644,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 964,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1276,
+    "passo": 4,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 1853,
+    "passo": 7,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     }
+    }
+   },
+   {
+    "t": 1853,
+    "passo": 7,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 2165,
+    "passo": 8,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+        "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+        "text": "quadro novo na parede",
+        "edited": false,
+        "position": {
+         "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "19341f49-9642-4f09-bb49-784645806156",
+        "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+        "text": "café na sala",
+        "edited": false,
+        "position": {
+         "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+         "stack": null,
+         "rank": 0
+        }
+       }
+      ],
+      "voting": {
+       "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+       "voteLimit": 5,
+       "allowMultipleVotes": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "votes": {
+        "total": 1,
+        "votesPerNote": {
+         "19341f49-9642-4f09-bb49-784645806156": {
+          "total": 1
+         }
+        }
+       },
+       "isAnonymous": true
+      }
+     }
+    }
+   }
+  ],
+  "B": [
+   {
+    "t": 68,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+       "name": "oraculo v08",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+       "createdAt": "2026-10-11T09:38:16.261329-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "152d7613-b667-4ce5-b9bf-435d6ce72aeb",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "94785401-7da4-49e4-bf1b-346d716edcc6",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "edc28464-5a69-4af1-ad4f-b2f1f3e68b1e",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": [],
+      "reactions": null,
+      "votings": [],
+      "votes": []
+     }
+    }
+   },
+   {
+    "t": 331,
+    "passo": 2,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": false,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:16.270063-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     }
+    }
+   },
+   {
+    "t": 332,
+    "passo": 2,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": []
+    }
+   },
+   {
+    "t": 644,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": []
+    }
+   },
+   {
+    "t": 964,
+    "passo": 3,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 1
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1276,
+    "passo": 4,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 1853,
+    "passo": 7,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "2c29a9d8-859c-42f6-9ce8-749f30ae1f95",
+      "name": "oraculo v08",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T09:38:17.208922-03:00",
+      "createdAt": "2026-10-11T09:38:16.261329-03:00"
+     }
+    }
+   },
+   {
+    "t": 1853,
+    "passo": 7,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+       "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "19341f49-9642-4f09-bb49-784645806156",
+       "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 2165,
+    "passo": 8,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "id": "8376bdd8-f5cd-4a1c-8d2c-c7cd1cb8fa8b",
+        "author": "94785401-7da4-49e4-bf1b-346d716edcc6",
+        "text": "quadro novo na parede",
+        "edited": false,
+        "position": {
+         "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "19341f49-9642-4f09-bb49-784645806156",
+        "author": "f5521a4f-7131-406c-b6cb-d072f67748f5",
+        "text": "café na sala",
+        "edited": false,
+        "position": {
+         "column": "f2175fc5-7e9a-46be-b475-6a18a33922e4",
+         "stack": null,
+         "rank": 0
+        }
+       }
+      ],
+      "voting": {
+       "id": "c71a3499-e931-4f49-8401-377fd00404cc",
+       "voteLimit": 5,
+       "allowMultipleVotes": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "votes": {
+        "total": 1,
+        "votesPerNote": {
+         "19341f49-9642-4f09-bb49-784645806156": {
+          "total": 1
+         }
+        }
+       },
+       "isAnonymous": true
+      }
+     }
+    }
+   }
+  ]
+ }
+}

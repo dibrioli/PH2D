@@ -1,3 +1,5 @@
+> ⚠️ SUBSTITUÍDO pelo [handoff W11](HANDOFF_INTEGRACAO_line_MiroClone_W11_2026-10-10.md) — integre por ele.
+
 # HANDOFF DE INTEGRAÇÃO — `line/MiroClone` W5 … W10 → `main` (2026-10-10)
 
 > Para o **agente integrador** (DIRETRIZ §1.5.3–1.5.4, §1.5.9). A linha FECHOU e PAROU: não integra nem

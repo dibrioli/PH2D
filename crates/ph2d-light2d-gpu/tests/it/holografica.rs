@@ -326,7 +326,19 @@ fn sonda_hrc_pelo_tamanho_da_luz() {
         };
         let r = gabarito(&cena, &g);
         let w = lado as usize;
-        for h in variantes() {
+        // ⭐ W5d: o passo do traço curto e o filtro em cruz (o C1: a luz menor que a célula).
+        for h in [
+            None,
+            Some(HOLOGRAFICA_PADRAO),
+            Some(Holografica {
+                passo: 0.25,
+                ..HOLOGRAFICA_PADRAO
+            }),
+            Some(Holografica {
+                borrao: false,
+                ..HOLOGRAFICA_PADRAO
+            }),
+        ] {
             let (flu, _) = rodar(&gpu, com(Config::padrao(g), h), &cena);
             // O anel entre 2 e 8 raios do centro (mais 4 texels).
             let (mut d, mut m, mut se) = (0.0, 0.0, 0.0);

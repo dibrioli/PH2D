@@ -471,3 +471,91 @@ fn o_disco_de_imagem_nao_sai_em_facetas() {
         falhas.join(" · ")
     );
 }
+
+/// A variação total de um anel lido na placa (o laço fechado).
+fn variacao(fl: &Fluencia, pts: &[[f64; 2]]) -> f64 {
+    let g: Vec<f64> = pts.iter().map(|p| fl.amostra(*p)).collect();
+    (0..g.len())
+        .map(|k| (g[(k + 1) % g.len()] - g[k]).abs())
+        .sum()
+}
+
+/// O teto da variação do anel de DENTRO (0,65 e 0,9 do raio) sobre a do anel logo FORA (+2,5 texels),
+/// com o rebote — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`, zoom 2,5): o disco 0,979 · a elipse 0,981; sem
+/// a média 1,014 · 1,109 (a conta é determinística: não há relógio nela).
+const TETO_RISCOS: f64 = 1.0;
+
+/// ⭐⭐ **GATE — o interior com o rebote não sai em riscos**: as sondas da cascata coladas a uma
+/// superfície que reflete variam ±15 % de uma para a outra e a lei do interior projetava esse ruído até
+/// ao centro (as fatias do disco com o rebote, cena 5); a c0 do ponto de fronteira pela média AO LONGO
+/// da face (`Config::c0_ao_longo_da_face`) tira-o. A régua: o disco e a elipse (polígonos) com o rebote
+/// (60 quadros) no zoom 2,5 — a variação do anel de dentro não passa a do de fora (o interior só
+/// projeta a borda); o controlo sem a média, na mesma corrida.
+#[test]
+fn o_interior_com_o_rebote_nao_sai_em_riscos() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut falhas = Vec::new();
+    let mut controlo: f64 = 0.0;
+    for ri in 0..2 {
+        let (c, redondos) = cena_redonda([0.0; 2]);
+        let r = redondos[ri];
+        let a = vista_em(2.5, r.centro);
+        let cfg = Config {
+            rebote: true,
+            ..config(&gpu, a, false)
+        };
+        let tx = cfg.grade.texel_m / f64::from(cfg.fina);
+        let ler = |face: f32| {
+            let mut s = Solver::novo(
+                &gpu,
+                Config {
+                    c0_ao_longo_da_face: face,
+                    ..cfg
+                },
+            )
+            .expect("solver");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+            s.regiao_fina(i, f);
+            for _ in 0..60 {
+                s.quadro(&gpu, &c);
+            }
+            fluencia_lida(&gpu, &s)
+        };
+        let anel_de = |f: f64, fora: f64| -> Vec<[f64; 2]> {
+            (0..AMOSTRAS)
+                .map(|k| r.no_anel(std::f64::consts::TAU * k as f64 / AMOSTRAS as f64, f, fora))
+                .collect()
+        };
+        let fora = anel_de(1.0, 2.5 * tx);
+        for (nome, fl) in [
+            ("produto", ler(cfg.c0_ao_longo_da_face)),
+            ("sem a média", ler(0.0)),
+        ] {
+            let base = variacao(&fl, &fora);
+            let pior = [0.65, 0.9]
+                .iter()
+                .map(|&f| variacao(&fl, &anel_de(f, 0.0)) / base)
+                .fold(0.0, f64::max);
+            eprintln!("riscos · {} · {nome}: dentro/fora {pior:.3}", r.nome);
+            if nome == "produto" {
+                if pior > TETO_RISCOS {
+                    falhas.push(format!("{}: {pior:.3}", r.nome));
+                }
+            } else {
+                controlo = controlo.max(pior);
+            }
+        }
+    }
+    assert!(
+        controlo > TETO_RISCOS,
+        "o controlo sem a média não mostra os riscos ({controlo:.3}) — a régua não os vê"
+    );
+    assert!(
+        falhas.is_empty(),
+        "o interior com o rebote sai em riscos (teto {TETO_RISCOS}): {}",
+        falhas.join(" · ")
+    );
+}

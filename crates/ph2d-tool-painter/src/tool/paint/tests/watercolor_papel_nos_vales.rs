@@ -168,6 +168,8 @@ fn traco_wet(papel: Option<TextureKind>, tooth: f32) -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * W * 4) as usize], W, W);
     t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    t.set_wet_largura_crua(1.0);
     t.paint.brush.color = [0.2, 0.3, 0.8];
     t.paint.brush.radius_px = 14.0;
     if let Some(k) = papel {
@@ -238,6 +240,7 @@ fn mexer_no_tooth_com_a_sessao_viva_refaz_o_papel() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
         t.set_paint_media(PaintMedia::WetPaint);
+        t.set_wet_largura_crua(1.0);
         t.paint.brush.color = [0.2, 0.3, 0.8];
         t.paint.brush.radius_px = 14.0;
         if let Some(k) = papel {

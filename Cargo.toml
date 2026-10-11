@@ -123,6 +123,13 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.ph2d-poly2d]
 opt-level = 2
+# The Wet Paint engine and its pigment law (11/10, min of 2 interleaved, o0 → o2): o_traco_nao_muda_de_tom 159 → 23 s ·
+# sem_celulas_soltas 252 → 49 s · miniatura de fábrica 28 → 4 s; six scene gates went from TIMEOUT to 28–125 s. Cold build
+# 50 s both; rebuild after one edit 3.9 → 3.5 s (wet-paint), 3.3 → 3.2 s (pigment). Same bytes (the factory/byte gates).
+[profile.dev.package.ph2d-wet-paint]
+opt-level = 2
+[profile.dev.package.ph2d-pigment]
+opt-level = 2
 
 # Motion (11/10, A/B intercalado, o mínimo de 2): `nenhum_no_emite_mais_do_que_o_tecto` 87,7 s (o0) ·
 # 12,9 s (só collide) · 9,7 s (os quatro) — o collide é O(n²) sobre 16 384 pontos na CPU de

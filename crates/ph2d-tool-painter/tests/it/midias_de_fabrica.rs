@@ -81,7 +81,7 @@ fn de_fabrica(nome: &str) -> Preset {
         .preset
 }
 
-fn cena_seca(p: &Preset, raio: f32, ficheiro: &str) -> Medida {
+fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> Medida {
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
@@ -94,7 +94,9 @@ fn cena_seca(p: &Preset, raio: f32, ficheiro: &str) -> Medida {
             .iter()
             .for_each(|q| f.extend_from_slice(&q[..3]));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(format!("{dir}/midia_{ficheiro}.ppm"), f).unwrap();
+        for nome in ficheiros {
+            std::fs::write(format!("{dir}/midia_{nome}.ppm"), &f).unwrap();
+        }
     }
     mede(&px, w, RECTO)
 }
@@ -106,14 +108,36 @@ fn no_vale(n: f64, r: f64, c: f64) -> bool {
 
 #[test]
 fn cada_preset_parece_a_sua_midia() {
-    let round = de_fabrica("Wet Round");
+    let round = &de_fabrica("Wet Round");
+    // Todas as cenas de uma vez: as 8 mídias e o controlo UMA vez por largura (o Wet Round não depende da
+    // mídia). Medido 11/10: 57 → 46 s.
+    let mut raios: Vec<f32> = MIDIAS.iter().map(|m| m.raio).collect();
+    raios.sort_by(f32::total_cmp);
+    raios.dedup();
+    let (medidas, controlos): (Vec<Medida>, Vec<Medida>) = std::thread::scope(|s| {
+        let a: Vec<_> = MIDIAS
+            .iter()
+            .map(|m| s.spawn(|| cena_seca(&de_fabrica(m.preset), m.raio, &[m.preset.to_owned()])))
+            .collect();
+        let b: Vec<_> = raios
+            .iter()
+            .map(|&r| {
+                let nomes: Vec<String> = MIDIAS
+                    .iter()
+                    .filter(|m| m.raio == r)
+                    .map(|m| format!("{}_controlo", m.preset))
+                    .collect();
+                s.spawn(move || cena_seca(round, r, &nomes))
+            })
+            .collect();
+        let junta = |h: Vec<std::thread::ScopedJoinHandle<'_, Medida>>| {
+            h.into_iter().map(|h| h.join().unwrap()).collect()
+        };
+        (junta(a), junta(b))
+    });
     let mut falhas = Vec::new();
-    for m in &MIDIAS {
-        let (n, c) = std::thread::scope(|s| {
-            let a = s.spawn(|| cena_seca(&de_fabrica(m.preset), m.raio, m.preset));
-            let b = s.spawn(|| cena_seca(&round, m.raio, &format!("{}_controlo", m.preset)));
-            (a.join().unwrap(), b.join().unwrap())
-        });
+    for (m, n) in MIDIAS.iter().zip(&medidas) {
+        let c = &controlos[raios.iter().position(|&r| r == m.raio).unwrap()];
         println!(
             "[midia] {} vs {}: {:?} (controlo {:?})",
             m.preset, m.foto, n, c

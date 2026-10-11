@@ -288,9 +288,28 @@ fn fora_da_promessa(larguras: &[f32], rel: f32) -> Vec<String> {
 #[test]
 fn a_largura_e_a_prometida() {
     let mut falhas = Vec::new();
-    for (rel, b) in ficheiros_de_fabrica() {
-        let p = ler(&b).unwrap();
-        let larguras = larguras_da_promessa(&p, false);
+    let ficheiros = ficheiros_de_fabrica();
+    // Os presets em paralelo (cada um já pinta os seus raios em paralelo): medido 11/10, 55 → 51 s.
+    let medidos: Vec<(Preset, Vec<f32>, Option<Vec<f32>>)> = std::thread::scope(|s| {
+        let h: Vec<_> = ficheiros
+            .iter()
+            .map(|(rel, b)| {
+                s.spawn(move || {
+                    let p = ler(b).unwrap();
+                    let (larguras, crua) = std::thread::scope(|s| {
+                        let crua = rel
+                            .ends_with("Wet Round.ph2d-brush.png")
+                            .then(|| s.spawn(|| larguras_da_promessa(&p, true)));
+                        let larguras = larguras_da_promessa(&p, false);
+                        (larguras, crua.map(|h| h.join().unwrap()))
+                    });
+                    (p, larguras, crua)
+                })
+            })
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    for ((rel, _), (p, larguras, crua)) in ficheiros.iter().zip(medidos) {
         println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
         let com_grao = p
             .parametros
@@ -306,9 +325,9 @@ fn a_largura_e_a_prometida() {
         for f in fora_da_promessa(&larguras, tol) {
             falhas.push(format!("{rel}: {f}"));
         }
-        if rel.ends_with("Wet Round.ph2d-brush.png") {
+        if let Some(crua) = crua {
             assert!(
-                !fora_da_promessa(&larguras_da_promessa(&p, true), TOLERANCIA_REL).is_empty(),
+                !fora_da_promessa(&crua, TOLERANCIA_REL).is_empty(),
                 "controlo: a lei crua do Wet Round já cumpria a promessa — o portão não mede nada"
             );
         }

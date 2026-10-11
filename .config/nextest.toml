@@ -91,8 +91,11 @@ priority = -100
 # série → 69 s em paralelo (a cena do dono, Live Water, é a mais longa e é sequencial); o
 # `sem_celulas_soltas` 29–40 s. Sob a suíte inteira o de 140 s passou o tecto de 180 s
 # (`nextest-impacted`, 18 107 testes). Tecto pedido: 6 × 60 s, ~5× o medido sozinho.
+# 11/10 (onda da velocidade, wet-paint a opt-level 2): as camadas 159 s e o sem_celulas 67 s sob a suíte do
+# ph2d-tool-painter; e os dois portões da fábrica entram — `a_largura_e_a_prometida` 50 s sozinho / 105 s sob a
+# suíte, `cada_preset_parece_a_sua_midia` 41 / 98 s (a cura é a fixture: HANDOFF_CONTINUACAO_..._VELOCIDADE).
 [[profile.default.overrides]]
-filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(sem_celulas_soltas)'
+filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(sem_celulas_soltas) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia)'
 slow-timeout = { period = "60s", terminate-after = 6 }
 
 # ── Tecto GLOBAL e as três regras que viviam em scripts ─────────────────────────

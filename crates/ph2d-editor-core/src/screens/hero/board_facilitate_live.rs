@@ -82,10 +82,9 @@ pub(super) fn follow(hero: &mut HeroScreen) {
             // Uma votação nova da sala: o painel abre a todos (o Miro avisa todos ao começar).
             if f.live_round.get(&id) != Some(&v.round) {
                 // Uma votação de UM ecrã aberta antes da sala: acaba (o resultado dela vai para o
-                // quadro), em vez de os votos dela se perderem por baixo da da sala.
-                if ed.vote().is_some() && !f.live_round.contains_key(&id) {
-                    let history = live.histories.entry(id).or_default();
-                    ed.end_vote(&mut board.doc, history);
+                // histórico), em vez de os votos dela se perderem por baixo da da sala.
+                if !f.live_round.contains_key(&id) {
+                    super::history::end_here(board, ed, f, &live.team.author);
                 }
                 ed.put_vote(Some(VoteSession::live(v.setup, v.targets.clone())));
                 f.live_round.insert(id, v.round);
@@ -106,13 +105,13 @@ pub(super) fn follow(hero: &mut HeroScreen) {
                 }
             }
         }
-        // Acabou: os totais já chegaram ao quadro; a sessão sai e o painel mostra o resultado.
+        // Acabou: a sessão já chegou ao histórico (ADR-0183 §10); a votação sai e o painel abre-a.
         Some(v) if f.live_round.get(&id) == Some(&v.round) && ed.vote().is_some() => {
             ed.put_vote(None);
             f.live_round.remove(&id);
             f.live_done.remove(&id);
             f.live_sent.remove(&id);
-            f.panels.insert(id, VotePanel::Results { all: false });
+            super::history::after_room_end(board, f);
         }
         // Saí da sala a meio: a sessão da sala não fica a fingir de votação deste ecrã.
         None if !here && f.live_round.remove(&id).is_some() => {

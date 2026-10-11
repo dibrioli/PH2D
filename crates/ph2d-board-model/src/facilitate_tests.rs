@@ -50,22 +50,11 @@ fn a_stamp_counts_and_leaves_at_zero() {
     assert!(el.org.as_ref().is_some_and(|o| o.stamps.len() == 1));
 }
 
-/// Pôr 0 votos num elemento sem caixa de organizar não a cria (a caixa só existe quando se usa).
+/// ⭐ S1: os carimbos gravam-se e lêem-se (os votos são da equipa desde a W13: `poll_tests.rs`).
 #[test]
-fn zero_votes_create_no_box() {
-    let (_, mut el) = note(&mut BoardSet::default());
-    el.set_votes(0);
-    assert!(el.org.is_none());
-    el.set_votes(4);
-    assert_eq!(el.votes(), 4);
-}
-
-/// ⭐ V4/S1: os votos e os carimbos gravam-se e lêem-se (formato 7).
-#[test]
-fn votes_and_stamps_round_trip_through_the_bytes() {
+fn stamps_round_trip_through_the_bytes() {
     let mut set = BoardSet::default();
     let (a, mut el) = note(&mut set);
-    el.set_votes(5);
     el.add_stamp(Stamp::ThumbsUp, 2);
     el.add_stamp(Stamp::Party, 1);
     BoardOp::Put(el).apply(&mut set.get_mut(a).unwrap().doc);
@@ -92,7 +81,8 @@ fn a_format_6_file_still_opens_with_no_votes_or_stamps() {
     assert!(els[2].mind().is_some_and(|m| m.parent.is_none()));
     let child = els[3].mind().expect("o filho é nó");
     assert!(child.collapsed && child.parent == Some(els[2].id));
-    assert!(els.iter().all(|e| e.votes() == 0 && e.stamps().is_empty()));
+    assert!(els.iter().all(|e| e.stamps().is_empty()));
+    assert!(b.team.polls.is_empty(), "sem votos, sem sessão");
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(
         back, set,

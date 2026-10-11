@@ -82,7 +82,6 @@ fn sample() -> Board {
         [40.0, 40.0, 199.0, 199.0],
     );
     n.frame = Some(outer);
-    n.set_votes(3);
     n.add_stamp(Stamp::Heart, 2);
     n.tags_mut().push(Tag {
         name: "urgent".into(),
@@ -341,7 +340,7 @@ fn colors_parse_and_print() {
 
 /// ⭐⭐ X2: o que se EDITA no Excalidraw volta editado — mover, reescrever o texto de uma nota, mudar a
 /// cor, duplicar (a cópia leva o nosso `customData` e ganha um id novo) e apagar —, e o resto continua
-/// o nosso (a nota continua NOTA, com etiqueta e votos).
+/// o nosso (a nota continua NOTA, com etiqueta).
 #[test]
 fn edits_made_in_excalidraw_come_back() {
     let mut file: serde_json::Value = serde_json::from_str(RESTORED).unwrap();
@@ -372,7 +371,7 @@ fn edits_made_in_excalidraw_come_back() {
         ShapeType::Sticky,
         "continua nota"
     );
-    assert_eq!((note.votes(), note.tags().len()), (3, 1));
+    assert_eq!(note.tags().len(), 1);
     let ell = doc.get(ElementId(9)).unwrap();
     assert_eq!(
         ell.shape().unwrap().style.fill,
@@ -512,4 +511,26 @@ fn a_sketched_note_travels_with_smooth_paper_and_the_hand_letter() {
     let st = back.doc.get(id).unwrap().style().clone();
     assert!(st.sketch, "a nota voltou final");
     assert_eq!(st.look.letter, ph2d_board_model::Letter::Auto);
+}
+
+/// ⭐ W13 (ADR-0183 §9): um `.excalidraw` escrito ANTES do histórico trazia os votos no nosso elemento
+/// (`customData.ph2d.element.org.votes`, o que o escritor do formato 10 punha): voltam no `Import` para
+/// quem cria o quadro os guardar como UMA sessão; a cópia feita lá (id novo) não os leva.
+#[test]
+fn an_old_file_brings_its_votes_back_for_one_session() {
+    let mut file: serde_json::Value = serde_json::from_str(RESTORED).unwrap();
+    let els = file["elements"].as_array_mut().unwrap();
+    let i = els.iter().position(|e| e["id"] == "ph2d-3").unwrap();
+    els[i]["customData"]["ph2d"]["element"]["org"]["votes"] = serde_json::json!(3);
+    let mut copy = els[i].clone();
+    copy["id"] = serde_json::json!("copy1");
+    copy["boundElements"] = serde_json::json!([]);
+    els.push(copy);
+    let back = read(&serde_json::to_string(&file).unwrap()).unwrap();
+    assert_eq!(back.votes.into_iter().collect::<Vec<_>>(), [(ElementId(3), 3)]);
+    let now = read(RESTORED).unwrap();
+    let carried = |v: &serde_json::Value| v["customData"]["ph2d"]["element"]["org"]["votes"].as_u64();
+    let restored: serde_json::Value = serde_json::from_str(RESTORED).unwrap();
+    let old_votes: u64 = restored["elements"].as_array().unwrap().iter().filter_map(carried).sum();
+    assert_eq!(now.votes.values().map(|&n| u64::from(n)).sum::<u64>(), old_votes, "o que o ficheiro traz, nem mais nem menos");
 }

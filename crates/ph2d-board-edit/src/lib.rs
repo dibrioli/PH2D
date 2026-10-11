@@ -365,6 +365,13 @@ impl Editor {
         self.unread = ids;
     }
 
+    /// W12 — as notas com o texto escondido de mim: quem pinta um texto delas (a busca, as linhas de
+    /// um resultado) pinta o marcador.
+    #[must_use]
+    pub fn unread(&self) -> &BTreeSet<ElementId> {
+        &self.unread
+    }
+
     #[must_use]
     pub fn metrics(&self) -> &Metrics {
         &self.metrics

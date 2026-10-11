@@ -124,7 +124,7 @@ fn measure_cluster_cost() {
 }
 
 /// O quadro de 10 000 notas à zoom `zoom` (`None` = de longe, o quadro inteiro) com `marks`: 0 = nada,
-/// 1 = o selo em todas, 2 = três carimbos em todas.
+/// 1 = o selo em todas (uma sessão mostrada com voto em todas, W13), 2 = três carimbos em todas.
 fn marked(zoom: Option<f64>, marks: u8) -> BoardSet {
     let mut set = notes(10_000, false);
     let id = set.boards()[0].id;
@@ -133,10 +133,13 @@ fn marked(zoom: Option<f64>, marks: u8) -> BoardSet {
     }
     let doc = &mut set.get_mut(id).unwrap().doc;
     let ids: Vec<_> = doc.live().map(|e| e.id).collect();
+    let mut votes = std::collections::BTreeMap::new();
     for (i, id) in ids.into_iter().enumerate() {
         let mut el = doc.get(id).unwrap().clone();
         match marks {
-            1 => el.set_votes(1 + (i % 9) as u32),
+            1 => {
+                votes.insert(id, 1 + (i % 9) as u32);
+            }
             2 => {
                 for s in [Stamp::Heart, Stamp::Star, Stamp::ThumbsUp] {
                     el.add_stamp(s, 1 + (i % 3) as i64);
@@ -146,6 +149,7 @@ fn marked(zoom: Option<f64>, marks: u8) -> BoardSet {
         }
         BoardOp::Put(el).apply(doc);
     }
+    set.get_mut(id).unwrap().team.add_poll(votes, "", 1, 0);
     set
 }
 

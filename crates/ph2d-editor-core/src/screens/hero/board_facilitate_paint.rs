@@ -21,6 +21,9 @@ use ph2d_vector::VectorScene;
 #[path = "board_private_paint.rs"]
 mod private;
 
+#[path = "board_facilitate_history_paint.rs"]
+mod history;
+
 /// O que um botão mostra.
 #[derive(Clone, Debug)]
 enum Face {
@@ -47,29 +50,6 @@ enum VoteView {
         /// W12 — só para quem iniciou, ao vivo: uma linha por pessoa (os votos usados, se acabou).
         people: Vec<String>,
     },
-    /// `hidden` = as linhas que «See all» não mostra (não cabem na área: o painel não sai do ecrã).
-    Results {
-        rows: Vec<(String, u32)>,
-        all: bool,
-        more: bool,
-        hidden: usize,
-    },
-}
-
-/// O texto de uma linha do resultado: a 1.ª linha do texto da nota (ou «sem texto»).
-fn row_text(el: &ph2d_board_model::Element) -> String {
-    let t = el
-        .shape()
-        .map_or("", |s| s.text.as_str())
-        .lines()
-        .next()
-        .unwrap_or("")
-        .trim();
-    if t.is_empty() {
-        tr("board.vote.untitled").to_owned()
-    } else {
-        t.to_owned()
-    }
 }
 
 /// `MM:SS`.
@@ -144,26 +124,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
                     }
                 })
         }
-        Some(VotePanel::Results { all }) => {
-            let res = ph2d_board_edit::vote_results(&board.doc);
-            let n = if all {
-                res.len().min(fit)
-            } else {
-                res.len().min(3)
-            };
-            let rows = res
-                .iter()
-                .take(n)
-                .filter_map(|(e, v)| board.doc.get(*e).map(|el| (row_text(el), *v)))
-                .collect();
-            Some(VoteView::Results {
-                rows,
-                all,
-                more: res.len() > 3,
-                hidden: if all { res.len() - n } else { 0 },
-            })
-        }
+        Some(VotePanel::Results { .. } | VotePanel::History) => None,
     };
+    let hist = history::view(hero, id, fit);
     let (hit, store) = (&mut hero.hit_index, &hero.store);
     if let Some(t) = timer {
         let at = Rect::new(x, y, w, 0.0);
@@ -171,6 +134,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     }
     if let Some(v) = view {
         y += paint_vote(scene, ts, hit, store, theme, &v, Rect::new(x, y, w, 0.0)) + gap;
+    }
+    if let Some(v) = hist {
+        y += history::paint(scene, ts, hit, store, theme, &v, Rect::new(x, y, w, 0.0)) + gap;
     }
     if let Some(p) = private_view {
         private::paint(scene, ts, hit, store, theme, &p, Rect::new(x, y, w, 0.0));
@@ -375,9 +341,8 @@ fn paint_vote(
 ) -> f32 {
     let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
     let rows = match v {
-        VoteView::Setup(_) => 5,
+        VoteView::Setup(_) => 6,
         VoteView::Session { add1, people, .. } => 4 + usize::from(*add1) + people.len(),
-        VoteView::Results { rows, hidden, .. } => rows.len() + 2 + usize::from(*hidden > 0),
     };
     let h = pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g;
     let r = Rect::new(at.x, at.y, at.w, h);
@@ -391,10 +356,7 @@ fn paint_vote(
     let label_y = |i: usize| row(i) + (s - TypeToken::Sm.px()) / 2.0 - pad / 2.0;
     let x0 = r.x + Spacing::Sm.px();
     let right = r.x + r.w - pad;
-    let title = match v {
-        VoteView::Results { .. } => tr("board.vote.results"),
-        _ => tr("board.vote.title"),
-    };
+    let title = tr("board.vote.title");
     paint_text(
         ts,
         scene,
@@ -417,13 +379,14 @@ fn paint_vote(
     };
     match v {
         VoteView::Setup(setup) => {
+            history::tabs(&mut list, wide(1, 0, 2), wide(1, 1, 2), false);
             let label_w = r.w - 4.0 * s; // LITERAL-PX-OK: a coluna do `[−] n [+]`, em botões
             paint_text_elided(
                 ts,
                 scene,
                 tr("board.vote.votes"),
                 x0,
-                label_y(1),
+                label_y(2),
                 TypeToken::Sm.px(),
                 label_w,
                 text2,
@@ -436,7 +399,7 @@ fn paint_vote(
                 ts,
                 &mut list,
                 right,
-                row(1),
+                row(2),
                 steps,
                 ends,
                 &value,
@@ -447,7 +410,7 @@ fn paint_vote(
                 scene,
                 tr("board.vote.one_per"),
                 x0,
-                label_y(2),
+                label_y(3),
                 TypeToken::Sm.px(),
                 r.w - 2.0 * s,
                 text2,
@@ -459,7 +422,7 @@ fn paint_vote(
             };
             list.push((
                 FacButton::OnePerObject,
-                Rect::new(right - s, row(2), s, s),
+                Rect::new(right - s, row(3), s, s),
                 Face::Icon(icon),
                 setup.one_per_object,
             ));
@@ -468,7 +431,7 @@ fn paint_vote(
                 scene,
                 tr("board.vote.minutes"),
                 x0,
-                label_y(3),
+                label_y(4),
                 TypeToken::Sm.px(),
                 label_w,
                 text2,
@@ -483,10 +446,10 @@ fn paint_vote(
                 setup.minutes > 0,
                 u64::from(setup.minutes) < TIMER_MAX.as_secs() / 60,
             );
-            stepper(scene, ts, &mut list, right, row(3), steps, ends, &m, text1);
+            stepper(scene, ts, &mut list, right, row(4), steps, ends, &m, text1);
             list.push((
                 FacButton::VoteStart,
-                wide(4, 0, 1),
+                wide(5, 0, 1),
                 Face::Text(tr("board.vote.start").into()),
                 true,
             ));
@@ -570,76 +533,6 @@ fn paint_vote(
                 paint_text_elided(ts, scene, p, x0, label_y(i), TypeToken::Sm.px(), w, text2);
                 i += 1;
             }
-        }
-        VoteView::Results {
-            rows,
-            all,
-            more,
-            hidden,
-        } => {
-            for (i, (text, n)) in rows.iter().enumerate() {
-                let count = if *n == 1 {
-                    tr("board.vote.one_vote").to_owned()
-                } else {
-                    tr_with("board.vote.n_votes", &[("n", n)])
-                };
-                let cw = 2.5 * s; // LITERAL-PX-OK: a coluna de «99 votes» em botões
-                let line = format!("{}. {text}", i + 1);
-                paint_text_elided(
-                    ts,
-                    scene,
-                    &line,
-                    x0,
-                    label_y(i + 1),
-                    TypeToken::Sm.px(),
-                    r.w - cw - 2.0 * pad,
-                    text1,
-                );
-                let cr = Rect::new(right - cw, row(i + 1), cw, s);
-                paint_text_centered(ts, scene, &count, cr, TypeToken::Sm.px(), text2);
-            }
-            if *hidden > 0 {
-                let line = tr_with("board.vote.more_rows", &[("n", hidden)]);
-                let y = label_y(rows.len() + 1);
-                paint_text(
-                    ts,
-                    scene,
-                    &line,
-                    x0,
-                    y,
-                    TypeToken::Sm.px(),
-                    f32::INFINITY,
-                    text2,
-                );
-            }
-            let last = rows.len() + 1 + usize::from(*hidden > 0);
-            let n = 2 + usize::from(*more);
-            // V4 — «New vote» abre uma votação nova (o fim dela tira este resultado do quadro).
-            list.push((
-                FacButton::VoteNew,
-                wide(last, 0, n),
-                Face::Text(tr("board.vote.new_short").into()),
-                true,
-            ));
-            if *more {
-                let key = if *all {
-                    "board.vote.top3"
-                } else {
-                    "board.vote.see_all"
-                };
-                list.push((
-                    FacButton::VoteSeeAll,
-                    wide(last, 1, n),
-                    Face::Text(tr(key).into()),
-                    false,
-                ));
-            }
-            list.push((
-                FacButton::VoteClear,
-                wide(last, n - 1, n),
-                Face::Text(tr("board.vote.clear").into()),
-                false,
-            ));
         }
     }
     buttons(scene, ts, hit, store, theme, list);

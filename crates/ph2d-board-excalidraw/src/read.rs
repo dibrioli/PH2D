@@ -19,6 +19,10 @@ use crate::{ID, PH2D, head_of, hex, parse_color};
 pub struct Import {
     pub doc: BoardDoc,
     pub skipped: BTreeMap<String, usize>,
+    /// W13 — os votos que um ficheiro de antes do histórico trazia no nosso elemento (`org.votes`,
+    /// formato ≤ 10): quem cria o quadro guarda-os como UMA sessão (`Team::adopt_old_votes`,
+    /// ADR-0183 §9). Uma cópia feita lá não os leva.
+    pub votes: BTreeMap<ElementId, u32>,
 }
 
 /// O elemento nosso que viajou no `customData`, se há.
@@ -159,6 +163,13 @@ pub fn read(json: &str) -> Result<Import, String> {
         let mut el = match carried(v) {
             Some(mut ours) => {
                 let fresh = ours.id != id;
+                let old = &v["customData"][PH2D]["element"]["org"]["votes"];
+                if let Some(n) = old.as_u64().and_then(|n| u32::try_from(n).ok())
+                    && n > 0
+                    && !fresh
+                {
+                    imp.votes.insert(id, n);
+                }
                 ours.id = id;
                 ours.z = key;
                 ours.deleted = false;

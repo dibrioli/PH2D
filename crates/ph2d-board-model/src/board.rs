@@ -13,8 +13,9 @@ use crate::{BoardDoc, Team};
 /// (`Org::votes`, `Org::stamps`, W7); 8 = a equipa (`Board::team`: comentários, versões, frames fora da
 /// apresentação, W8); 9 = o aspecto que vem do Excalidraw (`Style::look`: preenchimento, rugosidade 2,
 /// alinhamento e letra do texto; `Org::seed`: a semente do tremor, W9); 10 = a identidade das
-/// mensagens e das versões da equipa (`Message::id`, `Version::id`, W11 — ADR-0181).
-pub const FORMAT_VERSION: u32 = 10;
+/// mensagens e das versões da equipa (`Message::id`, `Version::id`, W11 — ADR-0181); 11 = o histórico
+/// das votações (`Team::polls`, `Team::shown`) e o elemento sem `Org::votes` (W13 — ADR-0183).
+pub const FORMAT_VERSION: u32 = 11;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -122,6 +123,8 @@ impl BoardSet {
         let mut copy = self.boards[at].clone();
         copy.id = new_id;
         copy.name = name;
+        // ADR-0183 §8 — o histórico das votações não vai na cópia (Miro: «If I duplicate my board… No»).
+        (copy.team.polls, copy.team.shown) = (Vec::new(), None);
         self.boards.insert(at + 1, copy);
         Some(new_id)
     }
@@ -231,6 +234,7 @@ impl BoardSet {
             7 => crate::legacy::read_v7(bytes),
             8 => crate::legacy::read_v8(bytes),
             9 => crate::legacy::read_v9(bytes),
+            10 => crate::legacy::read_v10(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

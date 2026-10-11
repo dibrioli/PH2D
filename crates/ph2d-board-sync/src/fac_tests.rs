@@ -537,11 +537,7 @@ fn no_one_hears_a_vote_before_the_end_and_a_leavers_vote_counts() {
     assert!(caio.used.is_empty(), "só quem iniciou vê os votos usados");
     assert_eq!(caio.done, BTreeSet::from([10]), "quem acabou é público");
     assert_eq!(r.fac(0).vote.unwrap().used, BTreeMap::from([(10, 3)]));
-    assert_eq!(
-        r.hb.doc.get(a).unwrap().votes(),
-        0,
-        "nada no quadro até ao fim"
-    );
+    assert!(r.hb.team.polls.is_empty(), "nada no quadro até ao fim");
     // O Caio vota e sai; o Dani entra a meio e vota.
     r.vote(1, ballot(round, &[(b, 1)], false));
     r.drop(1);
@@ -561,15 +557,26 @@ fn no_one_hears_a_vote_before_the_end_and_a_leavers_vote_counts() {
             .contains(&Event::Denied(Refusal::OnlyStarterEndsVote))
     );
     r.ask(0, Ask::VoteEnd);
-    assert_eq!(r.hb.doc.get(a).unwrap().votes(), 3);
-    assert_eq!(
-        r.hb.doc.get(b).unwrap().votes(),
-        5,
-        "o voto de quem saiu conta"
-    );
+    assert_eq!(shown(&r.hb, a), 3);
+    assert_eq!(shown(&r.hb, b), 5, "o voto de quem saiu conta");
+    // W13 (ADR-0183 §10): UMA sessão no histórico, com quem iniciou e quantos votaram.
+    let [p] = &r.hb.team.polls[..] else {
+        panic!("uma sessão");
+    };
+    assert_eq!((p.by.as_str(), p.voters, p.number), ("Bia", 4, 1));
     assert!(r.fac(d).vote.unwrap().ended);
     assert!(r.fac(d).vote.unwrap().used.is_empty());
-    assert_eq!(r.b(d).doc.get(b).unwrap().votes(), 5);
+    assert_eq!(shown(r.b(d), b), 5);
+    let host = r.hb.team.polls.clone();
+    assert_eq!(r.b(d).team.polls, host, "quem entrou a meio recebe-a igual");
+}
+
+/// O voto que o quadro MOSTRA em `id` (a sessão mostrada, ADR-0183 §3; `0` = sem selo).
+fn shown(b: &ph2d_board_model::Board, id: ph2d_board_model::ElementId) -> u32 {
+    b.team
+        .shown_poll()
+        .and_then(|p| p.totals.get(&id).copied())
+        .unwrap_or(0)
 }
 
 /// O relógio do anfitrião acaba a votação (Miro; o do Scrumlr não acabava nada, v05).
@@ -594,9 +601,9 @@ fn the_hosts_clock_ends_the_vote() {
     r.at(30_000);
     assert_eq!(r.fac(0).vote.unwrap().left_ms, Some(30_000));
     r.at(59_999);
-    assert_eq!(r.b(0).doc.get(a).unwrap().votes(), 0);
+    assert_eq!(shown(r.b(0), a), 0);
     r.at(60_000);
-    assert_eq!(r.b(0).doc.get(a).unwrap().votes(), 1);
+    assert_eq!(shown(r.b(0), a), 1);
     assert!(r.fac(0).vote.unwrap().ended);
 }
 

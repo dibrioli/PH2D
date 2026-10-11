@@ -3,12 +3,13 @@
 //! `VersionId`); apagar deixa lápide (nada ressuscita); texto, resolver, alfinete e nome são registos
 //! LWW; o «lido» é uma marca por PESSOA (até que mensagem leu), e por isso duas pessoas a ler ao mesmo
 //! tempo não se apagam. A ordem é a mesma em todos os pares: fios pela 1.ª mensagem, mensagens e
-//! versões pelo instante e pelo id. A equipa é pequena: captura-se por comparação com a sombra.
+//! versões pelo instante e pelo id. A equipa é pequena: captura-se por comparação com a sombra. As
+//! votações acabadas (W13, ADR-0183) são registos como as versões, e a sessão mostrada um registo LWW.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_model::{
-    ElementId, Message, MessageId, Pin, Team, Thread, ThreadId, Version, VersionId,
+    ElementId, Message, MessageId, Pin, Poll, PollId, Team, Thread, ThreadId, Version, VersionId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +31,12 @@ pub enum TeamWrite {
     VersionName(VersionId, String),
     VersionGone(VersionId),
     Slide(ElementId, bool),
+    /// W13 — uma votação acabada (o instantâneo).
+    Poll(Poll),
+    PollName(PollId, String),
+    PollGone(PollId),
+    /// W13 — a sessão que o quadro mostra («Show results on the board»).
+    Shown(Option<PollId>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -39,6 +46,8 @@ enum Key {
     Text(MessageId),
     VersionName(VersionId),
     Slide(ElementId),
+    PollName(PollId),
+    Shown,
 }
 
 /// O que a equipa de uma sessão sabe além do que está na `Team`.
@@ -51,6 +60,7 @@ pub(crate) struct TeamState {
     versions_gone: BTreeSet<VersionId>,
     /// Mensagens de um fio que ainda não chegou aqui.
     pending: Vec<(Lamport, TeamWrite)>,
+    polls_gone: BTreeSet<PollId>,
 }
 
 /// A sombra: a equipa como estava na última captura (as versões sem os bytes).
@@ -59,6 +69,8 @@ pub(crate) struct Shadow {
     threads: Vec<Thread>,
     versions: Vec<(VersionId, String)>,
     slides: BTreeSet<ElementId>,
+    polls: Vec<(PollId, String)>,
+    shown: Option<PollId>,
 }
 
 impl Shadow {
@@ -71,6 +83,8 @@ impl Shadow {
                 .map(|v| (v.id, v.name.clone()))
                 .collect(),
             slides: team.hidden_slides.clone(),
+            polls: team.polls.iter().map(|p| (p.id, p.name.clone())).collect(),
+            shown: team.shown,
         }
     }
 }
@@ -182,6 +196,24 @@ impl TeamState {
                 .symmetric_difference(&shadow.slides)
                 .map(|f| TeamWrite::Slide(*f, team.hidden_slides.contains(f))),
         );
+        let op: BTreeMap<PollId, &String> = shadow.polls.iter().map(|(i, n)| (*i, n)).collect();
+        for p in &team.polls {
+            match op.get(&p.id) {
+                None => out.push(TeamWrite::Poll(p.clone())),
+                Some(n) if **n != p.name => out.push(TeamWrite::PollName(p.id, p.name.clone())),
+                Some(_) => {}
+            }
+        }
+        let np: BTreeSet<PollId> = team.polls.iter().map(|p| p.id).collect();
+        out.extend(
+            op.keys()
+                .filter(|id| !np.contains(id))
+                .map(|id| TeamWrite::PollGone(*id)),
+        );
+        // Depois da sessão: quem recebe já a tem quando a passa a mostrar.
+        if team.shown != shadow.shown {
+            out.push(TeamWrite::Shown(team.shown));
+        }
         out
     }
 
@@ -324,6 +356,35 @@ impl TeamState {
                     team.set_slide_hidden(*f, *hidden);
                 }
             }
+            TeamWrite::Poll(p) => {
+                if !self.polls_gone.contains(&p.id) {
+                    lww(self, Key::PollName(p.id));
+                    if team.poll(p.id).is_none() {
+                        team.polls.push(p.clone());
+                    }
+                }
+            }
+            TeamWrite::PollName(id, name) => {
+                if self.polls_gone.contains(id) {
+                    return true;
+                }
+                let Some(p) = team.polls.iter_mut().find(|p| p.id == *id) else {
+                    return false;
+                };
+                if lww(self, Key::PollName(*id)) {
+                    p.name.clone_from(name);
+                }
+            }
+            TeamWrite::PollGone(id) => {
+                self.polls_gone.insert(*id);
+                team.remove_poll(*id);
+            }
+            // Pode chegar antes da sessão (lê-se como nenhuma até ela chegar); uma apagada, nunca.
+            TeamWrite::Shown(id) => {
+                if lww(self, Key::Shown) {
+                    team.shown = id.filter(|id| !self.polls_gone.contains(id));
+                }
+            }
         }
         true
     }
@@ -357,5 +418,9 @@ impl TeamState {
         team.threads
             .sort_by_key(|t| (t.messages.first().map_or(0, |m| m.at), t.id));
         team.versions.sort_by_key(|v| (v.at, v.id));
+        team.polls.sort_by_key(|p| (p.at, p.number, p.id));
+        if team.shown.is_some_and(|id| self.polls_gone.contains(&id)) {
+            team.shown = None;
+        }
     }
 }

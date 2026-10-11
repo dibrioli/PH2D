@@ -151,6 +151,11 @@ pub(super) struct ElementV8 {
     deleted: bool,
 }
 
+/// Os votos dos elementos vivos de um documento dos formatos 7–8.
+pub(super) fn votes_v8(d: &DocOld<ElementV8>) -> std::collections::BTreeMap<ElementId, u32> {
+    super::old_votes(d, |e| (e.deleted, e.org.as_ref().map_or(0, |o| o.votes)))
+}
+
 pub(super) fn element_v8(e: ElementV8) -> Element {
     let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
     el.angle = e.angle;
@@ -162,7 +167,6 @@ pub(super) fn element_v8(e: ElementV8) -> Element {
             link: o.link,
             tags: o.tags,
             mind: o.mind,
-            votes: o.votes,
             stamps: o.stamps,
             seed: None,
         })
@@ -195,15 +199,18 @@ pub(crate) fn read_v8(bytes: &[u8]) -> Result<BoardSet, String> {
         .boards
         .into_iter()
         .map(|b| {
+            let votes = votes_v8(&b.doc);
             let mut doc = doc_old(b.doc, &element_v8);
             doc.reindex();
+            let mut team: crate::Team = b.team.into();
+            team.adopt_old_votes(votes);
             Board {
                 id: b.id,
                 name: b.name,
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
-                team: b.team.into(),
+                team,
             }
         })
         .collect();

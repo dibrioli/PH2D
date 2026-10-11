@@ -24,6 +24,8 @@ pub const BOARD_FRAME_RENAME_INPUT: NodeId = hash_node_id("board_frame_rename_in
 pub const BOARD_COMMENT_INPUT: NodeId = hash_node_id("board_comment_input");
 pub const BOARD_AUTHOR_INPUT: NodeId = hash_node_id("board_author_input");
 pub const BOARD_VERSION_INPUT: NodeId = hash_node_id("board_version_input");
+/// W13 — o campo que ocupa o título de uma sessão de votação enquanto ela se renomeia.
+pub const BOARD_POLL_NAME_INPUT: NodeId = hash_node_id("board_poll_name_input");
 /// W11 — o painel «Live»: o código de 6 caracteres e o endereço (opcional) do quadro a que se entra.
 pub const BOARD_LIVE_CODE_INPUT: NodeId = hash_node_id("board_live_code_input");
 pub const BOARD_LIVE_ADDR_INPUT: NodeId = hash_node_id("board_live_addr_input");

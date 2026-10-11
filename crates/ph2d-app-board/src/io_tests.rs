@@ -73,6 +73,7 @@ fn the_pdf_has_a_page_per_frame_and_the_link_between_them() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &path,
     )
     .unwrap();
@@ -104,6 +105,7 @@ fn svg_writes_one_file_or_one_per_frame() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &one,
     )
     .unwrap();
@@ -115,6 +117,7 @@ fn svg_writes_one_file_or_one_per_frame() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &one,
     )
     .unwrap();
@@ -135,6 +138,7 @@ fn an_excalidraw_file_written_opens_back() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &path,
     )
     .unwrap();
@@ -174,6 +178,7 @@ fn png_without_a_gpu_and_an_empty_board_refuse_with_a_reason() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &d.join("b.png"),
     );
     assert_eq!(e, Err(tr("board.io.no_gpu").to_owned()));
@@ -186,6 +191,7 @@ fn png_without_a_gpu_and_an_empty_board_refuse_with_a_reason() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &d.join("e.svg"),
     );
     assert_eq!(e, Err(tr("board.io.nothing").to_owned()));
@@ -232,6 +238,7 @@ fn links_work_on_one_page_and_frame_names_never_collide() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &pdf_path,
     )
     .unwrap();
@@ -248,6 +255,7 @@ fn links_work_on_one_page_and_frame_names_never_collide() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &svg_path,
     )
     .unwrap();
@@ -277,6 +285,7 @@ fn links_work_on_one_page_and_frame_names_never_collide() {
         &[],
         None,
         &mut ts,
+        &std::collections::BTreeSet::new(),
         &d.join("t.svg"),
     )
     .unwrap();

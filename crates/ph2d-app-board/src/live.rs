@@ -337,6 +337,8 @@ fn host_tick(
     let p = my_presence(hero, board)?;
     send_host(&net, s.presence(now, p));
     let b = hero.documents.board_mut(board)?;
+    // W13 — o fim de uma votação da sala data-se pelo relógio de parede do anfitrião.
+    s.set_wall(ph2d_editor_core::screens::hero::board_nav::team::now_unix());
     send_host(&net, s.tick(b, now));
     let me = s.me.peer;
     let peers: Vec<LivePeer> = s

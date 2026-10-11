@@ -13,6 +13,8 @@
 //!   lê-se com [`StyleV8`] (pelo [`KindV8`]).
 //! - 9 (W9): mensagens e versões sem id (W11) — o leitor dá-lhos pelo contador ([`TeamV9`], que o 8
 //!   também usa).
+//! - 10 (W11–W12): os votos da última votação em cada elemento (`Org::votes`) e a equipa sem histórico
+//!   (W13, ADR-0183): do 7 ao 10 os votos viram UMA sessão, mostrada ([`old_votes`]).
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -30,9 +32,12 @@ use crate::{
 mod v8;
 #[path = "legacy_v9.rs"]
 mod v9;
+#[path = "legacy_v10.rs"]
+mod v10;
 pub(crate) use v8::read_v8;
 use v8::{ElementV8, KindV8, element_v8};
 use v9::TeamV9;
+pub(crate) use v10::read_v10;
 pub(crate) use v9::read_v9;
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
@@ -202,6 +207,21 @@ fn read_old<E: for<'de> Deserialize<'de>>(
     Ok(BoardSet::from_parts(boards, old.next_id))
 }
 
+/// Os votos (`Org::votes`, formatos 7–10) dos elementos vivos: `votes` diz de um elemento antigo se
+/// está apagado e quantos votos tem.
+pub(super) fn old_votes<E>(
+    d: &DocOld<E>,
+    votes: impl Fn(&E) -> (bool, u32),
+) -> BTreeMap<ElementId, u32> {
+    d.elements
+        .iter()
+        .filter_map(|(&id, e)| match votes(e) {
+            (false, n) if n > 0 => Some((id, n)),
+            _ => None,
+        })
+        .collect()
+}
+
 pub(super) fn doc_old<E>(d: DocOld<E>, element: &impl Fn(E) -> Element) -> BoardDoc {
     BoardDoc {
         elements: d
@@ -333,7 +353,6 @@ fn element_v5(e: ElementV5) -> Element {
             link: o.link,
             tags: o.tags,
             mind: None,
-            votes: 0,
             stamps: Vec::new(),
             seed: None,
         })
@@ -419,7 +438,6 @@ fn element_v6(e: ElementV6) -> Element {
             link: o.link,
             tags: o.tags,
             mind: o.mind,
-            votes: 0,
             stamps: Vec::new(),
             seed: None,
         })
@@ -506,15 +524,18 @@ pub(crate) fn read_v7(bytes: &[u8]) -> Result<BoardSet, String> {
         .boards
         .into_iter()
         .map(|b| {
+            let votes = v8::votes_v8(&b.doc);
             let mut doc = doc_old(b.doc, &element_v8);
             doc.reindex();
+            let mut team = Team::default();
+            team.adopt_old_votes(votes);
             Board {
                 id: b.id,
                 name: b.name,
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
-                team: Team::default(),
+                team,
             }
         })
         .collect();

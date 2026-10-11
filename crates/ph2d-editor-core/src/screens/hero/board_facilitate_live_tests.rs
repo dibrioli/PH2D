@@ -112,14 +112,16 @@ fn a_live_vote_asks_the_room_and_each_plus_sends_my_ballot() {
         board_nav::facilitate::vote_in_session(&t.hero),
         "o fim é da sala"
     );
-    // A sala acaba: os totais chegam ao quadro e o estado diz «acabou».
-    let mut el = t.elem(a);
-    el.set_votes(3);
+    // A sala acaba: a sessão chega ao histórico (ADR-0183 §10) e o estado diz «acabou».
     let (board, _) = t.hero.documents.active_parts().unwrap();
-    let _ = BoardOp::Put(el).apply(&mut board.doc);
+    board
+        .team
+        .add_poll(std::collections::BTreeMap::from([(a, 3)]), "Bia", 2, 0);
     t.says(|f| f.vote.as_mut().unwrap().ended = true);
     assert!(!board_nav::facilitate::vote_in_session(&t.hero));
     assert!(t.painted(FacButton::VoteNew), "o painel mostra o resultado");
+    assert!(t.painted(FacButton::PollBack), "o da sessão que a sala acabou de guardar");
+    assert_eq!(t.shown(a), 3);
 }
 
 /// ⭐ Uma nota escondida de mim: o desenho não lhe pinta o texto, `Enter` não a abre para escrever
@@ -348,7 +350,7 @@ fn a_one_screen_vote_opened_before_the_room_keeps_its_own_buttons() {
         !board_nav::facilitate::vote_in_session(&t.hero),
         "«End for all» morto"
     );
-    assert_eq!(t.elem(a).votes(), 1);
+    assert_eq!(t.shown(a), 1);
     assert!(
         t.fac_asked()
             .iter()

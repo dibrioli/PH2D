@@ -12,8 +12,9 @@ use crate::presence::{Presence, SEND_EVERY_MS, Seen};
 use crate::{PeerId, Replica, Snapshot, Write};
 
 /// A versão do protocolo: quem fala outra é recusado com uma frase (nunca uma fusão às cegas).
-/// 2 = a facilitação ao vivo (ADR-0182).
-pub const PROTOCOL: u32 = 2;
+/// 2 = a facilitação ao vivo (ADR-0182); 3 = o histórico das votações (`TeamWrite::Poll…`, o `Field`
+/// sem `Votes`, ADR-0183).
+pub const PROTOCOL: u32 = 3;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;

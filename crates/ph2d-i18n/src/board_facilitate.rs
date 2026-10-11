@@ -58,12 +58,28 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.untitled" => "(no text)",
         "board.vote.see_all" => "See all results",
         "board.vote.top3" => "Top 3",
-        "board.vote.clear" => "Clear results",
         "board.vote.close" => "Close",
-        "board.vote.new" => "New vote — when it ends, its result replaces this one",
+        "board.vote.new" => "New vote — this result stays in Results",
         "board.vote.new_short" => "New vote",
         "board.vote.surface" => "Facilitation",
         "board.vote.more_rows" => "…and {n} more",
+        "board.vote.tab_new" => "New session",
+        "board.vote.tab_new_tip" => "Set up a new vote",
+        "board.vote.tab_results_tip" => "Every vote on this board, newest first",
+        "board.vote.show_on_board" => "Show results on the board",
+        "board.vote.show_on_board_tip" => "Show the open vote's totals on the notes, for everyone",
+        "board.vote.session_default" => "Voting {n}",
+        "board.vote.no_sessions" => "No votes yet",
+        "board.vote.no_votes" => "Nobody voted",
+        "board.vote.open_tip" => "Open this vote's results",
+        "board.vote.back" => "Back to all results",
+        "board.vote.rename_tip" => "Double-click to rename",
+        "board.vote.delete_tip" => "Delete this vote's results — click again to confirm",
+        "board.vote.page_up" => "Newer votes",
+        "board.vote.page_down" => "Older votes",
+        "board.vote.by" => "by {name}",
+        "board.vote.deleted_row" => "(deleted)",
+        "board.vote.hidden_row" => "(hidden note)",
         "board.notice.no_votes_left" => "No votes left — take one back with − or press I'm done",
         "board.notice.one_vote_per_object" => "One vote per object — this one already has yours",
         "board.notice.nothing_to_vote" => "Nothing to vote on — votes go on notes and shapes",
@@ -83,7 +99,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "1. Timer — the card at the top right. Set the minutes with − and +, then Play. +1m and +5m add time; at zero it chimes."
         }
         "board.smoke.fac.l2" => {
-            "2. Vote — Voting (left bar) shows the last result: New vote, then Start voting. Click the grey + at a note's corner; − takes one back."
+            "2. Vote — Voting (left bar) opens Results, every past vote: New session, then Start voting. Click the grey + at a note's corner; − takes one back."
         }
         "board.smoke.fac.l3" => {
             "3. Turns — I'm done hands the screen to the next person (their votes start at zero). End for all puts the totals on the notes."

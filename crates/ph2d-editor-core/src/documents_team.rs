@@ -227,10 +227,17 @@ impl Documents {
     }
 
     /// X3 — um quadro novo no fim das abas com o documento importado, já activo e enquadrado.
-    pub fn import_board(&mut self, name: String, doc: ph2d_board_model::BoardDoc) -> BoardId {
+    pub fn import_board(
+        &mut self,
+        name: String,
+        doc: ph2d_board_model::BoardDoc,
+        old_votes: std::collections::BTreeMap<ph2d_board_model::ElementId, u32>,
+    ) -> BoardId {
         let id = self.create(name);
         if let Some(b) = self.boards.get_mut(id) {
             b.doc = doc;
+            // W13 (ADR-0183 §9): os votos de um ficheiro de antes do histórico viram UMA sessão.
+            b.team.adopt_old_votes(old_votes);
         }
         self.live.nav.fit_pending = true;
         id

@@ -2,8 +2,11 @@
 //! `08_ao_vivo.md` §1) e a convergência com uma rede que atrasa, reordena e duplica.
 
 use super::*;
+use std::collections::BTreeMap;
+
 use ph2d_board_model::{
-    BoardSet, History, MessageId, Pin, Rgba, RichText, Shape, ShapeType, Stamp, Style, ThreadId,
+    BoardSet, History, MessageId, Pin, PollId, Rgba, RichText, Shape, ShapeType, Stamp, Style,
+    ThreadId,
 };
 
 const RED: Rgba = Rgba([200, 0, 0, 255]);
@@ -439,13 +442,16 @@ fn every_peer_ends_with_the_same_board_whatever_the_network_does() {
 
 const WHO: [&str; 3] = ["ana", "bia", "caio"];
 
-/// Uma mudança sorteada na equipa: abrir, responder, ler, editar, apagar, resolver, versão, slide.
+/// Uma mudança sorteada na equipa: abrir, responder, ler, editar, apagar, resolver, versão, slide; e
+/// (W13) acabar uma votação, renomear, apagar e escolher a sessão mostrada.
 fn team_edit(p: &mut Peer, rng: &mut Rng) {
     let me = WHO[rng.below(3)];
     let at = 1_000 + rng.below(50) as i64;
     let threads: Vec<ThreadId> = p.b.team.threads.iter().map(|t| t.id).collect();
     let t = (!threads.is_empty()).then(|| threads[rng.below(threads.len())]);
-    match (rng.below(8), t) {
+    let polls: Vec<PollId> = p.b.team.polls.iter().map(|q| q.id).collect();
+    let q = (!polls.is_empty()).then(|| polls[rng.below(polls.len())]);
+    match (rng.below(12), t) {
         (0, _) | (_, None) => {
             p.b.team.open(Pin::Point([1.0, 2.0]), me, "oi", at);
         }
@@ -478,6 +484,21 @@ fn team_edit(p: &mut Peer, rng: &mut Rng) {
                 v.name = format!("n{}", rng.below(9));
             }
         }
+        (8, _) => {
+            let votes = BTreeMap::from([(ElementId(rng.below(3) as u64 + 1), 1 + rng.below(4) as u32)]);
+            p.b.team.add_poll(votes, me, 1, at);
+        }
+        (9, _) => {
+            if let Some(q) = q {
+                p.b.team.rename_poll(q, &format!("s{}", rng.below(9)));
+            }
+        }
+        (10, _) => {
+            if let Some(q) = q {
+                p.b.team.remove_poll(q);
+            }
+        }
+        (11, _) => p.b.team.show_poll(q.filter(|_| rng.below(3) > 0)),
         _ => {
             let f = ElementId(rng.below(3) as u64 + 1);
             p.b.team.set_slide_hidden(f, rng.below(2) == 0);
@@ -555,6 +576,37 @@ fn a_saved_version_travels_and_a_delete_beats_a_rename() {
     b.b.team.versions.clear();
     concurrently(&mut a, &mut b);
     assert!(a.b.team.versions.is_empty());
+}
+
+/// ⭐ W13 (ADR-0183 §6): uma sessão acabada em A chega a B mostrada; renomear e apagar ao mesmo tempo:
+/// fica apagada, e o quadro deixa de a mostrar nos dois.
+#[test]
+fn a_finished_vote_travels_shown_and_a_delete_beats_a_rename() {
+    let (mut a, mut b, x) = two();
+    let id = a.b.team.add_poll(BTreeMap::from([(x, 3)]), "ana", 2, 5);
+    concurrently(&mut a, &mut b);
+    assert_eq!(b.b.team.polls, a.b.team.polls);
+    assert_eq!(b.b.team.shown, Some(id), "o resultado aparece a todos");
+    a.b.team.rename_poll(id, "Retro");
+    b.b.team.remove_poll(id);
+    concurrently(&mut a, &mut b);
+    assert!(a.b.team.polls.is_empty() && b.b.team.polls.is_empty());
+    assert_eq!((a.b.team.shown, b.b.team.shown), (None, None));
+}
+
+/// W13: mostrar uma sessão ao mesmo tempo que outro a apaga não a ressuscita como mostrada.
+#[test]
+fn showing_a_session_another_deletes_shows_nothing() {
+    let (mut a, mut b, x) = two();
+    let one = a.b.team.add_poll(BTreeMap::from([(x, 1)]), "ana", 1, 5);
+    let two = a.b.team.add_poll(BTreeMap::from([(x, 2)]), "ana", 1, 6);
+    concurrently(&mut a, &mut b);
+    a.b.team.show_poll(Some(one));
+    b.b.team.remove_poll(one);
+    concurrently(&mut a, &mut b);
+    assert_eq!((a.b.team.shown, b.b.team.shown), (None, None));
+    assert_eq!(a.b.team.polls.iter().map(|p| p.id).collect::<Vec<_>>(), [two]);
+    same(&a, &b, "depois de apagar a mostrada");
 }
 
 /// O retrato compacta os carimbos por elemento e devolve-os IGUAIS a quem entra; e mede quanto pesa

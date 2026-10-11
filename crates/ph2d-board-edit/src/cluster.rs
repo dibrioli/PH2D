@@ -138,7 +138,6 @@ impl Editor {
                         el.id = doc.mint_id();
                         el.version = 0;
                         el.z = next_key(doc, &mut z);
-                        el.set_votes(0);
                     }
                     let to = [x + px + c as f64 * (col_w + gx), y];
                     el.translate([to[0] - el.x, to[1] - el.y]);

@@ -204,6 +204,7 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
         1.0,
         Some(ph2d_board_render::EXPORT_PAPER),
         true,
+        &std::collections::BTreeSet::new(),
         &mut ts,
     );
     assert_eq!(size, [800.0, 450.0]);
@@ -214,7 +215,7 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
         .filter(|o| matches!(o, DrawOp::Stroke { .. }))
         .count();
     let r = routes(b);
-    let (mut all, _) = paint_page(b, &board_page(b, &r).unwrap(), 1.0, None, true, &mut ts);
+    let (mut all, _) = paint_page(b, &board_page(b, &r).unwrap(), 1.0, None, true, &std::collections::BTreeSet::new(), &mut ts);
     let all_ops = all.take_record();
     let mut t = texts(&all_ops);
     t.sort();
@@ -241,7 +242,7 @@ fn the_paper_is_white_or_nothing() {
     let mut ts = TextSystem::without_system_fonts();
     let page = frame_page(b, f1).unwrap();
     let mut fills = |paper| {
-        let (mut s, _) = paint_page(b, &page, 1.0, paper, true, &mut ts);
+        let (mut s, _) = paint_page(b, &page, 1.0, paper, true, &std::collections::BTreeSet::new(), &mut ts);
         let ops = s.take_record();
         let first = ops.iter().find_map(|o| match o {
             DrawOp::Fill { brush, .. } => Some(brush.clone()),
@@ -270,7 +271,7 @@ fn svg_and_pdf_carry_the_text() {
     let b = &set.boards()[0];
     let r = routes(b);
     let mut ts = TextSystem::without_system_fonts();
-    let (mut s, size) = paint_page(b, &board_page(b, &r).unwrap(), 2.0, None, true, &mut ts);
+    let (mut s, size) = paint_page(b, &board_page(b, &r).unwrap(), 2.0, None, true, &std::collections::BTreeSet::new(), &mut ts);
     let ops = s.take_record();
     let svg = svg::write(&ops, size);
     assert!(svg.starts_with("<svg xmlns=\"http://www.w3.org/2000/svg\""));
@@ -287,6 +288,7 @@ fn svg_and_pdf_carry_the_text() {
                 1.0,
                 Some(ph2d_board_render::EXPORT_PAPER),
                 true,
+                &std::collections::BTreeSet::new(),
                 &mut ts,
             );
             (sc.take_record(), sz)
@@ -350,7 +352,7 @@ fn the_pdf_grows_linearly_with_faded_objects() {
         let mut r = RouteCache::default();
         r.sync(&b.doc);
         let mut ts = TextSystem::without_system_fonts();
-        let (mut s, size) = paint_page(&b, &board_page(&b, &r).unwrap(), 1.0, None, true, &mut ts);
+        let (mut s, size) = paint_page(&b, &board_page(&b, &r).unwrap(), 1.0, None, true, &std::collections::BTreeSet::new(), &mut ts);
         let ops = s.take_record();
         pdf::write(&[pdf::PdfPage {
             ops: &ops,

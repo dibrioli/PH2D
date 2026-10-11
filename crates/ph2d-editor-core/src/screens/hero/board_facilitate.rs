@@ -23,6 +23,10 @@ pub use paint::paint;
 
 #[path = "board_facilitate_live.rs"]
 mod fac_live;
+
+#[path = "board_facilitate_history.rs"]
+mod history;
+pub use history::row_node as poll_row_node;
 pub use fac_live::{private_open, toggle_private};
 
 /// Um botão do cartão ou do painel.
@@ -51,9 +55,8 @@ pub enum FacButton {
     VoteEnd,
     VoteAdd1,
     VoteSeeAll,
-    VoteClear,
     VoteClose,
-    /// V4 — no resultado: abrir uma votação NOVA (que, no fim, tira este do quadro).
+    /// V4 — no resultado: abrir uma votação NOVA (este fica no histórico, W13).
     VoteNew,
     /// O fundo do cartão e do painel: toma o clique (um clique no mostrador não cai no quadro).
     Surface,
@@ -66,9 +69,19 @@ pub enum FacButton {
     PrivateRevealMine,
     PrivateOff,
     PrivateClose,
+    /// W13 — os separadores «New session» · «Results», o toggle «Show results on the board», e na
+    /// sessão aberta: voltar à lista, renomear, apagar; as setas da página da lista.
+    VoteTabNew,
+    VoteTabResults,
+    ShowOnBoard,
+    PollBack,
+    PollRename,
+    PollDelete,
+    PollUp,
+    PollDown,
 }
 
-const ALL: [FacButton; 34] = [
+const ALL: [FacButton; 41] = [
     FacButton::TimerMinus,
     FacButton::TimerPlus,
     FacButton::TimerPlay,
@@ -92,7 +105,6 @@ const ALL: [FacButton; 34] = [
     FacButton::VoteEnd,
     FacButton::VoteAdd1,
     FacButton::VoteSeeAll,
-    FacButton::VoteClear,
     FacButton::VoteClose,
     FacButton::VoteNew,
     FacButton::Surface,
@@ -103,6 +115,14 @@ const ALL: [FacButton; 34] = [
     FacButton::PrivateRevealMine,
     FacButton::PrivateOff,
     FacButton::PrivateClose,
+    FacButton::VoteTabNew,
+    FacButton::VoteTabResults,
+    FacButton::ShowOnBoard,
+    FacButton::PollBack,
+    FacButton::PollRename,
+    FacButton::PollDelete,
+    FacButton::PollUp,
+    FacButton::PollDown,
 ];
 
 /// ⛔ Bits 40–47 diferentes dos saltos da navegação (`0x4e61_1…`–`0x4e61_4…`): o idioma dela.
@@ -143,7 +163,6 @@ fn tooltip_key(b: FacButton) -> &'static str {
         FacButton::VoteEnd => "board.vote.end",
         FacButton::VoteAdd1 => "board.timer.add1_tip",
         FacButton::VoteSeeAll => "board.vote.see_all",
-        FacButton::VoteClear => "board.vote.clear",
         FacButton::VoteClose => "board.vote.close",
         FacButton::VoteNew => "board.vote.new",
         FacButton::Surface => "board.vote.surface",
@@ -154,6 +173,14 @@ fn tooltip_key(b: FacButton) -> &'static str {
         FacButton::PrivateRevealMine => "board.private.reveal_mine_tip",
         FacButton::PrivateOff => "board.private.turn_off_tip",
         FacButton::PrivateClose => "board.vote.close",
+        FacButton::VoteTabNew => "board.vote.tab_new_tip",
+        FacButton::VoteTabResults => "board.vote.tab_results_tip",
+        FacButton::ShowOnBoard => "board.vote.show_on_board_tip",
+        FacButton::PollBack => "board.vote.back",
+        FacButton::PollRename => "board.vote.rename_tip",
+        FacButton::PollDelete => "board.vote.delete_tip",
+        FacButton::PollUp => "board.vote.page_up",
+        FacButton::PollDown => "board.vote.page_down",
     }
 }
 
@@ -264,14 +291,14 @@ pub fn toggle_vote(hero: &mut HeroScreen) {
     let has_results = hero
         .documents
         .active_board()
-        .is_some_and(|b| !ph2d_board_edit::vote_results(&b.doc).is_empty());
+        .is_some_and(|b| !b.team.polls.is_empty());
     if let Some((id, f)) = active(hero)
         && f.panels.remove(&id).is_none()
     {
         let p = if has_session {
             VotePanel::Session
         } else if has_results {
-            VotePanel::Results { all: false }
+            VotePanel::History
         } else {
             VotePanel::Setup(VoteSetup::default())
         };
@@ -314,22 +341,34 @@ pub fn follow(hero: &mut HeroScreen) {
         .timers
         .get(&board.id)
         .is_some_and(|t| matches!(t.run(), TimerRun::Done { .. }));
-    if done && !ed.is_busy() && f.vote_clock.remove(&board.id).is_some() && ed.vote().is_some() {
-        let history = live.histories.entry(board.id).or_default();
-        ed.end_vote(&mut board.doc, history);
-        f.panels.insert(board.id, VotePanel::Results { all: false });
+    if done && !ed.is_busy() && f.vote_clock.remove(&board.id).is_some() {
+        history::end_here(board, ed, f, &live.team.author);
     }
     fac_live::follow(hero);
 }
 
 /// ⭐ Os cliques do cartão e do painel. Corre no pré-despacho (ids derivados).
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
+    if history::field_event(hero, event) {
+        return true;
+    }
     let (WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)) = event else {
         return false;
     };
+    // Qualquer clique do painel desarma o lixo de uma sessão; só o 2.º no MESMO apaga.
+    if let Some(k) = history::row_of(id) {
+        hero.documents.live.fac.confirm_poll = None;
+        history::row_click(hero, k);
+        return true;
+    }
     let Some(b) = button_of(id) else {
         return false;
     };
+    let armed = hero.documents.live.fac.confirm_poll.take();
+    let double = matches!(event, WidgetEvent::DoubleClick(_));
+    if history::click(hero, b, armed, double) {
+        return true;
+    }
     // W12 — numa sessão ao vivo, votar e o modo privado são pedidos à sala.
     if fac_live::click(hero, b) {
         return true;
@@ -367,7 +406,6 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return true;
     }
     let ed = super::super::board_view::editor(&mut live.editor, theme);
-    let history = live.histories.entry(board.id).or_default();
     let panel = f.panels.get(&board.id).copied();
     match (b, panel) {
         (FacButton::VotesMinus | FacButton::VotesPlus, Some(VotePanel::Setup(mut s))) => {
@@ -403,17 +441,12 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         (FacButton::VoteDone, _) => _ = ed.next_voter(),
         (FacButton::VoteEnd, _) => {
-            ed.end_vote(&mut board.doc, history);
+            history::end_here(board, ed, f, &live.team.author);
             f.vote_clock.remove(&board.id);
-            f.panels.insert(board.id, VotePanel::Results { all: false });
         }
-        (FacButton::VoteSeeAll, Some(VotePanel::Results { all })) => {
-            f.panels.insert(board.id, VotePanel::Results { all: !all });
-        }
-        (FacButton::VoteClear, _) => {
-            ed.clear_votes(&mut board.doc, history);
+        (FacButton::VoteSeeAll, Some(VotePanel::Results { poll, all })) => {
             f.panels
-                .insert(board.id, VotePanel::Setup(VoteSetup::default()));
+                .insert(board.id, VotePanel::Results { poll, all: !all });
         }
         (FacButton::VoteClose, _) => _ = f.panels.remove(&board.id),
         (FacButton::VoteNew, Some(VotePanel::Results { .. })) => {

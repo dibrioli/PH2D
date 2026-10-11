@@ -6,7 +6,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_board_model::{Board, BoardOp, ElementId, Field, VOTES_MAX};
+use ph2d_board_model::{Board, ElementId, Field, VOTES_MAX};
 
 use super::{ConnId, Event, Host, Msg, To};
 use crate::fac::{Ask, Ballot, Fac, Private, REVEAL_COUNTDOWN_MS, Refusal, VoteRoom};
@@ -25,6 +25,11 @@ pub(super) struct Chair {
     loose: Vec<Write>,
     /// O estado mudou: sai a cada um no próximo tique, DEPOIS das escritas.
     dirty: bool,
+    /// W13 — o nome de quem iniciou a votação aberta (vazio com «Make names anonymous»): fica na
+    /// sessão do histórico mesmo que a pessoa saia antes do fim.
+    vote_by: String,
+    /// W13 — o relógio de parede (segundos UNIX) do instante do fim ([`Host::set_wall`]).
+    wall_s: i64,
 }
 
 impl Host {
@@ -142,6 +147,14 @@ impl Host {
                     ..setup
                 };
                 let _ = self.chair.vault.tally();
+                let anonymous = self.chair.fac.private.as_ref().is_some_and(|p| p.anonymous);
+                self.chair.vote_by = if anonymous {
+                    String::new()
+                } else if from == self.me.peer {
+                    self.me.name.clone()
+                } else {
+                    self.room.peers.get(&from).map(|p| p.name.clone()).unwrap_or_default()
+                };
                 self.chair.vote_until =
                     (setup.minutes > 0).then(|| now_ms + u64::from(setup.minutes) * 60_000);
                 let round = self.chair.fac.vote.as_ref().map_or(1, |v| v.round + 1);
@@ -185,25 +198,18 @@ impl Host {
         self.chair.dirty = true;
     }
 
-    /// SOMAR: os totais vão para o quadro como escrita da sala (o resultado anterior sai), e a
-    /// votação fica «acabou».
+    /// O relógio de parede (segundos UNIX) com que o fim de uma votação se data (W13). O `now_ms` dos
+    /// tiques é monótono, sem data.
+    pub fn set_wall(&mut self, unix_s: i64) {
+        self.chair.wall_s = unix_s;
+    }
+
+    /// SOMAR: a sessão vai para o histórico do quadro como escrita da sala e passa a ser a mostrada
+    /// (ADR-0183 §10: UMA escrita da equipa, que sai no tique antes do estado «acabou»).
     fn end_vote(&mut self, board: &mut Board) {
-        let totals = self.chair.vault.tally();
-        let ops: Vec<BoardOp> = board
-            .doc
-            .live_with_hidden()
-            .filter_map(|e| {
-                let want = totals.get(&e.id).copied().unwrap_or(0);
-                (e.votes() != want).then(|| {
-                    let mut e = e.clone();
-                    e.set_votes(want);
-                    BoardOp::Put(e)
-                })
-            })
-            .collect();
-        for op in ops {
-            let _ = op.apply(&mut board.doc);
-        }
+        let (totals, voters) = self.chair.vault.tally();
+        let by = std::mem::take(&mut self.chair.vote_by);
+        board.team.add_poll(totals, &by, voters, self.chair.wall_s);
         if let Some(v) = &mut self.chair.fac.vote {
             v.ended = true;
             v.left_ms = None;

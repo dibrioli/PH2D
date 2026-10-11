@@ -20,6 +20,7 @@ mod legacy;
 mod mind;
 mod ops;
 mod organize;
+mod poll;
 mod rich;
 mod session;
 mod team;
@@ -48,6 +49,7 @@ pub use mind::{
 };
 pub use ops::{BoardOp, apply_batch};
 pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag};
+pub use poll::{Poll, PollId};
 pub use rich::{Mark, Marks, RichText, Span};
 pub use session::SESSION_ID_BIT;
 pub use team::{Message, MessageId, Pin, Team, TeamOp, Thread, ThreadId, Version, VersionId};

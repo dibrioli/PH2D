@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_edit::{Timer, VoteSession, VoteSetup};
-use ph2d_board_model::{BoardId, ElementId};
+use ph2d_board_model::{BoardId, ElementId, PollId};
 
 /// O painel de votação de um quadro.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -14,8 +14,10 @@ pub(crate) enum VotePanel {
     Setup(VoteSetup),
     /// A sessão aberta (V2–V3): o painel lê-a do editor.
     Session,
-    /// O resultado (V4): o top 3, ou todos.
-    Results { all: bool },
+    /// O resultado de UMA sessão do histórico (V4; W13, ADR-0183): o top 3, ou todos.
+    Results { poll: PollId, all: bool },
+    /// W13 — o separador «Results» (o do Miro): «Show results on the board» e a lista das sessões.
+    History,
 }
 
 /// O estado de SESSÃO da facilitação.
@@ -45,6 +47,14 @@ pub(crate) struct Fac {
     pub(crate) private: BTreeMap<BoardId, PrivateSetup>,
     /// W12 — os quadros com o modo privado ligado (a virada abre o painel a todos, como o Miro).
     pub(crate) private_on: BTreeSet<BoardId>,
+    /// W13 — a 1.ª sessão da página da lista de cada quadro (as setas da página), e quantas filas
+    /// cabem na página (a pintura di-lo).
+    pub(crate) history_from: BTreeMap<BoardId, usize>,
+    pub(crate) history_page: usize,
+    /// W13 — a sessão que se renomeia (o campo ocupa o título dela).
+    pub(crate) renaming_poll: Option<(BoardId, PollId)>,
+    /// W13 — o lixo armado: o 2.º clique NESTE apaga, qualquer outro clique desarma.
+    pub(crate) confirm_poll: Option<(BoardId, PollId)>,
 }
 
 /// W12 — as opções de ligar o modo privado (as do diálogo do Miro).

@@ -213,11 +213,6 @@ fn a_click_on_the_plus_casts_one_vote() {
     w.click(minus, NONE);
     assert_eq!(w.ed.vote().unwrap().mine(a), 1);
     assert!(w.ed.selection().is_empty(), "votar não selecciona");
-    assert_eq!(
-        w.doc.get(a).unwrap().votes(),
-        0,
-        "a sessão não escreve no documento"
-    );
 }
 
 /// ⭐ V2: com «One vote per object», o 2.º voto no mesmo objecto é a recusa.
@@ -253,75 +248,61 @@ fn the_next_voter_sees_none_of_the_previous() {
     assert!(w.ed.vote_marks(&w.doc)[0].minus.is_none());
 }
 
-/// ⭐ V4: o fim escreve os totais (de todos os turnos) num passo, e tira o resultado anterior.
+/// ⭐ V4: o fim devolve os totais de TODOS os turnos e quantos votaram, sem tocar no documento nem no
+/// desfazer (o resultado é uma sessão da equipa, ADR-0183 §6).
 #[test]
-fn ending_writes_the_totals_in_one_step() {
+fn ending_returns_the_totals_of_every_turn_and_leaves_the_document() {
     let mut w = world();
     let a = w.sticky([0.0, 0.0], "a", 1, &[]);
-    let b = w.sticky([300.0, 0.0], "b", 1, &[]);
-    let mut old = w.doc.get(b).unwrap().clone();
-    old.set_votes(9);
-    w.h.apply(&mut w.doc, vec![BoardOp::Put(old)]);
+    w.sticky([300.0, 0.0], "b", 1, &[]);
+    let before = w.doc.clone();
     w.ed.start_vote(&w.doc, VoteSetup::default());
     let p = w.plus(a);
     w.click(p, NONE);
     w.click(p, NONE);
     w.ed.next_voter();
     w.click(p, NONE);
-    assert!(w.ed.end_vote(&mut w.doc, &mut w.h));
-    assert!(w.ed.vote().is_none());
-    assert_eq!(
-        (w.doc.get(a).unwrap().votes(), w.doc.get(b).unwrap().votes()),
-        (3, 0)
-    );
-    assert_eq!(vote_results(&w.doc), [(a, 3)]);
-    assert!(w.cmd(Command::Undo));
-    assert_eq!(
-        (w.doc.get(a).unwrap().votes(), w.doc.get(b).unwrap().votes()),
-        (0, 9)
-    );
+    let (totals, voters) = w.ed.end_vote().expect("havia sessão");
+    assert_eq!((totals.into_iter().collect::<Vec<_>>(), voters), (vec![(a, 3)], 2));
+    assert!(w.ed.vote().is_none() && w.ed.end_vote().is_none());
+    assert_eq!(w.doc, before, "o documento não muda");
 }
 
-/// V5: os selos vão do menor ao maior total do quadro.
+/// V5: os selos vão do menor ao maior total dos VIVOS da sessão mostrada; as linhas do resultado vão
+/// do maior ao menor, empate pela leitura, e o apagado no fim do empate (ADR-0183 §2).
 #[test]
-fn the_range_of_the_badges_is_the_boards() {
+fn the_badges_and_the_rows_read_the_shown_session() {
     let mut w = world();
-    assert_eq!(vote_range(&w.doc), None);
-    for (i, n) in [2, 5, 0].into_iter().enumerate() {
-        let id = w.sticky([300.0 * i as f64, 0.0], "x", 1, &[]);
-        let mut el = w.doc.get(id).unwrap().clone();
-        el.set_votes(n);
-        w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
-    }
-    assert_eq!(vote_range(&w.doc), Some([2, 5]));
+    let ids: Vec<_> = (0..4)
+        .map(|i| w.sticky([300.0 * f64::from(i), 0.0], "x", 1, &[]))
+        .collect();
+    let mut team = ph2d_board_model::Team::default();
+    let mut totals = std::collections::BTreeMap::new();
+    totals.extend([(ids[0], 2), (ids[1], 5), (ids[2], 2), (ids[3], 9)]);
+    let id = team.add_poll(totals.clone(), "", 1, 0);
+    w.h.apply(&mut w.doc, vec![BoardOp::Delete(ids[3])]);
+    assert_eq!(vote_range(&w.doc, &totals), Some([2, 5]), "o apagado não tem selo");
+    assert_eq!(vote_range(&w.doc, &Default::default()), None);
     assert_eq!(
-        vote_results(&w.doc).iter().map(|r| r.1).collect::<Vec<_>>(),
-        [5, 2]
+        vote_results(&w.doc, team.poll(id).unwrap()),
+        [(ids[3], 9), (ids[1], 5), (ids[0], 2), (ids[2], 2)],
+        "o instantâneo guarda o apagado (a linha «Deleted item»)"
     );
 }
 
-/// ⭐ V7: uma cópia não leva os votos; «Clear results» tira-os num passo.
+/// ⭐ S4: uma cópia leva os carimbos (os votos já não são do objecto: ADR-0183 §3).
 #[test]
-fn a_copy_carries_no_votes_and_clear_takes_them_off() {
+fn a_copy_carries_the_stamps() {
     let mut w = world();
     let a = w.sticky([0.0, 0.0], "a", 1, &[]);
     let mut el = w.doc.get(a).unwrap().clone();
-    el.set_votes(4);
     el.add_stamp(Stamp::Heart, 2);
     w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
     w.ed.select(&w.doc, [a]);
     assert!(w.cmd(Command::Duplicate));
     let copy = *w.ed.selection().iter().next().unwrap();
     assert_ne!(copy, a);
-    assert_eq!(w.doc.get(copy).unwrap().votes(), 0, "V7: os votos não vão");
-    assert_eq!(
-        w.doc.get(copy).unwrap().stamps()[0].count,
-        2,
-        "S4: os carimbos vão"
-    );
-    assert!(w.ed.clear_votes(&mut w.doc, &mut w.h));
-    assert_eq!(w.doc.get(a).unwrap().votes(), 0);
-    assert!(!w.ed.clear_votes(&mut w.doc, &mut w.h));
+    assert_eq!(w.doc.get(copy).unwrap().stamps()[0].count, 2);
 }
 
 // ─── Carimbos (S2–S3) ───────────────────────────────────────────────────────────────────────────
@@ -446,7 +427,6 @@ fn stamp_chips_stop_before_the_vote_badge() {
     for s in [Stamp::Heart, Stamp::Star, Stamp::Flame, Stamp::Party] {
         el.add_stamp(s, 1);
     }
-    el.set_votes(2);
     let (c, d) = ph2d_board_model::vote_badge(&el, 2, [1, 2]);
     for (_, r) in ph2d_board_model::stamp_chips(&el) {
         assert!(r[2] < c[0] - d / 2.0, "a ficha {r:?} entra no selo");

@@ -56,13 +56,15 @@ pub(crate) fn sample() -> (BoardSet, [ElementId; 2]) {
         [40.0, 40.0, 199.0, 199.0],
     );
     n.frame = Some(f1);
-    n.set_votes(3);
     n.add_stamp(Stamp::Heart, 2);
     n.tags_mut().push(Tag {
         name: "urgent".into(),
         color: Rgba([240, 147, 157, 255]),
     });
     let note = put(b, n);
+    // W13 — uma sessão de votação mostrada no quadro: a exportação nunca pinta os selos (Miro).
+    b.team
+        .add_poll(std::collections::BTreeMap::from([(note, 3)]), "", 1, 0);
     let mut sk = shape(b, ShapeType::Diamond, "Sketch", [320.0, 60.0, 200.0, 140.0]);
     sk.frame = Some(f1);
     if let Some(s) = sk.shape_mut() {

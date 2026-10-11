@@ -17,6 +17,8 @@ const PXS: [f64; 2] = [1.0, 1.25];
 struct Run {
     ed: Editor,
     doc: BoardDoc,
+    /// A equipa do quadro: o histórico das votações (W13).
+    team: ph2d_board_model::Team,
     h: History,
     ts: TextSystem,
     l: Lessons,
@@ -27,9 +29,12 @@ impl Run {
     fn new(px: f64) -> Self {
         let mut doc = BoardDoc::default();
         let l = build(&mut doc);
+        let mut team = ph2d_board_model::Team::default();
+        team.add_poll(l.before.clone(), "", 3, 0);
         Self {
             ed: Editor::new(default_style(), metrics()),
             doc,
+            team,
             h: History::default(),
             ts: TextSystem::without_system_fonts(),
             l,
@@ -84,8 +89,9 @@ fn every_facilitation_lesson_does_what_it_says() {
     for px in PXS {
         let mut r = Run::new(px);
         let [_l1, l2, l3, l4, l5] = r.l.notes;
+        let shown = |r: &Run, id| r.team.shown_poll().and_then(|p| p.totals.get(&id).copied());
         assert!(
-            r.el(r.l.ideas[0]).votes() == 3 && r.el(r.l.ideas[3]).votes() == 1,
+            shown(&r, r.l.ideas[0]) == Some(3) && shown(&r, r.l.ideas[3]) == Some(1),
             "o resultado de antes"
         );
         // 1 — o cronómetro: `+` arma 6, Play corre, `+1m` soma, no zero soa.
@@ -100,7 +106,7 @@ fn every_facilitation_lesson_does_what_it_says() {
             t.tick(now + Duration::from_secs(7 * 60)) && matches!(t.run(), TimerRun::Done { .. })
         );
         // 2 — votar: a sessão no quadro inteiro (nada seleccionado), o `+` no canto de uma nota.
-        assert!(r.text(l2).contains("New vote") && r.text(l2).contains("Start voting"));
+        assert!(r.text(l2).contains("New session") && r.text(l2).contains("Start voting"));
         assert!(r.ed.start_vote(&r.doc, VoteSetup::default()));
         let (a, b) = (r.l.ideas[2], r.l.ideas[4]);
         let pa = r.corner(a);
@@ -124,13 +130,11 @@ fn every_facilitation_lesson_does_what_it_says() {
         let pb = r.corner(b);
         r.click(pb, false);
         r.click(pa, false);
-        assert!(r.ed.end_vote(&mut r.doc, &mut r.h));
-        assert_eq!((r.el(a).votes(), r.el(b).votes()), (2, 1));
-        assert_eq!(
-            r.el(r.l.ideas[0]).votes(),
-            0,
-            "o resultado de antes saiu do quadro"
-        );
+        let (totals, voters) = r.ed.end_vote().expect("havia votação");
+        r.team.add_poll(totals, "", voters, 0);
+        assert_eq!((shown(&r, a), shown(&r, b)), (Some(2), Some(1)));
+        assert_eq!(shown(&r, r.l.ideas[0]), None, "o quadro mostra a nova");
+        assert_eq!(r.team.polls.len(), 2, "W13: a de antes fica no histórico");
         // 4 — carimbos: seleccionar uma nota e carimbar; a ficha +1, Shift −1.
         assert!(r.text(l4).contains("Stamp") && r.text(l4).contains("Shift"));
         let n = r.l.ideas[6];
@@ -194,12 +198,14 @@ fn the_scene_opens_with_the_timer_card() {
     scene_facilitate(&mut hero);
     assert!(board_nav::facilitate::timer_open(&hero));
     let board = hero.documents.active_board().unwrap();
-    assert_eq!(ph2d_board_edit::vote_range(&board.doc), Some([1, 3]));
+    let shown = &board.team.shown_poll().expect("a votação de antes, mostrada").totals;
+    assert_eq!(ph2d_board_edit::vote_range(&board.doc, shown), Some([1, 3]));
 }
 
 /// ⭐ A lição 2 pelo PAINEL (auditoria W7: a cena nasce com um resultado, e o painel do resultado não
-/// tinha como abrir uma votação nova — a lição ensinava um caminho que não existia): Voting mostra o
-/// resultado, «New vote» abre a votação, «Start voting» começa-a; o fim dela tira o resultado antigo.
+/// tinha como abrir uma votação nova — a lição ensinava um caminho que não existia): Voting abre
+/// «Results» (W13), «New session» abre a votação, «Start voting» começa-a; o fim abre a sessão nova,
+/// que o quadro passa a mostrar, e a de antes fica no histórico.
 #[test]
 fn the_vote_lesson_runs_from_the_panel() {
     use board_nav::facilitate::{FacButton, apply_event, fac_node, toggle_vote};
@@ -210,7 +216,7 @@ fn the_vote_lesson_runs_from_the_panel() {
     let click = |hero: &mut HeroScreen, b: FacButton| {
         assert!(apply_event(hero, WidgetEvent::Click(fac_node(b))), "{b:?}");
     };
-    click(&mut hero, FacButton::VoteNew);
+    click(&mut hero, FacButton::VoteTabNew);
     click(&mut hero, FacButton::VoteStart);
     assert!(
         board_nav::facilitate::vote_in_session(&hero),
@@ -218,9 +224,10 @@ fn the_vote_lesson_runs_from_the_panel() {
     );
     click(&mut hero, FacButton::VoteEnd);
     let board = hero.documents.active_board().unwrap();
-    assert_eq!(
-        ph2d_board_edit::vote_range(&board.doc),
-        None,
-        "nenhum voto: o resultado antigo saiu"
-    );
+    let [old, new] = &board.team.polls[..] else {
+        panic!("duas sessões: a de antes e a nova");
+    };
+    assert_eq!(board.team.shown, Some(new.id), "o quadro mostra a nova");
+    assert!(new.totals.is_empty(), "nenhum voto: nenhum selo");
+    assert_eq!((old.number, new.number), (1, 2));
 }

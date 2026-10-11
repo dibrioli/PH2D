@@ -88,8 +88,12 @@ pub struct Team {
     pub versions: Vec<Version>,
     /// Os frames marcados «Hide from presentation» (P1).
     pub hidden_slides: BTreeSet<ElementId>,
-    /// O contador dos ids de fios, mensagens e versões fora de sessão ([`Team::mint`]).
+    /// O contador dos ids de fios, mensagens, versões e votações fora de sessão ([`Team::mint`]).
     next_id: u64,
+    /// W13 — as votações acabadas, pela ordem em que acabaram (`poll.rs`, ADR-0183).
+    pub polls: Vec<crate::Poll>,
+    /// W13 — a sessão cujo resultado o quadro mostra (o selo); `None` = nenhuma.
+    pub shown: Option<crate::PollId>,
     /// Em sessão ao vivo: os ids sorteados ([`Team::set_session`]).
     #[serde(skip)]
     session: crate::session::Lottery,
@@ -158,6 +162,7 @@ impl Team {
 
     fn uses(&self, id: u64) -> bool {
         self.versions.iter().any(|v| v.id.0 == id)
+            || self.polls.iter().any(|p| p.id.0 == id)
             || self
                 .threads
                 .iter()
@@ -168,6 +173,22 @@ impl Team {
     /// [`Board::set_session`] liga o documento e a equipa juntos.
     pub fn set_session(&mut self, seed: Option<u64>) {
         self.session = crate::session::Lottery::new(seed);
+    }
+
+    /// A equipa do formato 10 (sem votações): o leitor dele (`legacy_v10.rs`) não vê os campos privados.
+    pub(crate) fn from_v10(
+        threads: Vec<Thread>,
+        versions: Vec<Version>,
+        hidden_slides: BTreeSet<ElementId>,
+        next_id: u64,
+    ) -> Self {
+        Self {
+            threads,
+            versions,
+            hidden_slides,
+            next_id,
+            ..Self::default()
+        }
     }
 
     /// Abre um fio novo com a 1.ª mensagem; quem o escreve já o leu. Texto vazio (só espaços) não abre.

@@ -75,8 +75,8 @@ pub struct RenderCache {
     /// W7 — os selos do resultado escondidos (há uma votação aberta: o resultado anterior não a
     /// influencia).
     pub hide_votes: bool,
-    /// W7 — o menor e o maior total do quadro, pela revisão do documento.
-    vote_range: Option<(u64, Option<[u32; 2]>)>,
+    /// W7 — o menor e o maior total dos selos, pela revisão do documento e a sessão mostrada (W13).
+    vote_range: Option<((u64, u64), Option<[u32; 2]>)>,
     /// W8 — o desenho para EXPORTAR ([`ExportLook`]); `None` = o ecrã.
     pub export: Option<ExportLook>,
     /// W12 (ADR-0182) — as notas de OUTROS com o texto escondido de mim: sem o texto, com os
@@ -236,7 +236,7 @@ pub fn paint(
     let chains = frames::Chains::new(&board.doc, &shown, &far);
     let framed = board.doc.has_frames();
     let board_ink = cache.ink;
-    let range = cache.vote_range(&board.doc);
+    let badges = cache.vote_badges(board);
     for el in board.doc.live_in_z_order() {
         if framed {
             if el.as_frame().is_some() {
@@ -347,7 +347,7 @@ pub fn paint(
             board.id.0,
             el,
             v * to_world(el),
-            range,
+            badges.and_then(|(p, r)| Some((*p.totals.get(&el.id)?, r))),
         );
     }
     clips.close(scene);

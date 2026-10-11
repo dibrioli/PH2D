@@ -50,14 +50,13 @@ pub enum Field {
     Link,
     Tags,
     Mind,
-    Votes,
     Stamps,
     Seed,
 }
 
 impl Field {
     /// Todos, pela ordem do enum.
-    pub const ALL: [Field; 38] = [
+    pub const ALL: [Field; 37] = [
         Field::Box,
         Field::Angle,
         Field::Z,
@@ -93,14 +92,13 @@ impl Field {
         Field::Link,
         Field::Tags,
         Field::Mind,
-        Field::Votes,
         Field::Stamps,
         Field::Seed,
     ];
 
     /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
-    /// transmite a diferença, não o valor. Os votos NÃO: são o resultado de uma votação, que o
-    /// facilitador escreve (V4).
+    /// transmite a diferença, não o valor. (O resultado de uma votação não é um registo do elemento:
+    /// é uma sessão da equipa, ADR-0183.)
     #[must_use]
     pub fn is_counter(self) -> bool {
         matches!(self, Field::Stamps)
@@ -161,7 +159,6 @@ impl Element {
             Field::Link => enc(&org.link),
             Field::Tags => enc(&org.tags),
             Field::Mind => enc(&org.mind),
-            Field::Votes => enc(&org.votes),
             Field::Stamps => enc(&org.stamps),
             Field::Seed => enc(&org.seed),
         })
@@ -229,7 +226,6 @@ impl Element {
             Field::Link => put(&mut self.org_mut().link, b),
             Field::Tags => put(&mut self.org_mut().tags, b),
             Field::Mind => put(&mut self.org_mut().mind, b),
-            Field::Votes => put(&mut self.org_mut().votes, b),
             Field::Stamps => put(&mut self.org_mut().stamps, b),
             Field::Seed => put(&mut self.org_mut().seed, b),
         }

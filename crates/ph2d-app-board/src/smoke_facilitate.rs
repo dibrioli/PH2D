@@ -22,6 +22,8 @@ pub(crate) struct Lessons {
     pub ideas_frame: ElementId,
     pub ideas: [ElementId; 7],
     pub notes: [ElementId; 5],
+    /// A votação de antes (W13: uma sessão do histórico, mostrada — os selos à vista).
+    pub before: std::collections::BTreeMap<ElementId, u32>,
 }
 
 /// A margem do frame da cena (a da cena 8: os painéis laterais e a barra de estado tapam as bordas).
@@ -92,6 +94,7 @@ fn tr(key: &str) -> String {
 pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
     let cols = 4.0;
     let step = STICKY_SIDE + NOTE_GAP;
+    let mut before = std::collections::BTreeMap::new();
     let ideas: [ElementId; 7] = std::array::from_fn(|i| {
         let (key, color, tags, votes, stamps) = IDEAS[i];
         let at = [PAD + (i % 4) as f64 * step, PAD + (i / 4) as f64 * step];
@@ -107,11 +110,13 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
                 color: c,
             });
         }
-        el.set_votes(votes);
         for (s, n) in stamps {
             el.add_stamp(*s, *n);
         }
         let id = el.id;
+        if votes > 0 {
+            before.insert(id, votes);
+        }
         BoardOp::Put(el).apply(doc);
         id
     });
@@ -182,6 +187,7 @@ pub(crate) fn build(doc: &mut BoardDoc) -> Lessons {
         ideas_frame,
         ideas,
         notes,
+        before,
     }
 }
 
@@ -205,7 +211,9 @@ pub(super) fn scene_facilitate(hero: &mut HeroScreen) {
     let mut set = BoardSet::default();
     let id = set.create(default_name(1));
     let board = set.get_mut(id).expect("acabou de nascer");
-    build(&mut board.doc);
+    let l = build(&mut board.doc);
+    // A votação de antes: «Voting 1» no histórico, sem data (a cena não sabe quando), mostrada.
+    board.team.add_poll(l.before, "", 3, 0);
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
     board_nav::show(hero, false, false);

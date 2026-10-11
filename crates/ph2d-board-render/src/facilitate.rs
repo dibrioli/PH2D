@@ -185,8 +185,9 @@ fn number(
     );
 }
 
-/// ⭐ V5 e S3 — por cima de um elemento (por `t` = caixa → ecrã): o selo do resultado, se `range` (o
-/// menor e o maior total do quadro, `None` = escondidos) e ele tem votos; as fichas dos carimbos.
+/// ⭐ V5 e S3 — por cima de um elemento (por `t` = caixa → ecrã): o selo do resultado, se `badge` (os
+/// votos dele na sessão mostrada e o menor e o maior total dos selos; `None` = sem selo); as fichas
+/// dos carimbos.
 pub(crate) fn paint_marks(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -194,7 +195,7 @@ pub(crate) fn paint_marks(
     board: u64,
     el: &Element,
     t: Affine,
-    range: Option<[u32; 2]>,
+    badge: Option<(u32, [u32; 2])>,
 ) {
     for (c, [x0, y0, x1, y1]) in ph2d_board_model::stamp_chips(el) {
         let h = y1 - y0;
@@ -230,10 +231,10 @@ pub(crate) fn paint_marks(
             ink,
         );
     }
-    let Some(range) = range.filter(|_| el.votes() > 0) else {
+    let Some((votes, range)) = badge.filter(|b| b.0 > 0) else {
         return;
     };
-    let (c, d) = ph2d_board_model::vote_badge(el, el.votes(), range);
+    let (c, d) = ph2d_board_model::vote_badge(el, votes, range);
     let disc = Circle::new(Point::new(c[0], c[1]), d / 2.0);
     scene.fill_path(&disc.to_path(0.1), &Brush::Solid(doc_color(BADGE_BLUE)), t);
     // A ponta descolada (o Miro): o arco de cima à esquerda, mais claro, cortado pela corda.
@@ -254,7 +255,7 @@ pub(crate) fn paint_marks(
         ts,
         text,
         (board ^ BADGE_SALT, el.id.0),
-        el.votes(),
+        votes,
         d * BADGE_TEXT,
         c,
         t,
@@ -315,20 +316,26 @@ fn paint_vote_marks(
 }
 
 impl crate::RenderCache {
-    /// V5 — o menor e o maior total do quadro (recontado só quando o documento muda); `None` com os
-    /// selos escondidos.
-    pub(crate) fn vote_range(&mut self, doc: &ph2d_board_model::BoardDoc) -> Option<[u32; 2]> {
+    /// V5 — a sessão que o quadro mostra (ADR-0183 §3) e o menor e o maior total dos selos dela
+    /// (recontado só quando o documento ou a sessão mudam); `None` com os selos escondidos.
+    pub(crate) fn vote_badges<'b>(
+        &mut self,
+        board: &'b ph2d_board_model::Board,
+    ) -> Option<(&'b ph2d_board_model::Poll, [u32; 2])> {
         if self.hide_votes {
             return None;
         }
-        match self.vote_range {
-            Some((rev, r)) if rev == doc.rev() => r,
+        let poll = board.team.shown_poll()?;
+        let key = (board.doc.rev(), poll.id.0);
+        let range = match self.vote_range {
+            Some((k, r)) if k == key => r,
             _ => {
-                let r = ph2d_board_edit::vote_range(doc);
-                self.vote_range = Some((doc.rev(), r));
+                let r = ph2d_board_edit::vote_range(&board.doc, &poll.totals);
+                self.vote_range = Some((key, r));
                 r
             }
-        }
+        };
+        range.map(|r| (poll, r))
     }
 }
 

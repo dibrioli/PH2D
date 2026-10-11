@@ -147,14 +147,13 @@ fn clusters_keep_reading_order() {
     assert_eq!(w.clusters()[0].1, [a, d]);
 }
 
-/// ⭐ C6: uma nota com duas etiquetas vai para os dois grupos (no 2.º, uma CÓPIA, com os carimbos e sem
-/// votos); as sem etiqueta no «no tag».
+/// ⭐ C6: uma nota com duas etiquetas vai para os dois grupos (no 2.º, uma CÓPIA, com os carimbos); as
+/// sem etiqueta no «no tag».
 #[test]
 fn a_note_with_two_tags_is_in_two_clusters() {
     let mut w = world();
     let a = w.sticky([0.0, 0.0], "both", 1, &["Q1", "Q2"]);
     let mut el = w.el(a).clone();
-    el.set_votes(3);
     el.add_stamp(Stamp::Heart, 1);
     w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
     let b = w.sticky([300.0, 0.0], "none", 1, &[]);
@@ -168,7 +167,6 @@ fn a_note_with_two_tags_is_in_two_clusters() {
     let copy = c[1].1[0];
     assert_ne!(copy, a);
     assert_eq!(w.texts(&[copy]), ["both"]);
-    assert_eq!(w.el(copy).votes(), 0);
     assert_eq!(w.el(copy).stamps().len(), 1);
     assert_eq!(c[2].1, [b]);
     assert_eq!(w.doc.live_len(), 3 + 3);

@@ -193,13 +193,15 @@ fn only_frame(board: &Board, routes: &RouteCache, frame: ElementId) -> Board {
 /// ⭐ Desenha `page` de `board` a `scale` píxeis por unidade, no modo de export (E6/E7: `paper` =
 /// `None` transparente), numa cena que GRAVA (para o SVG e o PDF) — e que a placa desenha para o PNG.
 /// `vector` = o detalhe inteiro (SVG/PDF); `false` = o nível de detalhe do ecrã a esta escala (PNG).
-/// Devolve a cena e o tamanho dela em píxeis.
+/// `unread` = as notas de outros com o texto escondido de quem exporta (ADR-0182): saem como no ecrã,
+/// com o marcador, nunca com um texto que ele já não lê. Devolve a cena e o tamanho dela em píxeis.
 pub fn paint_page(
     board: &Board,
     page: &Page,
     scale: f64,
     paper: Option<Color>,
     vector: bool,
+    unread: &std::collections::BTreeSet<ElementId>,
     ts: &mut TextSystem,
 ) -> (VectorScene, [f64; 2]) {
     let mut routes = RouteCache::default();
@@ -228,6 +230,7 @@ pub fn paint_page(
         };
     }
     cache.hide_votes = true;
+    cache.unread.clone_from(unread);
     cache.export = Some(ExportLook { paper, vector });
     let mut scene = VectorScene::new();
     scene.record();

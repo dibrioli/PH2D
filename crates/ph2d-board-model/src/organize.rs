@@ -37,8 +37,6 @@ pub struct Org {
     pub tags: Vec<Tag>,
     /// W6 — o nó de mapa mental ([`crate::Mind`]), se é um.
     pub mind: Option<crate::Mind>,
-    /// W7 — o total da última votação ([`Element::votes`]).
-    pub votes: u32,
     /// W7 — os carimbos ([`Element::stamps`]).
     pub stamps: Vec<crate::StampCount>,
     /// W9 — a semente do tremor que veio de um `.excalidraw` ([`Element::seed`]); `None` = a do id.

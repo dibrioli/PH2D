@@ -201,7 +201,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 10);
+    assert_eq!(FORMAT_VERSION, 11);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -512,8 +512,8 @@ fn a_format_9_file_still_opens_and_its_team_gets_ids() {
     let bytes = set.to_bytes().unwrap();
     assert_eq!(
         postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
-        10,
-        "regrava-se como 10"
+        FORMAT_VERSION,
+        "regrava-se no formato actual"
     );
     assert_eq!(
         BoardSet::from_bytes(&bytes).unwrap(),

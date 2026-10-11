@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use serde::Deserialize;
 
 use crate::{
-    Board, BoardDoc, BoardId, BoardSet, Camera, ElementId, Message, MessageId, Pin, Team, Thread,
+    Board, BoardId, BoardSet, Camera, ElementId, Message, MessageId, Pin, Team, Thread,
     ThreadId, Version, VersionId,
 };
 
@@ -88,7 +88,7 @@ struct BoardV9 {
     id: BoardId,
     name: String,
     camera: Camera,
-    doc: BoardDoc,
+    doc: super::DocOld<super::v10::ElementV10>,
     sketch: bool,
     team: TeamV9,
 }
@@ -107,15 +107,18 @@ pub(crate) fn read_v9(bytes: &[u8]) -> Result<BoardSet, String> {
         .boards
         .into_iter()
         .map(|b| {
-            let mut doc = b.doc;
+            let votes = super::v10::votes_v10(&b.doc);
+            let mut doc = super::doc_old(b.doc, &super::v10::element_v10);
             doc.reindex();
+            let mut team: Team = b.team.into();
+            team.adopt_old_votes(votes);
             Board {
                 id: b.id,
                 name: b.name,
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
-                team: b.team.into(),
+                team,
             }
         })
         .collect();

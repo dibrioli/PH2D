@@ -6,6 +6,7 @@
 //!
 //! A shell só chama [`service`] (composição).
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -78,7 +79,15 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
             let Some(path) = ph2d_app_host::modal::save_file(dialog) else {
                 return;
             };
-            let text = match write_export(&b, choice, &selection, gpu, ts, &path) {
+            // ADR-0182 — o quadro da sessão ao vivo sai como eu o vejo (as notas que não leio, sem o
+            // texto); outro quadro não tem nada escondido de mim.
+            let lv = hero.documents.live_view();
+            let unread = if lv.board == Some(board) {
+                lv.fac.hidden_to_me.clone()
+            } else {
+                BTreeSet::new()
+            };
+            let text = match write_export(&b, choice, &selection, gpu, ts, &unread, &path) {
                 Ok(files) => {
                     let names: Vec<String> = files.iter().map(|f| display(f)).collect();
                     tr_with("board.io.exported", &[("file", &names.join(", "))])
@@ -99,7 +108,7 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                 Ok((name, imp)) => {
                     let n = imp.doc.live_len();
                     let skipped = skipped_list(&imp.skipped);
-                    let id = hero.documents.import_board(name.clone(), imp.doc);
+                    let id = hero.documents.import_board(name.clone(), imp.doc, imp.votes);
                     document_tabs::register_board(&mut hero.store, id);
                     let mut t = tr_with(
                         "board.io.imported",
@@ -267,16 +276,29 @@ fn page_paths(path: &Path, b: &Board, pages: &[Page]) -> Vec<PathBuf> {
 ///
 /// # Errors
 /// Nada a exportar, a placa recusou, ou o disco.
+#[allow(clippy::too_many_arguments)]
 pub fn write_export(
     b: &Board,
     c: ExportChoice,
     sel: &[ElementId],
     gpu: Option<&GpuContext>,
     ts: &mut TextSystem,
+    unread: &BTreeSet<ElementId>,
     path: &Path,
 ) -> Result<Vec<PathBuf>, String> {
     if c.format == Format::Excalidraw {
-        std::fs::write(path, ph2d_board_excalidraw::write(b)).map_err(|e| e.to_string())?;
+        // ADR-0182/0183 — a nota que não leio sai sem texto (o `.excalidraw` não tem marcador): nunca
+        // um texto que já não existe.
+        let mut seen = b.clone();
+        for id in unread {
+            if let Some(mut el) = seen.doc.get(*id).cloned()
+                && let Some(s) = el.shape_mut()
+            {
+                s.text = ph2d_board_model::RichText::plain("");
+                let _ = ph2d_board_model::BoardOp::Put(el).apply(&mut seen.doc);
+            }
+        }
+        std::fs::write(path, ph2d_board_excalidraw::write(&seen)).map_err(|e| e.to_string())?;
         return Ok(vec![path.to_path_buf()]);
     }
     let mut routes = RouteCache::default();
@@ -293,7 +315,7 @@ pub fn write_export(
             let recs: Vec<_> = pages
                 .iter()
                 .map(|p| {
-                    let (mut s, size) = paint_page(b, p, 1.0, paper, true, ts);
+                    let (mut s, size) = paint_page(b, p, 1.0, paper, true, unread, ts);
                     (s.take_record(), size)
                 })
                 .collect();
@@ -311,7 +333,7 @@ pub fn write_export(
         }
         Format::Svg => {
             for (i, (p, to)) in pages.iter().zip(page_paths(path, b, &pages)).enumerate() {
-                let (mut s, size) = paint_page(b, p, 1.0, paper, true, ts);
+                let (mut s, size) = paint_page(b, p, 1.0, paper, true, unread, ts);
                 // As ligações de um SVG são as da própria página (um ficheiro, uma página).
                 let here: Vec<([f64; 4], [f64; 4])> = link_pairs(b, &pages, i)
                     .into_iter()
@@ -331,7 +353,7 @@ pub fn write_export(
             let mp = ph2d_board_export::PNG_MEGAPIXELS[c.size.min(2)];
             for (p, to) in pages.iter().zip(page_paths(path, b, &pages)) {
                 let scale = ph2d_board_export::png_scale(p, mp);
-                let img = png::render(gpu, &mut pass, b, p, scale, paper, tile, ts)?;
+                let img = png::render(gpu, &mut pass, b, p, scale, paper, tile, unread, ts)?;
                 std::fs::write(&to, png::encode(&img)).map_err(|e| e.to_string())?;
                 out.push(to);
             }

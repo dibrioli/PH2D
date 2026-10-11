@@ -85,6 +85,15 @@ impl T {
         let ed = self.hero.documents.live.editor.as_ref().unwrap();
         ed.vote().map_or(0, |s| s.mine(id))
     }
+
+    /// O voto que o quadro MOSTRA em `id` (a sessão mostrada do histórico, W13 — ADR-0183 §3).
+    pub(super) fn shown(&self, id: ElementId) -> u32 {
+        let b = self.hero.documents.active_board().unwrap();
+        b.team
+            .shown_poll()
+            .and_then(|p| p.totals.get(&id).copied())
+            .unwrap_or(0)
+    }
 }
 
 /// ⭐ F2/F4/F5 pelo ecrã: o botão Timer abre o cartão armado a 5:00; `+` arma 6; ▶ corre; `+1m` soma;
@@ -180,8 +189,8 @@ fn the_timer_card_never_covers_the_frames_panel() {
 }
 
 /// ⭐ V1–V4 pelo ecrã: o painel abre na abertura; 2 votos; o `+` no canto da nota vota; sem votos é o
-/// aviso; «I'm done» passa à seguinte; «End for all» escreve os totais num passo e mostra o resultado;
-/// com a sessão aberta o resultado anterior esconde-se.
+/// aviso; «I'm done» passa à seguinte; «End for all» guarda a sessão no histórico (fora do desfazer:
+/// o documento não muda, W13) e mostra o resultado; com a sessão aberta o resultado anterior esconde-se.
 #[test]
 fn a_vote_runs_from_the_panel_to_the_result() {
     let mut t = T::new();
@@ -209,18 +218,19 @@ fn a_vote_runs_from_the_panel_to_the_result() {
     );
     let pb = corner(&t.elem(b));
     t.click_world(pb);
+    let doc = t.hero.documents.active_board().unwrap().doc.clone();
     t.fac(FacButton::VoteEnd);
-    assert_eq!((t.elem(a).votes(), t.elem(b).votes()), (2, 1));
+    assert_eq!((t.shown(a), t.shown(b)), (2, 1));
     assert!(
         !t.hero.documents.live.render_cache.hide_votes,
         "acabada, o resultado volta a ver-se"
     );
-    assert!(
-        t.find(fac_node(FacButton::VoteClear)).is_some(),
-        "o resultado"
+    assert!(t.find(fac_node(FacButton::VoteNew)).is_some(), "o resultado");
+    assert_eq!(
+        t.hero.documents.active_board().unwrap().doc,
+        doc,
+        "o fim não escreve no documento (nem no desfazer)"
     );
-    assert!(t.key(BoardKey::Char('z'), CTRL, None));
-    assert_eq!(t.elem(a).votes(), 0, "UM passo de desfazer");
 }
 
 /// ⭐ V6: os minutos da votação armam o cronómetro do quadro, e o zero dele acaba a votação.
@@ -243,12 +253,8 @@ fn the_clock_ends_the_vote() {
     *t.timer_mut() = Timer::with_minutes(1);
     t.timer_mut().play(Instant::now() - Duration::from_secs(61));
     t.paint();
-    assert_eq!(
-        t.elem(a).votes(),
-        1,
-        "o zero acabou a votação e escreveu o total"
-    );
-    assert!(t.find(fac_node(FacButton::VoteClear)).is_some());
+    assert_eq!(t.shown(a), 1, "o zero acabou a votação e guardou o total");
+    assert!(t.find(fac_node(FacButton::VoteNew)).is_some());
 }
 
 /// ⭐ A sessão é do SEU quadro: noutra aba não há `+`; ao voltar, ela volta.
@@ -439,7 +445,7 @@ fn the_clock_waits_for_the_gesture_to_end() {
     );
     t.paint();
     assert!(!board_nav::facilitate::vote_in_session(&t.hero));
-    assert_eq!(t.elem(a).votes(), 1);
+    assert_eq!(t.shown(a), 1);
 }
 
 /// V6: o ■ confirmado larga o relógio da votação (o cartão volta a ser só um cronómetro).
@@ -466,7 +472,8 @@ fn stopping_the_timer_releases_the_vote() {
     );
 }
 
-/// V4: o resultado oferece «New vote»; «See all results» nunca sai da área do quadro.
+/// V4: o resultado (aberto pela lista do histórico, W13) oferece «New vote»; «See all results» nunca
+/// sai da área do quadro.
 #[test]
 fn the_result_panel_starts_a_new_vote_and_fits_the_area() {
     let mut t = T::new();
@@ -482,21 +489,14 @@ fn the_result_panel_starts_a_new_vote_and_fits_the_area() {
             )
         })
         .collect();
-    for (i, id) in ids.iter().enumerate() {
-        let (board, live) = t.hero.documents.active_parts().unwrap();
-        let mut el = board.doc.get(*id).unwrap().clone();
-        el.set_votes(1 + i as u32);
-        let h = live.histories.entry(board.id).or_default();
-        h.apply(&mut board.doc, vec![BoardOp::Put(el)]);
-    }
+    let totals = ids.iter().zip(1..).map(|(id, n)| (*id, n)).collect();
+    let board = t.hero.documents.active_board_mut().unwrap();
+    board.team.add_poll(totals, "Ana", 60, 0);
     t.shell_click_bar(VOTE);
+    t.shell_click_id(board_nav::facilitate::poll_row_node(0), "a 1.ª fila");
     t.fac(FacButton::VoteSeeAll);
     let c = t.hero.last_canvas;
-    for b in [
-        FacButton::VoteSeeAll,
-        FacButton::VoteClear,
-        FacButton::VoteNew,
-    ] {
+    for b in [FacButton::VoteSeeAll, FacButton::VoteNew] {
         let (_, y) = t.find(fac_node(b)).unwrap_or_else(|| panic!("{b:?}"));
         assert!(y < c.y + c.h, "{b:?} fora da área");
     }

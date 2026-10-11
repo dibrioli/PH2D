@@ -128,17 +128,21 @@ impl Vault {
             .collect()
     }
 
-    /// SOMAR: os totais por alvo (de todos os boletins — quem saiu conta, Scrumlr v03) e o cofre dos
-    /// votos fica vazio.
-    pub(crate) fn tally(&mut self) -> BTreeMap<ElementId, u32> {
+    /// SOMAR: os totais por alvo (de todos os boletins — quem saiu conta, Scrumlr v03) e quantas
+    /// pessoas votaram; o cofre dos votos fica vazio.
+    pub(crate) fn tally(&mut self) -> (BTreeMap<ElementId, u32>, u32) {
         let mut t: BTreeMap<ElementId, u32> = BTreeMap::new();
+        let mut voters = 0u32;
         for b in std::mem::take(&mut self.ballots).into_values() {
+            if b.votes.values().any(|&n| n > 0) {
+                voters += 1;
+            }
             for (id, n) in b.votes {
                 let s = t.entry(id).or_default();
                 *s = s.saturating_add(n);
             }
         }
         t.retain(|_, n| *n > 0);
-        t
+        (t, voters)
     }
 }

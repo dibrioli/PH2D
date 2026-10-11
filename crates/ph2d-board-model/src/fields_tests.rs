@@ -52,7 +52,6 @@ fn rich_org() -> Org {
             vertical: true,
             hidden: false,
         }),
-        votes: 3,
         stamps: vec![StampCount {
             stamp: Stamp::Heart,
             count: 2,
@@ -258,7 +257,6 @@ fn every_field_of_the_model_is_named_here() {
             link: _,
             tags: _,
             mind,
-            votes: _,
             stamps: _,
             seed: _,
         } = org.as_deref().unwrap();

@@ -1,10 +1,11 @@
 //! **A votação** (W7, `docs/MiroClone/05_facilitacao.md` §2 V1–V7): a SESSÃO (votos por pessoa, «um
 //! voto por objecto», os votos da pessoa ao ecrã, «I'm done» passa à seguinte) vive no editor; o
-//! RESULTADO — o total de cada objecto — vai para o documento (`Element::votes`) num passo de desfazer.
+//! RESULTADO — o total de cada objecto — é uma sessão do histórico na equipa do quadro (W13, ADR-0183:
+//! `Team::add_poll`, fora do desfazer), e o selo deriva da sessão mostrada.
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History};
+use ph2d_board_model::{BoardDoc, Element, ElementId, Poll};
 pub use ph2d_board_model::{VOTES_DEFAULT, VOTES_MAX, VoteSetup};
 
 use crate::{Editor, Notice};
@@ -154,37 +155,41 @@ impl VoteSession {
         !gone.is_empty()
     }
 
-    /// V4 — os totais, com os da pessoa ao ecrã.
-    fn finish(mut self) -> BTreeMap<ElementId, u32> {
+    /// V4 — os totais, com os da pessoa ao ecrã, e quantas pessoas votaram.
+    fn finish(mut self) -> (BTreeMap<ElementId, u32>, u32) {
         if !self.mine.is_empty() {
             self.next_voter();
         }
-        self.totals
+        (self.totals, self.voters)
     }
 }
 
-/// V4 — o resultado no quadro: `(id, total)` dos que têm votos, do maior para o menor (empate: a
-/// ordem de leitura — de cima, da esquerda).
+/// V4 — as linhas do resultado de uma sessão: `(id, total)`, do maior para o menor (empate: a ordem
+/// de leitura — de cima, da esquerda —, e os que já não estão no quadro no fim). O instantâneo guarda
+/// também os apagados depois do fim (ADR-0183 §2: a linha diz «Deleted item»).
 #[must_use]
-pub fn results(doc: &BoardDoc) -> Vec<(ElementId, u32)> {
-    let mut v: Vec<&Element> = doc.live().filter(|e| e.votes() > 0).collect();
+pub fn results(doc: &BoardDoc, poll: &Poll) -> Vec<(ElementId, u32)> {
+    let mut v: Vec<(ElementId, u32)> = poll.totals.iter().map(|(&id, &n)| (id, n)).collect();
+    let at = |id: ElementId| doc.get(id).map(|e| (e.y, e.x));
     v.sort_by(|a, b| {
-        b.votes()
-            .cmp(&a.votes())
-            .then(a.y.total_cmp(&b.y))
-            .then(a.x.total_cmp(&b.x))
-            .then(a.id.cmp(&b.id))
+        b.1.cmp(&a.1)
+            .then_with(|| match (at(a.0), at(b.0)) {
+                (Some(p), Some(q)) => p.0.total_cmp(&q.0).then(p.1.total_cmp(&q.1)),
+                (p, q) => q.is_some().cmp(&p.is_some()),
+            })
+            .then(a.0.cmp(&b.0))
     });
-    v.into_iter().map(|e| (e.id, e.votes())).collect()
+    v
 }
 
-/// V5 — o menor e o maior total no quadro (o tamanho dos selos). `None` = nenhum resultado.
+/// V5 — o menor e o maior total dos selos que o quadro pinta (os elementos VIVOS da sessão
+/// mostrada). `None` = nenhum selo.
 #[must_use]
-pub fn vote_range(doc: &BoardDoc) -> Option<[u32; 2]> {
-    doc.live()
-        .map(Element::votes)
-        .filter(|n| *n > 0)
-        .fold(None, |r, n| match r {
+pub fn vote_range(doc: &BoardDoc, totals: &BTreeMap<ElementId, u32>) -> Option<[u32; 2]> {
+    totals
+        .iter()
+        .filter(|&(&id, &n)| n > 0 && doc.get(id).is_some())
+        .fold(None, |r, (_, &n)| match r {
             None => Some([n, n]),
             Some([lo, hi]) => Some([lo.min(n), hi.max(n)]),
         })
@@ -232,42 +237,11 @@ impl Editor {
         self.vote.as_mut().map(VoteSession::next_voter).is_some()
     }
 
-    /// V4 — «End for all»: os totais vão para o documento num passo — o resultado anterior sai do
-    /// quadro inteiro. `false` = não havia sessão.
-    pub fn end_vote(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
-        let Some(s) = self.vote.take() else {
-            return false;
-        };
-        let totals = s.finish();
-        let ops: Vec<BoardOp> = doc
-            .live_with_hidden()
-            .filter_map(|e| {
-                let want = totals.get(&e.id).copied().unwrap_or(0);
-                (e.votes() != want).then(|| {
-                    let mut e = e.clone();
-                    e.set_votes(want);
-                    BoardOp::Put(e)
-                })
-            })
-            .collect();
-        history.apply(doc, ops);
-        true
-    }
-
-    /// V7 — «Clear results»: tira o resultado do quadro (um passo). `false` = não havia.
-    pub fn clear_votes(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
-        let ops: Vec<BoardOp> = doc
-            .live_with_hidden()
-            .filter(|e| e.votes() > 0)
-            .map(|e| {
-                let mut e = e.clone();
-                e.set_votes(0);
-                BoardOp::Put(e)
-            })
-            .collect();
-        let any = !ops.is_empty();
-        history.apply(doc, ops);
-        any
+    /// V4 — «End for all»: fecha a sessão e devolve os totais e quantas pessoas votaram, que quem
+    /// chama guarda no histórico (`Team::add_poll`, ADR-0183 — fora do desfazer). `None` = não havia
+    /// sessão.
+    pub fn end_vote(&mut self) -> Option<(BTreeMap<ElementId, u32>, u32)> {
+        self.vote.take().map(VoteSession::finish)
     }
 
     /// V2 — um clique no `+` (ou no `−`) de `id`. A recusa fica no aviso.

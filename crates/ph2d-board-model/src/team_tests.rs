@@ -353,13 +353,19 @@ fn a_format_7_file_still_opens_with_no_team() {
     let b = &set.boards()[0];
     assert_eq!(b.name, "Retro7");
     assert_eq!(b.camera.zoom, 0.75);
-    assert_eq!(b.team, Team::default());
     let els = b.doc.live_in_z_order();
     assert_eq!(els.len(), 4);
     assert_eq!(els[0].as_frame().unwrap().name, "Ideas");
     let note = els[1];
     assert_eq!(note.frame, Some(els[0].id));
-    assert_eq!((note.votes(), note.stamps().len()), (3, 1));
+    assert_eq!(note.stamps().len(), 1);
+    // W13 (ADR-0183): os 3 votos da nota viram a única sessão do histórico, mostrada.
+    let [p] = &b.team.polls[..] else {
+        panic!("uma sessão: os votos do ficheiro");
+    };
+    assert_eq!(p.totals.iter().collect::<Vec<_>>(), [(&note.id, &3)]);
+    assert_eq!(b.team.shown, Some(p.id));
+    assert!(b.team.threads.is_empty() && b.team.versions.is_empty());
     assert_eq!(note.tags()[0].name, "urgente");
     assert!(els[3].connector().is_some());
     assert_eq!(b.doc.frames_in_panel_order()[0].id, els[0].id);

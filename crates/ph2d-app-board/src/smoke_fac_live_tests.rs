@@ -239,11 +239,7 @@ fn the_private_scene_hides_until_the_reveal_and_votes_without_peeking() {
         to_ana.send("votei").unwrap();
         // 6 — o fim: os totais no meu quadro, e o painel no resultado.
         assert!(
-            until(&mut g, 10, |g| room(g).is_some_and(|b| b
-                .doc
-                .get(ideas[0])
-                .unwrap()
-                .votes()
+            until(&mut g, 10, |g| room(g).is_some_and(|b| shown(b, ideas[0])
                 == 3)),
             "os totais não chegaram"
         );
@@ -369,14 +365,14 @@ fn the_private_scene_hides_until_the_reveal_and_votes_without_peeking() {
                 .iter()
                 .any(|(n, u, d)| n == "Bia" && *u == 2 && *d))));
     assert_eq!(
-        room(&mut ana).unwrap().doc.get(ideas[0]).unwrap().votes(),
+        shown(room(&mut ana).unwrap(), ideas[0]),
         0,
         "nada antes do fim"
     );
     // 6 — «End for all».
     click(&mut ana, FacButton::VoteEnd);
     assert_eq!(
-        room(&mut ana).unwrap().doc.get(ideas[0]).unwrap().votes(),
+        shown(room(&mut ana).unwrap(), ideas[0]),
         3
     );
     next(&mut ana, "vi o fim");
@@ -457,7 +453,7 @@ fn fotos_dos_estados_da_cena_13() {
         to_ana.send("votei").unwrap();
         next("acabei a votação");
         until(&mut g, 5, |g| {
-            room(g).is_some_and(|b| b.doc.get(ideas[0]).unwrap().votes() > 0)
+            room(g).is_some_and(|b| shown(b, ideas[0]) > 0)
         });
         until(&mut g, 1, |_| false);
         cam.shot(&mut g, "b5_o_resultado");
@@ -520,4 +516,12 @@ fn fotos_dos_estados_da_cena_13() {
     frame(&mut ana);
     to_bia.send("adeus").unwrap();
     bia.join().unwrap();
+}
+
+/// O voto que o quadro MOSTRA em `id` (a sessão mostrada do histórico, W13 — ADR-0183 §3).
+fn shown(b: &ph2d_board_model::Board, id: ph2d_board_model::ElementId) -> u32 {
+    b.team
+        .shown_poll()
+        .and_then(|p| p.totals.get(&id).copied())
+        .unwrap_or(0)
 }

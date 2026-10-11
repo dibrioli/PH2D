@@ -244,8 +244,7 @@
                   ],
                   "name": "urgent"
                 }
-              ],
-              "votes": 3
+              ]
             },
             "version": 1,
             "w": 199,
@@ -398,8 +397,7 @@
               "mind": null,
               "seed": null,
               "stamps": [],
-              "tags": [],
-              "votes": 0
+              "tags": []
             },
             "version": 1,
             "w": 180,
@@ -550,8 +548,7 @@
               "mind": null,
               "seed": null,
               "stamps": [],
-              "tags": [],
-              "votes": 0
+              "tags": []
             },
             "version": 1,
             "w": 120,
@@ -823,8 +820,7 @@
               "mind": null,
               "seed": null,
               "stamps": [],
-              "tags": [],
-              "votes": 0
+              "tags": []
             },
             "version": 1,
             "w": 160,

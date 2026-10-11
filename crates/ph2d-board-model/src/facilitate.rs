@@ -142,18 +142,6 @@ pub fn stamp_chips(el: &Element) -> Vec<(StampCount, [f64; 4])> {
 }
 
 impl Element {
-    /// O total do último resultado de votação neste objecto (V4; `0` = nenhum).
-    #[must_use]
-    pub fn votes(&self) -> u32 {
-        self.org.as_ref().map_or(0, |o| o.votes)
-    }
-
-    pub fn set_votes(&mut self, n: u32) {
-        if n > 0 || self.org.is_some() {
-            self.org_mut().votes = n;
-        }
-    }
-
     /// Os carimbos, pela ordem em que nasceram (S3).
     #[must_use]
     pub fn stamps(&self) -> &[StampCount] {

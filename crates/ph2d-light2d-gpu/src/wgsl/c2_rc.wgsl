@@ -47,6 +47,11 @@ override FRONTEIRA_NA_FACE: bool = false;
 // ⭐ W5a (F1): o passo onde a captura tem cobertura (a menos de um texel de uma borda), em fração
 // do `PASSO` — o raio que roça o canto do oclusor não o salta.
 override PASSO_NA_BORDA: f32 = 1.0;
+// ⭐ W5d — DENTRO pela borda EXATA da cobertura (não pelo iso-½ da bilinear) onde `borda_aqui`: ver
+// [`dentro_exato`]. A C3 desliga-a na luz direta dos texels de FORA (a marcha deles fica no iso-½:
+// a mesma foto, ~0,4 ms a menos na cena 4).
+override BORDA_EXATA: bool = false;
+var<private> borda_aqui: bool = true;
 
 struct Cascata {
     tamanho: vec2<u32>,
@@ -107,7 +112,11 @@ fn meio(pc: vec2<f32>) -> Meio {
     let g = textureGather(0, cobertura, vizinhos, (base + 1.0) / n);
     let c = mix(mix(g.w, g.z, fr.x), mix(g.x, g.y, fr.x), fr.y);
     m.c = c;
-    if c < 0.5 {
+    if BORDA_EXATA && borda_aqui {
+        if !dentro_exato(p, n, c) {
+            return m;
+        }
+    } else if c < 0.5 {
         return m;
     }
     var melhor = g.w;
@@ -130,6 +139,24 @@ fn meio(pc: vec2<f32>) -> Meio {
         m.luz = any(m.e.rgb > vec3<f32>(0.0));
     }
     return m;
+}
+
+// ⭐ W5d — `p` (texels da captura ligada, grade `n`) está DENTRO pela borda EXATA da cobertura: a
+// reta de cada texel parcial que o `c3_borda` (`c3_borda.wgsl`, o AAEDT) gravou no lugar da cobertura
+// (`(cobertura, normal, recuo)`); texel cheio dentro, vazio fora, sem reta `c` (o iso-½). O iso-½ da
+// bilinear desvia-se de uma borda reta até ~0,08 texel conforme a posição (o ABERTO 5 da W5c).
+fn dentro_exato(p: vec2<f32>, n: vec2<f32>, c: f32) -> bool {
+    let e = textureLoad(cobertura, clamp(vec2<i32>(floor(p)), vec2<i32>(0), vec2<i32>(n) - 1), 0);
+    if e.r >= 1.0 {
+        return true;
+    }
+    if e.r <= 0.0 {
+        return false;
+    }
+    if e.g == 0.0 && e.b == 0.0 {
+        return c >= 0.5;
+    }
+    return dot(p - floor(p) - 0.5, e.gb) >= e.a;
 }
 
 // Quanto se pode andar a partir de `p` sem chegar a um ponto «dentro». O JFA dá a célula-semente

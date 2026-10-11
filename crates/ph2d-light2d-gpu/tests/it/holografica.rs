@@ -10,12 +10,14 @@ use crate::comum::{dentro_de_opaco, gabarito, gpu, grade, ler_fluencia, rmse_rel
 // Os tetos da holográfica — medido + 10 % na RTX 5060 Ti (W5c; tabela no handoff):
 // - a penumbra pelas cascatas no Alto: holográfica 0,0757 × clássica 0,1175; céu e vidro 0,0075;
 // - junto a uma face (o pior de 6 desvios; longe · próprio): Alto 0,003 · 0,002 · Médio 0,007 ·
-//   0,005 · Baixo 0,011 · 0,009 (a clássica até 0,046 · 0,215);
+//   0,005 · Baixo 0,011 · 0,009 (a clássica até 0,046 · 0,215); ⭐ W5d: o próprio no Alto 0,0029 com a
+//   média da c0 ao longo da face (a troca medida que apaga as fatias do interior com o rebote, cena 5:
+//   a mesma face lida em cinco pontos dela, e não num só);
 // - o G9 do rebote: 0,0092 · 0,0104 · 0,0071 (a clássica 0,044 · 0,074 · 0,131);
 // - o pan (a grade por blocos, 3 vistas): 0,00061.
 const TOL_PENUMBRA_HOLO: f64 = 0.0833;
 const TOL_CEU_E_VIDRO_HOLO: f64 = 0.0083;
-const TOL_FACE_HOLO: [[f64; 2]; 3] = [[0.0035, 0.0025], [0.0077, 0.0055], [0.0121, 0.0099]];
+const TOL_FACE_HOLO: [[f64; 2]; 3] = [[0.0035, 0.0032], [0.0077, 0.0055], [0.0121, 0.0099]];
 const TOL_G9_HOLO: [f64; 3] = [0.0101, 0.0115, 0.0079];
 const TOL_PAN_HOLO: f64 = 0.00067;
 

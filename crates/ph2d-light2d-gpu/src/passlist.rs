@@ -28,6 +28,9 @@ pub(crate) struct Opcionais {
     /// ⭐ W5c: o rebote — `[albedo, fonte]`: o albedo que a C0 captura e a luz que cada superfície
     /// recebeu no quadro anterior (lida no mundo pelo quadro seguinte).
     pub rebote: Option<[usize; 2]>,
+    /// ⭐ W5d: a borda exata da captura que a C3 lê (`(cobertura, normal, recuo)` por texel), com
+    /// [`Config::borda_exata`].
+    pub borda: Option<usize>,
 }
 
 impl Opcionais {
@@ -52,6 +55,7 @@ impl Opcionais {
                 let k = proxima(2);
                 [k, k + 1]
             }),
+            borda: cfg.borda_exata.then(|| proxima(1)),
         }
     }
 
@@ -229,6 +233,20 @@ impl PassList {
             });
         }
 
+        if op.borda.is_some() {
+            let gc = if op.captura.is_some() {
+                cfg.grade_da_captura()
+            } else {
+                g
+            };
+            texturas.push(Textura {
+                nome: "luz2d/tex/borda",
+                formato: wgpu::TextureFormat::Rgba16Float,
+                tamanho: [gc.largura, gc.altura],
+                usos: T::STORAGE_BINDING | amostrada,
+            });
+        }
+
         // ⭐ W5b (F4): a atlas das máscaras dos sprites distantes — a de 1 × 1 (cresce com elas,
         // contada na geometria residente).
         texturas.push(Textura {
@@ -379,6 +397,15 @@ impl PassList {
         // ⭐ C3: a visibilidade nas sondas da c0 e a grade fina (c0 interpolada + a luz direta). A
         // luz direta marcha na captura fina quando há (W5a) e não lê a emissão (só a transmissão).
         let [cob, tau] = op.captura.unwrap_or([COBERTURA, TAU_DENTRO]);
+        // ⭐ W5d: a borda exata dessa captura, que a C3 lê no lugar da cobertura.
+        if let Some(b) = op.borda {
+            passes.push(Passe {
+                nome: "C3 borda".into(),
+                le: vec![cob],
+                escreve: vec![b],
+            });
+        }
+        let cob = op.borda.unwrap_or(cob);
         let cena = [cob, tau, sementes_finais];
         let c0 = Self::indice_da_c0(cfg);
         let mut le_fina = vec![c0];

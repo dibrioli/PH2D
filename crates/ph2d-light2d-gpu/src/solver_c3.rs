@@ -89,6 +89,8 @@ pub(super) struct C3 {
     /// ⭐ W5c: a FONTE do rebote (a luz que cada superfície recebe, para o quadro seguinte) — os
     /// grupos 2 (a c0) e 3 (a saída).
     rebote: Option<(Par, [wgpu::BindGroup; 2])>,
+    /// ⭐ W5d: a borda exata da captura (a pipeline, o grupo 3 e o tamanho dela).
+    borda: Option<(wgpu::ComputePipeline, wgpu::BindGroup, [u32; 2])>,
     /// A grade das cascatas (a fonte do rebote cobre-a inteira).
     tamanho_grosso: [u32; 2],
     uniforme: wgpu::Buffer,
@@ -122,6 +124,8 @@ impl C3 {
         let op = Opcionais::de(cfg);
         // A marcha da luz direta lê a captura FINA dos opacos quando há (W5a).
         let [cob, tau] = op.captura.unwrap_or([COBERTURA, TAU_DENTRO]);
+        // ⭐ W5d: com a borda exata, a C3 lê a saída do `c3_borda` (a cobertura no vermelho).
+        let cob_c3 = op.borda.unwrap_or(cob);
         let cena_layout = layout(
             device,
             "luz2d c3 cena",
@@ -153,7 +157,7 @@ impl C3 {
                 },
                 vista(1, &e.vistas[EMISSAO]),
                 vista(2, &e.vistas[e.sementes_finais]),
-                vista(5, &e.vistas[cob]),
+                vista(5, &e.vistas[cob_c3]),
                 vista(6, &e.vistas[tau]),
                 wgpu::BindGroupEntry {
                     binding: 7,
@@ -183,6 +187,8 @@ impl C3 {
             ("PREENCHE", f64::from(u8::from(cfg.preenchimento.is_some()))),
             ("CELULA_PREENCHE", f64::from(cfg.preenchimento.unwrap_or(1))),
             ("MEDIA_NO_EIXO", f64::from(u8::from(cfg.media_no_eixo))),
+            ("C0_AO_LONGO_DA_FACE", f64::from(cfg.c0_ao_longo_da_face)),
+            ("BORDA_EXATA", f64::from(u8::from(cfg.borda_exata))),
         ];
         let bordas = match cfg.refino {
             Refino::Bordas(b) => Some(b),
@@ -440,6 +446,34 @@ impl C3 {
             (par, grupos)
         });
 
+        // ⭐ W5d: a borda exata — lê a cobertura crua, escreve a da C3 (grupo 3, bindings 12–13).
+        let borda = op.borda.map(|b| {
+            let g3 = layout(
+                device,
+                "luz2d c3 borda",
+                &[
+                    entrada_textura(12, FLOAT),
+                    entrada_escrita(13, wgpu::TextureFormat::Rgba16Float),
+                ],
+            );
+            let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("luz2d c3 borda"),
+                layout: &g3,
+                entries: &[vista(12, &e.vistas[cob]), vista(13, &e.vistas[b])],
+            });
+            let t = &e.lista.texturas[b].tamanho;
+            (
+                pipeline_em(
+                    "luz2d c3 borda",
+                    &[None, None, None, Some(&g3)],
+                    "c3_borda",
+                    &[],
+                ),
+                grupo,
+                *t,
+            )
+        });
+
         let gf = cfg.grade_da_fluencia();
         let mut c3 = Self {
             cena,
@@ -448,6 +482,7 @@ impl C3 {
             fina,
             grupo_fina,
             rebote,
+            borda,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
             uniforme: e.uni_c3.clone(),
             u: UniformeFina {
@@ -509,6 +544,12 @@ impl C3 {
                 label: Some("luz2d C3 preenche"),
                 timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_PREENCHE)),
             });
+            // ⭐ W5d: a borda exata antes de tudo o que a lê (o carimbo dela conta no preenche).
+            if let Some((pipe, g3, [w, h])) = &self.borda {
+                p.set_pipeline(pipe);
+                p.set_bind_group(3, g3, &[]);
+                p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+            }
             if let Some(pr) = &self.preenchimento {
                 // Os uniformes de cada passo: a região deste quadro e o salto.
                 let mut uni = vec![0u8; PASSO_UNIFORME as usize * pr.grupos.len()];

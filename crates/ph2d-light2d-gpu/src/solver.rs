@@ -616,6 +616,13 @@ impl Solver {
         &self.texturas[crate::passlist::FLUENCIA]
     }
 
+    /// ⭐ W5d: a c0 do último quadro (as cascatas: rgb = a fluência na sonda, alfa = fora dos opacos),
+    /// na grade das cascatas — para quem precisa de a medir.
+    #[must_use]
+    pub fn c0(&self) -> &wgpu::Texture {
+        &self.texturas[PassList::indice_da_c0(&self.cfg)]
+    }
+
     /// Quantas pipelines este solver COMPILOU ao nascer — 0 quando a [`crate::Fabrica`] já as tinha
     /// (a mesma luz numa grade de outro tamanho).
     #[must_use]

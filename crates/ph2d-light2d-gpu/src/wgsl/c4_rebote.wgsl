@@ -30,7 +30,10 @@ fn c3_rebote(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let P = vec2<f32>(gid.xy) + 0.5;
     var Q = P;
-    if meio(P).tau <= 0.0 {
+    borda_aqui = true;
+    let dentro = meio(P).tau <= 0.0;
+    borda_aqui = dentro;
+    if dentro {
         var d_melhor = 3.4e38;
         for (var dy = -2; dy <= 2; dy++) {
             for (var dx = -2; dx <= 2; dx++) {

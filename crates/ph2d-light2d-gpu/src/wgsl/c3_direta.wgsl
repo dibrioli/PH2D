@@ -88,6 +88,9 @@ override CELULA_PREENCHE: u32 = 1u;
 override PREENCHE_A_GRADE_INTEIRA: bool = true;
 // ⭐ O texel que o eixo medial corta guarda a média das faces (senão o ponto de fronteira mais perto).
 override MEDIA_NO_EIXO: bool = true;
+// ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
+// nesta meia-largura (texels das cascatas; 0 = no ponto): ver [`c0_ao_longo_da_face`].
+override C0_AO_LONGO_DA_FACE: f32 = 0.0;
 const SEM_SEMENTE: u32 = 0xffffffffu;
 
 // A abertura do disco na penumbra: `RAIOS_DIRETOS + 1` raios FIXOS nas fronteiras de
@@ -462,6 +465,35 @@ fn c0_em(P: vec2<f32>) -> vec3<f32> {
     return mix(a, b, fr.y);
 }
 
+// ⭐ W5d — a c0 no ponto de fronteira `P` que o texel `P0` (dentro) lê: a média de até cinco pontos ao
+// longo da face (a tangente ⟂ `P − P0`), a [`C0_AO_LONGO_DA_FACE`] de cada lado — só os que continuam
+// sobre ELA (fora do corpo, com ele um texel atrás: a ponta de uma face não lê o outro lado do canto).
+// As sondas COLADAS a uma superfície que reflete variam ±15 % de uma para a outra (o brilho dela visto
+// por poucos raios curtos: a fração que a acerta salta com a posição da sonda contra a curva) e a lei do
+// interior projetava esse ruído até ao centro do corpo (as fatias do disco com o rebote, cena 5). Ao
+// longo da face, e não em volta: as sondas mais afastadas veem menos o próprio corpo (a tenda de raio 2
+// tirava 4–9 % da face).
+fn c0_ao_longo_da_face(P: vec2<f32>, P0: vec2<f32>) -> vec3<f32> {
+    let d = P - P0;
+    let m = length(d);
+    if C0_AO_LONGO_DA_FACE <= 0.0 || m <= 1e-6 {
+        return c0_em(P);
+    }
+    let n = d / m;
+    let t = vec2<f32>(-n.y, n.x) * (0.5 * C0_AO_LONGO_DA_FACE);
+    var s = c0_em(P);
+    var k = 1.0;
+    for (var i = -2; i <= 2; i++) {
+        let q = P + t * f32(i);
+        if i == 0 || meio(q + 0.25 * n).tau <= 0.0 || meio(q - n).tau > 0.0 {
+            continue;
+        }
+        s += c0_em(q);
+        k += 1.0;
+    }
+    return s / k;
+}
+
 // ⭐ O ponto da FRONTEIRA entre `dentro` (num opaco) e `fora` (um texel exterior), do lado de fora —
 // por bissecção do `meio`: a lei do gabarito é o exterior mais próximo, não o centro de um texel.
 fn na_fronteira(dentro: vec2<f32>, fora: vec2<f32>) -> vec2<f32> {
@@ -525,6 +557,7 @@ fn alem_do_eixo(a: vec3<f32>, b: vec3<f32>, h: f32) -> f32 {
 // sementes do JFA da célula e das 8 vizinhas. Junto ao eixo medial, também o ponto da outra face mais
 // perto e a área do texel além do eixo, pelas distâncias PERPENDICULARES às duas faces.
 fn onde_calcular(id: vec2<u32>) -> Onde {
+    borda_aqui = true;
     let P0 = ponto_fino(id);
     if !PREENCHE || meio(P0).tau > 0.0 {
         return Onde(P0, false, P0, 0.0);
@@ -729,6 +762,7 @@ fn c3_visibilidade(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let Q = vec2<f32>(id) + 0.5;
+    borda_aqui = false;
     var w = vec2<u32>(0u);
     for (var k = 0u; k < lampadas.n; k++) {
         var codigo = CERTA;
@@ -751,6 +785,7 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
     // próximo podem estar fora da região.
     let onde = onde_calcular(alvo);
     let remapeado = onde.remapeado;
+    borda_aqui = remapeado;
     let P = onde.p;
     let u = P - 0.5;
     let base = vec2<i32>(floor(u));
@@ -763,7 +798,12 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
     let w1 = textureLoad(visibilidades, vec2<i32>(r.x, q.y), 0).xy;
     let w2 = textureLoad(visibilidades, vec2<i32>(q.x, r.y), 0).xy;
     let w3 = textureLoad(visibilidades, r, 0).xy;
-    var soma = c0_em(P);
+    var soma: vec3<f32>;
+    if remapeado {
+        soma = c0_ao_longo_da_face(P, ponto_fino(alvo));
+    } else {
+        soma = c0_em(P);
+    }
     for (var k = 0u; k < lampadas.n; k++) {
         let L = lampadas.itens[k];
         let s = sem_sombra(P, L);
@@ -827,5 +867,10 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let onde = onde_calcular(id);
-    textureStore(fina_saida, id, vec4<f32>(nas_faces(luz_exata(onde.p), onde), 1.0));
+    borda_aqui = onde.remapeado;
+    var l = luz_exata(onde.p);
+    if onde.remapeado {
+        l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
+    }
+    textureStore(fina_saida, id, vec4<f32>(nas_faces(l, onde), 1.0));
 }

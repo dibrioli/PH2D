@@ -146,6 +146,15 @@ pub struct Config {
     /// dele, medidas pela perpendicular (o `MEDIA_NO_EIXO` do `c3_direta.wgsl`); `false` = o valor do
     /// ponto de fronteira mais perto do centro (a diagonal entre faces em escada, smoke do dono 10/10).
     pub media_no_eixo: bool,
+    /// ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
+    /// nesta meia-largura em texels das cascatas (o `C0_AO_LONGO_DA_FACE`; 0 = no ponto): as sondas
+    /// coladas a uma superfície que reflete variam ±15 % de uma para a outra.
+    pub c0_ao_longo_da_face: f32,
+    /// ⭐ W5d — o INTERIOR de um opaco (a lei F3 e a luz lida na fronteira) decide «dentro» pela
+    /// borda EXATA da cobertura (o `c3_borda.wgsl`, o AAEDT; o `BORDA_EXATA` do `c2_rc.wgsl`);
+    /// `false` = o iso-½ da bilinear, que se desvia até ~0,08 texel (a passagem luz/sombra serrilhada
+    /// das formas curvas, cena 5).
+    pub borda_exata: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -162,6 +171,11 @@ pub struct Holografica {
     /// quadrante (salvo quando ela cai dentro de um opaco).
     pub mais_um: bool,
 }
+
+/// ⭐ W5d — a meia-largura da média da c0 ao longo da face (texels das cascatas) — MEDIDA (rodada
+/// `medida_luz2d_w5d`, o disco e a elipse da cena 5 com o rebote): 1 e 2 alisam o interior sem custo
+/// (a elipse a 0,9 do raio: excesso de variação +0,02 → −0,17 → −0,26); 2 apaga os riscos na foto.
+pub const C0_AO_LONGO_DA_FACE_PADRAO: f32 = 2.0;
 
 /// A cascata holográfica por omissão — ver a rodada `medida_luz2d_w5c`.
 pub const HOLOGRAFICA_PADRAO: Holografica = Holografica {
@@ -295,6 +309,8 @@ impl Config {
             mascara_da_fusao: MascaraDaFusao::PeloFim,
             fronteira_na_face: true,
             media_no_eixo: true,
+            c0_ao_longo_da_face: C0_AO_LONGO_DA_FACE_PADRAO,
+            borda_exata: true,
             holografica: None,
         }
     }

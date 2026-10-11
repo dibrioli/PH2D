@@ -37,12 +37,13 @@ const SUB: u32 = 12;
 const FAIXA: f64 = 4.0;
 /// Um texel do interior está ERRADO a mais disto do gabarito, relativo ao máximo dele ali.
 const ERRADO: f64 = 0.10;
-/// Texels errados por caso no produto — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`): 0 ou 1 (um canto da
-/// caixa, onde o eixo chega à borda); sem a média no eixo, 35 a 537 (a escada).
-const TETO_ERRADOS: usize = 3;
+/// Texels errados por caso no produto — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`): 0 em todo caso desde a
+/// borda exata (W5d; antes 0 ou 1 — um canto da caixa, onde o eixo chega à borda); sem a média no
+/// eixo, 35 a 537 (a escada).
+const TETO_ERRADOS: usize = 1;
 
 /// A cena 3 com a parede verde feita uma caixa livre no meio da sala, deslocada `d` metros.
-fn cena(d: [f32; 2]) -> CenaDeLuz {
+pub(crate) fn cena(d: [f32; 2]) -> CenaDeLuz {
     cena_em([CENTRO[0] + d[0], CENTRO[1] + d[1]], LADO)
 }
 
@@ -87,7 +88,7 @@ fn folgas(p: [f64; 2], d: [f32; 2]) -> Option<(f64, f64)> {
 /// O gabarito nos texels do interior a menos de `FAIXA` texels do eixo medial e a mais de um da borda
 /// (longe do eixo a lei é a de sempre, medida noutros gates): `(centro, média sobre o texel)`; e
 /// quantos texels o eixo corta.
-fn gabarito(
+pub(crate) fn gabarito(
     g: ph2d_light2d_gpu::Grade,
     c: &CenaDeLuz,
     d: [f32; 2],
@@ -128,7 +129,7 @@ fn gabarito(
 }
 
 /// `(o pior erro, quantos texels erram mais que ERRADO)`, relativos ao máximo do gabarito ali.
-fn erros(fl: &Fluencia, gab: &[([f64; 2], f64)]) -> (f64, usize) {
+pub(crate) fn erros(fl: &Fluencia, gab: &[([f64; 2], f64)]) -> (f64, usize) {
     let max = gab.iter().map(|x| x.1).fold(0.0, f64::max);
     gab.iter().fold((0.0, 0), |(pior, n), &(p, g)| {
         let e = (fl.amostra(p) - g).abs() / max;

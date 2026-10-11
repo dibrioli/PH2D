@@ -83,7 +83,8 @@ fn the_layer_noise_is_anchored_to_the_world() {
 /// ligar, a camada filtrada sai com outra cor que o resto da cena — este gate reprova primeiro.
 #[test]
 fn the_layer_skips_a_tonemap_that_is_a_bypass() {
-    let wgsl = include_str!("../../ph2d-render/src/shaders/tonemap.wgsl");
+    // O mapeamento mudou para o `tonemap_conta.wgsl` (Luz 2D W3, no `main`).
+    let wgsl = include_str!("../../ph2d-render/src/shaders/tonemap_conta.wgsl");
     assert!(
         wgsl.contains("const BYPASS_LUT: bool = true;"),
         "o tonemap deixou o bypass: a camada filtrada (motion_filter) tem de passar por ele"

@@ -245,5 +245,33 @@ $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
 
 ## 12. Smoke do dono
 
-W5 … W10: **OK** (W10, 10/10: *«smoke ok.»* — lição 5 e o realce sem o ponto no foco). **W11: PENDENTE** — o painel
-Live (4 estados), o cursor alheio e o selo «Following» só foram vistos por testes e por fotografia (§7).
+W5 … W10: **OK** (W10, 10/10: *«smoke ok.»* — lição 5 e o realce sem o ponto no foco). **W11: OK** (10/10: *«smoke
+OK. Vamos integrar ao main.»* — as duas janelas da cena 12 no mesmo computador; o botão da firewall num 2.º computador
+continua por medir).
+
+## 13. Integração (10/10, por ordem do dono)
+
+- **Uma linha só** ⇒ a ordem não se mede. O `main` tinha andado (`782f90b69 → e77dfb059`, a UIUX F6–F8, 115 commits):
+  rebase de 120 commits, `range-diff` contra o tip de antes (`6d24e83fd`): **109 iguais, 11 mudados**, todos pelos
+  conflitos abaixo; zero marcadores introduzidos em qualquer commit. O `foundational-integrate.sh` foi seguido À MÃO
+  (passo a passo): ele recusa o primário com `??` de OUTRA linha (`crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs`,
+  `docs/Painter/NewFeaturesWetPaint/`) — não tocados.
+- **Conflitos, pelos estágios:** (1) `board_bar.rs` (W5) — a linha MOVEU `toolbar_rects`/`shapes_rects`/`style_rects`
+  para `board_bar_layout.rs` (tecto de LOC) e a UIUX F8 reescreveu os corpos sobre o `float_bar` genérico ⇒ ficou o
+  movimento com os corpos da UIUX (o `style_rects_of` da linha também passa pelo `float_bar::strip_rects`, a mesma
+  conta: `ROW_MAX` 8, duas linhas); no W6 o `hit_index.register` duplicado sai (o `float_bar::paint_button` regista).
+  (2) `icons.rs` (W7, W8) — a UIUX tirou os testes para `icons_tests.rs`: as 7 variantes da linha (`LayoutGrid`,
+  `Timer`, `Volume2`, `VolumeX`, `Vote`, `MessageSquare`, `Presentation`) entram na lista de lá pelo slug.
+  (3) `CLAUDE.md` (×8, os handoffs W5…W11) — o do `main` com a linha do Quadro do commit. (4)
+  `reference_topic_measurement_discipline.md` (W9) — união (as duas entradas). **Número que soma, CONTADO:** a família
+  «Como uma RÉGUA mente» tem **206** entradas na árvore combinada; nenhum lado dizia 206 (`main` 205, linha 205).
+- **Portão da árvore combinada** (`c93b7367a`): registos (staleness) ✓; `CARGO_BUILD_WARNINGS=deny cargo check
+  --workspace --all-targets` ✓; `nextest-impacted` BASE=main **18 189/18 189** (112 s de nextest, `loadavg` 22,6);
+  `ph2d-editor-core` inteira **2 146** ✓; `ph2d-panel-registry-init --test it` **133** ✓ (o tecto `tokens` 3 091
+  aguenta); `ph2d-host-desktop --test it` **796** ✓; clippy (flags do `ship.sh`) ✓; machete ✓; censos **114/114**;
+  standalone-optional ✓; workflow-packages ✓. Dois ✗ curados (`b31d1f940`): o fmt da fusão à mão e o `nin` do
+  roteiro do oráculo do QuickShape (latente no `main`, UIUX F7) na lista do `typos`.
+- **O primário tinha `project-memory/MEMORY.md` por commitar (de outra sessão)** e a linha muda o mesmo ficheiro:
+  o `--ff-only` recusaria. Guardou-se o diff dele (patch + cópia inteira no scratchpad), limpou-se só esse ficheiro,
+  `merge --ff-only`, re-aplicou-se o patch e conferiu-se que o diff que ficou por commitar é o MESMO de antes — nada
+  dele foi commitado, nada se perdeu. Sem `stash` (a pilha é partilhada entre sessões).

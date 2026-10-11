@@ -404,6 +404,9 @@ fn facetas(gpu: &GpuContext) {
     }
 }
 
+/// Um anel: `(nome, pontos, gabarito)`.
+type AnelLido = (&'static str, Vec<[f64; 2]>, Vec<f64>);
+
 /// O corpo com o REBOTE (60 quadros) contra a SÉRIE do gabarito, por variante de [`COM_REBOTE`]:
 /// os anéis e as fotos (as de [`VARIANTES`] sem rebote junto).
 fn rebote(gpu: &GpuContext, c: &CenaDeLuz, r: &Redondo, a: Affine, tx: f64, sem: &[Fluencia]) {
@@ -414,7 +417,7 @@ fn rebote(gpu: &GpuContext, c: &CenaDeLuz, r: &Redondo, a: Affine, tx: f64, sem:
             rebotes: 60,
         },
     );
-    let aneis: Vec<(&str, Vec<[f64; 2]>, Vec<f64>)> = ANEIS
+    let aneis: Vec<AnelLido> = ANEIS
         .iter()
         .map(|(nome, f, fora)| {
             let pts: Vec<[f64; 2]> = (0..AMOSTRAS)
@@ -632,8 +635,8 @@ fn custo(gpu: &GpuContext) {
         .collect();
     let mut solvers: Vec<(usize, usize, Solver)> = Vec::new();
     for ci in 0..cenas.len() {
-        for vi in 0..VARIANTES.len() {
-            solvers.push((ci, vi, solver(gpu, a, config(gpu, a, VARIANTES[vi]))));
+        for (vi, v) in VARIANTES.iter().enumerate() {
+            solvers.push((ci, vi, solver(gpu, a, config(gpu, a, *v))));
         }
     }
     let mut minimo = vec![f64::INFINITY; solvers.len()];

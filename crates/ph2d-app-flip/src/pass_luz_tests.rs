@@ -127,7 +127,9 @@ fn alfa_desenhado(gpu: &GpuContext, o: &mut OclusaoDoFlip<'_>, quem: &[u64]) -> 
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
     let alfa = buf.slice(..).get_mapped_range()[..]
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| f64::from(p[3]) / 255.0)
         .collect();
     (desenhou, alfa)

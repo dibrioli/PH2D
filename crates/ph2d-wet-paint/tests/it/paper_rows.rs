@@ -28,30 +28,50 @@ fn the_paper_bake_by_rows_is_the_serial_bake() {
         serie.iter().any(|&v| v != serie[0]),
         "a fixtura tem de ter um papel com relevo"
     );
-    assert!(
-        serie
-            .iter()
-            .zip(&paralelo)
-            .all(|(a, b)| a.to_bits() == b.to_bits()),
-        "o bake por linhas mudou o papel"
-    );
-    // E o ORÁCULO independente: o laço de ANTES, congelado aqui. As duas rotas partilham o corpo por
-    // linha, logo compará-las uma com a outra não apanha um corpo errado. ⚠️ O tile é o da folha `1` e
-    // o motor nasce com o da `0`: uma linha que o bake saltasse ficava com o papel do construtor, e é
-    // isso que a torna visível aqui.
-    let ts = ph2d_wet_paint::paper::TILE_SIZE as i64;
+    // ⚠️ A mensagem diz ONDE: a única falha vista (11/10, `nextest-impacted` a load ~90) não reproduziu
+    // em 2 400 corridas a load ~109 (o0 e o2), e dizia só «mudou» (HANDOFF_CONTINUACAO_…_VELOCIDADE_2).
+    // O ORÁCULO independente: o laço de ANTES, congelado aqui. As duas rotas partilham o corpo por linha,
+    // logo compará-las uma com a outra não apanha um corpo errado. ⚠️ O tile é o da folha `1` e o motor
+    // nasce com o da `0`: uma linha que o bake saltasse ficava com o papel do construtor.
     let s = W + 2;
-    for y in 0..H + 2 {
-        let ty = (y as i64 - 1).rem_euclid(ts) * ts;
-        for x in 0..s {
-            let want = tile[(ty + (x as i64 - 1).rem_euclid(ts)) as usize];
-            assert_eq!(
-                paralelo[y * s + x].to_bits(),
-                want.to_bits(),
-                "o bake por linhas pôs outro texel do tile na célula ({x}, {y})"
-            );
-        }
-    }
+    let ts = ph2d_wet_paint::paper::TILE_SIZE as i64;
+    let oraculo: Vec<f32> = (0..(H + 2) * s)
+        .map(|i| {
+            let (x, y) = ((i % s) as i64, (i / s) as i64);
+            tile[((y - 1).rem_euclid(ts) * ts + (x - 1).rem_euclid(ts)) as usize]
+        })
+        .collect();
+    // Cada rota contra o oráculo, e a mensagem diz ONDE (quantas células, a 1.ª, as linhas): a falha de
+    // 11/10 dizia só «mudou» e era o perfil `ci-test`, não carga (HANDOFF_CONTINUACAO_…_VELOCIDADE_2 §2).
+    let confere = |rota: &str, v: &[f32]| {
+        let difere: Vec<usize> = (0..oraculo.len().max(v.len()))
+            .filter(|&i| oraculo.get(i).map(|o| o.to_bits()) != v.get(i).map(|o| o.to_bits()))
+            .collect();
+        let mut ys: Vec<usize> = difere.iter().map(|&i| i / s).collect();
+        ys.dedup();
+        let n_linhas = ys.len();
+        ys.truncate(16);
+        // Uma célula que o bake não escreveu fica com o papel do CONSTRUTOR (a folha `0`).
+        let nascido = Engine::new(W, H).active_grid().paper.clone();
+        let por_escrever = difere
+            .iter()
+            .filter(|&&i| v.get(i).map(|o| o.to_bits()) == nascido.get(i).map(|o| o.to_bits()))
+            .count();
+        assert!(
+            difere.is_empty(),
+            "o bake {rota} pôs outro texel do tile: {} células de {} (comprimento {}; {por_escrever} com o \
+             papel do construtor; em {n_linhas} linhas); a 1.ª em (x, y) = {:?}: {:?} contra o tile {:?}; \
+             linhas {ys:?}",
+            difere.len(),
+            oraculo.len(),
+            v.len(),
+            difere.first().map(|&i| (i % s, i / s)),
+            difere.first().and_then(|&i| v.get(i)),
+            difere.first().and_then(|&i| oraculo.get(i)),
+        );
+    };
+    confere("em série", &serie);
+    confere("por linhas", &paralelo);
 }
 
 /// **A semente fica na faixa do dente** — uma lei do hospedeiro que sai de `0..1` é cortada, como o

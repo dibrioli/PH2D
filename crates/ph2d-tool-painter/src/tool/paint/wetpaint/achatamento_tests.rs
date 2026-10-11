@@ -164,11 +164,19 @@ fn o_escorrimento_do_s_nao_se_corta_em_rectangulos() {
         ..Variante::default()
     };
     let mut falhas = Vec::new();
-    for (nome, tilt) in [("meia", (3, 4)), ("máxima", (3, 8))] {
-        let produto = le(&cena(&cold, Some(tilt), 30, &mut |_, _| {}).0);
-        let controlo = le(&cena(&lei, Some(tilt), 30, &mut |_, _| {}).0);
-        // E sem papel (o grão sem desenho, dono 10/10): a mesma régua.
-        let sem = le(&cena(&Variante::default(), Some(tilt), 30, &mut |_, _| {}).0);
+    // E sem papel (o grão sem desenho, dono 10/10): a mesma régua.
+    let sem_papel = Variante::default();
+    let inclinacoes = [("meia", (3, 4)), ("máxima", (3, 8))];
+    // As seis cenas são independentes: uma por thread (140 s em série sob a suíte, 11/10).
+    let lidas = std::thread::scope(|s| {
+        inclinacoes
+            .map(|(_, tilt)| {
+                [&cold, &lei, &sem_papel]
+                    .map(|v| s.spawn(move || le(&cena(v, Some(tilt), 30, &mut |_, _| {}).0)))
+            })
+            .map(|h| h.map(|h| h.join().expect("a cena entrou em pânico")))
+    });
+    for ((nome, _), [produto, controlo, sem]) in inclinacoes.into_iter().zip(lidas) {
         eprintln!(
             "[recto] {nome}: Cold {produto:?} · com a lei da gota {controlo:?} · sem papel {sem:?}"
         );

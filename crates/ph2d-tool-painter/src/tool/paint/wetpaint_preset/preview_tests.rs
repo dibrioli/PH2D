@@ -6,7 +6,7 @@ use ph2d_painter_brush::{TextureKind, TextureMapping};
 use ph2d_wet_paint::tuning::Knob;
 
 /// Um parâmetro mexido: o nome, como se mexe, e se o traço final tem de mudar com ele.
-type Caso<'a> = (&'a str, &'a dyn Fn(&mut PainterTool), bool);
+type Caso<'a> = (&'a str, &'a (dyn Fn(&mut PainterTool) + Sync), bool);
 
 fn molhado() -> PainterTool {
     let mut t = PainterTool::default();
@@ -57,18 +57,31 @@ fn o_preview_anima_o_traco_e_a_agua() {
     );
 }
 
+/// O último quadro do preview de dois [`molhado`] mexidos por `mexes`, um por thread (cada preview custa
+/// ~10 s em `dev` sob a suíte, 11/10).
+fn ultimos(mexes: [&(dyn Fn(&mut PainterTool) + Sync); 2]) -> [Vec<u8>; 2] {
+    std::thread::scope(|s| {
+        mexes
+            .map(|mexe| {
+                s.spawn(move || {
+                    let mut t = molhado();
+                    mexe(&mut t);
+                    quadros(&t).pop().unwrap()
+                })
+            })
+            .map(|h| h.join().expect("o preview entrou em pânico"))
+    })
+}
+
 #[test]
 fn o_preview_mostra_o_papel_de_cor() {
     let creme = [236, 226, 200];
-    let mut t = molhado();
-    t.papel = Some(creme);
-    let ultimo = quadros(&t).pop().unwrap();
+    let [ultimo, branco] = ultimos([&|t| t.papel = Some(creme), &|_| {}]);
     assert_eq!(
         ultimo[..3],
         creme,
         "longe do traço vê-se o papel do documento"
     );
-    let branco = quadros(&molhado()).pop().unwrap();
     assert_eq!(branco[..3], [255, 255, 255]);
 }
 
@@ -80,10 +93,7 @@ fn o_preview_mostra_o_dente_do_papel() {
         t.sync_paper_across_slots();
         t.paint.wetpaint.paper_visual = true;
     };
-    let mut t = molhado();
-    com_papel(&mut t);
-    let liso = quadros(&molhado()).pop().unwrap();
-    let dente = quadros(&t).pop().unwrap();
+    let [liso, dente] = ultimos([&|_| {}, &com_papel]);
     assert_ne!(liso, dente, "o dente do papel muda a tinta do preview");
 }
 
@@ -132,22 +142,33 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
         // A Opacity do Wet Paint (smoke do dono 10/10: «o preview ficou mais claro, os traços não»).
         ("opacity", &|t| t.paint.wetpaint.opacidade = 0.4, true),
     ];
-    for (nome, mexe, pinta_diferente) in casos {
-        let mut t = molhado();
-        mexe(&mut t);
-        assert_ne!(
-            t.wet_preview_chave(),
-            base.wet_preview_chave(),
-            "{nome}: a chave não viu"
-        );
-        if pinta_diferente {
-            assert_ne!(
-                quadros(&t).pop().unwrap(),
-                ultimo_base,
-                "{nome}: o preview não mudou"
-            );
+    // Os casos são independentes: um por thread (113 s em série sob a suíte, 11/10).
+    let chave_base = base.wet_preview_chave();
+    let ultimo_base = &ultimo_base;
+    std::thread::scope(|s| {
+        let h: Vec<_> = casos
+            .into_iter()
+            .map(|(nome, mexe, pinta_diferente)| {
+                s.spawn(move || {
+                    let mut t = molhado();
+                    mexe(&mut t);
+                    assert_ne!(t.wet_preview_chave(), chave_base, "{nome}: a chave não viu");
+                    if pinta_diferente {
+                        assert_ne!(
+                            &quadros(&t).pop().unwrap(),
+                            ultimo_base,
+                            "{nome}: o preview não mudou"
+                        );
+                    }
+                })
+            })
+            .collect();
+        for h in h {
+            if let Err(p) = h.join() {
+                std::panic::resume_unwind(p);
+            }
         }
-    }
+    });
 }
 
 #[test]
@@ -162,10 +183,9 @@ fn quando_a_cena_muda_o_pintor_desiste() {
 
 #[test]
 fn o_preview_pinta_o_pincel_mesmo_com_o_smear_ativo() {
-    let mut t = molhado();
-    let ultimo_pincel = quadros(&t).pop().unwrap();
-    t.paint.wetpaint.tool = WetTool::Smear;
-    assert_eq!(quadros(&t).pop().unwrap(), ultimo_pincel);
+    let [ultimo_pincel, com_smear] =
+        ultimos([&|_| {}, &|t| t.paint.wetpaint.tool = WetTool::Smear]);
+    assert_eq!(com_smear, ultimo_pincel);
 }
 
 /// **Sonda (ignorada): grava o preview sobre quatro obras** em `PH2D_SONDA_OUT` (PPM, lado a lado):

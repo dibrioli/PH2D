@@ -258,3 +258,13 @@
   gerador com fila paralela (545 → 577 s) e as mídias com o botão Dry (muda a régua). O que ficou > 10 s e as
   ideias medidas: [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_VELOCIDADE.md) §4.
 
+
+- ✅ **A 2.ª onda da VELOCIDADE (11/10, prompt [20](20_PROMPT_janela_velocidade_2.md)).** ⚠️ O `paper_rows` não é carga: reprova
+  100/100 no perfil `ci-test` (a rota paralela põe o texel errado em 7 403 células) e só com a crate ≥ o2 +
+  `lto = "off"` + `overflow-checks` — código mau do compilador, exposto pela o2 do prompt 19; ABERTO, 1.º da próxima
+  janela (o produto e o smoke não caem). R9: nove testes de cenas independentes em série passam a uma
+  cena por thread, as mesmas contas (S 19,8 → 7,6 s; chave do preview 28,6 → 7,7; sem células 19,9 → 7,7; …). Ficam
+  acima de 10 s, já paralelos: camadas 44,7 · largura 24,7 · mídias 14,8 s; e as poças da Aquarela 32,9 s (a mesma
+  cura dá 7,3 s, mas o ficheiro é de outro meio e a cerca recusa — decisão do dono). ⛔ Medidos: o «ponto fixo» das mídias
+  (os quadros depois de secar já custam 0 ms) e menos quadros na largura (a do Wet Round anda até ao q480).
+  [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_VELOCIDADE_2.md).

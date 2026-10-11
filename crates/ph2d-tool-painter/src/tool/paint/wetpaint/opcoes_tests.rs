@@ -37,19 +37,29 @@ const ESPERADO: [(&str, Option<u8>, u64); 6] = [
 #[test]
 fn com_as_opcoes_desligadas_o_s_e_a_bancada_sao_os_de_hoje_ao_byte() {
     let mut mudou = Vec::new();
-    for (nome, anel, esperado) in ESPERADO {
-        let px = if nome == "S" {
-            cena(
-                &Variante::default(),
-                anel.map(|a| (3, a)),
-                30,
-                &mut |_, _| {},
-            )
-            .0
-        } else {
-            bancada(0.005, 0.0, &[], anel, AGUAS)
-        };
-        let h = fnv1a(&px);
+    // As seis cenas são independentes: uma por thread (91 s em série sob a suíte, 11/10).
+    let hashes: Vec<u64> = std::thread::scope(|s| {
+        let h: Vec<_> = ESPERADO
+            .iter()
+            .map(|&(nome, anel, _)| {
+                s.spawn(move || {
+                    fnv1a(&if nome == "S" {
+                        cena(
+                            &Variante::default(),
+                            anel.map(|a| (3, a)),
+                            30,
+                            &mut |_, _| {},
+                        )
+                        .0
+                    } else {
+                        bancada(0.005, 0.0, &[], anel, AGUAS)
+                    })
+                })
+            })
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    for ((nome, anel, esperado), h) in ESPERADO.into_iter().zip(hashes) {
         eprintln!("[opções] {nome} anel {anel:?}: {h:#018x}");
         if h != esperado {
             mudou.push(format!(
@@ -80,10 +90,46 @@ fn a_heavy_edge_a_meio_pesa_na_orla_de_baixo_como_no_rebelle() {
         });
         (super::gota_tests::le(&px, 0).0, px)
     };
-    let (hoje, _) = orla(0.0, Some(4), true);
-    let (com, _) = orla(0.5, Some(4), true);
-    let (nada, _) = orla(0.0, Some(4), false);
-    let (nada_com, _) = orla(0.5, Some(4), false);
+    let s_com_heavy = |anel: u8| {
+        let v = Variante {
+            heavy_edge: Some(0.5),
+            ..Variante::default()
+        };
+        super::achatamento_tests::le(&cena(&v, Some((3, anel)), 30, &mut |_, _| {}).0)
+    };
+    // As oito cenas são independentes: uma por thread (93 s em série sob a suíte, 11/10).
+    let (orlas, s_lidos) = std::thread::scope(|s| {
+        let o = [
+            (0.0, Some(4), true),
+            (0.5, Some(4), true),
+            (0.0, Some(4), false),
+            (0.5, Some(4), false),
+            (1.0, None, false),
+            (0.0, None, false),
+        ]
+        .map(|(v, anel, cold)| {
+            let orla = &orla;
+            s.spawn(move || orla(v, anel, cold))
+        });
+        let l = [4u8, 8].map(|anel| {
+            let s_com_heavy = &s_com_heavy;
+            s.spawn(move || s_com_heavy(anel))
+        });
+        let junta =
+            |h: std::thread::ScopedJoinHandle<'_, _>| h.join().expect("a cena entrou em pânico");
+        (
+            o.map(junta),
+            l.map(|h| h.join().expect("a cena entrou em pânico")),
+        )
+    });
+    let [
+        (hoje, _),
+        (com, _),
+        (nada, _),
+        (nada_com, _),
+        (_, direita),
+        (_, direita_sem),
+    ] = orlas;
     eprintln!(
         "[heavy edge] meia, água 1: Cold {hoje:.2} → {com:.2} · sem papel {nada:.2} → {nada_com:.2} (Rebelle 1,6)"
     );
@@ -99,18 +145,11 @@ fn a_heavy_edge_a_meio_pesa_na_orla_de_baixo_como_no_rebelle() {
         nada_com > nada + 0.2,
         "sem papel a Heavy Edge não pesa a orla ({nada:.2} → {nada_com:.2})"
     );
-    let (_, direita) = orla(1.0, None, false);
-    let (_, direita_sem) = orla(0.0, None, false);
     assert!(
         direita == direita_sem,
         "a Heavy Edge mudou a tela DIREITA (sem inclinação não há para onde descer)"
     );
-    for anel in [4u8, 8] {
-        let v = Variante {
-            heavy_edge: Some(0.5),
-            ..Variante::default()
-        };
-        let l = super::achatamento_tests::le(&cena(&v, Some((3, anel)), 30, &mut |_, _| {}).0);
+    for (anel, l) in [4u8, 8].into_iter().zip(s_lidos) {
         eprintln!("[heavy edge] S anel {anel}: recto {l:?}");
         if let Err(e) = super::achatamento_tests::barra(l) {
             panic!("a Heavy Edge corta o S em rectângulos no anel {anel}: {e}");
@@ -367,11 +406,13 @@ fn a_borda_de_um_traco_sobre_tinta_tambem_amacia() {
     // As bordas do azul (x ≈ 185 e 215) dentro do vermelho (y 105–135); o miolo do vermelho a 80 px delas.
     let borda = (176, 105, 224, 135);
     let miolo = (90, 108, 130, 132);
-    for assentar in [false, true] {
-        let (antes, depois) = (
-            azul_sobre_vermelho(0.0, assentar),
-            azul_sobre_vermelho(1.0, assentar),
-        );
+    // As quatro cenas são independentes: uma por thread (38 s em série sob a suíte, 11/10).
+    let cenas = std::thread::scope(|s| {
+        [false, true]
+            .map(|assentar| [0.0, 1.0].map(|f| s.spawn(move || azul_sobre_vermelho(f, assentar))))
+            .map(|h| h.map(|h| h.join().expect("a cena entrou em pânico")))
+    });
+    for (assentar, [antes, depois]) in [false, true].into_iter().zip(cenas) {
         let (b0, b1) = (aspereza_em(&antes, borda), aspereza_em(&depois, borda));
         let (m0, m1) = (aspereza_em(&antes, miolo), aspereza_em(&depois, miolo));
         eprintln!(

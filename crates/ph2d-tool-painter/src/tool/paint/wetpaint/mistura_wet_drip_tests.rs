@@ -490,8 +490,27 @@ fn uma_mistura_nunca_e_mais_clara_que_as_tintas() {
 fn sem_celulas_soltas() {
     let b = biblioteca();
     let mut falhas = Vec::new();
-    for seco in [false, true] {
-        let (n, n32) = soltas(&cena_partilhada(&b, Var { seco, ..Var::DUAS }));
+    let ctl = Var {
+        lei_de_antes: true,
+        ..Var::DUAS
+    };
+    // As três cenas são independentes: uma por thread (67 s sob a suíte, 11/10).
+    let [molhado, seco_, controlo] = std::thread::scope(|s| {
+        [
+            Var::DUAS,
+            Var {
+                seco: true,
+                ..Var::DUAS
+            },
+            ctl,
+        ]
+        .map(|v| {
+            let b = &b;
+            s.spawn(move || soltas(&cena_partilhada(b, v)))
+        })
+        .map(|h| h.join().expect("a cena entrou em pânico"))
+    });
+    for (seco, (n, n32)) in [(false, molhado), (true, seco_)] {
         println!("seco {seco}: pontilhado {n} · N32 {n32:.3} %");
         if n > TECTO_PONTILHADO || n32 > REBELLE_N32 {
             falhas.push(format!(
@@ -499,11 +518,7 @@ fn sem_celulas_soltas() {
             ));
         }
     }
-    let ctl = Var {
-        lei_de_antes: true,
-        ..Var::DUAS
-    };
-    let (n, n32) = soltas(&cena_partilhada(&b, ctl));
+    let (n, n32) = controlo;
     println!("CONTROLO (a lei de antes): pontilhado {n} · N32 {n32:.3} %");
     assert!(
         n > TECTO_PONTILHADO,

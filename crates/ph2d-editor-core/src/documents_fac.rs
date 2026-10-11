@@ -51,6 +51,9 @@ pub(crate) struct Fac {
     /// cabem na página (a pintura di-lo).
     pub(crate) history_from: BTreeMap<BoardId, usize>,
     pub(crate) history_page: usize,
+    /// W13 — as sessões que a última pintura pôs nas filas da lista, pela ordem (o clique na fila `k`
+    /// abre ESTA, mesmo que a rede mude a lista entretanto).
+    pub(crate) history_rows: Vec<PollId>,
     /// W13 — a sessão que se renomeia (o campo ocupa o título dela).
     pub(crate) renaming_poll: Option<(BoardId, PollId)>,
     /// W13 — o lixo armado: o 2.º clique NESTE apaga, qualquer outro clique desarma.

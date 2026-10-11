@@ -85,8 +85,17 @@ fn measure_export_cost() {
         let mut t: Vec<Vec<f64>> = vec![Vec::new(); names.len()];
         let mut bytes = vec![0usize; names.len()];
         for _ in 0..ROUNDS {
-            let (ms, (mut scene, size)) =
-                time(|| paint_page(&board, &page, 1.0, Some(EXPORT_PAPER), true, &std::collections::BTreeSet::new(), &mut ts));
+            let (ms, (mut scene, size)) = time(|| {
+                paint_page(
+                    &board,
+                    &page,
+                    1.0,
+                    Some(EXPORT_PAPER),
+                    true,
+                    &std::collections::BTreeSet::new(),
+                    &mut ts,
+                )
+            });
             t[0].push(ms);
             let ops = scene.take_record();
             bytes[0] = ops.len();

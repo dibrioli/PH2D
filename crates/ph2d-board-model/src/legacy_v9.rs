@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 use serde::Deserialize;
 
 use crate::{
-    Board, BoardId, BoardSet, Camera, ElementId, Message, MessageId, Pin, Team, Thread,
-    ThreadId, Version, VersionId,
+    Board, BoardId, BoardSet, Camera, ElementId, Message, MessageId, Pin, Team, Thread, ThreadId,
+    Version, VersionId,
 };
 
 #[derive(Deserialize)]

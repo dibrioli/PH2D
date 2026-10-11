@@ -243,8 +243,8 @@ fn the_private_scene_hides_until_the_reveal_and_votes_without_peeking() {
         to_ana.send("votei").unwrap();
         // 6 — o fim: os totais no meu quadro, e o painel no resultado.
         assert!(
-            until(&mut g, 10, |g| room(g).is_some_and(|b| shown(b, ideas[0])
-                == 3)),
+            until(&mut g, 10, |g| room(g)
+                .is_some_and(|b| shown(b, ideas[0]) == 3)),
             "os totais não chegaram"
         );
         assert!(!facilitate::vote_in_session(&g));
@@ -375,10 +375,7 @@ fn the_private_scene_hides_until_the_reveal_and_votes_without_peeking() {
     );
     // 6 — «End for all».
     click(&mut ana, FacButton::VoteEnd);
-    assert_eq!(
-        shown(room(&mut ana).unwrap(), ideas[0]),
-        3
-    );
+    assert_eq!(shown(room(&mut ana).unwrap(), ideas[0]), 3);
     next(&mut ana, "vi o fim");
     ana.documents.ask_live(LiveRequest::Leave);
     frame(&mut ana);

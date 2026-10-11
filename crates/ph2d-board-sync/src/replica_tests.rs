@@ -485,7 +485,8 @@ fn team_edit(p: &mut Peer, rng: &mut Rng) {
             }
         }
         (8, _) => {
-            let votes = BTreeMap::from([(ElementId(rng.below(3) as u64 + 1), 1 + rng.below(4) as u32)]);
+            let votes =
+                BTreeMap::from([(ElementId(rng.below(3) as u64 + 1), 1 + rng.below(4) as u32)]);
             p.b.team.add_poll(votes, me, 1, at);
         }
         (9, _) => {
@@ -608,6 +609,22 @@ fn sessions_keep_the_order_of_their_number_whatever_the_clock_says() {
     }
 }
 
+/// ⭐ W13 (auditoria): dois pares acabam uma votação AO MESMO TEMPO — os dois deram «Voting 2»; a
+/// fusão dá à 2.ª o número seguinte, igual nos dois (sem escrita a mais).
+#[test]
+fn two_votes_ended_at_once_never_share_a_number() {
+    let (mut a, mut b, x) = two();
+    a.b.team.add_poll(BTreeMap::from([(x, 1)]), "ana", 1, 5);
+    concurrently(&mut a, &mut b);
+    a.b.team.add_poll(BTreeMap::from([(x, 2)]), "ana", 1, 9);
+    b.b.team.add_poll(BTreeMap::from([(x, 3)]), "bia", 1, 9);
+    concurrently(&mut a, &mut b);
+    let nums = |p: &Peer| p.b.team.polls.iter().map(|q| q.number).collect::<Vec<_>>();
+    assert_eq!(nums(&a), [1, 2, 3]);
+    assert_eq!(nums(&a), nums(&b));
+    same(&a, &b, "depois de renumerar");
+}
+
 /// W13: mostrar uma sessão ao mesmo tempo que outro a apaga não a ressuscita como mostrada.
 #[test]
 fn showing_a_session_another_deletes_shows_nothing() {
@@ -619,7 +636,10 @@ fn showing_a_session_another_deletes_shows_nothing() {
     b.b.team.remove_poll(one);
     concurrently(&mut a, &mut b);
     assert_eq!((a.b.team.shown, b.b.team.shown), (None, None));
-    assert_eq!(a.b.team.polls.iter().map(|p| p.id).collect::<Vec<_>>(), [two]);
+    assert_eq!(
+        a.b.team.polls.iter().map(|p| p.id).collect::<Vec<_>>(),
+        [two]
+    );
     same(&a, &b, "depois de apagar a mostrada");
 }
 

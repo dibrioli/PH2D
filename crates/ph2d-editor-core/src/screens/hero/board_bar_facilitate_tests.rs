@@ -56,7 +56,7 @@ impl T {
         self.hero.documents.live.fac.timers.get_mut(&id).unwrap()
     }
 
-    fn elem(&self, id: ElementId) -> ph2d_board_model::Element {
+    pub(super) fn elem(&self, id: ElementId) -> ph2d_board_model::Element {
         self.hero
             .documents
             .active_board()
@@ -68,7 +68,7 @@ impl T {
     }
 
     /// Um clique no quadro no ponto `w` do mundo, pela porta da shell.
-    fn click_world(&mut self, w: [f64; 2]) {
+    pub(super) fn click_world(&mut self, w: [f64; 2]) {
         let b = self.hero.documents.active_board().unwrap();
         let a = board_view::area_of(self.hero.last_canvas);
         let p = b.camera.to_screen(a, w);
@@ -225,7 +225,10 @@ fn a_vote_runs_from_the_panel_to_the_result() {
         !t.hero.documents.live.render_cache.hide_votes,
         "acabada, o resultado volta a ver-se"
     );
-    assert!(t.find(fac_node(FacButton::VoteNew)).is_some(), "o resultado");
+    assert!(
+        t.find(fac_node(FacButton::VoteNew)).is_some(),
+        "o resultado"
+    );
     assert_eq!(
         t.hero.documents.active_board().unwrap().doc,
         doc,

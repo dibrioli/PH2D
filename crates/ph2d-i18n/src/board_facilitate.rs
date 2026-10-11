@@ -67,7 +67,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.tab_new_tip" => "Set up a new vote",
         "board.vote.tab_results_tip" => "Every vote on this board, newest first",
         "board.vote.show_on_board" => "Show on the board",
-        "board.vote.show_on_board_tip" => "Show results on the board — the open vote's totals on the notes, for everyone",
+        "board.vote.show_on_board_tip" => {
+            "Show results on the board — the open vote's totals on the notes, for everyone"
+        }
         "board.vote.session_default" => "Voting {n}",
         "board.vote.no_sessions" => "No votes yet",
         "board.vote.no_votes" => "Nobody voted",
@@ -98,7 +100,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "2. Click Voting 1: its totals go on the notes. A note deleted after that vote says (deleted)."
         }
         "board.smoke.history.l3" => {
-            "3. Double-click the title Voting 1, type a new name, press Enter. The list shows it."
+            "3. Double-click the title Voting 1, type a new name, press Enter: the title changes, and so does the list (the < arrow)."
         }
         "board.smoke.history.l4" => {
             "4. Show on the board: click the round switch to hide the badges, again to bring them back."

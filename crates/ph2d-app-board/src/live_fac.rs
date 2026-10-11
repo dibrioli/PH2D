@@ -276,12 +276,18 @@ mod tests {
             let fac = room(on);
             let mut peers = [peer(1, "Ana", true), peer(2, "Bia", false)];
             hide_names(&fac, &mut peers);
-            assert_eq!((peers[0].name.as_str(), peers[1].name.as_str()), ("Ana", other));
+            assert_eq!(
+                (peers[0].name.as_str(), peers[1].name.as_str()),
+                ("Ana", other)
+            );
             let v = fac_view(&fac, 1, 1, BTreeSet::new(), &peers);
             let vote = v.vote.unwrap();
             assert_eq!(vote.by, other, "quem iniciou");
-            assert_eq!(vote.used, vec![(other.to_owned(), 2, false)], "os votos usados");
+            assert_eq!(
+                vote.used,
+                vec![(other.to_owned(), 2, false)],
+                "os votos usados"
+            );
         }
     }
 }
-

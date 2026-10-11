@@ -70,14 +70,26 @@ pub(crate) fn build(b: &mut Board, now: i64) -> (Lessons, [f64; 4]) {
     let y = h + GAP;
     let lessons: [ElementId; 7] = std::array::from_fn(|i| {
         let key = format!("board.smoke.history.l{}", i + 1);
-        note(b, &key, 1, [i as f64 * (side + GAP), y, side, side], false, None)
+        note(
+            b,
+            &key,
+            1,
+            [i as f64 * (side + GAP), y, side, side],
+            false,
+            None,
+        )
     });
     let title = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, None, INK),
         text: RichText::plain(&tr("board.smoke.history.title")),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, ideas_w, 40.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        title,
+        [0.0, -80.0, ideas_w, 40.0],
+    );
     put(b, el);
     let lessons_w = 7.0 * side + 6.0 * GAP;
     let view = [

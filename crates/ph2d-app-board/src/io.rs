@@ -108,7 +108,9 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                 Ok((name, imp)) => {
                     let n = imp.doc.live_len();
                     let skipped = skipped_list(&imp.skipped);
-                    let id = hero.documents.import_board(name.clone(), imp.doc, imp.votes);
+                    let id = hero
+                        .documents
+                        .import_board(name.clone(), imp.doc, imp.votes);
                     document_tabs::register_board(&mut hero.store, id);
                     let mut t = tr_with(
                         "board.io.imported",

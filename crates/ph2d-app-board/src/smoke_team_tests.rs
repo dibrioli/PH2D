@@ -344,7 +344,16 @@ fn every_team_lesson_does_what_it_says() {
     assert_eq!(choice.format, Format::Pdf);
     let path = std::env::temp_dir().join(format!("ph2d_w8_scene10_{}.pdf", std::process::id()));
     let b = s.board().clone();
-    let files = crate::io::write_export(&b, choice, &selection, None, &mut s.ts, &std::collections::BTreeSet::new(), &path).unwrap();
+    let files = crate::io::write_export(
+        &b,
+        choice,
+        &selection,
+        None,
+        &mut s.ts,
+        &std::collections::BTreeSet::new(),
+        &path,
+    )
+    .unwrap();
     let pdf = std::fs::read(&files[0]).unwrap();
     let text = String::from_utf8_lossy(&pdf);
     assert_eq!(

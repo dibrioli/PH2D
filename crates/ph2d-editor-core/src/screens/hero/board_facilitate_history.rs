@@ -43,6 +43,17 @@ pub(crate) fn title(p: &Poll) -> String {
     }
 }
 
+/// Quem acabou uma votação de UM ecrã, para o histórico: o nome de quem escreve; vazio com «Make
+/// names anonymous» ligado na sala (a sessão diria o nome para sempre — auditoria W13).
+pub(super) fn poll_by(hero: &HeroScreen) -> String {
+    let fac = &hero.documents.live_view().fac;
+    if fac.private.as_ref().is_some_and(|p| p.anonymous) {
+        String::new()
+    } else {
+        hero.documents.live.team.author.clone()
+    }
+}
+
 /// V4 — acaba a votação de UM ecrã: a sessão vai para o histórico, passa a ser a mostrada, e o painel
 /// abre-a. `false` = não havia votação.
 pub(super) fn end_here(board: &mut Board, ed: &mut Editor, f: &mut Fac, by: &str) -> bool {
@@ -64,18 +75,6 @@ pub(super) fn after_room_end(board: &Board, f: &mut Fac) {
         None => VotePanel::History,
     };
     f.panels.insert(board.id, panel);
-}
-
-/// As sessões da página da lista de `board`, da mais nova à mais velha: `(fila, sessão)`.
-pub(super) fn page(f: &Fac, board: &Board) -> Vec<PollId> {
-    let from = f.history_from.get(&board.id).copied().unwrap_or(0);
-    board
-        .team
-        .polls_newest_first()
-        .skip(from)
-        .take(f.history_page.max(1))
-        .map(|p| p.id)
-        .collect()
 }
 
 /// O campo do nome: Enter (ou sair dele) grava, Esc larga.
@@ -106,7 +105,14 @@ pub(super) fn row_click(hero: &mut HeroScreen, k: usize) {
         return;
     };
     let f = &mut live.fac;
-    let Some(poll) = page(f, board).get(k).copied() else {
+    // A fila é a sessão que a PINTURA mostrou nela: uma sessão que chegou da rede entre a pintura e o
+    // clique desloca os índices, nunca o id (auditoria W13).
+    let Some(poll) = f
+        .history_rows
+        .get(k)
+        .copied()
+        .filter(|p| board.team.poll(*p).is_some())
+    else {
         return;
     };
     f.panels
@@ -135,7 +141,9 @@ pub(super) fn click(
     };
     match b {
         FacButton::VoteTabNew => {
-            f.panels.insert(id, VotePanel::Setup(VoteSetup::default()));
+            if !matches!(f.panels.get(&id), Some(VotePanel::Setup(_))) {
+                f.panels.insert(id, VotePanel::Setup(VoteSetup::default()));
+            }
         }
         FacButton::VoteTabResults | FacButton::PollBack => {
             f.panels.insert(id, VotePanel::History);

@@ -263,7 +263,10 @@ fn ending_returns_the_totals_of_every_turn_and_leaves_the_document() {
     w.ed.next_voter();
     w.click(p, NONE);
     let (totals, voters) = w.ed.end_vote().expect("havia sessão");
-    assert_eq!((totals.into_iter().collect::<Vec<_>>(), voters), (vec![(a, 3)], 2));
+    assert_eq!(
+        (totals.into_iter().collect::<Vec<_>>(), voters),
+        (vec![(a, 3)], 2)
+    );
     assert!(w.ed.vote().is_none() && w.ed.end_vote().is_none());
     assert_eq!(w.doc, before, "o documento não muda");
 }
@@ -281,7 +284,11 @@ fn the_badges_and_the_rows_read_the_shown_session() {
     totals.extend([(ids[0], 2), (ids[1], 5), (ids[2], 2), (ids[3], 9)]);
     let id = team.add_poll(totals.clone(), "", 1, 0);
     w.h.apply(&mut w.doc, vec![BoardOp::Delete(ids[3])]);
-    assert_eq!(vote_range(&w.doc, &totals), Some([2, 5]), "o apagado não tem selo");
+    assert_eq!(
+        vote_range(&w.doc, &totals),
+        Some([2, 5]),
+        "o apagado não tem selo"
+    );
     assert_eq!(vote_range(&w.doc, &Default::default()), None);
     assert_eq!(
         vote_results(&w.doc, team.poll(id).unwrap()),

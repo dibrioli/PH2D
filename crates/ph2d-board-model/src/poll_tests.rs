@@ -21,7 +21,10 @@ fn three_votes_in_a_row_are_three_sessions_and_the_newest_is_shown() {
     assert_eq!(t.shown, Some(c));
     let pa = t.poll(a).unwrap();
     assert_eq!(pa.totals, totals(&[(1, 2), (2, 1)]), "o zero não entra");
-    assert_eq!((pa.total(), pa.voters, pa.by.as_str(), pa.at), (3, 2, "Ana", 100));
+    assert_eq!(
+        (pa.total(), pa.voters, pa.by.as_str(), pa.at),
+        (3, 2, "Ana", 100)
+    );
     assert_eq!(pa.name, "", "sem nome: o ecrã pinta «Voting N»");
 }
 
@@ -53,7 +56,10 @@ fn rename_trims_delete_turns_the_badge_off_and_numbers_follow_the_living() {
     t.show_poll(Some(a));
     assert_eq!(t.shown_poll().map(|p| p.id), Some(a));
     t.show_poll(Some(b));
-    assert_eq!(t.shown, None, "mostrar uma que não existe é não mostrar nenhuma");
+    assert_eq!(
+        t.shown, None,
+        "mostrar uma que não existe é não mostrar nenhuma"
+    );
 }
 
 /// ⭐ ADR-0183 §8: a cópia do quadro nasce sem histórico (Miro), a gravação leva-o, e a versão nunca.
@@ -71,7 +77,11 @@ fn the_history_survives_the_file_but_not_a_duplicate_nor_a_version() {
     let d = set.duplicate(a, "Copy".into()).unwrap();
     let copy = &set.get(d).unwrap().team;
     assert!(copy.polls.is_empty() && copy.shown.is_none());
-    assert_eq!(set.get(a).unwrap().team.polls.len(), 1, "o original fica com o seu");
+    assert_eq!(
+        set.get(a).unwrap().team.polls.len(),
+        1,
+        "o original fica com o seu"
+    );
 }
 
 /// Os ids das sessões saem do contador da equipa, partilhado com fios e versões.
@@ -109,7 +119,9 @@ fn a_format_10_file_opens_and_its_votes_become_one_shown_session() {
             && a.team.versions.iter().all(|v| v.id.0 != p.id.0),
         "o id da sessão não colide com os do ficheiro"
     );
-    let saved = a.team.versions[0].read().expect("a versão do formato 10 abre");
+    let saved = a.team.versions[0]
+        .read()
+        .expect("a versão do formato 10 abre");
     assert_eq!(saved.doc.live_len(), 3);
     assert!(
         o.team.polls.is_empty() && o.team.shown.is_none(),
@@ -117,7 +129,11 @@ fn a_format_10_file_opens_and_its_votes_become_one_shown_session() {
     );
     let bytes = set.to_bytes().unwrap();
     assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 11);
-    assert_eq!(BoardSet::from_bytes(&bytes).unwrap(), set, "regravado no 11, igual");
+    assert_eq!(
+        BoardSet::from_bytes(&bytes).unwrap(),
+        set,
+        "regravado no 11, igual"
+    );
 }
 
 /// Gravados pelo build do formato 10 (`02f3fc596`).

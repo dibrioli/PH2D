@@ -95,8 +95,30 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
     let paper = Some(EXPORT_PAPER);
 
     // 1. A placa: inteira e em ladrilhos de 300 px (com fronteiras a cortar notas e letras).
-    let whole = png::render(&gpu, &mut pass, b, &page, 1.0, paper, 8192, &std::collections::BTreeSet::new(), &mut ts).unwrap();
-    let tiled = png::render(&gpu, &mut pass, b, &page, 1.0, paper, 300, &std::collections::BTreeSet::new(), &mut ts).unwrap();
+    let whole = png::render(
+        &gpu,
+        &mut pass,
+        b,
+        &page,
+        1.0,
+        paper,
+        8192,
+        &std::collections::BTreeSet::new(),
+        &mut ts,
+    )
+    .unwrap();
+    let tiled = png::render(
+        &gpu,
+        &mut pass,
+        b,
+        &page,
+        1.0,
+        paper,
+        300,
+        &std::collections::BTreeSet::new(),
+        &mut ts,
+    )
+    .unwrap();
     let (seam_bad, seam_mean) = diff(&whole.rgba, &tiled.rgba, 2);
     println!(
         "ladrilhos 300 px contra inteira: {:.4} % > 2 · média {seam_mean:.4}",
@@ -106,7 +128,15 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
     std::fs::write(d.join("gpu_tiled.png"), png::encode(&tiled)).unwrap();
 
     // 2. O SVG (vector: o detalhe inteiro) por dois rasterizadores.
-    let (mut s, size) = paint_page(b, &page, 1.0, paper, true, &std::collections::BTreeSet::new(), &mut ts);
+    let (mut s, size) = paint_page(
+        b,
+        &page,
+        1.0,
+        paper,
+        true,
+        &std::collections::BTreeSet::new(),
+        &mut ts,
+    );
     let svg_text = svg::write(&s.take_record(), size);
     let svg_path = d.join("board.svg");
     std::fs::write(&svg_path, &svg_text).unwrap();
@@ -141,7 +171,15 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
     let recs: Vec<_> = pages
         .iter()
         .map(|p| {
-            let (mut sc, sz) = paint_page(b, p, 1.0, paper, true, &std::collections::BTreeSet::new(), &mut ts);
+            let (mut sc, sz) = paint_page(
+                b,
+                p,
+                1.0,
+                paper,
+                true,
+                &std::collections::BTreeSet::new(),
+                &mut ts,
+            );
             (sc.take_record(), sz)
         })
         .collect();
@@ -177,7 +215,18 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
         &["-r", "72", "-png", p, prefix.to_str().unwrap()],
     );
     for (i, pg) in pages.iter().enumerate() {
-        let gpu_page = png::render(&gpu, &mut pass, b, pg, 1.0, paper, 8192, &std::collections::BTreeSet::new(), &mut ts).unwrap();
+        let gpu_page = png::render(
+            &gpu,
+            &mut pass,
+            b,
+            pg,
+            1.0,
+            paper,
+            8192,
+            &std::collections::BTreeSet::new(),
+            &mut ts,
+        )
+        .unwrap();
         let (w, h, px) = decode(&d.join(format!("board_pdf-{}.png", i + 1)));
         assert_eq!((w, h), (gpu_page.width, gpu_page.height), "página {i}");
         let (bad, mean) = diff(&gpu_page.rgba, &px, 48);

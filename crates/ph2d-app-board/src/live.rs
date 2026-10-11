@@ -496,13 +496,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             .unwrap_or_default();
         hero.documents.live_view_mut().role = LiveRole::Guest { host };
         let host_peer = peers.iter().find(|p| p.color == 0).map_or(0, |p| p.peer);
-        let fac = fac_view(
-            &room,
-            me.unwrap_or(0),
-            host_peer,
-            s.my_sealed(),
-            &peers,
-        );
+        let fac = fac_view(&room, me.unwrap_or(0), host_peer, s.my_sealed(), &peers);
         announce(hero, fac);
         view(hero, id, &peers, |p| s.seen(p), now);
     }
@@ -560,7 +554,8 @@ fn event(hero: &mut HeroScreen, board: BoardId, e: Event, names: &[(u64, String)
         }
         Event::Left(p) => {
             let n = fac::someone(hero, name(p));
-            hero.documents.tell(tr_with("board.live.left", &[("name", &n)]));
+            hero.documents
+                .tell(tr_with("board.live.left", &[("name", &n)]));
         }
         Event::Summoned { from, camera } => {
             if let Some(b) = hero.documents.board_mut(board) {

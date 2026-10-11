@@ -198,7 +198,11 @@ fn the_scene_opens_with_the_timer_card() {
     scene_facilitate(&mut hero);
     assert!(board_nav::facilitate::timer_open(&hero));
     let board = hero.documents.active_board().unwrap();
-    let shown = &board.team.shown_poll().expect("a votação de antes, mostrada").totals;
+    let shown = &board
+        .team
+        .shown_poll()
+        .expect("a votação de antes, mostrada")
+        .totals;
     assert_eq!(ph2d_board_edit::vote_range(&board.doc, shown), Some([1, 3]));
 }
 

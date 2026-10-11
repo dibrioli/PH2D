@@ -527,10 +527,23 @@ fn an_old_file_brings_its_votes_back_for_one_session() {
     copy["boundElements"] = serde_json::json!([]);
     els.push(copy);
     let back = read(&serde_json::to_string(&file).unwrap()).unwrap();
-    assert_eq!(back.votes.into_iter().collect::<Vec<_>>(), [(ElementId(3), 3)]);
+    assert_eq!(
+        back.votes.into_iter().collect::<Vec<_>>(),
+        [(ElementId(3), 3)]
+    );
     let now = read(RESTORED).unwrap();
-    let carried = |v: &serde_json::Value| v["customData"]["ph2d"]["element"]["org"]["votes"].as_u64();
+    let carried =
+        |v: &serde_json::Value| v["customData"]["ph2d"]["element"]["org"]["votes"].as_u64();
     let restored: serde_json::Value = serde_json::from_str(RESTORED).unwrap();
-    let old_votes: u64 = restored["elements"].as_array().unwrap().iter().filter_map(carried).sum();
-    assert_eq!(now.votes.values().map(|&n| u64::from(n)).sum::<u64>(), old_votes, "o que o ficheiro traz, nem mais nem menos");
+    let old_votes: u64 = restored["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(carried)
+        .sum();
+    assert_eq!(
+        now.votes.values().map(|&n| u64::from(n)).sum::<u64>(),
+        old_votes,
+        "o que o ficheiro traz, nem mais nem menos"
+    );
 }

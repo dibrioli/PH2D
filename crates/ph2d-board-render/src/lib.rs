@@ -57,6 +57,9 @@ const DOT_PX: f64 = 4.0;
 /// Quantos quadros um contorno guardado sobrevive sem ser desenhado.
 const KEEP_FRAMES: u64 = 120;
 
+/// O menor e o maior total dos selos, guardados pela (revisão do documento, sessão mostrada).
+type VoteRangeCache = Option<((u64, u64), Option<[u32; 2]>)>;
+
 /// O contorno de uma forma só depende disto.
 type OutlineKey = (ShapeType, u64, u64, bool);
 
@@ -76,7 +79,7 @@ pub struct RenderCache {
     /// influencia).
     pub hide_votes: bool,
     /// W7 — o menor e o maior total dos selos, pela revisão do documento e a sessão mostrada (W13).
-    vote_range: Option<((u64, u64), Option<[u32; 2]>)>,
+    vote_range: VoteRangeCache,
     /// W8 — o desenho para EXPORTAR ([`ExportLook`]); `None` = o ecrã.
     pub export: Option<ExportLook>,
     /// W12 (ADR-0182) — as notas de OUTROS com o texto escondido de mim: sem o texto, com os

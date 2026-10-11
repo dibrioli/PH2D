@@ -28,17 +28,17 @@ use crate::{
     End, FracKey, Head, Rgba, RichText, Route, Shape, ShapeType, Style, Team,
 };
 
+#[path = "legacy_v10.rs"]
+mod v10;
 #[path = "legacy_v8.rs"]
 mod v8;
 #[path = "legacy_v9.rs"]
 mod v9;
-#[path = "legacy_v10.rs"]
-mod v10;
 pub(crate) use v8::read_v8;
 use v8::{ElementV8, KindV8, element_v8};
 use v9::TeamV9;
-pub(crate) use v10::read_v10;
 pub(crate) use v9::read_v9;
+pub(crate) use v10::read_v10;
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]

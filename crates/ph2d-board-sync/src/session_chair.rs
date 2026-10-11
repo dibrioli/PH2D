@@ -153,7 +153,11 @@ impl Host {
                 } else if from == self.me.peer {
                     self.me.name.clone()
                 } else {
-                    self.room.peers.get(&from).map(|p| p.name.clone()).unwrap_or_default()
+                    self.room
+                        .peers
+                        .get(&from)
+                        .map(|p| p.name.clone())
+                        .unwrap_or_default()
                 };
                 self.chair.vote_until =
                     (setup.minutes > 0).then(|| now_ms + u64::from(setup.minutes) * 60_000);
@@ -209,6 +213,9 @@ impl Host {
     fn end_vote(&mut self, board: &mut Board) {
         let (totals, voters) = self.chair.vault.tally();
         let by = std::mem::take(&mut self.chair.vote_by);
+        // Ligado a meio também conta: a sessão diria o nome para sempre (auditoria W13).
+        let anonymous = self.chair.fac.private.as_ref().is_some_and(|p| p.anonymous);
+        let by = if anonymous { String::new() } else { by };
         board.team.add_poll(totals, &by, voters, self.chair.wall_s);
         if let Some(v) = &mut self.chair.fac.vote {
             v.ended = true;

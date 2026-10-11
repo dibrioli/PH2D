@@ -120,7 +120,10 @@ fn a_live_vote_asks_the_room_and_each_plus_sends_my_ballot() {
     t.says(|f| f.vote.as_mut().unwrap().ended = true);
     assert!(!board_nav::facilitate::vote_in_session(&t.hero));
     assert!(t.painted(FacButton::VoteNew), "o painel mostra o resultado");
-    assert!(t.painted(FacButton::PollBack), "o da sessão que a sala acabou de guardar");
+    assert!(
+        t.painted(FacButton::PollBack),
+        "o da sessão que a sala acabou de guardar"
+    );
     assert_eq!(t.shown(a), 3);
 }
 

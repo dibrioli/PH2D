@@ -158,15 +158,24 @@ fn search_finds_text_frame_names_and_tags_in_reading_order() {
         board_nav::find(doc, "IDEIA", None, &BTreeSet::new()),
         vec![other, high, low, f]
     );
-    assert_eq!(board_nav::find(doc, "", Some("ideia"), &BTreeSet::new()), vec![other]);
+    assert_eq!(
+        board_nav::find(doc, "", Some("ideia"), &BTreeSet::new()),
+        vec![other]
+    );
     assert!(
         board_nav::find(doc, "  ", None, &BTreeSet::new()).is_empty(),
         "nada pedido, nada achado"
     );
     // W12/W13 — uma nota escondida de mim não se acha pelo texto antigo; a etiqueta é pública.
     let hidden = BTreeSet::from([high, other]);
-    assert_eq!(board_nav::find(doc, "ideia a", None, &hidden), Vec::<ElementId>::new());
-    assert_eq!(board_nav::find(doc, "IDEIA", None, &hidden), vec![other, low, f]);
+    assert_eq!(
+        board_nav::find(doc, "ideia a", None, &hidden),
+        Vec::<ElementId>::new()
+    );
+    assert_eq!(
+        board_nav::find(doc, "IDEIA", None, &hidden),
+        vec![other, low, f]
+    );
 }
 
 /// `Ctrl+F` abre o campo; escrever acha; `Enter` leva a vista ao primeiro achado e depois ao seguinte.

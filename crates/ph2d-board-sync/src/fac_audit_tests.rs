@@ -228,3 +228,36 @@ fn a_sealed_write_lost_on_the_wire_is_resent_to_the_vault() {
     assert_eq!(text(r.b(1), id), "perdido no fio");
     r.all_same();
 }
+
+/// ⭐ W13 (auditoria): o anonimato que LIGA a meio de uma votação vale no fim — a sessão do histórico
+/// não guarda o nome de quem a iniciou. ⛔ Controlo: sem anonimato fica o nome.
+#[test]
+fn a_vote_ended_under_anonymous_names_keeps_no_name() {
+    for anonymous in [true, false] {
+        let mut hb = board();
+        let a = note(&mut hb, "a", 0.0);
+        let mut r = Room::new(hb, &["Bia"]);
+        r.ask(
+            0,
+            Ask::VoteStart {
+                setup: VoteSetup {
+                    votes: 1,
+                    one_per_object: false,
+                    minutes: 0,
+                },
+                targets: BTreeSet::from([a]),
+            },
+        );
+        r.ask(
+            0,
+            Ask::PrivateOn {
+                anonymous,
+                anyone_can_end: false,
+            },
+        );
+        r.vote(0, ballot(1, &[(a, 1)], true));
+        r.ask(0, Ask::VoteEnd);
+        let by = r.hb.team.polls[0].by.clone();
+        assert_eq!(by.is_empty(), anonymous, "anonymous={anonymous}: «{by}»");
+    }
+}

@@ -390,7 +390,7 @@ fn paint_vote(
         VoteView::Setup(setup) => {
             history::tabs(&mut list, wide(1, 0, 2), wide(1, 1, 2), false);
             // Até ao `−` do contador (3 botões e 2 vãos da borda) — «Votes per person» saía cortado.
-            let label_w = right - 3.0 * s - 3.0 * g - x0;
+            let label_w = right - 3.0 * s - 3.0 * g - x0; // LITERAL-PX-OK: o contador, 3 botões e 3 vãos
             paint_text_elided(
                 ts,
                 scene,

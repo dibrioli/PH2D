@@ -48,10 +48,12 @@ O que os outros fazem (corrido/medido):
    Copiar e colar uma nota deixa de levar um selo que não é dela.
 4. **Uma votação de cada vez** (Scrumlr 400). Uma votação de UM ecrã e uma da SALA entram no MESMO histórico. A
    cancelada não entra: o histórico é de resultados.
-5. **Nome por omissão «Voting N»** (Miro), `N` = 1 + o maior número vivo, gravado como TEXTO (o idioma das versões:
-   o nome é do artista desde que nasce). `by` = o nome de quem iniciou, vazio com «Make names anonymous» (ADR-0182
-   §8 — a sessão ficaria a dizê-lo para sempre). `at` = o instante do FIM (relógio de parede, segundos Unix).
-6. **Renomear** (lápis ou duplo clique) é LWW por sessão. **Apagar** (lixo, «clique outra vez», o idioma das
+5. **Nome por omissão «Voting N»** (Miro), `N` = 1 + o maior número vivo; o nome vazio pinta-se «Voting N» no idioma
+   do ecrã e o que o artista escreve é texto. A lista ordena pelo NÚMERO (nunca pelo relógio), e dois pares que
+   acabam uma votação ao mesmo tempo (o mesmo `N`) são renumerados pela fusão, igual em todos (auditoria W13).
+   `by` = o nome de quem iniciou, vazio com «Make names anonymous» ligado no FIM (ADR-0182 §8 — a sessão ficaria a
+   dizê-lo para sempre). `at` = o instante do FIM (relógio de parede, segundos Unix).
+6. **Renomear** (duplo clique no título da sessão, o idioma das versões — não há ícone de lápis) é LWW por sessão. **Apagar** (lixo, «clique outra vez», o idioma das
    versões) é uma lápide: apagar vence renomear; apagar a mostrada desliga o selo. Nenhum dos dois, nem o fim de
    uma votação, entra no desfazer — são registos da equipa, como versões e comentários. Na W7 o fim era um passo
    de desfazer; deixa de ser, porque desfazer o fim apagaria uma sessão que outros já viram, e o lixo é o caminho.
@@ -60,7 +62,8 @@ O que os outros fazem (corrido/medido):
 8. **Não vai na cópia do quadro nem numa versão** (Miro: *«If I duplicate my board… No»*); **não se exporta**
    (Miro; o PNG/SVG já sai sem selos). Uma versão restaurada nasce sem histórico.
 9. **Formato 11.** A `Team` ganha `polls`, `shown` e o `Org` perde `votes`. Os ficheiros 1–10 leem-se (o 9 e o 10
-   pelo `ElementV10`, o idioma do `OrgV8`) e os votos que traziam viram UMA sessão «Voting 1», sem data, mostrada.
+   pelo `ElementV10`, o idioma do `OrgV8`) e os votos que traziam nos elementos VIVOS viram UMA sessão «Voting 1», sem
+   data, mostrada (um voto numa nota apagada não tinha selo: não entra).
    O mesmo vale para o `customData` de um `.excalidraw` antigo. A fixture `format_v10.bin` grava-se ANTES de mudar.
 10. **Ao vivo.** `TeamWrite` cresce no FIM (`Poll`, `PollName`, `PollGone`, `Shown`). O fim de uma votação da sala
     é UMA escrita da equipa do anfitrião (a sessão e o `Shown`), no mesmo tique que o estado «acabou» e antes dele

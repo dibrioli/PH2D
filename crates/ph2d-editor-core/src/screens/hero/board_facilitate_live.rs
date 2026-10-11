@@ -60,6 +60,7 @@ pub(super) fn follow(hero: &mut HeroScreen) {
         LiveFac::default()
     };
     let mut asks = Vec::new();
+    let by = super::history::poll_by(hero);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -84,7 +85,7 @@ pub(super) fn follow(hero: &mut HeroScreen) {
                 // Uma votação de UM ecrã aberta antes da sala: acaba (o resultado dela vai para o
                 // histórico), em vez de os votos dela se perderem por baixo da da sala.
                 if !f.live_round.contains_key(&id) {
-                    super::history::end_here(board, ed, f, &live.team.author);
+                    super::history::end_here(board, ed, f, &by);
                 }
                 ed.put_vote(Some(VoteSession::live(v.setup, v.targets.clone())));
                 f.live_round.insert(id, v.round);

@@ -26,8 +26,8 @@ mod fac_live;
 
 #[path = "board_facilitate_history.rs"]
 mod history;
-pub use history::row_node as poll_row_node;
 pub use fac_live::{private_open, toggle_private};
+pub use history::row_node as poll_row_node;
 
 /// Um botão do cartão ou do painel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -324,6 +324,7 @@ pub fn tick(hero: &mut HeroScreen, now: Instant) {
 /// relógio da votação acaba-a (V6) — nunca a meio de um gesto (o desfazer dele guardaria o antes).
 pub fn follow(hero: &mut HeroScreen) {
     let theme = hero.theme;
+    let by = history::poll_by(hero);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -335,6 +336,8 @@ pub fn follow(hero: &mut HeroScreen) {
         }
         ed.put_vote(f.parked.remove(&board.id));
         f.in_editor = Some(board.id);
+        // O lixo armado e o renomear são do quadro que ficou para trás (auditoria W13).
+        (f.confirm_poll, f.renaming_poll) = (None, None);
     }
     ed.prune_vote(&board.doc);
     let done = f
@@ -342,7 +345,7 @@ pub fn follow(hero: &mut HeroScreen) {
         .get(&board.id)
         .is_some_and(|t| matches!(t.run(), TimerRun::Done { .. }));
     if done && !ed.is_busy() && f.vote_clock.remove(&board.id).is_some() {
-        history::end_here(board, ed, f, &live.team.author);
+        history::end_here(board, ed, f, &by);
     }
     fac_live::follow(hero);
 }
@@ -375,6 +378,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     let now = Instant::now();
     let theme = hero.theme;
+    let by = history::poll_by(hero);
     let Some((board, live)) = hero.documents.active_parts() else {
         return true;
     };
@@ -441,7 +445,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         (FacButton::VoteDone, _) => _ = ed.next_voter(),
         (FacButton::VoteEnd, _) => {
-            history::end_here(board, ed, f, &live.team.author);
+            history::end_here(board, ed, f, &by);
             f.vote_clock.remove(&board.id);
         }
         (FacButton::VoteSeeAll, Some(VotePanel::Results { poll, all })) => {

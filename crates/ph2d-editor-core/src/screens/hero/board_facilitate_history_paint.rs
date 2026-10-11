@@ -15,7 +15,9 @@ use super::{Btn, Face, buttons, card};
 use crate::documents::fac::VotePanel;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, paint_text_centered, paint_text_elided, resolve};
+use crate::paint::{
+    fill_rounded_rect, paint_text, paint_text_centered, paint_text_elided, resolve,
+};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 
@@ -98,11 +100,15 @@ pub(super) fn view(hero: &mut HeroScreen, id: BoardId, fit: usize) -> Option<His
             let from = f.history_from.entry(id).or_default();
             *from = (*from).min(n.saturating_sub(1));
             let from = *from;
-            let rows: Vec<(String, String)> = board
+            let page: Vec<&ph2d_board_model::Poll> = board
                 .team
                 .polls_newest_first()
                 .skip(from)
                 .take(fit)
+                .collect();
+            f.history_rows = page.iter().map(|p| p.id).collect();
+            let rows: Vec<(String, String)> = page
+                .into_iter()
                 .map(|p| {
                     let when = if p.at > 0 {
                         super::super::super::team::ago(p.at, now)
@@ -133,8 +139,14 @@ pub(super) fn view(hero: &mut HeroScreen, id: BoardId, fit: usize) -> Option<His
         }
         VotePanel::Results { poll, all } => {
             let Some(p) = board.team.poll(poll) else {
-                // Apagada (aqui ou ao vivo): o painel volta à lista.
+                // Apagada (aqui ou ao vivo): o painel volta à lista, e o renomear e o lixo dela largam-se.
                 f.panels.insert(id, VotePanel::History);
+                if f.renaming_poll == Some((id, poll)) {
+                    f.renaming_poll = None;
+                }
+                if f.confirm_poll == Some((id, poll)) {
+                    f.confirm_poll = None;
+                }
                 return None;
             };
             let res = ph2d_board_edit::vote_results(&board.doc, p);
@@ -145,9 +157,8 @@ pub(super) fn view(hero: &mut HeroScreen, id: BoardId, fit: usize) -> Option<His
             } else {
                 res.len().min(3)
             };
-            let line = |(e, v): &(ElementId, u32)| {
-                (row_text(board.doc.get(*e), unread.contains(e)), *v)
-            };
+            let line =
+                |(e, v): &(ElementId, u32)| (row_text(board.doc.get(*e), unread.contains(e)), *v);
             let mut sub = Vec::new();
             if p.at > 0 {
                 sub.push(super::super::super::team::ago(p.at, now));
@@ -184,7 +195,7 @@ pub(super) fn paint(
 ) -> f32 {
     let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
     let rows = match v {
-        HistView::List { rows, .. } => 3 + rows.len().max(1),
+        HistView::List { rows, .. } => 2 + rows.len().max(1) + usize::from(!rows.is_empty()),
         HistView::Session { rows, hidden, .. } => 4 + rows.len().max(1) + usize::from(*hidden > 0),
     };
     let h = pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g;
@@ -211,9 +222,23 @@ pub(super) fn paint(
     let toggle = |list: &mut Vec<Btn>, scene: &mut VectorScene, ts: &mut TextSystem, i, on| {
         let w = r.w - 2.0 * s;
         let key = "board.vote.show_on_board";
-        paint_text_elided(ts, scene, tr(key), x0, label_y(i), TypeToken::Sm.px(), w, text2);
+        paint_text_elided(
+            ts,
+            scene,
+            tr(key),
+            x0,
+            label_y(i),
+            TypeToken::Sm.px(),
+            w,
+            text2,
+        );
         let face = Face::Icon(if on { IconId::Success } else { IconId::Circle });
-        list.push((FacButton::ShowOnBoard, Rect::new(right - s, row(i), s, s), face, on));
+        list.push((
+            FacButton::ShowOnBoard,
+            Rect::new(right - s, row(i), s, s),
+            face,
+            on,
+        ));
     };
     match v {
         HistView::List {
@@ -223,9 +248,21 @@ pub(super) fn paint(
             down,
         } => {
             let md = TypeToken::Md.px();
-            paint_text(ts, scene, tr("board.vote.title"), x0, label_y(0), md, f32::INFINITY, text1);
+            paint_text(
+                ts,
+                scene,
+                tr("board.vote.title"),
+                x0,
+                label_y(0),
+                md,
+                f32::INFINITY,
+                text1,
+            );
             let mut x = right - s;
-            for (b, i, on) in [(FacButton::PollDown, IconId::ChevronDown, *down), (FacButton::PollUp, IconId::ChevronUp, *up)] {
+            for (b, i, on) in [
+                (FacButton::PollDown, IconId::ChevronDown, *down),
+                (FacButton::PollUp, IconId::ChevronUp, *up),
+            ] {
                 // Uma seta que não mexeria não se pinta (controlo morto).
                 if on {
                     x -= s + g;
@@ -233,10 +270,21 @@ pub(super) fn paint(
                 }
             }
             tabs(&mut list, wide(1, 0, 2), wide(1, 1, 2), true);
-            toggle(&mut list, scene, ts, 2, *shown_on);
+            // Sem sessões o toggle não faria nada: não se pinta (controlo morto — auditoria W13).
             if rows.is_empty() {
                 let none = tr("board.vote.no_sessions");
-                paint_text_elided(ts, scene, none, x0, label_y(3), TypeToken::Sm.px(), r.w, text2);
+                paint_text_elided(
+                    ts,
+                    scene,
+                    none,
+                    x0,
+                    label_y(2),
+                    TypeToken::Sm.px(),
+                    r.w,
+                    text2,
+                );
+            } else {
+                toggle(&mut list, scene, ts, 2, *shown_on);
             }
             let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
             for (k, (name, when)) in rows.iter().enumerate() {
@@ -246,7 +294,11 @@ pub(super) fn paint(
                     store.button_state(id),
                     Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
                 );
-                let bg = if hover { ColorToken::Bg3 } else { ColorToken::Bg2 };
+                let bg = if hover {
+                    ColorToken::Bg3
+                } else {
+                    ColorToken::Bg2
+                };
                 fill_rounded_rect(scene, rr, radius, resolve(bg, theme));
                 let (sm, ty) = (TypeToken::Sm.px(), label_y(3 + k));
                 // A data com a largura dela (a «2 d ago» saía «2 d a…»): o nome é que se corta.
@@ -269,7 +321,12 @@ pub(super) fn paint(
             armed,
             shown_on,
         } => {
-            list.push(icon(FacButton::PollBack, r.x + pad, IconId::ChevronLeft, false));
+            list.push(icon(
+                FacButton::PollBack,
+                r.x + pad,
+                IconId::ChevronLeft,
+                false,
+            ));
             let del = right - 2.0 * s - g;
             list.push(icon(FacButton::PollDelete, del, IconId::Trash, *armed));
             // O título: duplo clique renomeia (o idioma das versões); a renomear, o campo ocupa-o.
@@ -286,7 +343,10 @@ pub(super) fn paint(
             let sm = TypeToken::Sm.px();
             // O lixo armado diz-se aqui (a dica só aparece com o rato parado em cima).
             let (line, ink) = if *armed {
-                (tr("board.vote.delete_confirm"), resolve(ColorToken::Danger, theme))
+                (
+                    tr("board.vote.delete_confirm"),
+                    resolve(ColorToken::Danger, theme),
+                )
             } else {
                 (sub.as_str(), text2)
             };
@@ -323,8 +383,17 @@ pub(super) fn paint(
                 true,
             ));
             if *more {
-                let key = if *all { "board.vote.top3" } else { "board.vote.see_all" };
-                list.push((FacButton::VoteSeeAll, wide(last, 1, n), Face::Text(tr(key).into()), false));
+                let key = if *all {
+                    "board.vote.top3"
+                } else {
+                    "board.vote.see_all"
+                };
+                list.push((
+                    FacButton::VoteSeeAll,
+                    wide(last, 1, n),
+                    Face::Text(tr(key).into()),
+                    false,
+                ));
             }
         }
     }
@@ -337,9 +406,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
-    use ph2d_board_model::{
-        BoardOp, BoardSet, Element, Rgba, RichText, Shape, ShapeType, Style,
-    };
+    use ph2d_board_model::{BoardOp, BoardSet, Element, Rgba, RichText, Shape, ShapeType, Style};
 
     /// ⭐ As linhas de uma sessão nunca pintam o texto de uma nota que não leio (o marcador) nem
     /// fingem uma nota apagada (a linha diz «(deleted)»); a que leio mostra a 1.ª linha dela. A
@@ -349,7 +416,7 @@ mod tests {
         let mut set = BoardSet::default();
         let id = set.create("R".into());
         let b = set.get_mut(id).unwrap();
-        let mut put = |b: &mut ph2d_board_model::Board, text: &str| {
+        let put = |b: &mut ph2d_board_model::Board, text: &str| {
             let el = Element::new_shape(
                 b.doc.mint_id(),
                 b.doc.z_on_top(),
@@ -364,11 +431,18 @@ mod tests {
             let _ = BoardOp::Put(el).apply(&mut b.doc);
             id
         };
-        let (read, secret, gone) = (put(b, "visível\n2.ª"), put(b, "segredo antigo"), put(b, "x"));
+        let (read, secret, gone) = (
+            put(b, "visível\n2.ª"),
+            put(b, "segredo antigo"),
+            put(b, "x"),
+        );
         let _ = BoardOp::Delete(gone).apply(&mut b.doc);
-        let poll = b
-            .team
-            .add_poll(BTreeMap::from([(read, 3), (secret, 2), (gone, 1)]), "", 1, 0);
+        let poll = b.team.add_poll(
+            BTreeMap::from([(read, 3), (secret, 2), (gone, 1)]),
+            "",
+            1,
+            0,
+        );
         let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
         crate::screens::hero::document_tabs::load(&mut hero, set);
         hero.documents.activate(Some(id));

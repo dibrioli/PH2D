@@ -10,7 +10,7 @@ use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
 use crate::image_import::ImportItemResult;
 use ph2d_editor_core::Toast;
-use ph2d_i18n::tr_with;
+use ph2d_i18n::{tr, tr_with};
 
 impl App {
     /// Imports each dropped path that resolves to an image, anchoring
@@ -29,6 +29,14 @@ impl App {
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return;
         };
+        // Com um QUADRO na aba, os ficheiros iam para a cena escondida atrás dela.
+        if hero.documents.active().is_some() {
+            gfx.toasts.push(Toast::warning(tr(
+                "shell.input_drop.board_takes_no_files_yet",
+            )));
+            self.title_dirty = true;
+            return;
+        }
         let pixels_per_meter = hero.project.pixels_per_meter;
         let win = gfx.scene_window();
         // macOS-only: winit 0.30 does NOT emit `CursorMoved` during
@@ -188,6 +196,72 @@ impl App {
         // linha dessas escondida entre dez «Imported» não é lida.
         for note in batch.notes {
             gfx.toasts.push(Toast::warning(note));
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl App {
+    /// Liga o receptor de «soltar» do Wayland à janela; no X11 o winit já entrega `DroppedFile`.
+    pub(crate) fn attach_wayland_drops(&mut self, window: &std::sync::Arc<winit::window::Window>) {
+        let weak = std::sync::Arc::downgrade(window);
+        let wake = move || {
+            if let Some(w) = weak.upgrade() {
+                w.request_redraw();
+            }
+        };
+        match ph2d_wayland_dnd::DropReceiver::attach(window.as_ref(), wake) {
+            Ok(receiver) => self.wayland_drops = receiver,
+            Err(e) => eprintln!("drag-and-drop on Wayland unavailable: {e}"),
+        }
+    }
+
+    /// Os eventos do receptor entram pelas MESMAS portas do `HoveredFile`/`DroppedFile` do winit.
+    pub(crate) fn pump_wayland_drops(&mut self) {
+        use ph2d_wayland_dnd::DndEvent;
+        let Some(events) = self
+            .wayland_drops
+            .as_ref()
+            .map(|r| r.drain().collect::<Vec<_>>())
+        else {
+            return;
+        };
+        // O compositor dá pixels LÓGICOS da superfície; o `last_cursor` é físico.
+        let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor());
+        let px = |(x, y): (f64, f64)| ((x * scale) as f32, (y * scale) as f32);
+        for event in events {
+            match event {
+                DndEvent::Hover { paths, at } => {
+                    self.last_cursor = px(at);
+                    for p in paths {
+                        self.on_hovered_file(p);
+                    }
+                }
+                DndEvent::Motion { at } => {
+                    let cursor = px(at);
+                    self.last_cursor = cursor;
+                    let hero = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
+                    if let Some((_, p)) = hero.and_then(|h| h.dragging_files.as_mut()) {
+                        *p = cursor;
+                    }
+                }
+                DndEvent::Leave => self.on_hovered_file_cancelled(),
+                DndEvent::Drop { list, at } => {
+                    self.last_cursor = px(at);
+                    if list.not_files > 0 || list.paths.is_empty() {
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            gfx.toasts.push(Toast::warning(tr_with(
+                                "shell.input_drop.not_files",
+                                &[("count", &list.not_files.max(1))],
+                            )));
+                        }
+                        self.title_dirty = true;
+                    }
+                    for p in list.paths {
+                        self.on_dropped_file(p);
+                    }
+                }
+            }
         }
     }
 }

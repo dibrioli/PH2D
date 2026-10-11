@@ -30,7 +30,7 @@ thiserror = "2"
 ph2d-audio-decode = { path = "../ph2d-audio-decode" }
 
 [lints.rust]
-# ⚠️ Esta crate NÃO herda `[lints] workspace = true`: é uma das DUAS excepções nomeadas do gate
+# ⚠️ Esta crate NÃO herda `[lints] workspace = true`: é uma das excepções nomeadas do gate
 # `architecture_every_member_inherits_the_workspace_lints`, e existe para ISOLAR a ABI C do `unsafe-libopus` (ADR-0116).
 # `deny` e não o `forbid` da workspace, para que SÓ os módulos que tocam a ABI o autorizem por
 # escrito (`#![allow(unsafe_code)]`) — o resto da crate continua proibido, e o gate confere a lista.

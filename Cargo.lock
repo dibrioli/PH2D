@@ -6089,6 +6089,7 @@ dependencies = [
  "ph2d-vec-text",
  "ph2d-vector",
  "ph2d-vector-font",
+ "ph2d-wayland-dnd",
  "postcard",
  "rfd",
  "serde",
@@ -9388,6 +9389,19 @@ name = "ph2d-warp-style"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-wayland-dnd"
+version = "0.0.0"
+dependencies = [
+ "percent-encoding",
+ "raw-window-handle",
+ "rustix 1.1.4",
+ "smithay-client-toolkit",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols-plasma",
 ]
 
 [[package]]

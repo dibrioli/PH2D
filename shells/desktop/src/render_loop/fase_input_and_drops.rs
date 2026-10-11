@@ -32,6 +32,8 @@ impl crate::App {
         // input snapshot → sim → extract → render.
         self.pump_gamepad();
         self.push_input_to_script();
+        #[cfg(target_os = "linux")]
+        self.pump_wayland_drops();
 
         // M14.7 polish (7.3 fix): drain `pending_drops` atomically
         // BEFORE the render walks PresentWorld. Each path imports

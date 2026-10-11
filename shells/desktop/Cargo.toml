@@ -21,6 +21,8 @@ ph2d-morph-machine = { path = "../../crates/ph2d-morph-machine" }
 # Transform::compose and must use the same impl).
 libm = { version = "=0.2.16", default-features = false }
 ph2d-host = { path = "../../crates/ph2d-host" }
+# Soltar ficheiros na janela no Wayland (o winit 0.30 não tem DnD lá) — MiroClone W14.
+ph2d-wayland-dnd = { path = "../../crates/ph2d-wayland-dnd" }
 # ⭐ **A porta por onde uma família de módulo fala com a shell** (W2, ADR-0075). A shell é o lado
 # que a IMPLEMENTA (`src/app_host.rs`); as crates `ph2d-app-*` são as que a consomem.
 ph2d-app-host = { path = "../../crates/ph2d-app-host" }

@@ -50,6 +50,12 @@ const EXCECOES: &[(&str, &[&str], &str)] = &[
         &["src/decode.rs", "src/encode.rs"],
         "FFI da `libavif` (`libavif-sys`): decode e encode por ponteiro",
     ),
+    (
+        "ph2d-wayland-dnd",
+        &["src/receiver.rs", "tests/kwin_drop.rs"],
+        "a `wl_display`/`wl_surface` do winit por ponteiro (`raw-window-handle`): sem DnD no winit \
+         0.30, soltar ficheiros no Wayland é um receptor na MESMA ligação — MiroClone W14",
+    ),
 ];
 
 fn root() -> PathBuf {
@@ -254,13 +260,20 @@ fn every_exception_denies_unsafe_and_confines_it_to_the_modules_it_names() {
             "`{nome}` não herda e não declara `[lints.rust] unsafe_code = \"deny\"` — o `unsafe` \
              fica solto na crate inteira"
         );
+        // Todo ALVO, como o lint: um `allow` num `tests/` que o censo não lê é `unsafe` sem nome.
         let mut autorizam = BTreeSet::new();
-        rs_files(&dir.join("src"), &mut |f| {
-            let t = fs::read_to_string(f).expect("um .rs da excepção");
-            if t.lines().any(|l| l.trim() == "#![allow(unsafe_code)]") {
-                autorizam.insert(rel(&dir, f));
+        for alvo in ["src", "tests", "benches", "examples"] {
+            let d = dir.join(alvo);
+            if !d.is_dir() {
+                continue;
             }
-        });
+            rs_files(&d, &mut |f| {
+                let t = fs::read_to_string(f).expect("um .rs da excepção");
+                if t.lines().any(|l| l.trim() == "#![allow(unsafe_code)]") {
+                    autorizam.insert(rel(&dir, f));
+                }
+            });
+        }
         let esperados: BTreeSet<String> = modulos.iter().map(|m| (*m).to_owned()).collect();
         assert_eq!(
             autorizam, esperados,

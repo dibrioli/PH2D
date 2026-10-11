@@ -193,3 +193,136 @@ fn a_cena_7_ensina_o_traco_do_flip() {
     }
     assert!(falhas.is_empty(), "{}", falhas.join(" · "));
 }
+
+/// O erro relativo do blit do Flip contra a conta na CPU — MEDIDO + 10 % (RTX 5060 Ti, a cena 7 a
+/// 480×270): `1,34e-3` em 1 680 canais; o do sprite é `1,21e-3` (`paridade_luz_recebida`): o alvo é
+/// `f16` e o filtro bilinear da placa tem 8 bits de fração.
+const TOL_TRACO_RECEBE: f64 = 1.48e-3;
+
+/// ⭐ **O traço do Flip RECEBE a luz como o sprite** (W5e): o `fs_blit` do Flip concatena o
+/// `receber.wgsl` — cada pixel é a cor linear × `F(mundo)/2π`, a mesma conta do sprite e da colagem,
+/// medida contra a fluência lida de volta. Controlo na mesma corrida: sem luz, o blit de sempre (a cor
+/// linear, byte a byte entre duas corridas apagadas).
+#[test]
+fn o_traco_do_flip_recebe_a_luz_como_o_sprite() {
+    use ph2d_flip_render::{FlipCompose, SLICE_FORMAT};
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let alvo = (480_u32, 270_u32);
+    let afim = ph2d_render::Camera2d::default()
+        .world_to_screen_affine(ph2d_host::WindowSize::new(alvo.0, alvo.1));
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 7));
+    let r = crate::comum::renderer(&gpu);
+    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+    for _ in 0..3 {
+        assert!(l.preparar(&w, afim, alvo));
+        l.gravar(&gpu, &mut PresentWorld::new(), &r);
+    }
+    let f = crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"));
+    let cor_srgb = [191_u8, 140, 64];
+    let tex = |formato, usos| {
+        gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("cena 7 blit"),
+            size: wgpu::Extent3d {
+                width: alvo.0,
+                height: alvo.1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: formato,
+            usage: usos,
+            view_formats: &[],
+        })
+    };
+    let src = tex(
+        SLICE_FORMAT,
+        wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+    );
+    let pixels: Vec<u8> = (0..alvo.0 * alvo.1)
+        .flat_map(|_| [cor_srgb[0], cor_srgb[1], cor_srgb[2], 255])
+        .collect();
+    gpu.queue.write_texture(
+        src.as_image_copy(),
+        &pixels,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(alvo.0 * 4),
+            rows_per_image: None,
+        },
+        wgpu::Extent3d {
+            width: alvo.0,
+            height: alvo.1,
+            depth_or_array_layers: 1,
+        },
+    );
+    let mut compose = FlipCompose::new(&gpu.device, wgpu::TextureFormat::Rgba16Float);
+    let mut corre = |luz: bool| {
+        let destino = tex(
+            wgpu::TextureFormat::Rgba16Float,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        );
+        let na_tela = luz.then(|| l.na_tela()).flatten();
+        compose.receber_luz(&gpu, na_tela.as_ref().map(|(r, m)| (r, *m)));
+        compose.blit(
+            &gpu.device,
+            &gpu.queue,
+            &src,
+            &destino.create_view(&wgpu::TextureViewDescriptor::default()),
+        );
+        crate::comum::ler(&gpu, &destino, 8)
+    };
+    let (apagada, outra_apagada, acesa) = (corre(false), corre(false), corre(true));
+    assert_eq!(
+        apagada, outra_apagada,
+        "controlo: o blit apagado é determinístico"
+    );
+    let canal = |px: &[u8], k: usize| {
+        f64::from(half::f16::from_le_bytes([px[2 * k], px[2 * k + 1]]).to_f32())
+    };
+    let lin = cor_srgb.map(|c| {
+        let c = f64::from(c) / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    });
+    let mapa = ph2d_app_light2d::tela_para_mundo(afim);
+    let mut pior = 0.0_f64;
+    let mut pontos = 0;
+    for py in (8..alvo.1 - 8).step_by(13) {
+        for px in (8..alvo.0 - 8).step_by(17) {
+            let i = ((py * alvo.0 + px) * 8) as usize;
+            let (a, b) = (&apagada[i..i + 8], &acesa[i..i + 8]);
+            let (x, y) = (f64::from(px) + 0.5, f64::from(py) + 0.5);
+            let mundo = [
+                mapa[0][0] * x + mapa[0][1] * y + mapa[0][2],
+                mapa[1][0] * x + mapa[1][1] * y + mapa[1][2],
+            ];
+            for c in 0..3 {
+                let esperado_apagado = lin[c];
+                assert!(
+                    (canal(a, c) - esperado_apagado).abs() <= 2e-3,
+                    "controlo: sem luz o blit é a cor linear ({} × {esperado_apagado})",
+                    canal(a, c)
+                );
+                let luz = f.amostra_canal(mundo, c) / std::f64::consts::TAU;
+                let esperado = lin[c] * luz;
+                if esperado > 1e-3 {
+                    pior = pior.max((canal(b, c) - esperado).abs() / esperado);
+                    pontos += 1;
+                }
+            }
+        }
+    }
+    eprintln!("o traço recebe: {pontos} canais, o pior erro relativo {pior:.2e}");
+    assert!(pontos > 100, "poucos pontos acesos ({pontos})");
+    assert!(
+        pior <= TOL_TRACO_RECEBE,
+        "o blit do Flip não recebe a luz como o sprite: {pior:.2e}"
+    );
+}

@@ -4899,6 +4899,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-flip",
  "ph2d-flip-entities",
+ "ph2d-flip-render",
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",

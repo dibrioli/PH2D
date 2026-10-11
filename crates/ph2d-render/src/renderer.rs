@@ -186,7 +186,7 @@ impl SpriteRenderer {
         let individual = IndividualTextureStore::new(&gpu);
         let mesh_buffer = crate::sprite_mesh::MeshVertexBuffer::new(&gpu);
         let skin_buffers = crate::sprite_mesh_skin_gpu::SkinBuffers::new(&gpu, &pipeline.skin_bgl);
-        let luz = crate::luz_recebida::GrupoDeLuz::novo(&gpu, &pipeline.luz_bgl, &[]);
+        let luz = crate::luz_recebida::GrupoDeLuz::novo(&gpu.device, &pipeline.luz_bgl, &[]);
 
         Self {
             gpu,

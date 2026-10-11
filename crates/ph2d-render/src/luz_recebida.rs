@@ -58,8 +58,10 @@ impl LuzRecebida<'_> {
     }
 }
 
-/// As três entradas do `@group(3)` que o `receber.wgsl` declara (bindings 0–2).
-pub(crate) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; 3] {
+/// As três entradas do `@group(3)` que o `receber.wgsl` declara (bindings 0–2). ⭐ W5e: pública — o
+/// blit do Flip também recebe a luz.
+#[must_use]
+pub fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; 3] {
     let frag = wgpu::ShaderStages::FRAGMENT;
     [
         wgpu::BindGroupLayoutEntry {
@@ -92,7 +94,7 @@ pub(crate) fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; 3] {
 }
 
 /// O `@group(3)` de um receptor: o grupo NEUTRO, construído uma vez, e o ACESO do quadro.
-pub(crate) struct GrupoDeLuz {
+pub struct GrupoDeLuz {
     uniforme: wgpu::Buffer,
     amostra: wgpu::Sampler,
     neutro: wgpu::BindGroup,
@@ -101,13 +103,13 @@ pub(crate) struct GrupoDeLuz {
 
 impl GrupoDeLuz {
     /// `extra` = entradas a mais do layout (a colagem acrescenta o LUT do tonemap), já no `bgl`.
-    pub(crate) fn novo(
-        gpu: &GpuContext,
+    #[must_use]
+    pub fn novo(
+        device: &wgpu::Device,
         bgl: &wgpu::BindGroupLayout,
         extra: &[wgpu::BindGroupEntry<'_>],
     ) -> Self {
         use wgpu::util::DeviceExt as _;
-        let device = &gpu.device;
         let uniforme = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-render luz recebida ubo"),
             size: size_of::<LuzUniforme>() as u64,
@@ -150,7 +152,7 @@ impl GrupoDeLuz {
     }
 
     /// Acende (`Some`) ou apaga (`None`) o grupo para os próximos desenhos.
-    pub(crate) fn definir(
+    pub fn definir(
         &mut self,
         gpu: &GpuContext,
         bgl: &wgpu::BindGroupLayout,
@@ -171,12 +173,14 @@ impl GrupoDeLuz {
         });
     }
 
-    pub(crate) fn aceso(&self) -> bool {
+    #[must_use]
+    pub fn aceso(&self) -> bool {
         self.aceso.is_some()
     }
 
     /// O grupo a ligar: o aceso se `com_luz` e houver luz; senão o neutro.
-    pub(crate) fn ligar(&self, com_luz: bool) -> &wgpu::BindGroup {
+    #[must_use]
+    pub fn ligar(&self, com_luz: bool) -> &wgpu::BindGroup {
         match &self.aceso {
             Some(g) if com_luz => g,
             _ => &self.neutro,

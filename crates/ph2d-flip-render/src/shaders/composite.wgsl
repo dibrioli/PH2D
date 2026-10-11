@@ -75,5 +75,7 @@ fn fs_blit(in: VsOut) -> @location(0) vec4<f32> {
         srgb_to_linear(s.b),
     );
     let a = s.a;
-    return vec4<f32>(lin * a, a); // premult
+    // ⭐ W5e: a LUZ 2D que o traço recebe — a mesma conta do sprite e da colagem (`receber.wgsl`,
+    // concatenado à frente). Sem luz o ramo não é tomado: o blit de sempre, byte a byte.
+    return luz_receber(vec4<f32>(lin * a, a), luz_tela_para_mundo(in.pos.xy), 0u); // premult
 }

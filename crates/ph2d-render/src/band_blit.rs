@@ -262,7 +262,7 @@ impl BandBlit {
         });
         let lut_vista = lut_neutro.create_view(&wgpu::TextureViewDescriptor::default());
         let luz = crate::luz_recebida::GrupoDeLuz::novo(
-            gpu,
+            &gpu.device,
             &luz_bgl,
             &lut_entradas(&lut_vista, &sampler),
         );

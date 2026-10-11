@@ -203,6 +203,7 @@ impl crate::App {
             luz2d,
             flip,
             flip_composite,
+            flip_compose,
             ..
         } = gfx;
         // M14.5 — viewport / RT pipeline. Four GPU submissions
@@ -316,6 +317,8 @@ impl crate::App {
         };
         luz2d.gravar_com(surface.gpu(), present, renderer, &mut [&mut flip_luz]);
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
+        let na_tela = luz2d.na_tela();
+        flip_compose.receber_luz(surface.gpu(), na_tela.as_ref().map(|(l, m)| (l, *m)));
         // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
         plan.banded |= lente || filtrada;
         let banded = plan.banded;

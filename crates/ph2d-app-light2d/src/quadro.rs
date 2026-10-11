@@ -593,6 +593,13 @@ impl LuzDoQuadro {
         })
     }
 
+    /// ⭐ W5e — a luz para um receptor em espaço de TELA (o blit do Flip): a recebida e o afim píxel →
+    /// mundo do quadro; `None` = apagada.
+    #[must_use]
+    pub fn na_tela(&self) -> Option<(LuzRecebida<'_>, [[f64; 3]; 2])> {
+        Some((self.recebida()?, tela_para_mundo(self.mundo_para_tela)))
+    }
+
     /// **Porta 3** — acende (ou apaga) os dois receptores para este quadro.
     pub fn ligar(
         &self,

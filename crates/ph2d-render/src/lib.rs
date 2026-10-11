@@ -145,7 +145,7 @@ pub use layer_compositor::{
     motion_weights,
 };
 pub use lens::{LensPass, LensUniform};
-pub use luz_recebida::{LuzRecebida, LuzUniforme, RECEBER_WGSL};
+pub use luz_recebida::{GrupoDeLuz, LuzRecebida, LuzUniforme, RECEBER_WGSL, entradas_do_layout};
 pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{
     DrawnMesh, MeshUv, WorldBbox, drawn_instance_of, drawn_mesh_of, mesh_uv, pick_sprite_at_world,

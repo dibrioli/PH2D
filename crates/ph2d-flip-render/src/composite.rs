@@ -70,6 +70,10 @@ pub struct FlipCompose {
     /// produtor — é isso que torna a troca uma decisão sobre *quais pixels o traço acende*, e não
     /// um segundo pipeline de Flip.
     walk: Option<crate::WalkPass>,
+    /// ⭐ W5e — a LUZ 2D recebida no `fs_blit` (o `@group(3)` do `receber.wgsl`, a mesma conta da
+    /// colagem do vetor); neutro sem luz: o blit de sempre, byte a byte.
+    luz_bgl: wgpu::BindGroupLayout,
+    luz: ph2d_render::GrupoDeLuz,
 }
 
 impl FlipCompose {
@@ -97,9 +101,25 @@ impl FlipCompose {
             bind_group_layouts: &[Some(&bgl)],
             immediate_size: 0,
         });
+        let luz_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-flip compose luz bgl"),
+            entries: &ph2d_render::entradas_do_layout(),
+        });
+        let layout_do_blit = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ph2d-flip compose blit layout"),
+            bind_group_layouts: &[Some(&bgl), None, None, Some(&luz_bgl)],
+            immediate_size: 0,
+        });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-flip compose shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/composite.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}",
+                    ph2d_render::RECEBER_WGSL,
+                    include_str!("shaders/composite.wgsl")
+                )
+                .into(),
+            ),
         });
 
         let resolve_pipeline = fullscreen_pipeline(
@@ -112,7 +132,7 @@ impl FlipCompose {
         );
         let blit_pipeline = fullscreen_pipeline(
             device,
-            &layout,
+            &layout_do_blit,
             &shader,
             "fs_blit",
             game_rt_format,
@@ -132,6 +152,8 @@ impl FlipCompose {
             fills: None,
             fills_view: None,
             walk: None,
+            luz: ph2d_render::GrupoDeLuz::novo(device, &luz_bgl, &[]),
+            luz_bgl,
         }
     }
 
@@ -375,6 +397,17 @@ impl FlipCompose {
         self.straight.as_ref().expect("ensure criou o straight")
     }
 
+    /// ⭐ W5e — acende (`Some`: a luz do quadro e o afim píxel → mundo do alvo) ou apaga a LUZ 2D que o
+    /// traço recebe no [`Self::blit`].
+    pub fn receber_luz(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        luz: Option<(&ph2d_render::LuzRecebida<'_>, [[f64; 3]; 2])>,
+    ) {
+        let acesa = luz.map(|(l, tela_para_mundo)| (l.fluencia, l.uniforme(Some(tela_para_mundo))));
+        self.luz.definir(gpu, &self.luz_bgl, acesa, &[]);
+    }
+
     /// Compõe a saída do compositor (`src`, straight sRGB8) no `game_rt` (`target`,
     /// 16F) com premult-over, preservando o que já está lá (`LoadOp::Load`).
     pub fn blit(
@@ -415,6 +448,7 @@ impl FlipCompose {
             });
             pass.set_pipeline(&self.blit_pipeline);
             pass.set_bind_group(0, &bg, &[]);
+            pass.set_bind_group(3, self.luz.ligar(true), &[]);
             pass.draw(0..3, 0..1);
         }
         queue.submit([enc.finish()]);

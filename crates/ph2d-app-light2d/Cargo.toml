@@ -51,6 +51,7 @@ ph2d-core = { path = "../ph2d-core" }
 # ⭐ W5e — a cena 7: a camada do Flip para a luz (`OclusaoDoFlip`) e o mapa objeto → entidade.
 ph2d-app-flip = { path = "../ph2d-app-flip" }
 ph2d-flip-entities = { path = "../ph2d-flip-entities" }
+ph2d-flip-render = { path = "../ph2d-flip-render" }
 # O censo HR-15 da família (`every_word_this_family_shows_comes_from_the_string_table`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }

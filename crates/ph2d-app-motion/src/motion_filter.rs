@@ -165,7 +165,8 @@ impl MotionFiltro {
     }
 
     /// **O que o cartão do nó `no` diz**: um `fx.filter` fora do fio não filtra nada; um `Each Shape`
-    /// depois de um `Whole Layer` corre na camada; e um `Each Shape` vê como UMA peça as formas que,
+    /// depois de um `Whole Layer` corre na camada; saídas que pousam com modos diferentes partilham
+    /// a camada ([`Self::pousa`]); e um `Each Shape` vê como UMA peça as formas que,
     /// no último quadro, foram à camada pelo Vello ([`formas_no_vello`]).
     #[must_use]
     pub fn queixa(&self, no: NodeId) -> Option<String> {
@@ -173,6 +174,8 @@ impl MotionFiltro {
             "app.motion.motion_filter.off_the_wire"
         } else if self.na_camada.contains(&no) {
             "app.motion.motion_filter.after_whole_layer"
+        } else if self.pousas.len() > 1 && self.pilha.iter().any(|d| d.no == no) {
+            "app.motion.motion_filter.outputs_land_differently"
         } else if self.formas_no_vello
             && ph2d_node_fx_filter::partition(&self.pilha)
                 .0
@@ -186,7 +189,10 @@ impl MotionFiltro {
         Some(ph2d_i18n::tr(chave).to_string())
     }
 
-    /// A pousa da camada neste quadro.
+    /// A pousa da camada neste quadro. ⚠️ A camada é UMA para o Motion inteiro (doc 129 §3.5, W4b
+    /// item 4 — medido: nenhuma cena tem duas saídas com filtro; uma camada por saída partiria a
+    /// ordem por linha ENTRE saídas, doc 119 W4): saídas com modos diferentes pousam com o da
+    /// primeira, e o cartão de cada filtro di-lo.
     #[must_use]
     pub fn pousa(&self) -> Pousa {
         self.pousas.first().copied().unwrap_or_default()
@@ -430,14 +436,20 @@ impl MotionState {
         // sink entre as cópias mistura-se só com o que está na camada; com o cenário, na pousa).
         if let Some(cena) = no_vello {
             if vello.is_none() {
-                *vello = ph2d_render::VelloPass::new(e.gpu, wgpu::TextureFormat::Rgba8Unorm, tamanho)
-                    .inspect_err(|erro| eprintln!("[motion_filtro] o Vello da camada: {erro}"))
-                    .ok();
+                *vello =
+                    ph2d_render::VelloPass::new(e.gpu, wgpu::TextureFormat::Rgba8Unorm, tamanho)
+                        .inspect_err(|erro| eprintln!("[motion_filtro] o Vello da camada: {erro}"))
+                        .ok();
             }
             let pintou = vello.as_mut().map(|v| {
-                v.render_to_intermediate(e.gpu, cena.inner(), tamanho, ph2d_vector::Color::TRANSPARENT)
-                    .inspect_err(|erro| eprintln!("[motion_filtro] o Vello da camada: {erro}"))
-                    .map(|()| v)
+                v.render_to_intermediate(
+                    e.gpu,
+                    cena.inner(),
+                    tamanho,
+                    ph2d_vector::Color::TRANSPARENT,
+                )
+                .inspect_err(|erro| eprintln!("[motion_filtro] o Vello da camada: {erro}"))
+                .map(|()| v)
             });
             match pintou {
                 Some(Ok(v)) if ops_forma.is_empty() => colagem.blit(
@@ -454,7 +466,8 @@ impl MotionState {
                         let v = t.create_view(&wgpu::TextureViewDescriptor::default());
                         (t, v)
                     });
-                    let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
+                    let origem =
+                        Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
                     pilha.run_straight(
                         e.gpu,
                         v.intermediate_texture(),

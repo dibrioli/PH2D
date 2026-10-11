@@ -65,7 +65,9 @@ pub(crate) fn coze_o_quadro(
     // A lente do quadro (ciclo 20): ANTES do atalho da placa, que retorna cedo.
     motion.lente.prepara(&motion.doc.graph, target);
     motion.filtro.prepara(&motion.doc.graph, &motion.sinks);
-    motion.pump.isola_na_camada(!motion.filtro.pilha().is_empty());
+    motion
+        .pump
+        .isola_na_camada(!motion.filtro.pilha().is_empty());
 
     // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0126) — opt-in preview ──
     // Unless `PH2D_GPU_COOK=0`, an unscoped document — one sink or several (doc 119) — cooks on the GPU

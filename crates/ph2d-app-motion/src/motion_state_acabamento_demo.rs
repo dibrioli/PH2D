@@ -122,8 +122,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(crate) const LUT_QUENTE: &str = "docs/Motion Nodes/tutoriais/luts/quente.cube";
 
 /// Os passos que [`passo`] reconhece, pela ordem do roteiro (`0` = a cena como abre).
-pub(crate) const PASSOS: [&str; 13] = [
-    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8",
+pub(crate) const PASSOS: [&str; 14] = [
+    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8", "9",
 ];
 
 /// **Um passo do roteiro já feito** — `PH2D_ACABAMENTO_PASSO=<passo>`, a porta das FOTOS: os
@@ -150,8 +150,8 @@ pub(crate) fn passo(g: &mut Graph, c: &Cena, n: &str) -> bool {
         "7c" => g.set_param(c.lente, l::EXPOSURE, 1.0),
         "7d" => g.set_text_param(c.lente, ph2d_node_fx_lens::LUT, LUT_QUENTE),
         "8" => g.set_param(c.lente, l::GRAIN, 0.4),
-        // Fora do roteiro, uma MEDIÇÃO (doc 129 §7): a saída em `Add` manda as formas ao Vello.
-        "mistura" => g.set_param(c.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0),
+        // A mistura (W4b, doc 129 §3.5): a saída em `Add`, a camada filtrada pousa somando.
+        "9" => g.set_param(c.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0),
         _ => return false,
     }
     true

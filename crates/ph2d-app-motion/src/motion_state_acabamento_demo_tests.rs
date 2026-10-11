@@ -136,13 +136,15 @@ fn every_photo_variant_is_the_step_it_names() {
     let l = |p: &str| lido(p).3;
     assert!(l("5").lente.vinheta.neutra());
     assert!(l("5b").lente.vinheta.amount < 0.0);
+    // A mistura: o passo (9) põe a saída em `Add` (com tudo, o alcance de origem).
     let mut m = MotionState::new();
     let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
-    assert!(passo(&mut m.doc.graph, &cena, "mistura"));
+    assert!(passo(&mut m.doc.graph, &cena, "9"));
+    let g = &m.doc.graph;
+    assert_eq!(ph2d_eval_motion::sink_blend_tag(g, cena.saida), 1, "Add");
     assert_eq!(
-        ph2d_eval_motion::sink_blend_tag(&m.doc.graph, cena.saida),
-        1,
-        "a medição põe a saída em Add"
+        ph2d_eval_motion::sink_blend_with(g, cena.saida),
+        ph2d_eval_motion::BlendWith::Everything
     );
     assert!(!l("6").lente.aberracao.neutra() && l("6").lente.vinheta == lente0.lente.vinheta);
     assert!(l("7a").lente.grade.temperatura > 0.0);
@@ -161,7 +163,7 @@ fn every_photo_variant_is_the_step_it_names() {
     let mut m = MotionState::new();
     let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
     let antes = m.doc.graph.clone();
-    assert!(!passo(&mut m.doc.graph, &cena, "9"));
+    assert!(!passo(&mut m.doc.graph, &cena, "99"));
     assert_eq!(format!("{:?}", m.doc.graph), format!("{antes:?}"));
     // E o `.cube` que o passo (7) nomeia existe, onde o app o procura (a raiz do repo).
     let raiz = concat!(env!("CARGO_MANIFEST_DIR"), "/../../");
@@ -260,16 +262,23 @@ fn a_scene_blend_with_the_layer_on_lowers_without_a_group() {
             );
         }
         let caso = format!("camada {isolada}, alcance {alcance}");
-        assert!(!m.pump.vector_instances.is_empty(), "{caso}: a =135 tem formas");
+        assert!(
+            !m.pump.vector_instances.is_empty(),
+            "{caso}: a =135 tem formas"
+        );
         let tag = if agrupa { 1 } else { 0 };
         assert!(
-            m.pump.vector_instances.iter().all(|v| v.mistura.blend == tag),
+            m.pump
+                .vector_instances
+                .iter()
+                .all(|v| v.mistura.blend == tag),
             "{caso}: as formas deviam levar o tag {tag}"
         );
         assert!(
-            m.pump.instances.iter().all(|i| {
-                ph2d_render::RenderInstance::unpack_blend(i.flip_uv) == 0
-            }),
+            m.pump
+                .instances
+                .iter()
+                .all(|i| { ph2d_render::RenderInstance::unpack_blend(i.flip_uv) == 0 }),
             "{caso}: uma sprite leva o modo — ele correria na camada E na pousa"
         );
     }

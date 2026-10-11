@@ -114,7 +114,10 @@ const PASSES: [wgpu::BlendState; 5] = {
     use wgpu::BlendFactor as F;
     let over = componente(F::One, F::OneMinusSrcAlpha);
     [
-        wgpu::BlendState { color: over, alpha: over },
+        wgpu::BlendState {
+            color: over,
+            alpha: over,
+        },
         wgpu::BlendState {
             color: componente(F::One, F::One),
             alpha: componente(F::One, F::One),

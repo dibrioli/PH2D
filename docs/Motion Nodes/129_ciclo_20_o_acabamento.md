@@ -182,7 +182,7 @@ Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illu
   Photoshop, par do «Inner Glow»); gate de rótulos únicos por superfície.
 - U2 (px do projecto) fica nomeado: a unidade é do projecto inteiro, não deste nó.
 
-### §3.5 — W4b: a MISTURA do `Output` e a camada filtrada (desenho, 11/10 — por fazer)
+### §3.5 — W4b: a MISTURA do `Output` e a camada filtrada (desenho 11/10 — FEITO, §5.8)
 
 **Medido (W4, §5.7):** com o `Output` em `Blend` = `Add`/`Multiply`/`Screen` o sink mistura EM GRUPO
 (doc 118): o cozimento da placa recusa (`RECUSA_MISTURA_EM_GRUPO`), a CPU baixa o sink inteiro para
@@ -226,7 +226,7 @@ tem um `f` — meça e decida (camada por sink, ou a queixa).
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | ✅ §5.4 (+ a `=135` com uma sombra projectada) |
 | W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | ✅ §5.6 · smoke do dono APROVADO 11/10 |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | ✅ §5.7 (+ a pilha só na área da cena; a mistura medida e dita no cartão) |
-| W4b | a mistura do `Output` com a camada filtrada (§3.5) | — |
+| W4b | a mistura do `Output` com a camada filtrada (§3.5) | ✅ §5.8 (+ o passo (9) do roteiro e a secção 10 do tutorial) |
 | W5 | provas de mutação · o handoff | — |
 
 ## §5 — Medições
@@ -429,6 +429,40 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
 - **A rota da CPU com filtro ACONTECE** (o aberto do W3): a saída em `Add` manda tudo ao Vello e o
   filtro não alcança nada (§3.5). O cartão de cada `Filter` di-lo desde a W4; a cura é a W4b.
 
+### §5.8 — A mistura atravessa a camada (W4b, 11/10)
+
+- **A pousa é mistura de HARDWARE, não um passe com cópia do mundo** (o desenho do §3.5 pedia a
+  cópia): `Soma` = `One/One`, `Tela` = `One/OneMinusSrc` — exactos com qualquer alfa —, e o
+  `Multiplica` em DOIS passes no mesmo passe de desenho (`Dst/OneMinusSrcAlpha` com o alfa intacto,
+  depois `OneMinusDstAlpha/One`): `s·b + b·(1−αs) + s·(1−αb)`, exacto. `ph2d_render::Pousa` +
+  `BandBlit::blit_pousa`. Gates `band_blit_pousa_gpu`: contra a lei ≤ 1 nível (fundos meio
+  transparentes incluídos; o controlo separa os quatro modos e o `Multiplica` de um passe só) e
+  contra o Vello **0 níveis** nas 18 células opacas.
+- **A porta do produto pinta o que o quadro sem filtro pinta, AO BYTE**: a tabela do doc 118 pela
+  cena vectorial na camada, `filtra_a_camada` com pilha neutra e a pousa — 9 células (3 modos × 3
+  alcances), diferença **0** contra o quadro de hoje (gate
+  `the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it`).
+- **O `Scene` não agrupa com a camada ligada** (`MisturaDoSink::pousa_na_camada`, a mesma regra na
+  bomba e na rota da placa): as formas vão à placa e às células; `Everything`/`Copies`, o `Blend`
+  por linha e a geometria recusada vão ao **Vello dentro da camada** (`cena_da_camada`, sem o
+  mundo por baixo), onde os `Each Shape` correm sobre o CONJUNTO (`FxStackPass::run_straight`) e o
+  cartão di-lo (`each_shape_sees_the_vector_path_as_one`).
+- **O preço do Vello na camada** (`o_preco_do_vello_na_camada`, `--release`, 12 blocos
+  intercalados, o mínimo, `load 12–23`; pilha neutra):
+
+  | | 1600×972 · 256 | 1600×972 · 4 096 | 4K · 256 | 4K · 4 096 |
+  |---|---:|---:|---:|---:|
+  | a camada sem formas | 0,10 ms | 0,10 | 0,29 | 0,28 |
+  | com o Vello dentro dela | 0,49 | 1,85 | 1,54 | 2,25 |
+
+  ⚠️ Não é custo NOVO por inteiro: esse Vello corria antes na cena do quadro (agora sai dela).
+- **Duas saídas com modos diferentes partilham a camada** (item 4, decidido): medido, NENHUMA cena
+  tem duas saídas com filtro, e uma camada por saída partiria a ordem por linha ENTRE saídas (doc
+  119 W4) e pediria faixas nas sprites, nas células e na placa. ⇒ a camada pousa com o modo da
+  primeira, e o cartão de cada filtro di-lo (`outputs_land_differently`).
+- **A foto** (`handoffs/fotos_W4b/`, passo (9) = `Output` em `Add`): os discos clareiam o fundo e o
+  relevo fica; a sombra escura some na soma (a lei). A da W4 (`mistura`) saía chapada.
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo
@@ -454,8 +488,12 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
   as páginas reaproveitam o átlas em série. Uma página de 4096 custaria ~1,2 GB.
 - (W3b) U2 (o cartão mostra px do PROJECTO): a unidade é do projecto inteiro, não deste nó.
 
-- (W4) ⭐ A MISTURA do `Output` (Add/Multiply/Screen), o `Blend` por linha e a geometria recusada
-  levam as formas ao Vello, fora da camada filtrada — medido; o cartão di-lo; a cura é a W4b (§3.5).
+- ~~(W4) A MISTURA do `Output` fora da camada filtrada~~ — curada na W4b (§5.8).
+- (W4b) Os filtros de TODOS os fios aplicam-se à camada do Motion inteiro (o `from_graph` concatena
+  o fio de cada `Output`): um filtro no fio de uma saída filtra também a outra. Medido: nenhuma cena
+  o tem; a cura (uma camada por fio) é a mesma que o item 4 recusou por agora.
+- (W4b) `Multiply` dentro da camada com placa (hardware) pediria `DUAL_SOURCE_BLENDING`; hoje o
+  `Everything`/`Copies` vai ao Vello (+0,4–1,9 ms, §5.8).
 - (W4) O retângulo da camada é o `scene_viewport` (a área onde o mundo se renderiza); a área que o
   artista VÊ (`cena_visivel`, a da lente) é menor quando há painéis por cima — mais barato, por medir.
 - (W3) A lei de mistura do `fx.filter` sem ficha (os rótulos são da shell) e a rampa com 2 stops.

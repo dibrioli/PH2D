@@ -181,7 +181,10 @@ fn the_hardware_blend_paints_the_law_of_each_mode() {
         .filter(|(_, c)| c.0.1 < 1.0)
         .max_by(|(_, x), (_, y)| (x.1.0 * x.1.1).total_cmp(&(y.1.0 * y.1.1)))
         .expect("um caso de fundo meio transparente");
-    let m = Pousa::ALL.iter().position(|p| *p == Pousa::Multiplica).unwrap_or(0);
+    let m = Pousa::ALL
+        .iter()
+        .position(|p| *p == Pousa::Multiplica)
+        .unwrap_or(0);
     assert!(
         (i32::from(leituras[m][i][0]) - i32::from(ingenuo(*caso))).abs() > 8,
         "a fixtura não separa o `Multiplica` exacto do de um passe só"

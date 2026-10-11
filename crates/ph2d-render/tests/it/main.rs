@@ -11,8 +11,8 @@ mod fx_stack_common;
 
 mod a_amostragem_do_device_chega_ao_pixel;
 mod a_mistura_do_device_chega_ao_pixel;
-mod band_blit_pousa_gpu;
 mod architecture_sprite_inspector_surface;
+mod band_blit_pousa_gpu;
 mod blend_mode_regression;
 mod bloom_wgsl_valid;
 mod camera_screen_to_world;

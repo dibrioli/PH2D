@@ -223,7 +223,22 @@ fechadas e neutras — abra cada uma para a ligar.</p>
   <figcaption><code>Grain</code> 0,4.</figcaption></figure>
 </div>
 
-<h2>10 · O que isto custa</h2>
+<h2>10 · Misturar com a cena</h2>
+<p>No cartão do <code>Output</code>, mude <code>Blend</code> para <code>Add</code>. Os discos passam a
+<b>somar luz</b> ao que está por baixo: ficam mais claros, e o relevo continua em cada disco.</p>
+<p>A sombra some — e está certo: somar uma cor escura quase não acrescenta nada. Os filtros correm
+primeiro, na camada; o <code>Blend</code> vale quando a camada pousa na cena, como no After Effects.</p>
+<figure class="wide meia"><img src="../fig/acabamento_mistura.png" alt="os discos mais claros, com relevo, somados ao fundo">
+<figcaption>Com <code>Add</code>: o relevo fica, a sombra escura desaparece na soma.</figcaption></figure>
+<p><b>Como saber que errou:</b> os discos ficam chapados, sem o brilho do relevo — reporte com uma
+foto.</p>
+<div class="note"><b>Com quem misturar.</b> No mesmo cartão, <code>Blend With</code> escolhe com
+quem: <code>Scene</code> mistura a camada com o que está por baixo; <code>Copies</code> mistura os
+discos só entre si (a camada pousa normal); <code>Everything</code> faz as duas coisas. Com
+<code>Everything</code> ou <code>Copies</code>, um filtro em <code>Each Shape</code> trata os discos
+como uma peça só — o cartão do filtro avisa.</div>
+
+<h2>11 · O que isto custa</h2>
 <p>Medido nesta máquina, na placa de vídeo, com o computador ocupado por outros trabalhos — vale
 como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
 <table>
@@ -234,6 +249,8 @@ como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
       <td class="n">0,8 ms</td></tr>
   <tr><td>o mesmo em <code>Each Shape</code>, 4 096 discos</td><td class="n">4,6 ms</td>
       <td class="n">4,9 ms</td></tr>
+  <tr><td>a mistura com <code>Everything</code>, 4 096 discos (eles passam pelo desenho de vetor)</td>
+      <td class="n">1,9 ms</td><td class="n">2,3 ms</td></tr>
   <tr><td>o <code>Lens</code> com as quatro secções ligadas, na janela inteira</td>
       <td class="n">0,4 ms</td><td class="n">1,8 ms</td></tr>
 </table>
@@ -241,12 +258,7 @@ como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
 conta. <code>Each Shape</code> custa mais com muitas formas, porque cada uma corre sozinha; com
 poucas formas os dois custam quase o mesmo.</p>
 
-<div class="note"><b>Mistura e filtros.</b> Se o <code>Output</code> usar <code>Blend</code> =
-<code>Add</code>, <code>Multiply</code> ou <code>Screen</code>, as formas são desenhadas por outro
-caminho e, por agora, os filtros <b>não as alcançam</b>. O cartão de cada <code>Filter</code> avisa
-por escrito. Fazer as duas coisas juntas é o próximo passo.</div>
-
-<h2>11 · Se algo não bater</h2>
+<h2>12 · Se algo não bater</h2>
 <table>
   <tr><th>o que você vê</th><th>o que reportar</th></tr>
   <tr><td>o relevo treme com a galáxia a girar</td><td>uma foto e o <code>Effect</code></td></tr>

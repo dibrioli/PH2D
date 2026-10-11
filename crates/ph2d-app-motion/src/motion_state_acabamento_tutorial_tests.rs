@@ -81,6 +81,9 @@ fn every_name_the_finishing_tutorial_puts_in_code_is_on_screen() {
         "Aberration",
         "LUT File",
         "Grain",
+        "Blend",
+        "Add",
+        "Blend With",
     ] {
         assert!(
             TUTORIAL.contains(&format!("<code>{nome}</code>")),

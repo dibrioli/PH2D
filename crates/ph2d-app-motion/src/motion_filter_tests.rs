@@ -187,7 +187,10 @@ fn shapes_drawn_by_the_vector_path_are_named_on_every_each_shape_card() {
     let mut f = MotionFiltro::default();
     f.prepara(&g, &[]);
     assert!(f.liga(true));
-    assert!(f.queixa(um).is_none(), "sem formas pelo Vello, o cartão cala");
+    assert!(
+        f.queixa(um).is_none(),
+        "sem formas pelo Vello, o cartão cala"
+    );
     f.formas_no_vello = true;
     for no in [um, dois] {
         let q = f.queixa(no).expect("o cartão diz");
@@ -226,10 +229,18 @@ fn the_landing_mode_and_the_group_layer_agree_on_every_tag() {
     }
     let vello = |tag| crate::motion_shape_gen::mistura::mistura_vello(tag);
     let par = |p: Pousa| match p {
-        Pousa::Soma => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::Plus),
-        Pousa::Multiplica => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Multiply, ph2d_vector::Compose::SrcOver),
-        Pousa::Tela => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Screen, ph2d_vector::Compose::SrcOver),
-        Pousa::Normal => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver),
+        Pousa::Soma => {
+            ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::Plus)
+        }
+        Pousa::Multiplica => {
+            ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Multiply, ph2d_vector::Compose::SrcOver)
+        }
+        Pousa::Tela => {
+            ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Screen, ph2d_vector::Compose::SrcOver)
+        }
+        Pousa::Normal => {
+            ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver)
+        }
     };
     for tag in [1u8, 3, 4] {
         assert_eq!(
@@ -274,7 +285,42 @@ fn the_landing_comes_from_the_sinks() {
     assert_eq!(f.pousa(), Pousa::Soma, "`Add` com tudo pousa somando");
     g.set_param(saida, ph2d_eval_motion::SINK_BLEND_WITH_PARAM, 1.0);
     f.prepara(&g, &[saida]);
-    assert_eq!(f.pousa(), Pousa::Normal, "`Copies` mistura dentro da camada");
+    assert_eq!(
+        f.pousa(),
+        Pousa::Normal,
+        "`Copies` mistura dentro da camada"
+    );
     f.prepara(&g, &[]);
     assert_eq!(f.pousa(), Pousa::Normal);
+}
+
+/// ⭐ **Duas saídas, dois modos, UMA camada: o cartão de cada filtro di-lo** (doc 129 §3.5, item 4) —
+/// a camada pousa com o modo da primeira. ⚠️ O controlo: duas saídas com o MESMO modo calam.
+#[test]
+fn two_outputs_that_land_differently_are_named_on_every_filter_card() {
+    let mut g = Graph::new();
+    let filtro = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
+    let a = g.add_node("motion.output".to_string());
+    let b = g.add_node("motion.output".to_string());
+    g.connect(ph2d_nodegraph::graph::Edge {
+        from: (filtro, 0),
+        to: (a, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    for s in [a, b] {
+        g.set_param(s, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+    }
+    let mut f = MotionFiltro::default();
+    f.prepara(&g, &[a, b]);
+    assert!(f.liga(true));
+    assert!(
+        f.queixa(filtro).is_none(),
+        "o mesmo modo nas duas: o cartão cala"
+    );
+    g.set_param(b, ph2d_eval_motion::SINK_BLEND_PARAM, 3.0);
+    f.prepara(&g, &[a, b]);
+    assert_eq!(f.pousa(), Pousa::Soma, "a primeira manda");
+    let q = f.queixa(filtro).expect("o cartão diz");
+    assert!(q.contains("different modes"), "{q}");
 }

@@ -129,6 +129,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_filter.after_whole_layer" => {
             "After a Whole Layer filter - runs on the whole layer, not on each shape"
         }
+        "app.motion.motion_filter.outputs_land_differently" => {
+            "The Outputs blend with the scene in different modes - the filtered layer lands with the first Output's"
+        }
         "app.motion.motion_filter.each_shape_sees_the_vector_path_as_one" => {
             "Some shapes draw by the vector path (a Blend with Everything or Copies, a Blend per row, a shape the GPU refuses) - Each Shape treats them as one piece"
         }

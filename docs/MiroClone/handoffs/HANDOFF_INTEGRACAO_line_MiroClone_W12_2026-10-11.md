@@ -13,7 +13,7 @@
 |---|---|
 | branch | `line/MiroClone` · worktree `Worktrees/line-MiroClone` |
 | base (merge-base) | `8f20c60de` (o `main` de 11/10) — se o `main` não andou, `--ff-only` |
-| commits | 8 sobre a base (`git log --oneline 8f20c60de..HEAD`), `cf254345d` … `1e7f5966a` |
+| commits | 9 sobre a base (`git log --oneline 8f20c60de..HEAD`), `cf254345d` … `1e7f5966a` + este handoff |
 | diff em `crates/` | `git diff --shortstat 8f20c60de..HEAD -- crates/`: 50 ficheiros, +4 788 / −256 (o resto do diff total são as saídas do oráculo e as fotos) |
 | smoke | **por fazer** (§8); a cena 13 foi vista por fotografia, 11 estados com duas janelas (§7) |
 
@@ -138,7 +138,7 @@ PH2D_BOARD_SMOKE=1  ./target/smoke/ph2d-host-desktop      # janela 2 (a Bia): Li
 
 ## 10. Para o integrador
 
-- Ordem: uma linha, 8 commits; `main` = merge-base ⇒ `--ff-only`; senão `git cherry main HEAD` e rebase.
+- Ordem: uma linha, 9 commits; `main` = merge-base ⇒ `--ff-only`; senão `git cherry main HEAD` e rebase.
 - Conflitos prováveis (palpite por tipo de ficheiro): `ph2d-i18n/src/lib.rs` (a cadeia `.or_else`), `board_bar.rs`
   (`TOOLBAR`), `docs/architecture/decisions/README.md` (gerado: regenere com `scripts/adr-index.sh`), e o número
   do ADR 0182.

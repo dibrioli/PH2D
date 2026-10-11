@@ -1,0 +1,398 @@
+{
+ "oraculo": "Inkscape 1.4.4 (dcaf3e7d9e, 2026-05-05)",
+ "nota": "caixa preta (GPL): so a SAIDA sobre formas nossas; coordenadas em px do documento (viewBox 800x600); a alca e o alvo ja rodados como a forma; o arrasto e o rato do xdotool em 12 passos; o modificador e premido depois do press",
+ "calibracao_tela": {
+  "sx": 1.2450000409293764,
+  "sy": 1.2450000603046905,
+  "ox": 96.9999794263743,
+  "oy": 145.99997276562362
+ },
+ "forma": "<path id=\"F\" sodipodi:type=\"arc\" sodipodi:cx=\"400\" sodipodi:cy=\"300\" sodipodi:rx=\"120\" sodipodi:ry=\"80\" sodipodi:start=\"0\" sodipodi:end=\"4.712389\" sodipodi:arc-type=\"slice\" d=\"M 0,0\" style=\"fill:#88aaff;stroke:#000000;stroke-width:2\"/>",
+ "origem": {
+  "sodipodi:type": "arc",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:rx": "120",
+  "sodipodi:ry": "80",
+  "sodipodi:start": "0",
+  "sodipodi:end": "4.712389",
+  "sodipodi:arc-type": "slice"
+ },
+ "controlo_depois_do_ultimo_undo": {
+  "sodipodi:type": "arc",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:rx": "120",
+  "sodipodi:ry": "80",
+  "sodipodi:start": "0",
+  "sodipodi:end": "4.712389",
+  "sodipodi:arc-type": "slice"
+ },
+ "experiencias": [
+  {
+   "nome": "start_a+30",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    503.923,
+    340.0
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    724,
+    569
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0.52528304",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "slice"
+   }
+  },
+  {
+   "nome": "start_a+77",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    426.9941,
+    377.9496
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    629,
+    617
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "1.3409193",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "arc",
+    "sodipodi:open": "true"
+   }
+  },
+  {
+   "nome": "start_a+135",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    315.1472,
+    356.5685
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    489,
+    590
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "2.3519512",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "arc",
+    "sodipodi:open": "true"
+   }
+  },
+  {
+   "nome": "start_a+200",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    287.2369,
+    272.6384
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    455,
+    485
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "3.4918583",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "arc",
+    "sodipodi:open": "true"
+   }
+  },
+  {
+   "nome": "start_a-40",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    491.9253,
+    248.577
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    709,
+    455
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "5.5850177",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "slice"
+   }
+  },
+  {
+   "nome": "start_far_a+40",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    547.0805,
+    382.2768
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    778,
+    622
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0.70007754",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "slice"
+   }
+  },
+  {
+   "nome": "start_far_a+77",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    443.1906,
+    424.7194
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    649,
+    675
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "1.3423751",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "slice"
+   }
+  },
+  {
+   "nome": "start_in_a+40",
+   "mod": "",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    438.3022,
+    321.212
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    643,
+    546
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0.69676708",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "arc",
+    "sodipodi:open": "true"
+   }
+  },
+  {
+   "nome": "end_a+200",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    220.0
+   ],
+   "alvo_doc": [
+    287.2369,
+    272.6384
+   ],
+   "alca_tela": [
+    595,
+    420
+   ],
+   "alvo_tela": [
+    455,
+    485
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0",
+    "sodipodi:end": "3.4966007",
+    "sodipodi:arc-type": "arc",
+    "sodipodi:open": "true"
+   }
+  },
+  {
+   "nome": "end_a+300",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    220.0
+   ],
+   "alvo_doc": [
+    460.0,
+    230.718
+   ],
+   "alca_tela": [
+    595,
+    420
+   ],
+   "alvo_tela": [
+    670,
+    433
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0",
+    "sodipodi:end": "5.2360005",
+    "sodipodi:arc-type": "slice"
+   }
+  },
+  {
+   "nome": "start_a+37_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    495.8363,
+    348.1452
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    714,
+    579
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0.52359878",
+    "sodipodi:end": "4.712389",
+    "sodipodi:arc-type": "slice"
+   }
+  },
+  {
+   "nome": "start_a+37_shift",
+   "mod": "shift",
+   "alca_doc": [
+    520.0,
+    300.0
+   ],
+   "alvo_doc": [
+    495.8363,
+    348.1452
+   ],
+   "alca_tela": [
+    744,
+    519
+   ],
+   "alvo_tela": [
+    714,
+    579
+   ],
+   "depois": {
+    "sodipodi:type": "arc",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:rx": "120",
+    "sodipodi:ry": "80",
+    "sodipodi:start": "0.64590881",
+    "sodipodi:end": "5.3582978",
+    "sodipodi:arc-type": "slice"
+   }
+  }
+ ]
+}

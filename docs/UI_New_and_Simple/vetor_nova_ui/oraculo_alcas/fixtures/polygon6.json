@@ -1,0 +1,303 @@
+{
+ "oraculo": "Inkscape 1.4.4 (dcaf3e7d9e, 2026-05-05)",
+ "nota": "caixa preta (GPL): so a SAIDA sobre formas nossas; coordenadas em px do documento (viewBox 800x600); a alca e o alvo ja rodados como a forma; o arrasto e o rato do xdotool em 12 passos; o modificador e premido depois do press",
+ "calibracao_tela": {
+  "sx": 1.2324745204380017,
+  "sy": 1.2450000603046905,
+  "ox": 99.04229334914845,
+  "oy": 145.99997276562362
+ },
+ "forma": "<path id=\"F\" sodipodi:type=\"star\" sodipodi:sides=\"6\" sodipodi:cx=\"400\" sodipodi:cy=\"300\" sodipodi:r1=\"100\" sodipodi:r2=\"45\" sodipodi:arg1=\"-1.570796327\" sodipodi:arg2=\"-1.047197551\" inkscape:flatsided=\"true\" inkscape:rounded=\"0\" inkscape:randomized=\"0\" d=\"M 0,0\" style=\"fill:#88aaff;stroke:#000000;stroke-width:2\"/>",
+ "origem": {
+  "sodipodi:type": "star",
+  "sodipodi:sides": "6",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:r1": "100",
+  "sodipodi:r2": "45",
+  "sodipodi:arg1": "-1.570796327",
+  "sodipodi:arg2": "-1.047197551",
+  "inkscape:flatsided": "true",
+  "inkscape:rounded": "0",
+  "inkscape:randomized": "0"
+ },
+ "controlo_depois_do_ultimo_undo": {
+  "sodipodi:type": "star",
+  "sodipodi:sides": "6",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:r1": "100",
+  "sodipodi:r2": "45",
+  "sodipodi:arg1": "-1.570796327",
+  "sodipodi:arg2": "-1.047197551",
+  "inkscape:flatsided": "true",
+  "inkscape:rounded": "0",
+  "inkscape:randomized": "0"
+ },
+ "experiencias": [
+  {
+   "nome": "tip_r60",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    240.0
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    592,
+    445
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "59.839357",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-1.0471976",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_r130",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    170.0
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    592,
+    358
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "129.71888",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-1.0471976",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_r170",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    130.0
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    592,
+    308
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "169.87952",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-1.0471976",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a+20",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    434.202,
+    206.0307
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    634,
+    403
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "99.469569",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.2247849",
+    "sodipodi:arg2": "-0.70118611",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a+45",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    470.7107,
+    229.2893
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    679,
+    431
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "99.680139",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-0.79394496",
+    "sodipodi:arg2": "-0.27034619",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a-30",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    350.0,
+    213.3975
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    530,
+    412
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "99.676903",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-2.0939404",
+    "sodipodi:arg2": "-1.5703416",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a+30_r140_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    470.0,
+    178.7564
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    678,
+    369
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "139.22774",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-1.0471976",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_r130_shift",
+   "mod": "shift",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    170.0
+   ],
+   "alca_tela": [
+    592,
+    395
+   ],
+   "alvo_tela": [
+    592,
+    358
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "6",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-1.0471976",
+    "inkscape:flatsided": "true",
+    "inkscape:rounded": "-8.9743379e-11",
+    "inkscape:randomized": "0"
+   }
+  }
+ ]
+}

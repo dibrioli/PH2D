@@ -41,6 +41,10 @@ mod params_symmetry;
 /// linha de tabela em vez de oito lugares.
 pub mod shapes;
 
+/// As ALÇAS de cada forma no canvas (F9): a lei (o ponto do contorno cozido + a métrica medida
+/// no Inkscape) e o arrasto. A tabela forma a forma vive no irmão `shape_handles_table`.
+pub mod shape_handles;
+mod shape_handles_table;
 /// A TRAVESSIA do catálogo (descritor · unidade UI↔mundo · clamp · escolhas) — módulo irmão
 /// de `shapes` (teto de LOC). Re-exportado dali, então quem consome não percebe o corte.
 mod shapes_units;

@@ -1,0 +1,421 @@
+{
+ "oraculo": "Inkscape 1.4.4 (dcaf3e7d9e, 2026-05-05)",
+ "nota": "caixa preta (GPL): so a SAIDA sobre formas nossas; coordenadas em px do documento (viewBox 800x600); a alca e o alvo ja rodados como a forma; o arrasto e o rato do xdotool em 12 passos; o modificador e premido depois do press",
+ "calibracao_tela": {
+  "sx": 1.2450000409293764,
+  "sy": 1.2450000603046905,
+  "ox": 96.9999794263743,
+  "oy": 145.99997276562362
+ },
+ "forma": "<rect id=\"F\" x=\"300\" y=\"240\" width=\"200\" height=\"120\" rx=\"10\" ry=\"10\" style=\"fill:#88aaff;stroke:#000000;stroke-width:2\"/>",
+ "origem": {
+  "x": "300",
+  "y": "240",
+  "width": "200",
+  "height": "120",
+  "rx": "10",
+  "ry": "10"
+ },
+ "controlo_depois_do_ultimo_undo": {
+  "x": "300",
+  "y": "240",
+  "width": "200",
+  "height": "120",
+  "rx": "10",
+  "ry": "10"
+ },
+ "experiencias": [
+  {
+   "nome": "rx_x-20",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    470.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    682,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "30.08032",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x-40",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    450.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    657,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "50.160641",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x-70",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    420.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    620,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "79.879517",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x-95",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    395.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    589,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "100",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x-140",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    350.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    533,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "100",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x+15",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    505.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    726,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "0",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x-40_y+25",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    450.0,
+    265.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    657,
+    476
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "50.160641",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "rx_x-40_y-30",
+   "mod": "",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    450.0,
+    210.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    657,
+    407
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "50.160641",
+    "ry": "10"
+   }
+  },
+  {
+   "nome": "ry_y+15",
+   "mod": "",
+   "alca_doc": [
+    500.0,
+    250.0
+   ],
+   "alvo_doc": [
+    500.0,
+    265.0
+   ],
+   "alca_tela": [
+    719,
+    457
+   ],
+   "alvo_tela": [
+    719,
+    476
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "10",
+    "ry": "25.261044"
+   }
+  },
+  {
+   "nome": "ry_y+35",
+   "mod": "",
+   "alca_doc": [
+    500.0,
+    250.0
+   ],
+   "alvo_doc": [
+    500.0,
+    285.0
+   ],
+   "alca_tela": [
+    719,
+    457
+   ],
+   "alvo_tela": [
+    719,
+    501
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "10",
+    "ry": "45.341366"
+   }
+  },
+  {
+   "nome": "ry_y+70",
+   "mod": "",
+   "alca_doc": [
+    500.0,
+    250.0
+   ],
+   "alvo_doc": [
+    500.0,
+    320.0
+   ],
+   "alca_tela": [
+    719,
+    457
+   ],
+   "alvo_tela": [
+    719,
+    544
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "10",
+    "ry": "60"
+   }
+  },
+  {
+   "nome": "rx_x-40_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    450.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    657,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "50.160641",
+    "ry": "50.160641"
+   }
+  },
+  {
+   "nome": "ry_y+35_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    500.0,
+    250.0
+   ],
+   "alvo_doc": [
+    500.0,
+    285.0
+   ],
+   "alca_tela": [
+    719,
+    457
+   ],
+   "alvo_tela": [
+    719,
+    501
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "45.341366",
+    "ry": "45.341366"
+   }
+  },
+  {
+   "nome": "rx_x-40_shift",
+   "mod": "shift",
+   "alca_doc": [
+    490.0,
+    240.0
+   ],
+   "alvo_doc": [
+    450.0,
+    240.0
+   ],
+   "alca_tela": [
+    707,
+    445
+   ],
+   "alvo_tela": [
+    657,
+    445
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "50.160641",
+    "ry": "10"
+   }
+  }
+ ]
+}

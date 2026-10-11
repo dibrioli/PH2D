@@ -1,0 +1,534 @@
+{
+ "oraculo": "Inkscape 1.4.4 (dcaf3e7d9e, 2026-05-05)",
+ "nota": "caixa preta (GPL): so a SAIDA sobre formas nossas; coordenadas em px do documento (viewBox 800x600); a alca e o alvo ja rodados como a forma; o arrasto e o rato do xdotool em 12 passos; o modificador e premido depois do press",
+ "calibracao_tela": {
+  "sx": 1.2450000409293764,
+  "sy": 1.2450000603046905,
+  "ox": 96.9999794263743,
+  "oy": 145.99997276562362
+ },
+ "forma": "<path id=\"F\" sodipodi:type=\"star\" sodipodi:sides=\"5\" sodipodi:cx=\"400\" sodipodi:cy=\"300\" sodipodi:r1=\"100\" sodipodi:r2=\"45\" sodipodi:arg1=\"-1.570796327\" sodipodi:arg2=\"-0.942477796\" inkscape:flatsided=\"false\" inkscape:rounded=\"0\" inkscape:randomized=\"0\" d=\"M 0,0\" style=\"fill:#88aaff;stroke:#000000;stroke-width:2\"/>",
+ "origem": {
+  "sodipodi:type": "star",
+  "sodipodi:sides": "5",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:r1": "100",
+  "sodipodi:r2": "45",
+  "sodipodi:arg1": "-1.570796327",
+  "sodipodi:arg2": "-0.942477796",
+  "inkscape:flatsided": "false",
+  "inkscape:rounded": "0",
+  "inkscape:randomized": "0"
+ },
+ "controlo_depois_do_ultimo_undo": {
+  "sodipodi:type": "star",
+  "sodipodi:sides": "5",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:r1": "100",
+  "sodipodi:r2": "45",
+  "sodipodi:arg1": "-1.570796327",
+  "sodipodi:arg2": "-0.942477796",
+  "inkscape:flatsided": "false",
+  "inkscape:rounded": "0",
+  "inkscape:randomized": "0"
+ },
+ "experiencias": [
+  {
+   "nome": "tip_r60",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    240.0
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    595,
+    445
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "59.839357",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_r130",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    170.0
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    595,
+    358
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "129.71888",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_r170",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    130.0
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    595,
+    308
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "169.87952",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a+20",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    434.202,
+    206.0307
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    638,
+    403
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "99.74484",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.2172094",
+    "sodipodi:arg2": "-0.58889087",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a+45",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    470.7107,
+    229.2893
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    683,
+    431
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100.24486",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-0.78823102",
+    "sodipodi:arg2": "-0.15991249",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a-30",
+   "mod": "",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    350.0,
+    213.3975
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    533,
+    412
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "99.676903",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-2.0939404",
+    "sodipodi:arg2": "-1.4656219",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_a+30_r140_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    470.0,
+    178.7564
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    682,
+    369
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "139.62799",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "tip_r130_shift",
+   "mod": "shift",
+   "alca_doc": [
+    400.0,
+    200.0
+   ],
+   "alvo_doc": [
+    400.0,
+    170.0
+   ],
+   "alca_tela": [
+    595,
+    395
+   ],
+   "alvo_tela": [
+    595,
+    358
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "-7.4786149e-11",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_r25",
+   "mod": "",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    414.6946,
+    279.7746
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    613,
+    494
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "24.923858",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.95470973",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_r70",
+   "mod": "",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    441.145,
+    243.3688
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    646,
+    449
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "69.743502",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.94400174",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_r120",
+   "mod": "",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    470.5342,
+    202.918
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    683,
+    399
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "119.70284",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.93971298",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_a+15",
+   "mod": "",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    434.9716,
+    271.6806
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    639,
+    484
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "45.278497",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.67724322",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_a-20",
+   "mod": "",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    412.4037,
+    256.7432
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    610,
+    466
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "44.4787",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-1.2977942",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_a+15_r70_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    454.4002,
+    255.9476
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    663,
+    465
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "69.864748",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0",
+    "inkscape:randomized": "0"
+   }
+  },
+  {
+   "nome": "inner_r70_shift",
+   "mod": "shift",
+   "alca_doc": [
+    426.4503,
+    263.5942
+   ],
+   "alvo_doc": [
+    441.145,
+    243.3688
+   ],
+   "alca_tela": [
+    628,
+    474
+   ],
+   "alvo_tela": [
+    646,
+    449
+   ],
+   "depois": {
+    "sodipodi:type": "star",
+    "sodipodi:sides": "5",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:r1": "100",
+    "sodipodi:r2": "45",
+    "sodipodi:arg1": "-1.5707963",
+    "sodipodi:arg2": "-0.9424778",
+    "inkscape:flatsided": "false",
+    "inkscape:rounded": "0.0024254395",
+    "inkscape:randomized": "0"
+   }
+  }
+ ]
+}

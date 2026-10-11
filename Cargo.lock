@@ -9231,6 +9231,7 @@ dependencies = [
  "ph2d-vec-edit",
  "ph2d-vec-scene",
  "ph2d-vector",
+ "serde_json",
 ]
 
 [[package]]

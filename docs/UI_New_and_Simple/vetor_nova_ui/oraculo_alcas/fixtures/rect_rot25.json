@@ -1,0 +1,437 @@
+{
+ "oraculo": "Inkscape 1.4.4 (dcaf3e7d9e, 2026-05-05)",
+ "nota": "caixa preta (GPL): so a SAIDA sobre formas nossas; coordenadas em px do documento (viewBox 800x600); a alca e o alvo ja rodados como a forma; o arrasto e o rato do xdotool em 12 passos; o modificador e premido depois do press",
+ "calibracao_tela": {
+  "sx": 1.2450000409293764,
+  "sy": 1.2450000603046905,
+  "ox": 96.9999794263743,
+  "oy": 145.99997276562362
+ },
+ "forma": "<rect id=\"F\" x=\"300\" y=\"240\" width=\"200\" height=\"120\" rx=\"10\" ry=\"10\" transform=\"rotate(25 400 300)\" style=\"fill:#88aaff;stroke:#000000;stroke-width:2\"/>",
+ "origem": {
+  "x": "300",
+  "y": "240",
+  "width": "200",
+  "height": "120",
+  "rx": "10",
+  "ry": "10",
+  "transform": "rotate(25 400 300)"
+ },
+ "controlo_depois_do_ultimo_undo": {
+  "x": "300",
+  "y": "240",
+  "width": "200",
+  "height": "120",
+  "rx": "10",
+  "ry": "10",
+  "transform": "rotate(25 400 300)"
+ },
+ "experiencias": [
+  {
+   "nome": "rx_x-20",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    488.7986,
+    275.2048
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    706,
+    489
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "29.409601",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-40",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    470.6725,
+    266.7524
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    683,
+    478
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "49.886612",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-70",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    443.4833,
+    254.0739
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    649,
+    462
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "80.068428",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-95",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    420.8256,
+    243.5084
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    621,
+    449
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "100",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-140",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    380.0417,
+    224.4906
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    570,
+    425
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "100",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x+15",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    520.5194,
+    289.9965
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    745,
+    507
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "0",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-40_y+25",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    460.107,
+    289.4101
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    670,
+    506
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "49.845402",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-40_y-30",
+   "mod": "",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    483.351,
+    239.5632
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    699,
+    444
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "49.780666",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "ry_y+15",
+   "mod": "",
+   "alca_doc": [
+    511.7617,
+    296.9464
+   ],
+   "alvo_doc": [
+    505.4224,
+    310.5411
+   ],
+   "alca_tela": [
+    734,
+    516
+   ],
+   "alvo_tela": [
+    726,
+    533
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "10",
+    "ry": "25.090906",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "ry_y+35",
+   "mod": "",
+   "alca_doc": [
+    511.7617,
+    296.9464
+   ],
+   "alvo_doc": [
+    496.9701,
+    328.6672
+   ],
+   "alca_tela": [
+    734,
+    516
+   ],
+   "alvo_tela": [
+    716,
+    555
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "10",
+    "ry": "44.500507",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "ry_y+70",
+   "mod": "",
+   "alca_doc": [
+    511.7617,
+    296.9464
+   ],
+   "alvo_doc": [
+    482.1784,
+    360.388
+   ],
+   "alca_tela": [
+    734,
+    516
+   ],
+   "alvo_tela": [
+    697,
+    595
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "10",
+    "ry": "60",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-40_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    470.6725,
+    266.7524
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    683,
+    478
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "49.886612",
+    "ry": "49.886612",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "ry_y+35_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    511.7617,
+    296.9464
+   ],
+   "alvo_doc": [
+    496.9701,
+    328.6672
+   ],
+   "alca_tela": [
+    734,
+    516
+   ],
+   "alvo_tela": [
+    716,
+    555
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "44.500507",
+    "ry": "44.500507",
+    "transform": "rotate(25,400,300)"
+   }
+  },
+  {
+   "nome": "rx_x-40_shift",
+   "mod": "shift",
+   "alca_doc": [
+    506.9248,
+    283.6572
+   ],
+   "alvo_doc": [
+    470.6725,
+    266.7524
+   ],
+   "alca_tela": [
+    728,
+    499
+   ],
+   "alvo_tela": [
+    683,
+    478
+   ],
+   "depois": {
+    "x": "300",
+    "y": "240",
+    "width": "200",
+    "height": "120",
+    "rx": "49.886612",
+    "ry": "10",
+    "transform": "rotate(25,400,300)"
+   }
+  }
+ ]
+}

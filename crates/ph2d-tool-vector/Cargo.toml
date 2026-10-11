@@ -43,3 +43,7 @@ ph2d-symmetry = { path = "../ph2d-symmetry" }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# Os gates das alças (F9) leem as fixtures do Inkscape (`oraculo_alcas/fixtures/*.json`).
+serde_json = "1"

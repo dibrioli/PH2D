@@ -1,0 +1,363 @@
+{
+ "oraculo": "Inkscape 1.4.4 (dcaf3e7d9e, 2026-05-05)",
+ "nota": "caixa preta (GPL): so a SAIDA sobre formas nossas; coordenadas em px do documento (viewBox 800x600); a alca e o alvo ja rodados como a forma; o arrasto e o rato do xdotool em 12 passos; o modificador e premido depois do press",
+ "calibracao_tela": {
+  "sx": 1.2450000409293764,
+  "sy": 1.2450000603046905,
+  "ox": 96.9999794263743,
+  "oy": 145.99997276562362
+ },
+ "forma": "<path id=\"F\" sodipodi:type=\"spiral\" sodipodi:cx=\"400\" sodipodi:cy=\"300\" sodipodi:expansion=\"1\" sodipodi:revolution=\"3\" sodipodi:radius=\"110\" sodipodi:argument=\"0\" sodipodi:t0=\"0.1\" d=\"M 0,0\" style=\"fill:none;stroke:#000000;stroke-width:2\"/>",
+ "origem": {
+  "sodipodi:type": "spiral",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:expansion": "1",
+  "sodipodi:revolution": "3",
+  "sodipodi:radius": "110",
+  "sodipodi:argument": "0",
+  "sodipodi:t0": "0.1"
+ },
+ "controlo_depois_do_ultimo_undo": {
+  "sodipodi:type": "spiral",
+  "sodipodi:cx": "400",
+  "sodipodi:cy": "300",
+  "sodipodi:expansion": "1",
+  "sodipodi:revolution": "3",
+  "sodipodi:radius": "110",
+  "sodipodi:argument": "0",
+  "sodipodi:t0": "0.1"
+ },
+ "experiencias": [
+  {
+   "nome": "outer_a+0_r150",
+   "mod": "",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    550.0,
+    300.0
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    782,
+    519
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3",
+    "sodipodi:radius": "110",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.1"
+   }
+  },
+  {
+   "nome": "outer_a+0_r70",
+   "mod": "",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    470.0,
+    300.0
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    682,
+    519
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3",
+    "sodipodi:radius": "110",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.1"
+   }
+  },
+  {
+   "nome": "outer_a+90_r110",
+   "mod": "",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    400.0,
+    410.0
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    595,
+    656
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3.2500582",
+    "sodipodi:radius": "119.16879",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.092306055"
+   }
+  },
+  {
+   "nome": "outer_a-90_r110",
+   "mod": "",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    400.0,
+    190.0
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    595,
+    383
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "2.7499416",
+    "sodipodi:radius": "100.83119",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.10909322"
+   }
+  },
+  {
+   "nome": "outer_a+45_r160",
+   "mod": "",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    513.1371,
+    413.1371
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    736,
+    660
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3.1250281",
+    "sodipodi:radius": "114.58437",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.095999129"
+   }
+  },
+  {
+   "nome": "outer_a+180_r110",
+   "mod": "",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    290.0,
+    300.0
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    458,
+    519
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "2.5",
+    "sodipodi:radius": "91.666664",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.12"
+   }
+  },
+  {
+   "nome": "outer_a+50_r130_ctrl",
+   "mod": "ctrl",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    483.5624,
+    399.5858
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    699,
+    643
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3.125",
+    "sodipodi:radius": "114.58334",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.096000001"
+   }
+  },
+  {
+   "nome": "outer_a+50_r130_shift",
+   "mod": "shift",
+   "alca_doc": [
+    510.0,
+    300.0
+   ],
+   "alvo_doc": [
+    483.5624,
+    399.5858
+   ],
+   "alca_tela": [
+    732,
+    519
+   ],
+   "alvo_tela": [
+    699,
+    643
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3",
+    "sodipodi:radius": "129.9657",
+    "sodipodi:argument": "-17.976425",
+    "sodipodi:t0": "0.1"
+   }
+  },
+  {
+   "nome": "inner_out20",
+   "mod": "",
+   "alca_doc": [
+    396.6008,
+    310.4616
+   ],
+   "alvo_doc": [
+    390.4205,
+    329.4828
+   ],
+   "alca_tela": [
+    591,
+    533
+   ],
+   "alvo_tela": [
+    583,
+    556
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3",
+    "sodipodi:radius": "110",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.10069872"
+   }
+  },
+  {
+   "nome": "inner_out40",
+   "mod": "",
+   "alca_doc": [
+    396.6008,
+    310.4616
+   ],
+   "alvo_doc": [
+    384.2401,
+    348.5039
+   ],
+   "alca_tela": [
+    591,
+    533
+   ],
+   "alvo_tela": [
+    575,
+    580
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1",
+    "sodipodi:revolution": "3",
+    "sodipodi:radius": "110",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.10058051"
+   }
+  },
+  {
+   "nome": "inner_alt_out30",
+   "mod": "alt",
+   "alca_doc": [
+    396.6008,
+    310.4616
+   ],
+   "alvo_doc": [
+    387.3303,
+    338.9933
+   ],
+   "alca_tela": [
+    591,
+    533
+   ],
+   "alvo_tela": [
+    579,
+    568
+   ],
+   "depois": {
+    "sodipodi:type": "spiral",
+    "sodipodi:cx": "400",
+    "sodipodi:cy": "300",
+    "sodipodi:expansion": "1.321285",
+    "sodipodi:revolution": "3",
+    "sodipodi:radius": "110",
+    "sodipodi:argument": "0",
+    "sodipodi:t0": "0.1"
+   }
+  }
+ ]
+}

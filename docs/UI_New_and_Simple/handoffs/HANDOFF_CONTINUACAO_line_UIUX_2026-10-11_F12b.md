@@ -23,6 +23,11 @@
   barramento restilar a selecção antes de a limpar): seta e coração em caixa larga e alta/estreita, quadrado *Curve* 0,010, pentágono *Curve* 0,070, lua, balão; traço 16 px. Fotos em
   `/var/tmp/ph2d_F12_cena18/` (`depois_bico_cortado.png`, `antes_chanfro.png` com `PH2D_MITER_CLIP=0`,
   `lado_a_lado_antes_esq_depois_dir.png`). Leitura e as três opções ao dono: doc 19 §5.
+- **Depois da R1, dois pedidos do dono** (11/10): (1) o rectângulo de raio minúsculo sob traço
+  grosso saía com o canto em chanfro — `ph2d_vec_render::miter_clip::tighter_than` (curvatura < ½w)
+  manda essas geometrias pelo contorno exacto (`90eebf7b38`; a cena 18 ganhou o rectângulo);
+  (2) no modo Forma um CLIQUE numa forma existente selecciona-a, arrastar desenha
+  (`shape_live::after_the_shape_release`, `2bb2954b82`). Binário smoke compilado.
 - A placa da GPU do Motion (`contorno_cpu.rs` + 2 shaders) NÃO entra nesta linha: só depois de o dono
   aprovar o bico cortado (doc 19 §5).
 

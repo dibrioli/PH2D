@@ -106,12 +106,14 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
 
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let cena = monta(doc, reg)?;
-    if let Some(n) = std::env::var("PH2D_ACABAMENTO_PASSO").ok() {
-        if !passo(&mut doc.graph, &cena, n.trim()) {
-            eprintln!(
-                "[o acabamento] PH2D_ACABAMENTO_PASSO={n}: passo desconhecido, cena de sempre"
-            );
-        }
+    if let Ok(n) = std::env::var("PH2D_ACABAMENTO_PASSO")
+        && !passo(&mut doc.graph, &cena, n.trim())
+    {
+        eprintln!(
+            "[o acabamento] PH2D_ACABAMENTO_PASSO={n}: passo desconhecido (os do roteiro: {}), \
+             cena de sempre",
+            PASSOS.join(" ")
+        );
     }
     Some(vec![cena.saida])
 }

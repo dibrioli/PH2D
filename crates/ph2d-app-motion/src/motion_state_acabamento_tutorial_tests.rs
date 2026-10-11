@@ -110,5 +110,5 @@ fn every_figure_of_the_finishing_tutorial_exists() {
 /// O passo (1) só se VÊ se os discos se tocam: o diâmetro passa o vão da grelha.
 #[test]
 fn the_discs_touch_so_whole_layer_differs_from_each_shape() {
-    assert!(2.0 * ESTRELA > super::super::ritmo_demo::VAO);
+    const { assert!(2.0 * ESTRELA > super::super::ritmo_demo::VAO) }
 }

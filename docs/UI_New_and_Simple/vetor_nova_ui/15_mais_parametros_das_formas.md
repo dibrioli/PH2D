@@ -54,6 +54,33 @@ Illustrator pelo helpx (Live Shapes / Live Corners); Inkscape CORRIDO (§2) e o 
 | Nuvem | bolhas · fofo · vale · irregular | ✓ | Bubbles · Inner radius | — | — |
 | Coração | entalhe | ✓ | Spread | — | — |
 
+## §1b — A estrela do dono: o Affinity e o Illustrator PELAS FOTOS (a 2.ª redacção)
+
+> O dono, depois da 1.ª redacção: *«a estrela ficou horrível. nem tem como criar uma estrela com
+> isso. vá descobrir como fazem Affinity e Illustrator. veja por fotos como eles posicionam o gizmo e
+> seus pontos»*. A 1.ª redacção copiou o Inkscape (o vale torcia com a mão) e espalhou cinco pontos
+> pela estrela (dois quase sobrepostos no vale); a estrela nascia gorda (0,5).
+
+Fontes: a figura da estrela de omissão do manual do Affinity (Designer 2 e o app novo — o mesmo
+ficheiro, md5 igual), a captura do fórum Serif (12 pontas, barra visível), os quadros do vídeo «Star
+Tool Ninja»; os GIFs do Tuts+ do Illustrator (o widget de pontas, o arrasto de R1/R2). Imagens
+guardadas fora do repo; a leitura está aqui.
+
+| | Affinity | Illustrator | nós (2.ª redacção) |
+|---|---|---|---|
+| os pontos | 3 vermelhos, JUNTO da ponta de cima: a ponta e os dois vales dela | R1 numa ponta, R2 num vale, ⊙ de canto, ⇕ das pontas | 4 junto da ponta de cima + o ⇕ |
+| a ponta | arredonda (*Outer circle*): o ponto desce pelo eixo da ponta | R1 (raio exterior), radial | arredonda; o ponto é o cruzamento do contorno com o EIXO da ponta (`Spot::Apex`), desenhado `PARK_PX` para dentro |
+| o vale da direita | o raio interior | R2 (o raio interior), radial, círculo tracejado | o raio interior, SÓ radial |
+| o vale da esquerda | arredonda os vales (*Inner circle*) | ⊙ | arredonda os vales, pelo eixo do vale |
+| *Curved edges* | dois pontos a meio dos lados da ponta | — | a envergadura no meio do lado esquerdo da ponta |
+| as pontas | só a barra (*Points*) | ⇕ na borda direita da caixa, «Points: N» | ⇕ na borda direita da caixa VISÍVEL, 1/24 da altura por degrau (`Law::Steps`) |
+| torção | não existe | não existe | só no cartão |
+| omissão | 5 pontas, raio interior ≈ 38 % (os ombros alinhados) | 5, regular | 5, `cos 72°/cos 36° = 0,382` (era 0,5) |
+| a caixa | aparece junto (8 alças + rotação); o ponto da ponta cai em cima da alça do meio-topo | some durante o arrasto de um raio | junto; o ponto da ponta desenha-se para dentro do topo (a caixa abraça o contorno cozido e desce com a ponta arredondada — estacionar a partir do vértice vivo deixava-o por baixo da alça azul: a foto) |
+
+O polígono ganhou o mesmo idioma: o canto no vértice de cima (pelo eixo dele), a envergadura no meio
+do lado esquerdo, os lados no ⇕.
+
 ## §2 — Os oráculos
 
 ### O Inkscape 1.4.4 — CORRIDO (`oraculo_parametros/`)
@@ -73,7 +100,7 @@ fixtures com cabeçalho. Os gates (`shape_handles_f10_tests.rs`) passam pelo cat
 | a espiral: `r = t^divergência`, `θ = voltas·2π·t`, `t ∈ [t0, 1]` | as ÂNCORAS dele caem na lei a `≤ 9e-7` (12 espirais) |
 | o ajuste dele (4 cúbicas por volta) | afasta-se até `0,006` da lei — a régua é a LEI, não as cúbicas dele |
 | a nossa espiral divergente (16 por volta; abaixo de 1 pelo RAIO) | `< 1e-3` da lei (a `0,5` sem a reparametrização: `0,0135`) |
-| o vale torce com a mão (o arrasto livre do vale da F9) | 12 arrastos: a torção = `Δarg2` a `< 0,3°`; Ctrl = só o raio (`Δ = 0`) |
+| o vale torce com a mão (o arrasto livre do vale da F9) | 12 arrastos: a torção = `Δarg2` a `< 0,3°` — **medido e RECUSADO** (§1b, §6): o produto do dono não torce |
 
 ### O Affinity — o MANUAL (o produto de referência do dono)
 
@@ -93,8 +120,8 @@ nenhum controlo morto). Nenhuma forma passa de 8 campos: o tecto `MAX_SHAPE_FIEL
 | forma | campo novo (índice) | faixa | gesto |
 |---|---|---|---|
 | Rect arredondado | Corner (5) | Rounded · Straight · Concave · Cutout | **cartão** |
-| Polígono | Corner (2) · Curve (3) · Smooth (4) | escolha · −1…1 · −1…1 | cartão · **meio da 2.ª aresta** · cartão |
-| Estrela | Corner (4) · Curve (5) · Smooth (6) · Twist (7) | escolha · −1…1 · −1…1 · ±90° | cartão · **meio da 3.ª aresta** · cartão · **o vale (polar)** |
+| Polígono | Corner (2) · Curve (3) · Smooth (4) | escolha · −1…1 · −1…1 | cartão · **meio do lado esquerdo do vértice de cima** · cartão |
+| Estrela | Corner (4) · Curve (5) · Smooth (6) · Twist (7) | escolha · −1…1 · −1…1 · ±90° | cartão · **meio do lado esquerdo da ponta de cima** · cartão · cartão |
 | Espiral | Expansion (1) · Inner (2) | −0,9…9 · 0…0,9 | cartão · **a ponta de dentro** |
 | Engrenagem | Tooth (3) · Curvature (4) | −0,35…0,4 · −0,5…0,5 | **o fim do topo do 1.º dente** · cartão |
 | Trapézio (e o invertido) | Right (1) | −0,49…0,49 | **Alt no canto direito** (Alt no esquerdo devolve a diferença) |
@@ -103,13 +130,14 @@ nenhum controlo morto). Nenhuma forma passa de 8 campos: o tecto `MAX_SHAPE_FIEL
 - ⭐ **O tipo do canto** (`CornerStyle`): o corte é o MESMO nos quatro (o recuo sai do raio pela conta de
   sempre) — trocar o tipo só troca a ligação: o arco, a recta, o arco CENTRADO na quina, o entalhe
   (`p_in + p_out − quina`). Sobre arestas curvas passa pelo motor das quinas vivas (`corner_live`).
-- ⭐ **O vale da estrela é POLAR** (`Law::Polar`): o raio pela métrica do F9 e a torção pelo ângulo
-  desenrolado — o arrasto livre do Inkscape; **Ctrl = só o raio** (o Ctrl dele).
+- ⭐ **A estrela e o polígono do Affinity** (§1b): os pontos junto da ponta/vértice de cima; o raio
+  interior SÓ radial; o ⇕ das pontas/lados; a estrela regular de omissão.
 - **A envergadura** tem alça no MEIO de uma aresta (`Spot::EdgeMid`, `t = ½` da cúbica — o meio da
-  corda não está no contorno). A 1.ª aresta é a do arredondamento (satura no meio dela): a alça vai à
-  2.ª (polígono) / 3.ª (estrela).
-- **A alça do canto sobre uma aresta CURVA**: o `Spot::Rounding` procura o corte na cúbica e não na
-  corda (gate `the_corner_handle_still_rides_a_curved_edge`).
+  corda não está no contorno).
+- ⭐ **Arredondar nunca engorda**: com a envergadura E o raio do canto, a ligação lisa entre duas
+  arestas curvas passava `0,067` ACIMA do vértice; agora arredonda-se o contorno recto (arcos
+  exactos) e enverga-se só o troço entre cantos, com as alças do arco rodadas para a tangente (G1) —
+  `the_rounding_never_grows_past_the_sharp_corner`.
 - **O meio do losango** vive SEMPRE sobre a aresta da caixa (onde mora a alça de escala): desenha-se
   `PARK_PX` para dentro (`inset`), a pega mede-se ao ponto verdadeiro.
 
@@ -149,6 +177,9 @@ com elas. Os MESMOS ids da fila ② (`vector_shape_field_id/_choice_id`): um com
 | o tipo do canto POR CANTO (o *Single radius* desligado do Affinity) | +3 campos no rect (6 → 9) passa o tecto de 8, que é do DOCUMENTO (`VecShape::Param.values: [f64; 8]` por serde — subir exige migrar saves e o `PROJECT_SCHEMA`); um tipo para os quatro cobre o Illustrator e o Affinity com *Single radius* |
 | o tipo de arco do Inkscape (fatia · arco · corda) como escolha | já são TRÊS formas (`Pie`, `Arc`, `Segment`) — e a forma aberta/fechada é do `kind` (`is_closed`), não de um valor |
 | o sentido da espiral (horário) | é o espelho horizontal da forma — a composição já o exprime |
+| ⭐ **o vale que TORCE com a mão** (a `Law::Polar`, o `arg2` do Inkscape — a 1.ª redacção) | medido (12 arrastos a `< 0,3°`) e recusado: nem o Affinity nem o Illustrator rodam a estrela pelo raio interior (as fotos); o desvio da mão torcia a estrela — o dono: *«ficou horrível»*. A torção fica no cartão |
+| a contagem de pontas pelo ÂNGULO de uma ponta (o *side widget* lido como ângulo, a F9) | obscuro (agarrar uma ponta e rodar); o Illustrator usa um ⇕ na borda da caixa, vertical — é o que ficou |
+| estacionar o ponto da ponta a partir do vértice VIVO | a caixa abraça o contorno cozido: com a ponta arredondada o topo dela (a alça do meio-topo) desce até ao ponto — a alça verde ficava por baixo da azul (a foto da cena 16) ⇒ desenhado sempre `PARK_PX` para dentro do topo |
 | a perpendicular ao raio como direcção do liso (a 1.ª redacção) | o Inkscape torcido mediu `15,015°`; a perpendicular dava 0° (`0,025` da forma) |
 | comparar a espiral com as CÚBICAS do Inkscape | ele ajusta 4 por volta e afasta-se até `0,006` da lei; as âncoras dele são a lei a `1e-6` |
 | a espiral divergente parametrizada por `t` | com divergência < 1 a derivada é infinita no centro: `0,0135` da lei; pelo raio, `< 1e-3` |
@@ -167,6 +198,7 @@ com elas. Os MESMOS ids da fila ② (`vector_shape_field_id/_choice_id`): um com
 
 - `PH2D_OBJECT_MODE_SMOKE=15` (refeita): as três formas, o botão **Forma** (não a Seleção), o canto, o
   vale e o fim da pizza — foto [`f10_02`](fotos/f10_02_cena15_as_alcas_no_modo_forma.png).
-- `PH2D_OBJECT_MODE_SMOKE=16` (nova, `vector_mode_card`): uma estrela; as pontas arredondam, o vale
-  TORCE 12°, a aresta ENVERGA, e o chip *Corner* do cartão vai a *Concave* — foto
-  [`f10_01`](fotos/f10_01_cena16_a_estrela_torcida_curva_e_o_canto_concavo_pelo_cartao.png).
+- `PH2D_OBJECT_MODE_SMOKE=16` (nova, `vector_mode_card`): a estrela regular; as pontas arredondam (o
+  ponto desce pelo eixo), os vales arredondam, o ⇕ sobe dois degraus — 7 pontas; o cartão ao lado —
+  foto [`f10_01`](fotos/f10_01_cena16_a_estrela_do_affinity_pontas_macias_e_sete_pontas_pelo_widget.png).
+  A estrela acabada de desenhar, com os pontos junto da ponta: [`f10_03`](fotos/f10_03_a_estrela_nova_regular_e_os_pontos_junto_da_ponta.png).

@@ -13,6 +13,18 @@
   aparecer imediatamente… ainda no modo shape; no modo select não»* · *«clicar nos controles ou gizmo
   tem a preferência em relação a criar nova forma.»*
 
+## §00 — A 2.ª redacção da ESTRELA (o dono: «a estrela ficou horrível»)
+
+Depois do 1.º fecho o dono reprovou a estrela: *«nem tem como criar uma estrela com isso. vá
+descobrir como fazem Affinity e Illustrator. veja por fotos como eles posicionam o gizmo»*. Lidas as
+figuras do manual do Affinity e os GIFs do Illustrator (doc 15 §1b): os pontos passaram para JUNTO da
+ponta de cima (a ponta arredonda pelo eixo dela — `Spot::Apex`, desenhado para dentro do topo; o vale
+da direita é o raio interior SÓ radial; o vale da esquerda arredonda os vales; a envergadura a meio do
+lado esquerdo da ponta), as pontas/lados num ⇕ na borda direita da caixa visível (`Spot::Box` +
+`Law::Steps`), a torção pela mão (a `Law::Polar` do Inkscape) SAIU, e a estrela nova nasce regular
+(0,382). De caminho: envergadura + raio de canto engordava a forma (0,067 acima do vértice) —
+curado; a régua `dist_to_outline` media só às amostras — curada. Commits `d731f7422`, `413592ee0`.
+
 ## §0 — Para o `CLAUDE.md` §5.1 — JÁ APLICADO
 
 UI/UX: «Último:» → este ficheiro; «…enquadrar e as alças das formas (D10)» → «…enquadrar, as alças
@@ -25,7 +37,7 @@ parêntese do spec/06 encurtou (`seletor`, `em mode_drive`).
 |---|---|---|
 | ⭐ **o oráculo** | o Inkscape 1.4.4 (GPL: caixa preta) pela LINHA DE COMANDO (`object-to-path` + `export-plain-svg`) sobre 31 formas nossas: o *Rounded*, a torção (`arg2`), a divergência e o `t0` da espiral | `vetor_nova_ui/oraculo_parametros/` (`corre_inkscape_params.py`, 4 fixtures) |
 | ⭐ **os parâmetros** | tipo do canto (Rounded · Straight · Concave · Cutout) no rect arredondado, polígono e estrela; envergadura (*Curve*) e liso (*Smooth*) no polígono e na estrela; torção (*Twist*) na estrela; *Expansion* e *Inner* na espiral; *Tooth* e *Curvature* na engrenagem; *Right* no trapézio; *Mid* no losango — todos APENSOS e NEUTROS em zero | `ph2d-vec-scene/src/{polystar.rs, corner_style.rs}` (novos), `symbols.rs` (`gear_ex`), `flow.rs` (`trapezoid_asym`, `diamond_mid`), `space.rs` (`bend_edges`), `kind.rs` (o `cook`); os campos em `ph2d-tool-vector/src/{shapes.rs, shapes_fields.rs}` |
-| **as alças novas** | `Spot::EdgeMid` (a envergadura no meio de uma aresta), `Law::Polar` (o vale da estrela: raio + torção, Ctrl = só o raio), o raio interno da espiral, a largura do dente, o meio do losango (`inset`: desenhado para dentro), o Alt no trapézio; o `Spot::Rounding` sobre uma aresta CURVA | `ph2d-tool-vector/src/{shape_handles.rs, shape_handles_table.rs}` |
+| **as alças novas** | a estrela e o polígono do Affinity (§00): `Spot::Apex` (o eixo da quina), `Spot::Box` + `Law::Steps` (o ⇕), `Spot::EdgeMid` (a envergadura); o raio interno da espiral, a largura do dente, o meio do losango (`inset`), o Alt no trapézio | `ph2d-tool-vector/src/{shape_handles.rs, shape_handles_spots.rs (novo), shape_handles_table.rs}` |
 | ⭐ **o cartão lateral** | os campos que nenhuma alça move, num cartão flutuante à direita da forma (espelha à esquerda; desvia da ④/coluna/flyout; nunca cobre a forma) enquanto as alças estão à vista; os MESMOS ids da fila ② (que fica com todos os números) | `ph2d-editor-core/src/screens/hero/tool_bars_card.rs` (novo), `interaction/tool_bars.rs` (`ToolBars::card`), `ph2d-panel-vector/src/bars_row.rs` (`card_chips`, `shape_field_chip`, `shape_handles_shown`) |
 | ⭐ **as alças no modo Forma** | o plano do overlay passa as alças ao **Shape** (nunca no Select); o alvo é a MESMA porta dos campos (`Gate { mode, armed }`: armado no catálogo ⇒ sem alças); a forma acabada de desenhar tem alças no mesmo quadro; a caixa existe no Shape **só com as alças** (`ObjectBox::HandlesOnly`: sem miolo nem pivô — desenhar por cima de uma forma continua); a alça da forma ganha à da caixa; os nós da forma somem com as alças à vista | `ph2d-app-vec/src/{overlay.rs, shape_handles_live.rs, shape_live.rs}`; `ph2d-editor-core` (`paint_sprite_gizmo_with`, `GizmoStateGroup::handles_only`); a shell (o press, a guarda do arrasto da caixa, a publicação da caixa, o overlay de nós) |
 | **a dica ⑤** | `panel.vector.hint.shape_handles` («…Empty canvas: draw another»); a `select_shape` saiu | `ph2d-i18n`, `ph2d-panel-vector/src/bars.rs` |
@@ -41,7 +53,8 @@ Tabelas no doc 15 §1–§3 e §6.
 - **A espiral** `r = t^divergência`, `t ∈ [t0, 1]`: as ÂNCORAS do Inkscape caem na lei a `≤ 9e-7`; as
   cúbicas dele (4 por volta) afastam-se `0,006` — a régua é a lei. A nossa (16 por volta; com
   divergência < 1 parametrizada pelo RAIO, porque a derivada no centro é infinita): `< 1e-3`.
-- **O vale torce com a mão**: os 12 arrastos do vale da F9 dão a torção `= Δarg2` a `< 0,3°`.
+- **O vale torce com a mão** no Inkscape (12 arrastos a `< 0,3°`) — **recusado**: o produto do dono
+  (Affinity, Illustrator) não torce pelo vale; gate novo `the_star_valley_never_twists`.
 - **Tecto de 8 campos MANTIDO**: o mais cheio é a estrela (8). O tipo de canto POR canto (9 no rect) é
   recusa medida — o tecto é do documento (`VecShape::Param.values: [f64; 8]`).
 - **A caixa no modo Forma** revê o ADR-0112 por ordem do dono (o clique que ela «rouba» é o que ele
@@ -49,13 +62,15 @@ Tabelas no doc 15 §1–§3 e §6.
 
 ## §3 — Foundational tocado e contratos
 
-- **`ph2d-vec-scene`**: módulos novos `polystar` (`PolyStar`, `polystar`, `spiral_ex`,
+- **`ph2d-vec-scene`**: **`DEFAULT_STAR_INNER` 0,5 → 0,382** (só a estrela NOVA: o save guarda o
+  valor); módulos novos `polystar` (`PolyStar`, `polystar`, `spiral_ex`,
   `round_rect_styled`) e `corner_style` (`CornerStyle`); `corner_live::round_authored_corners_styled`
   (a antiga delega, byte a byte); `gear_ex`, `trapezoid_asym`, `diamond_mid` (as antigas ficam, com a
   mesma assinatura — `gear` tem consumidores no Motion); `space::bend_edges` (crate). O `cook` de 7
   formas passa pelas portas novas (com zero = as antigas: gate).
-- **`ph2d-tool-vector`**: `Spot::EdgeMid`, `Law::Polar`, **`HandleDesc::inset` (campo novo — struct
-  literal fora da tabela não compila)**; o módulo `shapes_fields` (os blocos `FieldDesc` saíram do
+- **`ph2d-tool-vector`**: `Spot::{EdgeMid, Apex, Box}`, `Law::Steps` (a `Law::Polar` da 1.ª
+  redacção saiu), **`HandleDesc::inset` (campo novo — struct literal fora da tabela não compila)**;
+  `DEFAULT_STAR_INNER` (a cópia da ferramenta) passa a apontar para a do catálogo; o módulo `shapes_fields` (os blocos `FieldDesc` saíram do
   `shapes.rs`, sem mudar valores); o descritor ganhou campos em 8 formas (o losango deixou de ser uma
   forma sem campos).
 - **`ph2d-editor-core`**: `ToolBars::card` (**campo novo**), o módulo `screens/hero/tool_bars_card`,
@@ -115,7 +130,7 @@ mutação, `af76cb758`) e 1 é equivalente:
 | M7 | sem torção | `twist_draws_the_inkscape_arg2_star` |
 | M8–M10 | a espiral sem expoente / sem `t0` / sem a reparametrização | `spiral_ex_matches_the_inkscape_divergence_and_inner_radius` |
 | M11 | sem o retorno antecipado da identidade | **equivalente**: o caminho genérico dá o MESMO `VecPath` nas entradas medidas — o atalho é a garantia por construção, o gate `the_new_fields_at_zero_are_the_old_shapes_byte_for_byte` a observável |
-| M12–M13 | o vale não torce / o Ctrl também torce | `the_star_valley_twists_with_the_hand_like_inkscape` |
+| M12–M13 | (a `Law::Polar` — saiu na 2.ª redacção da estrela) | — |
 | M14 | o ângulo polar não conta como alça | `the_fields_without_a_gesture_are_counted_not_listed` |
 | M15 | o losango sem `inset` | `the_diamond_middle_handle_is_drawn_inside_the_box_edge` |
 | M16 | o canto só na corda | `the_corner_handle_still_rides_a_curved_edge` |
@@ -130,13 +145,13 @@ O agente B (o cartão) correu 6/6 (a M6 sobrevivia → gate
 ## §6 — Smoke (do dono)
 
 1. `cd ~/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_OBJECT_MODE_SMOKE=16 ./target/smoke/ph2d-host-desktop`
-2. A cena desenha uma estrela grande com a ferramenta de forma na mão e, sozinha, puxa as bolinhas
-   verdes: as pontas arredondam, o vale torce, as arestas envergam; depois clica duas vezes no chip
-   *Corner* do cartão ao lado da estrela.
-3. Tem de acontecer: uma estrela torcida, de lados curvos e pontas mordidas para dentro; bolinhas verdes
-   sobre ela; à direita, um cartão com *Corner: Concave* e *Smooth*; em cima os oito números.
-4. Errado: sem bolinhas verdes; pontinhos laranja/azuis por cima da estrela; o cartão ausente ou a
-   tapar a estrela.
+2. A cena desenha uma estrela (nasce regular) com a ferramenta de forma na mão e, sozinha, puxa os
+   pontos verdes junto da ponta de cima: as pontas arredondam, os vales arredondam, e o ⇕ da borda
+   direita da caixa sobe — 7 pontas.
+3. Tem de acontecer: uma estrela de 7 pontas macias; 4 pontos verdes junto da ponta de cima e 1 na
+   borda direita da caixa; à direita, o cartão (*Corner* · *Smooth* · *Twist*).
+4. Errado: pontos espalhados pela estrela ou escondidos debaixo dos quadradinhos azuis; o cartão por
+   cima do ⇕; a estrela torta.
 5. Na mesma janela: com a ferramenta de forma, desenhe outra forma num canto vazio — as bolinhas dela
    aparecem logo; clique numa bolinha e arraste (ela ganha a desenhar); clique no vazio para desenhar
    mais uma; troque para a seta preta (Seleção) — as bolinhas somem e fica só a caixa.
@@ -154,6 +169,12 @@ O agente B (o cartão) correu 6/6 (a M6 sobrevivia → gate
   (o estado do store é o da fila ②, que é exercitado).
 - Do F9 (continua): o botão direito a meio do arrasto não cancela; um dedo real ainda não agarrou uma
   alça.
+
+## §7b — A 2.ª redacção: portão
+
+`nextest-impacted` (`BASE=8f20c60de`, HEAD `413592ee0`): **19 564 / 19 564** (load 118) · clippy do
+`ship.sh` ✓ · fmt ✓. Tecto de 700 LOC: a lei das alças (743) e os testes dela (723) partidos em
+irmãos (`shape_handles_spots.rs`, `shape_handles_f9_oracle_tests.rs`).
 
 ## §8 — Portão, binário e `agent-loop-profile.sh`
 

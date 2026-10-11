@@ -42,7 +42,8 @@
 > trapézio, o meio do losango — com o Inkscape corrido e o manual do Affinity; o que não tem alça vai
 > a um CARTÃO LATERAL junto da forma; e as alças passam ao modo FORMA (nunca no Select), com
 > prioridade sobre desenhar — [`15_mais_parametros_das_formas.md`](15_mais_parametros_das_formas.md);
-> cena `=16`, foto [`fotos/f10_01`](fotos/f10_01_cena16_a_estrela_torcida_curva_e_o_canto_concavo_pelo_cartao.png).
+> a estrela segue o Affinity pelas fotos (os pontos junto da ponta, o raio só radial, o ⇕ das pontas);
+> cena `=16`, foto [`fotos/f10_01`](fotos/f10_01_cena16_a_estrela_do_affinity_pontas_macias_e_sete_pontas_pelo_widget.png).
 
 ## O roteador
 

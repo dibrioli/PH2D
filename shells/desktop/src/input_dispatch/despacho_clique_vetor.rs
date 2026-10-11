@@ -119,9 +119,15 @@ impl crate::App {
         // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique
         // cai no caminho de sempre (picking de sprite + gizmo), e é assim que uma
         // forma vetorial se transforma. Só Node e os modos de desenho entram aqui.
+        // F10: no modo Forma há caixa (só alças) — o Move e o Up de um arrasto dela são do gizmo.
         if self.vector_tool_active()
             && self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Select
             && !menu_open_before
+            && !self
+                .gfx
+                .as_ref()
+                .and_then(|g| g.hero_screen.as_ref())
+                .is_some_and(|h| h.gizmo.drag.is_some())
         {
             // A canvas press while a text field is focused must blur it (commit the
             // edit) — the pen/shape arms below consume the press and bypass the

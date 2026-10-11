@@ -50,8 +50,10 @@ pub(super) fn paint_canvas_overlays(
     // current camera; the painter projects to screen pixels with the
     // same math the grid uses (so the gizmo and grid stay aligned
     // across pan/zoom).
+    // F10: no modo Forma da ferramenta vetorial, só as alças (o miolo continua canvas).
     if let Some(view) = hero.gizmo.view {
-        crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
+        let body = !hero.gizmo.handles_only;
+        crate::gizmo::paint_sprite_gizmo_with(scene, &view, hero.theme, &mut hero.hit_index, body);
     }
     // Flip W7.5: o gizmo da POSE da chave (modo Edit + quadro instanciado). Pintado
     // como gizmo KEYED — rotate/scale nos ids do espaço `FlipPose`, sem interior
@@ -209,3 +211,7 @@ pub(super) fn paint_canvas_overlays(
         crate::readout::paint_chip(text_system, scene, text, at, 0.0, hero.theme);
     }
 }
+
+#[cfg(test)]
+#[path = "paint_canvas_overlays_tests.rs"]
+mod tests;

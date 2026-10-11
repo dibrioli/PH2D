@@ -171,6 +171,19 @@ pub fn paint_sprite_gizmo(
     theme: Theme,
     hit_index: &mut HitIndex,
 ) {
+    paint_sprite_gizmo_with(scene, view, theme, hit_index, true);
+}
+
+/// [`paint_sprite_gizmo`] com o CORPO opcional: `body = false` (F10, o modo Forma da ferramenta
+/// vetorial) não pinta nem regista o miolo (`GIZMO_BBOX_INTERIOR`) nem o pivô — só o contorno, as
+/// alças de escala e as zonas de rotação. O miolo continua canvas: o press nele desenha.
+pub fn paint_sprite_gizmo_with(
+    scene: &mut VectorScene,
+    view: &GizmoView,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    body: bool,
+) {
     // The 4 corners rotated around the bbox center and projected (`paint_geom`).
     let corners_s = corners_screen(view);
     let [tl, tr, bl, br] = corners_s;
@@ -185,7 +198,9 @@ pub fn paint_sprite_gizmo(
     let sy_min = tl[1].min(tr[1]).min(bl[1]).min(br[1]);
     let sy_max = tl[1].max(tr[1]).max(bl[1]).max(br[1]);
     let aabb = Rect::new(sx_min, sy_min, sx_max - sx_min, sy_max - sy_min);
-    hit_index.register(ids::GIZMO_BBOX_INTERIOR, aabb);
+    if body {
+        hit_index.register(ids::GIZMO_BBOX_INTERIOR, aabb);
+    }
 
     // Stroke the oriented bbox as a 4-segment closed path so the
     // visible outline follows the sprite's rotation.
@@ -280,6 +295,9 @@ pub fn paint_sprite_gizmo(
         fill_rounded_rect(scene, r, 2.0, handle_fill);
         // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
         stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
+    }
+    if !body {
+        return;
     }
     // Pivot dot at the TRUE pivot (`Transform.translation`), projected
     // to screen. For a centered sprite this coincides with the bbox

@@ -56,6 +56,7 @@ pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
 pub use model::{MODEL_IDENTITY, model_apply, model_inverse, skew_about, skew_translation_out};
 pub use paint::{
     GizmoView, HANDLE_SIZE_PX, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed,
+    paint_sprite_gizmo_with,
 };
 pub use point::{PointGizmoView, PointHandle, PointHandleKind, paint_point_gizmo, point_handle_id};
 pub use readout::{GizmoReadout, gizmo_readout};

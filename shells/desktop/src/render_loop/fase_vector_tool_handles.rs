@@ -105,8 +105,8 @@ impl crate::App {
                 vector_scene,
             );
         }
-        // **As alças de PARÂMETRO da forma** (F9) — Select, por cima do gizmo como as do texto e do
-        // padrão: o raio do canto, o vale da estrela, os ângulos do arco.
+        // **As alças de PARÂMETRO da forma** (F9; F10: no modo Forma) — por cima do gizmo: o raio do
+        // canto, o vale da estrela, os ângulos do arco.
         if overlay.shape_handles {
             let theme = hero.theme;
             ph2d_app_vec::shape_handles_live::draw(

@@ -1,11 +1,11 @@
-//! ⭐ **A cena 15** (`PH2D_OBJECT_MODE_SMOKE=15`, F9 — 11/10): AS ALÇAS DAS FORMAS. No layout
-//! *Vetor*, um rectângulo arredondado, uma estrela e uma pizza; a Seleção (a seta preta) pelo clique
-//! do botão dela; e cada forma, sozinha na seleção, com UMA alça arrastada pelo MESMO press e o MESMO
-//! arrasto que a shell chama (`shape_handles_live::on`): o canto arredonda mais, o vale da estrela
-//! abre, e o fim da pizza dá a volta até aos 300°. A foto final mostra a pizza seleccionada, com as
-//! três alças dela à vista.
+//! ⭐ **A cena 15** (`PH2D_OBJECT_MODE_SMOKE=15`, F9 — 11/10; F10): AS ALÇAS DAS FORMAS. No layout
+//! *Vetor*, um rectângulo arredondado, uma estrela e uma pizza; o botão *Forma* da coluna ① (as
+//! alças vivem no modo Forma, nunca no Select — F10); e cada forma, sozinha na seleção, com UMA alça
+//! arrastada pelo MESMO press e o MESMO arrasto que a shell chama (`shape_handles_live::on`): o canto
+//! arredonda mais, o vale da estrela abre, e o fim da pizza dá a volta até aos 300°. A foto final
+//! mostra a pizza seleccionada, com as três alças dela à vista e a ferramenta de forma na mão.
 
-use crate::shape_handles_live::{on, view};
+use crate::shape_handles_live::{Gate, on, view};
 use crate::state::VecState;
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -40,7 +40,8 @@ fn pull(
 ) -> bool {
     vec.pen.select_many(&[id]);
     let Some(at) =
-        view(sim, &vec.entities, &[id], PX, None, None).and_then(|v| v.points.get(handle).copied())
+        view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, None)
+            .and_then(|v| v.points.get(handle).copied())
     else {
         return false;
     };
@@ -54,7 +55,7 @@ fn pull(
 }
 
 /// Um passo da cena 15; devolve o próximo estágio, se mudou. `70..=72` = uma forma por estágio
-/// (cada uma espera a anterior virar objecto) · `73` = a Seleção pelo botão · `74` = o canto ·
+/// (cada uma espera a anterior virar objecto) · `73` = o modo Forma pelo botão · `74` = o canto ·
 /// `75` = o vale · `76` = o fim da pizza · `9` = feito.
 pub fn step(
     stage: u8,
@@ -72,12 +73,12 @@ pub fn step(
         }
         73 if feitas == FORMAS.len() => {
             hero.apply_event(WidgetEvent::Click(
-                ph2d_tool_vector::ids::VECTOR_MODE_SELECT,
+                ph2d_tool_vector::ids::VECTOR_MODE_SHAPE,
             ));
             Some(74)
         }
         // O canto de cima à esquerda, 0,45 m para dentro ao longo da aresta: os quatro arredondam.
-        74 if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select => {
+        74 if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Shape => {
             let id = nth(vec, 0)?;
             pull(vec, scene, sim, id, 0, |a| {
                 (1..=6)
@@ -92,7 +93,7 @@ pub fn step(
             let id = nth(vec, 1)?;
             let inner = handles_of(ShapeKind::Star)
                 .iter()
-                .position(|h| h.law == Law::Radial)?;
+                .position(|h| h.fields.first() == Some(&1))?;
             let c = FORMAS[1].1;
             pull(vec, scene, sim, id, inner, move |a| {
                 (1..=6)

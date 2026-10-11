@@ -167,12 +167,13 @@ pub fn hint_key_for(snap: &VectorStyleSnapshot) -> &'static str {
     if snap.mode == DrawMode::Pencil && snap.pencil_quickshape {
         return "panel.vector.hint.pencil_quickshape";
     }
-    // F9: na Seleção, com uma forma de ALÇAS em foco, a dica ensina os modificadores delas.
-    if snap.mode == DrawMode::Select
-        && crate::shape_focus::resolved(snap)
+    // F10: no modo Forma, com a forma VIVA de alças em foco (as alças à vista — armado no catálogo o
+    // foco publicado é `None`), a dica ensina-as e diz que o vazio desenha outra.
+    if snap.mode == DrawMode::Shape
+        && crate::state::current_shape_focus()
             .is_some_and(|k| !ph2d_tool_vector::shape_handles::handles_of(k).is_empty())
     {
-        return "panel.vector.hint.select_shape";
+        return "panel.vector.hint.shape_handles";
     }
     hint_key(snap.mode)
 }

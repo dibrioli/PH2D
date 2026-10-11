@@ -31,9 +31,9 @@ fn the_scene_pulls_a_corner_a_valley_and_the_end_of_a_pie() {
     assert_eq!(
         step(74, &mut c.vec, &mut c.scene, &mut c.sim, &mut c.hero),
         None,
-        "sem a Seleção na mão, espera"
+        "sem o modo Forma na mão, espera"
     );
-    c.vec.draw_config.mode = ph2d_tool_vector::DrawMode::Select;
+    c.vec.draw_config.mode = ph2d_tool_vector::DrawMode::Shape;
     for s in 74..=76 {
         assert!(
             step(s, &mut c.vec, &mut c.scene, &mut c.sim, &mut c.hero).is_some(),

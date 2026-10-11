@@ -159,23 +159,21 @@ impl crate::App {
                 _ => {}
             }
         }
-        // **As alças do modo Select** — a do TEXTO EM CAMINHO (W5), as fichas do PATTERN (W4) e as
-        // de PARÂMETRO da forma (F9): no Select a tool não captura o canvas, e sem este arm a
-        // pressão iria para o picking/gizmo. O gizmo é inócuo sobre um texto ou motivo vinculado
-        // (vive na identidade); as da forma ESTACIONAM fora das alças da caixa
-        // (`shape_handles_live::PARK_PX`) e ganham o clique só dentro do raio delas — mesmo com
-        // Shift/Ctrl/Alt, que ali são modificadores do arrasto e não da seleção. Cada uma só
-        // devolve `true` sobre a SUA alça; qualquer outro caso segue o caminho de sempre.
+        // **As alças sobre o canvas**, antes do picking/gizmo e do desenho — no Select a do TEXTO EM
+        // CAMINHO (W5) e as fichas do PATTERN (W4): lá a tool não captura o canvas, e o gizmo é
+        // inócuo sobre um texto ou motivo vinculado. No modo FORMA (F10) as de PARÂMETRO da forma:
+        // ganham à caixa, ao Shift e ao desenho dentro do raio delas (Shift/Ctrl/Alt modificam o
+        // arrasto); o modo e o latch são de `shape_handles_live`, que responde `false` fora dele.
+        // Cada uma só devolve `true` sobre a SUA alça; o resto segue o caminho de sempre.
         if self.vector_tool_active()
-            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
-            && (self.vec_textpath_handle_down(w)
-                || self.vec_patternpath_handle_down(w)
-                || self.vec_shape_handle_down(w))
+            && (self.vec_shape_handle_down(w)
+                || (self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
+                    && (self.vec_textpath_handle_down(w) || self.vec_patternpath_handle_down(w))))
         {
             return true;
         }

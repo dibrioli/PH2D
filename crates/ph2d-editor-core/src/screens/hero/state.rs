@@ -159,6 +159,9 @@ pub struct GizmoStateGroup {
     /// plus current camera/window and pushes here just before
     /// `paint_hero_screen`. `None` ⇒ no gizmo painted this frame.
     pub view: Option<crate::gizmo::GizmoView>,
+    /// F10: a caixa do [`Self::view`] pinta-se só com as ALÇAS (sem miolo nem pivô) — a shell
+    /// acende-o no modo Forma da ferramenta vetorial (`ph2d_app_vec::overlay::object_box`).
+    pub handles_only: bool,
     /// Onda 2: per-frame views of the multi-selection extras. The
     /// shell rebuilds this from `extra_selection` × PresentWorld each
     /// frame. The painter draws an outline-only gizmo (no interactive

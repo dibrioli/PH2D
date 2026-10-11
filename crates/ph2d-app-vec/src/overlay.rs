@@ -44,10 +44,10 @@ pub struct VecOverlayPlan {
     pub patternpath_handles: bool,
     /// **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil, na forma selecionada.
     pub width_handles: bool,
-    /// **As alças de PARÂMETRO da forma** (F9) — o raio do canto, o vale, os ângulos — só no
-    /// **Select**: é a seta preta que o pedido nomeia («a ferramenta de seleção na mão»), e no
-    /// Node a forma deixa de ser paramétrica ao primeiro nó movido. Se a seleção tem uma forma
-    /// com alças é o [`crate::shape_handles_live::view`] que decide.
+    /// **As alças de PARÂMETRO da forma** (F9; F10 — 11/10) — o raio do canto, o vale, os ângulos —
+    /// só no modo **Forma**: o dono pediu-as à mão logo depois de desenhar, sem trocar de
+    /// ferramenta, e NUNCA no Select. Se há uma forma com alças (e o latch do catálogo apagado) é
+    /// o [`crate::shape_handles_live::view`] que decide.
     pub shape_handles: bool,
     // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
     // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
@@ -90,7 +90,31 @@ pub fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
         // que aquele modo existe para editar. É a mesma razão que fez a alça de quina virar as
         // ferramentas Fillet/Chamfer.
         width_handles: vector_active && mode == DrawMode::Width,
-        shape_handles: vector_active && mode == DrawMode::Select,
+        shape_handles: vector_active && mode == DrawMode::Shape,
+    }
+}
+
+/// A caixa de objecto (o gizmo de escala/rotação) sob a ferramenta vetorial.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ObjectBox {
+    /// Nenhuma — um modo de autoria cujo gesto é o canvas inteiro (ADR-0112).
+    Off,
+    /// Inteira: miolo (Translate), alças, rotação e pivô.
+    Whole,
+    /// ⭐ F10: só as ALÇAS de escala e rotação — sem miolo nem pivô, pintados ou registados. O
+    /// miolo continua canvas: desenhar uma forma por cima ou dentro de outra continua (o Affinity).
+    HandlesOnly,
+}
+
+/// ⭐ **Que caixa a ferramenta vetorial deixa publicar** (F10): inteira no Select, só as alças no
+/// modo Forma (o press numa delas é da caixa; no vazio, desenha-se), nenhuma nos outros modos.
+/// Ferramenta inactiva ⇒ inteira (a regra das outras ferramentas é da shell).
+#[must_use]
+pub fn object_box(vector_active: bool, mode: DrawMode) -> ObjectBox {
+    match (vector_active, mode) {
+        (false, _) | (true, DrawMode::Select) => ObjectBox::Whole,
+        (true, DrawMode::Shape) => ObjectBox::HandlesOnly,
+        _ => ObjectBox::Off,
     }
 }
 
@@ -182,22 +206,37 @@ mod tests {
         assert!(!plan.patternpath_handles);
     }
 
-    /// **As alças do Pattern são do SELECT, e só dele** (plano 23, W4) — a mesma razão da alça do
-    /// texto: no Node se perderiam nas âncoras dos outros paths.
+    /// ⭐ **As alças de PARÂMETRO da forma são do modo FORMA, e só dele** (F10, pedido do dono 11/10:
+    /// *«no modo select os controles não devem aparecer»*) — a inversão da F9.
     #[test]
-    fn the_shape_handles_belong_to_select_mode_alone() {
-        assert!(vec_overlay_plan(true, DrawMode::Select).shape_handles);
-        assert!(!vec_overlay_plan(false, DrawMode::Select).shape_handles);
+    fn the_shape_handles_belong_to_shape_mode_alone() {
+        assert!(vec_overlay_plan(true, DrawMode::Shape).shape_handles);
+        assert!(!vec_overlay_plan(false, DrawMode::Shape).shape_handles);
         for mode in [
+            DrawMode::Select,
             DrawMode::Node,
             DrawMode::Pen,
-            DrawMode::Shape,
+            DrawMode::Frame,
             DrawMode::Pencil,
         ] {
             assert!(!vec_overlay_plan(true, mode).shape_handles, "{mode:?}");
         }
     }
 
+    /// ⭐ **A caixa no modo Forma é só ALÇAS** (F10): inteira no Select e com a ferramenta
+    /// inactiva, só alças no modo Forma, nenhuma nos outros modos de autoria (ADR-0112).
+    #[test]
+    fn the_object_box_is_handles_only_in_shape_mode() {
+        assert_eq!(object_box(true, DrawMode::Select), ObjectBox::Whole);
+        assert_eq!(object_box(false, DrawMode::Pen), ObjectBox::Whole);
+        assert_eq!(object_box(true, DrawMode::Shape), ObjectBox::HandlesOnly);
+        for mode in [DrawMode::Node, DrawMode::Pen, DrawMode::Frame, DrawMode::Pencil] {
+            assert_eq!(object_box(true, mode), ObjectBox::Off, "{mode:?}");
+        }
+    }
+
+    /// **As alças do Pattern são do SELECT, e só dele** (plano 23, W4) — a mesma razão da alça do
+    /// texto: no Node se perderiam nas âncoras dos outros paths.
     #[test]
     fn the_patternpath_handles_belong_to_select_mode_alone() {
         assert!(vec_overlay_plan(true, DrawMode::Select).patternpath_handles);

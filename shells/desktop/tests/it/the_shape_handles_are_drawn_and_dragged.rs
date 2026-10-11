@@ -5,10 +5,10 @@
 //! COSTURA da shell (precisa de janela): que ela desenha, e que o press, o arrasto, o soltar e o
 //! `Esc` estão no fluxo do ponteiro e do teclado, na ordem certa.
 
-/// O desenho: gateado pela política de modo (`overlay.shape_handles`, Select-only), FORA do bloco
-/// `if overlay.edit` (falso no Select) — depois das alças do conector, como as do padrão.
+/// O desenho: gateado pela política de modo (`overlay.shape_handles`, só no modo Forma desde a F10),
+/// FORA do bloco `if overlay.edit` — depois das alças do conector, como as do padrão.
 #[test]
-fn the_render_loop_draws_the_shape_handles_in_select_mode() {
+fn the_render_loop_draws_the_shape_handles_by_the_mode_policy() {
     let rl = crate::frame_text::render_frame();
     let draw_at = rl
         .find("if overlay.shape_handles {")
@@ -26,21 +26,37 @@ fn the_render_loop_draws_the_shape_handles_in_select_mode() {
     );
 }
 
-/// O gesto: o press no cluster de alças do Select, ANTES do picking/gizmo genérico; o arrasto no
-/// mover; o soltar e o `Esc` libertam-no.
+/// O gesto (F10): o press no cluster de alças sobre o canvas, FORA do portão de modo do Select
+/// (as alças da forma são do modo Forma — a lei do modo e do latch é do motor) e ANTES do ramo
+/// vetorial (o Shift-arm e o desenho de uma forma nova) e do gizmo; o arrasto no mover; o soltar e
+/// o `Esc` libertam-no.
 #[test]
 fn the_pointer_and_the_keyboard_wire_the_shape_handle_gesture() {
     let disp = crate::input_text::dispatch();
     let press = disp
-        .find("|| self.vec_shape_handle_down(w))")
-        .expect("o PRESS das alças da forma (cluster do Select)");
+        .find("&& (self.vec_shape_handle_down(w)")
+        .expect("o PRESS das alças da forma (cluster das alças sobre o canvas)");
+    let head = disp[..press]
+        .rfind("if self.vector_tool_active()")
+        .expect("o if do cluster");
+    assert!(
+        !disp[head..press].contains("DrawMode::Select"),
+        "o press das alças da forma voltou para trás do portão do Select"
+    );
     let generic = disp
         .find("no modo **Select** a ferramenta não captura")
-        .expect("o guard ADR-0112 do dispatch genérico");
+        .expect("o guard ADR-0112 do ramo vetorial");
+    let draw = disp
+        .find("self.vec.shape.on_press(")
+        .expect("o press do desenho de uma forma nova");
     assert!(
-        press < generic,
-        "o press das alças da forma tem de vir ANTES do picking/gizmo — senão o clique selecionaria \
-         a forma (ou a escalaria pela caixa) em vez de agarrar a alça"
+        press < generic && press < draw,
+        "o press das alças da forma tem de vir ANTES do ramo vetorial — senão o clique numa alça \
+         desenharia uma forma nova (ou abriria o Shift-arm) em vez de a agarrar"
+    );
+    assert!(
+        disp.contains("h.gizmo.drag.is_some())"),
+        "o ramo vetorial não cede a um arrasto da caixa — o Up dele engoliria o fim do arrasto"
     );
     for (needle, what) in [
         (

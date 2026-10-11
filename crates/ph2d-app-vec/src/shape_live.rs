@@ -177,6 +177,17 @@ pub fn make_committed_shape_live(
     }
 }
 
+/// ⭐ **Soltar o gesto de forma SELECCIONA a forma nova** — é nela que o artista vai mexer, e é o
+/// que acende as alças dela ainda com a ferramenta na mão (F10: a seleção que muda apaga o latch do
+/// catálogo). Nada fica seleccionado se o weld a fundiu noutro objecto (o id sumiu).
+pub fn select_the_drawn_shape(vec: &mut crate::state::VecState, scene: &VecScene) {
+    let sel = vec
+        .shape
+        .selected()
+        .filter(|id| scene.paths().iter().any(|p| p.id == *id));
+    vec.pen.select(sel);
+}
+
 /// "Convert to Curves" de formas paramétricas (NÃO-texto): descarta o `VecShape` — a
 /// geometria já assada vira um path cru, editável com a caneta. Devolve quantas converteu.
 pub fn drop_shape_params(sim: &mut SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> usize {

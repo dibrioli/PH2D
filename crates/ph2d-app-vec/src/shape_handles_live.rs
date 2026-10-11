@@ -7,8 +7,9 @@
 //! só outra mão sobre os mesmos campos, nunca uma segunda mutação da forma. O passo de undo é o do
 //! diff do quadro (o botão premido segura-o até soltar: um arrasto = um passo).
 //!
-//! O alvo é o de [`crate::shape_params::panel_shape_target`] — a 1.ª forma paramétrica da seleção,
-//! o mesmo objeto cujos números a fila ② mostra.
+//! ⭐ **O alvo é o dos campos** ([`crate::shape_params::shape_field_target`], com o modo e o latch do
+//! catálogo — [`Gate`]): as alças vivem só no modo Forma (F10), e armado no catálogo ninguém as tem.
+//! Alça e campo falam sempre da MESMA forma.
 
 use ph2d_ecs::{Entity, SimWorld, VecShape};
 use ph2d_tool_vector::params::DrawMode;
@@ -17,7 +18,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_entities::transform::{world_transform, xform_of_transform};
 use ph2d_vec_scene::{ShapeKind, ShapeValues, VecPath, VecPathId, VecScene, Xform};
 
-use crate::shape_params::{edit_selected_shape, panel_shape_target};
+use crate::shape_params::{edit_selected_shape, shape_field_target};
 
 /// O raio de acerto de uma alça, em px de ecrã: o LADO da alça da caixa
 /// (`ph2d_editor_core::HANDLE_SIZE_PX`) — o mesmo alcance que a mão já conhece.
@@ -26,6 +27,31 @@ pub const HIT_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64;
 /// Onde uma alça estaciona, em px: o círculo de acerto dela encosta no quadrado da alça da caixa
 /// (meio lado + o raio de acerto) — as duas nunca disputam o mesmo ponto.
 pub const PARK_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64 * 0.5 + HIT_PX;
+
+/// ⭐ **De quem são as alças** (F10): o modo da ferramenta e o latch do «armado no catálogo»
+/// (`VecState::shape_armed`) — a MESMA pergunta que os campos fazem.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Gate {
+    pub mode: DrawMode,
+    pub armed: bool,
+}
+
+impl Gate {
+    /// O modo Forma, desarmado — a forma seleccionada (a acabada de desenhar) tem alças.
+    pub const SHAPE: Self = Self {
+        mode: DrawMode::Shape,
+        armed: false,
+    };
+
+    /// O portão do quadro, lido do estado vetorial.
+    #[must_use]
+    pub fn of(vec: &crate::state::VecState) -> Self {
+        Self {
+            mode: vec.draw_config.mode,
+            armed: vec.shape_armed,
+        }
+    }
+}
 
 /// A forma paramétrica das alças e o que é preciso para a cozinhar e a pôr no mundo.
 struct Target {
@@ -40,8 +66,12 @@ struct Target {
 }
 
 impl Target {
-    fn of(sim: &SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> Option<Self> {
-        let (id, entity, kind, values) = panel_shape_target(sim, map, selection)?;
+    fn of(sim: &SimWorld, map: &VecEntityMap, selection: &[VecPathId], gate: Gate) -> Option<Self> {
+        if !crate::overlay::vec_overlay_plan(true, gate.mode).shape_handles {
+            return None;
+        }
+        let (id, entity, kind, values) =
+            shape_field_target(sim, map, selection, gate.mode, gate.armed)?;
         let Some(VecShape::Param { w, h, .. }) = sim.world().get::<VecShape>(entity) else {
             return None;
         };
@@ -113,18 +143,19 @@ pub struct ShapeHandlesView {
     pub track: Vec<[f64; 2]>,
 }
 
-/// As alças da forma seleccionada. `grabbed` (o arrasto vivo) manda no quente; sem ele, a alça sob
-/// `hover` (mundo) — a guia aparece ANTES do arrasto, como no Affinity.
+/// As alças da forma seleccionada (fora do `gate`, nenhuma). `grabbed` (o arrasto vivo) manda no
+/// quente; sem ele, a alça sob `hover` (mundo) — a guia aparece ANTES do arrasto, como no Affinity.
 #[must_use]
 pub fn view(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
+    gate: Gate,
     px_to_world: f64,
     grabbed: Option<usize>,
     hover: Option<[f64; 2]>,
 ) -> Option<ShapeHandlesView> {
-    let t = Target::of(sim, map, selection)?;
+    let t = Target::of(sim, map, selection, gate)?;
     let grips = t.grips(px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let hot = grabbed.or_else(|| hover.and_then(|w| hit(&world, w, HIT_PX * px_to_world)));
@@ -169,16 +200,17 @@ impl ShapeHandleGrab {
 }
 
 /// ⭐ **O press**: se `w` (mundo) cai numa alça da forma seleccionada, agarra-a. `None` = nenhuma
-/// alça ali — o clique segue para a caixa, o pick, o marquee.
+/// alça ali — o clique segue para a caixa ou para o desenho de uma forma nova.
 #[must_use]
 pub fn press(
     sim: &SimWorld,
     map: &VecEntityMap,
     selection: &[VecPathId],
+    gate: Gate,
     w: [f64; 2],
     px_to_world: f64,
 ) -> Option<ShapeHandleGrab> {
-    let t = Target::of(sim, map, selection)?;
+    let t = Target::of(sim, map, selection, gate)?;
     let grips = t.grips(px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let k = hit(&world, w, HIT_PX * px_to_world)?;
@@ -212,8 +244,9 @@ pub fn drag(
         scene,
         map,
         selection,
+        gate,
     } = world;
-    let Some(t) = Target::of(sim, map, selection) else {
+    let Some(t) = Target::of(sim, map, selection, gate) else {
         return false;
     };
     if t.id != grab.id {
@@ -228,7 +261,7 @@ pub fn drag(
         px_to_world,
         &t.cook(),
     );
-    write(sim, scene, map, selection, new)
+    write(sim, scene, map, selection, gate, new)
 }
 
 /// O `Esc` (ou o botão direito) a meio: os campos voltam aos do press.
@@ -237,32 +270,33 @@ pub fn cancel(
     scene: &mut VecScene,
     map: &VecEntityMap,
     selection: &[VecPathId],
+    gate: Gate,
     grab: &ShapeHandleGrab,
 ) -> bool {
-    match Target::of(sim, map, selection) {
-        Some(t) if t.id == grab.id => write(sim, scene, map, selection, grab.drag.at_press),
+    match Target::of(sim, map, selection, gate) {
+        Some(t) if t.id == grab.id => write(sim, scene, map, selection, gate, grab.drag.at_press),
         _ => false,
     }
 }
 
 /// O DUPLO-CLIQUE numa alça: os campos dela voltam ao valor de fábrica (o Affinity). `false` =
 /// nenhuma alça em `w`.
-pub fn reset_at(
-    sim: &mut SimWorld,
-    scene: &mut VecScene,
-    map: &VecEntityMap,
-    selection: &[VecPathId],
-    w: [f64; 2],
-    px_to_world: f64,
-) -> bool {
-    let Some(g) = press(sim, map, selection, w, px_to_world) else {
+pub fn reset_at(world: World<'_>, w: [f64; 2], px_to_world: f64) -> bool {
+    let World {
+        sim,
+        scene,
+        map,
+        selection,
+        gate,
+    } = world;
+    let Some(g) = press(sim, map, selection, gate, w, px_to_world) else {
         return false;
     };
-    let Some(t) = Target::of(sim, map, selection) else {
+    let Some(t) = Target::of(sim, map, selection, gate) else {
         return false;
     };
     let new = law::reset(t.kind, g.handle(), &t.values);
-    write(sim, scene, map, selection, new)
+    write(sim, scene, map, selection, gate, new)
 }
 
 /// ⭐ **A entrada das alças** — o que a shell guarda entre eventos (`VecState::shape_handles`) e as
@@ -276,12 +310,13 @@ pub struct ShapeHandleInput {
     last: Option<(u128, usize, VecPathId)>,
 }
 
-/// O mundo que as portas tocam (a shell parte o `gfx` nestes três).
+/// O mundo que as portas tocam (a shell parte o `gfx`; o resto vem do `VecState`).
 pub struct World<'a> {
     pub sim: &'a mut SimWorld,
     pub scene: &'a mut VecScene,
     pub map: &'a VecEntityMap,
     pub selection: &'a [VecPathId],
+    pub gate: Gate,
 }
 
 impl ShapeHandleInput {
@@ -289,7 +324,8 @@ impl ShapeHandleInput {
     /// MESMA alça dentro da janela do duplo-clique, repõe-a. `true` = consumido (o clique não segue
     /// para a caixa nem para o pick).
     pub fn press(&mut self, world: World<'_>, w: [f64; 2], px_to_world: f64, now_ns: u128) -> bool {
-        let Some(g) = press(world.sim, world.map, world.selection, w, px_to_world) else {
+        let Some(g) = press(world.sim, world.map, world.selection, world.gate, w, px_to_world)
+        else {
             self.last = None;
             return false;
         };
@@ -301,14 +337,7 @@ impl ShapeHandleInput {
         if double {
             self.last = None;
             self.grab = None;
-            reset_at(
-                world.sim,
-                world.scene,
-                world.map,
-                world.selection,
-                w,
-                px_to_world,
-            );
+            reset_at(world, w, px_to_world);
         } else {
             self.last = Some((now_ns, g.handle(), g.id));
             self.grab = Some(g);
@@ -341,13 +370,20 @@ impl ShapeHandleInput {
         let Some(g) = self.grab.take() else {
             return false;
         };
-        cancel(world.sim, world.scene, world.map, world.selection, &g);
+        cancel(
+            world.sim,
+            world.scene,
+            world.map,
+            world.selection,
+            world.gate,
+            &g,
+        );
         true
     }
 }
 
 /// O desenho das alças da forma seleccionada (por cima do gizmo): a quente é a agarrada ou a que
-/// está sob `hover` (mundo), e o trilho dela é a guia. Nada sem uma forma com alças na seleção.
+/// está sob `hover` (mundo), e o trilho dela é a guia. Nada fora do [`Gate`] do `vec`.
 pub fn draw(
     vec: &crate::state::VecState,
     sim: &SimWorld,
@@ -359,7 +395,8 @@ pub fn draw(
 ) {
     let grabbed = vec.shape_handles.grab.map(|g| g.handle());
     let selection = vec.pen.selected_paths();
-    if let Some(v) = view(sim, &vec.entities, selection, px_to_world, grabbed, hover) {
+    let gate = Gate::of(vec);
+    if let Some(v) = view(sim, &vec.entities, selection, gate, px_to_world, grabbed, hover) {
         ph2d_vec_render::draw_shape_handles(&v.points, v.hot, &v.track, camera, theme, target);
     }
 }
@@ -367,7 +404,7 @@ pub fn draw(
 /// As portas de [`ShapeHandleInput`] sobre o [`crate::state::VecState`] inteiro — a shell parte só
 /// o `gfx` (o mundo e a cena); a seleção, o mapa e o estado vêm do `vec`.
 pub mod on {
-    use super::{Mods, SimWorld, VecScene, World};
+    use super::{Gate, Mods, SimWorld, VecScene, World};
     use crate::state::VecState;
 
     fn split<'a>(
@@ -375,6 +412,7 @@ pub mod on {
         sim: &'a mut SimWorld,
         scene: &'a mut VecScene,
     ) -> (&'a mut super::ShapeHandleInput, World<'a>) {
+        let gate = Gate::of(vec);
         let VecState {
             shape_handles,
             entities,
@@ -386,6 +424,7 @@ pub mod on {
             scene,
             map: entities,
             selection: pen.selected_paths(),
+            gate,
         };
         (shape_handles, world)
     }
@@ -428,6 +467,7 @@ fn write(
     scene: &mut VecScene,
     map: &VecEntityMap,
     selection: &[VecPathId],
+    gate: Gate,
     new: ShapeValues,
 ) -> bool {
     edit_selected_shape(
@@ -435,8 +475,8 @@ fn write(
         scene,
         map,
         selection,
-        DrawMode::Select,
-        false,
+        gate.mode,
+        gate.armed,
         |_, values| {
             *values = new;
             true
@@ -447,3 +487,9 @@ fn write(
 #[cfg(test)]
 #[path = "shape_handles_live_tests.rs"]
 mod tests;
+
+/// As alças no MODO FORMA (F10) pela cadeia do produto: o gesto da ferramenta, a seleção da forma
+/// nova, o nascimento vivo, o quadro dos campos (o latch) e as portas da shell.
+#[cfg(test)]
+#[path = "shape_mode_handles_tests.rs"]
+mod shape_mode_tests;

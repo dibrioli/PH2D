@@ -3,9 +3,12 @@
 
 use super::*;
 use crate::shape_live::recook_shape;
+use crate::shape_params::panel_shape_target;
 use ph2d_ecs::Transform;
 
 const PX: f64 = 0.01;
+/// O portão das alças: o modo Forma, desarmado (F10).
+const G: Gate = Gate::SHAPE;
 
 /// Uma forma viva no mundo com POSE (translação + rotação) — a mesma montagem dos testes de
 /// `shape_params`.
@@ -48,8 +51,8 @@ fn the_handles_follow_the_pose_of_the_shape() {
     let k = ShapeKind::Star;
     let (sim0, _, map0, id0) = live(k, k.defaults(), [0.0, 0.0], 0.0);
     let (sim1, _, map1, id1) = live(k, k.defaults(), [5.0, -3.0], 0.7);
-    let a = view(&sim0, &map0, &[id0], PX, None, None).expect("alças");
-    let b = view(&sim1, &map1, &[id1], PX, None, None).expect("alças");
+    let a = view(&sim0, &map0, &[id0], G, PX, None, None).expect("alças");
+    let b = view(&sim1, &map1, &[id1], G, PX, None, None).expect("alças");
     assert_eq!(a.points.len(), law::handles_of(k).len());
     let (c, s) = (0.7_f64.cos(), 0.7_f64.sin());
     for (p, q) in a.points.iter().zip(&b.points) {
@@ -66,14 +69,14 @@ fn the_handles_follow_the_pose_of_the_shape() {
 fn a_press_grabs_only_on_a_handle() {
     let k = ShapeKind::Polygon;
     let (sim, _, map, id) = live(k, k.defaults(), [1.0, 1.0], 0.3);
-    let v = view(&sim, &map, &[id], PX, None, None).unwrap();
+    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
     for (n, p) in v.points.iter().enumerate() {
-        let g = press(&sim, &map, &[id], *p, PX).expect("agarra");
+        let g = press(&sim, &map, &[id], G, *p, PX).expect("agarra");
         assert_eq!(g.handle(), n);
-        assert!(press(&sim, &map, &[id], [p[0] + 3.0 * HIT_PX * PX, p[1]], PX).is_none());
+        assert!(press(&sim, &map, &[id], G, [p[0] + 3.0 * HIT_PX * PX, p[1]], PX).is_none());
     }
     assert!(
-        press(&sim, &map, &[], v.points[0], PX).is_none(),
+        press(&sim, &map, &[], G, v.points[0], PX).is_none(),
         "sem seleção não há alças"
     );
 }
@@ -88,10 +91,10 @@ fn a_drag_writes_through_the_one_door_and_esc_and_double_click_restore() {
     let (mut sim, mut scene, map, id) = live(k, v0, [2.0, 0.0], 0.0);
     let inner = law::handles_of(k)
         .iter()
-        .position(|h| h.law == law::Law::Radial)
+        .position(|h| h.fields.first() == Some(&1))
         .unwrap();
-    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[inner];
-    let mut g = press(&sim, &map, &[id], p, PX).unwrap();
+    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[inner];
+    let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
     assert_eq!(g.handle(), inner);
     // Para fora, ao longo do raio: o raio normalizado sobe.
     let c = [2.0, 0.0];
@@ -120,9 +123,9 @@ fn a_drag_writes_through_the_one_door_and_esc_and_double_click_restore() {
         .verts
         .clone();
     assert_ne!(before, now, "a geometria não re-cozinhou");
-    assert!(cancel(&mut sim, &mut scene, &map, &[id], &g));
+    assert!(cancel(&mut sim, &mut scene, &map, &[id], G, &g));
     assert_eq!(values_of(&sim, &map, id)[1], v0[1], "o Esc não repôs");
-    assert!(reset_at(&mut sim, &mut scene, &map, &[id], p, PX));
+    assert!(reset_at(w(&mut sim, &mut scene, &map, &[id]), p, PX));
     assert_eq!(
         values_of(&sim, &map, id)[1],
         k.defaults()[1],
@@ -135,8 +138,8 @@ fn a_drag_writes_through_the_one_door_and_esc_and_double_click_restore() {
 fn a_drag_whose_shape_left_the_selection_writes_nothing() {
     let k = ShapeKind::Star;
     let (mut sim, mut scene, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[0];
-    let mut g = press(&sim, &map, &[id], p, PX).unwrap();
+    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[0];
+    let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
     assert!(!drag(
         w(&mut sim, &mut scene, &map, &[]),
         &mut g,
@@ -151,9 +154,9 @@ fn a_drag_whose_shape_left_the_selection_writes_nothing() {
 fn hovering_a_handle_shows_its_track() {
     let k = ShapeKind::RoundRect;
     let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
-    let v = view(&sim, &map, &[id], PX, None, None).unwrap();
+    let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
     assert!(v.hot.is_none() && v.track.is_empty());
-    let h = view(&sim, &map, &[id], PX, None, Some(v.points[0])).unwrap();
+    let h = view(&sim, &map, &[id], G, PX, None, Some(v.points[0])).unwrap();
     assert_eq!(h.hot, Some(0));
     assert!(h.track.len() >= 2, "{:?}", h.track);
 }
@@ -166,13 +169,13 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     let mut v0 = k.defaults();
     v0[0] = 0.0;
     let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
-    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[0];
+    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[0];
     // A alça do canto de cima à esquerda (−2, 1) estacionou PARK_PX para a direita.
     assert!(
         (p[0] - (-2.0 + PARK_PX * PX)).abs() < 1e-9 && (p[1] - 1.0).abs() < 1e-9,
         "{p:?}"
     );
-    let mut g = press(&sim, &map, &[id], p, PX).unwrap();
+    let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
     assert!(drag(
         w(&mut sim, &mut scene, &map, &[id]),
         &mut g,
@@ -206,9 +209,9 @@ fn a_second_press_on_the_same_handle_inside_the_window_resets_it() {
     let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
     let inner = law::handles_of(k)
         .iter()
-        .position(|h| h.law == law::Law::Radial)
+        .position(|h| h.fields.first() == Some(&1))
         .unwrap();
-    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[inner];
+    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[inner];
     let mut input = ShapeHandleInput::default();
     let sel = [id];
     // Dois presses LONGE no tempo: dois agarrares, nada reposto.
@@ -249,6 +252,7 @@ fn w<'a>(
         scene,
         map,
         selection,
+        gate: G,
     }
 }
 
@@ -262,9 +266,9 @@ fn esc_through_the_input_door_restores_the_press_and_ends_the_drag() {
     let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
     let inner = law::handles_of(k)
         .iter()
-        .position(|h| h.law == law::Law::Radial)
+        .position(|h| h.fields.first() == Some(&1))
         .unwrap();
-    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[inner];
+    let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[inner];
     let sel = [id];
     let mut input = ShapeHandleInput::default();
     assert!(

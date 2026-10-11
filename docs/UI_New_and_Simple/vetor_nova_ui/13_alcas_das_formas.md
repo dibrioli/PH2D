@@ -41,14 +41,22 @@
   *Single radius* de omissão do Affinity).
 - **Duplo-clique numa alça** repõe os campos DELA no valor de fábrica (o Affinity: *«double-click the
   red handle that has been previously moved»*); as outras ficam.
-- **As portas:** só no **Select** (a seta preta) com a forma seleccionada; o press entra no cluster de
-  alças do Select (texto em caminho, padrão, forma) ANTES do gizmo e do pick — dentro do raio dela a
-  alça ganha, mesmo com Shift/Ctrl/Alt (ali são modificadores do arrasto). O arrasto escreve pela
-  porta ÚNICA `shape_params::edit_selected_shape` (a mesma dos campos); o undo é o do diff do quadro
-  (o botão premido segura-o: **um arrasto = um passo**); o **Esc** a meio repõe os valores do press.
-  O toque entra pelo mesmo caminho (o reconhecedor da F6 converte o dedo em press/arrasto).
-- **A dica ⑤:** na Seleção com uma forma de alças em foco, o rodapé diz *«Drag a shape handle: adjust ·
-  Shift: 15° steps · Ctrl: turn the arc · Alt: one corner · Double-click: reset · Esc: cancel»*.
+- **As portas (F10, 11/10 — inverte a F9):** só no **modo Forma** (nunca no Select), com a forma
+  seleccionada e o latch do catálogo apagado — o alvo é o MESMO dos campos
+  (`shape_field_target`, `shape_handles_live::Gate`): armado no catálogo ⇒ nenhuma alça; desenhar
+  selecciona a forma nova (`shape_live::select_the_drawn_shape`) e as alças dela acendem já, com a
+  ferramenta na mão. **Prioridade do press:** (a) a alça da forma — o cluster de alças sobre o
+  canvas, ANTES do Shift-arm, do desenho e do gizmo, com `over_canvas_or_gizmo` (dentro do raio
+  dela ganha, mesmo sobre uma alça da caixa; Shift/Ctrl/Alt modificam o arrasto); (b) as alças da
+  CAIXA, que no modo Forma se publica só com elas (`overlay::object_box` → `HandlesOnly`,
+  `paint_sprite_gizmo_with(body = false)`: sem miolo nem pivô); (c) o resto é canvas e desenha uma
+  forma nova (o miolo da caixa também — desenhar dentro de outra forma continua). Com um arrasto
+  da caixa vivo, o ramo vetorial não consome o Move/Up. O arrasto escreve pela porta ÚNICA
+  `shape_params::edit_selected_shape`; o undo é o do diff do quadro (**um arrasto = um passo**); o
+  **Esc** a meio repõe os valores do press. O toque entra pelo mesmo caminho.
+- **A dica ⑤:** no modo Forma com as alças à vista, o rodapé diz *«Drag a handle: adjust · Shift:
+  15° steps · Ctrl: turn the arc · Alt: one corner · Double-click: reset · Esc: cancel · Empty
+  canvas: draw another»* (`panel.vector.hint.shape_handles`; a `select_shape` saiu).
 - **A guia:** com o cursor sobre uma alça de trilho, o trilho dela desenha-se (a guia vermelha do
   Affinity: diz para onde a mão a pode levar).
 - **A cor:** o apelido `shape-handle` → `success`, MEDIDO contra as alças da caixa (`accent`,

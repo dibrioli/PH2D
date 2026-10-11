@@ -81,6 +81,14 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
+        // F10: a caixa da ferramenta vetorial — inteira no Select, só ALÇAS no modo Forma.
+        let caixa = ph2d_app_vec::overlay::object_box(
+            tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector")),
+            self.vec.draw_config.mode,
+        );
+        hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
         // Snapshot publication phase — extracted to sibling
         // `snapshots.rs` as a free fn taking explicit refs (Wave
         // 3.2 stage A). Reads PresentWorld + SimWorld + AssetDb,
@@ -117,7 +125,7 @@ impl crate::App {
             &tool_preview_bits,
             vec_scene,
             // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas**
-            // (ADR-0112) — a vectorial fora do Select dela, **e a do Flip sempre** (ela só está na mão em Draw/Edit).
+            // (ADR-0112) — a vectorial fora do Select e do modo Forma (lá, só alças: F10), **e a do Flip sempre**.
             // As alças registam hit-rects, e os dois ramos de canvas (`ramo_ferramenta_vetorial` e
             // `ramo_flip_premidos`) exigem o MESMO `on_canvas`: uma caixa sobre um canvas de
             // autoria é um ladrão de cliques, seja qual for a família do objecto que a publica.
@@ -126,10 +134,7 @@ impl crate::App {
             // AUTORADA, então enquanto a máquina move a forma ela fica para trás e passa a
             // descrever um lugar que a forma já não ocupa — é a razão pela qual o ADR-0128
             // recusou cinco vezes um gizmo sobre geometria que se move.
-            (!tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
-                || self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select)
+            caixa != ph2d_app_vec::overlay::ObjectBox::Off
                 && !tools
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))

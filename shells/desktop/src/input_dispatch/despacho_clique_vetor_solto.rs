@@ -73,15 +73,9 @@ impl crate::App {
             } else {
                 false
             };
-            if committed {
-                // Seleciona a forma nova para edição imediata — a menos que
-                // o weld a tenha fundido noutro objeto (o id sumiu).
-                let sel = self.vec.shape.selected().filter(|id| {
-                    self.gfx
-                        .as_ref()
-                        .is_some_and(|g| g.vec_scene.paths().iter().any(|p| p.id == *id))
-                });
-                self.vec.pen.select(sel);
+            // A forma nova fica seleccionada — e as alças dela acendem já (F10).
+            if committed && let Some(gfx) = self.gfx.as_ref() {
+                ph2d_app_vec::shape_live::select_the_drawn_shape(&mut self.vec, &gfx.vec_scene);
             }
             return true;
         }

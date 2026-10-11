@@ -14,8 +14,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.hint.select" => {
             "Click: pick \u{00b7} Shift+click: add \u{00b7} Drag: move, scale or rotate"
         }
-        "panel.vector.hint.select_shape" => {
-            "Drag a shape handle: adjust \u{00b7} Shift: 15\u{00b0} steps \u{00b7} Ctrl: turn the arc \u{00b7} Alt: one corner \u{00b7} Double-click: reset \u{00b7} Esc: cancel"
+        "panel.vector.hint.shape_handles" => {
+            "Drag a handle: adjust \u{00b7} Shift: 15\u{00b0} steps \u{00b7} Ctrl: turn the arc \u{00b7} Alt: one corner \u{00b7} Double-click: reset \u{00b7} Esc: cancel \u{00b7} Empty canvas: draw another"
         }
         "panel.vector.hint.node" => {
             "Click: point \u{00b7} Shift+click: add \u{00b7} Drag empty: marquee \u{00b7} Alt on a handle: break it"

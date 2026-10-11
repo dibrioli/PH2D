@@ -17,8 +17,9 @@ fn gesture_block() -> String {
         .expect("o arm do gesto de desenhar sumiu do handler de ponteiro");
     let rest = &src[start..];
     let end = rest
-        // O vizinho seguinte é o cluster das alças do Select (texto, padrão e, desde a F9, a forma).
-        .find("// **As alças do modo Select**")
+        // O vizinho seguinte é o cluster das alças sobre o canvas (texto e padrão no Select; a forma
+        // no modo Forma, F10).
+        .find("// **As alças sobre o canvas**")
         .expect("o fim do bloco (o vizinho seguinte) sumiu");
     rest[..end].to_string()
 }

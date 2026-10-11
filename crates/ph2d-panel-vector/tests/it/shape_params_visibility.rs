@@ -321,46 +321,46 @@ fn the_panel_no_longer_paints_the_shape_params() {
     assert!(shape_entries(&row(&crate::host_aberto())) > 0);
 }
 
-/// ⑤ **A dica ensina as alças** (F9): na Seleção com uma forma de ALÇAS em foco, a dica diz os
-/// modificadores delas; com uma forma sem parâmetros (o rectângulo) ou sem forma, a dica de sempre.
+/// ⑤ **A dica ensina as alças no modo FORMA** (F10): com a forma VIVA de alças em foco (as alças à
+/// vista), a dica diz os modificadores delas e que o vazio desenha outra; armado no catálogo (foco
+/// vivo `None`), com uma forma sem parâmetros (o rectângulo) ou no Select, a dica de sempre.
 #[test]
-fn the_select_hint_teaches_the_handles_only_with_a_handled_shape_in_focus() {
+fn the_shape_hint_teaches_the_handles_only_while_they_are_on_screen() {
     let snap = |mode| VectorStyleSnapshot {
         mode,
         ..VectorStyleSnapshot::default()
     };
-    publish(
-        Some(ShapeKind::Star),
-        1,
-        DrawMode::Select,
-        ShapeKind::Rectangle,
-    );
+    publish(Some(ShapeKind::Star), 1, DrawMode::Shape, ShapeKind::Star);
     assert_eq!(
-        bars::hint_key_for(&snap(DrawMode::Select)),
-        "panel.vector.hint.select_shape"
+        bars::hint_key_for(&snap(DrawMode::Shape)),
+        "panel.vector.hint.shape_handles"
     );
-    assert_eq!(
-        bars::hint_key_for(&snap(DrawMode::Node)),
-        "panel.vector.hint.node"
-    );
-    publish(
-        Some(ShapeKind::Rectangle),
-        1,
-        DrawMode::Select,
-        ShapeKind::Rectangle,
-    );
+    // No Select não há alças de forma (F10): a dica do Select.
     assert_eq!(
         bars::hint_key_for(&snap(DrawMode::Select)),
         "panel.vector.hint.select"
     );
-    publish(None, 1, DrawMode::Select, ShapeKind::Star);
+    // Armado no catálogo: a shell publica foco vivo `None` — sem alças, a dica do desenho.
+    publish(None, 1, DrawMode::Shape, ShapeKind::Star);
     assert_eq!(
-        bars::hint_key_for(&snap(DrawMode::Select)),
-        "panel.vector.hint.select"
+        bars::hint_key_for(&snap(DrawMode::Shape)),
+        "panel.vector.hint.shape"
     );
+    // Uma forma sem alças (a 1.ª do catálogo que não tem nenhuma, se ainda houver).
+    if let Some(&bare) = ph2d_vec_scene::ALL_SHAPES
+        .iter()
+        .find(|&&k| ph2d_tool_vector::shape_handles::handles_of(k).is_empty())
+    {
+        publish(Some(bare), 1, DrawMode::Shape, ShapeKind::Star);
+        assert_eq!(
+            bars::hint_key_for(&snap(DrawMode::Shape)),
+            "panel.vector.hint.shape",
+            "{bare:?} não tem alças"
+        );
+    }
     assert_ne!(
-        ph2d_i18n::tr("panel.vector.hint.select_shape"),
-        "panel.vector.hint.select_shape",
+        ph2d_i18n::tr("panel.vector.hint.shape_handles"),
+        "panel.vector.hint.shape_handles",
         "a dica nova não tem texto"
     );
 }

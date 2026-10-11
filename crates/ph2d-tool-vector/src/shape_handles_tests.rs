@@ -11,8 +11,10 @@ pub(super) fn cooker(kind: ShapeKind, half: [f64; 2]) -> impl Fn(&ShapeValues) -
     move |v: &ShapeValues| cook(kind, [-half[0], -half[1]], [half[0], half[1]], v)
 }
 
-/// A distância de `q` ao contorno de `p` (as cúbicas amostradas, sub-contornos incluídos).
-fn dist_to_outline(p: &VecPath, q: [f64; 2]) -> f64 {
+/// A distância de `q` ao contorno de `p` (as cúbicas amostradas, sub-contornos incluídos) — aos
+/// SEGMENTOS entre as amostras: medida só às amostras, um ponto entre duas (o `Spot::Apex`, F10)
+/// lia até `1e-3` fora com o ponto exactamente na curva.
+pub(super) fn dist_to_outline(p: &VecPath, q: [f64; 2]) -> f64 {
     let mut best = f64::INFINITY;
     let mut run = |vs: &[ph2d_vec_scene::VecVertex], closed: bool| {
         let n = vs.len();
@@ -20,13 +22,25 @@ fn dist_to_outline(p: &VecPath, q: [f64; 2]) -> f64 {
         for k in 0..segs {
             let (a, b) = (&vs[k], &vs[(k + 1) % n]);
             let pts = [a.anchor, a.out_handle, b.in_handle, b.anchor];
-            for s in 0..=256 {
+            let at = |s: u32| {
                 let t = f64::from(s) / 256.0;
                 let u = 1.0 - t;
                 let w = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
-                let x = (0..4).map(|i| w[i] * pts[i][0]).sum::<f64>();
-                let y = (0..4).map(|i| w[i] * pts[i][1]).sum::<f64>();
-                best = best.min((x - q[0]).hypot(y - q[1]));
+                [
+                    (0..4).map(|i| w[i] * pts[i][0]).sum::<f64>(),
+                    (0..4).map(|i| w[i] * pts[i][1]).sum::<f64>(),
+                ]
+            };
+            for s in 0..256 {
+                let (p0, p1) = (at(s), at(s + 1));
+                let d = [p1[0] - p0[0], p1[1] - p0[1]];
+                let l2 = d[0] * d[0] + d[1] * d[1];
+                let t = if l2 > 0.0 {
+                    (((q[0] - p0[0]) * d[0] + (q[1] - p0[1]) * d[1]) / l2).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                best = best.min((q[0] - p0[0] - d[0] * t).hypot(q[1] - p0[1] - d[1] * t));
             }
         }
         if n == 1 {
@@ -71,7 +85,9 @@ fn every_handle_sits_on_its_outline() {
             for v in variants(kind, h) {
                 let q = handle_point(h, &v, HALF, &ck)
                     .unwrap_or_else(|| panic!("{kind:?} alça {k}: sem ponto em {v:?}"));
-                let on = if h.sharp.is_empty() || matches!(h.spot, Spot::Rounding { .. }) {
+                let on = if h.sharp.is_empty()
+                    || matches!(h.spot, Spot::Rounding { .. } | Spot::Apex(_))
+                {
                     ck(&v)
                 } else {
                     ck(&zeroed(&v, h.sharp))
@@ -80,9 +96,19 @@ fn every_handle_sits_on_its_outline() {
                 // Affinity nasce lá).
                 let d = match h.spot {
                     Spot::Ellipse { scale: Some(i), .. } if v[i] <= 0.0 => q[0].hypot(q[1]),
+                    // O ⇕ é um widget da CAIXA visível (o Illustrator): mora na borda direita dela.
+                    Spot::Box { .. } => {
+                        let right = on
+                            .verts
+                            .iter()
+                            .map(|x| x.anchor[0])
+                            .fold(f64::MIN, f64::max);
+                        (q[0] - right).abs()
+                    }
                     _ => dist_to_outline(&on, q),
                 };
-                assert!(d < 1e-6, "{kind:?} alça {k}: {d} fora do contorno em {v:?}");
+                // `1e-5`: a corda das 256 amostras de uma cúbica longa (o `Apex` cai entre duas).
+                assert!(d < 1e-5, "{kind:?} alça {k}: {d} fora do contorno em {v:?}");
                 n += 1;
             }
         }
@@ -347,10 +373,7 @@ fn a_double_click_resets_only_that_handle() {
     let mut v = k.defaults();
     v[0] = 9.0;
     v[1] = 0.3;
-    let inner = handles_of(k)
-        .iter()
-        .position(|h| matches!(h.law, Law::Polar { .. }))
-        .unwrap();
+    let inner = handles_of(k).iter().position(|h| h.fields == [1]).unwrap();
     let r = reset(k, inner, &v);
     assert_eq!(r[1], k.defaults()[1]);
     assert_eq!(r[0], 9.0);
@@ -368,7 +391,7 @@ fn the_fields_without_a_gesture_are_counted_not_listed() {
         (K::RoundRect, &[4, 5]),
         // F10: o tipo do canto (escolha) e o liso (um perfil) — o cartão lateral.
         (K::Polygon, &[2, 4]),
-        (K::Star, &[4, 6]),
+        (K::Star, &[4, 6, 7]),
         // F10: a divergência da espiral e a envergadura dos flancos da engrenagem.
         (K::Spiral, &[1]),
         (K::Gear, &[4]),
@@ -501,8 +524,9 @@ fn the_corner_radius_is_the_hand_projected_on_the_edge_like_inkscape() {
 }
 
 /// ⭐ O RAIO INTERIOR da estrela é a DISTÂNCIA da mão ao centro (o `r2` do Inkscape, com e sem
-/// Ctrl, direita e rodada): a nossa razão = `r2 / r1`. O Inkscape vira as pontas para a direita
-/// do topo e nós para a esquerda: o documento dele entra ESPELHADO.
+/// Ctrl, direita e rodada): a nossa razão = `r2 / r1`. O vale que ele arrasta é o da DIREITA da
+/// ponta de cima — o mesmo da nossa alça do raio (F10, a do Affinity): o documento entra com o y
+/// virado.
 #[test]
 fn the_star_inner_radius_is_the_distance_to_the_centre_like_inkscape() {
     let mut n = 0;
@@ -513,14 +537,14 @@ fn the_star_inner_radius_is_the_distance_to_the_centre_like_inkscape() {
             if !nome.starts_with("inner_") || e["mod"] == "shift" {
                 continue;
             }
-            let m = |p: [f64; 2]| [400.0 - p[0], 300.0 - p[1]];
+            let m = |p: [f64; 2]| [p[0] - 400.0, 300.0 - p[1]];
             let a = m(pointer(&f, e, "alca_tela", rot));
             let b = m(pointer(&f, e, "alvo_tela", rot));
             let mut v = ShapeKind::Star.defaults();
             v[1] = 0.45;
             let inner = handles_of(ShapeKind::Star)
                 .iter()
-                .position(|h| matches!(h.law, Law::Polar { .. }));
+                .position(|h| h.law == Law::Radial);
             let r = replay(
                 ShapeKind::Star,
                 inner.unwrap(),

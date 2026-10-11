@@ -44,6 +44,14 @@ pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
             Some(k) => crate::star_rounded(center, rx, ry, s.n, k, s.radii[0], s.radii[1]),
         };
     }
+    // Envergadura COM raio de canto (e sem liso): arredonda-se o contorno RECTO (arcos exactos) e
+    // enverga-se só o troço recto entre dois cantos. Pela ligação lisa entre duas arestas curvas
+    // o canto passava ACIMA do vértice (0,067 num pentágono a envergadura 0,4 e raio 0,15 — o
+    // arredondamento engordava a forma): medido em `the_rounding_never_grows_past_the_sharp_corner`.
+    if s.curve != 0.0 && s.smooth == 0.0 && s.radii.iter().any(|r| *r > 0.0) {
+        let straight = polystar(center, rx, ry, &PolyStar { curve: 0.0, ..*s });
+        return bend_between_corners(straight, center, s.curve);
+    }
     let unit = unit_vertices(s);
     let m = unit.len();
     // As alças de cada aresta, no círculo: o liso (tangentes) + a envergadura (normal).
@@ -101,6 +109,51 @@ pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
     match crate::corner_live::round_authored_corners_styled(&verts, true, s.style) {
         Some(cooked) => closed(cooked),
         None => closed(clear_radii(verts)),
+    }
+}
+
+/// Enverga os troços RECTOS (alças nulas ou a ⅓) de um contorno fechado já arredondado: o meio de
+/// cada um anda `curve × meia corda` pela normal de FORA (para dentro, nunca além de 90 % da
+/// distância ao centro), e as alças vizinhas rodam para a nova tangente — a junção fica lisa.
+fn bend_between_corners(mut p: VecPath, center: [f64; 2], curve: f64) -> VecPath {
+    let n = p.verts.len();
+    for k in 0..n {
+        let j = (k + 1) % n;
+        let (a, b) = (p.verts[k].anchor, p.verts[j].anchor);
+        let d = [b[0] - a[0], b[1] - a[1]];
+        let len = d[0].hypot(d[1]);
+        let straight = |h: [f64; 2], o: [f64; 2], t: f64| {
+            let q = [o[0] + d[0] * t, o[1] + d[1] * t];
+            (h[0] - o[0]).hypot(h[1] - o[1]) < 1e-12 || (h[0] - q[0]).hypot(h[1] - q[1]) < 1e-9
+        };
+        if len <= 1e-12
+            || !straight(p.verts[k].out_handle, a, 1.0 / 3.0)
+            || !straight(p.verts[j].in_handle, b, -1.0 / 3.0)
+        {
+            continue;
+        }
+        let normal = [d[1] / len, -d[0] / len];
+        let reach = ((a[0] - center[0]) * normal[0] + (a[1] - center[1]) * normal[1]).abs();
+        let h = (curve * len * 0.5).max(-0.9 * reach) * 4.0 / 3.0;
+        let off = [normal[0] * h, normal[1] * h];
+        let out = [a[0] + d[0] / 3.0 + off[0], a[1] + d[1] / 3.0 + off[1]];
+        let inn = [b[0] - d[0] / 3.0 + off[0], b[1] - d[1] / 3.0 + off[1]];
+        p.verts[k].out_handle = out;
+        p.verts[j].in_handle = inn;
+        // A alça do ARCO vizinho roda para a tangente nova (mesmo comprimento): G1 na junção.
+        align_opposite(&mut p.verts[k].in_handle, a, out);
+        align_opposite(&mut p.verts[j].out_handle, b, inn);
+    }
+    p
+}
+
+/// Põe `h` (alça de `o`) do lado oposto de `other`, com o comprimento que tinha; nula fica nula.
+fn align_opposite(h: &mut [f64; 2], o: [f64; 2], other: [f64; 2]) {
+    let l = (h[0] - o[0]).hypot(h[1] - o[1]);
+    let t = [o[0] - other[0], o[1] - other[1]];
+    let lt = t[0].hypot(t[1]);
+    if l > 1e-12 && lt > 1e-12 {
+        *h = [o[0] + t[0] / lt * l, o[1] + t[1] / lt * l];
     }
 }
 

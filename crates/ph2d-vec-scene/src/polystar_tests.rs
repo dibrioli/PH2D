@@ -263,3 +263,45 @@ fn the_field_value_picks_the_corner_style_in_the_descriptor_order() {
         );
     }
 }
+
+/// ⭐ **Arredondar nunca engorda** — com a envergadura e o raio do canto, nenhum ponto do contorno
+/// passa do vértice da ponta (pela ligação lisa entre duas arestas curvas passava `0,067`).
+#[test]
+fn the_rounding_never_grows_past_the_sharp_corner() {
+    for (inner, curve) in [
+        (None, 0.4),
+        (None, -0.3),
+        (Some(0.45), 0.4),
+        (Some(0.45), -0.3),
+    ] {
+        let s = PolyStar {
+            n: 5,
+            inner,
+            curve,
+            radii: [0.15, 0.1],
+            ..PolyStar::default()
+        };
+        let p = polystar([0.0; 2], 1.0, 1.0, &s);
+        let top = (0..p.verts.len())
+            .flat_map(|i| {
+                let (a, b) = (&p.verts[i], &p.verts[(i + 1) % p.verts.len()]);
+                (0..=32).map(move |k| cubic_at(a, b, f64::from(k) / 32.0)[1])
+            })
+            .fold(f64::MIN, f64::max);
+        assert!(
+            top <= 1.0 + 1e-9,
+            "{inner:?} curve {curve}: o contorno chega a {top}"
+        );
+        // E a junção do arco com a aresta curva é lisa: as alças de cada âncora colineares.
+        for v in &p.verts {
+            let (i, o) = (
+                [v.in_handle[0] - v.anchor[0], v.in_handle[1] - v.anchor[1]],
+                [v.out_handle[0] - v.anchor[0], v.out_handle[1] - v.anchor[1]],
+            );
+            if i[0].hypot(i[1]) > 1e-9 && o[0].hypot(o[1]) > 1e-9 && inner.is_none() {
+                let c = (i[0] * o[1] - i[1] * o[0]) / (i[0].hypot(i[1]) * o[0].hypot(o[1]));
+                assert!(c.abs() < 1e-9, "quina na junção: {v:?}");
+            }
+        }
+    }
+}

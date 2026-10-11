@@ -356,7 +356,7 @@ impl ModeFamily for Family<'_> {
 /// `=13` (F7e): o Edit Shape — o rectângulo seguro, o botão da ④ e um canto arrastado.
 /// `=14` (F8): enquadrar tudo — três formas fora da tela e *Ver ▸ Enquadrar tudo* (`vector_mode_frame`).
 /// `=15` (F9): as alças das formas — um canto, um vale e o fim de uma pizza (`vector_mode_handles`).
-/// `=16` (F10): os parâmetros novos — a torção, a envergadura e o *Corner* do cartão (`vector_mode_card`).
+/// `=16` (F10): a estrela do Affinity — pontas e vales macios, o ⇕ a 7 pontas, o cartão (`vector_mode_card`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -535,7 +535,7 @@ pub fn smoke_step(
             }
         }
         // A cena 16 (F10): os parâmetros novos e o cartão lateral — `vector_mode_card`.
-        s @ 80..=86 => {
+        s @ 80..=84 => {
             if let Some(next) = crate::vector_mode_card::step(s, vec, scene, sim, hero) {
                 go(next);
             }

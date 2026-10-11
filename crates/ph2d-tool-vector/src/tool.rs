@@ -100,7 +100,7 @@ pub const DEFAULT_POLYGON_SIDES: u32 = 5;
 
 /// Default star point count / inner ratio / rounded-rect corner radius (px).
 pub const DEFAULT_STAR_POINTS: u32 = 5;
-pub const DEFAULT_STAR_INNER: f64 = 0.5;
+pub const DEFAULT_STAR_INNER: f64 = ph2d_vec_scene::DEFAULT_STAR_INNER;
 pub const DEFAULT_CORNER_RADIUS_PX: f64 = 12.0;
 /// Polígono e estrela nascem de quinas VIVAS (o canto redondo é opt-in).
 pub const DEFAULT_POLYGON_RADIUS_PX: f64 = 0.0;

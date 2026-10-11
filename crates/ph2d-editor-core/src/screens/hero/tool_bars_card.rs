@@ -23,10 +23,12 @@ use ph2d_vector::VectorScene;
 /// O id (a11y) do rail do cartão — irmão dos rails `203..205` da fila e dos flyouts dela.
 const CARD_RAIL: NodeId = NodeId(206);
 
-/// A folga entre a seleção (ou um obstáculo) e o painel do cartão.
+/// A folga entre a seleção (ou um obstáculo) e o painel do cartão — mais uma ALÇA: os widgets que
+/// moram na borda da caixa (o ⇕ das pontas, F10) ficam à vista (a foto da estrela nova: o cartão
+/// tapava-o).
 #[must_use]
 pub fn card_gap() -> f32 {
-    Spacing::Sm.px()
+    Spacing::Sm.px() + crate::HANDLE_SIZE_PX
 }
 
 /// O recuo do rail dentro do painel.

@@ -82,58 +82,34 @@ const ROUND_RECT: &[HandleDesc] = &[
     round_corner(0, true, &[3], &[]),
 ];
 
-/// O polígono (`shapes::regular_polygon`, 1.º vértice às 12h, anti-horário): os LADOS pelo
-/// ângulo do 2.º vértice; o raio do canto no 1.º; a ENVERGADURA (F10) no meio da 2.ª aresta (a
-/// 1.ª é a do arredondamento, que satura no meio dela). O tipo do canto e o liso: o cartão.
+/// O ⇕ dos LADOS / das PONTAS (o *Points* do Illustrator): na borda direita da caixa, a um quarto
+/// do topo — entre a alça do canto e a do meio da aresta.
+const COUNT_WIDGET: Spot = Spot::Box { u: 8, v: 2 };
+
+/// O polígono (`shapes::regular_polygon`, 1.º vértice às 12h, anti-horário), no idioma da estrela
+/// do Affinity (F10, a foto do dono): o raio do canto no vértice de CIMA, descendo pelo eixo dele
+/// (desenhado `PARK_PX` para DENTRO: o topo do contorno É a alça do meio-topo da caixa, que abraça
+/// o contorno cozido e desce com ele — estacionar a partir do vértice vivo deixava-a por baixo da
+/// alça azul, medido na foto da cena 16); a envergadura no meio do lado esquerdo dele; os
+/// lados no ⇕. O tipo do canto e o liso: o cartão.
 const POLYGON: &[HandleDesc] = &[
-    on_sharp(h(&[0], Spot::Vertex(1), Law::Count), &[1]),
-    on_sharp(h(&[3], Spot::EdgeMid(1), Law::Nearest), &[1]),
-    parked(on_sharp(
-        h(
-            &[1],
-            Spot::Rounding {
-                corner: 0,
-                next: true,
-            },
-            Law::Nearest,
-        ),
-        &[1],
-    )),
+    h(&[0], COUNT_WIDGET, Law::Steps),
+    on_sharp(h(&[3], Spot::EdgeMid(0), Law::Nearest), &[1]),
+    inset(on_sharp(h(&[1], Spot::Apex(0), Law::Nearest), &[1])),
 ];
 
-/// A estrela (`shapes::star`, pontas nos pares, vales nos ímpares, 1.ª ponta às 12h): as PONTAS
-/// pelo ângulo da 2.ª ponta; o raio INTERIOR e a TORÇÃO (F10) no 1.º vale (a distância e o ângulo,
-/// como o Inkscape; Ctrl = só o raio); o arredondamento da ponta e do vale nas arestas que saem
-/// deles; a ENVERGADURA (F10) no meio da 3.ª aresta.
+/// A estrela (`shapes::star`, pontas nos pares, vales nos ímpares, 1.ª ponta às 12h) — a do Affinity
+/// (o manual e as fotos, F10): os pontos JUNTO da ponta de cima. A ponta arredonda (o *Outer
+/// circle*: o ponto desce pelo eixo dela; desenhado para DENTRO, fora da alça do meio-topo); o vale da DIREITA é
+/// o raio interior (só radial — nada torce, nem no Affinity nem no Illustrator); o vale da ESQUERDA
+/// arredonda os vales (o *Inner circle*, pelo eixo dele); a envergadura no meio do lado esquerdo da
+/// ponta; as pontas no ⇕ do Illustrator. O tipo do canto, o liso e a torção: o cartão.
 const STAR: &[HandleDesc] = &[
-    on_sharp(h(&[0], Spot::Vertex(2), Law::Count), &[2, 3]),
-    on_sharp(h(&[5], Spot::EdgeMid(2), Law::Nearest), &[2, 3]),
-    parked(on_sharp(
-        h(&[1], Spot::Vertex(1), Law::Polar { angle: 7 }),
-        &[2, 3],
-    )),
-    parked(on_sharp(
-        h(
-            &[2],
-            Spot::Rounding {
-                corner: 0,
-                next: true,
-            },
-            Law::Nearest,
-        ),
-        &[2, 3],
-    )),
-    parked(on_sharp(
-        h(
-            &[3],
-            Spot::Rounding {
-                corner: 1,
-                next: true,
-            },
-            Law::Nearest,
-        ),
-        &[2, 3],
-    )),
+    h(&[0], COUNT_WIDGET, Law::Steps),
+    on_sharp(h(&[5], Spot::EdgeMid(0), Law::Nearest), &[2, 3]),
+    on_sharp(h(&[3], Spot::Apex(1), Law::Nearest), &[2, 3]),
+    on_sharp(h(&[1], Spot::FromEnd(0), Law::Radial), &[2, 3]),
+    inset(on_sharp(h(&[2], Spot::Apex(0), Law::Nearest), &[2, 3])),
 ];
 
 /// O início e o fim de um arco da família do círculo (0 = abertura, 1 = início).

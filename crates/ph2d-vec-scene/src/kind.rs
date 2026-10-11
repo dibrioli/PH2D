@@ -340,7 +340,10 @@ impl ShapeKind {
 pub const DEFAULT_CORNER_RADIUS: f64 = 0.12;
 pub const DEFAULT_POLYGON_SIDES: f64 = 5.0;
 pub const DEFAULT_STAR_POINTS: f64 = 5.0;
-pub const DEFAULT_STAR_INNER: f64 = 0.5;
+/// A estrela REGULAR de 5 pontas (os «ombros» alinhados: `cos 72° / cos 36°`) — a de omissão do
+/// Affinity e do Illustrator (F10, as fotos dos dois); era `0,5`, uma estrela gorda. Só a estrela
+/// NOVA nasce assim: o save guarda o valor dele.
+pub const DEFAULT_STAR_INNER: f64 = 0.381_966_011_250_105_1;
 pub const DEFAULT_SPIRAL_TURNS: f64 = 3.0;
 pub const DEFAULT_ARC_DEGREES: f64 = 180.0;
 /// Setas: espessura da haste, comprimento e largura da cabeça (frações da caixa).

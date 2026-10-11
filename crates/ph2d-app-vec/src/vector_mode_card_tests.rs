@@ -9,7 +9,7 @@ use ph2d_vec_entities::entities::sync;
 use ph2d_vec_scene::ShapeKind;
 
 #[test]
-fn the_scene_rounds_the_tips_twists_the_valley_bends_the_edges_and_clicks_the_card() {
+fn the_scene_rounds_the_tips_and_valleys_and_steps_to_seven_points() {
     let mut c = cena();
     crate::vector_mode::draw_shape(
         &mut c.vec,
@@ -46,20 +46,13 @@ fn the_scene_rounds_the_tips_twists_the_valley_bends_the_edges_and_clicks_the_ca
         );
     }
     let v = values(&c);
-    assert!(v[2] > 0.05, "a ponta arredondou: {v:?}");
-    assert!((v[7] - 12.0).abs() < 0.5, "o vale torceu 12°: {v:?}");
-    assert!(v[5] > 0.05, "a aresta envergou para fora: {v:?}");
+    assert!(v[2] > 0.05, "as pontas arredondaram: {v:?}");
+    assert!(v[3] > 0.02, "os vales arredondaram: {v:?}");
+    assert_eq!(v[0], 7.0, "o ⇕ subiu dois degraus: {v:?}");
+    assert_eq!(v[7], 0.0, "nada torceu: {v:?}");
     assert!(
-        (v[1] - ShapeKind::Star.defaults()[1]).abs() < 0.02,
-        "o raio do vale ficou: {v:?}"
-    );
-    assert_eq!(
-        step(85, &mut c.vec, &mut c.scene, &mut c.sim, &mut c.hero),
-        Some(86)
-    );
-    assert_eq!(
-        step(86, &mut c.vec, &mut c.scene, &mut c.sim, &mut c.hero),
-        Some(9)
+        (v[1] - ShapeKind::Star.defaults()[1]).abs() < 1e-12,
+        "o raio interior ficou: {v:?}"
     );
     assert!(
         c.vec.shape_handles.grab.is_none(),

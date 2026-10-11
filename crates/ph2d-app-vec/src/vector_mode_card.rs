@@ -1,10 +1,9 @@
-//! ⭐ **A cena 16** (`PH2D_OBJECT_MODE_SMOKE=16`, F10 — 11/10): OS PARÂMETROS NOVOS E O CARTÃO
-//! LATERAL. No layout *Vetor*, uma estrela desenhada com a ferramenta de forma na mão; o botão
-//! *Forma* (as alças vivem no modo Forma); e, pelo MESMO press e arrasto da shell
-//! (`shape_handles_live::on`), três alças: as pontas arredondam, o vale TORCE (a torção, F10) e a
-//! aresta ENVERGA (a envergadura, F10). Por fim o chip *Corner* do CARTÃO LATERAL é clicado duas
-//! vezes: *Rounded → Straight → Concave* — as pontas mordem para dentro. A foto final mostra a
-//! estrela com as alças verdes e, ao lado dela, o cartão com o *Corner* e o *Smooth*.
+//! ⭐ **A cena 16** (`PH2D_OBJECT_MODE_SMOKE=16`, F10 — 11/10): A ESTRELA DO AFFINITY E O CARTÃO
+//! LATERAL. No layout *Vetor*, uma estrela desenhada com a ferramenta de forma na mão (nasce
+//! REGULAR); o botão *Forma*; e, pelo MESMO press e arrasto da shell (`shape_handles_live::on`), os
+//! pontos junto da ponta de cima: a ponta arredonda (o ponto desce pelo eixo dela), o vale da
+//! esquerda arredonda os vales, e o ⇕ da borda da caixa sobe dois degraus — 7 pontas. A foto final
+//! mostra a estrela macia com os pontos verdes e, ao lado, o cartão (Corner · Smooth · Twist).
 
 use crate::shape_handles_live::{Gate, on, view};
 use crate::state::VecState;
@@ -54,8 +53,8 @@ fn pull(
 }
 
 /// Um passo da cena 16; devolve o próximo estágio, se mudou. `80` = a estrela · `81` = o modo
-/// Forma pelo botão · `82` = as pontas arredondam · `83` = o vale torce · `84` = a aresta enverga ·
-/// `85`/`86` = o *Corner* do cartão, duas vezes · `9` = feito.
+/// Forma pelo botão · `82` = as pontas arredondam (o ponto desce pelo eixo da ponta) · `83` = os
+/// vales arredondam · `84` = o ⇕ sobe dois degraus: 7 pontas · `9` = feito.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
@@ -64,6 +63,17 @@ pub fn step(
     hero: &mut HeroScreen,
 ) -> Option<u8> {
     let (c, half) = ESTRELA;
+    // A mão anda do ponto `a` na direcção `dir` (mundo), em seis passos até `len`.
+    let walk = move |dir: [f64; 2], len: f64| {
+        move |a: [f64; 2]| -> Vec<[f64; 2]> {
+            (1..=6)
+                .map(|k| {
+                    let t = len * f64::from(k) / 6.0;
+                    [a[0] + dir[0] * t, a[1] + dir[1] * t]
+                })
+                .collect()
+        }
+    };
     match stage {
         80 if vec.entities.is_empty() => {
             crate::vector_mode::draw_shape(vec, scene, ShapeKind::Star, c, half);
@@ -73,49 +83,24 @@ pub fn step(
             hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_SHAPE));
             Some(82)
         }
-        // A ponta: a alça do arredondamento anda para o centro — o raio da ponta cresce.
+        // A ponta de cima: o ponto desce 0,25 m pelo eixo dela — as pontas arredondam, macias.
         82 if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Shape => {
-            pull(vec, scene, sim, handle_of(2)?, move |a| {
-                (1..=6)
-                    .map(|k| {
-                        let t = 0.05 * f64::from(k);
-                        [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t]
-                    })
-                    .collect()
-            })
-            .then_some(83)
+            pull(vec, scene, sim, handle_of(2)?, walk([0.0, -1.0], 0.25)).then_some(83)
         }
-        // O vale roda 12° à volta do centro, à mesma distância: a estrela torce.
-        83 => pull(vec, scene, sim, handle_of(1)?, move |a| {
-            let (r, a0) = (
-                (a[0] - c[0]).hypot(a[1] - c[1]),
-                (a[1] - c[1]).atan2(a[0] - c[0]),
-            );
-            (1..=6)
-                .map(|k| {
-                    let t = a0 + (2.0 * f64::from(k)).to_radians();
-                    [c[0] + r * t.cos(), c[1] + r * t.sin()]
-                })
-                .collect()
-        })
-        .then_some(84),
-        // O meio de uma aresta, para FORA: as arestas envergam.
-        84 => pull(vec, scene, sim, handle_of(5)?, move |a| {
-            (1..=6)
-                .map(|k| {
-                    let t = 1.0 + 0.03 * f64::from(k);
-                    [c[0] + (a[0] - c[0]) * t, c[1] + (a[1] - c[1]) * t]
-                })
-                .collect()
-        })
-        .then_some(85),
-        // O chip *Corner* do cartão (o MESMO id da fila ②): Rounded → Straight → Concave.
-        s @ (85 | 86) => {
-            hero.apply_event(WidgetEvent::Click(
-                ph2d_tool_vector::ids::vector_shape_choice_id(4),
-            ));
-            Some(if s == 85 { 86 } else { 9 })
+        // O vale da esquerda: o ponto sobe 0,04 m pelo eixo dele — os vales arredondam de leve.
+        83 => {
+            let dir = [-(54f64.to_radians().cos()), 54f64.to_radians().sin()];
+            pull(vec, scene, sim, handle_of(3)?, walk(dir, 0.04)).then_some(84)
         }
+        // O ⇕ das pontas: dois degraus para cima (1/24 da altura cada) — 7 pontas.
+        84 => pull(
+            vec,
+            scene,
+            sim,
+            handle_of(0)?,
+            walk([0.0, 1.0], 2.0 * 2.0 * half / 24.0),
+        )
+        .then_some(9),
         _ => None,
     }
 }

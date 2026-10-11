@@ -43,6 +43,15 @@ pub enum Spot {
     /// O MEIO (`t = ½`) da aresta que sai do vértice `i` (F10: a envergadura — numa aresta curva o
     /// meio da corda não está no contorno).
     EdgeMid(usize),
+    /// Onde o contorno COZIDO cruza o raio do centro à quina `corner` do contorno vivo (os campos
+    /// `sharp` a zero): o meio do arredondamento dela — o *Outer/Inner circle* do Affinity, cujo
+    /// ponto vermelho desce pelo eixo da ponta à medida que ela arredonda. Sem raio é a quina.
+    Apex(usize),
+    /// Um ponto FIXO da caixa VISÍVEL — a do contorno cozido, a que o gizmo desenha (`u` da
+    /// esquerda, `v` do topo, em OITAVOS dela) — um widget fora do contorno: o ⇕ das pontas do
+    /// Illustrator, na borda direita da caixa (na caixa dos campos ele ficava fora da visível, e o
+    /// cartão lateral tapava-o — a foto da estrela nova).
+    Box { u: u8, v: u8 },
 }
 
 /// Como o arrasto escreve nos campos — a MÉTRICA com que o ponto da alça persegue a mão. Todas
@@ -80,10 +89,9 @@ pub enum Law {
     /// a distância não conta — as `revolution` do Inkscape só mudam com o ângulo (150 e 70 px a
     /// 0° deixam 3,000; +90° dá 3,250).
     Winding,
-    /// O RAIO pela métrica [`Law::Radial`] e o ÂNGULO do campo `angle` pelo ângulo da mão,
-    /// desenrolado desde o press (F10: o vale da estrela do Inkscape — `r2` e `arg2` juntos; com
-    /// Ctrl, como lá, só o raio).
-    Polar { angle: usize },
+    /// Contagem por DEGRAUS verticais desde o press: cada 1/24 da altura da caixa para CIMA soma
+    /// uma, para baixo tira — o ⇕ «Points» do Illustrator (o Affinity só tem a barra).
+    Steps,
 }
 
 /// O que o Alt (`alone`) faz numa alça partilhada: escreve OUTROS campos e devolve a soma aos
@@ -140,11 +148,8 @@ pub fn handles_of(kind: ShapeKind) -> &'static [HandleDesc] {
 pub fn fields_without_handle(kind: ShapeKind) -> impl Iterator<Item = usize> {
     let hs = handles_of(kind);
     (0..shapes::desc(kind).fields.len()).filter(move |i| {
-        !hs.iter().any(|h| {
-            h.fields.contains(i)
-                || h.alone.is_some_and(|a| a.fields.contains(i))
-                || h.law == Law::Polar { angle: *i }
-        })
+        !hs.iter()
+            .any(|h| h.fields.contains(i) || h.alone.is_some_and(|a| a.fields.contains(i)))
     })
 }
 
@@ -176,6 +181,15 @@ fn spot_at(
             Some([(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5])
         }
         Spot::Sub(c, i) => p.subpaths.get(c)?.verts.get(i).map(|v| v.anchor),
+        Spot::Box { u, v } => {
+            let (lo, hi) = curve_bbox(p)?;
+            let (u, v) = (f64::from(u) / 8.0, f64::from(v) / 8.0);
+            Some([lo[0] + (hi[0] - lo[0]) * u, hi[1] - (hi[1] - lo[1]) * v])
+        }
+        Spot::Apex(corner) => {
+            let q = sharp?.verts.get(corner)?.anchor;
+            spoke_hit(p, q)
+        }
         Spot::EdgeMid(i) => {
             let n = p.verts.len();
             let (a, b) = (p.verts.get(i)?, p.verts.get((i + 1) % n.max(1))?);
@@ -214,23 +228,6 @@ fn spot_at(
             if len <= 0.0 {
                 return None;
             }
-            // Numa aresta CURVA (a envergadura, o liso) o corte pousa na curva, não na corda.
-            let (vq, vo) = (
-                &sharp.verts[corner],
-                &sharp.verts[if next {
-                    (corner + 1) % n
-                } else {
-                    (corner + n - 1) % n
-                }],
-            );
-            let seg = if next {
-                [q, vq.out_handle, vo.in_handle, o]
-            } else {
-                [q, vq.in_handle, vo.out_handle, o]
-            };
-            if seg[1] != q || seg[2] != o {
-                return on_curve_nearest_corner(&seg, p, len);
-            }
             let tol = len * 1e-7;
             p.verts
                 .iter()
@@ -259,7 +256,7 @@ pub fn handle_point(
         return spot_at(h.spot, &cook(values), None, values, half);
     }
     let sharp = cook(&zeroed(values, h.sharp));
-    if matches!(h.spot, Spot::Rounding { .. }) {
+    if matches!(h.spot, Spot::Rounding { .. } | Spot::Apex(_)) {
         spot_at(h.spot, &cook(values), Some(&sharp), values, half)
     } else {
         spot_at(h.spot, &sharp, None, values, half)
@@ -489,19 +486,22 @@ pub fn drag(
                 v[*iv] = (d.at_press[*iv] - dy / (2.0 * hy)).clamp(vlo, vhi);
             }
         }
-        Law::Nearest | Law::Radial | Law::Count | Law::Polar { .. } => {
-            if let Law::Polar { angle } = h.law
-                && !mods.pairs
-                && let Some((lo, hi, _)) = range_world(kind, angle, px_to_world)
+        Law::Steps => {
+            if let Some(&i) = fields.first()
+                && let Some((lo, hi, _)) = range_world(kind, i, px_to_world)
             {
-                v[angle] = snap(d.at_press[angle] + d.wound).clamp(lo, hi);
+                let step = 2.0 * half[1].max(1e-12) / STEPS_PER_BOX;
+                let n = ((p[1] - d.origin[1]) / step).round();
+                v[i] = (d.at_press[i] + n).clamp(lo, hi);
             }
+        }
+        Law::Nearest | Law::Radial | Law::Count => {
             let metric = |vals: &ShapeValues| {
                 let Some(q) = handle_point(h, vals, half, cook) else {
                     return f64::INFINITY;
                 };
                 match h.law {
-                    Law::Radial | Law::Polar { .. } => {
+                    Law::Radial => {
                         let r = |x: [f64; 2]| {
                             (x[0] / half[0].max(1e-12)).hypot(x[1] / half[1].max(1e-12))
                         };
@@ -651,6 +651,78 @@ pub fn reset(kind: ShapeKind, handle: usize, values: &ShapeValues) -> ShapeValue
     v
 }
 
+/// A caixa do contorno (as cúbicas amostradas): `(mínimo, máximo)`.
+fn curve_bbox(p: &VecPath) -> Option<([f64; 2], [f64; 2])> {
+    let n = p.verts.len();
+    let segs = if p.closed { n } else { n.saturating_sub(1) };
+    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+    for s in 0..segs.max(usize::from(n == 1)) {
+        let (a, b) = (&p.verts[s], &p.verts[(s + 1) % n]);
+        let c = [a.anchor, a.out_handle, b.in_handle, b.anchor];
+        for k in 0..=16 {
+            let q = cubic_at(&c, f64::from(k) / 16.0);
+            lo = [lo[0].min(q[0]), lo[1].min(q[1])];
+            hi = [hi[0].max(q[0]), hi[1].max(q[1])];
+        }
+    }
+    (lo[0] <= hi[0]).then_some((lo, hi))
+}
+
+/// Degraus do [`Law::Steps`] na altura da caixa (uma estrela de 400 px: ~17 px por ponta).
+const STEPS_PER_BOX: f64 = 24.0;
+
+/// Onde o contorno `p` cruza o raio do centro (a origem) a `q`, do lado de `q` — o cruzamento mais
+/// perto de `q` em distância ao centro (a estrela é estrelada em relação ao centro: um só).
+fn spoke_hit(p: &VecPath, q: [f64; 2]) -> Option<[f64; 2]> {
+    const N: usize = 64;
+    let r = q[0].hypot(q[1]);
+    if r <= 0.0 {
+        return None;
+    }
+    let u = [q[0] / r, q[1] / r];
+    let cross = |b: [f64; 2]| u[0] * b[1] - u[1] * b[0];
+    let n = p.verts.len();
+    let segs = if p.closed { n } else { n.saturating_sub(1) };
+    let mut best: Option<(f64, [f64; 2])> = None;
+    let mut keep = |b: [f64; 2]| {
+        let along = u[0] * b[0] + u[1] * b[1];
+        if along > 0.0 && best.is_none_or(|(e, _)| (along - r).abs() < e) {
+            best = Some(((along - r).abs(), b));
+        }
+    };
+    for s in 0..segs {
+        let (a, b) = (&p.verts[s], &p.verts[(s + 1) % n]);
+        let c = [a.anchor, a.out_handle, b.in_handle, b.anchor];
+        let mut t0 = 0.0;
+        let mut f0 = cross(c[0]);
+        if f0 == 0.0 {
+            keep(c[0]);
+        }
+        for k in 1..=N {
+            let t1 = k as f64 / N as f64;
+            let f1 = cross(cubic_at(&c, t1));
+            if f0 * f1 < 0.0 {
+                let (mut lo, mut hi, mut flo) = (t0, t1, f0);
+                for _ in 0..60 {
+                    let m = 0.5 * (lo + hi);
+                    let fm = cross(cubic_at(&c, m));
+                    if (fm < 0.0) == (flo < 0.0) {
+                        lo = m;
+                        flo = fm;
+                    } else {
+                        hi = m;
+                    }
+                }
+                keep(cubic_at(&c, 0.5 * (lo + hi)));
+            } else if f1 == 0.0 {
+                keep(cubic_at(&c, t1));
+            }
+            (t0, f0) = (t1, f1);
+        }
+    }
+    best.map(|(_, b)| b)
+}
+
 /// O ponto da cúbica `c` em `t`.
 fn cubic_at(c: &[[f64; 2]; 4], t: f64) -> [f64; 2] {
     let u = 1.0 - t;
@@ -659,29 +731,6 @@ fn cubic_at(c: &[[f64; 2]; 4], t: f64) -> [f64; 2] {
         w.iter().zip(c).map(|(k, q)| k * q[0]).sum(),
         w.iter().zip(c).map(|(k, q)| k * q[1]).sum(),
     ]
-}
-
-/// O vértice cozido que pousa na cúbica `seg` (do canto, `t = 0`, até meio dela) o mais perto do
-/// canto — o [`Spot::Rounding`] de uma aresta curva.
-fn on_curve_nearest_corner(seg: &[[f64; 2]; 4], p: &VecPath, len: f64) -> Option<[f64; 2]> {
-    const N: usize = 256;
-    let pts: Vec<[f64; 2]> = (0..=N)
-        .map(|k| cubic_at(seg, k as f64 / N as f64))
-        .collect();
-    let tol = len * 2e-3;
-    p.verts
-        .iter()
-        .map(|v| v.anchor)
-        .filter_map(|a| {
-            let (k, d) = pts
-                .iter()
-                .enumerate()
-                .map(|(k, q)| (k, (q[0] - a[0]).hypot(q[1] - a[1])))
-                .min_by(|x, y| x.1.total_cmp(&y.1))?;
-            (d <= tol && k <= N / 2 + 1).then_some((k, a))
-        })
-        .min_by_key(|x| x.0)
-        .map(|(_, a)| a)
 }
 
 #[cfg(test)]

@@ -3,7 +3,6 @@
 //! (`arg2`) e a espiral (*Divergence* + *Inner radius*) cozidos pelo Inkscape
 //! (`oraculo_parametros/`), e a torção do vale pela mão (`oraculo_alcas/`, a F9). Doc 15 §2.
 
-use super::tests::{attr, fixture, pointer, replay};
 use super::*;
 use ph2d_vec_scene::cook;
 
@@ -277,45 +276,138 @@ fn spiral_ex_matches_the_inkscape_divergence_and_inner_radius() {
 /// A lei contra as âncoras dele e contra a nossa curva (a amostragem densa da lei é `≈5e-5`).
 const SPIRAL_LAW_TOL: f64 = 1e-3;
 
-/// ⭐ **O vale torce com a mão, como o do Inkscape** (os 6 arrastos do vale da F9, em 2 estrelas,
-/// direita e rodada 25°): o arrasto sem modificador escreve o raio E a torção; Ctrl (o Ctrl dele:
-/// sem torcer) só o raio. A reflexão da F9 preserva o sentido dos ângulos.
+/// ⭐ **O vale da estrela NUNCA torce** — o produto do dono decide a lei, não o oráculo: nem o
+/// Affinity nem o Illustrator rodam a estrela pelo raio interior (as fotos dos dois: só radial, com
+/// o círculo tracejado «R2» no Illustrator). O Inkscape torce (o `arg2`), e a 1.ª redacção da F10
+/// copiou-o — o dono: *«a estrela ficou horrível»*. A torção vive no cartão.
 #[test]
-fn the_star_valley_twists_with_the_hand_like_inkscape() {
-    let mut n = 0;
-    for (name, rot) in [("star5", 0.0), ("star5_rot25", 25.0)] {
-        let f = fixture(name);
-        for e in f["experiencias"].as_array().unwrap() {
-            let nome = e["nome"].as_str().unwrap();
-            if !nome.starts_with("inner_") || e["mod"] == "shift" {
-                continue;
-            }
-            let m = |p: [f64; 2]| [400.0 - p[0], 300.0 - p[1]];
-            let (a, b) = (
-                m(pointer(&f, e, "alca_tela", rot)),
-                m(pointer(&f, e, "alvo_tela", rot)),
+fn the_star_valley_never_twists() {
+    let k = ShapeKind::Star;
+    let ck = super::tests::cooker(k, [1.0, 1.0]);
+    let v = k.defaults();
+    let i = handles_of(k).iter().position(|h| h.fields == [1]).unwrap();
+    let q = handle_point(&handles_of(k)[i], &v, [1.0, 1.0], &ck).unwrap();
+    // A mão desvia 40° do raio do vale e afasta-se: só o raio muda.
+    let a = q[1].atan2(q[0]) + 40f64.to_radians();
+    let r = q[0].hypot(q[1]) * 1.3;
+    let mut d = HandleDrag::start(i, v, q, q, [1.0, 1.0]);
+    let out = drag(
+        k,
+        &mut d,
+        [r * a.cos(), r * a.sin()],
+        Mods::default(),
+        [1.0, 1.0],
+        1.0,
+        &ck,
+    );
+    assert_eq!(out[7], 0.0, "a torção ficou");
+    assert!(
+        (out[1] - v[1] * 1.3).abs() < 2e-3,
+        "o raio interior seguiu a distância: {}",
+        out[1]
+    );
+}
+
+/// ⭐ **A ponta de cima arredonda, e o ponto DESCE pelo eixo dela** (o *Outer circle* do Affinity):
+/// a alça é o cruzamento do contorno com o eixo da ponta; arrastá-la para o centro arredonda.
+#[test]
+fn the_tip_handle_slides_down_the_tip_axis_and_rounds_the_tips() {
+    let k = ShapeKind::Star;
+    let half = [1.0, 1.0];
+    let ck = super::tests::cooker(k, half);
+    let v = k.defaults();
+    let i = handles_of(k).iter().position(|h| h.fields == [2]).unwrap();
+    let h = &handles_of(k)[i];
+    let q = handle_point(h, &v, half, &ck).unwrap();
+    assert!(
+        q[0].abs() < 1e-9 && (q[1] - 1.0).abs() < 1e-9,
+        "sem raio é a ponta: {q:?}"
+    );
+    let p = [0.0, 0.85];
+    let mut d = HandleDrag::start(i, v, q, q, half);
+    let out = drag(k, &mut d, p, Mods::default(), half, 1.0, &ck);
+    assert!(out[2] > 0.0, "a ponta arredondou");
+    let r = handle_point(h, &out, half, &ck).unwrap();
+    assert!(
+        r[0].abs() < 1e-6 && (r[1] - 0.85).abs() < 1e-3,
+        "o ponto ficou no eixo, onde a mão o largou: {r:?}"
+    );
+    // Desenhada `park_at` para DENTRO do topo do contorno — que é onde a alça do meio-topo da caixa
+    // mora (a caixa abraça o contorno COZIDO): sem e com arredondamento (a foto da cena 16).
+    for vals in [v, out] {
+        let top = handle_point(h, &vals, half, &ck).unwrap()[1];
+        let g = handle_grip(k, h, &vals, half, 1.0, 0.1, &ck).unwrap();
+        assert!(
+            (g[1] - (top - 0.1)).abs() < 1e-9 && g[0].abs() < 1e-9,
+            "desenhada para dentro: {g:?} (topo {top})"
+        );
+    }
+}
+
+/// ⭐ **O ⇕ das pontas** (o *Points* do Illustrator): na borda direita da caixa; arrastar para CIMA
+/// soma pontas, para baixo tira — um degrau por 1/24 da altura.
+#[test]
+fn the_points_widget_steps_the_count_up_and_down() {
+    for k in [ShapeKind::Star, ShapeKind::Polygon] {
+        let half = [1.0, 1.0];
+        let ck = super::tests::cooker(k, half);
+        let v = k.defaults();
+        let i = handles_of(k)
+            .iter()
+            .position(|h| h.law == Law::Steps)
+            .unwrap();
+        let q = handle_point(&handles_of(k)[i], &v, half, &ck).unwrap();
+        // Na borda direita da caixa VISÍVEL (a do contorno), a um quarto do topo dela.
+        let ys: Vec<f64> = ck(&v).verts.iter().map(|x| x.anchor[1]).collect();
+        let right = ck(&v)
+            .verts
+            .iter()
+            .map(|x| x.anchor[0])
+            .fold(f64::MIN, f64::max);
+        let (top, bottom) = (
+            ys.iter().copied().fold(f64::MIN, f64::max),
+            ys.iter().copied().fold(f64::MAX, f64::min),
+        );
+        assert!(
+            (q[0] - right).abs() < 1e-9,
+            "{k:?}: na borda direita visível: {q:?}"
+        );
+        assert!(
+            (q[1] - (top - (top - bottom) / 4.0)).abs() < 1e-9,
+            "{k:?}: a um quarto do topo: {q:?}"
+        );
+        let step = 2.0 / 24.0;
+        for (dy, want) in [(3.0 * step, 3.0), (-2.0 * step, -2.0), (0.4 * step, 0.0)] {
+            let mut d = HandleDrag::start(i, v, q, q, half);
+            let out = drag(
+                k,
+                &mut d,
+                [q[0] + 0.3, q[1] + dy],
+                Mods::default(),
+                half,
+                1.0,
+                &ck,
             );
-            let mut v = ShapeKind::Star.defaults();
-            v[1] = 0.45;
-            let valley = handles_of(ShapeKind::Star)
-                .iter()
-                .position(|h| matches!(h.law, Law::Polar { .. }))
-                .unwrap();
-            let mods = Mods {
-                pairs: e["mod"] == "ctrl",
-                ..Mods::default()
-            };
-            let r = replay(ShapeKind::Star, valley, v, [100.0, 100.0], a, b, mods);
-            let want = (attr(e, "sodipodi:arg2") - attr(e, "sodipodi:arg1")).to_degrees() - 36.0;
-            assert!(
-                (r[7] - want).abs() < 0.3,
-                "{name}/{nome}: torção {} contra {want}",
-                r[7]
-            );
-            n += 1;
+            assert_eq!(out[0], v[0] + want, "{k:?}: dy {dy}");
         }
     }
-    assert_eq!(n, 12);
+}
+
+/// A estrela NOVA nasce REGULAR (os ombros alinhados — a das fotos do Affinity e do Illustrator):
+/// os dois vales de cima na mesma altura que as pontas dos lados.
+#[test]
+fn a_new_star_is_born_regular() {
+    let p = cook(
+        ShapeKind::Star,
+        [-1.0, -1.0],
+        [1.0, 1.0],
+        &ShapeKind::Star.defaults(),
+    );
+    let (side_tip, valley) = (p.verts[2].anchor, p.verts[1].anchor);
+    assert!(
+        (side_tip[1] - valley[1]).abs() < 1e-12,
+        "{side_tip:?} {valley:?}"
+    );
 }
 
 /// ⭐ **Alt no trapézio: só o lado agarrado** (o *Left/Right point* do Affinity) — sem Alt os dois
@@ -390,8 +482,9 @@ fn the_diamond_middle_handle_is_drawn_inside_the_box_edge() {
     );
 }
 
-/// ⭐ **A alça do raio do canto continua a pousar com a aresta CURVA** — com a envergadura a aresta
-/// não é a corda, e o corte do canto pousa na curva (`Spot::Rounding` sobre a cúbica).
+/// ⭐ **A alça do canto do polígono pousa no contorno também com a aresta CURVA** — ela é o
+/// cruzamento do contorno com o eixo do vértice de cima (`Spot::Apex`), e a envergadura não a tira
+/// de lá; um raio maior desce-a pelo eixo.
 #[test]
 fn the_corner_handle_still_rides_a_curved_edge() {
     let k = ShapeKind::Polygon;
@@ -400,21 +493,18 @@ fn the_corner_handle_still_rides_a_curved_edge() {
     let mut v = k.defaults();
     v[1] = 0.15; // o raio do canto (mundo)
     v[3] = 0.4; // a envergadura
-    let h = handles_of(k).iter().position(|h| h.fields == [1]).unwrap();
-    let p = handle_point(&handles_of(k)[h], &v, half, &ck).expect("a alça do canto existe");
-    let cooked = ck(&v);
+    let h = &handles_of(k)[handles_of(k).iter().position(|h| h.fields == [1]).unwrap()];
+    let p = handle_point(h, &v, half, &ck).expect("a alça do canto existe");
+    assert!(p[0].abs() < 1e-9, "no eixo do vértice de cima: {p:?}");
     assert!(
-        cooked
-            .verts
-            .iter()
-            .any(|x| (x.anchor[0] - p[0]).hypot(x.anchor[1] - p[1]) < 1e-12),
-        "a alça é um vértice cozido: {p:?}"
+        super::tests::dist_to_outline(&ck(&v), p) < 1e-6,
+        "no contorno curvo: {p:?}"
     );
-    let mut lo = v;
-    lo[1] = 0.05;
-    let q = handle_point(&handles_of(k)[h], &lo, half, &ck).unwrap();
+    let mut big = v;
+    big[1] = 0.3;
+    let q = handle_point(h, &big, half, &ck).unwrap();
     assert!(
-        (q[0] - p[0]).hypot(q[1] - p[1]) > 1e-3,
-        "um raio menor põe o corte noutro ponto da curva"
+        q[1] < p[1] - 1e-3,
+        "um raio maior desce o ponto pelo eixo: {q:?} {p:?}"
     );
 }

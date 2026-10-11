@@ -604,8 +604,8 @@ impl Guest {
 }
 
 #[cfg(test)]
-#[path = "session_tests.rs"]
-mod tests;
-#[cfg(test)]
 #[path = "session_files_tests.rs"]
 mod files_tests;
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod tests;

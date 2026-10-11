@@ -135,10 +135,10 @@ pub struct Replica {
     files: BTreeSet<ph2d_board_model::FileId>,
 }
 
-#[path = "replica_sealed.rs"]
-mod sealed;
 #[path = "replica_files.rs"]
 mod files;
+#[path = "replica_sealed.rs"]
+mod sealed;
 pub use files::by_file;
 pub(crate) use sealed::sealed_field;
 use sealed::{Seal, Sealed};
@@ -461,7 +461,12 @@ impl Replica {
         self.team.receive(&mut board.team, &team);
         self.team_shadow = Shadow::of(&board.team);
         let mut todo: Vec<Write> = std::mem::take(&mut self.pending);
-        todo.extend(writes.into_iter().filter(|w| !self.file_in(board, w)).cloned());
+        todo.extend(
+            writes
+                .into_iter()
+                .filter(|w| !self.file_in(board, w))
+                .cloned(),
+        );
         loop {
             let before = todo.len();
             let mut again = Vec::new();

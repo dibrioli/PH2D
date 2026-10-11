@@ -84,7 +84,10 @@ fn settled(board: &Board, cache: &mut RenderCache) -> Vec<DrawOp> {
         if !cache.images.pending() && !images(&ops).is_empty() {
             return ops;
         }
-        assert!(t0.elapsed() < Duration::from_secs(20), "a descodificação não acabou");
+        assert!(
+            t0.elapsed() < Duration::from_secs(20),
+            "a descodificação não acabou"
+        );
         std::thread::sleep(Duration::from_millis(5));
     }
 }
@@ -141,7 +144,10 @@ fn the_screen_shows_the_placeholder_until_the_pixels_arrive() {
     let mut cache = RenderCache::default();
     let ops = paint_ops(&b, &mut cache);
     assert!(images(&ops).is_empty());
-    assert!(!cache.images.pending(), "sem descodificador nada fica pendente");
+    assert!(
+        !cache.images.pending(),
+        "sem descodificador nada fica pendente"
+    );
     let mut cache = RenderCache::default();
     cache.images.set_decoder(test_decode());
     let first = paint_ops(&b, &mut cache);
@@ -149,7 +155,10 @@ fn the_screen_shows_the_placeholder_until_the_pixels_arrive() {
     let ops = settled(&b, &mut cache);
     let img = images(&ops)[0];
     assert_eq!([img.image.width(), img.image.height()], [64, 32]);
-    assert!(img.source.is_none(), "estes bytes não são de um MIME de imagem");
+    assert!(
+        img.source.is_none(),
+        "estes bytes não são de um MIME de imagem"
+    );
 }
 
 /// ⭐ O nível tem a resolução do ECRÃ: uma imagem de 4096² mostrada a 100 px desenha um nível de
@@ -210,10 +219,13 @@ fn the_export_decodes_at_once_and_skips_a_missing_file() {
     assert_eq!([img.image.width(), img.image.height()], [300, 200]);
     let mut gone = b.clone();
     gone.files.clear();
-    let before = paint_ops(&gone, &mut RenderCache {
-        export: cache.export,
-        ..RenderCache::default()
-    });
+    let before = paint_ops(
+        &gone,
+        &mut RenderCache {
+            export: cache.export,
+            ..RenderCache::default()
+        },
+    );
     assert!(images(&before).is_empty());
     assert!(
         !before.iter().any(|o| matches!(o, DrawOp::Fill { .. })),

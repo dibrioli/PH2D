@@ -46,8 +46,8 @@ pub use cluster::{
 };
 pub use facilitate::{VOTE_MINUS_STEP, VoteMark, chip_at};
 pub use frame_box::Frame;
-pub use images::birth_size;
 pub use gesture::Down;
+pub use images::birth_size;
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
 pub use mindmap::{digits, node_size};
 pub use notes::{

@@ -26,7 +26,14 @@ impl T {
 fn a_dropped_image_lands_on_the_point_and_its_bar_changes_it() {
     let mut t = T::new();
     let p = t.at(0.3, 0.4);
-    assert_eq!(insert_images(&mut t.hero, vec![file(1, 120, 80)], Some([p.0.into(), p.1.into()])), 1);
+    assert_eq!(
+        insert_images(
+            &mut t.hero,
+            vec![file(1, 120, 80)],
+            Some([p.0.into(), p.1.into()])
+        ),
+        1
+    );
     t.paint();
     let img = t.images().remove(0);
     let b = t.hero.documents.active_board().unwrap();
@@ -35,7 +42,10 @@ fn a_dropped_image_lands_on_the_point_and_its_bar_changes_it() {
     assert!((c[0] - f64::from(p.0)).abs() < 1e-3 && (c[1] - f64::from(p.1)).abs() < 1e-3);
     assert_eq!([img.w, img.h], [120.0, 80.0]);
     assert!(t.find(node(Item::Round(true))).is_some(), "os cantos");
-    assert!(t.find(node(Item::Fill(None))).is_none(), "preenchimento numa imagem");
+    assert!(
+        t.find(node(Item::Fill(None))).is_none(),
+        "preenchimento numa imagem"
+    );
     let half = OPACITIES.iter().position(|o| *o == 50).expect("há 50 %");
     t.click_bar(Item::Opacity(half));
     assert_eq!(t.images()[0].image().unwrap().style.opacity, 50);
@@ -52,9 +62,17 @@ fn a_huge_image_is_born_at_half_the_visible_area() {
     let b = t.hero.documents.active_board().unwrap();
     let area = board_view::area_of(board_view::area(t.hero.last_layout.as_ref().unwrap()));
     let (fw, fh) = (area[2] / b.camera.zoom / 2.0, area[3] / b.camera.zoom / 2.0);
-    assert!(img.w <= fw + 1e-9 && img.h <= fh + 1e-9, "{} × {} > {fw} × {fh}", img.w, img.h);
+    assert!(
+        img.w <= fw + 1e-9 && img.h <= fh + 1e-9,
+        "{} × {} > {fw} × {fh}",
+        img.w,
+        img.h
+    );
     assert!((img.w / img.h - 2.0).abs() < 1e-9);
-    assert!((img.w - fw).abs() < 1e-9 || (img.h - fh).abs() < 1e-9, "encolheu de mais");
+    assert!(
+        (img.w - fw).abs() < 1e-9 || (img.h - fh).abs() < 1e-9,
+        "encolheu de mais"
+    );
 }
 
 /// ⭐ Copiar uma imagem e colá-la noutro quadro leva os bytes dela.
@@ -81,7 +99,10 @@ fn copy_paste_into_another_board_carries_the_bytes() {
 fn text_on_the_clipboard_wins_over_an_image() {
     use crate::screens::hero::board_images::takes_image_paste;
     let t = T::new();
-    assert!(!takes_image_paste(&t.hero, Some("a\tb\nc\td")), "a folha de cálculo");
+    assert!(
+        !takes_image_paste(&t.hero, Some("a\tb\nc\td")),
+        "a folha de cálculo"
+    );
     assert!(takes_image_paste(&t.hero, None), "a captura de ecrã");
     assert!(takes_image_paste(&t.hero, Some("  ")));
 }

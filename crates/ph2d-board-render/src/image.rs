@@ -133,10 +133,8 @@ fn halve(src: &[u8], [w, h]: [u32; 2], to: [u32; 2]) -> Vec<u8> {
                 acc[3] += a;
             }
             let o = &mut out[(y * to[0] as usize + x) * 4..][..4];
-            if acc[3] > 0 {
-                for c in 0..3 {
-                    o[c] = ((acc[c] + acc[3] / 2) / acc[3]) as u8;
-                }
+            for c in 0..3 {
+                o[c] = (acc[c] + acc[3] / 2).checked_div(acc[3]).unwrap_or(0) as u8;
             }
             o[3] = ((acc[3] + 2) / 4) as u8;
         }
@@ -169,9 +167,11 @@ fn pyramid(px: Pixels) -> Option<Vec<(StableImage, [u32; 2])>> {
 /// Descodifica e faz a pirâmide; um descodificador que entra em pânico é uma imagem que falhou (o fio
 /// continua, e a imagem não fica no cinzento à espera para sempre).
 fn decode_pyramid(decode: &Decode, bytes: &[u8]) -> Option<Vec<(StableImage, [u32; 2])>> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| decode(bytes).and_then(pyramid)))
-        .ok()
-        .flatten()
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        decode(bytes).and_then(pyramid)
+    }))
+    .ok()
+    .flatten()
 }
 
 impl Images {
@@ -392,7 +392,9 @@ pub(crate) fn paint(
                 sh * f64::from(f.size[1]) / ch.max(1e-9),
             ]
         };
-        images.level(img.file, f, need, export.is_some()).map(|l| (f, l))
+        images
+            .level(img.file, f, need, export.is_some())
+            .map(|l| (f, l))
     });
     let clip = img.crop.is_some() || st.round;
     let alpha = f32::from(st.opacity.min(100)) / 100.0;

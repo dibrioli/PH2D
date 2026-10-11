@@ -83,7 +83,13 @@ pub struct ImageSource {
 
 impl std::fmt::Debug for ImageSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ImageSource({}, {} B, {:?})", self.mime, self.bytes.len(), self.size)
+        write!(
+            f,
+            "ImageSource({}, {} B, {:?})",
+            self.mime,
+            self.bytes.len(),
+            self.size
+        )
     }
 }
 

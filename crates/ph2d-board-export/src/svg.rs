@@ -299,7 +299,11 @@ impl Images {
                     f64::from(level[0]) / f64::from(s.size[0].max(1)),
                     f64::from(level[1]) / f64::from(s.size[1].max(1)),
                 );
-                ((s.bytes.as_ptr() as usize, s.bytes.len()), s.size, op.transform * k)
+                (
+                    (s.bytes.as_ptr() as usize, s.bytes.len()),
+                    s.size,
+                    op.transform * k,
+                )
             }
             None => {
                 let px = op.image.rgba();

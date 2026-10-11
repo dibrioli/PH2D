@@ -18,7 +18,12 @@ fn file(n: u8) -> ImageFile {
 /// Um quadro com uma imagem do ficheiro `f` na caixa `bx`; devolve o id do elemento.
 fn put(b: &mut Board, f: ImageFile, bx: [f64; 4]) -> crate::ElementId {
     let id = b.put_file(f);
-    let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), Image::new(id, style()), bx);
+    let el = Element::new_image(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        Image::new(id, style()),
+        bx,
+    );
     let eid = el.id;
     BoardOp::Put(el).apply(&mut b.doc);
     eid
@@ -111,7 +116,10 @@ fn the_saved_set_is_the_set_with_its_files_in_use() {
     put(b, file(4), [0.0, 0.0, 10.0, 10.0]);
     b.save_version("v".into(), 7);
     set.create("B".into());
-    assert_eq!(set.to_bytes().unwrap(), postcard::to_allocvec(&set).unwrap());
+    assert_eq!(
+        set.to_bytes().unwrap(),
+        postcard::to_allocvec(&set).unwrap()
+    );
 }
 
 /// Uma versão não guarda bytes de imagem; restaurá-la tira-os do quadro de onde vem — só os que ela

@@ -372,8 +372,8 @@ fn every_team_lesson_does_what_it_says() {
     let (name, imp) = crate::io::import_file(&example).unwrap();
     assert_eq!(name, "example");
     assert!(imp.doc.live_len() >= 10);
-    // W14 — a imagem do exemplo (uma PNG) entra, com os bytes.
-    assert!(imp.skipped.is_empty(), "{:?}", imp.skipped);
+    // W14 — a imagem do exemplo (uma PNG) entra, com os bytes; o embeddable e o iframe saltam.
+    assert!(!imp.skipped.contains_key("image"), "{:?}", imp.skipped);
     assert_eq!(imp.files.len(), 1);
     assert!(imp.doc.live().any(|e| e.image().is_some()));
 }

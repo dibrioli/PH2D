@@ -65,7 +65,11 @@ fn an_image_is_born_natural_and_only_shrinks_to_fit() {
 #[test]
 fn several_images_land_in_a_grid_around_the_point_as_one_step() {
     let (mut ed, mut doc, mut h) = (editor(), BoardDoc::default(), History::default());
-    let items = [(key(1), [100, 100]), (key(2), [100, 50]), (key(3), [100, 100])];
+    let items = [
+        (key(1), [100, 100]),
+        (key(2), [100, 50]),
+        (key(3), [100, 100]),
+    ];
     let made = ed.insert_images(&mut doc, &mut h, &items, [0.0, 0.0], [1e6, 1e6]);
     assert_eq!(made.len(), 3);
     let gap = 100.0 * GAP_FRAC;
@@ -93,12 +97,24 @@ fn several_images_land_in_a_grid_around_the_point_as_one_step() {
 #[test]
 fn a_corner_drag_keeps_the_image_proportion_and_a_click_inside_selects_it() {
     let (mut ed, mut doc, mut h) = (editor(), BoardDoc::default(), History::default());
-    let id = ed.insert_images(&mut doc, &mut h, &[(key(1), [200, 100])], [0.0, 0.0], [1e6, 1e6])[0];
+    let id = ed.insert_images(
+        &mut doc,
+        &mut h,
+        &[(key(1), [200, 100])],
+        [0.0, 0.0],
+        [1e6, 1e6],
+    )[0];
     drag(&mut ed, &mut doc, &mut h, [100.0, 50.0], [300.0, 60.0]);
     let e = doc.get(id).unwrap();
     assert!((e.w / e.h - 2.0).abs() < 1e-9, "{} × {}", e.w, e.h);
     assert!(e.w > 200.0, "cresceu: {}", e.w);
-    drag(&mut ed, &mut doc, &mut h, [5000.0, 5000.0], [5000.0, 5000.0]);
+    drag(
+        &mut ed,
+        &mut doc,
+        &mut h,
+        [5000.0, 5000.0],
+        [5000.0, 5000.0],
+    );
     assert!(ed.selection().is_empty());
     let c = doc.get(id).unwrap().center();
     drag(&mut ed, &mut doc, &mut h, c, c);
@@ -120,7 +136,11 @@ fn a_copy_carries_its_image_bytes_to_another_board() {
     ed.keep_clip_files(&files);
     let mut other = Files::new();
     ed.give_clip_files(&mut other);
-    assert_eq!(other.keys().copied().collect::<Vec<_>>(), [id], "só os da cópia");
+    assert_eq!(
+        other.keys().copied().collect::<Vec<_>>(),
+        [id],
+        "só os da cópia"
+    );
     assert_eq!(other[&id], f);
 }
 
@@ -129,10 +149,19 @@ fn a_copy_carries_its_image_bytes_to_another_board() {
 #[test]
 fn an_arrow_dropped_on_an_image_binds_to_it() {
     let (mut ed, mut doc, mut h) = (editor(), BoardDoc::default(), History::default());
-    let id = ed.insert_images(&mut doc, &mut h, &[(key(1), [200, 100])], [0.0, 0.0], [1e6, 1e6])[0];
+    let id = ed.insert_images(
+        &mut doc,
+        &mut h,
+        &[(key(1), [200, 100])],
+        [0.0, 0.0],
+        [1e6, 1e6],
+    )[0];
     ed.tool = crate::Tool::Connector;
     drag(&mut ed, &mut doc, &mut h, [-400.0, 0.0], [10.0, 5.0]);
-    let arrow = doc.live().find_map(|e| e.connector().cloned()).expect("a seta nasceu");
+    let arrow = doc
+        .live()
+        .find_map(|e| e.connector().cloned())
+        .expect("a seta nasceu");
     assert!(
         matches!(arrow.end, ph2d_board_model::End::Bound { target, .. } if target == id),
         "{:?}",
@@ -149,11 +178,22 @@ fn the_next_shape_does_not_land_on_an_image() {
         style: Style::new(None, Some(Rgba([0, 0, 0, 255])), Rgba([0, 0, 0, 255])),
         text: ph2d_board_model::RichText::default(),
     };
-    let rect = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [0.0, 0.0, 100.0, 100.0]);
+    let rect = Element::new_shape(
+        doc.mint_id(),
+        doc.z_on_top(),
+        shape,
+        [0.0, 0.0, 100.0, 100.0],
+    );
     let rid = rect.id;
     let _ = BoardOp::Put(rect).apply(&mut doc);
     // A imagem exactamente onde a seguinte nasceria (à direita, a um passo).
-    let img = ed.insert_images(&mut doc, &mut h, &[(key(1), [100, 100])], [210.0, 50.0], [1e6, 1e6])[0];
+    let img = ed.insert_images(
+        &mut doc,
+        &mut h,
+        &[(key(1), [100, 100])],
+        [210.0, 50.0],
+        [1e6, 1e6],
+    )[0];
     ed.select(&doc, [rid]);
     let mut ts = TextSystem::without_system_fonts();
     ed.command(&mut doc, &mut h, &mut ts, Command::Grow([1.0, 0.0]));

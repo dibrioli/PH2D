@@ -60,8 +60,9 @@ impl Replica {
 /// As mensagens de um lote de escritas: cada ficheiro na sua, o resto numa.
 #[must_use]
 pub fn by_file(ws: Vec<Write>) -> Vec<Msg> {
-    let (files, rest): (Vec<Write>, Vec<Write>) =
-        ws.into_iter().partition(|w| matches!(w, Write::File { .. }));
+    let (files, rest): (Vec<Write>, Vec<Write>) = ws
+        .into_iter()
+        .partition(|w| matches!(w, Write::File { .. }));
     let mut out: Vec<Msg> = files.into_iter().map(|w| Msg::Writes(vec![w])).collect();
     if !rest.is_empty() {
         out.insert(0, Msg::Writes(rest));

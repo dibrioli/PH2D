@@ -8,9 +8,9 @@ use std::sync::Arc;
 
 use ph2d_board_model::{ImageFile, mime_of};
 use ph2d_board_render::Pixels;
+use ph2d_editor_core::Toast;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::board_images::{insert_images, takes_image_paste};
-use ph2d_editor_core::Toast;
 use ph2d_i18n::tr_with;
 
 /// Os píxeis RGBA de 8 bits de uns bytes de imagem (os de 16 bits descem a 8). `None` = não é uma

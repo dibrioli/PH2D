@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use ph2d_board_model::BoardId;
 use ph2d_board_net as net;
 use ph2d_board_net::firewall::Change;
-use ph2d_board_sync::{self as sync, Event, Msg, Presence, To};
+use ph2d_board_sync::{self as sync, Event, Msg, Presence};
 use ph2d_editor_core::documents::live::{
     LiveFac, LiveFound, LiveOther, LivePeer, LiveRequest, LiveRole,
 };

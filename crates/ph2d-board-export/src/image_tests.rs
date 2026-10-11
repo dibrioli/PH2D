@@ -35,7 +35,11 @@ fn install() {
 /// Um JPEG RGB `w × h` (ruído suave: comprime como uma fotografia).
 fn jpeg(w: u32, h: u32) -> Vec<u8> {
     let img = image::RgbImage::from_fn(w, h, |x, y| {
-        image::Rgb([(x * 7 % 256) as u8, (y * 5 % 256) as u8, ((x ^ y) % 256) as u8])
+        image::Rgb([
+            (x * 7 % 256) as u8,
+            (y * 5 % 256) as u8,
+            ((x ^ y) % 256) as u8,
+        ])
     });
     let mut out = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 85)
@@ -68,7 +72,12 @@ fn a_jpeg_goes_into_the_pdf_once_and_as_it_arrived() {
         );
         let fid = f.id;
         BoardOp::Put(f).apply(&mut b.doc);
-        let mut el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), Image::new(file, st.clone()), [x + 50.0, 50.0, 400.0, 300.0]);
+        let mut el = Element::new_image(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            Image::new(file, st.clone()),
+            [x + 50.0, 50.0, 400.0, 300.0],
+        );
         el.frame = Some(fid);
         BoardOp::Put(el).apply(&mut b.doc);
     }
@@ -95,13 +104,22 @@ fn a_jpeg_goes_into_the_pdf_once_and_as_it_arrived() {
         .collect();
     let out = pdf::write(&pdf_pages);
     let text = String::from_utf8_lossy(&out);
-    assert_eq!(text.matches("/Subtype /Image").count(), 1, "uma vez para as duas páginas");
+    assert_eq!(
+        text.matches("/Subtype /Image").count(),
+        1,
+        "uma vez para as duas páginas"
+    );
     assert!(text.contains("/DCTDecode"));
     assert!(
         out.windows(bytes.len()).any(|w| w == &bytes[..]),
         "os bytes do JPEG não estão no PDF"
     );
-    assert!(out.len() < bytes.len() + 20_000, "{} B para um JPEG de {} B", out.len(), bytes.len());
+    assert!(
+        out.len() < bytes.len() + 20_000,
+        "{} B para um JPEG de {} B",
+        out.len(),
+        bytes.len()
+    );
 }
 
 /// Duas imagens do MESMO ficheiro, uma em `(0, 0)` de `30 × 20` e outra em `(100, 0)` de `60 × 40`.
@@ -113,7 +131,12 @@ fn board() -> Board {
     let file = b.put_file(ImageFile::new(png_3x2(), [3, 2]));
     let st = Style::new(None, None, Rgba([0, 0, 0, 255]));
     for bx in [[0.0, 0.0, 30.0, 20.0], [100.0, 0.0, 60.0, 40.0]] {
-        let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), Image::new(file, st.clone()), bx);
+        let el = Element::new_image(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            Image::new(file, st.clone()),
+            bx,
+        );
         BoardOp::Put(el).apply(&mut b.doc);
     }
     set.boards()[0].clone()
@@ -152,9 +175,15 @@ fn the_svg_defines_each_file_once_and_places_each_image() {
     let src = imgs[1].source.as_ref().expect("os bytes de origem");
     assert_eq!((src.mime, src.size), ("image/png", [3, 2]));
     // A 2.ª imagem: o píxel natural (3, 2) cai no canto de baixo à direita da caixa.
-    let k = [3.0 / f64::from(imgs[1].image.width()), 2.0 / f64::from(imgs[1].image.height())];
+    let k = [
+        3.0 / f64::from(imgs[1].image.width()),
+        2.0 / f64::from(imgs[1].image.height()),
+    ];
     let corner = imgs[1].transform * Point::new(3.0 / k[0], 2.0 / k[1]);
-    assert!((corner - Point::new(160.0 + PAD, 40.0 + PAD)).hypot() < 1e-9, "{corner:?}");
+    assert!(
+        (corner - Point::new(160.0 + PAD, 40.0 + PAD)).hypot() < 1e-9,
+        "{corner:?}"
+    );
     let svg = svg::write(&ops, size);
     assert_eq!(svg.matches("<image id=").count(), 1, "{svg}");
     assert_eq!(svg.matches("<use xlink:href=\"#i0\"").count(), 2);
@@ -174,11 +203,19 @@ fn the_pdf_writes_the_pixels_once_with_their_alpha() {
         links: Vec::new(),
     }]);
     let text = String::from_utf8_lossy(&bytes);
-    assert_eq!(text.matches("/Subtype /Image").count(), 2, "o RGB e a máscara");
+    assert_eq!(
+        text.matches("/Subtype /Image").count(),
+        2,
+        "o RGB e a máscara"
+    );
     assert_eq!(text.matches("/SMask").count(), 1);
     assert_eq!(text.matches("/Width 3").count(), 2);
     assert!(text.contains("/Interpolate true"));
-    assert_eq!(text.matches("/I0 Do").count(), 0, "o conteúdo vai comprimido");
+    assert_eq!(
+        text.matches("/I0 Do").count(),
+        0,
+        "o conteúdo vai comprimido"
+    );
 }
 
 /// O PNG (pela placa) também desenha a imagem: a gravação do modo imagem leva-a, ao nível do ecrã.
@@ -202,7 +239,12 @@ fn grava_svg_e_pdf_com_imagens() {
     let ids: Vec<_> = b.doc.live().map(|e| e.id).collect();
     let mut a = b.doc.get(ids[0]).unwrap().clone();
     let i = a.image_mut().unwrap();
-    i.crop = Some(ph2d_board_model::Crop { x: 1.0, y: 0.0, w: 2.0, h: 2.0 });
+    i.crop = Some(ph2d_board_model::Crop {
+        x: 1.0,
+        y: 0.0,
+        w: 2.0,
+        h: 2.0,
+    });
     i.flip = [true, false];
     BoardOp::Put(a).apply(&mut b.doc);
     let mut c = b.doc.get(ids[1]).unwrap().clone();
@@ -213,6 +255,10 @@ fn grava_svg_e_pdf_com_imagens() {
     BoardOp::Put(c).apply(&mut b.doc);
     let (ops, size) = ops(&b, true);
     std::fs::write(format!("{dir}/w14.svg"), svg::write(&ops, size)).unwrap();
-    let pdf = pdf::write(&[pdf::PdfPage { ops: &ops, size, links: Vec::new() }]);
+    let pdf = pdf::write(&[pdf::PdfPage {
+        ops: &ops,
+        size,
+        links: Vec::new(),
+    }]);
     std::fs::write(format!("{dir}/w14.pdf"), pdf).unwrap();
 }

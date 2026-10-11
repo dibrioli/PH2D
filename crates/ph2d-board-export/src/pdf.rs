@@ -256,16 +256,20 @@ impl Doc {
     fn image(&mut self, op: &ph2d_vector::ImageOp) -> String {
         let img = &op.image;
         let px = img.rgba();
-        let key = op.source.as_ref().map_or((px.as_ptr() as usize, px.len()), |s| {
-            (s.bytes.as_ptr() as usize, s.bytes.len())
-        });
+        let key = op
+            .source
+            .as_ref()
+            .map_or((px.as_ptr() as usize, px.len()), |s| {
+                (s.bytes.as_ptr() as usize, s.bytes.len())
+            });
         if let Some(n) = self.images.get(&key) {
             return n.clone();
         }
         let (w, h) = (img.width() as i32, img.height() as i32);
-        let jpeg = op.source.as_ref().filter(|s| {
-            s.mime == "image/jpeg" && s.size == [img.width(), img.height()]
-        });
+        let jpeg = op
+            .source
+            .as_ref()
+            .filter(|s| s.mime == "image/jpeg" && s.size == [img.width(), img.height()]);
         if let Some((s, gray)) = jpeg.and_then(|s| Some((s, jpeg_gray(&s.bytes)?))) {
             let r = self.id();
             let mut im = self.pdf.image_xobject(r, &s.bytes);
@@ -283,7 +287,10 @@ impl Doc {
             self.refs.insert(name.clone(), r);
             return name;
         }
-        let rgb: Vec<u8> = px.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect();
+        let rgb: Vec<u8> = px
+            .chunks_exact(4)
+            .flat_map(|p| [p[0], p[1], p[2]])
+            .collect();
         let alpha: Vec<u8> = px.chunks_exact(4).map(|p| p[3]).collect();
         let r = self.id();
         let sm = alpha.iter().any(|&a| a < 255).then(|| self.id());

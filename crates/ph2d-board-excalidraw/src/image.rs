@@ -8,9 +8,7 @@ use std::collections::BTreeMap;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
-use ph2d_board_model::{
-    Board, Crop, Element, ElementId, FracKey, Image, ImageFile, Ingest, Style,
-};
+use ph2d_board_model::{Board, Crop, Element, ElementId, FracKey, Image, ImageFile, Ingest, Style};
 use serde_json::{Map, Value, json};
 
 use crate::PH2D;
@@ -150,10 +148,7 @@ pub(crate) fn files(board: &Board, els: &[&Element]) -> Value {
         if out.contains_key(&key) {
             continue;
         }
-        let Some((f, mime)) = board
-            .file(img.file)
-            .and_then(|f| Some((f, f.mime()?)))
-        else {
+        let Some((f, mime)) = board.file(img.file).and_then(|f| Some((f, f.mime()?))) else {
             continue;
         };
         let url = format!("data:{mime};base64,{}", STANDARD.encode(&f.bytes.0));

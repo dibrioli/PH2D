@@ -72,14 +72,15 @@ fn icon() -> Pixels {
             let disc = (100.0 - d).clamp(0.0, 1.0); // CLAMP-OK: cobertura em [0, 1]
             let ring = (6.0 - (d - 118.0).abs()).clamp(0.0, 1.0); // CLAMP-OK: cobertura em [0, 1]
             let a = disc.max(ring);
-            let c = if ring > disc { [40, 40, 40] } else { [245, 130, 40] };
+            let c = if ring > disc {
+                [40, 40, 40]
+            } else {
+                [245, 130, 40]
+            };
             rgba.extend([c[0], c[1], c[2], (a * 255.0).round() as u8]);
         }
     }
-    Pixels {
-        size: [s, s],
-        rgba,
-    }
+    Pixels { size: [s, s], rgba }
 }
 
 fn file(b: &mut Board, px: &Pixels) -> FileId {
@@ -87,7 +88,13 @@ fn file(b: &mut Board, px: &Pixels) -> FileId {
     b.put_file(crate::images::ingest(&png).expect("a nossa PNG lê-se"))
 }
 
-fn image(b: &mut Board, file: FileId, bx: [f64; 4], home: ElementId, edit: impl Fn(&mut Element)) -> ElementId {
+fn image(
+    b: &mut Board,
+    file: FileId,
+    bx: [f64; 4],
+    home: ElementId,
+    edit: impl Fn(&mut Element),
+) -> ElementId {
     let img = Image::new(file, Style::new(None, None, INK));
     let mut el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), img, bx);
     el.frame = Some(home);
@@ -124,7 +131,14 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         (i.style.round, i.style.opacity) = (true, 75);
     });
     let icon = image(b, logo, [740.0, 300.0, 160.0, 160.0], frame, |_| {});
-    let cover = note(b, "board.smoke.images.cover", 1, [1060.0, 400.0, 150.0, 150.0], false, Some(frame));
+    let cover = note(
+        b,
+        "board.smoke.images.cover",
+        1,
+        [1060.0, 400.0, 150.0, 150.0],
+        false,
+        Some(frame),
+    );
     let mut c = Connector::new(
         End::Bound {
             target: cover,
@@ -143,16 +157,33 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     let y = fh + GAP;
     let lessons: [ElementId; 6] = std::array::from_fn(|i| {
         let key = format!("board.smoke.images.l{}", i + 1);
-        note(b, &key, 1, [i as f64 * (side + GAP), y, side, side], false, None)
+        note(
+            b,
+            &key,
+            1,
+            [i as f64 * (side + GAP), y, side, side],
+            false,
+            None,
+        )
     });
     let title = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, None, INK),
         text: RichText::plain(&tr("board.smoke.images.title")),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, fw, 40.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        title,
+        [0.0, -80.0, fw, 40.0],
+    );
     put(b, el);
-    let view = [-MARGIN_X, -80.0 - MARGIN_Y, fw + MARGIN_X, y + side + MARGIN_Y];
+    let view = [
+        -MARGIN_X,
+        -80.0 - MARGIN_Y,
+        fw + MARGIN_X,
+        y + side + MARGIN_Y,
+    ];
     let l = Lessons {
         board: b.id,
         photo,

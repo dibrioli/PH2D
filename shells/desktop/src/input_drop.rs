@@ -206,32 +206,60 @@ impl App {
     }
 }
 
+// O receptor de «soltar» do Wayland (o winit 0.30 não entrega `DroppedFile` lá, MiroClone W14): estado
+// do fio da janela, fora da `App` (a catraca `the_app_only_sheds_fields`). `None` = ainda não ligado;
+// `Some(None)` = não há (X11, ou falhou). Ligado no 1.º quadro com janela; largado no `exiting`, antes
+// da ligação do winit.
+#[cfg(target_os = "linux")]
+thread_local! {
+    static WAYLAND_DROPS: std::cell::RefCell<Option<Option<ph2d_wayland_dnd::DropReceiver>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Larga o receptor do Wayland (antes de a ligação do winit fechar).
+pub(crate) fn release_wayland_drops() {
+    #[cfg(target_os = "linux")]
+    WAYLAND_DROPS.with(|r| drop(r.borrow_mut().take()));
+}
+
 #[cfg(target_os = "linux")]
 impl App {
     /// Liga o receptor de «soltar» do Wayland à janela; no X11 o winit já entrega `DroppedFile`.
-    pub(crate) fn attach_wayland_drops(&mut self, window: &std::sync::Arc<winit::window::Window>) {
+    fn attach_wayland_drops(window: &std::sync::Arc<winit::window::Window>) {
         let weak = std::sync::Arc::downgrade(window);
         let wake = move || {
             if let Some(w) = weak.upgrade() {
                 w.request_redraw();
             }
         };
-        match ph2d_wayland_dnd::DropReceiver::attach(window.as_ref(), wake) {
-            Ok(receiver) => self.wayland_drops = receiver,
-            Err(e) => eprintln!("drag-and-drop on Wayland unavailable: {e}"),
-        }
+        let receiver = match ph2d_wayland_dnd::DropReceiver::attach(window.as_ref(), wake) {
+            Ok(receiver) => receiver,
+            Err(e) => {
+                eprintln!("drag-and-drop on Wayland unavailable: {e}");
+                None
+            }
+        };
+        WAYLAND_DROPS.with(|r| *r.borrow_mut() = Some(receiver));
     }
 
     /// Os eventos do receptor entram pelas MESMAS portas do `HoveredFile`/`DroppedFile` do winit.
     pub(crate) fn pump_wayland_drops(&mut self) {
         use ph2d_wayland_dnd::DndEvent;
-        let Some(events) = self
-            .wayland_drops
-            .as_ref()
-            .map(|r| r.drain().collect::<Vec<_>>())
-        else {
+        if WAYLAND_DROPS.with(|r| r.borrow().is_none())
+            && let Some(w) = self.window.as_ref()
+        {
+            Self::attach_wayland_drops(w);
+        }
+        let events: Vec<DndEvent> = WAYLAND_DROPS.with(|r| {
+            r.borrow()
+                .as_ref()
+                .and_then(Option::as_ref)
+                .map(|d| d.drain().collect())
+                .unwrap_or_default()
+        });
+        if events.is_empty() {
             return;
-        };
+        }
         // O compositor dá pixels LÓGICOS da superfície; o `last_cursor` é físico.
         let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor());
         let px = |(x, y): (f64, f64)| ((x * scale) as f32, (y * scale) as f32);

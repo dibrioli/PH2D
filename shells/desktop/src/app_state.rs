@@ -431,10 +431,6 @@ pub(crate) struct App {
     /// every path that reached us imports atomically, regardless of
     /// event interleaving.
     pub(crate) pending_drops: Vec<std::path::PathBuf>,
-    /// Soltar ficheiros no Wayland, onde o winit 0.30 não entrega `DroppedFile` (MiroClone W14).
-    /// Largado no `exiting`, antes da ligação do winit.
-    #[cfg(target_os = "linux")]
-    pub(crate) wayland_drops: Option<ph2d_wayland_dnd::DropReceiver>,
     /// M14.4g Telemetry Phase A: EWMA-smoothed frame time pushed to
     /// the hero's `BottomHudStats` each frame so the status bar shows
     /// real fps/ms instead of the M5 placeholder strings. α=0.1 —

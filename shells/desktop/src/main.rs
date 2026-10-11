@@ -787,8 +787,6 @@ impl App {
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
             pending_drops: Vec::new(),
-            #[cfg(target_os = "linux")]
-            wayland_drops: None,
             frame_cpu_ms_ewma: 1.0, // optimistic baseline; reseeds on
             // the first frame's measurement
             pivot_content_center: None,
@@ -959,8 +957,6 @@ impl ApplicationHandler for App {
         // fires lifecycle hooks. See
         // `docs/Migracao/2026-05-convention-by-discovery.md`.
         let (window, host, gfx) = init::build_initial_state(&self.handler, event_loop);
-        #[cfg(target_os = "linux")]
-        self.attach_wayland_drops(&window);
         let size = gfx.surface.size();
         let scale = host.scale_factor();
         self.window = Some(window);
@@ -1011,8 +1007,7 @@ impl ApplicationHandler for App {
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
-        #[cfg(target_os = "linux")]
-        drop(self.wayland_drops.take());
+        crate::input_drop::release_wayland_drops();
     }
 }
 

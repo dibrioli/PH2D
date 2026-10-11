@@ -22,7 +22,13 @@ const CTRL: Modifiers = Modifiers {
 fn images(h: &HeroScreen) -> Vec<Element> {
     h.documents
         .active_board()
-        .map(|b| b.doc.live().filter(|e| e.image().is_some()).cloned().collect())
+        .map(|b| {
+            b.doc
+                .live()
+                .filter(|e| e.image().is_some())
+                .cloned()
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -60,7 +66,10 @@ fn the_images_scene_does_what_its_lessons_say() {
     let imgs = images(&h);
     assert_eq!(imgs.len(), 4, "a fotografia, o sol, a redonda e o ícone");
     for e in &imgs {
-        assert!(b.file(e.image().unwrap().file).is_some(), "uma imagem sem bytes");
+        assert!(
+            b.file(e.image().unwrap().file).is_some(),
+            "uma imagem sem bytes"
+        );
     }
     assert_eq!(b.files.len(), 2, "a fotografia uma vez para as três");
     let sun = b.doc.get(l.sun).unwrap().image().unwrap();
@@ -71,18 +80,39 @@ fn the_images_scene_does_what_its_lessons_say() {
     let round = b.doc.get(l.round).unwrap().image().unwrap();
     assert!(round.style.round && round.style.opacity == 75);
     for (i, id) in l.lessons.iter().enumerate() {
-        let t = b.doc.get(*id).unwrap().shape().unwrap().text.as_str().to_owned();
+        let t = b
+            .doc
+            .get(*id)
+            .unwrap()
+            .shape()
+            .unwrap()
+            .text
+            .as_str()
+            .to_owned();
         assert_eq!(t, ph2d_i18n::tr(&format!("board.smoke.images.l{}", i + 1)));
     }
 
     // 2 — a seta acaba na BORDA da fotografia (presa a ela), não no centro.
     let mut routes = RouteCache::default();
     routes.sync(&b.doc);
-    let end = *routes.get(l.arrow).expect("a seta tem rota").stations.last().unwrap();
+    let end = *routes
+        .get(l.arrow)
+        .expect("a seta tem rota")
+        .stations
+        .last()
+        .unwrap();
     let p = b.doc.get(l.photo).unwrap();
     let c = p.center();
-    assert!((end[0] - c[0]).hypot(end[1] - c[1]) > 100.0, "a seta vai ao centro: {end:?}");
-    assert!(end[0] >= p.x - 20.0 && end[0] <= p.x + p.w + 20.0 && end[1] >= p.y - 20.0 && end[1] <= p.y + p.h + 20.0);
+    assert!(
+        (end[0] - c[0]).hypot(end[1] - c[1]) > 100.0,
+        "a seta vai ao centro: {end:?}"
+    );
+    assert!(
+        end[0] >= p.x - 20.0
+            && end[0] <= p.x + p.w + 20.0
+            && end[1] >= p.y - 20.0
+            && end[1] <= p.y + p.h + 20.0
+    );
 
     // 6 — exportar leva as quatro imagens (o vector: o nível inteiro de cada).
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
@@ -90,10 +120,17 @@ fn the_images_scene_does_what_its_lessons_say() {
     let set: std::collections::BTreeSet<ElementId> = Default::default();
     let (mut s, size) = ph2d_board_export::paint_page(b, &page, 1.0, None, true, &set, &mut ts);
     let ops = s.take_record();
-    let n = ops.iter().filter(|o| matches!(o, ph2d_vector::DrawOp::Image(_))).count();
+    let n = ops
+        .iter()
+        .filter(|o| matches!(o, ph2d_vector::DrawOp::Image(_)))
+        .count();
     assert_eq!(n, 4);
     let svg = ph2d_board_export::svg::write(&ops, size);
-    assert_eq!(svg.matches("<image id=").count(), 2, "cada ficheiro uma vez");
+    assert_eq!(
+        svg.matches("<image id=").count(),
+        2,
+        "cada ficheiro uma vez"
+    );
 
     // 1 — largar um ficheiro num ponto do ecrã: nasce centrado lá, seleccionado.
     let png = crate::images::encode_png(&photo()).unwrap();
@@ -102,16 +139,29 @@ fn the_images_scene_does_what_its_lessons_say() {
     let c = h.last_canvas;
     let view = [c.x, c.y, c.w, c.h].map(f64::from);
     let at = [view[0] + view[2] * 0.25, view[1] + view[3] * 0.75];
-    assert!(crate::images::drop_files(&mut h, &[path.clone(), path.with_extension("txt")], at).is_some(), "o que não é imagem avisa");
+    assert!(
+        crate::images::drop_files(&mut h, &[path.clone(), path.with_extension("txt")], at)
+            .is_some(),
+        "o que não é imagem avisa"
+    );
     let _ = std::fs::remove_file(&path);
-    let dropped = images(&h).into_iter().find(|e| !imgs.iter().any(|o| o.id == e.id)).unwrap();
+    let dropped = images(&h)
+        .into_iter()
+        .find(|e| !imgs.iter().any(|o| o.id == e.id))
+        .unwrap();
     let b = h.documents.active_board().unwrap();
     let s = b.camera.to_screen(view, dropped.center());
-    assert!((s[0] - at[0]).abs() < 1e-6 && (s[1] - at[1]).abs() < 1e-6, "{s:?} ≠ {at:?}");
+    assert!(
+        (s[0] - at[0]).abs() < 1e-6 && (s[1] - at[1]).abs() < 1e-6,
+        "{s:?} ≠ {at:?}"
+    );
 
     // 3 — a imagem largada fica seleccionada: a barra dela mostra os cantos e a opacidade.
     hand.paint(&mut h);
-    assert!(on_screen(&h, node(Item::Round(true))), "a barra da imagem não tem os cantos");
+    assert!(
+        on_screen(&h, node(Item::Round(true))),
+        "a barra da imagem não tem os cantos"
+    );
     assert!(on_screen(&h, node(Item::Opacity(0))));
 
     // 4 — colar uma imagem da área de transferência: nasce no meio da vista.
@@ -131,5 +181,8 @@ fn the_images_scene_does_what_its_lessons_say() {
     let copy = images(&h);
     assert_eq!(copy.len(), 1, "a colagem noutro quadro");
     let b = h.documents.active_board().unwrap();
-    assert!(b.file(copy[0].image().unwrap().file).is_some(), "colou sem os bytes");
+    assert!(
+        b.file(copy[0].image().unwrap().file).is_some(),
+        "colou sem os bytes"
+    );
 }

@@ -2,9 +2,7 @@
 //! mensagem só dele; a imagem que um convidado põe chega aos outros pelo anfitrião.
 
 use super::*;
-use ph2d_board_model::{
-    BoardOp, BoardSet, Element, FileId, Image, ImageFile, Rgba, Style,
-};
+use ph2d_board_model::{BoardOp, BoardSet, Element, FileId, Image, ImageFile, Rgba, Style};
 
 fn board() -> Board {
     let mut set = BoardSet::default();
@@ -16,7 +14,12 @@ fn board() -> Board {
 fn image(b: &mut Board, n: u8) -> FileId {
     let file = b.put_file(ImageFile::new(vec![n; 64], [8, 8]));
     let img = Image::new(file, Style::new(None, None, Rgba([0, 0, 0, 255])));
-    let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), img, [f64::from(n), 0.0, 8.0, 8.0]);
+    let el = Element::new_image(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        img,
+        [f64::from(n), 0.0, 8.0, 8.0],
+    );
     let _ = BoardOp::Put(el).apply(&mut b.doc);
     file
 }
@@ -49,7 +52,10 @@ fn to_conn(out: &[(To, Msg)], conn: ConnId) -> Vec<Msg> {
 
 fn files_in(m: &Msg) -> usize {
     match m {
-        Msg::Writes(ws) => ws.iter().filter(|w| matches!(w, Write::File { .. })).count(),
+        Msg::Writes(ws) => ws
+            .iter()
+            .filter(|w| matches!(w, Write::File { .. }))
+            .count(),
         _ => 0,
     }
 }
@@ -86,7 +92,10 @@ fn a_joiner_gets_the_lean_board_then_each_file_alone() {
 fn a_guest_image_reaches_the_others_through_the_host() {
     let mut hb = board();
     let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
-    let (mut bia, mut rui) = (Guest::new(2, "Bia".into(), 2, 2), Guest::new(3, "Rui".into(), 3, 3));
+    let (mut bia, mut rui) = (
+        Guest::new(2, "Bia".into(), 2, 2),
+        Guest::new(3, "Rui".into(), 3, 3),
+    );
     let (mut bb, mut rb) = (None, None);
     for (g, slot, conn) in [(&mut bia, &mut bb, 7), (&mut rui, &mut rb, 8)] {
         let (out, _) = host.frame(&mut hb, conn, &g.hello().encode(), 0);
@@ -101,14 +110,21 @@ fn a_guest_image_reaches_the_others_through_the_host() {
     let mut relayed = Vec::new();
     for m in &sent {
         let (out, _) = host.frame(&mut hb, 7, &m.encode(), 10);
-        assert!(to_conn(&out, 7).iter().all(|m| files_in(m) == 0), "devolveu à Bia");
+        assert!(
+            to_conn(&out, 7).iter().all(|m| files_in(m) == 0),
+            "devolveu à Bia"
+        );
         relayed.extend(to_conn(&out, 8));
     }
     assert!(hb.file(key).is_some(), "o anfitrião não guardou os bytes");
     deliver(&mut rui, &mut rb, &relayed);
     let rb = rb.unwrap();
     assert!(rb.file(key).is_some(), "o Rui não tem os bytes");
-    assert!(rb.doc.live().any(|e| e.image().is_some_and(|i| i.file == key)));
+    assert!(
+        rb.doc
+            .live()
+            .any(|e| e.image().is_some_and(|i| i.file == key))
+    );
 }
 
 /// Auditoria W14 — quem entra não recebe os bytes que nenhum elemento refere (o resto de uma colagem,

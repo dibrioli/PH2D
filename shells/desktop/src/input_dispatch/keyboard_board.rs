@@ -96,7 +96,10 @@ impl crate::App {
             .flatten();
         // W14 — uma IMAGEM na área de transferência entra no quadro (a cópia do quadro cola-se a si).
         if ctrl_v
-            && ph2d_editor_core::screens::hero::board_images::takes_image_paste(hero, paste.as_deref())
+            && ph2d_editor_core::screens::hero::board_images::takes_image_paste(
+                hero,
+                paste.as_deref(),
+            )
             && let Some(img) = g.clipboard.as_mut().and_then(|c| c.get_image().ok())
         {
             let size = [img.width as u32, img.height as u32];

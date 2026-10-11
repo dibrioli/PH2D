@@ -317,3 +317,104 @@ fn the_star_valley_twists_with_the_hand_like_inkscape() {
     }
     assert_eq!(n, 12);
 }
+
+/// ⭐ **Alt no trapézio: só o lado agarrado** (o *Left/Right point* do Affinity) — sem Alt os dois
+/// cantos curtos andam juntos; com Alt o esquerdo anda e o direito fica onde estava, e vice-versa.
+#[test]
+fn alt_moves_only_the_grabbed_side_of_the_trapezoid() {
+    let k = ShapeKind::Trapezoid;
+    let half = [2.0, 1.0];
+    let ck = super::tests::cooker(k, half);
+    let corner = |v: &ShapeValues, i: usize| ck(v).verts[i].anchor;
+    for (h, other) in [(0, 1), (1, 0)] {
+        let v = k.defaults();
+        let grip = handle_point(&handles_of(k)[h], &v, half, &ck).unwrap();
+        let mut d = HandleDrag::start(h, v, grip, grip, half);
+        let push = if h == 0 { 0.3 } else { -0.3 };
+        let p = [grip[0] + push, grip[1]];
+        let alone = drag(
+            k,
+            &mut d,
+            p,
+            Mods {
+                alone: true,
+                ..Mods::default()
+            },
+            half,
+            1.0,
+            &ck,
+        );
+        assert!(
+            (corner(&alone, h)[0] - p[0]).abs() < 1e-6,
+            "o lado {h} foi à mão: {:?}",
+            corner(&alone, h)
+        );
+        assert!(
+            (corner(&alone, other)[0] - corner(&v, other)[0]).abs() < 1e-9,
+            "Alt: o outro lado ({other}) ficou"
+        );
+        let mut d = HandleDrag::start(h, v, grip, grip, half);
+        let both = drag(k, &mut d, p, Mods::default(), half, 1.0, &ck);
+        assert!(
+            (corner(&both, other)[0] - corner(&v, other)[0]).abs() > 0.1,
+            "sem Alt os dois andam juntos"
+        );
+    }
+}
+
+/// ⭐ **O meio do losango desenha-se para DENTRO** — o vértice da direita vive sobre a aresta da
+/// caixa, onde mora a alça de escala: a alça dele fica `park_at` para o centro (e a pega mede-se
+/// ao ponto verdadeiro: agarrar e soltar não muda nada).
+#[test]
+fn the_diamond_middle_handle_is_drawn_inside_the_box_edge() {
+    let k = ShapeKind::Diamond;
+    let half = [2.0, 1.0];
+    let ck = super::tests::cooker(k, half);
+    let v = k.defaults();
+    let h = &handles_of(k)[0];
+    let truth = handle_point(h, &v, half, &ck).unwrap();
+    let grip = handle_grip(k, h, &v, half, 1.0, 0.3, &ck).unwrap();
+    assert!(
+        (truth[0] - half[0]).abs() < 1e-9,
+        "o vértice está na aresta da caixa"
+    );
+    assert!(
+        grip[0] < half[0] - 0.29,
+        "a alça desenha-se para dentro: {grip:?}"
+    );
+    let mut d = HandleDrag::start(0, v, grip, truth, half);
+    let held = drag(k, &mut d, grip, Mods::default(), half, 1.0, &ck);
+    assert!(
+        (held[0] - v[0]).abs() < 1e-9,
+        "agarrar e soltar não muda o meio"
+    );
+}
+
+/// ⭐ **A alça do raio do canto continua a pousar com a aresta CURVA** — com a envergadura a aresta
+/// não é a corda, e o corte do canto pousa na curva (`Spot::Rounding` sobre a cúbica).
+#[test]
+fn the_corner_handle_still_rides_a_curved_edge() {
+    let k = ShapeKind::Polygon;
+    let half = [1.0, 1.0];
+    let ck = super::tests::cooker(k, half);
+    let mut v = k.defaults();
+    v[1] = 0.15; // o raio do canto (mundo)
+    v[3] = 0.4; // a envergadura
+    let h = handles_of(k).iter().position(|h| h.fields == [1]).unwrap();
+    let p = handle_point(&handles_of(k)[h], &v, half, &ck).expect("a alça do canto existe");
+    let cooked = ck(&v);
+    assert!(
+        cooked
+            .verts
+            .iter()
+            .any(|x| (x.anchor[0] - p[0]).hypot(x.anchor[1] - p[1]) < 1e-12),
+        "a alça é um vértice cozido: {p:?}"
+    );
+    let mut lo = v;
+    lo[1] = 0.05;
+    let q = handle_point(&handles_of(k)[h], &lo, half, &ck).unwrap();
+    assert!(
+        (q[0] - p[0]).hypot(q[1] - p[1]) > 1e-3,
+        "um raio menor põe o corte noutro ponto da curva"
+    );
+}

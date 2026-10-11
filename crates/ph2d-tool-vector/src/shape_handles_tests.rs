@@ -7,7 +7,7 @@ use ph2d_vec_scene::{ALL_SHAPES, cook};
 const HALF: [f64; 2] = [3.0, 2.0];
 const PX: f64 = 0.01;
 
-fn cooker(kind: ShapeKind, half: [f64; 2]) -> impl Fn(&ShapeValues) -> VecPath {
+pub(super) fn cooker(kind: ShapeKind, half: [f64; 2]) -> impl Fn(&ShapeValues) -> VecPath {
     move |v: &ShapeValues| cook(kind, [-half[0], -half[1]], [half[0], half[1]], v)
 }
 

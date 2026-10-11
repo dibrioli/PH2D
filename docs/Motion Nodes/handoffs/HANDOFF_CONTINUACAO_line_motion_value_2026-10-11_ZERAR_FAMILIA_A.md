@@ -9,8 +9,13 @@
 
 - Worktree `Worktrees/line-motion-value`, branch `line/motion-value`, base `8f20c60de` (= `main`),
   HEAD = o commit deste ficheiro. **Nada integrado nem enviado.**
-- ⏳ **Smoke do dono pendente:** cena `=70` (`PH2D_GPU_COOK_DEMO=70`) — foto conferida (as quatro
-  estrelas com o halo anamórfico). Binário `smoke` deixado compilado.
+- ✅ **Smoke do dono (11/10):** *«smoke de glow está OK»*, mas *«as estrelas estão paradas»* — o
+  `force.vortex` nascia no centro do MUNDO e as estrelas estão em `(−4,6; −1,6)`, fora do raio.
+  Cura: vórtice + `force.attractor` no MESMO centro + `force.drag` (a órbita estável do doc do
+  vórtice), constantes `CENTRO_DAS_ESTRELAS`/`VORTICE`/`ATRATOR`/`ARRASTO`. Gate
+  `the_stars_orbit_and_stay_on_screen` (10 s simulados: `1,61` no 1.º s, `2,06` no último, a mais
+  longe a `1,70` do centro); mutação com o centro em `(0,0)`: sangra (`6,58` do centro). Foto
+  refeita: as estrelas espalhadas em volta do centro. ⏳ Re-smoke das estrelas a girar.
 
 ## Família A — FECHADA
 
@@ -43,9 +48,12 @@
    ⇒ **medir** (sonda, junto da família C) e provavelmente fechar por medição.
 4. `fx.filter` sem os modos de mistura e com rampa de 2 stops (`fx-filter/src/lib.rs:16,466,474`):
    a `FxOp` já tem `blend` (lei CPU `ph2d-blend-mode::apply`, WGSL `fx_stack_shader.rs:192`) e 8
-   stops (`op.rs:264`); o painel de VETOR já os autora. ⇒ **perguntado ao dono** (produto) se o
-   cartão do Motion ganha os modos e o degradê de até 8 cores. Se sim: o oráculo da lei é o
-   ImageMagick (`-compose`, licença permissiva) sobre entradas nossas (§0.9).
+   stops (`op.rs:264`); o painel de VETOR já os autora. ⇒ ✅ **DONO DECIDIU (11/10):** *«sim se a
+   performance for boa, pois aqui podemos ter milhares de objetos»*. ⇒ fazer, com a tabela de
+   custo ao lado: cada modo e a rampa de 2 a 8 stops sobre a camada com milhares de formas
+   (`4 096` e `32 761`), placa e CPU de reserva, contra o Normal de hoje; se algum modo custar
+   caro, a tabela decide antes de ele entrar. O oráculo da lei: ImageMagick (`-compose`,
+   permissivo) sobre entradas nossas (§0.9).
 5. `Multiplica` na camada / `DUAL_SOURCE_BLENDING`: existe no wgpu 29.0.4, `ph2d-gpu/src/context.rs:69`
    não o pede. Custo medido do Vello na camada: `0,49–2,25 ms` (doc 129 parte_1 l.238; parte dele já
    existia). ⇒ técnico (delegado): medir se o adaptador da estação o tem; se sim, rota por placa com

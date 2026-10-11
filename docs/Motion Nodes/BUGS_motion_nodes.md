@@ -1,7 +1,7 @@
 # Bugs do módulo Motion Nodes — registro + soluções
 
 > **Índice** — partido em 2026-10-11 (`doc-split`, sha256: nenhuma linha perdida). Fica aqui a tabela-resumo
-> e o #19 (fechado em 11/10, à espera do smoke); os fechados vivem verbatim em `archive/BUGS_motion_nodes/` (≤ 40 KB cada).
+> e o #19 (fechado, smoke do dono 11/10); os fechados vivem verbatim em `archive/BUGS_motion_nodes/` (≤ 40 KB cada).
 > Não há tabela «Recusas MEDIDAS» neste doc.
 
 | Bug | Onde |
@@ -33,7 +33,7 @@
 | [13](archive/BUGS_motion_nodes/parte_3.md#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
 | [18](archive/BUGS_motion_nodes/parte_3.md#bug-18--um-toque-que-treme-virava-arrasto-no-grafo-e-um-campo-legível-não-respondia) | **"Apertar botões em todo módulo é impreciso e inconsistente"** (da barra de baixo aos campos dentro dos nós) | o despacho da superfície do grafo (`ph2d-editor-core`) + o cartão (`ph2d-panel-motion-graph`) | ✅ FECHADO (smoke do dono 10/10) | 2026-10-10 |
-| [19](#bug-19--o-ângulo-do-glow-aparece-só-onde-não-faz-nada) | **O ângulo do *streak* do Glow aparece só onde não faz nada** (achado do agente, ciclo 20, sem report) | `fx.glow` (`PARAM_GATES`) + `motion_bridge_params_visible.rs` | ✅ **CURADO** (aguarda smoke, cena `=70`) — espécie `ParamGateAway` | 2026-10-10 |
+| [19](#bug-19--o-ângulo-do-glow-aparece-só-onde-não-faz-nada) | **O ângulo do *streak* do Glow aparece só onde não faz nada** (achado do agente, ciclo 20, sem report) | `fx.glow` (`PARAM_GATES`) + `motion_bridge_params_visible.rs` | ✅ **FECHADO** — smoke do dono 11/10 (cena `=70`), espécie `ParamGateAway` | 2026-10-10 |
 ---
 
 ## Bug #19 — o ângulo do Glow aparece só onde não faz nada

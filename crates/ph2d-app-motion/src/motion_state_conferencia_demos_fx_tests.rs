@@ -153,3 +153,56 @@ fn the_scene_authors_exactly_one_glow_and_it_carries_the_knobs() {
     );
     assert!(g.intensity > 1.0, "e o halo tem de ser visível de saída");
 }
+
+/// ⭐ **AS ESTRELAS RODAM, E FICAM NA TELA** (smoke do dono, 11/10: *«as estrelas estão
+/// paradas»* — o vórtice nascia no centro do MUNDO, longe delas, e nenhuma força as alcançava).
+///
+/// Simula 10 s: no 1.º segundo já andaram; no último ainda andam; nunca saem de 2 unidades do
+/// centro (o vórtice sozinho atira-as para fora — é o atrator e o arrasto que as seguram).
+#[test]
+fn the_stars_orbit_and_stay_on_screen() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    build_fx_demo_document(&mut doc, &reg).expect("a cena monta");
+    let integ = doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.integrate")
+        .map(|n| n.id)
+        .expect("a banda 3 integra");
+    let c = super::CENTRO_DAS_ESTRELAS;
+    let mut cook = Cook::new();
+    let mut poses: Vec<Vec<[f32; 2]>> = Vec::new();
+    for k in 0..600 {
+        let t = f64::from(k) / 60.0;
+        let out = cook.cook(&doc.graph, &reg, integ, t).expect("coze");
+        if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+            poses.push(p.clone());
+        }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+    }
+    let anda = |a: &[[f32; 2]], b: &[[f32; 2]]| {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| (p[0] - q[0]).hypot(p[1] - q[1]))
+            .fold(0.0, f32::max)
+    };
+    let longe = poses
+        .iter()
+        .flatten()
+        .map(|p| (p[0] - c[0]).hypot(p[1] - c[1]))
+        .fold(0.0, f32::max);
+    eprintln!(
+        "estrelas: 1.o s {:.3} · ultimo s {:.3} · mais longe {longe:.3}",
+        anda(&poses[0], &poses[60]),
+        anda(&poses[540], &poses[599])
+    );
+    assert_eq!(poses.len(), 600);
+    assert!(anda(&poses[0], &poses[60]) > 0.1, "paradas no 1.o segundo");
+    assert!(
+        anda(&poses[540], &poses[599]) > 0.1,
+        "pararam antes dos 10 s"
+    );
+    assert!(longe < 2.0, "fugiram do centro: {longe}");
+}

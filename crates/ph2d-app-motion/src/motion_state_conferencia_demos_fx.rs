@@ -34,6 +34,13 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 const SOFTNESS: f32 = 0.5;
 /// A anamorfose que a banda 3 autora.
 const STRETCH: f32 = 4.0;
+/// O centro das estrelas da banda 3 — e o do vórtice e do atrator que as fazem rodar.
+pub(crate) const CENTRO_DAS_ESTRELAS: [f32; 2] = [-4.6, -1.6];
+/// `(strength, radius)` do vórtice e do atrator, e o arrasto: a órbita medida pelo gate
+/// `the_stars_orbit_and_stay_on_screen`.
+const VORTICE: (f32, f32) = (6.0, 2.4);
+const ATRATOR: (f32, f32) = (5.0, 4.0);
+const ARRASTO: f32 = 1.0;
 /// O `tint` do vagalume — o valor que lava a tela sem um teto.
 const FIREFLY: f32 = 40.0;
 
@@ -44,6 +51,15 @@ fn wire(g: &mut Graph, from: NodeId, fp: u16, to: NodeId, tp: u16) -> Option<()>
         delayed: false,
     })
     .ok()
+}
+
+fn push_solto(g: &mut Graph, kind: &str, ps: &[(&str, f32)], x: f32, y: f32) -> NodeId {
+    let n = g.add_node(kind);
+    g.set_pos(n, Pos { x, y });
+    for (k, v) in ps {
+        g.set_param(n, *k, *v);
+    }
+    n
 }
 
 fn push(g: &mut Graph, head: NodeId, kind: &str, ps: &[(&str, f32)], ey: f32, x: f32) -> NodeId {
@@ -125,27 +141,53 @@ pub fn build_fx_demo_document(
     // ⭐ FORMAS numa SIMULAÇÃO (a lei do smoke do Motion): as peças rodam num vórtice e cada
     // uma leva uma estrela — o risco anamórfico tem de seguir formas em movimento.
     let ey = 480.0;
-    let src = grid(g, 4.0, 1.0, 0.42, [-4.6, -1.6], ey);
+    let src = grid(g, 4.0, 1.0, 0.42, CENTRO_DAS_ESTRELAS, ey);
     let integ = g.add_node("motion.integrate");
     g.set_pos(integ, Pos { x: 140.0, y: ey });
     wire(g, src, 0, integ, 0)?;
-    let vortex = g.add_node("force.vortex");
-    g.set_pos(
-        vortex,
-        Pos {
-            x: 140.0,
-            y: ey + 140.0,
-        },
+    // A órbita estável (o doc do `force.vortex`): o vórtice sozinho atira as peças para fora;
+    // com o atrator no MESMO centro e o arrasto elas ficam a rodar no sítio.
+    let [cx, cy] = CENTRO_DAS_ESTRELAS;
+    let vortex = push_solto(
+        g,
+        "force.vortex",
+        &[
+            ("center_x", cx),
+            ("center_y", cy),
+            ("strength", VORTICE.0),
+            ("radius", VORTICE.1),
+        ],
+        140.0,
+        ey + 140.0,
     );
-    g.set_param(vortex, "strength", 6.0);
-    g.set_param(vortex, "radius", 2.4);
+    let atrator = push(
+        g,
+        vortex,
+        "force.attractor",
+        &[
+            ("target_x", cx),
+            ("target_y", cy),
+            ("strength", ATRATOR.0),
+            ("radius", ATRATOR.1),
+        ],
+        ey + 140.0,
+        280.0,
+    );
+    let arrasto = push(
+        g,
+        atrator,
+        "force.drag",
+        &[("coefficient", ARRASTO)],
+        ey + 140.0,
+        420.0,
+    );
     g.connect(Edge {
         from: (integ, 0),
         to: (vortex, 0),
         delayed: true,
     })
     .ok()?;
-    wire(g, vortex, 0, integ, 1)?;
+    wire(g, arrasto, 0, integ, 1)?;
     let estrela = g.add_node("source.shape");
     g.set_pos(
         estrela,

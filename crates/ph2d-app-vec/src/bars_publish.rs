@@ -25,7 +25,8 @@ pub fn selection_on_screen(
     let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
     let mut any = false;
     for &id in pen.selected_paths() {
-        if let Some((a, b)) = scene.path_world_curve_bbox(xforms, id) {
+        // A MESMA caixa que o gizmo desenha (o traço incluído — F11): uma pergunta, uma porta.
+        if let Some((a, b)) = ph2d_vec_render::path_world_visual_bbox(scene, xforms, id) {
             any = true;
             lo = [lo[0].min(a[0]), lo[1].min(a[1])];
             hi = [hi[0].max(b[0]), hi[1].max(b[1])];

@@ -173,12 +173,19 @@ fn strip_from(x: f32, y: f32, bar_h: f32, groups: &[usize], s: f32) -> Vec<Rect>
 /// ícone ilegíveis) e usam o [`button_px`] da coluna.
 #[must_use]
 pub fn strip_rects(area: Rect, sel: Rect, groups: &[usize], s: f32) -> Vec<Rect> {
+    strip_rects_at(area, sel, groups, s, Spacing::Lg.px())
+}
+
+/// A [`strip_rects`] a `gap` px da seleção — a ④ do vetor afasta-se uma alça inteira mais
+/// (`tool_bars_card::selection_gap`, F11); o Quadro fica na de sempre.
+#[must_use]
+pub fn strip_rects_at(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32) -> Vec<Rect> {
     let (width, bar_h) = strip_extent(groups, s);
-    let above = sel.y - bar_h - Spacing::Lg.px();
+    let above = sel.y - bar_h - gap;
     let y = if above >= area.y {
         above
     } else {
-        (sel.y + sel.h + Spacing::Lg.px()).min(area.y + area.h - bar_h)
+        (sel.y + sel.h + gap).min(area.y + area.h - bar_h)
     };
     let x = (sel.x + sel.w / 2.0 - width / 2.0)
         .max(area.x)

@@ -217,3 +217,31 @@ fn the_card_leaves_a_whole_handle_free_at_the_selection_edge() {
         "só {free} px entre a seleção e o cartão — a alça da borda fica por baixo"
     );
 }
+
+/// ⭐ (F11) **A ④ e o cartão ficam à MESMA folga da seleção** — uma alça inteira mais `Lg` (o dono:
+/// *«abrem muito próximos das formas»*; eram 12 e 18 px). A ④ por cima, o cartão à direita.
+#[test]
+fn the_action_bar_and_the_card_float_one_handle_plus_lg_off_the_selection() {
+    let gap = crate::HANDLE_SIZE_PX + ph2d_tokens::Spacing::Lg.px();
+    assert!((selection_gap() - gap).abs() < 1e-3);
+    let mut ts = TextSystem::without_system_fonts();
+    let mid = Rect::new(AREA.x + 400.0, AREA.y + 300.0, 120.0, 90.0);
+    let b = bars(mid, 3, 4);
+    let all = placed(&b, AREA, false, false, false);
+    let bar_bottom = all
+        .iter()
+        .filter(|(btn, _)| (100..104).contains(&btn.id.0))
+        .map(|(_, r)| r.y + r.h)
+        .fold(f32::MIN, f32::max);
+    assert!(
+        (mid.y - bar_bottom - gap).abs() < 1e-3,
+        "a ④ a {} px da seleção, não {gap}",
+        mid.y - bar_bottom
+    );
+    let c = placed_in_bars(&b, AREA, &all, RailButtonSize::Small, &mut ts).expect("cartão");
+    assert!(
+        (c.panel.x - (mid.x + mid.w) - gap).abs() < 1e-3,
+        "o cartão a {} px da seleção, não {gap}",
+        c.panel.x - (mid.x + mid.w)
+    );
+}

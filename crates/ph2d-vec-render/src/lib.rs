@@ -152,6 +152,8 @@ mod recorte_tests;
 mod path_bounds;
 pub(crate) use path_bounds::bounds_from_local;
 pub use path_bounds::{path_bounds_under, path_screen_bounds, standalone_path_screen_bounds};
+mod visual_bounds;
+pub use visual_bounds::{path_intrinsic_visual_bbox, path_visual_bounds, path_world_visual_bbox};
 
 /// A [`Fill`] rule do Vello para o `fill_rule` do path.
 pub(crate) fn fill_rule(path: &VecPath) -> Fill {

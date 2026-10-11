@@ -90,6 +90,17 @@ impl VecPath {
         }
     }
 
+    /// **Todo contorno desta forma fecha?** — a pergunta que decide se existe um interior (o
+    /// traço Inner/Outer só existe aí). Lê a geometria COZIDA: um efeito que ABRE um contorno (um
+    /// Trim) responde que já não há região. Porta única: o alinhamento (`ph2d-vec-boolean`) e a
+    /// caixa visual (`ph2d-vec-render`) perguntam aqui.
+    #[must_use]
+    pub fn all_contours_closed(&self) -> bool {
+        let cooked = self.cooked();
+        let n = cooked.contour_count();
+        n > 0 && (0..n).all(|c| cooked.contour(c).is_some_and(|(_, closed)| closed))
+    }
+
     /// Contorno `c` mutável (`0` = primário).
     pub fn contour_mut(&mut self, c: usize) -> Option<(&mut Vec<VecVertex>, &mut bool)> {
         match c {

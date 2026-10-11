@@ -8,7 +8,7 @@
 
 use super::{
     column_rects, grid_rects, inner, paint_button, paint_panel, paint_swatch, pinned_strip_rects,
-    strip_rects,
+    strip_rects_at,
 };
 use crate::icons::IconId;
 use crate::ids;
@@ -87,7 +87,9 @@ pub fn placed(
         // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
         let s = super::button_px();
         let rects = match bars.selection {
-            Some(sel) if !pinned => strip_rects(area, sel, &sizes, s),
+            Some(sel) if !pinned => {
+                strip_rects_at(area, sel, &sizes, s, super::tool_bars_card::selection_gap())
+            }
             _ => pinned_strip_rects(area, &sizes, s),
         };
         out.extend(groups.into_iter().flatten().zip(rects));

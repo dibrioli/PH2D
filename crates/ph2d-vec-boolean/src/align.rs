@@ -56,7 +56,8 @@ use crate::{BoolOp, apply, expand::drop_slivers, outline_stroke};
 #[must_use]
 pub fn aligned_stroke(path: &VecPath) -> Option<Vec<VecPath>> {
     let s = path.stroke.as_ref()?;
-    if !s.is_aligned() || !all_contours_closed(path) {
+    // Lê a COZIDA (o raio vivo, ADR-0121, e os efeitos, ADR-0132): é ela que a banda traça.
+    if !s.is_aligned() || !path.all_contours_closed() {
         return None;
     }
     // A banda DUPLA: o mesmo traço com o dobro da largura, que cobre `[−w, +w]`.
@@ -101,17 +102,6 @@ fn doubled(s: &StrokeSpec) -> StrokeSpec {
         dash: s.dash.map(|(d, g)| (d * 0.5, g * 0.5)),
         ..s.clone()
     }
-}
-
-/// **Todo contorno desta forma fecha?** — a pergunta que decide se existe um interior.
-///
-/// Lê a geometria **COZIDA**: o raio de quina vivo (ADR-0121) e a pilha de efeitos (ADR-0132)
-/// correm antes, e é a forma cozida que a banda vai traçar. Perguntar à autorada deixaria um
-/// efeito que ABRE um contorno (um Trim) responder que ainda há região.
-fn all_contours_closed(path: &VecPath) -> bool {
-    let cooked = path.cooked();
-    let n = cooked.contour_count();
-    n > 0 && (0..n).all(|c| cooked.contour(c).is_some_and(|(_, closed)| closed))
 }
 
 #[cfg(test)]

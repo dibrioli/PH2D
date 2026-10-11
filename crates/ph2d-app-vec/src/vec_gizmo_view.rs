@@ -71,6 +71,9 @@ pub(crate) fn stroke_hit_r_from(px_to_world: f64) -> f64 {
 /// O `anchor` e o meio-tamanho **intrínsecos** (pré-escala) da forma de `entity`,
 /// na linguagem que o gizmo de sprite fala. `None` se a entidade não é um path, ou
 /// se o path está vazio.
+///
+/// ⭐ (F11) A caixa é a do que a forma PINTA — o traço incluído, sob a escala do mundo (a
+/// *Use Preview Bounds* do Illustrator; doc 17 §2). Escala nula: a da curva.
 #[must_use]
 pub fn anchor_half(
     sim: &SimWorld,
@@ -78,7 +81,7 @@ pub fn anchor_half(
     entity: Entity,
 ) -> Option<([f32; 2], [f32; 2])> {
     let vp = sim.world().get::<VecPathRef>(entity)?;
-    let (lo, hi) = scene.path_curve_bbox(vp.0)?;
+    let (lo, hi) = intrinsic_visual_bbox(sim, scene, entity, vp.0)?;
     let anchor = [
         ((lo[0] + hi[0]) * 0.5) as f32,
         ((lo[1] + hi[1]) * 0.5) as f32,
@@ -88,6 +91,23 @@ pub fn anchor_half(
         ((hi[1] - lo[1]) * 0.5) as f32,
     ];
     Some((anchor, half))
+}
+
+/// A caixa intrínseca VISUAL do caminho `id` sob a escala de mundo de `entity` (o espaço do
+/// [`gizmo_view_from`]); a da curva quando a escala é nula.
+fn intrinsic_visual_bbox(
+    sim: &SimWorld,
+    scene: &VecScene,
+    entity: Entity,
+    id: ph2d_vec_scene::VecPathId,
+) -> Option<([f64; 2], [f64; 2])> {
+    let s = world_transform(sim, entity).scale;
+    scene
+        .path(id)
+        .and_then(|p| {
+            ph2d_vec_render::path_intrinsic_visual_bbox(p, [f64::from(s.x), f64::from(s.y)])
+        })
+        .or_else(|| scene.path_curve_bbox(id))
 }
 
 /// A `GizmoView` de uma forma vetorial — o mesmo `bbox_world` + `pivot` + `rotation`
@@ -229,7 +249,7 @@ pub fn container_view(
     let mut lo = [f64::INFINITY; 2];
     let mut hi = [f64::NEG_INFINITY; 2];
     for child in &env.children {
-        if let Some((clo, chi)) = scene.path_curve_bbox(child.path) {
+        if let Some((clo, chi)) = intrinsic_visual_bbox(sim, scene, entity, child.path) {
             lo = [lo[0].min(clo[0]), lo[1].min(clo[1])];
             hi = [hi[0].max(chi[0]), hi[1].max(chi[1])];
         }

@@ -11,10 +11,11 @@ use ph2d_render::WorldBbox;
 use ph2d_render::camera_frame::union;
 use ph2d_vec_scene::{VecScene, VecXforms};
 
-/// A caixa de MUNDO da curva de uma forma (`None` = forma sem geometria).
+/// A caixa de MUNDO do que uma forma PINTA, o traço incluído (F11 — um traço grosso não sai
+/// cortado na borda do enquadramento). `None` = forma sem geometria.
 #[must_use]
 pub fn path_box(scene: &VecScene, xf: &VecXforms, id: u64) -> Option<WorldBbox> {
-    let (lo, hi) = scene.path_world_curve_bbox(xf, id)?;
+    let (lo, hi) = ph2d_vec_render::path_world_visual_bbox(scene, xf, id)?;
     #[allow(clippy::cast_possible_truncation)]
     Some(WorldBbox {
         min: [lo[0] as f32, lo[1] as f32],

@@ -190,3 +190,56 @@ fn the_gizmo_box_follows_the_pose_the_layout_gave() {
         "e medir 2 de meia-largura (1 x 2): {half}"
     );
 }
+
+/// ⭐ (F11) **A caixa ENGLOBA o traço** — a *Use Preview Bounds* do Illustrator, e a MESMA caixa na
+/// ④ e no cartão (`bars_publish::selection_on_screen`). Sob escala `(3, 1)` a caneta continua
+/// REDONDA: `0,1·√3` de cada lado nos dois eixos (não `0,3` e `0,1`). O dono: *«o gizmo de
+/// transformação não engloba o stroke»*.
+#[test]
+fn the_gizmo_box_wraps_the_stroke_and_the_action_bar_reads_the_same_box() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut sq = rectangle([-1.0, -1.0], [1.0, 1.0]);
+    sq.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+        ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+        0.2,
+    ));
+    let id = scene.push_path(sq);
+    let t = Transform {
+        scale: Vec2::new(3.0, 1.0),
+        ..Transform::IDENTITY
+    };
+    let e = sim.world_mut().spawn((t, VecPathRef(id))).id();
+    let ws = WindowSize {
+        width: 800,
+        height: 600,
+    };
+    let v = view(
+        &sim,
+        &scene,
+        &Default::default(),
+        e,
+        &Camera2d::default(),
+        ws,
+        (0.0, 0.0),
+        false,
+    )
+    .unwrap();
+    let m = (0.1 * 3f32.sqrt()) as f32;
+    assert!(
+        (v.bbox_max_world[0] - (3.0 + m)).abs() < 1e-3,
+        "{:?}",
+        v.bbox_max_world
+    );
+    assert!(
+        (v.bbox_max_world[1] - (1.0 + m)).abs() < 1e-3,
+        "{:?}",
+        v.bbox_max_world
+    );
+    let mut xf = ph2d_vec_scene::VecXforms::new();
+    xf.insert(id, xform_of_transform(t));
+    let (lo, hi) = ph2d_vec_render::path_world_visual_bbox(&scene, &xf, id).unwrap();
+    for (a, b) in [(lo[0], v.bbox_min_world[0]), (hi[1], v.bbox_max_world[1])] {
+        assert!((a as f32 - b).abs() < 1e-3, "a ④ lê {a}, a caixa {b}");
+    }
+}

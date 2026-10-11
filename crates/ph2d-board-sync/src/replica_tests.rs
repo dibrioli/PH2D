@@ -594,6 +594,20 @@ fn a_finished_vote_travels_shown_and_a_delete_beats_a_rename() {
     assert_eq!((a.b.team.shown, b.b.team.shown), (None, None));
 }
 
+/// W13: a ordem das sessões é a do NÚMERO («Voting N»), nunca a do relógio — um relógio atrasado (ou
+/// os votos sem data de um ficheiro antigo) não põe a mais nova em baixo (foto a9 da cena 14).
+#[test]
+fn sessions_keep_the_order_of_their_number_whatever_the_clock_says() {
+    let (mut a, mut b, x) = two();
+    a.b.team.add_poll(BTreeMap::from([(x, 1)]), "ana", 1, 500);
+    a.b.team.add_poll(BTreeMap::from([(x, 2)]), "ana", 1, 0);
+    concurrently(&mut a, &mut b);
+    for p in [&a, &b] {
+        let nums: Vec<u32> = p.b.team.polls_newest_first().map(|q| q.number).collect();
+        assert_eq!(nums, [2, 1]);
+    }
+}
+
 /// W13: mostrar uma sessão ao mesmo tempo que outro a apaga não a ressuscita como mostrada.
 #[test]
 fn showing_a_session_another_deletes_shows_nothing() {

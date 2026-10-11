@@ -78,7 +78,16 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             .as_ref()
             .map_or(0.0, |p| private::height(p) + gap);
     let step = btn() + ph2d_tokens::control_gap_px();
-    let fit = (((area.y + area.h - y - taken - gap) / step).floor() as usize)
+    // O chão da coluna: acima dos botões do canto e do minimapa aberto (a lista do histórico passava
+    // por baixo deles — foto a9 da cena 14).
+    let mut floor = super::super::button_rects(area)
+        .iter()
+        .map(|(_, r)| r.y)
+        .fold(area.y + area.h, f32::min);
+    if hero.documents.live.nav.minimap_open {
+        floor = floor.min(super::super::minimap_rect(area).y);
+    }
+    let fit = (((floor - y - taken - gap) / step).floor() as usize)
         .saturating_sub(3)
         .max(3);
     let view = match hero.documents.live.fac.panels.get(&id).copied() {
@@ -380,7 +389,8 @@ fn paint_vote(
     match v {
         VoteView::Setup(setup) => {
             history::tabs(&mut list, wide(1, 0, 2), wide(1, 1, 2), false);
-            let label_w = r.w - 4.0 * s; // LITERAL-PX-OK: a coluna do `[−] n [+]`, em botões
+            // Até ao `−` do contador (3 botões e 2 vãos da borda) — «Votes per person» saía cortado.
+            let label_w = right - 3.0 * s - 3.0 * g - x0;
             paint_text_elided(
                 ts,
                 scene,

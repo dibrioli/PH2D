@@ -248,8 +248,9 @@ pub(super) fn paint(
                 );
                 let bg = if hover { ColorToken::Bg3 } else { ColorToken::Bg2 };
                 fill_rounded_rect(scene, rr, radius, resolve(bg, theme));
-                let when_w = 2.5 * s; // LITERAL-PX-OK: a coluna de «12 min ago», em botões
                 let (sm, ty) = (TypeToken::Sm.px(), label_y(3 + k));
+                // A data com a largura dela (a «2 d ago» saía «2 d a…»): o nome é que se corta.
+                let when_w = crate::paint::rect_for_label(ts.prefix_width(when, sm)) + pad;
                 let name_w = rr.w - when_w - 2.0 * pad;
                 paint_text_elided(ts, scene, name, rr.x + pad, ty, sm, name_w, text1);
                 let wr = Rect::new(rr.x + rr.w - when_w, rr.y, when_w - pad, s);
@@ -283,7 +284,13 @@ pub(super) fn paint(
                 hit.register(super::fac_node(FacButton::PollRename), tr_);
             }
             let sm = TypeToken::Sm.px();
-            paint_text_elided(ts, scene, sub, x0, label_y(1), sm, r.w - 2.0 * pad, text2);
+            // O lixo armado diz-se aqui (a dica só aparece com o rato parado em cima).
+            let (line, ink) = if *armed {
+                (tr("board.vote.delete_confirm"), resolve(ColorToken::Danger, theme))
+            } else {
+                (sub.as_str(), text2)
+            };
+            paint_text_elided(ts, scene, line, x0, label_y(1), sm, r.w - 2.0 * pad, ink);
             toggle(&mut list, scene, ts, 2, *shown_on);
             let cw = 2.5 * s; // LITERAL-PX-OK: a coluna de «99 votes» em botões
             for (i, (text, n)) in rows.iter().enumerate() {

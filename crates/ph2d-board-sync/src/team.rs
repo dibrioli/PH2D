@@ -418,7 +418,7 @@ impl TeamState {
         team.threads
             .sort_by_key(|t| (t.messages.first().map_or(0, |m| m.at), t.id));
         team.versions.sort_by_key(|v| (v.at, v.id));
-        team.polls.sort_by_key(|p| (p.at, p.number, p.id));
+        team.polls.sort_by_key(|p| (p.number, p.at, p.id));
         if team.shown.is_some_and(|id| self.polls_gone.contains(&id)) {
             team.shown = None;
         }

@@ -136,6 +136,12 @@ fn the_list_pages_when_it_does_not_fit() {
     assert!((3..40).contains(&fit), "{fit} filas");
     let (_, y) = t.find(poll_row_node(fit - 1)).unwrap();
     assert!(y < c.y + c.h, "a última fila fora da área");
+    // E acima dos botões do canto (a foto a9 da cena 14: a lista passava por baixo do Live).
+    let floor = board_nav::button_rects(c)
+        .iter()
+    .map(|(_, r)| r.y)
+    .fold(f32::MAX, f32::min);
+    assert!(y < floor, "a última fila ({y}) por baixo dos botões do canto ({floor})");
     assert!(t.find(fac_node(FacButton::PollUp)).is_none());
     t.poll_btn(FacButton::PollDown);
     assert!(t.find(fac_node(FacButton::PollUp)).is_some());
@@ -170,8 +176,11 @@ fn every_w13_panel_line_fits_the_column() {
             ),
             w - 2.0 * pad,
         ),
-        (ph2d_i18n::tr_with("board.vote.session_default", &n), w - 3.0 * s - 3.0 * g),
-        (ph2d_i18n::tr_with("board.ago.day", &n), 2.5 * s - pad),
+        (ph2d_i18n::tr_with("board.vote.session_default", &n), w - 2.0 * pad - 3.0 * s - 3.0 * g),
+        (text("board.vote.delete_confirm"), w - 2.0 * pad),
+        // A abertura: o rótulo vai até ao `−` do contador (o «Votes per per…» da foto a5).
+        (text("board.vote.votes"), w - pad - 3.0 * s - 3.0 * g - Spacing::Sm.px()),
+        (text("board.vote.minutes"), w - pad - 3.0 * s - 3.0 * g - Spacing::Sm.px()),
         (text("board.vote.new_short"), half),
         (text("board.vote.see_all"), half),
     ];

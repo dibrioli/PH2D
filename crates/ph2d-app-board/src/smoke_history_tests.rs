@@ -178,3 +178,55 @@ fn the_history_scene_does_what_its_lessons_say() {
     ana.documents.ask_live(LiveRequest::Leave);
     frame(&mut ana);
 }
+
+/// 📷 As fotos dos estados da cena 14 pelo caminho REAL (o painel e a rede), à mão com a placa:
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-board --lib fotos_dos_estados_da_cena_14
+/// -- --ignored --nocapture` → `<temp>/ph2d_w13_fotos/`.
+#[test]
+#[ignore = "fotos: à mão, com a placa"]
+fn fotos_dos_estados_da_cena_14() {
+    use crate::smoke::shots::Shots;
+    const DIR: &str = "ph2d_w13_fotos";
+    reset_for_tests();
+    fake_firewall_for_tests(Probe::default(), vec!["192.168.15.0/24".parse().unwrap()]);
+    let mut cam = Shots::new(DIR);
+    let mut ana = hero("Ana");
+    let l = scene_history(&mut ana);
+    frame(&mut ana);
+    cam.shot(&mut ana, "a0_abertura_a_lista");
+    let mut hand = Hand::new();
+    row(&mut ana, &mut hand, 1);
+    cam.shot(&mut ana, "a1_a_voting_1_aberta");
+    assert!(apply_event(&mut ana, WidgetEvent::DoubleClick(fac_node(FacButton::PollRename))));
+    cam.shot(&mut ana, "a2_a_renomear");
+    assert!(apply_event(&mut ana, WidgetEvent::Cancel(BOARD_POLL_NAME_INPUT)));
+    click(&mut ana, FacButton::ShowOnBoard);
+    cam.shot(&mut ana, "a3_sem_selos");
+    click(&mut ana, FacButton::ShowOnBoard);
+    click(&mut ana, FacButton::PollDelete);
+    cam.shot(&mut ana, "a4_o_lixo_armado");
+    click(&mut ana, FacButton::PollBack);
+    click(&mut ana, FacButton::VoteTabNew);
+    cam.shot(&mut ana, "a5_new_session");
+    click(&mut ana, FacButton::VoteStart);
+    until(&mut ana, 10, |h| facilitate::vote_in_session(h));
+    hand.plus(&mut ana, l.ideas[0]);
+    cam.shot(&mut ana, "a6_a_votar");
+    click(&mut ana, FacButton::VoteEnd);
+    until(&mut ana, 10, |h| team(h).polls.len() == 3);
+    cam.shot(&mut ana, "a7_a_voting_3");
+    click(&mut ana, FacButton::PollBack);
+    cam.shot(&mut ana, "a8_a_lista_com_tres");
+    // Muitas sessões: a página e as setas.
+    {
+        let b = room(&mut ana).unwrap();
+        for n in 0..30 {
+            let t = std::collections::BTreeMap::from([(l.ideas[n % 5], 1 + n as u32)]);
+            b.team.add_poll(t, "Rui", 1, 0);
+        }
+    }
+    frame(&mut ana);
+    cam.shot(&mut ana, "a9_muitas_sessoes");
+    click(&mut ana, FacButton::PollDown);
+    cam.shot(&mut ana, "a10_a_pagina_seguinte");
+}

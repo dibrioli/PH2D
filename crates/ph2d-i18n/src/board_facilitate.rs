@@ -75,6 +75,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.back" => "Back to all results",
         "board.vote.rename_tip" => "Double-click to rename",
         "board.vote.delete_tip" => "Delete this vote's results — click again to confirm",
+        "board.vote.delete_confirm" => "Click the bin again to delete",
         "board.vote.page_up" => "Newer votes",
         "board.vote.page_down" => "Older votes",
         "board.vote.by" => "by {name}",

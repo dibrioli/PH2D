@@ -74,14 +74,80 @@ fn another_protocol_is_refused_with_a_reason() {
         protocol: PROTOCOL + 1,
         peer: 2,
         name: "Bia".into(),
+        key: 2,
     };
     let (out, _) = host.frame(&mut hb, 7, &hello.encode(), 0);
     assert_eq!(out, vec![(To::One(7), Msg::Refused { protocol: PROTOCOL })]);
-    let mut g = Guest::new(2, "Bia".into(), 2);
+    let mut g = Guest::new(2, "Bia".into(), 2, 2);
     let mut gb = None;
     let (_, ev) = deliver(&mut g, &mut gb, &out[0].1.encode(), 0);
     assert_eq!(ev, vec![Event::Refused { theirs: PROTOCOL }]);
     assert!(gb.is_none());
+}
+
+/// ⭐ O id de cada pessoa corre a sala inteira, a chave só vem ao anfitrião: quem traz o id da Bia (ou o
+/// do anfitrião) sem a chave dela é recusado e não recebe NADA — nem o quadro, nem o que é dela (o
+/// cofre, o boletim) — e a Bia continua a ser a Bia; ela própria volta de uma queda com a sua chave.
+#[test]
+fn an_id_without_its_key_is_refused_and_its_owner_comes_back() {
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let bia = Guest::new(2, "Bia".into(), 2, 0xB1A);
+    let (out, _) = host.frame(&mut hb, 7, &bia.hello().encode(), 0);
+    assert!(matches!(&out[0].1, Msg::Welcome { you, .. } if you.peer == 2));
+    let refused = vec![(To::One(9), Msg::Refused { protocol: PROTOCOL })];
+    for (peer, key, who) in [
+        (2, 0xBAD, "a Bia"),
+        (1, 0xBAD, "o anfitrião"),
+        (1, 1, "o anfitrião"),
+    ] {
+        let forged = Guest::new(peer, "Bia".into(), 9, key);
+        let (out, ev) = host.frame(&mut hb, 9, &forged.hello().encode(), 0);
+        assert_eq!(out, refused, "fez-se passar por {who}");
+        assert!(ev.is_empty(), "{who}: {ev:?}");
+    }
+    // O impostor recusado não fala por ninguém: o fio dele não tem identidade.
+    let (out, _) = host.frame(&mut hb, 9, &Msg::Ballot(Ballot::default()).encode(), 0);
+    assert!(out.is_empty(), "{out:?}");
+    // A Bia cai e volta noutro fio, com a SUA chave: é ela, com a cor dela.
+    let _ = host.left(7);
+    let (out, _) = host.frame(&mut hb, 8, &bia.hello().encode(), 0);
+    assert!(
+        matches!(&out[0].1, Msg::Welcome { you, .. } if you.peer == 2 && you.color == 1),
+        "{out:?}"
+    );
+}
+
+/// O `Hello` do protocolo 3 (sem a chave) é recusado com a frase de sempre (antes de se ler, o par antigo
+/// ficava à espera); e o `Hello` de agora, lido por um anfitrião do protocolo 3, dá-lhe a versão para o
+/// recusar (a chave vai no FIM e ele ignora-a).
+#[test]
+fn the_old_hello_and_the_new_one_are_refused_across_versions() {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    enum V3 {
+        Hello {
+            protocol: u32,
+            peer: PeerId,
+            name: String,
+        },
+    }
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let old = V3::Hello {
+        protocol: 3,
+        peer: 2,
+        name: "Bia".into(),
+    };
+    let (out, _) = host.frame(&mut hb, 7, &postcard::to_allocvec(&old).unwrap(), 0);
+    assert_eq!(out, vec![(To::One(7), Msg::Refused { protocol: PROTOCOL })]);
+    let new = Guest::new(2, "Bia".into(), 2, 2).hello().encode();
+    let Ok(V3::Hello { protocol, .. }) = postcard::from_bytes::<V3>(&new) else {
+        panic!("um anfitrião do protocolo 3 não leria o Hello de agora");
+    };
+    assert_eq!(protocol, PROTOCOL);
+    // O controlo: nada que não seja um `Hello` antigo recebe resposta.
+    let (out, _) = host.frame(&mut hb, 7, &[0xFF, 0xFF, 0xFF], 0);
+    assert!(out.is_empty());
 }
 
 /// Entrar: o convidado recebe o quadro do anfitrião, a cor seguinte, e os outros sabem que chegou;
@@ -91,7 +157,7 @@ fn joining_gives_the_hosts_board_and_the_next_colour() {
     let mut hb = board();
     rect(&mut hb, 3.0);
     let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
-    let g = Guest::new(2, "Bia".into(), 2);
+    let g = Guest::new(2, "Bia".into(), 2, 2);
     let (out, ev) = host.frame(&mut hb, 7, &g.hello().encode(), 0);
     let Msg::Welcome { you, .. } = &out[0].1 else {
         panic!("{out:?}");
@@ -168,7 +234,7 @@ fn the_others_cursor_glides_between_samples() {
 fn summon_reaches_everyone_but_the_caller() {
     let mut hb = board();
     let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
-    let mut b = Guest::new(2, "Bia".into(), 2);
+    let mut b = Guest::new(2, "Bia".into(), 2, 2);
     let mut bb = None;
     let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 0);
     deliver(&mut b, &mut bb, &out[0].1.encode(), 0);
@@ -201,7 +267,7 @@ fn a_newcomer_sees_where_everyone_already_is() {
         1,
         "a Ana pôs o rato"
     );
-    let mut b = Guest::new(2, "Bia".into(), 2);
+    let mut b = Guest::new(2, "Bia".into(), 2, 2);
     let mut bb = None;
     let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 10);
     for (_, m) in &out {
@@ -209,7 +275,7 @@ fn a_newcomer_sees_where_everyone_already_is() {
     }
     let pb = b.presence(20, presence(9.0, vec![])).remove(0);
     let _ = host.frame(&mut hb, 7, &pb.encode(), 20);
-    let mut c = Guest::new(3, "Caio".into(), 3);
+    let mut c = Guest::new(3, "Caio".into(), 3, 3);
     let mut cb = None;
     let (out, _) = host.frame(&mut hb, 8, &c.hello().encode(), 30);
     let to_caio: Vec<u64> = out
@@ -245,10 +311,10 @@ fn a_newcomer_sees_where_everyone_already_is() {
 fn a_newcomer_is_not_told_about_who_already_left() {
     let mut hb = board();
     let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
-    let b = Guest::new(2, "Bia".into(), 2);
+    let b = Guest::new(2, "Bia".into(), 2, 2);
     let _ = host.frame(&mut hb, 7, &b.hello().encode(), 0);
     let _ = host.left(7);
-    let mut c = Guest::new(3, "Caio".into(), 3);
+    let mut c = Guest::new(3, "Caio".into(), 3, 3);
     let mut cb = None;
     let (out, _) = host.frame(&mut hb, 8, &c.hello().encode(), 10);
     for (to, m) in &out {
@@ -267,7 +333,7 @@ fn a_newcomer_is_not_told_about_who_already_left() {
 fn the_host_ending_the_room_is_told_to_the_guest() {
     let mut hb = board();
     let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
-    let mut b = Guest::new(2, "Bia".into(), 2);
+    let mut b = Guest::new(2, "Bia".into(), 2, 2);
     let mut bb = None;
     let (out, _) = host.frame(&mut hb, 7, &b.hello().encode(), 0);
     deliver(&mut b, &mut bb, &out[0].1.encode(), 0);
@@ -357,7 +423,7 @@ fn a_star_room_with_drops_ends_with_one_board() {
         let mut guests: Vec<(Guest, Option<Board>, History)> = (0..n)
             .map(|i| {
                 (
-                    Guest::new(10 + i, format!("p{i}"), seed * 7 + i),
+                    Guest::new(10 + i, format!("p{i}"), seed * 7 + i, seed * 7 + i),
                     None,
                     History::default(),
                 )

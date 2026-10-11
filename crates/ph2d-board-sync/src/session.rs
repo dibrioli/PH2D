@@ -13,8 +13,8 @@ use crate::{PeerId, Replica, Snapshot, Write};
 
 /// A versão do protocolo: quem fala outra é recusado com uma frase (nunca uma fusão às cegas).
 /// 2 = a facilitação ao vivo (ADR-0182); 3 = o histórico das votações (`TeamWrite::Poll…`, o `Field`
-/// sem `Votes`, ADR-0183).
-pub const PROTOCOL: u32 = 3;
+/// sem `Votes`, ADR-0183); 4 = a identidade presa à chave do `Hello` (ADR-0182 §10).
+pub const PROTOCOL: u32 = 4;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;
@@ -35,6 +35,9 @@ pub enum Msg {
         protocol: u32,
         peer: PeerId,
         name: String,
+        /// O segredo de quem abriu este `peer`: só vai ao anfitrião, e voltar pede o mesmo. ⛔ No FIM:
+        /// um anfitrião do protocolo 3 lê os três de cima, ignora este e recusa pela versão.
+        key: u64,
     },
     Welcome {
         you: PeerInfo,
@@ -80,6 +83,18 @@ impl Msg {
     pub fn decode(bytes: &[u8]) -> Option<Msg> {
         postcard::from_bytes(bytes).ok()
     }
+}
+
+/// O `Hello` dos protocolos 1–3 (sem a chave): só se lê para o recusar com a frase de sempre — sem
+/// isto o par antigo ficava à espera de uma resposta que nunca vinha.
+#[derive(Deserialize)]
+#[allow(dead_code)] // lêem-se só para saber que é um `Hello`
+enum OldHello {
+    Hello {
+        protocol: u32,
+        peer: PeerId,
+        name: String,
+    },
 }
 
 /// Para quem vai uma mensagem do anfitrião.
@@ -170,6 +185,8 @@ pub struct Host {
     replica: Replica,
     pub me: PeerInfo,
     guests: BTreeMap<ConnId, PeerId>,
+    /// A chave de cada identidade, desde o 1.º `Hello` dela (fica com quem sai: é a de quem volta).
+    keys: BTreeMap<PeerId, u64>,
     room: Room,
     chair: Chair,
 }
@@ -188,6 +205,7 @@ impl Host {
             replica: Replica::host(peer, board, seed),
             me,
             guests: BTreeMap::new(),
+            keys: BTreeMap::new(),
             room,
             chair: Chair::default(),
         }
@@ -204,18 +222,27 @@ impl Host {
         let mut out = Vec::new();
         let mut events = Vec::new();
         let Some(msg) = Msg::decode(bytes) else {
+            if postcard::from_bytes::<OldHello>(bytes).is_ok() {
+                out.push((To::One(conn), Msg::Refused { protocol: PROTOCOL }));
+            }
             return (out, events);
         };
         if let Msg::Hello {
             protocol,
             peer,
             name,
+            key,
         } = msg
         {
-            if protocol != PROTOCOL {
+            // Os ids correm a sala inteira; a chave só vem ao anfitrião. Quem traz o id de OUTRO (ou
+            // o meu) sem a chave dele é recusado ANTES de receber o que é dessa pessoa (o cofre, o
+            // boletim) e de poder agir em nome dela.
+            let impostor = peer == self.me.peer || self.keys.get(&peer).is_some_and(|k| *k != key);
+            if protocol != PROTOCOL || impostor {
                 out.push((To::One(conn), Msg::Refused { protocol: PROTOCOL }));
                 return (out, events);
             }
+            self.keys.insert(peer, key);
             // Quem volta guarda a cor; quem chega leva a seguinte.
             let color = self.room.peers.get(&peer).map_or_else(
                 || u8::try_from(self.room.peers.len()).unwrap_or(u8::MAX),
@@ -356,6 +383,8 @@ pub struct Guest {
     peer: PeerId,
     name: String,
     seed: u64,
+    /// O segredo que prende `peer` a mim (só vai no `Hello`).
+    key: u64,
     replica: Option<Replica>,
     pub me: Option<PeerInfo>,
     room: Room,
@@ -367,11 +396,13 @@ pub struct Guest {
 
 impl Guest {
     #[must_use]
-    pub fn new(peer: PeerId, name: String, seed: u64) -> Self {
+    /// `key` vem do sistema e nunca sai daqui senão no `Hello` (é o que me deixa voltar como eu).
+    pub fn new(peer: PeerId, name: String, seed: u64, key: u64) -> Self {
         Self {
             peer,
             name,
             seed,
+            key,
             replica: None,
             me: None,
             room: Room::default(),
@@ -422,6 +453,7 @@ impl Guest {
             protocol: PROTOCOL,
             peer: self.peer,
             name: self.name.clone(),
+            key: self.key,
         }
     }
 

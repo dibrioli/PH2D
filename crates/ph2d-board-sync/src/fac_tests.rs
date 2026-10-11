@@ -104,7 +104,7 @@ impl Room {
     fn join(&mut self, name: &str) -> usize {
         let i = self.peers.len();
         let peer = 10 + i as u64;
-        let g = Guest::new(peer, name.into(), 50 + peer);
+        let g = Guest::new(peer, name.into(), 50 + peer, 50 + peer);
         let hello = g.hello().encode();
         self.peers.push(Peer {
             g,

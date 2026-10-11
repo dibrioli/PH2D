@@ -173,7 +173,7 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             let me = hero.documents.author().to_owned();
             st.live = Some(Live::Guest {
                 net: None,
-                s: sync::Guest::new(random(), me, random()),
+                s: sync::Guest::new(random(), me, random(), random()),
                 board: None,
                 dialing: Some(dial(addr, &code)),
                 addr,

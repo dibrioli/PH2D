@@ -82,6 +82,20 @@ O que os outros fazem (corrido/medido):
    outros perdem nome e cor própria e «seguir» desliga-se.
 9. **Protocolo 2.** `Msg` cresce SÓ no fim (`Sealed`, `Ballot`, `Fac`, `Ask`); `PROTOCOL` 1 → 2 (um par antigo
    é recusado com a frase de sempre, nunca funde às cegas). O cofre e o estado da facilitação nunca vão a disco.
+10. **A identidade presa à chave (emenda W13 §9, 11/10; protocolo 4).** O cofre entrega o texto de uma nota ao
+    `PeerId` dela e o anfitrião atribui cada mensagem ao `PeerId` do fio — mas o `PeerId` corre a sala inteira
+    (`Welcome`, `Joined`, `Presence`) e, até ao protocolo 3, um `Hello` com o id da Bia ERA a Bia (é como ela
+    volta de uma queda): quem tinha o código recebia o texto escondido dela e votava ou revelava em nome dela. O
+    `Hello` leva no FIM uma chave aleatória (`Guest::new(…, key)`, do sistema) que só vai ao anfitrião; o 1.º
+    `Hello` de um id prende-lhe a chave (fica depois de ele sair — é a de quem volta), e um `Hello` com o id de
+    outro sem a chave dele, ou com o id do próprio anfitrião, é recusado ANTES do `Welcome` (nada do quadro, nada
+    do cofre). O modelo de confiança da sala não muda (quem tem o código é de casa); o que muda é que ninguém de
+    casa se faz passar por outro. A chave no FIM mantém a recusa entre versões nos dois sentidos: um anfitrião 3
+    lê os três primeiros campos, ignora a chave e recusa pela versão; um `Hello` 3 (sem chave) lê-se à parte
+    (`OldHello`) e recusa-se com a frase de sempre. Gates: `an_id_without_its_key_is_refused_and_its_owner_comes_back`,
+    `the_old_hello_and_the_new_one_are_refused_across_versions` (mutação 4/4). Recusado: o anfitrião atribuir os
+    ids (muda o id de cada um ao entrar e parte as réplicas que o usam desde o `Replica::join`); um hash do id como
+    id público (a mesma troca, e pede um hash de sentido único).
 
 ## Alternativas recusadas
 

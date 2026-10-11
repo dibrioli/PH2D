@@ -183,6 +183,29 @@ filtro das sementes sangram. ⚖️ Equivalente: M6, o refino que falha devolver
 condição da normal o par só passa se as direções já se afastam, e então mistura dois pontos da mesma face de luz
 quase igual; nenhum gate o distingue.
 
+## 2.º smoke do dono (10/10): «até o zoom muda o render»
+
+**A queixa** (duas fotos, a mesma caixa verde junto à lâmpada em dois zooms): a face da caixa na sombra e a sombra ao
+lado clareavam ao afastar o zoom.
+
+**A causa, medida** (`o_rebote_nao_depende_da_oitava`, a caixa logo à direita e abaixo da lâmpada da cena 3): sem rebote
+a luz é a mesma em toda vista; com ele, na oitava mais grossa (texel 0,031 m) a face 1,653 × gabarito 0,269 (+514 %),
+a sombra +204 %, o fundo +61 %; na fina (0,016 m) ≤ 1 %. Com a caixa sem albedo as duas oitavas batem — o excesso é a
+luz que a própria caixa devolve. A cadeia: a borda direita caía DENTRO de uma célula das cascatas (cobertura 0,50); o
+ponto logo fora da borda pela captura fina (o `meio`) tinha as QUATRO sondas vizinhas dentro do opaco (a borda da
+captura e a das sondas diferem por centésimos de célula, conforme a posição — o mesmo desvio do ABERTO 5); o `c0_em`,
+sem nenhuma sonda de fora, voltava às de DENTRO (o lixo do interior: 2,107 = 2π × 0,335) — a fonte do rebote da face
+inteira 0,335 em vez de 0,06, a emissão da face 6×, e o interior remapeado lia o mesmo (as listras verticais).
+
+**A cura** (`c0_em`, `c3_direta.wgsl`): sem sonda de fora nas quatro, as de fora do anel seguinte (4×4, tenda de raio 2);
+só sem nenhuma o bilinear cru. Gate: 4 zooms em duas passagens de oitava, o pior 2,9 % (teto 3,5 %), visto vermelho
+(+514 %). Mutações (2/2 sangram): sem o anel (+514 %); o anel sem a máscara de fora (+424 %). Foto:
+`fotos_W5c/oitava_antes_depois.png` (a luz em volta da caixa; em cima antes — grossa · fina —, em baixo depois).
+
+**A mesma família:** a fusão das cascatas CLÁSSICAS (`pesos_da_fusao`, `c2_rc.wgsl`) também volta aos pesos sem máscara
+quando as quatro sondas de cima estão mascaradas — não é o caminho do produto (a holográfica) e a clássica erra o
+rebote desta cena por outro lado (a face 0,071, −74 %); fica anotado no item 7 abaixo.
+
 ## ⚠️ ABERTO (W5c → W5d)
 
 1. **O rebote de FORA da grade (o maior):** com zoom forte o rebote enfraquece — na vista de 2 m da cena 3, −55 a
@@ -207,6 +230,8 @@ quase igual; nenhum gate o distingue.
    e não há ainda um portão de paridade sprite × vetor do rebote (o G7 do rebote).
 7. **O RC clássico** (fica como alternativa) depende do alinhamento das faces junto a elas: o rebote da cena 3 5,5 ·
    24 · 39 % — não o religue sem ler isto.
+   E a fusão dele volta aos pesos SEM máscara quando as quatro sondas de cima estão mascaradas (a mesma família da
+   cura do `c0_em` do 2.º smoke); na caixa junto à lâmpada a face sai 0,071 × 0,269.
 8. Os da W5b que continuam: a A3 (muitos objetos fora da grade sem nenhum a tapar), dois translúcidos sobrepostos
    fora da grade, o `a_nitidez_da_luz` sob carga.
 

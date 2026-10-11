@@ -438,6 +438,24 @@ fn c0_em(P: vec2<f32>) -> vec3<f32> {
         if soma > 0.0 {
             return (c00.rgb * w.x + c10.rgb * w.y + c01.rgb * w.z + c11.rgb * w.w) / soma;
         }
+        // ⭐ Nenhuma das quatro é de fora: P está fora pela captura fina, mas a borda dela e a das
+        // sondas diferem por centésimos de célula — as de fora estão no anel seguinte. Voltar às de
+        // DENTRO lia o interior (o rebote da face inteira 6× na oitava grossa, 2.º smoke do dono).
+        var fora = vec3<f32>(0.0);
+        var peso = 0.0;
+        for (var dy = -1; dy <= 2; dy++) {
+            for (var dx = -1; dx <= 2; dx++) {
+                let t = clamp(base + vec2<i32>(dx, dy), vec2<i32>(0), ultimo);
+                let c = textureLoad(c0_fluencia, t, 0);
+                let o = abs(vec2<f32>(base + vec2<i32>(dx, dy)) - u);
+                let wt = max(1.0 - 0.5 * o.x, 0.0) * max(1.0 - 0.5 * o.y, 0.0) * c.a;
+                fora += c.rgb * wt;
+                peso += wt;
+            }
+        }
+        if peso > 0.0 {
+            return fora / peso;
+        }
     }
     let a = mix(c00.rgb, c10.rgb, fr.x);
     let b = mix(c01.rgb, c11.rgb, fr.x);

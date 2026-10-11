@@ -278,7 +278,9 @@ o ABERTO 1 da W5a fechado) e mais barata no Baixo e no Médio, ao preço da mem�
 «Ultra» como nível próprio foi recusado pela medida. Aberto o maior: o rebote de FORA da grade (com zoom forte os
 refletores fora dela não refletem: −55 a −64 % junto à borda). Depois do smoke do dono, o interior de um opaco
 deixou de mudar de desenho com a posição: o texel que o eixo medial corta guarda a média das faces na área dele
-(texels errados 35–537 → 0–1; secção «Depois do smoke do dono» do handoff).
+(texels errados 35–537 → 0–1; secção «Depois do smoke do dono» do handoff); e o rebote deixou de mudar com
+o zoom: o ponto logo fora de uma borda sem nenhuma sonda de fora nas quatro vizinhas lia as de DENTRO (a face na
+sombra +514 % na oitava grossa → ≤ 3 %).
 
 Também abertos (técnicos, sem queixa do dono): as cascatas ainda calculam a grade inteira (81,5 % fora
 da janela) e a região C3 pode encolher ao canvas; o G4 (K3) segue com pouca margem (3,98–4,64 % de 5 %,

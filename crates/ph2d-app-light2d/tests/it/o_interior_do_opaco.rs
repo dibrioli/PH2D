@@ -43,15 +43,20 @@ const TETO_ERRADOS: usize = 3;
 
 /// A cena 3 com a parede verde feita uma caixa livre no meio da sala, deslocada `d` metros.
 fn cena(d: [f32; 2]) -> CenaDeLuz {
+    cena_em([CENTRO[0] + d[0], CENTRO[1] + d[1]], LADO)
+}
+
+/// A cena 3 com a parede verde feita uma caixa de `lado` em `centro`.
+fn cena_em(centro: [f32; 2], lado: [f32; 2]) -> CenaDeLuz {
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 3));
     let mut q = w.query::<(&Name, &mut Sprite, &mut Transform, &mut GlobalTransform)>();
     let mut achou = false;
     for (n, mut s, mut t, mut g) in q.iter_mut(&mut w) {
         if n.as_str() == "Parede verde" {
-            s.size = LADO;
-            t.translation.x = CENTRO[0] + d[0];
-            t.translation.y = CENTRO[1] + d[1];
+            s.size = lado;
+            t.translation.x = centro[0];
+            t.translation.y = centro[1];
             *g = GlobalTransform::from_transform(*t);
             achou = true;
         }
@@ -347,3 +352,87 @@ fn sonda_custo_da_media_no_eixo() {
     }
     eprintln!("# loadavg depois {}", crate::medida_luz2d_w4b::loadavg());
 }
+
+/// ⭐⭐ **GATE — o rebote não depende da oitava** (2.º smoke do dono, 10/10: «até o zoom muda o render»
+/// — a face da caixa na sombra e a sombra ao lado clareavam ao afastar o zoom). Medido: com a grade da
+/// oitava mais grossa a borda direita da caixa caía DENTRO de uma célula, o ponto logo fora da borda
+/// tinha as quatro sondas vizinhas dentro do opaco e a c0 dele voltava às de DENTRO (o lixo do
+/// interior): a fonte do rebote ali 0,335 em vez de 0,06, a face 1,65 em vez de 0,27. A régua: a caixa
+/// logo à direita e abaixo da lâmpada da cena 3, a vista nela nos dois lados de duas passagens de
+/// oitava (zoom 1,6 · 2,2 · 2,5 · 4), pela configuração do produto com o rebote (120 quadros), contra a série do
+/// gabarito, na face direita (o interior: o exterior mais próximo), na sombra e no fundo.
+#[test]
+fn o_rebote_nao_depende_da_oitava() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let fabrica =
+        Camera2d::default().world_to_screen_affine(ph2d_host::WindowSize::new(FHD.0, FHD.1));
+    let alvo = Point::new(f64::from(FHD.0) * 0.5, f64::from(FHD.1) * 0.5);
+    let (lado, centro) = ([1.2_f32, 2.0], [0.69_f32 + 0.6, 1.13 - 1.0]);
+    let c = cena_em(centro, lado);
+    let (x1, cy) = (f64::from(centro[0] + 0.5 * lado[0]), f64::from(centro[1]));
+    // (o ponto lido, o ponto do gabarito: na face, o exterior mais próximo)
+    let pontos = [
+        ("face direita", [x1 - 0.1, cy], [x1 + 0.005, cy]),
+        ("sombra", [x1 + 0.15, cy], [x1 + 0.15, cy]),
+        ("fundo", [x1 + 1.0, cy + 0.6], [x1 + 1.0, cy + 0.6]),
+    ];
+    let serie = ph2d_light2d_ref::Rebote::resolver(
+        &c,
+        ph2d_light2d_ref::OpcoesDoRebote {
+            passo_m: 0.02,
+            rebotes: 200,
+        },
+    );
+    let gab: Vec<f64> = pontos
+        .iter()
+        .map(|(_, _, q)| 2.0 * std::f64::consts::PI * serie.luz_em(*q)[1])
+        .collect();
+    let dg = DEGRAU_PADRAO;
+    let foco = fabrica * Point::new(f64::from(centro[0]) - 0.3, f64::from(centro[1]) + 0.3);
+    let mut falhas = Vec::new();
+    for zoom in [1.6, 2.2, 2.5, 4.0] {
+        let a = vello::kurbo::Affine::translate(alvo.to_vec2())
+            * vello::kurbo::Affine::scale(zoom)
+            * vello::kurbo::Affine::translate(-foco.to_vec2())
+            * fabrica;
+        let grade = grade_do_quadro(a, FHD, dg).expect("grade");
+        let cfg = Config {
+            fina: fina_do_quadro(a, dg),
+            captura: captura_do_quadro(a, dg),
+            holografica: dg.holografica.then_some(HOLOGRAFICA_PADRAO),
+            rebote: true,
+            ..Config::padrao_para(&gpu.device, grade)
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+        s.regiao_fina(i, f);
+        for _ in 0..120 {
+            s.quadro(&gpu, &c);
+        }
+        let fl = fluencia_lida(&gpu, &s);
+        for ((nome, p, _), g) in pontos.iter().zip(&gab) {
+            let v = fl.amostra(*p);
+            let e = (v - g).abs() / g;
+            eprintln!(
+                "rebote · zoom {zoom} (texel {:.4} m) · {nome}: {v:.3} (gabarito {g:.3}, {:+.1} %)",
+                grade.texel_m,
+                100.0 * (v - g) / g
+            );
+            if e > TETO_OITAVA {
+                falhas.push(format!("zoom {zoom} · {nome}: {v:.3} × {g:.3}"));
+            }
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "o rebote muda com a oitava (teto {TETO_OITAVA}): {}",
+        falhas.join(" · ")
+    );
+}
+
+/// O erro relativo máximo de cada ponto do [`o_rebote_nao_depende_da_oitava`] — MEDIDO (RTX 5060 Ti):
+/// o pior 2,9 % (o fundo na oitava grossa); antes da cura +514 % (a face) · +204 % (a sombra).
+const TETO_OITAVA: f64 = 0.035;

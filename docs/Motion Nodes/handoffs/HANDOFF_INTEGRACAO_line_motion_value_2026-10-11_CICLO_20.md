@@ -193,3 +193,12 @@ Dois commits a mais na linha, pedidos pelo dono depois do fecho (detalhe e núme
 **Smoke do `Collide`:** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env
 PH2D_GPU_COOK_DEMO=122 cargo run -p ph2d-host-desktop --profile smoke` — Play; no cartão `Shape` de
 cima ligue `Collide` (o `Output` já não o tem): a fileira de cima separa-se.
+
+## §10 — A linha rápida (11/10, depois do §9)
+
+Detalhe: [`HANDOFF_CONTINUACAO_…_LINHA_RAPIDA_FECHO.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_LINHA_RAPIDA_FECHO.md).
+⚠️ **Para o integrador:** `e22630d38` APENDA quatro blocos `[profile.dev.package.*]` (collide,
+proximity, field-shape, force-attractor) ao fim da lista do `Cargo.toml` da raiz — se outra linha
+também apendar ali, o conflito é de vizinhança: guarde os dois. O collide só reordena guardas sem
+efeito (bit-idêntico). `7aa02b678` parte 121/BUGS/110/129 em `docs/Motion Nodes/archive/`. Suíte
+`ph2d-app-motion` 97,6 → 14,8 s; `nextest-impacted` 5 081/5 081.

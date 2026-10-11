@@ -182,6 +182,40 @@ Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illu
   Photoshop, par do «Inner Glow»); gate de rótulos únicos por superfície.
 - U2 (px do projecto) fica nomeado: a unidade é do projecto inteiro, não deste nó.
 
+### §3.5 — W4b: a MISTURA do `Output` e a camada filtrada (desenho, 11/10 — por fazer)
+
+**Medido (W4, §5.7):** com o `Output` em `Blend` = `Add`/`Multiply`/`Screen` o sink mistura EM GRUPO
+(doc 118): o cozimento da placa recusa (`RECUSA_MISTURA_EM_GRUPO`), a CPU baixa o sink inteiro para
+cópias vectoriais (`lower_group_onto`) e o quadro vai ao Vello — a camada filtrada só recebe a placa,
+logo **o filtro não filtra nada**. A foto da `=135` com `PH2D_ACABAMENTO_PASSO=mistura`: discos
+chapados, sem relevo nem sombra. Da MESMA família (§0.10): um `Blend` por LINHA (a coluna `blend`,
+`FormaComMistura`) e uma geometria que a placa recusa (`Recusada`/`Ausente`) — qualquer UMA manda o
+quadro inteiro ao Vello. Hoje (W4) o cartão de cada `Filter` di-lo (`formas_fora_da_camada`, gate
+`shapes_drawn_off_the_layer_are_named_on_every_filter_card`).
+
+**A lei (estado da arte):** After Effects / Photoshop — os efeitos de uma camada correm na camada
+ISOLADA e o modo de mistura da camada aplica-se quando ela POUSA no que está por baixo. As três
+arrumações do doc 118 (`Everything` `f(f(B,S₁),S₂)` · `Copies` `f(S₁,S₂) over B` · `Scene`
+`f(B, S₁ over S₂)`, em sRGB codificado, W3C) passam, com um `Filter` no fio, a:
+- `Scene`: as cópias em `Normal` na camada → a pilha → a camada pousa com `f` (a fórmula de hoje,
+  com o filtro no meio — exacta);
+- `Copies`: as cópias misturam-se ENTRE SI com `f` dentro da camada → a pilha → `over`;
+- `Everything`: a camada isola-se (os efeitos pedem-no) ⇒ `f` entre as cópias e `f` na pousa
+  (`f(B, f(S₁,S₂))` — igual a `f(f(B,S₁),S₂)` para Add/Multiply/Screen de alfa cheio, que são
+  associativos; com alfa parcial é a lei do Photoshop, não a do Vello: diga-o no tutorial).
+
+**O desenho:** (1) a POUSA com modo: um passe de composição que lê a camada filtrada e uma CÓPIA do
+mundo e escreve `f` no espaço do desenhista (a lei de `ph2d-blend-mode`, a mesma do
+`layer_composite.wgsl`), no retângulo da cena; oráculo = o `a_mistura_em_grupo_pinta_a_tabela_do_doc_118`
+(o `Scene` sem filtro tem de sair AO BYTE igual ao de hoje com a pilha vazia). (2) com filtro, o sink
+não agrupa (`lower_group_onto` só sem filtro; a placa aceita-o; a recusa do cozimento cai) e a
+`MisturaDoSink` vai à pousa; (3) `Copies`/`Everything` e os `Blend` por linha: o Vello DENTRO da
+camada (a cena vectorial do Motion, sem o mundo por baixo, num alvo `Rgba8Unorm` colado com
+`BandSource::Vector`) — e com eles o `Each Shape` corre sobre o conjunto (o Vello não tem buffer de
+instâncias para as células: o cartão di-lo); (4) as geometrias recusadas entram pelo mesmo Vello.
+⚠️ Dois sinks com modos diferentes partilham UMA camada (a pilha é de todo o Motion): a pousa só
+tem um `f` — meça e decida (camada por sink, ou a queixa).
+
 ## §4 — Waves
 
 | wave | o quê | estado |
@@ -191,7 +225,8 @@ Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illu
 | W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | ✅ §5.3 (+ a cena `=135` com a lente; o filtro entra na W3) |
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | ✅ §5.4 (+ a `=135` com uma sombra projectada) |
 | W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | ✅ §5.6 · smoke do dono APROVADO 11/10 |
-| W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
+| W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | ✅ §5.7 (+ a pilha só na área da cena; a mistura medida e dita no cartão) |
+| W4b | a mistura do `Output` com a camada filtrada (§3.5) | — |
 | W5 | provas de mutação · o handoff | — |
 
 ## §5 — Medições
@@ -365,6 +400,35 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
 - **A relocação** é em MUNDO (`L⁻¹·T`, `T` inteiro): a fração sub-pixel não muda e a volta é cópia
   ao texel (gate `the_device_relocation_is_the_cpu_sum`).
 
+### §5.7 — As fotos, o relógio e a mistura (W4, 11/10)
+
+- **As fotos** (`fotografa_cena.sh`, 1600×972, `PH2D_ACABAMENTO_PASSO=<passo>`: cada passo do roteiro
+  escrito na cena pelo MESMO gesto do cartão; gate `every_photo_variant_is_the_step_it_names`), em
+  [`handoffs/fotos_W4/`](handoffs/fotos_W4/): os passos (0)–(8) e a `mistura`. ⚠️ A 1.ª rodada
+  mostrou que o passo (1) **não se via**: o disco de raio `0,15` deixava um vão de `0,02` na grelha
+  de `0,32`, e as fotos de `Each Shape` e `Whole Layer` saíam iguais — a cena ensinava o que não
+  acontece. O raio passou a `0,2` (gate `the_discs_touch_so_whole_layer_differs_from_each_shape`).
+  O cartão do passo (4) não se fotografa (os cartões estão fechados na foto): o gate
+  `an_each_shape_after_a_whole_layer_says_so_on_its_card` prova-o.
+- **O relógio** (`relogio_cada_forma_contra_camada_inteira`, `--release`, 12 blocos intercalados, o
+  mínimo, `load 17`; a sombra interna):
+
+  | | 1600×972 · 256 | 1600×972 · 4 096 | 4K · 256 | 4K · 4 096 |
+  |---|---:|---:|---:|---:|
+  | cada forma (átlas) | 0,60 ms | 4,63 ms | 0,77 ms | 4,89 ms |
+  | camada inteira, janela inteira | 0,52 | 0,63 | **2,01** | **2,16** |
+  | camada inteira, só a cena (55 % × 55 %) | 0,28 | 0,37 | **0,77** | **0,85** |
+  | a lente, 4 secções, janela inteira | 0,37 | 0,37 | 1,75 | 1,75 |
+
+  ⇒ a pilha da camada passou a correr SÓ no retângulo da cena alargado pelo que ela lê e espalha
+  (`ph2d_render::retangulo_da_camada`, `run_layer_rect`, `blit_rect`); a lente já corria só na cena.
+  Gate `fx_stack_camada_rect_gpu` (`PH2D_GPU=1`, `--ignored`), camada 1100×760, discos também FORA da
+  cena: dentro dela **0 níveis** (sombra de fora para dentro; sombra interna + borrão σ 45 na
+  pirâmide, a origem na grelha de 2) e **1** (turbulência no mundo); o controlo sem margem desvia
+  **141 · 87 · 197**.
+- **A rota da CPU com filtro ACONTECE** (o aberto do W3): a saída em `Add` manda tudo ao Vello e o
+  filtro não alcança nada (§3.5). O cartão de cada `Filter` di-lo desde a W4; a cura é a W4b.
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo
@@ -390,8 +454,8 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
   as páginas reaproveitam o átlas em série. Uma página de 4096 custaria ~1,2 GB.
 - (W3b) U2 (o cartão mostra px do PROJECTO): a unidade é do projecto inteiro, não deste nó.
 
-- (W3) Formas da rota da CPU (o Vello, `formas_pedem_o_vello`) não entram na camada filtrada — medir
-  quando acontece numa cena com filtro (W4).
-- (W3) O passe da camada corre na janela INTEIRA (o tamanho do `WorldRt`), não no sub-rect da cena:
-  o relógio a 4K é da W4.
+- (W4) ⭐ A MISTURA do `Output` (Add/Multiply/Screen), o `Blend` por linha e a geometria recusada
+  levam as formas ao Vello, fora da camada filtrada — medido; o cartão di-lo; a cura é a W4b (§3.5).
+- (W4) O retângulo da camada é o `scene_viewport` (a área onde o mundo se renderiza); a área que o
+  artista VÊ (`cena_visivel`, a da lente) é menor quando há painéis por cima — mais barato, por medir.
 - (W3) A lei de mistura do `fx.filter` sem ficha (os rótulos são da shell) e a rampa com 2 stops.

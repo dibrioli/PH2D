@@ -38,6 +38,7 @@
   .wide img { width:100%; display:block; border-radius:6px; }
   .wide figcaption { font-size:11px; color:var(--t2); margin-top:6px; text-align:center; }
   .pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .meia { width:55%; margin-left:auto; margin-right:auto; }
   table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
   th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
   th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
@@ -146,6 +147,10 @@ segundos.</p>
       deixou.</div></li>
 </ol>
 
+<figure class="wide meia"><img src="../fig/acabamento_interna.png" alt="cada disco com sombra por dentro">
+  <figcaption><code>Inner Shadow</code> em <code>Each Shape</code>: a mesma sombra em todos os
+  discos.</figcaption></figure>
+
 <h2>4 · A sombra da galáxia</h2>
 <ol class="steps">
   <li><b>Olhe o 2.º <code>Filter</code></b> (<code>Drop Shadow</code>, <code>Whole Layer</code>).
@@ -156,6 +161,9 @@ segundos.</p>
       <div class="out">Cada disco projecta a sua sombra, e a sombra de um cai <b>em cima</b> do
       vizinho.</div></li>
 </ol>
+
+<figure class="wide meia"><img src="../fig/acabamento_sombras.png" alt="cada disco projecta a sua sombra">
+  <figcaption>A sombra em <code>Each Shape</code>: cada disco projecta a sua.</figcaption></figure>
 
 <h2>5 · A ordem conta</h2>
 <ol class="steps">
@@ -204,7 +212,39 @@ fechadas e neutras — abra cada uma para a ligar.</p>
       <div class="bad">Se o grão continuar a mexer com o tempo parado, avise.</div></li>
 </ol>
 
-<!--CUSTO-->
+<div class="pair">
+<figure class="wide"><img src="../fig/acabamento_lente_5b.png" alt="os cantos claros">
+  <figcaption><code>Vignette</code> em -0,5: os cantos clareiam.</figcaption></figure>
+<figure class="wide"><img src="../fig/acabamento_lente_6.png" alt="franjas de cor nas bordas">
+  <figcaption><code>Aberration</code> 0,03: a franja nas bordas.</figcaption></figure>
+<figure class="wide"><img src="../fig/acabamento_lente_7d.png" alt="a cena com a LUT quente">
+  <figcaption>A LUT quente no <code>LUT File</code>.</figcaption></figure>
+<figure class="wide"><img src="../fig/acabamento_lente_8.png" alt="o chuvisco do grao">
+  <figcaption><code>Grain</code> 0,4.</figcaption></figure>
+</div>
+
+<h2>10 · O que isto custa</h2>
+<p>Medido nesta máquina, na placa de vídeo, com o computador ocupado por outros trabalhos — vale
+como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
+<table>
+  <tr><th>o quê</th><th>janela 1600×972</th><th>janela 4K</th></tr>
+  <tr><td>um <code>Filter</code> em <code>Whole Layer</code> (a sombra interna), 4 096 discos</td>
+      <td class="n">0,4 ms</td><td class="n">0,9 ms</td></tr>
+  <tr><td>o mesmo em <code>Each Shape</code>, 256 discos</td><td class="n">0,6 ms</td>
+      <td class="n">0,8 ms</td></tr>
+  <tr><td>o mesmo em <code>Each Shape</code>, 4 096 discos</td><td class="n">4,6 ms</td>
+      <td class="n">4,9 ms</td></tr>
+  <tr><td>o <code>Lens</code> com as quatro secções ligadas, na janela inteira</td>
+      <td class="n">0,4 ms</td><td class="n">1,8 ms</td></tr>
+</table>
+<p>Os filtros e a lente só trabalham na <b>área da cena</b> — o que fica por baixo dos painéis não
+conta. <code>Each Shape</code> custa mais com muitas formas, porque cada uma corre sozinha; com
+poucas formas os dois custam quase o mesmo.</p>
+
+<div class="note"><b>Mistura e filtros.</b> Se o <code>Output</code> usar <code>Blend</code> =
+<code>Add</code>, <code>Multiply</code> ou <code>Screen</code>, as formas são desenhadas por outro
+caminho e, por agora, os filtros <b>não as alcançam</b>. O cartão de cada <code>Filter</code> avisa
+por escrito. Fazer as duas coisas juntas é o próximo passo.</div>
 
 <h2>11 · Se algo não bater</h2>
 <table>

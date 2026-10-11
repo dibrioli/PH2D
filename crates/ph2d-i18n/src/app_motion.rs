@@ -129,6 +129,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_filter.after_whole_layer" => {
             "After a Whole Layer filter - runs on the whole layer, not on each shape"
         }
+        "app.motion.motion_filter.shapes_off_the_layer" => {
+            "Some shapes draw on another path (a Blend Add, Multiply or Screen, or a shape the GPU refuses) - the filters skip them"
+        }
         "app.motion.motion_bridge_params_text_rows.rule_problem" => {
             "\u{ab}{rule}\u{bb}: {say} (+{queixas} more)"
         }

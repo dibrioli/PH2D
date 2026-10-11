@@ -14,7 +14,10 @@
 //! o Motion deixa de se intercalar por z com as sprites da cena. Onion, partículas e barras ficam lá.
 //! ⚠️ **Sem tonemap:** o passe fundido o atravessa, e ele está em BYPASS (`clamp`, gate
 //! `the_layer_skips_a_tonemap_that_is_a_bypass`) — se o AgX ligar, esta camada tem de o seguir.
-//! ⚠️ Formas da rota da CPU (o Vello, `formas_pedem_o_vello`) não estão na placa nem na camada.
+//! ⚠️ Formas da rota da CPU (o Vello: um `Output` com `Blend` Add/Multiply/Screen, um `Blend` por
+//! linha, uma geometria que a placa recusa) não estão na placa nem na camada — medido na foto da
+//! `=135` com `PH2D_ACABAMENTO_PASSO=mistura` (doc 129 §5.7). O cartão de cada `Filter` di-lo
+//! ([`formas_fora_da_camada`]); a cura (a mistura na colagem da camada) é a W4b.
 
 use crate::motion_state::MotionState;
 use ph2d_node_fx_filter::NoDoFiltro;
@@ -70,7 +73,16 @@ pub struct MotionFiltro {
     na_camada: Vec<NodeId>,
     desenha: bool,
     ligada: bool,
+    /// No último quadro filtrado, formas do Motion foram desenhadas FORA da camada.
+    formas_fora: bool,
     placa: Option<Placa>,
+}
+
+/// **Formas do Motion ficaram fora da camada filtrada?** — há cópias vectoriais neste quadro e a
+/// placa (a única fonte de formas da camada) não as desenhou: foram ao Vello.
+#[must_use]
+pub fn formas_fora_da_camada(copias_vectoriais: usize, placa_ativa: bool) -> bool {
+    copias_vectoriais > 0 && !placa_ativa
 }
 
 const FORMATO_DA_CAMADA: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -94,6 +106,7 @@ impl MotionFiltro {
     pub fn liga(&mut self, desenha: bool) -> bool {
         self.desenha = desenha;
         self.ligada = desenha && !self.pilha.is_empty();
+        self.formas_fora &= self.ligada;
         self.ligada
     }
 
@@ -104,13 +117,16 @@ impl MotionFiltro {
     }
 
     /// **O que o cartão do nó `no` diz**: um `fx.filter` fora do fio não filtra nada; um `Each Shape`
-    /// depois de um `Whole Layer` corre na camada.
+    /// depois de um `Whole Layer` corre na camada; e, no último quadro, formas do Motion ficaram fora
+    /// da camada ([`formas_fora_da_camada`]).
     #[must_use]
     pub fn queixa(&self, no: NodeId) -> Option<String> {
         let chave = if self.fora.contains(&no) {
             "app.motion.motion_filter.off_the_wire"
         } else if self.na_camada.contains(&no) {
             "app.motion.motion_filter.after_whole_layer"
+        } else if self.formas_fora && self.pilha.iter().any(|d| d.no == no) {
+            "app.motion.motion_filter.shapes_off_the_layer"
         } else {
             return None;
         };
@@ -256,6 +272,11 @@ impl MotionState {
         if !self.filtro.ligada {
             return false;
         }
+        self.filtro.formas_fora = formas_fora_da_camada(
+            self.pump.vector_instances.len(),
+            e.formas
+                .is_some_and(crate::motion_shape_placa::PlacaDeFormas::ativa),
+        );
         let arte = crate::lei_da_aparencia::a_arte_desenha(self, self.pump.a_lei());
         let linear = mundo_para_pixel(e.camera, e.window, e.scene_viewport);
         let resolve = |pilha: &[NoDoFiltro]| -> Vec<FxOpGpu> {

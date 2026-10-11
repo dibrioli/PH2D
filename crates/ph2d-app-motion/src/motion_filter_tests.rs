@@ -156,3 +156,46 @@ fn the_filter_labels_are_unique_where_they_meet() {
         }
     }
 }
+
+/// ⭐ **Formas fora da camada: o cartão de cada filtro di-lo** (doc 129 §5.7) — a foto da `=135`
+/// com a saída em `Add` mostrou os discos sem relevo nem sombra, e nada o dizia. A lei: há cópias
+/// vectoriais e a placa não as desenhou.
+#[test]
+fn shapes_drawn_off_the_layer_are_named_on_every_filter_card() {
+    assert!(formas_fora_da_camada(3, false));
+    assert!(!formas_fora_da_camada(3, true), "a placa desenhou-as");
+    assert!(!formas_fora_da_camada(0, false), "sem formas, nada a dizer");
+
+    let mut g = Graph::new();
+    let um = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
+    let dois = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
+    let solto = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
+    let saida = g.add_node("motion.output".to_string());
+    let liga = |g: &mut Graph, de, para| {
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (de, 0),
+            to: (para, 0),
+            delayed: false,
+        })
+        .expect("liga")
+    };
+    liga(&mut g, um, dois);
+    liga(&mut g, dois, saida);
+    let mut f = MotionFiltro::default();
+    f.prepara(&g);
+    assert!(f.liga(true));
+    assert!(f.queixa(um).is_none(), "sem formas fora, o cartão cala");
+    f.formas_fora = true;
+    for no in [um, dois] {
+        let q = f.queixa(no).expect("o cartão diz");
+        assert!(q.contains("Blend") && q.contains("skip"), "{q}");
+    }
+    let q = f.queixa(solto).expect("o solto diz o seu");
+    assert!(
+        q.contains("Not on the wire"),
+        "a queixa de fora do fio vem primeiro: {q}"
+    );
+    // O quadro seguinte sem o Motion na cena apaga-a.
+    assert!(!f.liga(false));
+    assert!(f.queixa(um).is_none());
+}

@@ -188,3 +188,15 @@ fn no_fields_or_no_selection_means_no_card() {
     b.card.clear();
     assert!(placed_in_bars(&b, AREA, &[], RailButtonSize::Small, &mut ts).is_none());
 }
+
+/// O lado de um OBSTÁCULO nunca troca a barra pela seleção: à direita não cabe, a esquerda está
+/// tapada de alto a baixo, e o lado direito do obstáculo cai em cima da seleção.
+#[test]
+fn the_card_never_trades_an_obstacle_for_the_selection() {
+    let area = Rect::new(0.0, 0.0, 380.0, 800.0);
+    let sel = Rect::new(100.0, 300.0, 200.0, 90.0);
+    let wall = Rect::new(0.0, 0.0, 95.0, 800.0);
+    let r = card_rect(area, sel, [84.0, 200.0], &[wall]);
+    assert!(!overlaps(sel, r), "o cartão {r:?} cobre a seleção");
+    assert!(inside(area, r));
+}

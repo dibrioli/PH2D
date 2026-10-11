@@ -403,7 +403,7 @@ pub(crate) fn caixa_do_quad(t: Affine, w: u32, h: u32) -> ph2d_vector::Rect {
 
 #[cfg(test)]
 #[path = "motion_shape_mistura_gpu_tests.rs"]
-mod gpu_tests;
+pub(crate) mod gpu_tests;
 
 #[cfg(test)]
 #[path = "motion_shape_mistura_filtro_tests.rs"]

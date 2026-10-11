@@ -36,7 +36,8 @@ fn o_enxame_vai_a_placa_com_as_duas_saidas() {
     for &s in &sinks {
         assert!(!crate::motion_bridge::gpu::sink_mistura_em_grupo(
             &m.doc.graph,
-            s
+            s,
+            false
         ));
     }
 }

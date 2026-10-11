@@ -68,7 +68,7 @@ fn the_filter_and_the_lens_sit_on_the_wire_and_pass_it_through() {
 #[test]
 fn the_scene_opens_with_a_bevel_on_each_shape_and_a_shadow_on_the_layer() {
     let (mut m, cena) = cozida(2);
-    m.filtro.prepara(&m.doc.graph);
+    m.filtro.prepara(&m.doc.graph, &m.sinks);
     let pilha = m.filtro.pilha();
     assert_eq!(
         pilha.iter().map(|d| d.no).collect::<Vec<_>>(),
@@ -95,7 +95,7 @@ fn an_each_shape_after_a_whole_layer_says_so_on_its_card() {
     m.doc
         .graph
         .set_param(cena.camada, ph2d_node_fx_filter::param::SCOPE, 0.0);
-    m.filtro.prepara(&m.doc.graph);
+    m.filtro.prepara(&m.doc.graph, &m.sinks);
     assert!(m.filtro.queixa(cena.forma).is_none());
     let q = m.filtro.queixa(cena.camada).expect("o cartão diz");
     assert!(q.contains("Whole Layer"), "{q}");
@@ -109,7 +109,7 @@ fn every_photo_variant_is_the_step_it_names() {
         let mut m = MotionState::new();
         let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
         assert!(passo(&mut m.doc.graph, &cena, passo_), "{passo_}");
-        m.filtro.prepara(&m.doc.graph);
+        m.filtro.prepara(&m.doc.graph, &m.sinks);
         let pilha = m.filtro.pilha().to_vec();
         let (f, c) = ph2d_node_fx_filter::partition(&pilha);
         let partes = (f.len(), c.len());
@@ -226,4 +226,51 @@ fn every_row_the_script_names_is_on_the_filter_card() {
         .map(|c| ph2d_i18n::tr(c))
         .collect();
     assert_eq!(opcoes, ["Each Shape", "Whole Layer"]);
+}
+
+/// ⭐⭐ **W4b — com a camada filtrada ligada, o `Output` em `Add` com o CENÁRIO não agrupa** (doc 129
+/// §3.5), medido na bomba do PRODUTO sobre a `=135`: as formas saem sem modo (a placa leva-as e a
+/// camada pousa somando) e as sprites sem os bits de mistura (senão o `Add` corria DUAS vezes — na
+/// camada e na pousa). ⚠️ Os dois controlos: sem a camada o grupo de sempre, e com ela o
+/// `Everything` continua a agrupar (mistura ENTRE as cópias, dentro da camada).
+#[test]
+fn a_scene_blend_with_the_layer_on_lowers_without_a_group() {
+    for (isolada, alcance, agrupa) in [(false, 2.0, true), (true, 2.0, false), (true, 0.0, true)] {
+        let mut m = MotionState::new();
+        let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+        m.sinks = vec![cena.saida];
+        let g = &mut m.doc.graph;
+        g.set_param(cena.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+        g.set_param(cena.saida, ph2d_eval_motion::SINK_BLEND_WITH_PARAM, alcance);
+        m.pump.isola_na_camada(isolada);
+        let scopes = ph2d_nodegraph::cook::TimeScopes::new();
+        for t in 0..2 {
+            #[expect(clippy::cast_precision_loss, reason = "um tique")]
+            crate::motion_externals::publish_all(&mut m, t as f64 / 60.0);
+            let sinks = m.sinks.clone();
+            let _ = m.pump.advance_or_scrub_scoped(
+                &m.doc.graph,
+                &m.registry,
+                &sinks,
+                t,
+                |t| t as f64 / 60.0,
+                m.default_uv_rect,
+                m.default_size,
+                &scopes,
+            );
+        }
+        let caso = format!("camada {isolada}, alcance {alcance}");
+        assert!(!m.pump.vector_instances.is_empty(), "{caso}: a =135 tem formas");
+        let tag = if agrupa { 1 } else { 0 };
+        assert!(
+            m.pump.vector_instances.iter().all(|v| v.mistura.blend == tag),
+            "{caso}: as formas deviam levar o tag {tag}"
+        );
+        assert!(
+            m.pump.instances.iter().all(|i| {
+                ph2d_render::RenderInstance::unpack_blend(i.flip_uv) == 0
+            }),
+            "{caso}: uma sprite leva o modo — ele correria na camada E na pousa"
+        );
+    }
 }

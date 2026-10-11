@@ -40,6 +40,22 @@ pub fn retangulo_da_camada(cena: [u32; 4], janela: (u32, u32), ops: &[FxOpGpu]) 
 }
 
 impl FxStackPass {
+    /// O [`Self::run`] (fonte com alfa RETO — o intermediário do Vello) com a âncora `origem` do
+    /// ruído: as formas do Motion que vão à camada pelo Vello (doc 129 §3.5).
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_straight(
+        &mut self,
+        gpu: &GpuContext,
+        src: &wgpu::Texture,
+        dst: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        ops: &[FxOpGpu],
+        origem: Origem<'_>,
+    ) {
+        self.run_with(gpu, src, [0, 0], dst, w, h, ops, &[], false, origem);
+    }
+
     /// **A camada pré-multiplicada do Motion, só no retângulo `rect`** de `src` — o [`Self::run_layer`]
     /// lido a partir de `(rect.x, rect.y)`, com o resultado no canto de `dst` (que tem pelo menos
     /// `rect.w × rect.h`). `Origem::Ponto` está em pixels de `src` e é trazido para o retângulo.

@@ -120,6 +120,16 @@ impl MisturaDoSink {
     pub fn tem_camada(&self) -> bool {
         matches!(self.blend, 1 | 3 | 4)
     }
+
+    /// ⭐ **Com a camada filtrada do Motion ligada (`isolada`), o modo deste sink vai à POUSA dela**
+    /// (doc 129 §3.5): misturar só com o CENÁRIO é `f(fundo, S₁ over S₂)` — as cópias juntam-se em
+    /// `Normal` na camada e o `f` aplica-se quando ela pousa. ⇒ o sink não agrupa e desenha sem
+    /// modo, nas duas rotas (a bomba e a placa). `Everything`/`Copies` misturam ENTRE as cópias:
+    /// continuam a agrupar, dentro da camada.
+    #[must_use]
+    pub fn pousa_na_camada(&self, isolada: bool) -> bool {
+        isolada && self.tem_camada() && self.com == BlendWith::Scene
+    }
 }
 
 /// O alcance de um sink, lido pela MESMA leitura arredondada e presa dos outros tags.

@@ -52,6 +52,88 @@ impl BandSource {
     }
 }
 
+/// ⭐ **Como a faixa POUSA no alvo** (doc 129 §3.5, a mistura do `Output` com a camada filtrada do
+/// Motion): a mistura de HARDWARE sobre os bytes crus — o espaço do desenhista, o mesmo em que o
+/// Vello mistura. A lei é a do Vello ([`Self::lei`]): `Soma` = Porter-Duff `plus`
+/// (`Compose::Plus`), `Multiplica`/`Tela` = `Mix` W3C com `SrcOver`, alfa do fundo incluída.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum Pousa {
+    /// O `over` pré-multiplicado de sempre.
+    #[default]
+    Normal,
+    Soma,
+    Multiplica,
+    Tela,
+}
+
+impl Pousa {
+    pub const ALL: [Pousa; 4] = [Pousa::Normal, Pousa::Soma, Pousa::Multiplica, Pousa::Tela];
+
+    /// **A lei**, sobre cores PRÉ-MULTIPLICADAS em `[0, 1]`: `b` o alvo, `s` a faixa.
+    #[must_use]
+    pub fn lei(self, b: [f32; 4], s: [f32; 4]) -> [f32; 4] {
+        let (ab, sa) = (b[3], s[3]);
+        let alfa = sa + ab - sa * ab;
+        let canal = |i: usize| match self {
+            Pousa::Normal => s[i] + b[i] * (1.0 - sa),
+            Pousa::Soma => (s[i] + b[i]).min(1.0),
+            Pousa::Tela => s[i] + b[i] - s[i] * b[i],
+            Pousa::Multiplica => s[i] * (1.0 - ab) + b[i] * (1.0 - sa) + s[i] * b[i],
+        };
+        let a = if self == Pousa::Soma {
+            (sa + ab).min(1.0)
+        } else {
+            alfa
+        };
+        [canal(0), canal(1), canal(2), a]
+    }
+
+    /// Os passes de hardware, por ordem (índices de [`PASSES`]). ⚠️ O `Multiplica` não cabe numa
+    /// equação de mistura só (o termo `s·(1 − αb + b)` não é um factor): o 1.º passe escreve
+    /// `s·b + b·(1 − αs)` sem tocar no alfa, o 2.º soma `s·(1 − αb)` lendo o alfa ORIGINAL do fundo.
+    fn passes(self) -> &'static [usize] {
+        match self {
+            Pousa::Normal => &[0],
+            Pousa::Soma => &[1],
+            Pousa::Tela => &[2],
+            Pousa::Multiplica => &[3, 4],
+        }
+    }
+}
+
+const fn componente(src: wgpu::BlendFactor, dst: wgpu::BlendFactor) -> wgpu::BlendComponent {
+    wgpu::BlendComponent {
+        src_factor: src,
+        dst_factor: dst,
+        operation: wgpu::BlendOperation::Add,
+    }
+}
+
+/// As equações de mistura de cada passe de [`Pousa::passes`] — `(cor, alfa)`.
+const PASSES: [wgpu::BlendState; 5] = {
+    use wgpu::BlendFactor as F;
+    let over = componente(F::One, F::OneMinusSrcAlpha);
+    [
+        wgpu::BlendState { color: over, alpha: over },
+        wgpu::BlendState {
+            color: componente(F::One, F::One),
+            alpha: componente(F::One, F::One),
+        },
+        wgpu::BlendState {
+            color: componente(F::One, F::OneMinusSrc),
+            alpha: over,
+        },
+        wgpu::BlendState {
+            color: componente(F::Dst, F::OneMinusSrcAlpha),
+            alpha: componente(F::Zero, F::One),
+        },
+        wgpu::BlendState {
+            color: componente(F::OneMinusDstAlpha, F::One),
+            alpha: componente(F::OneMinusDstAlpha, F::One),
+        },
+    ]
+};
+
 /// O módulo da colagem: a luz recebida e a conta do tonemap À FRENTE (as mesmas do sprite).
 pub const BAND_BLIT_WGSL: &str = concat!(
     include_str!("shaders/receber.wgsl"),
@@ -60,7 +142,12 @@ pub const BAND_BLIT_WGSL: &str = concat!(
 );
 
 pub struct BandBlit {
-    pipeline: wgpu::RenderPipeline,
+    /// Um pipeline por equação de [`PASSES`]; só o `over` nasce com o passe, os outros no 1.º
+    /// pedido (a colagem do mundo nunca os pede).
+    pipelines: [std::sync::OnceLock<wgpu::RenderPipeline>; PASSES.len()],
+    shader: wgpu::ShaderModule,
+    layout: wgpu::PipelineLayout,
+    target_format: wgpu::TextureFormat,
     bgl: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     uniforms: [wgpu::Buffer; 4],
@@ -137,57 +224,11 @@ impl BandBlit {
             label: Some("ph2d-render band blit shader"),
             source: wgpu::ShaderSource::Wgsl(BAND_BLIT_WGSL.into()),
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("ph2d-render band blit pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: target_format,
-                    // ⚠️ **`One / OneMinusSrcAlpha` — o `over` pré-multiplicado.** O shader entrega
-                    // sempre pré-multiplicado, e o alvo é de formato CRU: ⇒ a mistura acontece
-                    // sobre os bytes codificados, que É o espaço do desenhista.
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                    }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview_mask: None,
-            cache: None,
-        });
+        // ⚠️ **`One / OneMinusSrcAlpha` — o `over` pré-multiplicado.** O shader entrega sempre
+        // pré-multiplicado, e o alvo é de formato CRU: ⇒ a mistura acontece sobre os bytes
+        // codificados, que É o espaço do desenhista.
+        let pipelines = std::array::from_fn(|_| std::sync::OnceLock::new());
+        let _ = pipelines[0].set(pipeline(device, &layout, &shader, target_format, PASSES[0]));
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ph2d-render band blit sampler"),
             mag_filter: wgpu::FilterMode::Nearest,
@@ -223,7 +264,10 @@ impl BandBlit {
             &lut_entradas(&lut_vista, &sampler),
         );
         Self {
-            pipeline,
+            pipelines,
+            shader,
+            layout,
+            target_format,
             bgl,
             sampler,
             uniforms,
@@ -281,6 +325,19 @@ impl BandBlit {
         source: BandSource,
         rect: Option<[u32; 4]>,
     ) {
+        self.blit_pousa(gpu, target, src, source, rect, Pousa::Normal);
+    }
+
+    /// O [`Self::blit_rect`] com a faixa a pousar por `pousa` ([`Pousa::lei`]).
+    pub fn blit_pousa(
+        &self,
+        gpu: &GpuContext,
+        target: &wgpu::TextureView,
+        src: &wgpu::TextureView,
+        source: BandSource,
+        rect: Option<[u32; 4]>,
+        pousa: Pousa,
+    ) {
         let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-render band blit bg"),
             layout: &self.bgl,
@@ -328,13 +385,71 @@ impl BandBlit {
                 pass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0.0, 1.0);
                 pass.set_scissor_rect(x, y, w, h);
             }
-            pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bg, &[]);
             pass.set_bind_group(3, self.luz.ligar(source.recebe_luz()), &[]);
-            pass.draw(0..3, 0..1);
+            // Os passes de um modo partilham o passe de desenho: a mistura do 2.º lê o que o 1.º
+            // escreveu (a ordem das primitivas é garantida).
+            for &i in pousa.passes() {
+                pass.set_pipeline(self.pipelines[i].get_or_init(|| {
+                    pipeline(
+                        &gpu.device,
+                        &self.layout,
+                        &self.shader,
+                        self.target_format,
+                        PASSES[i],
+                    )
+                }));
+                pass.draw(0..3, 0..1);
+            }
         }
         gpu.queue.submit(Some(enc.finish()));
     }
+}
+
+fn pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    shader: &wgpu::ShaderModule,
+    format: wgpu::TextureFormat,
+    blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("ph2d-render band blit pipeline"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("vs_main"),
+            buffers: &[],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("fs_main"),
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(blend),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview_mask: None,
+        cache: None,
+    })
 }
 
 fn lut_entradas<'a>(

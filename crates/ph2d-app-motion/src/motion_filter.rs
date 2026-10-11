@@ -14,15 +14,18 @@
 //! o Motion deixa de se intercalar por z com as sprites da cena. Onion, partículas e barras ficam lá.
 //! ⚠️ **Sem tonemap:** o passe fundido o atravessa, e ele está em BYPASS (`clamp`, gate
 //! `the_layer_skips_a_tonemap_that_is_a_bypass`) — se o AgX ligar, esta camada tem de o seguir.
-//! ⚠️ Formas da rota da CPU (o Vello: um `Output` com `Blend` Add/Multiply/Screen, um `Blend` por
-//! linha, uma geometria que a placa recusa) não estão na placa nem na camada — medido na foto da
-//! `=135` com `PH2D_ACABAMENTO_PASSO=mistura` (doc 129 §5.7). O cartão de cada `Filter` di-lo
-//! ([`formas_fora_da_camada`]); a cura (a mistura na colagem da camada) é a W4b.
+//! ⭐ **A MISTURA do `Output` com a camada** (W4b, doc 129 §3.5 — a lei do After Effects: os efeitos
+//! correm na camada ISOLADA e o modo aplica-se quando ela POUSA): as formas que vão ao Vello (a
+//! mistura em grupo, o `Blend` por linha, a geometria que a placa recusa) são desenhadas DENTRO da
+//! camada ([`MotionFiltro::cena_da_camada`], sem o mundo por baixo), e a camada pousa no mundo com o
+//! modo dos sinks que misturam com o cenário ([`pousa_do_sink`]).
 
 use crate::motion_state::MotionState;
+use ph2d_eval_motion::BlendWith;
 use ph2d_node_fx_filter::NoDoFiltro;
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use ph2d_render::{BandBlit, BandSource, FxOpGpu, FxStackPass, Origem, RenderInstance};
+use ph2d_render::{BandBlit, BandSource, FxOpGpu, FxStackPass, Origem, Pousa, RenderInstance};
+use ph2d_vector::VectorScene;
 
 /// As sprites do Motion no DISPOSITIVO: o buffer do cozimento, quantas, e os runs de textura.
 pub type SpritesDaPlaca<'a> = (&'a wgpu::Buffer, u32, &'a [ph2d_render::GpuTexRun]);
@@ -53,6 +56,8 @@ struct Alvos {
     /// ([`ph2d_render::retangulo_da_camada`]).
     saida: wgpu::Texture,
     saida_view: wgpu::TextureView,
+    /// Os `Each Shape` sobre as formas do Vello (sRGB reto) — nasce no primeiro quadro que o pede.
+    vello_cada: Option<(wgpu::Texture, wgpu::TextureView)>,
 }
 
 struct Placa {
@@ -62,6 +67,8 @@ struct Placa {
     alvos: Option<Alvos>,
     /// As células dos degraus `Each Shape` — nascem no primeiro quadro que as pede.
     celulas: Option<ph2d_fx_cells::Celulas>,
+    /// O Vello da camada (as formas que a placa não leva) — nasce no primeiro quadro que o pede.
+    vello: Option<ph2d_render::VelloPass>,
 }
 
 /// O estado dos filtros entre quadros.
@@ -71,28 +78,69 @@ pub struct MotionFiltro {
     fora: Vec<NodeId>,
     /// Os `Each Shape` depois de um `Whole Layer` (correm na camada).
     na_camada: Vec<NodeId>,
+    /// Como a camada pousa no mundo: um modo por sink, sem repetições, na ordem dos sinks.
+    pousas: Vec<Pousa>,
     desenha: bool,
     ligada: bool,
-    /// No último quadro filtrado, formas do Motion foram desenhadas FORA da camada.
-    formas_fora: bool,
+    /// No último quadro filtrado, formas do Motion foram à camada pelo Vello (sem células).
+    formas_no_vello: bool,
+    /// A cena vectorial do Motion DENTRO da camada (a shell codifica nela em vez de na do quadro).
+    cena: VectorScene,
     placa: Option<Placa>,
 }
 
-/// **Formas do Motion ficaram fora da camada filtrada?** — há cópias vectoriais neste quadro e a
-/// placa (a única fonte de formas da camada) não as desenhou: foram ao Vello.
+/// **Formas do Motion foram à camada pelo VELLO?** — há cópias vectoriais neste quadro e a placa
+/// não as desenhou. Na camada, mas fora das células: um `Each Shape` vê-as como uma peça só.
 #[must_use]
-pub fn formas_fora_da_camada(copias_vectoriais: usize, placa_ativa: bool) -> bool {
+pub fn formas_no_vello(copias_vectoriais: usize, placa_ativa: bool) -> bool {
     copias_vectoriais > 0 && !placa_ativa
+}
+
+/// ⭐ **Como o conteúdo de um sink POUSA no mundo** (doc 129 §3.5): só quem mistura com o CENÁRIO
+/// (`Scene`, `Everything`) pousa com o modo; `Copies` mistura as cópias entre si DENTRO da camada e
+/// pousa em `Normal`. Os tags são os do `motion.output` (`1 Add · 3 Multiply · 4 Screen`); os outros
+/// não têm camada ([`ph2d_eval_motion::MisturaDoSink::tem_camada`]).
+#[must_use]
+pub fn pousa_do_sink(tag: u8, com: BlendWith) -> Pousa {
+    if com == BlendWith::Copies {
+        return Pousa::Normal;
+    }
+    match tag {
+        1 => Pousa::Soma,
+        3 => Pousa::Multiplica,
+        4 => Pousa::Tela,
+        _ => Pousa::Normal,
+    }
 }
 
 const FORMATO_DA_CAMADA: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 impl MotionFiltro {
-    /// **Por quadro, no passo do Motion**: a pilha do fio e os filtros fora dele.
-    pub fn prepara(&mut self, graph: &Graph) {
+    /// **Por quadro, no passo do Motion**: a pilha do fio, os filtros fora dele e a pousa dos sinks.
+    pub fn prepara(&mut self, graph: &Graph, sinks: &[NodeId]) {
         self.pilha = ph2d_node_fx_filter::from_graph(graph);
         self.fora = ph2d_node_fx_filter::fora_do_fio(graph, &self.pilha);
         self.na_camada = ph2d_node_fx_filter::na_camada_apesar_do_scope(&self.pilha);
+        self.pousas.clear();
+        for &s in sinks {
+            let p = pousa_do_sink(
+                ph2d_eval_motion::sink_blend_tag(graph, s),
+                ph2d_eval_motion::sink_blend_with(graph, s),
+            );
+            if !self.pousas.contains(&p) {
+                self.pousas.push(p);
+            }
+        }
+    }
+
+    /// **A cena vectorial do Motion neste quadro, se for à CAMADA** — `desenha` = o Motion está na
+    /// cena (a mesma pergunta do [`Self::liga`], feita antes dele: a shell codifica a cena
+    /// vectorial antes de planear o quadro). `None` = a cena do quadro, a de sempre.
+    pub fn cena_da_camada(&mut self, desenha: bool) -> Option<&mut VectorScene> {
+        (desenha && !self.pilha.is_empty()).then(|| {
+            self.cena.reset();
+            &mut self.cena
+        })
     }
 
     /// A pilha do quadro, na ordem do fio.
@@ -106,7 +154,7 @@ impl MotionFiltro {
     pub fn liga(&mut self, desenha: bool) -> bool {
         self.desenha = desenha;
         self.ligada = desenha && !self.pilha.is_empty();
-        self.formas_fora &= self.ligada;
+        self.formas_no_vello &= self.ligada;
         self.ligada
     }
 
@@ -117,28 +165,44 @@ impl MotionFiltro {
     }
 
     /// **O que o cartão do nó `no` diz**: um `fx.filter` fora do fio não filtra nada; um `Each Shape`
-    /// depois de um `Whole Layer` corre na camada; e, no último quadro, formas do Motion ficaram fora
-    /// da camada ([`formas_fora_da_camada`]).
+    /// depois de um `Whole Layer` corre na camada; e um `Each Shape` vê como UMA peça as formas que,
+    /// no último quadro, foram à camada pelo Vello ([`formas_no_vello`]).
     #[must_use]
     pub fn queixa(&self, no: NodeId) -> Option<String> {
         let chave = if self.fora.contains(&no) {
             "app.motion.motion_filter.off_the_wire"
         } else if self.na_camada.contains(&no) {
             "app.motion.motion_filter.after_whole_layer"
-        } else if self.formas_fora && self.pilha.iter().any(|d| d.no == no) {
-            "app.motion.motion_filter.shapes_off_the_layer"
+        } else if self.formas_no_vello
+            && ph2d_node_fx_filter::partition(&self.pilha)
+                .0
+                .iter()
+                .any(|d| d.no == no)
+        {
+            "app.motion.motion_filter.each_shape_sees_the_vector_path_as_one"
         } else {
             return None;
         };
         Some(ph2d_i18n::tr(chave).to_string())
     }
 
-    fn placa(&mut self, gpu: &ph2d_gpu::GpuContext, tamanho: (u32, u32)) -> &mut Placa {
-        let placa = self.placa.get_or_insert_with(|| Placa {
+    /// A pousa da camada neste quadro.
+    #[must_use]
+    pub fn pousa(&self) -> Pousa {
+        self.pousas.first().copied().unwrap_or_default()
+    }
+
+    fn placa<'p>(
+        placa: &'p mut Option<Placa>,
+        gpu: &ph2d_gpu::GpuContext,
+        tamanho: (u32, u32),
+    ) -> &'p mut Placa {
+        let placa = placa.get_or_insert_with(|| Placa {
             pilha: FxStackPass::new(gpu),
             colagem: BandBlit::new(gpu, FORMATO_DA_CAMADA),
             alvos: None,
             celulas: None,
+            vello: None,
         });
         if placa.alvos.as_ref().is_none_or(|a| a.tamanho != tamanho) {
             placa.alvos = Some(Alvos::new(gpu, tamanho));
@@ -177,6 +241,7 @@ impl Alvos {
             camada,
             saida_view: vista(&saida),
             saida,
+            vello_cada: None,
         }
     }
 }
@@ -272,7 +337,7 @@ impl MotionState {
         if !self.filtro.ligada {
             return false;
         }
-        self.filtro.formas_fora = formas_fora_da_camada(
+        self.filtro.formas_no_vello = formas_no_vello(
             self.pump.vector_instances.len(),
             e.formas
                 .is_some_and(crate::motion_shape_placa::PlacaDeFormas::ativa),
@@ -292,12 +357,15 @@ impl MotionState {
         let (gpu_sprites, cpu) =
             sprites_de(&self.gpu_cook, &self.pump.instances, self.gpu_live, arte);
         let geometrias = &self.placa_geometrias;
+        let pousa = self.filtro.pousa();
+        let no_vello = self.filtro.formas_no_vello.then_some(&self.filtro.cena);
         let Placa {
             pilha,
             colagem,
             alvos,
             celulas,
-        } = self.filtro.placa(e.gpu, tamanho);
+            vello,
+        } = MotionFiltro::placa(&mut self.filtro.placa, e.gpu, tamanho);
         let Some(alvos) = alvos.as_mut() else {
             return false;
         };
@@ -357,6 +425,50 @@ impl MotionState {
                 tamanho,
             });
         }
+        // ⭐ As formas que a placa não leva (a mistura em grupo, o `Blend` por linha, a geometria
+        // recusada): o Vello DENTRO da camada, sem o mundo por baixo (a camada é isolada — o modo do
+        // sink entre as cópias mistura-se só com o que está na camada; com o cenário, na pousa).
+        if let Some(cena) = no_vello {
+            if vello.is_none() {
+                *vello = ph2d_render::VelloPass::new(e.gpu, wgpu::TextureFormat::Rgba8Unorm, tamanho)
+                    .inspect_err(|erro| eprintln!("[motion_filtro] o Vello da camada: {erro}"))
+                    .ok();
+            }
+            let pintou = vello.as_mut().map(|v| {
+                v.render_to_intermediate(e.gpu, cena.inner(), tamanho, ph2d_vector::Color::TRANSPARENT)
+                    .inspect_err(|erro| eprintln!("[motion_filtro] o Vello da camada: {erro}"))
+                    .map(|()| v)
+            });
+            match pintou {
+                Some(Ok(v)) if ops_forma.is_empty() => colagem.blit(
+                    e.gpu,
+                    &alvos.camada_view,
+                    v.intermediate_view(),
+                    BandSource::Vector,
+                ),
+                // ⭐ O Vello não tem células: os `Each Shape` correm sobre o CONJUNTO das formas
+                // dele (o cartão di-lo — [`formas_no_vello`]).
+                Some(Ok(v)) => {
+                    let (tex, vista) = alvos.vello_cada.get_or_insert_with(|| {
+                        let t = ph2d_render::make_output_texture(e.gpu, tamanho.0, tamanho.1);
+                        let v = t.create_view(&wgpu::TextureViewDescriptor::default());
+                        (t, v)
+                    });
+                    let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
+                    pilha.run_straight(
+                        e.gpu,
+                        v.intermediate_texture(),
+                        tex,
+                        tamanho.0,
+                        tamanho.1,
+                        &ops_forma,
+                        origem,
+                    );
+                    colagem.blit(e.gpu, &alvos.camada_view, vista, BandSource::Vector);
+                }
+                _ => {}
+            }
+        }
         // A pilha só no que se VÊ: o retângulo da cena, alargado pelo que ela lê e espalha (doc
         // 129 §5.7 — a 4K, 2,01 → 0,77 ms).
         let (w, h) = tamanho;
@@ -377,12 +489,13 @@ impl MotionState {
             &ops_camada,
             origem,
         );
-        e.band_blit.blit_rect(
+        e.band_blit.blit_pousa(
             e.gpu,
             e.mundo.blend_view(),
             &alvos.saida_view,
             BandSource::Vector,
             Some(rect),
+            pousa,
         );
         true
     }
@@ -410,3 +523,7 @@ fn sprites_de<'a>(
 #[cfg(test)]
 #[path = "motion_filter_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_filter_mistura_gpu_tests.rs"]
+mod mistura_gpu_tests;

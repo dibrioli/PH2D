@@ -387,7 +387,8 @@ fn every_gpu_cook_call_receives_the_style() {
 #[test]
 fn a_rota_da_placa_recusa_um_sink_que_mistura_em_grupo() {
     // ⚠️ Desde o doc 119 W3 a pergunta é feita a CADA saída — basta uma que misture em grupo.
-    let recusa = ".any(|&s| sink_mistura_em_grupo(&motion.doc.graph, s))\n    {\n        return fell(motion, RECUSA_MISTURA_EM_GRUPO);";
+    // ⭐ Desde a W4b do ciclo 20 a cerca pergunta também pela camada filtrada (o `Scene` pousa nela).
+    let recusa = ".any(|&s| sink_mistura_em_grupo(&motion.doc.graph, s, motion.pump.camada_isolada()))\n    {\n        return fell(motion, RECUSA_MISTURA_EM_GRUPO);";
     assert_eq!(
         GPU_BRIDGE.matches(recusa).count(),
         1,

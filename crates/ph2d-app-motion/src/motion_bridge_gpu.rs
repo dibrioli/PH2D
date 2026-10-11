@@ -137,16 +137,22 @@ pub(crate) const RECUSA_ORDEM_ENTRE_SAIDAS: &str =
 pub(crate) const RECUSA_MISTURA_EM_GRUPO: &str = "CPU: o sink mistura EM GRUPO (Add/Multiply/Screen) -- so a cena vectorial sabe o alcance e o tom (doc 118)";
 
 /// **Este sink mistura EM GRUPO?** — a cerca da rota da placa, PURA para uma cena a poder
-/// perguntar sem montar o quadro (a `=13` pergunta-o).
-pub(crate) fn sink_mistura_em_grupo(graph: &Graph, sink: NodeId) -> bool {
+/// perguntar sem montar o quadro (a `=13` pergunta-o). `isolada` = a camada filtrada do Motion
+/// está ligada: o `Scene` vai à pousa dela e não agrupa ([`ph2d_eval_motion::MisturaDoSink::pousa_na_camada`]).
+pub(crate) fn sink_mistura_em_grupo(graph: &Graph, sink: NodeId, isolada: bool) -> bool {
+    let m = mistura_do_sink(graph, sink);
+    m.tem_camada() && !m.pousa_na_camada(isolada)
+}
+
+fn mistura_do_sink(graph: &Graph, sink: NodeId) -> ph2d_eval_motion::MisturaDoSink {
     // ⚠️ O tag numa variável, e não no campo: o gate `every_gpu_cook_call_receives_the_style` conta
     // as ocorrências de `blend` seguido de vírgula neste ficheiro, uma por chamada de cook.
     let tag = ph2d_eval_motion::sink_style(graph, sink).blend;
     ph2d_eval_motion::MisturaDoSink {
         blend: tag,
-        ..ph2d_eval_motion::MisturaDoSink::default()
+        com: ph2d_eval_motion::sink_blend_with(graph, sink),
+        sink: 0,
     }
-    .tem_camada()
 }
 
 /// Os relógios que o device marcha: um tique vira `sub` sub-passadas.
@@ -192,12 +198,20 @@ pub(crate) use dirigidos::{plano_do_produto, valores_dirigidos};
 /// discordavam sempre que alguém mudava a lei da bomba (doc 123 §4).
 pub(crate) fn estilos_das_saidas(motion: &MotionState) -> Vec<ph2d_render::SinkStyle> {
     let lei = motion.pump.a_lei();
+    let isolada = motion.pump.camada_isolada();
     motion
         .sinks
         .iter()
-        .map(|&s| ph2d_render::SinkStyle {
-            so_com_forma: lei,
-            ..ph2d_eval_motion::sink_style(&motion.doc.graph, s)
+        .map(|&s| {
+            let mut estilo = ph2d_render::SinkStyle {
+                so_com_forma: lei,
+                ..ph2d_eval_motion::sink_style(&motion.doc.graph, s)
+            };
+            // O modo vai à pousa da camada — a MESMA regra da bomba.
+            if mistura_do_sink(&motion.doc.graph, s).pousa_na_camada(isolada) {
+                estilo.blend = 0;
+            }
+            estilo
         })
         .collect()
 }
@@ -294,7 +308,7 @@ pub(super) fn cook_gpu(
     if motion
         .sinks
         .iter()
-        .any(|&s| sink_mistura_em_grupo(&motion.doc.graph, s))
+        .any(|&s| sink_mistura_em_grupo(&motion.doc.graph, s, motion.pump.camada_isolada()))
     {
         return fell(motion, RECUSA_MISTURA_EM_GRUPO);
     }

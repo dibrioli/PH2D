@@ -38,7 +38,7 @@ fn a_cena_da_mistura_vai_a_placa() {
     // `=13` em `Add` — que no app ia à CPU. *Um gate que pergunta a metade da decisão aprova a
     // cena pela metade.*
     assert!(
-        !crate::motion_bridge::gpu::sink_mistura_em_grupo(&m.doc.graph, out),
+        !crate::motion_bridge::gpu::sink_mistura_em_grupo(&m.doc.graph, out, false),
         "a =13 abre num modo que mistura EM GRUPO -- esse sink recusa a placa e a cena mostra a \
          CPU; o modo dela tem de ser o `Subtract`"
     );

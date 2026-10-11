@@ -68,7 +68,8 @@ impl crate::App {
                 // ⭐ O filtro do PROJECTO — o MESMO que o `fase_extract_inputs` dá a uma sprite
                 // `Inherit` (doc 118 §8): uma folha não muda de filtro por mudar de média.
                 hero.project.image_filter,
-                vector_scene,
+                // ⭐ Com filtros, na camada do Motion (doc 129 §3.5), e não por cima do mundo.
+                motion.filtro.cena_da_camada(motion_tool_active).unwrap_or(vector_scene),
             );
             // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele é `268 MB` e
             // ficava retida pela vida do processo. Os RECORTES ficam — eles são a resposta

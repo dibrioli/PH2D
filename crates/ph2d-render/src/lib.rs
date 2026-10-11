@@ -116,7 +116,7 @@ pub use camera::{Camera2d, CameraUniform};
 pub use sink_style::{SinkStyle, StyleReach};
 // A ordem canonica de desenho e' uma LEI do produto, e quem escreve linhas que
 // dependem dela (o lowering de Motion) tem de a poder MEDIR sem uma GPU.
-pub use band_blit::{BandBlit, BandSource};
+pub use band_blit::{BandBlit, BandSource, Pousa};
 pub use compositor::Compositor;
 pub use compressed_pipeline::{
     COMPRESSED_TEXTURE_CACHE_BUDGET_MB, CompressedTexturePipeline, CompressedUploadError,

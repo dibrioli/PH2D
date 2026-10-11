@@ -33,25 +33,25 @@ use ph2d_vector::{Affine, VectorScene};
 
 use super::super::{VecPathStore, encode};
 
-const W: u32 = 64;
-const H: u32 = 8;
+pub(crate) const W: u32 = 64;
+pub(crate) const H: u32 = 8;
 /// Os três cinzentos da fixtura, no espaço codificado.
-const B: f32 = 0.6;
-const A1: f32 = 0.5;
-const A2: f32 = 0.3;
+pub(crate) const B: f32 = 0.6;
+pub(crate) const A1: f32 = 0.5;
+pub(crate) const A2: f32 = 0.3;
 /// As colunas lidas: só A · sobreposição · só B · só o fundo.
-const COLUNAS: [u32; 4] = [10, 24, 38, 54];
+pub(crate) const COLUNAS: [u32; 4] = [10, 24, 38, 54];
 /// ⚠️ A barra é de ARREDONDAMENTO: um canal `f32` passa a `u8` uma vez por camada, e há no máximo
 /// duas camadas numa coluna. Os alcances distinguem-se por ≥ `18` bytes nesta fixtura (o
 /// controlo mede-o), logo a barra não pode esconder a troca de um arranjo por outro.
-const BARRA: i32 = 3;
+pub(crate) const BARRA: i32 = 3;
 
-fn try_headless_gpu() -> Option<GpuContext> {
+pub(crate) fn try_headless_gpu() -> Option<GpuContext> {
     GpuContext::new(GpuContext::default_instance(), None).ok()
 }
 
 /// As três leis de mistura que o sink leva à placa (doc 118), por tag.
-fn f(tag: u8, fundo: f32, fonte: f32) -> f32 {
+pub(crate) fn f(tag: u8, fundo: f32, fonte: f32) -> f32 {
     match tag {
         1 => (fundo + fonte).min(1.0),
         3 => fundo * fonte,
@@ -61,7 +61,7 @@ fn f(tag: u8, fundo: f32, fonte: f32) -> f32 {
 }
 
 /// A linha esperada da tabela: `[só A, sobreposição, só B, só fundo]`.
-fn esperado(tag: u8, com: Option<BlendWith>) -> [f32; 4] {
+pub(crate) fn esperado(tag: u8, com: Option<BlendWith>) -> [f32; 4] {
     match com {
         None => [A1, A2, A2, B],
         Some(BlendWith::Everything) => [f(tag, B, A1), f(tag, f(tag, B, A1), A2), f(tag, B, A2), B],
@@ -70,14 +70,14 @@ fn esperado(tag: u8, com: Option<BlendWith>) -> [f32; 4] {
     }
 }
 
-fn byte(x: f32) -> i32 {
+pub(crate) fn byte(x: f32) -> i32 {
     #[allow(clippy::cast_possible_truncation)]
     let v = (x.clamp(0.0, 1.0) * 255.0).round() as i32;
     v
 }
 
 /// Uma cópia de `largura × H` centrada em `cx`, em píxeis (a câmera é a identidade).
-fn copia(
+pub(crate) fn copia(
     cx: f32,
     largura: f32,
     cinza: f32,
@@ -115,7 +115,7 @@ fn solida(cinza: f32) -> crate::motion_leaf_images::Art {
 }
 
 /// Pinta a fixtura pela porta do PRODUTO ([`encode`]) e devolve as quatro colunas (canal R).
-fn mede(
+pub(crate) fn mede(
     pass: &mut VelloPass,
     gpu: &GpuContext,
     tag: u8,

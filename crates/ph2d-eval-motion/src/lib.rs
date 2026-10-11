@@ -195,6 +195,10 @@ pub struct MotionCookPump {
     /// para o estilo. ⚠️ **Um segundo consumidor desta bomba herda o neutro por construção**, e é
     /// isso que o gate `uma_bomba_nasce_neutra_e_o_motion_e_que_liga` afirma.
     so_com_forma: bool,
+    /// ⭐ **A camada filtrada do Motion está ligada** (doc 129 §3.5): um sink que mistura só com o
+    /// CENÁRIO (`Scene`) não agrupa — as cópias juntam-se em `Normal` na camada e o modo aplica-se
+    /// quando ela pousa. Ver [`Self::isola_na_camada`].
+    camada_isolada: bool,
 }
 
 mod cook_target;
@@ -247,7 +251,19 @@ impl MotionCookPump {
             separacoes: 0,
             ultimo_relatorio: ph2d_contact::passe::Relatorio::default(),
             so_com_forma: false,
+            camada_isolada: false,
         }
+    }
+
+    /// Liga a camada isolada — ver o campo `camada_isolada`. Por quadro, pelo dono dos filtros.
+    pub fn isola_na_camada(&mut self, isolada: bool) {
+        self.camada_isolada = isolada;
+    }
+
+    /// A camada isolada que esta bomba carrega — a rota da placa pergunta-a aqui (uma fonte só).
+    #[must_use]
+    pub fn camada_isolada(&self) -> bool {
+        self.camada_isolada
     }
 
     /// Liga ou desliga a lei do dono NESTA bomba — ver [`Self::so_com_forma`].
@@ -498,7 +514,7 @@ impl MotionCookPump {
                                 // ⚠️ Uma leitura, dois lowerings: eles TÊM de receber o MESMO
                                 // estilo, e perguntá-lo duas vezes é como um deles passa a ler
                                 // outra coisa no dia em que a porta ganhar um campo.
-                                let estilo = ph2d_render::SinkStyle {
+                                let mut estilo = ph2d_render::SinkStyle {
                                     so_com_forma,
                                     ..sink_style(graph, sink)
                                 };
@@ -506,11 +522,15 @@ impl MotionCookPump {
                                 // [`MisturaDoSink`]. O lowering não o conhece; aqui o sink
                                 // inteiro é baixado, e é o único sítio que sabe as três
                                 // coisas ao mesmo tempo.
-                                let mistura = MisturaDoSink {
+                                let mut mistura = MisturaDoSink {
                                     blend: estilo.blend,
                                     com: sink_blend_with(graph, sink),
                                     sink: indice_do_sink as u32,
                                 };
+                                if mistura.pousa_na_camada(self.camada_isolada) {
+                                    estilo.blend = 0;
+                                    mistura.blend = 0;
+                                }
                                 let antes = self.vector_instances.len();
                                 if mistura.tem_camada() {
                                     // ⭐⭐⭐ **Um sink que mistura em grupo vai INTEIRO ao Vello**

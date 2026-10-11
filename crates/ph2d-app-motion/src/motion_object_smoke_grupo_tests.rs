@@ -52,7 +52,7 @@ fn as_celulas_em_grupo_recusam_a_placa() {
     let sinks = build(&mut m.doc.graph, "Object");
     let em_grupo = sinks
         .iter()
-        .filter(|&&s| crate::motion_bridge::gpu::sink_mistura_em_grupo(&m.doc.graph, s))
+        .filter(|&&s| crate::motion_bridge::gpu::sink_mistura_em_grupo(&m.doc.graph, s, false))
         .count();
     assert_eq!(em_grupo, 6, "tres alcances x duas medias");
 }

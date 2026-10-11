@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn without_a_filter_nothing_changes() {
     let mut f = MotionFiltro::default();
-    f.prepara(&Graph::new());
+    f.prepara(&Graph::new(), &[]);
     assert!(!f.liga(true));
     assert!(f.pilha().is_empty());
 }
@@ -157,18 +157,20 @@ fn the_filter_labels_are_unique_where_they_meet() {
     }
 }
 
-/// ⭐ **Formas fora da camada: o cartão de cada filtro di-lo** (doc 129 §5.7) — a foto da `=135`
-/// com a saída em `Add` mostrou os discos sem relevo nem sombra, e nada o dizia. A lei: há cópias
-/// vectoriais e a placa não as desenhou.
+/// ⭐ **Formas pelo Vello: o cartão de cada `Each Shape` di-lo** (doc 129 §3.5) — desde a W4b elas
+/// estão NA camada (o `Whole Layer` filtra-as), mas fora das células: um `Each Shape` vê-as como uma
+/// peça só. A lei: há cópias vectoriais e a placa não as desenhou; só os cartões `Each Shape` falam.
 #[test]
-fn shapes_drawn_off_the_layer_are_named_on_every_filter_card() {
-    assert!(formas_fora_da_camada(3, false));
-    assert!(!formas_fora_da_camada(3, true), "a placa desenhou-as");
-    assert!(!formas_fora_da_camada(0, false), "sem formas, nada a dizer");
+fn shapes_drawn_by_the_vector_path_are_named_on_every_each_shape_card() {
+    assert!(formas_no_vello(3, false));
+    assert!(!formas_no_vello(3, true), "a placa desenhou-as");
+    assert!(!formas_no_vello(0, false), "sem formas, nada a dizer");
 
     let mut g = Graph::new();
     let um = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
     let dois = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
+    let inteira = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
+    g.set_param(inteira, ph2d_node_fx_filter::param::SCOPE, 1.0);
     let solto = g.add_node(ph2d_node_fx_filter::TYPE_NAME.to_string());
     let saida = g.add_node("motion.output".to_string());
     let liga = |g: &mut Graph, de, para| {
@@ -180,16 +182,21 @@ fn shapes_drawn_off_the_layer_are_named_on_every_filter_card() {
         .expect("liga")
     };
     liga(&mut g, um, dois);
-    liga(&mut g, dois, saida);
+    liga(&mut g, dois, inteira);
+    liga(&mut g, inteira, saida);
     let mut f = MotionFiltro::default();
-    f.prepara(&g);
+    f.prepara(&g, &[]);
     assert!(f.liga(true));
-    assert!(f.queixa(um).is_none(), "sem formas fora, o cartão cala");
-    f.formas_fora = true;
+    assert!(f.queixa(um).is_none(), "sem formas pelo Vello, o cartão cala");
+    f.formas_no_vello = true;
     for no in [um, dois] {
         let q = f.queixa(no).expect("o cartão diz");
-        assert!(q.contains("Blend") && q.contains("skip"), "{q}");
+        assert!(q.contains("Blend") && q.contains("one piece"), "{q}");
     }
+    assert!(
+        f.queixa(inteira).is_none(),
+        "o `Whole Layer` filtra as formas do Vello — o cartão dele cala"
+    );
     let q = f.queixa(solto).expect("o solto diz o seu");
     assert!(
         q.contains("Not on the wire"),
@@ -198,4 +205,76 @@ fn shapes_drawn_off_the_layer_are_named_on_every_filter_card() {
     // O quadro seguinte sem o Motion na cena apaga-a.
     assert!(!f.liga(false));
     assert!(f.queixa(um).is_none());
+}
+
+/// ⭐⭐ **A pousa e a camada concordam em todo tag** (doc 129 §3.5): um modo com pousa é um modo com
+/// camada ([`ph2d_eval_motion::MisturaDoSink::tem_camada`]) e o MESMO do Vello (a tradução do
+/// codificador das formas) — senão a camada pousava num modo e as cópias misturavam-se noutro.
+/// `Copies` pousa sempre em `Normal` (mistura só entre as cópias).
+#[test]
+fn the_landing_mode_and_the_group_layer_agree_on_every_tag() {
+    for tag in 0..=u8::MAX {
+        let m = ph2d_eval_motion::MisturaDoSink {
+            blend: tag,
+            ..Default::default()
+        };
+        for com in BlendWith::ALL {
+            let p = pousa_do_sink(tag, com);
+            let esperado = m.tem_camada() && com != BlendWith::Copies;
+            assert_eq!(p != Pousa::Normal, esperado, "tag {tag} {com:?}: {p:?}");
+        }
+    }
+    let vello = |tag| crate::motion_shape_gen::mistura::mistura_vello(tag);
+    let par = |p: Pousa| match p {
+        Pousa::Soma => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::Plus),
+        Pousa::Multiplica => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Multiply, ph2d_vector::Compose::SrcOver),
+        Pousa::Tela => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Screen, ph2d_vector::Compose::SrcOver),
+        Pousa::Normal => ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver),
+    };
+    for tag in [1u8, 3, 4] {
+        assert_eq!(
+            vello(tag),
+            Some(par(pousa_do_sink(tag, BlendWith::Scene))),
+            "tag {tag}: a pousa e o Vello traduzem o modo de maneiras diferentes"
+        );
+    }
+}
+
+/// ⭐⭐ **Só o `Scene` deixa de agrupar, e só com a camada ligada** (doc 129 §3.5) — a regra que a
+/// bomba e a rota da placa perguntam ([`ph2d_eval_motion::MisturaDoSink::pousa_na_camada`]).
+#[test]
+fn only_a_scene_blend_goes_to_the_landing_and_only_with_the_layer() {
+    for tag in 0..=u8::MAX {
+        for com in BlendWith::ALL {
+            let m = ph2d_eval_motion::MisturaDoSink {
+                blend: tag,
+                com,
+                sink: 0,
+            };
+            assert!(!m.pousa_na_camada(false), "sem camada nada muda");
+            assert_eq!(
+                m.pousa_na_camada(true),
+                m.tem_camada() && com == BlendWith::Scene,
+                "tag {tag} {com:?}"
+            );
+        }
+    }
+}
+
+/// A pousa vem dos SINKS: um `Output` em `Add` com o cenário pousa em `Soma`; sem sinks, `Normal`.
+#[test]
+fn the_landing_comes_from_the_sinks() {
+    let mut g = Graph::new();
+    let saida = g.add_node("motion.output".to_string());
+    let mut f = MotionFiltro::default();
+    f.prepara(&g, &[saida]);
+    assert_eq!(f.pousa(), Pousa::Normal, "o `Output` nasce sem mistura");
+    g.set_param(saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+    f.prepara(&g, &[saida]);
+    assert_eq!(f.pousa(), Pousa::Soma, "`Add` com tudo pousa somando");
+    g.set_param(saida, ph2d_eval_motion::SINK_BLEND_WITH_PARAM, 1.0);
+    f.prepara(&g, &[saida]);
+    assert_eq!(f.pousa(), Pousa::Normal, "`Copies` mistura dentro da camada");
+    f.prepara(&g, &[]);
+    assert_eq!(f.pousa(), Pousa::Normal);
 }

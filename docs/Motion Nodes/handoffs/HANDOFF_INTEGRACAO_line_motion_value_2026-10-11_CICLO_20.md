@@ -223,3 +223,9 @@ deixa de recusar a cena: a `=114` e as `=121`–`=123` com `Collide` vão à rot
 a `6e-8`. ⚠️ **Para o integrador:** a `ph2d-gpu-cook` ganha a dependência `ph2d-contact` (aresta
 interna, nenhum pacote externo); `GpuCook` ganha um campo APENDADO (`passe`) e duas portas públicas
 (`set_passe`, `passe_correu`); `lib.rs` fica a `695/700` linhas.
+Smoke do dono OK (11/10). Depois dele (`4a46078e26`): até `1 024` peças o passe corre num SÓ
+GRUPO (a cadeia de 16 peças a 1024 varreduras: `116 → 11,3 ms`) e o `Relatorio` sai da placa sem
+espera para o perfilador. ⚠️ **Para o integrador:** a bomba (`ph2d-eval-motion`) troca o campo
+`taps_por_tique` por `armadas: taps::Armadas` (o `lib.rs` fica em `698/700`) e ganha duas portas
+públicas APENDADAS em `taps.rs` (`set_sinks_do_desenho`, `publica_relatorio`). Portão:
+`nextest-impacted` `4 647/4 647`, clippy/fmt limpos, censos `117/117`, machete limpo.

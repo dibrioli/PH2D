@@ -58,7 +58,7 @@ o relógio só vale a ordem). Os mais lentos DEPOIS: `o_oclusor_fino_faz_a_sombr
 - Fotos: [`fotos_W5f/cena7_antes_quatro_bolas.png`](fotos_W5f/cena7_antes_quatro_bolas.png) ·
   [`fotos_W5f/cena7_onda_do_flip.png`](fotos_W5f/cena7_onda_do_flip.png).
 
-## 3. O smoke do dono — item 2 («app demorando de abrir») — MEDIDO, cura por fazer (1.ª tarefa da W5g)
+## 3. O smoke do dono — item 2 («app demorando de abrir») — MEDIDO, cura por fazer (W5g, DEPOIS do F5 — §4)
 
 **Régua** (`EXIT_AFTER_FRAMES=3`, lançar → 3 quadros → sair, tela virtual, 4 variantes × 3 blocos
 intercalados, o mínimo; roteiro derivado do `fotografa_cena.sh` com `FOTO_HOME_DE`):
@@ -79,7 +79,13 @@ dividir os 3,5 s entre `naga` e driver (o `~/.cache/nvidia` já guarda o driver)
 `PipelineCache` persistida em disco encurta o tempo até a luz acender. Portão: com o modo em fundo o 1.º
 quadro volta em < 100 ms e o solver chega em N quadros; mutação: o modo em fundo síncrono reprova.
 
-## 4. Item 3 (cena 8, relevo) — sem mudança: F5, ÚLTIMO na fila por ordem do dono.
+## 4. ⛔ ORDEM NOVA DO DONO (11/10, 17h35) — a W5g começa pelo F5 (o miolo das formas)
+
+O dono viu a cena 7 nova: «o objeto superior [a onda] ficou bom. Os demais continuam ruins» (a foto dele
+chegou corrompida — CRC no PNG). Os discos mostram o defeito do relevo da cena 8: a fatia reta do centro
+à borda e a fronteira acesa/escura em degraus — o F5 do plano (o interior pelo exterior mais próximo, a
+fase da grade; BUGS §2). Perguntado, o dono escolheu: **«bolas e relevo primeiro»** — o F5 sai do fim da
+fila e passa À FRENTE do item 2 (a abertura). A W5g: F5 (cenas 7 e 8, mais a 5 e a 6), depois o §3.
 
 ## Smoke do dono (o que já dá para ver)
 

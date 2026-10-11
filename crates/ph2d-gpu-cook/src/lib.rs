@@ -68,6 +68,8 @@ mod ligacoes;
 pub mod lower;
 pub mod lower_forma;
 pub use formas::GpuFormas;
+/// O passe de separação na placa (doc 130).
+pub mod passe_na_placa;
 pub mod plan;
 pub mod reduce;
 // PUBLIC for one reason, written here so it is not "tidied" back: the naga sweep
@@ -234,6 +236,7 @@ impl GpuCook {
         self.stream_op_hold_bufs.clear();
         self.pool.reclaim();
         self.vira_as_ligacoes();
+        self.passe.larga();
 
         // As costuras que atravessam — e as que NÃO voltam a atravessar (ciclo 8, W1).
         let uploaded = self.enviar_costuras(gpu, boundary_streams);

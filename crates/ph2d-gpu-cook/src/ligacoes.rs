@@ -188,6 +188,7 @@ impl crate::GpuCook {
         if let Some(g) = &self.grid {
             g.vira();
         }
+        self.passe.vira();
     }
 
     /// **Esquece todas as ligações guardadas** — o próximo cozimento recria-as como antes do doc

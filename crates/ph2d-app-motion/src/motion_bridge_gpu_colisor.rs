@@ -24,10 +24,39 @@ use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 pub(super) const RECUSA_COLISOR: &str =
     "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contatos (doc 109)";
 
-/// A frase da recusa do PASSE automático (doc 115 W5/§33) — a única em que a divergência não é
-/// entre dois kernels mas entre *haver um passe* e *não haver nenhum*.
+/// A frase da recusa do PASSE automático (doc 115 §33, doc 130 §5) — desde o doc 130 só quando
+/// alguma peça declara e NENHUMA corrente de sink chegou à placa com a coluna do colisor: a
+/// divergência seria entre *haver um passe* e *não haver nenhum*.
 pub(super) const RECUSA_PASSE: &str =
-    "CPU: uma peca declara colisor (Collide) -- a separacao automatica corre na CPU (doc 115)";
+    "CPU: uma peca declara colisor (Collide) e nenhuma saida chegou a placa com ele (doc 130)";
+
+/// As varreduras do passe de cada sink, na ordem de `motion.sinks` (a mesma dos estilos) — a
+/// MESMA porta que a CPU lê ([`ph2d_eval_motion::sink_collide_sweeps`]).
+pub(super) fn varreduras_do_passe(motion: &MotionState) -> Vec<u32> {
+    motion
+        .sinks
+        .iter()
+        .map(|&s| ph2d_eval_motion::sink_collide_sweeps(&motion.doc.graph, s) as u32)
+        .collect()
+}
+
+/// ⭐ **O passe na placa é um estágio que DESPACHA** (doc 130): uma cena cujo único trabalho de
+/// placa é separar o que o sink desenha (a pilha `=114`: tudo a montante é `sim.step`, na CPU) vai
+/// à rota híbrida — a separação de centenas de peças é o custo, não o lowering. Uma porta só, que o
+/// `cook_gpu` e o censo de rota chamam.
+pub(crate) fn estagios_que_despacham(
+    plan: &ph2d_gpu_cook::GpuPlan,
+    kernels: &dyn ph2d_nodegraph::gpu::KernelResolver,
+    declara: bool,
+) -> usize {
+    plan.dispatching_stages(kernels) + usize::from(declara)
+}
+
+/// ⭐ **A cerca do fim** (doc 130 §5): a CPU disse que alguma peça declara, o cozimento na placa
+/// correu, e nenhum sink chegou lá com a coluna — a placa desenharia sobreposto o que a CPU separa.
+pub(super) fn cerca_do_passe(motion: &MotionState, declara: bool) -> bool {
+    declara && motion.gpu_live && motion.gpu_cook.passe_correu() == 0
+}
 
 /// ⭐⭐⭐ **ALGUMA PEÇA DECLARA O COLISOR NESTE QUADRO?** (doc 115 §33) — o `Collide` RESOLVIDO (um
 /// fio conta) de todo nó que o registo diz declarar por interruptor
@@ -44,7 +73,7 @@ pub(super) const RECUSA_PASSE: &str =
 /// ⚠️ **E um objecto SEM o botão continua a cozer no dispositivo** — a membrana já não declara
 /// nada, e é o cartão que decide. A recusa é barata por MEDIÇÃO: a `8` varreduras a separação de
 /// centenas de peças custa `12,4 %` de um quadro e o cozimento inteiro na CPU `0,02 %` (doc 115 §11).
-pub(super) fn peca_declara_colisor(motion: &mut MotionState, seconds: f64) -> bool {
+pub(crate) fn peca_declara_colisor(motion: &mut MotionState, seconds: f64) -> bool {
     let declarantes: Vec<(
         ph2d_nodegraph::graph::NodeId,
         &'static NodeManifest,

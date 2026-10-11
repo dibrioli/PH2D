@@ -52,6 +52,7 @@ mod ligacoes_de_porta_template;
 mod ligacoes_guardadas;
 mod measure_static_orbit;
 mod node_key_uniform;
+mod passe_na_placa;
 mod placa;
 mod plan_analysis;
 mod plan_da_uniao;

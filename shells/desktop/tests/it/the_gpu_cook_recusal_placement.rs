@@ -83,7 +83,8 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
         "o ritmo do grafo tem de ser lido ANTES do plano (substeps@{substeps} vs plan@{plan})"
     );
     // ⭐ doc 115 §33: a peça que declara colisor (o `Collide` da forma ou do objecto) arma o passe
-    // da CPU — e recusa ANTES do plano, pela mesma razão das formas.
+    // — e é perguntada ANTES do plano, pela mesma razão das formas (doc 130: a resposta já não
+    // recusa, arma a cerca do fim do cozimento).
     let colisor = body.find("peca_declara_colisor(").expect(
         "cook_gpu consulta a cerca do passe automatico — sem ela a mesma cena sairia separada na \
          CPU e sobreposta na placa",

@@ -14,6 +14,7 @@ bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
+ph2d-contact = { path = "../ph2d-contact" }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }  # o sweep do naga DERIVA o registry em vez de o enumerar

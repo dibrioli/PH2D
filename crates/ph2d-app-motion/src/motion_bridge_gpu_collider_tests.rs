@@ -31,19 +31,18 @@ fn fonte_na_saida(tipo: &str, collide: Option<f32>) -> (MotionState, NodeId) {
     (m, fonte)
 }
 
-/// ⭐⭐⭐ **A CERCA DO PASSE AUTOMÁTICO: toda peça que declara recusa o dispositivo, e só ela**
-/// (doc 115 §33).
+/// ⭐⭐⭐ **A PERGUNTA DO PASSE AUTOMÁTICO: toda peça que declara a arma, e só ela** (doc 115 §33).
 ///
-/// O passe corre no fim do cozimento **da CPU** e arma-se sozinho; na rota do dispositivo não existe
-/// corrente de CPU para separar. ⇒ a pergunta é só *«alguma peça declara?»*, pelos DOIS cartões que
-/// têm o botão.
+/// Desde o doc 130 o passe corre também NA PLACA, e a resposta deixou de recusar: arma a cerca do
+/// fim do cozimento ([`super::cerca_do_passe`]). A pergunta continua a ser só *«alguma peça
+/// declara?»*, pelos DOIS cartões que têm o botão.
 ///
 /// ⚠️ **A tabela inteira, com os controlos:** cada cartão desligado (e sem override) **não** recusa —
 /// ⭐ é a frase que a W1 escreveu e que continua a valer: *«um objecto SEM colisor tem de continuar a
 /// cozer no dispositivo — senão a cerca derruba toda cena com um Sprite e o §0.0 deixa o caminho
 /// lento definir o produto»*. E as varreduras do sink **sozinhas** não armam nada.
 #[test]
-fn uma_peca_que_declara_recusa_o_dispositivo() {
+fn uma_peca_que_declara_arma_o_passe() {
     let casos = [
         // (fonte, collide, recusa?)
         ("source.shape", Some(1.0), true),
@@ -71,24 +70,28 @@ fn uma_peca_que_declara_recusa_o_dispositivo() {
     assert!(!peca_declara_colisor(&mut MotionState::new(), 0.0));
 }
 
-/// ⛔⛔⛔ **O FIO da cerca do passe** — os gates acima chamam a porta, e **cortar o `return` no
-/// `cook_gpu` deixa-os todos verdes** (*um gate que chama a função em vez de percorrer a rota afirma
-/// que a lei existe, nunca que o produto a usa*). A metade que o CI corre é o despacho lido por
-/// `include_str!`; a que percorre a rota é o irmão `#[ignore]` abaixo, com a placa.
+/// ⛔⛔⛔ **O FIO da cerca do passe** (doc 130 §5) — os gates acima chamam a porta, e **cortar o
+/// `return` no `cook_gpu` deixa-os todos verdes** (*um gate que chama a função em vez de percorrer a
+/// rota afirma que a lei existe, nunca que o produto a usa*). A metade que o CI corre é o despacho
+/// lido por `include_str!`: a pergunta ANTES do plano, as varreduras entregues à placa, e a cerca
+/// do fim nas DUAS rotas (a inteira e a híbrida). A que percorre a rota é o irmão `#[ignore]`.
 #[test]
 fn a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento() {
     const PONTE: &str = include_str!("motion_bridge_gpu.rs");
-    let despacho = PONTE
-        .split_once("if peca_declara_colisor(motion, target as f64 * fixed_dt)")
-        .map(|(_, resto)| resto)
-        .expect(
-            "o `cook_gpu` deixou de PERGUNTAR se alguma peca declara colisor — a mesma cena \
-             sairia separada na CPU e sobreposta na placa (doc 115 §33)",
-        );
-    let ate_ao_fecho = despacho.split_once('}').map(|(x, _)| x).unwrap_or("");
-    assert!(
-        ate_ao_fecho.contains("return fell(motion, RECUSA_PASSE)"),
-        "a cerca e' perguntada e a resposta nao SAI para a CPU: {ate_ao_fecho:?}"
+    let (antes, depois) = PONTE
+        .split_once("let declara = peca_declara_colisor(motion, target as f64 * fixed_dt);")
+        .expect("o `cook_gpu` deixou de PERGUNTAR se alguma peca declara colisor (doc 115 §33)");
+    assert!(antes.contains("fn cook_gpu("), "a pergunta e' do `cook_gpu`");
+    let plano = depois.find("plano_do_produto(").expect("o cook_gpu planeia");
+    let passe = depois
+        .find("motion.gpu_cook.set_passe(colisor::varreduras_do_passe(motion));")
+        .expect("as varreduras do cartao Output chegam a placa — sem elas o passe nao corre");
+    assert!(passe < plano, "as varreduras entregam-se antes do cozimento");
+    let cerca = "if colisor::cerca_do_passe(motion, declara) {\n                return fell(motion, RECUSA_PASSE);";
+    assert_eq!(
+        depois.matches(cerca).count(),
+        2,
+        "a cerca do fim tem de SAIR para a CPU nas duas rotas (inteira e hibrida)"
     );
     // ⛔ E as cercas que a §33 matou não voltam: com o passe automático uma declaração tem
     // sempre leitor, e a pergunta «e alguém a lê?» seria uma segunda porta para a mesma lei.
@@ -101,27 +104,26 @@ fn a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento() {
     }
 }
 
-/// ⭐⭐⭐ **A ROTA REAL: um objecto com `Collide` cai para a CPU pela razão do passe; sem ele, não**
-/// (doc 115 §33). Percorre o `cook_gpu` com a placa — o irmão do gate textual acima.
+/// ⭐⭐⭐ **A ROTA REAL: um objecto com `Collide` FICA na placa e é separado lá** (doc 130); sem ele,
+/// a placa não corre passe nenhum. Percorre o `cook_gpu` com a placa — o irmão do gate textual.
 #[test]
 #[ignore = "placa: precisa de adapter de GPU"]
-fn a_ponte_manda_para_a_cpu_o_objecto_que_declara_e_so_esse() {
+fn a_ponte_separa_na_placa_o_objecto_que_declara_e_so_esse() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         panic!("sem adapter — este gate mede a ponte do device e nao tem versao de CPU");
     };
     let scopes = ph2d_nodegraph::cook::TimeScopes::new();
     let (mut com, _) = fonte_na_saida("source.object", Some(1.0));
     let saida = cook_gpu(&mut com, &gpu, 0, 1.0 / 60.0, &scopes);
-    assert!(matches!(saida, GpuOutcome::FellThrough), "{saida:?}");
-    assert_eq!(com.route_said, Some(RECUSA_PASSE));
-    // ⚠️ O CONTROLO: o mesmo documento sem o botão não sai por esta razão.
+    assert_ne!(com.route_said, Some(RECUSA_PASSE), "{saida:?}");
+    if matches!(saida, GpuOutcome::Handled) {
+        assert_eq!(com.gpu_cook.passe_correu(), 1, "o objecto que declara e' separado na placa");
+    }
+    // ⚠️ O CONTROLO: o mesmo documento sem o botão não leva coluna, logo nenhum passe.
     let (mut sem, _) = fonte_na_saida("source.object", None);
-    let _ = cook_gpu(&mut sem, &gpu, 0, 1.0 / 60.0, &scopes);
-    assert_ne!(
-        sem.route_said,
-        Some(RECUSA_PASSE),
-        "um objecto sem Collide tem de continuar a poder cozer no dispositivo"
-    );
+    if matches!(cook_gpu(&mut sem, &gpu, 0, 1.0 / 60.0, &scopes), GpuOutcome::Handled) {
+        assert_eq!(sem.gpu_cook.passe_correu(), 0, "sem Collide nao ha passe");
+    }
 }
 
 /// ⭐⭐ **O CENSO dos leitores da declaração** — a bandeira do registo não pode ficar por pôr.

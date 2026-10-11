@@ -339,6 +339,7 @@ fn motion_route_census() {
         state.sinks = sinks.clone();
         crate::motion_externals::publish_all(&mut state, 0.0);
         let plan = crate::motion_bridge::gpu::plano_do_produto(&mut state, 0.0);
+        let declara = crate::motion_bridge::gpu::peca_declara_colisor(&mut state, 0.0);
         let estilos: Vec<_> = sinks
             .iter()
             .map(|&s| ph2d_eval_motion::sink_style(&state.doc.graph, s))
@@ -348,7 +349,7 @@ fn motion_route_census() {
             sinks.len(),
             scopes.is_empty(),
             &plan.boundaries,
-            plan.dispatching_stages(&state.registry),
+            crate::motion_bridge::gpu::estagios_que_despacham(&plan, &state.registry, declara),
         );
         // ⚠️ **A razão é a PRIMEIRA que morde**, na ordem em que o `gpu_route` as pergunta —
         // uma cena pode ter duas, e nomear a segunda mandaria alguém curar a errada.

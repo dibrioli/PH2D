@@ -184,6 +184,8 @@ pub struct GpuCook {
     /// The engine-algorithm pipelines (ADR-0139), built on first use like the
     /// stream ops — `Option` because `GpuCook` is `Default`.
     pub(crate) voronoi_pipes: Option<voronoi::VoronoiPipes>,
+    /// O passe de separação de cada sink (doc 130).
+    pub(crate) passe: crate::passe_na_placa::Passe,
     /// The texture-run partition of the last cook's instance buffer, so the
     /// renderer can draw a `source.object` graph by binding the object's texture
     /// per run — computed CPU-side from the boundary, no readback (see

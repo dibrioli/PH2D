@@ -84,6 +84,11 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let forma = no(g, "source.shape");
         g.set_param(forma, ph2d_node_motion_shape::param::KIND, quadrado);
         g.set_param(forma, ph2d_node_motion_shape::param::SIZE, MEIA);
+        // Só a FOTO do smoke (doc 130): `PH2D_PASSE_COLIDE=1` nasce com o botão ligado, porque o
+        // clique sintético não chega à janela virtual. Sem a variável, desarmada como sempre.
+        if std::env::var("PH2D_PASSE_COLIDE").is_ok_and(|v| v == "1") {
+            g.set_param(forma, ph2d_node_motion_shape::param::COLLIDE, 1.0);
+        }
 
         // Os PONTOS: duas linhas que se atravessam, `PARES` colunas bem afastadas ⇒ pares.
         let grelha = no(g, "motion.grid");

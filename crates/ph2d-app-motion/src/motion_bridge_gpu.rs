@@ -118,7 +118,8 @@ pub(super) use objecto::{
 mod colisor;
 #[path = "motion_bridge_gpu_forma.rs"]
 pub(crate) mod forma;
-use colisor::{RECUSA_COLISOR, RECUSA_PASSE, graph_declares_collider, peca_declara_colisor};
+use colisor::{RECUSA_COLISOR, RECUSA_PASSE, graph_declares_collider};
+pub(crate) use colisor::{estagios_que_despacham, peca_declara_colisor};
 
 /// O motivo de um documento de várias saídas não ir à placa quando uma delas não pode ser encenada
 /// (doc 119 W3): ela ficaria fronteira, e o estilo de uma saída iria para as linhas de outra.
@@ -278,12 +279,11 @@ pub(super) fn cook_gpu(
     if graph_declares_collider(&motion.doc.graph) {
         return fell(motion, RECUSA_COLISOR);
     }
-    // Doc 115 §33: o passe automático corre no fim do cozimento da CPU, e na rota do dispositivo
-    // não existe corrente de CPU para separar. ⚠️ A pergunta é só «alguma peça declara?» — o sink
-    // lê toda declaração, e um objecto sem o botão continua na placa. Ver [`peca_declara_colisor`].
-    if peca_declara_colisor(motion, target as f64 * fixed_dt) {
-        return fell(motion, RECUSA_PASSE);
-    }
+    // ⭐ Doc 130: o passe automático (doc 115 §33) corre TAMBÉM na placa, antes do lowering de
+    // cada sink — a pergunta deixou de recusar e passou a ARMAR a cerca do fim. Ver
+    // [`peca_declara_colisor`] e [`colisor::cerca_do_passe`].
+    let declara = peca_declara_colisor(motion, target as f64 * fixed_dt);
+    motion.gpu_cook.set_passe(colisor::varreduras_do_passe(motion));
     // ⭐⭐⭐ **Um sink que mistura EM GRUPO desenha-se no Vello** (doc 118 W3/W4): o device entrega
     // as imagens ao passe de sprites, que só sabe a mistura de hardware — em luz linear e sem
     // alcance nenhum. ⇒ a rota da placa desenharia o tom e o alcance ERRADOS, e cai para a CPU,
@@ -369,7 +369,7 @@ pub(super) fn cook_gpu(
         motion.sinks.len(),
         scopes.is_empty(),
         &plan.boundaries,
-        plan.dispatching_stages(&motion.registry),
+        estagios_que_despacham(&plan, &motion.registry, declara),
     );
     match route {
         GpuRoute::Cpu if !scopes.is_empty() => fell(
@@ -431,6 +431,9 @@ pub(super) fn cook_gpu(
                 );
                 forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
             });
+            if colisor::cerca_do_passe(motion, declara) {
+                return fell(motion, RECUSA_PASSE);
+            }
             // A cook that errored leaves `gpu_live` false → let the CPU pump draw.
             if motion.gpu_live {
                 // ⭐⭐⭐ **AS TOMADAS, que esta rota deixava cair** (report do dono, 2026-09-08).
@@ -567,6 +570,9 @@ pub(super) fn cook_gpu(
                         forma::anota_a_mistura(&mut motion.formas_pedem_o_vello, feito)
                     });
             }
+            if colisor::cerca_do_passe(motion, declara) {
+                return fell(motion, RECUSA_PASSE);
+            }
             // The pump was marched to the boundary this frame regardless of the
             // GPU result — do NOT also run the sink loop (it would early-return on
             // the same tick and leave `instances` holding the boundary lowering).
@@ -644,6 +650,11 @@ mod varias_saidas_tests;
 #[cfg(test)]
 #[path = "motion_bridge_gpu_formas_tests.rs"]
 mod formas_tests;
+
+/// ⭐⭐⭐ **O `Collide` na placa** (doc 130): as cenas do passe aceites e iguais à CPU.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_passe_tests.rs"]
+mod passe_tests;
 
 /// A sonda da W4 do doc 121: por onde vai cada cena de demo com formas, e porquê.
 #[cfg(test)]

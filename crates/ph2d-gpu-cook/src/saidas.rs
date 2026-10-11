@@ -51,6 +51,17 @@ impl GpuCook {
                 .map(|s| streams.get(s).cloned().unwrap_or_default())
                 .collect()
         };
+        // ⭐ O PASSE DE SEPARAÇÃO (doc 130): a corrente que cada sink DESENHA, antes do lowering e
+        // do passe de formas — a mesma porta que a CPU chama no fim do cozimento.
+        let saidas: Vec<GpuStream> = saidas
+            .into_iter()
+            .enumerate()
+            .map(|(k, s)| {
+                let v = self.passe.varreduras.get(k).copied().unwrap_or(0);
+                self.separa_na_placa(gpu, encoder, &s, v, ph2d_contact::REPOUSO_VISIVEL)
+                    .unwrap_or(s)
+            })
+            .collect();
         if styles.len() != saidas.len() {
             return Err(GpuCookError::SinkStyleMismatch {
                 sinks: saidas.len(),

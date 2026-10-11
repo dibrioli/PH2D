@@ -1,0 +1,144 @@
+▸ linha line_luz2d · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s · COM A PLACA
+   Compiling ph2d-app-light2d v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D/crates/ph2d-app-light2d)
+    Finished `smoke` profile [optimized] target(s) in 1.15s
+     Running tests/it/main.rs (target/smoke/deps/it-92c4d5d6f580ad90)
+
+running 6 tests
+test medida_luz2d_w5e::medida_luz2d_w5e_bytes ... ## A0. Os bytes DECLARADOS (PassList, sem placa), vista de fábrica
+| res | nível | grade (cascatas) | fluência | vista MB | entorno MB | total MB | na janela (cascatas · fluência) | maiores |
+|---|---|---|---|---|---|---|---|---|
+| 1080p | Baixa | 640×384 | 2560×1536 | 275 | 8 | 283 | 19 % · 19 % | luz2d/tex/borda 126 · luz2d/tex/tau_dentro_fina 31 · luz2d/tex/fluencia 31 · luz2d/tex/cobertura_fina 31 |
+| 1080p | Media | 1280×768 | 2560×1536 | 434 | 34 | 468 | 19 % · 19 % | luz2d/tex/borda 126 · luz2d/tex/tau_dentro_fina 31 · luz2d/tex/fluencia 31 · luz2d/tex/cobertura_fina 31 |
+| 1080p | Alta | 2496×1472 | 2496×1472 | 1011 | 128 | 1139 | 20 % · 20 % | luz2d/tex/borda 118 · luz2d/tex/tau_dentro_fina 29 · luz2d/tex/rebote 29 · luz2d/tex/fluencia 29 |
+| 1440p | Baixa | 832×512 | 3328×2048 | 472 | 16 | 488 | 43 % · 43 % | luz2d/tex/borda 218 · luz2d/tex/tau_dentro_fina 55 · luz2d/tex/fluencia 55 · luz2d/tex/cobertura_fina 55 |
+| 1440p | Media | 1664×1024 | 3328×2048 | 732 | 60 | 793 | 43 % · 43 % | luz2d/tex/borda 218 · luz2d/tex/tau_dentro_fina 55 · luz2d/tex/fluencia 55 · luz2d/tex/cobertura_fina 55 |
+| 1440p | Alta | 3264×1920 | 3264×1920 | 1643 | 250 | 1893 | 47 % · 47 % | luz2d/tex/borda 201 · luz2d/tex/tau_dentro_fina 50 · luz2d/tex/rebote 50 · luz2d/tex/fluencia 50 |
+| 2160p | Baixa | 1280×768 | 5120×3072 | 1109 | 34 | 1143 | 19 % · 19 % | luz2d/tex/borda 503 · luz2d/tex/tau_dentro_fina 126 · luz2d/tex/fluencia 126 · luz2d/tex/cobertura_fina 126 |
+| 2160p | Media | 2496×1472 | 4992×2944 | 1663 | 128 | 1791 | 20 % · 20 % | luz2d/tex/borda 470 · luz2d/tex/tau_dentro_fina 118 · luz2d/tex/fluencia 118 · luz2d/tex/cobertura_fina 118 |
+| 2160p | Alta | 4992×2944 | 4992×2944 | 4162 | 528 | 4690 | 20 % · 20 % | luz2d/tex/borda 470 · luz2d/tex/tau_dentro_fina 118 · luz2d/tex/rebote 118 · luz2d/tex/fluencia 118 |
+ok
+test medida_luz2d_w5e::medida_luz2d_w5e_orcamento ... ## A2. A memória que o wgpu expõe
+- limiar None: criada · adaptador max_texture_dimension_2d 32768 · alocado Some(67) MB
+- limiar Some(1): o dispositivo não nasce
+- limiar Some(50): criada · adaptador max_texture_dimension_2d 32768 · alocado Some(67) MB
+- limiar Some(100): criada · adaptador max_texture_dimension_2d 32768 · alocado Some(67) MB
+ok
+test medida_luz2d_w5e::medida_luz2d_w5e_placa ... ## A1. Na placa (cena 3, vista de fábrica; max_texture_dimension_2d 8192) · loadavg antes 1.37 1.76 7.30
+(a fina engrossada pelos tetos: a 2160p `k ≥ 1`, ver a tabela A0)
+| res | nível | alocado MB | por nível ms | fixo ms | total ms | recusa / erro |
+|---|---|---|---|---|---|---|
+| 1080p | Baixa | 285 | 2.71 | 1.54 | 4.25 | — |
+| 1080p | Media | 470 | 4.94 | 2.19 | 7.12 | — |
+| 1080p | Alta | 1151 | 24.15 | 6.83 | 30.99 | — |
+| 1440p | Baixa | 489 | 4.51 | 2.93 | 7.43 | — |
+| 1440p | Media | 797 | 8.87 | 3.88 | 12.75 | — |
+| 1440p | Alta | 1900 | 41.09 | 18.70 | 59.79 | — |
+| 2160p | Baixa | 478 | 9.29 | 2.22 | 11.51 | — |
+| 2160p | Media | 1151 | 24.09 | 6.84 | 30.93 | — |
+| 2160p | Alta | 4105 | 113.52 | 28.31 | 141.83 | — |
+loadavg depois 1.18 1.61 6.82
+ok
+test medida_luz2d_w5e::medida_luz2d_w5e_quadro_do_app ... ## O quadro do app · loadavg 1.18 1.61 6.82
+q0: 67.3 ms de parede · placa None ms · Some((Alta, true)) · fina (0, false)
+q1: 31.0 ms de parede · placa Some(26.501376000000004) ms · Some((Alta, true)) · fina (0, false)
+q2: 31.0 ms de parede · placa Some(26.501376000000004) ms · Some((Alta, true)) · fina (0, false)
+q3: 30.9 ms de parede · placa Some(29.46345600000001) ms · Some((Alta, true)) · fina (0, false)
+q4: 30.6 ms de parede · placa Some(29.46345600000001) ms · Some((Alta, true)) · fina (0, false)
+q5: 30.9 ms de parede · placa Some(26.748192) ms · Some((Media, true)) · fina (0, false)
+q6: 24.0 ms de parede · placa None ms · Some((Media, true)) · fina (0, false)
+q7: 7.4 ms de parede · placa Some(5.439680000000001) ms · Some((Media, true)) · fina (0, false)
+q8: 7.7 ms de parede · placa Some(5.439680000000001) ms · Some((Media, true)) · fina (0, false)
+q9: 7.3 ms de parede · placa Some(6.380096000000001) ms · Some((Media, true)) · fina (0, false)
+q10: 7.8 ms de parede · placa Some(6.380096000000001) ms · Some((Media, true)) · fina (0, false)
+q11: 7.9 ms de parede · placa Some(5.4454080000000005) ms · Some((Media, true)) · fina (0, false)
+q20: 7.7 ms de parede · placa Some(5.4452479999999985) ms · Some((Media, true)) · fina (0, false)
+q30: 8.2 ms de parede · placa Some(6.370464000000002) ms · Some((Media, true)) · fina (0, false)
+q40: 7.8 ms de parede · placa Some(5.465631999999999) ms · Some((Media, true)) · fina (0, false)
+q50: 8.0 ms de parede · placa Some(6.432928000000001) ms · Some((Media, true)) · fina (0, false)
+q60: 7.8 ms de parede · placa Some(5.471872) ms · Some((Media, true)) · fina (0, false)
+q70: 7.4 ms de parede · placa Some(6.4508480000000015) ms · Some((Media, true)) · fina (0, false)
+q80: 7.9 ms de parede · placa Some(5.448928000000001) ms · Some((Media, true)) · fina (0, false)
+q90: 7.6 ms de parede · placa Some(6.424032) ms · Some((Media, true)) · fina (0, false)
+q100: 8.2 ms de parede · placa Some(5.464416000000001) ms · Some((Media, true)) · fina (0, false)
+q110: 7.4 ms de parede · placa Some(6.400448) ms · Some((Media, true)) · fina (0, false)
+ok
+test medida_luz2d_w5e::medida_luz2d_w5e_s ... ## S. O protocolo S1–S3 · S7 (ms de placa, o mínimo de 7; nível Baixa) · loadavg antes 1.18 1.61 6.82
+| res | cena | vista ms | entorno ms | total ms |
+|---|---|---|---|---|
+| 720p | S1 uma luz | 4.17 | 0.27 | 4.44 |
+| 720p | S2 1 sprites | 0.98 | 0.24 | 1.22 |
+| 720p | S2 10 sprites | 1.00 | 0.24 | 1.24 |
+| 720p | S2 100 sprites | 1.03 | 0.24 | 1.27 |
+| 720p | S2 1000 sprites | 1.50 | 0.25 | 1.75 |
+| 720p | S2 10000 sprites | 4.94 | 0.31 | 5.25 |
+| 720p | S2L 1 lâmpadas | 0.91 | 0.21 | 1.12 |
+| 720p | S2L 10 lâmpadas | 3.50 | 0.22 | 3.72 |
+| 720p | S2L 100 lâmpadas | 66.24 | 0.23 | 66.47 |
+| 720p | S2L 1000 lâmpadas | 378.67 | 0.22 | 378.89 |
+| 720p | S2L 10000 lâmpadas | 372.36 | 0.24 | 372.60 |
+| 720p | S3 0 oclusores | 0.90 | 0.22 | 1.12 |
+| 720p | S3 10 oclusores | 4.98 | 0.31 | 5.29 |
+| 720p | S3 100 oclusores | 26.66 | 0.38 | 27.04 |
+| 720p | S3 1000 oclusores | 42.35 | 0.42 | 42.77 |
+| 1080p | S1 uma luz | 5.35 | 0.36 | 5.71 |
+| 1080p | S2 1 sprites | 1.67 | 0.33 | 2.00 |
+| 1080p | S2 10 sprites | 1.69 | 0.33 | 2.02 |
+| 1080p | S2 100 sprites | 1.71 | 0.33 | 2.04 |
+| 1080p | S2 1000 sprites | 2.19 | 0.34 | 2.52 |
+| 1080p | S2 10000 sprites | 5.65 | 0.39 | 6.04 |
+| 1080p | S2L 1 lâmpadas | 1.59 | 0.31 | 1.90 |
+| 1080p | S2L 10 lâmpadas | 4.16 | 0.32 | 4.48 |
+| 1080p | S2L 100 lâmpadas | 66.86 | 0.31 | 67.18 |
+| 1080p | S2L 1000 lâmpadas | 378.99 | 0.32 | 379.31 |
+| 1080p | S2L 10000 lâmpadas | 373.74 | 0.33 | 374.07 |
+| 1080p | S3 0 oclusores | 1.59 | 0.31 | 1.90 |
+| 1080p | S3 10 oclusores | 6.10 | 0.40 | 6.51 |
+| 1080p | S3 100 oclusores | 27.78 | 0.47 | 28.24 |
+| 1080p | S3 1000 oclusores | 43.29 | 0.50 | 43.78 |
+| 1440p | S1 uma luz | 8.52 | 0.59 | 9.11 |
+| 1440p | S2 1 sprites | 2.70 | 0.48 | 3.17 |
+| 1440p | S2 10 sprites | 2.77 | 0.48 | 3.25 |
+| 1440p | S2 100 sprites | 2.88 | 0.48 | 3.36 |
+| 1440p | S2 1000 sprites | 3.68 | 0.48 | 4.16 |
+| 1440p | S2 10000 sprites | 12.51 | 0.54 | 13.06 |
+| 1440p | S2L 1 lâmpadas | 2.68 | 0.46 | 3.14 |
+| 1440p | S2L 10 lâmpadas | 7.04 | 0.46 | 7.51 |
+| 1440p | S2L 100 lâmpadas | 187.35 | 0.46 | 187.81 |
+| 1440p | S2L 1000 lâmpadas | 1678.40 | 0.47 | 1678.87 |
+| 1440p | S2L 10000 lâmpadas | 2833.36 | 0.48 | 2833.84 |
+| 1440p | S3 0 oclusores | 2.69 | 0.46 | 3.15 |
+| 1440p | S3 10 oclusores | 11.11 | 0.57 | 11.68 |
+| 1440p | S3 100 oclusores | 60.71 | 0.68 | 61.39 |
+| 1440p | S3 1000 oclusores | 118.61 | 0.72 | 119.33 |
+| 2160p (fina ×2) | S1 uma luz | 10.92 | 0.93 | 11.85 |
+| 2160p (fina ×2) | S2 1 sprites | 4.96 | 0.81 | 5.77 |
+| 2160p (fina ×2) | S2 10 sprites | 5.00 | 0.81 | 5.81 |
+| 2160p (fina ×2) | S2 100 sprites | 5.03 | 0.81 | 5.84 |
+| 2160p (fina ×2) | S2 1000 sprites | 5.55 | 0.82 | 6.37 |
+| 2160p (fina ×2) | S2 10000 sprites | 9.16 | 0.87 | 10.03 |
+| 2160p (fina ×2) | S2L 1 lâmpadas | 4.90 | 0.79 | 5.69 |
+| 2160p (fina ×2) | S2L 10 lâmpadas | 6.35 | 0.80 | 7.15 |
+| 2160p (fina ×2) | S2L 100 lâmpadas | 44.89 | 0.80 | 45.70 |
+| 2160p (fina ×2) | S2L 1000 lâmpadas | 318.96 | 0.80 | 319.75 |
+| 2160p (fina ×2) | S2L 10000 lâmpadas | 411.81 | 0.81 | 412.62 |
+| 2160p (fina ×2) | S3 0 oclusores | 4.89 | 0.79 | 5.68 |
+| 2160p (fina ×2) | S3 10 oclusores | 11.40 | 0.91 | 12.31 |
+| 2160p (fina ×2) | S3 100 oclusores | 24.87 | 1.02 | 25.89 |
+| 2160p (fina ×2) | S3 1000 oclusores | 43.77 | 1.06 | 44.83 |
+loadavg depois 0.71 1.18 5.72
+ok
+test medida_luz2d_w5e::medida_luz2d_w5e_s2_por_passe ... ## S2 passe a passo (1080p Baixo) · loadavg 0.73 1.18 5.70
+- S2 1 sprites: TemposMs { c0: 0.024448, c1: 0.034624, c2: [1.082752, 3.2e-5, 0.0, 3.2e-5, 3.2e-5, 3.2e-5], c3_visibilidade: 0.003264, c3_fina: 0.0848, c0_fina: 0.063936, c3_preenche: 0.369056, c3_mascaras: 0.0, c0_rebote: 0.00016, c3_rebote: 3.2e-5 }
+- S2 10 sprites: TemposMs { c0: 0.025952, c1: 0.03488, c2: [1.081888, 3.2e-5, 3.2e-5, 3.2e-5, 3.2e-5, 3.2e-5], c3_visibilidade: 0.003072, c3_fina: 0.105024, c0_fina: 0.063968, c3_preenche: 0.369312, c3_mascaras: 3.2e-5, c0_rebote: 3.2e-5, c3_rebote: 3.2e-5 }
+  relatório C0: 100 fora
+  relatório C0: 100 fora
+  relatório C0: 100 fora
+  relatório C0: 100 fora
+  relatório C0: 100 fora
+- S2 100 sprites: TemposMs { c0: 0.0264, c1: 0.034912, c2: [1.08288, 3.2e-5, 0.0, 3.2e-5, 3.2e-5, 6.4e-5], c3_visibilidade: 0.003072, c3_fina: 0.12032, c0_fina: 0.074336, c3_preenche: 0.370496, c3_mascaras: 3.2e-5, c0_rebote: 3.2e-5, c3_rebote: 3.2e-5 }
+- S2 1000 sprites: TemposMs { c0: 0.054592, c1: 0.034432, c2: [1.082624, 3.2e-5, 6.4e-5, 0.0, 3.2e-5, 6.4e-5], c3_visibilidade: 0.003072, c3_fina: 0.4536, c0_fina: 0.181504, c3_preenche: 0.370656, c3_mascaras: 3.2e-5, c0_rebote: 3.2e-5, c3_rebote: 3.2e-5 }
+- S2 10000 sprites: TemposMs { c0: 0.216672, c1: 0.034496, c2: [1.086112, 3.2e-5, 3.2e-5, 3.2e-5, 3.2e-5, 3.2e-5], c3_visibilidade: 0.003328, c3_fina: 2.57712, c0_fina: 1.32704, c3_preenche: 0.390304, c3_mascaras: 3.2e-5, c0_rebote: 3.2e-5, c3_rebote: 3.2e-5 }
+ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 91 filtered out; finished in 256.99s
+

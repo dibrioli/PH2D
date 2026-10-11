@@ -19,6 +19,7 @@ const fn h(fields: &'static [usize], spot: Spot, law: Law) -> HandleDesc {
         alone: None,
         park: false,
         inset: false,
+        in_corner: false,
     }
 }
 
@@ -70,6 +71,7 @@ const fn round_corner(
         }),
         park: true,
         inset: false,
+        in_corner: true,
     }
 }
 

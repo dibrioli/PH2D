@@ -161,8 +161,9 @@ fn hovering_a_handle_shows_its_track() {
     assert!(h.track.len() >= 2, "{:?}", h.track);
 }
 
-/// Agarrar uma alça ESTACIONADA (raio zero, a `PARK_PX` do canto) e não mexer não arredonda nada;
-/// mexer 5 px para dentro dá 5 px de raio — a pega mede-se ao ponto verdadeiro.
+/// Agarrar o ⊙ ESTACIONADO (raio zero, `PARK_PX` para dentro do canto em cada eixo) e não mexer
+/// não arredonda nada; mexer 5 px para dentro — na horizontal ou na DIAGONAL, como o centro do arco
+/// anda — dá 5 px de raio: a pega mede-se ao ponto verdadeiro.
 #[test]
 fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     let k = ShapeKind::RoundRect;
@@ -170,11 +171,30 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     v0[0] = 0.0;
     let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
     let p = view(&sim, &map, &[id], G, PX, None, None).unwrap().points[0];
-    // A alça do canto de cima à esquerda (−2, 1) estacionou PARK_PX para a direita.
+    // O ⊙ do canto de cima à esquerda (−2, 1) estacionou PARK_PX para dentro, na diagonal.
     assert!(
-        (p[0] - (-2.0 + PARK_PX * PX)).abs() < 1e-9 && (p[1] - 1.0).abs() < 1e-9,
+        (p[0] - (-2.0 + PARK_PX * PX)).abs() < 1e-9 && (p[1] - (1.0 - PARK_PX * PX)).abs() < 1e-9,
         "{p:?}"
     );
+    let mut d = press(&sim, &map, &[id], G, p, PX).unwrap();
+    assert!(drag(
+        w(&mut sim, &mut scene, &map, &[id]),
+        &mut d,
+        [p[0] + 5.0 * PX, p[1] - 5.0 * PX],
+        Mods::default(),
+        PX
+    ));
+    assert!(
+        (values_of(&sim, &map, id)[0] - 5.0 * PX).abs() < 1e-6,
+        "a mão na diagonal"
+    );
+    assert!(drag(
+        w(&mut sim, &mut scene, &map, &[id]),
+        &mut d,
+        p,
+        Mods::default(),
+        PX
+    ));
     let mut g = press(&sim, &map, &[id], G, p, PX).unwrap();
     assert!(drag(
         w(&mut sim, &mut scene, &map, &[id]),

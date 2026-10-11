@@ -120,6 +120,8 @@ pub struct HandleDesc {
     /// A alça desenha-se `park_at` para DENTRO (para o centro da caixa): o ponto dela vive SEMPRE
     /// sobre uma aresta da caixa, onde mora uma alça de escala (F10: o meio do losango).
     pub inset: bool,
+    /// O ⊙ desenha-se DENTRO do canto, no centro do arco (F11 — `spots::corner_centre`).
+    pub in_corner: bool,
 }
 
 /// Os modificadores do arrasto (teclas do Illustrator; Ctrl = «em pares», Affinity).
@@ -314,6 +316,9 @@ pub fn handle_grip(
             1.0
         };
         return Some([at[0] * k, at[1] * k]);
+    }
+    if h.in_corner {
+        return spots::corner_centre(h, values, half, park_at, cook);
     }
     if !h.park {
         return Some(at);

@@ -85,10 +85,14 @@ dentro da caixa (§2) a folga real cresce ainda `½w` × zoom. Gate:
   hits), a ficha do número junto do cursor (`handle_readout` — `«Points: 7»`, o nome pela porta do
   painel `nomes_do_motor::campo`, os comprimentos pela `LengthDisplay`), e no raio o círculo
   TRACEJADO pelo ponto agarrado (`radius_ring`).
-- **ABERTO:** o ⊙ do rectângulo continua sobre a ARESTA (o `Spot::Rounding` estacionado); o
-  Illustrator põe-no no CENTRO do arco (dentro do canto). Com a lei `Nearest` a mão diagonal projecta
-  na aresta e o centro do arco anda na diagonal — a alça seguiria a mão exactamente. Vive no
-  `handle_grip` (o `shape_handles.rs` está a ~680 de 700 LOC: num irmão).
+- **O ⊙ do rectângulo DENTRO do canto** (janela 2): `HandleDesc::in_corner` (só o `round_corner`)
+  ⇒ o `handle_grip` desenha-o no CENTRO do arco (`spots::corner_centre`: a quina + o início do arco
+  em cada aresta; com raio zero `park_at` em cada eixo, na diagonal). O ponto VERDADEIRO fica no
+  início do arco, na aresta, e a lei `Nearest` não muda: a mão diagonal projecta na aresta e o
+  centro anda na diagonal com ela. Gates `a_corner_handle_sits_inside_the_corner_at_the_arc_centre`
+  (os 4 cantos) e `a_parked_handle_grabbed_and_held_still_changes_nothing` (a mão na diagonal).
+  O balão rectangular (`SPEECH_RECT`) fica com o canto estacionado na aresta (o canto dele roda com o
+  bico; sem foto do Illustrator).
 
 ## §5 — ⛔ Recusas MEDIDAS
 

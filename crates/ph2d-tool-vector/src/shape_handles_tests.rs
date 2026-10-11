@@ -200,25 +200,44 @@ fn grabbing_a_handle_off_centre_does_not_move_it() {
     }
 }
 
-/// A alça de canto com raio ZERO estaciona a `park_at` da quina, ao longo da aresta — e a de
-/// raio largo fica no ponto verdadeiro.
+/// O ⊙ do rectângulo (o *corner widget* do Illustrator) desenha-se DENTRO do canto, no centro do
+/// arco: com raio ZERO a `park_at` da quina em CADA eixo (na diagonal), com raio largo no centro —
+/// e o ponto verdadeiro (o que a lei mede) continua no início do arco, na aresta.
 #[test]
-fn a_corner_handle_parks_off_the_box_corner() {
+fn a_corner_handle_sits_inside_the_corner_at_the_arc_centre() {
     let kind = ShapeKind::RoundRect;
     let ck = cooker(kind, HALF);
-    let h = &handles_of(kind)[0];
-    let mut v = kind.defaults();
-    v[0] = 0.0;
-    let corner = handle_point(h, &v, HALF, &ck).unwrap();
-    assert!((corner[0] + HALF[0]).abs() < 1e-9 && (corner[1] - HALF[1]).abs() < 1e-9);
-    let g = handle_grip(kind, h, &v, HALF, PX, 0.25, &ck).unwrap();
-    assert!(
-        (g[0] - (corner[0] + 0.25)).abs() < 1e-9 && (g[1] - corner[1]).abs() < 1e-9,
-        "{g:?}"
-    );
-    v[0] = 1.0;
-    let g = handle_grip(kind, h, &v, HALF, PX, 0.25, &ck).unwrap();
-    assert!((g[0] - (corner[0] + 1.0)).abs() < 1e-9, "{g:?}");
+    for (k, sx, sy) in [
+        (0, 1.0, -1.0),
+        (1, -1.0, -1.0),
+        (2, -1.0, 1.0),
+        (3, 1.0, 1.0),
+    ] {
+        let h = &handles_of(kind)[k];
+        let mut v = kind.defaults();
+        v[0] = 0.0;
+        let q = handle_point(h, &v, HALF, &ck).unwrap();
+        assert!(
+            (q[0].abs() - HALF[0]).abs() < 1e-9 && (q[1].abs() - HALF[1]).abs() < 1e-9,
+            "o ponto verdadeiro de raio zero é a quina: {q:?}"
+        );
+        let g = handle_grip(kind, h, &v, HALF, PX, 0.25, &ck).unwrap();
+        assert!(
+            (g[0] - (q[0] + sx * 0.25)).abs() < 1e-9 && (g[1] - (q[1] + sy * 0.25)).abs() < 1e-9,
+            "canto {k}: na diagonal {g:?}"
+        );
+        v[0] = 0.8;
+        let g = handle_grip(kind, h, &v, HALF, PX, 0.25, &ck).unwrap();
+        assert!(
+            (g[0] - (q[0] + sx * 0.8)).abs() < 1e-6 && (g[1] - (q[1] + sy * 0.8)).abs() < 1e-6,
+            "canto {k}: no centro do arco {g:?}"
+        );
+        let a = handle_point(h, &v, HALF, &ck).unwrap();
+        assert!(
+            (a[1] - q[1]).abs() < 1e-9 && (a[0] - (q[0] + sx * 0.8)).abs() < 1e-6,
+            "canto {k}: o verdadeiro no início do arco, na aresta de cima/baixo {a:?}"
+        );
+    }
 }
 
 /// O Alt arredonda SÓ o canto agarrado: os outros guardam o raio deles — também quando o

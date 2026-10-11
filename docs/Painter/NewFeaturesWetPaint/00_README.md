@@ -21,7 +21,9 @@
 
 | Doc | O que tem |
 |---|---|
-| [15_PROMPT_janela_auditoria_mistura.md](15_PROMPT_janela_auditoria_mistura.md) | **O prompt da PRÓXIMA janela** — auditoria e cura da mistura de pigmentos (amarelo sobre azul seco dá preto e nunca cobre; smoke do dono 10/10), as hipóteses a medir e a barra pelo Rebelle |
+| [17_PROMPT_janela_presets_todas_as_midias.md](17_PROMPT_janela_presets_todas_as_midias.md) | **O prompt da PRÓXIMA janela** (dono 11/10) — os presets de TODAS as mídias no Wet Paint: o mapa das mídias medido contra os 281 presets e as fotos do Rebelle, a W2 (a largura prometida, a base de todo preset) e o 1.º lote de presets novos, cada um com um portão que reprova o Wet Round |
+| [16_PROMPT_janela_auditoria_mistura_simplificacao.md](16_PROMPT_janela_auditoria_mistura_simplificacao.md) | O prompt da auditoria multi-agente da mistura (o azul-claro do Wet Drip com as caixas K–M) — o estado no 05 §4b «Mistura II» |
+| [15_PROMPT_janela_auditoria_mistura.md](15_PROMPT_janela_auditoria_mistura.md) | O prompt da auditoria e cura da mistura de pigmentos (amarelo sobre azul seco dá preto e nunca cobre; smoke do dono 10/10), as hipóteses a medir e a barra pelo Rebelle |
 | [14_smooth_edges_a_borda_suave.md](14_smooth_edges_a_borda_suave.md) | **O Smooth Edges do Wet Paint** (W1g, aprovado pelo dono 10/10): a lei da borda suave por raio, as três tentativas recusadas e a lição (a dureza que se vê é o contorno escuro por DENTRO da mancha), os portões e o custo |
 | [13_PROMPT_janela_W1g_opcoes.md](13_PROMPT_janela_W1g_opcoes.md) | O prompt da W1g (Live Water, Heavy Edge, fios finos) — o estado no 05 §4b «W1g» |
 | [11_PROMPT_janela_W1e_agua_papel_tilt.md](11_PROMPT_janela_W1e_agua_papel_tilt.md) | **O prompt da PRÓXIMA janela** (W1e — escorrimento realista só com água, pigmento e Tilt; um só papel, o do painel; o pincel seco nos picos; o Tilt no preset), com as medições de 09/10 |

@@ -1190,6 +1190,11 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
 
 ## §5 — A próxima janela (a W2)
 
+> ⭐ **11/10 — o prompt da próxima janela é o [17](17_PROMPT_janela_presets_todas_as_midias.md)** (pedido do
+> dono: os presets de TODAS as mídias): o mapa das mídias medido contra o Rebelle, a W2 abaixo (a largura
+> prometida) como base, e o 1.º lote de presets que o motor já pinta como a mídia. O texto abaixo é o plano
+> da W2 de 08/10 e continua válido como a Fase B do 17.
+
 A W1b fechou (§4b; o prompt dela: [07](07_PROMPT_janela_W1b_gotas.md)). Pendente do dono: o Wet Drip a
 0,49 pinga ou não com a tela no máximo. A W2:
 

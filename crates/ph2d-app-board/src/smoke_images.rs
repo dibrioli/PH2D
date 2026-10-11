@@ -26,6 +26,9 @@ pub(crate) struct Lessons {
 }
 
 const GAP: f64 = 40.0;
+/// A margem do que os painéis tapam (a da cena 14, em unidades do mundo).
+const MARGIN_X: f64 = 450.0;
+const MARGIN_Y: f64 = 90.0;
 const PHOTO: [u32; 2] = [640, 400];
 
 /// A fotografia de demonstração: céu em degradê, um sol, duas colinas.
@@ -149,7 +152,7 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     };
     let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, fw, 40.0]);
     put(b, el);
-    let view = [-GAP, -80.0 - GAP, fw + GAP, y + side + GAP];
+    let view = [-MARGIN_X, -80.0 - MARGIN_Y, fw + MARGIN_X, y + side + MARGIN_Y];
     let l = Lessons {
         board: b.id,
         photo,

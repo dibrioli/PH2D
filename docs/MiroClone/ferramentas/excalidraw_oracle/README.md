@@ -445,3 +445,27 @@ a seta já parada a g (os pontos mostrados são o encaixe no meio do lado), e o 
 **Quando o escritor muda, regravam-se as TRÊS entradas nossas:** W8 (`grava_a_entrada_do_oraculo` +
 `corre_esquema.mjs entradas/w8_ph2d_quadro.excalidraw`, devolvendo o `w8_sondas.json` ao da W8); W9
 (`grava_a_entrada_w9_nosso` + `corre_fidelidade.mjs entradas/w9_nosso_casos.json`); W10 (os comandos acima).
+
+### W14 — a IMAGEM: `corre.sh saidas/w14 entradas/w14_*.excalidraw`
+
+Entradas: `entradas/w14_imagens.excalidraw` (gerada por `entradas/gera_w14_imagens.py`: uma PNG 4×2 de
+oito cores, uma por píxel, e seis elementos `image` — inteira, `scale [-1,1]`, `crop` 2×2 de 4×2,
+`roundness {type:3}` + `opacity 50` + `angle 0.5`, `fileId` sem ficheiro com `status:"pending"`, e
+`scale [1,-1]` + `crop` 2×1) e `entradas/w14_nosso.excalidraw` (escrita pelo NOSSO escritor, o teste
+ignorado `grava_a_entrada_do_oraculo_w14`). ⚠️ Antes de correr: `www/` do `$ORACLE_HOME` tem de existir
+(o passo do `esbuild` do `instala.sh`; em 11/10 estava vazio e o `corre.sh` recusava).
+
+Medido (SVG + PNG + `restored.json`):
+
+| lei | o que o oráculo faz |
+|---|---|
+| esticar | `<symbol><image preserveAspectRatio="none" width="100%" height="100%">` + `<use width height>` da caixa: a imagem estica à caixa, sem manter proporção |
+| espelho | `translate(w/2 h/2) scale(-1 1) translate(-w/2 -h/2)` no `<use>`: vira à volta do CENTRO da caixa |
+| recorte | `crop {x,y,width,height,naturalWidth,naturalHeight}` em píxeis NATURAIS; a imagem inteira escala por `w/crop.width` e uma `<mask>` do tamanho da caixa mostra só o recorte |
+| cantos | `roundness {type:3}` = `clipPath` com `rx = min(lado menor/4, 32)` — a regra do rectângulo (`corner_radius`) |
+| opacidade | `opacity` no `<use>`: a imagem inteira |
+| sem ficheiro | `status:"pending"` sem `files[fileId]`: o SVG OMITE-A; o PNG (canvas) pinta um cinzento com o ícone de imagem |
+| o nosso | `w14_nosso`: as três imagens nas caixas, o recorte+espelho e a redonda rodada certas (`w14_nosso.png`); o `restore` mantém `fileId`, `scale`, `crop`, `status` e o `customData` — gate `the_excalidraw_round_trip_returns_our_images` |
+
+Gates: `ph2d-board-excalidraw::image_tests` (o ficheiro dele abre com as imagens; sem descodificador
+saltam e contam-se; a ida e volta), `ph2d-board-render::image_tests` (a lei do afim, a camada).

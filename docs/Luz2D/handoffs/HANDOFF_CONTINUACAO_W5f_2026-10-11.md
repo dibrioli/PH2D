@@ -87,6 +87,12 @@ chegou corrompida — CRC no PNG). Os discos mostram o defeito do relevo da cena
 fase da grade; BUGS §2). Perguntado, o dono escolheu: **«bolas e relevo primeiro»** — o F5 sai do fim da
 fila e passa À FRENTE do item 2 (a abertura). A W5g: F5 (cenas 7 e 8, mais a 5 e a 6), depois o §3.
 
+**A foto do dono, com setas** ([`fotos_W5f/dono_cena7_degraus_na_borda.png`](fotos_W5f/dono_cena7_degraus_na_borda.png)):
+as quatro setas apontam para os pontos TANGENTES de cada disco (onde o raio da lâmpada raspa a silhueta e
+nasce a borda da sombra): ali a fronteira acesa/escura sai em DEGRAUS — os píxeis do interior que leem o
+exterior mais próximo alternam entre o lado aceso e o da sombra conforme a fase da grade. É esse o
+critério de aceite da W5g: a fronteira lisa nos tangentes (e a fatia reta do centro, a mesma família).
+
 ## Smoke do dono (o que já dá para ver)
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke`

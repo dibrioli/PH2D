@@ -372,3 +372,19 @@ fn the_private_panel_on_another_board_says_where_it_works() {
         "noutro quadro não se liga nada"
     );
 }
+
+/// ⛔ Prova de mutação W12 (M22; o defeito da 1.ª foto da cena 13): com o painel Live aberto, o do
+/// modo privado não fica por baixo dele — o Live desvia-se de TUDO o que está na coluna.
+#[test]
+fn the_live_panel_never_covers_the_private_panel() {
+    let mut t = T::new();
+    t.go_live();
+    t.shell_click_bar(PRIVATE);
+    t.hero.documents.live_view_mut().panel.open = true;
+    t.paint();
+    assert!(
+        t.painted(FacButton::PrivateClose),
+        "o Live tapou o painel do modo privado"
+    );
+    assert!(t.painted(FacButton::PrivateOn));
+}

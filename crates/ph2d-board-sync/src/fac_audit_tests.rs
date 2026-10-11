@@ -174,3 +174,57 @@ fn a_ballot_whose_sum_overflows_is_refused() {
             .contains(&Event::Denied(Refusal::BallotRefused))
     );
 }
+
+/// ⛔ Prova de mutação W12 (M13): a corrida da virada — a Bia ainda não sabe que o modo ligou e o texto
+/// dela sai às claras; o anfitrião, que sabe, põe-no no cofre (o filtro do servidor, como o Scrumlr):
+/// o Caio não o ouve até revelar, e depois todos o têm.
+#[test]
+fn a_clear_text_written_before_hearing_of_the_mode_goes_to_the_vault() {
+    let mut hb = board();
+    let id = note(&mut hb, "", 0.0);
+    let mut r = Room::new(hb, &["Bia", "Caio"]);
+    if let Some(e) = r.host.ask(&mut r.hb, private_on(), 0) {
+        panic!("{e:?}");
+    }
+    let p = &mut r.peers[0];
+    let b = p.b.as_mut().unwrap();
+    write(b, id, "escrito na virada");
+    let up = p.g.tick(b, 0);
+    assert!(
+        up.iter().any(|m| matches!(m, Msg::Writes(_))),
+        "controlo: a Bia escreveu às claras"
+    );
+    p.up.extend(up.into_iter().map(|m| m.encode()));
+    r.pump();
+    assert!(!r.heard(1, "escrito na virada"), "o Caio ouviu-o");
+    assert_eq!(r.fac(1).hidden, BTreeSet::from([id]));
+    r.host_ask(Ask::PrivateOff);
+    r.at(REVEAL_COUNTDOWN_MS);
+    assert_eq!(text(r.b(1), id), "escrito na virada");
+    r.all_same();
+}
+
+/// ⛔ Prova de mutação W12 (M14): o selado que ia no fio quando a ligação caiu (capturado, nunca
+/// entregue) volta ao COFRE no reenvio — nunca às claras a todos.
+#[test]
+fn a_sealed_write_lost_on_the_wire_is_resent_to_the_vault() {
+    let mut r = Room::new(board(), &["Bia", "Caio"]);
+    r.ask(0, private_on());
+    let p = &mut r.peers[0];
+    let b = p.b.as_mut().unwrap();
+    let id = note(b, "perdido no fio", 0.0);
+    let lost = p.g.tick(b, 0);
+    assert!(
+        lost.iter().any(|m| matches!(m, Msg::Sealed(_))),
+        "controlo: saiu selado"
+    );
+    r.drop(0);
+    r.back(0);
+    r.at(1);
+    assert!(!r.heard(1, "perdido no fio"), "o reenvio saiu às claras");
+    assert_eq!(r.fac(1).hidden, BTreeSet::from([id]));
+    r.ask(0, Ask::PrivateOff);
+    r.at(1 + REVEAL_COUNTDOWN_MS);
+    assert_eq!(text(r.b(1), id), "perdido no fio");
+    r.all_same();
+}

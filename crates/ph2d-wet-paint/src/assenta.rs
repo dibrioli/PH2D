@@ -180,7 +180,7 @@ fn resolve(mut x: [f64; 3], alvo: [f64; 3], ecra: impl Fn([f64; 3]) -> [f64; 3])
 /// **ASSENTAR:** a cor nova do assentado quando a cobertura do assentado passa de `a_s` a `a_s2` e a do
 /// filme de `a_f` a `a_f2` (o filme `uc` não muda de cor) — a que mantém [`cor`]. Sem a caixa das tintas de
 /// [`levanta`]: a tinta clara que TAPA a escura (a lei do Rebelle) guarda-se mais clara que a escura, e com o
-/// tecto o cruzamento seco ficava malva (`05 §4b` «Mistura — Wet Drip», tetraedro 0 → 15 %, o Rebelle 0).
+/// tecto o cruzamento seco ficava malva (`05 §4b` «Mistura II», tetraedro 0 → 15 %, o Rebelle 0).
 pub fn assenta(
     e: Ecra,
     sc: [f64; 3],

@@ -10,7 +10,7 @@ e as réguas são as dos portões `wetpaint/mistura_wet_drip_tests.rs`.
 
 - `<caixas>_<estado>_borda<n>[...]_8x.png` — Fase B (as quatro caixas de antes da cura); `faseC_*` / `prancha_faseC_*`
   — as ablações H1–H7; `faseD_*` — as candidatas da representação única (densidade, satura, contínua, curas
-  locais), todas RECUSADAS por número (`05 §4b` «Mistura — Wet Drip»).
+  locais), todas RECUSADAS por número (`05 §4b` «Mistura II»).
 - **`faseE_*` — a cura (11/10):** `antes_*` = a lei de antes do «Glaze layering» (`Lei::Camada`, o controlo dos
   portões — os bytes são os do produto de antes, conferido por `cmp` contra a Fase D) contra `duas` / `glaze` /
   `nenhuma` do produto curado, molhado e seco; `faseE_prancha_<estado>_1x.png` (a tela 1:1 nos quatro momentos)

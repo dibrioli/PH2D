@@ -1044,45 +1044,10 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - **Aberto:** (a) a largura (W2); (b) o Wash molhado mais escuro que o do Rebelle aos 2 s (64 → 38 contra
     46 → 39); (c) os fios finos e longos do Drip; (d) o Smooth Edges no máximo amacia o grão da tinta clara
     molhada (−10 %); (e) o Shape Noise no Wet Paint (#47).
-- ✅ **Mistura — Wet Drip: o azul-claro com as duas caixas K–M (11/10, prompt [16](16_PROMPT_janela_auditoria_mistura_simplificacao.md), Fases B–E).**
-  - **Causa (Fases B–C, `sonda_mistura_wet_drip`):** a lei de ecrã do «Glaze layering» (`Ecra::Camada`: o assentado
-    como fundo OPACO qualquer que seja a cobertura dele) e a sua inversa fechada ao assentar escreviam, sob filme
-    grosso, um assentado ciano/lilás preso a 255 e ESCONDIDO; o escorrimento destapava-o (pontos e faixas claras).
-  - ⛔ **Recusas MEDIDAS (Fase D, `faseD_tabelas.txt` da sessão):** a representação única por densidade óptica
-    (perde a W1e seca, γ 1,07–1,17 contra 0,30–0,70, e as camadas: o miolo a `[9, 4, 0]`, sem ordem de camadas
-    não há «tapar») · `CAMADA_CONTINUA` (sangria seca +0,129, camadas seco 0,54, molhada 1,25×) · trocar a K–M do
-    «Pigment mixing» pela média da densidade (decisão da janela principal: a mesma porta `ColorMix` nos três meios).
-  - **A cura (Fase E):** (1) o «Glaze layering» é a lei `Cobre` com a camada a tapar menos —
-    `Sim::camadas_transparentes` → `colorops::TINTA_ESCONDE_EM_VELATURA` = **2** no lugar de 5, lida SÓ por
-    `Sim::gather_params` (o ecrã e as transferências verticais vêem a mesma lei; `PigmentVisual::km_glaze` saiu e o
-    clique recompõe depois do reconcile). Esconde 1 contra 2, no mesmo processo: W1e seco γ 0,98·1,00 · **0,78·0,81**
-    (sem a caixa 0,44); camadas 0,82·0,86 ✗ · **0,85·0,87**; Δ +600 → Dry 26,7 · **20,8** (o produto 13,2).
-    (2) **A caixa das tintas só no RE-MOLHAR** (`assenta::levanta`): o filme que a água leva fica, por canal, entre as
-    duas tintas. ⛔ **Recusada no ASSENTAR, medida:** a caixa inteira e só o tecto viram o cruzamento azul sobre
-    vermelho SECO em malva — tetraedro do Rebelle `0,000 % → 15,3 %` (o Rebelle 0,000 % nas quatro capturas), com o
-    produto SEM caixas; a tinta clara que tapa a escura (a lei do Rebelle) guarda-se mais clara que a escura.
-    (3) `Lei::Camada` fica só como o CONTROLO dos portões (é a lei de antes ao byte: `cmp` dos PPM contra a Fase D).
-  - **Antes → depois (as duas caixas, molhado | vermelho seco):** índice fora do cone 9 001 → 511 | 5 844 → 0 ·
-    mais clara à mesma massa (luz linear) +0,565 → +0,043 | +0,633 → +0,100 · pontilhado 3 010 → 94 | 2 568 → 54 ·
-    tetraedro 19,2 % → 0,05 % | 16,8 % → 0,000 % · ciano 0,080 % → 0 | 0,132 % → 0. Sem caixas o produto não muda de
-    bytes no Wet Drip além do re-molhar (tetraedro 0,000 %); as barras (W1e, sangria, camadas, acumulação 1,79,
-    molhada 1,80×, tom ao secar 0,061 / 0,122) ficam as do produto.
-  - **Portões novos (controlo DENTRO):** `mistura_wet_drip_tests::uma_mistura_nunca_e_mais_clara_que_as_tintas`
-    (tolerância = o produto sem caixas, +0,148; cone ≤ 0,20; vermelho no produto de antes: +0,646 / 0,557) ·
-    `sem_celulas_soltas` (miolo > 25 níveis ≤ 150 e N32 ≤ 0,13 %; antes 2 778) ·
-    `o_glaze_layering_deixa_ver_a_camada_de_baixo` (γ 0,44 → 0,78·0,81; verde também na lei de antes, 0,86 — o
-    vermelho dele é uma caixa que não chega à tela) · `assenta::tests::as_transferencias_verticais_ficam_na_caixa_das_tintas`
-    (4 480 re-molhares, o pior do adversário por nome; sem a caixa sai 44,6 níveis). `km_flags_reach_the_sim_and_the_composite`:
-    o 2.º traço passou a OUTRO pigmento (a mesma tinta sobre si é uma camada só — o Glaze age onde o pigmento muda).
-  - **Regravado com a razão escrita:** as impressões do S e da bancada (`opcoes_tests`) e as 4 miniaturas de fábrica
-    (o re-molhar com a caixa). O censo dos controlos: a pega do ângulo do carimbo no Wet Paint passou a inerte (era
-    «viva» por arredondamento que saía pela inversa do re-molhar) — linha com o motivo, ao lado do Rotate.
-  - **Aberto:** o estado pior do adversário (filme lilás `[231, 186, 222]` re-molhando azul escuro sob quase branco)
-    está DENTRO da caixa por canal e fora do casco subtractivo (+0,135): a caixa não o apanha; o salto no Dry canvas
-    com o Glaze (20,8) é maior que o do produto (13,2).
 - ✅ **Mistura II — a representação da cor (11/10, prompt [16](16_PROMPT_janela_auditoria_mistura_simplificacao.md), Fases A–F; commit `d8a488185`).**
-  A pergunta do prompt: o defeito do Wet Drip (entrada acima) nasce da MISTURA ou da CONVERSÃO entre as
-  representações da cor? Resposta medida: da conversão (a cor de ecrã invertida e guardada como cor de pigmento),
+  Uma entrada só para a auditoria inteira (fundiu a «Mistura — Wet Drip: o azul-claro com as duas caixas K–M», Fases B–E,
+  que a implementação escrevera à parte). A pergunta do prompt: o defeito do Wet Drip (o azul-claro com as duas caixas K–M)
+  nasce da MISTURA ou da CONVERSÃO entre as representações da cor? Resposta medida: da conversão (a cor de ecrã invertida e guardada como cor de pigmento),
   nunca da K–M. Pranchas: [1:1](prancha_mistura_wet_drip.png) · [8×](prancha_mistura_wet_drip_8x.png) (as quatro capturas do
   dono · antes · depois · Rebelle; gerador [`ferramentas/prancha_mistura_ii.py`](ferramentas/prancha_mistura_ii.py));
   fixtures [`ph2d_mistura_wet_drip/`](fixtures/ph2d_mistura_wet_drip/README.md) · [`rebelle_mistura_wet_drip/`](fixtures/rebelle_mistura_wet_drip/README.md).
@@ -1125,12 +1090,12 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     | H6 | a razão da grelha | razão 3: 17 764 (blocos 3×3); com a cura 471 | ⛔ só aumenta o grão |
     | H7 | o pincel sujo | `Pickup` 0 + `pickup_assentado` 0: igual | ⛔ |
 
-    Mecanismo (as linhas do HEAD de então): `cor()` mostra o assentado como fundo OPACO qualquer que seja a cobertura dele (`a_s`
+    Mecanismo (as linhas do HEAD de então, a lei `Ecra::Camada` do «Glaze layering»): `cor()` mostra o assentado como fundo OPACO qualquer que seja a cobertura dele (`a_s`
     não entra; salto em `a_s = 0`); sob filme grosso (`a_f2 ≥ 0,96`) a inversa fechada pede um fundo de reflectância > 1 (no traço,
-    linear `[0,24 · 1,07 · 2,95]`) e o `clamp(0,1)` escreve CIANO (sob o azul) ou LILÁS (vermelho sob azul), escondido; o escorrimento
-    leva o filme e a mesma `cor()`, que dá a um assentado de `a_s = 0,018` o peso de um fundo inteiro, destapa-o. **Aterra** na advecção;
-    **provoca-o** `assenta::assenta`, ramo Camada.
-  - **Decisão D (janela principal, sobre as Fases D e D′).**
+    linear `[0,24 · 1,07 · 2,95]`) e o `clamp(0,1)` escreve CIANO (sob o azul) ou LILÁS (vermelho sob azul) — um assentado preso a 255,
+    escondido; o escorrimento leva o filme e a mesma `cor()`, que dá a um assentado de `a_s = 0,018` o peso de um fundo inteiro,
+    destapa-o (os pontos e faixas claras). **Aterra** na advecção; **provoca-o** `assenta::assenta`, ramo Camada.
+  - **Decisão D (janela principal, sobre as Fases D e D′; tabelas em `faseD_tabelas.txt` da sessão).**
 
     | alternativa | resultado (as duas caixas) | decisão |
     |---|---|---|
@@ -1140,10 +1105,16 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     | Média da densidade NA K–M do «Pigment mixing» (bit 256) | índice do Drip 546 → 3, tetraedro 0,053 % → 0; γ molhado 0,81 → 0,88 | ⛔ recusada pela janela: a mistura é a MESMA porta `ColorMix` nos três meios; K–M fica (limite por canal; a régua de Beer é que está enviesada) |
     | **Glaze layering = lei Cobre com a camada a tapar menos** (`TINTA_ESCONDE_EM_VELATURA` = 2, uma porta só: `Sim::camadas_transparentes`) | ver as barras | ✅ **escolhida** |
     | **Caixa das tintas no RE-MOLHAR** (`assenta::levanta`) | re-molhar fora da caixa 44,6 → 0 | ✅ |
-    | Caixa das tintas também no ASSENTAR (inteira, ou só o tecto) | tetraedro seco `0,000 % → 15,3 %` (malva) com o produto SEM caixas | ⛔ medida e recusada |
+    | Caixa das tintas também no ASSENTAR (inteira, ou só o tecto) | o cruzamento azul sobre vermelho SECO fica malva: tetraedro do Rebelle `0,000 % → 15,3 %` com o produto SEM caixas (o Rebelle 0,000 % nas quatro capturas) — a tinta clara que tapa a escura (a lei do Rebelle) guarda-se mais clara que a escura, e o tecto prende-a | ⛔ medida e recusada |
 
-    Esconde do Glaze, mesmo processo: 1 → camadas molhado 0,82 ✗; **2** → W1e seco γ 0,78·0,81, camadas 0,85·0,87, salto no Dry canvas 20,8;
-    sem a caixa (5): γ 0,44·0,44, salto 13,2; a lei de antes (Camada): γ 0,86 ✗, camadas seco 0,44 ✗.
+    Esconde do Glaze, mesmo processo (o salto no Dry canvas com Δ +600 de massa): 1 → W1e seco γ 0,98·1,00, camadas 0,82·0,86 ✗ (o molhado),
+    salto 26,7; **2** → W1e seco γ 0,78·0,81, camadas 0,85·0,87, salto 20,8; sem a caixa (5): γ 0,44·0,44, salto 13,2; a lei de antes
+    (Camada): γ 0,86 ✗, camadas seco 0,44 ✗.
+  - **A cura no código (Fase E):** (1) o «Glaze layering» é a lei `Cobre` com a camada a tapar menos — `Sim::camadas_transparentes` →
+    `colorops::TINTA_ESCONDE_EM_VELATURA` = **2** no lugar de `TINTA_ESCONDE` = 5, lida SÓ por `Sim::gather_params` (o ecrã e as
+    transferências verticais vêem a mesma lei; `PigmentVisual::km_glaze` saiu e o clique recompõe depois do reconcile). (2) A caixa das
+    tintas só no RE-MOLHAR (`assenta::levanta`): o filme que a água leva fica, por canal, entre as duas tintas. (3) `Lei::Camada` fica só
+    como o CONTROLO dos portões (é a lei de antes ao byte: `cmp` dos PPM contra a Fase D).
   - **Barras, lado a lado (antes sem caixas · antes duas caixas · depois duas caixas · Rebelle):**
 
     | barra | antes, sem caixas | antes, duas | depois, duas | Rebelle |
@@ -1158,18 +1129,39 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     | pontilhado | 92 \| 53 | 3 010 \| 2 568 | 94 \| 54 | — |
     | tetraedro | 0 \| 0 % | 19,2 \| 16,8 % | 0,05 \| 0 % | 0 % |
     | mais clara à mesma massa (luz linear) | +0,048 \| +0,129 | +0,565 \| +0,633 | +0,043 \| +0,100 | — |
+    | ciano | — | 0,080 \| 0,132 % | 0 \| 0 | 0 |
 
-  - **Portões com o vermelho de antes** (o «antes» = o produto de hoje com a cura desligada; o controlo reprova): `uma_mistura_nunca_e_mais_clara_que_as_tintas`
-    (+0,646 / cone 0,557 → ≤ +0,148 / ≤ 0,138) · `sem_celulas_soltas` (2 778 / 2 498 → 81 / 45) ·
-    `as_transferencias_verticais_ficam_na_caixa_das_tintas` (44,6 níveis → 0) · `o_glaze_layering_deixa_ver_a_camada_de_baixo`
-    (VERDE também antes, γ 0,86 contra 0,44: o vermelho dele é uma caixa que não chega à tela) · `km_flags_reach_the_sim_and_the_composite`
-    (o adversário D′ viu-o partir: o clique no Glaze mudava 5 890 bytes e passou a 0; curado pondo o 2.º traço de OUTRA tinta).
-  - **Mutações (Fase F, 13): 12 sangraram, 1 sobreviveu.** M1 e M1b (armazenamento / lei inteira de volta à Camada) · M2 (só o ecrã) · M3 (esconde do Glaze = o do produto) ·
+    Sem caixas o produto não muda de bytes no Wet Drip além do re-molhar (tetraedro 0,000 %): as barras do produto ficam as de antes.
+  - **Portões com o vermelho de antes** (o «antes» = o produto de hoje com a cura desligada; o controlo reprova; em `mistura_wet_drip_tests`
+    salvo onde dito): `uma_mistura_nunca_e_mais_clara_que_as_tintas` (tolerância = o produto sem caixas, +0,148; cone ≤ 0,20; +0,646 / cone
+    0,557 → ≤ +0,148 / ≤ 0,138) · `sem_celulas_soltas` (miolo > 25 níveis ≤ 150 e N32 ≤ 0,13 %; 2 778 / 2 498 → 81 / 45) ·
+    `assenta::tests::as_transferencias_verticais_ficam_na_caixa_das_tintas` (4 480 re-molhares, o pior do adversário por nome; 44,6 níveis → 0) ·
+    `o_glaze_layering_deixa_ver_a_camada_de_baixo` (γ 0,44 → 0,78·0,81; VERDE também antes, γ 0,86: o vermelho dele é uma caixa que não chega
+    à tela) · `km_flags_reach_the_sim_and_the_composite` (o adversário D′ viu-o partir: o clique no Glaze mudava 5 890 bytes e passou a 0;
+    curado pondo o 2.º traço de OUTRA tinta — a mesma tinta sobre si é uma camada só, o Glaze age onde o pigmento muda).
+  - **O portão das transferências (11/10, o que faltava para M7b):** `ph2d-wet-paint/tests/it/glaze_vertical_transfers.rs`. Cena de duas tintas
+    sobrepostas (4 pares em faixas, 40 linhas de massas, uniforme em `x` para o arrasto lateral do Smear ser nulo), a lei da sessão do produto;
+    a régua é o ecrã SECO do render (`sobre_branco(p.ecra.seco(), …)`) célula a célula, antes e depois de cada passe vertical. Medido:
+    - **assentar** (4 passes da secagem Jacobi; Dry canvas), 1 920 células: Δ 1,4e-4 sem a caixa · 1,3e-4 com → tecto **0,01**
+      (`com_o_glaze_assentar_guarda_o_ecra_seco`);
+    - **re-molhar tintas diferentes NÃO preserva o ecrã, nem sem a caixa** — a caixa das tintas prende a inversa: um traço de Wet muda até
+      **40,2** níveis sem o Glaze (4,13 com), de Smear **47,7** (13,84 com); sem o Glaze a caixa prende 1 853 de 1 853 células-dab no Wet (17 dabs).
+      Por isso o re-molhar mede-se pela lei dele, dab a dab (`Engine::dispatch_pressure_dab`): onde a caixa NÃO prendeu, com o Glaze, 484
+      células-dab no Wet (Δ 0,0095; 1 369 presas, Δ ≤ 0,34) e 476 no Smear (Δ 0,264; 1 268 presas, Δ ≤ 0,78) → tecto **1,5** (o de `assenta::tests`) e **≥ 100** livres; e o traço inteiro com tecto 8 (Wet)
+      e 25 (Smear) (`com_o_glaze_re_molhar_guarda_o_ecra_seco_onde_a_caixa_das_tintas_nao_prende`).
+  - **Regravado com a razão escrita:** as impressões do S e da bancada (`opcoes_tests`) e as 4 miniaturas de fábrica (o re-molhar com a caixa).
+    O censo dos controlos: a pega do ângulo do carimbo no Wet Paint passou a inerte (era «viva» por arredondamento que saía pela inversa do
+    re-molhar) — linha com o motivo, ao lado do Rotate.
+  - **Mutações (Fase F, 13): 12 sangraram, 1 sobreviveu — e M7b passou a sangrar com o portão das transferências (11/10): 13 de 13.** M1 e M1b (armazenamento / lei inteira de volta à Camada) · M2 (só o ecrã) · M3 (esconde do Glaze = o do produto) ·
     M5 (re-molhar sem a caixa) · M6 (caixa presa a [0,255]) · M7a (ecrã à parte sem a caixa) · M8 (constante 2 → 1) · M9 (o reconcile não passa a flag) ·
     M10 (`wet_recomposite_full` sem reconciliar) · M11 (a caixa do re-molhar sempre «vem») sangram; M4 (caixa ADICIONADA ao assentar, o inverso do pedido: o assentar
-    não tem caixa) sangra só na impressão digital. **Sobrevive M7b:** o armazenamento calculado à parte (esconde 5) com o ecrã a 2 — nenhum portão observa o
-    armazenamento do Glaze depois de o ecrã o ler. Reforço (não aplicado): teste em `mistura_wet_drip_tests` sobre o salto no Dry canvas da cena W1e com
-    `CAIXAS=(false,true)` (≤ ~21, o de esconde 5 daria ~13), ou unidade em `assenta` que exija o mesmo `Ecra` em `DryConst::new`, `dry_canvas` e `lift_settled`.
+    não tem caixa) sangra só na impressão digital. **M7b** (o armazenamento calculado à parte, esconde 5, com o ecrã a 2) sobreviveu à Fase F — nenhum portão
+    observava o armazenamento do Glaze depois de o ecrã o ler (corridos: `ph2d-wet-paint` `--lib` e `--test it`, `ph2d-tool-painter --lib wetpaint`). **Sangra
+    desde o portão das transferências (acima), uma âncora de cada vez:** M7b.1 secagem (`DryConst::new`) → `com_o_glaze_assentar_guarda_o_ecra_seco`, Δ **51,3**
+    (tecto 0,01) · M7b.2 Dry canvas (`dry_canvas_now`) → o mesmo, Δ **51,3** · M7b.3 Wet (`apply_wet` → `lift_settled`) →
+    `com_o_glaze_re_molhar_…_nao_prende`, **0** células-dab livres (≥ 100), Δ ≤ 1,79 nas presas, traço Δ **25,6** (tecto 8) · M7b.4 Smear (`apply_smear` →
+    `lift_settled`) → o mesmo, **6** livres com Δ **2,33** (tecto 1,5), traço Δ **43,4** (tecto 25); as quatro juntas, os dois testes. Restauro por cópia + `touch`,
+    `git diff` vazio nos ficheiros mutados.
     Cobertura fina: M4/M5/M6/M11 só vêem a caixa do re-molhar pela impressão digital do S/bancada (M5 e M6 também pela unidade); o tetraedro que justificou deixar o
     assentar sem caixa só existe na sonda `#[ignore]`; M2 e M10 têm um único portão cada.
   - ⛔ **Recusas MEDIDAS (não se reconstroem):** a densidade como representação única (acima) · `CAMADA_CONTINUA` (acima) · a média da densidade na K–M
@@ -1181,8 +1173,11 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     casco subtractivo (+0,135); só a cena 13 (Wet Wash quase branco sobre azul seco) o mostra, a 0,05 % dos pixels a 0,05 e 0 a 0,10 (sem caixas faz o mesmo); pede um portão de unidade
     sobre `assenta`/`levanta` que reprova hoje a 0,10 · (b) a inversa Cobre com tintas diferentes muda o ecrã seco > 1,5 níveis em 36 de 2 560 estados (até 16,8) — a caixa no
     assentar baixava o máximo (16,78 → 8,19) mas subia para 53 estados e partia o tetraedro · (c) o salto do Glaze no Dry canvas (20,8) é maior que o do produto (13,2) ·
-    (d) M7b e o reforço dele · (e) uma falha intermitente não diagnosticada de `--lib wetpaint` (164 + 1 numa corrida, verde na seguinte) · (f) o `solver::advect` isolado custa +27 % com a média
-    da densidade (recusada; o passo inteiro não mudou). **BUGS_painter #47** (depósito com subtracção absoluta) NÃO é este mecanismo; a auditoria não disse nada de novo sobre ele.
+    (d) o `solver::advect` isolado custa +27 % com a média da densidade (recusada; o passo inteiro não mudou). **Diagnosticada (11/10), já não aberta:** a falha
+    intermitente de `cargo test -p ph2d-tool-painter --lib wetpaint` (164 + 1) é `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`, membro
+    conhecido de [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md) (razão de relógios; está no `filter` da faixa isolada do nextest, que o `cargo test` não
+    aplica): três corridas seguidas da suíte → 164/1 (`0,7147 ms` a 2048² contra `1,7646` a 4096², 2,47× para a barra 2×; load 0,43 → 3,92), 165/0
+    (3,92 → 4,97), 165/0 (4,97 → 2,53); sozinho 3 de 3 verde a load 1,8. **BUGS_painter #47** (depósito com subtracção absoluta) NÃO é este mecanismo; a auditoria não disse nada de novo sobre ele.
 - **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

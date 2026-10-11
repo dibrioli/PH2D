@@ -12,7 +12,7 @@
 //! (o miolo 5×5 da tinta mais CLARO que a mediana 3×3) e a régua `N32` do Rebelle.
 //!
 //! ⚠️ O CONTROLO de cada portão é a lei de antes do «Glaze layering» (`Lei::Camada`): tem de reprovar.
-//! Números e recusas: `docs/Painter/NewFeaturesWetPaint/05_plano_da_linha_e_o_antes.md` §4b «Mistura — Wet Drip».
+//! Números e recusas: `docs/Painter/NewFeaturesWetPaint/05_plano_da_linha_e_o_antes.md` §4b «Mistura II».
 use super::mistura_tests as mt;
 use crate::tool::PainterTool;
 use ph2d_brush_presets::Biblioteca;

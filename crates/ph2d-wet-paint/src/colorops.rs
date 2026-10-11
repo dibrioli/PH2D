@@ -183,7 +183,7 @@ pub const TINTA_ESCONDE: f64 = 5.0;
 /// | camadas | 0,82 · 0,86 ✗ (o miolo a 0,81 do azul) | **0,85 · 0,87** | 0,86 · 0,88 |
 /// | Δ +600 → Dry | 26,7 | **20,8** | 13,2 |
 ///
-/// (`05 §4b` «Mistura — Wet Drip»; a lei de antes, a `Camada`, dava γ 0,86 e camadas 0,78 · 0,44 ✗.)
+/// (`05 §4b` «Mistura II»; a lei de antes, a `Camada`, dava γ 0,86 e camadas 0,78 · 0,44 ✗.)
 pub const TINTA_ESCONDE_EM_VELATURA: f64 = 2.0;
 
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos

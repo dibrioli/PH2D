@@ -15,6 +15,7 @@ mod deposit_rows;
 mod fingerprint;
 mod flow_grid;
 mod flow_symmetry;
+mod glaze_vertical_transfers;
 mod live_span;
 mod measure_dab_halves;
 mod measure_density;

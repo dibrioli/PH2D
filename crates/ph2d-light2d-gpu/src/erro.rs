@@ -10,6 +10,11 @@ pub enum ErroSolver {
         lado: u32,
         limite: u32,
     },
+    /// O dispositivo recusou alocar os `bytes` que a lista declara (um limite do HARDWARE: o wgpu
+    /// não diz quanta memória há, só que recusou).
+    SemMemoria {
+        bytes: u64,
+    },
 }
 
 impl std::fmt::Display for ErroSolver {
@@ -25,6 +30,9 @@ impl std::fmt::Display for ErroSolver {
                     f,
                     "grade de {lado} texels passa o limite do dispositivo ({limite})"
                 )
+            }
+            Self::SemMemoria { bytes } => {
+                write!(f, "o dispositivo recusou alocar {} MB", bytes / 1_000_000)
             }
         }
     }

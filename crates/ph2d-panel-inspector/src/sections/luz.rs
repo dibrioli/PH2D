@@ -25,6 +25,14 @@ fn frase(a: AvisoDaLuz) -> (String, ColorToken) {
             tr("panel.inspector.luz.solver_unavailable").to_string(),
             ColorToken::Warn,
         ),
+        AvisoDaLuz::SemMemoria { mb } => (
+            tr_with("panel.inspector.luz.out_of_memory", &[("mb", &mb)]),
+            ColorToken::Warn,
+        ),
+        AvisoDaLuz::SombraEngrossada { vezes } => (
+            tr_with("panel.inspector.luz.shadow_coarser_n", &[("n", &vezes)]),
+            ColorToken::Text3,
+        ),
         AvisoDaLuz::PontoSemTamanho => (
             tr("panel.inspector.luz.point_without_size").to_string(),
             ColorToken::Warn,

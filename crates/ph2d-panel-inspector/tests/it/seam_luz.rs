@@ -249,6 +249,8 @@ fn os_avisos_pintam_e_os_controlos_continuam_vivos() {
             limite: 8192,
         },
         AvisoDaLuz::SolverIndisponivel,
+        AvisoDaLuz::SemMemoria { mb: 4162 },
+        AvisoDaLuz::SombraEngrossada { vezes: 2 },
         AvisoDaLuz::PontoSemTamanho,
         AvisoDaLuz::PequenaDemaisParaOZoom,
         AvisoDaLuz::ForaDaVista,

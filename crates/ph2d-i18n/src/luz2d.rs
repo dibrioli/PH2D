@@ -29,6 +29,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.luz.solver_unavailable" => {
             "All light is off \u{2014} this GPU cannot run the light."
         }
+        "panel.inspector.luz.out_of_memory" => {
+            "All light is off \u{2014} the GPU refused its memory ({mb} MB) at this window size. \
+             Pick a lower Light quality in Settings, or make the window smaller."
+        }
+        "panel.inspector.luz.shadow_coarser_n" => {
+            "This window is large for the GPU \u{2014} shadow edges are drawn {n}\u{00d7} coarser."
+        }
         "panel.inspector.luz.point_without_size" => {
             "A size of 0 is not drawn yet \u{2014} give the lamp a size."
         }
@@ -55,6 +62,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "2D light is off: its grid ({lado} px) is larger than this GPU allows ({limite} px)."
         }
         "light2d.toast.solver_unavailable" => "2D light is off: this GPU cannot run it.",
+        "light2d.toast.out_of_memory" => {
+            "2D light is off: the GPU refused its memory ({mb} MB) at this window size."
+        }
         _ => return None,
     })
 }

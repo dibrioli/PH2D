@@ -42,6 +42,29 @@ pub struct Degrau {
     pub rebotes_por_quadro: u32,
 }
 
+impl Degrau {
+    /// ⭐ W5e — a grade FINA (a luz direta) e a captura fina dos opacos `2^k` × mais grossas: o que
+    /// cede quando a janela não cabe nos tetos do dispositivo (o lado de textura, a memória) ou no
+    /// tempo abaixo do Baixo ([`crate::teto`], [`crate::qualidade::Governador`]).
+    #[must_use]
+    pub fn com_fina_engrossada(self, k: u32) -> Self {
+        let f = f64::from(1u32 << k.min(16));
+        Self {
+            fino_px: self.fino_px * f,
+            captura_px: self.captura_px * f,
+            ..self
+        }
+    }
+
+    /// Quantas vezes a fina pode engrossar até a captura ser a das cascatas (depois disso não muda
+    /// mais nada).
+    #[must_use]
+    pub fn fina_max(self) -> u32 {
+        let r = self.c0_px / self.fino_px.min(self.captura_px);
+        if r > 1.0 { r.log2().ceil() as u32 } else { 0 }
+    }
+}
+
 /// ⭐ W5d — a margem do entorno, em fração da vista de cada lado: 1,5 ⇒ 4× a vista em cada eixo.
 pub const MARGEM_DO_ENTORNO: f64 = 1.5;
 

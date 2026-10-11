@@ -4907,6 +4907,7 @@ dependencies = [
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
+ "pollster",
  "vello",
  "wgpu",
 ]
@@ -6384,6 +6385,7 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-light2d-ecs",
  "ph2d-light2d-ref",
+ "pollster",
  "wgpu",
 ]
 

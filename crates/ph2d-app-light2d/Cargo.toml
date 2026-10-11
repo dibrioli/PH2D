@@ -54,6 +54,8 @@ vello = "0.10.0"
 half = "2"
 # O gabarito: a paridade da luz recebida mede contra ele.
 ph2d-light2d-ref = { path = "../ph2d-light2d-ref" }
+# Os escopos de erro do dispositivo (`pop` é um futuro) nas rodadas que medem recusas.
+pollster = "0.4.0"
 
 [lints]
 workspace = true

@@ -37,6 +37,9 @@ mod fina;
 /// ⭐ A cascata holográfica (W5c) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_hrc.rs"]
 mod holo;
+/// ⭐ O nascimento sob os tetos do dispositivo (W5e) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_nascer.rs"]
+mod nascer;
 /// ⭐ O rebote (W5c) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_rebote.rs"]
 mod rebote;
@@ -219,9 +222,9 @@ impl Solver {
         Self::novo_com(gpu, pedido, &crate::Fabrica::default())
     }
 
-    /// [`Self::novo`] com a [`crate::Fabrica`] partilhada: as pipelines de uma grade anterior com as
-    /// mesmas constantes voltam sem recompilar (a janela redimensionada custava ~2 s por quadro).
-    pub fn novo_com(
+    /// A montagem; [`Self::novo_com`] (ficheiro irmão `solver_nascer.rs`) envolve-a no escopo da
+    /// memória do dispositivo.
+    fn montar(
         gpu: &GpuContext,
         pedido: Config,
         fabrica: &crate::Fabrica,
@@ -241,12 +244,7 @@ impl Solver {
             grade: pedido.grade_efetiva(),
             ..pedido
         };
-        let limite = device.limits().max_texture_dimension_2d;
-        let gf = cfg.grade_da_fluencia();
-        let lado = gf.largura.max(gf.altura);
-        if lado > limite {
-            return Err(ErroSolver::GradeGrandeDemais { lado, limite });
-        }
+        cfg.cabe_na_placa(device.limits().max_texture_dimension_2d)?;
         let n = cfg.n_cascatas();
         let saltos = cfg.saltos_jfa();
         let com_tempos = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);

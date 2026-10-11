@@ -30,6 +30,12 @@ pub enum AvisoDaLuz {
     GradeGrandeDemais { lado: u32, limite: u32 },
     /// O dispositivo não tem `SHADER_F16` (ou a configuração é inválida): a luz está apagada.
     SolverIndisponivel,
+    /// ⭐ W5e: o dispositivo recusou a memória da luz nesta janela, nem com a sombra mais grossa: a
+    /// luz está apagada.
+    SemMemoria { mb: u64 },
+    /// ⭐ W5e: a janela é grande para o dispositivo (o lado de textura ou a memória) — a sombra
+    /// direta é desenhada `vezes` mais grossa que a do nível.
+    SombraEngrossada { vezes: u32 },
     /// Tamanho 0: o ponto exato ainda não é desenhado (o caminho analítico é da W5).
     PontoSemTamanho,
     /// A lâmpada é menor que meio texel da grade a esta distância da câmera.

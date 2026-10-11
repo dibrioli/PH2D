@@ -18,6 +18,7 @@ pub mod object_add;
 mod quadro;
 pub mod qualidade;
 pub mod smoke;
+pub mod teto;
 mod vetor;
 
 /// ⭐ W5d: a captura dos sprites do produto — para quem mede a luz pelo caminho dele.

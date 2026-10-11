@@ -29,7 +29,16 @@ struct Resolvido {
 
 /// A luz 2D do quadro do editor. Ver o cabeçalho da crate para as três portas.
 pub struct LuzDoQuadro {
+    /// O degrau EM USO: a [`Self::base`] com a fina engrossada o que os tetos e o governador pedem.
     degrau: Degrau,
+    /// ⭐ W5e: o degrau que o nível (ou a sonda) pede, antes dos tetos do dispositivo.
+    base: Degrau,
+    /// ⭐ W5e: o lado de textura do dispositivo (o da última placa vista; antes, o padrão do wgpu).
+    lado_max: u32,
+    /// ⭐ W5e: os bytes que o dispositivo RECUSOU, e em que janela (outra janela esquece-os).
+    recusou: Option<((u32, u32), u64)>,
+    /// ⭐ W5e: a fina que os tetos impõem (`None` = nada cabe), pela chave de que ela depende.
+    fina_dos_tetos: Option<(((u32, u32), Degrau, crate::teto::Tetos), Option<u32>)>,
     cena: CenaDeLuz,
     sem_luz: BTreeSet<Entity>,
     /// `Some` = a cena tem `Luz` neste quadro.
@@ -86,6 +95,10 @@ impl LuzDoQuadro {
     pub fn com_degrau(degrau: Degrau) -> Self {
         Self {
             degrau,
+            base: degrau,
+            lado_max: wgpu::Limits::default().max_texture_dimension_2d,
+            recusou: None,
+            fina_dos_tetos: None,
             cena: CenaDeLuz::default(),
             sem_luz: BTreeSet::new(),
             grade: None,
@@ -124,6 +137,9 @@ impl LuzDoQuadro {
         self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
         self.alvo_px = alvo_px;
+        if self.cena.luzes > 0 {
+            self.caber(mundo_para_tela, alvo_px);
+        }
         self.grade = if self.cena.luzes == 0 {
             None
         } else {
@@ -160,6 +176,7 @@ impl LuzDoQuadro {
             self.semeadas = crate::smoke::marcar_semeadas(world, vetores.0, pendentes);
         }
         let alvo = superficie.size();
+        self.lado_max = superficie.gpu().device.limits().max_texture_dimension_2d;
         let acesa = self.preparar(world, mundo_para_tela, (alvo.width, alvo.height));
         self.desenhar_vetores(superficie.gpu(), vetores.0, vetores.1);
         acesa
@@ -194,7 +211,59 @@ impl LuzDoQuadro {
         } else {
             p.nivel
         };
-        self.degrau = crate::qualidade::degrau_do(nivel);
+        self.base = crate::qualidade::degrau_do(nivel);
+    }
+
+    /// ⭐ W5e — o degrau em uso para esta janela: a base com a fina engrossada o MÍNIMO que cabe nos
+    /// tetos do dispositivo ([`crate::teto`]) e, com o «Automático», o que o governador pede abaixo do
+    /// Baixo. Nada cabe e o «Automático» ligado: desce o nível; manual, o solver recusa e o aviso diz.
+    fn caber(&mut self, mundo_para_tela: Affine, alvo_px: (u32, u32)) {
+        if self.recusou.is_some_and(|(alvo, _)| alvo != alvo_px) {
+            self.recusou = None;
+        }
+        let tetos = crate::teto::Tetos {
+            lado: self.lado_max,
+            recusou: self.recusou.map(|(_, b)| b),
+        };
+        let automatica = self.preferencia.is_some_and(|p| p.automatica);
+        let fina = loop {
+            let chave = (alvo_px, self.base, tetos);
+            let fina = match self.fina_dos_tetos {
+                Some((c, f)) if c == chave => f,
+                _ => {
+                    let f = crate::teto::fina_que_cabe(mundo_para_tela, alvo_px, self.base, tetos);
+                    self.fina_dos_tetos = Some((chave, f));
+                    f
+                }
+            };
+            if fina.is_some() || !automatica || !self.governador.descer() {
+                break fina;
+            }
+            self.base = crate::qualidade::degrau_do(self.governador.nivel);
+        };
+        let max = self.base.fina_max();
+        let minimo = fina.unwrap_or(max);
+        let k = if automatica {
+            self.governador.faixa_da_fina(minimo, max);
+            self.governador.fina
+        } else {
+            minimo
+        };
+        self.degrau = self.base.com_fina_engrossada(k);
+    }
+
+    /// ⭐ W5e: quantas vezes a fina está engrossada neste quadro (0 = a do nível) e se foi pelo
+    /// dispositivo (o aviso do Inspector).
+    #[must_use]
+    pub fn fina_engrossada(&self) -> (u32, bool) {
+        let pelos_tetos = self
+            .fina_dos_tetos
+            .and_then(|(_, f)| f)
+            .is_some_and(|f| f > 0);
+        let k = (self.degrau.captura_px / self.base.captura_px)
+            .log2()
+            .round() as u32;
+        (k, pelos_tetos)
     }
 
     /// O último custo de placa da grade atual (ms), com ou sem o «Automático»; `None` antes da 1.ª
@@ -255,9 +324,17 @@ impl LuzDoQuadro {
         present: &mut PresentWorld,
         renderer: &SpriteRenderer,
     ) {
+        self.lado_max = gpu.device.limits().max_texture_dimension_2d;
         let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
             return;
         };
+        // ⭐ W5e: nada cabe abaixo do que a placa já recusou nesta janela — não se tenta alocar de novo
+        // a cada quadro (outra janela ou outro nível tentam).
+        if let (Some((_, None)), Some((_, bytes))) = (self.fina_dos_tetos, self.recusou) {
+            self.resolvido = None;
+            self.erro = Some(ErroSolver::SemMemoria { bytes });
+            return;
+        }
         let (fina, captura) = (self.fina, self.captura);
         // ⭐ W5c: a cascata holográfica (o degrau escolhe-a; a troca recria o solver).
         let holografica = self
@@ -306,6 +383,10 @@ impl LuzDoQuadro {
             })
         };
         self.erro = pronto.err();
+        // ⭐ W5e: o dispositivo recusou a memória — o próximo `preparar` engrossa a fina abaixo disto.
+        if let Some(ErroSolver::SemMemoria { bytes }) = self.erro {
+            self.recusou = Some((self.alvo_px, bytes));
+        }
         self.preparar_entorno(gpu, holografica);
         if let Some(e) = &self.erro {
             // ⚠️ Fica DITO (a W4 leva-o à UI): a luz apaga-se neste quadro em vez de mentir.
@@ -526,7 +607,15 @@ impl LuzDoQuadro {
                 ErroSolver::SemShaderF16 | ErroSolver::ConfigInvalida(_) => {
                     AvisoDaLuz::SolverIndisponivel
                 }
+                ErroSolver::SemMemoria { bytes } => AvisoDaLuz::SemMemoria {
+                    mb: bytes / 1_000_000,
+                },
             });
+        }
+        if let (k @ 1.., true) = self.fina_engrossada()
+            && self.acesa()
+        {
+            out.push(AvisoDaLuz::SombraEngrossada { vezes: 1 << k });
         }
         let indice = self
             .cena
@@ -572,6 +661,10 @@ impl LuzDoQuadro {
             ErroSolver::SemShaderF16 | ErroSolver::ConfigInvalida(_) => {
                 ph2d_i18n::tr("light2d.toast.solver_unavailable").to_string()
             }
+            ErroSolver::SemMemoria { bytes } => ph2d_i18n::tr_with(
+                "light2d.toast.out_of_memory",
+                &[("mb", &(bytes / 1_000_000))],
+            ),
         })
     }
 

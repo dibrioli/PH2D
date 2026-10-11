@@ -16,6 +16,8 @@ ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
 wgpu = "29.0.4"
 bytemuck = { version = "1", features = ["derive"] }
+# O escopo de erro da memória ao nascer (`pop` é um futuro; já no `Cargo.lock`, via `ph2d-gpu`).
+pollster = "0.4.0"
 
 [dev-dependencies]
 # O gabarito: todo gate de qualidade (G3) e a tabela do G12 vêm dele.

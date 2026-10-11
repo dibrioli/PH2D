@@ -38,14 +38,20 @@
   `ferramentas/vectorcraft_2026-10-11/{oraculo_vc.py, juiz_resvg_offset.py}`. 578/592 concordam;
   as 14 discordâncias estão em `DISAGREE` com o lado certo.
 
+## 2.ª janela (11/10) — itens 1 e 2 FECHADOS em `665d959c2`
+
+- **#39** (a lente de 2 âncoras largada na volta do motor — a hipótese do XOR caiu) e **#40** (a
+  junção Bevel/Miter pela corda; o ponto a `1e-17`) — mecanismos, números e gates no
+  [BUGS](../BUGS_vector.md) #39/#40. A régua `raster.rs` passou a deslocar a grelha por frações
+  irracionais (o losango era ela). `DISAGREE`: 10 linhas, 582/592; o balão é PH2D certo.
+- Mutação feita (6/6 sangram; o filtro de segmento nulo era inalcançável e saiu) — **não** a
+  repita no fecho; a tabela abaixo continua a valer para as cláusulas da W2.
+- ⚠️ O Offset Bevel/Miter de TODA forma curva com quina mudou (`split_at_corners`, só
+  Bevel/Miter): o `nextest-impacted` do fecho é obrigatório sobre os consumidores de `ph2d-app-vec`.
+- Corrida dirigida da crate: 158 verdes · 24 ignorados; clippy `--all-targets -D warnings` limpo.
+
 ## Aberto (por ordem)
 
-1. **BUGS #39 — Exclude estrela × elipse perde 0,68 %** (pré-existente, igual na 0.4). Primeiro
-   `/pd-bug-causa` (hipótese: agrupamento do XOR com toque ponta×elipse); depois tirar a linha do
-   `DISAGREE`. Sondas: `prints_both_sides_step_by_step` (`OURS_DIR=` grava o nosso em SVG).
-2. **SpeechRect miter/bevel 0,4** (PH2D 0,56–0,58 % do `resvg`, VC 0,00–0,40) e **Diamond miter**
-   (o juiz vê os dois iguais à verdade; a diferença é da grelha de 400 px do gate) — medir e
-   reclassificar no `DISAGREE`.
 3. **W3 — kerning**, não começado. Leis: `crates/ph2d-vec-text/src/glyph.rs` doc de
    `wrapped_lines` (quebrador e desenhador com a MESMA `line_advance`); `parley`/`harfrust` já na
    árvore. ⛔ Ordem do coordenador: **NÃO** vira padrão — atrás de chave, antes/depois fotografado

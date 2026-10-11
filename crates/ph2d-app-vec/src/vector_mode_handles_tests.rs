@@ -46,7 +46,7 @@ fn the_scene_pulls_a_corner_a_valley_and_the_end_of_a_pie() {
         "o canto: {:?}",
         after[0]
     );
-    assert!(after[1][1] > before[1][1] + 0.2, "o vale: {:?}", after[1]);
+    assert!((after[1][1] - 0.65).abs() < 1e-6, "o vale: {:?}", after[1]);
     assert!(
         // A pose é `f32` (o `Transform`): o ângulo chega a ~2e-6 graus.
         (after[2][0] - 300.0).abs() < 1e-4,

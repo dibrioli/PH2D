@@ -30,6 +30,11 @@
   (`6 + 12 = 18 px`) do ponto mínimo, na direcção em que o campo cresce — o widget de canto do
   Illustrator nasce recolhido pela mesma razão. A pega mede-se ao ponto VERDADEIRO: agarrar a alça
   estacionada e não mexer não arredonda nada (gate `a_parked_handle_grabbed_and_held_still_changes_nothing`).
+- **As alças de ÂNGULO vivem `PARK_PX` para dentro do aro**, no raio delas (até metade do raio):
+  no aro, os pontos cardeais da elipse SÃO as alças do meio das arestas da caixa — a 1.ª foto da cena
+  15 mostrou o início da pizza às 3h escondido debaixo da de escala. A lei delas só lê o ângulo, e a
+  pega mede-se ao ponto DESENHADO (o mesmo ângulo): recolher não muda o que fazem (gate
+  `an_angle_handle_lives_inside_the_rim_off_the_box_handles`).
 - **Modificadores** (teclas do Illustrator; «em pares» do Affinity): **Shift** = ângulos em passos de
   15° (o passo medido no Inkscape); **Ctrl** = o início do arco leva o fim (o arco RODA inteiro);
   **Alt** = só este canto (o rectângulo arredondado — sem Alt os quatro cantos andam juntos, o
@@ -42,6 +47,8 @@
   porta ÚNICA `shape_params::edit_selected_shape` (a mesma dos campos); o undo é o do diff do quadro
   (o botão premido segura-o: **um arrasto = um passo**); o **Esc** a meio repõe os valores do press.
   O toque entra pelo mesmo caminho (o reconhecedor da F6 converte o dedo em press/arrasto).
+- **A dica ⑤:** na Seleção com uma forma de alças em foco, o rodapé diz *«Drag a shape handle: adjust ·
+  Shift: 15° steps · Ctrl: turn the arc · Alt: one corner · Double-click: reset · Esc: cancel»*.
 - **A guia:** com o cursor sobre uma alça de trilho, o trilho dela desenha-se (a guia vermelha do
   Affinity: diz para onde a mão a pode levar).
 - **A cor:** o apelido `shape-handle` → `success`, MEDIDO contra as alças da caixa (`accent`,
@@ -125,10 +132,12 @@ re-semeia os números no quadro seguinte (`shape_params::frame_fields`, a 2.ª r
 | a alça a saltar para o centro do ponteiro no press | o oráculo guarda a pega (20/20) |
 | o vermelho/laranja do Affinity | 0,062/0,080 contra as alças da caixa no Sunstone (barra 0,10) |
 | uma alça nas ESCOLHAS (o «Viewed» das isométricas) | não há gesto natural para um booleano: fica na fila ② |
+| a pega das alças de ângulo como ROTAÇÃO (para a alça recolhida não torcer o ângulo) | o Inkscape é TRANSLAÇÃO: 20/20 a 0,000°, a rotação erra até 0,6°; a cura certa foi medir a pega ao ponto DESENHADO |
+| o bico dos balões por métrica sobre o vértice, ou numa grelha 24×24 | o `cook` cola o bico à aresta: 8 de 60 arrastos presos; a grelha também, e regrediu a cabeça da seta ⇒ `BoxPoint` (a mão em frações da caixa, desde o press) |
 
 ## §6 — A cena 15
 
 `PH2D_OBJECT_MODE_SMOKE=15`: no layout *Vetor*, um rectângulo arredondado, uma estrela e uma pizza;
 a Seleção pelo botão dela; cada forma sozinha na seleção e UMA alça arrastada pelo MESMO press e o
-MESMO arrasto da shell (`shape_handles_live::on`): o canto arredonda (+0,45 m), o vale abre, o fim da
+MESMO arrasto da shell (`shape_handles_live::on`): o canto arredonda (+0,45 m), o vale abre (0,5 → 0,65), o fim da
 pizza dá a volta até aos 300°. Gate `the_scene_pulls_a_corner_a_valley_and_the_end_of_a_pie`.

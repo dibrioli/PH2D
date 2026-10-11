@@ -166,6 +166,13 @@ pub fn hint_key_for(snap: &VectorStyleSnapshot) -> &'static str {
     if snap.mode == DrawMode::Pencil && snap.pencil_quickshape {
         return "panel.vector.hint.pencil_quickshape";
     }
+    // F9: na Seleção, com uma forma de ALÇAS em foco, a dica ensina os modificadores delas.
+    if snap.mode == DrawMode::Select
+        && crate::shape_focus::resolved(snap)
+            .is_some_and(|k| !ph2d_tool_vector::shape_handles::handles_of(k).is_empty())
+    {
+        return "panel.vector.hint.select_shape";
+    }
     hint_key(snap.mode)
 }
 

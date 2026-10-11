@@ -183,8 +183,14 @@ pub fn press(
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let k = hit(&world, w, HIT_PX * px_to_world)?;
     // A pega mede-se ao ponto VERDADEIRO, não ao estacionado: agarrar a alça estacionada e não
-    // mexer não arredonda nada (o desvio da estação viaja com a mão).
-    let truth = law::handle_point(&law::handles_of(t.kind)[k], &t.values, t.half(), &t.cook())?;
+    // mexer não arredonda nada (o desvio da estação viaja com a mão). As de ÂNGULO medem-se ao
+    // ponto DESENHADO (recolhido no raio dela: o mesmo ângulo) — a translação não torce o ângulo.
+    let h = &law::handles_of(t.kind)[k];
+    let truth = if law::reads_only_the_angle(h) {
+        grips[k]?
+    } else {
+        law::handle_point(h, &t.values, t.half(), &t.cook())?
+    };
     Some(ShapeHandleGrab {
         id: t.id,
         entity_bits: t.entity.to_bits(),

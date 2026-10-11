@@ -253,6 +253,18 @@ pub fn handle_grip(
     cook: &dyn Fn(&ShapeValues) -> VecPath,
 ) -> Option<[f64; 2]> {
     let at = handle_point(h, values, half, cook)?;
+    // ⭐ As alças de ÂNGULO vivem `park_at` para DENTRO do aro, sobre o raio delas: no aro da
+    // elipse os pontos cardeais SÃO as alças do meio das arestas da caixa (medido na foto da cena
+    // 15: o início da pizza às 3h sumia debaixo da de escala). A lei delas só lê o ÂNGULO da mão,
+    // então recolhê-las não muda nada do que fazem; até metade do raio, para não cair no pivô.
+    if reads_only_the_angle(h) {
+        let r = at[0].hypot(at[1]);
+        if r <= 0.0 {
+            return Some(at);
+        }
+        let k = (r - park_at.min(r * 0.5)) / r;
+        return Some([at[0] * k, at[1] * k]);
+    }
     if !h.park {
         return Some(at);
     }
@@ -271,6 +283,17 @@ pub fn handle_grip(
         return Some(at);
     }
     Some([zero[0] + dx / l * park_at, zero[1] + dy / l * park_at])
+}
+
+/// `true` = a lei da alça só lê o ÂNGULO da mão — ela pode viver recolhida para dentro do aro, e a
+/// pega dela mede-se a partir do ponto DESENHADO (o mesmo ângulo do verdadeiro): segurar parado
+/// não muda nada e a translação não torce o ângulo.
+#[must_use]
+pub fn reads_only_the_angle(h: &HandleDesc) -> bool {
+    matches!(
+        h.law,
+        Law::Sweep { .. } | Law::ArcStart { .. } | Law::Count | Law::Winding
+    )
 }
 
 /// O estado de UM arrasto vivo de alça: os valores do press (o `Esc` repõe-nos), a pega (o
@@ -351,8 +374,9 @@ pub fn drag(
     let Some(h) = handles_of(kind).get(d.handle) else {
         return d.at_press;
     };
+    // A pega viaja com a mão como TRANSLAÇÃO (o Inkscape: 20/20 a 0,000°; a rotação erraria até
+    // 0,6°); o ângulo dela desenrola-se desde o press.
     let p = [p[0] + d.grip[0], p[1] + d.grip[1]];
-    // O ângulo da mão, desenrolado desde o press.
     let a = norm_angle(p, half);
     d.wound += wrap180(a - d.last_angle);
     d.last_angle = a;

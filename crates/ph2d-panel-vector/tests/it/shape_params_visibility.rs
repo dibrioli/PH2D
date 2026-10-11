@@ -320,3 +320,47 @@ fn the_panel_no_longer_paints_the_shape_params() {
     // Controle: o MESMO quadro leva os campos na fila — senão o gate passaria por nada existir.
     assert!(shape_entries(&row(&crate::host_aberto())) > 0);
 }
+
+/// ⑤ **A dica ensina as alças** (F9): na Seleção com uma forma de ALÇAS em foco, a dica diz os
+/// modificadores delas; com uma forma sem parâmetros (o rectângulo) ou sem forma, a dica de sempre.
+#[test]
+fn the_select_hint_teaches_the_handles_only_with_a_handled_shape_in_focus() {
+    let snap = |mode| VectorStyleSnapshot {
+        mode,
+        ..VectorStyleSnapshot::default()
+    };
+    publish(
+        Some(ShapeKind::Star),
+        1,
+        DrawMode::Select,
+        ShapeKind::Rectangle,
+    );
+    assert_eq!(
+        bars::hint_key_for(&snap(DrawMode::Select)),
+        "panel.vector.hint.select_shape"
+    );
+    assert_eq!(
+        bars::hint_key_for(&snap(DrawMode::Node)),
+        "panel.vector.hint.node"
+    );
+    publish(
+        Some(ShapeKind::Rectangle),
+        1,
+        DrawMode::Select,
+        ShapeKind::Rectangle,
+    );
+    assert_eq!(
+        bars::hint_key_for(&snap(DrawMode::Select)),
+        "panel.vector.hint.select"
+    );
+    publish(None, 1, DrawMode::Select, ShapeKind::Star);
+    assert_eq!(
+        bars::hint_key_for(&snap(DrawMode::Select)),
+        "panel.vector.hint.select"
+    );
+    assert_ne!(
+        ph2d_i18n::tr("panel.vector.hint.select_shape"),
+        "panel.vector.hint.select_shape",
+        "a dica nova não tem texto"
+    );
+}

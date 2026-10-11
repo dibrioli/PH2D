@@ -86,7 +86,8 @@ pub fn step(
             })
             .then_some(75)
         }
-        // O vale da estrela, para FORA ao longo do raio dele (o centro é o da forma).
+        // O vale da estrela, para FORA ao longo do raio dele (o centro é o da forma): 0,5 → 0,65 — uma
+        // estrela gorda, ainda estrela (a 0,8 ela lia-se pentágono na foto).
         75 => {
             let id = nth(vec, 1)?;
             let inner = handles_of(ShapeKind::Star)
@@ -96,7 +97,7 @@ pub fn step(
             pull(vec, scene, sim, id, inner, move |a| {
                 (1..=6)
                     .map(|k| {
-                        let t = 1.0 + 0.1 * f64::from(k);
+                        let t = 1.0 + 0.05 * f64::from(k);
                         [c[0] + (a[0] - c[0]) * t, c[1] + (a[1] - c[1]) * t]
                     })
                     .collect()

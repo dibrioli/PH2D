@@ -142,6 +142,10 @@ pub struct Config {
     /// `c2_rc.wgsl`): uma sonda de cima dentro de um opaco (ou sobre a face) zerava a fusão inteira e o
     /// raio de baixo que acaba dentro da face perdia a entrada nela.
     pub fronteira_na_face: bool,
+    /// ⭐ W5c — o texel fino que o EIXO MEDIAL de um opaco corta guarda a média das faces sobre a área
+    /// dele, medidas pela perpendicular (o `MEDIA_NO_EIXO` do `c3_direta.wgsl`); `false` = o valor do
+    /// ponto de fronteira mais perto do centro (a diagonal entre faces em escada, smoke do dono 10/10).
+    pub media_no_eixo: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -290,6 +294,7 @@ impl Config {
             rebote: false,
             mascara_da_fusao: MascaraDaFusao::PeloFim,
             fronteira_na_face: true,
+            media_no_eixo: true,
             holografica: None,
         }
     }

@@ -21,6 +21,7 @@ mod medida_luz2d_w5a;
 mod medida_luz2d_w5b;
 mod medida_luz2d_w5c;
 mod o_gizmo_da_luz;
+mod o_interior_do_opaco;
 mod o_oclusor_fino;
 mod paridade_luz_recebida;
 mod smoke_cena_1;

@@ -127,6 +127,62 @@ placa 34 + 19 ignorados (sondas) · lib 6 · família 47 + 16 · gabarito 27 + 2
 
 Smoke recompilado (regra I, depois do `rm -rf target/*/incremental`), 2.ª saída: `Finished \`smoke\` profile [optimized] target(s) in 0.20s`.
 
+## Depois do smoke do dono (10/10): o interior em escada
+
+**A queixa** (três fotos): a parede verde da cena 3 esticada e arrastada — as faces do interior (a lei F3: o ponto de
+dentro recebe a luz do exterior mais próximo, cortada no eixo medial) mudam de desenho com a posição: a diagonal entre
+duas faces em escada, e num sítio um risco vertical a mais.
+
+**A causa, medida** (`o_interior_do_opaco.rs`): a luz do interior está CERTA ponto a ponto (contra o gabarito nos
+centros dos texels, longe do eixo, ≤ 3 % em 8 deslocamentos × 2 zooms × 3 níveis, caminho do polígono = caminho do
+sprite). O defeito é de AMOSTRAGEM: o texel fino guardava a lei no CENTRO; um corte seco em diagonal amostrado numa
+grade de 1–2 px é uma escada que anda com a posição, e com o eixo sobre uma coluna de centros a coluna inteira empata e
+fica com a cor de uma face só (o risco).
+
+**O desenho** (`c3_direta.wgsl`, `Config::media_no_eixo`, por omissão ligado): o texel que o eixo corta guarda a MÉDIA
+da lei sobre a área dele — a face mais perto e a outra, na fração do texel além do eixo (`area_alem`: a área exata
+de um quadrado além de uma reta; o eixo é onde as distâncias se igualam e o gradiente da diferença é `n₁ − n₂`). As
+duas distâncias medem-se pela PERPENDICULAR (`pe_na_face`: a tangente por dois cruzamentos paralelos; o ponto de
+fronteira cruzava a face na oblíqua e a bissecção curta errava décimos de texel — a fração vem da diferença das
+duas); a luz de cada face continua no ponto de fronteira dela. Outra face = direção a > 60° E normal a > 60° (um
+ponto da mesma face visto de lado afasta-se em direção, não em normal); refino que falha = a mesma face. Longe do
+eixo o texel é o de sempre. Junto à borda, se a janela 5×5 não alcança uma segunda face, entram as sementes do JFA
+de OUTRA face ao alcance (os cantos).
+
+**Gate** `o_interior_do_opaco_nao_depende_da_posicao_na_grade` (a caixa livre na sala, 4 deslocamentos × zoom 1 e
+2,5, a configuração do produto; o gabarito é a média sobre o texel, 12×12 junto ao eixo): texels errados > 10 % — o
+produto 0–1 por caso (um canto), o controlo sem a média 35–537 (teto 3; o controlo tem de passar 30). Visto vermelho
+antes da cura (pior 0,23–0,48). Fotos: `fotos_W5c/interior_antes_depois.png`.
+
+**A régua do F3 mudou** (`c3_grade_fina.rs`): o gabarito do interior passa a ser a média da lei sobre a parte de DENTRO
+do texel (`media_no_texel`: 8×8 onde a média dos cantos se afasta do centro — um corte; a parte de fora é a borda do
+receptor, que o interior nunca guardou). Com a régua de ponto a média no eixo lia-se como erro. Os tetos re-assentes no
+medido + 10 % e o gate exige também vencer o controlo sem a média: fundo 0,001281 · 0,000043 · 0,000337 (sem 0,002545 ·
+0,000311 · 0,000536); faixa 0,3207 · 0,1136 · 0,0063 (sem 0,3664 · 0,2370 · 0,0522). A faísca na faixa é o canto do
+quadrado girado (a régua de ponto dava 0,0032 porque o centro É a lei do centro).
+
+**Custo** (`sonda_custo_da_media_no_eixo`, `c3_fina`, mínimo de 7 intercaladas, 1080p, três corridas iguais): cena 1
+0,74 → 0,75 ms · cena 2 0,26 → 0,37 · cena 3 0,33 → 0,37 · cena 4 1,33 → 1,40; a caixa no zoom 2,5 3,06 → 3,10 no
+melhor (as corridas deram até 4,17 com a placa a 96 % de uso por outro processo — releia na W5d com a placa livre). O que custa é a luz na outra
+face (a visibilidade marcha por lâmpada) e, nos vaga-lumes, que todo o interior de um corpo minúsculo está junto ao
+eixo.
+
+⛔ **Recusas medidas:** guardar o centro (a escada; o controlo); mistura linear em vez da área exata (45°: erra 1/8 da
+diferença das faces); a distância pelo ponto de fronteira oblíquo (pior 6–22 %); a luz no PÉ da perpendicular e uma
+TERCEIRA face (o encontro de três) — a 1.ª prova de mutação mostrou-as mudas em todo gate e custavam: cena 3 0,57 →
+0,37 ms ao tirá-las; sem a condição da normal a faixa da penumbra ia a 0,43 (pior que o controlo); refinar também
+longe do eixo (custo sem ganho); a régua do gate com 6×6 (degraus de 1/6 = 5 % da diferença das faces); o refino que
+falha a devolver a direção oblíqua como normal (um ponto da MESMA face lia-se como outra: −0,0002 junto às faces).
+
+**Prova de mutação** (agente `mutacao`, duas rodadas; os 4 gates: `o_interior_do_opaco`, F3 de `c3_grade_fina`,
+`junto_a_face` e a das faces da holográfica): a 1.ª, sobre o desenho com três faces e a luz no pé, deu 8/12 — as
+sobreviventes eram a 3.ª face, a luz no pé e duas guardas redundantes: saíram (acima). A 2.ª, sobre o código final:
+**11/12** — `media_no_eixo` falso, as duas fórmulas da área, `COS_OUTRA_FACE`, a condição da normal, o JFA dos
+cantos, a distância perpendicular, a escolha da face mais perto, a luz da outra face, o passo lateral do refino e o
+filtro das sementes sangram. ⚖️ Equivalente: M6, o refino que falha devolver a distância em vez de −1 — com a
+condição da normal o par só passa se as direções já se afastam, e então mistura dois pontos da mesma face de luz
+quase igual; nenhum gate o distingue.
+
 ## ⚠️ ABERTO (W5c → W5d)
 
 1. **O rebote de FORA da grade (o maior):** com zoom forte o rebote enfraquece — na vista de 2 m da cena 3, −55 a
@@ -144,7 +200,9 @@ Smoke recompilado (regra I, depois do `rm -rf target/*/incremental`), 2.ª saíd
    dos traços não carrega a distância ao recetor) — um corpo que brilha com 0,8 m de alcance: RMSE 4,21 (o RC 0,36).
    No produto só toca lâmpadas de alcance finito além das 7 diretas (os sprites que brilham têm alcance infinito).
 5. **O interior de uma parede que RECEBE luz** (ABERTO 2 da W5a) segue: a metade de fora das paredes da cena 3 fica
-   escura (a face mais próxima, o corte no eixo medial).
+   escura (a face mais próxima, o corte no eixo medial). O corte agora é antisserrilhado (secção acima); sobram ~0,1
+   de fração numa diagonal em certas posições — a borda do `meio` (cobertura bilinear ≥ ½) desvia-se até ~0,08 texel
+   da captura conforme a posição dentro do texel — e um texel num canto.
 6. **O vetor que reflete:** a cor da camada do Vello entra como albedo (sRGB → linear), mas o gabarito não vê vetores
    e não há ainda um portão de paridade sprite × vetor do rebote (o G7 do rebote).
 7. **O RC clássico** (fica como alternativa) depende do alinhamento das faces junto a elas: o rebote da cena 3 5,5 ·

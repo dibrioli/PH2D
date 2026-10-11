@@ -276,7 +276,9 @@ com a série; a placa com um rebote por quadro, a fonte lida no mundo — G9 ≤
 HOLOGRÁFICA (HRC, do artigo) como a cascata do produto em TODO nível — mais exata em todos (junto a uma face ≤ 1,1 %,
 o ABERTO 1 da W5a fechado) e mais barata no Baixo e no Médio, ao preço da memória (148 · 309 · 894 MB a 1080p); o
 «Ultra» como nível próprio foi recusado pela medida. Aberto o maior: o rebote de FORA da grade (com zoom forte os
-refletores fora dela não refletem: −55 a −64 % junto à borda).
+refletores fora dela não refletem: −55 a −64 % junto à borda). Depois do smoke do dono, o interior de um opaco
+deixou de mudar de desenho com a posição: o texel que o eixo medial corta guarda a média das faces na área dele
+(texels errados 35–537 → 0–1; secção «Depois do smoke do dono» do handoff).
 
 Também abertos (técnicos, sem queixa do dono): as cascatas ainda calculam a grade inteira (81,5 % fora
 da janela) e a região C3 pode encolher ao canvas; o G4 (K3) segue com pouca margem (3,98–4,64 % de 5 %,

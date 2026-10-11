@@ -86,6 +86,8 @@ override PREENCHE: bool = false;
 override CELULA_PREENCHE: u32 = 1u;
 // O preenchimento correu na grade inteira (senão só nas células da região).
 override PREENCHE_A_GRADE_INTEIRA: bool = true;
+// ⭐ O texel que o eixo medial corta guarda a média das faces (senão o ponto de fronteira mais perto).
+override MEDIA_NO_EIXO: bool = true;
 const SEM_SEMENTE: u32 = 0xffffffffu;
 
 // A abertura do disco na penumbra: `RAIOS_DIRETOS + 1` raios FIXOS nas fronteiras de
@@ -463,20 +465,56 @@ struct Onde {
     p: vec2<f32>,
     // Dentro de um opaco, calcula-se no exterior mais próximo.
     remapeado: bool,
+    // ⭐ O ponto da OUTRA face e a fração da área do texel do lado dela (o texel que o eixo medial
+    // corta guarda a média da lei sobre a área dele, não o valor do centro); 0 longe do eixo.
+    p2: vec2<f32>,
+    f2: f32,
+}
+
+// Duas faces são outras quando as direções aos pontos de fronteira se afastam mais que isto.
+const COS_OUTRA_FACE: f32 = 0.5;
+const SEM_FACE: u32 = 0xffffffffu;
+
+// ⭐ A fração da área de um quadrado de lado `h` (centrado) além da reta `g·x = t` (`g` unitária,
+// `t ≥ 0`): a projeção do quadrado em `g` é um trapézio.
+fn area_alem(g: vec2<f32>, t: f32, h: f32) -> f32 {
+    let p = max(0.5 * h * min(abs(g.x), abs(g.y)), 1e-6);
+    let q = 0.5 * h * max(abs(g.x), abs(g.y));
+    if t >= p + q {
+        return 0.0;
+    }
+    if t >= q - p {
+        return (p + q - t) * (p + q - t) / (8.0 * p * q);
+    }
+    return (q - t) / (2.0 * q);
+}
+
+// A fração do texel além do eixo entre a face mais perto `a` e a face `b` (`(normal, distância)` de
+// cada uma): o eixo é onde as distâncias se igualam, e o gradiente da diferença é `na − nb`.
+fn alem_do_eixo(a: vec3<f32>, b: vec3<f32>, h: f32) -> f32 {
+    let g = a.xy - b.xy;
+    let m = length(g);
+    if m <= 1e-4 {
+        return 0.0;
+    }
+    return area_alem(g / m, max(b.z - a.z, 0.0) / m, h);
 }
 
 // ⭐ Onde o texel fino `id` se calcula: no centro dele, ou — dentro de um opaco, com o preenchimento —
-// no ponto da fronteira mais próximo: perto da borda, entre os texels exteriores de uma janela de 5×5
-// o de FRONTEIRA mais perto (no canto o eixo medial chega à borda e o texel exterior mais perto pode
-// estar na face errada); mais fundo, a semente do JFA mais perto entre a da célula e as 8 vizinhas.
+// no ponto da fronteira mais próximo. Os candidatos: os pontos de fronteira a partir dos texels
+// exteriores de uma janela de 5×5 (no canto o eixo medial chega à borda e o texel exterior mais perto
+// pode estar na face errada) e — mais fundo, ou se a janela não alcança uma segunda face — das
+// sementes do JFA da célula e das 8 vizinhas. Junto ao eixo medial, também o ponto da outra face mais
+// perto e a área do texel além do eixo, pelas distâncias PERPENDICULARES às duas faces.
 fn onde_calcular(id: vec2<u32>) -> Onde {
     let P0 = ponto_fino(id);
     if !PREENCHE || meio(P0).tau > 0.0 {
-        return Onde(P0, false);
+        return Onde(P0, false, P0, 0.0);
     }
+    let h = 1.0 / f32(fina.fina);
+    var cand: array<vec2<f32>, 34>;
+    var n_cand = 0u;
     let n = vec2<i32>(cas.tamanho * fina.fina);
-    var melhor = P0;
-    var d_melhor = 3.4e38;
     for (var dy = -2; dy <= 2; dy++) {
         for (var dx = -2; dx <= 2; dx++) {
             let t = vec2<i32>(id) + vec2<i32>(dx, dy);
@@ -487,49 +525,149 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
             if meio(Pt).tau <= 0.0 {
                 continue;
             }
-            let b = na_fronteira(P0, Pt);
-            let d = distance(b, P0);
-            if d < d_melhor {
-                d_melhor = d;
-                melhor = b;
-            }
+            cand[n_cand] = na_fronteira(P0, Pt);
+            n_cand++;
         }
     }
-    if d_melhor < 3.4e38 {
-        return Onde(melhor, true);
-    }
-    let c = vec2<i32>(id / CELULA_PREENCHE);
-    var lo = vec2<i32>(0);
-    var hi = vec2<i32>(textureDimensions(preenchido));
-    if !PREENCHE_A_GRADE_INTEIRA {
-        lo = vec2<i32>(fina.inicio / CELULA_PREENCHE);
-        hi = vec2<i32>((fina.fim + CELULA_PREENCHE - 1u) / CELULA_PREENCHE);
-    }
-    // Entre as sementes da célula e das 8 vizinhas, a de ponto de FRONTEIRA mais perto (a mesma regra
-    // da janela: a semente de uma célula é UM texel exterior dela, e o desempate entre texels
-    // equidistantes não pode decidir a face).
-    for (var dy = -1; dy <= 1; dy++) {
-        for (var dx = -1; dx <= 1; dx++) {
-            let q = c + vec2<i32>(dx, dy);
-            if any(q < lo) || any(q >= hi) {
-                continue;
-            }
-            let s = textureLoad(preenchido, q, 0).x;
-            if s == SEM_SEMENTE {
-                continue;
-            }
-            let b = na_fronteira(P0, ponto_fino(vec2<u32>(s & 0xffffu, s >> 16u)));
-            let d = distance(b, P0);
-            if d < d_melhor {
-                d_melhor = d;
-                melhor = b;
+    var i1 = mais_perto(P0, &cand, n_cand);
+    let na_janela = n_cand;
+    if n_cand == 0u || (MEDIA_NO_EIXO && outra_face(P0, &cand, n_cand, i1, h) == SEM_FACE) {
+        var u1 = vec2<f32>(0.0);
+        var d1 = 0.0;
+        if na_janela > 0u {
+            d1 = distance(cand[i1], P0);
+            u1 = (cand[i1] - P0) / max(d1, 1e-6);
+        }
+        let c = vec2<i32>(id / CELULA_PREENCHE);
+        var lo = vec2<i32>(0);
+        var hi = vec2<i32>(textureDimensions(preenchido));
+        if !PREENCHE_A_GRADE_INTEIRA {
+            lo = vec2<i32>(fina.inicio / CELULA_PREENCHE);
+            hi = vec2<i32>((fina.fim + CELULA_PREENCHE - 1u) / CELULA_PREENCHE);
+        }
+        for (var dy = -1; dy <= 1; dy++) {
+            for (var dx = -1; dx <= 1; dx++) {
+                let q = c + vec2<i32>(dx, dy);
+                if any(q < lo) || any(q >= hi) {
+                    continue;
+                }
+                let s = textureLoad(preenchido, q, 0).x;
+                if s == SEM_SEMENTE {
+                    continue;
+                }
+                let ps = ponto_fino(vec2<u32>(s & 0xffffu, s >> 16u));
+                // Junto à borda, só a semente de OUTRA face ao alcance (a janela já tem a desta).
+                if na_janela > 0u {
+                    let ds = distance(ps, P0);
+                    if ds >= d1 + 3.0 * h || dot((ps - P0) / max(ds, 1e-6), u1) >= COS_OUTRA_FACE {
+                        continue;
+                    }
+                }
+                cand[n_cand] = na_fronteira(P0, ps);
+                n_cand++;
             }
         }
+        i1 = mais_perto(P0, &cand, n_cand);
     }
-    if d_melhor < 3.4e38 {
-        return Onde(melhor, true);
+    if n_cand == 0u {
+        return Onde(P0, false, P0, 0.0);
     }
-    return Onde(P0, false);
+    if !MEDIA_NO_EIXO {
+        return Onde(cand[i1], true, cand[i1], 0.0);
+    }
+    // Longe do eixo (nenhuma outra face a dois texels) o texel é o de sempre. Junto a ele a fração vem
+    // da diferença das distâncias, e o ponto de fronteira cruza a face na OBLÍQUA (a semente é um
+    // texel): as distâncias pela PERPENDICULAR.
+    let i2 = outra_face(P0, &cand, n_cand, i1, h);
+    if i2 == SEM_FACE {
+        return Onde(cand[i1], true, cand[i1], 0.0);
+    }
+    let e1 = pe_na_face(P0, cand[i1], h);
+    let e2 = pe_na_face(P0, cand[i2], h);
+    // Um ponto da MESMA face visto de lado também se afasta em direção: conta a normal.
+    if e1.z < 0.0 || e2.z < 0.0 || dot(e1.xy, e2.xy) >= COS_OUTRA_FACE {
+        return Onde(cand[i1], true, cand[i1], 0.0);
+    }
+    if e2.z < e1.z {
+        return Onde(cand[i2], true, cand[i1], alem_do_eixo(e2, e1, h));
+    }
+    return Onde(cand[i1], true, cand[i2], alem_do_eixo(e1, e2, h));
+}
+
+// O candidato mais perto de `P0` (`SEM_FACE` se não há nenhum).
+fn mais_perto(P0: vec2<f32>, cand: ptr<function, array<vec2<f32>, 34>>, n_cand: u32) -> u32 {
+    var melhor = SEM_FACE;
+    var d_melhor = 3.4e38;
+    for (var i = 0u; i < n_cand; i++) {
+        let d = distance((*cand)[i], P0);
+        if d < d_melhor {
+            d_melhor = d;
+            melhor = i;
+        }
+    }
+    return melhor;
+}
+
+// O candidato mais perto numa face OUTRA que a de `a` (a direção afasta-se), a menos de dois texels
+// além do `a` — `SEM_FACE` se não há.
+fn outra_face(P0: vec2<f32>, cand: ptr<function, array<vec2<f32>, 34>>, n_cand: u32, a: u32, h: f32) -> u32 {
+    if a == SEM_FACE {
+        return SEM_FACE;
+    }
+    let da = distance((*cand)[a], P0);
+    let ua = ((*cand)[a] - P0) / max(da, 1e-6);
+    var melhor = SEM_FACE;
+    var d_melhor = da + 2.0 * h;
+    for (var i = 0u; i < n_cand; i++) {
+        let d = distance((*cand)[i], P0);
+        let u = ((*cand)[i] - P0) / max(d, 1e-6);
+        if d < d_melhor && dot(u, ua) < COS_OUTRA_FACE {
+            d_melhor = d;
+            melhor = i;
+        }
+    }
+    return melhor;
+}
+
+// ⭐ A normal de fora da face no ponto de fronteira `b` (achado de `P0`, dentro) e a distância de `P0`
+// à face pela perpendicular: a tangente pelos cruzamentos de duas retas paralelas a `P0 → b`, de cada
+// lado a meia distância (no máximo um texel — junto a um canto, mais longe cruzaria a outra face).
+// `(normal, distância)`; sem os dois cruzamentos, distância NEGATIVA (a face não se mede).
+fn pe_na_face(P0: vec2<f32>, b: vec2<f32>, h: f32) -> vec3<f32> {
+    let d = max(distance(b, P0), 1e-6);
+    let u = (b - P0) / d;
+    let w = vec2<f32>(-u.y, u.x) * min(h, 0.5 * d);
+    let fim = b + u * h;
+    let a0 = P0 + w;
+    let a1 = P0 - w;
+    if meio(a0).tau > 0.0 || meio(a1).tau > 0.0 || meio(fim + w).tau <= 0.0 || meio(fim - w).tau <= 0.0 {
+        return vec3<f32>(u, -1.0);
+    }
+    let c0 = na_fronteira_fina(a0, fim + w, h);
+    let c1 = na_fronteira_fina(a1, fim - w, h);
+    let t = c0 - c1;
+    var n = normalize(vec2<f32>(t.y, -t.x));
+    if dot(n, u) < 0.0 {
+        n = -n;
+    }
+    return vec3<f32>(n, dot(0.5 * (c0 + c1) - P0, n));
+}
+
+// [`na_fronteira`] até um centésimo de texel `h` (o meio do último intervalo): os passos contam-se
+// pelo comprimento do segmento.
+fn na_fronteira_fina(dentro: vec2<f32>, fora: vec2<f32>, h: f32) -> vec2<f32> {
+    var a = dentro;
+    var b = fora;
+    let passos = u32(ceil(log2(max(distance(a, b) / (0.01 * h), 2.0))));
+    for (var i = 0u; i < passos; i++) {
+        let m = 0.5 * (a + b);
+        if meio(m).tau <= 0.0 {
+            a = m;
+        } else {
+            b = m;
+        }
+    }
+    return 0.5 * (a + b);
 }
 
 // A visibilidade da lâmpada `k` na sonda `q` da c0 (presa à grade; `CERTA` = 1).
@@ -641,7 +779,27 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         soma += s * v;
     }
-    textureStore(fina_saida, alvo, vec4<f32>(soma, 1.0));
+    textureStore(fina_saida, alvo, vec4<f32>(nas_faces(soma, onde), 1.0));
+}
+
+// A luz do texel: `l` (a da face mais perto) misturada com a da outra face na área dela.
+fn nas_faces(l: vec3<f32>, onde: Onde) -> vec3<f32> {
+    if onde.f2 <= 0.0 {
+        return l;
+    }
+    return mix(l, luz_exata(onde.p2), onde.f2);
+}
+
+// A luz em P com a visibilidade de cada lâmpada medida no ponto.
+fn luz_exata(P: vec2<f32>) -> vec3<f32> {
+    var soma = c0_em(P);
+    for (var k = 0u; k < lampadas.n; k++) {
+        let s = sem_sombra(P, lampadas.itens[k]);
+        if any(s > vec3<f32>(0.0)) {
+            soma += s * visibilidade(P, k, 0.0);
+        }
+    }
+    return soma;
 }
 
 @compute @workgroup_size(8, 8)
@@ -650,13 +808,6 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
     if any(id >= fina.fim) {
         return;
     }
-    let P = onde_calcular(id).p;
-    var soma = c0_em(P);
-    for (var k = 0u; k < lampadas.n; k++) {
-        let s = sem_sombra(P, lampadas.itens[k]);
-        if any(s > vec3<f32>(0.0)) {
-            soma += s * visibilidade(P, k, 0.0);
-        }
-    }
-    textureStore(fina_saida, id, vec4<f32>(soma, 1.0));
+    let onde = onde_calcular(id);
+    textureStore(fina_saida, id, vec4<f32>(nas_faces(luz_exata(onde.p), onde), 1.0));
 }

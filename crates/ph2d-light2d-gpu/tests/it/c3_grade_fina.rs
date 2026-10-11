@@ -319,26 +319,47 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
         };
         let (fc, g) = rodar(&gpu, com, &cena);
         let (fs, _) = rodar(&gpu, sem, &cena);
-        let r = gabarito(&cena, &g);
-        let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
-        let (ec, es) = (rmse_rel(&fc, &r, &dentro), rmse_rel(&fs, &r, &dentro));
-        // O interior FUNDO (o do JFA): a MÉDIA do erro, relativa ao máximo do gabarito (o fio do eixo
-        // medial é ~1 texel na parede de 40).
+        let (fm, _) = rodar(
+            &gpu,
+            Config {
+                media_no_eixo: false,
+                ..com
+            },
+            &cena,
+        );
+        // Dentro dos opacos, o gabarito é a média da lei sobre o texel (o texel que o eixo medial corta
+        // guarda a média das faces, W5c).
+        let mut r = gabarito(&cena, &g);
         let fundo = crate::comum::dentro_de_opaco(&cena, &g);
         let max = r.iter().map(|v| v[1]).fold(0.0_f64, f64::max);
-        let erros: Vec<f64> = (0..r.len())
-            .filter(|&k| fundo(k) && !dentro(k))
-            .map(|k| (f64::from(fc[k][1]) - r[k][1]).abs() / max)
-            .collect();
-        let media = erros.iter().sum::<f64>() / erros.len().max(1) as f64;
+        for k in (0..r.len()).filter(|&k| fundo(k)) {
+            r[k] = media_no_texel(&cena, &g, k, r[k]);
+        }
+        let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
+        let (ec, es, em) = (
+            rmse_rel(&fc, &r, &dentro),
+            rmse_rel(&fs, &r, &dentro),
+            rmse_rel(&fm, &r, &dentro),
+        );
+        // O interior FUNDO (o do JFA): a MÉDIA do erro, relativa ao máximo do gabarito.
+        let media_fundo = |f: &[[f32; 3]]| {
+            let erros: Vec<f64> = (0..r.len())
+                .filter(|&k| fundo(k) && !dentro(k))
+                .map(|k| (f64::from(f[k][1]) - r[k][1]).abs() / max)
+                .collect();
+            (
+                erros.iter().sum::<f64>() / erros.len().max(1) as f64,
+                erros.len(),
+            )
+        };
+        let ((media, n), (media_sem, _)) = (media_fundo(&fc), media_fundo(&fm));
         eprintln!(
-            "F3 interior fundo · {nome}: erro médio {media:.4} do máximo ({} texels; teto {})",
-            erros.len(),
+            "F3 interior fundo · {nome}: erro médio {media:.6} do máximo ({n} texels; sem a média no eixo {media_sem:.6}; teto {})",
             TETO_FUNDO[k]
         );
         assert!(
-            media <= TETO_FUNDO[k],
-            "F3 interior fundo · {nome}: {media:.4}"
+            media <= TETO_FUNDO[k] && media < media_sem,
+            "F3 interior fundo · {nome}: {media:.5} (sem a média no eixo {media_sem:.5})"
         );
         let mut piores: Vec<(f64, usize)> = (0..r.len())
             .filter(|&k| dentro(k))
@@ -357,25 +378,99 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
             );
         }
         eprintln!(
-            "F3 interior · {nome}: RMSE relativo {ec:.4} (sem o preenchimento {es:.4}; teto {teto})"
+            "F3 interior · {nome}: RMSE relativo {ec:.4} (sem o preenchimento {es:.4}; sem a média no eixo {em:.4}; teto {teto})"
         );
         assert!(
             es > 0.9,
             "controlo: sem o preenchimento o interior é 0 ({es:.4})"
         );
-        assert!(ec <= teto, "F3 interior · {nome}: {ec:.4} > {teto}");
+        assert!(
+            ec <= teto && ec < em,
+            "F3 interior · {nome}: {ec:.4} > {teto} (sem a média no eixo {em:.4})"
+        );
     }
+}
+
+/// ⭐ W5c: a lei MÉDIA sobre a parte do texel `k` DENTRO dos opacos (de valor `centro` no centro; a
+/// parte de fora é a borda do receptor, que o interior não guarda): onde a média dos cantos de dentro
+/// se afasta do centro mais de 1 % do maior deles no verde (um corte — o eixo medial — passa dentro do
+/// texel; um gradiente liso não muda a média), a média das subamostras de dentro de 8×8; senão o centro.
+fn media_no_texel(cena: &CenaDeLuz, g: &Grade, k: usize, centro: [f64; 3]) -> [f64; 3] {
+    let c = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+    let t = g.texel_m;
+    let ponto = |dx: f64, dy: f64| [c[0] + dx * t, c[1] + dy * t];
+    let cantos: Vec<f64> = [(-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5)]
+        .into_iter()
+        .map(|(dx, dy)| ponto(dx, dy))
+        .filter(|&p| dentro_de_algum(cena, p))
+        .map(|p| ph2d_light2d_ref::fluencia(cena, p)[1])
+        .collect();
+    let local = cantos.iter().fold(centro[1].abs(), |m, v| m.max(v.abs()));
+    if cantos.is_empty()
+        || (cantos.iter().sum::<f64>() / cantos.len() as f64 - centro[1]).abs() <= 0.01 * local
+    {
+        return centro;
+    }
+    let o = |a: u32| (f64::from(a) + 0.5) / 8.0 - 0.5;
+    let (mut m, mut n) = ([0.0; 3], 0.0);
+    for i in 0..64 {
+        let p = ponto(o(i % 8), o(i / 8));
+        if dentro_de_algum(cena, p) {
+            let v = ph2d_light2d_ref::fluencia(cena, p);
+            for (mc, vc) in m.iter_mut().zip(v) {
+                *mc += vc;
+            }
+            n += 1.0;
+        }
+    }
+    m.map(|v| v / n)
+}
+
+/// `p` cai dentro de um oclusor opaco ou de um emissor poligonal (os corpos de [`dentro_de_opaco`]).
+///
+/// [`dentro_de_opaco`]: crate::comum::dentro_de_opaco
+fn dentro_de_algum(cena: &CenaDeLuz, p: [f64; 2]) -> bool {
+    let opacos = cena
+        .oclusores
+        .iter()
+        .filter(|o| o.opacidade >= 1.0)
+        .map(|o| &o.vertices)
+        .chain(cena.emissores.iter().filter_map(|e| match e {
+            ph2d_light2d_ecs::Emissor::Poligono { vertices, .. } => Some(vertices),
+            _ => None,
+        }));
+    let p = [p[0] as f32, p[1] as f32];
+    opacos.into_iter().any(|v| {
+        let mut dentro = false;
+        let mut j = v.len() - 1;
+        for i in 0..v.len() {
+            let (a, b) = (v[i], v[j]);
+            if (a[1] > p[1]) != (b[1] > p[1])
+                && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]
+            {
+                dentro = !dentro;
+            }
+            j = i;
+        }
+        dentro
+    })
 }
 
 /// Texels finos de dentro, a partir da borda, que a régua mede.
 const FAIXA_INTERIOR: f64 = 2.0;
-/// O MEDIDO + 10 % (W5a): o erro médio do interior FUNDO, do máximo do gabarito — penumbra 0,0016 ·
-/// faísca 0,0001 · parede grossa 0,0005, e o desempate da semente trocado (o controlo equivalente da
-/// mutação) 0,0014 · 0,0002 · 0,0006. Com a semente MAIS PERTO em vez do ponto de fronteira mais
-/// perto: 0,0043 · 0,0007 · 0,0011 (e o desempate decidia a face: 0,0035).
-const TETO_FUNDO: [f64; 3] = [0.0018, 0.00025, 0.0007];
-/// O MEDIDO + 10 % (W5a, captura 2 × fina, a faixa de 2 texels): penumbra 0,3135 · faísca 0,0032 ·
-/// parede grossa 0,0759; sem o preenchimento 1,67 · 2,00 · 1,58. Com a captura GROSSA a penumbra dava 0,80 (o canto arredondado
-/// troca a face mais próxima); escolhendo o texel exterior mais perto em vez do ponto de FRONTEIRA
-/// mais perto, 0,83; só com as sementes do JFA de células de 4, 1,15.
-const TETO_INTERIOR: [f64; 3] = [0.345, 0.0036, 0.0835];
+/// O MEDIDO + 10 % (W5c, a régua da MÉDIA da lei sobre a parte de dentro do texel —
+/// [`media_no_texel`]): o erro médio do interior FUNDO, do máximo do gabarito — penumbra 0,001281 ·
+/// faísca 0,000043 · parede grossa 0,000337; sem a média no eixo (o controlo, o desenho da W5a)
+/// 0,002545 · 0,000311 · 0,000536. A régua de PONTO da W5a (o centro do texel) media 0,0016 · 0,0001 ·
+/// 0,0005; com a semente MAIS PERTO em vez do ponto de fronteira mais perto, 0,0043 · 0,0007 ·
+/// 0,0011 (e o desempate decidia a face: 0,0035).
+const TETO_FUNDO: [f64; 3] = [0.00141, 0.000048, 0.00037];
+/// O MEDIDO + 10 % (W5c, a régua da média, a captura 2 × fina, a faixa de 2 texels): penumbra 0,3207
+/// · faísca 0,1136 · parede grossa 0,0063; sem a média no eixo 0,3664 · 0,2370 · 0,0522; sem o
+/// preenchimento 1,65 · 1,96 · 1,58. Na faísca o resto é o canto do quadrado girado, onde o eixo
+/// medial chega à borda junto à sombra que nasce no canto. A régua de PONTO da W5a media 0,3135 ·
+/// 0,0032 · 0,0759 (o centro do texel é a lei do centro — a média sobre o texel não se via). Com a
+/// captura GROSSA a penumbra dava 0,80 (o canto arredondado troca a face mais próxima); escolhendo o
+/// texel exterior mais perto em vez do ponto de FRONTEIRA mais perto, 0,83; só com as sementes do
+/// JFA de células de 4, 1,15.
+const TETO_INTERIOR: [f64; 3] = [0.353, 0.125, 0.0070];

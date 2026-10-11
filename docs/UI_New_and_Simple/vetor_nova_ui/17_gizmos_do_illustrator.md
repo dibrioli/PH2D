@@ -49,13 +49,25 @@ englobar: segue-se o pedido (§2).
   que o artista encaixa; o Illustrator só muda com *Use Preview Bounds*), o pick/marquee, o
   `align`/`distribute`, o readout W/H do Inspector (`path_bbox`, as âncoras).
 - `VecPath::all_contours_closed` passou a porta única de «há interior?» (o align da booleana e a caixa).
-- ⚠️ **ABERTO — o desvio do arrasto de escala** (medido pela conta, não corrigido): o rácio da escala
-  é `cursor/início` medido ao pivô (o canto oposto da caixa VISUAL); o traço não cresce como a
-  geometria, então a alça arrastada desvia do cursor `m·(r − √(rₓ·r_y))` (escala livre) ou `m·(r−1)`
-  (*Resize Box*, o traço fixo — e aí o canto oposto também anda `m·(r−1)`), `m` = a meia largura
-  visual. Zero no arrasto UNIFORME (Shift). 3 px de traço a ×2: 1,5 px. A cura exacta é um rácio que
-  desconta a margem (`(agora − m)/(início − m)`) com o pivô na GEOMETRIA — mexe no
-  `GizmoDragState`/`transform.rs` partilhado com o sprite e o Flip (≈15 literais de teste).
+- **O desvio do arrasto de escala — MEDIDO (janela 2) e DECIDIDO.** ⛔ A premissa da janela 1 («o
+  *Resize Box* fixa o traço») é FALSA: `vec_frame_resize::apply` → `scale_path` →
+  `path_bake_xform::transform_fill_geometry` multiplica a largura por `√|det|`, como a escala livre.
+  Sonda (moldura 100×40 em (200, 100), traço 0,2, *Resize Box*, ×2):
+
+  | arrasto | largura | borda oposta andou | borda agarrada − cursor |
+  |---|---|---|---|
+  | canto ×2 uniforme | 0,2 → 0,4 | +0,000006 | 0,000000 |
+  | borda ×2 só em X | 0,2 → 0,283 | +0,0586 | −0,0586 |
+
+  ⇒ exacto no PROPORCIONAL; numa só direcção as duas bordas desviam `m·(sx − √(sx·sy))` (`m` = meia
+  largura: 0,1·0,586) e o eixo cruzado cresce `m·(√2 − 1)`. Um traço de 20 px esticado ×2 numa
+  direcção: ~5,9 px. **Não se cura nesta linha:** o desvio é da lei da caneta REDONDA (a largura
+  `√|det|`), não da caixa — antes da F11 a borda VISUAL já andava `m·(√2 − 1)`; a cura exacta pede
+  resolver o rácio acoplado à largura em DOIS caminhos (a moldura, na shell; a escala livre, no
+  `compute_gizmo_transform` partilhado com o sprite e o Flip). Fica a pergunta de PRODUTO ao dono:
+  *a moldura deve manter a espessura do traço ao redimensionar* (o *Scale Strokes & Effects* do
+  Illustrator, desligado por omissão)? Com a espessura fixa o desvio vira `m·(r − 1)` e cura-se só
+  na moldura. Gate da lei exacta: `a_proportional_resize_with_the_stroke_in_the_box_keeps_both_visual_edges`.
 
 ## §3 — A ④ e o cartão mais longe
 

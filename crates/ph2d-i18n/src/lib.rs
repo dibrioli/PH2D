@@ -620,7 +620,6 @@ mod tests {
         assert_eq!(tr("panel.vector.section.tool"), "Tool");
         assert_eq!(tr("panel.vector.mode.shape"), "Shape");
         assert_eq!(tr("panel.vector.category"), "Category");
-        assert_eq!(tr("panel.vector.shape.no_params"), "No parameters");
         assert_eq!(tr("panel.vector.group.iso"), "3D");
     }
 

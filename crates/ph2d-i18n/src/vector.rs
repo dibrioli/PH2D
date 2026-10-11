@@ -418,7 +418,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.marquee.lasso" => "Lasso",
         "panel.vector.section.cut" => "Cut",
         "panel.vector.category" => "Category",
-        "panel.vector.shape.no_params" => "No parameters",
         "panel.vector.marker.start" => "Start",
         "panel.vector.marker.end" => "End",
         "panel.vector.group.basic" => "Basic",

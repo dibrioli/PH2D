@@ -688,7 +688,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // ⛔ **−6 (2026-10-07, D10): o GESTO saiu do painel** — `Tool` → coluna ①; o catálogo `Shape`
         // → flyout da ①; `Pencil`, `Symmetry`, `Snap` → fila ②; `Path` → ②/④/⚙. ⚠️ O `35` foi
         // **CONTADO** (o gate imprimiu `left: 35`).
-        35,
+        // ⛔ **−1 (2026-10-11, F9): SHAPE_PARAMS saiu** — os parâmetros da forma viraram alças no
+        // canvas e o número exacto foi para a fila ② (`bars::tool_bars`). ⚠️ O `34` foi CONTADO.
+        34,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

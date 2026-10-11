@@ -321,8 +321,9 @@ pub const VECTOR_SECTION_TOOL: NodeId = hash_node_id("vector.section.tool");
 
 pub const VECTOR_SECTION_SHAPE: NodeId = hash_node_id("vector.section.shape");
 
-/// A seção dos PARÂMETROS da forma em foco — o rótulo dela é o NOME da forma (`STAR`,
-/// `GEAR`…), que é como o usuário descobre a quem os campos pertencem.
+/// A seção dos PARÂMETROS da forma em foco — ⛔ SAIU do painel na F9 (11/10): alças no canvas e
+/// o número exacto na fila ②. O id fica para o gate que prova que ela não volta
+/// (`the_panel_no_longer_holds_the_gesture_sections`), como o `TOOL` e o `SHAPE` acima.
 pub const VECTOR_SECTION_SHAPE_PARAMS: NodeId = hash_node_id("vector.section.shape_params");
 
 pub const VECTOR_SECTION_STROKE: NodeId = hash_node_id("vector.section.stroke");

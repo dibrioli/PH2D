@@ -3,7 +3,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::AreaMenu;
+use ph2d_editor_core::interaction::{AreaMenu, WidgetStore};
 use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
@@ -42,6 +42,39 @@ pub(super) fn style_chips(snap: &VectorStyleSnapshot) -> Vec<ToolRailEntry> {
             None,
         ),
     ]
+}
+
+/// ② os PARÂMETROS da forma em foco (F9, 11/10 — a Context Toolbar do Affinity): a secção do
+/// Inspector saiu; o número exacto mora aqui, a alça no canvas. O foco é a MESMA porta do clique
+/// (`shape_focus::resolved`: a forma viva, senão a armada, senão nada) e os ids são os do store
+/// que a shell semeia — um campo `Choice` é um chip que cicla, no id gémeo do slot numérico.
+pub(super) fn shape_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> Vec<ToolRailEntry> {
+    use ph2d_tool_vector::shapes::{self, FieldUnit};
+    let Some(kind) = crate::shape_focus::resolved(snap) else {
+        return Vec::new();
+    };
+    // ⚠️ Os nomes entram pela porta da tradução — o gate `every_door_the_names_enter_by_translates_them`
+    // lê esta chamada à letra.
+    shapes::desc(kind)
+        .fields
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            let name = crate::nomes_do_motor::campo(f.label);
+            match f.unit {
+                FieldUnit::Choice(names) => {
+                    let cur = store
+                        .number_value(ids::vector_shape_field_id(i))
+                        .unwrap_or(0.0);
+                    let opcao = shapes::choice_label(kind, i, cur).unwrap_or("");
+                    let face = crate::nomes_do_motor::campo(opcao);
+                    ToolRailEntry::compound(ids::vector_shape_choice_id(i), name, face, name)
+                        .showing(names.iter().copied().map(crate::nomes_do_motor::campo))
+                }
+                _ => ToolRailEntry::number(ids::vector_shape_field_id(i), name, name, None),
+            }
+        })
+        .collect()
 }
 
 /// ② as opções do GESTO que está na mão — à frente dos chips do gizmo (prioridade).

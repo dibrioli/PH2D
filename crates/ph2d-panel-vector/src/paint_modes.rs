@@ -1,4 +1,4 @@
-//! O seletor de MODO + os PARÂMETROS da forma em foco + as seções de TEXTO.
+//! O seletor de MODO + as linhas partilhadas (escolha, número, grelha) + as seções de TEXTO.
 //!
 //! Módulo irmão de `paint_sections` (teto de 600 LOC por arquivo de painel). O CATÁLOGO
 //! de formas mora no flyout da coluna ① (D10; os contornos: `shape_outlines`).
@@ -11,9 +11,8 @@
 //! apagada justamente enquanto se desenhava uma forma. O **conector**, ao contrário, É um
 //! modo: a geometria dele não é autorada, é derivada da relação entre duas formas.
 //!
-//! Os campos de parâmetro vivem numa seção IRMÃ cujo **título é o NOME da forma em foco**
-//! (`STAR`, `GEAR`, `SPEECH`…) — é assim que o usuário descobre a quem os campos
-//! pertencem; soltos, como estavam, não diziam nada.
+//! ⛔ F9 (11/10): os PARÂMETROS da forma em foco saíram do painel — alças no canvas e o número
+//! exacto na fila ② (`bars_row::shape_chips`), como a Context Toolbar do Affinity.
 
 /// **As seções de TEXTO** (`TEXT` · `FONT` · `PARAGRAPH` · `AXES`) — irmão pelo teto de 600 LOC do
 /// painel, e o corte é na fronteira que o cabeçalho deste arquivo já nomeava: aqui mora *que
@@ -24,69 +23,19 @@ mod text_sections;
 
 use crate::paint_sections::BodyCtx;
 use crate::paint_sections::label_col_w;
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::panel_chrome::{
     paint_segmented_button, paint_segmented_button_in_group,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, TypeToken};
-use ph2d_tool_vector::VectorStyleSnapshot;
-use ph2d_tool_vector::shapes;
 
 impl BodyCtx<'_> {
-    pub(crate) fn shape_params_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let Some(focus) = crate::shape_focus::resolved(snap) else {
-            return y;
-        };
-        let desc = shapes::desc(focus);
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_SHAPE_PARAMS,
-            desc.label,
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        if desc.fields.is_empty() {
-            paint_text(
-                self.text_system,
-                self.scene,
-                tr("panel.vector.shape.no_params"),
-                self.inner_x,
-                y + (self.row_h - TypeToken::Sm.px()) * 0.5,
-                TypeToken::Sm.px(),
-                self.inner_w,
-                resolve(ColorToken::Text3, self.theme),
-            );
-            return y + self.row_h + self.row_gap;
-        }
-        for (i, f) in desc.fields.iter().enumerate() {
-            let id = ph2d_tool_vector::ids::vector_shape_field_id(i);
-            y = match f.unit {
-                // Uma ESCOLHA não é um número. Um campo mostrando "Viewed: 1" não diz nada;
-                // um botão dizendo "From below" diz tudo — e clicar nele cicla.
-                shapes::FieldUnit::Choice(_) => {
-                    let cur = self.store.number_value(id).unwrap_or(0.0);
-                    let text = shapes::choice_label(focus, i, cur).unwrap_or("");
-                    // O HIT vai no gêmeo botão; o valor continua morando no slot numérico.
-                    let btn = ph2d_tool_vector::ids::vector_shape_choice_id(i);
-                    let text = crate::nomes_do_motor::campo(text);
-                    self.labeled_choice_button(crate::nomes_do_motor::campo(f.label), btn, text, y)
-                }
-                _ => {
-                    self.labeled_number_field(crate::nomes_do_motor::campo(f.label), id, f.step, y)
-                }
-            };
-        }
-        y
-    }
-
     /// Um campo de ESCOLHA: rótulo + um botão que mostra a opção corrente e CICLA ao clique.
     /// Ocupa a mesma coluna da caixa numérica, então a seção continua alinhada.
     ///
     /// `pub(crate)`: a seção do CONECTOR (`paint_connector`) pinta o campo **Route** com este
-    /// mesmo desenho — ela é irmã da seção de parâmetros de forma, não um enxerto.
+    /// desenho.
     pub(crate) fn labeled_choice_button(
         &mut self,
         label: &str,

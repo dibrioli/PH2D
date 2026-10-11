@@ -24,7 +24,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
-use row::{area_menus, gesture_chips, style_chips, symmetry_chips};
+use row::{area_menus, gesture_chips, shape_chips, style_chips, symmetry_chips};
 use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
@@ -463,6 +463,12 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     fields.extend(sym_fields);
     let mut row_lead = style_chips(&snap);
     row_lead.extend(fields);
+    // Os parâmetros da forma em foco (F9) são campos: à frente, num grupo que o separador nomeia.
+    let shape = shape_chips(&snap, store);
+    if !shape.is_empty() {
+        row_lead.push(ToolRailEntry::Divider);
+        row_lead.extend(shape);
+    }
     let gesture: Vec<ToolRailEntry> = gesture
         .into_iter()
         .skip_while(|e| matches!(e, ToolRailEntry::Divider))

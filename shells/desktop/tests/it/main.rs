@@ -214,6 +214,7 @@ mod the_scale_anchor_follows_the_live_modifier;
 mod the_scale_is_published_before_the_paint;
 mod the_scene_asks_the_one_chrome_door;
 mod the_shape_art_picker_is_wired;
+mod the_shape_handles_are_drawn_and_dragged;
 mod the_show_as_panel_switch_drives_the_authored_panel;
 mod the_signal_frame_has_one_order;
 mod the_signal_table_is_wired_into_the_frame;

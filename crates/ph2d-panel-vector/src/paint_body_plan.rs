@@ -216,9 +216,7 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
         b.brush_section(y)
     });
     // O específico do TIPO seleccionado (cada uma some sozinha quando não é o tipo).
-    p.seccao(VECTOR_SECTION_SHAPE_PARAMS, scope::ALWAYS, |b, y| {
-        b.shape_params_section(snap, y)
-    });
+    // ⛔ F9 (11/10): os parâmetros da FORMA saíram — alça no canvas, número exacto na fila ②.
     p.seccao(VECTOR_SECTION_CONNECTOR, scope::ALWAYS, |b, y| {
         b.connector_section(y)
     });

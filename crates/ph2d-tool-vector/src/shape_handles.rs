@@ -24,6 +24,8 @@ pub enum Spot {
     FromEnd(usize),
     /// O ponto médio dos vértices `i` e `j` do contorno principal (o meio de uma faixa).
     Mid(usize, usize),
+    /// O vértice `i` do sub-contorno `s` (o furo de uma etiqueta, o olho de um osso).
+    Sub(usize, usize),
     /// O início do ARREDONDAMENTO da quina `corner` do contorno VIVO (os campos `sharp` a
     /// zero): o vértice cozido que pousa na aresta que sai da quina para a seguinte (`next`) ou
     /// a anterior, o mais perto da quina. Com raio zero é a própria quina — o vértice muda de
@@ -152,6 +154,7 @@ fn spot_at(
             let (a, b) = (v(i)?, v(j)?);
             Some([(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5])
         }
+        Spot::Sub(c, i) => p.subpaths.get(c)?.verts.get(i).map(|v| v.anchor),
         Spot::Ellipse {
             start,
             sweep,
@@ -411,6 +414,12 @@ pub fn drag(
             };
             let rounds = if fields.len() > 1 { 3 } else { 1 };
             let before = fields.first().map(|&i| v[i]);
+            // Dois campos: primeiro a GRELHA conjunta — um ponto 2D (o bico de um balão) pode
+            // saltar de lado da caixa, e a descida campo a campo não atravessa o salto (19 de 60
+            // arrastos presos, medido). Depois a descida refina a partir do melhor da grelha.
+            if let [a, b] = fields {
+                grid_2d(kind, &mut v, *a, *b, px_to_world, &metric);
+            }
             for _ in 0..rounds {
                 for &i in fields {
                     if let Some((lo, hi, int)) = range_world(kind, i, px_to_world) {
@@ -427,6 +436,51 @@ pub fn drag(
         }
     }
     v
+}
+
+/// Pontos por eixo da grelha conjunta de dois campos.
+const GRID: usize = 24;
+
+/// O melhor par `(v[a], v[b])` numa grelha da faixa dos dois (contagens nos inteiros).
+fn grid_2d(
+    kind: ShapeKind,
+    v: &mut ShapeValues,
+    a: usize,
+    b: usize,
+    px_to_world: f64,
+    metric: &dyn Fn(&ShapeValues) -> f64,
+) {
+    let (Some(ra), Some(rb)) = (
+        range_world(kind, a, px_to_world),
+        range_world(kind, b, px_to_world),
+    ) else {
+        return;
+    };
+    let axis = |(lo, hi, int): (f64, f64, bool)| -> Vec<f64> {
+        #[expect(clippy::cast_precision_loss, reason = "GRID é pequeno")]
+        let xs = (0..=GRID).map(|k| lo + (hi - lo) * k as f64 / GRID as f64);
+        if int {
+            let mut r: Vec<f64> = xs.map(f64::round).collect();
+            r.dedup();
+            r
+        } else {
+            xs.collect()
+        }
+    };
+    let mut best = (metric(v), v[a], v[b]);
+    for x in axis(ra) {
+        for y in axis(rb) {
+            let mut w = *v;
+            w[a] = x;
+            w[b] = y;
+            let d = metric(&w);
+            if d < best.0 {
+                best = (d, x, y);
+            }
+        }
+    }
+    v[a] = best.1;
+    v[b] = best.2;
 }
 
 /// O valor do campo `i` em `[lo, hi]` com a menor métrica: varredura do trilho inteiro e

@@ -526,6 +526,8 @@ fn the_panel_no_longer_holds_the_gesture_sections() {
         ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY,
         t::VECTOR_SECTION_SNAP,
         t::VECTOR_SECTION_PATH,
+        // F9 (11/10): os parâmetros da forma — alças no canvas e a fila ②.
+        t::VECTOR_SECTION_SHAPE_PARAMS,
     ] {
         assert!(!p::VECTOR_SECTIONS.contains(&id), "{id:?} voltou ao painel");
     }

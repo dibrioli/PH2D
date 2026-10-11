@@ -2,10 +2,10 @@
 //! cronómetro de cada quadro, as sessões de voto e os painéis abertos; nada disto vai para o ficheiro
 //! (F1). Do lado dos DOCUMENTOS, como o `documents_nav.rs`; quem o pinta é `board_facilitate`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_edit::{Timer, VoteSession, VoteSetup};
-use ph2d_board_model::BoardId;
+use ph2d_board_model::{BoardId, ElementId};
 
 /// O painel de votação de um quadro.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +36,20 @@ pub(crate) struct Fac {
     pub(crate) cluster_open: bool,
     /// F6 — a campainha à espera de quem a toca (a shell, uma vez por quadro).
     pub(crate) chime: bool,
+    /// W12 — a votação AO VIVO de cada quadro: a rodada que a sessão do editor segue, o meu
+    /// «I'm done», e o último boletim enviado (um novo só sai quando muda).
+    pub(crate) live_round: BTreeMap<BoardId, u32>,
+    pub(crate) live_done: BTreeSet<BoardId>,
+    pub(crate) live_sent: BTreeMap<BoardId, (BTreeMap<ElementId, u32>, bool)>,
+    /// W12 — o painel do modo privado aberto em cada quadro, com as opções de ligar.
+    pub(crate) private: BTreeMap<BoardId, PrivateSetup>,
+}
+
+/// W12 — as opções de ligar o modo privado (as do diálogo do Miro).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct PrivateSetup {
+    pub(crate) anonymous: bool,
+    pub(crate) anyone_can_end: bool,
 }
 
 impl Fac {
@@ -46,6 +60,10 @@ impl Fac {
         self.panels.remove(&id);
         self.parked.remove(&id);
         self.vote_clock.remove(&id);
+        self.live_round.remove(&id);
+        self.live_done.remove(&id);
+        self.live_sent.remove(&id);
+        self.private.remove(&id);
         let in_editor = self.in_editor == Some(id);
         if in_editor {
             self.in_editor = None;

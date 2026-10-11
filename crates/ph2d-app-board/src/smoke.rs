@@ -14,6 +14,7 @@
 //! | 10 | a EQUIPA e a SAÍDA (W8): um lançamento em três frames-diapositivo, um comentário por ler e um resolvido, uma versão guardada, e as cinco lições (comentar · versões · apresentar · exportar · abrir um `.excalidraw`) |
 //! | 11 | a FIDELIDADE ao Excalidraw (W9): o `bv.excalidraw` do dono aberto pelo leitor (setas rectas, paradas a 5 + traço/2 das formas — compare com a foto `docs/MiroClone/bv_excalidraw.png`), setas curtas de 10 a 60 (a ponta encolhe para metade), duas caixas para desenhar uma seta que pára antes da forma, e as quatro lições |
 //! | 12 | o QUADRO AO VIVO (W11): a retrospectiva «Retro» (três notas num frame e um fluxo de três caixas) JÁ ABERTA à rede, o painel Live aberto com o código, e as seis lições (o código · a firewall · a 2.ª janela entra · desenhar junto · seguir · trazer todos e fechar); a 2.ª janela é outro PH2D com a cena 1 |
+//! | 13 | o que é de UMA pessoa (W12): a «Private retro» JÁ ABERTA à rede, os painéis Live e do modo privado abertos, quatro ideias num frame «Ideas», um frame vazio «Write privately» e as seis lições (entrar · ligar o modo privado · escrever escondido · revelar · votar sem ver os outros · acabar); a 2.ª janela é outro PH2D com a cena 1 |
 
 use ph2d_board_model::{
     Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Mark, Rgba,
@@ -57,10 +58,14 @@ mod fidelity;
 #[path = "smoke_live.rs"]
 mod live;
 
+/// A cena 13 (W12), num ficheiro filho.
+#[path = "smoke_fac_live.rs"]
+mod fac_live;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 12,
+    max_level: 13,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -84,7 +89,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         10 => _ = team::scene_team(hero),
         11 => _ = fidelity::scene_fidelity(hero),
         12 => _ = live::scene_live(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=12)"),
+        13 => _ = fac_live::scene_fac_live(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=13)"),
     }
 }
 

@@ -157,7 +157,7 @@ pub enum Selected {
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
 /// do brainstorm).
-const TOOLBAR: [Item; 17] = [
+const TOOLBAR: [Item; 18] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
     Item::Tool(Tool::Shape(ShapeType::Sticky)),
@@ -174,6 +174,7 @@ const TOOLBAR: [Item; 17] = [
     Item::Sketch,
     fac::TIMER,
     fac::VOTE,
+    fac::PRIVATE,
     fac::COMMENT,
 ];
 

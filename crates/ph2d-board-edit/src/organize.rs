@@ -72,11 +72,13 @@ pub enum Notice {
     /// W7 — votar ou agrupar sem nada que se vote ou agrupe (precisa de notas ou formas).
     NothingToVote,
     NothingToCluster,
+    /// W12 — escrever ou votar numa nota cujo texto ainda não foi revelado.
+    Private,
 }
 
 impl Notice {
     /// Todos — o gate de que cada um tem frase.
-    pub const ALL: [Notice; 9] = [
+    pub const ALL: [Notice; 10] = [
         Notice::GroupAcrossFrames,
         Notice::Locked,
         Notice::TooManyTags,
@@ -86,6 +88,7 @@ impl Notice {
         Notice::OneVotePerObject,
         Notice::NothingToVote,
         Notice::NothingToCluster,
+        Notice::Private,
     ];
 
     /// A chave i18n da frase que o artista lê.
@@ -101,6 +104,7 @@ impl Notice {
             Notice::OneVotePerObject => "board.notice.one_vote_per_object",
             Notice::NothingToVote => "board.notice.nothing_to_vote",
             Notice::NothingToCluster => "board.notice.nothing_to_cluster",
+            Notice::Private => "board.notice.private",
         }
     }
 }

@@ -87,6 +87,8 @@ pub struct LiveOther {
     pub color: u8,
     pub cursor: Option<[f64; 2]>,
     pub selection: Vec<ElementId>,
+    /// W12 — «Make names anonymous»: sem nome (já vem vazio) e na tinta neutra.
+    pub anonymous: bool,
 }
 
 /// A firewall desta máquina, como a família a leu (ADR-0181 §8).

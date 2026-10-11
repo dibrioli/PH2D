@@ -547,3 +547,6 @@ fn the_card_avoids_the_search_and_hides_dead_steps() {
         "a 1 minuto, sem −"
     );
 }
+
+#[path = "board_facilitate_live_tests.rs"]
+mod live;

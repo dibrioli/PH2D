@@ -55,6 +55,25 @@ impl VoteSession {
         })
     }
 
+    /// W12 — a sessão de UMA pessoa numa votação ao vivo: os alvos e as regras vêm do anfitrião, os
+    /// votos dos outros nunca chegam aqui (ADR-0182 §7).
+    #[must_use]
+    pub fn live(setup: VoteSetup, targets: BTreeSet<ElementId>) -> Self {
+        Self {
+            setup,
+            targets,
+            totals: BTreeMap::new(),
+            mine: BTreeMap::new(),
+            voters: 0,
+        }
+    }
+
+    /// W12 — os meus votos (o boletim que vai ao anfitrião).
+    #[must_use]
+    pub fn ballot(&self) -> &BTreeMap<ElementId, u32> {
+        &self.mine
+    }
+
     #[must_use]
     pub fn setup(&self) -> VoteSetup {
         self.setup
@@ -253,6 +272,10 @@ impl Editor {
 
     /// V2 — um clique no `+` (ou no `−`) de `id`. A recusa fica no aviso.
     pub(crate) fn vote_click(&mut self, id: ElementId, minus: bool) {
+        if self.unread.contains(&id) {
+            self.notice = Some(Notice::Private);
+            return;
+        }
         let Some(s) = self.vote.as_mut() else {
             return;
         };

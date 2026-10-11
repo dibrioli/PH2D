@@ -12,6 +12,7 @@ mod grid;
 mod mind;
 mod note;
 mod overlay;
+mod private;
 mod sketch;
 mod tags;
 mod theme_ink;
@@ -25,11 +26,13 @@ pub use theme_ink::ThemeInk;
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
 
 use ph2d_board_geom::{outline, text_origin, text_rect, to_world};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_geom::Outline;
 use ph2d_board_layout::TextCache;
-use ph2d_board_model::{Area, Board, Camera, Connector, Dash, Element, Rgba, Shape, ShapeType};
+use ph2d_board_model::{
+    Area, Board, Camera, Connector, Dash, Element, ElementId, Rgba, Shape, ShapeType,
+};
 use ph2d_board_route::{LABEL_WRAP, RouteCache, Routed, label_origin};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
@@ -76,6 +79,11 @@ pub struct RenderCache {
     vote_range: Option<(u64, Option<[u32; 2]>)>,
     /// W8 — o desenho para EXPORTAR ([`ExportLook`]); `None` = o ecrã.
     pub export: Option<ExportLook>,
+    /// W12 (ADR-0182) — as notas de OUTROS com o texto escondido de mim: sem o texto, com os
+    /// rabiscos e o olho fechado.
+    pub unread: BTreeSet<ElementId>,
+    /// W12 — as MINHAS notas escondidas dos outros: o texto e o olho fechado.
+    pub mine_private: BTreeSet<ElementId>,
 }
 
 /// ⭐ W8 — o desenho para EXPORTAR (`docs/MiroClone/06_equipa_e_saida.md` E6/E7): o papel (ou nada:
@@ -406,7 +414,8 @@ fn paint_shape(
     let font_px = st.font_size * zoom;
     let read_px = cache.lod(READ_PX);
     let text_ink = cache.ink.text(st);
-    if !shape.text.is_empty() && font_px >= cache.lod(GREEK_MIN_PX) {
+    let unread = shape.kind.is_note() && cache.unread.contains(&el.id);
+    if !unread && !shape.text.is_empty() && font_px >= cache.lod(GREEK_MIN_PX) {
         let [_, _, tw, _] = text_rect(shape.kind, el.w, el.h);
         let layout = cache.text.get_rich(
             ts,
@@ -432,6 +441,9 @@ fn paint_shape(
     }
     if shape.kind.is_note() && !el.tags().is_empty() && font_px >= cache.lod(READ_PX) {
         tags::paint(scene, ts, &mut cache.text, board, el, st.font_size, t);
+    }
+    if unread || (shape.kind.is_note() && cache.mine_private.contains(&el.id)) {
+        private::paint(scene, el, t, unread, text_ink);
     }
     if faded {
         scene.pop_layer();

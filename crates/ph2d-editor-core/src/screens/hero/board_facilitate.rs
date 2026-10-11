@@ -21,6 +21,10 @@ use ph2d_tokens::Spacing;
 mod paint;
 pub use paint::paint;
 
+#[path = "board_facilitate_live.rs"]
+mod live;
+pub use live::{private_open, toggle_private};
+
 /// Um botão do cartão ou do painel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FacButton {
@@ -53,9 +57,18 @@ pub enum FacButton {
     VoteNew,
     /// O fundo do cartão e do painel: toma o clique (um clique no mostrador não cai no quadro).
     Surface,
+    /// W12 — o painel do modo privado: as duas opções de ligar, ligar, a opção de quem ligou,
+    /// revelar as minhas, desligar para todos, e fechar o painel.
+    PrivateAnonymous,
+    PrivateAnyoneEnd,
+    PrivateOn,
+    PrivateAnyoneReveal,
+    PrivateRevealMine,
+    PrivateOff,
+    PrivateClose,
 }
 
-const ALL: [FacButton; 27] = [
+const ALL: [FacButton; 34] = [
     FacButton::TimerMinus,
     FacButton::TimerPlus,
     FacButton::TimerPlay,
@@ -83,6 +96,13 @@ const ALL: [FacButton; 27] = [
     FacButton::VoteClose,
     FacButton::VoteNew,
     FacButton::Surface,
+    FacButton::PrivateAnonymous,
+    FacButton::PrivateAnyoneEnd,
+    FacButton::PrivateOn,
+    FacButton::PrivateAnyoneReveal,
+    FacButton::PrivateRevealMine,
+    FacButton::PrivateOff,
+    FacButton::PrivateClose,
 ];
 
 /// ⛔ Bits 40–47 diferentes dos saltos da navegação (`0x4e61_1…`–`0x4e61_4…`): o idioma dela.
@@ -127,6 +147,13 @@ fn tooltip_key(b: FacButton) -> &'static str {
         FacButton::VoteClose => "board.vote.close",
         FacButton::VoteNew => "board.vote.new",
         FacButton::Surface => "board.vote.surface",
+        FacButton::PrivateAnonymous => "board.private.anonymous_tip",
+        FacButton::PrivateAnyoneEnd => "board.private.anyone_end_tip",
+        FacButton::PrivateOn => "board.private.turn_on",
+        FacButton::PrivateAnyoneReveal => "board.private.anyone_reveal_tip",
+        FacButton::PrivateRevealMine => "board.private.reveal_mine_tip",
+        FacButton::PrivateOff => "board.private.turn_off_tip",
+        FacButton::PrivateClose => "board.vote.close",
     }
 }
 
@@ -285,6 +312,7 @@ pub fn follow(hero: &mut HeroScreen) {
         ed.end_vote(&mut board.doc, history);
         f.panels.insert(board.id, VotePanel::Results { all: false });
     }
+    live::follow(hero);
 }
 
 /// ⭐ Os cliques do cartão e do painel. Corre no pré-despacho (ids derivados).
@@ -295,6 +323,10 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let Some(b) = button_of(id) else {
         return false;
     };
+    // W12 — numa sessão ao vivo, votar e o modo privado são pedidos à sala.
+    if live::click(hero, b) {
+        return true;
+    }
     let now = Instant::now();
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {

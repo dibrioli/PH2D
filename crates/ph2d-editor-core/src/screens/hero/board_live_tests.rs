@@ -324,6 +324,7 @@ fn another_persons_cursor_paints_their_name_beside_it() {
         color: 3,
         cursor: Some(world),
         selection: Vec::new(),
+        anonymous: false,
     }];
     let xs = ph2d_tokens::TypeToken::Xs.px();
     let near = |r: &(f32, usize, [f64; 2])| {

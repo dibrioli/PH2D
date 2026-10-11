@@ -35,11 +35,14 @@ pub enum FacItem {
     ClusterBy(usize),
     /// W8 (K1) — a ferramenta de comentar (`C`).
     Comment,
+    /// W12 — abre ou fecha o painel do modo privado (o Miro: «Facilitation tools» ▸ «Private mode»).
+    Private,
 }
 
 pub(super) const TIMER: Item = Item::Fac(FacItem::Timer);
 pub(super) const VOTE: Item = Item::Fac(FacItem::Vote);
 pub(super) const COMMENT: Item = Item::Fac(FacItem::Comment);
+pub(super) const PRIVATE: Item = Item::Fac(FacItem::Private);
 const STAMPS: Item = Item::Fac(FacItem::Stamps);
 const CLUSTER: Item = Item::Fac(FacItem::Cluster);
 
@@ -98,6 +101,7 @@ pub(super) struct Now {
     stamps: bool,
     cluster: bool,
     comment: bool,
+    private: bool,
 }
 
 impl Now {
@@ -109,6 +113,7 @@ impl Now {
             stamps: f.stamps_open,
             cluster: f.cluster_open,
             comment: hero.documents.live.team.commenting,
+            private: super::super::board_nav::facilitate::private_open(hero),
         }
     }
 
@@ -120,6 +125,7 @@ impl Now {
             STAMPS => self.stamps,
             CLUSTER => self.cluster,
             COMMENT => self.comment,
+            PRIVATE => self.private,
             Item::Fac(_) => false,
             _ => return None,
         })
@@ -139,6 +145,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         FacItem::Cluster => "board.fac.cluster",
         FacItem::ClusterBy(i) => CLUSTER_BY.get(i)?.1,
         FacItem::Comment => "board.tool.comment",
+        FacItem::Private => "board.fac.private",
     })
 }
 
@@ -175,6 +182,7 @@ pub(super) fn paint_icon(
         FacItem::Vote => icon(scene, IconId::Vote, inner, fg, w),
         FacItem::Cluster => icon(scene, IconId::LayoutGrid, inner, fg, w),
         FacItem::Comment => icon(scene, IconId::MessageSquare, inner, fg, w),
+        FacItem::Private => icon(scene, IconId::EyeClosed, inner, fg, w),
         // O carimbo é o MESMO desenho do quadro (`ph2d_board_render::paint_stamp`), nunca um segundo.
         FacItem::Stamps => {
             ph2d_board_render::paint_stamp(
@@ -278,6 +286,7 @@ pub(super) fn apply(hero: &mut HeroScreen, it: Item) -> bool {
         FacItem::Timer => super::super::board_nav::facilitate::toggle_timer(hero),
         FacItem::Vote => super::super::board_nav::facilitate::toggle_vote(hero),
         FacItem::Comment => super::super::board_nav::team::toggle_comment_tool(hero),
+        FacItem::Private => super::super::board_nav::facilitate::toggle_private(hero),
         FacItem::Stamps | FacItem::Cluster => {}
         FacItem::Stamp(i) => {
             let theme = hero.theme;

@@ -42,9 +42,11 @@ impl Editor {
             return Vec::new();
         };
         // Um nó escondido por um ramo recolhido não mostra o `+` (nem o aceita): volta ao expandir.
+        // W12 — nem uma nota cujo texto não leio (volta ao revelar).
         let mut els: Vec<&Element> = s
             .targets()
             .iter()
+            .filter(|id| !self.unread.contains(id))
             .filter_map(|id| doc.get(*id))
             .filter(|e| !e.is_hidden())
             .collect();

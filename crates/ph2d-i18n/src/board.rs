@@ -171,6 +171,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.org.paper" => "Frame white (as it was born)",
         "board.notice.group_across_frames" => "Can't group objects that live in different frames",
         "board.notice.locked" => "It's locked — unlock it first (Ctrl+Shift+L)",
+        "board.notice.private" => "This note is private until it's revealed",
         "board.notice.too_many_tags" => "A sticky note holds up to 8 tags",
         "board.org.tag" => {
             "Tag the selected notes (type a tag, Enter; the same tag again takes it off)"

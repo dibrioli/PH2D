@@ -337,6 +337,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     };
     let lv = &mut hero.documents.live_view;
     match h {
+        // W12 — com os nomes anónimos não se segue ninguém (o Miro: «Follow is no longer available»).
+        Hit::Avatar(_) if lv.fac.private.as_ref().is_some_and(|p| p.anonymous) => {}
         Hit::Avatar(i) => {
             if let Some(&peer) = lv.panel.avatars.get(i) {
                 lv.following = (lv.following != Some(peer)).then_some(peer);

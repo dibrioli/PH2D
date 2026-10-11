@@ -35,8 +35,16 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     // A selecção primeiro: os cursores passam por cima dela.
     let dash = f64::from(Spacing::Xs.px());
     let width = f64::from(StrokeToken::Default.px());
+    // W12 — anónimo: a tinta neutra do texto, a mesma para todos (a cor diria quem é).
+    let tint = |o: &crate::documents::live::LiveOther| {
+        if o.anonymous {
+            ColorToken::Text2
+        } else {
+            ColorToken::person(o.color)
+        }
+    };
     for o in &lv.others {
-        let ink = Brush::Solid(resolve(ColorToken::person(o.color), theme));
+        let ink = Brush::Solid(resolve(tint(o), theme));
         let stroke = Stroke::new(width).with_dashes(0.0, [dash * 2.0, dash]);
         for id in &o.selection {
             let Some(el) = board.doc.get(*id) else {
@@ -61,7 +69,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             continue;
         };
         let [x, y] = board.camera.to_screen(a, world);
-        let fill = resolve(ColorToken::person(o.color), theme);
+        let fill = resolve(tint(o), theme);
         let mut path = BezPath::new();
         for (i, (u, v)) in ARROW.iter().enumerate() {
             let pt = (x + u * h, y + v * h);
@@ -75,6 +83,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         let s = scene.inner_mut();
         s.fill(Fill::NonZero, Affine::IDENTITY, fill, None, &path);
         s.stroke(&Stroke::new(width), Affine::IDENTITY, edge, None, &path);
+        if o.anonymous {
+            continue;
+        }
         // A etiqueta com o nome, logo abaixo e à direita da ponta (a do Excalidraw).
         let w = crate::paint::rect_for_label(ts.prefix_width(&o.name, font));
         let lh = font + pad;

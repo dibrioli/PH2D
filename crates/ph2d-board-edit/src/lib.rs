@@ -320,6 +320,9 @@ pub struct Editor {
     mind_drop: Option<ElementId>,
     /// A sessão de voto aberta (W7).
     vote: Option<VoteSession>,
+    /// W12 (ADR-0182) — as notas de outros com o texto escondido de mim: não se escreve nem se vota
+    /// no que não se lê. A vista pô-las aqui a cada imagem.
+    unread: BTreeSet<ElementId>,
 }
 
 impl Editor {
@@ -353,7 +356,13 @@ impl Editor {
             frame_name: |n| n.to_string(),
             mind_drop: None,
             vote: None,
+            unread: BTreeSet::new(),
         }
+    }
+
+    /// W12 — as notas com o texto escondido de mim (a sessão ao vivo di-lo a cada imagem).
+    pub fn set_unread(&mut self, ids: BTreeSet<ElementId>) {
+        self.unread = ids;
     }
 
     #[must_use]

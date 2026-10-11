@@ -325,6 +325,29 @@ fn fac_view(
     }
 }
 
+/// A vista nova da facilitação, com os avisos das viradas (o Miro avisa todos: o modo ligou, as
+/// notas revelaram-se, uma votação começou).
+fn announce(hero: &mut HeroScreen, fac: LiveFac) {
+    let old = &hero.documents.live_view().fac;
+    let mut say = Vec::new();
+    match (&old.private, &fac.private) {
+        (None, Some(p)) if !p.by_me => {
+            say.push(tr_with("board.private.on", &[("name", &p.by)]));
+        }
+        (Some(_), None) => say.push(tr("board.private.revealed").to_owned()),
+        _ => {}
+    }
+    let open = |f: &LiveFac| f.vote.as_ref().filter(|v| !v.ended).map(|v| v.round);
+    if let Some(v) = fac.vote.as_ref().filter(|_| open(&fac) != open(old) && open(&fac).is_some()) {
+        let n = v.setup.votes.to_string();
+        say.push(tr_with("board.livevote.started", &[("name", &v.by), ("n", &n)]));
+    }
+    for m in say {
+        hero.documents.tell(m);
+    }
+    hero.documents.live_view_mut().fac = fac;
+}
+
 /// Liga numa thread à parte: o ecrã nunca espera pela rede.
 fn dial(addr: SocketAddr, code: &str) -> mpsc::Receiver<Result<net::Guest, net::JoinError>> {
     let (tx, rx) = mpsc::channel();
@@ -444,7 +467,7 @@ fn host_tick(
         })
         .collect();
     let fac = fac_view(&s.fac(now), me, me, s.my_sealed(), &peers);
-    hero.documents.live_view_mut().fac = fac;
+    announce(hero, fac);
     view(hero, board, &peers, |p| s.seen(p), now);
     Some(Live::Host { net, s, board })
 }
@@ -585,7 +608,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         hero.documents.live_view_mut().role = LiveRole::Guest { host };
         let host_peer = peers.iter().find(|p| p.color == 0).map_or(0, |p| p.peer);
         let fac = fac_view(&s.fac(now), me.unwrap_or(0), host_peer, s.my_sealed(), &peers);
-        hero.documents.live_view_mut().fac = fac;
+        announce(hero, fac);
         view(hero, id, &peers, |p| s.seen(p), now);
     }
     Some(Live::Guest {
@@ -664,6 +687,14 @@ fn view<'a>(
     seen: impl Fn(u64) -> Option<&'a sync::Seen>,
     now: u64,
 ) {
+    // W12 — «Make names anonymous»: o nome nem chega ao ecrã, e ninguém se segue.
+    let anon = hero
+        .documents
+        .live_view()
+        .fac
+        .private
+        .as_ref()
+        .is_some_and(|p| p.anonymous);
     let others: Vec<LiveOther> = peers
         .iter()
         .filter(|p| !p.me)
@@ -671,7 +702,8 @@ fn view<'a>(
             let s = seen(p.peer);
             LiveOther {
                 peer: p.peer,
-                name: p.name.clone(),
+                name: if anon { String::new() } else { p.name.clone() },
+                anonymous: anon,
                 color: p.color,
                 cursor: s.and_then(|s| s.cursor_at(now)),
                 selection: s
@@ -681,13 +713,17 @@ fn view<'a>(
             }
         })
         .collect();
-    let follow = hero.documents.live_view().following;
+    let follow = hero
+        .documents
+        .live_view()
+        .following
+        .filter(|_| !anon);
     let camera = follow.and_then(&seen).and_then(|s| s.camera_at(now));
     let v = hero.documents.live_view_mut();
     v.board = Some(board);
     v.peers = peers.to_vec();
     v.others = others;
-    if follow.is_some_and(|p| !peers.iter().any(|q| q.peer == p)) {
+    if anon || follow.is_some_and(|p| !peers.iter().any(|q| q.peer == p)) {
         v.following = None;
     }
     if let Some(cam) = camera

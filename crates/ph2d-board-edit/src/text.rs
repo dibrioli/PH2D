@@ -116,6 +116,10 @@ impl Editor {
             self.notice = Some(crate::Notice::Locked);
             return false;
         }
+        if self.unread.contains(&id) {
+            self.notice = Some(crate::Notice::Private);
+            return false;
+        }
         if !self.open_text(doc, id) {
             return false;
         }

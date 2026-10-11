@@ -1,0 +1,14 @@
+# Sonda (fora do workspace): `cargo run --release --manifest-path "docs/Vector Module/ferramentas/vectorcraft_2026-10-11/sonda_offset/Cargo.toml" --target-dir target/sonda_offset -- target/vectorcraft/ours > target/vectorcraft/ours/rows.tsv`
+# Origem: estudo ESTUDO_vectorcraft_comparado_2026-10-11 (§3). Depois lê-se com ph2d_offset_estrela.py.
+[package]
+name = "ph2d_offset_probe"
+version = "0.1.0"
+edition = "2024"
+[workspace]
+[dependencies]
+ph2d-vec-boolean = { path = "../../../../../crates/ph2d-vec-boolean" }
+ph2d-vec-scene = { path = "../../../../../crates/ph2d-vec-scene" }
+ph2d-vec-render = { path = "../../../../../crates/ph2d-vec-render" }
+kurbo = "0.13"
+[profile.release]
+debug = false

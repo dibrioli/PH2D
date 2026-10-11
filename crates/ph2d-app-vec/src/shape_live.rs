@@ -188,6 +188,27 @@ pub fn select_the_drawn_shape(vec: &mut crate::state::VecState, scene: &VecScene
     vec.pen.select(sel);
 }
 
+/// ⭐ **Soltar o gesto de forma** (`committed` = o `on_release` guardou-a): a forma nova fica
+/// seleccionada; um CLIQUE sem arrasto (descartado) em cima de uma forma que já existe SELECCIONA
+/// essa forma — o idioma do Affinity (F12, o dono: «se a ferramenta estiver em shape, deve ser
+/// possível selecionar shapes já colocadas no canvas»). Arrastar continua a desenhar, também por
+/// cima de outra forma. Num clique no vazio a selecção fica como estava.
+pub fn after_the_shape_release(vec: &mut crate::state::VecState, scene: &VecScene, committed: bool) {
+    if committed {
+        select_the_drawn_shape(vec, scene);
+        return;
+    }
+    let (a, b) = vec.shape.bounds();
+    let click = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
+    let hit_r = CLICK_HIT_PX * vec.shape.px_to_world();
+    if let Some(id) = vec.pen.path_at(scene, click, hit_r) {
+        vec.pen.select(Some(id));
+    }
+}
+
+/// O raio de captura do clique que selecciona no modo Forma — o mesmo das ferramentas de quina.
+const CLICK_HIT_PX: f64 = 12.0;
+
 /// "Convert to Curves" de formas paramétricas (NÃO-texto): descarta o `VecShape` — a
 /// geometria já assada vira um path cru, editável com a caneta. Devolve quantas converteu.
 pub fn drop_shape_params(sim: &mut SimWorld, map: &VecEntityMap, selection: &[VecPathId]) -> usize {

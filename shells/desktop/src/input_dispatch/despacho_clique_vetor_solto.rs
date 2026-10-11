@@ -73,9 +73,9 @@ impl crate::App {
             } else {
                 false
             };
-            // A forma nova fica seleccionada — e as alças dela acendem já (F10).
-            if committed && let Some(gfx) = self.gfx.as_ref() {
-                ph2d_app_vec::shape_live::select_the_drawn_shape(&mut self.vec, &gfx.vec_scene);
+            // A forma nova fica seleccionada (F10); um clique solto selecciona a que está por baixo (F12).
+            if let Some(gfx) = self.gfx.as_ref() {
+                ph2d_app_vec::shape_live::after_the_shape_release(&mut self.vec, &gfx.vec_scene, committed);
             }
             return true;
         }

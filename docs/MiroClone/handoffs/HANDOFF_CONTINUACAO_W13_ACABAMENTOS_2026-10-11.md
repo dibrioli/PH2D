@@ -44,6 +44,39 @@ botão com o contorno actual abre a grelha das formas). O plano:
    mutação de tirar o filtro). i18n: uma chave `board.style.shape` (o balão).
 5. Cena: a cena 2 ou 3 do quadro (formas) ganha a lição, se o roteador de cenas o pedir — conte o número no roteador.
 
+## E no MESMO ciclo (ordem do dono, 11/10): arrastar IMAGENS para o quadro e para a cena
+
+*«Ainda não podemos arrastar imagens nem para os quadros nem para o canvas.»* Smoke da W13 + acabamentos: **OK** (11/10).
+O dono escolheu: o botão «Forma» (acima) **e** isto, num ciclo só. Medido nesta janela (explorador, 11/10):
+
+1. **A causa da cena não é do PH2D: o evento nunca chega.** A sessão do dono é Wayland (`XDG_SESSION_TYPE=wayland`,
+   `WAYLAND_DISPLAY=wayland-0`, KDE Plasma 6). O `winit 0.30.13` (`Cargo.lock`) só emite `DroppedFile`/`HoveredFile` no
+   backend X11 (`platform_impl/linux/x11/event_processor.rs:547`, XDND); no `…/linux/wayland/` não há `wl_data_device`
+   nenhum. A shell não força X11. ⇒ a fila M14.4e (`main.rs:979-981` → `on_dropped_file` → `pending_drops` →
+   `input_drop.rs:22 handle_dropped_files` → `import_router::import_paths_grid`) está viva e muda.
+   - Caminhos a MEDIR antes de escolher (`bash scripts/stack-audit.sh --tetos` primeiro — regra do roteador): (a) um
+     `winit` que já traga DnD no Wayland, se existir e o tecto deixar; (b) receber o DnD pelo `smithay-client-toolkit
+     0.19.2` (JÁ na árvore, via winit; tem `data_device_manager`) sobre a MESMA ligação Wayland da janela (o
+     `raw_window_handle` dá o `wl_display`/`wl_surface`), numa fila de eventos própria — a posição vem do `motion` da
+     oferta, melhor que o cursor em cache de hoje; (c) ⛔ forçar X11/XWayland — perde-se a escala fraccionada e o toque
+     do Wayland: só como último recurso, com a medição ao lado.
+   - Nenhum teste toca `on_dropped_file`/`handle_dropped_files` hoje (só `import_router_tests.rs` no particionar).
+   - O app de referência a correr: um drop por script (`wl-copy`/`dragon-drop`?) que dê o mesmo evento nos dois
+     backends — o gate tem de chegar ao `pending_drops` pela porta real.
+2. **O quadro NÃO tem imagens** (`ph2d-board-model/src/element.rs:55-65`: `Shape`·`Connector`·`Ink`·`Frame`). O
+   `.excalidraw` com `type:"image"` é saltado na importação (`lib_tests.rs:~293`) e a exportação escreve `"files":{}`
+   (`write.rs:442`). Nem colar (`Ctrl+V`) uma imagem existe. ⇒ é uma onda do Quadro inteira: `ElementKind::Image` (os
+   bytes por conteúdo — sha256 —, guardados uma vez no `BoardSet`; FORMATO 12 com o leitor 11), desenho (Vello,
+   com cache de textura e o LOD de longe), redimensionar com a proporção, exportar PNG/SVG/PDF, o `.excalidraw` com
+   os `files` nos dois sentidos (o oráculo do Excalidraw da W8–W10 corre de novo), ao vivo (os bytes de uma imagem a
+   pares: o `MAX_FRAME` do transporte — medir; mandar por pedaços ou uma vez por conteúdo), e o modo privado
+   (uma imagem não tem texto — confirmar que nada sela/solta). Entradas: soltar (o 1.), colar e o «Import».
+3. **Com um quadro activo, o drop de hoje vai para a CENA escondida** (ou para nada — por confirmar): o
+   `handle_dropped_files` não pergunta por `documents.active()`. O despacho tem de escolher o destino pela aba activa.
+
+Ordem sugerida: 1.º o botão «Forma» (pequeno, fecha o §9); depois a entrada do drop no Wayland (serve a cena E o
+quadro, e só ela desbloqueia o smoke); depois a imagem no quadro. Cada uma com o seu smoke ao dono.
+
 ## Lembretes MEDIDOS nesta janela
 
 - **O arnês do quadro tem `T.vp_h`** (a altura da janela): uma janela baixa é `t.vp_h = …; t.paint()`.

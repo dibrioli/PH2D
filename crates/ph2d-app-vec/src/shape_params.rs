@@ -231,6 +231,75 @@ pub fn edit_selected_shape(
     true
 }
 
+/// ⭐ **O quadro dos campos de forma** — o latch do «armado para desenhar» que a seleção desarma,
+/// o foco que o painel pinta e a semente dos campos (a fila ②). Era a `fase_shape_fields` da shell.
+///
+/// ⭐⭐ **O LATCH:** a tool publica o clique no catálogo; a seleção que MUDA apaga-o — e desenhar
+/// seleciona a forma nova, então o ciclo Live Shape volta sozinho. Lê o alvo CRU
+/// ([`panel_shape_target`]): a porta devolve `None` justamente com o latch aceso, e lida aqui ele
+/// nunca mais cairia. O DESARME vem antes do ARME (um clique é um EVENTO; a mudança de alvo, um
+/// NÍVEL — no mesmo quadro ganha o gesto que se sabe ter acontecido).
+///
+/// ⚠️ **A semente corre quando o PAR `(alvo, tipo)` muda** — só o alvo deixava *«nada
+/// selecionado, catálogo em Star»* e *«…em Polygon»* iguais (`None == None`) e os campos, que são
+/// por ÍNDICE, com os números da forma anterior —, **e quando a forma viva mudou POR FORA** dos
+/// campos (F9: uma alça no canvas). Semear TODO quadro brigaria com o arrasto de um campo; comparar
+/// com a última semente não briga (o campo que escreve vê o seu próprio número voltar).
+pub fn frame_fields(
+    vec: &mut crate::state::VecState,
+    sim: &SimWorld,
+    tools: &mut ph2d_editor_core::ToolRegistry,
+    store: &mut WidgetStore,
+    px_to_world: f64,
+) {
+    use crate::vector_bridge::{adopt_shape_values, shape_catalog, take_shape_armed};
+    let sel = vec.pen.selected_paths().to_vec();
+    let alvo_vivo = panel_shape_target(sim, &vec.entities, &sel).map(|(id, ..)| id);
+    if alvo_vivo != vec.shape_armed_target {
+        vec.shape_armed_target = alvo_vivo;
+        vec.shape_armed = false;
+    }
+    if take_shape_armed(tools) {
+        vec.shape_armed = true;
+    }
+    let target = shape_field_target(
+        sim,
+        &vec.entities,
+        &sel,
+        vec.draw_config.mode,
+        vec.shape_armed,
+    );
+    ph2d_panel_vector::set_current_shape_focus(target.as_ref().map(|(_, _, k, _)| *k));
+    let catalog = shape_catalog(tools);
+    let focus = shape_seed_focus(
+        target.as_ref().map(|(id, _, k, _)| (*id, *k)),
+        catalog.map(|(k, _)| k).unwrap_or_default(),
+    );
+    // A conversão para UI é UMA, aqui: o store que o painel pinta e a tool que adota leem o
+    // MESMO array. Sem alvo, o que a tool guarda para aquele tipo (já em UI: o próximo desenho).
+    let ui = match target.as_ref() {
+        Some((_, _, kind, world)) => ui_values_of(*kind, world, px_to_world),
+        None => catalog.map(|(_, v)| v).unwrap_or_default(),
+    };
+    let por_fora = target.is_some()
+        && vec.shape_last_seed.is_some_and(|s| {
+            s.iter()
+                .zip(&ui)
+                .any(|(a, b)| (a - b).abs() > 1e-9 * (1.0 + a.abs()))
+        });
+    if Some(focus) != vec.shape_last_focus || por_fora {
+        vec.shape_last_focus = Some(focus);
+        vec.shape_last_seed = target.is_some().then_some(ui);
+        seed_shape_fields(store, focus.1, &ui);
+        adopt_shape_values(tools, focus.1, ui);
+    }
+}
+
 #[cfg(test)]
 #[path = "shape_params_tests.rs"]
 mod tests;
+
+/// O quadro dos campos ([`frame_fields`]) — irmão pelo tecto de LOC.
+#[cfg(test)]
+#[path = "shape_fields_frame_tests.rs"]
+mod frame_tests;

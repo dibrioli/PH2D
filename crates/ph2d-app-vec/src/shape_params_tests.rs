@@ -14,7 +14,7 @@ use ph2d_vec_scene::ALL_SHAPES;
 
 /// Uma forma viva no mundo: path na cena + entidade + `VecShape`, com uma POSE (o "move
 /// do usuário") para provar que o re-cook não a perde.
-fn live_shape(
+pub(super) fn live_shape(
     kind: ShapeKind,
     values: ShapeValues,
     pose: [f32; 2],

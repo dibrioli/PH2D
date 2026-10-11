@@ -428,6 +428,11 @@ pub struct VecState {
     /// os números da forma anterior (report do Enio, 2026-08-01).
     pub shape_last_focus: Option<(Option<ph2d_vec_scene::VecPathId>, ph2d_vec_scene::ShapeKind)>,
 
+    /// Os valores (UI) da última semente do ALVO VIVO — a 2.ª razão para re-semear (F9): a forma
+    /// mudou POR FORA dos campos (uma alça no canvas), e os números da fila ② ficariam velhos. Ver
+    /// [`crate::shape_params::frame_fields`].
+    pub shape_last_seed: Option<ph2d_vec_scene::ShapeValues>,
+
     /// ⭐⭐ **O artista está ARMADO para desenhar** — carregou numa forma do catálogo e ainda não
     /// tocou noutro objeto. Enquanto isto vale (e só no modo `Shape`), os campos de parâmetro do
     /// painel são os da forma ARMADA, e a caixa numérica NÃO alcança a forma selecionada

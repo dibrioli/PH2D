@@ -1,58 +1,21 @@
-//! **Arch-gate: o latch de «armado para desenhar» está LIGADO nas quatro pontas.**
-//!
-//! Irmão de [`the_shape_fields_are_seeded_by_the_pair`], e pela mesma razão: a decisão mora dentro
-//! do `render_frame`, que exige `gfx` (janela + GPU). Os gates de unidade provam que
-//! `shape_field_target` decide certo com o latch aceso e apagado; **nenhum deles prova que o
-//! produto o ACENDE, o APAGA e o entrega às duas rotas.**
+//! **Arch-gate: a ESCRITA dos campos de forma recebe o MESMO latch de «armado para desenhar».**
 //!
 //! # O defeito (report do Enio, 2026-08-31)
 //!
-//! *"Troco de Shape na tool Shape e as propriedades da shape não trocam imediatamente."*
-//!
-//! Desenhar deixa a forma nova selecionada, o alvo vivo vencia sempre, e escolher outra forma no
-//! catálogo deixava o painel nos parâmetros da anterior. ⚠️ **A cura pelo MODO sozinho matava o
-//! ciclo Live Shape** — *"desenhei uma estrela, deixa-me ajustar as pontas"* é o mesmo
-//! `DrawMode::Shape` com uma forma viva selecionada. O que os separa é a ORDEM dos gestos, e é isso
-//! que o latch guarda.
+//! *"Troco de Shape na tool Shape e as propriedades da shape não trocam imediatamente."* O latch
+//! guarda a ORDEM dos gestos (armei o Polígono × desenhei uma estrela): acendê-lo, apagá-lo e
+//! publicá-lo ao painel moram em `ph2d_app_vec::shape_params::frame_fields` e têm gates de
+//! COMPORTAMENTO lá (`shape_fields_frame_tests`, F9 — eram metade deste ficheiro, a ler texto). Aqui
+//! fica a ponta que continua na shell: o dreno que ESCREVE.
 
 /// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
-///
-/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: acender, apagar e a pintura mudaram-se
-/// para a `fase_shape_fields`, e a escrita continua no dreno do `render_loop/mod.rs`. «O desarme antes do arme» é uma
-/// ordem de EXECUÇÃO, e só o texto emendado a tem.
 static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
-/// As quatro pontas: acender · apagar · a pintura · a escrita.
+/// A ESCRITA é a ponta perigosa e tem de receber o MESMO latch que a pintura: os slots do painel
+/// são por ÍNDICE, então pintar a Estrela armada e escrever no Polígono selecionado põe *lados*
+/// onde o artista digitou *pontas*, sem erro nenhum.
 #[test]
-fn the_latch_is_armed_disarmed_and_read_by_both_routes() {
-    for (o_que, agulha) in [
-        (
-            "ACENDER — a tool publica o clique no catálogo",
-            "if vector_bridge::take_shape_armed(tools) {",
-        ),
-        (
-            "APAGAR — a selecção que muda desarma (desenhar selecciona a forma nova)",
-            "if alvo_vivo != self.vec.shape_armed_target {",
-        ),
-    ] {
-        assert!(
-            SRC.contains(agulha),
-            "ponta desligada ({o_que}): `{agulha}` nao existe no render_loop"
-        );
-    }
-    // A PINTURA — o que a shell publica ao painel sai da porta com o latch como ÚLTIMO argumento. ⚠️ A agulha era
-    // `"self.vec.shape_armed,\n                );"`, com INDENTAÇÃO dentro, e a publicação mudou-se para a fase noutra
-    // coluna (P5a). A régua da cadeia (`frame_text::find_chain`) só aceita espaço entre o latch e o `);` — e a rota
-    // de ESCRITA, que passa o mesmo latch seguido do fecho `|kind, values|`, não casa: as duas pontas continuam
-    // separadas.
-    assert!(
-        crate::frame_text::find_chain(&SRC, "self.vec.shape_armed,", ");").is_some(),
-        "ponta desligada (A PINTURA — o que a shell publica ao painel sai da porta com o latch): o latch nao e' o \
-         ultimo argumento de nenhuma publicacao no render_loop"
-    );
-    // A ESCRITA é a ponta perigosa e tem de receber o MESMO latch: os slots do painel são por
-    // ÍNDICE, então pintar a Estrela armada e escrever no Polígono selecionado põe *lados* onde o
-    // artista digitou *pontas*, sem erro nenhum.
+fn the_write_route_receives_the_latch() {
     let escrita = SRC
         .find("crate::vec_shape_params::edit_selected_shape(")
         .expect("a rota de escrita dos campos de forma");
@@ -61,36 +24,9 @@ fn the_latch_is_armed_disarmed_and_read_by_both_routes() {
         corpo.contains("self.vec.shape_armed,"),
         "a ESCRITA nao recebe o latch — ela alcancaria a forma que o painel ja' nao mostra"
     );
-}
-
-/// ⚠️ **O DESARME vem antes do ARME.** Um clique é um evento drenado (aconteceu, ponto); a mudança
-/// de alvo é um nível comparado com o frame anterior. Invertida a ordem, um frame em que os dois
-/// caíssem juntos apagaria o clique que o artista acabou de dar.
-#[test]
-fn the_disarm_runs_before_the_arm() {
-    let desarme = SRC
-        .find("if alvo_vivo != self.vec.shape_armed_target {")
-        .expect("o desarme");
-    let arme = SRC
-        .find("if vector_bridge::take_shape_armed(tools) {")
-        .expect("o arme");
+    // E a pintura sai da porta única, na fase dos campos — o mesmo latch, na mesma ordem.
     assert!(
-        desarme < arme,
-        "o arme ({arme}) corre antes do desarme ({desarme}): o clique seria apagado no mesmo frame"
-    );
-}
-
-/// ⚠️ **O latch lê o alvo CRU, nunca a porta.** A porta devolve `None` *porque* o latch está aceso;
-/// alimentá-la de volta seria um laço em que ele nunca mais cai — e o painel ficaria preso na forma
-/// armada para sempre.
-#[test]
-fn the_latch_watches_the_raw_target_not_the_gated_one() {
-    let bloco = SRC
-        .find("let alvo_vivo =")
-        .expect("o alvo que o latch observa");
-    let corpo = &SRC[bloco..bloco + 300];
-    assert!(
-        corpo.contains("vec_shape_params::panel_shape_target("),
-        "o latch observa a PORTA em vez do alvo cru — ele nunca mais se apaga"
+        SRC.contains("ph2d_app_vec::shape_params::frame_fields("),
+        "a fase dos campos de forma deixou de chamar a porta única"
     );
 }

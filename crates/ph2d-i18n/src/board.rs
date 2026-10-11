@@ -72,6 +72,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.shape.sticky" => "Sticky note",
         "board.shape.sticky_wide" => "Wide sticky note",
         "board.shape.sticky_stack" => "Sticky note stack",
+        "board.style.shape" => "Shape",
         "board.style.no_fill" => "No fill",
         "board.style.fill" => "Fill colour",
         "board.style.no_stroke" => "No outline",

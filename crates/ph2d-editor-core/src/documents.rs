@@ -54,6 +54,12 @@ pub(crate) struct BoardLive {
     pub(crate) space: bool,
     /// A grelha de todas as formas, aberta pelo «mais formas» da barra curta.
     pub(crate) shapes_open: bool,
+    /// A grelha «Forma» da barra de contexto (trocar o tipo das formas), aberta para ESTA selecção
+    /// e ferramenta.
+    pub(crate) reshape: Option<(
+        std::collections::BTreeSet<ph2d_board_model::ElementId>,
+        ph2d_board_edit::Tool,
+    )>,
     /// A galeria dos modelos, aberta pelo botão «Templates» da barra curta (W6).
     pub(crate) templates_open: bool,
     /// ⭐ O quadro TOMOU o carregar do gesto em curso: só então o largar e o mover são dele. Um gesto

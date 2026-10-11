@@ -406,3 +406,39 @@ fn reading_order_goes_by_rows_then_left_to_right() {
     let order: Vec<ElementId> = reading_order(&els).iter().map(|e| e.id).collect();
     assert_eq!(order, [b, a, c]);
 }
+
+/// ⛔ Mudar o TIPO das formas (a grelha «Forma» da barra) nunca toca uma nota nem faz uma: o cofre do
+/// modo privado sela o texto por `kind.is_note()` — uma nota escondida que virasse rectângulo soltava
+/// o texto. As duas formas trocam num passo só; pedir uma nota não muda nada nem gasta um passo.
+#[test]
+fn reshaping_turns_the_shapes_in_one_step_and_never_touches_or_makes_a_note() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 50.0, 50.0]);
+    let b = w.rect([100.0, 0.0, 50.0, 50.0]);
+    let n = w.note([400.0, 0.0]);
+    w.cmd(Command::SelectAll);
+    w.ed.set_shape_type(&mut w.doc, &mut w.h, ShapeType::Hexagon);
+    let kind = |w: &World, id| w.el(id).shape().unwrap().kind;
+    assert_eq!([kind(&w, a), kind(&w, b)], [ShapeType::Hexagon; 2]);
+    assert_eq!(kind(&w, n), ShapeType::Sticky, "a nota virou forma");
+    // O tipo que já têm não é um passo (o `Ctrl+Z` seguinte desfaz a troca, não um nada).
+    w.ed.set_shape_type(&mut w.doc, &mut w.h, ShapeType::Hexagon);
+    for t in [
+        ShapeType::Sticky,
+        ShapeType::StickyWide,
+        ShapeType::StickyStack,
+    ] {
+        w.ed.set_shape_type(&mut w.doc, &mut w.h, t);
+        assert_eq!(
+            kind(&w, a),
+            ShapeType::Hexagon,
+            "{t:?}: uma forma virou nota"
+        );
+    }
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(
+        [kind(&w, a), kind(&w, b)],
+        [ShapeType::Rectangle; 2],
+        "a troca não foi UM passo (ou um pedido recusado gastou um)"
+    );
+}

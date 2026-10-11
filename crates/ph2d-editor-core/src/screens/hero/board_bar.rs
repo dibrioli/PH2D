@@ -9,18 +9,15 @@
 //! quadro desenha, nunca um segundo desenho.
 
 use super::HeroScreen;
-use crate::icons::IconId;
-use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve};
+use crate::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use crate::widget::ButtonState;
 use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_edit::Tool;
-use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, ShapeType};
+use ph2d_board_model::{Dash, Head, Rgba, Route, ShapeType};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// ⛔ O salto tem os 16 bits do MEIO diferentes dos das abas de quadro (`…_0000_0003`): os dois
@@ -33,8 +30,8 @@ const SALT: u64 = 0xb0a2_d7ab_5ba2_0000;
 mod look;
 pub use look::shape_name_key;
 use look::{
-    arrow_icon, doc_color, ink, is_current, paint_panel, selected_arrow, selected_kind,
-    selected_style, selection_box, shape_icon, shown, stroke, swatch, tooltip_key,
+    doc_color, ink, is_current, paint_item, paint_panel, selected_arrow, selected_kind,
+    selected_style, selection_box, shown, stroke, swatch, tooltip_key,
 };
 
 /// As notas e o texto (W3, módulo filho: o ficheiro estava no tecto de LOC).
@@ -58,6 +55,11 @@ pub use mind::MindItem;
 #[path = "board_bar_facilitate.rs"]
 mod fac;
 pub use fac::FacItem;
+
+/// As duas grelhas das formas: a ferramenta e o «Forma» que troca o tipo (módulo filho).
+#[path = "board_bar_shapes.rs"]
+mod shapes;
+pub use shapes::reshape_rects;
 
 /// A caneta e o rascunho (W4, módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_pen.rs"]
@@ -122,6 +124,8 @@ pub enum Item {
     Mind(MindItem),
     /// Facilitar (W7): cronómetro, votação, carimbos, agrupar.
     Fac(FacItem),
+    /// «Forma»: abre a grelha que troca o TIPO das formas seleccionadas.
+    Reshape,
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -200,10 +204,11 @@ pub fn items() -> Vec<Item> {
     .flat_map(style_groups)
     .flatten()
     {
-        if !v.contains(&it) {
+        if !v.contains(&it) && it != shapes::RESHAPE {
             v.push(it);
         }
     }
+    v.push(shapes::RESHAPE); // no FIM: os ids dos outros não se movem
     v
 }
 
@@ -229,6 +234,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
     let org = organize::groups(sel);
     let mut groups: Vec<Vec<Item>> = match sel {
         Selected::Shapes => vec![
+            vec![shapes::RESHAPE],
             fill,
             stroke,
             width,
@@ -366,21 +372,8 @@ pub fn paint(
         );
     }
     if shapes_open {
-        let grid = shapes_rects(area);
-        paint_panel(scene, &grid, theme);
-        for (it, r) in grid {
-            let on = matches!(it, Item::Pick(t) if tool == Tool::Shape(t));
-            paint_item(
-                scene,
-                text_system,
-                theme,
-                &mut hero.hit_index,
-                &hero.store,
-                it,
-                r,
-                on,
-            );
-        }
+        let (hit, store) = (&mut hero.hit_index, &hero.store);
+        shapes::paint_tool_grid(scene, text_system, theme, hit, store, area, tool);
     }
     if notes::flyout_open(tool) {
         let (hit, store) = (&mut hero.hit_index, &hero.store);
@@ -401,6 +394,12 @@ pub fn paint(
         &mut live.fac,
         matches!(what, Some(Selected::Notes | Selected::Frames)),
     );
+    let reshape_now = shapes::current(ed, &board.doc);
+    let bar_has_reshape = what == Some(Selected::Shapes)
+        && shapes::shows(shapes::RESHAPE, ed, &board.doc) == Some(true);
+    shapes::sync(live, sel_box.is_some() && bar_has_reshape);
+    let reshape_open = live.reshape.is_some();
+    let ed = super::board_view::editor(&mut live.editor, theme);
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };
@@ -418,6 +417,7 @@ pub fn paint(
                 .filter(|it| org.shows(*it) != Some(false))
                 .filter(|it| mind::shows(*it, ed, &board.doc) != Some(false))
                 .filter(|it| fac::shows(*it, ed, &board.doc) != Some(false))
+                .filter(|it| shapes::shows(*it, ed, &board.doc) != Some(false))
                 .collect()
         })
         .filter(|g: &Vec<Item>| !g.is_empty())
@@ -425,6 +425,11 @@ pub fn paint(
     let bar = layout::style_rects_of(area, sel, groups);
     paint_panel(scene, &bar, theme);
     for (it, r) in bar.clone() {
+        if it == shapes::RESHAPE {
+            let (hit, store) = (&mut hero.hit_index, &hero.store);
+            shapes::paint_button(scene, hit, store, theme, r, (reshape_open, reshape_now));
+            continue;
+        }
         let on = mind::is_on(it, ed, &board.doc, templates_open)
             .or_else(|| fac_now.is_on(it))
             .or_else(|| org.is_on(it, style.fill))
@@ -444,148 +449,9 @@ pub fn paint(
     }
     let (hit, store) = (&mut hero.hit_index, &hero.store);
     fac::paint_flyout(scene, text_system, theme, hit, store, &bar, fac_now);
-}
-
-#[allow(clippy::too_many_arguments)]
-fn paint_item(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    it: Item,
-    r: Rect,
-    on: bool,
-) {
-    let id = node(it);
-    let fg = super::float_bar::paint_button(
-        scene,
-        hit_index,
-        store,
-        theme,
-        super::float_bar::Btn {
-            id,
-            rect: r,
-            on,
-            tint: ColorToken::Text2,
-        },
-    );
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    let inner = super::float_bar::inner(r);
-    let line = f64::from(StrokeToken::Default.px());
-    if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line)
-        || pen::paint_icon(scene, theme, it, inner, fg, line)
-        || organize::paint_icon(scene, theme, it, inner, fg, line)
-        || mind::paint_icon(scene, text_system, it, r, inner, fg, line, on)
-        || fac::paint_icon(scene, text_system, it, r, inner, fg, line)
-    {
-        return;
-    }
-    match it {
-        Item::Tool(Tool::Select) => {
-            paint_icon(scene, IconId::Select, inner, fg, StrokeToken::Default.px())
-        }
-        Item::Tool(Tool::Hand) => {
-            paint_icon(scene, IconId::Pan, inner, fg, StrokeToken::Default.px())
-        }
-        Item::MoreShapes => paint_icon(
-            scene,
-            IconId::MoreHorizontal,
-            inner,
-            fg,
-            StrokeToken::Default.px(),
-        ),
-        Item::Tool(Tool::Shape(t)) | Item::Pick(t) => shape_icon(scene, t, inner, fg, line, false),
-        Item::Tool(Tool::Connector) => {
-            arrow_icon(
-                scene,
-                inner,
-                fg,
-                line,
-                Route::Straight,
-                Connector::DEFAULT_HEADS,
-            );
-        }
-        Item::Route(rt) => arrow_icon(scene, inner, fg, line, rt, [Head::None, Head::None]),
-        Item::Head(i, h) => {
-            let heads = if i == 0 {
-                [h, Head::None]
-            } else {
-                [Head::None, h]
-            };
-            arrow_icon(scene, inner, fg, line, Route::Straight, heads);
-        }
-        Item::Fill(_) | Item::Stroke(_) => {
-            match swatch(it, theme) {
-                Some(c) => {
-                    let dot = crate::paint::frame_radius(theme, Radius::Sm.px());
-                    fill_rounded_rect(scene, inner, dot, shown(c, theme));
-                }
-                // «Nenhum»: o quadrado vazio cortado pela diagonal.
-                None => {
-                    shape_icon(scene, ShapeType::Rectangle, inner, fg, line, false);
-                    let mut p = ph2d_vector::BezPath::new();
-                    p.move_to((f64::from(inner.x), f64::from(inner.y + inner.h)));
-                    p.line_to((f64::from(inner.x + inner.w), f64::from(inner.y)));
-                    stroke(scene, &p, fg, line, Dash::Solid);
-                }
-            }
-            if matches!(it, Item::Stroke(Some(_))) {
-                // O contorno lê-se como um ANEL: o miolo volta à cor do painel.
-                // O miolo tem o lado de um `Sm`, centrado (com `Xs` de recuo o miolo sumia).
-                let k = ((inner.w - Spacing::Sm.px()) / 2.0).max(0.0);
-                let hole = Rect::new(
-                    inner.x + k,
-                    inner.y + k,
-                    inner.w - 2.0 * k,
-                    inner.h - 2.0 * k,
-                );
-                fill_rounded_rect(scene, hole, radius, resolve(ColorToken::BgElev, theme));
-            }
-        }
-        Item::Width(i) => {
-            let y = f64::from(inner.y + inner.h / 2.0);
-            let mut p = ph2d_vector::BezPath::new();
-            p.move_to((f64::from(inner.x), y));
-            p.line_to((f64::from(inner.x + inner.w), y));
-            stroke(scene, &p, fg, WIDTHS[i], Dash::Solid);
-        }
-        Item::Dash(d) => {
-            let y = f64::from(inner.y + inner.h / 2.0);
-            let mut p = ph2d_vector::BezPath::new();
-            p.move_to((f64::from(inner.x), y));
-            p.line_to((f64::from(inner.x + inner.w), y));
-            stroke(scene, &p, fg, line, d);
-        }
-        Item::Round(round) => shape_icon(scene, ShapeType::Rectangle, inner, fg, line, round),
-        Item::Opacity(i) => {
-            let a = f32::from(OPACITIES[i]) / 100.0; // LITERAL-PX-OK: percentagem → fracção
-            let c = resolve(ColorToken::Text1, theme).with_alpha(a);
-            fill_rounded_rect(scene, inner, radius, c);
-        }
-        Item::Font(i) => {
-            let label = tr([
-                "board.font.s",
-                "board.font.m",
-                "board.font.l",
-                "board.font.xl",
-            ][i]);
-            paint_text_centered(text_system, scene, label, r, TypeToken::Sm.px(), fg);
-        }
-        Item::NoteColor(_)
-        | Item::NoteSize(_)
-        | Item::NoteWide(_)
-        | Item::Bulk
-        | Item::Mark(_)
-        | Item::TextColor(_)
-        | Item::Tool(
-            Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame | Tool::MindMap,
-        )
-        | Item::Pen(_)
-        | Item::Sketch
-        | Item::Organize(_)
-        | Item::Mind(_)
-        | Item::Fac(_) => {}
+    if reshape_open {
+        let now = reshape_now;
+        shapes::paint_reshape_grid(scene, text_system, theme, hit, store, area, &bar, now);
     }
 }
 
@@ -598,10 +464,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     let theme = hero.theme;
-    if it == Item::MoreShapes {
-        hero.documents.live.shapes_open = !hero.documents.live.shapes_open;
-        return true;
-    }
+    let reshaping = shapes::toggle(&mut hero.documents.live, it);
     mind::toggle_gallery(&mut hero.documents.live, it);
     fac::toggle_flyouts(&mut hero.documents.live, it);
     if fac::apply(hero, it) {
@@ -616,6 +479,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     if it == Item::Organize(OrgItem::Tag) {
         super::board_nav::open_tag_field(hero);
+        return true;
+    }
+    if shapes::apply(hero, it, reshaping) {
         return true;
     }
     let Some((board, live)) = hero.documents.active_parts() else {
@@ -637,10 +503,6 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     match it {
         Item::Tool(t) => ed.tool = t,
-        Item::Pick(t) => {
-            ed.tool = Tool::Shape(t);
-            live.shapes_open = false;
-        }
         Item::Fill(_) => {
             // A letra acompanha o fundo: escolher um preenchimento escolhe a tinta que se lê nele
             // (sem fundo, a do tema — a mesma do quadro).
@@ -666,6 +528,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Item::Route(r) => ed.set_route(doc, history, r),
         Item::Head(i, h) => ed.set_head(doc, history, i, h),
         Item::MoreShapes
+        | Item::Pick(_)
+        | Item::Reshape
         | Item::NoteColor(_)
         | Item::NoteSize(_)
         | Item::NoteWide(_)

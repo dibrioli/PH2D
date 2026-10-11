@@ -2,12 +2,17 @@
 //! de LOC): o balão de cada controlo, o que está seleccionado, e os ícones — o contorno da forma e a
 //! seta desenhados com a MESMA geometria do quadro.
 
-use super::{FONT_SIZES, HEADS, Item, OPACITIES, Selected, WIDTHS, palette};
+use super::{FONT_SIZES, HEADS, Item, OPACITIES, Selected, WIDTHS, node, palette};
+use crate::icons::IconId;
+use crate::interaction::{HitIndex, WidgetStore};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_board_edit::{Editor, Frame, Tool};
 use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, Shape, ShapeType, Style};
 use ph2d_board_route::Dir;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_i18n::tr;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
 /// O tamanho da ponta nos ícones: o de nascença do catálogo (`Marker`, 1×).
@@ -38,6 +43,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Tool(Tool::Shape(ShapeType::Diamond)) => "board.tool.diamond",
         Item::Tool(Tool::Shape(_)) | Item::Pick(_) => return shape_key(it),
         Item::MoreShapes => "board.tool.more",
+        Item::Reshape => "board.style.shape",
         Item::Fill(None) => "board.style.no_fill",
         Item::Fill(Some(_)) => "board.style.fill",
         Item::Stroke(None) => "board.style.no_stroke",
@@ -339,5 +345,150 @@ pub(super) fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: 
         Item::Opacity(i) => s.opacity == OPACITIES[i],
         Item::Font(i) => s.font_size == FONT_SIZES[i],
         _ => false,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+/// Um controlo das barras: o botão e a cara dele.
+pub(super) fn paint_item(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    it: Item,
+    r: Rect,
+    on: bool,
+) {
+    let id = node(it);
+    let fg = super::super::float_bar::paint_button(
+        scene,
+        hit_index,
+        store,
+        theme,
+        super::super::float_bar::Btn {
+            id,
+            rect: r,
+            on,
+            tint: ColorToken::Text2,
+        },
+    );
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    let inner = super::super::float_bar::inner(r);
+    let line = f64::from(StrokeToken::Default.px());
+    if super::notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line)
+        || super::pen::paint_icon(scene, theme, it, inner, fg, line)
+        || super::organize::paint_icon(scene, theme, it, inner, fg, line)
+        || super::mind::paint_icon(scene, text_system, it, r, inner, fg, line, on)
+        || super::fac::paint_icon(scene, text_system, it, r, inner, fg, line)
+    {
+        return;
+    }
+    match it {
+        Item::Tool(Tool::Select) => {
+            paint_icon(scene, IconId::Select, inner, fg, StrokeToken::Default.px())
+        }
+        Item::Tool(Tool::Hand) => {
+            paint_icon(scene, IconId::Pan, inner, fg, StrokeToken::Default.px())
+        }
+        Item::MoreShapes => paint_icon(
+            scene,
+            IconId::MoreHorizontal,
+            inner,
+            fg,
+            StrokeToken::Default.px(),
+        ),
+        Item::Tool(Tool::Shape(t)) | Item::Pick(t) => shape_icon(scene, t, inner, fg, line, false),
+        Item::Tool(Tool::Connector) => {
+            arrow_icon(
+                scene,
+                inner,
+                fg,
+                line,
+                Route::Straight,
+                Connector::DEFAULT_HEADS,
+            );
+        }
+        Item::Route(rt) => arrow_icon(scene, inner, fg, line, rt, [Head::None, Head::None]),
+        Item::Head(i, h) => {
+            let heads = if i == 0 {
+                [h, Head::None]
+            } else {
+                [Head::None, h]
+            };
+            arrow_icon(scene, inner, fg, line, Route::Straight, heads);
+        }
+        Item::Fill(_) | Item::Stroke(_) => {
+            match swatch(it, theme) {
+                Some(c) => {
+                    let dot = crate::paint::frame_radius(theme, Radius::Sm.px());
+                    fill_rounded_rect(scene, inner, dot, shown(c, theme));
+                }
+                // «Nenhum»: o quadrado vazio cortado pela diagonal.
+                None => {
+                    shape_icon(scene, ShapeType::Rectangle, inner, fg, line, false);
+                    let mut p = ph2d_vector::BezPath::new();
+                    p.move_to((f64::from(inner.x), f64::from(inner.y + inner.h)));
+                    p.line_to((f64::from(inner.x + inner.w), f64::from(inner.y)));
+                    stroke(scene, &p, fg, line, Dash::Solid);
+                }
+            }
+            if matches!(it, Item::Stroke(Some(_))) {
+                // O contorno lê-se como um ANEL: o miolo volta à cor do painel.
+                // O miolo tem o lado de um `Sm`, centrado (com `Xs` de recuo o miolo sumia).
+                let k = ((inner.w - Spacing::Sm.px()) / 2.0).max(0.0);
+                let hole = Rect::new(
+                    inner.x + k,
+                    inner.y + k,
+                    inner.w - 2.0 * k,
+                    inner.h - 2.0 * k,
+                );
+                fill_rounded_rect(scene, hole, radius, resolve(ColorToken::BgElev, theme));
+            }
+        }
+        Item::Width(i) => {
+            let y = f64::from(inner.y + inner.h / 2.0);
+            let mut p = ph2d_vector::BezPath::new();
+            p.move_to((f64::from(inner.x), y));
+            p.line_to((f64::from(inner.x + inner.w), y));
+            stroke(scene, &p, fg, WIDTHS[i], Dash::Solid);
+        }
+        Item::Dash(d) => {
+            let y = f64::from(inner.y + inner.h / 2.0);
+            let mut p = ph2d_vector::BezPath::new();
+            p.move_to((f64::from(inner.x), y));
+            p.line_to((f64::from(inner.x + inner.w), y));
+            stroke(scene, &p, fg, line, d);
+        }
+        Item::Round(round) => shape_icon(scene, ShapeType::Rectangle, inner, fg, line, round),
+        Item::Opacity(i) => {
+            let a = f32::from(OPACITIES[i]) / 100.0; // LITERAL-PX-OK: percentagem → fracção
+            let c = resolve(ColorToken::Text1, theme).with_alpha(a);
+            fill_rounded_rect(scene, inner, radius, c);
+        }
+        Item::Font(i) => {
+            let label = tr([
+                "board.font.s",
+                "board.font.m",
+                "board.font.l",
+                "board.font.xl",
+            ][i]);
+            paint_text_centered(text_system, scene, label, r, TypeToken::Sm.px(), fg);
+        }
+        Item::NoteColor(_)
+        | Item::NoteSize(_)
+        | Item::NoteWide(_)
+        | Item::Bulk
+        | Item::Mark(_)
+        | Item::TextColor(_)
+        | Item::Tool(
+            Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame | Tool::MindMap,
+        )
+        | Item::Pen(_)
+        | Item::Sketch
+        | Item::Organize(_)
+        | Item::Mind(_)
+        | Item::Fac(_)
+        | Item::Reshape => {} // a cara do «Forma» é a forma actual: `shapes::paint_button`
     }
 }

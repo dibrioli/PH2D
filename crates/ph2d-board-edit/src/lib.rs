@@ -576,14 +576,22 @@ impl Editor {
         history.apply(doc, ops);
     }
 
-    /// Troca o contorno das formas seleccionadas (UM passo).
+    /// Troca o contorno das formas seleccionadas (UM passo). ⛔ Nunca toca uma nota nem faz uma: o
+    /// cofre do modo privado sela o texto por `kind.is_note()` (ADR-0182) — uma nota escondida que
+    /// virasse rectângulo soltava o texto.
     pub fn set_shape_type(&mut self, doc: &mut BoardDoc, history: &mut History, t: ShapeType) {
+        if t.is_note() {
+            return;
+        }
         let ops = self
             .editable(doc)
             .into_iter()
             .filter_map(|el| {
                 let mut el = el.clone();
-                el.shape_mut()?.kind = t;
+                let shape = el
+                    .shape_mut()
+                    .filter(|s| !s.kind.is_note() && s.kind != t)?;
+                shape.kind = t;
                 Some(BoardOp::Put(el))
             })
             .collect();

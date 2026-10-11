@@ -30,9 +30,9 @@ impl CornerStyle {
     #[must_use]
     pub fn of(v: f64) -> Self {
         match v.round() {
-            x if x == 1.0 => Self::Straight,
-            x if x == 2.0 => Self::Concave,
-            x if x == 3.0 => Self::Cutout,
+            1.0 => Self::Straight,
+            2.0 => Self::Concave,
+            3.0 => Self::Cutout,
             _ => Self::Round,
         }
     }

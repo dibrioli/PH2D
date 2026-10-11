@@ -118,6 +118,18 @@ pub fn object_box(vector_active: bool, mode: DrawMode) -> ObjectBox {
     }
 }
 
+/// [`object_box`] lido do quadro: a ferramenta activa é a vetorial? e o modo dela.
+#[must_use]
+pub fn object_box_of(
+    tools: &ph2d_editor_core::ToolRegistry,
+    vec: &crate::state::VecState,
+) -> ObjectBox {
+    let vector = tools
+        .active()
+        .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));
+    object_box(vector, vec.draw_config.mode)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,7 +242,12 @@ mod tests {
         assert_eq!(object_box(true, DrawMode::Select), ObjectBox::Whole);
         assert_eq!(object_box(false, DrawMode::Pen), ObjectBox::Whole);
         assert_eq!(object_box(true, DrawMode::Shape), ObjectBox::HandlesOnly);
-        for mode in [DrawMode::Node, DrawMode::Pen, DrawMode::Frame, DrawMode::Pencil] {
+        for mode in [
+            DrawMode::Node,
+            DrawMode::Pen,
+            DrawMode::Frame,
+            DrawMode::Pencil,
+        ] {
             assert_eq!(object_box(true, mode), ObjectBox::Off, "{mode:?}");
         }
     }

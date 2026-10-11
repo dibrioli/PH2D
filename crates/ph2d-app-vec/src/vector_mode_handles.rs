@@ -39,9 +39,8 @@ fn pull(
     path: impl Fn([f64; 2]) -> Vec<[f64; 2]>,
 ) -> bool {
     vec.pen.select_many(&[id]);
-    let Some(at) =
-        view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, None)
-            .and_then(|v| v.points.get(handle).copied())
+    let Some(at) = view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, None)
+        .and_then(|v| v.points.get(handle).copied())
     else {
         return false;
     };
@@ -72,9 +71,7 @@ pub fn step(
             Some(s + 1)
         }
         73 if feitas == FORMAS.len() => {
-            hero.apply_event(WidgetEvent::Click(
-                ph2d_tool_vector::ids::VECTOR_MODE_SHAPE,
-            ));
+            hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_SHAPE));
             Some(74)
         }
         // O canto de cima à esquerda, 0,45 m para dentro ao longo da aresta: os quatro arredondam.

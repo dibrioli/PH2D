@@ -48,15 +48,23 @@ fn the_node_overlay_hangs_off_the_envelope_gate() {
          envelope, o overlay de nós volta a desenhar a forma DERIVADA:\n{}",
         &src[sel..sel_end]
     );
-    let guard = at("if !envelope_selected {");
+    let guard = at("if !envelope_selected");
     let call = at("ph2d_vec_render::draw_overlays(");
     assert!(
         sel < guard && guard < call,
         "o `draw_overlays` não está sob `if !envelope_selected` — as alças de nó da forma sob a \
          gaiola voltariam à tela (o handle longo do refit numa quina côncava = a alça à deriva)"
     );
-    // Nada entre o guard e a chamada além de espaço/{ — a chamada é a PRIMEIRA coisa guardada.
-    let between = &src[guard + "if !envelope_selected {".len()..call];
+    // A condição só ACRESCENTA o dos nós das alças da forma (F10: `hides_the_nodes`) — nunca tira
+    // o do envelope —, e entre o `{` e a chamada não há nada: ela é a PRIMEIRA coisa guardada.
+    let open = src[guard..].find('{').expect("o bloco do guard") + guard;
+    let cond = src[guard + "if !envelope_selected".len()..open].trim();
+    assert!(
+        cond.is_empty()
+            || cond == "&& !ph2d_app_vec::shape_handles_live::hides_the_nodes(&self.vec, sim)",
+        "a condição do overlay de nós ganhou outra coisa além do envelope e das alças:\n{cond}"
+    );
+    let between = &src[open + 1..call];
     assert!(
         between.trim().is_empty(),
         "há código entre `if !envelope_selected {{` e o `draw_overlays` — o guard pode não estar a \

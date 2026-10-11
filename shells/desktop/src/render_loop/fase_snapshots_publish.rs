@@ -82,12 +82,7 @@ impl crate::App {
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
         // F10: a caixa da ferramenta vetorial — inteira no Select, só ALÇAS no modo Forma.
-        let caixa = ph2d_app_vec::overlay::object_box(
-            tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector")),
-            self.vec.draw_config.mode,
-        );
+        let caixa = ph2d_app_vec::overlay::object_box_of(tools, &self.vec);
         hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
         // Snapshot publication phase — extracted to sibling
         // `snapshots.rs` as a free fn taking explicit refs (Wave

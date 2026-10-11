@@ -212,10 +212,10 @@ mod sonda_tampa_redonda_tests;
 #[cfg(test)]
 #[path = "tampa_redonda_tests.rs"]
 mod tampa_redonda_tests;
-/// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
-mod vector_mode_handles;
 /// A cena 16 (F10): os parâmetros novos pelas alças e o cartão lateral.
 mod vector_mode_card;
+/// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
+mod vector_mode_handles;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

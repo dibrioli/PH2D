@@ -115,9 +115,16 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             } else {
                 // A mesma régua do teste de ponteiro real: o `X` abre o seletor em vez de ir ao
                 // barramento, e fixar/desligar a ④ são do chrome.
-                hero.bus.drain().any(
-                    |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == id),
-                ) || hero.store.picker_target().is_some()
+                // Um chip de ESCOLHA da forma (o Corner, F10) cicla: o valor sai no id GÉMEO do
+                // campo (`SetValue`), a porta única da shell para aplicar parâmetro.
+                let twin = (0..ph2d_tool_vector::ids::MAX_SHAPE_FIELD_SLOTS)
+                    .find(|&i| ph2d_tool_vector::ids::vector_shape_choice_id(i) == id)
+                    .map(ph2d_tool_vector::ids::vector_shape_field_id);
+                hero.bus.drain().any(|a| match a {
+                    EditorAction::ToolPanelEvent(PanelEvent::Click(i)) => i == id,
+                    EditorAction::ToolPanelEvent(PanelEvent::SetValue(f, _)) => Some(f) == twin,
+                    _ => false,
+                }) || hero.store.picker_target().is_some()
                     || [ids::SELECTION_ACTIONS_PIN, ids::SELECTION_ACTIONS_OFF].contains(&id)
             };
             assert!(

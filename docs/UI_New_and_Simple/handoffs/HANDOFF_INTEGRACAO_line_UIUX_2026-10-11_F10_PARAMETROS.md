@@ -187,11 +187,12 @@ irmãos (`shape_handles_spots.rs`, `shape_handles_f9_oracle_tests.rs`).
 ## §8 — Portão, binário e `agent-loop-profile.sh`
 
 Depois do `rm -rf target/*/incremental` (29 GB debug + 4,1 GB smoke) — `bash scripts/ph2d-run.sh
-cargo build -p ph2d-host-desktop --profile smoke`: 1.ª corrida 36,1 s; a 2.ª:
+cargo build -p ph2d-host-desktop --profile smoke` — refeito depois da 2.ª redacção da estrela (HEAD
+`cad9b8cd6`): 1.ª corrida 48,6 s; a 2.ª:
 
 ```
 ▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.23s
+    Finished `smoke` profile [optimized] target(s) in 0.32s
 ```
 
 O commit deste handoff é só documentação: o binário continua o do código.

@@ -1,4 +1,19 @@
 {
+ "h01": {
+  "passos": 12,
+  "iguais": true,
+  "difs": []
+ },
+ "h02": {
+  "passos": 8,
+  "iguais": true,
+  "difs": []
+ },
+ "h03": {
+  "passos": 5,
+  "iguais": true,
+  "difs": []
+ },
  "p01": {
   "passos": 8,
   "iguais": true,

@@ -100,3 +100,20 @@ natureza:** «Bring everyone to me» / Follow (AM), Private mode (esconde as not
 | voto: quem saltou entra depois pelo ícone (que mostra o tempo); entram também não registados | "If a user accidentally skipped voting, they can join it" | VO |
 | voto: reiniciar = acabar e começar outra | "end the session and start a new one" | VO |
 | desfazer depois de revelar · o que acontece a quem sai a meio · se o voto de quem sai conta · se o texto viaja cifrado ou não sai do autor | **CALADO** | — |
+
+## 7. O histórico das votações — W13 (2026-10-11)
+
+> VO relido pela API Zendesk (`updated_at` 2026-09-15). Figuras medidas guardadas em
+> `capturas_miro/vo_results_tab_21537451600658.png` e `capturas_miro/vo_session_detail_21537451603602.png`.
+
+| lei | citação / medida | fonte |
+|---|---|---|
+| o painel tem dois separadores: «New session» · «Results» | figura results_tab | VO |
+| «Results»: o toggle «Show results on the board» no TOPO (um só, do painel, não por sessão) e por baixo a lista das sessões | "keep voting results visible on the board using the toggle on the Results tab" · figura | VO |
+| a lista: uma linha por sessão, nome à esquerda em negrito, data curta à direita («19 Sep»), **a mais nova em cima** | figura: Voting 4 · 19 Sep / Voting 3 · 17 Sep / Voting 2 · 04 Sep / Voting 1 · 04 Sep | VO |
+| nome por omissão: **«Voting N»**, N sequencial no quadro | figura | VO |
+| abrir uma sessão: voltar (`←`), o nome em título, **lápis** (renomear) e **lixo** (apagar), e «04 Sep, 12:34 by <nome>» (data, hora e QUEM a iniciou) | "To rename a voting session or delete voting results, open a session and click the corresponding icons" · figura session_detail | VO |
+| o resultado da sessão aberta: uma linha por objecto votado, miniatura + «2 votes»/«1 vote» + barra proporcional ao MAIOR | figura session_detail | VO |
+| o quadro mostra os selos DA SESSÃO ABERTA (figura: «2» e «1» = os números da Voting 2) | figura session_detail | VO |
+| não exporta; não vai na cópia do quadro; reiniciar = acabar e começar outra | ver §2 e §6 | VO |
+| o que acontece ao selo se a nota votada for apagada · se apagar a sessão pede confirmação · desfazer · limite de sessões · o que «Clear results» faz (o Miro não tem esse botão) | **CALADO** | — |

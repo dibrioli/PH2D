@@ -306,6 +306,39 @@ const casos = {
     c.marca("M revela a coluna (visible=true)"); await c.api("M", "PUT", `/boards/${c.board}/columns/${h}`, { name: "Escondida", color: "planning-pink", visible: true, index: 2, description: "" }); await c.assenta();
     c.marca("B pede GET /notes"); await c.olha("B", "notes");
   },
+  // W13 — o histórico das votações: o que fica de cada uma, apagar, nota apagada, quem entra depois.
+  async h01(c) {
+    await c.monta(); await todasNotas(c);
+    const ids = [];
+    c.marca("VOT1: M abre; A vota n3, n3; B vota n1"); await c.abreVotacao(VB); ids.push(c.voting); await c.vota("A", "n3"); await c.vota("A", "n3"); await c.vota("B", "n1");
+    c.marca("M tenta abrir outra votação com VOT1 aberta"); await c.api("M", "POST", `/boards/${c.board}/votings`, VB); await c.assenta();
+    c.marca("M fecha VOT1 (CLOSED)"); await c.fechaVotacao();
+    c.marca("B pede GET /votings e GET /boards/{id}"); await c.olha("B", "votings"); await c.api("B", "GET", `/boards/${c.board}`);
+    c.marca("VOT2: M abre; A vota n5; M cancela (ABORTED)"); await c.abreVotacao(VB); ids.push(c.voting); await c.vota("A", "n5"); await c.fechaVotacao("ABORTED");
+    c.marca("B pede GET /votings e GET /boards/{id}"); await c.olha("B", "votings"); await c.api("B", "GET", `/boards/${c.board}`);
+    c.marca("VOT3: M abre; B vota n4, n4; A vota n4"); await c.abreVotacao(VB); ids.push(c.voting); await c.vota("B", "n4"); await c.vota("B", "n4"); await c.vota("A", "n4");
+    c.marca("M fecha VOT3 (CLOSED)"); await c.fechaVotacao();
+    c.marca("B pede GET /votings, GET /votings/{VOT1}, GET /boards/{id}"); await c.olha("B", "votings"); await c.olha("B", `votings/${ids[0]}`); await c.api("B", "GET", `/boards/${c.board}`);
+    c.marca("M tenta mostrar o resultado de VOT1 no quadro (PUT {showVoting:VOT1})"); await c.board_({ showVoting: ids[0] });
+    c.marca("B pede GET /boards/{id}"); await c.api("B", "GET", `/boards/${c.board}`);
+  },
+  async h02(c) {
+    await c.monta(); await todasNotas(c);
+    c.marca("VOT1: M abre; A vota n3, n1; B vota n3"); await c.abreVotacao(VB); const v1 = c.voting; await c.vota("A", "n3"); await c.vota("A", "n1"); await c.vota("B", "n3");
+    c.marca("M fecha VOT1"); await c.fechaVotacao();
+    c.marca("B apaga n3 (a nota mais votada) depois do fecho"); await c.api("B", "DELETE", `/boards/${c.board}/notes/${c.notas.n3}`, { deleteStack: false }); await c.assenta();
+    c.marca("M pede GET /votings/{VOT1} e GET /votings"); await c.olha("M", `votings/${v1}`); await c.olha("M", "votings");
+    c.marca("M tenta APAGAR VOT1 (DELETE /votings/{VOT1})"); await c.api("M", "DELETE", `/boards/${c.board}/votings/${v1}`); await c.assenta();
+    c.marca("M tenta RENOMEAR VOT1 (PUT /votings/{VOT1} {name})"); await c.api("M", "PUT", `/boards/${c.board}/votings/${v1}`, { status: "CLOSED", name: "Votação renomeada" }); await c.assenta();
+    c.marca("M pede GET /votings"); await c.olha("M", "votings");
+  },
+  async h03(c) {
+    await c.monta(); await todasNotas(c);
+    c.marca("VOT1: M abre; A vota n3; M fecha"); await c.abreVotacao(VB); await c.vota("A", "n3"); await c.fechaVotacao();
+    c.marca("VOT2: M abre; B vota n1, n1; M fecha"); await c.abreVotacao(VB); await c.vota("B", "n1"); await c.vota("B", "n1"); await c.fechaVotacao();
+    c.marca("C entra DEPOIS das duas votações: que INIT recebe?"); await c.entra("C"); await c.assenta(1500, 6000); // a ressinc. da entrada chega até ~1 s depois (corrida 2 a 11/10)
+    c.marca("C pede GET /votings e GET /votes"); await c.olha("C", "votings"); await c.olha("C", "votes");
+  },
 };
 
 const ordem = Object.keys(casos).filter((k) => !SO || SO.has(k));

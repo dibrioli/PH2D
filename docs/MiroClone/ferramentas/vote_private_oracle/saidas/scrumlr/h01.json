@@ -1,0 +1,5313 @@
+{
+ "meta": {
+  "oraculo": "Scrumlr (inovex/scrumlr.io), servidor Go, corrido em 127.0.0.1 sem docker",
+  "scrumlr_tag": "v5.4.2",
+  "scrumlr_commit": "6bae213129563eea946ec58e7a38d068dc53e0c3",
+  "scrumlr_licenca": "MIT (LICENSE do repo na tag, Copyright (c) 2017-2021 inovex GmbH)",
+  "go": "go1.26.9 linux-amd64 (BSD-3-Clause)",
+  "nats_server": "v2.14.4 linux-amd64 (Apache-2.0)",
+  "postgres": "18.4 (io.zonky.test.postgres:embedded-postgres-binaries-linux-amd64:18.4.0; PostgreSQL License; empacotamento Apache-2.0)",
+  "flags_servidor": "--insecure --disable-check-origin --enable-swagger --join-rate-limit 1000 --allow-anonymous-board-creation --allow-anonymous-custom-templates",
+  "caso": "h01",
+  "descricao": "Histórico (W13): VOT1 CLOSED, VOT2 ABORTED, VOT3 CLOSED seguidas; abrir outra com uma aberta; o que GET /votings guarda de cada; qual o quadro mostra (showVoting); mostrar a VOT1 de novo.",
+  "data": "2026-10-11T14:54:10.568Z",
+  "corrida": 1,
+  "servidor": "http://127.0.0.1:58080"
+ },
+ "ids": {
+  "BOARD": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+  "voting": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+  "colunas": {
+   "c1": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+   "c2": "90e5fd5c-85c9-486f-913c-11b1671ab8f7"
+  },
+  "notas": {
+   "n1": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+   "n2": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+   "n3": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+   "n4": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+   "n5": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b"
+  },
+  "users": {
+   "M": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+   "A": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+   "B": "c55c1239-7a93-4397-a5ba-ffe82932a0ec"
+  }
+ },
+ "linha_do_tempo": [
+  {
+   "t": 1,
+   "passo": 1,
+   "tipo": "passo",
+   "texto": "montagem: M cria o quadro; A, B entram"
+  },
+  {
+   "t": 32,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "M"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+    "name": "M",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 55,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards",
+   "corpo": {
+    "name": "oraculo h01",
+    "accessPolicy": "PUBLIC",
+    "columns": [
+     {
+      "name": "Bom",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "name": "Mudar",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     }
+    ]
+   },
+   "status": 201,
+   "resposta": {
+    "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+    "name": "oraculo h01",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "2026-10-11T11:54:04.377878-03:00",
+    "createdAt": "2026-10-11T11:54:04.377878-03:00"
+   }
+  },
+  {
+   "t": 60,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/columns",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+     "name": "Bom",
+     "description": "",
+     "color": "backlog-blue",
+     "visible": true,
+     "index": 0
+    },
+    {
+     "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+     "name": "Mudar",
+     "description": "",
+     "color": "value-violet",
+     "visible": true,
+     "index": 1
+    }
+   ]
+  },
+  {
+   "t": 73,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+      "name": "oraculo h01",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T11:54:04.390899-03:00",
+      "createdAt": "2026-10-11T11:54:04.377878-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": null,
+     "reactions": null,
+     "votings": null,
+     "votes": null
+    }
+   }
+  },
+  {
+   "t": 78,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "A"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+    "name": "A",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 84,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/participants",
+   "corpo": {},
+   "status": 201,
+   "resposta": null
+  },
+  {
+   "t": 84,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 90,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 90,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     }
+    ]
+   }
+  },
+  {
+   "t": 90,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 91,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+      "name": "oraculo h01",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T11:54:04.390899-03:00",
+      "createdAt": "2026-10-11T11:54:04.377878-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": [],
+     "reactions": null,
+     "votings": [],
+     "votes": []
+    }
+   }
+  },
+  {
+   "t": 94,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/login/anonymous",
+   "corpo": {
+    "name": "B"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+    "name": "B",
+    "accountType": "ANONYMOUS"
+   }
+  },
+  {
+   "t": 101,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/participants",
+   "corpo": {},
+   "status": 201,
+   "resposta": null
+  },
+  {
+   "t": 101,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 101,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "PARTICIPANT_CREATED",
+    "data": {
+     "banned": false,
+     "connected": false,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 107,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 107,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "color": "backlog-blue",
+      "description": "",
+      "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+      "index": 0,
+      "name": "Bom",
+      "visible": true
+     },
+     {
+      "color": "value-violet",
+      "description": "",
+      "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+      "index": 1,
+      "name": "Mudar",
+      "visible": true
+     }
+    ]
+   }
+  },
+  {
+   "t": 107,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "SESSION_UPDATED",
+    "data": {
+     "banned": false,
+     "connected": true,
+     "createdAt": "0001-01-01T00:00:00Z",
+     "favourite": false,
+     "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+     "raisedHand": false,
+     "ready": false,
+     "role": "PARTICIPANT",
+     "showHiddenColumns": true
+    }
+   }
+  },
+  {
+   "t": 107,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "COLUMNS_UPDATED",
+    "data": [
+     {
+      "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+      "name": "Bom",
+      "description": "",
+      "color": "backlog-blue",
+      "visible": true,
+      "index": 0
+     },
+     {
+      "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+      "name": "Mudar",
+      "description": "",
+      "color": "value-violet",
+      "visible": true,
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "t": 107,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": []
+   }
+  },
+  {
+   "t": 107,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC"
+   }
+  },
+  {
+   "t": 108,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "INIT",
+    "data": {
+     "board": {
+      "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+      "name": "oraculo h01",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "2026-10-11T11:54:04.390899-03:00",
+      "createdAt": "2026-10-11T11:54:04.377878-03:00"
+     },
+     "requests": null,
+     "participants": [
+      {
+       "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "OWNER",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      },
+      {
+       "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "connected": true,
+       "showHiddenColumns": true,
+       "ready": false,
+       "raisedHand": false,
+       "role": "PARTICIPANT",
+       "createdAt": "0001-01-01T00:00:00Z",
+       "banned": false,
+       "favourite": false
+      }
+     ],
+     "columns": [
+      {
+       "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ],
+     "notes": [],
+     "reactions": null,
+     "votings": [],
+     "votes": []
+    }
+   }
+  },
+  {
+   "t": 372,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/notes",
+   "corpo": {
+    "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+    "text": "café na sala"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+    "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+    "text": "café na sala",
+    "edited": false,
+    "position": {
+     "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+     "stack": null,
+     "rank": 0
+    }
+   }
+  },
+  {
+   "t": 373,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 373,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 373,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 690,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/notes",
+   "corpo": {
+    "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+    "text": "revisão às sextas"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+    "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+    "text": "revisão às sextas",
+    "edited": false,
+    "position": {
+     "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+     "stack": null,
+     "rank": 1
+    }
+   }
+  },
+  {
+   "t": 690,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 690,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 690,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "revisão às sextas"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 1004,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/notes",
+   "corpo": {
+    "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+    "text": "quadro novo na parede"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+    "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+    "text": "quadro novo na parede",
+    "edited": false,
+    "position": {
+     "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+     "stack": null,
+     "rank": 2
+    }
+   }
+  },
+  {
+   "t": 1004,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "edited": false,
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 2,
+       "stack": null
+      },
+      "text": "quadro novo na parede"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "revisão às sextas"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 1004,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1004,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1314,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/notes",
+   "corpo": {
+    "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+    "text": "reuniões longas demais"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+    "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+    "text": "reuniões longas demais",
+    "edited": false,
+    "position": {
+     "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+     "stack": null,
+     "rank": 0
+    }
+   }
+  },
+  {
+   "t": 1314,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "edited": false,
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "reuniões longas demais"
+     },
+     {
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "edited": false,
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 2,
+       "stack": null
+      },
+      "text": "quadro novo na parede"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "revisão às sextas"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 1314,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "text": "reuniões longas demais",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 0
+      }
+     },
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1314,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "text": "reuniões longas demais",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 0
+      }
+     },
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1627,
+   "passo": 1,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/notes",
+   "corpo": {
+    "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+    "text": "deploy à sexta"
+   },
+   "status": 201,
+   "resposta": {
+    "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+    "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+    "text": "deploy à sexta",
+    "edited": false,
+    "position": {
+     "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+     "stack": null,
+     "rank": 1
+    }
+   }
+  },
+  {
+   "t": 1627,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "edited": false,
+      "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "deploy à sexta"
+     },
+     {
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "edited": false,
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "reuniões longas demais"
+     },
+     {
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "edited": false,
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 2,
+       "stack": null
+      },
+      "text": "quadro novo na parede"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "revisão às sextas"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "café na sala"
+     }
+    ]
+   }
+  },
+  {
+   "t": 1627,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "deploy à sexta",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "text": "reuniões longas demais",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 0
+      }
+     },
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1627,
+   "passo": 1,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_UPDATED",
+    "data": [
+     {
+      "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "deploy à sexta",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "text": "reuniões longas demais",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 0
+      }
+     },
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 1929,
+   "passo": 2,
+   "tipo": "passo",
+   "texto": "VOT1: M abre; A vota n3, n3; B vota n1"
+  },
+  {
+   "t": 1938,
+   "passo": 2,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": {
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "isAnonymous": true
+   },
+   "status": 201,
+   "resposta": {
+    "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "OPEN",
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 1938,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 1938,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 1938,
+   "passo": 2,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 2250,
+   "passo": 2,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "0b38bd0e-bd91-4503-8b74-7afab4adb154"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "note": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+    "user": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037"
+   }
+  },
+  {
+   "t": 2511,
+   "passo": 2,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "0b38bd0e-bd91-4503-8b74-7afab4adb154"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "note": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+    "user": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037"
+   }
+  },
+  {
+   "t": 2772,
+   "passo": 2,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "8c879cdd-5fec-434a-b38c-70fed92328a7"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "note": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+    "user": "c55c1239-7a93-4397-a5ba-ffe82932a0ec"
+   }
+  },
+  {
+   "t": 3024,
+   "passo": 3,
+   "tipo": "passo",
+   "texto": "M tenta abrir outra votação com VOT1 aberta"
+  },
+  {
+   "t": 3029,
+   "passo": 3,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": {
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "isAnonymous": true
+   },
+   "status": 400,
+   "resposta": {
+    "status": "Bad request.",
+    "error": "voting error [BAD_REQUEST]: only one open voting per session is allowed"
+   }
+  },
+  {
+   "t": 3280,
+   "passo": 4,
+   "tipo": "passo",
+   "texto": "M fecha VOT1 (CLOSED)"
+  },
+  {
+   "t": 3293,
+   "passo": 4,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings/35ee828d-ff8e-4828-9807-2f22eb62eec0",
+   "corpo": {
+    "status": "CLOSED"
+   },
+   "status": 200,
+   "resposta": {
+    "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "CLOSED",
+    "votes": {
+     "total": 3,
+     "votesPerNote": {
+      "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+       "total": 2
+      },
+      "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+       "total": 1
+      }
+     }
+    },
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 3293,
+   "passo": 4,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      }
+     ],
+     "voting": {
+      "allowMultipleVotes": true,
+      "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "voteLimit": 5,
+      "votes": {
+       "total": 3,
+       "votesPerNote": {
+        "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+         "total": 2
+        },
+        "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+         "total": 1
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "t": 3293,
+   "passo": 4,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ],
+     "voting": {
+      "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+      "voteLimit": 5,
+      "allowMultipleVotes": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "votes": {
+       "total": 3,
+       "votesPerNote": {
+        "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+         "total": 2
+        },
+        "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+         "total": 1
+        }
+       }
+      },
+      "isAnonymous": true
+     }
+    }
+   }
+  },
+  {
+   "t": 3293,
+   "passo": 4,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ],
+     "voting": {
+      "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+      "voteLimit": 5,
+      "allowMultipleVotes": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "votes": {
+       "total": 3,
+       "votesPerNote": {
+        "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+         "total": 2
+        },
+        "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+         "total": 1
+        }
+       }
+      },
+      "isAnonymous": true
+     }
+    }
+   }
+  },
+  {
+   "t": 3594,
+   "passo": 5,
+   "tipo": "passo",
+   "texto": "B pede GET /votings e GET /boards/{id}"
+  },
+  {
+   "t": 3599,
+   "passo": 5,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+     "voteLimit": 5,
+     "allowMultipleVotes": true,
+     "showVotesOfOthers": false,
+     "status": "CLOSED",
+     "votes": {
+      "total": 3,
+      "votesPerNote": {
+       "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+        "total": 2
+       },
+       "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+        "total": 1
+       }
+      }
+     },
+     "isAnonymous": true
+    }
+   ]
+  },
+  {
+   "t": 3603,
+   "passo": 5,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437",
+   "corpo": null,
+   "status": 200,
+   "resposta": {
+    "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+    "name": "oraculo h01",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "lastModifiedAt": "2026-10-11T11:54:05.96622-03:00",
+    "createdAt": "2026-10-11T11:54:04.377878-03:00"
+   }
+  },
+  {
+   "t": 3603,
+   "passo": 6,
+   "tipo": "passo",
+   "texto": "VOT2: M abre; A vota n5; M cancela (ABORTED)"
+  },
+  {
+   "t": 3611,
+   "passo": 6,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": {
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "isAnonymous": true
+   },
+   "status": 201,
+   "resposta": {
+    "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "OPEN",
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 3611,
+   "passo": 6,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 3611,
+   "passo": 6,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 3611,
+   "passo": 6,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 3921,
+   "passo": 6,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+    "note": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+    "user": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037"
+   }
+  },
+  {
+   "t": 4182,
+   "passo": 6,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings/24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+   "corpo": {
+    "status": "ABORTED"
+   },
+   "status": 200,
+   "resposta": {
+    "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "ABORTED",
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 4182,
+   "passo": 6,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      }
+     ],
+     "voting": {
+      "allowMultipleVotes": true,
+      "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "ABORTED",
+      "voteLimit": 5
+     }
+    }
+   }
+  },
+  {
+   "t": 4182,
+   "passo": 6,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      }
+     ],
+     "voting": {
+      "allowMultipleVotes": true,
+      "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "ABORTED",
+      "voteLimit": 5
+     }
+    }
+   }
+  },
+  {
+   "t": 4182,
+   "passo": 6,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      }
+     ],
+     "voting": {
+      "allowMultipleVotes": true,
+      "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "ABORTED",
+      "voteLimit": 5
+     }
+    }
+   }
+  },
+  {
+   "t": 4484,
+   "passo": 7,
+   "tipo": "passo",
+   "texto": "B pede GET /votings e GET /boards/{id}"
+  },
+  {
+   "t": 4489,
+   "passo": 7,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+     "voteLimit": 5,
+     "allowMultipleVotes": true,
+     "showVotesOfOthers": false,
+     "status": "CLOSED",
+     "votes": {
+      "total": 3,
+      "votesPerNote": {
+       "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+        "total": 2
+       },
+       "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+        "total": 1
+       }
+      }
+     },
+     "isAnonymous": true
+    },
+    {
+     "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+     "voteLimit": 5,
+     "allowMultipleVotes": true,
+     "showVotesOfOthers": false,
+     "status": "ABORTED",
+     "isAnonymous": true
+    }
+   ]
+  },
+  {
+   "t": 4493,
+   "passo": 7,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437",
+   "corpo": null,
+   "status": 200,
+   "resposta": {
+    "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+    "name": "oraculo h01",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "lastModifiedAt": "2026-10-11T11:54:05.96622-03:00",
+    "createdAt": "2026-10-11T11:54:04.377878-03:00"
+   }
+  },
+  {
+   "t": 4493,
+   "passo": 8,
+   "tipo": "passo",
+   "texto": "VOT3: M abre; B vota n4, n4; A vota n4"
+  },
+  {
+   "t": 4502,
+   "passo": 8,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": {
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "isAnonymous": true
+   },
+   "status": 201,
+   "resposta": {
+    "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "OPEN",
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 4502,
+   "passo": 8,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 4502,
+   "passo": 8,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 4502,
+   "passo": 8,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_CREATED",
+    "data": {
+     "allowMultipleVotes": true,
+     "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+     "isAnonymous": true,
+     "showVotesOfOthers": false,
+     "status": "OPEN",
+     "voteLimit": 5
+    }
+   }
+  },
+  {
+   "t": 4814,
+   "passo": 8,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+    "note": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+    "user": "c55c1239-7a93-4397-a5ba-ffe82932a0ec"
+   }
+  },
+  {
+   "t": 5074,
+   "passo": 8,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+    "note": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+    "user": "c55c1239-7a93-4397-a5ba-ffe82932a0ec"
+   }
+  },
+  {
+   "t": 5334,
+   "passo": 8,
+   "tipo": "http",
+   "quem": "A",
+   "metodo": "POST",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votes",
+   "corpo": {
+    "note": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4"
+   },
+   "status": 201,
+   "resposta": {
+    "voting": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+    "note": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+    "user": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037"
+   }
+  },
+  {
+   "t": 5586,
+   "passo": 9,
+   "tipo": "passo",
+   "texto": "M fecha VOT3 (CLOSED)"
+  },
+  {
+   "t": 5595,
+   "passo": 9,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings/59e25ca4-bcc0-452d-8f97-991d35622c1c",
+   "corpo": {
+    "status": "CLOSED"
+   },
+   "status": 200,
+   "resposta": {
+    "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "CLOSED",
+    "votes": {
+     "total": 3,
+     "votesPerNote": {
+      "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+       "total": 3
+      }
+     }
+    },
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 5596,
+   "passo": 9,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      }
+     ],
+     "voting": {
+      "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+      "voteLimit": 5,
+      "allowMultipleVotes": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "votes": {
+       "total": 3,
+       "votesPerNote": {
+        "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+         "total": 3
+        }
+       }
+      },
+      "isAnonymous": true
+     }
+    }
+   }
+  },
+  {
+   "t": 5596,
+   "passo": 9,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      }
+     ],
+     "voting": {
+      "allowMultipleVotes": true,
+      "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "voteLimit": 5,
+      "votes": {
+       "total": 3,
+       "votesPerNote": {
+        "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+         "total": 3
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "t": 5596,
+   "passo": 9,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "VOTING_UPDATED",
+    "data": {
+     "notes": [
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      }
+     ],
+     "voting": {
+      "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+      "voteLimit": 5,
+      "allowMultipleVotes": true,
+      "showVotesOfOthers": false,
+      "status": "CLOSED",
+      "votes": {
+       "total": 3,
+       "votesPerNote": {
+        "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+         "total": 3
+        }
+       }
+      },
+      "isAnonymous": true
+     }
+    }
+   }
+  },
+  {
+   "t": 5897,
+   "passo": 10,
+   "tipo": "passo",
+   "texto": "B pede GET /votings, GET /votings/{VOT1}, GET /boards/{id}"
+  },
+  {
+   "t": 5902,
+   "passo": 10,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings",
+   "corpo": null,
+   "status": 200,
+   "resposta": [
+    {
+     "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+     "voteLimit": 5,
+     "allowMultipleVotes": true,
+     "showVotesOfOthers": false,
+     "status": "CLOSED",
+     "votes": {
+      "total": 3,
+      "votesPerNote": {
+       "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+        "total": 3
+       }
+      }
+     },
+     "isAnonymous": true
+    },
+    {
+     "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+     "voteLimit": 5,
+     "allowMultipleVotes": true,
+     "showVotesOfOthers": false,
+     "status": "CLOSED",
+     "votes": {
+      "total": 3,
+      "votesPerNote": {
+       "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+        "total": 2
+       },
+       "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+        "total": 1
+       }
+      }
+     },
+     "isAnonymous": true
+    },
+    {
+     "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+     "voteLimit": 5,
+     "allowMultipleVotes": true,
+     "showVotesOfOthers": false,
+     "status": "ABORTED",
+     "isAnonymous": true
+    }
+   ]
+  },
+  {
+   "t": 5906,
+   "passo": 10,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437/votings/35ee828d-ff8e-4828-9807-2f22eb62eec0",
+   "corpo": null,
+   "status": 200,
+   "resposta": {
+    "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+    "voteLimit": 5,
+    "allowMultipleVotes": true,
+    "showVotesOfOthers": false,
+    "status": "CLOSED",
+    "votes": {
+     "total": 3,
+     "votesPerNote": {
+      "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+       "total": 2
+      },
+      "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+       "total": 1
+      }
+     }
+    },
+    "isAnonymous": true
+   }
+  },
+  {
+   "t": 5909,
+   "passo": 10,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437",
+   "corpo": null,
+   "status": 200,
+   "resposta": {
+    "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+    "name": "oraculo h01",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+    "lastModifiedAt": "2026-10-11T11:54:05.96622-03:00",
+    "createdAt": "2026-10-11T11:54:04.377878-03:00"
+   }
+  },
+  {
+   "t": 5909,
+   "passo": 11,
+   "tipo": "passo",
+   "texto": "M tenta mostrar o resultado de VOT1 no quadro (PUT {showVoting:VOT1})"
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "accessPolicy": "PUBLIC",
+     "allowStacking": true,
+     "createdAt": "2026-10-11T11:54:04.377878-03:00",
+     "description": null,
+     "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+     "isLocked": false,
+     "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+     "sharedNote": null,
+     "showAuthors": true,
+     "showNoteReactions": true,
+     "showNotesOfOtherUsers": true,
+     "showVoting": null
+    }
+   }
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": true,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+     "createdAt": "2026-10-11T11:54:04.377878-03:00"
+    }
+   }
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "BOARD_UPDATED",
+    "data": {
+     "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+     "description": null,
+     "accessPolicy": "PUBLIC",
+     "showAuthors": true,
+     "showNotesOfOtherUsers": true,
+     "showNoteReactions": true,
+     "allowStacking": true,
+     "isLocked": false,
+     "sharedNote": null,
+     "showVoting": null,
+     "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+     "createdAt": "2026-10-11T11:54:04.377878-03:00"
+    }
+   }
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "http",
+   "quem": "M",
+   "metodo": "PUT",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437",
+   "corpo": {
+    "showVoting": "35ee828d-ff8e-4828-9807-2f22eb62eec0"
+   },
+   "status": 200,
+   "resposta": {
+    "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+    "createdAt": "2026-10-11T11:54:04.377878-03:00"
+   }
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "ws",
+   "quem": "M",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "edited": false,
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "reuniões longas demais"
+     },
+     {
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "edited": false,
+      "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "deploy à sexta"
+     },
+     {
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "edited": false,
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 2,
+       "stack": null
+      },
+      "text": "quadro novo na parede"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 1,
+       "stack": null
+      },
+      "text": "café na sala"
+     },
+     {
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "edited": false,
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "rank": 0,
+       "stack": null
+      },
+      "text": "revisão às sextas"
+     }
+    ]
+   }
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "ws",
+   "quem": "A",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "text": "reuniões longas demais",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "deploy à sexta",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 0
+      }
+     },
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 5918,
+   "passo": 11,
+   "tipo": "ws",
+   "quem": "B",
+   "msg": {
+    "type": "NOTES_SYNC",
+    "data": [
+     {
+      "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+      "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+      "text": "reuniões longas demais",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "deploy à sexta",
+      "edited": false,
+      "position": {
+       "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "stack": null,
+       "rank": 0
+      }
+     },
+     {
+      "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+      "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "text": "quadro novo na parede",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 2
+      }
+     },
+     {
+      "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "café na sala",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 1
+      }
+     },
+     {
+      "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+      "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "text": "revisão às sextas",
+      "edited": false,
+      "position": {
+       "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "stack": null,
+       "rank": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "t": 6219,
+   "passo": 12,
+   "tipo": "passo",
+   "texto": "B pede GET /boards/{id}"
+  },
+  {
+   "t": 6224,
+   "passo": 12,
+   "tipo": "http",
+   "quem": "B",
+   "metodo": "GET",
+   "caminho": "/boards/db92b3bc-0b59-4c54-a873-bfe9c245f437",
+   "corpo": null,
+   "status": 200,
+   "resposta": {
+    "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+    "description": null,
+    "accessPolicy": "PUBLIC",
+    "showAuthors": true,
+    "showNotesOfOtherUsers": true,
+    "showNoteReactions": true,
+    "allowStacking": true,
+    "isLocked": false,
+    "sharedNote": null,
+    "showVoting": null,
+    "lastModifiedAt": "2026-10-11T11:54:10.258112-03:00",
+    "createdAt": "2026-10-11T11:54:04.377878-03:00"
+   }
+  },
+  {
+   "t": 6226,
+   "passo": 12,
+   "tipo": "ws-fechado",
+   "quem": "M",
+   "code": 1000,
+   "reason": "sai"
+  },
+  {
+   "t": 6227,
+   "passo": 12,
+   "tipo": "ws-fechado",
+   "quem": "A",
+   "code": 1000,
+   "reason": "sai"
+  },
+  {
+   "t": 6227,
+   "passo": 12,
+   "tipo": "ws-fechado",
+   "quem": "B",
+   "code": 1000,
+   "reason": "sai"
+  }
+ ],
+ "recebido": {
+  "M": [
+   {
+    "t": 73,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+       "name": "oraculo h01",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T11:54:04.390899-03:00",
+       "createdAt": "2026-10-11T11:54:04.377878-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": null,
+      "reactions": null,
+      "votings": null,
+      "votes": null
+     }
+    }
+   },
+   {
+    "t": 84,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 90,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 90,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      }
+     ]
+    }
+   },
+   {
+    "t": 90,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 101,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 107,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 107,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "color": "backlog-blue",
+       "description": "",
+       "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "index": 0,
+       "name": "Bom",
+       "visible": true
+      },
+      {
+       "color": "value-violet",
+       "description": "",
+       "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "index": 1,
+       "name": "Mudar",
+       "visible": true
+      }
+     ]
+    }
+   },
+   {
+    "t": 107,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC"
+    }
+   },
+   {
+    "t": 373,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 690,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 1004,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 1314,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 1627,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "café na sala"
+      }
+     ]
+    }
+   },
+   {
+    "t": 1938,
+    "passo": 2,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 3293,
+    "passo": 4,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 2,
+         "stack": null
+        },
+        "text": "quadro novo na parede"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "café na sala"
+       },
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "deploy à sexta"
+       },
+       {
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "edited": false,
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "reuniões longas demais"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "revisão às sextas"
+       }
+      ],
+      "voting": {
+       "allowMultipleVotes": true,
+       "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+       "isAnonymous": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "voteLimit": 5,
+       "votes": {
+        "total": 3,
+        "votesPerNote": {
+         "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+          "total": 2
+         },
+         "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+          "total": 1
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   {
+    "t": 3611,
+    "passo": 6,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 4182,
+    "passo": 6,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "deploy à sexta"
+       },
+       {
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "edited": false,
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "reuniões longas demais"
+       },
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 2,
+         "stack": null
+        },
+        "text": "quadro novo na parede"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "café na sala"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "revisão às sextas"
+       }
+      ],
+      "voting": {
+       "allowMultipleVotes": true,
+       "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+       "isAnonymous": true,
+       "showVotesOfOthers": false,
+       "status": "ABORTED",
+       "voteLimit": 5
+      }
+     }
+    }
+   },
+   {
+    "t": 4502,
+    "passo": 8,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 5596,
+    "passo": 9,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "edited": false,
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "reuniões longas demais"
+       },
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "deploy à sexta"
+       },
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 2,
+         "stack": null
+        },
+        "text": "quadro novo na parede"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "café na sala"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "revisão às sextas"
+       }
+      ],
+      "voting": {
+       "allowMultipleVotes": true,
+       "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+       "isAnonymous": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "voteLimit": 5,
+       "votes": {
+        "total": 3,
+        "votesPerNote": {
+         "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+          "total": 3
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   {
+    "t": 5918,
+    "passo": 11,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+      "createdAt": "2026-10-11T11:54:04.377878-03:00"
+     }
+    }
+   },
+   {
+    "t": 5918,
+    "passo": 11,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "edited": false,
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "reuniões longas demais"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "deploy à sexta"
+      },
+      {
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "edited": false,
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 2,
+        "stack": null
+       },
+       "text": "quadro novo na parede"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 1,
+        "stack": null
+       },
+       "text": "café na sala"
+      },
+      {
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "edited": false,
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "rank": 0,
+        "stack": null
+       },
+       "text": "revisão às sextas"
+      }
+     ]
+    }
+   }
+  ],
+  "A": [
+   {
+    "t": 91,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+       "name": "oraculo h01",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T11:54:04.390899-03:00",
+       "createdAt": "2026-10-11T11:54:04.377878-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": [],
+      "reactions": null,
+      "votings": [],
+      "votes": []
+     }
+    }
+   },
+   {
+    "t": 101,
+    "passo": 1,
+    "msg": {
+     "type": "PARTICIPANT_CREATED",
+     "data": {
+      "banned": false,
+      "connected": false,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 107,
+    "passo": 1,
+    "msg": {
+     "type": "SESSION_UPDATED",
+     "data": {
+      "banned": false,
+      "connected": true,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "favourite": false,
+      "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+      "raisedHand": false,
+      "ready": false,
+      "role": "PARTICIPANT",
+      "showHiddenColumns": true
+     }
+    }
+   },
+   {
+    "t": 107,
+    "passo": 1,
+    "msg": {
+     "type": "COLUMNS_UPDATED",
+     "data": [
+      {
+       "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+       "name": "Bom",
+       "description": "",
+       "color": "backlog-blue",
+       "visible": true,
+       "index": 0
+      },
+      {
+       "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+       "name": "Mudar",
+       "description": "",
+       "color": "value-violet",
+       "visible": true,
+       "index": 1
+      }
+     ]
+    }
+   },
+   {
+    "t": 107,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": []
+    }
+   },
+   {
+    "t": 373,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 690,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1004,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1314,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1627,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1938,
+    "passo": 2,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 3293,
+    "passo": 4,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "deploy à sexta",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "text": "reuniões longas demais",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 0
+        }
+       },
+       {
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "quadro novo na parede",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 2
+        }
+       },
+       {
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "text": "revisão às sextas",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "text": "café na sala",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 0
+        }
+       }
+      ],
+      "voting": {
+       "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+       "voteLimit": 5,
+       "allowMultipleVotes": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "votes": {
+        "total": 3,
+        "votesPerNote": {
+         "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+          "total": 2
+         },
+         "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+          "total": 1
+         }
+        }
+       },
+       "isAnonymous": true
+      }
+     }
+    }
+   },
+   {
+    "t": 3611,
+    "passo": 6,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 4182,
+    "passo": 6,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "deploy à sexta"
+       },
+       {
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "edited": false,
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "reuniões longas demais"
+       },
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 2,
+         "stack": null
+        },
+        "text": "quadro novo na parede"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "café na sala"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "revisão às sextas"
+       }
+      ],
+      "voting": {
+       "allowMultipleVotes": true,
+       "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+       "isAnonymous": true,
+       "showVotesOfOthers": false,
+       "status": "ABORTED",
+       "voteLimit": 5
+      }
+     }
+    }
+   },
+   {
+    "t": 4502,
+    "passo": 8,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 5596,
+    "passo": 9,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "deploy à sexta",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "text": "reuniões longas demais",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 0
+        }
+       },
+       {
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "quadro novo na parede",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 2
+        }
+       }
+      ],
+      "voting": {
+       "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+       "voteLimit": 5,
+       "allowMultipleVotes": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "votes": {
+        "total": 3,
+        "votesPerNote": {
+         "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+          "total": 3
+         }
+        }
+       },
+       "isAnonymous": true
+      }
+     }
+    }
+   },
+   {
+    "t": 5918,
+    "passo": 11,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+      "description": null,
+      "accessPolicy": "PUBLIC",
+      "showAuthors": true,
+      "showNotesOfOtherUsers": true,
+      "showNoteReactions": true,
+      "allowStacking": true,
+      "isLocked": false,
+      "sharedNote": null,
+      "showVoting": null,
+      "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+      "createdAt": "2026-10-11T11:54:04.377878-03:00"
+     }
+    }
+   },
+   {
+    "t": 5918,
+    "passo": 11,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   }
+  ],
+  "B": [
+   {
+    "t": 108,
+    "passo": 1,
+    "msg": {
+     "type": "INIT",
+     "data": {
+      "board": {
+       "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+       "name": "oraculo h01",
+       "description": null,
+       "accessPolicy": "PUBLIC",
+       "showAuthors": true,
+       "showNotesOfOtherUsers": true,
+       "showNoteReactions": true,
+       "allowStacking": true,
+       "isLocked": false,
+       "sharedNote": null,
+       "showVoting": null,
+       "lastModifiedAt": "2026-10-11T11:54:04.390899-03:00",
+       "createdAt": "2026-10-11T11:54:04.377878-03:00"
+      },
+      "requests": null,
+      "participants": [
+       {
+        "id": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "OWNER",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       },
+       {
+        "id": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "connected": true,
+        "showHiddenColumns": true,
+        "ready": false,
+        "raisedHand": false,
+        "role": "PARTICIPANT",
+        "createdAt": "0001-01-01T00:00:00Z",
+        "banned": false,
+        "favourite": false
+       }
+      ],
+      "columns": [
+       {
+        "id": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "name": "Bom",
+        "description": "",
+        "color": "backlog-blue",
+        "visible": true,
+        "index": 0
+       },
+       {
+        "id": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "name": "Mudar",
+        "description": "",
+        "color": "value-violet",
+        "visible": true,
+        "index": 1
+       }
+      ],
+      "notes": [],
+      "reactions": null,
+      "votings": [],
+      "votes": []
+     }
+    }
+   },
+   {
+    "t": 373,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 690,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1004,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1314,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1627,
+    "passo": 1,
+    "msg": {
+     "type": "NOTES_UPDATED",
+     "data": [
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   },
+   {
+    "t": 1938,
+    "passo": 2,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 3293,
+    "passo": 4,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "deploy à sexta",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "text": "reuniões longas demais",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 0
+        }
+       },
+       {
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "quadro novo na parede",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 2
+        }
+       },
+       {
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "text": "revisão às sextas",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "text": "café na sala",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 0
+        }
+       }
+      ],
+      "voting": {
+       "id": "35ee828d-ff8e-4828-9807-2f22eb62eec0",
+       "voteLimit": 5,
+       "allowMultipleVotes": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "votes": {
+        "total": 3,
+        "votesPerNote": {
+         "0b38bd0e-bd91-4503-8b74-7afab4adb154": {
+          "total": 2
+         },
+         "8c879cdd-5fec-434a-b38c-70fed92328a7": {
+          "total": 1
+         }
+        }
+       },
+       "isAnonymous": true
+      }
+     }
+    }
+   },
+   {
+    "t": 3611,
+    "passo": 6,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 4182,
+    "passo": 6,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "deploy à sexta"
+       },
+       {
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "edited": false,
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "reuniões longas demais"
+       },
+       {
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "edited": false,
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 2,
+         "stack": null
+        },
+        "text": "quadro novo na parede"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 1,
+         "stack": null
+        },
+        "text": "café na sala"
+       },
+       {
+        "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+        "edited": false,
+        "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "rank": 0,
+         "stack": null
+        },
+        "text": "revisão às sextas"
+       }
+      ],
+      "voting": {
+       "allowMultipleVotes": true,
+       "id": "24f7ac9a-8648-4f95-97ba-5b701a56c1d2",
+       "isAnonymous": true,
+       "showVotesOfOthers": false,
+       "status": "ABORTED",
+       "voteLimit": 5
+      }
+     }
+    }
+   },
+   {
+    "t": 4502,
+    "passo": 8,
+    "msg": {
+     "type": "VOTING_CREATED",
+     "data": {
+      "allowMultipleVotes": true,
+      "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+      "isAnonymous": true,
+      "showVotesOfOthers": false,
+      "status": "OPEN",
+      "voteLimit": 5
+     }
+    }
+   },
+   {
+    "t": 5596,
+    "passo": 9,
+    "msg": {
+     "type": "VOTING_UPDATED",
+     "data": {
+      "notes": [
+       {
+        "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "deploy à sexta",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 1
+        }
+       },
+       {
+        "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+        "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+        "text": "reuniões longas demais",
+        "edited": false,
+        "position": {
+         "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+         "stack": null,
+         "rank": 0
+        }
+       },
+       {
+        "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+        "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+        "text": "quadro novo na parede",
+        "edited": false,
+        "position": {
+         "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+         "stack": null,
+         "rank": 2
+        }
+       }
+      ],
+      "voting": {
+       "id": "59e25ca4-bcc0-452d-8f97-991d35622c1c",
+       "voteLimit": 5,
+       "allowMultipleVotes": true,
+       "showVotesOfOthers": false,
+       "status": "CLOSED",
+       "votes": {
+        "total": 3,
+        "votesPerNote": {
+         "8d54dc7c-2007-472c-a5b0-8699f6c82cc4": {
+          "total": 3
+         }
+        }
+       },
+       "isAnonymous": true
+      }
+     }
+    }
+   },
+   {
+    "t": 5918,
+    "passo": 11,
+    "msg": {
+     "type": "BOARD_UPDATED",
+     "data": {
+      "accessPolicy": "PUBLIC",
+      "allowStacking": true,
+      "createdAt": "2026-10-11T11:54:04.377878-03:00",
+      "description": null,
+      "id": "db92b3bc-0b59-4c54-a873-bfe9c245f437",
+      "isLocked": false,
+      "lastModifiedAt": "0000-12-31T21:25:56-02:34",
+      "sharedNote": null,
+      "showAuthors": true,
+      "showNoteReactions": true,
+      "showNotesOfOtherUsers": true,
+      "showVoting": null
+     }
+    }
+   },
+   {
+    "t": 5918,
+    "passo": 11,
+    "msg": {
+     "type": "NOTES_SYNC",
+     "data": [
+      {
+       "id": "8d54dc7c-2007-472c-a5b0-8699f6c82cc4",
+       "author": "815cfaae-d2ba-4ef7-aa0e-f2a1126fc917",
+       "text": "reuniões longas demais",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "a6a9bd35-f471-4ba2-9a0e-fe53d3fd9e9b",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "deploy à sexta",
+       "edited": false,
+       "position": {
+        "column": "90e5fd5c-85c9-486f-913c-11b1671ab8f7",
+        "stack": null,
+        "rank": 0
+       }
+      },
+      {
+       "id": "0b38bd0e-bd91-4503-8b74-7afab4adb154",
+       "author": "c55c1239-7a93-4397-a5ba-ffe82932a0ec",
+       "text": "quadro novo na parede",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 2
+       }
+      },
+      {
+       "id": "8c879cdd-5fec-434a-b38c-70fed92328a7",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "café na sala",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 1
+       }
+      },
+      {
+       "id": "dbe4c1a3-8bdd-40bb-92ba-91531a3ad5a5",
+       "author": "32ee1a53-fb1f-4adb-9c6d-0b23d26dc037",
+       "text": "revisão às sextas",
+       "edited": false,
+       "position": {
+        "column": "da19039a-2ae1-47ca-bda8-a8c16b30dbe3",
+        "stack": null,
+        "rank": 0
+       }
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

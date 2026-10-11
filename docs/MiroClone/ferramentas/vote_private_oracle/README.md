@@ -9,8 +9,8 @@ servidor, as flags do `main.go`, o `swagger.json`, as rotas do `router.go`, o ra
 WebSocket em `api/boards.go` e os campos JSON de dois DTO de pedido (`NoteDeleteRequest.deleteStack`,
 `BoardUpdateRequest.showVoting`).
 
-Medido a 2026-10-11. São **23 casos**, cada um corrido **duas vezes**, e as duas corridas coincidem
-nos 23 depois da normalização (ver §5).
+Medido a 2026-10-11. São **26 casos** (23 da W12 e os 3 `h*` do histórico, W13), cada um corrido
+**duas vezes**, e as duas corridas coincidem nos 26 depois da normalização (ver §5).
 
 ## 1. Triagem de licença por artefacto
 
@@ -92,6 +92,18 @@ isAnonymous true`. «Nada» quer dizer zero mensagens WS naquele passo.
 | **p07** partilhar (foco) uma nota escondida | B recebe `BOARD_UPDATED sharedNote:n1` (o **id**), mas `NOTES_SYNC []` (sem conteúdo). `GET /notes/n1` de B dá o texto. ⚠️ `PUT {sharedNote:null}` sozinho põe `showNotesOfOtherUsers:true`, **revelando tudo a todos**, e o quadro perde o `name`. `PUT {sharedNote:null, showNotesOfOtherUsers:false}` **não** limpa o `sharedNote` | Focar uma nota escondida mostra o id e não o conteúdo. Desfocar tem um efeito colateral que **revela** o quadro |
 | **p08** coluna escondida (`visible:false`) | Nota de M na coluna escondida: B não recebe. A escreve lá → 201, mas **A não vê a própria nota** (`NOTES_UPDATED []`). M vê tudo. `GET /notes` de B devolve as duas. Revelar a coluna → `NOTES_SYNC` com tudo para todos | A coluna escondida é um 2.º mecanismo de «só o moderador vê», que esconde até do próprio autor |
 
+### O histórico das votações (W13, 11/10: `h01`–`h03`)
+
+| Caso | O que se observa | Veredito numa frase |
+|---|---|---|
+| **h01** VOT1 `CLOSED`, VOT2 `ABORTED`, VOT3 `CLOSED` seguidas | Abrir uma 2.ª com VOT1 aberta → **400** «only one open voting per session is allowed». `GET /votings` guarda **as três**: as `CLOSED` com `votes{total, votesPerNote}`, a `ABORTED` **sem** resultado. Nenhuma tem nome, data nem autor. `showVoting` passa sozinho à última `CLOSED` (VOT1 → continua VOT1 depois da VOT2 cancelada → VOT3). `PUT {showVoting:VOT1}` com VOT3 a mostrar **zera** o `showVoting` (`null`) | Uma votação de cada vez. Todas ficam guardadas, a cancelada sem resultado. O quadro mostra a **última acabada**, e não há forma de voltar a mostrar uma antiga |
+| **h02** a nota mais votada é apagada DEPOIS do fecho; apagar e renomear | Depois de `DELETE notes/n3`, `GET /votings/VOT1` dá `total 1, {n1:1}` (era `total 3, {n3:2, n1:1}`). `DELETE /votings/{id}` → **405** (a rota não existe). `PUT /votings/{id} {name}` → **404** | O resultado guardado **não é um instantâneo**: é recontado a partir dos votos vivos, e apagar uma nota tira-a (e aos votos dela) do resultado antigo. Não se apaga nem se renomeia uma votação |
+| **h03** C entra depois de duas votações fechadas | O `INIT` de C traz `votings` só com a **última** (VOT2) e `votes` com os **boletins crus** dela: `[{VOT2, n1, user:B}, {VOT2, n1, user:B}]`, numa votação `isAnonymous:true`. `GET /votings` de C dá as duas, com resultado. `GET /votes` de C → `null` | Quem entra depois recebe o histórico só por pedido, e a mensagem de entrada **vaza quem votou em quê** na última votação «anónima» |
+
+⚠️ **O que isto ensina ao PH2D** (ADR-0183): o resultado de uma sessão guarda-se como **instantâneo**
+(totais por elemento no momento do fim), nunca recontado a partir dos boletins, que **não saem do cofre do
+anfitrião** (ADR-0182 §7). O h03 mostra a alternativa: guardar os boletins para recontar abre a fuga.
+
 ### Outros comportamentos relevantes («é de uma pessoa e só se mostra quando alguém manda»)
 
 - **O canal empurra listas completas, não diferenças.** Cada `NOTES_UPDATED` e `NOTES_SYNC` é a lista
@@ -113,7 +125,10 @@ isAnonymous true`. «Nada» quer dizer zero mensagens WS naquele passo.
 **Sim, nos 23 casos** (`comparacao_corrida1_corrida2.json`: `iguais: true` em todos, com o mesmo
 número de passos, os mesmos pedidos/status/respostas e o mesmo multiconjunto de mensagens WS por
 participante e por passo). O `v03d` foi acrescentado depois e corrido também duas vezes, contra o mesmo
-servidor.
+servidor. Os `h01`–`h03` também (W13). ⚠️ O `h03` deu `DIFEREM em 5:ws:C` na 1.ª comparação: a
+ressincronização que a ENTRADA de C provoca chegou a C depois dos 250 ms de silêncio e caiu no passo
+seguinte. A cura é esse passo esperar `1 500 ms` de silêncio (`assenta(1500, 6000)`), não normalizar a
+diferença.
 
 A normalização, com o porquê de cada regra medido na 1.ª comparação, que sem ela dava 16 de 22 casos
 «diferentes», todos por ruído:

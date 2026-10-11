@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { canonico } from "./normaliza.mjs";
 const [a, b] = process.argv.slice(2);
 const res = {};
-for (const f of readdirSync(a).filter((x) => /^[vp]\d+\w*\.json$/.test(x)).sort()) {
+for (const f of readdirSync(a).filter((x) => /^[vph]\d+\w*\.json$/.test(x)).sort()) {
   const A = canonico(JSON.parse(readFileSync(join(a, f), "utf8")));
   const B = canonico(JSON.parse(readFileSync(join(b, f), "utf8")));
   const difs = [];

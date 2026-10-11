@@ -35,6 +35,9 @@
     "p05":  "Editar e apagar a própria nota enquanto escondida; desfazer (a API expõe?).",
     "p06":  "Autor escondido (showAuthors=false), notas visíveis: o que B recebe sobre o autor.",
     "p07":  "Modo privado + sharedNote: M partilha (foco) uma nota escondida de A — B recebe-a?",
-    "p08":  "Coluna escondida (visible=false): M e A escrevem nela; o que B recebe; M revela a coluna."
+    "p08":  "Coluna escondida (visible=false): M e A escrevem nela; o que B recebe; M revela a coluna.",
+    "h01":  "Histórico (W13): VOT1 CLOSED, VOT2 ABORTED, VOT3 CLOSED seguidas; abrir outra com uma aberta; o que GET /votings guarda de cada; qual o quadro mostra (showVoting); mostrar a VOT1 de novo.",
+    "h02":  "Histórico (W13): a nota mais votada é apagada DEPOIS do fecho — o resultado guardado ainda a conta? Apagar e renomear uma votação pela API.",
+    "h03":  "Histórico (W13): C entra DEPOIS de duas votações fechadas — o INIT e o GET /votings trazem o histórico?"
   }
 }

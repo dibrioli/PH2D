@@ -190,8 +190,9 @@ cópias vectoriais (`lower_group_onto`) e o quadro vai ao Vello — a camada fil
 logo **o filtro não filtra nada**. A foto da `=135` com `PH2D_ACABAMENTO_PASSO=mistura`: discos
 chapados, sem relevo nem sombra. Da MESMA família (§0.10): um `Blend` por LINHA (a coluna `blend`,
 `FormaComMistura`) e uma geometria que a placa recusa (`Recusada`/`Ausente`) — qualquer UMA manda o
-quadro inteiro ao Vello. Hoje (W4) o cartão de cada `Filter` di-lo (`formas_fora_da_camada`, gate
-`shapes_drawn_off_the_layer_are_named_on_every_filter_card`).
+quadro inteiro ao Vello. Na W4 o cartão de cada `Filter` dizia-o (`formas_fora_da_camada`); desde a W4b as
+formas estão na camada e só o `Each Shape` avisa (`formas_no_vello`, gate
+`shapes_drawn_by_the_vector_path_are_named_on_every_each_shape_card`).
 
 **A lei (estado da arte):** After Effects / Photoshop — os efeitos de uma camada correm na camada
 ISOLADA e o modo de mistura da camada aplica-se quando ela POUSA no que está por baixo. As três

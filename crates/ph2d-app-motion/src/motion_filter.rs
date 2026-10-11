@@ -143,6 +143,16 @@ impl MotionFiltro {
         })
     }
 
+    /// **Onde a shell codifica as formas do Motion**: com filtros, na camada
+    /// ([`Self::cena_da_camada`]) e não por cima do mundo; senão, na cena do quadro.
+    pub fn alvo_da_cena<'a>(
+        &'a mut self,
+        desenha: bool,
+        do_quadro: &'a mut VectorScene,
+    ) -> &'a mut VectorScene {
+        self.cena_da_camada(desenha).unwrap_or(do_quadro)
+    }
+
     /// A pilha do quadro, na ordem do fio.
     #[must_use]
     pub fn pilha(&self) -> &[NoDoFiltro] {

@@ -283,3 +283,46 @@ fn a_scene_blend_with_the_layer_on_lowers_without_a_group() {
         );
     }
 }
+
+/// ⭐ **Ligar a camada no MESMO tique recompõe** (auditoria da W4b): a camada muda o lowering de um
+/// sink `Scene` sem tocar no grafo — sem o `dirty`, a bomba devolvia as cópias do tique com o modo
+/// antigo e o `Add` corria na camada E na pousa.
+#[test]
+fn turning_the_layer_on_in_the_same_tick_relowers() {
+    let mut m = MotionState::new();
+    let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+    m.sinks = vec![cena.saida];
+    m.doc
+        .graph
+        .set_param(cena.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0);
+    m.doc
+        .graph
+        .set_param(cena.saida, ph2d_eval_motion::SINK_BLEND_WITH_PARAM, 2.0);
+    let scopes = ph2d_nodegraph::cook::TimeScopes::new();
+    let coze = |m: &mut MotionState| {
+        crate::motion_externals::publish_all(m, 0.0);
+        let sinks = m.sinks.clone();
+        let _ = m.pump.advance_or_scrub_scoped(
+            &m.doc.graph,
+            &m.registry,
+            &sinks,
+            0,
+            |t| t as f64 / 60.0,
+            m.default_uv_rect,
+            m.default_size,
+            &scopes,
+        );
+    };
+    coze(&mut m);
+    assert!(
+        m.pump.vector_instances.iter().all(|v| v.mistura.blend == 1),
+        "sem camada: o grupo"
+    );
+    m.pump.isola_na_camada(true);
+    coze(&mut m);
+    assert!(
+        !m.pump.vector_instances.is_empty()
+            && m.pump.vector_instances.iter().all(|v| v.mistura.blend == 0),
+        "a camada ligou no mesmo tique e as formas ficaram com o modo antigo"
+    );
+}

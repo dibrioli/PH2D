@@ -22,6 +22,9 @@ const FAIXAS: [(f32, f32); 6] = [
     (0.5, 0.6),
     (0.9, 0.3),
 ];
+/// Um caso da fixtura: `(fundo, faixa)`, cada um `(cor, alfa)`.
+type Caso = ((f32, f32), (f32, f32));
+
 /// Largura de cada célula do oráculo do Vello (arestas inteiras: sem anti-serrilhado a ler).
 const CEL: u32 = 8;
 
@@ -35,7 +38,7 @@ fn q(x: f32) -> f32 {
     f32::from(byte(x)) / 255.0
 }
 
-fn casos() -> Vec<((f32, f32), (f32, f32))> {
+fn casos() -> Vec<Caso> {
     FUNDOS
         .iter()
         .flat_map(|&f| FAIXAS.iter().map(move |&s| (f, s)))
@@ -43,7 +46,7 @@ fn casos() -> Vec<((f32, f32), (f32, f32))> {
 }
 
 /// Um alvo `Rgba8Unorm` de `w × 1` com o fundo de cada caso (cinzento, alfa no 4.º canal).
-fn alvo(gpu: &ph2d_gpu::GpuContext, cs: &[((f32, f32), (f32, f32))]) -> wgpu::Texture {
+fn alvo(gpu: &ph2d_gpu::GpuContext, cs: &[Caso]) -> wgpu::Texture {
     let w = cs.len() as u32;
     let t = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("test alvo da pousa"),
@@ -91,7 +94,7 @@ fn alvo(gpu: &ph2d_gpu::GpuContext, cs: &[((f32, f32), (f32, f32))]) -> wgpu::Te
 fn pousa_na_placa(
     gpu: &ph2d_gpu::GpuContext,
     blit: &BandBlit,
-    cs: &[((f32, f32), (f32, f32))],
+    cs: &[Caso],
     pousa: Pousa,
 ) -> Vec<[u8; 2]> {
     let w = cs.len() as u32;
@@ -117,7 +120,7 @@ fn pousa_na_placa(
 }
 
 /// A lei sobre os valores QUANTIZADOS que a placa de facto recebe.
-fn lei(pousa: Pousa, ((fc, fa), (sc, sa)): ((f32, f32), (f32, f32))) -> [u8; 2] {
+fn lei(pousa: Pousa, ((fc, fa), (sc, sa)): Caso) -> [u8; 2] {
     let (b, ab) = (q(fc), q(fa));
     let (c, a) = (q(sc), q(sa));
     let o = pousa.lei([b, b, b, ab], [c * a, c * a, c * a, a]);
@@ -171,7 +174,7 @@ fn the_hardware_blend_paints_the_law_of_each_mode() {
         }
     }
     // O de um passe só esquece o termo `s·(1 − αb)`: o caso que mais o pesa.
-    let ingenuo = |((fc, _), (sc, sa)): ((f32, f32), (f32, f32))| {
+    let ingenuo = |((fc, _), (sc, sa)): Caso| {
         let (b, c, a) = (q(fc), q(sc), q(sa));
         byte(c * a * b + b * (1.0 - a))
     };

@@ -257,6 +257,8 @@ impl MotionCookPump {
 
     /// Liga a camada isolada — ver o campo `camada_isolada`. Por quadro, pelo dono dos filtros.
     pub fn isola_na_camada(&mut self, isolada: bool) {
+        // Muda o lowering de um sink ⇒ o mesmo tique tem de recompor (não só uma edição do grafo).
+        self.dirty |= self.camada_isolada != isolada;
         self.camada_isolada = isolada;
     }
 

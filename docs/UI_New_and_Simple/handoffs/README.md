@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**49 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **49** são handoffs (registro **morto**).
+**50 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **50** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -63,7 +63,8 @@
 | 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7c_QUICKSHAPE_ARCOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7c_QUICKSHAPE_ARCOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F7c: O QUICKSHAPE COM ARCOS |
 | 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7d_QUICKSHAPE_SETAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7d_QUICKSHAPE_SETAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F7d: O QUICKSHAPE COM SETAS |
 | 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7e_EDIT_SHAPE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7e_EDIT_SHAPE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F7e: O EDIT SHAPE |
-| 2026-10-10 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F8_ENQUADRAR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F8_ENQUADRAR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F8: ENQUADRAR TUDO |
+| 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F8_ENQUADRAR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F8_ENQUADRAR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F8: ENQUADRAR TUDO |
+| 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F9: AS ALÇAS DAS FORMAS |
 
 ---
 

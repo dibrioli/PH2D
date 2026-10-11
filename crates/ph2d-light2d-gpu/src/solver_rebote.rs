@@ -40,7 +40,7 @@ impl Solver {
 
 impl SomaDoRebote {
     pub(super) fn novo(
-        device: &wgpu::Device,
+        device: crate::Placa<'_>,
         lista: &PassList,
         vistas: &[wgpu::TextureView],
         [albedo, fonte]: [usize; 2],

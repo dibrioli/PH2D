@@ -42,7 +42,7 @@ const ENTRADAS: [&str; 5] = [
 
 /// O que a holográfica pega do solver ao nascer.
 pub(super) struct Entradas<'a> {
-    pub device: &'a wgpu::Device,
+    pub device: crate::Placa<'a>,
     pub queue: &'a wgpu::Queue,
     pub cfg: &'a Config,
     pub escolhas: Escolhas,

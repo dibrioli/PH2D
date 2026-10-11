@@ -142,7 +142,10 @@ impl Solver {
             self.c0_sprites
                 .get_or_insert_with(|| {
                     solver_sprite::C0Sprites::novo(
-                        &gpu.device,
+                        crate::Placa {
+                            device: &gpu.device,
+                            fabrica: &self.fabrica,
+                        },
                         &solver_sprite::alvos_c0(formatos),
                         "luz2d/buf/sprites",
                     )

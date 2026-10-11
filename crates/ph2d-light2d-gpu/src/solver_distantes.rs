@@ -42,7 +42,7 @@ struct Pintor {
 }
 
 impl Pintor {
-    fn novo(device: &wgpu::Device) -> Self {
+    fn novo(device: crate::Placa<'_>) -> Self {
         let entrada = |binding, ty, vis| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: vis,
@@ -135,7 +135,7 @@ impl Pintor {
             ..Default::default()
         });
         let uni = criar_buffer(
-            device,
+            &device,
             "luz2d/buf/mascaras_atlas",
             16,
             wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -262,11 +262,16 @@ pub(super) struct Distantes {
     vista: wgpu::TextureView,
     lado: u32,
     pintor: Option<Pintor>,
+    fabrica: crate::Fabrica,
 }
 
 impl Distantes {
     /// Com os mínimos que a [`PassList`] declarou (`buffers`) e a atlas de 1 × 1 dela.
-    pub(super) fn novo(buffers: [wgpu::Buffer; 3], atlas: wgpu::Texture) -> Self {
+    pub(super) fn novo(
+        buffers: [wgpu::Buffer; 3],
+        atlas: wgpu::Texture,
+        fabrica: crate::Fabrica,
+    ) -> Self {
         let vista = atlas.create_view(&wgpu::TextureViewDescriptor::default());
         Self {
             buffers,
@@ -275,6 +280,7 @@ impl Distantes {
             vista,
             lado: 1,
             pintor: None,
+            fabrica,
         }
     }
 
@@ -364,7 +370,12 @@ impl Distantes {
             mudou = true;
         }
         self.pintor
-            .get_or_insert_with(|| Pintor::novo(device))
+            .get_or_insert_with(|| {
+                Pintor::novo(crate::Placa {
+                    device,
+                    fabrica: &self.fabrica,
+                })
+            })
             .desenhar(
                 gpu,
                 enc,

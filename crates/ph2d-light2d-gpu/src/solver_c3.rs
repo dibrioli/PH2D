@@ -64,7 +64,8 @@ impl Par {
 
 /// O que os passes C3 pegam do solver ao nascer.
 pub(super) struct Entradas<'a> {
-    pub gpu: &'a GpuContext,
+    /// O dispositivo com a fábrica das pipelines (a grade nova não as recompila).
+    pub placa: crate::Placa<'a>,
     pub cfg: &'a Config,
     pub lista: &'a PassList,
     pub vistas: &'a [wgpu::TextureView],
@@ -97,7 +98,7 @@ pub(super) struct C3 {
 }
 
 fn layout(
-    device: &wgpu::Device,
+    device: crate::Placa<'_>,
     rotulo: &str,
     entradas: &[wgpu::BindGroupLayoutEntry],
 ) -> wgpu::BindGroupLayout {
@@ -116,7 +117,7 @@ fn vista(binding: u32, v: &wgpu::TextureView) -> wgpu::BindGroupEntry<'_> {
 
 impl C3 {
     pub(super) fn novo(e: &Entradas<'_>) -> Self {
-        let device = &e.gpu.device;
+        let device = e.placa;
         let cfg = e.cfg;
         let op = Opcionais::de(cfg);
         // A marcha da luz direta lê a captura FINA dos opacos quando há (W5a).

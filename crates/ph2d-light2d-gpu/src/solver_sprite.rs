@@ -71,7 +71,7 @@ pub(crate) struct C0Sprites {
 
 impl C0Sprites {
     pub(crate) fn novo(
-        device: &wgpu::Device,
+        device: crate::Placa<'_>,
         alvos: &[Option<wgpu::ColorTargetState>; 4],
         rotulo_do_buffer: &'static str,
     ) -> Self {

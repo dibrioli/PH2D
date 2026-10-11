@@ -18,12 +18,13 @@ pub(super) struct CapturaFina {
     formatos: solver_sprite::FormatosC0,
     geometria: Option<Geometria>,
     sprites: Option<solver_sprite::C0Sprites>,
+    fabrica: crate::Fabrica,
 }
 
 impl CapturaFina {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn novo(
-        device: &wgpu::Device,
+        device: crate::Placa<'_>,
         modulo: &wgpu::ShaderModule,
         layout: &wgpu::PipelineLayout,
         uni: wgpu::Buffer,
@@ -71,6 +72,7 @@ impl CapturaFina {
             formatos,
             geometria: None,
             sprites: None,
+            fabrica: device.fabrica.clone(),
         }
     }
 
@@ -104,7 +106,10 @@ impl CapturaFina {
             self.sprites
                 .get_or_insert_with(|| {
                     solver_sprite::C0Sprites::novo(
-                        &gpu.device,
+                        crate::Placa {
+                            device: &gpu.device,
+                            fabrica: &self.fabrica,
+                        },
                         &solver_sprite::alvos_c0_opacos(formatos),
                         "luz2d/buf/sprites_fina",
                     )

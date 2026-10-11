@@ -5,7 +5,7 @@ use super::*;
 
 /// O que a C2 pega do solver ao nascer.
 pub(super) struct Entradas<'a> {
-    pub device: &'a wgpu::Device,
+    pub device: crate::Placa<'a>,
     pub cfg: &'a Config,
     pub lista: &'a PassList,
     pub vistas: &'a [wgpu::TextureView],

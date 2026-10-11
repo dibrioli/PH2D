@@ -123,6 +123,10 @@ struct Geometria {
 
 pub struct Solver {
     cfg: Config,
+    /// A fábrica das pipelines (as construídas depois do nascimento — os sprites — também a usam).
+    fabrica: crate::Fabrica,
+    /// Quantas pipelines este solver COMPILOU ao nascer (0 = todas vieram da fábrica).
+    compiladas_ao_nascer: u64,
     n: u32,
     lista: PassList,
     texturas: Vec<wgpu::Texture>,
@@ -209,8 +213,22 @@ impl Solver {
     /// [`ErroSolver`] se a configuração é inválida, pede f16 sem `SHADER_F16`, ou a grade passa o
     /// limite de textura do dispositivo.
     pub fn novo(gpu: &GpuContext, pedido: Config) -> Result<Self, ErroSolver> {
+        Self::novo_com(gpu, pedido, &crate::Fabrica::default())
+    }
+
+    /// [`Self::novo`] com a [`crate::Fabrica`] partilhada: as pipelines de uma grade anterior com as
+    /// mesmas constantes voltam sem recompilar (a janela redimensionada custava ~2 s por quadro).
+    pub fn novo_com(
+        gpu: &GpuContext,
+        pedido: Config,
+        fabrica: &crate::Fabrica,
+    ) -> Result<Self, ErroSolver> {
         pedido.validar()?;
-        let device = &gpu.device;
+        let compiladas_antes = fabrica.pipelines_criadas();
+        let device = crate::Placa {
+            device: &gpu.device,
+            fabrica,
+        };
         if pedido.aritmetica == Precisao::F16
             && !device.features().contains(wgpu::Features::SHADER_F16)
         {
@@ -234,7 +252,7 @@ impl Solver {
         let texturas: Vec<wgpu::Texture> = lista
             .texturas
             .iter()
-            .map(|t| criar_textura(device, t))
+            .map(|t| criar_textura(&device, t))
             .collect();
         let buffer = |nome: &'static str| {
             let b = lista
@@ -242,7 +260,7 @@ impl Solver {
                 .iter()
                 .find(|b| b.nome == nome)
                 .expect("buffer declarado na PassList");
-            criar_buffer(device, b.nome, b.bytes, b.usos)
+            criar_buffer(&device, b.nome, b.bytes, b.usos)
         };
         let uni_c0 = buffer("luz2d/buf/c0");
         let uni_jfa = buffer("luz2d/buf/jfa");
@@ -462,10 +480,13 @@ impl Solver {
             .iter()
             .position(|t| t.nome == NOME_DA_ATLAS)
             .expect("a PassList declara a atlas");
-        let distantes =
-            distantes::Distantes::novo(NOMES_DISTANTES.map(buffer), texturas[atlas].clone());
+        let distantes = distantes::Distantes::novo(
+            NOMES_DISTANTES.map(buffer),
+            texturas[atlas].clone(),
+            fabrica.clone(),
+        );
         let lampadas_grupo =
-            distantes::grupo_das_lampadas(device, &lampadas_layout, &lampadas, &distantes);
+            distantes::grupo_das_lampadas(&device, &lampadas_layout, &lampadas, &distantes);
         // O `textureGather` dos 4 vizinhos da cobertura; a borda prende-se ao texel da borda.
         let vizinhos = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("luz2d c2 vizinhos"),
@@ -497,7 +518,7 @@ impl Solver {
             })
         });
         let c3 = c3::C3::novo(&c3::Entradas {
-            gpu,
+            placa: device,
             cfg: &cfg,
             lista: &lista,
             vistas: &vistas,
@@ -542,6 +563,8 @@ impl Solver {
         ];
         Ok(Self {
             cfg,
+            fabrica: fabrica.clone(),
+            compiladas_ao_nascer: fabrica.pipelines_criadas() - compiladas_antes,
             n,
             lista,
             texturas,
@@ -591,6 +614,13 @@ impl Solver {
     #[must_use]
     pub fn fluencia(&self) -> &wgpu::Texture {
         &self.texturas[crate::passlist::FLUENCIA]
+    }
+
+    /// Quantas pipelines este solver COMPILOU ao nascer — 0 quando a [`crate::Fabrica`] já as tinha
+    /// (a mesma luz numa grade de outro tamanho).
+    #[must_use]
+    pub fn pipelines_compiladas_ao_nascer(&self) -> u64 {
+        self.compiladas_ao_nascer
     }
 
     /// ⭐ A grade da [`Self::fluencia`] (origem, texel e tamanho DELA).

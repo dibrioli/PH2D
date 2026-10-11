@@ -24,6 +24,7 @@ mod o_gizmo_da_luz;
 mod o_interior_do_opaco;
 mod o_oclusor_fino;
 mod paridade_luz_recebida;
+mod redimensionar;
 mod smoke_cena_1;
 mod smoke_cenas_w4;
 mod w4_artista;

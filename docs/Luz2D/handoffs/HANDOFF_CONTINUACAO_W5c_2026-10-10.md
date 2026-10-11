@@ -222,6 +222,17 @@ texel do interior NÃO muda a foto (recusado: custo sem efeito); a causa prováv
 bilinear mascarado salta quando o conjunto de sondas de fora muda ao longo da borda, e a lei projeta cada salto para
 dentro como uma fatia —, mais o serrilhado da passagem luz/sombra da lâmpada na borda.
 
+## Bug do dono (11/10): maximizar com a luz ligada
+
+A grade segue a janela e cada tamanho novo recriava o solver: ~2 s por quadro no maximizar (compilar as pipelines
+da C3). Cura: `Fabrica` (módulos, layouts e pipelines guardados pela descrição, partilhados pelos solvers de uma
+`LuzDoQuadro`; `Solver::novo_com`). Gate `redimensionar_a_janela_nao_recompila_a_luz` (190 → 0 pipelines em 10
+grades; quadros 4–11 ms), mutações 4/4. Detalhe e o porquê de nenhum gate o ver: [`BUGS_luz2d.md`](../BUGS_luz2d.md) §1.
+
+Do mesmo smoke (11/10), anotados para a W5d: **(a)** as facetas das formas curvas (item 0); **(b)** não há formas
+redondas DESENHADAS (vetor) para testar — o disco da cena 5 é a máscara do atlas; **(c)** com zoom forte some o
+brilho à esquerda do «L» da cena 5 (192 % × 264 %) — a luz devolvida por corpos fora da grade (item 1).
+
 ## ⚠️ ABERTO (W5c → W5d)
 
 0. **As facetas das formas curvas** (a cena 5): a c0 contínua ao longo de uma borda curva (o peso de cada sonda de

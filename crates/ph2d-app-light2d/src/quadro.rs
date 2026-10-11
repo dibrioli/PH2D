@@ -46,6 +46,9 @@ pub struct LuzDoQuadro {
     sprites_por_texel: (usize, usize),
     /// ⭐ Os caminhos vetoriais que bloqueiam, desenhados na grade (W3).
     vetores: crate::vetor::CamadaVetorial,
+    /// ⭐ A fábrica das pipelines, partilhada pelos solvers de cada grade: a janela redimensionada (o
+    /// maximizar muda o tamanho a cada quadro) só realoca — recompilar custava ~2 s por quadro.
+    fabrica: ph2d_light2d_gpu::Fabrica,
     /// A cena de smoke armada já foi encenada (uma vez por sessão).
     smoke_encenado: bool,
     /// A recusa do solver já foi DITA ao artista (o aviso sai na transição, não a cada quadro).
@@ -90,6 +93,7 @@ impl LuzDoQuadro {
             erro: None,
             sprites_por_texel: (0, 0),
             vetores: crate::vetor::CamadaVetorial::default(),
+            fabrica: ph2d_light2d_gpu::Fabrica::default(),
             smoke_encenado: false,
             recusa_dita: false,
             sem_luz_no_quadro: false,
@@ -275,7 +279,7 @@ impl LuzDoQuadro {
                 rebote,
                 ..Config::padrao_para(&gpu.device, g)
             };
-            Solver::novo(gpu, cfg).map(|solver| {
+            Solver::novo_com(gpu, cfg, &self.fabrica).map(|solver| {
                 let vista = solver
                     .fluencia()
                     .create_view(&wgpu::TextureViewDescriptor::default());

@@ -9,7 +9,7 @@
 - Por integrar (não integre, não pushe): W12+W13 ([handoff](HANDOFF_INTEGRACAO_line_MiroClone_W12_W13_2026-10-11.md), adenda §12)
   **+ `935aed878`** (o botão «Forma», abaixo). Base = `main` `8f20c60de`. O handoff de INTEGRAÇÃO desta onda escreve-se no
   fecho do ciclo (as três partes) e inclui `935aed878` + este doc.
-- Binário `--profile smoke` compilado com `935aed878` (`Finished … in 50.97s`). Smoke do «Forma» enviado ao dono, por fazer.
+- Binário `--profile smoke` compilado com `935aed878` (`Finished … in 50.97s`). Smoke do «Forma» (cena 2): **OK do dono (11/10)**.
 
 ## Parte 1 — FECHADA: o botão «Forma» (`935aed878`, não reconstruir)
 

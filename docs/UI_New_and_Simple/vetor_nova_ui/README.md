@@ -46,6 +46,7 @@
 | O prompt de F7 — o QuickShape no PH2D (a lei pura, o gesto de segurar, a porta visível, a cena 12) | [`06_prompt_F7_quickshape.md`](06_prompt_F7_quickshape.md) |
 | ⭐ **O prompt da próxima janela** — F7c: o QuickShape com ARCOS (pedido do dono, 10/10) | [`07_prompt_F7c_arcos.md`](07_prompt_F7c_arcos.md) |
 | ⭐ **Enquadrar tudo (F8)** — o tldraw e o Excalidraw corridos (a mesma lei com parâmetros diferentes), a margem derivada das barras, o voo pelo ponto fixo, o beliscão rápido, as recusas | [`11_enquadrar_tudo.md`](11_enquadrar_tudo.md) · [`oraculo_enquadrar/`](oraculo_enquadrar/) |
+| ⭐ **O prompt da próxima janela** — F9: os parâmetros de cada forma saem do Inspector para alças no canvas (pedido do dono, 11/10) | [`12_prompt_F9_gizmos_das_formas.md`](12_prompt_F9_gizmos_das_formas.md) |
 | As fontes, com URL por afirmação | [`referencias/R1_affinity.md`](referencias/R1_affinity.md) · [`R2_figma_sketch_penpot_graphite.md`](referencias/R2_figma_sketch_penpot_graphite.md) · [`R3_illustrator_curve_rive_inkscape.md`](referencias/R3_illustrator_curve_rive_inkscape.md) · [`R4_apps_de_ipad.md`](referencias/R4_apps_de_ipad.md) |
 | As fotos do «antes» e o precedente interno (a barra curta e a barra de estilo do Quadro) | [`fotos/`](fotos/) |
 

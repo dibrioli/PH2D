@@ -61,6 +61,42 @@ laços em 1D: Poly *Curve* 35 + *Smooth* 38, Star *Curve* 63 + *Smooth* 40 → *
 em ~30 linhas (estrela, setas, coração, nuvem, raio, explosão, balão-pensamento, iso…) — curados pela
 §2 sem tocar na geometria.
 
+## §5 — A cauda (F12 A2): cada espécie, o mecanismo e a cura
+
+Sondas `print_the_stroke_census`, `print_the_pair_census` e `print_the_tail_detail` (junta a junta:
+posição, volta, que ponta engancha, os pontos de controle; e que troços se cruzam). ANTES → DEPOIS:
+laços nos pares **145 → 0** (e 0 em 1D, que já era); ganchos **509** amostras nos pares e **214** em
+1D pela régua antiga → **0** pela régua nova (fora as excepções abaixo; parte dos 723 eram da régua,
+não da forma — a última linha da tabela). O gate `no_cooked_shape_loops_or_hooks` vale agora para TODAS as formas,
+campos, proporções e pares.
+
+| espécie | mecanismo medido | cura |
+|---|---|---|
+| estrela lisa de muitas pontas / inner 0,05 | as cúbicas de arestas VIZINHAS cruzam-se perto do vértice (as alças do liso não se cruzam — a cura «alças sem cruzar» do handoff não morde) | `ph2d_vec_scene::untangle`: se o contorno cozido se cruza, torção, *Curve* e *Smooth* recuam JUNTOS até ao último desenho sem cruzamento (bissecção, 32 amostras por troço, janela 3 troços, quase-cúspide > 120° conta como cruzamento, recuo 3 % depois do limiar) |
+| torção extrema, recorte redondo × *Curve* côncavo | arestas rectas que se cruzam; o arco do canto com a alça rodada para fora | a mesma guarda |
+| *Smooth* × *Curve* | cada aresta enverga pela SUA normal: o vértice «liso» tinha uma quina de 35° com gancho | o vértice liso é G1: alças na direcção média (sem *Curve* já eram colineares — paridade Inkscape intacta) |
+| engrenagem côncava de muitos dentes | os dois flancos do dente cruzam-se | `untangle` sobre a envergadura |
+| rabo do balão curto e largo | o bico em agulha obrigava o flanco a dobrar ~77° no último toco | o bico abre em V pela medida `cos(eixo, corda) × l / corda` (agulha ≥ 0,7, V ≤ 0,1; o balão por omissão mede 0,82 e não muda) |
+| rabo de lado (raio enorme × faixa mínima) | a alça da RAIZ saía da faixa (para lá da altura do bico) e o flanco cruzava o outro | a alça da raiz nunca passa de meia altura do bico, medida em `+u` (fora do corpo) |
+| bico pedido dentro do corpo | encostado na borda: rabo de altura zero, cruzado | o bico pára a meia faixa (`TIP_FLOOR`) |
+| seta dupla com cabeça 0,5 | haste de comprimento zero: fenda de ida-e-volta | sem haste o contorno é o losango |
+| cantinho côncavo, furo pequeno, bolhas | **não era gancho**: curva menor que a caneta | a régua mede a viragem em `min(½ caneta, ⅛ do troço)`; a caixa achatada mede a caneta no lado CURTO |
+
+Fica de fora, MEDIDO: a lua de fase < 0,12 (a borda de dentro é uma elipse de semi-eixo menor que
+meia caneta) e a nuvem/pensamento a menos de 1:2,9 (bolhas autoradas como círculos na caixa
+quadrada) — a viragem é a da elipse, não de uma alça; e a cúspide da espiral com *Expansion* ≥ 4,8,
+no miolo, num raio de `~0,002` da caixa (o Inkscape faz o mesmo). As fatias de 1° (pizza, oval,
+segmento no mínimo do *Sweep*) são agulhas de verdade.
+
+**As pontas que voltam 180° por desenho** (chifres da lua, bico da chave, ponta do rabo, as
+cúspides do *Curve* ±1): com o bico cortado ganham um toco de `2 ×` a largura (o SVG 2 faz o mesmo:
+o fixture do resvg a 0°). Antes eram chanfro rente. É a mudança MAIS visível do bico cortado — vai
+nas fotos da cena 18 para o dono decidir.
+
+**A placa da GPU do Motion** (`ph2d-shape-gpu/src/contorno_cpu.rs` + `contorno.wgsl` +
+`contorno_subgrupo.wgsl`, `limite_esquadria`) ainda salta para o chanfro nas cópias não conformes.
+Não entra nesta linha: é o motor do Motion e só vale portar depois de o dono aprovar o bico cortado.
+
 ## ⛔ Recusas MEDIDAS
 
 | proposta | porquê não |
@@ -69,3 +105,6 @@ em ~30 linhas (estrela, setas, coração, nuvem, raio, explosão, balão-pensame
 | junta redonda além do limite | também salta (de `2w` para `½w`) |
 | corrigir forma a forma | o salto é a lei do traço, não da forma: ~30 linhas do censo |
 | o *Smooth* negativo | laço por definição (fotos 2/3) |
+| limitar as alças do liso para «os dois segmentos-alça não se cruzarem» | medido na estrela de 9 pontas: as alças nem se encontram; o laço é entre arestas vizinhas |
+| limitar a alça do liso ao raio do vizinho (o sector) | partia a paridade com o Inkscape na estrela de 5 pontas a liso > 0,38 |
+| limitar o recuo da alça do BICO pela normal da elipse | criou ganchos no balão oval de base aberta (a normal do lado aponta de costas para o bico) |

@@ -106,6 +106,11 @@ pub fn arrow_double(a: [f64; 2], b: [f64; 2], tail: f64, head_len: f64, head_w: 
     let (x2, x3) = (l, 1.0 - l);
     let (y1, y2) = (0.5 - body * 0.5, 0.5 + body * 0.5);
     let (h1, h2) = (0.5 - span * 0.5, 0.5 + span * 0.5);
+    // As cabeças encostam: sem haste, o contorno é o losango (a haste de comprimento zero deixava
+    // uma fenda de ida-e-volta, que o traço desenhava por dentro).
+    if x3 - x2 <= 1e-9 {
+        return poly(&u, &[(0.0, 0.5), (x2, h1), (1.0, 0.5), (x2, h2)]);
+    }
     poly(
         &u,
         &[

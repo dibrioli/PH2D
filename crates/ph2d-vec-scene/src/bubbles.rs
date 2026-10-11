@@ -50,6 +50,9 @@ use crate::space::{Unit, Uv, add_sub, clamp_window, closed, fit, open};
 // Balão de fala retangular
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A altura mínima do bico sobre a borda do corpo, em fracção da faixa reservada.
+const TIP_FLOOR: f64 = 0.5;
+
 /// Empurra uma quina do round-rect: o arco de 90°, ou **uma quina viva** quando o raio é
 /// nulo (arco de raio zero deixaria duas âncoras coincidentes no path editável).
 fn rr_corner(out: &mut Vec<Uvv>, c: Uv, p: f64, q: f64, start_deg: f64, vivo: Uv) {
@@ -94,7 +97,9 @@ pub fn speech_rect(
 
     let k = sector((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)));
     let mut t = rot_q((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)), (4 - k) % 4);
-    t.0 = clamp_window(t.0, w, 1.0); // A FAIXA: o bico não tem como sair da caixa
+    // A FAIXA: o bico não tem como sair da caixa — nem deitar-se na borda (um bico pedido dentro
+    // do corpo pára a meia faixa; na borda o rabo tinha altura zero e cruzava-se, F12 A2).
+    t.0 = clamp_window(t.0, w + TIP_FLOOR * room, 1.0);
 
     // O raio vem em MUNDO; nos dois eixos de autoria ele vira um par (para a quina ser
     // circular na tela). O quarto-de-volta troca os eixos, então os raios trocam junto.
@@ -195,7 +200,7 @@ pub fn speech_oval(
     let w = 1.0 - room;
     let k = sector((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)));
     let mut t = rot_q((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)), (4 - k) % 4);
-    t.0 = clamp_window(t.0, w, 1.0);
+    t.0 = clamp_window(t.0, w + TIP_FLOOR * room, 1.0);
 
     let half = wedge.clamp(2.0, 45.0).to_radians();
     let c: Uv = (w * 0.5, 0.5);

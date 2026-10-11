@@ -34,9 +34,26 @@ pub struct PolyStar {
     pub style: CornerStyle,
 }
 
-/// O polígono / a estrela de [`PolyStar`] inscrito na elipse `rx`/`ry`, 1.ª ponta às 12h.
+/// O polígono / a estrela de [`PolyStar`] inscrito na elipse `rx`/`ry`, 1.ª ponta às 12h. Se a
+/// torção, a envergadura e o liso juntos cruzam o contorno, os três recuam JUNTOS até ao último
+/// desenho sem cruzamento ([`crate::untangle`]).
 #[must_use]
 pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
+    if s.twist_deg == 0.0 && s.curve == 0.0 && s.smooth <= 0.0 {
+        return shaped(center, rx, ry, s);
+    }
+    crate::untangle::untangled(s.n.max(1) as usize, |t| {
+        let p = PolyStar {
+            twist_deg: s.twist_deg * t,
+            curve: s.curve * t,
+            smooth: s.smooth * t,
+            ..*s
+        };
+        shaped(center, rx, ry, &p)
+    })
+}
+
+fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
     let plain = s.twist_deg == 0.0 && s.curve == 0.0 && s.smooth <= 0.0;
     if plain && s.style == CornerStyle::Round {
         return match s.inner {
@@ -49,7 +66,7 @@ pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
     // o canto passava ACIMA do vértice (0,067 num pentágono a envergadura 0,4 e raio 0,15 — o
     // arredondamento engordava a forma): medido em `the_rounding_never_grows_past_the_sharp_corner`.
     if s.curve != 0.0 && s.smooth <= 0.0 && s.radii.iter().any(|r| *r > 0.0) {
-        let straight = polystar(center, rx, ry, &PolyStar { curve: 0.0, ..*s });
+        let straight = shaped(center, rx, ry, &PolyStar { curve: 0.0, ..*s });
         return bend_between_corners(straight, center, s.curve);
     }
     let unit = unit_vertices(s);
@@ -106,8 +123,23 @@ pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
             -tb[1] * k - d[1] * chord + bend[1],
         ];
     }
-    let to_world = |p: [f64; 2]| [center[0] + rx * p[0], center[1] + ry * p[1]];
     let lisa = smooth != 0.0;
+    // Liso com envergadura: cada aresta enverga pela SUA normal e o vértice ganhava uma quina (35°
+    // na estrela a liso 0,3 e envergadura −0,4, com gancho). O vértice liso é G1: as duas alças na
+    // direcção média, cada uma com o seu comprimento. Sem envergadura já são colineares.
+    if lisa && s.curve != 0.0 {
+        for i in 0..m {
+            let (o, n) = (out_h[i], in_h[i]);
+            let d = [o[0] - n[0], o[1] - n[1]];
+            let l = d[0].hypot(d[1]);
+            if l > 1e-12 {
+                let (lo, ln) = (o[0].hypot(o[1]), n[0].hypot(n[1]));
+                out_h[i] = [d[0] / l * lo, d[1] / l * lo];
+                in_h[i] = [-d[0] / l * ln, -d[1] / l * ln];
+            }
+        }
+    }
+    let to_world = |p: [f64; 2]| [center[0] + rx * p[0], center[1] + ry * p[1]];
     let verts: Vec<VecVertex> = (0..m)
         .map(|i| {
             let p = unit[i];

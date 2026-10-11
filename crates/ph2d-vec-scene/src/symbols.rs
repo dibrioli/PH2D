@@ -426,6 +426,24 @@ pub fn gear_ex(
     tooth: f64,
     curvature: f64,
 ) -> VecPath {
+    // Flancos que se cruzam (muitos dentes, envergadura forte): a envergadura recua até ao último
+    // desenho sem cruzamento (`crate::untangle`).
+    if curvature == 0.0 {
+        return gear_cooked(a, b, teeth, depth, hole, tooth, 0.0);
+    }
+    let n = teeth.clamp(3.0, 64.0).round() as usize;
+    crate::untangle::untangled(n, |t| gear_cooked(a, b, teeth, depth, hole, tooth, curvature * t))
+}
+
+fn gear_cooked(
+    a: [f64; 2],
+    b: [f64; 2],
+    teeth: f64,
+    depth: f64,
+    hole: f64,
+    tooth: f64,
+    curvature: f64,
+) -> VecPath {
     let u = Unit::of(a, b);
     let n = teeth.clamp(3.0, 64.0).round() as usize;
     let d = depth.clamp(0.05, 0.60);

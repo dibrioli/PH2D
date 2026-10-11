@@ -300,16 +300,50 @@ pub(crate) fn tail_flanks(pa: Uv, pb: Uv, t: Uv, na: Uv, nb: Uv) -> (Uv, Uvv, Uv
         v_mul(v_norm(v_sub(t, pb)), 1.0 - ROOT_BIAS),
         v_mul(nb, ROOT_BIAS),
     ));
-    let pull = (TIP_PULL * l).min(0.5 * chord_a.min(chord_b));
-    let back = v_sub(t, v_mul(dir, pull));
+    // O bico é agulha (os dois flancos chegam pelo eixo) enquanto a corda do flanco não se afasta
+    // do eixo; num rabo curto e largo a agulha dobraria o flanco num gancho junto ao bico, então
+    // a chegada cede para a corda e o bico abre em V (F12 A2, doc 19 §5).
+    // A medida é o cosseno eixo↔corda vezes a esbelteza `l / corda`: a agulha dobra o flanco pelo
+    // ângulo, num troço do tamanho do eixo.
+    let open = |chord: f64, from: Uv| {
+        let c = if l > 1e-12 && chord > 1e-12 {
+            (axis.0 * (t.0 - from.0) + axis.1 * (t.1 - from.1)) / (chord * chord)
+        } else {
+            1.0
+        };
+        let beta = ((NEEDLE_COS - c) / (NEEDLE_COS - V_COS)).clamp(0.0, 1.0);
+        let d = v_norm(v_add(
+            v_mul(dir, 1.0 - beta),
+            v_mul(v_norm(v_sub(t, from)), beta),
+        ));
+        (d, beta)
+    };
+    let pull = |beta: f64, chord: f64| {
+        (TIP_PULL * (l + (chord - l) * beta)).min(0.5 * chord_a.min(chord_b))
+    };
+    // A alça da raiz nunca passa de metade da altura do bico sobre ela, medida para FORA do corpo
+    // (`+u`, o rabo é autorado à direita): um rabo de lado (o raio enorme come a aresta e a base
+    // não segue o bico) punha-a fora da caixa, e o flanco cruzava o outro.
+    let root = |r: Uv, from: Uv, chord: f64| {
+        let k = (ROOT_LEN * l).min(0.5 * chord);
+        let rise = t.0 - from.0;
+        let k = if r.0 > 1e-12 && rise > 0.0 { k.min(0.5 * rise / r.0) } else { k };
+        v_add(from, v_mul(r, k))
+    };
+    let (oa, ob) = (open(chord_a, pa), open(chord_b, pb));
     (
-        v_add(pa, v_mul(ra, (ROOT_LEN * l).min(0.5 * chord_a))),
+        root(ra, pa, chord_a),
         Uvv {
             a: t,
-            i: back,
-            o: back,
+            i: v_sub(t, v_mul(oa.0, pull(oa.1, chord_a))),
+            o: v_sub(t, v_mul(ob.0, pull(ob.1, chord_b))),
             cusp: true,
         },
-        v_add(pb, v_mul(rb, (ROOT_LEN * l).min(0.5 * chord_b))),
+        root(rb, pb, chord_b),
     )
 }
+
+/// A medida do [`tail_flanks`] até onde o bico é agulha, e a partir de onde ele chega pela corda
+/// (o balão por omissão mede `0,82`).
+const NEEDLE_COS: f64 = 0.7;
+const V_COS: f64 = 0.1;

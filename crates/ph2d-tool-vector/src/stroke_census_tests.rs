@@ -33,25 +33,32 @@ pub(crate) struct Probe {
 /// A largura do traço do censo (mundo): 7,5 % da caixa, a das fotos.
 pub(crate) const WIDTH: f64 = 0.3;
 
-fn hooked(seg: &PathSeg, at_end: bool) -> bool {
+/// A ponta vira mais de 30° na menor distância entre meia largura do traço e um OITAVO do próprio
+/// troço: a alça torta concentra a viragem numa lasca do troço (a foto 1); uma curva menor que a
+/// caneta (o cantinho, o furo, a bolha) espalha-a pelo troço inteiro e não é gancho (F12 A2).
+fn hooked(seg: &PathSeg, at_end: bool, width: f64) -> bool {
     let (Some(t), o) = (
         tangent_end(*seg, at_end),
         if at_end { seg.end() } else { seg.start() },
     ) else {
         return false;
     };
-    let mut prev = o;
+    let reach = (0.5 * width).min(arc_len(seg) / 8.0);
     for i in 1..=256 {
         let u = i as f64 / 256.0;
         let q = seg.eval(if at_end { 1.0 - u } else { u });
         let d = if at_end { o - q } else { q - o };
-        if d.hypot() >= 0.5 * WIDTH {
+        if d.hypot() >= reach {
             return t.dot(d / d.hypot()) < 30f64.to_radians().cos();
         }
-        prev = q;
     }
-    let _ = prev;
     false
+}
+
+fn arc_len(s: &PathSeg) -> f64 {
+    (1..=64)
+        .map(|i| (s.eval(i as f64 / 64.0) - s.eval((i - 1) as f64 / 64.0)).hypot())
+        .sum()
 }
 
 fn tangent_end(seg: PathSeg, at_end: bool) -> Option<Vec2> {
@@ -104,8 +111,13 @@ fn seg_len(s: &PathSeg) -> f64 {
     })
 }
 
-/// O censo de uma geometria.
+/// O censo de uma geometria, com a caneta do censo.
 pub(crate) fn probe(p: &BezPath, miter_limit: f64) -> Probe {
+    probe_w(p, miter_limit, WIDTH)
+}
+
+/// O censo com a caneta `width` (a caixa achatada mede-a no lado CURTO: 7,5 % da FORMA).
+fn probe_w(p: &BezPath, miter_limit: f64, width: f64) -> Probe {
     let mut r = Probe::default();
     // A volta a partir da qual o bico passa do limite: 1/cos(φ/2) > L.
     let phi_limit = 2.0 * (1.0 / miter_limit).acos();
@@ -126,7 +138,7 @@ pub(crate) fn probe(p: &BezPath, miter_limit: f64) -> Probe {
                 continue;
             }
             r.joins += 1;
-            if hooked(&a, true) || hooked(&b, false) {
+            if hooked(&a, true, width) || hooked(&b, false, width) {
                 r.hooks += 1;
             }
             if phi > phi_limit {
@@ -234,7 +246,8 @@ pub(crate) fn census(miter_limit: f64) -> Vec<Row> {
         let probes = (0..SAMPLES)
             .map(|s| {
                 let aspect = 0.25 * 16f64.powf(s as f64 / (SAMPLES - 1) as f64);
-                (aspect, probe(&path_of(d.kind, &base, aspect), miter_limit))
+                let pen = WIDTH * aspect.min(1.0);
+                (aspect, probe_w(&path_of(d.kind, &base, aspect), miter_limit, pen))
             })
             .collect();
         rows.push(Row {
@@ -337,12 +350,12 @@ fn print_the_pair_census() {
         let e = seen.entry(name.clone()).or_default();
         if p.local_loops > 0 {
             e.0 += 1;
-            if e.3.len() < 80 {
-                e.3 += &format!("({x:.2},{y:.2}) ");
-            }
         }
         if p.inner_cusps > 0 || p.hooks > 0 {
             e.1 += 1;
+        }
+        if (p.local_loops > 0 || p.inner_cusps > 0 || p.hooks > 0) && e.3.len() < 80 {
+            e.3 += &format!("({x:.2},{y:.2}) ");
         }
         if p.reversals > 0 {
             e.2 += 1;
@@ -355,28 +368,138 @@ fn print_the_pair_census() {
     }
 }
 
+/// O detalhe de uma geometria: cada junta com gancho, volta ou bico, e cada laço local.
+fn detail(p: &BezPath) -> Vec<String> {
+    let mut out = Vec::new();
+    let short = |s: &PathSeg| match s {
+        PathSeg::Line(l) => format!("L{:.3},{:.3}→{:.3},{:.3}", l.p0.x, l.p0.y, l.p1.x, l.p1.y),
+        PathSeg::Quad(q) => format!("Q{:.3},{:.3}→{:.3},{:.3}", q.p0.x, q.p0.y, q.p2.x, q.p2.y),
+        PathSeg::Cubic(c) => format!(
+            "C{:.3},{:.3} h{:.3},{:.3} h{:.3},{:.3} →{:.3},{:.3}",
+            c.p0.x, c.p0.y, c.p1.x, c.p1.y, c.p2.x, c.p2.y, c.p3.x, c.p3.y
+        ),
+    };
+    for (sp, (segs, closed)) in subpaths(p).into_iter().enumerate() {
+        let raw = segs.len();
+        let segs: Vec<PathSeg> = segs.into_iter().filter(|s| seg_len(s) > 1e-9).collect();
+        let n = segs.len();
+        if n < raw {
+            out.push(format!("  sub{sp}: {} troços de comprimento zero", raw - n));
+        }
+        let joins = if closed { n } else { n.saturating_sub(1) };
+        for k in 0..joins {
+            let (a, b) = (segs[k], segs[(k + 1) % n]);
+            let (Some(t1), Some(t2)) = (tangent_end(a, true), tangent_end(b, false)) else {
+                continue;
+            };
+            let phi = t1.dot(t2).clamp(-1.0, 1.0).acos().to_degrees();
+            let (ha, hb) = (hooked(&a, true, WIDTH), hooked(&b, false, WIDTH));
+            if ha || hb || phi > 179.0 {
+                let e = a.end();
+                out.push(format!(
+                    "  sub{sp} j{k} @({:.3},{:.3}) volta={phi:.1}° gancho={}{}\n     a={}\n     b={}",
+                    e.x,
+                    e.y,
+                    if ha { "a" } else { "" },
+                    if hb { "b" } else { "" },
+                    short(&a),
+                    short(&b)
+                ));
+            }
+        }
+    }
+    let pr = probe(p, ph2d_vec_scene::MITER_LIMIT);
+    if pr.local_loops > 0 {
+        out.push(format!("  laços locais = {}", pr.local_loops));
+        for (segs, closed) in subpaths(p) {
+            let segs: Vec<PathSeg> = segs.into_iter().filter(|s| seg_len(s) > 1e-9).collect();
+            let poly: Vec<(usize, Point)> = segs
+                .iter()
+                .enumerate()
+                .flat_map(|(k, s)| (0..16).map(move |i| (k, s.eval(i as f64 / 16.0))))
+                .collect();
+            let m = poly.len();
+            let mut pairs = std::collections::BTreeSet::new();
+            for i in 0..m {
+                for j in i + 2..(i + 24).min(m) {
+                    if closed && (j + 1) % m == i {
+                        continue;
+                    }
+                    if cross(poly[i].1, poly[(i + 1) % m].1, poly[j].1, poly[(j + 1) % m].1) {
+                        pairs.insert((poly[i].0, poly[j].0));
+                    }
+                }
+            }
+            for (a, b) in pairs.iter().take(4) {
+                out.push(format!("   cruza troço {a} × {b}\n     {}", short(&segs[*a])));
+            }
+        }
+    }
+    out
+}
+
+/// Sonda: o detalhe junta a junta dos casos da cauda (A2). `PH2D_CENSO_CASOS` filtra pelo nome.
+#[test]
+#[ignore = "sonda: imprime o detalhe dos casos da cauda (F12 A2)"]
+fn print_the_tail_detail() {
+    let only = std::env::var("PH2D_CENSO_CASOS").unwrap_or_default();
+    let cases: &[(&str, &[(&str, f64)], f64)] = &[
+        ("Oval say", &[("Tip y", 0.3), ("Wedge", 40.7)], 1.0),
+        ("Oval say", &[("Wedge", 36.4), ("Room", 0.16)], 1.0),
+        ("Speech", &[("Base", 0.6), ("Room", 0.05)], 1.0),
+        ("Speech", &[("Radius", 300.0), ("Room", 0.05)], 1.0),
+        ("Spiral", &[("Turns", 1.0), ("Expansion", 7.02)], 1.0),
+        ("Star", &[("Curve", -0.4), ("Smooth", 0.3)], 1.0),
+        ("Star", &[("Notch round", 50.0), ("Curve", -0.4)], 1.0),
+        ("Star", &[("Smooth", 0.1), ("Twist", 90.0)], 1.0),
+    ];
+    for (shape, sets, aspect) in cases {
+        let name = format!("{shape} {sets:?} aspect={aspect}");
+        if !only.is_empty() && !name.contains(&only) {
+            continue;
+        }
+        let d = SHAPES.iter().find(|d| d.label == *shape).expect(shape);
+        let mut v = d.kind.defaults();
+        for (field, x) in *sets {
+            let i = d.fields.iter().position(|f| f.label == *field).expect(field);
+            v[i] = if d.fields[i].unit == FieldUnit::Px { x * PX } else { *x };
+        }
+        println!("── {name}");
+        for l in detail(&path_of(d.kind, &v, *aspect)) {
+            println!("{l}");
+        }
+    }
+}
+
 fn pen() -> ph2d_vector::Stroke {
     ph2d_vector::Stroke::new(WIDTH)
         .with_join(ph2d_vector::Join::Miter)
         .with_miter_limit(ph2d_vec_scene::MITER_LIMIT)
 }
 
-/// ⭐ (b) **Nenhum laço em forma nenhuma**, campo a campo e na proporção da caixa; e o polígono e a
-/// estrela sem gancho (as fotos 1–3 do dono). A cauda de ganchos noutras formas: doc 19 §5.
+/// Onde a viragem é a de uma ELIPSE e não de uma alça (doc 19 §5): a lua mais fina que a caneta
+/// (a borda de dentro tem semi-eixo `< ½ caneta`) e as bolhas da nuvem e do pensamento, autoradas
+/// como círculos na caixa quadrada, numa caixa achatada além de ~1:2,9.
+fn the_ellipse_turns_not_a_handle(shape: &str, field: &str, x: f64) -> bool {
+    (shape == "Moon" && field == "Phase" && x < 0.12)
+        || (matches!(shape, "Cloud" | "Thought") && field == "aspect" && x < 0.35)
+}
+
+/// ⭐ (b) **Nenhum laço nem gancho em forma nenhuma**: campo a campo, na proporção da caixa e nos
+/// PARES de campos (as fotos 1–3 do dono e a cauda da F12 A2: a estrela lisa, a torção, o recorte
+/// redondo com *Curve*, a engrenagem, os rabos dos balões, a seta dupla sem haste).
 #[test]
-fn no_cooked_shape_loops_and_the_polystar_has_no_hook() {
+fn no_cooked_shape_loops_or_hooks() {
     for r in census(ph2d_vec_scene::MITER_LIMIT) {
         for (x, p) in &r.probes {
             assert_eq!(p.local_loops, 0, "{} {} = {x}: laço", r.shape, r.field);
-            if matches!(r.shape, "Poly" | "Star") {
+            if !the_ellipse_turns_not_a_handle(r.shape, &r.field, *x) {
                 assert_eq!(p.hooks, 0, "{} {} = {x}: gancho", r.shape, r.field);
             }
         }
     }
     for (name, x, y, p) in census_pairs(ph2d_vec_scene::MITER_LIMIT, 10) {
-        if name.starts_with("Poly ") {
-            assert!(p.local_loops + p.hooks == 0, "{name} ({x}, {y}): {p:?}");
-        }
+        assert!(p.local_loops + p.hooks == 0, "{name} ({x}, {y}): {p:?}");
     }
 }
 

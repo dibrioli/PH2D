@@ -144,6 +144,8 @@ pub use corner_style::CornerStyle;
 /// canto; divergência e raio interno) — irmão de `shapes`, que continua a ser o neutro.
 mod polystar;
 pub use polystar::{PolyStar, polystar, round_rect_styled, spiral_ex};
+/// **O contorno que não se cruza** — a forma pára no último desenho sem laço (F12 A2).
+mod untangle;
 
 /// **Comprimento de arco de uma cúbica, e o inverso dele** — o motor que a pilha de efeitos
 /// (ADR-0132) precisa. Mora na crate-folha [`ph2d_arclen`] (zero dependências) e é re-exportado

@@ -130,3 +130,96 @@ fn o_desenho_devolve_a_luz_como_a_imagem() {
     }
     assert!(falhas.is_empty(), "{}", falhas.join(" · "));
 }
+
+/// O anel da camada dos OUTROS contra o da imagem — MEDIDO + 10 % (RTX 5060 Ti, 40 quadros): o pior
+/// canal −0,27 % nos dois discos; a camada lida como NÃO premultiplicada (a mutação M12 da W5e) −0,39 %
+/// (a cor das bordas antisserrilhadas); sem reflexo −8,6 % e −14,2 %.
+const TOL_REBOTE_OUTROS: f64 = 0.003;
+
+/// ⭐ **G7 do rebote para os OUTROS** (W5e): o traço do Flip e as formas do Motion devolvem a luz pela
+/// cor que a família desenha na camada (premultiplicada). Na cena 7, com a família de discos de ÁREA
+/// EXATA coloridos, o anel logo fora de cada disco contra o da imagem gêmea, por canal. Controlo: o
+/// mesmo objeto com «não recebe luz».
+#[test]
+fn os_outros_devolvem_a_luz_como_a_imagem() {
+    use crate::o_traco_do_flip::DiscosExatos;
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let medir = |reflete: bool| {
+        let mut w = World::new();
+        assert!(smoke::encenar(&mut w, 7));
+        let e = w
+            .spawn((Transform::IDENTITY, BloqueiaLuz { opacidade: 1.0 }))
+            .id();
+        if !reflete {
+            w.entity_mut(e).insert(NaoRecebeLuz);
+        }
+        let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
+        assert_eq!(cena.outros.len(), 1);
+        assert_eq!(cena.outros[0].reflete, reflete);
+        let mut exatos = DiscosExatos {
+            entidade: e.to_bits(),
+            discos: smoke::DISCOS_DE_TINTA
+                .iter()
+                .map(|d| (d.centro, d.raio, d.cor))
+                .collect(),
+        };
+        let mut r = crate::comum::renderer(&gpu);
+        let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)
+            .into_iter()
+            .flat_map(|p| p.0)
+            .collect();
+        let disco = r
+            .acquire_individual(DISC_TILE_PX, DISC_TILE_PX, &disco)
+            .expect("textura do disco");
+        let mut present = PresentWorld::new();
+        let mut q = w.query_filtered::<(bevy_ecs::entity::Entity, &Sprite, &GlobalTransform), bevy_ecs::query::With<BloqueiaLuz>>();
+        for (e, s, g) in q.iter(&w) {
+            let [ax, ay, bx, by, tx, ty] = g.affine();
+            let mut i = crate::comum::quad(disco, [tx, ty]);
+            i.size = s.size;
+            i.anchor = s.anchor;
+            i.basis = [ax, ay, bx, by];
+            present.world_mut().spawn((i, SimRef(e)));
+        }
+        let afim = ph2d_render::Camera2d::default()
+            .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
+        let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+        for _ in 0..40 {
+            assert!(l.preparar(&w, afim, (1920, 1080)));
+            l.gravar_com(&gpu, &mut present, &r, &mut [&mut exatos]);
+        }
+        let f = crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"));
+        smoke::DISCOS_DE_TINTA
+            .iter()
+            .map(|d| anel(&f, d.centro, [d.raio; 2]))
+            .collect::<Vec<_>>()
+    };
+    let (com, sem) = (medir(true), medir(false));
+    let mut falhas = Vec::new();
+    for (i, d) in smoke::DISCOS_DE_TINTA.iter().enumerate() {
+        let rel = |a: [[f64; 3]; 2]| [0, 1, 2].map(|c| (a[0][c] - a[1][c]) / a[1][c]);
+        let (r_com, r_sem) = (rel(com[i]), rel(sem[i]));
+        let pior = |r: [f64; 3]| r.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+        eprintln!(
+            "G7 rebote dos outros · {}: RGB {:+.2} {:+.2} {:+.2} % · sem reflexo {:+.2} {:+.2} {:+.2} %",
+            d.nome,
+            100.0 * r_com[0],
+            100.0 * r_com[1],
+            100.0 * r_com[2],
+            100.0 * r_sem[0],
+            100.0 * r_sem[1],
+            100.0 * r_sem[2]
+        );
+        assert!(
+            pior(r_sem) > 10.0 * TOL_REBOTE_OUTROS,
+            "controlo: sem reflexo o anel do {} devia afastar-se da imagem",
+            d.nome
+        );
+        if pior(r_com) > TOL_REBOTE_OUTROS {
+            falhas.push(format!("{}: {:.4}", d.nome, pior(r_com)));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join(" · "));
+}

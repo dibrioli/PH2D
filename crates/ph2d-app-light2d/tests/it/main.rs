@@ -9,6 +9,7 @@ mod a_nitidez_da_luz;
 mod as_formas_do_motion;
 mod as_formas_redondas;
 mod captura_do_vetor;
+mod captura_dos_outros;
 mod captura_por_texel;
 mod censo_wgsl_partilhado;
 mod comum;

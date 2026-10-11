@@ -268,10 +268,18 @@ fn a_luz_recua_quando_a_placa_recusa_a_memoria() {
         eprintln!("sem VK_EXT_memory_budget (o limiar não recusa): nada a medir");
         return;
     };
+    // A 2160p nem a fina mais grossa cabe na folga do limiar mínimo (< 64 MB + um passo dele): a luz
+    // TEM de acabar apagada — e a 1080p ela pode acender com a fina engrossada.
+    for (alvo, tem_de_apagar) in [(UHD, true), (alvo, false)] {
+        recua(&apertada, &w, alvo, tem_de_apagar);
+    }
+}
+
+fn recua(apertada: &GpuContext, w: &World, alvo: (u32, u32), tem_de_apagar: bool) {
     let mut luz = LuzDoQuadro::com_degrau(degrau_do(N::Media));
     let mut recusas = Vec::new();
     for _ in 0..=degrau_do(N::Media).fina_max() + 1 {
-        assert_eq!(quadro(&apertada, &mut luz, &w, alvo), None);
+        assert_eq!(quadro(apertada, &mut luz, w, alvo), None);
         if let Some(ErroSolver::SemMemoria { bytes }) = luz.erro()
             && recusas.last() != Some(bytes)
         {
@@ -286,6 +294,15 @@ fn a_luz_recua_quando_a_placa_recusa_a_memoria() {
         recusas.windows(2).all(|p| p[1] < p[0]),
         "cada nova tentativa pede menos: {recusas:?}"
     );
+    // O RECUO: depois da 1.ª recusa a luz tenta uma fina mais grossa (outra recusa, menor) ou acende.
+    assert!(
+        recusas.len() >= 2 || luz.acesa(),
+        "a luz não recuou depois da recusa: {recusas:?}"
+    );
+    assert!(
+        !(tem_de_apagar && luz.acesa()),
+        "{alvo:?}: acendeu onde nada cabia"
+    );
     if luz.acesa() {
         assert!(luz.fina_engrossada().0 >= 1, "acendeu sem engrossar");
     } else {
@@ -294,6 +311,16 @@ fn a_luz_recua_quando_a_placa_recusa_a_memoria() {
                 .iter()
                 .any(|a| matches!(a, AvisoDaLuz::SemMemoria { .. })),
             "apagada sem o aviso"
+        );
+        // Nada cabe abaixo da recusa: os quadros seguintes NÃO voltam a alocar a grade.
+        let montagens = luz.montagens();
+        for _ in 0..3 {
+            assert_eq!(quadro(apertada, &mut luz, w, alvo), None);
+        }
+        assert_eq!(
+            luz.montagens(),
+            montagens,
+            "a luz apagada continua a montar o solver a cada quadro"
         );
     }
 }

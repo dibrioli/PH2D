@@ -88,6 +88,8 @@ pub struct LuzDoQuadro {
     governador: Governador,
     /// O último custo de placa lido (ms, o solver inteiro; da grade atual) e quantas leituras.
     custo_ms: Option<f64>,
+    /// ⭐ W5e: quantas vezes um solver da vista foi MONTADO (cada uma aloca a grade inteira).
+    montagens: u32,
     leituras: u32,
 }
 
@@ -136,6 +138,7 @@ impl LuzDoQuadro {
             preferencia: None,
             governador: Governador::novo(NivelDaLuz::Baixa),
             custo_ms: None,
+            montagens: 0,
             leituras: 0,
         }
     }
@@ -302,6 +305,13 @@ impl LuzDoQuadro {
         (k, pelos_tetos)
     }
 
+    /// ⭐ W5e: quantas vezes o solver da vista foi montado (alocado) — uma grade nova, um nível novo ou
+    /// uma recusa que se tenta de novo; nada cabendo abaixo da recusa, o quadro não monta.
+    #[must_use]
+    pub fn montagens(&self) -> u32 {
+        self.montagens
+    }
+
     /// O último custo de placa da grade atual (ms), com ou sem o «Automático»; `None` antes da 1.ª
     /// leitura dela ou sem `TIMESTAMP_QUERY` (aí o automático fica no teto).
     #[must_use]
@@ -423,6 +433,7 @@ impl LuzDoQuadro {
                 rebotes_por_quadro: self.degrau.rebotes_por_quadro,
                 ..Config::padrao_para(&gpu.device, g)
             };
+            self.montagens += 1;
             Solver::novo_com(gpu, cfg, &self.fabrica).map(|solver| {
                 let vista = solver
                     .fluencia()

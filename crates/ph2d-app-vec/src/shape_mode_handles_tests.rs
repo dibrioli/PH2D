@@ -229,7 +229,11 @@ fn where_a_shape_handle_meets_a_box_handle_the_shape_handle_wins() {
             .flat_map(|&x| [-1.0, 0.0, 1.0].map(|y| [at[0] + x * half, at[1] + y * half]))
             .filter(|p| *p != at);
         for b in caixa {
-            if !v.points.iter().any(|p| (p[0] - b[0]).hypot(p[1] - b[1]) <= r) {
+            if !v
+                .points
+                .iter()
+                .any(|p| (p[0] - b[0]).hypot(p[1] - b[1]) <= r)
+            {
                 continue;
             }
             hits += 1;
@@ -240,5 +244,37 @@ fn where_a_shape_handle_meets_a_box_handle_the_shape_handle_wins() {
             assert!(m.vec.shape_handles.release());
         }
     }
-    assert!(hits > 0, "controlo: nenhuma alça de forma caiu sobre uma da caixa");
+    assert!(
+        hits > 0,
+        "controlo: nenhuma alça de forma caiu sobre uma da caixa"
+    );
+}
+
+/// ⭐ **Com as alças à vista, os NÓS da forma somem** (a foto da cena 16: as âncoras laranja e as
+/// alças bézier azuis tapavam as verdes). Só no modo Forma com a forma viva como alvo: no Select,
+/// armado no catálogo, ou sem forma viva, a pergunta responde `false` e o overlay de nós é o de
+/// sempre.
+#[test]
+fn the_nodes_hide_only_while_the_shape_handles_show() {
+    let mut m = mesa();
+    m.draw(ShapeKind::Star, [0.0, 0.0], 1.0);
+    assert!(
+        hides_the_nodes(&m.vec, &m.sim),
+        "modo Forma, a estrela viva: sem nós"
+    );
+    m.vec.draw_config.mode = DrawMode::Select;
+    assert!(
+        !hides_the_nodes(&m.vec, &m.sim),
+        "no Select a pergunta nem se põe"
+    );
+    m.vec.draw_config.mode = DrawMode::Shape;
+    m.catalog(ShapeKind::Polygon);
+    m.frame();
+    assert!(
+        !hides_the_nodes(&m.vec, &m.sim),
+        "armado no catálogo: sem alças, nós de sempre"
+    );
+    m.vec.pen.select_many(&[]);
+    m.frame();
+    assert!(!hides_the_nodes(&m.vec, &m.sim), "nada seleccionado");
 }

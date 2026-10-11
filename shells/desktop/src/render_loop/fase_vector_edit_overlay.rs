@@ -36,7 +36,9 @@ impl crate::App {
                 .gizmo
                 .selection
                 .is_some_and(|bits| ph2d_app_vec::envelope_gesture::is_envelope(sim, bits));
-            if !envelope_selected {
+            if !envelope_selected
+                && !ph2d_app_vec::shape_handles_live::hides_the_nodes(&self.vec, sim)
+            {
                 ph2d_vec_render::draw_overlays(
                     vec_scene,
                     &vec_view,

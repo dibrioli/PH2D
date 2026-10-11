@@ -53,6 +53,15 @@ impl Gate {
     }
 }
 
+/// `true` = a forma seleccionada mostra as alças dela (modo Forma, forma viva com alças): os NÓS
+/// dela não se desenham — são derivados dos campos e nada no modo Forma os arrasta (o idioma do
+/// envelope, e das ferramentas de forma do Affinity). Medido na foto da cena 16 (F10): as âncoras
+/// laranja e as alças bézier azuis tapavam as alças verdes.
+#[must_use]
+pub fn hides_the_nodes(vec: &crate::state::VecState, sim: &SimWorld) -> bool {
+    Target::of(sim, &vec.entities, vec.pen.selected_paths(), Gate::of(vec)).is_some()
+}
+
 /// A forma paramétrica das alças e o que é preciso para a cozinhar e a pôr no mundo.
 struct Target {
     id: VecPathId,
@@ -324,8 +333,14 @@ impl ShapeHandleInput {
     /// MESMA alça dentro da janela do duplo-clique, repõe-a. `true` = consumido (o clique não segue
     /// para a caixa nem para o pick).
     pub fn press(&mut self, world: World<'_>, w: [f64; 2], px_to_world: f64, now_ns: u128) -> bool {
-        let Some(g) = press(world.sim, world.map, world.selection, world.gate, w, px_to_world)
-        else {
+        let Some(g) = press(
+            world.sim,
+            world.map,
+            world.selection,
+            world.gate,
+            w,
+            px_to_world,
+        ) else {
             self.last = None;
             return false;
         };
@@ -396,7 +411,15 @@ pub fn draw(
     let grabbed = vec.shape_handles.grab.map(|g| g.handle());
     let selection = vec.pen.selected_paths();
     let gate = Gate::of(vec);
-    if let Some(v) = view(sim, &vec.entities, selection, gate, px_to_world, grabbed, hover) {
+    if let Some(v) = view(
+        sim,
+        &vec.entities,
+        selection,
+        gate,
+        px_to_world,
+        grabbed,
+        hover,
+    ) {
         ph2d_vec_render::draw_shape_handles(&v.points, v.hot, &v.track, camera, theme, target);
     }
 }

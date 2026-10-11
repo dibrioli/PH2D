@@ -62,6 +62,11 @@ mod live;
 #[path = "smoke_fac_live.rs"]
 mod fac_live;
 
+/// O fotógrafo das cenas ao vivo (testes de fotos).
+#[cfg(test)]
+#[path = "smoke_shots_tests.rs"]
+pub(crate) mod shots;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",

@@ -223,6 +223,13 @@ pub fn vote_open(hero: &HeroScreen) -> bool {
         .is_some_and(|b| hero.documents.live.fac.panels.contains_key(&b.id))
 }
 
+/// Há alguma coisa na coluna da facilitação do quadro activo (o cronómetro, a votação, o modo
+/// privado)? Quem se põe ao lado dela pergunta AQUI — um painel novo não fica por baixo de outro.
+#[must_use]
+pub fn column_open(hero: &HeroScreen) -> bool {
+    timer_open(hero) || vote_open(hero) || private_open(hero)
+}
+
 /// Há uma votação aberta no quadro activo?
 #[must_use]
 pub fn vote_in_session(hero: &HeroScreen) -> bool {

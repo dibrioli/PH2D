@@ -43,6 +43,8 @@ pub(crate) struct Fac {
     pub(crate) live_sent: BTreeMap<BoardId, (BTreeMap<ElementId, u32>, bool)>,
     /// W12 — o painel do modo privado aberto em cada quadro, com as opções de ligar.
     pub(crate) private: BTreeMap<BoardId, PrivateSetup>,
+    /// W12 — os quadros com o modo privado ligado (a virada abre o painel a todos, como o Miro).
+    pub(crate) private_on: BTreeSet<BoardId>,
 }
 
 /// W12 — as opções de ligar o modo privado (as do diálogo do Miro).
@@ -64,6 +66,7 @@ impl Fac {
         self.live_done.remove(&id);
         self.live_sent.remove(&id);
         self.private.remove(&id);
+        self.private_on.remove(&id);
         let in_editor = self.in_editor == Some(id);
         if in_editor {
             self.in_editor = None;

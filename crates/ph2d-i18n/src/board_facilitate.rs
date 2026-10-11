@@ -47,6 +47,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.no_clock" => "Off",
         "board.vote.start" => "Start voting",
         "board.vote.left" => "{n} votes left",
+        "board.vote.left_one" => "1 vote left",
         "board.vote.voted" => "{n} voted",
         "board.vote.done" => "I'm done",
         "board.vote.done_tip" => "I'm done — hand the screen to the next person",

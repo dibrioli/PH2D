@@ -22,6 +22,8 @@ use ph2d_editor_core::screens::hero::{board_nav, document_tabs};
 pub(crate) struct Lessons {
     pub board: BoardId,
     pub ideas: [ElementId; 4],
+    /// O frame das ideias (seleccioná-lo vota só nelas).
+    pub ideas_frame: ElementId,
     /// O frame vazio onde se escreve em privado.
     pub private: ElementId,
     pub lessons: [ElementId; 6],
@@ -81,6 +83,7 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         Lessons {
             board: b.id,
             ideas,
+            ideas_frame,
             private,
             lessons,
         },

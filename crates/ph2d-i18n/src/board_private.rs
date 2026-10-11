@@ -22,9 +22,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.private.title" => "Private mode",
         "board.private.needs_live" => "Private mode works in a live session.",
         "board.private.needs_live_how" => "Open Live (bottom right), then come back here.",
-        "board.private.explain" => "Text on sticky notes is hidden from others",
+        "board.private.explain" => "Others can't read new notes",
         "board.private.explain_2" => "until private mode is turned off.",
-        "board.private.anonymous" => "Make names anonymous",
+        "board.private.anonymous" => "Anonymous names",
         "board.private.anonymous_tip" => {
             "Hide everyone's name and colour on cursors while private mode is on"
         }
@@ -34,7 +34,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.private.started_by" => "{name} turned on private mode",
         "board.private.started_by_you" => "You turned on private mode",
         "board.private.hidden_count" => "Hidden notes: {n}",
-        "board.private.anyone_reveal" => "Anyone can reveal their stickies",
+        "board.private.anyone_reveal" => "Let each reveal theirs",
         "board.private.anyone_reveal_tip" => {
             "Let each person reveal their own notes before the end"
         }
@@ -75,7 +75,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ── a votação ao vivo (o painel da votação) ──
         "board.livevote.done_count" => "{done} of {people} done",
         "board.livevote.done_tip" => "I'm done — let the others know (you can still change votes)",
-        "board.livevote.waiting" => "Done — waiting for the vote to end",
+        "board.livevote.waiting" => "Done — waiting for the end",
         "board.livevote.person" => "{name}: {n} votes",
         "board.livevote.person_done" => "{name}: {n} votes · done",
         _ => return None,

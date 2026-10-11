@@ -23,8 +23,7 @@ fn btn() -> f32 {
 pub(super) fn column(hero: &HeroScreen, area: Rect) -> (f32, f32, f32) {
     let nav = &hero.documents.live.nav;
     let (x, y, w) = super::super::facilitate::column(area, nav.frames_open, nav.search_open);
-    let fac =
-        super::super::facilitate::timer_open(hero) || super::super::facilitate::vote_open(hero);
+    let fac = super::super::facilitate::column_open(hero);
     let w2 = btn() * 10.0; // LITERAL-PX-OK: a largura do cartão do fio, em botões
     if fac {
         (x - w2 - Spacing::Md.px(), y, w2)

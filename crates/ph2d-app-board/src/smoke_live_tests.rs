@@ -255,59 +255,7 @@ fn the_live_scene_hosts_and_a_second_window_joins_by_its_code() {
 #[test]
 #[ignore = "fotografias: correm-se à mão com a placa"]
 fn fotos_dos_estados_da_cena_12() {
-    use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
-    use ph2d_editor_core::zones::Rect;
-    use ph2d_text::TextSystem;
-    use ph2d_vector::VectorScene;
-
-    /// Uma janela: o ecrã, o texto e a placa dela.
-    struct Shots {
-        gpu: ph2d_gpu::GpuContext,
-        pass: ph2d_render::VelloPass,
-        ts: TextSystem,
-        dir: std::path::PathBuf,
-    }
-    impl Shots {
-        fn new() -> Self {
-            ph2d_editor_core::test_support::ensure_panel_registry();
-            let gpu =
-                ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).unwrap();
-            let size = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
-            let pass = ph2d_render::VelloPass::new(&gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, size)
-                .unwrap();
-            let dir = std::env::temp_dir().join("ph2d_w11_fotos");
-            std::fs::create_dir_all(&dir).unwrap();
-            Self {
-                gpu,
-                pass,
-                ts: TextSystem::without_system_fonts(),
-                dir,
-            }
-        }
-        fn paint(&mut self, h: &mut HeroScreen) -> VectorScene {
-            let mut scene = VectorScene::new();
-            let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
-            paint_hero_screen(h, vp, &mut scene, &mut self.ts);
-            scene
-        }
-        fn shot(&mut self, h: &mut HeroScreen, name: &str) {
-            self.paint(h);
-            let scene = self.paint(h);
-            let size = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
-            let px = self
-                .pass
-                .render_and_readback(&self.gpu, scene.inner(), size)
-                .unwrap();
-            let img = ph2d_board_export::png::Image {
-                width: size.0,
-                height: size.1,
-                rgba: px,
-            };
-            let path = self.dir.join(format!("{name}.png"));
-            std::fs::write(&path, ph2d_board_export::png::encode(&img)).unwrap();
-            println!("foto: {}", path.display());
-        }
-    }
+    use crate::smoke::shots::Shots;
 
     reset_for_tests();
     let ufw = Probe {
@@ -316,7 +264,7 @@ fn fotos_dos_estados_da_cena_12() {
         ..Probe::default()
     };
     fake_firewall_for_tests(ufw, vec!["192.168.15.0/24".parse().unwrap()]);
-    let mut cam = Shots::new();
+    let mut cam = Shots::new("ph2d_w11_fotos");
     let mut ana = hero("Ana");
     scene_live(&mut ana);
     ana.documents.live_view_mut().my_cursor = Some([120.0, 160.0]);
@@ -334,7 +282,7 @@ fn fotos_dos_estados_da_cena_12() {
     let (to_bia, from_ana) = mpsc::channel::<()>();
     let bia = std::thread::spawn(move || {
         reset_for_tests();
-        let mut cam = Shots::new();
+        let mut cam = Shots::new("ph2d_w11_fotos");
         let mut g = hero("Bia");
         super::super::scene_two_boards(&mut g);
         live_board::toggle(&mut g);

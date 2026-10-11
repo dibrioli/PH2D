@@ -529,7 +529,11 @@ fn paint_vote(
             add1,
             people,
         } => {
-            let left_text = tr_with("board.vote.left", &[("n", left)]);
+            let left_text = if *left == 1 {
+                tr("board.vote.left_one").to_owned()
+            } else {
+                tr_with("board.vote.left", &[("n", left)])
+            };
             paint_text(
                 ts,
                 scene,
@@ -565,7 +569,8 @@ fn paint_vote(
             if both.is_empty() {
                 // Ao vivo, depois de «I'm done» e sem poder acabar: espera-se pelo fim.
                 let wait = tr("board.livevote.waiting");
-                paint_text(ts, scene, wait, x0, label_y(3), TypeToken::Sm.px(), f32::INFINITY, text2);
+                let w = r.w - 2.0 * pad;
+                paint_text_elided(ts, scene, wait, x0, label_y(3), TypeToken::Sm.px(), w, text2);
             }
             for (k, (b, key, on)) in both.iter().enumerate() {
                 list.push((*b, wide(3, k, both.len()), Face::Text(tr(key).into()), *on));

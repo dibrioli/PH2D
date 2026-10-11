@@ -67,6 +67,15 @@ pub(super) fn follow(hero: &mut HeroScreen) {
     live.render_cache.unread = fac.hidden_to_me;
     live.render_cache.mine_private = fac.mine_hidden;
     let (f, id) = (&mut live.fac, board.id);
+    // O modo ligou: o painel abre a todos (Miro PM: «the Private mode dialog will open»).
+    if fac.private.is_some() {
+        if f.private_on.insert(id) {
+            f.private.entry(id).or_default();
+        }
+    } else if f.private_on.remove(&id) {
+        // E fecha-se na virada de volta (as notas já estão à vista; o aviso diz que se revelaram).
+        f.private.remove(&id);
+    }
     match &fac.vote {
         Some(v) if !v.ended => {
             // Uma votação nova da sala: o painel abre a todos (o Miro avisa todos ao começar).

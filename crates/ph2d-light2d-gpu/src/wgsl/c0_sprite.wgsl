@@ -23,7 +23,8 @@ struct FormaSprite {
     // ⭐ W5c: a textura guarda a cor em sRGB (a camada do vetor, `Rgba8Unorm`): o albedo linear sai
     // pela curva; a de um sprite (`Rgba8UnormSrgb`) já chega linear.
     srgb: f32,
-    _p1: f32,
+    // ⭐ W5d: o alfa já é ÁREA (lida exata, a camada do vetor): a cobertura é a média dele.
+    alfa_e_area: f32,
     // ⭐ W5c: o multiplicador da cor do texel no albedo do rebote (zero = não reflete).
     albedo: vec4<f32>,
 }
@@ -34,6 +35,13 @@ struct FormaSprite {
 @group(1) @binding(1) var amostra: sampler;
 
 const SUB: u32 = 8u;
+// ⭐ W5d — a COBERTURA é a fração das subamostras com alfa ≥ ½ (a área da forma alfa ≥ ½), não a média
+// do alfa: a borda exata da C3 (`c3_borda.wgsl`) lê a cobertura como ÁREA, e a média do alfa de uma
+// textura de borda macia (a rampa do disco do atlas, ampliada) não é área de nada — a borda saía em
+// zigue-zague (o disco de imagem: o excesso de variação +2 → +47). A borda «dentro» (cobertura ≥ ½)
+// fica onde estava; a cor continua ponderada pelo alfa. A camada do vetor (lida exata, um píxel por
+// texel) já traz a ÁREA no alfa: nela, o limiar faria da cobertura 0 ou 1 (a escada dos texels).
+override COBERTURA_PELO_MEIO: bool = false;
 
 struct Saida {
     @builtin(position) pos: vec4<f32>,
@@ -54,6 +62,7 @@ fn vs(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> Saida {
 fn fs(e: Saida) -> Alvos {
     let f = sprites[e.forma];
     var soma_a = 0.0;
+    var soma_meio = 0.0;
     var soma_rgb = vec3<f32>(0.0);
     for (var j = 0u; j < SUB; j++) {
         for (var i = 0u; i < SUB; i++) {
@@ -63,11 +72,12 @@ fn fs(e: Saida) -> Alvos {
                 let c = textureSampleLevel(textura, amostra, mix(f.uv.xy, f.uv.zw, st), 0.0);
                 let reta = select(c.rgb, c.rgb / max(c.a, 1e-6), f.premultiplicada > 0.5);
                 soma_a += c.a;
+                soma_meio += select(0.0, 1.0, c.a >= 0.5);
                 soma_rgb += reta * c.a;
             }
         }
     }
-    let c = soma_a / f32(SUB * SUB);
+    let c = select(soma_a, soma_meio, COBERTURA_PELO_MEIO && f.alfa_e_area < 0.5) / f32(SUB * SUB);
     if c <= 0.0 {
         discard;
     }

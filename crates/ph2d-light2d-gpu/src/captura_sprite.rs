@@ -71,7 +71,8 @@ pub(crate) struct FormaSprite {
     pub opacidade: f32,
     pub premultiplicada: f32,
     pub srgb: f32,
-    pub _p: f32,
+    /// ⭐ W5d: o alfa da textura já é ÁREA (lida exata, a camada do vetor) — a cobertura é a média dele.
+    pub alfa_e_area: f32,
     pub albedo: [f32; 4],
 }
 
@@ -137,7 +138,10 @@ pub(crate) fn na_grade(
             opacidade: s.opacidade,
             premultiplicada: if s.premultiplicada { 1.0 } else { 0.0 },
             srgb: if s.cor_em_srgb { 1.0 } else { 0.0 },
-            _p: 0.0,
+            alfa_e_area: match c.texturas.get(s.textura).map(|t| t.1) {
+                Some(Amostragem::Exata) => 1.0,
+                _ => 0.0,
+            },
             albedo: [s.albedo[0], s.albedo[1], s.albedo[2], 0.0],
         });
         match lotes.last_mut() {

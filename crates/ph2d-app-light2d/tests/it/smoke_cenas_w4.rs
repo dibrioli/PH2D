@@ -287,8 +287,6 @@ fn a_cena_5_ensina_o_volume() {
     };
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 5));
-    assert!(!smoke::encenar(&mut World::new(), 6), "não há cena 6");
-    assert_eq!(smoke::ROUTERS[0].max_level, 5, "o maior nível do `match`");
     let cena = cena_de_luz(&w);
     assert_eq!(
         cena.oclusores.len(),
@@ -362,3 +360,186 @@ const PROFUNDIDADE: f64 = 0.35;
 /// A face virada para a lâmpada é pelo menos isto × a de trás — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`):
 /// o menor 18,5 × (a cruz), o maior 63 × (a elipse).
 const CONTRASTE_DAS_FACES: f64 = 10.0;
+
+/// ⭐⭐ **GATE — a cena 6 ensina as formas DESENHADAS** (W5d; o dono, 11/10: «não temos desenhos
+/// esféricos para testar»). O círculo e a elipse vetoriais entram no documento pela porta do smoke; a
+/// entidade de cada um (a que o editor cria) ganha o nome e o «bloqueia a luz»; e pelo caminho do
+/// produto (a camada vetorial da `LuzDoQuadro`) cada forma tem as FACES — a da lâmpada ≥
+/// [`CONTRASTE_DAS_FACES`] × a de trás — e a luz do interior do DESENHO bate com a da IMAGEM gêmea, no
+/// espelho em relação à lâmpada (a paridade desenho × imagem da lei do interior).
+#[test]
+fn a_cena_6_ensina_as_formas_desenhadas() {
+    use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro};
+    use ph2d_ecs::{GlobalTransform, PresentWorld, SimRef, Transform, VecPathRef};
+    use ph2d_render::{DISC_TILE_PX, Sprite, disc_tile_pixels};
+    use ph2d_vec_scene::{VecScene, VecXforms, Xform};
+    let Some(gpu) = crate::comum::gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 6));
+    assert!(!smoke::encenar(&mut World::new(), 7), "não há cena 7");
+    assert_eq!(smoke::ROUTERS[0].max_level, 6, "o maior nível do `match`");
+    let mut doc = VecScene::new();
+    assert!(
+        smoke::semear_documento(&mut doc, 5).is_empty(),
+        "só a cena 6 semeia o documento"
+    );
+    let semeadas = smoke::semear_documento(&mut doc, 6);
+    assert_eq!(semeadas.len(), smoke::REDONDAS.len());
+    let semeadas = smoke::marcar_semeadas(&mut w, &doc, semeadas);
+    assert_eq!(
+        semeadas.len(),
+        smoke::REDONDAS.len(),
+        "antes da sincronização do editor não há entidade a marcar"
+    );
+    // A sincronização do editor (`entities::sync`): a entidade de cada caminho, no lugar dele.
+    let mut xforms = VecXforms::new();
+    for (id, _) in &semeadas {
+        w.spawn((
+            Transform::IDENTITY,
+            Name::new(format!("Path {id}")),
+            VecPathRef(*id),
+        ));
+        xforms.insert(*id, Xform([1.0, 0.0, 0.0, 1.0, 0.0, 0.0]));
+    }
+    assert!(smoke::marcar_semeadas(&mut w, &doc, semeadas).is_empty());
+    let cena = cena_de_luz(&w);
+    assert_eq!(
+        cena.vetores.len(),
+        smoke::REDONDAS.len(),
+        "os desenhos bloqueiam"
+    );
+    assert!(cena.vetores.iter().all(|v| v.reflete), "e recebem a luz");
+    let mut nomes: Vec<String> = w
+        .query::<(&Name, &VecPathRef)>()
+        .iter(&w)
+        .map(|(n, _)| n.as_str().to_owned())
+        .collect();
+    nomes.sort();
+    assert_eq!(
+        nomes,
+        ["Círculo", "Elipse"],
+        "o nome que aparece na Hierarchy"
+    );
+
+    let mut r = crate::comum::renderer(&gpu);
+    let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)
+        .into_iter()
+        .flat_map(|p| p.0)
+        .collect();
+    let disco = r
+        .acquire_individual(DISC_TILE_PX, DISC_TILE_PX, &disco)
+        .expect("textura do disco");
+    let mut present = PresentWorld::new();
+    let mut q = w.query_filtered::<(bevy_ecs::entity::Entity, &Sprite, &GlobalTransform), bevy_ecs::query::With<ph2d_light2d_ecs::BloqueiaLuz>>();
+    for (e, s, g) in q.iter(&w) {
+        let [ax, ay, bx, by, tx, ty] = g.affine();
+        let mut i = crate::comum::quad(disco, [tx, ty]);
+        i.size = s.size;
+        i.anchor = s.anchor;
+        i.basis = [ax, ay, bx, by];
+        present.world_mut().spawn((i, SimRef(e)));
+    }
+    let afim = ph2d_render::Camera2d::default()
+        .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
+    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+    for _ in 0..30 {
+        assert!(l.preparar(&w, afim, (1920, 1080)));
+        l.desenhar_vetores(&gpu, &doc, &xforms);
+        l.gravar(&gpu, &mut present, &r);
+    }
+    let f = crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"));
+    let lampada = smoke::LAMPADA_DO_VOLUME.map(f64::from);
+    let mut falhas = Vec::new();
+    for forma in &smoke::REDONDAS {
+        let k = PROFUNDIDADE * 2.0 * forma.semi[0].min(forma.semi[1]);
+        let mut frentes = Vec::new();
+        for (qual, c) in [
+            ("desenho", forma.centro),
+            (
+                "imagem",
+                [forma.centro[0], forma.centro[1] - smoke::ABAIXO_DA_IMAGEM],
+            ),
+        ] {
+            let d = [lampada[0] - c[0], lampada[1] - c[1]];
+            let n = d[0].hypot(d[1]);
+            let u = [d[0] / n, d[1] / n];
+            let (frente, tras) = (
+                f.amostra([c[0] + u[0] * k, c[1] + u[1] * k]),
+                f.amostra([c[0] - u[0] * k, c[1] - u[1] * k]),
+            );
+            eprintln!(
+                "cena 6 · {} ({qual}): a face da lâmpada {frente:.3} · a de trás {tras:.3}",
+                forma.nome
+            );
+            if frente < CONTRASTE_DAS_FACES * tras {
+                falhas.push(format!(
+                    "{} ({qual}) sem faces: {frente:.3} × {tras:.3}",
+                    forma.nome
+                ));
+            }
+            frentes.push(frente);
+        }
+        // ⭐ A paridade AO LONGO de anéis (dentro e logo fora): a variação do desenho contra a do
+        // espelho da imagem (um risco ou uma faceta é variação que a imagem não tem). Ponto a ponto não:
+        // as cunhas da penumbra da lâmpada diferem entre a curva de Bézier e a textura do disco.
+        let mut tv = [0.0_f64; 2];
+        for (f_anel, fora) in [(0.35, 0.0), (0.65, 0.0), (0.9, 0.0), (1.0, 0.03)] {
+            let (d, im): (Vec<f64>, Vec<f64>) = (0..720)
+                .map(|k| {
+                    let t = std::f64::consts::TAU * f64::from(k) / 720.0;
+                    let (sn, cs) = t.sin_cos();
+                    let n = (forma.semi[1] * cs).hypot(forma.semi[0] * sn);
+                    let p = [
+                        forma.centro[0]
+                            + f_anel * forma.semi[0] * cs
+                            + fora * forma.semi[1] * cs / n,
+                        forma.centro[1]
+                            + f_anel * forma.semi[1] * sn
+                            + fora * forma.semi[0] * sn / n,
+                    ];
+                    // A imagem é o ESPELHO do desenho em relação à lâmpada (y → −y).
+                    (f.amostra(p), f.amostra([p[0], -p[1]]))
+                })
+                .unzip();
+            for k in 0..720 {
+                let em = |v: &[f64], j: isize| v[(k as isize + j).rem_euclid(720) as usize];
+                tv[0] += (em(&d, 1) - em(&d, 0)).abs();
+                tv[1] += (em(&im, 1) - em(&im, 0)).abs();
+            }
+        }
+        let tv_rel = (tv[0] - tv[1]) / tv[1];
+        eprintln!(
+            "cena 6 · {}: a variação nos anéis, desenho × imagem {:+.1} %",
+            forma.nome,
+            100.0 * tv_rel
+        );
+        if tv_rel > TOL_TV_DESENHO_IMAGEM {
+            falhas.push(format!(
+                "{}: a variação nos anéis {:+.1} % acima da imagem",
+                forma.nome,
+                100.0 * tv_rel
+            ));
+        }
+        let e = (frentes[0] - frentes[1]).abs() / frentes[1];
+        eprintln!(
+            "cena 6 · {}: desenho × imagem {:+.2} %",
+            forma.nome,
+            100.0 * (frentes[0] - frentes[1]) / frentes[1]
+        );
+        if e > TOL_DESENHO_IMAGEM {
+            falhas.push(format!("{}: desenho × imagem {:.3}", forma.nome, e));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join(" · "));
+}
+
+/// A face da lâmpada do DESENHO contra a da IMAGEM gêmea, relativo — MEDIDO (RTX 5060 Ti,
+/// `DEGRAU_PADRAO`, 30 quadros com o rebote): o círculo −0,44 %, a elipse −0,05 %; as faces 46 × e 47 ×.
+const TOL_DESENHO_IMAGEM: f64 = 0.01;
+/// A variação total dos anéis do desenho acima da da imagem (relativo) — MEDIDO (RTX 5060 Ti): o círculo
+/// −0,3 %, a elipse +3,9 %. A camada do vetor com a cobertura pelo limiar (a dos sprites) saía em
+/// riscos: ver a prova de mutação no handoff W5d.
+const TOL_TV_DESENHO_IMAGEM: f64 = 0.08;

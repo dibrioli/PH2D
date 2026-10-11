@@ -71,7 +71,7 @@ impl Redondo {
         (x.abs() - meio).max(0.0).hypot(y)
     }
 
-    fn poligono(&self) -> Vec<[f32; 2]> {
+    pub(crate) fn poligono(&self) -> Vec<[f32; 2]> {
         (0..LADOS)
             .map(|k| {
                 let p = self.no_anel(std::f64::consts::TAU * k as f64 / LADOS as f64, 1.0, 0.0);
@@ -349,6 +349,125 @@ fn as_formas_redondas_nao_saem_em_facetas() {
     assert!(
         falhas.is_empty(),
         "as formas redondas saem em facetas: {}",
+        falhas.join(" · ")
+    );
+}
+
+/// O disco da cena 5 (o sprite do disco do atlas) pela captura do PRODUTO, na vista `a`, com `cfg`:
+/// `(a fluência, o disco como polígono do raio da textura, a cena do gabarito)` — a borda da textura
+/// do disco fica a 127,5/128 do meio-lado.
+pub(crate) fn disco_de_imagem(
+    gpu: &ph2d_gpu::GpuContext,
+    a: Affine,
+    cfg: Config,
+) -> (Fluencia, Redondo, CenaDeLuz) {
+    use ph2d_ecs::{GlobalTransform, PresentWorld, SimRef};
+    use ph2d_render::{DISC_TILE_KEY, DISC_TILE_PX, Sprite, disc_tile_pixels};
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = cena_de_luz(&w);
+    let corpo = &smoke::CORPOS_DO_VOLUME[0];
+    let r = Redondo {
+        nome: corpo.nome,
+        centro: [f64::from(corpo.centro[0]), f64::from(corpo.centro[1])],
+        semi: [0.5 * f64::from(corpo.lado[0]) * 127.5 / 128.0; 2],
+    };
+    let mut gab = cena_redonda([0.0; 2]).0;
+    let i = gab
+        .oclusores
+        .iter()
+        .position(|o| {
+            let n = o.vertices.len() as f64;
+            let c = o.vertices.iter().fold([0.0_f64; 2], |a, v| {
+                [a[0] + f64::from(v[0]) / n, a[1] + f64::from(v[1]) / n]
+            });
+            (c[0] - r.centro[0]).abs() < 1e-3 && (c[1] - r.centro[1]).abs() < 1e-3
+        })
+        .expect("o disco no gabarito");
+    gab.oclusores[i].vertices = r.poligono();
+    let mut rend = crate::comum::renderer(gpu);
+    let branca = rend.acquire_individual(1, 1, &[255; 4]).expect("textura");
+    let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)
+        .into_iter()
+        .flat_map(|p| p.0)
+        .collect();
+    let disco = rend
+        .acquire_individual(DISC_TILE_PX, DISC_TILE_PX, &disco)
+        .expect("textura do disco");
+    let mut present = PresentWorld::new();
+    let mut q = w.query_filtered::<(Entity, &Sprite, &GlobalTransform), bevy_ecs::query::With<ph2d_light2d_ecs::BloqueiaLuz>>();
+    for (e, s, g) in q.iter(&w) {
+        let [ax, ay, bx, by, tx, ty] = g.affine();
+        let e_disco =
+            matches!(s.source, ph2d_render::SpriteSource::Atlas { key } if key == DISC_TILE_KEY);
+        let mut i = crate::comum::quad(if e_disco { disco } else { branca }, [tx, ty]);
+        i.size = s.size;
+        i.anchor = s.anchor;
+        i.basis = [ax, ay, bx, by];
+        present.world_mut().spawn((i, SimRef(e)));
+    }
+    let mut s = Solver::novo(gpu, cfg).expect("solver");
+    let (i0, f0) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+    s.regiao_fina(i0, f0);
+    let capt = ph2d_app_light2d::sprites_da_cena(&cena, &mut present, &rend);
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    s.gravar_com_sprites(gpu, &mut enc, &cena, &capt);
+    gpu.queue.submit([enc.finish()]);
+    (fluencia_lida(gpu, &s), r, gab)
+}
+
+/// O teto do excesso de variação num anel do disco de IMAGEM no zoom 1 — MEDIDO (RTX 5060 Ti,
+/// `DEGRAU_PADRAO`): o pior +0,66 (a 0,9 do raio); o controlo (a W5c) +1,30 com 2 cruzamentos a mais.
+/// ⚠️ No zoom 2,5 (a textura ampliada) o produto ainda tem 2 cruzamentos a mais (W5c: 4) — ABERTO.
+const TETO_TV_IMAGEM: f64 = 0.80;
+
+/// ⭐⭐ **GATE — o disco de IMAGEM sai liso** na vista do dono (zoom 1), pela captura do produto (o
+/// sprite do atlas): a cobertura do sprite pelo meio (a área da forma alfa ≥ ½) é o que a borda exata
+/// lê; com a média do alfa (a W5c sem ela) a borda saía em zigue-zague.
+#[test]
+fn o_disco_de_imagem_nao_sai_em_facetas() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let a = vista_em(1.0, cena_redonda([0.0; 2]).1[0].centro);
+    let produto = config(&gpu, a, false);
+    let tx = produto.grade.texel_m / f64::from(produto.fina);
+    let (fl, r, gab_cena) = disco_de_imagem(&gpu, a, produto);
+    let (fl0, ..) = disco_de_imagem(&gpu, a, config(&gpu, a, true));
+    let aneis: Vec<_> = ANEIS
+        .iter()
+        .map(|(nome, f, fora)| (*nome, anel(&gab_cena, &r, *f, fora * tx)))
+        .collect();
+    let max = aneis
+        .iter()
+        .flat_map(|(_, (_, v))| v.iter().copied())
+        .fold(0.0, f64::max);
+    let (mut falhas, mut cruzes_controlo) = (Vec::new(), 0);
+    for (nome, (pts, gab)) in &aneis {
+        let passo = passo_tx(pts, tx);
+        let eixo = |p: [f64; 2]| r.ao_eixo(p) < 2.0 * tx;
+        let l = ler_anel(&fl, pts, gab, max, passo, eixo);
+        let l0 = ler_anel(&fl0, pts, gab, max, passo, eixo);
+        cruzes_controlo = cruzes_controlo.max(l0.cruzes);
+        eprintln!(
+            "disco de imagem · {nome}: {} errados ({:.3}) · TV {:+.2} · ×{} (W5c: {} · TV {:+.2} · ×{})",
+            l.errados, l.pior, l.tv, l.cruzes, l0.errados, l0.tv, l0.cruzes
+        );
+        if l.errados > 0 || l.cruzes > 0 || l.tv > TETO_TV_IMAGEM {
+            falhas.push(format!(
+                "{nome}: {} errados · ×{} · TV {:+.2}",
+                l.errados, l.cruzes, l.tv
+            ));
+        }
+    }
+    assert!(
+        cruzes_controlo > 0,
+        "o controlo (a W5c) não mostra a passagem serrilhada — a régua não a vê"
+    );
+    assert!(
+        falhas.is_empty(),
+        "o disco de imagem sai em facetas: {}",
         falhas.join(" · ")
     );
 }

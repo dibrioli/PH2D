@@ -19,6 +19,8 @@ pub(super) struct CapturaFina {
     geometria: Option<Geometria>,
     sprites: Option<solver_sprite::C0Sprites>,
     fabrica: crate::Fabrica,
+    /// ⭐ W5d: a cobertura dos sprites pelo meio (a borda exata da C3 lê esta captura).
+    cobertura_pelo_meio: bool,
 }
 
 impl CapturaFina {
@@ -32,6 +34,7 @@ impl CapturaFina {
         formatos: solver_sprite::FormatosC0,
         g: Grade,
         fila: &wgpu::Queue,
+        cobertura_pelo_meio: bool,
     ) -> Self {
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("luz2d c0 captura fina"),
@@ -73,6 +76,7 @@ impl CapturaFina {
             geometria: None,
             sprites: None,
             fabrica: device.fabrica.clone(),
+            cobertura_pelo_meio,
         }
     }
 
@@ -112,6 +116,7 @@ impl CapturaFina {
                         },
                         &solver_sprite::alvos_c0_opacos(formatos),
                         "luz2d/buf/sprites_fina",
+                        self.cobertura_pelo_meio,
                     )
                 })
                 .preparar(gpu, &self.uni, &formas_sprite, &lotes, &sprites.texturas)

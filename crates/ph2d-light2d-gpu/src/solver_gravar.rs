@@ -148,6 +148,8 @@ impl Solver {
                         },
                         &solver_sprite::alvos_c0(formatos),
                         "luz2d/buf/sprites",
+                        // A C3 lê esta captura (sem a fina) com a borda exata: a cobertura pelo meio.
+                        self.cfg.borda_exata && !self.cfg.usa_captura_fina(),
                     )
                 })
                 .preparar(gpu, &self.uni_c0, &formas_sprite, &lotes, &sprites.texturas)

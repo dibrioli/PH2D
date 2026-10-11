@@ -51,6 +51,8 @@ pub struct LuzDoQuadro {
     fabrica: ph2d_light2d_gpu::Fabrica,
     /// A cena de smoke armada já foi encenada (uma vez por sessão).
     smoke_encenado: bool,
+    /// ⭐ W5d: as formas que o smoke pôs no documento e cuja entidade ainda não foi marcada.
+    semeadas: Vec<(ph2d_vec_scene::VecPathId, &'static str)>,
     /// A recusa do solver já foi DITA ao artista (o aviso sai na transição, não a cada quadro).
     recusa_dita: bool,
     /// A re-coleta ([`Self::recolher`]) achou a cena SEM `Luz` depois da codificação: este quadro
@@ -95,6 +97,7 @@ impl LuzDoQuadro {
             vetores: crate::vetor::CamadaVetorial::default(),
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
             smoke_encenado: false,
+            semeadas: Vec::new(),
             recusa_dita: false,
             sem_luz_no_quadro: false,
             preferencia: None,
@@ -139,13 +142,18 @@ impl LuzDoQuadro {
         world: &mut World,
         superficie: &ph2d_gpu::SurfaceContext,
         mundo_para_tela: Affine,
-        vetores: (&ph2d_vec_scene::VecScene, &ph2d_vec_scene::VecXforms),
+        vetores: (&mut ph2d_vec_scene::VecScene, &ph2d_vec_scene::VecXforms),
     ) -> bool {
         if !self.smoke_encenado {
             self.smoke_encenado = true;
             if let Some(n) = crate::smoke::nivel_armado() {
                 crate::smoke::encenar(world, n);
+                self.semeadas = crate::smoke::semear_documento(vetores.0, n);
             }
+        }
+        if !self.semeadas.is_empty() {
+            let pendentes = std::mem::take(&mut self.semeadas);
+            self.semeadas = crate::smoke::marcar_semeadas(world, vetores.0, pendentes);
         }
         let alvo = superficie.size();
         let acesa = self.preparar(world, mundo_para_tela, (alvo.width, alvo.height));

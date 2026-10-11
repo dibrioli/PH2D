@@ -540,6 +540,7 @@ impl Solver {
                 formatos_c0,
                 cfg.grade_da_captura(),
                 &gpu.queue,
+                cfg.borda_exata,
             )
         });
 

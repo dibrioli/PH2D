@@ -39,13 +39,13 @@ const RODADAS: usize = 7;
 #[derive(Clone, Copy)]
 struct Var {
     nome: &'static str,
-    /// A borda exata no interior (`Config::borda_exata`).
+    /// A borda exata no interior (`Config::borda_exata`, com a cobertura dos sprites pelo meio).
     borda: bool,
     /// A meia-largura da média ao longo da face (`Config::c0_ao_longo_da_face`).
     face: f32,
 }
 
-const VARIANTES: [Var; 4] = [
+const VARIANTES: [Var; 3] = [
     Var {
         nome: "W5c",
         borda: false,
@@ -57,11 +57,6 @@ const VARIANTES: [Var; 4] = [
         face: 0.0,
     },
     Var {
-        nome: "borda+face 1",
-        borda: true,
-        face: 1.0,
-    },
-    Var {
         nome: "borda+face 2",
         borda: true,
         face: 2.0,
@@ -69,7 +64,7 @@ const VARIANTES: [Var; 4] = [
 ];
 
 /// As variantes medidas COM o rebote (contra a série do gabarito).
-const COM_REBOTE: [Var; 4] = VARIANTES;
+const COM_REBOTE: [Var; 3] = VARIANTES;
 
 fn fabrica() -> Affine {
     Camera2d::default().world_to_screen_affine(WindowSize::new(FHD.0, FHD.1))
@@ -120,6 +115,7 @@ fn medida_luz2d_w5d() {
         loadavg()
     );
     facetas(&gpu);
+    disco_de_imagem(&gpu);
     interior_da_caixa(&gpu);
     custo(&gpu);
     eprintln!("# loadavg depois {}", loadavg());
@@ -449,5 +445,60 @@ fn custo(gpu: &GpuContext) {
             );
         }
         eprintln!("{linha}");
+    }
+}
+
+/// As variantes do disco de IMAGEM: `(nome, borda exata, média ao longo da face)`.
+const DO_SPRITE: [(&str, bool, f32); 2] = [("W5c", false, 0.0), ("borda+face 2", true, 2.0)];
+
+/// A2. O disco da cena 5 como o PRODUTO o captura (o sprite do disco do atlas, por texel), com o rebote
+/// desligado, contra o polígono do gabarito do mesmo raio.
+fn disco_de_imagem(gpu: &GpuContext) {
+    eprintln!("\n## A2. O disco de IMAGEM (o sprite do atlas, pelo caminho do produto)");
+    let r = cena_redonda([0.0; 2]).1[0];
+    for zoom in [1.0, 2.5] {
+        let a = vista_em(zoom, r.centro);
+        let base = config(gpu, a, VARIANTES[0]);
+        let tx = base.grade.texel_m / f64::from(base.fina);
+        let (_, r, gab_cena) = crate::as_formas_redondas::disco_de_imagem(gpu, a, base);
+        let aneis: Vec<_> = ANEIS
+            .iter()
+            .map(|(nome, f, fora)| (*nome, anel(&gab_cena, &r, *f, fora * tx)))
+            .collect();
+        let max = aneis
+            .iter()
+            .flat_map(|(_, (_, v))| v.iter().copied())
+            .fold(0.0, f64::max);
+        let mut fls = Vec::new();
+        for (nome, borda, face) in DO_SPRITE {
+            let cfg = Config {
+                borda_exata: borda,
+                c0_ao_longo_da_face: face,
+                ..base
+            };
+            let (fl, ..) = crate::as_formas_redondas::disco_de_imagem(gpu, a, cfg);
+            let mut linha = format!("- zoom {zoom} · disco de imagem · {nome}:");
+            for (anel_nome, (pts, gab)) in &aneis {
+                let passo = crate::as_formas_redondas::passo_tx(pts, tx);
+                let l = ler_anel(&fl, pts, gab, max, passo, |p| r.ao_eixo(p) < 2.0 * tx);
+                linha += &format!(
+                    " | {anel_nome}: {} err ({:.3}) TV {:+.2} ×{} ↔{:.1}",
+                    l.errados, l.pior, l.tv, l.cruzes, l.desvio
+                );
+            }
+            eprintln!("{linha}");
+            fls.push((format!("s_{nome}"), fl));
+        }
+        if zoom > 2.0 {
+            let lista: Vec<(String, &Fluencia)> = fls.iter().map(|(n, f)| (n.clone(), f)).collect();
+            let serie = ph2d_light2d_ref::Rebote::resolver(
+                &gab_cena,
+                ph2d_light2d_ref::OpcoesDoRebote {
+                    passo_m: 0.05,
+                    rebotes: 0,
+                },
+            );
+            fotos(&gab_cena, &lista, &r, tx, &serie);
+        }
     }
 }

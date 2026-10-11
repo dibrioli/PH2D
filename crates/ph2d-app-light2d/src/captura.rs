@@ -34,7 +34,7 @@ fn quad_no_mundo(i: &RenderInstance) -> ([f64; 2], [f64; 2], [f64; 2]) {
 }
 
 /// Os sprites da cena com textura amostrável, prontos para a C0.
-pub(crate) fn sprites_da_cena<'r>(
+pub fn sprites_da_cena<'r>(
     cena: &CenaDeLuz,
     present: &mut PresentWorld,
     renderer: &'r SpriteRenderer,

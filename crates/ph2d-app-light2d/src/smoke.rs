@@ -7,6 +7,7 @@
 //! | 3 | **Rebote** (W5c) — uma sala fechada: chão e teto claros, parede esquerda VERMELHA, direita VERDE, uma lâmpada branca perto do teto e um fundo que só RECEBE luz: a luz que bate nas paredes volta tingida — a sala clareia, o fundo avermelha junto à vermelha e esverdeia junto à verde (`PH2D_LIGHT2D_REBOTE=0` desliga o rebote, para comparar) |
 //! | 4 | **Tamanho da lâmpada** — duas salas iguais separadas por um muro: à esquerda uma lâmpada PEQUENA, à direita uma GRANDE, cada uma atrás da mesma parede: a pequena faz sombra nítida, a grande macia (a sonda mede a penumbra × a geometria) |
 //! | 5 | **Volume** — uma lâmpada no meio de um chão e seis corpos à volta que bloqueiam E recebem a luz (disco, elipse, losango, barra inclinada, «L» e cruz): o interior de cada um mostra a luz do exterior mais próximo, logo cada lado vira uma FACE — acesa a virada para a lâmpada, escura a de trás — e as faces encontram-se em arestas (o disco vira um cone que aponta a luz; o «L» e a cruz dobram as faces no canto, porque a lei olha a borda do CONJUNTO) |
+//! | 6 | **Formas desenhadas** (W5d) — uma lâmpada no meio, um CÍRCULO e uma ELIPSE desenhados (vetor, no documento do editor) em cima e os mesmos dois como IMAGENS embaixo, com as mesmas cores: o desenho bloqueia e recebe a luz como a imagem — a face virada para a lâmpada acesa, a de trás escura, a sombra atrás de cada um |
 //!
 //! Os vaga-lumes estão PARADOS: o que a cena ensina é a luz (e o custo), não o voo.
 
@@ -23,7 +24,7 @@ const PAREDE: (BloqueiaLuz, NaoRecebeLuz) = (BloqueiaLuz { opacidade: 1.0 }, Nao
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_LIGHT2D_SMOKE",
-    max_level: 5,
+    max_level: 6,
 }];
 
 /// O nível armado por variável de ambiente (`None` = inerte).
@@ -57,8 +58,12 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
             volume(world);
             true
         }
+        6 => {
+            redondas(world);
+            true
+        }
         _ => {
-            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–5)");
+            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–6)");
             false
         }
     }
@@ -343,7 +348,6 @@ pub fn tamanho_da_lampada(world: &mut World) {
     }
 }
 
-/// A luz ambiente de uma cena: `fracao` do forno branco, na cor dada.
 /// Cena 5 — a lâmpada (no centro do chão).
 pub const LAMPADA_DO_VOLUME: [f32; 2] = [0.0, 0.0];
 
@@ -484,6 +488,140 @@ pub fn volume(world: &mut World) {
     }
 }
 
+/// Cena 6 — uma forma redonda: o nome, o centro e os semieixos (metros), a cor (sRGB, a do
+/// documento vetorial; a imagem gêmea leva a mesma em linear).
+pub struct Redonda {
+    pub nome: &'static str,
+    pub centro: [f64; 2],
+    pub semi: [f64; 2],
+    pub cor: [u8; 3],
+}
+
+/// Cena 6 — as formas DESENHADAS (no documento vetorial) e, no espelho de cada uma em relação à
+/// lâmpada ([`ABAIXO_DA_IMAGEM`] abaixo), a IMAGEM gêmea: a mesma luz chega às duas.
+pub const REDONDAS: [Redonda; 2] = [
+    Redonda {
+        nome: "Círculo",
+        centro: [-2.6, 1.6],
+        semi: [0.9, 0.9],
+        cor: [51, 179, 191],
+    },
+    Redonda {
+        nome: "Elipse",
+        centro: [2.5, 1.6],
+        semi: [1.4, 0.65],
+        cor: [230, 140, 50],
+    },
+];
+
+/// Cena 6 — a distância da imagem gêmea abaixo de cada forma desenhada (metros): o dobro da altura
+/// delas sobre a lâmpada.
+pub const ABAIXO_DA_IMAGEM: f64 = 3.2;
+
+/// sRGB (u8) → linear: a cor que a imagem gêmea leva para sair igual ao desenho.
+fn linear(c: u8) -> f32 {
+    let c = f32::from(c) / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// Cena 6 — **Formas desenhadas.** O mundo: o chão, a luz ambiente, a lâmpada e as IMAGENS gêmeas; as
+/// formas desenhadas entram pelo documento ([`semear_documento`]).
+fn redondas(world: &mut World) {
+    let chao = quadrado(
+        world,
+        "Chão",
+        [0.0, 0.0],
+        [11.5, 8.5],
+        [0.6, 0.6, 0.62, 1.0],
+    );
+    // O chão no FUNDO: a raiz sem `RootOrder` desenha na frente, e os caminhos que o editor sincroniza
+    // depois recebem a ordem seguinte à maior que houver (o chão cobria os desenhos).
+    world.entity_mut(chao).insert(ph2d_ecs::RootOrder(0));
+    ambiente(world, 0.03, [0.6, 0.7, 1.0]);
+    let (t, g) = pose(LAMPADA_DO_VOLUME[0], LAMPADA_DO_VOLUME[1]);
+    world.spawn((
+        Name::new("Lâmpada"),
+        Luz {
+            cor: [1.0, 0.92, 0.8],
+            intensidade: std::f32::consts::TAU * 1.2,
+            tamanho_m: 0.2,
+            alcance_m: f32::INFINITY,
+            tipo: TipoDeLuz::Ponto,
+        },
+        t,
+        g,
+    ));
+    for r in &REDONDAS {
+        let (t, g) = pose(r.centro[0] as f32, (r.centro[1] - ABAIXO_DA_IMAGEM) as f32);
+        world.spawn((
+            Name::new(format!("{} (imagem)", r.nome)),
+            Sprite::atlas(
+                DISC_TILE_KEY,
+                [2.0 * r.semi[0] as f32, 2.0 * r.semi[1] as f32],
+                [linear(r.cor[0]), linear(r.cor[1]), linear(r.cor[2]), 1.0],
+            ),
+            t,
+            g,
+            BloqueiaLuz { opacidade: 1.0 },
+        ));
+    }
+}
+
+/// ⭐ Cena 6 — põe no DOCUMENTO vetorial as formas desenhadas do nível (só a 6 tem); devolve o
+/// caminho e o nome de cada uma. A entidade de cada caminho nasce na sincronização do editor (o
+/// `entities::sync`, no fim do quadro): [`marcar_semeadas`] dá-lhe o nome e o «bloqueia a luz».
+pub fn semear_documento(
+    doc: &mut ph2d_vec_scene::VecScene,
+    nivel: u32,
+) -> Vec<(ph2d_vec_scene::VecPathId, &'static str)> {
+    use ph2d_vec_scene::{Paint, Rgba8, ellipse};
+    if nivel != 6 {
+        return Vec::new();
+    }
+    REDONDAS
+        .iter()
+        .map(|r| {
+            let mut p = ellipse(r.centro, r.semi[0], r.semi[1]);
+            p.fill = Some(Paint::Solid(Rgba8::new(r.cor[0], r.cor[1], r.cor[2], 255)));
+            (doc.push_path(p), r.nome)
+        })
+        .collect()
+}
+
+/// As formas semeadas cuja entidade o editor já criou recebem o nome e o «bloqueia a luz»; devolve as
+/// que faltam (as que saíram do documento — um projeto aberto por cima — esquecem-se).
+pub fn marcar_semeadas(
+    world: &mut World,
+    doc: &ph2d_vec_scene::VecScene,
+    pendentes: Vec<(ph2d_vec_scene::VecPathId, &'static str)>,
+) -> Vec<(ph2d_vec_scene::VecPathId, &'static str)> {
+    let mut faltam = Vec::new();
+    for (id, nome) in pendentes {
+        if doc.path(id).is_none() {
+            continue;
+        }
+        let e = world
+            .query::<(bevy_ecs::entity::Entity, &ph2d_ecs::VecPathRef)>()
+            .iter(world)
+            .find(|(_, r)| r.0 == id)
+            .map(|(e, _)| e);
+        match e {
+            Some(e) => {
+                world
+                    .entity_mut(e)
+                    .insert((Name::new(nome), BloqueiaLuz { opacidade: 1.0 }));
+            }
+            None => faltam.push((id, nome)),
+        }
+    }
+    faltam
+}
+
+/// A luz ambiente de uma cena: `fracao` do forno branco, na cor dada.
 fn ambiente(world: &mut World, fracao: f32, cor: [f32; 3]) {
     let (t, g) = pose(0.0, 0.0);
     world.spawn((

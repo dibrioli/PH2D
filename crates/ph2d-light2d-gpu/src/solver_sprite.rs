@@ -74,6 +74,7 @@ impl C0Sprites {
         device: crate::Placa<'_>,
         alvos: &[Option<wgpu::ColorTargetState>; 4],
         rotulo_do_buffer: &'static str,
+        cobertura_pelo_meio: bool,
     ) -> Self {
         let layout_formas = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c0 sprites"),
@@ -142,7 +143,13 @@ impl C0Sprites {
             fragment: Some(wgpu::FragmentState {
                 module: &modulo,
                 entry_point: Some("fs"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &[(
+                        "COBERTURA_PELO_MEIO",
+                        f64::from(u8::from(cobertura_pelo_meio)),
+                    )],
+                    zero_initialize_workgroup_memory: true,
+                },
                 targets: alvos,
             }),
             primitive: wgpu::PrimitiveState {

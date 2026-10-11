@@ -348,7 +348,7 @@ impl Replica {
                     let (public, hidden) = match self.seal_set(&before, &now, f, value, at) {
                         Seal::Public(w) => (Some(w), None),
                         Seal::Sealed(w) => (None, Some(w)),
-                        Seal::Split(p, w) => (Some(p), Some(w)),
+                        Seal::Split(p, w) => (Some(p), Some(*w)),
                         Seal::Revert => {
                             reverts.push((id, before.read(Field::Text).unwrap_or_default()));
                             (None, None)

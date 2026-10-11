@@ -39,13 +39,18 @@ O que os outros fazem (corrido/medido):
    guarda o cofre e nunca o mostra (o mesmo que o servidor do Miro e do Scrumlr sabem; «não é protecção de
    dados», Miro PM). Uma peça só, `ph2d-board-sync::vault`, com duas políticas de soltar:
    **publicar** (notas: as escritas guardadas saem como escritas normais) e **somar** (votos: sai só o total).
-2. **Nota privada = o registo `Text` adiado.** Com o modo ligado, o `Replica::local` de cada par separa: o
-   registo `Text` de uma nota (`ShapeType::Sticky`) — de uma nota que NASCE (o `Born` sai com o texto vazio e o
-   texto num `Set` com carimbo seguinte) ou que é editada — vai selado; o resto (caixa, cor, z, apagar) é público
-   como sempre. O autor aplica-o no próprio quadro (lê o seu texto). A selagem é só uma ENTREGA ADIADA de uma
-   escrita de Lamport do autor: ao soltar, a fusão do ADR-0181 converge sem caso novo (comutativa, idempotente).
+2. **Nota privada = o registo `Text` (e o TAMANHO) adiados.** Com o modo ligado, o `Replica::local` de cada par separa: o
+   registo `Text` de uma nota — de uma nota que NASCE (o `Born` sai com o texto vazio e o texto num `Set` com
+   carimbo seguinte) ou que é editada — vai selado. A caixa de uma nota MINHA escondida também: a nota cresce com
+   o texto (o tamanho diria o comprimento — auditoria W12), por isso sai às claras com a posição nova e o TAMANHO
+   de antes, e a caixa inteira segue selada com o carimbo seguinte. Cor, z, apagar e mover são públicos como
+   sempre. O autor aplica tudo no próprio quadro. A selagem é só uma ENTREGA ADIADA de escritas de Lamport do
+   autor: ao soltar, a fusão do ADR-0181 converge sem caso novo. Uma escrita às claras MAIS NOVA de um registo
+   selado passa-lhe à frente (sai do cofre e das marcas).
 3. **O anfitrião-autor**: o quadro dele é a fonte do retrato, então o retrato SOBREPÕE aos registos selados dele
-   o valor E o carimbo PÚBLICOS (sem o carimbo, quem entra recusaria a escrita solta por `at` igual).
+   o valor E o carimbo PÚBLICOS (sem o carimbo, quem entra recusaria a escrita solta por `at` igual). Uma VERSÃO
+   guardada com o modo ligado (W8) leva o quadro como todos o vêem — a da autora também (uma versão é do quadro
+   da sala); sem isto o texto selado viajava comprimido numa `TeamWrite::Version`.
 4. **Sombra pública**: o anfitrião difunde o estado da facilitação (`Msg::Fac`) — modo ligado/quem ligou/opções,
    os ids das notas escondidas (sem autor), a votação (alvos, votos por pessoa, tempo, quem acabou). Quem entra
    a meio recebe-o logo depois do `Welcome`. Os outros desenham a nota escondida com um marcador FIXO (nunca
@@ -56,8 +61,12 @@ O que os outros fazem (corrido/medido):
    o defeito que este gate morde). Revelar não se desfaz; ligar o modo outra vez esconde só o NOVO (Miro, não o
    p04 do Scrumlr). Fechar a sala com o modo ligado REVELA antes do `End` (o trabalho do artista não se perde);
    uma queda do anfitrião deixa cada autor com o seu texto.
-6. **O texto escondido não se edita por outro** (não o tem); mover, cor e apagar continuam de todos (ADR-0181).
-   O desfazer do autor é o do ADR-0181 §3 — durante o modo, o passo desfeito sai selado.
+6. **O texto escondido só o autor o escreve.** Quem não o lê não o escreve por caminho NENHUM (Enter, negrito,
+   desfazer, colar…): a escrita desfaz-se ao ser capturada (`Replica::set_unread`) e o editor recusa com o aviso;
+   o cofre tem UM dono por nota até revelar. Na virada (quem escreve ainda não sabe do modo), o anfitrião põe no
+   cofre o texto de uma nota que chega às claras — o filtro que o Scrumlr faz no servidor; se a nota já tem outro
+   dono no cofre, o texto é de quem o escreveu para todos e segue. Mover, cor e apagar continuam de todos. O
+   desfazer do autor é o do ADR-0181 §3 — durante o modo, o passo desfeito sai selado.
 7. **Voto entre pessoas.** O boletim de cada um (`alvo → n`, «acabei») vai inteiro ao anfitrião a cada mudança
    (substitui o anterior — idempotente); ninguém mais recebe nada sobre escolhas (Scrumlr v01). Público: quem
    acabou e o tempo; para quem iniciou, quantos votos cada pessoa usou (Miro VO). Quem entra a meio vota (v02);
@@ -65,8 +74,9 @@ O que os outros fazem (corrido/medido):
    iniciou (Miro; o relógio do Scrumlr não acaba nada, v05). No fim o anfitrião SOMA e escreve `Votes` em cada
    alvo como escritas normais, no MESMO tique que o estado «acabou» e antes dele (o total chega a todos de uma
    vez, v04). É uma escrita DA SALA, não um gesto de alguém: não entra no desfazer de ninguém (como uma escrita
-   alheia, ADR-0181 §3); «Clear results» limpa-o. O resultado é sempre anónimo (só totais, v07). Nota
-   escondida não é votável por quem não a lê. Se quem iniciou (ou quem ligou o modo privado) sai, o anfitrião
+   alheia, ADR-0181 §3); «Clear results» limpa-o. O resultado é sempre anónimo (só totais, v07). Numa nota
+   escondida, quem não a lê não põe um voto NOVO (o que lá estava fica e pode sair); um boletim recusado é um aviso
+   a quem votou; a soma confere-se sem dar a volta. Se quem iniciou (ou quem ligou o modo privado) sai, o anfitrião
    — o dono da sala, como o dono do quadro no Miro — pode acabar por ele.
 8. **«Make names anonymous»**: as notas não têm autor no modelo; durante o modo os cursores e as selecções dos
    outros perdem nome e cor própria e «seguir» desliga-se.

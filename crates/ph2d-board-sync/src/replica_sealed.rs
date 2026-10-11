@@ -29,6 +29,9 @@ pub(super) fn is_note(el: &Element) -> bool {
     el.shape().is_some_and(|s| s.kind.is_note())
 }
 
+/// O quadro como os outros o têm, e os carimbos públicos dos registos tapados.
+pub(super) type Masked = (Board, Vec<((ElementId, Field), Lamport)>);
+
 /// O modo privado nesta ponta.
 #[derive(Clone, Debug, Default)]
 pub(super) struct Sealed {
@@ -48,7 +51,7 @@ pub(super) enum Seal {
     Public(Write),
     Sealed(Write),
     /// A posição pública (com o tamanho de antes) e a caixa inteira selada, com o carimbo seguinte.
-    Split(Write, Write),
+    Split(Write, Box<Write>),
     /// Escrita no texto de uma nota que não leio: desfaz-se.
     Revert,
 }
@@ -174,7 +177,7 @@ impl Replica {
         }
         self.sealed.public.insert((id, f), (pv.clone(), at));
         let sealed_at = self.tick();
-        Seal::Split(set(pv, at), set(value, sealed_at))
+        Seal::Split(set(pv, at), Box::new(set(value, sealed_at)))
     }
 
     /// Uma escrita mais nova de um registo meu selado chegou: a minha perdeu (e não se marca mais).
@@ -192,10 +195,7 @@ impl Replica {
 
     /// O quadro como os OUTROS o têm (os meus registos selados com o valor público), e os carimbos
     /// deles. `None` = nada meu selado (o quadro é o mesmo).
-    pub(super) fn masked(
-        &self,
-        board: &Board,
-    ) -> Option<(Board, Vec<((ElementId, Field), Lamport)>)> {
+    pub(super) fn masked(&self, board: &Board) -> Option<Masked> {
         let hide: Vec<_> = self
             .sealed
             .mine

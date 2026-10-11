@@ -255,7 +255,11 @@ mod tests {
         let room = hero.documents.create("Sala".into());
         let other = hero.documents.create("Outro".into());
         hero.documents.activate(Some(other));
-        hero.documents.live.fac.private.insert(other, PrivateSetup::default());
+        hero.documents
+            .live
+            .fac
+            .private
+            .insert(other, PrivateSetup::default());
         assert!(matches!(view(&hero, other), Some(PrivateView::NoSession)));
         let v = hero.documents.live_view_mut();
         v.role = LiveRole::Hosting {
@@ -265,7 +269,11 @@ mod tests {
         v.board = Some(room);
         assert!(matches!(view(&hero, other), Some(PrivateView::OtherBoard)));
         hero.documents.activate(Some(room));
-        hero.documents.live.fac.private.insert(room, PrivateSetup::default());
+        hero.documents
+            .live
+            .fac
+            .private
+            .insert(room, PrivateSetup::default());
         assert!(matches!(view(&hero, room), Some(PrivateView::Setup(_))));
     }
 }

@@ -314,14 +314,22 @@ fn styling_or_typing_on_a_note_hidden_from_me_is_refused_and_keeps_the_tool() {
     let before = t.elem(a).shape().unwrap().text.clone();
     t.pick(&[a]);
     t.key(BoardKey::Char('b'), CTRL, None);
-    assert_eq!(t.elem(a).shape().unwrap().text, before, "estilizou o que não lê");
+    assert_eq!(
+        t.elem(a).shape().unwrap().text,
+        before,
+        "estilizou o que não lê"
+    );
     assert_eq!(
         t.hero.documents.live.notice.map(|n| n.0),
         Some("board.notice.private")
     );
     t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
     let ed = t.hero.documents.live.editor.as_ref().unwrap();
-    assert_eq!(ed.tool, ph2d_board_edit::Tool::Select, "a letra trocou a ferramenta");
+    assert_eq!(
+        ed.tool,
+        ph2d_board_edit::Tool::Select,
+        "a letra trocou a ferramenta"
+    );
 }
 
 /// ⛔ Auditoria W12 (interface, F2): uma votação de UM ecrã aberta antes de entrar na sala continua a
@@ -336,9 +344,16 @@ fn a_one_screen_vote_opened_before_the_room_keeps_its_own_buttons() {
     let pa = [t.elem(a).x + t.elem(a).w, t.elem(a).y + t.elem(a).h];
     t.click_world(pa);
     t.fac(FacButton::VoteEnd);
-    assert!(!board_nav::facilitate::vote_in_session(&t.hero), "«End for all» morto");
+    assert!(
+        !board_nav::facilitate::vote_in_session(&t.hero),
+        "«End for all» morto"
+    );
     assert_eq!(t.elem(a).votes(), 1);
-    assert!(t.fac_asked().iter().all(|r| !matches!(r, LiveRequest::VoteEnd)));
+    assert!(
+        t.fac_asked()
+            .iter()
+            .all(|r| !matches!(r, LiveRequest::VoteEnd))
+    );
 }
 
 /// ⛔ Auditoria W12 (interface, F6): o painel aberto noutro quadro, numa sessão, diz onde o modo
@@ -347,9 +362,13 @@ fn a_one_screen_vote_opened_before_the_room_keeps_its_own_buttons() {
 fn the_private_panel_on_another_board_says_where_it_works() {
     let mut t = T::new();
     t.go_live();
-    t.hero.apply_event(WidgetEvent::Click(crate::ids::DOC_TAB_NEW));
+    t.hero
+        .apply_event(WidgetEvent::Click(crate::ids::DOC_TAB_NEW));
     t.paint();
     t.shell_click_bar(PRIVATE);
     assert!(t.painted(FacButton::PrivateClose));
-    assert!(!t.painted(FacButton::PrivateOn), "noutro quadro não se liga nada");
+    assert!(
+        !t.painted(FacButton::PrivateOn),
+        "noutro quadro não se liga nada"
+    );
 }

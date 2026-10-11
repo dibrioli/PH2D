@@ -157,3 +157,66 @@ pub(super) fn announce(hero: &mut HeroScreen, fac: LiveFac) {
     }
     hero.documents.live_view_mut().fac = fac;
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    use ph2d_board_model::VoteSetup;
+
+    use super::*;
+
+    fn peer(peer: u64, name: &str, me: bool) -> LivePeer {
+        LivePeer {
+            peer,
+            name: name.into(),
+            color: 0,
+            me,
+        }
+    }
+
+    /// A vista da sala (auditoria W12, interface F4/F5): quem já saiu é «Someone» (nunca um nome vazio);
+    /// «n of m done» conta só quem ESTÁ; as linhas de cada um só a quem iniciou; o meu escondido não
+    /// é «escondido de mim».
+    #[test]
+    fn the_view_names_who_left_and_counts_only_who_is_here() {
+        let fac = sync::Fac {
+            private: Some(sync::Private {
+                by: 9,
+                anonymous: false,
+                anyone_can_end: false,
+                anyone_can_reveal: false,
+                reveal_in_ms: None,
+            }),
+            hidden: BTreeSet::from([ElementId(1), ElementId(2)]),
+            vote: Some(sync::VoteRoom {
+                round: 1,
+                by: 1,
+                setup: VoteSetup::default(),
+                targets: BTreeSet::new(),
+                left_ms: None,
+                done: BTreeSet::from([2, 9]),
+                used: BTreeMap::from([(2, 1), (9, 3)]),
+                ended: false,
+            }),
+        };
+        let peers = [peer(1, "Ana", true), peer(2, "Bia", false)];
+        let v = fac_view(&fac, 1, 1, BTreeSet::from([ElementId(2)]), &peers);
+        let p = v.private.unwrap();
+        assert_eq!(p.by, tr("board.private.someone"));
+        assert!(p.may_end, "o anfitrião acaba o que quem saiu começou");
+        let vote = v.vote.unwrap();
+        assert_eq!(
+            (vote.done, vote.people),
+            (1, 2),
+            "quem saiu não conta em «done»"
+        );
+        assert!(vote.by_me);
+        assert!(
+            vote.used
+                .contains(&(tr("board.private.someone").to_owned(), 3, true))
+        );
+        assert_eq!(v.hidden_to_me, BTreeSet::from([ElementId(1)]));
+        assert_eq!(v.mine_hidden, BTreeSet::from([ElementId(2)]));
+    }
+}

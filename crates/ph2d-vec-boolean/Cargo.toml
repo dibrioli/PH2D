@@ -37,7 +37,13 @@ kurbo = "0.13"
 # cúbicas, então um `outline_stroke` de ponta redonda volta com **6 vértices em vez de 141**
 # (área igual a 1,1e-14, caixa idêntica). Quem editar os pontos de uma tinta assada vê outra
 # coisa; nenhum golden do repo conta vértices de tinta.
-linesweeper = "0.4"
+#
+# ⭐ SUBIDO para 0.5 em 2026-10-11 (prompt 49, W1; o VectorCraft já a usa). Compila sem mudar
+# uma linha e ZERA os pânicos do Offset (104 → 0 na varredura da estrela, `catch_unwind` agora
+# contado por gate); o Round para fora vai de 87 → 100/100. Um vermelho só, e foi de
+# REPRESENTAÇÃO outra vez: a fita do Power Stroke passou a trazer FUROS de área nula — curados em
+# `Region::into_paths` (`expand.rs`), não aqui.
+linesweeper = "0.5"
 
 [lints]
 workspace = true

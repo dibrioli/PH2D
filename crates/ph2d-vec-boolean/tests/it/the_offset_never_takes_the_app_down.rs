@@ -12,7 +12,8 @@
 //!
 //! O gate varre as MESMAS combinações e exige que a chamada RETORNE. Não exige que ela devolva
 //! geometria: quando o sweep de facto não consegue responder, vazio é a resposta certa (é a que a
-//! doc sempre prometeu) — o que não pode acontecer é o processo morrer.
+//! doc sempre prometeu) — o que não pode acontecer é o processo morrer. E, desde a 0.5 do motor,
+//! nenhum pânico pode ser ENGOLIDO sem que a conta (hook de `std::panic`) suba de zero.
 
 use ph2d_vec_scene::{LineJoin, OffsetSide, ShapeKind, cook};
 
@@ -39,21 +40,30 @@ fn no_offset_distance_takes_the_process_down() {
     ];
     let mut empties = 0;
     let mut total = 0;
-    for (name, shape) in &shapes {
-        for join in [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel] {
-            for side in [OffsetSide::Outer, OffsetSide::Inner, OffsetSide::Both] {
-                for i in 1..=100 {
-                    // A faixa cobre o curso REAL do slider: até ~2× o tamanho da forma.
-                    let d = f64::from(i) * 0.04;
-                    total += 1;
-                    if ph2d_vec_boolean::offset_path(shape, d, join, side).is_empty() {
-                        empties += 1;
+    let ((), panics) = super::the_offset_sweep_matches_the_table::counting_panics(|| {
+        for (name, shape) in &shapes {
+            for join in [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel] {
+                for side in [OffsetSide::Outer, OffsetSide::Inner, OffsetSide::Both] {
+                    for i in 1..=100 {
+                        // A faixa cobre o curso REAL do slider: até ~2× o tamanho da forma.
+                        let d = f64::from(i) * 0.04;
+                        total += 1;
+                        if ph2d_vec_boolean::offset_path(shape, d, join, side).is_empty() {
+                            empties += 1;
+                        }
+                        let _ = name;
                     }
-                    let _ = name;
                 }
             }
         }
-    }
+    });
+    // ⚠️ O `catch_unwind` do `offset_path` é um cinto CONTADO: sob o `linesweeper` 0.5 nenhuma
+    // destas 2 700 combinações panica (na 0.3/0.4 a estrela panicava em dezenas). Um pânico
+    // engolido que volte é uma regressão do motor que este número VÊ.
+    assert_eq!(
+        panics, 0,
+        "{panics} pânicos engolidos pelo catch_unwind do offset"
+    );
     // Controle positivo: se TUDO saísse vazio, o gate acima seria satisfeito por uma função que
     // não faz nada — e um gate que não pode falhar é pior que gate nenhum.
     assert!(

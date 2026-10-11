@@ -142,10 +142,31 @@ impl Region {
 
     /// De volta ao documento: um `VecPath` por grupo (compound quando há buraco), com o
     /// estilo de `style`.
+    ///
+    /// ⚠️ **Furo de área ~nula não é furo, é lasca, e sai aqui.** O `linesweeper` 0.5 devolve-as
+    /// como FUROS dentro do grupo (medido: a senoide de `the_ink_is_one_connected_piece_with_no_loops`
+    /// saía com dois furos de área `0,0` na fita de `8,0`; a 0.4 não os emitia), e o
+    /// [`drop_slivers`] só olha a peça inteira. O piso é o mesmo dele, relativo ao total.
     fn into_paths(self, style: &VecPath) -> Vec<VecPath> {
+        let total: f64 = self
+            .groups
+            .iter()
+            .filter_map(|g| g.first())
+            .map(|c| c.area().abs())
+            .sum();
         self.groups
             .iter()
-            .filter_map(|g| compound_from(g, style))
+            .filter_map(|g| {
+                let (outer, holes) = g.split_first()?;
+                let mut kept = vec![outer.clone()];
+                kept.extend(
+                    holes
+                        .iter()
+                        .filter(|h| h.area().abs() > total * SLIVER_REL)
+                        .cloned(),
+                );
+                compound_from(&kept, style)
+            })
             .collect()
     }
 }
@@ -403,9 +424,12 @@ pub(crate) fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
     }
     paths
         .into_iter()
-        .filter(|p| crate::area(p) > total * 1e-4)
+        .filter(|p| crate::area(p) > total * SLIVER_REL)
         .collect()
 }
+
+/// O piso de área de uma lasca, relativo à área total do resultado — ver [`drop_slivers`].
+const SLIVER_REL: f64 = 1e-4;
 
 /// **Offset Path** — move a borda da forma por `d`, com quinas em `join`, e `side` diz QUAIS
 /// contornos participam.
@@ -426,26 +450,17 @@ pub(crate) fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
 /// ~0, se o sweep falhar, ou se a forma **desaparecer** ao encolher (resposta correta: um
 /// traço fino encolhido demais não sobra).
 ///
-/// # ⚠️ O sweep PODE entrar em pânico, e o `catch_unwind` é o que torna esta doc verdadeira
+/// # O `catch_unwind` é um cinto CONTADO, não um silêncio
 ///
-/// *"devolve vazio se o sweep falhar"* era uma promessa só sobre o `None` do `Region::of`. O
-/// `linesweeper` 0.3.0 tem um `unwrap()` numa curva degenerada (`curve/mod.rs:302`) e **aborta o
-/// processo** em vez de devolver `None` — MEDIDO com uma varredura de 200 distâncias por forma:
-///
-/// | forma | Miter | Round | Bevel |
-/// |---|---|---|---|
-/// | retângulo | 0/200 | 0/200 | 0/200 |
-/// | hexágono | 8/200 | 26/200 | 26/200 |
-/// | estrela 5 pontas | 0/200 | 83/200 | **118/200** |
-///
-/// Numa estrela com quina Bevel, **59% das distâncias derrubam o app** — e o slider de Offset da
-/// seção Expand as alcança arrastando. É defeito PRÉ-EXISTENTE (nada aqui o introduziu); o
-/// Contour só o torna certo, porque N anéis varrem N distâncias de uma vez.
-///
-/// A cura no nosso lado é a mesma do `ph2d-imageio-avif` com um decoder hostil: **isolar o pânico
-/// na fronteira** e devolver o vazio que a função já promete. `AssertUnwindSafe` é honesto aqui —
-/// a entrada é emprestada e só lida, e o que sai é construído dentro do bloco, então não há
-/// invariante meio-escrito a vazar. A cura de VERDADE é do `linesweeper`, e não é desta linha.
+/// O `linesweeper` 0.3/0.4 tinha `unwrap()`s em curvas degeneradas (`curve/mod.rs:302` na 0.3,
+/// `:364` na 0.4) e **abortava o processo**: medido na 0.3 com 200 distâncias por forma, a
+/// estrela de 5 pontas panicava em 83/200 (Round) e 118/200 (Bevel). A 0.5 (prompt 49, W1) zera
+/// a conta — **0 pânicos** nas 2 700 combinações de `the_offset_never_takes_the_app_down` e nas
+/// 600 de `the_offset_sweep_matches_the_table`, que contam cada pânico por um hook de
+/// `std::panic` e reprovam se o número subir. O cinto fica (a porta única de
+/// [`crate::engine`] tem o seu; este cobre também o stroker da kurbo): uma regressão do motor
+/// volta a ser um vazio, nunca um app derrubado — mas um vazio que um gate VÊ.
+/// `AssertUnwindSafe` é honesto: a entrada é emprestada e só lida, e a saída nasce no bloco.
 #[must_use]
 pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
     if d.abs() < MIN_OFFSET || !d.is_finite() {

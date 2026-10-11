@@ -194,23 +194,27 @@ pub fn counting_panics<T>(f: impl FnOnce() -> T) -> (T, u64) {
 }
 
 /// A coluna do PRODUTO: por `(junção, lado)`, as distâncias (`d·100`) que NÃO acertam.
-/// Medida 2026-10-11 no merge-base (`linesweeper 0.4`): bate a coluna «hoje» do estudo §3.
+///
+/// | onda | round fora | bevel fora | bevel dentro | pânicos |
+/// |---|---|---|---|---|
+/// | merge-base (0.4) | 87/100 | 35/100 | 94/100 | 104 |
+/// | W1 (`linesweeper` 0.5) | 100/100 | 40/100 (vazio ≥ 164) | 94/100 (vazio 44..64) | 0 |
 const EXPECTED: &[(&str, &str, &str)] = &[
     ("miter", "fora", ""),
     ("miter", "dentro", ""),
-    ("round", "fora", "76 124 128 136 160 172 176 184 188 196 200 240 244"),
+    ("round", "fora", ""),
     ("round", "dentro", ""),
     (
         "bevel",
         "fora",
-        "76 124 128 136 156 164 168 172 176 180 184 188 192 196 200 204 208 212 216 220 224 228 \
-         232 236 240 244 248 252 256 260 264 268 272 276 280 284 288 292 296 300 304 308 312 316 \
-         320 324 328 332 336 340 344 348 352 356 360 364 368 372 376 380 384 388 392 396 400",
+        "164 168 172 176 180 184 188 192 196 200 204 208 212 216 220 224 228 232 236 240 244 248 \
+         252 256 260 264 268 272 276 280 284 288 292 296 300 304 308 312 316 320 324 328 332 336 \
+         340 344 348 352 356 360 364 368 372 376 380 384 388 392 396 400",
     ),
     ("bevel", "dentro", "44 48 52 56 60 64"),
 ];
 /// Pânicos que o `catch_unwind` do `offset_path` engole na varredura inteira.
-const EXPECTED_PANICS: u64 = 104;
+const EXPECTED_PANICS: u64 = 0;
 
 /// A varredura inteira: `(junção, lado) → células`.
 pub fn sweep() -> (BTreeMap<(&'static str, &'static str), Vec<Cell1>>, u64) {
@@ -251,11 +255,13 @@ fn resvg_areas() -> BTreeMap<(String, &'static str, u32), f64> {
 }
 
 /// ⚠️ A régua antes do produto: a verdade analítica tem de bater o `resvg` em TODAS as 600.
-fn assert_truth_is_tied_to_resvg(
-    table: &BTreeMap<(&'static str, &'static str), Vec<Cell1>>,
-) {
+fn assert_truth_is_tied_to_resvg(table: &BTreeMap<(&'static str, &'static str), Vec<Cell1>>) {
     let fx = resvg_areas();
-    assert_eq!(fx.len(), 600, "a fixture do resvg tem de cobrir as 600 combinações");
+    assert_eq!(
+        fx.len(),
+        600,
+        "a fixture do resvg tem de cobrir as 600 combinações"
+    );
     let s_area = signed_area(&anchors(&star())).abs();
     let mut worst = (0.0_f64, String::new());
     for ((jn, side), cells) in table {
@@ -269,7 +275,10 @@ fn assert_truth_is_tied_to_resvg(
             }
         }
     }
-    eprintln!("verdade analítica × resvg: pior {:.3} % ({})", worst.0, worst.1);
+    eprintln!(
+        "verdade analítica × resvg: pior {:.3} % ({})",
+        worst.0, worst.1
+    );
     assert!(
         worst.0 <= 0.3,
         "a verdade analítica deixou de bater o resvg: {:.3} % em {} (a régua mente antes do produto)",
@@ -318,3 +327,26 @@ fn the_offset_sweep_matches_the_table() {
          ele suba\n{report}"
     );
 }
+
+/// A varredura célula a célula (`--ignored --nocapture`): `junção lado d n diff% área`.
+#[test]
+#[ignore = "sonda: imprime as 600 células"]
+fn prints_the_sweep_cell_by_cell() {
+    let filter = std::env::var("SWEEP_JOIN").unwrap_or_default();
+    let star = star();
+    for (jn, j) in JOINS {
+        if !filter.is_empty() && filter != jn {
+            continue;
+        }
+        for (side, sign) in [("fora", 1.0), ("dentro", -1.0)] {
+            for i in 1..=100 {
+                let c = measure(&star, j, sign, i);
+                println!(
+                    "{jn}\t{side}\t{}\t{}\t{:.3}\t{:.5}",
+                    c.d100, c.ours_n, c.diff_pct, c.truth_area
+                );
+            }
+        }
+    }
+}
+

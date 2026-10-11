@@ -13,6 +13,7 @@ metadata:
 - [[feedback_a_mutation_that_survives_may_mean_a_missing_gate]] — explique por que é inofensiva ALI
 - [[feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant]] — `touch` depois de todo restore
 - [[feedback_a_mutation_harness_needs_a_positive_control_that_a_test_ran]] — exija `running 1 test`; filtro que não casa corre ZERO e sai 0
+- [[feedback_a_narrow_mutation_table_reads_survived_where_the_suite_bleeds]] — o veredito SURVIVE só depois da suíte da crate; 4 de 8 «sobreviventes» eram cobertas (11/10)
 - [[feedback_a_mutation_anchor_must_be_the_whole_expression]] — `tr("x")` dentro de `ph2d_i18n::tr("x")` gera mutante que não compila, e o `cargo-test-narrow.sh` sai 1 (não 2) com `0/0`: âncora = expressão inteira; conta só com o NOME do teste a reprovar
 - [[feedback_nextest_error_line_makes_a_mutation_script_read_killed_as_uncompiled]] — o nextest imprime `error: test run failed` num teste VERMELHO: `^error:` leu 4 mortas como «não compilou»; compilação é `error[E…]`/`could not compile`
 - ⛔ (Tags W3a, 13/09) **o alias de ficheiro do CORPO colide com a variável do ARNÊS**: os aliases das mutações chamavam-se `T`/`I`/`S`/`P`, e o `S` do arnês é a pasta dos LOGS ⇒ ele escreveu `…/sections/tags.rs/1-controlo.log`, e **os 18 controlos saíram «inválidos» de uma vez**. Falha alto, mas o sintoma (*«o controlo não corre»*) aponta para a árvore, não para o script — perdi duas corridas inteiras a procurar no sítio errado. ⇒ **aliases de DUAS letras**, e o arnês diz o porquê ao lado do `S=`

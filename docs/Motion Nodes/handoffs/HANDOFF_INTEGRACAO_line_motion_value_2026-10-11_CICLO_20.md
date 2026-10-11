@@ -7,8 +7,8 @@
 
 ## §1 — Identidade
 
-- Branch `line/motion-value`, HEAD `d521d1852` **(+1 commit a vir: os gates de placa Q29–Q31, Q34 —
-  ver §6; o HEAD final fica a preencher: `(a preencher)`)**.
+- Branch `line/motion-value`, HEAD do código `a03d0a938` (o commit seguinte só preenche este handoff e
+  a memória).
 - Merge-base com o `main`: **`8f20c60de`**. **10 commits** (mais velho → mais novo): `ce01e3114`,
   `6c391500c`, `21e5e9fc2`, `2508cc6cf` (W4) · `876f9b624`, `1c5be0d12`, `53578474c` (W4b) ·
   `7ec680a8b` (correcções do portão de fecho) · `1cc498b6f`, `d521d1852` (W5, mutação).
@@ -113,7 +113,13 @@ Portão batched sobre o diff acumulado:
 - Gates da shell `the_shell_only_shrinks`, `arch_safe_clamp_only`, `panel_loc_cap` verdes; censos de
   i18n verdes; censos da árvore combinada **12/12** e **117/117**.
 - Suítes de placa: `ph2d-render` **5/5**, `ph2d-app-motion` **58/58**.
-- **re-corrida final (depois do último commit): (a preencher)**.
+- **re-corrida final (sobre `a03d0a938`)**: nextest-impacted 17 507/17 509 — os 2 vermelhos são
+  gates de RELÓGIO da `ph2d-light2d-gpu` (fora do diff: `g4_o_custo_do_rc_nao_depende_do_numero_de_luzes`,
+  `g4_o_custo_da_holografica_nao_depende_do_numero_de_luzes`) a `load 75`, verdes sozinhos a
+  `load 52→41`; clippy `-D warnings` limpo (7 crates); fmt limpo; shell 23/23 + editor-core 7/7;
+  placa: ph2d-render 107/107 (o `the_pointwise_op_costs_much_less_than_a_blur` caiu uma vez na suíte e
+  passou 3/3 sozinho a `load 12`), ph2d-app-motion 68/68, `mistura_no_pump` 4/4, ph2d-node-fx-filter
+  16/16; censos 12/12 · 117/117; `architecture_claude_md_cabe_no_orcamento` 3/3.
 
 ## §5 — Auditoria (duas lentes: correcção e fiação)
 
@@ -143,7 +149,8 @@ Portão batched sobre o diff acumulado:
 5. Fotos de cada passo (14): `env PH2D_ACABAMENTO_PASSO=<p> …` com `p` em `0 1 2 3 4 5 5b 6 7a 7b 7c 7d 8 9`
    (mesmo `cd` e comando do passo 1). Tutorial:
    `docs/Motion Nodes/tutoriais/13_o_acabamento.pdf`.
-- **binário do smoke: (a preencher)**.
+- **binário do smoke**: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`,
+  2.ª corrida: `Finished \`smoke\` profile [optimized] target(s) in 0.28s` (zero `Compiling`).
 
 ## §8 — ABERTO
 

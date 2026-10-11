@@ -32,7 +32,10 @@ fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
 }
 
-/// Uma linha do 02 §6.9. `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
+/// Uma linha do 02 §6.9 — ⚠️ a Opacity (a claridade), o pigmento do Wash e o papel do Dry Brush CALIBRADOS
+/// contra o Rebelle (dono 10/10, «aproxime do Rebelle»; `sonda_presets_varre` contra
+/// `fixtures/rebelle_presets/`, 05 §4b «Conferência»). ⛔ Tirar pigmento dá a mesma claridade num traço
+/// sozinho mas torna a tinta transparente: medido, o cruzamento ia a γ 0,95 e o amarelo não cobria. `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
 /// `pickup`/`edge` são RAZÕES ao Wet Round, que é o padrão do dono (05 §1.2). A gravidade é a MESMA em
 /// todos (W1e, F5: o Rebelle não a tem por pincel — a velocidade é inclinação × água × cor); o `tilt` é o
 /// do dial (W1e, F4: Round, Wash e Dry com a tela direita, como o Rebelle; o Drip, o único que promete
@@ -40,6 +43,8 @@ fn raiz() -> PathBuf {
 struct Receita {
     nome: &'static str,
     water: f64,
+    /// A Opacity do Wet Paint: a cor diluída para o branco (a claridade do Rebelle, que cobre).
+    opacity: f64,
     pigment: f64,
     pickup: f64,
     gate: f64,
@@ -61,6 +66,7 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Round",
         water: 1.0,
+        opacity: 0.26,
         pigment: 800.0,
         pickup: 1.0,
         gate: 0.4,
@@ -72,8 +78,9 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     },
     Receita {
         nome: "Wet Wash",
-        water: 1.0,
-        pigment: 400.0,
+        water: 0.4,
+        opacity: 0.2,
+        pigment: 200.0,
         pickup: 0.6,
         gate: 0.3,
         evaporation: 0.7,
@@ -85,9 +92,10 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Dry Brush",
         water: 0.2,
+        opacity: 0.5,
         pigment: 1200.0,
         pickup: 1.6,
-        gate: 0.6,
+        gate: 0.4,
         evaporation: 1.5,
         edge: 1.125,
         tilt: DIREITA,
@@ -97,6 +105,7 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Drip",
         water: 1.0,
+        opacity: 0.28,
         pigment: 600.0,
         pickup: 0.8,
         gate: 0.2,
@@ -119,7 +128,7 @@ fn parametros(r: &Receita) -> Parametros {
     t.set_paint_media(PaintMedia::WetPaint);
     let (mut p, _) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, GRUPO, r.nome));
     p.volumes.size_px = None;
-    p.volumes.opacity = None;
+    p.volumes.opacity = Some(r.opacity);
     p.volumes.water = Some(r.water);
     p.tilt = Some(r.tilt);
     // As opções da W1g não são do pincel de fábrica: aplicá-lo não mexe nelas (a regra do preset antigo).

@@ -46,7 +46,11 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     assert_eq!(p.vista.ativo, None);
     p.atender(&mut t, PedidoPreset::Escolher(WASH.into()), &mut toasts);
     sem_erros(&toasts);
-    assert_eq!(knob(&t, "pigmentPerDab"), 400.0, "o Wash do 02 §6.9");
+    assert_eq!(
+        knob(&t, "pigmentPerDab"),
+        200.0,
+        "o Wash do 02 §6.9 (calibrado contra o Rebelle 10/10)"
+    );
     assert_eq!(knob(&t, "bristleCount"), 3000.0);
     assert_eq!(p.vista.ativo.as_deref(), Some(WASH));
     // Reaberto (outra sessão): o pincel abre com o Wash.
@@ -54,7 +58,7 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     t2.set_paint_media(PaintMedia::WetPaint);
     let p2 = Presets::abrir_em(pasta_de_fabrica(), Some(uti), &mut t2, &mut toasts);
     assert_eq!(p2.vista.ativo.as_deref(), Some(WASH));
-    assert_eq!(knob(&t2, "pigmentPerDab"), 400.0);
+    assert_eq!(knob(&t2, "pigmentPerDab"), 200.0);
 }
 
 #[test]

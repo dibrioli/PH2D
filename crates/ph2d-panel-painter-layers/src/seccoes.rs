@@ -222,6 +222,7 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.wetpaint.preset_policy",
     "panel.painter_layers.wetpaint.vol_size",
     "panel.painter_layers.wetpaint.water",
+    "panel.painter_layers.wetpaint.vol_opacity",
 ];
 /// *Clone*.
 pub(crate) const CLONE: &[&str] = &["panel.painter_layers.clone.aligned"];

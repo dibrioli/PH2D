@@ -163,3 +163,8 @@ pub(super) fn decode_wet_quick_size_option(id: NodeId) -> Option<u8> {
 pub(super) fn decode_wet_quick_water_option(id: NodeId) -> Option<u8> {
     decode_wet_quick(1, id)
 }
+
+/// Decode an **Opacity** quick-value option id → its index in `VOL_QUICK_UNIT`.
+pub(super) fn decode_wet_quick_opacity_option(id: NodeId) -> Option<u8> {
+    decode_wet_quick(2, id)
+}

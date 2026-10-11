@@ -133,8 +133,8 @@ pub use ph2d_painter_brush::{
 };
 pub use tool::paint::wetpaint_preset::{
     ALTURA_DO_PREVIEW, CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview,
-    DIAMETRO_DA_MINIATURA, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PedidoPreset,
-    miniatura_do_preset, pintar_preview,
+    DIAMETRO_DA_MINIATURA, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,
+    OPACIDADE_DE_FABRICA, PedidoPreset, miniatura_do_preset, pintar_preview,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,

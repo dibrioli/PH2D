@@ -1,8 +1,8 @@
 //! The **Wet Painter preset** widgets (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`): the preset chip,
-//! the Favorite checkbox, Save as New / Save as Default / Reset, the Size px volume (Water is
-//! [`super::PAINTER_WETPAINT_WATER`]), the quick-value chips of the two live volumes, and the
-//! volume-policy chip. Opacity, Pressure and Length have NO reader in Wet Paint yet (gate
-//! `a_opacidade_nao_tem_leitor_no_wet_paint`; W6/W5): no control until they do. The disk work behind the preset buttons is the shell bridge's
+//! the Favorite checkbox, Save as New / Save as Default / Reset, the Size px and Opacity volumes (Water
+//! is [`super::PAINTER_WETPAINT_WATER`]), the quick-value chips of the three live volumes, and the
+//! volume-policy chip. The Opacity is the Wet Paint's own (the shared brush strength has NO reader here,
+//! gate `a_opacidade_nao_tem_leitor_no_wet_paint`); Pressure and Length wait for W6/W5. The disk work behind the preset buttons is the shell bridge's
 //! (`ph2d-app-painter/src/painter_bridge_presets.rs`): the tool only records the request.
 
 use ph2d_a11y::NodeId;
@@ -52,10 +52,15 @@ pub const PAINTER_WETPAINT_PRESET_BUTTONS: [NodeId; 4] = [
 
 /// **Size px** volume — the DIAMETER the artist sees (the cursor ring); the tool stores half of it.
 pub const PAINTER_WETPAINT_VOL_SIZE: NodeId = hash_node_id("painter_brush.wetpaint_vol_size");
-/// The quick-value chip of each live volume, in volume order: Size px · Water.
-pub const PAINTER_WETPAINT_VOL_QUICK: [NodeId; 2] = [
+/// **Opacity** volume (`0..1`) — the Wet Paint's OWN opacity: the deposited colour goes to the paper
+/// white by it (the Rebelle's light paint, measured: colour × white at one fraction on all three
+/// channels). Not the shared brush strength (gate `a_opacidade_nao_tem_leitor_no_wet_paint`).
+pub const PAINTER_WETPAINT_VOL_OPACITY: NodeId = hash_node_id("painter_brush.wetpaint_vol_opacity");
+/// The quick-value chip of each live volume, in volume order: Size px · Water · Opacity.
+pub const PAINTER_WETPAINT_VOL_QUICK: [NodeId; 3] = [
     hash_node_id("painter_brush.wetpaint_vol_quick_size"),
     hash_node_id("painter_brush.wetpaint_vol_quick_water"),
+    hash_node_id("painter_brush.wetpaint_vol_quick_opacity"),
 ];
 
 /// Quick values of the Size px volume (diameter, px) — Rebelle's quick list, in px, from the smallest
@@ -63,7 +68,7 @@ pub const PAINTER_WETPAINT_VOL_QUICK: [NodeId; 2] = [
 pub const VOL_QUICK_SIZE_PX: [f32; 12] = [
     2.0, 3.0, 5.0, 10.0, 20.0, 40.0, 60.0, 100.0, 150.0, 200.0, 300.0, 500.0,
 ];
-/// Quick values of the 0..1 volume (Water), shown as percent.
+/// Quick values of the 0..1 volumes (Water · Opacity), shown as percent.
 pub const VOL_QUICK_UNIT: [f32; 10] = [0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.85, 1.0];
 
 /// The quick values of volume `v` (index into [`PAINTER_WETPAINT_VOL_QUICK`]).

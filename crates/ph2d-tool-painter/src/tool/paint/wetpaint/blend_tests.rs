@@ -36,6 +36,8 @@ fn tela_vermelha(cor: [f32; 3], blend: BrushBlend) -> PainterTool {
     t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
     t.set_brush_blend(blend as u8);
+    // A cor CHEIA: a identidade do modo é a cor pura (o preto diluído é cinza, que o Screen pinta).
+    t.paint.wetpaint.opacidade = 1.0;
     t
 }
 

@@ -8,7 +8,7 @@ Por coluna, com `escuro = 255 − min(rgb)` e o miolo = x0+40 … x0+110:
   largura   as linhas com escuro > 25 em torno de y = 150 (mediana por x), contra o tamanho 40
   orla      o escuro das 3 linhas da borda ÷ o do centro (> 1 = orla escura, a aguarela molhada)
   buracos   a fracção do miolo da faixa (60 % central) com escuro < ¼ do centro — o papel a aparecer
-  escorre   a maior descida (px) abaixo da faixa com escuro > 25
+  escorre   a maior descida (px) abaixo da faixa com escuro > 30 % da tinta (mínimo 6)
 uso: presets_regua.py <tela.png|ppm>…   (nomes à frente; colunas na ordem da bancada)
 """
 import sys
@@ -38,9 +38,12 @@ def coluna(e, i):
         fundo = max(fundo, bot)
     # escorre: a descida mais longa abaixo da faixa (mediana do fundo) em toda a largura do traço
     fb = int(np.median([150 + l // 2 for l in larg])) if larg else 150
+    # 30 % da tinta do próprio traço (mínimo 6): os fios de uma tinta diluída ficam abaixo dos 25 absolutos.
+    t0 = float(np.median(centro)) if centro else 0.0
+    limiar = max(6.0, 0.3 * t0)
     desc = 0
     for x in range(x0 - 10, x0 + 161):
-        c = e[fb:, x] > 25
+        c = e[fb:, x] > limiar
         k = 0
         while k < len(c) and c[k]:
             k += 1

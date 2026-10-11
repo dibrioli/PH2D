@@ -393,6 +393,7 @@ impl PainterTool {
                 .offers_pigment_mixing_in(self.paint.paint_mode, self.paint.eraser),
             wetpaint: self.paint.wetpaint.armed,
             wet_knobs: self.paint.wetpaint.knobs,
+            wet_opacidade: self.paint.wetpaint.opacidade,
             wet_tool: self.paint.wetpaint.tool,
             wet_tilt_on: self.paint.wetpaint.tilt_on,
             wet_tilt_ring: self.paint.wetpaint.tilt_ring,

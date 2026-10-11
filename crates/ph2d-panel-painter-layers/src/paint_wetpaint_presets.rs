@@ -1,9 +1,10 @@
 //! **O bloco de presets do Wet Painter** (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`): no Wet Paint
 //! ele toma o lugar da fileira «Preset» dos meios. De cima para baixo: o chip Preset (o navegador:
 //! Favoritos · os grupos, que são as pastas), Favorite, o preview VIVO, Save as New ·
-//! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water) com os valores
-//! rápidos, e a política dos volumes. Opacity, Pressure e Length não têm leitor no Wet Paint: não
-//! aparecem (gate `a_opacidade_nao_tem_leitor_no_wet_paint`).
+//! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water · Opacity, a do Wet
+//! Paint, que dilui a cor para o papel) com os valores rápidos, e a política dos volumes. A força
+//! partilhada continua sem leitor no Wet Paint (gate `a_opacidade_nao_tem_leitor_no_wet_paint`); Pressure e
+//! Length não aparecem.
 //!
 //! O que escreve onde: os botões e as escolhas viram um `PedidoPreset` no tool, que a ponte da app
 //! executa (o disco é dela); os volumes vão directos ao pincel (`route_wet_preset_event`).
@@ -75,6 +76,20 @@ pub(crate) fn paint_wetpaint_presets(
         "panel.painter_layers.wetpaint.water",
         ids::PAINTER_WETPAINT_WATER,
         brush.wet_knobs.water as f32,
+        (0.0, 1.0),
+        number_field::FINE_STEP,
+        2,
+    );
+    y = volume_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        2,
+        "panel.painter_layers.wetpaint.vol_opacity",
+        ids::PAINTER_WETPAINT_VOL_OPACITY,
+        brush.wet_opacidade,
         (0.0, 1.0),
         number_field::FINE_STEP,
         2,

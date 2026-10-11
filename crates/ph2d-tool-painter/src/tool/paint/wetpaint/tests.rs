@@ -33,6 +33,8 @@ fn tool_in_mode(mode: &str) -> PainterTool {
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode(mode);
+    // A cor CHEIA: estes gates medem o caminho da cor e da água, não a diluição da Opacity.
+    t.paint.wetpaint.opacidade = 1.0;
     t
 }
 

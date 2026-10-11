@@ -160,7 +160,7 @@ pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 12] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 13] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -171,6 +171,7 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 12] = [
     PAINTER_WETPAINT_GRAVITY,
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
+    super::PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_HEAVY_EDGE,
     PAINTER_WETPAINT_SMOOTH_EDGES,
 ];

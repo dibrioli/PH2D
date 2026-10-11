@@ -45,6 +45,8 @@ fn wet_tool(ratio: u8) -> PainterTool {
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
+    // A cor CHEIA: estes gates medem a grade e o composite, não a diluição da Opacity.
+    t.paint.wetpaint.opacidade = 1.0;
     // Pela PORTA (o slider), não pelo campo — é o caminho do artista.
     t.set_wet_grid_ratio(f64::from(ratio));
     t

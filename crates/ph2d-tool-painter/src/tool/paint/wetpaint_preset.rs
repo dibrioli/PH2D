@@ -15,6 +15,10 @@ use ph2d_painter_brush::TextureKind;
 use ph2d_wet_paint::tuning::KNOB_DEFS;
 use std::collections::BTreeMap;
 
+/// A Opacity do Wet Paint sem preset = a do Wet Round de fábrica: a claridade do Round do Rebelle (carga
+/// 55 contra 54, `sonda_presets_varre`, 05 §4b «Conferência»).
+pub const OPACIDADE_DE_FABRICA: f32 = 0.26;
+
 mod json;
 #[cfg(test)]
 mod medida_preview;
@@ -241,21 +245,29 @@ impl PainterTool {
                 self.aplicar_volume(0, *v);
                 return true;
             }
+            PanelEvent::SetValue(id, v) if *id == ids::PAINTER_WETPAINT_VOL_OPACITY => {
+                self.aplicar_volume(2, *v);
+                return true;
+            }
             _ => return false,
         };
         self.paint.wetpaint.preset_pedido = Some(pedido);
         true
     }
 
-    /// Um volume VIVO pelo índice do painel (Size px · Water).
+    /// Um volume VIVO pelo índice do painel (Size px · Water · Opacity).
     fn aplicar_volume(&mut self, vol: usize, x: f64) {
         let v = match vol {
             0 => Volumes {
                 size_px: Some(x),
                 ..Volumes::default()
             },
-            _ => Volumes {
+            1 => Volumes {
                 water: Some(x),
+                ..Volumes::default()
+            },
+            _ => Volumes {
+                opacity: Some(x),
                 ..Volumes::default()
             },
         };
@@ -341,7 +353,7 @@ impl PainterTool {
             self.set_brush_size_px(d as f32 * 0.5);
         }
         if let Some(o) = v.opacity.filter(|o| o.is_finite()) {
-            self.set_brush_strength(o as f32);
+            self.paint.wetpaint.opacidade = (o as f32).clamp(0.0, 1.0);
         }
         if let Some(w) = v.water.filter(|w| w.is_finite()) {
             self.paint.wetpaint.knobs.water = w.clamp(0.0, 1.0);
@@ -360,7 +372,7 @@ impl PainterTool {
     pub fn wet_preset_volumes(&self) -> Volumes {
         Volumes {
             size_px: Some(curto(self.paint.brush.radius_px * 2.0)),
-            opacity: Some(curto(self.paint.brush.strength)),
+            opacity: Some(curto(self.paint.wetpaint.opacidade)),
             water: Some(self.paint.wetpaint.knobs.water),
             ..Volumes::default()
         }

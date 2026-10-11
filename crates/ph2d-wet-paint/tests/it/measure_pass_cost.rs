@@ -314,3 +314,74 @@ fn measure_how_many_cells_a_pass_actually_visits() {
     }
     println!();
 }
+
+/// **O que custa «assentar não muda o que se vê»** (10/10, `ph2d_wet_paint::assenta`): o passe de secagem
+/// na poça grande com TRÊS cores sobrepostas (as junções resolvem de facto — numa cor só o Newton sai no
+/// 1.º teste), lei `Porto` contra `PorCima` e `Camada`, no MESMO processo, 7 rondas intercaladas, o mínimo.
+#[test]
+#[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
+fn measure_what_the_vertical_transfer_law_costs() {
+    use ph2d_wet_paint::assenta::Ecra;
+    let mut e = Engine::new(SIDE, SIDE);
+    e.sliders.water = 1.0;
+    e.sliders.size = 1.0;
+    let c = SIDE as f64 * 0.5;
+    for (lane, cor) in [
+        [30.0, 100.0, 220.0],
+        [245.0, 205.0, 25.0],
+        [200.0, 30.0, 30.0],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        e.color = cor;
+        let off = 300.0 * lane as f64 - 300.0;
+        drive_stroke(
+            &mut e,
+            c - 1500.0 * DIAG + off,
+            c - 1500.0 * DIAG,
+            c + 1500.0 * DIAG + off,
+            c + 1500.0 * DIAG,
+            120.0,
+            10,
+        );
+    }
+    e.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
+    let base: Params = e.sim.gather_params(&e.tuning);
+    let evap = e.sim.evap_scale * base.k(Knob::Evaporation);
+    let rewet = e.sim.rewet_base * base.k(Knob::Rewet);
+    let g = e.active_grid_mut();
+    let snap = snapshot_grid(g);
+    let leis = [
+        ("Porto", Ecra::Porto),
+        (
+            "PorCima",
+            Ecra::PorCima(ph2d_wet_paint::colorops::VELATURA_DO_FILME),
+        ),
+        ("Camada", Ecra::Camada),
+    ];
+    let mut melhor = [f64::MAX; 3];
+    for ronda in 0..7 {
+        for k in 0..3 {
+            let j = (k + ronda) % 3;
+            let mut p = base.clone();
+            p.ecra = leis[j].1;
+            let t = time_pass(g, &snap, |g| {
+                ph2d_wet_paint::drying::drying_pass_jacobi(g, &p, evap, rewet, false);
+            });
+            melhor[j] = melhor[j].min(t);
+        }
+    }
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "\n  o passe de secagem, 3 cores, {SIDE}² (mínimo de 7 rondas; load {})",
+        load.trim()
+    );
+    for (j, (nome, _)) in leis.iter().enumerate() {
+        println!(
+            "    {nome:<8} {:7.3} ms ({:+.0} %)",
+            melhor[j],
+            100.0 * (melhor[j] / melhor[0] - 1.0)
+        );
+    }
+}

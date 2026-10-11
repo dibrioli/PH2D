@@ -83,7 +83,21 @@ pub use ph2d_pigment::{ColorMix, reflectance_of_ks};
 /// vermelho SECO cai a `0,42–0,51` do caminho entre «o azul por cima» e «multiplicar as duas»
 /// (régua `docs/Painter/NewFeaturesWetPaint/ferramentas/velatura.py`, tabela no 05 §4b). O motor nasce
 /// com `0` (o port, que a impressão digital fixa); o produto liga este valor.
-pub const VELATURA_MEDIDA: f64 = 0.47;
+///
+/// ⚠️ **0,47 → 1,0 com a Opacity do Rebelle (10/10)**: a tinta diluída e a diferença de pigmento pelo ÂNGULO
+/// ([`diferenca_de_pigmento`]). Grelha velatura × filme, água parada (seco γ durante · depois · sangria,
+/// fracção do caminho; camadas: o azul escondido à 10.ª molhado; barra camadas ≥ 0,70):
+///
+/// | g · f | 0,47·0,47 | 0,6·0,35 | 0,6·0,40 | 0,6·0,50 | 0,8·0,40 | **1,0·0,40** |
+/// |---|---|---|---|---|---|---|
+/// | W1e seco | 0,45·0,41 · +0,015 | 0,37·0,32 · +0,017 | 0,41·0,36 · +0,017 | 0,47·0,43 · +0,014 | 0,41·0,36 · +0,017 | **0,41·0,36 · +0,017** |
+/// | W1e molhado γ · sangria | 0,29 ✗ | 0,33 | 0,33 · +0,080 | 0,33 | 0,40 · +0,072 | **0,48 · +0,063** |
+/// | camadas | 0,60 ✗ | 0,75 | 0,71 | 0,65 ✗ | 0,71 | **0,71** |
+///
+/// Com a Live Water e o papel Cold (filme 0,50): g 0,6 molhado γ 0,28 ✗ · 0,8 0,34 · **1,0 0,41**, o resto
+/// igual (seco 0,43·0,46 · +0,016, camadas 0,85). (Rebelle seco 0,42–0,49 · 0,44–0,51, molhado 0,62;
+/// camadas 0,89 molhado · 0,96 seco.) `1` = a multiplicação inteira, pesada pela diferença de pigmento.
+pub const VELATURA_MEDIDA: f64 = 1.0;
 
 /// **A velatura do filme MOLHADO sobre o assentado, no render** (W1f): o azul ainda em suspensão leva o
 /// termo inteiro de uma vez (peso ≈ 1), enquanto ao assentar entra aos bocados — com `VELATURA_MEDIDA`
@@ -102,7 +116,9 @@ pub const VELATURA_MEDIDA: f64 = 0.47;
 /// | água parada | 0,39 · 0,20 · +3,8 | 0,49 · 0,33 · +3,5 | 0,53 · 0,39 · +3,3 | 0,58 · 0,45 · +3,1 ✗ | **0,62 · 0,50 · +2,9** | 0,69 · 0,60 · +2,6 |
 ///
 /// (Rebelle 0,42–0,49 · 0,44–0,51 · +1…+2, barra da sangria ≤ 3; o molhado não muda: +13.)
-pub const VELATURA_DO_FILME: f64 = 0.25;
+///
+/// ⚠️ **0,25 → 0,40 com a Opacity do Rebelle (10/10)** — a grelha no doc de [`VELATURA_MEDIDA`].
+pub const VELATURA_DO_FILME: f64 = 0.40;
 
 /// **A mesma velatura com a água A CORRER no traço** (W1g, «Live Water»): a água que assenta durante o
 /// traço muda a conta, e o `0,20` deixava o azul sangrar `+3,2` sobre o vermelho SECO (barra `≤ 3`,
@@ -115,7 +131,10 @@ pub const VELATURA_DO_FILME: f64 = 0.25;
 /// (molhado: γ durante 0,40–0,44, sangria +27…+28 em todos; Rebelle seco 0,42–0,49 · 0,44–0,51.)
 /// Com [`crate::assenta`] (10/10), sem papel: 0,20 · 0,25 · **0,35** → seco 0,44·0,45 · 0,50·0,51 ·
 /// **0,60·0,61**, sangria +5,8 · +5,4 · **+4,7** (tecto +5 sem papel); com o Cold a barra inteira continua verde.
-pub const VELATURA_DO_FILME_VIVA: f64 = 0.35;
+/// ⚠️ **0,35 → 0,50 com a Opacity do Rebelle (10/10)**, sem papel (seco γ · sangria; camadas molhado): 0,35
+/// 0,33·0,34 · +0,032 ✗ · 0,89 · 0,40 0,36·0,37 · +0,030 ✗ · 0,88 · **0,50 0,43·0,45 · +0,027 · 0,85** ·
+/// 0,60 0,54·0,57 · +0,023 · 0,25 ✗ (tecto da sangria sem papel 0,028; camadas ≥ 0,70).
+pub const VELATURA_DO_FILME_VIVA: f64 = 0.50;
 
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos
 /// TRANSPARENTES: a cor de cima perde, na fração `glaze`, a luz que a de baixo já absorveu.
@@ -124,7 +143,7 @@ pub const VELATURA_DO_FILME_VIVA: f64 = 0.35;
 /// que é exactamente `alpha_of_mass(m_b + m_c)`). Sobre o branco, `glaze = 1` dá `O_b · O_c` (a lei de
 /// Beer–Lambert: absorbâncias somam-se) e `glaze = 0` não toca em `out` — a aritmética de antes ao bit.
 ///
-/// ⚠️ **O termo é da DIFERENÇA de pigmento** (× a distância RGB normalizada entre as duas, até 1): a
+/// ⚠️ **O termo é da DIFERENÇA de pigmento** (× [`diferenca_de_pigmento`], o ângulo entre os perfis de absorção): a
 /// MESMA tinta não se filtra a si mesma — a cobertura `alpha_of_mass` já a escurece pela massa, e uma
 /// mancha de uma cor assenta aos BOCADOS (cada passe de secagem é uma junção). Sem o factor, um traço
 /// vermelho sozinho escurecia de `(202, 37, 37)` para `(156, 25, 25)` (sonda `sonda_mistura`, 09/10).
@@ -140,12 +159,30 @@ pub fn velatura(
     if glaze <= 0.0 || a_baixo <= 0.0 {
         return;
     }
-    let d2 = (0..3).map(|c| (cima[c] - baixo[c]).powi(2)).sum::<f64>();
-    let dif = (d2.sqrt() / 255.0).min(1.0);
-    let k = w * glaze * a_baixo * dif;
+    let k = w * glaze * a_baixo * diferenca_de_pigmento(baixo, cima);
     for c in 0..3 {
         out[c] = (out[c] - k * cima[c] * (1.0 - baixo[c] / 255.0)).max(0.0);
     }
+}
+
+/// **Quão diferentes são os PIGMENTOS de duas tintas** (`0..1`): o seno do ângulo entre os perfis de absorção
+/// (`255 − cor`). A diluição muda o comprimento do perfil, não a direcção — a mesma tinta mais clara ou mais
+/// escura dá `0` (não se vela), e duas tintas diferentes velam o mesmo a qualquer diluição. ⛔ A distância
+/// RGB que esteve aqui encolhia com a diluição: com a Opacity do Rebelle (10/10) o azul sobre o vermelho caía a
+/// γ 0,20 (Rebelle 0,42–0,51) porque o claro e o claro ficam «perto». O papel branco (perfil nulo) dá `0`.
+#[inline]
+pub fn diferenca_de_pigmento(a: [f64; 3], b: [f64; 3]) -> f64 {
+    let (pa, pb) = (a.map(|v| 255.0 - v), b.map(|v| 255.0 - v));
+    let (na, nb) = (
+        pa.iter().map(|v| v * v).sum::<f64>(),
+        pb.iter().map(|v| v * v).sum::<f64>(),
+    );
+    if na < 1e-9 || nb < 1e-9 {
+        return 0.0;
+    }
+    let dot = (0..3).map(|c| pa[c] * pb[c]).sum::<f64>();
+    let cos2 = (dot * dot / (na * nb)).min(1.0);
+    (1.0 - cos2).sqrt()
 }
 
 /// K–M weighted mean of up to 4 engine colors (the advection's incoming-color

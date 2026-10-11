@@ -15,14 +15,15 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 
 /// (cena, inclinação, hash). Gravados em `fcc685e43`; regravados UMA vez a 10/10 pela ordem do dono sobre
 /// o papel (sem Kind, o grão sem desenho em vez do Cold — o traço sem papel mudou de propósito; as opções
-/// continuam a não mexer um byte).
+/// continuam a não mexer um byte); e outra vez a 10/10 pela ordem do dono «aproxime do Rebelle» (o Wet
+/// Round ganhou a Opacity 0,26 e a velatura foi re-medida: o traço de fábrica mudou de propósito).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0x2422_98ff_e3b5_cc05),
-    ("S", Some(4), 0xdda0_0431_822c_7a2e),
-    ("S", Some(8), 0xd86f_70c4_a969_e482),
-    ("bancada", None, 0xc9f6_4e0a_65c8_fe4a),
-    ("bancada", Some(4), 0x07c7_18e0_9450_5a29),
-    ("bancada", Some(8), 0xaa38_a84f_8d40_328a),
+    ("S", None, 0xe6d3_eba4_aa2e_239c),
+    ("S", Some(4), 0xaf08_3085_0ae8_7ab4),
+    ("S", Some(8), 0xb2f4_4f50_886d_031e),
+    ("bancada", None, 0x4c57_e851_ddfa_9b83),
+    ("bancada", Some(4), 0x7d26_8017_5e9f_e4ea),
+    ("bancada", Some(8), 0x5df2_a640_6890_9f26),
 ];
 
 #[test]
@@ -270,6 +271,9 @@ fn azul_sobre_vermelho(forca: f32, assentar: bool) -> Vec<u8> {
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
+    // A tinta CHEIA: o caso do 4.º smoke do dono; os limiares do degrau são de contraste absoluto, e com a
+    // Opacity do Wet Round (0,26) o degrau entre as duas tintas diluídas amacia menos (−18 %, 05 §4b).
+    t.paint.wetpaint.opacidade = 1.0;
     t.paint.wetpaint.tilt_on = false;
     t.paint.wetpaint.smooth_edges = forca;
     let cp = |x: f32, y: f32, phase| CanvasPointer {

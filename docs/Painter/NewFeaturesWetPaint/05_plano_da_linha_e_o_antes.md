@@ -902,7 +902,61 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   fina e escura ao secar, e não escorre (água 24); a nossa carrega tanta tinta como o Round e é a que MAIS
   escorre. Round, Dry Brush e Drip conferem com o nome (o Dry Brush é fios partidos onde o do Rebelle é
   estriado e cheio; os fios do Drip são grossos e curtos — o «fio único» aberto da W1e). ⚠️ Os quatro
-  carregam 3–4× a tinta do Rebelle e saem 25–30 px a 40 (a largura prometida, W2). Decisão do dono pendente.
+  carregam 3–4× a tinta do Rebelle e saem 25–30 px a 40 (a largura prometida, W2). Dono: «aproxime do
+  Rebelle e ajuste tudo que for necessário» ⇒ a entrada seguinte.
+- ✅ **A claridade do Rebelle — a Opacity do Wet Paint (10/10).** Medido nas fotos do oráculo: o traço claro do
+  Rebelle é a cor misturada com BRANCO numa fracção constante nos três canais (Round azul 0,667 · 0,671 ·
+  0,657; amarelo 0,70 · 0,72 · 0,72; vermelho da W1e 0,69 · 0,69) — tinta DILUÍDA que cobre, não pouca tinta.
+  - ⛔ **Recusa medida — clarear tirando pigmento** (Round 800 → 80, Wash 400 → 28…): dá a mesma carga num
+    traço sozinho, mas a tinta fica transparente e as camadas morrem — o cruzamento azul/vermelho ia a γ
+    0,95–0,97 MESMO com a velatura a 0 (Rebelle 0,42–0,51) e o amarelo sobre o azul ficava mais escuro que o
+    azul (lum 0,75–0,82 dele).
+  - **A lei:** a **Opacity** (volume do preset, `0..1`) é do Wet Paint (a força do pincel é partilhada entre
+    os meios — `a_opacidade_nao_tem_leitor_no_wet_paint` continua verde): `dab_route` deposita
+    `255 − op·(255 − cor)`; `1` = a cor ao bit. Nasce 0,26 (`OPACIDADE_DE_FABRICA`, a do Wet Round). Painel:
+    a linha **Opacity** sob o Water, com valores rápidos (`PAINTER_WETPAINT_VOL_OPACITY`, `VOL_QUICK[2]`).
+  - **Os pincéis** (varredura `sonda_presets_varre`, mesma régua dos dois lados; tabela no 02 §6.9):
+
+    | 30 s, tela direita | carga · largura (40) · orla · papel | inclinado: escorre | Rebelle (carga · orla · escorre) |
+    |---|---|---|---|
+    | Wet Round (Opacity 0,26) | 55 · 24 · 0,96 · 0 | 13 | 54 · 0,92 · 350 |
+    | Wet Wash (0,20, pigmento 200, água 0,4) | 39 · 25 · 1,03 · 0 | 2 | 39 · 1,41 · 0 |
+    | Wet Dry Brush (0,50, Paper Gate 0,4) | 105 · 22 · 0,42 · 0,13 | 1 | 102 · 1,00 · 1 |
+    | Wet Drip (0,28, Tilt máx.) | 59 · 29 · 0,96 · 0 | 71 | 60 · 0,91 · 348 |
+
+    ⚠️ A régua do escorrimento passou a contar a partir de 30 % da tinta do próprio traço (mínimo 6): com os
+    25 absolutos ela lia 0 no Wash diluído que a foto mostrava a escorrer (124 px com a água 1,0).
+  - **A tinta diluída mudou três leis, re-medidas no mesmo bloco (§0.10):**
+    1. **A diferença de pigmento da velatura é o ÂNGULO entre os perfis de absorção**
+       (`colorops::diferenca_de_pigmento`): a distância RGB encolhia com a diluição (o rosa e o azul-claro
+       ficam «perto») e o cruzamento caía a γ 0,20. Mutação «volta à distância RGB» ⇒ a barra W1e VERMELHA.
+    2. **As velaturas re-medidas** (grelha `sonda_velatura_recalibra`, as DUAS barras juntas — a W1e e as
+       camadas; tabela no doc de `VELATURA_MEDIDA`): `VELATURA_MEDIDA` 0,47 → **1,0**, `VELATURA_DO_FILME`
+       0,25 → **0,40**, `VELATURA_DO_FILME_VIVA` 0,35 → **0,50**. Água parada: seco γ 0,41 · 0,36, molhado
+       0,48; camadas 0,71 molhado · 1,00 seco. Com a Live Water e o Cold: seco 0,43 · 0,46, molhado 0,41,
+       camadas 0,85. ⚠️ Margens justas (0,71 contra 0,70; a sangria seca no tecto 0,017).
+    3. **As réguas passaram a não depender da diluição:** a sangria da W1e em FRACÇÃO do caminho (as barras
+       antigas, +8 e ±3 níveis sobre o caminho de 180 da tinta cheia, são 0,044 e 0,017 — o mesmo rigor); as
+       camadas pelo canal VERMELHO contra o amarelo como sai sozinho (o verde junto confundia cobrir com
+       concentrar: dava ao PRÓPRIO Rebelle 0,46 à 10.ª; pelo vermelho ele dá 0,30 · 0,75 · 0,89, seco 0,96).
+  - **Testes que mediam outra coisa** passam a pintar com a cor cheia (Opacity 1, escrito em cada um): o
+    `tool_in_mode` e o `wet_tool` dos gates de grade/encaminhamento, a identidade do Blend, o Smooth Edges
+    sobre tinta (o caso do 4.º smoke do dono era tinta cheia). Regravadas UMA vez, com a razão: as impressões
+    do S e da bancada (`opcoes_tests`) e as 4 miniaturas.
+  - **Portões novos:** `a_opacity_do_wet_paint_dilui_a_cor_para_o_papel` (a 0,26 ~¼ do escuro da cheia;
+    mutação «o pincel ignora a Opacity» ⇒ VERMELHO) · `a_opacity_e_um_volume_do_wet_paint` (painel: o campo e o
+    valor rápido chegam ao pincel e a força partilhada não mexe) · `os_volumes_sao_o_que_o_painel_mostra`
+    (mutação «o preset põe a Opacity na força» ⇒ VERMELHO). Custo das leis novas (assentar, a 4096², três
+    cores, mínimo de 7 rondas, `measure_what_the_vertical_transfer_law_costs`): Porto 0,666 · PorCima 0,650 ·
+    Camada 0,712 ms — desprezável.
+  - **Aberto (medido, para o dono decidir a ordem):** (a) a **sangria no molhado** anda 0,06–0,10 do caminho,
+    o Rebelle **0,27** — sempre foi ~3× mais fraca (a tinta cheia escondia-o nos níveis absolutos); é
+    dinâmica da água, calibrada nas ondas das gotas e dos fios, e a difusão do motor move MASSA e não cor
+    entre tintas de carga igual. (b) A **largura**: 22–29 px a 40 (Rebelle 32–41) — a W2. (c) O **Wash** não
+    tem a linha escura fina ao secar (orla 1,03; Rebelle 1,41). (d) Os fios do Round/Drip inclinados: grossos
+    e curtos (13 · 71 px; Rebelle 350, finos) — o «fio único» da W1e. (e) Com a tinta diluída o **Smooth
+    Edges** amacia menos o degrau entre duas tintas claras (−18 %; os limiares são de contraste absoluto).
+  - Prancha: [conferência calibrada](prancha_presets_calibrados.png) (Rebelle · nós, tela direita e inclinada).
 - ✅ **Assentar não muda o que se vê (dono 10/10: «Pigment mixing + Glaze layering pintando sobre tinta seca
   ainda tem uma aparência em 2 etapas — isso não pode acontecer»).** Sonda e portão em
   `wetpaint/mistura_camadas_tests.rs` (`duas_etapas`: uma passada de amarelo sobre o azul seco, o miolo com o

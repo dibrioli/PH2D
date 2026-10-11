@@ -136,6 +136,33 @@ fn o_water_e_um_volume_e_mexe_no_knob() {
     );
 }
 
+/// **A Opacity do Wet Paint** (a claridade do Rebelle, 10/10): o campo e o valor rápido chegam ao pincel
+/// — a Opacity DELE, não a força partilhada entre os meios.
+#[test]
+fn a_opacity_e_um_volume_do_wet_paint() {
+    let mut t = molhado();
+    let forca = t.brush_settings().strength;
+    digita(&mut t, ids::PAINTER_WETPAINT_VOL_OPACITY, "0.5");
+    assert!(
+        (t.brush_settings().wet_opacidade - 0.5).abs() < 1e-6,
+        "{}",
+        t.brush_settings().wet_opacidade
+    );
+    assert_eq!(
+        t.brush_settings().strength,
+        forca,
+        "a força partilhada não mexe"
+    );
+    let i100 = ids::VOL_QUICK_UNIT.iter().position(|&v| v == 1.0).unwrap() as u8;
+    escolhe(
+        &mut t,
+        Some(ROUND),
+        ids::PAINTER_WETPAINT_VOL_QUICK[2],
+        ids::painter_wetpaint_vol_quick_option_id(2, i100),
+    );
+    assert_eq!(t.brush_settings().wet_opacidade, 1.0, "o rápido «100 %»");
+}
+
 #[test]
 fn os_valores_rapidos_mudam_o_volume() {
     let mut t = molhado();

@@ -125,6 +125,10 @@ pub(crate) struct WetPaintState {
     pub(super) agua_viva: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento desce mais que a água na tela inclinada. `0` = a W1f, ao byte.
     pub(super) borda_que_pesa: f64,
+    /// **Opacity** (`0..1`, o volume do preset): a cor depositada vai para o branco do papel nesta medida
+    /// (`dab_route`). É do Wet Paint — a força do pincel é partilhada entre os meios. Nasce com a do Wet
+    /// Round ([`super::wetpaint_preset::OPACIDADE_DE_FABRICA`]).
+    pub(super) opacidade: f32,
     /// Experimental: K–M pigment mixing (`sim.km_mixing`).
     pub(super) km_mixing: bool,
     /// Experimental: K–M glaze stacking in the composite.
@@ -177,6 +181,7 @@ impl Default for WetPaintState {
             smooth_edges: 0.0,
             agua_viva: false,
             borda_que_pesa: 0.0,
+            opacidade: super::wetpaint_preset::OPACIDADE_DE_FABRICA,
             km_mixing: false,
             km_glaze: false,
             tuning_open: false,

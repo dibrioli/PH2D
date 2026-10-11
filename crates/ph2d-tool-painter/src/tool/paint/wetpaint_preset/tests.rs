@@ -418,12 +418,42 @@ fn os_volumes_sao_o_que_o_painel_mostra() {
         ..Volumes::default()
     });
     assert_eq!(t.paint.brush.radius_px, 20.0, "Size px é o DIÂMETRO");
-    assert_eq!(t.paint.brush.strength, 0.5);
+    assert_eq!(
+        t.paint.wetpaint.opacidade, 0.5,
+        "a Opacity é do Wet Paint, não a força partilhada"
+    );
     assert_eq!(t.paint.wetpaint.knobs.water, 0.25);
     let v = t.wet_preset_volumes();
     assert_eq!(
         (v.size_px, v.opacity, v.water),
         (Some(40.0), Some(0.5), Some(0.25))
+    );
+}
+
+/// **A Opacity do Wet Paint dilui a cor para o branco do papel** (a lei medida no Rebelle, 10/10): o traço
+/// a 0,26 é ~um quarto do escuro do traço cheio (a mediana do escuro nos píxeis pintados), e a 1 é a cor
+/// do pincel. Mutação que sangra: o `ink` do `dab_route` ignorar a Opacity (os dois traços iguais).
+#[test]
+fn a_opacity_do_wet_paint_dilui_a_cor_para_o_papel() {
+    let escuro = |op: f32| {
+        let mut t = ferramenta();
+        t.paint.wetpaint.opacidade = op;
+        let px = pinta(&mut t);
+        let mut v: Vec<u32> = px
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| 255 - u32::from(p[0].min(p[1]).min(p[2])))
+            .filter(|&e| e > 8)
+            .collect();
+        v.sort_unstable();
+        f64::from(v[v.len() / 2])
+    };
+    let (cheia, clara) = (escuro(1.0), escuro(0.26));
+    let razao = clara / cheia;
+    assert!(
+        (0.18..=0.36).contains(&razao),
+        "a Opacity 0,26 deu {clara} contra {cheia} da cheia (razão {razao:.2})"
     );
 }
 

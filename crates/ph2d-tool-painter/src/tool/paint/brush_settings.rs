@@ -455,6 +455,8 @@ pub struct BrushSettings {
     /// the basic section's curated rows and the Tuning panel's table are two
     /// views of this one value).
     pub wet_knobs: crate::WetKnobs,
+    /// The Wet Paint's own **Opacity** volume (`0..1`): the deposited colour goes to the paper white by it.
+    pub wet_opacidade: f32,
     /// The wet TOOL the brush wire drives while armed (doc 22).
     pub wet_tool: crate::WetTool,
     /// The tilt dial: on/off + ring (0..8) + spoke (0..11, 30 deg steps).

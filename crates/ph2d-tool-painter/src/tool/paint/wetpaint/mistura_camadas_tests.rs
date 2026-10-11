@@ -75,6 +75,8 @@ pub(super) struct Miolo {
 /// pincel e quantas passadas cabem num só traço (esfregar).
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Cond {
+    /// A Opacity do Wet Paint (`None` = a do preset, o produto).
+    pub opacidade: Option<f32>,
     pub km: bool,
     pub tilt: Option<u8>,
     pub borda: f64,
@@ -85,6 +87,7 @@ pub(super) struct Cond {
 }
 
 pub(super) const SIMPLES: Cond = Cond {
+    opacidade: None,
     km: false,
     tilt: None,
     borda: 0.0,
@@ -258,6 +261,9 @@ pub(super) fn cena(
     t.set_wet_borda_que_pesa(cond.borda);
     t.set_wet_smooth_edges(cond.suave);
     t.paint.wetpaint.km_mixing = cond.km;
+    if let Some(o) = cond.opacidade {
+        t.paint.wetpaint.opacidade = o;
+    }
     assert!(t.ensure_wet_session());
     // O tick leva as opções autoradas ao motor (o reconcile); só depois as variantes mexem nele.
     ticks(&mut t, 1);
@@ -315,13 +321,14 @@ fn r(c: [f64; 3]) -> [i32; 3] {
     c.map(|v| v.round() as i32)
 }
 
-/// A fracção do caminho azul → amarelo em luz linear (média do R e do G): `0` = o azul seco do miolo,
-/// `1` = a tinta amarela tal como foi escolhida (a referência pintada não serve: no defeito ela própria
-/// escurecia).
-fn para_o_amarelo(azul: [f64; 3], c: [f64; 3]) -> f64 {
-    let y = AMARELO.map(f64::from);
-    let f = |k: usize| (lin(c[k]) - lin(azul[k])) / (lin(y[k]) - lin(azul[k]));
-    (f(0) + f(1)) / 2.0
+/// **Quanto do azul ficou ESCONDIDO** — a fracção do caminho azul → amarelo no canal VERMELHO, em luz linear:
+/// `0` = o azul seco do miolo, `1` = o amarelo como ele sai sozinho no branco (com a Opacity a tinta é
+/// diluída e nunca chega à cor escolhida). Só o vermelho: é a luz que o azul absorve e o amarelo devolve. ⛔
+/// O verde junto (a régua de antes) confunde cobrir com CONCENTRAR — o Rebelle molhado acumula até o amarelo
+/// puro (G 205) abaixo do próprio traço (G 241) e a média dava-lhe 0,46 à 10.ª; pelo vermelho: 0,30 · 0,75 à
+/// 3.ª · 0,89 à 10.ª, seco 0,96 (`fixtures/rebelle_camadas/`).
+fn para_o_amarelo(azul: [f64; 3], y: [f64; 3], c: [f64; 3]) -> f64 {
+    (lin(c[0]) - lin(azul[0])) / (lin(y[0]) - lin(azul[0]))
 }
 
 /// **A barra (o Rebelle 8.3.4, `fixtures/rebelle_camadas/`, a mesma cena):** (a) nada fica mais escuro que o
@@ -349,8 +356,8 @@ fn barra(nome: &str, tr: &Trajectoria, so_a: bool) -> Result<(), String> {
     }
     if !so_a {
         let (p1, p10) = (
-            para_o_amarelo(azul, tr.passadas[1].ecra),
-            para_o_amarelo(azul, tr.passadas[10].ecra),
+            para_o_amarelo(azul, tr.amarelo, tr.passadas[1].ecra),
+            para_o_amarelo(azul, tr.amarelo, tr.passadas[10].ecra),
         );
         if p10 < 0.7 || p10 < p1 {
             f.push(format!(
@@ -366,6 +373,7 @@ fn barra(nome: &str, tr: &Trajectoria, so_a: bool) -> Result<(), String> {
 }
 
 const TUDO: Cond = Cond {
+    opacidade: None,
     km: false,
     tilt: Some(4),
     borda: 1.0,
@@ -391,12 +399,17 @@ fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
     };
     let km = |c: Cond| Cond { km: true, ..c };
     let sujo = |e: &mut ph2d_wet_paint::painter::Engine| e.sim.pickup_assentado = 0.5;
+    // O produto de antes pintava com a cor CHEIA (sem a Opacity).
+    let cheia = |c: Cond| Cond {
+        opacidade: Some(1.0),
+        ..c
+    };
     assert!(
-        barra("controlo", &cena(false, 10, km(TUDO), &antes), true).is_err(),
+        barra("controlo", &cena(false, 10, cheia(km(TUDO)), &antes), true).is_err(),
         "CONTROLO: a velatura por cima da K–M passou a barra — a régua não discrimina"
     );
     assert!(
-        barra("controlo", &cena(false, 10, SIMPLES, &sujo), false).is_err(),
+        barra("controlo", &cena(false, 10, cheia(SIMPLES), &sujo), false).is_err(),
         "CONTROLO: o pincel que apanha o assentado passou a barra — a régua não discrimina"
     );
     let mut f = Vec::new();
@@ -474,6 +487,7 @@ fn sonda_camadas() {
         (
             "tilt 4",
             Cond {
+                opacidade: None,
                 tilt: Some(4),
                 ..SIMPLES
             },
@@ -547,7 +561,7 @@ fn sonda_camadas() {
                         r(m.ecra),
                         lum(m.ecra),
                         m.escuro,
-                        para_o_amarelo(az, m.ecra),
+                        para_o_amarelo(az, tr.amarelo, m.ecra),
                         r(m.motor.sett_rgb),
                         m.motor.sett,
                         r(m.motor.susp_rgb),
@@ -735,5 +749,73 @@ fn sonda_duas_etapas() {
                 delta(v[0], v[5])
             );
         }
+    }
+}
+
+/// **Sonda: a velatura re-medida com a tinta do Rebelle** (pincéis calibrados 10/10): a grelha velatura das
+/// junções × do filme, nas duas barras (a de uma camada, W1e; e as camadas, fábrica molhado e seco).
+/// `PH2D_SONDA_GRELHA` = `g:f;…` (água parada) e `PH2D_SONDA_VIVA=1` para a Live Water.
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_velatura_recalibra() {
+    use super::mistura_tests::{SONDA_VELATURA, barra as barra_w1e, cena_toda, le};
+    let viva = std::env::var("PH2D_SONDA_VIVA").is_ok_and(|v| v == "1");
+    let cold = std::env::var("PH2D_SONDA_COLD").is_ok_and(|v| v == "1");
+    let cena_com = |seco, produto, filme, viva| cena_toda(seco, produto, filme, viva, false, cold);
+    let grelha = std::env::var("PH2D_SONDA_GRELHA").expect("PH2D_SONDA_GRELHA");
+    for gf in grelha.split(';').filter(|s| !s.is_empty()) {
+        let (g, f) = gf.split_once(':').expect("g:f");
+        let (g, f): (f64, f64) = (g.parse().expect("g"), f.parse().expect("f"));
+        *SONDA_VELATURA.lock().expect("sonda") = Some(g);
+        let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
+        let (s, m) = (
+            ler(cena_com(true, true, Some(f), viva)),
+            ler(cena_com(false, true, Some(f), viva)),
+        );
+        *SONDA_VELATURA.lock().expect("sonda") = None;
+        let aj = move |e: &mut ph2d_wet_paint::painter::Engine| {
+            e.sim.glaze = g;
+            e.sim.glaze_filme = f;
+        };
+        let cond = Cond { viva, ..SIMPLES };
+        let (mol, sec) = (cena(false, 10, cond, &aj), cena(true, 10, cond, &aj));
+        let resumo = |t: &Trajectoria| {
+            let az = lum(t.passadas[0].ecra);
+            let pior = t.passadas[1..]
+                .iter()
+                .map(|m| lum(m.ecra) / az)
+                .fold(f64::MAX, f64::min);
+            format!(
+                "p1 {:.2} p10 {:.2} pior lum/azul {:.2}",
+                para_o_amarelo(t.passadas[0].ecra, t.amarelo, t.passadas[1].ecra),
+                para_o_amarelo(t.passadas[0].ecra, t.amarelo, t.passadas[10].ecra),
+                pior
+            )
+        };
+        println!(
+            "[g {g:.2} f {f:.2} viva {viva}] W1e seco γ {:.2}·{:.2} sangria {:+.3} · molhado γ {:.2} sangria {:+.3} · barra {} | camadas molhado {} · seco {} · barra {} {}",
+            s.0.gama,
+            s.1.gama,
+            s.1.sangria,
+            m.0.gama,
+            m.1.sangria,
+            if barra_w1e(s.clone(), m.clone()).is_ok() {
+                "ok"
+            } else {
+                "✗"
+            },
+            resumo(&mol),
+            resumo(&sec),
+            if barra("", &mol, false).is_ok() {
+                "ok"
+            } else {
+                "✗"
+            },
+            if barra("", &sec, false).is_ok() {
+                "ok"
+            } else {
+                "✗"
+            },
+        );
     }
 }

@@ -263,3 +263,39 @@ fn w<'a>(
         selection,
     }
 }
+
+/// O `Esc` pela PORTA de entrada (a que a shell chama): a meio de um arrasto, os campos voltam aos
+/// do press e o arrasto acaba; sem arrasto, o `Esc` não é consumido.
+#[test]
+fn esc_through_the_input_door_restores_the_press_and_ends_the_drag() {
+    let k = ShapeKind::Star;
+    let mut v0 = k.defaults();
+    v0[1] = 0.3;
+    let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
+    let inner = law::handles_of(k)
+        .iter()
+        .position(|h| h.law == law::Law::Radial)
+        .unwrap();
+    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[inner];
+    let sel = [id];
+    let mut input = ShapeHandleInput::default();
+    assert!(
+        !input.escape(w(&mut sim, &mut scene, &map, &sel)),
+        "Esc sem arrasto foi consumido"
+    );
+    assert!(input.press(w(&mut sim, &mut scene, &map, &sel), p, PX, 0));
+    let out = [p[0] * 2.0, p[1] * 2.0];
+    assert!(input.drag(
+        w(&mut sim, &mut scene, &map, &sel),
+        out,
+        Mods::default(),
+        PX
+    ));
+    assert!(
+        values_of(&sim, &map, id)[1] > 0.35,
+        "o arrasto não escreveu"
+    );
+    assert!(input.escape(w(&mut sim, &mut scene, &map, &sel)));
+    assert_eq!(values_of(&sim, &map, id)[1], 0.3, "o Esc não repôs o press");
+    assert!(input.grab.is_none(), "o Esc deixou o arrasto vivo");
+}

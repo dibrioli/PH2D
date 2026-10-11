@@ -232,6 +232,8 @@ Provas de mutação (`mutacao`) em G3, G6, G7 e G12 no fecho — são as leis qu
 | 2 | **Vaga-lumes** — 1 000 sprites emissivos voando sobre um cenário | cada um ilumina o chão em volta | ms com 1 e com 1 000 emissores (a curva tem de ser plana) |
 | 3 | **Rebote** — sala com paredes coloridas | o chão tinge-se com a cor das paredes | quadros até convergir |
 | 4 | **Tamanho da lâmpada** — duas Luzes, pequena e grande, mesmo oclusor | a pequena faz sombra nítida, a grande, macia | largura da penumbra medida × prevista pela geometria |
+| 5 | **Volume** — oito corpos (disco, elipse, losango, barra, «L», cruz) em volta de uma lâmpada | cada lado vira uma face: a da lâmpada acesa, a de trás escura | a face da lâmpada ≥ 10 × a de trás em todo corpo |
+| 6 | **Formas desenhadas** (W5d) — um círculo e uma elipse VETORIAIS e, no espelho, as imagens gêmeas | o desenho bloqueia e recebe a luz como a imagem | desenho × imagem na face acesa e a variação nos anéis |
 
 Cada cena é **fotografada** (`docs/Components/ferramentas/fotografa_cena.sh`) antes de ir ao dono, e o
 número de cada uma vem da sonda headless (molde: `crates/ph2d-board-render/tests/it/measure_*.rs`).
@@ -247,7 +249,7 @@ número de cada uma vem da sonda headless (molde: `crates/ph2d-board-render/test
 | **W2 — o solver** | `ph2d-light2d-gpu`: C0, C1, C2, `PassList` + bytes, timestamps; sonda headless | G3, G4, G5, G10, G12 |
 | **W3 — receber** | sprite forward + vetor no compositor; ponto neutro; ancoragem | G6, G7, G11 |
 | **W4 — o artista** | `ph2d-app-light2d`: menu Add, Inspector, gizmo, paleta, undo, i18n; cenas 1–4 fotografadas | G8 + censos; **smoke do dono** |
-| **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada — W5a/W5b (fila do dono F1–F4), **W5c** (rebote; a holográfica em todo nível), W5d (governador acima de 1080p com a memória, Flip/Motion, S1–S8, o rebote de fora da grade) |
+| **W5 — o teto** | rebote, HRC «Ultra», C3 analítico (limiar medido), governador; rodada de medição desktop S1–S8 com o Godot por script como piso | G9 + rodada registrada — W5a/W5b (fila do dono F1–F4), **W5c** (rebote; a holográfica em todo nível), **W5d** (a precisão junto à borda; o rebote de fora da grade; K9 no Baixo), W5e (governador acima de 1080p com a memória, Flip/Motion, S1–S8) |
 | depois | celular (iPhone 13/16, POCO X5) — **adiado pelo dono** | K1–K9 do relatório |
 
 ### 7.1 Fila de implementação (ordem do dono, 10/10: «coloque na fila o que ainda não está bom»)
@@ -281,6 +283,16 @@ deixou de mudar de desenho com a posição: o texel que o eixo medial corta guar
 (texels errados 35–537 → 0–1; secção «Depois do smoke do dono» do handoff); e o rebote deixou de mudar com
 o zoom: o ponto logo fora de uma borda sem nenhuma sonda de fora nas quatro vizinhas lia as de DENTRO (a face na
 sombra +514 % na oitava grossa → ≤ 3 %).
+
+**W5d fechada** ([handoff W5d](handoffs/HANDOFF_CONTINUACAO_W5d_2026-10-11.md)): as formas REDONDAS sem
+facetas — a borda exata da cobertura no interior dos opacos (o AAEDT, pré-calculada por texel), a
+cobertura do sprite pelo meio (alfa ≥ ½) e a c0 do ponto de fronteira pela mediana ao longo da face (o
+cone e a aresta da elipse são a lei; o ruído e a escada saíram); a cena 6 «Formas desenhadas» (vetor e
+imagem gêmea, paridade 0,3 %); o REBOTE DE FORA DA GRADE pelo ENTORNO, um 2.º solver 8× mais grosso e 4×
+mais largo cuja luz de fora soma-se às cascatas da vista (−63,6 % → −0,3 %, +0,4–2,9 ms e 8–128 MB a
+1080p); e o K9 no Baixo com dois rebotes por quadro (11 → 6 quadros por +1,0 ms). Abertos: o disco de
+imagem ampliado, o K9 no Médio e no Alto, a luz pequena e o alcance finito na holográfica (a fusão), a
+memória e o governador acima de 1080p.
 
 Também abertos (técnicos, sem queixa do dono): as cascatas ainda calculam a grade inteira (81,5 % fora
 da janela) e a região C3 pode encolher ao canvas; o G4 (K3) segue com pouca margem (3,98–4,64 % de 5 %,

@@ -341,7 +341,7 @@ fn host_tick(
     s.set_wall(ph2d_editor_core::screens::hero::board_nav::team::now_unix());
     send_host(&net, s.tick(b, now));
     let me = s.me.peer;
-    let peers: Vec<LivePeer> = s
+    let mut peers: Vec<LivePeer> = s
         .peers()
         .iter()
         .map(|p| LivePeer {
@@ -351,7 +351,9 @@ fn host_tick(
             me: p.peer == me,
         })
         .collect();
-    let fac = fac_view(&s.fac(now, b), me, me, s.my_sealed(), &peers);
+    let room = s.fac(now, b);
+    fac::hide_names(&room, &mut peers);
+    let fac = fac_view(&room, me, me, s.my_sealed(), &peers);
     announce(hero, fac);
     view(hero, board, &peers, |p| s.seen(p), now);
     Some(Live::Host { net, s, board })
@@ -475,7 +477,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             }
         }
         let me = s.me.as_ref().map(|m| m.peer);
-        let peers: Vec<LivePeer> = s
+        let mut peers: Vec<LivePeer> = s
             .peers()
             .iter()
             .map(|p| LivePeer {
@@ -485,6 +487,8 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
                 me: Some(p.peer) == me,
             })
             .collect();
+        let room = s.fac(now);
+        fac::hide_names(&room, &mut peers);
         let host = peers
             .iter()
             .find(|p| p.color == 0)
@@ -493,7 +497,7 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
         hero.documents.live_view_mut().role = LiveRole::Guest { host };
         let host_peer = peers.iter().find(|p| p.color == 0).map_or(0, |p| p.peer);
         let fac = fac_view(
-            &s.fac(now),
+            &room,
             me.unwrap_or(0),
             host_peer,
             s.my_sealed(),
@@ -549,20 +553,24 @@ fn event(hero: &mut HeroScreen, board: BoardId, e: Event, names: &[(u64, String)
             .unwrap_or_default()
     };
     match e {
-        Event::Joined(p) => hero
-            .documents
-            .tell(tr_with("board.live.joined", &[("name", &p.name)])),
-        Event::Left(p) => hero
-            .documents
-            .tell(tr_with("board.live.left", &[("name", &name(p))])),
+        Event::Joined(p) => {
+            let n = fac::someone(hero, p.name);
+            hero.documents
+                .tell(tr_with("board.live.joined", &[("name", &n)]));
+        }
+        Event::Left(p) => {
+            let n = fac::someone(hero, name(p));
+            hero.documents.tell(tr_with("board.live.left", &[("name", &n)]));
+        }
         Event::Summoned { from, camera } => {
             if let Some(b) = hero.documents.board_mut(board) {
                 b.camera = camera;
             }
             hero.documents.activate(Some(board));
             hero.documents.live_view_mut().following = None;
+            let n = fac::someone(hero, name(from));
             hero.documents
-                .tell(tr_with("board.live.summoned", &[("name", &name(from))]));
+                .tell(tr_with("board.live.summoned", &[("name", &n)]));
         }
         Event::Denied(r) => hero.documents.tell(tr(refusal_key(r)).to_owned()),
         Event::Welcomed | Event::Refused { .. } | Event::Arrived(_) | Event::Ended => {}

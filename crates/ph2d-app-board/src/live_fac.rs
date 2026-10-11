@@ -158,6 +158,32 @@ pub(super) fn announce(hero: &mut HeroScreen, fac: LiveFac) {
     hero.documents.live_view_mut().fac = fac;
 }
 
+/// W13 (ADR-0182 §8, pontas da W12) — com «Make names anonymous» nenhum nome de OUTRA pessoa chega ao
+/// ecrã: a lista e os avatares do painel, quem acolhe, quem iniciou a votação e os votos usados (que
+/// se leem da lista). Os avisos de entrada e saída usam [`someone`].
+pub(super) fn hide_names(fac: &sync::Fac, peers: &mut [LivePeer]) {
+    if anonymous(fac) {
+        for p in peers.iter_mut().filter(|p| !p.me) {
+            tr("board.private.anonymous_name").clone_into(&mut p.name);
+        }
+    }
+}
+
+/// O modo privado está ligado com «Make names anonymous».
+pub(super) fn anonymous(fac: &sync::Fac) -> bool {
+    fac.private.as_ref().is_some_and(|p| p.anonymous)
+}
+
+/// O nome de um aviso (entrou, saiu, trouxe todos): «Someone» com os nomes anónimos.
+pub(super) fn someone(hero: &HeroScreen, name: String) -> String {
+    let fac = &hero.documents.live_view().fac;
+    if fac.private.as_ref().is_some_and(|p| p.anonymous) {
+        tr("board.private.someone").to_owned()
+    } else {
+        name
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
@@ -219,4 +245,43 @@ mod tests {
         assert_eq!(v.hidden_to_me, BTreeSet::from([ElementId(1)]));
         assert_eq!(v.mine_hidden, BTreeSet::from([ElementId(2)]));
     }
+
+    /// ⭐ W13 (pontas da W12): com «Make names anonymous» a lista diz «Anonymous» por cada OUTRO (o
+    /// meu nome fica), e por ela quem iniciou a votação e os votos usados também; sem a opção, nada
+    /// muda. ⛔ Controlo: a mesma sala sem a opção mostra «Bia».
+    #[test]
+    fn anonymous_names_never_reach_the_screen() {
+        let room = |anonymous| sync::Fac {
+            private: Some(sync::Private {
+                by: 1,
+                anonymous,
+                anyone_can_end: false,
+                anyone_can_reveal: false,
+                reveal_in_ms: None,
+            }),
+            hidden: BTreeSet::new(),
+            vote: Some(sync::VoteRoom {
+                round: 1,
+                by: 2,
+                setup: VoteSetup::default(),
+                targets: BTreeSet::new(),
+                left_ms: None,
+                done: BTreeSet::new(),
+                used: BTreeMap::from([(2, 2)]),
+                ended: false,
+            }),
+        };
+        let anon = tr("board.private.anonymous_name").to_owned();
+        for (on, other) in [(true, anon.as_str()), (false, "Bia")] {
+            let fac = room(on);
+            let mut peers = [peer(1, "Ana", true), peer(2, "Bia", false)];
+            hide_names(&fac, &mut peers);
+            assert_eq!((peers[0].name.as_str(), peers[1].name.as_str()), ("Ana", other));
+            let v = fac_view(&fac, 1, 1, BTreeSet::new(), &peers);
+            let vote = v.vote.unwrap();
+            assert_eq!(vote.by, other, "quem iniciou");
+            assert_eq!(vote.used, vec![(other.to_owned(), 2, false)], "os votos usados");
+        }
+    }
 }
+

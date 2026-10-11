@@ -16,6 +16,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.private.on" => "{name} turned on private mode — new notes are hidden from others",
         "board.private.revealed" => "Private mode ended — every note is revealed",
         "board.private.someone" => "Someone",
+        "board.private.anonymous_name" => "Anonymous",
         "board.private.no_follow" => "Following is off while names are anonymous",
         "board.livevote.refused" => {
             "That vote didn't count — a hidden note takes no new votes until it's revealed"

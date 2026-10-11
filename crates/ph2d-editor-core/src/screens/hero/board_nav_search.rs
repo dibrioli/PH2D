@@ -20,9 +20,15 @@ const FIELD_STEPS: f32 = 6.0; // LITERAL-PX-OK: proporção do campo
 
 /// ⭐ **O que a busca acha**: `query` (sem distinguir maiúsculas) no texto de cada elemento, e só
 /// os que têm a etiqueta `tag`, se há — por ordem de LEITURA (de cima para baixo, da esquerda para
-/// a direita). Nem uma coisa nem outra: nada.
+/// a direita). Nem uma coisa nem outra: nada. O texto de uma nota de `unread` (escondida de mim,
+/// ADR-0182) não se procura: o que eu tenho dela é um texto que já não existe (pontas da W12).
 #[must_use]
-pub fn find(doc: &BoardDoc, query: &str, tag: Option<&str>) -> Vec<ElementId> {
+pub fn find(
+    doc: &BoardDoc,
+    query: &str,
+    tag: Option<&str>,
+    unread: &std::collections::BTreeSet<ElementId>,
+) -> Vec<ElementId> {
     let q = query.trim().to_lowercase();
     if q.is_empty() && tag.is_none() {
         return Vec::new();
@@ -33,7 +39,7 @@ pub fn find(doc: &BoardDoc, query: &str, tag: Option<&str>) -> Vec<ElementId> {
         .filter(|el| {
             q.is_empty() || {
                 let mut texts: Vec<&str> = el.tags().iter().map(|t| t.name.as_str()).collect();
-                if let Some(s) = el.shape() {
+                if let Some(s) = el.shape().filter(|_| !unread.contains(&el.id)) {
                     texts.push(s.text.as_str());
                 }
                 if let Some(c) = el.connector() {
@@ -112,8 +118,10 @@ fn refresh(hero: &mut HeroScreen) {
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
+    let empty = std::collections::BTreeSet::new();
+    let unread = live.editor.as_ref().map_or(&empty, |e| e.unread());
     let n = &mut live.nav;
-    n.results = find(&board.doc, &query, n.tag_filter.as_deref());
+    n.results = find(&board.doc, &query, n.tag_filter.as_deref(), unread);
     n.current = 0;
 }
 

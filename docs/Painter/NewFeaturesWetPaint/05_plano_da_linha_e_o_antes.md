@@ -957,6 +957,16 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     e curtos (13 · 71 px; Rebelle 350, finos) — o «fio único» da W1e. (e) Com a tinta diluída o **Smooth
     Edges** amacia menos o degrau entre duas tintas claras (−18 %; os limiares são de contraste absoluto).
   - Prancha: [conferência calibrada](prancha_presets_calibrados.png) (Rebelle · nós, tela direita e inclinada).
+  - **Smoke do dono (10/10): «o preview ficou mais claro, os traços na pintura não».** Duas causas, a família
+    «copiar um componente deixa os irmãos» outra vez: (1) a `CenaDoPreview`/`ChaveDoPreview` não levavam a
+    Opacity — o preview pintava a de fábrica; (2) o `estado.json` do dono lembrava, por preset, `"opacity":
+    1.0` gravado ANTES desta mudança, quando o campo era a força partilhada (sem leitor); a política «manter
+    volumes» punha-o por cima do preset como a Opacity nova ⇒ a cor cheia na tela. Curas: a Opacity na cena
+    e na chave do preview (caso novo em `a_chave_muda_com_cada_parametro_e_o_traco_tambem`: «opacity: a chave
+    não viu» antes da cura); o `estado.json` ganha `versao` (`VERSAO_DO_ESTADO` = 1; um estado novo nasce
+    nela) e um ficheiro sem ela perde o `opacity` lembrado ao ler (fica a do preset) —
+    `um_estado_antigo_nao_traz_a_forca_como_opacity`, mutação «sem a migração» ⇒ VERMELHO. O ficheiro do
+    dono não foi tocado: migra-se no próximo arranque.
 - ✅ **Assentar não muda o que se vê (dono 10/10: «Pigment mixing + Glaze layering pintando sobre tinta seca
   ainda tem uma aparência em 2 etapas — isso não pode acontecer»).** Sonda e portão em
   `wetpaint/mistura_camadas_tests.rs` (`duas_etapas`: uma passada de amarelo sobre o azul seco, o miolo com o

@@ -91,7 +91,7 @@ fn o_preview_mostra_o_dente_do_papel() {
 fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
     let base = molhado();
     let ultimo_base = quadros(&base).pop().unwrap();
-    let casos: [Caso<'_>; 13] = [
+    let casos: [Caso<'_>; 14] = [
         (
             "pigmento",
             &|t| t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 1500.0),
@@ -129,6 +129,8 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
             &|t| t.paint.wetpaint.smooth_edges = 0.5,
             true,
         ),
+        // A Opacity do Wet Paint (smoke do dono 10/10: «o preview ficou mais claro, os traços não»).
+        ("opacity", &|t| t.paint.wetpaint.opacidade = 1.0, true),
     ];
     for (nome, mexe, pinta_diferente) in casos {
         let mut t = molhado();

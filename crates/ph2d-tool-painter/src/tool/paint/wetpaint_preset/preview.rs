@@ -67,6 +67,9 @@ pub struct CenaDoPreview {
     grids: (u8, u8),
     /// As opções da W1g (Live Water, Heavy Edge) — o fluido do preview é o da obra.
     opcoes: (bool, f64),
+    /// A Opacity do Wet Paint (smoke do dono 10/10: sem ela o preview pintava a de fábrica e a tela a do
+    /// pincel).
+    opacidade: f32,
 }
 
 /// «Mudou alguma coisa que o preview mostra?» — os mesmos ingredientes da [`CenaDoPreview`], com as
@@ -83,6 +86,7 @@ pub struct ChaveDoPreview {
     tilt: (bool, u8, u8),
     grids: (u8, u8),
     opcoes: (bool, f64),
+    opacidade: f32,
 }
 
 impl PainterTool {
@@ -107,6 +111,7 @@ impl PainterTool {
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
+            opacidade: w.opacidade,
         }
     }
 
@@ -129,6 +134,7 @@ impl PainterTool {
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
+            opacidade: w.opacidade,
         }
     }
 
@@ -166,6 +172,7 @@ impl PainterTool {
         (w.tilt_on, w.tilt_ring, w.tilt_spoke) = c.tilt;
         (w.grid_ratio, w.flow_ratio) = c.grids;
         (w.agua_viva, w.borda_que_pesa) = c.opcoes;
+        w.opacidade = c.opacidade;
         self.paint.eraser = false;
         self.invalidate_composite();
     }

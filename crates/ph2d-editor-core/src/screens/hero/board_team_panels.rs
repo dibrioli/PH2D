@@ -26,7 +26,8 @@ pub(super) fn column(hero: &HeroScreen, area: Rect) -> (f32, f32, f32) {
     let fac = super::super::facilitate::column_open(hero);
     let w2 = btn() * 10.0; // LITERAL-PX-OK: a largura do cartão do fio, em botões
     if fac {
-        (x - w2 - Spacing::Md.px(), y, w2)
+        let left = super::super::facilitate::column_left(hero, area);
+        (left - w2 - Spacing::Md.px(), y, w2)
     } else {
         (x + w - w2, y, w2)
     }

@@ -182,6 +182,16 @@ pub(super) fn view(hero: &mut HeroScreen, id: BoardId, fit: usize) -> Option<His
     }
 }
 
+/// A altura do histórico (a coluna soma-a antes de pintar).
+pub(super) fn height(v: &HistView) -> f32 {
+    let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
+    let rows = match v {
+        HistView::List { rows, .. } => 2 + rows.len().max(1) + usize::from(!rows.is_empty()),
+        HistView::Session { rows, hidden, .. } => 4 + rows.len().max(1) + usize::from(*hidden > 0),
+    };
+    pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g
+}
+
 /// ⭐ Pinta o histórico em `at` (a largura da coluna); devolve a altura.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint(
@@ -194,11 +204,7 @@ pub(super) fn paint(
     at: Rect,
 ) -> f32 {
     let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
-    let rows = match v {
-        HistView::List { rows, .. } => 2 + rows.len().max(1) + usize::from(!rows.is_empty()),
-        HistView::Session { rows, hidden, .. } => 4 + rows.len().max(1) + usize::from(*hidden > 0),
-    };
-    let h = pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g;
+    let h = height(v);
     let r = Rect::new(at.x, at.y, at.w, h);
     card(scene, r, theme, ColorToken::BgElev);
     hit.register(super::fac_node(FacButton::Surface), r);

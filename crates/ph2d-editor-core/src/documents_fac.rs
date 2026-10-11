@@ -58,6 +58,9 @@ pub(crate) struct Fac {
     pub(crate) renaming_poll: Option<(BoardId, PollId)>,
     /// W13 — o lixo armado: o 2.º clique NESTE apaga, qualquer outro clique desarma.
     pub(crate) confirm_poll: Option<(BoardId, PollId)>,
+    /// A banda que a coluna ocupou NESTE quadro (os cartões e, se não couberem, a barra): a roda e os
+    /// painéis da equipa perguntam aqui. `None` = a coluna está vazia.
+    pub(crate) column: Option<(BoardId, crate::zones::Rect)>,
 }
 
 /// W12 — as opções de ligar o modo privado (as do diálogo do Miro).

@@ -228,6 +228,38 @@ pub fn column(area: Rect, frames_open: bool, search_open: bool) -> (f32, f32, f3
     (right - w, top, w)
 }
 
+/// A chave da rolagem da coluna nas tabelas de todo painel: o FUNDO dos cartões (o idioma do Input Map).
+fn scroll_key() -> NodeId {
+    fac_node(FacButton::Surface)
+}
+
+/// A borda esquerda do que a coluna ocupou neste quadro (com a barra, se ela não cabe) — quem se põe
+/// à esquerda dela pergunta aqui.
+#[must_use]
+pub fn column_left(hero: &HeroScreen, area: Rect) -> f32 {
+    let nav = &hero.documents.live.nav;
+    let id = hero.documents.active_board().map(|b| b.id);
+    match hero.documents.live.fac.column {
+        Some((b, r)) if Some(b) == id => r.x,
+        _ => column(area, nav.frames_open, nav.search_open).0,
+    }
+}
+
+/// A roda sobre a coluna rola-a — nunca dá zoom no quadro por baixo de um cartão. `true` = consumida.
+pub(crate) fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
+    let id = hero.documents.active_board().map(|b| b.id);
+    let on = hero
+        .documents
+        .live
+        .fac
+        .column
+        .is_some_and(|(b, r)| Some(b) == id && r.contains(x, y));
+    if on {
+        hero.store.wheel_panel(scroll_key(), dy);
+    }
+    on
+}
+
 /// O quadro activo e a facilitação dele.
 fn active(hero: &mut HeroScreen) -> Option<(BoardId, &mut Fac)> {
     let id = hero.documents.active_board()?.id;

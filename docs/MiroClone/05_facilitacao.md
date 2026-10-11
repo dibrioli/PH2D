@@ -258,7 +258,12 @@ carimbos em todas no limiar da leitura davam **5,44 ms** de encode; com os camin
 encode (letra a 5 px), que é de BLOCOS: as três variantes deram o mesmo número porque não se desenhava
 marca nenhuma — a régua passou a ter a vista no limiar e a de longe como controlo.
 
-⇒ **nenhum tecto de selos nem de carimbos**: o pior caso cabe com folga num quadro de 60 Hz. O
+⇒ **nenhum tecto de selos nem de carimbos**: o pior caso cabe com folga num quadro de 60 Hz.
+
+**Re-medido 11/10 (W13: o selo lê a sessão MOSTRADA — uma procura num `BTreeMap` por nota desenhada;
+`--release`, `load` 16):** letra a 6 px · selos **1,34** ms de encode (nada 0,76; 3 carimbos 2,07); zoom 1 ·
+selos 0,54; de longe 1,23. O degrau do selo na placa (selos − nada) é 0,15 ms (era 0,16); as paredes da placa
+subiram TODAS, «nada» incluído (1,99 contra 1,05) ⇒ é a carga, não o selo. Nenhum tecto, nenhuma cura. O
 cronómetro não pede régua: o ecrã já se redesenha a cada quadro e o cartão é um desenho de tamanho fixo.
 
 ## §5 — O que o dono vê (cena 9)

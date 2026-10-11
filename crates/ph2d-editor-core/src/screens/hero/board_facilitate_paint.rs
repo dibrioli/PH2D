@@ -60,10 +60,11 @@ fn clock(t: &Timer, now: Instant) -> String {
 
 /// ⭐ Pinta o cartão e o painel do quadro activo (os relógios andam em [`super::tick`]).
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
+    hero.documents.live.fac.column = None;
     let now = Instant::now();
     let theme = hero.theme;
     let nav = &hero.documents.live.nav;
-    let (x, mut y, w) = column(area, nav.frames_open, nav.search_open);
+    let (x, y, w) = column(area, nav.frames_open, nav.search_open);
     let Some(board) = hero.documents.active_board() else {
         return;
     };
@@ -73,7 +74,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     let gap = ph2d_tokens::section_gap_px();
     let private_view = private::view(hero, id);
     let timer = hero.documents.live.fac.timers.get(&id).cloned();
-    let taken = timer.as_ref().map_or(0.0, |_| timer_height() + gap)
+    let taken = timer.as_ref().map_or(0.0, |t| timer_card_height(t) + gap)
         + private_view
             .as_ref()
             .map_or(0.0, |p| private::height(p) + gap);
@@ -87,9 +88,12 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     if hero.documents.live.nav.minimap_open {
         floor = floor.min(super::super::minimap_rect(area).y);
     }
-    let fit = (((floor - y - taken - gap) / step).floor() as usize)
+    // Um painel de `fit` filas da lista tem `fit + 3` filas e a moldura do cartão (`2·pad − vão`).
+    // As listas paginam até UMA fila; o que nem assim cabe (uma janela baixa) rola, abaixo.
+    let frame = 2.0 * Spacing::Xs.px() - ph2d_tokens::control_gap_px();
+    let fit = (((floor - gap - y - taken - frame) / step).floor() as usize)
         .saturating_sub(3)
-        .max(3);
+        .max(1);
     let view = match hero.documents.live.fac.panels.get(&id).copied() {
         None => None,
         Some(VotePanel::Setup(s)) => Some(VoteView::Setup(s)),
@@ -136,7 +140,38 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         Some(VotePanel::Results { .. } | VotePanel::History) => None,
     };
     let hist = history::view(hero, id, fit);
+    let heights = [
+        timer.as_ref().map(timer_card_height),
+        view.as_ref().map(vote_height),
+        hist.as_ref().map(history::height),
+        private_view.as_ref().map(private::height),
+    ];
+    let cards = heights.iter().flatten().count();
+    if cards == 0 {
+        return;
+    }
+    let content = heights.iter().flatten().sum::<f32>() + gap * (cards - 1) as f32;
+    // O que não cabe acima do chão ROLA pela porta da rolagem (o desenho e o clique recortados pela
+    // mesma banda); a barra toma a largura dela à esquerda, nunca por cima dos botões dos cartões.
+    let visible = (floor - gap - y).max(0.0);
+    let scrolls = crate::widget::scrollbar_is_needed(
+        crate::widget::scroll_area::with_tail(content, visible),
+        visible,
+    );
+    let bar = if scrolls {
+        w - crate::widget::scrollbar_track_rect(Rect::new(0.0, 0.0, w, w)).x
+    } else {
+        0.0
+    };
+    let x = x - bar;
+    let band = Rect::new(x, y, w + bar, visible);
+    hero.documents.live.fac.column = Some((id, band));
     let (hit, store) = (&mut hero.hit_index, &hero.store);
+    let key = super::scroll_key();
+    let bar_id = crate::widget::BOARD_FACILITATE_SCROLLBAR_ID;
+    let body = crate::widget::scroll_area::open_with(scene, hit, store, key, bar_id, band);
+    let top = body.top();
+    let mut y = top;
     if let Some(t) = timer {
         let at = Rect::new(x, y, w, 0.0);
         y += paint_timer(scene, ts, hit, store, theme, &t, now, at) + gap;
@@ -148,8 +183,14 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         y += history::paint(scene, ts, hit, store, theme, &v, Rect::new(x, y, w, 0.0)) + gap;
     }
     if let Some(p) = private_view {
-        private::paint(scene, ts, hit, store, theme, &p, Rect::new(x, y, w, 0.0));
+        y += private::paint(scene, ts, hit, store, theme, &p, Rect::new(x, y, w, 0.0)) + gap;
     }
+    debug_assert!(
+        (y - gap - top - content).abs() < 0.5,
+        "a altura somada antes de pintar é a pintada"
+    );
+    crate::widget::scroll_area::close_parts(body, scene, hit, store, content, theme)
+        .publish(&mut hero.store);
 }
 
 /// O fundo de um cartão.
@@ -349,11 +390,7 @@ fn paint_vote(
     at: Rect,
 ) -> f32 {
     let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
-    let rows = match v {
-        VoteView::Setup(_) => 6,
-        VoteView::Session { add1, people, .. } => 4 + usize::from(*add1) + people.len(),
-    };
-    let h = pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g;
+    let h = vote_height(v);
     let r = Rect::new(at.x, at.y, at.w, h);
     card(scene, r, theme, ColorToken::BgElev);
     hit.register(fac_node(FacButton::Surface), r);
@@ -589,4 +626,19 @@ fn stepper(
 pub(super) fn timer_height() -> f32 {
     let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
     pad + 2.0 * s + g + s + pad
+}
+
+/// A altura do cronómetro como ele se pinta: o cartão, ou a pílula (F7).
+fn timer_card_height(t: &Timer) -> f32 {
+    if t.minimized { btn() } else { timer_height() }
+}
+
+/// A altura do painel da votação.
+fn vote_height(v: &VoteView) -> f32 {
+    let (s, pad, g) = (btn(), Spacing::Xs.px(), ph2d_tokens::control_gap_px());
+    let rows = match v {
+        VoteView::Setup(_) => 6,
+        VoteView::Session { add1, people, .. } => 4 + usize::from(*add1) + people.len(),
+    };
+    pad * 2.0 + rows as f32 * s + (rows - 1) as f32 * g
 }

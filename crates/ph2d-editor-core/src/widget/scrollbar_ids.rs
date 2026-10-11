@@ -196,8 +196,12 @@ pub const SKELETON_SCROLLBAR_ID: NodeId = NodeId(848);
 /// não tinha barra nenhuma: um degradê dizia que havia mais, e nada deixava AGARRAR a lista. Desde a
 /// porta `scroll_area` a lista usa as tabelas de todo painel com a chave `CMD_PALETTE_CARD`.
 ///
-/// Next free id is `850`; re-read the collision note above before taking it.
 pub const CMD_PALETTE_SCROLLBAR_ID: NodeId = NodeId(849);
+/// MiroClone — a coluna da facilitação de um quadro (o cronómetro, a votação, o modo privado) quando
+/// ela não cabe numa janela baixa.
+///
+/// Next free id is `851`; re-read the collision note above before taking it.
+pub const BOARD_FACILITATE_SCROLLBAR_ID: NodeId = NodeId(850);
 
 #[cfg(test)]
 mod tests {
@@ -246,6 +250,7 @@ mod tests {
             ("TAGS", TAGS_SCROLLBAR_ID),
             ("SKELETON", SKELETON_SCROLLBAR_ID),
             ("CMD_PALETTE", CMD_PALETTE_SCROLLBAR_ID),
+            ("BOARD_FACILITATE", BOARD_FACILITATE_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

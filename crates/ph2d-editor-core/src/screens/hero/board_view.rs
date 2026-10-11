@@ -155,6 +155,9 @@ pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
     if hero.documents.active().is_none() {
         return false;
     }
+    if super::board_nav::facilitate::wheel(hero, x, y, dy) {
+        return true;
+    }
     // c21 — o MEU zoom pára de seguir.
     super::board_nav::team::live_board::unfollow(hero);
     let Some(board) = hero.documents.active_board_mut() else {

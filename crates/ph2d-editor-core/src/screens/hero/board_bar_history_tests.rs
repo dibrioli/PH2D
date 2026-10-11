@@ -169,6 +169,11 @@ fn the_list_pages_when_it_does_not_fit() {
         y < floor,
         "a última fila ({y}) por baixo dos botões do canto ({floor})"
     );
+    assert!(
+        t.find(crate::widget::BOARD_FACILITATE_SCROLLBAR_ID)
+            .is_none(),
+        "a página cheia cabe: nada rola por uns píxeis da moldura"
+    );
     assert!(t.find(fac_node(FacButton::PollUp)).is_none());
     t.poll_btn(FacButton::PollDown);
     assert!(t.find(fac_node(FacButton::PollUp)).is_some());
@@ -333,5 +338,193 @@ fn a_single_screen_vote_under_anonymous_names_keeps_no_name() {
         t.poll_btn(FacButton::VoteEnd);
         let by = t.polls().polls[0].by.clone();
         assert_eq!(by.is_empty(), anonymous, "anonymous={anonymous}: «{by}»");
+    }
+}
+
+impl T {
+    /// Os ids da coluna da facilitação que respondem ao clique numa faixa larga à volta dela (o
+    /// salto dela: os botões, as filas e o fundo), e a banda que a coluna ocupou.
+    fn column_ids(&self) -> (std::collections::BTreeSet<u64>, crate::zones::Rect) {
+        let salt = fac_node(FacButton::Surface).0 >> 40;
+        let band = self
+            .hero
+            .documents
+            .live
+            .fac
+            .column
+            .expect("a coluna pintou")
+            .1;
+        let mut ids = std::collections::BTreeSet::new();
+        let c = self.hero.last_canvas;
+        let mut y = c.y;
+        while y < c.y + c.h {
+            let mut x = band.x - band.w;
+            while x < band.x + 2.0 * band.w {
+                if let Some(id) = self.hero.hit_index.hit(x, y).filter(|i| i.0 >> 40 == salt) {
+                    ids.insert(id.0);
+                }
+                x += 2.0;
+            }
+            y += 2.0;
+        }
+        (ids, band)
+    }
+
+    /// O cronómetro e o resultado de uma votação: a coluna mais alta que a cena pede (medido: numa
+    /// área de `337` px ela já passava do chão).
+    fn tall_column(&mut self) {
+        let a = self.put_note([-400.0, -100.0], "a", 1);
+        let b = self.put_note([-100.0, -100.0], "b", 2);
+        let c = self.put_note([200.0, -100.0], "c", 3);
+        for n in 1..=40 {
+            self.poll(&[(a, n), (b, 1), (c, 2)]);
+        }
+        self.shell_click_bar(crate::screens::hero::board_bar::fac::TIMER);
+        self.shell_click_bar(VOTE);
+        self.shell_click_id(poll_row_node(0), "a 1.ª");
+    }
+
+    fn zoom(&self) -> f64 {
+        self.hero.documents.active_board().unwrap().camera.zoom
+    }
+}
+
+/// ⭐ Numa janela BAIXA a coluna da facilitação nunca passa do chão (os botões do canto): o que não
+/// cabe ROLA — a barra aparece à direita dos cartões, a roda sobre a coluna rola-a (nunca dá zoom no
+/// quadro), e rolando até ao fim alcança-se todo controlo que a janela alta mostra.
+#[test]
+fn a_low_window_scrolls_the_column_and_reaches_every_control() {
+    let mut t = T::new();
+    t.tall_column();
+    let (tall, _) = t.column_ids();
+    t.vp_h = 300.0; // LITERAL-PX-OK: uma janela baixa (a área fica abaixo dos 337 px medidos)
+    t.paint();
+    let c = t.hero.last_canvas;
+    let floor = board_nav::button_rects(c)
+        .iter()
+        .map(|(_, r)| r.y)
+        .fold(c.y + c.h, f32::min);
+    let (mut seen, band) = t.column_ids();
+    assert!(
+        band.y + band.h <= floor,
+        "a banda ({band:?}) passa do chão {floor}"
+    );
+    let bar = crate::widget::BOARD_FACILITATE_SCROLLBAR_ID;
+    let (bx, _) = t.find(bar).expect("a barra");
+    let (cx, _, cw) = column(c, false, false);
+    assert!(
+        bx > band.x + cw,
+        "a barra à direita dos cartões, nunca por cima"
+    );
+    assert!(
+        band.x + band.w <= cx + cw,
+        "a barra entra na margem da área (ou no painel de Frames)"
+    );
+    assert!(
+        !tall.is_subset(&seen),
+        "nada ficou escondido: a janela não está baixa o bastante"
+    );
+    let zoom = t.zoom();
+    let mid = (band.x + band.w / 2.0, band.y + band.h / 2.0);
+    for _ in 0..40 {
+        assert!(board_view::wheel(&mut t.hero, mid.0, mid.1, -30.0));
+        t.paint();
+        let (ids, _) = t.column_ids();
+        for id in &ids {
+            let (x, y) = t.find(NodeId(*id)).unwrap();
+            assert!(y < floor && x < band.x + band.w, "{id:#x} fora da banda");
+        }
+        seen.extend(ids);
+    }
+    assert_eq!(t.zoom(), zoom, "a roda sobre a coluna deu zoom no quadro");
+    let lost: Vec<_> = tall.difference(&seen).collect();
+    assert!(lost.is_empty(), "inalcançáveis: {lost:x?}");
+}
+
+/// O controlo: numa janela alta a coluna fica onde estava (sem barra); a roda sobre ela não dá zoom,
+/// e fora dela continua a dar.
+#[test]
+fn a_tall_window_keeps_the_column_and_the_wheel_off_it_still_zooms() {
+    let mut t = T::new();
+    t.tall_column();
+    let c = t.hero.last_canvas;
+    let (_, band) = t.column_ids();
+    assert_eq!(band.x, column(c, false, false).0);
+    assert!(
+        t.find(crate::widget::BOARD_FACILITATE_SCROLLBAR_ID)
+            .is_none()
+    );
+    let zoom = t.zoom();
+    assert!(board_view::wheel(
+        &mut t.hero,
+        band.x + 4.0,
+        band.y + 4.0,
+        -30.0
+    ));
+    assert_eq!(t.zoom(), zoom);
+    let (x, y) = t.at(0.3, 0.6);
+    assert!(board_view::wheel(&mut t.hero, x, y, -30.0));
+    assert_ne!(t.zoom(), zoom, "o controlo: fora da coluna a roda dá zoom");
+}
+
+/// Os painéis da equipa põem-se à esquerda do que a coluna OCUPA — com a barra, quando ela rola —
+/// e nada se pinta por cima dela.
+#[test]
+fn a_team_panel_never_covers_a_scrolling_column() {
+    let mut t = T::new();
+    t.tall_column();
+    t.vp_h = 300.0; // LITERAL-PX-OK: a janela baixa do teste acima
+    t.hero.documents.live.team.list_open = true;
+    t.paint();
+    let salt = fac_node(FacButton::Surface).0 >> 40;
+    let (_, band) = t.column_ids();
+    let mut y = band.y;
+    while y < band.y + band.h {
+        let mut x = band.x;
+        while x < band.x + band.w {
+            if let Some(id) = t
+                .hero
+                .hit_index
+                .hit(x, y)
+                .filter(|i| *i != crate::widget::BOARD_FACILITATE_SCROLLBAR_ID)
+            {
+                assert_eq!(id.0 >> 40, salt, "({x}, {y}) é {id:?}, não da coluna");
+            }
+            x += 2.0;
+        }
+        y += 2.0;
+    }
+}
+
+/// A lista do histórico pagina até UMA fila antes de a coluna rolar: na janela baixa, com o
+/// cronómetro, ela cabe sem barra (paginar e rolar ao mesmo tempo era o que o mínimo de três filas
+/// fazia).
+#[test]
+fn the_list_pages_down_to_one_row_before_the_column_scrolls() {
+    let mut t = T::new();
+    let a = t.put_note([-400.0, -100.0], "a", 1);
+    for n in 1..=40 {
+        t.poll(&[(a, n)]);
+    }
+    t.shell_click_bar(crate::screens::hero::board_bar::fac::TIMER);
+    t.shell_click_bar(VOTE);
+    // Medido: a 360 a lista de UMA fila e o cronómetro cabem (233 de 251 px); a de três filas, não.
+    t.vp_h = 360.0; // LITERAL-PX-OK: a janela que separa «pagina até uma» de «mínimo de três»
+    t.paint();
+    assert!(t.find(poll_row_node(0)).is_some());
+    assert!(
+        t.find(crate::widget::BOARD_FACILITATE_SCROLLBAR_ID)
+            .is_none(),
+        "a coluna rola com a lista a caber numa página"
+    );
+    assert!(t.find(fac_node(FacButton::PollDown)).is_some(), "e pagina");
+    // ⛔ A página cheia passa do chão pela moldura do cartão (uns 4 px) só numa faixa de alturas:
+    // varrem-se TODAS as de dois passos de fila (uma grelha folgada nunca cai nela).
+    let cw = column(t.hero.last_canvas, false, false).2;
+    for h in 360..=420 {
+        t.vp_h = h as f32;
+        t.paint();
+        let band = t.hero.documents.live.fac.column.unwrap().1;
+        assert_eq!(band.w, cw, "a {h} px a lista rola em vez de paginar");
     }
 }

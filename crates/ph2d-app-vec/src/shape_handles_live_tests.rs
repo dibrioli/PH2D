@@ -206,3 +206,60 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     ));
     assert!((values_of(&sim, &map, id)[0] - 5.0 * PX).abs() < 1e-6);
 }
+
+/// ⭐ O DUPLO-CLIQUE é o 2.º press na MESMA alça dentro da janela do despacho: repõe a fábrica e
+/// não deixa arrasto vivo. Fora da janela — ou noutra alça — é só outro agarrar.
+#[test]
+fn a_second_press_on_the_same_handle_inside_the_window_resets_it() {
+    use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS as W;
+    let k = ShapeKind::Star;
+    let mut v0 = k.defaults();
+    v0[1] = 0.3;
+    let (mut sim, mut scene, map, id) = live(k, v0, [0.0, 0.0], 0.0);
+    let inner = law::handles_of(k)
+        .iter()
+        .position(|h| h.law == law::Law::Radial)
+        .unwrap();
+    let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[inner];
+    let mut input = ShapeHandleInput::default();
+    let sel = [id];
+    // Dois presses LONGE no tempo: dois agarrares, nada reposto.
+    assert!(input.press(w(&mut sim, &mut scene, &map, &sel), p, PX, 0));
+    assert!(input.release());
+    assert!(input.press(w(&mut sim, &mut scene, &map, &sel), p, PX, W + 1));
+    assert!(input.grab.is_some());
+    assert_eq!(values_of(&sim, &map, id)[1], 0.3);
+    assert!(input.release());
+    // O 2.º DENTRO da janela: repõe, e o arrasto não fica vivo.
+    assert!(input.press(w(&mut sim, &mut scene, &map, &sel), p, PX, 2 * W + 10));
+    assert!(input.release());
+    assert!(input.press(
+        w(&mut sim, &mut scene, &map, &sel),
+        p,
+        PX,
+        2 * W + 10 + W / 2
+    ));
+    assert!(
+        input.grab.is_none(),
+        "o duplo-clique deixou um arrasto vivo"
+    );
+    assert_eq!(
+        values_of(&sim, &map, id)[1],
+        k.defaults()[1],
+        "o duplo-clique não repôs"
+    );
+}
+
+fn w<'a>(
+    sim: &'a mut SimWorld,
+    scene: &'a mut VecScene,
+    map: &'a VecEntityMap,
+    selection: &'a [VecPathId],
+) -> World<'a> {
+    World {
+        sim,
+        scene,
+        map,
+        selection,
+    }
+}

@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_board_model::{Board, BoardOp, BoardSet, Element, ElementId, Field, Stamp};
+use ph2d_board_model::{Board, BoardOp, BoardSet, Element, ElementId, Field, RichText, Stamp};
 use serde::{Deserialize, Serialize};
 
 use crate::team::{Shadow, TeamState, TeamWrite};
@@ -123,6 +123,24 @@ pub struct Replica {
     shadow: (String, bool),
     team: TeamState,
     team_shadow: Shadow,
+    sealed: Sealed,
+}
+
+/// O modo privado nesta ponta (ADR-0182 §2): o texto das notas escrito com ele ligado sai SELADO
+/// (só para o cofre do anfitrião), nunca numa escrita para todos.
+#[derive(Clone, Debug, Default)]
+struct Sealed {
+    on: bool,
+    /// Por enviar ao cofre.
+    out: Vec<Write>,
+    /// As minhas notas com texto por revelar, e o carimbo do último texto selado de cada uma.
+    mine: BTreeMap<ElementId, Lamport>,
+    /// O que os OUTROS têm do texto delas (o valor e o carimbo): o retrato do anfitrião mostra isto.
+    public: BTreeMap<ElementId, (Vec<u8>, Lamport)>,
+}
+
+fn is_note(el: &Element) -> bool {
+    el.shape().is_some_and(|s| s.kind.is_note())
 }
 
 impl Replica {
@@ -140,7 +158,52 @@ impl Replica {
             shadow: (board.name.clone(), board.sketch),
             team: TeamState::default(),
             team_shadow: Shadow::of(&board.team),
+            sealed: Sealed::default(),
         }
+    }
+
+    /// Liga/desliga a selagem (o modo privado da sala).
+    pub fn set_sealing(&mut self, on: bool) {
+        self.sealed.on = on;
+    }
+
+    /// As escritas seladas por enviar ao cofre.
+    pub fn take_sealed(&mut self) -> Vec<Write> {
+        std::mem::take(&mut self.sealed.out)
+    }
+
+    /// As minhas notas com texto por revelar.
+    #[must_use]
+    pub fn my_sealed(&self) -> BTreeSet<ElementId> {
+        self.sealed.mine.keys().copied().collect()
+    }
+
+    /// Estas notas foram reveladas: o texto delas já é de todos.
+    pub fn released(&mut self, ids: impl IntoIterator<Item = ElementId>) {
+        for id in ids {
+            // O selado já não se reenvia depois de uma queda: ou saiu, ou perdeu para um mais novo
+            // e nunca se mostra.
+            if let Some(at) = self.sealed.mine.remove(&id) {
+                let key = OutKey::Set(id, Field::Text);
+                if self.outbox.get(&key).and_then(crate::vault::sealed_text) == Some((id, at)) {
+                    self.outbox.remove(&key);
+                }
+            }
+            self.sealed.public.remove(&id);
+        }
+    }
+
+    /// O carimbo de um registo como os OUTROS o têm (o do texto de uma nota minha selada é o de antes
+    /// dela): o anfitrião compara-o com uma escrita selada que chega.
+    #[must_use]
+    pub fn public_stamp(&self, id: ElementId, f: Field) -> Lamport {
+        if f == Field::Text
+            && self.sealed.mine.contains_key(&id)
+            && let Some((_, at)) = self.sealed.public.get(&id)
+        {
+            return *at;
+        }
+        self.stamp(id, f)
     }
 
     /// Abre uma sessão sobre `board` (o anfitrião). `seed` (do sistema) sorteia os ids novos.
@@ -181,11 +244,17 @@ impl Replica {
         *self = Self {
             outbox: std::mem::take(&mut self.outbox),
             clock: self.clock,
+            sealed: std::mem::take(&mut self.sealed),
             ..Self::blank(self.peer, board)
         };
         self.adopt(snap);
         self.receive(board, &mine);
-        self.outgoing.extend(mine);
+        // O que era selado volta ao cofre, nunca a todos.
+        let (sealed, public): (Vec<Write>, Vec<Write>) = mine.into_iter().partition(|w| {
+            crate::vault::sealed_text(w).is_some_and(|(id, at)| self.sealed.mine.get(&id) == Some(&at))
+        });
+        self.outgoing.extend(public);
+        self.sealed.out.extend(sealed);
         Ok(())
     }
 
@@ -214,48 +283,39 @@ impl Replica {
         self.team = snap.team.clone();
     }
 
-    /// O retrato para quem entra.
+    /// O retrato para quem entra. O texto das MINHAS notas seladas sai com o valor e o carimbo que os
+    /// outros têm (ADR-0182 §3) — sem o carimbo, a escrita solta depois empataria e não entraria.
     #[must_use]
     pub fn snapshot(&self, board: &Board) -> Snapshot {
+        let hide: Vec<(ElementId, &(Vec<u8>, Lamport))> = self
+            .sealed
+            .mine
+            .keys()
+            .filter_map(|id| self.sealed.public.get(id).map(|p| (*id, p)))
+            .collect();
+        let mut stamps = self.stamps.clone();
+        let bytes = if hide.is_empty() {
+            BoardSet::board_bytes(board)
+        } else {
+            let mut b = board.clone();
+            for (id, (value, at)) in &hide {
+                if let Some(mut el) = b.doc.get_any(*id).cloned() {
+                    el.write(Field::Text, value);
+                    let _ = BoardOp::Put(el).apply(&mut b.doc);
+                }
+                stamps.insert((*id, Field::Text), *at);
+            }
+            BoardSet::board_bytes(&b)
+        };
         Snapshot {
-            board: BoardSet::board_bytes(board),
-            stamps: self.packed_stamps(),
+            board: bytes,
+            stamps: packed_stamps(&stamps),
             board_stamps: self.board_stamps.iter().map(|(k, v)| (*k, *v)).collect(),
             tokens: self.tokens.clone(),
             tops: self.tops.iter().map(|(k, v)| (*k, *v)).collect(),
             team: self.team.clone(),
             clock: self.clock,
         }
-    }
-
-    /// Os carimbos por elemento: o mais comum e os que diferem dele (os registos sem carimbo — que o
-    /// tipo não tem, ou nunca escritos — diferem com o carimbo zero).
-    fn packed_stamps(&self) -> Vec<PackedStamps> {
-        let mut by: BTreeMap<ElementId, BTreeMap<Field, Lamport>> = BTreeMap::new();
-        for ((id, f), l) in &self.stamps {
-            by.entry(*id).or_default().insert(*f, *l);
-        }
-        by.into_iter()
-            .map(|(id, fields)| {
-                let mut count: BTreeMap<Lamport, usize> = BTreeMap::new();
-                for l in fields.values() {
-                    *count.entry(*l).or_default() += 1;
-                }
-                let common = count
-                    .iter()
-                    .max_by_key(|(l, n)| (**n, std::cmp::Reverse(**l)))
-                    .map(|(l, _)| *l)
-                    .unwrap_or_default();
-                let odd = Field::ALL
-                    .into_iter()
-                    .filter_map(|f| {
-                        let l = fields.get(&f).copied().unwrap_or_default();
-                        (l != common).then_some((f, l))
-                    })
-                    .collect();
-                (id, common, odd)
-            })
-            .collect()
     }
 
     fn tick(&mut self) -> Lamport {
@@ -290,6 +350,7 @@ impl Replica {
     /// receber).
     pub fn local(&mut self, board: &mut Board) -> Vec<Write> {
         let mut out = std::mem::take(&mut self.outgoing);
+        let mut sealed = Vec::new();
         let mut lists = Vec::new();
         for (id, before) in board.doc.take_changes() {
             let Some(now) = board.doc.get_any(id).cloned() else {
@@ -297,12 +358,38 @@ impl Replica {
             };
             let Some(before) = before else {
                 let at = self.tick();
-                for f in Field::ALL.into_iter().filter(|f| now.read(*f).is_some()) {
+                // Uma nota que nasce com texto no modo privado: nasce vazia para todos, e o texto
+                // segue selado com o carimbo seguinte.
+                let mut born = now;
+                let text = (self.sealed.on
+                    && is_note(&born)
+                    && born.shape().is_some_and(|s| !s.text.is_empty()))
+                .then(|| born.read(Field::Text))
+                .flatten();
+                if text.is_some()
+                    && let Some(s) = born.shape_mut()
+                {
+                    s.text = RichText::default();
+                }
+                for f in Field::ALL.into_iter().filter(|f| born.read(*f).is_some()) {
                     self.stamps.insert((id, f), at);
                 }
-                self.tokens.seed(&now);
+                self.tokens.seed(&born);
                 self.touch(id, at);
-                out.push(Write::Born { el: now, at });
+                if let Some(value) = text {
+                    let blank = born.read(Field::Text).unwrap_or_default();
+                    self.sealed.public.entry(id).or_insert((blank, at));
+                    let at = self.tick();
+                    self.stamps.insert((id, Field::Text), at);
+                    self.touch(id, at);
+                    sealed.push(Write::Set {
+                        id,
+                        field: Field::Text,
+                        value,
+                        at,
+                    });
+                }
+                out.push(Write::Born { el: born, at });
                 continue;
             };
             let fields = before.changed_fields(&now);
@@ -342,14 +429,21 @@ impl Replica {
                     }
                     lists.push(id);
                 } else if let Some(value) = now.read(f) {
+                    let seal = self.sealed.on && f == Field::Text && is_note(&now);
+                    if seal && !self.sealed.public.contains_key(&id) {
+                        let old = before.read(Field::Text).unwrap_or_default();
+                        let stamp = self.stamp(id, Field::Text);
+                        self.sealed.public.insert(id, (old, stamp));
+                    }
                     self.stamps.insert((id, f), at);
                     self.touch(id, at);
-                    out.push(Write::Set {
+                    let w = Write::Set {
                         id,
                         field: f,
                         value,
                         at,
-                    });
+                    };
+                    if seal { sealed.push(w) } else { out.push(w) }
                 }
             }
         }
@@ -375,13 +469,24 @@ impl Replica {
         for id in lists {
             self.settle_list(board, id);
         }
-        let ids: BTreeSet<ElementId> = out.iter().filter_map(Write::id).collect();
+        let ids: BTreeSet<ElementId> = out.iter().chain(&sealed).filter_map(Write::id).collect();
         for id in ids {
             self.mark(board, id);
         }
         for w in &out {
+            // Um texto meu escrito às claras depois substitui o selado no reenvio.
+            if let Some((id, _)) = crate::vault::sealed_text(w) {
+                self.sealed.mine.remove(&id);
+            }
             self.remember(w);
         }
+        for w in &sealed {
+            if let Some((id, at)) = crate::vault::sealed_text(w) {
+                self.sealed.mine.insert(id, at);
+            }
+            self.remember(w);
+        }
+        self.sealed.out.extend(sealed);
         out
     }
 
@@ -548,6 +653,36 @@ impl Replica {
     pub fn pending(&self) -> usize {
         self.pending.len() + self.team.pending()
     }
+}
+
+/// Os carimbos por elemento: o mais comum e os que diferem dele (os registos sem carimbo — que o
+/// tipo não tem, ou nunca escritos — diferem com o carimbo zero).
+fn packed_stamps(stamps: &BTreeMap<(ElementId, Field), Lamport>) -> Vec<PackedStamps> {
+    let mut by: BTreeMap<ElementId, BTreeMap<Field, Lamport>> = BTreeMap::new();
+    for ((id, f), l) in stamps {
+        by.entry(*id).or_default().insert(*f, *l);
+    }
+    by.into_iter()
+        .map(|(id, fields)| {
+            let mut count: BTreeMap<Lamport, usize> = BTreeMap::new();
+            for l in fields.values() {
+                *count.entry(*l).or_default() += 1;
+            }
+            let common = count
+                .iter()
+                .max_by_key(|(l, n)| (**n, std::cmp::Reverse(**l)))
+                .map(|(l, _)| *l)
+                .unwrap_or_default();
+            let odd = Field::ALL
+                .into_iter()
+                .filter_map(|f| {
+                    let l = fields.get(&f).copied().unwrap_or_default();
+                    (l != common).then_some((f, l))
+                })
+                .collect();
+            (id, common, odd)
+        })
+        .collect()
 }
 
 fn count(el: &Element, s: Stamp) -> i64 {

@@ -6,6 +6,7 @@
 //! [ADR-0181]: ../../../docs/architecture/decisions/0181-o-quadro-ao-vivo-funde-por-campo-e-o-transporte-e-uma-porta.md
 
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::mpsc;
 use std::sync::{Arc, OnceLock};
@@ -14,8 +15,10 @@ use std::time::{Duration, Instant};
 use ph2d_board_model::BoardId;
 use ph2d_board_net as net;
 use ph2d_board_net::firewall::Change;
-use ph2d_board_sync::{self as sync, Event, Msg, Presence, To};
-use ph2d_editor_core::documents::live::{LiveFound, LiveOther, LivePeer, LiveRequest, LiveRole};
+use ph2d_board_sync::{self as sync, Ask, Ballot, Event, Msg, Presence, Refusal, To};
+use ph2d_editor_core::documents::live::{
+    LiveFac, LiveFound, LiveOther, LivePeer, LivePrivate, LiveRequest, LiveRole, LiveVote,
+};
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_editor_core::screens::hero::document_tabs;
 use ph2d_i18n::{tr, tr_with};
@@ -191,12 +194,41 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             }
         }
         LiveRequest::Leave => {
-            // O anfitrião diz adeus antes de fechar (numa thread: esvaziar as filas não prende o
-            // ecrã); o convidado só fecha o fio.
-            if let Some(Live::Host { net, .. }) = st.live.take() {
+            // O anfitrião revela o escondido e acaba a votação (ADR-0182 §5), depois diz adeus antes
+            // de fechar (numa thread: esvaziar as filas não prende o ecrã); o convidado só fecha o fio.
+            if let Some(Live::Host { net, mut s, board }) = st.live.take() {
+                if let Some(b) = hero.documents.board_mut(board) {
+                    send_host(&net, s.close(b, now_ms()));
+                }
                 std::thread::spawn(move || net.close(Msg::End.encode()));
             }
             stop(hero);
+        }
+        LiveRequest::PrivateOn {
+            anonymous,
+            anyone_can_end,
+        } => ask(
+            st,
+            hero,
+            Ask::PrivateOn {
+                anonymous,
+                anyone_can_end,
+            },
+        ),
+        LiveRequest::PrivateOff => ask(st, hero, Ask::PrivateOff),
+        LiveRequest::AnyoneCanReveal(on) => ask(st, hero, Ask::AnyoneCanReveal(on)),
+        LiveRequest::RevealMine => ask(st, hero, Ask::RevealMine),
+        LiveRequest::VoteStart { setup, targets } => {
+            ask(st, hero, Ask::VoteStart { setup, targets });
+        }
+        LiveRequest::VoteEnd => ask(st, hero, Ask::VoteEnd),
+        LiveRequest::Ballot { round, votes, done } => {
+            let b = Ballot { round, votes, done };
+            match &mut st.live {
+                Some(Live::Host { s, .. }) => _ = s.ballot(b),
+                Some(Live::Guest { net: Some(n), s, .. }) => _ = n.send(s.ballot(b).encode()),
+                _ => {}
+            }
         }
         LiveRequest::Summon => match &mut st.live {
             Some(Live::Host { net, s, board }) => {
@@ -217,6 +249,79 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             }
             _ => {}
         },
+    }
+}
+
+/// Um pedido da facilitação ao anfitrião (o meu, se sou eu): o que ele fizer sai no próximo tique.
+fn ask(st: &mut State, hero: &mut HeroScreen, a: Ask) {
+    match &mut st.live {
+        Some(Live::Host { s, board, .. }) => {
+            let Some(b) = hero.documents.board_mut(*board) else {
+                return;
+            };
+            if let Some(Event::Denied(r)) = s.ask(b, a, now_ms()) {
+                hero.documents.tell(tr(refusal_key(r)).to_owned());
+            }
+        }
+        Some(Live::Guest { net: Some(n), s, .. }) => _ = n.send(s.ask(a).encode()),
+        _ => {}
+    }
+}
+
+fn refusal_key(r: Refusal) -> &'static str {
+    match r {
+        Refusal::OnlyStarterEndsPrivate => "board.private.only_starter",
+        Refusal::RevealMineOff => "board.private.reveal_mine_off",
+        Refusal::VoteRunning => "board.livevote.running",
+        Refusal::OnlyStarterEndsVote => "board.livevote.only_starter",
+        Refusal::NothingToVote => "board.notice.nothing_to_vote",
+    }
+}
+
+/// ADR-0182 — a facilitação da sala como o ECRÃ a desenha: o que é escondido de mim, o que é meu, e
+/// os nomes no lugar dos pares.
+fn fac_view(
+    fac: &sync::Fac,
+    me: u64,
+    host: u64,
+    mine: BTreeSet<ph2d_board_model::ElementId>,
+    peers: &[LivePeer],
+) -> LiveFac {
+    let name = |p: u64| {
+        peers
+            .iter()
+            .find(|q| q.peer == p)
+            .map(|q| q.name.clone())
+            .unwrap_or_default()
+    };
+    LiveFac {
+        private: fac.private.as_ref().map(|p| LivePrivate {
+            by: name(p.by),
+            by_me: p.by == me,
+            anonymous: p.anonymous,
+            anyone_can_end: p.anyone_can_end,
+            anyone_can_reveal: p.anyone_can_reveal,
+            may_end: p.anyone_can_end || p.by == me || me == host,
+            reveal_in_ms: p.reveal_in_ms,
+        }),
+        hidden_to_me: fac.hidden.difference(&mine).copied().collect(),
+        mine_hidden: mine,
+        vote: fac.vote.as_ref().map(|v| LiveVote {
+            round: v.round,
+            by: name(v.by),
+            may_end: v.by == me || me == host,
+            setup: v.setup,
+            targets: v.targets.clone(),
+            left_ms: v.left_ms,
+            done: v.done.len(),
+            people: peers.len(),
+            used: v
+                .used
+                .iter()
+                .map(|(p, n)| (name(*p), *n, v.done.contains(p)))
+                .collect(),
+            ended: v.ended,
+        }),
     }
 }
 
@@ -338,6 +443,8 @@ fn host_tick(
             me: p.peer == me,
         })
         .collect();
+    let fac = fac_view(&s.fac(now), me, me, s.my_sealed(), &peers);
+    hero.documents.live_view_mut().fac = fac;
     view(hero, board, &peers, |p| s.seen(p), now);
     Some(Live::Host { net, s, board })
 }
@@ -476,6 +583,9 @@ fn guest_tick(hero: &mut HeroScreen, live: Live, now: u64) -> Option<Live> {
             .map(|p| p.name.clone())
             .unwrap_or_default();
         hero.documents.live_view_mut().role = LiveRole::Guest { host };
+        let host_peer = peers.iter().find(|p| p.color == 0).map_or(0, |p| p.peer);
+        let fac = fac_view(&s.fac(now), me.unwrap_or(0), host_peer, s.my_sealed(), &peers);
+        hero.documents.live_view_mut().fac = fac;
         view(hero, id, &peers, |p| s.seen(p), now);
     }
     Some(Live::Guest {
@@ -540,6 +650,7 @@ fn event(hero: &mut HeroScreen, board: BoardId, e: Event, names: &[(u64, String)
             hero.documents
                 .tell(tr_with("board.live.summoned", &[("name", &name(from))]));
         }
+        Event::Denied(r) => hero.documents.tell(tr(refusal_key(r)).to_owned()),
         Event::Welcomed | Event::Refused { .. } | Event::Arrived(_) | Event::Ended => {}
     }
 }
@@ -593,6 +704,7 @@ fn stop(hero: &mut HeroScreen) {
     v.role = LiveRole::Off;
     v.peers.clear();
     v.others.clear();
+    v.fac = LiveFac::default();
     v.following = None;
     if let Some(b) = board.and_then(|id| hero.documents.board_mut(id)) {
         b.set_session(None);

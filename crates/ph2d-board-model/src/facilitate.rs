@@ -6,6 +6,31 @@ use serde::{Deserialize, Serialize};
 
 use crate::Element;
 
+/// V1 — os votos por pessoa: de 1 a 99 (o Miro: *«the maximum number of votes is 99»*), nasce 3
+/// (a imagem `vote_02` do help).
+pub const VOTES_MAX: u32 = 99;
+pub const VOTES_DEFAULT: u32 = 3;
+
+/// V1 — o que se escolhe ao abrir uma votação (mora no modelo porque viaja numa sessão ao vivo,
+/// ADR-0182; a sessão em si é do editor).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VoteSetup {
+    pub votes: u32,
+    pub one_per_object: bool,
+    /// Minutos do relógio da sessão (0 = sem relógio): armam o cronómetro do quadro.
+    pub minutes: u32,
+}
+
+impl Default for VoteSetup {
+    fn default() -> Self {
+        Self {
+            votes: VOTES_DEFAULT,
+            one_per_object: false,
+            minutes: 0,
+        }
+    }
+}
+
 /// Um carimbo — os oito ícones Lucide da galeria (o Miro põe emoji na nota; não há fonte de emoji no
 /// programa, estudo §0). ⚠️ Append-only: o discriminante vai para o ficheiro.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

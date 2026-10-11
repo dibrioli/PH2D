@@ -2,7 +2,9 @@
 //! cursores mostram, e o que pedem. A rede e a sessão vivem na família (`ph2d-app-board::live`), que
 //! serve os pedidos a cada imagem e escreve aqui o que o ecrã desenha — o mesmo desenho do `take_io`.
 
-use ph2d_board_model::{Board, BoardId, ElementId};
+use std::collections::{BTreeMap, BTreeSet};
+
+use ph2d_board_model::{Board, BoardId, ElementId, VoteSetup};
 
 use super::Documents;
 
@@ -23,6 +25,27 @@ pub enum LiveRequest {
     FirewallAllow,
     /// Desfazer o que o PH2D liberou.
     FirewallRemove,
+    /// ADR-0182 — ligar o modo privado para todos.
+    PrivateOn { anonymous: bool, anyone_can_end: bool },
+    /// «Turn off private mode for all» (revela depois da contagem).
+    PrivateOff,
+    /// «Anyone can reveal their stickies» (só quem ligou).
+    AnyoneCanReveal(bool),
+    /// «Reveal all my sticky notes».
+    RevealMine,
+    /// Abrir uma votação entre pessoas sobre estes alvos.
+    VoteStart {
+        setup: VoteSetup,
+        targets: BTreeSet<ElementId>,
+    },
+    /// «End for all».
+    VoteEnd,
+    /// O meu boletim inteiro (a cada mudança).
+    Ballot {
+        round: u32,
+        votes: BTreeMap<ElementId, u32>,
+        done: bool,
+    },
 }
 
 /// Em que pé está esta pessoa.
@@ -77,6 +100,51 @@ pub struct LiveFirewall {
     pub busy: bool,
 }
 
+/// ADR-0182 — a facilitação da sala como o ECRÃ a desenha (a família escreve-a a cada imagem).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct LiveFac {
+    pub private: Option<LivePrivate>,
+    /// Notas de OUTROS com o texto escondido de mim: desenham-se sem o texto, com o olho fechado.
+    pub hidden_to_me: BTreeSet<ElementId>,
+    /// As MINHAS notas escondidas dos outros: o texto e o olho fechado.
+    pub mine_hidden: BTreeSet<ElementId>,
+    pub vote: Option<LiveVote>,
+}
+
+/// O modo privado ligado.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LivePrivate {
+    /// Quem o ligou (o nome) e se fui eu.
+    pub by: String,
+    pub by_me: bool,
+    pub anonymous: bool,
+    pub anyone_can_end: bool,
+    pub anyone_can_reveal: bool,
+    /// Posso desligá-lo (fui eu, sou o anfitrião, ou qualquer um pode).
+    pub may_end: bool,
+    /// A contagem para revelar (ms que faltam).
+    pub reveal_in_ms: Option<u64>,
+}
+
+/// A votação entre pessoas.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LiveVote {
+    pub round: u32,
+    /// Quem a iniciou (o nome).
+    pub by: String,
+    /// Posso acabá-la («End for all»).
+    pub may_end: bool,
+    pub setup: VoteSetup,
+    pub targets: BTreeSet<ElementId>,
+    pub left_ms: Option<u64>,
+    /// Quantos disseram «I'm done», de quantos estão na sala.
+    pub done: usize,
+    pub people: usize,
+    /// Só para quem iniciou: o nome, os votos usados e se acabou (Miro: «Participants»).
+    pub used: Vec<(String, u32, bool)>,
+    pub ended: bool,
+}
+
 /// O estado partilhado entre o ecrã e a família.
 #[derive(Clone, Debug, Default)]
 pub struct LiveView {
@@ -91,6 +159,8 @@ pub struct LiveView {
     /// Onde está o MEU rato no mundo do quadro da sala (o ecrã escreve-o).
     pub my_cursor: Option<[f64; 2]>,
     pub firewall: LiveFirewall,
+    /// ADR-0182 — o modo privado e a votação da sala, como os desenho.
+    pub fac: LiveFac,
     requests: Vec<LiveRequest>,
     /// O que só o ecrã sabe (o painel aberto, o relógio da procura, o que se pintou onde).
     pub(crate) panel: LivePanel,

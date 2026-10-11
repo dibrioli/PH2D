@@ -97,7 +97,16 @@ fn joining_gives_the_hosts_board_and_the_next_colour() {
         panic!("{out:?}");
     };
     assert_eq!((you.color, &ev[0]), (1, &Event::Joined(you.clone())));
-    assert_eq!(out[1].0, To::AllBut(7));
+    assert_eq!(
+        out.iter()
+            .find(|(_, m)| matches!(m, Msg::Joined(_)))
+            .map(|(to, _)| *to),
+        Some(To::AllBut(7))
+    );
+    assert!(
+        matches!(&out[1], (To::One(7), Msg::Fac(_))),
+        "quem entra recebe já o estado da facilitação"
+    );
     let mut g = g;
     let mut gb = None;
     let (_, ev) = deliver(&mut g, &mut gb, &out[0].1.encode(), 0);

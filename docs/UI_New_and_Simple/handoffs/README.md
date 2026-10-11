@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**50 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **50** são handoffs (registro **morto**).
+**51 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **51** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -64,7 +64,8 @@
 | 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7d_QUICKSHAPE_SETAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7d_QUICKSHAPE_SETAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F7d: O QUICKSHAPE COM SETAS |
 | 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7e_EDIT_SHAPE.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F7e_EDIT_SHAPE.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F7e: O EDIT SHAPE |
 | 2026-10-10 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F8_ENQUADRAR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-10_F8_ENQUADRAR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-10 — F8: ENQUADRAR TUDO |
-| 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F9: AS ALÇAS DAS FORMAS |
+| 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F10_PARAMETROS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F10_PARAMETROS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F10: MAIS PARÂMETROS, O CARTÃO LATERAL, AS ALÇAS NO MODO FOR… |
+| 2026-10-11 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F9: AS ALÇAS DAS FORMAS |
 
 ---
 

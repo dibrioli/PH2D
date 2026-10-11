@@ -37,6 +37,12 @@
 > espiral, a cabeça da seta… em todas as formas do catálogo; o número exacto na fila ②. A lei bate o
 > Inkscape corrido (107 arrastos) e segue o manual do Affinity — [`13_alcas_das_formas.md`](13_alcas_das_formas.md);
 > cena `=15`, foto [`fotos/f9_01`](fotos/f9_01_cena15_um_canto_um_vale_e_o_fim_da_pizza_pelas_alcas.png).
+> **F10 (11/10)**: MAIS parâmetros (*«não podemos reduzir… precisamos de mais»*) — o tipo do canto,
+> a envergadura, o liso, a torção, a divergência e o raio interno da espiral, o dente, o lado solto do
+> trapézio, o meio do losango — com o Inkscape corrido e o manual do Affinity; o que não tem alça vai
+> a um CARTÃO LATERAL junto da forma; e as alças passam ao modo FORMA (nunca no Select), com
+> prioridade sobre desenhar — [`15_mais_parametros_das_formas.md`](15_mais_parametros_das_formas.md);
+> cena `=16`, foto [`fotos/f10_01`](fotos/f10_01_cena16_a_estrela_torcida_curva_e_o_canto_concavo_pelo_cartao.png).
 
 ## O roteador
 
@@ -52,6 +58,7 @@
 | ⭐ **O prompt da próxima janela** — F7c: o QuickShape com ARCOS (pedido do dono, 10/10) | [`07_prompt_F7c_arcos.md`](07_prompt_F7c_arcos.md) |
 | ⭐ **Enquadrar tudo (F8)** — o tldraw e o Excalidraw corridos (a mesma lei com parâmetros diferentes), a margem derivada das barras, o voo pelo ponto fixo, o beliscão rápido, as recusas | [`11_enquadrar_tudo.md`](11_enquadrar_tudo.md) · [`oraculo_enquadrar/`](oraculo_enquadrar/) |
 | ⭐ **O prompt da próxima janela** — F9: os parâmetros de cada forma saem do Inspector para alças no canvas (pedido do dono, 11/10) | [`12_prompt_F9_gizmos_das_formas.md`](12_prompt_F9_gizmos_das_formas.md) |
+| ⭐ **Mais parâmetros, o cartão lateral e as alças no modo Forma (F10)** — a tabela forma × parâmetro (nós · Affinity · Illustrator · Inkscape), o Inkscape corrido pela linha de comando, o que entrou, as portas, as recusas | [`15_mais_parametros_das_formas.md`](15_mais_parametros_das_formas.md) · [`oraculo_parametros/`](oraculo_parametros/) |
 | As fontes, com URL por afirmação | [`referencias/R1_affinity.md`](referencias/R1_affinity.md) · [`R2_figma_sketch_penpot_graphite.md`](referencias/R2_figma_sketch_penpot_graphite.md) · [`R3_illustrator_curve_rive_inkscape.md`](referencias/R3_illustrator_curve_rive_inkscape.md) · [`R4_apps_de_ipad.md`](referencias/R4_apps_de_ipad.md) |
 | As fotos do «antes» e o precedente interno (a barra curta e a barra de estilo do Quadro) | [`fotos/`](fotos/) |
 

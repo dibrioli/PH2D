@@ -127,7 +127,9 @@ cima), com os MESMOS ids dos campos de antes (`vector_shape_field_id(i)`, `vecto
 é onde o Affinity o põe (a Context Toolbar) e onde o Illustrator o põe (o Control panel). Aparece com
 a forma seleccionada (Select) e com a forma armada (Shape: o próximo desenho). Um arrasto de alça
 re-semeia os números no quadro seguinte (`shape_params::frame_fields`, a 2.ª razão de semear).
-⚠️ **Pergunta ao dono** (no relatório da F9): fica na fila ②, ou também num cartão do Inspector?
+⚠️ ~~Pergunta ao dono: fica na fila ②, ou também num cartão do Inspector?~~ **Respondida (F10)**: a
+fila ② fica com tudo e o que não cabe numa alça vai a um CARTÃO LATERAL junto da forma —
+[`15_mais_parametros_das_formas.md`](15_mais_parametros_das_formas.md) §4.
 
 ## §5 — ⛔ Recusas MEDIDAS
 

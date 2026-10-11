@@ -13,7 +13,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -41,7 +41,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -69,7 +69,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -100,7 +100,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -131,7 +131,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -159,7 +159,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -187,7 +187,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -222,7 +222,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -250,7 +250,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -278,7 +278,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -306,7 +306,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -337,7 +337,7 @@
    640
   ],
   "simulation": [
-   null
+   240
   ],
   "eventos": {
    "NEW_ARTWORK": 1,
@@ -350,5 +350,369 @@
    "SIMULATION": 1
   },
   "sha256": "ab12513ff9a30f8585b5fad41d299df4de73f7ce779a38d5db9fbed50f0dd046"
+ },
+ "wcround": {
+  "tool": "WATERCOLOR",
+  "preset": "Watercolor/Round",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "8bc948b6c0cfcda1c4de04987f423c552a9ee586ab9607a50aa2b9629ff4c6a5"
+ },
+ "wcwash": {
+  "tool": "WATERCOLOR",
+  "preset": "Watercolor/Wash Round",
+  "size_px": 40.0,
+  "size_slider": 14.8,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "98ed08e61a7c4c99323858e8bd4cffe2a3c4fd5bf984faeebed00185bd0dd446"
+ },
+ "wcflat": {
+  "tool": "WATERCOLOR",
+  "preset": "Watercolor/Flat",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "6ae817cf1c8e1efcf42600f9fea97a0660e31e06cc063cf577125ed0313ef82b"
+ },
+ "wcliner": {
+  "tool": "WATERCOLOR",
+  "preset": "Watercolor/Liner",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "d530d38dd78259f17aafc32a042013d972fc0a064dab1a392378461ac6dbccb5"
+ },
+ "gouache": {
+  "tool": "WATERCOLOR",
+  "preset": "Gouache/Gouache Round",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "40659fd8f774e1a10729e20a91ea646e37cb973a4065ba3a4573dc3e8e9195e1"
+ },
+ "gouacheflat": {
+  "tool": "WATERCOLOR",
+  "preset": "Gouache/Gouache Flat",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "1f63f5e6248d9896aa8533846b4c50d856a0ead60c1abf44796bf131d31e2ce4"
+ },
+ "sumi": {
+  "tool": "WATERCOLOR",
+  "preset": "Sumi-e/Sumi-e  soft",
+  "size_px": 40.0,
+  "size_slider": 23.6,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "ee823c51a4c4331210652c352dd211df654fa2b93d4fb01f465435bc81c9ef2e"
+ },
+ "dippen": {
+  "tool": "INK_PEN",
+  "preset": "Pen/Dip Pen",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "5e7ea8ad683d88673d85392f70b934759eb85d03169bf5318c6e95b4064c8ec7"
+ },
+ "inkbrush": {
+  "tool": "INK_PEN",
+  "preset": "Brush/Brush",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "3627c75138db8e059082d869fcc2ade07e9cc217c4719ca84386bdbcde7ceb05"
+ },
+ "oilround": {
+  "tool": "OIL_AND_ACRYLIC",
+  "preset": "Round/Round Hard",
+  "size_px": 40.0,
+  "size_slider": 26.1,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "11ee4ffc5d614eb2ba886ee3a88d424b579626ebed59b5beb2c748ad6a37c4e5"
+ },
+ "charcoal": {
+  "tool": "PENCIL",
+  "preset": "Charcoal/Charcoal",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "dda2aebbdeccf6705564a8a2f3efb8dce645be79659decc546503818b6473d26"
+ },
+ "oilpastel2": {
+  "tool": "PASTEL",
+  "preset": "Pastel Oil/Oil Pastel 2",
+  "size_px": 40.0,
+  "size_slider": 34.2,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "c7708d9d52c5d92fcda83e6a73785634b09ffee9e9c36240a48e03fe0607b7ca"
+ },
+ "markerbullet": {
+  "tool": "MARKER",
+  "preset": "Marker/Bullet",
+  "size_px": 40.0,
+  "size_slider": 54.3,
+  "pressure": 100,
+  "extras": {},
+  "seed": 7,
+  "paper": "Default/EX00 White Simple",
+  "canvas": [
+   1000,
+   640
+  ],
+  "simulation": [
+   240
+  ],
+  "eventos": {
+   "NEW_ARTWORK": 1,
+   "POINTER_MOVE": 897,
+   "POINTER_PRESS": 7,
+   "POINTER_RELEASE": 7,
+   "SET_BRUSH": 8,
+   "SET_BRUSH_COLOR": 2,
+   "SET_RANDOM_SEED": 1,
+   "SIMULATION": 1
+  },
+  "sha256": "132547dd5297156102409f6553db4913b6d8d8a9aec03bee8150753f989b3e85"
  }
 }

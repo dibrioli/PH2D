@@ -11,8 +11,13 @@ import shutil
 import sys
 from pathlib import Path
 
+# Sessão de 2026-10-07 (as 12 primeiras) e de 2026-10-11 (13 presets de fábrica com a água e a opacidade
+# do próprio preset — sem `water`/`opacity` no SET_BRUSH). ⚠️ «Pastel Oil/Oil Pastel» saiu quase em branco sob
+# o Wine (0,83 % de tinta: só as pontas da rampa de pressão) ⇒ entra o vizinho «Oil Pastel 2» (`oilpastel2`).
 NOMES = ["oil", "express", "wc", "wcpreset", "wcwet", "ink", "pencil", "penciltilt",
-         "pastel", "marker", "airbrush", "oildirty"]
+         "pastel", "marker", "airbrush", "oildirty",
+         "wcround", "wcwash", "wcflat", "wcliner", "gouache", "gouacheflat", "sumi",
+         "dippen", "inkbrush", "oilround", "charcoal", "oilpastel2", "markerbullet"]
 
 
 def cabecalho(ev_path):
@@ -30,7 +35,7 @@ def cabecalho(ev_path):
         "tool": brush["tool"], "preset": brush["preset"], "size_px": brush["size_px"],
         "size_slider": brush.get("size"), "pressure": brush["pressure"], "extras": extras,
         "seed": seed, "paper": art["paper"]["preset"], "canvas": [art["width"], art["height"]],
-        "simulation": [e.get("steps", e.get("frames")) for e in sim],
+        "simulation": [e.get("repeats", e.get("steps", e.get("frames"))) for e in sim],
         "eventos": {t: sum(1 for e in ev if e["event_type"] == t) for t in sorted({e["event_type"] for e in ev})},
     }
 
@@ -38,10 +43,13 @@ def cabecalho(ev_path):
 def main():
     src, dst = Path(sys.argv[1]), Path(sys.argv[2])
     dst.mkdir(parents=True, exist_ok=True)
-    linhas = ["# Fotos do Rebelle 8.3.4 sobre os gestos da bancada (2026-10-07)", "",
+    linhas = ["# Fotos do Rebelle 8.3.4 sobre os gestos da bancada (sessões de 2026-10-07 e 2026-10-11)", "",
               "Recorte 1000×640 da janela a zoom 100 % (`SAVE` não existe por WebSocket), estado A "
               "(depois dos traços + `SIMULATION`). Gerado por `ferramentas/fixtures_rebelle.py`; "
-              "as medidas estão no [03 §2](../../03_tracos_medidos_rebelle_x_ph2d.md).", "",
+              "as medidas estão no [03 §2](../../03_tracos_medidos_rebelle_x_ph2d.md). As 12 primeiras linhas são de "
+              "07/10; as 13 seguintes (de `wcround` a `markerbullet`), de 11/10: presets de fábrica com a água e a "
+              "opacidade do próprio preset. «Pastel Oil/Oil Pastel» saiu quase em branco (só as pontas da rampa "
+              "de pressão) e foi substituído por «Oil Pastel 2».", "",
               "| ficheiro | ferramenta | preset | size_px | pressão | extras | semente | papel | sha256 (16) |",
               "|---|---|---|---|---|---|---|---|---|"]
     meta = {}

@@ -17,6 +17,22 @@ VERMELHO = {"r": 191, "g": 0, "b": 18}
 
 
 TILT = {"x": 0, "y": 0}
+PASTA = {"WATERCOLOR": "Watercolor", "OIL_AND_ACRYLIC": "Oil", "EXPRESS_OIL": "ExpressOil", "PENCIL": "Pencil",
+         "PASTEL": "Pastel", "INK_PEN": "Ink", "MARKER": "Marker", "AIRBRUSH": "Airbrush"}
+
+
+def max_do_preset(tool, preset):
+    """O `max_brush_size` do preset, lido da fixture dos 281 (`fixtures/rebelle_presets_281.json`); 300 se faltar."""
+    from pathlib import Path
+    fx = Path(__file__).resolve().parent.parent / "fixtures" / "rebelle_presets_281.json"
+    try:
+        alvo = f"/{PASTA[tool]}/{preset}.rebelle-brush.png"
+        for p in json.loads(fx.read_text())["pinceis"]:
+            if p["file"].endswith(alvo):
+                return float(p["Parameters"]["max_brush_size"])
+    except (KeyError, OSError):
+        pass
+    return 300.0
 
 
 def ptr(tipo, x, y, p, extra=None):
@@ -86,7 +102,7 @@ def main():
     MAX = {"Bristle/Bristle Flat": 400, "Round/Hairy": 300, "Watercolor/Flat 2": 300, "Watercolor/Round": 300,
            "Pen/Bullet": 100, "Graphite Pencil/8B": 80, "Pastel Dry/Dry Thin": 300, "Marker/Liner": 300,
            "Default/Spray 2": 700}
-    mx = MAX.get(a.preset, 300)
+    mx = MAX.get(a.preset) or max_do_preset(a.tool, a.preset)
     sb["size"] = round(100.0 * (a.size_px / mx) ** (2.0 / 3.0), 1)
     cor_actual = {"cor": AZUL}
     def gesto_rep(ev, pts, passo, p):

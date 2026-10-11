@@ -497,6 +497,44 @@ fn best_on_track(
     best.1
 }
 
+/// O TRILHO de uma alça de um campo (as métricas de perto e de raio): os pontos por onde ela
+/// passa ao varrer a faixa inteira — a guia vermelha que o Affinity mostra sobre a alça antes do
+/// arrasto, para a mão saber para onde ir. Vazio nas outras (o trilho de um ângulo é o próprio
+/// contorno; o de uma contagem são saltos).
+#[must_use]
+pub fn track(
+    kind: ShapeKind,
+    h: &HandleDesc,
+    values: &ShapeValues,
+    half: [f64; 2],
+    px_to_world: f64,
+    cook: &dyn Fn(&ShapeValues) -> VecPath,
+) -> Vec<[f64; 2]> {
+    let ([i], Law::Nearest | Law::Radial) = (h.fields, h.law) else {
+        return Vec::new();
+    };
+    let Some((lo, hi, _)) = range_world(kind, *i, px_to_world) else {
+        return Vec::new();
+    };
+    let mut v = *values;
+    let mut out: Vec<[f64; 2]> = Vec::with_capacity(TRACK_POINTS + 1);
+    for k in 0..=TRACK_POINTS {
+        #[expect(clippy::cast_precision_loss, reason = "TRACK_POINTS é pequeno")]
+        let x = lo + (hi - lo) * k as f64 / TRACK_POINTS as f64;
+        v[*i] = x;
+        if let Some(q) = handle_point(h, &v, half, cook)
+            && out.last() != Some(&q)
+        {
+            out.push(q);
+        }
+    }
+    out
+}
+
+/// Pontos do trilho desenhado (um trilho recto ou um raio precisam de 2; os curvos do catálogo
+/// — o furo de uma pizza segue uma recta, um vale de estrela também — ficam lisos com estes).
+const TRACK_POINTS: usize = 48;
+
 /// O duplo-clique numa alça REPÕE os campos dela no valor de fábrica (o Affinity: *«double-click
 /// the red handle that has been previously moved»* — só essa alça; as outras ficam).
 #[must_use]

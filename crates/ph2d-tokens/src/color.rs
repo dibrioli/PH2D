@@ -508,6 +508,13 @@ color_tokens! {
     /// [`crate::color_alias`].
     BoneHandle => "bone-handle",
 
+    // ── As alças das FORMAS (F9) ───────────────────────────────────
+    /// `shape-handle` — **as alças de PARÂMETRO de uma forma no canvas** (o raio do canto, o vale
+    /// da estrela, os ângulos do arco): as vermelhas do Affinity, que convivem com as da CAIXA
+    /// (`accent`) na mesma forma e não podem vestir a cor delas. O pai foi MEDIDO nos 8 temas —
+    /// a tabela vive em [`crate::color_alias`].
+    ShapeHandle => "shape-handle",
+
     // ── O quadro ao vivo: a cor de cada PESSOA (MiroClone W11) ─────
     // Cores de DADO: o índice viaja pela rede, então a pessoa 3 tem de ser a MESMA cor no ecrã de
     // todos, em qualquer tema — o mesmo valor nos doze. Desenho próprio em OKLCH (L 0,545–0,575,

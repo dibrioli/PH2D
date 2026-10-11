@@ -290,6 +290,11 @@ pub struct VecState {
     /// porque há DUAS alças. Ver [`crate::pattern_live::handle`].
     pub patternpath_handle: Option<crate::pattern_live::PatternHandle>,
 
+    /// **As alças de PARÂMETRO da forma** (F9): o arrasto vivo e o par do duplo-clique. Armada no
+    /// press de Select, largada no release ou no `Esc`. Runtime-only — o resultado (os campos)
+    /// é documento e vive no `VecShape`. Ver [`crate::shape_handles_live`].
+    pub shape_handles: crate::shape_handles_live::ShapeHandleInput,
+
     /// **O Picker de caminho-guia armado** (Enio 2026-07-23): `Some` enquanto se espera o clique que
     /// escolhe o guia de um motivo (Pattern) ou de um texto (Text on Path). A fonte foi capturada no
     /// arm; o clique seguinte no canvas prende, um clique no vazio desiste. Sair do modo Select (ou

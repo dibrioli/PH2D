@@ -44,6 +44,11 @@ pub struct VecOverlayPlan {
     pub patternpath_handles: bool,
     /// **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil, na forma selecionada.
     pub width_handles: bool,
+    /// **As alças de PARÂMETRO da forma** (F9) — o raio do canto, o vale, os ângulos — só no
+    /// **Select**: é a seta preta que o pedido nomeia («a ferramenta de seleção na mão»), e no
+    /// Node a forma deixa de ser paramétrica ao primeiro nó movido. Se a seleção tem uma forma
+    /// com alças é o [`crate::shape_handles_live::view`] que decide.
+    pub shape_handles: bool,
     // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
     // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
     // clicar-e-arrastar sobre a quina). A consolidação que o Enio pediu.
@@ -85,6 +90,7 @@ pub fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
         // que aquele modo existe para editar. É a mesma razão que fez a alça de quina virar as
         // ferramentas Fillet/Chamfer.
         width_handles: vector_active && mode == DrawMode::Width,
+        shape_handles: vector_active && mode == DrawMode::Select,
     }
 }
 
@@ -178,6 +184,20 @@ mod tests {
 
     /// **As alças do Pattern são do SELECT, e só dele** (plano 23, W4) — a mesma razão da alça do
     /// texto: no Node se perderiam nas âncoras dos outros paths.
+    #[test]
+    fn the_shape_handles_belong_to_select_mode_alone() {
+        assert!(vec_overlay_plan(true, DrawMode::Select).shape_handles);
+        assert!(!vec_overlay_plan(false, DrawMode::Select).shape_handles);
+        for mode in [
+            DrawMode::Node,
+            DrawMode::Pen,
+            DrawMode::Shape,
+            DrawMode::Pencil,
+        ] {
+            assert!(!vec_overlay_plan(true, mode).shape_handles, "{mode:?}");
+        }
+    }
+
     #[test]
     fn the_patternpath_handles_belong_to_select_mode_alone() {
         assert!(vec_overlay_plan(true, DrawMode::Select).patternpath_handles);

@@ -392,7 +392,7 @@ impl WidgetStore {
     /// (same id as the previous Down + within `DOUBLE_CLICK_WINDOW_NS`
     /// of it).
     pub fn record_pointer_down(&mut self, id: Option<NodeId>, timestamp_ns: u128) -> bool {
-        const DOUBLE_CLICK_WINDOW_NS: u128 = 350_000_000; // 350 ms
+        use crate::interaction::DOUBLE_CLICK_WINDOW_NS;
         let is_double = id.is_some()
             && id == self.last_down_id
             && timestamp_ns.saturating_sub(self.last_down_at_ns) < DOUBLE_CLICK_WINDOW_NS;

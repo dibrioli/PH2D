@@ -111,13 +111,18 @@ impl App {
         }
 
         // O LÁPIS (F7): com a forma do QuickShape, o Esc devolve o traço livre; sem ela, desiste do
-        // traço — o que a dica dele sempre disse.
+        // traço — o que a dica dele sempre disse. E a alça de PARÂMETRO da forma a meio de um
+        // arrasto (F9): os campos voltam aos do press.
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
             && self.vector_keys_live()
             && let Some(gfx) = self.gfx.as_mut()
-            && ph2d_app_vec::quickshape_frame::escape(&mut self.vec, &mut gfx.vec_scene)
+            && (ph2d_app_vec::shape_handles_live::on::escape(
+                &mut self.vec,
+                &mut gfx.sim,
+                &mut gfx.vec_scene,
+            ) || ph2d_app_vec::quickshape_frame::escape(&mut self.vec, &mut gfx.vec_scene))
         {
             return true;
         }

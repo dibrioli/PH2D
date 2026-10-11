@@ -13,6 +13,10 @@ use ph2d_a11y::NodeId;
 /// payloads — value-bearing variants carry only the `NodeId`; the
 /// caller re-reads from the store. Keeps events `Copy` so arena
 /// allocation costs a single pointer bump.
+/// A janela do DUPLO-CLIQUE (350 ms) — a do despacho dos widgets e a de toda superfície que deteta
+/// o seu (o quadro, as alças das formas): uma mão, um compasso.
+pub const DOUBLE_CLICK_WINDOW_NS: u128 = 350_000_000;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum WidgetEvent {
     /// Button / Tag remove / ContextMenu item / Modal cancel|confirm.

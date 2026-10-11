@@ -64,7 +64,7 @@ pub use drag::{
     NUMBER_INPUT_DRAG_THRESHOLD_PX, NumberInputDragState, NumberStepperHoldState,
     STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor, ScrubLaw,
 };
-pub use event::{PanelRowDrop, PanelRowFamily, WidgetEvent};
+pub use event::{DOUBLE_CLICK_WINDOW_NS, PanelRowDrop, PanelRowFamily, WidgetEvent};
 pub use hit::HitIndex;
 pub use press_slop::{PRESS_SLOP_PX, PressSlop};
 pub use state::{

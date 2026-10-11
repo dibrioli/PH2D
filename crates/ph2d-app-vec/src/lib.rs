@@ -189,6 +189,9 @@ pub mod paint_stack;
 #[cfg(test)]
 mod pattern_seam_probe;
 pub mod pick;
+/// As ALÇAS da forma viva no canvas (F9): onde ficam em mundo, o press, o arrasto pela porta
+/// única do `shape_params`, o `Esc` e o duplo-clique.
+pub mod shape_handles_live;
 pub mod shape_live;
 pub mod smoke_appearance;
 pub mod smoke_bone;
@@ -209,6 +212,8 @@ mod sonda_tampa_redonda_tests;
 #[cfg(test)]
 #[path = "tampa_redonda_tests.rs"]
 mod tampa_redonda_tests;
+/// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
+mod vector_mode_handles;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

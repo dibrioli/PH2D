@@ -77,6 +77,22 @@ pub(crate) const fn parent_of(t: ColorToken) -> Option<ColorToken> {
         // ciano `200`, laranja `55`, azul `250`), e o gate
         // `the_bend_handle_never_wears_the_colour_of_the_bone` guarda a barra.
         ColorToken::BoneHandle => ColorToken::Success,
+        // ⭐ **A ALÇA DE PARÂMETRO DE UMA FORMA (F9) — o pai MEDIDO**: ela convive na mesma forma
+        // com as alças da CAIXA (`Accent`, com o `AccentSoft` e a `Selection` do contorno à volta) e
+        // não pode vestir a cor delas. O pior caso de cada candidato contra as três, nos 8 temas:
+        //
+        // | candidato | pior caso |
+        // |---|---:|
+        // | **`Success`** | **`0,122`** (Workshop) |
+        // | `CurveG` | `0,104` (Gray) |
+        // | `Warn` | `0,080` (Sunstone) |
+        // | `Info` | `0,077` (Blueprint) |
+        // | `Danger` | `0,062` (Sunstone) |
+        //
+        // ⛔ O VERMELHO do Affinity (e o laranja) perdem no Sunstone, cujo acento é laranja; o
+        // `curve-g` é cor de DADO. O gate `a_shape_handle_never_wears_the_colour_of_the_box` (na
+        // `ph2d-vec-render`) guarda a barra.
+        ColorToken::ShapeHandle => ColorToken::Success,
         _ => return None,
     })
 }

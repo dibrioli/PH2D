@@ -11,6 +11,8 @@ impl crate::App {
         cam_affine: ph2d_vector::Affine,
         overlay: ph2d_app_vec::overlay::VecOverlayPlan,
     ) {
+        // F9: o cursor em mundo (a guia da alça sob ele) e a escala, antes de partir o `gfx`.
+        let (hover, px) = (self.vec_world_at(self.last_pointer), self.vec_px_to_world());
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -100,6 +102,20 @@ impl crate::App {
                 dragging == Some(PatternHandle::End),
                 cam_affine,
                 hero.theme,
+                vector_scene,
+            );
+        }
+        // **As alças de PARÂMETRO da forma** (F9) — Select, por cima do gizmo como as do texto e do
+        // padrão: o raio do canto, o vale da estrela, os ângulos do arco.
+        if overlay.shape_handles {
+            let theme = hero.theme;
+            ph2d_app_vec::shape_handles_live::draw(
+                &self.vec,
+                sim,
+                px,
+                hover,
+                cam_affine,
+                theme,
                 vector_scene,
             );
         }

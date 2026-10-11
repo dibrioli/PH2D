@@ -50,13 +50,14 @@ impl crate::App {
             self.skeleton.bone_pose = None;
             return true;
         }
-        // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto.
-        if self.vec.patternpath_handle.is_some()
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Up
-        {
+        // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto — e o de
+        // uma alça de PARÂMETRO da forma (F9; o passo de undo fecha com o botão).
+        if mapped_button == ph2d_host::PointerButton::Primary && kind == PointerKind::Up {
+            let pattern = self.vec.patternpath_handle.is_some();
             self.vec.patternpath_handle = None;
-            return true;
+            if self.vec.shape_handles.release() || pattern {
+                return true;
+            }
         }
         // O Up que fecha o arrasto de uma ÂNCORA do motion path — e que FECHA o passo de
         // undo que o press abriu. Sem este `commit_if_changed` o `begin` fica pendurado e
@@ -158,12 +159,13 @@ impl crate::App {
                 _ => {}
             }
         }
-        // **A alça do TEXTO EM CAMINHO** (W5), no modo Select — irmã da do conector, mesmo lugar
-        // e mesma razão: no Select a tool não captura o canvas, e sem este arm a pressão iria
-        // para o picking/gizmo. O gizmo é inócuo sobre um texto vinculado (vive na identidade),
-        // então o Select é a casa natural da alça — e sem as âncoras do Node ela não se confunde
-        // com ponto de objeto nenhum (Enio, smoke). Só devolve `true` sobre a alça de um texto
-        // vinculado SELECIONADO; qualquer outro caso segue o caminho de sempre.
+        // **As alças do modo Select** — a do TEXTO EM CAMINHO (W5), as fichas do PATTERN (W4) e as
+        // de PARÂMETRO da forma (F9): no Select a tool não captura o canvas, e sem este arm a
+        // pressão iria para o picking/gizmo. O gizmo é inócuo sobre um texto ou motivo vinculado
+        // (vive na identidade); as da forma ESTACIONAM fora das alças da caixa
+        // (`shape_handles_live::PARK_PX`) e ganham o clique só dentro do raio delas — mesmo com
+        // Shift/Ctrl/Alt, que ali são modificadores do arrasto e não da seleção. Cada uma só
+        // devolve `true` sobre a SUA alça; qualquer outro caso segue o caminho de sempre.
         if self.vector_tool_active()
             && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -171,21 +173,9 @@ impl crate::App {
             && !menu_open_before
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
-            && self.vec_textpath_handle_down(w)
-        {
-            return true;
-        }
-        // O MESMO guard para as alças do PATTERN (W4): no Select a tool não captura o canvas e o
-        // gizmo é inócuo sobre um motivo vinculado, então a ficha precisa deste arm antes do
-        // picking/gizmo. Irmão do `vec_textpath_handle_down` logo acima.
-        if self.vector_tool_active()
-            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Down
-            && !menu_open_before
-            && self.over_canvas_or_gizmo(evt.x, evt.y)
-            && let Some(w) = self.vec_world_at((evt.x, evt.y))
-            && self.vec_patternpath_handle_down(w)
+            && (self.vec_textpath_handle_down(w)
+                || self.vec_patternpath_handle_down(w)
+                || self.vec_shape_handle_down(w))
         {
             return true;
         }

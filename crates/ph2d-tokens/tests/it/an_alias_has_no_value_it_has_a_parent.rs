@@ -83,8 +83,8 @@ fn every_timeline_slot_resolves_to_its_declared_parent() {
     }
     assert_eq!(
         pares,
-        17 * 8,
-        "esperava 17 apelidos x 8 temas e comparei {pares}: ou a familia mudou de tamanho, ou o \
+        18 * 8,
+        "esperava 18 apelidos x 8 temas e comparei {pares}: ou a familia mudou de tamanho, ou o \
          filtro deixou de achar os apelidos"
     );
 }
@@ -159,6 +159,9 @@ fn the_parent_of_each_alias_is_the_one_the_measurement_found() {
         // DISTÂNCIA perceptual ao corpo do osso nos 8 temas, e ela continua a poder ser medida —
         // o gate `the_bend_handle_never_wears_the_colour_of_the_bone` fá-lo a cada corrida.
         ("bone-handle", "success"),
+        // ⭐ O `shape-handle` (F9) entra pela MESMA espécie de medição: a distância perceptual às
+        // alças da caixa nos 8 temas (`a_shape_handle_never_wears_the_colour_of_the_box`).
+        ("shape-handle", "success"),
     ];
     let mut seen = 0;
     for a in aliases() {
@@ -189,13 +192,15 @@ fn the_parent_of_each_alias_is_the_one_the_measurement_found() {
 /// O censo de cor de 2026-08-30 mediu que os 16 do Timeline eram **exactamente** os 16 apelidos de
 /// todo o sistema — os 34 slots dos nós são valores distintos. ⭐ **O 17.º nasceu em 2026-09-16**:
 /// o `bone-handle`, de um report do dono (as alças de curvatura vestiam a cor do osso), e o pai
-/// dele foi MEDIDO nos 8 temas — ver a tabela em `ph2d_tokens::color_alias`.
+/// dele foi MEDIDO nos 8 temas — ver a tabela em `ph2d_tokens::color_alias`. O 18.º, em
+/// 2026-10-11: o `shape-handle` (F9, as alças de parâmetro das formas), medido contra as alças da
+/// caixa.
 ///
 /// ⇒ a contagem sobe **com** o nome ao lado, e um apelido que nasça sem entrar nesta lista reprova.
 #[test]
 fn the_alias_family_is_exactly_the_named_slots() {
     /// As famílias que declaram apelidos, e a contagem de cada uma.
-    const FAMILIAS: &[(&str, usize)] = &[("timeline-", 16), ("bone-", 1)];
+    const FAMILIAS: &[(&str, usize)] = &[("timeline-", 16), ("bone-", 1), ("shape-", 1)];
     let declared: Vec<&str> = C::ALL
         .iter()
         .filter(|t| t.alias_parent().is_some())

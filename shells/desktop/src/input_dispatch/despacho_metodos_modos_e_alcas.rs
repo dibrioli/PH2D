@@ -325,6 +325,46 @@ impl crate::App {
         )
     }
 
+    /// **F9: o press e o arrasto das alças de PARÂMETRO da forma** — a lei e o estado moram em
+    /// `ph2d_app_vec::shape_handles_live`; aqui só se parte o `gfx`. `true` = consumido.
+    pub(super) fn vec_shape_handle_down(&mut self, w: [f64; 2]) -> bool {
+        let px = self.vec_px_to_world();
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let now = crate::App::timestamp_ns();
+        ph2d_app_vec::shape_handles_live::on::press(
+            &mut self.vec,
+            &mut gfx.sim,
+            &mut gfx.vec_scene,
+            w,
+            px,
+            now,
+        )
+    }
+
+    /// Ver [`Self::vec_shape_handle_down`]: o cursor em `(x, y)` com Shift (15°), Ctrl (em pares) e
+    /// Alt (só este canto). No-op sem um arrasto vivo.
+    pub(super) fn vec_shape_handle_move(&mut self, x: f32, y: f32) -> bool {
+        let (px, m) = (self.vec_px_to_world(), self.modifiers);
+        let mods = ph2d_tool_vector::shape_handles::Mods {
+            snap: m.shift_key(),
+            pairs: m.control_key() || m.super_key(),
+            alone: m.alt_key(),
+        };
+        let (Some(w), Some(gfx)) = (self.vec_world_at((x, y)), self.gfx.as_mut()) else {
+            return false;
+        };
+        ph2d_app_vec::shape_handles_live::on::drag(
+            &mut self.vec,
+            &mut gfx.sim,
+            &mut gfx.vec_scene,
+            w,
+            mods,
+            px,
+        )
+    }
+
     /// **Pressão no modo Select sobre uma alça do PATTERN** (W4): se uma está sob o cursor, arma o
     /// arrasto DELA e devolve `true` (o host então PULA o picking/gizmo). Irmã do
     /// `vec_textpath_handle_down`; o raio é o MESMO da ficha do texto (as duas são a mesma ficha).

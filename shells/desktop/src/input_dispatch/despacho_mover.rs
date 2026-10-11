@@ -77,8 +77,11 @@ impl crate::App {
         if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
             return true;
         }
-        // W4 do pattern: arrastar a ficha de Start/End (modo Select) — irmã da do texto.
-        if self.vec_patternpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
+        // W4 do pattern: arrastar a ficha de Start/End (modo Select) — irmã da do texto; e F9, a
+        // alça de PARÂMETRO da forma.
+        if self.vec_patternpath_handle_move(self.last_pointer.0, self.last_pointer.1)
+            || self.vec_shape_handle_move(self.last_pointer.0, self.last_pointer.1)
+        {
             return true;
         }
         // A ÂNCORA do motion path (ADR-0141): leva a trajetória para o cursor. Irmã das

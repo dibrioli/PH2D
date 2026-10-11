@@ -18,7 +18,7 @@ use ph2d_tokens::{Spacing, Theme};
 const WHEEL_ZOOM_PER_LINE: f64 = 0.9; // LITERAL-PX-OK: factor por linha, espelho da roda da cena
 const WHEEL_LINE_PX: f64 = 16.0; // LITERAL-PX-OK: px por linha de roda, espelho da roda da cena
 /// Janela do duplo-clique — a do despacho (`WidgetStore::record_pointer_down`).
-const DOUBLE_CLICK_NS: u128 = 350_000_000;
+const DOUBLE_CLICK_NS: u128 = crate::interaction::DOUBLE_CLICK_WINDOW_NS;
 
 /// O que a shell traz com cada evento do quadro.
 pub struct Input<'a> {

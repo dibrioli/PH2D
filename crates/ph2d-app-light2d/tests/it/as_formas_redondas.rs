@@ -615,13 +615,22 @@ fn junto_a_um_canto_a_face_le_a_sua_luz() {
         s.quadro(&gpu, &cena);
         fluencia_lida(&gpu, &s)
     };
-    let (fl, fl0) = (ler(cfg.c0_ao_longo_da_face, cfg.c0_ao_longo_mediana), ler(0.0, false));
+    let (fl, fl0) = (
+        ler(cfg.c0_ao_longo_da_face, cfg.c0_ao_longo_mediana),
+        ler(0.0, false),
+    );
     let acima = ph2d_light2d_ref::fluencia(&cena, [0.1 + tf, 0.5 + 2.0 * tc])[1];
     let mut pior: f64 = 0.0;
     for k in [2.0, 3.0, 4.0] {
         let p = [0.1 - 0.5 * tf, 0.5 - k * tc];
-        let (g, g0, r) = (fl.amostra(p), fl0.amostra(p), ph2d_light2d_ref::fluencia(&cena, p)[1]);
-        eprintln!("canto · {k} texels do canto: placa {g:.4} (sem a média {g0:.4}) · gabarito {r:.4} (acima do canto {acima:.4})");
+        let (g, g0, r) = (
+            fl.amostra(p),
+            fl0.amostra(p),
+            ph2d_light2d_ref::fluencia(&cena, p)[1],
+        );
+        eprintln!(
+            "canto · {k} texels do canto: placa {g:.4} (sem a média {g0:.4}) · gabarito {r:.4} (acima do canto {acima:.4})"
+        );
         pior = pior.max((g - r).abs() / acima);
     }
     assert!(

@@ -101,7 +101,7 @@ fn o_rebote_chega_de_fora_da_grade() {
 }
 
 /// ⭐⭐ **GATE — sem nada fora da vista, o entorno não acrescenta nada**: um corpo que brilha no meio da
-/// vista (nas cascatas), sem céu; a luz em volta dele com o entorno e sem ele é a mesma. O entorno não
+/// vista (nas cascatas; 1 m de raio, para o entorno 8× mais grosso o capturar), sem céu; a luz em volta dele com o entorno e sem ele é a mesma. O entorno não
 /// recolhe a emissão do MIOLO (a grade da vista: `Solver::mascarar_miolo`) — sem a máscara, ele contava
 /// outra vez a luz que a vista já tem.
 #[test]
@@ -121,7 +121,7 @@ fn o_entorno_nao_conta_duas_vezes_o_que_esta_na_vista() {
             vertices: (0..24)
                 .map(|k| {
                     let a = std::f32::consts::TAU * k as f32 / 24.0;
-                    [0.3 * a.cos(), 0.3 * a.sin()]
+                    [a.cos(), a.sin()]
                 })
                 .collect(),
             radiancia: [1.0; 3],
@@ -182,7 +182,7 @@ fn o_entorno_nao_conta_duas_vezes_o_que_esta_na_vista() {
         fluencia_lida(&gpu, &s)
     };
     let (com, sem) = (ler(true), ler(false));
-    let pior = [0.5_f64, 1.0, 2.0, 3.5]
+    let pior = [1.5_f64, 2.0, 3.0, 4.0]
         .iter()
         .flat_map(|&r| (0..8).map(move |k| (r, f64::from(k) * std::f64::consts::FRAC_PI_4)))
         .map(|(r, t)| {
@@ -190,7 +190,10 @@ fn o_entorno_nao_conta_duas_vezes_o_que_esta_na_vista() {
             (com.amostra(p) - sem.amostra(p)).abs() / sem.amostra(p).max(1e-6)
         })
         .fold(0.0, f64::max);
-    eprintln!("o entorno sem nada fora da vista: a luz difere no máximo {:.3} %", 100.0 * pior);
+    eprintln!(
+        "o entorno sem nada fora da vista: a luz difere no máximo {:.3} %",
+        100.0 * pior
+    );
     assert!(
         pior <= 0.01,
         "o entorno conta outra vez a luz da vista ({:.2} %)",

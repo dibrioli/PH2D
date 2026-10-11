@@ -267,11 +267,12 @@ fn levanta_cobre(
 }
 
 /// **A caixa das tintas** do re-molhar: o filme que a água leva fica, por canal, entre a cor dele (`fica`) e a
-/// do assentado que sobe (`vem`, quando o filme já tinha tinta). Sem ela a inversa escrevia, sob filme grosso,
+/// do assentado que sobe (`vem`); com o filme vazio, é a do assentado. Sem ela a inversa escrevia, sob filme grosso,
 /// uma cor mais clara que as duas, que a água carregava para onde não havia nada a tapar.
-fn na_caixa(x: [f64; 3], fica: [f64; 3], vem: [f64; 3], tem_vem: bool) -> [f64; 3] {
-    if !tem_vem {
-        return fica;
+fn na_caixa(x: [f64; 3], fica: [f64; 3], vem: [f64; 3], tem_fica: bool) -> [f64; 3] {
+    // Sem tinta a ficar (filme vazio), a única tinta é a que vem: a cor guardada do vazio não é tinta.
+    if !tem_fica {
+        return vem;
     }
     [0, 1, 2].map(|c| x[c].clamp(fica[c].min(vem[c]), fica[c].max(vem[c])))
 }
@@ -496,5 +497,31 @@ mod tests {
         let (a_s2, a_f2) = (1.0 - (1.0 - a_s) * (1.0 - d), 1.0 - (1.0 - a_f) / (1.0 - d));
         let u2 = levanta(e, AZUL, QUASE_BRANCO, a_s2, a_f2, a_s, a_f);
         assert!(fora_da_caixa(u2, AZUL, QUASE_BRANCO) <= 1e-9, "{u2:?}");
+    }
+
+    /// Re-molhar tinta SECA (filme vazio) leva a cor do assentado: a cor guardada de um filme sem massa é a de
+    /// uma tinta que já saiu. CONTROLO: a cor velha do vazio é outra tinta, longe do assentado.
+    #[test]
+    fn re_molhar_tinta_seca_leva_a_cor_do_assentado() {
+        let velha = [220.0, 60.0, 60.0];
+        for esconde in [
+            crate::colorops::TINTA_ESCONDE,
+            crate::colorops::TINTA_ESCONDE_EM_VELATURA,
+        ] {
+            let e = Ecra::Cobre {
+                filme: crate::colorops::VELATURA_DO_FILME,
+                esconde,
+                molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
+            };
+            let u2 = levanta(e, AZ, velha, 0.6, 0.0, 0.55, 0.1);
+            assert!(
+                perto(u2, AZ, 1.0),
+                "esconde {esconde}: {u2:?} ≠ o assentado {AZ:?}"
+            );
+            assert!(
+                !perto(velha, AZ, 1.0),
+                "CONTROLO: a cor velha não discrimina"
+            );
+        }
     }
 }

@@ -46,6 +46,8 @@ impl PainterTool {
         let visual = ph2d_wet_paint::render::PigmentVisual {
             // A Texture on Paint imprime o PAPEL: sem papel escolhido não há o que imprimir (dono 10/10).
             paper: self.paint.wetpaint.paper_visual && self.paint.brush.paper.is_active(),
+            // O relevo da tinta é da tinta (dono 11/10): o knob Emboss decide, com ou sem papel.
+            relevo: true,
         };
         // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`); `0` = desligado.
         let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;

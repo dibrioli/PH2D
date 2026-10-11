@@ -22,14 +22,16 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// caixa das tintas no RE-MOLHAR (prompt 16, Fase E: o filme que a água leva nunca sai, por canal, das duas
 /// tintas que se juntam — o traço de fábrica mudou de propósito, as opções continuam a não mexer um byte); e
 /// outra vez a 11/10 pela mesma caixa com o filme VAZIO (re-molhar tinta seca leva a cor do assentado, não a
-/// cor guardada de um filme sem massa — `assenta::tests::re_molhar_tinta_seca_leva_a_cor_do_assentado`).
+/// cor guardada de um filme sem massa — `assenta::tests::re_molhar_tinta_seca_leva_a_cor_do_assentado`); e
+/// outra vez a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada desenha-se com a lei
+/// SECA — as três cenas com tinta ainda molhada na foto mudaram; as opções continuam a não mexer um byte).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
     ("S", None, 0xc2d4_2d3b_ff20_c3cd),
-    ("S", Some(4), 0xcc60_b7b3_0274_b732),
-    ("S", Some(8), 0x51eb_21e8_d735_5be6),
+    ("S", Some(4), 0x8931_f59a_f258_e67b),
+    ("S", Some(8), 0x44dc_18ee_96d2_166b),
     ("bancada", None, 0xc165_ee11_520a_9a78),
     ("bancada", Some(4), 0x5a2a_5f49_28cf_dce3),
-    ("bancada", Some(8), 0xc403_6735_e16a_4158),
+    ("bancada", Some(8), 0x9824_e418_2ef6_83cf),
 ];
 
 #[test]

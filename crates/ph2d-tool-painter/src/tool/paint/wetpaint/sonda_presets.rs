@@ -272,32 +272,29 @@ fn sonda_presets_varre() {
     }
 }
 
-/// **A tinta molhada parece mais FORTE e clareia ao secar** (a escolha do dono 10/10, «como o Rebelle»): o
-/// Wet Round na tela direita, a tinta do miolo ([`regua`]) 2 s depois do Up contra 30 s. Rebelle 8.3.4
-/// (`fixtures/rebelle_presets/`): Round `111 → 54` (2,1×), Wash `46 → 39` (1,2×). ⚠️ O CONTROLO está dentro:
-/// sem o reforço da tinta molhada (`molhada_escurece = 1`) a mesma barra reprova.
+/// **A tinta molhada já é a cor que FICA** (dono 11/10: «nossos traços clareiam após se secarem. isso não é
+/// legal. melhor pintar com a tinta já em sua cor real» — substitui a escolha de 10/10, «como o Rebelle»,
+/// em que a tinta molhada parecia mais forte: Round `99 → 55`, 1,8×). O render desenha a célula molhada com
+/// a lei SECA (`ph2d_wet_paint::render`). A tinta do miolo ([`regua`]) 2 s depois do Up contra 30 s, na tela
+/// direita. O que sobra é MASSA que se desloca (a soma do pigmento conserva-se, 0,97–1,00): a tinta molhada
+/// acumulada no miolo corre para a orla ao secar.
 #[test]
-fn a_tinta_molhada_parece_mais_forte_e_clareia_ao_secar() {
+fn a_tinta_molhada_ja_e_a_cor_que_fica() {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
-    let razao = |i: usize, molhada: Option<f64>| {
-        let (dois, fim) = coluna_com(&b, i, false, &[], None, None, molhada);
+    let razao = |i: usize, knobs: &[(Knob, f64)]| {
+        let (dois, fim) = coluna_com(&b, i, false, knobs, None, None, None);
         let (t2, t) = (regua(&dois, i).0, regua(&fim, i).0);
-        eprintln!("[molhada] pincel {i} molhada {molhada:?}: tinta 2 s {t2:.0} → 30 s {t:.0}");
+        eprintln!(
+            "[cor real] pincel {i} {knobs:?}: tinta 2 s {t2:.0} → 30 s {t:.0} ({:.2})",
+            t2 / t.max(1.0)
+        );
         t2 / t.max(1.0)
     };
-    let c = razao(0, Some(1.0));
-    let (round, wash) = (razao(0, None), razao(1, None));
-    assert!(
-        c < 1.4,
-        "CONTROLO: sem o reforço da tinta molhada a razão foi {c:.2} — a régua não discrimina"
-    );
-    assert!(
-        round >= 1.4,
-        "o Wet Round molhado não parece mais forte: 2 s ÷ seco = {round:.2} (Rebelle 2,1)"
-    );
-    assert!(
-        wash >= 1.0,
-        "o Wet Wash ESCURECE ao secar: 2 s ÷ seco = {wash:.2} (Rebelle 1,2)"
-    );
+    let sem_orla = razao(0, &[(Knob::EdgeDarkening, 0.0)]);
+    let (round, wash, drip) = (razao(0, &[]), razao(1, &[]), razao(3, &[]));
+    let _ = sem_orla;
+    for (n, r) in [("Wet Round", round), ("Wet Wash", wash), ("Wet Drip", drip)] {
+        assert!(r <= 1.35, "o {n} clareia ao secar: 2 s ÷ seco = {r:.2}");
+    }
 }

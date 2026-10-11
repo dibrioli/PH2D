@@ -48,7 +48,8 @@ pub enum Ecra {
 }
 
 impl Ecra {
-    /// A mesma lei vista SECA (assentar e re-molhar preservam o ecrã seco; o render vê a tinta molhada).
+    /// A mesma lei vista SECA — assentar e re-molhar preservam o ecrã seco, e (desde 11/10, ordem do dono) o
+    /// render desenha com ela também a tinta molhada: o que se vê ao pintar é o que fica.
     #[must_use]
     pub fn seco(self) -> Self {
         match self {

@@ -15,30 +15,61 @@ use super::sonda_gestos::{pinta_cena_ate, tela};
 use ph2d_brush_presets::{Biblioteca, Preset};
 use std::path::PathBuf;
 
-/// O ruído do próprio Rebelle (recto × rápido da mesma foto, p90 sobre as 25 fotos, 11/10).
-const RUIDO_COBERTURA: f64 = 0.012;
-const RUIDO_TEXTURA: f64 = 0.37;
+/// Uma métrica da régua e o ruído do próprio Rebelle nela (recto × rápido da mesma foto, p90 sobre as 25
+/// fotos, 11/10): só conta numa mídia se o controlo estiver a mais de 3× este ruído da foto.
+#[derive(Clone, Copy, Debug)]
+enum Metrica {
+    Cobertura,
+    Textura,
+    Borda,
+    Orla,
+}
+
+impl Metrica {
+    fn de(self, m: &Medida) -> f64 {
+        match self {
+            Metrica::Cobertura => m.cobertura,
+            Metrica::Textura => m.textura,
+            Metrica::Borda => m.borda,
+            Metrica::Orla => m.orla,
+        }
+    }
+    fn ruido(self) -> f64 {
+        match self {
+            Metrica::Cobertura => 0.012,
+            Metrica::Textura => 0.37,
+            Metrica::Borda => 0.031,
+            Metrica::Orla => 1.0,
+        }
+    }
+}
 
 /// Os 8 s da cena + 22 s: seca, como a foto do Rebelle.
 const QUADROS_SECOS: u32 = 1800;
 
 /// Uma mídia: o preset, a foto do Rebelle (`docs/Painter/NewFeaturesWetPaint/fixtures/rebelle/`), o
-/// raio que dá a largura dela (W2: o número é a largura) e os números da foto (`mede_traco.py`, recto).
+/// raio que dá a largura dela (W2: o número é a largura) e os números da foto (`mede_traco.py`, recto) nas
+/// métricas que DISTINGUEM a mídia do Round (18 §3).
 struct Midia {
     preset: &'static str,
     foto: &'static str,
     raio: f32,
-    cobertura: Option<f64>,
-    textura: Option<f64>,
+    metricas: &'static [(Metrica, f64)],
 }
 
-const MIDIAS: [Midia; 1] = [Midia {
-    preset: "Wet Liner",
-    foto: "wcliner",
-    raio: 19.0,
-    cobertura: Some(0.653),
-    textura: Some(1.708),
-}];
+use Metrica::{Borda, Cobertura, Orla, Textura};
+
+#[rustfmt::skip]
+const MIDIAS: [Midia; 8] = [
+    Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
+    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Textura, 5.861), (Borda, 0.872)] },
+    Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Textura, 3.133), (Borda, 0.595)] },
+    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Borda, 0.796)] },
+    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
+    Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
+    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
+    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
+];
 
 fn de_fabrica(nome: &str) -> Preset {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
@@ -50,7 +81,7 @@ fn de_fabrica(nome: &str) -> Preset {
         .preset
 }
 
-fn cena_seca(p: &Preset, raio: f32) -> Medida {
+fn cena_seca(p: &Preset, raio: f32, ficheiro: &str) -> Medida {
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
@@ -63,7 +94,7 @@ fn cena_seca(p: &Preset, raio: f32) -> Medida {
             .iter()
             .for_each(|q| f.extend_from_slice(&q[..3]));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(format!("{dir}/midia_{}.ppm", p.parametros.name), f).unwrap();
+        std::fs::write(format!("{dir}/midia_{ficheiro}.ppm"), f).unwrap();
     }
     mede(&px, w, RECTO)
 }
@@ -79,36 +110,27 @@ fn cada_preset_parece_a_sua_midia() {
     let mut falhas = Vec::new();
     for m in &MIDIAS {
         let (n, c) = std::thread::scope(|s| {
-            let a = s.spawn(|| cena_seca(&de_fabrica(m.preset), m.raio));
-            let b = s.spawn(|| cena_seca(&round, m.raio));
+            let a = s.spawn(|| cena_seca(&de_fabrica(m.preset), m.raio, m.preset));
+            let b = s.spawn(|| cena_seca(&round, m.raio, &format!("{}_controlo", m.preset)));
             (a.join().unwrap(), b.join().unwrap())
         });
         println!(
-            "[midia] {} vs {}: cobertura {:.3} (controlo {:.3}) · textura {:.2} % (controlo {:.2})",
-            m.preset, m.foto, n.cobertura, c.cobertura, n.textura, c.textura
+            "[midia] {} vs {}: {:?} (controlo {:?})",
+            m.preset, m.foto, n, c
         );
-        for (nome, r, nv, cv, ruido) in [
-            (
-                "cobertura",
-                m.cobertura,
-                n.cobertura,
-                c.cobertura,
-                RUIDO_COBERTURA,
-            ),
-            ("textura", m.textura, n.textura, c.textura, RUIDO_TEXTURA),
-        ] {
-            let Some(r) = r else { continue };
+        for &(met, r) in m.metricas {
+            let (nv, cv) = (met.de(&n), met.de(&c));
             if !no_vale(nv, r, cv) {
                 falhas.push(format!(
-                    "{}: {nome} {nv:.3} fora do vale do Rebelle {r} (controlo {cv:.3})",
+                    "{}: {met:?} {nv:.3} fora do vale do Rebelle {r} (controlo {cv:.3})",
                     m.preset
                 ));
             }
             // O CONTROLO: o Wet Round tem de estar longe da foto (3× o ruído do Rebelle) — senão a
             // métrica não distingue a mídia e o vale aprovaria um Round com outro nome.
             assert!(
-                (cv - r).abs() > 3.0 * ruido,
-                "{}: o Wet Round dá {nome} {cv:.3}, a foto {} dá {r}: a métrica não distingue a mídia",
+                (cv - r).abs() > 3.0 * met.ruido(),
+                "{}: o Wet Round dá {met:?} {cv:.3}, a foto {} dá {r}: a métrica não distingue a mídia",
                 m.preset,
                 m.foto
             );

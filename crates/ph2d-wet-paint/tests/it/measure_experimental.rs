@@ -202,7 +202,10 @@ fn measure_glaze_layering_cost() {
         // The «Glaze layering» is a law of the session (`Sim::camadas_transparentes`).
         e.sim.camadas_transparentes = glaze;
         let params = e.sim.gather_params(&e.tuning);
-        let visual = PigmentVisual { paper };
+        let visual = PigmentVisual {
+            paper,
+            relevo: false,
+        };
         let mut samples = Vec::new();
         for _ in 0..20 {
             let t = Instant::now();
@@ -382,7 +385,10 @@ fn measure_the_products_frame() {
                 })
                 .collect();
             let mut out = vec![0u8; w * h * 4];
-            let visual = PigmentVisual { paper: false };
+            let visual = PigmentVisual {
+                paper: false,
+                relevo: false,
+            };
             let mut cs = Vec::new();
             for _ in 0..12 {
                 let t = Instant::now();
@@ -442,7 +448,10 @@ fn measure_row_parallel_composite() {
                 visible: l.visible,
             })
             .collect();
-        let visual = PigmentVisual { paper: false };
+        let visual = PigmentVisual {
+            paper: false,
+            relevo: false,
+        };
         let mut out = vec![0u8; W * H * 4];
         let mut serial = Vec::new();
         for _ in 0..9 {

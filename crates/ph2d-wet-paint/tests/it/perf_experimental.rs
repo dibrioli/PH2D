@@ -114,7 +114,10 @@ fn glaze_layering_costs_a_ratio_not_an_order_of_magnitude() {
     let mut run = |glaze: bool| {
         e.sim.camadas_transparentes = glaze;
         let params = e.sim.gather_params(&e.tuning);
-        let visual = PigmentVisual { paper: false };
+        let visual = PigmentVisual {
+            paper: false,
+            relevo: false,
+        };
         let mut s = Vec::new();
         for _ in 0..9 {
             let t = Instant::now();

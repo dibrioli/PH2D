@@ -315,6 +315,10 @@ pub struct PigmentVisual {
     /// [`render_region`], scaled by the `PaperVisibility` master. "The
     /// texture becomes visually part of the painting."
     pub paper: bool,
+    /// O RELEVO da tinta (o emboss do gradiente da massa) também SEM papel — o produto liga-o (dono 11/10:
+    /// o relevo é da tinta; o knob `Emboss` decide, `0` = nenhum). Desligado, o emboss só entra com o
+    /// papel, como no modelo.
+    pub relevo: bool,
 }
 
 /// [`render_pigment_only_region`]'s single per-cell body, with the optional
@@ -366,17 +370,23 @@ pub fn render_pigment_row_visual(
     let glaze = p.map_or(0.0, |p| p.glaze_filme);
     // A cor da camada: o assentado e o filme por cima dele — pela MESMA porta que assentar e re-molhar
     // preservam ([`crate::assenta::cor`]), com a lei que a sessão escolheu ([`crate::sim::Sim::gather_params`]).
+    // ⭐ A tinta molhada desenha-se com a lei SECA (dono 11/10: «melhor pintar com a tinta já em sua cor
+    // real»): o que se vê ao pintar é o que fica. A massa é a mesma nos dois momentos (`drying::dry_cell`
+    // conserva-a); antes o render reforçava a cobertura molhada (`molhada` = `TINTA_MOLHADA_ESCURECE`).
     let lei = match p.map(|p| p.ecra) {
-        Some(e @ (crate::assenta::Ecra::Cobre { .. } | crate::assenta::Ecra::Camada)) => e,
+        Some(e @ crate::assenta::Ecra::Cobre { .. }) => e.seco(),
+        Some(e @ crate::assenta::Ecra::Camada) => e,
         _ => crate::assenta::Ecra::PorCima(glaze),
     };
-    let (paper_vis, grain_vis, emboss_k) = match (paper_on, p) {
-        (true, Some(p)) => (
-            p.k(Knob::PaperVisibility),
-            p.k(Knob::VisualGrain),
-            p.k(Knob::Emboss),
-        ),
-        _ => (0.0, 0.0, 0.0),
+    let (paper_vis, grain_vis) = match (paper_on, p) {
+        (true, Some(p)) => (p.k(Knob::PaperVisibility), p.k(Knob::VisualGrain)),
+        _ => (0.0, 0.0),
+    };
+    // O RELEVO da tinta (o gradiente da massa) é da tinta, não do papel (dono 11/10): com `relevo`,
+    // desenha-se com ou sem papel escolhido; `0` = desligado.
+    let emboss_k = match p {
+        Some(p) if paper_on || visual.relevo => p.k(Knob::Emboss),
+        _ => 0.0,
     };
     {
         let mut i = x0 + cy * s;
@@ -396,7 +406,7 @@ pub fn render_pigment_row_visual(
                 let uc = lg.susp_rgb[i];
                 let ([mut cr, mut cg, mut cb], la) =
                     crate::assenta::cor_e_alfa(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
-                if paper_on {
+                if paper_on || emboss_k != 0.0 {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,
                     // granulation fading out as mass goes 1000 -> 3000, plus

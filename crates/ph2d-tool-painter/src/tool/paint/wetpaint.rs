@@ -449,6 +449,9 @@ mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho po
 #[cfg(test)]
 #[path = "wetpaint/grid_ratio_tests.rs"]
 mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
+#[cfg(test)]
+#[path = "wetpaint/relevo_tests.rs"]
+mod relevo_tests; // o Emboss do Tuning morde sem papel (dono 11/10)
 
 #[cfg(test)]
 #[path = "wetpaint/flow_ratio_tests.rs"]

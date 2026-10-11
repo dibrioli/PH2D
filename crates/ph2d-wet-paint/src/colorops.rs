@@ -144,6 +144,11 @@ pub const VELATURA_DO_FILME: f64 = 0.0;
 /// sangria seca +0,018, molhada +0,145).
 pub const VELATURA_DO_FILME_VIVA: f64 = 0.0;
 
+/// ⛔ **O PRODUTO JÁ NÃO A USA (dono 11/10: «nossos traços clareiam após se secarem. isso não é legal.
+/// melhor pintar com a tinta já em sua cor real»):** o render desenha a célula molhada com a lei SECA
+/// ([`crate::assenta::Ecra::seco`]) e a sessão deixa o `molhada_escurece` no neutro. A lei e a tabela
+/// abaixo ficam para os testes da lei (`assenta`) e para quem a quiser reabrir — medida, não reconstruir.
+///
 /// **Quanto a tinta MOLHADA parece mais forte que a seca** ([`crate::sim::Sim::molhada_escurece`]): o Rebelle
 /// 8.3.4 mede um traço Round a ~2 s com carga 111 e seco 54 (`fixtures/rebelle_presets/`), a W1e o azul
 /// molhado (133,150,231) contra o seco (204,211,245). Varrido na `sonda_presets_varre` (Round pigmento 90,

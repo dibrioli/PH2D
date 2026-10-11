@@ -1,0 +1,306 @@
+//! **As RECEITAS da fábrica do Wet Painter** — cada preset de `assets/brushes/WetPainter/` numa linha (o
+//! gerador e os portões vivem em `presets_de_fabrica.rs`; o portão por mídia em `midias_de_fabrica.rs`).
+
+use ph2d_brush_presets::Tilt;
+use serde_json::{Value, json};
+
+/// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
+pub const PRESETS_DE_FABRICA: usize = 12;
+
+/// O grão `kind` de lado `lado` no slot Grain do pincel (o JSON do `BrushSpec::texture`).
+pub fn grao(kind: &str, lado: f64) -> Value {
+    json!({"angle_deg": 0, "flow": false, "kind": kind, "mapping": "Tiled", "offset": [0.0, 0.0],
+           "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [lado, lado],
+           "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]})
+}
+
+/// Uma linha do 02 §6.9 — ⚠️ o pigmento e a orla CALIBRADOS contra o Rebelle (dono 10/10: «aproxime do
+/// Rebelle» e «o correto para clarear não seria usar pigment?»; `sonda_presets_varre` contra
+/// `fixtures/rebelle_presets/`, molhado a 2 s e seco a 30 s, 05 §4b). A claridade é POUCO pigmento — a cor
+/// acumula até à escolhida; a Opacity fica a 100 % (é a quantidade relativa do artista). `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
+/// `pickup` é RAZÃO ao padrão do dono (05 §1.2); `edge` é o valor do motor (desde 10/10: o padrão mudou). A gravidade é a MESMA em
+/// todos (W1e, F5: o Rebelle não a tem por pincel — a velocidade é inclinação × água × cor); o `tilt` é o
+/// do dial (W1e, F4: Round, Wash e Dry com a tela direita, como o Rebelle; o Drip, o único que promete
+/// escorrer, inclinado no máximo, para baixo).
+pub struct Receita {
+    pub nome: &'static str,
+    /// A pasta: `WetPainter/<meio>/<grupo>/<nome>` (o meio pelo nome da ferramenta do Rebelle, 17 C).
+    pub meio: &'static str,
+    pub grupo: &'static str,
+    pub water: f64,
+    /// A Opacity do Wet Paint: a quantidade de pigmento, em fracção do `pigment` (`1` = a receita).
+    pub opacity: f64,
+    pub pigment: f64,
+    pub pickup: f64,
+    pub gate: f64,
+    pub evaporation: f64,
+    pub edge: f64,
+    pub tilt: Tilt,
+    pub bristle_size: f64,
+    pub bristle_count: f64,
+    /// A dureza do carimbo (`BrushSpec::hardness`): 0 nos quatro de 07/10.
+    pub hardness: f64,
+    /// O tamanho (diâmetro, px) que o preset FIXA — só onde o tamanho É a mídia (o Liner é fino); nos
+    /// outros fica o do artista.
+    pub size_px: Option<f64>,
+    /// Os knobs do motor além dos de cima, pela chave do registo (o corpo do óleo: as cerdas e o relevo).
+    pub extras: &'static [(&'static str, f64)],
+    /// O grão do pincel (`BrushSpec::texture`, que toma o lugar das cerdas — W2.4): o tipo e o lado.
+    pub grao: Option<(&'static str, f64)>,
+}
+
+/// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
+pub const DIREITA: Tilt = Tilt {
+    on: false,
+    ring: 4,
+    spoke: 3,
+};
+
+pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
+    Receita {
+        meio: "Watercolor",
+        grupo: "Fluid",
+        nome: "Wet Round",
+        water: 1.0,
+        opacity: 1.0,
+        pigment: 78.0,
+        pickup: 1.0,
+        gate: 0.4,
+        evaporation: 1.0,
+        edge: 12.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: None,
+        extras: &[],
+        grao: None,
+    },
+    Receita {
+        meio: "Watercolor",
+        grupo: "Fluid",
+        nome: "Wet Wash",
+        water: 0.4,
+        opacity: 1.0,
+        pigment: 21.0,
+        pickup: 0.6,
+        gate: 0.3,
+        evaporation: 0.7,
+        edge: 20.0,
+        tilt: DIREITA,
+        bristle_size: 3.0,
+        bristle_count: 3000.0,
+        hardness: 0.0,
+        size_px: None,
+        extras: &[],
+        grao: None,
+    },
+    Receita {
+        meio: "Watercolor",
+        grupo: "Fluid",
+        nome: "Wet Dry Brush",
+        water: 0.2,
+        opacity: 1.0,
+        pigment: 300.0,
+        pickup: 1.6,
+        gate: 0.4,
+        evaporation: 1.5,
+        edge: 56.25,
+        tilt: DIREITA,
+        bristle_size: 1.5,
+        bristle_count: 1500.0,
+        hardness: 0.0,
+        size_px: None,
+        extras: &[],
+        grao: None,
+    },
+    Receita {
+        meio: "Watercolor",
+        grupo: "Fluid",
+        nome: "Wet Drip",
+        water: 1.0,
+        opacity: 1.0,
+        pigment: 63.0,
+        pickup: 0.8,
+        gate: 0.2,
+        evaporation: 0.6,
+        edge: 20.0,
+        tilt: Tilt {
+            on: true,
+            ring: 8,
+            spoke: 3,
+        },
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: None,
+        extras: &[],
+        grao: None,
+    },
+    // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
+    // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
+    // `fixtures/rebelle/wcliner.png` (cobertura 0,65 · textura 1,7 %) à largura 38; o Wet Round dá 0,19 · 8,1.
+    Receita {
+        meio: "Watercolor",
+        grupo: "Fluid",
+        nome: "Wet Liner",
+        water: 0.5,
+        opacity: 1.0,
+        pigment: 100.0,
+        pickup: 1.0,
+        gate: 0.05,
+        evaporation: 1.0,
+        edge: 100.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.9,
+        size_px: Some(29.0),
+        extras: &[],
+        grao: None,
+    },
+    // ⭐ O 2.º lote (11/10, depois da reavaliação pedida pelo dono — 18 §3: pigmento alto, o relevo de volta
+    // e o grão no lugar das cerdas). Cada um medido contra a foto do seu preset-oráculo do Rebelle, seco, à
+    // largura dela; o tamanho é o do preset dele. `cada_preset_parece_a_sua_midia` guarda-os.
+    // Oil & Acrylic › Bristle Flat: corpo cheio, estrias das cerdas, relevo.
+    Receita {
+        meio: "Oil",
+        grupo: "Bristle",
+        nome: "Oil Bristle",
+        water: 0.05,
+        opacity: 1.0,
+        pigment: 2000.0,
+        pickup: 1.0,
+        gate: 0.0,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 4.0,
+        bristle_count: 1500.0,
+        hardness: 0.9,
+        size_px: Some(103.0),
+        extras: &[("felt", 0.0), ("bristleStrength", 2.0), ("emboss", 2.0)],
+        grao: None,
+    },
+    // Oil & Acrylic › Round Hard (a acrílica do Rebelle é esta ferramenta).
+    Receita {
+        meio: "Oil",
+        grupo: "Round",
+        nome: "Acrylic Round",
+        water: 0.05,
+        opacity: 1.0,
+        pigment: 2000.0,
+        pickup: 1.0,
+        gate: 0.0,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 3.0,
+        bristle_count: 800.0,
+        hardness: 0.5,
+        size_px: Some(78.0),
+        extras: &[("felt", 0.0), ("bristleStrength", 4.0)],
+        grao: None,
+    },
+    // Express Oil › Hairy: cerdas finas, menos tinta.
+    Receita {
+        meio: "ExpressOil",
+        grupo: "Round",
+        nome: "Express Oil",
+        water: 0.1,
+        opacity: 1.0,
+        pigment: 800.0,
+        pickup: 1.0,
+        gate: 0.0,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 1.2,
+        bristle_count: 900.0,
+        hardness: 0.9,
+        size_px: Some(64.0),
+        extras: &[("felt", 0.0), ("bristleStrength", 4.0), ("emboss", 1.0)],
+        grao: None,
+    },
+    // Pencil › Graphite 8B: sem água, o grão do papel a abrir na orla.
+    Receita {
+        meio: "Pencil",
+        grupo: "Graphite",
+        nome: "Graphite 8B",
+        water: 0.0,
+        opacity: 1.0,
+        pigment: 500.0,
+        pickup: 1.0,
+        gate: 0.8,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: Some(6.5),
+        extras: &[("felt", 0.0)],
+        grao: Some(("Noise", 0.4)),
+    },
+    // Pencil › Charcoal: pouca carga, orla larga.
+    Receita {
+        meio: "Pencil",
+        grupo: "Charcoal",
+        nome: "Charcoal",
+        water: 0.0,
+        opacity: 1.0,
+        pigment: 100.0,
+        pickup: 1.0,
+        gate: 0.8,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: Some(37.0),
+        extras: &[("felt", 0.0)],
+        grao: Some(("Noise", 0.15)),
+    },
+    // Pastel › Pastel Dry › Dry Thin: grão fino e regular.
+    Receita {
+        meio: "Pastel",
+        grupo: "Dry",
+        nome: "Soft Pastel",
+        water: 0.0,
+        opacity: 1.0,
+        pigment: 400.0,
+        pickup: 1.0,
+        gate: 0.8,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: Some(29.0),
+        extras: &[("felt", 0.0)],
+        grao: Some(("Noise", 0.4)),
+    },
+    // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
+    // Voronoi passava as métricas, mas a largura variava até 42 % com a posição — medido 11/10).
+    Receita {
+        meio: "Pastel",
+        grupo: "Oil",
+        nome: "Oil Pastel",
+        water: 0.0,
+        opacity: 1.0,
+        pigment: 400.0,
+        pickup: 1.0,
+        gate: 0.8,
+        evaporation: 1.0,
+        edge: 0.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: Some(77.0),
+        extras: &[("felt", 0.0)],
+        grao: Some(("Noise", 0.15)),
+    },
+];

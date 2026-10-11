@@ -582,7 +582,8 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
 /// **O Smooth Edges no ZERO é o desligado AO BYTE** (o FNV da tela, razão 1 e 2 — a identidade e o
 /// amostrador). Gravado com o código do checkbox em `362938a99`; regravado UMA vez a 10/10 pela ordem do
 /// dono sobre o papel (sem Kind, o grão sem desenho em vez do Cold — o traço sem papel mudou de propósito);
-/// e outra vez a 10/10 pela escolha do dono «como o Rebelle» (o pigmento de fábrica 78 e a lei `Cobre`).
+/// e outra vez a 10/10 pela escolha do dono «como o Rebelle» (o pigmento de fábrica 78 e a lei `Cobre`); e
+/// a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada com a lei SECA).
 #[test]
 fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
     let fnv = |b: &[u8]| {
@@ -590,7 +591,7 @@ fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
             (h ^ u64::from(x)).wrapping_mul(0x0000_0100_0000_01b3)
         })
     };
-    for (ratio, esperado) in [(1u8, 0x07f1_1a9b_7694_bf1fu64), (2, 0x4fe1_b475_3f29_b432)] {
+    for (ratio, esperado) in [(1u8, 0xf8e0_4b0d_33bb_552bu64), (2, 0xa350_5d05_ebc7_f8b6)] {
         let mut t = wet_tool(ratio);
         t.paint.wetpaint.smooth_edges = 0.0;
         stroke(&mut t);

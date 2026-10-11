@@ -137,7 +137,8 @@ fn the_reconcile_baseline_is_the_engines_own_boot() {
 /// fact that each differs from the engine's SPEC boot is on the record. Every OTHER knob is the engine boot
 /// untouched. ⚠️ 10/10, pela ordem do dono («aproxime do Rebelle»; «o correto para clarear não seria usar
 /// pigment?»): o pincel sem preset é o Wet Round de fábrica — pigmento 800 → 78 e o escurecimento da orla
-/// 50 → 12 (o sexto).
+/// 50 → 12 (o sexto). ⚠️ 11/10, pela ordem do dono («tirou o relevo junto. é só trazer de volta»): o relevo
+/// da tinta (Emboss) desenha-se agora sem papel e nasce a 0 (o sétimo) — o traço de hoje não muda.
 #[test]
 fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
     use ph2d_wet_paint::tuning::knob_defaults;
@@ -148,6 +149,7 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
     assert_eq!(d.get(Knob::Felt), 0.03);
     assert_eq!(d.get(Knob::BristleSize), 2.0);
     assert_eq!(d.get(Knob::BristleCount), 2000.0);
+    assert_eq!(d.get(Knob::Emboss), 0.0);
     let boot = knob_defaults();
     for def in KNOB_DEFS.iter() {
         let is_enios = matches!(
@@ -158,6 +160,7 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
                 | Knob::Felt
                 | Knob::BristleSize
                 | Knob::BristleCount
+                | Knob::Emboss
         );
         if !is_enios {
             assert_eq!(

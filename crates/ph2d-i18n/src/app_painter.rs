@@ -75,6 +75,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // como o navegador as mostra; a pasta do artista mostra-se como ele a chamou.
         "app.painter.presets.folder.watercolor" => "Watercolor",
         "app.painter.presets.folder.fluid" => "Fluid",
+        "app.painter.presets.folder.oil" => "Oil",
+        "app.painter.presets.folder.express_oil" => "Express Oil",
+        "app.painter.presets.folder.pencil" => "Pencil",
+        "app.painter.presets.folder.pastel" => "Pastel",
+        "app.painter.presets.folder.bristle" => "Bristle",
+        "app.painter.presets.folder.round" => "Round",
+        "app.painter.presets.folder.graphite" => "Graphite",
+        "app.painter.presets.folder.charcoal" => "Charcoal",
+        "app.painter.presets.folder.dry" => "Dry",
         _ => return None,
     })
 }

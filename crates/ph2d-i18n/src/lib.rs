@@ -274,6 +274,8 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.group.physics" => "Physics",
         "panel.wet_tuning.group.tools" => "Tools",
         "panel.wet_tuning.group.experimental" => "Experimental",
+        "panel.wet_tuning.group.relief" => "Relief",
+        "panel.wet_tuning.knob.emboss" => "Emboss",
         "panel.wet_tuning.km_mixing" => "Pigment mixing (K-M)",
         "panel.wet_tuning.km_glaze" => "Glaze layering (K-M)",
         "panel.wet_tuning.note" => {

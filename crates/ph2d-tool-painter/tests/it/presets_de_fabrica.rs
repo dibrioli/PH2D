@@ -9,9 +9,10 @@
 //!     gera_os_presets_de_fabrica -- --ignored --nocapture
 //! ```
 
+use super::receitas_de_fabrica::{DIREITA, PRESETS_DE_FABRICA, RECEITAS, Receita, grao};
 use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
 use ph2d_brush_presets::{
-    Biblioteca, Origem, Parametros, Preset, Tilt, caminho_relativo, escrever, gravar, ler,
+    Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
 };
 use ph2d_tool_painter::{
     MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PaintMedia, PainterTool, WetKnobs, miniatura_do_preset,
@@ -19,10 +20,6 @@ use ph2d_tool_painter::{
 use ph2d_wet_paint::tuning::Knob;
 use std::path::PathBuf;
 
-/// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
-const PRESETS_DE_FABRICA: usize = 5;
-const MEIO_DA_PASTA: &str = "Watercolor";
-const GRUPO: &str = "Fluid";
 /// Os raios do MOTOR da lei raio → largura (W2, 05 §4b): geométricos de 1,5 a 1 100 — a largura 600
 /// (o raio 300 do portão) pede ~860 no Wet Round. O slider pára em 512 (`BRUSH_SIZE_MAX_PX`): acima, a
 /// sonda pede metade e o motor recebe o dobro (`set_wet_largura_crua(2)`).
@@ -37,132 +34,12 @@ fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
 }
 
-/// Uma linha do 02 §6.9 — ⚠️ o pigmento e a orla CALIBRADOS contra o Rebelle (dono 10/10: «aproxime do
-/// Rebelle» e «o correto para clarear não seria usar pigment?»; `sonda_presets_varre` contra
-/// `fixtures/rebelle_presets/`, molhado a 2 s e seco a 30 s, 05 §4b). A claridade é POUCO pigmento — a cor
-/// acumula até à escolhida; a Opacity fica a 100 % (é a quantidade relativa do artista). `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
-/// `pickup` é RAZÃO ao padrão do dono (05 §1.2); `edge` é o valor do motor (desde 10/10: o padrão mudou). A gravidade é a MESMA em
-/// todos (W1e, F5: o Rebelle não a tem por pincel — a velocidade é inclinação × água × cor); o `tilt` é o
-/// do dial (W1e, F4: Round, Wash e Dry com a tela direita, como o Rebelle; o Drip, o único que promete
-/// escorrer, inclinado no máximo, para baixo).
-struct Receita {
-    nome: &'static str,
-    water: f64,
-    /// A Opacity do Wet Paint: a quantidade de pigmento, em fracção do `pigment` (`1` = a receita).
-    opacity: f64,
-    pigment: f64,
-    pickup: f64,
-    gate: f64,
-    evaporation: f64,
-    edge: f64,
-    tilt: Tilt,
-    bristle_size: f64,
-    bristle_count: f64,
-    /// A dureza do carimbo (`BrushSpec::hardness`): 0 nos quatro de 07/10.
-    hardness: f64,
-    /// O tamanho (diâmetro, px) que o preset FIXA — só onde o tamanho É a mídia (o Liner é fino); nos
-    /// outros fica o do artista.
-    size_px: Option<f64>,
-}
-
-/// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
-const DIREITA: Tilt = Tilt {
-    on: false,
-    ring: 4,
-    spoke: 3,
-};
-
-const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
-    Receita {
-        nome: "Wet Round",
-        water: 1.0,
-        opacity: 1.0,
-        pigment: 78.0,
-        pickup: 1.0,
-        gate: 0.4,
-        evaporation: 1.0,
-        edge: 12.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.0,
-        size_px: None,
-    },
-    Receita {
-        nome: "Wet Wash",
-        water: 0.4,
-        opacity: 1.0,
-        pigment: 21.0,
-        pickup: 0.6,
-        gate: 0.3,
-        evaporation: 0.7,
-        edge: 20.0,
-        tilt: DIREITA,
-        bristle_size: 3.0,
-        bristle_count: 3000.0,
-        hardness: 0.0,
-        size_px: None,
-    },
-    Receita {
-        nome: "Wet Dry Brush",
-        water: 0.2,
-        opacity: 1.0,
-        pigment: 300.0,
-        pickup: 1.6,
-        gate: 0.4,
-        evaporation: 1.5,
-        edge: 56.25,
-        tilt: DIREITA,
-        bristle_size: 1.5,
-        bristle_count: 1500.0,
-        hardness: 0.0,
-        size_px: None,
-    },
-    Receita {
-        nome: "Wet Drip",
-        water: 1.0,
-        opacity: 1.0,
-        pigment: 63.0,
-        pickup: 0.8,
-        gate: 0.2,
-        evaporation: 0.6,
-        edge: 20.0,
-        tilt: Tilt {
-            on: true,
-            ring: 8,
-            spoke: 3,
-        },
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.0,
-        size_px: None,
-    },
-    // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
-    // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
-    // `fixtures/rebelle/wcliner.png` (cobertura 0,65 · textura 1,7 %) à largura 38; o Wet Round dá 0,19 · 8,1.
-    Receita {
-        nome: "Wet Liner",
-        water: 0.5,
-        opacity: 1.0,
-        pigment: 100.0,
-        pickup: 1.0,
-        gate: 0.05,
-        evaporation: 1.0,
-        edge: 100.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.9,
-        size_px: Some(29.0),
-    },
-];
-
 /// O pincel de fábrica do meio inteiro, com os knobs da receita. Tamanho e opacidade NÃO são fixados
 /// (a tabela não os tem): fica o do artista.
 fn parametros(r: &Receita) -> Parametros {
     let mut t = PainterTool::default();
     t.set_paint_media(PaintMedia::WetPaint);
-    let (mut p, _) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, GRUPO, r.nome));
+    let (mut p, _) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, r.grupo, r.nome));
     p.volumes.size_px = r.size_px;
     p.volumes.opacity = Some(r.opacity);
     p.volumes.water = Some(r.water);
@@ -175,6 +52,13 @@ fn parametros(r: &Receita) -> Parametros {
             .is_some(),
         "campo hardness existe"
     );
+    if let Some((kind, lado)) = r.grao {
+        assert!(
+            p.brush
+                .insert("texture".to_owned(), grao(kind, lado))
+                .is_some()
+        );
+    }
     let d = WetKnobs::DEFAULT;
     for (chave, v) in [
         ("pigmentPerDab", r.pigment),
@@ -184,7 +68,10 @@ fn parametros(r: &Receita) -> Parametros {
         ("edgeDarkening", r.edge),
         ("bristleSize", r.bristle_size),
         ("bristleCount", r.bristle_count),
-    ] {
+    ]
+    .into_iter()
+    .chain(r.extras.iter().copied())
+    {
         assert!(
             p.engine.insert(chave.to_owned(), v).is_some(),
             "knob {chave} existe"
@@ -279,7 +166,7 @@ fn gera_os_presets_de_fabrica() {
             larguras.join(" ")
         );
         if escreve {
-            let rel = caminho_relativo(MOTOR_DOS_PRESETS, MEIO_DA_PASTA, GRUPO, r.nome);
+            let rel = caminho_relativo(MOTOR_DOS_PRESETS, r.meio, r.grupo, r.nome);
             gravar(&raiz(), &rel, &preset).unwrap();
         }
     }
@@ -369,6 +256,11 @@ const RAIOS_DA_PROMESSA: [f32; 8] = [2.0, 3.5, 7.0, 13.0, 26.0, 55.0, 120.0, 300
 /// variam ±1–3 px).
 const TOLERANCIA_PX: f32 = 2.0;
 const TOLERANCIA_REL: f32 = 0.02;
+/// ⚠️ **Os pincéis com GRÃO (o slot Grain armado: grafite, carvão, os pastéis) — ± 10 %**: o grão e o
+/// papel têm estrutura, e a largura a ¼ do máximo varia com ONDE o traço cai (medido 11/10,
+/// `sonda_ruido_da_largura`, o traço a descer 30 px de cada vez: até 7,7 % no Graphite e 9,6 % no Charcoal
+/// a 52 px; 3,8 % a 240). A cura é um grão sem estrutura grande, não a tabela (05 §4b).
+const TOLERANCIA_REL_GRAO: f32 = 0.10;
 
 /// As larguras de `p` nos [`RAIOS_DA_PROMESSA`], com a promessa (`crua = false`) ou sem ela.
 fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
@@ -400,7 +292,18 @@ fn a_largura_e_a_prometida() {
         let p = ler(&b).unwrap();
         let larguras = larguras_da_promessa(&p, false);
         println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
-        for f in fora_da_promessa(&larguras, TOLERANCIA_REL) {
+        let com_grao = p
+            .parametros
+            .brush
+            .get("texture")
+            .and_then(|t| t.get("kind"))
+            .is_some_and(|k| k != "None");
+        let tol = if com_grao {
+            TOLERANCIA_REL_GRAO
+        } else {
+            TOLERANCIA_REL
+        };
+        for f in fora_da_promessa(&larguras, tol) {
             falhas.push(format!("{rel}: {f}"));
         }
         if rel.ends_with("Wet Round.ph2d-brush.png") {
@@ -463,7 +366,7 @@ fn sonda_custo_da_miniatura() {
 }
 
 /// **Sonda do RUÍDO da largura** (W2): o mesmo pincel ao mesmo raio prometido, cinco traços que só
-/// diferem na posição vertical (a tela cresce 1 px de cada vez) — o quanto a largura de um traço varia
+/// diferem na posição vertical (a tela cresce 60 px de cada vez; o traço desce 30) — o quanto a largura de um traço varia
 /// por si. É o chão de qualquer promessa: nenhuma tabela a acerta melhor do que isto.
 #[test]
 #[ignore = "sonda: o ruído da largura por traço (W2)"]
@@ -477,7 +380,7 @@ fn sonda_ruido_da_largura() {
                         let p = &p;
                         s.spawn(move || {
                             let (px, w, h) =
-                                traco_recto_alto(r, r + k as f32 / 6.0, QUADROS_DA_LEI, |t| {
+                                traco_recto_alto(r, r + 10.0 * k as f32, QUADROS_DA_LEI, |t| {
                                     t.set_wet_relogio_fixo(true);
                                     assert!(t.wet_preset_aplicar(p).is_empty());
                                 });

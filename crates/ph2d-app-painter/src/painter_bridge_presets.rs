@@ -346,6 +346,15 @@ fn rotulo_da_pasta(idioma: Idioma, nome: &str) -> &str {
     match nome {
         "Watercolor" => tr_em(idioma, "app.painter.presets.folder.watercolor"),
         "Fluid" => tr_em(idioma, "app.painter.presets.folder.fluid"),
+        "Oil" => tr_em(idioma, "app.painter.presets.folder.oil"),
+        "ExpressOil" => tr_em(idioma, "app.painter.presets.folder.express_oil"),
+        "Pencil" => tr_em(idioma, "app.painter.presets.folder.pencil"),
+        "Pastel" => tr_em(idioma, "app.painter.presets.folder.pastel"),
+        "Bristle" => tr_em(idioma, "app.painter.presets.folder.bristle"),
+        "Round" => tr_em(idioma, "app.painter.presets.folder.round"),
+        "Graphite" => tr_em(idioma, "app.painter.presets.folder.graphite"),
+        "Charcoal" => tr_em(idioma, "app.painter.presets.folder.charcoal"),
+        "Dry" => tr_em(idioma, "app.painter.presets.folder.dry"),
         _ => nome,
     }
 }

@@ -68,8 +68,12 @@ pub fn rows() -> &'static [TuneRow] {
         KNOB_DEFS
             .iter()
             .enumerate()
-            // O PAPER não tem linhas aqui (W1e, F2): o papel é o da secção Paper do painel.
-            .filter(|(_, d)| !matches!(d.group, KnobGroup::Hidden | KnobGroup::Paper))
+            // O PAPER não tem linhas aqui (W1e, F2): o papel é o da secção Paper do painel — só o RELEVO.
+            .filter(|(_, d)| match d.group {
+                KnobGroup::Hidden => false,
+                KnobGroup::Paper => ph2d_tool_painter::ids::WET_TUNING_RELEVO.contains(&d.key),
+                _ => true,
+            })
             .map(|(i, d)| TuneRow {
                 key: d.key,
                 knob: i,
@@ -105,9 +109,10 @@ pub struct Section {
     pub label: &'static str,
 }
 
-/// The four knob groups shown, in the model's display order (o PAPER saiu na W1e, F2). (Experimental is
-/// not a knob group — it is the two K–M checkboxes, painted after these.)
-pub const SECTIONS: [Section; 4] = [
+/// The knob groups shown, in the model's display order (o PAPER saiu na W1e, F2; o Relief é o grupo
+/// `Paper` do motor reduzido ao relevo da tinta). (Experimental is not a knob group — it is the two K–M
+/// checkboxes, painted after these.)
+pub const SECTIONS: [Section; 5] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -131,6 +136,12 @@ pub const SECTIONS: [Section; 4] = [
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[3],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[3],
         label: "panel.wet_tuning.group.tools",
+    },
+    Section {
+        group: KnobGroup::Paper,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[4],
+        label: "panel.wet_tuning.group.relief",
     },
 ];
 
@@ -173,19 +184,19 @@ mod tests {
         }
     }
 
-    /// 36 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
+    /// 37 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
     /// by doc 23 — + 7 Water + 10 Physics + 5 Tools — incl. the doc-23
-    /// Rewet lift) — the registry's visible surface, whole. O PAPER (6) saiu
-    /// na W1e (F2): nenhuma linha de papel vive fora da secção Paper do painel.
+    /// Rewet lift — + 1 Relief) — the registry's visible surface, whole. O PAPER (6) saiu
+    /// na W1e (F2); do grupo dele só o relevo da tinta (Emboss) voltou, a 11/10.
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 36);
+        assert_eq!(rows().len(), 37);
         for g in [
             (KnobGroup::Paint, 14),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 10),
             (KnobGroup::Tools, 5),
-            (KnobGroup::Paper, 0),
+            (KnobGroup::Paper, 1),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);

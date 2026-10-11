@@ -212,7 +212,10 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     let mut e = seeded_engine([220.0, 45.0, 40.0]);
     let params = e.sim.gather_params(&e.tuning);
     let layers = layers_of(&e);
-    let paper_on = PigmentVisual { paper: true };
+    let paper_on = PigmentVisual {
+        paper: true,
+        relevo: false,
+    };
     let mut off = vec![0u8; W * H * 4];
     let mut on = vec![0u8; W * H * 4];
     render_pigment_only_region(&layers, 1, 1, W, H, &mut off);

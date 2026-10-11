@@ -1095,9 +1095,10 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),
-    // ⛔ **`14`** comandos (eram 17 até a W1e tirar o grupo PAPER, 09/10): a fábrica derivada dele vive
-    //    noutra crate (`ph2d_tool_painter::ids::wet_tuning_reset_id`) — um *Reset* por botão de afinação.
-    ("wet_tuning", 14),
+    // ⛔ **`16`** comandos (eram 17 até a W1e tirar o grupo PAPER, 09/10; 14 → 16 a 11/10, ordem do dono:
+    //    o RELEVO da tinta volta como a secção Relief — o reset do Emboss e o do grupo): a fábrica derivada
+    //    dele vive noutra crate (`ph2d_tool_painter::ids::wet_tuning_reset_id`) — um *Reset* por botão.
+    ("wet_tuning", 16),
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.

@@ -47,24 +47,29 @@ pub const WET_TUNING_RESIZE_HANDLE: NodeId = hash_node_id("wet_tuning.resize_han
 /// Bottom-left resize gripper (`BlenderHitKind::ResizeHandleBl`).
 pub const WET_TUNING_RESIZE_HANDLE_BL: NodeId = hash_node_id("wet_tuning.resize_handle_bl");
 
-/// Collapsible group headers, in display order:
-/// Paint · Water · Physics · Tools · Experimental. (O PAPER saiu na W1e, F2: o papel do Wet Paint é o da
-/// secção Paper do painel — nenhum controlo de papel vive fora dela.)
-pub const WET_TUNING_GROUP_HEADERS: [NodeId; 5] = [
+/// Collapsible group headers: Paint · Water · Physics · Tools · Experimental · Relief (o 6.º, append-only:
+/// o índice 4 é o Experimental). O PAPER saiu na W1e, F2 (o papel do Wet Paint é o da secção Paper do
+/// painel); o RELEVO da tinta voltou a 11/10 (dono: «tirou o relevo junto»), sem o papel.
+pub const WET_TUNING_GROUP_HEADERS: [NodeId; 6] = [
     hash_node_id("wet_tuning.group_paint"),
     hash_node_id("wet_tuning.group_water"),
     hash_node_id("wet_tuning.group_physics"),
     hash_node_id("wet_tuning.group_tools"),
     hash_node_id("wet_tuning.group_experimental"),
+    hash_node_id("wet_tuning.group_relief"),
 ];
 
+/// Os knobs do grupo `Paper` do motor que são RELEVO da tinta, não papel (a secção Relief do Tuning).
+pub const WET_TUNING_RELEVO: [&str; 1] = ["emboss"];
+
 /// Per-group reset buttons (the model's header `resetGroup`), same order as
-/// the first four headers (Experimental has no reset — two checkboxes).
-pub const WET_TUNING_GROUP_RESETS: [NodeId; 4] = [
+/// the four first headers and then Relief (Experimental has no reset — two checkboxes).
+pub const WET_TUNING_GROUP_RESETS: [NodeId; 5] = [
     hash_node_id("wet_tuning.reset_paint"),
     hash_node_id("wet_tuning.reset_water"),
     hash_node_id("wet_tuning.reset_physics"),
     hash_node_id("wet_tuning.reset_tools"),
+    hash_node_id("wet_tuning.reset_relief"),
 ];
 
 /// Experimental: Kubelka–Munk pigment mixing (`sim.km_mixing`).

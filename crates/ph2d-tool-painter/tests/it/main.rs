@@ -13,6 +13,7 @@ mod measure_undo_capacity;
 mod midias_de_fabrica;
 mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
+mod receitas_de_fabrica;
 mod regua_midia;
 mod sonda_gestos;
 mod sonda_largura;

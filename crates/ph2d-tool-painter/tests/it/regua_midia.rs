@@ -11,6 +11,10 @@ pub const RECTO: [u32; 4] = [20, 60, 580, 120];
 pub struct Medida {
     pub cobertura: f64,
     pub textura: f64,
+    /// A cobertura na orla de 3 px ÷ a do miolo (< 1 = o grão abre na borda; > 1 = a orla escura).
+    pub borda: f64,
+    /// A mediana da transição 10 → 90 % do máximo da coluna, em cima e em baixo (px).
+    pub orla: f64,
 }
 
 /// `mede_traco.mede(png, crop)`: `c = max|px − papel| / 255` (papel = mediana das 2 linhas de cima e
@@ -83,10 +87,43 @@ pub fn mede(rgba: &[u8], w: u32, recorte: [u32; 4]) -> Medida {
         }
     }
     let cobertura = soma / n.max(1.0);
+    // A orla de 3 px: a máscara menos o miolo.
+    let (mut so, mut no) = (0.0f64, 0.0f64);
+    for (k, &v) in c.iter().enumerate() {
+        if v > 0.08 && !miolo[k] {
+            so += v;
+            no += 1.0;
+        }
+    }
+    let borda = (so / no.max(1.0)) / cobertura.max(1e-6);
+    let mut orlas = Vec::new();
+    for x in 0..cw {
+        let col: Vec<f64> = (0..ch).map(|y| c[y * cw + x]).collect();
+        let m = col.iter().copied().fold(0.0, f64::max);
+        if m < 0.08 {
+            continue;
+        }
+        let (lo, hi) = (0.1 * m, 0.9 * m);
+        let primeiro = |t: f64| col.iter().position(|&v| v >= t).unwrap();
+        let ultimo = |t: f64| col.iter().rposition(|&v| v >= t).unwrap();
+        orlas.push((primeiro(hi) - primeiro(lo)) as f64);
+        orlas.push((ultimo(lo) - ultimo(hi)) as f64);
+    }
+    orlas.sort_by(f64::total_cmp);
+    let k = orlas.len();
+    let orla = if k == 0 {
+        0.0
+    } else if k % 2 == 1 {
+        orlas[k / 2]
+    } else {
+        0.5 * (orlas[k / 2 - 1] + orlas[k / 2])
+    };
     let media = residuos.iter().sum::<f64>() / n.max(1.0);
     let var = residuos.iter().map(|r| (r - media).powi(2)).sum::<f64>() / n.max(1.0);
     Medida {
         cobertura,
         textura: 100.0 * var.sqrt() / cobertura.max(1e-6),
+        borda,
+        orla,
     }
 }

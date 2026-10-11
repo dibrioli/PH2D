@@ -46,6 +46,8 @@ const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01
     k[Knob::BristleSize as usize] = 2.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 1.0
     k[Knob::BristleCount as usize] = 2000.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 950
+    // O relevo da tinta nasce desligado (11/10): o render já o desenha sem papel, e o traço de hoje não muda.
+    k[Knob::Emboss as usize] = 0.0; // LITERAL-OK: wet-paint product default (relief off), engine boot 1
     k
 }
 
@@ -476,6 +478,7 @@ impl PainterTool {
                 KnobGroup::Water,
                 KnobGroup::Physics,
                 KnobGroup::Tools,
+                KnobGroup::Paper,
             ][gi];
             self.paint.wetpaint.knobs.reset_group(group);
             return true;
@@ -522,8 +525,12 @@ fn wet_tuning_id_map() -> &'static std::collections::BTreeMap<ph2d_a11y::NodeId,
     MAP.get_or_init(|| {
         let mut m = std::collections::BTreeMap::new();
         for (i, def) in KNOB_DEFS.iter().enumerate() {
-            // O PAPER não tem linhas no Tuning (W1e, F2): o papel é o da secção Paper do painel.
-            if matches!(def.group, KnobGroup::Hidden | KnobGroup::Paper) {
+            // O PAPER não tem linhas no Tuning (W1e, F2): o papel é o da secção Paper do painel — só o
+            // RELEVO da tinta (11/10).
+            if def.group == KnobGroup::Hidden
+                || (def.group == KnobGroup::Paper
+                    && !crate::ids::WET_TUNING_RELEVO.contains(&def.key))
+            {
                 continue;
             }
             m.insert(

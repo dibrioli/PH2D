@@ -181,15 +181,16 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
     ] {
         assert!(has(&plain, id), "static widget {id:?} missing");
     }
-    // Nenhuma linha de papel, com o papel do artista armado ou não.
+    // Nenhuma linha de papel, com o papel do artista armado ou não — o relevo da TINTA (Emboss, a secção
+    // Relief, 11/10) é do grupo `Paper` do motor e não é papel.
     let mut armed = PainterTool::default().brush_settings();
     armed.paper_kind = 1;
     for brush in [PainterTool::default().brush_settings(), armed] {
         let rects = paint_with(brush);
-        for def in ph2d_wet_paint::tuning::KNOB_DEFS
-            .iter()
-            .filter(|d| d.group == ph2d_wet_paint::tuning::KnobGroup::Paper)
-        {
+        for def in ph2d_wet_paint::tuning::KNOB_DEFS.iter().filter(|d| {
+            d.group == ph2d_wet_paint::tuning::KnobGroup::Paper
+                && !ph2d_tool_painter::ids::WET_TUNING_RELEVO.contains(&d.key)
+        }) {
             let id = ph2d_tool_painter::ids::wet_tuning_slider_id(def.key);
             assert!(
                 !has(&rects, id),

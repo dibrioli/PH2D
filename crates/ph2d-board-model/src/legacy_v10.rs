@@ -118,3 +118,62 @@ pub(crate) fn read_v10(bytes: &[u8]) -> Result<BoardSet, String> {
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::*;
+    use crate::{FracKey, Rgba, RichText, Shape, ShapeType, Style};
+
+    /// ⭐ W13 (prova de mutação, M6; ADR-0183 §9): só os votos dos elementos VIVOS de um ficheiro antigo
+    /// viram a sessão — um voto numa nota apagada não tinha selo e não entra.
+    #[test]
+    fn only_the_living_bring_their_old_votes() {
+        let kind = Element::new_shape(
+            ElementId(1),
+            FracKey::between(None, None),
+            Shape {
+                kind: ShapeType::Sticky,
+                style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+                text: RichText::plain("x"),
+            },
+            [0.0; 4],
+        )
+        .kind;
+        let el = |id: u64, votes: u32, deleted: bool| ElementV10 {
+            id: ElementId(id),
+            kind: kind.clone(),
+            x: 0.0,
+            y: 0.0,
+            w: 1.0,
+            h: 1.0,
+            angle: 0.0,
+            z: FracKey::between(None, None),
+            frame: None,
+            org: Some(Box::new(OrgV10 {
+                groups: Vec::new(),
+                locked: false,
+                link: None,
+                tags: Vec::new(),
+                mind: None,
+                votes,
+                stamps: Vec::new(),
+                seed: None,
+            })),
+            version: 0,
+            nonce: 0,
+            deleted,
+        };
+        let doc = DocOld {
+            elements: BTreeMap::from([
+                (ElementId(1), el(1, 3, false)),
+                (ElementId(2), el(2, 5, true)),
+                (ElementId(3), el(3, 0, false)),
+            ]),
+            next_id: 3,
+            top_z: None,
+        };
+        assert_eq!(votes_v10(&doc), BTreeMap::from([(ElementId(1), 3)]));
+    }
+}

@@ -408,3 +408,25 @@ fn the_pdf_grows_linearly_with_faded_objects() {
         many / few
     );
 }
+
+/// ⭐ W13 (prova de mutação, M18; pontas da W12): a nota que quem exporta não lê sai como no ecrã — sem o
+/// texto (que é um texto que já não existe). ⛔ Controlo: sem ela, o texto sai.
+#[test]
+fn an_unread_note_is_exported_without_its_text() {
+    let (set, [_, note, ..]) = board();
+    let b = &set.boards()[0];
+    let r = routes(b);
+    let mut ts = TextSystem::without_system_fonts();
+    let mut out = |unread: std::collections::BTreeSet<ElementId>| {
+        let page = board_page(b, &r).unwrap();
+        let (mut s, _) = paint_page(b, &page, 1.0, None, true, &unread, &mut ts);
+        texts(&s.take_record())
+    };
+    assert!(
+        out(std::collections::BTreeSet::new())
+            .iter()
+            .any(|t| t == "Slow builds")
+    );
+    let hidden = out(std::collections::BTreeSet::from([note]));
+    assert!(!hidden.iter().any(|t| t.contains("Slow")), "{hidden:?}");
+}

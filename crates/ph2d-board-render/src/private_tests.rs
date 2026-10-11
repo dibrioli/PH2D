@@ -102,3 +102,64 @@ fn the_eye_is_the_whole_lucide_eye_closed() {
         "{b:?}"
     );
 }
+
+/// ⭐ W13 (prova de mutação, M19): o selo é o da sessão MOSTRADA, e com uma votação aberta
+/// (`hide_votes`) não se pinta — pelo que o desenho emite (o número do selo é um texto). ⛔ Controlo:
+/// sem sessão mostrada, nenhum «7».
+#[test]
+fn the_badge_is_the_shown_sessions_and_hides_during_a_vote() {
+    let sevens = |shown: bool, hide: bool| -> usize {
+        let mut set = BoardSet::default();
+        let bid = set.create("p".into());
+        let b = set.get_mut(bid).unwrap();
+        let ink = Rgba([20, 20, 20, 255]);
+        let el = Element::new_shape(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            Shape {
+                kind: ShapeType::Sticky,
+                style: Style::new(Some(Rgba([255, 230, 120, 255])), None, ink),
+                text: RichText::plain("ideia"),
+            },
+            [20.0, 20.0, STICKY_SIDE, STICKY_SIDE],
+        );
+        let id = el.id;
+        let _ = BoardOp::Put(el).apply(&mut b.doc);
+        if shown {
+            b.team
+                .add_poll(std::collections::BTreeMap::from([(id, 7)]), "", 1, 0);
+        }
+        let board = &set.boards()[0];
+        let mut routes = RouteCache::default();
+        routes.sync(&board.doc);
+        let mut scene = VectorScene::new();
+        scene.record();
+        let mut ts = TextSystem::without_system_fonts();
+        let mut cache = RenderCache {
+            hide_votes: hide,
+            ..RenderCache::default()
+        };
+        crate::paint(
+            board,
+            [0.0, 0.0, 640.0, 480.0],
+            &mut scene,
+            Theme::Forge,
+            &mut ts,
+            &mut cache,
+            &routes,
+            None,
+        );
+        scene
+            .take_record()
+            .iter()
+            .filter(|o| matches!(o, DrawOp::Glyphs(r) if r.text == "7"))
+            .count()
+    };
+    assert_eq!(sevens(true, false), 1, "o selo da sessão mostrada");
+    assert_eq!(
+        sevens(true, true),
+        0,
+        "com uma votação aberta o selo esconde-se"
+    );
+    assert_eq!(sevens(false, false), 0, "controlo: sem sessão, sem selo");
+}

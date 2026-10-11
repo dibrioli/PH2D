@@ -114,6 +114,41 @@ fn hausdorff_one(a: &[[f64; 2]], b: &[[f64; 2]]) -> f64 {
     a.iter().map(|&p| dist_to_poly(p, b)).fold(0.0, f64::max)
 }
 
+/// O ponto de `pts` mais longe da curva ANALÍTICA `law(t)`, `t ∈ [t0, 1]`, com os pontos na mesma
+/// ordem da curva: uma procura grossa numa janela a partir do anterior e o `t` refinado por secção
+/// áurea — exacto e linear (com 60 000 amostras da lei o gate da espiral levava 29 s: o R9 de
+/// `PROMPT_LINHAS_RAPIDAS_2026-10-11.md`).
+fn dist_to_law(pts: &[[f64; 2]], law: &dyn Fn(f64) -> [f64; 2], t0: f64) -> f64 {
+    const N: usize = 4_000;
+    // Entre duas âncoras do Inkscape (12 cúbicas a 3 voltas) a grossa anda ~330 amostras.
+    const AHEAD: usize = 800;
+    let t_of = |k: usize| t0 + (1.0 - t0) * k as f64 / N as f64;
+    let far = |p: [f64; 2], t: f64| {
+        let q = law(t);
+        (q[0] - p[0]).hypot(q[1] - p[1])
+    };
+    let mut j: usize = 0;
+    let mut worst: f64 = 0.0;
+    for &p in pts {
+        let k = (j.saturating_sub(8)..=(j + AHEAD).min(N))
+            .min_by(|&x, &y| far(p, t_of(x)).total_cmp(&far(p, t_of(y))))
+            .unwrap_or(j);
+        j = k;
+        let (mut lo, mut hi) = (t_of(k.saturating_sub(1)), t_of((k + 1).min(N)));
+        let g = 0.618_033_988_749_895;
+        for _ in 0..60 {
+            let (a, b) = (hi - g * (hi - lo), lo + g * (hi - lo));
+            if far(p, a) < far(p, b) {
+                hi = b;
+            } else {
+                lo = a;
+            }
+        }
+        worst = worst.max(far(p, 0.5 * (lo + hi)));
+    }
+    worst
+}
+
 fn dist_to_poly(p: [f64; 2], poly: &[[f64; 2]]) -> f64 {
     poly.windows(2)
         .map(|w| {
@@ -245,18 +280,15 @@ fn spiral_ex_matches_the_inkscape_divergence_and_inner_radius() {
         let theirs = svg_cubics(e["d"].as_str().unwrap(), &ink(150.0));
         let anchors: Vec<[f64; 2]> = theirs.iter().flat_map(|c| [c[0], c[3]]).collect();
         // A lei, densa, no referencial do Inkscape (3h, anti-horário depois da reflexão).
-        let law: Vec<[f64; 2]> = (0..=60_000)
-            .map(|k| {
-                let t = t0 + (1.0 - t0) * f64::from(k) / 60_000.0;
-                let (a, r) = (
-                    std::f64::consts::TAU * 3.0 * t + std::f64::consts::PI,
-                    t.powf(div),
-                );
-                [r * a.cos(), r * a.sin()]
-            })
-            .collect();
-        let a = hausdorff_one(&anchors, &law);
-        let ours_law = hausdorff_one(&ours, &law);
+        let law = |t: f64| {
+            let (a, r) = (
+                std::f64::consts::TAU * 3.0 * t + std::f64::consts::PI,
+                t.powf(div),
+            );
+            [r * a.cos(), r * a.sin()]
+        };
+        let a = dist_to_law(&anchors, &law, t0);
+        let ours_law = dist_to_law(&ours, &law, t0);
         assert!(
             a < SPIRAL_LAW_TOL,
             "divergência {div}, t0 {t0}: a âncora do Inkscape a {a} da lei"
@@ -273,7 +305,7 @@ fn spiral_ex_matches_the_inkscape_divergence_and_inner_radius() {
     );
 }
 
-/// A lei contra as âncoras dele e contra a nossa curva (a amostragem densa da lei é `≈5e-5`).
+/// A lei contra as âncoras dele e contra a nossa curva (a distância à lei é exacta: o `t` refinado).
 const SPIRAL_LAW_TOL: f64 = 1e-3;
 
 /// ⭐ **O vale da estrela NUNCA torce** — o produto do dono decide a lei, não o oráculo: nem o

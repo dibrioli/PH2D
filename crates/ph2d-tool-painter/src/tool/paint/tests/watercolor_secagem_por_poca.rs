@@ -346,30 +346,53 @@ fn a_separacao_das_pocas_e_exacta_na_fronteira() {
         ("Dilution 0,5", |b| b.wet_dilution = 0.5),
     ];
     let fw = LADO as usize;
-    for (nome, ajusta) in casos {
+    // Cada distância nasce numa tela nova: as 195 cenas correm uma por thread, as mesmas contas (25 s em
+    // série, 11/10). Devolve `Some(mudou)` se a poça assou.
+    let cena = |ajusta: Ajuste, xc: u32| -> Option<usize> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
+        t.set_paint_media(crate::PaintMedia::Watercolor);
+        ajusta(&mut t.paint.brush);
+        t.set_dry_time_s(2.0);
+        vertical(&mut t, 40.0);
+        espera(&mut t, 1.0);
+        vertical(&mut t, xc as f32);
+        espera(&mut t, 1.25);
+        if !t.wet_session_continues() || t.paint.stroke_coverage[90 * fw + 40] == 0 {
+            return None;
+        }
+        let antes = t.canvas_rgba.as_ref().clone();
+        vertical(&mut t, 224.0);
+        let assou = t.paint.stroke_coverage[90 * fw + 40] == 0;
+        assou.then(|| mudou_fora(&antes, &t.canvas_rgba, 196..=255))
+    };
+    let cena = &cena;
+    let varridas: Vec<Vec<(u32, Option<usize>)>> = std::thread::scope(|s| {
+        let h: Vec<Vec<_>> = casos
+            .iter()
+            .map(|&(_, ajusta)| {
+                (56..=120u32)
+                    .map(|xc| (xc, s.spawn(move || cena(ajusta, xc))))
+                    .collect()
+            })
+            .collect();
+        h.into_iter()
+            .map(|v| {
+                v.into_iter()
+                    .map(|(xc, h)| (xc, h.join().unwrap()))
+                    .collect()
+            })
+            .collect()
+    });
+    for ((nome, _), varrida) in casos.iter().zip(varridas) {
         let mut assou_mais_perto = None;
-        for xc in 56..=120u32 {
-            let mut t = PainterTool::default();
-            t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
-            t.set_paint_media(crate::PaintMedia::Watercolor);
-            ajusta(&mut t.paint.brush);
-            t.set_dry_time_s(2.0);
-            vertical(&mut t, 40.0);
-            espera(&mut t, 1.0);
-            vertical(&mut t, xc as f32);
-            espera(&mut t, 1.25);
-            if !t.wet_session_continues() || t.paint.stroke_coverage[90 * fw + 40] == 0 {
-                continue;
-            }
-            let antes = t.canvas_rgba.as_ref().clone();
-            vertical(&mut t, 224.0);
-            let assou = t.paint.stroke_coverage[90 * fw + 40] == 0;
-            let mudou = mudou_fora(&antes, &t.canvas_rgba, 196..=255);
+        for (xc, assou) in varrida {
+            let Some(mudou) = assou else { continue };
             assert!(
-                !assou || mudou == 0,
+                mudou == 0,
                 "[{nome}] a poça seca a {xc} px assou e o re-render mudou {mudou} texels — a separação é curta"
             );
-            if assou && assou_mais_perto.is_none() {
+            if assou_mais_perto.is_none() {
                 assou_mais_perto = Some(xc);
             }
         }

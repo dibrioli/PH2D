@@ -62,6 +62,7 @@ Cura única: as cenas de cada teste são independentes e corriam em série; agor
 
 | teste | sob a suíte antes | sozinho antes | sozinho depois | load |
 |---|---|---|---|---|
+| `a_separacao_das_pocas…` (195; Aquarela, isenção do dono) | 151 s | 32,9 s | **7,3 s** | 15–21 |
 | `o_escorrimento_do_s_nao_se_corta_em_rectangulos` (6) | 138 s | 19,8 s | **7,6 s** | 17–21 |
 | `a_chave_muda_com_cada_parametro_e_o_traco_tambem` (12) | 111 s | 28,6 s | **7,7 s** | 12–15 |
 | `a_heavy_edge_a_meio_pesa_na_orla…` (8) | 90 s | 17,3 s | **6,0 s** | 13–14 |
@@ -75,9 +76,6 @@ Suíte do `ph2d-tool-painter`: 173 → 161 s (§6).
 
 ## §4 — Ficou acima de 10 s (sozinhos, load 16–22) — e porquê
 
-- ⛔ **Poças da Aquarela (`a_separacao_das_pocas…`) 32,9 s:** uma cena por thread dá **7,3 s** (verde), mas o
-  ficheiro é da Aquarela (congelada, dono 07/10) e a cerca só aceita linhas acrescentadas — revertido. Precisa do
-  dono: isenção «teste de outro meio, só a forma de correr», ou fica.
 - **Camadas 44,7 s:** já paralelo; a parede é a «cena do dono» (Live Water, 10 passadas), sequencial. Próximo:
   medir por passada e se uma tela menor dá o MESMO miolo ao byte.
 - **Largura 24,7 s:** 104 cenas já paralelas. Sonda (raio 300): Wet Round 0,2 s (q0) → 2,55 s (q480) e a largura
@@ -97,7 +95,8 @@ Suíte do `ph2d-tool-painter`: 173 → 161 s (§6).
 
 ## §6 — Fecho
 
-Bateria (agente `verificador`, em série): cerca ✗→✓ (o ficheiro da Aquarela revertido, §4) · `ph2d-wet-paint`
+Bateria (agente `verificador`, em série): cerca ✓ (as poças: isenção do dono 11/10, «pode fazer as mudanças» — `cerca_isencoes.tsv`, 20 linhas; a regra
+no `cerca.sh` ganha a classe «só a forma de correr um teste de outro meio»; `os_outros_meios_nao_mudam` ✓) · `ph2d-wet-paint`
 148/148 · `ph2d-tool-painter` 1574/1574 em **161 s** (antes 173 s; load 10→58, outras sessões) · `paper_rows` em
 laço `dev` 300/300 a load 62–67 · censos 134 · 237 · 17 ✓ · `ph2d-app-painter` 103/103 · fmt ✓ · clippy
 `-D warnings` ✓ · tecto 700 ✓ (403 · 195 · 568 · 561 · 293 · 116) · `nextest-impacted` 17 640/17 641 em 311 s —

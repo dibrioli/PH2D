@@ -1,1 +1,2 @@
 crates/ph2d-tool-painter/src/tool/paint/tests/watercolor_papel_nos_vales.rs	2	W1g (dono 10/10, sem papel o traço não sente papel): os dois testes do Tooth do WET PAINT que moram aqui perdem o caso «sem Kind» (o Tooth não age sem papel); nenhuma linha da Aquarela
+crates/ph2d-tool-painter/src/tool/paint/tests/watercolor_secagem_por_poca.rs	20	R9 (dono 11/10, «pode fazer as mudanças»): o teste das poças da Aquarela corre as 195 cenas uma por thread — as mesmas contas e asserções, 32,9 → 7,3 s; nenhum byte do produto, nenhuma lei da Aquarela

@@ -15,7 +15,9 @@ padrao='^crates/(ph2d-tool-painter|ph2d-painter-brush|ph2d-render|ph2d-app-paint
 falha=0
 n=0
 # As ISENÇÕES (uma por linha: caminho, o número EXATO de linhas removidas/alteradas, a razão): uma linha a
-# mais ou a menos volta a reprovar. Só para linhas que testam o Wet Paint e moram num ficheiro protegido.
+# mais ou a menos volta a reprovar. Só para linhas que testam o Wet Paint e moram num ficheiro protegido —
+# ou, por ordem do dono (11/10), para mudar só a FORMA DE CORRER um teste de outro meio (as mesmas contas e
+# asserções; nenhum byte do produto).
 isencoes="$(dirname "$0")/cerca_isencoes.tsv"
 while IFS=$'\t' read -r mais menos f; do
   [[ "$f" =~ $padrao ]] || continue

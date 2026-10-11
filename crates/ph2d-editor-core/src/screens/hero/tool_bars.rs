@@ -95,8 +95,32 @@ pub fn placed(
     out
 }
 
+/// Os blocos de [`placed`] (a coluna, o flyout, a ④), como intervalos na lista: cada um é um
+/// painel — o pintor e os obstáculos do cartão leem-nos daqui.
+#[must_use]
+pub fn blocks(bars: &ToolBars, n_placed: usize) -> [std::ops::Range<usize>; 3] {
+    let n_col: usize = bars.column.iter().map(Vec::len).sum();
+    let n_fly = bars.flyout.as_ref().map_or(0, |(_, f)| f.len());
+    [0..n_col, n_col..n_col + n_fly, n_col + n_fly..n_placed]
+}
+
+/// ⭐ **O cartão lateral deste quadro** (F10), fora dos painéis das outras barras — a mesma conta
+/// para o pintor e os gates.
+#[must_use]
+pub fn placed_card(
+    bars: &ToolBars,
+    area: Rect,
+    all: &[(BarButton, Rect)],
+    size: crate::widget::RailButtonSize,
+    text: &mut TextSystem,
+) -> Option<super::tool_bars_card::PlacedCard> {
+    let rects: Vec<Rect> = all.iter().map(|(_, r)| *r).collect();
+    let avoid = super::tool_bars_card::obstacles(&blocks(bars, all.len()), &rects);
+    super::tool_bars_card::placed_card(bars, area, size, &avoid, text)
+}
+
 /// Pinta as barras do módulo dentro de `area` (a área de desenho sem as réguas).
-pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, _text: &mut TextSystem) {
+pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, text: &mut TextSystem) {
     let Some(bars) = hero.store.tool_bars().cloned() else {
         return;
     };
@@ -105,21 +129,27 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, _text: 
     let pinned = hero.store.selection_actions_pinned();
     let all = placed(&bars, area, off, pinned, hero.view.ui_mirrored);
     // Os fundos primeiro, por bloco (a coluna, o flyout, a ④): cada um é um painel.
-    let n_col: usize = bars.column.iter().map(Vec::len).sum();
-    let n_fly = bars.flyout.as_ref().map_or(0, |(_, f)| f.len());
-    let blocks = [
-        (0, n_col),
-        (n_col, n_col + n_fly),
-        (n_col + n_fly, all.len()),
-    ];
-    for (a, b) in blocks {
-        if a < b && b <= all.len() {
-            paint_panel(scene, all[a..b].iter().map(|(_, r)| *r), theme);
+    for b in blocks(&bars, all.len()) {
+        if b.start < b.end && b.end <= all.len() {
+            paint_panel(scene, all[b].iter().map(|(_, r)| *r), theme);
         }
     }
+    let card = placed_card(&bars, area, &all, hero.store.rail_button_size(), text);
     for (b, r) in all {
         face(hero, scene, theme, &b, r);
         hero.store.set_tooltip(b.id, b.label);
+    }
+    if let Some(card) = card {
+        super::tool_bars_card::paint_card(
+            &card,
+            area,
+            scene,
+            text,
+            theme,
+            &mut hero.hit_index,
+            &hero.store,
+            &hero.motion,
+        );
     }
 }
 

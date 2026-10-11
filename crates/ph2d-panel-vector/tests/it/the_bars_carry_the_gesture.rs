@@ -354,13 +354,28 @@ fn the_snap_pulldown_holds_the_four_switches() {
 }
 
 /// ⭐⭐ **Uma porta**: num quadro, nenhum id é pintado duas vezes pelas barras — salvo as duas
-/// amostras de cor, que o padrão do Affinity põe na coluna E na fila (DECLARADO aqui).
+/// amostras de cor, que o padrão do Affinity põe na coluna E na fila, e o cartão lateral (F10),
+/// que é uma segunda CARA de campos da fila (DECLARADOS aqui: todo id do cartão está na fila).
 #[test]
 fn no_bar_paints_an_id_twice_except_the_declared_swatches() {
     const FREQUENT: [NodeId; 2] = [t::VECTOR_FILL_SWATCH, t::VECTOR_STROKE_SWATCH];
     for r in matriz() {
         let (b, menus) = r.barras();
+        let card: Vec<NodeId> = b.card.iter().filter_map(ToolRailEntry::node_id).collect();
+        let row = row_ids(&b);
+        assert!(
+            card.iter().all(|id| row.contains(id)),
+            "{:?}: cartão fora da fila",
+            r.mode
+        );
         let mut ids = b.painted_ids();
+        for id in &card {
+            let at = ids
+                .iter()
+                .rposition(|x| x == id)
+                .expect("o cartão está no `painted_ids`");
+            ids.remove(at);
+        }
         ids.extend(
             menus
                 .iter()

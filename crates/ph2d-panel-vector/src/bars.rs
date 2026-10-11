@@ -24,7 +24,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
-use row::{area_menus, gesture_chips, shape_chips, style_chips, symmetry_chips};
+use row::{area_menus, card_chips, gesture_chips, shape_chips, style_chips, symmetry_chips};
+pub use row::shape_handles_shown;
 use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
@@ -492,6 +493,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         row_tail: sym_chips,
         actions: actions(snap.mode, sel),
         selection,
+        card: card_chips(&snap, store),
         hint: tr(hint_key_for(&snap)).to_owned(),
         readout,
     }

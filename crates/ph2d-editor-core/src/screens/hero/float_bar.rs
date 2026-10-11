@@ -342,6 +342,9 @@ pub mod flash;
 /// O cliente do Vetor (e de qualquer módulo que publique [`crate::interaction::ToolBars`]).
 #[path = "tool_bars.rs"]
 pub mod tool_bars;
+/// O cartão lateral dos campos sem alça (F10).
+#[path = "tool_bars_card.rs"]
+pub mod tool_bars_card;
 #[path = "touch_mods.rs"]
 pub mod touch_mods;
 

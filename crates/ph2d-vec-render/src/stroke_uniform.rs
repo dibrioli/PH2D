@@ -34,7 +34,9 @@
 //! ⇒ **só o caso partido paga.** Um afim CONFORME (rotação + escala uniforme, com ou sem reflexão)
 //! desenha pela chamada de sempre, byte a byte. Há gate.
 
-use ph2d_vector::{Affine, BezPath, Brush, Shape, Stroke, VectorScene};
+use ph2d_vector::{
+    Affine, BezPath, Brush, Fill, Shape, Stroke, StrokeOpts, VectorScene, expand_stroke,
+};
 
 /// Tolerância relativa para chamar um afim de conforme. Ela é **relativa** de propósito: um teste
 /// absoluto chamaria de não-uniforme todo afim de um documento em unidades grandes.
@@ -74,20 +76,52 @@ pub fn stroke_uniform(
     transform: Affine,
     brush: &Brush,
     bp: &BezPath,
+    sharp: bool,
 ) {
     let (pen, pen_xf) = pen_for(stroke, transform);
     match pen {
         // O caminho de sempre, byte a byte — e é por aqui que passa a esmagadora maioria.
-        None => target.inner_mut().stroke(stroke, pen_xf, brush, None, bp),
-        // ⚠️ **A geometria atravessa o afim; a caneta não.**
+        None => match cut_outline(stroke, pen_xf, bp, sharp) {
+            None => target.inner_mut().stroke(stroke, pen_xf, brush, None, bp),
+            Some(out) => target
+                .inner_mut()
+                .fill(Fill::NonZero, pen_xf, brush, None, &out),
+        },
+        // ⚠️ **A geometria atravessa o afim; a caneta não.** (E o afim muda os ângulos: o corte
+        // mede-se no ecrã, sem a cache.)
         Some(mut pen) => {
             let screen = transform * bp.clone();
             ajusta_no_ecra(&mut pen, &screen);
-            target
-                .inner_mut()
-                .stroke(&pen, pen_xf, brush, None, &screen)
+            match cut_outline(&pen, pen_xf, &screen, true) {
+                None => target
+                    .inner_mut()
+                    .stroke(&pen, pen_xf, brush, None, &screen),
+                Some(out) => target
+                    .inner_mut()
+                    .fill(Fill::NonZero, pen_xf, brush, None, &out),
+            }
         }
     }
+}
+
+/// A tolerância do contorno expandido, em píxeis de ecrã.
+const CUT_TOL_PX: f64 = 0.05;
+
+/// ⭐ **O traço com os bicos CORTADOS** ([`crate::miter_clip`]) — `None` quando nenhuma junta passa
+/// do limite (o Vello traça, como sempre); senão o contorno da `kurbo` com os cortes, que se
+/// PREENCHE. `sharp` = a cache da geometria diz que pode haver quina além do limite.
+fn cut_outline(pen: &Stroke, xf: Affine, geo: &BezPath, sharp: bool) -> Option<BezPath> {
+    if !sharp {
+        return None;
+    }
+    let cuts = crate::miter_clip::patches(geo, pen);
+    if cuts.is_empty() {
+        return None;
+    }
+    let tol = CUT_TOL_PX / uniform_scale(xf).max(1e-12);
+    let mut out = expand_stroke(geo.iter(), pen, &StrokeOpts::default(), tol);
+    crate::miter_clip::append_oriented(&mut out, &cuts);
+    Some(out)
 }
 
 /// **O AFIM DE PINCEL QUE CHEGA AO VELLO**, e o único jeito de o construir é a
@@ -262,17 +296,29 @@ pub fn stroke_uniform_image(
     bp: &BezPath,
 ) {
     let (pen, pen_xf) = pen_for(stroke, transform);
-    match pen {
-        None => target.stroke_path_image(
-            bp, stroke, pen_xf, image, brush.0, x_extend, y_extend, quality, alpha,
-        ),
+    let (pen, geo) = match pen {
+        None => (stroke.clone(), std::borrow::Cow::Borrowed(bp)),
         Some(mut pen) => {
             let screen = transform * bp.clone();
             ajusta_no_ecra(&mut pen, &screen);
-            target.stroke_path_image(
-                &screen, &pen, pen_xf, image, brush.0, x_extend, y_extend, quality, alpha,
-            );
+            (pen, std::borrow::Cow::Owned(screen))
         }
+    };
+    match cut_outline(&pen, pen_xf, &geo, true) {
+        None => target.stroke_path_image(
+            &geo, &pen, pen_xf, image, brush.0, x_extend, y_extend, quality, alpha,
+        ),
+        Some(out) => target.fill_path_image(
+            &out,
+            Fill::NonZero,
+            pen_xf,
+            image,
+            brush.0,
+            x_extend,
+            y_extend,
+            quality,
+            alpha,
+        ),
     }
 }
 

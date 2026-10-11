@@ -152,6 +152,8 @@ mod recorte_tests;
 mod path_bounds;
 pub(crate) use path_bounds::bounds_from_local;
 pub use path_bounds::{path_bounds_under, path_screen_bounds, standalone_path_screen_bounds};
+/// O bico cortado (`miter-clip`) do lado da `kurbo` — o contorno que todo leitor expande.
+pub mod miter_clip;
 mod visual_bounds;
 pub use visual_bounds::{path_intrinsic_visual_bbox, path_visual_bounds, path_world_visual_bbox};
 
@@ -336,6 +338,9 @@ pub(crate) struct PathTess {
     /// recorte por câmara pergunta-o **por cópia**. *Sem isto, o teste do recorte custava mais do
     /// que o recorte poupava — medido.*
     pub(crate) transbordo: standalone::Transbordo,
+    /// O traço tem quina além do limite do bico ([`miter_clip::any_sharp`]) — só então o desenho
+    /// procura os cortes; pago uma vez por geometria.
+    pub(crate) agudo: bool,
 }
 
 /// **A caixa dos desenhos de uma [`PathTess`]** — a união do que o preenchimento e o traço
@@ -385,13 +390,20 @@ pub(crate) fn path_tess(path: &VecPath) -> PathTess {
     let stroke_bp = (path.stroke.is_some() && (open || fill_bp.is_none()))
         .then(|| build_contours(&cooked, None));
     let caixa_local = caixa_dos_desenhos(fill_bp.as_ref(), stroke_bp.as_ref());
+    let agudo = agudo_de(path, stroke_bp.as_ref().or(fill_bp.as_ref()));
     PathTess {
         fill_bp,
         stroke_bp,
         dash: dash_of(&cooked, path.stroke.as_ref()),
         caixa_local,
         transbordo: standalone::transbordo_do_caminho(path),
+        agudo,
     }
+}
+
+/// O sinal [`PathTess::agudo`] do traço de `path` sobre o desenho `bp` que ele usa.
+pub(crate) fn agudo_de(path: &VecPath, bp: Option<&BezPath>) -> bool {
+    path.stroke.is_some() && bp.is_some_and(miter_clip::any_sharp)
 }
 
 /// O tracejado AJUSTADO deste caminho cozido — `None` sem traço ou sem tracejado.

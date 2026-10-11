@@ -9229,6 +9229,7 @@ dependencies = [
  "ph2d-symmetry",
  "ph2d-tool-registry",
  "ph2d-vec-edit",
+ "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
  "serde_json",

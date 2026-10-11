@@ -535,3 +535,7 @@ pub use crate::shapes_units::{
 #[cfg(test)]
 #[path = "shapes_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "stroke_census_tests.rs"]
+mod stroke_census_tests;

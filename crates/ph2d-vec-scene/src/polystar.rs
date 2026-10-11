@@ -37,7 +37,7 @@ pub struct PolyStar {
 /// O polígono / a estrela de [`PolyStar`] inscrito na elipse `rx`/`ry`, 1.ª ponta às 12h.
 #[must_use]
 pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
-    let plain = s.twist_deg == 0.0 && s.curve == 0.0 && s.smooth == 0.0;
+    let plain = s.twist_deg == 0.0 && s.curve == 0.0 && s.smooth <= 0.0;
     if plain && s.style == CornerStyle::Round {
         return match s.inner {
             None => crate::regular_polygon_rounded(center, rx, ry, s.n, s.radii[0]),
@@ -48,35 +48,66 @@ pub fn polystar(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
     // enverga-se só o troço recto entre dois cantos. Pela ligação lisa entre duas arestas curvas
     // o canto passava ACIMA do vértice (0,067 num pentágono a envergadura 0,4 e raio 0,15 — o
     // arredondamento engordava a forma): medido em `the_rounding_never_grows_past_the_sharp_corner`.
-    if s.curve != 0.0 && s.smooth == 0.0 && s.radii.iter().any(|r| *r > 0.0) {
+    if s.curve != 0.0 && s.smooth <= 0.0 && s.radii.iter().any(|r| *r > 0.0) {
         let straight = polystar(center, rx, ry, &PolyStar { curve: 0.0, ..*s });
         return bend_between_corners(straight, center, s.curve);
     }
     let unit = unit_vertices(s);
     let m = unit.len();
-    // As alças de cada aresta, no círculo: o liso (tangentes) + a envergadura (normal).
+    // O liso só para FORA: o meio negativo do *Rounded* do Inkscape é um laço por definição (as
+    // fotos 2/3 do dono, F12) — doc 19 §3.
+    let smooth = s.smooth.max(0.0);
+    let wedge: Vec<f64> = (0..m).map(|i| interior_angle(&unit, i)).collect();
+    // As alças de cada aresta, no círculo: o liso (tangentes) + a envergadura.
     let mut out_h = vec![[0.0; 2]; m];
     let mut in_h = vec![[0.0; 2]; m];
     for i in 0..m {
-        let (a, b) = (unit[i], unit[(i + 1) % m]);
+        let j = (i + 1) % m;
+        let (a, b) = (unit[i], unit[j]);
         let d = [b[0] - a[0], b[1] - a[1]];
         let len = d[0].hypot(d[1]);
         if len <= 1e-12 {
             continue;
         }
-        let (ta, tb) = (tangent(&unit, i), tangent(&unit, (i + 1) % m));
-        let k = s.smooth * len;
+        let (ta, tb) = (tangent(&unit, i), tangent(&unit, j));
+        let k = smooth * len;
         // A envergadura: o meio da cúbica anda `h` pela normal de FORA quando as duas alças
-        // andam `4h/3`; para dentro, nunca além de 90 % da distância da corda ao centro.
+        // andam `4h/3` — sobre a corda a ⅓ (a MESMA lei do [`bend_between_corners`]): a tangente
+        // na quina roda `atan(4h/corda)`, a partir de zero. Para dentro, nunca além de 90 % da
+        // distância ao centro; e a rotação nunca passa da metade da quina que ela fecha (no limite,
+        // uma cúspide — nunca um laço).
         let normal = [d[1] / len, -d[0] / len];
         let reach = (a[0] * normal[0] + a[1] * normal[1]).abs();
-        let h = (s.curve * len * 0.5).max(-0.9 * reach);
+        let closing = |w: f64| {
+            if s.curve < 0.0 {
+                w
+            } else {
+                std::f64::consts::TAU - w
+            }
+        };
+        let cap = [wedge[i], wedge[j]]
+            .iter()
+            .map(|w| closing(*w) * 0.5)
+            .filter(|half| *half < std::f64::consts::FRAC_PI_2)
+            .map(|half| len * 0.25 * half.tan())
+            .fold(f64::INFINITY, f64::min);
+        let h = (s.curve * len * 0.5).max(-0.9 * reach).clamp(-cap, cap);
         let bend = [normal[0] * h * 4.0 / 3.0, normal[1] * h * 4.0 / 3.0];
-        out_h[i] = [ta[0] * k + bend[0], ta[1] * k + bend[1]];
-        in_h[(i + 1) % m] = [-tb[0] * k + bend[0], -tb[1] * k + bend[1]];
+        // O troço a ⅓ da corda entra inteiro sem liso; com liso cede às tangentes do Inkscape
+        // (a ⅓ da corda o liso já é a alça inteira), e sem envergadura não entra — a curva do
+        // Inkscape fica exacta. Abaixo de um passo do campo (`0,01`) ele entra em proporção.
+        let chord = (1.0 - 3.0 * smooth).max(0.0) * (s.curve.abs() / CURVE_STEP).min(1.0) / 3.0;
+        out_h[i] = [
+            ta[0] * k + d[0] * chord + bend[0],
+            ta[1] * k + d[1] * chord + bend[1],
+        ];
+        in_h[j] = [
+            -tb[0] * k - d[0] * chord + bend[0],
+            -tb[1] * k - d[1] * chord + bend[1],
+        ];
     }
     let to_world = |p: [f64; 2]| [center[0] + rx * p[0], center[1] + ry * p[1]];
-    let lisa = s.smooth != 0.0;
+    let lisa = smooth != 0.0;
     let verts: Vec<VecVertex> = (0..m)
         .map(|i| {
             let p = unit[i];
@@ -189,6 +220,19 @@ fn unit_vertices(s: &PolyStar) -> Vec<[f64; 2]> {
                 .collect()
         }
     }
+}
+
+/// Um passo do campo *Curve* (`shapes_fields::frac`): daí para cima a envergadura é a lei inteira.
+const CURVE_STEP: f64 = 0.01;
+
+/// O ângulo INTERNO no vértice `i` (o contorno é anti-horário: o interior fica à esquerda), `0..2π`.
+fn interior_angle(unit: &[[f64; 2]], i: usize) -> f64 {
+    let m = unit.len();
+    let v = unit[i];
+    let (p, n) = (unit[(i + m - 1) % m], unit[(i + 1) % m]);
+    let (dn, dp) = ([n[0] - v[0], n[1] - v[1]], [p[0] - v[0], p[1] - v[1]]);
+    let a = (dn[0] * dp[1] - dn[1] * dp[0]).atan2(dn[0] * dp[0] + dn[1] * dp[1]);
+    a.rem_euclid(std::f64::consts::TAU)
 }
 
 /// A direcção do liso no vértice `i`: do vizinho ANTERIOR para o SEGUINTE — medido no Inkscape

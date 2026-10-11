@@ -306,6 +306,8 @@ pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, MITER_LIMIT, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,
 };
+/// O bico CORTADO (`miter-clip` do SVG 2): a lei de toda junta `Miter` além do [`MITER_LIMIT`].
+pub mod miter_clip;
 
 /// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo
 /// do caminho, e é o que separa um desenho de um diagrama.

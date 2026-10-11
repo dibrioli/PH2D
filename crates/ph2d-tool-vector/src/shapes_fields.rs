@@ -155,7 +155,8 @@ pub(crate) const CORNER_STYLE: FieldDesc = FieldDesc {
 /// `> 0` para fora, `< 0` para dentro; `1` = o meio da aresta a meia corda dela.
 pub(crate) const CURVE: FieldDesc = signed("Curve", 1.0);
 /// **O liso dos vértices** (o *Rounded* do Inkscape, corrido): alças tangentes de `smooth × corda`.
-pub(crate) const SMOOTH_VERTS: FieldDesc = signed("Smooth", 1.0);
+/// Só para fora (F12): o meio negativo do Inkscape é um laço por definição (doc 19 §3).
+pub(crate) const SMOOTH_VERTS: FieldDesc = frac("Smooth", 0.0, 1.0);
 /// **A torção** (o `arg2` do Inkscape): os graus que os vales rodam em relação às pontas.
 pub(crate) const TWIST: FieldDesc = FieldDesc {
     label: "Twist",

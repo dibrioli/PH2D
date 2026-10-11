@@ -157,6 +157,8 @@ fn traco(s: &ph2d_vec_scene::StrokeSpec) -> (String, Option<&'static str>) {
         ph2d_vec_scene::LineCap::Square => "square",
     };
     let join = match s.join {
+        // O bico CORTADO (F12) é o `miter-clip` do SVG 2; um visor sem ele cai no `miter`.
+        ph2d_vec_scene::LineJoin::Miter if ph2d_vec_scene::miter_clip::enabled() => "miter-clip",
         ph2d_vec_scene::LineJoin::Miter => "miter",
         ph2d_vec_scene::LineJoin::Round => "round",
         ph2d_vec_scene::LineJoin::Bevel => "bevel",

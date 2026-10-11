@@ -47,3 +47,5 @@ workspace = true
 [dev-dependencies]
 # Os gates das alças (F9) leem as fixtures do Inkscape (`oraculo_alcas/fixtures/*.json`).
 serde_json = "1"
+# O censo do traço (F12) cozinha cada forma e lê o caminho pela porta do renderer.
+ph2d-vec-render = { path = "../ph2d-vec-render" }

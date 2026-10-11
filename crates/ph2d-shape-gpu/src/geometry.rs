@@ -15,7 +15,7 @@
 
 use crate::eixo::{EixoItem, eixo};
 use bytemuck::{Pod, Zeroable};
-use ph2d_vector::{BezPath, PathEl, Point, Shape, Stroke, StrokeOpts, expand_stroke, flatten};
+use ph2d_vector::{BezPath, PathEl, Point, Shape, Stroke, flatten};
 
 /// Quantos níveis de detalhe cada geometria leva.
 pub const LEVELS: usize = 8;
@@ -213,10 +213,10 @@ fn contornos_dos_tracos<'a>(
     input: &'a ShapeInput<'_>,
     tol: f64,
 ) -> impl Iterator<Item = BezPath> + 'a {
-    input
-        .strokes
-        .iter()
-        .map(move |s| expand_stroke(s.path.iter(), s.style, &StrokeOpts::default(), tol * 0.5))
+    input.strokes.iter().map(move |s| {
+        // O bico cortado (F12): a mesma porta do desenho e da caixa visual.
+        ph2d_vec_render::miter_clip::stroke_outline(s.path, s.style, tol * 0.5)
+    })
 }
 
 /// ⭐ doc 121 §9.18 (C) — **o contorno do traço de uma cópia CONFORME no nível `tol`**, aplanado como as

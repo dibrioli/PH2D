@@ -1,0 +1,63 @@
+{
+ "_cabecalho": {
+  "oraculo": "resvg 0.48.1",
+  "licenca": "Apache-2.0 / MIT (pacman -Qi resvg) — caixa preta",
+  "como": "corre_resvg.py: uma quina, pernas de 200 px, vértice em (150, 60), y para BAIXO",
+  "largura": 24.0,
+  "limite": 4.0,
+  "medida": "1.ª linha de píxel com tinta < 128 (±1 px)",
+  "data": "2026-10-11"
+ },
+ "experiencias": [
+  {
+   "interior_deg": 60,
+   "miter_top_y": 37,
+   "miter_clip_top_y": 37
+  },
+  {
+   "interior_deg": 40,
+   "miter_top_y": 26,
+   "miter_clip_top_y": 26
+  },
+  {
+   "interior_deg": 30,
+   "miter_top_y": 15,
+   "miter_clip_top_y": 15
+  },
+  {
+   "interior_deg": 29,
+   "miter_top_y": 14,
+   "miter_clip_top_y": 14
+  },
+  {
+   "interior_deg": 28,
+   "miter_top_y": 57,
+   "miter_clip_top_y": 12
+  },
+  {
+   "interior_deg": 25,
+   "miter_top_y": 58,
+   "miter_clip_top_y": 12
+  },
+  {
+   "interior_deg": 20,
+   "miter_top_y": 58,
+   "miter_clip_top_y": 12
+  },
+  {
+   "interior_deg": 10,
+   "miter_top_y": 59,
+   "miter_clip_top_y": 12
+  },
+  {
+   "interior_deg": 4,
+   "miter_top_y": 60,
+   "miter_clip_top_y": 12
+  },
+  {
+   "interior_deg": 0,
+   "miter_top_y": 60,
+   "miter_clip_top_y": 12
+  }
+ ]
+}

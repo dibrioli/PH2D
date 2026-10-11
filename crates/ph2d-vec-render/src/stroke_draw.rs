@@ -132,6 +132,7 @@ pub(crate) fn draw_one_stroke(
                             transform,
                             &brush,
                             &build_bezpath(&geo),
+                            true,
                         );
                         continue;
                     }
@@ -186,6 +187,7 @@ pub(crate) fn draw_one_stroke(
                             transform,
                             &brush,
                             bp,
+                            tess.agudo,
                         );
                     }
                     Cow::Owned(p) => {
@@ -202,6 +204,7 @@ pub(crate) fn draw_one_stroke(
                             transform,
                             &brush,
                             &line_bp,
+                            true,
                         );
                     }
                 },
@@ -212,6 +215,7 @@ pub(crate) fn draw_one_stroke(
                         transform,
                         &brush,
                         &build_bezpath(&geo),
+                        true,
                     );
                 }
                 StrokePiece::Fill { path: geo } => {

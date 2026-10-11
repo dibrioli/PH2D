@@ -170,8 +170,8 @@ pub(crate) fn traco(s: &usvg::Stroke) -> (StrokeSpec, Lost) {
             join: match s.linejoin() {
                 usvg::LineJoin::Round => LineJoin::Round,
                 usvg::LineJoin::Bevel => LineJoin::Bevel,
-                // ⚠️ O `MiterClip` do SVG 2 é um `Miter` com um tecto próprio; o documento tem um
-                // só `Miter`, e a diferença só se vê numa quina mais aguda que o limite.
+                // O `Miter` do documento JÁ corta o bico além do limite (`miter_clip`, F12) — o
+                // `MiterClip` do SVG 2 é ele; um `miter` puro só difere numa quina além do limite.
                 usvg::LineJoin::Miter | usvg::LineJoin::MiterClip => LineJoin::Miter,
             },
             dash,

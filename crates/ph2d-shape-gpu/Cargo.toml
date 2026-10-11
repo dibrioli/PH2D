@@ -12,6 +12,10 @@ authors.workspace = true
 [dependencies]
 # `BezPath` + o aplanamento e a expansão do traço (re-exportados pela porta única do kurbo).
 ph2d-vector = { path = "../ph2d-vector" }
+# ⭐ A LEI DA CASA do traço: o bico cortado no contorno expandido (`miter_clip::stroke_outline`, F12)
+# e, nos gates, a caneta sob escala não uniforme (`pen_for` + `ajusta_no_ecra`) — chamadas, não
+# copiadas. `ph2d-vec-render` não depende desta crate ⇒ sem ciclo.
+ph2d-vec-render = { path = "../ph2d-vec-render" }
 # O `GpuContext` — o dispositivo e a fila onde o passe vive.
 ph2d-gpu = { path = "../ph2d-gpu" }
 wgpu = "29.0.4"
@@ -25,10 +29,6 @@ vello = { version = "0.10.0", default-features = false, features = ["wgpu"] }
 # `ph2d-render` não depende desta crate ⇒ sem ciclo.
 ph2d-render = { path = "../ph2d-render" }
 pollster = "0.4.0"
-# ⭐ E a LEI DA CASA do traço sob escala não uniforme (`pen_for` + `ajusta_no_ecra`), chamada e não
-# copiada: a régua do tracejado (doc 121 §9.9) não pode ter uma cópia da lei que ela mede.
-# `ph2d-vec-render` não depende desta crate ⇒ sem ciclo.
-ph2d-vec-render = { path = "../ph2d-vec-render" }
 
 [lints]
 workspace = true

@@ -59,12 +59,14 @@ pub(crate) fn tessellate_shape_instance(path: &VecPath) -> PathTess {
             (0..cooked.contour_count()).any(|c| cooked.contour(c).is_some_and(|(_, cl)| !cl));
         let stroke_bp = (path.stroke.is_some() && open).then(|| build_contours(&cooked, None));
         let caixa_local = crate::caixa_dos_desenhos(Some(&fill_bp), stroke_bp.as_ref());
+        let agudo = crate::agudo_de(path, stroke_bp.as_ref().or(Some(&fill_bp)));
         PathTess {
             fill_bp: Some(fill_bp),
             stroke_bp,
             dash: crate::dash_of(&cooked, path.stroke.as_ref()),
             caixa_local,
             transbordo: crate::standalone::transbordo_do_caminho(path),
+            agudo,
         }
     }
 }

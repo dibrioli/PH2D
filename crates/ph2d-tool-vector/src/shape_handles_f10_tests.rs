@@ -195,7 +195,8 @@ fn the_same_curve(name: &str, d: &str, kind: ShapeKind, v: &[f64], r: f64, spin:
     h
 }
 
-/// ⭐ **O LISO é o *Rounded* do Inkscape** (8 estrelas e polígonos, de −0,25 a 1, cozidos por ele):
+/// ⭐ **O LISO é o *Rounded* do Inkscape** (estrelas e polígonos de 0 a 1, cozidos por ele; o −0,25
+/// do fixture é o laço que a F12 recusou):
 /// as alças tangentes de `liso × corda` desenham a MESMA curva.
 #[test]
 fn smooth_draws_the_inkscape_rounded_star_and_polygon() {
@@ -210,6 +211,9 @@ fn smooth_draws_the_inkscape_rounded_star_and_polygon() {
                 continue; // o acaso não se reproduz — doc 15 §5 (recusa)
             }
             let s = p["rounded"].as_f64().unwrap();
+            if s < 0.0 {
+                continue; // o laço do Inkscape — recusado na F12 (doc 19 §3)
+            }
             let v = match kind {
                 ShapeKind::Star => vec![5.0, 0.45, 0.0, 0.0, 0.0, 0.0, s, 0.0],
                 _ => vec![6.0, 0.0, 0.0, 0.0, s],
@@ -219,7 +223,7 @@ fn smooth_draws_the_inkscape_rounded_star_and_polygon() {
             n += 1;
         }
     }
-    assert_eq!(n, 12, "6 lisos × estrela e polígono");
+    assert_eq!(n, 10, "5 lisos (sem o negativo) × estrela e polígono");
 }
 
 /// A curva do Inkscape e a nossa são cúbicas da MESMA lei: sem torção batem a `1e-6`; torcida, a

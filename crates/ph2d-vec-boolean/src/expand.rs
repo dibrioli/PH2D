@@ -241,7 +241,42 @@ fn penned(bez: &BezPath, pen: &Stroke) -> Option<Region> {
 /// vai acumular muitos e regularizar uma vez só ([`power_stroke`]).
 fn penned_outline(bez: &BezPath, pen: &Stroke) -> BezPath {
     let tol = tolerance(bez);
-    weld_seams(&kurbo::stroke(bez, pen, &StrokeOpts::default(), tol), tol)
+    let mut out = weld_seams(&kurbo::stroke(bez, pen, &StrokeOpts::default(), tol), tol);
+    append_miter_clips(&mut out, bez, pen);
+    out
+}
+
+/// ⭐ O bico CORTADO (F12 A, a lei em [`ph2d_vec_scene::miter_clip`]) — o mesmo que o renderer
+/// desenha (`ph2d_vec_render::miter_clip`): cada junta `Miter` além do limite ganha o quadrilátero
+/// do corte, no sentido do corpo.
+fn append_miter_clips(out: &mut BezPath, bez: &BezPath, pen: &Stroke) {
+    use ph2d_vec_scene::miter_clip::{El, clip_patches, oriented, subpaths};
+    if !matches!(pen.join, Join::Miter) || pen.width <= 0.0 {
+        return;
+    }
+    let el = |e: kurbo::PathEl| match e {
+        kurbo::PathEl::MoveTo(p) => El::Move([p.x, p.y]),
+        kurbo::PathEl::LineTo(p) => El::Line([p.x, p.y]),
+        kurbo::PathEl::QuadTo(a, p) => El::Quad([a.x, a.y], [p.x, p.y]),
+        kurbo::PathEl::CurveTo(a, b, p) => El::Cubic([a.x, a.y], [b.x, b.y], [p.x, p.y]),
+        kurbo::PathEl::ClosePath => El::Close,
+    };
+    let subs = if pen.dash_pattern.is_empty() {
+        subpaths(bez.iter().map(el))
+    } else {
+        subpaths(kurbo::dash(bez.iter(), pen.dash_offset, &pen.dash_pattern).map(el))
+    };
+    let cuts = clip_patches(&subs, pen.width * 0.5, pen.miter_limit);
+    let quads = oriented(&cuts, |p| {
+        kurbo::Shape::winding(&*out, kurbo::Point::new(p[0], p[1]))
+    });
+    for q in quads {
+        out.move_to((q[0][0], q[0][1]));
+        for p in &q[1..] {
+            out.line_to((p[0], p[1]));
+        }
+        out.close_path();
+    }
 }
 
 /// **Solda a emenda de cada contorno**: o último ponto vira EXATAMENTE o primeiro quando já

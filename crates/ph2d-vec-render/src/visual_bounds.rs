@@ -9,7 +9,7 @@
 //! cartão, o enquadrar — uma caixa folgada lê-se como «a caixa não abraça a forma».
 
 use ph2d_vec_scene::{PaintRef, StrokeAlign, StrokePiece, StrokeSpec, VecPath};
-use ph2d_vector::{Affine, Rect, Shape, Stroke, StrokeOpts, expand_stroke};
+use ph2d_vector::{Affine, Rect, Shape, Stroke};
 
 use crate::{build_bezpath, kurbo_stroke, stroke_uniform::uniform_scale};
 
@@ -81,13 +81,7 @@ fn stroke_box(p: &VecPath, s: &StrokeSpec, m: Affine) -> Option<Rect> {
 
 fn expanded(bp: &ph2d_vector::BezPath, pen: &Stroke, m: Affine) -> Rect {
     let screen = m * bp.clone();
-    expand_stroke(
-        screen.iter(),
-        pen,
-        &StrokeOpts::default(),
-        (TOL * pen.width).max(1e-9),
-    )
-    .bounding_box()
+    crate::miter_clip::stroke_outline(&screen, pen, (TOL * pen.width).max(1e-9)).bounding_box()
 }
 
 /// A caixa de MUNDO do que o caminho `id` pinta, `(min, max)` — a pose das `VecXforms`.

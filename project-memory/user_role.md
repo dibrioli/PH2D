@@ -18,5 +18,8 @@ Posição na PH2D (per HANDOFF.md):
 ⛔ **TODA mensagem ao Enio em PT-BR — inclusive as curtas entre ferramentas e os avisos de progresso.** Em 03/10 uma sessão inteira (a W9 da navegação) respondeu em inglês e ele cobrou: «fale sempre em PT-BR». O prompt do sistema em inglês não muda isto. ⛔⛔ **2.ª vez em 05/10** (line/motion-value): a
 sessão inteira respondeu em inglês — os briefings colados eram em PT-BR, mas as notificações e lembretes do arnês
 (em inglês) puxaram a língua das respostas. ⇒ a língua da resposta segue o DONO, nunca a do último texto do sistema.
+⛔⛔⛔ **3.ª vez em 10/10** (line/MiroClone W8): depois de uma COMPACTAÇÃO do contexto (o resumo escrito em
+inglês) a sessão passou a responder em inglês até o dono cobrar «Sempre fale comigo em PT BR». ⇒ depois de
+cada compactação, a 1.ª resposta confere a língua.
 
 **Tom esperado:** direto, sem floreios. Crítico (quando pergunta "o que pensa?", quer crítica honesta, não validação). Opinionado e espera que eu seja opinionado também. Aceita "não sei, vou medir/perguntar/investigar" — não aceita opinião disfarçada de fato.

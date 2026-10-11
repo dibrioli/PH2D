@@ -29,6 +29,25 @@ criou a entrada de menu do Wine (`~/.local/share/applications/wine/Programs/Rebe
   Resultado: [`docs/Painter/47_o_papel_no_rebelle_estado_da_arte.md`](../docs/Painter/47_o_papel_no_rebelle_estado_da_arte.md)
   — o papel não é camada, a tinta guarda o alfa, compõe-se por «cobrir com transparência», a ordem
   não importa. Fechar: matar só o `kwin_wayland … oraculo/sessao.sh` e `wineserver -k` NESTE prefixo.
+
+- ⛔⛔ **A injecção de rato (`SendInput`) REGREDIU em 2026-10-07 à tarde:** clique pinta um ponto, ARRASTO não
+  pinta (5 variantes de evento, Wine limpo com `wineserver -k`, `use_ink` on/off, documento novo ou de
+  arranque — nada; só a ferramenta Inks pintou uma vez). Causa não encontrada; não gaste outra sessão nisso.
+- ✅ **A porta que SERVE é a oficial: WebSocket Control (Pro).** `rebelle.sh -websocket-server-enable
+  -websocket-port 8265 -websocket-allowed-ip-addresses 127.0.0.1,::ffff:127.0.0.1,::1` (sem o `::ffff:` o
+  servidor recusa o localhost IPv4-mapeado). Eventos JSON Motion IO
+  (`POINTER_PRESS/MOVE/RELEASE` com `pressure`, `pen_tilt`, `rotation`; `SET_BRUSH` com `tool`, `preset`
+  "Grupo/Nome", `size_px`, `water`, `opacity`, `paint_type`, `dirty_brush`, `color`; `NEW_ARTWORK` com papel;
+  `SET_RANDOM_SEED`; `SIMULATION`; `DRY`), **um evento por mensagem** (o documento `{"frames":…}` inteiro é
+  ignorado em silêncio); `SAVE` ainda não existe por WebSocket (8.3.4) ⇒ fotografa-se a janela a zoom 100 %
+  (campo do Navigator) e recorta-se a tela. ⚠️ `SET_BRUSH` só vale para o 1.º traço: reenvia-se COMPLETO
+  antes de cada gesto. Scripts: `~/Apps/rebelle/oraculo/{arranque.sh,gera_eventos.py,ws_eventos.mjs}`
+  (cópias em `docs/Painter/NewFeaturesWetPaint/ferramentas/`); o Node 24 traz `WebSocket` global.
+  Referência pública: https://www.escapemotions.com/products/rebelle/motionio_doc/reference/json_events_reference
+- Capturar um popup do Rebelle (não está em `_NET_CLIENT_LIST`): `python3 xtree.py :1 223x252` dá o id X
+  (libX11 por ctypes; não há `xwininfo`), depois `import -window <id>`. ⛔ `import -window root` e
+  `ffmpeg x11grab` dão PRETO (Xwayland rootless) e um `import` sem id fica à espera de um clique e PRENDE o
+  rato virtual — mate-o por `pgrep -x import` (nunca `pkill -f` com o padrão na própria linha).
 - ⛔ **O PAPEL pela porta WebSocket não serve de barra (medido 09/10, W1e):** sob o Wine o papel não se
   desenha (branco, desvio 0, até no RH00 de arranque); `SET_PAPER` derruba o 8.3.4 («bad optional
   access»); um `SET_ENGINE_PARAMS` (texture_influence…) depois de um `SET_BRUSH` reduz o pincel a um fio

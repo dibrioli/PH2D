@@ -1,8 +1,6 @@
 //! ⭐ **Os outros que bloqueiam** (W5e) — o traço do Flip, as formas do Motion: a família dona
-//! desenha-os ([`CamadaDeOclusao`]) numa camada por grupo de opacidade, na grade FINA (1 px no zoom
-//! mais fino da oitava), e a C0 lê cada camada como um sprite que cobre a grade — pelo meio (a área do
-//! alfa ≥ ½, a lei da borda exata). Na resolução da captura (½ px) cada camada custaria 4× (126 MB a
-//! 1080p); a leitura pelo meio dá a área com 1 px.
+//! desenha-os ([`CamadaDeOclusao`]) numa camada por grupo de opacidade, na resolução da CAPTURA fina, e
+//! a C0 lê cada camada EXATA como um sprite que cobre a grade — a lei da camada do vetor.
 
 use std::collections::BTreeMap;
 
@@ -119,7 +117,10 @@ fn nova(gpu: &GpuContext, tamanho: (u32, u32)) -> Camada {
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: FORMATO_DA_OCLUSAO,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        // `COPY_DST`: uma família pode também ESCREVER a camada (os testes, com a área exata).
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
     Camada {
@@ -134,10 +135,10 @@ fn limpar(gpu: &GpuContext, vista: &wgpu::TextureView) {
     let mut enc = gpu
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("luz2d/outros limpar"),
+            label: Some("luz2d/outros/limpar"),
         });
     drop(enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("luz2d/outros limpar"),
+        label: Some("luz2d/outros/limpar"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
             view: vista,
             depth_slice: None,

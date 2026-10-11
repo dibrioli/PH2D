@@ -562,12 +562,12 @@ fn redondas(world: &mut World) {
     chao_lampada_e_gemeas(world, &gemeas);
 }
 
+/// Uma imagem gêmea: o nome, o centro, os semi-eixos e a cor sRGB.
+type Gemea = (&'static str, [f64; 2], [f64; 2], [u8; 3]);
+
 /// As cenas 6 e 7: o chão no fundo, a luz ambiente, a lâmpada e as IMAGENS gêmeas `(nome, centro,
 /// semi-eixos, cor sRGB)` das formas desenhadas (o disco do atlas, «bloqueia a luz»).
-fn chao_lampada_e_gemeas(
-    world: &mut World,
-    gemeas: &[(&'static str, [f64; 2], [f64; 2], [u8; 3])],
-) {
+fn chao_lampada_e_gemeas(world: &mut World, gemeas: &[Gemea]) {
     let chao = quadrado(
         world,
         "Chão",

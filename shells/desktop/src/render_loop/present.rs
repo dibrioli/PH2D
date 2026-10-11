@@ -176,6 +176,7 @@ impl crate::App {
         // ⭐ A tinta da máscara da Remoção de fundo — o TERCEIRO produtor deste slot.
         bgremoval_tint: &ph2d_render::LiftedInstances,
     ) -> Option<(super::present_bands::FramePlan, bool)> {
+        self.present_luz();
         let gfx = self.gfx.as_mut()?;
         let AppGfx {
             surface,
@@ -201,9 +202,6 @@ impl crate::App {
             hero_screen,
             grid_behind_scene,
             luz2d,
-            flip,
-            flip_composite,
-            flip_compose,
             ..
         } = gfx;
         // M14.5 — viewport / RT pipeline. Four GPU submissions
@@ -303,33 +301,8 @@ impl crate::App {
         // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
         plan.banded |= self.motion_shell.placa.ativa();
         // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
-        //    codificação) — o vetor recebe a luz na colagem delas. Depois o solver, antes do primeiro
-        //    passe de sprite, e os dois receptores. ⛔ Sem `Luz`: nada disto muda o quadro.
+        //    codificação) — o vetor recebe a luz na colagem delas (o solver: `present_luz`).
         plan.banded |= luz2d.grade().is_some();
-        luz2d.recolher(sim.world());
-        let flip_models = ph2d_flip_entities::transform::build(sim, &self.flip_state.entities);
-        let mut flip_luz = ph2d_app_flip::pass::luz::OclusaoDoFlip {
-            doc: flip,
-            composite: flip_composite,
-            models: &flip_models,
-            playhead: &self.playhead,
-            entidades: &self.flip_state.entities,
-        };
-        let placa = &mut self.motion_shell.placa;
-        let mut motion_luz = ph2d_app_motion::motion_shape_placa::luz::OclusaoDoMotion::do_quadro(
-            placa,
-            motion,
-            sim.world(),
-        );
-        luz2d.gravar_com(
-            surface.gpu(),
-            present,
-            renderer,
-            &mut [&mut flip_luz, &mut motion_luz],
-        );
-        luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
-        let na_tela = luz2d.na_tela();
-        flip_compose.receber_luz(surface.gpu(), na_tela.as_ref().map(|(l, m)| (l, *m)));
         // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
         plan.banded |= lente || filtrada;
         let banded = plan.banded;
@@ -500,3 +473,5 @@ impl crate::App {
 
 #[path = "present_chrome.rs"]
 mod chrome_e_composicao;
+#[path = "present_luz.rs"]
+mod luz;

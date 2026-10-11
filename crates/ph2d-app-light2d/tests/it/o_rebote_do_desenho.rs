@@ -28,9 +28,10 @@ fn anel(f: &Fluencia, centro: [f64; 2], semi: [f64; 2]) -> [[f64; 3]; 2] {
             centro[0] + ANEL * semi[0] * cs,
             centro[1] + ANEL * semi[1] * sn,
         ];
-        for c in 0..3 {
-            soma[0][c] += f.amostra_canal(p, c);
-            soma[1][c] += f.amostra_canal([p[0], -p[1]], c);
+        let [d, im] = &mut soma;
+        for (c, (sd, si)) in d.iter_mut().zip(im.iter_mut()).enumerate() {
+            *sd += f.amostra_canal(p, c);
+            *si += f.amostra_canal([p[0], -p[1]], c);
         }
     }
     soma

@@ -78,6 +78,16 @@ razão nenhuma. Cada membro entra pelo **nome**.
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
 
+## A espécie da memória da placa (W5e, 2026-10-11)
+
+Um gate de GPU que ALOCA muito (a luz 2D: 0,3–4 GB por teste) reprova no fan-out quando a soma dos
+testes em paralelo passa a memória da placa — o driver recusa (`OutOfMemory`; a luz devolve
+`SemMemoria`) — e passa sozinho. O recurso é a VRAM, não o relógio: a cura é uma faixa que limita a
+CONCORRÊNCIA desses testes (`[test-groups.luz2d-placa] max-threads = 2` no
+[`.config/nextest.toml`](../../.config/nextest.toml), por pacote: `ph2d-app-light2d` e
+`ph2d-light2d-gpu`), não a faixa isolada do relógio. Medido no portão W5e: 9 de 17 508 reprovaram a
+load 8–34 com ~7 GB da placa já tomados por outros programas; os 9 passaram sozinhos.
+
 ## A outra espécie: a flake de GPU só no Linux do CI
 
 `atlas::tests::remove_of_missing_key_returns_none` ([`ph2d-render`](../../crates/ph2d-render/src/atlas/tests.rs))

@@ -25,6 +25,9 @@ use crate::grade::{
 #[path = "quadro_avisos.rs"]
 mod avisos;
 
+/// A chave de que a fina dos tetos depende: a janela, o degrau base e os tetos.
+type ChaveDosTetos = ((u32, u32), Degrau, crate::teto::Tetos);
+
 struct Resolvido {
     solver: Solver,
     /// A vista da fluência (a textura é fixa enquanto o solver vive).
@@ -42,7 +45,7 @@ pub struct LuzDoQuadro {
     /// ⭐ W5e: os bytes que o dispositivo RECUSOU, e em que janela (outra janela esquece-os).
     recusou: Option<((u32, u32), u64)>,
     /// ⭐ W5e: a fina que os tetos impõem (`None` = nada cabe), pela chave de que ela depende.
-    fina_dos_tetos: Option<(((u32, u32), Degrau, crate::teto::Tetos), Option<u32>)>,
+    fina_dos_tetos: Option<(ChaveDosTetos, Option<u32>)>,
     cena: CenaDeLuz,
     sem_luz: BTreeSet<Entity>,
     /// `Some` = a cena tem `Luz` neste quadro.
@@ -438,7 +441,8 @@ impl LuzDoQuadro {
             eprintln!("[luz2d] o solver recusou a grade {g:?}: {e:?}");
             return;
         }
-        self.outros.desenhar(gpu, (g, fina), &self.cena, familias);
+        self.outros
+            .desenhar(gpu, (g, captura), &self.cena, familias);
         let r = self
             .resolvido
             .as_mut()
@@ -455,11 +459,11 @@ impl LuzDoQuadro {
                 label: Some("luz2d quadro do editor"),
             });
         let mut sprites = crate::captura::sprites_da_cena(&self.cena, present, renderer);
-        // ⭐ W5e: os outros — sprites que a C0 lê pelo meio (a área do alfa ≥ ½).
+        // ⭐ W5e: os outros — na resolução da captura, lidos EXATOS (o píxel é a área: a lei do vetor).
         for (vista, mut s) in self.outros.sprites() {
             sprites
                 .texturas
-                .push((vista, ph2d_light2d_gpu::Amostragem::Bilinear));
+                .push((vista, ph2d_light2d_gpu::Amostragem::Exata));
             s.textura = sprites.texturas.len() - 1;
             sprites.sprites.push(s);
         }

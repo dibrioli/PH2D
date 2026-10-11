@@ -120,3 +120,15 @@ fail-fast = false
 
 [profile.default.junit]
 path = "junit.xml"
+
+# ⭐ W5e (2026-10-11) — a LUZ 2D NA PLACA, limitada pela MEMÓRIA da placa (não pelo relógio): cada gate
+# aloca 0,3–4 GB de VRAM (a 2160p, a recusa de memória do `os_tetos_da_placa`) e o solver nasce sob o
+# escopo `OutOfMemory`. Na suíte inteira em paralelo a placa RECUSOU (`SemMemoria`) 9 de 17 508 — com
+# load 8–34 e ~7 GB da placa já tomados por outros programas — e os 9 passaram sozinhos.
+# `docs/DevOps/FLAKES_DE_CARGA.md` § «A espécie da memória da placa».
+[test-groups.luz2d-placa]
+max-threads = 2
+
+[[profile.default.overrides]]
+filter = 'package(ph2d-app-light2d) | package(ph2d-light2d-gpu)'
+test-group = 'luz2d-placa'

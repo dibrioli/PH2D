@@ -9,10 +9,8 @@
 
 use bevy_ecs::world::World;
 use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro, smoke};
-use ph2d_core::Playhead;
 use ph2d_ecs::{FlipObjectRef, GlobalTransform, Name, PresentWorld, SimRef, Transform};
 use ph2d_flip::FlipDoc;
-use ph2d_flip_entities::entities::FlipEntityMap;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
 use ph2d_render::{DISC_TILE_PX, Sprite, disc_tile_pixels};
 
@@ -70,11 +68,100 @@ pub(crate) fn espelho(f: &Fluencia, centro: [f64; 2], semi: [f64; 2]) -> Espelho
     }
 }
 
-/// A face da lâmpada do TRAÇO contra a da IMAGEM, relativo — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`, 30
-/// quadros com o rebote): o disco grande −0,55 %, o pequeno +0,19 %; as faces 45 × e 37 ×. A tolerância
-/// é a da cena 6.
+/// ⭐ Uma família de teste que desenha DISCOS com a área EXATA de cada píxel (16×16 subamostras),
+/// premultiplicados na cor linear e guardados em sRGB — o que o contrato `CamadaDeOclusao` pede de um
+/// traço redondo.
+pub(crate) struct DiscosExatos {
+    pub entidade: u64,
+    /// `(centro, raio, cor sRGB)`.
+    pub discos: Vec<([f64; 2], f64, [u8; 3])>,
+}
+
+fn linear(c: u8) -> f32 {
+    let c = f32::from(c) / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+impl ph2d_light2d_gpu::CamadaDeOclusao for DiscosExatos {
+    fn desenhar(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        alvo: &wgpu::TextureView,
+        (w, h): (u32, u32),
+        [x0, y0, x1, y1]: [f64; 4],
+        quem: &[u64],
+    ) -> bool {
+        if !quem.contains(&self.entidade) {
+            return false;
+        }
+        const N: u32 = 16;
+        let (pw, ph) = ((x1 - x0) / f64::from(w), (y1 - y0) / f64::from(h));
+        let mut px = vec![0_u8; (w * h * 4) as usize];
+        let srgb = |v: f32| {
+            let v = v.clamp(0.0, 1.0);
+            let e = if v <= 0.003_130_8 {
+                v * 12.92
+            } else {
+                1.055 * v.powf(1.0 / 2.4) - 0.055
+            };
+            (e * 255.0).round() as u8
+        };
+        for &(c, r, cor) in &self.discos {
+            let lin = cor.map(linear);
+            let i0 = (((c[0] - r - x0) / pw).floor().max(0.0)) as u32;
+            let i1 = (((c[0] + r - x0) / pw).ceil() as u32).min(w);
+            let j0 = (((y1 - c[1] - r) / ph).floor().max(0.0)) as u32;
+            let j1 = (((y1 - c[1] + r) / ph).ceil() as u32).min(h);
+            for j in j0..j1 {
+                for i in i0..i1 {
+                    let mut dentro = 0;
+                    for sj in 0..N {
+                        for si in 0..N {
+                            let x = x0 + (f64::from(i) + (f64::from(si) + 0.5) / f64::from(N)) * pw;
+                            let y = y1 - (f64::from(j) + (f64::from(sj) + 0.5) / f64::from(N)) * ph;
+                            if (x - c[0]).hypot(y - c[1]) <= r {
+                                dentro += 1;
+                            }
+                        }
+                    }
+                    let a = dentro as f32 / (N * N) as f32;
+                    let k = ((j * w + i) * 4) as usize;
+                    for (canal, v) in lin.iter().enumerate() {
+                        px[k + canal] = srgb(v * a);
+                    }
+                    px[k + 3] = (a * 255.0).round() as u8;
+                }
+            }
+        }
+        gpu.queue.write_texture(
+            alvo.texture().as_image_copy(),
+            &px,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(w * 4),
+                rows_per_image: None,
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        true
+    }
+}
+
+/// A face da lâmpada do TRAÇO (discos de área exata, a camada na captura lida exata) contra a da
+/// IMAGEM, relativo — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`, 30 quadros com o rebote): −0,38 % e
+/// +0,38 %; as faces 45 × e 38 ×. Pelo traço do Flip de verdade (antes de o portão sair da família):
+/// −0,55 % e +0,19 %. A tolerância é a da cena 6.
 const TOL_TRACO_IMAGEM: f64 = 0.01;
-/// A variação dos anéis do traço acima da da imagem — MEDIDO: +3,3 % e +2,0 % (a da cena 6).
+/// A variação dos anéis do traço acima da da imagem — MEDIDO: +2,0 % e −1,4 % (a camada lida pelo meio
+/// na grade fina dava +13 e +18 %: recusada). A da cena 6.
 const TOL_TV_TRACO_IMAGEM: f64 = 0.08;
 
 #[test]
@@ -129,33 +216,30 @@ fn a_cena_7_ensina_o_traco_do_flip() {
     }
     let afim = ph2d_render::Camera2d::default()
         .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
-    let mut entidades = FlipEntityMap::new();
-    entidades.insert(id, e.to_bits());
-    let playhead = Playhead::default();
-    let mut composite = None;
-    let medir = |com_flip: bool,
-                 composite: &mut Option<ph2d_app_flip::pass::FlipComposite>,
-                 present: &mut PresentWorld| {
+    // A família do Flip, aqui, é a de DISCOS EXATOS (a área de cada píxel): a luz não pode depender de
+    // outra família. Que o Flip desenha essa mesma área prova-o o teste de contrato DELE
+    // (`ph2d-app-flip`, `pass_luz_tests.rs`).
+    let mut exatos = DiscosExatos {
+        entidade: e.to_bits(),
+        discos: smoke::DISCOS_DE_TINTA
+            .iter()
+            .map(|d| (d.centro, d.raio, d.cor))
+            .collect(),
+    };
+    let mut medir = |com_flip: bool, present: &mut PresentWorld| {
         let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
         for _ in 0..30 {
             assert!(l.preparar(&w, afim, (1920, 1080)));
-            let mut flip = ph2d_app_flip::pass::luz::OclusaoDoFlip {
-                doc: &doc,
-                composite,
-                models: &[],
-                playhead: &playhead,
-                entidades: &entidades,
-            };
             if com_flip {
-                l.gravar_com(&gpu, present, &r, &mut [&mut flip]);
+                l.gravar_com(&gpu, present, &r, &mut [&mut exatos]);
             } else {
                 l.gravar(&gpu, present, &r);
             }
         }
         crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"))
     };
-    let sem = medir(false, &mut composite, &mut present);
-    let f = medir(true, &mut composite, &mut present);
+    let sem = medir(false, &mut present);
+    let f = medir(true, &mut present);
     let mut falhas = Vec::new();
     for d in &smoke::DISCOS_DE_TINTA {
         let semi = [d.raio; 2];
@@ -301,15 +385,14 @@ fn o_traco_do_flip_recebe_a_luz_como_o_sprite() {
                 mapa[0][0] * x + mapa[0][1] * y + mapa[0][2],
                 mapa[1][0] * x + mapa[1][1] * y + mapa[1][2],
             ];
-            for c in 0..3 {
-                let esperado_apagado = lin[c];
+            for (c, &esperado_apagado) in lin.iter().enumerate() {
                 assert!(
                     (canal(a, c) - esperado_apagado).abs() <= 2e-3,
                     "controlo: sem luz o blit é a cor linear ({} × {esperado_apagado})",
                     canal(a, c)
                 );
                 let luz = f.amostra_canal(mundo, c) / std::f64::consts::TAU;
-                let esperado = lin[c] * luz;
+                let esperado = esperado_apagado * luz;
                 if esperado > 1e-3 {
                     pior = pior.max((canal(b, c) - esperado).abs() / esperado);
                     pontos += 1;

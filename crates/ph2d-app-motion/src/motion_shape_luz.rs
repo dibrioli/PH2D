@@ -1,7 +1,7 @@
 //! ⭐ **As formas do Motion na luz 2D** (W5e, `docs/Luz2D/01_plano.md` §2.4) — um objeto Motion com
 //! `BloqueiaLuz` faz as formas dele bloquearem a luz: as MESMAS cópias que a placa desenha neste
 //! quadro (do buffer do dispositivo, ou as da CPU), num passe irmão do dela (a mesma variante e o
-//! mesmo contorno), com o afim da grade da luz. A cobertura do passe é a de área (o alfa da forma).
+//! mesmo contorno, no formato da camada da luz), com o afim da grade da luz. A cobertura do passe é a de área (o alfa da forma).
 //!
 //! ⚠️ A placa não sabe de que objeto é cada cópia: um objeto Motion que bloqueia faz bloquear TODAS as
 //! formas da placa (aberto no handoff W5e). Sem a placa (a rota do Vello) não há captura.
@@ -64,7 +64,18 @@ impl CamadaDeOclusao for OclusaoDoMotion<'_> {
             return false;
         }
         if p.luz.is_none() {
-            p.luz = Some(p.passe_irmao(gpu));
+            let variante = if p.variante.constantes.is_empty() {
+                ph2d_shape_gpu::VarianteDoPasse::do_ambiente()
+            } else {
+                p.variante.clone()
+            };
+            let mut passe = ph2d_shape_gpu::ShapePass::da_variante(
+                gpu,
+                ph2d_light2d_gpu::FORMATO_DA_OCLUSAO,
+                &variante,
+            );
+            p.afina(&mut passe);
+            p.luz = Some(passe);
         }
         let Some(passe) = p.luz.as_mut() else {
             return false;
@@ -100,7 +111,7 @@ impl CamadaDeOclusao for OclusaoDoMotion<'_> {
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("luz2d/formas do motion"),
+                label: Some("luz2d/formas_do_motion"),
             });
         passe.draw(
             gpu,
@@ -117,3 +128,7 @@ impl CamadaDeOclusao for OclusaoDoMotion<'_> {
         true
     }
 }
+
+#[cfg(test)]
+#[path = "motion_shape_luz_tests.rs"]
+mod testes;

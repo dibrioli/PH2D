@@ -100,3 +100,7 @@ impl CamadaDeOclusao for OclusaoDoFlip<'_> {
         desenhou
     }
 }
+
+#[cfg(test)]
+#[path = "pass_luz_tests.rs"]
+mod testes;

@@ -228,6 +228,24 @@ distribui**. Comando: `bash docs/Luz2D/oraculo_godot/corre.sh` (passa pela porta
   (a luz da shell num irmão, para a shell não crescer), `.config/nextest.toml` (faixa `luz2d-placa`),
   `docs/DevOps/FLAKES_DE_CARGA.md`. Sem degrau de `PROJECT_SCHEMA`; nenhum contrato congelado tocado.
 
+## ⛔ O smoke do dono VOLTOU (11/10, à noite) — a próxima janela começa por AQUI
+
+A ordem do dono: a próxima janela da linha faz PRIMEIRO a onda de velocidade
+([`PROMPT_LINHAS_RAPIDAS_2026-10-11.md`](../../IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md),
+§1 + §2 + §3.Luz2D) e só depois isto:
+
+1. **Cena 7: «não tem desenho Flip na cena»** — no app dele o traço do Flip NÃO aparece (a foto da tela
+   virtual, `fotos_W5e/cena7_traco_do_flip.png`, mostra a Hierarchy com «Traço do Flip» e os discos em
+   cima — logo o defeito é do app no ecrã dele, não da lei medida). Suspeitos, por medir: o objeto
+   semeado no 1.º quadro e a sincronização do Flip (`entities::sync`) antes/depois do `codificar`; o
+   desenho só ao vivo com a ferramenta Flip; o quadro 0 do playhead. Reproduza no app ANTES de mexer.
+2. **«App demorando de abrir»** (cena 7) — candidata medida: a compilação a frio de cada nível (2–3 s
+   por troca; o Automático desce Alta → Média → Baixa ao abrir: o ABERTO 1). Meça o tempo até o 1.º
+   quadro com `PH2D_LIGHT2D_SMOKE=7` contra sem luz.
+3. **Cena 8 funciona**, «mas com o mesmo aspecto de baixa qualidade no relevo» — a foto do dono mostra
+   as formas do Motion como prismas com manchas e riscos escuros no interior: a família do F5 (o
+   interior pelo exterior mais próximo, a fase da grade), que segue ÚLTIMA na fila por ordem do dono.
+
 ## Smoke do dono
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke`

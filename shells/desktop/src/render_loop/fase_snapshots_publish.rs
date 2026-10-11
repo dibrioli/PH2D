@@ -81,15 +81,13 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
-        // F10: a caixa da ferramenta vetorial — inteira no Select, só ALÇAS no modo Forma.
-        let caixa = ph2d_app_vec::overlay::object_box_of(tools, &self.vec);
+        // F10: a caixa da ferramenta vetorial — inteira no Select, só ALÇAS no modo Forma (a ferramenta
+        // fica NOMEADA aqui: o gate `the_object_box_condition_names_every_authoring_tool` lê-a).
+        let vector =
+            tools.active().map(|t| t.id()) == Some(ph2d_editor_core::ToolId::new("vector"));
+        let caixa = ph2d_app_vec::overlay::object_box(vector, self.vec.draw_config.mode);
         hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
-        // Snapshot publication phase — extracted to sibling
-        // `snapshots.rs` as a free fn taking explicit refs (Wave
-        // 3.2 stage A). Reads PresentWorld + SimWorld + AssetDb,
-        // writes onto the HeroScreen (live_hierarchy, grid_view,
-        // stats, gizmo_view, inspector_*) so the paint pass
-        // honors the HR-8 / ADR-0021 boundary.
+        // A publicação dos snapshots (`snapshots.rs`, HR-8 / ADR-0021: o paint só lê o HeroScreen).
         snapshots::publish(
             hero,
             hero_live,

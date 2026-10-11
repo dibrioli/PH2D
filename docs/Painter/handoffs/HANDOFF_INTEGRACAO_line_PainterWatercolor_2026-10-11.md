@@ -123,4 +123,24 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && ./tar
 
 ## Integração
 
-(preenchida pelo integrador)
+**Integrada no `main` a 11/10** (ordem do dono, depois da `line/motion-value`), por `scripts/foundational-integrate.sh`:
+ponta `8b84cfdb8`, base `78a8d90db`.
+
+- **Rebase** sobre `78a8d90db` (72 commits do `main`; a sobreposição de ficheiros era só `Cargo.lock`, `ph2d-i18n/src/lib.rs` e
+  dois de `project-memory/`). Conflitos, pelos estágios: `project_schema.rs` / `project_schema_tests.rs` em `e5078c578` (W1b,
+  as gotas `187 → 188`) e `c9bbfd688` (o revert das gotas) — o `main` tem agora `188` = o `Motion Input` da motion-value; como
+  a linha desfez as gotas e a ponta não muda o schema, os dois commits intermédios ficaram com o lado do `main` (`:2`) ⇒ **os
+  commits entre a W1b e o revert não levam o degrau das gotas** (a ponta é a testada; não bisecte por ali). `MEMORY.md` e
+  `reference_topic_code_pattern_gotchas.md` por união; a família dos gotchas recontada a **42** (39 do `main` + 3 da linha),
+  um ponteiro só (`65c7ecbab`). `range-diff`: só mudaram os commits com conflito resolvido e o do handoff (o contexto do
+  CLAUDE.md). Nenhum marcador em nenhum commit.
+- **Primário:** tinha por rastrear os rascunhos de 07/10 de `docs/Painter/NewFeaturesWetPaint/` e
+  `crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs` (já na linha desde `5895c3f76`, evoluídos) — guardados em
+  `~/.local/share/ph2d-integracao-backup/2026-10-11/primario/` e removidos. As entradas vivas da memória do primário
+  (PT-BR 3.ª vez, o Rebelle pela porta WebSocket, «só o Wet Paint evolui») entraram pela linha, fundidas a 3 vias (`f4fcc9c6b`).
+- **1.ª corrida do portão: VERMELHA** — `n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto` passou o tecto de 180 s
+  sob a suíte inteira (140 s sozinho no `ci-test`). Cura (`8b84cfdb8`): os três portões de cena caros correm uma cena por
+  thread (camadas 140 → 69 s, `uma_mistura…` 65 → 23 s, `o_traco_nao_muda_de_tom_ao_secar` 43 → 18 s; asserções iguais) e
+  as camadas + `sem_celulas_soltas` ganham um override de 6 × 60 s em `.config/nextest.toml` com a medida escrita.
+- **2.ª corrida: VERDE** — sync dos registos, staleness, `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`,
+  `nextest-impacted` **18 107 / 18 107** (11 lentos) — e `merge --ff-only` no `main`.

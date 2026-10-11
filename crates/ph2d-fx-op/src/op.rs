@@ -263,6 +263,14 @@ impl FxOp {
     /// disso que o teto é, e há gate a afirmá-lo sobre a largura REAL do card.
     pub const MAX_GRADIENT_STOPS: usize = 8;
 
+    /// **Quantas amostras leva uma rampa ASSADA** — o Gradient Map do Motion, cujo degradê é uma
+    /// `ColorRamp` inteira (até 32 paradas, cinco interpolações, cinco espaços) e chega ao
+    /// dispositivo como tabela uniforme em `[0,1]`. O recurso é o PASSO DO ECRÃ da saída de 8 bits,
+    /// medido no espaço GRAVADO (sRGB): as quinas das paradas erram `0,033` a 512 e `0,0117` a
+    /// 2 048; a 4 096 o corpus inteiro fica abaixo de `1/255` (gate
+    /// `the_baked_ramp_is_invisible_and_half_of_it_is_not`, `ph2d-node-fx-filter`). 64 KiB.
+    pub const RAMP_LUT_TEXELS: usize = 4096;
+
     /// **A rampa como o DISPOSITIVO a quer: ordenada por posição e empacotada.** A porta única de
     /// *"que rampa este degrau desenha?"*.
     ///

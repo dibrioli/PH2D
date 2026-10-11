@@ -152,6 +152,16 @@ fn every_photo_variant_is_the_step_it_names() {
     assert!((l("7c").lente.grade.exposure - 1.0).abs() < 1e-6);
     assert_eq!(l("7d").lut.as_deref(), Some(LUT_QUENTE));
     assert!(!l("8").lente.grao.neutra());
+    // O degradê (10) e a lei de mistura (11): o 1.º filtro, e só ele.
+    let (dez, onze) = (lido("10").0, lido("11").0);
+    assert_eq!(dez[0].op.kind, ph2d_ecs::FxOp::GRADIENT_MAP);
+    assert!(dez[0].ramp.is_some(), "o arco-íris assado");
+    assert_eq!(
+        (dez[0].op.blend, onze[0].op.blend),
+        (0, 1),
+        "Normal, depois Multiply"
+    );
+    assert_eq!((dez[1].op, onze[1].op), (base[1].op, base[1].op));
     for p in PASSOS.iter().filter(|p| !p.starts_with('5')) {
         assert_eq!(
             l(p).lente.vinheta,
@@ -212,7 +222,7 @@ fn every_row_the_script_names_is_on_the_filter_card() {
     let hints = m.registry.param_ui(id).unwrap_or(&[]);
     let rotulos: Vec<&str> = hints.iter().map(|h| ph2d_i18n::tr(h.label)).collect();
     for nome in [
-        "Effect", "Apply To", "Radius", "Offset X", "Offset Y", "Opacity",
+        "Effect", "Apply To", "Radius", "Offset X", "Offset Y", "Opacity", "Gradient", "Blend",
     ] {
         assert!(rotulos.contains(&nome), "{nome} ∉ {rotulos:?}");
     }
@@ -220,9 +230,20 @@ fn every_row_the_script_names_is_on_the_filter_card() {
         .iter()
         .map(|c| ph2d_i18n::tr(c))
         .collect();
-    for tipo in ["Bevel", "Inner Shadow", "Drop Shadow"] {
+    for tipo in [
+        "Bevel",
+        "Inner Shadow",
+        "Drop Shadow",
+        "Gradient Map",
+        "Blur",
+    ] {
         assert!(tipos.contains(&tipo), "{tipo} ∉ {tipos:?}");
     }
+    let leis: Vec<&str> = ph2d_node_fx_filter::BLEND_LABELS
+        .iter()
+        .map(|c| ph2d_i18n::tr(c))
+        .collect();
+    assert!(leis.contains(&"Multiply"), "{leis:?}");
     let opcoes: Vec<&str> = ph2d_node_fx_filter::SCOPE_LABELS
         .iter()
         .map(|c| ph2d_i18n::tr(c))

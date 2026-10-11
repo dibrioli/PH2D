@@ -63,6 +63,7 @@ fn feathered(gpu: &ph2d_gpu::GpuContext) -> Vec<u8> {
             stops: [[0.0; 4]; 8],
             stop_pos: [[0.0; 4]; 2],
             stop_count: 0,
+            ramp_lut: None,
         }],
         &[],
     );

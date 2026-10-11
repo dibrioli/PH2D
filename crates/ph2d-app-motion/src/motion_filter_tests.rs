@@ -355,3 +355,90 @@ fn the_device_route_asks_the_same_landing_rule() {
         );
     }
 }
+
+/// ⭐ **Do cartão ao degrau que o passe corre** (ZERAR família B): a mistura escolhida no seletor e o
+/// degradê editado chegam ao `FxOpGpu` pela fila de intenções (o caminho do painel), e o cartão
+/// mostra cada um só onde o tipo o lê. Controlo: no Color Adjust nenhum dos dois aparece nem chega.
+#[test]
+fn the_cards_blend_and_gradient_reach_the_step_the_pass_runs() {
+    use crate::MotionParamIntent::{SetParam, SetTextParam};
+    use ph2d_ecs::FxOp;
+    use ph2d_node_fx_filter::param;
+    let mut m = crate::motion_state::MotionState::new();
+    let ids = [
+        "source.grid",
+        ph2d_node_fx_filter::TYPE_NAME,
+        "motion.output",
+    ]
+    .map(|t| m.doc.graph.add_node(t));
+    for par in ids.windows(2) {
+        m.doc
+            .graph
+            .connect(ph2d_nodegraph::graph::Edge {
+                from: (par[0], 0),
+                to: (par[1], 0),
+                delayed: false,
+            })
+            .expect("liga");
+    }
+    let (f, saida) = (ids[1], ids[2]);
+    let store = ph2d_editor_core::interaction::WidgetStore::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let mut gesto = |m: &mut crate::motion_state::MotionState, i| {
+        crate::push_param_intent(i);
+        crate::motion_bridge::params::apply_param_edits_for_tests(m, &store, &mut toasts);
+    };
+    let tipo = |k: u8| SetParam {
+        node: f.0,
+        param: param::KIND,
+        value: f64::from(k),
+    };
+    gesto(&mut m, tipo(FxOp::GRADIENT_MAP));
+    let texto = ph2d_color::serialize_gradient(&ph2d_color::GradientPreset::Rainbow.ramp());
+    gesto(
+        &mut m,
+        SetTextParam {
+            node: f.0,
+            param: param::RAMP,
+            value: texto.clone(),
+        },
+    );
+    gesto(
+        &mut m,
+        SetParam {
+            node: f.0,
+            param: param::BLEND,
+            value: 16.0,
+        },
+    );
+    {
+        let mostra = crate::motion_bridge::params::shown_params_for_tests(&m, f);
+        assert!(
+            mostra(param::RAMP) && mostra(param::BLEND),
+            "o degradê e a mistura no cartão"
+        );
+        assert!(
+            !mostra(param::COLOR[0]),
+            "as cores não pintam o Gradient Map"
+        );
+    }
+    m.filtro.prepara(&m.doc.graph, &[saida]);
+    let ops = degraus(m.filtro.pilha(), [1.0, 0.0, 0.0, 1.0]);
+    let lut = ops[0].ramp_lut.as_deref().expect("o degrau leva a tabela");
+    assert_eq!(lut.len(), FxOp::RAMP_LUT_TEXELS);
+    assert_eq!(ops[0].blend, 16, "a lei Hue chega ao passe");
+    let rampa = ph2d_color::parse_gradient(&texto).expect("o texto volta");
+    assert_eq!(lut[0], rampa.eval(0.0));
+
+    gesto(&mut m, tipo(FxOp::COLOR_ADJUST));
+    {
+        let mostra = crate::motion_bridge::params::shown_params_for_tests(&m, f);
+        assert!(
+            !mostra(param::RAMP) && !mostra(param::BLEND),
+            "controlo: o Color Adjust não os lê"
+        );
+    }
+    m.filtro.prepara(&m.doc.graph, &[saida]);
+    let ops = degraus(m.filtro.pilha(), [1.0, 0.0, 0.0, 1.0]);
+    assert!(ops[0].ramp_lut.is_none() && ops[0].blend == FxOp::BLEND_NORMAL);
+}

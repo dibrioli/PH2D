@@ -65,7 +65,7 @@ fn a_filter_off_the_wire_is_named_not_applied() {
 /// tabela e confere-se contra ela, tipo a tipo.
 #[test]
 fn every_gate_is_the_specs_own_answer() {
-    let pares: [(&str, Knob); 7] = [
+    let pares: [(&str, Knob); 9] = [
         (param::RADIUS, Knob::Radius),
         (param::OFFSET_X, Knob::Offset),
         (param::COLOR[0], Knob::Color),
@@ -73,6 +73,8 @@ fn every_gate_is_the_specs_own_answer() {
         (param::SIZE, Knob::Noise),
         (param::GROW, Knob::Grow),
         (param::HUE, Knob::Adjust),
+        (param::BLEND, Knob::Blend),
+        (param::RAMP, Knob::Ramp),
     ];
     for (nome, knob) in pares {
         let g = PARAM_GATES.iter().find(|g| g.param == nome).expect(nome);
@@ -98,17 +100,31 @@ fn every_gate_is_the_specs_own_answer() {
     );
 }
 
-/// Todo tipo com modos é servido por UM param de modo — um tipo novo com uma lista nova reprova.
+/// Todo tipo com modos é servido por UM param de modo — um tipo novo com uma lista nova reprova. O
+/// que lê a RAMPA tem os modos dela (Linear/Smooth) na interpolação do editor de gradiente, e por
+/// isso nenhum param de modo — mas tem o degradê no cartão.
 #[test]
 fn every_kind_with_modes_has_exactly_one_mode_param() {
     for k in 0..FxOp::KINDS {
-        let modos = FxOp::SPECS[k].modes;
+        let (modos, rampa) = (FxOp::SPECS[k].modes, takes(k, Knob::Ramp));
         let n = MODE_PARAMS
             .iter()
             .filter(|(_, l)| same_list(l, modos))
             .count();
-        assert_eq!(n, usize::from(!modos.is_empty()), "{}", FxOp::SPECS[k].name);
+        let nome = FxOp::SPECS[k].name;
+        assert_eq!(n, usize::from(!modos.is_empty() && !rampa), "{nome}");
+        if rampa {
+            assert!(
+                PARAM_HINTS
+                    .iter()
+                    .any(|h| h.param == param::RAMP && h.widget == ParamWidget::Gradient)
+            );
+        }
     }
+    assert!(
+        (0..FxOp::KINDS).any(|k| takes(k, Knob::Ramp) && !FxOp::SPECS[k].modes.is_empty()),
+        "controlo: algum tipo de rampa tem modos"
+    );
 }
 
 /// ⭐ Os rótulos do seletor DIZEM o nome da `SPECS`, pela tabela de strings — a lista não é escrita
@@ -118,14 +134,57 @@ fn the_labels_say_the_specs_names() {
     for (k, chave) in KIND_LABELS.iter().enumerate() {
         assert_eq!(ph2d_i18n::tr(chave), FxOp::SPECS[k].name, "tipo {k}");
     }
-    for ((_, modos), rotulos) in
-        MODE_PARAMS
-            .iter()
-            .zip([&FALLOFF_LABELS, &NOISE_LABELS, &RAMP_LABELS])
-    {
+    for ((_, modos), rotulos) in MODE_PARAMS.iter().zip([&FALLOFF_LABELS, &NOISE_LABELS]) {
         let palavras: Vec<&str> = rotulos.iter().map(|c| ph2d_i18n::tr(c)).collect();
         assert_eq!(palavras, modos.to_vec());
     }
+    // As leis de mistura: a palavra do `BlendMode`, código a código (a que o Vector e o Painter dizem).
+    for (i, chave) in BLEND_LABELS.iter().enumerate() {
+        let modo = ph2d_blend_mode::BlendMode::from_u8(u8::try_from(i).unwrap());
+        assert_eq!(
+            ph2d_i18n::tr(chave),
+            ph2d_i18n::tr(modo.label_key()),
+            "código {i}"
+        );
+    }
+}
+
+/// ⭐ **A mistura escolhida no cartão chega à pilha SÓ nos tipos que a leem** (a `SPECS`); nos outros
+/// fica Normal — escondida no cartão e inerte na `op`, o mesmo `blend_code` do Vector.
+#[test]
+fn the_blend_reaches_only_the_kinds_that_read_it() {
+    let (mut leem, mut ignoram) = (0, 0);
+    for k in 0..FxOp::KINDS {
+        let (mut g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
+        g.set_param(ids[1], param::KIND, k as f32);
+        g.set_param(ids[1], param::BLEND, 9.0);
+        let op = op_of(&g, ids[1]);
+        let quer = if FxOp::SPECS[k].takes_blend {
+            9
+        } else {
+            FxOp::BLEND_NORMAL
+        };
+        assert_eq!(
+            (op.blend, op.blend_code()),
+            (quer, quer),
+            "{}",
+            FxOp::SPECS[k].name
+        );
+        if FxOp::SPECS[k].takes_blend {
+            leem += 1
+        } else {
+            ignoram += 1
+        }
+    }
+    assert!(
+        leem > 0 && ignoram > 0,
+        "controlo: as duas populações existem"
+    );
+    // O valor digitado acima da lista não inventa um código.
+    let (mut g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
+    g.set_param(ids[1], param::KIND, f32::from(FxOp::COLOR_OVERLAY));
+    g.set_param(ids[1], param::BLEND, 99.0);
+    assert_eq!(op_of(&g, ids[1]).blend, FxOp::BLEND_KINDS - 1);
 }
 
 #[test]
@@ -293,18 +352,17 @@ fn overrides_reach_the_op() {
     assert_eq!(op_of(&g, no).mode, FxOp::MODE_CREASED);
 }
 
-/// A rampa de dois stops sai das duas cores — e é a do `FxOp::new` com os defaults.
+/// As cores do cartão NÃO alcançam a rampa: o Gradient Map lê o degradê, e as duas cores (que o
+/// tipo nem mostra) ficam fora dela — a `op` desenha os stops de fábrica.
 #[test]
-fn the_ramp_is_the_two_colours() {
+fn the_cards_colours_never_reach_the_ramp() {
     let (mut g, ids) = cadeia(&["source.grid", TYPE_NAME, "motion.output"]);
     g.set_param(ids[1], param::KIND, f32::from(FxOp::GRADIENT_MAP));
-    let op = op_of(&g, ids[1]);
-    let novo = FxOp::new(FxOp::GRADIENT_MAP);
-    assert_eq!(op.stop_count, 2);
-    // ⚠️ O branco volta da transferência linear → sRGB a `0,99999994` (o `f32` da curva única).
-    let (a, b) = (op.ramp_for_device(), novo.ramp_for_device());
-    let perto = |x: &[f32], y: &[f32]| x.iter().zip(y).all(|(p, q)| (p - q).abs() < 1e-6);
-    assert!(perto(a.0.as_flattened(), b.0.as_flattened()) && a.1 == b.1 && a.2 == b.2);
+    g.set_param(ids[1], param::COLOR[0], 0.5);
+    g.set_param(ids[1], param::COLOR2[1], 0.25);
+    let (op, novo) = (op_of(&g, ids[1]), FxOp::new(FxOp::GRADIENT_MAP));
+    assert_eq!(op.ramp_for_device(), novo.ramp_for_device());
+    assert!(!takes(usize::from(FxOp::GRADIENT_MAP), Knob::Color));
 }
 
 #[test]

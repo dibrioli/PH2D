@@ -46,6 +46,7 @@ fn turb(amount_px: f32, scale_px: f32, detail: u8, seed: u8, mode: u8) -> FxOpGp
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 
@@ -74,6 +75,7 @@ fn inert_glow(sigma_px: f32) -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 
@@ -484,11 +486,17 @@ fn the_noise_is_pinned_to_the_shape_not_to_the_scratch() {
     let t = turb(8.0, 32.0, 3, 0, FxOp::MODE_SMOOTH);
     let glow = inert_glow(4.0);
     // A margem que o instrumento acrescenta — perguntada à MESMA porta que a dimensiona.
-    let pad = ph2d_render::stack_reach(&[glow]).0;
+    let pad = ph2d_render::stack_reach(std::slice::from_ref(&glow)).0;
     assert!(pad > 0, "o instrumento tem de MUDAR a margem");
 
     // A: a forma na origem, num scratch justo.
-    let a_px = run(&gpu, &half_plane(&gpu, W, H, f64::from(EDGE)), W, H, &[t]);
+    let a_px = run(
+        &gpu,
+        &half_plane(&gpu, W, H, f64::from(EDGE)),
+        W,
+        H,
+        std::slice::from_ref(&t),
+    );
     // B: o MESMO desenho deslocado de `pad`, num scratch maior, sob uma pilha cuja margem cresceu
     // exatamente `pad` — que é o que a shell faz quando um degrau a mais entra na pilha.
     let (bw, bh) = (W + 2 * pad, H + 2 * pad);

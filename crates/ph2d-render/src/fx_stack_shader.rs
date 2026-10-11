@@ -37,12 +37,15 @@ struct Globals {
     stops: array<vec4<f32>, 8>,
     stop_pos: array<vec4<f32>, 2>,
     aux: vec4<i32>,
+    ramp: vec4<u32>,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
 @group(0) @binding(2) var<uniform> g: Globals;
 // A SILHUETA em segmentos (`x0,y0,x1,y1`), no espaço de texel do scratch. Vazia = `n_segs == 0`.
 @group(0) @binding(4) var<storage, read> segs: array<vec4<f32>>;
+// As rampas ASSADAS da corrida (RGBA linear reto); a deste degrau é `g.ramp.xy` = base, comprimento.
+@group(0) @binding(5) var<storage, read> ramp_lut: array<vec4<f32>>;
 
 // ── A TRANSFERÊNCIA sRGB ──────────────────────────────────────────────────────────────────────
 //
@@ -104,6 +107,15 @@ fn stop_at(i: u32) -> vec4<f32> {
 // ⚠️ **Fora do vão dos stops os extremos estendem PLANO** — a mesma escolha do Painter, e a que o
 // Photoshop faz: uma rampa que não cobre `[0,1]` não deve inventar cor além das pontas.
 fn ramp_sample(t: f32) -> vec4<f32> {
+    // A rampa ASSADA (o Motion): a biblioteca de cor já fez a interpolação e o espaço; aqui só a
+    // reconstrução linear entre amostras vizinhas. O host garante comprimento ≥ 2.
+    if (g.ramp.y >= 2u) {
+        let x = clamp(t, 0.0, 1.0) * f32(g.ramp.y - 1u);
+        let i = min(u32(floor(x)), g.ramp.y - 2u);
+        let c0 = ramp_lut[g.ramp.x + i];
+        let c1 = ramp_lut[g.ramp.x + i + 1u];
+        return c0 + (c1 - c0) * (x - f32(i));
+    }
     let n = g.stop_count;
     // Sem stops: a rampa preto→branco, que é a IDENTIDADE em luma.
     if (n == 0u) { return vec4<f32>(srgb_to_linear3(vec3<f32>(t, t, t)), 1.0); }

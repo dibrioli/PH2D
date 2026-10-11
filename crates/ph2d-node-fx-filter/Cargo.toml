@@ -20,6 +20,8 @@ ph2d-color = { path = "../ph2d-color" }
 [dev-dependencies]
 # Os rótulos do seletor são as chaves do vocabulário do painel vetorial: o gate confere a palavra.
 ph2d-i18n = { path = "../ph2d-i18n" }
+# As chaves das leis de mistura conferem-se contra o enum delas.
+ph2d-blend-mode = { path = "../ph2d-blend-mode" }
 
 [lints]
 workspace = true

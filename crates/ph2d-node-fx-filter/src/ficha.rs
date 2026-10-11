@@ -6,7 +6,7 @@ use ph2d_fx_op::FxOp;
 use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 
 use crate::{
-    COMPRIMENTO_DIGITADO, COMPRIMENTO_MAX, FALLOFF_LABELS, KIND_LABELS, NOISE_LABELS, RAMP_LABELS,
+    BLEND_LABELS, COMPRIMENTO_DIGITADO, COMPRIMENTO_MAX, FALLOFF_LABELS, KIND_LABELS, NOISE_LABELS,
     SCOPE_LABELS, param,
 };
 
@@ -54,6 +54,16 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         },
     ),
     modos(param::SCOPE, "node.fx.filter.param.scope", &SCOPE_LABELS),
+    // O degradê inteiro (paradas arrastáveis, cor OKLCH por parada, interpolação e espaço) — um
+    // param de TEXTO precisa do hint para existir na UI; `min/max/step` são inertes aqui.
+    hint(
+        param::RAMP,
+        "node.fx.filter.param.ramp",
+        0.0,
+        0.0,
+        0.0,
+        ParamWidget::Gradient,
+    ),
     slider(param::RADIUS, "node.fx.filter.param.radius", 0.0, L),
     slider(param::OFFSET_X, "node.fx.filter.param.offset_x", -L, L),
     slider(param::OFFSET_Y, "node.fx.filter.param.offset_y", -L, L),
@@ -85,6 +95,16 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         0.01,
         ParamWidget::Slider,
     ),
+    hint(
+        param::BLEND,
+        "node.fx.filter.param.blend",
+        0.0,
+        (FxOp::BLEND_KINDS - 1) as f32,
+        1.0,
+        ParamWidget::Enum {
+            labels: &BLEND_LABELS,
+        },
+    ),
     modos(
         param::FALLOFF,
         "node.fx.filter.param.falloff",
@@ -94,11 +114,6 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param::NOISE_MODE,
         "node.fx.filter.param.noise_mode",
         &NOISE_LABELS,
-    ),
-    modos(
-        param::RAMP_MODE,
-        "node.fx.filter.param.ramp_mode",
-        &RAMP_LABELS,
     ),
     slider(param::SIZE, "node.fx.filter.param.size", 0.0, L),
     hint(

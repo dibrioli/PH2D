@@ -75,6 +75,8 @@ struct Placa {
 #[derive(Default)]
 pub struct MotionFiltro {
     pilha: Vec<NoDoFiltro>,
+    /// Os degradês do Gradient Map já assados, entre quadros.
+    rampas: ph2d_node_fx_filter::RampasAssadas,
     fora: Vec<NodeId>,
     /// Os `Each Shape` depois de um `Whole Layer` (correm na camada).
     na_camada: Vec<NodeId>,
@@ -113,12 +115,25 @@ pub fn pousa_do_sink(tag: u8, com: BlendWith) -> Pousa {
     }
 }
 
+/// **Os degraus que o passe corre** — os ativos da pilha, em pixels de tela, cada um com o seu
+/// degradê assado.
+fn degraus(pilha: &[NoDoFiltro], linear: [f64; 4]) -> Vec<FxOpGpu> {
+    pilha
+        .iter()
+        .filter(|d| d.op.is_active())
+        .map(|d| FxOpGpu {
+            ramp_lut: d.ramp.clone(),
+            ..FxOpGpu::resolve(&d.op, linear)
+        })
+        .collect()
+}
+
 const FORMATO_DA_CAMADA: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 impl MotionFiltro {
     /// **Por quadro, no passo do Motion**: a pilha do fio, os filtros fora dele e a pousa dos sinks.
     pub fn prepara(&mut self, graph: &Graph, sinks: &[NodeId]) {
-        self.pilha = ph2d_node_fx_filter::from_graph(graph);
+        self.pilha = ph2d_node_fx_filter::from_graph_cached(graph, &mut self.rampas);
         self.fora = ph2d_node_fx_filter::fora_do_fio(graph, &self.pilha);
         self.na_camada = ph2d_node_fx_filter::na_camada_apesar_do_scope(&self.pilha);
         self.pousas.clear();
@@ -360,15 +375,8 @@ impl MotionState {
         );
         let arte = crate::lei_da_aparencia::a_arte_desenha(self, self.pump.a_lei());
         let linear = mundo_para_pixel(e.camera, e.window, e.scene_viewport);
-        let resolve = |pilha: &[NoDoFiltro]| -> Vec<FxOpGpu> {
-            pilha
-                .iter()
-                .filter(|d| d.op.is_active())
-                .map(|d| FxOpGpu::resolve(&d.op, linear))
-                .collect()
-        };
         let (por_forma, da_camada) = ph2d_node_fx_filter::partition(&self.filtro.pilha);
-        let (ops_forma, ops_camada) = (resolve(por_forma), resolve(da_camada));
+        let (ops_forma, ops_camada) = (degraus(por_forma, linear), degraus(da_camada, linear));
         let tamanho = e.mundo.size();
         let (gpu_sprites, cpu) =
             sprites_de(&self.gpu_cook, &self.pump.instances, self.gpu_live, arte);

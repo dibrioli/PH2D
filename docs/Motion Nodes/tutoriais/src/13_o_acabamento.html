@@ -238,7 +238,31 @@ discos só entre si (a camada pousa normal); <code>Everything</code> faz as duas
 <code>Everything</code> ou <code>Copies</code>, um filtro em <code>Each Shape</code> trata os discos
 como uma peça só — o cartão do filtro avisa.</div>
 
-<h2>11 · O que isto custa</h2>
+<h2>11 · O degradê de cores</h2>
+<p>No 1.º <code>Filter</code>, mude <code>Effect</code> para <code>Gradient Map</code>. Aparece a linha
+<code>Gradient</code>: uma barra de degradê com bolinhas — as <b>paradas</b>. Cada disco ganha a cor
+do degradê conforme a sua <b>claridade</b>: os escuros pegam a ponta esquerda, os claros a direita.</p>
+<p>Debaixo da barra há quatro tirinhas coloridas, degradês prontos; a 1.ª é o arco-íris. Clique nela.
+Os discos vão do <b>ciano ao violeta</b> — a faixa do arco-íris que a claridade deles alcança.
+Arraste uma bolinha e as cores se movem.</p>
+<p>No editor há ainda um botão que troca o espaço de cor (RGB, HSV, HSL, OKLab, OKLCH) e outro que troca
+a interpolação: eles mudam o <i>caminho</i> entre uma cor e outra, não as cores das paradas.</p>
+<figure class="wide"><img src="../fig/acabamento_degrade.png" alt="os discos com as cores do arco-iris, do ciano ao violeta">
+<figcaption><code>Gradient Map</code> com o arco-íris: ciano nos escuros, violeta nos claros.</figcaption></figure>
+<p><b>Como saber que errou:</b> o degradê não muda a cor dos discos.</p>
+
+<h2>12 · Escurecer em vez de trocar</h2>
+<p>Ainda no 1.º <code>Filter</code>, logo abaixo de <code>Opacity</code> há a linha <code>Blend</code>.
+Mude para <code>Multiply</code>: o arco-íris passa a <b>escurecer</b> a cor de cada disco, em vez de
+a trocar.</p>
+<p><code>Blend</code> só aparece nos efeitos que a usam — com <code>Effect</code> em <code>Blur</code>,
+por exemplo, ela não existe.</p>
+<figure class="wide"><img src="../fig/acabamento_degrade_multiply.png" alt="o arco-iris escurecendo a cor de cada disco">
+<figcaption>Com <code>Multiply</code>: a cor do disco fica, mais escura, tingida pelo degradê.</figcaption></figure>
+<p><b>Como saber que errou:</b> a linha <code>Blend</code> aparece com <code>Effect</code> em
+<code>Blur</code>.</p>
+
+<h2>13 · O que isto custa</h2>
 <p>Medido nesta máquina, na placa de vídeo, com o computador ocupado por outros trabalhos — vale
 como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
 <table>
@@ -258,7 +282,7 @@ como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
 conta. <code>Each Shape</code> custa mais com muitas formas, porque cada uma corre sozinha; com
 poucas formas os dois custam quase o mesmo.</p>
 
-<h2>12 · Se algo não bater</h2>
+<h2>14 · Se algo não bater</h2>
 <table>
   <tr><th>o que você vê</th><th>o que reportar</th></tr>
   <tr><td>o relevo treme com a galáxia a girar</td><td>uma foto e o <code>Effect</code></td></tr>
@@ -267,6 +291,8 @@ poucas formas os dois custam quase o mesmo.</p>
   <tr><td>em <code>Whole Layer</code>, a borda continua entre discos que se tocam</td><td>uma foto</td></tr>
   <tr><td>o efeito sai por cima dos painéis ou do grafo</td><td>uma foto da janela inteira</td></tr>
   <tr><td>a franja aparece no centro</td><td>o valor de <code>Aberration</code></td></tr>
+  <tr><td>o degradê não muda a cor dos discos</td><td>uma foto e o <code>Effect</code></td></tr>
+  <tr><td>a linha <code>Blend</code> aparece com <code>Effect</code> em <code>Blur</code></td><td>uma foto</td></tr>
   <tr><td>o grão mexe com o tempo parado</td><td>se o relógio estava parado mesmo</td></tr>
 </table>
 

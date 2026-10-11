@@ -44,6 +44,7 @@ fn morph(grow_px: f32) -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 
@@ -69,6 +70,7 @@ fn outline(w: f32) -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 

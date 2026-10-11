@@ -130,6 +130,7 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [f32; 2]) -> FxOpGpu 
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 

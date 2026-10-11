@@ -127,6 +127,7 @@ fn blank() -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 

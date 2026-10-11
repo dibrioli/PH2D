@@ -85,7 +85,7 @@ fn sonda_sombra_interna_cercado_contra_sozinho() {
             let mut s = op(FxOp::INNER_SHADOW, 5.3, [0.0, 0.0, 0.0, 1.0]);
             s.offset_px = [6.0, 6.0];
             s.mode = modo;
-            let cercado = corre(w, h, &camada(w, h, &grelha), &[s], &[]);
+            let cercado = corre(w, h, &camada(w, h, &grelha), &[s.clone()], &[]);
             let sozinho = corre(w, h, &camada(w, h, &[(c, c)]), &[s], &[]);
             eprintln!(
                 "[sonda inner] {nome} modo {modo}: miolo do disco central — cercado {:.1} · sozinho {:.1} (255 = sem sombra)",
@@ -172,7 +172,7 @@ fn the_raster_bevel_holds_still_under_subpixel_motion() {
         let (cx, cy) = (24.0 + dx, 24.0 + dx * 0.5);
         let src = camada(w, h, &[(cx, cy)]);
         for (rota, geom) in [("raster", Vec::new()), ("exacto", circulo(cx, cy))] {
-            let out = corre(w, h, &src, &[b], &geom);
+            let out = corre(w, h, &src, &[b.clone()], &geom);
             for r in [2.5, 4.5, 6.0] {
                 let (onda, anel) = ondulacao(&out, w, cx, cy, r);
                 eprintln!(

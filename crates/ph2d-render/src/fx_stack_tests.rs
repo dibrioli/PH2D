@@ -135,7 +135,8 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
     // `tint` impõe. E é ele que obrigou o `UNIFORM_STRIDE` a 512 — dobrá-lo foi medido em **2,345
     // ms contra 2,332** no mesmo frame de 32 formas, ou seja **grátis**.
     // + os 16 do `aux` da PIRÂMIDE do borrão (ciclo 20 W3b do Motion): 320.
-    assert_eq!(core::mem::size_of::<Globals>(), 320);
+    // + os 16 da RAMPA ASSADA (base e comprimento no `ramp_lut`, ZERAR família B): 336.
+    assert_eq!(core::mem::size_of::<Globals>(), 336);
     assert!(
         core::mem::size_of::<Globals>() as u64 <= crate::fx_stack::UNIFORM_STRIDE,
         "o `Globals` não cabe no stride — o offset dinâmico de um passe pisaria no do seguinte"
@@ -324,6 +325,7 @@ fn the_turbulence_warps_in_both_of_its_modes() {
             stops: [[0.0; 4]; 8],
             stop_pos: [[0.0; 4]; 2],
             stop_count: 0,
+            ramp_lut: None,
         };
         for raster_seeded in [false, true] {
             assert_eq!(
@@ -366,6 +368,7 @@ fn a_pointwise_kind_with_its_own_modes_never_falls_into_the_field_plan() {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     };
     // (a) O Gradient Map é POINTWISE nos DOIS modos — o `1` dele é Smooth, assunto do kernel.
     for mode in [0u8, 1] {
@@ -414,6 +417,7 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     };
     for amount in [1.0f32, 4.0, 10.5, 30.0] {
         let reach = op_reach(&op(amount));
@@ -451,6 +455,7 @@ fn morph_op(grow_px: f32) -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 

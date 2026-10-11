@@ -159,6 +159,7 @@ fn sombra_interna(contorno: bool) -> FxOpGpu {
         hue: 0.0,
         sat: 0.0,
         bright: 0.0,
+        ramp_lut: None,
     }
 }
 

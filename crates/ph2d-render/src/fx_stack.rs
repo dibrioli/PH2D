@@ -143,6 +143,9 @@ pub struct FxStackPass {
     /// Os segmentos da silhueta, em espaço de TEXEL do scratch. Grow-only, como as `work`.
     segs: wgpu::Buffer,
     segs_cap: u64,
+    /// As rampas ASSADAS da corrida (o Gradient Map do Motion). Grow-only, como os segmentos.
+    ramps: wgpu::Buffer,
+    ramps_cap: u64,
     work: Option<[Tex; 4]>,
 }
 
@@ -244,12 +247,16 @@ impl FxStackPass {
             mapped_at_creation: false,
         });
         let segs_cap = (std::mem::size_of::<[f32; 4]>() * 64) as u64;
-        let segs = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-render fx_stack segments"),
-            size: segs_cap,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let storage = |label: &str| {
+            gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size: segs_cap,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        };
+        let segs = storage("ph2d-render fx_stack segments");
+        let ramps = storage("ph2d-render fx_stack ramps");
         Self {
             pipeline_ingest,
             pipeline_h,
@@ -269,6 +276,8 @@ impl FxStackPass {
             globals_cap,
             segs,
             segs_cap,
+            ramps,
+            ramps_cap: segs_cap,
             work: None,
         }
     }
@@ -281,6 +290,16 @@ impl FxStackPass {
                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
                 view_dimension: wgpu::TextureViewDimension::D2,
                 multisampled: false,
+            },
+            count: None,
+        };
+        let leitura = |binding: u32| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None,
             },
             count: None,
         };
@@ -312,16 +331,8 @@ impl FxStackPass {
                         },
                         count: None,
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
+                    leitura(4),
+                    leitura(5),
                 ],
             })
     }
@@ -420,6 +431,8 @@ impl FxStackPass {
         }
         self.ensure_work(gpu, w, h);
         self.ensure_segments(gpu, geom);
+        let rampas =
+            crate::fx_stack_res::ensure_ramps(gpu, &mut self.ramps, &mut self.ramps_cap, ops);
         // Slot 0 é o INGEST (sempre) · depois os ops · o resolve é o último.
         let op_passes: usize = ops
             .iter()
@@ -463,7 +476,7 @@ impl FxStackPass {
         };
         let org_map = u32::from(matches!(origem, Origem::Mapa(_)));
         let mut slot = 1usize;
-        for op in ops {
+        for (op, &ramp) in ops.iter().zip(&rampas) {
             let plan = plan_of(op, geom.is_empty());
             // ⚠️ **A pergunta *"contra o QUE este degrau mede?"* tem UMA resposta, e ela é o PLANO.**
             // O finalize do campo escolhe entre o pé exato dos segmentos e a textura semeada
@@ -481,6 +494,7 @@ impl FxStackPass {
             };
             let g = Globals {
                 org_map,
+                ramp,
                 ..Globals::for_op(op, [w, h], org, n_segs)
             };
             match plan {
@@ -654,6 +668,10 @@ impl FxStackPass {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: self.segs.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.ramps.as_entire_binding(),
                 },
             ],
         })

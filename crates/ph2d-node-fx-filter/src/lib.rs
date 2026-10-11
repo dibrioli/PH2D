@@ -13,8 +13,9 @@
 //! por genérico `const`, e por isso nenhum sentinela). Os nomes dos tipos e dos modos são chaves do
 //! nó, e o gate confere cada palavra contra a tabela.
 //!
-//! ⚠️ Fora da ficha, declarado: a lei de MISTURA (`blend` fica Normal — os rótulos dela só a shell
-//! alcança) e a rampa do Gradient Map tem DOIS stops (as duas cores), não os oito da `FxOp`.
+//! A lei de MISTURA (`blend`) aparece nos tipos que a `SPECS` diz que a leem; o degradê do Gradient
+//! Map é uma `ColorRamp` inteira no param de TEXTO [`param::RAMP`] (o editor de gradiente), assada
+//! em tabela ([`bake_ramp`]) — a mesma biblioteca de cor do `fx.glow`.
 
 #![forbid(unsafe_code)]
 
@@ -28,6 +29,7 @@ use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -63,7 +65,10 @@ pub mod param {
     pub const OPACITY: &str = "opacity";
     pub const FALLOFF: &str = "falloff";
     pub const NOISE_MODE: &str = "noise_mode";
-    pub const RAMP_MODE: &str = "ramp_mode";
+    /// A lei de mistura do degrau (o código de `BlendMode`, `0..FxOp::BLEND_KINDS`).
+    pub const BLEND: &str = "blend";
+    /// O degradê do Gradient Map — param de TEXTO (`ph2d_color::serialize_gradient`).
+    pub const RAMP: &str = "ramp";
     pub const SIZE: &str = "size";
     pub const DETAIL: &str = "detail";
     pub const SEED: &str = "seed";
@@ -106,9 +111,9 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         p(param::COLOR2[2], 1.0),
         p(param::COLOR2[3], 1.0),
         p(param::OPACITY, 1.0),
+        p(param::BLEND, 0.0),
         p(param::FALLOFF, 0.0),
         p(param::NOISE_MODE, 0.0),
-        p(param::RAMP_MODE, 0.0),
         p(param::SIZE, 0.25),
         p(param::DETAIL, 3.0),
         p(param::SEED, 0.0),
@@ -152,10 +157,29 @@ pub static NOISE_LABELS: [&str; 2] = [
     "node.opts.node_fx_filter.noise_labels.0",
     "node.opts.node_fx_filter.noise_labels.1",
 ];
-/// Os modos da RAMPA (Gradient Map).
-pub static RAMP_LABELS: [&str; 2] = [
-    "node.opts.node_fx_filter.ramp_labels.0",
-    "node.opts.node_fx_filter.ramp_labels.1",
+/// As leis de MISTURA, na ordem dos códigos — as palavras do `BlendMode` (o gate confere-as contra
+/// o enum, código a código).
+pub static BLEND_LABELS: [&str; FxOp::BLEND_KINDS as usize] = [
+    "node.opts.node_fx_filter.blend_labels.0",
+    "node.opts.node_fx_filter.blend_labels.1",
+    "node.opts.node_fx_filter.blend_labels.2",
+    "node.opts.node_fx_filter.blend_labels.3",
+    "node.opts.node_fx_filter.blend_labels.4",
+    "node.opts.node_fx_filter.blend_labels.5",
+    "node.opts.node_fx_filter.blend_labels.6",
+    "node.opts.node_fx_filter.blend_labels.7",
+    "node.opts.node_fx_filter.blend_labels.8",
+    "node.opts.node_fx_filter.blend_labels.9",
+    "node.opts.node_fx_filter.blend_labels.10",
+    "node.opts.node_fx_filter.blend_labels.11",
+    "node.opts.node_fx_filter.blend_labels.12",
+    "node.opts.node_fx_filter.blend_labels.13",
+    "node.opts.node_fx_filter.blend_labels.14",
+    "node.opts.node_fx_filter.blend_labels.15",
+    "node.opts.node_fx_filter.blend_labels.16",
+    "node.opts.node_fx_filter.blend_labels.17",
+    "node.opts.node_fx_filter.blend_labels.18",
+    "node.opts.node_fx_filter.blend_labels.19",
 ];
 
 /// Onde o degrau corre ([`Scope`]), na ordem dos códigos.
@@ -185,17 +209,14 @@ impl Scope {
     }
 }
 
-/// Os três params de modo e a lista de modos que cada um escolhe — a lista é a do tipo que a
-/// declara na `SPECS`, e o gate de cada param são os tipos com a MESMA lista.
-pub const MODE_PARAMS: [(&str, &[&str]); 3] = [
+/// Os params de modo e a lista de modos que cada um escolhe — a lista é a do tipo que a declara na
+/// `SPECS`, e o gate de cada param são os tipos com a MESMA lista. Os modos de quem lê a RAMPA
+/// (Linear/Smooth do Gradient Map) são a interpolação do editor de gradiente, não um param.
+pub const MODE_PARAMS: [(&str, &[&str]); 2] = [
     (param::FALLOFF, FxOp::SPECS[FxOp::GLOW as usize].modes),
     (
         param::NOISE_MODE,
         FxOp::SPECS[FxOp::TURBULENCE as usize].modes,
-    ),
-    (
-        param::RAMP_MODE,
-        FxOp::SPECS[FxOp::GRADIENT_MAP as usize].modes,
     ),
 ];
 
@@ -206,13 +227,14 @@ pub const MODE_PARAMS: [(&str, &[&str]); 3] = [
 pub enum Knob {
     Radius,
     Offset,
-    /// A 1.ª cor — e a 1.ª ponta da rampa.
     Color,
-    /// A 2.ª cor — e a 2.ª ponta da rampa.
     Color2,
     Noise,
     Grow,
     Adjust,
+    Blend,
+    /// O degradê ([`param::RAMP`]).
+    Ramp,
 }
 
 /// O tipo `kind` lê o knob?
@@ -222,11 +244,13 @@ pub const fn takes(kind: usize, knob: Knob) -> bool {
     match knob {
         Knob::Radius => s.radius_label.is_some(),
         Knob::Offset => s.offset_labels.is_some(),
-        Knob::Color => s.color_label.is_some() || s.takes_ramp,
-        Knob::Color2 => s.color_b_label.is_some() || s.takes_ramp,
+        Knob::Color => s.color_label.is_some(),
+        Knob::Color2 => s.color_b_label.is_some(),
         Knob::Noise => s.noise_labels.is_some(),
         Knob::Grow => s.grow_label.is_some(),
         Knob::Adjust => s.adjust_labels.is_some(),
+        Knob::Blend => s.takes_blend,
+        Knob::Ramp => s.takes_ramp,
     }
 }
 
@@ -307,7 +331,8 @@ const GROW_KINDS: [i32; count(Some(Knob::Grow), &[])] = kinds_where(Some(Knob::G
 const ADJUST_KINDS: [i32; count(Some(Knob::Adjust), &[])] = kinds_where(Some(Knob::Adjust), &[]);
 const FALLOFF_KINDS: [i32; count(None, MODE_PARAMS[0].1)] = kinds_where(None, MODE_PARAMS[0].1);
 const NOISE_MODE_KINDS: [i32; count(None, MODE_PARAMS[1].1)] = kinds_where(None, MODE_PARAMS[1].1);
-const RAMP_MODE_KINDS: [i32; count(None, MODE_PARAMS[2].1)] = kinds_where(None, MODE_PARAMS[2].1);
+const BLEND_GATE_KINDS: [i32; count(Some(Knob::Blend), &[])] = kinds_where(Some(Knob::Blend), &[]);
+const RAMP_KINDS: [i32; count(Some(Knob::Ramp), &[])] = kinds_where(Some(Knob::Ramp), &[]);
 
 const fn gate(param: &'static str, values: &'static [i32]) -> ParamGate {
     ParamGate {
@@ -326,7 +351,8 @@ pub static PARAM_GATES: &[ParamGate] = &[
     gate(param::COLOR2[0], &COLOR2_KINDS),
     gate(param::FALLOFF, &FALLOFF_KINDS),
     gate(param::NOISE_MODE, &NOISE_MODE_KINDS),
-    gate(param::RAMP_MODE, &RAMP_MODE_KINDS),
+    gate(param::BLEND, &BLEND_GATE_KINDS),
+    gate(param::RAMP, &RAMP_KINDS),
     gate(param::SIZE, &NOISE_KINDS),
     gate(param::DETAIL, &NOISE_KINDS),
     gate(param::SEED, &NOISE_KINDS),
@@ -344,6 +370,8 @@ pub struct NoDoFiltro {
     pub no: NodeId,
     pub op: FxOp,
     pub scope: Scope,
+    /// O degradê ASSADO ([`bake_ramp`]); `None` = os stops da `op` (o preto→branco de fábrica).
+    pub ramp: Option<Arc<[[f32; 4]]>>,
 }
 
 /// ⭐ **A pilha partida em DOIS estágios pela ordem do fio** — porta única de *«que degraus correm
@@ -463,15 +491,10 @@ pub fn op_of(graph: &Graph, no: NodeId) -> FxOp {
         op.sat = read(ov, param::SATURATION);
         op.bright = read(ov, param::BRIGHTNESS);
     }
-    if FxOp::SPECS[k].takes_ramp {
-        op.stops[0] = op.color;
-        op.stops[1] = op.color_b;
-        op.stop_pos[0] = 0.0;
-        op.stop_pos[1] = 1.0;
-        op.stop_count = 2;
+    if takes(k, Knob::Blend) {
+        op.blend = read_u8(ov, param::BLEND, FxOp::BLEND_KINDS - 1);
     }
     op.enabled = true;
-    op.blend = FxOp::BLEND_NORMAL;
     op
 }
 
@@ -490,14 +513,14 @@ pub fn card_values(op: &FxOp) -> Vec<(&'static str, f32)> {
             (param::OFFSET_Y, op.offset[1]),
         ]);
     }
-    let ramp = FxOp::SPECS[k].takes_ramp;
     if takes(k, Knob::Color) {
-        let c = card_color(if ramp { op.stops[0] } else { op.color });
-        v.extend(param::COLOR.into_iter().zip(c));
+        v.extend(param::COLOR.into_iter().zip(card_color(op.color)));
     }
     if takes(k, Knob::Color2) {
-        let c = card_color(if ramp { op.stops[1] } else { op.color_b });
-        v.extend(param::COLOR2.into_iter().zip(c));
+        v.extend(param::COLOR2.into_iter().zip(card_color(op.color_b)));
+    }
+    if takes(k, Knob::Blend) {
+        v.push((param::BLEND, f32::from(op.blend)));
     }
     if let Some((nome, _)) = mode_param_of(k) {
         v.push((nome, f32::from(op.mode)));
@@ -553,6 +576,12 @@ pub fn switch_kind(graph: &mut Graph, no: NodeId, novo: u8) {
 /// nenhum no fio.
 #[must_use]
 pub fn from_graph(graph: &Graph) -> Vec<NoDoFiltro> {
+    from_graph_cached(graph, &mut RampasAssadas::default())
+}
+
+/// O [`from_graph`] que reaproveita os degradês já assados (`rampas`, entre quadros).
+#[must_use]
+pub fn from_graph_cached(graph: &Graph, rampas: &mut RampasAssadas) -> Vec<NoDoFiltro> {
     let mut saidas: Vec<NodeId> = graph
         .nodes()
         .iter()
@@ -568,6 +597,7 @@ pub fn from_graph(graph: &Graph) -> Vec<NoDoFiltro> {
             .map(|n| n.type_name.as_str())
     };
     let mut vistos = BTreeSet::new();
+    let mut usados = BTreeSet::new();
     let mut pilha = Vec::new();
     for saida in saidas {
         let mut fio = Vec::new();
@@ -582,12 +612,20 @@ pub fn from_graph(graph: &Graph) -> Vec<NoDoFiltro> {
             }
             cur = acima;
         }
-        pilha.extend(fio.into_iter().rev().map(|no| NoDoFiltro {
-            no,
-            op: op_of(graph, no),
-            scope: Scope::of(read(graph.node_param_overrides(no), param::SCOPE)),
-        }));
+        for no in fio.into_iter().rev() {
+            let ramp = ramp_text(graph, no).and_then(|t| {
+                usados.insert(t);
+                rampas.pega(t)
+            });
+            pilha.push(NoDoFiltro {
+                no,
+                op: op_of(graph, no),
+                scope: Scope::of(read(graph.node_param_overrides(no), param::SCOPE)),
+                ramp,
+            });
+        }
     }
+    rampas.guarda_so(&usados);
     pilha
 }
 
@@ -642,7 +680,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 mod ficha;
 use ficha::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
+mod rampa;
+use rampa::ramp_text;
+pub use rampa::{RampasAssadas, bake_ramp};
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ramp_tests.rs"]
+mod ramp_tests;

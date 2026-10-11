@@ -55,6 +55,7 @@ fn inner_shadow(blend: u8) -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 
@@ -79,6 +80,7 @@ fn overlay(tint: [f32; 4], blend: u8) -> FxOpGpu {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     }
 }
 
@@ -362,8 +364,9 @@ fn a_law_on_a_kind_that_does_not_take_one_moves_nothing_on_the_device() {
             stops: [[0.0; 4]; 8],
             stop_pos: [[0.0; 4]; 2],
             stop_count: 0,
+            ramp_lut: None,
         };
-        let plain = run(&mut pass, &gpu, &[op]);
+        let plain = run(&mut pass, &gpu, &[op.clone()]);
         op.blend = 1; // Multiply — a lei mais destrutiva que há sobre um fundo escuro.
         let marked = run(&mut pass, &gpu, &[op]);
         let differing = plain.iter().zip(&marked).filter(|(a, b)| a != b).count();
@@ -413,6 +416,7 @@ fn measure_the_smoke_scene_pairs() {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     };
     const CYAN: [f32; 4] = [0.1, 0.9, 1.0, 1.0];
     const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -456,23 +460,35 @@ fn measure_the_smoke_scene_pairs() {
         acc / f64::from(n)
     };
     for (label, ops) in [
-        ("base (só o bevel)          ", vec![bevel]),
-        ("1) overlay ciano NORMAL    ", vec![bevel, overlay(CYAN, 0)]),
-        ("2) overlay ciano MULTIPLY  ", vec![bevel, overlay(CYAN, 1)]),
+        ("base (só o bevel)          ", vec![bevel.clone()]),
+        (
+            "1) overlay ciano NORMAL    ",
+            vec![bevel.clone(), overlay(CYAN, 0)],
+        ),
+        (
+            "2) overlay ciano MULTIPLY  ",
+            vec![bevel.clone(), overlay(CYAN, 1)],
+        ),
         (
             "4) overlay ciano COLOR     ",
-            vec![bevel, overlay(CYAN, 18)],
+            vec![bevel.clone(), overlay(CYAN, 18)],
         ),
         (
             "7) overlay branco NORMAL   ",
-            vec![bevel, overlay(WHITE, 0)],
+            vec![bevel.clone(), overlay(WHITE, 0)],
         ),
         (
             "8) overlay branco OVERLAY  ",
-            vec![bevel, overlay(WHITE, 9)],
+            vec![bevel.clone(), overlay(WHITE, 9)],
         ),
-        ("5) inner shadow roxa NORMAL", vec![bevel, inner_shadow(0)]),
-        ("6) inner shadow roxa MULTIP", vec![bevel, inner_shadow(1)]),
+        (
+            "5) inner shadow roxa NORMAL",
+            vec![bevel.clone(), inner_shadow(0)],
+        ),
+        (
+            "6) inner shadow roxa MULTIP",
+            vec![bevel.clone(), inner_shadow(1)],
+        ),
     ] {
         let px = run(&mut pass, &gpu, &ops);
         eprintln!(

@@ -122,8 +122,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(crate) const LUT_QUENTE: &str = "docs/Motion Nodes/tutoriais/luts/quente.cube";
 
 /// Os passos que [`passo`] reconhece, pela ordem do roteiro (`0` = a cena como abre).
-pub(crate) const PASSOS: [&str; 14] = [
-    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8", "9",
+pub(crate) const PASSOS: [&str; 16] = [
+    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8", "9", "10", "11",
 ];
 
 /// **Um passo do roteiro já feito** — `PH2D_ACABAMENTO_PASSO=<passo>`, a porta das FOTOS: os
@@ -152,6 +152,15 @@ pub(crate) fn passo(g: &mut Graph, c: &Cena, n: &str) -> bool {
         "8" => g.set_param(c.lente, l::GRAIN, 0.4),
         // A mistura (W4b, doc 129 §3.5): a saída em `Add`, a camada filtrada pousa somando.
         "9" => g.set_param(c.saida, ph2d_eval_motion::SINK_BLEND_PARAM, 1.0),
+        // O degradê inteiro do Gradient Map e a lei de mistura (ZERAR família B).
+        "10" | "11" => {
+            ph2d_node_fx_filter::switch_kind(g, c.forma, ph2d_ecs::FxOp::GRADIENT_MAP);
+            let arco = ph2d_color::serialize_gradient(&ph2d_color::GradientPreset::Rainbow.ramp());
+            g.set_text_param(c.forma, ph2d_node_fx_filter::param::RAMP, arco);
+            if n == "11" {
+                g.set_param(c.forma, ph2d_node_fx_filter::param::BLEND, 1.0);
+            }
+        }
         _ => return false,
     }
     true
@@ -194,11 +203,20 @@ pub(super) fn announce() {
          quente.cube` puxa as sombras para o azul-petroleo e as luzes para o laranja.\n\
          (8) Abra `Film Grain` e ponha `Grain` em 0,4: um chuvisco fino que mexe a cada\n    \
          quadro. Pare o tempo: o grao PARA.\n\
+         (10) No 1.o `Filter`, troque `Effect` para `Gradient Map`: aparece a linha `Gradient`, uma\n    \
+         barra de degrade com bolinhas (as paradas). Cada disco ganha a cor do degrade pela sua\n    \
+         CLARIDADE: os escuros pegam a ponta esquerda, os claros a direita. Debaixo da barra ha'\n    \
+         quatro tirinhas coloridas (degrades prontos): clique na 1.a, o arco-iris. Os discos vao\n    \
+         do CIANO ao VIOLETA (a faixa do arco-iris que a claridade deles alcanca). Arraste uma\n    \
+         bolinha da barra: as cores dos discos andam junto.\n\
+         (11) Ainda no 1.o, a linha `Blend` (logo abaixo de `Opacity`): troque para `Multiply`. O\n    \
+         arco-iris passa a ESCURECER a cor de cada disco em vez de a trocar.\n\
          \n\
          DEU ERRADO se: o relevo tremer com a galaxia a girar; se em `Each Shape` os discos do meio\n\
          tiverem sombra interna diferente dos da beira; se em `Whole Layer` a borda continuar entre\n\
          discos que se tocam; se o efeito sair por cima dos paineis ou do grafo; se a franja\n\
-         aparecer no centro; ou se o grao continuar a mexer com o tempo parado.\n"
+         aparecer no centro; se o grao continuar a mexer com o tempo parado; se o degrade nao\n\
+         mudar a cor dos discos; ou se a linha `Blend` aparecer com o `Effect` em `Blur`.\n"
     );
 }
 

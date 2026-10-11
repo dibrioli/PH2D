@@ -9,7 +9,7 @@
 ///
 /// A conversão mundo→pixel é [`FxOpGpu::resolve`], a porta ÚNICA dos dois autores (o Vector e a
 /// camada do Motion): o passe não sabe o que é uma câmera, só a parte LINEAR dela.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FxOpGpu {
     /// `0` Blur · `1` Glow · `2` Drop Shadow (os códigos do `ph2d_ecs::FxOp`).
     pub kind: u8,
@@ -61,6 +61,10 @@ pub struct FxOpGpu {
     pub stop_pos: [[f32; 4]; 2],
     /// Quantos stops valem (`0` = a rampa preto→branco, a identidade em luma).
     pub stop_count: u32,
+    /// **A rampa ASSADA** (o Gradient Map do Motion): [`ph2d_fx_op::FxOp::RAMP_LUT_TEXELS`]
+    /// amostras uniformes de `[0,1]`, RGBA LINEAR reto, o alfa é a força. `None` = os `stops`, a lei
+    /// do Vector, ao bit.
+    pub ramp_lut: Option<std::sync::Arc<[[f32; 4]]>>,
 }
 
 impl FxOpGpu {
@@ -93,6 +97,7 @@ impl FxOpGpu {
             stops,
             stop_pos,
             stop_count,
+            ramp_lut: None,
             noise_scale_px: (o.scale * cam_scale).max(0.0),
             detail: o.detail_clamped(),
             seed: o.seed,

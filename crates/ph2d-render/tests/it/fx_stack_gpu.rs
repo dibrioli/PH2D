@@ -277,7 +277,7 @@ fn the_order_of_the_stack_changes_the_picture() {
         pass.run(&gpu, &src, &dst, w, h, ops, &[]);
         readback(&gpu, &dst, w, h)
     };
-    let a = render(&mut pass, &[glow, blur]);
+    let a = render(&mut pass, &[glow.clone(), blur.clone()]);
     let b = render(&mut pass, &[blur, glow]);
 
     let differing = a.iter().zip(&b).filter(|(x, y)| x != y).count();
@@ -350,7 +350,7 @@ fn the_cost_of_a_stack_is_linear_in_the_number_of_ops() {
     let one = op(0, 8.0, BLACK);
     eprintln!("[fx-stack] custo por profundidade de pilha, {w}x{h}, sigma 8 px:");
     for n in [0usize, 1, 2, 3, 4, 6] {
-        let ops: Vec<FxOpGpu> = std::iter::repeat_n(one, n).collect();
+        let ops: Vec<FxOpGpu> = std::iter::repeat_n(one.clone(), n).collect();
         // Aquece (compilação de pipeline / alocação das temps) antes de medir.
         pass.run(&gpu, &src, &dst, w, h, &ops, &[]);
         gpu.device
@@ -375,8 +375,8 @@ fn the_cost_of_a_stack_is_linear_in_the_number_of_ops() {
 #[test]
 fn the_reach_sums_along_the_stack_and_leans_the_way_the_shadow_falls() {
     let blur = op(0, 4.0, BLACK);
-    let (l1, t1, r1, b1) = stack_reach(&[blur]);
-    let (l2, t2, r2, b2) = stack_reach(&[blur, blur]);
+    let (l1, t1, r1, b1) = stack_reach(std::slice::from_ref(&blur));
+    let (l2, t2, r2, b2) = stack_reach(&[blur.clone(), blur.clone()]);
     assert_eq!(
         (l2, t2, r2, b2),
         (l1 * 2, t1 * 2, r1 * 2, b1 * 2),

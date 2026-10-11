@@ -107,6 +107,9 @@ pub(crate) struct Globals {
     /// Os passes da PIRÂMIDE do borrão (`fx_stack_piramide`): as dimensões de entrada/de baixo, o
     /// fator, e as marcas «1.º nível» / «já é a fonte». Zeros = o caminho de sempre.
     pub(crate) aux: [i32; 4],
+    /// A rampa ASSADA deste degrau no buffer `ramp_lut` (binding 5): `[base, comprimento, 0, 0]`.
+    /// Comprimento `0` = os `stops` (o Vector, sempre).
+    pub(crate) ramp: [u32; 4],
 }
 
 impl Globals {
@@ -153,6 +156,7 @@ impl Globals {
             stops: op.stops,
             stop_pos: op.stop_pos,
             aux: [0; 4],
+            ramp: [0; 4],
         }
     }
 }
@@ -191,6 +195,7 @@ impl Globals {
             stops: [[0.0; 4]; 8],
             stop_pos: [[0.0; 4]; 2],
             aux: [0; 4],
+            ramp: [0; 4],
         }
     }
 }
@@ -218,6 +223,44 @@ pub(crate) fn ensure_segments(
         });
     }
     gpu.queue.write_buffer(segs, 0, bytemuck::cast_slice(geom));
+}
+
+/// **As rampas ASSADAS da corrida, uma atrás da outra**, num buffer grow-only (o mesmo regime dos
+/// segmentos: nunca encolhe a zero). Devolve, por degrau, o `[base, comprimento, 0, 0]` do
+/// [`Globals::ramp`]; sem rampa nenhuma o buffer fica intocado.
+pub(crate) fn ensure_ramps(
+    gpu: &GpuContext,
+    buf: &mut wgpu::Buffer,
+    cap: &mut u64,
+    ops: &[crate::FxOpGpu],
+) -> Vec<[u32; 4]> {
+    let mut dados: Vec<[f32; 4]> = Vec::new();
+    let onde = ops
+        .iter()
+        .map(|op| match op.ramp_lut.as_deref() {
+            Some(lut) if lut.len() >= 2 => {
+                let base = u32::try_from(dados.len()).unwrap_or(u32::MAX);
+                dados.extend_from_slice(lut);
+                [base, u32::try_from(lut.len()).unwrap_or(u32::MAX), 0, 0]
+            }
+            _ => [0; 4],
+        })
+        .collect();
+    if dados.is_empty() {
+        return onde;
+    }
+    let need = std::mem::size_of_val(dados.as_slice()) as u64;
+    if need > *cap {
+        *cap = need.next_power_of_two();
+        *buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render fx_stack ramps"),
+            size: *cap,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+    }
+    gpu.queue.write_buffer(buf, 0, bytemuck::cast_slice(&dados));
+    onde
 }
 
 /// As texturas de trabalho, **grow-only**: uma cena com formas de tamanhos diferentes não paga uma

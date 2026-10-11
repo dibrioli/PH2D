@@ -88,18 +88,19 @@ fn the_field_pass_is_linear_in_the_segment_count_and_the_cap_fits_a_frame() {
         stops: [[0.0; 4]; 8],
         stop_pos: [[0.0; 4]; 2],
         stop_count: 0,
+        ramp_lut: None,
     };
     let time = |pass: &mut FxStackPass, segs: &[[f32; 4]]| -> f64 {
         // Aquece (compila pipelines, aloca) e só então mede — e o readback força o fim do trabalho,
         // senão o `submit` volta antes de a GPU ter feito qualquer coisa.
         for _ in 0..2 {
-            pass.run(&gpu, &src, &dst, W, H, &[op], segs);
+            pass.run(&gpu, &src, &dst, W, H, std::slice::from_ref(&op), segs);
             let _ = readback(&gpu, &dst, W, H);
         }
         let t = std::time::Instant::now();
         const N: u32 = 4;
         for _ in 0..N {
-            pass.run(&gpu, &src, &dst, W, H, &[op], segs);
+            pass.run(&gpu, &src, &dst, W, H, std::slice::from_ref(&op), segs);
             let _ = readback(&gpu, &dst, W, H);
         }
         t.elapsed().as_secs_f64() * 1000.0 / f64::from(N)

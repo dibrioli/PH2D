@@ -91,6 +91,8 @@ override MEDIA_NO_EIXO: bool = true;
 // ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
 // nesta meia-largura (texels das cascatas; 0 = no ponto): ver [`c0_ao_longo_da_face`].
 override C0_AO_LONGO_DA_FACE: f32 = 0.0;
+// ⭐ W5d — a MEDIANA (por canal) dos pontos ao longo da face, não a média: ver [`c0_ao_longo_da_face`].
+override C0_AO_LONGO_MEDIANA: bool = false;
 const SEM_SEMENTE: u32 = 0xffffffffu;
 
 // A abertura do disco na penumbra: `RAIOS_DIRETOS + 1` raios FIXOS nas fronteiras de
@@ -481,17 +483,45 @@ fn c0_ao_longo_da_face(P: vec2<f32>, P0: vec2<f32>) -> vec3<f32> {
     }
     let n = d / m;
     let t = vec2<f32>(-n.y, n.x) * (0.5 * C0_AO_LONGO_DA_FACE);
-    var s = c0_em(P);
-    var k = 1.0;
+    var v: array<vec3<f32>, 5>;
+    v[0] = c0_em(P);
+    var k = 1u;
     for (var i = -2; i <= 2; i++) {
         let q = P + t * f32(i);
         if i == 0 || meio(q + 0.25 * n).tau <= 0.0 || meio(q - n).tau > 0.0 {
             continue;
         }
-        s += c0_em(q);
-        k += 1.0;
+        v[k] = c0_em(q);
+        k++;
     }
-    return s / k;
+    if !C0_AO_LONGO_MEDIANA {
+        var s = vec3<f32>(0.0);
+        for (var i = 0u; i < k; i++) {
+            s += v[i];
+        }
+        return s / f32(k);
+    }
+    // A mediana por canal (ordenação por inserção de ≤ 5): tira o ruído de sonda para sonda sem
+    // arrastar um DEGRAU ao longo da face — junto a um canto, a cascata já vaza a luz do outro lado por
+    // ~2 texels, e a média espalhava-o mais 2.
+    var r = vec3<f32>(0.0);
+    for (var c = 0; c < 3; c++) {
+        var o: array<f32, 5>;
+        for (var i = 0u; i < k; i++) {
+            let x = v[i][c];
+            var j = i;
+            loop {
+                if j == 0u || o[j - 1u] <= x {
+                    break;
+                }
+                o[j] = o[j - 1u];
+                j--;
+            }
+            o[j] = x;
+        }
+        r[c] = select(o[k / 2u], 0.5 * (o[k / 2u - 1u] + o[k / 2u]), k % 2u == 0u);
+    }
+    return r;
 }
 
 // ⭐ O ponto da FRONTEIRA entre `dentro` (num opaco) e `fora` (um texel exterior), do lado de fora —

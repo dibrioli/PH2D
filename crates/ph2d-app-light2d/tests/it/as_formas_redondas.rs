@@ -481,14 +481,15 @@ fn variacao(fl: &Fluencia, pts: &[[f64; 2]]) -> f64 {
 }
 
 /// O teto da variação do anel de DENTRO (0,65 e 0,9 do raio) sobre a do anel logo FORA (+2,5 texels),
-/// com o rebote — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`, zoom 2,5): o disco 0,979 · a elipse 0,981; sem
-/// a média 1,014 · 1,109 (a conta é determinística: não há relógio nela).
-const TETO_RISCOS: f64 = 1.0;
+/// com o rebote — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`, zoom 2,5): pela mediana o disco 0,987 · a elipse
+/// 1,033 (pela média 0,979 · 0,981, mas ela espalha a luz junto a um canto); sem nada 1,014 · 1,109 (a
+/// conta é determinística: não há relógio nela).
+const TETO_RISCOS: f64 = 1.05;
 
 /// ⭐⭐ **GATE — o interior com o rebote não sai em riscos**: as sondas da cascata coladas a uma
 /// superfície que reflete variam ±15 % de uma para a outra e a lei do interior projetava esse ruído até
 /// ao centro (as fatias do disco com o rebote, cena 5); a c0 do ponto de fronteira pela média AO LONGO
-/// da face (`Config::c0_ao_longo_da_face`) tira-o. A régua: o disco e a elipse (polígonos) com o rebote
+/// da face (`Config::c0_ao_longo_da_face`, pela mediana) tira-o. A régua: o disco e a elipse (polígonos) com o rebote
 /// (60 quadros) no zoom 2,5 — a variação do anel de dentro não passa a do de fora (o interior só
 /// projeta a borda); o controlo sem a média, na mesma corrida.
 #[test]
@@ -508,11 +509,12 @@ fn o_interior_com_o_rebote_nao_sai_em_riscos() {
             ..config(&gpu, a, false)
         };
         let tx = cfg.grade.texel_m / f64::from(cfg.fina);
-        let ler = |face: f32| {
+        let ler = |face: f32, mediana: bool| {
             let mut s = Solver::novo(
                 &gpu,
                 Config {
                     c0_ao_longo_da_face: face,
+                    c0_ao_longo_mediana: mediana,
                     ..cfg
                 },
             )
@@ -531,8 +533,11 @@ fn o_interior_com_o_rebote_nao_sai_em_riscos() {
         };
         let fora = anel_de(1.0, 2.5 * tx);
         for (nome, fl) in [
-            ("produto", ler(cfg.c0_ao_longo_da_face)),
-            ("sem a média", ler(0.0)),
+            (
+                "produto",
+                ler(cfg.c0_ao_longo_da_face, cfg.c0_ao_longo_mediana),
+            ),
+            ("sem a média", ler(0.0, false)),
         ] {
             let base = variacao(&fl, &fora);
             let pior = [0.65, 0.9]
@@ -559,3 +564,77 @@ fn o_interior_com_o_rebote_nao_sai_em_riscos() {
         falhas.join(" · ")
     );
 }
+
+/// ⭐⭐ **GATE — junto a um canto, a face lê a SUA luz**: a média da c0 ao longo da face só aceita pontos
+/// que continuam sobre ela. A régua: uma parede de 0,2 × 1 m e um corpo que brilha em cima à esquerda (só
+/// nas cascatas, sem lâmpada): a face DIREITA está na sombra e o espaço acima do canto de cima-direita
+/// está aceso. Os texels do interior colados à face direita a 1–2 texels das cascatas do canto contra o
+/// gabarito (a face direita); a tangente dela passa do canto e lia a luz de cima.
+#[test]
+fn junto_a_um_canto_a_face_le_a_sua_luz() {
+    use ph2d_light2d_ecs::{Emissor, Oclusor};
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let cena = CenaDeLuz {
+        emissores: vec![Emissor::Poligono {
+            vertices: (0..16)
+                .map(|k| {
+                    let a = std::f32::consts::TAU * k as f32 / 16.0;
+                    [-0.5 + 0.12 * a.cos(), 0.95 + 0.12 * a.sin()]
+                })
+                .collect(),
+            radiancia: [4.0; 3],
+            alcance_m: f32::INFINITY,
+        }],
+        oclusores: vec![Oclusor {
+            vertices: vec![[-0.1, -0.5], [0.1, -0.5], [0.1, 0.5], [-0.1, 0.5]],
+            opacidade: 1.0,
+            albedo: [0.0; 3],
+        }],
+        luzes: 1,
+        ..Default::default()
+    };
+    let a = vista_em(2.5, [0.0, 0.4]);
+    let cfg = config(&gpu, a, false);
+    let tc = cfg.grade.texel_m;
+    let tf = tc / f64::from(cfg.fina);
+    let ler = |face: f32, mediana: bool| {
+        let mut s = Solver::novo(
+            &gpu,
+            Config {
+                c0_ao_longo_da_face: face,
+                c0_ao_longo_mediana: mediana,
+                ..cfg
+            },
+        )
+        .expect("solver");
+        let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+        s.regiao_fina(i, f);
+        s.quadro(&gpu, &cena);
+        fluencia_lida(&gpu, &s)
+    };
+    let (fl, fl0) = (ler(cfg.c0_ao_longo_da_face, cfg.c0_ao_longo_mediana), ler(0.0, false));
+    let acima = ph2d_light2d_ref::fluencia(&cena, [0.1 + tf, 0.5 + 2.0 * tc])[1];
+    let mut pior: f64 = 0.0;
+    for k in [2.0, 3.0, 4.0] {
+        let p = [0.1 - 0.5 * tf, 0.5 - k * tc];
+        let (g, g0, r) = (fl.amostra(p), fl0.amostra(p), ph2d_light2d_ref::fluencia(&cena, p)[1]);
+        eprintln!("canto · {k} texels do canto: placa {g:.4} (sem a média {g0:.4}) · gabarito {r:.4} (acima do canto {acima:.4})");
+        pior = pior.max((g - r).abs() / acima);
+    }
+    assert!(
+        acima > 0.0,
+        "o espaço acima do canto não está aceso — a régua não vê a outra luz"
+    );
+    assert!(
+        pior <= TETO_CANTO,
+        "a face na sombra lê a luz do outro lado do canto ({pior:.3} da luz de cima)"
+    );
+}
+
+/// O erro dos texels da face na sombra a 2 · 3 · 4 texels das cascatas do canto, relativo à luz acima
+/// dele — MEDIDO (RTX 5060 Ti, zoom 2,5): a mediana 0,085 (0,112 · 0,018 · 0 da luz 1,31); a média
+/// 0,23; sem nada 0,116 (a cascata já vaza ~2 texels — ABERTO).
+const TETO_CANTO: f64 = 0.10;

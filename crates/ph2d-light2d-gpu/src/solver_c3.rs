@@ -188,6 +188,10 @@ impl C3 {
             ("CELULA_PREENCHE", f64::from(cfg.preenchimento.unwrap_or(1))),
             ("MEDIA_NO_EIXO", f64::from(u8::from(cfg.media_no_eixo))),
             ("C0_AO_LONGO_DA_FACE", f64::from(cfg.c0_ao_longo_da_face)),
+            (
+                "C0_AO_LONGO_MEDIANA",
+                f64::from(u8::from(cfg.c0_ao_longo_mediana)),
+            ),
             ("BORDA_EXATA", f64::from(u8::from(cfg.borda_exata))),
         ];
         let bordas = match cfg.refino {

@@ -154,6 +154,8 @@ pub struct Config {
     /// nesta meia-largura em texels das cascatas (o `C0_AO_LONGO_DA_FACE`; 0 = no ponto): as sondas
     /// coladas a uma superfície que reflete variam ±15 % de uma para a outra.
     pub c0_ao_longo_da_face: f32,
+    /// ⭐ W5d — a MEDIANA dos pontos ao longo da face (o `C0_AO_LONGO_MEDIANA`), não a média.
+    pub c0_ao_longo_mediana: bool,
     /// ⭐ W5d — o INTERIOR de um opaco (a lei F3 e a luz lida na fronteira) decide «dentro» pela
     /// borda EXATA da cobertura (o `c3_borda.wgsl`, o AAEDT; o `BORDA_EXATA` do `c2_rc.wgsl`);
     /// `false` = o iso-½ da bilinear, que se desvia até ~0,08 texel (a passagem luz/sombra serrilhada
@@ -178,7 +180,11 @@ pub struct Holografica {
 
 /// ⭐ W5d — a meia-largura da média da c0 ao longo da face (texels das cascatas) — MEDIDA (rodada
 /// `medida_luz2d_w5d`, o disco e a elipse da cena 5 com o rebote): 1 e 2 alisam o interior sem custo
-/// (a elipse a 0,9 do raio: excesso de variação +0,02 → −0,17 → −0,26); 2 apaga os riscos na foto.
+/// (a elipse a 0,9 do raio: excesso de variação +0,02 → −0,17 → −0,26); 2 apaga os riscos na foto. Pela
+/// MEDIANA (o `Config::c0_ao_longo_mediana`): a média espalhava a luz que a cascata vaza junto a um canto
+/// (o portão `junto_a_um_canto_a_face_le_a_sua_luz`: a 2 · 3 texels do canto, 0,15 · 0,02 sem nada →
+/// 0,30 · 0,17 com a média → 0,11 · 0,02 com a mediana), ao preço de menos riscos tirados (a elipse
+/// com o rebote 1,109 → 0,981 com a média, → 1,033 com a mediana).
 pub const C0_AO_LONGO_DA_FACE_PADRAO: f32 = 2.0;
 
 /// A cascata holográfica por omissão — ver a rodada `medida_luz2d_w5c`.
@@ -315,6 +321,7 @@ impl Config {
             fronteira_na_face: true,
             media_no_eixo: true,
             c0_ao_longo_da_face: C0_AO_LONGO_DA_FACE_PADRAO,
+            c0_ao_longo_mediana: true,
             borda_exata: true,
             holografica: None,
         }

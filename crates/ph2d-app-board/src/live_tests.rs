@@ -172,6 +172,95 @@ fn a_wrong_code_is_said_and_nothing_opens() {
     service(&mut host);
 }
 
+/// ⭐ O quadro da sala SAI do anfitrião sem «End session» — a aba apagada, outro projecto carregado
+/// (os ids recomeçam: o mesmo id seria OUTRO quadro), a janela fechada —, e a sala fecha como «End
+/// session»: a votação aberta acaba e o resultado chega à Bia, e ela sai com o adeus — nunca passa por
+/// «a religar» (antes: os fios cortavam-se no `Drop` e ela religava até a porta a recusar).
+#[test]
+fn the_room_closes_like_end_session_when_its_board_leaves_the_host() {
+    type Leave = fn(&mut HeroScreen, ph2d_board_model::BoardId);
+    let ways: [(&str, Leave); 3] = [
+        ("apagar a aba", |h, id| {
+            assert!(h.documents.remove(id).is_some());
+        }),
+        ("carregar outro projecto", |h, _| {
+            let mut other = ph2d_board_model::BoardSet::default();
+            let id = other.create("Outro".into());
+            rect(other.get_mut(id).unwrap(), 0.0);
+            h.documents.replace(other);
+        }),
+        ("fechar a janela", |h, _| shutdown(h)),
+    ];
+    for (how, leave) in ways {
+        reset_for_tests();
+        let mut ana = hero("Ana");
+        let id = ana.documents.create("Retro".into());
+        ana.documents.activate(Some(id));
+        rect(ana.documents.board_mut(id).unwrap(), 0.0);
+        let target = ana
+            .documents
+            .boards()
+            .get(id)
+            .unwrap()
+            .doc
+            .live_in_z_order()[0]
+            .id;
+        ana.documents.ask_live(LiveRequest::Host);
+        service(&mut ana);
+        let LiveRole::Hosting { code, addrs } = ana.documents.live_view().role.clone() else {
+            panic!("{how}: não abriu");
+        };
+        let port = addrs[0].parse::<SocketAddr>().unwrap().port();
+        let (tx, rx) = mpsc::channel::<()>();
+        let bia = std::thread::spawn(move || {
+            let mut g = hero("Bia");
+            g.documents.ask_live(LiveRequest::Join {
+                addr: Some(format!("127.0.0.1:{port}")),
+                code,
+            });
+            assert!(until(&mut g, 10, |g| g
+                .documents
+                .live_view()
+                .fac
+                .vote
+                .is_some()));
+            let b = g.documents.live_view().board.unwrap();
+            let _ = tx.send(());
+            let mut religou = false;
+            let off = until(&mut g, 10, |g| {
+                religou |= g.documents.told() == Some(tr("board.live.reconnecting"));
+                g.documents.live_view().role == LiveRole::Off
+            });
+            let polls = g.documents.boards().get(b).unwrap().team.polls.len();
+            (off, religou, g.documents.told().map(str::to_owned), polls)
+        });
+        assert!(
+            until(&mut ana, 10, |h| h.documents.live_view().peers.len() == 2),
+            "{how}: a Bia não entrou"
+        );
+        ana.documents.ask_live(LiveRequest::VoteStart {
+            setup: ph2d_board_model::VoteSetup::default(),
+            targets: [target].into(),
+        });
+        let end = Instant::now() + Duration::from_secs(10);
+        while rx.try_recv().is_err() && Instant::now() < end {
+            service(&mut ana);
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        leave(&mut ana, id);
+        service(&mut ana);
+        assert_eq!(ana.documents.live_view().role, LiveRole::Off, "{how}");
+        let (off, religou, told, polls) = bia.join().expect("a Bia falhou");
+        assert!(off, "{how}: a Bia ficou na sala");
+        assert!(
+            !religou,
+            "{how}: a Bia passou por «a religar» — sem o adeus"
+        );
+        assert_eq!(told.as_deref(), Some(tr("board.live.host_left")), "{how}");
+        assert_eq!(polls, 1, "{how}: o fim da votação não chegou");
+    }
+}
+
 /// O anfitrião CAI sem o adeus (o programa morreu) e abre logo outra sala: quem estava a voltar acaba
 /// em segundos com a cópia (a porta recusa, ou ali já há outro código), e quem traz o código NOVO
 /// entra sem «travado» — antes eram 60 s de tentativas com o código velho, e elas travavam a sala nova.

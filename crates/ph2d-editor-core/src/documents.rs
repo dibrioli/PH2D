@@ -157,7 +157,11 @@ impl Documents {
     /// Troca todos os quadros (ao carregar um projecto) e volta à `Cena`.
     pub fn replace(&mut self, boards: BoardSet) {
         self.leave_board();
-        self.boards = boards;
+        let old = std::mem::replace(&mut self.boards, boards);
+        // A sala fecha com o quadro dela — os ids recomeçam, e o do projecto novo seria OUTRO quadro.
+        if let Some(b) = self.live_view.board.and_then(|id| old.get(id)) {
+            self.live_view.part(b.clone());
+        }
         self.renaming = None;
         self.tab_drag = None;
         self.live.histories.clear();
@@ -197,6 +201,11 @@ impl Documents {
             self.leave_board();
         }
         let gone = self.boards.remove(id)?;
+        // A sala deste quadro fecha como «End session»: a família ainda precisa dele para revelar o
+        // escondido e acabar a votação antes do adeus (ADR-0182 §5).
+        if self.live_view.board == Some(id) {
+            self.live_view.part(gone.clone());
+        }
         self.live.histories.remove(&id);
         // W7 — o relógio, o painel e a sessão do quadro apagado vão com ele (a campainha não toca
         // por um quadro que já não existe — auditoria W7).

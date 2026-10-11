@@ -37,6 +37,10 @@ impl crate::App {
         match self.handler.on_close_request() {
             CloseAction::Close => {
                 self.handler.on_lifecycle(Lifecycle::WillTerminate);
+                // A sala do quadro aberta fecha como «End session» (o adeus sai antes de a app acabar).
+                if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    ph2d_app_board::live::shutdown(h);
+                }
                 // Tear the audio system down HERE, deterministically, while the
                 // main thread is quiescent — instead of letting the `cpal::Stream`
                 // (ALSA/PipeWire, `!Send`) drop LAST in the `App` field cascade at

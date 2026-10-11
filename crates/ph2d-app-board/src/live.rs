@@ -197,15 +197,10 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
             }
         }
         LiveRequest::Leave => {
-            // O anfitrião revela o escondido e acaba a votação (ADR-0182 §5), depois diz adeus antes
-            // de fechar (numa thread: esvaziar as filas não prende o ecrã); o convidado só fecha o fio.
-            if let Some(Live::Host { net, mut s, board }) = st.live.take() {
-                if let Some(b) = hero.documents.board_mut(board) {
-                    send_host(&net, s.close(b, now_ms()));
-                }
+            if let Some(net) = leave(st, hero) {
+                // Numa thread: esvaziar as filas não prende o ecrã.
                 std::thread::spawn(move || net.close(Msg::End.encode()));
             }
-            stop(hero);
         }
         LiveRequest::Summon => match &mut st.live {
             Some(Live::Host { net, s, board }) => {
@@ -229,6 +224,38 @@ fn request(st: &mut State, hero: &mut HeroScreen, req: LiveRequest) {
         // ADR-0182 — o modo privado e a votação.
         r => fac::request(st, hero, r),
     }
+}
+
+/// Sair: o anfitrião revela o escondido e acaba a votação (ADR-0182 §5) — sobre o quadro da sala,
+/// mesmo que ele tenha acabado de sair das abas — e devolve a rede para o adeus; o convidado só fecha
+/// o fio.
+fn leave(st: &mut State, hero: &mut HeroScreen) -> Option<net::Host> {
+    let mut parting = hero.documents.take_parting();
+    let out = match st.live.take() {
+        Some(Live::Host { net, mut s, board }) => {
+            let b = match parting.as_mut().filter(|p| p.id == board) {
+                Some(p) => Some(p),
+                None => hero.documents.board_mut(board),
+            };
+            if let Some(b) = b {
+                send_host(&net, s.close(b, now_ms()));
+            }
+            Some(net)
+        }
+        _ => None,
+    };
+    stop(hero);
+    out
+}
+
+/// ⭐ A app vai fechar (a janela): a sala aberta fecha como «End session», e o adeus SAI antes de a
+/// app acabar — o `Drop` sozinho cortava os fios e os convidados ficavam a religar.
+pub fn shutdown(hero: &mut HeroScreen) {
+    STATE.with_borrow_mut(|st| {
+        if let Some(net) = leave(st, hero) {
+            net.close(Msg::End.encode());
+        }
+    });
 }
 
 /// Liga numa thread à parte: o ecrã nunca espera pela rede.

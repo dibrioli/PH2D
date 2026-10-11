@@ -168,6 +168,8 @@ pub struct LiveView {
     /// ADR-0182 — o modo privado e a votação da sala, como os desenho.
     pub fac: LiveFac,
     requests: Vec<LiveRequest>,
+    /// O quadro da sala que saiu das abas: a família fecha a sala com ele e larga-o.
+    parting: Option<Board>,
     /// O que só o ecrã sabe (o painel aberto, o relógio da procura, o que se pintou onde).
     pub(crate) panel: LivePanel,
 }
@@ -184,7 +186,20 @@ pub(crate) struct LivePanel {
     pub found: Vec<String>,
 }
 
+impl LiveView {
+    /// O quadro da sala sai das abas: fica para a família fechar a sala com ele (`Leave`).
+    pub(crate) fn part(&mut self, board: Board) {
+        self.parting = Some(board);
+        self.requests.push(LiveRequest::Leave);
+    }
+}
+
 impl Documents {
+    /// A família tira o quadro da sala que saiu das abas (ver [`LiveView::part`]).
+    pub fn take_parting(&mut self) -> Option<Board> {
+        self.live_view.parting.take()
+    }
+
     /// O ecrã pede uma coisa à família.
     pub fn ask_live(&mut self, req: LiveRequest) {
         self.live_view.requests.push(req);

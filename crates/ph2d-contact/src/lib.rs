@@ -108,7 +108,7 @@ pub use cercas::{
     CELULAS_POR_CANDIDATO, Cercas, MARGEM_DO_CORTE, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA,
     REPOUSO_VISIVEL,
 };
-pub use grelha::{candidatos, candidatos_e_grandes};
+pub use grelha::{GrelhaDeDiscos, candidatos, candidatos_e_grandes};
 pub use laco::separate;
 #[cfg(test)]
 pub(crate) use laco::{separate_com, separate_com_cercas, separate_grao};

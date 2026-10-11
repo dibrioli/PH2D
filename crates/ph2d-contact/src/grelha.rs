@@ -527,3 +527,39 @@ pub fn candidatos_e_grandes(
     }
     (soma, grade.grandes())
 }
+
+/// ⭐ **A mesma grelha para quem empurra DISCOS sem ser peça** (o `motion.collide` na CPU), numa
+/// camada só: os candidatos de cada disco são um SUPERCONJUNTO de quem pode tocar, em ordem
+/// CRESCENTE, desde que o `lado` seja `≥` a maior distância de contacto de um par.
+#[derive(Default)]
+pub struct GrelhaDeDiscos {
+    grade: Grelha,
+    ativo: Vec<bool>,
+}
+
+impl GrelhaDeDiscos {
+    /// Reconstrói a grelha sobre `p` (todos activos) com células de lado `lado`; o lado só cresce.
+    pub fn constroi(&mut self, p: &[[f32; 2]], lado: f32) {
+        self.ativo.clear();
+        self.ativo.resize(p.len(), true);
+        self.grade.planeia_numa_camada(&self.ativo, lado);
+        self.grade.constroi(p, &self.ativo);
+    }
+
+    /// Os candidatos de `k` (o próprio `k` incluído), em ordem crescente.
+    pub fn vizinhos_de(&self, k: usize, out: &mut Vec<u32>) {
+        self.grade.vizinhos_de(k, out);
+    }
+
+    /// Quantos candidatos a grelha entregaria somados sobre os discos, sem os materializar.
+    #[must_use]
+    pub fn candidatos_previstos(&self) -> usize {
+        self.grade.candidatos_previstos()
+    }
+
+    /// O lado que a construção usou (o pedido, ou dobrado até a grelha densa caber).
+    #[must_use]
+    pub fn lado(&self) -> f32 {
+        self.grade.lado
+    }
+}

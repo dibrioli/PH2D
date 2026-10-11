@@ -257,6 +257,22 @@ fn push_apart(
     iterations: usize,
     strength: f32,
 ) -> Vec<[f32; 2]> {
+    push_apart_com(p, w, radii, falloff, estrutura, iterations, strength, true)
+}
+
+/// O [`push_apart`] com a grelha de vizinhos permitida ou não — `false` é todos-os-pares, a
+/// referência do gate que prova a igualdade ao bit.
+#[allow(clippy::too_many_arguments)]
+fn push_apart_com(
+    p: &[[f32; 2]],
+    w: &[f32],
+    radii: &[f32],
+    falloff: &[f32],
+    estrutura: Option<&Estrutura>,
+    iterations: usize,
+    strength: f32,
+    grelha: bool,
+) -> Vec<[f32; 2]> {
     let n = p.len();
     let mut q = p.to_vec();
     // The largest disc in the set. It is the early-out (no radius anywhere ⇒ the
@@ -285,75 +301,35 @@ fn push_apart(
     // inside a field's edge).
     let mut delta = vec![[0.0f32; 2]; n];
     let mut contacts = vec![0u32; n];
+    let discos = Discos {
+        w,
+        radii,
+        falloff,
+        estrutura,
+        strength,
+    };
+    let lado = vizinhos::lado_da_celula(r_max);
+    let raios_finitos = radii.iter().all(|r| r.is_finite());
+    let mut grade = ph2d_contact::GrelhaDeDiscos::default();
+    let mut viz = Vec::new();
     for _ in 0..iterations {
         delta.fill([0.0, 0.0]);
         contacts.fill(0);
         // ── gather pass: every pair reads the SAME snapshot `q` ──
-        for i in 0..n {
-            for j in (i + 1)..n {
-                // Each disc brings its OWN radius (`r_i + r_j`, symmetric — and
-                // exactly `2·radius` when the sizes are uniform, since `x + x` is
-                // exact in IEEE-754).
-                let min_dist = radii[i] + radii[j];
-                if min_dist <= 0.0 {
-                    continue;
-                }
-                let min_d2 = min_dist * min_dist;
-                let dx = q[j][0] - q[i][0];
-                let dy = q[j][1] - q[i][1];
-                let d2 = dx * dx + dy * dy;
-                // The distance test FIRST: most pairs are apart, and every guard here is a
-                // side-effect-free `continue`, so their order cannot change a bit.
-                if d2 >= min_d2 {
-                    continue;
-                }
-                // Two immovable discs (or two infinitely heavy ones) have no
-                // correction to share — the constraint simply cannot be met.
-                let sum_w = w[i] + w[j];
-                if sum_w <= 0.0 {
-                    continue;
-                }
-                // ⚠️ The pair's weight is the PRODUCT, so a `falloff` of 0 on
-                // EITHER side makes the pair vanish — the disc is transparent, it
-                // is neither pushed nor pushes. That is what "this node does not
-                // act here" means, and it is precisely NOT what `inv_mass = 0`
-                // means (that one is pinned: immovable, and still an obstacle the
-                // others pack around). The product is also the reading the word
-                // *transparent* carries: two half-transparent panes pass a quarter.
-                let fw = falloff[i] * falloff[j];
-                if fw <= 0.0 {
-                    continue;
-                }
-                if estrutura.is_some_and(|e| e.segura(i, j, min_d2)) {
-                    continue;
-                }
-                let (nx, ny, penetration) = if d2 > EPS {
-                    let d = d2.sqrt();
-                    (dx / d, dy / d, min_dist - d)
-                } else {
-                    // Coincident: split along a deterministic axis (x for even i+j,
-                    // y otherwise) so the relaxation stays replay-stable (HR-5, no rng).
-                    // ⚠️ This is the ONE order-dependent corner left, and it is
-                    // irreducible: two EXACTLY coincident points carry nothing
-                    // intrinsic to break the symmetry with, so the index is the only
-                    // handle there is. Measure-zero — any jitter escapes it.
-                    if (i + j) % 2 == 0 {
-                        (1.0, 0.0, min_dist)
-                    } else {
-                        (0.0, 1.0, min_dist)
+        if grelha && raios_finitos && vizinhos::grelha_serve(&mut grade, &q, lado) {
+            vizinhos::varre(&discos, &q, &grade, &mut viz, &mut delta, &mut contacts);
+        } else {
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    if let Some(t) = discos.par(&q, i, j) {
+                        delta[i][0] -= t[0];
+                        delta[i][1] -= t[1];
+                        delta[j][0] += t[2];
+                        delta[j][1] += t[3];
+                        contacts[i] += 1;
+                        contacts[j] += 1;
                     }
-                };
-                // Each disc is ASKED to move its SHARE of the penetration:
-                // w_i / (w_i + w_j). Both free = half each, so the pair's midpoint is
-                // preserved exactly as before.
-                let push_i = penetration * (w[i] / sum_w) * strength * fw;
-                let push_j = penetration * (w[j] / sum_w) * strength * fw;
-                delta[i][0] -= nx * push_i;
-                delta[i][1] -= ny * push_i;
-                delta[j][0] += nx * push_j;
-                delta[j][1] += ny * push_j;
-                contacts[i] += 1;
-                contacts[j] += 1;
+                }
             }
         }
         // ── apply pass: each disc takes the AVERAGE of what its contacts asked ──
@@ -371,6 +347,82 @@ fn push_apart(
     }
     q
 }
+
+/// The per-element inputs of one relaxation, shared by both sweeps.
+struct Discos<'a> {
+    w: &'a [f32],
+    radii: &'a [f32],
+    falloff: &'a [f32],
+    estrutura: Option<&'a Estrutura>,
+    strength: f32,
+}
+
+impl Discos<'_> {
+    /// The pair `(i, j)`, `i < j`: `Some([nx·push_i, ny·push_i, nx·push_j, ny·push_j])` when it is a
+    /// live contact. ⚠️ Always called with `i < j`, so both sweeps compute the SAME floats.
+    #[inline]
+    fn par(&self, q: &[[f32; 2]], i: usize, j: usize) -> Option<[f32; 4]> {
+        let (w, falloff) = (self.w, self.falloff);
+        // Each disc brings its OWN radius (`r_i + r_j`, symmetric — and exactly `2·radius` when
+        // the sizes are uniform, since `x + x` is exact in IEEE-754).
+        let min_dist = self.radii[i] + self.radii[j];
+        if min_dist <= 0.0 {
+            return None;
+        }
+        let min_d2 = min_dist * min_dist;
+        let dx = q[j][0] - q[i][0];
+        let dy = q[j][1] - q[i][1];
+        let d2 = dx * dx + dy * dy;
+        // The distance test FIRST: most pairs are apart, and every guard here is a
+        // side-effect-free early return, so their order cannot change a bit.
+        if d2 >= min_d2 {
+            return None;
+        }
+        // Two immovable discs (or two infinitely heavy ones) have no correction to share —
+        // the constraint simply cannot be met.
+        let sum_w = w[i] + w[j];
+        if sum_w <= 0.0 {
+            return None;
+        }
+        // ⚠️ The pair's weight is the PRODUCT, so a `falloff` of 0 on EITHER side makes the
+        // pair vanish — the disc is transparent, it is neither pushed nor pushes. That is what
+        // "this node does not act here" means, and it is precisely NOT what `inv_mass = 0`
+        // means (that one is pinned: immovable, and still an obstacle the others pack around).
+        // The product is also the reading the word *transparent* carries: two
+        // half-transparent panes pass a quarter.
+        let fw = falloff[i] * falloff[j];
+        if fw <= 0.0 {
+            return None;
+        }
+        if self.estrutura.is_some_and(|e| e.segura(i, j, min_d2)) {
+            return None;
+        }
+        let (nx, ny, penetration) = if d2 > EPS {
+            let d = d2.sqrt();
+            (dx / d, dy / d, min_dist - d)
+        } else {
+            // Coincident: split along a deterministic axis (x for even i+j, y otherwise) so the
+            // relaxation stays replay-stable (HR-5, no rng). ⚠️ This is the ONE order-dependent
+            // corner left, and it is irreducible: two EXACTLY coincident points carry nothing
+            // intrinsic to break the symmetry with, so the index is the only handle there is.
+            // Measure-zero — any jitter escapes it.
+            if (i + j) % 2 == 0 {
+                (1.0, 0.0, min_dist)
+            } else {
+                (0.0, 1.0, min_dist)
+            }
+        };
+        // Each disc is ASKED to move its SHARE of the penetration: w_i / (w_i + w_j). Both free
+        // = half each, so the pair's midpoint is preserved exactly as before.
+        let push_i = penetration * (w[i] / sum_w) * self.strength * fw;
+        let push_j = penetration * (w[j] / sum_w) * self.strength * fw;
+        Some([nx * push_i, ny * push_i, nx * push_j, ny * push_j])
+    }
+}
+
+/// ⭐ A varredura pela grelha de vizinhos — ver o cabeçalho dele.
+#[path = "vizinhos.rs"]
+mod vizinhos;
 
 /// The inverse-mass column (`motion.pin_constraint`), widened to `n` and made
 /// safe: absent reads as free (`1`), and a negative or non-finite weight from a

@@ -250,4 +250,24 @@ rebote desta cena por outro lado (a face 0,071, −74 %); fica anotado no item 7
 ## Smoke do dono
 
 `PH2D_LIGHT2D_SMOKE=3` (a sala do rebote; `PH2D_LIGHT2D_REBOTE=0` para comparar) e as cenas 1, 2, 4 em Low · Medium ·
-High — os passos estão no relatório ao dono.
+High — os passos estão no relatório ao dono. Os dois smokes seguintes (o interior em escada; o rebote com o zoom):
+OK do dono, 10/10.
+
+## Integração no main (10/10, por ordem do dono: «Pode integrar»)
+
+- **Rebase** dos 96 commits sobre o main `b77911b67` (o main andara 246 commits desde o merge-base `782f90b69`);
+  ramo de segurança `line/Luz2D-pre-rebase-2026-10-10` = `29473c3e2`. 20 arquivos tocados dos dois lados; quatro
+  commits pararam, resolvidos pelos estágios do índice: `prefs.rs`/`init.rs`/`prefs_tests.rs`/`forwarding_persist.rs`
+  — o `left_handed` do main e o `luz2d` da linha juntos (o formato `…left_handed={}\nlight_quality={}\nlight_auto={}`);
+  `hero.rs` — o `ViewState::default()` do main (o `Default` já traz o `luz2d`); `reference_topic_code_gotchas.md` — as
+  lições dos dois lados; `MEMORY.md` — a família recontada no ficheiro dela: 33. `range-diff`: 93/96 idênticos, os 3
+  diferentes só na resolução. Marcadores (inclusive `|||||||`): zero em cada commit. `Cargo.lock`: só as 4 crates
+  novas.
+- **Números que somam:** a linha não toca nenhum — PROJECT_SCHEMA 187 (187, 13, 22), registros 106/107/107, ADR
+  nenhum, contrato congelado intocado, tetos de LOC sem estouro.
+- **Portão da árvore combinada** (tip `24a2967fe`): os três geradores sem diferença, staleness ✓, fmt ✓, o check do
+  workspace com avisos como erro ✓, clippy `-D warnings` nas 7 crates ✓, `nextest-impacted` BASE=main **17 333 /
+  17 333** (loadavg 12,5). O `foundational-integrate.sh` recusava o primário (dois ficheiros por rastrear de outra
+  frente do Painter, fora de `project-memory/`): os mesmos passos correram à mão, na ordem do script, e o
+  `merge --ff-only` levou o `MEMORY.md` sujo do primário por patch (hunks disjuntos dos da linha), reaplicado depois.
+- CLAUDE.md §5.1 ganhou a entrada da Luz 2D (532 bytes).

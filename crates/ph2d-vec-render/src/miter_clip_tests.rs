@@ -95,3 +95,36 @@ fn the_law_and_the_kurbo_agree_on_the_winding_sign() {
     );
     assert!(sq.area() > 0.0);
 }
+
+/// ⭐ O rectângulo de raio MINÚSCULO com traço grosso (a foto do dono de 11/10: um triângulo escuro
+/// dentro do traço, nos cantos): o canto é uma curva mais apertada que meia caneta, e o contorno
+/// tem tinta onde o chanfro a tirava — a `0,9 × ½w` do canto pela diagonal de FORA (o chanfro pára
+/// a `0,707`).
+#[test]
+fn a_tiny_corner_radius_under_a_thick_pen_keeps_the_corner_inked() {
+    let r = 1e-4;
+    let mut bp = BezPath::new();
+    bp.move_to((r, 0.0));
+    bp.line_to((10.0 - r, 0.0));
+    bp.curve_to((10.0, 0.0), (10.0, 0.0), (10.0, r));
+    bp.line_to((10.0, 10.0));
+    bp.line_to((0.0, 10.0));
+    bp.line_to((0.0, r));
+    bp.curve_to((0.0, 0.0), (0.0, 0.0), (r, 0.0));
+    bp.close_path();
+    let pen = pen(2.0);
+    assert!(tighter_than(&bp, 1.0), "o canto de raio 1e-4 sob ½w = 1 é apertado");
+    let out = stroke_outline(&bp, &pen, 1e-4);
+    let d = 0.9 / std::f64::consts::SQRT_2;
+    for q in [Point::new(-d, -d), Point::new(10.0 + d, -d)] {
+        assert_ne!(out.winding(q), 0, "{q:?}: o canto ficou sem tinta");
+    }
+    // O rectângulo de cantos vivos e o de raio largo não pagam o contorno exacto.
+    let sharp = BezPath::from_vec(vec![
+        PathEl::MoveTo(Point::new(0.0, 0.0)),
+        PathEl::LineTo(Point::new(10.0, 0.0)),
+        PathEl::LineTo(Point::new(10.0, 10.0)),
+        PathEl::ClosePath,
+    ]);
+    assert!(!tighter_than(&sharp, 1.0));
+}

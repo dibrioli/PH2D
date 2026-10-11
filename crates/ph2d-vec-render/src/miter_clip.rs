@@ -45,6 +45,32 @@ pub fn any_sharp(bp: &BezPath) -> bool {
     .is_empty()
 }
 
+/// Há troço com raio de curvatura MENOR que `half_w` em `bp`? O traçador da placa achata uma curva
+/// assim num segmento e o canto sai em chanfro (o rectângulo de raio minúsculo, a foto do dono de
+/// 11/10); a verdade é o contorno de raio `≈ ½w`, que o `expand_stroke` dá. Amostra a curvatura.
+#[must_use]
+pub fn tighter_than(bp: &BezPath, half_w: f64) -> bool {
+    if half_w <= 0.0 {
+        return false;
+    }
+    bp.segments().any(|s| {
+        let c = s.to_cubic();
+        let (q0, q1, q2) = (c.p1 - c.p0, c.p2 - c.p1, c.p3 - c.p2);
+        (0..=TIGHT_SAMPLES).any(|i| {
+            let t = i as f64 / TIGHT_SAMPLES as f64;
+            let u = 1.0 - t;
+            let v = (q0 * (u * u) + q1 * (2.0 * u * t) + q2 * (t * t)) * 3.0;
+            let a = ((q1 - q0) * u + (q2 - q1) * t) * 6.0;
+            let speed = v.hypot();
+            // Raio = |v|³ / |v × a| < ½w, sem dividir (o troço parado tem v = 0 e não é curva).
+            speed > 1e-12 && speed * speed * speed < half_w * v.cross(a).abs()
+        })
+    })
+}
+
+/// Amostras por troço do [`tighter_than`].
+const TIGHT_SAMPLES: usize = 16;
+
 /// ⭐ **O contorno do traço com os bicos cortados** — o `expand_stroke` da `kurbo` mais um
 /// quadrilátero por corte, cada um com o sentido do corpo (sem costura no preenchimento NonZero).
 #[must_use]

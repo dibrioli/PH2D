@@ -591,3 +591,27 @@ fn the_cut_tip_matches_the_resvg_miter_clip() {
     }
     assert_eq!(n, 10);
 }
+
+/// Sonda (F12, a foto do dono 11/10): o rectângulo de cantos vivos com furo no traço.
+#[test]
+#[ignore = "sonda: os cortes do RoundRect de raio ~0"]
+fn print_the_round_rect_cuts() {
+    for r in [0.0, 1e-9, 1e-7, 1e-5, 1e-3, 0.01] {
+        for box_ in [[3.0, 3.6], [4.0, 4.0]] {
+            let mut v = ShapeKind::RoundRect.defaults();
+            v[0] = r;
+            let p = cook(ShapeKind::RoundRect, [0.0, 0.0], box_, &v);
+            let bp = ph2d_vec_render::build_bezpath(&p.cooked());
+            let cuts = ph2d_vec_render::miter_clip::patches(&bp, &pen());
+            println!("r={r:e} box={box_:?}: {} troços, {} cortes", bp.segments().count(), cuts.len());
+            for c in &cuts {
+                println!("   corte em {:?}", c.quad[0]);
+            }
+            if !cuts.is_empty() {
+                for s in bp.segments() {
+                    println!("   {s:?}");
+                }
+            }
+        }
+    }
+}

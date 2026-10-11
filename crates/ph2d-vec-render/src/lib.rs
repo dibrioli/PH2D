@@ -338,8 +338,9 @@ pub(crate) struct PathTess {
     /// recorte por câmara pergunta-o **por cópia**. *Sem isto, o teste do recorte custava mais do
     /// que o recorte poupava — medido.*
     pub(crate) transbordo: standalone::Transbordo,
-    /// O traço tem quina além do limite do bico ([`miter_clip::any_sharp`]) — só então o desenho
-    /// procura os cortes; pago uma vez por geometria.
+    /// O traço tem quina além do limite do bico ([`miter_clip::any_sharp`]) ou curva mais apertada
+    /// que meia caneta ([`miter_clip::tighter_than`]) — só então o desenho vai pelo contorno
+    /// exacto; pago uma vez por geometria.
     pub(crate) agudo: bool,
 }
 
@@ -403,7 +404,10 @@ pub(crate) fn path_tess(path: &VecPath) -> PathTess {
 
 /// O sinal [`PathTess::agudo`] do traço de `path` sobre o desenho `bp` que ele usa.
 pub(crate) fn agudo_de(path: &VecPath, bp: Option<&BezPath>) -> bool {
-    path.stroke.is_some() && bp.is_some_and(miter_clip::any_sharp)
+    let Some(s) = path.stroke.as_ref() else {
+        return false;
+    };
+    bp.is_some_and(|bp| miter_clip::any_sharp(bp) || miter_clip::tighter_than(bp, s.width * 0.5))
 }
 
 /// O tracejado AJUSTADO deste caminho cozido — `None` sem traço ou sem tracejado.

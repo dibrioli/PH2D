@@ -1,7 +1,8 @@
 //! ⭐ **A cena 18** (`PH2D_OBJECT_MODE_SMOKE=18`, F12 A — 11/10): O TRAÇO DAS FORMAS, as das fotos
 //! do dono. No layout *Vetor*, com traço grosso: a seta dobrada e o coração, cada um numa caixa larga
 //! e numa alta e estreita (o bico que saltava para o chanfro), o quadrado com *Curve* `0,010` e o pentágono com
-//! *Curve* `0,070` (o «X» e as abas), e a lua e o balão (as pontas que voltam 180°). Correr com e
+//! *Curve* `0,070` (o «X» e as abas), a lua e o balão (as pontas que voltam 180°), e o rectângulo de
+//! raio minúsculo (o canto que a placa chanfrava). Correr com e
 //! sem `PH2D_MITER_CLIP=0` é o antes × depois do bico cortado. Doc 19.
 
 use crate::state::VecState;
@@ -25,6 +26,8 @@ const FORMAS: &[Forma] = &[
     (ShapeKind::Polygon, &[(0, 5.0), (3, 0.070)], [-0.2, -1.4], [0.8, -0.4]),
     (ShapeKind::Moon, &[], [1.1, 0.2], [2.0, 1.2]),
     (ShapeKind::SpeechRect, &[], [1.0, -1.4], [2.4, -0.4]),
+    // O rectângulo de raio minúsculo (a foto do dono de 11/10: o canto saía em chanfro).
+    (ShapeKind::RoundRect, &[(0, 0.001)], [2.4, 0.2], [3.2, 1.2]),
 ];
 
 /// Um passo da cena 18; devolve o próximo estágio, se mudou. `100` = as formas · `101` = o traço

@@ -109,13 +109,15 @@ const CUT_TOL_PX: f64 = 0.05;
 
 /// ⭐ **O traço com os bicos CORTADOS** ([`crate::miter_clip`]) — `None` quando nenhuma junta passa
 /// do limite (o Vello traça, como sempre); senão o contorno da `kurbo` com os cortes, que se
-/// PREENCHE. `sharp` = a cache da geometria diz que pode haver quina além do limite.
+/// PREENCHE — e o mesmo para uma curva mais apertada que meia caneta ([`crate::miter_clip::tighter_than`]).
+/// `sharp` = a cache da geometria diz que pode haver uma das duas.
 fn cut_outline(pen: &Stroke, xf: Affine, geo: &BezPath, sharp: bool) -> Option<BezPath> {
     if !sharp {
         return None;
     }
     let cuts = crate::miter_clip::patches(geo, pen);
-    if cuts.is_empty() {
+    // A curva mais apertada que meia caneta também vai pelo contorno exacto: a placa achata-a.
+    if cuts.is_empty() && !crate::miter_clip::tighter_than(geo, pen.width * 0.5) {
         return None;
     }
     let tol = CUT_TOL_PX / uniform_scale(xf).max(1e-12);
@@ -423,6 +425,29 @@ fn maior_contorno(bp: &BezPath) -> Option<(f64, bool)> {
 mod tests {
     use super::*;
     use std::f64::consts::FRAC_PI_4;
+
+    /// ⭐ O rectângulo de raio MINÚSCULO sob traço grosso (a foto do dono de 11/10) vai pelo contorno
+    /// EXACTO — a cache da geometria marca-o e o desenho preenche o contorno em vez de o deixar à
+    /// placa, que achata o arquinho do canto num chanfro. O de cantos vivos segue pela placa.
+    #[test]
+    fn a_tiny_round_corner_under_a_thick_pen_is_drawn_by_the_exact_outline() {
+        use ph2d_vec_scene::{Rgba8, ShapeKind, StrokeSpec, cook};
+        let shape = |r: f64| {
+            let mut v = ShapeKind::RoundRect.defaults();
+            v[0] = r;
+            let mut p = cook(ShapeKind::RoundRect, [0.0, 0.0], [3.0, 3.6], &v);
+            p.stroke = Some(StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 0.3));
+            p
+        };
+        let pen = Stroke::new(0.3).with_join(ph2d_vector::Join::Miter).with_miter_limit(4.0);
+        for (r, exact) in [(1e-4, true), (0.0, false), (0.5, false)] {
+            let p = shape(r);
+            let bp = crate::build_bezpath(&p.cooked());
+            let cached = crate::agudo_de(&p, Some(&bp));
+            assert_eq!(cached, exact, "raio {r}: a cache");
+            assert_eq!(cut_outline(&pen, Affine::IDENTITY, &bp, cached).is_some(), exact, "raio {r}");
+        }
+    }
 
     /// ⭐ doc 121 §9.9 — **sob escala não uniforme o tracejado FECHA no contorno do ecrã.** Um círculo
     /// esticado `(2, 0,7)` com o padrão ajustado no LOCAL (a `dash_fit`) e escalado por `√|det|` deixa

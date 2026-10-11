@@ -208,3 +208,9 @@ Depois: o `motion.collide` na CPU por vizinhos (`61ba12aec`, `a8d53c05f`, `82d24
 ⚠️ **Para o integrador:** a `ph2d-contact` ganha uma porta pública APENDADA (`GrelhaDeDiscos` no fim
 de `grelha.rs` + o `pub use`) — nada existente muda. Os mesmos bits que todos-os-pares (gates e
 mutações); a cena `=8` sem placa: o collide `6,38 s → 0,105 s` por cozimento.
+
+Depois: só o tique desenhado compõe (`70a5b6a24`, `c2521297b`; detalhe em
+[`…_SO_O_ESTADO.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_SO_O_ESTADO.md)). Os tiques
+recuperados e o scrub cozem só o estado (nós não-`Pure`, fontes de `pre`, tomadas de sinal); as
+tomadas de gizmo só no tique desenhado (`set_taps_por_tique`, APENDADO à bomba). Cena `=8` sem
+placa: HUD `2 fps · 402 ms → 23 fps · 41,9 ms`, mesmos bits.

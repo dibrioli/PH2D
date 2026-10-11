@@ -1139,6 +1139,13 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     `o_glaze_layering_deixa_ver_a_camada_de_baixo` (γ 0,44 → 0,78·0,81; VERDE também antes, γ 0,86: o vermelho dele é uma caixa que não chega
     à tela) · `km_flags_reach_the_sim_and_the_composite` (o adversário D′ viu-o partir: o clique no Glaze mudava 5 890 bytes e passou a 0;
     curado pondo o 2.º traço de OUTRA tinta — a mesma tinta sobre si é uma camada só, o Glaze age onde o pigmento muda).
+  - **A caixa com o filme VAZIO (11/10, apanhado pelo agente do portão M7b, lido e curado na janela principal, `dac663ab7`):** a 1.ª
+    redacção de `assenta::na_caixa` devolvia, com `a_f = 0`, a cor guardada do filme (`susp_rgb` de um filme sem massa — a de uma tinta que
+    já saiu) em vez da do assentado que sobe: re-molhar tinta seca de duas cores herdava uma cor parada (Δ 8,41 num traço de Wet depois de um
+    Dry canvas). Cura: sem tinta a ficar, a única tinta é a que vem. Portão `assenta::tests::re_molhar_tinta_seca_leva_a_cor_do_assentado`
+    (assentado azul, a cor velha vermelha no vazio, os dois tapares; a 1.ª redacção devolvia o vermelho). Regravadas UMA vez, com a razão, as
+    impressões do S e da bancada (`opcoes_tests`); as 4 miniaturas de fábrica não mudaram. Cercas depois: ph2d-wet-paint (50 + 99),
+    `--lib wetpaint` 165, `--test it` 6, censo dos controlos 133, painter-layers 179, `cerca.sh` VERDE, fmt e clippy `-D warnings`.
   - **O portão das transferências (11/10, o que faltava para M7b):** `ph2d-wet-paint/tests/it/glaze_vertical_transfers.rs`. Cena de duas tintas
     sobrepostas (4 pares em faixas, 40 linhas de massas, uniforme em `x` para o arrasto lateral do Smear ser nulo), a lei da sessão do produto;
     a régua é o ecrã SECO do render (`sobre_branco(p.ecra.seco(), …)`) célula a célula, antes e depois de cada passe vertical. Medido:

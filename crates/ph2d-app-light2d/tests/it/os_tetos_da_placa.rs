@@ -157,6 +157,47 @@ fn o_governador_engrossa_a_fina_abaixo_do_baixo() {
     assert_eq!(g.fina, 2, "o mínimo dos tetos prende a fina");
 }
 
+/// Abaixo do Baixo, com o custo nas CASCATAS (a 2160p: 10,0 de 12,3 ms, rodada A1), quem engrossa é
+/// a CÉLULA — a fina não pagaria nada; e ela volta (antes do nível) quando a folga prevista paga.
+#[test]
+fn o_governador_engrossa_a_celula_quando_as_cascatas_pesam() {
+    use ph2d_app_light2d::qualidade::CELULA_MAX;
+    let caro = Custo {
+        por_nivel: ORCAMENTO_MS * 1.6,
+        fixo: ORCAMENTO_MS * 0.4,
+    };
+    let mut g = Governador::novo(N::Baixa);
+    g.faixa_da_fina(0, 3);
+    for _ in 0..3 {
+        g.ler(caro, N::Alta);
+    }
+    assert_eq!((g.fina, g.celula), (0, 1), "as cascatas pesam: a célula");
+    for _ in 0..30 {
+        g.ler(caro, N::Alta);
+    }
+    assert_eq!(g.celula, CELULA_MAX, "até o teto da célula");
+    assert!(g.fina > 0, "acabada a célula, a fina");
+    for _ in 0..600 {
+        g.ler(fixo(0.01), N::Alta);
+    }
+    assert_eq!((g.nivel, g.fina, g.celula), (N::Alta, 0, 0), "tudo volta");
+    // Prevista pela lei: na célula 1 com as cascatas a 0,2 do orçamento, a célula 0 custaria 0,8 —
+    // acima dos 0,75 de folga: não volta.
+    let mut h = Governador::novo(N::Baixa);
+    h.faixa_da_fina(0, 3);
+    for _ in 0..3 {
+        h.ler(caro, N::Alta);
+    }
+    let justo = Custo {
+        por_nivel: ORCAMENTO_MS * 0.2,
+        fixo: 0.0,
+    };
+    for _ in 0..100 {
+        h.ler(justo, N::Alta);
+    }
+    assert_eq!(h.celula, 1, "sem folga prevista a célula não volta");
+}
+
 fn cena_3() -> World {
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 3));

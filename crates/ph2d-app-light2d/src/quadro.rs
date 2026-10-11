@@ -226,22 +226,29 @@ impl LuzDoQuadro {
             recusou: self.recusou.map(|(_, b)| b),
         };
         let automatica = self.preferencia.is_some_and(|p| p.automatica);
-        let fina = loop {
-            let chave = (alvo_px, self.base, tetos);
+        // Com o «Automático», a célula engrossada abaixo do Baixo (o governador acima de 1080p).
+        let celula = if automatica {
+            self.governador.celula
+        } else {
+            0
+        };
+        let (fina, base) = loop {
+            let base = self.base.com_celula_engrossada(celula);
+            let chave = (alvo_px, base, tetos);
             let fina = match self.fina_dos_tetos {
                 Some((c, f)) if c == chave => f,
                 _ => {
-                    let f = crate::teto::fina_que_cabe(mundo_para_tela, alvo_px, self.base, tetos);
+                    let f = crate::teto::fina_que_cabe(mundo_para_tela, alvo_px, base, tetos);
                     self.fina_dos_tetos = Some((chave, f));
                     f
                 }
             };
             if fina.is_some() || !automatica || !self.governador.descer() {
-                break fina;
+                break (fina, base);
             }
             self.base = crate::qualidade::degrau_do(self.governador.nivel);
         };
-        let max = self.base.fina_max();
+        let max = base.fina_max();
         let minimo = fina.unwrap_or(max);
         let k = if automatica {
             self.governador.faixa_da_fina(minimo, max);
@@ -249,7 +256,7 @@ impl LuzDoQuadro {
         } else {
             minimo
         };
-        self.degrau = self.base.com_fina_engrossada(k);
+        self.degrau = base.com_fina_engrossada(k);
     }
 
     /// ⭐ W5e: quantas vezes a fina está engrossada neste quadro (0 = a do nível) e se foi pelo

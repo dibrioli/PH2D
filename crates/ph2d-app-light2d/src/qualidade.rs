@@ -57,23 +57,33 @@ impl Custo {
     }
 }
 
+/// ⭐ W5e — quantas oitavas a CÉLULA pode engrossar abaixo do Baixo (o eixo do governador acima de
+/// 1080p). Medido (rodada `medida_luz2d_w5e`, A1, cena 3, vista de fábrica): a 2160p o Baixo custa
+/// 12,3 ms, 10,0 deles nas cascatas — uma oitava (célula de 8 px, no MUNDO a de 4 px a 1080p) prevê
+/// 2,5 + 2,3 ms; a segunda é a margem para placas mais fracas.
+pub const CELULA_MAX: u32 = 2;
+
 /// ⭐ O governador: lê o custo medido e decide o nível, sem passar do teto. ⭐ W5e: abaixo do Baixo
-/// ele ainda tem a FINA ([`Degrau::com_fina_engrossada`]) — a parte do custo que não segue o nível
-/// (`Custo::fixo`) cresce com os píxeis da janela, e acima de 1080p o Baixo sozinho pode não caber.
+/// ele tem DOIS eixos — a FINA ([`Degrau::com_fina_engrossada`], o `Custo::fixo`, que cresce com os
+/// píxeis da janela) e a CÉLULA ([`Degrau::com_celula_engrossada`], o `Custo::por_nivel`): desce pelo
+/// que pesa mais e devolve primeiro a fina (a sombra nítida).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Governador {
     pub nivel: NivelDaLuz,
     /// ⭐ W5e: a fina engrossada `2^fina` (dentro da [`Self::faixa_da_fina`]).
     pub fina: u32,
+    /// ⭐ W5e: a célula engrossada `2^celula` abaixo do Baixo (até [`CELULA_MAX`]).
+    pub celula: u32,
     /// O mínimo (o que os tetos do dispositivo já impõem) e o máximo da fina.
     faixa: (u32, u32),
     caras: u32,
     folgadas: u32,
 }
 
-/// O passo acima: primeiro a fina volta (a sombra nítida), depois o nível.
+/// O passo acima: primeiro a fina volta, depois a célula, depois o nível.
 enum Acima {
     Fina(u32),
+    Celula(u32),
     Nivel(NivelDaLuz),
 }
 
@@ -83,6 +93,7 @@ impl Governador {
         Self {
             nivel,
             fina: 0,
+            celula: 0,
             faixa: (0, 0),
             caras: 0,
             folgadas: 0,
@@ -108,8 +119,42 @@ impl Governador {
         true
     }
 
+    /// O passo acima que a folga prevista paga, na ordem fina → célula → nível. Cada eixo segue a lei
+    /// `1/célula²` da grade dele: uma oitava mais fina custa 4× a sua parte.
+    fn acima(&self, custo: Custo, teto: NivelDaLuz) -> Option<Acima> {
+        let cabe = |p: f64| p < ORCAMENTO_MS * FOLGA_PARA_SUBIR;
+        if self.fina > self.faixa.0 && cabe(custo.por_nivel + custo.fixo * 4.0) {
+            return Some(Acima::Fina(self.fina - 1));
+        }
+        if self.celula > 0 {
+            return cabe(custo.por_nivel * 4.0 + custo.fixo)
+                .then_some(Acima::Celula(self.celula - 1));
+        }
+        if self.fina > self.faixa.0 {
+            return None;
+        }
+        let a = vizinho(self.nivel, 1).filter(|&a| a <= teto)?;
+        let r = f64::from(self.nivel.celula_px() / a.celula_px());
+        cabe(custo.por_nivel * r * r + custo.fixo).then_some(Acima::Nivel(a))
+    }
+
+    /// Um passo abaixo: o nível; no Baixo, o eixo que pesa mais (o outro se aquele acabou).
+    fn abaixo(&mut self, custo: Custo) {
+        if let Some(b) = vizinho(self.nivel, -1) {
+            self.nivel = b;
+            return;
+        }
+        let fina = self.fina < self.faixa.1;
+        let celula = self.celula < CELULA_MAX;
+        if fina && (custo.fixo >= custo.por_nivel || !celula) {
+            self.fina += 1;
+        } else if celula {
+            self.celula += 1;
+        }
+    }
+
     /// Uma leitura do custo da luz (`ms` de placa, o solver inteiro) com o teto `teto`. Devolve o
-    /// nível a usar (a fina fica em [`Self::fina`]).
+    /// nível a usar (a fina e a célula ficam em [`Self::fina`] e [`Self::celula`]).
     pub fn ler(&mut self, custo: Custo, teto: NivelDaLuz) -> NivelDaLuz {
         if self.nivel > teto {
             *self = Self {
@@ -119,38 +164,20 @@ impl Governador {
             };
             return self.nivel;
         }
-        let ms = custo.total();
-        // A fina `2^k` mais fina custa 4× no fixo (a lei `1/célula²` da grade fina).
-        let acima = if self.fina > self.faixa.0 {
-            Some((
-                Acima::Fina(self.fina - 1),
-                custo.por_nivel + custo.fixo * 4.0,
-            ))
-        } else {
-            vizinho(self.nivel, 1).filter(|&a| a <= teto).map(|a| {
-                let r = f64::from(self.nivel.celula_px() / a.celula_px());
-                (Acima::Nivel(a), custo.por_nivel * r * r + custo.fixo)
-            })
-        };
-        if ms > ORCAMENTO_MS {
+        if custo.total() > ORCAMENTO_MS {
             self.folgadas = 0;
             self.caras += 1;
             if self.caras >= LEITURAS_PARA_DESCER {
-                if let Some(b) = vizinho(self.nivel, -1) {
-                    self.nivel = b;
-                } else if self.fina < self.faixa.1 {
-                    self.fina += 1;
-                }
+                self.abaixo(custo);
                 self.caras = 0;
             }
-        } else if let Some((passo, p)) = acima
-            && p < ORCAMENTO_MS * FOLGA_PARA_SUBIR
-        {
+        } else if let Some(passo) = self.acima(custo, teto) {
             self.caras = 0;
             self.folgadas += 1;
             if self.folgadas >= LEITURAS_PARA_SUBIR {
                 match passo {
                     Acima::Fina(k) => self.fina = k,
+                    Acima::Celula(j) => self.celula = j,
                     Acima::Nivel(a) => self.nivel = a,
                 }
                 self.folgadas = 0;

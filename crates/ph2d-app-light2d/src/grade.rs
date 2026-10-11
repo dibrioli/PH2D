@@ -56,6 +56,16 @@ impl Degrau {
         }
     }
 
+    /// ⭐ W5e — a CÉLULA das cascatas `2^j` × mais grossa: o eixo do governador abaixo do Baixo acima
+    /// de 1080p ([`crate::qualidade::CELULA_MAX`]). O entorno segue (é `entorno` × a célula).
+    #[must_use]
+    pub fn com_celula_engrossada(self, j: u32) -> Self {
+        Self {
+            c0_px: self.c0_px * f64::from(1u32 << j.min(16)),
+            ..self
+        }
+    }
+
     /// Quantas vezes a fina pode engrossar até a captura ser a das cascatas (depois disso não muda
     /// mais nada).
     #[must_use]

@@ -343,3 +343,274 @@ fn medida_luz2d_w5e_bytes() {
         }
     }
 }
+
+/// O retângulo do mundo que a vista `a` mostra numa janela `alvo`: `[x0, y0, x1, y1]`.
+fn visivel(a: Affine, alvo: (u32, u32)) -> [f32; 4] {
+    let inv = a.inverse();
+    let p = [
+        inv * kurbo::Point::new(0.0, 0.0),
+        inv * kurbo::Point::new(f64::from(alvo.0), f64::from(alvo.1)),
+    ];
+    [
+        p[0].x.min(p[1].x) as f32,
+        p[0].y.min(p[1].y) as f32,
+        p[0].x.max(p[1].x) as f32,
+        p[0].y.max(p[1].y) as f32,
+    ]
+}
+
+/// `n` pontos espalhados no retângulo `r` pela treliça do passo áureo (determinística).
+fn espalhados(n: u32, r: [f32; 4]) -> Vec<[f32; 2]> {
+    let k = f64::from(n).sqrt().ceil() as u32;
+    let celulas = k * k;
+    let alvo = ((f64::from(celulas) * 0.618_034) as u32).max(1);
+    let gcd = |mut a: u32, mut b: u32| {
+        while b != 0 {
+            (a, b) = (b, a % b);
+        }
+        a
+    };
+    let passo = (1..=alvo)
+        .rev()
+        .find(|&p| gcd(p, celulas) == 1)
+        .unwrap_or(1);
+    let (w, h) = ((r[2] - r[0]) / k as f32, (r[3] - r[1]) / k as f32);
+    (0..n)
+        .map(|i| {
+            let c = (u64::from(i) * u64::from(passo) % u64::from(celulas)) as u32;
+            [
+                r[0] + ((c % k) as f32 + 0.5) * w,
+                r[1] + ((c / k) as f32 + 0.5) * h,
+            ]
+        })
+        .collect()
+}
+
+fn quadrado(c: [f32; 2], meio: f32, giro: f32) -> Vec<[f32; 2]> {
+    (0..4)
+        .map(|i| {
+            let a = giro + std::f32::consts::FRAC_PI_2 * i as f32;
+            let (s, co) = a.sin_cos();
+            [
+                c[0] + meio * std::f32::consts::SQRT_2 * co,
+                c[1] + meio * std::f32::consts::SQRT_2 * s,
+            ]
+        })
+        .collect()
+}
+
+/// As cenas S1–S3 do protocolo (o relatório, «Luz 2D estado da arte»), na vista `r` do mundo: S1 uma
+/// luz e um corpo; S2 `n` emissores de 2 cm na treliça (a S2 do Godot: uma `PointLight2D` cada); S3 uma
+/// luz e `n` quadrados opacos de 10 cm.
+fn cenas_s(r: [f32; 4]) -> Vec<(String, ph2d_light2d_ecs::CenaDeLuz)> {
+    use ph2d_light2d_ecs::{CenaDeLuz, Emissor, Oclusor};
+    let centro = [(r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0];
+    let luz = |c: [f32; 2], raio: f32, l: f32| Emissor::Disco {
+        centro: c,
+        raio,
+        radiancia: [l; 3],
+        alcance_m: f32::INFINITY,
+    };
+    let corpo = |c, meio| Oclusor {
+        vertices: quadrado(c, meio, 0.3),
+        opacidade: 1.0,
+        albedo: [0.5; 3],
+    };
+    let base = CenaDeLuz {
+        luzes: 1,
+        ..Default::default()
+    };
+    let mut out = vec![(
+        "S1 uma luz".to_owned(),
+        CenaDeLuz {
+            emissores: vec![luz(centro, 0.1, 4.0)],
+            oclusores: vec![corpo([centro[0] + 1.0, centro[1]], 0.3)],
+            ..base.clone()
+        },
+    )];
+    let dentro = [r[0] + 0.5, r[1] + 0.5, r[2] - 0.5, r[3] - 0.5];
+    for n in [1, 10, 100, 1_000, 10_000] {
+        out.push((
+            format!("S2 {n} sprites"),
+            CenaDeLuz {
+                emissores: espalhados(n, dentro)
+                    .into_iter()
+                    .map(|c| Emissor::Poligono {
+                        vertices: quadrado(c, 0.02, 0.0),
+                        radiancia: [4.0; 3],
+                        alcance_m: f32::INFINITY,
+                    })
+                    .collect(),
+                ..base.clone()
+            },
+        ));
+    }
+    for n in [1, 10, 100, 1_000, 10_000] {
+        out.push((
+            format!("S2L {n} lâmpadas"),
+            CenaDeLuz {
+                emissores: espalhados(n, dentro)
+                    .into_iter()
+                    .map(|c| luz(c, 0.02, 4.0))
+                    .collect(),
+                ..base.clone()
+            },
+        ));
+    }
+    for n in [0, 10, 100, 1_000] {
+        out.push((
+            format!("S3 {n} oclusores"),
+            CenaDeLuz {
+                emissores: vec![luz(centro, 0.1, 4.0)],
+                oclusores: espalhados(n, dentro)
+                    .into_iter()
+                    .map(|c| corpo(c, 0.05))
+                    .collect(),
+                ..base.clone()
+            },
+        ));
+    }
+    out
+}
+
+/// S1–S3 e S7 do protocolo, NOSSO lado (o produto: o degrau Baixo do «Automático» de fábrica, a fina
+/// que cabe, o entorno): por resolução UM solver, as cenas trocadas quadro a quadro em rodadas
+/// rotadas — o MÍNIMO, o `loadavg` ao lado. A S4/S5 (penumbra, faísca) são os G3, a S6 o G11, a S8 o
+/// G9 e o K9 (rodadas anteriores).
+#[test]
+#[ignore = "rodada de medição W5e (placa): S1–S3 e S7, o nosso lado contra o Godot"]
+fn medida_luz2d_w5e_s() {
+    use ph2d_light2d_gpu::Solver;
+    let Some(gpu) = crate::comum::gpu() else {
+        eprintln!("medida: sem placa");
+        return;
+    };
+    let rodadas: usize = std::env::var("PH2D_W5E_RODADAS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(7);
+    eprintln!(
+        "## S. O protocolo S1–S3 · S7 (ms de placa, o mínimo de {rodadas}; nível {}) · loadavg antes {}",
+        std::env::var("PH2D_W5E_NIVEL").unwrap_or_else(|_| "Baixa".into()),
+        crate::medida_luz2d_w4b::loadavg()
+    );
+    let nivel = match std::env::var("PH2D_W5E_NIVEL").as_deref() {
+        Ok("Media") => NivelDaLuz::Media,
+        Ok("Alta") => NivelDaLuz::Alta,
+        _ => NivelDaLuz::Baixa,
+    };
+    let lado = gpu.device.limits().max_texture_dimension_2d;
+    eprintln!("| res | cena | vista ms | entorno ms | total ms |");
+    eprintln!("|---|---|---|---|---|");
+    for (nome, alvo) in [
+        ("720p", (1280, 720)),
+        RESOLUCOES[0],
+        RESOLUCOES[1],
+        RESOLUCOES[2],
+    ] {
+        let a = fabrica(alvo);
+        let tetos = ph2d_app_light2d::teto::Tetos {
+            lado,
+            recusou: None,
+        };
+        let k =
+            ph2d_app_light2d::teto::fina_que_cabe(a, alvo, degrau_do(nivel), tetos).expect("cabe");
+        let dg = degrau_do(nivel).com_fina_engrossada(k);
+        let g = grade_do_quadro(a, alvo, dg).expect("grade");
+        let cfg = Config {
+            aritmetica: Config::padrao_para(&gpu.device, g).aritmetica,
+            ..ph2d_app_light2d::teto::config_do_quadro(g, a, dg, true)
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
+        s.regiao_fina(i, f);
+        let mut e = config_do_entorno(a, alvo, dg).map(|c| {
+            let mut e = Solver::novo(&gpu, c).expect("entorno");
+            e.regiao_fina([0; 2], [0; 2]);
+            e
+        });
+        let cenas = cenas_s(visivel(a, alvo));
+        let mut minimo = vec![[f64::INFINITY; 2]; cenas.len()];
+        for rodada in 0..rodadas {
+            for j in 0..cenas.len() {
+                let i = (j + rodada) % cenas.len();
+                let sem_ceu = ph2d_light2d_ecs::CenaDeLuz {
+                    ceu: [0.0; 3],
+                    ..cenas[i].1.clone()
+                };
+                for _ in 0..QUADROS {
+                    if let Some(e) = e.as_mut() {
+                        e.quadro(&gpu, &sem_ceu);
+                    }
+                    s.quadro(&gpu, &cenas[i].1);
+                }
+                let tv = s.tempos(&gpu).map_or(f64::NAN, |t| t.total());
+                let te = e
+                    .as_ref()
+                    .and_then(|e| e.tempos(&gpu))
+                    .map_or(0.0, |t| t.total());
+                if tv + te < minimo[i][0] + minimo[i][1] {
+                    minimo[i] = [tv, te];
+                }
+            }
+        }
+        for ((c, _), m) in cenas.iter().zip(&minimo) {
+            eprintln!(
+                "| {nome}{} | {c} | {:.2} | {:.2} | {:.2} |",
+                if k > 0 {
+                    format!(" (fina ×{})", 1 << k)
+                } else {
+                    String::new()
+                },
+                m[0],
+                m[1],
+                m[0] + m[1]
+            );
+        }
+    }
+    eprintln!("loadavg depois {}", crate::medida_luz2d_w4b::loadavg());
+}
+
+/// S2 por PASSE (1080p, Baixo): quem escala com o número de emissores — o `TemposMs` inteiro do
+/// mínimo de 5 leituras de cada cena.
+#[test]
+#[ignore = "rodada de medição W5e (placa): a S2 passe a passo"]
+fn medida_luz2d_w5e_s2_por_passe() {
+    use ph2d_light2d_gpu::Solver;
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let alvo = RESOLUCOES[0].1;
+    let a = fabrica(alvo);
+    let dg = degrau_do(NivelDaLuz::Baixa);
+    let g = grade_do_quadro(a, alvo, dg).expect("grade");
+    let cfg = Config {
+        aritmetica: Config::padrao_para(&gpu.device, g).aritmetica,
+        ..ph2d_app_light2d::teto::config_do_quadro(g, a, dg, true)
+    };
+    let mut s = Solver::novo(&gpu, cfg).expect("solver");
+    let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
+    s.regiao_fina(i, f);
+    eprintln!(
+        "## S2 passe a passo (1080p Baixo) · loadavg {}",
+        crate::medida_luz2d_w4b::loadavg()
+    );
+    for (nome, cena) in cenas_s(visivel(a, alvo)) {
+        if !nome.starts_with("S2 ") {
+            continue;
+        }
+        let mut melhor: Option<ph2d_light2d_gpu::TemposMs> = None;
+        for _ in 0..5 {
+            let r = s.quadro(&gpu, &cena);
+            if let Some(t) = s.tempos(&gpu)
+                && melhor.as_ref().is_none_or(|m| t.total() < m.total())
+            {
+                melhor = Some(t);
+            }
+            if nome.ends_with("100 sprites") {
+                eprintln!("  relatório C0: {} fora", r.fora.len());
+            }
+        }
+        eprintln!("- {nome}: {:?}", melhor.expect("TIMESTAMP_QUERY"));
+    }
+}

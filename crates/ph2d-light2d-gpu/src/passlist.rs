@@ -31,6 +31,9 @@ pub(crate) struct Opcionais {
     /// ⭐ W5d: a borda exata da captura que a C3 lê (`(cobertura, normal, recuo)` por texel), com
     /// [`Config::borda_exata`].
     pub borda: Option<usize>,
+    /// ⭐ W5d: a EMISSÃO de base (antes da soma do rebote) — o 2.º rebote do quadro repõe-na, com
+    /// `rebotes_por_quadro > 1`.
+    pub emissao_base: Option<usize>,
 }
 
 impl Opcionais {
@@ -56,6 +59,8 @@ impl Opcionais {
                 [k, k + 1]
             }),
             borda: cfg.borda_exata.then(|| proxima(1)),
+            emissao_base: (cfg.rebote && cfg.rebotes_por_quadro > 1 && cfg.holografica.is_some())
+                .then(|| proxima(1)),
         }
     }
 
@@ -135,12 +140,19 @@ impl PassList {
         let n = cfg.n_cascatas();
         let saltos = cfg.saltos_jfa();
         let amostrada = T::TEXTURE_BINDING | T::COPY_SRC;
+        let op = Opcionais::de(cfg);
+        // ⭐ W5d: o 2.º rebote repõe a emissão de base por cópia.
+        let reposta = if op.emissao_base.is_some() {
+            T::COPY_DST
+        } else {
+            T::empty()
+        };
         let texturas = vec![
             Textura {
                 nome: "luz2d/tex/emissao",
                 formato: wgpu::TextureFormat::Rgba16Float,
                 tamanho: fino,
-                usos: T::RENDER_ATTACHMENT | amostrada,
+                usos: T::RENDER_ATTACHMENT | amostrada | reposta,
             },
             Textura {
                 nome: "luz2d/tex/cobertura",
@@ -186,7 +198,6 @@ impl PassList {
             },
         ];
         let mut texturas = texturas;
-        let op = Opcionais::de(cfg);
         if op.visibilidade.is_some() {
             texturas.push(Textura {
                 nome: "luz2d/tex/visibilidade",
@@ -244,6 +255,15 @@ impl PassList {
                 formato: wgpu::TextureFormat::Rgba16Float,
                 tamanho: [gc.largura, gc.altura],
                 usos: T::STORAGE_BINDING | amostrada,
+            });
+        }
+
+        if op.emissao_base.is_some() {
+            texturas.push(Textura {
+                nome: "luz2d/tex/emissao_base",
+                formato: wgpu::TextureFormat::Rgba16Float,
+                tamanho: fino,
+                usos: T::COPY_SRC | T::COPY_DST,
             });
         }
 
@@ -320,6 +340,13 @@ impl PassList {
         if op.rebote.is_some() {
             buffers.push(Buffer {
                 nome: "luz2d/buf/rebote",
+                bytes: 32,
+                usos: uniforme,
+            });
+        }
+        if op.emissao_base.is_some() {
+            buffers.push(Buffer {
+                nome: "luz2d/buf/rebote_mesma",
                 bytes: 32,
                 usos: uniforme,
             });

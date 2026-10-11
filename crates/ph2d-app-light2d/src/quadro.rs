@@ -272,7 +272,15 @@ impl LuzDoQuadro {
                 c.fina,
                 c.captura,
                 c.holografica,
-            ) == (g.largura, g.altura, fina, captura, holografica)
+                c.rebotes_por_quadro,
+            ) == (
+                g.largura,
+                g.altura,
+                fina,
+                captura,
+                holografica,
+                self.degrau.rebotes_por_quadro,
+            )
         });
         let pronto = if mesmas {
             let r = self.resolvido.as_mut().expect("verificado acima");
@@ -287,6 +295,7 @@ impl LuzDoQuadro {
                 captura,
                 holografica,
                 rebote,
+                rebotes_por_quadro: self.degrau.rebotes_por_quadro,
                 ..Config::padrao_para(&gpu.device, g)
             };
             Solver::novo_com(gpu, cfg, &self.fabrica).map(|solver| {

@@ -111,6 +111,7 @@ fn medida_luz2d_w5d_rebote() {
     crate::medida_luz2d_w5c::fora_da_grade(&gpu);
     entorno(&gpu);
     custo_do_entorno(&gpu);
+    rebotes_por_quadro(&gpu);
     eprintln!("# loadavg depois {}", loadavg());
 }
 
@@ -712,5 +713,81 @@ fn disco_de_imagem(gpu: &GpuContext) {
             );
             fotos(&gab_cena, &lista, &r, tx, &serie);
         }
+    }
+}
+
+/// B2. Os rebotes por quadro (K9: ≤ 10 quadros a 1 %): a convergência da cena 3 na vista de fábrica
+/// (o quadro em que o PIOR ponto fica a 5 % · 1 % do convergido, 120 quadros) e o custo (o mínimo de
+/// [`RODADAS`]), por nível, com 1 e 2 rebotes por quadro.
+fn rebotes_por_quadro(gpu: &GpuContext) {
+    use ph2d_app_light2d::qualidade::degrau_do;
+    use ph2d_editor_core::luz_edits::NivelDaLuz;
+    eprintln!("\n## B2. Rebotes por quadro (cena 3, vista de fábrica)");
+    let a = vista(1.0);
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 3));
+    let c3 = cena_de_luz(&w);
+    let pts = crate::medida_luz2d_w5c::pontos_da_cena_3();
+    for (nome, nivel) in [
+        ("Low", NivelDaLuz::Baixa),
+        ("Medium", NivelDaLuz::Media),
+        ("High", NivelDaLuz::Alta),
+    ] {
+        let d = degrau_do(nivel);
+        let cfg = |n: u32| Config {
+            fina: fina_do_quadro(a, d),
+            captura: captura_do_quadro(a, d),
+            holografica: Some(HOLOGRAFICA_PADRAO),
+            rebote: true,
+            rebotes_por_quadro: n,
+            ..Config::padrao_para(&gpu.device, grade_do_quadro(a, FHD, d).expect("grade"))
+        };
+        let mut linha = format!("- {nome}:");
+        let mut fins = Vec::new();
+        for n in [1, 2] {
+            let mut s = solver(gpu, a, cfg(n));
+            let mut historia: Vec<Vec<f64>> = Vec::new();
+            for _ in 0..120 {
+                s.quadro(gpu, &c3);
+                let f = fluencia_lida(gpu, &s);
+                historia.push(pts.iter().map(|&p| f.amostra(p)).collect());
+            }
+            let fim = historia.last().expect("120").clone();
+            let quadro_a = |tol: f64| {
+                historia
+                    .iter()
+                    .position(|h| {
+                        h.iter()
+                            .zip(&fim)
+                            .all(|(x, y)| (x - y).abs() <= tol * y.abs())
+                    })
+                    .map_or(0, |q| q + 1)
+            };
+            linha += &format!(
+                " · {n} por quadro: 5 % no {} · 1 % no {}",
+                quadro_a(0.05),
+                quadro_a(0.01)
+            );
+            fins.push(fim);
+        }
+        let dif = fins[0]
+            .iter()
+            .zip(&fins[1])
+            .map(|(x, y)| (x - y).abs() / x.abs().max(1e-9))
+            .fold(0.0, f64::max);
+        linha += &format!(" · o convergido difere {:.2} %", 100.0 * dif);
+        let mut ss = [solver(gpu, a, cfg(1)), solver(gpu, a, cfg(2))];
+        let mut minimo = [f64::INFINITY; 2];
+        for rodada in 0..RODADAS {
+            for j in 0..2 {
+                let i = (j + rodada) % 2;
+                for _ in 0..3 {
+                    ss[i].quadro(gpu, &c3);
+                }
+                minimo[i] = minimo[i].min(ss[i].tempos(gpu).expect("TIMESTAMP_QUERY").total());
+            }
+        }
+        linha += &format!(" · custo {:.2} → {:.2} ms", minimo[0], minimo[1]);
+        eprintln!("{linha}");
     }
 }

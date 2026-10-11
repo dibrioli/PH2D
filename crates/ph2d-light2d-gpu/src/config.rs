@@ -136,6 +136,10 @@ pub struct Config {
     /// ⭐ W5c — o REBOTE (plano §2.4): a luz que chega a um corpo opaco que recebe luz volta ao
     /// plano × o albedo dele, um rebote por quadro (a fonte do quadro anterior, lida no MUNDO).
     pub rebote: bool,
+    /// ⭐ W5d — quantos rebotes por quadro (≥ 1; com a holográfica): o 2.º repete no mesmo quadro a soma
+    /// na emissão (com a fonte que o 1.º acabou de escrever), a cascata e a fonte — o rebote assenta
+    /// no dobro da velocidade (K9), ao preço de uma cascata a mais.
+    pub rebotes_por_quadro: u32,
     /// ⭐ W5c — a fusão das cascatas junto a uma parede (o ABERTO 1 da W5a).
     pub mascara_da_fusao: MascaraDaFusao,
     /// ⭐ W5c — a fronteira entre intervalos junto a uma face (o `FRONTEIRA_NA_FACE` do
@@ -306,6 +310,7 @@ impl Config {
             distantes: true,
             mascara_px: MASCARA_PX_PADRAO,
             rebote: false,
+            rebotes_por_quadro: 1,
             mascara_da_fusao: MascaraDaFusao::PeloFim,
             fronteira_na_face: true,
             media_no_eixo: true,

@@ -38,6 +38,8 @@ pub struct Degrau {
     /// rebote de refletores fora da grade), somada às cascatas da vista. 0 = sem (só com a
     /// holográfica).
     pub entorno: f64,
+    /// ⭐ W5d: os rebotes por quadro (o `Config::rebotes_por_quadro`) — ver [`DEGRAU_PADRAO`].
+    pub rebotes_por_quadro: u32,
 }
 
 /// ⭐ W5d — a margem do entorno, em fração da vista de cada lado: 1,5 ⇒ 4× a vista em cada eixo.
@@ -62,6 +64,11 @@ pub const MARGEM_DO_ENTORNO: f64 = 1.5;
 /// 2,8–4,5 · 6,9–9,8 · 22,4–31,0 → 1,8–3,8 · 5,1–6,7 · 26,3–28,4 ms; a memória 109 · 146 · 244 →
 /// 148 · 309 · 894 MB (o recurso que ela paga). O limite medido: a luz menor que ~3 células de raio
 /// (−20 % de viés no raio 1,5; os vaga-lumes da cena 2 têm ~2 no Baixo e saem a −2,7 %).
+///
+/// ⭐ W5d — DOIS rebotes por quadro no Baixo (este; rodada `medida_luz2d_w5d_rebote`, a cena 3 na vista
+/// de fábrica, o pior ponto a 1 % do convergido): 11 → 6 quadros (K9: ≤ 10) por +1,0 ms (2,75 → 3,72);
+/// o convergido é o mesmo (0,00 %). No Médio e no Alto um só ([`crate::qualidade::degrau_do`]): o 2.º
+/// custaria 5,82 → 10,11 e 24,2 → 73,8 ms para os mesmos 12 → 6 quadros.
 pub const DEGRAU_PADRAO: Degrau = Degrau {
     c0_px: 4.0,
     margem: 0.125,
@@ -70,6 +77,7 @@ pub const DEGRAU_PADRAO: Degrau = Degrau {
     captura_px: 0.5,
     holografica: true,
     entorno: ENTORNO_PADRAO,
+    rebotes_por_quadro: 2,
 };
 
 /// ⭐ W5d — o fator do entorno — MEDIDO (rodada `medida_luz2d_w5d`, a cena 3 na vista de 2 m no nível

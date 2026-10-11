@@ -526,6 +526,37 @@ impl C3 {
 
     /// Grava os dois passes (o da visibilidade fica vazio sem ela: os carimbos dele valem 0) —
     /// `distantes`: alguma lâmpada tem objetos fora da grade neste quadro.
+    /// ⭐ W5d — só a FONTE do rebote (o 1.º de dois rebotes no quadro), com a borda exata antes; sem
+    /// carimbos.
+    pub(super) fn gravar_so_a_fonte(
+        &self,
+        gpu: &GpuContext,
+        enc: &mut wgpu::CommandEncoder,
+        (lampadas, distantes): (&wgpu::BindGroup, bool),
+    ) {
+        let Some((pipe, [g2, g3])) = &self.rebote else {
+            return;
+        };
+        gpu.queue
+            .write_buffer(&self.uniforme, 0, bytemuck::bytes_of(&self.u));
+        let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("luz2d C3 rebote (1.º)"),
+            timestamp_writes: None,
+        });
+        if let Some((bp, bg3, [w, h])) = &self.borda {
+            p.set_pipeline(bp);
+            p.set_bind_group(3, bg3, &[]);
+            p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        }
+        p.set_pipeline(pipe.de(distantes));
+        p.set_bind_group(0, &self.cena, &[]);
+        p.set_bind_group(1, lampadas, &[]);
+        p.set_bind_group(2, g2, &[]);
+        p.set_bind_group(3, g3, &[]);
+        let [w, h] = self.tamanho_grosso;
+        p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+    }
+
     pub(super) fn gravar(
         &self,
         gpu: &GpuContext,

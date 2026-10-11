@@ -267,6 +267,17 @@ impl Solver {
         // ⭐ W5c: a emissão ganha a luz que cada superfície refletora recebeu no quadro anterior.
         // Sem nenhum corpo que reflita, os dois passes do rebote saltam (e a fonte esquece-se).
         let reflete = self.rebote.is_some() && rebote::ha_refletor(cena, sprites);
+        // ⭐ W5d: o 2.º rebote do quadro repõe a emissão de BASE (a soma do rebote é aditiva).
+        let base = crate::passlist::Opcionais::de(&self.cfg)
+            .emissao_base
+            .filter(|_| reflete && self.hrc.is_some());
+        if let Some(b) = base {
+            enc.copy_texture_to_texture(
+                self.texturas[EMISSAO].as_image_copy(),
+                self.texturas[b].as_image_copy(),
+                self.texturas[EMISSAO].size(),
+            );
+        }
         match self.rebote.as_mut() {
             Some(r) if reflete => {
                 r.gravar(
@@ -316,9 +327,37 @@ impl Solver {
             });
             h.gravar(&mut p);
         }
+        // ⭐ W5d: os rebotes a mais do quadro — a fonte com esta cascata, a emissão de base de novo com a
+        // soma da fonte nova, e a cascata outra vez (o campo de distância não muda: é da cobertura).
+        // Os carimbos de cada cascata a mais vão para os da cascata `k` (vazios com a holográfica).
+        let mut a_mais = 0;
+        if let (Some(b), Some(h), Some(r)) = (base, &self.hrc, &self.rebote) {
+            for k in 1..self.cfg.rebotes_por_quadro.min(self.n) {
+                a_mais = k;
+                self.c3.gravar_so_a_fonte(
+                    gpu,
+                    enc,
+                    (&self.lampadas_grupo, !distante.indices.is_empty()),
+                );
+                enc.copy_texture_to_texture(
+                    self.texturas[b].as_image_copy(),
+                    self.texturas[EMISSAO].as_image_copy(),
+                    self.texturas[EMISSAO].size(),
+                );
+                r.gravar_na_mesma(enc, &self.alvos_c0[0]);
+                let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("luz2d C2 holográfica (rebote a mais)"),
+                    timestamp_writes: self
+                        .tempos
+                        .as_ref()
+                        .map(|t| t.escrita_compute(tempos::da_cascata(k))),
+                });
+                h.gravar(&mut p);
+            }
+        }
         for i in (0..self.n).rev() {
             if self.hrc.is_some() {
-                if i > 0 {
+                if i > a_mais {
                     rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::da_cascata(i));
                 }
                 continue;

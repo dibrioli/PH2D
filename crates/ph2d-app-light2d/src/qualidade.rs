@@ -27,6 +27,11 @@ const LEITURAS_PARA_SUBIR: u32 = 30;
 pub fn degrau_do(nivel: NivelDaLuz) -> Degrau {
     Degrau {
         c0_px: f64::from(nivel.celula_px()),
+        rebotes_por_quadro: if nivel == NivelDaLuz::Baixa {
+            DEGRAU_PADRAO.rebotes_por_quadro
+        } else {
+            1
+        },
         ..DEGRAU_PADRAO
     }
 }

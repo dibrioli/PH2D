@@ -27,6 +27,8 @@ pub(super) struct SomaDoRebote {
     /// A grade em que a fonte foi escrita (a do quadro anterior); `None` antes do 1.º.
     pub(super) anterior: Option<Grade>,
     fonte: wgpu::Texture,
+    /// ⭐ W5d: o 2.º rebote do quadro — a fonte lida na MESMA grade (o uniforme e o grupo dela).
+    na_mesma: Option<wgpu::BindGroup>,
 }
 
 impl Solver {
@@ -45,6 +47,8 @@ impl SomaDoRebote {
         vistas: &[wgpu::TextureView],
         [albedo, fonte]: [usize; 2],
         (uniforme, textura_da_fonte): (wgpu::Buffer, wgpu::Texture),
+        // ⭐ W5d: o uniforme do 2.º rebote (a mesma grade `g`) e a fila que o escreve.
+        mesma: Option<(wgpu::Buffer, &Grade, &wgpu::Queue)>,
     ) -> Self {
         let textura = |binding| wgpu::BindGroupLayoutEntry {
             binding,
@@ -81,6 +85,37 @@ impl SomaDoRebote {
                     resource: wgpu::BindingResource::TextureView(&vistas[fonte]),
                 },
             ],
+        });
+        let na_mesma = mesma.map(|(u, g, fila)| {
+            fila.write_buffer(
+                &u,
+                0,
+                bytemuck::bytes_of(&UniformeRebote {
+                    escala: [1.0; 2],
+                    desloc: [0.0; 2],
+                    anterior: [g.largura as f32, g.altura as f32],
+                    valida: 1.0,
+                    albedo_max: ph2d_light2d_ecs::ALBEDO_MAX,
+                }),
+            );
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("luz2d c0 rebote (na mesma grade)"),
+                layout: &layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: u.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(&vistas[albedo]),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(&vistas[fonte]),
+                    },
+                ],
+            })
         });
         let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("luz2d c0_rebote.wgsl"),
@@ -132,7 +167,40 @@ impl SomaDoRebote {
             uniforme,
             anterior: None,
             fonte: textura_da_fonte,
+            na_mesma,
         }
+    }
+
+    /// ⭐ W5d — o 2.º rebote do quadro: a soma na `emissao` com a fonte que a C3 acabou de escrever
+    /// (na mesma grade); sem carimbos. Devolve se gravou.
+    pub(super) fn gravar_na_mesma(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        emissao: &wgpu::TextureView,
+    ) -> bool {
+        let Some(grupo) = &self.na_mesma else {
+            return false;
+        };
+        let mut p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("luz2d C0 rebote (2.º)"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: emissao,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        p.set_pipeline(&self.pipeline);
+        p.set_bind_group(0, grupo, &[]);
+        p.draw(0..3, 0..1);
+        true
     }
 
     /// Grava a soma na `emissao` da grade `g` (com a fonte do quadro anterior, se houver).

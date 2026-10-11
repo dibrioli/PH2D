@@ -546,7 +546,10 @@ impl Solver {
 
         let rebote = op.rebote.map(|r| {
             let fonte = (buffer("luz2d/buf/rebote"), texturas[r[1]].clone());
-            rebote::SomaDoRebote::novo(device, &lista, &vistas, r, fonte)
+            let mesma = op
+                .emissao_base
+                .map(|_| (buffer("luz2d/buf/rebote_mesma"), &cfg.grade, &*gpu.queue));
+            rebote::SomaDoRebote::novo(device, &lista, &vistas, r, fonte, mesma)
         });
         gpu.queue.write_buffer(
             &uni_c0,

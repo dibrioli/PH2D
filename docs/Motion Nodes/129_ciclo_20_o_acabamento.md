@@ -228,7 +228,7 @@ tem um `f` — meça e decida (camada por sink, ou a queixa).
 | W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | ✅ §5.6 · smoke do dono APROVADO 11/10 |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | ✅ §5.7 (+ a pilha só na área da cena; a mistura medida e dita no cartão) |
 | W4b | a mistura do `Output` com a camada filtrada (§3.5) | ✅ §5.8 (+ o passo (9) do roteiro e a secção 10 do tutorial) |
-| W5 | provas de mutação · o handoff | — |
+| W5 | provas de mutação · o handoff | ✅ (handoff de integração) · §5.9 |
 
 ## §5 — Medições
 
@@ -463,6 +463,27 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
   primeira, e o cartão de cada filtro di-lo (`outputs_land_differently`).
 - **A foto** (`handoffs/fotos_W4b/`, passo (9) = `Output` em `Add`): os discos clareiam o fundo e o
   relevo fica; a sombra escura some na soma (a lei). A da W4 (`mistura`) saía chapada.
+
+### §5.9 — As provas de mutação (W5, 11/10)
+
+| lote | linhas | sangravam à 1.ª | o que se fez | depois |
+|---|---|---|---|---|
+| W4b | 21 | 15 | as 6 sobreviventes (P9, P11, P12, P14, P18, P19) viraram 6 gates: `com_a_camada_o_scene_desenha_sem_modo_e_o_everything_agrupa`, `the_device_route_asks_the_same_landing_rule`, a tabela de ponta a ponta nos dois ramos do Vello, `the_frame_step_isolates_the_pump_when_a_filter_is_on_the_wire`, `as_formas_do_motion_vao_a_camada_filtrada` | **21/21** |
+| W0–W4 | 41 | 36 de 40 (Q23 sem arnês) | Q23 (shell) → gate de texto `com_filtros_o_motion_sai_do_passe_fundido`; Q10, Q17, Q25, Q28 → `the_grain_follows_the_frame_tick`, `the_lens_frame_is_the_scene_not_the_window` (a escolha passou a `motion_lens::quadro_da_cena`, partilhada com a camada filtrada), a partição sem `Whole Layer`, `every_kind_keeps_its_default_colours_through_the_card` — cada um visto VERMELHO sob a sua mutação; Q29–Q31, Q34 já sangravam (ver abaixo) e ganharam gates directos | **41/41** (Q7 só pela placa) |
+
+- **Q29–Q31, Q34** (o passe do campo: semente G&S, ramo do pé da aresta, distância à tangente,
+  `org_map`) **não sobreviviam**: a 1.ª corrida só filtrou os 5 gates da tabela; sob a suíte `fx_stack`
+  inteira cada uma já derrubava gates antigos (Q29–Q31: `the_raster_bevel_holds_still_under_subpixel_motion`
+  e outros; Q34: `the_noise_is_pinned_to_the_shape_not_to_the_scratch`). ⚠️ Lição: o filtro de uma
+  prova de mutação é a TABELA, e uma tabela estreita lê «sobrevive» onde a suíte sangra. Ficaram dois
+  gates DIRECTOS: `the_raster_field_is_the_true_distance_to_a_disc_at_every_angle` (disco fora da
+  grelha, 1 027 texels da rampa: real 0,047 px · Q29 0,654 · Q30 0,297 · Q31 0,297; barra 0,1) e
+  `the_map_is_the_point_it_holds_texel_by_texel` (o `Origem::Mapa` = o `Ponto` de cada metade, ao
+  byte; os antigos só cobriam o lado `Ponto`).
+- **Q7** (a ordem fixa da lente) só é apanhada pelo gate de placa `the_four_together_match_the_cpu`.
+- Auditoria (duas lentes): «camada codificada e não desenhada» = falso positivo
+  (`motion_active` de `present_world_sprites` recebe `motion_draws`); «virar o isolamento não suja o
+  pump» = real, gate `turning_the_layer_on_in_the_same_tick_relowers`.
 
 ## §6 — Lições
 

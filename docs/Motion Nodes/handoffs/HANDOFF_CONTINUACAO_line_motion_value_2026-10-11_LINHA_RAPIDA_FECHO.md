@@ -79,7 +79,9 @@ no original continuam quebrados (`#bug-6`, `#bug-9`, `flip_pass_camera_tests.rs`
 | `cargo test : check` | 2,2× | 7× (inflado pelas corridas de medição A/B) |
 
 Portão de fecho (`verificador`): `nextest-impacted` 5 081/5 081 · clippy `-D warnings` do collide limpo
-· `doc-index --check` 17/17 · censos da árvore combinada 117/117.
+· `doc-index --check` 17/17 · censos da árvore combinada 117/117. Binário do smoke refeito depois da
+edição do collide: `cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida
+`Finished \`smoke\` profile [optimized] target(s) in 0.21s` (zero `Compiling`).
 
 ## ABERTO (nomeado)
 

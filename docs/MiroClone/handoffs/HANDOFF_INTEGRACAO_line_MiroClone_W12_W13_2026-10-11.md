@@ -146,13 +146,13 @@ PH2D_BOARD_SMOKE=9  ./target/smoke/ph2d-host-desktop      # a votação de um ec
 ## 9. O que fica ABERTO
 
 - **Smoke do dono da W13** (cena 14). O da W11 (descoberta e firewall num 2.º computador) continua por fazer.
-- A régua de custo do selo (`measure_marks_paint_cost`, 10 mil notas com selo) não foi corrida em `--release` com a placa
-  depois de o selo passar a ler a sessão mostrada (uma procura num `BTreeMap` por elemento desenhado, só com sessão mostrada).
 - Decisões registadas, não defeitos: apagar a sessão de maior número deixa reusar o «Voting N»; o «Voting N» de duas sessões
   acabadas ao mesmo tempo em pares diferentes pode mudar de número quando uma delas se apaga (`label_number` é do conjunto);
-  o fim de uma votação não se desfaz (o lixo é o caminho, ADR-0183 §6); o `fit` mínimo da coluna (3 filas) ainda pode passar
-  do chão numa janela muito baixa (da W7).
-- Do handoff da W12 §9: a identidade do par autodeclarada no `Hello`; fechar a ABA do anfitrião sem «End session».
+  o fim de uma votação não se desfaz (o lixo é o caminho, ADR-0183 §6).
+- **Mudar o TIPO de uma forma seleccionada não tem ecrã**: `Editor::set_shape_type` existe com ZERO chamadores e zero testes
+  (o Miro tem-no na barra da forma). Plano na [continuação dos acabamentos](HANDOFF_CONTINUACAO_W13_ACABAMENTOS_2026-10-11.md).
+- ~~a régua do selo por correr~~ · ~~o `fit` mínimo a passar do chão~~ · ~~a identidade autodeclarada no `Hello`~~ · ~~fechar a
+  ABA do anfitrião sem «End session»~~ — fechados em 11/10, §12.
 
 ## 10. Para o integrador
 
@@ -177,3 +177,27 @@ contexto inicial 62 mil.
 ▸ linha line_miroclone · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
     Finished `smoke` profile [optimized] target(s) in 0.31s
 ```
+
+## 12. Adenda — os acabamentos do §9 (11/10, 3 commits depois do `8a2e662df`)
+
+Integram-se JUNTO com o resto (mesma linha, mesmo `--ff-only` se o `main` não andou). Briefing da janela:
+[continuação dos acabamentos](HANDOFF_CONTINUACAO_W13_ACABAMENTOS_2026-10-11.md).
+
+| commit | o quê | partilhado tocado |
+|---|---|---|
+| `3c8d8c0a5` | a coluna da facilitação numa janela baixa ROLA pela porta `widget::scroll_area` (nunca passa do chão); a roda sobre ela nunca dá zoom no quadro; as listas paginam até 1 fila (o `fit` conta a moldura do cartão); os painéis da equipa à esquerda da barra. Medido: passava do chão a partir de 337 px de área. O selo re-medido em `--release` (1,34 ms; nenhum tecto — `05_facilitacao.md` §4.1) | `ph2d-editor-core`: **`BOARD_FACILITATE_SCROLLBAR_ID = 850`** em `widget/scrollbar_ids.rs` (+ a lista de unicidade e o `pub use`); `Fac.column`; `T.vp_h` no arnês dos testes do quadro |
+| `8aaf833b3` | o quadro da sala que SAI do anfitrião (aba apagada, outro projecto carregado, janela fechada) fecha a sala como «End session» — revela, acaba a votação, diz adeus. Achado na família: carregar outro projecto a hospedar punha a sala sobre o quadro novo com o MESMO id | `ph2d-editor-core` `Documents::{remove, replace}` + `LiveView::part`/`take_parting`; **shell**: 4 linhas em `input_dispatch/despacho_metodos_janela_e_vetor.rs` (`ph2d_app_board::live::shutdown` antes de largar o `gfx`) |
+| `9cd70e2f5` | a identidade presa a uma chave: o id de outra pessoa (ou o do anfitrião) sem a chave dela é recusado antes do `Welcome`; `Hello` 3 recusado com a frase em vez de silêncio | `ph2d-board-sync` **`PROTOCOL` 3 → 4**, `Msg::Hello.key` (no FIM), `Guest::new(…, key)`; ADR-0182 **§10** (emenda, número de ADR inalterado) |
+
+Para o integrador, além do §10:
+- **O id `850` CONTA-SE** contra o `main` do dia (`scrollbar_ids.rs` avisa: duas linhas que tomem o mesmo número fundem limpo).
+- **Protocolo 4**: um par da W13 (3) é recusado com a frase de sempre nos dois sentidos (gate
+  `the_old_hello_and_the_new_one_are_refused_across_versions`).
+- A shell cresce 4 linhas (composição; a catraca `the_shell_only_shrinks` tem folga — reconte na árvore combinada).
+- Gates novos: `board_bar_history_tests` (4: `a_low_window_scrolls_the_column_and_reaches_every_control`,
+  `a_tall_window_keeps_the_column_and_the_wheel_off_it_still_zooms`, `a_team_panel_never_covers_a_scrolling_column`,
+  `the_list_pages_down_to_one_row_before_the_column_scrolls`) · `live_tests::the_room_closes_like_end_session_when_its_board_leaves_the_host`
+  (rede real, 3 saídas) · `session_tests` (2). Mutação: 7/7 + 4/4 + 4/4 sangram (a M4 da coluna sobreviveu à 1.ª e ganhou a
+  varredura de alturas).
+- **Portão da adenda** (base `8a2e662df`, load 46): `nextest-impacted` **16 715/16 715** (com o `ph2d-editor-core::it`:
+  catraca da shell, tectos de LOC, censo das barras), clippy `-D warnings` nos 4 pacotes ✓, `fmt --check` ✓, `typos` ✓.

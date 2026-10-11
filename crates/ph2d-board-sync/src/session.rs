@@ -85,7 +85,7 @@ impl Msg {
     }
 }
 
-/// O `Hello` dos protocolos 1–3 (sem a chave): só se lê para o recusar com a frase de sempre — sem
+/// O `Hello` até ao protocolo 3 (sem a chave): só se lê para o recusar com a frase de sempre — sem
 /// isto o par antigo ficava à espera de uma resposta que nunca vinha.
 #[derive(Deserialize)]
 #[allow(dead_code)] // lêem-se só para saber que é um `Hello`

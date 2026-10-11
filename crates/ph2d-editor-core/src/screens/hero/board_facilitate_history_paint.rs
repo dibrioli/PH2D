@@ -115,7 +115,7 @@ pub(super) fn view(hero: &mut HeroScreen, id: BoardId, fit: usize) -> Option<His
                     } else {
                         String::new()
                     };
-                    (title(p), when)
+                    (title(&board.team, p), when)
                 })
                 .collect();
             for k in 0..rows.len() {
@@ -167,7 +167,7 @@ pub(super) fn view(hero: &mut HeroScreen, id: BoardId, fit: usize) -> Option<His
                 sub.push(tr_with("board.vote.by", &[("name", &p.by)]));
             }
             Some(HistView::Session {
-                title: title(p),
+                title: title(&board.team, p),
                 sub: sub.join(" · "),
                 rows: res.iter().take(n).map(line).collect(),
                 all,

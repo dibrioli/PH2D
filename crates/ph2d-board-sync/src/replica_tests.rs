@@ -609,8 +609,9 @@ fn sessions_keep_the_order_of_their_number_whatever_the_clock_says() {
     }
 }
 
-/// ⭐ W13 (auditoria): dois pares acabam uma votação AO MESMO TEMPO — os dois deram «Voting 2»; a
-/// fusão dá à 2.ª o número seguinte, igual nos dois (sem escrita a mais).
+/// ⭐ W13 (auditoria): dois pares acabam uma votação AO MESMO TEMPO — os dois guardaram o número 2; o
+/// ecrã pinta «Voting 2» e «Voting 3», igual nos dois (uma função do conjunto, nunca gravada: gravar
+/// a renumeração divergia no sorteio de convergência).
 #[test]
 fn two_votes_ended_at_once_never_share_a_number() {
     let (mut a, mut b, x) = two();
@@ -619,7 +620,13 @@ fn two_votes_ended_at_once_never_share_a_number() {
     a.b.team.add_poll(BTreeMap::from([(x, 2)]), "ana", 1, 9);
     b.b.team.add_poll(BTreeMap::from([(x, 3)]), "bia", 1, 9);
     concurrently(&mut a, &mut b);
-    let nums = |p: &Peer| p.b.team.polls.iter().map(|q| q.number).collect::<Vec<_>>();
+    let nums = |p: &Peer| {
+        let t = &p.b.team;
+        t.polls
+            .iter()
+            .map(|q| t.label_number(q.id))
+            .collect::<Vec<_>>()
+    };
     assert_eq!(nums(&a), [1, 2, 3]);
     assert_eq!(nums(&a), nums(&b));
     same(&a, &b, "depois de renumerar");

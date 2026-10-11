@@ -58,7 +58,7 @@ impl Team {
         at: i64,
     ) -> PollId {
         let id = PollId(self.mint());
-        let number = self.polls.iter().map(|p| p.number).max().unwrap_or(0) + 1;
+        let number = self.labels().last().map_or(0, |&(_, n)| n) + 1;
         self.polls.push(Poll {
             id,
             number,
@@ -70,6 +70,32 @@ impl Team {
         });
         self.shown = Some(id);
         id
+    }
+
+    /// O `N` que o ecrã pinta em «Voting N»: o número guardado, a menos que dois pares tenham acabado
+    /// uma votação ao mesmo tempo (o MESMO número) — pela ordem (número, fim, id) cada um leva pelo menos
+    /// o seguinte do anterior. Uma função do CONJUNTO, nunca gravada: igual em todos os pares, qualquer
+    /// que seja a ordem em que as sessões chegaram (renumerar e gravar divergia — portão W13). `0` = não
+    /// existe.
+    #[must_use]
+    pub fn label_number(&self, id: PollId) -> u32 {
+        self.labels()
+            .into_iter()
+            .find(|&(p, _)| p == id)
+            .map_or(0, |(_, n)| n)
+    }
+
+    /// `(sessão, N)` pela ordem (número, fim, id).
+    fn labels(&self) -> Vec<(PollId, u32)> {
+        let mut v: Vec<&Poll> = self.polls.iter().collect();
+        v.sort_by_key(|p| (p.number, p.at, p.id));
+        let mut last = 0;
+        v.into_iter()
+            .map(|p| {
+                last = p.number.max(last + 1);
+                (p.id, last)
+            })
+            .collect()
     }
 
     #[must_use]

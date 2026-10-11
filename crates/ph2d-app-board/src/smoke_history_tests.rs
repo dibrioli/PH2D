@@ -80,6 +80,7 @@ fn the_history_scene_does_what_its_lessons_say() {
         );
     };
     assert!(facilitate::vote_open(&ana), "o painel da votação não abriu");
+    assert_eq!(ana.documents.active(), Some(l.board));
     let xs: Vec<f64> = l
         .lessons
         .iter()

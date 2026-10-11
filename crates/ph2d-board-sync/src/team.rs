@@ -418,14 +418,9 @@ impl TeamState {
         team.threads
             .sort_by_key(|t| (t.messages.first().map_or(0, |m| m.at), t.id));
         team.versions.sort_by_key(|v| (v.at, v.id));
+        // Pelo número (o «Voting N»), nunca pelo relógio; dois iguais (dois pares acabaram ao mesmo
+        // tempo) separam-se pelo fim e pelo id — e o ecrã pinta-os com `Team::label_number`.
         team.polls.sort_by_key(|p| (p.number, p.at, p.id));
-        // Dois pares que acabaram uma votação ao mesmo tempo deram o MESMO «Voting N»: a fusão dá à
-        // 2.ª (pela ordem acima, a mesma em todos) o número seguinte. Determinístico, sem escrita.
-        let mut last = 0;
-        for p in &mut team.polls {
-            p.number = p.number.max(last + 1);
-            last = p.number;
-        }
         if team.shown.is_some_and(|id| self.polls_gone.contains(&id)) {
             team.shown = None;
         }

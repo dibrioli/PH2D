@@ -7,7 +7,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_board_edit::{Editor, VoteSetup};
-use ph2d_board_model::{Board, BoardId, Poll, PollId};
+use ph2d_board_model::{Board, BoardId, Poll, PollId, Team};
 use ph2d_i18n::tr_with;
 
 use super::super::super::HeroScreen;
@@ -35,9 +35,12 @@ pub(super) fn row_of(id: NodeId) -> Option<usize> {
 
 /// O título de uma sessão: o nome que lhe deram, ou «Voting N» no idioma do ecrã.
 #[must_use]
-pub(crate) fn title(p: &Poll) -> String {
+pub(crate) fn title(team: &Team, p: &Poll) -> String {
     if p.name.is_empty() {
-        tr_with("board.vote.session_default", &[("n", &p.number)])
+        tr_with(
+            "board.vote.session_default",
+            &[("n", &team.label_number(p.id))],
+        )
     } else {
         p.name.clone()
     }
@@ -160,7 +163,11 @@ pub(super) fn click(
             let Some(poll) = open.filter(|_| double) else {
                 return true;
             };
-            let name = board.team.poll(poll).map(title).unwrap_or_default();
+            let name = board
+                .team
+                .poll(poll)
+                .map(|p| title(&board.team, p))
+                .unwrap_or_default();
             f.renaming_poll = Some((id, poll));
             super::super::open_field(&mut hero.store, BOARD_POLL_NAME_INPUT, name);
         }

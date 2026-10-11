@@ -4,8 +4,8 @@
 use super::*;
 use ph2d_vec_scene::{ALL_SHAPES, cook};
 
-const HALF: [f64; 2] = [3.0, 2.0];
-const PX: f64 = 0.01;
+pub(super) const HALF: [f64; 2] = [3.0, 2.0];
+pub(super) const PX: f64 = 0.01;
 
 pub(super) fn cooker(kind: ShapeKind, half: [f64; 2]) -> impl Fn(&ShapeValues) -> VecPath {
     move |v: &ShapeValues| cook(kind, [-half[0], -half[1]], [half[0], half[1]], v)
@@ -276,7 +276,13 @@ fn alt_rounds_only_the_grabbed_corner() {
     }
 }
 
-fn spin(kind: ShapeKind, h: usize, v: ShapeValues, turn_deg: f64, mods: Mods) -> ShapeValues {
+pub(super) fn spin(
+    kind: ShapeKind,
+    h: usize,
+    v: ShapeValues,
+    turn_deg: f64,
+    mods: Mods,
+) -> ShapeValues {
     let ck = cooker(kind, HALF);
     let hd = &handles_of(kind)[h];
     let q = handle_point(hd, &v, HALF, &ck).unwrap();
@@ -646,78 +652,4 @@ fn the_arc_angles_follow_the_normalised_angle_like_inkscape() {
         }
     }
     assert_eq!(n, 24, "as 12 experiências de cada arco");
-}
-
-/// ⭐ AS VOLTAS da espiral: o Inkscape soma `Δθ/360` contínuo; as nossas voltas são INTEIRAS — a
-/// mesma lei arredondada (e a distância da mão não conta, nas duas).
-#[test]
-fn the_spiral_turns_follow_the_winding_like_inkscape() {
-    let f = fixture("spiral");
-    let mut n = 0;
-    for e in f["experiencias"].as_array().unwrap() {
-        let nome = e["nome"].as_str().unwrap();
-        // O Shift dele escala e roda (não é uma contagem); e o arrasto de 180° do roteiro é uma
-        // recta PELO centro — o sentido de uma volta assim não existe.
-        if !nome.starts_with("outer_") || e["mod"] == "shift" || nome.starts_with("outer_a+180") {
-            continue;
-        }
-        let rev = attr(e, "sodipodi:revolution");
-        let a0 = pointer(&f, e, "alca_tela", 0.0);
-        let b0 = pointer(&f, e, "alvo_tela", 0.0);
-        let ang = |p: [f64; 2]| (300.0 - p[1]).atan2(p[0] - 400.0).to_degrees();
-        // O y virado inverte o sentido dos dois (o dele enrola para baixo, o nosso para cima).
-        let turn = -wrap180(ang(b0) - ang(a0));
-        let mut v = ShapeKind::Spiral.defaults();
-        v[0] = 3.0;
-        let got = spin(ShapeKind::Spiral, 0, v, turn, Mods::default())[0];
-        let want = 3.0 + (rev - 3.0).round();
-        assert_eq!(
-            got, want,
-            "{nome}: {got} contra o oráculo {rev} arredondado"
-        );
-        n += 1;
-    }
-    assert_eq!(n, 6, "as experiências da ponta de fora");
-}
-
-/// ⭐ As alças de ÂNGULO recolhem-se `park_at` para dentro do aro (nunca em cima das alças do meio
-/// das arestas da caixa), até metade do raio — e o arrasto delas continua a ler só o ângulo.
-#[test]
-fn an_angle_handle_lives_inside_the_rim_off_the_box_handles() {
-    let k = ShapeKind::Pie;
-    let ck = cooker(k, HALF);
-    let v = k.defaults(); // início a 0° (3h): no aro, é o meio da aresta direita da caixa
-    let st = handles_of(k)
-        .iter()
-        .position(|h| matches!(h.law, Law::ArcStart { .. }))
-        .unwrap();
-    let h = &handles_of(k)[st];
-    let truth = handle_point(h, &v, HALF, &ck).unwrap();
-    assert!((truth[0] - HALF[0]).abs() < 1e-9 && truth[1].abs() < 1e-9);
-    let g = handle_grip(k, h, &v, HALF, PX, 0.25, &ck).unwrap();
-    assert!(
-        (g[0] - (HALF[0] - 0.25)).abs() < 1e-9 && g[1].abs() < 1e-9,
-        "{g:?}"
-    );
-    // Até metade do raio: num raio de 0,3 a alça fica a 0,15.
-    let tiny = handle_grip(k, h, &v, [0.3, 0.3], PX, 0.25, &cooker(k, [0.3, 0.3])).unwrap();
-    assert!((tiny[0] - 0.15).abs() < 1e-9, "{tiny:?}");
-    // Agarrada no sítio recolhido, a 40° de volta: o início vai a 40°, como do aro.
-    // Agarrada no sítio DESENHADO (a pega mede-se a ele) e levada por um quarto de volta perto do
-    // centro (meio raio): o ângulo da mão é o que conta.
-    let mut d = HandleDrag::start(st, v, g, g, HALF);
-    let mut r = v;
-    for s in 1..=8 {
-        let a = (40.0 * f64::from(s) / 8.0).to_radians();
-        r = drag(
-            k,
-            &mut d,
-            [HALF[0] * 0.5 * a.cos(), HALF[1] * 0.5 * a.sin()],
-            Mods::default(),
-            HALF,
-            PX,
-            &ck,
-        );
-    }
-    assert!((r[1] - 40.0).abs() < 1e-9, "{r:?}");
 }

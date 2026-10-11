@@ -82,7 +82,10 @@ pub(crate) const SECTION_COMPONENT: [(NodeId, &str); 48] = [
     ),
     (ids::INSP_LIVE_NAV_LINK_SECTION, "ph2d::physics::NavLink"),
     (ids::INSP_LIVE_LUZ_SECTION, "ph2d::light2d::Luz"),
-    (ids::INSP_LIVE_MOTION_INPUT_SECTION, "ph2d::ecs::MotionInput"),
+    (
+        ids::INSP_LIVE_MOTION_INPUT_SECTION,
+        "ph2d::ecs::MotionInput",
+    ),
 ];
 
 /// A família de uma secção, pelo catálogo.

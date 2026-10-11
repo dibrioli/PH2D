@@ -64,9 +64,9 @@ pub mod ktx2_format;
 /// per-pixel stack machine; texture-array cache + dirty-rect dispatch. See
 /// [`docs/Painter_projeto/02_layers.md`](../../../docs/Painter_projeto/02_layers.md).
 pub mod layer_compositor;
-pub mod luz_recebida;
 /// A lente da câmera sobre o acumulador do mundo (Motion ciclo 20, doc 129).
 pub mod lens;
+pub mod luz_recebida;
 pub mod mipgen;
 pub mod motion_fx;
 pub mod nine_slice;
@@ -142,8 +142,8 @@ pub use layer_compositor::{
     flatten_layer_ops, gaussian_weights, has_spatial, layer_cache_budget, max_layers_for_budget,
     motion_weights,
 };
-pub use luz_recebida::{LuzRecebida, LuzUniforme, RECEBER_WGSL};
 pub use lens::{LensPass, LensUniform};
+pub use luz_recebida::{LuzRecebida, LuzUniforme, RECEBER_WGSL};
 pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{
     DrawnMesh, MeshUv, WorldBbox, drawn_instance_of, drawn_mesh_of, mesh_uv, pick_sprite_at_world,

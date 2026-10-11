@@ -55,6 +55,12 @@
 
 O que sobra por quadro é UM `collide` (~42 ms no smoke): é o custo do nó, não da repetição.
 
+⛔ **A cena `=8` NÃO serve de smoke ao dono** (report dele: *«não há shapes ou objetos na cena»*):
+são posições sem forma, e o que se vê é o gizmo. Smoke com FORMAS + SIMULAÇÃO, sem placa,
+fotografado depois da cura: `=114` com `PH2D_PILHA_LADO=10` (200 quadrados, as duas taças,
+`61 fps · 16,3 ms`) e `=126` (32 761 estrelas com forças, `51 fps · 19,3 ms`). Nelas o quadro não
+fica lento, logo não há tiques recuperados — provam que a simulação continua certa, não o ganho.
+
 ## Gates e provas
 
 - `so_o_estado_tests.rs` (8): o `Pure` coze 1× por quadro (controlo `1+4+4`); mesmos bits com

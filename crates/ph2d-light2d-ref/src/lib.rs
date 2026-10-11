@@ -16,6 +16,7 @@
 
 mod geometria;
 mod integra;
+mod miolo;
 pub mod queda;
 mod rebote;
 
@@ -24,6 +25,7 @@ use std::f64::consts::TAU;
 use geometria::{Fronteira, angulo, cruzamentos, intersecoes};
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 use queda::queda;
+pub use miolo::{MIOLO_PADRAO, OpcoesDoMiolo};
 pub use rebote::{ALBEDO_MAX, OpcoesDoRebote, Rebote};
 
 struct Objeto {
@@ -243,19 +245,113 @@ fn fora_dos_opacos(objetos: &[Objeto], p: [f64; 2]) -> [f64; 2] {
 }
 
 /// A fluência (radiância integrada sobre o ângulo) que chega a `ponto`, por canal. Dentro de um
-/// corpo opaco, a do exterior mais próximo ([`fora_dos_opacos`]). Sem rebote (o corpo opaco é preto
-/// para a luz que chega a ele): a série está em [`Rebote`].
+/// corpo opaco, o MIOLO com [`MIOLO_PADRAO`] (o [`Gabarito`] da cena: o das últimas cenas
+/// perguntadas fica guardado, e o miolo de cada uma resolve-se uma vez). Sem rebote (o corpo opaco é
+/// preto para a luz que chega a ele): a série está em [`Rebote`].
 #[must_use]
 pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
-    let (objetos, pontuais) = montar(cena);
-    linha(
-        &objetos,
-        &pontuais,
-        rgb(cena.ceu),
-        &rebote::Elementos::vazio(),
-        ponto,
-    )
-    .direto
+    gabarito_de(cena).fluencia(ponto)
+}
+
+/// Quantas cenas a [`fluencia`] guarda (os portões correm em paralelo, cada um com as suas).
+const RECENTES_MAX: usize = 32;
+
+type Recente = (CenaDeLuz, std::sync::Arc<Gabarito>);
+
+static RECENTES: std::sync::Mutex<Vec<Recente>> = std::sync::Mutex::new(Vec::new());
+
+fn gabarito_de(cena: &CenaDeLuz) -> std::sync::Arc<Gabarito> {
+    let mut r = RECENTES
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(k) = r.iter().position(|(c, _)| c == cena) {
+        let g = r.remove(k);
+        let arc = g.1.clone();
+        r.push(g);
+        return arc;
+    }
+    let g = std::sync::Arc::new(Gabarito::novo(cena));
+    if r.len() >= RECENTES_MAX {
+        r.remove(0);
+    }
+    r.push((cena.clone(), g.clone()));
+    g
+}
+
+/// ⭐ W5h — **o gabarito sem rebote de UMA cena**, com o miolo dos opacos resolvido uma vez (na 1.ª
+/// pergunta de dentro).
+pub struct Gabarito {
+    objetos: Vec<Objeto>,
+    pontuais: Vec<Pontual>,
+    ceu: [f64; 3],
+    op: OpcoesDoMiolo,
+    miolo: std::sync::OnceLock<Option<miolo::Miolo>>,
+}
+
+impl Gabarito {
+    #[must_use]
+    pub fn novo(cena: &CenaDeLuz) -> Self {
+        Self::com_miolo(cena, MIOLO_PADRAO)
+    }
+
+    #[must_use]
+    pub fn com_miolo(cena: &CenaDeLuz, op: OpcoesDoMiolo) -> Self {
+        let (objetos, pontuais) = montar(cena);
+        Self {
+            objetos,
+            pontuais,
+            ceu: rgb(cena.ceu),
+            op,
+            miolo: std::sync::OnceLock::new(),
+        }
+    }
+
+    /// A luz no ponto pela lei do exterior mais próximo (a `suavidade = 0`).
+    fn exterior(&self, p: [f64; 2]) -> [f64; 3] {
+        linha(
+            &self.objetos,
+            &self.pontuais,
+            self.ceu,
+            &rebote::Elementos::vazio(),
+            p,
+        )
+        .direto
+    }
+
+    #[must_use]
+    pub fn fluencia(&self, ponto: [f64; 2]) -> [f64; 3] {
+        let fora = |q| self.exterior(q);
+        no_miolo(&self.objetos, self.op, &self.miolo, ponto, &fora)
+    }
+
+    #[must_use]
+    pub fn luz_em(&self, ponto: [f64; 2]) -> [f64; 3] {
+        self.fluencia(ponto).map(|f| f / TAU)
+    }
+}
+
+/// A luz em `ponto` com o miolo: fora da união dos opacos (ou com `suavidade = 0`) a lei de
+/// `exterior`; dentro, a mistura dela com a difusão.
+pub(crate) fn no_miolo(
+    objetos: &[Objeto],
+    op: OpcoesDoMiolo,
+    miolo: &std::sync::OnceLock<Option<miolo::Miolo>>,
+    ponto: [f64; 2],
+    exterior: &(dyn Fn([f64; 2]) -> [f64; 3] + Sync),
+) -> [f64; 3] {
+    let s = op.suavidade.clamp(0.0, 1.0);
+    if s <= 0.0 || !miolo::dentro_da_uniao(objetos, ponto, &mut Vec::new()) {
+        return exterior(ponto);
+    }
+    let resolvido = miolo.get_or_init(|| miolo::Miolo::resolver(objetos, op, exterior));
+    let Some(d) = resolvido.as_ref().and_then(|m| m.em(ponto)) else {
+        return exterior(ponto);
+    };
+    if s >= 1.0 {
+        return d;
+    }
+    let e = exterior(ponto);
+    [0, 1, 2].map(|c| e[c] + (d[c] - e[c]) * s)
 }
 
 /// ⭐ W5c — o que `ponto` recebe, partido em duas: a parte que não depende do rebote (`direto`: céu,
@@ -395,4 +491,20 @@ fn eventos(objetos: &[Objeto], p: [f64; 2], extras: &[[f64; 2]]) -> Vec<f64> {
     ang.sort_by(f64::total_cmp);
     ang.dedup();
     ang
+}
+
+/// `f` em cada item, em blocos contíguos por fio — a ordem (e o bit) não dependem dos fios.
+pub(crate) fn em_paralelo<T: Sync, R: Send>(itens: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let fios = std::thread::available_parallelism().map_or(1, usize::from);
+    let bloco = itens.len().div_ceil(fios).max(1);
+    std::thread::scope(|s| {
+        let tarefas: Vec<_> = itens
+            .chunks(bloco)
+            .map(|c| s.spawn(|| c.iter().map(&f).collect::<Vec<R>>()))
+            .collect();
+        tarefas
+            .into_iter()
+            .flat_map(|t| t.join().expect("um fio do gabarito"))
+            .collect()
+    })
 }

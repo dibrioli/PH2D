@@ -380,6 +380,10 @@ impl Solver {
             (&self.lampadas_grupo, !distante.indices.is_empty(), reflete),
             self.tempos.as_ref(),
         );
+        match &self.miolo {
+            Some(m) => m.gravar(gpu, enc, self.cfg.grade_da_fluencia().texel_m, self.tempos.as_ref()),
+            None => rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::C3_MIOLO),
+        }
         // A fonte que a C3 acabou de escrever está nesta grade: o quadro seguinte lê-a no mundo.
         if let Some(r) = self.rebote.as_mut().filter(|_| reflete) {
             r.anterior = Some(self.cfg.grade);
@@ -415,6 +419,9 @@ impl Solver {
     /// resto guarda o último valor. Por omissão, a grade inteira.
     pub fn regiao_fina(&mut self, inicio: [u32; 2], fim: [u32; 2]) {
         self.c3.regiao(&self.cfg, inicio, fim);
+        if let Some(m) = &mut self.miolo {
+            m.regiao(inicio, fim);
+        }
     }
 
     /// Um quadro: grava e submete.

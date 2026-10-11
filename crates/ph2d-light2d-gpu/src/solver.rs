@@ -25,6 +25,9 @@ mod c2;
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
+/// ⭐ O miolo dos opacos pela difusão (W5h) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_miolo.rs"]
+mod miolo;
 /// ⭐ O mundo fora da grade na placa (W5b, F4) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_distantes.rs"]
 mod distantes;
@@ -94,7 +97,7 @@ fn criar_textura(device: &wgpu::Device, t: &Textura) -> wgpu::Texture {
             height: t.tamanho[1],
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count: t.mips,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: t.formato,
@@ -158,6 +161,7 @@ pub struct Solver {
     /// ⭐ O mundo fora da grade (W5b, F4): o resto do grupo das lâmpadas.
     distantes: distantes::Distantes,
     c3: c3::C3,
+    miolo: Option<miolo::DoMiolo>,
     /// ⭐ A captura fina dos opacos (W5a), com [`Config::usa_captura_fina`].
     fina: Option<fina::CapturaFina>,
     rebote: Option<rebote::SomaDoRebote>,
@@ -531,6 +535,15 @@ impl Solver {
             sementes_finais,
             vizinhos: &vizinhos,
         });
+        let miolo = cfg.niveis_do_miolo().and_then(|_| {
+            miolo::DoMiolo::novo(&miolo::Entradas {
+                placa: device,
+                cfg: &cfg,
+                texturas: &texturas,
+                vistas: &vistas,
+                uniforme: buffer("luz2d/buf/miolo"),
+            })
+        });
         let fina = op.captura.map(|c| {
             fina::CapturaFina::novo(
                 device,
@@ -591,6 +604,7 @@ impl Solver {
             lampadas_grupo,
             distantes,
             c3,
+            miolo,
             fina,
             rebote,
             hrc,

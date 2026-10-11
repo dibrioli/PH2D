@@ -3,9 +3,9 @@
 //! cascata.
 
 /// Dois carimbos (início, fim) por passe: C0, C1, C3 visibilidade, C3 fina, C0 fina, C3 preenche,
-/// C3 máscaras, os dois do rebote (W5c) e as `n` cascatas.
+/// C3 máscaras, os dois do rebote (W5c), o miolo (W5h) e as `n` cascatas.
 pub(crate) fn n_carimbos(n_cascatas: u32) -> u32 {
-    2 * (9 + n_cascatas)
+    2 * (10 + n_cascatas)
 }
 
 pub(crate) const C0: u32 = 0;
@@ -17,10 +17,11 @@ pub(crate) const C3_PREENCHE: u32 = 10;
 pub(crate) const C3_MASCARAS: u32 = 12;
 pub(crate) const C0_REBOTE: u32 = 14;
 pub(crate) const C3_REBOTE: u32 = 16;
+pub(crate) const C3_MIOLO: u32 = 18;
 
 /// O par de carimbos da cascata `nivel`.
 pub(crate) fn da_cascata(nivel: u32) -> u32 {
-    18 + 2 * nivel
+    20 + 2 * nivel
 }
 
 /// Milissegundos de placa do último quadro, por passe.
@@ -43,6 +44,8 @@ pub struct TemposMs {
     /// ⭐ W5c: o rebote — a soma na emissão e a fonte para o quadro seguinte (0 sem ele).
     pub c0_rebote: f64,
     pub c3_rebote: f64,
+    /// ⭐ W5h: o miolo dos opacos pela difusão (0 sem ele).
+    pub c3_miolo: f64,
 }
 
 impl TemposMs {
@@ -68,14 +71,15 @@ impl TemposMs {
             + self.c3_mascaras
             + self.c0_rebote
             + self.c3_rebote
+            + self.c3_miolo
     }
 
     /// ⭐ A parte do tamanho da grade FINA, o mesmo em todo nível: ela, a captura fina e o
-    /// preenchimento (o governador prevê a subida sem a multiplicar) — e as máscaras dos distantes,
-    /// que seguem o objeto e não o nível.
+    /// preenchimento e o miolo (o governador prevê a subida sem a multiplicar) — e as máscaras dos
+    /// distantes, que seguem o objeto e não o nível.
     #[must_use]
     pub fn fixo(&self) -> f64 {
-        self.c3_fina + self.c0_fina + self.c3_preenche + self.c3_mascaras
+        self.c3_fina + self.c0_fina + self.c3_preenche + self.c3_mascaras + self.c3_miolo
     }
 
     /// ⭐ A parte que segue a célula do NÍVEL (`1/célula²`): tudo menos o [`Self::fixo`].
@@ -174,6 +178,7 @@ impl Tempos {
             c3_mascaras: ms(C3_MASCARAS),
             c0_rebote: ms(C0_REBOTE),
             c3_rebote: ms(C3_REBOTE),
+            c3_miolo: ms(C3_MIOLO),
         }
     }
 

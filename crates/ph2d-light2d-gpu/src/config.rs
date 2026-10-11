@@ -170,10 +170,40 @@ pub struct Config {
     /// `VIS_NA_FACE` do `c3_pe.wgsl`); `false` = a marcha a partir do ponto rente, cujos raios
     /// rasantes saem ora livres ora tapados com a fase da grade.
     pub vis_na_face: bool,
+    /// ⭐ W5h — o MIOLO dos opacos pela DIFUSÃO (`c3_miolo.wgsl`, a lei do
+    /// `ph2d_light2d_ref::OpcoesDoMiolo`); só com o preenchimento (que marca o interior). `None` = o
+    /// exterior mais próximo em todo o miolo (a lei até a W5g).
+    pub miolo: Option<Miolo>,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
 }
+
+/// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
+pub const CAPTURA_MAX: u32 = crate::captura::SUB;
+
+/// ⭐ W5h — o miolo por difusão: `Δu − u/ℓ² = 0` dentro dos opacos, com `u` = a luz do anel de
+/// texels junto à borda (o pé da W5g); resolvido numa pirâmide, da grade mais grossa à fina.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Miolo {
+    /// `0` = o exterior mais próximo · `1` = a difusão inteira (mistura linear).
+    pub suavidade: f32,
+    /// `ℓ` em metros; `f32::INFINITY` espalha até ao centro.
+    pub penetracao_m: f32,
+    /// As relaxações de Jacobi no nível 1 da pirâmide (o logo acima da fina, que faz uma só); cada
+    /// nível acima faz o dobro do de baixo até [`Self::relaxa_max`], e o mais grosso o dobro deste.
+    pub relaxa: u32,
+    pub relaxa_max: u32,
+}
+
+/// ⭐ W5h — a escolha do dono (11/10: a difusão inteira, até ao centro); as relaxações MEDIDAS na
+/// rodada `medida_luz2d_w5h`.
+pub const MIOLO_PADRAO: Miolo = Miolo {
+    suavidade: 1.0,
+    penetracao_m: f32::INFINITY,
+    relaxa: 4,
+    relaxa_max: 32,
+};
 
 /// ⭐ W5c — as escolhas da cascata holográfica.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -334,6 +364,7 @@ impl Config {
             borda_exata: true,
             pe_na_borda: true,
             vis_na_face: true,
+            miolo: Some(MIOLO_PADRAO),
             holografica: None,
         }
     }
@@ -379,6 +410,18 @@ impl Config {
         }
         saltos.push(1);
         Some((celulas, saltos))
+    }
+
+    /// ⭐ W5h — os níveis da pirâmide do miolo acima da grade fina (o mais grosso com 4–7 texels no
+    /// lado maior); `None` sem o miolo, sem o preenchimento (que marca o interior) ou numa grade fina
+    /// de menos de 8 texels.
+    #[must_use]
+    pub fn niveis_do_miolo(&self) -> Option<u32> {
+        self.miolo?;
+        self.preenchimento?;
+        let g = self.grade_da_fluencia();
+        let l = g.largura.max(g.altura).max(1).ilog2().checked_sub(2)?;
+        (l >= 1).then_some(l)
     }
 
     /// O padrão com aritmética f16 onde o dispositivo tem `SHADER_F16` (o caminho f32 é o mesmo

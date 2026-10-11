@@ -94,6 +94,8 @@ override C0_AO_LONGO_DA_FACE: f32 = 0.0;
 // ⭐ W5d — a MEDIANA (por canal) dos pontos ao longo da face, não a média: ver [`c0_ao_longo_da_face`].
 override C0_AO_LONGO_MEDIANA: bool = false;
 const SEM_SEMENTE: u32 = 0xffffffffu;
+// ⭐ W5h: o alfa da fluência marca o texel do INTERIOR (0) para o `c3_miolo.wgsl`.
+override MIOLO: bool = false;
 
 // A abertura do disco na penumbra: `RAIOS_DIRETOS + 1` raios FIXOS nas fronteiras de
 // `RAIOS_DIRETOS` fatias e, numa fatia em que a transmissão muda, `BISSECOES` passos de bissecção
@@ -869,7 +871,11 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         soma += s * v;
     }
-    textureStore(fina_saida, alvo, vec4<f32>(nas_faces(soma, onde), 1.0));
+    textureStore(fina_saida, alvo, vec4<f32>(nas_faces(soma, onde), alfa_do_miolo(onde)));
+}
+
+fn alfa_do_miolo(onde: Onde) -> f32 {
+    return select(1.0, 0.0, MIOLO && onde.remapeado);
 }
 
 // A luz do texel: `l` (a da face mais perto) misturada com a da outra face na área dela.
@@ -905,5 +911,5 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
         l = luz_exata_remapeada(onde.p, ponto_fino(id));
         l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
     }
-    textureStore(fina_saida, id, vec4<f32>(nas_faces(l, onde), 1.0));
+    textureStore(fina_saida, id, vec4<f32>(nas_faces(l, onde), alfa_do_miolo(onde)));
 }

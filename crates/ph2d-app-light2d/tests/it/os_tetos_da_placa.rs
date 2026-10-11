@@ -354,3 +354,27 @@ fn placa_com_limiar(t: u8) -> Option<GpuContext> {
     drop(t64);
     (!recusou).then_some(gpu)
 }
+
+/// ⭐ W5h — a CÉLULA engrossada (o governador abaixo do Baixo) não leva a captura além das subamostras
+/// da C0: o solver recusava a grade (`captura tem de ser uma potência de 2 até as 8 subamostras`) e a
+/// luz apagava com o aviso de que a placa não a corre (cena 8, com o custo que escolhia a célula 2).
+#[test]
+fn a_celula_grossa_nao_passa_a_captura_do_limite() {
+    use ph2d_app_light2d::qualidade::CELULA_MAX;
+    use ph2d_app_light2d::{DEGRAU_PADRAO, captura_do_quadro};
+    use ph2d_light2d_gpu::CAPTURA_MAX;
+    for j in 0..=CELULA_MAX {
+        let dg = DEGRAU_PADRAO.com_celula_engrossada(j);
+        for zoom in [1.0, 1.3, 1.9, 2.0, 7.7] {
+            let a = kurbo::Affine::scale(32.0 * zoom);
+            let c = captura_do_quadro(a, dg);
+            assert!(
+                c.is_power_of_two() && c <= CAPTURA_MAX,
+                "célula 2^{j}, zoom {zoom}: captura {c} (teto {CAPTURA_MAX})"
+            );
+        }
+    }
+    // Controlo: na célula mais grossa a razão dos dois texels passa do teto.
+    let dg = DEGRAU_PADRAO.com_celula_engrossada(CELULA_MAX);
+    assert!(dg.c0_px / dg.captura_px > f64::from(CAPTURA_MAX), "a fixture não contém o caso");
+}

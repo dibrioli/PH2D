@@ -2,10 +2,20 @@
 //! `docs/Luz2D/01_plano.md` §7.1: «uma linha escura de 1 px junto à face iluminada das paredes»). Um
 //! ponto dentro de um corpo opaco recebe a fluência do ponto de fora mais perto dele — a face acesa
 //! da parede não mistura zeros, e uma parede que RECEBE luz não sai preta. Um vidro (opacidade < 1)
-//! continua a atenuar por dentro.
+//! continua a atenuar por dentro. ⭐ W5h: esta lei é agora a `suavidade = 0` do miolo (a omissão é a
+//! difusão, `o_miolo_do_disco`).
 
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor, Oclusor};
-use ph2d_light2d_ref::fluencia;
+use ph2d_light2d_ref::{Gabarito, MIOLO_PADRAO, OpcoesDoMiolo};
+
+/// A lei do exterior mais próximo é o miolo com `suavidade = 0` (W5h: a difusão é a omissão).
+fn fluencia(c: &CenaDeLuz, p: [f64; 2]) -> [f64; 3] {
+    let op = OpcoesDoMiolo {
+        suavidade: 0.0,
+        ..MIOLO_PADRAO
+    };
+    Gabarito::com_miolo(c, op).fluencia(p)
+}
 
 use crate::comum::disco;
 

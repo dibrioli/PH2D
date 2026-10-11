@@ -8,5 +8,6 @@ mod g2_penumbra;
 mod g9_o_rebote;
 mod luz_em_de_frente;
 mod o_interior_de_um_opaco;
+mod o_miolo_do_disco;
 mod opacidade_e_alcance;
 mod uma_lampada_e_luz_nao_corpo;

@@ -13,7 +13,8 @@ use std::f64::consts::TAU;
 pub use ph2d_light2d_ecs::ALBEDO_MAX;
 use ph2d_light2d_ecs::CenaDeLuz;
 
-use crate::{Linha, Objeto, Pontual, geometria, linha, montar, opaco, rgb};
+use crate::miolo::{MIOLO_PADRAO, Miolo, OpcoesDoMiolo};
+use crate::{Linha, Objeto, Pontual, em_paralelo, geometria, linha, montar, opaco, rgb};
 
 /// O afastamento de `x⁺` da fronteira (para FORA), em metros.
 const FORA: f64 = 1e-9;
@@ -111,6 +112,9 @@ pub struct Rebote {
     elementos: Elementos,
     radiancia: Vec<[f64; 3]>,
     residuo: f64,
+    /// ⭐ W5h: o miolo dos opacos (resolvido na 1.ª pergunta de dentro).
+    op_miolo: OpcoesDoMiolo,
+    miolo: std::sync::OnceLock<Option<Miolo>>,
 }
 
 impl Rebote {
@@ -153,20 +157,27 @@ impl Rebote {
             elementos,
             radiancia,
             residuo,
+            op_miolo: MIOLO_PADRAO,
+            miolo: std::sync::OnceLock::new(),
         }
+    }
+
+    /// ⭐ W5h — as opções do miolo dos opacos (por omissão [`MIOLO_PADRAO`]).
+    #[must_use]
+    pub fn com_miolo(mut self, op: OpcoesDoMiolo) -> Self {
+        self.op_miolo = op;
+        self.miolo = std::sync::OnceLock::new();
+        self
     }
 
     /// A fluência em `ponto` com os rebotes resolvidos.
     #[must_use]
     pub fn fluencia(&self, ponto: [f64; 2]) -> [f64; 3] {
-        let l = linha(
-            &self.objetos,
-            &self.pontuais,
-            self.ceu,
-            &self.elementos,
-            ponto,
-        );
-        aplicar(&l, &self.radiancia)
+        let fora = |q| {
+            let l = linha(&self.objetos, &self.pontuais, self.ceu, &self.elementos, q);
+            aplicar(&l, &self.radiancia)
+        };
+        crate::no_miolo(&self.objetos, self.op_miolo, &self.miolo, ponto, &fora)
     }
 
     /// A luz que uma superfície de frente recebe em `ponto`: `F / 2π` (plano §2.3).
@@ -199,18 +210,3 @@ fn aplicar(l: &Linha, radiancia: &[[f64; 3]]) -> [f64; 3] {
     f
 }
 
-/// `f` em cada item, em blocos contíguos por fio — a ordem (e o bit) não dependem dos fios.
-fn em_paralelo<T: Sync, R: Send>(itens: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
-    let fios = std::thread::available_parallelism().map_or(1, usize::from);
-    let bloco = itens.len().div_ceil(fios).max(1);
-    std::thread::scope(|s| {
-        let tarefas: Vec<_> = itens
-            .chunks(bloco)
-            .map(|c| s.spawn(|| c.iter().map(&f).collect::<Vec<R>>()))
-            .collect();
-        tarefas
-            .into_iter()
-            .flat_map(|t| t.join().expect("um fio do rebote"))
-            .collect()
-    })
-}

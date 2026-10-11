@@ -16,3 +16,4 @@ mod holografica;
 mod junto_a_face;
 mod medicao;
 mod medida_luz2d;
+mod o_miolo_na_placa;

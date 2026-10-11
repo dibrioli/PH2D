@@ -141,10 +141,13 @@ pub fn fina_do_quadro(mundo_para_tela: Affine, degrau: Degrau) -> u32 {
     por_texel_das_cascatas(mundo_para_tela, degrau, degrau.fino_px)
 }
 
-/// ⭐ **Texels da captura fina dos opacos por texel das cascatas** (`Config::captura`, W5a).
+/// ⭐ **Texels da captura fina dos opacos por texel das cascatas** (`Config::captura`, W5a), até as
+/// subamostras da C0 ([`ph2d_light2d_gpu::CAPTURA_MAX`]): com a célula engrossada (o governador
+/// abaixo do Baixo) a razão passava de 8, o solver recusava a grade e a luz apagava (W5h, cena 8).
 #[must_use]
 pub fn captura_do_quadro(mundo_para_tela: Affine, degrau: Degrau) -> u32 {
     por_texel_das_cascatas(mundo_para_tela, degrau, degrau.captura_px)
+        .min(ph2d_light2d_gpu::CAPTURA_MAX)
 }
 
 /// O afim píxel → mundo: o INVERSO do mundo → tela que o Vello usou, nas duas linhas que o

@@ -34,6 +34,9 @@ pub(crate) struct Opcionais {
     /// ⭐ W5d: a EMISSÃO de base (antes da soma do rebote) — o 2.º rebote do quadro repõe-na, com
     /// `rebotes_por_quadro > 1`.
     pub emissao_base: Option<usize>,
+    /// ⭐ W5h: o miolo por difusão — `[conhecido da fina, conhecido, a, b]` (as três pirâmides
+    /// começam no nível 1).
+    pub miolo: Option<[usize; 4]>,
 }
 
 impl Opcionais {
@@ -61,6 +64,10 @@ impl Opcionais {
             borda: cfg.borda_exata.then(|| proxima(1)),
             emissao_base: (cfg.rebote && cfg.rebotes_por_quadro > 1 && cfg.holografica.is_some())
                 .then(|| proxima(1)),
+            miolo: cfg.niveis_do_miolo().map(|_| {
+                let k = proxima(4);
+                [k, k + 1, k + 2, k + 3]
+            }),
         }
     }
 
@@ -83,6 +90,8 @@ pub struct Textura {
     pub formato: wgpu::TextureFormat,
     pub tamanho: [u32; 2],
     pub usos: wgpu::TextureUsages,
+    /// ⭐ W5h: os níveis de mip (a pirâmide do miolo); 1 nas outras.
+    pub mips: u32,
 }
 
 impl Textura {
@@ -92,7 +101,13 @@ impl Textura {
             .formato
             .block_copy_size(None)
             .expect("formato de cor sem aspeto");
-        u64::from(self.tamanho[0]) * u64::from(self.tamanho[1]) * u64::from(texel)
+        (0..self.mips)
+            .map(|m| {
+                u64::from((self.tamanho[0] >> m).max(1))
+                    * u64::from((self.tamanho[1] >> m).max(1))
+                    * u64::from(texel)
+            })
+            .sum()
     }
 }
 
@@ -153,48 +168,56 @@ impl PassList {
                 formato: wgpu::TextureFormat::Rgba16Float,
                 tamanho: fino,
                 usos: T::RENDER_ATTACHMENT | amostrada | reposta,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/cobertura",
                 formato: wgpu::TextureFormat::R16Float,
                 tamanho: fino,
                 usos: T::RENDER_ATTACHMENT | amostrada,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/tau_dentro",
                 formato: wgpu::TextureFormat::R16Float,
                 tamanho: fino,
                 usos: T::RENDER_ATTACHMENT | amostrada,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/sementes_a",
                 formato: wgpu::TextureFormat::R32Uint,
                 tamanho: jfa,
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/sementes_b",
                 formato: wgpu::TextureFormat::R32Uint,
                 tamanho: jfa,
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/cascata_a",
                 formato: formato_cascata(cfg.armazenamento),
                 tamanho: fino,
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/cascata_b",
                 formato: formato_cascata(cfg.armazenamento),
                 tamanho: fino,
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             },
             Textura {
                 nome: "luz2d/tex/fluencia",
                 formato: formato_cascata(cfg.armazenamento),
                 tamanho: [gf.largura, gf.altura],
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             },
         ];
         let mut texturas = texturas;
@@ -204,6 +227,7 @@ impl PassList {
                 formato: wgpu::TextureFormat::Rg32Uint,
                 tamanho: fino,
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             });
         }
         if op.captura.is_some() {
@@ -214,6 +238,7 @@ impl PassList {
                     formato: wgpu::TextureFormat::R16Float,
                     tamanho: [gc.largura, gc.altura],
                     usos: T::RENDER_ATTACHMENT | amostrada,
+                    mips: 1,
                 });
             }
         }
@@ -225,6 +250,7 @@ impl PassList {
                     formato: wgpu::TextureFormat::R32Uint,
                     tamanho: *celulas,
                     usos: T::STORAGE_BINDING | amostrada,
+                    mips: 1,
                 });
             }
         }
@@ -235,12 +261,14 @@ impl PassList {
                 formato: wgpu::TextureFormat::Rgba8Unorm,
                 tamanho: fino,
                 usos: T::RENDER_ATTACHMENT | amostrada,
+                mips: 1,
             });
             texturas.push(Textura {
                 nome: "luz2d/tex/rebote",
                 formato: wgpu::TextureFormat::Rgba16Float,
                 tamanho: fino,
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             });
         }
 
@@ -255,6 +283,7 @@ impl PassList {
                 formato: wgpu::TextureFormat::Rgba16Float,
                 tamanho: [gc.largura, gc.altura],
                 usos: T::STORAGE_BINDING | amostrada,
+                mips: 1,
             });
         }
 
@@ -264,7 +293,30 @@ impl PassList {
                 formato: wgpu::TextureFormat::Rgba16Float,
                 tamanho: fino,
                 usos: T::COPY_SRC | T::COPY_DST,
+                mips: 1,
             });
+        }
+
+        // ⭐ W5h: o conhecido da fina no formato da fluência; a pirâmide (do nível 1) com o conhecido
+        // em f16 e a solução em f32 (o Jacobi em f16 estagna — medido).
+        if let Some(l) = cfg.niveis_do_miolo() {
+            use wgpu::TextureFormat as F;
+            let base = [gf.largura, gf.altura];
+            let meia = base.map(|x| (x >> 1).max(1));
+            for (nome, formato, tamanho, mips) in [
+                ("luz2d/tex/miolo_fino", formato_cascata(cfg.armazenamento), base, 1),
+                ("luz2d/tex/miolo_conhecido", F::Rgba16Float, meia, l),
+                ("luz2d/tex/miolo_a", F::Rgba32Float, meia, l),
+                ("luz2d/tex/miolo_b", F::Rgba32Float, meia, l),
+            ] {
+                texturas.push(Textura {
+                    nome,
+                    formato,
+                    tamanho,
+                    usos: T::STORAGE_BINDING | T::TEXTURE_BINDING,
+                    mips,
+                });
+            }
         }
 
         // ⭐ W5b (F4): a atlas das máscaras dos sprites distantes — a de 1 × 1 (cresce com elas,
@@ -274,6 +326,7 @@ impl PassList {
             formato: crate::solver::FORMATO_DA_ATLAS,
             tamanho: [1, 1],
             usos: crate::solver::USOS_DA_ATLAS,
+            mips: 1,
         });
 
         use wgpu::BufferUsages as B;
@@ -330,6 +383,13 @@ impl PassList {
             buffers.push(Buffer {
                 nome: "luz2d/buf/preenche",
                 bytes: PASSO_UNIFORME * (saltos.len() as u64 + 1),
+                usos: uniforme,
+            });
+        }
+        if let Some(l) = cfg.niveis_do_miolo() {
+            buffers.push(Buffer {
+                nome: "luz2d/buf/miolo",
+                bytes: PASSO_UNIFORME * 2 * u64::from(l + 1),
                 usos: uniforme,
             });
         }
@@ -467,6 +527,16 @@ impl PassList {
             le: le_fina,
             escreve: vec![FLUENCIA],
         });
+        // ⭐ W5h: o miolo — um piso (cada textura uma vez; as relaxações relêem a pirâmide).
+        if let Some(m) = op.miolo {
+            let mut todas = vec![FLUENCIA];
+            todas.extend(m);
+            passes.push(Passe {
+                nome: "C3 miolo".into(),
+                le: todas.clone(),
+                escreve: todas,
+            });
+        }
         // ⭐ W5c: a luz que cada superfície recebe (as cascatas + a luz direta), para o quadro seguinte.
         if let Some([_, fonte]) = op.rebote {
             passes.push(Passe {

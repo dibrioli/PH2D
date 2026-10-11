@@ -433,6 +433,7 @@ impl LuzDoQuadro {
                 rebotes_por_quadro: self.degrau.rebotes_por_quadro,
                 pe_na_borda: std::env::var("PH2D_LIGHT2D_PE").map_or(true, |v| v.trim() != "0"),
                 vis_na_face: std::env::var("PH2D_LIGHT2D_FACE").map_or(true, |v| v.trim() != "0"),
+                miolo: miolo_do_ambiente(),
                 ..Config::padrao_para(&gpu.device, g)
             };
             self.montagens += 1;
@@ -677,6 +678,23 @@ impl LuzDoQuadro {
 }
 
 /// ⭐ W5c: o rebote em todo nível (sem nenhum corpo que reflita, os passes dele saltam);
+/// ⭐ W5h — o miolo dos opacos: `PH2D_LIGHT2D_MIOLO=0` volta ao exterior mais próximo (comparar);
+/// `PH2D_LIGHT2D_SUAVIDADE` (0–1) e `PH2D_LIGHT2D_PENETRACAO` (metros) até o controlo por objeto.
+fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
+    if std::env::var("PH2D_LIGHT2D_MIOLO").is_ok_and(|v| v.trim() == "0") {
+        return None;
+    }
+    let num = |k: &str| std::env::var(k).ok().and_then(|v| v.trim().parse::<f32>().ok());
+    let padrao = ph2d_light2d_gpu::MIOLO_PADRAO;
+    Some(ph2d_light2d_gpu::Miolo {
+        suavidade: num("PH2D_LIGHT2D_SUAVIDADE").map_or(padrao.suavidade, |s| s.clamp(0.0, 1.0)),
+        penetracao_m: num("PH2D_LIGHT2D_PENETRACAO")
+            .filter(|p| *p > 0.0)
+            .unwrap_or(padrao.penetracao_m),
+        ..padrao
+    })
+}
+
 /// `PH2D_LIGHT2D_REBOTE=0` desliga-o (a comparação da cena 3).
 fn rebote_ligado() -> bool {
     std::env::var("PH2D_LIGHT2D_REBOTE").map_or(true, |v| v.trim() != "0")

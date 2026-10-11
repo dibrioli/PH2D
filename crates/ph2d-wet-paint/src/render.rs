@@ -389,8 +389,7 @@ pub fn render_pigment_row_visual(
                 let op = layer.opacity;
                 let a_s = alpha_of_mass(lg.sett[i] as f64) * op;
                 let a_f = alpha_of_mass(lg.susp[i] as f64) * op;
-                let la = a_s + a_f * (1.0 - a_s);
-                if la <= 0.0 {
+                if a_s + a_f * (1.0 - a_s) <= 0.0 {
                     continue;
                 }
                 // Layer color: settled, then suspended over it (straight
@@ -399,13 +398,13 @@ pub fn render_pigment_row_visual(
                 let uc = lg.susp_rgb[i];
                 // A cor da camada: o assentado e o filme por cima dele — pela MESMA porta que assentar e
                 // re-molhar preservam ([`crate::assenta::cor`]).
-                let lei = if glaze_on {
-                    crate::assenta::Ecra::Camada
-                } else {
-                    crate::assenta::Ecra::PorCima(glaze)
+                let lei = match p.map(|p| p.ecra) {
+                    Some(e @ crate::assenta::Ecra::Cobre { .. }) if !glaze_on => e,
+                    _ if glaze_on => crate::assenta::Ecra::Camada,
+                    _ => crate::assenta::Ecra::PorCima(glaze),
                 };
-                let [mut cr, mut cg, mut cb] =
-                    crate::assenta::cor(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
+                let ([mut cr, mut cg, mut cb], la) =
+                    crate::assenta::cor_e_alfa(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
                 if paper_on {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,

@@ -168,7 +168,8 @@ fn coluna_com(
     knobs: &[(Knob, f64)],
     agua: Option<f64>,
     opacidade: Option<f32>,
-) -> Vec<u8> {
+    molhada: Option<f64>,
+) -> (Vec<u8>, Vec<u8>) {
     let p = &b
         .entradas
         .iter()
@@ -197,6 +198,17 @@ fn coluna_com(
     t.paint.wetpaint.tilt_spoke = 3;
     t.set_brush_color_srgb8([23, 101, 179]);
     assert!(t.ensure_wet_session());
+    if let Some(k) = molhada {
+        t.on_tick(1.0);
+        t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("sessão")
+            .engine
+            .sim
+            .molhada_escurece = k;
+    }
     let x0 = 60.0 + i as f32 * 240.0;
     t.on_canvas_pointer(ponto(x0, PointerPhase::Down));
     for k in 1..=50 {
@@ -204,14 +216,18 @@ fn coluna_com(
         t.on_tick(8.0);
     }
     t.on_canvas_pointer(ponto(x0 + 150.0, PointerPhase::Up));
-    for _ in 0..30 * 60 {
+    for _ in 0..120 {
         t.on_tick(1000.0 / 60.0);
     }
-    t.canvas_rgba.to_vec()
+    let dois = t.canvas_rgba.to_vec();
+    for _ in 120..30 * 60 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    (dois, t.canvas_rgba.to_vec())
 }
 
 /// **Sonda: a varredura dos 4 pincéis contra o Rebelle** (fixtures/rebelle_presets). `PH2D_SONDA_VARRE` =
-/// `<pincel 0..3>|<knob>=<v>,…|<água ou ->|<opacity>` por linha (`;` separa); cada linha mede-se plana e inclinada.
+/// `<pincel 0..3>|<knob>=<v>,…|<água ou ->|<opacity>|<molhada_escurece>` por linha (`;` separa); cada linha mede-se plana e inclinada.
 #[test]
 #[ignore = "sonda: corre-se à mão"]
 fn sonda_presets_varre() {
@@ -235,10 +251,43 @@ fn sonda_presets_varre() {
             .collect();
         let agua = partes.get(2).and_then(|a| a.parse().ok());
         let op = partes.get(3).and_then(|a| a.parse().ok());
-        let (t, la, o, bu, _) = regua(&coluna_com(&b, i, false, &knobs, agua, op), i);
-        let (ti, li, oi, _, es) = regua(&coluna_com(&b, i, true, &knobs, agua, op), i);
+        let mol = partes.get(4).and_then(|a| a.parse().ok());
+        let (dois, plano) = coluna_com(&b, i, false, &knobs, agua, op, mol);
+        let t2 = regua(&dois, i).0;
+        let (t, la, o, bu, _) = regua(&plano, i);
+        let (ti, li, oi, _, es) = regua(&coluna_com(&b, i, true, &knobs, agua, op, mol).1, i);
         println!(
-            "[{l}] plano: tinta {t:.0} largura {la:.0} orla {o:.2} buracos {bu:.2} · inclinado: tinta {ti:.0} largura {li:.0} orla {oi:.2} escorre {es}"
+            "[{l}] plano: tinta 2 s {t2:.0} → {t:.0} largura {la:.0} orla {o:.2} buracos {bu:.2} · inclinado: tinta {ti:.0} largura {li:.0} orla {oi:.2} escorre {es}"
         );
     }
+}
+
+/// **A tinta molhada parece mais FORTE e clareia ao secar** (a escolha do dono 10/10, «como o Rebelle»): o
+/// Wet Round na tela direita, a tinta do miolo ([`regua`]) 2 s depois do Up contra 30 s. Rebelle 8.3.4
+/// (`fixtures/rebelle_presets/`): Round `111 → 54` (2,1×), Wash `46 → 39` (1,2×). ⚠️ O CONTROLO está dentro:
+/// sem o reforço da tinta molhada (`molhada_escurece = 1`) a mesma barra reprova.
+#[test]
+fn a_tinta_molhada_parece_mais_forte_e_clareia_ao_secar() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = Biblioteca::carregar(&raiz, None);
+    let razao = |i: usize, molhada: Option<f64>| {
+        let (dois, fim) = coluna_com(&b, i, false, &[], None, None, molhada);
+        let (t2, t) = (regua(&dois, i).0, regua(&fim, i).0);
+        eprintln!("[molhada] pincel {i} molhada {molhada:?}: tinta 2 s {t2:.0} → 30 s {t:.0}");
+        t2 / t.max(1.0)
+    };
+    let c = razao(0, Some(1.0));
+    let (round, wash) = (razao(0, None), razao(1, None));
+    assert!(
+        c < 1.4,
+        "CONTROLO: sem o reforço da tinta molhada a razão foi {c:.2} — a régua não discrimina"
+    );
+    assert!(
+        round >= 1.4,
+        "o Wet Round molhado não parece mais forte: 2 s ÷ seco = {round:.2} (Rebelle 2,1)"
+    );
+    assert!(
+        wash >= 1.0,
+        "o Wet Wash ESCURECE ao secar: 2 s ÷ seco = {wash:.2} (Rebelle 1,2)"
+    );
 }

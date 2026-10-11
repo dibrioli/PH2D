@@ -56,6 +56,18 @@ impl Params {
     pub fn k(&self, knob: Knob) -> f64 {
         self.values[knob as usize]
     }
+
+    /// **A quantidade de pigmento** do pincel (a Opacity do produto, `Sliders::pigmento`): escala SÓ o
+    /// pigmento que cada célula recebe (`PigmentPerDab`). O carimbo, a água e o portão do papel ficam —
+    /// escalar o carimbo deixava o portão (uma subtracção absoluta) comer a tinta clara (medido 10/10: a
+    /// 0,26 o miolo ia `2 → 12` em 12 passadas, a cor diluída `13 → 57`). `1` = o port, ao bit.
+    #[must_use]
+    pub fn com_pigmento(mut self, pigmento: f64) -> Self {
+        if pigmento != 1.0 {
+            self.values[Knob::PigmentPerDab as usize] *= pigmento;
+        }
+        self
+    }
 }
 
 /// Sim state that lives OUTSIDE the grid: cadence, tilt, experimental flags.
@@ -103,6 +115,13 @@ pub struct Sim {
     /// **Assentar e re-molhar preservam o ecrã?** ([`crate::assenta`]) `Porto` = as junções de antes; o
     /// produto liga a lei do render (`PorCima`, ou `Camada` com o «Glaze layering»).
     pub lei: crate::assenta::Lei,
+    /// **A tinta molhada parece mais forte e clareia ao secar** (o Rebelle e a aguarela real; dono 10/10):
+    /// a densidade óptica do pigmento em SUSPENSÃO vale este múltiplo no render (`a = 1 − (1 − a)^k`).
+    /// Assentar preserva o ecrã SECO ([`crate::assenta`]), então o traço clareia aos poucos ao secar sem
+    /// mudar de tom. `1` = o port.
+    pub molhada_escurece: f64,
+    /// **Quanto uma camada tapa a de baixo** na [`crate::assenta::Lei::Cobre`] (`h = 1 − (1 − a)^esconde`).
+    pub esconde: f64,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -177,6 +196,8 @@ impl Default for Sim {
             sedimenta: 0.0,
             pickup_assentado: 0.5,
             lei: crate::assenta::Lei::Porto,
+            molhada_escurece: 1.0,
+            esconde: 1.0,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -258,6 +279,11 @@ impl Sim {
                 crate::assenta::Lei::Porto => crate::assenta::Ecra::Porto,
                 crate::assenta::Lei::PorCima => crate::assenta::Ecra::PorCima(self.glaze_filme),
                 crate::assenta::Lei::Camada => crate::assenta::Ecra::Camada,
+                crate::assenta::Lei::Cobre => crate::assenta::Ecra::Cobre {
+                    filme: self.glaze_filme,
+                    esconde: self.esconde,
+                    molhada: self.molhada_escurece,
+                },
             },
         }
     }

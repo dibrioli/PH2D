@@ -881,7 +881,11 @@ fn pre_condicoes() -> Vec<Linha> {
         v.push((
             m,
             "Shape não redonda",
-            vec![opcao(PAINTER_SHAPE_KIND, painter_shape_kind_option_id(1))],
+            // No Wet Paint o Noise deixa a tela VAZIA (BUGS_painter #47): o Checker pinta.
+            vec![opcao(
+                PAINTER_SHAPE_KIND,
+                painter_shape_kind_option_id(if m == WetPaint { 2 } else { 1 }),
+            )],
             vec![Alvo::Id(PAINTER_BRUSH_JITTER_ROTATE)],
             false,
         ));

@@ -123,7 +123,10 @@ impl Engine {
         sil: Option<crate::brush::CellFn<'_>>,
         grain: Option<crate::brush::CellFn<'_>>,
     ) {
-        let p = self.sim.gather_params(&self.tuning);
+        let p = self
+            .sim
+            .gather_params(&self.tuning)
+            .com_pigmento(self.sliders.pigmento);
         let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
         if let Some(hook) = self.on_dab.as_mut() {
             hook(b, &dab);

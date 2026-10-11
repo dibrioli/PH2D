@@ -130,7 +130,7 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
             true,
         ),
         // A Opacity do Wet Paint (smoke do dono 10/10: «o preview ficou mais claro, os traços não»).
-        ("opacity", &|t| t.paint.wetpaint.opacidade = 1.0, true),
+        ("opacity", &|t| t.paint.wetpaint.opacidade = 0.4, true),
     ];
     for (nome, mexe, pinta_diferente) in casos {
         let mut t = molhado();

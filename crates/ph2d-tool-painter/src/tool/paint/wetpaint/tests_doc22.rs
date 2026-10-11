@@ -133,14 +133,17 @@ fn the_reconcile_baseline_is_the_engines_own_boot() {
     assert_ne!(WetKnobs::DEFAULT, WetKnobs::ENGINE_BOOT);
 }
 
-/// The five Wet Paint knob defaults Enio chose (2026-07-22) — pinned so they cannot silently drift, and
-/// so the fact that each differs from the engine's SPEC boot is on the record. Every OTHER knob is the
-/// engine boot untouched (the product profile is the boot with five tweaks, nothing more).
+/// The Wet Paint knob defaults Enio chose (2026-07-22) — pinned so they cannot silently drift, and so the
+/// fact that each differs from the engine's SPEC boot is on the record. Every OTHER knob is the engine boot
+/// untouched. ⚠️ 10/10, pela ordem do dono («aproxime do Rebelle»; «o correto para clarear não seria usar
+/// pigment?»): o pincel sem preset é o Wet Round de fábrica — pigmento 800 → 78 e o escurecimento da orla
+/// 50 → 12 (o sexto).
 #[test]
 fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
     use ph2d_wet_paint::tuning::knob_defaults;
     let d = WetKnobs::DEFAULT;
-    assert_eq!(d.get(Knob::PigmentPerDab), 800.0);
+    assert_eq!(d.get(Knob::PigmentPerDab), 78.0);
+    assert_eq!(d.get(Knob::EdgeDarkening), 12.0);
     assert_eq!(d.get(Knob::PaperGate), 0.4);
     assert_eq!(d.get(Knob::Felt), 0.03);
     assert_eq!(d.get(Knob::BristleSize), 2.0);
@@ -150,6 +153,7 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
         let is_enios = matches!(
             def.knob,
             Knob::PigmentPerDab
+                | Knob::EdgeDarkening
                 | Knob::PaperGate
                 | Knob::Felt
                 | Knob::BristleSize

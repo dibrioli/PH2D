@@ -97,7 +97,12 @@ pub use ph2d_pigment::{ColorMix, reflectance_of_ks};
 /// Com a Live Water e o papel Cold (filme 0,50): g 0,6 molhado γ 0,28 ✗ · 0,8 0,34 · **1,0 0,41**, o resto
 /// igual (seco 0,43·0,46 · +0,016, camadas 0,85). (Rebelle seco 0,42–0,49 · 0,44–0,51, molhado 0,62;
 /// camadas 0,89 molhado · 0,96 seco.) `1` = a multiplicação inteira, pesada pela diferença de pigmento.
-pub const VELATURA_MEDIDA: f64 = 1.0;
+///
+/// ⚠️⚠️ **0 desde a lei do Rebelle** ([`crate::assenta::Ecra::Cobre`], dono 10/10: a claridade é o pigmento):
+/// quem dá o γ do Rebelle é o TAPAR ([`TINTA_ESCONDE`]); a multiplicação por cima só o afastava (tapar 5,
+/// molhada 3, sem papel: velatura 0 → seco 0,44·0,43, molhado 0,81; 1 → 0,44·0,43, molhado 0,88). As
+/// tabelas acima são da tinta CHEIA diluída, que saiu.
+pub const VELATURA_MEDIDA: f64 = 0.0;
 
 /// **A velatura do filme MOLHADO sobre o assentado, no render** (W1f): o azul ainda em suspensão leva o
 /// termo inteiro de uma vez (peso ≈ 1), enquanto ao assentar entra aos bocados — com `VELATURA_MEDIDA`
@@ -118,7 +123,8 @@ pub const VELATURA_MEDIDA: f64 = 1.0;
 /// (Rebelle 0,42–0,49 · 0,44–0,51 · +1…+2, barra da sangria ≤ 3; o molhado não muda: +13.)
 ///
 /// ⚠️ **0,25 → 0,40 com a Opacity do Rebelle (10/10)** — a grelha no doc de [`VELATURA_MEDIDA`].
-pub const VELATURA_DO_FILME: f64 = 0.40;
+/// ⚠️⚠️ **0 desde a lei do Rebelle** (a mesma razão de [`VELATURA_MEDIDA`]; a 0,2 o seco ia a 0,52·0,52).
+pub const VELATURA_DO_FILME: f64 = 0.0;
 
 /// **A mesma velatura com a água A CORRER no traço** (W1g, «Live Water»): a água que assenta durante o
 /// traço muda a conta, e o `0,20` deixava o azul sangrar `+3,2` sobre o vermelho SECO (barra `≤ 3`,
@@ -134,7 +140,38 @@ pub const VELATURA_DO_FILME: f64 = 0.40;
 /// ⚠️ **0,35 → 0,50 com a Opacity do Rebelle (10/10)**, sem papel (seco γ · sangria; camadas molhado): 0,35
 /// 0,33·0,34 · +0,032 ✗ · 0,89 · 0,40 0,36·0,37 · +0,030 ✗ · 0,88 · **0,50 0,43·0,45 · +0,027 · 0,85** ·
 /// 0,60 0,54·0,57 · +0,023 · 0,25 ✗ (tecto da sangria sem papel 0,028; camadas ≥ 0,70).
-pub const VELATURA_DO_FILME_VIVA: f64 = 0.50;
+/// ⚠️⚠️ **0 desde a lei do Rebelle**: com a Live Water e sem papel a barra passa inteira a 0 (seco 0,40·0,51,
+/// sangria seca +0,018, molhada +0,145).
+pub const VELATURA_DO_FILME_VIVA: f64 = 0.0;
+
+/// **Quanto a tinta MOLHADA parece mais forte que a seca** ([`crate::sim::Sim::molhada_escurece`]): o Rebelle
+/// 8.3.4 mede um traço Round a ~2 s com carga 111 e seco 54 (`fixtures/rebelle_presets/`), a W1e o azul
+/// molhado (133,150,231) contra o seco (204,211,245). Varrido na `sonda_presets_varre` (Round pigmento 90,
+/// carga molhada a 2 s → seca; Rebelle 111 → 54, o Drip 110 → 60):
+///
+/// | fator | 1 | 1,4 | **1,6** | 1,8 | 2 | 3 |
+/// |---|---|---|---|---|---|---|
+/// | Round | — | 100 → 54 | **109 → 54** | 118 → 54 | 126 → 54 | 159 → 54 |
+/// | Drip (pigmento 75) | — | 99 → 60 | **109 → 60** | 117 → 60 | — | — |
+///
+/// ⚠️ Esta tabela é da 1.ª forma (a força do tom de cima). A lei é agora a COBERTURA do ponto inteiro, com a
+/// cor da camada fixa (o papel molhado escurece tudo por igual e só até à cor pura; o tom ao secar desliza
+/// 0,06, o Rebelle 0,05): fator 2,2 · 2,8 · **3** · 3,5 → Round 88 · 96 · **~100** · 106 → 55; Drip 85 · 92 ·
+/// **~96** · 101 → 60. O Wash fica mais escuro molhado que o do Rebelle (67 → 38 contra 46 → 39): a aguada
+/// dele está quase seca aos 2 s, a nossa não.
+pub const TINTA_MOLHADA_ESCURECE: f64 = 3.0;
+
+/// **Quanto uma camada tapa a de baixo** ([`crate::assenta::Ecra::Cobre`], `h = 1 − (1 − a)^esconde`, o extra
+/// pesado pela diferença de pigmento). Grelha `sonda_velatura_recalibra` (sem papel, água parada, molhada 1,6;
+/// W1e seco γ · sangria molhada; camadas molhado · seco; o tom ao secar):
+///
+/// | esconde | 1 | 2 | 3 | 4 | **5** | 6 | 7 |
+/// |---|---|---|---|---|---|---|---|
+/// | W1e seco | 0,75·0,76 ✗ | 0,70·0,70 | 0,61·0,58 | 0,59·0,56 | **0,48·0,44** | 0,43·0,39 | 0,39·0,35 |
+/// | camadas | 0,84 · 0,86 | 0,86 · 0,87 | 0,87 · 0,88 | — | **0,87 · 0,88** | 0,88 · 0,88 | 0,88 · 0,88 |
+///
+/// (Rebelle: seco 0,42–0,49 · 0,44–0,51, sangria molhada 0,27 — a nossa 0,26–0,28; camadas 0,89 · 0,96.)
+pub const TINTA_ESCONDE: f64 = 5.0;
 
 /// **A VELATURA** — o termo que transforma a junção «por cima» de duas tintas na junção de pigmentos
 /// TRANSPARENTES: a cor de cima perde, na fração `glaze`, a luz que a de baixo já absorveu.

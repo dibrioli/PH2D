@@ -48,6 +48,10 @@ pub struct Sliders {
     pub pressure: f64,
     pub water: f64,
     pub erase: f64,
+    /// **A quantidade de pigmento** do pincel (a Opacity do produto, `0..1`): multiplica o pigmento que cada
+    /// dab pousa ([`crate::sim::Params::com_pigmento`]) — a tinta fica clara por ter POUCO pigmento e acumula
+    /// até à cor escolhida (dono 10/10). `1` = o port, ao bit.
+    pub pigmento: f64,
 }
 
 impl Default for Sliders {
@@ -57,6 +61,7 @@ impl Default for Sliders {
             pressure: 0.7,
             water: 1.0,
             erase: 0.4,
+            pigmento: 1.0,
         }
     }
 }
@@ -265,7 +270,10 @@ impl Engine {
         dir_y: f64,
         r: f64,
     ) {
-        let p = self.sim.gather_params(&self.tuning);
+        let p = self
+            .sim
+            .gather_params(&self.tuning)
+            .com_pigmento(self.sliders.pigmento);
         let (dab, water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
         self.finish_dispatch(p, dab, b, water_unit);
     }

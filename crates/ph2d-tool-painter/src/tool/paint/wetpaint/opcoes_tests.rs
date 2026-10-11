@@ -16,14 +16,16 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// (cena, inclinação, hash). Gravados em `fcc685e43`; regravados UMA vez a 10/10 pela ordem do dono sobre
 /// o papel (sem Kind, o grão sem desenho em vez do Cold — o traço sem papel mudou de propósito; as opções
 /// continuam a não mexer um byte); e outra vez a 10/10 pela ordem do dono «aproxime do Rebelle» (o Wet
-/// Round ganhou a Opacity 0,26 e a velatura foi re-medida: o traço de fábrica mudou de propósito).
+/// Round ganhou a Opacity 0,26 e a velatura foi re-medida: o traço de fábrica mudou de propósito); e o S
+/// outra vez a 10/10 pela escolha do dono «como o Rebelle» (a claridade é o PIGMENTO — os presets de fábrica
+/// e o pincel sem preset com o pigmento do Rebelle — e a lei do ecrã `Cobre`).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0xe6d3_eba4_aa2e_239c),
-    ("S", Some(4), 0xaf08_3085_0ae8_7ab4),
-    ("S", Some(8), 0xb2f4_4f50_886d_031e),
-    ("bancada", None, 0x4c57_e851_ddfa_9b83),
-    ("bancada", Some(4), 0x7d26_8017_5e9f_e4ea),
-    ("bancada", Some(8), 0x5df2_a640_6890_9f26),
+    ("S", None, 0xf650_3793_75cd_1f6e),
+    ("S", Some(4), 0x45cb_214a_6fe2_b2d4),
+    ("S", Some(8), 0x70f9_929d_fc66_6508),
+    ("bancada", None, 0xfacf_bcb6_4edb_339a),
+    ("bancada", Some(4), 0x9ef7_47c7_c706_8c13),
+    ("bancada", Some(8), 0xb859_4fa5_9f37_a7c0),
 ];
 
 #[test]
@@ -271,9 +273,12 @@ fn azul_sobre_vermelho(forca: f32, assentar: bool) -> Vec<u8> {
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
-    // A tinta CHEIA: o caso do 4.º smoke do dono; os limiares do degrau são de contraste absoluto, e com a
-    // Opacity do Wet Round (0,26) o degrau entre as duas tintas diluídas amacia menos (−18 %, 05 §4b).
-    t.paint.wetpaint.opacidade = 1.0;
+    // A tinta CHEIA: o caso do 4.º smoke do dono (o Wet Round de então, pigmento 800). Com o pigmento do
+    // Rebelle (78) a tinta clara tem grão abaixo da mancha (`SS0`) e o miolo molhado amacia −10 % (05 §4b).
+    t.paint
+        .wetpaint
+        .knobs
+        .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
     t.paint.wetpaint.tilt_on = false;
     t.paint.wetpaint.smooth_edges = forca;
     let cp = |x: f32, y: f32, phase| CanvasPointer {
@@ -463,5 +468,39 @@ fn sonda_grava_fios_sobre_vermelho() {
             o.extend_from_slice(&p[..3]);
         }
         std::fs::write(format!("{d}/fsv_{k}.ppm"), o).unwrap();
+    }
+}
+
+/// **Sonda: a Heavy Edge re-medida com a tinta do Rebelle** (pigmento baixo, 10/10): a orla de baixo a meia,
+/// no Cold e sem papel, para cada `sedimenta` (`PH2D_SONDA_KS`).
+#[test]
+#[ignore = "sonda: corre-se à mão"]
+fn sonda_heavy_edge_recalibra() {
+    let ks: Vec<f64> = std::env::var("PH2D_SONDA_KS")
+        .ok()
+        .map(|v| v.split(',').filter_map(|s| s.parse().ok()).collect())
+        .unwrap_or_else(|| vec![0.0, 5.0, 10.0, 20.0, 40.0, 80.0]);
+    for k in ks {
+        let orla = |cold: bool| {
+            let px = super::sonda_gota::bancada_toda(
+                0.005,
+                0.0,
+                &[],
+                Some(4),
+                AGUAS,
+                &|s| s.sedimenta = k,
+                &|t| {
+                    if cold {
+                        t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
+                    }
+                },
+            );
+            super::gota_tests::le(&px, 0).0
+        };
+        println!(
+            "[heavy edge] sedimenta {k:>5}: Cold {:.2} · sem papel {:.2}",
+            orla(true),
+            orla(false)
+        );
     }
 }

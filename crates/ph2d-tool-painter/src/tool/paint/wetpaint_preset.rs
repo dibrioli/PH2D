@@ -15,9 +15,9 @@ use ph2d_painter_brush::TextureKind;
 use ph2d_wet_paint::tuning::KNOB_DEFS;
 use std::collections::BTreeMap;
 
-/// A Opacity do Wet Paint sem preset = a do Wet Round de fábrica: a claridade do Round do Rebelle (carga
-/// 55 contra 54, `sonda_presets_varre`, 05 §4b «Conferência»).
-pub const OPACIDADE_DE_FABRICA: f32 = 0.26;
+/// A Opacity do Wet Paint sem preset: todo o pigmento do pincel (a claridade de fábrica é o
+/// `pigmentPerDab` de cada preset, dono 10/10: «o correto para clarear não seria usar pigment?»).
+pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 
 mod json;
 #[cfg(test)]

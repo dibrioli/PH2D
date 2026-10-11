@@ -32,18 +32,18 @@ fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
 }
 
-/// Uma linha do 02 §6.9 — ⚠️ a Opacity (a claridade), o pigmento do Wash e o papel do Dry Brush CALIBRADOS
-/// contra o Rebelle (dono 10/10, «aproxime do Rebelle»; `sonda_presets_varre` contra
-/// `fixtures/rebelle_presets/`, 05 §4b «Conferência»). ⛔ Tirar pigmento dá a mesma claridade num traço
-/// sozinho mas torna a tinta transparente: medido, o cruzamento ia a γ 0,95 e o amarelo não cobria. `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
-/// `pickup`/`edge` são RAZÕES ao Wet Round, que é o padrão do dono (05 §1.2). A gravidade é a MESMA em
+/// Uma linha do 02 §6.9 — ⚠️ o pigmento e a orla CALIBRADOS contra o Rebelle (dono 10/10: «aproxime do
+/// Rebelle» e «o correto para clarear não seria usar pigment?»; `sonda_presets_varre` contra
+/// `fixtures/rebelle_presets/`, molhado a 2 s e seco a 30 s, 05 §4b). A claridade é POUCO pigmento — a cor
+/// acumula até à escolhida; a Opacity fica a 100 % (é a quantidade relativa do artista). `pigment`/`gate`/`evaporation`/cerdas/`water` estão nas unidades do motor;
+/// `pickup` é RAZÃO ao padrão do dono (05 §1.2); `edge` é o valor do motor (desde 10/10: o padrão mudou). A gravidade é a MESMA em
 /// todos (W1e, F5: o Rebelle não a tem por pincel — a velocidade é inclinação × água × cor); o `tilt` é o
 /// do dial (W1e, F4: Round, Wash e Dry com a tela direita, como o Rebelle; o Drip, o único que promete
 /// escorrer, inclinado no máximo, para baixo).
 struct Receita {
     nome: &'static str,
     water: f64,
-    /// A Opacity do Wet Paint: a cor diluída para o branco (a claridade do Rebelle, que cobre).
+    /// A Opacity do Wet Paint: a quantidade de pigmento, em fracção do `pigment` (`1` = a receita).
     opacity: f64,
     pigment: f64,
     pickup: f64,
@@ -66,12 +66,12 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Round",
         water: 1.0,
-        opacity: 0.26,
-        pigment: 800.0,
+        opacity: 1.0,
+        pigment: 78.0,
         pickup: 1.0,
         gate: 0.4,
         evaporation: 1.0,
-        edge: 1.0,
+        edge: 12.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
@@ -79,12 +79,12 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Wash",
         water: 0.4,
-        opacity: 0.2,
-        pigment: 200.0,
+        opacity: 1.0,
+        pigment: 21.0,
         pickup: 0.6,
         gate: 0.3,
         evaporation: 0.7,
-        edge: 0.75,
+        edge: 20.0,
         tilt: DIREITA,
         bristle_size: 3.0,
         bristle_count: 3000.0,
@@ -92,12 +92,12 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Dry Brush",
         water: 0.2,
-        opacity: 0.5,
-        pigment: 1200.0,
+        opacity: 1.0,
+        pigment: 300.0,
         pickup: 1.6,
         gate: 0.4,
         evaporation: 1.5,
-        edge: 1.125,
+        edge: 56.25,
         tilt: DIREITA,
         bristle_size: 1.5,
         bristle_count: 1500.0,
@@ -105,12 +105,12 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     Receita {
         nome: "Wet Drip",
         water: 1.0,
-        opacity: 0.28,
-        pigment: 600.0,
+        opacity: 1.0,
+        pigment: 63.0,
         pickup: 0.8,
         gate: 0.2,
         evaporation: 0.6,
-        edge: 1.0,
+        edge: 20.0,
         tilt: Tilt {
             on: true,
             ring: 8,
@@ -139,7 +139,7 @@ fn parametros(r: &Receita) -> Parametros {
         ("paperGate", r.gate),
         ("evaporation", r.evaporation),
         ("pickup", d.get(Knob::Pickup) * r.pickup),
-        ("edgeDarkening", d.get(Knob::EdgeDarkening) * r.edge),
+        ("edgeDarkening", r.edge),
         ("bristleSize", r.bristle_size),
         ("bristleCount", r.bristle_count),
     ] {

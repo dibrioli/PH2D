@@ -313,7 +313,13 @@ fn um_preset_sem_tilt_nao_mexe_na_inclinacao() {
 }
 
 fn pinta(t: &mut PainterTool) -> Vec<u8> {
-    t.set_brush_color_srgb8([23, 101, 179]);
+    risca(t, [23, 101, 179]);
+    t.run_full().0
+}
+
+/// O traço de [`pinta`] com a cor `cor`, sem tirar a tela da ferramenta (lê-se em `canvas_rgba`).
+fn risca(t: &mut PainterTool, cor: [u8; 3]) {
+    t.set_brush_color_srgb8(cor);
     let p = |x: f32, pr: f32, phase| CanvasPointer {
         pos: [x, 60.0 + 10.0 * (x * 0.03).sin()],
         pressure: pr,
@@ -334,7 +340,6 @@ fn pinta(t: &mut PainterTool) -> Vec<u8> {
     for _ in 0..60 {
         t.on_tick(1000.0 / 60.0);
     }
-    t.run_full().0
 }
 
 fn pelo_ficheiro(prm: Parametros, texturas: BTreeMap<String, Vec<u8>>) -> Preset {
@@ -430,11 +435,11 @@ fn os_volumes_sao_o_que_o_painel_mostra() {
     );
 }
 
-/// **A Opacity do Wet Paint dilui a cor para o branco do papel** (a lei medida no Rebelle, 10/10): o traço
-/// a 0,26 é ~um quarto do escuro do traço cheio (a mediana do escuro nos píxeis pintados), e a 1 é a cor
-/// do pincel. Mutação que sangra: o `ink` do `dab_route` ignorar a Opacity (os dois traços iguais).
+/// **A Opacity do Wet Paint é a QUANTIDADE de pigmento** (dono 10/10): o traço a 0,26 é ~um quarto do escuro
+/// do traço cheio (a mediana do escuro nos píxeis pintados; Rebelle: a Opacity clareia o traço). Mutação que
+/// sangra: a porta do dab ignorar o `pigmento` (os dois traços iguais).
 #[test]
-fn a_opacity_do_wet_paint_dilui_a_cor_para_o_papel() {
+fn a_opacity_do_wet_paint_e_a_quantidade_de_pigmento() {
     let escuro = |op: f32| {
         let mut t = ferramenta();
         t.paint.wetpaint.opacidade = op;
@@ -455,6 +460,83 @@ fn a_opacity_do_wet_paint_dilui_a_cor_para_o_papel() {
         (0.18..=0.36).contains(&razao),
         "a Opacity 0,26 deu {clara} contra {cheia} da cheia (razão {razao:.2})"
     );
+}
+
+/// O escuro do MIOLO do traço de [`pinta`] (a mediana na linha central, x 80…160) e a cor lá.
+fn miolo_do_traco(px: &[u8]) -> (f64, [f64; 3]) {
+    let mut v: Vec<(u32, [f64; 3])> = (80..160u32)
+        .map(|x| {
+            let y = (60.0 + 10.0 * (x as f32 * 0.03).sin()).round() as u32;
+            let i = ((y * W + x) * 4) as usize;
+            let c = [px[i], px[i + 1], px[i + 2]];
+            (255 - u32::from(c[0].min(c[1]).min(c[2])), c.map(f64::from))
+        })
+        .collect();
+    v.sort_by_key(|e| e.0);
+    let m = v[v.len() / 2];
+    (f64::from(m.0), m.1)
+}
+
+/// **Com a Opacity baixa a cor ACUMULA até à escolhida** (dono 10/10: «a cor nunca vai chegar à cor
+/// escolhida no painel … o correto para clarear não seria usar pigment?»; escolhido por ele: como o Rebelle,
+/// onde a tinta acumula até ao amarelo puro abaixo do próprio traço — `fixtures/rebelle_camadas/`). O mesmo
+/// traço, Opacity 0,26, seco entre passadas (lido 1 s depois de cada uma): o miolo escurece a cada passada, passa o tecto da cor diluída
+/// e fica no TOM do pincel. ⚠️ O CONTROLO está dentro: a lei recusada (a cor do pincel diluída para o papel,
+/// o pigmento cheio) pára no tecto dela e reprova a mesma barra.
+#[test]
+fn com_a_opacity_baixa_a_cor_acumula_ate_a_escolhida() {
+    const PASSADAS: usize = 12;
+    let azul = [23.0, 101.0, 179.0];
+    let tecto = 0.26 * (255.0 - 23.0);
+    let camadas = |op: f32, cor: [u8; 3]| {
+        let mut t = ferramenta();
+        t.paint.wetpaint.opacidade = op;
+        let mut out = Vec::new();
+        for _ in 0..PASSADAS {
+            risca(&mut t, cor);
+            out.push(miolo_do_traco(&t.canvas_rgba));
+            assert!(
+                t.route_brush_wetpaint_event(&ph2d_editor_core::tool::PanelEvent::Click(
+                    crate::ids::PAINTER_WETPAINT_DRYCANVAS
+                ))
+            );
+        }
+        out
+    };
+    let barra = |v: &[(f64, [f64; 3])]| -> Result<(), String> {
+        let escuros: Vec<f64> = v.iter().map(|e| e.0).collect();
+        let (ultimo, tom) = (
+            escuros[PASSADAS - 1],
+            ph2d_wet_paint::colorops::diferenca_de_pigmento(v[PASSADAS - 1].1, azul),
+        );
+        let sobe = escuros.windows(2).all(|w| w[1] >= w[0] - 1.0);
+        if sobe && ultimo >= 1.5 * tecto && tom <= 0.15 {
+            Ok(())
+        } else {
+            Err(format!(
+                "escuro por passada {escuros:?} (tecto da diluída {tecto:.0}, barra {:.0}); tom {tom:.3}",
+                1.5 * tecto
+            ))
+        }
+    };
+    let diluida = azul.map(|c| (255.0 - 0.26 * (255.0 - c)).round() as u8);
+    let c = camadas(1.0, diluida);
+    eprintln!(
+        "[acumula] controlo (diluída): {:?}",
+        c.iter().map(|e| e.0).collect::<Vec<_>>()
+    );
+    assert!(
+        barra(&c).is_err(),
+        "CONTROLO: a cor diluída passou a barra — a régua não discrimina"
+    );
+    let p = camadas(0.26, [23, 101, 179]);
+    eprintln!(
+        "[acumula] produto: {:?}",
+        p.iter().map(|e| e.0).collect::<Vec<_>>()
+    );
+    if let Err(e) = barra(&p) {
+        panic!("a Opacity 0,26 não acumula até à cor escolhida: {e}");
+    }
 }
 
 /// O painel mostra um volume só quando o traço o LÊ. A Opacity (a força) não tem leitor no Wet Paint

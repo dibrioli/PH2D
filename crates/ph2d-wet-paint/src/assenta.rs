@@ -21,6 +21,9 @@ pub enum Lei {
     PorCima,
     /// «Glaze layering (K-M)»: o filme como camada de reflectância sobre o assentado.
     Camada,
+    /// **A lei do Rebelle** (dono 10/10, [`Ecra::Cobre`]): a claridade é a quantidade de pigmento, a
+    /// camada de cima tapa a de baixo mais do que a sua força, e molhada parece mais forte.
+    Cobre,
 }
 
 /// A lei com o que ela lê dos params: a velatura do filme no [`Lei::PorCima`].
@@ -30,6 +33,85 @@ pub enum Ecra {
     Porto,
     PorCima(f64),
     Camada,
+    /// O filme é uma TINTA da cor guardada com a força da sua cobertura `a_f` (a claridade vem do
+    /// pigmento: acumula até à cor escolhida), que TAPA o assentado com `h = 1 − (1 − a_f)^esconde`
+    /// (`≥ a_f`: uma tinta clara tapa mais do que a sua força — o azul claro seco do Rebelle tapa ~60 % do
+    /// vermelho; o extra pesado pela diferença de pigmento, a mesma tinta só soma), mais a velatura `filme`. Molhada, a força do tom vale `1 − (1 − a_f)^molhada`; o tapar
+    /// não muda ao secar — o traço clareia SEM mudar de tom (o Rebelle: (131,124,201) → (194,188,224)).
+    Cobre {
+        filme: f64,
+        esconde: f64,
+        molhada: f64,
+    },
+}
+
+impl Ecra {
+    /// A mesma lei vista SECA (assentar e re-molhar preservam o ecrã seco; o render vê a tinta molhada).
+    #[must_use]
+    pub fn seco(self) -> Self {
+        match self {
+            Ecra::Cobre { filme, esconde, .. } => Ecra::Cobre {
+                filme,
+                esconde,
+                molhada: 1.0,
+            },
+            e => e,
+        }
+    }
+}
+
+/// A cor da camada e a sua cobertura (o que o render compõe): `sc` assentado (`a_s`) sob `uc` em
+/// suspensão (`a_f`). ⛔ Uma porta só — o render e as transferências verticais passam por aqui.
+#[inline]
+pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([f64; 3], f64) {
+    let Ecra::Cobre {
+        filme,
+        esconde,
+        molhada,
+    } = e
+    else {
+        return (cor(e, sc, uc, a_s, a_f), a_s + a_f * (1.0 - a_s));
+    };
+    if a_f <= 0.0 {
+        return (sc, a_s);
+    }
+    // MOLHADA: a COBERTURA do ponto inteiro (a tinta de cima e a seca debaixo da água) vale a densidade
+    // `1 + (molhada − 1)·a_f`, com a cor da camada fixa — o papel molhado escurece tudo por igual e só até à
+    // cor pura (o Rebelle: o cruzamento (131,124,201) → (194,188,224), seno do ângulo dos perfis 0,05; e o
+    // amarelo molhado acumulado é a própria tinta, (245,205,25)). ⛔ Escalar a densidade da COR passava da
+    // cor pura: o amarelo molhado ficava mais escuro que a tinta (0,90 do azul seco nas camadas).
+    let p = 1.0 + (molhada - 1.0) * a_f;
+    // `r` é o ponto sobre o branco; devolve a cor da camada e a cobertura que o compõem.
+    let molha = |r: [f64; 3], la: f64| {
+        let c = r.map(|v| ((v - 255.0 * (1.0 - la)) / la).clamp(0.0, 255.0));
+        let la_w = if p == 1.0 {
+            la
+        } else {
+            1.0 - (1.0 - la).powf(p)
+        };
+        (c, la_w)
+    };
+    let a_t = a_f;
+    if a_s <= 0.0 {
+        return molha(uc.map(|v| 255.0 - a_t * (255.0 - v)), a_t);
+    }
+    // O tapar EXTRA é da diferença de pigmento: a mesma tinta sobre si mesma só soma pigmento (sem ele,
+    // re-molhar o azul para dentro de um filme azul clareava-o — medido no teste das transferências).
+    let h = 1.0 - (1.0 - a_f).powf(esconde);
+    let a_e = a_t + (h - a_t).max(0.0) * crate::colorops::diferenca_de_pigmento(sc, uc);
+    let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
+    let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
+    let mut r = [0, 1, 2].map(|k| t_s[k] * (1.0 - a_e) + c_eff[k] * a_e);
+    velatura(&mut r, a_e, filme, 1.0, t_s, c_eff);
+    let la = a_s + a_e * (1.0 - a_s);
+    molha(r, la)
+}
+
+/// O que a célula mostra sobre o papel branco — o que assentar e re-molhar preservam.
+#[inline]
+pub fn sobre_branco(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> [f64; 3] {
+    let (c, la) = cor_e_alfa(e, sc, uc, a_s, a_f);
+    c.map(|v| 255.0 * (1.0 - la) + v * la)
 }
 
 /// A cor que o ecrã mostra de uma célula: `sc` assentado (cobertura `a_s`) sob `uc` em suspensão (`a_f`).
@@ -50,6 +132,7 @@ pub fn cor(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> [f64; 3] 
                 a_f,
             ))
         }),
+        Ecra::Cobre { .. } => cor_e_alfa(e, sc, uc, a_s, a_f).0,
         Ecra::PorCima(_) | Ecra::Porto => {
             let filme = if let Ecra::PorCima(f) = e { f } else { 0.0 };
             let mut c = [0, 1, 2].map(|k| sc[k] * (1.0 - a_f) + uc[k] * a_f);
@@ -103,6 +186,28 @@ pub fn assenta(
     a_s2: f64,
     a_f2: f64,
 ) -> [f64; 3] {
+    let e = e.seco();
+    if let Ecra::Cobre { .. } = e {
+        let alvo = sobre_branco(e, sc, uc, a_s, a_f);
+        if a_s <= 0.0 && a_f2 <= 0.0 {
+            return uc;
+        }
+        // O palpite: o que assentou TAPA o assentado pela mesma lei (uma camada de `uc` com a cobertura da
+        // massa que desceu) — com o palpite «o assentado de antes», sob um filme grosso o ecrã quase não o vê
+        // e a cor escondida voltava ao secar (a armadilha do `resolve`).
+        let a_dm = if a_s < 1.0 {
+            (1.0 - (1.0 - a_s2) / (1.0 - a_s)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let x0 = if a_s <= 0.0 || a_s2 <= 0.0 {
+            uc
+        } else {
+            let r = sobre_branco(e, sc, uc, a_s, a_dm);
+            r.map(|v| (255.0 - (255.0 - v) / a_s2).clamp(0.0, 255.0))
+        };
+        return resolve(x0, alvo, |x| sobre_branco(e, x, uc, a_s2, a_f2));
+    }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_f2 <= 0.0 {
         return alvo;
@@ -145,6 +250,20 @@ pub fn levanta(
     a_s2: f64,
     a_f2: f64,
 ) -> [f64; 3] {
+    let e = e.seco();
+    if let Ecra::Cobre { .. } = e {
+        if a_f2 <= 0.0 {
+            return uc;
+        }
+        let alvo = sobre_branco(e, sc, uc, a_s, a_f);
+        let x0 = if a_f <= 0.0 {
+            sc
+        } else {
+            let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
+            [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
+        };
+        return resolve(x0, alvo, |x| sobre_branco(e, sc, x, a_s2, a_f2));
+    }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_s2 <= 0.0 || a_f2 <= 0.0 {
         return alvo;
@@ -193,6 +312,7 @@ mod tests {
     #[test]
     fn as_transferencias_verticais_nao_mudam_o_ecra() {
         for e in [Ecra::PorCima(0.20), Ecra::PorCima(0.35), Ecra::Camada] {
+            let cor = |e, sc, uc, a_s, a_f| sobre_branco(e, sc, uc, a_s, a_f);
             for (a_s, a_f, d) in [
                 (0.9, 0.95, 0.05),
                 (0.999, 0.99, 0.02),
@@ -222,13 +342,25 @@ mod tests {
         }
     }
 
-    /// A MESMA tinta por cima de si mesma fica a mesma cor (o traço de uma cor não muda ao secar).
+    /// A MESMA tinta por cima de si mesma fica a mesma cor (o traço de uma cor não muda ao secar). Na lei do
+    /// Rebelle, duas camadas da mesma tinta são UMA com a massa das duas: o tapar a mais só pesa quando o
+    /// pigmento muda (mutação que sangra: tapar a mais sem a diferença de pigmento clareia `0,80 → 0,58`).
     #[test]
     fn a_mesma_tinta_nao_muda() {
         let e = Ecra::PorCima(0.20);
         let s2 = assenta(e, AM, AM, 0.9, 0.8, 0.95, 0.6);
         assert!(perto(s2, AM, 0.01), "{s2:?}");
         assert_eq!(assenta(e, [0.0; 3], AM, 0.0, 0.8, 0.3, 0.7), AM);
+        let cobre = Ecra::Cobre {
+            filme: 0.2,
+            esconde: 3.0,
+            molhada: 1.0,
+        };
+        let (duas, uma) = (
+            sobre_branco(cobre, AM, AM, 0.6, 0.5),
+            sobre_branco(cobre, AM, AM, 0.8, 0.0),
+        );
+        assert!(perto(duas, uma, 0.5), "duas camadas {duas:?} ≠ uma {uma:?}");
     }
 
     /// Tudo assentado = a cor que se via.
@@ -238,5 +370,36 @@ mod tests {
             let antes = cor(e, AZ, AM, 0.9, 0.7);
             assert_eq!(assenta(e, AZ, AM, 0.9, 0.7, 0.97, 0.0), antes);
         }
+    }
+
+    /// Na lei do Rebelle o assentar preserva o ecrã SECO em transferências reais (≤ 5 % da massa por passe)
+    /// e a MESMA tinta não muda ao trocar de camada (re-molhar). Re-molhar pigmento DIFERENTE muda o tapar
+    /// (a camada de cima tapa mais) — sem invariante aí.
+    #[test]
+    fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
+        let e = Ecra::Cobre {
+            filme: 0.2,
+            esconde: 3.0,
+            molhada: 1.6,
+        };
+        for (a_s, a_f, d) in [
+            (0.9, 0.95, 0.05),
+            (0.6, 0.5, 0.05),
+            (0.99, 0.3, 0.03),
+            (0.2, 0.1, 0.05),
+        ] {
+            let a_s2 = 1.0 - (1.0 - a_s) * (1.0 - d);
+            let a_f2 = 1.0 - (1.0 - a_f) / (1.0 - d);
+            let antes = sobre_branco(e.seco(), AZ, AM, a_s, a_f);
+            let s2 = assenta(e, AZ, AM, a_s, a_f, a_s2, a_f2);
+            let depois = sobre_branco(e.seco(), s2, AM, a_s2, a_f2);
+            assert!(
+                perto(antes, depois, 1.5),
+                "assenta {a_s},{a_f}: {antes:?} → {depois:?}"
+            );
+        }
+        // A massa conserva-se: (1 − 0,95)(1 − 0,2) = (1 − 0,9)(1 − 0,6).
+        let u2 = levanta(e, AM, AM, 0.95, 0.2, 0.9, 0.6);
+        assert!(perto(u2, AM, 0.5), "a mesma tinta: {u2:?}");
     }
 }

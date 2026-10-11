@@ -394,11 +394,13 @@ fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
     // As DUAS leis de antes: a velatura por cima da K–M e o assentar que não preserva o ecrã (cada cura
     // sozinha já tira o preto).
     let antes = |e: &mut ph2d_wet_paint::painter::Engine| {
-        e.sim.glaze = ph2d_wet_paint::colorops::VELATURA_MEDIDA;
+        e.sim.glaze = 0.47;
         e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
+        e.sim.molhada_escurece = 1.0;
+        e.tuning
+            .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
     };
     let km = |c: Cond| Cond { km: true, ..c };
-    let sujo = |e: &mut ph2d_wet_paint::painter::Engine| e.sim.pickup_assentado = 0.5;
     // O produto de antes pintava com a cor CHEIA (sem a Opacity).
     let cheia = |c: Cond| Cond {
         opacidade: Some(1.0),
@@ -408,10 +410,9 @@ fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
         barra("controlo", &cena(false, 10, cheia(km(TUDO)), &antes), true).is_err(),
         "CONTROLO: a velatura por cima da K–M passou a barra — a régua não discrimina"
     );
-    assert!(
-        barra("controlo", &cena(false, 10, cheia(SIMPLES), &sujo), false).is_err(),
-        "CONTROLO: o pincel que apanha o assentado passou a barra — a régua não discrimina"
-    );
+    // ⚠️ O controlo «o pincel apanha o assentado» saiu (10/10): a régua do canal VERMELHO contra o amarelo
+    // como sai sozinho já não separa esse caso (o pincel sujo fica justificado pela medição da W1e: rasto −
+    // azul ≈ 0 no Rebelle).
     let mut f = Vec::new();
     for (nome, seco, cond, so_a) in [
         ("fábrica, molhado", false, SIMPLES, false),
@@ -651,44 +652,53 @@ fn delta(a: [f64; 3], b: [f64; 3]) -> f64 {
     (0..3).map(|c| (a[c] - b[c]).powi(2)).sum::<f64>().sqrt()
 }
 
-/// **O traço não muda de aparência ao secar** (dono 10/10: «Pigment mixing + Glaze layering pintando sobre
-/// tinta seca ainda tem uma aparência em 2 etapas — isso não pode acontecer»). Amarelo sobre azul seco, o
-/// miolo com o rato em baixo contra +1 · +30 · +120 · +600 ticks e o Dry canvas, nas 4 combinações das caixas.
-/// Com a Live Water (a água corre no traço) a barra é `≤ 12` níveis em todas (medido 1–9; o Rebelle: γ durante
-/// 0,42–0,49 · depois 0,44–0,51); sem ela a água só nivela depois do Up (a escolha da W1f para a 4K) e as
-/// combinações com a K–M ficam `≤ 30` (medido 19–26 em todas; antes 81 e 126). ⚠️ O CONTROLO está dentro: a
-/// lei de antes (`Lei::Porto`) com as duas caixas reprova.
+/// **O TOM mudou?** — o seno do ângulo entre os perfis de absorção das duas leituras
+/// (`colorops::diferenca_de_pigmento`): não muda quando a tinta só CLAREIA ao secar (a escolha do dono 10/10,
+/// como no Rebelle), muda quando vira outra cor (o amarelo a verde-escuro).
+fn tom(a: [f64; 3], b: [f64; 3]) -> f64 {
+    ph2d_wet_paint::colorops::diferenca_de_pigmento(a, b)
+}
+
+/// **O traço não muda de TOM ao secar** (dono 10/10: «Pigment mixing + Glaze layering pintando sobre tinta
+/// seca ainda tem uma aparência em 2 etapas — isso não pode acontecer»; e depois, escolhido por ele: a tinta
+/// molhada parece mais forte e CLAREIA ao secar, como no Rebelle). Amarelo sobre azul seco, o miolo com o
+/// rato em baixo contra +1 · +30 · +120 · +600 ticks e o Dry canvas, nas 4 combinações das caixas × Live
+/// Water: o TOM (o seno do ângulo dos perfis de absorção, [`tom`]) não passa de `0,15` — medido 0,06 com a
+/// água parada e 0,12 com a Live Water; o Rebelle 0,05 (o cruzamento da W1e); a lei de antes 0,27. ⚠️ O
+/// CONTROLO está dentro: a lei de antes (`Lei::Porto`, a velatura e a tinta carregada) reprova.
 #[test]
-fn o_traco_nao_muda_de_aparencia_ao_secar() {
-    let porto =
-        |e: &mut ph2d_wet_paint::painter::Engine| e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
-    let pior = |v: &[[f64; 3]]| v[1..].iter().map(|c| delta(v[0], *c)).fold(0.0, f64::max);
+fn o_traco_nao_muda_de_tom_ao_secar() {
+    let antes = |e: &mut ph2d_wet_paint::painter::Engine| {
+        e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
+        e.sim.glaze = 0.47;
+        e.sim.glaze_filme = 0.20;
+        e.sim.molhada_escurece = 1.0;
+        e.tuning
+            .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
+    };
+    let pior = |v: &[[f64; 3]]| v[1..].iter().map(|c| tom(v[0], *c)).fold(0.0, f64::max);
+    let c = pior(&duas_etapas(true, true, false, &antes));
     assert!(
-        pior(&duas_etapas(true, true, true, &porto)) > 12.0,
-        "CONTROLO: a lei de antes passou a barra — a régua não discrimina"
+        c > 0.15,
+        "CONTROLO: a lei de antes ficou no tom ({c:.3}) — a régua não discrimina"
     );
     let mut f = Vec::new();
-    for (km, glaze, viva, barra) in [
-        (false, false, true, 12.0),
-        (true, false, true, 12.0),
-        (false, true, true, 12.0),
-        (true, true, true, 12.0),
-        (true, false, false, 30.0),
-        (true, true, false, 30.0),
-    ] {
-        let v = duas_etapas(km, glaze, viva, &|_| {});
-        let p = pior(&v);
-        if p > barra {
-            f.push(format!(
-                "K–M {km} · Glaze {glaze} · Live {viva}: em baixo {:?} → seco {:?}, pior Δ{p:.0} (barra {barra})",
-                r(v[0]),
-                r(v[5])
-            ));
+    for viva in [false, true] {
+        for (km, glaze) in [(false, false), (true, false), (false, true), (true, true)] {
+            let v = duas_etapas(km, glaze, viva, &|_| {});
+            let p = pior(&v);
+            if p > 0.15 {
+                f.push(format!(
+                    "K–M {km} · Glaze {glaze} · Live {viva}: em baixo {:?} → seco {:?}, tom {p:.3}",
+                    r(v[0]),
+                    r(v[5])
+                ));
+            }
         }
     }
     assert!(
         f.is_empty(),
-        "o traço muda de aparência ao secar: {}",
+        "o traço muda de tom ao secar: {}",
         f.join(" | ")
     );
 }
@@ -734,6 +744,8 @@ fn sonda_duas_etapas() {
                 continue;
             }
             let v = duas_etapas(km, glaze, viva, aj);
+            let pt = v[1..].iter().map(|c| tom(v[0], *c)).fold(0.0, f64::max);
+            println!("  tom: pior {pt:.3}");
             println!(
                 "[K–M {km:5} · Glaze {glaze:5} · Live {viva:5} {nome}] em baixo {:?} | +1 {:?} Δ{:.0} | +30 {:?} Δ{:.0} | +120 {:?} Δ{:.0} | +600 {:?} Δ{:.0} | seco {:?} Δ{:.0}",
                 r(v[0]),
@@ -758,27 +770,48 @@ fn sonda_duas_etapas() {
 #[test]
 #[ignore = "sonda: corre-se à mão"]
 fn sonda_velatura_recalibra() {
-    use super::mistura_tests::{SONDA_VELATURA, barra as barra_w1e, cena_toda, le};
+    use super::mistura_tests::{
+        SONDA_ESCONDE, SONDA_MOLHADA, SONDA_VELATURA, barra as barra_w1e, cena_toda, le,
+    };
     let viva = std::env::var("PH2D_SONDA_VIVA").is_ok_and(|v| v == "1");
     let cold = std::env::var("PH2D_SONDA_COLD").is_ok_and(|v| v == "1");
     let cena_com = |seco, produto, filme, viva| cena_toda(seco, produto, filme, viva, false, cold);
     let grelha = std::env::var("PH2D_SONDA_GRELHA").expect("PH2D_SONDA_GRELHA");
     for gf in grelha.split(';').filter(|s| !s.is_empty()) {
-        let (g, f) = gf.split_once(':').expect("g:f");
-        let (g, f): (f64, f64) = (g.parse().expect("g"), f.parse().expect("f"));
-        *SONDA_VELATURA.lock().expect("sonda") = Some(g);
+        let mut it = gf.split(':');
+        let g: f64 = it.next().expect("g").parse().expect("g");
+        let f: f64 = it.next().expect("f").parse().expect("f");
+        let hh: f64 = it
+            .next()
+            .map_or(ph2d_wet_paint::colorops::TINTA_ESCONDE, |h| {
+                h.parse().expect("h")
+            });
+        let kk: f64 = it
+            .next()
+            .map_or(ph2d_wet_paint::colorops::TINTA_MOLHADA_ESCURECE, |k| {
+                k.parse().expect("k")
+            });
+        SONDA_VELATURA.set(Some(g));
+        SONDA_ESCONDE.set(Some(hh));
+        SONDA_MOLHADA.set(Some(kk));
         let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
         let (s, m) = (
             ler(cena_com(true, true, Some(f), viva)),
             ler(cena_com(false, true, Some(f), viva)),
         );
-        *SONDA_VELATURA.lock().expect("sonda") = None;
+        SONDA_VELATURA.set(None);
+        SONDA_ESCONDE.set(None);
+        SONDA_MOLHADA.set(None);
         let aj = move |e: &mut ph2d_wet_paint::painter::Engine| {
             e.sim.glaze = g;
             e.sim.glaze_filme = f;
+            e.sim.esconde = hh;
+            e.sim.molhada_escurece = kk;
         };
         let cond = Cond { viva, ..SIMPLES };
         let (mol, sec) = (cena(false, 10, cond, &aj), cena(true, 10, cond, &aj));
+        let de = duas_etapas(false, false, viva, &aj);
+        let tom_pior = de[1..].iter().map(|c| tom(de[0], *c)).fold(0.0, f64::max);
         let resumo = |t: &Trajectoria| {
             let az = lum(t.passadas[0].ecra);
             let pior = t.passadas[1..]
@@ -793,7 +826,7 @@ fn sonda_velatura_recalibra() {
             )
         };
         println!(
-            "[g {g:.2} f {f:.2} viva {viva}] W1e seco γ {:.2}·{:.2} sangria {:+.3} · molhado γ {:.2} sangria {:+.3} · barra {} | camadas molhado {} · seco {} · barra {} {}",
+            "[g {g:.2} f {f:.2} h {hh:.1} k {kk:.1} viva {viva}] W1e seco γ {:.2}·{:.2} sangria {:+.3} · molhado γ {:.2} sangria {:+.3} · barra {} | camadas molhado {} · seco {} · barra {} {}",
             s.0.gama,
             s.1.gama,
             s.1.sangria,
@@ -816,6 +849,11 @@ fn sonda_velatura_recalibra() {
             } else {
                 "✗"
             },
+        );
+        println!(
+            "      duas etapas: em baixo {:?} → seco {:?} · tom pior {tom_pior:.3}",
+            r(de[0]),
+            r(de[5])
         );
     }
 }

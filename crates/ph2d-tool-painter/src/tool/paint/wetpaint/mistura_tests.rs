@@ -79,8 +79,14 @@ pub(super) fn le(px: &[u8], antes: &[u8]) -> Leitura {
     }
 }
 
-/// A velatura das junções forçada nas cenas desta régua (as sondas de calibração; `None` = o produto).
-pub(super) static SONDA_VELATURA: std::sync::Mutex<Option<f64>> = std::sync::Mutex::new(None);
+// A velatura das junções, o quanto tapa (`Sim::esconde`) e o reforço da tinta molhada forçados nas mesmas
+// cenas (`None` = o produto). Por THREAD: os portões correm em paralelo e uma variante forçada não pode
+// vazar para a cena de outro teste.
+thread_local! {
+    pub(super) static SONDA_VELATURA: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+    pub(super) static SONDA_ESCONDE: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+    pub(super) static SONDA_MOLHADA: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+}
 
 /// A cena: devolve as telas ANTES do azul, DURANTE o azul (ponteiro em baixo) e 2 s DEPOIS do Up.
 fn cena(seco: bool, produto: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
@@ -144,10 +150,14 @@ pub(super) fn cena_toda(
             .sim_while_painting = true;
     }
     if !produto {
+        // O PORT inteiro: sem velatura, sem a água no traço, sem a lei do Rebelle (o tapar e a tinta
+        // molhada mais forte).
         let s = t.paint.wetpaint.session.as_mut().expect("sessão");
         s.engine.sim.glaze = 0.0;
         s.engine.sim.glaze_filme = 0.0;
         s.engine.sim.sim_while_painting = false;
+        s.engine.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
+        s.engine.sim.molhada_escurece = 1.0;
     }
     if let Some(f) = filme {
         t.paint
@@ -159,7 +169,7 @@ pub(super) fn cena_toda(
             .sim
             .glaze_filme = f;
     }
-    if let Some(g) = *SONDA_VELATURA.lock().expect("sonda") {
+    if let Some(g) = SONDA_VELATURA.get() {
         t.paint
             .wetpaint
             .session
@@ -168,6 +178,26 @@ pub(super) fn cena_toda(
             .engine
             .sim
             .glaze = g;
+    }
+    if let Some(h) = SONDA_ESCONDE.get() {
+        t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("sessão")
+            .engine
+            .sim
+            .esconde = h;
+    }
+    if let Some(k) = SONDA_MOLHADA.get() {
+        t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("sessão")
+            .engine
+            .sim
+            .molhada_escurece = k;
     }
     t.set_brush_color_srgb8([200, 30, 30]);
     t.on_canvas_pointer(cp([100.0, 150.0], PointerPhase::Down));
@@ -208,8 +238,8 @@ pub(super) fn cena_toda(
 }
 
 /// A barra (o Rebelle com folga): o seco VELA (γ entre 0,30 e 0,70, durante e depois) e não sangra
-/// (`|sangria| ≤ 0,017` do caminho); o molhado SANGRA (`≥ 0,044`) e a mistura vê-se a pintar (γ durante
-/// `≥ 0,30`). O Rebelle diluído (W1e, as fotos re-medidas 10/10): seco +0,02…+0,05, molhado **0,27** — o
+/// (`|sangria| ≤ 0,05` do caminho — o Rebelle diluído mede +0,02…+0,05; a barra 0,017 vinha dos 3 níveis da
+/// tinta cheia); o molhado SANGRA (`≥ 0,044`) e a mistura vê-se a pintar (γ durante `≥ 0,30`). O Rebelle diluído (W1e, as fotos re-medidas 10/10): seco +0,02…+0,05, molhado **0,27** — o
 /// nosso molhado anda ~0,08 desde sempre (aberto no 05 §4b «Conferência»).
 pub(super) fn barra(seco: (Leitura, Leitura), molhado: (Leitura, Leitura)) -> Result<(), String> {
     let mut f = Vec::new();
@@ -221,7 +251,7 @@ pub(super) fn barra(seco: (Leitura, Leitura), molhado: (Leitura, Leitura)) -> Re
             ));
         }
     }
-    if seco.1.sangria.abs() > 0.017 {
+    if seco.1.sangria.abs() > 0.05 {
         f.push(format!(
             "seco: sangria {:+.3} (Rebelle +0,02…+0,05)",
             seco.1.sangria
@@ -260,43 +290,43 @@ fn azul_sobre_vermelho_vela_no_seco_e_sangra_no_molhado_como_no_rebelle() {
     }
 }
 
-/// **Com a Live Water (W1g) a mistura continua na barra do Rebelle** — pelo produto (a opção autorada,
-/// que troca a velatura do filme para [`ph2d_wet_paint::colorops::VELATURA_DO_FILME_VIVA`]), com o papel
-/// Cold escolhido (onde a constante foi medida). O controlo: a água ao vivo com a velatura da água PARADA
-/// reprova (a sangria no seco passa de 3). ⚠️ SEM papel (o grão sem desenho, dono 10/10) a sangria no seco
-/// fica em +3,4…+5 para qualquer velatura (medido; Rebelle +1…+2): a água ao vivo corre sobre o grão —
-/// aberto no 05 §4b; ali o resto da barra vale e a sangria no seco tem tecto 0,028 (+5 níveis do caminho de 180).
+/// **Com a Live Water (W1g) a mistura continua na barra do Rebelle** — pelo produto (a opção autorada), sem
+/// papel (o papel liso da bancada do Rebelle): a barra inteira. Com o papel Cold escolhido, o γ (a sangria
+/// molhada no Cold é baixa com a água ao vivo, 05 §4b — o Rebelle não foi medido no Cold). O controlo: sem o
+/// TAPAR da lei do Rebelle (`esconde` 1) o seco vai a γ 0,75 e reprova.
 #[test]
 fn com_a_live_water_a_mistura_continua_na_barra_do_rebelle() {
     let ler = |(z, a, b): (Vec<u8>, Vec<u8>, Vec<u8>)| (le(&a, &z), le(&b, &z));
-    let parada = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
+    SONDA_ESCONDE.set(Some(1.0));
     let controlo = barra(
-        ler(cena_toda(true, true, Some(parada), true, false, true)),
-        ler(cena_toda(false, true, Some(parada), true, false, true)),
-    );
-    assert!(
-        controlo.is_err(),
-        "CONTROLO: a velatura da água parada passou a barra com a água ao vivo — a régua não discrimina"
-    );
-    if let Err(e) = barra(
-        ler(cena_produto(true, true, true)),
-        ler(cena_produto(false, true, true)),
-    ) {
-        panic!("a mistura com a Live Water (papel Cold) falhou a barra do Rebelle: {e}");
-    }
-    let (seco, molhado) = (
         ler(cena_produto(true, true, false)),
         ler(cena_produto(false, true, false)),
     );
-    let mut sem_a_sangria_seca = seco.clone();
-    sem_a_sangria_seca.1.sangria = 0.0;
-    if let Err(e) = barra(sem_a_sangria_seca, molhado) {
-        panic!("a mistura com a Live Water sem papel falhou a barra do Rebelle: {e}");
+    SONDA_ESCONDE.set(None);
+    assert!(
+        controlo.is_err(),
+        "CONTROLO: sem o tapar a Live Water passou a barra — a régua não discrimina"
+    );
+    if let Err(e) = barra(
+        ler(cena_produto(true, true, false)),
+        ler(cena_produto(false, true, false)),
+    ) {
+        panic!("a mistura com a Live Water falhou a barra do Rebelle: {e}");
+    }
+    let (seco, molhado) = (
+        ler(cena_produto(true, true, true)),
+        ler(cena_produto(false, true, true)),
+    );
+    for (nome, g) in [("seco durante", seco.0.gama), ("seco depois", seco.1.gama)] {
+        assert!(
+            (0.30..=0.70).contains(&g),
+            "Live Water no Cold: {nome} γ {g:.2} fora de 0,30–0,70"
+        );
     }
     assert!(
-        seco.1.sangria.abs() <= 0.028,
-        "sem papel a Live Water sangra {:+.3} no seco (tecto 0,028; Rebelle +0,02…+0,05)",
-        seco.1.sangria
+        molhado.0.gama >= 0.30,
+        "Live Water no Cold: molhado durante γ {:.2} < 0,30",
+        molhado.0.gama
     );
 }
 

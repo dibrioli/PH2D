@@ -387,17 +387,18 @@ Comuns: `accumulate=false`, `use_AA=false` nos ásperos, `paper_depth` 0,9 com c
 > Round 24, Flat Dry 9, Dip Pen 49). O «Wet Drip» passa a ser «muita água», não «muita gravidade». A W1b
 > regera a fábrica com isto.
 
-> ✅ **Calibrado contra o Rebelle (10/10, dono: «aproxime do Rebelle»)** — a coluna **Opacity** é nova (a
-> claridade: a cor depositada vai para o branco do papel nessa medida; o Rebelle mede exactamente isso, a
-> cor × branco numa fracção constante nos três canais). Valores do ficheiro gerador
-> (`tests/it/presets_de_fabrica.rs`); a medição e as recusas no 05 §4b «A claridade do Rebelle».
+> ✅ **Calibrado contra o Rebelle (10/10, dono: «aproxime do Rebelle» e depois «o correto para clarear não
+> seria usar pigment?»)** — a claridade é POUCO **Pigment/dab** (a cor acumula até à escolhida); a
+> **Opacity** é a quantidade relativa do artista (multiplica o pigmento) e nasce a 1 nos quatro. Valores do
+> ficheiro gerador (`tests/it/presets_de_fabrica.rs`; Edge Darkening no valor do motor, Pickup em razão ao
+> padrão); a medição e as recusas (a diluição, recusada pelo dono) no 05 §4b «A claridade é o PIGMENTO».
 
-| preset | Opacity | Water | Pigment/dab | Pickup | Paper Gate | Evaporation | Edge Darkening | Gravity | Bristle Size/Count |
+| preset | Opacity | Water | Pigment/dab | Pickup | Paper Gate | Evaporation | Edge Darkening | Tilt | Bristle Size/Count |
 |---|---|---|---|---|---|---|---|---|---|
-| Wet Round | **0,26** | 1,0 | 800 | 0,5 | 0,4 | 1,0 | 0,8 | 0,5 | 2 / 2000 |
-| Wet Wash | **0,20** | **0,4** | **200** | 0,3 | 0,3 | 0,7 | 0,6 | 0,3 | 3 / 3000 |
-| Wet Dry Brush | **0,50** | 0,2 | 1200 | 0,8 | **0,4** | 1,5 | 0,9 | 0,2 | 1,5 / 1500 |
-| Wet Drip | **0,28** | 1,0 | 600 | 0,4 | 0,2 | 0,6 | 0,8 | 1,0 | 2 / 2000 |
+| Wet Round | 1,0 | 1,0 | **78** | 1,0 | 0,4 | 1,0 | **12** | direita | 2 / 2000 |
+| Wet Wash | 1,0 | **0,4** | **21** | 0,6 | 0,3 | 0,7 | **20** | direita | 3 / 3000 |
+| Wet Dry Brush | 1,0 | 0,2 | **300** | 1,6 | **0,4** | 1,5 | **56,25** | direita | 1,5 / 1500 |
+| Wet Drip | 1,0 | 1,0 | **63** | 0,8 | 0,2 | 0,6 | **20** | máximo, para baixo | 2 / 2000 |
 
 > **O que os presets NÃO podem fingir:** o esborrato entre carimbos, a sequência de texturas por pressão,
 > o fundo que fura, o pincel secundário, a tinta finita, a mistura por queda de pressão, a largura por

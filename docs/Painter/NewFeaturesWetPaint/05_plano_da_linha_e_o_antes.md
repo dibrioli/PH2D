@@ -904,7 +904,8 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   estriado e cheio; os fios do Drip são grossos e curtos — o «fio único» aberto da W1e). ⚠️ Os quatro
   carregam 3–4× a tinta do Rebelle e saem 25–30 px a 40 (a largura prometida, W2). Dono: «aproxime do
   Rebelle e ajuste tudo que for necessário» ⇒ a entrada seguinte.
-- ✅ **A claridade do Rebelle — a Opacity do Wet Paint (10/10).** Medido nas fotos do oráculo: o traço claro do
+- ⛔ **SUBSTITUÍDA pela entrada «A claridade é o PIGMENTO» (o dono recusou a diluição, 10/10)** — fica como
+  registo. **A claridade do Rebelle — a Opacity do Wet Paint (10/10).** Medido nas fotos do oráculo: o traço claro do
   Rebelle é a cor misturada com BRANCO numa fracção constante nos três canais (Round azul 0,667 · 0,671 ·
   0,657; amarelo 0,70 · 0,72 · 0,72; vermelho da W1e 0,69 · 0,69) — tinta DILUÍDA que cobre, não pouca tinta.
   - ⛔ **Recusa medida — clarear tirando pigmento** (Round 800 → 80, Wash 400 → 28…): dá a mesma carga num
@@ -997,6 +998,51 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     DUAS leis de antes (cada cura sozinha já tira o preto). Unidade `assenta::tests` (≤ 1,5 níveis em 7
     estados, incluindo filme a 99 % e opaco). Cercas verdes: suíte de `ph2d-wet-paint` (impressões),
     `--lib wetpaint` 159 (bytes do S e da bancada, `mistura_tests`, Live Water), miniaturas, ponte do preview.
+- ✅ **A claridade é o PIGMENTO — a lei do Rebelle (dono 10/10).** O dono recusou a diluição da entrada
+  «A claridade do Rebelle»: *«os parâmetros que vc usou para clarear a cor não permitem o acúmulo de cor (a cor
+  nunca vai chegar à cor escolhida no painel). o correto para clarear não seria usar pigment? … é como se vc
+  tivesse mudado a cor do pincel e não a quantidade de pigmento»*; escolheu «como o Rebelle» (a tinta molhada
+  parece mais forte e clareia ao secar; a camada de cima tapa; a cor acumula até à escolhida).
+  - ⛔ **Recusa do DONO — a diluição** (`dab_route` a depositar `255 − op·(255 − cor)`): o tecto de um traço é a
+    cor diluída e nenhuma pilha passa dele (medido: 12 passadas a 0,26 vão `13 → 57`, o tecto 60). A recusa
+    MEDIDA de antes (tirar pigmento ⇒ camadas transparentes, γ 0,95) fica válida para a lei de ecrã de então;
+    a lei nova abaixo é o que a desfaz.
+  - **A lei do ecrã `Cobre`** (`assenta::Ecra::Cobre`, `Sim::lei` do produto; o «Glaze layering» continua
+    `Camada`): (1) a claridade sai da QUANTIDADE (a cobertura da massa, `1 − 0,998^m`); (2) a camada de cima
+    tapa a de baixo mais do que a força dela, `h = 1 − (1 − a)^esconde`, e o extra pesa pela diferença de
+    pigmento (o seno do ângulo dos perfis de absorção) — a mesma tinta sobre si mesma é UMA camada com a massa
+    das duas; (3) a tinta molhada escurece como DENSIDADE de cobertura do ponto inteiro (`p = 1 + (K − 1)·a`,
+    a cor da camada fixa): mais forte molhada, clareia ao secar sem mudar de tom; o assentar preserva o ecrã
+    SECO (`Ecra::seco()`). As velaturas multiplicativas vão a 0 (só afastavam o γ). Constantes com as grelhas
+    no doc de cada uma: `TINTA_ESCONDE` = **5**, `TINTA_MOLHADA_ESCURECE` = **3**, `VELATURA_*` = **0**.
+  - **A Opacity é a quantidade de pigmento** (`Sliders::pigmento`, levada pelo reconcile): escala SÓ o
+    `PigmentPerDab` da célula (`Params::com_pigmento`, nas três portas que pintam — faixa, a do motor, a
+    máscara). ⛔ **Medido e recusado: escalar o carimbo** (a `intensity`) — o portão do papel é uma
+    subtracção absoluta e comia a tinta clara (12 passadas a 0,26: `2 → 12`), e a água ia junto. Pelo pigmento:
+    `11 → 108` e a subir, no tom do pincel (sin 0,005).
+  - **Os pincéis** com a Opacity 1 e o pigmento do Rebelle (Round 78 · Wash 21, água 0,4 · Dry Brush 300,
+    Paper Gate 0,4 · Drip 63); o pincel sem preset nasce no Wet Round (pigmento 78, Edge Darkening 12).
+    Heavy Edge re-medida com a tinta clara: `SEDIMENTA_DA_BORDA` 10 → **0,3** (Cold a meia 1,27 → 1,49 ao meio
+    do slider; Rebelle 1,6). Wet Round a 2 s → seco **99 → 55** (Rebelle 111 → 54); W1e seco γ 0,48 · 0,44 e
+    sangria molhada 0,26–0,28 (Rebelle 0,42–0,49 · 0,44–0,51 e 0,27); camadas 0,87 · 0,88 (Rebelle 0,89 ·
+    0,96); o tom ao secar 0,06 (Rebelle 0,05).
+  - **Portões novos (controlo DENTRO de cada um):** `com_a_opacity_baixa_a_cor_acumula_ate_a_escolhida` (o
+    controlo é a diluição) · `a_tinta_molhada_parece_mais_forte_e_clareia_ao_secar` (Round ≥ 1,4×; controlo
+    `molhada_escurece = 1`: 69 → 55) · `o_traco_nao_muda_de_tom_ao_secar` (≤ 0,15) ·
+    `assenta::tests::a_mesma_tinta_nao_muda` (duas camadas da mesma tinta = uma). Renomeado:
+    `a_opacity_do_wet_paint_e_a_quantidade_de_pigmento`. **Mutações (7, todas VERMELHAS):** a Opacity não chega
+    ao pigmento · volta ao carimbo · o tapar sem a diferença de pigmento (sobreviveu ao 1.º portão — o da mesma
+    tinta ganhou a cláusula) · o tapar só com a força · sem o reforço molhado · o preset na força partilhada ·
+    o reconcile sem a Opacity.
+  - **Réguas que mudaram com a tinta clara:** o controlo da meia inclinação passou a 4× a gravidade (o dobro
+    escorria 19 px, barra 20); o Smooth Edges sobre tinta mede o caso do dono com o pigmento de então (800):
+    com o do Rebelle o miolo MOLHADO amacia −10 % (o grão claro fica abaixo da mancha `SS0` — aberto (d)). O
+    censo dos controlos lia a Heavy Edge «viva e inerte» com o Shape Noise: a tela estava VAZIA desde antes
+    (BUGS_painter **#47**, aberto); o censo arma o Checker no Wet Paint. Regravadas, com a razão escrita: as
+    impressões do S e da bancada (`opcoes_tests`) e do Smooth Edges no zero (`grid_ratio_tests`).
+  - **Aberto:** (a) a largura (W2); (b) o Wash molhado mais escuro que o do Rebelle aos 2 s (64 → 38 contra
+    46 → 39); (c) os fios finos e longos do Drip; (d) o Smooth Edges no máximo amacia o grão da tinta clara
+    molhada (−10 %); (e) o Shape Noise no Wet Paint (#47).
 - **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 

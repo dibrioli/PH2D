@@ -190,19 +190,12 @@ impl PainterTool {
         // The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
         // writes plane values straight through `clamp_u8`); the dab stores sRGB 0..1. Passing the
         // normalized value painted BLACK — Enio's W1 smoke, "a cor está preta".
-        // A **Opacity** do Wet Paint dilui a cor para o branco do papel (a lei medida no Rebelle: o traço
-        // claro dele é a cor × branco numa fracção constante nos três canais — tinta DILUÍDA que cobre,
-        // não pouca tinta; 05 §4b «Conferência»). `1` = a cor do pincel, ao bit.
-        let opacidade = f64::from(self.paint.wetpaint.opacidade);
         let ink = |c: [f32; 3]| {
-            [0, 1, 2].map(|k| {
-                let v = f64::from(c[k]) * 255.0;
-                if opacidade >= 1.0 {
-                    v
-                } else {
-                    255.0 - opacidade * (255.0 - v)
-                }
-            })
+            [
+                f64::from(c[0]) * 255.0,
+                f64::from(c[1]) * 255.0,
+                f64::from(c[2]) * 255.0,
+            ]
         };
         if !sess.stroke_open {
             sess.stroke_open = true;

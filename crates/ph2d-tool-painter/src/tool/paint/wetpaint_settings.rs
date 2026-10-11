@@ -39,7 +39,9 @@ pub struct WetKnobs {
 /// Each override is inside its `KNOB_DEFS` range, so no clamp is skipped by writing the array directly.
 const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     let mut k = knob_defaults();
-    k[Knob::PigmentPerDab as usize] = 800.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 600
+    // O pincel sem preset é o Wet Round de fábrica (o pigmento e a orla calibrados contra o Rebelle, 10/10).
+    k[Knob::PigmentPerDab as usize] = 78.0; // LITERAL-OK: wet-paint product default = Wet Round, engine boot 600
+    k[Knob::EdgeDarkening as usize] = 12.0; // LITERAL-OK: wet-paint product default = Wet Round, engine boot 50
     k[Knob::PaperGate as usize] = 0.4; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.6
     k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01
     k[Knob::BristleSize as usize] = 2.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 1.0

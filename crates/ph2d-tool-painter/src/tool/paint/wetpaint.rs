@@ -125,9 +125,9 @@ pub(crate) struct WetPaintState {
     pub(super) agua_viva: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento desce mais que a água na tela inclinada. `0` = a W1f, ao byte.
     pub(super) borda_que_pesa: f64,
-    /// **Opacity** (`0..1`, o volume do preset): a cor depositada vai para o branco do papel nesta medida
-    /// (`dab_route`). É do Wet Paint — a força do pincel é partilhada entre os meios. Nasce com a do Wet
-    /// Round ([`super::wetpaint_preset::OPACIDADE_DE_FABRICA`]).
+    /// **Opacity** (`0..1`, o volume do preset): a QUANTIDADE de pigmento de cada dab (`sliders.pigmento`,
+    /// pelo reconcile) — a tinta clareia por ter pouco pigmento e acumula até à cor escolhida (dono 10/10).
+    /// É do Wet Paint: a força do pincel é partilhada entre os meios.
     pub(super) opacidade: f32,
     /// Experimental: K–M pigment mixing (`sim.km_mixing`).
     pub(super) km_mixing: bool,
@@ -161,7 +161,11 @@ pub(crate) struct WetPaintState {
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
 /// Medida na rodada da W1g (05 §4b): a meia, o motor a 5 dá a orla de baixo ÷ de cima do Rebelle (1,56;
 /// Rebelle 1,6) ⇒ o meio do slider; a 10 ela é 4,1 e a régua do recto continua verde.
-pub(super) const SEDIMENTA_DA_BORDA: f64 = 10.0;
+/// ⚠️ **10 → 0,3 com a tinta do Rebelle (pigmento baixo, 10/10)**: a tinta clara não satura, e o mesmo
+/// deslocamento esvaziava o topo (orla 7,5 a 5). Medido com a régua relativa (`gota_tests::le`), Cold a meia:
+/// sedimenta 0 · 0,1 · 0,15 · 0,2 · 0,3 · 0,5 → 1,27 · 1,41 · ~1,48 · 1,55 · 1,70 · 2,00 (sem papel 1,62 →
+/// 2,56). O meio do slider (0,15) dá ~1,48 (Rebelle 1,6).
+pub(super) const SEDIMENTA_DA_BORDA: f64 = 0.3;
 
 impl Default for WetPaintState {
     fn default() -> Self {

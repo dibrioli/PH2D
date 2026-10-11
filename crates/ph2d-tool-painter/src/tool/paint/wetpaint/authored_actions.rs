@@ -13,6 +13,7 @@ impl PainterTool {
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             km_mixing: w.km_mixing,
             km_glaze: w.km_glaze,
+            opacidade: w.opacidade,
             tooth: self
                 .paint
                 .brush
@@ -55,7 +56,11 @@ impl PainterTool {
         engine.sim.glaze_filme = ph2d_wet_paint::colorops::VELATURA_DO_FILME;
         engine.sim.pickup_assentado = 0.0;
         // Assentar e re-molhar não mudam o que se vê (dono 10/10: «o traço muda de aparência no mouse up»).
-        engine.sim.lei = ph2d_wet_paint::assenta::Lei::PorCima;
+        // A lei do Rebelle (dono 10/10): a claridade é o pigmento, a camada de cima tapa a de baixo mais do
+        // que a sua força, e a tinta molhada parece mais forte e clareia ao secar sem mudar de tom.
+        engine.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+        engine.sim.molhada_escurece = ph2d_wet_paint::colorops::TINTA_MOLHADA_ESCURECE;
+        engine.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
         self.paint.wetpaint.session = Some(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,

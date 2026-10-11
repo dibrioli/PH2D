@@ -3,7 +3,7 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#11** (o **#15** fechou, medido em
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
 > 2026-10-03, e o texto dele fica como registo), a **tinta
 > EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
 > as **⛔ RECUSAS MEDIDAS do esfregão** (com a decisão do dono em aberto), e o **#24**, cujas duas causas
@@ -72,6 +72,19 @@
 | 37 | **`then_some(Region { … x1 - x0 … })` transbordava com rectângulos disjuntos** — o argumento do `then_some` é avaliado ANTES do teste, e em debug a subtração entrava em pânico. Cinco sítios com a mesma forma (`region.rs`: `intersect_region` e `grow_region`; `fill.rs`, `paste_patch.rs`, `watercolor_smudge.rs`); o 1.º chamador a passar rectângulos disjuntos foi o descasque da mancha do Solid (#36). Cura: `then(|| …)` nos cinco. | 2026-10-05 |
 
 ---
+
+## Bug #47 — Wet Paint: com o Shape **Noise** o traço quase não aparece (ABERTO, achado 2026-10-10)
+
+**Medido** (sonda de tela branca, o pincel de fábrica, um traço de 220 px, soma de `255 − min(rgb)`):
+Wet Paint `None 93 818 · Noise 6 · Checker 35 781 · Voronoi 2 631`; Digital `703 486 · 314 987 · 595 738 ·
+531 967`. **Já era assim antes do prompt 15** (no `8e0d24488`, pigmento de fábrica 800: a mesma tela
+vazia). **Mecanismo provável** (lido, não ablado): o depósito do motor é `stamp − (1 − tooth)·gate`
+(`trail/deposit.rs`, a granulação do papel) — uma subtracção ABSOLUTA; a silhueta do Noise (média ~0,4)
+baixa o `stamp` para baixo do gate e a célula não recebe nada. No Digital a mesma silhueta só multiplica.
+**Quem o achou:** o censo `a_linha_esmaecida_e_a_que_nao_age` lia a Heavy Edge «viva e inerte» na
+pré-condição «Shape não redonda» do Wet Paint — a tela estava vazia e passava por `1` píxel de sorte. O
+censo passou a armar o **Checker** no Wet Paint (a tela pinta); a cura do depósito é decisão de desenho
+(o gate por fracção da silhueta muda o traço redondo de hoje) e fica aqui.
 
 ## Bug #29 — Impasto na peça 3D: o halo, as ferramentas, os estilhaços e a meia-lua (FECHADO 2026-10-01)
 

@@ -164,9 +164,9 @@ Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illu
   fração sub-pixel não muda ⇒ a volta é cópia exacta ao texel.
 - *A volta:* um passe de composição instanciado, célula a célula na ordem, `over` pré-multiplicado
   no espaço do desenhista, para a camada; depois a pilha `Whole Layer` (vazia = só a conversão).
-- *A6:* a pilha recebe a origem do ruído explícita (`f32`): `Whole Layer` = o pixel da origem do
-  mundo; `Each Shape` = um mapa por célula (o pixel da âncora da instância no átlas); o Vector passa
-  a origem EXACTA da caixa (era `floor`).
+- *A6:* a pilha recebe a origem do ruído explícita (`Origem`): `Whole Layer` = o pixel da origem do
+  mundo; `Each Shape` = um mapa por célula (o pixel da âncora da instância no átlas); o Vector fica
+  na margem (a caixa da forma — a translação dele não entra na chave do memo).
 - *A7:* `offset_px` em `f32`: o borrão amostra a gaussiana deslocada (`gauss(k + frac)`), o finalize
   interpola o campo, a luz do bevel é o vector sem arredondar.
 - *A3:* semente de Gustavson & Strand (2011): TODO texel de cobertura parcial semeia, com o gradiente
@@ -190,7 +190,7 @@ Figma idem (efeito no grupo × em cada filho). ⇒ o `scope` é o idioma do Illu
 | W1 | o passe da lente em `ph2d-render` · paridade WGSL × `ph2d-lens` | ✅ §5.2 |
 | W2 | o nó `fx.lens` · o cartão · i18n · a costura na shell (o acumulador; o modo em faixas ligado pelo nó) · o `.cube` por nome | ✅ §5.3 (+ a cena `=135` com a lente; o filtro entra na W3) |
 | W3 | `fx.filter`: a camada isolada · a ingestão linear da pilha · o passe de composição · o nó derivado | ✅ §5.4 (+ a `=135` com uma sombra projectada) |
-| W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | — (§3.4) |
+| W3b | `scope` (Each Shape · Whole Layer) · o átlas por forma · a semente sub-pixel do campo · o resto da auditoria §5.5 | ✅ §5.6 |
 | W4 | a cena `=135` (formas + simulação com campos) fotografada · o relógio do grupo · o tutorial 13 | — |
 | W5 | provas de mutação · o handoff | — |
 
@@ -339,6 +339,32 @@ Costura OK (lente 2): o seletor de 15 tipos alcança-se por clique (as bordas an
 lista); os gates escondem as linhas no cartão e no painel pela MESMA função; o aviso «fora do fio»
 chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem dar a volta.
 
+### §5.6 — Cada forma e o resto da auditoria (W3b, 10–11/10)
+
+| achado | a cura | medido (gate) |
+|---|---|---|
+| A1 a sombra interna/bevel/contorno veem a UNIÃO | `scope` no nó; os `Each Shape` correm nas CÉLULAS de um átlas (`ph2d-fx-cells`): cada instância sozinha, a pilha UMA vez sobre o átlas, a volta na ordem de z | disco cercado × sozinho: **0–1 nível** (Proximity e Contour, a tocar e com vão de 2 px); a camada inteira, o controlo: **28–146** (`a_surrounded_shape_gets_the_same_effect_as_alone`) |
+| — a vala entre células | a margem é o máximo do que a pilha ESPALHA (`stack_reach`) e do que ela LÊ (`stack_read`, porta nova) | só com o `stack_reach` a sombra interna (espalha 0, lê ~23 px) desviava **71** níveis |
+| A2/A5 os defaults de outro algoritmo | `op_of` parte do `FxOp::new(tipo)`; `switch_kind` (o gesto do cartão, o mesmo passo de undo) escreve os defaults do tipo novo nos knobs não tocados | todo tipo = o `FxOp::new` do Vector; controlo: só o `kind` → Glow preto (`a_kind_chosen_on_the_card_is_the_vectors_new`) |
+| A3 o bevel do raster treme | semente de Gustavson & Strand (Sobel √2 + `edgedf`) em TODO texel de cobertura parcial, a normal da aresta na semente e a distância à TANGENTE perto do pé | ¼–¾ px: raster **6,8** níveis no pior (era 43) contra o exacto **10,7**; contorno à mesma distância **5** (fixtura de cobertura por ÁREA; a antiga era a rampa da semente antiga) |
+| A4 a cor linearizada duas vezes | `read_color`/`card_color`: a fronteira linear ↔ sRGB no nó | sRGB 128 chega como 128 (controlo: a fixtura move-se > 0,2) |
+| A6 o ruído preso à janela | `Origem` explícita: o mundo (camada inteira) ou o mapa por célula | um pan de 1 unidade leva a origem `k` px (`the_layer_noise_is_anchored_to_the_world`) |
+| A7 a luz/deslocamento a pixel inteiro | `offset_px` em `f32`: a gaussiana deslocada `gauss(k + frac)`, o campo interpolado | ¼ px move a sombra (arredondado: 3 de 4 passos parados); luz `(0,3; 0,2)` = `(3; 2)` |
+| A8 a régua verde por construção | o borrão desce na PIRÂMIDE acima de σ 32 px (médias 2×2 com uma célula de folga; o σ de baixo desconta a caixa e a tenda); slider 0,6, digitado até 10 | retângulo borrado × `Π Φ` a σ 30/100/300: **0,9 / 1,0 / 1,2** níveis (a lei antiga: 4 / 64 / 128); o tecto digitado a 8K no zoom máximo cabe no `SIGMA_ALCANCAVEL` |
+| U1 nomes repetidos | a linha do tipo é «Effect»; «Glow» → «Outer Glow» (também no Vector); o nó `fx.drop_shadow` (cópias) → «Shadow Copies» | `the_filter_labels_are_unique_where_they_meet` |
+
+- **O relógio** (`relogio_cada_forma_contra_camada_inteira`, perfil `smoke`, a sombra interna,
+  camada 1600×972, mínimo de 12 blocos intercalados, `load 4,3`): **256 discos — cada forma
+  0,55 ms (1 página) · camada inteira 0,51 ms; 4 096 — 4,64 ms (4 páginas) · 0,61 ms.** Inclui a
+  leitura das caixas (à espera da própria submissão).
+- **As duas rotas das sprites:** a da CPU sai IGUAL à camada inteira (0 texels); a da placa fica
+  ≤ 1 nível fora da silhueta e muda 17 de 8 716 texels NA silhueta (0,2 %) — o desenhador já difere
+  entre as suas duas rotas em 13 texels na camada inteira. Sem filtro, as duas rotas são idênticas
+  entre «cada forma» e «camada inteira». Fixtura AMPLIADA: reduzida, a escolha do nível de mipmap
+  (o disco de 256 px a ~22 px, ×11,6 ≈ 2^3,5) troca de nível por uma derivada ínfima.
+- **A relocação** é em MUNDO (`L⁻¹·T`, `T` inteiro): a fração sub-pixel não muda e a volta é cópia
+  ao texel (gate `the_device_relocation_is_the_cpu_sum`).
+
 ## §6 — Lições
 
 - **O oráculo ensina a PERGUNTA e o programa dele tem convenções próprias** — dois comandos do mesmo
@@ -356,6 +382,13 @@ chega ao cartão mesmo sem cozimento; o `hue` em graus com sufixo «deg» e sem 
   borda fina e `0,23` com a larga. Varra as configurações ANTES de escolher a lei, nunca uma só.
 
 ## §7 — Abertos nomeados
+
+- (W3b) A rota da PLACA do desenhador de sprites tem uma sensibilidade na silhueta que a da CPU não
+  tem (13 texels entre as duas rotas na camada inteira, 17 entre células e camada) — do
+  `SpriteRenderer`, não das células; medir quando uma cena de sprites com filtro aparecer.
+- (W3b) 4 096 formas em cada forma = 4 páginas de 2048 (o `LADO_MAX`, recurso: memória) e 4,6 ms;
+  as páginas reaproveitam o átlas em série. Uma página de 4096 custaria ~1,2 GB.
+- (W3b) U2 (o cartão mostra px do PROJECTO): a unidade é do projecto inteiro, não deste nó.
 
 - (W3) Formas da rota da CPU (o Vello, `formas_pedem_o_vello`) não entram na camada filtrada — medir
   quando acontece numa cena com filtro (W4).

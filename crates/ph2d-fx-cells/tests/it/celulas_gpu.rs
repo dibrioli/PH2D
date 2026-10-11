@@ -516,3 +516,108 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
     }
 }
 
+
+/// **O RELÓGIO** (doc 129 §3.4, `MEDIR_VELOCIDADE.md`): «cada forma» contra «a camada inteira»,
+/// a 256 e a 4 096 discos que se tocam, a sombra interna (σ 5,3 px, deslocada 6 px) — numa camada
+/// de 1600×972. As duas variantes no MESMO processo, intercaladas em blocos, o MÍNIMO de cada.
+/// Inclui a leitura das caixas (a espera pela placa). Imprime; não reprova.
+#[test]
+#[ignore = "medição de GPU"]
+fn relogio_cada_forma_contra_camada_inteira() {
+    const LW: u32 = 1600;
+    const LH: u32 = 972;
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let mut b = Banca::new(gpu);
+    let ops = [sombra_interna(false)];
+    let alvo = |gpu: &GpuContext| {
+        gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width: LW,
+                height: LH,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: FORMATO,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        })
+    };
+    let k = 12.0f32;
+    let vista = ShapeView {
+        lin: [k, 0.0, 0.0, -k],
+        t: [LW as f32 * 0.5, LH as f32 * 0.5],
+        alvo: [LW as f32, LH as f32],
+    };
+    let cam = Camera2d {
+        height_world: LH as f32 / k,
+        ..Camera2d::default()
+    };
+    for lado in [16i32, 64] {
+        let ds: Vec<ShapeInstance> = (0..lado)
+            .flat_map(|j| {
+                (0..lado).map(move |i| ShapeInstance {
+                    size: [1.0, 1.0],
+                    ..disco((i - lado / 2) as f32, (j - lado / 2) as f32)
+                })
+            })
+            .collect();
+        let buf = b.copias(&ds);
+        let (camada, saida, formas) = (alvo(&b.gpu), make_output_texture(&b.gpu, LW, LH), alvo(&b.gpu));
+        let (vc, vf) = (
+            camada.create_view(&wgpu::TextureViewDescriptor::default()),
+            formas.create_view(&wgpu::TextureViewDescriptor::default()),
+        );
+        let n = ds.len() as u32;
+        let mut cada = f64::MAX;
+        let mut inteira = f64::MAX;
+        let mut paginas = 0;
+        for _bloco in 0..12 {
+            let t0 = std::time::Instant::now();
+            b.celulas.corre(Entrada {
+                gpu: &b.gpu,
+                renderer: &mut b.renderer,
+                camera: &cam,
+                window: WindowSize { width: LW, height: LH },
+                scene_viewport: None,
+                sprites: Sprites::Cpu(&[]),
+                formas: Some(Formas { buffer: &buf, n, vista }),
+                ops: &ops,
+                pilha: &mut b.pilha,
+                camada: &vc,
+                tamanho: (LW, LH),
+            });
+            b.pilha.run_layer(&b.gpu, &camada, &saida, LW, LH, &[], Origem::Margem);
+            let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            cada = cada.min(t0.elapsed().as_secs_f64() * 1e3);
+            paginas = b.celulas.ultimas_paginas().len();
+
+            let t0 = std::time::Instant::now();
+            let mut enc = b.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            b.placa.draw(
+                &b.gpu,
+                &mut enc,
+                &vf,
+                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                vista,
+                Copias { buffer: &buf, count: n },
+            );
+            b.gpu.queue.submit([enc.finish()]);
+            b.colagem.blit(&b.gpu, &vc, &vf, BandSource::Formas);
+            b.pilha.run_layer(&b.gpu, &camada, &saida, LW, LH, &ops, Origem::Margem);
+            let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            inteira = inteira.min(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        eprintln!(
+            "[relógio] {n} discos: cada forma {cada:.2} ms ({paginas} página(s)) · camada inteira {inteira:.2} ms · \
+             load {}",
+            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or("?")
+        );
+    }
+}

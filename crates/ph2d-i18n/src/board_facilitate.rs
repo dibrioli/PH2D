@@ -66,8 +66,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.tab_new" => "New session",
         "board.vote.tab_new_tip" => "Set up a new vote",
         "board.vote.tab_results_tip" => "Every vote on this board, newest first",
-        "board.vote.show_on_board" => "Show results on the board",
-        "board.vote.show_on_board_tip" => "Show the open vote's totals on the notes, for everyone",
+        "board.vote.show_on_board" => "Show on the board",
+        "board.vote.show_on_board_tip" => "Show results on the board — the open vote's totals on the notes, for everyone",
         "board.vote.session_default" => "Voting {n}",
         "board.vote.no_sessions" => "No votes yet",
         "board.vote.no_votes" => "Nobody voted",
@@ -80,6 +80,37 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.vote.by" => "by {name}",
         "board.vote.deleted_row" => "(deleted)",
         "board.vote.hidden_row" => "(hidden note)",
+        // ── a cena 14: o histórico das votações (W13) ──
+        "board.smoke.history.board" => "Vote history",
+        "board.smoke.history.title" => "Every vote stays — open, rename, show or delete it",
+        "board.smoke.history.ideas" => "Ideas",
+        "board.smoke.history.n1" => "Shorter stand-ups",
+        "board.smoke.history.n2" => "A demo every Friday",
+        "board.smoke.history.n3" => "Pair on reviews",
+        "board.smoke.history.n4" => "Fewer meetings",
+        "board.smoke.history.n5" => "One shared backlog",
+        "board.smoke.history.gone" => "Old idea",
+        "board.smoke.history.l1" => {
+            "1. The Voting panel (top right) shows Results: every vote here, newest on top. The blue badges are Voting 2."
+        }
+        "board.smoke.history.l2" => {
+            "2. Click Voting 1: its totals go on the notes. A note deleted after that vote says (deleted)."
+        }
+        "board.smoke.history.l3" => {
+            "3. Double-click the title Voting 1, type a new name, press Enter. The list shows it."
+        }
+        "board.smoke.history.l4" => {
+            "4. Show on the board: click the round switch to hide the badges, again to bring them back."
+        }
+        "board.smoke.history.l5" => {
+            "5. New session, Start voting, vote with the grey +, End for all: Voting 3 appears on top."
+        }
+        "board.smoke.history.l6" => {
+            "6. Open a vote, click the bin, then click it again: that vote leaves the list."
+        }
+        "board.smoke.history.l7" => {
+            "7. In a 2nd PH2D window: press Live, click Vote history in the list, type the code, Join. Its Results show the same votes."
+        }
         "board.notice.no_votes_left" => "No votes left — take one back with − or press I'm done",
         "board.notice.one_vote_per_object" => "One vote per object — this one already has yours",
         "board.notice.nothing_to_vote" => "Nothing to vote on — votes go on notes and shapes",

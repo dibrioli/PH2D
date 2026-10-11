@@ -83,7 +83,7 @@ impl T {
     }
 
     /// Escreve `s` no campo com o teclado e carrega Enter (o despacho do hero).
-    fn write_and_enter(&mut self, s: &str) {
+    pub(super) fn write_and_enter(&mut self, s: &str) {
         for ch in s.chars() {
             let arena = Bump::new();
             let ev = self.hero.handle_text_input(ch, &arena).to_vec();

@@ -13,7 +13,7 @@ use ph2d_board_model::{BoardOp, ElementId, Rgba, RichText, STICKY_COLORS, Shape,
 
 impl T {
     /// Uma nota de 199 no mundo em `at`, posta no quadro activo por uma operação.
-    fn put_note(&mut self, at: [f64; 2], text: &str, color: usize) -> ElementId {
+    pub(super) fn put_note(&mut self, at: [f64; 2], text: &str, color: usize) -> ElementId {
         let (board, live) = self.hero.documents.active_parts().unwrap();
         let ink = Rgba([20, 20, 20, 255]);
         let el = ph2d_board_model::Element::new_shape(

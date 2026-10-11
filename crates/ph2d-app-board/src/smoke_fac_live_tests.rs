@@ -21,19 +21,23 @@ use ph2d_editor_core::screens::hero::board_nav::facilitate::{
     self, FacButton, apply_event, fac_node,
 };
 
-fn hero(name: &str) -> HeroScreen {
+pub(in crate::smoke) fn hero(name: &str) -> HeroScreen {
     let mut h = HeroScreen::new(NodeId(1));
     h.documents.set_author(name.into());
     h
 }
 
 /// Uma imagem: a família serve a rede, e o ecrã segue a sala (o que o desenho faz antes de pintar).
-fn frame(h: &mut HeroScreen) {
+pub(in crate::smoke) fn frame(h: &mut HeroScreen) {
     service(h);
     facilitate::follow(h);
 }
 
-fn until(h: &mut HeroScreen, secs: u64, mut done: impl FnMut(&mut HeroScreen) -> bool) -> bool {
+pub(in crate::smoke) fn until(
+    h: &mut HeroScreen,
+    secs: u64,
+    mut done: impl FnMut(&mut HeroScreen) -> bool,
+) -> bool {
     let end = Instant::now() + Duration::from_secs(secs);
     while Instant::now() < end {
         frame(h);
@@ -45,7 +49,7 @@ fn until(h: &mut HeroScreen, secs: u64, mut done: impl FnMut(&mut HeroScreen) ->
     false
 }
 
-fn room(h: &mut HeroScreen) -> Option<&mut Board> {
+pub(in crate::smoke) fn room(h: &mut HeroScreen) -> Option<&mut Board> {
     let id = h.documents.live_view().board?;
     h.documents.board_mut(id)
 }
@@ -63,13 +67,13 @@ fn text(h: &mut HeroScreen, id: ElementId) -> String {
 
 /// A mão no quadro: pinta o ecrã (o rect do quadro sai dali) e clica num ponto do MUNDO pela porta da
 /// shell (`board_view::pointer`) — o `+` de votar é um clique no quadro, nunca um atalho.
-struct Hand {
+pub(in crate::smoke) struct Hand {
     ts: ph2d_text::TextSystem,
     clock: u128,
 }
 
 impl Hand {
-    fn new() -> Self {
+    pub(in crate::smoke) fn new() -> Self {
         ph2d_editor_core::test_support::ensure_panel_registry();
         Self {
             ts: ph2d_text::TextSystem::without_system_fonts(),
@@ -77,7 +81,7 @@ impl Hand {
         }
     }
 
-    fn paint(&mut self, h: &mut HeroScreen) {
+    pub(in crate::smoke) fn paint(&mut self, h: &mut HeroScreen) {
         use ph2d_editor_core::screens::hero::{
             HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen,
         };
@@ -86,7 +90,7 @@ impl Hand {
     }
 
     /// O `+` de votar de `id` (o canto de baixo à direita da nota).
-    fn plus(&mut self, h: &mut HeroScreen, id: ElementId) {
+    pub(in crate::smoke) fn plus(&mut self, h: &mut HeroScreen, id: ElementId) {
         use ph2d_editor_core::screens::hero::board_view::{Input, pointer};
         use ph2d_host::{Modifiers, PointerButton, PointerKind};
         self.paint(h);
@@ -121,7 +125,7 @@ impl Hand {
     }
 }
 
-fn click(h: &mut HeroScreen, b: FacButton) {
+pub(in crate::smoke) fn click(h: &mut HeroScreen, b: FacButton) {
     assert!(apply_event(h, WidgetEvent::Click(fac_node(b))), "{b:?}");
     frame(h);
 }

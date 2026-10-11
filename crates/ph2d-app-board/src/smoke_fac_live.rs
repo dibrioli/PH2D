@@ -124,4 +124,4 @@ pub(super) fn scene_fac_live(hero: &mut HeroScreen) -> Lessons {
 
 #[cfg(test)]
 #[path = "smoke_fac_live_tests.rs"]
-mod tests;
+pub(super) mod tests;

@@ -324,3 +324,65 @@ pub(super) fn paint(
     buttons(scene, ts, hit, store, theme, list);
     h
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    use super::*;
+    use ph2d_board_model::{
+        BoardOp, BoardSet, Element, Rgba, RichText, Shape, ShapeType, Style,
+    };
+
+    /// ⭐ As linhas de uma sessão nunca pintam o texto de uma nota que não leio (o marcador) nem
+    /// fingem uma nota apagada (a linha diz «(deleted)»); a que leio mostra a 1.ª linha dela. A
+    /// gravação da cena não vê o texto dos painéis: prova-se pela função que o decide.
+    #[test]
+    fn a_row_never_paints_a_hidden_or_a_deleted_note() {
+        let mut set = BoardSet::default();
+        let id = set.create("R".into());
+        let b = set.get_mut(id).unwrap();
+        let mut put = |b: &mut ph2d_board_model::Board, text: &str| {
+            let el = Element::new_shape(
+                b.doc.mint_id(),
+                b.doc.z_on_top(),
+                Shape {
+                    kind: ShapeType::Sticky,
+                    style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+                    text: RichText::plain(text),
+                },
+                [0.0, 0.0, 100.0, 100.0],
+            );
+            let id = el.id;
+            let _ = BoardOp::Put(el).apply(&mut b.doc);
+            id
+        };
+        let (read, secret, gone) = (put(b, "visível\n2.ª"), put(b, "segredo antigo"), put(b, "x"));
+        let _ = BoardOp::Delete(gone).apply(&mut b.doc);
+        let poll = b
+            .team
+            .add_poll(BTreeMap::from([(read, 3), (secret, 2), (gone, 1)]), "", 1, 0);
+        let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+        crate::screens::hero::document_tabs::load(&mut hero, set);
+        hero.documents.activate(Some(id));
+        let theme = hero.theme;
+        let (_, live) = hero.documents.active_parts().unwrap();
+        crate::screens::hero::board_view::editor(&mut live.editor, theme)
+            .set_unread(BTreeSet::from([secret]));
+        live.fac
+            .panels
+            .insert(id, VotePanel::Results { poll, all: true });
+        let Some(HistView::Session { rows, .. }) = view(&mut hero, id, 10) else {
+            panic!("a sessão aberta");
+        };
+        let rows: Vec<(&str, u32)> = rows.iter().map(|(t, n)| (t.as_str(), *n)).collect();
+        assert_eq!(
+            rows,
+            [
+                ("visível", 3),
+                (tr("board.vote.hidden_row"), 2),
+                (tr("board.vote.deleted_row"), 1)
+            ]
+        );
+    }
+}

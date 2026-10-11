@@ -73,6 +73,8 @@ pub struct LuzDoQuadro {
     semeadas: Vec<(ph2d_vec_scene::VecPathId, &'static str)>,
     /// ⭐ W5e: o objeto Flip que o smoke pôs no documento e cuja entidade ainda não foi marcada.
     semeado_flip: Option<ph2d_flip::FlipObjectId>,
+    /// ⭐ W5e: a cena 8 espera os objetos Motion (do smoke do Motion) para os marcar.
+    motion_por_marcar: bool,
     /// A recusa do solver já foi DITA ao artista (o aviso sai na transição, não a cada quadro).
     recusa_dita: bool,
     /// A re-coleta ([`Self::recolher`]) achou a cena SEM `Luz` depois da codificação: este quadro
@@ -125,6 +127,7 @@ impl LuzDoQuadro {
             smoke_encenado: false,
             semeadas: Vec::new(),
             semeado_flip: None,
+            motion_por_marcar: false,
             recusa_dita: false,
             sem_luz_no_quadro: false,
             preferencia: None,
@@ -185,7 +188,11 @@ impl LuzDoQuadro {
                 crate::smoke::encenar(world, n);
                 self.semeadas = crate::smoke::semear_documento(vetores.0, n);
                 self.semeado_flip = crate::smoke::semear_flip(flip, n);
+                self.motion_por_marcar = n == 8;
             }
+        }
+        if self.motion_por_marcar {
+            self.motion_por_marcar = crate::smoke::marcar_motion(world) == 0;
         }
         if let Some(id) = self.semeado_flip {
             self.semeado_flip = crate::smoke::marcar_flip(world, flip, id);

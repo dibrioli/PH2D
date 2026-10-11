@@ -25,11 +25,15 @@ const PAREDE: (BloqueiaLuz, NaoRecebeLuz) = (BloqueiaLuz { opacidade: 1.0 }, Nao
 #[path = "smoke_flip.rs"]
 mod flip;
 pub use flip::{DISCOS_DE_TINTA, DiscoDeTinta, NOME_DO_TRACO, marcar_flip, semear_flip};
+/// ⭐ W5e — a cena 8, as formas do Motion (ficheiro irmão).
+#[path = "smoke_motion.rs"]
+mod motion;
+pub use motion::{LAMPADA_DAS_FORMAS, marcar_motion};
 
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_LIGHT2D_SMOKE",
-    max_level: 7,
+    max_level: 8,
 }];
 
 /// O nível armado por variável de ambiente (`None` = inerte).
@@ -71,8 +75,12 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
             flip::traco_do_flip(world);
             true
         }
+        8 => {
+            motion::formas_do_motion(world);
+            true
+        }
         _ => {
-            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–7)");
+            eprintln!("[luz2d] PH2D_LIGHT2D_SMOKE={nivel}: não há esta cena (1–8)");
             false
         }
     }

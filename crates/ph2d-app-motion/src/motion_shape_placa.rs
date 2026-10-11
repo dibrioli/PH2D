@@ -273,7 +273,13 @@ pub struct PlacaDeFormas {
     /// As cópias que o [`Self::desenha`] deste quadro desenhou: o buffer, quantas e a vista — o
     /// `fx.filter` em cada forma (doc 129 §3.4) redesenha-as, uma por célula.
     ultimas: Option<(wgpu::Buffer, u32, ShapeView)>,
+    /// ⭐ W5e: o passe irmão que desenha as formas para a LUZ 2D ([`luz`]).
+    luz: Option<ShapePass>,
 }
+
+/// ⭐ W5e — as formas do Motion na luz 2D (ficheiro irmão).
+#[path = "motion_shape_luz.rs"]
+pub mod luz;
 
 impl PlacaDeFormas {
     /// **Este quadro vai à placa?** Decide TUDO-OU-NADA (ver o cabeçalho) e, se vai, deixa as

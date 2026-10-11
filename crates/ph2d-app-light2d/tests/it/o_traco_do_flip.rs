@@ -85,8 +85,6 @@ fn a_cena_7_ensina_o_traco_do_flip() {
     };
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 7));
-    assert!(!smoke::encenar(&mut World::new(), 8), "não há cena 8");
-    assert_eq!(smoke::ROUTERS[0].max_level, 7, "o maior nível do `match`");
     let mut doc = FlipDoc::default();
     assert!(
         smoke::semear_flip(&mut doc, 6).is_none(),

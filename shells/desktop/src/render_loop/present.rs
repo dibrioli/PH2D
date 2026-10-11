@@ -315,7 +315,18 @@ impl crate::App {
             playhead: &self.playhead,
             entidades: &self.flip_state.entities,
         };
-        luz2d.gravar_com(surface.gpu(), present, renderer, &mut [&mut flip_luz]);
+        let placa = &mut self.motion_shell.placa;
+        let mut motion_luz = ph2d_app_motion::motion_shape_placa::luz::OclusaoDoMotion::do_quadro(
+            placa,
+            motion,
+            sim.world(),
+        );
+        luz2d.gravar_com(
+            surface.gpu(),
+            present,
+            renderer,
+            &mut [&mut flip_luz, &mut motion_luz],
+        );
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         let na_tela = luz2d.na_tela();
         flip_compose.receber_luz(surface.gpu(), na_tela.as_ref().map(|(l, m)| (l, *m)));

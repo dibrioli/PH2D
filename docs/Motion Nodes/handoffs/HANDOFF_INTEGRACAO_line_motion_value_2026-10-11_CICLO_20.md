@@ -202,3 +202,9 @@ proximity, field-shape, force-attractor) ao fim da lista do `Cargo.toml` da raiz
 também apendar ali, o conflito é de vizinhança: guarde os dois. O collide só reordena guardas sem
 efeito (bit-idêntico). `7aa02b678` parte 121/BUGS/110/129 em `docs/Motion Nodes/archive/`. Suíte
 `ph2d-app-motion` 97,6 → 14,8 s; `nextest-impacted` 5 081/5 081.
+
+Depois: o `motion.collide` na CPU por vizinhos (`61ba12aec`, `a8d53c05f`, `82d2405c8`; detalhe em
+[`…_COLLIDE_VIZINHOS.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_COLLIDE_VIZINHOS.md)).
+⚠️ **Para o integrador:** a `ph2d-contact` ganha uma porta pública APENDADA (`GrelhaDeDiscos` no fim
+de `grelha.rs` + o `pub use`) — nada existente muda. Os mesmos bits que todos-os-pares (gates e
+mutações); a cena `=8` sem placa: o collide `6,38 s → 0,105 s` por cozimento.

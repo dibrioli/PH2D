@@ -161,6 +161,15 @@ pub struct Config {
     /// `false` = o iso-½ da bilinear, que se desvia até ~0,08 texel (a passagem luz/sombra serrilhada
     /// das formas curvas, cena 5).
     pub borda_exata: bool,
+    /// ⭐ W5g (F5) — o texel do INTERIOR lê a luz no PÉ dele na borda exata (o `PE_NA_BORDA` do
+    /// `c3_pe.wgsl`; só com [`Self::borda_exata`]); `false` = o ponto de fronteira da busca, que salta
+    /// ao longo da face com a fase da grade (os degraus nos pontos tangentes dos discos, cena 7).
+    pub pe_na_borda: bool,
+    /// ⭐ W5g (F5) — a lâmpada vista do ponto de fronteira de um texel do INTERIOR: a face tapa a
+    /// abertura atrás da tangente (conta exata) e a marcha parte de meio texel da captura para fora (o
+    /// `VIS_NA_FACE` do `c3_pe.wgsl`); `false` = a marcha a partir do ponto rente, cujos raios
+    /// rasantes saem ora livres ora tapados com a fase da grade.
+    pub vis_na_face: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -323,6 +332,8 @@ impl Config {
             c0_ao_longo_da_face: C0_AO_LONGO_DA_FACE_PADRAO,
             c0_ao_longo_mediana: true,
             borda_exata: true,
+            pe_na_borda: true,
+            vis_na_face: true,
             holografica: None,
         }
     }

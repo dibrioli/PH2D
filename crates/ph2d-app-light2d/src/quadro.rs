@@ -431,6 +431,8 @@ impl LuzDoQuadro {
                 holografica,
                 rebote,
                 rebotes_por_quadro: self.degrau.rebotes_por_quadro,
+                pe_na_borda: std::env::var("PH2D_LIGHT2D_PE").map_or(true, |v| v.trim() != "0"),
+                vis_na_face: std::env::var("PH2D_LIGHT2D_FACE").map_or(true, |v| v.trim() != "0"),
                 ..Config::padrao_para(&gpu.device, g)
             };
             self.montagens += 1;

@@ -653,6 +653,7 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
     if n_cand == 0u {
         return Onde(P0, false, P0, 0.0);
     }
+    cand[i1] = pe_na_borda(P0, cand[i1]);
     if !MEDIA_NO_EIXO {
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
@@ -663,6 +664,7 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
     if i2 == SEM_FACE {
         return Onde(cand[i1], true, cand[i1], 0.0);
     }
+    cand[i2] = pe_na_borda(P0, cand[i2]);
     let e1 = pe_na_face(P0, cand[i1], h);
     let e2 = pe_na_face(P0, cand[i2], h);
     // Um ponto da MESMA face visto de lado também se afasta em direção: conta a normal.
@@ -850,7 +852,7 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
         ) >> vec4<u32>(desl)) & vec4<u32>(0xffu);
         var v = 1.0;
         if remapeado {
-            v = visibilidade(P, k, 0.0);
+            v = visibilidade_remapeada(P, ponto_fino(alvo), k);
         } else if any(c != vec4<u32>(CERTA)) {
             let f = vec4<f32>(min(c, vec4<u32>(INTEIRA))) / f32(INTEIRA);
             let lo = min(min(f.x, f.y), min(f.z, f.w));
@@ -900,6 +902,7 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
     borda_aqui = onde.remapeado;
     var l = luz_exata(onde.p);
     if onde.remapeado {
+        l = luz_exata_remapeada(onde.p, ponto_fino(id));
         l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
     }
     textureStore(fina_saida, id, vec4<f32>(nas_faces(l, onde), 1.0));

@@ -270,6 +270,8 @@ fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
         Config {
             borda_exata: false,
             c0_ao_longo_da_face: 0.0,
+            pe_na_borda: false,
+            vis_na_face: false,
             ..cfg
         }
     } else {

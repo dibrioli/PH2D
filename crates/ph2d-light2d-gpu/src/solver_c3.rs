@@ -193,6 +193,8 @@ impl C3 {
                 f64::from(u8::from(cfg.c0_ao_longo_mediana)),
             ),
             ("BORDA_EXATA", f64::from(u8::from(cfg.borda_exata))),
+            ("PE_NA_BORDA", f64::from(u8::from(cfg.pe_na_borda))),
+            ("VIS_NA_FACE", f64::from(u8::from(cfg.vis_na_face))),
         ];
         let bordas = match cfg.refino {
             Refino::Bordas(b) => Some(b),

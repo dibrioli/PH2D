@@ -138,3 +138,64 @@ fn as_cenas_do_passe_com_collide_correm_na_placa_e_dao_o_que_a_cpu_da() {
         assert!(d <= EPS, "={cena}: a placa desenha a {d} da CPU");
     }
 }
+
+/// O P da TOMADA de cada sink — o que o gizmo do colisor desenha.
+fn p_da_tomada(m: &MotionState) -> Vec<[f32; 2]> {
+    let mut v: Vec<[f32; 2]> = m
+        .pump
+        .tap_streams()
+        .iter()
+        .filter(|(n, _)| m.sinks.contains(n))
+        .flat_map(|(_, s)| match s.get("P") {
+            Some(ph2d_nodegraph::attr::Column::Vec2(p)) => p.clone(),
+            _ => Vec::new(),
+        })
+        .collect();
+    v.sort_by(|a, b| a.partial_cmp(b).expect("finito"));
+    v
+}
+
+/// ⭐⭐ **O GIZMO DO COLISOR fica com as formas na rota da placa** (report do dono, 11/10, com foto:
+/// *«funciona mas desalinhou os gizmos dos colliders»*). A tomada do sink é cozida na CPU, e a
+/// marcha híbrida não lhe dizia que ele era uma saída — guardava a corrente CRUA, e o contorno azul
+/// ficava onde as formas estavam ANTES da separação. Placa × CPU, com o controlo `Collide` desligado.
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn a_tomada_do_sink_ve_a_separacao_na_rota_da_placa() {
+    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
+        panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");
+    };
+    for cena in [121, 122, 123] {
+        let mut m = estado(cena, true);
+        let mut cpu = estado(cena, true);
+        let mut sem = estado(cena, false);
+        cpu.gpu_enabled = false;
+        sem.gpu_enabled = false;
+        for x in [&mut m, &mut cpu, &mut sem] {
+            let sinks = x.sinks.clone();
+            x.pump.set_taps(&sinks);
+        }
+        crate::motion_externals::publish_all(&mut m, TIQUE as f64 * DT);
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&m.doc.graph, &m.registry);
+        let saida = cook_gpu(&mut m, &gpu, TIQUE, DT, &scopes);
+        assert!(
+            matches!(saida, GpuOutcome::Handled),
+            "={cena}: {:?}",
+            m.route_said
+        );
+        let _ = (formas_da_cpu(&mut cpu), formas_da_cpu(&mut sem));
+        let (tp, tc, ts) = (p_da_tomada(&m), p_da_tomada(&cpu), p_da_tomada(&sem));
+        assert!(
+            !tp.is_empty() && tp.len() == tc.len(),
+            "={cena}: a tomada do sink"
+        );
+        assert!(
+            pior(&tc, &ts) > MEXE,
+            "={cena}: controlo — a separacao mexe no P da tomada"
+        );
+        assert_eq!(
+            tp, tc,
+            "={cena}: a tomada da rota da placa e' a da CPU, ao bit"
+        );
+    }
+}

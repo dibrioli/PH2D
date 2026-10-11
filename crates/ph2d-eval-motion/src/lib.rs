@@ -140,8 +140,8 @@ pub struct MotionCookPump {
     /// na porta que o chamador lembrasse (a rota **híbrida** ficava MUDA, com os gates verdes).
     /// Aqui a tomada cavalga QUALQUER marcha, e uma rota nova nasce coberta.
     taps: Vec<NodeId>,
-    /// Quantas das [`Self::taps`] (as primeiras) cozem em todo tique — ver `set_taps_por_tique`.
-    taps_por_tique: usize,
+    /// Quantas tomadas cozem em todo tique e que nós são as SAÍDAS do quadro — ver `taps.rs`.
+    armadas: taps::Armadas,
     /// O que as tomadas disseram em cada tique MARCHADO deste quadro — o livro-razão que o
     /// host lê UMA vez, depois de qualquer rota.
     ///
@@ -243,7 +243,7 @@ impl MotionCookPump {
             boundary_streams: Vec::new(),
             tap_streams: Vec::new(),
             taps: Vec::new(),
-            taps_por_tique: 0,
+            armadas: taps::Armadas::default(),
             tap_fires: Vec::new(),
             separa_o_desenho: true,
             separacoes: 0,

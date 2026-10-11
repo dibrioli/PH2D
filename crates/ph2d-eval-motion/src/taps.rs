@@ -11,7 +11,25 @@ use crate::{CookTarget, MotionCookPump, NodeId, Stream};
 use ph2d_nodegraph::cook::{OpResolver, TimeScopes};
 use ph2d_nodegraph::graph::Graph;
 
+/// O que as tomadas sabem do quadro além da lista delas.
+#[derive(Default)]
+pub(crate) struct Armadas {
+    /// Quantas das tomadas (as primeiras) cozem em todo tique — ver `set_taps_por_tique`.
+    por_tique: usize,
+    /// As SAÍDAS do quadro, para as marchas que não as recebem (doc 130): a híbrida marcha só até
+    /// às fronteiras e a da placa inteira só coze tomadas — e a tomada de um sink tem de ver o
+    /// que ele DESENHA, separado, em qualquer rota (o gizmo do colisor desalinhava, report do dono).
+    sinks_do_desenho: Vec<NodeId>,
+}
+
 impl MotionCookPump {
+    /// **As SAÍDAS deste quadro**, para as rotas cuja marcha não as recebe (a híbrida e a da placa
+    /// inteira, doc 130): uma tomada num sink vê a corrente SEPARADA, como na porta de sinks.
+    pub fn set_sinks_do_desenho(&mut self, sinks: &[NodeId]) {
+        self.armadas.sinks_do_desenho.clear();
+        self.armadas.sinks_do_desenho.extend_from_slice(sinks);
+    }
+
     /// Carimba no livro-razão o que as tomadas disseram no tique que o chamador PEDIU.
     ///
     /// ⚠️ Chamado pelas duas marchas (a de avanço e a de scrub) e **uma vez cada**: o scrub
@@ -36,7 +54,7 @@ impl MotionCookPump {
     pub fn set_taps(&mut self, taps: &[NodeId]) {
         self.taps.clear();
         self.taps.extend_from_slice(taps);
-        self.taps_por_tique = taps.len();
+        self.armadas.por_tique = taps.len();
     }
 
     /// **Só as primeiras `n` tomadas cozem em todo tique** (as dos SINAIS: o livro-razão é por
@@ -44,7 +62,7 @@ impl MotionCookPump {
     /// desenhado salta-as. Medido (11/10): o gizmo de posições pede o sink da cena `=8`, e sem
     /// isto o `motion.collide` recozia-se em cada tique recuperado. Chame depois de `set_taps`.
     pub fn set_taps_por_tique(&mut self, n: usize) {
-        self.taps_por_tique = n.min(self.taps.len());
+        self.armadas.por_tique = n.min(self.taps.len());
     }
 
     /// O que as tomadas disseram em cada tique MARCHADO desde a última limpeza — o livro-razão.
@@ -111,7 +129,19 @@ impl MotionCookPump {
                 .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
                 && let Some(v) = outputs.first()
             {
-                self.tap_streams.push((node, v.as_stream().clone()));
+                // A tomada de um sink vê o que ele DESENHA (doc 130) — a mesma porta da marcha.
+                let cozido = v.as_stream();
+                let desenhado = self
+                    .armadas
+                    .sinks_do_desenho
+                    .contains(&node)
+                    .then(|| {
+                        self.separacoes += 1;
+                        o_que_o_sink_desenha(graph, node, cozido).0
+                    })
+                    .flatten();
+                self.tap_streams
+                    .push((node, desenhado.unwrap_or_else(|| cozido.clone())));
             }
         }
     }
@@ -159,16 +189,16 @@ impl MotionCookPump {
         //
         // ⚠️ **Só para quem é SINK neste quadro**: a tomada de uma `source.shape` com o `Collide`
         // ligado também traz a caixa declarada, e separá-la desarrumaria a geometria da forma.
-        let sinks_do_quadro: &[NodeId] = match *target {
-            CookTarget::Sinks { sinks, .. } => sinks,
-            CookTarget::Boundaries(_) => &[],
+        let sinks_do_quadro: Vec<NodeId> = match *target {
+            CookTarget::Sinks { sinks, .. } => sinks.to_vec(),
+            CookTarget::Boundaries(_) => self.armadas.sinks_do_desenho.clone(),
         };
         // ⚠️ **Sem `clear` aqui:** quem limpa é o braço `Sinks` acima (que publica o que desenhou)
         // e o braço `Boundaries`, que não tem rota de desenho. Limpar aqui apagaria a publicação.
         for i in 0..self.taps.len() {
             let node = self.taps[i];
             // Uma tomada de gizmo não coze num tique que não vai ser desenhado (`set_taps_por_tique`).
-            let so_do_desenho = i >= self.taps_por_tique;
+            let so_do_desenho = i >= self.armadas.por_tique;
             if (so_do_desenho && !self.separa_o_desenho)
                 || self.tap_streams.iter().any(|(n, _)| *n == node)
             {

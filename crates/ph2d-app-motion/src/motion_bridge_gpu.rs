@@ -286,6 +286,8 @@ pub(super) fn cook_gpu(
     motion
         .gpu_cook
         .set_passe(colisor::varreduras_do_passe(motion));
+    // A tomada de um sink (o gizmo do colisor) vê a corrente separada em qualquer rota.
+    motion.pump.set_sinks_do_desenho(&motion.sinks);
     // ⭐⭐⭐ **Um sink que mistura EM GRUPO desenha-se no Vello** (doc 118 W3/W4): o device entrega
     // as imagens ao passe de sprites, que só sabe a mistura de hardware — em luz linear e sem
     // alcance nenhum. ⇒ a rota da placa desenharia o tom e o alcance ERRADOS, e cai para a CPU,

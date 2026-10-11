@@ -9,7 +9,7 @@
 - Worktree `Worktrees/line-motion-value`, branch `line/motion-value`, base `8f20c60de` (= `main`).
   **Nada integrado nem enviado.** Onda anterior: [`…_SO_O_ESTADO.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_SO_O_ESTADO.md).
 - Commits desta onda: `ef52ffe7e` (kernel + rota + gates) · `26195b539` (duas fixturas pedidas pelas
-  mutações) · o deste handoff.
+  mutações) · `e4dd150ee` (cerca + censo + handoff) · o do gizmo (item 5).
 
 ## O que mudou
 
@@ -29,6 +29,17 @@
    `sim.step`) vai à rota HÍBRIDA em vez de cair por «fronteira sem estágio».
 4. `=122`: `PH2D_PASSE_COLIDE=1` nasce com o `Collide` ligado — só para a FOTO (o clique sintético
    não chega à janela virtual). Sem a variável, desarmada como sempre.
+
+5. ⛔ **Report do dono no 1.º smoke (com foto): *«funciona mas desalinhou os gizmos dos colliders»*.**
+   O gizmo lê a TOMADA do sink, cozida na CPU; a marcha híbrida (`Boundaries`) e a `cook_taps_only`
+   não sabiam que nó era saída, e guardavam a corrente CRUA — o contorno ficava onde as formas
+   estavam ANTES da separação (a família do doc 115 §16, agora pela rota da placa). Cura: a bomba
+   guarda as saídas do quadro (`set_sinks_do_desenho`, em `taps::Armadas` com o `por_tique` — o
+   `lib.rs` da bomba fica em `698/700`) e toda tomada num sink passa pela MESMA porta
+   `o_que_o_sink_desenha`. Gate `a_tomada_do_sink_ve_a_separacao_na_rota_da_placa` (`=121`–`=123`,
+   tomada da placa = da CPU AO BIT, controlo `Collide` desligado); sem a linha da ponte ele cai.
+   ⚠️ Preço nomeado: com o contorno à mostra (`Show Collider`) a CPU coze a cadeia do sink e o passe
+   para o gizmo — já pagava a cadeia antes; desligar o contorno tira os dois.
 
 ## Medido
 

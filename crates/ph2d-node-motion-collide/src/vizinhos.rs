@@ -1,12 +1,11 @@
 //! **A varredura por VIZINHOS do `push_apart`** — `O(n · k)` em vez de `O(n²)`, e **o mesmo
 //! resultado ao bit** que todos-os-pares.
 //!
-//! Porque ao bit: em todos-os-pares, o `delta[k]` soma os parceiros de `k` em ordem CRESCENTE de
-//! índice (os `m < k` chegam pelo laço de fora, depois os `m > k` pelo de dentro). Aqui cada disco
-//! junta os seus próprios parceiros, também em ordem crescente (a [`ph2d_contact::GrelhaDeDiscos`]
-//! entrega-os assim), e cada par é sempre calculado como `par(min, max)` — os mesmos floats, a
-//! mesma ordem de soma. A grelha só tem de entregar um SUPERCONJUNTO de quem toca; quem não toca é
-//! recusado pelo `par`, como antes.
+//! Porque ao bit: é o MESMO laço — `i` a crescer por fora, os `j > i` a crescer por dentro, cada
+//! par calculado uma vez e espalhado aos dois —, só que os `j` de dentro vêm da grelha (a
+//! [`ph2d_contact::GrelhaDeDiscos`] entrega-os em ordem crescente) em vez de serem todos. A grelha
+//! só tem de entregar um SUPERCONJUNTO de quem toca; quem não toca é recusado pelo `par`, e não
+//! entra em soma nenhuma — logo cada `delta` recebe as mesmas parcelas pela mesma ordem.
 //!
 //! O arredondamento de `floor(x / lado)` nunca separa por DUAS células um par que toca, a qualquer
 //! magnitude: quando o quociente fica grosso o bastante para saltar uma célula, as próprias posições
@@ -34,9 +33,10 @@ pub(super) fn grelha_serve(grade: &mut GrelhaDeDiscos, q: &[[f32; 2]], lado: f32
 }
 
 /// A grelha só corre quando o custo dela é menos de METADE do de todos-os-pares (`n²/2` pares).
-/// Por disco, com `c` candidatos, ela custa `c · (3 + 0,5·log₂ c)` verificações de par — o modelo
-/// ajustado à sonda [`tests::sonda_custo_da_grelha`] (11/10, 16 384 discos, raio 0,3 · 0,6 · 2 ·
-/// 12: a grelha `270× · 120× · 8×` mais rápida e `3,5×` mais LENTA no raio 12).
+/// Por disco, com `c` candidatos, ela custa `c · (3 + 0,5·log₂ c)` verificações de par — modelo
+/// ajustado à [`tests::sonda_custo_da_grelha`] quando cada par se calculava dos dois lados (raio 12
+/// era `3,5×` mais LENTO pela grelha). `--release`, 11/10, load 1,5: raio 0,3 · 0,6 · 2 a `595× ·
+/// 198× · 21×`; a cena `=8` (32 761 pontos, 8 passadas) `6,38 s → 0,105 s`; raio 12 recusado.
 fn vale_a_pena(candidatos: usize, n: usize) -> bool {
     #[expect(clippy::cast_precision_loss, reason = "contagens muito abaixo de 2^52")]
     let (c, n) = (candidatos as f64, n as f64);
@@ -54,22 +54,19 @@ pub(super) fn varre(
     delta: &mut [[f32; 2]],
     contacts: &mut [u32],
 ) {
-    for k in 0..q.len() {
-        grade.vizinhos_de(k, viz);
-        for &m in viz.iter() {
-            let m = m as usize;
-            if m < k {
-                if let Some(t) = discos.par(q, m, k) {
-                    delta[k][0] += t[2];
-                    delta[k][1] += t[3];
-                    contacts[k] += 1;
-                }
-            } else if m > k
-                && let Some(t) = discos.par(q, k, m)
+    for i in 0..q.len() {
+        grade.vizinhos_de(i, viz);
+        for &j in viz.iter() {
+            let j = j as usize;
+            if j > i
+                && let Some(t) = discos.par(q, i, j)
             {
-                delta[k][0] -= t[0];
-                delta[k][1] -= t[1];
-                contacts[k] += 1;
+                delta[i][0] -= t[0];
+                delta[i][1] -= t[1];
+                delta[j][0] += t[2];
+                delta[j][1] += t[3];
+                contacts[i] += 1;
+                contacts[j] += 1;
             }
         }
     }

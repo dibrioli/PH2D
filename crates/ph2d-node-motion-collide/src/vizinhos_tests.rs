@@ -140,17 +140,24 @@ fn o_raio_grande_volta_a_todos_os_pares() {
 #[test]
 #[ignore = "sonda: medicao"]
 fn sonda_custo_da_grelha() {
-    let p: Vec<[f32; 2]> = (0..128 * 128)
-        .map(|k| {
-            #[expect(clippy::cast_precision_loss, reason = "128 cabe")]
-            let (x, y) = ((k % 128) as f32, (k / 128) as f32);
-            [x, y]
-        })
-        .collect();
-    let n = p.len();
-    for raio in [0.3_f32, 0.6, 2.0, 12.0] {
+    // (lado da grelha de pontos, espaçamento, raio, passadas) — a última é a cena `=8` no pico.
+    for (lado, gap, raio, passadas) in [
+        (128_usize, 1.0_f32, 0.3_f32, 12_usize),
+        (128, 1.0, 0.6, 12),
+        (128, 1.0, 2.0, 12),
+        (128, 1.0, 12.0, 12),
+        (181, 0.25, 0.3 * 1.35, 8),
+    ] {
+        let p: Vec<[f32; 2]> = (0..lado * lado)
+            .map(|k| {
+                #[expect(clippy::cast_precision_loss, reason = "181 cabe")]
+                let (x, y) = ((k % lado) as f32 * gap, (k / lado) as f32 * gap);
+                [x, y]
+            })
+            .collect();
+        let n = p.len();
         let c = Cena {
-            p: p.clone(),
+            p,
             w: vec![1.0; n],
             radii: vec![raio; n],
             fall: vec![1.0; n],
@@ -160,12 +167,13 @@ fn sonda_custo_da_grelha() {
         for _ in 0..2 {
             for (i, g) in [true, false].into_iter().enumerate() {
                 let t = std::time::Instant::now();
-                std::hint::black_box(corre(&c, 12, g));
+                std::hint::black_box(corre(&c, passadas, g));
                 melhor[i] = melhor[i].min(t.elapsed().as_secs_f64());
             }
         }
         eprintln!(
-            "raio {raio}: grelha {:.3} s · todos-os-pares {:.3} s · serve={}",
+            "n {n} gap {gap} raio {raio} × {passadas}: grelha {:.3} s · todos-os-pares {:.3} s · \
+             serve={}",
             melhor[0],
             melhor[1],
             grelha_usada(&c)

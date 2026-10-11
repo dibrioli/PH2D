@@ -71,6 +71,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.skin_suspend.images_unbound_from_the_bones" => {
             "The image size or margins changed: {soltas} image(s) unbound from the bones. Ctrl+Z brings the binding back."
         }
+        // As pastas da FÁBRICA dos presets do Wet Painter (`assets/brushes/WetPainter/<meio>/<grupo>`),
+        // como o navegador as mostra; a pasta do artista mostra-se como ele a chamou.
+        "app.painter.presets.folder.watercolor" => "Watercolor",
+        "app.painter.presets.folder.fluid" => "Fluid",
         _ => return None,
     })
 }

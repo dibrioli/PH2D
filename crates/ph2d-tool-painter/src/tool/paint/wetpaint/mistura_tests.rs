@@ -131,8 +131,11 @@ pub(super) fn cena_toda(
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
+    // A física mede-se no carimbo do motor de sempre: a W2 só re-rotula o número do painel.
+    t.set_wet_largura_crua(1.0);
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_wet_largura_crua(1.0);
     t.wet_preset_aplicar_volumes(&p.parametros.volumes);
     t.paint.wetpaint.tilt_on = false;
     t.set_brush_size_px(30.0);

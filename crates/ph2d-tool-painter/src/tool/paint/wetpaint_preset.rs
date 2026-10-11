@@ -342,6 +342,12 @@ impl PainterTool {
         if let Some(v) = prm.heavy_edge {
             self.set_wet_borda_que_pesa(v);
         }
+        // A largura prometida (W2): a lei MEDIDA do preset; um ficheiro sem ela (de antes da W2) usa a
+        // do Wet Round, o pincel de fábrica.
+        self.paint.wetpaint.largura = Some(
+            super::wetpaint::largura::LeiDaLargura::de_tabela(&prm.width_table)
+                .unwrap_or_else(super::wetpaint::largura::LeiDaLargura::de_omissao),
+        );
         self.wet_preset_aplicar_volumes(&prm.volumes);
         falhas
     }
@@ -414,6 +420,10 @@ impl PainterTool {
         });
         p.live_water = Some(w.agua_viva);
         p.heavy_edge = Some(w.borda_que_pesa);
+        // A lei da largura do pincel de onde ele veio (W2): um pincel mexido guarda a do preset-base.
+        if let Some(lei) = &w.largura {
+            p.width_table = lei.tabela();
+        }
 
         let mut texturas = BTreeMap::new();
         if self.paint.brush.shape.kind == TextureKind::Image

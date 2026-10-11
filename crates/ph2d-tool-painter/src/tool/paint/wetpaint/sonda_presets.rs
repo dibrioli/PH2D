@@ -37,10 +37,20 @@ fn coluna(b: &Biblioteca, i: usize, modo: &str) -> (Vec<u8>, Vec<u8>) {
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
+    // `PH2D_SONDA_TAMANHOS=a,b,c,d`: o tamanho de cada coluna (a largura MEDIDA do Rebelle, 05 §4.1).
+    let tamanho = std::env::var("PH2D_SONDA_TAMANHOS")
+        .ok()
+        .and_then(|v| v.split(',').nth(i).and_then(|x| x.parse().ok()))
+        .unwrap_or(40.0);
     t.wet_preset_aplicar_volumes(&Volumes {
-        size_px: Some(40.0),
+        size_px: Some(tamanho),
         ..p.parametros.volumes.clone()
     });
+    // `PH2D_SONDA_CRUA=1`: a lei da largura de ANTES da W2 (o raio direto ao motor) — o «antes» na
+    // mesma corrida.
+    if std::env::var("PH2D_SONDA_CRUA").as_deref() == Ok("1") {
+        t.set_wet_largura_crua(1.0);
+    }
     match modo {
         "plano" => t.paint.wetpaint.tilt_on = false,
         "inclinado" => {

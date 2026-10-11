@@ -11,6 +11,7 @@
 //! obra neutra (tela branca, sem papel).
 
 use super::super::brush_settings::BrushTextureImage;
+use super::super::wetpaint::largura::LeiDaLargura;
 use crate::{PaintMedia, PainterTool, WetKnobs};
 use ph2d_brush_presets::LADO_MINIATURA;
 use ph2d_editor_core::Tool;
@@ -70,6 +71,8 @@ pub struct CenaDoPreview {
     /// A Opacity do Wet Paint (smoke do dono 10/10: sem ela o preview pintava a de fábrica e a tela a do
     /// pincel).
     opacidade: f32,
+    /// A lei da largura do pincel (W2): sem ela o preview e a miniatura pintavam com a do Wet Round.
+    largura: Option<LeiDaLargura>,
 }
 
 /// «Mudou alguma coisa que o preview mostra?» — os mesmos ingredientes da [`CenaDoPreview`], com as
@@ -87,6 +90,7 @@ pub struct ChaveDoPreview {
     grids: (u8, u8),
     opcoes: (bool, f64),
     opacidade: f32,
+    largura: Option<u64>,
 }
 
 impl PainterTool {
@@ -112,6 +116,7 @@ impl PainterTool {
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
             opacidade: w.opacidade,
+            largura: w.largura.clone(),
         }
     }
 
@@ -135,6 +140,7 @@ impl PainterTool {
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
             opacidade: w.opacidade,
+            largura: w.largura.as_ref().map(LeiDaLargura::chave),
         }
     }
 
@@ -173,6 +179,7 @@ impl PainterTool {
         (w.grid_ratio, w.flow_ratio) = c.grids;
         (w.agua_viva, w.borda_que_pesa) = c.opcoes;
         w.opacidade = c.opacidade;
+        w.largura.clone_from(&c.largura);
         self.paint.eraser = false;
         self.invalidate_composite();
     }

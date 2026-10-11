@@ -49,6 +49,17 @@ impl PainterTool {
         // MOMENTO em que um dab pousa muda a tinta — medido, 3 093 px num pincel guardado.
         if matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
             brush.impasto_push = 0.0;
+            // O Wet Paint não lê a Strength (a Opacity dele é o pigmento): o carimbo só a usava para
+            // recuperar a pressão (`cobertura ÷ strength`), e essa divisão não volta exata — com o carimbo
+            // da W2 o último bit mudava 1 px entre o pincel e o mesmo pincel guardado (que não leva a
+            // Strength). A 1, a cobertura É a pressão; nada muda para quem já pintava a 1.
+            brush.strength = 1.0;
+            // A LARGURA PROMETIDA (W2): o traço nasce com o raio do MOTOR cuja largura medida é o
+            // número do painel — e o espaçamento dos carimbos é o desse raio, como em qualquer pincel
+            // daquele tamanho (a tabela do preset mede-se assim). O anel continua no raio pedido.
+            if let Some(lei) = &self.paint.wetpaint.largura {
+                brush.radius_px = lei.raio_do_motor(brush.radius_px);
+            }
         }
         if self.papel_como_grain() {
             brush.texture = brush.paper;

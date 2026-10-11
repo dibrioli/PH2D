@@ -9,7 +9,7 @@
 //!     gera_os_presets_de_fabrica -- --ignored --nocapture
 //! ```
 
-use super::sonda_gestos::{fnv1a, largura_mediana, traco_recto_com};
+use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
 use ph2d_brush_presets::{
     Biblioteca, Origem, Parametros, Preset, Tilt, caminho_relativo, escrever, gravar, ler,
 };
@@ -20,13 +20,18 @@ use ph2d_wet_paint::tuning::Knob;
 use std::path::PathBuf;
 
 /// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
-const PRESETS_DE_FABRICA: usize = 4;
+const PRESETS_DE_FABRICA: usize = 5;
 const MEIO_DA_PASTA: &str = "Watercolor";
 const GRUPO: &str = "Fluid";
-/// Os raios da lei raio → largura (05 §1.1), os mesmos da sonda `sonda_largura`.
-const RAIOS: [f32; 14] = [
-    2.0, 4.0, 7.8, 12.2, 15.3, 19.1, 23.8, 29.8, 46.6, 72.8, 114.0, 178.0, 278.0, 434.0,
-];
+/// Os raios do MOTOR da lei raio → largura (W2, 05 §4b): geométricos de 1,5 a 1 100 — a largura 600
+/// (o raio 300 do portão) pede ~860 no Wet Round. O slider pára em 512 (`BRUSH_SIZE_MAX_PX`): acima, a
+/// sonda pede metade e o motor recebe o dobro (`set_wet_largura_crua(2)`).
+const PONTOS_DA_LEI: usize = 64;
+const RAIO_MIN: f32 = 1.5;
+const RAIO_MAX: f32 = 1100.0;
+/// Os quadros de 60 Hz depois do traço: a largura que se promete é a que FICA, com a água assentada
+/// (a 0 quadros o Wet Round a raio 30 lê 8 px; aos 8 s, 32 — 05 §4b).
+const QUADROS_DA_LEI: u32 = 480;
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
@@ -53,6 +58,11 @@ struct Receita {
     tilt: Tilt,
     bristle_size: f64,
     bristle_count: f64,
+    /// A dureza do carimbo (`BrushSpec::hardness`): 0 nos quatro de 07/10.
+    hardness: f64,
+    /// O tamanho (diâmetro, px) que o preset FIXA — só onde o tamanho É a mídia (o Liner é fino); nos
+    /// outros fica o do artista.
+    size_px: Option<f64>,
 }
 
 /// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
@@ -75,6 +85,8 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: None,
     },
     Receita {
         nome: "Wet Wash",
@@ -88,6 +100,8 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         tilt: DIREITA,
         bristle_size: 3.0,
         bristle_count: 3000.0,
+        hardness: 0.0,
+        size_px: None,
     },
     Receita {
         nome: "Wet Dry Brush",
@@ -101,6 +115,8 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         tilt: DIREITA,
         bristle_size: 1.5,
         bristle_count: 1500.0,
+        hardness: 0.0,
+        size_px: None,
     },
     Receita {
         nome: "Wet Drip",
@@ -118,6 +134,26 @@ const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         },
         bristle_size: 2.0,
         bristle_count: 2000.0,
+        hardness: 0.0,
+        size_px: None,
+    },
+    // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
+    // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
+    // `fixtures/rebelle/wcliner.png` (cobertura 0,65 · textura 1,7 %) à largura 38; o Wet Round dá 0,19 · 8,1.
+    Receita {
+        nome: "Wet Liner",
+        water: 0.5,
+        opacity: 1.0,
+        pigment: 100.0,
+        pickup: 1.0,
+        gate: 0.05,
+        evaporation: 1.0,
+        edge: 100.0,
+        tilt: DIREITA,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+        hardness: 0.9,
+        size_px: Some(29.0),
     },
 ];
 
@@ -127,12 +163,18 @@ fn parametros(r: &Receita) -> Parametros {
     let mut t = PainterTool::default();
     t.set_paint_media(PaintMedia::WetPaint);
     let (mut p, _) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, GRUPO, r.nome));
-    p.volumes.size_px = None;
+    p.volumes.size_px = r.size_px;
     p.volumes.opacity = Some(r.opacity);
     p.volumes.water = Some(r.water);
     p.tilt = Some(r.tilt);
     // As opções da W1g não são do pincel de fábrica: aplicá-lo não mexe nelas (a regra do preset antigo).
     (p.live_water, p.heavy_edge) = (None, None);
+    assert!(
+        p.brush
+            .insert("hardness".to_owned(), serde_json::json!(r.hardness))
+            .is_some(),
+        "campo hardness existe"
+    );
     let d = WetKnobs::DEFAULT;
     for (chave, v) in [
         ("pigmentPerDab", r.pigment),
@@ -151,19 +193,50 @@ fn parametros(r: &Receita) -> Parametros {
     p
 }
 
-fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
-    RAIOS
-        .iter()
-        .map(|&r| {
-            let (px, w, h) = traco_recto_com(r, 0, |t| {
-                t.set_wet_relogio_fixo(true);
-                let falhas = t.wet_preset_aplicar(p);
-                assert!(falhas.is_empty());
-            });
-            // O raio pelo menor texto que volta ao mesmo f32 (7.8, não 7.800000190734863).
-            let raio: f64 = format!("{r}").parse().unwrap();
-            [raio, f64::from(largura_mediana(&px, w, h))]
+fn raios_da_lei() -> Vec<f32> {
+    (0..PONTOS_DA_LEI)
+        .map(|i| {
+            let f = i as f32 / (PONTOS_DA_LEI - 1) as f32;
+            (RAIO_MIN * (RAIO_MAX / RAIO_MIN).powf(f) * 10.0).round() / 10.0
         })
+        .collect()
+}
+
+/// O preset com a tela DIREITA: a largura é a do traço; o escorrimento do Wet Drip é da tela (W1e).
+fn direito(p: &Preset) -> Preset {
+    let mut d = p.clone();
+    d.parametros.tilt = Some(DIREITA);
+    d
+}
+
+/// A largura que o pincel `p` deixa a `raio`: `crua` = o raio chega ao MOTOR sem a promessa.
+fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
+    let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
+    let (px, w, h) = traco_recto_alto(raio / escala, raio, QUADROS_DA_LEI, |t| {
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
+        if crua {
+            t.set_wet_largura_crua(escala);
+        }
+    });
+    largura_que_se_ve(&px, w, h)
+}
+
+/// A lei CRUA medida: raio do motor → largura, em paralelo (uma thread por raio).
+fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
+    let raios = raios_da_lei();
+    let larguras: Vec<f32> = std::thread::scope(|s| {
+        let h: Vec<_> = raios
+            .iter()
+            .map(|&r| s.spawn(move || largura_de(p, r, true)))
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    raios
+        .iter()
+        .zip(larguras)
+        // O raio pelo menor texto que volta ao mesmo f32 (7.8, não 7.800000190734863).
+        .map(|(&r, l)| [format!("{r}").parse().unwrap(), f64::from(l)])
         .collect()
 }
 
@@ -183,6 +256,15 @@ fn gera_os_presets_de_fabrica() {
             texturas: Default::default(),
         };
         preset.parametros.width_table = tabela_de_largura(&preset);
+        if r.nome == "Wet Round" {
+            // A tabela que o motor embute (`wetpaint/largura.rs::LARGURA_DO_WET_ROUND`), já limpa.
+            let mut t = PainterTool::default();
+            assert!(t.wet_preset_aplicar(&preset).is_empty());
+            println!(
+                "[fabrica] LARGURA_DO_WET_ROUND = {:?}",
+                t.wet_largura_tabela()
+            );
+        }
         preset.miniatura = miniatura_do_preset(&preset);
         let larguras: Vec<String> = preset
             .parametros
@@ -279,6 +361,83 @@ fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
     }
 }
 
+/// Os raios do portão da W2 (05 §3): fora da tabela, de 2 a 300.
+const RAIOS_DA_PROMESSA: [f32; 8] = [2.0, 3.5, 7.0, 13.0, 26.0, 55.0, 120.0, 300.0];
+/// A promessa do dono (05 §4.1): o número do painel é a largura que se vê ± 2 px — e, acima de 100 px,
+/// ± 2 %: a lei raio → largura ONDULA de raio para raio (a franja das cerdas), e nenhuma tabela a segue
+/// melhor (medido 11/10, 05 §4b W2: 64 e 128 pontos erram o mesmo, ≤ 1,8 %; cinco traços ao mesmo raio
+/// variam ±1–3 px).
+const TOLERANCIA_PX: f32 = 2.0;
+const TOLERANCIA_REL: f32 = 0.02;
+
+/// As larguras de `p` nos [`RAIOS_DA_PROMESSA`], com a promessa (`crua = false`) ou sem ela.
+fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
+    std::thread::scope(|s| {
+        let h: Vec<_> = RAIOS_DA_PROMESSA
+            .iter()
+            .map(|&r| s.spawn(move || largura_de(p, r, crua)))
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    })
+}
+
+fn fora_da_promessa(larguras: &[f32], rel: f32) -> Vec<String> {
+    RAIOS_DA_PROMESSA
+        .iter()
+        .zip(larguras)
+        .filter(|(r, l)| (*l - 2.0 * *r).abs() > TOLERANCIA_PX.max(rel * 2.0 * *r))
+        .map(|(r, l)| format!("raio {r}: {l} px (pedido {})", 2.0 * r))
+        .collect()
+}
+
+/// **A LARGURA PROMETIDA (W2)**: em cada preset de fábrica, o traço a raio `r` mede `2·r ± 2 px` (± 2 %
+/// acima de 100 px), de 2 a 300 — raios fora da tabela do preset. CONTROLO dentro: a lei CRUA (o raio direto ao motor, a de antes
+/// da W2) reprova no mesmo pincel.
+#[test]
+fn a_largura_e_a_prometida() {
+    let mut falhas = Vec::new();
+    for (rel, b) in ficheiros_de_fabrica() {
+        let p = ler(&b).unwrap();
+        let larguras = larguras_da_promessa(&p, false);
+        println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
+        for f in fora_da_promessa(&larguras, TOLERANCIA_REL) {
+            falhas.push(format!("{rel}: {f}"));
+        }
+        if rel.ends_with("Wet Round.ph2d-brush.png") {
+            assert!(
+                !fora_da_promessa(&larguras_da_promessa(&p, true), TOLERANCIA_REL).is_empty(),
+                "controlo: a lei crua do Wet Round já cumpria a promessa — o portão não mede nada"
+            );
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "a largura não é a do painel:\n{}",
+        falhas.join("\n")
+    );
+}
+
+/// O pincel que nasce SEM preset tem a lei da largura do Wet Round de fábrica (o `WetKnobs::DEFAULT` é
+/// o Wet Round): a tabela embutida no motor é a do ficheiro.
+#[test]
+fn a_lei_de_omissao_e_a_do_wet_round() {
+    let b = Biblioteca::carregar(&raiz(), None);
+    let e = b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .expect("o Wet Round de fábrica");
+    let mut t = PainterTool::default();
+    assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+    let mut nasce = PainterTool::default();
+    nasce.set_paint_media(PaintMedia::WetPaint);
+    assert_eq!(
+        nasce.wet_largura_tabela(),
+        t.wet_largura_tabela(),
+        "a LARGURA_DO_WET_ROUND do motor não é a do ficheiro: regere-a (o gerador imprime-a)"
+    );
+}
+
 /// **Sonda de custo da miniatura** — o número que decide onde o preview vivo corre (no quadro ou numa
 /// thread). Mínimo de 5 corridas por preset, a tela inteira e só o traço (sem a água depois).
 #[test]
@@ -300,5 +459,38 @@ fn sonda_custo_da_miniatura() {
             })
             .fold(f64::INFINITY, f64::min);
         println!("[custo] {rel:<60} {min:7.1} ms");
+    }
+}
+
+/// **Sonda do RUÍDO da largura** (W2): o mesmo pincel ao mesmo raio prometido, cinco traços que só
+/// diferem na posição vertical (a tela cresce 1 px de cada vez) — o quanto a largura de um traço varia
+/// por si. É o chão de qualquer promessa: nenhuma tabela a acerta melhor do que isto.
+#[test]
+#[ignore = "sonda: o ruído da largura por traço (W2)"]
+fn sonda_ruido_da_largura() {
+    for (rel, b) in ficheiros_de_fabrica() {
+        let p = direito(&ler(&b).unwrap());
+        for &r in &RAIOS_DA_PROMESSA {
+            let ls: Vec<f32> = std::thread::scope(|s| {
+                let h: Vec<_> = (0..5)
+                    .map(|k| {
+                        let p = &p;
+                        s.spawn(move || {
+                            let (px, w, h) =
+                                traco_recto_alto(r, r + k as f32 / 6.0, QUADROS_DA_LEI, |t| {
+                                    t.set_wet_relogio_fixo(true);
+                                    assert!(t.wet_preset_aplicar(p).is_empty());
+                                });
+                            largura_que_se_ve(&px, w, h)
+                        })
+                    })
+                    .collect();
+                h.into_iter().map(|h| h.join().unwrap()).collect()
+            });
+            println!(
+                "[ruido] {rel:<55} raio {r:>5} pedido {:>5} → {ls:?}",
+                2.0 * r
+            );
+        }
     }
 }

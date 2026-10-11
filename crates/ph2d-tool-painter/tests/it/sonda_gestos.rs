@@ -79,6 +79,11 @@ pub fn tela() -> PainterTool {
 
 /// A cena inteira com o pincel que `t` já tem (a cor é a da bancada): devolve `run_full()`.
 pub fn pinta_cena(t: &mut PainterTool) -> (Vec<u8>, u32, u32) {
+    pinta_cena_ate(t, 480)
+}
+
+/// [`pinta_cena`] com `quadros` de 60 Hz depois dos gestos (480 = os 8 s da cena).
+pub fn pinta_cena_ate(t: &mut PainterTool, quadros: u32) -> (Vec<u8>, u32, u32) {
     t.set_brush_color_srgb8(AZUL);
     let cheio = |_: f32| 1.0f32;
     // Linha 1 — recto a passo de rato · curva em S.
@@ -94,8 +99,8 @@ pub fn pinta_cena(t: &mut PainterTool) -> (Vec<u8>, u32, u32) {
     t.set_brush_color_srgb8(VERMELHO);
     gesto(t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, cheio);
     gesto(t, &[[700.0, 480.0], [960.0, 480.0]], 3.0, cheio);
-    // O tempo passa (a água corre e seca; nos outros meios é inócuo): 8 s a 60 Hz.
-    for _ in 0..480 {
+    // O tempo passa (a água corre e seca; nos outros meios é inócuo).
+    for _ in 0..quadros {
         t.on_tick(1000.0 / 60.0);
     }
     t.run_full()
@@ -117,7 +122,18 @@ pub fn traco_recto_com(
     ticks: u32,
     prepara: impl FnOnce(&mut PainterTool),
 ) -> (Vec<u8>, u32, u32) {
-    let h = ((size * 6.0) as u32 + 80).max(120);
+    traco_recto_alto(size, size, ticks, prepara)
+}
+
+/// [`traco_recto_com`] numa tela com altura para um traço de raio `alto` (o raio que o MOTOR vê, quando
+/// a sonda o põe além do do slider).
+pub fn traco_recto_alto(
+    size: f32,
+    alto: f32,
+    ticks: u32,
+    prepara: impl FnOnce(&mut PainterTool),
+) -> (Vec<u8>, u32, u32) {
+    let h = ((alto * 6.0) as u32 + 80).max(120);
     let cy = h as f32 * 0.5;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * h * 4) as usize], W, h);
@@ -135,6 +151,18 @@ pub fn traco_recto_com(
 /// dos três canais, e a largura é a extensão das linhas com `c ≥ 0,5 · max(c)` da coluna; colunas com
 /// `max < 0,08` não contam. Devolve a mediana das colunas do traço.
 pub fn largura_mediana(rgba: &[u8], w: u32, h: u32) -> f32 {
+    largura_a(rgba, w, h, 0.5)
+}
+
+/// **A largura que se vê** (a da promessa da W2): a de [`largura_mediana`] com o limiar a ¼ do máximo da
+/// coluna. Medido 11/10 (05 §4b, W2): num traço de borda definida é a MESMA a 50 · 35 · 25 · 15 % (as 4
+/// fotos do Rebelle e o nosso Round/Wash/Drip); só a cerda PARTIDA difere — o Dry Brush a meia altura lê
+/// o miolo (32 px) e a nuvem de fios que se vê vai a 52.
+pub fn largura_que_se_ve(rgba: &[u8], w: u32, h: u32) -> f32 {
+    largura_a(rgba, w, h, 0.25)
+}
+
+fn largura_a(rgba: &[u8], w: u32, h: u32, fracao: f32) -> f32 {
     let c = |x: u32, y: u32| {
         let i = ((y * w + x) * 4) as usize;
         rgba[i..i + 3].iter().map(|&v| 255 - v).max().unwrap_or(0) as f32 / 255.0
@@ -145,7 +173,7 @@ pub fn largura_mediana(rgba: &[u8], w: u32, h: u32) -> f32 {
             if m < 0.08 {
                 return None;
             }
-            let ys: Vec<u32> = (0..h).filter(|&y| c(x, y) >= 0.5 * m).collect();
+            let ys: Vec<u32> = (0..h).filter(|&y| c(x, y) >= fracao * m).collect();
             Some((ys[ys.len() - 1] - ys[0] + 1) as f32)
         })
         .collect();

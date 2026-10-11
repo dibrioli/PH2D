@@ -156,6 +156,9 @@ pub(crate) struct WetPaintState {
     pub(super) relogio_fixo: Option<f64>,
     /// O pedido do bloco de presets que espera a ponte da app (o disco é dela, não do tool).
     pub(super) preset_pedido: Option<super::wetpaint_preset::PedidoPreset>,
+    /// **A largura prometida (W2)**: a lei raio do motor → largura do pincel de agora (a do preset; sem
+    /// preset, a do Wet Round, que é o pincel de fábrica). `None` = a lei CRUA — só a sonda que a mede.
+    pub(super) largura: Option<largura::LeiDaLargura>,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -193,6 +196,7 @@ impl Default for WetPaintState {
             flow_ratio: 1,
             relogio_fixo: None,
             preset_pedido: None,
+            largura: Some(largura::LeiDaLargura::de_omissao()),
         }
     }
 }
@@ -205,10 +209,31 @@ impl PainterTool {
     pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
     }
+
+    /// **A lei CRUA da largura** — o carimbo chega ao motor com `escala ×` o raio pedido, sem a promessa
+    /// da W2 (`escala` > 1 mede raios do motor além da faixa do slider, `BRUSH_SIZE_MAX_PX`). Para a
+    /// sonda que MEDE a tabela de um preset (`tests/it/presets_de_fabrica.rs`) e para os portões da
+    /// FÍSICA, que medem uma lei num carimbo do motor de tamanho fixo (a W2 só re-rotula o número do
+    /// painel). Aplicar um preset volta a ligar a promessa.
+    pub fn set_wet_largura_crua(&mut self, escala: f32) {
+        self.paint.wetpaint.largura =
+            (escala != 1.0).then(|| largura::LeiDaLargura::escala(escala));
+    }
+
+    /// A lei da largura do pincel de agora, como um preset a guarda (`None` = sem promessa).
+    #[must_use]
+    pub fn wet_largura_tabela(&self) -> Option<Vec<[f64; 2]>> {
+        self.paint
+            .wetpaint
+            .largura
+            .as_ref()
+            .map(largura::LeiDaLargura::tabela)
+    }
 }
 
 mod dab_route; // a ROTA DO DAB (pincel -> fluido) — filho por LOC
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
+pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabela do preset
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};

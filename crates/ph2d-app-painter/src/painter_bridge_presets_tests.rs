@@ -42,7 +42,13 @@ fn knob(t: &PainterTool, chave: &str) -> f64 {
 #[test]
 fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     let (mut p, mut t, mut toasts, uti) = abre("escolher");
-    assert_eq!(p.vista.entradas.len(), 4, "a fábrica inteira no navegador");
+    // O número da fábrica CONTA-SE (`the_factory_presets_are_counted`), nunca se escreve aqui.
+    let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
+    assert_eq!(
+        p.vista.entradas.len(),
+        fabrica.entradas.len(),
+        "a fábrica inteira no navegador"
+    );
     assert_eq!(p.vista.ativo, None);
     p.atender(&mut t, PedidoPreset::Escolher(WASH.into()), &mut toasts);
     sem_erros(&toasts);
@@ -137,4 +143,27 @@ fn o_favorito_aparece_na_vista() {
     assert!(p.vista.procurar(WASH).unwrap().favorito);
     p.atender(&mut t, PedidoPreset::AlternarFavorito, &mut toasts);
     assert!(!p.vista.procurar(WASH).unwrap().favorito);
+}
+
+/// HR-15: as pastas da FÁBRICA (meio e grupo) que o navegador mostra como título passam pela tabela de
+/// texto — no idioma de teste nenhuma sai crua. Controlo: uma pasta do artista sai como ele a chamou.
+#[test]
+fn cada_pasta_de_fabrica_tem_rotulo() {
+    let bib = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
+    assert!(!bib.entradas.is_empty());
+    for e in &bib.entradas {
+        let [_, meio, grupo, _] = e.partes();
+        for pasta in [meio, grupo] {
+            assert_ne!(
+                rotulo_da_pasta(Idioma::Teste, pasta),
+                pasta,
+                "{}: a pasta {pasta:?} não tem rótulo em `rotulo_da_pasta`",
+                e.relativo
+            );
+        }
+    }
+    assert_eq!(
+        rotulo_da_pasta(Idioma::Teste, "Os meus pincéis"),
+        "Os meus pincéis"
+    );
 }

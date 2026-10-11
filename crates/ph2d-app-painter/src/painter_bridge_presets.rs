@@ -12,7 +12,7 @@ use ph2d_brush_presets::{
     caminho_relativo, gravar, pasta_do_utilizador,
 };
 use ph2d_editor_core::toast::{Toast, ToastQueue};
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::{Idioma, idioma, tr, tr_em, tr_with};
 use ph2d_panel_painter_layers::{VistaPreset, VistaPresets, set_current_wet_presets};
 use ph2d_tool_painter::{
     MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PainterTool, PedidoPreset, miniatura_do_preset,
@@ -159,9 +159,9 @@ impl Presets {
             toasts.push(Toast::error(tr("app.painter.presets.no_user_folder")));
             return false;
         };
-        let (mut parametros, texturas) = painter.wet_preset_capturar(base);
-        // A tabela raio → largura mede-se pela sonda da fábrica; num pincel mexido ela já não vale.
-        parametros.width_table.clear();
+        // A tabela raio → largura (W2) mede-se pela sonda da fábrica: o pincel do artista leva a do
+        // preset de onde veio (`wet_preset_capturar`), a promessa que ele estava a ver ao pintar.
+        let (parametros, texturas) = painter.wet_preset_capturar(base);
         let mut preset = Preset {
             parametros,
             origem: Origem::Utilizador,
@@ -291,6 +291,10 @@ impl Presets {
             .iter()
             .map(|e| {
                 let [_, meio, grupo, nome] = e.partes();
+                let (meio, grupo) = (
+                    rotulo_da_pasta(idioma(), meio),
+                    rotulo_da_pasta(idioma(), grupo),
+                );
                 VistaPreset {
                     relativo: e.relativo.clone(),
                     nome: nome.to_owned(),
@@ -334,6 +338,16 @@ pub(crate) fn drive(painter: &mut PainterTool, wet_armado: bool, toasts: &mut To
         }
         set_current_wet_presets(Some(p.vista.clone()));
     });
+}
+
+/// O nome de uma pasta da FÁBRICA como rótulo de interface (HR-15); a pasta do artista é texto DELE e
+/// mostra-se como está. Pasta de fábrica nova = um braço aqui (`cada_pasta_de_fabrica_tem_rotulo`).
+fn rotulo_da_pasta(idioma: Idioma, nome: &str) -> &str {
+    match nome {
+        "Watercolor" => tr_em(idioma, "app.painter.presets.folder.watercolor"),
+        "Fluid" => tr_em(idioma, "app.painter.presets.folder.fluid"),
+        _ => nome,
+    }
 }
 
 #[cfg(test)]

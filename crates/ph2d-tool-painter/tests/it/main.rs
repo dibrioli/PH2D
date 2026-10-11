@@ -10,9 +10,12 @@
 
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod measure_undo_capacity;
+mod midias_de_fabrica;
 mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
+mod regua_midia;
 mod sonda_gestos;
 mod sonda_largura;
+mod sonda_midias;
 mod sonda_tilt_do_preset;
 mod sonda_tracos_por_meio;

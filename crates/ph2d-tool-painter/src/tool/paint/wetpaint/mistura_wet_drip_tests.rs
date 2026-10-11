@@ -178,8 +178,11 @@ pub(super) fn cena(b: &Biblioteca, v: Var, tintas: Tintas) -> Cena {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
+    // A física mede-se no carimbo do motor de sempre: a W2 só re-rotula o número do painel.
+    t.set_wet_largura_crua(1.0);
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(&preset(b, "Wet Round")).is_empty());
+    t.set_wet_largura_crua(1.0);
     t.paint.wetpaint.tilt_on = false;
     t.set_brush_size_px(30.0);
     t.set_wet_borda_que_pesa(v.borda);
@@ -201,6 +204,7 @@ pub(super) fn cena(b: &Biblioteca, v: Var, tintas: Tintas) -> Cena {
     }
     if tintas != Tintas::SoVermelho {
         assert!(t.wet_preset_aplicar(&preset(b, "Wet Drip")).is_empty());
+        t.set_wet_largura_crua(1.0);
         assert!(t.paint.wetpaint.tilt_on && t.paint.wetpaint.tilt_ring == 8);
         aplica_lei(&mut t, v);
         t.set_brush_size_px(20.0);

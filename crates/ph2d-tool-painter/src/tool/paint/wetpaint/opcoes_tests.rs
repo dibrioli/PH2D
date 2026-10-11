@@ -127,6 +127,8 @@ fn com_a_live_water_a_agua_corre_com_o_traco() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 300 * 200 * 4], 300, 200);
         t.set_paint_tool_mode("wetpaint");
+        // A física mede-se no carimbo do motor de sempre: a W2 só re-rotula o número do painel.
+        t.set_wet_largura_crua(1.0);
         t.set_wet_relogio_fixo(true);
         t.set_wet_agua_viva(viva);
         let p = |x: f32, phase| CanvasPointer {
@@ -172,6 +174,7 @@ fn sem_papel_o_traco_nao_tem_o_desenho_de_um_papel() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 200 * 120 * 4], 200, 120);
         t.set_paint_media(PaintMedia::WetPaint);
+        t.set_wet_largura_crua(1.0);
         t.set_wet_relogio_fixo(true);
         if let Some(k) = papel {
             t.set_brush_paper_kind(k.to_u8());
@@ -275,8 +278,10 @@ fn azul_sobre_vermelho(forca: f32, assentar: bool) -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 400 * 240 * 4], 400, 240);
     t.set_paint_tool_mode("wetpaint");
+    t.set_wet_largura_crua(1.0);
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_wet_largura_crua(1.0);
     // A tinta CHEIA: o caso do 4.º smoke do dono (o Wet Round de então, pigmento 800). Com o pigmento do
     // Rebelle (78) a tinta clara tem grão abaixo da mancha (`SS0`) e o miolo molhado amacia −10 % (05 §4b).
     t.paint
@@ -414,8 +419,10 @@ fn fios_sobre_vermelho(forca: f32) -> Vec<u8> {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 400 * 300 * 4], 400, 300);
     t.set_paint_tool_mode("wetpaint");
+    t.set_wet_largura_crua(1.0);
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_wet_largura_crua(1.0);
     t.paint.wetpaint.smooth_edges = forca;
     let cp = |x: f32, y: f32, phase| CanvasPointer {
         pos: [x, y],
@@ -449,6 +456,7 @@ fn fios_sobre_vermelho(forca: f32) -> Vec<u8> {
         .expect("o pincel de fábrica")
         .preset;
     assert!(t.wet_preset_aplicar(wash).is_empty());
+    t.set_wet_largura_crua(1.0);
     t.paint.wetpaint.smooth_edges = forca;
     (t.paint.wetpaint.tilt_on, t.paint.wetpaint.tilt_ring) = (true, 8);
     t.set_wet_borda_que_pesa(1.0);

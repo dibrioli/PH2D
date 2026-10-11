@@ -104,10 +104,7 @@ fn a_drag_writes_through_the_one_door_and_esc_and_double_click_restore() {
         .verts
         .clone();
     assert!(drag(
-        &mut sim,
-        &mut scene,
-        &map,
-        &[id],
+        w(&mut sim, &mut scene, &map, &[id]),
         &mut g,
         out,
         Mods::default(),
@@ -141,10 +138,7 @@ fn a_drag_whose_shape_left_the_selection_writes_nothing() {
     let p = view(&sim, &map, &[id], PX, None, None).unwrap().points[0];
     let mut g = press(&sim, &map, &[id], p, PX).unwrap();
     assert!(!drag(
-        &mut sim,
-        &mut scene,
-        &map,
-        &[],
+        w(&mut sim, &mut scene, &map, &[]),
         &mut g,
         [0.0, 0.0],
         Mods::default(),
@@ -180,10 +174,7 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     );
     let mut g = press(&sim, &map, &[id], p, PX).unwrap();
     assert!(drag(
-        &mut sim,
-        &mut scene,
-        &map,
-        &[id],
+        w(&mut sim, &mut scene, &map, &[id]),
         &mut g,
         p,
         Mods::default(),
@@ -195,10 +186,7 @@ fn a_parked_handle_grabbed_and_held_still_changes_nothing() {
     );
     let q = [p[0] + 5.0 * PX, p[1]];
     assert!(drag(
-        &mut sim,
-        &mut scene,
-        &map,
-        &[id],
+        w(&mut sim, &mut scene, &map, &[id]),
         &mut g,
         q,
         Mods::default(),

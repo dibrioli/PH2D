@@ -201,15 +201,18 @@ pub fn press(
 /// O arrasto: leva a alça para `w` (mundo) e escreve os campos pela porta única. `false` = a forma
 /// agarrada deixou de ser o alvo (outro escritor mexeu na seleção) — o chamador larga o arrasto.
 pub fn drag(
-    sim: &mut SimWorld,
-    scene: &mut VecScene,
-    map: &VecEntityMap,
-    selection: &[VecPathId],
+    world: World<'_>,
     grab: &mut ShapeHandleGrab,
     w: [f64; 2],
     mods: Mods,
     px_to_world: f64,
 ) -> bool {
+    let World {
+        sim,
+        scene,
+        map,
+        selection,
+    } = world;
     let Some(t) = Target::of(sim, map, selection) else {
         return false;
     };
@@ -319,16 +322,7 @@ impl ShapeHandleInput {
         let Some(mut g) = self.grab else {
             return false;
         };
-        if drag(
-            world.sim,
-            world.scene,
-            world.map,
-            world.selection,
-            &mut g,
-            w,
-            mods,
-            px_to_world,
-        ) {
+        if drag(world, &mut g, w, mods, px_to_world) {
             self.grab = Some(g);
         } else {
             self.grab = None;

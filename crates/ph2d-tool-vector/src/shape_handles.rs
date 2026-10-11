@@ -66,8 +66,8 @@ pub enum Law {
     /// acompanha e o arco RODA inteiro (o Shift do Inkscape; aqui Ctrl = «em pares», Affinity).
     ArcStart { sweep: usize },
     /// Um PONTO da caixa (campos `[u, v]`, frações da esquerda e do TOPO): os dois campos andam
-    /// o que a mão anda, em frações da caixa, desde o press — o bico de um balão (*Tail end position
-    /// + Tail height* do Affinity, um ponto 2D). Sem busca: o `cook` cola o bico à aresta e troca de
+    /// o que a mão anda, em frações da caixa, desde o press — o bico de um balão (o *Tail end
+    /// position* e o *Tail height* do Affinity, um ponto 2D). Sem busca: o `cook` cola o bico à aresta e troca de
     /// sector num SALTO, e uma métrica sobre o vértice prendia-se na diagonal (8 de 60 arrastos a
     /// ≥ 7e-3; uma grelha conjunta 24×24 também, e regrediu a cabeça da seta). RELATIVO e não a
     /// posição absoluta da mão: com o bico colado, o vértice que se desenha não é o ponto do

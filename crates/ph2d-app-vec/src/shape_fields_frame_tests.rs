@@ -41,8 +41,10 @@ fn field(store: &WidgetStore, i: usize) -> Option<f64> {
 fn the_latch_arms_on_the_catalog_click_and_the_selection_change_disarms_it() {
     let (sim, _scene, map, star) =
         live_shape(ShapeKind::Star, ShapeKind::Star.defaults(), [0.0, 0.0]);
-    let mut vec = VecState::default();
-    vec.entities = map;
+    let mut vec = VecState {
+        entities: map,
+        ..VecState::default()
+    };
     vec.pen.select_many(&[star]);
     vec.draw_config.mode = DrawMode::Shape;
     let (mut t, mut store) = (tools(), store());
@@ -98,8 +100,10 @@ fn the_seed_memo_is_the_pair_and_without_a_target_the_catalog_seeds() {
 fn a_change_from_a_canvas_handle_reseeds_the_fields() {
     let (mut sim, mut scene, map, star) =
         live_shape(ShapeKind::Star, ShapeKind::Star.defaults(), [0.0, 0.0]);
-    let mut vec = VecState::default();
-    vec.entities = map;
+    let mut vec = VecState {
+        entities: map,
+        ..VecState::default()
+    };
     vec.pen.select_many(&[star]);
     let (mut t, mut store) = (tools(), store());
     frame_fields(&mut vec, &sim, &mut t, &mut store, PX);

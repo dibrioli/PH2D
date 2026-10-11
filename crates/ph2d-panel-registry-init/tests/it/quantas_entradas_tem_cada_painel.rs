@@ -2133,7 +2133,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):
     //    `9 × ROW_H_PX (25) = 225` exactos. ⚠️ Recolher não se aplica; quem mudar isto mude a lista.
-    ("tokens", 3091.0),
+    // ⬆️ `3 091 → 3 116` em 2026-10-11 (UIUX F9), pela MESMA razão: uma fileira nova, o apelido
+    //    `shape-handle` (as alças de parâmetro das formas): `1 × ROW_H_PX (25)` exactos.
+    ("tokens", 3116.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

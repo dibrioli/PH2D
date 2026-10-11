@@ -85,7 +85,7 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
 | **W0** ✅ | as 12 fotos do Rebelle em `fixtures/rebelle/` com cabeçalho; `mede_todos.sh` sem caminho de scratchpad; a régua em Rust; a lei raio → largura medida e diagnosticada (§1.1). `PH2D_SONDA_PRESET` passa para a W1 (antes dela não há presets) | o gate de largura passa para a W2 (§1.1) |
 | **W1** ✅ | crate `ph2d-brush-presets` (`*.ph2d-brush.png`), fábrica em `assets/brushes/WetPainter/`, navegador + os volumes VIVOS (Size px, Water; Opacity/Pressure/Length sem leitor ⇒ fora) | round-trip ao byte; presets contados; campo desconhecido não falha; miniatura = a do motor; o pincel guardado pinta o mesmo traço ao byte |
 | **W1b** ✅ (08/10) | **as gotas pela lei do Rebelle** ([06](06_gotas_rebelle_x_ph2d.md)): a gravidade sai do pincel e vai para a TELA (o dial de inclinação, **desligado** de fábrica); Create Drips · Drip Size · Drip Length passam a ser do PAPEL (a obra); a água de fábrica dos presets desce para a faixa do Rebelle; o MECANISMO da gota no motor (ficheiro irmão do solver) | a bancada do 06 (`sonda_gotas` + `ferramentas/gota*`): tela direita ou inclinação a meio ⇒ **0**; inclinação máx. ⇒ gota **≥ 250 px** nos traços de água ≥ 0,7 e **0** nos de 0,4 e 0,2, **1–2 gotas por traço, ≤ 4 px de largura** (Rebelle 249–283 px, 1–3 px); Create Drips off ⇒ 0 e a orla de baixo escura; Size/Length 10/10 ⇒ ≥ 450 px em funil (Rebelle 463–465) · nenhum preset leva `gravity` · controlo: knobs das gotas no neutro e inclinação desligada ⇒ o traço de hoje ao byte |
-| **W2** | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv — e a **largura prometida** (§1.1: o raio do motor sai da tabela do preset, em `stamp_dabs_wetpaint`) | **largura = 2·raio ± 2 px** em raios fora da tabela, de 2 a 300 (hoje 0,25–0,60 × e o buraco 11–15) · a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
+| **W2** ◐ (a largura ✅ 11/10, §4b) | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv — e a **largura prometida** (§1.1: o raio do motor sai da tabela do preset, em `stamp_dabs_wetpaint`) | **largura = 2·raio ± 2 px** em raios fora da tabela, de 2 a 300 (hoje 0,25–0,60 × e o buraco 11–15) · a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
 | **W3** | campo de altura no grid (fios Add/Remove), oleosidade = viscosidade, luz do Impasto por porta livre | óleo: borda/miolo **0,8–0,9** (hoje 0,52 ✗; dele 0,87) e textura na banda da W2; acrílico: largura A = B |
 | **W4** | lei do papel do fluido (força × pressão, contraste, scratch, fundo que fura, `PaperBehaviour` × 5 papéis) | lápis 8B: textura **≥ 8 %**, borda/miolo **< 0,5** (dele 9,1 / 0,32; não temos lápis) |
 | **W5** | Paint / Paint&Mix / Paint&Blend / Blend / Erase por pressão e limiar da queda; Loading+Length; Dirty Brush; Glaze | 1.º a bancada do Rebelle (03 §4, redondo a cruzar + 3.º traço fora); depois o nosso na mesma direcção |
@@ -1188,8 +1188,73 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
 - **Falta (só com ordem do dono):** o fecho da linha (`/pd-linha-fechar`, handoff).
   (O degrau 187 → 188 das gotas foi desfeito com elas: a linha não muda o schema.)
 
+- ✅ **Presets de todas as mídias — o mapa, a W2 e o 1.º lote (11/10, prompt [17](17_PROMPT_janela_presets_todas_as_midias.md)).**
+  O mapa inteiro, a régua e as lições: **[18_mapa_das_midias.md](18_mapa_das_midias.md)**.
+  - **Fase A — o mapa, medido.** Os 281 presets em texto ([`fixtures/rebelle_presets_281.json`](fixtures/rebelle_presets_281.json),
+    com cabeçalho) e **13 fotos novas do oráculo** nos nossos gestos (25 em [`fixtures/rebelle/`](fixtures/rebelle/README.md)); ~90 receitas
+    varridas por `tests/it/sonda_midias.rs` (JSON sem recompilar) e medidas por `ferramentas/midias_regua.py` contra a foto da mesma
+    mídia e o controlo (o Wet Round à mesma largura), secas. **Veredito:** hoje o Wet Paint só pinta a família **aquarela**. Caneta,
+    nanquim e marcador passam as 7 métricas do traço mas **tapam no cruzamento** (nosso 1,00 · Rebelle 0,016–0,24 — a métrica nova que
+    os reprovou); o nanquim entra inteiro só com a mistura de pigmentos da OBRA ligada (0,245 · 0,24). Óleo/acrílica: sem estrias
+    (textura 1,0 · 5,9). Lápis, carvão, pastéis, giz e aerógrafo: sem água o depósito quase some. A guache do Rebelle nos volumes de
+    fábrica é o nosso Round (cob 0,22 · 0,19, borda 0,99 · 1,00) e o Flat dele tem a forma de pontas retas que não temos ⇒ nenhum
+    preset com esses nomes. A acrílica do Rebelle é a ferramenta «Oil & Acrylic» (o Express Oil é óleo de secagem rápida).
+  - **Fase B — a W2, a largura prometida** (`wetpaint/largura.rs`, entra no `dab_spec.rs::authored_spec` do Wet Paint): o traço
+    nasce com o raio do MOTOR cuja largura medida é o número do painel (e o espaçamento dos carimbos é o desse raio — na 1.ª versão,
+    a troca no `dab_route` deixava o espaçamento do raio pedido e errava +50 % a 110 px); o anel continua no raio pedido. A lei de
+    cada preset é a `width_table` MEDIDA pelo gerador: **64 raios do motor de 1,5 a 1 100**, com a água assentada (480 quadros; a
+    0 quadros o Round a raio 30 lê 8 px — as tabelas antigas prometiam o dobro), a tela direita (o Drip escorria e lia 6 px a raio
+    200) e acima de 512 pela lei crua × 2 (`set_wet_largura_crua`: o slider pára em `BRUSH_SIZE_MAX_PX` — o «teto de 345 px» que a
+    sonda leu era ele). ⭐ **A régua é a largura a ¼ do máximo da coluna** (`sonda_gestos::largura_que_se_ve`): igual à de meia
+    altura em todo traço de borda definida (as 4 fotos do Rebelle e o nosso Round/Wash/Drip: 50 · 35 · 25 · 15 % dão o mesmo), e a
+    única honesta na cerda partida (o Dry Brush a meia altura lê o miolo, 32 px, e a nuvem de fios que se vê vai a 52). Sem preset,
+    a lei do Wet Round (`LARGURA_DO_WET_ROUND`, gate `a_lei_de_omissao_e_a_do_wet_round`); o pincel guardado leva a do preset de onde
+    veio (a ponte já não a apaga); o preview/miniatura levam-na (sem isso a miniatura do Drip mudava com a tabela embutida).
+    **Portão `a_largura_e_a_prometida`** (5 presets × 2, 3,5, 7, 13, 26, 55, 120, 300): **antes VERMELHO** — tabelas antigas: Round
+    raio 26 → 94 px, 120 → 343; controlo dentro: a lei crua do Round reprova. **Depois VERDE**: até 100 px ± 1 px; acima ≤ 1,8 %
+    (Round 605/600, Dry 589/600, Drip 243/240). A barra: ± 2 px, ± 2 % acima de 100 px — a lei ondula de raio para raio (franja das
+    cerdas): 64 e 128 pontos erram o mesmo, e cinco traços ao mesmo raio variam ±1–3 px (`sonda_ruido_da_largura`).
+    ⛔ **Medido e recusado:** a troca do raio no `dab_route` (espaçamento errado) · a régua de meia altura (o Dry Brush: −3,6 % a
+    +6,7 % e uma isenção nomeada, que saiu com a régua de ¼) · tabelas de 128 pontos (sem ganho, o dobro do gerador: 12 min).
+    **A W2 re-rotula o número**: o tamanho 40 pede ao motor o carimbo que antes se pedia com ~70. ⇒ os portões da FÍSICA que medem
+    uma lei num carimbo de tamanho fixo (mistura seco/molhado, Live Water, camadas, Wet Drip, Heavy Edge, achatamento, a célula maior
+    que o pincel, o Smooth Edges no zero, o S e a bancada ao byte) passam a medi-la na lei crua (`set_wet_largura_crua(1.0)` depois
+    de aplicar o preset — 21 pontos em 8 ficheiros); sem isso 9 deles reprovavam (sangria seca +0,42 contra +0,02…+0,05: a cena
+    estava desenhada para o carimbo antigo). **Os 4 de fábrica re-medidos à largura MEDIDA do Rebelle** (05 §4.1; plano, 30 s):
+    carga 52 · 36 · 100 · 60 (Rebelle 54 · 39 · 102 · 60 — sem recalibrar), largura 32 · 41 · 45* · 33 (32 · 41 · 34 · 32), orla
+    1,06 · 1,36 · 0,23 · 1,04 (0,92 · 1,41 · 1,00 · 0,91), escorre inclinado 35 · 4 · 0 · 68 (350 · 0 · 1 · 348). *A extensão absoluta
+    do Dry Brush (escuro > 25) inclui os fios soltos; a ¼ do máximo é 34. O Dry Brush continua o mais longe do Rebelle (orla 0,23,
+    estrias partidas onde o dele é estriado e cheio) — é a franja com física própria, o resto da W2. A fábrica regerou-se no mesmo
+    commit da lei (`a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` vermelho antes, como esperado).
+    **Os fios com física própria NÃO entraram:** a Fase A mostrou que o óleo/acrílica reprovam por três razões (estrias, relevo,
+    tinta finita) — os fios sozinhos não os põem na barra; plano no 18 §5 (bloco C).
+  - **Fase C — o 1.º lote: o Wet Liner** (`Watercolor/Fluid/Wet Liner`, 5.º de fábrica): o Liner do Rebelle (duro, carregado, papel
+    0,10, 28,86 px) ⇒ dureza 0,9, pigmento 100, água 0,5, Paper Gate 0,05, Edge Darkening 100, 29 px. À largura 38, seco: cobertura
+    **0,716** (Rebelle 0,653 · Round 0,184), textura **3,9 %** (1,7 · 8,5); a borda (0,93 · 1,05 · 1,00) não distingue a mídia do Round
+    acima do ruído do Rebelle e não conta. ⭐ **Portão `cada_preset_parece_a_sua_midia`** (`tests/it/midias_de_fabrica.rs`, a régua do
+    Python portada em `regua_midia.rs`, conferida na mesma imagem: 0,713/4,07 contra 0,71/4,1) com o CONTROLO dentro: o Wet Round tem
+    de estar a mais de 3× o ruído do Rebelle da foto em cada métrica usada. [Prancha 1:1](prancha_presets_midias.png)
+    (nosso · Rebelle · controlo; `ferramentas/prancha_midias.sh`). 02 §6.9 com a linha nova.
+  - **A Strength no traço do Wet Paint é 1** (`dab_spec.rs::authored_spec`): o carimbo só a usava para recuperar a pressão
+    (`cobertura ÷ strength`), e a divisão não volta exata — com o carimbo da W2, `o_pincel_guardado_pinta_o_mesmo_traco` (o
+    pincel a 0,85 contra o mesmo pincel guardado, que não leva a Strength) passou a diferir em **1 px**, 3 de 3. A 1 a cobertura
+    é a pressão; quem pintava a 1 (a fábrica, todo preset) não muda ao bit. **Flakes de carga confirmadas sozinhas:**
+    `the_water_runs_at_a_usable_rate_under_a_real_frame_loop` (7,5 Hz a load 41–65; sozinho 2/2) e
+    `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` (sozinho 3/3 a load 11) — membros da família.
+  - **HR-15:** o navegador mostrava as pastas de fábrica cruas («Watercolor · Fluid»); agora pela tabela
+    (`app.painter.presets.folder.*`, `rotulo_da_pasta`), gate `cada_pasta_de_fabrica_tem_rotulo` no idioma de teste (a pasta do
+    artista mostra-se como ele a chamou). O teste da ponte que dizia «4» conta a fábrica.
+  - **Aberto:** (a) a ordem das mídias de fora e a decisão da tinta (18 §5 — do dono) · (b) as duas bancadas do Rebelle discordam do
+    Round (tinta 54 nas gotas, cobertura 0,78 nos gestos; 18 §2) · (c) o Dry Brush longe do Rebelle (orla, estrias) — os fios ·
+    (d) a W2 prometida a ±2 px até 100 px e ±2 % acima (a lei ondula; a cura é a franja determinística dos fios).
+
 ## §5 — A próxima janela (a W2)
 
+> ⭐⭐ **11/10, depois do 17:** a W2 (a largura) e o 1.º lote (o Wet Liner) fecharam (§4b «Presets de todas as mídias»).
+> A próxima janela é a do bloco que o dono escolher no [18 §5](18_mapa_das_midias.md) (A: a lei da tinta por preset — caneta,
+> nanquim, marcador · B: o caminho sem água + o papel — lápis, carvão, pastéis, aerógrafo · C: os fios + a altura — óleo, acrílica).
+> O texto abaixo é o plano da W2 de 08/10, histórico.
+>
 > ⭐ **11/10 — o prompt da próxima janela é o [17](17_PROMPT_janela_presets_todas_as_midias.md)** (pedido do
 > dono: os presets de TODAS as mídias): o mapa das mídias medido contra o Rebelle, a W2 abaixo (a largura
 > prometida) como base, e o 1.º lote de presets que o motor já pinta como a mídia. O texto abaixo é o plano

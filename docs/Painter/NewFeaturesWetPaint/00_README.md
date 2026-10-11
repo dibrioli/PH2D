@@ -21,7 +21,8 @@
 
 | Doc | O que tem |
 |---|---|
-| [17_PROMPT_janela_presets_todas_as_midias.md](17_PROMPT_janela_presets_todas_as_midias.md) | **O prompt da PRÓXIMA janela** (dono 11/10) — os presets de TODAS as mídias no Wet Paint: o mapa das mídias medido contra os 281 presets e as fotos do Rebelle, a W2 (a largura prometida, a base de todo preset) e o 1.º lote de presets novos, cada um com um portão que reprova o Wet Round |
+| [18_mapa_das_midias.md](18_mapa_das_midias.md) | **O mapa das mídias** (11/10): cada mídia do dono contra os 281 presets e 25 fotos do Rebelle, medida à largura igual com o controlo dentro — hoje o Wet Paint só pinta a família aquarela (+ o **Wet Liner**); a métrica do CRUZAMENTO (a tinta e o marcador escurecem, os nossos tapam); o plano das mídias de fora em três blocos e a decisão do dono |
+| [17_PROMPT_janela_presets_todas_as_midias.md](17_PROMPT_janela_presets_todas_as_midias.md) | O prompt da janela de 11/10 (cumprido: 05 §4b «Presets de todas as mídias») — os presets de TODAS as mídias no Wet Paint: o mapa das mídias medido contra os 281 presets e as fotos do Rebelle, a W2 (a largura prometida, a base de todo preset) e o 1.º lote de presets novos, cada um com um portão que reprova o Wet Round |
 | [16_PROMPT_janela_auditoria_mistura_simplificacao.md](16_PROMPT_janela_auditoria_mistura_simplificacao.md) | O prompt da auditoria multi-agente da mistura (o azul-claro do Wet Drip com as caixas K–M) — o estado no 05 §4b «Mistura II» |
 | [15_PROMPT_janela_auditoria_mistura.md](15_PROMPT_janela_auditoria_mistura.md) | O prompt da auditoria e cura da mistura de pigmentos (amarelo sobre azul seco dá preto e nunca cobre; smoke do dono 10/10), as hipóteses a medir e a barra pelo Rebelle |
 | [14_smooth_edges_a_borda_suave.md](14_smooth_edges_a_borda_suave.md) | **O Smooth Edges do Wet Paint** (W1g, aprovado pelo dono 10/10): a lei da borda suave por raio, as três tentativas recusadas e a lição (a dureza que se vê é o contorno escuro por DENTRO da mancha), os portões e o custo |
@@ -35,8 +36,8 @@
 | [01_o_que_o_rebelle_tem_e_nos_nao.md](01_o_que_o_rebelle_tem_e_nos_nao.md) | A avaliação paralela: inventário dos dois lados, a tabela de lacunas por família, **porque o traço dele é superior** (as sete leis medidas e as refutadas), e o **plano de implementação** por onda, com gates |
 | [02_presets_para_wet_painter.md](02_presets_para_wet_painter.md) | Como o Rebelle configura cada meio (esquema de 200 parâmetros, lido de 281 presets de fábrica), a tradução para o nosso `BrushSpec`, o **formato de preset** proposto e os **presets de arranque de cada mídia** |
 | [03_tracos_medidos_rebelle_x_ph2d.md](03_tracos_medidos_rebelle_x_ph2d.md) | A bancada: os mesmos gestos nos dois programas, a régua (`ferramentas/mede_traco.py`), as tabelas e o que elas dizem |
-| [fixtures/](fixtures/) | `rebelle/` (as 12 fotos do oráculo sobre os nossos gestos, com cabeçalho) · `sonda_28/` (a nossa sonda em `main` 2a925859d: o «antes» e a imagem da cerca) |
-| [ferramentas/](ferramentas/) | `cerca.sh` (a cerca por ficheiros: os outros meios só ganham linhas) · `fixtures_rebelle.py` · `mede_todos.sh` · `extrai_pinceis.py` · `schema.py` · `por_meio.py` · `curvas.py` · `difere.py` (os dados dos presets) · `mede_traco.py` (a régua dos dois lados) · `tracos_rebelle.sh` · `reinicia.sh` · `xtree.py` (a porta do oráculo) |
+| [fixtures/](fixtures/) | `rebelle/` (as 25 fotos do oráculo sobre os nossos gestos, com cabeçalho) · `rebelle_presets_281.json` (os parâmetros dos 281 presets, em texto) · `sonda_28/` (a nossa sonda em `main` 2a925859d: o «antes» e a imagem da cerca) |
+| [ferramentas/](ferramentas/) | `cerca.sh` (a cerca por ficheiros: os outros meios só ganham linhas) · `fixtures_rebelle.py` · `mede_todos.sh` · `extrai_pinceis.py` · `schema.py` · `por_meio.py` · `curvas.py` · `difere.py` (os dados dos presets) · `mede_traco.py` (a régua dos dois lados) · `midias_regua.py` + `prancha_midias.sh` (as mídias, 18) · `tracos_rebelle.sh` · `reinicia.sh` · `xtree.py` (a porta do oráculo) |
 
 A sonda do nosso lado vive em `crates/ph2d-tool-painter/tests/it/sonda_tracos_por_meio.rs` (`#[ignore]`):
 

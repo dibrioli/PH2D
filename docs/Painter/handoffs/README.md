@@ -88,6 +88,7 @@
 | 2026-09-25 |  | [HANDOFF_INTEGRACAO_line_PainterWatercolor_A_LINHA_2026-09-25.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_A_LINHA_2026-09-25.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/PainterWatercolor`, a linha inteira |
 | 2026-10-07 |  | [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-07.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-07.md) | integração | `line/PainterWatercolor`: o papel é do documento e a aguada é um filtro (BUGS #35–#46, docs 47–48) |
 | 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-11.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-11.md) | integração | `line/PainterWatercolor`: o Wet Painter (presets, W1e–W1g, mistura, a claridade é o pigmento, Mistura II; BUGS #47) |
+| 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-11_PRESETS_MIDIAS.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-11_PRESETS_MIDIAS.md) | integração | `line/PainterWatercolor`: presets de todas as mídias (o mapa, a W2 a largura prometida, o Wet Liner; doc 18) |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

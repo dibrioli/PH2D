@@ -399,6 +399,14 @@ Comuns: `accumulate=false`, `use_AA=false` nos ásperos, `paper_depth` 0,9 com c
 | Wet Wash | 1,0 | **0,4** | **21** | 0,6 | 0,3 | 0,7 | **20** | direita | 3 / 3000 |
 | Wet Dry Brush | 1,0 | 0,2 | **300** | 1,6 | **0,4** | 1,5 | **56,25** | direita | 1,5 / 1500 |
 | Wet Drip | 1,0 | 1,0 | **63** | 0,8 | 0,2 | 0,6 | **20** | máximo, para baixo | 2 / 2000 |
+| **Wet Liner** (11/10) | 1,0 | **0,5** | **100** | 1,0 | **0,05** | 1,0 | **100** | direita | 2 / 2000 · dureza **0,9** · **29 px** |
+
+> ✅ **11/10 (prompt 17, 05 §4b «Presets de todas as mídias»):** o **Wet Liner** é o 1.º preset de mídia do mapa
+> ([18](18_mapa_das_midias.md)): o Liner do Rebelle (`Watercolor/Liner`: duro, carregado, papel 0,10, 28,86 px), medido à largura 38
+> seco — cobertura 0,72 · 0,65 (Round 0,18), textura 3,9 · 1,7 % (Round 8,5). E a **W2**: o número do Size é a largura que se vê
+> (a ¼ do máximo) ± 2 px até 100 px e ± 2 % acima, nos cinco; cada preset leva a lei MEDIDA (`width_table`, 64 raios do motor). Os
+> quatro de cima re-medidos à largura MEDIDA do Rebelle (nosso · Rebelle; plano, 30 s): carga 52 · 54, 36 · 39, 100 · 102, 60 · 60;
+> largura 32 · 32, 41 · 41, 34 (¼ máx.) · 34, 33 · 32 — sem recalibrar.
 
 > **O que os presets NÃO podem fingir:** o esborrato entre carimbos, a sequência de texturas por pressão,
 > o fundo que fura, o pincel secundário, a tinta finita, a mistura por queda de pressão, a largura por

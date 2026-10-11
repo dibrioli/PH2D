@@ -119,6 +119,14 @@ export 5, edit 6, sync 3, editor-core 4, app-board 7.
 
 ## 8. Smoke do dono
 
+O binário está compilado na worktree (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`,
+2.ª corrida, depois de `rm -rf target/*/incremental`):
+
+```text
+    Finished `smoke` profile [optimized] target(s) in 0.33s
+```
+
+
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && PH2D_BOARD_SMOKE=15 ./target/smoke/ph2d-host-desktop`
 2. Abre um quadro «Pictures» com uma moldura «Moodboard» (uma fotografia, o sol recortado, a mesma redonda e
    rodada, um ícone redondo laranja) e seis notas amarelas por baixo — cada nota é um passo a experimentar.

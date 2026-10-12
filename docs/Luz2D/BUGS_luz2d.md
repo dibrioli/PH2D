@@ -62,3 +62,22 @@
 - **A cura:** `Config::cabe_na_placa` em toda textura da `PassList`; a fina que cede (`teto::fina_que_cabe`);
   o nascimento do `Solver` sob os escopos OutOfMemory + Validation (`ErroSolver::SemMemoria`). Gates:
   `os_tetos_da_placa` (6, com o controlo do degrau da W5d e a placa a recusar de verdade). Handoff W5e.
+
+## 5. «Ao baixar o Opacity do azul, o laranja da sombra desapareceu — nem sempre» (12/10, cena 7)
+
+- **O sintoma enganava:** parecia a sombra do laranja (o rebote dele que chega à sombra do azul). Era o
+  CORPO do azul: «interior de opaco» era IGUALDADE a opacidade 1, nos dois lados (placa e gabarito). A 0,999
+  o interior mostrava a luz transmitida (× 0,001: PRETO, 0,0003 contra 2,70) e o albedo caía a zero (o
+  teal do azul sumia do anel e da sombra). O «nem sempre»: as duas bolas de cima são UM objeto Flip.
+- **E um segundo salto, escondido pelo 1.º:** com a lei do interior já contínua, a face a 0,999 ainda
+  caía −14 % no G/B. A cascata holográfica (`hrc_soma`) lê o texel na sonda «+1» adiante, salvo se ela
+  cai num OPACO (`τ = 0`); a sonda num translúcido a 0,999 contava como «fora» e ainda multiplicava pelo
+  τ dela — o texel colado à face lia o interior × 0,001 (o −43 % que a W5c mediu e curou só no opaco). O
+  borrão em cruz (`hrc_saida`) misturava os dois lados da borda translúcida pela mesma razão.
+- **Por que nenhum gate o via:** os portões do translúcido afirmavam a lei velha (`o_translucido_nao_
+  reflete*`, «um vidro continua a atenuar por dentro») e nenhum varria a opacidade junto a 1.
+- **A cura (W5k):** mostrado = `mix(transmitida, exterior/miolo, α)`, albedo `α·a`, o predicado
+  geométrico «dentro de um corpo» = `τ < 1` (`num_corpo`); a sonda adiante e o vizinho do borrão pesam o
+  τ (contínuos; em τ ∈ {0, 1} o bit de antes). Gates: `a_luz_e_continua_na_opacidade_do_oclusor` (a
+  cena do dono), `o_interior_e_continuo_na_opacidade` e `um_vidro_mistura_a_transmitida_e_o_exterior_pela_
+  opacidade` (gabarito), `o_translucido_reflete_a_sua_parte*` (gabarito e placa). Handoff W5k.

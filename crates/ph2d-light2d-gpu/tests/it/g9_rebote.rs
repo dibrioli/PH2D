@@ -631,25 +631,27 @@ fn sonda_g9_pelo_tamanho_da_grade() {
     }
 }
 
-/// ⭐ **O translúcido não reflete na placa** (a lei do plano §2.4; mutação P5 da W5c): a sala com as
-/// paredes a 0,99 de opacidade e albedo — com e sem o rebote, a MESMA fluência, bit a bit.
+/// ⭐ W5k — **o translúcido reflete a sua parte na placa** (`α·a`, contínuo em `α`; até a W5k o 0,99
+/// não refletia nada e a sala perdia a cor de uma vez): com as paredes a 0,99 os pontos ficam a 2 % da
+/// sala opaca, e o chão junto à vermelha continua tingido (sem o rebote, branco).
 #[test]
-fn o_translucido_nao_reflete_na_placa() {
+fn o_translucido_reflete_a_sua_parte_na_placa() {
     let Some(gpu) = gpu() else { return };
-    let mut cena = sala();
-    for o in &mut cena.oclusores {
+    let mut vidro = sala();
+    for o in &mut vidro.oclusores {
         o.opacidade = 0.99;
     }
     let (_, lado, texel) = DEGRAUS[1];
     let g = grade(lado, texel);
-    let mut com = Solver::novo(&gpu, com_rebote(g, true)).expect("solver");
-    let mut sem = Solver::novo(&gpu, com_rebote(g, false)).expect("solver");
-    for _ in 0..8 {
-        com.quadro(&gpu, &cena);
-        sem.quadro(&gpu, &cena);
+    let mut s = |rebote| Solver::novo(&gpu, com_rebote(g, rebote)).expect("solver");
+    let opaca = depois_de(&gpu, &mut s(true), &sala(), QUADROS);
+    let com = depois_de(&gpu, &mut s(true), &vidro, QUADROS);
+    let sem = depois_de(&gpu, &mut s(false), &vidro, QUADROS);
+    for k in 0..4 {
+        let e = erro(com[k], opaca[k]);
+        assert!(e <= 0.02, "ponto {k}: {:?} a 0,99 × {:?} opaca ({e:.4})", com[k], opaca[k]);
     }
-    assert!(
-        ler_fluencia(&gpu, &com) == ler_fluencia(&gpu, &sem),
-        "um translúcido com albedo refletiu"
-    );
+    let tinge = |l: [f64; 3]| l[0] / l[1];
+    assert!(tinge(com[0]) > 1.2, "o chão junto à vermelha a 0,99: {:?}", com[0]);
+    assert!((tinge(sem[0]) - 1.0).abs() < 0.01, "sem rebote, branco: {:?}", sem[0]);
 }

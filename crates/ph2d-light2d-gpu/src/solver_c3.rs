@@ -315,6 +315,32 @@ impl C3 {
             5,
             &e.vistas[op.preenche_final(cfg).unwrap_or(e.sementes_finais)],
         ));
+        // ⭐ W5k: a transmitida dos translúcidos para o miolo; sem ele a fina mistura-a no sítio e a
+        // ligação recebe uma textura de 1 × 1 que nunca se escreve.
+        entradas.push(entrada_escrita(6, formato));
+        let transmitida = Opcionais::de(cfg).miolo.map(|m| m[4]);
+        let vazia = transmitida.is_none().then(|| {
+            device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some("luz2d/tex/transmitida_vazia"),
+                    size: wgpu::Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: formato,
+                    usage: wgpu::TextureUsages::STORAGE_BINDING,
+                    view_formats: &[],
+                })
+                .create_view(&wgpu::TextureViewDescriptor::default())
+        });
+        grupo.push(vista(
+            6,
+            transmitida.map_or_else(|| vazia.as_ref().expect("a vazia"), |t| &e.vistas[t]),
+        ));
         let g2 = layout(device, "luz2d c3 fina", &entradas);
         let grupo_fina = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("luz2d c3 fina"),

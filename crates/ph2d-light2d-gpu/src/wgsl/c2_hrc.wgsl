@@ -277,6 +277,14 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     r_saida[e] = empacotar(Par(soma, 0.0));
 }
 
+// O R0 do cone 0 na sonda `(u, v)` (o céu × o arco além da última).
+fn r0_na_sonda(u: u32, v: u32) -> vec3<f32> {
+    if u < hrc.nx {
+        return desempacotar(r_cima[indice_r(hrc.nx, 0u, u, v, 0u)]).r;
+    }
+    return cas.ceu.rgb * arco(0u, 0u);
+}
+
 // ── A fluência do quadrante: L(u, v) += R0((u + 1, v), 0) ──
 @compute @workgroup_size(64)
 fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
@@ -286,20 +294,27 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     let u = e % hrc.eixo.x;
     let v = e / hrc.eixo.x;
-    var onde = u;
-    if MAIS_UM_HRC && meio(na_grade(f32(u + 1u), f32(v))).tau > 0.0 {
-        onde = u + 1u;
+    // ⭐ W5k: a sonda adiante pesa a TRANSMISSÃO da face entre as duas, `τ_adiante / τ_aqui` — 1 no
+    // mesmo meio ou para um mais claro (o «+1»), 0 num opaco (o próprio u), e de fora para um
+    // translúcido o τ dele (contínuo em α: a 0,999 é quase o opaco, a 0,001 quase nenhum corpo).
+    let tau = meio(na_grade(f32(u), f32(v))).tau;
+    var adiante = 0.0;
+    if MAIS_UM_HRC {
+        let t1 = meio(na_grade(f32(u + 1u), f32(v))).tau;
+        adiante = select(select(t1 / tau, 1.0, t1 >= tau), 0.0, t1 <= 0.0);
     }
-    var f = cas.ceu.rgb * arco(0u, 0u);
-    if onde < hrc.nx {
-        f = desempacotar(r_cima[indice_r(hrc.nx, 0u, onde, v, 0u)]).r;
+    var f = r0_na_sonda(u, v);
+    if adiante >= 1.0 {
+        f = r0_na_sonda(u + 1u, v);
+    } else if adiante > 0.0 {
+        f = mix(f, r0_na_sonda(u + 1u, v), adiante);
     }
     // Partir de DENTRO de um translúcido conta como entrada (a lei do gabarito): os traços da sonda
-    // começam «já dentro» e não a contam. A sonda dentro de um OPACO fica com a luz que a rodeia: a
-    // máscara tira-a da bilinear, mas onde as quatro de um texel caem dentro (um enxame denso) a
-    // bilinear crua lê-a — com zero, pintas pretas (medido na foto da cena 2, W5c).
-    let tau = meio(na_grade(f32(onde), f32(v))).tau;
-    if tau > 0.0 {
+    // começam «já dentro» e não a contam — o τ do TEXEL (W5k: não o da sonda lida). A sonda dentro de
+    // um OPACO fica com a luz que a rodeia: a máscara tira-a da bilinear, mas onde as quatro de um texel
+    // caem dentro (um enxame denso) a bilinear crua lê-a — com zero, pintas pretas (medido na foto da
+    // cena 2, W5c).
+    if tau > 0.0 && tau < 1.0 {
         f *= tau;
     }
     let t = texel_da_grade(u, v);
@@ -318,7 +333,8 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let P = vec2<f32>(gid.xy) + 0.5;
-    let fora = meio(P).tau > 0.0;
+    let tau_p = meio(P).tau;
+    let fora = tau_p > 0.0;
     let i = gid.y * hrc.grade.x + gid.x;
     var f = acumulado[i].rgb;
     if BORRAO_HRC {
@@ -330,12 +346,23 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
             if any(q < vec2<i32>(0)) || any(q >= vec2<i32>(hrc.grade)) {
                 continue;
             }
-            // O vizinho do OUTRO lado de uma borda não entra (a opacidade difere).
-            if (meio(vec2<f32>(q) + 0.5).tau > 0.0) != fora {
+            // O vizinho do OUTRO lado de uma borda não entra (a opacidade difere) — ⭐ W5k: no
+            // translúcido pesa a transmissão da face, `min τ / max τ` (contínuo; só peso, nunca
+            // reescalado: a emissão própria de quem reflete não leva o τ); entre τ iguais 1 e através
+            // de um opaco 0 (o bit de antes).
+            let tau_q = meio(vec2<f32>(q) + 0.5).tau;
+            let a = acumulado[u32(q.y) * hrc.grade.x + u32(q.x)].rgb;
+            if tau_q == tau_p {
+                soma += a;
+                peso += 1.0;
                 continue;
             }
-            soma += acumulado[u32(q.y) * hrc.grade.x + u32(q.x)].rgb;
-            peso += 1.0;
+            let w = min(tau_q, tau_p) / max(tau_q, tau_p);
+            if w <= 0.0 {
+                continue;
+            }
+            soma += w * a;
+            peso += w;
         }
         f = soma / peso;
     }

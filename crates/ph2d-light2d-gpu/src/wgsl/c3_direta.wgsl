@@ -425,6 +425,22 @@ fn alcanca(P: vec2<f32>, L: Lampada, folga: f32) -> bool {
     return queda(d * cas.texel_m, L.inv_alcance) > 0.0;
 }
 
+// ⭐ W5k: o τ do meio do ponto onde a `c0_em` se pede — 1 FORA dos corpos (o exterior; a omissão), o
+// do translúcido na transmitida de dentro dele (só à volta dela).
+var<private> c0_tau: f32 = 1.0;
+
+// ⭐ W5k — o peso de uma sonda vista de FORA: o τ dela se cai num translúcido (a 0,999 ≈ o opaco que o
+// alfa da c0 já tira; a 0,001 ≈ nenhum corpo), 1 no resto (o opaco é do alfa: o bit de antes). Só PESO,
+// nunca `v / τ`: a sonda dentro de um corpo que reflete apanha a própria emissão sem o τ, e dividi-la
+// fazia o rebote divergir (a sala a 0,99: 10⁴, medido).
+fn peso_de_fora(t: vec2<i32>) -> f32 {
+    if c0_tau < 1.0 {
+        return 1.0;
+    }
+    let tau = meio(vec2<f32>(t) + 0.5).tau;
+    return select(1.0, tau, tau > 0.0 && tau < 1.0);
+}
+
 // A c0 (as cascatas) bilinear no ponto P das cascatas — a conta do `receber.wgsl`, bordas presas.
 // Com o preenchimento, só as sondas de FORA dos opacos (o alfa da c0), renormalizadas.
 fn c0_em(P: vec2<f32>) -> vec3<f32> {
@@ -440,7 +456,8 @@ fn c0_em(P: vec2<f32>) -> vec3<f32> {
     let c11 = textureLoad(c0_fluencia, r, 0);
     if PREENCHE {
         let w = vec4<f32>((1.0 - fr.x) * (1.0 - fr.y), fr.x * (1.0 - fr.y), (1.0 - fr.x) * fr.y, fr.x * fr.y)
-            * vec4<f32>(c00.a, c10.a, c01.a, c11.a);
+            * vec4<f32>(c00.a, c10.a, c01.a, c11.a)
+            * vec4<f32>(peso_de_fora(q), peso_de_fora(vec2<i32>(r.x, q.y)), peso_de_fora(vec2<i32>(q.x, r.y)), peso_de_fora(r));
         let soma = w.x + w.y + w.z + w.w;
         if soma > 0.0 {
             return (c00.rgb * w.x + c10.rgb * w.y + c01.rgb * w.z + c11.rgb * w.w) / soma;
@@ -455,7 +472,7 @@ fn c0_em(P: vec2<f32>) -> vec3<f32> {
                 let t = clamp(base + vec2<i32>(dx, dy), vec2<i32>(0), ultimo);
                 let c = textureLoad(c0_fluencia, t, 0);
                 let o = abs(vec2<f32>(base + vec2<i32>(dx, dy)) - u);
-                let wt = max(1.0 - 0.5 * o.x, 0.0) * max(1.0 - 0.5 * o.y, 0.0) * c.a;
+                let wt = max(1.0 - 0.5 * o.x, 0.0) * max(1.0 - 0.5 * o.y, 0.0) * c.a * peso_de_fora(t);
                 fora += c.rgb * wt;
                 peso += wt;
             }
@@ -490,7 +507,7 @@ fn c0_ao_longo_da_face(P: vec2<f32>, P0: vec2<f32>) -> vec3<f32> {
     var k = 1u;
     for (var i = -2; i <= 2; i++) {
         let q = P + t * f32(i);
-        if i == 0 || meio(q + 0.25 * n).tau <= 0.0 || meio(q - n).tau > 0.0 {
+        if i == 0 || num_corpo(q + 0.25 * n) || !num_corpo(q - n) {
             continue;
         }
         v[k] = c0_em(q);
@@ -533,7 +550,7 @@ fn na_fronteira(dentro: vec2<f32>, fora: vec2<f32>) -> vec2<f32> {
     var b = fora;
     for (var i = 0u; i < 8u; i++) {
         let m = 0.5 * (a + b);
-        if meio(m).tau <= 0.0 {
+        if num_corpo(m) {
             a = m;
         } else {
             b = m;
@@ -591,7 +608,7 @@ fn alem_do_eixo(a: vec3<f32>, b: vec3<f32>, h: f32) -> f32 {
 fn onde_calcular(id: vec2<u32>) -> Onde {
     borda_aqui = true;
     let P0 = ponto_fino(id);
-    if !PREENCHE || meio(P0).tau > 0.0 {
+    if !PREENCHE || !num_corpo(P0) {
         return Onde(P0, false, P0, 0.0);
     }
     let h = 1.0 / f32(fina.fina);
@@ -605,7 +622,7 @@ fn onde_calcular(id: vec2<u32>) -> Onde {
                 continue;
             }
             let Pt = ponto_fino(vec2<u32>(t));
-            if meio(Pt).tau <= 0.0 {
+            if num_corpo(Pt) {
                 continue;
             }
             cand[n_cand] = na_fronteira(P0, Pt);
@@ -725,7 +742,7 @@ fn pe_na_face(P0: vec2<f32>, b: vec2<f32>, h: f32) -> vec3<f32> {
     let fim = b + u * h;
     let a0 = P0 + w;
     let a1 = P0 - w;
-    if meio(a0).tau > 0.0 || meio(a1).tau > 0.0 || meio(fim + w).tau <= 0.0 || meio(fim - w).tau <= 0.0 {
+    if !num_corpo(a0) || !num_corpo(a1) || num_corpo(fim + w) || num_corpo(fim - w) {
         return vec3<f32>(u, -1.0);
     }
     let c0 = na_fronteira_fina(a0, fim + w, h);
@@ -746,7 +763,7 @@ fn na_fronteira_fina(dentro: vec2<f32>, fora: vec2<f32>, h: f32) -> vec2<f32> {
     let passos = u32(ceil(log2(max(distance(a, b) / (0.01 * h), 2.0))));
     for (var i = 0u; i < passos; i++) {
         let m = 0.5 * (a + b);
-        if meio(m).tau <= 0.0 {
+        if num_corpo(m) {
             a = m;
         } else {
             b = m;
@@ -815,9 +832,39 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
     if any(alvo >= fina.fim) {
         return;
     }
+    borda_aqui = true;
+    let tau = meio(ponto_fino(alvo)).tau;
+    let onde = onde_calcular(alvo);
+    var l = luz_fina(alvo, onde);
+    var t = vec3<f32>(0.0);
+    if onde.remapeado && tau > 0.0 {
+        c0_tau = tau;
+        t = luz_fina(alvo, Onde(ponto_fino(alvo), false, ponto_fino(alvo), 0.0));
+        c0_tau = 1.0;
+    }
+    guardar_fina(alvo, onde, l, t, tau);
+}
+
+// ⭐ W5k — a fluência do texel e, dentro de um corpo de opacidade `α = 1 − τ < 1`, a TRANSMITIDA `t`
+// (a luz que o atravessa até ele): `mix(t, l, α)` aqui, ou — com o miolo, que troca o `l` do interior
+// pela difusão — na textura que o `miolo_final` mistura (`α = 1` no opaco: o bit de antes).
+fn guardar_fina(alvo: vec2<u32>, onde: Onde, l: vec3<f32>, t: vec3<f32>, tau: f32) {
+    let translucido = onde.remapeado && tau > 0.0;
+    var saida = l;
+    if MIOLO {
+        if onde.remapeado {
+            textureStore(transmitida_saida, alvo, vec4<f32>(t, select(1.0, 1.0 - tau, translucido)));
+        }
+    } else if translucido {
+        saida = mix(t, l, 1.0 - tau);
+    }
+    textureStore(fina_saida, alvo, vec4<f32>(saida, alfa_do_miolo(onde)));
+}
+
+// A luz do texel fino `alvo` calculada em `onde`, com as duas faces.
+fn luz_fina(alvo: vec2<u32>, onde: Onde) -> vec3<f32> {
     // O texel remapeado (dentro de um opaco) MEDE a visibilidade: as sondas em volta do exterior mais
     // próximo podem estar fora da região.
-    let onde = onde_calcular(alvo);
     let remapeado = onde.remapeado;
     borda_aqui = remapeado;
     let P = onde.p;
@@ -871,7 +918,7 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         soma += s * v;
     }
-    textureStore(fina_saida, alvo, vec4<f32>(nas_faces(soma, onde), alfa_do_miolo(onde)));
+    return nas_faces(soma, onde);
 }
 
 fn alfa_do_miolo(onde: Onde) -> f32 {
@@ -904,6 +951,8 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
     if any(id >= fina.fim) {
         return;
     }
+    borda_aqui = true;
+    let tau = meio(ponto_fino(id)).tau;
     let onde = onde_calcular(id);
     borda_aqui = onde.remapeado;
     var l = luz_exata(onde.p);
@@ -911,5 +960,12 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
         l = luz_exata_remapeada(onde.p, ponto_fino(id));
         l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
     }
-    textureStore(fina_saida, id, vec4<f32>(nas_faces(l, onde), alfa_do_miolo(onde)));
+    var t = vec3<f32>(0.0);
+    if onde.remapeado && tau > 0.0 {
+        borda_aqui = false;
+        c0_tau = tau;
+        t = luz_exata(ponto_fino(id));
+        c0_tau = 1.0;
+    }
+    guardar_fina(id, onde, nas_faces(l, onde), t, tau);
 }

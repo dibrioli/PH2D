@@ -34,9 +34,10 @@ pub(crate) struct Opcionais {
     /// ⭐ W5d: a EMISSÃO de base (antes da soma do rebote) — o 2.º rebote do quadro repõe-na, com
     /// `rebotes_por_quadro > 1`.
     pub emissao_base: Option<usize>,
-    /// ⭐ W5h: o miolo por difusão — `[conhecido da fina, conhecido, a, b]` (as três pirâmides
-    /// começam no nível 1).
-    pub miolo: Option<[usize; 4]>,
+    /// ⭐ W5h: o miolo por difusão — `[conhecido da fina, conhecido, a, b, transmitida]` (as três
+    /// pirâmides começam no nível 1; ⭐ W5k: a luz que atravessa um corpo translúcido e a opacidade
+    /// dele, que o `miolo_final` mistura).
+    pub miolo: Option<[usize; 5]>,
 }
 
 impl Opcionais {
@@ -65,8 +66,8 @@ impl Opcionais {
             emissao_base: (cfg.rebote && cfg.rebotes_por_quadro > 1 && cfg.holografica.is_some())
                 .then(|| proxima(1)),
             miolo: cfg.niveis_do_miolo().map(|_| {
-                let k = proxima(4);
-                [k, k + 1, k + 2, k + 3]
+                let k = proxima(5);
+                [k, k + 1, k + 2, k + 3, k + 4]
             }),
         }
     }
@@ -313,6 +314,12 @@ impl PassList {
                 ("luz2d/tex/miolo_conhecido", F::Rgba16Float, meia, l),
                 ("luz2d/tex/miolo_a", F::Rgba32Float, meia, l),
                 ("luz2d/tex/miolo_b", F::Rgba32Float, meia, l),
+                (
+                    "luz2d/tex/miolo_transmitida",
+                    formato_cascata(cfg.armazenamento),
+                    base,
+                    1,
+                ),
             ] {
                 texturas.push(Textura {
                     nome,
@@ -527,10 +534,12 @@ impl PassList {
             le_fina.push(p[saltos.len() % 2]);
         }
         le_fina.extend(cena);
+        let mut escreve_fina = vec![FLUENCIA];
+        escreve_fina.extend(op.miolo.map(|m| m[4]));
         passes.push(Passe {
             nome: "C3 fina".into(),
             le: le_fina,
-            escreve: vec![FLUENCIA],
+            escreve: escreve_fina,
         });
         // ⭐ W5h: o miolo — um piso (cada textura uma vez; as relaxações relêem a pirâmide).
         if let Some(m) = op.miolo {

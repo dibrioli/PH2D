@@ -1,6 +1,7 @@
-//! ⭐ W5c — **quem reflete** (a lei do rebote, plano §2.4): o corpo OPACO que recebe luz, com o albedo
-//! `tint∘self_tint`; o translúcido, o `NaoRecebeLuz` e o que brilha não refletem. O caminho vetorial
-//! diz só SE reflete (a cor dele vem da camada do Vello).
+//! ⭐ W5c — **quem reflete** (a lei do rebote, plano §2.4): o corpo que recebe luz, com o albedo
+//! `tint∘self_tint`; o `NaoRecebeLuz` e o que brilha não refletem. ⭐ W5k: o translúcido também — o
+//! albedo vai CRU e o solver multiplica-o pela opacidade (`α·a`). O caminho vetorial diz só SE reflete
+//! (a cor dele vem da camada do Vello).
 
 use bevy_ecs::world::World;
 use ph2d_ecs::{GlobalTransform, SpriteEmissive, StableId, Transform, VecPathRef};
@@ -32,7 +33,7 @@ fn mundo() -> World {
     let mut s = Sprite::atlas(0, [1.0, 1.0], tint);
     s.self_tint = [0.5, 1.0, 1.0, 1.0];
     w.spawn((s, opaco, t, g, StableId(2)));
-    // 3: translúcido ⇒ não.
+    // 3: translúcido ⇒ sim, com o albedo cru (o solver faz o `α·a`).
     let (t, g) = pose(2.0);
     w.spawn((
         Sprite::atlas(0, [1.0, 1.0], tint),
@@ -61,7 +62,7 @@ fn mundo() -> World {
         g,
         StableId(5),
     ));
-    // 6–8: caminhos — opaco que recebe, opaco sem luz, translúcido.
+    // 6–8: caminhos — opaco que recebe, opaco sem luz, translúcido (reflete).
     let (t, g) = pose(5.0);
     w.spawn((VecPathRef(6), opaco, t, g, StableId(6)));
     w.spawn((VecPathRef(7), opaco, NaoRecebeLuz, t, g, StableId(7)));
@@ -76,13 +77,13 @@ fn mundo() -> World {
 }
 
 #[test]
-fn quem_reflete_e_o_opaco_que_recebe_luz() {
+fn quem_reflete_e_o_corpo_que_recebe_luz() {
     let c = cena_de_luz(&mundo());
     // Os oclusores pela ordem do StableId: 2, 3, 4 (o 5 é emissor).
     let albedos: Vec<[f32; 3]> = c.oclusores.iter().map(|o| o.albedo).collect();
     assert_eq!(
         albedos,
-        vec![[0.4, 0.5, 0.25], [0.0; 3], [0.0; 3]],
+        vec![[0.4, 0.5, 0.25], [0.8, 0.5, 0.25], [0.0; 3]],
         "{c:#?}"
     );
     let por_sprite: Vec<(FormaDoSprite, [f32; 3])> =
@@ -91,13 +92,13 @@ fn quem_reflete_e_o_opaco_que_recebe_luz() {
         por_sprite,
         vec![
             (FormaDoSprite::Oclusor(0), [0.4, 0.5, 0.25]),
-            (FormaDoSprite::Oclusor(1), [0.0; 3]),
+            (FormaDoSprite::Oclusor(1), [0.8, 0.5, 0.25]),
             (FormaDoSprite::Oclusor(2), [0.0; 3]),
             (FormaDoSprite::Emissor(1), [0.0; 3]),
         ]
     );
     let vetores: Vec<(u64, bool)> = c.vetores.iter().map(|v| (v.caminho, v.reflete)).collect();
-    assert_eq!(vetores, vec![(6, true), (7, false), (8, false)]);
+    assert_eq!(vetores, vec![(6, true), (7, false), (8, true)]);
 }
 
 /// Um tint corrompido (NaN, negativo) não reflete — nunca envenena a série.

@@ -40,8 +40,8 @@ pub enum Emissor {
 pub struct Oclusor {
     pub vertices: Vec<[f32; 2]>,
     pub opacidade: f32,
-    /// ⭐ W5c — o albedo LINEAR com que o corpo devolve a luz (o rebote, plano §2.4): só num corpo
-    /// OPACO que recebe luz; zero = não reflete (o translúcido, o `NaoRecebeLuz`).
+    /// ⭐ W5c — o albedo LINEAR com que o corpo devolve a luz (o rebote, plano §2.4), num corpo que
+    /// recebe luz; zero = não reflete (o `NaoRecebeLuz`). ⭐ W5k: o solver multiplica-o pela opacidade.
     pub albedo: Rgb,
 }
 
@@ -79,7 +79,7 @@ pub struct OutroDeLuz {
     pub entidade: bevy_ecs::entity::Entity,
     /// A opacidade por entrada (`BloqueiaLuz`).
     pub opacidade: f32,
-    /// O objeto devolve a luz (opaco e recebe luz); o albedo é a cor que a família desenha.
+    /// O objeto devolve a luz (recebe luz; W5k: × a opacidade); o albedo é a cor que a família desenha.
     pub reflete: bool,
 }
 
@@ -91,8 +91,8 @@ pub struct VetorDeLuz {
     pub caminho: u64,
     /// A opacidade por entrada (`BloqueiaLuz`).
     pub opacidade: f32,
-    /// ⭐ W5c — o caminho devolve a luz (opaco e recebe luz); o albedo é a cor DELE, que a camada do
-    /// Vello já traz.
+    /// ⭐ W5c — o caminho devolve a luz (recebe luz; W5k: × a opacidade); o albedo é a cor DELE, que a
+    /// camada do Vello já traz.
     pub reflete: bool,
 }
 
@@ -108,7 +108,7 @@ pub struct SpriteDeLuz {
     /// A opacidade por entrada (1 num emissor, que é opaco; a do `BloqueiaLuz` num oclusor).
     pub opacidade: f32,
     /// ⭐ W5c — o multiplicador da cor do texel no ALBEDO do rebote (`tint∘self_tint`); zero = não
-    /// reflete (emissor, translúcido, `NaoRecebeLuz`).
+    /// reflete (emissor, `NaoRecebeLuz`); ⭐ W5k: o solver multiplica-o pela opacidade.
     pub albedo: Rgb,
 }
 

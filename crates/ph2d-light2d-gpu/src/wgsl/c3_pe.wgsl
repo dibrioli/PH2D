@@ -51,7 +51,7 @@ fn pe_na_borda(P0: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
             break;
         }
         let fim = P0 + nf * (d + 2.0 * h);
-        if meio(fim).tau <= 0.0 {
+        if num_corpo(fim) {
             break;
         }
         let c = cruzamento(P0, fim, h);
@@ -72,7 +72,7 @@ fn cruzamento(dentro: vec2<f32>, fora: vec2<f32>, h: f32) -> vec2<f32> {
     let passos = u32(ceil(log2(max(distance(a, b) / (0.01 * h), 2.0))));
     for (var i = 0u; i < passos; i++) {
         let m = 0.5 * (a + b);
-        if meio(m).tau <= 0.0 {
+        if num_corpo(m) {
             a = m;
         } else {
             b = m;
@@ -104,14 +104,21 @@ fn normal_de_fora(P: vec2<f32>, P0: vec2<f32>) -> vec2<f32> {
 
 // A fração à vista da lâmpada `k` do ponto de fronteira `P` com a normal de fora `nf`: a abertura
 // cortada pela tangente, a marcha a partir de meio texel da captura para fora.
-fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32) -> f32 {
+// ⭐ W5k: `translucido` — o corpo atrás da face deixa passar a sua parte (τ > 0): a metade de trás
+// da abertura não é tapada, marcha-se a partir do ponto espelhado DENTRO (a partida de dentro conta a
+// entrada × τ, a lei do gabarito). De `Q`, fora, o raio quase rente a uma face convexa nunca entra.
+fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32, translucido: bool) -> f32 {
     let L = lampadas.itens[k];
-    let Q = P + nf * AFASTA_NA_FACE * max(1.0 / ESCALA_DA_CAPTURA, 1.0 / f32(fina.fina));
+    let afasta = nf * AFASTA_NA_FACE * max(1.0 / ESCALA_DA_CAPTURA, 1.0 / f32(fina.fina));
+    let Q = P + afasta;
     let v = L.centro - Q;
     let d = length(v);
     if L.raio <= 0.0 || d <= L.raio {
         if dot(L.centro - P, nf) <= 0.0 {
-            return 0.0;
+            if !translucido {
+                return 0.0;
+            }
+            return visibilidade(P - afasta, k, 0.0);
         }
         return visibilidade(Q, k, 0.0);
     }
@@ -121,12 +128,27 @@ fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32) -> f32 {
     delta -= TAU * round(delta / TAU);
     let lo = max(-alfa, delta - 0.25 * TAU);
     let hi = min(alfa, delta + 0.25 * TAU);
-    if hi <= lo {
-        return 0.0;
+    var visto = 0.0;
+    if hi > lo {
+        let meia = 0.5 * (hi - lo);
+        visto = visivel_do_disco(Q, v, d, L.raio, base + 0.5 * (lo + hi), meia, k) * meia / alfa;
     }
-    let meia = 0.5 * (hi - lo);
-    let visto = visivel_do_disco(Q, v, d, L.raio, base + 0.5 * (lo + hi), meia, k);
-    return visto * meia / alfa;
+    if !translucido {
+        return visto;
+    }
+    // As duas pontas de trás, [−α, lo) e (hi, α] (uma vazia quando a face corta a abertura de um lado),
+    // pelos mesmos ângulos a partir de dentro.
+    let Qd = P - afasta;
+    let vd = L.centro - Qd;
+    let dd = length(vd);
+    let tras = array<vec2<f32>, 2>(vec2<f32>(-alfa, min(lo, alfa)), vec2<f32>(max(hi, -alfa), alfa));
+    for (var i = 0u; i < 2u; i++) {
+        let meia = 0.5 * (tras[i].y - tras[i].x);
+        if meia > 0.0 {
+            visto += visivel_do_disco(Qd, vd, dd, L.raio, base + 0.5 * (tras[i].x + tras[i].y), meia, k) * meia / alfa;
+        }
+    }
+    return visto;
 }
 
 // A visibilidade da lâmpada `k` no ponto de fronteira `P` que o texel `P0` (dentro) lê.
@@ -137,7 +159,7 @@ fn visibilidade_remapeada(P: vec2<f32>, P0: vec2<f32>, k: u32) -> f32 {
             // No canto a face não corta a abertura numa reta: a marcha do ponto rente, como antes.
             return visibilidade(P, k, 0.0);
         }
-        return visibilidade_na_face(P, nf, k);
+        return visibilidade_na_face(P, nf, k, meio(P0).tau > 0.0);
     }
     return visibilidade(P, k, 0.0);
 }
@@ -167,7 +189,7 @@ fn normal_secante(q: vec2<f32>, P0: vec2<f32>, h: f32) -> vec2<f32> {
         u = (q - P0) / d;
     }
     let O = q - u * (3.0 * h);
-    if meio(O).tau > 0.0 {
+    if !num_corpo(O) {
         return ns;
     }
     let a = atan2(u.y, u.x);
@@ -199,7 +221,7 @@ fn normal_secante(q: vec2<f32>, P0: vec2<f32>, h: f32) -> vec2<f32> {
 fn saida_na_direcao(P0: vec2<f32>, a: f32, alcance: f32, h: f32) -> vec2<f32> {
     let u = vec2<f32>(cos(a), sin(a));
     let fim = P0 + u * alcance;
-    if meio(fim).tau <= 0.0 {
+    if num_corpo(fim) {
         return P0 + u * (4.0 * alcance);
     }
     return cruzamento(P0, fim, h);

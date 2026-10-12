@@ -36,7 +36,7 @@ struct Objeto {
     opaco: bool,
     /// `1 − opacidade` (só para oclusores).
     transmissao: f64,
-    /// ⭐ W5c — o albedo com que o corpo devolve a luz (só um oclusor opaco reflete).
+    /// ⭐ W5c — o albedo com que o corpo devolve a luz (W5k: × a opacidade, no rebote).
     albedo: [f64; 3],
 }
 
@@ -202,27 +202,39 @@ pub fn luz_em(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
     fluencia(cena, ponto).map(|f| f / TAU)
 }
 
-/// O objeto é um corpo OPACO (τ dentro = 0): um que brilha (polígono) ou um oclusor de opacidade 1.
-fn opaco(o: &Objeto) -> bool {
-    o.opaco || (o.emissao.is_none() && o.transmissao <= 0.0)
+/// O objeto é um CORPO (τ dentro < 1): um que brilha (polígono) ou um oclusor de opacidade > 0.
+fn corpo(o: &Objeto) -> bool {
+    o.opaco || (o.emissao.is_none() && o.transmissao < 1.0)
 }
 
-/// ⭐ **O interior de um opaco recebe a luz do EXTERIOR mais próximo** (F3, W5a): dentro de um corpo
-/// opaco a resposta é a do ponto de fora mais perto — logo além do pé de `p` na aresta opaca mais
-/// próxima cujo pé não cai dentro de outro opaco. Fora de todo opaco, `p`.
+/// ⭐ W5k — a opacidade `α` em `p`: `1 − ∏ τ` dos corpos que o contêm (a do `tau_dentro` da placa).
+fn alfa_em(objetos: &[Objeto], p: [f64; 2]) -> f64 {
+    let mut buf = Vec::new();
+    let tau = objetos
+        .iter()
+        .filter(|o| corpo(o) && geometria::dentro(&o.fronteira, p, &mut buf))
+        .map(|o| o.transmissao)
+        .product::<f64>();
+    1.0 - tau
+}
+
+/// ⭐ **O interior de um corpo recebe a luz do EXTERIOR mais próximo** (F3, W5a): dentro de um corpo
+/// a resposta é a do ponto de fora mais perto — logo além do pé de `p` na aresta mais próxima cujo pé
+/// não cai dentro de outro corpo. Fora de todo corpo, `p`. (O translúcido mistura-a com a transmitida
+/// em [`no_miolo`].)
 fn fora_dos_opacos(objetos: &[Objeto], p: [f64; 2]) -> [f64; 2] {
     let mut buf = Vec::new();
     let mut dentro_de_algum = |q: [f64; 2]| {
         objetos
             .iter()
-            .filter(|o| opaco(o))
+            .filter(|o| corpo(o))
             .any(|o| geometria::dentro(&o.fronteira, q, &mut buf))
     };
     if !dentro_de_algum(p) {
         return p;
     }
     let mut melhor: Option<(f64, [f64; 2])> = None;
-    for o in objetos.iter().filter(|o| opaco(o)) {
+    for o in objetos.iter().filter(|o| corpo(o)) {
         let Fronteira::Poligono(v) = &o.fronteira else {
             continue;
         };
@@ -321,7 +333,24 @@ impl Gabarito {
     #[must_use]
     pub fn fluencia(&self, ponto: [f64; 2]) -> [f64; 3] {
         let fora = |q| self.exterior(q);
-        no_miolo(&self.objetos, self.op, &self.miolo, ponto, &fora)
+        let transmitida = |q| {
+            linha_sem_projetar(
+                &self.objetos,
+                &self.pontuais,
+                self.ceu,
+                &rebote::Elementos::vazio(),
+                q,
+            )
+            .direto
+        };
+        no_miolo(
+            &self.objetos,
+            self.op,
+            &self.miolo,
+            ponto,
+            &fora,
+            &transmitida,
+        )
     }
 
     #[must_use]
@@ -330,9 +359,31 @@ impl Gabarito {
     }
 }
 
-/// A luz em `ponto` com o miolo: fora da união dos opacos (ou com `suavidade = 0`) a lei de
-/// `exterior`; dentro, a mistura dela com a difusão.
+/// A luz em `ponto` com o miolo: fora da união dos corpos a lei de `exterior`; dentro, a mistura dela
+/// com a difusão (`suavidade`) — e ⭐ W5k, num corpo de opacidade `α < 1`, essa mistura com a
+/// `transmitida` (a luz que atravessa o corpo até `ponto`) por `α`: contínua em `α`, a de antes em 1.
 pub(crate) fn no_miolo(
+    objetos: &[Objeto],
+    op: OpcoesDoMiolo,
+    miolo: &std::sync::OnceLock<Option<miolo::Miolo>>,
+    ponto: [f64; 2],
+    exterior: &(dyn Fn([f64; 2]) -> [f64; 3] + Sync),
+    transmitida: &dyn Fn([f64; 2]) -> [f64; 3],
+) -> [f64; 3] {
+    if !miolo::dentro_da_uniao(objetos, ponto, &mut Vec::new()) {
+        return exterior(ponto);
+    }
+    let corpo = no_miolo_do_corpo(objetos, op, miolo, ponto, exterior);
+    let a = alfa_em(objetos, ponto);
+    if a >= 1.0 {
+        return corpo;
+    }
+    let t = transmitida(ponto);
+    [0, 1, 2].map(|c| t[c] + (corpo[c] - t[c]) * a)
+}
+
+/// A luz dentro da união dos corpos como se fossem opacos: o exterior mais próximo e a difusão.
+fn no_miolo_do_corpo(
     objetos: &[Objeto],
     op: OpcoesDoMiolo,
     miolo: &std::sync::OnceLock<Option<miolo::Miolo>>,
@@ -340,7 +391,7 @@ pub(crate) fn no_miolo(
     exterior: &(dyn Fn([f64; 2]) -> [f64; 3] + Sync),
 ) -> [f64; 3] {
     let s = op.suavidade.clamp(0.0, 1.0);
-    if s <= 0.0 || !miolo::dentro_da_uniao(objetos, ponto, &mut Vec::new()) {
+    if s <= 0.0 {
         return exterior(ponto);
     }
     let resolvido = miolo.get_or_init(|| miolo::Miolo::resolver(objetos, op, exterior));
@@ -370,6 +421,17 @@ pub(crate) fn linha(
     ponto: [f64; 2],
 ) -> Linha {
     let ponto = fora_dos_opacos(objetos, ponto);
+    linha_sem_projetar(objetos, pontuais, ceu, refletores, ponto)
+}
+
+/// A [`linha`] no próprio `ponto`, mesmo dentro de um corpo: a luz que o atravessa até lá.
+pub(crate) fn linha_sem_projetar(
+    objetos: &[Objeto],
+    pontuais: &[Pontual],
+    ceu: [f64; 3],
+    refletores: &rebote::Elementos,
+    ponto: [f64; 2],
+) -> Linha {
     let mut buf = Vec::new();
     let mut total = [0.0_f64; 3];
     let mut pesos: Vec<(usize, f64)> = Vec::new();

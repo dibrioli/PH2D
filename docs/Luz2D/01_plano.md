@@ -148,12 +148,19 @@ O rebote: fluência do quadro anterior × albedo realimenta a emissão da C0 (um
 gate G9 contra o gabarito com 2+ rebotes).
 
 **A lei do rebote (fixada na W5c, ANTES da placa):**
-- **Quem reflete:** um corpo OPACO (`BloqueiaLuz` de opacidade 1 — sprite ou caminho vetorial) que
-  RECEBE luz. Não refletem: o corpo que brilha (a radiância dele é a do autor), a lâmpada (luz, não
-  corpo), o translúcido (absorve o que intercepta), o que não bloqueia (não intercepta a luz do plano)
-  e o `NaoRecebeLuz`. ⇒ as paredes das cenas 1 e 4 (`NaoRecebeLuz`, decisão do dono) não mudam.
+- **Quem reflete:** um CORPO (`BloqueiaLuz` de opacidade `α > 0` — sprite, caminho vetorial, traço do
+  Flip, forma do Motion) que RECEBE luz. Não refletem: o corpo que brilha (a radiância dele é a do
+  autor), a lâmpada (luz, não corpo), o que não bloqueia (não intercepta a luz do plano) e o
+  `NaoRecebeLuz`. ⇒ as paredes das cenas 1 e 4 (`NaoRecebeLuz`, decisão do dono) não mudam.
+  ⭐ **W5k (12/10) — o translúcido reflete a sua parte, `α·a`** (até a W5k: «o translúcido não
+  reflete»). Medido no smoke do dono (a cena 7, o azul a varrer a opacidade; [handoff W5k](handoffs/HANDOFF_CONTINUACAO_W5k_2026-10-12.md)):
+  com o corte, de 1 a 0,999 o anel do azul perdia 10 % do G/B (o teal dele sumia de uma vez) e o
+  interior ficava PRETO (0,0003 contra 2,70: o interior mostrava a luz transmitida, × 0,001). A lei
+  agora é contínua em `α`, e em `α = 1` é a de antes bit a bit: **o interior de um corpo mostra
+  `mix(transmitida, exterior/miolo, α)`** (a transmitida = a luz que atravessa o corpo até o ponto) e
+  **o albedo efetivo é `α·a`**. Com `α → 0` o corpo some; com `α → 1` é o opaco.
 - **Quanto:** cada ponto `x` da fronteira devolve ao plano, igual em toda direção, a radiância
-  `L_r(x) = min(a, A_MAX) · luz_em(x⁺)` — o albedo linear `a` (cor do texel × tint; do caminho, a cor
+  `L_r(x) = min(α·a, A_MAX) · luz_em(x⁺)` — o albedo linear `a` (cor do texel × tint; do caminho, a cor
   dele) vezes a luz que a câmera MOSTRA ali (a superfície vista de frente, §2.3; pelo F3, a do exterior
   mais próximo `x⁺`). O que se vê é o que volta. `x⁺` vê o próprio corpo (a meia-volta dele, com a
   própria `L_r`): é a mesma pergunta que a placa faz numa sonda junto à face.

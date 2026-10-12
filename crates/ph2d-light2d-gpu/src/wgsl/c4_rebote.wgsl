@@ -1,7 +1,8 @@
 // C3 REBOTE (W5c, a lei do plano §2.4) — a FONTE do rebote do quadro seguinte: em cada texel das
 // cascatas junto a uma borda, a luz que a superfície recebe ali, `luz_em(x⁺) = F(x⁺)/2π` (as cascatas
 // mais a luz direta das lâmpadas), no EXTERIOR mais próximo `x⁺` (o F3: o que a câmera mostra). Dentro
-// de um opaco, `x⁺` sai da janela 5×5 pela bissecção do `meio`; fora, a faixa de `BANDA_DO_REBOTE`
+// de um corpo (W5k: também o translúcido, que devolve `α·a`), `x⁺` sai da janela 5×5 pela bissecção do
+// `meio`; fora, a faixa de `BANDA_DO_REBOTE`
 // texels em volta de toda borda guarda a luz do próprio ponto (um objeto que anda acha a fonte onde
 // chega). O resto fica com alfa 0 (sem fonte).
 //
@@ -31,7 +32,7 @@ fn c3_rebote(@builtin(global_invocation_id) gid: vec3<u32>) {
     let P = vec2<f32>(gid.xy) + 0.5;
     var Q = P;
     borda_aqui = true;
-    let dentro = meio(P).tau <= 0.0;
+    let dentro = num_corpo(P);
     borda_aqui = dentro;
     if dentro {
         var d_melhor = 3.4e38;
@@ -41,7 +42,7 @@ fn c3_rebote(@builtin(global_invocation_id) gid: vec3<u32>) {
                 if any(Pt < vec2<f32>(0.0)) || any(Pt >= vec2<f32>(cas.tamanho)) {
                     continue;
                 }
-                if meio(Pt).tau <= 0.0 {
+                if num_corpo(Pt) {
                     continue;
                 }
                 let b = na_fronteira(P, Pt);

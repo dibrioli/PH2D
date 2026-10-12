@@ -172,23 +172,36 @@ fn o_rebote_e_deterministico() {
     }
 }
 
-/// O que não reflete não muda nada: o translúcido (mesmo com albedo) e o emissor.
+/// ⭐ W5k — **o translúcido devolve a sua parte, `α·a`** (contínuo em `α`; até a W5k o 0,99 não
+/// refletia nada e a sala perdia a cor de uma vez) e o que brilha não reflete.
 #[test]
-fn o_translucido_e_o_que_brilha_nao_refletem() {
-    let mut c = sala();
-    for o in &mut c.oclusores {
-        o.opacidade = 0.99;
-    }
-    c.emissores.push(Emissor::Poligono {
-        vertices: vec![[1.0, 1.0], [1.2, 1.0], [1.2, 1.2], [1.0, 1.2]],
-        radiancia: [0.5; 3],
-        alcance_m: f32::INFINITY,
-    });
-    let r = Rebote::resolver(&c, op(0.05, 20));
-    assert_eq!(r.n_elementos(), 0);
+fn o_translucido_reflete_a_sua_parte_e_o_que_brilha_nao() {
+    let com_emissor = |opacidade: f32| {
+        let mut c = sala();
+        for o in &mut c.oclusores {
+            o.opacidade = opacidade;
+        }
+        c.emissores.push(Emissor::Poligono {
+            vertices: vec![[1.0, 1.0], [1.2, 1.0], [1.2, 1.2], [1.0, 1.2]],
+            radiancia: [0.5; 3],
+            alcance_m: f32::INFINITY,
+        });
+        c
+    };
+    let (c99, c1) = (com_emissor(0.99), com_emissor(1.0));
+    let r99 = Rebote::resolver(&c99, op(0.05, 20));
+    let r1 = Rebote::resolver(&c1, op(0.05, 20));
+    assert_eq!(r99.n_elementos(), Rebote::resolver(&sala(), op(0.05, 20)).n_elementos());
     for p in pontos_do_chao() {
-        assert_eq!(r.fluencia(p), fluencia(&c, p));
+        let (a, b) = (r99.fluencia(p), r1.fluencia(p));
+        for c in 0..3 {
+            assert!((a[c] - b[c]).abs() <= 0.02 * b[c], "{p:?} canal {c}: {a:?} a 0,99 × {b:?} a 1");
+        }
     }
+    // Controlo: a 0,99 o chão continua tingido pela parede vermelha (o rebote não sumiu).
+    let p = pontos_do_chao()[0];
+    assert!(razao(r99.luz_em(p), 0, 1) > 1.3);
+    assert!(razao(fluencia(&c99, p), 0, 1) < 1.01);
 }
 
 /// Sonda (à mão, `--ignored --nocapture`): os números que os portões acima leem.

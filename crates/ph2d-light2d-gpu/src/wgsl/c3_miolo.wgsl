@@ -9,7 +9,8 @@
 // `miolo_puxa` sobe (o peso de um texel grosso = a fração conhecida dos filhos); do mais grosso ao
 // nível 1, `miolo_desce` interpola o nível de cima e `miolo_relaxa` itera
 // `u = w·k + (1 − w)·Σ u_viz / (m + (h/ℓ)²)` (as vizinhas de fora da região não contam: Neumann),
-// em f32; `miolo_final` faz uma relaxação na fina sobre o nível 1 e escreve a fluência.
+// em f32; `miolo_final` faz uma relaxação na fina sobre o nível 1, mistura a transmitida dos
+// translúcidos (W5k) e escreve a fluência.
 //
 // `FORMATO` é o da `saida` de cada passe (a fluência, o conhecido em f16, a solução em f32), trocado
 // no texto ao criar o módulo.
@@ -36,6 +37,9 @@ struct Nivel {
 // O conhecido do nível de CIMA (desce: quem da interpolação existe).
 @group(0) @binding(3) var conhecido_acima: texture_2d<f32>;
 @group(0) @binding(4) var saida: texture_storage_2d<FORMATO, write>;
+// ⭐ W5k: num texel de dentro, a luz que atravessa o corpo até ele (rgb) e a opacidade `α` (a); a
+// `c3_fina` escreve-a em todo texel remapeado (`α = 1` no opaco).
+@group(0) @binding(5) var transmitida: texture_2d<f32>;
 
 const AUSENTE: f32 = -1.0;
 
@@ -225,6 +229,11 @@ fn miolo_final(@builtin(global_invocation_id) gid: vec3<u32>) {
         if m > 0.0 {
             l = mix(k.rgb, soma / (m + nv.kh2), nv.suavidade);
         }
+    }
+    // ⭐ W5k: dentro de um translúcido, `mix(transmitida, miolo, α)` — o opaco (`α = 1`) fica no bit.
+    if k.a >= 0.0 {
+        let tr = textureLoad(transmitida, t, 0);
+        l = select(mix(tr.rgb, l, tr.a), l, tr.a >= 1.0);
     }
     textureStore(saida, t, vec4<f32>(l, 1.0));
 }

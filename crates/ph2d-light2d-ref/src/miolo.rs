@@ -1,9 +1,10 @@
 //! ⭐ W5h — **o MIOLO dos opacos pela DIFUSÃO** (ordem do dono, 11/10: «espalhar suave» em todo corpo).
 //!
-//! Dentro da união dos corpos opacos a luz é a solução de Dirichlet `Δu − u/ℓ² = 0` com `u` = a luz de
-//! FORA na borda (as *diffusion curves*, Orzan et al. 2008; `ℓ = ∞` é Laplace). A lei até a W5g — o
-//! exterior mais próximo, que desenha o cone com arestas radiais — é a `suavidade = 0`; a resposta é a
-//! mistura linear das duas.
+//! Dentro da união dos corpos (W5k: todo oclusor de opacidade > 0) a luz é a solução de Dirichlet
+//! `Δu − u/ℓ² = 0` com `u` = a luz de FORA na borda (as *diffusion curves*, Orzan et al. 2008; `ℓ = ∞`
+//! é Laplace). A lei até a W5g — o exterior mais próximo, que desenha o cone com arestas radiais — é a
+//! `suavidade = 0`; a resposta é a mistura linear das duas (e o translúcido mistura-a com a transmitida,
+//! `crate::no_miolo`).
 //!
 //! O gabarito resolve-a numa grade própria, mais fina que a da placa, pelas diferenças finitas de
 //! Gibou et al. (2002): a borda corta cada aresta da grade no ponto EXATO e entra pela fração `θ` da
@@ -11,7 +12,7 @@
 //! exata do disco (o núcleo de Poisson), no portão `o_miolo_do_disco_e_o_de_poisson`.
 
 use crate::geometria::{self, Fronteira};
-use crate::{Objeto, opaco};
+use crate::{Objeto, corpo};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OpcoesDoMiolo {
@@ -60,7 +61,7 @@ const FORA_DA_UNIAO: u32 = u32::MAX;
 pub(crate) fn dentro_da_uniao(objetos: &[Objeto], p: [f64; 2], buf: &mut Vec<f64>) -> bool {
     objetos
         .iter()
-        .filter(|o| opaco(o))
+        .filter(|o| corpo(o))
         .any(|o| geometria::dentro(&o.fronteira, p, buf))
 }
 
@@ -80,8 +81,8 @@ fn cortes_da_reta(polis: &[&[[f64; 2]]], eixo: usize, c: f64, out: &mut Vec<f64>
 }
 
 impl Miolo {
-    /// Resolve o miolo da união dos opacos de `objetos`, com `exterior(q)` a luz num ponto `q` FORA
-    /// dela. `None` sem nenhum corpo opaco.
+    /// Resolve o miolo da união dos corpos de `objetos`, com `exterior(q)` a luz num ponto `q` FORA
+    /// dela. `None` sem nenhum corpo.
     pub(crate) fn resolver(
         objetos: &[Objeto],
         op: OpcoesDoMiolo,
@@ -89,7 +90,7 @@ impl Miolo {
     ) -> Option<Self> {
         let polis: Vec<&[[f64; 2]]> = objetos
             .iter()
-            .filter(|o| opaco(o))
+            .filter(|o| corpo(o))
             .filter_map(|o| match &o.fronteira {
                 Fronteira::Poligono(v) if v.len() >= 3 => Some(v.as_slice()),
                 _ => None,

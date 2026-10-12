@@ -24,7 +24,7 @@ struct Preenche {
 @group(3) @binding(2) var pre_saida: texture_storage_2d<r32uint, write>;
 
 fn fora_do_opaco(t: vec2<u32>) -> bool {
-    return meio((vec2<f32>(t) + 0.5) / f32(pre.fina)).tau > 0.0;
+    return !num_corpo((vec2<f32>(t) + 0.5) / f32(pre.fina));
 }
 
 @compute @workgroup_size(8, 8)

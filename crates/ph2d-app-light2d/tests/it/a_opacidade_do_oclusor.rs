@@ -32,7 +32,49 @@ fn anel(f: &Fluencia, c: [f64; 2], r: f64) -> [f64; 3] {
     s
 }
 
-fn medir(gpu: &ph2d_gpu::GpuContext, opacidade: f32) -> Leitura {
+fn medir(gpu: &ph2d_gpu::GpuContext, opacidades: &[f32]) -> Vec<Leitura> {
+    varrer(gpu, opacidades).iter().map(ler).collect()
+}
+
+/// A fluência a cada opacidade, na ORDEM dada, com um renderizador e uma luz só: montar o solver
+/// (os shaders) custa ~14 s em `dev` e os 40 quadros ~0,5 s — a 2.ª opacidade parte da 1.ª e os 40
+/// quadros reassentam o rebote.
+fn varrer(gpu: &ph2d_gpu::GpuContext, opacidades: &[f32]) -> Vec<Fluencia> {
+    let mut r = crate::comum::renderer(gpu);
+    let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)
+        .into_iter()
+        .flat_map(|p| p.0)
+        .collect();
+    let disco = r
+        .acquire_individual(DISC_TILE_PX, DISC_TILE_PX, &disco)
+        .expect("textura do disco");
+    let afim = ph2d_render::Camera2d::default()
+        .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
+    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+    let mut saida = Vec::new();
+    for &opacidade in opacidades {
+        let (w, mut present) = cena(opacidade, |s: &Sprite, t| {
+            let mut i = crate::comum::quad(disco, t);
+            i.size = s.size;
+            i.anchor = s.anchor;
+            i.tint = s.tint;
+            i
+        });
+        for _ in 0..40 {
+            assert!(l.preparar(&w, afim, (1920, 1080)));
+            l.gravar(gpu, &mut present, &r);
+        }
+        saida.push(crate::comum::fluencia_lida(gpu, l.solver().expect("solver")));
+    }
+    saida
+}
+
+/// A cena 7 com o laranja junto à sombra do azul e o azul a `opacidade`, e o mundo da apresentação
+/// (cada disco que bloqueia, pelo `quad` com a base do `GlobalTransform`).
+fn cena(
+    opacidade: f32,
+    quad: impl Fn(&Sprite, [f32; 2]) -> ph2d_render::RenderInstance,
+) -> (World, PresentWorld) {
     let mut w = World::new();
     assert!(smoke::encenar(&mut w, 7));
     let mut por_nome = |nome: &str| {
@@ -55,33 +97,18 @@ fn medir(gpu: &ph2d_gpu::GpuContext, opacidade: f32) -> Leitura {
     };
     w.entity_mut(laranja).insert(pose(LARANJA));
     w.entity_mut(azul).insert(BloqueiaLuz { opacidade });
-    let mut r = crate::comum::renderer(gpu);
-    let disco: Vec<u8> = disc_tile_pixels(DISC_TILE_PX)
-        .into_iter()
-        .flat_map(|p| p.0)
-        .collect();
-    let disco = r
-        .acquire_individual(DISC_TILE_PX, DISC_TILE_PX, &disco)
-        .expect("textura do disco");
     let mut present = PresentWorld::new();
     let mut q = w.query_filtered::<(bevy_ecs::entity::Entity, &Sprite, &GlobalTransform), bevy_ecs::query::With<BloqueiaLuz>>();
     for (e, s, g) in q.iter(&w) {
         let [ax, ay, bx, by, tx, ty] = g.affine();
-        let mut i = crate::comum::quad(disco, [tx, ty]);
-        i.size = s.size;
-        i.anchor = s.anchor;
+        let mut i = quad(s, [tx, ty]);
         i.basis = [ax, ay, bx, by];
-        i.tint = s.tint;
         present.world_mut().spawn((i, SimRef(e)));
     }
-    let afim = ph2d_render::Camera2d::default()
-        .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
-    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
-    for _ in 0..40 {
-        assert!(l.preparar(&w, afim, (1920, 1080)));
-        l.gravar(gpu, &mut present, &r);
-    }
-    let f = crate::comum::fluencia_lida(gpu, l.solver().expect("solver"));
+    (w, present)
+}
+
+fn ler(f: &Fluencia) -> Leitura {
     let n = AZUL[0].hypot(AZUL[1]);
     let u = [-AZUL[0] / n, -AZUL[1] / n];
     let face = [AZUL[0] + 0.6 * R_AZUL * u[0], AZUL[1] + 0.6 * R_AZUL * u[1]];
@@ -90,10 +117,48 @@ fn medir(gpu: &ph2d_gpu::GpuContext, opacidade: f32) -> Leitura {
     let ponto = |p: [f64; 2]| [0, 1, 2].map(|c| f.amostra_canal(p, c));
     [
         ponto(face),
-        anel(&f, AZUL, R_AZUL),
-        anel(&f, LARANJA, R_LARANJA),
+        anel(f, AZUL, R_AZUL),
+        anel(f, LARANJA, R_LARANJA),
         ponto(sombra),
     ]
+}
+
+/// ⭐ **A luz é CONTÍNUA na opacidade** (a lei da W5k: mostrado = `mix(transmitida, exterior, α)`,
+/// albedo `α·a`): a face acesa do azul, o anel dele e a sombra a `α` ficam a `tol` de `α = 1`, canal a
+/// canal. Antes da W5k, a 0,999 a face caía a 0,0003 de 2,70 (o corpo PRETO) e o rebote do azul sumia.
+#[test]
+fn a_luz_e_continua_na_opacidade_do_oclusor() {
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let [base, l999, l99] = medir(&gpu, &[1.0, 0.999, 0.99]).try_into().expect("três");
+    for (a, tol, l) in [(0.999_f32, 0.01, l999), (0.99, 0.02, l99)] {
+        for (k, nome) in [(0, "face acesa do azul"), (1, "anel do azul"), (3, "sombra do azul")] {
+            for c in 0..3 {
+                let (b, v) = (base[k][c], l[k][c]);
+                assert!(
+                    (v - b).abs() <= tol * b.abs(),
+                    "{nome}, canal {c}: {v:.4} a α {a} contra {b:.4} a α 1 (tolerância {tol})"
+                );
+            }
+        }
+    }
+}
+
+/// Instrumento (`--ignored`): grava a fluência a `α = 1` em `$PH2D_ALFA1_SAIDA` — a prova de que a
+/// lei nova é a de antes BIT A BIT no opaco (`cmp` entre a corrida da base e a da W5k).
+#[test]
+#[ignore = "instrumento: grava um ficheiro"]
+fn sonda_grava_a_fluencia_a_alfa_1() {
+    let Some(gpu) = crate::comum::gpu() else {
+        return;
+    };
+    let Ok(saida) = std::env::var("PH2D_ALFA1_SAIDA") else {
+        return;
+    };
+    let f = varrer(&gpu, &[1.0]).remove(0);
+    let bytes: Vec<u8> = f.v.iter().flatten().flat_map(|x| x.to_le_bytes()).collect();
+    std::fs::write(saida, bytes).expect("gravar");
 }
 
 /// Sonda (`--ignored --nocapture`): a varredura da opacidade.
@@ -104,8 +169,8 @@ fn sonda_a_opacidade_do_oclusor() {
         return;
     };
     let rgb = |v: [f64; 3]| format!("{:.4} {:.4} {:.4}", v[0], v[1], v[2]);
-    for a in [1.0_f32, 0.999, 0.99, 0.9, 0.5] {
-        let [face, anel_azul, anel_laranja, sombra] = medir(&gpu, a);
+    let alfas = [1.0_f32, 0.999, 0.99, 0.9, 0.5];
+    for (a, [face, anel_azul, anel_laranja, sombra]) in alfas.into_iter().zip(medir(&gpu, &alfas)) {
         eprintln!(
             "azul a {a}: face {} · anel azul {} · anel laranja {} · sombra {} (R/B {:.3})",
             rgb(face),

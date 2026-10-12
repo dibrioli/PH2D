@@ -1,6 +1,7 @@
-//! ⭐ **O rebote no gabarito** (W5c, a lei do plano §2.4): cada corpo OPACO que recebe luz devolve ao
-//! plano, igual em toda direção, `L_r(x) = min(a, A_MAX) · luz_em(x⁺)` — o albedo vezes a luz que a
-//! câmera mostra junto a `x` (o exterior mais próximo, F3).
+//! ⭐ **O rebote no gabarito** (W5c, a lei do plano §2.4): cada corpo que recebe luz devolve ao plano,
+//! igual em toda direção, `L_r(x) = min(α·a, A_MAX) · luz_em(x⁺)` — o albedo vezes a luz que a câmera
+//! mostra junto a `x` (o exterior mais próximo, F3); ⭐ W5k: `α` é a opacidade do corpo (o translúcido
+//! devolve a sua parte, contínuo em `α`).
 //!
 //! A fronteira de cada refletor parte-se em ELEMENTOS de comprimento `≤ h`, de radiância constante.
 //! Os extremos deles são ângulos-evento ([`crate::linha`]): em cada intervalo o raio acerta UM
@@ -14,7 +15,9 @@ pub use ph2d_light2d_ecs::ALBEDO_MAX;
 use ph2d_light2d_ecs::CenaDeLuz;
 
 use crate::miolo::{MIOLO_PADRAO, Miolo, OpcoesDoMiolo};
-use crate::{Linha, Objeto, Pontual, em_paralelo, geometria, linha, montar, opaco, rgb};
+use crate::{
+    Linha, Objeto, Pontual, corpo, em_paralelo, geometria, linha, linha_sem_projetar, montar, rgb,
+};
 
 /// O afastamento de `x⁺` da fronteira (para FORA), em metros.
 const FORA: f64 = 1e-9;
@@ -63,7 +66,7 @@ struct Elemento {
 }
 
 fn reflete(o: &Objeto) -> bool {
-    o.emissao.is_none() && opaco(o) && o.albedo.iter().any(|&a| a > 0.0)
+    o.emissao.is_none() && corpo(o) && o.albedo.iter().any(|&a| a > 0.0)
 }
 
 fn partir(objetos: &[Objeto], passo: f64) -> (Elementos, Vec<Elemento>) {
@@ -74,7 +77,9 @@ fn partir(objetos: &[Objeto], passo: f64) -> (Elementos, Vec<Elemento>) {
         let geometria::Fronteira::Poligono(v) = &o.fronteira else {
             continue;
         };
-        let albedo = o.albedo.map(|a| a.min(teto));
+        // ⭐ W5k: o corpo de opacidade `α` devolve `α·a` (a fração dele que é superfície).
+        let alfa = 1.0 - o.transmissao;
+        let albedo = o.albedo.map(|a| (alfa * a).min(teto));
         let normais = geometria::normais_para_fora(v);
         let mut arestas = Vec::with_capacity(v.len());
         for (i, &a) in v.iter().enumerate() {
@@ -177,7 +182,18 @@ impl Rebote {
             let l = linha(&self.objetos, &self.pontuais, self.ceu, &self.elementos, q);
             aplicar(&l, &self.radiancia)
         };
-        crate::no_miolo(&self.objetos, self.op_miolo, &self.miolo, ponto, &fora)
+        let transmitida = |q| {
+            let l = linha_sem_projetar(&self.objetos, &self.pontuais, self.ceu, &self.elementos, q);
+            aplicar(&l, &self.radiancia)
+        };
+        crate::no_miolo(
+            &self.objetos,
+            self.op_miolo,
+            &self.miolo,
+            ponto,
+            &fora,
+            &transmitida,
+        )
     }
 
     /// A luz que uma superfície de frente recebe em `ponto`: `F / 2π` (plano §2.3).

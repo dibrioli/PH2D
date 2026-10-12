@@ -80,6 +80,95 @@ fn rodar(gpu: &ph2d_gpu::GpuContext, cfg: Config, c: &CenaDeLuz) -> (Vec<[f32; 3
 const TETO: f64 = 0.05;
 const TETO_RMS: f64 = 0.03;
 
+/// O teto da média quadrática SEM o miolo (o exterior mais próximo, `PH2D_LIGHT2D_MIOLO=0`) — MEDIDO
+/// (W5k, `sonda_o_translucido_contra_o_gabarito`): 0,044 no opaco, 0,036 a 0,9, 0,012 a ½. O pior dele é
+/// o salto do eixo medial e do terminador (0,42 já no opaco) e não entra.
+const TETO_RMS_SEM_MIOLO: f64 = 0.05;
+
+/// ⭐ W5k — **o translúcido da placa é o do gabarito, com e sem o miolo** (`mix(transmitida,
+/// exterior/miolo, α)`; sem o miolo a mistura é a da `c3_fina`, com ele a do `miolo_final`): o disco a
+/// 0,9 e a ½ contra o gabarito no miolo fundo — com o miolo nos tetos do OPACO (medido: 0,034 · 0,019 a
+/// 0,9; 0,015 · 0,008 a ½) —, e a 0,999 a menos de 1 % do opaco (até a W5k, PRETO). Controlo da face: a
+/// metade de trás da lâmpada vista através do corpo (`visibilidade_na_face`) — tapada, o rms a 0,9 era
+/// 0,17 sem o miolo e 0,09 com ele.
+#[test]
+fn o_translucido_da_placa_e_o_do_gabarito() {
+    let Some(gpu) = gpu() else { return };
+    let com_alfa = |a: f32| {
+        let mut c = cena();
+        c.oclusores[0].opacidade = a;
+        c
+    };
+    for (miolo, suavidade) in [(Some(MIOLO_PADRAO), 1.0), (None, 0.0)] {
+        let op = OpcoesDoMiolo {
+            suavidade,
+            penetracao_m: f64::INFINITY,
+        };
+        for a in [0.9, 0.5] {
+            let (flu, g, _) = rodar(&gpu, config(miolo), &com_alfa(a));
+            let (pior, rms) = erro(&flu, &g, &Gabarito::com_miolo(&com_alfa(a), op));
+            let ok = if miolo.is_some() {
+                pior <= TETO && rms <= TETO_RMS
+            } else {
+                rms <= TETO_RMS_SEM_MIOLO
+            };
+            assert!(ok, "miolo {} a {a}: a placa não é o gabarito: pior {pior:.4} · rms {rms:.4}", miolo.is_some());
+        }
+        let (um, g, _) = rodar(&gpu, config(miolo), &com_alfa(1.0));
+        let (quase, ..) = rodar(&gpu, config(miolo), &com_alfa(0.999));
+        let no_disco = |k: usize| {
+            let p = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+            (p[0] - f64::from(C[0])).hypot(p[1] - f64::from(C[1])) < 0.95 * f64::from(R)
+        };
+        let topo = (0..um.len()).filter(|&k| no_disco(k)).map(|k| um[k][1]).fold(0.0, f32::max);
+        let salto = (0..um.len())
+            .filter(|&k| no_disco(k))
+            .map(|k| (quase[k][1] - um[k][1]).abs() / topo)
+            .fold(0.0, f32::max);
+        assert!(salto <= 0.01, "miolo {}: de 1 a 0,999 o interior saltou {salto:.5}", miolo.is_some());
+    }
+}
+
+/// Sonda (`--ignored --nocapture`): o erro da placa contra o gabarito no miolo fundo, por opacidade.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_o_translucido_contra_o_gabarito() {
+    let Some(gpu) = gpu() else { return };
+    for (miolo, suavidade) in [(Some(MIOLO_PADRAO), 1.0), (None, 0.0)] {
+        for a in [1.0_f32, 0.9, 0.5, 0.1, 0.001] {
+            let mut c = cena();
+            c.oclusores[0].opacidade = a;
+            let op = OpcoesDoMiolo {
+                suavidade,
+                penetracao_m: f64::INFINITY,
+            };
+            let (flu, g, _) = rodar(&gpu, config(miolo), &c);
+            let gab = Gabarito::com_miolo(&c, op);
+            let (pior, rms) = erro(&flu, &g, &gab);
+            let p = [f64::from(C[0]) - 0.3 * f64::from(R), f64::from(C[1])];
+            let (i, j) = (((p[0] - g.origem_m[0]) / g.texel_m) as u32, ((p[1] - g.origem_m[1]) / g.texel_m) as u32);
+            let placa = flu[(j * g.largura + i) as usize][1];
+            eprintln!(
+                "miolo {} α {a}: pior {pior:.4} rms {rms:.4} · no ponto da face placa {placa:.4} gabarito {:.4}",
+                miolo.is_some(),
+                gab.fluencia(g.centro(i, j))[1]
+            );
+            if (a - 0.9).abs() < 1e-6 || (a - 0.5).abs() < 1e-6 {
+                let volta: Vec<String> = (0..12)
+                    .map(|k| {
+                        let ang = f64::from(k * 30).to_radians();
+                        let p = [f64::from(C[0]) + 0.5 * f64::from(R) * ang.cos(), f64::from(C[1]) + 0.5 * f64::from(R) * ang.sin()];
+                        let (i, j) = (((p[0] - g.origem_m[0]) / g.texel_m) as u32, ((p[1] - g.origem_m[1]) / g.texel_m) as u32);
+                        let q = g.centro(i, j);
+                        format!("{}°:{:.3}/{:.3}", k * 30, flu[(j * g.largura + i) as usize][1], gab.fluencia(q)[1])
+                    })
+                    .collect();
+                eprintln!("   volta a 0,5R (placa/gabarito): {}", volta.join(" "));
+            }
+        }
+    }
+}
+
 #[test]
 fn o_miolo_da_placa_e_o_do_gabarito() {
     let Some(gpu) = gpu() else { return };

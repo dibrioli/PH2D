@@ -141,6 +141,12 @@ fn meio(pc: vec2<f32>) -> Meio {
     return m;
 }
 
+// ⭐ W5k — `pc` está DENTRO de um CORPO (τ < 1: todo emissor e todo oclusor de opacidade > 0): o
+// predicado GEOMÉTRICO da C3 (preencher, o pé na face, o `x⁺` do rebote). A marcha lê o τ (transporte).
+fn num_corpo(pc: vec2<f32>) -> bool {
+    return meio(pc).tau < 1.0;
+}
+
 // ⭐ W5d — `p` (texels da captura ligada, grade `n`) está DENTRO pela borda EXATA da cobertura: a
 // reta de cada texel parcial que o `c3_borda` (`c3_borda.wgsl`, o AAEDT) gravou no lugar da cobertura
 // (`(cobertura, normal, recuo)`); texel cheio dentro, vazio fora, sem reta `c` (o iso-½). O iso-½ da

@@ -1,9 +1,9 @@
 //! ⭐⭐⭐ **O interior de um opaco recebe a luz do EXTERIOR mais próximo** (F3 da fila do dono,
 //! `docs/Luz2D/01_plano.md` §7.1: «uma linha escura de 1 px junto à face iluminada das paredes»). Um
 //! ponto dentro de um corpo opaco recebe a fluência do ponto de fora mais perto dele — a face acesa
-//! da parede não mistura zeros, e uma parede que RECEBE luz não sai preta. Um vidro (opacidade < 1)
-//! continua a atenuar por dentro. ⭐ W5h: esta lei é agora a `suavidade = 0` do miolo (a omissão é a
-//! difusão, `o_miolo_do_disco`).
+//! da parede não mistura zeros, e uma parede que RECEBE luz não sai preta. ⭐ W5h: esta lei é agora a
+//! `suavidade = 0` do miolo (a omissão é a difusão, `o_miolo_do_disco`). ⭐ W5k: um vidro (opacidade
+//! `α < 1`) mistura a luz que o atravessa com a do opaco, por `α`.
 
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor, Oclusor};
 use ph2d_light2d_ref::{Gabarito, MIOLO_PADRAO, OpcoesDoMiolo};
@@ -66,16 +66,41 @@ fn o_interior_de_um_opaco_recebe_o_exterior_mais_proximo() {
     assert!(fluencia(&c, [1.55, 0.1])[1] > 0.1);
 }
 
+/// ⭐ W5k — **dentro de um vidro de opacidade `α`, `mix(transmitida, exterior, α)`**: a transmitida é
+/// a cena sem o vidro × `1 − α` (a partida de dentro conta como uma entrada), o exterior o do opaco.
 #[test]
-fn um_vidro_continua_a_atenuar_por_dentro() {
-    // No MESMO ponto, a cena sem o vidro: a partida de dentro conta como uma entrada (× ½).
+fn um_vidro_mistura_a_transmitida_e_o_exterior_pela_opacidade() {
     let p = [1.55, 0.1];
-    let dentro = fluencia(&cena(0.5), p)[1];
     let vazio = fluencia(&cena(0.0), p)[1];
-    assert!(
-        (dentro - 0.5 * vazio).abs() <= 1e-9 * vazio,
-        "dentro do vidro: {dentro} × ½ de {vazio}"
-    );
+    for a in [0.5_f32, 0.999, 0.001] {
+        let c = cena(a);
+        let a = f64::from(a);
+        let t = (1.0 - a) * vazio;
+        let e = fluencia(&c, logo_fora([1.5, 0.1], [-1.0, 0.0]))[1];
+        let esperado = t + (e - t) * a;
+        let dentro = fluencia(&c, p)[1];
+        assert!(
+            (dentro - esperado).abs() <= 1e-9 * vazio,
+            "dentro do vidro a {a}: {dentro} × {esperado}"
+        );
+    }
+}
+
+/// ⭐ W5k — **Lipschitz em `α`, com o miolo por omissão**: mudar a opacidade de `δ` muda o interior no
+/// máximo `2δ` × a luz sem o corpo (até a W5k, de 1 a 0,999 o interior caía a 0,1 %: o corpo PRETO). A
+/// régua é a luz da cena VAZIA: atrás do corpo (`[2.4, −0.3]`) a 0,999 passa `0,1 %` dela, o que sobe
+/// a sombra quase preta em ~3 % — físico, não um salto.
+#[test]
+fn o_interior_e_continuo_na_opacidade() {
+    let g = |a: f32, p: [f64; 2]| Gabarito::novo(&cena(a)).fluencia(p)[1];
+    for p in [[1.55, 0.1], [2.0, 0.0], [2.4, -0.3]] {
+        let vazio = g(0.0, p);
+        for (a, b) in [(0.999_f32, 1.0_f32), (0.001, 0.0)] {
+            let (x, y) = (g(a, p), g(b, p));
+            let teto = 2.0 * f64::from((a - b).abs()) * vazio;
+            assert!((x - y).abs() <= teto, "{p:?}: {x} a {a} × {y} a {b} (teto {teto})");
+        }
+    }
 }
 
 #[test]

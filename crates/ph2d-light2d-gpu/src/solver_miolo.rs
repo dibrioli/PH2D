@@ -67,7 +67,7 @@ impl DoMiolo {
         let cfg = e.cfg;
         let miolo = cfg.miolo?;
         let niveis = cfg.niveis_do_miolo()?;
-        let [i0, ik, ia, ib] = Opcionais::de(cfg).miolo?;
+        let [i0, ik, ia, ib, it] = Opcionais::de(cfg).miolo?;
         let device = e.placa;
         // Um módulo e um layout por formato da `saida` (o WGSL fixa-o na declaração).
         let por_formato = |formato: wgpu::TextureFormat| {
@@ -87,6 +87,7 @@ impl DoMiolo {
                     entrada_textura(2, FLOAT),
                     entrada_textura(3, FLOAT),
                     entrada_escrita(4, formato),
+                    entrada_textura(5, FLOAT),
                 ],
             });
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -144,6 +145,7 @@ impl DoMiolo {
         let (kv, av, bv) = (piramide(ik), piramide(ia), piramide(ib));
         let k0 = &e.vistas[i0];
         let fl = &e.vistas[FLUENCIA];
+        let transmitida = &e.vistas[it];
         // O conhecido do nível `l` (0 = o da fina).
         let k = |l: u32| if l == 0 { k0 } else { &kv[l as usize - 1] };
         let a = |l: u32| &av[l as usize - 1];
@@ -168,6 +170,7 @@ impl DoMiolo {
                     entrada(2, v[1]),
                     entrada(3, v[2]),
                     entrada(4, v[3]),
+                    entrada(5, transmitida),
                 ],
             })
         };

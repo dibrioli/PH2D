@@ -24,8 +24,10 @@
 
 use ph2d_imageio::{
     DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageExporter, ImageImporter,
-    ImportOpts, ImporterRegistry, MAX_ARCHIVE_TEXT_BYTES, MagicHint, MagicMatch, VectorDoc,
+    ImportOpts, ImporterRegistry, MagicHint, MagicMatch, VectorDoc,
 };
+
+pub mod raster;
 
 /// Register the SVG importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {
@@ -61,38 +63,9 @@ impl ImageImporter for SvgImporter {
     }
 
     fn import(&self, src: &[u8], _opts: &ImportOpts) -> Result<DecodedImage, Error> {
-        if src.is_empty() {
-            return Err(Error::Truncated);
-        }
-        // HR-13: cap source size before usvg parses. SVG is text/XML
-        // so the cap is large enough for any plausible icon set
-        // (~16 MiB) but blocks billion-laughs / hostile expansion.
-        if (src.len() as u64) > MAX_ARCHIVE_TEXT_BYTES {
-            return Err(Error::Decode(format!(
-                "SVG source {} bytes > MAX_ARCHIVE_TEXT_BYTES={MAX_ARCHIVE_TEXT_BYTES} \
-                 (DoS defence)",
-                src.len()
-            )));
-        }
-        // Parse via usvg. Audit-13 Lens HH FIN-1 (2026-05-27): the
-        // default `image_href_resolver` calls `std::fs::read(href)`
-        // for `<image href="…">` references — a hostile SVG with
-        // `<image href="/etc/passwd"/>` would touch the filesystem
-        // (no leak to caller, but page-cache footprint + timing
-        // side-channel). Override with neutral resolvers: data: URIs
-        // pass through; string hrefs are NOT resolved (return None).
-        let opts = usvg::Options {
-            image_href_resolver: usvg::ImageHrefResolver {
-                resolve_data: usvg::ImageHrefResolver::default_data_resolver(),
-                resolve_string: Box::new(|_href, _opts| None),
-            },
-            ..Default::default()
-        };
-        // Default options resolve <use>, <style>, gradients into a
-        // flat tree; the result is dropped here because VectorDoc
-        // body is reserved for W3+ ph2d-vector amendment.
-        let _tree = usvg::Tree::from_data(src, &opts)
-            .map_err(|e| Error::from_decoder_message(format!("SVG parse: {e}")))?;
+        // HR-13 (o tecto de bytes antes do parser) e Audit-13 Lens HH FIN-1 (nenhum `href` lê o
+        // disco): a MESMA porta que o Quadro usa para mostrar um SVG como imagem ([`raster::parse`]).
+        let _tree = raster::parse(src)?;
         // ⚠️⚠️ **A recusa passou a NOMEAR a porta certa** (2026-09-05, estudo 42 item 3). Ela dizia
         // *"lands in W3+ when ph2d-vector is callable from imageio"*, e isso deixou de ser o
         // estado do mundo: um `.svg` **entra** neste app como formas editáveis, pelo
@@ -138,6 +111,7 @@ impl ImageExporter for SvgExporter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_imageio::MAX_ARCHIVE_TEXT_BYTES;
 
     #[test]
     fn supports_recognizes_svg_open_tag_strong() {

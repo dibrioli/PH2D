@@ -36,6 +36,12 @@ ph2d-imageio = { path = "../ph2d-imageio" }
 # ⭐ Subir também COLAPSA o `kurbo`: a 0.43 arrastava `kurbo 0.11.3` via `svgtypes 0.15`, e era o
 # ÚNICO consumidor dessa cópia — a 0.48 pede `^0.13`, que é a que o resto da árvore já usa.
 usvg = { version = "0.48", default-features = false, features = ["svgz"] }
+# W15 do Quadro — o rasterizador da MESMA série do `usvg` (Apache-2.0 OR MIT, `pacman -Qi resvg`
+# 0.48.1 e crates.io): um SVG largado num quadro é uma IMAGEM, desenhada ao tamanho do ecrã. Puxa o
+# `tiny-skia 0.12` (o `0.11` fica pelo `sctk-adwaita` do winit, que não sobe: dois, o tecto do
+# `deny.toml`; nenhum tipo atravessa). `raster-images` = os `<image>` JPEG/GIF/WebP embebidos, por
+# crates que o `Cargo.lock` já tinha. ⛔ Sem `text` (a recusa do `ph2d-vec-svg/Cargo.toml`).
+resvg = { version = "0.48", default-features = false, features = ["raster-images"] }
 
 [dev-dependencies]
 # ⭐ **SÓ para o gate que prende os DOIS tectos de bytes ao mesmo número.** O importador de SVG a

@@ -8,8 +8,9 @@
 
 - Worktree `Worktrees/line-motion-value`, base `8f20c60de` (= `main`). Commits desta janela: `e1d7eb2aa4` (glow),
   `45399f5551` + `3ee494b5ca` + `3db921b434` + o Each Shape na mistura (B5). **Nada integrado nem enviado.**
-- ⏳ Smoke do dono: `=135` passos (12)/(13) (`PH2D_ACABAMENTO_PASSO=12|13`), fotografados; e o re-smoke das estrelas
-  (`=70`, cura `f0370a2786`).
+- ✅ **Smoke do dono OK (11/10)** — `=135` passos (12) Multiply e (13) Screen com `Copies`
+  (`PH2D_ACABAMENTO_PASSO=12|13`), depois da cura «o brilho do relevo não participa do Multiply».
+- ⏳ Re-smoke das estrelas a girar (`=70`, cura `f0370a2786`).
 
 ## LUT do `fx.glow` — FEITO (`e1d7eb2aa4`)
 

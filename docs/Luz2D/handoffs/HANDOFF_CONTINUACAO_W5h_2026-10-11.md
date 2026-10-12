@@ -71,7 +71,7 @@ O anel (a condição de fronteira = o pé da W5g) contra o gabarito: viés médi
    preto duro virou uma mancha suave (foto).
 6. Herdados: o portão lento `o_miolo_das_formas` (R9), o serrilhado de 1–2 px no terminador, a abertura lenta.
 
-## W5i — a ESTUFA das pipelines (o «app demora a abrir», W5f §3, e o nível novo a frio, W5e ABERTO 1)
+## W5i — ✅ SMOKE DO DONO OK (11/10) — a ESTUFA das pipelines (o «app demora a abrir», W5f §3, e o nível novo a frio, W5e ABERTO 1)
 
 `ph2d-app-light2d/src/forno.rs`: as pipelines dependem só da configuração (nunca da grade — o portão do
 redimensionar), então um solver de grade 32² montado noutro fio sobre a MESMA `Fabrica` deixa-as prontas.

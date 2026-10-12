@@ -134,4 +134,19 @@ seleccionada). Fotos: `/var/tmp/ph2d_F12_cenas/`.
 
 ## §8 — Portão, binário e `agent-loop-profile.sh`
 
-(a preencher)
+- **Portão batched** (agente `verificador`, 1× sobre `f1138408e1..227a9cae3b`, loadavg 36–48):
+  `nextest-impacted` **19 850 / 19 850** (8 563 ignorados, 232 s) · clippy do `ship.sh`
+  (`--workspace --all-targets --features ph2d-spike/bevy_ecs -D warnings`) **exit 0** (antes dele,
+  um `type_complexity` na sonda da cauda do censo, desta linha: curado em `227a9cae3b`) ·
+  `fmt --all --check` ✗ em dois ficheiros desta linha → curado em `059b21c0ac` (e
+  `the_shell_only_shrinks` re-corrido depois: ✓) · `workspace_src_files_under_loc_cap` ✓ ·
+  `architecture_claude_md_cabe_no_orcamento` 3/3 ✓ (a entrada UI/UX: 696/700 bytes) ·
+  `the_shape_handles_are_drawn_and_dragged` 2/2 ✓ · `every_door_the_names_enter_by_translates_them` ✓.
+- Fotos das cenas 15–19 (e a 19 com cada forma seleccionada): `/var/tmp/ph2d_F12_cenas/` — nenhum
+  cartão; nenhum ⇕ sobre uma alça de escala nem sobre a ④.
+- `bash scripts/doc-index.sh` ✓ · `rm -rf target/*/incremental` (20 G + 6 G).
+- **Binário de smoke** (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`),
+  2.ª corrida depois da limpeza, HEAD `059b21c0ac`:
+  `Finished \`smoke\` profile [optimized] target(s) in 0.39s` (zero `Compiling`).
+- `agent-loop-profile.sh` (20 sessões): paralelismo 1,13 ✗ · respostas/sessão 161 ✓ · test:check
+  4,1 ✗ · Edit 42 % ✗ · contexto/passo 417 mil ✗ · início 63 mil ✓.

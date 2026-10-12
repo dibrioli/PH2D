@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**55 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **55** são handoffs (registro **morto**).
+**58 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **58** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -67,9 +67,12 @@
 | 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F10.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F10.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 11/10 — depois da F10 |
 | 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F11.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F11.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 11/10 — a F11 a meio (janela 1 fechada pela R1) |
 | 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F12.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F12.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 11/10 — F12 a meio (sub-onda A, 1.ª parte) |
+| 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F12b.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-11_F12b.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 11/10 — F12 depois da 2.ª janela (A2 + A3 feitas) |
 | 2026-10-11 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F10_PARAMETROS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F10_PARAMETROS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F10: MAIS PARÂMETROS, O CARTÃO LATERAL, AS ALÇAS NO MODO FOR… |
-| 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F11_GIZMOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F11_GIZMOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F11: OS GIZMOS DAS FORMAS COMO O ILLUSTRATOR, A CAIXA COM O … |
+| 2026-10-11 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F11_GIZMOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F11_GIZMOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F11: OS GIZMOS DAS FORMAS COMO O ILLUSTRATOR, A CAIXA COM O … |
 | 2026-10-11 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-11_F9_ALCAS_DAS_FORMAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-11 — F9: AS ALÇAS DAS FORMAS |
+| 2026-10-12 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-12_F12c.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-12_F12c.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 12/10 — F12 depois da 3.ª janela (B · C · D · F feitas) |
+| 2026-10-12 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F12_SETAS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-12_F12_SETAS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-12 — F12: O CARTÃO SAI, AS SETAS ⇕ NA LATERAL, O TRAÇO SEM SALTO,… |
 
 ---
 

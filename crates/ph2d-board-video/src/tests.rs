@@ -393,3 +393,16 @@ fn the_playback_state_reads_the_players_messages() {
         "nunca passa do fim"
     );
 }
+
+/// ⭐ W19 (auditoria): o tocador reaproveitado para OUTRO vídeo não mostra o estado do anterior (o tempo,
+/// a duração, a pausa pedida) até o novo responder — começa do zero.
+#[test]
+fn loading_another_video_forgets_the_previous_ones_state() {
+    let p = Player::detached();
+    p.hear(&json!({"event":"infoDelivery","info":{"playerState":1,"currentTime":300.0,"duration":635.0}}));
+    p.pause();
+    assert_eq!(p.playback().duration, 635.0);
+    p.load(&bunny());
+    let b = p.playback();
+    assert_eq!((b.time, b.duration, b.want), (0.0, 0.0, None), "{b:?}");
+}

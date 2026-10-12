@@ -132,6 +132,22 @@ impl Player {
         }
     }
 
+    /// Um tocador sem navegador (os testes do estado).
+    #[cfg(test)]
+    pub(crate) fn detached() -> Self {
+        let (cmd, _) = channel();
+        Self {
+            cmd,
+            shared: Arc::default(),
+            seen: 0,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn hear(&self, msg: &Value) {
+        lock(&self.shared.playback).apply(msg, Instant::now());
+    }
+
     #[must_use]
     pub fn state(&self) -> PlayerState {
         lock(&self.shared.state)
@@ -207,7 +223,9 @@ impl Player {
         let _ = self.cmd.send(Cmd::Call(func, args));
     }
 
+    /// Outro vídeo no mesmo tocador: o estado do anterior esquece-se (até o novo responder, nada).
     pub fn load(&self, video: &Video) {
+        *lock(&self.shared.playback) = Playback::default();
         let _ = self.cmd.send(Cmd::Load(video.clone()));
     }
 

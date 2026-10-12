@@ -74,4 +74,4 @@ Fotos (`fotografa_cena.sh`, 1600×972): `=70`, `=136`, `=137` (+ `PH2D_MOTION_RO
 HIBRIDO`). Worktrees dos agentes removidas; `target/*/incremental` reclamado.
 
 binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
-`Finished smoke profile [optimized] target(s) in 0.24s` (depois de `62e22985ce`) — zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.25s` (depois de `5ae5c93662`) — zero `Compiling`.

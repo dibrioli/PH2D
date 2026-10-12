@@ -269,9 +269,11 @@ impl crate::App {
         self.smoke_expand_telemetry(f, 380);
         match f {
             // Rola o painel até a seção Expand entrar no hit-index (mesmo caminho do 18).
-            5..=7
+            // ⚠️ Pára no botão Apply (o widget MAIS BAIXO da seção), não no slider: parado no slider
+            // os chips de Corner ficavam fora do ecrã e o roteiro nunca os clicou (11/10).
+            5..=9
                 if self
-                    .smoke_find_widget(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
+                    .smoke_find_widget(ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH)
                     .is_none() =>
             {
                 let win = self.gfx.as_ref().map(|g| g.surface.size());
@@ -406,9 +408,11 @@ impl crate::App {
             // A seção Expand mora abaixo da dobra: ROLA o painel (roda, caminho real) até o
             // slider entrar no hit-index. O cursor precisa estar SOBRE o painel para a roda
             // ser dele — o painel docado fica na borda direita.
-            5..=7
+            // ⚠️ Pára no botão Apply (o widget MAIS BAIXO da seção), não no slider: parado no slider
+            // os chips de Corner ficavam fora do ecrã e o roteiro nunca os clicou (11/10).
+            5..=9
                 if self
-                    .smoke_find_widget(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
+                    .smoke_find_widget(ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH)
                     .is_none() =>
             {
                 let win = self.gfx.as_ref().map(|g| g.surface.size());

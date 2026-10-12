@@ -86,13 +86,17 @@ impl crate::App {
                 crate::offset_live::arm(sim, &self.vec.entities, &sel, d, knobs.0, knobs.1);
                 self.vec.offset_mirrored = (sel.len() == 1).then(|| sel[0]);
             }
-            // Um chip de Corner/Side clicado RETUNA os offsets vivos da seleção — e só
-            // eles: sem offset armado, o chip arma o próximo arrasto e não inventa
-            // geometria de lugar nenhum. Comparar com o quadro anterior é o que distingue
-            // "o artista clicou" de "o painel está no valor de sempre".
+            // Um chip de Corner/Side clicado PRÉ-VISUALIZA (`offset_live::choose_knobs`): retuna
+            // os offsets vivos e arma as formas nuas com o valor que o slider mostra. Comparar
+            // com o quadro anterior é o que distingue "o artista clicou" de "o painel está no
+            // valor de sempre".
             if knobs != self.vec.expand_knobs.0 {
                 self.vec.expand_knobs.0 = knobs;
-                crate::offset_live::retune(sim, &self.vec.entities, &sel, knobs);
+                let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
+                let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
+                if crate::offset_live::choose_knobs(sim, &self.vec.entities, &sel, knobs, d) > 0 {
+                    self.vec.offset_mirrored = (sel.len() == 1).then(|| sel[0]);
+                }
             }
         }
         // ── A LARGURA VIVA (ADR-0148) ────────────────────────────────────────

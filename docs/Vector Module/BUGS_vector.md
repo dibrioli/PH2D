@@ -7,7 +7,7 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** os **40 bugs estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** os **41 bugs estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -155,7 +155,11 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 40 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 41 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #41 — Os chips de Corner/Side do Offset não faziam NADA antes de mexer no slider, e o gate e o roteiro que os cobriam estavam verdes ✅ 2026-10-11
+
+**Sintoma (smoke do Enio, cena 17):** *«os botões de Side e Corner só tiveram efeito após mover offset»*. **Mecanismo:** o clique num chip chamava `offset_live::retune`, que por DESENHO só retunava offsets já armados (*«não arma nada: clicar Round sem ter arrastado não inventa um offset»*) — enquanto o painel MOSTRAVA o slider em 25 % sobre uma forma que não tinha offset nenhum. Um controlo que pinta um valor que o documento não tem, e um botão que não desenha. A regra do dono (2026-07-21, escrita no próprio módulo) diz o contrário: *«os botões Miter, Round e Bevel são previsualizações em tempo real»*. **Cura:** `offset_live::choose_knobs` — retuna os vivos e ARMA as formas nuas com o `d` que o slider mostra (zero ⇒ nada, a lei do `arm`); a `fase_live_offset_and_width` chama-o. ⚠️ **Os dois verdes sobre isto:** (a) o gate `retuning_a_shape_without_a_live_offset_arms_nothing` EXIGIA o defeito (substituído por `a_corner_chip_on_a_bare_shape_previews_the_slider_value` + dois irmãos, red-first, mutação sangra); (b) o roteiro auto-dirigido dos níveis 18/19 — escrito para o report de 07/20 — **nunca clicou um chip**: parava de rolar quando o SLIDER entrava no hit-index, e os chips, logo abaixo, ficavam fora do ecrã; ele imprimia `chip ROUND fora do hit-index` e seguia, sem falhar. Agora rola até o botão Apply (o widget mais baixo); no caminho real, `off=0 → off=1, d=0,300, live=152` logo após o clique, e com a cura ablada `off=0` (o sintoma do dono, reproduzido). ⛔ **A outra metade do report NÃO é defeito:** *«com valores negativos a estrela fica sempre pontuda»* — encolher uma ponta convexa dá sempre ponta (Steiner; o VectorCraft concorda no W0); o Corner muda os VALES (estrela a `d = −0,3`: Miter `0,232`, Round `0,260`, Bevel `0,307` de área).
 
 ### #40 — O Offset Bevel/Miter media a junção pela CORDA e não pela tangente, e um ponto a `1e-17` do anterior virava aresta com direção de ruído ✅ 2026-10-11
 

@@ -181,10 +181,10 @@ pub fn arm(
     n
 }
 
-/// Muda só a QUINA e o LADO dos offsets vivos de `ids` — o clique num chip de Corner/Side.
+/// Muda só a QUINA e o LADO dos offsets vivos de `ids`.
 ///
-/// Não arma nada: um caminho sem offset vivo continua sem. É o que faz clicar "Round" sem ter
-/// arrastado o slider não inventar um offset de lugar nenhum.
+/// Não arma nada: um caminho sem offset vivo continua sem. O clique num chip NÃO é isto sozinho —
+/// é o [`choose_knobs`], que arma as formas nuas com o valor do slider.
 pub fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], knobs: (u8, u8)) {
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
@@ -203,6 +203,30 @@ pub fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], knobs: 
             });
         }
     }
+}
+
+/// **O clique num chip de Corner/Side** — uma PRÉ-VISUALIZAÇÃO, nunca uma preparação muda
+/// (*«os botões Miter, Round e Bevel são previsualizações em tempo real»*, Enio, 2026-07-21).
+///
+/// Uma forma com offset vivo troca só a quina e o lado ([`retune`]: o `d` é DELA). Uma forma sem
+/// offset é armada com `d`, o valor que o slider MOSTRA — o painel já o exibe, e um clique que não
+/// o desenhasse era um controlo morto (smoke de 11/10). Slider no zero ⇒ nada (a lei do [`arm`]).
+///
+/// Devolve quantas formas foram ARMADAS.
+pub fn choose_knobs(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    ids: &[VecPathId],
+    knobs: (u8, u8),
+    d: f64,
+) -> usize {
+    retune(sim, map, ids, knobs);
+    let bare: Vec<VecPathId> = ids
+        .iter()
+        .copied()
+        .filter(|id| spec_of(sim, map, *id).is_none())
+        .collect();
+    arm(sim, map, &bare, d, knobs.0, knobs.1)
 }
 
 /// **MATERIALIZA** os offsets vivos da seleção — o `Apply Offset` e o `Convert to Curves`.

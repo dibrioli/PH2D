@@ -361,17 +361,45 @@ fn materialising_without_a_live_offset_refuses() {
     ));
 }
 
-/// **Um chip de Corner sobre uma forma SEM offset não inventa geometria.** O retune ajusta o
-/// que existe; armar é do slider. Sem isto, clicar "Round" a passear pelo painel offsetaria a
-/// seleção sozinho.
+/// **Um chip de Corner/Side sobre uma forma SEM offset PRÉ-VISUALIZA o valor que o slider mostra**
+/// (smoke do Enio, 11/10: *«os botões de Side e Corner só tiveram efeito após mover offset»*). A
+/// regra dele é de 2026-07-21 — *«os botões Miter, Round e Bevel são previsualizações em tempo
+/// real»* —, e o gate que aqui estava (`retuning_a_shape_without_a_live_offset_arms_nothing`)
+/// exigia o contrário: com o slider a mostrar 25 %, o clique não desenhava nada.
 #[test]
-fn retuning_a_shape_without_a_live_offset_arms_nothing() {
+fn a_corner_chip_on_a_bare_shape_previews_the_slider_value() {
     let (scene, mut sim, map, xf, id) = donut_scene();
-    crate::offset_live::retune(&mut sim, &map, &[id], (1, 0));
-    assert!(crate::offset_live::spec_of(&sim, &map, id).is_none());
+    let n = crate::offset_live::choose_knobs(&mut sim, &map, &[id], (1, 0), 0.3);
+    assert_eq!(n, 1, "o clique armou a forma");
+    let spec = crate::offset_live::spec_of(&sim, &map, id).expect("offset vivo depois do clique");
+    assert_eq!((spec.d, spec.join, spec.side), (0.3, 1, 0));
     let mut live = crate::offset_live::OffsetLive::default();
     live.recook(&scene, &sim, &map, &xf);
-    assert!(live.live().is_empty());
+    assert!(
+        !drawn(&live, id).is_empty(),
+        "o clique DESENHA a pré-visualização"
+    );
+}
+
+/// O mesmo clique com o slider no ZERO não arma nada: zero é «sem offset» (a lei do `arm`).
+#[test]
+fn a_corner_chip_with_the_slider_at_zero_arms_nothing() {
+    let (_, mut sim, map, _, id) = donut_scene();
+    assert_eq!(
+        crate::offset_live::choose_knobs(&mut sim, &map, &[id], (1, 0), 0.0),
+        0
+    );
+    assert!(crate::offset_live::spec_of(&sim, &map, id).is_none());
+}
+
+/// E sobre uma forma JÁ com offset o clique só troca a quina: o `d` dela fica, não o do slider.
+#[test]
+fn a_corner_chip_on_a_live_offset_keeps_its_distance() {
+    let (_, mut sim, map, _, id) = donut_scene();
+    crate::offset_live::arm(&mut sim, &map, &[id], 0.2, 0, 2);
+    crate::offset_live::choose_knobs(&mut sim, &map, &[id], (2, 2), 0.7);
+    let spec = crate::offset_live::spec_of(&sim, &map, id).expect("vivo");
+    assert_eq!((spec.d, spec.join, spec.side), (0.2, 2, 2));
 }
 
 // ─────────────────────────── O cozimento ───────────────────────────

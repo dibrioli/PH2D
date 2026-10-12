@@ -44,6 +44,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Tool(Tool::Shape(_)) | Item::Pick(_) => return shape_key(it),
         Item::MoreShapes => "board.tool.more",
         Item::Reshape => "board.style.shape",
+        Item::Gray => "board.style.gray",
         Item::Fill(None) => "board.style.no_fill",
         Item::Fill(Some(_)) => "board.style.fill",
         Item::Stroke(None) => "board.style.no_stroke",
@@ -464,6 +465,24 @@ pub(super) fn paint_item(
             stroke(scene, &p, fg, line, d);
         }
         Item::Round(round) => shape_icon(scene, ShapeType::Rectangle, inner, fg, line, round),
+        // O preto e branco: o círculo do contraste, meio cheio.
+        Item::Gray => {
+            let (cx, cy) = (
+                f64::from(inner.x + inner.w / 2.0),
+                f64::from(inner.y + inner.h / 2.0),
+            );
+            let rad = f64::from(inner.w.min(inner.h) / 2.0) - line / 2.0;
+            let ring = ph2d_vector::Shape::to_path(&ph2d_vector::Circle::new((cx, cy), rad), 0.1);
+            // A metade esquerda: dois quartos de círculo em cúbicas (a constante do quarto de círculo).
+            let k = rad * 0.552_284_75;
+            let mut half = ph2d_vector::BezPath::new();
+            half.move_to((cx, cy - rad));
+            half.curve_to((cx - k, cy - rad), (cx - rad, cy - k), (cx - rad, cy));
+            half.curve_to((cx - rad, cy + k), (cx - k, cy + rad), (cx, cy + rad));
+            half.close_path();
+            scene.fill_path(&half, &ph2d_vector::Brush::Solid(fg), ph2d_vector::Affine::IDENTITY);
+            stroke(scene, &ring, fg, line, Dash::Solid);
+        }
         Item::Opacity(i) => {
             let a = f32::from(OPACITIES[i]) / 100.0; // LITERAL-PX-OK: percentagem → fracção
             let c = resolve(ColorToken::Text1, theme).with_alpha(a);

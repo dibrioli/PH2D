@@ -622,7 +622,8 @@ impl Editor {
 /// letra (decisão do dono, 10/10: o papel fica liso, o desenho não as passa ao traço tremido).
 #[must_use]
 pub fn sketchable(el: &Element) -> bool {
-    el.connector().is_some() || el.shape().is_some()
+    // W15: a imagem pela moldura (o contorno à mão, como o de uma forma).
+    el.connector().is_some() || el.shape().is_some() || el.image().is_some()
 }
 
 /// A caixa alinhada que contém todos `els` (rodados): `[x0, y0, x1, y1]`.

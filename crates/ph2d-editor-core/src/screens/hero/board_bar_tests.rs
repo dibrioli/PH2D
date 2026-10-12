@@ -88,9 +88,11 @@ impl T {
             .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
             .to_vec();
         ev.extend_from_slice(self.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
+        // Dois cliques seguidos no mesmo botão chegam como duplo clique: a barra trata os dois igual.
         assert!(
-            ev.iter()
-                .any(|e| matches!(e, WidgetEvent::Click(i) if *i == id)),
+            ev.iter().any(
+                |e| matches!(e, WidgetEvent::Click(i) | WidgetEvent::DoubleClick(i) if *i == id)
+            ),
             "{ev:?}"
         );
         for e in ev {
@@ -513,3 +515,6 @@ mod live_board;
 
 #[path = "board_images_tests.rs"]
 mod images;
+
+#[path = "board_images_w15_tests.rs"]
+mod images_w15;

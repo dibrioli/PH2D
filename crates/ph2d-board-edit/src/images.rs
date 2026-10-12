@@ -6,7 +6,7 @@
 //! desfazer, e ficam seleccionadas.
 
 use ph2d_board_model::{
-    BoardDoc, BoardOp, Element, ElementId, FileId, Files, History, Image, Rgba, Style,
+    BoardDoc, BoardOp, Element, ElementId, FileId, Files, History, Image, ImageFilter, Rgba, Style,
 };
 
 use crate::Editor;
@@ -52,7 +52,9 @@ impl Editor {
         }
         let total = |v: &[f64]| v.iter().sum::<f64>() + gap * (v.len() as f64 - 1.0);
         let (x0, y0) = (at[0] - total(&col_w) / 2.0, at[1] - total(&row_h) / 2.0);
-        let style = Style::new(None, None, Rgba(ph2d_board_model::DEFAULT_INK));
+        let mut style = Style::new(None, None, Rgba(ph2d_board_model::DEFAULT_INK));
+        // A moldura (W15) nasce no modo do quadro, como o contorno de uma forma.
+        style.sketch = self.style.sketch;
         let mut made = Vec::with_capacity(items.len());
         for (i, ((file, _), s)) in items.iter().zip(&sizes).enumerate() {
             let (c, r) = (i % cols, i / cols);
@@ -85,6 +87,40 @@ impl Editor {
             .filter_map(Element::image)
             .filter_map(|i| Some((i.file, files.get(&i.file)?.clone())))
             .collect();
+    }
+
+    /// W15 — as imagens seleccionadas (editáveis) estão TODAS a preto e branco? `None` = nenhuma.
+    #[must_use]
+    pub fn images_gray(&self, doc: &BoardDoc) -> Option<bool> {
+        let imgs: Vec<&Image> = self.editable(doc).into_iter().filter_map(Element::image).collect();
+        (!imgs.is_empty()).then(|| imgs.iter().all(|i| i.filter == ImageFilter::Gray))
+    }
+
+    /// ⭐ W15 — o botão preto e branco: as imagens seleccionadas ficam todas cinzentas, ou (se já o
+    /// estavam todas) todas a cores. UM passo; só as que mudam. `false` = nenhuma imagem.
+    pub fn toggle_gray(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
+        let Some(all) = self.images_gray(doc) else {
+            return false;
+        };
+        let to = if all {
+            ImageFilter::Original
+        } else {
+            ImageFilter::Gray
+        };
+        let ops = self
+            .editable(doc)
+            .into_iter()
+            .filter(|el| el.image().is_some_and(|i| i.filter != to))
+            .map(|el| {
+                let mut el = el.clone();
+                if let Some(i) = el.image_mut() {
+                    i.filter = to;
+                }
+                BoardOp::Put(el)
+            })
+            .collect();
+        history.apply(doc, ops);
+        true
     }
 
     /// Antes de colar: os bytes das imagens da cópia entram no quadro de destino (`files`).

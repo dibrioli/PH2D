@@ -126,6 +126,8 @@ pub enum Item {
     Fac(FacItem),
     /// «Forma»: abre a grelha que troca o TIPO das formas seleccionadas.
     Reshape,
+    /// W15 — o preto e branco das imagens seleccionadas (aceso se estão todas).
+    Gray,
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -207,11 +209,12 @@ pub fn items() -> Vec<Item> {
     .flat_map(style_groups)
     .flatten()
     {
-        if !v.contains(&it) && it != shapes::RESHAPE {
+        if !v.contains(&it) && !matches!(it, Item::Reshape | Item::Gray) {
             v.push(it);
         }
     }
-    v.push(shapes::RESHAPE); // no FIM: os ids dos outros não se movem
+    // No FIM, pela ordem em que chegaram: os ids dos outros não se movem.
+    v.extend([shapes::RESHAPE, Item::Gray]);
     v
 }
 
@@ -282,8 +285,16 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         Selected::Ink => pen::ink_groups(),
         Selected::Frames => vec![organize::frame_fill_group(), fac::frame_group()],
         Selected::Mind => return mind::groups(),
-        // Os cantos e a opacidade (o que o Excalidraw oferece numa imagem: «Edges» e «Opacity»).
-        Selected::Images => vec![vec![Item::Round(false), Item::Round(true)], opacity],
+        // Os cantos e a opacidade (o que o Excalidraw oferece numa imagem: «Edges» e «Opacity»); a
+        // moldura (W15: o contorno, a espessura e o traço das formas) e o preto e branco.
+        Selected::Images => vec![
+            vec![Item::Round(false), Item::Round(true)],
+            stroke,
+            width,
+            dash,
+            opacity,
+            vec![Item::Gray],
+        ],
     };
     groups.extend(org);
     groups
@@ -435,7 +446,9 @@ pub fn paint(
             shapes::paint_button(scene, hit, store, theme, r, (reshape_open, reshape_now));
             continue;
         }
-        let on = mind::is_on(it, ed, &board.doc, templates_open)
+        let on = (it == Item::Gray)
+            .then(|| ed.images_gray(&board.doc) == Some(true))
+            .or_else(|| mind::is_on(it, ed, &board.doc, templates_open))
             .or_else(|| fac_now.is_on(it))
             .or_else(|| org.is_on(it, style.fill))
             .or_else(|| notes::is_current(it, Some(&style), &now))
@@ -531,6 +544,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Item::Opacity(i) => ed.set_style(doc, history, |s| s.opacity = OPACITIES[i]),
         Item::Font(i) => ed.set_style(doc, history, |s| s.font_size = FONT_SIZES[i]),
         Item::Route(r) => ed.set_route(doc, history, r),
+        Item::Gray => {
+            ed.toggle_gray(doc, history);
+        }
         Item::Head(i, h) => ed.set_head(doc, history, i, h),
         Item::MoreShapes
         | Item::Pick(_)

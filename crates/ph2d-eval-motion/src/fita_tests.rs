@@ -16,6 +16,14 @@ fn pub_(pares: &[(&str, f32)]) -> All {
         .collect()
 }
 
+/// As mesmas entradas com as mesmas revisões.
+fn mesmas(a: &All, b: &All) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .zip(b)
+            .all(|((na, ea), (nb, eb))| na == nb && ea.rev == eb.rev)
+}
+
 fn v(all: &All, nome: &str) -> Option<f32> {
     match all.get(nome)?.value.get("v")? {
         Column::Scalar(x) => x.first().copied(),
@@ -67,10 +75,7 @@ fn walking_tick_by_tick_equals_rebuilding_each_tick() {
     let mut estado = f.estado_em(3).unwrap();
     for t in 4..30u64 {
         f.avanca(t, &mut estado);
-        assert!(
-            mesmas_revisoes(&estado, &f.estado_em(t).unwrap()),
-            "tique {t}"
-        );
+        assert!(mesmas(&estado, &f.estado_em(t).unwrap()), "tique {t}");
     }
 }
 
@@ -107,11 +112,15 @@ fn recording_before_the_first_tick_starts_over() {
 #[test]
 fn over_budget_the_oldest_change_folds_into_the_base_and_the_bytes_stay_bounded() {
     let mut f = Fita::new();
-    let um = peso(&vec![("g".to_string(), Some(ext(0.0)))]);
-    f.set_orcamento(um * 10);
-    for t in 0..100u64 {
+    f.grava(0, &pub_(&[("g", 0.0)]));
+    let fixo = f.bytes();
+    f.grava(1, &pub_(&[("g", 1.0)]));
+    let um = f.bytes() - fixo;
+    let teto = fixo + um * 9;
+    f.set_orcamento(teto);
+    for t in 2..100u64 {
         f.grava(t, &pub_(&[("g", t as f32)]));
-        assert!(f.bytes() <= um * 10, "tique {t}: {} bytes", f.bytes());
+        assert!(f.bytes() <= teto, "tique {t}: {} bytes", f.bytes());
     }
     assert_eq!(v(&f.estado_em(99).unwrap(), "g"), Some(99.0));
     assert_eq!(
@@ -172,6 +181,44 @@ fn sonda_a_fita_declara_o_que_ocupa() {
         minimo(&tempos[tempos.len() - 100..])
     );
     let real = rss().saturating_sub(antes);
+    // Tocar de novo sobre o chão gravado (o `Igual`, tique a tique) e ler um tique qualquer (o
+    // início de um scrub): antes da âncora e do cursor, os dois refaziam a história desde a base.
+    let mut sobre = Vec::new();
+    for t in 700..800u64 {
+        for (e, nome) in nomes.iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
+            let v = (t as usize + e) as f32;
+            agora.insert(
+                nome.clone(),
+                External {
+                    rev: t * 1_000 + e as u64,
+                    value: Stream::new(1).with("v", Column::Scalar(vec![v])),
+                },
+            );
+        }
+        let t0 = std::time::Instant::now();
+        assert_eq!(f.grava(t, &agora), Gravacao::Igual);
+        sobre.push(t0.elapsed().as_secs_f64() * 1e3);
+    }
+    let mut ler = Vec::new();
+    for t in (0..T).step_by(97) {
+        let t0 = std::time::Instant::now();
+        let s = f.estado_em(t).expect("gravado");
+        ler.push(t0.elapsed().as_secs_f64() * 1e3);
+        assert_eq!(s.len(), K);
+    }
+    let maximo = |v: &[f64]| v.iter().copied().fold(0.0, f64::max);
+    eprintln!(
+        "fita: tocar sobre o gravado {:.4} ms/tique (o mínimo) · ler um tique qualquer {:.4}–{:.4} ms",
+        minimo(&sobre),
+        minimo(&ler),
+        maximo(&ler)
+    );
+    eprintln!(
+        "fita: size_of Mudanca {} · Option<Valor> {} B",
+        std::mem::size_of::<Mudanca>(),
+        std::mem::size_of::<Option<Valor>>()
+    );
     #[expect(clippy::cast_precision_loss, reason = "uma razão")]
     let mudancas = (K as u64 * T) as f64;
     #[expect(clippy::cast_precision_loss, reason = "uma razão")]
@@ -193,7 +240,7 @@ fn o_que_a_fita_devolve_e_o_que_se_publicou_em_cada_tique() {
     let publica = |t: u64, ramo: u64| -> All {
         let mut a = All::new();
         for e in 0..4u64 {
-            if (t + e) % 3 != 0 {
+            if !(t + e).is_multiple_of(3) {
                 a.insert(format!("e{e}"), ext((t * 7 + e + ramo * 1000) as f32));
             }
         }
@@ -236,5 +283,142 @@ fn o_que_a_fita_devolve_e_o_que_se_publicou_em_cada_tique() {
         for (nome, e) in &publica(t, 0) {
             assert_eq!(lido[nome].rev, e.rev, "dobrada, t={t} {nome}");
         }
+    }
+}
+
+/// O publicado num tique de uma «história» `h`: seis nomes, cada um muda a seu ritmo, às vezes
+/// some, e o `e5` tem duas colunas.
+fn publicado(t: u64, h: u64) -> All {
+    let mut a = All::new();
+    for e in 0..6u64 {
+        if (t * 13 + e * 5 + h).is_multiple_of(11) {
+            continue;
+        }
+        let x = (t / (e + 1) + h * 1000) as f32;
+        let mut s = Stream::new(1).with("v", Column::Scalar(vec![x]));
+        if e == 5 {
+            s = s.with("P", Column::Vec2(vec![[x, -x]]));
+        }
+        a.insert(
+            format!("e{e}"),
+            External {
+                rev: ph2d_nodegraph::external::fingerprint(&s),
+                value: s,
+            },
+        );
+    }
+    a
+}
+
+/// ⭐ **Um passeio de edição contra um MODELO** (doc 131 §7, C.11): tocar para a frente (com
+/// tiques saltados), voltar e tocar sobre o gravado (`Igual`, pelo cursor), editar no mesmo tique
+/// (`Ramo` no cursor), voltar e divergir, voltar para antes do primeiro — e, com um orçamento curto,
+/// a dobra. Depois de cada passo, todo tique gravado (e não dobrado) lê-se como o modelo, por
+/// `estado_em` e andando com `avanca` — atravessando várias âncoras.
+#[test]
+fn um_passeio_de_edicao_le_se_como_o_modelo() {
+    for orcamento in [usize::MAX, 24 * 1024] {
+        let mut f = Fita::new();
+        f.set_orcamento(orcamento);
+        let mut modelo: BTreeMap<u64, All> = BTreeMap::new();
+        let mut semente = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut sorte = |n: u64| {
+            semente = semente
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            (semente >> 33) % n
+        };
+        let mut t = 10u64;
+        let mut h = 0u64;
+        let mut ancoras = 0;
+        let mut dobras = 0;
+        for passo in 0..60 {
+            let ops = sorte(5);
+            let n = 5 + sorte(60);
+            for _ in 0..n {
+                match ops {
+                    // Para a frente, às vezes saltando tiques.
+                    0 | 1 => t += 1 + sorte(2) * sorte(3),
+                    // Voltar para um tique gravado e tocar sobre ele.
+                    2 if !modelo.is_empty() => {
+                        let p = *modelo.keys().next().unwrap();
+                        let u = *modelo.keys().next_back().unwrap();
+                        t = p + sorte(u - p + 1);
+                    }
+                    // Editar no mesmo tique (a história muda, o tique não).
+                    3 => h += 1,
+                    // Voltar e divergir.
+                    _ => {
+                        t = t.saturating_sub(sorte(40));
+                        h += 1;
+                    }
+                }
+                let a = publicado(t, h);
+                let esperado = match (modelo.keys().next(), modelo.keys().next_back()) {
+                    (Some(&p), Some(&u)) if p <= t && t <= u => {
+                        let antes = modelo.range(..=t).next_back().unwrap().1;
+                        if mesmas(antes, &a) {
+                            Gravacao::Igual
+                        } else {
+                            Gravacao::Ramo
+                        }
+                    }
+                    (Some(&p), _) if t < p => Gravacao::Ramo,
+                    _ => Gravacao::Nova,
+                };
+                let g = f.grava(t, &a);
+                if orcamento == usize::MAX {
+                    assert_eq!(g, esperado, "passo {passo}, t={t}");
+                }
+                match g {
+                    Gravacao::Igual => {}
+                    Gravacao::Nova => {
+                        modelo.insert(t, a);
+                    }
+                    Gravacao::Ramo => {
+                        if modelo.keys().next().is_some_and(|&p| t < p) {
+                            modelo.clear();
+                        }
+                        modelo.retain(|k, _| *k < t);
+                        modelo.insert(t, a);
+                    }
+                }
+            }
+            let (p, u) = (
+                *modelo.keys().next().unwrap(),
+                *modelo.keys().next_back().unwrap(),
+            );
+            let desde = f.base_ate.map_or(p, |b| b + 1).max(p);
+            let mut andando: Option<All> = None;
+            for k in desde..=u {
+                let certo = modelo.range(..=k).next_back().unwrap().1;
+                let lido = f.estado_em(k).expect("gravado");
+                assert!(mesmas(&lido, certo), "passo {passo} ({orcamento}), t={k}");
+                match andando.as_mut() {
+                    Some(e) => {
+                        f.avanca(k, e);
+                        assert!(mesmas(e, certo), "avanca: passo {passo}, t={k}");
+                    }
+                    None => andando = Some(lido),
+                }
+            }
+            assert!(f.estado_em(u + 1).is_none());
+            ancoras = ancoras.max(f.ancoras.len());
+            dobras += usize::from(f.base_ate.is_some());
+        }
+        if orcamento != usize::MAX {
+            assert!(
+                dobras >= 10,
+                "o orçamento curto tem de dobrar ({dobras} passos)"
+            );
+            assert!(f.bytes() <= orcamento);
+        }
+        assert!(
+            ancoras >= 3 || orcamento != usize::MAX,
+            "as âncoras foram exercidas ({ancoras})"
+        );
+        eprintln!(
+            "passeio ({orcamento} B): até {ancoras} âncoras, {dobras} passos com a base dobrada"
+        );
     }
 }

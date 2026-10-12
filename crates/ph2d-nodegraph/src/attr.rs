@@ -501,6 +501,25 @@ impl Stream {
                 .zip(other.attrs.iter())
                 .all(|((na, ca), (nb, cb))| na == nb && std::sync::Arc::ptr_eq(ca, cb))
     }
+
+    /// As colunas com a ALOCAÇÃO partilhada — quem guarda um stream noutra forma (a fita das
+    /// entradas, doc 131 §7 C.11) segura a mesma coluna sem a copiar.
+    pub fn shared_columns(&self) -> impl Iterator<Item = (&String, &std::sync::Arc<Column>)> {
+        self.attrs.iter()
+    }
+
+    /// [`Self::with`] para uma coluna já partilhada: não copia (o par de [`Self::shared_columns`]).
+    /// Mesmo contrato de comprimento.
+    #[must_use]
+    pub fn with_shared(mut self, name: impl Into<String>, col: std::sync::Arc<Column>) -> Self {
+        assert_eq!(
+            col.len(),
+            self.count,
+            "column length must equal stream element count"
+        );
+        self.attrs.insert(name.into(), col);
+        self
+    }
 }
 
 #[cfg(test)]
@@ -616,5 +635,15 @@ mod tests {
         let n = PAR_THRESHOLD * 2;
         let built = par_build(n, |i| i as u32);
         assert!(built.iter().copied().eq(0..n as u32));
+    }
+
+    /// A porta partilhada (doc 131 §7, C.11): sai a MESMA alocação e volta sem cópia.
+    #[test]
+    fn shared_columns_round_trip_without_copying() {
+        let a = Stream::new(2).with("v", Column::Scalar(vec![1.0, 2.0]));
+        let (nome, col) = a.shared_columns().next().unwrap();
+        let b = Stream::new(2).with_shared(nome.clone(), std::sync::Arc::clone(col));
+        assert!(a.shares_storage_with(&b));
+        assert_eq!(a, b);
     }
 }

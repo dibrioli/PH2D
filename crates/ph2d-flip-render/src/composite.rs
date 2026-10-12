@@ -241,6 +241,13 @@ impl FlipCompose {
         self.walk.is_some()
     }
 
+    /// O tamanho dos scratch (o do último desenho — o do ecrã), se já os há. Quem lê fora do ecrã
+    /// desenha a este tamanho para não os realocar (MiroClone W16).
+    #[must_use]
+    pub fn scratch_size(&self) -> Option<(u32, u32)> {
+        self.hdr.is_some().then_some(self.size)
+    }
+
     pub fn stage_layer(
         &mut self,
         device: &wgpu::Device,

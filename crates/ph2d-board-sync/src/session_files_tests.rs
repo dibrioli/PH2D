@@ -152,3 +152,43 @@ fn a_joiner_gets_only_the_files_something_refers_to() {
         .collect();
     assert_eq!(sent, [gone], "o resto ({stray:?}) viajou, ou o apagado não");
 }
+
+/// ⭐ W18 — AO VIVO viaja o LINK de um vídeo (cada par carrega o seu tocador; nada de bytes): o que a Bia
+/// põe chega ao Rui pelo anfitrião, com o mesmo link e o mesmo vídeo; mudar o link lá também chega.
+#[test]
+fn a_guest_video_reaches_the_others_as_its_link() {
+    use ph2d_board_model::{Embed, Video};
+    let mut hb = board();
+    let mut host = Host::open(1, "Ana".into(), &mut hb, 1);
+    let (mut bia, mut rui) = (
+        Guest::new(2, "Bia".into(), 2, 2),
+        Guest::new(3, "Rui".into(), 3, 3),
+    );
+    let (mut bb, mut rb) = (None, None);
+    for (g, slot, conn) in [(&mut bia, &mut bb, 7), (&mut rui, &mut rb, 8)] {
+        let (out, _) = host.frame(&mut hb, conn, &g.hello().encode(), 0);
+        for m in deliver(g, slot, &to_conn(&out, conn)) {
+            let _ = host.frame(&mut hb, conn, &m.encode(), 0);
+        }
+    }
+    let video = Video::YouTube { id: "aqz-KE-bpKQ".into(), start: 30, vertical: false };
+    let e = Embed {
+        link: "https://youtu.be/aqz-KE-bpKQ?t=30".into(),
+        video: video.clone(),
+        style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+    };
+    let doc = &mut bb.as_mut().unwrap().doc;
+    let el = Element::new_embed(doc.mint_id(), doc.z_on_top(), e, [0.0, 0.0, 560.0, 315.0]);
+    let id = el.id;
+    let _ = BoardOp::Put(el).apply(doc);
+    let sent = bia.tick(bb.as_mut().unwrap(), 10);
+    assert!(sent.iter().all(|m| files_in(m) == 0), "um vídeo não leva bytes");
+    let mut relayed = Vec::new();
+    for m in &sent {
+        let (out, _) = host.frame(&mut hb, 7, &m.encode(), 10);
+        relayed.extend(to_conn(&out, 8));
+    }
+    deliver(&mut rui, &mut rb, &relayed);
+    let got = rb.as_ref().unwrap().doc.get(id).and_then(|e| e.embed().cloned());
+    assert_eq!(got.map(|e| (e.link, e.video)), Some(("https://youtu.be/aqz-KE-bpKQ?t=30".into(), video)));
+}

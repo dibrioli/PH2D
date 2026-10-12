@@ -113,7 +113,10 @@ fn a_tiny_corner_radius_under_a_thick_pen_keeps_the_corner_inked() {
     bp.curve_to((0.0, 0.0), (0.0, 0.0), (r, 0.0));
     bp.close_path();
     let pen = pen(2.0);
-    assert!(tighter_than(&bp, 1.0), "o canto de raio 1e-4 sob ½w = 1 é apertado");
+    assert!(
+        tighter_than(&bp, 1.0),
+        "o canto de raio 1e-4 sob ½w = 1 é apertado"
+    );
     let out = stroke_outline(&bp, &pen, 1e-4);
     let d = 0.9 / std::f64::consts::SQRT_2;
     for q in [Point::new(-d, -d), Point::new(10.0 + d, -d)] {

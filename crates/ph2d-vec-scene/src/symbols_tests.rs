@@ -2,6 +2,7 @@
 //!
 //! Ligado por `#[path]` no modulo pai, entao `use super::*` continua valendo.
 
+use super::banner_family::{BANNER_FOLD, BANNER_RX};
 use super::*;
 
 const A: [f64; 2] = [-2.0, -1.0];

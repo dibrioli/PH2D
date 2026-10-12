@@ -75,7 +75,7 @@ fn the_images_scene_does_what_its_lessons_say() {
     let sun = b.doc.get(l.sun).unwrap().image().unwrap();
     assert!(sun.crop.is_some() && sun.flip == [true, false]);
     let icon = b.doc.get(l.icon).unwrap().image().unwrap();
-    let px = crate::images::decode(&b.file(icon.file).unwrap().bytes.0).unwrap();
+    let px = crate::images::decode(&b.file(icon.file).unwrap().bytes.0, None).unwrap();
     assert_eq!(px.rgba[3], 0, "o canto do ícone é transparente");
     let round = b.doc.get(l.round).unwrap().image().unwrap();
     assert!(round.style.round && round.style.opacity == 75);

@@ -53,3 +53,18 @@ fn the_texts_are_counted() {
     assert_eq!(dropped_texts(svg), 2);
     assert_eq!(dropped_texts(DISC), 0);
 }
+
+/// Um `.svgz` vira o texto dele; o que não é gzip passa igual; uma bomba acima do tecto não entra.
+#[test]
+fn a_svgz_becomes_its_text_up_to_the_ceiling() {
+    use std::io::Write as _;
+    let gz = |b: &[u8]| {
+        let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        e.write_all(b).unwrap();
+        e.finish().unwrap()
+    };
+    assert_eq!(&*plain(&gz(DISC)).unwrap(), DISC);
+    assert_eq!(&*plain(DISC).unwrap(), DISC);
+    let bomb = gz(&vec![b' '; MAX_ARCHIVE_TEXT_BYTES as usize + 1]);
+    assert!(plain(&bomb).is_none());
+}

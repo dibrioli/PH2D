@@ -36,12 +36,16 @@ ph2d-board-net = { path = "../ph2d-board-net" }
 # W14 — as imagens entram pela descodificação da cena (`decode_image`); o que o navegador não mostra
 # vira PNG (a mesma versão do `png` que o `image` já traz no lock).
 ph2d-asset = { path = "../ph2d-asset" }
+# W15 — um SVG como imagem do quadro: a árvore pelas defesas da importação e os píxeis a cada nível.
+ph2d-imageio-svg = { path = "../ph2d-imageio-svg" }
 # O TAMANHO de uma imagem que entra lê-se do cabeçalho (`into_dimensions`), sem descodificar os píxeis
 # no fio da janela — a mesma versão e os mesmos formatos que a `ph2d-asset` já liga.
 image = { version = "0.25", default-features = false }
 png = "0.18"
 
 [dev-dependencies]
+# W15 — o `.svgz` de teste (gzip).
+flate2 = "1"
 # O gate da cena 10 conduz o ecrã real (os eventos do ponteiro e do teclado do hero).
 bumpalo = "3"
 ph2d-a11y = { path = "../ph2d-a11y" }

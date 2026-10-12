@@ -42,6 +42,8 @@ usvg = { version = "0.48", default-features = false, features = ["svgz"] }
 # `deny.toml`; nenhum tipo atravessa). `raster-images` = os `<image>` JPEG/GIF/WebP embebidos, por
 # crates que o `Cargo.lock` já tinha. ⛔ Sem `text` (a recusa do `ph2d-vec-svg/Cargo.toml`).
 resvg = { version = "0.48", default-features = false, features = ["raster-images"] }
+# W15 — o `.svgz` descomprime-se com tecto (`raster::plain`): o `decompress_svgz` do usvg não tem.
+flate2 = "1"
 
 [dev-dependencies]
 # ⭐ **SÓ para o gate que prende os DOIS tectos de bytes ao mesmo número.** O importador de SVG a

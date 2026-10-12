@@ -98,9 +98,15 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
         }
         IoRequest::Import => {
             // O 1.º filtro é o que o diálogo mostra: tudo o que se abre (um `.jpg` à vista logo).
-            let all: Vec<&str> = ["excalidraw", "json", "png", "svg"]
+            let all: Vec<&str> = ["excalidraw", "json", "png", "svg", "svgz"]
                 .into_iter()
                 .chain(ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.iter().copied())
+                .collect();
+            // W15: um SVG também entra como imagem (o que não for uma cena do Excalidraw).
+            let images: Vec<&str> = ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS
+                .iter()
+                .copied()
+                .chain(["svg", "svgz"])
                 .collect();
             let dialog = rfd::FileDialog::new()
                 .add_filter(tr("board.io.filter_all"), &all)
@@ -108,10 +114,7 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                     tr("board.io.filter_excalidraw"),
                     &["excalidraw", "json", "png", "svg"],
                 )
-                .add_filter(
-                    tr("board.io.filter_images"),
-                    ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS,
-                );
+                .add_filter(tr("board.io.filter_images"), &images);
             let Some(path) = ph2d_app_host::modal::pick_file(dialog) else {
                 return;
             };
@@ -137,7 +140,13 @@ pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSys
                 Err(e) => {
                     match crate::images::insert_paths(hero, std::slice::from_ref(&path), None) {
                         p if p.placed > 0 => {
-                            tr_with("board.io.image_added", &[("name", &display(&path))])
+                            let mut t =
+                                tr_with("board.io.image_added", &[("name", &display(&path))]);
+                            if let Some(w) = p.warning() {
+                                t.push_str(". ");
+                                t.push_str(&w);
+                            }
+                            t
                         }
                         _ => tr_with("board.io.import_failed", &[("error", &e)]),
                     }

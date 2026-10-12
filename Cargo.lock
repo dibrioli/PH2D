@@ -4765,6 +4765,7 @@ name = "ph2d-app-board"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "flate2",
  "image",
  "ph2d-a11y",
  "ph2d-app-host",
@@ -4782,6 +4783,7 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-imageio-svg",
  "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
@@ -6281,6 +6283,7 @@ dependencies = [
 name = "ph2d-imageio-svg"
 version = "0.0.0"
 dependencies = [
+ "flate2",
  "ph2d-imageio",
  "ph2d-vec-svg",
  "resvg",

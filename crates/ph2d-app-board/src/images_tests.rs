@@ -38,7 +38,7 @@ fn a_png_comes_in_as_it_arrived() {
 fn a_format_the_browser_does_not_show_comes_in_as_png() {
     let f = ingest(&qoi_2x1()).expect("a cena lê QOI");
     assert_eq!((f.mime(), f.size), (Some("image/png"), [2, 1]));
-    let px = decode(&f.bytes.0).unwrap();
+    let px = decode(&f.bytes.0, None).unwrap();
     assert_eq!(px.rgba, [10, 20, 30, 255, 40, 50, 60, 128]);
 }
 
@@ -46,7 +46,46 @@ fn a_format_the_browser_does_not_show_comes_in_as_png() {
 #[test]
 fn what_is_not_an_image_is_refused() {
     assert!(ingest(b"not an image").is_none());
-    assert!(ingest(b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>").is_none());
+    assert!(ingest(b"<svg xmlns=\"http://www.w3.org/2000/svg\"><g").is_none(), "SVG estragado");
+}
+
+const SVG_DISC: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 4 2"><circle cx="2" cy="1" r="1" fill="#00ff00"/><text>oi</text></svg>"##;
+
+/// ⭐ W15 — um SVG entra como IMAGEM: os bytes como chegaram (o SVG exportado e o `.excalidraw`
+/// embebem-nos), o tamanho do `<svg>`, e desenha-se ao tamanho pedido (o natural sem pedido).
+#[test]
+fn an_svg_comes_in_as_a_picture_drawn_at_any_size() {
+    let f = ingest(SVG_DISC).expect("um SVG é uma imagem do quadro");
+    assert_eq!((&*f.bytes.0, f.size), (SVG_DISC, [40, 20]));
+    assert_eq!(f.mime(), Some("image/svg+xml"));
+    assert_eq!(decode(SVG_DISC, None).unwrap().size, [40, 20]);
+    let big = decode(SVG_DISC, Some([400, 200])).unwrap();
+    assert_eq!(big.size, [400, 200]);
+    let mid = &big.rgba[(100 * 400 + 200) * 4..][..4];
+    assert_eq!(mid, [0, 255, 0, 255]);
+}
+
+/// Um `.svgz` entra já descomprimido (um navegador não mostra gzip num `data:`).
+#[test]
+fn a_svgz_comes_in_as_its_text() {
+    use std::io::Write as _;
+    let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    e.write_all(SVG_DISC).unwrap();
+    let f = ingest(&e.finish().unwrap()).unwrap();
+    assert_eq!(&*f.bytes.0, SVG_DISC);
+}
+
+/// ⭐ Os textos de um SVG não se desenham — e o aviso di-lo (não só o terminal).
+#[test]
+fn the_texts_of_an_svg_are_named_in_the_warning() {
+    let p = Placed {
+        placed: 1,
+        refused: 0,
+        texts: 1,
+    };
+    let w = p.warning().expect("um aviso");
+    assert!(w.contains("1 text(s) inside the SVG"), "{w}");
+    assert!(Placed::default().warning().is_none());
 }
 
 /// ⭐ Auditoria W14 — o tamanho de uma PNG vem do CABEÇALHO: uns bytes com um cabeçalho válido e os
@@ -59,7 +98,7 @@ fn the_size_comes_from_the_header_without_decoding() {
     for x in &mut b[n - 20..n - 12] {
         *x ^= 0xa5;
     }
-    assert!(decode(&b).is_none(), "a descodificação inteira falha");
+    assert!(decode(&b, None).is_none(), "a descodificação inteira falha");
     let f = ingest(&b).expect("o cabeçalho chega");
     assert_eq!(f.size, [300, 200]);
 }
@@ -89,7 +128,7 @@ fn mede_a_entrada_e_a_descodificacao_de_uma_fotografia() {
         entrada = entrada.min(t.elapsed().as_secs_f64() * 1e3);
         assert_eq!(f.size, [w, h]);
         let t = std::time::Instant::now();
-        let px = decode(&jpg).unwrap();
+        let px = decode(&jpg, None).unwrap();
         inteira = inteira.min(t.elapsed().as_secs_f64() * 1e3);
         assert_eq!(px.size, [w, h]);
     }

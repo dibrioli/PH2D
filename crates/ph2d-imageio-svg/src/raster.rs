@@ -61,6 +61,22 @@ pub fn rasterize(tree: &usvg::Tree, size: [u32; 2]) -> Option<Vec<u8>> {
     Some(px)
 }
 
+/// O texto de um SVG: os próprios bytes, ou os de um `.svgz` (gzip) descomprimidos ATÉ ao tecto de
+/// bytes (uma bomba de compressão não passa dele). `None` = gzip estragado ou acima do tecto.
+#[must_use]
+pub fn plain(src: &[u8]) -> Option<std::borrow::Cow<'_, [u8]>> {
+    use std::io::Read as _;
+    if !src.starts_with(&[0x1f, 0x8b]) {
+        return Some(std::borrow::Cow::Borrowed(src));
+    }
+    let mut out = Vec::new();
+    flate2::read::GzDecoder::new(src)
+        .take(MAX_ARCHIVE_TEXT_BYTES + 1)
+        .read_to_end(&mut out)
+        .ok()?;
+    ((out.len() as u64) <= MAX_ARCHIVE_TEXT_BYTES).then_some(std::borrow::Cow::Owned(out))
+}
+
 /// Quantos `<text>` um SVG tem (o desenho não os mostra). Um `.svgz` (não é texto) conta zero.
 #[must_use]
 pub fn dropped_texts(src: &[u8]) -> usize {

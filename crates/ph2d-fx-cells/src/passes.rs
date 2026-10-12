@@ -3,9 +3,22 @@
 //! uma corrida (as caixas, o plano, a página); isto é o que cada passo despacha.
 
 use ph2d_gpu::GpuContext;
+use ph2d_gpu::pass_profiler::{self, SpanToken};
 use ph2d_render::GpuTexRun;
 
 use crate::plano::Celula;
+
+/// O relógio da PLACA de uma fase (`pass_profiler`, submissão própria): inerte, uma tranca e um
+/// ramo, sem o perfilador.
+pub(crate) fn abre(gpu: &GpuContext, rotulo: &'static str) -> Option<SpanToken> {
+    pass_profiler::span_begin(&gpu.device, &gpu.queue, rotulo)
+}
+
+pub(crate) fn fecha(gpu: &GpuContext, t: Option<SpanToken>) {
+    if let Some(t) = t {
+        pass_profiler::span_end(&gpu.device, &gpu.queue, t);
+    }
+}
 
 pub(crate) fn compute(gpu: &GpuContext, src: &str, rotulo: &str) -> wgpu::ComputePipeline {
     let module = gpu

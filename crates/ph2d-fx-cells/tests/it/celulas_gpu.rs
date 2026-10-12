@@ -4,7 +4,7 @@
 //!
 //! `PH2D_GPU=1 cargo test -p ph2d-fx-cells --test it -- --ignored --nocapture`
 
-use ph2d_fx_cells::{Celulas, Entrada, FORMATO, Formas, Sprites};
+use ph2d_fx_cells::{Celulas, Entrada, FORMATO, Formas, Sprites, Variante};
 use ph2d_fx_op::FxOp;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
@@ -94,12 +94,37 @@ fn textura(gpu: &GpuContext) -> wgpu::Texture {
     })
 }
 
+/// As quatro variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa) × saltar o alvo vazio.
+const VARIANTES: [Variante; 4] = [
+    Variante {
+        vala_justa: false,
+        salta_vazias: false,
+    },
+    Variante {
+        vala_justa: true,
+        salta_vazias: false,
+    },
+    Variante {
+        vala_justa: false,
+        salta_vazias: true,
+    },
+    Variante {
+        vala_justa: true,
+        salta_vazias: true,
+    },
+];
+
 /// Lê uma textura `Rgba8Unorm` (a saída da pilha).
 fn le(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
-    let linha = (W * 4).next_multiple_of(256);
+    le_de(gpu, tex, W, H)
+}
+
+/// Lê uma textura `Rgba8Unorm` de `w×h`.
+fn le_de(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
+    let linha = (w * 4).next_multiple_of(256);
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
-        size: u64::from(linha * H),
+        size: u64::from(linha * h),
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
@@ -113,12 +138,12 @@ fn le(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
             layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(linha),
-                rows_per_image: Some(H),
+                rows_per_image: Some(h),
             },
         },
         wgpu::Extent3d {
-            width: W,
-            height: H,
+            width: w,
+            height: h,
             depth_or_array_layers: 1,
         },
     );
@@ -127,10 +152,10 @@ fn le(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
     fatia.map_async(wgpu::MapMode::Read, |_| {});
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     let dados = fatia.get_mapped_range();
-    let mut out = Vec::with_capacity((W * H * 4) as usize);
-    for y in 0..H {
+    let mut out = Vec::with_capacity((w * h * 4) as usize);
+    for y in 0..h {
         let o = (y * linha) as usize;
-        out.extend_from_slice(&dados[o..o + (W * 4) as usize]);
+        out.extend_from_slice(&dados[o..o + (w * 4) as usize]);
     }
     out
 }
@@ -388,8 +413,27 @@ fn a_surrounded_shape_gets_the_same_effect_as_alone() {
         return;
     };
     let mut b = Banca::new(gpu);
-    for contorno in [false, true] {
-        let ops = [sombra_interna(contorno)];
+    // Os degraus de DENTRO (só eles deixam o miolo da forma cercada intacto): a sombra interna nos
+    // dois modos, o Bevel e o Inner Glow no campo de distância (o JFA da semente).
+    let campo = |kind| FxOpGpu {
+        kind,
+        sigma_px: 4.0,
+        offset_px: [-4.0, 4.0],
+        mode: FxOp::MODE_CONTOUR,
+        ..sombra_interna(true)
+    };
+    let degraus = [
+        ("Inner Shadow · Proximity", sombra_interna(false)),
+        ("Inner Shadow · Contour", sombra_interna(true)),
+        ("Bevel", campo(FxOp::BEVEL)),
+        ("Inner Glow · Contour", campo(FxOp::INNER_GLOW)),
+    ];
+    for ((nome, op), v) in degraus
+        .into_iter()
+        .flat_map(|d| VARIANTES.map(|v| (d.clone(), v)))
+    {
+        b.celulas.escolhe(v);
+        let ops = [op];
         let sozinho = b.cada_forma(&[disco(0.0, 0.0)], &ops);
         for vao in [0.0, 2.0] {
             let cercado = b.cada_forma(&grelha(vao), &ops);
@@ -397,16 +441,27 @@ fn a_surrounded_shape_gets_the_same_effect_as_alone() {
             let (d, n) = desvio_no_miolo(&sozinho, &cercado);
             let (dc, _) = desvio_no_miolo(&sozinho, &uniao);
             eprintln!(
-                "[cada forma] modo {} vão {vao} px: cercado × sozinho {d} níveis em {n} texels · \
-                 a camada inteira {dc}",
-                if contorno { "Contour" } else { "Proximity" }
+                "[cada forma] {v:?} {nome} vão {vao} px: cercado × sozinho {d} níveis em {n} \
+                 texels · a camada inteira {dc}"
             );
             assert!(n > 50, "o miolo tem texels");
-            assert!(d <= 1, "a forma cercada desvia {d} níveis da sozinha");
             assert!(
-                dc > 20,
-                "controlo: na camada inteira a união muda o miolo ({dc})"
+                d <= 1,
+                "{nome}: a forma cercada desvia {d} níveis da sozinha"
             );
+            // O controlo: a união muda o miolo — a sombra interna sempre; o campo (banda de 4 px)
+            // só quando as formas se TOCAM (com 2 px de vão a união já não o alcança).
+            let barra = match (nome.starts_with("Inner Shadow"), vao == 0.0) {
+                (true, _) => Some(20),
+                (false, true) => Some(4),
+                (false, false) => None,
+            };
+            if let Some(barra) = barra {
+                assert!(
+                    dc > barra,
+                    "controlo: na camada inteira a união muda o miolo ({nome}: {dc})"
+                );
+            }
         }
     }
 }
@@ -420,7 +475,7 @@ fn a_lone_shape_is_the_same_under_both_scopes() {
         return;
     };
     let mut b = Banca::new(gpu);
-    for ops in [
+    for (ops, v) in [
         vec![sombra_interna(true)],
         vec![{
             let mut s = sombra_interna(false);
@@ -428,7 +483,11 @@ fn a_lone_shape_is_the_same_under_both_scopes() {
             s.offset_px = [3.25, 2.5];
             s
         }],
-    ] {
+    ]
+    .into_iter()
+    .flat_map(|o| VARIANTES.map(|v| (o.clone(), v)))
+    {
+        b.celulas.escolhe(v);
         // Uma posição SUB-pixel: a fração tem de sobreviver à ida e volta.
         let um = [disco(0.33, -0.21)];
         let a = b.cada_forma(&um, &ops);
@@ -440,7 +499,7 @@ fn a_lone_shape_is_the_same_under_both_scopes() {
             .max()
             .unwrap_or(0);
         eprintln!(
-            "[sozinha] tipo {}: cada forma × camada inteira {pior} níveis",
+            "[sozinha] {v:?} tipo {}: cada forma × camada inteira {pior} níveis",
             ops[0].kind
         );
         assert!(
@@ -500,10 +559,14 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
         let v = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)];
         v.iter().any(|&(i, j)| a(i, j) != a(x, y))
     };
-    for (rota, r, r2) in [
+    for ((rota, r, r2), v) in [
         ("placa", Rota::Placa(&um), Rota::Placa(&um)),
         ("cpu", Rota::Cpu(&um), Rota::Cpu(&um)),
-    ] {
+    ]
+    .into_iter()
+    .flat_map(|x| VARIANTES.map(|v| (x, v)))
+    {
+        b.celulas.escolhe(v);
         let inteira = b.inteira_por(&[], r2, &ops);
         let cada = b.cada_um(&[], r, &ops);
         let (mut pior_dentro, mut na_borda, mut tinta) = (0u8, 0usize, 0usize);
@@ -523,7 +586,7 @@ fn a_lone_sprite_is_the_same_under_both_scopes_on_both_routes() {
             }
         }
         eprintln!(
-            "[sprite] rota {rota}: fora da silhueta {pior_dentro} níveis · na silhueta {na_borda} \
+            "[sprite] {v:?} rota {rota}: fora da silhueta {pior_dentro} níveis · na silhueta {na_borda} \
              texels mudam ({tinta} pintados)"
         );
         assert!(tinta > 100, "a sprite desenhou");
@@ -792,4 +855,448 @@ fn relogio_cada_forma_contra_camada_inteira() {
             );
         }
     }
+}
+
+/// A grelha `cols × rows` de discos de 1 unidade que se tocam (12 px a `k = 12`), centrada.
+fn grelha_de(cols: i32, rows: i32) -> Vec<ShapeInstance> {
+    (0..rows)
+        .flat_map(|j| {
+            (0..cols).map(move |i| ShapeInstance {
+                size: [1.0, 1.0],
+                ..disco((i - cols / 2) as f32, (j - rows / 2) as f32)
+            })
+        })
+        .collect()
+}
+
+/// As cinco populações da rodada C.10 (doc 131 §4): 256 · 1 024 · 2 048 · 4 096 · 8 192 discos,
+/// todos dentro de 1600×972.
+const POPULACOES: [(i32, i32); 5] = [(16, 16), (32, 32), (64, 32), (64, 64), (128, 64)];
+
+fn carga() -> String {
+    std::fs::read_to_string("/proc/loadavg")
+        .unwrap_or_default()
+        .split(' ')
+        .next()
+        .unwrap_or("?")
+        .to_owned()
+}
+
+/// A bancada da rodada C.10: a camada de 1600×972, a vista e a câmera a `k = 12`.
+struct Mesa {
+    lw: u32,
+    lh: u32,
+    vista: ShapeView,
+    cam: Camera2d,
+    camada: wgpu::Texture,
+    vc: wgpu::TextureView,
+}
+
+impl Mesa {
+    fn new(gpu: &GpuContext) -> Self {
+        let (lw, lh) = (1600u32, 972u32);
+        let k = 12.0f32;
+        let camada = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width: lw,
+                height: lh,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: FORMATO,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        Self {
+            lw,
+            lh,
+            vista: ShapeView {
+                lin: [k, 0.0, 0.0, -k],
+                t: [lw as f32 * 0.5, lh as f32 * 0.5],
+                alvo: [lw as f32, lh as f32],
+            },
+            cam: Camera2d {
+                height_world: lh as f32 / k,
+                ..Camera2d::default()
+            },
+            vc: camada.create_view(&wgpu::TextureViewDescriptor::default()),
+            camada,
+        }
+    }
+
+    /// Uma corrida «cada forma» das `n` cópias em `buf` (e das `sprites`, pela CPU) sobre a camada.
+    fn corre(
+        &self,
+        b: &mut Banca,
+        buf: &wgpu::Buffer,
+        n: u32,
+        sprites: &[RenderInstance],
+        ops: &[FxOpGpu],
+    ) {
+        b.celulas.corre(Entrada {
+            gpu: &b.gpu,
+            renderer: &mut b.renderer,
+            camera: &self.cam,
+            window: WindowSize {
+                width: self.lw,
+                height: self.lh,
+            },
+            scene_viewport: None,
+            sprites: Sprites::Cpu(sprites),
+            formas: Some(Formas {
+                buffer: buf,
+                n,
+                vista: self.vista,
+                corridas: &[],
+            }),
+            ops,
+            pilha: &mut b.pilha,
+            camada: &self.vc,
+            tamanho: (self.lw, self.lh),
+        });
+    }
+}
+
+/// **C.10 — onde vão os milissegundos de «cada forma»** (doc 131 §4 / §7): por população, o
+/// relógio da PLACA por fase (`pass_profiler`, uma submissão por fase) e o da CPU (`Instant`: a
+/// corrida até à última submissão, e até a placa acabar). Imprime; não reprova.
+///
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-fx-cells --test it relogio_c10_decomposicao -- --ignored --nocapture`
+#[test]
+#[ignore = "medição de GPU"]
+fn relogio_c10_decomposicao() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    ph2d_gpu::pass_profiler::init_forced(&gpu.device, &gpu.queue);
+    let mut b = Banca::new(gpu);
+    let mesa = Mesa::new(&b.gpu);
+    let ops = [sombra_interna(false)];
+    eprintln!(
+        "[c10] alcance {:?} · leitura {} px",
+        ph2d_render::stack_reach(&ops),
+        ph2d_render::stack_read(&ops)
+    );
+    for (cols, rows) in POPULACOES {
+        let ds = grelha_de(cols, rows);
+        let buf = b.copias(&ds);
+        let n = ds.len() as u32;
+        let (mut submete, mut total) = (f64::MAX, f64::MAX);
+        for _ in 0..3 {
+            mesa.corre(&mut b, &buf, n, &[], &ops);
+            ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+        }
+        let _ = ph2d_gpu::pass_profiler::drain(&b.gpu.device);
+        for _ in 0..20 {
+            let t0 = std::time::Instant::now();
+            mesa.corre(&mut b, &buf, n, &[], &ops);
+            submete = submete.min(t0.elapsed().as_secs_f64() * 1e3);
+            let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            total = total.min(t0.elapsed().as_secs_f64() * 1e3);
+            ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+        }
+        let t = ph2d_gpu::pass_profiler::drain(&b.gpu.device).unwrap_or_default();
+        let f = f64::from(t.frames.max(1));
+        let paginas = b.celulas.ultimas_paginas();
+        let area: u64 = paginas
+            .iter()
+            .map(|p| u64::from(p.tamanho[0]) * u64::from(p.tamanho[1]))
+            .sum();
+        let tamanhos: Vec<[u32; 2]> = paginas.iter().map(|p| p.tamanho).collect();
+        let mut linha = format!(
+            "[c10] {n} discos · {} página(s) {tamanhos:?} · {:.1} Mpx · CPU até submeter \
+             {submete:.2} ms · até a placa acabar {total:.2} ms · placa ocupada {:.2} ms ({} \
+             quadros) · load {}\n[c10]   ",
+            paginas.len(),
+            area as f64 / 1e6,
+            t.span_ns as f64 / f / 1e6,
+            t.frames,
+            carga()
+        );
+        let mut fases = t.per_label.clone();
+        fases.sort_by_key(|f| std::cmp::Reverse(f.1));
+        for (rotulo, ns, k) in fases {
+            linha.push_str(&format!(
+                "{rotulo}={:.3} ms(×{:.0}) ",
+                ns as f64 / f / 1e6,
+                f64::from(k) / f
+            ));
+        }
+        eprintln!("{linha}");
+    }
+    ph2d_gpu::pass_profiler::shutdown();
+}
+
+/// Os degraus da paridade entre variantes: de DENTRO (alcance nulo — onde a vala justa encolhe), de
+/// FORA com deslocamento sub-pixel, a turbulência (o mapa da origem por célula) e uma pilha de dois.
+fn degraus_da_paridade() -> Vec<(&'static str, Vec<FxOpGpu>)> {
+    let com = |kind, sigma_px, offset_px: [f32; 2], mode| FxOpGpu {
+        kind,
+        sigma_px,
+        offset_px,
+        mode,
+        ..sombra_interna(false)
+    };
+    vec![
+        ("Inner Shadow · Proximity", vec![sombra_interna(false)]),
+        ("Inner Shadow · Contour", vec![sombra_interna(true)]),
+        (
+            "Drop Shadow",
+            vec![com(
+                FxOp::DROP_SHADOW,
+                4.0,
+                [3.25, 2.5],
+                FxOp::MODE_PROXIMITY,
+            )],
+        ),
+        (
+            "Glow",
+            vec![com(FxOp::GLOW, 4.0, [0.0; 2], FxOp::MODE_PROXIMITY)],
+        ),
+        (
+            "Bevel",
+            vec![com(FxOp::BEVEL, 4.0, [-4.0, 4.0], FxOp::MODE_PROXIMITY)],
+        ),
+        (
+            "Turbulence",
+            vec![FxOpGpu {
+                detail: 3,
+                ..com(FxOp::TURBULENCE, 4.0, [0.0; 2], FxOp::MODE_SMOOTH)
+            }],
+        ),
+        (
+            "Drop Shadow + Inner Shadow",
+            vec![
+                com(FxOp::DROP_SHADOW, 3.0, [2.0, 2.0], FxOp::MODE_PROXIMITY),
+                sombra_interna(false),
+            ],
+        ),
+    ]
+}
+
+/// A faixa `[min, max]` por canal que as instâncias IGUAIS de uma cena dão a cada pixel relativo ao
+/// centro delas (`centros` em pixels inteiros, janela `±r`) — a verdade de «cada forma» para formas
+/// idênticas em posições inteiras, e a dispersão que a própria referência já tem por posição no
+/// átlas (o arredondamento `f32` da relocação: medido, o Bevel dá dois valores a 2 níveis um do
+/// outro no mesmo pixel relativo de discos iguais).
+fn faixas(img: &[u8], lw: u32, centros: &[(i32, i32)], r: i32) -> Vec<[(u8, u8); 4]> {
+    let lado = (2 * r + 1) as usize;
+    let mut f = vec![[(u8::MAX, 0u8); 4]; lado * lado];
+    for &(cx, cy) in centros {
+        for dy in -r..=r {
+            for dx in -r..=r {
+                let o = (((cy + dy) as u32 * lw + (cx + dx) as u32) * 4) as usize;
+                let k = ((dy + r) as usize) * lado + (dx + r) as usize;
+                for c in 0..4 {
+                    let (lo, hi) = &mut f[k][c];
+                    *lo = (*lo).min(img[o + c]);
+                    *hi = (*hi).max(img[o + c]);
+                }
+            }
+        }
+    }
+    f
+}
+
+/// ⭐⭐ **As variantes da rodada C.10 dão o pixel da de sempre** (doc 131 §7): para formas IGUAIS em
+/// posições inteiras, cada pixel de cada instância cai na faixa que a referência dá a esse pixel
+/// relativo (± 1 nível, a barra das portas «sozinha × camada inteira» deste ficheiro). Duas cenas a
+/// 1600×972: 4 096 discos que se tocam (várias páginas: a vala dupla faz até 4) e 24 sprites
+/// rodadas, por cada degrau de [`degraus_da_paridade`]. Controlo: o filtro muda a cena.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_c10_variants_give_the_same_pixels() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let mut b = Banca::new(gpu);
+    let mesa = Mesa::new(&b.gpu);
+    let ds = grelha_de(64, 64);
+    let buf = b.copias(&ds);
+    let ss: Vec<RenderInstance> = (0..24)
+        .map(|i| {
+            // A MESMA fração sub-pixel em todas (0,396 px · −0,252 px), e o azulejo AMPLIADO
+            // (79 px de 64): a sensibilidade do desenhador — a aresta sobre um centro de pixel, o
+            // nível de mipmap de uma textura reduzida (o gate da sprite sozinha) — não é da célula.
+            RenderInstance {
+                size: [6.6, 3.6],
+                ..sprite(
+                    &b,
+                    (i % 6) as f32 * 12.0 - 30.0 + 0.033,
+                    (i / 6) as f32 * 12.0 - 18.0 - 0.021,
+                )
+            }
+        })
+        .collect();
+    let px = |p: [f32; 2]| ((800.0 + p[0] * 12.0) as i32, (486.0 - p[1] * 12.0) as i32);
+    // Os discos com três vizinhos de cada lado (a mesma vizinhança até ±20 px) e todas as sprites.
+    let miolo: Vec<(i32, i32)> = ds
+        .iter()
+        .enumerate()
+        .filter(|(k, _)| (3..61).contains(&(k % 64)) && (3..61).contains(&(k / 64)))
+        .map(|(_, d)| px(d.pos))
+        .collect();
+    let sprites: Vec<(i32, i32)> = ss.iter().map(|s| px(s.world_pos)).collect();
+    let out = make_output_texture(&b.gpu, mesa.lw, mesa.lh);
+    let foto = |b: &mut Banca, v: Variante, discos: bool, ops: &[FxOpGpu]| {
+        b.celulas.escolhe(v);
+        if discos {
+            mesa.corre(b, &buf, ds.len() as u32, &[], ops);
+        } else {
+            mesa.corre(b, &buf, 0, &ss, ops);
+        }
+        let paginas = b.celulas.ultimas_paginas().len();
+        b.pilha.run_layer(
+            &b.gpu,
+            &mesa.camada,
+            &out,
+            mesa.lw,
+            mesa.lh,
+            &[],
+            Origem::Margem,
+        );
+        (le_de(&b.gpu, &out, mesa.lw, mesa.lh), paginas)
+    };
+    for (cena, discos, centros, r) in [
+        ("discos", true, &miolo, 20),
+        ("sprites", false, &sprites, 64),
+    ] {
+        let (cru, _) = foto(&mut b, VARIANTES[0], discos, &[]);
+        for (nome, ops) in degraus_da_paridade() {
+            let (referencia, p0) = foto(&mut b, VARIANTES[0], discos, &ops);
+            let controlo = cru.iter().zip(&referencia).filter(|(a, c)| a != c).count();
+            assert!(controlo > 1_000, "{cena} · {nome}: o filtro muda a cena");
+            let faixa = faixas(&referencia, mesa.lw, centros, r);
+            let dispersao = faixa
+                .iter()
+                .flat_map(|f| f.iter().map(|(lo, hi)| hi.saturating_sub(*lo)))
+                .max()
+                .unwrap_or(0);
+            // A silhueta da cena CRUA: um texel pintado com um vizinho vazio, ou o contrário (o
+            // gate da sprite sozinha: aí um quad sem anti-aliasing muda de lado com o arredondamento).
+            let a = |x: i32, y: i32| cru[((y as u32 * mesa.lw + x as u32) * 4 + 3) as usize] > 0;
+            let na_silhueta = |x: i32, y: i32| {
+                [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+                    .iter()
+                    .any(|&(i, j)| a(i, j) != a(x, y))
+            };
+            let lado = 2 * r + 1;
+            for v in &VARIANTES[1..] {
+                let (img, p) = foto(&mut b, *v, discos, &ops);
+                let (mut pior, mut no_miolo, mut na_borda, mut pintados) = (0u8, 0usize, 0usize, 0);
+                for &(cx, cy) in centros.iter() {
+                    for (k, f) in faixa.iter().enumerate() {
+                        let (x, y) = (cx + k as i32 % lado - r, cy + k as i32 / lado - r);
+                        let o = ((y as u32 * mesa.lw + x as u32) * 4) as usize;
+                        let d = (0..4)
+                            .map(|c| {
+                                f[c].0
+                                    .saturating_sub(img[o + c])
+                                    .max(img[o + c].saturating_sub(f[c].1))
+                            })
+                            .max()
+                            .unwrap_or(0);
+                        pintados += usize::from(a(x, y));
+                        if d > 1 && na_silhueta(x, y) {
+                            na_borda += 1;
+                        } else {
+                            pior = pior.max(d);
+                            no_miolo += usize::from(d > 1);
+                        }
+                    }
+                }
+                eprintln!(
+                    "[c10 paridade] {cena} · {nome} · {v:?}: {p0} → {p} página(s) · fora da faixa \
+                     da referência {pior} nível(is) fora da silhueta · {na_borda} texels da \
+                     silhueta mudam ({pintados} pintados) · dispersão da referência {dispersao} · \
+                     igual ao byte: {}",
+                    img == referencia
+                );
+                assert!(
+                    no_miolo == 0,
+                    "{cena} · {nome} · {v:?}: {no_miolo} texels a {pior} níveis fora da faixa"
+                );
+                assert!(
+                    na_borda * 200 <= pintados,
+                    "{cena} · {nome} · {v:?}: {na_borda} texels da silhueta mudam"
+                );
+            }
+        }
+    }
+}
+
+/// **C.10 — a régua intercalada das variantes** (doc 131 §4 / §7, `MEDIR_VELOCIDADE.md`): as
+/// quatro [`VARIANTES`] × as cinco [`POPULACOES`], blocos de 10 quadros com a ordem RODADA, 7
+/// rodadas; por variante, o MÍNIMO (e a mediana) da placa ocupada por quadro (`pass_profiler`) e da
+/// parede até a placa acabar. Imprime; não reprova.
+///
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-fx-cells --test it relogio_c10_intercalado -- --ignored --nocapture`
+#[test]
+#[ignore = "medição de GPU"]
+fn relogio_c10_intercalado() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    ph2d_gpu::pass_profiler::init_forced(&gpu.device, &gpu.queue);
+    let mut b = Banca::new(gpu);
+    let mesa = Mesa::new(&b.gpu);
+    let ops = [sombra_interna(false)];
+    let carga0 = carga();
+    for (cols, rows) in POPULACOES {
+        let ds = grelha_de(cols, rows);
+        let buf = b.copias(&ds);
+        let n = ds.len() as u32;
+        // O aquecimento de cada variante (átlas e pilha no tamanho), fora da régua.
+        for v in VARIANTES {
+            b.celulas.escolhe(v);
+            for _ in 0..3 {
+                mesa.corre(&mut b, &buf, n, &[], &ops);
+                ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+            }
+        }
+        let _ = ph2d_gpu::pass_profiler::drain(&b.gpu.device);
+        let mut placa: [Vec<f64>; 4] = Default::default();
+        let mut parede: [Vec<f64>; 4] = Default::default();
+        let mut paginas = [0usize; 4];
+        for rodada in 0..7 {
+            for k in 0..4 {
+                let i = (k + rodada) % 4;
+                b.celulas.escolhe(VARIANTES[i]);
+                let mut minimo = f64::MAX;
+                for _ in 0..10 {
+                    let t0 = std::time::Instant::now();
+                    mesa.corre(&mut b, &buf, n, &[], &ops);
+                    let _ = b.gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                    minimo = minimo.min(t0.elapsed().as_secs_f64() * 1e3);
+                    ph2d_gpu::pass_profiler::end_frame(&b.gpu.device, &b.gpu.queue);
+                }
+                let t = ph2d_gpu::pass_profiler::drain(&b.gpu.device).unwrap_or_default();
+                placa[i].push(t.span_ns as f64 / f64::from(t.frames.max(1)) / 1e6);
+                parede[i].push(minimo);
+                paginas[i] = b.celulas.ultimas_paginas().len();
+            }
+        }
+        let resumo = |v: &mut Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            (v[0], v[v.len() / 2])
+        };
+        let mut linha = format!("[c10 régua] {n} discos:");
+        for i in 0..4 {
+            let (pm, pmed) = resumo(&mut placa[i]);
+            let (wm, wmed) = resumo(&mut parede[i]);
+            linha.push_str(&format!(
+                "\n[c10 régua]   {:?} {} pág · placa {pm:.2} (med {pmed:.2}) ms · parede {wm:.2} \
+                 (med {wmed:.2}) ms",
+                VARIANTES[i], paginas[i]
+            ));
+        }
+        eprintln!("{linha}");
+    }
+    eprintln!("[c10 régua] load {carga0} → {}", carga());
+    ph2d_gpu::pass_profiler::shutdown();
 }

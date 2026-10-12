@@ -10,9 +10,9 @@ use ph2d_render::{
 use ph2d_shape_gpu::{Copias, Corrida, Mistura, ShapeInstance, ShapePass, ShapeView};
 
 use crate::passes::{
-    CelGpu, buffer, compute, faixas_da_pagina, liga, limpa, quads, reloca, render, vazio,
+    CelGpu, abre, buffer, compute, faixas_da_pagina, fecha, limpa, quads, reloca, render,
 };
-use crate::plano::{Caixa, Pagina, planeia};
+use crate::plano::{Caixa, Pagina, Vala, planeia};
 use crate::shaders::{COMPOE_WGSL, RELOCAR_WGSL, limites_wgsl};
 
 /// O formato da camada e das texturas do átlas (o da camada do Motion).
@@ -29,7 +29,9 @@ const FORMATO_MAPA: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 /// | **2048** | **32 MB** | **~304 MB** |
 /// | 4096 | 128 MB | ~1,2 GB |
 ///
-/// Uma cena que não cabe numa página corre em várias (o relógio por página está no doc 129 §5.6).
+/// Uma cena que não cabe numa página corre em várias, EM SÉRIE no mesmo átlas: a pilha custa pela
+/// ÁREA das páginas (`0,244 ms/Mpx` a 1, 2, 4 e 8 páginas — doc 131 §7 C.10), logo uma página maior
+/// ou um `texture_2d_array` com um despacho por fase pagariam memória e não ganhariam nada.
 pub const LADO_MAX: u32 = 2048;
 
 /// As sprites do Motion: o buffer do cozimento na placa (com as faixas de textura) ou a fatia da CPU.
@@ -193,6 +195,29 @@ pub struct Celulas {
     ultimas_paginas: Vec<Pagina>,
     /// B5: a volta com mistura — nasce no primeiro quadro que a pede.
     voltas: Option<crate::volta::Voltas>,
+    variante: Variante,
+}
+
+/// As variantes da rodada C.10 (doc 131 §7), escolhíveis em EXECUÇÃO — a régua intercalada e os
+/// gates de paridade correm as duas no mesmo processo. O `Default` é o do produto.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Variante {
+    /// A vala `A + L + 1` ([`Vala`]); `false` = a `2·max(A, L) + 1` do W3b.
+    pub vala_justa: bool,
+    /// Uma página sem sprites (ou sem formas) não desenha nem cola o alvo vazio.
+    pub salta_vazias: bool,
+}
+
+/// ⭐ As duas ligadas: o mesmo pixel (`the_c10_variants_give_the_same_pixels`) e, a 4 096 formas,
+/// `5,14 → 2,22 ms` de placa (doc 131 §7 C.10).
+impl Default for Variante {
+    fn default() -> Self {
+        Self {
+            vala_justa: true,
+            salta_vazias: true,
+        }
+    }
 }
 
 const PALAVRAS_SPRITE: u32 = (std::mem::size_of::<RenderInstance>() / 4) as u32;
@@ -236,6 +261,7 @@ impl Celulas {
             ultimas_caixas: Vec::new(),
             ultimas_paginas: Vec::new(),
             voltas: None,
+            variante: Variante::default(),
         }
     }
 
@@ -254,6 +280,12 @@ impl Celulas {
     #[must_use]
     pub fn ultimas_paginas(&self) -> &[Pagina] {
         &self.ultimas_paginas
+    }
+
+    /// A variante das próximas corridas (régua e gates da rodada C.10).
+    #[doc(hidden)]
+    pub fn escolhe(&mut self, v: Variante) {
+        self.variante = v;
     }
 
     /// ⭐ **Cada instância filtrada sozinha, devolvida no seu lugar, na ordem de z**, sobre a
@@ -291,15 +323,25 @@ impl Celulas {
         };
         let afim = afim_das_sprites(e.camera, e.window, e.scene_viewport);
 
+        let relogio = abre(gpu, "fx_cells.caixas");
         self.ultimas_caixas = self.caixas(gpu, s_buf, n_s, afim, e.formas);
-        // A vala entre conteúdos é `2M + 1`: tem de cobrir o que a pilha ESPALHA para fora de uma
-        // forma E o que ela LÊ em volta de cada pixel que escreve (plano.rs).
-        let (ml, mt, mr, mb) = stack_reach(e.ops);
-        let margem = ml.max(mt).max(mr).max(mb).max(stack_read(e.ops));
+        fecha(gpu, relogio);
+        // A vala cobre o que a pilha ESPALHA para fora de uma forma E o que ela LÊ em volta de cada
+        // pixel que escreve ([`Vala`]).
+        let (l, t, r, b) = stack_reach(e.ops);
+        let vala = Vala {
+            alcance: [l, t, r, b],
+            leitura: stack_read(e.ops),
+        };
+        let vala = if self.variante.vala_justa {
+            vala
+        } else {
+            vala.dupla()
+        };
         let paginas = planeia(
             &self.ultimas_caixas,
             [e.tamanho.0, e.tamanho.1],
-            margem,
+            vala,
             LADO_MAX,
         );
         let precisa = paginas.iter().fold((1u32, 1u32), |(w, h), p| {
@@ -369,92 +411,6 @@ impl Celulas {
         self.ultimas_paginas = paginas;
     }
 
-    /// As caixas no ecrã, sprites ++ formas — dois passes e UMA leitura (à espera da própria
-    /// submissão).
-    fn caixas(
-        &self,
-        gpu: &GpuContext,
-        s_buf: &wgpu::Buffer,
-        n_s: u32,
-        afim: [f64; 6],
-        formas: Option<Formas<'_>>,
-    ) -> Vec<Caixa> {
-        let n_f = formas.map_or(0, |f| f.n);
-        let n = u64::from(n_s + n_f);
-        if n == 0 {
-            return Vec::new();
-        }
-        let tam = std::mem::size_of::<Caixa>() as u64;
-        let uso = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC;
-        let cs = vazio(gpu, "fx_cells caixas sprites", u64::from(n_s) * tam, uso);
-        let cf = vazio(gpu, "fx_cells caixas formas", u64::from(n_f) * tam, uso);
-        let leitura = vazio(
-            gpu,
-            "fx_cells caixas leitura",
-            n * tam,
-            wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        );
-        let mut enc = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        if n_s > 0 {
-            #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
-            let p: [f32; 8] = [
-                afim[0] as f32,
-                afim[1] as f32,
-                afim[2] as f32,
-                afim[3] as f32,
-                afim[4] as f32,
-                afim[5] as f32,
-                f32::from_bits(n_s),
-                0.0,
-            ];
-            let u = buffer(
-                gpu,
-                "fx_cells limites p",
-                bytemuck::cast_slice(&p),
-                wgpu::BufferUsages::UNIFORM,
-            );
-            let bg = liga(
-                gpu,
-                &self.limites.get_bind_group_layout(0),
-                &[
-                    u.as_entire_binding(),
-                    s_buf.as_entire_binding(),
-                    cs.as_entire_binding(),
-                ],
-            );
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-            pass.set_pipeline(&self.limites);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(n_s.div_ceil(64), 1, 1);
-        }
-        if let Some(f) = formas.filter(|f| f.n > 0) {
-            self.formas.caixas(
-                gpu,
-                &mut enc,
-                f.vista,
-                Copias {
-                    buffer: f.buffer,
-                    count: f.n,
-                },
-                &cf,
-            );
-        }
-        enc.copy_buffer_to_buffer(&cs, 0, &leitura, 0, u64::from(n_s) * tam);
-        enc.copy_buffer_to_buffer(&cf, 0, &leitura, u64::from(n_s) * tam, u64::from(n_f) * tam);
-        let sub = gpu.queue.submit([enc.finish()]);
-        let fatia = leitura.slice(..n * tam);
-        fatia.map_async(wgpu::MapMode::Read, |_| {});
-        let _ = gpu.device.poll(wgpu::PollType::Wait {
-            submission_index: Some(sub),
-            timeout: None,
-        });
-        let caixas = bytemuck::cast_slice::<u8, Caixa>(&fatia.get_mapped_range()).to_vec();
-        leitura.unmap();
-        caixas
-    }
-
     #[expect(
         clippy::too_many_arguments,
         reason = "a página de sempre mais a volta com mistura (B5)"
@@ -486,6 +442,7 @@ impl Celulas {
                 d_f.push(no_mundo(f.vista.lin.map(f64::from), c.t));
             }
         }
+        let relogio = abre(gpu, "fx_cells.reloca");
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -529,6 +486,7 @@ impl Celulas {
             _ => None,
         };
         gpu.queue.submit([enc.finish()]);
+        fecha(gpu, relogio);
 
         let atlas = self.atlas.as_ref().expect("garantido pelo corre");
         let alvo = atlas.tamanho;
@@ -538,19 +496,29 @@ impl Celulas {
         let extra = reloc_s
             .as_ref()
             .map(|b| (b, idx_s.len() as u32, faixas.as_slice()));
-        e.renderer.render_instances_only(
-            &atlas.linear,
-            &cam,
-            WindowSize {
-                width: alvo.0,
-                height: alvo.1,
-            },
-            wgpu::Color::TRANSPARENT,
-            &cpu_s,
-            extra,
-            None,
-        );
+        // Um alvo VAZIO colado sobre a camada limpa é a identidade exacta (`0 + d·1`): saltá-lo
+        // não muda um bit.
+        let salta = self.variante.salta_vazias;
+        let com_s = !(salta && idx_s.is_empty());
+        let com_f = !(salta && reloc_f.is_none());
+        let relogio = abre(gpu, "fx_cells.sprites");
+        if com_s {
+            e.renderer.render_instances_only(
+                &atlas.linear,
+                &cam,
+                WindowSize {
+                    width: alvo.0,
+                    height: alvo.1,
+                },
+                wgpu::Color::TRANSPARENT,
+                &cpu_s,
+                extra,
+                None,
+            );
+        }
+        fecha(gpu, relogio);
 
+        let relogio = abre(gpu, "fx_cells.formas");
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -572,14 +540,22 @@ impl Celulas {
                     Copias { buffer: b, count },
                 );
             }
-            _ => limpa(&mut enc, &atlas.formas),
+            _ if com_f => limpa(&mut enc, &atlas.formas),
+            _ => {}
         }
         limpa(&mut enc, &atlas.camada_view);
         gpu.queue.submit([enc.finish()]);
-        self.colagem
-            .blit(gpu, &atlas.camada_view, &atlas.linear, BandSource::Sprites);
-        self.colagem
-            .blit(gpu, &atlas.camada_view, &atlas.formas, BandSource::Formas);
+        fecha(gpu, relogio);
+        let relogio = abre(gpu, "fx_cells.colagem");
+        if com_s {
+            self.colagem
+                .blit(gpu, &atlas.camada_view, &atlas.linear, BandSource::Sprites);
+        }
+        if com_f {
+            self.colagem
+                .blit(gpu, &atlas.camada_view, &atlas.formas, BandSource::Formas);
+        }
+        fecha(gpu, relogio);
 
         let cels: Vec<CelGpu> = pagina.celulas.iter().map(CelGpu::from).collect();
         let cels = buffer(
@@ -590,6 +566,7 @@ impl Celulas {
         );
         #[expect(clippy::cast_possible_truncation, reason = "uma página cabe num u32")]
         let n_cel = pagina.celulas.len() as u32;
+        let relogio = abre(gpu, "fx_cells.pilha");
         if usa_mapa {
             quads(
                 gpu,
@@ -616,6 +593,8 @@ impl Celulas {
             e.ops,
             origem,
         );
+        fecha(gpu, relogio);
+        let relogio = abre(gpu, "fx_cells.volta");
         let Some((pipes, sessao, corridas)) = mistas else {
             quads(
                 gpu,
@@ -627,6 +606,7 @@ impl Celulas {
                 e.tamanho,
                 false,
             );
+            fecha(gpu, relogio);
             return;
         };
         // As células vêm EM ORDEM (sprites primeiro): as das sprites voltam à camada, as das formas
@@ -658,8 +638,12 @@ impl Celulas {
             &atlas.saida_view,
             e.tamanho,
         );
+        fecha(gpu, relogio);
     }
 }
+
+#[path = "celulas_caixas.rs"]
+mod caixas;
 
 #[cfg(test)]
 #[path = "celulas_tests.rs"]

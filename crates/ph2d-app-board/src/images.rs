@@ -24,25 +24,16 @@ const SVG: &str = "image/svg+xml";
 const GIF: &str = "image/gif";
 
 /// ⭐ W16 — os quadros de um GIF em SEQUÊNCIA, cada um com a duração do ficheiro em ms (o animador do
-/// desenho, [`ph2d_board_render::install_animator`]): o `image` dá cada quadro já composto sobre o
-/// ecrã lógico (a disposição aplicada), RGBA reto. Um por vez — a memória não cresce com a duração;
-/// o tecto de cada alocação é o `Limits` do `image` (512 MiB). `None` = não é um GIF legível.
+/// desenho, [`ph2d_board_render::install_animator`]): cada quadro já composto sobre o ecrã lógico (o
+/// descarte aplicado, a lei do `image`), RGBA reto. Um por vez — a memória não cresce com a duração.
+/// W18 — pela crate `gif` (o iterador muda de fio) e com o tecto da porta das imagens. `None` = não é
+/// um GIF legível.
 #[must_use]
-pub fn frames(bytes: &[u8]) -> Option<Box<dyn Iterator<Item = (Pixels, u32)>>> {
-    use image::AnimationDecoder as _;
+pub fn frames(bytes: &[u8]) -> Option<Box<dyn Iterator<Item = (Pixels, u32)> + Send>> {
     if mime_of(bytes) != Some(GIF) {
         return None;
     }
-    let dec = image::codecs::gif::GifDecoder::new(std::io::Cursor::new(bytes.to_vec())).ok()?;
-    Some(Box::new(dec.into_frames().map_while(Result::ok).map(|f| {
-        let (n, d) = f.delay().numer_denom_ms();
-        let buf = f.into_buffer();
-        let px = Pixels {
-            size: [buf.width(), buf.height()],
-            rgba: buf.into_raw(),
-        };
-        (px, n / d.max(1))
-    })))
+    Some(Box::new(crate::gif_frames::GifFrames::new(bytes)?))
 }
 
 /// Os píxeis RGBA de 8 bits de uns bytes de imagem (os de 16 bits descem a 8); um SVG a `at` (o

@@ -38,6 +38,8 @@ ph2d-vec-layout = { path = "../ph2d-vec-layout" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-render = { path = "../ph2d-render" }
 wgpu = "29.0.4"
+# W18 — a régua dos GIF (`src/anim_measure_tests.rs`): GIF de verdade, descodificados pela crate do app.
+gif = "0.14"
 
 [lints]
 workspace = true

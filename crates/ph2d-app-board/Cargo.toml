@@ -49,6 +49,9 @@ png = "0.18"
 # mesmas versões que o `image` já puxa.
 zune-jpeg = "0.5"
 zune-core = "0.5"
+# W18 — os quadros de um GIF num iterador `Send` (um passo no grupo de fios do desenho); a versão que o
+# `image` já puxa.
+gif = "0.14"
 
 [dev-dependencies]
 # W15 — o `.svgz` de teste (gzip).

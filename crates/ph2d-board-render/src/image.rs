@@ -117,8 +117,12 @@ pub struct Images {
     entries: BTreeMap<Key, Entry>,
     tx: Sender<Done>,
     rx: Receiver<Done>,
-    /// Os trabalhos por fazer, partilhados pelos fios (criados à primeira vez).
-    jobs: Option<Sender<Job>>,
+    /// Os trabalhos por fazer, partilhados pelos fios (criados à primeira vez): descodificar uma imagem
+    /// e (W18) os passos dos GIF a tocar.
+    jobs: Option<Sender<Task>>,
+    /// W18 — a régua do W16 (um fio POR GIF), só para a medição no mesmo processo.
+    #[cfg(test)]
+    pub(crate) gif_thread_each: Option<BTreeMap<Key, Sender<crate::anim::Step>>>,
     frame: u64,
     /// W16 — os GIF a tocar no ecrã, e o relógio deles (o do começo do desenho).
     pub(crate) players: crate::anim::Players,
@@ -127,6 +131,12 @@ pub struct Images {
     clock: Option<Instant>,
     /// W17 — os ficheiros que não se lêem e já foram ditos a quem desenha ([`Images::take_failed`]).
     reported: BTreeSet<FileId>,
+}
+
+/// O que um fio do grupo faz.
+enum Task {
+    Decode(Job),
+    Step(crate::anim::Step),
 }
 
 struct Job {
@@ -146,6 +156,8 @@ impl Default for Images {
             tx,
             rx,
             jobs: None,
+            #[cfg(test)]
+            gif_thread_each: None,
             frame: 0,
             players: crate::anim::Players::default(),
             now: Instant::now(),
@@ -270,8 +282,23 @@ impl Images {
         if file.mime() != Some(ANIMATED_MIME) {
             return None;
         }
-        self.players
-            .frame((id, filter), &file.bytes.0, size, self.now, self.frame)
+        let shown = self
+            .players
+            .frame((id, filter), &file.bytes.0, size, self.now, self.frame);
+        for step in self.players.take_steps() {
+            #[cfg(test)]
+            if let Some(each) = &mut self.gif_thread_each {
+                let tx = each.entry((id, filter)).or_insert_with(|| {
+                    let (tx, rx) = channel::<crate::anim::Step>();
+                    std::thread::spawn(move || rx.into_iter().for_each(crate::anim::Step::run));
+                    tx
+                });
+                let _ = tx.send(step);
+                continue;
+            }
+            self.submit(Task::Step(step));
+        }
+        shown
     }
 
     /// O descodificador desta cache, ou o do app.
@@ -347,35 +374,45 @@ impl Images {
     }
 
     fn spawn(&mut self, job: Job) {
-        let Some(decode) = self.decoder() else {
-            return;
-        };
-        let salvage = self.salvager();
+        if self.decoder().is_some() {
+            self.submit(Task::Decode(job));
+        }
+    }
+
+    /// Manda um trabalho ao grupo de fios (criado à primeira vez: metade da máquina — a outra é do
+    /// desenho e do resto do app).
+    fn submit(&mut self, task: Task) {
+        let (decode, salvage) = (self.decoder(), self.salvager());
         let jobs = self.jobs.get_or_insert_with(|| {
-            let (jt, jr) = channel::<Job>();
+            let (jt, jr) = channel::<Task>();
             let jr = Arc::new(Mutex::new(jr));
-            // Metade da máquina: a outra é do desenho e do resto do app.
             let n = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
             for _ in 0..n {
                 let (jr, tx, decode, salvage) =
                     (jr.clone(), self.tx.clone(), decode.clone(), salvage.clone());
                 std::thread::spawn(move || {
                     loop {
-                        let job = match jr.lock() {
+                        let task = match jr.lock() {
                             Ok(r) => r.recv(),
                             Err(_) => return,
                         };
-                        let Ok(job) = job else { return };
-                        let out = run(&decode, salvage.as_ref(), &job);
-                        if tx.send((job.key, out)).is_err() {
-                            return;
+                        match task {
+                            Ok(Task::Decode(job)) => {
+                                let Some(decode) = &decode else { continue };
+                                let out = run(decode, salvage.as_ref(), &job);
+                                if tx.send((job.key, out)).is_err() {
+                                    return;
+                                }
+                            }
+                            Ok(Task::Step(step)) => step.run(),
+                            Err(_) => return,
                         }
                     }
                 });
             }
             jt
         });
-        let _ = jobs.send(job);
+        let _ = jobs.send(task);
     }
 
     /// O nível a desenhar de `file` (com o filtro `filter`) para `need` píxeis de ecrã na largura e

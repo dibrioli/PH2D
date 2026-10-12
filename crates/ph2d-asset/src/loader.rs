@@ -20,7 +20,7 @@ use std::sync::{Arc, OnceLock};
 /// Hard ceiling on decoded image dimensions (per side). 8k covers
 /// every realistic 2D sprite atlas; anything larger is almost
 /// certainly malicious or accidental.
-pub(crate) const MAX_DIMENSION: u32 = 8192;
+pub const MAX_DIMENSION: u32 = 8192;
 
 /// Lazy, process-global importer registry populated by
 /// [`ph2d_imageio_registry_init::register_all_importers`]. Used by

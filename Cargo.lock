@@ -4788,6 +4788,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "flate2",
+ "gif",
  "image",
  "ph2d-a11y",
  "ph2d-app-host",
@@ -5504,6 +5505,7 @@ name = "ph2d-board-render"
 version = "0.0.0"
 dependencies = [
  "flate2",
+ "gif",
  "ph2d-board-edit",
  "ph2d-board-geom",
  "ph2d-board-layout",

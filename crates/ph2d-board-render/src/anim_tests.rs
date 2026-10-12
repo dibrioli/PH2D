@@ -51,7 +51,7 @@ fn cache() -> RenderCache {
             .into_iter()
             .zip([100u32, 100, 5])
             .map(|(c, ms)| (flat(c), ms));
-        Some(Box::new(it) as Box<dyn Iterator<Item = (Pixels, u32)>>)
+        Some(Box::new(it) as Box<dyn Iterator<Item = (Pixels, u32)> + Send>)
     }));
     c
 }
@@ -173,7 +173,7 @@ fn a_still_gif_stops_its_player() {
     let mut c = cache();
     c.images.set_animator(Arc::new(|_: &[u8]| {
         Some(Box::new(std::iter::once((flat(PLAYED[1]), 100u32)))
-            as Box<dyn Iterator<Item = (Pixels, u32)>>)
+            as Box<dyn Iterator<Item = (Pixels, u32)> + Send>)
     }));
     let t0 = Instant::now();
     assert!(until(&b, &mut c, t0, PLAYED[1]), "o único quadro chega");

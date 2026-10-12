@@ -19,6 +19,9 @@ pub mod images;
 /// W18 — o que se lê de uma imagem estragada (o salvador do desenho).
 pub mod salvage;
 
+/// W18 — os quadros de um GIF num iterador que muda de fio.
+mod gif_frames;
+
 /// «Send to board…» da Hierarquia (W15): o modal e a entrega do conteúdo de um objecto da cena.
 pub mod send_to_board;
 

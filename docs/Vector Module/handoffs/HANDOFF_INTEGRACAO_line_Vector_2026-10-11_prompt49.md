@@ -29,6 +29,7 @@
 | `49c21ed5a` | memória: duas palavras que o `typos` do CI reprovava |
 | `9b85f02ca` | **BUGS #41** (smoke do dono): os chips de Corner/Side pré-visualizam sem esperar o slider |
 | `3b9247948` | **o kerning passa a ser o PADRÃO** (aceite do dono: «kerning é melhor») |
+| `d911e5525` | **BUGS #41, 2.ª metade**: o slider de Offset mostra a verdade da seleção |
 | `784aa51c5`, `76f9cbf41` | o handoff de continuação (um ficheiro, duas janelas) — e este |
 
 ## 2. Foundational / compartilhado tocado (tudo aditivo)
@@ -168,6 +169,11 @@ Oráculo W0: 582/592 passos concordam; as 10 discordâncias estão em `DISAGREE`
   substituído (3 gates, red-first, mutação sangra). O roteiro auto-dirigido dos níveis 18/19 nunca
   clicava um chip (parava de rolar no slider; `chip ROUND fora do hit-index` sem falhar) — rola
   agora até o Apply; no caminho real `off=0 → 1, d=0,300, live=152` logo após o clique.
+- 2.º smoke: *«o slider mostra 25 mas o efeito não aparece até mudar uma opção»* — o slider guardava
+  a fração de nascença sobre uma forma nua. Cura (`d911e5525`): `offset_live::shown_frac` (seleção
+  sem offset vivo ⇒ slider em ZERO) e `chip_frac` (o chip sobre o zero arma os 25 % de nascença e o
+  slider mostra-os). Nível 19 real: `off=0 slider=0.00` → clique → `off=1 d=0,300 slider=0.25`;
+  ablado, `off=0 slider=0.25` (o sintoma). `nextest-impacted` do diff: 2 881/2 881.
 - *«negativo fica sempre pontuda»*: **não é defeito** — a ponta convexa encolhe em ponta; o Corner
   muda os vales (d = −0,3: Miter 0,232 · Round 0,260 · Bevel 0,307). Imagem:
   `target/fotos-w3/offset_negativo.png`.
@@ -244,13 +250,14 @@ LOC LIDAS: ~200.
 ## 9. Smoke para o Enio
 
 Binário já compilado na worktree (2.ª corrida: `Finished smoke profile [optimized] target(s) in
-0.29s` depois do #41 e do kerning por omissão, zero `Compiling`).
+0.37s` depois das duas metades do #41 e do kerning por omissão, zero `Compiling`).
 
 **A. Os chips de Corner/Side pré-visualizam já no clique, e a estrela não some** (re-smoke do #41).
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && PH2D_BUILD_SMOKE=17 ./target/smoke/ph2d-host-desktop`
 (1) clique na estrela azul de borda amarela; (2) no painel da direita, desça até **Expand** e, SEM
-tocar no slider, clique **Round** em **Corner**; (3) a estrela cresce na hora, com as pontas
-arredondadas (o slider mostra 25); clique **Bevel** e **Miter**, e cada um muda o desenho na hora;
+tocar no slider, clique **Round** em **Corner**; (3) antes do clique o slider mostra 0 (a
+estrela não tem offset); no clique ela cresce na hora, com as pontas arredondadas, e o slider
+passa a 25; clique **Bevel** e **Miter**, e cada um muda o desenho na hora;
 depois arraste **Offset** de ponta a ponta — ela não pisca nem some no meio; (4) errado = o clique
 não muda nada até mexer no slider, ou a forma some no meio do arrasto. No lado NEGATIVO as pontas
 ficam afiadas em todos os cantos (é a geometria); o que muda são os vales entre elas

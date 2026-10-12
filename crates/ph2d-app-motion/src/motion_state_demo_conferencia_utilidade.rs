@@ -262,7 +262,9 @@ pub fn fx_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
         "  (!) Em cima (par): a MESMA sombra, so' que a da direita tem `Softness {softness}`.
   A borda ganha penumbra e o miolo continua com a MESMA densidade -- ligar a maciez nao
   pode clarear a sombra.
-  (!) No meio (roxo): estrelas rodam num vortice, e o halo delas esta' com
+  (!) No meio (roxo): DE' PLAY -- as estrelas GIRAM em volta do centro DELAS, todas no
+  mesmo sentido (umas duas voltas e meia em 10 s), e nunca saem do quadro. Paradas, ou a
+  fugir para longe, DEU ERRADO. O halo delas esta' com
   `Anamorphic {stretch}`. No cartao do no' Glow, arraste esse controle ate' 1: o halo
   volta a ser redondo e o `Streak Angle` SOME do cartao (num circulo ele nao faria
   nada). Tire-o de 1 para qualquer lado (0,5 ou 2): o `Streak Angle` VOLTA e gira o

@@ -151,6 +151,10 @@ mod jogo_demo;
 #[path = "motion_state_dano_demo.rs"]
 mod dano_demo;
 
+/// A cena `=137` — o colisor pelo nome, na placa (doc 131 §3, D.14). Ver o cabeçalho dela.
+#[path = "motion_state_colisor_nome_demo.rs"]
+mod colisor_nome_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

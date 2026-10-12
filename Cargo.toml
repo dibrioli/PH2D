@@ -135,6 +135,11 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.ph2d-node-force-attractor]
 opt-level = 2
+# Motion C.9 (12/10, binários de teste alternados, o mínimo de 6, doc 131 §7): os testes da
+# `ph2d-contact` 1,47 → 0,23 s · os de contacto do Motion 2,61 → 0,90 s · total 7,05 → 3,96 s;
+# compilar a crate 0,67 → 0,87 s.
+[profile.dev.package.ph2d-contact]
+opt-level = 2
 
 [profile.release]
 opt-level = 3

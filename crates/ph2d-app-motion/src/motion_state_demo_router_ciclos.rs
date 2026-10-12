@@ -19,7 +19,7 @@ use ph2d_nodegraph::graph::NodeId;
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
 const CICLOS: &[&str] = &[
     "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "130", "131", "132",
-    "133", "134", "135", "136",
+    "133", "134", "135", "136", "137",
 ];
 
 /// Este nível é uma cena de ciclo?
@@ -194,6 +194,14 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::dano_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::dano_demo::captions());
             super::dano_demo::announce();
+            sinks
+        }
+        // ⭐ **O COLISOR PELO NOME, NA PLACA** (doc 131 §3, D.14): duas galáxias de discos, a única
+        // diferença é o nome que o `Drive` Custom escreve.
+        "137" => {
+            let sinks = super::colisor_nome_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::colisor_nome_demo::captions());
+            super::colisor_nome_demo::announce();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

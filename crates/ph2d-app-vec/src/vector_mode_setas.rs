@@ -3,9 +3,10 @@
 //! arrasto da shell (`shape_handles_live::on`), um gesto em cada: a aresta do polígono enverga (o
 //! ponto do meio dela), a estrela sobe a 6 pontas (o 1.º ⇕), a pizza abre o furo e arredonda as
 //! quinas (o ⊙), e a ponta da espiral dá ¼ de volta À MÃO — ela segue o ângulo do ponteiro. A foto
-//! final: a espiral seleccionada com a ponta e os dois ⇕ na borda, e o ⇕ do *Expansion* A MEIO do
-//! arrasto, com a etiqueta do número à vista (o 1.º clique larga-o). `PH2D_CENA19_FICA=0..3` deixa
-//! seleccionada outra forma (0 = polígono · 1 = estrela · 2 = pizza) — para fotografar as setas dela.
+//! final: a espiral seleccionada com a ponta e os dois ⇕ na borda, o do *Expansion* já subido.
+//! `PH2D_CENA19_FICA=0..3` deixa seleccionada outra forma (0 = polígono · 1 = estrela · 2 = pizza) —
+//! para fotografar as setas dela. ⚠️ O gesto final SOLTA: a etiqueta mora junto do CURSOR, e um ⇕
+//! deixado agarrado saltaria ao 1.º movimento do rato do dono (a lei mede desde o press da cena).
 
 use crate::shape_handles_live::{Gate, on, view};
 use crate::state::VecState;
@@ -17,14 +18,15 @@ use ph2d_vec_scene::{ShapeKind, VecPathId};
 
 /// As quatro formas: o tipo e o centro (m), lado a lado; a meia-largura é [`MEIA`].
 pub(crate) const FORMAS: [(ShapeKind, [f64; 2]); 4] = [
-    (ShapeKind::Polygon, [-4.8, 0.0]),
-    (ShapeKind::Star, [-1.6, 0.0]),
-    (ShapeKind::Pie, [1.6, 0.0]),
-    (ShapeKind::Spiral, [4.8, 0.0]),
+    (ShapeKind::Polygon, [-3.8, 0.0]),
+    (ShapeKind::Star, [-1.1, 0.0]),
+    (ShapeKind::Pie, [1.9, 0.0]),
+    (ShapeKind::Spiral, [4.6, 0.0]),
 ];
 
-/// A meia-largura de cada forma (m) — a fila de ⇕ cabe entre uma forma e a seguinte.
-pub(crate) const MEIA: f64 = 0.9;
+/// A meia-largura de cada forma (m) — a fila de ⇕ cabe entre uma forma e a seguinte (fotografado
+/// a 1930 × 1040: o polígono fica à direita da paleta, os 5 ⇕ da estrela antes da pizza).
+pub(crate) const MEIA: f64 = 0.8;
 
 /// Metros por pixel da vista de omissão — o mesmo das outras cenas.
 const PX: f64 = 0.01;
@@ -32,7 +34,7 @@ const PX: f64 = 0.01;
 /// Quanto a mão sobe um ⇕ (m): 1,2 degraus de 1/24 da altura da caixa — um inteiro anda UM.
 pub(crate) const SOBE: f64 = 1.2 * 2.0 * MEIA / 24.0;
 
-/// A forma que fica seleccionada no fim, com o ⇕ dela a meio do arrasto (a espiral por omissão).
+/// A forma que fica seleccionada no fim, com o ⇕ dela subido (a espiral por omissão).
 fn fica() -> usize {
     std::env::var("PH2D_CENA19_FICA")
         .ok()
@@ -46,13 +48,13 @@ pub(crate) fn alca(kind: ShapeKind, pick: impl Fn(&HandleDesc) -> bool) -> Optio
     handles_of(kind).iter().position(pick)
 }
 
-/// A alça que fica VIVA no fim: o 1.º ⇕ da forma; a pizza não tem ⇕ — o furo.
+/// A alça do gesto final: o 1.º ⇕ da forma; a pizza não tem ⇕ — o furo.
 pub(crate) fn viva(kind: ShapeKind) -> Option<usize> {
     alca(kind, |h| h.spot == Spot::Rail).or_else(|| alca(kind, |h| h.law == Law::Radial))
 }
 
 /// Agarra a alça `handle` da forma `id` (sozinha na seleção) pelo press da shell e leva-a pelo
-/// `path(onde ela está)`; `soltar` = o botão sobe no fim. `false` = a alça não estava lá.
+/// `path(onde ela está)`; solta. `false` = a alça não estava lá.
 fn pull(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -60,7 +62,6 @@ fn pull(
     id: VecPathId,
     handle: usize,
     path: impl Fn([f64; 2]) -> Vec<[f64; 2]>,
-    soltar: bool,
 ) -> bool {
     vec.pen.select_many(&[id]);
     let Some(at) = view(sim, &vec.entities, &[id], Gate::of(vec), PX, None, None)
@@ -74,7 +75,7 @@ fn pull(
     for p in path(at) {
         on::drag(vec, sim, scene, p, Mods::default(), PX);
     }
-    !soltar || vec.shape_handles.release()
+    vec.shape_handles.release()
 }
 
 /// A mão anda de `a` até `a + d`, em seis passos.
@@ -101,7 +102,7 @@ fn radial(c: [f64; 2], len: f64) -> impl Fn([f64; 2]) -> Vec<[f64; 2]> {
 /// Um passo da cena 19; devolve o próximo estágio, se mudou. `110..=113` = uma forma por estágio ·
 /// `114` = o modo Forma pelo botão · `115` = a aresta do polígono · `116` = a estrela a 6 pontas ·
 /// `117` = o furo da pizza · `118` = as quinas dela · `119` = a ponta da espiral, ¼ de volta à mão ·
-/// `120` = o ⇕ que fica a meio do arrasto · `9` = feito.
+/// `120` = o ⇕ da forma que fica · `9` = feito.
 pub fn step(
     stage: u8,
     vec: &mut VecState,
@@ -121,27 +122,27 @@ pub fn step(
             hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_SHAPE));
             Some(115)
         }
-        // O ponto do meio da 1.ª aresta, 0,15 m para fora: a aresta enverga.
+        // O ponto do meio da 1.ª aresta, 0,05 m para fora: a aresta enverga (0,15 lia-se semicírculo).
         115 if vec.draw_config.mode == ph2d_tool_vector::DrawMode::Shape => {
             let (kind, c) = FORMAS[0];
             let k = alca(kind, |h| matches!(h.spot, Spot::EdgeMid(_)))?;
-            pull(vec, scene, sim, nth(vec, 0)?, k, radial(c, 0.15), true).then_some(116)
+            pull(vec, scene, sim, nth(vec, 0)?, k, radial(c, 0.05)).then_some(116)
         }
         // O 1.º ⇕ da estrela (as pontas) sobe um degrau: 6 pontas.
         116 => {
             let k = viva(FORMAS[1].0)?;
-            pull(vec, scene, sim, nth(vec, 1)?, k, walk([0.0, SOBE]), true).then_some(117)
+            pull(vec, scene, sim, nth(vec, 1)?, k, walk([0.0, SOBE])).then_some(117)
         }
         // O furo da pizza, 0,3 m para fora pelo raio.
         117 => {
             let (kind, c) = FORMAS[2];
             let k = alca(kind, |h| h.law == Law::Radial)?;
-            pull(vec, scene, sim, nth(vec, 2)?, k, radial(c, 0.3), true).then_some(118)
+            pull(vec, scene, sim, nth(vec, 2)?, k, radial(c, 0.3)).then_some(118)
         }
         // O ⊙ das quinas, 0,15 m para o centro pela borda recta do início (às 3h): arredondam.
         118 => {
             let k = alca(FORMAS[2].0, |h| matches!(h.spot, Spot::Rounding { .. }))?;
-            pull(vec, scene, sim, nth(vec, 2)?, k, walk([-0.15, 0.0]), true).then_some(119)
+            pull(vec, scene, sim, nth(vec, 2)?, k, walk([-0.15, 0.0])).then_some(119)
         }
         // A ponta da espiral dá ¼ de volta à volta do centro, de 10° em 10° — ela segue a mão.
         119 => {
@@ -159,9 +160,9 @@ pub fn step(
                     })
                     .collect()
             };
-            pull(vec, scene, sim, nth(vec, 3)?, k, quarto, true).then_some(120)
+            pull(vec, scene, sim, nth(vec, 3)?, k, quarto).then_some(120)
         }
-        // O ⇕ da forma que fica: agarrado e subido, SEM soltar — a etiqueta fica à vista.
+        // O ⇕ da forma que fica, subido (o furo, na pizza): ela fica seleccionada com as alças.
         120 => {
             let f = fica();
             let (kind, c) = FORMAS[f];
@@ -172,7 +173,7 @@ pub fn step(
                 } else {
                     Box::new(walk([0.0, SOBE]))
                 };
-            pull(vec, scene, sim, nth(vec, f)?, k, path, false).then_some(9)
+            pull(vec, scene, sim, nth(vec, f)?, k, path).then_some(9)
         }
         _ => None,
     }

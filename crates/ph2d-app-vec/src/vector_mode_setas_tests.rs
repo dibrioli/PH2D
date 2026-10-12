@@ -89,18 +89,31 @@ fn the_scene_moves_one_handle_of_each_shape_and_holds_an_arrow_mid_drag() {
     let c3 = FORMAS[3].1;
     let ang = (p[1] - c3[1]).atan2(p[0] - c3[0]).to_degrees();
     assert!((ang.abs() - 180.0).abs() < 1.0, "a ponta às {ang}°");
-    // O ⇕ do Expansion fica agarrado, a meio do arrasto, e a etiqueta diz o número dele.
+    // O ⇕ do Expansion sobe e SOLTA (um ⇕ deixado agarrado saltaria ao 1.º movimento do rato do
+    // dono); com o cursor sobre ele, a etiqueta diz o número.
     assert!(step(120, &mut c.vec, &mut c.scene, &mut c.sim, &mut c.hero).is_some());
-    let g = c.vec.shape_handles.grab.expect("o ⇕ fica agarrado");
-    assert_eq!(Some(g.handle()), viva(FORMAS[3].0));
+    assert!(c.vec.shape_handles.grab.is_none(), "o ⇕ ficou agarrado");
+    assert_eq!(
+        c.vec.pen.selected_paths(),
+        &[ids[3]],
+        "a espiral fica seleccionada"
+    );
     assert!(
-        values(&c, 3)[1] > 0.1,
-        "o Expansion subiu: {:?}",
+        (values(&c, 3)[1] - 0.5).abs() < 1e-9,
+        "o Expansion subiu um degrau e meio: {:?}",
         values(&c, 3)
     );
-    let label = readout(&c.vec, &c.sim, 0.01, Default::default(), None);
-    assert!(
-        label.as_deref().is_some_and(|s| s.starts_with("Expansion")),
-        "{label:?}"
-    );
+    let seta = view(
+        &c.sim,
+        &c.vec.entities,
+        &[ids[3]],
+        Gate::of(&c.vec),
+        0.01,
+        None,
+        None,
+    )
+    .unwrap()
+    .points[viva(FORMAS[3].0).unwrap()];
+    let label = readout(&c.vec, &c.sim, 0.01, Default::default(), Some(seta));
+    assert_eq!(label.as_deref(), Some("Expansion: 0.50"));
 }

@@ -255,6 +255,19 @@ fn link_pairs(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], usize, Elem
         .collect()
 }
 
+/// W18 — os vídeos da página `i`: a caixa em px da página e o link deles (no PDF e no SVG, clicar no
+/// vídeo exportado abre-o).
+fn video_links(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], String)> {
+    b.doc
+        .live()
+        .filter(|el| page_of(b, pages, el.id) == Some(i))
+        .filter_map(|el| {
+            let e = el.embed()?;
+            Some((on_page(b, &pages[i], el.id)?, ph2d_board_embed::canonical_link(&e.video)))
+        })
+        .collect()
+}
+
 /// As ligações do PDF (o alvo pelo canto de cima à esquerda na página dele).
 fn links(b: &Board, pages: &[Page], i: usize) -> Vec<pdf::Link> {
     link_pairs(b, pages, i)
@@ -363,7 +376,8 @@ pub fn write_export(
                     links: links(b, &pages, i),
                 })
                 .collect();
-            std::fs::write(path, pdf::write(&list)).map_err(|e| e.to_string())?;
+            let uris: Vec<_> = (0..pages.len()).map(|i| video_links(b, &pages, i)).collect();
+            std::fs::write(path, pdf::write_with_uris(&list, &uris)).map_err(|e| e.to_string())?;
             out.push(path.to_path_buf());
         }
         Format::Svg => {
@@ -376,7 +390,8 @@ pub fn write_export(
                     .filter(|(_, page, _)| *page == i)
                     .filter_map(|(rect, _, to)| Some((rect, on_page(b, p, to)?)))
                     .collect();
-                std::fs::write(&to, svg::write_linked(&s.take_record(), size, &here))
+                let uris = video_links(b, &pages, i);
+                std::fs::write(&to, svg::write_with_uris(&s.take_record(), size, &here, &uris))
                     .map_err(|e| e.to_string())?;
                 out.push(to);
             }

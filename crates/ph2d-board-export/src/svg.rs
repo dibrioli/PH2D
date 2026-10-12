@@ -140,6 +140,18 @@ pub fn write(ops: &[DrawOp], size: [f64; 2]) -> String {
 /// para uma `<view>` com a caixa do alvo — a ligação interna do SVG 1.1.
 #[must_use]
 pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4])]) -> String {
+    write_with_uris(ops, size, links, &[])
+}
+
+/// W18 — [`write_linked`] com as ligações para FORA (`uris`: a caixa em px da página e o endereço — um
+/// vídeo do quadro leva o dele): um `<a href>` transparente sobre a caixa.
+#[must_use]
+pub fn write_with_uris(
+    ops: &[DrawOp],
+    size: [f64; 2],
+    links: &[([f64; 4], [f64; 4])],
+    uris: &[([f64; 4], String)],
+) -> String {
     let mut glyphs = Glyphs::default();
     let [w, h] = size;
     let mut out = format!(
@@ -276,6 +288,17 @@ pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4]
             num(from[1]),
             num(from[2] - from[0]),
             num(from[3] - from[1])
+        );
+    }
+    for (bx, url) in uris {
+        let _ = writeln!(
+            out,
+            "<a xlink:href=\"{0}\" href=\"{0}\"><rect x=\"{1}\" y=\"{2}\" width=\"{3}\" height=\"{4}\" fill=\"#000000\" fill-opacity=\"0\"/></a>",
+            escape(url),
+            num(bx[0]),
+            num(bx[1]),
+            num(bx[2] - bx[0]),
+            num(bx[3] - bx[1])
         );
     }
     out.push_str("</svg>\n");

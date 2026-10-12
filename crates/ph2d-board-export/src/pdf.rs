@@ -599,6 +599,13 @@ fn fill(c: &mut Content, p: &BezPath, rule: Fill, t: Affine, color: Color, alpha
 /// ⭐ Escreve as páginas num PDF.
 #[must_use]
 pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
+    write_with_uris(pages, &[])
+}
+
+/// W18 — [`write`] com as ligações para FORA de cada página (`uris[i]`: a caixa em px da página `i` e o
+/// endereço — um vídeo do quadro leva o dele): uma anotação `Link` com uma acção `/URI`.
+#[must_use]
+pub fn write_with_uris(pages: &[PdfPage<'_>], uris: &[Vec<([f64; 4], String)>]) -> Vec<u8> {
     let mut doc = Doc {
         pdf: Pdf::new(),
         next: 0,
@@ -665,13 +672,15 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
     }
     for (i, (p, (body, used))) in pages.iter().zip(contents).enumerate() {
         let content = doc.id();
+        let outward: &[([f64; 4], String)] = uris.get(i).map_or(&[], Vec::as_slice);
         let annots: Vec<Ref> = p.links.iter().map(|_| doc.id()).collect();
+        let annots_out: Vec<Ref> = outward.iter().map(|_| doc.id()).collect();
         let [w, h] = p.size;
         let mut page = doc.pdf.page(page_ids[i]);
         page.media_box(Rect::new(0.0, 0.0, f(w), f(h)));
         page.parent(tree);
         page.contents(content);
-        page.annotations(annots.iter().copied());
+        page.annotations(annots.iter().chain(&annots_out).copied());
         resources(&mut page.resources(), &used);
         page.finish();
         let packed = deflate(&body);
@@ -692,6 +701,15 @@ pub fn write(pages: &[PdfPage<'_>]) -> Vec<u8> {
                 .destination()
                 .page(dest)
                 .xyz(f(l.at[0]), f(top), None);
+        }
+        for (a, (bx, url)) in annots_out.iter().zip(outward) {
+            let mut an = doc.pdf.annotation(*a);
+            an.subtype(AnnotationType::Link);
+            an.rect(Rect::new(f(bx[0]), f(h - bx[3]), f(bx[2]), f(h - bx[1])));
+            an.border(0.0, 0.0, 0.0, None);
+            an.action()
+                .action_type(ActionType::Uri)
+                .uri(Str(url.as_bytes()));
         }
     }
     doc.pdf.finish()

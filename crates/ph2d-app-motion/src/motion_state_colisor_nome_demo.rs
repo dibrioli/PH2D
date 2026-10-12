@@ -107,7 +107,8 @@ pub(super) fn announce() {
          cima dos outros. E' o controlo.\n\
          (3) No cartao `Drive` da DIREITA, troque `colisor` por `collider`: ela passa a fazer\n    \
          igual a' da esquerda.\n\
-         (4) No terminal, de 1 em 1 segundo: `device: HIBRIDO` - as duas correm na PLACA.\n\
+         (4) Aberta com `PH2D_MOTION_ROUTE_LOG=1`, o terminal diz UMA vez\n    \
+         `[motion-route] device: HIBRIDO` - as duas correm na PLACA.\n\
          \n\
          DEU ERRADO se: as duas ficarem iguais antes do passo (3); o passo (3) nao mudar nada;\n\
          ou o terminal disser `CPU: uma peca declara colisor pelo nome`.\n"

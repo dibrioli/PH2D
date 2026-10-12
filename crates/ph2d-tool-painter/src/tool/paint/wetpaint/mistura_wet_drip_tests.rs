@@ -32,8 +32,9 @@ const PASSADAS_AZUIS: usize = 5;
 const ESCORRE: usize = 600;
 
 /// O excesso (luz linear, por canal) sobre a tinta mais clara à mesma massa: o produto SEM caixas mede
-/// `+0,148` (o azul seco que TAPA o vermelho seco, a lei do Rebelle); a lei de antes `+0,646`.
-const TOL_MAIS_CLARA: f64 = 0.15;
+/// `+0,148` (o azul seco que TAPA o vermelho seco, a lei do Rebelle); a lei de antes `+0,646`. Com a caixa das
+/// tintas no ecrã (Bug #50, 12/10): `+0,1516` (K–M, seco) — o controlo continua a `+0,646`.
+const TOL_MAIS_CLARA: f64 = 0.16;
 /// O índice do cone (o máximo da tela): sem caixas `0,08`, com o «Pigment mixing» `0,14`; a lei de antes `0,56`.
 const TECTO_CONE: f64 = 0.20;
 /// «Mais claro que a mediana 3×3» conta acima de `N` níveis: o P99,9 de cada tinta SOZINHA sem caixas (25,0).

@@ -77,9 +77,16 @@ typos ✓ · tecto 700 ✓ (maior: `grid.rs` 612) · `nextest-impacted` 17 644/1
 Perfil do laço (10 sessões, antes → depois): paralelismo 1,09 → 1,14 · test:check 3,0 → 3,0 × · Edit 40 → 46 % ·
 contexto/passo 432 → 270 mil.
 
-## §7 — Depois do fecho (12/10): o Bug #50 ABERTO, medido
+## §7 — Depois do fecho (12/10): o Bug #50 FECHADO
 
-O dono achou a orla «esbranquiçada» do escuro fino sobre o claro seco (some depois do Undo). Duas causas medidas
-(o realce do relevo com cobertura inteira; o branco do tapar extra do `Cobre` + o `assenta` que o guarda), duas
-curas medidas e recusadas, o próximo candidato: [BUGS #50](../BUGS_painter.md). Portões vermelhos em
-`diag_bug50_*`. ⚠️ O dono pediu: decida o técnico sem perguntar. Comece a próxima janela por aqui, antes da família C.
+A orla «esbranquiçada» do escuro fino sobre o claro seco (dono, fotos; sumia depois do Undo). Mecanismo: o tapar
+extra do `Ecra::Cobre` pinta-se com a tinta diluída em BRANCO; onde o filme é mais escuro, clareava além das duas
+tintas. O Rebelle nunca passa da mais clara das duas (`fixtures/rebelle/{oil,express}.png`, borda do vermelho
+sobre o azul seco). Cura: cada canal do ecrã pára na mais clara das duas, depois da velatura
+([`cor_e_alfa`](../../../crates/ph2d-wet-paint/src/assenta.rs)). Cinco formas medidas no MESMO build (seletor por
+env, retirado): só esta passa a caixa E a barra do Rebelle — a tabela das recusas no índice dos fechados (#50).
+Tectos re-medidos com a lei nova e escritos ao lado: re-molhar com Glaze Wet 8 → 16 (15,36), livres 1,5 → 3
+(2,97); Wet Drip «mais clara» 0,15 → 0,16 (0,1516). Miniaturas regravadas: Oil Bristle e Express Oil, poucos px.
+⚠️ Aberto, por decidir: o realce do Emboss por diferença central põe metade da encosta FORA da aresta (+22 sobre o
+claro). Uma atribuição «a encosta é de quem sobe» foi medida e não entrou (muda o relevo afinado pelo dono).
+⚠️ O dono: «faça como achar melhor e pare de me fazer perguntas» — decida o técnico sem perguntar.

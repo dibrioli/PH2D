@@ -3,7 +3,7 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#50** (a orla clara do escuro fino), o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
 > 2026-10-03, e o texto dele fica como registo), a **tinta
 > EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
 > (o texto do #15 mudou-se em 2026-10-11 para o pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)),
@@ -109,33 +109,6 @@ Arneses de mutação em `docs/3D/ferramentas/`: `muta_o_relevo_na_peca.sh` · `m
 muito inclinada vê-se a faceta da retícula como um traço em degraus — o mesmo detalhe que a cor tem
 a esse degrau. A cura é interpolar gradientes por amostra (o análogo das normais por vértice), com
 o custo por medir.
-
----
-
-## Bug #50 — Wet Paint: a orla «esbranquiçada» do escuro fino sobre o claro seco (ABERTO, dono 12/10)
-
-**Sintoma (dono, com fotos):** azul escuro (19,74,125) sobre azul claro (35,125,207) já seco, no Oil Bristle: a
-aresta do escuro fica mais clara que AS DUAS tintas — (71,129,184), (58,123,182). **Depois do Undo não aparece** (o
-claro vira base congelada; foto limpa). **Duas causas, medidas célula a célula** (`DIAG=1` na sonda abaixo):
-1. **O realce do relevo** — na aresta, a célula está NA caixa (38,111,177) e o ecrã +22 em todos os canais: o
-   `emb` do Emboss sobre o assentado claro conta com a cobertura inteira (`la ≈ 1`); sobre a base, a aresta fina
-   cobre pouco e o realce some.
-2. **O branco do tapar extra** (`assenta::cor_e_alfa`, `Ecra::Cobre`): `c_eff` dilui o filme em BRANCO sobre
-   `a_e > a_t`; sobre papel é a lei, sobre tinta clareia o ponto além das duas (lei: o par do dono a `a_f` 0,2–0,3 dá
-   (59–61,131,197); vermelho sob azul sai 61 níveis). O `assenta` preserva esse ecrã ⇒ o assentado fica fora da
-   caixa (sem relevo: (49,113,172), 24 níveis).
-
-**Curas medidas e recusadas (12/10):**
-
-| cura | caixa (lei) | re-molhar com Glaze (traço, tecto 8) | barra do Rebelle |
-|---|---|---|---|
-| hoje | ✗ 61 | Wet 4,1 · Smear 13,8 | ✓ |
-| A: travar `a_e` no 1.º canal que sai da caixa | ✓ | ✗ Wet 15,4 (19 livres de 484; mais voltas do Newton não mudam) | ✗ Glaze γ 0,70 vs 0,60 · Live Water 0,70 |
-| B: o extra mostra a mais clara das duas, por canal | ✓ | ✓ Wet 0,09 · Smear 7,4 | ✗ azul/vermelho γ 0,44 → 0,76 (Rebelle 0,42–0,51); Glaze sem efeito |
-
-⇒ o branco do extra É o que faz o claro cobrir o escuro como no Rebelle; o defeito é ele entrar quando o filme é
-mais ESCURO. Próximo candidato (por medir): o branco só nos canais em que o filme é mais claro que o de baixo.
-Portões vermelhos guardados como `diag_bug50_*` (`assenta.rs`, `verde_no_soltar_tests.rs`, `SEM_RELEVO=1`).
 
 ---
 

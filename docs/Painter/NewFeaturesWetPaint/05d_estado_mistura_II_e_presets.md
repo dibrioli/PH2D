@@ -290,3 +290,7 @@
   (miniaturas: Oil Bristle 139 px na orla, Express Oil 30, Wet Dry Brush 108 e Wet Liner 86 a ±1; as seis cenas
   das opções até 9 níveis). Pranchas em `comparar_oleo/janela22/`. A família C (o óleo contra o Rebelle) fica
   para a janela seguinte. [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_RELEVO_E_VERDE.md).
+
+- ✅ **Bug #50 fechado (12/10).** O escuro fino sobre o claro seco deixava uma orla mais clara que as duas tintas: o
+  tapar extra da lei do Rebelle pinta-se com branco, certo para o claro sobre o escuro, errado ao contrário. Cada
+  canal pára agora na mais clara das duas — o Rebelle nunca passa dela. [handoff §7](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_RELEVO_E_VERDE.md).

@@ -104,8 +104,13 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
     let a_e = a_t + (h - a_t).max(0.0) * crate::colorops::diferenca_de_pigmento(sc, uc);
     let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
     let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
+    // ⛔ A CAIXA das tintas (Bug #50): o tapar extra pinta-se com a tinta diluída em BRANCO — é o que faz o claro
+    // cobrir o escuro como no Rebelle, mas onde o filme é mais ESCURO o branco clareava o ponto além das duas
+    // tintas (a orla esbranquiçada). Cada canal pára na mais clara das duas: o Rebelle nunca passa dela (as
+    // bordas do óleo sobre o azul seco, `fixtures/rebelle/{oil,express}.png`).
     let mut r = [0, 1, 2].map(|k| t_s[k] * (1.0 - a_e) + c_eff[k] * a_e);
     velatura(&mut r, a_e, filme, 1.0, t_s, c_eff);
+    let r = [0, 1, 2].map(|k| r[k].min(t_s[k].max(uc[k])));
     let la = a_s + a_e * (1.0 - a_s);
     molha(r, la)
 }
@@ -493,11 +498,9 @@ mod tests {
     /// o azul claro seco, (71,129,184) entre (35,125,207) e (19,74,125)). O que se vê sobre o branco fica, por
     /// canal, entre o assentado visto (`t_s`) e a tinta de cima — o tapar extra não traz o branco da diluição.
     /// 6 × 6 tintas (o par do dono primeiro), `a_s` 0,2–0,99, `a_f` 0,02–0,95, tapar do produto e da velatura.
-    /// ⚠️ VERMELHO hoje (61 níveis): é o portão do Bug #50 ABERTO — as duas curas medidas e o que cada uma parte
-    /// estão no `BUGS_painter.md` #50. Quando a cura entrar, sai o `ignore` e o nome perde o `diag_`.
+    /// Antes da caixa: 61 níveis (vermelho sob azul a `a_f` 0,3 → (179,161,197)).
     #[test]
-    #[ignore = "Bug #50 aberto: o portão vermelho da próxima janela"]
-    fn diag_bug50_o_ecra_fica_na_caixa_das_tintas() {
+    fn o_ecra_fica_na_caixa_das_tintas() {
         let tintas = [
             [35.0, 125.0, 207.0],
             [19.0, 74.0, 125.0],

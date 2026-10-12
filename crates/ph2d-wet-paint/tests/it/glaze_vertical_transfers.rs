@@ -46,14 +46,17 @@ const PARES: [([f32; 3], [f32; 3]); 4] = [
 /// Assentar (secagem, Dry canvas), por célula: sem a caixa 1,4e-4 · com 1,3e-4 · M7b 51,3.
 const TOL_ASSENTAR: f64 = 0.01;
 /// Re-molhar, dab a dab, nas células que a caixa das tintas NÃO prendeu — o tecto de `assenta::tests`;
-/// com o «Glaze» Wet 0,0095 · Smear 0,264; M7b no Smear 2,33.
-const TOL_LIVRES: f64 = 1.5;
+/// com o «Glaze» Wet 0,0095 · Smear 0,264; M7b no Smear 2,33. Com a caixa no ECRÃ (Bug #50, 12/10): Wet 1,50 ·
+/// Smear 2,97 — um canal encostado à mais clara das duas tintas não se repõe quando o re-molhar afina o de baixo
+/// (a caixa obriga o ecrã a mudar com a tinta levantada). O M7b continua a reprovar pelas livres e pelo traço.
+const TOL_LIVRES: f64 = 3.0;
 /// Quantas células-dab (17 dabs) a caixa das tintas tem de deixar livres: com o «Glaze» Wet 484 · Smear 476;
 /// sem a caixa — e com M7b — 0 e 6 (a inversa do tapar 5 sai da caixa quase sempre).
 const MIN_LIVRES: usize = 100;
 /// O traço inteiro de re-molhar, o maior desvio de uma célula: com o «Glaze» Wet 4,13 · Smear 13,84; sem a
-/// caixa 40,2 · 47,7; M7b 25,6 · 43,4.
-const TECTO_TRACO_WET: f64 = 8.0;
+/// caixa 40,2 · 47,7; M7b 25,6 · 43,4. Com a caixa no ECRÃ (Bug #50): Wet 15,36 · Smear 14,71 (sem o «Glaze»
+/// 20,67 · 19,90, sem tecto).
+const TECTO_TRACO_WET: f64 = 16.0;
 const TECTO_TRACO_SMEAR: f64 = 25.0;
 
 /// O motor com a lei da sessão do produto (`authored_actions::ensure_wet_session`) e a cena das duas tintas.

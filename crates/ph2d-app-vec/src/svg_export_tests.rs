@@ -501,3 +501,27 @@ fn o_svg_leva_o_limite_do_bico() {
         "uma junta redonda não tem bico a limitar"
     );
 }
+
+/// ⭐ «Send to board…» (W15): o SVG de UM objecto leva só esse caminho, e aos `pixels_per_meter` o
+/// tamanho natural (`width`) e o traço crescem na mesma escala — a régua do editor em píxeis. Um
+/// caminho que não existe não dá ficheiro.
+#[test]
+fn one_object_goes_out_alone_at_the_projects_pixels_per_meter() {
+    let mut scene = VecScene::new();
+    let a = quadrado(&mut scene, 10.0);
+    let b = quadrado(&mut scene, 3.0);
+    let um = svg_of_path(&scene, &VecXforms::new(), a, &sempre_nao, 1.0).expect("o caminho a");
+    assert!(um.contains(&format!("data-ph2d-id=\"{a}\"")));
+    assert!(
+        !um.contains(&format!("data-ph2d-id=\"{b}\"")),
+        "levou o vizinho"
+    );
+    let cem = svg_of_path(&scene, &VecXforms::new(), a, &sempre_nao, 100.0).expect("a, a 100");
+    // 20 de lado + 2 margens da largura do traço (2 a 1:1; 200 a 100 px por unidade).
+    assert!(um.contains(" width=\"24\""), "{um}");
+    assert!(
+        cem.contains(" width=\"2400\"") && cem.contains("stroke-width=\"200\""),
+        "{cem}"
+    );
+    assert!(svg_of_path(&scene, &VecXforms::new(), 999, &sempre_nao, 1.0).is_none());
+}

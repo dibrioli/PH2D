@@ -205,6 +205,19 @@ pub fn svg(
     escondido: &dyn Fn(u64) -> bool,
     preenchimento: &dyn Fn(u64) -> bool,
 ) -> Svg {
+    svg_at(scene, xforms, escondido, preenchimento, EIXOS)
+}
+
+/// ⭐ O mesmo SVG com `px_por_unidade` unidades do ficheiro por unidade de MUNDO — o «Send to board…»
+/// (W15) escreve-o aos `pixels_per_meter` do projecto, para o tamanho natural no quadro ser o da
+/// régua do editor em píxeis. A escala passa pela MESMA porta dos eixos (`world_to_svg`).
+pub fn svg_at(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    escondido: &dyn Fn(u64) -> bool,
+    preenchimento: &dyn Fn(u64) -> bool,
+    px_por_unidade: f64,
+) -> Svg {
     let mundo: Vec<(u64, VecPath)> = scene
         .paths()
         .iter()
@@ -215,7 +228,7 @@ pub fn svg(
             // vive em mundo), depois a lei dos EIXOS (mundo → ficheiro). Assá-las em separado pela
             // mesma porta mantém a geometria, o gradiente e a largura do traço em acordo.
             ph2d_vec_scene::bake_xform(&mut c, &ph2d_vec_scene::xform_of(xforms, p.id));
-            ph2d_vec_scene::bake_xform(&mut c, &ph2d_vec_svg::world_to_svg(EIXOS));
+            ph2d_vec_scene::bake_xform(&mut c, &ph2d_vec_svg::world_to_svg(px_por_unidade));
             (p.id, c)
         })
         .collect();
@@ -330,10 +343,18 @@ pub fn svg(
     // (uma unidade é uma unidade) e o EIXO Y é o do SVG (desce). A frase anterior colava-as numa
     // só — *"coordenadas de MUNDO (Y para baixo, como o SVG)"* — e assim afirmava que o mundo tem
     // o Y a descer, que é falso e era exactamente o defeito.
-    let mut nota = String::from(
-        "  Geometria COZIDA. Uma unidade do ficheiro = uma unidade de MUNDO; o eixo Y desce,\n  \
-         como manda o SVG (no mundo ele sobe).\n",
-    );
+    let mut nota = if px_por_unidade == EIXOS {
+        String::from(
+            "  Geometria COZIDA. Uma unidade do ficheiro = uma unidade de MUNDO; o eixo Y desce,\n  \
+             como manda o SVG (no mundo ele sobe).\n",
+        )
+    } else {
+        format!(
+            "  Geometria COZIDA. {} unidades do ficheiro = uma unidade de MUNDO; o eixo Y desce,\n  \
+             como manda o SVG (no mundo ele sobe).\n",
+            num(px_por_unidade)
+        )
+    };
     if aproximadas.is_empty() {
         nota.push_str("  Nada foi aproximado.\n");
     } else {
@@ -366,6 +387,27 @@ pub fn svg(
         formas: mundo.len(),
         aproximadas,
     }
+}
+
+/// ⭐ O SVG de UM objecto vectorial (o caminho `path`), aos `px_por_unidade` — o «Send to board…»
+/// (W15). Sai mesmo que o olho da Hierarquia o esconda: foi ESTE o objecto pedido. `None` = o caminho
+/// não está na cena ou não desenha nada.
+#[must_use]
+pub fn svg_of_path(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    path: u64,
+    preenchimento: &dyn Fn(u64) -> bool,
+    px_por_unidade: f64,
+) -> Option<String> {
+    let out = svg_at(
+        scene,
+        xforms,
+        &|id| id != path,
+        preenchimento,
+        px_por_unidade,
+    );
+    (out.formas > 0).then_some(out.texto)
 }
 
 #[cfg(test)]

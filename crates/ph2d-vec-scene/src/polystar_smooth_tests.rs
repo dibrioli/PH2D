@@ -102,23 +102,58 @@ fn more_smooth_never_turns_back() {
     }
 }
 
-/// ⭐ **O 1.º passo do liso não apaga o raio do canto**: liso `0,001` desenha a forma de liso `0`
-/// (antes, a estrela arredondada ficava pontuda — «no mínimo o maior efeito»).
+/// ⭐ **O raio do canto ENTRA no liso** (F13): com raio, o 1.º passo do liso já é o arredondado que
+/// o raio dava (o quinhão dele da meia aresta), e não o polígono cru. ⚠️ A ponta passa SEMPRE pelo
+/// vértice (a lei do *Rounded* do Inkscape, a de antes, que o dono quer de volta): o salto da ponta
+/// no 1.º passo fica — medido `0,059` no pentágono de raio `0,25`, o mesmo de apagar o raio.
 #[test]
-fn a_little_smooth_keeps_the_corner_radius() {
+fn the_corner_radius_carries_into_the_smooth() {
     for (name, mk) in [
         (
             "polígono",
-            (|s| poly(5, s, 0.25, CornerStyle::Round)) as fn(f64) -> PolyStar,
+            (|s, r| poly(5, s, r, CornerStyle::Round)) as fn(f64, f64) -> PolyStar,
         ),
-        ("estrela", |s| star(s, 0.25)),
+        ("estrela", |s, r| star(s, r)),
     ] {
-        let (a, b) = (
-            polystar([0.0; 2], 1.0, 1.0, &mk(0.0)),
-            polystar([0.0; 2], 1.0, 1.0, &mk(0.001)),
-        );
-        let h = hausdorff(&a, &b);
-        assert!(h < 2e-3, "{name}: {h}");
+        let at = |s, r| polystar([0.0; 2], 1.0, 1.0, &mk(s, r));
+        let h = hausdorff(&at(0.001, 0.25), &at(0.001, 0.0));
+        assert!(h > 0.01, "{name}: o raio não entrou no liso ({h})");
+    }
+}
+
+/// ⭐ **O liso não deixa calombos** (F13, o dono: «Smooth … ficou horrível»): com raio de canto e
+/// com ou sem envergadura, todo vértice do contorno cozido é G1 — as alças de entrada e de saída
+/// na mesma recta. O F13 anterior deixava a quina do raio em cada canto.
+#[test]
+fn smooth_leaves_no_corner_bump() {
+    for c in [0.0, 0.4, -0.4] {
+        for s in [0.05, 0.3, 0.5, 0.75, 1.0] {
+            let p = polystar(
+                [0.0; 2],
+                1.0,
+                1.0,
+                &PolyStar {
+                    curve: c,
+                    ..poly(5, s, 0.2, CornerStyle::Round)
+                },
+            );
+            for v in &p.verts {
+                let (a, b) = (
+                    [v.anchor[0] - v.in_handle[0], v.anchor[1] - v.in_handle[1]],
+                    [v.out_handle[0] - v.anchor[0], v.out_handle[1] - v.anchor[1]],
+                );
+                let (la, lb) = (a[0].hypot(a[1]), b[0].hypot(b[1]));
+                if la < 1e-9 || lb < 1e-9 {
+                    continue;
+                }
+                let cross = (a[0] * b[1] - a[1] * b[0]) / (la * lb);
+                assert!(
+                    cross.abs() < 1e-6,
+                    "liso {s}, envergadura {c}: quina {cross} em {:?}",
+                    v.anchor
+                );
+            }
+        }
     }
 }
 
@@ -174,29 +209,5 @@ fn a_corner_whose_edges_are_eaten_whole_keeps_its_style() {
             hausdorff(&at(style), &straight) > 0.1,
             "{style:?} virou a recta"
         );
-    }
-}
-
-/// ⭐ **Com raio, o vértice fica QUINA sob o liso e a envergadura** (`liso_em`: só o vértice sem raio
-/// é liso). Se o raio também alinhasse as alças (G1), as tangentes do canto ficariam colineares e o
-/// arredondado não teria o que arredondar — o raio sumia (medido: o efeito do raio `0,25` cai ~5×).
-#[test]
-fn with_a_radius_the_smooth_vertex_stays_a_corner_and_the_radius_shows() {
-    for (s, c, min) in [
-        (0.3, 0.4, 0.01),
-        (0.3, -0.4, 0.1),
-        (0.1, 0.4, 0.01),
-        (0.5, 0.2, 0.01),
-    ] {
-        let mk = |r: f64| PolyStar {
-            curve: c,
-            ..poly(5, s, r, CornerStyle::Round)
-        };
-        let (a, b) = (
-            polystar([0.0; 2], 1.0, 1.0, &mk(0.0)),
-            polystar([0.0; 2], 1.0, 1.0, &mk(0.25)),
-        );
-        let h = hausdorff(&a, &b);
-        assert!(h >= min, "liso {s}, envergadura {c}: o raio só mexe {h}");
     }
 }

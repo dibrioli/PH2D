@@ -107,13 +107,13 @@ const fn arrow_down(fields: &'static [usize]) -> HandleDesc {
 /// (desenhado `PARK_PX` para DENTRO: o topo do contorno É a alça do meio-topo da caixa, que abraça
 /// o contorno cozido e desce com ele — estacionar a partir do vértice vivo deixava-a por baixo da
 /// alça azul, medido na foto da cena 16); a envergadura no meio do lado esquerdo (de volta na F12,
-/// o dono); os lados, o tipo do canto, a envergadura e o liso na fila de ⇕.
+/// o dono); os lados, o tipo do canto e o liso na fila de ⇕ (a envergadura só no ponto da aresta —
+/// F13, o dono: «dois controles para a mesma coisa»).
 const POLYGON: &[HandleDesc] = &[
     arrow(&[0]),
     inset(on_sharp(h(&[1], Spot::Apex(0), Law::Nearest), &[1])),
     on_sharp(h(&[3], Spot::EdgeMid(0), Law::Nearest), &[1]),
     arrow(&[2]),
-    arrow(&[3]),
     arrow(&[4]),
 ];
 

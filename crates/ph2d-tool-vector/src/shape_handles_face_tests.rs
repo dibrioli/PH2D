@@ -17,7 +17,7 @@ fn each_handle_wears_the_face_of_what_it_does() {
     );
     assert_eq!(
         faces(ShapeKind::Polygon),
-        [Count, Corner, Radius, Count, Count, Count]
+        [Count, Corner, Radius, Count, Count]
     );
     assert_eq!(
         faces(ShapeKind::Star),
@@ -33,7 +33,6 @@ fn each_handle_wears_the_face_of_what_it_does() {
 fn what_was_on_the_card_is_an_arrow_on_the_side() {
     for (kind, field) in [
         (ShapeKind::Star, 5),
-        (ShapeKind::Polygon, 3),
         (ShapeKind::Polygon, 4),
         (ShapeKind::RoundRect, 5),
         (ShapeKind::Spiral, 1),

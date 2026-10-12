@@ -61,10 +61,11 @@ fn drag_rail(kind: ShapeKind, i: usize, v: ShapeValues, rise: f64) -> ShapeValue
 /// arrasto horizontal não conta.
 #[test]
 fn a_continuous_arrow_runs_the_whole_range_in_the_box_height() {
-    let k = ShapeKind::Polygon;
-    let i = rail_of(k, 3);
+    // A envergadura da ESTRELA (campo 5): a do polígono vive no ponto da aresta (F13).
+    let k = ShapeKind::Star;
+    let i = rail_of(k, 5);
     let v = k.defaults();
-    assert_eq!(v[3], 0.0);
+    assert_eq!(v[5], 0.0);
     for (rise, want) in [
         (0.25, 0.5),
         (-0.25, -0.5),
@@ -74,11 +75,11 @@ fn a_continuous_arrow_runs_the_whole_range_in_the_box_height() {
     ] {
         let out = drag_rail(k, i, v, rise);
         assert!(
-            (out[3] - want).abs() < 1e-9,
+            (out[5] - want).abs() < 1e-9,
             "subir {rise}: {} ≠ {want}",
-            out[3]
+            out[5]
         );
-        let others = (0..8).filter(|&j| j != 3).all(|j| out[j] == v[j]);
+        let others = (0..8).filter(|&j| j != 5).all(|j| out[j] == v[j]);
         assert!(others, "só o campo do ⇕ muda");
     }
 }
@@ -178,5 +179,29 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
     assert!(
         na_borda > 0 && por_fora > 0,
         "{na_borda} na borda, {por_fora} por fora"
+    );
+}
+
+/// ⭐ (F13, o dono: «tem dois controles para a mesma coisa: curve») **Um campo, um controlo**: o ⇕
+/// é o idioma do campo SEM ponto no contorno — nenhum campo tem ⇕ e outra alça ao mesmo tempo.
+#[test]
+fn no_field_has_an_arrow_and_another_handle() {
+    let mut dupes = Vec::new();
+    for &k in ALL_SHAPES {
+        let hs = handles_of(k);
+        for a in hs.iter().filter(|h| h.spot == Spot::Rail) {
+            for &f in a.fields {
+                if hs
+                    .iter()
+                    .any(|h| h.spot != Spot::Rail && h.fields.contains(&f))
+                {
+                    dupes.push(format!("{k:?} campo {f}"));
+                }
+            }
+        }
+    }
+    assert!(
+        dupes.is_empty(),
+        "dois controlos para o mesmo campo: {dupes:?}"
     );
 }

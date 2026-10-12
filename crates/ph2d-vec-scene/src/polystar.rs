@@ -84,15 +84,15 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
             s.radii[0]
         }
     };
-    // Com raio de canto o vértice abre aos poucos: a alça roda da aresta para a tangente pelo
-    // peso `liso / (liso + quinhão do raio)` — sem isto o 1.º passo do liso apagava o raio inteiro.
+    // Com raio de canto o liso PARTE do arredondado que o raio já dá (o quinhão dele da meia aresta,
+    // em *Rounded*) e vai ao redondo: o 1.º passo não apaga o raio, e o vértice é liso inteiro (o
+    // F13 rodava a alça aos poucos e deixava a quina do raio — calombos em cada canto, o dono:
+    // «horrível»).
     let world: Vec<[f64; 2]> = unit.iter().map(|p| [rx * p[0], ry * p[1]]).collect();
-    let open: Vec<f64> = (0..m)
+    let raw: Vec<f64> = (0..m)
         .map(|i| {
-            if lisa_ui <= 0.0 {
-                return 0.0;
-            }
-            lisa_ui / (lisa_ui + radius_share(&world, i, radius_of(i)))
+            let share = radius_share(&world, i, radius_of(i));
+            rounded_at_one(m) * (share + lisa_ui * (1.0 - share))
         })
         .collect();
     let wedge: Vec<f64> = (0..m).map(|i| interior_angle(&unit, i)).collect();
@@ -108,7 +108,11 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
             continue;
         }
         let (ta, tb) = (tangent(&unit, i), tangent(&unit, j));
-        let k = smooth * len;
+        let (ka, kb) = if lisa_ui > 0.0 {
+            (raw[i] * len, raw[j] * len)
+        } else {
+            (0.0, 0.0)
+        };
         // A envergadura: o meio da cúbica anda `h` pela normal de FORA quando as duas alças
         // andam `4h/3` — sobre a corda a ⅓ (a MESMA lei do [`bend_between_corners`]): a tangente
         // na quina roda `atan(4h/corda)`, a partir de zero. Para dentro, nunca além de 90 % da
@@ -135,20 +139,17 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
         // (a ⅓ da corda o liso já é a alça inteira), e sem envergadura não entra — a curva do
         // Inkscape fica exacta. Abaixo de um passo do campo (`0,01`) ele entra em proporção.
         let chord = (1.0 - 3.0 * smooth).max(0.0) * (s.curve.abs() / CURVE_STEP).min(1.0) / 3.0;
-        let along = [d[0] / len, d[1] / len];
-        let (ta, tb) = (toward(along, ta, open[i]), toward(along, tb, open[j]));
         out_h[i] = [
-            ta[0] * k + d[0] * chord + bend[0],
-            ta[1] * k + d[1] * chord + bend[1],
+            ta[0] * ka + d[0] * chord + bend[0],
+            ta[1] * ka + d[1] * chord + bend[1],
         ];
         in_h[j] = [
-            -tb[0] * k - d[0] * chord + bend[0],
-            -tb[1] * k - d[1] * chord + bend[1],
+            -tb[0] * kb - d[0] * chord + bend[0],
+            -tb[1] * kb - d[1] * chord + bend[1],
         ];
     }
     let lisa = smooth != 0.0;
-    // Só o vértice ABERTO de todo (sem raio) é liso; com raio ele fica quina e o raio arredonda-a.
-    let liso_em = |i: usize| lisa && open[i] >= 1.0;
+    let liso_em = |_: usize| lisa;
     // Liso com envergadura: cada aresta enverga pela SUA normal e o vértice ganhava uma quina (35°
     // na estrela a liso 0,3 e envergadura −0,4, com gancho). O vértice liso é G1: as duas alças na
     // direcção média, cada uma com o seu comprimento. Sem envergadura já são colineares.
@@ -298,23 +299,6 @@ fn radius_share(world: &[[f64; 2]], i: usize, r: f64) -> f64 {
             .acos();
     let max = 0.5 * la.min(lb);
     (r / half.tan().max(1e-12) / max).min(1.0)
-}
-
-/// A direcção de `along` (a aresta) rodada para `tangent` pelo peso `w` (`1` = a tangente).
-fn toward(along: [f64; 2], tangent: [f64; 2], w: f64) -> [f64; 2] {
-    if w >= 1.0 {
-        return tangent;
-    }
-    let v = [
-        along[0] * (1.0 - w) + tangent[0] * w,
-        along[1] * (1.0 - w) + tangent[1] * w,
-    ];
-    let l = v[0].hypot(v[1]);
-    if l <= 1e-12 {
-        tangent
-    } else {
-        [v[0] / l, v[1] / l]
-    }
 }
 
 /// Um passo do campo *Curve* (`shapes_fields::frac`): daí para cima a envergadura é a lei inteira.

@@ -104,6 +104,20 @@ pub const PAINTER_BRUSH_COLOR_JITTER_SAT: NodeId = hash_node_id("painter_brush.c
 /// Randomize-Color **Value** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(2, _)`.
 pub const PAINTER_BRUSH_COLOR_JITTER_VAL: NodeId = hash_node_id("painter_brush.color_jitter_val");
 
+/// Randomize-Color **when** — the segmented group (Every Dab / Every Stroke) and its two options.
+/// `Click` → `set_brush_color_jitter_scope`.
+pub const PAINTER_BRUSH_COLOR_JITTER_SCOPE: NodeId =
+    hash_node_id("painter_brush.color_jitter_scope");
+pub const PAINTER_BRUSH_COLOR_JITTER_PER_DAB: NodeId =
+    hash_node_id("painter_brush.color_jitter_per_dab");
+pub const PAINTER_BRUSH_COLOR_JITTER_PER_STROKE: NodeId =
+    hash_node_id("painter_brush.color_jitter_per_stroke");
+/// The two options, by [`ph2d_painter_brush::ColorJitterScope::to_u8`].
+pub const PAINTER_BRUSH_COLOR_JITTER_SCOPES: [NodeId; 2] = [
+    PAINTER_BRUSH_COLOR_JITTER_PER_DAB,
+    PAINTER_BRUSH_COLOR_JITTER_PER_STROKE,
+];
+
 /// Brush blend-mode dropdown chip (opens the brush-blend popover; mirror of the
 /// per-row blend chip but with a fixed id + the 24 `BrushBlend` modes).
 pub const PAINTER_BRUSH_BLEND: NodeId = hash_node_id("painter_brush.blend");

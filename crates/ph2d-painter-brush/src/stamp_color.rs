@@ -42,6 +42,18 @@ impl ColorStampMask {
 /// (Grain-Depth-blended toward `1`) on all four channels. WITH the Grain Colour Ramp: `ramp[g]` (each
 /// channel Depth-blended toward neutral `1`) so the Grain colour tints the premultiplied composite; the
 /// alpha channel scales coverage either way. Deterministic (HR-5: float-only + the shared LUT sampler).
+/// ⭐ **A lei do Bug #51:** uma camada que pinta a sua PRÓPRIA cor de textura pinta `textura × tinta`,
+/// e o Randomize Color desloca esse produto pelo `shift` sorteado do carimbo. Com a tinta branca e sem
+/// desvio é a textura ao byte. Os três núcleos (o carimbo assado, o acumulado por carimbo e o lote
+/// dinâmico) passam por aqui — uma lei, um sítio.
+#[inline]
+pub(crate) fn texture_times_tint(texel: [f32; 3], tint: [f32; 3], shift: [f32; 3]) -> [f32; 3] {
+    crate::jitter::apply_color_shift(
+        [texel[0] * tint[0], texel[1] * tint[1], texel[2] * tint[2]],
+        shift,
+    )
+}
+
 fn grain_modulation(g: f32, depth: f32, granulation: f32, ramp: Option<&[[f32; 4]]>) -> [f32; 4] {
     // Watercolor valley gate — scales the whole premultiplied modulation (coverage + tint) so pigment
     // is rejected in the paper's low areas. `1` when granulation is 0 → byte-identical.
@@ -118,13 +130,16 @@ pub fn render_color_stamp_mask(
                     continue;
                 }
                 // Texture Color: the layer paints its OWN per-pixel RGB (sampled at the same coord as the
-                // silhouette); else the flat resolved colour. Layers still composite "over" (z-order) —
+                // silhouette) × its resolved tint; else the flat resolved colour. Layers still composite "over" (z-order) —
                 // the per-layer blend modes apply at the on-canvas recomposite, not in this preview bake.
+                let flat = layer_colors.get(li).copied().unwrap_or([0.0, 0.0, 0.0]);
                 let c = match layer_rgb.get(li).and_then(|o| o.as_ref()) {
-                    Some(img) => {
-                        crate::texture::sample_shape_rgb_unit(&spec.shape, &shape_basis, u, v, img)
-                    }
-                    None => layer_colors.get(li).copied().unwrap_or([0.0, 0.0, 0.0]),
+                    Some(img) => texture_times_tint(
+                        crate::texture::sample_shape_rgb_unit(&spec.shape, &shape_basis, u, v, img),
+                        flat,
+                        [0.0; 3],
+                    ),
+                    None => flat,
                 };
                 let inv_a = 1.0 - a;
                 acc[0] = c[0] * a + acc[0] * inv_a;

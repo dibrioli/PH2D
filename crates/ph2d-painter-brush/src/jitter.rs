@@ -35,14 +35,16 @@ pub(crate) fn disc_sample(rng: &mut u64) -> (f32, f32) {
 }
 
 /// Resolve the per-dab jitter for `spec`: the radius **scale multiplier**, the extra **rotation**
-/// unit vector for the texture frame (identity `[1, 0]` = none), and the jittered **colour**.
+/// unit vector for the texture frame (identity `[1, 0]` = none), the jittered **colour** and the
+/// **HSV offset** that was drawn for it (`[0; 3]` = none — the offset a texture layer applies to its
+/// own per-pixel colour, Bug #51).
 ///
 /// Draw order is fixed (scale → rotate → H → S → V); each block draws from `rng` *only* when its
 /// feature would actually change the dab, so toggling one feature never perturbs another's stream
 /// while it is off, and an untouched brush consumes no randomness at all. The caller gates the whole
 /// thing behind [`crate::StrokeMethod::allows_jitter`] (Drag Dot / Anchored place one deliberate dab,
 /// so they opt out — like the position jitter).
-pub(crate) fn per_dab(rng: &mut u64, spec: &BrushSpec) -> (f32, [f32; 2], [f32; 3]) {
+pub(crate) fn per_dab(rng: &mut u64, spec: &BrushSpec) -> (f32, [f32; 2], [f32; 3], [f32; 3]) {
     let scale = if spec.jitter_scale > 0.0 {
         // ±amount around 1.0; never let the radius collapse — clamped by the caller.
         1.0 + (next_f32(rng) * 2.0 - 1.0) * spec.jitter_scale.clamp(0.0, 1.0)
@@ -57,18 +59,56 @@ pub(crate) fn per_dab(rng: &mut u64, spec: &BrushSpec) -> (f32, [f32; 2], [f32; 
     // Color randomization is driven SOLELY by the Hue/Sat/Value amounts (any > 0 → active).
     // The legacy `color_jitter_enabled` flag is no longer gated on — the brush panel dropped its
     // redundant enable toggle (the "Randomize Color" section activates on amount > 0, Enio 2026-06-24).
-    let color = if spec.has_colour_jitter_amount() {
-        jittered_colour(
-            rng,
-            spec.color,
-            spec.color_jitter_hue,
-            spec.color_jitter_sat,
-            spec.color_jitter_val,
-        )
-    } else {
-        spec.color
-    };
-    (scale, rotation, color)
+    let (color, shift) = colour_draw(rng, spec);
+    (scale, rotation, color, shift)
+}
+
+/// The Randomize-Color draw for `spec` — `(jittered colour, HSV offset)` — or the plain colour and a
+/// zero offset when every amount is zero (no draw). The ONE place the H → S → V draws happen, shared by
+/// the per-dab jitter and the per-stroke draw in [`crate::Stroke::new`].
+pub(crate) fn colour_draw(rng: &mut u64, spec: &BrushSpec) -> ([f32; 3], [f32; 3]) {
+    if !spec.has_colour_jitter_amount() {
+        return (spec.color, [0.0; 3]);
+    }
+    let shift = [
+        (next_f32(rng) * 2.0 - 1.0) * spec.color_jitter_hue.clamp(0.0, 1.0),
+        (next_f32(rng) * 2.0 - 1.0) * spec.color_jitter_sat.clamp(0.0, 1.0),
+        (next_f32(rng) * 2.0 - 1.0) * spec.color_jitter_val.clamp(0.0, 1.0),
+    ];
+    (shift_hsv(spec.color, shift), shift)
+}
+
+/// **When** Randomize Color draws: a new offset for every dab (the classic scatter) or ONE offset per
+/// stroke (the whole stroke in one colour, the next in another) — Procreate's *Color dynamics* keeps
+/// the two as separate controls. The per-stroke draw comes from its own stream seeded by the stroke's
+/// seed, and the per-dab draws still happen, so every other jitter is byte-identical in both modes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum ColorJitterScope {
+    /// A new colour every dab (the default — what every preset and project before this field paints).
+    #[default]
+    PerDab,
+    /// One colour for the whole stroke.
+    PerStroke,
+}
+
+impl ColorJitterScope {
+    /// Wire discriminant (`PerDab` = 0, `PerStroke` = 1).
+    #[must_use]
+    pub fn to_u8(self) -> u8 {
+        match self {
+            Self::PerDab => 0,
+            Self::PerStroke => 1,
+        }
+    }
+
+    /// Decode a wire discriminant; unknown values fall back to [`ColorJitterScope::PerDab`].
+    #[must_use]
+    pub fn from_u8(v: u8) -> Self {
+        match v {
+            1 => Self::PerStroke,
+            _ => Self::PerDab,
+        }
+    }
 }
 
 /// Per-gap **Jitter Spacing** multiplier: `1 ± amount` around the base spacing, floored at `0.05` so a
@@ -90,13 +130,23 @@ fn rotation_unit(rng: &mut u64, amount: f32) -> [f32; 2] {
     crate::texture::rotate_by_degrees(wrapped)
 }
 
-/// Offset `base` in HSV by up to `±hue/±sat/±val` (each a `0..1` amount). Hue wraps the colour
-/// wheel; saturation / value clamp to the unit range. Draws H, S, V in that fixed order.
-fn jittered_colour(rng: &mut u64, base: [f32; 3], hue: f32, sat: f32, val: f32) -> [f32; 3] {
+/// Offset `base` in HSV by the drawn `shift = [dh, ds, dv]`: hue wraps the colour wheel, saturation /
+/// value clamp to the unit range. Identity (to the bit) for a zero `shift`.
+#[must_use]
+pub fn apply_color_shift(base: [f32; 3], shift: [f32; 3]) -> [f32; 3] {
+    if shift == [0.0; 3] {
+        return base;
+    }
+    shift_hsv(base, shift)
+}
+
+/// [`apply_color_shift`] without the zero short-cut: the per-dab draw always ran the HSV round trip,
+/// and its bytes are the contract.
+fn shift_hsv(base: [f32; 3], shift: [f32; 3]) -> [f32; 3] {
     let mut hsv = rgb_to_hsv(base);
-    hsv[0] = (hsv[0] + (next_f32(rng) * 2.0 - 1.0) * hue.clamp(0.0, 1.0)).rem_euclid(1.0);
-    hsv[1] = (hsv[1] + (next_f32(rng) * 2.0 - 1.0) * sat.clamp(0.0, 1.0)).clamp(0.0, 1.0);
-    hsv[2] = (hsv[2] + (next_f32(rng) * 2.0 - 1.0) * val.clamp(0.0, 1.0)).clamp(0.0, 1.0);
+    hsv[0] = (hsv[0] + shift[0]).rem_euclid(1.0);
+    hsv[1] = (hsv[1] + shift[1]).clamp(0.0, 1.0);
+    hsv[2] = (hsv[2] + shift[2]).clamp(0.0, 1.0);
     hsv_to_rgb(hsv)
 }
 
@@ -140,27 +190,6 @@ pub(crate) fn hsv_to_rgb(hsv: [f32; 3]) -> [f32; 3] {
     }
 }
 
-/// Re-apply the SAME per-dab Randomize-Color HSV shift that turned `base` into `jittered` onto each of
-/// `colors`, in place. Lets the per-layer-colour path jitter EVERY layer's colour (custom picks too)
-/// coherently per dab — the dab already carries the jittered base (`Dab::color`), so the offset is
-/// reconstructed from `(base, jittered)` in HSV (no extra rng, identical stream). Identity when
-/// `base == jittered` (Randomize Color off). Deterministic (HR-5: HSV is float-only).
-pub fn shift_colors_like(base: [f32; 3], jittered: [f32; 3], colors: &mut [[f32; 3]]) {
-    let b = rgb_to_hsv(base);
-    let j = rgb_to_hsv(jittered);
-    let (dh, ds, dv) = (j[0] - b[0], j[1] - b[1], j[2] - b[2]);
-    if dh == 0.0 && ds == 0.0 && dv == 0.0 {
-        return; // Randomize Color off (or no offset this dab) → leave the colours untouched.
-    }
-    for c in colors.iter_mut() {
-        let mut hsv = rgb_to_hsv(*c);
-        hsv[0] = (hsv[0] + dh).rem_euclid(1.0);
-        hsv[1] = (hsv[1] + ds).clamp(0.0, 1.0);
-        hsv[2] = (hsv[2] + dv).clamp(0.0, 1.0);
-        *c = hsv_to_rgb(hsv);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,11 +221,12 @@ mod tests {
         };
         let mut rng = 12345u64;
         let before = rng;
-        let (scale, rot, color) = per_dab(&mut rng, &spec);
+        let (scale, rot, color, shift) = per_dab(&mut rng, &spec);
         assert_eq!(rng, before, "an all-off brush must not advance the RNG");
         assert_eq!(scale, 1.0);
         assert_eq!(rot, [1.0, 0.0]);
         assert_eq!(color, spec.color);
+        assert_eq!(shift, [0.0; 3]);
     }
 
     #[test]

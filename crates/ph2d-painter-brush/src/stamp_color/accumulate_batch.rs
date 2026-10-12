@@ -232,7 +232,12 @@ pub struct DynDab {
     pub spec: BrushSpec,
     pub shape_basis: crate::texture::TexDabBasis,
     pub grain_basis: Option<crate::texture::TexDabBasis>,
+    /// Per layer: the FINAL flat colour of a layer without texture colour (its Randomize offset already
+    /// applied by the caller), or the TINT of a texture-colour layer (× its texel, then `color_shift`).
     pub colors: Vec<[f32; 3]>,
+    /// The dab's drawn Randomize-Color offset ([`crate::Dab::color_shift`]), applied per pixel to the
+    /// texture-colour layers only.
+    pub color_shift: [f32; 3],
     pub coverage: f32,
 }
 
@@ -332,6 +337,7 @@ pub fn accumulate_shape_layers_rgba_batch(
                     grain_ramp,
                     d.colors[i],
                     layer_rgb.get(i).and_then(|o| o.as_ref()),
+                    d.color_shift,
                     d.coverage,
                 ) {
                     union = Some(union.map_or(r, |u| union_rect(u, r)));
@@ -394,12 +400,16 @@ pub fn accumulate_shape_layers_rgba_batch(
                                         continue;
                                     }
                                     let base = match layer_rgb.get(i).and_then(|o| o.as_ref()) {
-                                        Some(img) => sample_shape_rgb_unit(
-                                            &d.spec.shape,
-                                            &d.shape_basis,
-                                            u,
-                                            v,
-                                            img,
+                                        Some(img) => super::texture_times_tint(
+                                            sample_shape_rgb_unit(
+                                                &d.spec.shape,
+                                                &d.shape_basis,
+                                                u,
+                                                v,
+                                                img,
+                                            ),
+                                            d.colors[i],
+                                            d.color_shift,
                                         ),
                                         None => d.colors[i],
                                     };

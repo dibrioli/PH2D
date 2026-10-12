@@ -93,6 +93,36 @@ pub(crate) fn color_row(
     id: ph2d_a11y::NodeId,
     rgb: [u8; 3],
 ) -> f32 {
+    color_row_hit(ctx, theme, x, content_w, y, chave, id, rgb, true)
+}
+
+/// [`color_row`] sem alvo de clique — a linha de uma cor que ninguém lê (o Color inativo, Bug #51).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn color_row_without_hit(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    chave: &str,
+    id: ph2d_a11y::NodeId,
+    rgb: [u8; 3],
+) -> f32 {
+    color_row_hit(ctx, theme, x, content_w, y, chave, id, rgb, false)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn color_row_hit(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    chave: &str,
+    id: ph2d_a11y::NodeId,
+    rgb: [u8; 3],
+    com_hit: bool,
+) -> f32 {
     let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
     let rgba = [rgb[0], rgb[1], rgb[2], u8::MAX];
     {
@@ -104,6 +134,8 @@ pub(crate) fn color_row(
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let mut descartavel = ph2d_editor_core::HitIndex::new();
+    let hit_index = if com_hit { hit_index } else { &mut descartavel };
     ph2d_editor_core::property_row::paint_color_row(
         scene,
         text_system,

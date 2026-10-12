@@ -302,6 +302,8 @@ pub struct BrushSpec {
     pub color_jitter_sat: f32,
     /// **Value** randomize amount, `0..1` — per-dab offset `±amount`, clamped to `[0, 1]`.
     pub color_jitter_val: f32,
+    /// **When** Randomize Color draws — every dab (default) or once per stroke ([`ColorJitterScope`]).
+    pub color_jitter_scope: crate::jitter::ColorJitterScope,
     /// **Jitter Scale** (PH2D, not Blender): per-dab radius scatter, `0..1`. Each dab's radius is
     /// multiplied by `1 ± amount`, clamped so it never collapses. `0` = no scatter.
     pub jitter_scale: f32,

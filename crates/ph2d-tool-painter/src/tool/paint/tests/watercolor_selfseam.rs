@@ -461,6 +461,7 @@ fn the_level_planes_do_not_depend_on_how_the_dabs_are_batched() {
             radius_px: u.r,
             coverage: 1.0,
             color: [0.85, 0.12, 0.10],
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             dir: [0.0, 1.0],
             arc_len: 3.0 * i as f32,

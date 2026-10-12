@@ -162,7 +162,7 @@ pub use falloff_curve::{
 };
 pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
 pub use height::{DepthSource, DrawTo};
-pub use jitter::shift_colors_like;
+pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;

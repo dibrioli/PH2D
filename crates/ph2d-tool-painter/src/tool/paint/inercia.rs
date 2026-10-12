@@ -30,10 +30,11 @@ pub enum Dependente {
     ToothDoDigital,
     BordaSemTilt,
     SemPapel,
+    QuandoDoRandomize,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 16] = [
+    pub const TODOS: [Dependente; 17] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -50,6 +51,7 @@ impl Dependente {
         Dependente::ToothDoDigital,
         Dependente::BordaSemTilt,
         Dependente::SemPapel,
+        Dependente::QuandoDoRandomize,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -77,6 +79,7 @@ impl Dependente {
                 ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
                 ids::PAINTER_WETPAINT_PAPER_VISUAL,
             ],
+            Dependente::QuandoDoRandomize => &ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES,
         }
     }
 
@@ -101,6 +104,7 @@ impl Dependente {
             Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
             Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
             Dependente::SemPapel => "panel.painter_layers.inerte.paper_chosen",
+            Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
         }
     }
 
@@ -230,6 +234,9 @@ impl PainterTool {
             // Sem Kind o Wet Paint pinta sem desenho de papel (dono 10/10): o Tooth não tem relevo para
             // esculpir e o Texture on Paint não tem papel para imprimir.
             (Dependente::SemPapel, agua && !b.paper.is_active()),
+            // «Every Dab / Every Stroke» escolhe QUANDO o Randomize Color sorteia — sem Hue/Sat/Value não
+            // há sorteio (`jitter::colour_draw`).
+            (Dependente::QuandoDoRandomize, !b.has_colour_jitter_amount()),
         ];
         Inercias {
             dependentes: leis

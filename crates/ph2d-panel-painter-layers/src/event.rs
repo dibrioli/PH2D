@@ -389,6 +389,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         WidgetEvent::Click(id)
             if id == ph2d_tool_painter::ids::PAINTER_BRUSH_ERASER
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES.contains(&id)
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_TILING.contains(&id)
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN

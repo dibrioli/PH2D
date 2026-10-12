@@ -39,6 +39,7 @@ pub(super) fn arc(n: usize, radius: f32) -> Vec<Dab> {
                 // mudaria de cor — é o que torna a identidade um teste da ORDEM, não só da soma.
                 #[allow(clippy::cast_precision_loss)]
                 color: [(i % 7) as f32 / 7.0, 0.3, 0.9],
+                color_shift: [0.0; 3],
                 rotation: [1.0, 0.0],
                 dir: [c, s],
                 arc_len: 0.0,

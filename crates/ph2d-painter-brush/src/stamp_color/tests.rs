@@ -187,33 +187,38 @@ fn grain_colour_ramp_tints_the_composite() {
 }
 
 #[test]
-fn texture_color_layer_paints_its_own_rgb_not_the_flat_tint() {
-    // A full-cover layer whose flat tint is RED but whose captured RGB image is BLUE. With Texture
-    // Color (the `layer_rgb` slot present) the stamp must read the layer's OWN blue, not the red tint.
+fn texture_color_layer_paints_its_rgb_times_the_tint() {
+    // Bug #51: a layer with its captured RGB paints `texture × tint`. A BLUE texture under a WHITE tint is
+    // the texture to the byte; under a RED tint it is black (red × blue) — the tint acts, never ignored.
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
     let blue_rgb: Vec<u8> = [0u8, 0, 255].repeat(4); // 2×2 texels, all blue
-    let rgb = ImageRgb {
-        rgb: &blue_rgb,
-        width: 2,
-        height: 2,
+    let centre = |tint: [f32; 3]| {
+        let rgb = ImageRgb {
+            rgb: &blue_rgb,
+            width: 2,
+            height: 2,
+        };
+        let stamp = render_color_stamp_mask(
+            &spec,
+            &[mask(&l)],
+            &[tint],
+            &[Some(rgb)],
+            &[],
+            None,
+            None,
+            16,
+        );
+        center_rgba(&stamp)
     };
-    let stamp = render_color_stamp_mask(
-        &spec,
-        &[mask(&l)],
-        &[[1.0, 0.0, 0.0]], // flat tint = red (must be ignored)
-        &[Some(rgb)],
-        &[],
-        None,
-        None,
-        16,
-    );
-    let (c, a) = center_rgba(&stamp);
+    let (c, a) = centre([1.0, 1.0, 1.0]);
     assert!(a > 0.95, "covered: {a}");
     assert!(
         c[2] > 0.95 && c[0] < 0.05 && c[1] < 0.05,
-        "Texture Color samples the layer's own blue RGB, not the red flat tint: {c:?}"
+        "white tint: the layer's own blue RGB: {c:?}"
     );
+    let (c, _) = centre([1.0, 0.0, 0.0]);
+    assert!(c.iter().all(|v| *v < 0.05), "red × blue = black: {c:?}");
 }
 
 /// PARITY GATE — `accumulate_color_stamps_fused` (the per-Move bottleneck fast path) must produce
@@ -428,6 +433,8 @@ fn batched_dynamic_accumulate_is_bit_identical_to_sequential() {
         let grain_basis = dab_basis(&s.texture, rng, dims, fp);
         (s, shape_basis, grain_basis, center, radius, coverage)
     };
+    // A Randomize offset on every dab: the texture layers shift per pixel in BOTH kernels (Bug #51).
+    const SHIFT: [f32; 3] = [0.2, -0.1, 0.05];
     // Reference: the per-dab serial kernel, RNG stream in dab order.
     let mut seq: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; len]).collect();
     let mut rng_a = 7u64;
@@ -448,6 +455,7 @@ fn batched_dynamic_accumulate_is_bit_identical_to_sequential() {
                 None,
                 colors[i],
                 layer_rgb[i].as_ref(),
+                SHIFT,
                 cov,
             ) {
                 seq_rect = Some(match seq_rect {
@@ -481,6 +489,7 @@ fn batched_dynamic_accumulate_is_bit_identical_to_sequential() {
                 shape_basis: sb,
                 grain_basis: Some(gb),
                 colors: colors.to_vec(),
+                color_shift: SHIFT,
                 coverage: cov,
             }
         })
@@ -554,4 +563,102 @@ fn mis_shaped_maps_bail_instead_of_indexing_past_the_end() {
             .is_none(),
         "maps shaped for the other route ⇒ bail, not index at the wrong stride"
     );
+}
+
+/// **Custo do Bug #51:** o desvio do Randomize aplicado POR PÍXEL às camadas de textura (o HSV de
+/// `texture_times_tint`), no lote dinâmico — `[0; 3]` (o desvio desligado: só o produto) contra um desvio
+/// sorteado, no MESMO processo, intercalados em blocos rodados, o MÍNIMO de cada (MEDIR_VELOCIDADE.md).
+/// Um Move típico do `per_layer_perf_live`: 2048², r100, 12 carimbos, N = 3 e 16 camadas TODAS de textura.
+///   cargo test -p ph2d-painter-brush --release --lib measure_custo_do_desvio_na_textura -- --ignored --nocapture
+#[test]
+#[ignore = "medição — corra em --release"]
+fn measure_custo_do_desvio_na_textura() {
+    let spec = shape_image_spec();
+    let s = 128usize;
+    let lum: Vec<u8> = (0..s * s)
+        .map(|p| {
+            let (x, y) = ((p % s) as f32 - 64.0, (p / s) as f32 - 64.0);
+            ((1.0 - (x * x + y * y).sqrt() / 64.0).clamp(0.0, 1.0) * 255.0) as u8
+        })
+        .collect();
+    let rgb: Vec<u8> = (0..s * s * 3).map(|i| ((i * 7) % 256) as u8).collect();
+    let (w, h) = (2048u32, 2048u32);
+    for n in [3usize, 16] {
+        let masks: Vec<ImageMask> = (0..n)
+            .map(|_| ImageMask {
+                lum: &lum,
+                width: s as u32,
+                height: s as u32,
+            })
+            .collect();
+        let layer_rgb: Vec<Option<ImageRgb>> = (0..n)
+            .map(|_| {
+                Some(ImageRgb {
+                    rgb: &rgb,
+                    width: s as u32,
+                    height: s as u32,
+                })
+            })
+            .collect();
+        let dabs = |shift: [f32; 3]| -> Vec<DynDab> {
+            (0..12)
+                .map(|i| {
+                    let s = BrushSpec {
+                        radius_px: 100.0,
+                        ..spec
+                    };
+                    let fp = s.footprint_deform();
+                    DynDab {
+                        center: [400.0 + 30.0 * i as f32, 1000.0],
+                        radius: 100.0,
+                        spec: s,
+                        shape_basis: crate::texture::shape_basis(
+                            &s.shape,
+                            &mut 0u64,
+                            [w as f32, h as f32],
+                            fp,
+                            crate::texture::ShapeFrame::Static,
+                        ),
+                        grain_basis: None,
+                        colors: vec![[1.0; 3]; n],
+                        color_shift: shift,
+                        coverage: 1.0,
+                    }
+                })
+                .collect()
+        };
+        let variantes = [
+            ("sem desvio", dabs([0.0; 3])),
+            ("com desvio", dabs([0.3, -0.1, 0.05])),
+        ];
+        let mut accs: Vec<Vec<u8>> = (0..n).map(|_| vec![0u8; (w * h * 4) as usize]).collect();
+        let mut minimo = [f64::MAX; 2];
+        for bloco in 0..10 {
+            for k in 0..2 {
+                let v = (k + bloco) % 2;
+                let t0 = std::time::Instant::now();
+                let r = accumulate_shape_layers_rgba_batch(
+                    &mut accs,
+                    w,
+                    h,
+                    &variantes[v].1,
+                    &masks,
+                    &layer_rgb,
+                    None,
+                    None,
+                );
+                let ms = t0.elapsed().as_secs_f64() * 1e3;
+                assert!(r.is_some());
+                minimo[v] = minimo[v].min(ms);
+            }
+        }
+        println!(
+            "N{n}: {} {:.2} ms · {} {:.2} ms · razão {:.2}×",
+            variantes[0].0,
+            minimo[0],
+            variantes[1].0,
+            minimo[1],
+            minimo[1] / minimo[0]
+        );
+    }
 }

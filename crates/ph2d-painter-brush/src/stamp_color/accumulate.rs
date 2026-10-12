@@ -165,8 +165,8 @@ pub fn accumulate_color_stamps_fused(
 /// [`accumulate_color_stamp_coverage`] (constant orientation, one colour per layer, baked once), it
 /// resamples the silhouette per pixel so each dab can rotate (Random / Rake) and carry its own colour
 /// (Randomize Color rides on `color`). When `rgb` is `Some` (the layer's "Texture Color" mode), the per-
-/// pixel colour is sampled from the layer's OWN captured RGB at the same coord as the silhouette instead
-/// of the flat `color` — so the tip paints with the texture's real colours. The layers stay separate maps
+/// pixel colour is the layer's OWN captured RGB at the same coord as the silhouette × the tint `color`,
+/// shifted by `color_shift` (the dab's drawn Randomize offset) — the texture's real colours, tinted. The layers stay separate maps
 /// so they still recomposite in z-order (the higher above the lower across the whole stroke). `coverage` =
 /// the dab's Flow × Strength × pressure coverage. `over` accumulation (`s + prev·(1−s)`). Returns the
 /// touched rect. Deterministic (HR-5).
@@ -185,6 +185,7 @@ pub fn accumulate_shape_layer_rgba(
     grain_ramp: Option<&[[f32; 4]]>,
     color: [f32; 3],
     rgb: Option<&ImageRgb>,
+    color_shift: [f32; 3],
     coverage: f32,
 ) -> Option<DirtyRect> {
     let coverage = coverage.clamp(0.0, 1.0);
@@ -218,9 +219,14 @@ pub fn accumulate_shape_layer_rgba(
                 continue;
             }
             // The per-pixel colour: the layer's OWN captured RGB (Texture Color mode) sampled at the same
-            // coord as the silhouette, else the flat resolved `color`.
+            // coord as the silhouette, × the tint `color` and shifted by the dab's Randomize offset
+            // (Bug #51); else the flat resolved `color` (its Randomize already applied by the caller).
             let base = match rgb {
-                Some(img) => sample_shape_rgb_unit(&spec.shape, shape_basis, u, v, img),
+                Some(img) => super::texture_times_tint(
+                    sample_shape_rgb_unit(&spec.shape, shape_basis, u, v, img),
+                    color,
+                    color_shift,
+                ),
                 None => color,
             };
             // The Grain modulates per channel: a scalar (value) without a ramp, or `ramp[g]` (a colour

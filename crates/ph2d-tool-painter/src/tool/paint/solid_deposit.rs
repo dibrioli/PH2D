@@ -236,6 +236,7 @@ impl PainterTool {
             radius_px: r,
             coverage: self.paint.brush.strength.clamp(0.0, 1.0),
             color: self.paint.brush.color,
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             dir,
             arc_len: 0.0,

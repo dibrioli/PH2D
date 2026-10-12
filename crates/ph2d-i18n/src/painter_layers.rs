@@ -34,6 +34,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.strength_below_full" => "Acts when Strength is below 100%",
         "panel.painter_layers.inerte.accumulate_on" => "Acts when Accumulate is on",
         "panel.painter_layers.inerte.jitter_above_zero" => "Acts when Jitter is above 0",
+        "panel.painter_layers.inerte.randomize_above_zero" => {
+            "Acts when Hue, Saturation or Value is above 0"
+        }
         "panel.painter_layers.inerte.dash_ratio_below_full" => "Acts when Dash Ratio is below 100%",
         "panel.painter_layers.inerte.paper_and_relief" => {
             "Acts when a Paper is chosen and Relief is above 0"
@@ -215,6 +218,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.hue" => "Hue",
         "panel.painter_layers.brush.saturation" => "Saturation",
         "panel.painter_layers.brush.value" => "Value",
+        "panel.painter_layers.brush.randomize_when" => "Randomize Color: when",
+        "panel.painter_layers.brush.every_dab" => "Every Dab",
+        "panel.painter_layers.brush.every_stroke" => "Every Stroke",
         "panel.painter_layers.clone.sample_hint" => "Click canvas to sample",
         "panel.painter_layers.clone.set_source_resample" => "Set Source (resample)",
         "panel.painter_layers.clone.set_source" => "Set Source",

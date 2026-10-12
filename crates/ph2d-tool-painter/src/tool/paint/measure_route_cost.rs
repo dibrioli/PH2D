@@ -424,6 +424,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             radius_px: r,
             coverage: 0.6,
             color: [0.1, 0.2, 0.8],
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             dir: d,
             arc_len: 0.0,

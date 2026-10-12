@@ -187,6 +187,7 @@ fn spreading_the_same_batch_does_not_make_it_cost_more() {
                     coverage: 0.6,
                     #[allow(clippy::cast_precision_loss)]
                     color: [(i % 7) as f32 / 7.0, 0.3, 0.9],
+                    color_shift: [0.0; 3],
                     rotation: [1.0, 0.0],
                     dir: [co, s],
                     arc_len: 0.0,

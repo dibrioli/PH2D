@@ -368,6 +368,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_ERASER,
         // "Randomize Color" subsection enable (Color section header checkbox).
         ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        // Randomize Color «when»: Every Dab / Every Stroke.
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_PER_DAB,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_PER_STROKE,
         // Seamless Tiling (wrap-around painting) toggles, X / Y + the Repeat-Image tile preview.
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_X,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_Y,

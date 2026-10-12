@@ -17,6 +17,7 @@ mod falloff_handle_menu_e2e;
 mod o_censo_so_encolhe; // o que muda o ajuste e não a tinta: esmaecido ou com motivo na lista
 mod seam;
 mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o meio os oferece
+mod seam_color_inativo; // Bug #51: o Color inativo em Per-Layer Color (12/10)
 mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
 mod seam_composite_montagem; // o `+`, o menu e o `x` da pilha: pintados, registados, alcançáveis
 mod seam_curve_drag_ownership;

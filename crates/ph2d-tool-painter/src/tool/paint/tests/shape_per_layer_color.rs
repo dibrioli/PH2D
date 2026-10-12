@@ -32,6 +32,7 @@ fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke()
         radius_px: 6.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
@@ -66,6 +67,7 @@ fn per_layer_color_respects_brush_blend_mode() {
         radius_px: 6.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
@@ -83,26 +85,29 @@ fn per_layer_color_respects_brush_blend_mode() {
 #[test]
 fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
-    // Randomize Color on → the DYNAMIC per-layer path, which tints by each dab's own `d.color`. Two
-    // non-overlapping dabs carrying red / blue paint red / blue (the static cached path baked one colour
-    // for the whole stroke and would ignore `d.color`).
+    // Randomize Color on → the DYNAMIC per-layer path, which shifts each layer by the dab's own drawn
+    // offset (`d.color_shift`, Bug #51 — it used to be reconstructed from `d.color`). Two non-overlapping
+    // dabs, a red brush with hue offsets 0 and ⅔, paint red / blue (the static cached path baked one
+    // colour for the whole stroke and would ignore the offset).
     let mut t = white_canvas(64, 6.0);
     t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.color = [1.0, 0.0, 0.0];
     t.paint.brush.color_jitter_hue = 0.5; // Randomize Color active (amount > 0) → routes to the dynamic path
     t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
     t.toggle_brush_shape_per_layer_color(); // layers un-coloured → they take the per-dab base colour
-    let dab = |cx: f32, col: [f32; 3]| Dab {
+    let dab = |cx: f32, dh: f32| Dab {
         center: [cx, 32.0],
         radius_px: 6.0,
         coverage: 1.0,
-        color: col,
+        color: ph2d_painter_brush::apply_color_shift([1.0, 0.0, 0.0], [dh, 0.0, 0.0]),
+        color_shift: [dh, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
     };
-    t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]); // red dab
-    t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]); // blue dab
+    t.stamp_dabs(&[dab(16.0, 0.0)]); // red dab
+    t.stamp_dabs(&[dab(48.0, 2.0 / 3.0)]); // blue dab
     let red = px(&t, 64, 16, 32);
     let blue = px(&t, 64, 48, 32);
     assert!(red[0] > 200 && red[2] < 80, "first dab is red: {red:?}");
@@ -132,6 +137,7 @@ fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
         radius_px: 6.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
@@ -173,6 +179,7 @@ fn live_dab(x: f32) -> ph2d_painter_brush::Dab {
         radius_px: 6.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
@@ -231,6 +238,7 @@ fn flipping_per_layer_color_mid_stroke_keeps_what_was_already_painted() {
         radius_px: 8.0,
         coverage,
         color: [0.0, 0.0, 1.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
@@ -327,6 +335,7 @@ fn per_layer_color_grain_random_offset_takes_the_per_dab_route() {
         radius_px: 9.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,
@@ -446,7 +455,7 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
     // Randomize Color must jitter the per-layer CUSTOM colours too (the artist's case), not only the
     // un-coloured layers. Brush base grey; both layers a custom green. Two dabs with different `d.color`
     // shift the green by different HSV offsets → the two locations differ (the path used to ignore the
-    // custom colours, so Randomize Color had no effect).
+    // custom colours, so Randomize Color had no effect). The offset rides on `d.color_shift` (Bug #51).
     let mut t = white_canvas(64, 6.0);
     t.paint.brush.stroke_method = StrokeMethod::Space;
     t.paint.brush.color = [0.5, 0.5, 0.5];
@@ -455,18 +464,19 @@ fn per_layer_color_randomize_jitters_custom_layer_colours() {
     t.toggle_brush_shape_per_layer_color();
     t.set_brush_shape_layer_color(0, [0.0, 1.0, 0.0]);
     t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]);
-    let dab = |cx: f32, col: [f32; 3]| Dab {
+    let dab = |cx: f32, dh: f32| Dab {
         center: [cx, 32.0],
         radius_px: 6.0,
         coverage: 1.0,
-        color: col,
+        color: ph2d_painter_brush::apply_color_shift([0.5, 0.5, 0.5], [dh, 0.0, 0.0]),
+        color_shift: [dh, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
         stroke_radius_px: 6.0,
     };
-    t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]);
-    t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]);
+    t.stamp_dabs(&[dab(16.0, 0.1)]);
+    t.stamp_dabs(&[dab(48.0, 0.4)]);
     let a = px(&t, 64, 16, 32);
     let b = px(&t, 64, 48, 32);
     assert_ne!(a, b, "custom layer colours jitter per dab: {a:?} vs {b:?}");

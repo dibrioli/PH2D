@@ -935,6 +935,13 @@ fn pre_condicoes() -> Vec<Linha> {
         ));
         v.push((
             m,
+            "Randomize Hue 0,8",
+            vec![Gesto::Slider(PAINTER_BRUSH_COLOR_JITTER_HUE, 0.8)],
+            vec![Alvo::Id(PAINTER_BRUSH_COLOR_JITTER_PER_STROKE)],
+            false,
+        ));
+        v.push((
+            m,
             "Dash ligado (Ratio 0,3)",
             vec![Gesto::Slider(PAINTER_BRUSH_DASH_RATIO, 0.3)],
             vec![

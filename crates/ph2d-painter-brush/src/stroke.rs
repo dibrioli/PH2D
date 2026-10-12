@@ -34,6 +34,10 @@ pub struct Dab {
     /// This dab's paint colour. Equal to [`BrushSpec::color`] unless **Randomize Color** is on, in
     /// which case it is the per-dab HSV-jittered colour (see [`crate::jitter`]).
     pub color: [f32; 3],
+    /// The Randomize-Color **HSV offset** `[dh, ds, dv]` that made [`Self::color`] (`[0; 3]` = none). A
+    /// layer that paints its OWN texture colour applies it per pixel to `texture × tint` (Bug #51) — the
+    /// offset is carried, never reconstructed from the colours (a white tint has no hue to reconstruct).
+    pub color_shift: [f32; 3],
     /// Extra per-dab texture rotation as a unit vector (identity `[1, 0]` = none); set by **Jitter
     /// Rotate**. The stamp composes it into the texture frame; it has no effect without a texture.
     pub rotation: [f32; 2],
@@ -166,6 +170,8 @@ pub struct Stroke {
     /// whoever knows the geometry: the closed-loop fills declare that their first dab lands on an
     /// arbitrary seam, and everything else keeps what the method started with.
     taper_head: bool,
+    /// Randomize Color **per stroke** — see [`Self::stroke_colour_draw`]. `None` ⇒ per-dab or off.
+    stroke_colour: Option<([f32; 3], [f32; 3])>,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -292,6 +298,7 @@ impl Stroke {
             warming: false,
             arc_len: 0.0,
             taper_head: ends::method_starts_with_head(spec.stroke_method),
+            stroke_colour: Self::stroke_colour_draw(&spec, seed),
         }
     }
 
@@ -582,6 +589,7 @@ impl Stroke {
             coverage: self.spec.strength.clamp(0.0, 1.0),
             // Anchored opts out of all per-dab jitter (like position jitter): a deliberate stamp.
             color: self.spec.color,
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             // The Rake heading is the drag direction (anchor → cursor), set by the caller.
             dir,

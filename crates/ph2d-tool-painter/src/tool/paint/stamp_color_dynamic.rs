@@ -8,7 +8,7 @@ use super::Region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, Dab, DynDab, FusedDab, ImageRgb, StrokeMethod, accumulate_color_stamps_rgba_batch,
-    accumulate_shape_layers_rgba_batch, blend_over, shift_colors_like,
+    accumulate_shape_layers_rgba_batch, apply_color_shift, blend_over,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
 
@@ -57,8 +57,8 @@ impl PainterTool {
         let bbox: Option<Region>;
         {
             let masks = self.paint.shape_layers.masks();
-            // The layers' resolved base colours (custom pick, else the brush base) — fixed across the
-            // batch; Randomize Color then re-applies each dab's HSV shift to ALL of them below.
+            // The layers' resolved colours / tints (`ShapeLayers::resolved_colors`) — fixed across the
+            // batch; Randomize Color then applies each dab's drawn HSV offset to ALL of them below.
             let base_colors = self.paint.shape_layers.resolved_colors(brush.color);
             // Texture-Color layers sample their OWN per-pixel RGB (instead of the flat colour); `None`
             // for a tint layer. Fixed across the batch.
@@ -105,11 +105,20 @@ impl PainterTool {
                             fp,
                         )
                     });
-                    // Randomize Color: apply the dab's HSV shift (reconstructed from `brush.color →
-                    // d.color`) to EVERY layer colour — custom picks included — so the whole tip jitters
-                    // coherently per dab. Identity when Randomize Color is off (`d.color == brush.color`).
-                    let mut colors = base_colors.clone();
-                    shift_colors_like(brush.color, d.color, &mut colors);
+                    // Randomize Color: the dab's DRAWN HSV offset moves every layer coherently — a flat
+                    // layer here, once per dab; a texture layer per pixel in the kernel (`texture × tinta`,
+                    // then the offset — Bug #51). Identity when Randomize Color is off.
+                    let colors = base_colors
+                        .iter()
+                        .zip(&layer_rgb)
+                        .map(|(&c, rgb)| {
+                            if rgb.is_some() {
+                                c
+                            } else {
+                                apply_color_shift(c, d.color_shift)
+                            }
+                        })
+                        .collect();
                     DynDab {
                         center: d.center,
                         radius: d.radius_px,
@@ -117,6 +126,7 @@ impl PainterTool {
                         shape_basis,
                         grain_basis,
                         colors,
+                        color_shift: d.color_shift,
                         coverage: (d.coverage * brush.flow).clamp(0.0, 1.0),
                     }
                 })

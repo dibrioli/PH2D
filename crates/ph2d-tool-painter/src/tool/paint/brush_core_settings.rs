@@ -113,7 +113,7 @@ impl PainterTool {
     /// ⚠️ **O early-return não é higiene, é o orçamento:** a shell encaminha o picker a CADA QUADRO
     /// enquanto ele está aberto, e um re-stamp de forma custa milissegundos — sem o guard de igualdade
     /// isto seria um re-carimbo por quadro com a cor parada.
-    fn set_brush_color_rgb(&mut self, rgb: [f32; 3]) {
+    pub(super) fn set_brush_color_rgb(&mut self, rgb: [f32; 3]) {
         if self.paint.brush.color == rgb {
             return; // a shell reencaminha o mesmo valor todo quadro — nada mudou, nada re-carimba
         }

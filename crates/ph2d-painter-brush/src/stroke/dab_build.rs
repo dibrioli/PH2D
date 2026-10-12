@@ -9,6 +9,16 @@
 use super::*;
 
 impl Stroke {
+    /// Randomize Color **per stroke**: the `(colour, HSV offset)` drawn ONCE at pen-down, from a stream
+    /// of its own seeded by the stroke `seed` — so the per-dab stream every other jitter reads is
+    /// untouched, and a fill method that rebuilds its stroke every Move with the same seed keeps its
+    /// colour for the whole gesture.
+    pub(super) fn stroke_colour_draw(spec: &BrushSpec, seed: u64) -> Option<([f32; 3], [f32; 3])> {
+        (spec.color_jitter_scope == crate::jitter::ColorJitterScope::PerStroke
+            && spec.has_colour_jitter_amount())
+        .then(|| crate::jitter::colour_draw(&mut (seed ^ 0x636F_6C6F_7572_5354), spec))
+    }
+
     /// Build a dab at `pos`/`pressure`, applying pressure dynamics, the space-attenuation
     /// `overlap` multiplier, and the per-dab jitter (scale / rotate / colour, then position).
     ///
@@ -37,11 +47,17 @@ impl Stroke {
         // Per-dab Scale / Rotate / Randomize-Color in a FIXED draw order, gated like position jitter
         // (Drag Dot / Anchored opt out). Drawn BEFORE the position jitter so it keeps its old slot
         // when these are off — an all-off brush draws nothing and matches the no-jitter baseline.
-        let (scale, rotation, color) = if self.spec.stroke_method.allows_jitter() {
-            crate::jitter::per_dab(&mut self.rng, &self.spec)
-        } else {
-            (1.0, [1.0, 0.0], self.spec.color)
-        };
+        let (scale, rotation, mut color, mut color_shift) =
+            if self.spec.stroke_method.allows_jitter() {
+                crate::jitter::per_dab(&mut self.rng, &self.spec)
+            } else {
+                (1.0, [1.0, 0.0], self.spec.color, [0.0; 3])
+            };
+        // Randomize Color «per stroke»: the per-dab draw above still ran (the stream stays the one every
+        // other jitter reads), and the stroke's own draw replaces it.
+        if let (Some(c), true) = (self.stroke_colour, self.spec.stroke_method.allows_jitter()) {
+            (color, color_shift) = c;
+        }
         let radius = (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale)
             .clamp(0.5, MAX_BRUSH_RADIUS_PX);
         let coverage =
@@ -57,6 +73,7 @@ impl Stroke {
             radius_px: radius,
             coverage,
             color,
+            color_shift,
             rotation,
             // The length-weighted EMA of the PATH tangent, advanced by this dab's own travel just above.
             // Read from the path, never from the jittered `center`, so position jitter cannot wobble it.

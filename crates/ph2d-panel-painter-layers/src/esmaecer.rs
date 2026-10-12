@@ -71,6 +71,17 @@ pub(crate) fn talvez_esmaecido<R>(
     if dica.is_none() {
         return pintar(ctx);
     }
+    esmaecido(ctx, theme, area, pintar)
+}
+
+/// **Pinta `pintar` esmaecido, sempre** — com o mesmo alfa da linha inerte. O chamador decide; para um
+/// controlo que não só não age como também não aceita clique (o Color em «Per-Layer Color», Bug #51).
+pub(crate) fn esmaecido<R>(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    area: Rect,
+    pintar: impl FnOnce(&mut PaintCtx) -> R,
+) -> R {
     let forma = RoundedRect::new(
         f64::from(area.x),
         f64::from(area.y),

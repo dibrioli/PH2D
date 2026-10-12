@@ -5,8 +5,8 @@
 //! chave ausente ou ilegível = o valor de `base` (o preset diz o que fixa, o resto é o de fábrica).
 
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, Falloff, FalloffCurve, FalloffPoint, FootprintCurve, HandleType,
-    JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, TextureKind, TextureMapping,
+    BrushBlend, BrushSpec, ColorJitterScope, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
+    HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, TextureKind, TextureMapping,
     TextureSettings,
 };
 use serde_json::{Value, json};
@@ -195,6 +195,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "color_jitter_hue" => num(b.color_jitter_hue),
         "color_jitter_sat" => num(b.color_jitter_sat),
         "color_jitter_val" => num(b.color_jitter_val),
+        "color_jitter_scope" => nome(b.color_jitter_scope),
         "blend" => nome(b.blend),
         "pigment" => json!(b.pigment),
         "pigment_mix" => num(b.pigment_mix),
@@ -238,6 +239,13 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "color_jitter_hue" => b.color_jitter_hue = f(v, b.color_jitter_hue),
         "color_jitter_sat" => b.color_jitter_sat = f(v, b.color_jitter_sat),
         "color_jitter_val" => b.color_jitter_val = f(v, b.color_jitter_val),
+        "color_jitter_scope" => {
+            b.color_jitter_scope = de_nome(
+                v,
+                [ColorJitterScope::PerDab, ColorJitterScope::PerStroke],
+                b.color_jitter_scope,
+            );
+        }
         "blend" => {
             b.blend = de_nome(
                 v,

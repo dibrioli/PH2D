@@ -122,6 +122,7 @@ impl Default for BrushSpec {
             color_jitter_hue: 0.0,
             color_jitter_sat: 0.0,
             color_jitter_val: 0.0,
+            color_jitter_scope: crate::jitter::ColorJitterScope::PerDab,
             jitter_scale: 0.0,
             jitter_rotate: 0.0,
             jitter_spacing: 0.0,

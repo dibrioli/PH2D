@@ -56,6 +56,9 @@ pub struct BrushSettings {
     pub falloff_len: u8,
     /// Straight-RGB paint colour in `[0, 1]`.
     pub color: [f32; 3],
+    /// No layer reads the Color («Per-Layer Color»: each layer owns its colour) — the panel shows it
+    /// inactive and not clickable (Bug #51).
+    pub color_inactive: bool,
     /// Blend-mode wire discriminant ([`ph2d_painter_brush::BrushBlend::to_u8`]).
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
@@ -420,6 +423,9 @@ pub struct BrushSettings {
     /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
     pub color_jitter_enabled: bool,
     pub color_jitter: [f32; 3],
+    /// Randomize Color **when** ([`ph2d_painter_brush::ColorJitterScope::to_u8`]): `0` every dab, `1`
+    /// every stroke.
+    pub color_jitter_scope: u8,
     pub jitter_scale: f32,
     pub jitter_rotate: f32,
     pub jitter_spacing: f32,

@@ -20,6 +20,14 @@ impl PainterTool {
                 self.toggle_brush_color_jitter_enabled();
                 true
             }
+            PanelEvent::Click(id) if crate::ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES.contains(id) => {
+                let k = crate::ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES
+                    .iter()
+                    .position(|i| i == id)
+                    .unwrap_or(0);
+                self.set_brush_color_jitter_scope(k as u8);
+                true
+            }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_TILING_X => {
                 self.toggle_brush_tiling(0);
                 true
@@ -345,6 +353,12 @@ impl PainterTool {
         }
     }
 
+    /// Set **when** Randomize Color draws ([`ph2d_painter_brush::ColorJitterScope`] wire value): every
+    /// dab, or once per stroke. Read at pen-down (`Stroke::new`).
+    pub fn set_brush_color_jitter_scope(&mut self, v: u8) {
+        self.paint.brush.color_jitter_scope = ph2d_painter_brush::ColorJitterScope::from_u8(v);
+    }
+
     /// Set **Jitter Scale** (per-dab radius scatter) from the slider's `0..1` track.
     pub fn set_brush_jitter_scale(&mut self, t: f32) {
         self.paint.brush.jitter_scale = t.clamp(0.0, 1.0);
@@ -392,6 +406,7 @@ impl PainterTool {
         b.color_jitter_hue = d.color_jitter_hue;
         b.color_jitter_sat = d.color_jitter_sat;
         b.color_jitter_val = d.color_jitter_val;
+        b.color_jitter_scope = d.color_jitter_scope;
     }
 
     /// Reset the **Texture** section to defaults — clears the assigned texture and its modulation

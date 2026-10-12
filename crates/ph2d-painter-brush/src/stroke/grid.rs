@@ -70,6 +70,7 @@ impl Stroke {
             radius_px: radius.clamp(0.0, MAX_BRUSH_RADIUS_PX),
             coverage: self.spec.strength.clamp(0.0, 1.0),
             color: self.spec.color,
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             dir: [0.0, 0.0],
             arc_len: 0.0,

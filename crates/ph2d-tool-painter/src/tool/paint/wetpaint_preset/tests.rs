@@ -130,6 +130,7 @@ fn pincel_mexido() -> BrushSpec {
         color_jitter_hue: 0.05,
         color_jitter_sat: 0.1,
         color_jitter_val: 0.08,
+        color_jitter_scope: ph2d_painter_brush::ColorJitterScope::PerStroke,
         blend: BrushBlend::Multiply,
         pigment: true,
         pigment_mix: 0.4,

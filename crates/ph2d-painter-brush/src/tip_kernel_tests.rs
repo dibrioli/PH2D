@@ -178,6 +178,7 @@ fn no_kernel_writes_outside_the_tip() {
             ),
             grain_basis: None,
             colors: vec![[1.0, 1.0, 1.0]],
+            color_shift: [0.0; 3],
         }],
         &[layer],
         &[None],

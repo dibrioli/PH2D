@@ -180,7 +180,8 @@ pub(crate) fn end_fold(ctx: &mut PaintCtx, fold: SectionFold, y: f32) -> f32 {
 
 /// Paint the collapsible "Randomize Color" section: ALL-CAPS header + collapse chevron + assignable
 /// colour dot (Inspector pattern). Collapsed → just the header. Expanded → Hue / Saturation / Value
-/// editable slider rows (the effect activates when any amount > 0; there is no enable toggle).
+/// editable slider rows (the effect activates when any amount > 0; there is no enable toggle), then the
+/// «when» segments (Every Dab / Every Stroke).
 pub(crate) fn paint_randomize_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -222,6 +223,27 @@ pub(crate) fn paint_randomize_section(
             brush.color_jitter[slot],
         );
     }
+    // Randomize Color «when»: a new colour every dab, or one per stroke.
+    y = crate::paint_seg_row::seg_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SCOPE,
+        tr("panel.painter_layers.brush.randomize_when"),
+        &[
+            (
+                ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_PER_DAB,
+                tr("panel.painter_layers.brush.every_dab"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_PER_STROKE,
+                tr("panel.painter_layers.brush.every_stroke"),
+            ),
+        ],
+        usize::from(brush.color_jitter_scope),
+    );
     let out = y;
     end_fold(ctx, fold, out)
 }

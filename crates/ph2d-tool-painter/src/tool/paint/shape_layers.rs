@@ -256,18 +256,36 @@ impl ShapeLayers {
         self.layers.iter().map(BrushTextureImage::as_mask).collect()
     }
 
-    /// Each layer's resolved colour: its custom pick when `color_on[i]`, else the brush base `brush_color`
-    /// (the "Color" at the top of the brush panel) — exactly the substitution the spec calls for.
+    /// Each layer's resolved colour — the flat colour of a layer without texture colour, the TINT
+    /// (`texture × tinta`, Bug #51) of one with it: the custom pick when `color_on[i]`; a texture layer
+    /// tints by the brush **Color** when it is the ONLY layer («Use Texture Colors») and by WHITE when
+    /// there are several («Per-Layer Color»: each layer owns its colour, the Color is inactive); a layer
+    /// with no captured RGB paints the brush Color. The cached stamp keys on `brush_color` + the version,
+    /// so the tint is in its key.
     pub(super) fn resolved_colors(&self, brush_color: [f32; 3]) -> Vec<[f32; 3]> {
+        let single = self.layers.len() == 1;
         (0..self.layers.len())
             .map(|i| {
                 if self.color_on.get(i).copied().unwrap_or(false) {
                     self.color.get(i).copied().unwrap_or(brush_color)
+                } else if !single && self.rgb_image(i).is_some() {
+                    [1.0, 1.0, 1.0]
                 } else {
                     brush_color
                 }
             })
             .collect()
+    }
+
+    /// Does any layer READ the brush **Color**? `false` only in «Per-Layer Color» where every layer owns
+    /// its colour (its texture or a custom pick) — the panel then shows the Color inactive (a control
+    /// nobody reads is a dead control).
+    pub(super) fn brush_color_is_read(&self) -> bool {
+        !self.is_color_mode()
+            || self.layers.len() == 1
+            || (0..self.layers.len()).any(|i| {
+                !self.color_on.get(i).copied().unwrap_or(false) && self.rgb_image(i).is_none()
+            })
     }
 
     /// Snapshot the per-layer **artist assignments** `(color_on, color)` — the only state the artist owns —

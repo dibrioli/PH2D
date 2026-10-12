@@ -172,6 +172,8 @@ impl PainterTool {
             falloff_points,
             falloff_len: b.custom_falloff.len() as u8,
             color: b.color,
+            color_inactive: !self.paint.shape_layers.brush_color_is_read()
+                && self.texture_colour_paints(),
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
             is_smear: self.is_smear_mode(),
@@ -383,6 +385,7 @@ impl PainterTool {
             shape_color_ramp_alpha_mode: self.paint.shape_color_ramp_alpha_mode.to_u8(),
             color_jitter_enabled: b.color_jitter_enabled,
             color_jitter: [b.color_jitter_hue, b.color_jitter_sat, b.color_jitter_val],
+            color_jitter_scope: b.color_jitter_scope.to_u8(),
             jitter_scale: b.jitter_scale,
             jitter_rotate: b.jitter_rotate,
             jitter_spacing: b.jitter_spacing,

@@ -207,6 +207,7 @@ fn o_tamanho_da_camada_chega_ao_barro_e_a_lista_dela_encolhe() {
             radius_px: 8.0,
             coverage: 1.0,
             color: [1.0, 0.0, 0.0],
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             dir: [1.0, 0.0],
             arc_len: f32::from(i) * 1.6,

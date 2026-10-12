@@ -344,6 +344,7 @@ mod tests {
             radius_px: 10.0,
             coverage: 0.5,
             color: [0.1, 0.2, 0.3],
+            color_shift: [0.0; 3],
             rotation: [1.0, 0.0],
             dir: [1.0, 0.0],
             arc_len: 0.0,

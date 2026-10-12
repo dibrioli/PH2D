@@ -1063,6 +1063,7 @@ fn circle_degenerate_axis_fills_nothing() {
         radius_px: 1.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
@@ -1182,6 +1183,7 @@ fn curve_fill_needs_two_points() {
         radius_px: 1.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,
@@ -1746,3 +1748,93 @@ fn the_heading_is_a_fact_of_the_path_not_of_the_dab_spacing() {
         );
     }
 }
+
+/// A Randomize-Color brush with every other per-dab jitter on (scale, rotate, position), on `scope`.
+fn colour_scope_spec(scope: crate::jitter::ColorJitterScope) -> BrushSpec {
+    BrushSpec {
+        color: [0.8, 0.2, 0.1],
+        color_jitter_hue: 0.6,
+        color_jitter_sat: 0.3,
+        color_jitter_val: 0.2,
+        color_jitter_scope: scope,
+        jitter_scale: 0.5,
+        jitter_rotate: 0.7,
+        jitter: 0.4,
+        ..straight_spec(6.0, 0.3)
+    }
+}
+
+fn colour_scope_dabs(scope: crate::jitter::ColorJitterScope, seed: u64) -> Vec<Dab> {
+    let mut s = Stroke::new(colour_scope_spec(scope), no_dynamics(), seed);
+    let mut out = Vec::new();
+    let mut all = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    all.extend_from_slice(&out);
+    s.extend(pt(120.0, 10.0, 1.0), &mut out);
+    all.extend_from_slice(&out);
+    all
+}
+
+/// «a cada traço» muda SÓ a cor: o fluxo do RNG dos outros jitters é o mesmo nos dois modos (os sorteios
+/// por carimbo continuam a correr), logo posição, raio e rotação saem ao bit.
+#[test]
+fn per_stroke_colour_changes_only_the_colour() {
+    use crate::jitter::ColorJitterScope::{PerDab, PerStroke};
+    let a = colour_scope_dabs(PerDab, 9);
+    let b = colour_scope_dabs(PerStroke, 9);
+    assert!(a.len() > 10, "a stroke of many dabs: {}", a.len());
+    assert_eq!(a.len(), b.len());
+    for (x, y) in a.iter().zip(&b) {
+        assert_eq!(
+            (x.center, x.radius_px, x.rotation),
+            (y.center, y.radius_px, y.rotation)
+        );
+    }
+    assert!(
+        a.windows(2).any(|w| w[0].color != w[1].color),
+        "per dab: the colour varies"
+    );
+    assert!(
+        b.iter()
+            .all(|d| (d.color, d.color_shift) == (b[0].color, b[0].color_shift))
+    );
+    assert_ne!(b[0].color_shift, [0.0; 3], "the stroke drew an offset");
+    let c = colour_scope_dabs(PerStroke, 10);
+    assert_ne!(
+        b[0].color, c[0].color,
+        "the next stroke (next seed) draws another colour"
+    );
+}
+
+/// O carimbo carrega o desvio SORTEADO, e ele refaz a cor do carimbo pela mesma conta.
+#[test]
+fn the_dab_carries_the_offset_that_made_its_colour() {
+    let spec = colour_scope_spec(crate::jitter::ColorJitterScope::PerDab);
+    for d in colour_scope_dabs(crate::jitter::ColorJitterScope::PerDab, 3) {
+        assert_eq!(
+            crate::jitter::apply_color_shift(spec.color, d.color_shift),
+            d.color
+        );
+    }
+}
+
+/// O pincel «a cada carimbo» é o de ANTES ao byte: a impressão digital dos carimbos (centro, raio,
+/// cobertura, cor, rotação) foi tirada no `348c81d206`, antes do `color_shift` existir.
+#[test]
+fn per_dab_randomize_is_byte_identical_to_before_the_scope() {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut mix = |v: f32| {
+        h ^= u64::from(v.to_bits());
+        h = h.wrapping_mul(0x100_0000_01b3);
+    };
+    for d in colour_scope_dabs(crate::jitter::ColorJitterScope::PerDab, 9) {
+        for v in [d.center[0], d.center[1], d.radius_px, d.coverage] {
+            mix(v);
+        }
+        for v in d.color.into_iter().chain(d.rotation) {
+            mix(v);
+        }
+    }
+    assert_eq!(h, IMPRESSAO_ANTES, "impressão de hoje: {h:#x}");
+}
+const IMPRESSAO_ANTES: u64 = 0x6e2c_ccd1_5f9e_0cff;

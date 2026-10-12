@@ -439,6 +439,9 @@ fn paint_color_swatch_row(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    if brush.color_inactive {
+        return paint_color_swatch_inactive(ctx, theme, x, content_w, y, brush);
+    }
     register_button(ctx.host.store_mut(), core_ids::PAINTER_COLOR_THUMB);
     crate::paint_brush_rows::color_row(
         ctx,
@@ -450,6 +453,36 @@ fn paint_color_swatch_row(
         core_ids::PAINTER_COLOR_THUMB,
         encode_rgb(brush.color),
     )
+}
+
+/// ⭐ **O Color INATIVO** (Bug #51): em «Per-Layer Color» cada camada é dona da sua cor e nenhuma lê o
+/// Color — a linha pinta-se esmaecida e o seu clique não tem alvo (o hit vai para um índice descartável
+/// e o botão não se regista); um selector aberto nela fecha-se.
+fn paint_color_swatch_inactive(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let store = ctx.host.store_mut();
+    if store.picker_target() == Some(core_ids::PAINTER_COLOR_THUMB) {
+        store.set_picker_target(None);
+    }
+    let area = Rect::new(x, y, content_w, ph2d_tokens::ROW_H_PX);
+    crate::esmaecer::esmaecido(ctx, theme, area, |ctx| {
+        crate::paint_brush_rows::color_row_without_hit(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "panel.painter_layers.brush.color",
+            core_ids::PAINTER_COLOR_THUMB,
+            encode_rgb(brush.color),
+        )
+    })
 }
 
 /// The shared scrollable dropdown-popover renderer (moved to its own module for the LOC cap).

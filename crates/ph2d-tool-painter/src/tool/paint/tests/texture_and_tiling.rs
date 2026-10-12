@@ -31,6 +31,7 @@ fn tiling_wrapped_copies_share_the_dabs_random_frame() {
         radius_px: 12.0,
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [1.0, 0.0],
         arc_len: 0.0,

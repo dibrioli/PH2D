@@ -113,6 +113,30 @@ impl PainterTool {
         self.reflatten_shape_image();
         self.shape_source_doc = source_doc;
         self.shape_source_revision = self.shape_source_content_revision();
+        self.texture_colour_starts_untinted();
+    }
+
+    /// ⭐ **Bug #51 (d):** no instante em que a cor da textura passa a contar — uma imagem nova associada
+    /// com «Use Texture Colors» ligado, ou o modo ligado com a imagem já lá — o Color vai a BRANCO: a
+    /// textura entra como é (`textura × branco`), e o Color passa a ser a tinta que o artista escolhe
+    /// por cima. Uma re-captura automática da MESMA fonte não passa por aqui (a tinta é do artista).
+    fn texture_colour_starts_untinted(&mut self) {
+        if self.paint.shape_layers.is_color_mode()
+            && self.paint.shape_layers.any_texture_color()
+            && self.texture_colour_paints()
+        {
+            self.set_brush_color_rgb([1.0, 1.0, 1.0]);
+        }
+    }
+
+    /// A cor da textura da Shape PINTA nesta mídia? O Wet Paint e a Watercolor pintam a tinta chapada
+    /// (o Color) e nunca a lêem (`stamp_route.rs`: as duas desviam antes da rota de cor) — lá o Color
+    /// continua a ser a tinta, nem branco nem inactivo.
+    pub(super) fn texture_colour_paints(&self) -> bool {
+        !matches!(
+            self.paint_media(),
+            super::media::PaintMedia::WetPaint | super::media::PaintMedia::Watercolor
+        )
     }
 
     /// Set the Shape **source** from the dropdown's wire discriminant (the "Texture" picker; mirror of
@@ -176,6 +200,12 @@ impl PainterTool {
     /// the live buffers (`canvas_rgba` for the active layer, `images` for the rest). A no-op with no
     /// visible raster layers. Groups / non-raster layers are skipped (top-level rasters only, v1).
     pub fn capture_layers_as_brush_shape(&mut self) {
+        self.capture_layers(false);
+    }
+
+    /// The capture itself; `automatic` = the per-frame re-capture of the SAME source, which keeps the
+    /// artist's tint (only an association by the artist sends the Color to white, Bug #51).
+    fn capture_layers(&mut self, automatic: bool) {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;
@@ -255,6 +285,7 @@ impl PainterTool {
             // sprite starts neutral. `set_brush_shape_layers` resets them, so snapshot/restore around it.
             // `rgb` / `opacity` / `doc_ids` are always re-read fresh (opacity mirrors the live source layer).
             let same_source = self.bound_doc.is_some() && self.bound_doc == self.shape_source_doc;
+            let fresh = !automatic && !same_source;
             let assignments = same_source.then(|| self.paint.shape_layers.assignments_snapshot());
             self.set_brush_shape_layers(layers);
             self.paint
@@ -270,6 +301,9 @@ impl PainterTool {
             }
             self.shape_source_doc = self.bound_doc;
             self.shape_source_revision = self.shape_source_content_revision();
+            if fresh {
+                self.texture_colour_starts_untinted();
+            }
         }
     }
 
@@ -297,7 +331,7 @@ impl PainterTool {
             return;
         }
         if self.shape_source_content_revision() != self.shape_source_revision {
-            self.capture_layers_as_brush_shape(); // also refreshes `shape_source_revision`
+            self.capture_layers(true); // also refreshes `shape_source_revision`
         }
     }
 
@@ -379,6 +413,7 @@ impl PainterTool {
     /// lower). While on, the Shape colour ramp is hidden + nullified (the route uses the coloured stamp).
     pub fn toggle_brush_shape_per_layer_color(&mut self) {
         self.paint.shape_layers.toggle_per_layer_color();
+        self.texture_colour_starts_untinted();
         // Flipping the mode MID-STROKE (the panel and the canvas are both live — that is how Enio's Rake
         // panic happened) invalidates the accumulation, and silently: `pre` is the PRE-stroke canvas, and
         // any dab painted while the mode was OFF went straight to `canvas_rgba` — it is in neither `pre`

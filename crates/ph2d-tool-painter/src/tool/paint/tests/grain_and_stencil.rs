@@ -198,6 +198,7 @@ fn per_layer_color_grain_stencil_masks_to_the_rect_not_the_whole_dab() {
         radius_px: 30.0, // covers the canvas; the silhouette (full square) reaches well past the rect
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,

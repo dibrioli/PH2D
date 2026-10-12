@@ -582,6 +582,7 @@ fn watercolor_editor_stamp_deposits_without_an_open_stroke() {
         radius_px: 8.0,
         coverage: 1.0,
         color: t.paint.brush.color,
+        color_shift: [0.0; 3],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
         arc_len: 0.0,

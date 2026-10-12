@@ -266,7 +266,10 @@ fn so_bloqueiam_as_copias_dos_objetos_pedidos() {
             let exata = area_dos(quais);
             let (soma, soma_exata) = (alfa.iter().sum::<f64>(), exata.iter().sum::<f64>());
             let erro = (soma - soma_exata) / soma_exata;
-            eprintln!("{rota}, pedidos {quem:?}: a área {soma:.1} × a exata {soma_exata:.1} px² ({:+.3} %)", 100.0 * erro);
+            eprintln!(
+                "{rota}, pedidos {quem:?}: a área {soma:.1} × a exata {soma_exata:.1} px² ({:+.3} %)",
+                100.0 * erro
+            );
             assert!(
                 erro.abs() <= TOL_AREA_TOTAL,
                 "{rota}, pedidos {quem:?}: a área das formas deles {erro:+.4}"
@@ -299,8 +302,10 @@ fn o_dono_de_cada_copia_e_o_do_sink_dela() {
         ladrilhos: 0..0,
     };
     m.pump.faixas = vec![faixa(sa, 0..3), faixa(sb, 3..5), faixa(sc, 5..6)];
-    let mut placa = PlacaDeFormas::default();
     // A cópia 1 (do sink A) foi pulada; a 5 é de um sink sem dono.
-    placa.fonte = vec![0, 2, 3, 4, 5];
+    let placa = PlacaDeFormas {
+        fonte: vec![0, 2, 3, 4, 5],
+        ..PlacaDeFormas::default()
+    };
     assert_eq!(donos(&m, &placa), vec![(42, 0..2), (43, 2..4)]);
 }

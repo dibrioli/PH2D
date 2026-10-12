@@ -362,8 +362,14 @@ fn as_faixas_dos_sinks_seguem_o_lod() {
     };
     let mut faixas = [faixa(1, 0..1, 0..4), faixa(2, 1..2, 4..8)];
     apply_object_lod(&mut instances, &mut vectors, &mut faixas, &bake, 3);
-    assert_eq!((faixas[0].vetores.clone(), faixas[0].ladrilhos.clone()), (0..1, 2..5));
-    assert_eq!((faixas[1].vetores.clone(), faixas[1].ladrilhos.clone()), (1..2, 5..8));
+    assert_eq!(
+        (faixas[0].vetores.clone(), faixas[0].ladrilhos.clone()),
+        (0..1, 2..5)
+    );
+    assert_eq!(
+        (faixas[1].vetores.clone(), faixas[1].ladrilhos.clone()),
+        (1..2, 5..8)
+    );
     assert_eq!(vectors[faixas[1].vetores.start].world_pos[0], 7.0);
     assert_eq!(instances[faixas[1].ladrilhos.start].world_pos[0], 4.0);
 }

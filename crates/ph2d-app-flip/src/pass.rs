@@ -347,7 +347,7 @@ fn composite_layers(
                 so = ops
                     .iter()
                     .enumerate()
-                    .map(|(k, op)| match op {
+                    .map(|(k, &op)| match op {
                         LayerOp::Layer {
                             mask,
                             clipping,
@@ -355,13 +355,13 @@ fn composite_layers(
                             blend_mode,
                             ..
                         } if !trecho.contains(&k) => LayerOp::Layer {
-                            mask: mask.clone(),
-                            clipping: *clipping,
-                            key: *key,
-                            blend_mode: *blend_mode,
+                            mask,
+                            clipping,
+                            key,
+                            blend_mode,
                             opacity: 0.0,
                         },
-                        o => o.clone(),
+                        o => o,
                     })
                     .collect();
                 &so

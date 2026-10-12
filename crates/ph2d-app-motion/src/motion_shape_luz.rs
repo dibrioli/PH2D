@@ -147,7 +147,7 @@ impl CamadaDeOclusao for OclusaoDoMotion<'_> {
         }
         // Nem todas pedidas: só as faixas delas, numa lista à parte (a CPU sobe-as; no dispositivo, uma
         // cópia de placa para placa).
-        let (buffer, count) = if pedidas[..] == [0..count] {
+        let (buffer, count) = if pedidas.len() == 1 && pedidas[0] == (0..count) {
             (buffer, count)
         } else if p.do_dispositivo.is_none() {
             let so: Vec<_> = pedidas

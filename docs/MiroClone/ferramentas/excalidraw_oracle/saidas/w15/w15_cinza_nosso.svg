@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="120" height="60" viewBox="0 0 120 60">
+<clipPath id="c1"><path d="M0 0L120 0L120 60L0 60Z"/></clipPath>
+<g clip-path="url(#c1)">
+<defs><image id="i0" width="4" height="4" preserveAspectRatio="none" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFUlEQVR4nGM5ocH1nwEJMCFziBMAAIMSAgQmaRr2AAAAAElFTkSuQmCC"/></defs>
+<defs><filter id="gray" color-interpolation-filters="linearRGB"><feColorMatrix type="saturate" values="0"/></filter></defs>
+<use xlink:href="#i0" transform="matrix(10 0 0 10 10 10)" filter="url(#gray)"/>
+<use xlink:href="#i0" transform="matrix(10 0 0 10 70 10)"/>
+<path d="M0 0L40 0L40 40L0 40Z" fill="none" stroke="#1e1e1e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" transform="matrix(1 0 0 1 70 10)"/>
+</g>
+</svg>

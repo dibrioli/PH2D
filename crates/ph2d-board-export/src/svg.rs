@@ -283,10 +283,18 @@ pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4]
 
 /// W14 — as imagens: cada ficheiro definido UMA vez (`<image>` em `<defs>`, os bytes como chegaram
 /// num `data:`; sem MIME, o nível em PNG), cada desenho um `<use>` com o afim do píxel natural.
+///
+/// W15 — a preto e branco: o `<use>` leva o filtro [`GRAY_FILTER`] (definido uma vez) e os bytes
+/// continuam os originais (um SVG embebido fica vector); os píxeis de um nível já vêm cinzentos.
 #[derive(Default)]
 struct Images {
     defined: std::collections::BTreeMap<(usize, usize), usize>,
+    gray: bool,
 }
+
+/// O preto e branco da casa em SVG: `saturate 0` é a matriz da luminância Rec. 709, e em `linearRGB`
+/// (dito, não confiado à omissão) corre sobre a luz linear — a lei de `ph2d_board_render::to_gray`.
+const GRAY_FILTER: &str = "<defs><filter id=\"gray\" color-interpolation-filters=\"linearRGB\"><feColorMatrix type=\"saturate\" values=\"0\"/></filter></defs>";
 
 impl Images {
     fn place(&mut self, out: &mut String, op: &ph2d_vector::ImageOp) {
@@ -323,7 +331,13 @@ impl Images {
             );
             n
         });
-        let _ = writeln!(out, "<use xlink:href=\"#i{id}\"{}/>", transform(t));
+        let gray = op.source.as_ref().is_some_and(|s| s.gray);
+        if gray && !self.gray {
+            self.gray = true;
+            let _ = writeln!(out, "{GRAY_FILTER}");
+        }
+        let filter = if gray { " filter=\"url(#gray)\"" } else { "" };
+        let _ = writeln!(out, "<use xlink:href=\"#i{id}\"{}{filter}/>", transform(t));
     }
 }
 

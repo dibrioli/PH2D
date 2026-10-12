@@ -1,0 +1,7 @@
+# fumo_w15_cinza.sh — 2026-10-11 — linha line/MiroClone aae94bda5f — o ecrã dá gray_of(200,40,10)=104
+gs.png           cinza=(104, 104, 104, 255) cor=(200, 40, 10, 255)
+inkscape.png     cinza=(103, 103, 103, 255) cor=(200, 40, 10, 255)
+magick_svg.png   cinza=(103, 103, 103, 255) cor=(200, 40, 10, 255)
+pdftoppm.png     cinza=(104, 104, 104, 255) cor=(200, 40, 10, 255)
+resvg.png        cinza=(102, 102, 102, 255) cor=(200, 40, 10, 255)
+rsvg.png         cinza=(104, 104, 104, 255) cor=(200, 40, 10, 255)

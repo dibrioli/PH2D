@@ -22,8 +22,8 @@ fn png_3x2() -> Vec<u8> {
 }
 
 /// O descodificador do app, para estes testes: só PNG.
-fn install() {
-    ph2d_board_render::install_decoder(Arc::new(|b: &[u8]| {
+pub(crate) fn install() {
+    ph2d_board_render::install_decoder(Arc::new(|b: &[u8], _at: Option<[u32; 2]>| {
         let img = image::load_from_memory(b).ok()?.to_rgba8();
         Some(Pixels {
             size: [img.width(), img.height()],

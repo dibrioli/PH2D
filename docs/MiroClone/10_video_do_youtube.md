@@ -58,6 +58,7 @@ Sonda: [`ferramentas/youtube_motor/sonda_w19_tocador.mjs`](ferramentas/youtube_m
 | … no NOSSO `Player` | 1 quadro em 3 s, luz 9,5/255 (preto) → com a guarda: 90 quadros, luz 179 | teste `clicking_the_channel_…` |
 | a API oficial | `initialDelivery`, `onReady`, `infoDelivery` (~3,7/s a tocar; parado, cala-se), `onStateChange` (depois do `addEventListener` no `onReady`); `mute`/`setVolume`/`seekTo` 4–10 ms; `pauseVideo` ~630 ms; `playVideo` ~255 ms | `w19b/` `A`, teste `our_controls_…` |
 | anúncios (sem sessão, Big Buck Bunny) | nenhum (`ad-showing` ausente, sem `adState`) — a linha de base do Premium | `w19b/` `A` |
+| anúncios nos MONETIZADOS, sem sessão (`dQw4w9WgXcQ`, `kJQP7kiw5Fk`, `9bZkp7q19f0` × `youtube-nocookie.com` e `www.youtube.com`, 15 s cada) | **0 de 6** (a classe `ad-*` nunca aparece) e, pelo OLHO (o detector não tinha controlo positivo), aos 3 s o Despacito mostra o próprio vídeo nos dois domínios ⇒ o Premium não teria o que tirar: a parte Premium NÃO se constrói (o perfil persistente com a sessão da pessoa custaria privacidade por nada); volta ao dono com a medida | `w19_premium/` |
 
 **O mecanismo da cura.** `Player` (`ph2d-board-video/src/player.rs`): a página nossa pede o estado (`listening` a
 cada 250 ms até à 1.ª resposta), regista `onStateChange` no `onReady` e passa cada mensagem pelo binding `ph2dState`;

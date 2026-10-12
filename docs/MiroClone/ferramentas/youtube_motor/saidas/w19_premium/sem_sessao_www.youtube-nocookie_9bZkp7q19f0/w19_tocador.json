@@ -1,0 +1,251 @@
+{
+ "o_que": "W19: o tocador oficial conduzido como o PH2D (sonda_w19_tocador.mjs)",
+ "exe": "/usr/bin/google-chrome-stable",
+ "video": "9bZkp7q19f0",
+ "data": "2026-10-12T17:13:42.222Z",
+ "versao": "155.0.8059.39",
+ "P": {},
+ "F": {},
+ "Z": [],
+ "C": [],
+ "A": {
+  "host": "www.youtube-nocookie.com",
+  "sessao": [],
+  "anuncios_15s": 0,
+  "amostras": [
+   {
+    "s": 1,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 2,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 3,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 4,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 5,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 6,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 7,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 8,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 9,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 10,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 11,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 12,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 13,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 14,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   },
+   {
+    "s": 15,
+    "anuncio": false,
+    "classes": [
+     "ytp-livebadge-color"
+    ]
+   }
+  ],
+  "eventos": [
+   "initialDelivery",
+   "onReady",
+   "alreadyInitialized",
+   "infoDelivery",
+   "apiInfoDelivery",
+   "onStateChange"
+  ],
+  "chaves_infoDelivery": [
+   "muted",
+   "volume",
+   "playbackQuality",
+   "availableQualityLevels",
+   "preferredQuality",
+   "playerState",
+   "currentTime",
+   "duration",
+   "videoData",
+   "videoStartBytes",
+   "videoBytesTotal",
+   "videoLoadedFraction",
+   "currentTimeLastUpdated_",
+   "playbackRate",
+   "mediaReferenceTime",
+   "videoUrl",
+   "videoContentRect",
+   "progressState",
+   "playlist",
+   "playlistIndex",
+   "videoBytesLoaded"
+  ],
+  "infoDelivery_por_s": 4,
+  "ordens": [
+   {
+    "func": "mute",
+    "args": [],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "unMute",
+    "args": [],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "setVolume",
+    "args": [
+     30
+    ],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "seekTo",
+    "args": [
+     120,
+     true
+    ],
+    "ms_ate_o_estado": 10
+   },
+   {
+    "func": "pauseVideo",
+    "args": [],
+    "ms_ate_o_estado": 971
+   },
+   {
+    "func": "playVideo",
+    "args": [],
+    "ms_ate_o_estado": 264
+   },
+   {
+    "func": "setPlaybackRate",
+    "args": [
+     1.5
+    ],
+    "ms_ate_o_estado": 5
+   }
+  ],
+  "exemplo": {
+   "currentTime": 120.163969,
+   "duration": 253,
+   "playerState": 1,
+   "volume": 30,
+   "muted": false,
+   "videoData": {
+    "video_id": "9bZkp7q19f0",
+    "author": "officialpsy",
+    "title": "PSY - GANGNAM STYLE(강남스타일) M/V",
+    "isPlayable": true,
+    "errorCode": null,
+    "video_quality": "large",
+    "video_quality_features": [],
+    "backgroundable": false,
+    "eventId": "RxXNao-YCcKjobIP2vyTsAY",
+    "cpn": "b90qECa4X5ca2BK2",
+    "isLive": false,
+    "isWindowedLive": false,
+    "isManifestless": false,
+    "allowLiveDvr": false,
+    "isListed": true,
+    "isMultiChannelAudio": false,
+    "hasProgressBarBoundaries": false,
+    "isPremiere": false,
+    "itct": "CAAQu2kiEwjP17OP_bSXAxXCUUgAHVr-BGbKAQQaXO0O",
+    "playerResponseCpn": "",
+    "progressBarStartPositionUtcTimeMillis": null,
+    "progressBarEndPositionUtcTimeMillis": null,
+    "paidContentOverlayDurationMs": 0,
+    "isSeekable": null
+   },
+   "availablePlaybackRates": [
+    0.25,
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5,
+    1.75,
+    2
+   ]
+  },
+  "anuncio": {
+   "classes": [
+    "ytp-livebadge-color",
+    "ytp-autohide",
+    "playing-mode"
+   ],
+   "seletor": null,
+   "adState": []
+  }
+ }
+}

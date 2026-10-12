@@ -131,8 +131,11 @@ falha e a decisão volta ao dono (o Servo é o plano B).
 7. **Premium** (sem anúncios pelo caminho legítimo — esconder ou saltar anúncios viola os termos e NÃO se faz):
    a pessoa entra na conta dela. ⚠️ Por medir com a conta do dono: o domínio sem cookies (`youtube-nocookie.com`)
    não leva a sessão de `youtube.com`, por isso uma sessão iniciada só conta com o tocador em `www.youtube.com/embed`
-   e um perfil PERSISTENTE do PH2D. Critério de morte: sem anúncios com a sessão iniciada depois da 2.ª
-   tentativa, ou a parte sai e a decisão volta ao dono com a medida.
+   e um perfil PERSISTENTE do PH2D. **Medido (12/10, `youtube_motor/saidas/w19_premium/`): SEM sessão o tocador
+   embutido não mostrou anúncios em 3 vídeos muito monetizados, nos dois domínios (0 de 6, e pelo olho aos 3 s)**
+   ⇒ o Premium não teria o que tirar; a parte NÃO se constrói (o perfil persistente com a sessão da pessoa
+   custaria privacidade e abriria o risco do item 8 por nada) e a decisão volta ao dono com a medida: se ele vir
+   um anúncio num vídeo do quadro, esse vídeo é a entrada da medição seguinte.
 8. **Windows** (aberto da W18): ⛔ continua sem tocador (abre no navegador). A porta TCP (`--remote-debugging-port`)
    fica RECUSADA: qualquer processo local mandaria no navegador — e, com o perfil persistente do item 7, na
    sessão do YouTube da pessoa. A rota é o tubo com handles herdados (`--remote-debugging-io-pipes`), que pede

@@ -14,7 +14,9 @@ const [exe, vid, out, profile] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
 const require = createRequire(path.join(process.env.HOME, "Apps/excalidraw-oracle/package.json"));
 const { chromium } = require("playwright");
-const BASE = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&playsinline=1&enablejsapi=1&start=0`;
+// HOST=www.youtube.com: o tocador com a sessão da pessoa (o domínio sem cookies não a leva) — a pergunta do Premium.
+const HOST = process.env.HOST || "www.youtube-nocookie.com";
+const BASE = `https://${HOST}/embed/${vid}?autoplay=1&playsinline=1&enablejsapi=1&start=0`;
 const OURS = `${BASE}&controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3`;
 const args = ["--autoplay-policy=no-user-gesture-required", "--hide-scrollbars"];
 const browser = profile
@@ -257,7 +259,18 @@ if (FASES.includes("C")) for (const [params, src] of [["hoje", BASE], ["nossos",
 // ── A: o estado e as ordens pela API oficial ──────────────────────────────────────────────────────
 if (FASES.includes("A")) {
   const s = await abre(OURS, 560, 315);
-  await sleep(6000);
+  // Os anúncios aparecem no começo (pre-roll): uma amostra por segundo nos primeiros 15 s.
+  const amostras = [];
+  for (let k = 0; k < 15; k++) {
+    await sleep(1000);
+    const inv = await inventario(s.frame);
+    if (k === 2 || k === 8) await shot(s, `A_${k + 1}s.png`);
+    const cls = inv.classes_do_tocador || [];
+    amostras.push({ s: k + 1, anuncio: cls.some((c) => /^ad-|ad-showing|ad-interrupting/.test(c)) || !!inv.seletores?.anuncio?.visivel,
+      classes: cls.filter((c) => /ad/.test(c)) });
+  }
+  const cookies = await s.cdp.send("Storage.getCookies").catch(() => ({ cookies: [] }));
+  const sessao = (cookies.cookies || []).filter((c) => /youtube\.com|google\.com/.test(c.domain) && /SAPISID|SID|LOGIN_INFO/.test(c.name)).map((c) => `${c.domain} ${c.name}`);
   const eventos = [...new Set(s.msgs.map((x) => x.m.event))];
   const chaves = [...new Set(s.msgs.filter((x) => x.m.event === "infoDelivery").flatMap((x) => Object.keys(x.m.info || {})))];
   const n3 = s.msgs.filter((x) => x.t > 3000 && x.t <= 6000 && x.m.event === "infoDelivery").length;
@@ -275,7 +288,7 @@ if (FASES.includes("A")) {
   }
   const info = ultimoInfo(s.msgs);
   const inv = await inventario(s.frame);
-  res.A = { eventos, chaves_infoDelivery: chaves, infoDelivery_por_s: Math.round(n3 / 3 * 10) / 10, ordens,
+  res.A = { host: HOST, sessao, anuncios_15s: amostras.filter((a) => a.anuncio).length, amostras, eventos, chaves_infoDelivery: chaves, infoDelivery_por_s: Math.round(n3 / 3 * 10) / 10, ordens,
     exemplo: { currentTime: info.currentTime, duration: info.duration, playerState: info.playerState, volume: info.volume,
       muted: info.muted, videoData: info.videoData, availablePlaybackRates: info.availablePlaybackRates },
     anuncio: { classes: inv.classes_do_tocador, seletor: inv.seletores?.anuncio, adState: s.msgs.filter((x) => typeof x.m.info === "object" && x.m.info && "adState" in x.m.info).map((x) => x.m.info.adState).slice(-1) } };

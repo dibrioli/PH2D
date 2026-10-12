@@ -119,3 +119,52 @@ fn o_nivel_e_a_conformidade_sao_os_do_shader() {
     );
     assert!((caneta_de([40.0, 0.0, 0.0, 10.0]) - 20.0).abs() < 1.0e-5);
 }
+
+/// Um V de pernas `10 K` com a quina na origem, ângulo interno `phi` (graus), o bico para `+y`;
+/// caneta `2 K`, junta em esquadria, limite `4`.
+fn v_agudo(phi: f64) -> (BezPath, Stroke) {
+    let (s, c) = (phi.to_radians() * 0.5).sin_cos();
+    let l = 10.0 * K;
+    let mut bp = BezPath::new();
+    bp.move_to((-l * s, -l * c));
+    bp.line_to((0.0, 0.0));
+    bp.line_to((l * s, -l * c));
+    (bp, Stroke::new(2.0 * K).with_join(Join::Miter).with_miter_limit(4.0))
+}
+
+/// A altura do bico: o último ponto pintado subindo a bissectriz (`x = 0`) desde a quina.
+fn topo(contorno: &BezPath) -> f64 {
+    (0..=24_000)
+        .map(|i| f64::from(i) * 0.005)
+        .filter(|&y| contorno.winding(Point::new(0.0, y)) != 0)
+        .fold(0.0, f64::max)
+}
+
+/// ⭐ (F13 E) **A placa do Motion corta o bico como o resto da casa** (SVG 2 `miter-clip`): além do
+/// limite o topo fica a `limite × ½w` = `4 K` — contínuo, sem o salto para o chanfro (o fixture do
+/// resvg, doc 19 §2); dentro dele, o bico inteiro. Oráculo: `miter_clip::stroke_outline` (o traço
+/// conforme da mesma placa e o render da cena). Controlo: com o limite NEGATIVO (`PH2D_MITER_CLIP=0`)
+/// o chanfro de antes — o topo cai abaixo de `K`.
+#[test]
+fn a_placa_corta_o_bico_alem_do_limite_como_o_oraculo() {
+    for phi in [60.0, 30.0, 28.0, 20.0, 10.0, 1.0] {
+        let (bp, s) = v_agudo(phi);
+        let mut pecas = Vec::new();
+        eixo(&bp, &s, 0.1, &mut pecas);
+        let mut lei = BezPath::new();
+        contorno_do_eixo(&pecas, &AfimDaCopia::IDENTIDADE, false, &mut lei);
+        let oraculo = ph2d_vec_render::miter_clip::stroke_outline(&bp, &s, 0.01);
+        let (t, o) = (topo(&lei), topo(&oraculo));
+        let inteiro = K / (phi.to_radians() * 0.5).sin();
+        let quer = if inteiro <= 4.0 * K { inteiro } else { 4.0 * K };
+        assert!((t - quer).abs() < 0.05 && (o - quer).abs() < 0.05, "{phi}°: placa {t}, oráculo {o}, lei {quer}");
+        if inteiro > 4.0 * K {
+            for it in &mut pecas {
+                it.limite_esquadria = -it.limite_esquadria;
+            }
+            let mut antes = BezPath::new();
+            contorno_do_eixo(&pecas, &AfimDaCopia::IDENTIDADE, false, &mut antes);
+            assert!(topo(&antes) < K, "{phi}°: o chanfro de antes não voltou com o limite negativo");
+        }
+    }
+}

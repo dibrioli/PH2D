@@ -100,7 +100,7 @@ pub fn contorno_do_eixo(
 
 #[path = "contorno_cpu_vetor.rs"]
 mod vetor;
-use vetor::{V, dot, length, mix, perp, positivo, pt, sign, v};
+use vetor::{V, corte_da_esquadria, dot, length, mix, perp, positivo, pt, sign, v};
 
 /// Quantos traços um troço corta, no máximo (`TRACOS_POR_TROCO_MAX` do shader).
 const TRACOS_POR_TROCO_MAX: f32 = 65536.0;
@@ -251,6 +251,12 @@ impl Saida<'_> {
                 dir = sign(n0.x * u.y - n0.y * u.x);
             }
             self.leque(b, n0, n1, dt, dir, r);
+            return;
+        }
+        if junta == 0 && limite > 0.0 {
+            let (a2, b2) = corte_da_esquadria(u, w, b, n0, n1, limite * r);
+            self.quad(b, b + n0, a2, b2);
+            self.tri(b, b2, b + n1);
             return;
         }
         self.tri(b, b + n0, b + n1);

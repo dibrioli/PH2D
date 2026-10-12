@@ -246,36 +246,32 @@ pub(super) fn textura(
 
 /// O Vello: cada cópia um `fill` (e um `stroke`), pela ordem.
 fn pelo_vello(gpu: &GpuContext, forma: &Forma<'_>, cs: &[Copia]) -> Vec<u8> {
-    let mut cena = vello::Scene::new();
+    let mut vs = ph2d_vector::VectorScene::new();
     let regra = match forma.regra {
         FillRule::NonZero => Fill::NonZero,
         FillRule::EvenOdd => Fill::EvenOdd,
     };
     for c in cs {
         let t = pose(c);
-        cena.fill(regra, t, &Brush::Solid(Color::new(c.tint)), None, forma.bp);
+        vs.inner_mut()
+            .fill(regra, t, &Brush::Solid(Color::new(c.tint)), None, forma.bp);
         if let Some((s, cor)) = &forma.traco {
             let linha = forma.linha.unwrap_or(forma.bp);
-            // ⭐ A LEI DA CASA sob escala não uniforme (`ph2d_vec_render::stroke_uniform`, bug #27),
-            // CHAMADA: a geometria atravessa o afim, a caneta não — REDONDA, de largura `w·√|det|`,
-            // o tracejado escala com ela e ajusta-se ao contorno do ecrã (doc 121 §9.9).
-            match ph2d_vec_render::pen_for(s, t) {
-                (None, xf) => cena.stroke(s, xf, &Brush::Solid(Color::new(*cor)), None, linha),
-                (Some(mut pen), xf) => {
-                    let tela = t * linha.clone();
-                    ph2d_vec_render::ajusta_no_ecra(&mut pen, &tela);
-                    cena.stroke(&pen, xf, &Brush::Solid(Color::new(*cor)), None, &tela);
-                }
-            }
+            // ⭐ A LEI DA CASA, CHAMADA (`ph2d_vec_render::stroke_uniform`): a caneta REDONDA de
+            // largura `w·√|det|` sob escala não uniforme (bug #27), o tracejado ajustado ao ecrã (doc
+            // 121 §9.9) e o bico CORTADO além do limite (F13 E, doc 19 §2 — o Vello cru chanfra).
+            let brush = Brush::Solid(Color::new(*cor));
+            ph2d_vec_render::stroke_uniform(&mut vs, s, t, &brush, linha, true);
         }
     }
+    let cena = vs.inner();
     // ⛔ O `VelloPass` do PRODUTO e não um `vello::Renderer` montado aqui: a escolha do
     // anti-aliasing pertence a quem possui o renderer (`ph2d-render`), e um gate que a nomeasse
     // mediria contra uma escolha que o produto pode deixar de fazer (gate
     // `the_pass_aa_is_never_chosen_by_a_text_preference`, que apanhou a 1.ª redacção no fecho).
     let mut r = ph2d_render::VelloPass::new(gpu, wgpu::TextureFormat::Rgba8Unorm, (LADO, LADO))
         .expect("o VelloPass do produto nasce");
-    r.render_and_readback(gpu, &cena, (LADO, LADO))
+    r.render_and_readback(gpu, cena, (LADO, LADO))
         .expect("o Vello desenha")
 }
 

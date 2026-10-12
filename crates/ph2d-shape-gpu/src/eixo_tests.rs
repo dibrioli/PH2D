@@ -44,7 +44,8 @@ fn um_aberto_com_quina_leva_troços_e_pontas() {
     );
     #[expect(clippy::cast_possible_truncation, reason = "o registo é f32")]
     let limite = st.miter_limit as f32;
-    assert_eq!(ext, limite);
+    // F13 E: o bico CORTADO vai até às quinas do corte, `√(limite² + 1)`.
+    assert_eq!(ext, (limite * limite + 1.0).sqrt());
     assert!((v[0].meia_largura - 0.05).abs() < 1e-7);
 }
 
@@ -291,7 +292,7 @@ fn os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas() {
                 );
             }
             let fator = match it.tipo {
-                ITEM_TROCO if alcanca_a_esquadria(it) => it.limite_esquadria,
+                ITEM_TROCO if alcanca_a_esquadria(it) => alcance_da_esquadria(it.limite_esquadria),
                 ITEM_PONTA if it.ponta == PONTA_QUADRADA => 1.5,
                 _ => 1.0,
             };
@@ -312,8 +313,8 @@ fn os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas() {
     assert!(
         blocos
             .iter()
-            .any(|c| c.tipo == ITEM_BLOCO && (c.meia_largura - 0.05 * 4.0).abs() < 1e-6),
-        "controlo: ha' um bloco cujo alcance e' o da esquadria (0,05 x 4)"
+            .any(|c| c.tipo == ITEM_BLOCO && (c.meia_largura - 0.05 * 17.0_f32.sqrt()).abs() < 1e-6),
+        "controlo: ha' um bloco cujo alcance e' o da esquadria cortada (0,05 x √17)"
     );
 }
 

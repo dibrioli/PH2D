@@ -101,9 +101,17 @@ corte em todo lado (como está); (b) o corte, menos nas pontas que voltam ~180°
 salto ao arrastar nas formas de cúspide fixa, mas o rabo aberto em V entre 150° e 180° saltaria);
 (c) voltar ao chanfro de antes (`PH2D_MITER_CLIP=0` vira o padrão).
 
-**A placa da GPU do Motion** (`ph2d-shape-gpu/src/contorno_cpu.rs` + `contorno.wgsl` +
-`contorno_subgrupo.wgsl`, `limite_esquadria`) ainda salta para o chanfro nas cópias não conformes.
-Não entra nesta linha: é o motor do Motion e só vale portar depois de o dono aprovar o bico cortado.
+**A placa da GPU do Motion** — ✅ portada na F13 E (o dono aprovou o bico cortado, resposta (a)).
+As cópias NÃO conformes (o eixo pintado pixel a pixel e o contorno calculado) cortam o bico como o
+resto da casa: `corte_da_esquadria` em `shape.wgsl` (o `junta_em`), a mesma conta em `contorno.wgsl`
+(o `emite_junta`, como arestas) e no espelho CPU (`contorno_cpu.rs::junta`). O alcance da peça e do
+bloco passa de `limite` a `√(limite² + 1)` meias larguras (as quinas do corte; `alcance_da_esquadria`
+no shader e em `eixo.rs`). `PH2D_MITER_CLIP=0` chega à placa pelo SINAL do `limite_esquadria`
+(negativo = o chanfro de antes; o layout não muda). Gates: `a_placa_corta_o_bico_alem_do_limite_como_o_oraculo`
+(60° → 1°, contra `miter_clip::stroke_outline`; controlo: o limite negativo devolve o chanfro) e os 15
+de GPU do `ph2d-shape-gpu` (`--ignored`, na placa) — o `pelo_vello` deles passou a CHAMAR o
+`stroke_uniform` da casa (o Vello cru chanfra: com `PH2D_MITER_CLIP=0` os dois passavam, com o corte
+divergiam só no bico).
 
 ## ⛔ Recusas MEDIDAS
 

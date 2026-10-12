@@ -528,12 +528,31 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
 // `eixo::alcanca_a_esquadria` faz para a caixa do bloco.
 fn alcance_da_peca(it: Eixo) -> f32 {
     if it.tipo == 0u && it.junta == 0u && (it.ponta & 12u) != 0u {
-        return max(it.limite, 1.0);
+        return alcance_da_esquadria(it.limite);
     }
     if it.tipo == 2u && it.ponta == 1u {
         return 1.5;
     }
     return 1.0;
+}
+
+// Até onde a esquadria vai, em meias larguras: o bico inteiro até `limite`; CORTADO (F13 E) as quinas
+// do corte até `√(limite² + 1)`. `limite < 0` = o chanfro de antes (`PH2D_MITER_CLIP=0`).
+fn alcance_da_esquadria(limite: f32) -> f32 {
+    if limite > 0.0 {
+        return sqrt(limite * limite + 1.0);
+    }
+    return max(-limite, 1.0);
+}
+
+// As duas quinas do bico CORTADO em `b` (SVG 2 `miter-clip`, a lei de
+// `ph2d_vec_scene::miter_clip::clip_patch`): a recta perpendicular à bissectriz a `d` do vértice,
+// onde a corta cada aresta de fora (`b + n0` ao longo de `u`, `b + n1` ao longo de `−v`).
+fn corte_da_esquadria(u: vec2<f32>, v: vec2<f32>, b: vec2<f32>, n0: vec2<f32>, n1: vec2<f32>, d: f32) -> vec4<f32> {
+    let e = normalize(u - v);
+    let a2 = b + n0 + u * ((d - dot(n0, e)) / dot(u, e));
+    let b2 = b + n1 + v * ((d - dot(n1, e)) / dot(v, e));
+    return vec4<f32>(a2, b2);
 }
 
 // Quanto a bissectriz de um vértice LISO pode sair do arco verdadeiro, em pixels: a faixa troca o
@@ -612,6 +631,10 @@ fn junta_em(u: vec2<f32>, b: vec2<f32>, c: vec2<f32>, r: f32, junta: u32, limite
             dir = sign(n0.x * u.y - n0.y * u.x);
         }
         return leque(b, n0, n1, dt, dir, r, xy);
+    }
+    if junta == 0u && limite > 0.0 {
+        let k = corte_da_esquadria(u, v, b, n0, n1, limite * r);
+        return quad(b, b + n0, k.xy, k.zw, xy) + tri(b, k.zw, b + n1, xy);
     }
     return tri(b, b + n0, b + n1, xy);
 }

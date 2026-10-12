@@ -311,7 +311,7 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
             }
             // O mesmo alcance que o shader dá à peça (`alcance_da_peca`).
             let fator = match it.tipo {
-                ITEM_TROCO if alcanca_a_esquadria(it) => it.limite_esquadria.max(1.0),
+                ITEM_TROCO if alcanca_a_esquadria(it) => alcance_da_esquadria(it.limite_esquadria),
                 ITEM_PONTA if it.ponta == PONTA_QUADRADA => 1.5,
                 _ => 1.0,
             };
@@ -331,6 +331,17 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
         out.extend_from_slice(bloco);
     }
     out
+}
+
+/// Até onde a esquadria vai, em meias larguras — o `alcance_da_esquadria` do shader: o bico inteiro
+/// até `limite`; CORTADO (F13 E) as quinas do corte até `√(limite² + 1)`; `limite < 0` = o chanfro.
+#[must_use]
+pub fn alcance_da_esquadria(limite: f32) -> f32 {
+    if limite > 0.0 {
+        (limite * limite + 1.0).sqrt()
+    } else {
+        (-limite).max(1.0)
+    }
 }
 
 /// O troço pode acabar numa esquadria autorada (uma das pontas é quina e a junta é a esquadria) —
@@ -353,7 +364,11 @@ fn f(p: Point) -> [f32; 2] {
 /// esquadria vai até ao limite; a ponta quadrada até `√2`).
 pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -> f32 {
     #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
-    let (meia, limite) = ((style.width * 0.5) as f32, style.miter_limit as f32);
+    let (meia, mut limite) = ((style.width * 0.5) as f32, style.miter_limit as f32);
+    // `limite < 0` = o chanfro de antes além do limite (`PH2D_MITER_CLIP=0`); `> 0` = o bico CORTADO.
+    if !ph2d_vec_render::miter_clip::enabled() {
+        limite = -limite;
+    }
     let tracejado = tracejado_do_eixo(style);
     let [traco, vao] = tracejado.unwrap_or_default();
     let base = EixoItem {
@@ -438,7 +453,7 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
             if interior(j) {
                 flags |= FAIXA_FIM | if q[j] { QUINA_FIM } else { 0 };
                 if q[j] && base.junta == JUNTA_ESQUADRIA {
-                    ext = ext.max(limite);
+                    ext = ext.max(alcance_da_esquadria(limite));
                 }
             }
             out.push(EixoItem {

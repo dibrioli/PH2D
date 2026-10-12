@@ -77,3 +77,12 @@ pub(super) fn positivo(a: V, b: V, c: V) -> bool {
 pub(super) fn mix(a: V, b: V, t: f32) -> V {
     a * (1.0 - t) + b * t
 }
+
+/// O `corte_da_esquadria` do shader: as duas quinas do bico CORTADO a `d` do vértice `b`.
+pub(super) fn corte_da_esquadria(u: V, w: V, b: V, n0: V, n1: V, d: f32) -> (V, V) {
+    let k = u - w;
+    let e = k * (1.0 / length(k));
+    let a2 = b + n0 + u * ((d - dot(n0, e)) / dot(u, e));
+    let b2 = b + n1 + w * ((d - dot(n1, e)) / dot(w, e));
+    (a2, b2)
+}

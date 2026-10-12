@@ -4,6 +4,8 @@
 //! todo leitor que expande um traço: o desenho, a caixa visual, a placa.
 
 use ph2d_vec_scene::miter_clip::{ClipPatch, El, clip_patches, oriented, subpaths};
+/// `PH2D_MITER_CLIP=0` volta ao chanfro — a mesma chave para a placa do Motion (`ph2d-shape-gpu`).
+pub use ph2d_vec_scene::miter_clip::enabled;
 use ph2d_vector::{BezPath, Join, PathEl, Point, Shape, Stroke, StrokeOpts, dash, expand_stroke};
 
 /// O `PathEl` da `kurbo` no espelho da lei.

@@ -183,6 +183,12 @@ fn emite_junta(u: vec2<f32>, b: vec2<f32>, c: vec2<f32>, r: f32, junta: u32, lim
         emite_leque(b, n0, n1, dt, dir, r);
         return;
     }
+    if junta == 0u && limite > 0.0 {
+        let k = corte_da_esquadria(u, v, b, n0, n1, limite * r);
+        emite_quad(b, b + n0, k.xy, k.zw);
+        emite_tri(b, k.zw, b + n1);
+        return;
+    }
     emite_tri(b, b + n0, b + n1);
 }
 

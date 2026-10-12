@@ -169,6 +169,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_rewire.these_two_nodes_cannot_trade_places" => {
             "These two nodes can't trade places in the chain"
         }
+        // ⚠️ À MÃO: os canais de um seletor de cor no menu do fio solto (smoke do dono, 12/10:
+        // «o Tint não tem R» — os canais liam «Color», «g», «b», «a»).
+        "app.motion.motion_bridge_fold.color_channel_r" => "{cor} R",
+        "app.motion.motion_bridge_fold.color_channel_g" => "{cor} G",
+        "app.motion.motion_bridge_fold.color_channel_b" => "{cor} B",
+        "app.motion.motion_bridge_fold.color_channel_a" => "{cor} A",
         _ => return None,
     })
 }

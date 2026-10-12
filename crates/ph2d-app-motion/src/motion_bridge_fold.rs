@@ -379,14 +379,14 @@ fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<Port
         .params
         .iter()
         .filter(|p| driven.is_none_or(|d| !d.contains_key(p.name)))
-        .filter(|p| shown(p.name))
+        // Um canal de um seletor de cor segue o seletor: no `Solid` o `r2` esconde-se e o `g2`
+        // (sem hint) aparecia na mesma — um fio para um número que ninguém lê.
+        .filter(|p| shown(canal_da_cor(hints, p.name).map_or(p.name, |(h, _)| h.param)))
         .map(|p| {
             // The artist reads the label the params panel shows them ("Strength"), not the
             // canonical key ("strength") — the same name in both places, or the menu is
             // offering something they cannot find.
-            let label = hints
-                .and_then(|hs| hs.iter().find(|h| h.param == p.name))
-                .map_or(p.name, |h| ph2d_i18n::tr(h.label));
+            let label = rotulo_do_param(hints, p.name);
             PortChoice {
                 node: n.0,
                 target: ChoiceTarget::Param(p.name),
@@ -401,6 +401,47 @@ fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<Port
             }
         })
         .collect()
+}
+
+/// As chaves dos quatro canais de um seletor de cor, pela ordem de `ParamWidget::Color::channels`.
+const CANAIS_DA_COR: [&str; 4] = [
+    "app.motion.motion_bridge_fold.color_channel_r",
+    "app.motion.motion_bridge_fold.color_channel_g",
+    "app.motion.motion_bridge_fold.color_channel_b",
+    "app.motion.motion_bridge_fold.color_channel_a",
+];
+
+/// O seletor de cor de que `nome` é canal, e o índice do canal — `None` fora de um seletor.
+fn canal_da_cor(
+    hints: Option<&'static [ph2d_node_registry::ParamUiHint]>,
+    nome: &str,
+) -> Option<(&'static ph2d_node_registry::ParamUiHint, usize)> {
+    hints
+        .unwrap_or_default()
+        .iter()
+        .find_map(|h| match h.widget {
+            ph2d_node_registry::ParamWidget::Color { channels } => {
+                channels.iter().position(|c| *c == nome).map(|i| (h, i))
+            }
+            _ => None,
+        })
+}
+
+/// **O rótulo de um param no menu do fio solto** — o do painel; um CANAL de um seletor de cor lê
+/// «Color R/G/B/A» (smoke do dono, 12/10: o `r` lia «Color» e os outros três a chave crua).
+fn rotulo_do_param(
+    hints: Option<&'static [ph2d_node_registry::ParamUiHint]>,
+    nome: &'static str,
+) -> String {
+    if let Some((h, i)) = canal_da_cor(hints, nome) {
+        return ph2d_i18n::tr_with(CANAIS_DA_COR[i], &[("cor", &ph2d_i18n::tr(h.label))]);
+    }
+    hints
+        .unwrap_or_default()
+        .iter()
+        .find(|h| h.param == nome)
+        .map_or(nome, |h| ph2d_i18n::tr(h.label))
+        .to_string()
 }
 
 /// One collapsed card: its derived sockets, and what its contents are DOING —

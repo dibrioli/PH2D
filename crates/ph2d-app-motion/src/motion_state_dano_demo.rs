@@ -140,7 +140,7 @@ pub(super) fn announce() {
          (2) Arraste `Value` para CIMA: nada acontece - curar nao e' dano.\n\
          (3) No grafo, o cartao `Input` de cor (verde) esta' solto. Aproxime o grafo (roda do rato)\n    \
          ate' ler os nomes das saidas dele (Out, R, G, B, A). Puxe um fio da saida `R` e solte-o\n    \
-         em cima do cartao `Tint`: abre um menu; escolha `R`. Aparecem QUATRO fios (R, G, B, A)\n    \
+         em cima do cartao `Tint`: abre um menu; escolha `Tint: Color R`. Aparecem QUATRO fios\n    \
          e as estrelas ficam verdes. Um `Ctrl+Z` tira os quatro.\n\
          \n\
          DEU ERRADO se: subir a vida tambem sacudir a galaxia; abrir a cena ja' a sacudir;\n\

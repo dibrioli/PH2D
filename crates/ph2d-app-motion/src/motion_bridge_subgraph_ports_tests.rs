@@ -360,7 +360,43 @@ fn um_canal_de_cor_solto_no_mesmo_canal_liga_a_cor_inteira() {
         v.iter().map(|(k, p)| ((*k).to_string(), *p)).collect()
     };
 
-    solta_no_param(&mut m, (cor, 1), tint, "r");
+    // ⭐ O que o MENU oferece (smoke do dono, 12/10: «o Tint não tem R» — o `r` lia «Color» e os
+    // outros a chave crua): os quatro canais do seletor lidos «Color R/G/B/A», nenhuma chave crua.
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    fold::fold(&m, &mut snap);
+    let oferta: Vec<(String, &'static str)> = ph2d_panel_motion_graph::card_hidden_ports(tint.0)
+        .inputs
+        .iter()
+        .filter_map(|p| match p.target {
+            ph2d_panel_motion_graph::ChoiceTarget::Param(nome) => Some((p.label.clone(), nome)),
+            _ => None,
+        })
+        .collect();
+    for (canal, nome) in [("R", "r"), ("G", "g"), ("B", "b"), ("A", "a")] {
+        assert!(
+            oferta
+                .iter()
+                .any(|(l, n)| l.ends_with(&format!("Color {canal}")) && *n == nome),
+            "o menu oferece «Color {canal}»: {oferta:?}"
+        );
+    }
+    assert!(
+        !oferta
+            .iter()
+            .any(|(l, _)| l.ends_with(": g") || l.ends_with(": b") || l.ends_with(": a")),
+        "nenhuma chave crua: {oferta:?}"
+    );
+    // E a 2.ª cor segue o seletor dela: no `Solid` (o modo de fábrica) nenhum canal `*2`.
+    assert!(
+        !oferta.iter().any(|(_, n)| n.ends_with('2')),
+        "a 2.ª cor no Solid é um fio para um número que ninguém lê: {oferta:?}"
+    );
+    let r = oferta
+        .iter()
+        .find(|(l, _)| l.ends_with("Color R"))
+        .map(|(_, n)| *n)
+        .expect("a entrada que o roteiro manda escolher");
+    solta_no_param(&mut m, (cor, 1), tint, r);
     assert_eq!(
         ligados(&m),
         par(&[("a", 4), ("b", 3), ("g", 2), ("r", 1)]),

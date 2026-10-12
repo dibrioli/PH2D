@@ -105,8 +105,9 @@ pub(super) fn announce() {
          empurram-se uns aos outros; no meio ficam soltos.\n\
          (2) A da DIREITA (azul, `colisor` - o nome errado): os discos da borda passam uns por\n    \
          cima dos outros. E' o controlo.\n\
-         (3) No cartao `Drive` da DIREITA, troque `colisor` por `collider`: ela passa a fazer\n    \
-         igual a' da esquerda.\n\
+         (3) Aproxime o grafo (roda do rato) ate' ler as linhas do cartao `Drive` de BAIXO (o\n    \
+         da galaxia azul): `Channel` = `Custom...` e `Column` = `colisor`. Clique em `colisor`,\n    \
+         escreva `collider` e Enter: a azul passa a fazer igual a' laranja.\n\
          (4) Aberta com `PH2D_MOTION_ROUTE_LOG=1`, o terminal diz UMA vez\n    \
          `[motion-route] device: HIBRIDO` - as duas correm na PLACA.\n\
          \n\

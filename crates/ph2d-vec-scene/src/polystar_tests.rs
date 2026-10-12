@@ -166,7 +166,8 @@ fn smooth_puts_tangent_handles_a_fraction_of_the_chord_long() {
         tip.out_handle[0] - tip.anchor[0],
         tip.out_handle[1] - tip.anchor[1],
     ];
-    assert!((h[0].hypot(h[1]) - 0.25 * chord).abs() < 1e-12);
+    let rounded = 0.25 * rounded_at_one(10);
+    assert!((h[0].hypot(h[1]) - rounded * chord).abs() < 1e-12);
     assert!(
         h[1].abs() < 1e-12,
         "a ponta do topo: alça horizontal (tangente)"

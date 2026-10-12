@@ -215,8 +215,8 @@ fn smooth_draws_the_inkscape_rounded_star_and_polygon() {
                 continue; // o laço do Inkscape — recusado na F12 (doc 19 §3)
             }
             let v = match kind {
-                ShapeKind::Star => vec![5.0, 0.45, 0.0, 0.0, 0.0, 0.0, s, 0.0],
-                _ => vec![6.0, 0.0, 0.0, 0.0, s],
+                ShapeKind::Star => vec![5.0, 0.45, 0.0, 0.0, 0.0, 0.0, ours(s, 10), 0.0],
+                _ => vec![6.0, 0.0, 0.0, 0.0, ours(s, 6)],
             };
             let h = the_same_curve(name, e["d"].as_str().unwrap(), kind, &v, 100.0, false);
             assert!(h < SMOOTH_TOL, "{name} rounded {s}: Hausdorff {h}");
@@ -224,6 +224,13 @@ fn smooth_draws_the_inkscape_rounded_star_and_polygon() {
         }
     }
     assert_eq!(n, 10, "5 lisos (sem o negativo) × estrela e polígono");
+}
+
+/// O nosso *Smooth* para o *Rounded* `r` do Inkscape num contorno de `m` vértices (F13): o `1` é o
+/// círculo do `m`-ágono regular — a alça do arco sobre a corda, `1 / (3·cos²(π/2m))`.
+fn ours(r: f64, m: usize) -> f64 {
+    let c = (std::f64::consts::PI / (2.0 * m as f64)).cos();
+    r * 3.0 * c * c
 }
 
 /// A curva do Inkscape e a nossa são cúbicas da MESMA lei: sem torção batem a `1e-6`; torcida, a
@@ -242,7 +249,7 @@ fn twist_draws_the_inkscape_arg2_star() {
             p["twist_deg_ydown"].as_f64().unwrap(),
             p["rounded"].as_f64().unwrap(),
         );
-        let v = [5.0, 0.45, 0.0, 0.0, 0.0, 0.0, s, tw];
+        let v = [5.0, 0.45, 0.0, 0.0, 0.0, 0.0, ours(s, 10), tw];
         let h = the_same_curve(
             "torcida",
             e["d"].as_str().unwrap(),

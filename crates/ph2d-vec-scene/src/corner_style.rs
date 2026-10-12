@@ -21,7 +21,8 @@ pub enum CornerStyle {
     Straight,
     /// O arco CENTRADO na quina — morde a forma para dentro (o *Inverted Round*).
     Concave,
-    /// O entalhe: duas retas paralelas às arestas (o *Cutout* do Affinity).
+    /// O entalhe: duas retas perpendiculares às arestas até ao centro do arredondado (o *Cutout*
+    /// do Affinity: num ângulo recto, o quadrado).
     Cutout,
 }
 
@@ -76,7 +77,12 @@ pub(crate) fn link(
             (f.out1, f.mid.into_iter().collect(), f.in2)
         }
         CornerStyle::Cutout => {
-            let c = [p_in[0] + p_out[0] - apex[0], p_in[1] + p_out[1] - apex[1]];
+            // As paredes perpendiculares a cada lado, até ao CENTRO do arredondado (o quadrado do
+            // Affinity num ângulo recto). O paralelogramo `p_in + p_out − quina` chegava ao lado
+            // oposto de um triângulo e cruzava-se (F13, «o Cutout está estranho» — doc 15 §3b).
+            let Some(c) = normals_meet(p_in, t_in, p_out, t_out) else {
+                return straight();
+            };
             let notch = VecVertex {
                 anchor: c,
                 in_handle: third(c, p_in),
@@ -99,6 +105,29 @@ fn apex(p_in: [f64; 2], t_in: [f64; 2], p_out: [f64; 2], t_out: [f64; 2]) -> Opt
     let d = sub(p_out, p_in);
     let s = (d[0] * t_out[1] - d[1] * t_out[0]) / det;
     (s > 0.0).then(|| [p_in[0] + t_in[0] * s, p_in[1] + t_in[1] * s])
+}
+
+/// O encontro das NORMAIS em `p_in` e `p_out` — o centro do filete tangente aos dois lados.
+/// `None` = tangentes paralelas.
+fn normals_meet(
+    p_in: [f64; 2],
+    t_in: [f64; 2],
+    p_out: [f64; 2],
+    t_out: [f64; 2],
+) -> Option<[f64; 2]> {
+    let (n_in, n_out) = ([-t_in[1], t_in[0]], [-t_out[1], t_out[0]]);
+    apex_of_lines(p_in, n_in, p_out, n_out)
+}
+
+/// `p + s·u = q + w·v` (sem exigir `s > 0`). `None` = paralelas.
+fn apex_of_lines(p: [f64; 2], u: [f64; 2], q: [f64; 2], v: [f64; 2]) -> Option<[f64; 2]> {
+    let det = u[0] * v[1] - u[1] * v[0];
+    if det.abs() < 1e-12 {
+        return None;
+    }
+    let d = sub(q, p);
+    let s = (d[0] * v[1] - d[1] * v[0]) / det;
+    Some([p[0] + u[0] * s, p[1] + u[1] * s])
 }
 
 /// O alçapão de uma reta na forma canônica (⅓ do caminho de `p` a `q`) — a mesma do chanfro.

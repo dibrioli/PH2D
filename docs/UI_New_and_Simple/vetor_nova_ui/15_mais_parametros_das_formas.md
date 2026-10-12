@@ -130,6 +130,7 @@ nenhum controlo morto). Nenhuma forma passa de 8 campos: o tecto `MAX_SHAPE_FIEL
 - ⭐ **O tipo do canto** (`CornerStyle`): o corte é o MESMO nos quatro (o recuo sai do raio pela conta de
   sempre) — trocar o tipo só troca a ligação: o arco, a recta, o arco CENTRADO na quina, o entalhe
   (`p_in + p_out − quina`). Sobre arestas curvas passa pelo motor das quinas vivas (`corner_live`).
+  ⚠️ **F13 — o entalhe mudou de lei** (§3b).
 - ⭐ **A estrela e o polígono do Affinity** (§1b): os pontos junto da ponta/vértice de cima; o raio
   interior SÓ radial; o ⇕ das pontas/lados; a estrela regular de omissão.
 - **A envergadura** tem alça no MEIO de uma aresta (`Spot::EdgeMid`, `t = ½` da cúbica — o meio da
@@ -140,6 +141,31 @@ nenhum controlo morto). Nenhuma forma passa de 8 campos: o tecto `MAX_SHAPE_FIEL
   `the_rounding_never_grows_past_the_sharp_corner`.
 - **O meio do losango** vive SEMPRE sobre a aresta da caixa (onde mora a alça de escala): desenha-se
   `PARK_PX` para dentro (`inset`), a pega mede-se ao ponto verdadeiro.
+
+## §3b — F13: o *Cutout* e o *Smooth* pelo relatório do dono (12/10)
+
+O dono, no Polígono: *«veja se cutoff está correto pois está estranho»*, *«Smooth parece invertido
+(smooth no mínimo tem maior efeito)»*, *«faça auditoria nas outras»*. Medido por uma folha de contacto
+(toda forma × todo campo × 9 valores, a distância de Hausdorff à forma do mínimo) e ampliações:
+antes [`fotos/f13_00_cantos_e_liso_antes.png`](fotos/f13_00_cantos_e_liso_antes.png), depois
+[`fotos/f13_01_cantos_e_liso_depois.png`](fotos/f13_01_cantos_e_liso_depois.png).
+
+| defeito medido | causa | cura (gate) |
+|---|---|---|
+| o entalhe de um triângulo a raio 25 px cruza-se (laço); a estrela vira um ouriço | a lei `p_in + p_out − quina` (paralelogramo): num triângulo o fundo chega ao MEIO do lado oposto | paredes PERPENDICULARES aos lados até ao centro do arredondado (`normals_meet`) — o quadrado do Affinity num ângulo recto, nunca para lá do centro (`the_cutout_is_square_to_its_edges_and_stops_at_the_fillet_centre`) |
+| no tecto do raio (o lado comido inteiro) Concave e Cutout viram Straight | o pedaço de comprimento zero não tem tangente; o `link` caía na recta | a tangente vem do segmento de origem no ponto do corte (`corner_live`; `a_corner_whose_edges_are_eaten_whole_keeps_its_style`) |
+| o *Smooth* do pentágono: redondo a 0,38, depois enruga e a 1,0 tem bicos — o fim da faixa «desfaz» | a faixa 0…1 era o *Rounded* do Inkscape cru: o redondo é `1/(3·cos²(π/2m))` ≈ 0,37 | `1` = o redondo (o `m`-ágono regular é o círculo dele): `rounded = smooth × rounded_at_one(m)` (`smooth_one_is_the_circle_of_the_regular_polygon`, `more_smooth_never_turns_back`); o oráculo do Inkscape converte (`ours(r, m)`) e continua a `5e-5` |
+| com raio de canto, o 1.º passo do liso (0,001) apaga o raio inteiro: a estrela redonda fica pontuda — «no mínimo o maior efeito» | o vértice liso é G1 (as alças colineares): ângulo 180°, o raio não tem quina onde morder | a alça RODA da aresta para a tangente pelo peso `liso / (liso + quinhão do raio)` e o vértice fica quina até abrir de todo (`a_little_smooth_keeps_the_corner_radius`); sem raio o peso é 1 — o Inkscape exacto |
+
+⚠️ **Régua:** a 1.ª medição da continuidade leu `0,023` entre o liso 0 e 0,001 — era a distância ponto
+a PONTO numa aresta recta de alças coladas (as amostras amontoam-se nas pontas). Ponto a SEGMENTO: `0`.
+
+**Auditoria das outras formas** (a mesma folha): os «não monótonos» são campos cíclicos (*Start*,
+contagens) ou um furo que nasce no centro — esperados. Ficam registados, sem cura: o *Cutout* no
+tecto deixa lascas de espessura zero (o rectângulo 2:1 fica um quadrado com dois «bigodes»; o
+polígono, só linhas) — a lei é essa, o traço mostra-as; a seta dobrada com *Tail* > *Head width*
+perde as farpas (o OOXML prende a haste à cabeça — por decidir); o *Check* com peso ≥ 0,5 mostra o
+topo do braço curto como um degrau (o tecto de validade é 1,5× o braço).
 
 ## §4 — O cartão lateral
 

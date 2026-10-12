@@ -159,7 +159,18 @@ pub fn round_authored_corners_styled(
                 // O chanfro pelo sinal do raio, senão o tipo pedido; o arredondado é o arco de
                 // handle `(4/3)·tan(α/4)·r` de sempre (em DUAS cúbicas acima de `90°`), e os
                 // outros (a reta (⅓, ⅔), o côncavo, o entalhe) vêm do `corner_style`.
-                let (t_in, t_out) = (tangent_at_end(a), tangent_at_start(b));
+                // Lado comido inteiro (raio no tecto): a tangente vem da origem no corte (F13).
+                let (si, so) = (incoming(i, n, closed), outgoing(i, n, closed, seg_count));
+                let t_in = nonzero(tangent_at_end(a)).unwrap_or_else(|| {
+                    si.map_or([0.0; 2], |s| {
+                        tangent_at_end(&sub_cubic(&segs[s], 0.0, u1[s]))
+                    })
+                });
+                let t_out = nonzero(tangent_at_start(b)).unwrap_or_else(|| {
+                    so.map_or([0.0; 2], |s| {
+                        tangent_at_start(&sub_cubic(&segs[s], u0[s], 1.0))
+                    })
+                });
                 let kind = if verts[i].is_chamfer() {
                     crate::CornerStyle::Straight
                 } else {
@@ -534,6 +545,10 @@ fn tangent_at_start(c: &Cubic) -> [f64; 2] {
         }
     }
     [0.0, 0.0]
+}
+
+fn nonzero(t: [f64; 2]) -> Option<[f64; 2]> {
+    (t != [0.0, 0.0]).then_some(t)
 }
 
 /// Versor da tangente no FIM da cúbica (direção do traçado), mesma cascata.

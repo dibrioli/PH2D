@@ -193,6 +193,20 @@ pub fn counting_panics<T>(f: impl FnOnce() -> T) -> (T, u64) {
     (out, PANICS.with(Cell::get))
 }
 
+/// ⛔ Controlo do contador: com `EXPECTED_PANICS = 0` um hook que nunca contasse também daria 0 —
+/// aqui dois pânicos ENGOLIDOS por `catch_unwind` têm de ser contados, e a janela tem de fechar.
+#[test]
+fn the_panic_counter_counts_a_swallowed_panic() {
+    let ((), n) = counting_panics(|| {
+        for _ in 0..2 {
+            let _ = std::panic::catch_unwind(|| panic!("pânico de controlo"));
+        }
+    });
+    assert_eq!(n, 2, "o hook não contou os pânicos engolidos");
+    let ((), after) = counting_panics(|| ());
+    assert_eq!(after, 0, "a contagem não recomeça a cada janela");
+}
+
 /// A coluna do PRODUTO: por `(junção, lado)`, as distâncias (`d·100`) que NÃO acertam.
 ///
 /// | onda | round fora | bevel fora | bevel dentro | pânicos |

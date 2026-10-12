@@ -110,6 +110,9 @@ impl ImageFile {
 
     /// O tipo MIME pelos bytes mágicos — o `mimeType` de um `.excalidraw` e o `data:` de um SVG.
     /// `None` = nenhum que um navegador mostre.
+    ///
+    /// W15: `image/svg+xml` = um ficheiro VECTORIAL (o tamanho natural é o do `<svg>`; o desenho
+    /// rasteriza-o ao tamanho de cada nível).
     #[must_use]
     pub fn mime(&self) -> Option<&'static str> {
         mime_of(&self.bytes.0)
@@ -132,9 +135,41 @@ pub fn mime_of(b: &[u8]) -> Option<&'static str> {
         "image/bmp"
     } else if at(4, b"ftypavif") || at(4, b"ftypavis") {
         "image/avif"
+    } else if is_svg(b) {
+        "image/svg+xml"
     } else {
         return None;
     })
+}
+
+/// W15 — um SVG (texto): o 1.º elemento é `<svg`, depois do BOM, de espaços, da declaração `<?xml`,
+/// de comentários e do `<!DOCTYPE`. Só se olha para o princípio (um SVG não precisa de ser lido
+/// inteiro para se saber que o é).
+fn is_svg(b: &[u8]) -> bool {
+    let mut r = b.strip_prefix(b"\xef\xbb\xbf").unwrap_or(b);
+    loop {
+        r = r.trim_ascii_start();
+        let skip = |r: &[u8], open: &[u8], close: &[u8]| -> Option<usize> {
+            r.starts_with(open).then(|| {
+                r.windows(close.len())
+                    .position(|w| w == close)
+                    .map(|i| i + close.len())
+            })?
+        };
+        if let Some(n) = skip(r, b"<?", b"?>")
+            .or_else(|| skip(r, b"<!--", b"-->"))
+            .or_else(|| skip(r, b"<!DOCTYPE", b">"))
+        {
+            r = &r[n..];
+            continue;
+        }
+        let Some(rest) = r.strip_prefix(b"<svg") else {
+            return false;
+        };
+        return rest
+            .first()
+            .is_some_and(|c| c.is_ascii_whitespace() || *c == b'>' || *c == b'/');
+    }
 }
 
 /// ⭐ A **porta de entrada** de uns bytes de imagem no quadro (soltar, colar, importar, um
@@ -179,7 +214,9 @@ pub struct Image {
     pub crop: Option<Crop>,
     /// Espelhada na horizontal e na vertical, à volta do centro da caixa (o `scale` `-1`).
     pub flip: [bool; 2],
-    /// W15 (formato 13).
+    /// W15 (formato 13). `default`: o nosso elemento no `customData` de um `.excalidraw` da W14 não o
+    /// tem (o JSON lê-se por nome; o postcard, posicional, lê-o sempre).
+    #[serde(default)]
     pub filter: ImageFilter,
 }
 

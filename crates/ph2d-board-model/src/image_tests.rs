@@ -51,14 +51,22 @@ fn a_blob_is_the_bytes_of_a_vec_in_postcard() {
 /// O MIME pelos bytes mágicos de cada formato que um navegador mostra; texto não é imagem.
 #[test]
 fn the_mime_comes_from_the_magic_bytes() {
-    let cases: [(&[u8], Option<&str>); 7] = [
+    let svg = Some("image/svg+xml");
+    let cases: [(&[u8], Option<&str>); 13] = [
         (b"\x89PNG\r\n\x1a\nxxxx", Some("image/png")),
         (&[0xff, 0xd8, 0xff, 0xe0], Some("image/jpeg")),
         (b"GIF89a....", Some("image/gif")),
         (b"RIFF\0\0\0\0WEBPVP8 ", Some("image/webp")),
         (b"BM\0\0\0\0", Some("image/bmp")),
         (b"\0\0\0\x1cftypavif", Some("image/avif")),
-        (b"<svg xmlns=", None),
+        // W15: um SVG é imagem (texto, depois do BOM, da declaração, de comentários e do DOCTYPE).
+        (b"<svg xmlns=", svg),
+        (b"\xef\xbb\xbf  <?xml version=\"1.0\"?>\n<!-- a -> b -->\n<!DOCTYPE svg>\n<svg>", svg),
+        (b"<svg/>", svg),
+        (b"<svgx>", None),
+        (b"<html><svg>", None),
+        (b"<!-- sem fim <svg>", None),
+        (b"hello", None),
     ];
     for (bytes, want) in cases {
         assert_eq!(mime_of(bytes), want, "{bytes:?}");

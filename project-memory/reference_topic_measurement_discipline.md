@@ -1441,7 +1441,7 @@ ele se comporta quando a **sonda estreita**:
 absoluto não separa `C¹` de «mais liso», e «mais liso» é exactamente o que não resolve o problema.*
 
 ⭐ **E há um par de leis que vale para qualquer porte de método numérico:**
-1. **valide por PROPRIEDADE, não por valor** — a biblioteca de referência (SciPy) estima os
+1. **confira por PROPRIEDADE, não por valor** — a biblioteca de referência (SciPy) estima os
    gradientes por minimização global e eu por mínimos quadrados no anel; comparar número a número
    mediria o estimador. O que tem de bater são as leis: exactidão nos dados · partição da unidade ·
    a derivada a desaparecer com a sonda · precisão linear. Cada uma é um gate e cada uma apanhou
@@ -1506,14 +1506,14 @@ e imprimiu `Finished`. Ver [[reference_topic_gate_discipline]] e
 ## ⭐⭐⭐ A ABLAÇÃO QUE «não fez nada» era a SHELL a não separar palavras (2026-09-20)
 
 Um laço de medição construía a configuração numa string e passava-a sem aspas —
-`for cfg in "as_duas:ABL_A=0 ABL_B=64"; do env=${cfg#*:}; env $env <corrida>; done`.
+`for cfg in "as_duas:ABLA_A=0 ABLA_B=64"; do env=${cfg#*:}; env $env <corrida>; done`.
 
 ⛔ **A shell desta sessão NÃO faz word-splitting de uma variável não citada.** O resultado é
-`ABL_A="0 ABL_B=64"` e `ABL_B` **vazio** — ou seja, a corrida combinada mediu a BASE. E uma base
+`ABLA_A="0 ABLA_B=64"` e `ABLA_B` **vazio** — ou seja, a corrida combinada mediu a BASE. E uma base
 disfarçada de ablação lê-se exactamente como ***«esta ablação não faz efeito»***, que foi a
 conclusão errada que eu quase escrevi: as duas ablações **sozinhas** funcionavam e só a combinação
-mentia, que é o pior arranjo possível. Medido em isolamento: `env $env bash -c 'echo $ABL_A'`
-imprime `0 ABL_B=64`.
+mentia, que é o pior arranjo possível. Medido em isolamento: `env $env bash -c 'echo $ABLA_A'`
+imprime `0 ABLA_B=64`.
 
 ⚠️ **A mesma armadilha mordeu uma SEGUNDA vez no mesmo dia**, noutra forma: `<instrumento>
 $LISTA_DE_PATHS` passou catorze caminhos como **um** path, e ele respondeu

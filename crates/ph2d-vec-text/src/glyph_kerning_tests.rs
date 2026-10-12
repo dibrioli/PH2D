@@ -360,3 +360,21 @@ fn draw_the_before_and_after_for_the_owner() {
     std::fs::write(&out, svg).expect("escreve");
     println!("{}", out.display());
 }
+
+/// O `XPlacement` do par desloca o glifo SEM mover o pen: na fonte mínima o `B` desenha-se em
+/// `500 − 50 + 30`, e o glifo seguinte (o 2.º `A`) parte de `500 − 50 + 500`, sem os `30`.
+#[test]
+fn a_placement_moves_the_glyph_and_not_the_pen() {
+    let font = VariableFont::new(
+        include_bytes!("../../ph2d-vector-font/tests/fixtures/kern_xplacement.ttf").to_vec(),
+    )
+    .expect("fixture");
+    assert_eq!(
+        pens(&font, "ABA", &lay(1000.0, true), &[]),
+        vec![0.0, 480.0, 950.0]
+    );
+    assert_eq!(
+        pens(&font, "ABA", &lay(1000.0, false), &[]),
+        vec![0.0, 500.0, 1000.0]
+    );
+}

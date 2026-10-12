@@ -2,10 +2,11 @@
 //! traz para a árvore). Devolve só o que o kerning MUDA; os glifos e os avanços nominais continuam a
 //! vir do [`crate::skrifa_bridge`], e é por isso que um texto sem pares sai byte-idêntico.
 //!
-//! ⚠️ A resposta é a DIFERENÇA entre duas moldagens da mesma linha, com e sem a feature `kern`. Um
-//! avanço moldado sozinho vem arredondado à grelha do moldador, e subtraí-lo do avanço exacto da
-//! fonte deixaria um resto de `1/128` em todo par de uma instância variável; a diferença é zero onde
-//! não há par, por construção.
+//! ⚠️ A resposta é a DIFERENÇA entre duas moldagens da mesma linha, com e sem a feature `kern`: é
+//! zero onde não há par por construção, e não depende de o moldador e o skrifa lerem o MESMO avanço
+//! nominal. Hoje leem (medido 11/10, Inter a 400/650/733: os dois arredondam o HVAR à unidade), e é
+//! por isso que nenhum gate distingue a diferença de `moldado − nominal`; a diferença fica porque não
+//! precisa dessa coincidência.
 
 use harfrust::{
     Direction, Feature, ShapeOptions, ShaperData, ShaperInstance, Tag, UnicodeBuffer, Variation,
@@ -117,9 +118,41 @@ mod tests {
         );
     }
 
+    /// A Noto Sans do repo LIGA o `fi` (a Inter não — medido 11/10, e com ela este gate era vácuo).
     #[test]
     fn a_ligature_the_font_would_make_is_not_made() {
-        // `liga` desligada: o `fi` continua a ser dois glifos, e por isso tem resposta.
-        assert_eq!(inter().kerning("fi", &[]).map(|k| k.len()), Some(2));
+        let noto = VariableFont::new(
+            include_bytes!("../../ph2d-text/fonts/NotoSansVariable.ttf").to_vec(),
+        )
+        .expect("NotoSans parses");
+        assert_eq!(noto.kerning("fi", &[]).map(|k| k.len()), Some(2));
+    }
+
+    /// O `calt` da Inter troca `->` por uma seta; desligado, os dois glifos ficam.
+    #[test]
+    fn a_contextual_alternate_is_not_taken() {
+        assert_eq!(inter().kerning("->", &[]).map(|k| k.len()), Some(2));
+    }
+
+    /// O par `AB` da fonte mínima (`tests/fixtures/kern_xplacement.ttf`, gerada por
+    /// `fonte_kern_xplacement.py`): XAdvance −50 no `A`, XPlacement +30 no `B`.
+    #[test]
+    fn a_placement_on_the_second_glyph_is_an_offset_not_an_advance() {
+        let f = VariableFont::new(include_bytes!("../tests/fixtures/kern_xplacement.ttf").to_vec())
+            .expect("fixture parses");
+        let k = f.kerning("AB", &[]).expect("sem substituição");
+        assert_eq!(
+            k,
+            vec![
+                KernAdjust {
+                    advance: -50.0,
+                    offset: 0.0
+                },
+                KernAdjust {
+                    advance: 0.0,
+                    offset: 30.0
+                },
+            ]
+        );
     }
 }

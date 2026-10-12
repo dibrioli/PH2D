@@ -48,17 +48,20 @@ fn the_w16_scene_does_what_its_lessons_say() {
     );
 }
 
-/// O rato real sobre o quadro (cliques a 50 ms: um par é um duplo-clique).
-struct Mouse {
+/// O rato real sobre o quadro (cliques a 50 ms: um par é um duplo-clique); `mods` = as teclas em
+/// baixo (W17: o `Shift` do recorte).
+pub(crate) struct Mouse {
     ts: ph2d_text::TextSystem,
     clock: u128,
+    pub(crate) mods: ph2d_host::Modifiers,
 }
 
 impl Mouse {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             ts: ph2d_text::TextSystem::without_system_fonts(),
             clock: 1_000_000_000_000,
+            mods: ph2d_host::Modifiers::default(),
         }
     }
 
@@ -72,7 +75,7 @@ impl Mouse {
         self.clock += 50_000_000;
         let input = Input {
             text: &mut self.ts,
-            mods: ph2d_host::Modifiers::default(),
+            mods: self.mods,
             now_ns: self.clock,
         };
         // Os movimentos chegam pela porta deles (a da janela).
@@ -96,13 +99,13 @@ impl Mouse {
         );
     }
 
-    fn click(&mut self, h: &mut HeroScreen, world: [f64; 2]) {
+    pub(crate) fn click(&mut self, h: &mut HeroScreen, world: [f64; 2]) {
         use ph2d_host::PointerKind::{Down, Up};
         self.at(h, Down, world);
         self.at(h, Up, world);
     }
 
-    fn drag(&mut self, h: &mut HeroScreen, from: [f64; 2], to: [f64; 2]) {
+    pub(crate) fn drag(&mut self, h: &mut HeroScreen, from: [f64; 2], to: [f64; 2]) {
         use ph2d_host::PointerKind::{Down, Move, Up};
         self.at(h, Down, from);
         let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];

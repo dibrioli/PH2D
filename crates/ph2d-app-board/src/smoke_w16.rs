@@ -164,4 +164,4 @@ pub(super) fn scene_w16(hero: &mut HeroScreen) -> Lessons {
 
 #[cfg(test)]
 #[path = "smoke_w16_tests.rs"]
-mod tests;
+pub(crate) mod tests;

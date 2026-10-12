@@ -31,7 +31,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. Drop an SVG file (a logo, an icon) on this board, then zoom in with the wheel: it stays sharp, like the big star logo."
         }
         "board.smoke.frames.l5" => {
-            "5. Open the Scene tab, right-click a picture, a vector drawing or a Flip in the Hierarchy, choose Send to board… and pick this board (or New board). A Flip goes as the frame you are on, not the animation."
+            "5. Scene tab: right-click a picture, vector or Flip in the Hierarchy, then Send to board… and pick a board. A Flip goes as its current frame."
         }
         "board.smoke.frames.l6" => {
             "6. Export the board (PNG, SVG or PDF): the frames and the black and white come out the same as here."

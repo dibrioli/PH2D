@@ -54,13 +54,14 @@ impl Gate {
     }
 }
 
-/// `true` = a forma seleccionada mostra as alças dela (modo Forma, forma viva com alças): os NÓS
-/// dela não se desenham — são derivados dos campos e nada no modo Forma os arrasta (o idioma do
-/// envelope, e das ferramentas de forma do Affinity). Medido na foto da cena 16 (F10): as âncoras
-/// laranja e as alças bézier azuis tapavam as alças verdes.
+/// `true` = os NÓS da selecção não se desenham: no modo Forma NUNCA (F13, o dono: «shape não deve
+/// mostrar nós como a ferramenta node» — nem armado, nem numa forma sem alças: nada no modo Forma
+/// os arrasta), e onde quer que as alças de uma forma viva estejam à vista (F10: as âncoras laranja
+/// tapavam as alças verdes na foto da cena 16).
 #[must_use]
 pub fn hides_the_nodes(vec: &crate::state::VecState, sim: &SimWorld) -> bool {
-    Target::of(sim, &vec.entities, vec.pen.selected_paths(), Gate::of(vec)).is_some()
+    vec.draw_config.mode == DrawMode::Shape
+        || Target::of(sim, &vec.entities, vec.pen.selected_paths(), Gate::of(vec)).is_some()
 }
 
 /// A forma paramétrica das alças e o que é preciso para a cozinhar e a pôr no mundo.

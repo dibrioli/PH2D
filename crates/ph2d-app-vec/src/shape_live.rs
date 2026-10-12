@@ -207,6 +207,9 @@ pub fn after_the_shape_release(
     let hit_r = CLICK_HIT_PX * vec.shape.px_to_world();
     if let Some(id) = vec.pen.path_at(scene, click, hit_r) {
         vec.pen.select(Some(id));
+        // F13: o clique é um EVENTO — desarma mesmo na forma que JÁ estava seleccionada (o quadro
+        // dos campos só desarma quando a selecção MUDA), e as alças dela voltam.
+        vec.shape_armed = false;
     }
 }
 

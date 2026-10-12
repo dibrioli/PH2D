@@ -309,31 +309,51 @@ fn where_a_shape_handle_meets_a_box_handle_the_shape_handle_wins() {
     );
 }
 
-/// ⭐ **Com as alças à vista, os NÓS da forma somem** (a foto da cena 16: as âncoras laranja e as
-/// alças bézier azuis tapavam as verdes). Só no modo Forma com a forma viva como alvo: no Select,
-/// armado no catálogo, ou sem forma viva, a pergunta responde `false` e o overlay de nós é o de
-/// sempre.
+/// ⭐ **No modo Forma os NÓS nunca se desenham** (F13, o dono: «shape não deve mostrar nós como a
+/// ferramenta node») — nem armado no catálogo, nem sem alças; no Select, os de sempre.
 #[test]
-fn the_nodes_hide_only_while_the_shape_handles_show() {
+fn the_nodes_never_draw_in_shape_mode() {
     let mut m = mesa();
     m.draw(ShapeKind::Star, [0.0, 0.0], 1.0);
     assert!(
         hides_the_nodes(&m.vec, &m.sim),
-        "modo Forma, a estrela viva: sem nós"
+        "modo Forma, a estrela viva"
     );
+    m.catalog(ShapeKind::Polygon);
+    m.frame();
+    assert!(m.vec.shape_armed, "o catálogo não armou");
+    assert!(hides_the_nodes(&m.vec, &m.sim), "armado no catálogo");
     m.vec.draw_config.mode = DrawMode::Select;
     assert!(
         !hides_the_nodes(&m.vec, &m.sim),
-        "no Select a pergunta nem se põe"
+        "no Select, os nós de sempre"
     );
-    m.vec.draw_config.mode = DrawMode::Shape;
+}
+
+/// ⭐⭐ **Seleccionar com a ferramenta Forma DESARMA e acende as alças** (F13, o dono: «o modo shape
+/// além de criar shapes deve selecionar shapes tb. Uma vez seleciona com a ferramenta Shape, o gizmo
+/// de ajustes deve reaparecer»). O clique é um EVENTO: mesmo na forma que JÁ estava seleccionada
+/// (a selecção não muda, e só a mudança desarmava), e com o clique no MEIO de uma forma cheia.
+#[test]
+fn a_click_on_a_shape_disarms_and_brings_its_handles_back() {
+    let mut m = mesa();
+    let star = m.draw(ShapeKind::Star, [0.0, 0.0], 1.0);
+    let disc = m.draw(ShapeKind::Ellipse, [4.0, 0.0], 1.0);
+    for (target, at) in [(disc, [4.0, 0.0]), (star, [0.0, 0.0]), (star, [0.1, -0.1])] {
+        m.catalog(ShapeKind::Polygon);
+        m.frame();
+        assert!(m.view().is_none(), "armado, sem alças");
+        m.click(at);
+        m.frame();
+        assert_eq!(m.vec.pen.selected(), Some(target), "o clique em {at:?}");
+        assert!(!m.vec.shape_armed, "o clique em {at:?} não desarmou");
+        assert!(m.view().is_some(), "o clique em {at:?} não trouxe as alças");
+        assert!(hides_the_nodes(&m.vec, &m.sim));
+    }
+    // No vazio: nada muda — continua armado para desenhar.
     m.catalog(ShapeKind::Polygon);
     m.frame();
-    assert!(
-        !hides_the_nodes(&m.vec, &m.sim),
-        "armado no catálogo: sem alças, nós de sempre"
-    );
-    m.vec.pen.select_many(&[]);
+    m.click([20.0, 20.0]);
     m.frame();
-    assert!(!hides_the_nodes(&m.vec, &m.sim), "nada seleccionado");
+    assert!(m.vec.shape_armed, "um clique no vazio desarmou");
 }

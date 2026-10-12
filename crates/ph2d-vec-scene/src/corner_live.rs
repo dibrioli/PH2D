@@ -161,16 +161,13 @@ pub fn round_authored_corners_styled(
                 // outros (a reta (⅓, ⅔), o côncavo, o entalhe) vêm do `corner_style`.
                 // Lado comido inteiro (raio no tecto): a tangente vem da origem no corte (F13).
                 let (si, so) = (incoming(i, n, closed), outgoing(i, n, closed, seg_count));
-                let t_in = nonzero(tangent_at_end(a)).unwrap_or_else(|| {
-                    si.map_or([0.0; 2], |s| {
-                        tangent_at_end(&sub_cubic(&segs[s], 0.0, u1[s]))
-                    })
-                });
-                let t_out = nonzero(tangent_at_start(b)).unwrap_or_else(|| {
-                    so.map_or([0.0; 2], |s| {
-                        tangent_at_start(&sub_cubic(&segs[s], u0[s], 1.0))
-                    })
-                });
+                let real = |t: &[f64; 2]| *t != [0.0; 2];
+                let t_in = (Some(tangent_at_end(a)).filter(real))
+                    .or_else(|| si.map(|s| tangent_at_end(&sub_cubic(&segs[s], 0.0, u1[s]))))
+                    .unwrap_or_default();
+                let t_out = (Some(tangent_at_start(b)).filter(real))
+                    .or_else(|| so.map(|s| tangent_at_start(&sub_cubic(&segs[s], u0[s], 1.0))))
+                    .unwrap_or_default();
                 let kind = if verts[i].is_chamfer() {
                     crate::CornerStyle::Straight
                 } else {
@@ -545,10 +542,6 @@ fn tangent_at_start(c: &Cubic) -> [f64; 2] {
         }
     }
     [0.0, 0.0]
-}
-
-fn nonzero(t: [f64; 2]) -> Option<[f64; 2]> {
-    (t != [0.0, 0.0]).then_some(t)
 }
 
 /// Versor da tangente no FIM da cúbica (direção do traçado), mesma cascata.

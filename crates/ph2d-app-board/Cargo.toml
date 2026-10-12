@@ -40,7 +40,8 @@ ph2d-asset = { path = "../ph2d-asset" }
 ph2d-imageio-svg = { path = "../ph2d-imageio-svg" }
 # O TAMANHO de uma imagem que entra lê-se do cabeçalho (`into_dimensions`), sem descodificar os píxeis
 # no fio da janela — a mesma versão e os mesmos formatos que a `ph2d-asset` já liga.
-image = { version = "0.25", default-features = false }
+# W16 — e os quadros de um GIF em sequência (o animador do quadro).
+image = { version = "0.25", default-features = false, features = ["gif"] }
 png = "0.18"
 # W16 — o `Ctrl+V` num quadro lê a área de transferência (ficheiros, imagem, texto). O
 # `wayland-data-control` é o que lê o que OUTRO app copiou numa janela Wayland nativa (sem ele o

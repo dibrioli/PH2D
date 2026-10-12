@@ -17,6 +17,7 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Instant;
 
 use ph2d_board_geom::{corner_radius, to_world};
 use ph2d_board_model::{Element, FileId, Image, ImageFile, ImageFilter};
@@ -45,6 +46,8 @@ type Key = (FileId, ImageFilter);
 
 /// O MIME de um ficheiro que se rasteriza a cada tamanho.
 const VECTOR_MIME: &str = "image/svg+xml";
+/// W16 — o MIME de um ficheiro que pode ser ANIMADO no ecrã.
+const ANIMATED_MIME: &str = "image/gif";
 
 /// O descodificador do APP, instalado uma vez ao arrancar ([`install_decoder`]): toda [`Images`] o usa
 /// quando precisa de descodificar (não quando nasce — uma cache feita antes da instalação também o vê).
@@ -104,6 +107,11 @@ pub struct Images {
     /// Os trabalhos por fazer, partilhados pelos fios (criados à primeira vez).
     jobs: Option<Sender<Job>>,
     frame: u64,
+    /// W16 — os GIF a tocar no ecrã, e o relógio deles (o do começo do desenho).
+    pub(crate) players: crate::anim::Players,
+    now: Instant,
+    /// Os testes param o relógio.
+    clock: Option<Instant>,
 }
 
 struct Job {
@@ -123,6 +131,9 @@ impl Default for Images {
             rx,
             jobs: None,
             frame: 0,
+            players: crate::anim::Players::default(),
+            now: Instant::now(),
+            clock: None,
         }
     }
 }
@@ -172,6 +183,14 @@ fn halve(src: &[u8], [w, h]: [u32; 2], to: [u32; 2]) -> Vec<u8> {
         }
     }
     out
+}
+
+/// W16 — metade (ou o tamanho `to` de uma halving) de uns píxeis.
+pub(crate) fn halve_to(px: &Pixels, to: [u32; 2]) -> Pixels {
+    Pixels {
+        size: to,
+        rgba: halve(&px.rgba, px.size, to),
+    }
 }
 
 /// A pirâmide inteira de uns píxeis (o 1.º nível já reduzido ao atlas, se preciso).
@@ -244,6 +263,33 @@ impl Images {
         self.decode = Some(decode);
     }
 
+    /// W16 — outro animador que o do app.
+    pub fn set_animator(&mut self, animate: crate::anim::Animate) {
+        self.players.set_animator(animate);
+    }
+
+    /// W16 — o relógio parado em `at` (os testes); `None` = o do sistema.
+    pub fn set_clock(&mut self, at: Option<Instant>) {
+        self.clock = at;
+    }
+
+    /// ⭐ W16 — o quadro de uma imagem ANIMADA a mostrar agora no ecrã, aos píxeis `size` (o nível
+    /// que o desenho escolheu). `None` = não é animada, ou o tocador ainda não deu o primeiro (o da
+    /// pirâmide desenha-se).
+    pub(crate) fn animated(
+        &mut self,
+        id: FileId,
+        filter: ImageFilter,
+        file: &ImageFile,
+        size: [u32; 2],
+    ) -> Option<(StableImage, [u32; 2])> {
+        if file.mime() != Some(ANIMATED_MIME) {
+            return None;
+        }
+        self.players
+            .frame((id, filter), &file.bytes.0, size, self.now, self.frame)
+    }
+
     /// O descodificador desta cache, ou o do app.
     fn decoder(&self) -> Option<Decode> {
         self.decode.clone().or_else(|| DECODER.get().cloned())
@@ -253,9 +299,11 @@ impl Images {
     /// sempre, `ControlFlow::Poll`).
     #[must_use]
     pub fn pending(&self) -> bool {
-        self.entries
-            .values()
-            .any(|e| e.pending || e.levels.iter().any(|l| l.asked))
+        self.players.any()
+            || self
+                .entries
+                .values()
+                .any(|e| e.pending || e.levels.iter().any(|l| l.asked))
     }
 
     /// Recolhe o que os fios acabaram.
@@ -452,6 +500,7 @@ impl Images {
         self.frame += 1;
         if self.frame.is_multiple_of(KEEP_FRAMES) {
             let cut = self.frame.saturating_sub(KEEP_FRAMES);
+            self.players.forget_before(cut);
             for e in self.entries.values_mut() {
                 let last = e.levels.len() - 1;
                 for l in &mut e.levels[..last] {
@@ -463,9 +512,10 @@ impl Images {
         }
     }
 
-    /// Recolhe os acabados (no início de um desenho).
+    /// Recolhe os acabados (no início de um desenho) e acerta o relógio das animações.
     pub(crate) fn begin_frame(&mut self) {
         self.collect();
+        self.now = self.clock.unwrap_or_else(Instant::now);
     }
 }
 
@@ -584,6 +634,14 @@ pub(crate) fn paint(
         if let Some((f, source)) = &embed {
             scene.record_embedded_image(t * level_to_box(el, img, f.size, f.size), source);
         } else if let Some((f, (pixels, size))) = level {
+            // W16 — um GIF no ecrã toca: o quadro de agora ao tamanho do nível escolhido.
+            let (pixels, size) = match export {
+                None => cache
+                    .images
+                    .animated(img.file, img.filter, f, size)
+                    .unwrap_or((pixels, size)),
+                Some(_) => (pixels, size),
+            };
             let m = t * level_to_box(el, img, f.size, size);
             scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source_of(f).as_ref());
         }

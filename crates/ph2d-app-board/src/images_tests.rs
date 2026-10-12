@@ -248,3 +248,54 @@ fn files_copied_in_dolphin_paste_in_with_the_crlf_stripped() {
     assert_eq!(board.doc.live().filter(|e| e.image().is_some()).count(), 1);
     let _ = std::fs::remove_dir_all(&d);
 }
+
+/// Um GIF 3×2 de três quadros (vermelho 70 ms, verde 0 ms, azul 40 ms), escrito pelo `image`.
+fn gif_3() -> Vec<u8> {
+    use image::{Delay, Frame, RgbaImage};
+    let mut out = Vec::new();
+    {
+        let mut enc = image::codecs::gif::GifEncoder::new(&mut out);
+        enc.set_repeat(image::codecs::gif::Repeat::Infinite)
+            .unwrap();
+        for (c, ms) in [
+            ([255, 0, 0, 255], 70),
+            ([0, 255, 0, 255], 0),
+            ([0, 0, 255, 255], 40),
+        ] {
+            let buf = RgbaImage::from_pixel(3, 2, image::Rgba(c));
+            enc.encode_frame(Frame::from_parts(
+                buf,
+                0,
+                0,
+                Delay::from_numer_denom_ms(ms, 1),
+            ))
+            .unwrap();
+        }
+    }
+    out
+}
+
+/// ⭐ W16 — os quadros de um GIF saem em SEQUÊNCIA com a duração do ficheiro (a lei dos curtos é do
+/// desenho), e o 1.º quadro do desenho é o primeiro dele; um PNG não é animação.
+#[test]
+fn a_gif_gives_its_frames_in_order_with_their_file_durations() {
+    let g = gif_3();
+    let got: Vec<([u8; 4], u32)> = frames(&g)
+        .expect("um GIF")
+        .map(|(px, ms)| {
+            assert_eq!(px.size, [3, 2]);
+            (px.rgba[..4].try_into().unwrap(), ms)
+        })
+        .collect();
+    assert_eq!(
+        got,
+        [
+            ([255, 0, 0, 255], 70),
+            ([0, 255, 0, 255], 0),
+            ([0, 0, 255, 255], 40)
+        ]
+    );
+    assert_eq!(decode(&g, None).unwrap().rgba[..4], [255, 0, 0, 255]);
+    assert_eq!(ingest(&g).unwrap().size, [3, 2]);
+    assert!(frames(&png(2, 2, [1, 2, 3, 255])).is_none());
+}

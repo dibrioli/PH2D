@@ -6,6 +6,7 @@
 //! ⚠️ Reconstrói a cena a cada quadro, recortando ao ecrã; o texto moldado vem da [`TextCache`].
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
 
+mod anim;
 mod facilitate;
 mod frames;
 mod gray;
@@ -20,6 +21,7 @@ mod sketch;
 mod tags;
 mod theme_ink;
 
+pub use anim::{Animate, frame_ms, install_animator};
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
 pub use gray::{gray_of, to_gray};

@@ -20,11 +20,39 @@ use ph2d_imageio_svg::raster;
 
 /// O MIME de um ficheiro vectorial.
 const SVG: &str = "image/svg+xml";
+/// W16 — o MIME de um ficheiro que toca no quadro.
+const GIF: &str = "image/gif";
+
+/// ⭐ W16 — os quadros de um GIF em SEQUÊNCIA, cada um com a duração do ficheiro em ms (o animador do
+/// desenho, [`ph2d_board_render::install_animator`]): o `image` dá cada quadro já composto sobre o
+/// ecrã lógico (a disposição aplicada), RGBA reto. Um por vez — a memória não cresce com a duração;
+/// o tecto de cada alocação é o `Limits` do `image` (512 MiB). `None` = não é um GIF legível.
+#[must_use]
+pub fn frames(bytes: &[u8]) -> Option<Box<dyn Iterator<Item = (Pixels, u32)>>> {
+    use image::AnimationDecoder as _;
+    if mime_of(bytes) != Some(GIF) {
+        return None;
+    }
+    let dec = image::codecs::gif::GifDecoder::new(std::io::Cursor::new(bytes.to_vec())).ok()?;
+    Some(Box::new(dec.into_frames().map_while(Result::ok).map(|f| {
+        let (n, d) = f.delay().numer_denom_ms();
+        let buf = f.into_buffer();
+        let px = Pixels {
+            size: [buf.width(), buf.height()],
+            rgba: buf.into_raw(),
+        };
+        (px, n / d.max(1))
+    })))
+}
 
 /// Os píxeis RGBA de 8 bits de uns bytes de imagem (os de 16 bits descem a 8); um SVG a `at` (o
 /// natural, sem ele). `None` = não é uma imagem que o app lê.
 #[must_use]
 pub fn decode(bytes: &[u8], at: Option<[u32; 2]>) -> Option<Pixels> {
+    // W16 — o 1.º quadro de um GIF sem descodificar os outros (a porta da cena junta-os todos).
+    if mime_of(bytes) == Some(GIF) {
+        return frames(bytes)?.next().map(|(px, _)| px);
+    }
     if mime_of(bytes) == Some(SVG) {
         let tree = raster::parse(bytes).ok()?;
         let size = at.unwrap_or_else(|| raster::natural_size(&tree));
@@ -208,9 +236,10 @@ pub fn paste_files(hero: &mut HeroScreen, paths: Vec<PathBuf>) -> Option<Option<
     )
 }
 
-/// Instala o descodificador no desenho (uma vez; as seguintes não fazem nada).
+/// Instala o descodificador e o animador no desenho (uma vez; as seguintes não fazem nada).
 pub fn install() {
     ph2d_board_render::install_decoder(Arc::new(decode));
+    ph2d_board_render::install_animator(Arc::new(frames));
 }
 
 #[cfg(test)]

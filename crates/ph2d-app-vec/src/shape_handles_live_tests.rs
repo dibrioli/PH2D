@@ -313,7 +313,7 @@ fn esc_through_the_input_door_restores_the_press_and_ends_the_drag() {
 }
 
 /// ⭐ (F11) **As caras do Illustrator e o círculo do raio** — a estrela mostra ⇕ ⊙ ○ ⊙ (o R2 e os
-/// dois cantos, sem a envergadura), e o círculo tracejado só existe DURANTE o arrasto do raio,
+/// dois cantos) e a fila de ⇕ da F12, e o círculo tracejado só existe DURANTE o arrasto do raio,
 /// pelo ponto agarrado (a elipse da caixa, normalizada: `w = 4`, `h = 2`).
 #[test]
 fn a_star_wears_the_illustrator_faces_and_its_radius_drag_draws_the_ring() {
@@ -321,7 +321,11 @@ fn a_star_wears_the_illustrator_faces_and_its_radius_drag_draws_the_ring() {
     let k = ShapeKind::Star;
     let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
     let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
-    assert_eq!(v.faces, [Count, Corner, Radius, Corner]);
+    // F12: a fila de ⇕ (o tipo do canto, a envergadura, o liso e a torção) ao lado das pontas.
+    assert_eq!(
+        v.faces,
+        [Count, Corner, Radius, Corner, Count, Count, Count, Count]
+    );
     assert!(v.ring.is_empty(), "sem arrasto não há círculo");
     assert!(
         v.stems.iter().all(Option::is_none),
@@ -344,7 +348,17 @@ fn the_pie_angles_ride_a_stem_outside_the_rim() {
     let k = ShapeKind::Pie;
     let (sim, _, map, id) = live(k, k.defaults(), [0.0, 0.0], 0.0);
     let v = view(&sim, &map, &[id], G, PX, None, None).unwrap();
-    for (p, s) in v.points.iter().zip(&v.stems) {
+    // F12: o furo voltou ao canvas (sem haste); os ângulos têm-na.
+    let angles = v
+        .faces
+        .iter()
+        .filter(|f| **f == ph2d_vec_render::HandleFace::Angle);
+    assert_eq!(angles.count(), 2);
+    for ((p, s), f) in v.points.iter().zip(&v.stems).zip(&v.faces) {
+        if *f != ph2d_vec_render::HandleFace::Angle {
+            assert!(s.is_none(), "só os ângulos têm haste");
+            continue;
+        }
         let root = s.expect("haste");
         let (rp, rr) = ((p[0] / 2.0).hypot(p[1]), (root[0] / 2.0).hypot(root[1]));
         assert!((rr - 1.0).abs() < 1e-6, "a raiz no aro: {root:?}");

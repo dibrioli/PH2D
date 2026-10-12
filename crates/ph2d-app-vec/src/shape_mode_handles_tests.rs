@@ -158,7 +158,14 @@ impl Mesa {
     /// Um CLIQUE da ferramenta de forma (press e soltar no mesmo ponto) e o que a shell faz no Up.
     fn click(&mut self, at: [f64; 2]) {
         let shape = &mut self.vec.shape;
-        shape.on_press(&mut self.scene, ShapeKind::Ellipse, ShapeKind::Ellipse.defaults(), at, PX, ShapeConstraint::default());
+        shape.on_press(
+            &mut self.scene,
+            ShapeKind::Ellipse,
+            ShapeKind::Ellipse.defaults(),
+            at,
+            PX,
+            ShapeConstraint::default(),
+        );
         let committed = shape.on_release(&mut self.scene);
         assert!(!committed, "um clique fez forma");
         crate::shape_live::after_the_shape_release(&mut self.vec, &self.scene, committed);
@@ -176,7 +183,12 @@ fn a_click_in_shape_mode_selects_the_shape_under_it_and_a_drag_still_draws() {
     assert_eq!(m.vec.pen.selected(), Some(disc));
     let paths = m.scene.paths().len();
     m.click([0.0, 0.0]);
-    let fill = m.scene.paths().iter().find(|p| p.id == star).map(|p| p.fill.is_some());
+    let fill = m
+        .scene
+        .paths()
+        .iter()
+        .find(|p| p.id == star)
+        .map(|p| p.fill.is_some());
     let hit = m.vec.pen.path_at(&m.scene, [0.0, 0.0], 0.12);
     let bounds = m.vec.shape.bounds();
     assert_eq!(
@@ -186,9 +198,16 @@ fn a_click_in_shape_mode_selects_the_shape_under_it_and_a_drag_still_draws() {
     );
     assert_eq!(m.scene.paths().len(), paths, "o clique deixou uma forma");
     m.click([20.0, 20.0]);
-    assert_eq!(m.vec.pen.selected(), Some(star), "o clique no vazio mudou a selecção");
+    assert_eq!(
+        m.vec.pen.selected(),
+        Some(star),
+        "o clique no vazio mudou a selecção"
+    );
     let over = m.draw(ShapeKind::Ellipse, [0.0, 0.0], 0.5);
-    assert!(over != star && m.scene.paths().len() == paths + 1, "arrastar por cima não desenhou");
+    assert!(
+        over != star && m.scene.paths().len() == paths + 1,
+        "arrastar por cima não desenhou"
+    );
 }
 
 /// ⭐ **O press numa alça no modo Forma arrasta-a e não desenha** (a porta da shell consome-o: a

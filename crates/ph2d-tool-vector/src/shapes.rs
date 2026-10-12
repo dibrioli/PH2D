@@ -134,7 +134,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Ellipse,
         label: "Oval",
         group: ShapeGroup::Basic,
-        fields: &[SWEEP, START, HOLE],
+        fields: &[SWEEP, START, HOLE, radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Polygon,
@@ -181,7 +181,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Pie,
         label: "Pie",
         group: ShapeGroup::Round,
-        fields: &[SWEEP, START, HOLE],
+        fields: &[SWEEP, START, HOLE, radius("Corner round")],
     },
     ShapeDesc {
         kind: ShapeKind::Segment,
@@ -529,7 +529,7 @@ pub const SHAPES: &[ShapeDesc] = &[
 // A travessia (descritor · unidade · clamp · escolhas) mora no módulo irmão, mas a porta é
 // aqui: `shapes::to_world`, `shapes::clamp`, … seguem existindo para quem consome.
 pub use crate::shapes_units::{
-    choice_label, clamp, clamp_to, desc, next_choice, shapes_in, to_ui, to_world,
+    choice_label, clamp, clamp_to, desc, next_choice, shapes_in, shown_fields, to_ui, to_world,
 };
 
 #[cfg(test)]

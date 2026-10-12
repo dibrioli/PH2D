@@ -77,26 +77,35 @@ const fn round_corner(
 
 /// Os vértices do rectângulo vivo (`shapes::rectangle`, Y-para-CIMA): 0 = BL, 1 = BR, 2 = TR,
 /// 3 = TL. Os campos do `round_rect_radii`: 0 = raio base (o TL), 1/2/3 = desvio TR/BR/BL.
+/// O tipo do canto (5) no ⇕ (F12 — o dono: «Corner … com a mesma seta das pontas»); o *Smoothing*
+/// (4) saiu do Vetor (`shapes::shown_fields`).
 const ROUND_RECT: &[HandleDesc] = &[
     round_corner(3, false, &[0], &[1, 2, 3]),
     round_corner(2, true, &[1], &[]),
     round_corner(1, false, &[2], &[]),
     round_corner(0, true, &[3], &[]),
+    arrow(&[5]),
 ];
 
-/// O ⇕ dos LADOS / das PONTAS (o *Points* do Illustrator): na borda direita da caixa, a um quarto
-/// do topo — entre a alça do canto e a do meio da aresta.
-const COUNT_WIDGET: Spot = Spot::Box { u: 8, v: 2 };
+/// ⭐ (F12) Um ⇕ da fila da lateral (o *Points* do Illustrator): o idioma de todo campo sem ponto
+/// no contorno — o dono, 12/10: «setas lado a lado». O 1.º da tabela fica na borda da caixa.
+const fn arrow(fields: &'static [usize]) -> HandleDesc {
+    h(fields, Spot::Rail, Law::Steps)
+}
 
 /// O polígono (`shapes::regular_polygon`, 1.º vértice às 12h, anti-horário), no idioma da estrela
 /// do Affinity (F10, a foto do dono): o raio do canto no vértice de CIMA, descendo pelo eixo dele
 /// (desenhado `PARK_PX` para DENTRO: o topo do contorno É a alça do meio-topo da caixa, que abraça
 /// o contorno cozido e desce com ele — estacionar a partir do vértice vivo deixava-a por baixo da
-/// alça azul, medido na foto da cena 16); os lados no ⇕ — o ◇ e o ⊙ do Illustrator, nada mais
-/// (F11). A envergadura, o tipo do canto e o liso: o cartão.
+/// alça azul, medido na foto da cena 16); a envergadura no meio do lado esquerdo (de volta na F12,
+/// o dono); os lados, o tipo do canto, a envergadura e o liso na fila de ⇕.
 const POLYGON: &[HandleDesc] = &[
-    h(&[0], COUNT_WIDGET, Law::Steps),
+    arrow(&[0]),
     inset(on_sharp(h(&[1], Spot::Apex(0), Law::Nearest), &[1])),
+    on_sharp(h(&[3], Spot::EdgeMid(0), Law::Nearest), &[1]),
+    arrow(&[2]),
+    arrow(&[3]),
+    arrow(&[4]),
 ];
 
 /// A estrela (`shapes::star`, pontas nos pares, vales nos ímpares, 1.ª ponta às 12h) — a do Affinity
@@ -104,12 +113,16 @@ const POLYGON: &[HandleDesc] = &[
 /// circle*: o ponto desce pelo eixo dela; desenhado para DENTRO, fora da alça do meio-topo); o vale da DIREITA é
 /// o raio interior (só radial — nada torce, nem no Affinity nem no Illustrator); o vale da ESQUERDA
 /// arredonda os vales (o *Inner circle*, pelo eixo dele); as pontas no ⇕ — o R2, os dois ⊙ e o ⇕
-/// do Illustrator (F11). A envergadura, o tipo do canto, o liso e a torção: o cartão.
+/// do Illustrator (F11). O tipo do canto, a envergadura, o liso e a torção: a fila de ⇕ (F12).
 const STAR: &[HandleDesc] = &[
-    h(&[0], COUNT_WIDGET, Law::Steps),
+    arrow(&[0]),
     on_sharp(h(&[3], Spot::Apex(1), Law::Nearest), &[2, 3]),
     on_sharp(h(&[1], Spot::FromEnd(0), Law::Radial), &[2, 3]),
     inset(on_sharp(h(&[2], Spot::Apex(0), Law::Nearest), &[2, 3])),
+    arrow(&[4]),
+    arrow(&[5]),
+    arrow(&[6]),
+    arrow(&[7]),
 ];
 
 /// O início e o fim de um arco da família do círculo (0 = abertura, 1 = início).
@@ -134,18 +147,47 @@ const ARC_END: HandleDesc = h(
     Law::Sweep { start: 1 },
 );
 
-/// A família do círculo (`round::ellipse_sweep`): 0 = abertura, 1 = início, 2 = furo. O início e o
-/// fim sobre a elipse — os dois *pie widgets* do Illustrator. Numa elipse INTEIRA o fim está sobre o
-/// início e vem por último — puxá-lo abre a pizza. O furo (o Illustrator não o põe no canvas; F11):
-/// o cartão.
-const ROUND: &[HandleDesc] = &[ARC_START, ARC_END];
+/// A família do círculo (`round::ellipse_sweep`): 0 = abertura, 1 = início, 2 = furo. O furo no
+/// meio da fatia, a partir do centro (o *Hole radius* do Affinity, radial — de volta na F12, o
+/// dono); o início e o fim sobre a elipse — os dois *pie widgets* do Illustrator. Numa elipse
+/// INTEIRA o fim está sobre o início e vem por último — puxá-lo abre a pizza. O raio das quinas da
+/// fatia (3, F12 — o dono) na ponta do INÍCIO, pela borda recta: sem quina (a volta inteira) some.
+const ROUND: &[HandleDesc] = &[
+    parked(on_sharp(
+        h(
+            &[3],
+            Spot::Rounding {
+                corner: 0,
+                next: false,
+            },
+            Law::Nearest,
+        ),
+        &[3],
+    )),
+    parked(h(
+        &[2],
+        Spot::Ellipse {
+            start: 1,
+            sweep: Some(0),
+            mid: true,
+            scale: Some(2),
+        },
+        Law::Radial,
+    )),
+    ARC_START,
+    ARC_END,
+];
 
 /// O arco aberto e o segmento: só o início e o fim.
 const ARC: &[HandleDesc] = &[ARC_START, ARC_END];
 
-/// A espiral (`shapes::spiral`): as VOLTAS na ponta de fora, por volta inteira do ponteiro. O raio
-/// interno (um ponto no centro, colado ao pivô — F11) e a divergência: o cartão.
-const SPIRAL: &[HandleDesc] = &[h(&[0], Spot::FromEnd(0), Law::Winding)];
+/// A espiral (`shapes::spiral`): as VOLTAS na ponta de fora, por volta inteira do ponteiro; a
+/// divergência e o raio interno na fila de ⇕ (F12, o dono).
+const SPIRAL: &[HandleDesc] = &[
+    h(&[0], Spot::FromEnd(0), Law::Winding),
+    arrow(&[1]),
+    arrow(&[2]),
+];
 
 /// A seta (`arrows::arrow_block`, autorada em `(u, v)` com `v` do topo): 0 = haste, 1 = comprimento
 /// da cabeça, 2 = largura da cabeça. A espessura da haste no canto de trás dela (vértice 0); a
@@ -245,27 +287,34 @@ const SPEECH_RECT: &[HandleDesc] = &[
 
 /// O balão oval (`bubbles::speech_oval`): a meia-abertura no flanco `P(tb)` (vértice 0, desliza
 /// pela elipse); o BICO 2-D no último vértice (o arco muda de contagem com a abertura), por cima. A
-/// faixa do rabo NÃO tem alça: encolhe a elipse inteira e move o flanco junto com a abertura (o
-/// par no flanco é acoplado: 1,3e-4 de erro nas 3 rondas) — nenhum vértice anda só com ela.
-const SPEECH_OVAL: &[HandleDesc] = &[at(&[2], 0), h(&[0, 1], Spot::FromEnd(0), Law::BoxPoint)];
+/// faixa do rabo no ⇕ (F12): encolhe a elipse inteira e move o flanco junto com a abertura (o par
+/// no flanco é acoplado: 1,3e-4 de erro nas 3 rondas) — nenhum vértice anda só com ela.
+const SPEECH_OVAL: &[HandleDesc] = &[
+    at(&[2], 0),
+    h(&[0, 1], Spot::FromEnd(0), Law::BoxPoint),
+    arrow(&[3]),
+];
 
 /// O pensamento (`bubbles::thought`): o corpo (a nuvem) é o contorno principal, as bolhas os
 /// sub-contornos (a 0 é a menor, centrada no bico). Os gomos pelo ângulo do vértice 6 (medido
 /// 5..24: o ângulo do 4, 6 e 8 é MONÓTONO na contagem, o do 10 recua; o 6 cobre 136°, o 4 só 56°);
-/// o BICO 2-D no 1.º vértice da bolha 0. O número de bolhas NÃO tem alça: a bolha 0 não muda com
+/// o BICO 2-D no 1.º vértice da bolha 0. O número de bolhas no ⇕ (F12): a bolha 0 não muda com
 /// ele, e qualquer outra deixa de existir com uma bolha só.
 const THOUGHT: &[HandleDesc] = &[
     h(&[3], Spot::Vertex(6), Law::Count),
     h(&[0, 1], Spot::Sub(0, 0), Law::BoxPoint),
+    arrow(&[2]),
 ];
 
 /// A explosão (`bubbles::burst`, pontas nos pares, vales nos ímpares): as PONTAS pelo ângulo do
 /// vértice 8 (a 5.ª ponta — medido: com o jitter de fábrica o ângulo do 2 recua sete vezes na
 /// faixa 5..30, o do 8 duas, de < 1°, e cobre 235° em vez de 61°); o raio interior no 1.º vale
-/// (distância ao centro, como a estrela).
+/// (distância ao centro, como a estrela); a desordem radial e angular no ⇕ (F12).
 const BURST: &[HandleDesc] = &[
     h(&[0], Spot::Vertex(8), Law::Count),
     parked(h(&[1], Spot::Vertex(1), Law::Radial)),
+    arrow(&[2]),
+    arrow(&[3]),
 ];
 
 /// A chaveta (`bubbles::brace`, aberta; o BICO à esquerda): o aperto no bico (vértice 3, na
@@ -278,11 +327,16 @@ const BRACE: &[HandleDesc] = &[at(&[1], 3), at(&[2, 0], 1)];
 const HEART: &[HandleDesc] = &[at(&[0], 0)];
 
 /// A nuvem (`bubbles::cloud`): os gomos pelo ângulo do vértice 6 (medido 5..24 com a
-/// irregularidade de fábrica: o único de 4/6/8/10 sem recuo). ⛔ O fofo NÃO tem alça: o `refit`
+/// irregularidade de fábrica: o único de 4/6/8/10 sem recuo). O fofo, a suavização e a irregularidade no ⇕ (F12) — o `refit`
 /// normaliza a nuvem à caixa, e o único vértice de índice estável (o 0, o vale antes do 1.º gomo —
 /// os arcos mudam de contagem com o fofo) anda 1,5 % do raio na faixa inteira, nada abaixo de
 /// ~0,66, e deixa de ser monótono com a suavização (0,90 → 0,907 → 0,899).
-const CLOUD: &[HandleDesc] = &[h(&[0], Spot::Vertex(6), Law::Count)];
+const CLOUD: &[HandleDesc] = &[
+    h(&[0], Spot::Vertex(6), Law::Count),
+    arrow(&[1]),
+    arrow(&[2]),
+    arrow(&[3]),
+];
 
 /// O raio (`symbols::bolt`): a cintura pelo degrau do meio (vértice 2, o par 2–8 abre com ela).
 const BOLT: &[HandleDesc] = &[at(&[0], 2)];
@@ -311,8 +365,9 @@ const GEAR: &[HandleDesc] = &[
     h(&[0], Spot::Vertex(4), Law::Count),
     h(&[1], Spot::Vertex(2), Law::Radial),
     h(&[2], Spot::Sub(0, 0), Law::Radial),
-    // F10: a LARGURA do dente no fim do topo do 1.º (a envergadura dos flancos: o cartão).
+    // F10: a LARGURA do dente no fim do topo do 1.º; a envergadura dos flancos no ⇕ (F12).
     at(&[3], 1),
+    arrow(&[4]),
 ];
 
 /// A cruz (`symbols::cross`): o braço na quina INTERIOR de cima à direita (vértice 4), na diagonal
@@ -326,16 +381,16 @@ const CHECK: &[HandleDesc] = &[at(&[0], 1)];
 const BANNER: &[HandleDesc] = &[at(&[0], 8)];
 
 /// O cubo (`iso::iso_cube`, o hexágono 0 = topo, 1 = ombro direito): a inclinação no topo (na
-/// horizontal), a altura no ombro (na vertical). O ponto de vista é uma escolha.
-const ISO_CUBE: &[HandleDesc] = &[at(&[1], 0), at(&[0], 1)];
+/// horizontal), a altura no ombro (na vertical); o ponto de vista (uma escolha de dois) no ⇕.
+const ISO_CUBE: &[HandleDesc] = &[at(&[1], 0), at(&[0], 1), arrow(&[2])];
 
 /// O cone (`iso::iso_cone`): o ápice é fixo; a boca é o ponto de tangência do lado direito
 /// (vértice 1, o início do arco da base).
-const ISO_CONE: &[HandleDesc] = &[at(&[0], 1)];
+const ISO_CONE: &[HandleDesc] = &[at(&[0], 1), arrow(&[1])];
 
 /// A pirâmide (`iso::iso_pyramid`: ápice, direita, frente, esquerda): a altura no lado direito, a
 /// inclinação na frente (na horizontal).
-const ISO_PYRAMID: &[HandleDesc] = &[at(&[0], 1), at(&[1], 2)];
+const ISO_PYRAMID: &[HandleDesc] = &[at(&[0], 1), at(&[1], 2), arrow(&[2])];
 
 /// O processo pré-definido (`flow::predefined_process`): as barras são sub-contornos (rectas); a
 /// largura no topo da barra esquerda (sub-contorno 0, vértice 0), na horizontal.

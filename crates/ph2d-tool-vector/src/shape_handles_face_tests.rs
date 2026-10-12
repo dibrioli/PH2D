@@ -1,7 +1,7 @@
 //! Gates da cara das alças (F11 — o idioma dos *Live Shapes* do Illustrator, doc 17 §1).
 
 use super::*;
-use crate::shape_handles::{fields_without_handle, handles_of};
+use crate::shape_handles::{Law, Spot, fields_without_handle, handles_of};
 
 fn faces(kind: ShapeKind) -> Vec<Glyph> {
     handles_of(kind).iter().map(glyph_of).collect()
@@ -11,27 +11,46 @@ fn faces(kind: ShapeKind) -> Vec<Glyph> {
 #[test]
 fn each_handle_wears_the_face_of_what_it_does() {
     use Glyph::{Angle, Corner, Count, Radius};
-    assert_eq!(faces(ShapeKind::RoundRect), [Corner; 4]);
-    assert_eq!(faces(ShapeKind::Polygon), [Count, Corner]);
-    assert_eq!(faces(ShapeKind::Star), [Count, Corner, Radius, Corner]);
-    assert_eq!(faces(ShapeKind::Ellipse), [Angle, Angle]);
-    assert_eq!(faces(ShapeKind::Spiral), [Radius]);
+    assert_eq!(
+        faces(ShapeKind::RoundRect),
+        [Corner, Corner, Corner, Corner, Count]
+    );
+    assert_eq!(
+        faces(ShapeKind::Polygon),
+        [Count, Corner, Radius, Count, Count, Count]
+    );
+    assert_eq!(
+        faces(ShapeKind::Star),
+        [Count, Corner, Radius, Corner, Count, Count, Count, Count]
+    );
+    assert_eq!(faces(ShapeKind::Ellipse), [Corner, Radius, Angle, Angle]);
+    assert_eq!(faces(ShapeKind::Spiral), [Radius, Count, Count]);
 }
 
-/// ⭐ **Simplificar é tirar do CANVAS, não do produto** (o dono na F10: *«não podemos reduzir
-/// parâmetros»*): o que o Illustrator não põe no canvas — a envergadura da estrela e do polígono, o
-/// furo da pizza, o raio interno da espiral — vai ao CARTÃO (a conta `fields_without_handle`).
+/// ⭐ (F12) **O que o cartão segurava é um ⇕ da fila** (o dono, 12/10: «os ajustes que estão nos
+/// modais passam para setas lado a lado … e os modais retirados de todas as formas»).
 #[test]
-fn what_left_the_canvas_is_on_the_card() {
+fn what_was_on_the_card_is_an_arrow_on_the_side() {
     for (kind, field) in [
         (ShapeKind::Star, 5),
         (ShapeKind::Polygon, 3),
-        (ShapeKind::Ellipse, 2),
+        (ShapeKind::Polygon, 4),
+        (ShapeKind::RoundRect, 5),
+        (ShapeKind::Spiral, 1),
         (ShapeKind::Spiral, 2),
     ] {
         assert!(
-            fields_without_handle(kind).any(|i| i == field),
-            "{kind:?}: o campo {field} saiu do canvas e não foi ao cartão"
+            handles_of(kind)
+                .iter()
+                .any(|h| h.spot == Spot::Rail && h.law == Law::Steps && h.fields == [field]),
+            "{kind:?}: o campo {field} não tem o ⇕ dele"
+        );
+    }
+    for &kind in ph2d_vec_scene::ALL_SHAPES {
+        assert_eq!(
+            fields_without_handle(kind).count(),
+            0,
+            "{kind:?} ainda abre o cartão"
         );
     }
 }
@@ -57,6 +76,16 @@ fn the_readout_names_the_field_and_its_number() {
     assert_eq!(
         readout(ShapeKind::Star, &star[3], &v, &name, &len),
         "Tip round: 0.25 m"
+    );
+    // Uma ESCOLHA diz o nome da opção, não o índice.
+    v[4] = 2.0;
+    let corner = handles_of(ShapeKind::Star)
+        .iter()
+        .find(|h| h.fields == [4])
+        .unwrap();
+    assert_eq!(
+        readout(ShapeKind::Star, corner, &v, &name, &len),
+        "Corner: Concave"
     );
 }
 

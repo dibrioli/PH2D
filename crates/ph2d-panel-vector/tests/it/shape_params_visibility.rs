@@ -177,7 +177,8 @@ fn a_selected_live_shape_still_shows_its_own_fields() {
 fn the_frame_mode_shows_the_round_rect_fields_not_the_lit_catalog_buttons() {
     use ph2d_tool_vector::shapes;
     let cru = shapes::desc(ShapeKind::Rectangle).fields.len();
-    let efectivo = shapes::desc(ShapeKind::RoundRect).fields.len();
+    // F12: o Smoothing saiu do Vetor — a fila mostra os campos VISÍVEIS.
+    let efectivo = shapes::shown_fields(ShapeKind::RoundRect).count();
     assert_ne!(
         cru, efectivo,
         "a fixture precisa de duas formas distinguiveis"

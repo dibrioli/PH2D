@@ -432,7 +432,9 @@ pub fn gear_ex(
         return gear_cooked(a, b, teeth, depth, hole, tooth, 0.0);
     }
     let n = teeth.clamp(3.0, 64.0).round() as usize;
-    crate::untangle::untangled(n, |t| gear_cooked(a, b, teeth, depth, hole, tooth, curvature * t))
+    crate::untangle::untangled(n, |t| {
+        gear_cooked(a, b, teeth, depth, hole, tooth, curvature * t)
+    })
 }
 
 fn gear_cooked(

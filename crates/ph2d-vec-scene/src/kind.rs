@@ -383,9 +383,11 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ),
         // A família do círculo: `sweep` + `start` + `inner` dão elipse, pizza, rosquinha
         // e anel parcial (crate::round). Pie é a mesma forma com outros defaults.
-        ShapeKind::Ellipse | ShapeKind::Pie => {
-            crate::ellipse_sweep(c, rx, ry, f(v, 1), f(v, 0), f(v, 2))
-        }
+        // F12: o 4.º campo arredonda as quinas da fatia (neutro em zero).
+        ShapeKind::Ellipse | ShapeKind::Pie => crate::round_slice_corners(
+            crate::ellipse_sweep(c, rx, ry, f(v, 1), f(v, 0), f(v, 2)),
+            f(v, 3),
+        ),
         ShapeKind::Segment => crate::ellipse_chord(c, rx, ry, f(v, 1), f(v, 0)),
         // F10: tipo do canto, envergadura, liso (e a torção da estrela) — `crate::polystar`.
         ShapeKind::Polygon => crate::polystar(

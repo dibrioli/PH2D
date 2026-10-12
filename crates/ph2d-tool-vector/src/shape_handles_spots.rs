@@ -1,6 +1,6 @@
 //! A geometria dos PONTOS das alças — módulo irmão de [`super`] pelo tecto de 700 LOC (HR-18):
-//! onde o contorno cruza o eixo de uma quina (`Spot::Apex`), a caixa do contorno (`Spot::Box`) e
-//! o ponto de uma cúbica; e onde o ⊙ de canto se desenha (o centro do arco).
+//! onde o contorno cruza o eixo de uma quina (`Spot::Apex`), a caixa do contorno (`Spot::Rail`) e
+//! o ponto de uma cúbica; onde o ⊙ de canto se desenha (o centro do arco); e a busca no trilho.
 
 use ph2d_vec_scene::{ShapeValues, VecPath};
 
@@ -120,4 +120,77 @@ pub(super) fn cubic_at(c: &[[f64; 2]; 4], t: f64) -> [f64; 2] {
         w.iter().zip(c).map(|(k, q)| k * q[0]).sum(),
         w.iter().zip(c).map(|(k, q)| k * q[1]).sum(),
     ]
+}
+
+/// Amostras por campo antes do refinamento (o trilho inteiro, para o mínimo ser o GLOBAL).
+const SAMPLES: usize = 96;
+/// Rodadas de refinamento (a janela encolhe ×4 por rodada à volta do melhor).
+const REFINE: usize = 14;
+
+/// O valor do campo `i` em `[lo, hi]` com a menor métrica: varredura do trilho inteiro e
+/// refinamento à volta do melhor. Empates (o trilho satura — um raio maior que meia aresta não
+/// anda mais) ficam com o valor MAIS PERTO do atual: a alça não salta para o fim da faixa.
+pub(super) fn best_on_track(
+    v: &mut ShapeValues,
+    i: usize,
+    lo: f64,
+    hi: f64,
+    int: bool,
+    metric: &dyn Fn(&ShapeValues) -> f64,
+) -> f64 {
+    let cur = v[i];
+    let mut eval = |x: f64| {
+        v[i] = x;
+        metric(v)
+    };
+    // O empate é da MÉTRICA (um trilho saturado devolve a mesma distância), nunca da faixa: com a
+    // mão 25 px fora de uma aresta a distância é quase plana no mínimo (`dx²/50`), e uma
+    // tolerância à escala da faixa puxava o raio 0,005 para o valor antigo (medido no `rx`).
+    let better = |(d, x): (f64, f64), (bd, bx): (f64, f64)| {
+        if !bd.is_finite() {
+            return d.is_finite();
+        }
+        let tie = 1e-12 * (1.0 + bd);
+        d < bd - tie || ((d - bd).abs() <= tie && (x - cur).abs() < (bx - cur).abs())
+    };
+    let mut best = (f64::INFINITY, cur);
+    if int {
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "as faixas de contagem do catálogo são pequenas (≤ 60)"
+        )]
+        let (a, b) = (lo.ceil() as i64, hi.floor() as i64);
+        for n in a..=b {
+            #[expect(clippy::cast_precision_loss, reason = "n ≤ 60")]
+            let x = n as f64;
+            let c = (eval(x), x);
+            if better(c, best) {
+                best = c;
+            }
+        }
+        v[i] = cur;
+        return best.1;
+    }
+    for k in 0..=SAMPLES {
+        #[expect(clippy::cast_precision_loss, reason = "k ≤ SAMPLES")]
+        let x = lo + (hi - lo) * k as f64 / SAMPLES as f64;
+        let c = (eval(x), x);
+        if better(c, best) {
+            best = c;
+        }
+    }
+    #[expect(clippy::cast_precision_loss, reason = "SAMPLES é pequeno")]
+    let mut half = (hi - lo) / SAMPLES as f64;
+    for _ in 0..REFINE {
+        for k in -2..=2 {
+            let x = (best.1 + half * f64::from(k) * 0.5).clamp(lo, hi);
+            let c = (eval(x), x);
+            if better(c, best) {
+                best = c;
+            }
+        }
+        half *= 0.25;
+    }
+    v[i] = cur;
+    best.1
 }

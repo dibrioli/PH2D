@@ -327,7 +327,11 @@ pub(crate) fn tail_flanks(pa: Uv, pb: Uv, t: Uv, na: Uv, nb: Uv) -> (Uv, Uvv, Uv
     let root = |r: Uv, from: Uv, chord: f64| {
         let k = (ROOT_LEN * l).min(0.5 * chord);
         let rise = t.0 - from.0;
-        let k = if r.0 > 1e-12 && rise > 0.0 { k.min(0.5 * rise / r.0) } else { k };
+        let k = if r.0 > 1e-12 && rise > 0.0 {
+            k.min(0.5 * rise / r.0)
+        } else {
+            k
+        };
         v_add(from, v_mul(r, k))
     };
     let (oa, ob) = (open(chord_a, pa), open(chord_b, pb));

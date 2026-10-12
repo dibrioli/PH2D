@@ -52,7 +52,8 @@ pub fn readout(
                 FieldUnit::Count => format!("{}", v.round()),
                 FieldUnit::Degrees => format!("{v:.0}\u{b0}"),
                 FieldUnit::Px => length(v),
-                FieldUnit::Ratio | FieldUnit::Choice(_) => format!("{v:.2}"),
+                FieldUnit::Choice(_) => name(shapes::choice_label(kind, i, v)?),
+                FieldUnit::Ratio => format!("{v:.2}"),
             };
             Some(format!("{}: {shown}", name(f.label)))
         })

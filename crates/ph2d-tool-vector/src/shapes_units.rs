@@ -13,6 +13,16 @@ pub fn desc(kind: ShapeKind) -> &'static ShapeDesc {
     SHAPES.iter().find(|d| d.kind == kind).unwrap_or(&SHAPES[0])
 }
 
+/// Os slots que o documento GUARDA e o Vetor não mostra (F12): o *Smoothing* do rectângulo saiu do
+/// produto por ordem do dono (11/10), mas o slot 4 fica — os saves posicionais e o Motion
+/// (`motion_shape_gen`) escrevem-no, e o `cook` honra-o.
+const NOT_SHOWN: &[(ShapeKind, usize)] = &[(ShapeKind::RoundRect, 4)];
+
+/// Os campos de `kind` que o Vetor MOSTRA (a fila ②, as alças, o ⇕), pela ordem do descritor.
+pub fn shown_fields(kind: ShapeKind) -> impl Iterator<Item = usize> {
+    (0..desc(kind).fields.len()).filter(move |&i| !NOT_SHOWN.contains(&(kind, i)))
+}
+
 /// As formas de uma família, na ordem do catálogo.
 pub fn shapes_in(group: ShapeGroup) -> impl Iterator<Item = &'static ShapeDesc> {
     SHAPES.iter().filter(move |d| d.group == group)

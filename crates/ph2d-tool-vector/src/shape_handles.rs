@@ -47,11 +47,11 @@ pub enum Spot {
     /// `sharp` a zero): o meio do arredondamento dela — o *Outer/Inner circle* do Affinity, cujo
     /// ponto vermelho desce pelo eixo da ponta à medida que ela arredonda. Sem raio é a quina.
     Apex(usize),
-    /// Um ponto FIXO da caixa VISÍVEL — a do contorno cozido, a que o gizmo desenha (`u` da
-    /// esquerda, `v` do topo, em OITAVOS dela) — um widget fora do contorno: o ⇕ das pontas do
-    /// Illustrator, na borda direita da caixa (na caixa dos campos ele ficava fora da visível, e o
-    /// cartão lateral tapava-o — a foto da estrela nova).
-    Box { u: u8, v: u8 },
+    /// ⭐ (F12) Um ⇕ da FILA da lateral — o *Points* do Illustrator, o idioma de TODO ajuste sem
+    /// ponto no contorno (o dono, 12/10: «setas lado a lado»). O 1.º na borda direita da caixa
+    /// VISÍVEL (a do contorno cozido) a um quarto do topo; os seguintes para FORA, um ao lado do
+    /// outro ([`handle_grip`]), pela ordem da tabela.
+    Rail,
 }
 
 /// Como o arrasto escreve nos campos — a MÉTRICA com que o ponto da alça persegue a mão. Todas
@@ -89,8 +89,9 @@ pub enum Law {
     /// a distância não conta — as `revolution` do Inkscape só mudam com o ângulo (150 e 70 px a
     /// 0° deixam 3,000; +90° dá 3,250).
     Winding,
-    /// Contagem por DEGRAUS verticais desde o press: cada 1/24 da altura da caixa para CIMA soma
-    /// uma, para baixo tira — o ⇕ «Points» do Illustrator (o Affinity só tem a barra).
+    /// O ⇕ «Points» do Illustrator (o Affinity só tem a barra): o arrasto VERTICAL desde o press,
+    /// para CIMA soma. Um inteiro (contagem, escolha) anda um degrau por 1/24 da altura da caixa;
+    /// um contínuo anda a faixa INTEIRA na altura da caixa, no passo do campo (F12).
     Steps,
 }
 
@@ -149,7 +150,7 @@ pub fn handles_of(kind: ShapeKind) -> &'static [HandleDesc] {
 /// para todos). É uma CONTA sobre a tabela, nunca uma lista à parte.
 pub fn fields_without_handle(kind: ShapeKind) -> impl Iterator<Item = usize> {
     let hs = handles_of(kind);
-    (0..shapes::desc(kind).fields.len()).filter(move |i| {
+    shapes::shown_fields(kind).filter(move |i| {
         !hs.iter()
             .any(|h| h.fields.contains(i) || h.alone.is_some_and(|a| a.fields.contains(i)))
     })
@@ -183,10 +184,9 @@ fn spot_at(
             Some([(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5])
         }
         Spot::Sub(c, i) => p.subpaths.get(c)?.verts.get(i).map(|v| v.anchor),
-        Spot::Box { u, v } => {
+        Spot::Rail => {
             let (lo, hi) = curve_bbox(p)?;
-            let (u, v) = (f64::from(u) / 8.0, f64::from(v) / 8.0);
-            Some([lo[0] + (hi[0] - lo[0]) * u, hi[1] - (hi[1] - lo[1]) * v])
+            Some([hi[0], hi[1] - (hi[1] - lo[1]) * 0.25])
         }
         Spot::Apex(corner) => {
             let q = sharp?.verts.get(corner)?.anchor;
@@ -215,7 +215,11 @@ fn spot_at(
         Spot::Rounding { corner, next } => {
             let sharp = sharp?;
             let n = sharp.verts.len();
-            if n < 2 {
+            // Sem QUINA ali (a elipse inteira) não há o que arredondar: a alça some.
+            if n < 2
+                || ph2d_vec_scene::corner_live::corner_at(&sharp.verts, sharp.closed, corner)
+                    .is_none()
+            {
                 return None;
             }
             let q = sharp.verts.get(corner)?.anchor;
@@ -290,6 +294,11 @@ pub fn handle_grip(
     cook: &dyn Fn(&ShapeValues) -> VecPath,
 ) -> Option<[f64; 2]> {
     let at = handle_point(h, values, half, cook)?;
+    if h.spot == Spot::Rail {
+        #[expect(clippy::cast_precision_loss, reason = "uma fila de poucos ⇕")]
+        let k = rail_slot(kind, h) as f64;
+        return Some([at[0] + k * RAIL_PITCH * park_at, at[1]]);
+    }
     // ⭐ As alças de ÂNGULO vivem `park_at` para DENTRO do aro, sobre o raio delas: no aro da
     // elipse os pontos cardeais SÃO as alças do meio das arestas da caixa (medido na foto da cena
     // 15: o início da pizza às 3h sumia debaixo da de escala). A lei delas só lê o ÂNGULO da mão,
@@ -339,6 +348,19 @@ pub fn handle_grip(
     }
     Some([zero[0] + dx / l * park_at, zero[1] + dy / l * park_at])
 }
+
+/// O lugar de `h` na fila de ⇕ de `kind` (a ordem da tabela).
+fn rail_slot(kind: ShapeKind, h: &HandleDesc) -> usize {
+    handles_of(kind)
+        .iter()
+        .filter(|x| x.spot == Spot::Rail)
+        .position(|x| x == h)
+        .unwrap_or(0)
+}
+
+/// A distância entre dois ⇕ vizinhos, em `park_at` (18 px): 27 px — os discos de acerto (24 px)
+/// não se tocam.
+pub const RAIL_PITCH: f64 = 1.5;
 
 /// `true` = a alça é o início ou o fim de um ARCO (o *pie widget*: vive por fora do aro).
 #[must_use]
@@ -402,11 +424,6 @@ impl HandleDrag {
     }
 }
 
-/// Amostras por campo antes do refinamento (o trilho inteiro, para o mínimo ser o GLOBAL).
-const SAMPLES: usize = 96;
-/// Rodadas de refinamento (a janela encolhe ×4 por rodada à volta do melhor).
-const REFINE: usize = 14;
-
 /// A faixa de AUTORIA do campo `i` em unidades de documento (os `Px` atravessam a fronteira
 /// pela mesma conta do painel) e se ele é inteiro.
 fn range_world(kind: ShapeKind, i: usize, px_to_world: f64) -> Option<(f64, f64, bool)> {
@@ -418,6 +435,19 @@ fn range_world(kind: ShapeKind, i: usize, px_to_world: f64) -> Option<(f64, f64,
     };
     let int = matches!(f.unit, FieldUnit::Count | FieldUnit::Choice(_));
     Some((f.min * k, f.max * k, int))
+}
+
+/// O passo do campo `i` em unidades de documento (o de autoria; nunca zero).
+fn step_world(kind: ShapeKind, i: usize, px_to_world: f64) -> f64 {
+    let Some(f) = shapes::desc(kind).fields.get(i) else {
+        return 1.0;
+    };
+    let k = if f.unit == FieldUnit::Px {
+        px_to_world
+    } else {
+        1.0
+    };
+    (f.step * k).max(f64::EPSILON)
 }
 
 /// ⭐ **O arrasto** — os valores novos da forma com o ponteiro em `p` (local). Parte sempre dos
@@ -505,11 +535,16 @@ pub fn drag(
         }
         Law::Steps => {
             if let Some(&i) = fields.first()
-                && let Some((lo, hi, _)) = range_world(kind, i, px_to_world)
+                && let Some((lo, hi, int)) = range_world(kind, i, px_to_world)
             {
-                let step = 2.0 * half[1].max(1e-12) / STEPS_PER_BOX;
-                let n = ((p[1] - d.origin[1]) / step).round();
-                v[i] = (d.at_press[i] + n).clamp(lo, hi);
+                let rise = (p[1] - d.origin[1]) / (2.0 * half[1].max(1e-12));
+                let delta = if int {
+                    (rise * STEPS_PER_BOX).round()
+                } else {
+                    let step = step_world(kind, i, px_to_world);
+                    (rise * (hi - lo) / step).round() * step
+                };
+                v[i] = (d.at_press[i] + delta).clamp(lo, hi);
             }
         }
         Law::Nearest | Law::Radial | Law::Count => {
@@ -546,74 +581,6 @@ pub fn drag(
         }
     }
     v
-}
-
-/// O valor do campo `i` em `[lo, hi]` com a menor métrica: varredura do trilho inteiro e
-/// refinamento à volta do melhor. Empates (o trilho satura — um raio maior que meia aresta não
-/// anda mais) ficam com o valor MAIS PERTO do atual: a alça não salta para o fim da faixa.
-fn best_on_track(
-    v: &mut ShapeValues,
-    i: usize,
-    lo: f64,
-    hi: f64,
-    int: bool,
-    metric: &dyn Fn(&ShapeValues) -> f64,
-) -> f64 {
-    let cur = v[i];
-    let mut eval = |x: f64| {
-        v[i] = x;
-        metric(v)
-    };
-    // O empate é da MÉTRICA (um trilho saturado devolve a mesma distância), nunca da faixa: com a
-    // mão 25 px fora de uma aresta a distância é quase plana no mínimo (`dx²/50`), e uma
-    // tolerância à escala da faixa puxava o raio 0,005 para o valor antigo (medido no `rx`).
-    let better = |(d, x): (f64, f64), (bd, bx): (f64, f64)| {
-        if !bd.is_finite() {
-            return d.is_finite();
-        }
-        let tie = 1e-12 * (1.0 + bd);
-        d < bd - tie || ((d - bd).abs() <= tie && (x - cur).abs() < (bx - cur).abs())
-    };
-    let mut best = (f64::INFINITY, cur);
-    if int {
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "as faixas de contagem do catálogo são pequenas (≤ 60)"
-        )]
-        let (a, b) = (lo.ceil() as i64, hi.floor() as i64);
-        for n in a..=b {
-            #[expect(clippy::cast_precision_loss, reason = "n ≤ 60")]
-            let x = n as f64;
-            let c = (eval(x), x);
-            if better(c, best) {
-                best = c;
-            }
-        }
-        v[i] = cur;
-        return best.1;
-    }
-    for k in 0..=SAMPLES {
-        #[expect(clippy::cast_precision_loss, reason = "k ≤ SAMPLES")]
-        let x = lo + (hi - lo) * k as f64 / SAMPLES as f64;
-        let c = (eval(x), x);
-        if better(c, best) {
-            best = c;
-        }
-    }
-    #[expect(clippy::cast_precision_loss, reason = "SAMPLES é pequeno")]
-    let mut half = (hi - lo) / SAMPLES as f64;
-    for _ in 0..REFINE {
-        for k in -2..=2 {
-            let x = (best.1 + half * f64::from(k) * 0.5).clamp(lo, hi);
-            let c = (eval(x), x);
-            if better(c, best) {
-                best = c;
-            }
-        }
-        half *= 0.25;
-    }
-    v[i] = cur;
-    best.1
 }
 
 /// O TRILHO de uma alça de um campo (as métricas de perto e de raio): os pontos por onde ela
@@ -673,7 +640,7 @@ const STEPS_PER_BOX: f64 = 24.0;
 
 #[path = "shape_handles_spots.rs"]
 mod spots;
-use spots::{cubic_at, curve_bbox, spoke_hit};
+use spots::{best_on_track, cubic_at, curve_bbox, spoke_hit};
 
 #[cfg(test)]
 #[path = "shape_handles_tests.rs"]
@@ -688,3 +655,8 @@ mod f9_oracle_tests;
 #[cfg(test)]
 #[path = "shape_handles_f10_tests.rs"]
 mod f10_tests;
+
+/// A fila de ⇕ da F12 — irmão pelo tecto de LOC.
+#[cfg(test)]
+#[path = "shape_handles_f12_tests.rs"]
+mod f12_tests;

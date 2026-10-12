@@ -161,15 +161,17 @@ fn every_declared_field_of_every_shape_moves_its_geometry() {
                     .map(|x| (x.anchor, x.in_handle, x.out_handle))
                     .collect::<Vec<_>>()
             };
-            // Um campo que só age com OUTRO aceso (o tipo do canto precisa de raio — F10) tem de
-            // agir com algum outro campo no máximo: a conta procura o estado, nunca uma lista.
+            // Um campo que só age com OUTRO aceso (o tipo do canto precisa de raio — F10; as
+            // quinas da fatia, de a elipse estar aberta — F12) tem de agir com algum outro campo
+            // num EXTREMO: a conta procura o estado, nunca uma lista.
             let acts = cook(lo) != cook(hi)
                 || (0..d.fields.len()).filter(|&j| j != i).any(|j| {
-                    let (mut a, mut b) = (lo, hi);
-                    let m = d.fields[j].max;
-                    apply_shape_field(k, &mut a, field(j), m, 1.0)
-                        && apply_shape_field(k, &mut b, field(j), m, 1.0)
-                        && cook(a) != cook(b)
+                    [d.fields[j].min, d.fields[j].max].into_iter().any(|m| {
+                        let (mut a, mut b) = (lo, hi);
+                        apply_shape_field(k, &mut a, field(j), m, 1.0)
+                            && apply_shape_field(k, &mut b, field(j), m, 1.0)
+                            && cook(a) != cook(b)
+                    })
                 });
             assert!(
                 acts,

@@ -196,6 +196,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.engine.campo.cleft" => "Cleft",
         "panel.vector.engine.campo.cord" => "Cord",
         "panel.vector.engine.campo.corner" => "Corner",
+        "panel.vector.engine.campo.corner_round" => "Corner round",
         "panel.vector.engine.campo.curve" => "Curve",
         "panel.vector.engine.campo.cut" => "Cut",
         "panel.vector.engine.campo.depth" => "Depth",

@@ -142,6 +142,27 @@ pub fn ellipse_sweep(
     }
 }
 
+/// ⭐ (F12, o dono: «um ponto para ajustar os raios das quinas quando o círculo não está
+/// inteiro») **As quinas de uma fatia arredondadas** pelo `r` — as pontas do arco, o centro da pizza
+/// ou as pontas do arco interno do anel, pelo motor da quina viva (`corner_live`: G1 entre o arco e
+/// a borda recta, saturação sem pânico). `r ≤ 0` ou sem quina (a volta inteira) = o caminho intacto.
+#[must_use]
+pub fn round_slice_corners(mut p: VecPath, r: f64) -> VecPath {
+    if r <= 0.0 {
+        return p;
+    }
+    for v in &mut p.verts {
+        if v.kind == VertexKind::Corner {
+            v.corner_radius = r;
+        }
+    }
+    match crate::corner_live::round_authored_corners(&p.verts, p.closed) {
+        Some(verts) => p.verts = verts,
+        None => p.verts.iter_mut().for_each(|v| v.corner_radius = 0.0),
+    }
+    p
+}
+
 /// **Segmento circular** (a corda): o arco fechado por uma linha RETA entre as pontas —
 /// não pelo centro, que é o que o distingue da pizza.
 #[must_use]
@@ -395,6 +416,52 @@ mod cap_tests {
             ("rosquinha", 0, ellipse_sweep(c, 1.0, 1.0, 0.0, 360.0, 0.55)),
         ] {
             assert_eq!(count(&path), want, "{name}: quinas que o motor VÊ");
+        }
+    }
+
+    /// ⭐ (F12) **As quinas da fatia arredondam** pelo raio: zero é a fatia byte a byte; com raio,
+    /// nenhuma quina sobra (o motor não vê nenhuma) e tudo fica DENTRO da caixa; a elipse inteira e
+    /// a rosquinha não mudam; um raio maior que a fatia satura sem pânico.
+    #[test]
+    fn the_slice_corners_round_and_zero_is_the_slice() {
+        let c = [0.0, 0.0];
+        let count = |p: &VecPath| {
+            (0..p.verts.len())
+                .filter(|&i| corner_at(&p.verts, p.closed, i).is_some())
+                .count()
+        };
+        for (name, start, sweep, hole) in [
+            ("pizza", 0.0, 70.0, 0.0),
+            ("pizza larga", 10.0, 250.0, 0.0),
+            ("anel", 30.0, 220.0, 0.5),
+        ] {
+            let p = ellipse_sweep(c, 1.0, 1.0, start, sweep, hole);
+            assert_eq!(round_slice_corners(p.clone(), 0.0), p, "{name}: zero");
+            let r = round_slice_corners(p.clone(), 0.1);
+            assert_eq!(count(&r), 0, "{name}: as quinas arredondaram");
+            assert!(r.verts.len() > p.verts.len(), "{name}");
+            for v in &r.verts {
+                // 3e-4: o erro radial da cúbica que aproxima um arco de ≤ 90° (2,7e-4).
+                assert!(
+                    v.anchor[0].hypot(v.anchor[1]) <= 1.0 + 3e-4,
+                    "{name}: {v:?}"
+                );
+                assert_eq!(v.corner_radius, 0.0, "{name}: nada pendente");
+            }
+            let huge = round_slice_corners(p, 50.0);
+            assert!(
+                huge.verts
+                    .iter()
+                    .all(|v| v.anchor.iter().all(|x| x.is_finite()))
+            );
+        }
+        for hole in [0.0, 0.55] {
+            let full = ellipse_sweep(c, 1.0, 1.0, 0.0, 360.0, hole);
+            assert_eq!(
+                round_slice_corners(full.clone(), 0.3),
+                full,
+                "volta inteira"
+            );
         }
     }
 }

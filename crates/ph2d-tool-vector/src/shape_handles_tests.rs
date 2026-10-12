@@ -83,8 +83,19 @@ fn every_handle_sits_on_its_outline() {
                 "{kind:?} alça {k}: campo fora do descritor"
             );
             for v in variants(kind, h) {
-                let q = handle_point(h, &v, HALF, &ck)
-                    .unwrap_or_else(|| panic!("{kind:?} alça {k}: sem ponto em {v:?}"));
+                let Some(q) = handle_point(h, &v, HALF, &ck) else {
+                    // Só some a alça de uma quina que não existe (F12: a elipse inteira).
+                    let Spot::Rounding { corner, .. } = h.spot else {
+                        panic!("{kind:?} alça {k}: sem ponto em {v:?}");
+                    };
+                    let sharp = ck(&zeroed(&v, h.sharp));
+                    assert!(
+                        ph2d_vec_scene::corner_live::corner_at(&sharp.verts, true, corner)
+                            .is_none(),
+                        "{kind:?} alça {k}: a quina existe e a alça sumiu em {v:?}"
+                    );
+                    continue;
+                };
                 let on = if h.sharp.is_empty()
                     || matches!(h.spot, Spot::Rounding { .. } | Spot::Apex(_))
                 {
@@ -97,13 +108,9 @@ fn every_handle_sits_on_its_outline() {
                 let d = match h.spot {
                     Spot::Ellipse { scale: Some(i), .. } if v[i] <= 0.0 => q[0].hypot(q[1]),
                     // O ⇕ é um widget da CAIXA visível (o Illustrator): mora na borda direita dela.
-                    Spot::Box { .. } => {
-                        let right = on
-                            .verts
-                            .iter()
-                            .map(|x| x.anchor[0])
-                            .fold(f64::MIN, f64::max);
-                        (q[0] - right).abs()
+                    Spot::Rail => {
+                        let (_, hi) = spots::curve_bbox(&on).expect("caixa");
+                        (q[0] - hi[0]).abs()
                     }
                     _ => dist_to_outline(&on, q),
                 };
@@ -404,45 +411,25 @@ fn a_double_click_resets_only_that_handle() {
     assert_eq!(r[0], 9.0);
 }
 
-/// Cada campo do descritor ou tem alça ou está CONTADO como sem gesto (fila ②) — e os sem gesto
-/// das formas principais são os que o doc 13 §3 nomeia.
+/// ⭐ (F12) **Todo campo que o Vetor mostra tem um gesto** — um ponto no contorno ou o ⇕ da fila —
+/// e por isso NENHUMA forma abre o cartão (a conta `fields_without_handle` é zero). O *Smoothing*
+/// do rectângulo (slot 4) saiu do Vetor: nem chip, nem alça.
 #[test]
 fn the_fields_without_a_gesture_are_counted_not_listed() {
-    let none = |k: ShapeKind| fields_without_handle(k).collect::<Vec<_>>();
     use ShapeKind as K;
-    // A lista EXACTA por forma; toda forma fora dela tem alça para todo campo.
-    let without: &[(ShapeKind, &[usize])] = &[
-        // A suavização do canto: um perfil, não um ponto; o tipo do canto (F10) é uma ESCOLHA.
-        (K::RoundRect, &[4, 5]),
-        // F10: o tipo do canto (escolha) e o liso (um perfil) — o cartão lateral. F11: a
-        // envergadura também (o Illustrator não a põe no canvas).
-        (K::Polygon, &[2, 3, 4]),
-        (K::Star, &[4, 5, 6, 7]),
-        // F11: o furo da pizza (o Illustrator só tem os dois ângulos no canvas).
-        (K::Ellipse, &[2]),
-        (K::Pie, &[2]),
-        // F10: a divergência da espiral e a envergadura dos flancos da engrenagem; F11: o raio
-        // interno da espiral (um ponto no centro, colado ao pivô).
-        (K::Spiral, &[1, 2]),
-        (K::Gear, &[4]),
-        // A faixa do rabo encolhe a elipse inteira: nenhum vértice anda só com ela.
-        (K::SpeechOval, &[3]),
-        // O número de bolhas: a bolha 0 não muda com ele, as outras somem com uma só.
-        (K::Thought, &[2]),
-        // A desordem radial e angular: nenhum ponto a representa.
-        (K::Burst, &[2, 3]),
-        // O fofo: o `refit` normaliza a nuvem e o vale estável quase não anda; a suavização dos
-        // vales e a irregularidade: nenhum ponto as representa.
-        (K::Cloud, &[1, 2, 3]),
-        // O ponto de vista é uma ESCOLHA (fila ②).
-        (K::IsoCube, &[2]),
-        (K::IsoCone, &[1]),
-        (K::IsoPyramid, &[2]),
-    ];
     for &k in ALL_SHAPES {
-        let want = without.iter().find(|w| w.0 == k).map_or(&[][..], |w| w.1);
-        assert_eq!(none(k), want, "{k:?}: os campos sem alça");
+        assert_eq!(
+            fields_without_handle(k).collect::<Vec<_>>(),
+            Vec::<usize>::new(),
+            "{k:?}: os campos sem alça"
+        );
     }
+    assert!(!shapes::shown_fields(K::RoundRect).any(|i| i == 4));
+    assert!(
+        !handles_of(K::RoundRect)
+            .iter()
+            .any(|h| h.fields.contains(&4))
+    );
     // As formas sem campo não têm alça nenhuma.
     for k in [K::Rectangle, K::Line, K::Pill, K::Delay, K::Junction] {
         assert!(handles_of(k).is_empty(), "{k:?}");

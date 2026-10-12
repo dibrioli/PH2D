@@ -52,7 +52,7 @@ pub(super) fn shape_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> Ve
     let Some(kind) = crate::shape_focus::resolved(snap) else {
         return Vec::new();
     };
-    (0..ph2d_tool_vector::shapes::desc(kind).fields.len())
+    ph2d_tool_vector::shapes::shown_fields(kind)
         .filter_map(|i| shape_field_chip(kind, i, store))
         .collect()
 }

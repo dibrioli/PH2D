@@ -193,7 +193,11 @@ pub fn select_the_drawn_shape(vec: &mut crate::state::VecState, scene: &VecScene
 /// essa forma — o idioma do Affinity (F12, o dono: «se a ferramenta estiver em shape, deve ser
 /// possível selecionar shapes já colocadas no canvas»). Arrastar continua a desenhar, também por
 /// cima de outra forma. Num clique no vazio a selecção fica como estava.
-pub fn after_the_shape_release(vec: &mut crate::state::VecState, scene: &VecScene, committed: bool) {
+pub fn after_the_shape_release(
+    vec: &mut crate::state::VecState,
+    scene: &VecScene,
+    committed: bool,
+) {
     if committed {
         select_the_drawn_shape(vec, scene);
         return;

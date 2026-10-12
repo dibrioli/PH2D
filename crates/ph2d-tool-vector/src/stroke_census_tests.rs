@@ -247,7 +247,10 @@ pub(crate) fn census(miter_limit: f64) -> Vec<Row> {
             .map(|s| {
                 let aspect = 0.25 * 16f64.powf(s as f64 / (SAMPLES - 1) as f64);
                 let pen = WIDTH * aspect.min(1.0);
-                (aspect, probe_w(&path_of(d.kind, &base, aspect), miter_limit, pen))
+                (
+                    aspect,
+                    probe_w(&path_of(d.kind, &base, aspect), miter_limit, pen),
+                )
             })
             .collect();
         rows.push(Row {
@@ -425,13 +428,21 @@ fn detail(p: &BezPath) -> Vec<String> {
                     if closed && (j + 1) % m == i {
                         continue;
                     }
-                    if cross(poly[i].1, poly[(i + 1) % m].1, poly[j].1, poly[(j + 1) % m].1) {
+                    if cross(
+                        poly[i].1,
+                        poly[(i + 1) % m].1,
+                        poly[j].1,
+                        poly[(j + 1) % m].1,
+                    ) {
                         pairs.insert((poly[i].0, poly[j].0));
                     }
                 }
             }
             for (a, b) in pairs.iter().take(4) {
-                out.push(format!("   cruza troço {a} × {b}\n     {}", short(&segs[*a])));
+                out.push(format!(
+                    "   cruza troço {a} × {b}\n     {}",
+                    short(&segs[*a])
+                ));
             }
         }
     }
@@ -461,8 +472,16 @@ fn print_the_tail_detail() {
         let d = SHAPES.iter().find(|d| d.label == *shape).expect(shape);
         let mut v = d.kind.defaults();
         for (field, x) in *sets {
-            let i = d.fields.iter().position(|f| f.label == *field).expect(field);
-            v[i] = if d.fields[i].unit == FieldUnit::Px { x * PX } else { *x };
+            let i = d
+                .fields
+                .iter()
+                .position(|f| f.label == *field)
+                .expect(field);
+            v[i] = if d.fields[i].unit == FieldUnit::Px {
+                x * PX
+            } else {
+                *x
+            };
         }
         println!("── {name}");
         for l in detail(&path_of(d.kind, &v, *aspect)) {
@@ -603,7 +622,11 @@ fn print_the_round_rect_cuts() {
             let p = cook(ShapeKind::RoundRect, [0.0, 0.0], box_, &v);
             let bp = ph2d_vec_render::build_bezpath(&p.cooked());
             let cuts = ph2d_vec_render::miter_clip::patches(&bp, &pen());
-            println!("r={r:e} box={box_:?}: {} troços, {} cortes", bp.segments().count(), cuts.len());
+            println!(
+                "r={r:e} box={box_:?}: {} troços, {} cortes",
+                bp.segments().count(),
+                cuts.len()
+            );
             for c in &cuts {
                 println!("   corte em {:?}", c.quad[0]);
             }

@@ -22,8 +22,18 @@ const FORMAS: &[Forma] = &[
     (ShapeKind::ArrowBent, &[], [-2.9, -1.8], [-2.3, -0.1]),
     (ShapeKind::Heart, &[(0, 0.10)], [-1.6, 0.2], [-0.5, 1.2]),
     (ShapeKind::Heart, &[(0, 0.30)], [-1.4, -1.8], [-0.8, -0.1]),
-    (ShapeKind::Polygon, &[(0, 4.0), (3, 0.010)], [-0.2, 0.2], [0.8, 1.2]),
-    (ShapeKind::Polygon, &[(0, 5.0), (3, 0.070)], [-0.2, -1.4], [0.8, -0.4]),
+    (
+        ShapeKind::Polygon,
+        &[(0, 4.0), (3, 0.010)],
+        [-0.2, 0.2],
+        [0.8, 1.2],
+    ),
+    (
+        ShapeKind::Polygon,
+        &[(0, 5.0), (3, 0.070)],
+        [-0.2, -1.4],
+        [0.8, -0.4],
+    ),
     (ShapeKind::Moon, &[], [1.1, 0.2], [2.0, 1.2]),
     (ShapeKind::SpeechRect, &[], [1.0, -1.4], [2.4, -0.4]),
     // O rectângulo de raio minúsculo (a foto do dono de 11/10: o canto saía em chanfro).

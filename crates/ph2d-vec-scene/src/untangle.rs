@@ -50,7 +50,11 @@ pub(crate) fn crosses(p: &VecPath, period: usize) -> bool {
     }
     let segs = if p.closed { n } else { n - 1 };
     // Com simetria, o 1.º período (e a janela à frente dele) chega.
-    let first = if p.closed && period > 1 && segs % period == 0 { segs / period } else { segs };
+    let first = if p.closed && period > 1 && segs % period == 0 {
+        segs / period
+    } else {
+        segs
+    };
     // Só os troços que a procura lê: o 1.º período e a janela à frente dele.
     let read = (first + WINDOW).min(segs);
     let flat: Vec<Flat> = (0..read)
@@ -62,10 +66,12 @@ pub(crate) fn crosses(p: &VecPath, period: usize) -> bool {
                     cubic_at(a.anchor, a.out_handle, b.in_handle, b.anchor, t)
                 })
                 .collect();
-            let lo = pts.iter().fold([f64::INFINITY; 2], |m, q| [m[0].min(q[0]), m[1].min(q[1])]);
-            let hi = pts
+            let lo = pts
                 .iter()
-                .fold([f64::NEG_INFINITY; 2], |m, q| [m[0].max(q[0]), m[1].max(q[1])]);
+                .fold([f64::INFINITY; 2], |m, q| [m[0].min(q[0]), m[1].min(q[1])]);
+            let hi = pts.iter().fold([f64::NEG_INFINITY; 2], |m, q| {
+                [m[0].max(q[0]), m[1].max(q[1])]
+            });
             Flat { pts, lo, hi }
         })
         .collect();
@@ -73,7 +79,10 @@ pub(crate) fn crosses(p: &VecPath, period: usize) -> bool {
     // o laço nasce, e a bissecção pousaria nela.
     let reverses = flat.iter().take(first).any(|f| {
         f.pts.windows(3).any(|w| {
-            let (u, v) = ([w[1][0] - w[0][0], w[1][1] - w[0][1]], [w[2][0] - w[1][0], w[2][1] - w[1][1]]);
+            let (u, v) = (
+                [w[1][0] - w[0][0], w[1][1] - w[0][1]],
+                [w[2][0] - w[1][0], w[2][1] - w[1][1]],
+            );
             let (lu, lv) = (u[0].hypot(u[1]), v[0].hypot(v[1]));
             lu > 1e-12 && lv > 1e-12 && u[0] * v[0] + u[1] * v[1] < -0.5 * lu * lv
         })
@@ -92,7 +101,10 @@ pub(crate) fn crosses(p: &VecPath, period: usize) -> bool {
             }
             let (f, g) = (&flat[k], &flat[l]);
             if d > 0
-                && (f.hi[0] < g.lo[0] || g.hi[0] < f.lo[0] || f.hi[1] < g.lo[1] || g.hi[1] < f.lo[1])
+                && (f.hi[0] < g.lo[0]
+                    || g.hi[0] < f.lo[0]
+                    || f.hi[1] < g.lo[1]
+                    || g.hi[1] < f.lo[1])
             {
                 continue;
             }

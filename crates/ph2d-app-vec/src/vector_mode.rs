@@ -387,7 +387,9 @@ pub fn smoke_step(
         0 => {
             let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
             let want = match scene.as_deref() {
-                Ok("6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18") => 1,
+                Ok(
+                    "6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18",
+                ) => 1,
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);

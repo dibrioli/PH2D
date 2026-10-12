@@ -336,6 +336,7 @@ pub fn chave_do_campo(fonte: &str) -> Option<&'static str> {
         "Cleft" => "panel.vector.engine.campo.cleft",
         "Cord" => "panel.vector.engine.campo.cord",
         "Corner" => "panel.vector.engine.campo.corner",
+        "Corner round" => "panel.vector.engine.campo.corner_round",
         "Curve" => "panel.vector.engine.campo.curve",
         "Cut" => "panel.vector.engine.campo.cut",
         "Depth" => "panel.vector.engine.campo.depth",

@@ -252,7 +252,7 @@ pub(crate) mod space;
 /// A família do CÍRCULO (elipse · arco · pizza · rosquinha · segmento) — pontos do
 /// mesmo espaço de três parâmetros, não cinco primitivas. Módulo irmão de `shapes`.
 pub(crate) mod round;
-pub use round::{FULL_TURN, arc_open, ellipse_chord, ellipse_sweep};
+pub use round::{FULL_TURN, arc_open, ellipse_chord, ellipse_sweep, round_slice_corners};
 
 /// As setas em BLOCO (forma preenchível) — não confundir com as pontas de traço
 /// (arrowheads), que são propriedade do stroke. Módulo irmão de `shapes`.

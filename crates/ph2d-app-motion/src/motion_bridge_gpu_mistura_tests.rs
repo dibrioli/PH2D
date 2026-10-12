@@ -11,7 +11,9 @@
 //!   `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-motion --lib --release \
 //!        mistura_tests -- --ignored --nocapture`
 
-use super::mistura::{RECUSA_IMAGEM_EM_GRUPO, RECUSA_MISTURA_PEDE_O_MUNDO};
+use super::mistura::{
+    RECUSA_GRUPO_SEM_MEMORIA, RECUSA_IMAGEM_EM_GRUPO, RECUSA_MISTURA_PEDE_O_MUNDO,
+};
 use super::{GpuOutcome, cook_gpu};
 use crate::motion_shape_placa::gpu_tests::{LADO, camara, compara, le_a_camada};
 use crate::motion_shape_placa::{Misturas, PlacaDeFormas, corridas_do_dispositivo};
@@ -240,7 +242,7 @@ fn a_mistura_em_grupo_pelo_dispositivo_desenha_o_que_a_cpu_desenha() {
                 };
                 if em_grupo {
                     assert!(!primeira, "{caso}: sem memória da CPU");
-                    assert_eq!(m.route_said, Some(RECUSA_IMAGEM_EM_GRUPO), "{caso}");
+                    assert_eq!(m.route_said, Some(RECUSA_GRUPO_SEM_MEMORIA), "{caso}");
                     marcha_a_cpu(&mut m, TIQUE - 1);
                     assert!(
                         coze(&mut m, &gpu, TIQUE),
@@ -296,7 +298,7 @@ fn uma_imagem_no_sink_que_mistura_em_grupo_fica_na_cpu_e_di_lo() {
     let _ = m.doc.graph.disconnect(junta, 0);
     liga(&mut m, imagens, junta, 0);
     assert!(!coze(&mut m, &gpu, 1));
-    assert_eq!(m.route_said, Some(RECUSA_IMAGEM_EM_GRUPO), "sem memória");
+    assert_eq!(m.route_said, Some(RECUSA_GRUPO_SEM_MEMORIA), "sem memória");
     marcha_a_cpu(&mut m, 1);
     assert!(!coze(&mut m, &gpu, 2));
     assert_eq!(

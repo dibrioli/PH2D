@@ -255,4 +255,67 @@ mod tests {
             Err(MotivoDoVello::Desligadas)
         );
     }
+
+    /// ⭐ **As corridas do dispositivo, faixa a faixa** (B6): dois sinks `Copies` são DOIS grupos
+    /// (`sink + 1`, mutação «grupo 0» sobrevivente da prova até este gate); vizinhas iguais juntam-se;
+    /// a faixa vazia não pede mistura; tudo `Normal` é vazio (o `draw` de sempre); o mundo por baixo
+    /// recusa pelo motivo.
+    #[test]
+    fn as_corridas_por_faixa_separam_os_grupos_de_cada_sink() {
+        use ph2d_nodegraph::graph::Graph;
+        let mut g = Graph::new();
+        let [a, b, c, d] = std::array::from_fn(|_| g.add_node("motion.output"));
+        let m = |blend, com, sink| MisturaDoSink { blend, com, sink };
+        let placa = Misturas {
+            ligadas: true,
+            isolada: true,
+            multiplica: true,
+        };
+        let de = |s| {
+            if s == a {
+                m(1, BlendWith::Copies, 0)
+            } else if s == b {
+                m(1, BlendWith::Copies, 1)
+            } else if s == c {
+                m(4, BlendWith::Scene, 2)
+            } else {
+                m(0, BlendWith::Copies, 3)
+            }
+        };
+        let corridas = corridas_por_faixa(&[(a, 0..3), (b, 3..5), (c, 5..5), (d, 5..9)], de, placa)
+            .expect("a placa compõe-nas");
+        let vistas: Vec<_> = corridas
+            .iter()
+            .map(|r| (r.copias.clone(), r.mistura, r.grupo))
+            .collect();
+        assert_eq!(
+            vistas,
+            vec![
+                (0..3, Mistura::Soma, 1),
+                (3..5, Mistura::Soma, 2),
+                (5..9, Mistura::Normal, 0),
+            ],
+            "um grupo por sink; a faixa vazia do Scene não recusa nem corre"
+        );
+        // Vizinhas IGUAIS (o mesmo sink partido em duas faixas) juntam-se.
+        let juntas = corridas_por_faixa(&[(a, 0..2), (a, 2..4)], de, placa).expect("compõe");
+        assert_eq!(juntas.len(), 1);
+        assert_eq!(juntas[0].copias, 0..4);
+        // Tudo Normal: vazio.
+        assert!(
+            corridas_por_faixa(&[(d, 0..4)], de, placa)
+                .expect("Normal")
+                .is_empty()
+        );
+        // O mundo por baixo, fora da camada isolada.
+        let fora = Misturas {
+            isolada: false,
+            ..placa
+        };
+        let todo = |_| m(1, BlendWith::Everything, 0);
+        assert_eq!(
+            corridas_por_faixa(&[(a, 0..2)], todo, fora).err(),
+            Some(MotivoDoVello::PedeOMundo)
+        );
+    }
 }

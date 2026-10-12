@@ -484,3 +484,67 @@ fn the_copies_steps_go_to_the_plate() {
         );
     }
 }
+
+/// ⭐⭐ **Os passos (12) e (13) cozem no DISPOSITIVO** (B6): a cena do smoke pela porta do quadro do
+/// produto (`coze_o_quadro`), com os filtros no fio. O 1.º quadro cai para a CPU (sem memória dela o
+/// grupo não sabe se tem imagens — e di-lo); os seguintes vão à placa, com as corridas da mistura.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn the_copies_steps_cook_on_the_device() {
+    use crate::motion_shape_placa::{Misturas, corridas_do_dispositivo};
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        return;
+    };
+    for (n, esperada) in [
+        ("12", ph2d_shape_gpu::Mistura::Multiplica),
+        ("13", ph2d_shape_gpu::Mistura::Tela),
+    ] {
+        let mut m = MotionState::new();
+        let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+        assert!(passo(&mut m.doc.graph, &cena, n));
+        m.sinks = vec![cena.saida];
+        m.filtro.prepara(&m.doc.graph, &m.sinks);
+        let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
+        let mut rotas = Vec::new();
+        let mut corridas = Vec::new();
+        for q in 1..=6u32 {
+            playhead.seek(f64::from(q) / 60.0);
+            crate::motion_bridge::quadro::coze_o_quadro(&mut m, &gpu, &playhead, 1.0 / 60.0);
+            rotas.push((m.route_said.unwrap_or(""), m.gpu_live));
+            if m.gpu_live {
+                corridas =
+                    corridas_do_dispositivo(&m, Misturas::do_quadro(&gpu, m.pump.camada_isolada()));
+            }
+        }
+        println!("passo {n}: {rotas:?}");
+        assert!(
+            m.pump.camada_isolada(),
+            "passo {n}: os filtros isolam a camada"
+        );
+        assert_eq!(
+            rotas[0].0,
+            crate::motion_bridge::gpu::mistura::RECUSA_GRUPO_SEM_MEMORIA,
+            "passo {n}: o 1.º quadro não tem a memória da CPU"
+        );
+        assert!(
+            rotas[1..]
+                .iter()
+                .all(|(r, vivo)| *vivo && r.starts_with("device")),
+            "passo {n}: depois do 1.º, a placa coze: {rotas:?}"
+        );
+        assert!(
+            !corridas.is_empty(),
+            "passo {n}: as corridas levam a mistura"
+        );
+        assert!(
+            corridas
+                .iter()
+                .all(|c| c.mistura == esperada && c.grupo > 0),
+            "passo {n}: {:?}",
+            corridas
+                .iter()
+                .map(|c| (c.mistura, c.grupo))
+                .collect::<Vec<_>>()
+        );
+    }
+}

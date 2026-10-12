@@ -156,6 +156,16 @@ recusa e a leitura da marca no `present_chrome.rs`. **Custo medido** (`o_preco_d
 **continua pintado** (`2 034 540 px` nas quatro colunas) — o `Renderer` cresce o buffer; o custo sobe
 em degrau acima de `~131 k` e fica dentro de um quadro a `32 k` (`~3,4 ms` de placa).
 
+**B6 (12/10) — a recusa do W4 deixou de ser incondicional.** O `RECUSA_MISTURA_EM_GRUPO` saiu; a cerca é
+[`motion_bridge_gpu_mistura.rs`](../../crates/ph2d-app-motion/src/motion_bridge_gpu_mistura.rs): um sink
+que mistura em grupo vai ao DISPOSITIVO quando a placa de formas compõe a mistura dele (as regras da
+CPU, `Misturas::da_mistura`) e as linhas dele são TODAS formas — a memória da CPU decide antes de cozer
+e a vigia do cozimento (`ph2d-gpu-cook/src/vigia.rs`, contada no baixamento das formas, lida sem espera)
+devolve-o à CPU se uma imagem aparecer depois. Uma imagem continua a ir à cena vectorial (o passe de
+sprites não sabe o alcance) e diz-se `CPU: uma linha de IMAGEM num sink que mistura em grupo`. As
+corridas saem por faixa de sink (`corridas_por_faixa`), sem leitura de volta. Números e gates: o
+[handoff B6](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_FAMILIA_B_B6.md).
+
 **W5 — a cena `=14`** ([`motion_object_smoke_grupo.rs`](../../crates/ph2d-app-motion/src/motion_object_smoke_grupo.rs)):
 quatro colunas (controlo `Normal` · `Multiply` em `Everything` · `Copies` · `Scene`), cada uma com uma
 fileira de IMAGENS e uma de FORMAS, 2×2 cópias SOBREPOSTAS (`PASSO < LADO_COPIA` é erro de

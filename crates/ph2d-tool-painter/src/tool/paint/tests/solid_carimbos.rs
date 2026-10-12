@@ -149,7 +149,13 @@ fn sonda_solid_de_folhas() {
     }
     let mut t = folhas_com(StrokeMethod::Space, &rgba, s);
     t.set_brush_size_px(14.0);
-    laco(&mut t);
+    // `PH2D_SONDA_U=1`: o «U» ABERTO, que o Solid fecha (a aresta da corda).
+    if std::env::var_os("PH2D_SONDA_U").is_some() {
+        u_aberto(&mut t);
+        t.on_canvas_pointer(cp([190.0, 70.0], PointerPhase::Up));
+    } else {
+        laco(&mut t);
+    }
     let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| "/tmp/solid_folhas.ppm".into());
     let mut ppm = format!("P6 {LADO} {LADO} 255\n").into_bytes();
     for p in t.canvas_rgba.chunks(4) {
@@ -244,4 +250,46 @@ fn todo_type_pinta_na_cor_da_ponta() {
             );
         }
     }
+}
+
+/// Um «U» ABERTO a meio do gesto (sem o Up): o Solid fecha-o com a corda do fim ao começo.
+fn u_aberto(t: &mut PainterTool) {
+    t.on_canvas_pointer(cp([70.0, 70.0], PointerPhase::Down));
+    let pts = [[70.0, 190.0], [190.0, 190.0], [190.0, 70.0]];
+    let mut a = [70.0f32, 70.0];
+    for b in pts {
+        for k in 1..=12 {
+            let f = k as f32 / 12.0;
+            t.on_canvas_pointer(cp(
+                [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f],
+                PointerPhase::Move,
+            ));
+        }
+        a = b;
+    }
+}
+
+/// **Sem BARRA de fechamento** (smoke do dono 12/10, foto com setas): com a mancha de carimbos a corda
+/// — a ponta sem jitter, em fila do fim ao começo — desenhava uma barra de folhas alinhadas. Com a ponta
+/// de imagem não há corda; com a redonda (CONTROLO) ela continua a dar o acabamento à aresta lisa.
+#[test]
+fn com_carimbos_o_solid_nao_desenha_a_corda() {
+    let mut folha = folhas(StrokeMethod::Space);
+    u_aberto(&mut folha);
+    assert!(
+        folha.closing_chord_dabs().is_empty(),
+        "a corda de folhas em fila voltou"
+    );
+
+    let mut redonda = PainterTool::default();
+    redonda.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
+    redonda.set_paint_media(PaintMedia::Digital);
+    redonda.set_brush_size_px(8.0);
+    redonda.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_LINE_SOLID));
+    redonda.paint.brush.stroke_method = StrokeMethod::Space;
+    u_aberto(&mut redonda);
+    assert!(
+        !redonda.closing_chord_dabs().is_empty(),
+        "CONTROLO: a mancha lisa fecha com a corda"
+    );
 }

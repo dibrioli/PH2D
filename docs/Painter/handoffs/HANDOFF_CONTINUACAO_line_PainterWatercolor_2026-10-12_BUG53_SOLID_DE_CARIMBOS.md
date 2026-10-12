@@ -46,6 +46,15 @@ Color a branco). *«E veja se Type está coerente com textura em Shape e jitter.
 
 fmt ✓ · clippy `-D warnings --all-targets` (brush, tool) ✓ · `nextest-impacted` **17 132/17 132** (`load` 5–27).
 
+## §5b — A barra de fechamento (smoke do dono 12/10, 2.ª foto, `4f077b4da6` + 1)
+
+Num traço ABERTO a corda que o Solid desenha do fim ao começo (`closing_chord_dabs`, a ponta sem jitter, em
+fila) virava uma BARRA de folhas alinhadas. A corda nasceu para a aresta reta da mancha LISA; com a mancha de
+carimbos a aresta já é de folhas soltas ⇒ sem corda quando `solid_fills_with_stamps` (o corpo da corda do
+Impasto segue a mesma porta). Portão `com_carimbos_o_solid_nao_desenha_a_corda` (+ CONTROLO: a redonda
+mantém a corda), VERMELHO visto com a condição tirada; `sonda_solid_de_folhas` com `PH2D_SONDA_U=1`
+fotografa o «U» aberto (antes: a barra; depois: nenhuma).
+
 ## §6 — Aberto
 
 - **Wet Paint / Watercolor:** o Solid lá é ÁGUA (enche ao soltar / cobertura da aguada) e não lê a cor da

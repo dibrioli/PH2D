@@ -217,9 +217,18 @@ impl PainterTool {
     ///
     /// ⚠️ **As cópias saem da porta do MOTOR** (`push_symmetric`): a corda tem de cair nas mesmas
     /// raias que os dabs do gesto, e o tiling vem de graça porque o dispatch do carimbo já o envolve.
-    fn closing_chord_dabs(&self) -> Vec<Dab> {
+    ///
+    /// ⛔ **Com a mancha de CARIMBOS não há corda** (smoke do dono 12/10, foto): a corda existe para a
+    /// aresta reta da mancha LISA ter o acabamento do pincel; os carimbos da área já fazem essa aresta
+    /// soltos, e a corda — a ponta sem jitter, em fila — desenhava uma BARRA de folhas alinhadas.
+    pub(super) fn closing_chord_dabs(&self) -> Vec<Dab> {
         let path = &self.paint.solid_path;
-        if path.len() < 3 || !self.solid_owns_the_gesture() {
+        if path.len() < 3
+            || !self.solid_owns_the_gesture()
+            || self
+                .stroke_spec()
+                .solid_fills_with_stamps(self.paint.shape_image.is_some())
+        {
             return Vec::new();
         }
         let (a, b) = (path[path.len() - 1], path[0]);

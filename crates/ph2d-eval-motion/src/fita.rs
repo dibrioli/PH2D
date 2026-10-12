@@ -38,6 +38,9 @@ pub struct Fita {
     /// `[primeiro, ultimo]` = os tiques gravados.
     primeiro: Option<u64>,
     ultimo: Option<u64>,
+    /// O estado em `ultimo` — gravar um tique NOVO no fim compara com ele, sem refazer a soma
+    /// desde a base (essa soma custava a história inteira a cada tique: doc 131 §7, C.11).
+    cauda: Option<All>,
     bytes: usize,
     orcamento: usize,
 }
@@ -148,7 +151,10 @@ impl Fita {
             self.base = agora.clone();
             self.base_ate = Some(t);
         } else {
-            let m = diferenca(&self.estado_ate(t), agora);
+            let m = match (&self.cauda, self.ultimo) {
+                (Some(c), Some(u)) if resultado == Gravacao::Nova && u < t => diferenca(c, agora),
+                _ => diferenca(&self.estado_ate(t), agora),
+            };
             if !m.is_empty() {
                 self.bytes += peso(&m);
                 self.marcas.insert(t, m);
@@ -156,6 +162,7 @@ impl Fita {
         }
         self.primeiro = self.primeiro.or(Some(t));
         self.ultimo = Some(t);
+        self.cauda = Some(agora.clone());
         while self.bytes > self.orcamento && !self.marcas.is_empty() {
             self.dobra();
         }
@@ -181,6 +188,7 @@ impl Fita {
             self.bytes -= peso(m);
         }
         self.ultimo = Some(t - 1);
+        self.cauda = None;
     }
 
     /// ⚠️ **Acima do orçamento, a marca mais velha DOBRA-SE na base**: um scrub para antes dela

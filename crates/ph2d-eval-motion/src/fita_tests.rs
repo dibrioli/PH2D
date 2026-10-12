@@ -125,3 +125,116 @@ fn over_budget_the_oldest_change_folds_into_the_base_and_the_bytes_stay_bounded(
         v(&f.estado_em(f.base_ate.unwrap()).unwrap(), "g")
     );
 }
+
+/// O RSS do processo, em bytes (Linux; `0` noutro sítio).
+fn rss() -> usize {
+    std::fs::read_to_string("/proc/self/statm")
+        .ok()
+        .and_then(|s| s.split_whitespace().nth(1)?.parse::<usize>().ok())
+        .map_or(0, |paginas| paginas * 4096)
+}
+
+/// **A RÉGUA DA FITA contra a memória REAL** (doc 131 §4, C.11): `K` entradas a mudar em todo tique,
+/// sem orçamento; o que o `bytes()` declara por mudança contra o que o processo ganhou de RSS.
+#[test]
+#[ignore = "sonda: memória do processo"]
+fn sonda_a_fita_declara_o_que_ocupa() {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    use ph2d_nodegraph::external::External;
+    const K: usize = 300;
+    const T: u64 = 1_500;
+    let nomes: Vec<String> = (0..K).map(|e| format!("entrada_{e}")).collect();
+    let mut f = Fita::new();
+    f.set_orcamento(usize::MAX);
+    let antes = rss();
+    let mut agora = All::new();
+    let mut tempos = Vec::with_capacity(T as usize);
+    for t in 0..T {
+        for (e, nome) in nomes.iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
+            let v = (t as usize + e) as f32;
+            agora.insert(
+                nome.clone(),
+                External {
+                    rev: t * 1_000 + e as u64,
+                    value: Stream::new(1).with("v", Column::Scalar(vec![v])),
+                },
+            );
+        }
+        let t0 = std::time::Instant::now();
+        f.grava(t, &agora);
+        tempos.push(t0.elapsed().as_secs_f64() * 1e3);
+    }
+    let minimo = |v: &[f64]| v.iter().copied().fold(f64::MAX, f64::min);
+    eprintln!(
+        "fita: gravar um tique — os 100 primeiros {:.4} ms · os 100 últimos {:.4} ms (o mínimo)",
+        minimo(&tempos[..100]),
+        minimo(&tempos[tempos.len() - 100..])
+    );
+    let real = rss().saturating_sub(antes);
+    #[expect(clippy::cast_precision_loss, reason = "uma razão")]
+    let mudancas = (K as u64 * T) as f64;
+    #[expect(clippy::cast_precision_loss, reason = "uma razão")]
+    let (declarado, ocupado) = (f.bytes() as f64 / mudancas, real as f64 / mudancas);
+    eprintln!(
+        "fita: {K} entradas × {T} tiques — declara {declarado:.1} B/mudança, o processo ganhou {ocupado:.1} B/mudança ({:.1}×)",
+        ocupado / declarado
+    );
+}
+
+/// ⭐ **O QUE A FITA DEVOLVE É O QUE SE PUBLICOU** (doc 131 §7, C.11) — sobre uma sequência que passa
+/// pelos três caminhos da gravação (tique NOVO no fim, que lê a `cauda`; o mesmo tique outra vez; um
+/// RAMO para trás) e pela DOBRA (orçamento curto): todo tique gravado e ainda não dobrado lê-se igual
+/// ao publicado nele.
+#[test]
+fn o_que_a_fita_devolve_e_o_que_se_publicou_em_cada_tique() {
+    let mut f = Fita::new();
+    let mut verdade: BTreeMap<u64, All> = BTreeMap::new();
+    let publica = |t: u64, ramo: u64| -> All {
+        let mut a = All::new();
+        for e in 0..4u64 {
+            if (t + e) % 3 != 0 {
+                a.insert(format!("e{e}"), ext((t * 7 + e + ramo * 1000) as f32));
+            }
+        }
+        a
+    };
+    // Para a frente, com tiques repetidos (a tocar sobre chão gravado).
+    for t in 0..40 {
+        let a = publica(t, 0);
+        f.grava(t, &a);
+        f.grava(t, &a);
+        verdade.insert(t, a);
+    }
+    // Um RAMO em 25 e de novo para a frente: o futuro velho é esquecido.
+    verdade.retain(|t, _| *t < 25);
+    for t in 25..60 {
+        let a = publica(t, 1);
+        f.grava(t, &a);
+        verdade.insert(t, a);
+    }
+    for (t, a) in &verdade {
+        let lido = f.estado_em(*t).expect("gravado");
+        assert_eq!(
+            lido.keys().collect::<Vec<_>>(),
+            a.keys().collect::<Vec<_>>(),
+            "t={t}: as entradas"
+        );
+        for (nome, e) in a {
+            assert_eq!(lido[nome].rev, e.rev, "t={t} {nome}");
+        }
+    }
+    // E com um orçamento que dobra: o que ficou depois da base continua verdadeiro.
+    let um = f.bytes() / 60;
+    let mut g = Fita::new();
+    g.set_orcamento(um * 10);
+    for t in 0..60 {
+        g.grava(t, &publica(t, 0));
+    }
+    for t in 55..60 {
+        let lido = g.estado_em(t).expect("gravado");
+        for (nome, e) in &publica(t, 0) {
+            assert_eq!(lido[nome].rev, e.rev, "dobrada, t={t} {nome}");
+        }
+    }
+}

@@ -660,6 +660,11 @@ mod taps_tests;
 #[path = "motion_bridge_gpu_varias_saidas_tests.rs"]
 mod varias_saidas_tests;
 
+/// A fila C do doc 131 §4 — a sonda única de velocidade.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_fila_c_probe.rs"]
+mod fila_c_probe;
+
 /// A deriva da `=129` por tique e por nó (doc 131 §2) — sonda.
 #[cfg(test)]
 #[path = "motion_bridge_gpu_deriva_129_tests.rs"]

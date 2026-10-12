@@ -45,7 +45,7 @@ fn estado(tag: u8, com: BlendWith, isolada: bool, junta: bool) -> (MotionState, 
 
 /// O [`estado`] com uma grelha `lado × lado` e, com `anima`, um `motion.wiggle` depois do `rotate`
 /// (a sonda do preço: uma cena parada a CPU serve da memória e não coze nada).
-fn estado_de(
+pub(super) fn estado_de(
     lado: f32,
     anima: bool,
     tag: u8,
@@ -135,7 +135,7 @@ fn estado_de(
 /// A marcha da CPU até `ate` — o que a bomba faz no quadro em que a ponte cai (e o que deixa a
 /// memória). ⚠️ O quadro SEGUINTE é o do dispositivo (`ate + 1`): a rota híbrida coze o prefixo
 /// dos tiques que a bomba ainda deve, e no mesmo tique não deve nenhum.
-fn marcha_a_cpu(m: &mut MotionState, ate: u64) {
+pub(super) fn marcha_a_cpu(m: &mut MotionState, ate: u64) {
     crate::motion_externals::publish_all(m, ate as f64 * DT);
     let scopes = ph2d_node_motion_time_remap::time_scopes(&m.doc.graph, &m.registry);
     for tick in m.pump.last_cooked_tick().map_or(0, |t| t + 1)..=ate {
@@ -153,7 +153,7 @@ fn marcha_a_cpu(m: &mut MotionState, ate: u64) {
 }
 
 /// Um quadro da ponte no tique `t`; `Handled` só conta com o cozimento VIVO.
-fn coze(m: &mut MotionState, gpu: &GpuContext, t: u64) -> bool {
+pub(super) fn coze(m: &mut MotionState, gpu: &GpuContext, t: u64) -> bool {
     crate::motion_externals::publish_all(m, t as f64 * DT);
     let scopes = ph2d_node_motion_time_remap::time_scopes(&m.doc.graph, &m.registry);
     matches!(cook_gpu(m, gpu, t, DT, &scopes), GpuOutcome::Handled) && m.gpu_live

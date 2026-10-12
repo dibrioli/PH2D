@@ -51,7 +51,7 @@ fn posed(deg: f64, s: f64, x: f64, y: f64) -> Xform {
 }
 
 /// A cena do print do Enio: três formas sobrepostas, todas com pose.
-fn enios_scene() -> Vec<VecPath> {
+pub fn enios_scene() -> Vec<VecPath> {
     vec![
         // Retângulo arredondado grande, no fundo (raio base 40, sem desvios, sem smoothing).
         placed(

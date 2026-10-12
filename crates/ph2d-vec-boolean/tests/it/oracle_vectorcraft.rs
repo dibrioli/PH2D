@@ -93,7 +93,7 @@ pub fn offset_corpus() -> Vec<(String, VecPath)> {
 }
 
 /// O `d` SVG de um `VecPath` cozido (M/C/Z absolutos, em pixels SVG).
-fn svg_d(p: &VecPath) -> String {
+pub fn svg_d(p: &VecPath) -> String {
     let mut s = String::new();
     let t = |q: Point| (q.x * SVG_SCALE + SVG_OFFSET, q.y * SVG_SCALE + SVG_OFFSET);
     for el in vecpath_bez(p).elements() {
@@ -120,7 +120,7 @@ fn svg_d(p: &VecPath) -> String {
     s
 }
 
-fn rule_attr(p: &VecPath) -> &'static str {
+pub fn rule_attr(p: &VecPath) -> &'static str {
     match p.fill_rule {
         FillRule::EvenOdd => "evenodd",
         FillRule::NonZero => "nonzero",

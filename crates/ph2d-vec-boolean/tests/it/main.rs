@@ -17,6 +17,7 @@ mod measure_power_stroke_slivers;
 mod measure_width_presets;
 mod offset_live_cost;
 mod oracle_vectorcraft;
+mod oracle_vectorcraft_build;
 mod probe_contour_cost;
 mod probe_contour_demo_star;
 mod probe_offset_as_effect;

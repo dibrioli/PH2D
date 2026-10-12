@@ -327,7 +327,7 @@ fn a_high_count_geometry_becomes_tiles_a_low_count_one_stays_crisp() {
         lod_vi(6, 7.0),
     ];
     let mut instances: Vec<RenderInstance> = Vec::new();
-    apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+    apply_object_lod(&mut instances, &mut vectors, &mut [], &bake, 3);
     assert_eq!(instances.len(), 6, "gid 5 (6 > 3) became GPU tiles");
     assert!(
         instances.iter().all(|i| i.texture_id == 500),
@@ -338,6 +338,34 @@ fn a_high_count_geometry_becomes_tiles_a_low_count_one_stays_crisp() {
         vectors.iter().all(|v| v.geometry_id == 6),
         "gid 6 (2 <= 3) stayed a crisp vector"
     );
+}
+
+/// ⭐ Luz2D W5j — **o dono atravessa o LOD**: as faixas da bomba seguem as listas (o que ficou nítido
+/// e os ladrilhos de cada sink). A mesma cena acima, partida em dois sinks: A = as 4 primeiras, B = as
+/// 4 últimas. (Mutação: não mexer nas faixas ⇒ RED.)
+#[test]
+fn as_faixas_dos_sinks_seguem_o_lod() {
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
+    bake.seed_for_test(2, 6, 600, [1.0, 1.0]);
+    let mut vectors: Vec<VectorInstance> = [5, 6, 5, 5, 5, 5, 5, 6]
+        .iter()
+        .zip(0_u8..)
+        .map(|(&g, k)| lod_vi(g, f32::from(k)))
+        .collect();
+    let mut instances: Vec<RenderInstance> = vec![bytemuck::Zeroable::zeroed(); 2];
+    let faixa = |sink: u32, instancias, vetores| ph2d_eval_motion::FaixaDoSink {
+        sink: ph2d_nodegraph::graph::NodeId(sink),
+        instancias,
+        vetores,
+        ladrilhos: 0..0,
+    };
+    let mut faixas = [faixa(1, 0..1, 0..4), faixa(2, 1..2, 4..8)];
+    apply_object_lod(&mut instances, &mut vectors, &mut faixas, &bake, 3);
+    assert_eq!((faixas[0].vetores.clone(), faixas[0].ladrilhos.clone()), (0..1, 2..5));
+    assert_eq!((faixas[1].vetores.clone(), faixas[1].ladrilhos.clone()), (1..2, 5..8));
+    assert_eq!(vectors[faixas[1].vetores.start].world_pos[0], 7.0);
+    assert_eq!(instances[faixas[1].ladrilhos.start].world_pos[0], 4.0);
 }
 
 /// **The swap is FAITHFUL** — a tile lands EXACTLY where the crisp vector would. The
@@ -445,7 +473,7 @@ fn um_objecto_que_mistura_nao_vira_tile() {
     linha.blend_linha = 4;
     let mut vectors = vec![grupo, linha, lod_vi(5, 2.0), lod_vi(5, 3.0)];
     let mut instances: Vec<RenderInstance> = Vec::new();
-    apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+    apply_object_lod(&mut instances, &mut vectors, &mut [], &bake, 3);
     assert_eq!(
         instances.len(),
         2,
@@ -465,7 +493,7 @@ fn below_threshold_or_without_a_tile_everything_stays_crisp() {
     bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
     let mut vectors = vec![lod_vi(5, 0.0), lod_vi(5, 1.0)];
     let mut instances: Vec<RenderInstance> = Vec::new();
-    apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+    apply_object_lod(&mut instances, &mut vectors, &mut [], &bake, 3);
     assert!(
         instances.is_empty() && vectors.len() == 2,
         "2 <= 3 stays crisp"
@@ -479,7 +507,7 @@ fn below_threshold_or_without_a_tile_everything_stays_crisp() {
         lod_vi(5, 3.0),
     ];
     let mut instances: Vec<RenderInstance> = Vec::new();
-    apply_object_lod(&mut instances, &mut vectors, &empty, 3);
+    apply_object_lod(&mut instances, &mut vectors, &mut [], &empty, 3);
     assert!(
         instances.is_empty() && vectors.len() == 4,
         "no tile -> correctness before speed, all crisp"
@@ -517,7 +545,7 @@ fn the_lod_partition_cost_at_scale() {
         for _ in 0..iters {
             let mut vectors = base.clone();
             let mut instances: Vec<RenderInstance> = Vec::with_capacity(n);
-            apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+            apply_object_lod(&mut instances, &mut vectors, &mut [], &bake, 3);
             std::hint::black_box(&instances);
         }
         let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
@@ -649,14 +677,14 @@ fn the_lod_threshold_is_where_a_shape_starts_being_visible_to_the_glow() {
     };
     // NO limiar: nada se move — a forma continua invisível ao passe.
     let (mut inst, mut vecs) = (Vec::new(), stamps(4));
-    apply_object_lod(&mut inst, &mut vecs, &bake, 4);
+    apply_object_lod(&mut inst, &mut vecs, &mut [], &bake, 4);
     assert!(
         inst.is_empty() && vecs.len() == 4,
         "no limiar a forma fica crisp, e o glow não a vê"
     );
     // UM acima: todas viram tiles — e passam a ser exactamente o que o glow lê.
     let (mut inst, mut vecs) = (Vec::new(), stamps(5));
-    apply_object_lod(&mut inst, &mut vecs, &bake, 4);
+    apply_object_lod(&mut inst, &mut vecs, &mut [], &bake, 4);
     assert!(
         vecs.is_empty() && inst.len() == 5,
         "um acima do limiar a MESMA forma vira sprite, e passa a brilhar"

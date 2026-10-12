@@ -19,6 +19,11 @@ fn gpu() -> Option<GpuContext> {
 
 /// A área analítica dos discos em cada píxel (16×16 subamostras), linha 0 = `MUNDO[3]`.
 fn area_exata() -> Vec<f64> {
+    area_dos(&[0, 1])
+}
+
+/// A área analítica dos discos `quais` em cada píxel.
+fn area_dos(quais: &[usize]) -> Vec<f64> {
     let (w, h) = TAMANHO;
     let [x0, y0, x1, y1] = MUNDO;
     let (pw, ph) = ((x1 - x0) / f64::from(w), (y1 - y0) / f64::from(h));
@@ -30,7 +35,10 @@ fn area_exata() -> Vec<f64> {
                 for si in 0..16 {
                     let x = x0 + (i + (f64::from(si) + 0.5) / 16.0) * pw;
                     let y = y1 - (j + (f64::from(sj) + 0.5) / 16.0) * ph;
-                    if DISCOS.iter().any(|(c, r)| (x - c[0]).hypot(y - c[1]) <= *r) {
+                    if quais.iter().any(|&q| {
+                        let (c, r) = DISCOS[q];
+                        (x - c[0]).hypot(y - c[1]) <= r
+                    }) {
                         dentro += 1;
                     }
                 }
@@ -145,7 +153,7 @@ fn a_camada_do_motion_para_a_luz_e_a_area_das_formas() {
         placa: &mut placa,
         geometrias: &geos,
         dispositivo: None,
-        objetos: vec![42],
+        donos: vec![(42, 0..2)],
     };
     let (desenhou, _) = alfa_desenhado(&gpu, &mut o, &[42]);
     assert!(
@@ -163,7 +171,7 @@ fn a_camada_do_motion_para_a_luz_e_a_area_das_formas() {
         placa: &mut placa,
         geometrias: &geos,
         dispositivo: None,
-        objetos: vec![42],
+        donos: vec![(42, 0..2)],
     };
     let (desenhou, alfa) = alfa_desenhado(&gpu, &mut o, &[7]);
     assert!(!desenhou, "a luz não pediu nenhum objeto Motion");
@@ -187,4 +195,112 @@ fn a_camada_do_motion_para_a_luz_e_a_area_das_formas() {
         "a área das formas: {erro_total:+.4}"
     );
     assert!(pior <= TOL_PIXEL, "um píxel fora do disco: {pior:.3}");
+}
+
+/// Os dois discos como cópias da placa (a elipse unitária).
+fn copias_dos_discos(store: &mut VecPathStore) -> Vec<VectorInstance> {
+    let h = store.push(ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5));
+    DISCOS
+        .iter()
+        .map(|(c, r)| VectorInstance {
+            geometry_id: h,
+            texture_id: 0,
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            premultiplied: 0.0,
+            world_pos: [c[0] as f32, c[1] as f32],
+            size: [(2.0 * r) as f32; 2],
+            basis: [1.0, 0.0, 0.0, 1.0],
+            tint: [1.0; 4],
+            anchor: [0.0, 0.0],
+            sampling: 0,
+            blend_linha: 0,
+            mistura: Default::default(),
+        })
+        .collect()
+}
+
+/// ⭐ W5j — **só bloqueiam as cópias dos objetos que a luz pediu** (o ABERTO 5 da W5e): o disco
+/// grande é do objeto 42, o pequeno do 43. Controlo na mesma corrida: os dois pedidos = os dois discos.
+/// (Antes da W5j a placa desenhava todas as cópias para qualquer objeto pedido ⇒ RED.)
+#[test]
+fn so_bloqueiam_as_copias_dos_objetos_pedidos() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let mut store = VecPathStore::default();
+    let insts = copias_dos_discos(&mut store);
+    let mut geos = GeometriasDaPlaca::default();
+    let mut placa = PlacaDeFormas::default();
+    assert!(placa.decide(
+        true,
+        &insts,
+        &store,
+        &mut geos,
+        ph2d_vector::Affine::IDENTITY
+    ));
+    // A rota do DISPOSITIVO: as mesmas cópias num buffer do «cozido» (só leitura por cópia).
+    let do_cozido = wgpu::util::DeviceExt::create_buffer_init(
+        &*gpu.device,
+        &wgpu::util::BufferInitDescriptor {
+            label: Some("motion/luz/cozido"),
+            contents: bytemuck::cast_slice(&placa.copias),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        },
+    );
+    for rota in ["cpu", "dispositivo"] {
+        let dispositivo = (rota == "dispositivo").then_some(&do_cozido);
+        if dispositivo.is_some() {
+            let vivas = [insts[0].geometry_id];
+            let cam = ph2d_vector::Affine::IDENTITY;
+            assert!(placa.decide_do_dispositivo(true, 2, &vivas, &store, &mut geos, cam));
+        }
+        let mut o = OclusaoDoMotion {
+            placa: &mut placa,
+            geometrias: &geos,
+            dispositivo,
+            donos: vec![(42, 0..1), (43, 1..2)],
+        };
+        for (quem, quais) in [(&[42][..], &[0][..]), (&[43], &[1]), (&[42, 43], &[0, 1])] {
+            let (desenhou, alfa) = alfa_desenhado(&gpu, &mut o, quem);
+            assert!(desenhou);
+            let exata = area_dos(quais);
+            let (soma, soma_exata) = (alfa.iter().sum::<f64>(), exata.iter().sum::<f64>());
+            let erro = (soma - soma_exata) / soma_exata;
+            eprintln!("{rota}, pedidos {quem:?}: a área {soma:.1} × a exata {soma_exata:.1} px² ({:+.3} %)", 100.0 * erro);
+            assert!(
+                erro.abs() <= TOL_AREA_TOTAL,
+                "{rota}, pedidos {quem:?}: a área das formas deles {erro:+.4}"
+            );
+        }
+    }
+}
+
+/// ⭐ W5j — **o dono de cada cópia na rota da CPU**: a faixa `vetores` do sink, lida pelo índice de
+/// origem de cada cópia — uma forma que a placa pula (vazia) não desloca o dono das seguintes.
+#[test]
+fn o_dono_de_cada_copia_e_o_do_sink_dela() {
+    let mut m = crate::motion_state::MotionState::new();
+    let sa = m.doc.graph.add_node("motion.output");
+    let sb = m.doc.graph.add_node("motion.output");
+    let sc = m.doc.graph.add_node("motion.output");
+    m.doc.set_owner(sa, 1);
+    m.doc.set_owner(sb, 2);
+    let dono = |entity| crate::motion_objeto::Dono {
+        entity,
+        visible: true,
+        afim: crate::motion_objeto::IDENTIDADE,
+    };
+    m.objeto.donos.insert(1, dono(42));
+    m.objeto.donos.insert(2, dono(43));
+    let faixa = |sink, vetores| ph2d_eval_motion::FaixaDoSink {
+        sink,
+        instancias: 0..0,
+        vetores,
+        ladrilhos: 0..0,
+    };
+    m.pump.faixas = vec![faixa(sa, 0..3), faixa(sb, 3..5), faixa(sc, 5..6)];
+    let mut placa = PlacaDeFormas::default();
+    // A cópia 1 (do sink A) foi pulada; a 5 é de um sink sem dono.
+    placa.fonte = vec![0, 2, 3, 4, 5];
+    assert_eq!(donos(&m, &placa), vec![(42, 0..2), (43, 2..4)]);
 }

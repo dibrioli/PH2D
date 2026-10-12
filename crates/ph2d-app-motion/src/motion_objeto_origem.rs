@@ -18,7 +18,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_eval_motion::VectorInstance;
+use ph2d_eval_motion::{FaixaDoSink, VectorInstance};
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_render::RenderInstance;
 
@@ -30,8 +30,9 @@ use crate::motion_state::MotionState;
 pub struct Origem {
     /// O passe da placa, compilado no 1.º quadro que o pede.
     passe: Option<ph2d_gpu_cook::instances::dono::PasseDoDono>,
-    /// As listas como a bomba as compôs (espaço LOCAL), desde que alguma afim não é identidade.
-    local: Option<(Vec<RenderInstance>, Vec<VectorInstance>)>,
+    /// As listas como a bomba as compôs (espaço LOCAL) e as faixas delas (o LOD muda as duas),
+    /// desde que alguma afim não é identidade.
+    local: Option<(Vec<RenderInstance>, Vec<VectorInstance>, Vec<FaixaDoSink>)>,
     /// A composição da bomba a que [`Self::local`] corresponde.
     composicao: u64,
     /// A afim aplicada a cada sink nas listas da bomba.
@@ -102,9 +103,10 @@ pub fn aplica_cpu(motion: &mut MotionState) {
     let o = &mut motion.objeto.origem;
     if todas_identidade {
         // Volta ao espaço local se alguma afim tinha sido aplicada a estas listas.
-        if !nova && let Some((i, v)) = o.local.take() {
+        if !nova && let Some((i, v, f)) = o.local.take() {
             motion.pump.instances = i;
             motion.pump.vector_instances = v;
+            motion.pump.faixas = f;
         }
         o.local = None;
         o.aplicada.clear();
@@ -115,13 +117,15 @@ pub fn aplica_cpu(motion: &mut MotionState) {
         o.local = Some((
             motion.pump.instances.clone(),
             motion.pump.vector_instances.clone(),
+            motion.pump.faixas.clone(),
         ));
         o.composicao = motion.pump.composicoes;
     } else if o.aplicada == afins {
         return;
-    } else if let Some((i, v)) = &o.local {
+    } else if let Some((i, v, f)) = &o.local {
         motion.pump.instances.clone_from(i);
         motion.pump.vector_instances.clone_from(v);
+        motion.pump.faixas.clone_from(f);
     }
     for f in &motion.pump.faixas {
         let Some(a) = afins.get(&f.sink).filter(|a| **a != IDENTIDADE) else {

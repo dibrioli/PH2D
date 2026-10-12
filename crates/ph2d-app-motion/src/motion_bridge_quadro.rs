@@ -138,6 +138,7 @@ pub(crate) fn coze_o_quadro(
     objects::apply_object_lod(
         &mut motion.pump.instances,
         &mut motion.pump.vector_instances,
+        &mut motion.pump.faixas,
         &motion.object_bake,
         objects::LOD_COUNT,
     );

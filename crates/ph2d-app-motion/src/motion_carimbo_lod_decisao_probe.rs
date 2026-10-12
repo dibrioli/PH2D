@@ -81,6 +81,7 @@ fn audit_does_the_existing_lod_ever_arm() {
     crate::motion_bridge::objects::apply_object_lod(
         &mut instancias,
         &mut vectores,
+        &mut m.pump.faixas,
         &m.object_bake,
         crate::motion_bridge::objects::LOD_COUNT,
     );

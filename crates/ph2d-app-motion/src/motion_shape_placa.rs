@@ -254,6 +254,9 @@ pub struct PlacaDeFormas {
     corridas: Vec<Corrida>,
     /// Por que o último quadro ficou no Vello por causa de uma mistura ([`Misturas::da_copia`]).
     motivo: Option<MotivoDoVello>,
+    /// ⭐ W5j: o índice em `insts` (a lista do [`Self::decide`]) de cada uma das [`Self::copias`] —
+    /// a ponte para a faixa do sink, logo para o objeto dono.
+    fonte: Vec<u32>,
     ativa: bool,
     /// ⭐ **As cópias vêm do DISPOSITIVO** (doc 121 W3): quantas o cozimento escreveu no buffer
     /// dele — `None` na rota da CPU, onde elas são as [`Self::copias`].
@@ -275,6 +278,8 @@ pub struct PlacaDeFormas {
     ultimas: Option<(wgpu::Buffer, u32, ShapeView)>,
     /// ⭐ W5e: o passe irmão que desenha as formas para a LUZ 2D ([`luz`]).
     luz: Option<ShapePass>,
+    /// ⭐ W5j: as cópias do dispositivo dos objetos que bloqueiam, quando nem todos bloqueiam.
+    luz_copias: Option<wgpu::Buffer>,
 }
 
 /// ⭐ W5e — as formas do Motion na luz 2D (ficheiro irmão).
@@ -314,6 +319,7 @@ impl PlacaDeFormas {
         if !self.ativa {
             self.copias.clear();
             self.corridas.clear();
+            self.fonte.clear();
         }
         self.diz(insts.len(), geometrias.len());
         self.ativa
@@ -344,9 +350,10 @@ impl PlacaDeFormas {
         self.cam = cam;
         self.copias.clear();
         self.corridas = corridas;
+        self.fonte.clear();
         for &h in vivas {
-            let _ = geometrias.veredito(h, store);
-        }
+        let _ = geometrias.veredito(h, store);
+    }
         self.ativa = ligada && n > 0;
         if !self.ativa {
             self.corridas.clear();
@@ -400,9 +407,10 @@ impl PlacaDeFormas {
         self.copias.clear();
         self.corridas.clear();
         self.motivo = None;
+        self.fonte.clear();
         // ⚠️ Um handle que o store largou nunca volta (não é reciclado) — a entrada dele é lixo.
         geometrias.varre(store);
-        for inst in insts {
+        for (k, inst) in insts.iter().enumerate() {
             if inst.geometry_id == 0 {
                 return false;
             }
@@ -427,15 +435,16 @@ impl PlacaDeFormas {
                             grupo,
                         }),
                     }
+                    self.fonte.push(u32::try_from(k).unwrap_or(u32::MAX));
                     self.copias.push(ShapeInstance {
-                        pos: inst.world_pos,
-                        size: inst.size,
-                        basis: inst.basis,
-                        anchor: inst.anchor,
-                        geometry: inst.geometry_id,
-                        _pad: 0,
-                        tint: inst.tint,
-                    });
+                    pos: inst.world_pos,
+                    size: inst.size,
+                    basis: inst.basis,
+                    anchor: inst.anchor,
+                    geometry: inst.geometry_id,
+                    _pad: 0,
+                    tint: inst.tint,
+                });
                 }
             }
         }

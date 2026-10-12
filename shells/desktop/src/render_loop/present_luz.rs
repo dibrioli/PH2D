@@ -35,11 +35,8 @@ impl crate::App {
             entidades: &self.flip_state.entities,
         };
         let placa = &mut self.motion_shell.placa;
-        let mut motion_luz = ph2d_app_motion::motion_shape_placa::luz::OclusaoDoMotion::do_quadro(
-            placa,
-            motion,
-            sim.world(),
-        );
+        let mut motion_luz =
+            ph2d_app_motion::motion_shape_placa::luz::OclusaoDoMotion::do_quadro(placa, motion);
         luz2d.gravar_com(
             surface.gpu(),
             present,

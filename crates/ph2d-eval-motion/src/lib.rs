@@ -214,6 +214,9 @@ pub struct FaixaDoSink {
     pub instancias: std::ops::Range<usize>,
     /// As cópias vectoriais dele.
     pub vetores: std::ops::Range<usize>,
+    /// As cópias vectoriais dele que o LOD do app passou a ladrilhos, no fim de `instancias` da
+    /// lista (vazio até o LOD correr).
+    pub ladrilhos: std::ops::Range<usize>,
 }
 
 impl Default for MotionCookPump {
@@ -577,6 +580,7 @@ impl MotionCookPump {
                         sink,
                         instancias: i0..self.instances.len(),
                         vetores: v0..self.vector_instances.len(),
+                        ladrilhos: 0..0,
                     });
                 }
             }

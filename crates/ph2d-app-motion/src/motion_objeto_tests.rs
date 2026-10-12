@@ -212,11 +212,13 @@ fn a_origem_leva_a_faixa_do_dono_e_nunca_duas_vezes() {
             sink: sa,
             instancias: 0..1,
             vetores: 0..0,
+            ladrilhos: 0..0,
         },
         ph2d_eval_motion::FaixaDoSink {
             sink: sb,
             instancias: 1..2,
             vetores: 0..0,
+            ladrilhos: 0..0,
         },
     ];
     m.pump.composicoes = 1;

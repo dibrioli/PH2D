@@ -48,9 +48,13 @@ pub const LOD_COUNT: usize = 16_000;
 /// ⚠️ **The swap is FAITHFUL:** the tile keeps the instance's `world_pos`/`size`/
 /// `basis`/`tint`, only replacing `geometry_id` with the tile `texture_id` + the
 /// individual-texture unit UV — so a tile lands exactly where the crisp vector would.
+///
+/// ⭐ `faixas` (the pump's, Luz2D W5j) follow the lists: each sink's `vetores` shrinks to what stayed
+/// and its `ladrilhos` names its tiles in `instances` — the owner of every copy survives the LOD.
 pub fn apply_object_lod(
     instances: &mut Vec<RenderInstance>,
     vector_instances: &mut Vec<VectorInstance>,
+    faixas: &mut [ph2d_eval_motion::FaixaDoSink],
     object_bake: &crate::motion_object_bake::ObjectBake,
     threshold: usize,
 ) {
@@ -79,14 +83,31 @@ pub fn apply_object_lod(
     // ⛔ **Uma linha que MISTURA fica no Vello, a qualquer contagem** (doc 118 §9): a camada dela só
     // existe na cena vectorial. A partição das formas já tinha esta cerca; a dos objetos não, e um
     // grupo que mistura com mais de `LOD_COUNT` cópias perdia o modo no quadro em que passava o tecto.
-    vector_instances.retain(|vi| match tile_for.get(&vi.geometry_id) {
-        Some(_) if crate::motion_shape_gen::mistura::precisa_do_vello(vi) => true,
-        Some(&texture_id) => {
-            instances.push(vector_instance_as_tile(vi, texture_id));
-            false // moved to a tile
-        }
-        None => true, // stays crisp
+    // `ficam[k]` / `movidas[k]`: how many of the first `k` stayed / became tiles.
+    let base = instances.len();
+    let mut ficam = Vec::with_capacity(vector_instances.len() + 1);
+    let mut movidas = Vec::with_capacity(vector_instances.len() + 1);
+    ficam.push(0);
+    movidas.push(0);
+    vector_instances.retain(|vi| {
+        let fica = match tile_for.get(&vi.geometry_id) {
+            Some(_) if crate::motion_shape_gen::mistura::precisa_do_vello(vi) => true,
+            Some(&texture_id) => {
+                instances.push(vector_instance_as_tile(vi, texture_id));
+                false // moved to a tile
+            }
+            None => true, // stays crisp
+        };
+        ficam.push(ficam[ficam.len() - 1] + usize::from(fica));
+        movidas.push(movidas[movidas.len() - 1] + usize::from(!fica));
+        fica
     });
+    let em = |v: &[usize], k: usize| v[k.min(v.len() - 1)];
+    for f in faixas {
+        let r = f.vetores.clone();
+        f.vetores = em(&ficam, r.start)..em(&ficam, r.end);
+        f.ladrilhos = base + em(&movidas, r.start)..base + em(&movidas, r.end);
+    }
 }
 
 /// Build the GPU-instanced tile quad for a live-vector instance the LOD moved to a

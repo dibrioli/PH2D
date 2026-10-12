@@ -162,6 +162,18 @@ fn fixturas() -> Vec<(&'static str, Stream)> {
     v
 }
 
+/// Uma nuvem de `n` discos (a das sondas): densidade fixa, colisor `0,25`.
+fn nuvem(n: usize) -> Stream {
+    let lado = (n as f32).sqrt() * 0.42;
+    let mut semente = 11u32;
+    let p: Vec<[f32; 2]> = (0..n)
+        .map(|_| [lcg(&mut semente) * lado, lcg(&mut semente) * lado])
+        .collect();
+    let mut s = corrente(p);
+    esc(&mut s, COLLIDER_COLUMN, vec![0.25; n]);
+    s
+}
+
 fn coluna_p(s: &Stream) -> Vec<[f32; 2]> {
     match s.get("P") {
         Some(Column::Vec2(v)) => v.clone(),
@@ -194,11 +206,74 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
         return;
     };
     let mut cook = GpuCook::default();
-    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo.
-    for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
+    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo — este com as DUAS variantes
+    // do `scan` (doc 131 C.7): memória de grupo e subgrupos.
+    for (caminho, tecto, sg) in [
+        ("despachos", 0, false),
+        ("um grupo", u32::MAX, false),
+        ("subgrupos", u32::MAX, true),
+    ] {
         cook.passe_um_grupo_ate(Some(tecto));
+        cook.passe_scan_por_subgrupos(Some(sg));
         compara_por_passo(&gpu, &mut cook, caminho);
     }
+    o_scan_por_subgrupos_da_a_mesma_grelha(&gpu, &mut cook);
+}
+
+/// ⭐ **O `scan` é de INTEIROS: as duas variantes dão a MESMA grelha, ao bit** (doc 131 C.7) — o
+/// `starts` (a saída do `scan`) e o `sorted` da última varredura, e as mesmas varreduras.
+/// ⚠️ O `P`/`rot` NÃO é igual ao bit (MEDIDO 12/10: `|ΔP| ≤ 3,81e-6 · alcance_max`): o módulo
+/// é OUTRO e o compilador do dispositivo contrai o `corrige` de outra maneira — as duas variantes
+/// ficam sob a MESMA tolerância contra a CPU (acima). Controlo: o MESMO módulo duas vezes é igual
+/// ao bit (o passe é determinista), logo a grelha igual não é uma coincidência de corrida.
+fn o_scan_por_subgrupos_da_a_mesma_grelha(gpu: &ph2d_gpu::GpuContext, cook: &mut GpuCook) {
+    let tem_sg = gpu.device.features().contains(wgpu::Features::SUBGROUP);
+    cook.passe_um_grupo_ate(Some(u32::MAX));
+    // + uma nuvem no tecto do caminho (1 024 peças, 2 049 baldes: 9 por fio no `scan`).
+    let todas = fixturas().into_iter().chain([("nuvem_1024", nuvem(1024))]);
+    let mut pior = 0.0_f32;
+    for (nome, s) in todas {
+        let alc = alcance_max(&s);
+        for v in PASSOS {
+            let mut lado = |sg| {
+                cook.passe_scan_por_subgrupos(Some(sg));
+                let (p, r, n) = cook
+                    .separa_e_le(gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
+                    .expect("corre");
+                assert_eq!(
+                    cook.passe_correu_por_subgrupos(),
+                    sg && tem_sg,
+                    "{nome} v={v}: a variante pedida é a que correu"
+                );
+                let grelha = cook.passe_le_grelha(gpu).expect("a grelha do passe");
+                (grelha, n, p, r)
+            };
+            let (grupo, sub, grupo2) = (lado(false), lado(true), lado(false));
+            assert_eq!(
+                grupo.0, sub.0,
+                "{nome} v={v}: a grelha do scan por subgrupos"
+            );
+            assert_eq!(grupo.1, sub.1, "{nome} v={v}: as varreduras");
+            let bits = |l: &(Vec<u32>, u32, Vec<[f32; 2]>, Vec<f32>)| -> Vec<u32> {
+                l.2.iter()
+                    .flatten()
+                    .chain(&l.3)
+                    .map(|x| x.to_bits())
+                    .collect()
+            };
+            assert_eq!(
+                bits(&grupo),
+                bits(&grupo2),
+                "{nome} v={v}: o passe é determinista"
+            );
+            for (a, b) in grupo.2.iter().zip(&sub.2) {
+                pior = pior.max((a[0] - b[0]).abs().max((a[1] - b[1]).abs()) / alc);
+            }
+        }
+    }
+    eprintln!(
+        "o scan por subgrupos (o dispositivo tem-nos: {tem_sg}) dá a mesma grelha, ao bit; |ΔP|/alc entre as variantes ≤ {pior:.2e}"
+    );
 }
 
 fn compara_por_passo(gpu: &ph2d_gpu::GpuContext, cook: &mut GpuCook, caminho: &str) {
@@ -278,17 +353,31 @@ fn sem_colisor_a_placa_nao_corre_o_passe() {
     assert!(GpuCook::default().separa_e_le(&gpu, &s, 8, 1e-5).is_none());
 }
 
-/// Os nove módulos do passe validam no `naga` sem placa (a CI não tem uma).
+/// Os módulos do passe validam no `naga` sem placa (a CI não tem uma): todos sem capacidade
+/// nenhuma, salvo o `uno_sg`, que pede SÓ os subgrupos (e é o único que os pede).
 #[test]
 fn os_modulos_do_passe_validam_sem_placa() {
-    for (nome, src) in ph2d_gpu_cook::passe_na_placa::fontes_wgsl() {
+    use naga::valid::{
+        Capabilities, ShaderStages, SubgroupOperationSet, ValidationFlags, Validator,
+    };
+    let fontes = ph2d_gpu_cook::passe_na_placa::fontes_wgsl();
+    assert_eq!(fontes.len(), 11, "o censo dos módulos do passe");
+    for (nome, src) in fontes {
         let m = naga::front::wgsl::parse_str(&src).unwrap_or_else(|e| panic!("{nome}: {e}"));
-        naga::valid::Validator::new(
-            naga::valid::ValidationFlags::all(),
-            naga::valid::Capabilities::empty(),
-        )
-        .validate(&m)
-        .unwrap_or_else(|e| panic!("{nome}: {e:?}"));
+        let sem = Validator::new(ValidationFlags::all(), Capabilities::empty()).validate(&m);
+        if nome == "uno_sg" {
+            assert!(
+                sem.is_err(),
+                "uno_sg valida SEM subgrupos: não é a variante"
+            );
+            Validator::new(ValidationFlags::all(), Capabilities::SUBGROUP)
+                .subgroup_stages(ShaderStages::COMPUTE)
+                .subgroup_operations(SubgroupOperationSet::ARITHMETIC)
+                .validate(&m)
+                .unwrap_or_else(|e| panic!("{nome}: {e:?}"));
+        } else {
+            sem.unwrap_or_else(|e| panic!("{nome}: {e:?}"));
+        }
     }
 }
 
@@ -344,13 +433,7 @@ fn measure_o_encode_por_varreduras() {
     };
     let mut cook = GpuCook::default();
     for n in [256usize, 1_000, 2_048, 4_096, 32_761] {
-        let lado = (n as f32).sqrt() * 0.42;
-        let mut semente = 11u32;
-        let p: Vec<[f32; 2]> = (0..n)
-            .map(|_| [lcg(&mut semente) * lado, lcg(&mut semente) * lado])
-            .collect();
-        let mut s = corrente(p);
-        esc(&mut s, COLLIDER_COLUMN, vec![0.25; n]);
+        let s = nuvem(n);
         for (caminho, v, tecto) in [8u32, 64, 512]
             .into_iter()
             .flat_map(|v| [("despachos", v, 0), ("um grupo", v, u32::MAX)])
@@ -374,45 +457,97 @@ fn measure_o_encode_por_varreduras() {
     }
 }
 
-/// Sonda (não afirma nada): a CADEIA — o regime das muitas varreduras (`~n²`, doc 115 §18) —,
-/// CPU × placa com a paragem do produto, mínimo de 3.
-/// `cargo test --release -p ph2d-gpu-cook --test it measure_a_cadeia -- --ignored --nocapture`
+/// Sonda (não afirma nada): a CADEIA — o regime das muitas varreduras (`~n²`, doc 115 §18) — e
+/// a nuvem de 2 048 (a fronteira dos caminhos), CPU × as variantes da placa (doc 131 C.7: o
+/// `scan` por subgrupos, as ligações em cache) no MESMO processo, em blocos intercalados com a
+/// ordem rodada, o MÍNIMO de 15, a paragem do produto. Cada célula: total · encomenda (ms).
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-gpu-cook --test it
+/// measure_a_cadeia -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda: mede, não julga"]
 fn measure_a_cadeia_cpu_contra_placa() {
     let Some(gpu) = try_headless_gpu() else {
         return;
     };
-    let mut cook = GpuCook::default();
-    for n in [16usize, 32, 256] {
+    let carga = || {
+        std::fs::read_to_string("/proc/loadavg")
+            .map(|l| l.split(' ').take(3).collect::<Vec<_>>().join(" "))
+            .unwrap_or_default()
+    };
+    eprintln!("loadavg no início: {}", carga());
+    let cadeia = |n: usize| {
         let mut s = corrente((0..n).map(|i| [i as f32 * 0.5, 0.0]).collect());
         par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.5, 0.5]; n]);
-        for v in [64u32, 1024, 4096] {
-            let (mut cpu, mut desp, mut uno) = (f64::MAX, f64::MAX, f64::MAX);
-            let (mut vc, mut vg) = (0, 0);
-            for _ in 0..3 {
+        s
+    };
+    // (nome, tecto do caminho de um grupo, scan por subgrupos, ligações em cache)
+    let variantes: [(&str, u32, bool, bool); 6] = [
+        ("despachos", 0, false, false),
+        ("despachos+cache", 0, false, true),
+        ("um grupo (atual)", u32::MAX, false, false),
+        ("um grupo+cache", u32::MAX, false, true),
+        ("subgrupos", u32::MAX, true, false),
+        ("subgrupos+cache", u32::MAX, true, true),
+    ];
+    let linhas = [
+        ("cadeia", 16usize, 1024u32),
+        ("cadeia", 16, 4096),
+        ("cadeia", 32, 4096),
+        ("cadeia", 256, 1024),
+        ("nuvem", 256, 64),
+        ("nuvem", 512, 64),
+        ("nuvem", 1024, 64),
+        ("nuvem", 2048, 64),
+    ];
+    let mut cook = GpuCook::default();
+    for (forma, n, v) in linhas {
+        let s = if forma == "cadeia" {
+            cadeia(n)
+        } else {
+            nuvem(n)
+        };
+        // A CPU é a variante 0 da rotação; as da placa, 1.. .
+        let k = variantes.len() + 1;
+        let mut total = vec![f64::MAX; k];
+        let mut encomenda = vec![f64::MAX; k];
+        let (mut vc, mut vg) = (0, 0);
+        for bloco in 0..15 {
+            for passo in 0..k {
+                let qual = (passo + bloco) % k;
                 let t = std::time::Instant::now();
-                let (_, r) = separa_com_relatorio(&s, v as usize);
-                cpu = cpu.min(t.elapsed().as_secs_f64());
-                vc = r.varreduras;
-                for (tecto, melhor) in [(0, &mut desp), (u32::MAX, &mut uno)] {
-                    cook.passe_um_grupo_ate(Some(tecto));
-                    let t = std::time::Instant::now();
-                    let g = cook
-                        .separa_e_le(&gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
-                        .expect("corre");
-                    *melhor = melhor.min(t.elapsed().as_secs_f64());
-                    vg = g.2;
+                if qual == 0 {
+                    let (_, r) = separa_com_relatorio(&s, v as usize);
+                    total[0] = total[0].min(t.elapsed().as_secs_f64());
+                    vc = r.varreduras;
+                    continue;
                 }
+                let (_, tecto, sg, cache) = variantes[qual - 1];
+                cook.passe_um_grupo_ate(Some(tecto));
+                cook.passe_scan_por_subgrupos(Some(sg));
+                cook.passe_ligacoes_em_cache(Some(cache));
+                let t = std::time::Instant::now();
+                let g = cook
+                    .separa_e_le(&gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
+                    .expect("corre");
+                total[qual] = total[qual].min(t.elapsed().as_secs_f64());
+                encomenda[qual] = encomenda[qual].min(cook.passe_encode().as_secs_f64());
+                vg = g.2;
             }
-            eprintln!(
-                "cadeia n = {n:>3} · tecto {v:>4}: CPU {:>8.2} ms ({vc} varr.) · despachos {:>8.2} · um grupo {:>8.2} ms ({vg} varr.)",
-                cpu * 1e3,
-                desp * 1e3,
-                uno * 1e3
+        }
+        let mut linha = format!(
+            "{forma} {n:>4} · tecto {v:>4} ({vc} varr. CPU, {vg} placa): CPU {:.2}",
+            total[0] * 1e3
+        );
+        for (i, (nome, ..)) in variantes.iter().enumerate() {
+            linha += &format!(
+                " · {nome} {:.2} ({:.3})",
+                total[i + 1] * 1e3,
+                encomenda[i + 1] * 1e3
             );
         }
+        eprintln!("{linha}");
     }
+    eprintln!("loadavg no fim: {}", carga());
 }
 
 /// ⭐ **O `Relatorio` sai da placa SEM espera e diz o que a CPU diz** (doc 130 §5): as varreduras

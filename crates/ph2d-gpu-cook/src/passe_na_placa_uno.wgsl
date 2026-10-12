@@ -1,8 +1,8 @@
 // O passe INTEIRO num so' GRUPO (doc 130 §3.1): poucas pecas e muitas varreduras -- o regime da
 // CADEIA (`~n^2` varreduras, doc 115 §18). Um despacho; as fases sincronizam por barreira e a
-// paragem SAI do laco (nada de despachos vazios depois do repouso).
+// paragem SAI do laco (nada de despachos vazios depois do repouso). O `scan` (e a `Ent` da entrada)
+// vem de `passe_na_placa_scan_grupo.wgsl` ou, com subgrupos, de `passe_na_placa_scan_subgrupo.wgsl`.
 
-var<workgroup> wg_parcial: array<u32, 256>;
 var<workgroup> wg_andou: atomic<u32>;
 var<workgroup> wg_parar: u32;
 
@@ -11,33 +11,9 @@ fn pnp_barreira() {
     workgroupBarrier();
 }
 
-// O `scan` exclusivo de `starts[0..m)` por um grupo: cada fio soma um troco contiguo, o grupo
-// varre as 256 somas (Hillis-Steele) e cada fio reescreve o seu troco.
-fn pnp_scan_grupo(lid: u32, m: u32) {
-    let por = (m + 255u) / 256u;
-    let ini = min(lid * por, m);
-    let fim = min(ini + por, m);
-    var soma = 0u;
-    for (var k = ini; k < fim; k = k + 1u) { soma = soma + atomicLoad(&starts[k]); }
-    wg_parcial[lid] = soma;
-    workgroupBarrier();
-    for (var d = 1u; d < 256u; d = d * 2u) {
-        var x = 0u;
-        if (lid >= d) { x = wg_parcial[lid - d]; }
-        workgroupBarrier();
-        wg_parcial[lid] = wg_parcial[lid] + x;
-        workgroupBarrier();
-    }
-    var acc = wg_parcial[lid] - soma;
-    for (var k = ini; k < fim; k = k + 1u) {
-        let c = atomicLoad(&starts[k]);
-        atomicStore(&starts[k], acc);
-        acc = acc + c;
-    }
-}
-
 @compute @workgroup_size(256)
-fn main(@builtin(local_invocation_index) lid: u32) {
+fn main(e: Ent) {
+    let lid = e.lid;
     pnp_toca();
     let n = u.n;
     let nb = u.num_buckets;
@@ -59,7 +35,7 @@ fn main(@builtin(local_invocation_index) lid: u32) {
         pnp_barreira();
         for (var i = lid; i < n; i = i + 256u) { pnp_gira_conta(i, bi, lado); }
         pnp_barreira();
-        pnp_scan_grupo(lid, nb + 1u);
+        pnp_scan_grupo(e, nb + 1u);
         pnp_barreira();
         for (var i = lid; i < n; i = i + 256u) { pnp_espalha(i, bi, lado); }
         pnp_barreira();

@@ -273,3 +273,25 @@ ficam afiadas em todos os cantos (é a geometria); o que muda são os vales entr
   medido até 216 chars (0,7 ms). A sonda vira tecto se o dono pedir textos longos.
 - Linha aberta a cortar faces no Shape Builder (como o Illustrator faz): nem o VC nem o PH2D o
   fazem. É feature nova, decisão de produto, e não defeito.
+
+## 11. Integração (11/10, por ordem do dono)
+
+- `main` estava no merge-base (`8f20c60de`): rebase vazio, `--ff-only` para `361c9afc8`.
+- `foundational-integrate.sh` (pela `ph2d-run.sh`, load ~16–25 com a suíte do Painter a correr ao
+  lado): sync dos registos sem diff · staleness verde · `CARGO_BUILD_WARNINGS=deny cargo check
+  --workspace --all-targets` limpo · `nextest-impacted` **16 956/16 956** (o flake do
+  `mask_tests` passou). O `--ff-only` do script recusou só por `project-memory/MEMORY.md` sujo no
+  primário (sessões vivas); o diff local foi guardado, o ficheiro reposto, o ff feito à mão sobre o
+  MESMO tip testado e o diff reaplicado (`git apply --3way`, hunks disjuntos).
+- Rascunhos não versionados do primário que a linha substituiu (`49_PROMPT…`, `ESTUDO…`,
+  `Estudos/vectorcraft_2026-10-11/`, versões anteriores às correções de caminho da linha) saíram da
+  árvore; cópia em `target/integracao-vector-2026-10-11-backup/`.
+- **Medido para as linhas ainda abertas** (`git merge-tree` de cada uma contra o novo `main`):
+  Luz2D, MiroClone e UIUX fundem sem conflito; PainterWatercolor conflita só no `CLAUDE.md` (§5,
+  entradas vizinhas) e motion-value só em `MEMORY.md` + `reference_topic_measurement_discipline.md`
+  (contagens de família: reconte, não escolha). Nenhuma das cinco cria `TextLayout { … }`.
+- ⚠️ **Para o integrador da line/UIUX:** o `24c7f2ea7` dela põe o bico CORTADO (miter-clip SVG 2)
+  em `penned_outline`; o Offset Bevel/Miter desta linha já não passa por ali e continua a chanfrar
+  além do `miter_limit` (lei do Offset Path do Illustrator). Fusão textual limpa em `expand.rs`; a
+  divergência Offset × Outline Stroke no Miter é de lei, não de build — confirme
+  `the_offset_sweep_matches_the_table` na árvore combinada.

@@ -79,7 +79,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "3. Export this board as PDF: three pages with the same photo, and the photo is read once for the whole file, not once per page."
         }
         "board.smoke.w17.l4" => {
-            "4. Scene tab: Send to board\u{2026} a selection where something has no name or was deleted: the warning says \u{201c}Unnamed picture\u{201d} or \u{201c}Deleted object\u{201d}, never a blank."
+            "4. Scene tab, Send to board\u{2026}: an object with no name, or deleted meanwhile, is named in the warning \u{2014} never a blank."
         }
         "board.smoke.images.title" => "Pictures on the board: drop, paste, resize, export",
         "board.smoke.images.frame" => "Moodboard",

@@ -86,6 +86,8 @@ pub(super) struct C3 {
     preenchimento: Option<Preenchimento>,
     fina: Par,
     grupo_fina: wgpu::BindGroup,
+    /// ⭐ W5n: o anel fora da região (o miolo no corpo inteiro, `c3_anel.wgsl`).
+    anel: Option<(Par, wgpu::BindGroup)>,
     /// ⭐ W5c: a FONTE do rebote (a luz que cada superfície recebe, para o quadro seguinte) — os
     /// grupos 2 (a c0) e 3 (a saída).
     rebote: Option<(Par, [wgpu::BindGroup; 2])>,
@@ -350,12 +352,10 @@ impl C3 {
         // ⭐ Os raios da luz direta marcham no passo da grade FINA: com o das cascatas as amostras
         // entram e saem do canto do oclusor conforme o texel fino anda, e a borda ondula (medido na
         // W4b, Low: 0,53 → 0,06 px no contorno de 50 %).
-        let fina = match bordas.filter(|_| visibilidade.is_some()) {
-            Some(b) => pipeline(
-                "luz2d c3 fina",
-                &g2,
+        let (entrada_fina, constantes_fina) = match bordas.filter(|_| visibilidade.is_some()) {
+            Some(b) => (
                 "c3_fina",
-                &[
+                vec![
                     ("PASSO", fino(true)),
                     ("RAIOS_DIRETOS", f64::from(b.raios)),
                     ("BISSECOES", f64::from(b.bissecoes)),
@@ -363,13 +363,14 @@ impl C3 {
                     ("CURVATURA", f64::from(u8::from(b.curvatura))),
                 ],
             ),
-            None => pipeline(
-                "luz2d c3 fina",
-                &g2,
-                "c3_fina_exata",
-                &[("PASSO", fino(true))],
-            ),
+            None => ("c3_fina_exata", vec![("PASSO", fino(true))]),
         };
+        let fina = pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina);
+        let anel = op.miolo.filter(|_| cfg.anel_fora_da_regiao).map(|m| {
+            let (l, g) = super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0]);
+            let entrada = format!("{entrada_fina}_anel");
+            (pipeline("luz2d c3 anel", &l, &entrada, &constantes_fina), g)
+        });
 
         // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
         let preenchimento = cfg
@@ -517,6 +518,7 @@ impl C3 {
             preenchimento,
             fina,
             grupo_fina,
+            anel,
             rebote,
             borda,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
@@ -676,5 +678,17 @@ impl C3 {
         p.set_bind_group(1, lampadas, &[]);
         p.set_bind_group(2, &self.grupo_fina, &[]);
         p.dispatch_workgroups(fina[0], fina[1], 1);
+        // ⭐ W5n: com a região menor que a grade, o anel e o conhecido de fora dela (na grade inteira).
+        if let Some((pipe, g2)) = self.anel.as_ref().filter(|_| self.regiao_parcial()) {
+            let [w, h] = self.u.tamanho;
+            p.set_pipeline(pipe.de(distantes));
+            p.set_bind_group(2, g2, &[]);
+            p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        }
+    }
+
+    /// A região deste quadro é menor que a grade fina.
+    pub(super) fn regiao_parcial(&self) -> bool {
+        self.u.inicio != [0; 2] || self.u.fim != self.u.tamanho
     }
 }

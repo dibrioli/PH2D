@@ -25,7 +25,10 @@ struct Nivel {
     // (h_nível / ℓ)²: 0 sem penetração.
     kh2: f32,
     suavidade: f32,
-    _p: vec2<f32>,
+    // ⭐ W5n: 1 = a região é menor que a grade — a moldura dela é do `c3_anel.wgsl` (que vê as vizinhas
+    // de fora), e o `classifica` deixa-a.
+    moldura: f32,
+    _p: f32,
 }
 
 @group(0) @binding(0) var<uniform> nv: Nivel;
@@ -51,6 +54,11 @@ fn na_outra(t: vec2<i32>) -> bool {
     return all(t >= vec2<i32>(nv.outro_inicio)) && all(t < vec2<i32>(nv.outro_fim));
 }
 
+// `t` está no nível que a `entrada`, a `saida` ou o `conhecido` deste passe têm (a grade INTEIRA dele).
+fn no_nivel(t: vec2<i32>, n: vec2<i32>) -> bool {
+    return all(t >= vec2<i32>(0)) && all(t < n);
+}
+
 fn alvo(gid: vec3<u32>) -> vec2<i32> {
     return vec2<i32>(gid.xy + nv.inicio);
 }
@@ -64,6 +72,15 @@ fn miolo_classifica(@builtin(global_invocation_id) gid: vec3<u32>) {
     let t = alvo(gid);
     if !na_regiao(t) {
         return;
+    }
+    if nv.moldura > 0.5 {
+        let n = vec2<i32>(textureDimensions(entrada));
+        for (var k = 0; k < 4; k++) {
+            let v = t + VIZ[k];
+            if no_nivel(v, n) && !na_regiao(v) {
+                return;
+            }
+        }
     }
     let f = textureLoad(entrada, t, 0);
     // Fora dos opacos o texel não entra na pirâmide: só o anel prende a solução.
@@ -209,9 +226,11 @@ fn miolo_final(@builtin(global_invocation_id) gid: vec3<u32>) {
     if k.a >= 0.0 && k.a < 1.0 {
         var soma = vec3<f32>(0.0);
         var m = 0.0;
+        // As vizinhas na grade inteira com o anel de fora da região (W5n); sem ele, só na região.
+        let n = vec2<i32>(textureDimensions(conhecido));
         for (var j = 0; j < 4; j++) {
             let v = t + VIZ[j];
-            if !na_regiao(v) {
+            if !no_nivel(v, n) || (nv.moldura < 0.5 && !na_regiao(v)) {
                 continue;
             }
             let kv = textureLoad(conhecido, v, 0);
@@ -236,4 +255,144 @@ fn miolo_final(@builtin(global_invocation_id) gid: vec3<u32>) {
         l = select(mix(tr.rgb, l, tr.a), l, tr.a >= 1.0);
     }
     textureStore(saida, t, vec4<f32>(l, 1.0));
+}
+
+// ⭐ W5n — os V-ciclos de CORREÇÃO (Briggs, Henson e McCormick, «A Multigrid Tutorial», cap. 3): a
+// cascata acima só DESCE a solução, e o erro de média frequência que os níveis grossos não acertam
+// ficava (medido: a caixa de 2,2 m no zoom 2,5 com 2 058 texels a mais de 10 % do gabarito; a face do
+// rebote +49 %). Sobre a solução u do nível 1: o defeito d = T(u) − u (T = uma relaxação); o erro e
+// satisfaz e = (1 − w)·Σ e_viz/(m + (h/ℓ)²) + d, com e = 0 no conhecido; d desce (a média dos filhos
+// presentes × σ, a escala do operador entre níveis), e resolve-se no mais grosso, sobe pela bilinear
+// com relaxações amortecidas em cada nível e soma-se a u (que relaxa mais uma vez). Nos níveis do erro
+// (≥ 2) todo texel com algum filho conhecido (w > 0) PRENDE o erro a zero: com o w fracionário o
+// operador grosso quase não tem fronteira e a correção divergia (medido: ×10⁴ em dois ciclos; prender
+// só com mais de metade conhecida também divergia).
+
+// O amortecimento das relaxações do erro (Jacobi puro não apaga o modo xadrez).
+const AMORTECE: f32 = 0.8;
+
+// `entrada` = u do nível 1; `saida` = d.
+@compute @workgroup_size(8, 8)
+fn miolo_defeito(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    let k = textureLoad(conhecido, t, 0);
+    if k.a < 0.0 {
+        textureStore(saida, t, vec4<f32>(0.0));
+        return;
+    }
+    let d = relaxado(t, k) - textureLoad(entrada, t, 0).rgb;
+    textureStore(saida, t, vec4<f32>(d, 1.0));
+}
+
+// `entrada` = d do nível de baixo, `conhecido_acima` = o conhecido de BAIXO (quem está presente);
+// `saida` = d deste nível: σ × a média dos filhos presentes; σ = 4·(4 + κ_baixo)/(4 + κ), κ = (h/ℓ)².
+@compute @workgroup_size(8, 8)
+fn miolo_restringe(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    let k = textureLoad(conhecido, t, 0);
+    if k.a != 0.0 {
+        textureStore(saida, t, vec4<f32>(0.0));
+        return;
+    }
+    let n = vec2<i32>(textureDimensions(entrada));
+    var soma = vec3<f32>(0.0);
+    var presentes = 0.0;
+    for (var j = 0; j < 4; j++) {
+        let c = 2 * t + vec2<i32>(j & 1, j >> 1);
+        if any(c >= n) || !na_outra(c) || textureLoad(conhecido_acima, c, 0).a < 0.0 {
+            continue;
+        }
+        soma += textureLoad(entrada, c, 0).rgb;
+        presentes += 1.0;
+    }
+    let sigma = (16.0 + nv.kh2) / (4.0 + nv.kh2);
+    textureStore(saida, t, vec4<f32>(sigma * soma / max(presentes, 1.0), 1.0));
+}
+
+// O erro no nível mais grosso parte de d (a 1.ª relaxação a partir de zero): `entrada` = d.
+@compute @workgroup_size(8, 8)
+fn miolo_erro_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    let k = textureLoad(conhecido, t, 0);
+    var e = vec3<f32>(0.0);
+    if k.a == 0.0 {
+        e = textureLoad(entrada, t, 0).rgb;
+    }
+    textureStore(saida, t, vec4<f32>(e, 1.0));
+}
+
+// Uma relaxação amortecida do erro: `entrada` = e, `conhecido_acima` = d (o lado direito).
+@compute @workgroup_size(8, 8)
+fn miolo_erro_relaxa(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    let k = textureLoad(conhecido, t, 0);
+    if k.a != 0.0 {
+        textureStore(saida, t, vec4<f32>(0.0));
+        return;
+    }
+    var soma = vec3<f32>(0.0);
+    var m = 0.0;
+    for (var j = 0; j < 4; j++) {
+        let v = t + VIZ[j];
+        if na_regiao(v) && textureLoad(conhecido, v, 0).a >= 0.0 {
+            soma += textureLoad(entrada, v, 0).rgb;
+            m += 1.0;
+        }
+    }
+    let d = textureLoad(conhecido_acima, t, 0).rgb;
+    let e = textureLoad(entrada, t, 0).rgb;
+    var livre = d;
+    if m > 0.0 {
+        livre = (1.0 - k.a) * soma / (m + nv.kh2) + d;
+    }
+    textureStore(saida, t, vec4<f32>(mix(e, livre, AMORTECE), 1.0));
+}
+
+// O erro de cima pela bilinear: `entrada` = e de cima, `conhecido_acima` = o conhecido de cima.
+@compute @workgroup_size(8, 8)
+fn miolo_erro_sobe(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    let k = textureLoad(conhecido, t, 0);
+    var e = vec3<f32>(0.0);
+    if k.a == 0.0 {
+        let g = grosso_em(t);
+        e = select(vec3<f32>(0.0), g.rgb, g.a > 0.0);
+    }
+    textureStore(saida, t, vec4<f32>(e, 1.0));
+}
+
+// u + e no nível 1: `entrada` = e do nível 2, `conhecido_acima` = o conhecido dele, e u no binding 5.
+@compute @workgroup_size(8, 8)
+fn miolo_soma(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    let k = textureLoad(conhecido, t, 0);
+    let u = textureLoad(transmitida, t, 0).rgb;
+    if k.a < 0.0 {
+        textureStore(saida, t, vec4<f32>(0.0));
+        return;
+    }
+    var e = vec3<f32>(0.0);
+    if k.a < 1.0 {
+        let g = grosso_em(t);
+        e = select(vec3<f32>(0.0), g.rgb, g.a > 0.0);
+    }
+    textureStore(saida, t, vec4<f32>(u + e, 1.0));
 }

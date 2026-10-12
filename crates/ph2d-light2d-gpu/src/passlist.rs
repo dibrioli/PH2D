@@ -36,8 +36,8 @@ pub(crate) struct Opcionais {
     pub emissao_base: Option<usize>,
     /// ⭐ W5h: o miolo por difusão — `[conhecido da fina, conhecido, a, b, transmitida]` (as três
     /// pirâmides começam no nível 1; ⭐ W5k: a luz que atravessa um corpo translúcido e a opacidade
-    /// dele, que o `miolo_final` mistura).
-    pub miolo: Option<[usize; 5]>,
+    /// dele, que o `miolo_final` mistura; ⭐ W5n: o defeito do V-ciclo, outra pirâmide do nível 1).
+    pub miolo: Option<[usize; 6]>,
 }
 
 impl Opcionais {
@@ -66,8 +66,8 @@ impl Opcionais {
             emissao_base: (cfg.rebote && cfg.rebotes_por_quadro > 1 && cfg.holografica.is_some())
                 .then(|| proxima(1)),
             miolo: cfg.niveis_do_miolo().map(|_| {
-                let k = proxima(5);
-                [k, k + 1, k + 2, k + 3, k + 4]
+                let k = proxima(6);
+                [k, k + 1, k + 2, k + 3, k + 4, k + 5]
             }),
         }
     }
@@ -320,6 +320,7 @@ impl PassList {
                     base,
                     1,
                 ),
+                ("luz2d/tex/miolo_defeito", F::Rgba32Float, meia, l),
             ] {
                 texturas.push(Textura {
                     nome,

@@ -174,6 +174,10 @@ pub struct Config {
     /// `ph2d_light2d_ref::OpcoesDoMiolo`); só com o preenchimento (que marca o interior). `None` = o
     /// exterior mais próximo em todo o miolo (a lei até a W5g).
     pub miolo: Option<Miolo>,
+    /// ⭐ W5n — com a região menor que a grade, o miolo resolve-se no corpo INTEIRO: o anel de fora da
+    /// região (`c3_anel.wgsl`) e a pirâmide na grade inteira nos níveis que a região lê; `false` = só
+    /// na região, com Neumann na borda dela (a W5h: o interior mudava com o enquadramento).
+    pub anel_fora_da_regiao: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -194,6 +198,11 @@ pub struct Miolo {
     /// nível acima faz o dobro do de baixo até [`Self::relaxa_max`], e o mais grosso o dobro deste.
     pub relaxa: u32,
     pub relaxa_max: u32,
+    /// ⭐ W5n — os V-ciclos de CORREÇÃO depois da cascata (o defeito do nível 1 desce, o erro resolve-se
+    /// no mais grosso e sobe); 0 = só a cascata (a W5h: o erro de média frequência ficava).
+    pub ciclos: u32,
+    /// ⭐ W5n — os pares de relaxações do erro em cada nível do V-ciclo, a subir.
+    pub suaviza: u32,
 }
 
 /// ⭐ W5h — a escolha do dono (11/10: a difusão inteira, até ao centro); as relaxações MEDIDAS na
@@ -203,6 +212,8 @@ pub const MIOLO_PADRAO: Miolo = Miolo {
     penetracao_m: f32::INFINITY,
     relaxa: 4,
     relaxa_max: 32,
+    ciclos: 3,
+    suaviza: 2,
 };
 
 /// ⭐ W5c — as escolhas da cascata holográfica.
@@ -365,6 +376,7 @@ impl Config {
             pe_na_borda: true,
             vis_na_face: true,
             miolo: Some(MIOLO_PADRAO),
+            anel_fora_da_regiao: true,
             holografica: None,
         }
     }

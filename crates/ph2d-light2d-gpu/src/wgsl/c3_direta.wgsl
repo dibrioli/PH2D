@@ -944,6 +944,17 @@ fn luz_exata(P: vec2<f32>) -> vec3<f32> {
     return soma;
 }
 
+// A luz do texel fino `id` pela visibilidade exata em `onde` (sem a outra face: `nas_faces`).
+fn luz_exata_no_onde(id: vec2<u32>, onde: Onde) -> vec3<f32> {
+    borda_aqui = onde.remapeado;
+    var l = luz_exata(onde.p);
+    if onde.remapeado {
+        l = luz_exata_remapeada(onde.p, ponto_fino(id));
+        l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
+    }
+    return l;
+}
+
 @compute @workgroup_size(8, 8)
 fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
     let id = gid.xy + fina.inicio;
@@ -953,12 +964,7 @@ fn c3_fina_exata(@builtin(global_invocation_id) gid: vec3<u32>) {
     borda_aqui = true;
     let tau = meio(ponto_fino(id)).tau;
     let onde = onde_calcular(id);
-    borda_aqui = onde.remapeado;
-    var l = luz_exata(onde.p);
-    if onde.remapeado {
-        l = luz_exata_remapeada(onde.p, ponto_fino(id));
-        l += c0_ao_longo_da_face(onde.p, ponto_fino(id)) - c0_em(onde.p);
-    }
+    let l = luz_exata_no_onde(id, onde);
     var t = vec3<f32>(0.0);
     if onde.remapeado && tau > 0.0 {
         borda_aqui = false;

@@ -229,6 +229,32 @@ pub fn choose_knobs(
     arm(sim, map, &bare, d, knobs.0, knobs.1)
 }
 
+/// **O slider de Offset diz a verdade da seleção** (smoke de 11/10: *«o slider mostra 25 mas o efeito
+/// não aparece na estrela»*). Sem offset vivo em nenhuma forma de `ids` ele tem de ler ZERO —
+/// `Some(0.0)` quando o `slider` mostra outra coisa. `None` = nada a corrigir: há offset vivo (quem
+/// escreve o número é o espelho da seleção) ou o slider já está no zero.
+#[must_use]
+pub fn shown_frac(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    ids: &[VecPathId],
+    slider: f64,
+) -> Option<f64> {
+    let live = ids.iter().any(|id| spec_of(sim, map, *id).is_some());
+    (!live && slider != 0.0).then_some(0.0)
+}
+
+/// A fração que um chip arma numa forma nua: a do slider, ou — com ele no zero, que é o que uma
+/// forma nua mostra ([`shown_frac`]) — a de NASCENÇA. Um chip que não desenhasse era o BUGS #41.
+#[must_use]
+pub fn chip_frac(slider: f64) -> f64 {
+    if slider == 0.0 {
+        ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC
+    } else {
+        slider
+    }
+}
+
 /// **MATERIALIZA** os offsets vivos da seleção — o `Apply Offset` e o `Convert to Curves`.
 ///
 /// É o único momento em que os vértices do offset passam a existir no documento. Cada forma é

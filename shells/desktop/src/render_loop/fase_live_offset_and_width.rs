@@ -80,6 +80,17 @@ impl crate::App {
                 .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
                     ph2d_tool_vector::params::slider_to_offset_frac(v)
                 });
+            // O slider diz a verdade da seleção: sem offset vivo, ZERO (`offset_live::shown_frac`).
+            let truth = (!offset_grabbed)
+                .then(|| crate::offset_live::shown_frac(sim, &self.vec.entities, &sel, frac))
+                .flatten();
+            let frac = truth.map_or(frac, |f| {
+                hero.store.set_slider_value(
+                    ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
+                    ph2d_tool_vector::params::offset_frac_to_slider(f),
+                );
+                f
+            });
             if offset_grabbed && !sel.is_empty() {
                 let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
                 let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
@@ -93,9 +104,14 @@ impl crate::App {
             if knobs != self.vec.expand_knobs.0 {
                 self.vec.expand_knobs.0 = knobs;
                 let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
+                let chip = crate::offset_live::chip_frac(frac);
+                let d = chip * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
                 if crate::offset_live::choose_knobs(sim, &self.vec.entities, &sel, knobs, d) > 0 {
                     self.vec.offset_mirrored = (sel.len() == 1).then(|| sel[0]);
+                    hero.store.set_slider_value(
+                        ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
+                        ph2d_tool_vector::params::offset_frac_to_slider(chip),
+                    );
                 }
             }
         }

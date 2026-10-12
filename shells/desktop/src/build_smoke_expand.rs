@@ -243,8 +243,17 @@ impl crate::App {
             .and_then(|g| g.hero_screen.as_ref())
             .and_then(|h| h.store.active_id())
             .map_or("-".into(), |id| format!("{id:?}"));
+        // O que o slider MOSTRA (fração): tem de concordar com `off`/`d` — o BUGS #41.
+        let shown = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| h.store.slider(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET))
+            .map_or(f64::NAN, |(_, v)| {
+                ph2d_tool_vector::params::slider_to_offset_frac(v)
+            });
         eprintln!(
-            "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} off={offs} join={} d={} \
+            "[retune-smoke] f={f} dt={dt_ms:.1}ms undo={} off={offs} join={} d={} slider={shown:.2} \
              paths={paths} src={verts} live={live_verts} bw={bw:.3} active={active}",
             self.undo.depth(),
             ph2d_panel_vector::expand_join(),

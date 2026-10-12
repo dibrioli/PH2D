@@ -402,6 +402,44 @@ fn a_corner_chip_on_a_live_offset_keeps_its_distance() {
     assert_eq!((spec.d, spec.join, spec.side), (0.2, 2, 2));
 }
 
+/// **O slider não mostra um offset que a forma não tem** (smoke do Enio, 11/10: *«o slider mostra
+/// 25 mas o efeito disso não aparece na estrela»*). Numa seleção sem offset vivo ele lê ZERO; só um
+/// offset vivo (o espelho) põe outro número lá.
+#[test]
+fn a_bare_selection_shows_a_zero_offset() {
+    let (_, mut sim, map, _, id) = donut_scene();
+    assert_eq!(
+        crate::offset_live::shown_frac(&sim, &map, &[id], 0.25),
+        Some(0.0)
+    );
+    assert_eq!(
+        crate::offset_live::shown_frac(&sim, &map, &[], 0.0),
+        None,
+        "já no zero: nada a escrever"
+    );
+    crate::offset_live::arm(&mut sim, &map, &[id], 0.2, 1, 2);
+    assert_eq!(
+        crate::offset_live::shown_frac(&sim, &map, &[id], 0.25),
+        None,
+        "vivo: o espelho manda"
+    );
+}
+
+/// E o chip sobre a forma nua, com o slider no zero que ela mostra, pré-visualiza a fração de
+/// NASCENÇA (25 %): um clique de Corner que não desenhasse seria o #41 de volta.
+#[test]
+fn a_chip_on_a_zero_slider_previews_the_birth_fraction() {
+    assert_eq!(
+        crate::offset_live::chip_frac(0.0),
+        ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC
+    );
+    assert_eq!(
+        crate::offset_live::chip_frac(-0.4),
+        -0.4,
+        "um valor que o artista pôs fica"
+    );
+}
+
 // ─────────────────────────── O cozimento ───────────────────────────
 
 /// **O memo re-coze quando a FONTE muda.** A chave é a geometria de mundo que entra, não um

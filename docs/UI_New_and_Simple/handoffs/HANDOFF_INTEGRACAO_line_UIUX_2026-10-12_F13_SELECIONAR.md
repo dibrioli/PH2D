@@ -141,3 +141,26 @@ nó) e `2_elipse.png` (a selecção passou à elipse).
 - Fotos da cena 20: `/var/tmp/ph2d_F13_cena20/` (as duas paragens; nenhum nó no modo Forma).
 - `agent-loop-profile.sh` (20 sessões): paralelismo 1,14 ✗ · respostas/sessão 164 ✓ · test:check
   4,2 ✗ · Edit 43 % ✗ · contexto/passo 347 mil ✗ · início 63 mil ✓.
+
+## §9 — Integrado no `main` (12/10, por ordem do dono: «Integre a linha ao main»)
+
+- Rebase sobre o `main` `bbdb80cc93` (a integração do MiroClone W12–W19 por cima da Luz2D W5m): 82
+  commits; 5 conflitos, TODOS no `CLAUDE.md` §5.1 (a entrada UI/UX ao lado da do MiroClone),
+  resolvidos pelos estágios — o `:2` inteiro com a entrada UI/UX do `:3` (script que recusa se o `:3`
+  mudou outra linha). `range-diff`: só esses 5 commits mudaram, e só no contexto. Mergiraf não
+  interveio. Superfície partilhada sem conflito de texto: `Cargo.lock`, `svg_export.rs`,
+  `store_core.rs`, `board_view.rs`, `hero/paint.rs`, `ph2d-i18n`, `ph2d-vector`, `tests/it/main.rs`.
+- **Semântico apanhado pelo portão** (`check --workspace --all-targets`, avisos negados): o
+  `vec_convert_tests.rs` da shell lia o id devolvido pelo `ShapeTool::on_press`, que a correcção do
+  clique (`04aea82470`) tirou → lê o `selected()` no soltar (`07674c067d`). Era desta linha (o
+  `check` estreito não compila os testes), não do `main`.
+- **Árvore suja do primário recolhida:** o `PROMPT_LINHAS_RAPIDAS_2026-10-11.md` vivia solto em
+  `docs/IntegracaoMultiAgente/` (citado por handoffs de cinco linhas e pelo `Cargo.toml`, nunca
+  commitado) → commitado e, pelo gate `the_live_process_folder_holds_no_dated_record`, movido para
+  `docs/archive/integracao-jornadas/`, com as 13 referências por caminho (sha256 igual ao solto).
+- **Portão da árvore combinada** (`nextest-impacted`, `ci-test`): 20 145 corridos, 20 131 verdes; os
+  14 restantes = o do registo datado (curado acima, re-corrido 8/8) + os **13 da Luz 2D herdados**
+  (`ph2d-app-light2d` ×10, `ph2d-light2d-gpu` ×3), vermelhos no `main` sem esta linha (corridos no
+  primário, mesmas mensagens; o handoff do MiroClone já os lista ao bit). Por isso o `--ff-only` foi
+  feito à mão (o `foundational-integrate.sh` só junta com o impactado verde).
+- `main` → `6b13c519f4`. §5.1 UI/UX: «Último: F13, no main 12/10».

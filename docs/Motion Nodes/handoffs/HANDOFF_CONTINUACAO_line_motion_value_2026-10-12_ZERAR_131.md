@@ -57,6 +57,9 @@ fila do painel, fotografado): do `cor` a placa recebe verde; do `R` do cartão `
 `(1, 1, 1, 1)` — o branco do report. Curado em `62e22985ce`: `saida_viva(kind, porta)` na crate do Input e a recusa com
 aviso nas duas portas onde um fio nasce (`DriveParam`, `Connect`); o roteiro nomeia o cartão (o `cor` está SOZINHO à
 direita). ⏳ Re-smoke `=136` passo 3.
+⚠️ **3.º report** — a foto do aviso CORTADO («…only carry a colour on a…»): o aviso passa a 47 caracteres. Aberto
+para a `line/UIUX`: o aviso (toast) corta sem reticências de sentido nem quebra de linha — outros avisos longos do
+Motion (`can_t_drive_that_output_is_a_per_element_stream` + a cura) perdem a cura do mesmo modo.
 
 ## Fecho desta janela
 

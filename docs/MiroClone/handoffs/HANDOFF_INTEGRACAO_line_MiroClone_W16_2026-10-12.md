@@ -16,7 +16,7 @@
 | base (merge-base) | `8f20c60de`. O `main` andou **21 commits** (linha Vector e memória) e a linha **NÃO está rebaseada**: o integrador rebaseia |
 | commits da W16 | 12: `git log --oneline 383637a100..HEAD` (`383637a100` = fim da W15) |
 | diff da W16 em `crates/`+`shells/` | `git diff --shortstat 383637a100..HEAD -- crates shells`: 68 ficheiros, +3 881 / −335 |
-| smoke | cena 17 (`PH2D_BOARD_SMOKE=17`): **ainda sem smoke do dono**. A W15 teve OK dele (11/10). Foto da cena: `ferramentas/soltar_wayland/quadro17_depois.png` (KWin virtual; a bola do GIF anda entre duas fotos) |
+| smoke | cena 17 (`PH2D_BOARD_SMOKE=17`): **smoke OK do dono (12/10)**. A W15 teve OK dele (11/10). Foto da cena: `ferramentas/soltar_wayland/quadro17_depois.png` (KWin virtual; a bola do GIF anda entre duas fotos) |
 
 Os 6 abertos herdados da W14/W15 num bloco só (§0.10):
 
@@ -122,7 +122,6 @@ ritmo `t + d` do GIF) foram tapadas com testes e re-mutadas (sangram) ⇒ **17/1
 - (c) O Shift do recorte toma a proporção em px naturais (o oráculo só mediu kx = ky).
 - (d) Um fio de tocador por GIF à vista, sem tecto de quantidade.
 - (e) Os `<text>` de um SVG continuam a não se desenhar (recusa medida da feature `text` do usvg, de pé).
-- Falta o **smoke do dono** da cena 17.
 
 ## 5. O integrador
 

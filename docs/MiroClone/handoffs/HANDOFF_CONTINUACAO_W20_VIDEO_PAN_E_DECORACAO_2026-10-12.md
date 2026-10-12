@@ -1,4 +1,4 @@
-# CONTINUAÇÃO — `line/MiroClone` W20: o pan não pausa o vídeo, e o vídeo decora-se como um retângulo (2026-10-12)
+# CONTINUAÇÃO — `line/MiroClone` W20: o pan não pausa o vídeo, o vídeo decora-se como um retângulo e arrasta-se (2026-10-12)
 
 > Rota `/pd-linha-assumir`: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && pwd && git branch --show-current`
 > ANTES de ler. Estado: a W19 FECHOU e integrou-se ao `main` por ordem do dono (12/10)
@@ -21,6 +21,16 @@
    fizerem sentido; o `.excalidraw` lê/escreve-os. ⚠️ Regra do YouTube: a decoração fica À VOLTA do tocador (a
    borda por fora ou no rebordo da caixa), nunca por cima do quadro do vídeo; e um preenchimento não pode tapar o
    vídeo vivo.
+
+3. **«Não é possível arrastar a janela de vídeo pois clicar no vídeo dá play. Logo, precisamos resolver isso:
+   segurar e arrastar move, apenas clicar dá play/pause.»** Hoje (`board_video::pointer_down`) o carregar no play
+   — ou num vídeo já seleccionado — ACTIVA-o no próprio Down, e activo o rato vai todo para o tocador: não sobra
+   gesto para mover. Cura a desenhar e a gatear pelo despacho real: a decisão passa para o LARGAR — Down guarda o
+   ponto; um Move além do limiar de arrasto da casa vira o arrasto do editor (move o elemento); Up sem arrasto é o
+   clique (activa / toca-pausa). Atenção ao vídeo ACTIVO e vivo: o clique dentro dele vai ao tocador (o play ao
+   meio, o canal) — o arrasto num activo precisa de uma pega que não seja o tocador (a moldura/borda da caixa, que
+   o item 2 desenha, ou a nossa barra), porque o Down dentro do tocador vivo é do YouTube. Meça o oráculo (o
+   Excalidraw: arrastar um `embeddable` activo vs inactivo) antes de escolher.
 
 ## Lembretes medidos da W19
 

@@ -161,27 +161,8 @@ fn the_scene_authors_exactly_one_glow_and_it_carries_the_knobs() {
 /// centro (o vórtice sozinho atira-as para fora — é o atrator e o arrasto que as seguram).
 #[test]
 fn the_stars_orbit_and_stay_on_screen() {
-    let reg = registry();
-    let mut doc = MotionDoc::default();
-    build_fx_demo_document(&mut doc, &reg).expect("a cena monta");
-    let integ = doc
-        .graph
-        .nodes()
-        .iter()
-        .find(|n| n.type_name == "motion.integrate")
-        .map(|n| n.id)
-        .expect("a banda 3 integra");
     let c = super::CENTRO_DAS_ESTRELAS;
-    let mut cook = Cook::new();
-    let mut poses: Vec<Vec<[f32; 2]>> = Vec::new();
-    for k in 0..600 {
-        let t = f64::from(k) / 60.0;
-        let out = cook.cook(&doc.graph, &reg, integ, t).expect("coze");
-        if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
-            poses.push(p.clone());
-        }
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
-    }
+    let poses = poses_das_estrelas();
     let anda = |a: &[[f32; 2]], b: &[[f32; 2]]| {
         a.iter()
             .zip(b)
@@ -205,4 +186,69 @@ fn the_stars_orbit_and_stay_on_screen() {
         "pararam antes dos 10 s"
     );
     assert!(longe < 2.0, "fugiram do centro: {longe}");
+}
+
+/// A coluna `P` das estrelas (a banda 3) em 10 s a 60 Hz, pelo cozimento da CPU.
+fn poses_das_estrelas() -> Vec<Vec<[f32; 2]>> {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    build_fx_demo_document(&mut doc, &reg).expect("a cena monta");
+    let integ = doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.integrate")
+        .map(|n| n.id)
+        .expect("a banda 3 integra");
+    let mut cook = Cook::new();
+    let mut poses: Vec<Vec<[f32; 2]>> = Vec::new();
+    for k in 0..600 {
+        let t = f64::from(k) / 60.0;
+        let out = cook.cook(&doc.graph, &reg, integ, t).expect("coze");
+        if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+            poses.push(p.clone());
+        }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+    }
+    poses
+}
+
+/// ⭐ **AS ESTRELAS GIRAM EM VOLTA DO CENTRO DELAS** (doc 131 §1). O gate de cima prova que
+/// andam e não fogem — e o defeito original (o vórtice no centro do MUNDO) passava nele se
+/// alguma força as empurrasse. Este mede o GIRO: por estrela, o ângulo desenrolado em volta de
+/// `CENTRO_DAS_ESTRELAS` ao fim de 10 s, e o raio.
+#[test]
+fn as_estrelas_da_70_giram_em_volta_do_centro_delas() {
+    let c = super::CENTRO_DAS_ESTRELAS;
+    let poses = poses_das_estrelas();
+    let n = poses[0].len();
+    let mut giros = Vec::with_capacity(n);
+    for i in 0..n {
+        let (mut total, mut rmin, mut rmax) = (0.0f32, f32::INFINITY, 0.0f32);
+        let ang = |p: [f32; 2]| (p[1] - c[1]).atan2(p[0] - c[0]);
+        for w in poses.windows(2) {
+            let mut d = ang(w[1][i]) - ang(w[0][i]);
+            if d > std::f32::consts::PI {
+                d -= std::f32::consts::TAU;
+            } else if d < -std::f32::consts::PI {
+                d += std::f32::consts::TAU;
+            }
+            total += d;
+            let r = (w[1][i][0] - c[0]).hypot(w[1][i][1] - c[1]);
+            rmin = rmin.min(r);
+            rmax = rmax.max(r);
+        }
+        giros.push((total / std::f32::consts::TAU, rmin, rmax));
+    }
+    for (i, (v, rmin, rmax)) in giros.iter().enumerate() {
+        eprintln!("estrela {i}: {v:+.3} voltas · raio {rmin:.3}..{rmax:.3}");
+    }
+    // Medido (12/10, a cena curada): as 4 estrelas dão −2,47 a −2,76 voltas em 10 s, raio
+    // 0,33..1,70. ⇒ «gira» = pelo menos UMA volta, todas no MESMO sentido, sem cair no centro.
+    let sentido = giros[0].0.signum();
+    for (i, &(v, rmin, _)) in giros.iter().enumerate() {
+        assert!(v.abs() >= 1.0, "a estrela {i} não dá uma volta: {v:+.3}");
+        assert_eq!(v.signum(), sentido, "a estrela {i} gira ao contrário");
+        assert!(rmin > 0.1, "a estrela {i} caiu no centro: raio {rmin:.3}");
+    }
 }

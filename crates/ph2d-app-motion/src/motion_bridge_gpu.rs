@@ -660,6 +660,11 @@ mod taps_tests;
 #[path = "motion_bridge_gpu_varias_saidas_tests.rs"]
 mod varias_saidas_tests;
 
+/// A deriva da `=129` por tique e por nó (doc 131 §2) — sonda.
+#[cfg(test)]
+#[path = "motion_bridge_gpu_deriva_129_tests.rs"]
+mod deriva_129_tests;
+
 /// ⭐⭐⭐ **As FORMAS pela rota do DISPOSITIVO desenham o que a rota da CPU desenha** (doc 121 W3).
 #[cfg(test)]
 #[path = "motion_bridge_gpu_formas_tests.rs"]

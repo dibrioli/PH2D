@@ -58,8 +58,13 @@ impl GpuCook {
             .enumerate()
             .map(|(k, s)| {
                 let v = self.passe.varreduras.get(k).copied().unwrap_or(0);
-                self.separa_na_placa(gpu, encoder, &s, v, ph2d_contact::REPOUSO_VISIVEL)
-                    .unwrap_or(s)
+                match self.separa_na_placa(gpu, encoder, &s, v, ph2d_contact::REPOUSO_VISIVEL) {
+                    Some(separada) => {
+                        self.a_saida_e_o_que_ela_desenha(plan.sinks.get(k), &separada);
+                        separada
+                    }
+                    None => s,
+                }
             })
             .collect();
         if styles.len() != saidas.len() {
@@ -217,6 +222,18 @@ impl GpuCook {
         juntar_as_particoes(&partes, &mut self.tex_runs);
         ordenar_como_a_cpu(styles, &mut self.tex_runs);
         Ok(total)
+    }
+
+    /// ⭐⭐ **A corrente de uma saída é a que ela DESENHA** — depois do passe de separação, como a CPU
+    /// responde (`ph2d_eval_motion::o_que_o_sink_desenha`): a tomada (os números do cartão) e a
+    /// leitura de depuração (os gates) liam a corrente de ANTES, e a `=129` com o `Collide` ligado
+    /// dava `2,7e-3` placa × CPU com o desenho igual (doc 131 §2).
+    fn a_saida_e_o_que_ela_desenha(&mut self, sink: Option<&NodeId>, separada: &GpuStream) {
+        let Some(&sink) = sink else { return };
+        self.tap_streams.insert(sink, separada.clone());
+        if self.debug_retain {
+            self.debug_streams.insert(sink, separada.clone());
+        }
     }
 }
 

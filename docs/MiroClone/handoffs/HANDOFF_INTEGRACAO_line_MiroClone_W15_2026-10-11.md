@@ -14,7 +14,7 @@
 | base (merge-base) | `8f20c60de` (o `main` de 11/10) — se o `main` não andou, `--ff-only` |
 | commits da W15 | `84a111d63..9bd06c29b` (22) + este handoff; a linha inteira: `git log --oneline 8f20c60de..HEAD` |
 | diff da W15 em `crates/`+`shells/` | `git diff --shortstat 3e45504e5..HEAD -- crates shells`: 89 ficheiros, +4 082 / −222 |
-| smoke | cena 16 (`PH2D_BOARD_SMOKE=16`): **por fazer pelo dono**; a foto da cena (o binário final, num KWin virtual, com uma imagem largada e a barra dela à vista) está em `ferramentas/soltar_wayland/quadro16_depois.png` |
+| smoke | cena 16 (`PH2D_BOARD_SMOKE=16`): **OK do dono** (11/10); a foto da cena (o binário final, num KWin virtual, com uma imagem largada e a barra dela à vista) está em `ferramentas/soltar_wayland/quadro16_depois.png` |
 
 Ordem do dono (11/10, depois do OK da W14): *«moldura (stroke) para imagem como as shapes · um filtro preto e branco
 com botão na barra superior · imagens SVG e Flip também devem poder ser importadas · na Hierarchy, botão direito:

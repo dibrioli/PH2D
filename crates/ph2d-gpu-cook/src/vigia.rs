@@ -112,6 +112,11 @@ impl GpuCook {
     /// ⭐ **Quantas linhas de imagem a placa contou** nas saídas vigiadas, na última leitura
     /// completa — e esquece-a (cada leitura decide UMA vez). `0` enquanto nada voltou.
     pub fn toma_imagens_vigiadas(&mut self, gpu: &GpuContext) -> u32 {
+        // ⚠️ Sem leitura em voo não há `poll`: ele acordaria as leituras dos OUTROS (os cartões, o
+        // relatório do passe) num ponto do quadro onde elas nunca acordavam.
+        if self.vigia.em_voo.is_none() {
+            return self.vigia.lida.take().unwrap_or(0);
+        }
         // ⛔ `Poll` e NUNCA `wait` — ver o cabeçalho.
         let _ = gpu.device.poll(wgpu::PollType::Poll);
         if let Some((staging, pronto)) = &self.vigia.em_voo {

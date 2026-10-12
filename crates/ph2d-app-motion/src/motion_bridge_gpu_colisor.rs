@@ -8,6 +8,9 @@
 //! diferentes**: o nome escrito num text param, e o botão `Collide` de uma peça (a `source.shape` e,
 //! desde a §33, o `source.object`).
 //!
+//! ⭐ Desde o doc 130 o passe corre também na placa, e desde o doc 131 D.14 a escrita do raio pelo
+//! nome também: o que sobra é o nome que a placa não resolve e a cerca do fim.
+//!
 //! ⚠️ **O DESPACHO fica no [`super`]**, de propósito: o que este ficheiro tem são as PERGUNTAS, e
 //! quem decide a ordem do cozimento é o `cook_gpu`. O gate
 //! `a_cerca_do_passe_esta_de_facto_ligada_ao_cozimento` lê aquele ficheiro por `include_str!`
@@ -16,13 +19,15 @@
 
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::cook::OpResolver;
+use ph2d_nodegraph::gpu::{KernelResolver, StreamOp};
 use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 
-/// A frase da recusa do colisor escrito PELO NOME ([`graph_declares_collider`]) — uma constante,
-/// para o gate que prova a LIGAÇÃO ler a frase do produto e não uma cópia dela.
+/// A frase da recusa do colisor nomeado num param que a placa não resolve
+/// ([`graph_declares_collider`]) — uma constante, para o gate que prova a LIGAÇÃO ler a frase do
+/// produto e não uma cópia dela.
 pub(super) const RECUSA_COLISOR: &str =
-    "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contatos (doc 109)";
+    "CPU: um nome de colisor num param que a placa nao resolve (doc 109, doc 131 D.14)";
 
 /// A frase da recusa do PASSE automático (doc 115 §33, doc 130 §5) — desde o doc 130 só quando
 /// alguma peça declara e NENHUMA corrente de sink chegou à placa com a coluna do colisor: a
@@ -86,6 +91,9 @@ pub(super) fn cerca_do_passe(motion: &MotionState, declara: bool) -> bool {
 /// ⚠️ **E um objecto SEM o botão continua a cozer no dispositivo** — a membrana já não declara
 /// nada, e é o cartão que decide. A recusa é barata por MEDIÇÃO: a `8` varreduras a separação de
 /// centenas de peças custa `12,4 %` de um quadro e o cozimento inteiro na CPU `0,02 %` (doc 115 §11).
+///
+/// ⭐ **E a escrita do raio PELO NOME também declara** (doc 131 D.14, [`escreve_colisor_pelo_nome`]):
+/// ela vai à placa, logo arma a mesma cerca do fim.
 pub(crate) fn peca_declara_colisor(motion: &mut MotionState, seconds: f64) -> bool {
     let declarantes: Vec<(
         ph2d_nodegraph::graph::NodeId,
@@ -103,32 +111,86 @@ pub(crate) fn peca_declara_colisor(motion: &mut MotionState, seconds: f64) -> bo
             Some((n.id, manifest, chave))
         })
         .collect();
-    declarantes.into_iter().any(|(id, manifest, chave)| {
+    let botao = declarantes.into_iter().any(|(id, manifest, chave)| {
         crate::motion_externals::resolved_params(motion, id, seconds, manifest)
             .get(chave)
             .is_some_and(|&v| v >= 0.5)
+    });
+    botao || escreve_colisor_pelo_nome(motion, seconds)
+}
+
+/// ⭐⭐ **Um nome de colisor que a placa NÃO resolve manda o documento para a CPU** (doc 109 W2,
+/// doc 131 D.14).
+///
+/// Desde o D.14 o sequenciador resolve ele próprio o nome de um text param que o TIPO do nó declara
+/// a um [`StreamOp`] — a escrita por nome (o `Custom` do `motion.drive`, [`StreamOp::WriteNamed`])
+/// e a leitura (o `value.attribute`, [`StreamOp::Project`]): os dois lados escrevem e lêem a MESMA
+/// coluna, e o passe da placa separa-a. Recusa-se só o que sobra — um text param de colisor que
+/// nenhum `StreamOp` do nó nomeia (outra chave, outro nó): quem o lê e o que faz com ele, a placa
+/// não sabe.
+///
+/// ⚠️ **A pergunta continua a ser sobre o NOME**, aparado: um falso positivo é cozinhar na CPU,
+/// nunca uma cena errada.
+pub(super) fn graph_declares_collider(graph: &Graph, kernels: &dyn KernelResolver) -> bool {
+    use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
+    graph.node_text_params().iter().any(|(id, params)| {
+        let resolvida = graph
+            .node(*id)
+            .and_then(|n| kernels.stream_op(NodeTypeId::of(n.type_name.as_str())))
+            .and_then(|op| match op {
+                StreamOp::WriteNamed { text_param, .. } | StreamOp::Project { text_param, .. } => {
+                    Some(*text_param)
+                }
+                _ => None,
+            });
+        params.iter().any(|(chave, v)| {
+            resolvida != Some(chave.as_str())
+                && matches!(
+                    v.trim(),
+                    COLLIDER_COLUMN | COLLIDER_BOX_COLUMN | COLLIDER_OFFSET_COLUMN
+                )
+        })
     })
 }
 
-/// ⭐⭐ **Um documento que escreve o colisor PELO NOME cozinha na CPU** (doc 109 W2) — a rota que o
-/// botão não cobre: um nó que escreve uma coluna pelo NOME (o canal `Custom…` do `motion.drive`).
-///
-/// ⚠️ **A pergunta é sobre o NOME e não sobre o nó**: uma lista de «nós que escrevem por nome»
-/// envelheceria no dia do próximo. O preço de um falso positivo é cozinhar na CPU, nunca uma cena
-/// errada.
-pub(super) fn graph_declares_collider(graph: &Graph) -> bool {
-    use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
-    // As TRÊS colunas da declaração (doc 109 §5): a caixa e o centro também só a CPU resolve.
-    graph.node_text_params().values().any(|params| {
-        params.values().any(|v| {
-            matches!(
-                v.trim(),
-                COLLIDER_COLUMN | COLLIDER_BOX_COLUMN | COLLIDER_OFFSET_COLUMN
-            )
+/// ⭐ **Alguma escrita por nome ACTIVA escreve o raio do colisor neste quadro?** (doc 131 D.14) —
+/// o irmão do botão para a cerca do fim ([`cerca_do_passe`]): o `when` resolvido (um fio conta) e
+/// o nome EXACTO, como a CPU o escreve. Só o raio: a escrita por nome é escalar, e a caixa e o
+/// centro são `Vec2` — um escalar com esses nomes não declara em nenhum dos lados.
+fn escreve_colisor_pelo_nome(motion: &mut MotionState, seconds: f64) -> bool {
+    let escritas: Vec<_> = motion
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter_map(|n| {
+            let ty = NodeTypeId::of(n.type_name.as_str());
+            let Some(StreamOp::WriteNamed {
+                text_param, when, ..
+            }) = motion.registry.stream_op(ty)
+            else {
+                return None;
+            };
+            let nome = motion
+                .doc
+                .graph
+                .node_text_param_overrides(n.id)?
+                .get(*text_param)?;
+            (nome == ph2d_nodegraph::attr::COLLIDER_COLUMN)
+                .then(|| Some((n.id, motion.registry.resolve(ty)?.manifest(), *when)))
+                .flatten()
         })
+        .collect();
+    escritas.into_iter().any(|(id, manifest, when)| {
+        let p = crate::motion_externals::resolved_params(motion, id, seconds, manifest);
+        when(&|nome: &str| p.get(nome).copied().unwrap_or(0.0))
     })
 }
 
 #[cfg(test)]
 #[path = "motion_bridge_gpu_collider_tests.rs"]
 mod collider_tests;
+
+#[cfg(test)]
+#[path = "motion_bridge_gpu_colisor_nome_tests.rs"]
+mod colisor_nome_tests;

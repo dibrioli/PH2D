@@ -10,8 +10,8 @@ use ph2d_gpu::GpuContext;
 use ph2d_node_motion_shape::param;
 use ph2d_nodegraph::node::NodeTypeId;
 
-const TIQUE: u64 = 6;
-const DT: f64 = 1.0 / 60.0;
+pub(super) const TIQUE: u64 = 6;
+pub(super) const DT: f64 = 1.0 / 60.0;
 /// Medido (11/10, RTX, `TIQUE = 6`): o pior desvio entre as rotas nas quatro cenas foi `5,96e-8`
 /// (a `=122`); a `=114` deu `0`. Folga de ~17×.
 const EPS: f32 = 1e-6;
@@ -43,7 +43,7 @@ fn estado(cena: u32, colide: bool) -> MotionState {
     m
 }
 
-fn formas_da_cpu(m: &mut MotionState) -> Vec<[f32; 2]> {
+pub(super) fn formas_da_cpu(m: &mut MotionState) -> Vec<[f32; 2]> {
     let scopes = ph2d_node_motion_time_remap::time_scopes(&m.doc.graph, &m.registry);
     crate::motion_externals::publish_all(m, TIQUE as f64 * DT);
     for tick in 0..=TIQUE {
@@ -68,7 +68,7 @@ fn formas_da_cpu(m: &mut MotionState) -> Vec<[f32; 2]> {
     v
 }
 
-fn formas_da_placa(gpu: &GpuContext, m: &MotionState) -> Vec<[f32; 2]> {
+pub(super) fn formas_da_placa(gpu: &GpuContext, m: &MotionState) -> Vec<[f32; 2]> {
     let w = ph2d_gpu_cook::lower_forma::FORMA_WORDS as usize;
     let mut v: Vec<[f32; 2]> = m
         .gpu_cook
@@ -83,7 +83,7 @@ fn formas_da_placa(gpu: &GpuContext, m: &MotionState) -> Vec<[f32; 2]> {
     v
 }
 
-fn pior(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
+pub(super) fn pior(a: &[[f32; 2]], b: &[[f32; 2]]) -> f32 {
     a.iter()
         .zip(b)
         .map(|(p, q)| (p[0] - q[0]).abs().max((p[1] - q[1]).abs()))

@@ -290,19 +290,34 @@ fn a_membrana_nao_escreve_colisor_nenhum() {
     );
 }
 
-/// ⭐⭐ **A LIGAÇÃO: a ponte do produto recusa de facto o documento** — o gate abaixo prova a
-/// pergunta; este prova que ela é feita no caminho que cozinha.
+/// A chave que a escrita por nome do `motion.drive` declara — lida do REGISTO (a app não depende
+/// da crate do nó).
+fn chave_do_drive() -> &'static str {
+    use ph2d_nodegraph::gpu::{KernelResolver, StreamOp};
+    let m = MotionState::new();
+    match m
+        .registry
+        .stream_op(ph2d_nodegraph::node::NodeTypeId::of("motion.drive"))
+    {
+        Some(StreamOp::WriteNamed { text_param, .. }) => text_param,
+        outro => panic!("o motion.drive regista uma escrita por nome: {outro:?}"),
+    }
+}
+
+/// ⭐⭐ **A LIGAÇÃO: a ponte do produto recusa de facto o nome que a placa não resolve** — o gate
+/// abaixo prova a pergunta; este prova que ela é feita no caminho que cozinha (doc 131 D.14).
 ///
-/// ⚠️ Com o CONTROLO: o mesmo grafo sem o nome não pode sair com esta razão, senão a recusa seria
-/// incondicional e o gate passaria por ela.
+/// ⚠️ As três metades: sem nome, e com o nome na chave que o `motion.drive` resolve (a escrita por
+/// nome vai à placa), a rota NÃO pode ser esta recusa; com o nome numa chave que nenhum
+/// `StreamOp` nomeia, é.
 #[test]
 #[ignore = "placa: precisa de adapter de GPU"]
-fn the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu() {
+fn the_bridge_refuses_only_a_collider_name_the_device_cannot_resolve() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         panic!("sem adapter — este gate mede a ponte do device e nao tem versao de CPU");
     };
     let scopes = ph2d_nodegraph::cook::TimeScopes::new();
-    let monta = |com_nome: bool| {
+    let monta = |chave: Option<&str>| {
         let mut m = MotionState::new();
         let g = &mut m.doc.graph;
         let grade = g.add_node("motion.grid");
@@ -313,76 +328,63 @@ fn the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu() {
             delayed: false,
         })
         .expect("liga");
-        if com_nome {
+        if let Some(chave) = chave {
             let d = g.add_node("motion.drive");
-            g.set_text_param(d, "column", "collider");
+            g.set_text_param(d, chave, "collider");
         }
         m.sinks = vec![out];
         m
     };
-    let mut sem = monta(false);
-    let _ = cook_gpu(&mut sem, &gpu, 0, 1.0 / 60.0, &scopes);
-    assert_ne!(
-        sem.route_said,
-        Some(RECUSA_COLISOR),
-        "o controlo nao pode ser recusado por isto"
-    );
-
-    let mut com = monta(true);
+    for chave in [None, Some(chave_do_drive())] {
+        let mut m = monta(chave);
+        let _ = cook_gpu(&mut m, &gpu, 0, 1.0 / 60.0, &scopes);
+        assert_ne!(m.route_said, Some(RECUSA_COLISOR), "{chave:?}");
+    }
+    let mut com = monta(Some("qualquer_chave"));
     let saida = cook_gpu(&mut com, &gpu, 0, 1.0 / 60.0, &scopes);
     assert!(matches!(saida, GpuOutcome::FellThrough), "{saida:?}");
     assert_eq!(com.route_said, Some(RECUSA_COLISOR));
 }
 
-/// ⭐⭐ **Escrever `collider` pelo nome manda o documento para a CPU — e só esse nome.**
+/// ⭐⭐ **Só um nome de colisor EXACTO numa chave que a placa não resolve manda para a CPU.**
 ///
-/// ⚠️ As três metades, porque cada uma sozinha tem cura errada: *«sem nome, dispositivo»* passa
-/// com a função a devolver sempre `false`; *«com o nome, CPU»* passa com ela sempre `true`; e *«um
-/// nome PARECIDO não conta»* é o que impede a cura preguiçosa por `contains`, que mandaria para a
-/// CPU as colunas `collider_around`/`collider_inside` que o shell publica e o nó retira.
+/// ⚠️ As metades, porque cada uma sozinha tem cura errada: *«sem nome, dispositivo»* passa com a
+/// função a devolver sempre `false`; *«com o nome, CPU»* passa com ela sempre `true`; *«um nome
+/// PARECIDO não conta»* impede a cura por `contains` (as `collider_around`/`collider_inside` que o
+/// shell publica); e *«a chave do `StreamOp` não conta»* é a lei do D.14 — a escrita (o `column`
+/// do `motion.drive`) e a leitura (o `attr` do `value.attribute`) por nome vão à placa.
 #[test]
-fn only_the_exact_collider_name_sends_the_document_to_the_cpu() {
+fn only_an_unresolved_collider_name_sends_the_document_to_the_cpu() {
     let mut m = MotionState::new();
     let drive = m.doc.graph.add_node("motion.drive");
-    assert!(
-        !graph_declares_collider(&m.doc.graph),
-        "sem text param nenhum"
-    );
+    let declara = |m: &MotionState| graph_declares_collider(&m.doc.graph, &m.registry);
+    assert!(!declara(&m), "sem text param nenhum");
 
-    m.doc.graph.set_text_param(drive, "column", "tint");
-    assert!(!graph_declares_collider(&m.doc.graph), "outra coluna");
+    m.doc.graph.set_text_param(drive, "qualquer_chave", "tint");
+    assert!(!declara(&m), "outra coluna");
 
     m.doc
         .graph
-        .set_text_param(drive, "column", "collider_fit_half");
-    assert!(
-        !graph_declares_collider(&m.doc.graph),
-        "um nome PARECIDO nao conta"
-    );
+        .set_text_param(drive, "qualquer_chave", "collider_fit_half");
+    assert!(!declara(&m), "um nome PARECIDO nao conta");
 
-    // As outras duas colunas da declaração (doc 109 §5) contam como o raio.
-    for nome in ["collider_box", "collider_offset"] {
-        m.doc.graph.set_text_param(drive, "column", nome);
-        assert!(
-            graph_declares_collider(&m.doc.graph),
-            "`{nome}` e' declaracao"
-        );
+    for nome in ["collider", "collider_box", "collider_offset", " collider "] {
+        m.doc.graph.set_text_param(drive, "qualquer_chave", nome);
+        assert!(declara(&m), "`{nome}` numa chave sem StreamOp recusa");
     }
 
-    m.doc.graph.set_text_param(drive, "column", " collider ");
-    assert!(
-        graph_declares_collider(&m.doc.graph),
-        "o nome, com espacos a volta"
-    );
-
-    // A pergunta é sobre o NOME e não sobre a chave: um nó que o guarde noutro text param conta.
-    let mut outro = MotionState::new();
-    let n = outro.doc.graph.add_node("motion.drive");
-    outro
-        .doc
-        .graph
-        .set_text_param(n, "qualquer_chave", "collider");
-    assert!(graph_declares_collider(&outro.doc.graph));
+    // ⭐ A chave que o `StreamOp` do nó nomeia: a placa resolve-a.
+    for (tipo, chave) in [
+        ("motion.drive", chave_do_drive()),
+        ("value.attribute", "attr"),
+    ] {
+        let mut outro = MotionState::new();
+        let n = outro.doc.graph.add_node(tipo);
+        for nome in ["collider", "collider_box", "collider_offset"] {
+            outro.doc.graph.set_text_param(n, chave, nome);
+            assert!(!declara(&outro), "`{tipo}.{chave} = {nome}` vai a' placa");
+        }
+    }
 }
 
 /// ⭐⭐⭐ **O COLISOR DECLARADO PELA FORMA NUNCA CHEGA AO DISPOSITIVO** — e é isto que torna
@@ -453,7 +455,7 @@ fn a_cadeia_que_declara_colisor_pela_forma_e_recusada_do_dispositivo() {
         "o CONTROLO (grelha, sem forma) nao pode ser recusado — a cerca seria incondicional"
     );
     assert!(
-        !graph_declares_collider(&m2.doc.graph),
+        !graph_declares_collider(&m2.doc.graph, &m2.registry),
         "e nem pela outra cerca, que le' os nomes das colunas"
     );
 }

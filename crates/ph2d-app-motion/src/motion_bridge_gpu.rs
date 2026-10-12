@@ -278,8 +278,8 @@ pub(super) fn cook_gpu(
     ) {
         return fell(motion, porque);
     }
-    // Doc 109: o contacto entre peças ainda só existe na CPU — ver [`graph_declares_collider`].
-    if graph_declares_collider(&motion.doc.graph) {
+    // Doc 109 · 131 D.14: um nome de colisor que a placa não resolve — ver [`graph_declares_collider`].
+    if graph_declares_collider(&motion.doc.graph, &motion.registry) {
         return fell(motion, RECUSA_COLISOR);
     }
     // ⭐ Doc 130: o passe automático (doc 115 §33) corre TAMBÉM na placa, antes do lowering de

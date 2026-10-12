@@ -159,3 +159,36 @@ Encomenda (CPU) do passe: `0,04–0,06 ms` sem cache × `0,01 ms` com cache.
 |---|---|
 | `scan` do passe de um grupo por subgrupos | cadeia 16·1024: `12,36` × `11,53 ms` (perde nas 4 cadeias) |
 | ligações + uniformes do passe em cache | `−0,03 ms` de encomenda; o total fica dentro do ruído |
+
+### D.14 — o colisor pelo NOME na placa (12/10)
+
+**A lei construída** (a forma genérica, no lugar dos «três canais» do §3): `StreamOp::WriteNamed`, o
+irmão de ESCRITA do `Project`. O sequenciador lê o nome no cozimento, aplica a escada da CPU (vazio ·
+escrituração · coluna existente não escalar · sem valor ⇒ a entrada) e empresta a coluna ao kernel sob
+o alias `drive_named` (guardando uma coluna que já se chamasse assim), devolvendo-a ao nome no fim. A
+forma provada junta o nome só se for coluna da convenção (`coluna_da_convencao`); o gate
+`every_column_the_plan_asks_is_a_convention_column` prende a lista ao registo (hoje o plano pergunta
+`{id, pulse, rot, v}`). A `RECUSA_COLISOR` fica só para um nome de colisor numa chave que nenhum
+`StreamOp` do nó nomeia; `peca_declara_colisor` = botão ∨ escrita ACTIVA do raio pelo nome (só
+`collider`: a escrita é escalar, a caixa e o centro são `Vec2`).
+
+**Preço** (`sonda_o_preco_do_colisor_pelo_nome`, `--profile smoke`, RTX 5060 Ti; grelha de discos →
+`motion.drive` Custom `collider = |P|·s` → output a 8 varreduras; o vão muda a cada quadro; CPU × placa
+no MESMO processo, 6 blocos rodados × 8 quadros, o MÍNIMO; a placa espera a fila):
+
+| discos | CPU (antes: a recusa) | placa (rota híbrida) | razão | `loadavg` |
+|---:|---:|---:|---:|---|
+| 4 096 | 3,745 ms | 1,371 ms | 2,73× | 103,95 56,47 31,58 |
+| 16 384 | 8,586 ms | 1,553 ms | 5,53× | 108,92 58,29 32,31 |
+
+⚠️ Lido a `load ~105` (outras linhas na máquina): o relógio inflaciona os dois lados; a razão é a
+leitura, não os milissegundos.
+
+**Gates (vistos verdes):** paridade CPU × placa de cada degrau (`gpu_cpu_parity_escrita_nomeada`, 9
+casos, pior `|Δ|` `1,1e-5` relativo a `29,5`, as recusas ao bit); a cena de teste
+`o_colisor_pelo_nome_separa_na_placa_como_na_cpu`: 8² `2,98e-8` (`4,3e-7·alcance`), 32² `1,19e-7`
+(`1,55e-6·alcance`) ≤ `1e-5·alcance` (130 §4), o drive é estágio da placa, o controlo mexe `2,4e-2` /
+`5,4e-2` — comparação pela forma MAIS PRÓXIMA (a ordenação lexicográfica trocava pares a um ulp: `7e-1`
+sobre `3e-8`); a recusa continua para a chave sem `StreamOp`. **Mutações (todas sangraram):** o degrau
+«sem valor» apagado · a coluna guardada no alias perdida · o `when` invertido · a cerca a recusar
+sempre · a declaração pelo nome que nunca dispara.

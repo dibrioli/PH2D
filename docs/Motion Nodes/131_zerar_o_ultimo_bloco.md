@@ -115,6 +115,54 @@ corte é verificado por `git diff --stat` (linhas totais iguais entre vivo + arq
 
 ## §7 — Medições (preenchidas ao correr)
 
+### Item 2 — a `=70`: a cura viva, e agora gateada pelo GIRO
+
+`as_estrelas_da_70_giram_em_volta_do_centro_delas` (CPU, 600 tiques): as 4 estrelas dão `−2,47 … −2,76` voltas
+em 10 s em volta de `CENTRO_DAS_ESTRELAS`, raio `0,33 … 1,70` ⇒ a barra: `≥ 1` volta, o MESMO sentido, raio `> 0,1`.
+O roteiro da `=70` (terminal) ganhou o passo «DE PLAY: as estrelas giram».
+
+### Item 3 — o vermelho da `=129`: nem deriva nem o `transform` — a placa respondia ANTES do passe
+
+Sonda `a_deriva_da_129_*` (placa, a mesma ponte): o corpo (fronteira da CPU) é igual ao bit nos dois lados; a
+coluna sem `Collide` dá `0`; o Δ nasce no tique 1 e não cresce (`1,76e-3` · `3,7e-3` · `2,74e-3` · `5,5e-3` ·
+`4,7e-3` · `3,1e-3` · `6,2e-3` · `3,9e-3` a `T = 1, 2, 3, 5, 10, 30, 60, 120`) ⇒ o critério 2 do §2. Estágio a
+estágio: a CPU separa na saída (`transform × saída = 2,74e-3`, coluna `rot`), a leitura da placa NÃO — o
+`GpuCook` guardava `tap_streams`/`debug_streams` ANTES de `baixar_as_saidas`. Os cartões (a tomada) liam o mesmo.
+**Cura:** `a_saida_e_o_que_ela_desenha` (`saidas.rs`). Depois: `=129` `1,19e-7`, a barra absoluta `1e-3` intacta,
+81 cenas julgadas. Gate novo da tomada: `a_tomada_da_saida_com_collide_e_o_que_ela_desenha` (com controlo).
+
+### D.13 — a cor num gesto; o dano sai da vida
+
+Medido antes: um `DriveParam` ligava 1 de 4 canais. `grupo_de_cor` (ponte do grafo): mesma letra dos dois lados ⇒
+o grupo inteiro (`r g b a` · `r2…` · `fill_r…`), um passo de desfazer; `g` sobre `r` liga só esse. Vida e dano:
+`vida → On Change (Fall)` dispara em `[nascer, desce, fica, sobe, desce] = [–, ✓, –, –, ✓]` — a sequência do gate do
+`Damage` do componente ⇒ UM objecto basta. Cena `=136` (o clarão: tamanho `0,130 → 0,323 → 0,130`; curar `0,130`).
+
+### C.8 — o «piso» da rota híbrida não era dela (fecha por lei)
+
+`fila_c_o_piso_hibrido` (`--profile smoke`, carga ~11, mínimo de 12 blocos rodados), ms por quadro:
+
+| estrelas | placa + espera | o prefixo (CPU) | placa sem espera | submissão VAZIA + espera | CPU inteira |
+|---:|---:|---:|---:|---:|---:|
+| 1 024 | `0,150` | `0,001` | `0,072` | `0,023` | `0,069` |
+| 16 384 | `0,166` | `0,001` | `0,074` | `0,020` | `0,946` |
+
+A única fronteira das estrelas com `wiggle` e da `=135` é o `source.shape` (uma linha): o prefixo custa `0,001 ms`.
+O `~0,55 ms` da sonda do B6 era o DESENHO das formas + a espera, comum às três rotas. As duas contas do
+`cook_taps_only` já tinham sido curadas no ciclo 12 (doc 120 §8.5). Nada a construir.
+
+### C.9 — `opt-level = 2` na `ph2d-contact` em `dev`
+
+Binários de teste das duas variantes, alternados, o mínimo de 6 (carga 12 → 7): `ph2d-contact` `1,47 → 0,23 s` ·
+os de contacto do Motion `2,61 → 0,90 s` · `contact-world`/`soft-body`/`sim-step` iguais · total `7,05 → 3,96 s`;
+compilar a crate `0,67 → 0,87 s`. Entrou no `Cargo.toml` (a classe da `ph2d-node-motion-collide`).
+
+### C.12 — o engasgo da troca de rota (fecha por lei)
+
+`fila_c_a_troca_de_rota` (a `=135` pelo `coze_o_quadro`, smoke, carga ~12, mínimo de 12): o quadro que SAI da placa
+`1,436 ms` × o da CPU sem troca `0,258 ms` ⇒ `+1,18 ms`, UMA vez por troca — o quadro fica a `8,6 %` do orçamento de
+60 Hz (`16,67 ms`): nenhum quadro perdido. Construir o estado do dispositivo na CPU para o poupar não paga.
+
 ### C.7 — `scan` por subgrupos e ligações em cache no passe de um grupo: ⛔ RECUSADOS (12/10)
 
 Construídos (`4b2cec5f5b`: `passe_na_placa_scan_subgrupo.wgsl`, `subgroupExclusiveAdd` + UMA barreira contra as

@@ -68,7 +68,29 @@ handoff.
 
 ## §5 — Provas de mutação
 
-⟨por preencher⟩
+Agente `mutacao`, sobre `c8c1219a79`, verde antes de cada uma, restauro por `cp` + `touch`, árvore
+limpa no fim. Controlos: cada filtro com ≥ 1 teste (9 · 4 · 16 · 35 · 12 · 89); cada âncora casou 1×.
+**16 mutações, 15 vermelhas à 1.ª; a H4 sobreviveu e foi curada com um gate** (`c16ff352fc`).
+
+| cláusula | mutação | vermelho em |
+|---|---|---|
+| A `after_the_shape_release` | sem `shape_armed = false` | `a_click_on_a_shape_disarms…` · `the_scene_selects_with_the_shape_tool…` |
+| A `hides_the_nodes` | sem `mode == Shape ‖` | `the_nodes_never_draw_in_shape_mode` · `a_shape_without_params_in_shape_mode…` |
+| B `keep_the_pen` largura | apagada | 3 em `vec_frame_pen_tests` + o da shell (`0,4` contra `0,2`) |
+| B `keep_the_pen` deslocamento / dilatação | apagados (2 mutações) | `keep_the_pen_keeps_the_layers_width_offset_and_dilation` |
+| B a margem no alvo | `lo = alvo` sem a margem | 2 em `vec_frame_pen_tests` + o da shell |
+| B a secante | sem passo | `under_world_scale_and_on_a_stretched_mitre_tip…` |
+| C `down` | `* 1.0` | `the_viewed_arrow_goes_up_to_from_above` |
+| D caixa baixa | o ramo nunca dispara | `no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px` |
+| E o corte no espelho | `if false` | `a_placa_corta_o_bico_alem_do_limite_como_o_oraculo` |
+| E o alcance | `√(l² + 1)` → `l` | `um_aberto_com_quina_leva_troços_e_pontas` · `os_blocos_guardam_as_pecas…` |
+| `normals_meet` | devolve o ponto de entrada | 3 (`the_four_corner_styles…`, `the_cutout_is_square…`, `a_corner_whose_edges_are_eaten_whole…`) |
+| `rounded_at_one` | `1,0` | `smooth_one_is_the_circle_of_the_regular_polygon` |
+| `corner_live` tangente de origem | sem ela, cada lado (2 mutações) | `a_corner_whose_edges_are_eaten_whole_keeps_its_style` (⚠️ um só teste guarda os dois lados) |
+| **`liso_em`** (G1 só sem raio) | `lisa && open ≥ 1` → `lisa` | **sobrevivia** (nenhum teste via o raio a sumir sob liso + envergadura) → gate `with_a_radius_the_smooth_vertex_stays_a_corner_and_the_radius_shows`: medido, o efeito do raio `0,25` cai ~5× com a mutação (`0,0287 → 0,0055`); vermelho confirmado à mão |
+
+O WGSL não tem mutação própria (os gates dele precisam da placa): o espelho CPU é a mesma conta, e
+os 15 de GPU passam com o corte e divergem do Vello cru sem ele (§2).
 
 ## §6 — Smoke (do dono)
 
@@ -90,4 +112,29 @@ nó) e `2_elipse.png` (a selecção passou à elipse).
 
 ## §8 — Portão, binário e `agent-loop-profile.sh`
 
-⟨por preencher⟩
+- **Portão batched** (agente `verificador`, 1× sobre `b1dd77e477..c16ff352fc`, loadavg 16–19):
+  `nextest-impacted` (14 crates mudadas + dependentes, `tests/it` incluídos) **19 936 / 19 950**, 8 603
+  pulados — os 14 que não passaram são TODOS da Luz 2D (ver abaixo) · clippy do `ship.sh`
+  (`--workspace --all-targets --features ph2d-spike/bevy_ecs -D warnings`) **exit 0** ·
+  `fmt --all --check` ✗ em 11 ficheiros desta linha → curado em `b42b803554` (re-corrido: limpo) ·
+  `workspace_src_files_under_loc_cap` ✓ · `the_shell_only_shrinks` ✓ ·
+  `architecture_claude_md_cabe_no_orcamento` 3/3 ✓ (a entrada UI/UX: 698/700 bytes) ·
+  `the_shape_handles_are_drawn_and_dragged` 2/2 ✓ · `every_door_the_names_enter_by_translates_them` ✓ ·
+  GPU `ph2d-shape-gpu --test it -- --ignored` **15/15**.
+- ⛔ **Os 14 da Luz 2D estão VERMELHOS NO `main`** (`b1dd77e477`, corridos no primário com
+  `PH2D_GPU=1`, sem esta linha): `ph2d-light2d-gpu` — `c3_grade_fina::{so_a_regiao_se_calcula…,
+  o_interior_de_um_opaco…}`, `g5_o_que_a_placa_alocou…`; `ph2d-app-light2d` — `as_formas_redondas::
+  {o_disco_de_imagem…, o_interior_com_o_rebote…, as_formas_redondas_nao_saem_em_facetas}`,
+  `o_interior_do_opaco::{o_rebote_nao_depende_da_oitava, o_interior_do_opaco_nao_depende_da_posicao…}`,
+  `o_miolo_das_formas…`, `o_traco_do_flip::{…recebe_a_luz…, a_cena_7…}`, `smoke_cenas_w4::{a_cena_5…,
+  a_cena_6…}` — as mesmas mensagens nos dois lados (o `holografica::a_holografica_junto_a_uma_face…`
+  só estoura o prazo sob carga: sozinho passa em 2,7 s). Não reproduzem carga (sozinhos, loadavg 1,26).
+  Não são desta linha (o `ph2d-light2d-gpu` não depende de nada que ela mexeu além do `ph2d-i18n`);
+  são para a linha Luz2D / o integrador — o handoff W5m dela não os menciona.
+- `bash scripts/doc-index.sh` ✓ · `rm -rf target/*/incremental` (16 G + 4,6 G).
+- **Binário de smoke** (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`),
+  2.ª corrida depois da limpeza, HEAD `b42b803554`:
+  `Finished \`smoke\` profile [optimized] target(s) in 0.52s` (zero `Compiling`).
+- Fotos da cena 20: `/var/tmp/ph2d_F13_cena20/` (as duas paragens; nenhum nó no modo Forma).
+- `agent-loop-profile.sh` (20 sessões): paralelismo 1,14 ✗ · respostas/sessão 164 ✓ · test:check
+  4,2 ✗ · Edit 43 % ✗ · contexto/passo 347 mil ✗ · início 63 mil ✓.

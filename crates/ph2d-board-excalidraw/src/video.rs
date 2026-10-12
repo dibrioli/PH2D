@@ -55,10 +55,13 @@ pub(crate) fn write(el: &Element, e: &Embed, mut m: Map<String, Value>) -> Value
     m.insert("link".into(), json!(e.link));
     m.insert(
         "roundness".into(),
-        if e.style.round { json!({ "type": 3 }) } else { Value::Null },
+        if e.style.round {
+            json!({ "type": 3 })
+        } else {
+            Value::Null
+        },
     );
     let custom = serde_json::to_value(el).unwrap_or(Value::Null);
     m.insert("customData".into(), json!({ PH2D: { "element": custom } }));
     Value::Object(m)
 }
-

@@ -44,7 +44,12 @@ fn fetches_a_real_thumbnail() {
     let rede = t0.elapsed();
     let t1 = Instant::now();
     let again = thumb::fetch(&bunny(), Duration::from_secs(10)).unwrap();
-    println!("miniatura: {} bytes, rede {:?}, disco {:?}", b.len(), rede, t1.elapsed());
+    println!(
+        "miniatura: {} bytes, rede {:?}, disco {:?}",
+        b.len(),
+        rede,
+        t1.elapsed()
+    );
     assert_eq!(b, again);
     let f = decode_jpeg(&b).unwrap();
     println!("tamanho {:?}", f.size);
@@ -80,8 +85,18 @@ fn the_person_s_browser_plays_at_24_fps_and_answers_a_click() {
     let _ = p.take_frame();
     let tc = Instant::now();
     for m in [
-        Mouse::Down { x: 280.0, y: 157.0, button: Button::Left, clicks: 1 },
-        Mouse::Up { x: 280.0, y: 157.0, button: Button::Left, clicks: 1 },
+        Mouse::Down {
+            x: 280.0,
+            y: 157.0,
+            button: Button::Left,
+            clicks: 1,
+        },
+        Mouse::Up {
+            x: 280.0,
+            y: 157.0,
+            button: Button::Left,
+            clicks: 1,
+        },
     ] {
         p.mouse(m);
     }
@@ -93,7 +108,15 @@ fn the_person_s_browser_plays_at_24_fps_and_answers_a_click() {
         }
         std::thread::sleep(Duration::from_millis(1));
     }
-    println!("quadros distintos {fps:.2}/s · clique → quadro {answer:?} · load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    println!(
+        "quadros distintos {fps:.2}/s · clique → quadro {answer:?} · load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
     assert!(fps >= 24.0, "{fps:.2} q/s < 24");
-    assert!(answer.is_some_and(|d| d <= Duration::from_millis(100)), "{answer:?}");
+    assert!(
+        answer.is_some_and(|d| d <= Duration::from_millis(100)),
+        "{answer:?}"
+    );
 }

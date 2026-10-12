@@ -25,7 +25,10 @@ fn the_w18_scene_does_what_its_lessons_say() {
     };
     assert_eq!(b_id, l.board);
     assert_eq!(el.embed().unwrap().link, LINK);
-    assert!(h.documents.videos_mut().on_screen.contains_key(&l.video), "o vídeo está à vista");
+    assert!(
+        h.documents.videos_mut().on_screen.contains_key(&l.video),
+        "o vídeo está à vista"
+    );
     // Lição 1: o play (o meio do vídeo) activa-o, e ele fica vivo.
     let mid = [el.x + el.w / 2.0, el.y + el.h / 2.0];
     Mouse::new().click(&mut h, mid);
@@ -41,32 +44,61 @@ fn the_w18_scene_does_what_its_lessons_say() {
             style: Style::new(None, None, super::super::team::INK),
             text: RichText::default(),
         };
-        let n = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), s, [el.x + 10.0, el.y + 10.0, 80.0, 80.0]);
+        let n = Element::new_shape(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            s,
+            [el.x + 10.0, el.y + 10.0, 80.0, 80.0],
+        );
         let _ = BoardOp::Put(n).apply(&mut b.doc);
     }
     Hand::new().paint(&mut h);
-    assert!(!h.documents.videos_mut().on_screen[&l.video].live, "tapado não está vivo");
+    assert!(
+        !h.documents.videos_mut().on_screen[&l.video].live,
+        "tapado não está vivo"
+    );
     // Lição 3: colar um link faz OUTRO vídeo.
     let before = embeds(&h);
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let ctrl = ph2d_host::Modifiers { ctrl: true, ..ph2d_host::Modifiers::default() };
+    let ctrl = ph2d_host::Modifiers {
+        ctrl: true,
+        ..ph2d_host::Modifiers::default()
+    };
     use ph2d_editor_core::screens::hero::board_keys::{BoardKey, key};
     h.documents.videos_mut().active = None;
-    let out = key(&mut h, &mut ts, BoardKey::Char('v'), ctrl, true, None, Some("https://youtu.be/aqz-KE-bpKQ?t=30".into()));
+    let out = key(
+        &mut h,
+        &mut ts,
+        BoardKey::Char('v'),
+        ctrl,
+        true,
+        None,
+        Some("https://youtu.be/aqz-KE-bpKQ?t=30".into()),
+    );
     assert!(out.consumed);
     assert_eq!(embeds(&h), before + 1);
     // Lição 4: as letras do SVG desenham-se (a tinta azul do «Hello») e o aviso nomeia a família que falta.
     let px = crate::images::decode(SVG_TEXT.as_bytes(), None).expect("o SVG desenha-se");
-    let blue = px.rgba.chunks_exact(4).filter(|p| p[2] > 100 && p[0] < 80 && p[1] < 100).count();
+    let blue = px
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[2] > 100 && p[0] < 80 && p[1] < 100)
+        .count();
     assert!(blue > 200, "o «Hello» azul: {blue} píxeis");
     let gaps = ph2d_imageio_svg::raster::text_gaps(SVG_TEXT.as_bytes());
     assert_eq!(gaps.missing_families, vec!["No Such Font PH2D".to_owned()]);
     // Lição 5: a cortada mostra as linhas de cima, e o quadro avisa que está estragada.
-    let saved = crate::salvage::salvage(&super::super::w17::damaged_png()).expect("as linhas de cima");
+    let saved =
+        crate::salvage::salvage(&super::super::w17::damaged_png()).expect("as linhas de cima");
     let rows = (0..saved.size[1])
         .take_while(|&y| saved.rgba[((y * saved.size[0]) * 4 + 3) as usize] != 0)
         .count();
-    assert!(rows > 0 && rows < saved.size[1] as usize, "{rows} linhas lidas");
+    assert!(
+        rows > 0 && rows < saved.size[1] as usize,
+        "{rows} linhas lidas"
+    );
     let t0 = std::time::Instant::now();
     let mut warned = None;
     while t0.elapsed().as_secs() < 20 {

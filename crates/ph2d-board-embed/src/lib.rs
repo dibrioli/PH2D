@@ -41,8 +41,12 @@ pub fn youtube(text: &str) -> Option<Video> {
     let seg: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     let (id, vertical) = match host {
         "youtu.be" | "www.youtu.be" => (*seg.first()?, false),
-        "youtube.com" | "www.youtube.com" | "m.youtube.com" | "music.youtube.com"
-        | "youtube-nocookie.com" | "www.youtube-nocookie.com" => match seg.as_slice() {
+        "youtube.com"
+        | "www.youtube.com"
+        | "m.youtube.com"
+        | "music.youtube.com"
+        | "youtube-nocookie.com"
+        | "www.youtube-nocookie.com" => match seg.as_slice() {
             ["watch"] => (param("v")?, false),
             ["shorts", id] => (*id, true),
             ["embed" | "live" | "v", id] => (*id, false),
@@ -86,7 +90,11 @@ fn seconds(t: &str) -> u32 {
     let (mut total, mut num) = (0u32, 0u32);
     for c in t.chars() {
         match c {
-            '0'..='9' => num = num.saturating_mul(10).saturating_add(c.to_digit(10).unwrap_or(0)),
+            '0'..='9' => {
+                num = num
+                    .saturating_mul(10)
+                    .saturating_add(c.to_digit(10).unwrap_or(0))
+            }
             'h' => (total, num) = (total.saturating_add(num.saturating_mul(3600)), 0),
             'm' => (total, num) = (total.saturating_add(num.saturating_mul(60)), 0),
             's' => (total, num) = (total.saturating_add(num), 0),
@@ -100,11 +108,17 @@ fn seconds(t: &str) -> u32 {
 #[must_use]
 pub fn canonical_link(v: &Video) -> String {
     match v {
-        Video::YouTube { id, start, vertical: true } if *start == 0 => {
+        Video::YouTube {
+            id,
+            start,
+            vertical: true,
+        } if *start == 0 => {
             format!("https://www.youtube.com/shorts/{id}")
         }
         Video::YouTube { id, start: 0, .. } => format!("https://www.youtube.com/watch?v={id}"),
-        Video::YouTube { id, start, .. } => format!("https://www.youtube.com/watch?v={id}&t={start}s"),
+        Video::YouTube { id, start, .. } => {
+            format!("https://www.youtube.com/watch?v={id}&t={start}s")
+        }
     }
 }
 

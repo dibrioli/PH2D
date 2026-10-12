@@ -124,7 +124,11 @@ fn pairs() -> Vec<(Element, Element)> {
         i
     };
     let embed = |st: Style, rich: bool| crate::Embed {
-        link: if rich { "https://youtu.be/aqz-KE-bpKQ?t=9".into() } else { "https://youtu.be/dQw4w9WgXcQ".into() },
+        link: if rich {
+            "https://youtu.be/aqz-KE-bpKQ?t=9".into()
+        } else {
+            "https://youtu.be/dQw4w9WgXcQ".into()
+        },
         video: crate::Video::YouTube {
             id: if rich { "aqz-KE-bpKQ" } else { "dQw4w9WgXcQ" }.into(),
             start: if rich { 9 } else { 0 },

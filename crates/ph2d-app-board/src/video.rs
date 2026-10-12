@@ -86,7 +86,8 @@ pub fn drop_links(hero: &mut HeroScreen, links: &[String], at: [f32; 2]) -> usiz
 fn from_clipboard(hero: &mut HeroScreen) {
     let text = ph2d_app_host::clipboard::read(|c| c.get_text().ok());
     match text {
-        Ok(Some(t)) if ph2d_editor_core::screens::hero::board_video::insert_link(hero, &t, None) => {}
+        Ok(Some(t))
+            if ph2d_editor_core::screens::hero::board_video::insert_link(hero, &t, None) => {}
         Ok(_) => hero.documents.warn("board.video.copy_first"),
         Err(_) => hero.documents.warn("clipboard.no_answer"),
     }
@@ -135,7 +136,11 @@ fn dom_key(down: bool, k: PlayerKey) -> Key {
     let (key, code, vk, text): (String, String, u32, Option<String>) = match k {
         PlayerKey::Char(c) => {
             let up = c.to_ascii_uppercase();
-            let code = if c.is_ascii_digit() { format!("Digit{c}") } else { format!("Key{up}") };
+            let code = if c.is_ascii_digit() {
+                format!("Digit{c}")
+            } else {
+                format!("Key{up}")
+            };
             (c.to_string(), code, u32::from(up), Some(c.to_string()))
         }
         PlayerKey::Space => (" ".into(), "Space".into(), 32, Some(" ".into())),
@@ -148,7 +153,13 @@ fn dom_key(down: bool, k: PlayerKey) -> Key {
         PlayerKey::Enter => ("Enter".into(), "Enter".into(), 13, None),
         PlayerKey::Tab => ("Tab".into(), "Tab".into(), 9, None),
     };
-    Key { down, key, code, vk, text: text.filter(|_| down) }
+    Key {
+        down,
+        key,
+        code,
+        vk,
+        text: text.filter(|_| down),
+    }
 }
 
 fn mouse(i: &PlayerInput) -> Option<Mouse> {
@@ -158,8 +169,28 @@ fn mouse(i: &PlayerInput) -> Option<Mouse> {
         _ => Button::Right,
     };
     Some(match *i {
-        PlayerInput::Down { x, y, button, clicks } => Mouse::Down { x, y, button: b(button), clicks },
-        PlayerInput::Up { x, y, button, clicks } => Mouse::Up { x, y, button: b(button), clicks },
+        PlayerInput::Down {
+            x,
+            y,
+            button,
+            clicks,
+        } => Mouse::Down {
+            x,
+            y,
+            button: b(button),
+            clicks,
+        },
+        PlayerInput::Up {
+            x,
+            y,
+            button,
+            clicks,
+        } => Mouse::Up {
+            x,
+            y,
+            button: b(button),
+            clicks,
+        },
         PlayerInput::Move { x, y } => Mouse::Move { x, y },
         PlayerInput::Wheel { x, y, dx, dy } => Mouse::Wheel { x, y, dx, dy },
         PlayerInput::Key { .. } => return None,

@@ -54,11 +54,32 @@ pub fn set_thumbnail(key: String, t: Thumb) {
 #[derive(Clone, Debug, PartialEq)]
 pub enum PlayerInput {
     /// `button`: 0 esquerdo, 1 do meio, 2 direito.
-    Down { x: f64, y: f64, button: u8, clicks: u32 },
-    Up { x: f64, y: f64, button: u8, clicks: u32 },
-    Move { x: f64, y: f64 },
-    Wheel { x: f64, y: f64, dx: f64, dy: f64 },
-    Key { down: bool, key: PlayerKey },
+    Down {
+        x: f64,
+        y: f64,
+        button: u8,
+        clicks: u32,
+    },
+    Up {
+        x: f64,
+        y: f64,
+        button: u8,
+        clicks: u32,
+    },
+    Move {
+        x: f64,
+        y: f64,
+    },
+    Wheel {
+        x: f64,
+        y: f64,
+        dx: f64,
+        dy: f64,
+    },
+    Key {
+        down: bool,
+        key: PlayerKey,
+    },
 }
 
 /// Uma tecla para o tocador (quem fala com o navegador dá-lhe o nome do DOM).
@@ -166,7 +187,8 @@ pub(crate) fn paint(
     theme: Theme,
 ) {
     let t = v * to_world(el);
-    let corners = [[0.0, 0.0], [el.w, 0.0], [0.0, el.h], [el.w, el.h]].map(|[x, y]| t * Point::new(x, y));
+    let corners =
+        [[0.0, 0.0], [el.w, 0.0], [0.0, el.h], [el.w, el.h]].map(|[x, y]| t * Point::new(x, y));
     let [x, y, w, h] = area;
     let whole = corners
         .iter()
@@ -184,7 +206,14 @@ pub(crate) fn paint(
     let active = on_screen && cache.videos.active == Some(el.id);
     let live = active && live_allowed(screen);
     if on_screen {
-        cache.videos.on_screen.insert(el.id, Placement { screen, live, to_screen: t });
+        cache.videos.on_screen.insert(
+            el.id,
+            Placement {
+                screen,
+                live,
+                to_screen: t,
+            },
+        );
         cache.videos.videos.insert(el.id, e.video.clone());
     }
     let alpha = f32::from(e.style.opacity.min(100)) / 100.0;

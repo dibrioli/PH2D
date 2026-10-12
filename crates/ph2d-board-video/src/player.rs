@@ -56,10 +56,28 @@ pub enum Button {
 /// Um gesto do rato, em píxeis do TOCADOR (`0..size`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Mouse {
-    Move { x: f64, y: f64 },
-    Down { x: f64, y: f64, button: Button, clicks: u32 },
-    Up { x: f64, y: f64, button: Button, clicks: u32 },
-    Wheel { x: f64, y: f64, dx: f64, dy: f64 },
+    Move {
+        x: f64,
+        y: f64,
+    },
+    Down {
+        x: f64,
+        y: f64,
+        button: Button,
+        clicks: u32,
+    },
+    Up {
+        x: f64,
+        y: f64,
+        button: Button,
+        clicks: u32,
+    },
+    Wheel {
+        x: f64,
+        y: f64,
+        dx: f64,
+        dy: f64,
+    },
 }
 
 /// Uma tecla (os nomes do DOM: `key` = `" "`, `code` = `"Space"`, o código virtual do Windows).
@@ -193,7 +211,9 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
     let writer: Arc<OnceLock<Arc<Mutex<std::process::ChildStdin>>>> = Arc::new(OnceLock::new());
     let reader_ids = Arc::new(AtomicU64::new(READER_IDS));
     let (sr, w2) = (s.clone(), writer.clone());
-    let browser = Browser::spawn(&exe, move |m| on_message(&sr, &w2, &reader_ids, &resp_tx, m));
+    let browser = Browser::spawn(&exe, move |m| {
+        on_message(&sr, &w2, &reader_ids, &resp_tx, m)
+    });
     let mut b = match browser {
         Ok(b) => b,
         Err(e) => return PlayerState::Failed(e.to_string()),
@@ -209,10 +229,18 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
             }
         }
     };
-    let Some(t) = call(&mut b, "Target.createTarget", json!({ "url": "about:blank" }), None) else {
+    let Some(t) = call(
+        &mut b,
+        "Target.createTarget",
+        json!({ "url": "about:blank" }),
+        None,
+    ) else {
         return PlayerState::Failed("createTarget".into());
     };
-    let target = t["result"]["targetId"].as_str().unwrap_or_default().to_owned();
+    let target = t["result"]["targetId"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
     let Some(a) = call(
         &mut b,
         "Target.attachToTarget",
@@ -221,12 +249,18 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
     ) else {
         return PlayerState::Failed("attachToTarget".into());
     };
-    let session = a["result"]["sessionId"].as_str().unwrap_or_default().to_owned();
+    let session = a["result"]["sessionId"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
     let sess = Some(session.as_str());
     let pattern = format!("{ORIGIN}*");
     for (m, p) in [
         ("Page.enable", json!({})),
-        ("Fetch.enable", json!({ "patterns": [{ "urlPattern": pattern }] })),
+        (
+            "Fetch.enable",
+            json!({ "patterns": [{ "urlPattern": pattern }] }),
+        ),
     ] {
         if call(&mut b, m, p, sess).is_none() {
             return PlayerState::Failed(m.into());
@@ -302,10 +336,20 @@ fn mouse_params(m: Mouse) -> (&'static str, Value) {
     };
     let p = match m {
         Mouse::Move { x, y } => json!({ "type": "mouseMoved", "x": x, "y": y }),
-        Mouse::Down { x, y, button, clicks } => {
+        Mouse::Down {
+            x,
+            y,
+            button,
+            clicks,
+        } => {
             json!({ "type": "mousePressed", "x": x, "y": y, "button": name(button), "clickCount": clicks })
         }
-        Mouse::Up { x, y, button, clicks } => {
+        Mouse::Up {
+            x,
+            y,
+            button,
+            clicks,
+        } => {
             json!({ "type": "mouseReleased", "x": x, "y": y, "button": name(button), "clickCount": clicks })
         }
         Mouse::Wheel { x, y, dx, dy } => {
@@ -343,8 +387,17 @@ fn on_message(
     match m["method"].as_str() {
         Some("Page.screencastFrame") => {
             let id = next_reader_id(ids);
-            send_on(w, id, "Page.screencastFrameAck", json!({ "sessionId": p["sessionId"] }), sess);
-            if let Some(f) = p["data"].as_str().and_then(|d| decode_jpeg(&STANDARD.decode(d).ok()?)) {
+            send_on(
+                w,
+                id,
+                "Page.screencastFrameAck",
+                json!({ "sessionId": p["sessionId"] }),
+                sess,
+            );
+            if let Some(f) = p["data"]
+                .as_str()
+                .and_then(|d| decode_jpeg(&STANDARD.decode(d).ok()?))
+            {
                 *lock(&s.frame) = Some(f);
                 s.seq.fetch_add(1, Ordering::Release);
             }

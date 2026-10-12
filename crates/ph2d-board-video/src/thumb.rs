@@ -38,7 +38,8 @@ pub fn fetch(v: &Video, timeout: Duration) -> Result<Vec<u8>, ThumbError> {
     if let Some(f) = file {
         // Escrita atómica: um ficheiro a meio nunca é lido como miniatura.
         let tmp = f.with_extension("part");
-        if f.parent().is_some_and(|p| std::fs::create_dir_all(p).is_ok())
+        if f.parent()
+            .is_some_and(|p| std::fs::create_dir_all(p).is_ok())
             && std::fs::write(&tmp, &bytes).is_ok()
         {
             let _ = std::fs::rename(&tmp, &f);

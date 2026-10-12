@@ -56,7 +56,11 @@ fn every_oracle_link_gets_the_oracle_verdict_or_a_named_correction() {
     assert_eq!(all.len(), 24, "as 24 sondas Y");
     for (sonda, link, embed) in all {
         let got = youtube(&link).map(|v| match v {
-            Video::YouTube { id, start, vertical } => (id, start, vertical),
+            Video::YouTube {
+                id,
+                start,
+                vertical,
+            } => (id, start, vertical),
         });
         if let Some(want) = corrected(&sonda) {
             assert_eq!(
@@ -70,11 +74,15 @@ fn every_oracle_link_gets_the_oracle_verdict_or_a_named_correction() {
             assert_eq!(got, None, "{sonda}: o oráculo deixa em texto «{link}»");
             continue;
         };
-        let (id, start, vertical) = got.unwrap_or_else(|| panic!("{sonda}: o oráculo faz vídeo de «{link}»"));
+        let (id, start, vertical) =
+            got.unwrap_or_else(|| panic!("{sonda}: o oráculo faz vídeo de «{link}»"));
         assert!(src.contains(&format!("/embed/{id}")), "{sonda}: {src}");
         assert_eq!(vertical, sonda.contains("shorts"), "{sonda}");
         // O oráculo passa o `t` CRU (`start=90s`, `start=1m30s`): nós em segundos.
-        let raw = src.split("start=").nth(1).map(|s| s.split('&').next().unwrap());
+        let raw = src
+            .split("start=")
+            .nth(1)
+            .map(|s| s.split('&').next().unwrap());
         let want = raw.map_or(0, seconds);
         assert_eq!(start, want, "{sonda}: {src}");
     }
@@ -82,7 +90,15 @@ fn every_oracle_link_gets_the_oracle_verdict_or_a_named_correction() {
 
 #[test]
 fn start_reads_seconds_minutes_and_hours() {
-    assert_eq!([seconds("90"), seconds("90s"), seconds("1m30s"), seconds("1h2m3s")], [90, 90, 90, 3723]);
+    assert_eq!(
+        [
+            seconds("90"),
+            seconds("90s"),
+            seconds("1m30s"),
+            seconds("1h2m3s")
+        ],
+        [90, 90, 90, 3723]
+    );
     assert_eq!(seconds("x"), 0);
 }
 
@@ -103,11 +119,37 @@ fn natural_size_and_canonical_link_round_trip() {
 /// ⭐ As regras do YouTube: vivo só descoberto, sem rodar, inteiro à vista e ≥ 200×200 px.
 #[test]
 fn the_player_is_live_only_where_youtube_allows_it() {
-    let ok = OnScreen { size: [560.0, 315.0], angle: 0.0, covered: false, whole: true };
+    let ok = OnScreen {
+        size: [560.0, 315.0],
+        angle: 0.0,
+        covered: false,
+        whole: true,
+    };
     assert!(live_allowed(ok));
-    assert!(!live_allowed(OnScreen { covered: true, ..ok }), "tapado");
+    assert!(
+        !live_allowed(OnScreen {
+            covered: true,
+            ..ok
+        }),
+        "tapado"
+    );
     assert!(!live_allowed(OnScreen { angle: 0.1, ..ok }), "rodado");
-    assert!(!live_allowed(OnScreen { whole: false, ..ok }), "meio fora da vista");
-    assert!(!live_allowed(OnScreen { size: [356.0, 199.9], ..ok }), "abaixo de 200 px");
-    assert!(live_allowed(OnScreen { size: [200.0, 200.0], ..ok }), "o mínimo");
+    assert!(
+        !live_allowed(OnScreen { whole: false, ..ok }),
+        "meio fora da vista"
+    );
+    assert!(
+        !live_allowed(OnScreen {
+            size: [356.0, 199.9],
+            ..ok
+        }),
+        "abaixo de 200 px"
+    );
+    assert!(
+        live_allowed(OnScreen {
+            size: [200.0, 200.0],
+            ..ok
+        }),
+        "o mínimo"
+    );
 }

@@ -23,12 +23,20 @@ fn board_of(doc: ph2d_board_model::BoardDoc) -> Board {
 fn the_oracle_s_embeddable_reads_as_a_video_and_writes_back() {
     let imp = read(GRAVADO).unwrap();
     assert!(imp.skipped.is_empty(), "nada salta: {:?}", imp.skipped);
-    let el = imp.doc.live().find(|e| e.embed().is_some()).expect("o vídeo");
+    let el = imp
+        .doc
+        .live()
+        .find(|e| e.embed().is_some())
+        .expect("o vídeo");
     let e = el.embed().unwrap();
     assert_eq!(e.link, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
     assert_eq!(
         e.video,
-        Video::YouTube { id: "dQw4w9WgXcQ".into(), start: 0, vertical: false }
+        Video::YouTube {
+            id: "dQw4w9WgXcQ".into(),
+            start: 0,
+            vertical: false
+        }
     );
     assert_eq!([el.x, el.y, el.w, el.h], [640.0, 400.0, 560.0, 315.0]);
     assert!(e.style.round, "roundness {{type: 3}}");
@@ -41,7 +49,10 @@ fn the_oracle_s_embeddable_reads_as_a_video_and_writes_back() {
         .expect("o embeddable");
     assert_eq!(v["link"], "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
     assert_eq!(v["roundness"]["type"], 3);
-    assert_eq!([v["width"].as_f64(), v["height"].as_f64()], [Some(560.0), Some(315.0)]);
+    assert_eq!(
+        [v["width"].as_f64(), v["height"].as_f64()],
+        [Some(560.0), Some(315.0)]
+    );
     // E volta a ler-se igual (o nosso no `customData`).
     let back = read(&out.to_string()).unwrap();
     let el2 = back.doc.live().find(|e| e.embed().is_some()).unwrap();
@@ -51,7 +62,10 @@ fn the_oracle_s_embeddable_reads_as_a_video_and_writes_back() {
 /// Um `embeddable` de outro site (o Vimeo) não é um vídeo do quadro: salta, com o aviso de sempre.
 #[test]
 fn a_foreign_embeddable_still_skips_with_the_warning() {
-    let vimeo = GRAVADO.replace("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://vimeo.com/76979871");
+    let vimeo = GRAVADO.replace(
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://vimeo.com/76979871",
+    );
     let imp = read(&vimeo).unwrap();
     assert_eq!(imp.skipped.get("embeddable"), Some(&1));
     assert!(imp.doc.live().all(|e| e.embed().is_none()));

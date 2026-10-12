@@ -3,7 +3,9 @@
 
 use std::sync::Arc;
 
-use ph2d_board_model::{Board, BoardOp, BoardSet, Element, Embed, Rgba, Shape, ShapeType, Style, Video};
+use ph2d_board_model::{
+    Board, BoardOp, BoardSet, Element, Embed, Rgba, Shape, ShapeType, Style, Video,
+};
 use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
@@ -13,7 +15,11 @@ use super::*;
 use crate::RenderCache;
 
 fn video(id: &str) -> Video {
-    Video::YouTube { id: id.into(), start: 0, vertical: false }
+    Video::YouTube {
+        id: id.into(),
+        start: 0,
+        vertical: false,
+    }
 }
 
 /// Um vídeo 560×315 com a câmara a mostrá-lo inteiro; `note` = uma nota POR CIMA dele.
@@ -26,7 +32,12 @@ fn board(id: &str, note: bool) -> Board {
         video: video(id),
         style: Style::new(None, None, Rgba([0, 0, 0, 255])),
     };
-    let el = Element::new_embed(b.doc.mint_id(), b.doc.z_on_top(), e, [0.0, 0.0, 560.0, 315.0]);
+    let el = Element::new_embed(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        e,
+        [0.0, 0.0, 560.0, 315.0],
+    );
     let _ = BoardOp::Put(el).apply(&mut b.doc);
     if note {
         let s = Shape {
@@ -34,7 +45,12 @@ fn board(id: &str, note: bool) -> Board {
             style: Style::new(Some(Rgba([255, 230, 0, 255])), None, Rgba([0, 0, 0, 255])),
             text: ph2d_board_model::RichText::default(),
         };
-        let n = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), s, [500.0, 280.0, 100.0, 100.0]);
+        let n = Element::new_shape(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            s,
+            [500.0, 280.0, 100.0, 100.0],
+        );
         let _ = BoardOp::Put(n).apply(&mut b.doc);
     }
     let mut out = set.boards()[0].clone();
@@ -49,13 +65,23 @@ fn ops(b: &Board, c: &mut RenderCache) -> Vec<DrawOp> {
     let mut scene = VectorScene::new();
     scene.record();
     let mut ts = TextSystem::without_system_fonts();
-    crate::paint(b, [0.0, 0.0, 1280.0, 800.0], &mut scene, Theme::Forge, &mut ts, c, &routes, None);
+    crate::paint(
+        b,
+        [0.0, 0.0, 1280.0, 800.0],
+        &mut scene,
+        Theme::Forge,
+        &mut ts,
+        c,
+        &routes,
+        None,
+    );
     scene.take_record()
 }
 
 fn has_play(o: &[DrawOp]) -> bool {
     let red = crate::token(ColorToken::Danger, Theme::Forge);
-    o.iter().any(|d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), .. } if *k == red))
+    o.iter()
+        .any(|d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), .. } if *k == red))
 }
 
 fn image_colors(o: &[DrawOp]) -> Vec<[u8; 4]> {
@@ -84,7 +110,10 @@ fn a_video_asks_for_its_thumbnail_and_then_draws_it() {
     assert!(has_play(&first));
     assert!(image_colors(&first).is_empty());
     assert!(c.videos.wanted.contains("youtube:AAAAAAAAAA1"));
-    set_thumbnail("youtube:AAAAAAAAAA1".into(), Thumb::Ready(flat([9, 8, 7, 255], 4, 3), [4, 3]));
+    set_thumbnail(
+        "youtube:AAAAAAAAAA1".into(),
+        Thumb::Ready(flat([9, 8, 7, 255], 4, 3), [4, 3]),
+    );
     let then = ops(&b, &mut c);
     assert_eq!(image_colors(&then), vec![[9, 8, 7, 255]]);
     assert!(has_play(&then), "parado: o play por cima da miniatura");
@@ -118,8 +147,14 @@ fn a_screen_point_maps_into_the_player() {
     let el = b.doc.get(id).unwrap();
     let p = c.videos.on_screen[&id];
     let o = p.to_screen * ph2d_vector::Point::new(0.0, 0.0);
-    let got = c.videos.player_point(id, el, [o.x + 56.0, o.y + 31.5]).unwrap();
-    assert!((got[0] - 56.0).abs() < 1e-6 && (got[1] - 31.5).abs() < 1e-6, "{got:?}");
+    let got = c
+        .videos
+        .player_point(id, el, [o.x + 56.0, o.y + 31.5])
+        .unwrap();
+    assert!(
+        (got[0] - 56.0).abs() < 1e-6 && (got[1] - 31.5).abs() < 1e-6,
+        "{got:?}"
+    );
     assert!(c.videos.player_point(id, el, [o.x - 5.0, o.y]).is_none());
     let mid = p.to_screen * ph2d_vector::Point::new(280.0, 157.5);
     assert!(c.videos.on_play(id, el, [mid.x, mid.y]));

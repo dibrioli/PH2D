@@ -36,7 +36,8 @@ fn gif_with(dispose: [DisposalMethod; 4]) -> Vec<u8> {
     {
         let mut e = Encoder::new(&mut out, 6, 5, &palette).unwrap();
         e.set_repeat(Repeat::Infinite).unwrap();
-        let rects: [(u16, u16, u16, u16); 4] = [(0, 0, 6, 5), (1, 1, 3, 2), (2, 0, 4, 4), (0, 3, 6, 2)];
+        let rects: [(u16, u16, u16, u16); 4] =
+            [(0, 0, 6, 5), (1, 1, 3, 2), (2, 0, 4, 4), (0, 3, 6, 2)];
         for (k, (l, t, w, h)) in rects.into_iter().enumerate() {
             let buf: Vec<u8> = (0..usize::from(w) * usize::from(h))
                 .map(|i| ((i + k) % 5) as u8)

@@ -23,7 +23,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.tool.ellipse" => "Ellipse (O)",
         "board.tool.diamond" => "Diamond (D)",
         "board.tool.more" => "More shapes",
-        "board.tool.video" => "YouTube video (copy a link, then click \u{2014} or paste it with Ctrl+V)",
+        "board.tool.video" => {
+            "YouTube video (copy a link, then click \u{2014} or paste it with Ctrl+V)"
+        }
         "board.tool.pen" => "Pen (P) — draw, highlight, erase (E), laser pointer (K)",
         "board.sketch" => {
             "Sketch ↔ Final — hand-drawn look for the selection, or the whole board when nothing is selected"

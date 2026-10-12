@@ -357,14 +357,30 @@ fn a_video_carries_its_link_out_in_pdf_and_svg() {
     let url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=9s".to_owned();
     let bx = [10.0, 20.0, 570.0, 335.0];
     let s = svg::write_with_uris(&[], [600.0, 400.0], &[], &[(bx, url.clone())]);
-    assert!(s.contains("<a xlink:href=\"https://www.youtube.com/watch?v=aqz-KE-bpKQ&amp;t=9s\""), "{s}");
-    assert!(s.contains("<rect x=\"10\" y=\"20\" width=\"560\" height=\"315\""), "{s}");
-    let page = pdf::PdfPage { ops: &[], size: [600.0, 400.0], links: vec![] };
+    assert!(
+        s.contains("<a xlink:href=\"https://www.youtube.com/watch?v=aqz-KE-bpKQ&amp;t=9s\""),
+        "{s}"
+    );
+    assert!(
+        s.contains("<rect x=\"10\" y=\"20\" width=\"560\" height=\"315\""),
+        "{s}"
+    );
+    let page = pdf::PdfPage {
+        ops: &[],
+        size: [600.0, 400.0],
+        links: vec![],
+    };
     let bytes = pdf::write_with_uris(&[page], &[vec![(bx, url)]]);
     let text = String::from_utf8_lossy(&bytes);
     assert!(text.contains("/S /URI"), "a acção /URI");
-    assert!(text.contains("/URI (https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=9s)"), "o endereço");
-    assert!(text.contains("/Rect [10 65 570 380]"), "a caixa em pontos do PDF (y para cima)");
+    assert!(
+        text.contains("/URI (https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=9s)"),
+        "o endereço"
+    );
+    assert!(
+        text.contains("/Rect [10 65 570 380]"),
+        "a caixa em pontos do PDF (y para cima)"
+    );
 }
 
 /// ⭐ O PDF cresce com o NÚMERO de objectos translúcidos, nunca com o quadrado dele: cada grupo de

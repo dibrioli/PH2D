@@ -32,7 +32,7 @@ pub fn insert_link(hero: &mut HeroScreen, text: &str, at: Option<[f64; 2]>) -> b
     let natural = ph2d_board_embed::natural_size(&video);
     let history = live.histories.entry(board.id).or_default();
     let ed = editor(&mut live.editor, theme);
-    ed.insert_embed(&mut board.doc, history, text, video, natural, center, fit);
+    ed.insert_embed(&mut board.doc, history, (text, video), natural, center, fit);
     true
 }
 
@@ -57,7 +57,12 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
             && live_now
             && let Some([px, py]) = vids.player_point(id, el, p)
         {
-            vids.inbox.push(PlayerInput::Down { x: px, y: py, button: button(b), clicks: 1 });
+            vids.inbox.push(PlayerInput::Down {
+                x: px,
+                y: py,
+                button: button(b),
+                clicks: 1,
+            });
             live.video_press = true;
             return true;
         }
@@ -65,7 +70,11 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         vids.active = None;
         vids.frame = None;
     }
-    let selected = live.editor.as_ref().map(|e| e.selection().clone()).unwrap_or_default();
+    let selected = live
+        .editor
+        .as_ref()
+        .map(|e| e.selection().clone())
+        .unwrap_or_default();
     // O de cima primeiro (o desenhado por último).
     let mut ids: Vec<_> = vids.on_screen.keys().copied().collect();
     ids.sort_by(|a, c| {
@@ -74,8 +83,11 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         zc.cmp(&za)
     });
     for id in ids {
-        let Some(el) = board.doc.get(id) else { continue };
-        let again = selected.len() == 1 && selected.contains(&id) && vids.player_point(id, el, p).is_some();
+        let Some(el) = board.doc.get(id) else {
+            continue;
+        };
+        let again =
+            selected.len() == 1 && selected.contains(&id) && vids.player_point(id, el, p).is_some();
         if b == PointerButton::Primary && (vids.on_play(id, el, p) || again) {
             vids.active = Some(id);
             vids.frame = None;
@@ -93,7 +105,12 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
             } else if !s.whole || s.size[0].min(s.size[1]) < ph2d_board_embed::MIN_LIVE_SIDE {
                 let [x0, y0, x1, y1] = aabb;
                 let pad = (x1 - x0).max(y1 - y0) * FRAME_PAD;
-                super::board_nav::show_box(hero, false, false, [x0 - pad, y0 - pad, x1 + pad, y1 + pad]);
+                super::board_nav::show_box(
+                    hero,
+                    false,
+                    false,
+                    [x0 - pad, y0 - pad, x1 + pad, y1 + pad],
+                );
             }
             return true;
         }
@@ -112,7 +129,9 @@ pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     };
     let vids = &mut live.render_cache.videos;
     let Some(id) = vids.active else { return false };
-    let Some(el) = board.doc.get(id) else { return false };
+    let Some(el) = board.doc.get(id) else {
+        return false;
+    };
     match vids.player_point(id, el, p) {
         Some([px, py]) => {
             vids.inbox.push(PlayerInput::Move { x: px, y: py });
@@ -136,7 +155,12 @@ pub(crate) fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
         && let Some(el) = board.doc.get(id)
     {
         let [px, py] = vids.player_point(id, el, p).unwrap_or([-1.0, -1.0]);
-        vids.inbox.push(PlayerInput::Up { x: px, y: py, button: 0, clicks: 1 });
+        vids.inbox.push(PlayerInput::Up {
+            x: px,
+            y: py,
+            button: 0,
+            clicks: 1,
+        });
     }
     true
 }
@@ -178,4 +202,3 @@ pub(crate) fn key(hero: &mut HeroScreen, k: BoardKey, mods: Modifiers, pressed: 
     vids.inbox.push(PlayerInput::Key { down: pressed, key });
     true
 }
-

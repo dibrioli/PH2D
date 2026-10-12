@@ -65,8 +65,13 @@ fn a_trailing_nul_is_not_part_of_the_name() {
 /// links da web; um `mailto:` não.
 #[test]
 fn web_links_are_kept_beside_the_count() {
-    let l = parse(b"https://www.youtube.com/watch?v=aqz-KE-bpKQ\r\nmailto:a@b.c\r\nfile:///tmp/a.png\r\n");
+    let l = parse(
+        b"https://www.youtube.com/watch?v=aqz-KE-bpKQ\r\nmailto:a@b.c\r\nfile:///tmp/a.png\r\n",
+    );
     assert_eq!(l.not_files, 2);
-    assert_eq!(l.links, vec!["https://www.youtube.com/watch?v=aqz-KE-bpKQ".to_owned()]);
+    assert_eq!(
+        l.links,
+        vec!["https://www.youtube.com/watch?v=aqz-KE-bpKQ".to_owned()]
+    );
     assert_eq!(l.paths.len(), 1);
 }

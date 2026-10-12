@@ -34,12 +34,12 @@ pub use element::{
     BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Rgba, Shape,
     ShapeType, Style, TextAlign, VAlign, rotate_about,
 };
+pub use embed::{Embed, Video};
 pub use facilitate::{
     STAMP_CHIP_BASE, STAMP_CHIP_DIGIT, STAMP_CHIP_GAP, STAMP_CHIP_H, Stamp, StampCount, VOTE_BADGE,
     VOTE_BADGE_OUT, VOTE_PLUS, VOTES_DEFAULT, VOTES_MAX, VoteSetup, digits as count_digits,
     mark_side, stamp_chips, vote_badge, vote_plus,
 };
-pub use embed::{Embed, Video};
 pub use fields::Field;
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};

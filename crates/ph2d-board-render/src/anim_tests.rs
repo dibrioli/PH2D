@@ -149,7 +149,10 @@ fn a_gif_plays_in_the_presentation_and_not_in_a_png_export() {
         paper: None,
         target: ExportTarget::Screen,
     });
-    assert!(until(&b, &mut show, t0, PLAYED[0]), "a apresentação não toca");
+    assert!(
+        until(&b, &mut show, t0, PLAYED[0]),
+        "a apresentação não toca"
+    );
     assert!(until(
         &b,
         &mut show,
@@ -163,7 +166,10 @@ fn a_gif_plays_in_the_presentation_and_not_in_a_png_export() {
     });
     assert_eq!(drawn(&b, &mut png), PYRAMID);
     assert!(!png.images.players.any(), "o PNG não toca");
-    assert!(!ExportTarget::Screen.vector(), "o detalhe da apresentação é o do PNG");
+    assert!(
+        !ExportTarget::Screen.vector(),
+        "o detalhe da apresentação é o do PNG"
+    );
 }
 
 /// Um GIF de um quadro só não fica a tocar: o tocador sai e a pirâmide desenha-o.

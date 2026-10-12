@@ -56,9 +56,7 @@ impl Iterator for GifFrames {
                 }
                 let s = (fy * fw + fx) as usize * 4;
                 let d = (y * w + x) as usize * 4;
-                let Some(px) = f.buffer.get(s..s + 4) else {
-                    return None;
-                };
+                let px = f.buffer.get(s..s + 4)?;
                 // Alfa 0 deixa ver o que havia.
                 let cur: [u8; 4] = if px[3] == 0 {
                     out[d..d + 4].try_into().ok()?

@@ -171,7 +171,11 @@ fn a_guest_video_reaches_the_others_as_its_link() {
             let _ = host.frame(&mut hb, conn, &m.encode(), 0);
         }
     }
-    let video = Video::YouTube { id: "aqz-KE-bpKQ".into(), start: 30, vertical: false };
+    let video = Video::YouTube {
+        id: "aqz-KE-bpKQ".into(),
+        start: 30,
+        vertical: false,
+    };
     let e = Embed {
         link: "https://youtu.be/aqz-KE-bpKQ?t=30".into(),
         video: video.clone(),
@@ -182,13 +186,24 @@ fn a_guest_video_reaches_the_others_as_its_link() {
     let id = el.id;
     let _ = BoardOp::Put(el).apply(doc);
     let sent = bia.tick(bb.as_mut().unwrap(), 10);
-    assert!(sent.iter().all(|m| files_in(m) == 0), "um vídeo não leva bytes");
+    assert!(
+        sent.iter().all(|m| files_in(m) == 0),
+        "um vídeo não leva bytes"
+    );
     let mut relayed = Vec::new();
     for m in &sent {
         let (out, _) = host.frame(&mut hb, 7, &m.encode(), 10);
         relayed.extend(to_conn(&out, 8));
     }
     deliver(&mut rui, &mut rb, &relayed);
-    let got = rb.as_ref().unwrap().doc.get(id).and_then(|e| e.embed().cloned());
-    assert_eq!(got.map(|e| (e.link, e.video)), Some(("https://youtu.be/aqz-KE-bpKQ?t=30".into(), video)));
+    let got = rb
+        .as_ref()
+        .unwrap()
+        .doc
+        .get(id)
+        .and_then(|e| e.embed().cloned());
+    assert_eq!(
+        got.map(|e| (e.link, e.video)),
+        Some(("https://youtu.be/aqz-KE-bpKQ?t=30".into(), video))
+    );
 }

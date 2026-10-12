@@ -167,12 +167,12 @@ impl Default for Images {
     }
 }
 
-#[path = "image_pyramid.rs"]
-mod pyramid;
 #[path = "image_box.rs"]
 mod boxes;
-pub use boxes::level_to_box;
+#[path = "image_pyramid.rs"]
+mod pyramid;
 pub(crate) use boxes::box_path;
+pub use boxes::level_to_box;
 use boxes::{broken_mark, placeholder};
 #[cfg(test)]
 use pyramid::halve;

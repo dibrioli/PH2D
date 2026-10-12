@@ -6,15 +6,27 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.images.skipped" => "Skipped {count}: not an image",
         // W17 — o cabeçalho leu-se, os dados não: a imagem fica partida no quadro.
         "board.images.unreadable" => "A picture on this board is damaged and cannot be shown",
-        "board.video.covered" => "Something covers the video: YouTube only plays it uncovered \u{2014} move it out",
-        "board.video.rotated" => "A rotated video cannot play (YouTube's rule): set its angle back to 0",
-        "board.video.copy_first" => "Copy a YouTube link first, then click Video (or paste it on the board)",
-        "board.video.offline" => "No internet: the video shows its place until the network comes back",
+        "board.video.covered" => {
+            "Something covers the video: YouTube only plays it uncovered \u{2014} move it out"
+        }
+        "board.video.rotated" => {
+            "A rotated video cannot play (YouTube's rule): set its angle back to 0"
+        }
+        "board.video.copy_first" => {
+            "Copy a YouTube link first, then click Video (or paste it on the board)"
+        }
+        "board.video.offline" => {
+            "No internet: the video shows its place until the network comes back"
+        }
         "board.video.no_browser" => {
             "To play videos inside the board, install Chrome, Edge, Brave or Chromium \u{2014} opened in your browser"
         }
-        "board.video.failed" => "The browser did not start the video \u{2014} opened in your browser instead",
-        "board.video.cannot_open" => "This video cannot play here, and the browser could not be opened",
+        "board.video.failed" => {
+            "The browser did not start the video \u{2014} opened in your browser instead"
+        }
+        "board.video.cannot_open" => {
+            "This video cannot play here, and the browser could not be opened"
+        }
         "board.style.gray" => "Black and white",
         "board.style.flip_h" => "Flip horizontal (Shift+H)",
         "board.style.flip_v" => "Flip vertical (Shift+V)",
@@ -94,7 +106,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w18.l4" => {
             "4. Present (bottom right): the GIF moves in the slide too. The SVG words now draw; the bar names the missing font."
         }
-        "board.smoke.w18.l5" => "5. The cut picture shows the part that could be read, with a red mark in the corner.",
+        "board.smoke.w18.l5" => {
+            "5. The cut picture shows the part that could be read, with a red mark in the corner."
+        }
         "board.smoke.w17.board" => "Known picture fixes",
         "board.smoke.w17.title" => "A damaged picture, Shift on a cropped one, and a quicker PDF",
         "board.smoke.w17.damaged" => "Damaged",

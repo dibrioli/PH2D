@@ -5,7 +5,9 @@
 use ph2d_board_geom::corner_radius;
 use ph2d_board_model::{Element, Image};
 use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::{Affine, Brush, Circle, Point, Rect, RoundedRect, Shape as _, Stroke, VectorScene};
+use ph2d_vector::{
+    Affine, Brush, Circle, Point, Rect, RoundedRect, Shape as _, Stroke, VectorScene,
+};
 
 use crate::token;
 
@@ -34,7 +36,13 @@ pub(crate) fn box_path(el: &Element, round: bool) -> ph2d_vector::BezPath {
 /// a moldura, o sol e o monte (o idioma do Excalidraw, `w14_imagens.png`). W17 — `broken` = a que NÃO
 /// se lê: o mesmo ícone na tinta do perigo, riscado (o Excalidraw não distingue: desenha o que o
 /// navegador descodificar, ou nada — `saidas/w17`).
-pub(super) fn placeholder(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme, broken: bool) {
+pub(super) fn placeholder(
+    scene: &mut VectorScene,
+    el: &Element,
+    t: Affine,
+    theme: Theme,
+    broken: bool,
+) {
     scene.fill_path(
         &box_path(el, el.image().is_some_and(|i| i.style.round)),
         &Brush::Solid(token(ColorToken::Bg3, theme)),
@@ -98,4 +106,3 @@ pub(super) fn broken_mark(scene: &mut VectorScene, el: &Element, t: Affine, them
         &slash,
     );
 }
-

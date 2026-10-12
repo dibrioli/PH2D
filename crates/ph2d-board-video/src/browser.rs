@@ -90,8 +90,14 @@ impl Browser {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()?;
-        let stdin = child.stdin.take().ok_or_else(|| std::io::Error::other("sem stdin"))?;
-        let stdout = child.stdout.take().ok_or_else(|| std::io::Error::other("sem stdout"))?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| std::io::Error::other("sem stdin"))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| std::io::Error::other("sem stdout"))?;
         std::thread::Builder::new()
             .name("ph2d-cdp-ler".into())
             .spawn(move || read_messages(stdout, on_message))?;

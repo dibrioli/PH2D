@@ -20,12 +20,19 @@ fn rows_read(px: &Pixels, x: u32) -> u32 {
 #[test]
 fn a_truncated_png_shows_the_rows_it_has_like_the_browser() {
     let bytes = std::fs::read(format!("{ENT}w17_png_truncado.png")).unwrap();
-    assert!(crate::images::decode(&bytes, None).is_none(), "o inteiro recusa-o");
+    assert!(
+        crate::images::decode(&bytes, None).is_none(),
+        "o inteiro recusa-o"
+    );
     let px = salvage(&bytes).expect("lê as linhas de cima");
     assert_eq!(px.size, [400, 300]);
     let n = rows_read(&px, 120);
     assert!((172..=174).contains(&n), "Chromium: 173 linhas; nós {n}");
-    assert_eq!(&px.rgba[(120 * 4)..(120 * 4 + 4)], &[255, 0, 0, 255], "o quadrante de cima é vermelho");
+    assert_eq!(
+        &px.rgba[(120 * 4)..(120 * 4 + 4)],
+        &[255, 0, 0, 255],
+        "o quadrante de cima é vermelho"
+    );
     let below = ((n + 5) * 400 + 120) as usize * 4;
     assert_eq!(px.rgba[below + 3], 0, "abaixo do corte, transparente");
 }
@@ -35,12 +42,18 @@ fn a_truncated_png_shows_the_rows_it_has_like_the_browser() {
 #[test]
 fn a_truncated_jpeg_shows_the_rows_it_has_like_the_browser() {
     let bytes = std::fs::read(format!("{ENT}w17_jpeg_truncado.jpg")).unwrap();
-    assert!(crate::images::decode(&bytes, None).is_none(), "o inteiro recusa-o");
+    assert!(
+        crate::images::decode(&bytes, None).is_none(),
+        "o inteiro recusa-o"
+    );
     let px = salvage(&bytes).expect("lê as linhas de cima");
     let n = rows_read(&px, 120);
     assert!((126..=158).contains(&n), "Chromium: 142 linhas; nós {n}");
     let top = &px.rgba[(10 * 400 + 120) * 4..(10 * 400 + 120) * 4 + 4];
-    assert!(top[0] > 230 && top[1] < 25 && top[2] < 25, "vermelho em cima: {top:?}");
+    assert!(
+        top[0] > 230 && top[1] < 25 && top[2] < 25,
+        "vermelho em cima: {top:?}"
+    );
 }
 
 /// O que não é PNG/JPEG, ou não tem nada legível, não se salva (o cinzento riscado continua).
@@ -49,6 +62,8 @@ fn garbage_and_other_formats_are_not_salvaged() {
     assert!(salvage(b"not an image").is_none());
     let lixo = std::fs::read(format!("{ENT}w17_png_idat_lixo.png")).unwrap();
     let r = salvage(&lixo);
-    assert!(r.is_none_or(|p| rows_read(&p, 120) == 0), "o IDAT de lixo não dá linhas");
+    assert!(
+        r.is_none_or(|p| rows_read(&p, 120) == 0),
+        "o IDAT de lixo não dá linhas"
+    );
 }
-

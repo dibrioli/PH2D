@@ -84,7 +84,14 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     let y = fh + 2.0 * GAP;
     let lessons: [ElementId; LESSONS] = std::array::from_fn(|i| {
         let key = format!("board.smoke.w18.l{}", i + 1);
-        note(b, &key, 1, [i as f64 * (side + GAP), y, side, side], false, None)
+        note(
+            b,
+            &key,
+            1,
+            [i as f64 * (side + GAP), y, side, side],
+            false,
+            None,
+        )
     });
     let right = right.max(LESSONS as f64 * (side + GAP));
     let title = Shape {
@@ -92,9 +99,19 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         style: Style::new(None, None, super::team::INK),
         text: RichText::plain(&tr("board.smoke.w18.title")),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, right, 40.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        title,
+        [0.0, -80.0, right, 40.0],
+    );
     put(b, el);
-    let view = [-MARGIN_X, -80.0 - MARGIN_Y, right + MARGIN_X, y + side + MARGIN_Y];
+    let view = [
+        -MARGIN_X,
+        -80.0 - MARGIN_Y,
+        right + MARGIN_X,
+        y + side + MARGIN_Y,
+    ];
     let l = Lessons {
         board: b.id,
         video: video_id,

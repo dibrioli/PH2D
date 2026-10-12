@@ -263,7 +263,10 @@ fn video_links(b: &Board, pages: &[Page], i: usize) -> Vec<([f64; 4], String)> {
         .filter(|el| page_of(b, pages, el.id) == Some(i))
         .filter_map(|el| {
             let e = el.embed()?;
-            Some((on_page(b, &pages[i], el.id)?, ph2d_board_embed::canonical_link(&e.video)))
+            Some((
+                on_page(b, &pages[i], el.id)?,
+                ph2d_board_embed::canonical_link(&e.video),
+            ))
         })
         .collect()
 }
@@ -376,7 +379,9 @@ pub fn write_export(
                     links: links(b, &pages, i),
                 })
                 .collect();
-            let uris: Vec<_> = (0..pages.len()).map(|i| video_links(b, &pages, i)).collect();
+            let uris: Vec<_> = (0..pages.len())
+                .map(|i| video_links(b, &pages, i))
+                .collect();
             std::fs::write(path, pdf::write_with_uris(&list, &uris)).map_err(|e| e.to_string())?;
             out.push(path.to_path_buf());
         }
@@ -391,8 +396,11 @@ pub fn write_export(
                     .filter_map(|(rect, _, to)| Some((rect, on_page(b, p, to)?)))
                     .collect();
                 let uris = video_links(b, &pages, i);
-                std::fs::write(&to, svg::write_with_uris(&s.take_record(), size, &here, &uris))
-                    .map_err(|e| e.to_string())?;
+                std::fs::write(
+                    &to,
+                    svg::write_with_uris(&s.take_record(), size, &here, &uris),
+                )
+                .map_err(|e| e.to_string())?;
                 out.push(to);
             }
         }

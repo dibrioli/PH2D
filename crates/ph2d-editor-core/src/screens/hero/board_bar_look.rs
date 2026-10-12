@@ -490,7 +490,11 @@ pub(super) fn paint_item(
             let mut tri = ph2d_vector::BezPath::new();
             for (k, [fx, fy]) in ICON_PLAY.iter().enumerate() {
                 let p = (cx + fx * s, cy + fy * s);
-                if k == 0 { tri.move_to(p) } else { tri.line_to(p) }
+                if k == 0 {
+                    tri.move_to(p)
+                } else {
+                    tri.line_to(p)
+                }
             }
             tri.close_path();
             scene.fill_path(&tri, &Brush::Solid(fg), Affine::IDENTITY);

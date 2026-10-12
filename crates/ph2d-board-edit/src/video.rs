@@ -2,18 +2,18 @@
 //! (560×315; um `/shorts/` 315×560), reduzido para caber em `fit` (metade da vista) como uma imagem, com o
 //! desfazer e a selecção.
 
-use ph2d_board_model::{BoardOp, BoardDoc, Element, ElementId, Embed, History, Rgba, Style, Video};
+use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, Embed, History, Rgba, Style, Video};
 
 use crate::Editor;
 
 impl Editor {
-    /// Põe o vídeo `video` (o `link` como chegou) com o meio em `at`; `natural` = o tamanho de nascença.
+    /// Põe o vídeo (`what` = o link como chegou e o que ele é) com o meio em `at`; `natural` = o tamanho de
+    /// nascença.
     pub fn insert_embed(
         &mut self,
         doc: &mut BoardDoc,
         history: &mut History,
-        link: &str,
-        video: Video,
+        (link, video): (&str, Video),
         natural: [f64; 2],
         at: [f64; 2],
         fit: [f64; 2],
@@ -55,14 +55,35 @@ mod tests {
         let doc = &mut set.get_mut(id).unwrap().doc;
         let mut h = History::default();
         let mut ed = crate::images::tests::editor();
-        let v = Video::YouTube { id: "aqz-KE-bpKQ".into(), start: 0, vertical: false };
-        let made = ed.insert_embed(doc, &mut h, " https://youtu.be/aqz-KE-bpKQ ", v.clone(), [560.0, 315.0], [100.0, 50.0], [1e9; 2]);
+        let v = Video::YouTube {
+            id: "aqz-KE-bpKQ".into(),
+            start: 0,
+            vertical: false,
+        };
+        let made = ed.insert_embed(
+            doc,
+            &mut h,
+            (" https://youtu.be/aqz-KE-bpKQ ", v.clone()),
+            [560.0, 315.0],
+            [100.0, 50.0],
+            [1e9; 2],
+        );
         let el = doc.get(made).unwrap();
         assert_eq!([el.x, el.y, el.w, el.h], [-180.0, -107.5, 560.0, 315.0]);
         assert_eq!(el.embed().unwrap().link, "https://youtu.be/aqz-KE-bpKQ");
         assert!(el.embed().unwrap().style.round);
-        assert_eq!(ed.selection().iter().copied().collect::<Vec<_>>(), vec![made]);
-        let small = ed.insert_embed(doc, &mut h, "x", v, [560.0, 315.0], [0.0, 0.0], [280.0, 280.0]);
+        assert_eq!(
+            ed.selection().iter().copied().collect::<Vec<_>>(),
+            vec![made]
+        );
+        let small = ed.insert_embed(
+            doc,
+            &mut h,
+            ("x", v),
+            [560.0, 315.0],
+            [0.0, 0.0],
+            [280.0, 280.0],
+        );
         assert_eq!(doc.get(small).unwrap().w, 280.0, "cabe em metade da vista");
         let _ = h.undo(doc);
         assert!(doc.get(small).is_none_or(|e| e.deleted));

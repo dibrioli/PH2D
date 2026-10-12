@@ -32,14 +32,19 @@ fn png_rows(bytes: &[u8]) -> Option<Pixels> {
     let mut y = 0usize;
     while let Ok(Some(row)) = r.next_row() {
         let out = &mut rgba[y * w as usize * 4..(y + 1) * w as usize * 4];
-        for (o, i) in out.chunks_exact_mut(4).zip(row.data().chunks_exact(color.samples())) {
-            o.copy_from_slice(&match *i {
+        for (o, i) in out
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(row.data().chunks_exact(color.samples()))
+        {
+            *o = match *i {
                 [g] => [g, g, g, 255],
                 [g, a] => [g, g, g, a],
                 [r, g, b] => [r, g, b, 255],
                 [r, g, b, a] => [r, g, b, a],
                 _ => return None,
-            });
+            };
         }
         y += 1;
         if y == h as usize {
@@ -61,7 +66,7 @@ pub(crate) fn jpeg_ends(bytes: &[u8]) -> bool {
 /// e pinta o que falta — a metade de baixo de um cortado, sem aviso).
 #[must_use]
 pub(crate) fn jpeg_whole(bytes: &[u8]) -> Option<Pixels> {
-    jpeg_rows(bytes).filter(|p| p.rgba.chunks_exact(4).all(|q| q[3] != 0))
+    jpeg_rows(bytes).filter(|p| p.rgba.as_chunks::<4>().0.iter().all(|q| q[3] != 0))
 }
 
 /// O JPEG pelo `zune-jpeg` tolerante (pára no erro, «matching browsers» — `mcu.rs`). Os blocos que ele
@@ -81,10 +86,17 @@ fn jpeg_rows(bytes: &[u8]) -> Option<Pixels> {
     let (w, h) = (u32::from(info.width), u32::from(info.height));
     let mut rgba = vec![0u8; dec.output_buffer_size()?];
     dec.decode_into(&mut rgba).ok()?;
-    for p in rgba.chunks_exact_mut(4).filter(|p| p[3] != u8::MAX) {
-        p.fill(0);
+    for p in rgba
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .filter(|p| p[3] != u8::MAX)
+    {
+        *p = [0; 4];
     }
-    rgba.chunks_exact(4)
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
         .any(|p| p[3] != 0)
         .then_some(Pixels { size: [w, h], rgba })
 }

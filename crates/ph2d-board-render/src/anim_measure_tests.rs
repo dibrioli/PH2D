@@ -31,7 +31,9 @@ const ROUNDS: usize = 3;
 
 /// Um GIF de [`FRAMES`] quadros inteiros, diferente para cada `seed` (o ficheiro é outro).
 fn gif(seed: usize) -> Vec<u8> {
-    let palette: Vec<u8> = (0..=255u8).flat_map(|i| [i, i.wrapping_mul(3), i.wrapping_mul(7)]).collect();
+    let palette: Vec<u8> = (0..=255u8)
+        .flat_map(|i| [i, i.wrapping_mul(3), i.wrapping_mul(7)])
+        .collect();
     let mut out = Vec::new();
     {
         let mut e = gif::Encoder::new(&mut out, SIDE[0], SIDE[1], &palette).unwrap();
@@ -61,8 +63,15 @@ fn animator() -> crate::anim::Animate {
         let size = [u32::from(d.width()), u32::from(d.height())];
         Some(Box::new(std::iter::from_fn(move || {
             let f = d.read_next_frame().ok()??;
-            Some((Pixels { size, rgba: f.buffer.to_vec() }, u32::from(f.delay) * 10))
-        })) as Box<dyn Iterator<Item = (Pixels, u32)> + Send>)
+            Some((
+                Pixels {
+                    size,
+                    rgba: f.buffer.to_vec(),
+                },
+                u32::from(f.delay) * 10,
+            ))
+        }))
+            as Box<dyn Iterator<Item = (Pixels, u32)> + Send>)
     })
 }
 
@@ -75,24 +84,49 @@ fn board(n: usize) -> Board {
     let rows = n.div_ceil(cols);
     let (cw, ch) = (1280.0 / cols as f64, 800.0 / rows as f64);
     for k in 0..n {
-        let file = b.put_file(ImageFile::new(gif(k), [u32::from(SIDE[0]), u32::from(SIDE[1])]));
+        let file = b.put_file(ImageFile::new(
+            gif(k),
+            [u32::from(SIDE[0]), u32::from(SIDE[1])],
+        ));
         let img = Image::new(file, Style::new(None, None, Rgba([0, 0, 0, 255])));
         let (x, y) = ((k % cols) as f64 * cw, (k / cols) as f64 * ch);
-        let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), img, [x, y, cw * 0.95, ch * 0.9]);
+        let el = Element::new_image(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            img,
+            [x, y, cw * 0.95, ch * 0.9],
+        );
         let _ = BoardOp::Put(el).apply(&mut b.doc);
     }
     let mut out = set.boards()[0].clone();
-    out.camera = ph2d_board_model::Camera { center_x: 640.0, center_y: 400.0, zoom: 1.0 };
+    out.camera = ph2d_board_model::Camera {
+        center_x: 640.0,
+        center_y: 400.0,
+        zoom: 1.0,
+    };
     out
 }
 
 fn proc_threads() -> usize {
     let s = std::fs::read_to_string("/proc/self/status").unwrap();
-    s.lines().find_map(|l| l.strip_prefix("Threads:")).unwrap().trim().parse().unwrap()
+    s.lines()
+        .find_map(|l| l.strip_prefix("Threads:"))
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap()
 }
 fn proc_rss_mb() -> f64 {
     let s = std::fs::read_to_string("/proc/self/status").unwrap();
-    let kb: f64 = s.lines().find_map(|l| l.strip_prefix("VmRSS:")).unwrap().trim().trim_end_matches(" kB").trim().parse().unwrap();
+    let kb: f64 = s
+        .lines()
+        .find_map(|l| l.strip_prefix("VmRSS:"))
+        .unwrap()
+        .trim()
+        .trim_end_matches(" kB")
+        .trim()
+        .parse()
+        .unwrap();
     kb / 1024.0
 }
 fn proc_cpu_s() -> f64 {
@@ -113,7 +147,12 @@ struct Run {
 
 fn run(each: bool, b: &Board) -> Run {
     let mut c = RenderCache::default();
-    c.images.set_decoder(Arc::new(|_: &[u8], _| Some(Pixels { size: [160, 120], rgba: vec![128; 160 * 120 * 4] })));
+    c.images.set_decoder(Arc::new(|_: &[u8], _| {
+        Some(Pixels {
+            size: [160, 120],
+            rgba: vec![128; 160 * 120 * 4],
+        })
+    }));
     c.images.set_animator(animator());
     if each {
         c.images.gif_thread_each = Some(BTreeMap::new());
@@ -127,7 +166,16 @@ fn run(each: bool, b: &Board) -> Run {
     while t0.elapsed().as_secs_f64() < SECONDS {
         let tick = Instant::now();
         let mut scene = VectorScene::new();
-        crate::paint(b, [0.0, 0.0, 1280.0, 800.0], &mut scene, Theme::Forge, &mut ts, &mut c, &routes, None);
+        crate::paint(
+            b,
+            [0.0, 0.0, 1280.0, 800.0],
+            &mut scene,
+            Theme::Forge,
+            &mut ts,
+            &mut c,
+            &routes,
+            None,
+        );
         paints.push(tick.elapsed().as_secs_f64() * 1e3);
         peak_threads = peak_threads.max(proc_threads());
         std::thread::sleep(Duration::from_millis(16).saturating_sub(tick.elapsed()));
@@ -153,17 +201,36 @@ fn run(each: bool, b: &Board) -> Run {
 #[ignore = "régua: corre à mão (cabeçalho)"]
 fn measure_gif_players_pool_against_a_thread_each() {
     let base_threads = proc_threads();
-    println!("load {:?} · fios no começo {base_threads} · {FRAMES} quadros {}×{} a 25 q/s", std::fs::read_to_string("/proc/loadavg").unwrap().trim(), SIDE[0], SIDE[1]);
-    println!("{:>4} {:>8} {:>12} {:>6} {:>7} {:>8} {:>9} {:>11}", "GIFs", "a tocar", "variante", "fios", "CPU", "RSS MB", "desenho", "q/s por GIF");
+    println!(
+        "load {:?} · fios no começo {base_threads} · {FRAMES} quadros {}×{} a 25 q/s",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim(),
+        SIDE[0],
+        SIDE[1]
+    );
+    println!(
+        "{:>4} {:>8} {:>12} {:>6} {:>7} {:>8} {:>9} {:>11}",
+        "GIFs", "a tocar", "variante", "fios", "CPU", "RSS MB", "desenho", "q/s por GIF"
+    );
     for n in [1, 10, 50, 200] {
         let b = board(n);
         let mut best: BTreeMap<&str, Run> = BTreeMap::new();
         for round in 0..ROUNDS {
-            let order: [bool; 2] = if round % 2 == 0 { [false, true] } else { [true, false] };
+            let order: [bool; 2] = if round % 2 == 0 {
+                [false, true]
+            } else {
+                [true, false]
+            };
             for each in order {
                 let r = run(each, &b);
                 let k = if each { "fio_por_gif" } else { "pool" };
-                let e = best.entry(k).or_insert(Run { threads: usize::MAX, cpu: f64::MAX, rss: f64::MAX, paint_med_ms: f64::MAX, playing: 0, shown_per_gif_s: 0.0 });
+                let e = best.entry(k).or_insert(Run {
+                    threads: usize::MAX,
+                    cpu: f64::MAX,
+                    rss: f64::MAX,
+                    paint_med_ms: f64::MAX,
+                    playing: 0,
+                    shown_per_gif_s: 0.0,
+                });
                 e.threads = e.threads.min(r.threads);
                 e.cpu = e.cpu.min(r.cpu);
                 e.rss = e.rss.min(r.rss);
@@ -173,8 +240,10 @@ fn measure_gif_players_pool_against_a_thread_each() {
             }
         }
         for (k, r) in &best {
-            println!("{n:>4} {:>8} {k:>12} {:>6} {:>6.2}n {:>8.1} {:>7.2}ms {:>11.1}", r.playing, r.threads, r.cpu, r.rss, r.paint_med_ms, r.shown_per_gif_s);
+            println!(
+                "{n:>4} {:>8} {k:>12} {:>6} {:>6.2}n {:>8.1} {:>7.2}ms {:>11.1}",
+                r.playing, r.threads, r.cpu, r.rss, r.paint_med_ms, r.shown_per_gif_s
+            );
         }
     }
 }
-

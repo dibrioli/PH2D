@@ -100,6 +100,8 @@
 | 2026-10-10 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-10_CICLO_20.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-10_CICLO_20.md) | continuação | o prompt do ciclo 20 «O ACABAMENTO» (pós-processamento como nós) |
 | 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-11_CICLO_20.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-11_CICLO_20.md) | integração | ciclo 20 FECHADO (W4–W5): a mistura do Output atravessa a camada filtrada, provas de mutação |
 | 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B.md) | continuação | fila viva ZERAR, família B: B4 feito (mistura + degradê no `fx.filter`), B3/B6 fechados por medição, B5 (mistura por instância na placa) é a próxima onda |
+| 2026-10-11 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B_B5.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-11_ZERAR_FAMILIA_B_B5.md) | continuação | B5 feito: mistura por cópia nas formas da placa (Soma · Tela · Multiplica), o `Each Shape` entra na mistura; LUT do glow a 4 096 |
+| 2026-10-12 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_FAMILIA_B_B6.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-12_ZERAR_FAMILIA_B_B6.md) | continuação | fila viva: B6 feito — a mistura em grupo pelo DISPOSITIVO (corridas por faixa, vigia das imagens), halo fechado por medição; família B fechada, segue C/D/E |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

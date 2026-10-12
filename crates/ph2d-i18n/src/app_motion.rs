@@ -175,6 +175,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_fold.color_channel_g" => "{cor} G",
         "app.motion.motion_bridge_fold.color_channel_b" => "{cor} B",
         "app.motion.motion_bridge_fold.color_channel_a" => "{cor} A",
+        // ⚠️ À MÃO: o fio de uma saída de cor de um Input que não é de Cor (smoke do dono, 12/10).
+        "app.motion.motion_bridge_subgraph.r_g_b_a_only_on_a_color_input" => {
+            "Can't wire: R, G, B and A only carry a colour on an Input whose Kind is Color"
+        }
         _ => return None,
     })
 }

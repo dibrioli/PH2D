@@ -209,6 +209,18 @@ impl NodeOp for ValueInput {
     }
 }
 
+/// **Esta saída diz alguma coisa neste `kind`?** As saídas `r g b a` só levam uma cor num Input
+/// de Cor; noutro tipo emitem os params de cor de fábrica (`1`) e um fio delas pinta de BRANCO sem
+/// aviso (smoke do dono, 12/10, doc 131 §3 D.13).
+#[must_use]
+pub fn saida_viva(kind: f32, porta: u16) -> bool {
+    let de_cor = MANIFEST
+        .outputs
+        .get(usize::from(porta))
+        .is_some_and(|p| COLOR.contains(&p.name));
+    !de_cor || kind.round() as i32 == KIND_COLOR
+}
+
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueInput))?;
     reg.register_ui(

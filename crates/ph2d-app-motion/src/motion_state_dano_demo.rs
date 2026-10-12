@@ -138,10 +138,12 @@ pub(super) fn announce() {
          (1) De PLAY. No cartao `Input` chamado `vida`, arraste `Value` para BAIXO (de 1 para\n    \
          0,7): as estrelas INCHAM e o redemoinho acelera; em dois segundos tudo acalma.\n\
          (2) Arraste `Value` para CIMA: nada acontece - curar nao e' dano.\n\
-         (3) No grafo, o cartao `Input` de cor (verde) esta' solto. Aproxime o grafo (roda do rato)\n    \
-         ate' ler os nomes das saidas dele (Out, R, G, B, A). Puxe um fio da saida `R` e solte-o\n    \
+         (3) No grafo ha' DOIS cartoes `Input`: o da esquerda, ligado ao `On Change`, e' a `vida`; o\n    \
+         `cor` e' o que esta' SOZINHO a' direita. Aproxime o grafo (roda do rato) ate' ler as\n    \
+         saidas do `cor` (Out, R, G, B, A). Puxe um fio da saida `R` e solte-o\n    \
          em cima do cartao `Tint`: abre um menu; escolha `Tint: Color R`. Aparecem QUATRO fios\n    \
-         e as estrelas ficam verdes. Um `Ctrl+Z` tira os quatro.\n\
+         e as estrelas ficam verdes. Um `Ctrl+Z` tira os quatro. (Um fio do `R` da `vida` nao\n    \
+         liga: a `vida` e' um numero, e aparece um aviso a dize-lo.)\n\
          \n\
          DEU ERRADO se: subir a vida tambem sacudir a galaxia; abrir a cena ja' a sacudir;\n\
          ou o fio do `r` ligar so' um canal.\n"

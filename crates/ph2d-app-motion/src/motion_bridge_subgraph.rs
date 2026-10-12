@@ -155,6 +155,10 @@ pub(super) fn drive(
         )));
         return;
     }
+    if saida_morta(motion, from) {
+        avisa_saida_morta(toasts);
+        return;
+    }
     let pre = motion.doc.clone();
     // ⭐ A COR NUM GESTO (doc 131 §3, D.13): um canal solto sobre o MESMO canal de um grupo de cor
     // liga o grupo inteiro — um passo de desfazer.
@@ -287,6 +291,32 @@ pub(super) fn converter_from(motion: &MotionState, from: (NodeId, u16)) -> Optio
 /// mesma régua. Um nó desconhecido ou uma porta que não existe respondem **não** — o
 /// default recusa, que é o lado seguro (um fio que não aparece é uma ausência; um que
 /// aparece e não age é uma mentira).
+/// **Uma saída que não diz nada no estado do nó** — as `r g b a` de um Input que não é de Cor
+/// (`ph2d_node_value_input::saida_viva`). Um fio dela liga-se, vê-se e pinta de branco: recusa-se
+/// nas duas portas onde um fio nasce (o `Connect` e o `DriveParam`), com o porquê no aviso.
+pub(super) fn saida_morta(motion: &MotionState, from: (NodeId, u16)) -> bool {
+    let e_input = motion
+        .doc
+        .graph
+        .node(from.0)
+        .is_some_and(|n| n.type_name == ph2d_node_value_input::MANIFEST.name);
+    let kind = motion
+        .doc
+        .graph
+        .node_param_overrides(from.0)
+        .and_then(|p| p.get(ph2d_node_value_input::KIND))
+        .copied()
+        .unwrap_or(0.0);
+    e_input && !ph2d_node_value_input::saida_viva(kind, from.1)
+}
+
+/// O aviso da [`saida_morta`].
+pub(super) fn avisa_saida_morta(toasts: &mut ph2d_editor_core::ToastQueue) {
+    toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+        "app.motion.motion_bridge_subgraph.r_g_b_a_only_on_a_color_input",
+    )));
+}
+
 pub(super) fn source_can_drive(motion: &MotionState, from: (NodeId, u16)) -> bool {
     super::fold::manifest_of(motion, from.0).is_some_and(|m| {
         m.outputs

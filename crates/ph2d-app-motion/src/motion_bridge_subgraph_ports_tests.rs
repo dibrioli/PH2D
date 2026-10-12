@@ -426,3 +426,61 @@ fn um_canal_de_cor_solto_no_mesmo_canal_liga_a_cor_inteira() {
         "uma troca de canal liga só esse"
     );
 }
+
+/// ⭐ **As saídas R G B A de um Input que NÃO é de Cor não ligam nada, e o aviso diz porquê**
+/// (smoke do dono, 12/10: o fio do `R` do cartão `vida` (Número) ligou os quatro canais do Tint a
+/// `1` — as estrelas ficaram brancas sem aviso). Nas duas portas onde um fio nasce: o param e a porta.
+#[test]
+fn um_canal_de_cor_de_um_input_que_nao_e_cor_nao_liga_e_diz_porque() {
+    let mut m = flat();
+    let numero = m.doc.graph.add_node("value.input");
+    let tint = m.doc.graph.add_node("motion.tint");
+    let mapa = m.doc.graph.add_node("value.map_range");
+    let aplica = |m: &mut MotionState| {
+        let mut toasts = ph2d_editor_core::ToastQueue::default();
+        apply_graph_intents(
+            m,
+            &mut ph2d_core::Playhead::default(),
+            &mut toasts,
+            &mut ph2d_editor_core::screens::layout::CenterSplit::None,
+        );
+        toasts.len()
+    };
+    push_intent(GraphIntent::DriveParam {
+        from_node: numero.0,
+        from_port: 1,
+        to_node: tint.0,
+        param: "r",
+    });
+    assert_eq!(aplica(&mut m), 1, "o aviso");
+    assert!(
+        m.doc.graph.param_sources(tint).is_none(),
+        "nenhum fio para o Tint"
+    );
+    push_intent(GraphIntent::Connect {
+        from_node: numero.0,
+        from_port: 1,
+        to_node: mapa.0,
+        to_port: 0,
+    });
+    assert_eq!(aplica(&mut m), 1, "o aviso");
+    assert!(
+        m.doc.graph.input_edge(mapa, 0).is_none(),
+        "nenhum fio para a porta"
+    );
+    // Controlo: o MESMO gesto de um Input de Cor liga.
+    #[expect(clippy::cast_precision_loss, reason = "um enum pequeno")]
+    m.doc.graph.set_param(
+        numero,
+        ph2d_node_value_input::KIND,
+        ph2d_node_value_input::KIND_COLOR as f32,
+    );
+    push_intent(GraphIntent::DriveParam {
+        from_node: numero.0,
+        from_port: 1,
+        to_node: tint.0,
+        param: "r",
+    });
+    assert_eq!(aplica(&mut m), 0, "sem aviso");
+    assert_eq!(m.doc.graph.param_sources(tint).map(|s| s.len()), Some(4));
+}

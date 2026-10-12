@@ -91,7 +91,11 @@ pub(super) fn apply_graph_intents(
                 if let Some((f, fp)) = subgraph::resolve_port(motion, from_node, from_port, false)
                     && let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true)
                 {
-                    connect::apply_connect(motion, toasts, f.0, fp, t.0, tp);
+                    if subgraph::saida_morta(motion, (f, fp)) {
+                        subgraph::avisa_saida_morta(toasts);
+                    } else {
+                        connect::apply_connect(motion, toasts, f.0, fp, t.0, tp);
+                    }
                 }
             }
             // **A wire that lands on a PARAMETER** (doc 58) — it has no port, so it cannot

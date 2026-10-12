@@ -99,6 +99,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w16.l6" => {
             "6. Export this board as SVG: it is quick even with big photos, and the pictures go in as they arrived."
         }
+        "board.smoke.w19.board" => "Video controls",
+        "board.smoke.w19.title" => "A YouTube video with our own controls",
+        "board.smoke.w19.youtube" => "YouTube",
+        "board.smoke.w19.l1" => {
+            "1. Click the red play: the video plays and our controls show UNDER it (YouTube lets nothing cover it)"
+        }
+        "board.smoke.w19.l2" => {
+            "2. Zoom with the wheel: the video keeps playing while 200 x 200 of it is in view"
+        }
+        "board.smoke.w19.l3" => {
+            "3. Click the channel name inside the video: it opens in your browser, the video keeps playing"
+        }
+        "board.smoke.w19.l4" => {
+            "4. Full screen button (or F): the video fills the board without stretching. Esc leaves"
+        }
+        "board.smoke.w19.l5" => {
+            "5. Space or K plays/pauses, arrows jump, M mutes. Present: click the video on the slide"
+        }
         "board.smoke.w18.board" => "Video and picture fixes",
         "board.smoke.w18.title" => "A YouTube video on the board, and the last picture fixes",
         "board.smoke.w18.youtube" => "YouTube",

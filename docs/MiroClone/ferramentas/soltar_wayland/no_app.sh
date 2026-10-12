@@ -2,7 +2,7 @@
 # O app INTEIRO, nativo no Wayland de um KWin virtual: outro cliente larga «água teste.png» no meio
 # do ecrã e o roteiro fotografa o depois (ScreenShot2 da sessão virtual).
 #
-# Uso: bash docs/MiroClone/ferramentas/soltar_wayland/no_app.sh <nome> [CHAVE=VALOR …]
+# Uso: PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/MiroClone/ferramentas/soltar_wayland/no_app.sh <nome> [CHAVE=VALOR …]
 #   ex.: no_app.sh cena                        → a cena de abertura: a imagem entra como sprite
 #        no_app.sh quadro PH2D_BOARD_SMOKE=2   → um quadro na aba: a recusa aparece na tela
 # Saída: docs/MiroClone/ferramentas/soltar_wayland/<nome>_depois.png (meio segundo depois de largar)
@@ -19,7 +19,9 @@ APP="$RAIZ/target/smoke/ph2d-host-desktop"
 [ -x "$APP" ] || { echo "falta: bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke" >&2; exit 2; }
 NOVO="$(find "$RAIZ/crates" "$RAIZ/shells" -name '*.rs' -not -path '*/tests/*' -not -name '*_tests.rs' -newer "$APP" -print -quit 2>/dev/null || true)"
 [ -z "$NOVO" ] || { echo "RECUSA: ha' codigo mais novo que o binario (${NOVO#"$RAIZ/"})" >&2; exit 2; }
-FONTE="$(bash scripts/ph2d-run.sh cargo test -p ph2d-wayland-dnd --test kwin_drop --no-run 2>&1 \
+# ⚠️ Sem o `env -u PH2D_GPU`, correr isto por `PH2D_GPU=1 bash scripts/ph2d-run.sh …` (a placa é do KWin e do
+# app) fazia a porta de DENTRO esperar pela placa que a de fora segura: 300 s e `exit 75`, engolido aqui (W19).
+FONTE="$(env -u PH2D_GPU bash scripts/ph2d-run.sh cargo test -p ph2d-wayland-dnd --test kwin_drop --no-run 2>&1 \
   | sed -n 's/.*Executable tests\/kwin_drop.rs (\(.*\))/\1/p' | tail -1)"
 [ -x "$RAIZ/$FONTE" ] || { echo "RECUSA: a origem do arrasto nao compilou" >&2; exit 2; }
 

@@ -39,3 +39,35 @@ nada à frente do leitor, ≥ 200×200, Referer ⇒ **vivo só destapado, sem ro
 10. **Memória:** `project-memory/project_youtube_in_the_board_uses_the_persons_own_browser_2026_10_12.md` (+ linha no
     `MEMORY.md`) está no checkout PRIMÁRIO (não rastreado lá) — recolha-o ao integrar.
 
+
+## §W19 — os defeitos do smoke do dono e os NOSSOS controles (12/10)
+
+Decisão: [ADR-0185 §W19](../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md).
+Sonda: [`ferramentas/youtube_motor/sonda_w19_tocador.mjs`](ferramentas/youtube_motor/sonda_w19_tocador.mjs)
+(`FASES=P,F,Z,C,A`, `ECRA=1`), saídas em `youtube_motor/saidas/w19*` (Chrome 155, Big Buck Bunny).
+
+| pergunta | medido | onde |
+|---|---|---|
+| o tocador NOVO do YouTube (2026) | classes `ytm*`/`ytSpec*`; os seletores `ytp-*` antigos não existem — a sonda acha os alvos pelo nome acessível | `w19/`, `w19b/` |
+| o que `controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3` tira | some: a barra, o tempo, volume, legendas, definições, ecrã inteiro, «Mais vídeos»; FICAM: título, canal, «Copiar link», logotipo «YouTube», play ao meio | `w19/P_*_rato.png` |
+| duplo-clique / `f` com os nossos parâmetros | não entram em ecrã inteiro | `w19c/` |
+| ecrã inteiro do tocador, Playwright | não deforma (o Playwright emula o ecrã) | `w19d_ecra0/` |
+| ecrã inteiro do tocador, O NOSSO `Player` | quadros **420×315** numa caixa 560×315 (o ecrã imaginado 800×600 → 4:3) | teste `the_player_s_fullscreen_corner_…` |
+| zoom: o tamanho a cada 16 ms, 5 s (4 variantes × 2, intercaladas) | **0 pausas** em todas; só métricas sem recomeçar o screencast: 12–14 q/s (o screencast não segue); recomeçar: 36 q/s; assentar 250 ms: 30 q/s | `w19/w19_tocador.json` `Z` |
+| canal / título / «YouTube» | cada um abre uma ABA NOVA (`targetCreated`, `popup`); a moldura NUNCA navega; «YouTube» também pausa o vídeo | `w19b/` `C` |
+| … no NOSSO `Player` | 1 quadro em 3 s, luz 9,5/255 (preto) → com a guarda: 90 quadros, luz 179 | teste `clicking_the_channel_…` |
+| a API oficial | `initialDelivery`, `onReady`, `infoDelivery` (~3,7/s a tocar; parado, cala-se), `onStateChange` (depois do `addEventListener` no `onReady`); `mute`/`setVolume`/`seekTo` 4–10 ms; `pauseVideo` ~630 ms; `playVideo` ~255 ms | `w19b/` `A`, teste `our_controls_…` |
+| anúncios (sem sessão, Big Buck Bunny) | nenhum (`ad-showing` ausente, sem `adState`) — a linha de base do Premium | `w19b/` `A` |
+
+**O mecanismo da cura.** `Player` (`ph2d-board-video/src/player.rs`): a página nossa pede o estado (`listening` a
+cada 250 ms até à 1.ª resposta), regista `onStateChange` no `onReady` e passa cada mensagem pelo binding `ph2dState`;
+`Playback` (`playback.rs`) guarda fase/tempo/duração/volume/mudo e a fase PEDIDA (`want`, ≤ 1,5 s) para o botão
+mudar no quadro seguinte. `Target.setDiscoverTargets` → cada aba nova (não a nossa) com endereço `http*` fecha-se,
+a nossa volta à frente, e o endereço vai para `take_outside` (o app abre-o no navegador do sistema). As métricas
+levam `screenWidth/Height` = a caixa. O app (`ph2d-app-board/src/video.rs`): `held` guarda se tocava quando as
+regras o pausaram; `settled` só muda o tamanho do tocador 250 ms depois de o do ecrã parar. O editor
+(`board_video_bar.rs`): a barra por baixo, o ecrã inteiro (a colocação do vídeo passa a ser a do ecrã inteiro — o
+rato e o tamanho seguem-na), os atalhos em `board_video::key`, e a apresentação (`paint_show`: um botão por vídeo
+por cima da sala).
+
+**Cena de smoke:** 20 (`PH2D_BOARD_SMOKE=20`, `smoke_w19.rs`, gate `the_w19_scene_does_what_its_lessons_say`).

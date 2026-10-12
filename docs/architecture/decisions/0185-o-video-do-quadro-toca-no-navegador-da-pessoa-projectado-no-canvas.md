@@ -43,7 +43,8 @@ quadros chegam por screencast e desenham-se no canvas como uma imagem; o rato e 
 3. **UM tocador vivo de cada vez** — o vídeo ACTIVADO (o idioma do oráculo: um clique activa, clicar fora
    desactiva). Os outros mostram a miniatura com o símbolo de play.
 4. **Vivo só quando as regras se cumprem**, uma função com gate (`live_allowed`): descoberto (nenhum elemento por
-   cima do retângulo dele), sem rotação, ≥ 200×200 px de ecrã e inteiro à vista. Ao falhar qualquer uma, o
+   cima do retângulo dele), sem rotação e ≥ 200×200 px VISÍVEIS (W19: era «inteiro à vista», a regra era nossa e
+   pausava o vídeo a cada zoom — §W19). Ao falhar qualquer uma, o
    desenho volta à miniatura (com o quadro em que parou) no mesmo quadro em que deixou de cumprir.
 5. **A miniatura SEMPRE no canvas**: export, pan, zoom, rotação, sem rede. Busca-se fora do fio da janela, com
    prazo (o molde do `clipboard.rs`), entra na cache do quadro; sem rede, o lugar com o título/link e uma frase.
@@ -84,9 +85,63 @@ falha e a decisão volta ao dono (o Servo é o plano B).
 ## O que fica gateado (para ninguém re-litigar por prosa)
 
 - `ph2d-board-embed` (crate da lei): `youtube::parse` contra a tabela das 24 formas do oráculo (+ as correcções);
-  `live_allowed` (descoberto · sem rotação · ≥ 200×200 · inteiro à vista).
+  `live_allowed` (descoberto · sem rotação · ≥ 200×200 VISÍVEIS — §W19).
 - O `.excalidraw`: ler e escrever o `embeddable` com `link` (o contador do aviso X3 desce).
 - `deny.toml` `[bans]` (o `cargo deny` do `ship.sh`): as crates de extrair fluxos do YouTube (`rustube`,
   `rusty_ytdl`, `ytextract`, `youtube_dl`, `yt-dlp`, `ytdlp`) e os motores web recusados (`wry`, `cef`,
   `cef-dll-sys`, `servo`, `webkit2gtk`) — nomes reais conferidos por `cargo search` (12/10). Reabrir um deles é
   tirar a linha COM um ADR novo.
+
+## §W19 — emenda: os NOSSOS controles (12/10, depois do smoke do dono)
+
+**Os três defeitos do smoke, cada um reproduzido VERMELHO antes da cura** (mecanismo e números:
+[`10_video_do_youtube.md`](../../MiroClone/10_video_do_youtube.md) §W19; sonda
+[`sonda_w19_tocador.mjs`](../../MiroClone/ferramentas/youtube_motor/sonda_w19_tocador.mjs)):
+
+- **O ecrã inteiro DO TOCADOR deformava.** O navegador sem ecrã imagina um ecrã 800×600; o ecrã inteiro manda
+  quadros 4:3 (420×315 numa caixa 560×315, teste real) e o desenho esticava-os. Cura em três camadas: o «ecrã»
+  da aba é a caixa (`screenWidth/Height`), o tocador vem sem ecrã inteiro (`fs=0`, sem a permissão `fullscreen`
+  no `<iframe>`), e o desenho NUNCA estica (faixas, como o tocador).
+- **O zoom pausava.** A sonda mudou o tamanho do tocador a cada 16 ms durante 5 s em 8 corridas: **zero pausas**.
+  A pausa era a NOSSA regra «inteiro à vista». O YouTube pede ≥ 200×200 px **visíveis**: é essa a lei agora.
+  O tocador segue o tamanho do ecrã 250 ms depois de ele assentar (medido sem perda de quadros).
+- **Clicar no canal deixava preto.** Os links do tocador (canal, título, «YouTube») abrem uma ABA NOVA no navegador
+  invisível, que fica à frente: o nosso screencast parava (1 quadro em 3 s, luz 9,5/255). Cura: a aba nova
+  fecha-se no `Target.targetCreated`, a nossa volta à frente, e o link abre-se no navegador do SISTEMA.
+
+**Decisão do dono (12/10): «Nossos controles + Premium».**
+
+1. **O tocador vem sem os controles dele**: `controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3` (cada um medido
+   no oráculo: ficam o título, o canal, «Copiar link», o logotipo «YouTube» e o play ao meio, que as regras do
+   YouTube não deixam esconder).
+2. **A nossa barra fica POR BAIXO da caixa do vídeo, fora dela** (por cima se em baixo não couber, e some se não
+   couber em lado nenhum) — *«must not display overlays … in front of any part of an embedded player»*. Tocar/
+   pausar, o tempo, a barra de tempo, o mudo e o volume, o NOSSO ecrã inteiro e «Abrir no YouTube» (no ponto em
+   que está). O estado vem da API oficial (`listening` → `infoDelivery`/`onStateChange`, ~4 mensagens/s, passado
+   ao PH2D por `Runtime.addBinding`); as ordens por `postMessage`. Medido: `seekTo`/`mute`/`setVolume` chegam ao
+   estado em 4–10 ms, `pauseVideo` em ~630 ms — por isso a ordem dada MANDA no botão até o tocador a confirmar
+   (≤ 1,5 s).
+3. **As teclas são nossas** (o tocador, com `disablekb=1`, ignora-as): os atalhos do YouTube — espaço/K, ←/→ 5 s,
+   J/L 10 s, ↑/↓ volume, M, F; `Esc` sai do ecrã inteiro. O encaminhamento de teclas ao tocador saiu.
+4. **O nosso ecrã inteiro** enche a área do quadro com a proporção do vídeo e a barra por baixo; as barras do
+   quadro não se pintam nem agarram, o rato no preto e a roda não chegam ao quadro.
+5. **A roda do rato é do quadro** (o zoom), nunca do tocador — o caminho dela até ao tocador saiu.
+6. **Na apresentação o vídeo do diapositivo toca** (era só a miniatura com um play inerte): um clique activa-o,
+   os seguintes tocam/pausam, a barra por cima da sala; mudar de diapositivo deixa-o de fora da vista, sair pára-o.
+7. **Premium** (sem anúncios pelo caminho legítimo — esconder ou saltar anúncios viola os termos e NÃO se faz):
+   a pessoa entra na conta dela. ⚠️ Por medir com a conta do dono: o domínio sem cookies (`youtube-nocookie.com`)
+   não leva a sessão de `youtube.com`, por isso uma sessão iniciada só conta com o tocador em `www.youtube.com/embed`
+   e um perfil PERSISTENTE do PH2D. Critério de morte: sem anúncios com a sessão iniciada depois da 2.ª
+   tentativa, ou a parte sai e a decisão volta ao dono com a medida.
+8. **Windows** (aberto da W18): ⛔ continua sem tocador (abre no navegador). A porta TCP (`--remote-debugging-port`)
+   fica RECUSADA: qualquer processo local mandaria no navegador — e, com o perfil persistente do item 7, na
+   sessão do YouTube da pessoa. A rota é o tubo com handles herdados (`--remote-debugging-io-pipes`), que pede
+   marcar dois handles como herdáveis; não há Windows nesta bancada para o medir.
+
+**Gateado:** `live_allowed` com `visible` (`ph2d-board-embed`); o desenho com faixas
+(`a_frame_of_another_shape_draws_with_bands_never_stretched`); a barra nunca à frente e cada ordem pelo despacho
+real (`our_controls_sit_under_the_video_and_each_gives_its_order`, `the_bar_goes_under_or_over_the_video_never_on_it`);
+o ecrã inteiro 16:9 (`our_fullscreen_fills_the_board_keeping_the_shape_and_esc_leaves`); a apresentação
+(`a_video_on_a_slide_plays_in_the_presentation_with_our_controls`); e no navegador real (`#[ignore]`, à mão):
+`the_player_s_fullscreen_corner_never_changes_the_frame_shape`, `clicking_the_channel_keeps_the_player_playing_and_lit`,
+`a_continuous_zoom_never_pauses_the_player`, `our_controls_reach_the_player_and_come_back_in_its_state`.

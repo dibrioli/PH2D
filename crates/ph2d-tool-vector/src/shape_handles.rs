@@ -300,6 +300,16 @@ pub fn handle_grip(
     if h.spot == Spot::Rail {
         #[expect(clippy::cast_precision_loss, reason = "uma fila de poucos ⇕")]
         let k = rail_slot(kind, h) as f64;
+        // F13 D: na caixa BAIXA (`h/4 < park_at`) o 1.º ⇕ tocaria as alças do canto e do meio — a
+        // fila passa à meia altura, um passo POR FORA da borda (a alça do meio fica na borda).
+        if let Some((lo, hi)) = curve_bbox(&cook(values))
+            && (hi[1] - lo[1]) * 0.25 < park_at
+        {
+            return Some([
+                hi[0] + (k + 1.0) * RAIL_PITCH * park_at,
+                (lo[1] + hi[1]) * 0.5,
+            ]);
+        }
         return Some([at[0] + k * RAIL_PITCH * park_at, at[1]]);
     }
     // ⭐ As alças de ÂNGULO vivem `park_at` para DENTRO do aro, sobre o raio delas: no aro da

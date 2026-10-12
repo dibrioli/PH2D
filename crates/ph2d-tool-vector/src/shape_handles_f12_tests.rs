@@ -124,3 +124,56 @@ fn the_viewed_arrow_goes_up_to_from_above() {
         }
     }
 }
+
+/// ⭐ (F13 D) **Nenhum ⇕ toca uma alça da caixa nem a ④, de 20 a 400 px de altura**: em toda forma
+/// com fila, o disco de acerto de cada ⇕ (`HIT` = 12 px) fica fora dos 8 quadrados de escala (lado
+/// 12 px) e dentro da banda vertical da caixa ± a folga da ④ (24 px, que flutua por cima ou por
+/// baixo dela). Controlo: as duas moradas (na borda a `h/4` e por fora à meia altura) são visitadas.
+#[test]
+fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
+    const HIT: f64 = 12.0;
+    const SQ: f64 = 6.0;
+    const GAP: f64 = 24.0;
+    let park = SQ + HIT;
+    let (mut na_borda, mut por_fora) = (0, 0);
+    for &k in ALL_SHAPES {
+        if !handles_of(k).iter().any(|h| h.spot == Spot::Rail) {
+            continue;
+        }
+        for alto in (20..=400).step_by(4) {
+            let half = [100.0, f64::from(alto) * 0.5];
+            let ck = cooker(k, half);
+            let v = k.defaults();
+            let Some((lo, hi)) = spots::curve_bbox(&ck(&v)) else {
+                continue;
+            };
+            let mid = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+            let alcas: Vec<[f64; 2]> = [lo[0], mid[0], hi[0]]
+                .iter()
+                .flat_map(|&x| [lo[1], mid[1], hi[1]].map(|y| [x, y]))
+                .filter(|p| *p != mid)
+                .collect();
+            for h in handles_of(k).iter().filter(|h| h.spot == Spot::Rail) {
+                let p = handle_grip(k, h, &v, half, 1.0, park, &ck).expect("grip");
+                if (p[0] - hi[0]).abs() < 1e-9 {
+                    na_borda += 1;
+                } else if (p[1] - mid[1]).abs() < 1e-9 {
+                    por_fora += 1;
+                }
+                for a in &alcas {
+                    let dx = ((p[0] - a[0]).abs() - SQ).max(0.0);
+                    let dy = ((p[1] - a[1]).abs() - SQ).max(0.0);
+                    assert!(
+                        dx.hypot(dy) >= HIT - 1e-9,
+                        "{k:?} a {alto} px: o ⇕ em {p:?} toca a alça em {a:?}"
+                    );
+                }
+                assert!(
+                    p[1] - HIT >= lo[1] - GAP && p[1] + HIT <= hi[1] + GAP,
+                    "{k:?} a {alto} px: o ⇕ em {p:?} entra na banda da ④"
+                );
+            }
+        }
+    }
+    assert!(na_borda > 0 && por_fora > 0, "{na_borda} na borda, {por_fora} por fora");
+}

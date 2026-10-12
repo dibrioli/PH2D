@@ -158,3 +158,24 @@ fn a_still_gif_stops_its_player() {
 fn a_frame_of_ten_ms_or_less_lasts_a_tenth_of_a_second() {
     assert_eq!([0, 10, 11, 70].map(frame_ms), [100, 100, 11, 70]);
 }
+
+/// Um desenho que chega um pouco ATRASADO (menos de 1 s) não empurra o ritmo: o quadro seguinte
+/// acaba no tempo dele contado do fim do anterior, não de agora.
+#[test]
+fn a_late_draw_does_not_drift_the_rhythm() {
+    let b = board();
+    let t0 = Instant::now();
+    let mut c = cache();
+    assert!(until(&b, &mut c, t0, PLAYED[0]));
+    assert!(until(
+        &b,
+        &mut c,
+        t0 + Duration::from_millis(150),
+        PLAYED[1]
+    ));
+    // O 2.º acaba em t0 + 200 (não em 150 + 100 = 250).
+    assert!(
+        until(&b, &mut c, t0 + Duration::from_millis(210), PLAYED[2]),
+        "o ritmo derivou"
+    );
+}

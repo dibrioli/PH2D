@@ -255,10 +255,12 @@ fn escape_mid_drag_is_undoable_and_tiny_or_foreign_crops_never_abort() {
     assert!(w.h.undo(&mut w.doc));
     assert_eq!(w.crop(), None, "o desfazer apanha o arrasto do Escape");
 
+    // Uma imagem de 8 × 6 (abaixo do mínimo): não encolhe mais, e também não CRESCE para 10.
     let mut w = world(8.0, 6.0, |_| {});
     w.drag([428.0, 186.0], [-1.0, -1.0], NONE);
+    assert_eq!(w.boxed(), [420.0, 180.0, 8.0, 6.0]);
     w.drag([424.0, 183.0], [1.0, 1.0], NONE);
-    assert!(w.boxed()[2] > 0.0 && w.boxed()[3] > 0.0);
+    assert_eq!(w.boxed()[2..], [8.0, 6.0]);
 
     let mut w = world(400.0, 300.0, |e| {
         e.image_mut().unwrap().crop = Some(Crop {

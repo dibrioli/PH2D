@@ -204,7 +204,8 @@ pub fn render(
     }
 }
 
-/// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt`.
+/// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt` — em trechos com a luz de
+/// cada um (W5j).
 #[allow(clippy::too_many_arguments)]
 fn composite_layers(
     layers: &[LayerRef<'_>],
@@ -213,12 +214,82 @@ fn composite_layers(
     flip_composite: &mut Option<FlipComposite>,
     game_rt: &GameRt,
     cam: &CameraRaw,
+    cam_center: [f32; 2],
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) {
+    let comp = flip_composite.get_or_insert_with(|| FlipComposite::new(gpu));
+    if let Some(ops) = stage_slices(
+        layers,
+        flip_render,
+        flip_compose,
+        comp,
+        cam,
+        cam_center,
+        (w, h),
+        gpu,
+    ) {
+        composite_lit(layers, &ops, flip_compose, comp, game_rt, (w, h), gpu);
+    }
+    comp.tess.log();
+    if std::env::var_os("PH2D_FLIP_STATS").is_some() {
+        let (staged, skipped) = comp.stage.stats();
+        eprintln!("[ph2d-flip] pass A: {staged} rasterizada(s), {skipped} pulada(s) neste frame");
+    }
+}
+
+/// Os passes 1–3 sem o blit: a saída fica no `comp.compositor.output_texture()` (straight sRGB8,
+/// `w × h`), TODAS as camadas numa composição só (sem a luz: é o quadro do desenho) — o «Send to
+/// board…» a lê por cópia ([`raster`], W15). `false` = a composição falhou (dito no terminal).
+#[allow(clippy::too_many_arguments)]
+fn compose(
+    layers: &[LayerRef<'_>],
+    flip_render: &mut FlipRenderer,
+    flip_compose: &mut FlipCompose,
+    comp: &mut FlipComposite,
+    cam: &CameraRaw,
+    cam_center: [f32; 2],
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) -> bool {
+    let Some(ops) = stage_slices(
+        layers,
+        flip_render,
+        flip_compose,
+        comp,
+        cam,
+        cam_center,
+        (w, h),
+        gpu,
+    ) else {
+        return false;
+    };
+    let FlipComposite {
+        compositor, dummy, ..
+    } = comp;
+    let provider = DummyProvider { pixels: dummy };
+    if let Err(e) = compositor.composite(gpu, &ops, &provider, w, h, Region::full(w, h)) {
+        eprintln!("[ph2d-flip] composite falhou: {e}");
+        return false;
+    }
+    true
+}
+
+/// Os passes 1–2: a tesselação e a fatia de cada camada no compositor. Devolve a op-list (bottom-to-top),
+/// ou `None` se uma injecção falhou (dito no terminal).
+#[allow(clippy::too_many_arguments)]
+fn stage_slices(
+    layers: &[LayerRef<'_>],
+    flip_render: &mut FlipRenderer,
+    flip_compose: &mut FlipCompose,
+    comp: &mut FlipComposite,
+    cam: &CameraRaw,
     // O centro (pan) da câmera-viewport em MUNDO — a paralaxe multiplano lerpa a
     // translação de cada camada entre ele e a origem do objeto por `depth`.
     cam_center: [f32; 2],
     (w, h): (u32, u32),
     gpu: &GpuContext,
-) {
+) -> Option<Vec<LayerOp>> {
     // A op-list (bottom-to-top = ordem das camadas), construída antes do loop
     // porque o `inject`/`composite` dimensionam o array de fatias por ela.
     let ops: Vec<LayerOp> = layers
@@ -232,7 +303,6 @@ fn composite_layers(
         })
         .collect();
 
-    let comp = flip_composite.get_or_insert_with(|| FlipComposite::new(gpu));
     comp.ensure_dummy(w, h);
     comp.tess.reset_stats();
     comp.stage.reset_stats();
@@ -324,13 +394,25 @@ fn composite_layers(
                 compositor.inject_slice_from_texture(gpu, &ops, l.key, slice, w, h, (0, 0, w, h), 0)
             {
                 eprintln!("[ph2d-flip] inject falhou: {e}");
-                return;
+                return None;
             }
             stage.record(l.key, fp);
         }
     }
 
-    // Passe 3: compõe (blend/opacity por-camada) e blita a saída no game_rt.
+    Some(ops)
+}
+
+/// O passe 3 do ECRÃ: compõe (blend/opacity por-camada) e blita a saída no `game_rt`.
+fn composite_lit(
+    layers: &[LayerRef<'_>],
+    ops: &[LayerOp],
+    flip_compose: &mut FlipCompose,
+    comp: &mut FlipComposite,
+    game_rt: &GameRt,
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) {
     {
         let FlipComposite {
             compositor, dummy, ..
@@ -342,7 +424,7 @@ fn composite_layers(
         for (recebe, trecho) in trechos(layers, flip_compose) {
             let so: Vec<LayerOp>;
             let ops_do_trecho = if trecho == (0..layers.len()) {
-                &ops
+                ops
             } else {
                 so = ops
                     .iter()
@@ -376,11 +458,6 @@ fn composite_layers(
                 flip_compose.blit_com(&gpu.device, &gpu.queue, out, game_rt.view(), recebe);
             }
         }
-    }
-    comp.tess.log();
-    if std::env::var_os("PH2D_FLIP_STATS").is_some() {
-        let (staged, skipped) = comp.stage.stats();
-        eprintln!("[ph2d-flip] pass A: {staged} rasterizada(s), {skipped} pulada(s) neste frame");
     }
 }
 
@@ -627,3 +704,7 @@ mod tests;
 #[cfg(test)]
 #[path = "multiplane_tests.rs"]
 mod multiplane_tests;
+
+/// ⭐ O quadro ACTUAL de um objecto, rasterizado fora do ecrã (o «Send to board…», W15).
+#[path = "pass_raster.rs"]
+pub mod raster;

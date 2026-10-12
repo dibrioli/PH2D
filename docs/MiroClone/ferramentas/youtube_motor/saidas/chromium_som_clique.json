@@ -1,0 +1,39 @@
+{
+ "o_que": "Chrome sem ecrã como janela virtual: som pelo sistema e clique por CDP",
+ "versao": "155.0.8059.39",
+ "data": "2026-10-12T13:47:59.277Z",
+ "som": {
+  "fluxos_no_sistema": [
+   "servoshell",
+   "servoshell",
+   "Google Chrome"
+  ],
+  "corked": [
+   "yes",
+   "yes",
+   "no"
+  ]
+ },
+ "cliques": [
+  {
+   "clique": 0,
+   "quadros_em_1200ms": 14,
+   "primeiro_ms": 7
+  },
+  {
+   "clique": 1,
+   "quadros_em_1200ms": 46,
+   "primeiro_ms": 17
+  },
+  {
+   "clique": 2,
+   "quadros_em_1200ms": 1,
+   "primeiro_ms": 310
+  },
+  {
+   "clique": 3,
+   "quadros_em_1200ms": 46,
+   "primeiro_ms": 28
+  }
+ ]
+}

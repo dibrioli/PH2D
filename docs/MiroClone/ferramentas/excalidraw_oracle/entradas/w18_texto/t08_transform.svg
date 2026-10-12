@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+<g transform="translate(200 150)"><text id="a" x="0" y="0" font-family="DejaVu Sans" font-size="36" fill="#dc0000" transform="rotate(30)">Rotated</text></g><text id="b" x="20" y="40" font-family="DejaVu Sans" font-size="20" fill="#0000dc" transform="scale(2 1)">Wide</text>
+</svg>

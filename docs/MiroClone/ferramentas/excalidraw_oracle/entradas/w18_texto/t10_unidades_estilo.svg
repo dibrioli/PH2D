@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="170" viewBox="0 0 420 170">
+<text id="pt" x="10" y="45" font-family="DejaVu Sans" font-size="24pt" fill="#dc0000">24pt</text><text id="px" x="10" y="95" style="font-family: DejaVu Sans; font-size: 32px; fill: #00a000">style 32px</text><g font-size="20" font-family="DejaVu Sans" fill="#0000dc"><text id="g" x="10" y="145">inherited 20</text></g>
+</svg>

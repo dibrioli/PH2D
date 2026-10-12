@@ -1,0 +1,29 @@
+{
+ "o_que": "WebKitGTK 4.1 fora do ecr\u00e3 (GtkOffscreenWindow.get_pixbuf a cada 16 ms) a tocar o embed do YouTube",
+ "webkit": "2.54.1",
+ "aceleracao": "nunca",
+ "video": "aqz-KE-bpKQ",
+ "segundos": 25.0,
+ "data": "2026-10-12 10:28:09",
+ "loadavg": [
+  6.7548828125,
+  12.6904296875,
+  17.64111328125
+ ],
+ "quadros_lidos": 1556,
+ "quadros_distintos_depois_de_5s": 1201,
+ "fps_distintos_depois_de_5s": 60.0,
+ "cpu_s_proprio": 2.19,
+ "rss_max_mb_proprio": 192.2,
+ "fotos": [
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_0.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_1.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_2.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_3.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_4.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_5.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_6.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_7.png",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/webkit_com_good/webkitgtk_8.png"
+ ]
+}

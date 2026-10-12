@@ -1,0 +1,5919 @@
+{
+ "oraculo": "@excalidraw/excalidraw",
+ "versao": "0.18.1",
+ "licenca": "MIT",
+ "chromium": "153.0.8010.12",
+ "playwright": "1.63.0",
+ "data": "2026-10-12T13:09:18.023Z",
+ "loadavg_inicio": [
+  15.97,
+  23.07,
+  22.42
+ ],
+ "loadavg_fim": [
+  23.32,
+  24.12,
+  23.08
+ ],
+ "comando": "node sonda_w18.mjs --rede youtube",
+ "script_sha256": "87cdd1e5381ce77cfc23df1b657459535082824f053edf10e10090531c909ebc",
+ "rede": "youtube",
+ "entradas_svg": {
+  "t01_familia_presente.svg": "05482de1dea60d53c3fcac5d7097fef5114a4c492ecf39b973689d56ca9a1d99",
+  "t02_familia_ausente.svg": "f30c51ce4445096ef54de119cb3db157e09f4703754b9e237797dacdbbc45810",
+  "t03_sem_familia.svg": "0d2c23d03479f39f447f5d40f18f28a23b5dce3567f89019643dda480b8c6dc8",
+  "t04_genericas.svg": "a461527227dee31fb05529a5709289c1cb818e718f79f4aab1c50dc808fe9b19",
+  "t05_lista_familias.svg": "f1b993ec888130d1064df64e576507e2a6ede1f360f1909373a5addcc65b76ee",
+  "t06_anchor.svg": "86db9e02f8bfbeba6d4544a9d38ed22be4387c74e688c215ed6becec0290867d",
+  "t07_tspan.svg": "e43ae984c2fca53a06794bbf3eab395e2a766db98c904020027731ade7130b0b",
+  "t08_transform.svg": "04c8330e0c3940881a99c7b2437e5c95b271e3924cfd3676661fbcef88808767",
+  "t09_peso_italico.svg": "a3b3f9eb6b1778ae7b92c4721285399044db7381aa9a698ed451a87717363d0a",
+  "t10_unidades_estilo.svg": "4eab5f2dcda974b9247d2b448099dfbd459fbb3c0bb3d6ddf4aa4e14fba305e7",
+  "t11_espacos.svg": "e1786278f3b32e6f822eeb53079b922b319ab942b9cc0cfe7cf60e9d3fa0972e",
+  "t12_contorno.svg": "45e4abeb12e86d747cdac73ef8071b17bc3de04e5bd9e290ba273d3423d4416a",
+  "t13_viewbox.svg": "f12cc17cf866e4449bbd870fecb3352177975302155e7b6ae110739b38c05ddf",
+  "t14_acentos.svg": "a2af872ad2a0de47571345c786938ae95dc8dd6cd62ee6fe2bce41978d4ad979",
+  "t15_letter_spacing.svg": "146f6be3b45fc18a1f17292778e46954b5ea4682248e349c53c13e645df11cf8",
+  "t16_lista_x.svg": "335b5d0dcc70608407fc938a2898f3f637611296682cb76981a03b723ebf8050"
+ },
+ "links": [
+  [
+   "Y01_watch",
+   "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y02_youtu_be",
+   "https://youtu.be/dQw4w9WgXcQ"
+  ],
+  [
+   "Y03_shorts",
+   "https://www.youtube.com/shorts/dQw4w9WgXcQ"
+  ],
+  [
+   "Y04_embed",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ"
+  ],
+  [
+   "Y05_live",
+   "https://www.youtube.com/live/dQw4w9WgXcQ"
+  ],
+  [
+   "Y06_watch_t_s",
+   "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s"
+  ],
+  [
+   "Y07_watch_t_hms",
+   "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s"
+  ],
+  [
+   "Y08_youtu_be_t",
+   "https://youtu.be/dQw4w9WgXcQ?t=42"
+  ],
+  [
+   "Y09_embed_start",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?start=30"
+  ],
+  [
+   "Y10_watch_list",
+   "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI"
+  ],
+  [
+   "Y11_playlist",
+   "https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI"
+  ],
+  [
+   "Y12_canal",
+   "https://www.youtube.com/@YouTube"
+  ],
+  [
+   "Y13_m_youtube",
+   "https://m.youtube.com/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y14_nocookie",
+   "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+  ],
+  [
+   "Y15_music",
+   "https://music.youtube.com/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y16_sem_www",
+   "https://youtube.com/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y17_http",
+   "http://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y18_maiusculas",
+   "https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y19_sem_esquema",
+   "www.youtube.com/watch?v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y20_id_curto",
+   "https://www.youtube.com/watch?v=abc"
+  ],
+  [
+   "Y21_watch_v_depois",
+   "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ"
+  ],
+  [
+   "Y22_texto_com_link",
+   "look at this https://youtu.be/dQw4w9WgXcQ"
+  ],
+  [
+   "Y23_nao_video",
+   "https://example.com/page"
+  ],
+  [
+   "Y24_vimeo",
+   "https://vimeo.com/76979871"
+  ]
+ ],
+ "ambiente": {
+  "janela": [
+   1280,
+   800
+  ],
+  "deviceScaleFactor": 1,
+  "zoom": 1,
+  "scroll": [
+   0,
+   0
+  ],
+  "cena_igual_ecra": true,
+  "prng": "mulberry32 semente 3354812654",
+  "fontconfig_sans": "Noto Sans (fc-match sans-serif, 12/10)"
+ },
+ "pedidos": {
+  "bloqueados": [
+   "https://player.vimeo.com/video/76979871?api=1"
+  ],
+  "deixados": [
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+   "https://www.youtube.com/s/player/5203c085/www-player.css",
+   "https://www.youtube.com/s/_/ytembeds/_/ss/k=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAQADG/d=1/br=1/rs=AGKMywFtFCATmVzNmzHLzM1tr51RZElllA/m=root,base",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/am=AAAAQADG/d=1/excm=base,root/br=1/rs=AGKMywEnfNJX8tOIw8qi_3kJS_UwVM_mDw/m=ro",
+   "https://www.youtube.com/s/player/5203c085/player_embed.vflset/en_US/base.js",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://static.doubleclick.net/instream/ad_status.js",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/ck=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAQADG/d=1/exm=base,root/excm=base,roo",
+   "https://www.youtube.com/api/stats/qoe?cpn=6S6AExxMdNS4u__3&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.google.com/js/th/BSN_p7cmOQQHbNygC-OI0VGwAWslr5jzjYHDp9uj-Pk.js",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/ck=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAQADG/d=1/exm=base,r78Drb,root/excm=b",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/ck=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAQADG/d=1/exm=base,cwx9N,r78Drb,root/",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?uRyaIg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6S6AExxMdNS4u__3&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?N0AaEg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?Wzd4tw",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?pFIsVg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/live?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.gstatic.com/youtube/img/icons/mweb/youtube_fill/logo/v2/67px.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?UUbp2g",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=90s",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?1-_jtQ",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=1m30s",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?6gL9eA",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=42",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?cTRu9Q",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=30",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?Y50lqQ",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?65hzBg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI&enablejsapi=1",
+   "https://www.youtube.com/s/_/ytembeds/_/ss/k=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAAADGAEA/d=1/br=1/rs=AGKMywE_rd3zmlIFHKcEIfVHBAd0AYubaA/m=root,base",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/am=AAAAAADGAEA/d=1/excm=base,root/br=1/rs=AGKMywEZaVr2atYWrBkCMCmYPNPaCcpLcA/m",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/ck=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAAADGAEA/d=1/exm=base,root/excm=base,",
+   "https://www.youtube.com/api/stats/qoe?cpn=FT1dY6PbmmA0_J-m&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.W-iQWzahjQg.es5.O/ck=ytembeds.base.WihmKuG5Kvc.L.W.O/am=AAAAAADGAEA/d=1/exm=base,cwx9N,root/excm",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?hNVg9A",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=FT1dY6PbmmA0_J-m&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/@YouTube",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?zwf0hQ",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?tPk4qg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+   "https://www.youtube.com/embed/abc?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.gstatic.com/youtube/img/icons/mweb/youtube_fill/logo/v2/67px.svg",
+   "https://www.youtube.com/generate_204?oh-8Qg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/watch?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.gstatic.com/youtube/img/icons/mweb/youtube_fill/logo/v2/67px.svg",
+   "https://www.youtube.com/generate_204?nMecQQ",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?k6Y_iw",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?jmkI1A",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?zrUkAg",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/generate_204?OkRfcw",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://googleads.g.doubleclick.net/pagead/id",
+   "https://www.youtube.com/api/stats/qoe?cpn=6AExxMdNS4u__3d7&el=embedded&ns=yt&fexp=v1%2C100673025%2C627%2C-76669008%2C27058999%2C34656%2C124674%2C117689%2C9252%2",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg",
+   "https://www.youtube.com/generate_204?zGmpTw",
+   "https://www.youtube.com/generate_204?ONqJcw",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/generate_204?TT4irw",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+   "https://www.youtube.com/youtubei/v1/log_event?alt=json"
+  ]
+ },
+ "falhas": 0,
+ "sondas": [
+  {
+   "sonda": "Y01_watch",
+   "pergunta": "Colar «https://www.youtube.com/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "NxgFDMWiW04NNctdiUK--",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "NxgFDMWiW04NNctdiUK--"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y01_watch_00_colou.png"
+    }
+   ],
+   "ms": 7247,
+   "load": [
+    16.36,
+    22.92,
+    22.38
+   ]
+  },
+  {
+   "sonda": "Y02_youtu_be",
+   "pergunta": "Colar «https://youtu.be/dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://youtu.be/dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "CkmiHoBAUSv99Dj0SM40L",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://youtu.be/dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "CkmiHoBAUSv99Dj0SM40L"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y02_youtu_be_00_colou.png"
+    }
+   ],
+   "ms": 7227,
+   "load": [
+    15.29,
+    22.59,
+    22.27
+   ]
+  },
+  {
+   "sonda": "Y03_shorts",
+   "pergunta": "Colar «https://www.youtube.com/shorts/dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "zZas80ASjLE6AT2GEUltW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 315,
+       "height": 560,
+       "angle": 0,
+       "link": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "zZas80ASjLE6AT2GEUltW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        311,
+        560
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y03_shorts_00_colou.png"
+    }
+   ],
+   "ms": 7209,
+   "load": [
+    14.22,
+    22.25,
+    22.16
+   ]
+  },
+  {
+   "sonda": "Y04_embed",
+   "pergunta": "Colar «https://www.youtube.com/embed/dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "y8-hcF9KHFt9WKr1xw315",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "y8-hcF9KHFt9WKr1xw315"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y04_embed_00_colou.png"
+    }
+   ],
+   "ms": 7219,
+   "load": [
+    13.01,
+    21.73,
+    22
+   ]
+  },
+  {
+   "sonda": "Y05_live",
+   "pergunta": "Colar «https://www.youtube.com/live/dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/live/dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "Mc6zgr2tLEFYbpbHiFmnd",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/live/dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "Mc6zgr2tLEFYbpbHiFmnd"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/live?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y05_live_00_colou.png"
+    }
+   ],
+   "ms": 7211,
+   "load": [
+    15.89,
+    22.18,
+    22.14
+   ]
+  },
+  {
+   "sonda": "Y06_watch_t_s",
+   "pergunta": "Colar «https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "zNNuFYgR2UJuaKB1eItlO",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "zNNuFYgR2UJuaKB1eItlO"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=90s",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y06_watch_t_s_00_colou.png"
+    }
+   ],
+   "ms": 7235,
+   "load": [
+    25.13,
+    24,
+    22.74
+   ]
+  },
+  {
+   "sonda": "Y07_watch_t_hms",
+   "pergunta": "Colar «https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "hSoh6cUSMbA1mrVe0y5A4",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "hSoh6cUSMbA1mrVe0y5A4"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=1m30s",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y07_watch_t_hms_00_colou.png"
+    }
+   ],
+   "ms": 7226,
+   "load": [
+    25.68,
+    24.14,
+    22.79
+   ]
+  },
+  {
+   "sonda": "Y08_youtu_be_t",
+   "pergunta": "Colar «https://youtu.be/dQw4w9WgXcQ?t=42» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://youtu.be/dQw4w9WgXcQ?t=42",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "K3ri4Pb_9PmLH_xGKKHXx",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://youtu.be/dQw4w9WgXcQ?t=42",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "K3ri4Pb_9PmLH_xGKKHXx"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=42",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y08_youtu_be_t_00_colou.png"
+    }
+   ],
+   "ms": 7254,
+   "load": [
+    27.37,
+    24.55,
+    22.94
+   ]
+  },
+  {
+   "sonda": "Y09_embed_start",
+   "pergunta": "Colar «https://www.youtube.com/embed/dQw4w9WgXcQ?start=30» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/embed/dQw4w9WgXcQ?start=30",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "-xfrzFPKxqGQsjZlRXeg0",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/embed/dQw4w9WgXcQ?start=30",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "-xfrzFPKxqGQsjZlRXeg0"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&start=30",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y09_embed_start_00_colou.png"
+    }
+   ],
+   "ms": 7275,
+   "load": [
+    27.74,
+    24.67,
+    22.98
+   ]
+  },
+  {
+   "sonda": "Y10_watch_list",
+   "pergunta": "Colar «https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "vJHs2sNlS29yHufJ8OHAR",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "vJHs2sNlS29yHufJ8OHAR"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y10_watch_list_00_colou.png"
+    }
+   ],
+   "ms": 7251,
+   "load": [
+    29.43,
+    25.14,
+    23.16
+   ]
+  },
+  {
+   "sonda": "Y11_playlist",
+   "pergunta": "Colar «https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "orrZdVxqiY3IdBqYUjX-T",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "orrZdVxqiY3IdBqYUjX-T"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI&enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y11_playlist_00_colou.png"
+    }
+   ],
+   "ms": 7265,
+   "load": [
+    28.91,
+    25.1,
+    23.16
+   ]
+  },
+  {
+   "sonda": "Y12_canal",
+   "pergunta": "Colar «https://www.youtube.com/@YouTube» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/@YouTube",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "4fLUDUr9XT6AmptMfJa8w",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 840,
+       "angle": 0,
+       "link": "https://www.youtube.com/@YouTube",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "4fLUDUr9XT6AmptMfJa8w"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/@YouTube",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        840
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "error: Refused to display 'https://www.youtube.com/' in a frame because it set 'X-Frame-Options' to 'sameorigin'."
+     ],
+     "foto": "w18_online_Y12_canal_00_colou.png"
+    }
+   ],
+   "ms": 7254,
+   "load": [
+    28.44,
+    25.07,
+    23.15
+   ]
+  },
+  {
+   "sonda": "Y13_m_youtube",
+   "pergunta": "Colar «https://m.youtube.com/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://m.youtube.com/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "x38ROnEVVkhcvgWffMAn6",
+       "type": "text",
+       "x": 438.2861328125,
+       "y": 387.5,
+       "width": 403.427734375,
+       "height": 25,
+       "angle": 0,
+       "link": null,
+       "validated": null,
+       "customData": null,
+       "text": "https://m.youtube.com/watch?v=dQw4w9WgXcQ",
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "x38ROnEVVkhcvgWffMAn6"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "FontPicker__container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nFont family\nFont size\nText align\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y13_m_youtube_00_colou.png"
+    }
+   ],
+   "ms": 7243,
+   "load": [
+    28.43,
+    25.18,
+    23.21
+   ]
+  },
+  {
+   "sonda": "Y14_nocookie",
+   "pergunta": "Colar «https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "n6OSz-KzP_voXJF38yn9-",
+       "type": "text",
+       "x": 361.5,
+       "y": 387.5,
+       "width": 557,
+       "height": 25,
+       "angle": 0,
+       "link": null,
+       "validated": null,
+       "customData": null,
+       "text": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "n6OSz-KzP_voXJF38yn9-"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "FontPicker__container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nFont family\nFont size\nText align\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y14_nocookie_00_colou.png"
+    }
+   ],
+   "ms": 7202,
+   "load": [
+    28.47,
+    25.24,
+    23.24
+   ]
+  },
+  {
+   "sonda": "Y15_music",
+   "pergunta": "Colar «https://music.youtube.com/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "1IJjDCzK54kB8uDfpbs2z",
+       "type": "text",
+       "x": 392.5,
+       "y": 387.5,
+       "width": 495,
+       "height": 25,
+       "angle": 0,
+       "link": null,
+       "validated": null,
+       "customData": null,
+       "text": "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "1IJjDCzK54kB8uDfpbs2z"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "FontPicker__container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nFont family\nFont size\nText align\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y15_music_00_colou.png"
+    }
+   ],
+   "ms": 7231,
+   "load": [
+    27.74,
+    25.2,
+    23.25
+   ]
+  },
+  {
+   "sonda": "Y16_sem_www",
+   "pergunta": "Colar «https://youtube.com/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://youtube.com/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "1v2gKPoc19XOoxSX_Epqp",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "1v2gKPoc19XOoxSX_Epqp"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y16_sem_www_00_colou.png"
+    }
+   ],
+   "ms": 7232,
+   "load": [
+    26.96,
+    25.08,
+    23.22
+   ]
+  },
+  {
+   "sonda": "Y17_http",
+   "pergunta": "Colar «http://www.youtube.com/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "http://www.youtube.com/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "pNhdXf_gggHq1b7EEHl2r",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "http://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "pNhdXf_gggHq1b7EEHl2r"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y17_http_00_colou.png"
+    }
+   ],
+   "ms": 7230,
+   "load": [
+    25.36,
+    24.81,
+    23.16
+   ]
+  },
+  {
+   "sonda": "Y18_maiusculas",
+   "pergunta": "Colar «https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "J_th28Criho2zf1a44cXW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 840,
+       "angle": 0,
+       "link": "https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "J_th28Criho2zf1a44cXW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        840
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "error: Refused to display 'https://www.youtube.com/' in a frame because it set 'X-Frame-Options' to 'sameorigin'."
+     ],
+     "foto": "w18_online_Y18_maiusculas_00_colou.png"
+    }
+   ],
+   "ms": 7200,
+   "load": [
+    24.85,
+    24.72,
+    23.13
+   ]
+  },
+  {
+   "sonda": "Y19_sem_esquema",
+   "pergunta": "Colar «www.youtube.com/watch?v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "www.youtube.com/watch?v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "OAyQsctFw3rpA38IJ21k7",
+       "type": "text",
+       "x": 435.5,
+       "y": 387.5,
+       "width": 409,
+       "height": 25,
+       "angle": 0,
+       "link": null,
+       "validated": null,
+       "customData": null,
+       "text": "www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "OAyQsctFw3rpA38IJ21k7"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "FontPicker__container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nFont family\nFont size\nText align\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y19_sem_esquema_00_colou.png"
+    }
+   ],
+   "ms": 7234,
+   "load": [
+    26.6,
+    25.1,
+    23.28
+   ]
+  },
+  {
+   "sonda": "Y20_id_curto",
+   "pergunta": "Colar «https://www.youtube.com/watch?v=abc» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/watch?v=abc",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "Um22yY8Fu4QWWzWRPTtg8",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=abc",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "Um22yY8Fu4QWWzWRPTtg8"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/abc?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y20_id_curto_00_colou.png"
+    }
+   ],
+   "ms": 7205,
+   "load": [
+    26.15,
+    25.04,
+    23.26
+   ]
+  },
+  {
+   "sonda": "Y21_watch_v_depois",
+   "pergunta": "Colar «https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "1ME1FilCJMy4gA_r8TOb1",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "1ME1FilCJMy4gA_r8TOb1"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/watch?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Y21_watch_v_depois_00_colou.png"
+    }
+   ],
+   "ms": 7211,
+   "load": [
+    24.54,
+    24.72,
+    23.17
+   ]
+  },
+  {
+   "sonda": "Y22_texto_com_link",
+   "pergunta": "Colar «look at this https://youtu.be/dQw4w9WgXcQ» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "look at this https://youtu.be/dQw4w9WgXcQ",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "_pbMHORTHqA3mlaxlhV8m",
+       "type": "text",
+       "x": 421,
+       "y": 387.5,
+       "width": 438,
+       "height": 25,
+       "angle": 0,
+       "link": null,
+       "validated": null,
+       "customData": null,
+       "text": "look at this https://youtu.be/dQw4w9WgXcQ",
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "_pbMHORTHqA3mlaxlhV8m"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "FontPicker__container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nFont family\nFont size\nText align\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y22_texto_com_link_00_colou.png"
+    }
+   ],
+   "ms": 7231,
+   "load": [
+    21.76,
+    24.12,
+    22.99
+   ]
+  },
+  {
+   "sonda": "Y23_nao_video",
+   "pergunta": "Colar «https://example.com/page» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://example.com/page",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "ZvzUrGj5NYkn6pV7zXnZO",
+       "type": "text",
+       "x": 515.5,
+       "y": 387.5,
+       "width": 249,
+       "height": 25,
+       "angle": 0,
+       "link": null,
+       "validated": null,
+       "customData": null,
+       "text": "https://example.com/page",
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "ZvzUrGj5NYkn6pV7zXnZO"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "FontPicker__container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nFont family\nFont size\nText align\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y23_nao_video_00_colou.png"
+    }
+   ],
+   "ms": 7231,
+   "load": [
+    20.97,
+    23.92,
+    22.93
+   ]
+  },
+  {
+   "sonda": "Y24_vimeo",
+   "pergunta": "Colar «https://vimeo.com/76979871» no canvas vazio (rato em 640,400): que elemento nasce?",
+   "passos": [
+    {
+     "passo": "colou",
+     "colado": "https://vimeo.com/76979871",
+     "alvo_do_colar": "excalidraw excalidraw-container",
+     "elementos": [
+      {
+       "id": "qmvjMwDDe9-ihSoVfleLj",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://vimeo.com/76979871",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "qmvjMwDDe9-ihSoVfleLj"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://player.vimeo.com/video/76979871?api=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Y24_vimeo_00_colou.png"
+    }
+   ],
+   "ms": 7238,
+   "load": [
+    18.06,
+    23.19,
+    22.71
+   ]
+  },
+  {
+   "sonda": "Z01_caminho",
+   "pergunta": "Um vídeo do YouTube colado: parado → clique (selecção) → clique fora → duplo clique / clique no meio estando seleccionado (activar) → Esc.",
+   "passos": [
+    {
+     "passo": "parado",
+     "elemento": {
+      "id": "lS0SXu2t1lgmsbnvAb3iW",
+      "type": "embeddable",
+      "x": 640,
+      "y": 400,
+      "width": 560,
+      "height": 315,
+      "angle": 0,
+      "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "validated": null,
+      "customData": null,
+      "text": null,
+      "isDeleted": false,
+      "roundness": {
+       "type": 3
+      },
+      "strokeColor": "transparent",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid"
+     },
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "lS0SXu2t1lgmsbnvAb3iW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Z01_caminho_00_parado.png"
+    },
+    {
+     "passo": "desseleccionado",
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z01_caminho_01_desseleccionado.png"
+    },
+    {
+     "passo": "clique_1",
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": {
+       "element": {
+        "id": "lS0SXu2t1lgmsbnvAb3iW",
+        "type": "embeddable",
+        "x": 640,
+        "y": 400,
+        "width": 560,
+        "height": 315,
+        "angle": 0,
+        "strokeColor": "transparent",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a0",
+        "roundness": {
+         "type": 3
+        },
+        "seed": 172799728,
+        "version": 2,
+        "versionNonce": 389181456,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1791810493320,
+        "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "locked": false
+       },
+       "state": "active"
+      },
+      "selectedElementIds": [
+       "lS0SXu2t1lgmsbnvAb3iW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z01_caminho_02_clique_1.png"
+    },
+    {
+     "passo": "clique_2",
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": {
+       "element": {
+        "id": "lS0SXu2t1lgmsbnvAb3iW",
+        "type": "embeddable",
+        "x": 640,
+        "y": 400,
+        "width": 560,
+        "height": 315,
+        "angle": 0,
+        "strokeColor": "transparent",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a0",
+        "roundness": {
+         "type": 3
+        },
+        "seed": 172799728,
+        "version": 2,
+        "versionNonce": 389181456,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1791810493320,
+        "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "locked": false
+       },
+       "state": "active"
+      },
+      "selectedElementIds": [
+       "lS0SXu2t1lgmsbnvAb3iW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z01_caminho_03_clique_2.png"
+    },
+    {
+     "passo": "duplo_clique",
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": {
+       "element": {
+        "id": "lS0SXu2t1lgmsbnvAb3iW",
+        "type": "embeddable",
+        "x": 640,
+        "y": 400,
+        "width": 560,
+        "height": 315,
+        "angle": 0,
+        "strokeColor": "transparent",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a0",
+        "roundness": {
+         "type": 3
+        },
+        "seed": 172799728,
+        "version": 2,
+        "versionNonce": 389181456,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1791810493320,
+        "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "locked": false
+       },
+       "state": "active"
+      },
+      "selectedElementIds": [
+       "lS0SXu2t1lgmsbnvAb3iW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z01_caminho_04_duplo_clique.png"
+    },
+    {
+     "passo": "esc",
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": {
+       "element": {
+        "id": "lS0SXu2t1lgmsbnvAb3iW",
+        "type": "embeddable",
+        "x": 640,
+        "y": 400,
+        "width": 560,
+        "height": 315,
+        "angle": 0,
+        "strokeColor": "transparent",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "strokeStyle": "solid",
+        "roughness": 1,
+        "opacity": 100,
+        "groupIds": [],
+        "frameId": null,
+        "index": "a0",
+        "roundness": {
+         "type": 3
+        },
+        "seed": 172799728,
+        "version": 2,
+        "versionNonce": 389181456,
+        "isDeleted": false,
+        "boundElements": null,
+        "updated": 1791810493320,
+        "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "locked": false
+       },
+       "state": "active"
+      },
+      "selectedElementIds": [
+       "lS0SXu2t1lgmsbnvAb3iW"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "all",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "all",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z01_caminho_05_esc.png"
+    },
+    {
+     "passo": "clique_fora",
+     "elementos": [
+      {
+       "id": "lS0SXu2t1lgmsbnvAb3iW",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z01_caminho_06_clique_fora.png"
+    }
+   ],
+   "ms": 22275,
+   "load": [
+    23.83,
+    24.12,
+    23.02
+   ]
+  },
+  {
+   "sonda": "Z02_redimensiona",
+   "pergunta": "Pega SE do vídeo +200,+40 sem Shift e com Shift: a proporção mantém-se?",
+   "passos": [
+    {
+     "passo": "seleccionado",
+     "elementos": [
+      {
+       "id": "deSBhWOvljExH6rnavZuh",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "deSBhWOvljExH6rnavZuh"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ]
+    },
+    {
+     "passo": "se_livre",
+     "pega": [
+      1200,
+      715
+     ],
+     "delta": [
+      200,
+      40
+     ],
+     "elementos": [
+      {
+       "id": "deSBhWOvljExH6rnavZuh",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 760,
+       "height": 355,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "deSBhWOvljExH6rnavZuh"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": "info"
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        756,
+        355
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "You can constrain proportions by holding Shift while resizing, hold Alt to resize from the center"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z02_redimensiona_01_se_livre.png"
+    },
+    {
+     "passo": "se_shift",
+     "pega": [
+      1400,
+      755
+     ],
+     "delta": [
+      200,
+      40
+     ],
+     "elementos": [
+      {
+       "id": "deSBhWOvljExH6rnavZuh",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 760,
+       "height": 355,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [
+       "deSBhWOvljExH6rnavZuh"
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        756,
+        355
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      },
+      {
+       "classe": "color-picker-container",
+       "texto": ""
+      }
+     ],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "You can constrain proportions by holding Shift while resizing, hold Alt to resize from the center"
+      },
+      {
+       "classe": "excalidraw-hyperlinkContainer",
+       "texto": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z02_redimensiona_02_se_shift.png"
+    }
+   ],
+   "ms": 12141,
+   "load": [
+    25.52,
+    24.51,
+    23.17
+   ]
+  },
+  {
+   "sonda": "Z03_vista",
+   "pergunta": "Pan (scroll −200,−100) e zoom 0,5 e 2: o iframe segue? some? Rotação 30°?",
+   "passos": [
+    {
+     "passo": "antes",
+     "elementos": [
+      {
+       "id": "SSIxO6qHQaU3tD-cvFG0s",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Z03_vista_00_antes.png"
+    },
+    {
+     "passo": "pan",
+     "elementos": [
+      {
+       "id": "SSIxO6qHQaU3tD-cvFG0s",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": -200,
+      "scrollY": -100,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        442,
+        300,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 440, 300)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z03_vista_01_pan.png"
+    },
+    {
+     "passo": "zoom_0.5",
+     "elementos": [
+      {
+       "id": "SSIxO6qHQaU3tD-cvFG0s",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 0.5,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        321,
+        200,
+        278,
+        157.5
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(0.5, 0, 0, 0.5, 320, 200)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z03_vista_02_zoom_0.5.png"
+    },
+    {
+     "passo": "zoom_2",
+     "elementos": [
+      {
+       "id": "SSIxO6qHQaU3tD-cvFG0s",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 2,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        1284,
+        800,
+        1112,
+        630
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(2, 0, 0, 2, 1280, 800)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z03_vista_03_zoom_2.png"
+    },
+    {
+     "passo": "rodado_30",
+     "elementos": [
+      {
+       "id": "SSIxO6qHQaU3tD-cvFG0s",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0.5235987755982988,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        600.5,
+        282.1,
+        639,
+        550.8
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(0.866025, 0.5, -0.5, 0.866025, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [],
+     "foto": "w18_online_Z03_vista_04_rodado_30.png"
+    }
+   ],
+   "ms": 12050,
+   "load": [
+    25.57,
+    24.56,
+    23.2
+   ]
+  },
+  {
+   "sonda": "Z04_export",
+   "pergunta": "Export PNG/SVG e o .excalidraw gravado de um vídeo colado.",
+   "passos": [
+    {
+     "passo": "exportou",
+     "export": {
+      "svg": {
+       "ficheiro": "w18_online_Z04_export.svg",
+       "bytes": 1933,
+       "tem_a": true,
+       "tem_image": false,
+       "tem_foreignObject": false,
+       "textos": [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+       ],
+       "hrefs": [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+       ]
+      },
+      "png": {
+       "ficheiro": "w18_online_Z04_export.png"
+      },
+      "excalidraw": {
+       "ficheiro": "w18_online_Z04_gravado.excalidraw",
+       "elementos": [
+        {
+         "id": "12rPqNuZhCC6PL8PB3J7D",
+         "type": "embeddable",
+         "x": 640,
+         "y": 400,
+         "width": 560,
+         "height": 315,
+         "angle": 0,
+         "strokeColor": "transparent",
+         "backgroundColor": "transparent",
+         "fillStyle": "solid",
+         "strokeWidth": 2,
+         "strokeStyle": "solid",
+         "roughness": 1,
+         "opacity": 100,
+         "groupIds": [],
+         "frameId": null,
+         "index": "a0",
+         "roundness": {
+          "type": 3
+         },
+         "seed": 221286640,
+         "version": 2,
+         "versionNonce": 143734288,
+         "isDeleted": false,
+         "boundElements": null,
+         "updated": 1791810539803,
+         "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+         "locked": false
+        }
+       ]
+      }
+     },
+     "elementos": [
+      {
+       "id": "12rPqNuZhCC6PL8PB3J7D",
+       "type": "embeddable",
+       "x": 640,
+       "y": 400,
+       "width": 560,
+       "height": 315,
+       "angle": 0,
+       "link": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": {
+        "type": 3
+       },
+       "strokeColor": "transparent",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        642,
+        400,
+        556,
+        315
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 640, 400)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      },
+      {
+       "classe": "selected-shape-actions zen-mode-transition",
+       "texto": "Selected shape actions\nStroke\nBackground\nStroke width\nStroke style\nSloppiness\nEdges\nOpacity\n100\n0\nLayers\nActions"
+      },
+      {
+       "classe": "HintViewer",
+       "texto": "Hold Ctrl to deep select, and to prevent dragging"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters."
+     ]
+    }
+   ],
+   "ms": 9396,
+   "load": [
+    24.49,
+    24.36,
+    23.15
+   ]
+  },
+  {
+   "sonda": "Z05_abre_gravado",
+   "pergunta": "Abrir um .excalidraw com um embeddable do YouTube escrito à mão (validated ausente, true e false).",
+   "passos": [
+    {
+     "passo": "abriu",
+     "elementos": [
+      {
+       "id": "sem",
+       "type": "embeddable",
+       "x": 20,
+       "y": 120,
+       "width": 400,
+       "height": 225,
+       "angle": 0,
+       "link": "https://youtu.be/dQw4w9WgXcQ",
+       "validated": null,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      },
+      {
+       "id": "sim",
+       "type": "embeddable",
+       "x": 440,
+       "y": 120,
+       "width": 400,
+       "height": 225,
+       "angle": 0,
+       "link": "https://youtu.be/dQw4w9WgXcQ",
+       "validated": true,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      },
+      {
+       "id": "nao",
+       "type": "embeddable",
+       "x": 860,
+       "y": 120,
+       "width": 400,
+       "height": 225,
+       "angle": 0,
+       "link": "https://youtu.be/dQw4w9WgXcQ",
+       "validated": false,
+       "customData": null,
+       "text": null,
+       "isDeleted": false,
+       "roundness": null,
+       "strokeColor": "#1e1e1e",
+       "backgroundColor": "transparent",
+       "fillStyle": "solid"
+      }
+     ],
+     "appState": {
+      "activeEmbeddable": null,
+      "selectedElementIds": [],
+      "scrollX": 0,
+      "scrollY": 0,
+      "zoom": 1,
+      "toast": null,
+      "errorMessage": null,
+      "activeTool": "selection",
+      "showHyperlinkPopup": false
+     },
+     "iframes": [
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        22,
+        120,
+        396,
+        225
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 20, 120)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      },
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        442,
+        120,
+        396,
+        225
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 440, 120)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      },
+      {
+       "src": "https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1",
+       "srcdoc": null,
+       "rect": [
+        862,
+        120,
+        396,
+        225
+       ],
+       "pointerEvents": "none",
+       "display": "inline",
+       "visibility": "visible",
+       "opacity": "1",
+       "sandbox": "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads",
+       "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+       "referrerpolicy": "no-referrer-when-downgrade",
+       "title": "Excalidraw Embedded Content",
+       "pais": [
+        {
+         "classe": "excalidraw__embeddable__outer",
+         "transform": "none",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container__inner",
+         "transform": "matrix(1, 0, 0, 1, 0, 0)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw__embeddable-container",
+         "transform": "matrix(1, 0, 0, 1, 860, 120)",
+         "pointerEvents": "none",
+         "opacity": "1",
+         "display": "block",
+         "visibility": "visible"
+        },
+        {
+         "classe": "excalidraw excalidraw-container",
+         "transform": "none",
+         "pointerEvents": "auto",
+         "opacity": "1",
+         "display": "flex",
+         "visibility": "visible"
+        }
+       ]
+      }
+     ],
+     "avisos_visiveis": [],
+     "textos_que_apareceram": [
+      {
+       "classe": "LoadingMessage",
+       "texto": "Loading scene…"
+      },
+      {
+       "classe": "excalidraw excalidraw-container",
+       "texto": "To move canvas, hold mouse wheel or spacebar while dragging, or use the hand tool\nShapes\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nLibrary\nCanvas actions\n100%"
+      },
+      {
+       "classe": "sidebar-trigger__label-element",
+       "texto": "Library"
+      }
+     ],
+     "cursor": "",
+     "consola": [
+      "warning: No available adapters.",
+      "warning: No available adapters.",
+      "warning: No available adapters."
+     ],
+     "foto": "w18_online_Z05_abre_gravado_00_abriu.png"
+    }
+   ],
+   "ms": 9782,
+   "load": [
+    23.32,
+    24.12,
+    23.08
+   ]
+  }
+ ]
+}

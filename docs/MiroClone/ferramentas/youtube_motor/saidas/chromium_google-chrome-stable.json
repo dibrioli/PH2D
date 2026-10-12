@@ -1,0 +1,18 @@
+{
+ "o_que": "Chromium sem ecrã + CDP screencast a tocar o embed do YouTube (proxy do CEF off-screen)",
+ "exe": "/usr/bin/google-chrome-stable",
+ "versao": "155.0.8059.39",
+ "video": "aqz-KE-bpKQ",
+ "data": "2026-10-12T13:14:00.700Z",
+ "segundos": 20.051,
+ "quadros": 601,
+ "fps": 29.97,
+ "cpu_nucleos": 0.15,
+ "rss_mb_arvore": 1336,
+ "fotos": [
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/chromium_0.jpg",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/chromium_1.jpg",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/chromium_2.jpg",
+  "docs/MiroClone/ferramentas/youtube_motor/saidas/chromium_3.jpg"
+ ]
+}

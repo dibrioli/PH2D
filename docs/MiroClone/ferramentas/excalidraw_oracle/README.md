@@ -569,3 +569,30 @@ números de `E02..E07`). ⚠️ **Divergência deliberada (D):** o Excalidraw n�
 ninguém; a ordem do dono (12/10) é o contrário — uma recusa que só o terminal vê é botão mudo. Nós: a imagem que o
 descodificador não lê desenha-se **riscada na tinta do perigo** e o quadro diz-o na faixa de avisos UMA vez por ficheiro;
 não desenhamos a parte lida de um ficheiro cortado (o `image` recusa-o inteiro).
+
+### W18 — o VÍDEO do YouTube colado (`embeddable`) e o `<text>` de um SVG: `sonda_w18.mjs`
+
+```bash
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh timeout 900 node docs/MiroClone/ferramentas/excalidraw_oracle/sonda_w18.mjs --rede nao      # + as 16 sondas T
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh timeout 900 node docs/MiroClone/ferramentas/excalidraw_oracle/sonda_w18.mjs --rede youtube  # só YouTube/Google deixados passar
+```
+
+Saídas `saidas/w18/w18_sondas_{offline,online}.json` (45 + 29 sondas, **0 falhas**, 12/10). As fotos dos 24
+links colados não se guardam (o JSON tem tudo); as do caminho `Z01..Z05` sim.
+
+| pergunta | o Excalidraw 0.18.1 |
+|---|---|
+| que links viram vídeo (Ctrl+V de texto) | `watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`, `/live/`, `youtube.com` sem `www`, `http://` → **`embeddable`** com `link` = o colado; `m.youtube.com`, `music.youtube.com`, `youtube-nocookie.com`, sem esquema (`www.…`) e texto com um link dentro → **texto** |
+| o tamanho | **560×315** (16:9); `/shorts/` **315×560**; um link do YouTube que não é vídeo (canal, maiúsculas no domínio) **560×840** (o genérico) |
+| onde nasce | o canto de cima-esquerdo no rato (640,400 → x 640, y 400) |
+| o `src` do iframe | `https://www.youtube.com/embed/<id>?enablejsapi=1` (+ `&start=<t>` **cru**: `90s`, `1m30s` — o embed só entende segundos ⇒ ⛔ não copiar); `playlist?list=` → `embed/videoseries?list=`; `watch?v=…&list=` larga a lista |
+| defeitos do oráculo (⛔ não copiar) | `/live/<id>` → `embed/live` (partido); `watch?feature=share&v=<id>` → `embed/watch` (partido); `WWW.YOUTUBE.COM` não é reconhecido; um id de 3 letras (`v=abc`) é aceite |
+| parado | o iframe está SEMPRE carregado por cima do canvas, `pointer-events: none` |
+| activar | **um clique** no vídeo ⇒ `activeEmbeddable.state = "active"`, o iframe recebe o rato; `Esc` não desactiva; clicar fora desactiva |
+| redimensionar | livre (560×315 + (200,40) → 760×355); o **Shift não prende** a proporção |
+| pan / zoom / rodar | o iframe segue por CSS (`transform` do contentor; a 30° o rectângulo do iframe roda) |
+| export PNG | um rectângulo **cinzento arredondado** (`#d3d3d3`) com o link em texto ao meio (`w18_offline_Z04_export.png`) |
+| export SVG | o mesmo, dentro de um `<a href="<link>">` (+ um `<a target=_blank>` à volta); sem `<image>`, sem `foreignObject` |
+| `.excalidraw` | `type: "embeddable"`, `link`, `roundness: {type: 3}`, `strokeColor`/`backgroundColor` `transparent`; sem `validated` gravado |
+| abrir um gravado | `validated` ausente, `true` ou `false` — os três mostram o iframe |
+| sem rede | o rectângulo vazio, só o ícone ↗ no canto; com rede o tocador oficial (o vídeo de teste `dQw4…` diz «This video is unavailable» no Chromium do Playwright) |

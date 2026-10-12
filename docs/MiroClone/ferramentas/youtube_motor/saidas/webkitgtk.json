@@ -1,0 +1,19 @@
+{
+ "o_que": "WebKitGTK 4.1 fora do ecr\u00e3 (GtkOffscreenWindow.get_pixbuf a cada 16 ms) a tocar o embed do YouTube",
+ "webkit": "2.54.1",
+ "aceleracao": "sempre",
+ "video": "aqz-KE-bpKQ",
+ "segundos": 25.0,
+ "data": "2026-10-12 10:11:38",
+ "loadavg": [
+  8.0234375,
+  18.35498046875,
+  21.13525390625
+ ],
+ "quadros_lidos": 1556,
+ "quadros_distintos_depois_de_5s": 0,
+ "fps_distintos_depois_de_5s": 0.0,
+ "cpu_s_proprio": 1.83,
+ "rss_max_mb_proprio": 180.8,
+ "fotos": []
+}

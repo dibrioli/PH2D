@@ -449,12 +449,15 @@ fn detail(p: &BezPath) -> Vec<String> {
     out
 }
 
+/// Um caso da cauda: a forma, os campos que mudam (nome, valor) e o aspecto da caixa.
+type TailCase = (&'static str, &'static [(&'static str, f64)], f64);
+
 /// Sonda: o detalhe junta a junta dos casos da cauda (A2). `PH2D_CENSO_CASOS` filtra pelo nome.
 #[test]
 #[ignore = "sonda: imprime o detalhe dos casos da cauda (F12 A2)"]
 fn print_the_tail_detail() {
     let only = std::env::var("PH2D_CENSO_CASOS").unwrap_or_default();
-    let cases: &[(&str, &[(&str, f64)], f64)] = &[
+    let cases: &[TailCase] = &[
         ("Oval say", &[("Tip y", 0.3), ("Wedge", 40.7)], 1.0),
         ("Oval say", &[("Wedge", 36.4), ("Room", 0.16)], 1.0),
         ("Speech", &[("Base", 0.6), ("Room", 0.05)], 1.0),

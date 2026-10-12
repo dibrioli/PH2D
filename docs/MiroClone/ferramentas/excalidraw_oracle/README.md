@@ -489,3 +489,51 @@ Medido 2026-10-11 (PNG 1×, vermelho = `r>150, g<120, b<120`; a PNG da imagem é
 | filtro P&B | nenhum: o `restore` de uma imagem tem 30 chaves e nenhuma é filtro. Chaves desconhecidas (`filter`, `grayscale`, `imageFilter`) **passam intactas** (o `restore` não as valida nem as usa). O único filtro é do export escuro do appState: `filter="invert(93%) hue-rotate(180deg)"` no `<svg>` inteiro |
 
 Uma imagem mínima (`{type:"image", fileId}`) restaura com `strokeColor "#1e1e1e"` e `status "pending"`.
+
+### W16 — o recorte, o espelho e o GIF no EDITOR: `sonda_imagem_w16.mjs`
+
+```bash
+python3 -I docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_w16_imagens.py     # só se mudar as entradas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/sonda_imagem_w16.mjs \
+  [--so <prefixo>[,<prefixo>…]] [<pasta_entradas> <pasta_saida>]       # por omissão entradas/ e saidas/w16/
+```
+
+Entradas NOSSAS (`gera_w16_imagens.py`, Pillow): `w16_quadrantes.png` 400×300 — TL `(255,0,0)` · TR
+`(0,160,0)` · BL `(0,0,255)` · BR preto (o canal a 0 dá o alfa: sobre branco `v = (1−α)·255`) — e
+`w16_anim.gif` 120×120, 3 quadros de 200 ms em ciclo (vermelho · verde · azul). 32 sondas; cada uma monta
+o `<Excalidraw>` de novo (1280×800, zoom 1, scroll 0 ⇒ cena = ecrã; imagem em `420,180`, 1:1 com o natural),
+`addFiles` + espera a imagem no canvas, age com o rato/teclado do Playwright e grava DEPOIS de cada passo:
+o elemento (`x y w h angle scale crop status`), o `appState` relevante, **todas** as chaves do `appState`
+que mudaram, o cursor, a dica do rodapé, uma captura (`saidas/w16/w16_<sonda>_<nn>_<passo>.png`) e as
+corridas de cor nas linhas `y=240`/`420` e colunas `x=520`/`720` (onde a imagem está no ecrã e com que
+alfa). As pegas acham-se pelo CURSOR do `canvas.interactive`. Saída: `saidas/w16/w16_sondas.json`
+(cabeçalho: versão, Chromium, data, `loadavg`, sha256 das entradas e do script) + o export do GIF
+(`w16_C01_gif_export.{svg,png}`). Relógio LIVRE (o duplo clique precisa dele); PRNG semeado pelas
+entradas. **Determinismo:** duas corridas (31 sondas, 12/10, `load` 30–100) = 92/92 capturas/SVG
+idênticos byte a byte e o JSON igual fora dos tempos — salvo a amostra do `<img>` de CONTROLO do GIF,
+que depende do relógio de parede (é para isso que existe).
+
+Medido 2026-10-12 (Excalidraw 0.18.1, Chromium 153):
+
+| pergunta | o que o oráculo faz |
+|---|---|
+| entrar | duplo clique na imagem, **Enter** com ela seleccionada, ou «Crop image» (botão do painel e menu de contexto) ⇒ `appState.croppingElementId = <id>`. `isCropping` só é `true` DURANTE o arrasto de uma pega (falso no pan). Dica: *«Click outside the image or press Enter or ESCAPE to finish cropping»* |
+| pegas | **8**: cantos (`nwse`/`nesw-resize`, zona de ±6 px de ecrã à volta do canto) e meios dos lados (`ns`/`ew-resize`, ±2 px, sem desenho). Desenha só 4 «L» nos cantos; as MESMAS zonas fora do modo |
+| canto SE −80,−60 | `x,y` fixos, `w,h` 400×300 → 320×240, `crop {0,0,320,240,400,300}` (`A02`) |
+| proporção | **livre**: SE −80,−30 ⇒ 320×270 (`A02b`); com **Shift** fica a do natural 4:3 ⇒ 360×270 (`A02c`) |
+| canto NW +80,+60 | o elemento ANDA (`x,y` 420,180 → 500,240) e `crop.x,y` = 80,60: a imagem fica PARADA no ecrã (o fantasma continua a começar em 420) (`A03`) |
+| meios | E −80 ⇒ `w` 320, `crop.width` 320; N +60 ⇒ `y`+60, `crop.y` 60; S/W idem (`A04`; ruído `39.99999999999994`) |
+| unidades | o `crop` é em px NATURAIS: imagem a metade (200×150), SE −40,−30 ⇒ caixa 160×120, `crop` 320×240 (`A02d`) |
+| pan | arrastar DENTRO desliza a imagem sob a janela (cursor `move`; `x,y,w,h` não mudam), no MESMO sentido do ponteiro — mas **`Δcrop` = −2·Δponteiro em unidades de CENA, qualquer que seja a escala da imagem**: −50,−40 ⇒ `crop` +100,+80 (`A05`); −20,−10 ⇒ +40,+20 com 1, 4 ou 20 `pointermove` (`A05b`) e com a caixa a 0,5×/1×/1,5×/2× do natural (`A05c..g`); a zoom 2, −20,−10 de ecrã ⇒ +20,+10. Só a 0,5× a imagem segue o dedo |
+| limites | o pan pára nas bordas naturais (`crop.x ∈ [0, 400−w]`: +300 ⇒ 0; −600 ⇒ 160,120); uma pega para FORA da imagem natural fica presa à borda (inteira: nada muda, nem a versão; recortada e SE +300,+300 ⇒ volta a 400×300 e `crop` passa a **`null`**) (`A06`) |
+| mínimo | **10×10 em unidades de CENA** (a 1:1 `crop` 10×10; a metade, `crop` 20×20 naturais) — e arrastar para lá do canto oposto também dá 10×10, não vira (`A06b..d`) |
+| sair | **Enter**, **Escape** e clique fora SAEM e **guardam** o recorte (o Escape não desfaz); o clique fora também tira a selecção; **duplo clique dentro NÃO sai** (`A07a..d`) |
+| desfazer | por ARRASTO, não o recorte inteiro: depois de sair, o 1.º Ctrl+Z só volta a ENTRAR no modo (geometria igual); o 2.º desfaz o último arrasto (NW) e deixa o do SE; Ctrl+Shift+Z refaz. Dentro do modo, cada Ctrl+Z tira um arrasto até `crop null` (`A07`, `A08b`) |
+| redimensionar depois | a pega NORMAL não toca no `crop`: a imagem recortada escala. Canto e lado mantêm a proporção da caixa (SE +80,0 ⇒ 480×360; E +60 ⇒ 540×405 com `y` −22,5, centrado na vertical); **Shift LIBERTA** a proporção e a imagem ESTICA (620×405, o vermelho natural 0..200 ocupa 387 px) — igual sem recorte (`A09`, `A09b`) |
+| rodada 30° | suportado: as pegas seguem a rotação (a SE achada no canto rodado `718,560`); SE −80,−60 no referencial da imagem ⇒ `crop` 320,2×239,8 e o canto NW fica parado no ecrã (`x,y` mudam porque são da caixa não rodada) (`A10`) |
+| espelhada | o `crop` é em px da imagem natural NÃO espelhada: com `scale [-1,1]`, SE −80,−60 ⇒ **`crop.x = 80`** (contra 0 sem espelho, `A02`) — o lado direito do ecrã é a esquerda natural; NW +40,+30 depois ⇒ `crop.x` fica 80, `width` 280 (`A11`) |
+| esbatido | fora do recorte a imagem natural aparece a **α ≈ 0,1**: sobre branco o vermelho fica `(255,228,228)`, o verde `(228,244,228)`, o azul `(228,228,255)`, o preto `228` ⇒ `α = 27/255 = 0,106` (verde por G: 0,116). Ao sair desaparece (branco) |
+| espelho | **Shift+H** ⇒ `scale [-1,1]`, **Shift+V** ⇒ `scale [1,-1]` (os dois ⇒ `[-1,-1]`); `x,y,w,h` NÃO mudam (vira à volta do centro); ×2 volta a `[1,1]` exacto. Rodada 30°: Shift+H dá `angle` 2π−θ (`5.7596`) e ×2 volta a `0.5235987755982991` (era `…988`: deriva 3e-16). Recortada: o `crop` NÃO muda, o recorte vira no lugar (`B02`) |
+| botões | painel da imagem: «Crop image» (sem botão de espelho). Menu de contexto da imagem: Cut · Copy · Paste · Wrap selection in frame · **Crop image** · Copy to clipboard as PNG/SVG · Copy/Paste styles · Add to library · as 4 de ordem · **Flip horizontal [Shift+H]** · **Flip vertical [Shift+V]** · Add link · Copy link to object · Duplicate · Lock · Delete (`B01`) |
+| GIF no canvas | **só o 1.º quadro**: 12 amostras em 2,2 s, sem e com re-render provado (com `scrollX` 1 a borda `x=560` fica branca), sempre `(255,0,0)`. CONTROLO: o mesmo GIF num `<img>` do DOM anima (vermelho → verde → azul a ~200 ms) e o `drawImage` desse `<img>` num canvas novo dá sempre vermelho ⇒ é a regra do `drawImage` do Chromium, não uma escolha só do Excalidraw (`C01`) |
+| GIF no export | `getFiles()` guarda `mimeType "image/gif"`; o SVG leva `<image href="data:image/gif;base64,…">` com os bytes **iguais** aos da entrada (anima em quem o abrir); o PNG (`exportToBlob`) sai com o **1.º quadro**, igual nas 3 exportações espaçadas de 250 ms (o mesmo sha256) |

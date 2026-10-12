@@ -1,5 +1,7 @@
 # CONTINUAÇÃO — `line/MiroClone` W16: o que ficou aberto das imagens (2026-10-11)
 
+> **FECHADO — ver [HANDOFF_INTEGRACAO_line_MiroClone_W16_2026-10-12.md](HANDOFF_INTEGRACAO_line_MiroClone_W16_2026-10-12.md).**
+
 > Rota `/pd-linha-assumir`: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && pwd && git branch --show-current`
 > ANTES de ler. Estado: a W15 FECHOU com **smoke OK do dono (11/10)** —
 > [handoff de integração W15](HANDOFF_INTEGRACAO_line_MiroClone_W15_2026-10-11.md) (integra-se com a W14 e a W12+W13;

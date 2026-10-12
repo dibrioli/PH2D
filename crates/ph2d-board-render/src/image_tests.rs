@@ -284,10 +284,17 @@ fn without_the_wanted_level_the_nearest_finer_one_draws() {
     let mut imgs = Images::default();
     imgs.set_decoder(test_decode());
     // A pirâmide inteira por um pedido síncrono do nível 0, e depois esquece-se o nível 1.
-    let _ = imgs.level(f.id(), ImageFilter::Original, &f, [512.0, 512.0], true).unwrap();
-    let e = imgs.entries.get_mut(&(f.id(), ImageFilter::Original)).unwrap();
+    let _ = imgs
+        .level(f.id(), ImageFilter::Original, &f, [512.0, 512.0], true)
+        .unwrap();
+    let e = imgs
+        .entries
+        .get_mut(&(f.id(), ImageFilter::Original))
+        .unwrap();
     assert!(e.levels.len() >= 3);
     e.levels[1].image = None;
-    let (_, size) = imgs.level(f.id(), ImageFilter::Original, &f, [200.0, 200.0], false).unwrap();
+    let (_, size) = imgs
+        .level(f.id(), ImageFilter::Original, &f, [200.0, 200.0], false)
+        .unwrap();
     assert_eq!(size, [512, 512], "foi à miniatura em vez do fino");
 }

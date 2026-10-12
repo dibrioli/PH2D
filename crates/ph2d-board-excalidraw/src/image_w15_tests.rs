@@ -22,12 +22,21 @@ fn sample_w15() -> Board {
     let file = b.files.keys().next().copied().unwrap();
     let mut img = ph2d_board_model::Image::new(
         file,
-        ph2d_board_model::Style::new(None, Some(Rgba([224, 49, 49, 255])), Rgba([30, 30, 30, 255])),
+        ph2d_board_model::Style::new(
+            None,
+            Some(Rgba([224, 49, 49, 255])),
+            Rgba([30, 30, 30, 255]),
+        ),
     );
     img.style.stroke_width = 4.0;
     img.style.dash = Dash::Dashed;
     img.filter = ImageFilter::Gray;
-    let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), img, [200.0, 120.0, 160.0, 80.0]);
+    let el = Element::new_image(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        img,
+        [200.0, 120.0, 160.0, 80.0],
+    );
     BoardOp::Put(el).apply(&mut b.doc);
     b
 }

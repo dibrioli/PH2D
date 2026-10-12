@@ -49,7 +49,8 @@ fn a_filesystem_href_is_not_read() {
 
 #[test]
 fn the_texts_are_counted() {
-    let svg = br#"<svg xmlns="http://www.w3.org/2000/svg"><text>a</text><g><text>b</text></g></svg>"#;
+    let svg =
+        br#"<svg xmlns="http://www.w3.org/2000/svg"><text>a</text><g><text>b</text></g></svg>"#;
     assert_eq!(dropped_texts(svg), 2);
     assert_eq!(dropped_texts(DISC), 0);
 }

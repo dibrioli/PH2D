@@ -255,7 +255,15 @@ fn a_format_12_file_still_opens_with_its_images_unfiltered() {
     assert_eq!(imgs.len(), 2);
     let a = imgs[0];
     assert_eq!(a.file, file(7).id());
-    assert_eq!(a.crop, Some(Crop { x: 1.0, y: 0.0, w: 4.0, h: 2.0 }));
+    assert_eq!(
+        a.crop,
+        Some(Crop {
+            x: 1.0,
+            y: 0.0,
+            w: 4.0,
+            h: 2.0
+        })
+    );
     assert_eq!(a.flip, [true, false]);
     assert!(a.style.round);
     assert_eq!(a.style.opacity, 60);
@@ -263,7 +271,15 @@ fn a_format_12_file_still_opens_with_its_images_unfiltered() {
     assert!(imgs.iter().all(|i| i.filter == ImageFilter::Original));
     assert_eq!(b.files.len(), 2);
     assert_eq!(b.team.versions.len(), 1);
-    assert_eq!(b.team.versions[0].read().unwrap().doc.live_in_z_order().len(), 2);
+    assert_eq!(
+        b.team.versions[0]
+            .read()
+            .unwrap()
+            .doc
+            .live_in_z_order()
+            .len(),
+        2
+    );
     assert_eq!(set.boards()[1].name, "Vazio");
     let bytes = set.to_bytes().unwrap();
     assert_eq!(

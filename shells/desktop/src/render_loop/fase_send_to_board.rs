@@ -55,6 +55,8 @@ impl crate::App {
         let unreadable = || Toast::warning(tr_with("board.send.unreadable", &[("name", &name)]));
         let content = match kind(e) {
             ObjectKind::Image => {
+                // PRECISION-READONLY: LÊ os pixels e manda uma CÓPIA ao quadro (8 bits, o formato das
+                // imagens do quadro); a sprite da cena nunca é escrita de volta.
                 let src = crate::hero_intents::texture_edit::read_sprite_source(
                     e,
                     &gfx.sim,

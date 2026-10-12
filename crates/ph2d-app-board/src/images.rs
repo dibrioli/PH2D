@@ -11,12 +11,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use ph2d_board_model::{ImageFile, mime_of};
-use ph2d_imageio_svg::raster;
 use ph2d_board_render::Pixels;
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::board_images::{insert_images, takes_image_paste};
 use ph2d_i18n::tr_with;
+use ph2d_imageio_svg::raster;
 
 /// O MIME de um ficheiro vectorial.
 const SVG: &str = "image/svg+xml";
@@ -50,7 +50,10 @@ pub fn decode(bytes: &[u8], at: Option<[u32; 2]>) -> Option<Pixels> {
 pub fn ingest(bytes: &[u8]) -> Option<ImageFile> {
     if let Some(svg) = raster::plain(bytes).filter(|b| mime_of(b) == Some(SVG)) {
         let tree = raster::parse(&svg).ok()?;
-        return Some(ImageFile::new(svg.into_owned(), raster::natural_size(&tree)));
+        return Some(ImageFile::new(
+            svg.into_owned(),
+            raster::natural_size(&tree),
+        ));
     }
     if mime_of(bytes).is_some() {
         let size = header_size(bytes).or_else(|| decode(bytes, None).map(|p| p.size))?;

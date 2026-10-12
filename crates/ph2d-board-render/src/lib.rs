@@ -22,8 +22,8 @@ mod theme_ink;
 
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
-pub use grid::{dot_grid, grid_step_world};
 pub use gray::{gray_of, to_gray};
+pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, install_decoder, level_to_box};
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;

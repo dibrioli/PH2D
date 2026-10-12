@@ -149,9 +149,7 @@ fn an_svg_draws_a_level_rasterized_at_the_screen_size() {
         cache.images.set_decoder(decode());
         let b = board(svg(10, 10), [0.0, 0.0, 100.0, 100.0], zoom, |_| {});
         let o = settled(&b, &mut cache, |o| {
-            image_ops(o)
-                .first()
-                .is_some_and(|i| i.image.width() >= lo)
+            image_ops(o).first().is_some_and(|i| i.image.width() >= lo)
         });
         let w = image_ops(&o)[0].image.width();
         assert!((lo..=hi).contains(&w), "zoom {zoom}: nível de {w} px");
@@ -184,7 +182,10 @@ fn the_frame_strokes_the_box_after_the_image() {
             }
         });
         let o = settled(&b, &mut cache, |o| !image_ops(o).is_empty());
-        let at_img = o.iter().position(|o| matches!(o, DrawOp::Image(_))).unwrap();
+        let at_img = o
+            .iter()
+            .position(|o| matches!(o, DrawOp::Image(_)))
+            .unwrap();
         let strokes: Vec<(usize, f64)> = o
             .iter()
             .enumerate()
@@ -236,12 +237,23 @@ fn an_unreadable_framed_image_exports_its_frame() {
         paper: None,
         vector: true,
     });
-    let b = board(ImageFile::new(vec![1, 2], [8, 8]), [0.0, 0.0, 80.0, 60.0], 1.0, |i| {
-        i.style.stroke = Some(Rgba([0, 0, 0, 255]));
-        i.style.stroke_width = 3.0;
-    });
+    let b = board(
+        ImageFile::new(vec![1, 2], [8, 8]),
+        [0.0, 0.0, 80.0, 60.0],
+        1.0,
+        |i| {
+            i.style.stroke = Some(Rgba([0, 0, 0, 255]));
+            i.style.stroke_width = 3.0;
+        },
+    );
     let o = ops(&b, &mut cache);
     assert!(image_ops(&o).is_empty());
-    assert!(o.iter().any(|o| matches!(o, DrawOp::Stroke { style, .. } if style.width == 3.0)));
-    assert!(!o.iter().any(|o| matches!(o, DrawOp::Fill { .. })), "o cinzento do «a chegar»");
+    assert!(
+        o.iter()
+            .any(|o| matches!(o, DrawOp::Stroke { style, .. } if style.width == 3.0))
+    );
+    assert!(
+        !o.iter().any(|o| matches!(o, DrawOp::Fill { .. })),
+        "o cinzento do «a chegar»"
+    );
 }

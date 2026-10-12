@@ -8,8 +8,8 @@
 use super::images::{file, image, photo};
 use super::team::{note, put, tr};
 use ph2d_board_model::{
-    Board, BoardId, BoardSet, Dash, Element, ElementId, ImageFilter, RichText, Rgba,
-    STICKY_SIDE, Shape, ShapeType, Style,
+    Board, BoardId, BoardSet, Dash, Element, ElementId, ImageFilter, Rgba, RichText, STICKY_SIDE,
+    Shape, ShapeType, Style,
 };
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::screens::hero::{board_nav, document_tabs};
@@ -45,9 +45,7 @@ fn frame_style(el: &mut Element, c: Rgba, w: f64, dash: Dash, sketch: bool, roun
 pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
     let side = STICKY_SIDE;
     let shot = file(b, &photo());
-    let logo = b.put_file(
-        crate::images::ingest(LOGO.as_bytes()).expect("o nosso SVG lê-se"),
-    );
+    let logo = b.put_file(crate::images::ingest(LOGO.as_bytes()).expect("o nosso SVG lê-se"));
     let (iw, ih) = (320.0, 200.0);
     // As molduras.
     let fw = 3.0 * iw + 4.0 * GAP;
@@ -80,9 +78,15 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         None,
     );
     let color = image(b, shot, [GAP, y2 + GAP + 20.0, iw, ih], bw, |_| {});
-    let gray = image(b, shot, [2.0 * GAP + iw, y2 + GAP + 20.0, iw, ih], bw, |el| {
-        el.image_mut().expect("imagem").filter = ImageFilter::Gray;
-    });
+    let gray = image(
+        b,
+        shot,
+        [2.0 * GAP + iw, y2 + GAP + 20.0, iw, ih],
+        bw,
+        |el| {
+            el.image_mut().expect("imagem").filter = ImageFilter::Gray;
+        },
+    );
     // O SVG, pequeno e grande.
     let sx = bw_w + GAP;
     let svg = super::organize::frame(
@@ -91,22 +95,51 @@ pub(crate) fn build(b: &mut Board) -> (Lessons, [f64; 4]) {
         [sx, y2, fw - sx, ih + 2.0 * GAP + 20.0],
         None,
     );
-    let svg_small = image(b, logo, [sx + GAP, y2 + GAP + 20.0, 60.0, 60.0], svg, |_| {});
-    let svg_big = image(b, logo, [sx + 2.0 * GAP + 60.0, y2 + GAP + 20.0, ih, ih], svg, |_| {});
+    let svg_small = image(
+        b,
+        logo,
+        [sx + GAP, y2 + GAP + 20.0, 60.0, 60.0],
+        svg,
+        |_| {},
+    );
+    let svg_big = image(
+        b,
+        logo,
+        [sx + 2.0 * GAP + 60.0, y2 + GAP + 20.0, ih, ih],
+        svg,
+        |_| {},
+    );
     let y = y2 + ih + 3.0 * GAP + 20.0;
     let lessons: [ElementId; 6] = std::array::from_fn(|i| {
         let key = format!("board.smoke.frames.l{}", i + 1);
-        note(b, &key, 1, [i as f64 * (side + GAP), y, side, side], false, None)
+        note(
+            b,
+            &key,
+            1,
+            [i as f64 * (side + GAP), y, side, side],
+            false,
+            None,
+        )
     });
     let title = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, None, super::team::INK),
         text: RichText::plain(&tr("board.smoke.frames.title")),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), title, [0.0, -80.0, fw, 40.0]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        title,
+        [0.0, -80.0, fw, 40.0],
+    );
     put(b, el);
     let right = fw.max(6.0 * (side + GAP));
-    let view = [-MARGIN_X, -80.0 - MARGIN_Y, right + MARGIN_X, y + side + MARGIN_Y];
+    let view = [
+        -MARGIN_X,
+        -80.0 - MARGIN_Y,
+        right + MARGIN_X,
+        y + side + MARGIN_Y,
+    ];
     let l = Lessons {
         board: b.id,
         framed,

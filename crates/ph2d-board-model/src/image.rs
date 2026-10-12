@@ -166,8 +166,7 @@ fn is_svg(b: &[u8]) -> bool {
             };
             let close = open + r[open..].iter().position(|&c| c == b']')?;
             let rest = r[close + 1..].trim_ascii_start();
-            rest.starts_with(b">")
-                .then(|| r.len() - rest.len() + 1)
+            rest.starts_with(b">").then(|| r.len() - rest.len() + 1)
         };
         if let Some(n) = skip(r, b"<?", b"?>")
             .or_else(|| skip(r, b"<!--", b"-->"))
@@ -205,7 +204,9 @@ pub struct Crop {
 
 /// O filtro de cor de uma imagem (W15). ⚠️ Append-only: o discriminante vai para o ficheiro, e uma
 /// variante nova no FIM não muda o formato.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub enum ImageFilter {
     /// As cores do ficheiro.
     #[default]

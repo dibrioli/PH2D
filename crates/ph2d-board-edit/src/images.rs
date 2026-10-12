@@ -92,7 +92,11 @@ impl Editor {
     /// W15 — as imagens seleccionadas (editáveis) estão TODAS a preto e branco? `None` = nenhuma.
     #[must_use]
     pub fn images_gray(&self, doc: &BoardDoc) -> Option<bool> {
-        let imgs: Vec<&Image> = self.editable(doc).into_iter().filter_map(Element::image).collect();
+        let imgs: Vec<&Image> = self
+            .editable(doc)
+            .into_iter()
+            .filter_map(Element::image)
+            .collect();
         (!imgs.is_empty()).then(|| imgs.iter().all(|i| i.filter == ImageFilter::Gray))
     }
 

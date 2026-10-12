@@ -108,7 +108,11 @@ fn the_pdf_writes_the_gray_pixels_as_their_own_image() {
         links: Vec::new(),
     }]);
     let text = String::from_utf8_lossy(&bytes);
-    assert_eq!(text.matches("/Subtype /Image").count(), 2, "a cores e a cinzento");
+    assert_eq!(
+        text.matches("/Subtype /Image").count(),
+        2,
+        "a cores e a cinzento"
+    );
 }
 
 /// Um JPEG cinzento não entra como chegou (os bytes dele são a cores): vão os píxeis.
@@ -166,7 +170,12 @@ fn an_svg_drawn_twice_goes_to_the_pdf_at_each_size() {
     let file = b.put_file(ImageFile::new(svg.to_vec(), [10, 10]));
     let st = Style::new(None, None, Rgba([0, 0, 0, 255]));
     for bx in [[0.0, 0.0, 60.0, 60.0], [100.0, 0.0, 600.0, 600.0]] {
-        let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), Image::new(file, st.clone()), bx);
+        let el = Element::new_image(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            Image::new(file, st.clone()),
+            bx,
+        );
         BoardOp::Put(el).apply(&mut b.doc);
     }
     let board = set.boards()[0].clone();

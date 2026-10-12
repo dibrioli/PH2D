@@ -46,7 +46,10 @@ fn a_format_the_browser_does_not_show_comes_in_as_png() {
 #[test]
 fn what_is_not_an_image_is_refused() {
     assert!(ingest(b"not an image").is_none());
-    assert!(ingest(b"<svg xmlns=\"http://www.w3.org/2000/svg\"><g").is_none(), "SVG estragado");
+    assert!(
+        ingest(b"<svg xmlns=\"http://www.w3.org/2000/svg\"><g").is_none(),
+        "SVG estragado"
+    );
 }
 
 const SVG_DISC: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 4 2"><circle cx="2" cy="1" r="1" fill="#00ff00"/><text>oi</text></svg>"##;

@@ -485,7 +485,11 @@ pub(super) fn paint_item(
             ring.curve_to((cx + k, cy + rad), (cx + rad, cy + k), (cx + rad, cy));
             ring.curve_to((cx + rad, cy - k), (cx + k, cy - rad), (cx, cy - rad));
             half.close_path();
-            scene.fill_path(&half, &ph2d_vector::Brush::Solid(fg), ph2d_vector::Affine::IDENTITY);
+            scene.fill_path(
+                &half,
+                &ph2d_vector::Brush::Solid(fg),
+                ph2d_vector::Affine::IDENTITY,
+            );
             stroke(scene, &ring, fg, line, Dash::Solid);
         }
         Item::Opacity(i) => {

@@ -45,8 +45,8 @@ mod v11;
 pub(crate) use v11::read_v11;
 #[path = "legacy_v12.rs"]
 mod v12;
-pub(crate) use v12::read_v12;
 use v11::{VersionV11, version_v11};
+pub(crate) use v12::read_v12;
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]

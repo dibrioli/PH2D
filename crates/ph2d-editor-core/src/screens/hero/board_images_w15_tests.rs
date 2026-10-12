@@ -7,7 +7,11 @@ use ph2d_board_model::{ImageFile, ImageFilter};
 
 fn put(t: &mut T, n: u8) {
     assert_eq!(
-        insert_images(&mut t.hero, vec![ImageFile::new(vec![n; 4], [120, 80])], None),
+        insert_images(
+            &mut t.hero,
+            vec![ImageFile::new(vec![n; 4], [120, 80])],
+            None
+        ),
         1
     );
     t.paint();
@@ -46,7 +50,11 @@ fn the_image_bar_frames_the_picture() {
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert_eq!(image(&t).style.dash, Dash::Solid);
     t.click_bar(Item::Stroke(None));
-    assert_eq!(image(&t).style.stroke, None, "«sem contorno» tira a moldura");
+    assert_eq!(
+        image(&t).style.stroke,
+        None,
+        "«sem contorno» tira a moldura"
+    );
 }
 
 /// ⭐ O botão preto e branco: um clique põe a imagem cinzenta (e o botão acende), outro devolve as

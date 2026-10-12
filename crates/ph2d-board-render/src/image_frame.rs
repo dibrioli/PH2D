@@ -56,4 +56,3 @@ pub(crate) fn paint(
         scene.stroke_path(&stroke, t, &Brush::Solid(cache.ink.color(c)), &o.fill);
     }
 }
-

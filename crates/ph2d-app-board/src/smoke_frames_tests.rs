@@ -29,12 +29,23 @@ fn the_frames_scene_does_what_its_lessons_say() {
     assert!(hand.sketch && hand.round);
     let (c, g) = (img(&h, l.color), img(&h, l.gray));
     assert_eq!(c.file, g.file, "a MESMA fotografia");
-    assert_eq!((c.filter, g.filter), (ImageFilter::Original, ImageFilter::Gray));
+    assert_eq!(
+        (c.filter, g.filter),
+        (ImageFilter::Original, ImageFilter::Gray)
+    );
     let (s, big) = (img(&h, l.svg_small), img(&h, l.svg_big));
     assert_eq!(s.file, big.file);
     let f = b.file(s.file).unwrap();
     assert_eq!((f.mime(), f.size), (Some("image/svg+xml"), logo().size));
     assert_eq!(l.lessons.len(), 6);
-    let lesson5 = b.doc.get(l.lessons[4]).unwrap().shape().unwrap().text.as_str().to_owned();
+    let lesson5 = b
+        .doc
+        .get(l.lessons[4])
+        .unwrap()
+        .shape()
+        .unwrap()
+        .text
+        .as_str()
+        .to_owned();
     assert!(lesson5.contains("Send to board…"), "{lesson5}");
 }

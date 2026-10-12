@@ -230,3 +230,57 @@ tocar, voltar, `Igual`, `Ramo` no mesmo tique, divergir, a dobra; `estado_em` e 
 `a_fita_declara_a_memoria_que_retem` (±25 %, 8 cenários); `ph2d-eval-motion --lib` 103/103; `ph2d-app-motion`
 (scrub · replay · jogo · entradas · recuo · fita) 23/23. **Mutações (sangraram):** a curva sem o peso da coluna
 (3,80×) · a marca sem o seu vetor (2,25–32×).
+
+_(vazio até à rodada)_
+
+### C.10 — «cada forma» a 4 096: as páginas (12/10, RTX 5060 Ti, `--release`)
+
+Fixtura do W3b: discos de 12 px que se tocam a 1600×972, sombra interna σ 5,3 deslocada 6 px (alcance `A = 0`,
+leitura `L = 23` px). Sondas em `crates/ph2d-fx-cells/tests/it/celulas_gpu.rs`.
+
+**Decomposição** (`relogio_c10_decomposicao`; `pass_profiler`, uma submissão por fase; ms de placa por quadro):
+
+| discos | pág. | Mpx | pilha | formas | colagem | volta | reloca | caixas | placa | CPU até submeter |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 256 | 1 | 1,0 | 0,27 | 0,21 | 0,05 | 0,02 | 0,04 | 0,08 | 0,77 | 0,28 |
+| 1 024 | 1 | 3,9 | 0,96 | 0,13 | 0,07 | 0,04 | 0,04 | 0,06 | 1,47 | 0,29 |
+| 2 048 | 2 | 7,7 | 1,84 | 0,25 | 0,15 | 0,09 | 0,07 | 0,08 | 2,67 | 0,55 |
+| 4 096 | 4 | 15,3 | 3,73 | 0,48 | 0,31 | 0,17 | 0,13 | 0,12 | 5,29 | 1,07 |
+| 8 192 | 8 | 30,6 | 7,48 | 0,92 | 0,64 | 0,35 | 0,24 | 0,13 | 10,54 | 1,94 |
+
+A placa manda (CPU `1,07` × placa `5,29` a 4 096); a pilha é 70 % e custa **`0,244 ms/Mpx` a 1, 2, 4 e 8 páginas** —
+linear na ÁREA, sem termo por página. A leitura das caixas é UMA por quadro (`0,12` ms), não por página. A causa é a
+área: células de 61 px para discos de 14 (vala `2·max(A, L) + 1 = 47`) — 15,3 Mpx contra 1,55 da camada inteira.
+
+**Lei** (`plano::Vala`): entre os conteúdos de duas células basta **`A + L + 1`** (cada pixel da SAÍDA, conteúdo + `A`,
+lê `L`); um degrau de dentro separava por 47 px quando 24 bastam. E uma página sem sprites (ou sem formas) não desenha
+nem cola o alvo vazio (colar zero sobre a camada limpa é a identidade exacta).
+
+**Régua intercalada** (`relogio_c10_intercalado`: 4 variantes × 5 populações, blocos de 10 quadros, 7 rodadas com a
+ordem rodada, o MÍNIMO da placa ocupada por quadro; mediana a ≤ `0,13` ms dele; `load 5,42 → 5,23`):
+
+| discos | W3b (vala dupla) | vala justa | dupla + salta vazias | **justa + salta** | páginas | parede W3b → final |
+|---:|---:|---:|---:|---:|:--:|---:|
+| 256 | 0,55 | 0,44 | 0,52 | **0,41** | 1 → 1 | 0,57 → 0,41 |
+| 1 024 | 1,34 | 0,74 | 1,25 | **0,69** | 1 → 1 | 1,31 → 0,72 |
+| 2 048 | 2,62 | 1,12 | 2,55 | **1,08** | 2 → 1 | 2,58 → 1,11 |
+| 4 096 | 5,14 | 2,27 | 4,98 | **2,22** | 4 → 2 | 5,08 → 2,17 |
+| 8 192 | 10,44 | 4,32 | 9,99 | **4,12** | 8 → 3 | 10,28 → 4,06 |
+
+**Gates** (as quatro variantes, as mesmas barras): `a_surrounded_shape_gets_the_same_effect_as_alone` (ganhou o Bevel e o
+Inner Glow no campo: 0 níveis), `a_lone_shape…`, `a_lone_sprite…` (a justa: 17 → 0 texels da silhueta na rota da
+placa) e ⭐ `the_c10_variants_give_the_same_pixels` — 4 096 discos e 24 sprites, 7 degraus: cada pixel de cada instância
+cai na faixa que a REFERÊNCIA dá a instâncias iguais (±1), a silhueta das sprites ≤ 0,5 % dos texels pintados. Discos:
+0 fora; sprites: ≤ 65 de 82 104 texels da silhueta (a própria referência dispersa 63 níveis ali — o quad sem
+anti-aliasing); «salta vazias» = igual ao byte em todos. Mutações: vala sem a leitura → 3 gates vermelhos; formas nunca
+coladas → 2.
+
+**Default de produto = vala justa + salta vazias** (`Variante::default`; a escolha em execução fica para a régua e os gates).
+
+| ⛔ Recusas MEDIDAS | porquê |
+|---|---|
+| `texture_2d_array` com um despacho por fase | a pilha é linear na área (`0,244 ms/Mpx` de 1 a 8 páginas): não há custo por página a amortizar, e a memória sobe a páginas × 304 MB |
+| `LADO_MAX` 4096 | a mesma área, 1,2 GB por página |
+| tirar a sincronização por página | não existe: uma leitura por quadro (`0,12` ms), CPU `1,07` × placa `5,29` |
+
+Aberto: um degrau de FORA (alcance ≈ leitura: Glow `16`/`17`) quase não encolhe (`35 → 34` px) — o ganho é dos de dentro.

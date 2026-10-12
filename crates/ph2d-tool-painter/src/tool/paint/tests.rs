@@ -215,6 +215,7 @@ mod grain_and_stencil;
 mod impasto_body;
 mod line_editor;
 mod parked_shapes;
+mod ponta_cortada; // a ponta da Shape cortada sob Jitter Rotate (smoke 12/10)
 mod protection_and_layer_mask;
 mod reset_de_fabrica; // o Reset de uma secção devolve o pincel com que ESTE modo nasce (doc 45)
 mod selection_editing;

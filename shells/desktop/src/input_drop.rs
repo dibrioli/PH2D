@@ -282,11 +282,20 @@ impl App {
                 DndEvent::Leave => self.on_hovered_file_cancelled(),
                 DndEvent::Drop { list, at } => {
                     self.last_cursor = px(at);
-                    if list.not_files > 0 || list.paths.is_empty() {
+                    let (c, hero) = (
+                        self.last_cursor,
+                        self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()),
+                    );
+                    let refused = list.not_files
+                        - hero.map_or(0, |h| {
+                            ph2d_app_board::video::drop_links(h, &list.links, [c.0, c.1])
+                        });
+                    if refused > 0 || (list.paths.is_empty() && refused == list.not_files) {
                         if let Some(gfx) = self.gfx.as_mut() {
+                            let n = refused.max(1);
                             gfx.toasts.push(Toast::warning(tr_with(
                                 "shell.input_drop.not_files",
-                                &[("count", &list.not_files.max(1))],
+                                &[("count", &n)],
                             )));
                         }
                         self.title_dirty = true;

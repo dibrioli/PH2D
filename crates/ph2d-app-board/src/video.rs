@@ -72,6 +72,16 @@ pub fn service(hero: &mut HeroScreen) {
     player(hero, &mut st);
 }
 
+/// W18 — os links LARGADOS (do navegador) que são vídeos do YouTube entram no quadro em `at` (px de
+/// ecrã). Devolve quantos entraram (os outros a shell diz que recusou).
+pub fn drop_links(hero: &mut HeroScreen, links: &[String], at: [f32; 2]) -> usize {
+    let at = [f64::from(at[0]), f64::from(at[1])];
+    links
+        .iter()
+        .filter(|l| ph2d_editor_core::screens::hero::board_video::insert_link(hero, l, Some(at)))
+        .count()
+}
+
 /// O botão «Video»: o link da área de transferência vira um vídeo no meio da vista; senão, diz como.
 fn from_clipboard(hero: &mut HeroScreen) {
     let text = ph2d_app_host::clipboard::read(|c| c.get_text().ok());

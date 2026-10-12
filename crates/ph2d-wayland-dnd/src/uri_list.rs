@@ -13,6 +13,9 @@ use percent_encoding::percent_decode;
 pub struct UriList {
     pub paths: Vec<PathBuf>,
     pub not_files: usize,
+    /// W18 — os endereços da web (`http(s)://`) entre os que não eram ficheiro: um vídeo do YouTube
+    /// largado do navegador entra no quadro.
+    pub links: Vec<String>,
 }
 
 pub fn parse(bytes: &[u8]) -> UriList {
@@ -24,7 +27,15 @@ pub fn parse(bytes: &[u8]) -> UriList {
         }
         match file_path(line) {
             Some(p) => out.paths.push(p),
-            None => out.not_files += 1,
+            None => {
+                out.not_files += 1;
+                let web = [&b"https://"[..], b"http://"]
+                    .iter()
+                    .any(|s| line.len() > s.len() && line[..s.len()].eq_ignore_ascii_case(s));
+                if web && let Ok(s) = std::str::from_utf8(line) {
+                    out.links.push(s.to_owned());
+                }
+            }
         }
     }
     out

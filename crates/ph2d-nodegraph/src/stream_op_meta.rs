@@ -136,7 +136,7 @@ pub enum StreamOp {
         /// O kernel que escreve o `alias` (escalar, `ReadWrite`, porta 0).
         kernel: GpuKernel,
         /// Quando a escrita por nome está activa, sobre os params resolvidos do nó.
-        when: fn(&dyn Fn(&str) -> f32) -> bool,
+        when: crate::gpu::ApplicableFn,
     },
 }
 

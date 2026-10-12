@@ -150,6 +150,8 @@ Fecharam aqui: W17 (a) GIF na apresentação, (b) fio por GIF, (c) `<text>` do S
 
 ## 7. Smoke do dono
 
+⚠️ **Smoke do dono (12/10): defeitos no vídeo** — o ecrã inteiro do tocador deforma, o zoom às vezes pausa, o ícone do canal deixa o vídeo preto; e a decisão «nossos controles + Premium». Seguem na [continuação W19](HANDOFF_CONTINUACAO_W19_VIDEO_DEFEITOS_E_CONTROLES_2026-10-12.md).
+
 ### Binário do smoke compilado
 
 `rm -rf target/*/incremental` (35 GB) e depois, a 2.ª de

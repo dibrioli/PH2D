@@ -13,6 +13,8 @@ authors.workspace = true
 # O `.excalidraw` de ida e volta (W8, `docs/MiroClone/06_equipa_e_saida.md` §2 X1–X4): o esquema
 # aprendido pelas SAÍDAS do oráculo Excalidraw 0.18.1 (nunca pelo fonte). Sem UI, sem ficheiros.
 ph2d-board-model = { path = "../ph2d-board-model" }
+# W18 — o `embeddable` com um link do YouTube: a lei de reconhecer o vídeo (ADR-0185).
+ph2d-board-embed = { path = "../ph2d-board-embed" }
 ph2d-board-geom = { path = "../ph2d-board-geom" }
 ph2d-board-edit = { path = "../ph2d-board-edit" }
 ph2d-board-route = { path = "../ph2d-board-route" }

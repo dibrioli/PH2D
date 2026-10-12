@@ -55,11 +55,13 @@ pub enum Field {
     /// W14 — o ficheiro, o recorte, o espelho e (W15) o filtro de uma imagem (mudam juntos: recortar
     /// move a imagem).
     Image,
+    /// W18 — o link de um vídeo e o que ele é (mudam juntos).
+    Embed,
 }
 
 impl Field {
     /// Todos, pela ordem do enum.
-    pub const ALL: [Field; 38] = [
+    pub const ALL: [Field; 39] = [
         Field::Box,
         Field::Angle,
         Field::Z,
@@ -98,6 +100,7 @@ impl Field {
         Field::Stamps,
         Field::Seed,
         Field::Image,
+        Field::Embed,
     ];
 
     /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
@@ -169,6 +172,10 @@ impl Element {
                 let i = self.image()?;
                 enc(&(i.file, i.crop, i.flip, i.filter))
             }
+            Field::Embed => {
+                let e = self.embed()?;
+                enc(&(&e.link, &e.video))
+            }
         })
     }
 
@@ -239,6 +246,11 @@ impl Element {
             Field::Image => {
                 let i = self.image_mut()?;
                 (i.file, i.crop, i.flip, i.filter) = dec(b)?;
+                Some(())
+            }
+            Field::Embed => {
+                let e = self.embed_mut()?;
+                (e.link, e.video) = dec(b)?;
                 Some(())
             }
         }

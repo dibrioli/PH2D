@@ -64,6 +64,8 @@ pub enum ElementKind {
     Frame(Frame),
     /// Uma imagem (W14): os bytes vivem no quadro ([`crate::Board::files`]); a caixa é a dela.
     Image(Box<crate::Image>),
+    /// W18 (ADR-0185) — um vídeo: o link e o que ele é; o tocador é do navegador.
+    Embed(Box<crate::Embed>),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -346,6 +348,28 @@ impl Element {
         Self::bare(id, z, ElementKind::Image(Box::new(image)), bx)
     }
 
+    /// W18 — um vídeo novo na caixa `[x, y, w, h]`.
+    #[must_use]
+    pub fn new_embed(id: ElementId, z: FracKey, embed: crate::Embed, bx: [f64; 4]) -> Self {
+        Self::bare(id, z, ElementKind::Embed(Box::new(embed)), bx)
+    }
+
+    /// O vídeo, se é um.
+    #[must_use]
+    pub fn embed(&self) -> Option<&crate::Embed> {
+        match &self.kind {
+            ElementKind::Embed(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn embed_mut(&mut self) -> Option<&mut crate::Embed> {
+        match &mut self.kind {
+            ElementKind::Embed(e) => Some(e),
+            _ => None,
+        }
+    }
+
     /// A imagem, se é uma.
     #[must_use]
     pub fn image(&self) -> Option<&crate::Image> {
@@ -479,6 +503,7 @@ impl Element {
             ElementKind::Ink(i) => &i.style,
             ElementKind::Frame(f) => &f.style,
             ElementKind::Image(i) => &i.style,
+            ElementKind::Embed(e) => &e.style,
         }
     }
 
@@ -489,6 +514,7 @@ impl Element {
             ElementKind::Ink(i) => &mut i.style,
             ElementKind::Frame(f) => &mut f.style,
             ElementKind::Image(i) => &mut i.style,
+            ElementKind::Embed(e) => &mut e.style,
         }
     }
 
@@ -499,7 +525,8 @@ impl Element {
             ElementKind::Shape(_)
             | ElementKind::Ink(_)
             | ElementKind::Frame(_)
-            | ElementKind::Image(_) => {
+            | ElementKind::Image(_)
+            | ElementKind::Embed(_) => {
                 self.x += d[0];
                 self.y += d[1];
             }

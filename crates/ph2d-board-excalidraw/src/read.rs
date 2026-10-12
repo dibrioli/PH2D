@@ -122,6 +122,7 @@ pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
                 | "magicframe"
                 | "text"
                 | "image"
+                | "embeddable"
         );
         if ok {
             kept.push(v);
@@ -191,10 +192,16 @@ pub fn read_with(json: &str, ingest: Ingest<'_>) -> Result<Import, String> {
                     *imp.skipped.entry("image".into()).or_default() += 1;
                     continue;
                 }
+                if !crate::video::edits(&mut ours, v) {
+                    *imp.skipped.entry("embeddable".into()).or_default() += 1;
+                    continue;
+                }
                 ours
             }
             None => match if v["type"] == "image" {
                 crate::image::foreign(v, id, key, &files)
+            } else if v["type"] == "embeddable" {
+                crate::video::foreign(v, id, key)
             } else {
                 foreign(v, id, key, texts.get(me), (&map, &by_id))
             } {
@@ -335,7 +342,7 @@ fn edits(el: &mut Element, v: &Value, text: Option<&Text>, links: Links<'_, '_>,
                 el.translate([x - p0[0], y - p0[1]]);
             }
         }
-        ph2d_board_model::ElementKind::Image(_) => {
+        ph2d_board_model::ElementKind::Image(_) | ph2d_board_model::ElementKind::Embed(_) => {
             let (w, h) = (
                 num(v, "width").unwrap_or(el.w),
                 num(v, "height").unwrap_or(el.h),

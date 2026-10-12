@@ -11,6 +11,7 @@ mod board;
 mod camera;
 mod connector;
 mod element;
+mod embed;
 mod facilitate;
 mod fields;
 mod frac;
@@ -38,6 +39,7 @@ pub use facilitate::{
     VOTE_BADGE_OUT, VOTE_PLUS, VOTES_DEFAULT, VOTES_MAX, VoteSetup, digits as count_digits,
     mark_side, stamp_chips, vote_badge, vote_plus,
 };
+pub use embed::{Embed, Video};
 pub use fields::Field;
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};

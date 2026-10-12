@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-board-video"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# W18 (ADR-0185) — o vídeo do quadro, o lado que fala com o MUNDO: a miniatura pela rede e o tocador no
+# navegador da pessoa (família Chrome, conduzido pelo CDP num tubo). Nada disto corre no fio da janela.
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-board-embed = { path = "../ph2d-board-embed" }
+# HTTPS da miniatura: rustls com o `ring` e os certificados do SISTEMA lidos pelo `rustls-native-certs` —
+# nem o `webpki-roots` nem o `platform-verifier` (os dois puxam certificados embarcados com a licença
+# CDLA-Permissive-2.0, fora do `deny.toml`; medido 12/10).
+ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "_ring"] }
+rustls-native-certs = "0.8"
+# O protocolo do navegador (CDP): JSON em mensagens separadas por NUL no tubo; os quadros em JPEG/base64.
+serde_json = "1"
+base64 = "0.22"
+zune-jpeg = "0.5"
+zune-core = "0.5"
+
+[lints]
+workspace = true

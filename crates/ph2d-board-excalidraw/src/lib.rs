@@ -15,6 +15,7 @@ mod image;
 mod legacy_focus;
 mod read;
 mod style;
+mod video;
 mod write;
 
 pub use embed::scene_from_bytes;
@@ -140,3 +141,6 @@ mod image_w15_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "video_tests.rs"]
+mod video_tests;

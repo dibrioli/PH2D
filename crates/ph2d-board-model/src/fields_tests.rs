@@ -123,6 +123,15 @@ fn pairs() -> Vec<(Element, Element)> {
         }
         i
     };
+    let embed = |st: Style, rich: bool| crate::Embed {
+        link: if rich { "https://youtu.be/aqz-KE-bpKQ?t=9".into() } else { "https://youtu.be/dQw4w9WgXcQ".into() },
+        video: crate::Video::YouTube {
+            id: if rich { "aqz-KE-bpKQ" } else { "dQw4w9WgXcQ" }.into(),
+            start: if rich { 9 } else { 0 },
+            vertical: rich,
+        },
+        style: st,
+    };
     let bx = [0.0, 0.0, 10.0, 10.0];
     let plain = [
         Element::new_shape(ID, z0(), shape(plain_style(), ShapeType::Rectangle, ""), bx),
@@ -130,6 +139,7 @@ fn pairs() -> Vec<(Element, Element)> {
         Element::new_ink(ID, z0(), ink(plain_style(), false), bx),
         Element::new_frame(ID, z0(), frame(plain_style(), ""), bx),
         Element::new_image(ID, z0(), image(plain_style(), false), bx),
+        Element::new_embed(ID, z0(), embed(plain_style(), false), bx),
     ];
     let rich = [
         Element::new_shape(ID, z0(), shape(rich_style(), ShapeType::Hexagon, "olá"), bx),
@@ -137,6 +147,7 @@ fn pairs() -> Vec<(Element, Element)> {
         Element::new_ink(ID, z0(), ink(rich_style(), true), bx),
         Element::new_frame(ID, z0(), frame(rich_style(), "F"), bx),
         Element::new_image(ID, z0(), image(rich_style(), true), bx),
+        Element::new_embed(ID, z0(), embed(rich_style(), true), bx),
     ]
     .map(|mut el| {
         (el.x, el.y, el.w, el.h) = (1.5, -2.5, 30.0, 40.0);
@@ -254,6 +265,14 @@ fn every_field_of_the_model_is_named_here() {
                     flip: _,
                     filter: _,
                 } = &**i;
+                style
+            }
+            ElementKind::Embed(e) => {
+                let crate::Embed {
+                    link: _,
+                    video: _,
+                    style,
+                } = &**e;
                 style
             }
         };

@@ -400,6 +400,10 @@ pub fn write(board: &Board) -> String {
                 let m = base(board, el, "image", &[]);
                 out.push(crate::image::write(board, el, i, m));
             }
+            ElementKind::Embed(e) => {
+                let m = base(board, el, "embeddable", &[]);
+                out.push(crate::video::write(el, e, m));
+            }
             ElementKind::Frame(f) => {
                 let mut m = base(board, el, "frame", &[]);
                 m.insert("name".into(), json!(f.name));

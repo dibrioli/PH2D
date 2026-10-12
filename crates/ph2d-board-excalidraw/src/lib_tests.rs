@@ -286,12 +286,14 @@ fn the_embedded_scenes_round_trip_too() {
 
 /// ⭐ X3: um ficheiro DO Excalidraw (um elemento de cada tipo, gravado por ele) entra pelo mapeamento
 /// directo: formas, texto preso e solto, setas presas, linha, traço, frames com filhos; a imagem, o
-/// embeddable e o iframe SALTAM e contam-se.
+/// iframe SALTAM e contam-se (a imagem sem ficheiro); W18: o `embeddable` com um link do YouTube entra como
+/// VÍDEO.
 #[test]
 fn an_excalidraw_file_opens_by_the_direct_mapping() {
     let imp = read(THEIRS).unwrap();
     assert_eq!(imp.skipped.get("image"), Some(&1));
-    assert_eq!(imp.skipped.get("embeddable"), Some(&1));
+    assert_eq!(imp.skipped.get("embeddable"), None, "W18: é um vídeo");
+    assert_eq!(imp.doc.live().filter(|e| e.embed().is_some()).count(), 1);
     assert_eq!(imp.skipped.get("iframe"), Some(&1));
     let els = imp.doc.live_in_z_order();
     let shapes: Vec<_> = els.iter().filter_map(|e| e.shape()).collect();

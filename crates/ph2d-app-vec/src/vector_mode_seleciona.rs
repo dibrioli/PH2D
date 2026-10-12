@@ -44,7 +44,9 @@ fn arma(hero: &mut HeroScreen) {
         .iter()
         .position(|s| s.kind == ARMADA)
     {
-        hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::vector_shape_id(i)));
+        hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::vector_shape_id(
+            i,
+        )));
     }
 }
 

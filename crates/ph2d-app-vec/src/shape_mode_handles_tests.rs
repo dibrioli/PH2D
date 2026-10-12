@@ -378,9 +378,16 @@ fn a_shape_without_params_in_shape_mode_is_selected_without_handles_or_nodes() {
     m.frame();
     m.click([0.0, 0.0]);
     m.frame();
-    assert_eq!(m.vec.pen.selected(), Some(star), "o clique não a seleccionou");
+    assert_eq!(
+        m.vec.pen.selected(),
+        Some(star),
+        "o clique não a seleccionou"
+    );
     assert!(!m.vec.shape_armed, "o clique não desarmou");
     assert!(m.view().is_none(), "uma forma sem parâmetros com alças");
     assert!(hides_the_nodes(&m.vec, &m.sim), "nós no modo Forma");
-    assert!(!m.press([0.0, 0.0]), "o press agarrou uma alça que não existe");
+    assert!(
+        !m.press([0.0, 0.0]),
+        "o press agarrou uma alça que não existe"
+    );
 }

@@ -129,7 +129,12 @@ fn v_agudo(phi: f64) -> (BezPath, Stroke) {
     bp.move_to((-l * s, -l * c));
     bp.line_to((0.0, 0.0));
     bp.line_to((l * s, -l * c));
-    (bp, Stroke::new(2.0 * K).with_join(Join::Miter).with_miter_limit(4.0))
+    (
+        bp,
+        Stroke::new(2.0 * K)
+            .with_join(Join::Miter)
+            .with_miter_limit(4.0),
+    )
 }
 
 /// A altura do bico: o último ponto pintado subindo a bissectriz (`x = 0`) desde a quina.
@@ -157,14 +162,20 @@ fn a_placa_corta_o_bico_alem_do_limite_como_o_oraculo() {
         let (t, o) = (topo(&lei), topo(&oraculo));
         let inteiro = K / (phi.to_radians() * 0.5).sin();
         let quer = if inteiro <= 4.0 * K { inteiro } else { 4.0 * K };
-        assert!((t - quer).abs() < 0.05 && (o - quer).abs() < 0.05, "{phi}°: placa {t}, oráculo {o}, lei {quer}");
+        assert!(
+            (t - quer).abs() < 0.05 && (o - quer).abs() < 0.05,
+            "{phi}°: placa {t}, oráculo {o}, lei {quer}"
+        );
         if inteiro > 4.0 * K {
             for it in &mut pecas {
                 it.limite_esquadria = -it.limite_esquadria;
             }
             let mut antes = BezPath::new();
             contorno_do_eixo(&pecas, &AfimDaCopia::IDENTIDADE, false, &mut antes);
-            assert!(topo(&antes) < K, "{phi}°: o chanfro de antes não voltou com o limite negativo");
+            assert!(
+                topo(&antes) < K,
+                "{phi}°: o chanfro de antes não voltou com o limite negativo"
+            );
         }
     }
 }

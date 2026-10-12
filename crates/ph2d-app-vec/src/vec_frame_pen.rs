@@ -63,7 +63,10 @@ pub fn resize_keeping_the_pen(
             anchor[i] + (vhi[i] - anchor[i]) * s[i],
         )
     };
-    let mut margem = [[glo[0] - vlo[0], vhi[0] - ghi[0]], [glo[1] - vlo[1], vhi[1] - ghi[1]]];
+    let mut margem = [
+        [glo[0] - vlo[0], vhi[0] - ghi[0]],
+        [glo[1] - vlo[1], vhi[1] - ghi[1]],
+    ];
     let largura = [ghi[0] - glo[0], ghi[1] - glo[1]];
     let tol = 1e-9 * (vhi[0] - vlo[0]).max(vhi[1] - vlo[1]).max(1.0);
     // O 1.º passe com a margem de partida; depois, a secante sobre o erro da largura visual.
@@ -105,7 +108,10 @@ pub fn resize_keeping_the_pen(
         if erro < tol {
             break;
         }
-        margem = [[nlo[0] - wlo[0], whi[0] - nhi[0]], [nlo[1] - wlo[1], whi[1] - nhi[1]]];
+        margem = [
+            [nlo[0] - wlo[0], whi[0] - nhi[0]],
+            [nlo[1] - wlo[1], whi[1] - nhi[1]],
+        ];
         for i in 0..2 {
             let (tlo, thi) = alvo(i);
             let f = (whi[i] - wlo[i]) - (thi - tlo);

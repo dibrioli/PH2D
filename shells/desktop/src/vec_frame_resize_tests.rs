@@ -583,7 +583,10 @@ fn a_resize_with_the_stroke_in_the_box_keeps_the_pen_and_both_visual_edges() {
                 "({sx}, {sy}): a borda agarrada não está no cursor: {v1:?}"
             );
         }
-        let w = scene.path(id).and_then(|p| p.stroke.as_ref()).map(|s| s.width);
+        let w = scene
+            .path(id)
+            .and_then(|p| p.stroke.as_ref())
+            .map(|s| s.width);
         assert_eq!(w, Some(0.2), "({sx}, {sy}): a largura do traço mudou");
     }
 }

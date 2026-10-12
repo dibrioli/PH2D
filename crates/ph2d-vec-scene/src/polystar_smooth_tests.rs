@@ -182,7 +182,12 @@ fn a_corner_whose_edges_are_eaten_whole_keeps_its_style() {
 /// arredondado não teria o que arredondar — o raio sumia (medido: o efeito do raio `0,25` cai ~5×).
 #[test]
 fn with_a_radius_the_smooth_vertex_stays_a_corner_and_the_radius_shows() {
-    for (s, c, min) in [(0.3, 0.4, 0.01), (0.3, -0.4, 0.1), (0.1, 0.4, 0.01), (0.5, 0.2, 0.01)] {
+    for (s, c, min) in [
+        (0.3, 0.4, 0.01),
+        (0.3, -0.4, 0.1),
+        (0.1, 0.4, 0.01),
+        (0.5, 0.2, 0.01),
+    ] {
         let mk = |r: f64| PolyStar {
             curve: c,
             ..poly(5, s, r, CornerStyle::Round)

@@ -34,7 +34,15 @@ fn the_scene_selects_with_the_shape_tool_and_brings_the_handles_back() {
         c.vec.shape_armed = true;
         let alcas = |c: &super::tests::Cena| {
             let sel = c.vec.pen.selected_paths();
-            view(&c.sim, &c.vec.entities, sel, Gate::of(&c.vec), 0.01, None, None)
+            view(
+                &c.sim,
+                &c.vec.entities,
+                sel,
+                Gate::of(&c.vec),
+                0.01,
+                None,
+                None,
+            )
         };
         assert!(alcas(&c).is_none(), "armado, a forma {k} já tinha alças");
         assert!(step(s, &mut c.vec, &mut c.scene, &mut c.hero).is_some());

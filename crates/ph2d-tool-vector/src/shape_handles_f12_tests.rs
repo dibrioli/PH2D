@@ -175,5 +175,8 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
             }
         }
     }
-    assert!(na_borda > 0 && por_fora > 0, "{na_borda} na borda, {por_fora} por fora");
+    assert!(
+        na_borda > 0 && por_fora > 0,
+        "{na_borda} na borda, {por_fora} por fora"
+    );
 }

@@ -45,7 +45,10 @@ fn redimensiona(scene: &mut VecScene, id: VecPathId, ws: [f64; 2], t: f64, s: [f
             "eixo {i}, s {s:?}, pivô {t}: a caixa {nlo:?}–{nhi:?}, pedida {tlo}–{thi}"
         );
     }
-    let w = scene.path(id).and_then(|p| p.stroke.as_ref()).map(|s| s.width);
+    let w = scene
+        .path(id)
+        .and_then(|p| p.stroke.as_ref())
+        .map(|s| s.width);
     assert_eq!(w, Some(w0), "a largura do traço mudou");
 }
 
@@ -80,7 +83,10 @@ fn the_raw_scale_moves_the_edge_and_keep_the_pen_restores_the_width() {
     let (lo, hi) = visual(&scene, id, [1.0, 1.0]);
     scene.scale_path(id, 2.0, 1.0, lo);
     let (nlo, nhi) = visual(&scene, id, [1.0, 1.0]);
-    let w = scene.path(id).and_then(|p| p.stroke.as_ref()).map(|s| s.width);
+    let w = scene
+        .path(id)
+        .and_then(|p| p.stroke.as_ref())
+        .map(|s| s.width);
     assert!(w.is_some_and(|w| w > 6.0), "o cru não engrossou: {w:?}");
     assert!(
         (nhi[0] - (lo[0] + 2.0 * (hi[0] - lo[0]))).abs() > 0.1 || (nlo[0] - lo[0]).abs() > 0.1,
@@ -97,7 +103,8 @@ fn the_raw_scale_moves_the_edge_and_keep_the_pen_restores_the_width() {
 fn keep_the_pen_keeps_the_layers_width_offset_and_dilation() {
     let (mut scene, id, _) = cena(rectangle([0.0, 0.0], [100.0, 40.0]), 6.0);
     let p = scene.path_mut(id).expect("forma");
-    let mut faixa = ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 3.0));
+    let mut faixa =
+        ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 3.0));
     faixa.offset = [4.0, -2.0];
     faixa.dilate = 1.5;
     p.paints.push(faixa);
@@ -111,7 +118,11 @@ fn keep_the_pen_keeps_the_layers_width_offset_and_dilation() {
         (w, e.offset, e.dilate)
     };
     scene.scale_path(id, 2.0, 2.0, [0.0, 0.0]);
-    assert_ne!(lerp(&scene), (3.0, [4.0, -2.0], 1.5), "controlo: o cru não mexeu");
+    assert_ne!(
+        lerp(&scene),
+        (3.0, [4.0, -2.0], 1.5),
+        "controlo: o cru não mexeu"
+    );
     if let Some(p) = scene.path_mut(id) {
         *p = start.clone();
     }

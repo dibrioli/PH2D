@@ -19,6 +19,7 @@
 - [Corpus da pesquisa ossos+vetor (23/09), fora do repo](reference_vector_bones_research_corpus_2026_09_23.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - ⭐ [Dono decidiu (06/10): o PH2D TERÁ versão no navegador, mas NÃO agora — 1.º degrau: AVIF fora do `wasm32`](project_web_shell_decided_by_owner_2026_10_06.md)
+- ⭐ [Dono decidiu (12/10): YouTube no Quadro = o navegador família-Chrome da PESSOA por CDP; nada embutido](project_youtube_in_the_board_uses_the_persons_own_browser_2026_10_12.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md)
 - [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)

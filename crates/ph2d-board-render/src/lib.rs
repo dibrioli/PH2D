@@ -30,7 +30,10 @@ pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
-pub use video::{Placement, PlayerInput, PlayerKey, Thumb, Videos, set_thumbnail, video_key};
+pub use video::{
+    Placement, PlayerInput, PlayerStatus, Thumb, VideoCommand, Videos, set_thumbnail,
+    video_key,
+};
 
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
 

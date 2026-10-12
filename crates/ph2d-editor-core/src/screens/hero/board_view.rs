@@ -144,8 +144,9 @@ fn view_rect(board: &Board, area: Area) -> [f64; 4] {
 
 /// A roda sobre a área de um quadro activo. `true` = consumida (a cena não a vê).
 pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
-    // W8 — durante a apresentação a vista é a da viagem: a roda não a mexe.
-    if super::board_nav::team::show::showing(hero) {
+    // W8 — durante a apresentação a vista é a da viagem: a roda não a mexe (W19: nem no ecrã inteiro do
+    // vídeo, que tapa o quadro).
+    if super::board_nav::team::show::showing(hero) || super::board_video::fullscreen(hero) {
         return true;
     }
     let area = hero.last_canvas;

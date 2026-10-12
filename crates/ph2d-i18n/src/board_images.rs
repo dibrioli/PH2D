@@ -27,6 +27,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.video.cannot_open" => {
             "This video cannot play here, and the browser could not be opened"
         }
+        // W19 — os NOSSOS controles, por baixo do vídeo.
+        "board.video.play" => "Play (Space or K)",
+        "board.video.pause" => "Pause (Space or K)",
+        "board.video.seek" => "Jump in the video (arrows: 5 s, J/L: 10 s)",
+        "board.video.mute" => "Mute (M)",
+        "board.video.unmute" => "Unmute (M)",
+        "board.video.volume" => "Volume (arrows up and down)",
+        "board.video.fullscreen" => "Full screen (F)",
+        "board.video.exit_fullscreen" => "Leave full screen (Esc or F)",
+        "board.video.open_outside" => "Open on YouTube, where the board stopped",
+        "board.video.time" => "{now} / {total}",
         "board.style.gray" => "Black and white",
         "board.style.flip_h" => "Flip horizontal (Shift+H)",
         "board.style.flip_v" => "Flip vertical (Shift+V)",

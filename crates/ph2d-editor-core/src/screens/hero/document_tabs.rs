@@ -104,6 +104,7 @@ pub fn populate(store: &mut WidgetStore) {
     super::document_tabs_menu::populate(store);
     super::send_to_board::populate(store);
     super::board_bar::populate(store);
+    super::board_video_bar::populate(store);
     super::board_nav::populate(store);
 }
 
@@ -280,6 +281,7 @@ pub fn gap_px() -> f32 {
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if super::document_tabs_menu::apply_event(hero, event)
         || super::board_bar::apply_event(hero, event)
+        || super::board_video_bar::apply_event(hero, event)
         || super::board_nav::apply_event(hero, event)
     {
         return true;

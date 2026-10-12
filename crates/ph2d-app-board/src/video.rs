@@ -1,9 +1,12 @@
 //! W18 ([ADR-0185]) — **dá vida aos vídeos do quadro**, a cada quadro do app (pelo `io::service`):
 //! - as miniaturas que o desenho pediu buscam-se num fio cada (com prazo, e a cache em disco);
 //! - o vídeo ACTIVADO toca no navegador da pessoa ([`ph2d_board_video::Player`]): arranca, segue o tamanho
-//!   dele no ecrã, recebe o rato e as teclas, e os quadros dele voltam para o desenho;
-//! - deixar de estar vivo (tapado, rodado, pequeno, fora da vista) ou desactivar PAUSA (as regras do
-//!   YouTube); o navegador fecha um minuto depois do último vídeo;
+//!   dele no ecrã, recebe o rato, e os quadros dele voltam para o desenho;
+//! - deixar de estar vivo (tapado, rodado, menos de 200×200 px à vista) ou desactivar PAUSA (as regras do
+//!   YouTube) e, de volta, retoma só se estava a tocar; o navegador fecha um minuto depois do último vídeo;
+//! - W19: os NOSSOS controles (`Videos::commands`) e o estado do tocador para eles (`Videos::status`); os
+//!   links que o tocador quis abrir (o canal, o título) vão para o navegador do sistema; o tamanho do
+//!   tocador só segue o do ecrã quando o zoom assenta ([`SETTLE`]);
 //! - sem navegador da família Chrome: abre o link no navegador do sistema e diz porquê.
 //!
 //! [ADR-0185]: ../../../docs/architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md
@@ -14,8 +17,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use ph2d_board_model::{ElementId, Video};
-use ph2d_board_render::{PlayerInput, PlayerKey, Thumb, set_thumbnail, video_key};
-use ph2d_board_video::{Button, Key, Mouse, Player, PlayerState};
+use ph2d_board_render::{
+    PlayerInput, PlayerStatus, Thumb, VideoCommand, set_thumbnail, video_key,
+};
+use ph2d_board_video::{Button, Mouse, Player, PlayerState};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_vector::StableImage;
 
@@ -23,6 +28,10 @@ use ph2d_vector::StableImage;
 const THUMB_DEADLINE: Duration = Duration::from_secs(8);
 /// Quanto o navegador fica aberto depois do último vídeo (voltar a um vídeo não espera meio segundo).
 const LINGER: Duration = Duration::from_secs(60);
+/// Quanto tempo o tamanho do vídeo no ecrã fica igual antes de o tocador o seguir. Medido
+/// (`youtube_motor/saidas/w19`, variante «assenta»): 30 quadros/s e zero pausas; seguir a cada quadro também
+/// não pausa, mas recomeça o screencast 60 vezes por segundo — o desenho escala o quadro entretanto.
+const SETTLE: Duration = Duration::from_millis(250);
 
 type Fetched = (String, Option<Vec<u8>>);
 
@@ -31,7 +40,10 @@ struct Playing {
     video: Video,
     player: Player,
     size: [u32; 2],
-    paused: bool,
+    /// O tamanho que o ecrã pede e desde quando (o tocador segue-o depois de [`SETTLE`]).
+    asked: Option<([u32; 2], Instant)>,
+    /// Pausado pelas REGRAS (não vivo): `Some(estava a tocar)` — de volta, retoma só nesse caso.
+    held: Option<bool>,
 }
 
 struct State {
@@ -131,44 +143,13 @@ fn thumbnails(hero: &mut HeroScreen, st: &mut State) {
     }
 }
 
-/// A tecla do tocador com o nome do DOM (`key`, `code`, o código virtual do Windows, o texto).
-fn dom_key(down: bool, k: PlayerKey) -> Key {
-    let (key, code, vk, text): (String, String, u32, Option<String>) = match k {
-        PlayerKey::Char(c) => {
-            let up = c.to_ascii_uppercase();
-            let code = if c.is_ascii_digit() {
-                format!("Digit{c}")
-            } else {
-                format!("Key{up}")
-            };
-            (c.to_string(), code, u32::from(up), Some(c.to_string()))
-        }
-        PlayerKey::Space => (" ".into(), "Space".into(), 32, Some(" ".into())),
-        PlayerKey::Left => ("ArrowLeft".into(), "ArrowLeft".into(), 37, None),
-        PlayerKey::Up => ("ArrowUp".into(), "ArrowUp".into(), 38, None),
-        PlayerKey::Right => ("ArrowRight".into(), "ArrowRight".into(), 39, None),
-        PlayerKey::Down => ("ArrowDown".into(), "ArrowDown".into(), 40, None),
-        PlayerKey::Home => ("Home".into(), "Home".into(), 36, None),
-        PlayerKey::End => ("End".into(), "End".into(), 35, None),
-        PlayerKey::Enter => ("Enter".into(), "Enter".into(), 13, None),
-        PlayerKey::Tab => ("Tab".into(), "Tab".into(), 9, None),
-    };
-    Key {
-        down,
-        key,
-        code,
-        vk,
-        text: text.filter(|_| down),
-    }
-}
-
-fn mouse(i: &PlayerInput) -> Option<Mouse> {
+fn mouse(i: &PlayerInput) -> Mouse {
     let b = |n: u8| match n {
         0 => Button::Left,
         1 => Button::Middle,
         _ => Button::Right,
     };
-    Some(match *i {
+    match *i {
         PlayerInput::Down {
             x,
             y,
@@ -192,27 +173,55 @@ fn mouse(i: &PlayerInput) -> Option<Mouse> {
             clicks,
         },
         PlayerInput::Move { x, y } => Mouse::Move { x, y },
-        PlayerInput::Wheel { x, y, dx, dy } => Mouse::Wheel { x, y, dx, dy },
-        PlayerInput::Key { .. } => return None,
-    })
+    }
+}
+
+/// Pausa pelas regras (guarda se estava a tocar).
+fn hold(p: &mut Playing) {
+    if p.held.is_none() {
+        let running = p.player.playback().shown(Instant::now()).running();
+        if running {
+            p.player.pause();
+        }
+        p.held = Some(running);
+    }
+}
+
+/// O tamanho que o tocador deve ter agora: o do ecrã, depois de ele ficar [`SETTLE`] igual.
+fn settled(asked: &mut Option<([u32; 2], Instant)>, have: [u32; 2], want: [u32; 2], now: Instant) -> Option<[u32; 2]> {
+    if want == have {
+        *asked = None;
+        return None;
+    }
+    match *asked {
+        Some((s, since)) if s == want => (now.duration_since(since) >= SETTLE).then(|| {
+            *asked = None;
+            want
+        }),
+        _ => {
+            *asked = Some((want, now));
+            None
+        }
+    }
 }
 
 fn player(hero: &mut HeroScreen, st: &mut State) {
+    let now = Instant::now();
     let vids = hero.documents.videos_mut();
     let inbox = std::mem::take(&mut vids.inbox);
+    let commands = std::mem::take(&mut vids.commands);
     let target = vids.active.and_then(|id| {
         let pl = vids.on_screen.get(&id)?;
         Some((id, vids.videos.get(&id)?.clone(), pl.live, pl.screen.size))
     });
     // Desactivado (ou o vídeo saiu da vista): pausa, e o navegador fica um minuto.
     let Some((id, video, live, size)) = target else {
-        if let Some(p) = st.playing.as_mut()
-            && !p.paused
-        {
-            p.player.pause();
-            p.paused = true;
+        vids.status = None;
+        if let Some(p) = st.playing.as_mut() {
+            hold(p);
         }
         if vids.active.is_none() {
+            vids.fullscreen = false;
             let since = *st.idle_since.get_or_insert_with(Instant::now);
             if since.elapsed() > LINGER {
                 st.playing = None;
@@ -227,7 +236,7 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
         Some(p) => {
             p.player.load(&video);
             p.player.resize(size);
-            (p.id, p.video, p.size, p.paused) = (id, video.clone(), size, false);
+            (p.id, p.video, p.size, p.held, p.asked) = (id, video.clone(), size, None, None);
         }
         // Só arranca quando pode estar vivo (senão tocaria com som até a pausa chegar).
         None if !live => return,
@@ -237,7 +246,8 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
                 video: video.clone(),
                 player: Player::start(&video, size),
                 size,
-                paused: false,
+                asked: None,
+                held: None,
             });
         }
     }
@@ -248,6 +258,8 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
             st.playing = None;
             vids.active = None;
             vids.frame = None;
+            vids.status = None;
+            vids.fullscreen = false;
             let link = ph2d_board_embed::canonical_link(&video);
             let opened = ph2d_board_video::open_in_browser(&link);
             hero.documents.warn(match (no, opened) {
@@ -259,29 +271,51 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
         }
         PlayerState::Starting | PlayerState::Playing => {}
     }
-    if !live {
-        if !p.paused {
-            p.player.pause();
-            p.paused = true;
-        }
-        return;
-    }
-    if p.paused {
-        p.player.play();
-        p.paused = false;
-    }
-    if p.size != size {
-        p.player.resize(size);
-        p.size = size;
-    }
-    for i in &inbox {
-        match i {
-            PlayerInput::Key { down, key } => p.player.key(dom_key(*down, *key)),
-            other => {
-                if let Some(m) = mouse(other) {
-                    p.player.mouse(m);
+    let b = p.player.playback();
+    vids.status = Some(PlayerStatus {
+        time: b.now(now),
+        duration: b.duration,
+        playing: b.shown(now).running(),
+        volume: b.volume,
+        muted: b.muted,
+    });
+    let mut notice = None;
+    for c in commands {
+        match c {
+            VideoCommand::TogglePlay if b.shown(now).running() => p.player.pause(),
+            VideoCommand::TogglePlay => p.player.play(),
+            VideoCommand::Seek(t) => p.player.seek(t),
+            VideoCommand::Volume(v) => p.player.set_volume(v),
+            VideoCommand::ToggleMute => p.player.set_muted(!b.muted),
+            VideoCommand::OpenOutside => {
+                p.player.pause();
+                let link = ph2d_board_embed::link_at(&video, b.now(now) as u32);
+                if !ph2d_board_video::open_in_browser(&link) {
+                    notice = Some("board.video.cannot_open");
                 }
             }
+        }
+    }
+    // O canal, o título, «YouTube» dentro do tocador: a aba nova fechou-se lá; o link abre-se aqui.
+    for url in p.player.take_outside() {
+        if !ph2d_board_video::open_in_browser(&url) {
+            notice = Some("board.video.cannot_open");
+        }
+    }
+    if !live {
+        hold(p);
+    } else if let Some(was) = p.held.take()
+        && was
+    {
+        p.player.play();
+    }
+    if let Some(sz) = settled(&mut p.asked, p.size, size, now) {
+        p.player.resize(sz);
+        p.size = sz;
+    }
+    if live {
+        for i in &inbox {
+            p.player.mouse(mouse(i));
         }
     }
     if let Some(f) = p.player.take_frame()
@@ -289,4 +323,11 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
     {
         vids.frame = Some((img, f.size));
     }
+    if let Some(n) = notice {
+        hero.documents.warn(n);
+    }
 }
+
+#[cfg(test)]
+#[path = "video_tests.rs"]
+mod tests;

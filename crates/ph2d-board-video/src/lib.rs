@@ -12,7 +12,7 @@ pub mod thumb;
 
 pub use browser::find as find_browser;
 pub use playback::{Phase, Playback};
-pub use player::{Button, Frame, Key, Mouse, Player, PlayerState};
+pub use player::{Button, Frame, Mouse, Player, PlayerState};
 
 /// «Abrir no navegador»: o `url` (só `https://`) no navegador por omissão do sistema. `false` = não abriu.
 #[must_use]

@@ -70,32 +70,32 @@ pub enum PlayerInput {
         x: f64,
         y: f64,
     },
-    Wheel {
-        x: f64,
-        y: f64,
-        dx: f64,
-        dy: f64,
-    },
-    Key {
-        down: bool,
-        key: PlayerKey,
-    },
 }
 
-/// Uma tecla para o tocador (quem fala com o navegador dá-lhe o nome do DOM).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PlayerKey {
-    /// Uma letra ou algarismo ASCII (minúsculo).
-    Char(char),
-    Space,
-    Left,
-    Right,
-    Up,
-    Down,
-    Home,
-    End,
-    Enter,
-    Tab,
+/// O estado do tocador do vídeo activo, para os NOSSOS controles (o app põe-no a cada quadro).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PlayerStatus {
+    /// Segundos.
+    pub time: f64,
+    pub duration: f64,
+    /// A tocar (ou a encher): o botão mostra «pausa».
+    pub playing: bool,
+    /// `0..=100`.
+    pub volume: u8,
+    pub muted: bool,
+}
+
+/// Uma ordem dos NOSSOS controles para o tocador (o app executa-a).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum VideoCommand {
+    TogglePlay,
+    /// Salta para estes segundos.
+    Seek(f64),
+    /// `0..=100` (e tira o mudo).
+    Volume(u8),
+    ToggleMute,
+    /// «Abrir no YouTube»: o link no navegador do sistema, no tempo em que está (e pausa aqui).
+    OpenOutside,
 }
 
 /// Onde um vídeo ficou no ecrã neste desenho.
@@ -124,6 +124,14 @@ pub struct Videos {
     pub wanted: BTreeSet<String>,
     /// Os vídeos à vista: a chave de cada um (para o app saber o vídeo do activado).
     pub videos: BTreeMap<ElementId, Video>,
+    /// O estado do tocador activo (`None` = ainda não há tocador).
+    pub status: Option<PlayerStatus>,
+    /// As ordens dos nossos controles (o app esvazia).
+    pub commands: Vec<VideoCommand>,
+    /// O NOSSO ecrã inteiro: o vídeo activo enche a área do quadro, com a proporção dele.
+    pub fullscreen: bool,
+    /// A apresentação está a desenhar (o modo limpo do export): os vídeos dela registam-se e tocam.
+    pub presenting: bool,
 }
 
 impl Videos {
@@ -208,7 +216,7 @@ pub(crate) fn paint(
         covered: covered(doc, el),
         visible: [span(|c| c.x, x, x + w), span(|c| c.y, y, y + h)],
     };
-    let on_screen = cache.export.is_none();
+    let on_screen = cache.export.is_none() || cache.videos.presenting;
     let active = on_screen && cache.videos.active == Some(el.id);
     let live = active && live_allowed(screen);
     if on_screen {

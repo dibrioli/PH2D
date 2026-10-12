@@ -121,6 +121,11 @@ pub fn stop(hero: &mut HeroScreen) {
         return;
     };
     hero.documents.live.team.commenting = s.was_commenting;
+    // W19 — o vídeo que tocava na apresentação pára (no quadro volta a ser só o lugar com o play).
+    let vids = hero.documents.videos_mut();
+    vids.active = None;
+    vids.frame = None;
+    vids.fullscreen = false;
     if let Some(b) = hero
         .documents
         .active_board_mut()
@@ -153,6 +158,10 @@ pub fn key(
                 };
                 go(s, to, cam);
             }
+        }
+        // W19 — no ecrã inteiro de um vídeo, o `Esc` sai só dele.
+        BoardKey::Escape if hero.documents.videos_mut().fullscreen => {
+            hero.documents.videos_mut().fullscreen = false;
         }
         BoardKey::Escape => stop(hero),
         _ => {}
@@ -208,8 +217,23 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
                 EXPORT_PAPER,
             );
         }
+        cache.videos.presenting = true;
         ph2d_board_render::paint(board, a, scene, theme, ts, cache, routes, None);
+        cache.videos.presenting = false;
         cache.export = None;
+        // W19 — só os vídeos DESTE diapositivo tocam (os vizinhos ficam no preto).
+        if let Some((p0, p1)) = corners {
+            let inside = |q: ph2d_vector::Point| {
+                q.x >= p0[0] - 0.5 && q.y >= p0[1] - 0.5 && q.x <= p1[0] + 0.5 && q.y <= p1[1] + 0.5
+            };
+            let doc = &board.doc;
+            cache.videos.on_screen.retain(|id, pl| {
+                doc.get(*id).is_some_and(|el| {
+                    inside(pl.to_screen * ph2d_vector::Point::new(0.0, 0.0))
+                        && inside(pl.to_screen * ph2d_vector::Point::new(el.w, el.h))
+                })
+            });
+        }
         // Fora do diapositivo, preto (os vizinhos não espreitam).
         if let Some((p0, p1)) = corners {
             let (vx0, vy0, vx1, vy1) = (a[0], a[1], a[0] + a[2], a[1] + a[3]);
@@ -294,4 +318,6 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
     );
     let fg = crate::paint::resolve(ColorToken::Text1, theme);
     crate::paint::paint_text_centered(ts, scene, &label, count, font, fg);
+    // W19 — os vídeos do diapositivo tocam aqui, com os nossos controles por baixo (por cima da sala).
+    super::super::super::board_video_bar::paint_show(hero, viewport, scene, ts);
 }

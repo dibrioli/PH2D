@@ -178,4 +178,8 @@ fn the_player_comes_without_its_own_controls() {
         assert!(u.split(['?', '&']).any(|q| q == p), "falta {p}: {u}");
     }
     assert!(player_url_at(&v, 130).ends_with("start=130"));
+    // «Abrir no YouTube» continua onde o quadro parou — e o link volta ao mesmo vídeo, nesse ponto.
+    let at = youtube(&link_at(&v, 75)).unwrap();
+    assert_eq!(at, Video::YouTube { id: ID.into(), start: 75, vertical: false });
+    assert_eq!(link_at(&v, 0), format!("https://www.youtube.com/watch?v={ID}"));
 }

@@ -65,6 +65,7 @@ pub mod board_images;
 pub mod board_keys;
 pub mod board_nav;
 pub mod board_video;
+pub mod board_video_bar;
 pub mod board_view;
 pub mod document_tabs;
 pub mod document_tabs_menu;

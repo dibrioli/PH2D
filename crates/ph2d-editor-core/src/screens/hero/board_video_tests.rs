@@ -5,7 +5,8 @@
 use super::*;
 use crate::screens::hero::board_video;
 use ph2d_board_model::ElementId;
-use ph2d_board_render::{PlayerInput, PlayerKey};
+use crate::screens::hero::board_video_bar::{self, Ctl, layout};
+use ph2d_board_render::{PlayerInput, PlayerStatus, VideoCommand};
 
 const LINK: &str = "https://www.youtube.com/watch?v=aqz-KE-bpKQ";
 
@@ -101,16 +102,11 @@ fn a_pasted_link_becomes_a_video_that_plays_on_its_play_and_takes_the_mouse_and_
         [v.x, v.y],
         "o quadro não arrastou"
     );
-    // As teclas: o espaço é do tocador.
+    // As teclas (W19): o espaço é dos NOSSOS controles (o tocador vem com `disablekb=1`).
+    t.hero.documents.videos_mut().status = Some(STATUS);
     assert!(t.key(BoardKey::Space, Modifiers::default(), None));
-    let keys = std::mem::take(&mut t.hero.documents.videos_mut().inbox);
-    assert!(
-        keys.contains(&PlayerInput::Key {
-            down: true,
-            key: PlayerKey::Space
-        }),
-        "{keys:?}"
-    );
+    let cmds = std::mem::take(&mut t.hero.documents.videos_mut().commands);
+    assert_eq!(cmds, vec![VideoCommand::TogglePlay]);
     // Fora: desactiva.
     let out = t.at(0.02, 0.98);
     click(&mut t, out);
@@ -136,4 +132,150 @@ fn the_video_button_asks_the_app_for_the_clipboard_link() {
     assert!(board_video::insert_link(&mut t.hero, LINK, None));
     t.paint();
     assert!(video(&t).is_some());
+}
+
+/// O que o app põe a cada quadro com o tocador a tocar (aos 10 s de 100).
+const STATUS: PlayerStatus = PlayerStatus {
+    time: 10.0,
+    duration: 100.0,
+    playing: true,
+    volume: 80,
+    muted: false,
+};
+
+/// Um vídeo colado, activado pelo play, com o estado do tocador (como o app o deixa).
+fn active(t: &mut T) -> ElementId {
+    assert!(paste(t, LINK));
+    let id = video(t).unwrap().id;
+    let play = on_video(t, id, 0.5, 0.5);
+    click(t, play);
+    t.hero.documents.videos_mut().status = Some(STATUS);
+    t.paint();
+    id
+}
+
+/// Down + Up pelo despacho real em `(x, y)`; os eventos vão ao ecrã.
+fn press(t: &mut T, (x, y): (f32, f32)) {
+    let arena = Bump::new();
+    let mut ev = t.hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena).to_vec();
+    ev.extend_from_slice(t.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
+    for e in ev {
+        t.hero.apply_event(e);
+    }
+    t.paint();
+}
+
+fn ctl(t: &T, c: Ctl) -> (f32, f32) {
+    t.find(board_video_bar::node(c))
+        .unwrap_or_else(|| panic!("{c:?} não está pintado"))
+}
+
+fn commands(t: &mut T) -> Vec<VideoCommand> {
+    std::mem::take(&mut t.hero.documents.videos_mut().commands)
+}
+
+/// O rectângulo de ecrã do vídeo, pela colocação que o desenho registou.
+fn video_rect(t: &mut T, id: ElementId) -> [f32; 4] {
+    let (a, b) = (on_video(t, id, 0.0, 0.0), on_video(t, id, 1.0, 1.0));
+    [a.0, a.1, b.0 - a.0, b.1 - a.1]
+}
+
+/// ⭐⭐ W19 — os NOSSOS controles: pintados POR BAIXO do vídeo (nada à frente dele — as regras do
+/// YouTube), e cada um, pelo despacho real, dá a ordem dele ao tocador.
+#[test]
+fn our_controls_sit_under_the_video_and_each_gives_its_order() {
+    let mut t = T::new();
+    let id = active(&mut t);
+    let [vx, vy, vw, vh] = video_rect(&mut t, id);
+    for c in [Ctl::Play, Ctl::Seek, Ctl::Mute, Ctl::Volume, Ctl::Fullscreen, Ctl::Outside] {
+        let (x, y) = ctl(&t, c);
+        assert!(y > vy + vh, "{c:?} em {x},{y}: à frente do vídeo {vx},{vy} {vw}×{vh}");
+    }
+    for (c, want) in [
+        (Ctl::Play, VideoCommand::TogglePlay),
+        (Ctl::Mute, VideoCommand::ToggleMute),
+        (Ctl::Outside, VideoCommand::OpenOutside),
+    ] {
+        let at = ctl(&t, c);
+        press(&mut t, at);
+        assert_eq!(commands(&mut t), vec![want], "{c:?}");
+    }
+    // A barra de tempo: o clique a meio salta para o meio do vídeo.
+    let (x, y) = ctl(&t, Ctl::Seek);
+    press(&mut t, (x, y));
+    let got = commands(&mut t);
+    assert!(
+        matches!(got.as_slice(), [VideoCommand::Seek(s)] if (s - 50.0).abs() < 3.0),
+        "{got:?}"
+    );
+    assert_eq!(t.hero.documents.videos_mut().active, Some(id), "a barra não desactiva o vídeo");
+}
+
+/// ⭐⭐ W19 — o NOSSO ecrã inteiro: o vídeo enche a área do quadro com a proporção dele (16:9, nunca
+/// esticado), a barra fica por baixo dele, as barras do quadro somem, o rato no preto e a roda não chegam
+/// ao quadro, e o `Esc` sai.
+#[test]
+fn our_fullscreen_fills_the_board_keeping_the_shape_and_esc_leaves() {
+    let mut t = T::new();
+    let id = active(&mut t);
+    let at = ctl(&t, Ctl::Fullscreen);
+    press(&mut t, at);
+    assert!(board_video::fullscreen(&t.hero));
+    t.paint();
+    let [x, y, w, h] = video_rect(&mut t, id);
+    let area = t.hero.last_canvas;
+    assert!((w / h - 16.0 / 9.0).abs() < 1e-3, "esticado: {w}×{h}");
+    assert!(
+        (w - area.w).abs() < 1.0 || h > area.h * 0.8,
+        "não encheu a área {area:?}: {w}×{h}"
+    );
+    assert!(x >= area.x && y >= area.y && x + w <= area.x + area.w + 0.5);
+    let pl = t.hero.documents.videos_mut().on_screen[&id];
+    assert!(pl.live, "no ecrã inteiro o tocador está vivo: {:?}", pl.screen);
+    let (_, by) = ctl(&t, Ctl::Play);
+    assert!(by > y + h, "a barra à frente do vídeo");
+    assert!(t.find(super::node(Item::Video)).is_none(), "as barras do quadro ficaram por baixo");
+    // O preto à volta: não desactiva nem chega ao quadro.
+    click(&mut t, (area.x + 2.0, area.y + 2.0));
+    assert_eq!(t.hero.documents.videos_mut().active, Some(id));
+    assert!(board_view::wheel(&mut t.hero, area.x + 2.0, area.y + 2.0, 1.0));
+    assert!(t.key(BoardKey::Escape, Modifiers::default(), None));
+    assert!(!board_video::fullscreen(&t.hero));
+}
+
+/// W19 — os atalhos do YouTube são dos nossos controles.
+#[test]
+fn the_youtube_shortcuts_drive_our_controls() {
+    let mut t = T::new();
+    let _ = active(&mut t);
+    let none = Modifiers::default();
+    for (k, want) in [
+        (BoardKey::Char('k'), VideoCommand::TogglePlay),
+        (BoardKey::Right, VideoCommand::Seek(15.0)),
+        (BoardKey::Left, VideoCommand::Seek(5.0)),
+        (BoardKey::Char('l'), VideoCommand::Seek(20.0)),
+        (BoardKey::Char('j'), VideoCommand::Seek(0.0)),
+        (BoardKey::Up, VideoCommand::Volume(85)),
+        (BoardKey::Down, VideoCommand::Volume(75)),
+        (BoardKey::Char('m'), VideoCommand::ToggleMute),
+    ] {
+        assert!(t.key(k, none, None), "{k:?}");
+        assert_eq!(commands(&mut t), vec![want], "{k:?}");
+    }
+    assert!(t.key(BoardKey::Char('f'), none, None));
+    assert!(board_video::fullscreen(&t.hero));
+}
+
+/// A barra nunca fica à frente do vídeo: por baixo, por cima se em baixo não couber, e nenhuma se não
+/// couber em lado nenhum.
+#[test]
+fn the_bar_goes_under_or_over_the_video_never_on_it() {
+    use crate::zones::Rect;
+    let area = Rect::new(0.0, 0.0, 1000.0, 600.0);
+    let time = 80.0;
+    let under = layout(area, Rect::new(100.0, 100.0, 560.0, 315.0), time).unwrap();
+    assert!(under.ctls.iter().all(|(_, r)| r.y >= 415.0));
+    let over = layout(area, Rect::new(100.0, 250.0, 560.0, 340.0), time).unwrap();
+    assert!(over.ctls.iter().all(|(_, r)| r.y + r.h <= 250.0));
+    assert!(layout(area, Rect::new(0.0, 10.0, 1000.0, 580.0), time).is_none());
 }

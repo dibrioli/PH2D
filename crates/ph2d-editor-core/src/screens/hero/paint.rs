@@ -256,8 +256,12 @@ pub fn paint_hero_screen(
             ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
             ph2d_board_render::paint_votes(board, area, scene, text_system, cache, &marks);
         }
-        super::board_nav::paint(hero, r, scene, text_system);
-        super::board_bar::paint(hero, r, scene, text_system);
+        // W19 — no NOSSO ecrã inteiro o vídeo tapa a área: as barras do quadro nem se pintam (nem se agarram).
+        if !super::board_video::fullscreen(hero) {
+            super::board_nav::paint(hero, r, scene, text_system);
+            super::board_bar::paint(hero, r, scene, text_system);
+        }
+        super::board_video_bar::paint(hero, r, scene, text_system);
         // Pintar e agarrar leem o MESMO rect (o `board_view` lê o `last_canvas`).
         hero.last_canvas = r;
         hero.last_content = r;

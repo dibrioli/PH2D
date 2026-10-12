@@ -128,6 +128,18 @@ pub fn canonical_link(v: &Video) -> String {
 /// (`youtube_motor/saidas/w19*`): ficam o título, o canal, «Copiar link», o «YouTube» e o play ao meio.
 pub const OUR_CONTROLS: &str = "controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3";
 
+/// O link do vídeo no ponto em que ele está (`secs`): o «Abrir no YouTube» dos nossos controles continua
+/// onde o quadro parou.
+#[must_use]
+pub fn link_at(v: &Video, secs: u32) -> String {
+    match v {
+        Video::YouTube { id, .. } if secs > 0 => {
+            format!("https://www.youtube.com/watch?v={id}&t={secs}s")
+        }
+        Video::YouTube { id, .. } => format!("https://www.youtube.com/watch?v={id}"),
+    }
+}
+
 /// O tocador OFICIAL (o domínio sem cookies do YouTube), a começar em `start` segundos, sem os controles
 /// dele ([`OUR_CONTROLS`]); `enablejsapi` deixa a página que o leva falar com ele pela API oficial
 /// (`postMessage`: as ordens e o estado).

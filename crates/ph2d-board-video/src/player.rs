@@ -74,22 +74,6 @@ pub enum Mouse {
         button: Button,
         clicks: u32,
     },
-    Wheel {
-        x: f64,
-        y: f64,
-        dx: f64,
-        dy: f64,
-    },
-}
-
-/// Uma tecla (os nomes do DOM: `key` = `" "`, `code` = `"Space"`, o código virtual do Windows).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Key {
-    pub down: bool,
-    pub key: String,
-    pub code: String,
-    pub vk: u32,
-    pub text: Option<String>,
 }
 
 enum Cmd {
@@ -98,7 +82,6 @@ enum Cmd {
     Call(&'static str, Value),
     Resize([u32; 2]),
     Mouse(Mouse),
-    Key(Key),
 }
 
 #[derive(Default)]
@@ -236,9 +219,6 @@ impl Player {
         let _ = self.cmd.send(Cmd::Mouse(m));
     }
 
-    pub fn key(&self, k: Key) {
-        let _ = self.cmd.send(Cmd::Key(k));
-    }
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -375,17 +355,6 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
                 let (method, p) = mouse_params(m);
                 b.send(method, p, sess);
             }
-            Ok(Cmd::Key(k)) => {
-                let mut p = json!({
-                    "type": if k.down { "keyDown" } else { "keyUp" },
-                    "key": k.key, "code": k.code,
-                    "windowsVirtualKeyCode": k.vk, "nativeVirtualKeyCode": k.vk,
-                });
-                if let (true, Some(t)) = (k.down, k.text) {
-                    p["text"] = json!(t);
-                }
-                b.send("Input.dispatchKeyEvent", p, sess);
-            }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return PlayerState::Starting,
         }
@@ -437,9 +406,6 @@ fn mouse_params(m: Mouse) -> (&'static str, Value) {
             clicks,
         } => {
             json!({ "type": "mouseReleased", "x": x, "y": y, "button": name(button), "clickCount": clicks })
-        }
-        Mouse::Wheel { x, y, dx, dy } => {
-            json!({ "type": "mouseWheel", "x": x, "y": y, "deltaX": dx, "deltaY": dy })
         }
     };
     ("Input.dispatchMouseEvent", p)

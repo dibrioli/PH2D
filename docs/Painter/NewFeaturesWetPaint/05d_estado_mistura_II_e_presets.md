@@ -275,3 +275,9 @@
   `dev` e `release`, nenhum bit mudou. Censo do código gerado: nenhum outro laço vectorizado com a máscara. O
   `sedimenta` ganhou o portão série × paralelo que faltava. Reprodutor de 40 linhas pronto para o dono decidir se
   reporta. [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_COMPILADOR.md).
+
+- ✅ **Família C: os valores do DONO nos três presets do óleo (11/10).** O dono afinou a olho contra o Rebelle o Oil
+  Bristle, a Acrylic Round e o Express Oil (cerdas, pigmento, relevo, Spacing do Stroke 0,01) — ficam («vamos deixar
+  esses valores e seguir»); a régua das mídias perdeu as três métricas que os reprovavam. O Spacing do Tuning saiu do
+  painel (o do pincel é o do Stroke). Achados no smoke, ABERTOS: o relevo que some ao trocar de pincel (#48) e o azul
+  que fica verde no soltar (#49) — 1.º e 2.º da [janela 22](22_PROMPT_janela_relevo_e_verde.md).

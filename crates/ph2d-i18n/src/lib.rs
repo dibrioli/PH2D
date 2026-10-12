@@ -290,7 +290,6 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.wet_tuning.knob.intensity" => "Intensity",
         "panel.wet_tuning.knob.bristleStrength" => "Bristle strength",
         "panel.wet_tuning.knob.bristleSize" => "Bristle size",
-        "panel.wet_tuning.knob.spacing" => "Spacing",
         "panel.wet_tuning.knob.tipClean" => "Tip clean",
         "panel.wet_tuning.knob.blendForce" => "Blend force",
         "panel.wet_tuning.knob.gateSaturation" => "Gate saturation",

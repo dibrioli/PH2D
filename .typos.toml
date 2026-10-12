@@ -427,6 +427,7 @@ reflecte = "reflecte"  # pt-PT de «reflete», dentro de `o_espelho_conserva_o_c
 # e o nome da feature seguem "container" (ingles correto) no codigo.
 resolvemos = "resolvemos"  # pt-BR (citacao VERBATIM do Enio: "ainda nao resolvemos o primeiro traco")
 instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) — lido como "install" mal escrito
+metricas = "metricas"  # pt «métricas» sem acento num campo (`Midia::metricas`, midias_de_fabrica.rs; midias_regua.py)
 # ─────────────────────────────────────────────────────────────────────────────
 # ⚠️ Ship de 2026-10-11 (oito linhas juntas). Critério de sempre — *allowlistar isto pode esconder um
 # typo real?* — NÃO em todas: três palavras portuguesas e um nome próprio.

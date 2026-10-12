@@ -52,6 +52,14 @@ fn parametros(r: &Receita) -> Parametros {
             .is_some(),
         "campo hardness existe"
     );
+    if let Some(s) = r.spacing {
+        assert!(
+            p.brush
+                .insert("spacing".to_owned(), serde_json::json!(s))
+                .is_some(),
+            "campo spacing existe"
+        );
+    }
     if let Some((kind, lado)) = r.grao {
         assert!(
             p.brush

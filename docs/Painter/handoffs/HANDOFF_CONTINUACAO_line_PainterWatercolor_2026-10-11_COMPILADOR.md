@@ -90,3 +90,11 @@ e em `ci-test` (239 s) · censos 134 · 237 · 17 ✓ · `ph2d-app-painter` 103/
 suíte cheia), sozinha em `ci-test` 3/3 a `load` 20–24 — flake de carga de OUTRA linha, ainda fora da tabela do
 `FLAKES_DE_CARGA.md` (registe quem é dono da Luz 2D). Perfil do laço: paralelismo 1,12 → 1,11 · test:check
 2,4 → 2,6 × · Edit 50 → 46 % · contexto/passo 245 → 282 mil. ⇒ **pronta para o `main`** no que é desta linha.
+
+## §7 — Depois do fecho (a mesma janela, ordens do dono)
+
+Spacing do Tuning → `Hidden` (8 × 2 = imagem idêntica; 0,5 = 0,1 %) · os presets do óleo com os valores do dono
+(`receitas_de_fabrica.rs`, `Receita.spacing`) e a `midias_de_fabrica` sem as três métricas que os reprovavam ·
+Bugs #48 e #49 registados · pranchas `comparar_oleo/` por `ferramentas/prancha_comparar.sh <dir dos midia_*.ppm do
+PH2D_SONDA_OUT da midias_de_fabrica> <saída> "<preset>|<foto>|<título>"`. Detalhe e tarefa:
+[prompt 22](../NewFeaturesWetPaint/22_PROMPT_janela_relevo_e_verde.md).

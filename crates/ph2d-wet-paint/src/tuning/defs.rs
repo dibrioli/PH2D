@@ -131,9 +131,11 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         1.0,
         Some(Rebuild::Brush),
     ),
+    // Oculto (dono 11/10): no pincel do produto a distância entre marcas é o Spacing do Stroke; este só
+    // rola a janela do rasto — 8 contra 2 dá a imagem idêntica, 0,5 muda 0,1 % (handoff COMPILADOR §7).
     k(
         Knob::Spacing,
-        KnobGroup::Paint,
+        KnobGroup::Hidden,
         "spacing",
         0.5,
         8.0,

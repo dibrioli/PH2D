@@ -352,8 +352,8 @@ impl PlacaDeFormas {
         self.corridas = corridas;
         self.fonte.clear();
         for &h in vivas {
-        let _ = geometrias.veredito(h, store);
-    }
+            let _ = geometrias.veredito(h, store);
+        }
         self.ativa = ligada && n > 0;
         if !self.ativa {
             self.corridas.clear();
@@ -437,14 +437,14 @@ impl PlacaDeFormas {
                     }
                     self.fonte.push(u32::try_from(k).unwrap_or(u32::MAX));
                     self.copias.push(ShapeInstance {
-                    pos: inst.world_pos,
-                    size: inst.size,
-                    basis: inst.basis,
-                    anchor: inst.anchor,
-                    geometry: inst.geometry_id,
-                    _pad: 0,
-                    tint: inst.tint,
-                });
+                        pos: inst.world_pos,
+                        size: inst.size,
+                        basis: inst.basis,
+                        anchor: inst.anchor,
+                        geometry: inst.geometry_id,
+                        _pad: 0,
+                        tint: inst.tint,
+                    });
                 }
             }
         }

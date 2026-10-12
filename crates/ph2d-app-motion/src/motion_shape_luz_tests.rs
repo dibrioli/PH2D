@@ -252,7 +252,15 @@ fn so_bloqueiam_as_copias_dos_objetos_pedidos() {
         if dispositivo.is_some() {
             let vivas = [insts[0].geometry_id];
             let cam = ph2d_vector::Affine::IDENTITY;
-            assert!(placa.decide_do_dispositivo(true, 2, &vivas, &store, &mut geos, cam));
+            assert!(placa.decide_do_dispositivo(
+                true,
+                2,
+                &vivas,
+                &store,
+                &mut geos,
+                cam,
+                Vec::new()
+            ));
         }
         let mut o = OclusaoDoMotion {
             placa: &mut placa,

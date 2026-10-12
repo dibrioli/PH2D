@@ -65,29 +65,34 @@ O gate batched desta janela: §5.
 
 | tentativa | por quê |
 |---|---|
-| luz aplicada a cada FATIA do Flip antes do compositor | a frescura (`needs_stage`) guarda fatias: re-injetar todas a cada quadro com a luz, ou guardar uma cópia apagada por camada (N × ecrã) |
-| decompor por cor (`L·C_r + C_n`, dois compositores) | exato só para blends lineares e o dobro de fatias |
+| luz em cada FATIA do Flip antes do compositor | a frescura guarda fatias: re-injetar todas por quadro, ou N cópias de ecrã |
+| decompor por cor (`L·C_r + C_n`) | só blends lineares; o dobro de fatias |
 | máscara por píxel de quem não recebe | errada onde os objetos se sobrepõem |
-| `Copias` com início (bind com offset) | o offset de storage tem de ser múltiplo de 256 B (4 cópias); a cópia placa→placa não tem restrição |
+| `Copias` com início (bind com offset) | offset de storage múltiplo de 256 B |
+
+## 4b. Smoke do dono (11/10): «o Unlit não fica visível no Inspector» — CURADO em `94be21a74`
+
+`BloqueiaLuz` e `NaoRecebeLuz` não tinham cartão. Agora:
+`InspectorCorpoDaLuzInfo` + `LuzFieldEdit::{Opacidade, RetirarOclusor, RetirarSemLuz}` no MESMO canal da
+`Luz`; cartões em `sections/luz_corpo.rs`; portões `seam_luz_corpo` (4) e `os_cartoes_do_corpo` (4).
+⭐ Censo `component_card_census_tests.rs`: todo componente do «Add Component» tem cartão ou está na
+dívida com motivo (22; a maioria sem botão de retirar).
 
 ## 5. Gate batched e binário do smoke
 
-`nextest-impacted` (base `5e9c86b54`, placa, load 16–29): 5 053 / 5 065. Os vermelhos, todos ANTERIORES —
-abate feito (os ficheiros desta janela voltados a `5e9c86b54`, a mesma corrida): ⚠️ `a_cena_7_ensina_o_traco_do_flip`
+`nextest-impacted` (base `5e9c86b54`, load 16–29): 5 053 / 5 065. Vermelhos ANTERIORES (abate: os ficheiros
+voltados a `5e9c86b54`): ⚠️ `a_cena_7_ensina_o_traco_do_flip`
 («sem faces»), `o_traco_do_flip_recebe_a_luz_como_o_sprite` (3,12e-3 > 1,48e-3), `a_cena_5_ensina_o_volume` e
-`a_cena_6_ensina_as_formas_desenhadas` («sem faces») reprovam IGUAIS na base — a família dos vermelhos de
-propósito da W5h (o miolo por difusão mudou o interior; reescrever contra a lei nova, W5h §3.3) e NÃO estavam
-na lista dela: junte-os. Mais os seis conhecidos (`o_interior_do_opaco_nao_depende_da_posicao_na_grade` em
-timeout de 180 s) e `o_oclusor_fino` em timeout sob carga (o R9 da W5f). O `workspace_src_files_under_loc_cap`
-estava vermelho desde a W5i (`quadro.rs` 779): curado por corte em `d7429b111` (entorno e leituras em irmãos,
-674). clippy `--all-targets -D warnings` (as seis crates + a shell) e `fmt --check`: limpos.
+`a_cena_6_ensina_as_formas_desenhadas` («sem faces») reprovam IGUAIS na base — família
+dos vermelhos de propósito da W5h (§3.3), fora da lista dela: junte-os. Mais os seis conhecidos (`o_interior_do_opaco_nao_depende_da_posicao_na_grade` em
+timeout de 180 s) e `o_oclusor_fino` em timeout sob carga (o R9 da W5f). O tecto de LOC (`quadro.rs` 779, desde a W5i):
+cortado em `d7429b111` (674). clippy `-D warnings` e `fmt --check`: limpos.
 
 Fotos (`fotos_W5j/`, tela virtual): [cena 7](fotos_W5j/cena7.png) · [cena 8](fotos_W5j/cena8.png) — as
-formas das duas pilhas fazem sombra; as cópias vermelhas do Swarm NÃO (item 6). ⚠️ A abertura a frio na tela
-virtual (HOME isolado ⇒ cache do driver frio) levou 12–45 s até acender sob load 23–58: fotografe com espera ≥ 45.
+formas das duas pilhas fazem sombra; as cópias vermelhas do Swarm NÃO (item 6). ⚠️ Na tela virtual (cache do driver
+frio) a luz acendeu em 12–45 s sob load 23–58: espera ≥ 45 s.
 
-Binário: `cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida: `Finished smoke profile [optimized]
-target(s) in 0.30s`.
+Binário (depois de `94be21a74`), 2.ª corrida: `Finished smoke profile [optimized] target(s) in 0.34s`.
 
 ## Smoke do dono
 

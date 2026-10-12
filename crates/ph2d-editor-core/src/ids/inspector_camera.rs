@@ -142,6 +142,14 @@ pub const INSP_LIVE_NAV_LINK_GRIP: NodeId = hash_node_id("insp_live_nav_link_gri
 pub const INSP_LIVE_LUZ_SECTION: NodeId = hash_node_id("insp_live_luz_section");
 /// A pega de arrasto da secção LUZ.
 pub const INSP_LIVE_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_grip");
+/// O cabeçalho dobrável do cartão LIGHT OCCLUDER — o corpo que bloqueia a luz (`BloqueiaLuz`).
+pub const INSP_LIVE_LUZ_OCLUSOR_SECTION: NodeId = hash_node_id("insp_live_luz_oclusor_section");
+/// A pega de arrasto do cartão LIGHT OCCLUDER.
+pub const INSP_LIVE_LUZ_OCLUSOR_GRIP: NodeId = hash_node_id("insp_live_luz_oclusor_grip");
+/// O cabeçalho dobrável do cartão UNLIT — o corpo que não recebe luz (`NaoRecebeLuz`).
+pub const INSP_LIVE_LUZ_SEM_LUZ_SECTION: NodeId = hash_node_id("insp_live_luz_sem_luz_section");
+/// A pega de arrasto do cartão UNLIT.
+pub const INSP_LIVE_LUZ_SEM_LUZ_GRIP: NodeId = hash_node_id("insp_live_luz_sem_luz_grip");
 /// O cabeçalho dobrável da secção MOTION INPUT — a entrada que o grafo do Motion lê (ciclo 19).
 pub const INSP_LIVE_MOTION_INPUT_SECTION: NodeId = hash_node_id("insp_live_motion_input_section");
 /// A pega de arrasto da secção MOTION INPUT.

@@ -475,6 +475,42 @@ pub(crate) fn push_familia_saida<'a>(
             )
         },
     );
+    // ⭐ Os cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT —, logo a seguir à lâmpada (a mesma
+    // família LUZ do catálogo).
+    let lugar = move |y| crate::paint_optional_luz::Lugar {
+        inner_x,
+        inner_w,
+        y,
+        header_h,
+    };
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_LUZ_OCLUSOR_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_luz::paint_oclusor_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                lugar(y),
+                snaps.corpo_luz_info.as_ref(),
+            )
+        },
+    );
+    plano.push(
+        ph2d_editor_core::ids::INSP_LIVE_LUZ_SEM_LUZ_SECTION,
+        move |c, t, y| {
+            crate::paint_optional_luz::paint_sem_luz_section(
+                c.scene,
+                c.text,
+                t,
+                c.hit,
+                store,
+                lugar(y),
+                snaps.corpo_luz_info.as_ref(),
+            )
+        },
+    );
     plano.push(
         ph2d_editor_core::ids::INSP_LIVE_SCRIPT_SECTION,
         move |c, t, y| {

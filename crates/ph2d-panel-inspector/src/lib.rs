@@ -277,15 +277,23 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,
-    set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_counter_watch,
-    set_current_inspector_emitter, set_current_inspector_factory, set_current_inspector_hud,
-    set_current_inspector_luz, set_current_inspector_motion_input, set_current_inspector_nav,
-    set_current_inspector_parallax, set_current_inspector_particles,
-    set_current_inspector_path_follow, set_current_inspector_projectile, set_current_inspector_ray,
-    set_current_inspector_script, set_current_inspector_sequence, set_current_inspector_shake,
+    set_current_inspector_audio, set_current_inspector_camera, set_current_inspector_corpo_luz,
+    set_current_inspector_counter_watch, set_current_inspector_emitter,
+    set_current_inspector_factory, set_current_inspector_hud, set_current_inspector_luz,
+    set_current_inspector_motion_input, set_current_inspector_nav, set_current_inspector_parallax,
+    set_current_inspector_particles, set_current_inspector_path_follow,
+    set_current_inspector_projectile, set_current_inspector_ray, set_current_inspector_script,
+    set_current_inspector_sequence, set_current_inspector_shake,
     set_current_inspector_statemachine, set_current_inspector_timer, set_current_inspector_topdown,
     set_current_inspector_tween, set_current_inspector_vida, set_current_inspector_weapon,
 };
+
+/// ⭐ **A tabela secção → componente que o cartão EDITA** (a do «mostra o cartão desta família»),
+/// exportada para o censo «todo componente que a paleta oferece tem cartão» a LER — nunca copiada.
+#[must_use]
+pub fn probe_section_components() -> &'static [(NodeId, &'static str)] {
+    &reveal::SECTION_COMPONENT
+}
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.
 ///

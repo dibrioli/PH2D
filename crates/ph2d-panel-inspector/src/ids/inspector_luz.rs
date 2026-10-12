@@ -18,3 +18,11 @@ pub const INSP_LUZ_TAMANHO: NodeId = hash_node_id("insp_luz_tamanho");
 pub const INSP_LUZ_ALCANCE_LIGADO: NodeId = hash_node_id("insp_luz_alcance_ligado");
 /// O alcance da queda autoral, em metros.
 pub const INSP_LUZ_ALCANCE: NodeId = hash_node_id("insp_luz_alcance");
+
+// ⭐ Os cartões do CORPO na luz («Light Occluder» · «Unlit») — componente = ícone + cartão.
+/// A `BloqueiaLuz.opacidade` (`0..=1`).
+pub const INSP_LUZ_OPACIDADE: NodeId = hash_node_id("insp_luz_opacidade");
+/// «x Remove Light Occluder».
+pub const INSP_LUZ_RETIRAR_OCLUSOR: NodeId = hash_node_id("insp_luz_retirar_oclusor");
+/// «x Remove Unlit».
+pub const INSP_LUZ_RETIRAR_SEM_LUZ: NodeId = hash_node_id("insp_luz_retirar_sem_luz");

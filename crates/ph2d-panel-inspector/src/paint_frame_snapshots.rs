@@ -97,6 +97,8 @@ pub(crate) struct LiveSnapshots {
     pub emitter_info: Option<ph2d_editor_core::shake_edits::InspectorEmitterInfo>,
     /// ⭐ A LUZ (Luz 2D, W4).
     pub luz_info: Option<ph2d_editor_core::luz_edits::InspectorLuzInfo>,
+    /// ⭐ Os cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT.
+    pub corpo_luz_info: Option<ph2d_editor_core::luz_edits::InspectorCorpoDaLuzInfo>,
     pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
     pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
@@ -156,6 +158,7 @@ impl LiveSnapshots {
         let shake_info = crate::state_components::current_inspector_shake();
         let emitter_info = crate::state_components::current_inspector_emitter();
         let luz_info = crate::state_components::current_inspector_luz();
+        let corpo_luz_info = crate::state_components::current_inspector_corpo_luz();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -194,6 +197,7 @@ impl LiveSnapshots {
             shake_info.is_some(),
             emitter_info.is_some(),
             luz_info.is_some(),
+            corpo_luz_info.is_some(),
             tags_info.is_some(),
         ]);
         Self {
@@ -230,6 +234,7 @@ impl LiveSnapshots {
             shake_info,
             emitter_info,
             luz_info,
+            corpo_luz_info,
             tags_info,
             blend_info,
             physics_info,

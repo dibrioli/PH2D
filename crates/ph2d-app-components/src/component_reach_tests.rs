@@ -30,7 +30,7 @@ fn buildable_in_the_product(name: &str) -> bool {
 
 /// Os nomes canónicos que a paleta oferece a `kind`, com *Show all* LIGADO (isto é: tudo o que ela
 /// consegue mostrar, aplicável ou não).
-fn offered_to(kind: ObjectKind) -> Vec<&'static str> {
+pub(super) fn offered_to(kind: ObjectKind) -> Vec<&'static str> {
     let reg = crate::component_registry_for_tests::registo();
     let can_build = |n: &str| {
         reg.get_by_id(ph2d_ecs::scene::stable_type_id(n))

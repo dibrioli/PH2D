@@ -323,3 +323,9 @@ mod measure;
 #[cfg(test)]
 #[path = "component_reach_tests.rs"]
 mod reach_tests;
+
+/// ⭐ O censo «todo componente que a paleta oferece tem CARTÃO» — ver
+/// [`crate::component_card_census_tests`].
+#[cfg(test)]
+#[path = "component_card_census_tests.rs"]
+mod card_census_tests;

@@ -5,8 +5,8 @@
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use ph2d_ecs::SimWorld;
-use ph2d_editor_core::luz_edits::{InspectorLuzInfo, LuzFieldEdit};
-use ph2d_light2d_ecs::{Luz, TipoDeLuz};
+use ph2d_editor_core::luz_edits::{InspectorCorpoDaLuzInfo, InspectorLuzInfo, LuzFieldEdit};
+use ph2d_light2d_ecs::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 
 /// A tag de cada tipo (a posição em `luz_edits::TIPOS`).
 #[must_use]
@@ -74,15 +74,57 @@ fn aplicar(l: &mut Luz, edit: &LuzFieldEdit) -> bool {
     *l != antes
 }
 
-/// **O dreno de UMA edição.** `true` = tocou no mundo.
+/// O instantâneo dos cartões do CORPO («Light Occluder» · «Unlit») para o objeto `escolhido`;
+/// `None` se ele não tem nenhum dos dois componentes (ADR-0166: o cartão só existe onde o
+/// componente está).
+#[must_use]
+pub fn build_corpo_info(world: &World, escolhido: Option<u64>) -> Option<InspectorCorpoDaLuzInfo> {
+    let bits = escolhido?;
+    let ent = world.get_entity(Entity::from_bits(bits)).ok()?;
+    let oclusor = ent.get::<BloqueiaLuz>().map(|b| b.opacidade);
+    let sem_luz = ent.contains::<NaoRecebeLuz>();
+    (oclusor.is_some() || sem_luz).then_some(InspectorCorpoDaLuzInfo {
+        entity_bits: bits,
+        oclusor,
+        sem_luz,
+    })
+}
+
+/// As edições do CORPO. `false` = componente ausente, valor recusado ou nada mudou.
+fn aplicar_ao_corpo(w: &mut World, e: Entity, edit: &LuzFieldEdit) -> bool {
+    match *edit {
+        LuzFieldEdit::Opacidade(v) if v.is_finite() => {
+            w.get_mut::<BloqueiaLuz>(e).is_some_and(|mut b| {
+                let nova = v.clamp(0.0, 1.0);
+                let mudou = b.opacidade != nova;
+                if mudou {
+                    b.opacidade = nova;
+                }
+                mudou
+            })
+        }
+        LuzFieldEdit::RetirarOclusor => w.entity_mut(e).take::<BloqueiaLuz>().is_some(),
+        LuzFieldEdit::RetirarSemLuz => w.entity_mut(e).take::<NaoRecebeLuz>().is_some(),
+        _ => false,
+    }
+}
+
+/// **O dreno de UMA edição.** `true` = tocou no mundo. As da lâmpada vão à `Luz`; as do corpo, à
+/// `BloqueiaLuz` / `NaoRecebeLuz`.
 pub fn apply(sim: &mut SimWorld, bits: u64, edit: &LuzFieldEdit) -> bool {
     let e = Entity::from_bits(bits);
     let w = sim.world_mut();
     if w.get_entity(e).is_err() {
         return false;
     }
-    w.get_mut::<Luz>(e)
-        .is_some_and(|mut l| aplicar(&mut l, edit))
+    match edit {
+        LuzFieldEdit::Opacidade(_) | LuzFieldEdit::RetirarOclusor | LuzFieldEdit::RetirarSemLuz => {
+            aplicar_ao_corpo(w, e, edit)
+        }
+        _ => w
+            .get_mut::<Luz>(e)
+            .is_some_and(|mut l| aplicar(&mut l, edit)),
+    }
 }
 
 /// **O dreno do quadro.** `true` = alguma tocou no mundo.
@@ -97,15 +139,21 @@ pub fn apply_all(sim: &mut SimWorld, edits: &[(u64, LuzFieldEdit)]) -> bool {
 impl crate::LuzDoQuadro {
     /// ⭐ **O que a luz publica no fim do quadro** (W5c: saiu da shell, a função dela passava o teto):
     /// aplica a preferência do editor e devolve a ficha da secção LUZ do escolhido (`(entidade,
-    /// quantos)`) e a recusa NOVA do solver em palavras (recusa que só o terminal vê é botão mudo).
+    /// quantos)`), a dos cartões do CORPO e a recusa NOVA do solver em palavras (recusa que só o
+    /// terminal vê é botão mudo).
     pub fn publicar(
         &mut self,
         preferencia: ph2d_editor_core::luz_edits::PreferenciaDaLuz,
         world: &World,
         (escolhido, quantos): (Option<u64>, usize),
-    ) -> (Option<InspectorLuzInfo>, Option<String>) {
+    ) -> (
+        Option<InspectorLuzInfo>,
+        Option<InspectorCorpoDaLuzInfo>,
+        Option<String>,
+    ) {
         self.preferir(preferencia);
         let info = build_info(world, escolhido, quantos, self);
-        (info, self.recusa_nova())
+        let corpo = build_corpo_info(world, escolhido);
+        (info, corpo, self.recusa_nova())
     }
 }

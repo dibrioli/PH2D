@@ -17,6 +17,24 @@ pub enum LuzFieldEdit {
     /// A posição em [`TIPOS`]: `0` = Ponto, `1` = Ambiente. ⚠️ Viaja como `u8` pela cerca de
     /// dependência; a tradução é da família, com gate de ida-e-volta.
     Tipo(u8),
+    /// A `BloqueiaLuz.opacidade` do corpo — a fração bloqueada por entrada (`0..=1`).
+    Opacidade(f32),
+    /// Retira a `BloqueiaLuz` do corpo (o cartão «Light Occluder»).
+    RetirarOclusor,
+    /// Retira a `NaoRecebeLuz` do corpo (o cartão «Unlit»).
+    RetirarSemLuz,
+}
+
+/// ⭐ O que os cartões do CORPO na luz — «Light Occluder» e «Unlit» — precisam para se pintar
+/// (componente = ícone + cartão). `None` no painel = o objeto não tem nenhum dos dois.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorCorpoDaLuzInfo {
+    /// Os bits da entidade — o endereço que toda edição carrega.
+    pub entity_bits: u64,
+    /// A `BloqueiaLuz.opacidade`, se o objeto bloqueia a luz.
+    pub oclusor: Option<f32>,
+    /// O objeto tem a `NaoRecebeLuz`?
+    pub sem_luz: bool,
 }
 
 /// As chaves dos chips do TIPO, na ordem da tag.

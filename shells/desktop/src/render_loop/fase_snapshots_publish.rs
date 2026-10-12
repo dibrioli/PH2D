@@ -223,8 +223,9 @@ impl crate::App {
         );
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
-        let (info, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);
+        let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);
         ph2d_panel_inspector::set_current_inspector_luz(info);
+        ph2d_panel_inspector::set_current_inspector_corpo_luz(corpo);
         if let Some(m) = recusa {
             toasts.push(Toast::warning(m));
         }

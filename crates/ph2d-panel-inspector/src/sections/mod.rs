@@ -85,6 +85,8 @@ mod joint_pair_rows;
 pub(crate) mod lifecycle;
 /// ⭐ A LUZ (Luz 2D, W4).
 pub(crate) mod luz;
+/// ⭐ Os cartões do CORPO na luz — «Light Occluder» e «Unlit».
+pub(crate) mod luz_corpo;
 mod material_blend;
 pub(crate) mod motion_input;
 pub(crate) mod nav;

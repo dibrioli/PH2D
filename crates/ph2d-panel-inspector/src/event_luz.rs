@@ -57,3 +57,39 @@ pub(crate) fn apply_luz_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
     });
     true
 }
+
+/// Despacha um evento dos cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT. `true` = consumido.
+/// O endereço é o do instantâneo do CORPO (o objeto pode não ter `Luz` nenhuma).
+pub(crate) fn apply_luz_corpo_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let Some(info) = crate::state_components::current_inspector_corpo_luz() else {
+        return false;
+    };
+    let edit = match ev {
+        WidgetEvent::ValueChanged(id)
+            if id == crate::ids::INSP_LUZ_OPACIDADE && info.oclusor.is_some() =>
+        {
+            #[allow(clippy::cast_possible_truncation)]
+            let v = host.store().number_value(id).unwrap_or(1.0) as f32; // LITERAL-PX-OK: a partida
+            E::Opacidade(v)
+        }
+        WidgetEvent::Click(id)
+            if id == crate::ids::INSP_LUZ_RETIRAR_OCLUSOR && info.oclusor.is_some() =>
+        {
+            E::RetirarOclusor
+        }
+        WidgetEvent::Click(id) if id == crate::ids::INSP_LUZ_RETIRAR_SEM_LUZ && info.sem_luz => {
+            E::RetirarSemLuz
+        }
+        _ => return false,
+    };
+    if let WidgetEvent::Click(id) = ev
+        && let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id)
+    {
+        *state = ButtonState::Normal;
+    }
+    host.bus_mut().push(EditorAction::InspectorComponentEdit {
+        entity_bits: info.entity_bits,
+        edit: ComponentEdit::Luz(edit),
+    });
+    true
+}

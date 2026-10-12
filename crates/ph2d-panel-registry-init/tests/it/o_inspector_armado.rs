@@ -900,6 +900,14 @@ fn arma_o_top20() {
         )),
         selected_count: selecionados(),
     }));
+    // ⭐ Os cartões do CORPO na luz — LIGHT OCCLUDER e UNLIT, os dois.
+    insp::set_current_inspector_corpo_luz(Some(
+        ph2d_editor_core::luz_edits::InspectorCorpoDaLuzInfo {
+            entity_bits: BITS,
+            oclusor: Some(0.5),
+            sem_luz: true,
+        },
+    ));
     insp::set_current_inspector_shake(Some(InspectorShakeInfo {
         entity_bits: BITS,
         amplitude: 0.35,
@@ -1230,6 +1238,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_sequence(None);
     insp::set_current_inspector_shake(None);
     insp::set_current_inspector_luz(None);
+    insp::set_current_inspector_corpo_luz(None);
     insp::set_current_inspector_tween(None);
     insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_vida(None);
@@ -1294,6 +1303,7 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("sequence", || insp::set_current_inspector_sequence(None)),
     ("shake", || insp::set_current_inspector_shake(None)),
     ("luz", || insp::set_current_inspector_luz(None)),
+    ("corpo_luz", || insp::set_current_inspector_corpo_luz(None)),
     ("tween", || insp::set_current_inspector_tween(None)),
     ("weapon", || insp::set_current_inspector_weapon(None)),
     ("name", || insp::set_current_inspector_name(None)),

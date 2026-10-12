@@ -9,13 +9,14 @@
 //!   do abanão); `0` é o ponto exato, que a secção avisa que ainda não desenha (W5);
 //! - **alcance** `0,1..200 m` — `0` não é um alcance (a lei recusa-o); o passo é o piso. Sem
 //!   alcance (`∞`) é a caixa «Limit Range» desligada, não um número.
+//! - **opacidade** `0..1` — a fração bloqueada por entrada do raio (`BloqueiaLuz`): é uma fração.
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState, format_number};
 
 /// `(id, valor de partida, mínimo, máximo, passo)` — a partida é a `Luz::default()`.
-const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 3] = [
+const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 4] = [
     (
         ids::INSP_LUZ_INTENSIDADE,
         std::f64::consts::TAU,
@@ -25,10 +26,16 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 3] = [
     ),
     (ids::INSP_LUZ_TAMANHO, 0.25, 0.0, 200.0, 0.01), // LITERAL-PX-OK: metros
     (ids::INSP_LUZ_ALCANCE, 10.0, 0.1, 200.0, 0.1),  // LITERAL-PX-OK: metros
+    // A partida é a `BloqueiaLuz::default()`.
+    (ids::INSP_LUZ_OPACIDADE, 1.0, 0.0, 1.0, 0.01), // LITERAL-PX-OK: fração
 ];
 
 pub(crate) fn populate_luz(store: &mut WidgetStore) {
     super::populate::register_button_ids(store, &ids::INSP_LUZ_TIPO);
+    super::populate::register_button_ids(
+        store,
+        &[ids::INSP_LUZ_RETIRAR_OCLUSOR, ids::INSP_LUZ_RETIRAR_SEM_LUZ],
+    );
     // A amostra: `Plain` + `register_picker_swatch` — o despacho abre o seletor sozinho; a escolha
     // volta pelo `sync_luz`.
     store.register(ids::INSP_LUZ_COR, InteractiveState::Plain);

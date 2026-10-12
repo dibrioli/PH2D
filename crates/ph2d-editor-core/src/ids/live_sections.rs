@@ -36,7 +36,8 @@ use super::*;
 ///
 /// ⚠️ `48` → `47` em 2026-10-05: a secção LIVE MESH saiu com o 3D (ADR-0179). `46` → `47` em
 /// 2026-10-09: a LUZ (Luz 2D, W4). `47` → `48` na integração: o MOTION INPUT (ciclo 19 do Motion).
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 48] = [
+/// `48` → `50` em 2026-10-11: LIGHT OCCLUDER e UNLIT (os cartões do corpo na luz).
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 50] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_GRIP),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_GRIP),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_GRIP),
@@ -134,6 +135,10 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 48] = [
     (INSP_LIVE_LUZ_SECTION, INSP_LIVE_LUZ_GRIP),
     // A 48.ª — MOTION INPUT (ciclo 19 do Motion), no mesmo commit que a secção.
     (INSP_LIVE_MOTION_INPUT_SECTION, INSP_LIVE_MOTION_INPUT_GRIP),
+    // A 49.ª e a 50.ª — LIGHT OCCLUDER e UNLIT (`BloqueiaLuz` · `NaoRecebeLuz`), no mesmo commit
+    // que os cartões. Dois e não um: componente = ícone + cartão.
+    (INSP_LIVE_LUZ_OCLUSOR_SECTION, INSP_LIVE_LUZ_OCLUSOR_GRIP),
+    (INSP_LIVE_LUZ_SEM_LUZ_SECTION, INSP_LIVE_LUZ_SEM_LUZ_GRIP),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

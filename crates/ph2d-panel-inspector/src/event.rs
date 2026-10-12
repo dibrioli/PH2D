@@ -113,6 +113,9 @@ pub(crate) fn apply_event(
     if crate::event_luz::apply_luz_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    if crate::event_luz::apply_luz_corpo_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_shake::apply_shake_event(host, ev) {
         return EventOutcome::Consumed;
     }

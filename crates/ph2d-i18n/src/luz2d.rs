@@ -56,6 +56,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.luz.quality_cost" => {
             "Quality: {nivel} ({modo}), {ms} ms of GPU per frame \u{2014} Settings \u{25b8} 2D Light."
         }
+        "panel.inspector.luz.opacity" => "Opacity",
+        "panel.inspector.luz.x_remove_occluder" => "x Remove Light Occluder",
+        "panel.inspector.luz.x_remove_unlit" => "x Remove Unlit",
+        "panel.inspector.luz.unlit_explained" => {
+            "The light does not shade this object; it keeps its own colors."
+        }
         "panel.inspector.luz.automatic" => "automatic",
         "panel.inspector.luz.manual" => "manual",
         "light2d.toast.grid_too_big" => {

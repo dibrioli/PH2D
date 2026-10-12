@@ -77,3 +77,20 @@ pub(crate) fn sync(
         host.store_mut().set_number_value(id, v);
     }
 }
+
+/// **A semente do cartão LIGHT OCCLUDER** — a opacidade do documento na caixa (sem ela, a caixa
+/// mostraria a partida do `populate` sobre um oclusor autorado). Um número só, semeado todo o
+/// quadro fora da mão do artista — é assim que um `Ctrl+Z` se vê nela.
+pub(crate) fn sync_corpo(host: &mut dyn PanelHostInternal) {
+    let Some(opacidade) =
+        crate::state_components::current_inspector_corpo_luz().and_then(|i| i.oclusor)
+    else {
+        return;
+    };
+    let id = crate::ids::INSP_LUZ_OPACIDADE;
+    let ocupada = host.store().focus_id() == Some(id)
+        || host.store().number_input_drag().map(|d| d.id) == Some(id);
+    if !ocupada {
+        host.store_mut().set_number_value(id, f64::from(opacidade));
+    }
+}

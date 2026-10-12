@@ -36,6 +36,7 @@ mod o_rebote_assenta;
 mod o_rebote_de_fora_da_grade;
 mod o_rebote_do_desenho;
 mod o_traco_do_flip;
+mod os_cartoes_do_corpo;
 mod os_tetos_da_placa;
 mod paridade_luz_recebida;
 mod redimensionar;

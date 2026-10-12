@@ -1091,7 +1091,10 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    `nenhuma_escolha_do_app_e_montada_a_mao` lê um composto a toda a largura como uma escolha
     //    montada à mão e manda-a para o `paint_choice_row` — e uma lista não é um segmentado. A
     //    recontagem das linhas é da régua, e é de todas as listas de uma vez.
-    ("inspector", 85),
+    // ⬆️ `85 → 87` em 2026-10-11 (Luz 2D, smoke do dono) — **capacidade nova**: os cartões LIGHT
+    //    OCCLUDER e UNLIT, cada um com o seu `x Remove` (dois comandos a sério). A *Opacity* é um
+    //    VALOR e não conta.
+    ("inspector", 87),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

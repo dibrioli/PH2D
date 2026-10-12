@@ -75,7 +75,9 @@ fn o_dano_e_a_vida_a_descer_como_o_damage_do_componente() {
     r.tique(0);
     let mut disparos = vec![r.disparou()];
     for (t, vida) in [(1u64, 0.7f32), (2, 0.7), (3, 0.9), (4, 0.3)] {
-        r.m.entradas.jogo.set("vida", Escritor::Script, Valor::Numero(vida));
+        r.m.entradas
+            .jogo
+            .set("vida", Escritor::Script, Valor::Numero(vida));
         r.tique(t);
         disparos.push(r.disparou());
     }
@@ -95,7 +97,9 @@ fn o_dano_sacode_a_galaxia_e_curar_nao() {
         r.tique(t);
     }
     let calma = r.tamanho();
-    r.m.entradas.jogo.set("vida", Escritor::Script, Valor::Numero(1.0));
+    r.m.entradas
+        .jogo
+        .set("vida", Escritor::Script, Valor::Numero(1.0));
     let mut t = 30;
     let mut pico_a_subir = calma;
     for _ in 0..20 {
@@ -103,7 +107,9 @@ fn o_dano_sacode_a_galaxia_e_curar_nao() {
         t += 1;
         pico_a_subir = pico_a_subir.max(r.tamanho());
     }
-    r.m.entradas.jogo.set("vida", Escritor::Script, Valor::Numero(0.6));
+    r.m.entradas
+        .jogo
+        .set("vida", Escritor::Script, Valor::Numero(0.6));
     let mut pico = 0.0f32;
     for _ in 0..20 {
         r.tique(t);
@@ -115,8 +121,19 @@ fn o_dano_sacode_a_galaxia_e_curar_nao() {
         t += 1;
     }
     let depois = r.tamanho();
-    eprintln!("cena 136: tamanho calma {calma:.4} · a curar {pico_a_subir:.4} · pico do dano {pico:.4} · 3 s depois {depois:.4}");
-    assert!((pico_a_subir - calma).abs() < 1e-4, "curar mexeu nas estrelas");
-    assert!(pico > 1.5 * calma, "o dano não as inchou: {calma} -> {pico}");
-    assert!((depois - calma).abs() < 0.05 * calma, "não voltaram à calma: {depois}");
+    eprintln!(
+        "cena 136: tamanho calma {calma:.4} · a curar {pico_a_subir:.4} · pico do dano {pico:.4} · 3 s depois {depois:.4}"
+    );
+    assert!(
+        (pico_a_subir - calma).abs() < 1e-4,
+        "curar mexeu nas estrelas"
+    );
+    assert!(
+        pico > 1.5 * calma,
+        "o dano não as inchou: {calma} -> {pico}"
+    );
+    assert!(
+        (depois - calma).abs() < 0.05 * calma,
+        "não voltaram à calma: {depois}"
+    );
 }

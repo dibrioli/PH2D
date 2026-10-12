@@ -343,9 +343,11 @@ fn um_canal_de_cor_solto_no_mesmo_canal_liga_a_cor_inteira() {
     let mut m = flat();
     let cor = m.doc.graph.add_node("value.input");
     #[expect(clippy::cast_precision_loss, reason = "um enum pequeno")]
-    m.doc
-        .graph
-        .set_param(cor, ph2d_node_value_input::KIND, ph2d_node_value_input::KIND_COLOR as f32);
+    m.doc.graph.set_param(
+        cor,
+        ph2d_node_value_input::KIND,
+        ph2d_node_value_input::KIND_COLOR as f32,
+    );
     let tint = m.doc.graph.add_node("motion.tint");
     let ligados = |m: &MotionState| -> Vec<(String, u16)> {
         m.doc
@@ -365,7 +367,10 @@ fn um_canal_de_cor_solto_no_mesmo_canal_liga_a_cor_inteira() {
         "um gesto liga a cor inteira"
     );
     let back = m.history.undo(&m.doc).expect("um passo de desfazer");
-    assert!(back.graph.param_sources(tint).is_none(), "e um Ctrl+Z tira os quatro");
+    assert!(
+        back.graph.param_sources(tint).is_none(),
+        "e um Ctrl+Z tira os quatro"
+    );
     m.doc = back;
 
     solta_no_param(&mut m, (cor, 1), tint, "r2");
@@ -379,5 +384,9 @@ fn um_canal_de_cor_solto_no_mesmo_canal_liga_a_cor_inteira() {
     }
 
     solta_no_param(&mut m, (cor, 2), tint, "r");
-    assert_eq!(ligados(&m), par(&[("r", 2)]), "uma troca de canal liga só esse");
+    assert_eq!(
+        ligados(&m),
+        par(&[("r", 2)]),
+        "uma troca de canal liga só esse"
+    );
 }

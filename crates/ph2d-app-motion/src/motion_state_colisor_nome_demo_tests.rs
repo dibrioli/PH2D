@@ -29,7 +29,12 @@ fn borda_sobreposta(k: usize, ate: u64) -> f32 {
             &scopes,
         );
     }
-    let p: Vec<[f32; 2]> = m.pump.vector_instances.iter().map(|v| v.world_pos).collect();
+    let p: Vec<[f32; 2]> = m
+        .pump
+        .vector_instances
+        .iter()
+        .map(|v| v.world_pos)
+        .collect();
     assert!(
         p.len() > 100,
         "a coluna desenha os discos: {} ({:?}, {} sprites)",
@@ -63,8 +68,13 @@ fn borda_sobreposta(k: usize, ate: u64) -> f32 {
 #[test]
 fn o_nome_collider_separa_os_discos_e_o_nome_errado_nao() {
     let (com, sem) = (borda_sobreposta(0, 120), borda_sobreposta(1, 120));
-    eprintln!("cena 137: discos da borda sobrepostos com `collider` {com:.3} · com `colisor` {sem:.3}");
-    assert!(sem > 0.5, "controlo: sem leitor a borda sobrepõe-se ({sem})");
+    eprintln!(
+        "cena 137: discos da borda sobrepostos com `collider` {com:.3} · com `colisor` {sem:.3}"
+    );
+    assert!(
+        sem > 0.5,
+        "controlo: sem leitor a borda sobrepõe-se ({sem})"
+    );
     assert!(com < 0.1, "o colisor pelo nome não separou a borda: {com}");
 }
 
@@ -72,8 +82,8 @@ fn o_nome_collider_separa_os_discos_e_o_nome_errado_nao() {
 #[test]
 #[ignore = "placa: precisa de adapter de GPU"]
 fn a_cena_do_colisor_pelo_nome_coze_na_placa() {
-    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
-        .expect("adapter");
+    let gpu =
+        ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).expect("adapter");
     let mut m = MotionState::new();
     m.doc = MotionDoc::new();
     let (saidas, _) = monta(&mut m.doc, &m.registry).expect("a cena monta");

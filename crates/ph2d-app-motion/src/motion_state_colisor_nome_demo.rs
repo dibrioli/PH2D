@@ -60,7 +60,11 @@ fn coluna(g: &mut ph2d_nodegraph::graph::Graph, k: usize) -> Option<(NodeId, Nod
     g.set_param(lugar, "offset_x", (k as f32 * 2.0 - 1.0) * COL_X);
     liga(g, (raio, 0), lugar, 0, false)?;
     let saida = no(g, "motion.output", 660.0, 0.0);
-    g.set_param(saida, ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM, VARREDURAS);
+    g.set_param(
+        saida,
+        ph2d_eval_motion::SINK_COLLIDE_ITERATIONS_PARAM,
+        VARREDURAS,
+    );
     liga(g, (lugar, 0), saida, 0, false)?;
     Some((saida, raio))
 }
@@ -80,11 +84,13 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 
 /// As fichas do canvas.
 pub(super) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
-    let ficha =
-        |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -3.2], t.to_string());
+    let ficha = |x: f32, t: &str| crate::motion_demo_legend::Caption::new([x, -3.2], t.to_string());
     vec![
         ficha(-COL_X, "Custom = collider: os discos da borda empurram-se"),
-        ficha(COL_X, "Custom = colisor (controlo): ninguem le, sobrepoem-se"),
+        ficha(
+            COL_X,
+            "Custom = colisor (controlo): ninguem le, sobrepoem-se",
+        ),
     ]
 }
 

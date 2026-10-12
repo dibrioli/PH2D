@@ -102,27 +102,26 @@ fn a_deriva_da_129_por_tique_e_por_no() {
                 &scopes,
             );
         }
-        let fronteiras: Vec<NodeId> = m
-            .pump
-            .boundary_streams()
-            .iter()
-            .map(|(n, _)| *n)
-            .collect();
+        let fronteiras: Vec<NodeId> = m.pump.boundary_streams().iter().map(|(n, _)| *n).collect();
         let mut linha = format!("T={t:<4} {:?}", m.route_said.unwrap_or("?"));
         for (k, (&sink, &corpo)) in m.sinks.iter().zip(&corpos).enumerate() {
-            let sp = m.gpu_cook.read_column_vec2(&gpu, sink, "P").unwrap_or_default();
+            let sp = m
+                .gpu_cook
+                .read_column_vec2(&gpu, sink, "P")
+                .unwrap_or_default();
             let (ds, amp) = delta(&sp, &tomada(&cpu, sink));
             // O corpo do lado da placa: a fronteira da CPU (rota híbrida) ou a coluna do device.
-            let (onde, cp) = if let Some((_, s)) =
-                m.pump.boundary_streams().iter().find(|(n, _)| *n == corpo)
-            {
-                ("fronteira", p_de(s))
-            } else {
-                (
-                    "device",
-                    m.gpu_cook.read_column_vec2(&gpu, corpo, "P").unwrap_or_default(),
-                )
-            };
+            let (onde, cp) =
+                if let Some((_, s)) = m.pump.boundary_streams().iter().find(|(n, _)| *n == corpo) {
+                    ("fronteira", p_de(s))
+                } else {
+                    (
+                        "device",
+                        m.gpu_cook
+                            .read_column_vec2(&gpu, corpo, "P")
+                            .unwrap_or_default(),
+                    )
+                };
             let (dc, _) = delta(&cp, &tomada(&cpu, corpo));
             linha += &format!(
                 "\n    col {k}: saída {ds:.3e} (rel {:.2e}, amp {amp:.3}) · corpo[{onde}] {dc:.3e} · n {}",
@@ -172,7 +171,11 @@ fn a_deriva_da_129_onde_nasce() {
                 &scopes,
             );
         }
-        let placa = |n: NodeId| m.gpu_cook.read_column_vec2(&gpu, n, "P").unwrap_or_default();
+        let placa = |n: NodeId| {
+            m.gpu_cook
+                .read_column_vec2(&gpu, n, "P")
+                .unwrap_or_default()
+        };
         let colunas = |n: NodeId| {
             cpu.pump
                 .tap_streams()
@@ -192,7 +195,12 @@ fn a_deriva_da_129_onde_nasce() {
         let (pt, ps) = (placa(lugar), placa(sink));
         eprintln!("  CPU   transform × saída  {:.3e}", delta(&ct, &cs).0);
         eprintln!("  placa transform × saída  {:.3e}", delta(&pt, &ps).0);
-        eprintln!("  transform placa × CPU    {:.3e} (n {} × {})", delta(&pt, &ct).0, pt.len(), ct.len());
+        eprintln!(
+            "  transform placa × CPU    {:.3e} (n {} × {})",
+            delta(&pt, &ct).0,
+            pt.len(),
+            ct.len()
+        );
         eprintln!("  saída     placa × CPU    {:.3e}", delta(&ps, &cs).0);
         let difs: Vec<(usize, f32)> = ps
             .iter()
@@ -253,5 +261,8 @@ fn a_tomada_da_saida_com_collide_e_o_que_ela_desenha() {
     let (separou, _) = delta(&ps, &pt);
     eprintln!("tomada da saída placa × CPU {d:e} · saída × transform na placa {separou:e}");
     assert!(d <= 1e-5, "o cartão da placa lê outra corrente: {d:e}");
-    assert!(separou > 1e-3, "controlo: o passe não separou ({separou:e})");
+    assert!(
+        separou > 1e-3,
+        "controlo: o passe não separou ({separou:e})"
+    );
 }

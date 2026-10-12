@@ -34,7 +34,14 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
     let g = &mut doc.graph;
     let no = no_em(0.0);
     let (galaxia, redemoinho) = super::ritmo_demo::galaxia_e_redemoinho(g, 0.0)?;
-    let vida = entrada(g, &no, "vida", ph2d_node_value_input::KIND_NUMBER, -1100.0, -330.0);
+    let vida = entrada(
+        g,
+        &no,
+        "vida",
+        ph2d_node_value_input::KIND_NUMBER,
+        -1100.0,
+        -330.0,
+    );
     g.set_param(vida, ph2d_node_value_input::VALUE_PARAM, VIDA);
     // O DANO: a vida a descer (`direction` 1 = Fall); o `pre` guarda o valor do tique anterior.
     let dano = no(g, "pulse.on_change", -880.0, -330.0);
@@ -91,7 +98,14 @@ pub(crate) fn monta(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Cena> {
     liga(g, (estrela, 0), pecas, 0, false)?;
     liga(g, (clarao, 0), pecas, 1, false)?;
     // A COR: o Tint por ligar e o cartão `cor` ao lado (o gesto é do roteiro).
-    let cor = entrada(g, &no, "cor", ph2d_node_value_input::KIND_COLOR, 220.0, -220.0);
+    let cor = entrada(
+        g,
+        &no,
+        "cor",
+        ph2d_node_value_input::KIND_COLOR,
+        220.0,
+        -220.0,
+    );
     for (canal, v) in ph2d_node_value_input::COLOR.iter().zip(COR) {
         g.set_param(cor, *canal, v);
     }

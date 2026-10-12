@@ -227,9 +227,13 @@ pub(super) fn grupo_de_cor(
                     Some((p.name, u16::try_from(o).ok()?))
                 })
                 .collect();
-            if grupo.len() >= 3 && grupo.iter().take(3).zip("rgb".chars()).all(|((p, _), c)| {
-                *p == troca(param, i, c)
-            }) {
+            if grupo.len() >= 3
+                && grupo
+                    .iter()
+                    .take(3)
+                    .zip("rgb".chars())
+                    .all(|((p, _), c)| *p == troca(param, i, c))
+            {
                 return Some(grupo);
             }
         }

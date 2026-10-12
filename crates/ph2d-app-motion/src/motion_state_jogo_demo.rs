@@ -38,7 +38,13 @@ pub(crate) const CLARAO: f32 = 2.5;
 pub(crate) const VIDA: f32 = 0.6;
 pub(crate) const COR_DO_TIME: [f32; 4] = [1.0, 0.45, 0.1, 1.0];
 
-pub(super) fn liga(g: &mut Graph, de: (NodeId, u16), para: NodeId, porta: u16, pre: bool) -> Option<()> {
+pub(super) fn liga(
+    g: &mut Graph,
+    de: (NodeId, u16),
+    para: NodeId,
+    porta: u16,
+    pre: bool,
+) -> Option<()> {
     g.connect(Edge {
         from: de,
         to: (para, porta),

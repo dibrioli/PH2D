@@ -104,7 +104,12 @@ fn fila_c_o_piso_hibrido() {
         let (mut cpu, _, _) = estado_de(lado, true, 0, BlendWith::Copies, false, false);
         cpu.gpu_enabled = false;
         assert!(coze(&mut dev, &gpu, 2), "{:?}", dev.route_said);
-        let fronteiras: Vec<_> = dev.pump.boundary_streams().iter().map(|(n, _)| *n).collect();
+        let fronteiras: Vec<_> = dev
+            .pump
+            .boundary_streams()
+            .iter()
+            .map(|(n, _)| *n)
+            .collect();
         let scopes = ph2d_node_motion_time_remap::time_scopes(&cpu.doc.graph, &cpu.registry);
         let (mut t0, mut t1, mut t2, mut t3) = (3u64, 3u64, 3u64, 3u64);
         let mut a = || {
@@ -114,8 +119,14 @@ fn fila_c_o_piso_hibrido() {
         };
         let mut b = || {
             let (g, r) = (&pre.doc.graph, &pre.registry);
-            pre.pump
-                .advance_or_scrub_to_nodes_scoped(g, r, &fronteiras, t1, |t| t as f64 * DT, &scopes);
+            pre.pump.advance_or_scrub_to_nodes_scoped(
+                g,
+                r,
+                &fronteiras,
+                t1,
+                |t| t as f64 * DT,
+                &scopes,
+            );
             t1 += 1;
         };
         let mut c = || {
@@ -171,7 +182,10 @@ fn fila_c_o_piso_hibrido() {
 #[ignore = "sonda: placa, --profile smoke"]
 fn fila_c_a_troca_de_rota() {
     let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("adapter");
-    println!("\n=== C.12 · a troca de rota (=135) · carga {} ===", carga());
+    println!(
+        "\n=== C.12 · a troca de rota (=135) · carga {} ===",
+        carga()
+    );
     let novo = |placa: bool| {
         let mut m = cena("135");
         m.gpu_enabled = placa;
@@ -226,7 +240,10 @@ fn fila_c_a_troca_de_rota() {
 #[ignore = "sonda: CPU"]
 fn fila_c_a_fita_por_entrada() {
     use ph2d_ecs::motion_inputs::{Escritor, Valor};
-    println!("\n=== C.11 · a fita por entrada (orçamento {} MiB) ===", ph2d_eval_motion::FITA_BYTES >> 20);
+    println!(
+        "\n=== C.11 · a fita por entrada (orçamento {} MiB) ===",
+        ph2d_eval_motion::FITA_BYTES >> 20
+    );
     for k in [3usize, 30, 300] {
         let mut m = MotionState::new();
         let g = &mut m.doc.graph;
@@ -239,7 +256,7 @@ fn fila_c_a_fita_por_entrada() {
         });
         for e in 0..k {
             let n = g.add_node("value.input");
-            g.set_text_param(n, ph2d_node_value_input::NAME_KEY, &format!("e{e}"));
+            g.set_text_param(n, ph2d_node_value_input::NAME_KEY, format!("e{e}"));
         }
         m.sinks = vec![out];
         m.pump.define_a_lei(true);
@@ -248,9 +265,11 @@ fn fila_c_a_fita_por_entrada() {
         for t in 0..TIQUES {
             for e in 0..k {
                 #[expect(clippy::cast_precision_loss, reason = "um valor de teste")]
-                m.entradas
-                    .jogo
-                    .set(&format!("e{e}"), Escritor::Script, Valor::Numero((t + e as u64) as f32));
+                m.entradas.jogo.set(
+                    &format!("e{e}"),
+                    Escritor::Script,
+                    Valor::Numero((t + e as u64) as f32),
+                );
             }
             crate::motion_externals::publish_all(&mut m, t as f64 * DT);
             m.pump.advance_or_scrub_scoped(
@@ -269,6 +288,8 @@ fn fila_c_a_fita_por_entrada() {
         let por_tique = bytes as f64 / TIQUES as f64;
         #[expect(clippy::cast_precision_loss, reason = "uma razão")]
         let minutos = ph2d_eval_motion::FITA_BYTES as f64 / por_tique / 60.0 / 60.0;
-        println!("  {k:>4} entradas a mudar: {por_tique:.1} B/tique · {minutos:.1} min de história a 60 Hz");
+        println!(
+            "  {k:>4} entradas a mudar: {por_tique:.1} B/tique · {minutos:.1} min de história a 60 Hz"
+        );
     }
 }

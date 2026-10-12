@@ -51,7 +51,12 @@ relatório da janela; números de velocidade = as tabelas acima.
 `8ee7620197`: o menu do fio solto lê os canais de um seletor de cor «Color R/G/B/A» (o `r` lia «Color», `g b a` a
 chave crua) e um canal segue o seletor (no `Solid`, `g2 b2 a2` apareciam sem leitor); o nome da coluna do Drive
 está no cartão (linha `Column`), legível só com o grafo APROXIMADO — os roteiros `=136`/`=137` dizem-no. O gate do
-gesto tira o param da entrada «Color R» do MENU. ⏳ Re-smoke `=136` (passo 3) e `=137` (passo 3).
+gesto tira o param da entrada «Color R» do MENU. ✅ `=137` OK no 2.º smoke.
+⚠️ **2.º report** — «os 4 fios ligaram com só o R; as estrelas continuam brancas». Medido no app vivo (o intent na
+fila do painel, fotografado): do `cor` a placa recebe verde; do `R` do cartão `vida` (Kind = Number) recebe
+`(1, 1, 1, 1)` — o branco do report. Curado em `62e22985ce`: `saida_viva(kind, porta)` na crate do Input e a recusa com
+aviso nas duas portas onde um fio nasce (`DriveParam`, `Connect`); o roteiro nomeia o cartão (o `cor` está SOZINHO à
+direita). ⏳ Re-smoke `=136` passo 3.
 
 ## Fecho desta janela
 
@@ -66,4 +71,4 @@ Fotos (`fotografa_cena.sh`, 1600×972): `=70`, `=136`, `=137` (+ `PH2D_MOTION_RO
 HIBRIDO`). Worktrees dos agentes removidas; `target/*/incremental` reclamado.
 
 binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
-`Finished smoke profile [optimized] target(s) in 0.38s` (depois de `8ee7620197`) — zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.24s` (depois de `62e22985ce`) — zero `Compiling`.

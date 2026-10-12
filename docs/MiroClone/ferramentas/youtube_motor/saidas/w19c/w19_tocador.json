@@ -1,0 +1,260 @@
+{
+ "o_que": "W19: o tocador oficial conduzido como o PH2D (sonda_w19_tocador.mjs)",
+ "exe": "/usr/bin/google-chrome-stable",
+ "video": "aqz-KE-bpKQ",
+ "data": "2026-10-12T16:29:25.276Z",
+ "versao": "155.0.8059.39",
+ "P": {},
+ "F": {
+  "560x315": {
+   "botao": {
+    "tag": "button",
+    "aria": "Entrar no modo tela cheia",
+    "texto": "",
+    "classe": "icon-button fullscreen-icon",
+    "href": null,
+    "x": 488,
+    "y": 187,
+    "w": 48,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "clicou": true,
+   "quadros_antes": [
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    },
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    },
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    }
+   ],
+   "tamanhos_depois": [
+    "560x315 jpeg 560x315"
+   ],
+   "quadros_depois": 77,
+   "fullscreen_no_iframe": true,
+   "fullscreen_na_pagina": true,
+   "janela": {
+    "windowId": 432875651,
+    "bounds": {
+     "left": 10,
+     "top": 10,
+     "width": 780,
+     "height": 580,
+     "windowState": "normal"
+    }
+   },
+   "geo_antes": {
+    "ecra": [
+     800,
+     600
+    ],
+    "janela": [
+     560,
+     315
+    ],
+    "video_rect": [
+     0,
+     0,
+     560,
+     315
+    ],
+    "video_px": [
+     854,
+     480
+    ],
+    "object_fit": "cover"
+   },
+   "geo_depois": {
+    "ecra": [
+     800,
+     600
+    ],
+    "janela": [
+     560,
+     315
+    ],
+    "video_rect": [
+     0,
+     0,
+     560,
+     315
+    ],
+    "video_px": [
+     854,
+     480
+    ],
+    "object_fit": "cover"
+   }
+  },
+  "480x360": {
+   "botao": {
+    "tag": "button",
+    "aria": "Entrar no modo tela cheia",
+    "texto": "",
+    "classe": "icon-button fullscreen-icon",
+    "href": null,
+    "x": 408,
+    "y": 232,
+    "w": 48,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "clicou": true,
+   "quadros_antes": [
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    },
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    },
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    }
+   ],
+   "tamanhos_depois": [
+    "480x360 jpeg 480x360"
+   ],
+   "quadros_depois": 75,
+   "fullscreen_no_iframe": true,
+   "fullscreen_na_pagina": true,
+   "janela": {
+    "windowId": 432875653,
+    "bounds": {
+     "left": 10,
+     "top": 10,
+     "width": 780,
+     "height": 580,
+     "windowState": "normal"
+    }
+   },
+   "geo_antes": {
+    "ecra": [
+     800,
+     600
+    ],
+    "janela": [
+     480,
+     360
+    ],
+    "video_rect": [
+     0,
+     45,
+     480,
+     270
+    ],
+    "video_px": [
+     854,
+     480
+    ],
+    "object_fit": "cover"
+   },
+   "geo_depois": {
+    "ecra": [
+     800,
+     600
+    ],
+    "janela": [
+     480,
+     360
+    ],
+    "video_rect": [
+     0,
+     45,
+     480,
+     270
+    ],
+    "video_px": [
+     854,
+     480
+    ],
+    "object_fit": "cover"
+   }
+  },
+  "nossos_duplo_clique": {
+   "fullscreen_no_iframe": false,
+   "geo": {
+    "ecra": [
+     800,
+     600
+    ],
+    "janela": [
+     560,
+     315
+    ],
+    "video_rect": [
+     0,
+     0,
+     560,
+     315
+    ],
+    "video_px": [
+     854,
+     480
+    ],
+    "object_fit": "cover"
+   }
+  },
+  "nossos_tecla_f": {
+   "fullscreen_no_iframe": false,
+   "geo": {
+    "ecra": [
+     800,
+     600
+    ],
+    "janela": [
+     560,
+     315
+    ],
+    "video_rect": [
+     0,
+     0,
+     560,
+     315
+    ],
+    "video_px": [
+     854,
+     480
+    ],
+    "object_fit": "cover"
+   }
+  }
+ },
+ "Z": [],
+ "C": []
+}

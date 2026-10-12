@@ -5,10 +5,11 @@
 //! da janela. Medido (`youtube_motor/saidas/chromium_*`): 29,97 q/s a 560×315, 0,15 núcleo, clique → quadro
 //! em 7–28 ms.
 
+use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
@@ -16,6 +17,7 @@ use ph2d_board_model::Video;
 use serde_json::{Value, json};
 
 use crate::browser::{Browser, send_on};
+use crate::playback::{Phase, Playback};
 
 /// A origem da página que leva o tocador (o `Referer` que o YouTube vê).
 const ORIGIN: &str = "https://ph2d.local/";
@@ -92,8 +94,8 @@ pub struct Key {
 
 enum Cmd {
     Load(Video),
-    /// Uma ordem da API do tocador (`pauseVideo`, `playVideo`).
-    Command(&'static str),
+    /// Uma ordem da API do tocador (`pauseVideo`, `seekTo`…) e os argumentos dela (uma lista JSON).
+    Call(&'static str, Value),
     Resize([u32; 2]),
     Mouse(Mouse),
     Key(Key),
@@ -105,6 +107,14 @@ struct Shared {
     frame: Mutex<Option<Frame>>,
     seq: AtomicU64,
     html: Mutex<String>,
+    playback: Mutex<Playback>,
+    /// Os links que o tocador quis abrir numa aba nova (o canal, o título, «YouTube»): fecham-se lá e o
+    /// app abre-os no navegador do sistema.
+    outside: Mutex<Vec<String>>,
+    /// A aba do tocador.
+    target: OnceLock<String>,
+    /// As abas novas já fechadas.
+    popups: Mutex<BTreeSet<String>>,
 }
 
 /// O tocador (o navegador fecha quando ele cai).
@@ -158,11 +168,60 @@ impl Player {
 
     /// Pausa (o vídeo fica no quadro em que parou).
     pub fn pause(&self) {
-        let _ = self.cmd.send(Cmd::Command("pauseVideo"));
+        self.want(Phase::Paused);
+        self.call("pauseVideo", json!([]));
     }
 
     pub fn play(&self) {
-        let _ = self.cmd.send(Cmd::Command("playVideo"));
+        self.want(Phase::Playing);
+        self.call("playVideo", json!([]));
+    }
+
+    /// Salta para `secs` segundos.
+    pub fn seek(&self, secs: f64) {
+        let secs = secs.max(0.0);
+        {
+            let mut p = lock(&self.shared.playback);
+            p.time = secs;
+            p.read_at = Some(Instant::now());
+        }
+        self.call("seekTo", json!([secs, true]));
+    }
+
+    pub fn set_muted(&self, muted: bool) {
+        lock(&self.shared.playback).muted = muted;
+        self.call(if muted { "mute" } else { "unMute" }, json!([]));
+    }
+
+    /// O volume `0..=100` (e tira o mudo, como o tocador faz).
+    pub fn set_volume(&self, v: u8) {
+        let v = v.min(100);
+        {
+            let mut p = lock(&self.shared.playback);
+            p.volume = v;
+            p.muted = false;
+        }
+        self.call("setVolume", json!([v]));
+        self.call("unMute", json!([]));
+    }
+
+    /// O estado do tocador (o tempo, a duração, a fase, o volume).
+    #[must_use]
+    pub fn playback(&self) -> Playback {
+        lock(&self.shared.playback).clone()
+    }
+
+    /// Os links que o tocador quis abrir (o app abre-os no navegador do sistema).
+    pub fn take_outside(&self) -> Vec<String> {
+        std::mem::take(&mut *lock(&self.shared.outside))
+    }
+
+    fn want(&self, p: Phase) {
+        lock(&self.shared.playback).want = Some((p, Instant::now()));
+    }
+
+    fn call(&self, func: &'static str, args: Value) {
+        let _ = self.cmd.send(Cmd::Call(func, args));
     }
 
     pub fn load(&self, video: &Video) {
@@ -191,13 +250,25 @@ pub(crate) fn page_for_test(video: &Video) -> String {
     page(video)
 }
 
-/// A página que leva o tocador oficial a ocupar a aba inteira.
+/// O nome do `Runtime.addBinding` por onde as mensagens do tocador chegam ao PH2D.
+const BINDING: &str = "ph2dState";
+
+/// A página que leva o tocador oficial a ocupar a aba inteira, e que lhe fala pela API oficial: pede-lhe
+/// o estado (`listening`, até ele responder), ouve o `onStateChange` e passa cada mensagem ao PH2D.
 fn page(video: &Video) -> String {
     format!(
         "<!doctype html><html><body style=\"margin:0;background:#000;overflow:hidden\">\
-         <iframe style=\"border:0;width:100vw;height:100vh\" allow=\"autoplay; encrypted-media; fullscreen\" \
-         referrerpolicy=\"strict-origin-when-cross-origin\" src=\"{}\"></iframe></body></html>",
-        ph2d_board_embed::player_url(video)
+         <iframe style=\"border:0;width:100vw;height:100vh\" allow=\"autoplay; encrypted-media\" \
+         referrerpolicy=\"strict-origin-when-cross-origin\" src=\"{src}\"></iframe><script>\
+         const f=document.querySelector('iframe');\
+         const say=(o)=>f.contentWindow.postMessage(JSON.stringify(Object.assign(o,{{id:1,channel:'widget'}})),'*');\
+         const ask=setInterval(()=>say({{event:'listening'}}),250);\
+         addEventListener('message',(e)=>{{if(typeof e.data!=='string'||!e.origin.includes('youtube'))return;\
+         clearInterval(ask);if(self.{BINDING})self.{BINDING}(e.data);\
+         if(e.data.includes('\"onReady\"'))say({{event:'command',func:'addEventListener',args:['onStateChange']}});}});\
+         self.ph2dCall=(func,args)=>say({{event:'command',func,args}});\
+         </script></body></html>",
+        src = ph2d_board_embed::player_url(video)
     )
 }
 
@@ -254,9 +325,24 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
         .unwrap_or_default()
         .to_owned();
     let sess = Some(session.as_str());
+    let _ = s.target.set(target);
+    // As abas novas que o tocador abre (o canal, o título, «YouTube») — medido: a aba nova ficava à frente
+    // e o tocador deixava de pintar (preto).
+    if call(
+        &mut b,
+        "Target.setDiscoverTargets",
+        json!({ "discover": true }),
+        None,
+    )
+    .is_none()
+    {
+        return PlayerState::Failed("setDiscoverTargets".into());
+    }
     let pattern = format!("{ORIGIN}*");
     for (m, p) in [
         ("Page.enable", json!({})),
+        ("Runtime.enable", json!({})),
+        ("Runtime.addBinding", json!({ "name": BINDING })),
         (
             "Fetch.enable",
             json!({ "patterns": [{ "urlPattern": pattern }] }),
@@ -276,11 +362,8 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
                 *lock(&s.html) = page(&v);
                 b.send("Page.navigate", json!({ "url": ORIGIN }), sess);
             }
-            Ok(Cmd::Command(func)) => {
-                let js = format!(
-                    "document.querySelector('iframe')?.contentWindow?.postMessage(\
-                     '{{\"event\":\"command\",\"func\":\"{func}\",\"args\":\"\"}}', '*')"
-                );
+            Ok(Cmd::Call(func, args)) => {
+                let js = format!("self.ph2dCall?.('{func}', {args})");
                 b.send("Runtime.evaluate", json!({ "expression": js }), sess);
             }
             Ok(Cmd::Resize(sz)) => {
@@ -309,11 +392,14 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
     }
 }
 
+/// O tamanho da aba E do «ecrã» dela: sem o ecrã, o navegador sem ecrã imagina um de 800×600 e um ecrã
+/// inteiro manda quadros 4:3 (W19, medido: 420×315 numa caixa 560×315).
 fn metrics(b: &mut Browser, sess: Option<&str>, size: [u32; 2]) -> [u32; 2] {
     let size = size.map(|v| v.max(1));
     b.send(
         "Emulation.setDeviceMetricsOverride",
-        json!({ "width": size[0], "height": size[1], "deviceScaleFactor": 1, "mobile": false }),
+        json!({ "width": size[0], "height": size[1], "deviceScaleFactor": 1, "mobile": false,
+                "screenWidth": size[0], "screenHeight": size[1] }),
         sess,
     );
     size
@@ -386,6 +472,23 @@ fn on_message(
     let sess = m["sessionId"].as_str();
     let p = &m["params"];
     match m["method"].as_str() {
+        Some("Runtime.bindingCalled") if p["name"] == BINDING => {
+            if let Some(v) = p["payload"]
+                .as_str()
+                .and_then(|t| serde_json::from_str::<Value>(t).ok())
+            {
+                lock(&s.playback).apply(&v, Instant::now());
+            }
+        }
+        Some("Target.targetCreated" | "Target.targetInfoChanged") => {
+            let info = &p["targetInfo"];
+            if let Some(url) = popup_url(s, info) {
+                let ours = s.target.get().cloned().unwrap_or_default();
+                send_on(w, next_reader_id(ids), "Target.closeTarget", json!({ "targetId": info["targetId"] }), None);
+                send_on(w, next_reader_id(ids), "Target.activateTarget", json!({ "targetId": ours }), None);
+                lock(&s.outside).push(url);
+            }
+        }
         Some("Page.screencastFrame") => {
             let id = next_reader_id(ids);
             send_on(
@@ -420,6 +523,17 @@ fn on_message(
         }
         _ => {}
     }
+}
+
+/// Uma aba nova (não a do tocador) que já diz o endereço: o endereço a abrir fora, UMA vez (o
+/// `targetCreated` e os `targetInfoChanged` repetem-no; sem endereço ainda, `about:blank`, espera-se).
+fn popup_url(s: &Shared, info: &Value) -> Option<String> {
+    let id = info["targetId"].as_str()?;
+    let url = info["url"].as_str().unwrap_or_default();
+    if info["type"] != "page" || s.target.get().is_none_or(|t| t == id) || !url.starts_with("http") {
+        return None;
+    }
+    lock(&s.popups).insert(id.to_owned()).then(|| url.to_owned())
 }
 
 pub(crate) fn decode_jpeg(bytes: &[u8]) -> Option<Frame> {

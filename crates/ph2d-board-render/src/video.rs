@@ -1,6 +1,6 @@
 //! W18 ([ADR-0185]) — **desenhar um VÍDEO do quadro**: o quadro do tocador (o navegador da pessoa,
 //! projectado) quando ele está activo e as regras do YouTube o deixam vivo ([`ph2d_board_embed::live_allowed`]:
-//! descoberto, sem rodar, inteiro à vista, ≥ 200×200 px); senão o último quadro que se viu, ou a miniatura
+//! descoberto, sem rodar, ≥ 200×200 px à vista); senão o último quadro que se viu, ou a miniatura
 //! (cortada a encher a caixa), ou o lugar vazio — sempre com o símbolo de play quando não está vivo.
 //! Quem toca, busca a miniatura e encaminha o rato é o app (`ph2d-app-board`); aqui só se desenha e se
 //! diz ONDE cada vídeo ficou ([`Videos::on_screen`]).
@@ -189,10 +189,16 @@ pub(crate) fn paint(
     let t = v * to_world(el);
     let corners =
         [[0.0, 0.0], [el.w, 0.0], [0.0, el.h], [el.w, el.h]].map(|[x, y]| t * Point::new(x, y));
+    // A parte à vista: a caixa de ecrã dos cantos cortada pela vista (sem rodar é o retângulo exacto; rodado
+    // o tocador não está vivo de qualquer forma).
     let [x, y, w, h] = area;
-    let whole = corners
-        .iter()
-        .all(|c| c.x >= x && c.y >= y && c.x <= x + w && c.y <= y + h);
+    let span = |a: fn(&Point) -> f64, lo: f64, hi: f64| {
+        let (mn, mx) = corners
+            .iter()
+            .map(a)
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(m, n), v| (m.min(v), n.max(v)));
+        (mx.min(hi) - mn.max(lo)).max(0.0)
+    };
     let screen = OnScreen {
         size: [
             (corners[1] - corners[0]).hypot(),
@@ -200,7 +206,7 @@ pub(crate) fn paint(
         ],
         angle: el.angle,
         covered: covered(doc, el),
-        whole,
+        visible: [span(|c| c.x, x, x + w), span(|c| c.y, y, y + h)],
     };
     let on_screen = cache.export.is_none();
     let active = on_screen && cache.videos.active == Some(el.id);
@@ -225,7 +231,7 @@ pub(crate) fn paint(
     let key = video_key(&e.video);
     let thumb = thumbs().get(&key).cloned();
     match (frame, thumb) {
-        (Some((img, size)), _) => stretch(scene, &img, size, el, t),
+        (Some((img, size)), _) => fit(scene, &img, size, el, t),
         (None, Some(Thumb::Ready(img, size))) => cover(scene, &img, size, el, t),
         (None, Some(Thumb::Missing)) => {}
         (None, None) => {
@@ -238,9 +244,14 @@ pub(crate) fn paint(
     }
 }
 
-/// A imagem esticada à caixa (o tocador já tem o tamanho dela).
-fn stretch(scene: &mut VectorScene, img: &StableImage, size: [u32; 2], el: &Element, t: Affine) {
-    let m = t * Affine::scale_non_uniform(el.w / f64::from(size[0]), el.h / f64::from(size[1]));
+/// O quadro do tocador INTEIRO na caixa, com faixas se a proporção for outra (como o tocador faz) — nunca
+/// esticado (W19: o ecrã inteiro do tocador mandava 4:3 para uma caixa 16:9). Um quadro de outro tamanho
+/// (o tocador ainda não seguiu o zoom) escala-se por igual.
+fn fit(scene: &mut VectorScene, img: &StableImage, size: [u32; 2], el: &Element, t: Affine) {
+    let (iw, ih) = (f64::from(size[0]), f64::from(size[1]));
+    let k = (el.w / iw).min(el.h / ih);
+    let off = [(el.w - iw * k) / 2.0, (el.h - ih * k) / 2.0];
+    let m = t * Affine::translate((off[0], off[1])) * Affine::scale(k);
     scene.draw_recorded_image(img, m, ImageQuality::Medium, None);
 }
 

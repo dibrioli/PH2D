@@ -122,14 +122,29 @@ pub fn canonical_link(v: &Video) -> String {
     }
 }
 
-/// O tocador OFICIAL (o domínio sem cookies do YouTube), a começar no início gravado; `enablejsapi` deixa
-/// a página que o leva pausá-lo e retomá-lo pela API oficial (`postMessage`).
+/// Os parâmetros oficiais que tiram os controles do tocador (os nossos ficam por baixo dele, W19):
+/// `controls=0` a barra · `fs=0` o ecrã inteiro (e o duplo-clique) · `disablekb=1` as teclas (o `f`) ·
+/// `rel=0` os vídeos de outros canais · `iv_load_policy=3` as anotações. Medido no oráculo
+/// (`youtube_motor/saidas/w19*`): ficam o título, o canal, «Copiar link», o «YouTube» e o play ao meio.
+pub const OUR_CONTROLS: &str = "controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3";
+
+/// O tocador OFICIAL (o domínio sem cookies do YouTube), a começar em `start` segundos, sem os controles
+/// dele ([`OUR_CONTROLS`]); `enablejsapi` deixa a página que o leva falar com ele pela API oficial
+/// (`postMessage`: as ordens e o estado).
+#[must_use]
+pub fn player_url_at(v: &Video, start: u32) -> String {
+    match v {
+        Video::YouTube { id, .. } => format!(
+            "https://www.youtube-nocookie.com/embed/{id}?autoplay=1&playsinline=1&enablejsapi=1&{OUR_CONTROLS}&start={start}"
+        ),
+    }
+}
+
+/// O tocador a começar no início gravado.
 #[must_use]
 pub fn player_url(v: &Video) -> String {
     match v {
-        Video::YouTube { id, start, .. } => format!(
-            "https://www.youtube-nocookie.com/embed/{id}?autoplay=1&playsinline=1&enablejsapi=1&start={start}"
-        ),
+        Video::YouTube { start, .. } => player_url_at(v, *start),
     }
 }
 
@@ -159,20 +174,20 @@ pub struct OnScreen {
     pub angle: f64,
     /// Algum elemento está à frente de alguma parte dele.
     pub covered: bool,
-    /// O retângulo inteiro cabe na vista do quadro.
-    pub whole: bool,
+    /// A largura e a altura da parte do retângulo que está DENTRO da vista do quadro (px de ecrã).
+    pub visible: [f64; 2],
 }
 
 /// ⭐ O tocador pode estar VIVO no canvas (senão, a miniatura): as regras do YouTube para o tocador
 /// embutido — nada à frente de nenhuma parte dele, a aparência dele não se modifica (sem rodar), e pelo
-/// menos [`MIN_LIVE_SIDE`] × [`MIN_LIVE_SIDE`] visíveis — e inteiro à vista.
+/// menos [`MIN_LIVE_SIDE`] × [`MIN_LIVE_SIDE`] VISÍVEIS. Meio fora da vista não viola nada (W19: exigir o
+/// vídeo inteiro pausava-o a cada zoom).
 #[must_use]
 pub fn live_allowed(s: OnScreen) -> bool {
     !s.covered
-        && s.whole
         && s.angle == 0.0
-        && s.size[0] >= MIN_LIVE_SIDE
-        && s.size[1] >= MIN_LIVE_SIDE
+        && s.visible[0] >= MIN_LIVE_SIDE
+        && s.visible[1] >= MIN_LIVE_SIDE
 }
 
 #[cfg(test)]

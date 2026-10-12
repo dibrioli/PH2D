@@ -1,0 +1,1291 @@
+{
+ "o_que": "W19: o tocador oficial conduzido como o PH2D (sonda_w19_tocador.mjs)",
+ "exe": "/usr/bin/google-chrome-stable",
+ "video": "aqz-KE-bpKQ",
+ "data": "2026-10-12T16:17:32.906Z",
+ "versao": "155.0.8059.39",
+ "P": {
+  "hoje": {
+   "url": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0",
+   "a_tocar": {
+    "seletores": {
+     "barra": null,
+     "ecra_inteiro": null,
+     "canal": null,
+     "titulo": null,
+     "logo_youtube": null,
+     "marca": null,
+     "sugestoes_pausa": null,
+     "ecra_final": null,
+     "anuncio": null,
+     "cartoes": null,
+     "mais_videos": null
+    },
+    "links_visiveis": [],
+    "classes_do_tocador": [
+     "ytp-livebadge-color",
+     "playing-mode",
+     "ytp-autohide"
+    ]
+   },
+   "rato_em_cima": {
+    "seletores": {
+     "barra": null,
+     "ecra_inteiro": null,
+     "canal": null,
+     "titulo": null,
+     "logo_youtube": null,
+     "marca": null,
+     "sugestoes_pausa": null,
+     "ecra_final": null,
+     "anuncio": null,
+     "cartoes": null,
+     "mais_videos": null
+    },
+    "links_visiveis": [
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytmVideoInfoVideoTitle",
+      "target": "",
+      "x": 78,
+      "y": 0,
+      "w": 302,
+      "h": 38,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube-nocookie.com/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+      "classe": "ytmVideoInfoChannelTitle",
+      "target": "",
+      "x": 78,
+      "y": 38,
+      "w": 302,
+      "h": 13,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+      "target": "_blank",
+      "x": 392,
+      "y": 255,
+      "w": 138,
+      "h": 48,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=xOXolSQcEb4&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 20,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=xOXolSQcEb4&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 20,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vE57fPUAQh0&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 236,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vE57fPUAQh0&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 236,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=ZrdpOH-kgAQ&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 452,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=ZrdpOH-kgAQ&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 452,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=rf742sQbZfE&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 668,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=rf742sQbZfE&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 668,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vIptkJrQtgg&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 884,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vIptkJrQtgg&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 884,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=-MV7Hg31usU&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1100,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=-MV7Hg31usU&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1100,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=hmzVh56mTls&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1316,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=hmzVh56mTls&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1316,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=WeUclk49FXU&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1532,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=WeUclk49FXU&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1532,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=dK9TbWrjFFE&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1748,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=dK9TbWrjFFE&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1748,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=B4EPW7JUMTM&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1964,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=B4EPW7JUMTM&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1964,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=uGOVGjYdYtA&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 2180,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=uGOVGjYdYtA&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 2180,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=9birRC2F2pQ&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 2396,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=9birRC2F2pQ&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 2396,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     }
+    ],
+    "classes_do_tocador": [
+     "ytp-livebadge-color",
+     "playing-mode",
+     "ytp-autohide"
+    ]
+   },
+   "pausado": {
+    "seletores": {
+     "barra": null,
+     "ecra_inteiro": null,
+     "canal": null,
+     "titulo": null,
+     "logo_youtube": null,
+     "marca": null,
+     "sugestoes_pausa": null,
+     "ecra_final": null,
+     "anuncio": null,
+     "cartoes": null,
+     "mais_videos": null
+    },
+    "links_visiveis": [
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytmVideoInfoVideoTitle",
+      "target": "",
+      "x": 78,
+      "y": 0,
+      "w": 302,
+      "h": 38,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube-nocookie.com/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+      "classe": "ytmVideoInfoChannelTitle",
+      "target": "",
+      "x": 78,
+      "y": 38,
+      "w": 302,
+      "h": 13,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+      "target": "_blank",
+      "x": 392,
+      "y": 255,
+      "w": 138,
+      "h": 48,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=xOXolSQcEb4&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 20,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=xOXolSQcEb4&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 20,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vE57fPUAQh0&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 236,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vE57fPUAQh0&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 236,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=ZrdpOH-kgAQ&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 452,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=ZrdpOH-kgAQ&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 452,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=rf742sQbZfE&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 668,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=rf742sQbZfE&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 668,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vIptkJrQtgg&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 884,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=vIptkJrQtgg&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 884,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=-MV7Hg31usU&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1100,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=-MV7Hg31usU&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1100,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=hmzVh56mTls&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1316,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=hmzVh56mTls&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1316,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=WeUclk49FXU&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1532,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=WeUclk49FXU&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1532,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=dK9TbWrjFFE&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1748,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=dK9TbWrjFFE&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1748,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=B4EPW7JUMTM&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 1964,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=B4EPW7JUMTM&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 1964,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=uGOVGjYdYtA&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 2180,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=uGOVGjYdYtA&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 2180,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=9birRC2F2pQ&feature=endscreen",
+      "classe": "media-item-thumbnail-container",
+      "target": "_blank",
+      "x": 2396,
+      "y": 327,
+      "w": 200,
+      "h": 113,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=9birRC2F2pQ&feature=endscreen",
+      "classe": "",
+      "target": "_blank",
+      "x": 2396,
+      "y": 452,
+      "w": 200,
+      "h": 57,
+      "visivel": true,
+      "opacidade": 1
+     }
+    ],
+    "classes_do_tocador": [
+     "ytp-livebadge-color",
+     "ytp-autohide",
+     "paused-mode"
+    ]
+   },
+   "estado": [
+    {
+     "t": 1478,
+     "s": 1
+    },
+    {
+     "t": 8905,
+     "s": 2
+    }
+   ]
+  },
+  "nossos": {
+   "url": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3",
+   "a_tocar": {
+    "seletores": {
+     "barra": null,
+     "ecra_inteiro": null,
+     "canal": null,
+     "titulo": null,
+     "logo_youtube": null,
+     "marca": null,
+     "sugestoes_pausa": null,
+     "ecra_final": null,
+     "anuncio": null,
+     "cartoes": null,
+     "mais_videos": null
+    },
+    "links_visiveis": [],
+    "classes_do_tocador": [
+     "ytp-livebadge-color",
+     "playing-mode",
+     "ytp-autohide"
+    ]
+   },
+   "rato_em_cima": {
+    "seletores": {
+     "barra": null,
+     "ecra_inteiro": null,
+     "canal": null,
+     "titulo": null,
+     "logo_youtube": null,
+     "marca": null,
+     "sugestoes_pausa": null,
+     "ecra_final": null,
+     "anuncio": null,
+     "cartoes": null,
+     "mais_videos": null
+    },
+    "links_visiveis": [
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytmVideoInfoVideoTitle",
+      "target": "",
+      "x": 78,
+      "y": 0,
+      "w": 446,
+      "h": 38,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube-nocookie.com/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+      "classe": "ytmVideoInfoChannelTitle",
+      "target": "",
+      "x": 78,
+      "y": 38,
+      "w": 446,
+      "h": 13,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+      "target": "_blank",
+      "x": 392,
+      "y": 255,
+      "w": 138,
+      "h": 48,
+      "visivel": true,
+      "opacidade": 1
+     }
+    ],
+    "classes_do_tocador": [
+     "ytp-livebadge-color",
+     "playing-mode",
+     "ytp-autohide"
+    ]
+   },
+   "pausado": {
+    "seletores": {
+     "barra": null,
+     "ecra_inteiro": null,
+     "canal": null,
+     "titulo": null,
+     "logo_youtube": null,
+     "marca": null,
+     "sugestoes_pausa": null,
+     "ecra_final": null,
+     "anuncio": null,
+     "cartoes": null,
+     "mais_videos": null
+    },
+    "links_visiveis": [
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytmVideoInfoVideoTitle",
+      "target": "",
+      "x": 78,
+      "y": 0,
+      "w": 446,
+      "h": 38,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube-nocookie.com/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+      "classe": "ytmVideoInfoChannelTitle",
+      "target": "",
+      "x": 78,
+      "y": 38,
+      "w": 446,
+      "h": 13,
+      "visivel": true,
+      "opacidade": 1
+     },
+     {
+      "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+      "target": "_blank",
+      "x": 392,
+      "y": 255,
+      "w": 138,
+      "h": 48,
+      "visivel": true,
+      "opacidade": 1
+     }
+    ],
+    "classes_do_tocador": [
+     "ytp-livebadge-color",
+     "ytp-autohide",
+     "paused-mode"
+    ]
+   },
+   "estado": [
+    {
+     "t": 1014,
+     "s": 1
+    },
+    {
+     "t": 8742,
+     "s": 2
+    }
+   ]
+  }
+ },
+ "F": {
+  "560x315": {
+   "botao": null,
+   "clicou": false,
+   "quadros_antes": [
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    },
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    },
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    }
+   ],
+   "tamanhos_depois": [
+    "560x315 jpeg 560x315"
+   ],
+   "quadros_depois": 75,
+   "fullscreen_no_iframe": false,
+   "fullscreen_na_pagina": false,
+   "janela": {
+    "windowId": 1027207745,
+    "bounds": {
+     "left": 10,
+     "top": 10,
+     "width": 780,
+     "height": 580,
+     "windowState": "normal"
+    }
+   }
+  },
+  "480x360": {
+   "botao": null,
+   "clicou": false,
+   "quadros_antes": [
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    },
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    },
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    }
+   ],
+   "tamanhos_depois": [
+    "480x360 jpeg 480x360"
+   ],
+   "quadros_depois": 78,
+   "fullscreen_no_iframe": false,
+   "fullscreen_na_pagina": false,
+   "janela": {
+    "windowId": 1027207747,
+    "bounds": {
+     "left": 10,
+     "top": 10,
+     "width": 780,
+     "height": 580,
+     "windowState": "normal"
+    }
+   }
+  }
+ },
+ "Z": [
+  {
+   "variante": "fixo",
+   "passos": 0,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 195,
+   "distintos_por_s": 30,
+   "tempo_final": 12.127983
+  },
+  {
+   "variante": "hoje",
+   "passos": 267,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 237,
+   "distintos_por_s": 36,
+   "tempo_final": 12.372465
+  },
+  {
+   "variante": "so_metricas",
+   "passos": 278,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 94,
+   "distintos_por_s": 14.3,
+   "tempo_final": 12.641974
+  },
+  {
+   "variante": "assenta",
+   "passos": 1,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 196,
+   "distintos_por_s": 30.2,
+   "tempo_final": 12.386165
+  },
+  {
+   "variante": "assenta",
+   "passos": 1,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 196,
+   "distintos_por_s": 30.2,
+   "tempo_final": 12.6589
+  },
+  {
+   "variante": "so_metricas",
+   "passos": 283,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 81,
+   "distintos_por_s": 12.5,
+   "tempo_final": 12.391433
+  },
+  {
+   "variante": "hoje",
+   "passos": 267,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 247,
+   "distintos_por_s": 37.5,
+   "tempo_final": 12.650149
+  },
+  {
+   "variante": "fixo",
+   "passos": 0,
+   "estados": [],
+   "pausas": 0,
+   "buffering": 0,
+   "quadros": 195,
+   "distintos_por_s": 30,
+   "tempo_final": 12.388339
+  }
+ ],
+ "C": [
+  {
+   "params": "hoje",
+   "alvo": "canal",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 29325,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "titulo",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 29543,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "logo_youtube",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 29002,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "marca",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 29372,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "sugestao_pausa",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 0,
+   "jpeg_medio_bytes": null,
+   "ultimo_estado": 2
+  },
+  {
+   "params": "nossos",
+   "alvo": "canal",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 26914,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "titulo",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 28191,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "logo_youtube",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 26977,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "marca",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 26687,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "sugestao_pausa",
+   "achado": null,
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 0,
+   "jpeg_medio_bytes": null,
+   "ultimo_estado": 2
+  }
+ ],
+ "A": {
+  "eventos": [
+   "initialDelivery",
+   "onReady",
+   "alreadyInitialized",
+   "infoDelivery"
+  ],
+  "chaves_infoDelivery": [
+   "muted",
+   "volume",
+   "playbackQuality",
+   "availableQualityLevels",
+   "preferredQuality",
+   "playerState",
+   "currentTime",
+   "duration",
+   "videoData",
+   "videoStartBytes",
+   "videoBytesTotal",
+   "videoLoadedFraction",
+   "currentTimeLastUpdated_",
+   "playbackRate",
+   "mediaReferenceTime",
+   "videoUrl",
+   "videoContentRect",
+   "progressState",
+   "playlist",
+   "playlistIndex",
+   "videoBytesLoaded"
+  ],
+  "infoDelivery_por_s": 3.7,
+  "ordens": [
+   {
+    "func": "mute",
+    "args": [],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "unMute",
+    "args": [],
+    "ms_ate_o_estado": 6
+   },
+   {
+    "func": "setVolume",
+    "args": [
+     30
+    ],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "seekTo",
+    "args": [
+     120,
+     true
+    ],
+    "ms_ate_o_estado": 10
+   },
+   {
+    "func": "pauseVideo",
+    "args": [],
+    "ms_ate_o_estado": 948
+   },
+   {
+    "func": "playVideo",
+    "args": [],
+    "ms_ate_o_estado": 269
+   },
+   {
+    "func": "setPlaybackRate",
+    "args": [
+     1.5
+    ],
+    "ms_ate_o_estado": 5
+   }
+  ],
+  "exemplo": {
+   "currentTime": 120.170107,
+   "duration": 635,
+   "playerState": 1,
+   "volume": 30,
+   "muted": false,
+   "videoData": {
+    "video_id": "aqz-KE-bpKQ",
+    "author": "Blender",
+    "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+    "isPlayable": true,
+    "errorCode": null,
+    "video_quality": "large",
+    "video_quality_features": [],
+    "backgroundable": false,
+    "eventId": "IwnNapjuI4m_obIPp_iY2QQ",
+    "cpn": "GJlya47piEqZplV2",
+    "isLive": false,
+    "isWindowedLive": false,
+    "isManifestless": false,
+    "allowLiveDvr": false,
+    "isListed": true,
+    "isMultiChannelAudio": false,
+    "hasProgressBarBoundaries": false,
+    "isPremiere": false,
+    "itct": "CAAQu2kiEwjYi83F8bSXAxWJX0gAHSc8JkvKAQSHGTOe",
+    "playerResponseCpn": "",
+    "progressBarStartPositionUtcTimeMillis": null,
+    "progressBarEndPositionUtcTimeMillis": null,
+    "paidContentOverlayDurationMs": 0,
+    "isSeekable": null
+   },
+   "availablePlaybackRates": [
+    0.25,
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5,
+    1.75,
+    2
+   ]
+  },
+  "anuncio": {
+   "classes": [
+    "ytp-livebadge-color",
+    "ytp-autohide",
+    "playing-mode"
+   ],
+   "seletor": null,
+   "adState": []
+  }
+ }
+}

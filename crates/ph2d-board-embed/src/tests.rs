@@ -116,14 +116,15 @@ fn natural_size_and_canonical_link_round_trip() {
     assert_eq!(youtube(&canonical_link(&s)), Some(s));
 }
 
-/// ⭐ As regras do YouTube: vivo só descoberto, sem rodar, inteiro à vista e ≥ 200×200 px.
+/// ⭐ As regras do YouTube: vivo só descoberto, sem rodar e com ≥ 200×200 px VISÍVEIS (W19: meio fora da
+/// vista não pausa).
 #[test]
 fn the_player_is_live_only_where_youtube_allows_it() {
     let ok = OnScreen {
         size: [560.0, 315.0],
         angle: 0.0,
         covered: false,
-        whole: true,
+        visible: [560.0, 315.0],
     };
     assert!(live_allowed(ok));
     assert!(
@@ -135,12 +136,25 @@ fn the_player_is_live_only_where_youtube_allows_it() {
     );
     assert!(!live_allowed(OnScreen { angle: 0.1, ..ok }), "rodado");
     assert!(
-        !live_allowed(OnScreen { whole: false, ..ok }),
-        "meio fora da vista"
+        live_allowed(OnScreen {
+            size: [1600.0, 900.0],
+            visible: [700.0, 200.0],
+            ..ok
+        }),
+        "meio fora da vista com 700×200 à vista (o zoom do smoke do dono)"
+    );
+    assert!(
+        !live_allowed(OnScreen {
+            size: [1600.0, 900.0],
+            visible: [700.0, 199.9],
+            ..ok
+        }),
+        "menos de 200 px à vista"
     );
     assert!(
         !live_allowed(OnScreen {
             size: [356.0, 199.9],
+            visible: [356.0, 199.9],
             ..ok
         }),
         "abaixo de 200 px"
@@ -148,8 +162,20 @@ fn the_player_is_live_only_where_youtube_allows_it() {
     assert!(
         live_allowed(OnScreen {
             size: [200.0, 200.0],
+            visible: [200.0, 200.0],
             ..ok
         }),
         "o mínimo"
     );
+}
+
+/// W19 — o tocador vem SEM os controles dele (os nossos ficam por baixo): cada parâmetro oficial medido.
+#[test]
+fn the_player_comes_without_its_own_controls() {
+    let v = youtube(&format!("https://youtu.be/{ID}?t=42")).unwrap();
+    let u = player_url(&v);
+    for p in ["controls=0", "fs=0", "disablekb=1", "rel=0", "iv_load_policy=3", "enablejsapi=1"] {
+        assert!(u.split(['?', '&']).any(|q| q == p), "falta {p}: {u}");
+    }
+    assert!(player_url_at(&v, 130).ends_with("start=130"));
 }

@@ -6,10 +6,12 @@
 //! [ADR-0185]: ../../../docs/architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md
 
 mod browser;
+mod playback;
 mod player;
 pub mod thumb;
 
 pub use browser::find as find_browser;
+pub use playback::{Phase, Playback};
 pub use player::{Button, Frame, Key, Mouse, Player, PlayerState};
 
 /// «Abrir no navegador»: o `url` (só `https://`) no navegador por omissão do sistema. `false` = não abriu.

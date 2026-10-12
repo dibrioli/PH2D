@@ -160,3 +160,69 @@ fn a_screen_point_maps_into_the_player() {
     assert!(c.videos.on_play(id, el, [mid.x, mid.y]));
     assert!(!c.videos.on_play(id, el, [o.x + 5.0, o.y + 5.0]));
 }
+
+/// O retângulo de ecrã `[x, y, w, h]` da imagem do quadro do tocador.
+fn frame_rect(o: &[DrawOp], color: [u8; 4]) -> [f64; 4] {
+    let i = o
+        .iter()
+        .find_map(|d| match d {
+            DrawOp::Image(i) if i.image.rgba()[..4] == color => Some(i),
+            _ => None,
+        })
+        .expect("o quadro do tocador não se desenhou");
+    let (w, h) = (f64::from(i.image.width()), f64::from(i.image.height()));
+    let a = i.transform * ph2d_vector::Point::new(0.0, 0.0);
+    let b = i.transform * ph2d_vector::Point::new(w, h);
+    [a.x, a.y, b.x - a.x, b.y - a.y]
+}
+
+/// ⭐⭐ W19 (smoke do dono, defeito 1): um quadro do tocador com OUTRA proporção que a caixa (o ecrã
+/// inteiro do tocador mandava 420×315 para uma caixa 560×315) desenha-se INTEIRO e com faixas, como o
+/// tocador faz — nunca esticado.
+#[test]
+fn a_frame_of_another_shape_draws_with_bands_never_stretched() {
+    let b = board("AAAAAAAAAA4", false);
+    let mut c = RenderCache::default();
+    c.videos.active = Some(vid_of(&b));
+    c.videos.frame = Some((flat([4, 5, 6, 255], 420, 315), [420, 315]));
+    let o = ops(&b, &mut c);
+    let box_ = c.videos.on_screen[&vid_of(&b)].to_screen * ph2d_vector::Point::new(0.0, 0.0);
+    let [x, y, w, h] = frame_rect(&o, [4, 5, 6, 255]);
+    assert!(
+        (w / h - 420.0 / 315.0).abs() < 1e-9,
+        "esticado: {w}×{h} (a proporção do quadro é 4:3)"
+    );
+    assert!((h - 315.0).abs() < 1e-9 && (w - 420.0).abs() < 1e-9, "{w}×{h}");
+    assert!(
+        (x - box_.x - 70.0).abs() < 1e-9 && (y - box_.y).abs() < 1e-9,
+        "as faixas de 70 px dos dois lados: {x},{y}"
+    );
+    // Da mesma forma, um quadro mais pequeno que a caixa (o tocador ainda não seguiu o zoom) ENCHE-a.
+    c.videos.frame = Some((flat([4, 5, 6, 255], 320, 180), [320, 180]));
+    let o = ops(&b, &mut c);
+    let r = frame_rect(&o, [4, 5, 6, 255]);
+    assert!((r[2] - 560.0).abs() < 1e-9 && (r[3] - 315.0).abs() < 1e-9, "{r:?}");
+}
+
+/// ⭐⭐ W19 (smoke do dono, defeito 2): com o zoom, o vídeo MEIO FORA da vista continua vivo enquanto
+/// houver ≥ 200×200 px dele à vista (a regra do YouTube), e a parte visível é a medida.
+#[test]
+fn a_video_half_out_of_view_stays_live() {
+    let mut b = board("AAAAAAAAAA5", false);
+    let mut c = RenderCache::default();
+    let id = vid_of(&b);
+    c.videos.active = Some(id);
+    // O meio do vídeo no canto de cima à esquerda da vista de 1280×800, ao zoom 2: só um quarto à vista.
+    b.camera.zoom = 2.0;
+    b.camera.center_x = 280.0 + 640.0 / 2.0;
+    b.camera.center_y = 157.5 + 400.0 / 2.0;
+    let _ = ops(&b, &mut c);
+    let p = c.videos.on_screen[&id];
+    assert_eq!(p.screen.size, [1120.0, 630.0]);
+    assert!(
+        (p.screen.visible[0] - 560.0).abs() < 1e-6 && (p.screen.visible[1] - 315.0).abs() < 1e-6,
+        "{:?}",
+        p.screen.visible
+    );
+    assert!(p.live, "meio fora da vista com 560×315 à vista pausava o vídeo");
+}

@@ -1,0 +1,654 @@
+{
+ "o_que": "W19: o tocador oficial conduzido como o PH2D (sonda_w19_tocador.mjs)",
+ "exe": "/usr/bin/google-chrome-stable",
+ "video": "aqz-KE-bpKQ",
+ "data": "2026-10-12T16:26:05.365Z",
+ "versao": "155.0.8059.39",
+ "P": {},
+ "F": {
+  "560x315": {
+   "botao": {
+    "tag": "button",
+    "aria": "Entrar no modo tela cheia",
+    "texto": "",
+    "classe": "icon-button fullscreen-icon",
+    "href": null,
+    "x": 488,
+    "y": 187,
+    "w": 48,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "clicou": true,
+   "quadros_antes": [
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    },
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    },
+    {
+     "w": 560,
+     "h": 315,
+     "jpeg": [
+      560,
+      315
+     ]
+    }
+   ],
+   "tamanhos_depois": [
+    "560x315 jpeg 560x315"
+   ],
+   "quadros_depois": 77,
+   "fullscreen_no_iframe": true,
+   "fullscreen_na_pagina": true,
+   "janela": {
+    "windowId": 764314696,
+    "bounds": {
+     "left": 10,
+     "top": 10,
+     "width": 780,
+     "height": 580,
+     "windowState": "normal"
+    }
+   }
+  },
+  "480x360": {
+   "botao": {
+    "tag": "button",
+    "aria": "Entrar no modo tela cheia",
+    "texto": "",
+    "classe": "icon-button fullscreen-icon",
+    "href": null,
+    "x": 408,
+    "y": 232,
+    "w": 48,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "clicou": true,
+   "quadros_antes": [
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    },
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    },
+    {
+     "w": 480,
+     "h": 360,
+     "jpeg": [
+      480,
+      360
+     ]
+    }
+   ],
+   "tamanhos_depois": [
+    "480x360 jpeg 480x360"
+   ],
+   "quadros_depois": 74,
+   "fullscreen_no_iframe": true,
+   "fullscreen_na_pagina": true,
+   "janela": {
+    "windowId": 764314698,
+    "bounds": {
+     "left": 10,
+     "top": 10,
+     "width": 780,
+     "height": 580,
+     "windowState": "normal"
+    }
+   }
+  }
+ },
+ "Z": [],
+ "C": [
+  {
+   "params": "hoje",
+   "alvo": "avatar",
+   "achado": {
+    "tag": "button",
+    "aria": "Ocultar controles do player",
+    "texto": "",
+    "classe": "ytmA11yStylesHiddenButton",
+    "href": null,
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 1,
+   "jpeg_medio_bytes": 24985,
+   "ultimo_estado": 2
+  },
+  {
+   "params": "hoje",
+   "alvo": "canal",
+   "achado": {
+    "tag": "a",
+    "aria": "",
+    "texto": "Blender",
+    "classe": "ytmVideoInfoChannelTitle",
+    "href": "https://www.youtube-nocookie.com/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+    "x": 78,
+    "y": 38,
+    "w": 302,
+    "h": 13,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [
+    {
+     "t": 7915,
+     "novo_alvo": "https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg?source_ve_path=MjE0Mjgz&embeds_referring_euri=https%3A%2F%2Fph2d.local%2F"
+    },
+    {
+     "t": 7915,
+     "popup": "https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg?source_ve_path=MjE0Mjgz&embeds_referring_euri=https%3A%2F%2Fph2d.local%2F"
+    }
+   ],
+   "paginas_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 29420,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "titulo",
+   "achado": {
+    "tag": "a",
+    "aria": "",
+    "texto": "Big Buck Bunny 60fps 4K - Official Blend",
+    "classe": "ytmVideoInfoVideoTitle",
+    "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "x": 78,
+    "y": 0,
+    "w": 350,
+    "h": 38,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [
+    {
+     "t": 7935,
+     "novo_alvo": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    },
+    {
+     "t": 7935,
+     "popup": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    }
+   ],
+   "paginas_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 92,
+   "jpeg_medio_bytes": 29665,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "logo_youtube",
+   "achado": {
+    "tag": "a",
+    "aria": "Assistir no YouTube",
+    "texto": "",
+    "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+    "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "x": 392,
+    "y": 255,
+    "w": 138,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [
+    {
+     "t": 7732,
+     "novo_alvo": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    },
+    {
+     "t": 7732,
+     "popup": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    }
+   ],
+   "paginas_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 11,
+   "jpeg_medio_bytes": 24101,
+   "ultimo_estado": 2
+  },
+  {
+   "params": "hoje",
+   "alvo": "mais_videos",
+   "achado": {
+    "tag": "button",
+    "aria": "Mais vídeos",
+    "texto": "Mais vídeos",
+    "classe": "ytmFullscreenRelatedVideosEntryPointViewModelButton ytmFulls",
+    "href": null,
+    "x": 217,
+    "y": 255,
+    "w": 171,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 92,
+   "jpeg_medio_bytes": 36071,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "hoje",
+   "alvo": "copiar_link",
+   "achado": {
+    "tag": "button",
+    "aria": "Copiar link",
+    "texto": "",
+    "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+    "href": null,
+    "x": 38,
+    "y": 259,
+    "w": 40,
+    "h": 40,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 28482,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "avatar",
+   "achado": {
+    "tag": "button",
+    "aria": "Ocultar controles do player",
+    "texto": "",
+    "classe": "ytmA11yStylesHiddenButton",
+    "href": null,
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 1,
+   "jpeg_medio_bytes": 20952,
+   "ultimo_estado": 2
+  },
+  {
+   "params": "nossos",
+   "alvo": "canal",
+   "achado": {
+    "tag": "a",
+    "aria": "",
+    "texto": "Blender",
+    "classe": "ytmVideoInfoChannelTitle",
+    "href": "https://www.youtube-nocookie.com/channel/UCSMOQeBJ2RAnuFungnQOxLg",
+    "x": 78,
+    "y": 38,
+    "w": 446,
+    "h": 13,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [
+    {
+     "t": 8053,
+     "novo_alvo": "https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg?source_ve_path=MjE0Mjgz&embeds_referring_euri=https%3A%2F%2Fph2d.local%2F"
+    },
+    {
+     "t": 8053,
+     "popup": "https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg?source_ve_path=MjE0Mjgz&embeds_referring_euri=https%3A%2F%2Fph2d.local%2F"
+    }
+   ],
+   "paginas_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 92,
+   "jpeg_medio_bytes": 26982,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "titulo",
+   "achado": {
+    "tag": "a",
+    "aria": "",
+    "texto": "Big Buck Bunny 60fps 4K - Official Blend",
+    "classe": "ytmVideoInfoVideoTitle",
+    "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "x": 78,
+    "y": 0,
+    "w": 446,
+    "h": 38,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [
+    {
+     "t": 7680,
+     "novo_alvo": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    },
+    {
+     "t": 7680,
+     "popup": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    }
+   ],
+   "paginas_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 92,
+   "jpeg_medio_bytes": 25606,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "logo_youtube",
+   "achado": {
+    "tag": "a",
+    "aria": "Assistir no YouTube",
+    "texto": "",
+    "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+    "href": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "x": 392,
+    "y": 255,
+    "w": 138,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [
+    {
+     "t": 7714,
+     "novo_alvo": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    },
+    {
+     "t": 7714,
+     "popup": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    }
+   ],
+   "paginas_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 10,
+   "jpeg_medio_bytes": 22581,
+   "ultimo_estado": 2
+  },
+  {
+   "params": "nossos",
+   "alvo": "mais_videos",
+   "achado": {
+    "tag": "button",
+    "aria": "Mais vídeos",
+    "texto": "Mais vídeos",
+    "classe": "ytmFullscreenRelatedVideosEntryPointViewModelButton ytmFulls",
+    "href": null,
+    "x": 217,
+    "y": 255,
+    "w": 171,
+    "h": 48,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 21671,
+   "ultimo_estado": 1
+  },
+  {
+   "params": "nossos",
+   "alvo": "copiar_link",
+   "achado": {
+    "tag": "button",
+    "aria": "Copiar link",
+    "texto": "",
+    "classe": "ytSpecButtonShapeNextHost ytSpecButtonShapeNextText ytSpecBu",
+    "href": null,
+    "x": 38,
+    "y": 259,
+    "w": 40,
+    "h": 40,
+    "visivel": true,
+    "opacidade": 1
+   },
+   "eventos": [],
+   "paginas_depois": [
+    "https://ph2d.local/"
+   ],
+   "molduras_depois": [
+    "https://ph2d.local/",
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&playsinline=1&enablejsapi=1&start=0&co"
+   ],
+   "quadros_depois": 90,
+   "jpeg_medio_bytes": 27026,
+   "ultimo_estado": 1
+  }
+ ],
+ "A": {
+  "eventos": [
+   "initialDelivery",
+   "onReady",
+   "infoDelivery",
+   "alreadyInitialized",
+   "onStateChange"
+  ],
+  "chaves_infoDelivery": [
+   "muted",
+   "volume",
+   "playbackQuality",
+   "availableQualityLevels",
+   "preferredQuality",
+   "playerState",
+   "currentTime",
+   "duration",
+   "videoData",
+   "videoStartBytes",
+   "videoBytesTotal",
+   "videoLoadedFraction",
+   "currentTimeLastUpdated_",
+   "playbackRate",
+   "mediaReferenceTime",
+   "videoUrl",
+   "videoContentRect",
+   "progressState",
+   "playlist",
+   "playlistIndex",
+   "videoBytesLoaded"
+  ],
+  "infoDelivery_por_s": 3.7,
+  "ordens": [
+   {
+    "func": "mute",
+    "args": [],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "unMute",
+    "args": [],
+    "ms_ate_o_estado": 6
+   },
+   {
+    "func": "setVolume",
+    "args": [
+     30
+    ],
+    "ms_ate_o_estado": 4
+   },
+   {
+    "func": "seekTo",
+    "args": [
+     120,
+     true
+    ],
+    "ms_ate_o_estado": 5
+   },
+   {
+    "func": "pauseVideo",
+    "args": [],
+    "ms_ate_o_estado": 629
+   },
+   {
+    "func": "playVideo",
+    "args": [],
+    "ms_ate_o_estado": 253
+   },
+   {
+    "func": "setPlaybackRate",
+    "args": [
+     1.5
+    ],
+    "ms_ate_o_estado": 5
+   }
+  ],
+  "exemplo": {
+   "currentTime": 120.147656,
+   "duration": 635,
+   "playerState": 1,
+   "volume": 30,
+   "muted": false,
+   "videoData": {
+    "video_id": "aqz-KE-bpKQ",
+    "author": "Blender",
+    "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+    "isPlayable": true,
+    "errorCode": null,
+    "video_quality": "large",
+    "video_quality_features": [],
+    "backgroundable": false,
+    "eventId": "sQrNauz2LPS0obIPxIvk0Q0",
+    "cpn": "KVybwsHAyNGHeUkU",
+    "isLive": false,
+    "isWindowedLive": false,
+    "isManifestless": false,
+    "allowLiveDvr": false,
+    "isListed": true,
+    "isMultiChannelAudio": false,
+    "hasProgressBarBoundaries": false,
+    "isPremiere": false,
+    "itct": "CAAQu2kiEwisk7qD87SXAxV0WkgAHcQFOdrKAQRwlwzm",
+    "playerResponseCpn": "",
+    "progressBarStartPositionUtcTimeMillis": null,
+    "progressBarEndPositionUtcTimeMillis": null,
+    "paidContentOverlayDurationMs": 0,
+    "isSeekable": null
+   },
+   "availablePlaybackRates": [
+    0.25,
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5,
+    1.75,
+    2
+   ]
+  },
+  "anuncio": {
+   "classes": [
+    "ytp-livebadge-color",
+    "ytp-autohide",
+    "playing-mode"
+   ],
+   "seletor": null,
+   "adState": []
+  }
+ }
+}

@@ -11,6 +11,7 @@
 //!    do vetor.
 
 mod captura;
+mod forno;
 pub mod gizmo;
 mod grade;
 pub mod inspector;

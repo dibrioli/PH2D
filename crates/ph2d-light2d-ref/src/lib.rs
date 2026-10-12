@@ -23,9 +23,9 @@ mod rebote;
 use std::f64::consts::TAU;
 
 use geometria::{Fronteira, angulo, cruzamentos, intersecoes};
+pub use miolo::{MIOLO_PADRAO, OpcoesDoMiolo};
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 use queda::queda;
-pub use miolo::{MIOLO_PADRAO, OpcoesDoMiolo};
 pub use rebote::{ALBEDO_MAX, OpcoesDoRebote, Rebote};
 
 struct Objeto {

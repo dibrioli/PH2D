@@ -92,13 +92,13 @@ impl Placa<'_> {
         desc: wgpu::ShaderModuleDescriptor<'_>,
     ) -> wgpu::ShaderModule {
         let k = format!("{desc:?}");
-        let mut m = self.fabrica.memo(self.device);
-        if let Some(s) = m.memo.modulos.get(&k) {
+        if let Some(s) = self.fabrica.memo(self.device).memo.modulos.get(&k) {
             return s.clone();
         }
+        // Compila FORA do cadeado (a estufa do app compila noutro fio enquanto o quadro corre).
         let s = self.device.create_shader_module(desc);
-        m.memo.modulos.insert(k, s.clone());
-        s
+        let mut m = self.fabrica.memo(self.device);
+        m.memo.modulos.entry(k).or_insert(s).clone()
     }
 
     pub fn create_pipeline_layout(
@@ -119,11 +119,15 @@ impl Placa<'_> {
         desc: &wgpu::ComputePipelineDescriptor<'_>,
     ) -> wgpu::ComputePipeline {
         let k = format!("{desc:?}");
-        let mut m = self.fabrica.memo(self.device);
-        if let Some(p) = m.memo.computos.get(&k) {
+        if let Some(p) = self.fabrica.memo(self.device).memo.computos.get(&k) {
             return p.clone();
         }
         let p = self.device.create_compute_pipeline(desc);
+        let mut m = self.fabrica.memo(self.device);
+        if let Some(q) = m.memo.computos.get(&k) {
+            // Outro fio compilou a mesma enquanto esta compilava: fica a dele.
+            return q.clone();
+        }
         m.pipelines_criadas += 1;
         m.memo.computos.insert(k, p.clone());
         p
@@ -134,11 +138,14 @@ impl Placa<'_> {
         desc: &wgpu::RenderPipelineDescriptor<'_>,
     ) -> wgpu::RenderPipeline {
         let k = format!("{desc:?}");
-        let mut m = self.fabrica.memo(self.device);
-        if let Some(p) = m.memo.renders.get(&k) {
+        if let Some(p) = self.fabrica.memo(self.device).memo.renders.get(&k) {
             return p.clone();
         }
         let p = self.device.create_render_pipeline(desc);
+        let mut m = self.fabrica.memo(self.device);
+        if let Some(q) = m.memo.renders.get(&k) {
+            return q.clone();
+        }
         m.pipelines_criadas += 1;
         m.memo.renders.insert(k, p.clone());
         p

@@ -43,11 +43,7 @@ fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> Config {
     Config {
         pe_na_borda: VARIANTES[v].1,
         vis_na_face: VARIANTES[v].2,
-        ..crate::medida_luz2d_w5d::config(
-            gpu,
-            a,
-            crate::medida_luz2d_w5d::VARIANTES[2],
-        )
+        ..crate::medida_luz2d_w5d::config(gpu, a, crate::medida_luz2d_w5d::VARIANTES[2])
     }
 }
 
@@ -61,10 +57,15 @@ fn medida_luz2d_w5g() {
     eprintln!(
         "# Rodada W5g · {} · perfil {} · loadavg antes {}",
         gpu.adapter.get_info().name,
-        if cfg!(debug_assertions) { "DEBUG" } else { "otimizado (smoke)" },
+        if cfg!(debug_assertions) {
+            "DEBUG"
+        } else {
+            "otimizado (smoke)"
+        },
         loadavg()
     );
-    let aneis_todos: Vec<(&str, f64, f64)> = ANEIS.iter().chain(MAIS_ANEIS.iter()).copied().collect();
+    let aneis_todos: Vec<(&str, f64, f64)> =
+        ANEIS.iter().chain(MAIS_ANEIS.iter()).copied().collect();
     assert_eq!(aneis_todos.len(), N_ANEIS);
     // [variante][anel] — o pior sobre zooms, fases e corpos.
     let mut pior = [[Leitura::default(); N_ANEIS]; VARIANTES.len()];
@@ -103,8 +104,7 @@ fn medida_luz2d_w5g() {
                     }
                     eprintln!(
                         "A · zoom {zoom} · {k}/8 · {} · {}{linha}",
-                        r.nome,
-                        VARIANTES[v].0
+                        r.nome, VARIANTES[v].0
                     );
                 }
             }
@@ -121,7 +121,7 @@ fn medida_luz2d_w5g() {
     }
     for &zoom in &ZOOMS {
         let a = vista_em(zoom, cena_redonda([0.0; 2]).1[0].centro);
-        for v in 0..VARIANTES.len() {
+        for (v, variante) in VARIANTES.iter().enumerate() {
             let cfg = config(&gpu, a, v);
             let tx = cfg.grade.texel_m / f64::from(cfg.fina);
             let (fl, r, gab_cena) = disco_de_imagem(&gpu, a, cfg);
@@ -142,10 +142,7 @@ fn medida_luz2d_w5g() {
                     l.errados, l.cruzes, l.desvio, l.tv
                 );
             }
-            eprintln!(
-                "B · imagem · zoom {zoom} · {}{linha}",
-                VARIANTES[v].0
-            );
+            eprintln!("B · imagem · zoom {zoom} · {}{linha}", variante.0);
         }
     }
     custo(&gpu);

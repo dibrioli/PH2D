@@ -376,5 +376,8 @@ fn a_celula_grossa_nao_passa_a_captura_do_limite() {
     }
     // Controlo: na célula mais grossa a razão dos dois texels passa do teto.
     let dg = DEGRAU_PADRAO.com_celula_engrossada(CELULA_MAX);
-    assert!(dg.c0_px / dg.captura_px > f64::from(CAPTURA_MAX), "a fixture não contém o caso");
+    assert!(
+        dg.c0_px / dg.captura_px > f64::from(CAPTURA_MAX),
+        "a fixture não contém o caso"
+    );
 }

@@ -381,7 +381,12 @@ impl Solver {
             self.tempos.as_ref(),
         );
         match &self.miolo {
-            Some(m) => m.gravar(gpu, enc, self.cfg.grade_da_fluencia().texel_m, self.tempos.as_ref()),
+            Some(m) => m.gravar(
+                gpu,
+                enc,
+                self.cfg.grade_da_fluencia().texel_m,
+                self.tempos.as_ref(),
+            ),
             None => rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::C3_MIOLO),
         }
         // A fonte que a C3 acabou de escrever está nesta grade: o quadro seguinte lê-a no mundo.

@@ -304,7 +304,12 @@ impl PassList {
             let base = [gf.largura, gf.altura];
             let meia = base.map(|x| (x >> 1).max(1));
             for (nome, formato, tamanho, mips) in [
-                ("luz2d/tex/miolo_fino", formato_cascata(cfg.armazenamento), base, 1),
+                (
+                    "luz2d/tex/miolo_fino",
+                    formato_cascata(cfg.armazenamento),
+                    base,
+                    1,
+                ),
                 ("luz2d/tex/miolo_conhecido", F::Rgba16Float, meia, l),
                 ("luz2d/tex/miolo_a", F::Rgba32Float, meia, l),
                 ("luz2d/tex/miolo_b", F::Rgba32Float, meia, l),

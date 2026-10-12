@@ -170,7 +170,7 @@ pub(crate) fn build_initial_state(
         frost_doc_scene: ph2d_vector::VectorScene::new(),
         frost_front_scene: ph2d_vector::VectorScene::new(),
         frosting: false,
-        luz2d: ph2d_app_light2d::LuzDoQuadro::new(),
+        luz2d: ph2d_app_light2d::LuzDoQuadro::new().com_montagem_em_fundo(),
         band_doc_scenes: Vec::new(),
         grid_behind_scene: ph2d_vector::VectorScene::new(),
         compositor_reads_world: false,

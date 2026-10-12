@@ -5,6 +5,7 @@ mod a_escada_da_sombra;
 mod a_face_acesa_da_parede;
 mod a_grade_fina;
 mod a_luz_nao_muda_com_a_vista;
+mod a_luz_nasce_na_estufa;
 mod a_nitidez_da_luz;
 mod as_formas_do_motion;
 mod as_formas_redondas;

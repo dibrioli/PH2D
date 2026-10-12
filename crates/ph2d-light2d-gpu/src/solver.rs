@@ -25,9 +25,6 @@ mod c2;
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
-/// ⭐ O miolo dos opacos pela difusão (W5h) — ficheiro irmão pelo mesmo tecto.
-#[path = "solver_miolo.rs"]
-mod miolo;
 /// ⭐ O mundo fora da grade na placa (W5b, F4) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_distantes.rs"]
 mod distantes;
@@ -40,6 +37,9 @@ mod fina;
 /// ⭐ A cascata holográfica (W5c) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_hrc.rs"]
 mod holo;
+/// ⭐ O miolo dos opacos pela difusão (W5h) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_miolo.rs"]
+mod miolo;
 /// ⭐ O nascimento sob os tetos do dispositivo (W5e) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_nascer.rs"]
 mod nascer;

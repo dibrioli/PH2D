@@ -71,6 +71,21 @@ O anel (a condição de fronteira = o pé da W5g) contra o gabarito: viés médi
    preto duro virou uma mancha suave (foto).
 6. Herdados: o portão lento `o_miolo_das_formas` (R9), o serrilhado de 1–2 px no terminador, a abertura lenta.
 
+## W5i — a ESTUFA das pipelines (o «app demora a abrir», W5f §3, e o nível novo a frio, W5e ABERTO 1)
+
+`ph2d-app-light2d/src/forno.rs`: as pipelines dependem só da configuração (nunca da grade — o portão do
+redimensionar), então um solver de grade 32² montado noutro fio sobre a MESMA `Fabrica` deixa-as prontas.
+`LuzDoQuadro::com_montagem_em_fundo()` (a shell liga-a; os portões ficam síncronos): configuração fria →
+à estufa, o quadro sai sem luz (`aquecendo()`), a janela segue; ao abrir adianta os três níveis e o
+entorno. O entorno frio: a vista acende sem ele até ficar pronto. `config_do_solver` é agora a ÚNICA porta
+da configuração (o quadro e a estufa; antes duplicava a do `teto::config_do_quadro`). A `Fabrica` compila
+FORA do cadeado (consulta → compila → guarda; o fio que chega 2.º fica com a do 1.º).
+Portão `a_luz_nasce_na_estufa_e_a_troca_de_nivel_nao_compila`: controlo síncrono 309 ms / 26 pipelines no
+1.º quadro (cache do driver quente; a frio no app eram 3,5 s); com a estufa 1.º quadro 0 ms, acesa em 21
+quadros, o pior 11 ms; com a estufa ociosa, Baixa/Média/Alta montam no quadro com 0 pipelines. Foto da
+cena 7 no app: 62 qps (as da W5h, 4–5 qps). ⚠️ Fica: a pipeline dos sprites por texel nasce no 1.º quadro
+que os tem (no fio do quadro; não medida) e a variante «célula engrossada» acima de 1080p não é adiantada.
+
 ## Fotos
 
 [`fotos_W5h/cena7_antes_esquerda_difusao_direita.png`](fotos_W5h/cena7_antes_esquerda_difusao_direita.png) — a

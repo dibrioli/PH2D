@@ -143,7 +143,7 @@ impl Miolo {
             for v in &polis {
                 cortes_da_reta(&[v], 1, y, &mut por_poli);
                 por_poli.sort_by(f64::total_cmp);
-                for par in por_poli.chunks_exact(2) {
+                for par in por_poli.as_chunks::<2>().0 {
                     let i0 = ((par[0] - origem[0]) / h).ceil().max(0.0) as usize;
                     let i1 = (((par[1] - origem[0]) / h).floor() as usize).min(n[0] - 1);
                     for i in i0..=i1 {
@@ -216,7 +216,10 @@ impl Miolo {
         let mut viz = vec![[Viz::Dentro(0); 4]; nos.len()];
         for (k, &(i, j)) in nos.iter().enumerate() {
             for (d, dir) in DIRS.iter().enumerate() {
-                let (vi, vj) = ((i as isize + dir[0]) as usize, (j as isize + dir[1]) as usize);
+                let (vi, vj) = (
+                    (i as isize + dir[0]) as usize,
+                    (j as isize + dir[1]) as usize,
+                );
                 viz[k][d] = Viz::Dentro(indice[vj * n[0] + vi]);
             }
         }
@@ -276,9 +279,9 @@ impl Miolo {
             }
             if let Viz::Borda { g, .. } = self.viz[ka as usize][d] {
                 let s = &mut na_borda[b];
-                for c in 0..3 {
-                    s.0[c] += g[c];
-                    todas.0[c] += g[c];
+                for (c, gc) in g.iter().enumerate() {
+                    s.0[c] += gc;
+                    todas.0[c] += gc;
                 }
                 s.1 += 1.0;
                 todas.1 += 1.0;

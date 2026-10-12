@@ -91,6 +91,12 @@ pub struct LuzDoQuadro {
     /// ⭐ W5e: quantas vezes um solver da vista foi MONTADO (cada uma aloca a grade inteira).
     montagens: u32,
     leituras: u32,
+    /// ⭐ W5i: a estufa das pipelines (desligada por omissão: os portões medem o quadro síncrono).
+    forno: crate::forno::Forno,
+    /// ⭐ W5i: a configuração deste quadro ainda está na estufa — o quadro sai sem luz, sem travar.
+    aquecendo: bool,
+    /// ⭐ W5i: os outros níveis já foram adiantados à estufa.
+    adiantado: bool,
 }
 
 impl Default for LuzDoQuadro {
@@ -140,6 +146,61 @@ impl LuzDoQuadro {
             custo_ms: None,
             montagens: 0,
             leituras: 0,
+            forno: crate::forno::Forno::default(),
+            aquecendo: false,
+            adiantado: false,
+        }
+    }
+
+    /// ⭐ W5i — **a montagem em fundo** (a do editor): as pipelines de cada configuração compilam-se
+    /// na estufa, noutro fio; até estarem prontas o quadro sai sem luz e a janela não prende.
+    #[must_use]
+    pub fn com_montagem_em_fundo(mut self) -> Self {
+        self.forno.ligado = true;
+        self
+    }
+
+    /// ⭐ W5i — a estufa não tem nada na fila nem a montar (sempre `true` sem a montagem em fundo).
+    #[must_use]
+    pub fn estufa_ociosa(&self) -> bool {
+        self.forno.ociosa()
+    }
+
+    /// ⭐ W5i — a configuração está na estufa e este quadro saiu sem luz.
+    #[must_use]
+    pub fn aquecendo(&self) -> bool {
+        self.aquecendo
+    }
+
+    /// A configuração do solver da vista para o degrau `dg` na grade `g` — a ÚNICA porta (o quadro
+    /// e a estufa).
+    fn config_do_solver(&self, gpu: &GpuContext, g: Grade, dg: Degrau) -> Config {
+        let env = |k: &str| std::env::var(k).map_or(true, |v| v.trim() != "0");
+        Config {
+            aritmetica: Config::padrao_para(&gpu.device, g).aritmetica,
+            pe_na_borda: env("PH2D_LIGHT2D_PE"),
+            vis_na_face: env("PH2D_LIGHT2D_FACE"),
+            miolo: miolo_do_ambiente(),
+            ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
+        }
+    }
+
+    /// ⭐ W5i — adianta à estufa os três níveis e o entorno nesta vista (uma vez): a troca de nível (o
+    /// «Automático» desce ao abrir) encontra as pipelines prontas.
+    fn adiantar_niveis(&mut self, gpu: &GpuContext) {
+        if self.adiantado || !self.forno.ligado {
+            return;
+        }
+        self.adiantado = true;
+        for nivel in [NivelDaLuz::Baixa, NivelDaLuz::Media, NivelDaLuz::Alta] {
+            let dg = crate::qualidade::degrau_do(nivel);
+            if let Some(g) = grade_do_quadro(self.mundo_para_tela, self.alvo_px, dg) {
+                let cfg = self.config_do_solver(gpu, g, dg);
+                self.forno.adiantar(cfg);
+            }
+        }
+        if let Some(cfg) = self.config_do_entorno(gpu) {
+            self.forno.adiantar(cfg);
         }
     }
 
@@ -357,7 +418,7 @@ impl LuzDoQuadro {
     /// A luz está acesa neste quadro (a cena tem `Luz` e o solver não recusou)?
     #[must_use]
     pub fn acesa(&self) -> bool {
-        self.grade.is_some() && self.erro.is_none() && !self.sem_luz_no_quadro
+        self.grade.is_some() && self.erro.is_none() && !self.sem_luz_no_quadro && !self.aquecendo
     }
 
     /// **Porta 2** — grava o solver num encoder próprio e submete-o (a fila põe-no antes do passe de
@@ -383,6 +444,8 @@ impl LuzDoQuadro {
         familias: &mut [&mut dyn ph2d_light2d_gpu::CamadaDeOclusao],
     ) {
         self.lado_max = gpu.device.limits().max_texture_dimension_2d;
+        self.forno.andar(gpu, &self.fabrica);
+        self.aquecendo = false;
         let Some(g) = self.grade.filter(|_| !self.sem_luz_no_quadro) else {
             return;
         };
@@ -424,18 +487,17 @@ impl LuzDoQuadro {
             self.resolvido = None;
             // A grade nova (outro nível, outra janela) tem outro custo: o lido era da anterior.
             self.custo_ms = None;
-            let rebote = rebote_ligado();
-            let cfg = Config {
-                fina,
-                captura,
-                holografica,
-                rebote,
-                rebotes_por_quadro: self.degrau.rebotes_por_quadro,
-                pe_na_borda: std::env::var("PH2D_LIGHT2D_PE").map_or(true, |v| v.trim() != "0"),
-                vis_na_face: std::env::var("PH2D_LIGHT2D_FACE").map_or(true, |v| v.trim() != "0"),
-                miolo: miolo_do_ambiente(),
-                ..Config::padrao_para(&gpu.device, g)
-            };
+            let cfg = self.config_do_solver(gpu, g, self.degrau);
+            debug_assert_eq!((cfg.fina, cfg.captura), (fina, captura));
+            // ⭐ W5i: a frio, as pipelines vão à estufa e este quadro sai sem luz (a janela segue).
+            if !self.forno.pronta(&cfg) {
+                self.forno.pedir(cfg);
+                self.adiantar_niveis(gpu);
+                self.forno.andar(gpu, &self.fabrica);
+                self.aquecendo = true;
+                self.erro = None;
+                return;
+            }
             self.montagens += 1;
             Solver::novo_com(gpu, cfg, &self.fabrica).map(|solver| {
                 let vista = solver
@@ -449,7 +511,7 @@ impl LuzDoQuadro {
         if let Some(ErroSolver::SemMemoria { bytes }) = self.erro {
             self.recusou = Some((self.alvo_px, bytes));
         }
-        self.preparar_entorno(gpu, holografica);
+        self.preparar_entorno(gpu);
         if let Some(e) = &self.erro {
             // ⚠️ Fica DITO (a W4 leva-o à UI): a luz apaga-se neste quadro em vez de mentir.
             eprintln!("[luz2d] o solver recusou a grade {g:?}: {e:?}");
@@ -554,11 +616,12 @@ impl LuzDoQuadro {
     /// ⭐ W5d — o ENTORNO deste quadro: criado na grade dele ([`Degrau::entorno`] × o texel,
     /// [`MARGEM_DO_ENTORNO`] de cada lado), reposicionado se ela só andou, apagado sem ele (o degrau, a
     /// holográfica, `PH2D_LIGHT2D_ENTORNO=0` para comparar).
-    fn preparar_entorno(
-        &mut self,
-        gpu: &GpuContext,
-        holografica: Option<ph2d_light2d_gpu::Holografica>,
-    ) {
+    /// ⭐ W5i — a configuração do ENTORNO nesta vista (`None` = sem ele).
+    fn config_do_entorno(&self, gpu: &GpuContext) -> Option<Config> {
+        let holografica = self
+            .degrau
+            .holografica
+            .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
         let ligado = self.degrau.entorno > 0.0
             && holografica.is_some()
             && std::env::var("PH2D_LIGHT2D_ENTORNO").map_or(true, |v| v.trim() != "0");
@@ -567,13 +630,22 @@ impl LuzDoQuadro {
             margem: MARGEM_DO_ENTORNO,
             ..self.degrau
         };
-        let Some(ge) = ligado
+        let ge = ligado
             .then(|| grade_do_quadro(self.mundo_para_tela, self.alvo_px, de))
-            .flatten()
-        else {
+            .flatten()?;
+        Some(Config {
+            holografica,
+            rebote: rebote_ligado(),
+            ..Config::padrao_para(&gpu.device, ge)
+        })
+    }
+
+    fn preparar_entorno(&mut self, gpu: &GpuContext) {
+        let Some(cfg) = self.config_do_entorno(gpu) else {
             self.entorno = None;
             return;
         };
+        let ge = cfg.grade;
         let mesma = self.entorno.as_ref().is_some_and(|e| {
             let c = e.config();
             (c.grade.largura, c.grade.altura) == (ge.largura, ge.altura)
@@ -585,11 +657,13 @@ impl LuzDoQuadro {
             }
             return;
         }
-        let cfg = Config {
-            holografica,
-            rebote: rebote_ligado(),
-            ..Config::padrao_para(&gpu.device, ge)
-        };
+        // ⭐ W5i: a frio, à estufa — a vista acende sem a luz de fora até ele ficar pronto.
+        if !self.forno.pronta(&cfg) {
+            self.forno.pedir(cfg);
+            self.forno.andar(gpu, &self.fabrica);
+            self.entorno = None;
+            return;
+        }
         self.entorno = Solver::novo_com(gpu, cfg, &self.fabrica)
             .map(|mut s| {
                 // Só as cascatas e a fonte do rebote: a grade fina dele não se lê.
@@ -684,7 +758,11 @@ fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
     if std::env::var("PH2D_LIGHT2D_MIOLO").is_ok_and(|v| v.trim() == "0") {
         return None;
     }
-    let num = |k: &str| std::env::var(k).ok().and_then(|v| v.trim().parse::<f32>().ok());
+    let num = |k: &str| {
+        std::env::var(k)
+            .ok()
+            .and_then(|v| v.trim().parse::<f32>().ok())
+    };
     let padrao = ph2d_light2d_gpu::MIOLO_PADRAO;
     Some(ph2d_light2d_gpu::Miolo {
         suavidade: num("PH2D_LIGHT2D_SUAVIDADE").map_or(padrao.suavidade, |s| s.clamp(0.0, 1.0)),

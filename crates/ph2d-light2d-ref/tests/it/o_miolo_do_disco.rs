@@ -61,7 +61,10 @@ fn erro(u: impl Fn([f64; 2]) -> f64, exato: impl Fn(f64, f64) -> f64, g_max: f64
             pior = (e, r / R, a);
         }
     }
-    eprintln!("  o pior: {:.2e} em r = {:.2} R, φ = {:.2}", pior.0, pior.1, pior.2);
+    eprintln!(
+        "  o pior: {:.2e} em r = {:.2} R, φ = {:.2}",
+        pior.0, pior.1, pior.2
+    );
     pior.0
 }
 
@@ -103,7 +106,10 @@ fn o_miolo_do_disco_e_o_de_poisson() {
     let e0 = erro(|p| perto.fluencia(p)[1], poisson, g_max);
     eprintln!("miolo × Poisson: erro {e:.2e} (controlo, o exterior mais próximo: {e0:.2e})");
     assert!(e0 > 20.0 * TETO, "o controlo não distingue: {e0:.2e}");
-    assert!(e <= TETO, "o miolo do disco não é o de Poisson: {e:.2e} > {TETO:.0e}");
+    assert!(
+        e <= TETO,
+        "o miolo do disco não é o de Poisson: {e:.2e} > {TETO:.0e}"
+    );
 }
 
 /// `I₀(x)` pela série.
@@ -145,6 +151,9 @@ fn a_penetracao_e_a_de_bessel() {
         };
         let e = erro(|p| gab.fluencia(p)[1], bessel, PI);
         eprintln!("penetração {l} m × Bessel: erro {e:.2e}");
-        assert!(e <= TETO, "a penetração {l} m não é a de Bessel: {e:.2e} > {TETO:.0e}");
+        assert!(
+            e <= TETO,
+            "a penetração {l} m não é a de Bessel: {e:.2e} > {TETO:.0e}"
+        );
     }
 }

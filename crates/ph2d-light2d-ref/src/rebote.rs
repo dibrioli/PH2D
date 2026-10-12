@@ -209,4 +209,3 @@ fn aplicar(l: &Linha, radiancia: &[[f64; 3]]) -> [f64; 3] {
     }
     f
 }
-

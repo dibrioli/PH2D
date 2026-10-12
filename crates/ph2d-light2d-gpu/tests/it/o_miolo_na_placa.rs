@@ -42,7 +42,10 @@ fn erro_na_faixa(flu: &[[f32; 3]], g: &Grade, gab: &Gabarito, a: f64, b: f64) ->
     let g_max = (0..360)
         .map(|k| {
             let a = f64::from(k).to_radians();
-            let p = [f64::from(C[0]) + 1.02 * r * a.cos(), f64::from(C[1]) + 1.02 * r * a.sin()];
+            let p = [
+                f64::from(C[0]) + 1.02 * r * a.cos(),
+                f64::from(C[1]) + 1.02 * r * a.sin(),
+            ];
             gab.fluencia(p)[1]
         })
         .fold(0.0, f64::max);
@@ -113,7 +116,10 @@ fn a_penetracao_da_placa_e_a_do_gabarito() {
     let (flu, g, _) = rodar(&gpu, config(Some(m)), &c);
     let (pior, rms) = erro(&flu, &g, &gab);
     eprintln!("penetração 0,15 m: pior {pior:.4} · rms {rms:.4}");
-    assert!(pior <= TETO && rms <= TETO_RMS, "penetração 0,15 m: pior {pior:.4} · rms {rms:.4}");
+    assert!(
+        pior <= TETO && rms <= TETO_RMS,
+        "penetração 0,15 m: pior {pior:.4} · rms {rms:.4}"
+    );
 }
 
 /// A suavidade é a mistura LINEAR das duas leis, texel a texel (o exterior mais próximo tem, no eixo
@@ -138,16 +144,30 @@ fn a_suavidade_da_placa_mistura_as_duas_leis() {
             (p[0] - f64::from(C[0])).hypot(p[1] - f64::from(C[1])) < 0.95 * f64::from(R)
         })
         .collect();
-    let topo = no_disco.iter().map(|&k| zero[k][1].max(um[k][1])).fold(0.0_f32, f32::max);
+    let topo = no_disco
+        .iter()
+        .map(|&k| zero[k][1].max(um[k][1]))
+        .fold(0.0_f32, f32::max);
     let pior = no_disco
         .iter()
         .map(|&k| (meio[k][1] - 0.5 * (zero[k][1] + um[k][1])).abs() / topo)
         .fold(0.0_f32, f32::max);
-    let diferem = no_disco.iter().filter(|&&k| (zero[k][1] - um[k][1]).abs() > 0.05 * topo).count();
-    eprintln!("suavidade ½ × a média das duas: pior {pior:.5} ({diferem} texels onde as leis diferem)");
-    assert!(diferem > 100, "o controlo não distingue as duas leis: {diferem} texels");
+    let diferem = no_disco
+        .iter()
+        .filter(|&&k| (zero[k][1] - um[k][1]).abs() > 0.05 * topo)
+        .count();
+    eprintln!(
+        "suavidade ½ × a média das duas: pior {pior:.5} ({diferem} texels onde as leis diferem)"
+    );
+    assert!(
+        diferem > 100,
+        "o controlo não distingue as duas leis: {diferem} texels"
+    );
     // O f16 da fluência: ~2⁻¹¹ relativo, nas três leituras.
-    assert!(pior <= 2e-3, "a suavidade ½ não é a média das duas leis: {pior:.5}");
+    assert!(
+        pior <= 2e-3,
+        "a suavidade ½ não é a média das duas leis: {pior:.5}"
+    );
 }
 
 /// A rodada das relaxações: o erro e o custo de cada par (fina, grossa), intercalados no MESMO
@@ -161,31 +181,31 @@ fn sonda_relaxacoes_do_miolo() {
     let pares = [(32, 32), (2, 32), (4, 32), (8, 32), (4, 64), (2, 64)];
     // A pequena (256² finos) e a do tamanho de 1080p (1920² finos, o disco com 240 texels de raio).
     for lado in [128_u32, 960] {
-    eprintln!("grade fina {}²:", 2 * lado);
-    let mut ms = vec![f64::INFINITY; pares.len()];
-    let mut erros = vec![(0.0, 0.0); pares.len()];
-    for _ in 0..3 {
-        for (k, &(relaxa, relaxa_max)) in pares.iter().enumerate() {
-            let m = Miolo {
-                relaxa,
-                relaxa_max,
-                ..MIOLO_PADRAO
-            };
-            let cfg = Config {
-                grade: grade(lado, 5.12 / f64::from(lado)),
-                ..config(Some(m))
-            };
-            let (flu, g, t) = rodar(&gpu, cfg, &c);
-            ms[k] = ms[k].min(t);
-            erros[k] = erro(&flu, &g, &gab);
+        eprintln!("grade fina {}²:", 2 * lado);
+        let mut ms = vec![f64::INFINITY; pares.len()];
+        let mut erros = vec![(0.0, 0.0); pares.len()];
+        for _ in 0..3 {
+            for (k, &(relaxa, relaxa_max)) in pares.iter().enumerate() {
+                let m = Miolo {
+                    relaxa,
+                    relaxa_max,
+                    ..MIOLO_PADRAO
+                };
+                let cfg = Config {
+                    grade: grade(lado, 5.12 / f64::from(lado)),
+                    ..config(Some(m))
+                };
+                let (flu, g, t) = rodar(&gpu, cfg, &c);
+                ms[k] = ms[k].min(t);
+                erros[k] = erro(&flu, &g, &gab);
+            }
         }
-    }
-    for (k, (relaxa, max)) in pares.iter().enumerate() {
-        eprintln!(
-            "relaxa {relaxa:>2} → {max:>2}: pior {:.4} · rms {:.4} · {:.3} ms",
-            erros[k].0, erros[k].1, ms[k]
-        );
-    }
+        for (k, (relaxa, max)) in pares.iter().enumerate() {
+            eprintln!(
+                "relaxa {relaxa:>2} → {max:>2}: pior {:.4} · rms {:.4} · {:.3} ms",
+                erros[k].0, erros[k].1, ms[k]
+            );
+        }
     }
 }
 
@@ -215,45 +235,53 @@ fn sonda_anel_do_miolo() {
     };
     let r = f64::from(R);
     for lado_de_dentro in [true, false] {
-    let (mut soma, mut n, mut pior) = (0.0, 0.0, (0.0_f64, 0.0, 0.0, 0.0));
-    let mut g_max = 0.0_f64;
-    for j in 1..g.altura - 1 {
-        for i in 1..g.largura - 1 {
-            let p = g.centro(i, j);
-            if dentro(p) != lado_de_dentro {
-                continue;
-            }
-            let anel = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|&(di, dj)| {
-                dentro(g.centro((i as i32 + di) as u32, (j as i32 + dj) as u32)) != lado_de_dentro
-            });
-            if !anel {
-                continue;
-            }
-            let a = (p[1] - f64::from(C[1])).atan2(p[0] - f64::from(C[0]));
-            // O pé na borda (o polígono de 96 lados pelo raio do apótema na direção) — ou o centro
-            // do texel de fora.
-            let lado = std::f64::consts::TAU / 96.0;
-            let rb = r * (lado / 2.0).cos() / ((a - 0.1).rem_euclid(lado) - lado / 2.0).cos();
-            let pe = if lado_de_dentro {
-                [f64::from(C[0]) + (rb + 1e-5) * a.cos(), f64::from(C[1]) + (rb + 1e-5) * a.sin()]
-            } else {
-                p
-            };
-            let gpu_v = f64::from(flu[(j * g.largura + i) as usize][1]);
-            let ref_v = gab.fluencia(pe)[1];
-            g_max = g_max.max(ref_v);
-            let e = gpu_v - ref_v;
-            soma += e;
-            n += 1.0;
-            if e.abs() > pior.0.abs() {
-                pior = (e, a.to_degrees(), gpu_v, ref_v);
+        let (mut soma, mut n, mut pior) = (0.0, 0.0, (0.0_f64, 0.0, 0.0, 0.0));
+        let mut g_max = 0.0_f64;
+        for j in 1..g.altura - 1 {
+            for i in 1..g.largura - 1 {
+                let p = g.centro(i, j);
+                if dentro(p) != lado_de_dentro {
+                    continue;
+                }
+                let anel = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|&(di, dj)| {
+                    dentro(g.centro((i as i32 + di) as u32, (j as i32 + dj) as u32))
+                        != lado_de_dentro
+                });
+                if !anel {
+                    continue;
+                }
+                let a = (p[1] - f64::from(C[1])).atan2(p[0] - f64::from(C[0]));
+                // O pé na borda (o polígono de 96 lados pelo raio do apótema na direção) — ou o centro
+                // do texel de fora.
+                let lado = std::f64::consts::TAU / 96.0;
+                let rb = r * (lado / 2.0).cos() / ((a - 0.1).rem_euclid(lado) - lado / 2.0).cos();
+                let pe = if lado_de_dentro {
+                    [
+                        f64::from(C[0]) + (rb + 1e-5) * a.cos(),
+                        f64::from(C[1]) + (rb + 1e-5) * a.sin(),
+                    ]
+                } else {
+                    p
+                };
+                let gpu_v = f64::from(flu[(j * g.largura + i) as usize][1]);
+                let ref_v = gab.fluencia(pe)[1];
+                g_max = g_max.max(ref_v);
+                let e = gpu_v - ref_v;
+                soma += e;
+                n += 1.0;
+                if e.abs() > pior.0.abs() {
+                    pior = (e, a.to_degrees(), gpu_v, ref_v);
+                }
             }
         }
-    }
-    eprintln!(
-        "{}: {n} texels · viés médio {:.4} (g_max {g_max:.3}) · pior {pior:?}",
-        if lado_de_dentro { "anel de dentro" } else { "anel de fora" },
-        soma / n
-    );
+        eprintln!(
+            "{}: {n} texels · viés médio {:.4} (g_max {g_max:.3}) · pior {pior:?}",
+            if lado_de_dentro {
+                "anel de dentro"
+            } else {
+                "anel de fora"
+            },
+            soma / n
+        );
     }
 }

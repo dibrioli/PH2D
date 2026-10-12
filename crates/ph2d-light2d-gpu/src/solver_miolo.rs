@@ -120,7 +120,10 @@ impl DoMiolo {
                 cache: None,
             })
         };
-        let (f16, f32) = (wgpu::TextureFormat::Rgba16Float, wgpu::TextureFormat::Rgba32Float);
+        let (f16, f32) = (
+            wgpu::TextureFormat::Rgba16Float,
+            wgpu::TextureFormat::Rgba32Float,
+        );
         let pipelines = [
             pipeline("miolo_classifica", fluencia),
             pipeline("miolo_puxa", f16),
@@ -195,7 +198,11 @@ impl DoMiolo {
             if l == niveis { 2 * n } else { n }
         };
         let pares = |l: u32| no_nivel(l).div_ceil(2);
-        por(Tipo::Inicia, niveis, [k(niveis - 1), k(niveis), k(niveis), a(niveis)]);
+        por(
+            Tipo::Inicia,
+            niveis,
+            [k(niveis - 1), k(niveis), k(niveis), a(niveis)],
+        );
         for l in (1..=niveis).rev() {
             if l < niveis {
                 por(Tipo::Desce, l, [a(l + 1), k(l), k(l + 1), a(l)]);

@@ -302,6 +302,58 @@ fn a_small_view_keeps_only_the_levels_it_asked_for() {
     assert_eq!(kept, [128], "{kept:?}");
 }
 
+/// As cores sólidas que `ops` pinta (preenchimentos e traços).
+fn inks(ops: &[DrawOp]) -> Vec<ph2d_vector::Color> {
+    ops.iter()
+        .filter_map(|o| match o {
+            DrawOp::Fill {
+                brush: ph2d_vector::Brush::Solid(c),
+                ..
+            }
+            | DrawOp::Stroke {
+                brush: ph2d_vector::Brush::Solid(c),
+                ..
+            } => Some(*c),
+            _ => None,
+        })
+        .collect()
+}
+
+/// ⭐ W17 — uma imagem que NÃO se lê (o cabeçalho bom, os dados estragados: o descodificador devolve
+/// nada) deixa de ser o cinzento do «a chegar»: desenha-se partida, na tinta do perigo — e quem
+/// desenha fica a saber, UMA vez por ficheiro.
+#[test]
+fn an_unreadable_picture_looks_broken_and_is_reported_once() {
+    let b = board_with(file(8, 8), [0.0, 0.0, 80.0, 80.0], |_| {});
+    let id = b.doc.live().find_map(|e| e.image()).unwrap().file;
+    let mut cache = RenderCache::default();
+    cache.images.set_decoder(Arc::new(|_: &[u8], _| None));
+    let arriving = paint_ops(&b, &mut cache);
+    let danger = crate::token(ph2d_tokens::ColorToken::Danger, Theme::Forge);
+    assert!(
+        !inks(&arriving).contains(&danger),
+        "o «a chegar» já parece partido"
+    );
+    let t0 = Instant::now();
+    while cache.images.pending() {
+        assert!(t0.elapsed() < Duration::from_secs(20), "ficou pendente");
+        std::thread::sleep(Duration::from_millis(5));
+        let _ = paint_ops(&b, &mut cache);
+    }
+    let broken = paint_ops(&b, &mut cache);
+    assert!(images(&broken).is_empty());
+    assert!(
+        inks(&broken).contains(&danger),
+        "a imagem ilegível desenha-se igual à que está a chegar"
+    );
+    assert_eq!(cache.images.take_failed(), vec![id]);
+    let _ = paint_ops(&b, &mut cache);
+    assert!(
+        cache.images.take_failed().is_empty(),
+        "o mesmo ficheiro avisado duas vezes"
+    );
+}
+
 /// ⭐ Auditoria W14 — um descodificador que entra em PÂNICO não deixa a imagem pendente para sempre
 /// (fica no cinzento, sem ficar «a descodificar»), e o fio continua a servir a seguinte.
 #[test]

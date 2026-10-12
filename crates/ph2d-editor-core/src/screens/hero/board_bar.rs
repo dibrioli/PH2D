@@ -368,6 +368,10 @@ pub fn paint(
     if let Some(n) = ed.take_notice() {
         live.notice = Some((n.key(), std::time::Instant::now()));
     }
+    // W17 — uma imagem que não se lê avisa na tela (uma vez por ficheiro), nunca só fica partida.
+    if !live.render_cache.images.take_failed().is_empty() {
+        live.notice = Some(("board.images.unreadable", std::time::Instant::now()));
+    }
     let notice = live
         .notice
         .filter(|(_, t)| t.elapsed().as_secs_f32() < crate::toast::Toast::DEFAULT_TTL_S);

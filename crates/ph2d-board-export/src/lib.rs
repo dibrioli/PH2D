@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 
 use ph2d_board_model::{Board, BoardOp, Camera, ElementId, End};
 pub use ph2d_board_render::ExportTarget;
-use ph2d_board_render::{Detail, ExportLook, RenderCache};
+use ph2d_board_render::{Detail, ExportLook, Images, RenderCache};
 use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -191,18 +191,43 @@ fn only_frame(board: &Board, routes: &RouteCache, frame: ElementId) -> Board {
     out
 }
 
+/// ⭐ W17 — o que as páginas de UM export partilham: as notas de outros com o texto escondido de quem
+/// exporta (ADR-0182: saem como no ecrã, com o marcador, nunca com um texto que ele já não lê) e as
+/// imagens descodificadas — a mesma fotografia em N frames descodifica-se UMA vez, não uma por página
+/// (nem por ladrilho do PNG).
+#[derive(Default)]
+pub struct ExportCache {
+    unread: BTreeSet<ElementId>,
+    images: Images,
+}
+
+impl ExportCache {
+    /// Um export com estas notas escondidas.
+    #[must_use]
+    pub fn new(unread: BTreeSet<ElementId>) -> Self {
+        Self {
+            unread,
+            images: Images::default(),
+        }
+    }
+
+    /// As imagens do export (um teste troca-lhes o descodificador).
+    pub fn images(&mut self) -> &mut Images {
+        &mut self.images
+    }
+}
+
 /// ⭐ Desenha `page` de `board` a `scale` píxeis por unidade, no modo de export (E6/E7: `paper` =
 /// `None` transparente), numa cena que GRAVA (para o SVG e o PDF) — e que a placa desenha para o PNG.
-/// `target` = o destino ([`ExportTarget`]: o detalhe e o que uma imagem leva).
-/// `unread` = as notas de outros com o texto escondido de quem exporta (ADR-0182): saem como no ecrã,
-/// com o marcador, nunca com um texto que ele já não lê. Devolve a cena e o tamanho dela em píxeis.
+/// `target` = o destino ([`ExportTarget`]: o detalhe e o que uma imagem leva); `shared` = o que as
+/// páginas do mesmo export partilham ([`ExportCache`]). Devolve a cena e o tamanho dela em píxeis.
 pub fn paint_page(
     board: &Board,
     page: &Page,
     scale: f64,
     paper: Option<Color>,
     target: ExportTarget,
-    unread: &std::collections::BTreeSet<ElementId>,
+    shared: &mut ExportCache,
     ts: &mut TextSystem,
 ) -> (VectorScene, [f64; 2]) {
     let mut routes = RouteCache::default();
@@ -231,8 +256,9 @@ pub fn paint_page(
         };
     }
     cache.hide_votes = true;
-    cache.unread.clone_from(unread);
+    cache.unread.clone_from(&shared.unread);
     cache.export = Some(ExportLook { paper, target });
+    std::mem::swap(&mut cache.images, &mut shared.images);
     let mut scene = VectorScene::new();
     scene.record();
     let area = [0.0, 0.0, size[0], size[1]];
@@ -246,6 +272,7 @@ pub fn paint_page(
         &routes,
         None,
     );
+    std::mem::swap(&mut cache.images, &mut shared.images);
     (scene, size)
 }
 

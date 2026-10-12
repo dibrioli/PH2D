@@ -94,7 +94,7 @@ fn measure_export_cost() {
                     1.0,
                     Some(EXPORT_PAPER),
                     ExportTarget::Pdf,
-                    &std::collections::BTreeSet::new(),
+                    &mut ph2d_board_export::ExportCache::default(),
                     &mut ts,
                 )
             });
@@ -124,7 +124,7 @@ fn measure_export_cost() {
                         sc,
                         Some(EXPORT_PAPER),
                         tile,
-                        &std::collections::BTreeSet::new(),
+                        &mut ph2d_board_export::ExportCache::default(),
                         &mut ts,
                     )
                     .unwrap()

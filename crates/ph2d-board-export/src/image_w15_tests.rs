@@ -3,8 +3,6 @@
 //! píxeis cinzentos (outro XObject que a mesma fotografia a cores) e um JPEG cinzento não entra como
 //! chegou.
 
-use std::collections::BTreeSet;
-
 use super::*;
 use ph2d_board_model::{BoardSet, Element, Image, ImageFile, ImageFilter, Rgba, Style};
 use ph2d_vector::DrawOp;
@@ -49,7 +47,7 @@ fn ops(b: &Board, target: ExportTarget) -> (Vec<DrawOp>, [f64; 2]) {
         1.0,
         None,
         target,
-        &BTreeSet::new(),
+        &mut ExportCache::default(),
         &mut ts,
     );
     (s.take_record(), size)

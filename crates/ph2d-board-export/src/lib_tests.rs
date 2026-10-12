@@ -204,7 +204,7 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
         1.0,
         Some(ph2d_board_render::EXPORT_PAPER),
         ExportTarget::Svg,
-        &std::collections::BTreeSet::new(),
+        &mut ExportCache::default(),
         &mut ts,
     );
     assert_eq!(size, [800.0, 450.0]);
@@ -221,7 +221,7 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
         1.0,
         None,
         ExportTarget::Svg,
-        &std::collections::BTreeSet::new(),
+        &mut ExportCache::default(),
         &mut ts,
     );
     let all_ops = all.take_record();
@@ -256,7 +256,7 @@ fn the_paper_is_white_or_nothing() {
             1.0,
             paper,
             ExportTarget::Svg,
-            &std::collections::BTreeSet::new(),
+            &mut ExportCache::default(),
             &mut ts,
         );
         let ops = s.take_record();
@@ -293,7 +293,7 @@ fn svg_and_pdf_carry_the_text() {
         2.0,
         None,
         ExportTarget::Svg,
-        &std::collections::BTreeSet::new(),
+        &mut ExportCache::default(),
         &mut ts,
     );
     let ops = s.take_record();
@@ -312,7 +312,7 @@ fn svg_and_pdf_carry_the_text() {
                 1.0,
                 Some(ph2d_board_render::EXPORT_PAPER),
                 ExportTarget::Pdf,
-                &std::collections::BTreeSet::new(),
+                &mut ExportCache::default(),
                 &mut ts,
             );
             (sc.take_record(), sz)
@@ -382,7 +382,7 @@ fn the_pdf_grows_linearly_with_faded_objects() {
             1.0,
             None,
             ExportTarget::Pdf,
-            &std::collections::BTreeSet::new(),
+            &mut ExportCache::default(),
             &mut ts,
         );
         let ops = s.take_record();
@@ -419,7 +419,15 @@ fn an_unread_note_is_exported_without_its_text() {
     let mut ts = TextSystem::without_system_fonts();
     let mut out = |unread: std::collections::BTreeSet<ElementId>| {
         let page = board_page(b, &r).unwrap();
-        let (mut s, _) = paint_page(b, &page, 1.0, None, ExportTarget::Svg, &unread, &mut ts);
+        let (mut s, _) = paint_page(
+            b,
+            &page,
+            1.0,
+            None,
+            ExportTarget::Svg,
+            &mut ExportCache::new(unread),
+            &mut ts,
+        );
         texts(&s.take_record())
     };
     assert!(

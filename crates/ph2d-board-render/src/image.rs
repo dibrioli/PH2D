@@ -14,7 +14,7 @@
 //! lado do atlas); e a MOLDURA é o contorno de um rectângulo com o estilo da imagem (a lei das formas:
 //! traço, tracejado, rascunho, cantos), por cima, fora do recorte.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
@@ -112,6 +112,8 @@ pub struct Images {
     now: Instant,
     /// Os testes param o relógio.
     clock: Option<Instant>,
+    /// W17 — os ficheiros que não se lêem e já foram ditos a quem desenha ([`Images::take_failed`]).
+    reported: BTreeSet<FileId>,
 }
 
 struct Job {
@@ -134,6 +136,7 @@ impl Default for Images {
             players: crate::anim::Players::default(),
             now: Instant::now(),
             clock: None,
+            reported: BTreeSet::new(),
         }
     }
 }
@@ -191,6 +194,23 @@ impl Images {
     /// Outro descodificador que o do app (sem nenhum as imagens ficam no cinzento).
     pub fn set_decoder(&mut self, decode: Decode) {
         self.decode = Some(decode);
+    }
+
+    /// W17 — os ficheiros que o descodificador não leu (o cabeçalho bom, os dados estragados) e que
+    /// ainda não tinham sido ditos: cada um UMA vez, para quem desenha avisar na tela.
+    pub fn take_failed(&mut self) -> Vec<FileId> {
+        let mut out = Vec::new();
+        for ((id, _), e) in &self.entries {
+            if e.failed && self.reported.insert(*id) {
+                out.push(*id);
+            }
+        }
+        out
+    }
+
+    /// W17 — `file` (com o filtro `filter`) não se lê: desenha-se partido, não «a chegar».
+    pub(crate) fn failed(&self, file: FileId, filter: ImageFilter) -> bool {
+        self.entries.get(&(file, filter)).is_some_and(|e| e.failed)
     }
 
     /// W16 — outro animador que o do app.
@@ -547,7 +567,8 @@ pub(crate) fn paint(
     }
     if level.is_none() && embed.is_none() {
         if export.is_none() {
-            placeholder(scene, el, t, theme);
+            let broken = file.is_some() && cache.images.failed(img.file, img.filter);
+            placeholder(scene, el, t, theme, broken);
         }
     } else {
         let a = if group { 1.0 } else { alpha };
@@ -593,9 +614,11 @@ pub(crate) fn paint(
     }
 }
 
-/// O lugar de uma imagem que ainda não chegou (ou que não se lê): a caixa no fundo elevado e, ao
-/// meio, o ícone de imagem — a moldura, o sol e o monte (o idioma do Excalidraw, `w14_imagens.png`).
-fn placeholder(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme) {
+/// O lugar de uma imagem que ainda não chegou: a caixa no fundo elevado e, ao meio, o ícone de imagem —
+/// a moldura, o sol e o monte (o idioma do Excalidraw, `w14_imagens.png`). W17 — `broken` = a que NÃO
+/// se lê: o mesmo ícone na tinta do perigo, riscado (o Excalidraw não distingue: desenha o que o
+/// navegador descodificar, ou nada — `saidas/w17`).
+fn placeholder(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme, broken: bool) {
     scene.fill_path(
         &box_path(el, el.image().is_some_and(|i| i.style.round)),
         &Brush::Solid(token(ColorToken::Bg3, theme)),
@@ -608,9 +631,22 @@ fn placeholder(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme) {
     let (cx, cy) = (el.w / 2.0, el.h / 2.0);
     let (x0, y0) = (cx - side / 2.0, cy - side * 0.4);
     let (x1, y1) = (cx + side / 2.0, cy + side * 0.4);
-    let ink = Brush::Solid(token(ColorToken::Text2, theme));
+    let ink = Brush::Solid(token(
+        if broken {
+            ColorToken::Danger
+        } else {
+            ColorToken::Text2
+        },
+        theme,
+    ));
     let frame = Rect::new(x0, y0, x1, y1).to_rounded_rect(side * 0.08);
     scene.stroke_path(&Stroke::new(side * 0.07), t, &ink, &frame);
+    if broken {
+        let mut slash = ph2d_vector::BezPath::new();
+        slash.move_to((x0 - side * 0.1, y0 - side * 0.1));
+        slash.line_to((x1 + side * 0.1, y1 + side * 0.1));
+        scene.stroke_path(&Stroke::new(side * 0.07), t, &ink, &slash);
+    }
     let sun = Circle::new((x0 + side * 0.3, y0 + side * 0.25), side * 0.09);
     scene.fill_path(&sun.to_path(0.1), &ink, t);
     let mut hill = ph2d_vector::BezPath::new();

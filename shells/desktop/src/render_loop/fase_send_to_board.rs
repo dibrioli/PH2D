@@ -55,11 +55,11 @@ impl crate::App {
         for bits in targets(clicked.to_bits(), &selected) {
             let e = ph2d_ecs::Entity::from_bits(bits);
             if world.get_entity(e).is_err() {
+                items.push(Sent::gone());
                 continue;
             }
-            let name = world
-                .get::<ph2d_ecs::Name>(e)
-                .map_or_else(String::new, |n| n.0.clone());
+            let name = world.get::<ph2d_ecs::Name>(e).map(|n| n.0.as_str());
+            let name = Sent::name_of(name, kind(e));
             let sent = match kind(e) {
                 ObjectKind::Image => {
                     // PRECISION-READONLY: LÊ os pixels e manda uma CÓPIA ao quadro (8 bits, o formato

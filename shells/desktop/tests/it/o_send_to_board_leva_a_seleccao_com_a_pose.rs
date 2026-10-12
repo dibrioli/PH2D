@@ -78,3 +78,23 @@ fn the_phase_sends_the_selection_posed_in_one_delivery() {
         "uma entrega por escolha — a selecção vai numa leva só (um passo de desfazer)"
     );
 }
+
+/// W17 — um objecto apagado entre o pedido e a escolha ENTRA no aviso (nunca um `continue` mudo), e o
+/// nome de cada um vem do `Sent::name_of` (o do tipo quando não tem nome — nunca um vazio).
+#[test]
+fn the_phase_counts_the_deleted_and_names_the_nameless() {
+    let body = fase_body();
+    let at = body
+        .find("world.get_entity(e).is_err()")
+        .expect("a fase já não pergunta se o objecto ainda existe — re-mire este gate");
+    let arm = &body[at..at + 120.min(body.len() - at)];
+    assert!(
+        arm.contains("items.push(Sent::gone());"),
+        "o apagado sai em silêncio: {arm}"
+    );
+    assert!(body.contains("Sent::name_of(name, kind(e))"));
+    assert!(
+        !body.contains("map_or_else(String::new"),
+        "o nome vazio voltou"
+    );
+}

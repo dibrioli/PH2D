@@ -340,13 +340,16 @@ pub fn write_export(
     }
     let alpha = c.transparent && matches!(c.format, Format::Png | Format::Svg);
     let paper = (!alpha).then_some(EXPORT_PAPER);
+    // W17 — as páginas partilham as imagens: cada ficheiro descodifica-se uma vez por export.
+    let mut shared = ph2d_board_export::ExportCache::new(unread.clone());
     let mut out = Vec::new();
     match c.format {
         Format::Pdf => {
             let recs: Vec<_> = pages
                 .iter()
                 .map(|p| {
-                    let (mut s, size) = paint_page(b, p, 1.0, paper, ExportTarget::Pdf, unread, ts);
+                    let (mut s, size) =
+                        paint_page(b, p, 1.0, paper, ExportTarget::Pdf, &mut shared, ts);
                     (s.take_record(), size)
                 })
                 .collect();
@@ -364,7 +367,8 @@ pub fn write_export(
         }
         Format::Svg => {
             for (i, (p, to)) in pages.iter().zip(page_paths(path, b, &pages)).enumerate() {
-                let (mut s, size) = paint_page(b, p, 1.0, paper, ExportTarget::Svg, unread, ts);
+                let (mut s, size) =
+                    paint_page(b, p, 1.0, paper, ExportTarget::Svg, &mut shared, ts);
                 // As ligações de um SVG são as da própria página (um ficheiro, uma página).
                 let here: Vec<([f64; 4], [f64; 4])> = link_pairs(b, &pages, i)
                     .into_iter()
@@ -384,7 +388,7 @@ pub fn write_export(
             let mp = ph2d_board_export::PNG_MEGAPIXELS[c.size.min(2)];
             for (p, to) in pages.iter().zip(page_paths(path, b, &pages)) {
                 let scale = ph2d_board_export::png_scale(p, mp);
-                let img = png::render(gpu, &mut pass, b, p, scale, paper, tile, unread, ts)?;
+                let img = png::render(gpu, &mut pass, b, p, scale, paper, tile, &mut shared, ts)?;
                 std::fs::write(&to, png::encode(&img)).map_err(|e| e.to_string())?;
                 out.push(to);
             }

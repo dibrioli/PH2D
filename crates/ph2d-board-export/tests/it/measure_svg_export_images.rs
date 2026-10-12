@@ -113,7 +113,7 @@ fn measure_svg_export_images() {
                 1.0,
                 Some(EXPORT_PAPER),
                 variants[k].1,
-                &std::collections::BTreeSet::new(),
+                &mut ph2d_board_export::ExportCache::default(),
                 &mut ts,
             );
             let out = svg::write(&s.take_record(), size);

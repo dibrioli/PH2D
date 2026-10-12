@@ -8,6 +8,7 @@
 pub use ph2d_board_edit::Pose;
 use ph2d_board_model::BoardId;
 use ph2d_board_render::Pixels;
+pub use ph2d_component_desc::ObjectKind;
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::board_images::insert_posed;
@@ -80,6 +81,46 @@ impl Sent {
             pose: Pose::default(),
         }
     }
+
+    /// W17 — um objecto apagado entre o pedido e a escolha: conta no aviso como «Deleted object».
+    #[must_use]
+    pub fn gone() -> Self {
+        Self::missing(tr("board.send.deleted"), "board.send.gone")
+    }
+
+    /// W17 — o nome com que um objecto aparece nos avisos: o dele; sem nenhum (ou só espaços), o do
+    /// TIPO («Unnamed picture») — nunca um vazio («Left out: , Flip»).
+    #[must_use]
+    pub fn name_of(name: Option<&str>, kind: ObjectKind) -> String {
+        if let Some(n) = name.filter(|n| !n.trim().is_empty()) {
+            return n.to_owned();
+        }
+        tr(match kind {
+            ObjectKind::Image => "board.send.unnamed.image",
+            ObjectKind::Vector => "board.send.unnamed.vector",
+            ObjectKind::Flip => "board.send.unnamed.flip",
+            _ => "board.send.unnamed.other",
+        })
+        .to_owned()
+    }
+}
+
+/// Os nomes de uma lista de aviso, pela ordem, os iguais uma vez com a conta («Deleted object ×2»).
+fn listed(names: &[&str]) -> String {
+    let mut seen: Vec<(&str, usize)> = Vec::new();
+    for n in names {
+        match seen.iter_mut().find(|(m, _)| m == n) {
+            Some((_, k)) => *k += 1,
+            None => seen.push((n, 1)),
+        }
+    }
+    seen.iter()
+        .map(|(n, k)| match k {
+            1 => (*n).to_owned(),
+            _ => format!("{n} \u{d7}{k}"),
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// ⭐ A escolha do modal (`HierRequest::SendToBoardChosen`): `board` = um quadro aberto, `None` = um
@@ -114,11 +155,15 @@ pub fn deliver(
             let names: Vec<&str> = left.iter().map(|(n, _)| n.as_str()).collect();
             Some(Toast::warning(tr_with(
                 "board.send.left_out",
-                &[("names", &names.join(", "))],
+                &[("names", &listed(&names))],
             )))
         }
     };
     if files.is_empty() {
+        // W17 — todos sumiram: o aviso diz isso, não a lista dos apagados.
+        if many && left.iter().all(|(_, why)| *why == "board.send.gone") {
+            return Err(Toast::warning(tr("board.send.all_gone")));
+        }
         return Err(left_out.unwrap_or_else(|| Toast::warning(tr("board.send.wrong_kind"))));
     }
     let target = match board.map(BoardId) {

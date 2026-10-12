@@ -243,6 +243,8 @@ fn cropped(d: &Drag, natural: [u32; 2], p: Pointer) -> Option<Element> {
     let y0 = sy.clamp(0.0, nh);
     let [mut x0, mut y0, mut x1, mut y1] =
         [x0, y0, (sx + sw).clamp(x0, nw), (sy + sh).clamp(y0, nh)];
+    // A proporção da janela do começo do arrasto, em píxeis naturais — a que o `Shift` guarda.
+    let ratio = (x1 - x0) / (y1 - y0).max(1e-9);
     let mut el = d.original.clone();
     match d.grip {
         Grip::Pan => {
@@ -268,9 +270,10 @@ fn cropped(d: &Drag, natural: [u32; 2], p: Pointer) -> Option<Element> {
                 _ => {}
             }
             if p.mods.shift && ax != 0 && ay != 0 {
-                // A proporção da imagem natural, na maior das duas caixas que cabe.
+                // W17 (`saidas/w17` E06/E07): a de um recorte já feito, não a da imagem inteira; na
+                // maior caixa que cabe.
                 let (w, h) = (x1 - x0, y1 - y0);
-                let r = nw / nh;
+                let r = ratio;
                 let (mut w2, mut h2) = if w / h < r { (h * r, h) } else { (w, w / r) };
                 let room_x = if ax > 0 { nw - x0 } else { x1 };
                 let room_y = if ay > 0 { nh - y0 } else { y1 };

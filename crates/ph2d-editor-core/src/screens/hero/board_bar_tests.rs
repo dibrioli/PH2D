@@ -521,3 +521,6 @@ mod images_w15;
 
 #[path = "board_images_w16_tests.rs"]
 mod images_w16;
+
+#[path = "board_images_w17_tests.rs"]
+mod images_w17;

@@ -4,6 +4,8 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "board.images.skipped" => "Skipped {count}: not an image",
+        // W17 — o cabeçalho leu-se, os dados não: a imagem fica partida no quadro.
+        "board.images.unreadable" => "A picture on this board is damaged and cannot be shown",
         "board.style.gray" => "Black and white",
         "board.style.flip_h" => "Flip horizontal (Shift+H)",
         "board.style.flip_v" => "Flip vertical (Shift+V)",
@@ -61,6 +63,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "board.smoke.w16.l6" => {
             "6. Export this board as SVG: it is quick even with big photos, and the pictures go in as they arrived."
+        }
+        "board.smoke.w17.board" => "Known picture fixes",
+        "board.smoke.w17.title" => "A damaged picture, Shift on a cropped one, and a quicker PDF",
+        "board.smoke.w17.damaged" => "Damaged",
+        "board.smoke.w17.crop" => "Crop with Shift",
+        "board.smoke.w17.same" => "Same photo",
+        "board.smoke.w17.l1" => {
+            "1. The right picture's file is cut in half. It shows crossed out in red, and the bar above the board says so once \u{2014} before, it stayed grey forever."
+        }
+        "board.smoke.w17.l2" => {
+            "2. Double-click the tall picture, hold Shift and drag a corner: it keeps its own tall shape, not the shape of the whole photo."
+        }
+        "board.smoke.w17.l3" => {
+            "3. Export this board as PDF: three pages with the same photo, and the photo is read once for the whole file, not once per page."
+        }
+        "board.smoke.w17.l4" => {
+            "4. Scene tab: Send to board\u{2026} a selection where something has no name or was deleted: the warning says \u{201c}Unnamed picture\u{201d} or \u{201c}Deleted object\u{201d}, never a blank."
         }
         "board.smoke.images.title" => "Pictures on the board: drop, paste, resize, export",
         "board.smoke.images.frame" => "Moodboard",

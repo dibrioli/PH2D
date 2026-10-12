@@ -303,6 +303,81 @@ fn the_selection_goes_whole_each_with_its_pose_and_the_left_out_are_named() {
     );
 }
 
+/// ⭐ W17 — um objecto SEM nome (nenhum, ou só espaços) aparece nos avisos pelo TIPO — sozinho ou
+/// numa lista —, nunca como um vazio («Left out: , Flip»); iguais contam-se uma vez.
+#[test]
+fn a_nameless_object_is_named_by_its_kind_in_every_warning() {
+    let mut t = T::new(&["Moodboard"]);
+    let pic = Sent::name_of(None, ObjectKind::Image);
+    let shape = Sent::name_of(Some("  "), ObjectKind::Vector);
+    let drawing = Sent::name_of(None, ObjectKind::Flip);
+    assert_eq!(
+        Sent::name_of(Some("Hero"), ObjectKind::Image),
+        "Hero",
+        "o nome do artista fica"
+    );
+    for (got, want) in [
+        (pic.as_str(), "board.send.unnamed.image"),
+        (shape.as_str(), "board.send.unnamed.vector"),
+        (drawing.as_str(), "board.send.unnamed.flip"),
+    ] {
+        assert_eq!(got, tr(want), "{want}");
+    }
+    let alone = deliver(&mut t.hero, None, vec![Sent::new(pic.clone(), None)]).unwrap_err();
+    assert!(
+        alone.message.starts_with(tr("board.send.unnamed.image")),
+        "{}",
+        alone.message
+    );
+    let b = t.board_ids()[0];
+    let items = vec![
+        Sent::new("Hero", Some(red(4, 4))),
+        Sent::new(shape.clone(), None),
+        Sent::new(drawing.clone(), None),
+        Sent::new(drawing.clone(), None),
+    ];
+    let left = deliver(&mut t.hero, Some(b.0), items).unwrap().1.unwrap();
+    assert!(
+        !left.message.contains(", ,") && !left.message.contains(": ,"),
+        "{}",
+        left.message
+    );
+    assert_eq!(
+        left.message,
+        tr_with(
+            "board.send.left_out",
+            &[("names", &format!("{shape}, {drawing} \u{d7}2"))]
+        )
+    );
+}
+
+/// ⭐ W17 — um objecto APAGADO entre o pedido e a escolha conta no aviso; se TODOS sumiram, o aviso
+/// diz isso (e não «só imagens, vectores e Flip», que enganava).
+#[test]
+fn a_deleted_object_is_counted_and_when_all_are_gone_the_warning_says_so() {
+    let mut t = T::new(&["Moodboard"]);
+    let one = deliver(&mut t.hero, None, vec![Sent::gone()]).unwrap_err();
+    assert_eq!(one.message, tr("board.send.gone"));
+    let all = deliver(&mut t.hero, None, vec![Sent::gone(), Sent::gone()]).unwrap_err();
+    assert_eq!(all.message, tr("board.send.all_gone"));
+    let b = t.board_ids()[0];
+    let items = vec![
+        Sent::new("Hero", Some(red(4, 4))),
+        Sent::gone(),
+        Sent::gone(),
+    ];
+    let left = deliver(&mut t.hero, Some(b.0), items).unwrap().1.unwrap();
+    assert_eq!(
+        left.message,
+        tr_with(
+            "board.send.left_out",
+            &[("names", &format!("{} \u{d7}2", tr("board.send.deleted")))]
+        )
+    );
+    assert_eq!(t.images(b).len(), 1, "o que existe entra");
+    assert_eq!(t.hero.documents.boards().boards().len(), 1);
+}
+
 /// ⭐ W16 — a pose de uma sprite: o mundo (y para cima, ângulo anti-horário) para o quadro (y para
 /// baixo, ângulo horário), à régua `ppm`; o espelho horizontal sem rodar 180°; a inclinação (que o
 /// quadro não exprime) redesenha os píxeis; sem área não vai.

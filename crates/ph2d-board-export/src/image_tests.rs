@@ -1,7 +1,6 @@
 //! W14 — as imagens na saída: no SVG cada ficheiro uma vez (os bytes como chegaram) e cada imagem um
 //! `<use>` no sítio da caixa; no PDF os píxeis uma vez, com o alfa à parte.
 
-use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use super::*;
@@ -21,9 +20,27 @@ fn png_3x2() -> Vec<u8> {
     out
 }
 
+/// As descodificações feitas, pela impressão digital dos bytes (os testes correm em paralelo: cada um
+/// conta só os ficheiros dele).
+static DECODED: std::sync::Mutex<Vec<u64>> = std::sync::Mutex::new(Vec::new());
+
+fn print_of(b: &[u8]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    b.hash(&mut h);
+    h.finish()
+}
+
+/// Quantas vezes `b` foi descodificado.
+fn decodes_of(b: &[u8]) -> usize {
+    let p = print_of(b);
+    DECODED.lock().unwrap().iter().filter(|&&q| q == p).count()
+}
+
 /// O descodificador do app, para estes testes: só PNG.
 pub(crate) fn install() {
     ph2d_board_render::install_decoder(Arc::new(|b: &[u8], at: Option<[u32; 2]>| {
+        DECODED.lock().unwrap().push(print_of(b));
         // W15: um SVG pelo rasterizador do app (o mesmo da porta de entrada).
         if b.starts_with(b"<svg") {
             let tree = ph2d_imageio_svg::raster::parse(b).ok()?;
@@ -103,7 +120,7 @@ fn a_jpeg_goes_into_the_pdf_once_and_as_it_arrived() {
                 1.0,
                 None,
                 ExportTarget::Pdf,
-                &BTreeSet::new(),
+                &mut ExportCache::default(),
                 &mut ts,
             );
             (s.take_record(), size)
@@ -137,6 +154,62 @@ fn a_jpeg_goes_into_the_pdf_once_and_as_it_arrived() {
     );
 }
 
+/// ⭐ W17 — a MESMA fotografia em três frames: o PDF descodifica-a UMA vez para as três páginas (o
+/// export partilha as imagens; antes, uma por página).
+#[test]
+fn one_export_decodes_a_photo_once_for_all_its_pages() {
+    install();
+    let bytes = jpeg(404, 303);
+    let mut set = BoardSet::default();
+    let id = set.create("Fotos".into());
+    let b = set.get_mut(id).unwrap();
+    let file = b.put_file(ImageFile::new(bytes.clone(), [404, 303]));
+    let st = Style::new(None, None, Rgba([0, 0, 0, 255]));
+    for k in 0..3 {
+        let x = f64::from(k) * 1000.0;
+        let f = Element::new_frame(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            ph2d_board_model::Frame {
+                name: format!("F{k}"),
+                style: st.clone(),
+            },
+            [x, 0.0, 500.0, 400.0],
+        );
+        let fid = f.id;
+        BoardOp::Put(f).apply(&mut b.doc);
+        let mut el = Element::new_image(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            Image::new(file, st.clone()),
+            [x + 50.0, 50.0, 404.0, 303.0],
+        );
+        el.frame = Some(fid);
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let b = set.boards()[0].clone();
+    let mut routes = RouteCache::default();
+    routes.sync(&b.doc);
+    let mut ts = TextSystem::without_system_fonts();
+    let pages = pdf_pages(&b, &routes, &[]);
+    assert_eq!(pages.len(), 3);
+    let (mut drawn, mut shared) = (0, ExportCache::default());
+    for p in &pages {
+        let (mut s, _) = paint_page(&b, p, 1.0, None, ExportTarget::Pdf, &mut shared, &mut ts);
+        drawn += s
+            .take_record()
+            .iter()
+            .filter(|o| matches!(o, DrawOp::Image(_)))
+            .count();
+    }
+    assert_eq!(drawn, 3, "cada página com a sua imagem");
+    assert_eq!(
+        decodes_of(&bytes),
+        1,
+        "a mesma foto descodificada por página"
+    );
+}
+
 /// Duas imagens do MESMO ficheiro, uma em `(0, 0)` de `30 × 20` e outra em `(100, 0)` de `60 × 40`.
 fn board() -> Board {
     install();
@@ -167,7 +240,7 @@ fn ops(b: &Board, target: ExportTarget) -> (Vec<DrawOp>, [f64; 2]) {
         1.0,
         None,
         target,
-        &BTreeSet::new(),
+        &mut ExportCache::default(),
         &mut ts,
     );
     (s.take_record(), size)

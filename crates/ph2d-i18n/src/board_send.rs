@@ -18,6 +18,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.send.no_board" => "That board was closed before the picture arrived",
         // W16 — vários objectos de uma vez: os que não foram.
         "board.send.left_out" => "Left out: {names}",
+        // W17 — o nome nos avisos de um objecto sem nome (pelo tipo), de um apagado entre o pedido e a
+        // escolha, e o aviso de quando TODOS sumiram.
+        "board.send.unnamed.image" => "Unnamed picture",
+        "board.send.unnamed.vector" => "Unnamed shape",
+        "board.send.unnamed.flip" => "Unnamed drawing",
+        "board.send.unnamed.other" => "Unnamed object",
+        "board.send.deleted" => "Deleted object",
+        "board.send.all_gone" => "Those objects are no longer in the scene",
         _ => return None,
     })
 }

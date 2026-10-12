@@ -101,6 +101,19 @@ impl Documents {
         std::mem::take(&mut self.live.fac.chime)
     }
 
+    /// W17 — a chave do aviso que a faixa do quadro mostra (a última recusa do editor, a imagem que
+    /// não se lê), enquanto não é trocada.
+    #[must_use]
+    pub fn notice(&self) -> Option<&'static str> {
+        self.live.notice.map(|(k, _)| k)
+    }
+
+    /// W17 — há imagens do quadro a descodificar.
+    #[must_use]
+    pub fn images_pending(&self) -> bool {
+        self.live.render_cache.images.pending()
+    }
+
     /// Todos os quadros, na ordem das abas — o que a shell grava.
     #[must_use]
     pub fn boards(&self) -> &BoardSet {

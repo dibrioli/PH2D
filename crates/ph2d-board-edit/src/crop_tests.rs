@@ -103,7 +103,7 @@ const NW: [f64; 2] = [420.0, 180.0];
 
 /// ⭐ A2/A3 — o canto SE: o canto oposto fica, a caixa encolhe, o recorte é a janela em píxeis
 /// naturais; o NW move o elemento e a imagem fica parada no ecrã. A proporção é livre; `Shift` dá a
-/// da imagem natural (a maior das duas caixas). A2d: a meio tamanho o recorte conta-se em naturais.
+/// da janela (aqui a imagem inteira; a maior das duas caixas). A2d: a meio tamanho o recorte conta-se em naturais.
 #[test]
 fn a_corner_moves_its_side_of_the_window_and_the_picture_stays_put() {
     let mut w = world(400.0, 300.0, |_| {});
@@ -127,6 +127,92 @@ fn a_corner_moves_its_side_of_the_window_and_the_picture_stays_put() {
     w.drag([620.0, 330.0], [-40.0, -30.0], NONE);
     assert_eq!(w.boxed()[2..], [160.0, 120.0]);
     assert_eq!(w.crop(), Some([0.0, 0.0, 320.0, 240.0]));
+}
+
+/// ⭐ W17 — o `Shift` num canto guarda a proporção da JANELA do começo do arrasto, em píxeis naturais
+/// (`saidas/w17`, E01..E08): esticada sem recorte é a do natural (a caixa no ecrã guarda a do que se
+/// vê); JÁ recortada é a do recorte de agora (2:3), não a da imagem inteira (4:3).
+#[test]
+fn shift_keeps_the_proportion_of_the_window_stretched_or_already_cropped() {
+    let tall = |e: &mut Element| {
+        e.image_mut().unwrap().crop = Some(Crop {
+            x: 0.0,
+            y: 0.0,
+            w: 200.0,
+            h: 300.0,
+        });
+    };
+    for (what, w, h, edit, from, by, boxed, crop) in [
+        (
+            "E02 esticada 600×300, SE",
+            600.0,
+            300.0,
+            None,
+            [1020.0, 480.0],
+            [-80.0, -30.0],
+            [420.0, 180.0, 540.0, 270.0],
+            [0.0, 0.0, 360.0, 270.0],
+        ),
+        (
+            "E03 esticada 600×300, NW",
+            600.0,
+            300.0,
+            None,
+            NW,
+            [80.0, 30.0],
+            [480.0, 210.0, 540.0, 270.0],
+            [40.0, 30.0, 360.0, 270.0],
+        ),
+        (
+            "E04 esticada 400×450, SE",
+            400.0,
+            450.0,
+            None,
+            [820.0, 630.0],
+            [-80.0, -30.0],
+            [420.0, 180.0, 373.333333, 420.0],
+            [0.0, 0.0, 373.333333, 280.0],
+        ),
+        (
+            "E05 esticada 600×300, SE −20,−100",
+            600.0,
+            300.0,
+            None,
+            [1020.0, 480.0],
+            [-20.0, -100.0],
+            [420.0, 180.0, 580.0, 290.0],
+            [0.0, 0.0, 386.666667, 290.0],
+        ),
+        (
+            "E06 recortada 2:3, caixa 200×300",
+            200.0,
+            300.0,
+            Some(tall),
+            [620.0, 480.0],
+            [-40.0, -30.0],
+            [420.0, 180.0, 180.0, 270.0],
+            [0.0, 0.0, 180.0, 270.0],
+        ),
+        (
+            "E07 recortada 2:3 e esticada, caixa 300×300",
+            300.0,
+            300.0,
+            Some(tall),
+            [720.0, 480.0],
+            [-40.0, -30.0],
+            [420.0, 180.0, 270.0, 270.0],
+            [0.0, 0.0, 180.0, 270.0],
+        ),
+    ] {
+        let mut wd = world(w, h, |e| {
+            if let Some(f) = edit {
+                f(e);
+            }
+        });
+        wd.drag(from, by, SHIFT);
+        assert_eq!(wd.boxed(), boxed, "{what}: a caixa");
+        assert_eq!(wd.crop(), Some(crop), "{what}: o recorte");
+    }
 }
 
 /// A4 — as pegas dos MEIOS dos lados (sem desenho) movem só o lado delas.

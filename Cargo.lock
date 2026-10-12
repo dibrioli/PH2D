@@ -4801,6 +4801,7 @@ dependencies = [
  "ph2d-board-render",
  "ph2d-board-route",
  "ph2d-board-sync",
+ "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",

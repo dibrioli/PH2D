@@ -105,7 +105,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
         1.0,
         paper,
         8192,
-        &std::collections::BTreeSet::new(),
+        &mut ph2d_board_export::ExportCache::default(),
         &mut ts,
     )
     .unwrap();
@@ -117,7 +117,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
         1.0,
         paper,
         300,
-        &std::collections::BTreeSet::new(),
+        &mut ph2d_board_export::ExportCache::default(),
         &mut ts,
     )
     .unwrap();
@@ -136,7 +136,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
         1.0,
         paper,
         ExportTarget::Svg,
-        &std::collections::BTreeSet::new(),
+        &mut ph2d_board_export::ExportCache::default(),
         &mut ts,
     );
     let svg_text = svg::write(&s.take_record(), size);
@@ -179,7 +179,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
                 1.0,
                 paper,
                 ExportTarget::Pdf,
-                &std::collections::BTreeSet::new(),
+                &mut ph2d_board_export::ExportCache::default(),
                 &mut ts,
             );
             (sc.take_record(), sz)
@@ -225,7 +225,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
             1.0,
             paper,
             8192,
-            &std::collections::BTreeSet::new(),
+            &mut ph2d_board_export::ExportCache::default(),
             &mut ts,
         )
         .unwrap();

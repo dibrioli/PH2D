@@ -31,8 +31,10 @@ const MIN_DRAG_PX: f64 = 3.0;
 pub struct ShapeTool {
     /// Estilo da forma sendo desenhada (a shell o sincroniza da tool a cada frame).
     style: PenStyle,
-    /// O path vivo sendo dimensionado (entre press e release); `None` = ocioso.
+    /// O path vivo sendo dimensionado; `None` = ocioso, ou premido sem arrasto ainda.
     active: Option<VecPathId>,
+    /// Há um gesto entre press e release (com ou sem path: ver [`Self::on_press`]).
+    pressed: bool,
     kind: ShapeKind,
     /// Os parâmetros da forma em **MUNDO**, na ordem do catálogo (a shell converte da
     /// unidade de UI antes de chamar — a geometria só fala mundo).
@@ -82,7 +84,7 @@ impl ShapeTool {
     /// Há um arrasto de forma em curso?
     #[must_use]
     pub fn is_active(&self) -> bool {
-        self.active.is_some()
+        self.pressed
     }
 
     /// A última forma commitada (para a shell selecionar no release).
@@ -142,8 +144,9 @@ impl ShapeTool {
         self.active
     }
 
-    /// Começa uma forma no ponto `p` (mundo): empurra um path degenerado (que já
-    /// renderiza) e registra kind + valores + `px_to_world`. Devolve o id novo.
+    /// Começa um gesto no ponto `p` (mundo) e registra kind + valores + `px_to_world`. ⚠️ A forma
+    /// só NASCE no arrasto, passado [`MIN_DRAG_PX`] (F13): nascida no press, um CLIQUE (que no modo
+    /// Forma selecciona) ganhava entidade e linha na Hierarquia e sumia no soltar.
     pub fn on_press(
         &mut self,
         scene: &mut VecScene,
@@ -152,19 +155,17 @@ impl ShapeTool {
         p: [f64; 2],
         px_to_world: f64,
         constraint: ShapeConstraint,
-    ) -> VecPathId {
+    ) {
         if let Some(id) = self.active.take() {
             scene.remove_path(id);
         }
+        self.pressed = true;
         self.kind = kind;
         self.values = values;
         self.start = p;
         self.cur = p;
         self.px_to_world = px_to_world;
         self.constraint = constraint;
-        let id = scene.push_path(self.build());
-        self.active = Some(id);
-        id
     }
 
     /// Redimensiona a forma ativa contra a caixa `start..p` (com Shift/Alt). `true` se
@@ -185,7 +186,7 @@ impl ShapeTool {
     /// `true` se havia um gesto vivo.
     pub fn set_constraint(&mut self, scene: &mut VecScene, constraint: ShapeConstraint) -> bool {
         if self.constraint == constraint {
-            return self.active.is_some();
+            return self.pressed;
         }
         self.constraint = constraint;
         self.rebuild(scene)
@@ -193,8 +194,15 @@ impl ShapeTool {
 
     /// Reescreve a geometria do path em gesto a partir do estado corrente.
     fn rebuild(&mut self, scene: &mut VecScene) -> bool {
-        let Some(id) = self.active else {
+        if !self.pressed {
             return false;
+        }
+        let Some(id) = self.active else {
+            let (a, b) = self.bounds();
+            if (b[0] - a[0]).abs().max((b[1] - a[1]).abs()) >= MIN_DRAG_PX * self.px_to_world {
+                self.active = Some(scene.push_path(self.build()));
+            }
+            return true;
         };
         let rebuilt = self.build();
         let Some(path) = scene.path_mut(id) else {
@@ -211,6 +219,7 @@ impl ShapeTool {
     /// Encerra o arrasto: mantém a forma se ela vence [`MIN_DRAG_PX`] em algum eixo (e a
     /// registra como a seleção commitada), senão a remove (cancela). `true` sse commitou.
     pub fn on_release(&mut self, scene: &mut VecScene) -> bool {
+        self.pressed = false;
         let Some(id) = self.active.take() else {
             return false;
         };
@@ -234,6 +243,7 @@ impl ShapeTool {
 
     /// Descarta a forma em curso (troca de tool / clique secundário / Esc).
     pub fn cancel(&mut self, scene: &mut VecScene) {
+        self.pressed = false;
         if let Some(id) = self.active.take() {
             scene.remove_path(id);
         }
@@ -351,9 +361,15 @@ mod tests {
             PTW,
             ShapeConstraint::default(),
         );
+        assert!(
+            shape.is_active() && scene.is_empty(),
+            "o press nao faz path (F13)"
+        );
         shape.on_drag(&mut scene, [0.01, 0.01], ShapeConstraint::default());
+        assert!(scene.is_empty(), "um arrasto abaixo do clique nao faz path");
         assert!(!shape.on_release(&mut scene), "clique perdido cancela");
         assert!(scene.is_empty(), "forma cancelada nao deixa path");
+        assert!(!shape.is_active());
     }
 
     #[test]
@@ -491,6 +507,7 @@ mod tests {
             PTW,
             ShapeConstraint::default(),
         );
+        shape.on_drag(&mut scene, [3.0, 2.0], ShapeConstraint::default());
         assert_eq!(scene.paths().len(), 1);
         shape.cancel(&mut scene);
         assert!(scene.is_empty() && !shape.is_active());

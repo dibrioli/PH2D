@@ -38,7 +38,7 @@ pub(crate) const CLARAO: f32 = 2.5;
 pub(crate) const VIDA: f32 = 0.6;
 pub(crate) const COR_DO_TIME: [f32; 4] = [1.0, 0.45, 0.1, 1.0];
 
-fn liga(g: &mut Graph, de: (NodeId, u16), para: NodeId, porta: u16, pre: bool) -> Option<()> {
+pub(super) fn liga(g: &mut Graph, de: (NodeId, u16), para: NodeId, porta: u16, pre: bool) -> Option<()> {
     g.connect(Edge {
         from: de,
         to: (para, porta),
@@ -56,7 +56,7 @@ fn indice(k: ph2d_node_motion_shape::ShapeKind) -> Option<f32> {
 }
 
 /// Uma forma de cor `rgb`.
-fn forma(
+pub(super) fn forma(
     g: &mut Graph,
     no: &impl Fn(&mut Graph, &str, f32, f32) -> NodeId,
     k: ph2d_node_motion_shape::ShapeKind,
@@ -81,7 +81,7 @@ fn forma(
     Some(f)
 }
 
-fn entrada(
+pub(super) fn entrada(
     g: &mut Graph,
     no: &impl Fn(&mut Graph, &str, f32, f32) -> NodeId,
     nome: &str,
@@ -112,7 +112,7 @@ pub(crate) struct Cena {
     pub redemoinho: NodeId,
 }
 
-fn no_em(y0: f32) -> impl Fn(&mut Graph, &str, f32, f32) -> NodeId {
+pub(super) fn no_em(y0: f32) -> impl Fn(&mut Graph, &str, f32, f32) -> NodeId {
     move |g: &mut Graph, tipo: &str, x: f32, dy: f32| {
         let n = g.add_node(tipo.to_string());
         g.set_pos(n, Pos { x, y: y0 + dy });

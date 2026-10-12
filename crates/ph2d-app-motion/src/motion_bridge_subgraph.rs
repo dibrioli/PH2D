@@ -156,7 +156,15 @@ pub(super) fn drive(
         return;
     }
     let pre = motion.doc.clone();
-    match motion.doc.graph.drive_param(to, param, from) {
+    // ⭐ A COR NUM GESTO (doc 131 §3, D.13): um canal solto sobre o MESMO canal de um grupo de cor
+    // liga o grupo inteiro — um passo de desfazer.
+    let ligados = match grupo_de_cor(motion, from, to, param) {
+        Some(grupo) => grupo
+            .into_iter()
+            .try_for_each(|(p, porta)| motion.doc.graph.drive_param(to, p, (from.0, porta))),
+        None => motion.doc.graph.drive_param(to, param, from),
+    };
+    match ligados {
         Ok(()) => {
             motion.history.push_undo(pre);
             motion.pump.mark_dirty();
@@ -164,11 +172,69 @@ pub(super) fn drive(
         // A outra recusa estrutural: fecharia um laço. (Um param não tem caso «já ligado» —
         // uma segunda fonte substitui a primeira, como re-plugar um socket de entrada.)
         Err(_) => {
+            // Um grupo é atómico: nada fica meio ligado.
+            motion.doc = pre;
             toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
                 "app.motion.motion_bridge_subgraph.can_t_drive_that_would_make_a_loop",
             )));
         }
     }
+}
+
+/// Os canais de uma COR, pela ordem em que um grupo se escreve.
+const CANAIS_DE_COR: [char; 4] = ['r', 'g', 'b', 'a'];
+
+/// **O GRUPO DE COR de um fio solto num param** (doc 131 §3, D.13) — `(param, porta da fonte)` por
+/// canal, ou `None` quando o gesto liga só o canal solto.
+///
+/// Um grupo existe dos DOIS lados pelo nome: trocar a letra do canal (`r` → `g b a`) no nome da
+/// porta da fonte (`r` do `value.input` Color) e no do param (`r`, `r2`, `fill_r`) dá nomes que o
+/// manifesto declara — pelo menos `r g b`; o `a` entra se os dois lados o têm. ⚠️ Só com a MESMA
+/// letra dos dois lados: `g` solto sobre `r` é uma troca de canal que o artista pediu.
+pub(super) fn grupo_de_cor(
+    motion: &MotionState,
+    from: (NodeId, u16),
+    to: NodeId,
+    param: &str,
+) -> Option<Vec<(&'static str, u16)>> {
+    let fonte = super::fold::manifest_of(motion, from.0)?;
+    let alvo = super::fold::manifest_of(motion, to)?;
+    let porta = fonte.outputs.get(usize::from(from.1))?.name;
+    // As posições onde a letra de um canal pode ser trocada, e a letra solta.
+    let canal = |nome: &str| -> Vec<(usize, char)> {
+        nome.char_indices()
+            .filter(|(_, c)| CANAIS_DE_COR.contains(c))
+            .collect()
+    };
+    let troca = |nome: &str, i: usize, c: char| {
+        let mut s = nome.to_string();
+        s.replace_range(i..=i, c.encode_utf8(&mut [0; 4]));
+        s
+    };
+    for (j, letra) in canal(porta) {
+        for (i, l) in canal(param) {
+            if l != letra {
+                continue;
+            }
+            let grupo: Vec<(&'static str, u16)> = CANAIS_DE_COR
+                .iter()
+                .filter_map(|&c| {
+                    let p = alvo.params.iter().find(|s| s.name == troca(param, i, c))?;
+                    let o = fonte
+                        .outputs
+                        .iter()
+                        .position(|s| s.name == troca(porta, j, c))?;
+                    Some((p.name, u16::try_from(o).ok()?))
+                })
+                .collect();
+            if grupo.len() >= 3 && grupo.iter().take(3).zip("rgb".chars()).all(|((p, _), c)| {
+                *p == troca(param, i, c)
+            }) {
+                return Some(grupo);
+            }
+        }
+    }
+    None
 }
 
 /// ⭐⭐⭐ **O NÓ QUE CONVERTE esta saída num valor — DERIVADO do registry, nunca uma tabela.**

@@ -7,6 +7,7 @@
 
 use super::subgraph_tests::flat;
 use super::*;
+use ph2d_nodegraph::graph::NodeId;
 use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
 
 /// Wiring into a CARD's socket reaches the real port inside it — the derivation that
@@ -316,4 +317,67 @@ fn grouping_a_node_whose_param_is_driven_from_outside_keeps_the_wire_on_the_card
         Some("strength"),
         "the card's socket stands for a PARAMETER of the node inside it"
     );
+}
+
+/// O fio solto pelo painel — o intent do menu do param, aplicado como o quadro o aplica.
+fn solta_no_param(m: &mut MotionState, from: (NodeId, u16), to: NodeId, param: &'static str) {
+    push_intent(GraphIntent::DriveParam {
+        from_node: from.0.0,
+        from_port: from.1,
+        to_node: to.0,
+        param,
+    });
+    apply_graph_intents(
+        m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
+    );
+}
+
+/// ⭐ **A COR NUM GESTO** (doc 131 §3, D.13): o `r` de um Input Color solto no `r` do Tint liga
+/// `r g b a` — antes era um fio por canal (medido: 1 de 4 ligado). Solto no `r2`, o grupo da 2.ª
+/// cor. Um passo de desfazer. Controlo: o `g` solto no `r` é uma troca de canal e liga só esse.
+#[test]
+fn um_canal_de_cor_solto_no_mesmo_canal_liga_a_cor_inteira() {
+    let mut m = flat();
+    let cor = m.doc.graph.add_node("value.input");
+    #[expect(clippy::cast_precision_loss, reason = "um enum pequeno")]
+    m.doc
+        .graph
+        .set_param(cor, ph2d_node_value_input::KIND, ph2d_node_value_input::KIND_COLOR as f32);
+    let tint = m.doc.graph.add_node("motion.tint");
+    let ligados = |m: &MotionState| -> Vec<(String, u16)> {
+        m.doc
+            .graph
+            .param_sources(tint)
+            .map(|s| s.iter().map(|(k, v)| (k.clone(), v.1)).collect())
+            .unwrap_or_default()
+    };
+    let par = |v: &[(&str, u16)]| -> Vec<(String, u16)> {
+        v.iter().map(|(k, p)| ((*k).to_string(), *p)).collect()
+    };
+
+    solta_no_param(&mut m, (cor, 1), tint, "r");
+    assert_eq!(
+        ligados(&m),
+        par(&[("a", 4), ("b", 3), ("g", 2), ("r", 1)]),
+        "um gesto liga a cor inteira"
+    );
+    let back = m.history.undo(&m.doc).expect("um passo de desfazer");
+    assert!(back.graph.param_sources(tint).is_none(), "e um Ctrl+Z tira os quatro");
+    m.doc = back;
+
+    solta_no_param(&mut m, (cor, 1), tint, "r2");
+    assert_eq!(
+        ligados(&m),
+        par(&[("a2", 4), ("b2", 3), ("g2", 2), ("r2", 1)]),
+        "o grupo da 2.ª cor"
+    );
+    for p in ["r2", "g2", "b2", "a2"] {
+        m.doc.graph.undrive_param(tint, p);
+    }
+
+    solta_no_param(&mut m, (cor, 2), tint, "r");
+    assert_eq!(ligados(&m), par(&[("r", 2)]), "uma troca de canal liga só esse");
 }

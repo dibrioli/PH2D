@@ -80,13 +80,12 @@ dois objectos · 14. colisor pelo NOME (`RECUSA_COLISOR`) na CPU. **E — Docs:*
 
 ## Fecho desta janela
 
-Portão §1.5.9 (`verificador`) sobre o diff `17fd6d3179..HEAD`: 1.ª corrida com 4 vermelhos determinísticos, todos
-curados e reconferidos — censo HR-15 (os motivos eram constantes ⇒ `MotivoDoVello` dito DENTRO do `eprintln!`),
-tecto de LOC (`motion_fx_tests.rs` 731 ⇒ `motion_fx_lut_tests.rs`, filho do módulo de testes), clippy do glow
-(`type_complexity`, `expect` sem uso), fmt. 2.ª corrida: `nextest-impacted` **22 343/22 343** (load 13–29);
-`check --workspace --all-targets` `-D warnings`, clippy `-D warnings`, fmt, typos, machete verdes. GPU
-(`PH2D_GPU=1`): `ph2d-shape-gpu` it 15/15, `ph2d-render` ignorados 10/10 + a LUT 1/1, `ph2d-app-motion` placa/camada
-13/13, `ph2d-gpu` 2/2, espelho da LUT na shell 1/1. Mutações da janela (8) todas VERMELHAS.
+Portão §1.5.9 (`verificador`), duas rodadas. 1.ª (até `3db921b434`): 4 vermelhos determinísticos curados — censo
+HR-15 (motivos ⇒ `MotivoDoVello` dito no `eprintln!`), tecto de LOC (`motion_fx_lut_tests.rs`), clippy do glow, fmt.
+2.ª (com o Each Shape na mistura, `733217c2c7`): `nextest-impacted` **22 343/22 343**; `check --workspace
+--all-targets` `-D warnings`, fmt, typos, machete verdes; clippy `-D warnings` verde depois do `expect` de
+`too_many_arguments` no `Celulas::pagina`. GPU (`PH2D_GPU=1`): `ph2d-shape-gpu` it 15/15, `ph2d-fx-cells` 1/1 + 4/4,
+`ph2d-app-motion` placa/camada 14/14, `ph2d-render` 10/10. Mutações da janela (9) todas VERMELHAS.
 
 binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
-`Finished smoke profile [optimized] target(s) in 0.21s` — zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.25s` — zero `Compiling`.

@@ -455,6 +455,10 @@ impl Celulas {
         caixas
     }
 
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "a página de sempre mais a volta com mistura (B5)"
+    )]
     fn pagina(
         &mut self,
         e: &mut Entrada<'_>,

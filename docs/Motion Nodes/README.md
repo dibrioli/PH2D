@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**141 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**142 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -145,6 +145,7 @@
 | 128 |   | [128_ciclo_19_o_jogo_manda.md](128_ciclo_19_o_jogo_manda.md) | — | 128 — CICLO 19: O JOGO MANDA (entradas publicadas, tempo dirigido, crossfade de estados) |
 | 129 |   | [129_ciclo_20_o_acabamento.md](129_ciclo_20_o_acabamento.md) | — | 129 — CICLO 20: O ACABAMENTO (a lente da câmera e os filtros da camada) |
 | 130 |   | [130_o_passe_na_placa.md](130_o_passe_na_placa.md) | — | 130 — O passe de separação na PLACA (o `Collide` do cartão `Shape`/`Object`) |
+| 131 |   | [131_zerar_o_ultimo_bloco.md](131_zerar_o_ultimo_bloco.md) | — | 131 — ZERAR, o último bloco: a `=70`, o vermelho da `=129` e a fila C · D · E (plano, 12/10) |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

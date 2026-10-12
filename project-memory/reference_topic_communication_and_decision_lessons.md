@@ -92,3 +92,4 @@ metadata:
 
 - ⛔⛔ [O dono reclamou do passo a passo sem fim — planeie TODAS as variantes e ablações à partida e meça numa só rodada intercalada (04/10: 4 rodadas em série, ~2 h de espera)](feedback_plan_every_measurement_upfront_and_batch_it.md)
 - ⛔⛔ [«Não é possível» só depois de varrer o eixo INTEIRO do knob e ler o código do controlo (dono 11/10)](feedback_impossible_needs_the_whole_knob_axis_and_the_code.md)
+- ⭐ [Dono decidiu (12/10): YouTube no Quadro = o navegador família-Chrome da PESSOA por CDP; nada embutido](project_youtube_in_the_board_uses_the_persons_own_browser_2026_10_12.md)

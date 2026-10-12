@@ -19,7 +19,6 @@
 - [Corpus da pesquisa ossos+vetor (23/09), fora do repo](reference_vector_bones_research_corpus_2026_09_23.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - ⭐ [Dono decidiu (06/10): o PH2D TERÁ versão no navegador, mas NÃO agora — 1.º degrau: AVIF fora do `wasm32`](project_web_shell_decided_by_owner_2026_10_06.md)
-- ⭐ [Dono decidiu (12/10): YouTube no Quadro = o navegador família-Chrome da PESSOA por CDP; nada embutido](project_youtube_in_the_board_uses_the_persons_own_browser_2026_10_12.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md)
 - [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)
@@ -53,7 +52,7 @@
 - ⛔⛔ [Um CORTE de LOC move os imports também — a lint corrida antes do corte não vale, e foi o build do dono que apanhou os órfãos](feedback_a_cut_moves_the_imports_too_relint_after_it.md)
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais (66) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (67) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)

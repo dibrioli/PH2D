@@ -15,13 +15,15 @@
 //! +3 GiB na placa, falhava com 8 camadas (o orçamento do compositor só tem 4 fatias a esse tamanho)
 //! e deixava 1,4 GiB de scratch do ecrã presos (`docs/MiroClone/ferramentas/memoria_flip/`).
 
-use super::{FlipComposite, LayerRef, collect_layers, compose};
+use super::{DummyProvider, FlipComposite, LayerRef, collect_layers, stage_slices};
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipObjectId, FlipTarget};
+use ph2d_flip_render::CameraRaw;
 use ph2d_flip_render::engine::new_engine_armed;
 use ph2d_flip_render::{FlipCompose, FlipRenderer};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
+use ph2d_render::layer_compositor::Region;
 use ph2d_render::{Camera2d, max_layers_for_budget};
 use ph2d_vec_scene::Xform;
 
@@ -241,3 +243,40 @@ fn read_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Option<V
 #[cfg(test)]
 #[path = "pass_raster_tests.rs"]
 mod tests;
+
+/// Os passes 1–3 sem o blit: a saída fica no `comp.compositor.output_texture()` (straight sRGB8,
+/// `w × h`), TODAS as camadas numa composição só (sem a luz: é o quadro do desenho) — o «Send to
+/// board…» a lê por cópia (W15). `false` = a composição falhou (dito no terminal).
+#[allow(clippy::too_many_arguments)]
+fn compose(
+    layers: &[LayerRef<'_>],
+    flip_render: &mut FlipRenderer,
+    flip_compose: &mut FlipCompose,
+    comp: &mut FlipComposite,
+    cam: &CameraRaw,
+    cam_center: [f32; 2],
+    (w, h): (u32, u32),
+    gpu: &GpuContext,
+) -> bool {
+    let Some(ops) = stage_slices(
+        layers,
+        flip_render,
+        flip_compose,
+        comp,
+        cam,
+        cam_center,
+        (w, h),
+        gpu,
+    ) else {
+        return false;
+    };
+    let FlipComposite {
+        compositor, dummy, ..
+    } = comp;
+    let provider = DummyProvider { pixels: dummy };
+    if let Err(e) = compositor.composite(gpu, &ops, &provider, w, h, Region::full(w, h)) {
+        eprintln!("[ph2d-flip] composite falhou: {e}");
+        return false;
+    }
+    true
+}

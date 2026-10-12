@@ -238,43 +238,6 @@ fn composite_layers(
     }
 }
 
-/// Os passes 1–3 sem o blit: a saída fica no `comp.compositor.output_texture()` (straight sRGB8,
-/// `w × h`), TODAS as camadas numa composição só (sem a luz: é o quadro do desenho) — o «Send to
-/// board…» a lê por cópia ([`raster`], W15). `false` = a composição falhou (dito no terminal).
-#[allow(clippy::too_many_arguments)]
-fn compose(
-    layers: &[LayerRef<'_>],
-    flip_render: &mut FlipRenderer,
-    flip_compose: &mut FlipCompose,
-    comp: &mut FlipComposite,
-    cam: &CameraRaw,
-    cam_center: [f32; 2],
-    (w, h): (u32, u32),
-    gpu: &GpuContext,
-) -> bool {
-    let Some(ops) = stage_slices(
-        layers,
-        flip_render,
-        flip_compose,
-        comp,
-        cam,
-        cam_center,
-        (w, h),
-        gpu,
-    ) else {
-        return false;
-    };
-    let FlipComposite {
-        compositor, dummy, ..
-    } = comp;
-    let provider = DummyProvider { pixels: dummy };
-    if let Err(e) = compositor.composite(gpu, &ops, &provider, w, h, Region::full(w, h)) {
-        eprintln!("[ph2d-flip] composite falhou: {e}");
-        return false;
-    }
-    true
-}
-
 /// Os passes 1–2: a tesselação e a fatia de cada camada no compositor. Devolve a op-list (bottom-to-top),
 /// ou `None` se uma injecção falhou (dito no terminal).
 #[allow(clippy::too_many_arguments)]

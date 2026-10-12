@@ -61,6 +61,10 @@ pub fn decode(bytes: &[u8], at: Option<[u32; 2]>) -> Option<Pixels> {
             rgba: raster::rasterize(&tree, size)?,
         });
     }
+    // W18 — um JPEG cortado não é inteiro (o salvador mostra as linhas lidas, e avisa).
+    if mime_of(bytes) == Some("image/jpeg") && !crate::salvage::jpeg_ends(bytes) {
+        return crate::salvage::jpeg_whole(bytes);
+    }
     let asset = ph2d_asset::decode_image(bytes).ok()?;
     let (w, h, px) = asset.image_rgba8()?;
     Some(Pixels {
@@ -258,10 +262,11 @@ pub fn paste_files(hero: &mut HeroScreen, paths: Vec<PathBuf>) -> Option<Option<
     )
 }
 
-/// Instala o descodificador e o animador no desenho (uma vez; as seguintes não fazem nada).
+/// Instala o descodificador, o animador e o salvador (W18) no desenho (uma vez; as seguintes não fazem nada).
 pub fn install() {
     ph2d_board_render::install_decoder(Arc::new(decode));
     ph2d_board_render::install_animator(Arc::new(frames));
+    ph2d_board_render::install_salvager(Arc::new(crate::salvage::salvage));
 }
 
 #[cfg(test)]

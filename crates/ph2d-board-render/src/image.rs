@@ -59,6 +59,17 @@ pub fn install_decoder(decode: Decode) {
     let _ = DECODER.set(decode);
 }
 
+/// W18 — o SALVADOR: as linhas que se lêem de um ficheiro que o descodificador recusou (um PNG ou JPEG
+/// cortado mostra as de cima, como o navegador); a imagem continua ESTRAGADA (o aviso, a marca).
+pub type Salvage = Arc<dyn Fn(&[u8]) -> Option<Pixels> + Send + Sync>;
+
+static SALVAGER: OnceLock<Salvage> = OnceLock::new();
+
+/// Instala o salvador do app (a 2.ª chamada não muda nada).
+pub fn install_salvager(salvage: Salvage) {
+    let _ = SALVAGER.set(salvage);
+}
+
 /// O maior lado de um nível que o Vello aceita: o atlas dele é um quadrado deste lado.
 pub(crate) const ATLAS_SIDE: u32 = 8192;
 /// O maior lado do nível que FICA sempre (o que se desenha enquanto o fino volta a descodificar):
@@ -91,7 +102,8 @@ type Levels = Vec<(StableImage, [u32; 2])>;
 
 /// O que um fio acabou: a pirâmide de um raster, ou UM nível de um SVG (o índice).
 enum Out {
-    Pyramid(Option<Levels>),
+    /// `bool` = salva de um ficheiro estragado (as linhas que se leram).
+    Pyramid(Option<Levels>, bool),
     Level(usize, Option<(StableImage, [u32; 2])>),
 }
 
@@ -101,6 +113,7 @@ type Done = (Key, Out);
 /// qualquer quadro). Uma por [`crate::RenderCache`].
 pub struct Images {
     decode: Option<Decode>,
+    salvage: Option<Salvage>,
     entries: BTreeMap<Key, Entry>,
     tx: Sender<Done>,
     rx: Receiver<Done>,
@@ -128,6 +141,7 @@ impl Default for Images {
         let (tx, rx) = channel();
         Self {
             decode: None,
+            salvage: None,
             entries: BTreeMap::new(),
             tx,
             rx,
@@ -166,7 +180,7 @@ fn decode_filtered(
 /// Descodifica: a pirâmide de um raster, ou o nível `at` de um SVG. Um descodificador que entra em
 /// pânico é uma imagem que falhou (o fio continua, e a imagem não fica no cinzento à espera para
 /// sempre).
-fn run(decode: &Decode, job: &Job) -> Out {
+fn run(decode: &Decode, salvage: Option<&Salvage>, job: &Job) -> Out {
     let filter = job.key.1;
     let ok = |f: &dyn Fn() -> Option<Levels>| {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(f))
@@ -174,9 +188,19 @@ fn run(decode: &Decode, job: &Job) -> Out {
             .flatten()
     };
     match job.at {
-        None => Out::Pyramid(ok(&|| {
-            decode_filtered(decode, &job.bytes, None, filter).and_then(pyramid)
-        })),
+        None => match ok(&|| decode_filtered(decode, &job.bytes, None, filter).and_then(pyramid)) {
+            Some(levels) => Out::Pyramid(Some(levels), false),
+            None => {
+                let saved = salvage.and_then(|s| {
+                    let s: Decode = Arc::new({
+                        let s = s.clone();
+                        move |b: &[u8], _| s(b)
+                    });
+                    ok(&|| decode_filtered(&s, &job.bytes, None, filter).and_then(pyramid))
+                });
+                Out::Pyramid(saved, true)
+            }
+        },
         Some((k, size)) => {
             let one = ok(&|| {
                 let px = decode_filtered(decode, &job.bytes, Some(size), filter)?;
@@ -194,6 +218,16 @@ impl Images {
     /// Outro descodificador que o do app (sem nenhum as imagens ficam no cinzento).
     pub fn set_decoder(&mut self, decode: Decode) {
         self.decode = Some(decode);
+    }
+
+    /// W18 — outro salvador que o do app.
+    pub fn set_salvager(&mut self, salvage: Salvage) {
+        self.salvage = Some(salvage);
+    }
+
+    /// O salvador desta cache, ou o do app.
+    fn salvager(&self) -> Option<Salvage> {
+        self.salvage.clone().or_else(|| SALVAGER.get().cloned())
     }
 
     /// W17 — os ficheiros que o descodificador não leu (o cabeçalho bom, os dados estragados) e que
@@ -269,7 +303,10 @@ impl Images {
             return;
         };
         let levels = match out {
-            Out::Pyramid(levels) => levels,
+            Out::Pyramid(levels, broken) => {
+                e.failed |= broken;
+                levels
+            }
             Out::Level(k, one) => {
                 let Some(slot) = e.levels.get_mut(k) else {
                     return;
@@ -313,13 +350,15 @@ impl Images {
         let Some(decode) = self.decoder() else {
             return;
         };
+        let salvage = self.salvager();
         let jobs = self.jobs.get_or_insert_with(|| {
             let (jt, jr) = channel::<Job>();
             let jr = Arc::new(Mutex::new(jr));
             // Metade da máquina: a outra é do desenho e do resto do app.
             let n = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
             for _ in 0..n {
-                let (jr, tx, decode) = (jr.clone(), self.tx.clone(), decode.clone());
+                let (jr, tx, decode, salvage) =
+                    (jr.clone(), self.tx.clone(), decode.clone(), salvage.clone());
                 std::thread::spawn(move || {
                     loop {
                         let job = match jr.lock() {
@@ -327,7 +366,7 @@ impl Images {
                             Err(_) => return,
                         };
                         let Ok(job) = job else { return };
-                        let out = run(&decode, &job);
+                        let out = run(&decode, salvage.as_ref(), &job);
                         if tx.send((job.key, out)).is_err() {
                             return;
                         }
@@ -354,6 +393,7 @@ impl Images {
         let key = (id, filter);
         let frame = self.frame;
         let decoder = self.decoder();
+        let salvage = self.salvager();
         let vector = file.mime() == Some(VECTOR_MIME);
         let e = self.entries.entry(key).or_insert_with(|| Entry {
             want: usize::MAX,
@@ -370,14 +410,15 @@ impl Images {
             failed: false,
             vector,
         });
-        if e.failed {
-            return None;
-        }
         let want = e
             .levels
             .iter()
             .rposition(|l| f64::from(l.size[0]) >= need[0] && f64::from(l.size[1]) >= need[1])
             .unwrap_or(0);
+        // W18 — estragada: as linhas salvas, se as há (nada se volta a descodificar).
+        if e.failed {
+            return self.pick(key, want, frame);
+        }
         if e.levels[want].image.is_none() {
             e.want = e.want.min(want);
         }
@@ -405,7 +446,7 @@ impl Images {
                 };
                 match &decoder {
                     Some(d) if sync => {
-                        let out = run(d, &job);
+                        let out = run(d, salvage.as_ref(), &job);
                         self.adopt(key, out);
                     }
                     Some(_) => self.spawn(job),
@@ -420,7 +461,7 @@ impl Images {
             };
             if sync {
                 if let Some(d) = &decoder {
-                    let out = run(d, &job);
+                    let out = run(d, salvage.as_ref(), &job);
                     self.adopt(key, out);
                 }
             } else if decoder.is_some() {
@@ -451,7 +492,8 @@ impl Images {
         if self.frame.is_multiple_of(KEEP_FRAMES) {
             let cut = self.frame.saturating_sub(KEEP_FRAMES);
             self.players.forget_before(cut);
-            for e in self.entries.values_mut() {
+            // W18 — a estragada não volta a descodificar: as linhas salvas ficam.
+            for e in self.entries.values_mut().filter(|e| !e.failed) {
                 let last = e.levels.len() - 1;
                 for l in &mut e.levels[..last] {
                     if l.used < cut {
@@ -607,6 +649,10 @@ pub(crate) fn paint(
         if layered {
             scene.pop_layer();
         }
+        // W18 — as linhas que se leram de uma estragada: no ecrã, a marca dela num canto.
+        if export.is_none() && embed.is_none() && cache.images.failed(img.file, img.filter) {
+            broken_mark(scene, el, t, theme);
+        }
     }
     if framed {
         crate::image_frame::paint(scene, cache, el, img, t, board);
@@ -661,6 +707,30 @@ fn placeholder(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme, b
     scene.fill_path(&hill, &ink, t);
 }
 
+/// W18 — a marca de uma imagem estragada de que se lêem as linhas de cima: o círculo do perigo com o
+/// risco do ícone de imagem, no canto de cima à direita (o desenho continua a mostrar o que se leu).
+fn broken_mark(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme) {
+    let r = el.w.min(el.h) * 0.08;
+    if r <= 0.0 {
+        return;
+    }
+    let c = Point::new(el.w - r * 1.6, r * 1.6);
+    scene.fill_path(
+        &Circle::new(c, r).to_path(0.1),
+        &Brush::Solid(token(ColorToken::Danger, theme)),
+        t,
+    );
+    let mut slash = ph2d_vector::BezPath::new();
+    slash.move_to((c.x - r * 0.5, c.y - r * 0.5));
+    slash.line_to((c.x + r * 0.5, c.y + r * 0.5));
+    scene.stroke_path(
+        &Stroke::new(r * 0.25),
+        t,
+        &Brush::Solid(token(ColorToken::Bg1, theme)),
+        &slash,
+    );
+}
+
 #[cfg(test)]
 #[path = "image_tests.rs"]
 mod tests;
@@ -668,3 +738,7 @@ mod tests;
 #[cfg(test)]
 #[path = "image_w15_tests.rs"]
 mod w15_tests;
+
+#[cfg(test)]
+#[path = "image_w18_tests.rs"]
+mod w18_tests;

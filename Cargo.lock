@@ -4814,6 +4814,8 @@ dependencies = [
  "png",
  "rfd",
  "serde_json",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]

@@ -122,7 +122,7 @@ ritmo `t + d` do GIF) foram tapadas com testes e re-mutadas (sangram) ⇒ **17/1
 - (c) O Shift do recorte toma a proporção em px naturais (o oráculo só mediu kx = ky).
 - (d) Um fio de tocador por GIF à vista, sem tecto de quantidade.
 - (e) Os `<text>` de um SVG continuam a não se desenhar (recusa medida da feature `text` do usvg, de pé).
-- Falta o **smoke do dono** da cena 17 e a **foto** `quadro17_depois.png`.
+- Falta o **smoke do dono** da cena 17.
 
 ## 5. O integrador
 

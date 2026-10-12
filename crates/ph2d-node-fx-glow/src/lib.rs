@@ -282,9 +282,11 @@ pub fn bake_halo_lut(graph: &Graph) -> Option<Arc<[[f32; 4]]>> {
     })
 }
 
+/// A última LUT assada e o texto dela.
+type UltimaLut = Option<(String, Arc<[[f32; 4]]>)>;
+
 thread_local! {
-    static ULTIMA_LUT: std::cell::RefCell<Option<(String, Arc<[[f32; 4]]>)>> =
-        const { std::cell::RefCell::new(None) };
+    static ULTIMA_LUT: std::cell::RefCell<UltimaLut> = const { std::cell::RefCell::new(None) };
 }
 
 /// The manifest default for a param name (the single source of a knob's neutral

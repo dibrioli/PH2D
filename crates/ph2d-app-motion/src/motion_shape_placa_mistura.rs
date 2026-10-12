@@ -36,7 +36,7 @@ impl Misturas {
 
     /// A mistura e o grupo de uma cópia, ou o MOTIVO de o quadro ficar no Vello. O grupo é
     /// `sink + 1` no `Copies` (dois sinks são dois grupos) e `0` sem grupo.
-    pub fn da_copia(self, inst: &VectorInstance) -> Result<(Mistura, u32), &'static str> {
+    pub fn da_copia(self, inst: &VectorInstance) -> Result<(Mistura, u32), MotivoDoVello> {
         let de = |tag: u8| match tag {
             1 => Some(Mistura::Soma),
             3 => Some(Mistura::Multiplica),
@@ -47,12 +47,14 @@ impl Misturas {
         let linha = inst.blend_linha.checked_sub(1).and_then(de);
         let grupo = crate::motion_shape_gen::mistura::chave_de_mistura(&inst.mistura);
         if !self.ligadas && (linha.is_some() || grupo.is_some()) {
-            return Err(MISTURAS_DESLIGADAS);
+            return Err(MotivoDoVello::Desligadas);
         }
         let (m, g) = match grupo {
-            None if linha.is_some() && !self.isolada => return Err(PEDE_O_MUNDO),
-            Some((_, BlendWith::Scene, _)) => return Err(PEDE_O_MUNDO),
-            Some((_, BlendWith::Everything, _)) if !self.isolada => return Err(PEDE_O_MUNDO),
+            None if linha.is_some() && !self.isolada => return Err(MotivoDoVello::PedeOMundo),
+            Some((_, BlendWith::Scene, _)) => return Err(MotivoDoVello::PedeOMundo),
+            Some((_, BlendWith::Everything, _)) if !self.isolada => {
+                return Err(MotivoDoVello::PedeOMundo);
+            }
             None => (linha.unwrap_or(Mistura::Normal), 0),
             Some((tag, BlendWith::Everything, _)) => (linha.or(de(tag)).unwrap_or_default(), 0),
             Some((tag, BlendWith::Copies, sink)) => {
@@ -60,17 +62,22 @@ impl Misturas {
             }
         };
         if m == Mistura::Multiplica && !self.multiplica {
-            return Err(SEM_MULTIPLICA);
+            return Err(MotivoDoVello::SemMultiplica);
         }
         Ok((m, g))
     }
 }
 
-/// Os motivos, ditos no terminal na mudança de rota.
-pub const MISTURAS_DESLIGADAS: &str = "misturas por copia desligadas";
-pub const PEDE_O_MUNDO: &str =
-    "a mistura pede o mundo por baixo (fora da camada isolada do Motion)";
-pub const SEM_MULTIPLICA: &str = "Multiply sem DUAL_SOURCE_BLENDING neste dispositivo";
+/// Por que uma cópia com mistura deixa o quadro no Vello — dito no terminal na mudança de rota.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MotivoDoVello {
+    /// [`Misturas::ligadas`] desligado.
+    Desligadas,
+    /// A mistura compõe com o mundo por baixo e a camada não está isolada.
+    PedeOMundo,
+    /// Multiply sem `DUAL_SOURCE_BLENDING` neste dispositivo.
+    SemMultiplica,
+}
 
 #[cfg(test)]
 mod tests {
@@ -121,13 +128,16 @@ mod tests {
             "o grupo é sink + 1"
         );
         assert_eq!(dentro.da_copia(&copies), Ok((Mistura::Multiplica, 5)));
-        assert_eq!(m(true, false).da_copia(&copies), Err(SEM_MULTIPLICA));
+        assert_eq!(
+            m(true, false).da_copia(&copies),
+            Err(MotivoDoVello::SemMultiplica)
+        );
         let tudo = copia(1, BlendWith::Everything, 0);
-        assert_eq!(fora.da_copia(&tudo), Err(PEDE_O_MUNDO));
+        assert_eq!(fora.da_copia(&tudo), Err(MotivoDoVello::PedeOMundo));
         assert_eq!(dentro.da_copia(&tudo), Ok((Mistura::Soma, 0)));
         assert_eq!(
             dentro.da_copia(&copia(4, BlendWith::Scene, 0)),
-            Err(PEDE_O_MUNDO)
+            Err(MotivoDoVello::PedeOMundo)
         );
         // A linha substitui a do grupo; sem grupo, pede o que está por baixo.
         assert_eq!(
@@ -136,7 +146,7 @@ mod tests {
         );
         assert_eq!(
             fora.da_copia(&copia(0, BlendWith::Everything, 5)),
-            Err(PEDE_O_MUNDO)
+            Err(MotivoDoVello::PedeOMundo)
         );
         assert_eq!(
             dentro.da_copia(&copia(0, BlendWith::Everything, 5)),
@@ -149,7 +159,7 @@ mod tests {
         );
         assert_eq!(
             Misturas::default().da_copia(&copies),
-            Err(MISTURAS_DESLIGADAS)
+            Err(MotivoDoVello::Desligadas)
         );
     }
 }

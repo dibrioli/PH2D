@@ -13,12 +13,7 @@ const BITS_DO_PESO: i32 = 8;
 /// O que o SAMPLER devolve no `fs_composite` (`bloom.wgsl`): a tabela guardada em `Rgba16Float`,
 /// o endereço no centro do texel (`lut_u`: o índice contínuo é `t·(n−1)`, a lei de
 /// [`ph2d_color::ramp_lut::bake`]) e o peso quantizado a [`BITS_DO_PESO`].
-#[expect(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "índices de uma tabela pequena"
-)]
+#[expect(clippy::cast_precision_loss, reason = "índices de uma tabela pequena")]
 fn sampler(lut: &[[f32; 4]], t: f32) -> [f32; 4] {
     le_no_indice(lut, t.clamp(0.0, 1.0) * (lut.len() - 1) as f32)
 }
@@ -74,7 +69,10 @@ fn measure_ramp_lut_resolution() {
         let (w, _) = erro_no_ecra(&r, HALO_LUT_TEXELS, sampler);
         eprintln!("  @{HALO_LUT_TEXELS} {nome:<24} {w:.5}");
     }
-    assert!(pior(16, sampler) > DISPLAY_STEP, "controlo: a régua vê 16 texels");
+    assert!(
+        pior(16, sampler) > DISPLAY_STEP,
+        "controlo: a régua vê 16 texels"
+    );
 }
 
 /// **A RESOLUÇÃO QUE SHIPA É A MEDIDA** — invisível no corpus inteiro, lida pelo sampler, e
@@ -118,7 +116,10 @@ fn a_hard_step_dirties_one_cell_and_a_cell_is_finer_than_the_display() {
     );
     #[expect(clippy::cast_precision_loss, reason = "HALO_LUT_TEXELS <= 4096")]
     let cell = 1.0 / HALO_LUT_TEXELS as f32;
-    assert!(cell < DISPLAY_STEP, "uma celula ({cell}) mais fina que o passo");
+    assert!(
+        cell < DISPLAY_STEP,
+        "uma celula ({cell}) mais fina que o passo"
+    );
     let (_, coarse) = erro_no_ecra(&ramp, HALO_LUT_TEXELS / 8, sampler);
     assert!(
         coarse > frac * 4.0,

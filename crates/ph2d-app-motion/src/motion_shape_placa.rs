@@ -207,7 +207,7 @@ pub fn contorno_por_ordem() -> bool {
 // ⭐⭐ B5 — o que a placa compõe como o Vello neste quadro (a mistura por cópia).
 #[path = "motion_shape_placa_mistura.rs"]
 mod mistura;
-pub use mistura::Misturas;
+pub use mistura::{Misturas, MotivoDoVello};
 
 /// O lado da placa: o passe e a camada, criados na primeira vez que um quadro vai lá.
 struct Gpu {
@@ -250,7 +250,7 @@ pub struct PlacaDeFormas {
     /// As corridas de mistura das [`Self::copias`] (B5) — uma só `Normal` sem grupo é o de sempre.
     corridas: Vec<Corrida>,
     /// Por que o último quadro ficou no Vello por causa de uma mistura ([`Misturas::da_copia`]).
-    motivo: Option<&'static str>,
+    motivo: Option<MotivoDoVello>,
     ativa: bool,
     /// ⭐ **As cópias vêm do DISPOSITIVO** (doc 121 W3): quantas o cozimento escreveu no buffer
     /// dele — `None` na rota da CPU, onde elas são as [`Self::copias`].
@@ -354,11 +354,15 @@ impl PlacaDeFormas {
                     eprintln!("[formas] {n} copias de {geometrias} geometrias pela PLACA");
                 }
                 (false, _) => match self.motivo {
-                    Some(m) => {
-                        eprintln!(
-                            "[formas] {n} copias de {geometrias} geometrias pela cena Vello: {m}"
-                        );
-                    }
+                    Some(MotivoDoVello::Desligadas) => eprintln!(
+                        "[formas] {n} copias de {geometrias} geometrias pela cena Vello: misturas por copia desligadas"
+                    ),
+                    Some(MotivoDoVello::PedeOMundo) => eprintln!(
+                        "[formas] {n} copias de {geometrias} geometrias pela cena Vello: a mistura pede o mundo por baixo (fora da camada isolada do Motion)"
+                    ),
+                    Some(MotivoDoVello::SemMultiplica) => eprintln!(
+                        "[formas] {n} copias de {geometrias} geometrias pela cena Vello: Multiply sem DUAL_SOURCE_BLENDING neste dispositivo"
+                    ),
                     None => {
                         eprintln!("[formas] {n} copias de {geometrias} geometrias pela cena Vello");
                     }
@@ -526,7 +530,7 @@ impl PlacaDeFormas {
     /// Por que o último [`Self::decide_com_misturas`] deixou o quadro no Vello por causa de uma
     /// mistura — `None` quando não foi por isso.
     #[must_use]
-    pub fn motivo_do_vello(&self) -> Option<&'static str> {
+    pub fn motivo_do_vello(&self) -> Option<MotivoDoVello> {
         self.motivo
     }
 

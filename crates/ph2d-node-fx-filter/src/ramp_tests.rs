@@ -2,8 +2,8 @@
 //! [`FxOp::RAMP_LUT_TEXELS`].
 
 use super::*;
-use ph2d_color::ramp_lut::regua::{DISPLAY_STEP, SWEEP, corpus, erro_no_ecra, pior};
 use ph2d_color::ramp_lut::bake;
+use ph2d_color::ramp_lut::regua::{DISPLAY_STEP, SWEEP, corpus, erro_no_ecra, pior};
 use ph2d_color::srgb::linear_to_srgb_unit;
 use ph2d_color::{ColorRamp, GradientPreset, RampColorMode, RampInterp};
 
@@ -52,7 +52,10 @@ fn measure_ramp_lut_in_the_screen_encoding() {
             eprintln!("    {n:>5} {nome:<24} {worst:.5}");
         }
     }
-    assert!(pior(16, reconstruct) > DISPLAY_STEP, "controlo: a régua vê 16 texels");
+    assert!(
+        pior(16, reconstruct) > DISPLAY_STEP,
+        "controlo: a régua vê 16 texels"
+    );
 }
 
 /// **A resolução que corre é a medida** — invisível no corpus inteiro, e metade dela visível (senão

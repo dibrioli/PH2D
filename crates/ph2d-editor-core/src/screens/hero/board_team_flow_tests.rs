@@ -516,7 +516,10 @@ fn a_video_on_a_slide_plays_in_the_presentation_with_our_controls() {
     let vid = doc.live().find(|e| e.embed().is_some()).unwrap().id;
     t.shell_click_id(button_node(NavButton::Present), "Present");
     let video = board_video_bar::show_node(vid);
-    assert!(t.find(video).is_some(), "o vídeo do diapositivo é clicável por cima da sala");
+    assert!(
+        t.find(video).is_some(),
+        "o vídeo do diapositivo é clicável por cima da sala"
+    );
     t.shell_click_id(video, "o vídeo do diapositivo");
     assert_eq!(t.hero.documents.videos_mut().active, Some(vid));
     t.hero.documents.videos_mut().status = Some(PlayerStatus {
@@ -529,11 +532,18 @@ fn a_video_on_a_slide_plays_in_the_presentation_with_our_controls() {
     t.paint();
     let pl = t.hero.documents.videos_mut().on_screen[&vid];
     assert!(pl.live, "vivo na apresentação: {:?}", pl.screen);
-    assert!(t.find(board_video_bar::node(Ctl::Play)).is_some(), "a barra por cima da sala");
+    assert!(
+        t.find(board_video_bar::node(Ctl::Play)).is_some(),
+        "a barra por cima da sala"
+    );
     t.shell_click_id(video, "o 2.º clique");
     let cmds = std::mem::take(&mut t.hero.documents.videos_mut().commands);
     assert_eq!(cmds, vec![VideoCommand::TogglePlay]);
     t.key(BoardKey::Escape, Modifiers::default(), None);
     assert!(t.hero.documents.live.team.show.is_none());
-    assert_eq!(t.hero.documents.videos_mut().active, None, "sair da apresentação pára o vídeo");
+    assert_eq!(
+        t.hero.documents.videos_mut().active,
+        None,
+        "sair da apresentação pára o vídeo"
+    );
 }

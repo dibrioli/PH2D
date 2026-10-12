@@ -192,7 +192,10 @@ fn a_frame_of_another_shape_draws_with_bands_never_stretched() {
         (w / h - 420.0 / 315.0).abs() < 1e-9,
         "esticado: {w}×{h} (a proporção do quadro é 4:3)"
     );
-    assert!((h - 315.0).abs() < 1e-9 && (w - 420.0).abs() < 1e-9, "{w}×{h}");
+    assert!(
+        (h - 315.0).abs() < 1e-9 && (w - 420.0).abs() < 1e-9,
+        "{w}×{h}"
+    );
     assert!(
         (x - box_.x - 70.0).abs() < 1e-9 && (y - box_.y).abs() < 1e-9,
         "as faixas de 70 px dos dois lados: {x},{y}"
@@ -201,7 +204,10 @@ fn a_frame_of_another_shape_draws_with_bands_never_stretched() {
     c.videos.frame = Some((flat([4, 5, 6, 255], 320, 180), [320, 180]));
     let o = ops(&b, &mut c);
     let r = frame_rect(&o, [4, 5, 6, 255]);
-    assert!((r[2] - 560.0).abs() < 1e-9 && (r[3] - 315.0).abs() < 1e-9, "{r:?}");
+    assert!(
+        (r[2] - 560.0).abs() < 1e-9 && (r[3] - 315.0).abs() < 1e-9,
+        "{r:?}"
+    );
 }
 
 /// ⭐⭐ W19 (smoke do dono, defeito 2): com o zoom, o vídeo MEIO FORA da vista continua vivo enquanto
@@ -224,5 +230,8 @@ fn a_video_half_out_of_view_stays_live() {
         "{:?}",
         p.screen.visible
     );
-    assert!(p.live, "meio fora da vista com 560×315 à vista pausava o vídeo");
+    assert!(
+        p.live,
+        "meio fora da vista com 560×315 à vista pausava o vídeo"
+    );
 }

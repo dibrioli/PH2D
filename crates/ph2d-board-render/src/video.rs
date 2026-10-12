@@ -204,7 +204,9 @@ pub(crate) fn paint(
         let (mn, mx) = corners
             .iter()
             .map(a)
-            .fold((f64::INFINITY, f64::NEG_INFINITY), |(m, n), v| (m.min(v), n.max(v)));
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(m, n), v| {
+                (m.min(v), n.max(v))
+            });
         (mx.min(hi) - mn.max(lo)).max(0.0)
     };
     let screen = OnScreen {

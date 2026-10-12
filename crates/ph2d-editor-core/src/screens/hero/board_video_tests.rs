@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::screens::hero::board_video;
-use ph2d_board_model::ElementId;
 use crate::screens::hero::board_video_bar::{self, Ctl, layout};
+use ph2d_board_model::ElementId;
 use ph2d_board_render::{PlayerInput, PlayerStatus, VideoCommand};
 
 const LINK: &str = "https://www.youtube.com/watch?v=aqz-KE-bpKQ";
@@ -157,7 +157,10 @@ fn active(t: &mut T) -> ElementId {
 /// Down + Up pelo despacho real em `(x, y)`; os eventos vão ao ecrã.
 fn press(t: &mut T, (x, y): (f32, f32)) {
     let arena = Bump::new();
-    let mut ev = t.hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena).to_vec();
+    let mut ev = t
+        .hero
+        .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+        .to_vec();
     ev.extend_from_slice(t.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
     for e in ev {
         t.hero.apply_event(e);
@@ -187,9 +190,19 @@ fn our_controls_sit_under_the_video_and_each_gives_its_order() {
     let mut t = T::new();
     let id = active(&mut t);
     let [vx, vy, vw, vh] = video_rect(&mut t, id);
-    for c in [Ctl::Play, Ctl::Seek, Ctl::Mute, Ctl::Volume, Ctl::Fullscreen, Ctl::Outside] {
+    for c in [
+        Ctl::Play,
+        Ctl::Seek,
+        Ctl::Mute,
+        Ctl::Volume,
+        Ctl::Fullscreen,
+        Ctl::Outside,
+    ] {
         let (x, y) = ctl(&t, c);
-        assert!(y > vy + vh, "{c:?} em {x},{y}: à frente do vídeo {vx},{vy} {vw}×{vh}");
+        assert!(
+            y > vy + vh,
+            "{c:?} em {x},{y}: à frente do vídeo {vx},{vy} {vw}×{vh}"
+        );
     }
     for (c, want) in [
         (Ctl::Play, VideoCommand::TogglePlay),
@@ -208,7 +221,11 @@ fn our_controls_sit_under_the_video_and_each_gives_its_order() {
         matches!(got.as_slice(), [VideoCommand::Seek(s)] if (s - 50.0).abs() < 3.0),
         "{got:?}"
     );
-    assert_eq!(t.hero.documents.videos_mut().active, Some(id), "a barra não desactiva o vídeo");
+    assert_eq!(
+        t.hero.documents.videos_mut().active,
+        Some(id),
+        "a barra não desactiva o vídeo"
+    );
 }
 
 /// ⭐⭐ W19 — o NOSSO ecrã inteiro: o vídeo enche a área do quadro com a proporção dele (16:9, nunca
@@ -231,14 +248,26 @@ fn our_fullscreen_fills_the_board_keeping_the_shape_and_esc_leaves() {
     );
     assert!(x >= area.x && y >= area.y && x + w <= area.x + area.w + 0.5);
     let pl = t.hero.documents.videos_mut().on_screen[&id];
-    assert!(pl.live, "no ecrã inteiro o tocador está vivo: {:?}", pl.screen);
+    assert!(
+        pl.live,
+        "no ecrã inteiro o tocador está vivo: {:?}",
+        pl.screen
+    );
     let (_, by) = ctl(&t, Ctl::Play);
     assert!(by > y + h, "a barra à frente do vídeo");
-    assert!(t.find(super::node(Item::Video)).is_none(), "as barras do quadro ficaram por baixo");
+    assert!(
+        t.find(super::node(Item::Video)).is_none(),
+        "as barras do quadro ficaram por baixo"
+    );
     // O preto à volta: não desactiva nem chega ao quadro.
     click(&mut t, (area.x + 2.0, area.y + 2.0));
     assert_eq!(t.hero.documents.videos_mut().active, Some(id));
-    assert!(board_view::wheel(&mut t.hero, area.x + 2.0, area.y + 2.0, 1.0));
+    assert!(board_view::wheel(
+        &mut t.hero,
+        area.x + 2.0,
+        area.y + 2.0,
+        1.0
+    ));
     assert!(t.key(BoardKey::Escape, Modifiers::default(), None));
     assert!(!board_video::fullscreen(&t.hero));
 }

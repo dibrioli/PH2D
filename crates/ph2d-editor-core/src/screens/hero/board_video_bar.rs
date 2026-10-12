@@ -241,7 +241,8 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             let (iw, ih) = (f64::from(sz[0]), f64::from(sz[1]));
             let f = (size[0] / iw).min(size[1] / ih);
             let off = ((size[0] - iw * f) / 2.0, (size[1] - ih * f) / 2.0);
-            let m = Affine::translate((f64::from(r.x) + off.0, f64::from(r.y) + off.1)) * Affine::scale(f);
+            let m = Affine::translate((f64::from(r.x) + off.0, f64::from(r.y) + off.1))
+                * Affine::scale(f);
             scene.draw_recorded_image(img, m, ImageQuality::Medium, None);
         }
         r
@@ -287,7 +288,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
                 _ => 0.0,
             };
             // A arrastar, o valor é o da mão; senão o do tocador.
-            let dragging = store.slider(id).is_some_and(|(s, _)| s == SliderState::Dragging);
+            let dragging = store
+                .slider(id)
+                .is_some_and(|(s, _)| s == SliderState::Dragging);
             if !dragging {
                 store.set_slider_value(id, want);
             }
@@ -321,13 +324,24 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             Ctl::Fullscreen => IconId::Maximize,
             _ => IconId::Open,
         };
-        paint_icon(scene, icon, float_bar::inner(r), fg, StrokeToken::Default.px());
+        paint_icon(
+            scene,
+            icon,
+            float_bar::inner(r),
+            fg,
+            StrokeToken::Default.px(),
+        );
     }
 }
 
 /// ⭐ W19 — na apresentação: cada vídeo do diapositivo é clicável por cima da sala (o 1.º clique activa-o
 /// e toca, os seguintes tocam e pausam) e o activo tem a barra, por cima de tudo. `viewport` = a janela.
-pub fn paint_show(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
+pub fn paint_show(
+    hero: &mut HeroScreen,
+    viewport: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+) {
     if let Some((board, live)) = hero.documents.active_parts() {
         for (id, pl) in &live.render_cache.videos.on_screen {
             if let Some(el) = board.doc.get(*id) {

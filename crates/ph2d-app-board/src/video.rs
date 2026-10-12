@@ -17,9 +17,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use ph2d_board_model::{ElementId, Video};
-use ph2d_board_render::{
-    PlayerInput, PlayerStatus, Thumb, VideoCommand, set_thumbnail, video_key,
-};
+use ph2d_board_render::{PlayerInput, PlayerStatus, Thumb, VideoCommand, set_thumbnail, video_key};
 use ph2d_board_video::{Button, Mouse, Player, PlayerState};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_vector::StableImage;
@@ -188,7 +186,12 @@ fn hold(p: &mut Playing) {
 }
 
 /// O tamanho que o tocador deve ter agora: o do ecrã, depois de ele ficar [`SETTLE`] igual.
-fn settled(asked: &mut Option<([u32; 2], Instant)>, have: [u32; 2], want: [u32; 2], now: Instant) -> Option<[u32; 2]> {
+fn settled(
+    asked: &mut Option<([u32; 2], Instant)>,
+    have: [u32; 2],
+    want: [u32; 2],
+    now: Instant,
+) -> Option<[u32; 2]> {
     if want == have {
         *asked = None;
         return None;

@@ -31,8 +31,7 @@ pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvag
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
 pub use video::{
-    Placement, PlayerInput, PlayerStatus, Thumb, VideoCommand, Videos, set_thumbnail,
-    video_key,
+    Placement, PlayerInput, PlayerStatus, Thumb, VideoCommand, Videos, set_thumbnail, video_key,
 };
 
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};

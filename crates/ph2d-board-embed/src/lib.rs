@@ -196,10 +196,7 @@ pub struct OnScreen {
 /// vídeo inteiro pausava-o a cada zoom).
 #[must_use]
 pub fn live_allowed(s: OnScreen) -> bool {
-    !s.covered
-        && s.angle == 0.0
-        && s.visible[0] >= MIN_LIVE_SIDE
-        && s.visible[1] >= MIN_LIVE_SIDE
+    !s.covered && s.angle == 0.0 && s.visible[0] >= MIN_LIVE_SIDE && s.visible[1] >= MIN_LIVE_SIDE
 }
 
 #[cfg(test)]

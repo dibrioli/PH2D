@@ -174,12 +174,29 @@ fn the_player_is_live_only_where_youtube_allows_it() {
 fn the_player_comes_without_its_own_controls() {
     let v = youtube(&format!("https://youtu.be/{ID}?t=42")).unwrap();
     let u = player_url(&v);
-    for p in ["controls=0", "fs=0", "disablekb=1", "rel=0", "iv_load_policy=3", "enablejsapi=1"] {
+    for p in [
+        "controls=0",
+        "fs=0",
+        "disablekb=1",
+        "rel=0",
+        "iv_load_policy=3",
+        "enablejsapi=1",
+    ] {
         assert!(u.split(['?', '&']).any(|q| q == p), "falta {p}: {u}");
     }
     assert!(player_url_at(&v, 130).ends_with("start=130"));
     // «Abrir no YouTube» continua onde o quadro parou — e o link volta ao mesmo vídeo, nesse ponto.
     let at = youtube(&link_at(&v, 75)).unwrap();
-    assert_eq!(at, Video::YouTube { id: ID.into(), start: 75, vertical: false });
-    assert_eq!(link_at(&v, 0), format!("https://www.youtube.com/watch?v={ID}"));
+    assert_eq!(
+        at,
+        Video::YouTube {
+            id: ID.into(),
+            start: 75,
+            vertical: false
+        }
+    );
+    assert_eq!(
+        link_at(&v, 0),
+        format!("https://www.youtube.com/watch?v={ID}")
+    );
 }

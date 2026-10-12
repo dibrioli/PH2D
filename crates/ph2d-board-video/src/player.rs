@@ -218,7 +218,6 @@ impl Player {
     pub fn mouse(&self, m: Mouse) {
         let _ = self.cmd.send(Cmd::Mouse(m));
     }
-
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -450,8 +449,20 @@ fn on_message(
             let info = &p["targetInfo"];
             if let Some(url) = popup_url(s, info) {
                 let ours = s.target.get().cloned().unwrap_or_default();
-                send_on(w, next_reader_id(ids), "Target.closeTarget", json!({ "targetId": info["targetId"] }), None);
-                send_on(w, next_reader_id(ids), "Target.activateTarget", json!({ "targetId": ours }), None);
+                send_on(
+                    w,
+                    next_reader_id(ids),
+                    "Target.closeTarget",
+                    json!({ "targetId": info["targetId"] }),
+                    None,
+                );
+                send_on(
+                    w,
+                    next_reader_id(ids),
+                    "Target.activateTarget",
+                    json!({ "targetId": ours }),
+                    None,
+                );
                 lock(&s.outside).push(url);
             }
         }
@@ -496,10 +507,13 @@ fn on_message(
 fn popup_url(s: &Shared, info: &Value) -> Option<String> {
     let id = info["targetId"].as_str()?;
     let url = info["url"].as_str().unwrap_or_default();
-    if info["type"] != "page" || s.target.get().is_none_or(|t| t == id) || !url.starts_with("http") {
+    if info["type"] != "page" || s.target.get().is_none_or(|t| t == id) || !url.starts_with("http")
+    {
         return None;
     }
-    lock(&s.popups).insert(id.to_owned()).then(|| url.to_owned())
+    lock(&s.popups)
+        .insert(id.to_owned())
+        .then(|| url.to_owned())
 }
 
 pub(crate) fn decode_jpeg(bytes: &[u8]) -> Option<Frame> {

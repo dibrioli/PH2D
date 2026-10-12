@@ -32,9 +32,19 @@ fn find(h: &HeroScreen, id: ph2d_a11y::NodeId) -> Option<(f32, f32)> {
 
 /// O rectângulo de ecrã do vídeo, pela colocação que o desenho registou.
 fn rect(h: &mut HeroScreen, l: &Lessons) -> [f64; 4] {
-    let el = h.documents.active_board().unwrap().doc.get(l.video).unwrap().clone();
+    let el = h
+        .documents
+        .active_board()
+        .unwrap()
+        .doc
+        .get(l.video)
+        .unwrap()
+        .clone();
     let pl = h.documents.videos_mut().on_screen[&l.video];
-    let (a, b) = (pl.to_screen * Point::new(0.0, 0.0), pl.to_screen * Point::new(el.w, el.h));
+    let (a, b) = (
+        pl.to_screen * Point::new(0.0, 0.0),
+        pl.to_screen * Point::new(el.w, el.h),
+    );
     [a.x, a.y, b.x - a.x, b.y - a.y]
 }
 
@@ -52,7 +62,14 @@ fn the_w19_scene_does_what_its_lessons_say() {
     let mut h = hero("Ana");
     let l = scene_w19(&mut h);
     Hand::new().paint(&mut h);
-    let el = h.documents.active_board().unwrap().doc.get(l.video).unwrap().clone();
+    let el = h
+        .documents
+        .active_board()
+        .unwrap()
+        .doc
+        .get(l.video)
+        .unwrap()
+        .clone();
     // Lição 1: o play activa-o; com o tocador a responder, a barra fica POR BAIXO.
     Mouse::new().click(&mut h, [el.x + el.w / 2.0, el.y + el.h / 2.0]);
     h.documents.videos_mut().status = Some(PlayerStatus {
@@ -79,7 +96,10 @@ fn the_w19_scene_does_what_its_lessons_say() {
     Hand::new().paint(&mut h);
     let pl = h.documents.videos_mut().on_screen[&l.video];
     assert!(pl.live, "o zoom tirou-o de vivo: {:?}", pl.screen);
-    assert!(pl.screen.visible[0] < pl.screen.size[0], "a régua: metade fora da vista");
+    assert!(
+        pl.screen.visible[0] < pl.screen.size[0],
+        "a régua: metade fora da vista"
+    );
     // Lição 4: `F` — o nosso ecrã inteiro, com a proporção do vídeo; `Esc` sai.
     press(&mut h, BoardKey::Char('f'));
     assert!(h.documents.videos_mut().fullscreen);

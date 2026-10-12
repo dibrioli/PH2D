@@ -48,12 +48,7 @@ fn button(b: PointerButton) -> u8 {
 /// O NOSSO ecrã inteiro está ligado (o vídeo activo tapa o quadro).
 #[must_use]
 pub fn fullscreen(hero: &HeroScreen) -> bool {
-    hero.documents
-        .live
-        .render_cache
-        .videos
-        .fullscreen
-        && hero.documents.active().is_some()
+    hero.documents.live.render_cache.videos.fullscreen && hero.documents.active().is_some()
 }
 
 /// O carregar no quadro. `true` = era do vídeo (activá-lo, ou o tocador activo).

@@ -309,12 +309,18 @@ fn our_controls_reach_the_player_and_come_back_in_its_state() {
     let wait = |what: &str, ok: &dyn Fn(&Playback) -> bool| {
         let t = Instant::now();
         while !ok(&p.playback()) {
-            assert!(t.elapsed() < Duration::from_secs(3), "{what}: {:?}", p.playback());
+            assert!(
+                t.elapsed() < Duration::from_secs(3),
+                "{what}: {:?}",
+                p.playback()
+            );
             std::thread::sleep(Duration::from_millis(5));
         }
         println!("{what}: {:?}", t.elapsed());
     };
-    wait("o estado chega", &|b| b.duration > 600.0 && b.phase == Phase::Playing);
+    wait("o estado chega", &|b| {
+        b.duration > 600.0 && b.phase == Phase::Playing
+    });
     // O que se ouve DEPOIS de `t` veio do tocador (as ordens escrevem o estado na hora, para o botão).
     let fresh = |t: Instant| move |b: &Playback| b.heard_at.is_some_and(|r| r > t);
     let t = Instant::now();
@@ -330,7 +336,11 @@ fn our_controls_reach_the_player_and_come_back_in_its_state() {
     });
     let t = Instant::now();
     p.pause();
-    assert_eq!(p.playback().shown(Instant::now()), Phase::Paused, "o botão muda na hora");
+    assert_eq!(
+        p.playback().shown(Instant::now()),
+        Phase::Paused,
+        "o botão muda na hora"
+    );
     assert!(t.elapsed() < Duration::from_millis(100));
     wait("pausado", &|b| b.phase == Phase::Paused);
     p.play();
@@ -348,18 +358,38 @@ fn the_playback_state_reads_the_players_messages() {
             "volume":80,"muted":false,"playbackRate":1}}),
         t0,
     );
-    assert_eq!((b.phase, b.time, b.duration, b.volume), (Phase::Playing, 7.5, 635.0, 80));
+    assert_eq!(
+        (b.phase, b.time, b.duration, b.volume),
+        (Phase::Playing, 7.5, 635.0, 80)
+    );
     let later = t0 + Duration::from_millis(500);
-    assert!((b.now(later) - 8.0).abs() < 1e-9, "o tempo anda entre as mensagens");
+    assert!(
+        (b.now(later) - 8.0).abs() < 1e-9,
+        "o tempo anda entre as mensagens"
+    );
     b.want = Some((Phase::Paused, t0));
     assert_eq!(b.shown(later), Phase::Paused, "a pausa pedida mostra-se já");
     assert!((b.now(later) - 7.5).abs() < 1e-9, "pausado, o tempo pára");
-    b.apply(&json!({"event":"infoDelivery","info":{"playerState":1}}), later);
-    assert_eq!(b.shown(later), Phase::Paused, "uma mensagem velha não a desfaz");
+    b.apply(
+        &json!({"event":"infoDelivery","info":{"playerState":1}}),
+        later,
+    );
+    assert_eq!(
+        b.shown(later),
+        Phase::Paused,
+        "uma mensagem velha não a desfaz"
+    );
     b.apply(&json!({"event":"onStateChange","info":2}), later);
     assert_eq!((b.phase, b.want), (Phase::Paused, None), "confirmada");
     assert_eq!(b.shown(t0 + Duration::from_secs(5)), Phase::Paused);
-    b.apply(&json!({"event":"infoDelivery","info":{"currentTime":700.0}}), later);
+    b.apply(
+        &json!({"event":"infoDelivery","info":{"currentTime":700.0}}),
+        later,
+    );
     b.phase = Phase::Playing;
-    assert_eq!(b.now(later + Duration::from_secs(9)), 635.0, "nunca passa do fim");
+    assert_eq!(
+        b.now(later + Duration::from_secs(9)),
+        635.0,
+        "nunca passa do fim"
+    );
 }

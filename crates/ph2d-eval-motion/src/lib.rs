@@ -204,20 +204,8 @@ mod scrub;
 /// A caixa de saída dos TAPS — o readout inline do doc 43, num irmão.
 mod taps;
 use cook_target::CookTarget;
-
-/// ⭐ A faixa de um sink nas duas listas da bomba (ver [`MotionCookPump::faixas`]).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FaixaDoSink {
-    /// O nó `motion.output`.
-    pub sink: NodeId,
-    /// As cópias de sprite dele.
-    pub instancias: std::ops::Range<usize>,
-    /// As cópias vectoriais dele.
-    pub vetores: std::ops::Range<usize>,
-    /// As cópias vectoriais dele que o LOD do app passou a ladrilhos, no fim de `instancias` da
-    /// lista (vazio até o LOD correr).
-    pub ladrilhos: std::ops::Range<usize>,
-}
+mod faixa;
+pub use faixa::FaixaDoSink;
 
 impl Default for MotionCookPump {
     fn default() -> Self {

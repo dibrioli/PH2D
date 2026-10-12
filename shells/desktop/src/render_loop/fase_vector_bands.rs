@@ -51,8 +51,6 @@ impl crate::App {
             flip,
             ..
         } = FrameGfx::of(gfx);
-        // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
-        let hero = hero_screen.as_mut()?;
         let paint_ctx = PaintCtx {
             theme: *theme,
             viewport,
@@ -71,7 +69,8 @@ impl crate::App {
             &vec_live,
             cam_affine,
             paint_ctx.text,
-            hero.theme,
+            // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
+            hero_screen.as_ref()?.theme,
         );
         // ⭐⭐⭐ **AS FAIXAS DO DOCUMENTO** (ADR-0154 Fase 2). Quando a cena INTERCALA vetor e
         // sprite, o documento deixa de ir para a cena do chrome e passa a ser codificado uma
@@ -170,9 +169,8 @@ impl crate::App {
             );
             band_doc_scenes.push(target);
         }
-        if !doc_bands.is_empty() {
-            // O documento já foi codificado nas faixas — a cena do chrome fica só com o chrome.
-        } else {
+        // Com faixas o documento já foi codificado nelas — a cena do chrome fica só com o chrome.
+        if doc_bands.is_empty() {
             // ⭐⭐⭐ **COM O VIDRO, o documento sai da cena do CHROME.** Ele tem de aterrar no
             // acumulador do mundo **antes** do borrão, e os painéis entram depois dele; na
             // mesma cena, os dois seriam borrados ou nítidos juntos. ⛔ Sem receita aberta é a

@@ -155,6 +155,59 @@ pub fn paste(hero: &mut HeroScreen, text: Option<&str>, size: [u32; 2], rgba: Ve
     insert_images(hero, vec![ImageFile::new(png, size)], None) > 0
 }
 
+/// O que o `Ctrl+V` num quadro fez ([`paste_clipboard`]).
+#[derive(Debug)]
+pub enum Paste {
+    /// Entraram ficheiros ou uma imagem (e o aviso do que ficou de fora).
+    Done(Option<Toast>),
+    /// Não é para as imagens: o texto da área de transferência, para o teclado do quadro.
+    Text(Option<String>),
+}
+
+/// ⭐ W16 — a porta da shell para o `Ctrl+V` num quadro: primeiro os FICHEIROS copiados (o Dolphin
+/// oferece SÓ `text/uri-list` — `docs/MiroClone/ferramentas/colar_dolphin/saida_2026-10-11.txt`), como
+/// os largados, no meio da vista; depois uma IMAGEM; senão o texto. Os ficheiros vêm antes do texto
+/// porque a leitura de texto do Wayland devolve a própria lista de URIs.
+pub fn paste_clipboard(hero: &mut HeroScreen, clip: &mut arboard::Clipboard) -> Paste {
+    if takes_image_paste(hero, None)
+        && let Ok(paths) = clip.get().file_list()
+        && let Some(toast) = paste_files(hero, paths)
+    {
+        return Paste::Done(toast);
+    }
+    let text = clip.get_text().ok();
+    if takes_image_paste(hero, text.as_deref())
+        && let Ok(img) = clip.get_image()
+    {
+        let size = [img.width as u32, img.height as u32];
+        if paste(hero, text.as_deref(), size, img.bytes.into_owned()) {
+            return Paste::Done(None);
+        }
+    }
+    Paste::Text(text)
+}
+
+/// Os ficheiros copiados `paths` no quadro activo, no meio da vista. `None` = nenhum (não é para
+/// aqui). ⚠️ O `arboard` 3.6.1 parte a lista só no `\n` e o `\r` do CRLF (a do Dolphin, a da RFC 2483)
+/// fica no fim de cada caminho: tira-se aqui.
+pub fn paste_files(hero: &mut HeroScreen, paths: Vec<PathBuf>) -> Option<Option<Toast>> {
+    let paths: Vec<PathBuf> = paths
+        .into_iter()
+        .map(|p| match p.to_str().and_then(|s| s.strip_suffix('\r')) {
+            Some(s) => PathBuf::from(s),
+            None => p,
+        })
+        .collect();
+    if paths.is_empty() || !takes_image_paste(hero, None) {
+        return None;
+    }
+    Some(
+        insert_paths(hero, &paths, None)
+            .warning()
+            .map(Toast::warning),
+    )
+}
+
 /// Instala o descodificador no desenho (uma vez; as seguintes não fazem nada).
 pub fn install() {
     ph2d_board_render::install_decoder(Arc::new(decode));

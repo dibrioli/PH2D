@@ -91,22 +91,18 @@ impl crate::App {
         }
         let pressed = state == ElementState::Pressed;
         let ctrl_v = pressed && (mods.ctrl || mods.meta) && k == BoardKey::Char('v');
-        let paste = ctrl_v
-            .then(|| g.clipboard.as_mut().and_then(|c| c.get_text().ok()))
-            .flatten();
-        // W14 — uma IMAGEM na área de transferência entra no quadro (a cópia do quadro cola-se a si).
-        if ctrl_v
-            && ph2d_editor_core::screens::hero::board_images::takes_image_paste(
-                hero,
-                paste.as_deref(),
-            )
-            && let Some(img) = g.clipboard.as_mut().and_then(|c| c.get_image().ok())
-        {
-            let size = [img.width as u32, img.height as u32];
-            let rgba = img.bytes.into_owned();
-            if ph2d_app_board::images::paste(hero, paste.as_deref(), size, rgba) {
-                self.any_input_this_frame = true;
-                return true;
+        // W14/W16 — ficheiros copiados e uma IMAGEM entram no quadro; o resto é texto para o teclado.
+        let mut paste = None;
+        if ctrl_v && let Some(c) = g.clipboard.as_mut() {
+            match ph2d_app_board::images::paste_clipboard(hero, c) {
+                ph2d_app_board::images::Paste::Done(toast) => {
+                    if let Some(t) = toast {
+                        g.toasts.push(t);
+                    }
+                    self.any_input_this_frame = true;
+                    return true;
+                }
+                ph2d_app_board::images::Paste::Text(t) => paste = t,
             }
         }
         let out = board_keys::key(hero, &mut g.text_system, k, mods, pressed, text, paste);

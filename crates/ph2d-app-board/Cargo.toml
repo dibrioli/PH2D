@@ -42,6 +42,11 @@ ph2d-imageio-svg = { path = "../ph2d-imageio-svg" }
 # no fio da janela — a mesma versão e os mesmos formatos que a `ph2d-asset` já liga.
 image = { version = "0.25", default-features = false }
 png = "0.18"
+# W16 — o `Ctrl+V` num quadro lê a área de transferência (ficheiros, imagem, texto). O
+# `wayland-data-control` é o que lê o que OUTRO app copiou numa janela Wayland nativa (sem ele o
+# `arboard` só fala X11, que o KWin só serve a uma janela X11 activa — medido em
+# `docs/MiroClone/ferramentas/colar_dolphin/saida_2026-10-11.txt`). A MESMA linha da shell.
+arboard = { version = "3", features = ["wayland-data-control"] }
 
 [dev-dependencies]
 # W15 — o `.svgz` de teste (gzip).

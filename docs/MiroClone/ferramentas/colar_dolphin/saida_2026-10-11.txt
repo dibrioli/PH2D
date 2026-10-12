@@ -1,0 +1,190 @@
+# Oráculo: Ctrl+C de ficheiros no Dolphin → área de transferência → arboard
+# data: 2026-10-11T23:29:39-03:00
+# dolphin 26.08.1 · kwin 6.7.5
+# arboard (Cargo.lock da worktree): 3.6.1
+# shells/desktop/Cargo.toml: arboard = "3"
+# qt6-base 6.12.0-2 kio 6.30.0-1.1 wl-clipboard 1:2.3.0-1.1 xorg-xwayland 24.1.14-1.1 
+# roteiro: docs/MiroClone/ferramentas/colar_dolphin/corre.sh
+sessao: WAYLAND_DISPLAY=ph2d-colar DISPLAY=:1
+================ CONTROLO: antes de qualquer copia ================
+--- wl-paste --list-types ---
+Nothing is copied (vazio)
+
+--- sonda arboard ---
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+arboard 3.6.1 · caminho = wayland-data-control
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+
+================ CASO 1: um ficheiro (agua teste.png com acento e espaco) ================
+servico: org.kde.dolphin-3682313
+objectos D-Bus do Dolphin (sem as accoes):
+  /
+  /FileUndoManager
+  /MainApplication
+  /dolphin
+  /dolphin/Dolphin_1
+  /dolphin/Dolphin_1/actions
+  /org
+  /org/freedesktop
+  /org/freedesktop/FileManager1
+  /org/kde
+  /org/kde/dolphin
+accoes exportadas: 135
+trigger /dolphin/Dolphin_1/actions/edit_copy
+--- wl-paste --list-types ---
+text/uri-list
+application/x-kde4-urilist
+application/vnd.portal.filetransfer
+application/x-kde-source-id
+--- tipo: text/uri-list ---
+00000000: 6669 6c65 3a2f 2f2f 746d 702f 746d 702e  file:///tmp/tmp.
+00000010: 5a48 7a52 387a 7131 3379 2f75 6d2f 2543  ZHzR8zq13y/um/%C
+00000020: 3325 4131 6775 6125 3230 7465 7374 652e  3%A1gua%20teste.
+00000030: 706e 670d 0a                             png..
+--- tipo: application/x-kde4-urilist ---
+00000000: 6669 6c65 3a2f 2f2f 746d 702f 746d 702e  file:///tmp/tmp.
+00000010: 5a48 7a52 387a 7131 3379 2f75 6d2f 2543  ZHzR8zq13y/um/%C
+00000020: 3325 4131 6775 6125 3230 7465 7374 652e  3%A1gua%20teste.
+00000030: 706e 670d 0a                             png..
+--- tipo: application/vnd.portal.filetransfer ---
+00000000: 4d36 6c5f 5936 566c 6639 3534 6963 4f6e  M6l_Y6Vlf954icOn
+00000010: 7758 5561 3267                           wXUa2g
+--- tipo: application/x-kde-source-id ---
+00000000: 3a31 2e31 30                             :1.10
+--- sonda arboard ---
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+arboard 3.6.1 · caminho = wayland-data-control
+get_text() = Ok("file:///tmp/tmp.ZHzR8zq13y/um/%C3%A1gua%20teste.png\r\n") [53 bytes]
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Ok(["/tmp/tmp.ZHzR8zq13y/um/água teste.png\r"])
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+--- sonda x11 COM uma janela X11 activa (xmessage) ---
+_NET_ACTIVE_WINDOW: _NET_ACTIVE_WINDOW(WINDOW): window id # 0x400024 · xmessage: 
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Ok(["/tmp/tmp.ZHzR8zq13y/um/água teste.png\r"])
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+
+================ CASO 2: dois ficheiros (agua teste.png + b.gif) ================
+servico: org.kde.dolphin-3694959
+objectos D-Bus do Dolphin (sem as accoes):
+  /
+  /FileUndoManager
+  /MainApplication
+  /dolphin
+  /dolphin/Dolphin_1
+  /dolphin/Dolphin_1/actions
+  /org
+  /org/freedesktop
+  /org/freedesktop/FileManager1
+  /org/kde
+  /org/kde/dolphin
+accoes exportadas: 135
+trigger /dolphin/Dolphin_1/actions/edit_select_all
+trigger /dolphin/Dolphin_1/actions/edit_copy
+--- wl-paste --list-types ---
+text/uri-list
+application/x-kde4-urilist
+application/vnd.portal.filetransfer
+application/x-kde-source-id
+--- tipo: text/uri-list ---
+00000000: 6669 6c65 3a2f 2f2f 746d 702f 746d 702e  file:///tmp/tmp.
+00000010: 5a48 7a52 387a 7131 3379 2f64 6f69 732f  ZHzR8zq13y/dois/
+00000020: 2543 3325 4131 6775 6125 3230 7465 7374  %C3%A1gua%20test
+00000030: 652e 706e 670d 0a66 696c 653a 2f2f 2f74  e.png..file:///t
+00000040: 6d70 2f74 6d70 2e5a 487a 5238 7a71 3133  mp/tmp.ZHzR8zq13
+00000050: 792f 646f 6973 2f62 2e67 6966 0d0a       y/dois/b.gif..
+--- tipo: application/x-kde4-urilist ---
+00000000: 6669 6c65 3a2f 2f2f 746d 702f 746d 702e  file:///tmp/tmp.
+00000010: 5a48 7a52 387a 7131 3379 2f64 6f69 732f  ZHzR8zq13y/dois/
+00000020: 2543 3325 4131 6775 6125 3230 7465 7374  %C3%A1gua%20test
+00000030: 652e 706e 670d 0a66 696c 653a 2f2f 2f74  e.png..file:///t
+00000040: 6d70 2f74 6d70 2e5a 487a 5238 7a71 3133  mp/tmp.ZHzR8zq13
+00000050: 792f 646f 6973 2f62 2e67 6966 0d0a       y/dois/b.gif..
+--- tipo: application/vnd.portal.filetransfer ---
+00000000: 6267 7859 496a 3275 7961 3558 6b4d 3166  bgxYIj2uya5XkM1f
+00000010: 5641 6553 3751                           VAeS7Q
+--- tipo: application/x-kde-source-id ---
+00000000: 3a31 2e32 31                             :1.21
+--- sonda arboard ---
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+arboard 3.6.1 · caminho = wayland-data-control
+get_text() = Ok("file:///tmp/tmp.ZHzR8zq13y/dois/%C3%A1gua%20teste.png\r\nfile:///tmp/tmp.ZHzR8zq13y/dois/b.gif\r\n") [94 bytes]
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Ok(["/tmp/tmp.ZHzR8zq13y/dois/água teste.png\r", "/tmp/tmp.ZHzR8zq13y/dois/b.gif\r"])
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+--- sonda x11 COM uma janela X11 activa (xmessage) ---
+_NET_ACTIVE_WINDOW: _NET_ACTIVE_WINDOW(WINDOW): window id # 0x400024 · xmessage: 
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Ok(["/tmp/tmp.ZHzR8zq13y/dois/água teste.png\r", "/tmp/tmp.ZHzR8zq13y/dois/b.gif\r"])
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+
+================ CONTROLO: TEXTO copiado por um cliente Wayland (wl-copy) ================
+--- wl-paste --list-types ---
+text/plain
+text/plain
+text/plain;charset=utf-8
+TEXT
+STRING
+UTF8_STRING
+--- tipo: text/plain ---
+00000000: 6f6c c3a1 2074 6578 746f                 ol.. texto
+--- tipo: text/plain ---
+00000000: 6f6c c3a1 2074 6578 746f                 ol.. texto
+--- tipo: text/plain;charset=utf-8 ---
+00000000: 6f6c c3a1 2074 6578 746f                 ol.. texto
+--- tipo: TEXT ---
+00000000: 6f6c c3a1 2074 6578 746f                 ol.. texto
+--- tipo: STRING ---
+00000000: 6f6c c3a1 2074 6578 746f                 ol.. texto
+--- tipo: UTF8_STRING ---
+00000000: 6f6c c3a1 2074 6578 746f                 ol.. texto
+--- sonda arboard ---
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+arboard 3.6.1 · caminho = wayland-data-control
+get_text() = Ok("olá texto") [10 bytes]
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+--- sonda x11 COM uma janela X11 activa (xmessage) ---
+_NET_ACTIVE_WINDOW: _NET_ACTIVE_WINDOW(WINDOW): window id # 0x400024 · xmessage: 
+arboard 3.6.1 · caminho = x11 (o do app)
+get_text() = Ok("olá texto") [10 bytes]
+get_image() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().file_list() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+get().html() = Err(ContentNotAvailable - "The clipboard contents were not available in the requested format or the clipboard is empty.")
+(exit=0)
+--- dolphin.log (fim) ---
+wl_display_dispatch: Broken pipe

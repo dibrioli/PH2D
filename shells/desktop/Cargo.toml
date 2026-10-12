@@ -392,8 +392,10 @@ ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
 ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
-# fed back to the store via `apply_clipboard_paste`.
-arboard = "3"
+# fed back to the store via `apply_clipboard_paste`. W16 (MiroClone): `wayland-data-control` reads what
+# ANOTHER app copied from a native Wayland window (X11-only arboard sees it only while an X11 window is
+# active — docs/MiroClone/ferramentas/colar_dolphin/saida_2026-10-11.txt). Same line as ph2d-app-board.
+arboard = { version = "3", features = ["wayland-data-control"] }
 # bumpalo: per-frame arena for HeroScreen interaction events
 # (ADR-0024). Allocated once at AppGfx construction; reset every
 # frame after dispatch.

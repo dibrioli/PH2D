@@ -154,3 +154,97 @@ fn an_excalidraw_with_an_svg_picture_opens_with_it() {
     assert_eq!(f.mime(), Some("image/svg+xml"));
     assert_eq!(f.size, [100, 100]);
 }
+
+// ── MEDIÇÃO (não é gate): a metade do QUADRO no «Send to board…» de um Flip ──────────────────────
+// Uso: `docs/MiroClone/ferramentas/memoria_flip/corre.sh` (`PH2D_MEDE_LADO=<px>`, `--ignored
+// --nocapture`): o `encode_png` + o `ingest` de um quadro do Flip `lado²`, em dois conteúdos.
+
+fn rss_mib(campo: &str) -> f64 {
+    let s = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
+    s.lines()
+        .find(|l| l.starts_with(campo))
+        .and_then(|l| l.split_whitespace().nth(1)?.parse::<f64>().ok())
+        .map_or(-1.0, |kb| kb / 1024.0)
+}
+
+/// O tempo (mínimo de 3), o tamanho do PNG e o pico de RSS do `encode_png` + `ingest` de `lado²`
+/// em dois conteúdos: o da medição do Flip (faixas opacas de uma cor, cantos transparentes) e o
+/// pior caso (ruído, incompressível).
+#[test]
+#[ignore = "medição; corre por docs/MiroClone/ferramentas/memoria_flip/corre.sh"]
+fn mede_png_do_quadro_do_flip() {
+    let lado: u32 = std::env::var("PH2D_MEDE_LADO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2048);
+    let n = (lado as usize) * (lado as usize);
+    let mut faixas = vec![0u8; n * 4];
+    for (i, p) in faixas.chunks_exact_mut(4).enumerate() {
+        let (x, y) = ((i % lado as usize) as f32, (i / lado as usize) as f32);
+        let r = lado as f32 / 20.0;
+        let canto = (x < r && y < r && (x - r).hypot(y - r) > r)
+            || (x > lado as f32 - r && y < r && (x - lado as f32 + r).hypot(y - r) > r);
+        if !canto {
+            p.copy_from_slice(&[200, 128, 30, 255]);
+        }
+    }
+    let mut s = 0x2545_F491_4F6C_DD1Du64;
+    let ruido: Vec<u8> = (0..n * 4)
+        .map(|_| {
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            (s >> 24) as u8
+        })
+        .collect();
+    for (nome, rgba) in [("faixas", faixas), ("ruido", ruido)] {
+        let px = Pixels {
+            size: [lado, lado],
+            rgba,
+        };
+        let (mut te, mut ti, mut bytes) = (f64::INFINITY, f64::INFINITY, 0usize);
+        let mut pico = 0.0f64;
+        for _ in 0..3 {
+            let _ = std::fs::write("/proc/self/clear_refs", "5");
+            let rss0 = rss_mib("VmRSS:");
+            let t = std::time::Instant::now();
+            let png = encode_png(&px).expect("png");
+            te = te.min(t.elapsed().as_secs_f64() * 1e3);
+            let t = std::time::Instant::now();
+            let f = ingest(&png).expect("ingest");
+            ti = ti.min(t.elapsed().as_secs_f64() * 1e3);
+            pico = pico.max(rss_mib("VmHWM:") - rss0);
+            bytes = png.len();
+            drop((png, f));
+        }
+        println!(
+            "PNG lado={lado} conteudo={nome} rgba={:.1} MiB png={:.1} MiB encode_min={te:.1} ms ingest_min={ti:.1} ms pico_rss_acima_do_antes={pico:.1} MiB",
+            (n * 4) as f64 / 1048576.0,
+            bytes as f64 / 1048576.0
+        );
+    }
+}
+
+/// ⭐ W16 — o `Ctrl+V` de ficheiros copiados no Dolphin: cada caminho chega com o `\r` do CRLF no fim
+/// (o `arboard` 3.6.1 parte a lista só no `\n`); as imagens entram, o resto é avisado.
+#[test]
+fn files_copied_in_dolphin_paste_in_with_the_crlf_stripped() {
+    let d = std::env::temp_dir().join(format!("ph2d-w16-colar-{}", std::process::id()));
+    std::fs::create_dir_all(&d).unwrap();
+    let a = d.join("água teste.png");
+    std::fs::write(&a, png(4, 3, [9, 9, 9, 255])).unwrap();
+    let t = d.join("nota.txt");
+    std::fs::write(&t, b"oi").unwrap();
+    let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    assert!(
+        paste_files(&mut h, vec![a.clone()]).is_none(),
+        "sem quadro não é para aqui"
+    );
+    h.documents.create("Q".into());
+    let cr = |p: &PathBuf| PathBuf::from(format!("{}\r", p.display()));
+    let toast = paste_files(&mut h, vec![cr(&a), cr(&t)]).expect("é para o quadro");
+    assert!(toast.is_some(), "o .txt avisa-se");
+    let board = h.documents.active_board().unwrap();
+    assert_eq!(board.doc.live().filter(|e| e.image().is_some()).count(), 1);
+    let _ = std::fs::remove_dir_all(&d);
+}

@@ -94,3 +94,33 @@ fn a_choice_arrow_steps_through_the_options() {
         assert_eq!(out[5], want, "{steps} degraus");
     }
 }
+
+/// ⭐ (F13 C) **O ⇕ do *Viewed* dos isométricos: subir = «From above»** (o índice 0) — só ele
+/// inverte; o resto da fila sobe o valor (controlo: o tipo do canto, acima).
+#[test]
+fn the_viewed_arrow_goes_up_to_from_above() {
+    for (k, f) in [
+        (ShapeKind::IsoCube, 2),
+        (ShapeKind::IsoCone, 1),
+        (ShapeKind::IsoPyramid, 2),
+    ] {
+        let i = rail_of(k, f);
+        let mut below = k.defaults();
+        below[f] = 1.0;
+        assert_eq!(drag_rail(k, i, below, 1.0 / 24.0)[f], 0.0, "{k:?}: subir");
+        let mut above = k.defaults();
+        above[f] = 0.0;
+        assert_eq!(drag_rail(k, i, above, -1.0 / 24.0)[f], 1.0, "{k:?}: descer");
+        assert_eq!(drag_rail(k, i, above, 1.0 / 24.0)[f], 0.0, "{k:?}: satura");
+        let downs = handles_of(k).iter().filter(|h| h.down).count();
+        assert_eq!(downs, 1, "{k:?}: só o Viewed inverte");
+    }
+    for &k in ALL_SHAPES {
+        if !matches!(
+            k,
+            ShapeKind::IsoCube | ShapeKind::IsoCone | ShapeKind::IsoPyramid
+        ) {
+            assert!(handles_of(k).iter().all(|h| !h.down), "{k:?} inverteu");
+        }
+    }
+}

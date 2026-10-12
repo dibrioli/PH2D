@@ -20,6 +20,7 @@ const fn h(fields: &'static [usize], spot: Spot, law: Law) -> HandleDesc {
         park: false,
         inset: false,
         in_corner: false,
+        down: false,
     }
 }
 
@@ -72,6 +73,7 @@ const fn round_corner(
         park: true,
         inset: false,
         in_corner: true,
+        down: false,
     }
 }
 
@@ -91,6 +93,13 @@ const ROUND_RECT: &[HandleDesc] = &[
 /// no contorno — o dono, 12/10: «setas lado a lado». O 1.º da tabela fica na borda da caixa.
 const fn arrow(fields: &'static [usize]) -> HandleDesc {
     h(fields, Spot::Rail, Law::Steps)
+}
+
+/// Um ⇕ que DESCE para subir o valor (F13 C — o *Viewed*: subir = «From above», o índice 0).
+const fn arrow_down(fields: &'static [usize]) -> HandleDesc {
+    let mut d = arrow(fields);
+    d.down = true;
+    d
 }
 
 /// O polígono (`shapes::regular_polygon`, 1.º vértice às 12h, anti-horário), no idioma da estrela
@@ -382,15 +391,15 @@ const BANNER: &[HandleDesc] = &[at(&[0], 8)];
 
 /// O cubo (`iso::iso_cube`, o hexágono 0 = topo, 1 = ombro direito): a inclinação no topo (na
 /// horizontal), a altura no ombro (na vertical); o ponto de vista (uma escolha de dois) no ⇕.
-const ISO_CUBE: &[HandleDesc] = &[at(&[1], 0), at(&[0], 1), arrow(&[2])];
+const ISO_CUBE: &[HandleDesc] = &[at(&[1], 0), at(&[0], 1), arrow_down(&[2])];
 
 /// O cone (`iso::iso_cone`): o ápice é fixo; a boca é o ponto de tangência do lado direito
 /// (vértice 1, o início do arco da base).
-const ISO_CONE: &[HandleDesc] = &[at(&[0], 1), arrow(&[1])];
+const ISO_CONE: &[HandleDesc] = &[at(&[0], 1), arrow_down(&[1])];
 
 /// A pirâmide (`iso::iso_pyramid`: ápice, direita, frente, esquerda): a altura no lado direito, a
 /// inclinação na frente (na horizontal).
-const ISO_PYRAMID: &[HandleDesc] = &[at(&[0], 1), at(&[1], 2), arrow(&[2])];
+const ISO_PYRAMID: &[HandleDesc] = &[at(&[0], 1), at(&[1], 2), arrow_down(&[2])];
 
 /// O processo pré-definido (`flow::predefined_process`): as barras são sub-contornos (rectas); a
 /// largura no topo da barra esquerda (sub-contorno 0, vértice 0), na horizontal.

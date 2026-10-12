@@ -124,6 +124,8 @@ pub struct HandleDesc {
     pub inset: bool,
     /// O ⊙ desenha-se DENTRO do canto, no centro do arco (F11 — `spots::corner_centre`).
     pub in_corner: bool,
+    /// O [`Law::Steps`] ao contrário: descer a mão sobe o valor (F13 C — o *Viewed*).
+    pub down: bool,
 }
 
 /// Os modificadores do arrasto (teclas do Illustrator; Ctrl = «em pares», Affinity).
@@ -539,7 +541,8 @@ pub fn drag(
             if let Some(&i) = fields.first()
                 && let Some((lo, hi, int)) = range_world(kind, i, px_to_world)
             {
-                let rise = (p[1] - d.origin[1]) / (2.0 * half[1].max(1e-12));
+                let rise = (p[1] - d.origin[1]) / (2.0 * half[1].max(1e-12))
+                    * if h.down { -1.0 } else { 1.0 };
                 let delta = if int {
                     (rise * STEPS_PER_BOX).round()
                 } else {

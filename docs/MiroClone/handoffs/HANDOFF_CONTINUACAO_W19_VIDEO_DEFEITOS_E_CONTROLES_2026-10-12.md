@@ -1,5 +1,7 @@
 # CONTINUAÇÃO — `line/MiroClone` W19: os defeitos do vídeo no smoke do dono, os NOSSOS controles, o Premium e o que ficou aberto (2026-10-12)
 
+> ✅ **FECHADO (12/10)** — [handoff de integração W19](HANDOFF_INTEGRACAO_line_MiroClone_W19_2026-10-12.md).
+
 > Rota `/pd-linha-assumir`: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && pwd && git branch --show-current`
 > ANTES de ler. Estado: a W18 FECHOU ([handoff de integração W18](HANDOFF_INTEGRACAO_line_MiroClone_W18_2026-10-12.md),
 > mecanismo do vídeo em [`10_video_do_youtube.md`](../10_video_do_youtube.md), decisão [ADR-0185](../../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md)),

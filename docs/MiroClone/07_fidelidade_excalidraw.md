@@ -154,7 +154,11 @@ Legenda do «nós»: **L** = o leitor (`read.rs`), **E** = o escritor (`write.rs
 | `seed` | a semente do tremor | ⇒ tirada do NOSSO id ❌ | o mesmo rascunho treme diferente cá | guardar a semente importada (no `Org`, raro) |
 | `link` (URL) | URL ou ligação a elemento (`isElementLink`) | ignorado ❌ | — | o nosso `link` é a elemento; URL = campo novo (baixo) |
 | `customData` de terceiros | preservado | ignorado ⚠️ | some na volta | E: devolver o que não é `ph2d` (baixo) |
-| `image`, `embeddable`, `iframe` | — | SALTAM com aviso (X3) ⚠️ | recusa 06 §3 (sem elemento imagem) | onda própria |
+| `image` (W14, ADR-0184) | `fileId` + `files`, `scale`, `crop`, `roundness`, `opacity` | ✅ (`saidas/w14/`) | — | — |
+| `image` com `strokeColor`/`strokeWidth`/`strokeStyle` (W15) | NÃO desenha contorno numa imagem (0 píxeis do traço, `saidas/w15/`); guarda os campos | a MOLDURA é extensão nossa: viaja no nosso elemento do `customData`; uma imagem DELE (com o `#1e1e1e` de nascença) entra sem moldura ✅ | — | — |
+| filtro preto e branco (W15) | não existe (nenhuma das 30 chaves; o `restore` não valida chaves inventadas) | extensão nossa (`Image::filter`, no `customData`) ✅ | o Excalidraw mostra-a a cores | — |
+| `image` `image/svg+xml` (W15) | aceita, devolve o MESMO `mimeType`/`dataURL`, desenha-o; só com `viewBox` o PNG dele sai 80×80 no canto (diverge do SVG dele) | ✅ entra como imagem vectorial (o tamanho do `<svg>`, senão o `viewBox`, esticado à caixa) | — | — |
+| `embeddable`, `iframe` | — | SALTAM com aviso (X3) ⚠️ | recusa 06 §3 | onda própria |
 | `index` / ordem, `isDeleted`, `version` | — | ✅ (X4) | — | — |
 
 ## §5 — Melhoramentos inspirados no Excalidraw (por impacto para o dono)

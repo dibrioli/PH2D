@@ -67,7 +67,18 @@ englobar: segue-se o pedido (§2).
   `compute_gizmo_transform` partilhado com o sprite e o Flip). Fica a pergunta de PRODUTO ao dono:
   *a moldura deve manter a espessura do traço ao redimensionar* (o *Scale Strokes & Effects* do
   Illustrator, desligado por omissão)? Com a espessura fixa o desvio vira `m·(r − 1)` e cura-se só
-  na moldura. Gate da lei exacta: `a_proportional_resize_with_the_stroke_in_the_box_keeps_both_visual_edges`.
+  na moldura.
+- ✅ **F13 B — o dono (12/10): «faça como sugere». A *Resize Box* MANTÉM a caneta** (largura, traços
+  da pilha, ladrilho da estampa do traço, deslocamento e dilatação das camadas —
+  `ph2d_app_vec::vec_frame_pen::keep_the_pen`). A geometria escala o que FALTA à caixa visual (a
+  margem do traço fica) e o pivô passa ao ponto que deixa as duas bordas exactas
+  (`resize_keeping_the_pen`); a receita de uma forma viva segue a razão da GEOMETRIA. Onde a margem
+  muda com a razão (o bico em esquadria de uma estrela esticada só num eixo) uma secante sobre o erro
+  da largura visual fecha-a: medido, 5–6 passes à tolerância `1e-6` da caixa (4 não chegam; o ponto
+  fixo simples precisava de dezenas). A escala LIVRE (sem *Resize Box*) não muda: continua `√|det|`.
+  Gates: `a_resize_with_the_stroke_in_the_box_keeps_the_pen_and_both_visual_edges` (a shell: ×2 e
+  ×(2, 1), largura igual) e `vec_frame_pen_tests` (2× pela caixa duas vezes, só X, do centro, sob
+  escala de mundo `(3, 1)`, a estrela esticada; controlo: o `scale_path` cru desvia).
 
 ## §3 — A ④ e o cartão mais longe
 

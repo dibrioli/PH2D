@@ -90,3 +90,31 @@ fn the_raw_scale_moves_the_edge_and_keep_the_pen_restores_the_width() {
     keep_the_pen(p, &start);
     assert_eq!(p.stroke.as_ref().map(|s| s.width), Some(6.0));
 }
+
+/// A pilha também fica: o traço de uma camada, o deslocamento (a sombra dura) e a dilatação — o
+/// *Scale Strokes & Effects* desligado leva os EFEITOS junto. Controlo: o `scale_path` mexe-lhes.
+#[test]
+fn keep_the_pen_keeps_the_layers_width_offset_and_dilation() {
+    let (mut scene, id, _) = cena(rectangle([0.0, 0.0], [100.0, 40.0]), 6.0);
+    let p = scene.path_mut(id).expect("forma");
+    let mut faixa = ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 3.0));
+    faixa.offset = [4.0, -2.0];
+    faixa.dilate = 1.5;
+    p.paints.push(faixa);
+    let start = p.clone();
+    let lerp = |scene: &VecScene| {
+        let e = &scene.path(id).expect("forma").paints[0];
+        let w = match &e.kind {
+            PaintKind::Stroke(s) => s.width,
+            PaintKind::Fill(_) => f64::NAN,
+        };
+        (w, e.offset, e.dilate)
+    };
+    scene.scale_path(id, 2.0, 2.0, [0.0, 0.0]);
+    assert_ne!(lerp(&scene), (3.0, [4.0, -2.0], 1.5), "controlo: o cru não mexeu");
+    if let Some(p) = scene.path_mut(id) {
+        *p = start.clone();
+    }
+    resize_keeping_the_pen(&mut scene, id, &start, [1.0, 1.0], [0.0, 0.0], [2.0, 2.0]);
+    assert_eq!(lerp(&scene), (3.0, [4.0, -2.0], 1.5));
+}

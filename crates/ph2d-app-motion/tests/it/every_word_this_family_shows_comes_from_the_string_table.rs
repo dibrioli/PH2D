@@ -48,6 +48,15 @@ const FORA: &[Isento] = &[
          `say_route` — impressa atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
     ),
     (
+        // A QUARTA irmã (B6, 12/10): o `RECUSA_MISTURA_EM_GRUPO` vivia no `motion_bridge_gpu.rs`
+        // (isento acima) e a cerca da mistura em grupo saiu para um ficheiro próprio, partida nos
+        // cinco motivos que ela agora distingue — a mesma porta `say_route`.
+        "motion_bridge_gpu_mistura.rs",
+        "as RAZÕES da cerca da mistura em grupo (sem memória da CPU · imagem no grupo · o mundo \
+         por baixo · Multiply sem a 2.ª saída · misturas desligadas), irmãs das de cima e pela \
+         mesma porta `say_route` — impressas atrás de `PH2D_MOTION_ROUTE_LOG`, nunca no ecrã",
+    ),
+    (
         "motion_glow_layer.rs",
         "o `[glow-diag]` atrás de `PH2D_GLOW_DIAG` — a lista de que é feito o bright-pass, para \
          quem caça um halo que não aparece",

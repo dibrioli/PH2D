@@ -120,16 +120,8 @@ impl crate::App {
         // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121 W2/W3, B5) — decidido antes de o documento
         // ser codificado (com elas na placa ele vai às FAIXAS); no DISPOSITIVO o buffer é o dele.
         let por_ordem = ph2d_app_motion::motion_shape_placa::por_ordem();
-        let misturas = ph2d_app_motion::motion_shape_placa::Misturas::do_quadro(
-            surface.gpu(),
-            motion.pump.camada_isolada(),
-        );
-        // ⭐ B6 — no dispositivo, a mistura por FAIXA de sink (as mesmas regras da CPU).
-        let corridas = if motion.gpu_live {
-            ph2d_app_motion::motion_shape_placa::corridas_do_dispositivo(motion, misturas)
-        } else {
-            Vec::new()
-        };
+        let (misturas, corridas) =
+            ph2d_app_motion::motion_shape_placa::misturas_do_quadro(surface.gpu(), motion);
         let placa = match motion.gpu_cook.formas().filter(|_| motion.gpu_live) {
             Some(f) => self.motion_shell.placa.decide_do_dispositivo(
                 motion_tool_active && por_ordem,

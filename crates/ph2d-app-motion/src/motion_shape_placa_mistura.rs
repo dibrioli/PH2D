@@ -161,6 +161,22 @@ pub fn corridas_do_dispositivo(
     })
 }
 
+/// ⭐ **O que a shell passa à placa neste quadro** (B6): as misturas do dispositivo e da camada
+/// isolada e, com o cozimento VIVO, as corridas por faixa — vazias na rota da CPU, que monta as dela.
+#[must_use]
+pub fn misturas_do_quadro(
+    gpu: &GpuContext,
+    motion: &crate::motion_state::MotionState,
+) -> (Misturas, Vec<ph2d_shape_gpu::Corrida>) {
+    let misturas = Misturas::do_quadro(gpu, motion.pump.camada_isolada());
+    let corridas = if motion.gpu_live {
+        corridas_do_dispositivo(motion, misturas)
+    } else {
+        Vec::new()
+    };
+    (misturas, corridas)
+}
+
 /// Por que uma cópia com mistura deixa o quadro no Vello — dito no terminal na mudança de rota.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MotivoDoVello {

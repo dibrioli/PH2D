@@ -209,6 +209,7 @@ pub fn contorno_por_ordem() -> bool {
 mod mistura;
 pub use mistura::{
     Misturas, MotivoDoVello, corridas_do_dispositivo, corridas_por_faixa, mistura_no_quadro,
+    misturas_do_quadro,
 };
 
 /// O lado da placa: o passe e a camada, criados na primeira vez que um quadro vai lá.

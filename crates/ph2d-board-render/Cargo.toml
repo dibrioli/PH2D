@@ -21,6 +21,8 @@ ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
+# W15 — o preto e branco das imagens pela luminância e pela curva sRGB canónicas.
+ph2d-color = { path = "../ph2d-color" }
 
 [dev-dependencies]
 # A régua da W8 (`tests/it/measure_team_cost.rs`): o custo de uma versão comprimida.

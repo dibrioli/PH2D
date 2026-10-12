@@ -5480,6 +5480,7 @@ dependencies = [
  "ph2d-board-model",
  "ph2d-board-rough",
  "ph2d-board-route",
+ "ph2d-color",
  "ph2d-gpu",
  "ph2d-render",
  "ph2d-text",

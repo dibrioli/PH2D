@@ -79,16 +79,20 @@ pub struct ImageSource {
     pub bytes: Arc<[u8]>,
     pub mime: &'static str,
     pub size: [u32; 2],
+    /// W15 do Quadro — os bytes mostram-se a PRETO E BRANCO (a luminância Rec. 709 da luz linear): o
+    /// SVG embebe-os com o filtro; os píxeis gravados JÁ vêm cinzentos.
+    pub gray: bool,
 }
 
 impl std::fmt::Debug for ImageSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "ImageSource({}, {} B, {:?})",
+            "ImageSource({}, {} B, {:?}, gray {})",
             self.mime,
             self.bytes.len(),
-            self.size
+            self.size,
+            self.gray
         )
     }
 }

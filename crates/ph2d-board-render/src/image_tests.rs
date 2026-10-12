@@ -23,7 +23,7 @@ fn file(w: u32, h: u32) -> ImageFile {
 }
 
 fn test_decode() -> Decode {
-    Arc::new(|b: &[u8]| {
+    Arc::new(|b: &[u8], _at: Option<[u32; 2]>| {
         let w = u32::from_le_bytes(b.get(..4)?.try_into().ok()?);
         let h = u32::from_le_bytes(b.get(4..8)?.try_into().ok()?);
         let mut rgba = Vec::with_capacity(w as usize * h as usize * 4);
@@ -95,11 +95,11 @@ fn settled(board: &Board, cache: &mut RenderCache) -> Vec<DrawOp> {
 /// A pirâmide: o 1.º cabe no atlas do Vello, cada um é metade do anterior, o último cabe na miniatura.
 #[test]
 fn the_pyramid_fits_the_atlas_and_halves_down_to_the_thumbnail() {
-    let s = level_sizes([20_000, 100]);
+    let s = level_sizes([20_000, 100], false);
     assert_eq!(s[0], [5000, 25]);
     assert!(s.windows(2).all(|p| p[1] == p[0].map(|v| v.div_ceil(2))));
     assert!(s.last().unwrap()[0] <= THUMB_SIDE && s[s.len() - 2][0] > THUMB_SIDE);
-    assert_eq!(level_sizes([3, 2]), [[3, 2]]);
+    assert_eq!(level_sizes([3, 2], false), [[3, 2]]);
 }
 
 /// Metade pesada pelo alfa: um píxel vermelho entre três transparentes dá vermelho a ¼ — nunca um
@@ -258,9 +258,9 @@ fn a_panicking_decoder_fails_the_image_and_the_pool_survives() {
     let b = board_with(file(8, 8), [0.0, 0.0, 80.0, 80.0], |_| {});
     let good = test_decode();
     let mut cache = RenderCache::default();
-    cache.images.set_decoder(Arc::new(move |bytes: &[u8]| {
+    cache.images.set_decoder(Arc::new(move |bytes: &[u8], at| {
         assert!(bytes[0] != 8, "pânico de teste");
-        good(bytes)
+        good(bytes, at)
     }));
     let t0 = Instant::now();
     loop {
@@ -284,10 +284,10 @@ fn without_the_wanted_level_the_nearest_finer_one_draws() {
     let mut imgs = Images::default();
     imgs.set_decoder(test_decode());
     // A pirâmide inteira por um pedido síncrono do nível 0, e depois esquece-se o nível 1.
-    let _ = imgs.level(f.id(), &f, [512.0, 512.0], true).unwrap();
-    let e = imgs.entries.get_mut(&f.id()).unwrap();
+    let _ = imgs.level(f.id(), ImageFilter::Original, &f, [512.0, 512.0], true).unwrap();
+    let e = imgs.entries.get_mut(&(f.id(), ImageFilter::Original)).unwrap();
     assert!(e.levels.len() >= 3);
     e.levels[1].image = None;
-    let (_, size) = imgs.level(f.id(), &f, [200.0, 200.0], false).unwrap();
+    let (_, size) = imgs.level(f.id(), ImageFilter::Original, &f, [200.0, 200.0], false).unwrap();
     assert_eq!(size, [512, 512], "foi à miniatura em vez do fino");
 }

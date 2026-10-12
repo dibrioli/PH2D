@@ -8,8 +8,10 @@
 
 mod facilitate;
 mod frames;
+mod gray;
 mod grid;
 mod image;
+mod image_frame;
 mod mind;
 mod note;
 mod overlay;
@@ -21,6 +23,7 @@ mod theme_ink;
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
 pub use grid::{dot_grid, grid_step_world};
+pub use gray::{gray_of, to_gray};
 pub use image::{Decode, Images, Pixels, install_decoder, level_to_box};
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
@@ -310,8 +313,7 @@ pub fn paint(
         }
         if let Some(img) = el.image() {
             let file = board.file(img.file);
-            let export = cache.export.map(|e| e.vector);
-            image::paint(scene, &mut cache.images, el, img, file, v, theme, export);
+            image::paint(scene, cache, el, img, file, v, theme, board.id.0);
             let marks = badges.and_then(|(p, r)| Some((*p.totals.get(&el.id)?, r)));
             let t = v * to_world(el);
             facilitate::paint_marks(scene, ts, &mut cache.text, board.id.0, el, t, marks);

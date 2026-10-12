@@ -8,20 +8,25 @@
 //! cinzento) e guarda uma pirâmide de metades; o desenho pede o nível com a resolução do ECRÃ — o
 //! atlas do Vello é UM quadrado partilhado por todas as imagens à vista (`MAX_ATLAS_SIZE = 8192` em
 //! `vello_encoding-0.10.0/src/image_cache.rs:10`), e a imagem inteira de 20 fotografias não cabia.
+//!
+//! W15: a pirâmide é por ficheiro E filtro (a cinzenta é outra entrada, [`crate::gray`]); um SVG não
+//! se reduz por metades — cada nível rasteriza-se ao tamanho DELE (nítido a qualquer zoom, até ao
+//! lado do atlas); e a MOLDURA é o contorno de um rectângulo com o estilo da imagem (a lei das formas:
+//! traço, tracejado, rascunho, cantos), por cima, fora do recorte.
 
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use ph2d_board_geom::{corner_radius, to_world};
-use ph2d_board_model::{Element, FileId, Image, ImageFile};
+use ph2d_board_model::{Element, FileId, Image, ImageFile, ImageFilter};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
     Affine, Brush, Circle, ImageQuality, ImageSource, Point, Rect, RoundedRect, Shape as _,
     StableImage, Stroke, VectorScene, VelloBlend,
 };
 
-use crate::token;
+use crate::{RenderCache, token};
 
 /// Os píxeis de uma imagem descodificada: RGBA de 8 bits, alfa reto, sRGB.
 pub struct Pixels {
@@ -30,8 +35,15 @@ pub struct Pixels {
 }
 
 /// O descodificador (os bytes de um ficheiro → os píxeis). Quem desenha não descodifica: recebe-o de
-/// quem tem a porta de entrada das imagens (`ph2d-app-board`).
-pub type Decode = Arc<dyn Fn(&[u8]) -> Option<Pixels> + Send + Sync>;
+/// quem tem a porta de entrada das imagens (`ph2d-app-board`). `at` = o tamanho a que se rasteriza um
+/// ficheiro VECTORIAL (`image/svg+xml`); um raster ignora-o e dá o natural.
+pub type Decode = Arc<dyn Fn(&[u8], Option<[u32; 2]>) -> Option<Pixels> + Send + Sync>;
+
+/// A chave de uma pirâmide: o ficheiro e o filtro (a mesma fotografia a cores e a cinzento são duas).
+type Key = (FileId, ImageFilter);
+
+/// O MIME de um ficheiro que se rasteriza a cada tamanho.
+const VECTOR_MIME: &str = "image/svg+xml";
 
 /// O descodificador do APP, instalado uma vez ao arrancar ([`install_decoder`]): toda [`Images`] o usa
 /// quando precisa de descodificar (não quando nasce — uma cache feita antes da instalação também o vê).
@@ -57,23 +69,35 @@ struct Entry {
     /// O nível mais fino pedido desde a última descodificação: ao chegar ela, os mais finos do que
     /// ele não ficam (uma fotografia de 8192² vista a 500 px não guarda os 256 MiB do 1.º nível).
     want: usize,
+    /// Um raster: a pirâmide inteira a descodificar.
     pending: bool,
     failed: bool,
+    /// Um SVG: cada nível pede-se sozinho ([`Level::asked`]).
+    vector: bool,
 }
 
 struct Level {
     size: [u32; 2],
     image: Option<StableImage>,
     used: u64,
+    asked: bool,
 }
 
-type Done = (FileId, Option<Vec<(StableImage, [u32; 2])>>);
+type Levels = Vec<(StableImage, [u32; 2])>;
+
+/// O que um fio acabou: a pirâmide de um raster, ou UM nível de um SVG (o índice).
+enum Out {
+    Pyramid(Option<Levels>),
+    Level(usize, Option<(StableImage, [u32; 2])>),
+}
+
+type Done = (Key, Out);
 
 /// ⭐ **As imagens descodificadas** do desenho, por ficheiro (os mesmos bytes = a mesma entrada, em
 /// qualquer quadro). Uma por [`crate::RenderCache`].
 pub struct Images {
     decode: Option<Decode>,
-    entries: BTreeMap<FileId, Entry>,
+    entries: BTreeMap<Key, Entry>,
     tx: Sender<Done>,
     rx: Receiver<Done>,
     /// Os trabalhos por fazer, partilhados pelos fios (criados à primeira vez).
@@ -82,8 +106,10 @@ pub struct Images {
 }
 
 struct Job {
-    id: FileId,
+    key: Key,
     bytes: Arc<[u8]>,
+    /// `None` = a pirâmide de um raster; `Some` = um nível de um SVG.
+    at: Option<(usize, [u32; 2])>,
 }
 
 impl Default for Images {
@@ -101,9 +127,14 @@ impl Default for Images {
 }
 
 /// Os tamanhos da pirâmide de uma imagem `natural`: o 1.º cabe no atlas, cada um metade do anterior
-/// (arredondada para cima), até um que caiba em [`THUMB_SIDE`].
-fn level_sizes(natural: [u32; 2]) -> Vec<[u32; 2]> {
+/// (arredondada para cima), até um que caiba em [`THUMB_SIDE`]. Um SVG começa no lado do atlas (a
+/// proporção dele), por pequeno que seja o natural: é vector.
+fn level_sizes(natural: [u32; 2], vector: bool) -> Vec<[u32; 2]> {
     let mut s = natural.map(|v| v.max(1));
+    if vector {
+        let k = f64::from(ATLAS_SIDE) / f64::from(s[0].max(s[1]));
+        s = s.map(|v| ((f64::from(v) * k).round() as u32).clamp(1, ATLAS_SIDE));
+    }
     while s[0].max(s[1]) > ATLAS_SIDE {
         s = s.map(|v| v.div_ceil(2));
     }
@@ -143,8 +174,8 @@ fn halve(src: &[u8], [w, h]: [u32; 2], to: [u32; 2]) -> Vec<u8> {
 }
 
 /// A pirâmide inteira de uns píxeis (o 1.º nível já reduzido ao atlas, se preciso).
-fn pyramid(px: Pixels) -> Option<Vec<(StableImage, [u32; 2])>> {
-    let sizes = level_sizes(px.size);
+fn pyramid(px: Pixels) -> Option<Levels> {
+    let sizes = level_sizes(px.size, false);
     let at0 = px.size;
     if px.rgba.len() != at0[0] as usize * at0[1] as usize * 4 {
         return None;
@@ -164,14 +195,46 @@ fn pyramid(px: Pixels) -> Option<Vec<(StableImage, [u32; 2])>> {
     Some(out)
 }
 
-/// Descodifica e faz a pirâmide; um descodificador que entra em pânico é uma imagem que falhou (o fio
-/// continua, e a imagem não fica no cinzento à espera para sempre).
-fn decode_pyramid(decode: &Decode, bytes: &[u8]) -> Option<Vec<(StableImage, [u32; 2])>> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        decode(bytes).and_then(pyramid)
-    }))
-    .ok()
-    .flatten()
+/// Os píxeis de `bytes` (a `at`, se é um SVG) com o filtro aplicado.
+fn decode_filtered(
+    decode: &Decode,
+    bytes: &[u8],
+    at: Option<[u32; 2]>,
+    filter: ImageFilter,
+) -> Option<Pixels> {
+    let mut px = decode(bytes, at)?;
+    match filter {
+        ImageFilter::Original => {}
+        ImageFilter::Gray => crate::gray::to_gray(&mut px.rgba),
+    }
+    Some(px)
+}
+
+/// Descodifica: a pirâmide de um raster, ou o nível `at` de um SVG. Um descodificador que entra em
+/// pânico é uma imagem que falhou (o fio continua, e a imagem não fica no cinzento à espera para
+/// sempre).
+fn run(decode: &Decode, job: &Job) -> Out {
+    let filter = job.key.1;
+    let ok = |f: &dyn Fn() -> Option<Levels>| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(f))
+            .ok()
+            .flatten()
+    };
+    match job.at {
+        None => Out::Pyramid(ok(&|| {
+            decode_filtered(decode, &job.bytes, None, filter).and_then(pyramid)
+        })),
+        Some((k, size)) => {
+            let one = ok(&|| {
+                let px = decode_filtered(decode, &job.bytes, Some(size), filter)?;
+                (px.size == size && px.rgba.len() == size[0] as usize * size[1] as usize * 4)
+                    .then(|| StableImage::from_rgba(Arc::new(px.rgba), size[0], size[1]))
+                    .flatten()
+                    .map(|img| vec![(img, size)])
+            });
+            Out::Level(k, one.and_then(|mut v| v.pop()))
+        }
+    }
 }
 
 impl Images {
@@ -189,19 +252,43 @@ impl Images {
     /// sempre, `ControlFlow::Poll`).
     #[must_use]
     pub fn pending(&self) -> bool {
-        self.entries.values().any(|e| e.pending)
+        self.entries
+            .values()
+            .any(|e| e.pending || e.levels.iter().any(|l| l.asked))
     }
 
     /// Recolhe o que os fios acabaram.
     fn collect(&mut self) {
-        while let Ok((id, levels)) = self.rx.try_recv() {
-            self.adopt(id, levels);
+        while let Ok((key, out)) = self.rx.try_recv() {
+            self.adopt(key, out);
         }
     }
 
-    fn adopt(&mut self, id: FileId, levels: Option<Vec<(StableImage, [u32; 2])>>) {
-        let Some(e) = self.entries.get_mut(&id) else {
+    fn adopt(&mut self, key: Key, out: Out) {
+        let frame = self.frame;
+        let Some(e) = self.entries.get_mut(&key) else {
             return;
+        };
+        let levels = match out {
+            Out::Pyramid(levels) => levels,
+            Out::Level(k, one) => {
+                let Some(slot) = e.levels.get_mut(k) else {
+                    return;
+                };
+                slot.asked = false;
+                match one {
+                    Some((img, size)) => {
+                        *slot = Level {
+                            size,
+                            image: Some(img),
+                            used: frame,
+                            asked: false,
+                        };
+                    }
+                    None => e.failed = true,
+                }
+                return;
+            }
         };
         e.pending = false;
         let (want, last) = (e.want, e.levels.len().saturating_sub(1));
@@ -213,7 +300,8 @@ impl Images {
                         *slot = Level {
                             size,
                             image: Some(img),
-                            used: self.frame,
+                            used: frame,
+                            asked: false,
                         };
                     }
                 }
@@ -222,7 +310,7 @@ impl Images {
         }
     }
 
-    fn spawn(&mut self, id: FileId, bytes: Arc<[u8]>) {
+    fn spawn(&mut self, job: Job) {
         let Some(decode) = self.decoder() else {
             return;
         };
@@ -240,8 +328,8 @@ impl Images {
                             Err(_) => return,
                         };
                         let Ok(job) = job else { return };
-                        let out = decode_pyramid(&decode, &job.bytes);
-                        if tx.send((job.id, out)).is_err() {
+                        let out = run(&decode, &job);
+                        if tx.send((job.key, out)).is_err() {
                             return;
                         }
                     }
@@ -249,33 +337,39 @@ impl Images {
             }
             jt
         });
-        let _ = jobs.send(Job { id, bytes });
+        let _ = jobs.send(job);
     }
 
-    /// O nível a desenhar de `file` para `need` píxeis de ecrã na largura e na altura da imagem
-    /// NATURAL inteira: o mais pequeno que os tem; se ainda não há, o mais próximo que houver (e o
-    /// certo pede-se). `sync` = descodifica JÁ (o export não espera por quadros). `None` = nada ainda.
+    /// O nível a desenhar de `file` (com o filtro `filter`) para `need` píxeis de ecrã na largura e
+    /// na altura da imagem NATURAL inteira: o mais pequeno que os tem; se ainda não há, o mais
+    /// próximo que houver (e o certo pede-se). `sync` = descodifica JÁ (o export não espera por
+    /// quadros). `None` = nada ainda.
     pub(crate) fn level(
         &mut self,
         id: FileId,
+        filter: ImageFilter,
         file: &ImageFile,
         need: [f64; 2],
         sync: bool,
     ) -> Option<(StableImage, [u32; 2])> {
+        let key = (id, filter);
         let frame = self.frame;
         let decoder = self.decoder();
-        let e = self.entries.entry(id).or_insert_with(|| Entry {
+        let vector = file.mime() == Some(VECTOR_MIME);
+        let e = self.entries.entry(key).or_insert_with(|| Entry {
             want: usize::MAX,
-            levels: level_sizes(file.size)
+            levels: level_sizes(file.size, vector)
                 .into_iter()
                 .map(|size| Level {
                     size,
                     image: None,
                     used: 0,
+                    asked: false,
                 })
                 .collect(),
             pending: false,
             failed: false,
+            vector,
         });
         if e.failed {
             return None;
@@ -288,17 +382,59 @@ impl Images {
         if e.levels[want].image.is_none() {
             e.want = e.want.min(want);
         }
-        if e.levels[want].image.is_none() && !e.pending {
+        let bytes = &file.bytes.0;
+        if e.vector {
+            // O nível pedido e a miniatura (o que fica quando o fino se esquece); o export só o seu.
+            let thumb = e.levels.len() - 1;
+            let mut ask: Vec<(usize, [u32; 2])> = [want, thumb]
+                .into_iter()
+                .filter(|&k| e.levels[k].image.is_none() && !e.levels[k].asked)
+                .filter(|&k| !sync || k == want)
+                .map(|k| (k, e.levels[k].size))
+                .collect();
+            ask.dedup_by_key(|a| a.0);
+            if !sync && decoder.is_some() {
+                for (k, _) in &ask {
+                    e.levels[*k].asked = true;
+                }
+            }
+            for (k, size) in ask {
+                let job = Job {
+                    key,
+                    bytes: bytes.clone(),
+                    at: Some((k, size)),
+                };
+                match &decoder {
+                    Some(d) if sync => {
+                        let out = run(d, &job);
+                        self.adopt(key, out);
+                    }
+                    Some(_) => self.spawn(job),
+                    None => {}
+                }
+            }
+        } else if e.levels[want].image.is_none() && !e.pending {
+            let job = Job {
+                key,
+                bytes: bytes.clone(),
+                at: None,
+            };
             if sync {
-                let out = decoder.and_then(|d| decode_pyramid(&d, &file.bytes.0));
-                self.adopt(id, out);
+                if let Some(d) = &decoder {
+                    let out = run(d, &job);
+                    self.adopt(key, out);
+                }
             } else if decoder.is_some() {
                 e.pending = true;
-                self.spawn(id, file.bytes.0.clone());
+                self.spawn(job);
             }
         }
-        let e = self.entries.get_mut(&id)?;
-        // O certo, senão o mais fino mais perto (nítido), senão o mais grosso mais perto.
+        self.pick(key, want, frame)
+    }
+
+    /// O nível `want` se há, senão o mais fino mais perto (nítido), senão o mais grosso mais perto.
+    fn pick(&mut self, key: Key, want: usize, frame: u64) -> Option<(StableImage, [u32; 2])> {
+        let e = self.entries.get_mut(&key)?;
         let pick = std::iter::once(want)
             .chain((0..want).rev())
             .chain(want + 1..e.levels.len())
@@ -363,18 +499,24 @@ fn box_path(el: &Element, round: bool) -> ph2d_vector::BezPath {
     RoundedRect::new(0.0, 0.0, el.w, el.h, r).to_path(0.1)
 }
 
-/// Pinta a imagem `img` de `el` (`v` = mundo → ecrã). `file` = o ficheiro, se chegou.
+/// Os píxeis por ponto de um SVG num export vectorial (o PDF mede em pontos, 1/72 pol): os 300 ppp da
+/// impressão. Um raster vai inteiro (o leitor amplia o que quiser).
+const PRINT_PX_PER_PT: f64 = 300.0 / 72.0;
+
+/// Pinta a imagem `img` de `el` (`v` = mundo → ecrã) e a moldura dela. `file` = o ficheiro, se chegou;
+/// `board` = o quadro (a chave do rascunho da moldura).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint(
     scene: &mut VectorScene,
-    images: &mut Images,
+    cache: &mut RenderCache,
     el: &Element,
     img: &Image,
     file: Option<&ImageFile>,
     v: Affine,
     theme: Theme,
-    export: Option<bool>,
+    board: u64,
 ) {
+    let export = cache.export.map(|e| e.vector);
     let t = v * to_world(el);
     let st = &img.style;
     // Os píxeis de ecrã por píxel natural (o maior dos dois eixos da caixa rodada).
@@ -383,39 +525,62 @@ pub(crate) fn paint(
     let (sw, sh) = ((ex - o).hypot(), (ey - o).hypot());
     let level = file.and_then(|f| {
         let [_, _, cw, ch] = img.source(f.size);
-        // No vector o nível inteiro (o leitor amplia o que quiser).
-        let need = if export == Some(true) {
-            [f64::from(f.size[0]), f64::from(f.size[1])]
-        } else {
-            [
-                sw * f64::from(f.size[0]) / cw.max(1e-9),
-                sh * f64::from(f.size[1]) / ch.max(1e-9),
-            ]
+        let vector = f.mime() == Some(VECTOR_MIME);
+        let screen = [
+            sw * f64::from(f.size[0]) / cw.max(1e-9),
+            sh * f64::from(f.size[1]) / ch.max(1e-9),
+        ];
+        let need = match export {
+            Some(true) if vector => screen.map(|n| n * PRINT_PX_PER_PT),
+            Some(true) => [f64::from(f.size[0]), f64::from(f.size[1])],
+            _ => screen,
         };
-        images
-            .level(img.file, f, need, export.is_some())
+        cache
+            .images
+            .level(img.file, img.filter, f, need, export.is_some())
             .map(|l| (f, l))
     });
+    if level.is_none() && export.is_some() {
+        return;
+    }
+    let framed = st.stroke.is_some() && st.stroke_width > 0.0;
     let clip = img.crop.is_some() || st.round;
     let alpha = f32::from(st.opacity.min(100)) / 100.0;
-    let Some((f, (pixels, size))) = level else {
-        if export.is_none() {
-            placeholder(scene, el, t, theme);
-        }
-        return;
-    };
-    let layered = clip || alpha < 1.0;
-    if layered {
-        scene.push_layer_shape(VelloBlend::default(), alpha, t, &box_path(el, st.round));
+    // Com moldura e transparente: a imagem e a moldura compõem-se JUNTAS (a de uma forma: o traço não
+    // deixa ver a imagem por baixo).
+    let group = framed && alpha < 1.0;
+    if group {
+        let [x0, y0, x1, y1] = el.aabb();
+        let pad = crate::image_frame::reach(el, img);
+        let p0 = v * Point::new(x0 - pad, y0 - pad);
+        let p1 = v * Point::new(x1 + pad, y1 + pad);
+        scene.push_object_layer(&Rect::from_points(p0, p1), VelloBlend::default(), alpha);
     }
-    let source = f.mime().map(|mime| ImageSource {
-        bytes: f.bytes.0.clone(),
-        mime,
-        size: f.size,
-    });
-    let m = t * level_to_box(el, img, f.size, size);
-    scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source.as_ref());
-    if layered {
+    match level {
+        None => placeholder(scene, el, t, theme),
+        Some((f, (pixels, size))) => {
+            let a = if group { 1.0 } else { alpha };
+            let layered = clip || a < 1.0;
+            if layered {
+                scene.push_layer_shape(VelloBlend::default(), a, t, &box_path(el, st.round));
+            }
+            let source = f.mime().map(|mime| ImageSource {
+                bytes: f.bytes.0.clone(),
+                mime,
+                size: f.size,
+                gray: img.filter == ImageFilter::Gray,
+            });
+            let m = t * level_to_box(el, img, f.size, size);
+            scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source.as_ref());
+            if layered {
+                scene.pop_layer();
+            }
+        }
+    }
+    if framed {
+        crate::image_frame::paint(scene, cache, el, img, t, board);
+    }
+    if group {
         scene.pop_layer();
     }
 }
@@ -453,3 +618,7 @@ fn placeholder(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme) {
 #[cfg(test)]
 #[path = "image_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "image_w15_tests.rs"]
+mod w15_tests;

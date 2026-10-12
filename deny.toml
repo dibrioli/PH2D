@@ -203,6 +203,20 @@ deny = [
     # underscore. Hífen-version não existe e banir hífen é silent miss.
     { name = "nvtt_rs" },             # high-level wrapper (nota: underscore!)
     { name = "nvtt_sys" },            # unsafe bindings (nota: underscore!)
+    # ADR-0185 (W18) — o vídeo do YouTube toca no navegador da PESSOA; tirar o fluxo viola os termos do
+    # YouTube. Nomes REAIS (`cargo search`, 12/10/2026).
+    { name = "rustube" },
+    { name = "rusty_ytdl" },
+    { name = "ytextract" },
+    { name = "youtube_dl" },
+    { name = "yt-dlp" },
+    { name = "ytdlp" },
+    # ADR-0185 — nenhum motor web dentro do PH2D (medidos e recusados; o Servo é plano B por ADR novo).
+    { name = "wry" },
+    { name = "cef" },
+    { name = "cef-dll-sys" },
+    { name = "servo" },
+    { name = "webkit2gtk" },
 ]
 
 # Skip duplicate-version checks for crates that legitimately have multiple

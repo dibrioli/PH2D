@@ -64,7 +64,10 @@ fn varrer(gpu: &ph2d_gpu::GpuContext, opacidades: &[f32]) -> Vec<Fluencia> {
             assert!(l.preparar(&w, afim, (1920, 1080)));
             l.gravar(gpu, &mut present, &r);
         }
-        saida.push(crate::comum::fluencia_lida(gpu, l.solver().expect("solver")));
+        saida.push(crate::comum::fluencia_lida(
+            gpu,
+            l.solver().expect("solver"),
+        ));
     }
     saida
 }
@@ -133,7 +136,11 @@ fn a_luz_e_continua_na_opacidade_do_oclusor() {
     };
     let [base, l999, l99] = medir(&gpu, &[1.0, 0.999, 0.99]).try_into().expect("três");
     for (a, tol, l) in [(0.999_f32, 0.01, l999), (0.99, 0.02, l99)] {
-        for (k, nome) in [(0, "face acesa do azul"), (1, "anel do azul"), (3, "sombra do azul")] {
+        for (k, nome) in [
+            (0, "face acesa do azul"),
+            (1, "anel do azul"),
+            (3, "sombra do azul"),
+        ] {
             for c in 0..3 {
                 let (b, v) = (base[k][c], l[k][c]);
                 assert!(

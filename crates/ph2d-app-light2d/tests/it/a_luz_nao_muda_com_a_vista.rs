@@ -17,7 +17,7 @@ use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro, smoke};
 use ph2d_ecs::{GlobalTransform, Name, PresentWorld, SimRef, Transform, VecPathRef};
 use ph2d_host::WindowSize;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
-use ph2d_light2d_ecs::{BloqueiaLuz, CenaDeLuz, Luz, Oclusor, TipoDeLuz};
+use ph2d_light2d_ecs::{BloqueiaLuz, CenaDeLuz, Luz, NaoRecebeLuz, Oclusor, TipoDeLuz};
 use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer};
 use ph2d_vec_scene::{VecScene, VecXforms, rectangle};
 
@@ -577,9 +577,12 @@ fn um_opaco_inteiro_na_grade_nao_conta_duas_vezes() {
             let mut t = Transform::IDENTITY;
             t.translation.x = 0.5;
             let g = GlobalTransform::from_transform(t);
+            // ⭐ W5k: o translúcido reflete `α·a` e a régua (`ref::fluencia`) não tem o rebote — a lei
+            // deste portão é a transmissão contada UMA vez, não o rebote (esse tem os seus, g9).
             w.spawn((
                 Sprite::atlas(0, [0.2, 3.0], [1.0; 4]),
                 BloqueiaLuz { opacidade: o },
+                NaoRecebeLuz,
                 t,
                 g,
             ));

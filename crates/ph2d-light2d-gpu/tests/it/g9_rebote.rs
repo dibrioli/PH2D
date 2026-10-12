@@ -631,27 +631,99 @@ fn sonda_g9_pelo_tamanho_da_grade() {
     }
 }
 
+/// A sala com as paredes a `opacidade` (o vidro da W5k).
+fn sala_a(opacidade: f32) -> CenaDeLuz {
+    let mut c = sala();
+    for o in &mut c.oclusores {
+        o.opacidade = opacidade;
+    }
+    c
+}
+
+/// A luz nos pontos da sala a `opacidade`, na placa (`holografica` = o caminho do produto).
+fn na_sala(
+    gpu: &ph2d_gpu::GpuContext,
+    holografica: Option<ph2d_light2d_gpu::Holografica>,
+    rebote: bool,
+    opacidade: f32,
+) -> [[f64; 3]; 4] {
+    let (_, lado, texel) = DEGRAUS[1];
+    let cfg = Config {
+        holografica,
+        ..com_rebote(grade(lado, texel), rebote)
+    };
+    let mut s = Solver::novo(gpu, cfg).expect("solver");
+    depois_de(gpu, &mut s, &sala_a(opacidade), QUADROS)
+}
+
 /// ⭐ W5k — **o translúcido reflete a sua parte na placa** (`α·a`, contínuo em `α`; até a W5k o 0,99
-/// não refletia nada e a sala perdia a cor de uma vez): com as paredes a 0,99 os pontos ficam a 2 % da
-/// sala opaca, e o chão junto à vermelha continua tingido (sem o rebote, branco).
+/// não refletia nada e a sala perdia a cor de uma vez): no caminho do produto (a holográfica), com as
+/// paredes a 0,99 os pontos ficam a 2 % da sala opaca — o gabarito muda 0,1 % —, e o chão junto à
+/// vermelha continua tingido (sem o rebote, branco). ⛔ VERMELHO DE PROPÓSITO (W5k): a placa muda 4,6 %
+/// (a clássica 7 %) — um resíduo do rebote de corpos translúcidos que refletem, ver o handoff W5k §4.
 #[test]
 fn o_translucido_reflete_a_sua_parte_na_placa() {
     let Some(gpu) = gpu() else { return };
-    let mut vidro = sala();
-    for o in &mut vidro.oclusores {
-        o.opacidade = 0.99;
-    }
-    let (_, lado, texel) = DEGRAUS[1];
-    let g = grade(lado, texel);
-    let mut s = |rebote| Solver::novo(&gpu, com_rebote(g, rebote)).expect("solver");
-    let opaca = depois_de(&gpu, &mut s(true), &sala(), QUADROS);
-    let com = depois_de(&gpu, &mut s(true), &vidro, QUADROS);
-    let sem = depois_de(&gpu, &mut s(false), &vidro, QUADROS);
+    let produto = Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
+    let (opaca, com) = (
+        na_sala(&gpu, produto, true, 1.0),
+        na_sala(&gpu, produto, true, 0.99),
+    );
+    let sem = na_sala(&gpu, produto, false, 0.99);
+    let tinge = |l: [f64; 3]| l[0] / l[1];
+    assert!(
+        tinge(com[0]) > 1.2,
+        "o chão junto à vermelha a 0,99: {:?}",
+        com[0]
+    );
+    assert!(
+        (tinge(sem[0]) - 1.0).abs() < 0.01,
+        "sem rebote, branco: {:?}",
+        sem[0]
+    );
     for k in 0..4 {
         let e = erro(com[k], opaca[k]);
-        assert!(e <= 0.02, "ponto {k}: {:?} a 0,99 × {:?} opaca ({e:.4})", com[k], opaca[k]);
+        assert!(
+            e <= 0.02,
+            "ponto {k}: {:?} a 0,99 × {:?} opaca ({e:.4})",
+            com[k],
+            opaca[k]
+        );
     }
-    let tinge = |l: [f64; 3]| l[0] / l[1];
-    assert!(tinge(com[0]) > 1.2, "o chão junto à vermelha a 0,99: {:?}", com[0]);
-    assert!((tinge(sem[0]) - 1.0).abs() < 0.01, "sem rebote, branco: {:?}", sem[0]);
+}
+
+/// Sonda (`--ignored --nocapture`): de 1 a 0,99, quanto muda cada ponto na clássica, na holográfica e
+/// no gabarito com a série convergida (W5k: 7,0 · 5,0 · 6,4 · 3,6 % · 4,6 · 3,9 · 4,4 · 3,5 % · 0,14 ·
+/// 0,07 · 0,14 · 0,08 %).
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_o_translucido_na_sala() {
+    let Some(gpu) = gpu() else { return };
+    for holografica in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
+        let (opaca, com) = (
+            na_sala(&gpu, holografica, true, 1.0),
+            na_sala(&gpu, holografica, true, 0.99),
+        );
+        let e: Vec<String> = (0..4)
+            .map(|k| format!("{:.4}", erro(com[k], opaca[k])))
+            .collect();
+        eprintln!(
+            "holográfica {}: 0,99 × opaca por ponto {}",
+            holografica.is_some(),
+            e.join(" ")
+        );
+    }
+    let op = OpcoesDoRebote {
+        passo_m: 0.01,
+        rebotes: 300,
+    };
+    let (r1, r99) = (
+        Rebote::resolver(&sala(), op),
+        Rebote::resolver(&sala_a(0.99), op),
+    );
+    let e: Vec<String> = pontos()
+        .iter()
+        .map(|&p| format!("{:.4}", erro(r99.luz_em(p), r1.luz_em(p))))
+        .collect();
+    eprintln!("gabarito: 0,99 × opaca por ponto {}", e.join(" "));
 }

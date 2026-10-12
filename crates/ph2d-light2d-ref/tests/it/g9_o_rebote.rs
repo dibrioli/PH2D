@@ -191,11 +191,17 @@ fn o_translucido_reflete_a_sua_parte_e_o_que_brilha_nao() {
     let (c99, c1) = (com_emissor(0.99), com_emissor(1.0));
     let r99 = Rebote::resolver(&c99, op(0.05, 20));
     let r1 = Rebote::resolver(&c1, op(0.05, 20));
-    assert_eq!(r99.n_elementos(), Rebote::resolver(&sala(), op(0.05, 20)).n_elementos());
+    assert_eq!(
+        r99.n_elementos(),
+        Rebote::resolver(&sala(), op(0.05, 20)).n_elementos()
+    );
     for p in pontos_do_chao() {
         let (a, b) = (r99.fluencia(p), r1.fluencia(p));
         for c in 0..3 {
-            assert!((a[c] - b[c]).abs() <= 0.02 * b[c], "{p:?} canal {c}: {a:?} a 0,99 × {b:?} a 1");
+            assert!(
+                (a[c] - b[c]).abs() <= 0.02 * b[c],
+                "{p:?} canal {c}: {a:?} a 0,99 × {b:?} a 1"
+            );
         }
     }
     // Controlo: a 0,99 o chão continua tingido pela parede vermelha (o rebote não sumiu).

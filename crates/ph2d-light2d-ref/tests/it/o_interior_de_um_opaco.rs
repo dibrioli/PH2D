@@ -98,7 +98,10 @@ fn o_interior_e_continuo_na_opacidade() {
         for (a, b) in [(0.999_f32, 1.0_f32), (0.001, 0.0)] {
             let (x, y) = (g(a, p), g(b, p));
             let teto = 2.0 * f64::from((a - b).abs()) * vazio;
-            assert!((x - y).abs() <= teto, "{p:?}: {x} a {a} × {y} a {b} (teto {teto})");
+            assert!(
+                (x - y).abs() <= teto,
+                "{p:?}: {x} a {a} × {y} a {b} (teto {teto})"
+            );
         }
     }
 }

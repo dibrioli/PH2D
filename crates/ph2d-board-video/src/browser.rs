@@ -72,6 +72,7 @@ impl Browser {
         exe: &Path,
         on_message: impl FnMut(Incoming) + Send + 'static,
     ) -> std::io::Result<Self> {
+        sweep_stale_profiles(&std::env::temp_dir());
         let profile =
             std::env::temp_dir().join(format!("ph2d-cdp-{}-{}", std::process::id(), unique()));
         std::fs::create_dir_all(&profile)?;
@@ -164,6 +165,31 @@ fn read_messages(stdout: impl Read, mut on_message: impl FnMut(Incoming)) {
             if let Ok(v) = serde_json::from_slice::<Value>(&msg[..msg.len() - 1]) {
                 on_message(v);
             }
+        }
+    }
+}
+
+/// Os perfis que um PH2D que já MORREU deixou em `dir` (`ph2d-cdp-<pid>-…`, o pid sem processo): um
+/// fecho abrupto fecha o navegador (o tubo fecha) mas não apaga a pasta. Só onde há `/proc`.
+pub(crate) fn sweep_stale_profiles(dir: &Path) {
+    if !Path::new("/proc/self").exists() {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let name = e.file_name();
+        let Some(pid) = name
+            .to_str()
+            .and_then(|n| n.strip_prefix("ph2d-cdp-"))
+            .and_then(|r| r.split('-').next())
+            .and_then(|p| p.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        if pid != std::process::id() && !Path::new(&format!("/proc/{pid}")).exists() {
+            let _ = std::fs::remove_dir_all(e.path());
         }
     }
 }

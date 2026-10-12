@@ -365,7 +365,9 @@ fn mouse_params(m: Mouse) -> (&'static str, Value) {
 /// O id seguinte do leitor: dá a volta DENTRO de `READER_IDS..READER_IDS_END` (o contador começa em
 /// `READER_IDS`), distinto do anterior e sempre um inteiro de 32 bits.
 pub(crate) fn next_reader_id(ids: &AtomicU64) -> u64 {
-    let n = ids.fetch_add(1, Ordering::Relaxed).saturating_sub(READER_IDS);
+    let n = ids
+        .fetch_add(1, Ordering::Relaxed)
+        .saturating_sub(READER_IDS);
     READER_IDS + n % (READER_IDS_END - READER_IDS)
 }
 

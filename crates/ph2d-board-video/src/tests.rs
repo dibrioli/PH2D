@@ -48,7 +48,30 @@ fn reader_ids_stay_32_bit_and_distinct_across_the_wrap() {
     assert_eq!(a, (start..start + 5).collect::<Vec<_>>());
     let ids = AtomicU64::new(end - 2);
     let b: Vec<u64> = (0..4).map(|_| player::next_reader_id(&ids)).collect();
-    assert_eq!(b, vec![end - 2, end - 1, start, start + 1], "dá a volta dentro da faixa");
+    assert_eq!(
+        b,
+        vec![end - 2, end - 1, start, start + 1],
+        "dá a volta dentro da faixa"
+    );
+}
+
+/// O perfil que um PH2D morto deixou varre-se; o de um processo vivo (este) e o que não é nosso ficam.
+#[test]
+fn stale_browser_profiles_of_dead_processes_are_swept() {
+    let dir = std::env::temp_dir().join(format!("ph2d-video-sweep-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // Um pid acima do máximo do Linux (4 194 304) nunca existe.
+    let dead = dir.join("ph2d-cdp-4294967-1");
+    let alive = dir.join(format!("ph2d-cdp-{}-2", std::process::id()));
+    let other = dir.join("outra-coisa");
+    for d in [&dead, &alive, &other] {
+        std::fs::create_dir_all(d).unwrap();
+    }
+    browser::sweep_stale_profiles(&dir);
+    assert!(!dead.exists(), "o do morto fica");
+    assert!(alive.exists() && other.exists());
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// A miniatura de verdade, pela rede (e a 2.ª vez pelo disco).

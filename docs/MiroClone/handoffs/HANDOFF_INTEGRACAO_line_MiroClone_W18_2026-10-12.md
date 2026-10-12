@@ -105,6 +105,9 @@ fora · M12 colar→vídeo · M13 `embeddable` aceite · M14 `UriList.links` · 
 activo (os ids são por quadro) ⇒ `Documents::activate` zera-o; um vídeo activado mas não vivo arrancava o navegador (som até
 à pausa) ⇒ arranca só se vivo.
 
+Achado no fim (a máquina limpa): um fecho abrupto fecha o navegador (o tubo) mas deixava a pasta do perfil em
+`/tmp/ph2d-cdp-*` — `browser::sweep_stale_profiles` varre as de pids mortos ao lançar (teste novo).
+
 ## 4. Abertos (nomeados)
 
 - (a) **Windows:** o tubo CDP é lançado por `sh` — lá ainda não há leitor (cai para abrir o navegador); macOS tem `sh`, não testado.

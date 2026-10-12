@@ -285,9 +285,12 @@ impl PainterTool {
             self.paint.pilha.pre = (*self.canvas_rgba).clone();
             self.paint.pilha.lotes.clear();
         }
-        let Some(caixa_nova) =
-            super::region::caixa_das_camadas(&camadas, (w, h), self.paint.tiling)
-        else {
+        let Some(caixa_nova) = super::region::caixa_das_camadas(
+            &camadas,
+            (w, h),
+            self.paint.tiling,
+            self.paint.brush.tip_reach(),
+        ) else {
             return;
         };
         #[cfg(test)]
@@ -531,7 +534,7 @@ impl PainterTool {
             self.aplica_deposito(dabs);
             return;
         }
-        let Some(r) = dabs_bounds(dabs, w, h) else {
+        let Some(r) = dabs_bounds(dabs, w, h, self.paint.brush.tip_reach()) else {
             return;
         };
         // 1. O escudo opaco, limpo dentro da região.

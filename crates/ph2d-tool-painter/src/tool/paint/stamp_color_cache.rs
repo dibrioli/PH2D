@@ -181,7 +181,7 @@ impl PainterTool {
         h: u32,
     ) {
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
-        self.ensure_color_stamp_cache(brush, mask_size_for(max_r));
+        self.ensure_color_stamp_cache(brush, mask_size_for(max_r * brush.stamp_domain(true)));
         let n = self
             .paint
             .color_stamp_cache
@@ -257,7 +257,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
-                super::region::dabs_bounds(dabs, w, h),
+                super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
             );
             let PerLayerStroke { pre, cov } = &mut self.paint.per_layer_stroke;
             let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -599,7 +599,10 @@ impl PainterTool {
         self.ensure_ramp_lut(owner);
         self.ensure_shape_ramp_lut();
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
-        self.ensure_ramp_color_stamp_cache(brush, mask_size_for(max_r));
+        self.ensure_ramp_color_stamp_cache(
+            brush,
+            mask_size_for(max_r * brush.stamp_domain(self.paint.shape_image.is_some())),
+        );
         let Some((stamp, _)) = self.paint.ramp_color_stamp_cache.as_ref() else {
             return;
         };

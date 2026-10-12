@@ -23,8 +23,9 @@ mod stencil;
 mod tiled;
 pub use kind::TextureKind;
 pub use shape::{
-    ImageRgb, compose_shape_silhouette_kind, remap_shape_value, render_shape_preview,
-    sample_shape_rgb_unit, sample_shape_silhouette, sample_shape_silhouette_unit,
+    ImageRgb, compose_shape_silhouette_kind, image_tip_extent, image_tip_radius, remap_shape_value,
+    render_shape_preview, sample_shape_rgb_unit, sample_shape_silhouette,
+    sample_shape_silhouette_unit,
 };
 pub use stencil::{render_stencil_preview, stencil_frame, stencil_gate};
 pub use tiled::{angle_basis, sample_tiled, sample_tiled_rot, sample_tiled_rot_wrapped};

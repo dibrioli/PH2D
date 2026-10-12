@@ -207,8 +207,10 @@ impl PainterTool {
         }
         let (mut minx, mut miny, mut maxx, mut maxy) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
         let mut max_r = 0.0_f32;
+        // O alcance da ponta de imagem do Shape (Bug #52) — `1` sem ela, ao bit.
+        let reach = self.paint.brush.tip_reach();
         for d in dabs {
-            let r = d.radius_px + 1.0;
+            let r = d.radius_px * reach + 1.0;
             max_r = max_r.max(r);
             minx = minx.min(d.center[0] - r);
             maxx = maxx.max(d.center[0] + r);

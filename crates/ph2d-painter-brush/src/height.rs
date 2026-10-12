@@ -68,6 +68,13 @@ pub struct HeightDab<'a> {
     pub grain_image: Option<&'a crate::texture::ImageMask<'a>>,
 }
 
+/// O alcance do dab em raios: `1`, ou a ponta de imagem do Shape quando ela sai do disco
+/// ([`crate::tip::dab_extent`], Bug #52) — o relevo e o pigmento percorrem a MESMA ponta.
+#[inline]
+pub(crate) fn tip_reach(spec: &crate::BrushSpec, dab: &HeightDab<'_>) -> f32 {
+    spec.dab_tip_reach(dab.shape.as_ref().map(|s| s.basis))
+}
+
 /// How far back the body sweeps, in pixels (0 when there is no previous dab).
 #[inline]
 pub(crate) fn sweep_len(dab: &HeightDab<'_>) -> f32 {
@@ -360,7 +367,9 @@ pub fn accumulate_dab_height(
     let film_aa = crate::height_film::FilmAa::for_dab(spec, dab.shape.is_some(), radius);
     // The bbox has to cover the whole SWEPT body, not just the disc at the centre (+ the AA's
     // one-texel fractional ring so it is not clipped at small radii).
-    let reach = radius + sweep_len(dab) + crate::height_film::FilmAa::pad_px(&film_aa);
+    let reach = radius * tip_reach(spec, dab)
+        + sweep_len(dab)
+        + crate::height_film::FilmAa::pad_px(&film_aa);
     let x0 = (cx - reach).floor().max(0.0) as i64;
     let y0 = (cy - reach).floor().max(0.0) as i64;
     let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
@@ -443,7 +452,7 @@ pub fn erase_dab_height(
     }
     let radius = dab.radius.max(0.5);
     let (cx, cy) = (dab.center[0], dab.center[1]);
-    let reach = radius + sweep_len(dab);
+    let reach = radius * tip_reach(spec, dab) + sweep_len(dab);
     let x0 = (cx - reach).floor().max(0.0) as i64;
     let y0 = (cy - reach).floor().max(0.0) as i64;
     let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);

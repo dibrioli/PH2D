@@ -59,6 +59,49 @@ impl BrushSpec {
             && (self.texture.kind != crate::texture::TextureKind::Image || has_grain_image)
     }
 
+    /// ⭐ **O alcance da ponta em raios, invariante à rotação** (Bug #52): o raio do disco que contém a
+    /// ponta de imagem do Shape em QUALQUER ângulo (a da Shape e a sorteada de cada dab) — `1` sem ponta
+    /// de imagem. As regiões do tool (salvar/restaurar, sujar, desfazer, a guarda) multiplicam o raio
+    /// por ele: inflar a mais é inócuo, a menos deixa rasto (Bug #24). O achatamento só encolhe a ponta.
+    #[must_use]
+    pub fn tip_reach(&self) -> f32 {
+        if !self.shape.is_active() {
+            return 1.0;
+        }
+        crate::texture::image_tip_radius(&self.shape).map_or(1.0, |r| r.max(1.0))
+    }
+
+    /// O alcance de UM dab em raios (`≥ 1`): a ponta de imagem com a base dele (Angle + a rotação
+    /// sorteada, já na pegada de `basis`), ou `1`. Para os núcleos que medem o dab por um raio escalar
+    /// (o relevo, a escultura, o motor da tinta molhada); os por-eixo usam [`crate::tip`].
+    #[must_use]
+    pub fn dab_tip_reach(&self, basis: Option<&crate::texture::TexDabBasis>) -> f32 {
+        let e = crate::tip::dab_extent(
+            [1.0, 1.0],
+            &self.shape,
+            basis.filter(|_| self.shape.is_active()),
+        );
+        e[0].max(e[1])
+    }
+
+    /// O DOMÍNIO do carimbo assado em raios (`≥ 1`, [`crate::tip`]): o quadrado que contém a ponta
+    /// estática deste pincel. Quem escolhe a resolução do assado multiplica o raio por ele, para a ponta
+    /// alargada não perder nitidez. `1` sem ponta de imagem ⇒ o assado de sempre, ao bit.
+    #[must_use]
+    pub fn stamp_domain(&self, has_shape_image: bool) -> f32 {
+        if !self.shape_silhouette_active(has_shape_image) {
+            return 1.0;
+        }
+        let basis = crate::texture::shape_basis(
+            &self.shape,
+            &mut 0u64,
+            [1.0, 1.0],
+            self.footprint_deform(),
+            crate::texture::ShapeFrame::Static,
+        );
+        crate::tip::stamp_domain(&self.shape, Some(&basis))
+    }
+
     /// Whether the **Shape** slot supplies the silhouette (else the [`Self::falloff`] does). True when
     /// a shape kind is assigned AND — for the `Image` kind — the pixels are present: an Image shape with
     /// no image falls back to the falloff, so the brush never paints a blank silhouette. `has_shape_image`

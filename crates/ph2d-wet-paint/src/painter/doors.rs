@@ -51,6 +51,8 @@ impl Engine {
             shape: self.shape,
             dir_x,
             dir_y,
+            reach: 1.0,
+            window_reach: 1.0,
         };
         (dab, water_unit)
     }
@@ -127,7 +129,10 @@ impl Engine {
             .sim
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
-        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        if sil.is_some() {
+            [dab.reach, dab.window_reach] = self.silhouette_reach;
+        }
         if let Some(hook) = self.on_dab.as_mut() {
             hook(b, &dab);
         }
@@ -183,7 +188,10 @@ impl Engine {
         grain: Option<crate::brush::CellFn<'_>>,
     ) {
         let p = self.sim.gather_params(&self.tuning);
-        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, dir_x, dir_y, r);
+        if sil.is_some() {
+            [dab.reach, dab.window_reach] = self.silhouette_reach;
+        }
         self.texture();
         let tex = self.brush_tex.take().unwrap();
         let erase = self.sliders.erase;

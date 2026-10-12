@@ -32,6 +32,8 @@ pub fn accumulate_color_stamp_coverage(
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }
+    // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
+    let radius = radius * stamp.reach;
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;
@@ -100,6 +102,8 @@ pub fn accumulate_color_stamps_fused(
         stamps.iter().all(|s| s.size == size),
         "fused accumulate requires all stamps baked at the same size"
     );
+    // Todas as camadas assam com o MESMO pincel ⇒ o mesmo domínio ([`crate::tip::stamp_domain`]).
+    let radius = radius * stamps[0].reach;
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;
@@ -194,10 +198,13 @@ pub fn accumulate_shape_layer_rgba(
     }
     let depth = spec.grain_depth();
     let (cx, cy) = (center[0], center[1]);
-    let x0 = (cx - radius).floor().max(0.0) as i64;
-    let y0 = (cy - radius).floor().max(0.0) as i64;
-    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    // A caixa cobre a ponta de imagem inteira ([`crate::tip::dab_extent`], Bug #52).
+    let [ex, ey] = crate::tip::dab_extent([1.0, 1.0], &spec.shape, Some(shape_basis));
+    let (rx, ry) = (radius * ex, radius * ey);
+    let x0 = (cx - rx).floor().max(0.0) as i64;
+    let y0 = (cy - ry).floor().max(0.0) as i64;
+    let x1 = ((cx + rx).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + ry).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }

@@ -64,6 +64,12 @@ pub struct Dab {
     pub shape: BrushShape,
     pub dir_x: f64,
     pub dir_y: f64,
+    /// O alcance da silhueta do HOSPEDEIRO em raios (`≥ 1`): a ponta de imagem rodada ou de Size < 1
+    /// vai além de `r` (Bug #52 do Painter). Só o caminho com forma a percorre; o motor deixa `1`.
+    pub reach: f64,
+    /// O alcance que a JANELA do rasto tem de caber (`≥ reach`): o máximo do traço — com a rotação
+    /// sorteada por dab o `reach` varia, e a janela só cresce no primeiro dab.
+    pub window_reach: f64,
 }
 
 pub struct Trail {
@@ -431,7 +437,7 @@ impl Trail {
             // e todo transfer a zeram), então realocar não pode perder tinta
             // acumulada — crescer no meio de uma janela invalidaria as
             // coordenadas locais do que já está lá.
-            self.fit_to(dab.r);
+            self.fit_to(dab.r * dab.window_reach);
         }
     }
 

@@ -140,7 +140,8 @@ fn apply_erase_impl(
     };
     match sil {
         Some(sil) => {
-            for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, dab.r, sil, grain, body);
+            let r = dab.r * dab.reach;
+            for_each_stamp_pixel_shaped(*s, *w, *h, tex, dab.x, dab.y, r, sil, grain, body);
         }
         None => {
             debug_assert!(grain.is_none(), "grain override requires the shaped path");
@@ -161,7 +162,7 @@ fn apply_erase_impl(
         }
     }
     if touched {
-        let r = rect_around(g, dab.x, dab.y, dab.r);
+        let r = rect_around(g, dab.x, dab.y, dab.r * dab.reach);
         expand_to(g, &r);
         Some(r)
     } else {

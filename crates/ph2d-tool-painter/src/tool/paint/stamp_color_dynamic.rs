@@ -173,7 +173,10 @@ impl PainterTool {
         h: u32,
     ) {
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
-        self.ensure_color_stamp_cache(brush, super::stamp_cache::mask_size_for(max_r));
+        self.ensure_color_stamp_cache(
+            brush,
+            super::stamp_cache::mask_size_for(max_r * brush.stamp_domain(true)),
+        );
         let n = self
             .paint
             .color_stamp_cache

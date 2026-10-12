@@ -377,7 +377,15 @@ fn stamp_dab_inner(
     // resultado pintado é o MESMO ao bit** (o que ficava de fora já tinha `falloff_t > 1`), e é isto
     // que faz o custo de um dab deixar de crescer com o quadrado do raio: sobre arte comprimida o
     // raio e o achatamento crescem JUNTOS, logo a área é `R²/|det W|` — os texels que a arte tem.
-    let [ext_x, ext_y] = footprint.extent();
+    // E a ponta de imagem do Shape sai dela quando roda ou tem Size < 1 ([`crate::tip::dab_extent`]).
+    let [ext_x, ext_y] = crate::tip::dab_extent(
+        footprint.extent(),
+        &spec.shape,
+        shape
+            .as_ref()
+            .filter(|_| spec.shape.is_active())
+            .map(|s| s.basis),
+    );
     let (reach_x, reach_y) = (radius * ext_x + aa_pad, radius * ext_y + aa_pad);
     let x0 = (cx - reach_x).floor().max(0.0) as i64;
     let y0 = (cy - reach_y).floor().max(0.0) as i64;

@@ -22,6 +22,8 @@ use crate::texture::ImageMask;
 pub struct ColorStampMask {
     data: Vec<u8>,
     size: u32,
+    /// O domínio assado em raios ([`crate::tip::stamp_domain`]); quem amostra percorre `radius · reach`.
+    reach: f32,
 }
 
 impl ColorStampMask {
@@ -29,6 +31,12 @@ impl ColorStampMask {
     #[must_use]
     pub fn size(&self) -> u32 {
         self.size
+    }
+
+    /// O domínio assado em raios (`≥ 1`) — o raio de quem amostra é `radius · reach`.
+    #[must_use]
+    pub fn reach(&self) -> f32 {
+        self.reach
     }
 
     /// The premultiplied-RGBA texels (`size·size·4`), for the panel's coloured Shape preview.
@@ -110,12 +118,13 @@ pub fn render_color_stamp_mask(
         footprint,
         crate::texture::ShapeFrame::Static,
     );
+    let reach = crate::tip::stamp_domain(&spec.shape, Some(&shape_basis));
     let inv = 2.0 / size as f32;
     for j in 0..size {
-        let v = (j as f32 + 0.5) * inv - 1.0;
+        let v = ((j as f32 + 0.5) * inv - 1.0) * reach;
         let row = (j as usize) * (size as usize) * 4;
         for i in 0..size {
-            let u = (i as f32 + 0.5) * inv - 1.0;
+            let u = ((i as f32 + 0.5) * inv - 1.0) * reach;
             // Composite the layers bottom→top — each higher layer "over" the accumulated lower ones.
             let mut acc = [0.0f32; 4]; // premultiplied rgba
             for (li, layer) in layers.iter().enumerate() {
@@ -165,7 +174,7 @@ pub fn render_color_stamp_mask(
             data[o + 3] = encode(acc[3]);
         }
     }
-    ColorStampMask { data, size }
+    ColorStampMask { data, size, reach }
 }
 
 /// Render the unit **ramp-coloured** stamp at `size`×`size` — the cached fast path for a **Grain +
@@ -200,12 +209,13 @@ pub fn render_ramp_color_stamp(
             crate::texture::ShapeFrame::Static,
         )
     });
+    let reach = crate::tip::stamp_domain(&spec.shape, shape_basis.as_ref());
     let inv = 2.0 / size as f32;
     for j in 0..size {
-        let v = (j as f32 + 0.5) * inv - 1.0;
+        let v = ((j as f32 + 0.5) * inv - 1.0) * reach;
         let row = (j as usize) * (size as usize) * 4;
         for i in 0..size {
-            let u = (i as f32 + 0.5) * inv - 1.0;
+            let u = ((i as f32 + 0.5) * inv - 1.0) * reach;
             // Silhouette coverage — the Shape image REPLACES the falloff (else the bare falloff), exactly
             // like `render_stamp_mask`, so the cached colour matches the per-pixel path's coverage.
             let t = footprint.falloff_t(u, v);
@@ -243,7 +253,7 @@ pub fn render_ramp_color_stamp(
             data[o + 3] = encode(a);
         }
     }
-    ColorStampMask { data, size }
+    ColorStampMask { data, size, reach }
 }
 
 /// Read-only per-dab context for the coloured-stamp blit, shared across the row bands.
@@ -285,6 +295,8 @@ pub fn blit_color_stamp(
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }
+    // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
+    let radius = radius * stamp.reach;
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;

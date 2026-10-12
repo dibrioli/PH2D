@@ -40,6 +40,8 @@ fn dab() -> Dab {
         shape: BrushShape::Round,
         dir_x: 1.0,
         dir_y: 0.0,
+        reach: 1.0,
+        window_reach: 1.0,
     }
 }
 

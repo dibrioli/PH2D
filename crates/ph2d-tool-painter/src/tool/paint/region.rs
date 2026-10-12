@@ -69,7 +69,8 @@ impl PainterTool {
     /// escalar o raio — o centro não se move (`camada_dabs`) —, e a escala usada aqui é o **máximo**
     /// sobre as camadas vivas.
     pub(super) fn caixa_do_lote(&self, dabs: &[Dab]) -> Option<Region> {
-        let escala = self.escala_do_carimbo();
+        // E a ponta de imagem do Shape vai além do raio quando roda ou tem Size < 1 (Bug #52).
+        let escala = self.escala_do_carimbo() * self.paint.brush.tip_reach();
         dabs.iter().fold(None, |acc, d| {
             match (acc, self.dab_bbox(d.center, d.radius_px * escala)) {
                 (Some(a), Some(r)) => Some(super::union_region(a, r)),
@@ -301,10 +302,14 @@ pub(super) fn grow_region(r: Region, pad: u32, w: u32, h: u32) -> Option<Region>
 /// que inclui o pad de AA da rota per-pixel) e ignora cobertura/blend, então um dab que acaba não
 /// escrevendo nada só amplia a região. Amplia é seguro; encolher não é.
 #[must_use]
-pub(super) fn dabs_bounds(dabs: &[Dab], w: u32, h: u32) -> Option<Region> {
+///
+/// `reach` é o alcance da ponta em raios ([`ph2d_painter_brush::BrushSpec::tip_reach`], Bug #52): a
+/// ponta de imagem rodada ou de Size < 1 escreve além de `± raio`.
+pub(super) fn dabs_bounds(dabs: &[Dab], w: u32, h: u32, reach: f32) -> Option<Region> {
     let mut acc: Option<Region> = None;
     for d in dabs {
-        let Some(r) = ph2d_painter_brush::dab_write_bounds(d.center, d.radius_px, w, h) else {
+        let Some(r) = ph2d_painter_brush::dab_write_bounds(d.center, d.radius_px * reach, w, h)
+        else {
             continue;
         };
         let r = Region {
@@ -330,6 +335,7 @@ pub(super) fn caixa_das_camadas(
     camadas: &[Vec<Dab>; N_CAMADAS],
     (w, h): (u32, u32),
     tiling: [bool; 2],
+    reach: f32,
 ) -> Option<Region> {
     let mut acc: Option<Region> = None;
     for lista in camadas {
@@ -340,7 +346,7 @@ pub(super) fn caixa_das_camadas(
         } else {
             lista
         };
-        if let Some(r) = dabs_bounds(lista, w, h) {
+        if let Some(r) = dabs_bounds(lista, w, h, reach) {
             acc = Some(acc.map_or(r, |a| union_region(a, r)));
         }
     }
@@ -353,7 +359,7 @@ mod dab_bounds_tests {
 
     #[test]
     fn an_empty_dab_list_writes_nowhere() {
-        assert_eq!(dabs_bounds(&[], 256, 256), None);
+        assert_eq!(dabs_bounds(&[], 256, 256, 1.0), None);
     }
 }
 

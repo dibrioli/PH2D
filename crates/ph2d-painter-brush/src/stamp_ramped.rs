@@ -58,6 +58,8 @@ pub fn blit_stamp_ramped(
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }
+    // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
+    let radius = radius * mask.reach();
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;

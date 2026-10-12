@@ -21,6 +21,9 @@ use crate::texture::ImageMask;
 pub struct StampMask {
     data: Vec<u8>,
     size: u32,
+    /// O domínio assado em raios (`[-reach, reach]²`, [`crate::tip::stamp_domain`]); `1` sem ponta de
+    /// imagem. Quem blita percorre `radius · reach`.
+    reach: f32,
 }
 
 impl StampMask {
@@ -28,6 +31,12 @@ impl StampMask {
     #[must_use]
     pub fn size(&self) -> u32 {
         self.size
+    }
+
+    /// O domínio assado em raios (`≥ 1`) — o raio de quem blita é `radius · reach`.
+    #[must_use]
+    pub fn reach(&self) -> f32 {
+        self.reach
     }
 }
 
@@ -64,12 +73,13 @@ pub fn render_stamp_mask(
             crate::texture::ShapeFrame::Static,
         )
     });
+    let reach = crate::tip::stamp_domain(&spec.shape, shape_basis.as_ref());
     let inv = 2.0 / size as f32;
     for j in 0..size {
-        let v = (j as f32 + 0.5) * inv - 1.0;
+        let v = ((j as f32 + 0.5) * inv - 1.0) * reach;
         let row = (j as usize) * (size as usize);
         for i in 0..size {
-            let u = (i as f32 + 0.5) * inv - 1.0;
+            let u = ((i as f32 + 0.5) * inv - 1.0) * reach;
             let mut w = match &shape_basis {
                 Some(sb) => {
                     let raw = crate::texture::sample_shape_silhouette_unit(
@@ -99,7 +109,7 @@ pub fn render_stamp_mask(
             data[row + i as usize] = encode(w);
         }
     }
-    StampMask { data, size }
+    StampMask { data, size, reach }
 }
 
 /// Read-only per-dab blit context shared by the row bands.
@@ -145,6 +155,8 @@ pub fn blit_stamp(
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }
+    // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
+    let radius = radius * mask.reach;
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;
@@ -367,14 +379,6 @@ pub fn blit_canvas_cached(
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }
-    let (cx, cy) = (center[0], center[1]);
-    let x0 = (cx - radius).floor().max(0.0) as i64;
-    let y0 = (cy - radius).floor().max(0.0) as i64;
-    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
-    if x0 >= x1 || y0 >= y1 {
-        return None;
-    }
     // The dab flatten/rotate (Shape + falloff are dab-relative ⇒ deform; the canvas-fixed Grain does not).
     let footprint = spec.footprint_deform();
     // The canvas-fixed texture frame (Tiled rotation / Stencil rect); dab-independent (no Jitter, and
@@ -398,6 +402,17 @@ pub fn blit_canvas_cached(
                 crate::texture::ShapeFrame::Static,
             )
         });
+    // A caixa cobre a ponta de imagem inteira ([`crate::tip::dab_extent`], Bug #52).
+    let [ex, ey] = crate::tip::dab_extent([1.0, 1.0], &spec.shape, shape_basis.as_ref());
+    let (cx, cy) = (center[0], center[1]);
+    let (rx, ry) = (radius * ex, radius * ey);
+    let x0 = (cx - rx).floor().max(0.0) as i64;
+    let y0 = (cy - ry).floor().max(0.0) as i64;
+    let x1 = ((cx + rx).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + ry).ceil() as i64 + 1).min(height as i64);
+    if x0 >= x1 || y0 >= y1 {
+        return None;
+    }
     let ctx = CanvasBlitCtx {
         spec,
         basis,

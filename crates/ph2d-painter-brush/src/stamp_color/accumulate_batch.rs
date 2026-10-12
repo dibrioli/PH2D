@@ -76,6 +76,7 @@ pub fn accumulate_color_stamps_fused_batch(
         inv_radius: f32,
         coverage: f32,
     }
+    let reach = stamps[0].reach;
     let mut boxes: Vec<Box_> = Vec::with_capacity(dabs.len());
     for (di, d) in dabs.iter().enumerate() {
         let coverage = d.coverage.clamp(0.0, 1.0);
@@ -83,10 +84,12 @@ pub fn accumulate_color_stamps_fused_batch(
             continue;
         }
         let (cx, cy) = (d.center[0], d.center[1]);
-        let x0 = (cx - d.radius).floor().max(0.0) as i64;
-        let y0 = (cy - d.radius).floor().max(0.0) as i64;
-        let x1 = ((cx + d.radius).ceil() as i64 + 1).min(width as i64);
-        let y1 = ((cy + d.radius).ceil() as i64 + 1).min(height as i64);
+        // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
+        let r = d.radius * reach;
+        let x0 = (cx - r).floor().max(0.0) as i64;
+        let y0 = (cy - r).floor().max(0.0) as i64;
+        let x1 = ((cx + r).ceil() as i64 + 1).min(width as i64);
+        let y1 = ((cy + r).ceil() as i64 + 1).min(height as i64);
         if x0 >= x1 || y0 >= y1 {
             continue;
         }
@@ -98,7 +101,7 @@ pub fn accumulate_color_stamps_fused_batch(
             y1,
             cx,
             cy,
-            inv_radius: 1.0 / d.radius,
+            inv_radius: 1.0 / r,
             coverage,
         });
     }
@@ -288,10 +291,13 @@ pub fn accumulate_shape_layers_rgba_batch(
             continue;
         }
         let (cx, cy) = (d.center[0], d.center[1]);
-        let x0 = (cx - d.radius).floor().max(0.0) as i64;
-        let y0 = (cy - d.radius).floor().max(0.0) as i64;
-        let x1 = ((cx + d.radius).ceil() as i64 + 1).min(width as i64);
-        let y1 = ((cy + d.radius).ceil() as i64 + 1).min(height as i64);
+        // A caixa cobre a ponta de imagem inteira ([`crate::tip::dab_extent`], Bug #52).
+        let [ex, ey] = crate::tip::dab_extent([1.0, 1.0], &d.spec.shape, Some(&d.shape_basis));
+        let (rx, ry) = (d.radius * ex, d.radius * ey);
+        let x0 = (cx - rx).floor().max(0.0) as i64;
+        let y0 = (cy - ry).floor().max(0.0) as i64;
+        let x1 = ((cx + rx).ceil() as i64 + 1).min(width as i64);
+        let y1 = ((cy + ry).ceil() as i64 + 1).min(height as i64);
         if x0 >= x1 || y0 >= y1 {
             continue;
         }
@@ -537,6 +543,7 @@ pub fn accumulate_color_stamps_rgba_batch(
         inv_radius: f32,
         coverage: f32,
     }
+    let reach = stamps[0].reach;
     let mut boxes: Vec<Box_> = Vec::with_capacity(dabs.len());
     for (di, d) in dabs.iter().enumerate() {
         let coverage = d.coverage.clamp(0.0, 1.0);
@@ -544,10 +551,12 @@ pub fn accumulate_color_stamps_rgba_batch(
             continue;
         }
         let (cx, cy) = (d.center[0], d.center[1]);
-        let x0 = (cx - d.radius).floor().max(0.0) as i64;
-        let y0 = (cy - d.radius).floor().max(0.0) as i64;
-        let x1 = ((cx + d.radius).ceil() as i64 + 1).min(width as i64);
-        let y1 = ((cy + d.radius).ceil() as i64 + 1).min(height as i64);
+        // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
+        let r = d.radius * reach;
+        let x0 = (cx - r).floor().max(0.0) as i64;
+        let y0 = (cy - r).floor().max(0.0) as i64;
+        let x1 = ((cx + r).ceil() as i64 + 1).min(width as i64);
+        let y1 = ((cy + r).ceil() as i64 + 1).min(height as i64);
         if x0 >= x1 || y0 >= y1 {
             continue;
         }
@@ -559,7 +568,7 @@ pub fn accumulate_color_stamps_rgba_batch(
             y1,
             cx,
             cy,
-            inv_radius: 1.0 / d.radius,
+            inv_radius: 1.0 / r,
             coverage,
         });
     }

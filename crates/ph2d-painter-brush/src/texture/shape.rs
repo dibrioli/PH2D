@@ -215,6 +215,70 @@ pub fn sample_shape_unit(
     shape_value(s, b, f, [sx, sy], image)
 }
 
+/// Os quatro cantos da ponta de imagem `|tex| ≤ 1` de [`shape_value`] desfeitos o Offset e o Size —
+/// ainda no referencial RODADO da Shape. `None` quando a ponta não é esse quadrado: um Shape
+/// procedural multiplica pelo falloff (o círculo manda) e o Flow ladrilha ao longo do traço.
+fn image_tip_corners(s: &TextureSettings) -> Option<[[f32; 2]; 4]> {
+    if s.kind != TextureKind::Image || s.flow {
+        return None;
+    }
+    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let q = |a: f32, b: f32| [(a - s.offset[0]) / sx, (b - s.offset[1]) / sy];
+    Some([q(-1.0, -1.0), q(1.0, -1.0), q(-1.0, 1.0), q(1.0, 1.0)])
+}
+
+/// ⭐⭐ **A PORTA DO ALCANCE da ponta de imagem** (Bug #52): a meia-caixa, em unidades de raio e nos eixos
+/// da TELA, que contém o quadrado `|tex| ≤ 1` de [`shape_value`] levado de volta pelo Offset, pelo Size,
+/// pela rotação da Shape (`b.u`/`b.v`) e pela pegada do dab (`b.footprint`, que carrega o Jitter Rotate e
+/// o achatamento). `None` = a ponta não é um quadrado ([`image_tip_corners`]); o chamador fica com a
+/// caixa da pegada.
+///
+/// ⚠️ Superconjunto declarado, como o [`crate::FootprintDeform::extent`]: exacto numa pegada plana (os
+/// cantos levados à tela), pela curva de nível com margem numa curva. A `0°`, Size `1`, sem Offset dá
+/// `[1, 1]` ao bit — a caixa de sempre.
+#[must_use]
+pub fn image_tip_extent(s: &TextureSettings, b: &TexDabBasis) -> Option<[f32; 2]> {
+    let q = image_tip_corners(s)?;
+    // `tex = M·rel·size + offset`, com as linhas de `M` = `u`, `v` ⇒ `rel = M⁻¹·q`.
+    let det = b.u[0] * b.v[1] - b.u[1] * b.v[0];
+    if det.abs() <= 1e-6 || det.is_nan() {
+        return None;
+    }
+    let rel = q.map(|c| {
+        [
+            (b.v[1] * c[0] - b.u[1] * c[1]) / det,
+            (b.u[0] * c[1] - b.v[0] * c[0]) / det,
+        ]
+    });
+    if !b.footprint.is_flat_footprint() {
+        let rho = rel
+            .iter()
+            .map(|r| (r[0] * r[0] + r[1] * r[1]).sqrt())
+            .fold(0.0_f32, f32::max);
+        return Some(b.footprint.extent_at(rho));
+    }
+    let mut e = [0.0_f32; 2];
+    for r in rel {
+        let p = b.footprint.unapply_linear(r);
+        e = [e[0].max(p[0].abs()), e[1].max(p[1].abs())];
+    }
+    Some(e)
+}
+
+/// O alcance da ponta de imagem em raios INVARIANTE à rotação (a da Shape e a do dab): o raio do disco
+/// que a contém em qualquer ângulo — o que as regiões do tool usam, que não conhecem a rotação sorteada
+/// de cada dab. `≥` qualquer componente de [`image_tip_extent`] numa pegada plana (o achatamento só
+/// encolhe). `None` como em [`image_tip_corners`].
+#[must_use]
+pub fn image_tip_radius(s: &TextureSettings) -> Option<f32> {
+    image_tip_corners(s).map(|q| {
+        q.iter()
+            .map(|c| (c[0] * c[0] + c[1] * c[1]).sqrt())
+            .fold(0.0_f32, f32::max)
+    })
+}
+
 /// Shared core of [`sample_shape`] / [`sample_shape_unit`]: rotate the scaled footprint coord `rel`
 /// into the shape's frame (basis already carries the rotation), translate by Offset, then read the
 /// silhouette. Outside the `[-1, 1]²` tip → `0`. Image kind clamps to the border (one finite copy);

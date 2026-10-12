@@ -99,7 +99,10 @@ impl PainterTool {
         h: u32,
     ) {
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
-        self.ensure_stamp_cache(brush, mask_size_for(max_r));
+        self.ensure_stamp_cache(
+            brush,
+            mask_size_for(max_r * brush.stamp_domain(self.paint.shape_image.is_some())),
+        );
         let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
             return;
         };
@@ -107,7 +110,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h),
+            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -159,7 +162,10 @@ impl PainterTool {
         let owner = self.color_ramp_owner(brush.texture.is_active());
         self.ensure_ramp_lut(owner);
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
-        self.ensure_stamp_cache(brush, mask_size_for(max_r));
+        self.ensure_stamp_cache(
+            brush,
+            mask_size_for(max_r * brush.stamp_domain(self.paint.shape_image.is_some())),
+        );
         let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
             return;
         };
@@ -169,7 +175,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h),
+            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -243,7 +249,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h),
+            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -357,7 +363,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h),
+            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
         );
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
@@ -507,7 +513,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h),
+            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
         );
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());

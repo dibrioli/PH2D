@@ -316,7 +316,7 @@ impl<'a, 'b> Passeio<'a, 'b> {
         let (cx, cy) = (dab.center[0], dab.center[1]);
         // The bbox covers the whole SWEPT body, not just the disc at the centre — otherwise the
         // intensity would bead at every pointer event, at a rhythm chosen by the mouse's polling rate.
-        let reach = radius + crate::height::sweep_len(dab);
+        let reach = radius * crate::height::tip_reach(spec, dab) + crate::height::sweep_len(dab);
         let x0 = (cx - reach).floor().max(0.0) as i64;
         let y0 = (cy - reach).floor().max(0.0) as i64;
         let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);

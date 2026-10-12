@@ -316,6 +316,15 @@ impl PainterTool {
                     image: shape_image.as_ref(),
                     ramp_lut: shape_ramp_lut,
                 });
+            // O alcance da ponta de imagem (Bug #52): o motor percorre `r · reach` células, e a
+            // janela do rasto cabe o máximo do traço (com rotação por dab, o disco de qualquer ângulo).
+            let reach = spec.dab_tip_reach(shape_basis.as_ref());
+            let janela = if spec.shape_has_per_dab_rotation(shape_image.is_some()) {
+                spec.tip_reach().max(reach)
+            } else {
+                reach
+            };
+            sess.engine.silhouette_reach = [f64::from(reach), f64::from(janela)];
             // Grain basis AFTER the Shape basis, from the same RNG stream —
             // the colour route's resolve order (Shape before Grain), so the
             // random draws land where every other route puts them.

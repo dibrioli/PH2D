@@ -109,9 +109,12 @@ impl PainterTool {
         }
         #[cfg(test)]
         fases::soma(fases::PRE, t_pre);
-        let Some(caixa_nova) =
-            super::region::caixa_das_camadas(&camadas, (w, h), self.paint.tiling)
-        else {
+        let Some(caixa_nova) = super::region::caixa_das_camadas(
+            &camadas,
+            (w, h),
+            self.paint.tiling,
+            self.paint.brush.tip_reach(),
+        ) else {
             return;
         };
         // A bissecção do §3.1 da auditoria, agora sobre a rota de acumulação: com a região a ser o

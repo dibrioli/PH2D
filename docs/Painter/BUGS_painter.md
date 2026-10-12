@@ -3,7 +3,7 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#52** (a ponta da Shape cortada), o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
 > 2026-10-03, e o texto dele fica como registo), a **tinta
 > EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
 > (o texto do #15 mudou-se em 2026-10-11 para o pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)),
@@ -29,44 +29,6 @@
 > [**#1 a #40**](BUGS_painter_fechados_1_a_40.md) · [**#41 a #46** e #37, mais o post-mortem do #15](BUGS_painter_fechados_41_a_46.md).
 > Bug fechado novo: uma linha no fim do segundo pedaço.
 
-
----
-
-## Bug #52 — A ponta da Shape de imagem sai CORTADA com Jitter Rotate (ABERTO, smoke do dono 2026-10-12)
-
-**Report:** *«usando jitter de rot, scale e pos, a ponta da textura em shape às vezes é cortada. Suspeito que o
-jitter provoca um bug de crop.»* ⚠️ **O jitter só o MOSTRA; a causa é a caixa.**
-
-**Mecanismo (medido pela rota real, `stamp_dabs`; sonda `ponta_cortada::sonda_ponta_cortada`, imagem
-QUADRADA cheia, raio 10):** o laço de cada carimbo percorre a caixa `centro ± raio` (× a extensão da pegada
-— `accumulate.rs`, `accumulate_batch.rs`, `dab.rs:380`), e o carimbo cacheado assa só `[-1, 1]²`
-(`render_color_stamp_mask`, `render_stamp_mask`, lidos por `tip::axis_taps`). Mas a ponta de uma Shape de imagem
-é o quadrado `|tex| ≤ 1` no referencial DELA (`shape_value`: rotação, Size e Offset) — e não está recortada
-ao círculo. Rodada, os cantos chegam a `√2·r`; com Size < 1 a ponta é MAIOR que o raio.
-
-| caso (com e sem «Use Texture Colors», igual) | alcance | píxeis | sem corte |
-|---|---|---|---|
-| Size 1, 0° | ±10 | 400 | 400 ✓ |
-| Size 1, 30° / 45° | ±10 | 354 / 356 | 400 (cantos a 14,1) |
-| Size 0,6, qualquer ângulo, rota dinâmica | ±10 | 441 | ≈ 1111 |
-| Size 0,6, 0°, carimbo cacheado | ±10 | **400** | ≈ 1111 — e ≠ 441: duas respostas |
-
-**O portão que estava VERDE:** `no_kernel_writes_outside_the_tip` (`tip_kernel_tests.rs`) — o oráculo
-dele define a ponta como `|p + 0,5 − c| ≤ r` nos eixos da TELA, e é exactamente a caixa que corta. A
-fixtura (0°, Size 1, sem Offset) é o único caso em que a ponta e a caixa coincidem — *uma fixtura alinhada
-aos eixos não mede uma base*. ⚠️ **O doc do teste e o de `tip.rs` dizem que esse oráculo é «a mesma frase» de
-`shape_value`; não é** (lá o `|tex| > 1` é no referencial da ponta) — são parte do bug.
-
-**A cura desenhada (próxima janela, [prompt 25](NewFeaturesWetPaint/25_PROMPT_janela_ponta_cortada.md)):** UMA
-porta para «até onde chega a ponta» — o alcance, em unidades de raio, do quadrado `|tex| ≤ 1` levado de volta
-pela rotação + Size + Offset + pegada (superconjunto declarado, como o `extent`), invariante à rotação do
-dab se for por spec — e TODO quem responde à pergunta passa por ela: os três núcleos de cor, o `dab.rs`, os
-dois carimbos cacheados (assar no domínio do alcance e o `tip::axis_taps` amostrar nele) e as regiões do tool
-(`dab_bbox` / `caixa_do_lote` / `dab_batch_region`: salvar, restaurar, sujar e desfazer — *inflar a menos deixa
-rasto*, a lição do #24). O carimbo de grade (0°, Size 1) fica ao bit. Portões vermelhos:
-`diag_bug52_a_ponta_rodada_nao_e_cortada` · `diag_bug52_size_menor_que_um_nao_corta_a_ponta_nas_duas_rotas`
-(`--ignored`). ⏳ Por medir: o Angle ESTÁTICO da Shape (sem jitter, rota cacheada) — o mesmo mecanismo prevê
-o mesmo corte.
 
 ---
 

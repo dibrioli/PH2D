@@ -123,6 +123,8 @@ pub struct Engine {
     /// o `TRAIL_SIZE` virou o PISO dela. O texto antigo dizia o número fixo.
     /// Lazily grown; ended together by [`Self::end_direct_stroke`].
     pub lane_trails: Vec<Trail>,
+    /// `[dab, janela]` do hospedeiro, por dab com forma ([`crate::trail::Dab::reach`]); `[1, 1]` = o raio.
+    pub silhouette_reach: [f64; 2],
     /// Test hook: (pressure, dab) per dispatched dab.
     ///
     /// ⚠️ **`+ Send` porque o `Engine` VIAJA** — a sim roda numa thread própria
@@ -164,6 +166,7 @@ impl Engine {
             brush_tex: None,
             trail: Trail::default(),
             lane_trails: Vec::new(),
+            silhouette_reach: [1.0, 1.0],
             stroke: Stroke::default(),
             stroke_events: Vec::new(),
             tool: Tool::Paint,

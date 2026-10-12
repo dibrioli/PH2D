@@ -18,6 +18,46 @@
 //! e uma linha inteira fora da ponta é descartada de uma vez — estritamente MENOS trabalho do que a
 //! versão que clampava e depois multiplicava por um peso.
 
+/// ⭐⭐ **Até onde chega o dab**, em raios por eixo: a caixa `base` (a da pegada, ou `[1, 1]`) alargada
+/// até à ponta de imagem do Shape quando há uma ([`crate::texture::image_tip_extent`], Bug #52). Todo
+/// núcleo que percorre um dab com Shape pergunta AQUI — a ponta rodada ou de Size < 1 sai da caixa
+/// `± raio`, e a caixa que a cortava era o defeito. Sem ponta de imagem devolve `base` ao bit.
+#[inline]
+#[must_use]
+pub(crate) fn dab_extent(
+    base: [f32; 2],
+    shape: &crate::TextureSettings,
+    basis: Option<&crate::texture::TexDabBasis>,
+) -> [f32; 2] {
+    #[cfg(test)]
+    if CAIXA_DO_RAIO.with(std::cell::Cell::get) {
+        return base; // a caixa de ANTES da cura, para o A/B de custo ser no mesmo processo
+    }
+    match basis.and_then(|b| crate::texture::image_tip_extent(shape, b)) {
+        Some(t) => [base[0].max(t[0]), base[1].max(t[1])],
+        None => base,
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// A medição de custo (`measure_o_custo_do_alcance`): `true` = a caixa `± raio` de antes do #52.
+    pub(crate) static CAIXA_DO_RAIO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O DOMÍNIO do carimbo assado, em raios (`≥ 1`): o quadrado `[-d, d]²` que contém a ponta estática
+/// ([`dab_extent`] sobre `[1, 1]`). `1` sem ponta de imagem — o assado de sempre, ao bit. Quem assa
+/// percorre `u·d`, quem amostra divide pela mesma `d` (`radius · d` no lugar de `radius`), então
+/// [`axis_taps`] continua a responder no quadrado unitário DO CARIMBO.
+#[must_use]
+pub(crate) fn stamp_domain(
+    shape: &crate::TextureSettings,
+    basis: Option<&crate::texture::TexDabBasis>,
+) -> f32 {
+    let e = dab_extent([1.0, 1.0], shape, basis);
+    e[0].max(e[1])
+}
+
 /// Os dois texels vizinhos e o peso bilinear de UM eixo, ou `None` fora da ponta.
 ///
 /// `c` é a coordenada do dab em `[-1, 1]` (centro `0`), `size` o lado do stamp cacheado. A convenção é
@@ -26,8 +66,12 @@
 ///
 /// ⚠️ **O clamp governa só o INTERIOR.** Ele existe porque o meio texel entre a borda e o aro não tem
 /// vizinho de fora; estendê-lo para ALÉM do quadrado unitário é que era o defeito — ali não há dab
-/// nenhum, e a rota por-pixel sempre disse isso ([`crate::texture::shape::shape_value`] devolve `0`
-/// para `|tex| > 1`).
+/// nenhum.
+///
+/// ⛔ **O quadrado unitário é o do CARIMBO, não o da ponta** (Bug #52). A ponta de imagem é `|tex| ≤ 1`
+/// no referencial DELA ([`crate::texture::shape::shape_value`]) — rodada ou de Size < 1 ela sai de
+/// `[-1, 1]²` raios. O carimbo assa o domínio [`stamp_domain`] que a contém, e quem amostra divide por
+/// ele (`radius · reach`); só a `0°`, Size `1`, sem Offset, os dois quadrados coincidem.
 ///
 /// ⚠️ **O `NaN` sai por `None`, e é EXPLÍCITO:** `a > 1.0` é falso para `NaN`, então sem o teste ele
 /// entraria como se estivesse dentro e os índices sairiam do `as i64` de um `NaN` — zero, mudo.

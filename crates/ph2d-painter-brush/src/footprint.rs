@@ -196,6 +196,18 @@ impl FootprintDeform {
         self.curve.add_to(lin, [ru, rv])
     }
 
+    /// O inverso da parte LINEAR de [`Self::apply`]: do referencial da pegada de volta à tela, em
+    /// unidades de raio. Exacto numa pegada plana; a curvatura NÃO entra (quem a tem usa
+    /// [`Self::extent_at`]).
+    #[must_use]
+    pub fn unapply_linear(self, f: [f32; 2]) -> [f32; 2] {
+        if self.is_identity() {
+            return f;
+        }
+        let (ru, rv) = (f[0], f[1] * self.minor_fraction());
+        [ru * self.cos - rv * self.sin, ru * self.sin + rv * self.cos]
+    }
+
     /// A fração do eixo MAIOR que o eixo MENOR mede (`1` = redondo, `1 − Flatten` achatado).
     ///
     /// É o número de que a admissibilidade da LUT do filme é feita ([`crate::height_film::FilmLut`]):
@@ -220,6 +232,12 @@ impl FootprintDeform {
     /// exactamente `1` — a fronteira da pegada É a curva de nível que o amostrador usa. Há gate.
     #[must_use]
     pub fn outline_at(self, t: f32) -> [f32; 2] {
+        self.level_outline_at(t, 1.0)
+    }
+
+    /// A curva de nível `falloff_t = level` no parâmetro `t` — o [`Self::outline_at`] é `level = 1`, ao
+    /// bit (`× 1` e `4 · 1` são exactos).
+    fn level_outline_at(self, t: f32, level: f32) -> [f32; 2] {
         let (sen, cos) = (t * std::f32::consts::TAU).sin_cos();
         let menor = sen * self.minor_fraction();
         let elipse = [
@@ -227,7 +245,7 @@ impl FootprintDeform {
             cos * self.sin + menor * self.cos,
         ];
         if self.curve.is_flat() {
-            return elipse;
+            return [elipse[0] * level, elipse[1] * level];
         }
         // ⭐ Com curvatura a curva de nível **não é uma elipse**, e o anel tem de a percorrer — não
         // uma elipse que a tinta não pinta. A direcção é a mesma; o RAIO resolve-se contra o próprio
@@ -237,10 +255,10 @@ impl FootprintDeform {
         // ⚠️ **A cerca é a estrelaridade:** para uma dobra forte a ponto de a curva de nível deixar
         // de ser vista da origem, a bissecção devolve o primeiro cruzamento — o anel fica MENOR que
         // a tinta em vez de partido. É a degradação certa para desenhar um contorno.
-        let (mut lo, mut hi) = (0.0_f32, 4.0_f32);
+        let (mut lo, mut hi) = (0.0_f32, 4.0_f32 * level);
         for _ in 0..24 {
             let mid = 0.5 * (lo + hi);
-            if self.falloff_t(elipse[0] * mid, elipse[1] * mid) < 1.0 {
+            if self.falloff_t(elipse[0] * mid, elipse[1] * mid) < level {
                 lo = mid;
             } else {
                 hi = mid;
@@ -315,6 +333,18 @@ impl FootprintDeform {
                 (s * s + c * c * m * m).sqrt(),
             ];
         }
+        self.extent_at(1.0)
+    }
+
+    /// A caixa da curva de nível `falloff_t = level` — o [`Self::extent`] é `level = 1`. Plana: a mesma
+    /// elipse escalada (exacto); curva: amostrada com margem para cima. Serve a ponta de imagem do
+    /// Shape (Bug #52), que no referencial da pegada cabe no disco de raio `level`.
+    #[must_use]
+    pub fn extent_at(self, level: f32) -> [f32; 2] {
+        if self.curve.is_flat() {
+            let e = self.extent();
+            return [e[0] * level, e[1] * level];
+        }
         const AMOSTRAS: usize = 64;
         /// ⚠️ A margem cobre o extremo que cai ENTRE duas amostras — e ela é para cima, que é o lado
         /// seguro: uma caixa grande a mais visita texels de cobertura zero, uma pequena a menos
@@ -322,7 +352,7 @@ impl FootprintDeform {
         const MARGEM: f32 = 1.03;
         let (mut ex, mut ey) = (0.0f32, 0.0f32);
         for k in 0..AMOSTRAS {
-            let p = self.outline_at(k as f32 / AMOSTRAS as f32);
+            let p = self.level_outline_at(k as f32 / AMOSTRAS as f32, level);
             ex = ex.max(p[0].abs());
             ey = ey.max(p[1].abs());
         }

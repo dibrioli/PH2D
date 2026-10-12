@@ -81,3 +81,46 @@ CLIQUE*) e [[feedback_tool_unit_green_integration_dead]] (*unit-verde ≠ funcio
 | 49 | **Azul escuro sobre azul claro ficava VERDE no soltar** (dono 11/10, *Pigment mixing* desligado; depois do Undo os traços saíam azuis). Mecanismo: no soltar a sim volta a andar e o filme escuro ASSENTA sobre o claro seco; `assenta::resolve` (Newton por canal) media a derivada de cada canal contra o ecrã do INÍCIO da volta, mas o tapar extra (`diferenca_de_pigmento`) acopla os três canais — mexer no R mudava o G, e o assentado ia a verde-água (83,178,211). O Undo «curava» porque o claro passa a BASE congelada (sem assentado no motor). Não era K–M. Cura: cada canal lê o ecrã depois do anterior. Portões `assenta::assentar_azul_sobre_azul_nao_muda_o_tom` (lei: +15 → ≤ 1,4 a `d` 5 %) e `verde_no_soltar_tests::o_azul_sobre_azul_nao_fica_verde_no_soltar` (produto: Oil Bristle +17, Express Oil +10 → ≤ 3). O portão que estava verde: `na_lei_do_rebelle_assentar_preserva_o_ecra_seco` media UM passe, com amarelo sob azul — a deriva acumula em muitos. |
 | 50 | **A orla «esbranquiçada» do azul escuro fino sobre o azul claro seco** (dono 12/10, fotos: (71,129,184) entre (35,125,207) e (19,74,125); depois do Undo sumia). Mecanismo: no `Ecra::Cobre` o tapar EXTRA (`a_e > a_t`) pinta-se com a tinta diluída em BRANCO — é o que faz o claro cobrir o escuro como no Rebelle (γ azul/vermelho 0,42–0,51), mas onde o filme é mais ESCURO o branco clareava o ponto além das duas tintas; a lei pura dá (59–61,131,197) ao par do dono a `a_f` 0,2–0,3. Sobre a base congelada (depois do Undo) não há assentado no motor ⇒ sem tapar extra. O Rebelle nunca passa da mais clara das duas (as bordas do vermelho sobre o azul seco em `fixtures/rebelle/{oil,express}.png`). Cura: cada canal do ecrã pára na mais clara das duas (`.min(t_s.max(uc))`, DEPOIS da velatura). Recusadas, medidas: travar `a_e` (re-molhar com Glaze Δ15,4 com 19 livres; Glaze γ +0,10 < +0,15), o extra com a mais clara (γ 0,76 fora do Rebelle), o extra com a própria tinta (γ 0,97). Portões `assenta::o_ecra_fica_na_caixa_das_tintas` (61 → 0) e `verde_no_soltar_tests::o_escuro_fino_sobre_o_claro_seco_nao_deixa_orla_clara` (27 → 3; régua: o claro CHEIO e a massa que não desce — onde a água afina, clarear para o papel é verdade). Tectos re-medidos com a lei nova: re-molhar com Glaze Wet 15,36 · livres 2,97 (M7b continua a sangrar), Wet Drip «mais clara» 0,1516. ⚠️ Visto e NÃO mudado: o realce do Emboss por diferença central põe metade da encosta na célula de FORA de uma aresta grossa (+22 sobre o claro, à esquerda/em cima do traço) — a cor da foto do dono é da lei, não dele. |
 | 51 | **A imagem no Shape com «Use Texture Colors» calava o Color e o Randomize Color** (dono 12/10). Mecanismo: a camada com RGB capturado SUBSTITUÍA a cor do carimbo (`Some(img) => sample`, nos três núcleos) e o desvio do Randomize era RECONSTRUÍDO de «Color → cor do carimbo» (`shift_colors_like`) — nulo num Color branco/cinza. Cura: a lei `textura × tinta` numa porta só (`stamp_color::texture_times_tint`, os três núcleos), o `Dab` carrega o desvio SORTEADO (`color_shift`; o `shift_colors_like` saiu), a tinta por modo (`ShapeLayers::resolved_colors`: uma camada = Color, Per-Layer = branco nas de textura), o Color → branco ao associar a imagem/ligar o modo (só onde a textura pinta: nem Wet Paint nem Watercolor) e INATIVO em Per-Layer (`BrushSettings::color_inactive`, sem alvo de clique). No mesmo bloco: o Randomize Color «a cada traço» (`ColorJitterScope`, sorteio em `Stroke::new` de um fluxo próprio; os sorteios por carimbo continuam ⇒ os outros jitters ao bit). Portões: `textura_tinge` (10), `seam_color_inativo` (2), `per_stroke_colour_changes_only_the_colour`, `per_dab_randomize_is_byte_identical_to_before_the_scope` (impressão tirada no `348c81d206`). Handoff: [prompt 24](handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-12_BUG51_TEXTURA_TINGE.md) | 2026-10-12 |
+| 52 | **A ponta da Shape de imagem saía CORTADA rodada (Jitter Rotate ou Angle) ou com Size < 1** (dono 12/10). Mecanismo: todo núcleo percorria a caixa `centro ± raio` e o carimbo assado só `[-1, 1]²`, mas a ponta é `|tex| ≤ 1` no referencial DELA (rodada chega a `√2·r`, Size 0,6 a `1,67·r`); o portão `no_kernel_writes_outside_the_tip` definia a ponta nos eixos da TELA — a fixtura a 0° era o único caso em que coincidem. Cura: UMA porta do alcance (`texture::image_tip_extent` → `tip::dab_extent` nos núcleos por-pixel, `tip::stamp_domain` no domínio do assado, `BrushSpec::tip_reach` nas regiões do tool); 0°/Size 1 ao bit. [post-mortem](#post-mortem-do-52-verbatim-aberto-em-1210) · [handoff](handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-12_BUG52_PONTA_CORTADA.md) |
+
+---
+
+## Post-mortem do #52 (verbatim, aberto em 12/10)
+
+> Fechado no mesmo dia pelo [prompt 25](NewFeaturesWetPaint/25_PROMPT_janela_ponta_cortada.md); o texto de quando estava ABERTO, sem cortes.
+
+### Bug #52 — A ponta da Shape de imagem sai CORTADA com Jitter Rotate (ABERTO, smoke do dono 2026-10-12)
+
+**Report:** *«usando jitter de rot, scale e pos, a ponta da textura em shape às vezes é cortada. Suspeito que o
+jitter provoca um bug de crop.»* ⚠️ **O jitter só o MOSTRA; a causa é a caixa.**
+
+**Mecanismo (medido pela rota real, `stamp_dabs`; sonda `ponta_cortada::sonda_ponta_cortada`, imagem
+QUADRADA cheia, raio 10):** o laço de cada carimbo percorre a caixa `centro ± raio` (× a extensão da pegada
+— `accumulate.rs`, `accumulate_batch.rs`, `dab.rs:380`), e o carimbo cacheado assa só `[-1, 1]²`
+(`render_color_stamp_mask`, `render_stamp_mask`, lidos por `tip::axis_taps`). Mas a ponta de uma Shape de imagem
+é o quadrado `|tex| ≤ 1` no referencial DELA (`shape_value`: rotação, Size e Offset) — e não está recortada
+ao círculo. Rodada, os cantos chegam a `√2·r`; com Size < 1 a ponta é MAIOR que o raio.
+
+| caso (com e sem «Use Texture Colors», igual) | alcance | píxeis | sem corte |
+|---|---|---|---|
+| Size 1, 0° | ±10 | 400 | 400 ✓ |
+| Size 1, 30° / 45° | ±10 | 354 / 356 | 400 (cantos a 14,1) |
+| Size 0,6, qualquer ângulo, rota dinâmica | ±10 | 441 | ≈ 1111 |
+| Size 0,6, 0°, carimbo cacheado | ±10 | **400** | ≈ 1111 — e ≠ 441: duas respostas |
+
+**O portão que estava VERDE:** `no_kernel_writes_outside_the_tip` (`tip_kernel_tests.rs`) — o oráculo
+dele define a ponta como `|p + 0,5 − c| ≤ r` nos eixos da TELA, e é exactamente a caixa que corta. A
+fixtura (0°, Size 1, sem Offset) é o único caso em que a ponta e a caixa coincidem — *uma fixtura alinhada
+aos eixos não mede uma base*. ⚠️ **O doc do teste e o de `tip.rs` dizem que esse oráculo é «a mesma frase» de
+`shape_value`; não é** (lá o `|tex| > 1` é no referencial da ponta) — são parte do bug.
+
+**A cura desenhada (próxima janela, [prompt 25](NewFeaturesWetPaint/25_PROMPT_janela_ponta_cortada.md)):** UMA
+porta para «até onde chega a ponta» — o alcance, em unidades de raio, do quadrado `|tex| ≤ 1` levado de volta
+pela rotação + Size + Offset + pegada (superconjunto declarado, como o `extent`), invariante à rotação do
+dab se for por spec — e TODO quem responde à pergunta passa por ela: os três núcleos de cor, o `dab.rs`, os
+dois carimbos cacheados (assar no domínio do alcance e o `tip::axis_taps` amostrar nele) e as regiões do tool
+(`dab_bbox` / `caixa_do_lote` / `dab_batch_region`: salvar, restaurar, sujar e desfazer — *inflar a menos deixa
+rasto*, a lição do #24). O carimbo de grade (0°, Size 1) fica ao bit. Portões vermelhos:
+`diag_bug52_a_ponta_rodada_nao_e_cortada` · `diag_bug52_size_menor_que_um_nao_corta_a_ponta_nas_duas_rotas`
+(`--ignored`). ⏳ Por medir: o Angle ESTÁTICO da Shape (sem jitter, rota cacheada) — o mesmo mecanismo prevê
+o mesmo corte.

@@ -149,7 +149,8 @@ impl Trail {
         grain: Option<CellFn<'_>>,
         mode: Option<Rows>,
     ) -> (i32, i32, i32, i32) {
-        let Some((x0, y0, x1, y1)) = shaped_bounds(g.w, g.h, dab.x, dab.y, dab.r) else {
+        let Some((x0, y0, x1, y1)) = shaped_bounds(g.w, g.h, dab.x, dab.y, dab.r * dab.reach)
+        else {
             return VAZIA;
         };
         let mode = mode.unwrap_or_else(|| {

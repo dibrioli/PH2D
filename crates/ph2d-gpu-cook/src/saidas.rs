@@ -3,21 +3,60 @@
 //! o buffer inteiro.
 //!
 //! Partido do `lib.rs` (a 6 linhas do tecto) ao longo da costura que lá estava: o laço dos
-//! estágios produz CORRENTES; daqui para a frente é *como as correntes viram desenho*.
+//! estágios produz CORRENTES; daqui para a frente é *como as correntes viram desenho*. O `cook`
+//! de uma saída veio para cá pelo mesmo tecto (doc 131 D.14).
 //!
 //! ⚠️ **Com UMA saída isto é o caminho de sempre, byte a byte**: deslocamento `0`, a partição
 //! procurada pelo comprimento entre todas as fronteiras, a contagem devolvida é a da corrente.
 
 use crate::plan::GpuPlan;
 use crate::stream::GpuStream;
-use crate::{GpuCook, GpuCookError, tex_runs};
+use crate::{CookClock, GpuCook, GpuCookError, tex_runs};
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::attr::Stream;
-use ph2d_nodegraph::graph::NodeId;
+use ph2d_nodegraph::cook::OpResolver;
+use ph2d_nodegraph::gpu::KernelResolver;
+use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::{GpuTexRun, SinkStyle};
 use std::collections::BTreeMap;
 
 impl GpuCook {
+    /// Run `plan` at `clock`, producing the instance buffer. Each entry of
+    /// `boundary_streams` is a [`GpuPlan::boundaries`] node's freshly cooked
+    /// output stream (cook them with the ordinary
+    /// [`ph2d_nodegraph::cook::Cook`] — that keeps every CPU semantic
+    /// canonical); the set must match the plan's exactly, and is empty iff the
+    /// plan is fully GPU. `default_uv_rect`/`default_size` are the CPU
+    /// lowering's fallbacks, applied by the lowering kernel to absent columns.
+    /// Returns the instance count. **One queue submit.**
+    #[allow(clippy::too_many_arguments)] // the cook seam: graph + resolvers + plan + clock + defaults
+    pub fn cook(
+        &mut self,
+        gpu: &GpuContext,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        kernels: &dyn KernelResolver,
+        plan: &GpuPlan,
+        boundary_streams: &[(NodeId, &Stream)],
+        clock: CookClock,
+        default_uv_rect: [f32; 4],
+        default_size: [f32; 2],
+        style: SinkStyle,
+    ) -> Result<u32, GpuCookError> {
+        self.cook_many(
+            gpu,
+            graph,
+            ops,
+            kernels,
+            plan,
+            boundary_streams,
+            clock,
+            default_uv_rect,
+            default_size,
+            std::slice::from_ref(&style),
+        )
+    }
+
     /// Baixa as [`GpuPlan::sinks`] (um estilo por saída, na mesma ordem) e devolve a contagem
     /// TOTAL das correntes das saídas — com uma saída, a da corrente dela, como sempre.
     ///

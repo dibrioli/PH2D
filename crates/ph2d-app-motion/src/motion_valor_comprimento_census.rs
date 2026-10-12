@@ -263,6 +263,7 @@ fn kernels<'r>(reg: &'r NodeRegistry, man: &NodeManifest) -> Vec<&'r GpuKernel> 
             identity_kernel,
             ..
         }) => vistos.extend([predicate, identity_kernel]),
+        Some(StreamOp::WriteNamed { kernel, .. }) => vistos.push(kernel),
         _ => {}
     }
     vistos

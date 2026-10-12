@@ -160,6 +160,7 @@ impl NodeOp for MotionDrive {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionDrive))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_stream_op(MANIFEST.id, kernel::ESCRITA_NOMEADA);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

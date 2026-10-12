@@ -389,6 +389,39 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
         "o `motion.trail` tem de ser varrido (predicado, redução, corpo, identidade), got {carries}"
     );
 
+    // ⭐ A escrita por NOME (doc 131 D.14): o kernel que a `WriteNamed` leva, por presença.
+    let mut escritas = 0usize;
+    for manifest in reg.manifests() {
+        let Some(ph2d_nodegraph::gpu::StreamOp::WriteNamed { kernel: k, .. }) =
+            reg.stream_op(manifest.id)
+        else {
+            continue;
+        };
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
+        for mask in 0u32..(1 << k.bindings.len().min(16)) {
+            let src = ph2d_gpu_cook::codegen::kernel_module(
+                k,
+                k.bindings,
+                &port_names,
+                ph2d_gpu_cook::codegen::ExtraBuffers::NONE,
+                reg.wgsl_shared(manifest.id),
+                |bb| {
+                    let idx = k.bindings.iter().position(|x| std::ptr::eq(x, bb));
+                    mask & (1 << idx.expect("binding belongs to the kernel")) != 0
+                },
+            );
+            validate(
+                &format!("{} write-named mask {mask:b}", manifest.name),
+                &src,
+            );
+            escritas += 1;
+        }
+    }
+    assert!(
+        escritas >= 8,
+        "o Custom do `motion.drive` (3 bindings), got {escritas}"
+    );
+
     // A reduction's `value` is a WGSL EXPRESSION the node author writes by hand,
     // pasted into a module of its own (`fn reduce_value(v) -> f32`) that the
     // kernel sweep above never builds. Until this loop existed those expressions

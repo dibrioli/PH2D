@@ -229,18 +229,43 @@ fn the_custom_channel_is_the_last_index_and_the_others_did_not_move() {
     }
 }
 
-/// **O CUSTOM RECUSA O DEVICE, E OS OUTROS NÃO.**
+/// **O CUSTOM VAI À PLACA PELO NOME, E SÓ ELE** (doc 131 D.14).
 ///
-/// As duas metades: sem a segunda, *"ele recusa"* seria satisfeito por um nó que
-/// desistisse do device inteiro.
+/// Nenhum canal recusa o device; a escrita por nome está activa no Custom e em mais nenhum, e a
+/// variante que o `channel = 9` resolve é o MESMO kernel que a `WriteNamed` leva — dois sítios
+/// com leis diferentes seriam a cópia que diverge.
 #[test]
-fn the_custom_channel_refuses_the_device_and_the_others_keep_it() {
-    let f = GPU_KERNEL.applicable.expect("o nó declara a recusa");
+fn the_custom_channel_writes_by_name_on_the_device_and_only_it() {
+    use ph2d_nodegraph::gpu::StreamOp;
+    assert!(
+        GPU_KERNEL.applicable.is_none(),
+        "nenhum canal recua para a CPU"
+    );
+    let StreamOp::WriteNamed {
+        text_param,
+        alias,
+        kernel,
+        when,
+    } = kernel::ESCRITA_NOMEADA
+    else {
+        panic!("o Custom regista uma escrita por nome");
+    };
+    assert_eq!(text_param, DRIVE_COL_KEY);
     let ch = |v: f32| move |name: &str| if name == "channel" { v } else { 0.0 };
-    assert!(!f(&ch(CH_CUSTOM as f32)), "o Custom recua para a CPU");
-    for other in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0] {
-        assert!(f(&ch(other)), "o canal {other} continua no device");
+    assert!(when(&ch(CH_CUSTOM as f32)), "o Custom escreve pelo nome");
+    for other in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 11.0] {
+        assert!(
+            !when(&ch(other)),
+            "o canal {other} escreve a coluna do enum"
+        );
     }
+    let resolvido = GPU_KERNEL.resolve(&ch(CH_CUSTOM as f32));
+    assert_eq!(
+        resolvido.wgsl, kernel.wgsl,
+        "a variante do Custom e' a da escrita"
+    );
+    assert_eq!(resolvido.bindings[0].column, alias);
+    assert!(kernel.wgsl.contains(&format!("write_{alias}(")));
 }
 
 /// Uma fonte que CARREGA as colunas de escrituracao — sem elas a recusa seria

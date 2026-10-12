@@ -106,12 +106,11 @@ pub(crate) const CH_VAL: i32 = 8;
 /// silêncio todo grafo salvo. O espaço positivo cresce para cima, como o
 /// `CH_HUE` fez.
 ///
-/// ⚠️ **Ele RECUSA o device** (`applicable`), e o motivo é estrutural e não
-/// preguiça: uma `ColumnBinding` carrega o nome da coluna como `&'static str` —
-/// o sequenciador precisa dele **antes** de cozer, para montar o bind group —, e
-/// um nome que o artista digita só existe em tempo de cook. O precedente é a
-/// `Median` do `value.reduce`, que recua pela mesma porta. *Um caminho mais
-/// lento é honesto; um nome escrito no buffer errado não é.*
+/// ⭐ **Ele vai à placa pelo `StreamOp::WriteNamed`** (doc 131 D.14): uma
+/// `ColumnBinding` carrega o nome como `&'static str` e o nome do artista só existe
+/// no cozimento, então o sequenciador apresenta a coluna ao kernel sob um nome
+/// estático (`kernel::DRIVE_NAMED_ALIAS`) e devolve-a com o nome do artista — o
+/// irmão de escrita do `Project` do `value.attribute`.
 pub(crate) const CH_CUSTOM: i32 = 9;
 
 /// **UM EIXO do tamanho** — o *Scale + S.XYZ* do C4D, contra o *Uniform Scale* que o

@@ -24,7 +24,7 @@ pub const ROWS_COL: &str = "cp_rows";
 /// filtered, minted from gathered rows, concatenated, or projected down to one
 /// named column — declared on the side like a kernel (ADR-0126, ADR-0136). The
 /// per-element MAP stays [`GpuKernel`]; these are the other four verbs of a
-/// stream engine, and the machinery for each lives once in the sequencer.
+/// stream engine (plus the named WRITE), and the machinery for each lives once in the sequencer.
 ///
 /// The count of a [`Self::Compact`] output is a fact of the DATA, so it is
 /// resolved on the device and read back at the compaction seam (8 bytes — the
@@ -121,6 +121,22 @@ pub enum StreamOp {
         identity: fn(&CountLawCtx<'_>) -> bool,
         /// O que corre sobre a porta viva nesse caso.
         identity_kernel: GpuKernel,
+    },
+    /// **Escrita numa coluna NOMEADA** (o canal `Custom` do `motion.drive`, doc 131 D.14) — o
+    /// irmão de ESCRITA do [`Self::Project`]. O nome é um text param, resolvido no cozimento; a
+    /// coluna é apresentada ao `kernel` sob o `alias` estático e devolvida com o nome do artista.
+    /// A escada da CPU vale inteira: nome vazio, coluna de escrituração, coluna existente que não
+    /// é escalar ou sem valor (com a coluna ausente) ⇒ a saída é a entrada. `when` falso ⇒ o
+    /// kernel registado, como sempre.
+    WriteNamed {
+        /// O text param que nomeia a coluna.
+        text_param: &'static str,
+        /// O nome estático da coluna nas bindings do `kernel`.
+        alias: &'static str,
+        /// O kernel que escreve o `alias` (escalar, `ReadWrite`, porta 0).
+        kernel: GpuKernel,
+        /// Quando a escrita por nome está activa, sobre os params resolvidos do nó.
+        when: fn(&dyn Fn(&str) -> f32) -> bool,
     },
 }
 

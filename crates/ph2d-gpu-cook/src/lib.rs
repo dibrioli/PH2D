@@ -139,42 +139,6 @@ impl GpuCook {
         self.driven = driven;
     }
 
-    /// Run `plan` at `clock`, producing the instance buffer. Each entry of
-    /// `boundary_streams` is a [`GpuPlan::boundaries`] node's freshly cooked
-    /// output stream (cook them with the ordinary
-    /// [`ph2d_nodegraph::cook::Cook`] — that keeps every CPU semantic
-    /// canonical); the set must match the plan's exactly, and is empty iff the
-    /// plan is fully GPU. `default_uv_rect`/`default_size` are the CPU
-    /// lowering's fallbacks, applied by the lowering kernel to absent columns.
-    /// Returns the instance count. **One queue submit.**
-    #[allow(clippy::too_many_arguments)] // the cook seam: graph + resolvers + plan + clock + defaults
-    pub fn cook(
-        &mut self,
-        gpu: &GpuContext,
-        graph: &Graph,
-        ops: &dyn OpResolver,
-        kernels: &dyn KernelResolver,
-        plan: &GpuPlan,
-        boundary_streams: &[(NodeId, &Stream)],
-        clock: CookClock,
-        default_uv_rect: [f32; 4],
-        default_size: [f32; 2],
-        style: ph2d_render::SinkStyle,
-    ) -> Result<u32, GpuCookError> {
-        self.cook_many(
-            gpu,
-            graph,
-            ops,
-            kernels,
-            plan,
-            boundary_streams,
-            clock,
-            default_uv_rect,
-            default_size,
-            std::slice::from_ref(&style),
-        )
-    }
-
     /// ⭐⭐⭐ [`Self::cook`] com **várias saídas** (doc 119 W3): um estilo por [`GpuPlan::sinks`], na
     /// mesma ordem, e as saídas baixadas uma a seguir à outra no MESMO buffer. ⚠️ Com uma saída
     /// ela É o [`Self::cook`] — aquele delega aqui —, o que põe todos os gates de paridade desta
@@ -328,7 +292,20 @@ impl GpuCook {
             // that branch would forward port 0 instead.
             let mut source_port: Option<usize> = None;
             let mut nao_herda: &[&str] = &[];
+            let mut renome = None;
             match kernels.stream_op(stage.ty) {
+                // A escrita por NOME (doc 131 D.14): a coluna do artista sob o alias do kernel.
+                op @ Some(ph2d_nodegraph::gpu::StreamOp::WriteNamed { .. }) => {
+                    let no = (graph, stage.node, manifest, &self.driven);
+                    match stream_op::escrita_nomeada(op, no, &mut base, &mut inputs) {
+                        stream_op::Escrita::Passa => {
+                            streams.insert(stage.node, base);
+                            continue;
+                        }
+                        stream_op::Escrita::Escreve(k, r) => (kernel, renome) = (k, Some(r)),
+                        stream_op::Escrita::Normal => {}
+                    }
+                }
                 Some(ph2d_nodegraph::gpu::StreamOp::Concat { ports }) => {
                     let out = self.encode_concat(gpu, &mut encoder, ports, &inputs);
                     streams.insert(stage.node, out);
@@ -639,6 +616,9 @@ impl GpuCook {
                     };
                     side.insert((stage.node, usize::from(pp.port)), s);
                 }
+            }
+            if let Some(r) = renome {
+                r.devolve(&mut out);
             }
             streams.insert(stage.node, out);
         }

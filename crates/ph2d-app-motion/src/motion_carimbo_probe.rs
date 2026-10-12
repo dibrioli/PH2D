@@ -238,7 +238,7 @@ fn audit_the_stamp_draw() {
 
 /// ⭐⭐ **QUEM JÁ TEM VERBO ESTRUTURAL** — a população em que o carimbo teria de entrar.
 ///
-/// ⛔ **Derivada do REGISTO, nunca escrita à mão:** os cinco verbos do
+/// ⛔ **Derivada do REGISTO, nunca escrita à mão:** os seis verbos do
 /// [`StreamOp`](ph2d_nodegraph::gpu::StreamOp) são o canal por onde um nó que muda a contagem
 /// declara a lei dele ao sequenciador (ADR-0136). O carimbo não está aqui, e é essa a ausência que
 /// o ciclo 10 mede.
@@ -254,6 +254,7 @@ fn audit_the_stream_op_family() {
             StreamOp::Concat { .. } => "Concat",
             StreamOp::Project { .. } => "Project",
             StreamOp::Carry { .. } => "Carry",
+            StreamOp::WriteNamed { .. } => "WriteNamed",
         }
     }
     let m = crate::motion_state::MotionState::new();

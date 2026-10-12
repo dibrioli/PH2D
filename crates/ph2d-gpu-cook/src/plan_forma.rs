@@ -116,6 +116,25 @@ pub(super) fn output_shape(
                 );
             }
         }
+        // A escrita por NOME activa (doc 131 D.14): a entrada mais o nome, se for uma coluna da
+        // convenção — o `alias` do kernel nunca sai do estágio.
+        Some(StreamOp::WriteNamed {
+            text_param,
+            kernel,
+            when,
+            ..
+        }) if when(&|n: &str| resolve_param(graph, node, manifest, n, driven)) => {
+            let nome = graph
+                .node_text_param_overrides(node)
+                .and_then(|m| m.get(*text_param))
+                .map_or("", String::as_str);
+            if tem_valor(graph, ops, kernels, node, kernel, (budget, driven)) {
+                cols.extend(coluna_da_convencao(nome));
+            }
+            let dense = kernels.keeps_dense_window(inst.type_id())
+                && (manifest.inputs.is_empty() || dense_in);
+            return Some(Shape { cols, dense });
+        }
         // Compact: the base's columns survive (filtered, not reshaped) and the
         // node's own kernel writes ride on top — the plain rules below.
         Some(_) | None => {}
@@ -199,6 +218,58 @@ pub(super) fn edge_shape(
         },
     };
     Some(Shape { cols, dense: false })
+}
+
+/// **A coluna de CONVENÇÃO com este nome**, como `&'static str` — o que a forma de uma escrita por
+/// nome ([`StreamOp::WriteNamed`]) pode afirmar. As perguntas do plano são todas sobre nomes
+/// estáticos (as bindings que recusam ou pareiam por `id`, a coluna de um [`FiredBirth`]); um nome
+/// de artista fora desta lista não é pergunta de ninguém, logo não entra. O gate
+/// `every_column_the_plan_asks_is_a_convention_column` (tests/it) prende a lista ao registo.
+#[must_use]
+pub fn coluna_da_convencao(nome: &str) -> Option<&'static str> {
+    use ph2d_nodegraph::attr as a;
+    [
+        a::VALUE_COLUMN,
+        a::TINT_MASK_COLUMN,
+        a::COLLIDER_COLUMN,
+        a::COLLIDER_BOX_COLUMN,
+        a::COLLIDER_OFFSET_COLUMN,
+        a::INV_INERTIA_COLUMN,
+        a::FRICTION_COLUMN,
+        a::BOUNCE_COLUMN,
+        a::ROLLING_COLUMN,
+        // As que o plano pergunta hoje e que a `attr` não nomeia: o `RefuseIfPresent` do
+        // `motion.duplicator` e o segundo nascimento do `sim.spawn`.
+        "rot",
+        "pulse",
+    ]
+    .into_iter()
+    .find(|c| *c == nome)
+}
+
+/// **A escrita por nome tem VALOR?** — o «sem valor não se escreve» da CPU sobre a forma: uma porta
+/// de valor (`ReadBroadcast`) desligada, ou cuja forma provada não traz a coluna, não escreve. Uma
+/// forma por provar conta como valor (o produtor emite o que declara).
+fn tem_valor(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    node: NodeId,
+    kernel: &ph2d_nodegraph::gpu::GpuKernel,
+    (budget, driven): (u32, &DrivenParams),
+) -> bool {
+    let mut valores = kernel
+        .bindings
+        .iter()
+        .filter(|b| b.port != 0 && b.access.broadcasts())
+        .peekable();
+    valores.peek().is_none()
+        || valores.any(|b| match graph.input_edge(node, b.port) {
+            None => false,
+            Some((_, _, true)) => true,
+            Some((src, sp, false)) => edge_shape(graph, ops, kernels, (src, sp), budget, driven)
+                .is_none_or(|s| s.cols.contains(b.column)),
+        })
 }
 
 /// **O segundo nascimento está activo?** — a porta lateral traz, PROVAVELMENTE, a coluna dele (o

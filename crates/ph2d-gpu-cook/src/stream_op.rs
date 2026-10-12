@@ -41,7 +41,10 @@ mod complemento;
 mod concat;
 #[path = "stream_op_disparo.rs"]
 mod disparo;
+#[path = "stream_op_escrita.rs"]
+mod escrita;
 pub(crate) use carry::Carregado;
+pub(crate) use escrita::{Escrita, escrita_nomeada};
 #[path = "stream_op_project.rs"]
 mod project;
 

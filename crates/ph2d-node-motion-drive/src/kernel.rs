@@ -13,7 +13,7 @@ use crate::VALUE_COL;
 use crate::channel::{
     CH_CUSTOM, CH_FALLOFF, CH_HUE, CH_OPACITY, CH_SAT, CH_SIZE_X, CH_SIZE_Y, CH_VAL,
 };
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, StreamOp};
 use ph2d_nodegraph::port::Dim;
 
 /// ⚠️ **`space` apendado**: sem esta linha o kernel lê um `params.space` inexistente — ou,
@@ -200,6 +200,46 @@ const DRIVE_ROT: GpuKernel = GpuKernel {
     count_law: None,
     variant_by_param: None,
     applicable: None,
+};
+
+/// O nome estático com que o sequenciador apresenta a coluna do [`CH_CUSTOM`] ao kernel
+/// ([`ph2d_nodegraph::gpu::StreamOp::WriteNamed`]).
+pub(crate) const DRIVE_NAMED_ALIAS: &str = "drive_named";
+
+/// **Custom** — o [`DRIVE_ROT`] sobre a coluna do artista, que o sequenciador renomeia para
+/// [`DRIVE_NAMED_ALIAS`] e de volta (a lei de `channel::drive_named`).
+pub(crate) const DRIVE_NAMED: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_cur = read_in_drive_named(i);\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        write_drive_named(i, drive_resolve(dr_cur, dr_v, dr_mode, dr_f, HAS_value_v));\n",
+    wgsl_lib: DRIVE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: DRIVE_NAMED_ALIAS,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            // A coluna ausente nasce em zero, como na CPU.
+            identity: [0.0; 4],
+            port: 0,
+        },
+        drive_common!()[0],
+        drive_common!()[1],
+    ],
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// A escrita por nome do canal Custom — registada ao lado do [`GPU_KERNEL`].
+pub(crate) const ESCRITA_NOMEADA: StreamOp = StreamOp::WriteNamed {
+    text_param: crate::channel::DRIVE_COL_KEY,
+    alias: DRIVE_NAMED_ALIAS,
+    kernel: DRIVE_NAMED,
+    when: |p| p("channel").round() as i32 == CH_CUSTOM,
 };
 
 /// **Size** — drives BOTH components uniformly, from the unit identity.
@@ -444,15 +484,13 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     bindings: DRIVE_P.bindings,
     params: DRIVE_PARAMS,
     count_law: None,
-    // ⚠️ **O CUSTOM RECUSA o device** — ver [`CH_CUSTOM`]: uma `ColumnBinding`
-    // carrega o nome como `&'static str`, e o nome que o artista digita só existe
-    // em tempo de cook. O sequenciador recua para o `eval` da CPU, que é a porta
-    // que a `Median` do `value.reduce` já usa.
-    applicable: Some(|param| param("channel").round() as i32 != CH_CUSTOM),
+    // O Custom vai à placa pelo `StreamOp::WriteNamed` (doc 131 D.14).
+    applicable: None,
     variant_by_param: Some(|param| {
         // The same rounding and the same mapping as `channel_column`.
         match param("channel").round() as i32 {
             2 => &DRIVE_ROT,
+            CH_CUSTOM => &DRIVE_NAMED,
             CH_OPACITY => &DRIVE_TINT,
             CH_FALLOFF => &DRIVE_FALLOFF,
             CH_HUE | CH_SAT | CH_VAL => &DRIVE_HSV,

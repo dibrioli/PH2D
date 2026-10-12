@@ -1,6 +1,6 @@
 # HANDOFF DE CONTINUAÇÃO — `line/PainterWatercolor`, o código mau do compilador no bake (2026-10-11, prompt 21)
 
-## As regras (R1–R9, [PROMPT_LINHAS_RAPIDAS §2](../../IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md))
+## As regras (R1–R9, [PROMPT_LINHAS_RAPIDAS §2](../../archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md))
 
 - R1 janela curta: ~150 chamadas ou a onda fechada ⇒ commit, handoff ≤ 8 KB, PARE.
 - R2 edite pelo `Edit` (novo = `Write`); script só para a MESMA troca em N ficheiros, com `assert` de contagem.

@@ -1,7 +1,7 @@
 TROCA DE AGENTE — line/PainterWatercolor («Wet Painter»): a ONDA DA VELOCIDADE. Tornar a linha rápida antes de
 continuar a fila (ordem do dono, 11/10: «começando pelos problemas de lentidão»).
 
-O documento-mãe é `/home/enio/Documentos/Projetos/PH2D/docs/IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md`
+O documento-mãe é `/home/enio/Documentos/Projetos/PH2D/docs/archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md`
 (no checkout PRINCIPAL, fora da worktree, por versionar). Leia dele SÓ o §1, o §2 e o §3.Painter. Este prompt
 resume-o e acrescenta o que a janela de 11/10 deixou.
 

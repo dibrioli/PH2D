@@ -34,7 +34,7 @@
 ## A tarefa desta onda (o §3.Motion do prompt — confirme sobre ESTA base antes de agir)
 
 Prompt completo (só no `main`, ainda não nesta worktree):
-`/home/enio/Documentos/Projetos/PH2D/docs/IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md`
+`/home/enio/Documentos/Projetos/PH2D/docs/archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md`
 — leia §1, §2 e §3.Motion, não as outras secções.
 
 1. `bash scripts/agent-loop-profile.sh 10` → os números de ANTES.

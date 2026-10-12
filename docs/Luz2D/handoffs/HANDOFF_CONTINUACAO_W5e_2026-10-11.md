@@ -231,7 +231,7 @@ distribui**. Comando: `bash docs/Luz2D/oraculo_godot/corre.sh` (passa pela porta
 ## ⛔ O smoke do dono VOLTOU (11/10, à noite) — a próxima janela começa por AQUI
 
 A ordem do dono: a próxima janela da linha faz PRIMEIRO a onda de velocidade
-([`PROMPT_LINHAS_RAPIDAS_2026-10-11.md`](../../IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md),
+([`PROMPT_LINHAS_RAPIDAS_2026-10-11.md`](../../archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md),
 §1 + §2 + §3.Luz2D) e só depois isto:
 
 1. **Cena 7: «não tem desenho Flip na cena»** — no app dele o traço do Flip NÃO aparece (a foto da tela

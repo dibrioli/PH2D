@@ -2,7 +2,7 @@
 
 > Para a janela NOVA que abre a 1.ª onda depois da W13. Rota `/pd-linha-assumir`:
 > `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && pwd && git branch --show-current` ANTES de ler.
-> Ordem do dono: [`PROMPT_LINHAS_RAPIDAS_2026-10-11.md`](../../IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md)
+> Ordem do dono: [`PROMPT_LINHAS_RAPIDAS_2026-10-11.md`](../../archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md)
 > — leia §1, §2 e só o §3.Miro. Esta onda vem ANTES da fila da linha.
 
 ## As regras (R1–R9, copiadas do prompt §2)

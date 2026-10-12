@@ -18,7 +18,7 @@ Registos regenerados sem diferença · staleness ✓ · `CARGO_BUILD_WARNINGS=de
 --all-targets` ✓ · `nextest-impacted` (BASE=main) **18 212/18 212** (`load` 5–23).
 
 ⚠️ **Duas travas do primário, as duas conhecidas:**
-1. `docs/IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md` está NÃO versionado no primário (o
+1. `docs/archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md` está NÃO versionado no primário (o
    documento das regras R1–R9 que os handoffs citam) ⇒ o script recusa. Foi posto de lado durante o portão e
    reposto (sha256 conferido). ⏳ Alguém tem de o versionar — os links `../../IntegracaoMultiAgente/…` dos
    handoffs apontam para ele.

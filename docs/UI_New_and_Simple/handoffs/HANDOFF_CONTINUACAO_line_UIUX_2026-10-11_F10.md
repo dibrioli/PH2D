@@ -1,6 +1,6 @@
 # HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 11/10 — depois da F10
 
-## As regras (de `docs/IntegracaoMultiAgente/PROMPT_LINHAS_RAPIDAS_2026-10-11.md` §2)
+## As regras (de `docs/archive/integracao-jornadas/PROMPT_LINHAS_RAPIDAS_2026-10-11.md` §2)
 
 - **R1 — Janela curta.** Uma onda = uma janela. Passou de ~150 chamadas de ferramenta ou fechou a
   onda: commit, handoff de continuação ≤ 8 KB, PARE.

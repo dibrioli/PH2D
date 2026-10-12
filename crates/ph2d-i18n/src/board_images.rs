@@ -6,6 +6,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.images.skipped" => "Skipped {count}: not an image",
         // W17 — o cabeçalho leu-se, os dados não: a imagem fica partida no quadro.
         "board.images.unreadable" => "A picture on this board is damaged and cannot be shown",
+        "board.video.copy_first" => "Copy a YouTube link first, then click Video (or paste it on the board)",
+        "board.video.offline" => "No internet: the video shows its place until the network comes back",
+        "board.video.no_browser" => {
+            "To play videos inside the board, install Chrome, Edge, Brave or Chromium \u{2014} opened in your browser"
+        }
+        "board.video.failed" => "The browser did not start the video \u{2014} opened in your browser instead",
+        "board.video.cannot_open" => "This video cannot play here, and the browser could not be opened",
         "board.style.gray" => "Black and white",
         "board.style.flip_h" => "Flip horizontal (Shift+H)",
         "board.style.flip_v" => "Flip vertical (Shift+V)",

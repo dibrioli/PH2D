@@ -28,6 +28,10 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-board-export = { path = "../ph2d-board-export", features = ["gpu"] }
 ph2d-board-excalidraw = { path = "../ph2d-board-excalidraw" }
 ph2d-board-render = { path = "../ph2d-board-render" }
+# W18 (ADR-0185) — o vídeo: a lei (o link canónico) e o lado do mundo (a miniatura, o tocador no navegador
+# da pessoa); `ph2d-vector` para pôr os quadros dele no desenho.
+ph2d-board-embed = { path = "../ph2d-board-embed" }
+ph2d-board-video = { path = "../ph2d-board-video" }
 ph2d-board-route = { path = "../ph2d-board-route" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-render = { path = "../ph2d-render" }
@@ -53,6 +57,8 @@ zune-core = "0.5"
 # `image` já puxa.
 gif = "0.14"
 
+ph2d-vector = { path = "../ph2d-vector" }
+
 [dev-dependencies]
 # W15 — o `.svgz` de teste (gzip).
 flate2 = "1"
@@ -60,7 +66,6 @@ flate2 = "1"
 bumpalo = "3"
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-host = { path = "../ph2d-host" }
-ph2d-vector = { path = "../ph2d-vector" }
 # O gate da cena 11 lê o ficheiro do dono e mede a ponta contra o contorno.
 ph2d-board-geom = { path = "../ph2d-board-geom" }
 serde_json = "1"

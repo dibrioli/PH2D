@@ -20,6 +20,7 @@ mod private;
 mod sketch;
 mod tags;
 mod theme_ink;
+mod video;
 
 pub use anim::{Animate, frame_ms, install_animator};
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
@@ -29,6 +30,9 @@ pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
 pub use overlay::paint_overlay;
 pub use theme_ink::ThemeInk;
+pub use video::{
+    Placement, PlayerInput, PlayerKey, Thumb, Videos, set_thumbnail, video_key,
+};
 
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
 
@@ -98,6 +102,8 @@ pub struct RenderCache {
     pub images: Images,
     /// W16 — a imagem em recorte: desenha-se também INTEIRA, esbatida, por baixo da janela.
     pub cropping: Option<ElementId>,
+    /// W18 — os vídeos: o activado, o quadro do tocador, o que o editor lhe manda, onde ficaram.
+    pub videos: Videos,
 }
 
 /// ⭐ W8 — o desenho para EXPORTAR (`docs/MiroClone/06_equipa_e_saida.md` E6/E7): o papel (ou nada:
@@ -260,6 +266,9 @@ pub fn paint(
     };
     cache.sketch.ink = cache.ink;
     cache.images.begin_frame();
+    if cache.export.is_none() {
+        cache.videos.begin_frame();
+    }
     scene.push_clip(&clip);
     if cache.export.is_none() {
         scene.fill_rect(clip, token(ColorToken::Bg1, theme));
@@ -348,6 +357,10 @@ pub fn paint(
             let marks = badges.and_then(|(p, r)| Some((*p.totals.get(&el.id)?, r)));
             let t = v * to_world(el);
             facilitate::paint_marks(scene, ts, &mut cache.text, board.id.0, el, t, marks);
+            continue;
+        }
+        if let Some(e) = el.embed() {
+            video::paint(scene, cache, &board.doc, el, e, v, area, theme);
             continue;
         }
         let Some(shape) = el.shape() else {

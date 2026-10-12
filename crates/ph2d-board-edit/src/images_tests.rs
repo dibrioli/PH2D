@@ -12,7 +12,7 @@ const NONE: Mods = Mods {
     alt: false,
 };
 
-fn editor() -> Editor {
+pub(crate) fn editor() -> Editor {
     let ink = Rgba([20, 20, 20, 255]);
     Editor::new(
         Style::new(None, Some(ink), ink),

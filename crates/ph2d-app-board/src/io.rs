@@ -61,6 +61,7 @@ fn author(hero: &mut HeroScreen) {
 pub fn service(hero: &mut HeroScreen, gpu: Option<&GpuContext>, ts: &mut TextSystem) {
     author(hero);
     crate::live::service(hero);
+    crate::video::service(hero);
     let Some(req) = hero.documents.take_io() else {
         return;
     };

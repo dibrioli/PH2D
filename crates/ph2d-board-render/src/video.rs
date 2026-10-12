@@ -1,0 +1,249 @@
+//! W18 ([ADR-0185]) — **desenhar um VÍDEO do quadro**: o quadro do tocador (o navegador da pessoa,
+//! projectado) quando ele está activo e as regras do YouTube o deixam vivo ([`ph2d_board_embed::live_allowed`]:
+//! descoberto, sem rodar, inteiro à vista, ≥ 200×200 px); senão o último quadro que se viu, ou a miniatura
+//! (cortada a encher a caixa), ou o lugar vazio — sempre com o símbolo de play quando não está vivo.
+//! Quem toca, busca a miniatura e encaminha o rato é o app (`ph2d-app-board`); aqui só se desenha e se
+//! diz ONDE cada vídeo ficou ([`Videos::on_screen`]).
+//!
+//! [ADR-0185]: ../../../docs/architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::{Mutex, OnceLock};
+
+use ph2d_board_embed::{OnScreen, live_allowed};
+use ph2d_board_geom::to_world;
+use ph2d_board_model::{BoardDoc, Element, ElementId, Embed, Video};
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::{
+    Affine, Brush, Circle, ImageQuality, Point, Shape as _, StableImage, VectorScene, VelloBlend,
+};
+
+use crate::{RenderCache, token};
+
+/// A miniatura de um vídeo, para qualquer desenho do processo (ecrã, apresentação, export).
+#[derive(Clone)]
+pub enum Thumb {
+    Ready(StableImage, [u32; 2]),
+    /// A rede não a deu (o lugar vazio, e o app avisa).
+    Missing,
+}
+
+static THUMBS: OnceLock<Mutex<BTreeMap<String, Thumb>>> = OnceLock::new();
+
+fn thumbs() -> std::sync::MutexGuard<'static, BTreeMap<String, Thumb>> {
+    THUMBS
+        .get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// A chave de um vídeo (a da miniatura).
+#[must_use]
+pub fn video_key(v: &Video) -> String {
+    match v {
+        Video::YouTube { id, .. } => format!("youtube:{id}"),
+    }
+}
+
+/// O app põe a miniatura (ou a falta dela) de um vídeo.
+pub fn set_thumbnail(key: String, t: Thumb) {
+    thumbs().insert(key, t);
+}
+
+/// Um gesto que o editor manda ao tocador, em píxeis do TOCADOR (`0..tamanho do vídeo no ecrã`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum PlayerInput {
+    /// `button`: 0 esquerdo, 1 do meio, 2 direito.
+    Down { x: f64, y: f64, button: u8, clicks: u32 },
+    Up { x: f64, y: f64, button: u8, clicks: u32 },
+    Move { x: f64, y: f64 },
+    Wheel { x: f64, y: f64, dx: f64, dy: f64 },
+    Key { down: bool, key: PlayerKey },
+}
+
+/// Uma tecla para o tocador (quem fala com o navegador dá-lhe o nome do DOM).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlayerKey {
+    /// Uma letra ou algarismo ASCII (minúsculo).
+    Char(char),
+    Space,
+    Left,
+    Right,
+    Up,
+    Down,
+    Home,
+    End,
+    Enter,
+    Tab,
+}
+
+/// Onde um vídeo ficou no ecrã neste desenho.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Placement {
+    pub screen: OnScreen,
+    /// O tocador está vivo (activo E as regras deixam).
+    pub live: bool,
+    /// Local (`0..w`, `0..h` do elemento) → ecrã.
+    pub to_screen: Affine,
+}
+
+/// ⭐ O estado do vídeo no desenho (um por [`RenderCache`]): o activado, o quadro do tocador, o que o
+/// editor lhe manda e onde cada vídeo ficou.
+#[derive(Default)]
+pub struct Videos {
+    /// O vídeo ACTIVADO (um tocador vivo de cada vez).
+    pub active: Option<ElementId>,
+    /// O quadro do tocador mais novo (o app põe-no).
+    pub frame: Option<(StableImage, [u32; 2])>,
+    /// O que o editor mandou ao tocador (o app esvazia).
+    pub inbox: Vec<PlayerInput>,
+    /// Onde cada vídeo à vista ficou no último desenho do ecrã.
+    pub on_screen: BTreeMap<ElementId, Placement>,
+    /// As miniaturas que faltam (o app busca-as).
+    pub wanted: BTreeSet<String>,
+    /// Os vídeos à vista: a chave de cada um (para o app saber o vídeo do activado).
+    pub videos: BTreeMap<ElementId, Video>,
+}
+
+impl Videos {
+    /// O ponto de ecrã `p` em píxeis do tocador de `id` (`None` = fora dele, ou não está à vista).
+    #[must_use]
+    pub fn player_point(&self, id: ElementId, el: &Element, p: [f64; 2]) -> Option<[f64; 2]> {
+        let pl = self.on_screen.get(&id)?;
+        let l = pl.to_screen.inverse() * Point::new(p[0], p[1]);
+        let inside = l.x >= 0.0 && l.y >= 0.0 && l.x <= el.w && l.y <= el.h;
+        inside.then(|| {
+            [
+                l.x / el.w.max(1e-9) * pl.screen.size[0],
+                l.y / el.h.max(1e-9) * pl.screen.size[1],
+            ]
+        })
+    }
+
+    /// `p` (ecrã) cai no símbolo de play de `id`.
+    #[must_use]
+    pub fn on_play(&self, id: ElementId, el: &Element, p: [f64; 2]) -> bool {
+        let Some(pl) = self.on_screen.get(&id) else {
+            return false;
+        };
+        let l = pl.to_screen.inverse() * Point::new(p[0], p[1]);
+        let r = play_radius(el);
+        (l.x - el.w / 2.0).hypot(l.y - el.h / 2.0) <= r
+    }
+
+    pub(crate) fn begin_frame(&mut self) {
+        self.on_screen.clear();
+        self.videos.clear();
+    }
+}
+
+fn play_radius(el: &Element) -> f64 {
+    el.w.min(el.h) * 0.12
+}
+
+/// Algum elemento desenhado DEPOIS de `el` (por cima, os frames não contam) toca a caixa dele.
+fn covered(doc: &BoardDoc, el: &Element) -> bool {
+    let [x0, y0, x1, y1] = el.aabb();
+    doc.live().any(|o| {
+        if o.id == el.id || o.as_frame().is_some() || o.z <= el.z {
+            return false;
+        }
+        let [a0, b0, a1, b1] = o.aabb();
+        a0 < x1 && a1 > x0 && b0 < y1 && b1 > y0
+    })
+}
+
+/// Pinta o vídeo `e` de `el` (`v` = mundo → ecrã; `area` = a vista).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint(
+    scene: &mut VectorScene,
+    cache: &mut RenderCache,
+    doc: &BoardDoc,
+    el: &Element,
+    e: &Embed,
+    v: Affine,
+    area: [f64; 4],
+    theme: Theme,
+) {
+    let t = v * to_world(el);
+    let corners = [[0.0, 0.0], [el.w, 0.0], [0.0, el.h], [el.w, el.h]].map(|[x, y]| t * Point::new(x, y));
+    let [x, y, w, h] = area;
+    let whole = corners
+        .iter()
+        .all(|c| c.x >= x && c.y >= y && c.x <= x + w && c.y <= y + h);
+    let screen = OnScreen {
+        size: [
+            (corners[1] - corners[0]).hypot(),
+            (corners[2] - corners[0]).hypot(),
+        ],
+        angle: el.angle,
+        covered: covered(doc, el),
+        whole,
+    };
+    let on_screen = cache.export.is_none();
+    let active = on_screen && cache.videos.active == Some(el.id);
+    let live = active && live_allowed(screen);
+    if on_screen {
+        cache.videos.on_screen.insert(el.id, Placement { screen, live, to_screen: t });
+        cache.videos.videos.insert(el.id, e.video.clone());
+    }
+    let alpha = f32::from(e.style.opacity.min(100)) / 100.0;
+    let shape = crate::image::box_path(el, e.style.round);
+    scene.push_layer_shape(VelloBlend::default(), alpha, t, &shape);
+    scene.fill_path(&shape, &Brush::Solid(token(ColorToken::Bg3, theme)), t);
+    // O quadro do tocador (vivo, ou o último que se viu ao deixar de o estar); senão a miniatura.
+    let frame = cache.videos.frame.clone().filter(|_| active);
+    let key = video_key(&e.video);
+    let thumb = thumbs().get(&key).cloned();
+    match (frame, thumb) {
+        (Some((img, size)), _) => stretch(scene, &img, size, el, t),
+        (None, Some(Thumb::Ready(img, size))) => cover(scene, &img, size, el, t),
+        (None, Some(Thumb::Missing)) => {}
+        (None, None) => {
+            cache.videos.wanted.insert(key);
+        }
+    }
+    scene.pop_layer();
+    if !live {
+        play_mark(scene, el, t, theme);
+    }
+}
+
+/// A imagem esticada à caixa (o tocador já tem o tamanho dela).
+fn stretch(scene: &mut VectorScene, img: &StableImage, size: [u32; 2], el: &Element, t: Affine) {
+    let m = t * Affine::scale_non_uniform(el.w / f64::from(size[0]), el.h / f64::from(size[1]));
+    scene.draw_recorded_image(img, m, ImageQuality::Medium, None);
+}
+
+/// A miniatura a ENCHER a caixa, cortada ao meio (as faixas pretas do `hqdefault` 4:3 saem num 16:9).
+fn cover(scene: &mut VectorScene, img: &StableImage, size: [u32; 2], el: &Element, t: Affine) {
+    let (iw, ih) = (f64::from(size[0]), f64::from(size[1]));
+    let k = (el.w / iw).max(el.h / ih);
+    let off = [(el.w - iw * k) / 2.0, (el.h - ih * k) / 2.0];
+    let m = t * Affine::translate((off[0], off[1])) * Affine::scale(k);
+    scene.draw_recorded_image(img, m, ImageQuality::Medium, None);
+}
+
+/// O símbolo de play: o círculo do perigo (o vermelho de «vídeo») com o triângulo, ao meio.
+fn play_mark(scene: &mut VectorScene, el: &Element, t: Affine, theme: Theme) {
+    let r = play_radius(el);
+    if r <= 0.0 {
+        return;
+    }
+    let c = Point::new(el.w / 2.0, el.h / 2.0);
+    scene.fill_path(
+        &Circle::new(c, r).to_path(0.1),
+        &Brush::Solid(token(ColorToken::Danger, theme)),
+        t,
+    );
+    let mut tri = ph2d_vector::BezPath::new();
+    tri.move_to((c.x - r * 0.35, c.y - r * 0.45));
+    tri.line_to((c.x + r * 0.5, c.y));
+    tri.line_to((c.x - r * 0.35, c.y + r * 0.45));
+    tri.close_path();
+    scene.fill_path(&tri, &Brush::Solid(token(ColorToken::Text1, theme)), t);
+}
+
+#[cfg(test)]
+#[path = "video_tests.rs"]
+mod tests;

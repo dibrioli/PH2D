@@ -75,6 +75,24 @@ pub fn key(
             }
         };
     }
+    // W18 — o vídeo activo toma as teclas do tocador; um link do YouTube colado vira um vídeo (fora de
+    // um texto a escrever).
+    if super::board_video::key(hero, k, mods, pressed) {
+        return taken();
+    }
+    let writing = hero
+        .documents
+        .live
+        .editor
+        .as_ref()
+        .is_some_and(|e| e.is_editing_text());
+    if pressed
+        && !writing
+        && let Some(t) = paste.as_deref()
+        && super::board_video::insert_link(hero, t, None)
+    {
+        return taken();
+    }
     if pressed && let Some(out) = super::board_nav::key(hero, k, mods) {
         return out;
     }

@@ -75,6 +75,10 @@ pub(crate) struct BoardLive {
     pub(crate) fac: fac::Fac,
     /// A equipa e a saída (W8): comentar, versões, apresentar, exportar.
     pub(crate) team: team::Team,
+    /// W18 — o carregar em curso é do tocador de um vídeo (o mover e o largar também).
+    pub(crate) video_press: bool,
+    /// W18 — o botão «Video» da barra pediu o link da área de transferência (o app lê-a).
+    pub(crate) video_ask: bool,
 }
 
 impl std::fmt::Debug for BoardLive {
@@ -106,6 +110,21 @@ impl Documents {
     #[must_use]
     pub fn notice(&self) -> Option<&'static str> {
         self.live.notice.map(|(k, _)| k)
+    }
+
+    /// W18 — os vídeos do desenho do quadro (o app dá-lhes vida: miniaturas, o tocador, os quadros).
+    pub fn videos_mut(&mut self) -> &mut ph2d_board_render::Videos {
+        &mut self.live.render_cache.videos
+    }
+
+    /// W18 — o botão «Video» foi carregado desde a última vez (o app lê o link da área de transferência).
+    pub fn take_video_ask(&mut self) -> bool {
+        std::mem::take(&mut self.live.video_ask)
+    }
+
+    /// W18 — um aviso na faixa do quadro, pela chave i18n (como as recusas do editor).
+    pub fn warn(&mut self, key: &'static str) {
+        self.live.notice = Some((key, std::time::Instant::now()));
     }
 
     /// W17 — há imagens do quadro a descodificar.

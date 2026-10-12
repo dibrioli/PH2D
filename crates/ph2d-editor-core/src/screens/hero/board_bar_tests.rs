@@ -516,6 +516,9 @@ mod live_board;
 #[path = "board_images_tests.rs"]
 mod images;
 
+#[path = "board_video_tests.rs"]
+mod video;
+
 #[path = "board_images_w15_tests.rs"]
 mod images_w15;
 

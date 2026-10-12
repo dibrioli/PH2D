@@ -31,6 +31,7 @@ mod snap;
 mod templates;
 mod text;
 mod timer;
+mod video;
 mod vote;
 mod wire;
 

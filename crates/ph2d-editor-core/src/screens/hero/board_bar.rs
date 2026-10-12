@@ -132,6 +132,8 @@ pub enum Item {
     Flip(usize),
     /// W16 — recortar a imagem seleccionada (o mesmo que o duplo-clique ou `Enter`).
     Crop,
+    /// W18 — um vídeo do YouTube pelo link da área de transferência (ADR-0185).
+    Video,
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -227,8 +229,13 @@ pub fn items() -> Vec<Item> {
         Item::Flip(1),
         Item::Crop,
     ]);
+    // W18 — no FIM também.
+    v.push(Item::Video);
     v
 }
+
+/// W18 — a cauda da barra curta (depois do [`TOOLBAR`], para os ids de antes não se moverem).
+pub(super) const TOOLBAR_TAIL: [Item; 1] = [Item::Video];
 
 /// Os grupos da barra de estilo, da esquerda para a direita, para o que está seleccionado.
 #[must_use]
@@ -518,6 +525,11 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         super::board_nav::open_tag_field(hero);
         return true;
     }
+    // W18 — o app lê a área de transferência (com prazo, fora daqui) e põe o vídeo, ou diz porquê não.
+    if it == Item::Video {
+        hero.documents.live.video_ask = true;
+        return true;
+    }
     if shapes::apply(hero, it, reshaping) {
         return true;
     }
@@ -586,7 +598,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::Sketch
         | Item::Organize(_)
         | Item::Mind(_)
-        | Item::Fac(_) => {}
+        | Item::Fac(_)
+        | Item::Video => {}
     }
     true
 }

@@ -632,15 +632,21 @@ pub fn pointer_down(
     y: f32,
     button: ph2d_host::PointerButton,
 ) -> bool {
-    minimap::down(hero, x, y) || team::pointer_down(hero, x, y, button)
+    minimap::down(hero, x, y)
+        || team::pointer_down(hero, x, y, button)
+        || super::board_video::pointer_down(hero, x, y, button)
 }
 
 /// Minimapa: o arrasto. `true` = consumido.
 pub fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    minimap::drag(hero, x, y) || team::bubble_drag(hero, x, y)
+    minimap::drag(hero, x, y)
+        || team::bubble_drag(hero, x, y)
+        || super::board_video::pointer_move(hero, x, y)
 }
 
 /// Minimapa: o largar. `true` = era dele.
 pub fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    std::mem::take(&mut hero.documents.live.nav.minimap_drag) || team::bubble_up(hero, x, y)
+    std::mem::take(&mut hero.documents.live.nav.minimap_drag)
+        || team::bubble_up(hero, x, y)
+        || super::board_video::pointer_up(hero, x, y)
 }

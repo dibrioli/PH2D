@@ -232,4 +232,4 @@ impl Editor {
 
 #[cfg(test)]
 #[path = "images_tests.rs"]
-mod tests;
+pub(crate) mod tests;

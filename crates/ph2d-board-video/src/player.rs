@@ -74,6 +74,8 @@ pub struct Key {
 
 enum Cmd {
     Load(Video),
+    /// Uma ordem da API do tocador (`pauseVideo`, `playVideo`).
+    Command(&'static str),
     Resize([u32; 2]),
     Mouse(Mouse),
     Key(Key),
@@ -134,6 +136,15 @@ impl Player {
         }
         self.seen = seq;
         lock(&self.shared.frame).clone()
+    }
+
+    /// Pausa (o vídeo fica no quadro em que parou).
+    pub fn pause(&self) {
+        let _ = self.cmd.send(Cmd::Command("pauseVideo"));
+    }
+
+    pub fn play(&self) {
+        let _ = self.cmd.send(Cmd::Command("playVideo"));
     }
 
     pub fn load(&self, video: &Video) {
@@ -230,6 +241,13 @@ fn run(s: &Arc<Shared>, video: &Video, size: [u32; 2], rx: &Receiver<Cmd>) -> Pl
             Ok(Cmd::Load(v)) => {
                 *lock(&s.html) = page(&v);
                 b.send("Page.navigate", json!({ "url": ORIGIN }), sess);
+            }
+            Ok(Cmd::Command(func)) => {
+                let js = format!(
+                    "document.querySelector('iframe')?.contentWindow?.postMessage(\
+                     '{{\"event\":\"command\",\"func\":\"{func}\",\"args\":\"\"}}', '*')"
+                );
+                b.send("Runtime.evaluate", json!({ "expression": js }), sess);
             }
             Ok(Cmd::Resize(sz)) => {
                 let sz = metrics(&mut b, sess, sz);

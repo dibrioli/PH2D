@@ -108,12 +108,13 @@ pub fn canonical_link(v: &Video) -> String {
     }
 }
 
-/// O tocador OFICIAL (o domínio sem cookies do YouTube), a começar no início gravado.
+/// O tocador OFICIAL (o domínio sem cookies do YouTube), a começar no início gravado; `enablejsapi` deixa
+/// a página que o leva pausá-lo e retomá-lo pela API oficial (`postMessage`).
 #[must_use]
 pub fn player_url(v: &Video) -> String {
     match v {
         Video::YouTube { id, start, .. } => format!(
-            "https://www.youtube-nocookie.com/embed/{id}?autoplay=1&playsinline=1&start={start}"
+            "https://www.youtube-nocookie.com/embed/{id}?autoplay=1&playsinline=1&enablejsapi=1&start={start}"
         ),
     }
 }

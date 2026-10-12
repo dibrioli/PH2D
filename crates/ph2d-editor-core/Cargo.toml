@@ -52,6 +52,8 @@ ph2d-a11y             = { path = "../ph2d-a11y" }
 ph2d-input            = { path = "../ph2d-input" }
 ph2d-board-model      = { path = "../ph2d-board-model" }
 ph2d-board-render     = { path = "../ph2d-board-render" }
+# W18 — a lei do vídeo do quadro (que link é um vídeo; o tamanho de nascença) — ADR-0185.
+ph2d-board-embed      = { path = "../ph2d-board-embed" }
 ph2d-board-edit       = { path = "../ph2d-board-edit" }
 ph2d-board-route      = { path = "../ph2d-board-route" }
 # W8 — as páginas do exportar (o tamanho em píxeis do diálogo), SEM a feature `gpu` (o PNG pela

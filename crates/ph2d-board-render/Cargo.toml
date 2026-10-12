@@ -12,6 +12,8 @@ authors.workspace = true
 [dependencies]
 # Desenha um quadro numa área do ecrã. Sem ECS e sem o editor: o editor chama-o, nunca o contrário.
 ph2d-board-model = { path = "../ph2d-board-model" }
+# W18 — o vídeo: as regras de quando o tocador pode estar vivo (ADR-0185).
+ph2d-board-embed = { path = "../ph2d-board-embed" }
 ph2d-board-geom = { path = "../ph2d-board-geom" }
 ph2d-board-layout = { path = "../ph2d-board-layout" }
 ph2d-board-edit = { path = "../ph2d-board-edit" }

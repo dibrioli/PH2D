@@ -364,6 +364,11 @@ impl Editor {
             self.selection = std::collections::BTreeSet::from([id]);
             return self.begin_crop(doc, history);
         }
+        // W18 — num VÍDEO o duplo-clique é do tocador (o app activa-o), nunca um texto por cima.
+        if doc.get(id).is_some_and(|e| e.embed().is_some()) {
+            self.selection = std::collections::BTreeSet::from([id]);
+            return false;
+        }
         self.begin_text(doc, ts, id, Some(p.world))
     }
 }

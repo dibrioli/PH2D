@@ -1,7 +1,7 @@
 //! Onde fica cada controlo das barras do quadro: a barra curta, a grelha das formas e a barra de
 //! estilo por cima da selecção (módulo filho de [`super`]).
 
-use super::{Item, Selected, TOOLBAR, style_groups};
+use super::{Item, Selected, TOOLBAR, TOOLBAR_TAIL, style_groups};
 use crate::zones::Rect;
 use ph2d_board_model::ShapeType;
 
@@ -14,10 +14,11 @@ pub(super) use super::super::float_bar::{button_px as btn_px, gap};
 pub fn toolbar_rects(area: Rect) -> Vec<(Item, Rect)> {
     TOOLBAR
         .iter()
+        .chain(&TOOLBAR_TAIL)
         .copied()
         .zip(super::super::float_bar::column_rects(
             area,
-            &[TOOLBAR.len()],
+            &[TOOLBAR.len() + TOOLBAR_TAIL.len()],
         ))
         .collect()
 }

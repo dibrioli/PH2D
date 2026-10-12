@@ -19,6 +19,9 @@ pub mod images;
 /// W18 — o que se lê de uma imagem estragada (o salvador do desenho).
 pub mod salvage;
 
+/// W18 — o vídeo do quadro: as miniaturas e o tocador no navegador da pessoa.
+pub mod video;
+
 /// W18 — os quadros de um GIF num iterador que muda de fio.
 mod gif_frames;
 

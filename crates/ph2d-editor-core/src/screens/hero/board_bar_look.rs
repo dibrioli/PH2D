@@ -15,6 +15,13 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
+/// W18 — o triângulo de play do botão «Video», em fracções do lado do miolo, a partir do centro.
+const ICON_PLAY: [[f64; 2]; 3] = [
+    [-0.15, -0.2], // LITERAL-PX-OK: desenho do glifo (o play no ecrã)
+    [0.225, 0.0],  // LITERAL-PX-OK: desenho do glifo
+    [-0.15, 0.2],  // LITERAL-PX-OK: desenho do glifo
+];
+
 /// O tamanho da ponta nos ícones: o de nascença do catálogo (`Marker`, 1×).
 const ICON_HEAD_SCALE: f64 = 1.0;
 
@@ -48,6 +55,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Flip(0) => "board.style.flip_h",
         Item::Flip(_) => "board.style.flip_v",
         Item::Crop => "board.style.crop",
+        Item::Video => "board.tool.video",
         Item::Fill(None) => "board.style.no_fill",
         Item::Fill(Some(_)) => "board.style.fill",
         Item::Stroke(None) => "board.style.no_stroke",
@@ -471,6 +479,22 @@ pub(super) fn paint_item(
             stroke(scene, &p, fg, line, d);
         }
         Item::Round(round) => shape_icon(scene, ShapeType::Rectangle, inner, fg, line, round),
+        // W18 — o vídeo: o ecrã (um rectângulo redondo) com o play dentro.
+        Item::Video => {
+            shape_icon(scene, ShapeType::Rectangle, inner, fg, line, true);
+            let (cx, cy) = (
+                f64::from(inner.x + inner.w / 2.0),
+                f64::from(inner.y + inner.h / 2.0),
+            );
+            let s = f64::from(inner.w.min(inner.h));
+            let mut tri = ph2d_vector::BezPath::new();
+            for (k, [fx, fy]) in ICON_PLAY.iter().enumerate() {
+                let p = (cx + fx * s, cy + fy * s);
+                if k == 0 { tri.move_to(p) } else { tri.line_to(p) }
+            }
+            tri.close_path();
+            scene.fill_path(&tri, &Brush::Solid(fg), Affine::IDENTITY);
+        }
         // O preto e branco: o círculo do contraste, meio cheio.
         Item::Gray => {
             let (cx, cy) = (

@@ -56,7 +56,9 @@ fn the_w16_items_come_last_and_move_no_id() {
         .iter()
         .position(|i| *i == Item::Gray)
         .expect("o preto e branco");
-    assert_eq!(v[g + 1..], [Item::Flip(0), Item::Flip(1), Item::Crop]);
+    assert_eq!(v[g + 1..g + 4], [Item::Flip(0), Item::Flip(1), Item::Crop]);
+    // W18 — o vídeo depois deles, no fim de tudo.
+    assert_eq!(v.last(), Some(&Item::Video));
 }
 
 /// ⭐ O recorte entra pelo botão da barra e por `Enter` (com a imagem seleccionada), e sai por `Enter`

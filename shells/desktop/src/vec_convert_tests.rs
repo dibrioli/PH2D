@@ -343,7 +343,7 @@ fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
     let mut tool = ShapeTool::new();
 
     // O artista DESENHA um retângulo (o caminho real que pede o nascimento vivo).
-    let id = tool.on_press(
+    tool.on_press(
         &mut scene,
         ShapeKind::Rectangle,
         Default::default(),
@@ -353,6 +353,7 @@ fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
     );
     tool.on_drag(&mut scene, [40.0, 40.0], ShapeConstraint::default());
     assert!(tool.on_release(&mut scene), "a forma foi commitada");
+    let id = tool.selected().expect("a forma commitada");
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
 
     // FRAME: ela nasce viva.

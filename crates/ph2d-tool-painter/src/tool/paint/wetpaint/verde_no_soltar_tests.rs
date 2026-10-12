@@ -134,3 +134,114 @@ fn sonda_verde() {
         }
     }
 }
+
+/// A tela do Oil Bristle com o claro seco e, se `escuro`, o escuro a `forca` × o pigmento por cima (soltado).
+fn tela(claro: [u8; 3], escuro: Option<([u8; 3], f64)>) -> PainterTool {
+    let b = super::mistura_wet_drip_tests::biblioteca();
+    let e = &b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Oil Bristle")
+        .expect("o pincel de fábrica")
+        .preset;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(e).is_empty());
+    if std::env::var("SEM_RELEVO").is_ok() {
+        t.paint.wetpaint.knobs.set(Knob::Emboss, 0.0);
+    }
+    t.set_brush_size_px(40.0);
+    t.set_brush_color_srgb8(claro);
+    t.on_canvas_pointer(p(30.0, 80.0, PointerPhase::Down));
+    for k in 1..=60 {
+        t.on_canvas_pointer(p(30.0 + 3.0 * k as f32, 80.0, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(p(210.0, 80.0, PointerPhase::Up));
+    ticks(&mut t, 10);
+    t.wetpaint_dry_canvas();
+    ticks(&mut t, 4);
+    if let Some((cor, forca)) = escuro {
+        t.set_brush_color_srgb8(cor);
+        let ppd = t.paint.wetpaint.knobs.get(Knob::PigmentPerDab);
+        t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, ppd * forca);
+        t.on_canvas_pointer(p(120.0, 10.0, PointerPhase::Down));
+        for k in 1..=48 {
+            t.on_canvas_pointer(p(120.0, 10.0 + 3.0 * k as f32, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(p(120.0, 154.0, PointerPhase::Up));
+        ticks(&mut t, 60);
+    }
+    t
+}
+
+/// **Bug #50 (dono 12/10): a orla «esbranquiçada» do azul escuro fino sobre o azul claro seco** — (71,129,184)
+/// entre (35,125,207) e (19,74,125); depois do Undo (o claro na base congelada) não havia. Nenhum canal da
+/// tela com o escuro fica mais claro que o claro de baixo E que o escuro, em toda a orla.
+/// ⚠️ VERMELHO hoje: 35 níveis com o relevo (o realce do Emboss na aresta, +22 em todos os canais), 24 sem ele
+/// (`SEM_RELEVO=1`: o assentado já fora da caixa); `DIAG=1` imprime a célula do pior pixel. Bug #50 ABERTO.
+#[test]
+#[ignore = "Bug #50 aberto: o portão vermelho da próxima janela"]
+fn diag_bug50_o_escuro_fino_sobre_o_claro_seco_nao_deixa_orla_clara() {
+    const CLARO: [u8; 3] = [35, 125, 207];
+    const ESCURO: [u8; 3] = [19, 74, 125];
+    let antes = tela(CLARO, None).canvas_rgba.to_vec();
+    for forca in [1.0, 0.3] {
+        let t = tela(CLARO, Some((ESCURO, forca)));
+        let depois = t.canvas_rgba.to_vec();
+        let (mut pior, mut onde, mut mudou) = (0i32, 0usize, 0usize);
+        for (i, (a, d)) in antes.chunks(4).zip(depois.chunks(4)).enumerate() {
+            if a == d {
+                continue;
+            }
+            mudou += 1;
+            for k in 0..3 {
+                let fora = i32::from(d[k]) - i32::from(a[k].max(ESCURO[k]));
+                if fora > pior {
+                    (pior, onde) = (fora, i);
+                }
+            }
+        }
+        assert!(
+            mudou > 500,
+            "forca {forca}: o escuro não pintou ({mudou} px)"
+        );
+        let px = &depois[onde * 4..onde * 4 + 3];
+        if std::env::var("DIAG").is_ok() {
+            let s = t.paint.wetpaint.session.as_ref().unwrap();
+            let g = s.engine.active_grid();
+            let r = s.ratio as usize;
+            let i = (onde % W) / r + 1 + ((onde / W) / r + 1) * g.s;
+            let (a_s, a_f) = (
+                ph2d_wet_paint::opacity::alpha_of_mass(f64::from(g.sett[i])),
+                ph2d_wet_paint::opacity::alpha_of_mass(f64::from(g.susp[i])),
+            );
+            let e = ph2d_wet_paint::assenta::Ecra::Cobre {
+                filme: 0.0,
+                esconde: 5.0,
+                molhada: 1.0,
+            };
+            let lei = ph2d_wet_paint::assenta::sobre_branco(
+                e,
+                g.sett_rgb[i].map(f64::from),
+                g.susp_rgb[i].map(f64::from),
+                a_s,
+                a_f,
+            );
+            eprintln!(
+                "DIAG ratio {r} sett {} {:?} a_s {a_s:.3} · susp {} {:?} a_f {a_f:.3} · relevo {} · lei {lei:.0?}",
+                g.sett[i], g.sett_rgb[i], g.susp[i], g.susp_rgb[i], g.relevo[i]
+            );
+        }
+        assert!(
+            pior <= 2,
+            "forca {forca}: a orla saiu {pior} níveis acima das duas tintas em ({}, {}) = {px:?} sobre {:?}",
+            onde % W,
+            onde / W,
+            &antes[onde * 4..onde * 4 + 3]
+        );
+    }
+}

@@ -489,6 +489,56 @@ mod tests {
         assert!(pior <= 3.0, "o assentar subiu o verde {pior:+.1} níveis");
     }
 
+    /// **Bug #50 — o ecrã fica na caixa das tintas** (dono 12/10: a orla «esbranquiçada» do azul escuro fino sobre
+    /// o azul claro seco, (71,129,184) entre (35,125,207) e (19,74,125)). O que se vê sobre o branco fica, por
+    /// canal, entre o assentado visto (`t_s`) e a tinta de cima — o tapar extra não traz o branco da diluição.
+    /// 6 × 6 tintas (o par do dono primeiro), `a_s` 0,2–0,99, `a_f` 0,02–0,95, tapar do produto e da velatura.
+    /// ⚠️ VERMELHO hoje (61 níveis): é o portão do Bug #50 ABERTO — as duas curas medidas e o que cada uma parte
+    /// estão no `BUGS_painter.md` #50. Quando a cura entrar, sai o `ignore` e o nome perde o `diag_`.
+    #[test]
+    #[ignore = "Bug #50 aberto: o portão vermelho da próxima janela"]
+    fn diag_bug50_o_ecra_fica_na_caixa_das_tintas() {
+        let tintas = [
+            [35.0, 125.0, 207.0],
+            [19.0, 74.0, 125.0],
+            [220.0, 60.0, 60.0],
+            AM,
+            AZ,
+            [248.0, 246.0, 240.0],
+        ];
+        let mut pior = (0.0f64, String::new());
+        for esconde in [5.0, 2.0] {
+            let e = Ecra::Cobre {
+                filme: 0.0,
+                esconde,
+                molhada: 1.0,
+            };
+            for sc in tintas {
+                for uc in tintas {
+                    for a_s in [0.2, 0.6, 0.9, 0.99] {
+                        for a_f in [0.02, 0.1, 0.2, 0.3, 0.5, 0.8, 0.95] {
+                            let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
+                            let v = sobre_branco(e, sc, uc, a_s, a_f);
+                            let fora = fora_da_caixa(v, t_s, uc);
+                            if fora > pior.0 {
+                                pior = (
+                                    fora,
+                                    format!("{sc:?} sob {uc:?} a_s {a_s} a_f {a_f} → {v:.0?}"),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            pior.0 <= 0.5,
+            "o ecrã saiu da caixa {:.1} níveis: {}",
+            pior.0,
+            pior.1
+        );
+    }
+
     /// Quanto `x` sai, por canal, da caixa de `a` e `b` (níveis; `0` dentro).
     fn fora_da_caixa(x: [f64; 3], a: [f64; 3], b: [f64; 3]) -> f64 {
         (0..3)

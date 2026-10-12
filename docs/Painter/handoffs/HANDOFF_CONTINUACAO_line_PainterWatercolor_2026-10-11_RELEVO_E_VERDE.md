@@ -76,3 +76,10 @@ lib 1565/1565 e `it` em `dev` e `ci-test` (o `a_lei_de_omissao_e_a_do_wet_round`
 typos ✓ · tecto 700 ✓ (maior: `grid.rs` 612) · `nextest-impacted` 17 644/17 645 (a única falha era a constante).
 Perfil do laço (10 sessões, antes → depois): paralelismo 1,09 → 1,14 · test:check 3,0 → 3,0 × · Edit 40 → 46 % ·
 contexto/passo 432 → 270 mil.
+
+## §7 — Depois do fecho (12/10): o Bug #50 ABERTO, medido
+
+O dono achou a orla «esbranquiçada» do escuro fino sobre o claro seco (some depois do Undo). Duas causas medidas
+(o realce do relevo com cobertura inteira; o branco do tapar extra do `Cobre` + o `assenta` que o guarda), duas
+curas medidas e recusadas, o próximo candidato: [BUGS #50](../BUGS_painter.md). Portões vermelhos em
+`diag_bug50_*`. ⚠️ O dono pediu: decida o técnico sem perguntar. Comece a próxima janela por aqui, antes da família C.

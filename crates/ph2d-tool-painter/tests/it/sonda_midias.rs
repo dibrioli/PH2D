@@ -115,7 +115,9 @@ const RAIOS_CANDIDATO: [f32; 11] = [
 
 /// Uma receita da sonda, dona dos dados: de [`CANDIDATOS`] ou de um ficheiro JSON
 /// (`PH2D_SONDA_RECEITAS=<f>`: `[{"nome","foto","alvo","water","knobs":{…},"brush":{…}}]`) — a varredura
-/// sem recompilar.
+/// sem recompilar. Com `"base": "<preset de fábrica>"` e `"raio"`, parte DESSE preset (os knobs e os campos
+/// por cima dos dele, `water`/`opacity` só se vierem) e pinta a cena ao raio dado, como
+/// `cada_preset_parece_a_sua_midia` (prompt 23: a varredura da família C).
 struct Receita {
     nome: String,
     foto: String,
@@ -124,6 +126,9 @@ struct Receita {
     knobs: Vec<(String, f64)>,
     brush: Vec<(String, Value)>,
     heavy_edge: Option<f64>,
+    base: Option<String>,
+    raio: Option<f32>,
+    opacity: Option<f64>,
 }
 
 fn receitas() -> Vec<Receita> {
@@ -134,8 +139,8 @@ fn receitas() -> Vec<Receita> {
             .map(|r| Receita {
                 nome: r["nome"].as_str().unwrap().to_owned(),
                 foto: r["foto"].as_str().unwrap_or("").to_owned(),
-                alvo: r["alvo"].as_f64().unwrap() as f32,
-                water: r["water"].as_f64().unwrap(),
+                alvo: r["alvo"].as_f64().unwrap_or(0.0) as f32,
+                water: r["water"].as_f64().unwrap_or(f64::NAN),
                 knobs: r["knobs"].as_object().map_or(Vec::new(), |o| {
                     o.iter()
                         .map(|(k, v)| (k.clone(), v.as_f64().unwrap()))
@@ -145,6 +150,9 @@ fn receitas() -> Vec<Receita> {
                     o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
                 }),
                 heavy_edge: r["heavy_edge"].as_f64(),
+                base: r["base"].as_str().map(str::to_owned),
+                raio: r["raio"].as_f64().map(|v| v as f32),
+                opacity: r["opacity"].as_f64(),
             })
             .collect();
     }
@@ -161,11 +169,31 @@ fn receitas() -> Vec<Receita> {
                 .map(|(k, v)| (k.to_owned(), v))
                 .collect(),
             heavy_edge: None,
+            base: None,
+            raio: None,
+            opacity: None,
         })
         .collect()
 }
 
 fn preset_de(c: &Receita) -> Preset {
+    if let Some(base) = &c.base {
+        let mut p = super::midias_de_fabrica::de_fabrica(base);
+        let q = &mut p.parametros;
+        if !c.water.is_nan() {
+            q.volumes.water = Some(c.water);
+        }
+        if let Some(o) = c.opacity {
+            q.volumes.opacity = Some(o);
+        }
+        for (k, v) in &c.knobs {
+            assert!(q.engine.insert(k.clone(), *v).is_some(), "knob {k}");
+        }
+        for (k, v) in &c.brush {
+            assert!(q.brush.insert(k.clone(), v.clone()).is_some(), "campo {k}");
+        }
+        return p;
+    }
     let mut t = PainterTool::default();
     t.set_paint_media(PaintMedia::WetPaint);
     let (mut p, _): (Parametros, _) =
@@ -252,11 +280,15 @@ fn as_midias_com_os_knobs_de_hoje() {
             let out = &out;
             s.spawn(move || {
                 let p = preset_de(c);
-                let lei: Vec<(f32, f32)> = RAIOS_CANDIDATO
-                    .iter()
-                    .map(|&r| (r, largura_ao_raio(&p, r)))
-                    .collect();
-                let r = raio_para(&lei, c.alvo);
+                let lei: Vec<(f32, f32)> = if c.raio.is_some() {
+                    Vec::new()
+                } else {
+                    RAIOS_CANDIDATO
+                        .iter()
+                        .map(|&r| (r, largura_ao_raio(&p, r)))
+                        .collect()
+                };
+                let r = c.raio.or_else(|| raio_para(&lei, c.alvo));
                 let mut t = tela();
                 t.set_wet_relogio_fixo(true);
                 assert!(t.wet_preset_aplicar(&p).is_empty());

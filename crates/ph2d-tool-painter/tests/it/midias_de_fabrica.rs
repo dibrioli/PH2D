@@ -23,15 +23,21 @@ enum Metrica {
     Textura,
     Borda,
     Orla,
+    /// A largura do traço DE PÉ (D4–D6) sobre a do DEITADO (A2–F2): o pincel chato (prompt 23).
+    Chato,
+    /// A tinta mediana no miolo do A2–F2 (0 = papel): a claridade do Express Oil (prompt 23).
+    Tinta,
 }
 
 impl Metrica {
-    fn de(self, m: &Medida) -> f64 {
+    fn de(self, (m, c): &(Medida, FamiliaC)) -> f64 {
         match self {
             Metrica::Cobertura => m.cobertura,
             Metrica::Textura => m.textura,
             Metrica::Borda => m.borda,
             Metrica::Orla => m.orla,
+            Metrica::Chato => c.de_pe / c.deitado,
+            Metrica::Tinta => c.tinta,
         }
     }
     fn ruido(self) -> f64 {
@@ -40,6 +46,77 @@ impl Metrica {
             Metrica::Textura => 0.37,
             Metrica::Borda => 0.031,
             Metrica::Orla => 1.0,
+            // Uma foto só tem um traço de pé: o ruído é o de 1 px de largura nos dois (≈ 0,03) e a tinta é
+            // lida como a cobertura.
+            Metrica::Chato => 0.05,
+            Metrica::Tinta => 0.012,
+        }
+    }
+}
+
+/// A régua da família C (`ferramentas/mede_familia_c.py`, as mesmas janelas): a largura do traço vermelho DE
+/// PÉ em D4 e D6 (fora do cruzamento), a do azul DEITADO A2–F2 e a tinta mediana no miolo dele.
+#[derive(Debug)]
+struct FamiliaC {
+    de_pe: f64,
+    deitado: f64,
+    tinta: f64,
+}
+
+impl FamiliaC {
+    fn de(px: &[u8], w: u32) -> Self {
+        let w = w as usize;
+        let q = |x: usize, y: usize| &px[(y * w + x) * 4..(y * w + x) * 4 + 3];
+        // O canal que a tinta mais apaga, e só a tinta da cor certa.
+        let azul = |x, y| {
+            let c = q(x, y);
+            if c[2] < c[0] {
+                0.0
+            } else {
+                1.0 - f64::from(c[0]) / 255.0
+            }
+        };
+        let verm = |x, y| {
+            let c = q(x, y);
+            if c[0] < c[2] {
+                0.0
+            } else {
+                1.0 - f64::from(c[1]) / 255.0
+            }
+        };
+        // Px acima de metade do pico (o p95 do perfil).
+        let acima = |perfil: &[f64]| {
+            let mut o = perfil.to_vec();
+            o.sort_by(f64::total_cmp);
+            let pico = o[((o.len() - 1) as f64 * 0.95).round() as usize];
+            perfil.iter().filter(|&&v| v > 0.5 * pico).count() as f64
+        };
+        let deitado: Vec<f64> = (80..160)
+            .map(|y| (150..500).map(|x| azul(x, y)).sum::<f64>() / 350.0)
+            .collect();
+        let de_pe = [(395_usize, 445_usize), (515, 565)]
+            .iter()
+            .map(|&(y0, y1)| {
+                let p: Vec<f64> = (240..360)
+                    .map(|x| (y0..y1).map(|y| verm(x, y)).sum::<f64>() / (y1 - y0) as f64)
+                    .collect();
+                acima(&p)
+            })
+            .sum::<f64>()
+            / 2.0;
+        let mut o = deitado.clone();
+        o.sort_by(f64::total_cmp);
+        let pico = o[((o.len() - 1) as f64 * 0.95).round() as usize];
+        let mut miolo: Vec<f64> = deitado
+            .iter()
+            .copied()
+            .filter(|&v| v > 0.15 * pico)
+            .collect();
+        miolo.sort_by(f64::total_cmp);
+        Self {
+            de_pe,
+            deitado: acima(&deitado),
+            tinta: miolo[miolo.len() / 2],
         }
     }
 }
@@ -57,24 +134,26 @@ struct Midia {
     metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{Borda, Cobertura, Orla, Textura};
+use Metrica::{Borda, Chato, Cobertura, Orla, Textura, Tinta};
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
 // valores»); a régua reprovava Textura do Oil Bristle (8,46 contra 5,86) e da Acrylic Round (30,4 contra 3,13)
 // e a Borda do Express Oil (0,66 contra 0,80) — saíram daqui, a régua não mede o que o olho dele vê (18 §2).
+// O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
+// sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
 const MIDIAS: [Midia; 8] = [
     Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
-    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872)] },
+    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
     Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
-    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700)] },
+    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Tinta, 0.772)] },
     Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
     Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
     Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
     Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
 ];
 
-fn de_fabrica(nome: &str) -> Preset {
+pub(super) fn de_fabrica(nome: &str) -> Preset {
     let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     Biblioteca::carregar(&raiz, None)
         .entradas
@@ -84,7 +163,7 @@ fn de_fabrica(nome: &str) -> Preset {
         .preset
 }
 
-fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> Medida {
+fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> (Medida, FamiliaC) {
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
@@ -101,7 +180,7 @@ fn cena_seca(p: &Preset, raio: f32, ficheiros: &[String]) -> Medida {
             std::fs::write(format!("{dir}/midia_{nome}.ppm"), &f).unwrap();
         }
     }
-    mede(&px, w, RECTO)
+    (mede(&px, w, RECTO), FamiliaC::de(&px, w))
 }
 
 /// `n` do lado do Rebelle `r` do ponto médio entre ele e o controlo `c`.
@@ -117,7 +196,7 @@ fn cada_preset_parece_a_sua_midia() {
     let mut raios: Vec<f32> = MIDIAS.iter().map(|m| m.raio).collect();
     raios.sort_by(f32::total_cmp);
     raios.dedup();
-    let (medidas, controlos): (Vec<Medida>, Vec<Medida>) = std::thread::scope(|s| {
+    let (medidas, controlos): (Vec<_>, Vec<_>) = std::thread::scope(|s| {
         let a: Vec<_> = MIDIAS
             .iter()
             .map(|m| s.spawn(|| cena_seca(&de_fabrica(m.preset), m.raio, &[m.preset.to_owned()])))
@@ -133,7 +212,7 @@ fn cada_preset_parece_a_sua_midia() {
                 s.spawn(move || cena_seca(round, r, &nomes))
             })
             .collect();
-        let junta = |h: Vec<std::thread::ScopedJoinHandle<'_, Medida>>| {
+        let junta = |h: Vec<std::thread::ScopedJoinHandle<'_, (Medida, FamiliaC)>>| {
             h.into_iter().map(|h| h.join().unwrap()).collect()
         };
         (junta(a), junta(b))
@@ -147,7 +226,13 @@ fn cada_preset_parece_a_sua_midia() {
         );
         for &(met, r) in m.metricas {
             let (nv, cv) = (met.de(n), met.de(c));
-            if !no_vale(nv, r, cv) {
+            // A Tinta é uma FAIXA dos dois lados do Rebelle: o controlo (o Round, aquarela: 0,18) fica do lado
+            // CLARO e o defeito medido do Express Oil era o opaco (0,91) — o vale aprovava-o (prompt 23).
+            let dentro = match met {
+                Tinta => (nv - r).abs() < 4.0 * met.ruido(),
+                _ => no_vale(nv, r, cv),
+            };
+            if !dentro {
                 falhas.push(format!(
                     "{}: {met:?} {nv:.3} fora do vale do Rebelle {r} (controlo {cv:.3})",
                     m.preset

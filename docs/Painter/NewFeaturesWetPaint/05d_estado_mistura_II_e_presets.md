@@ -294,3 +294,11 @@
 - ✅ **Bug #50 fechado (12/10).** O escuro fino sobre o claro seco deixava uma orla mais clara que as duas tintas: o
   tapar extra da lei do Rebelle pinta-se com branco, certo para o claro sobre o escuro, errado ao contrário. Cada
   canal pára agora na mais clara das duas — o Rebelle nunca passa dela. [handoff §7](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_RELEVO_E_VERDE.md).
+
+- ✅ **Família C contra o Rebelle (12/10, janela 23).** Medido antes de construir (~180 composições dos knobs de
+  hoje, um build): o **Oil Bristle** virou pincel CHATO de lâmina de pé (`dab_flatten` 0,68, 90°) com feltro 0,05
+  — o traço de pé 38 → 12 px (Rebelle 13), o deitado 40 (41); o **Express Oil** ficou claro e liso (pigmento 60,
+  cerdas 4, sem água: tinta 0,906 → 0,776, Rebelle 0,772). A **Acrylic Round** (cerdas 0,5 → 2,0, corpo cheio)
+  foi medida e RECUSADA pelo dono. Régua: `ferramentas/mede_familia_c.py`; pranchas `comparar_oleo/janela23_*`.
+  Abertos: tufos nítidos do Express e cerdas de duas espessuras (motor, não knob).
+  [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-12_FAMILIA_C.md).

@@ -49,6 +49,9 @@ pub struct Receita {
     pub grao: Option<(&'static str, f64)>,
     /// O Spacing do Stroke (`BrushSpec::spacing`, fracção do diâmetro) que o preset FIXA; `None` = o padrão.
     pub spacing: Option<f64>,
+    /// O pincel CHATO (`BrushSpec::dab_flatten`, `dab_angle_deg`): a pegada achatada e o ângulo dela, FIXO
+    /// na tela (não segue o traço) — o Bristle Flat do Rebelle é largo deitado e fino de pé.
+    pub achatado: Option<(f64, u16)>,
 }
 
 /// A tela direita, com o dial guardado no meio e para baixo (para quando o artista a ligar).
@@ -78,6 +81,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[],
         grao: None,
         spacing: None,
+        achatado: None,
     },
     Receita {
         meio: "Watercolor",
@@ -98,6 +102,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[],
         grao: None,
         spacing: None,
+        achatado: None,
     },
     Receita {
         meio: "Watercolor",
@@ -118,6 +123,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[],
         grao: None,
         spacing: None,
+        achatado: None,
     },
     Receita {
         meio: "Watercolor",
@@ -142,6 +148,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[],
         grao: None,
         spacing: None,
+        achatado: None,
     },
     // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
     // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
@@ -165,6 +172,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[],
         grao: None,
         spacing: None,
+        achatado: None,
     },
     // ⭐ O 2.º lote (11/10, depois da reavaliação pedida pelo dono — 18 §3: pigmento alto, o relevo de volta
     // e o grão no lugar das cerdas). Cada um medido contra a foto do seu preset-oráculo do Rebelle, seco, à
@@ -186,9 +194,12 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: Some(103.0),
-        extras: &[("felt", 0.0), ("bristleStrength", 2.0), ("emboss", 0.7)],
+        // O chato (prompt 23, aceite do dono 12/10): lâmina de pé, 0,68 = 1 − 13/41 (o traço de pé e o
+        // deitado da foto); o feltro fecha as falhas que a lâmina fina abria. Régua: `mede_familia_c.py`.
+        extras: &[("felt", 0.05), ("bristleStrength", 2.0), ("emboss", 0.7)],
         grao: None,
         spacing: Some(0.01),
+        achatado: Some((0.68, 90)),
     },
     // Oil & Acrylic › Round Hard (a acrílica do Rebelle é esta ferramenta).
     Receita {
@@ -210,27 +221,31 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[("felt", 0.0), ("bristleStrength", 2.0)],
         grao: None,
         spacing: Some(0.01),
+        achatado: None,
     },
-    // Express Oil › Hairy: cerdas finas, menos tinta.
+    // Express Oil › Hairy: claro e liso, tufos (prompt 23, aceite do dono 12/10). A claridade é POUCO
+    // pigmento — com o Spacing 0,01 cada célula leva ~100 carimbos, por isso 60 e não 250; sem água (a água
+    // assentava o pouco pigmento nos poros: grão 0,065 → 0,027); cerdas 4 = tufos sem sal.
     Receita {
         meio: "ExpressOil",
         grupo: "Round",
         nome: "Express Oil",
-        water: 0.09,
+        water: 0.0,
         opacity: 0.6,
-        pigment: 750.0,
+        pigment: 60.0,
         pickup: 1.0,
         gate: 0.0,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
-        bristle_size: 2.0,
+        bristle_size: 4.0,
         bristle_count: 900.0,
         hardness: 0.9,
         size_px: Some(64.0),
         extras: &[("felt", 0.0), ("bristleStrength", 2.0), ("emboss", 0.2)],
         grao: None,
         spacing: Some(0.01),
+        achatado: None,
     },
     // Pencil › Graphite 8B: sem água, o grão do papel a abrir na orla.
     Receita {
@@ -252,6 +267,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[("felt", 0.0)],
         grao: Some(("Noise", 0.4)),
         spacing: None,
+        achatado: None,
     },
     // Pencil › Charcoal: pouca carga, orla larga.
     Receita {
@@ -273,6 +289,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[("felt", 0.0)],
         grao: Some(("Noise", 0.15)),
         spacing: None,
+        achatado: None,
     },
     // Pastel › Pastel Dry › Dry Thin: grão fino e regular.
     Receita {
@@ -294,6 +311,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[("felt", 0.0)],
         grao: Some(("Noise", 0.4)),
         spacing: None,
+        achatado: None,
     },
     // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
     // Voronoi passava as métricas, mas a largura variava até 42 % com a posição — medido 11/10).
@@ -316,5 +334,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         extras: &[("felt", 0.0)],
         grao: Some(("Noise", 0.15)),
         spacing: None,
+        achatado: None,
     },
 ];

@@ -60,6 +60,17 @@ fn parametros(r: &Receita) -> Parametros {
             "campo spacing existe"
         );
     }
+    if let Some((flatten, angulo)) = r.achatado {
+        for (campo, v) in [
+            ("dab_flatten", serde_json::json!(flatten)),
+            ("dab_angle_deg", serde_json::json!(angulo)),
+        ] {
+            assert!(
+                p.brush.insert(campo.to_owned(), v).is_some(),
+                "campo {campo} existe"
+            );
+        }
+    }
     if let Some((kind, lado)) = r.grao {
         assert!(
             p.brush

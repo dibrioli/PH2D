@@ -117,10 +117,8 @@ impl crate::App {
         *frosting = ph2d_app_components::master_editing::any_open(sim);
         frost_doc_scene.reset();
         frost_front_scene.reset();
-        // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121, W2) — decidido AQUI, antes de o documento
-        // ser codificado: com elas na placa o documento vai às FAIXAS, para ficar por baixo delas.
-        // ⭐⭐⭐ Com o cozimento no DISPOSITIVO (doc 121 W3) as cópias já estão no buffer dele: a
-        // placa lê-o sem o trazer de volta, e só prepara as geometrias vivas que a ponte anotou.
+        // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121 W2/W3, B5) — decidido antes de o documento
+        // ser codificado (com elas na placa ele vai às FAIXAS); no DISPOSITIVO o buffer é o dele.
         let por_ordem = ph2d_app_motion::motion_shape_placa::por_ordem();
         let placa = match motion.gpu_cook.formas().filter(|_| motion.gpu_live) {
             Some(f) => self.motion_shell.placa.decide_do_dispositivo(
@@ -131,12 +129,16 @@ impl crate::App {
                 &mut motion.placa_geometrias,
                 cam_affine,
             ),
-            None => self.motion_shell.placa.decide(
+            None => self.motion_shell.placa.decide_com_misturas(
                 motion_tool_active && !*frosting && por_ordem,
                 &motion.pump.vector_instances,
                 &motion.shape_store,
                 &mut motion.placa_geometrias,
                 cam_affine,
+                ph2d_app_motion::motion_shape_placa::Misturas::do_quadro(
+                    surface.gpu(),
+                    motion.pump.camada_isolada(),
+                ),
             ),
         };
         // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS (a colagem acende-o); sem `Luz`, `false`.

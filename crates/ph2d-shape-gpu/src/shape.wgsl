@@ -1014,6 +1014,24 @@ fn tracejado_px(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32,
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    return cor_da_copia(in);
+}
+
+// B5 — a cópia de uma corrida com MISTURA (`mistura.rs`): a cor presa a `[0, 1]` como o Vello a
+// grava (a tinta HDR só vive no halo), pré-multiplicada (`rgb ≤ α`).
+fn cor_de_mistura(in: VsOut) -> vec4<f32> {
+    let c = cor_da_copia(in);
+    let a = min(c.a, 1.0);
+    return vec4<f32>(min(c.rgb, vec3<f32>(a)), a);
+}
+
+@fragment
+fn fs_mistura(in: VsOut) -> @location(0) vec4<f32> {
+    return cor_de_mistura(in);
+}
+
+// A cor pré-multiplicada de uma cópia neste pixel (descarta o que não cobre).
+fn cor_da_copia(in: VsOut) -> vec4<f32> {
     let xy = floor(in.pos.xy);
     var af = 0.0;
     // O traço é sempre não-nulo: o contorno expandido é um preenchimento.

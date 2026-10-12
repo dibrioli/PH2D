@@ -368,10 +368,13 @@ impl MotionState {
         if !self.filtro.ligada {
             return false;
         }
+        // ⚠️ `desenhou` e não `ativa`: o presente desenha a placa ANTES desta colagem, e o `desenha`
+        // consome a decisão — com `ativa` o Vello da camada corria por cima da placa, com a cena
+        // VELHA do último quadro que a codificou (a shell não a codifica com a placa ativa).
         self.filtro.formas_no_vello = formas_no_vello(
             self.pump.vector_instances.len(),
             e.formas
-                .is_some_and(crate::motion_shape_placa::PlacaDeFormas::ativa),
+                .is_some_and(crate::motion_shape_placa::PlacaDeFormas::desenhou),
         );
         let arte = crate::lei_da_aparencia::a_arte_desenha(self, self.pump.a_lei());
         let linear = mundo_para_pixel(e.camera, e.window, e.scene_viewport);
@@ -427,8 +430,12 @@ impl MotionState {
             if let Some(p) = e.formas {
                 p.afina(celulas.formas_mut());
             }
+            // B5: as cópias com mistura não vão às células — a camada da placa entra inteira, como as
+            // do Vello.
+            let misturou = e.formas.filter(|p| p.misturou());
             let formas = e
                 .formas
+                .filter(|p| !p.misturou())
                 .and_then(|p| p.copias_do_quadro())
                 .map(|(buffer, n, vista)| ph2d_fx_cells::Formas { buffer, n, vista });
             let sprites = match gpu_sprites {
@@ -448,6 +455,9 @@ impl MotionState {
                 camada: &alvos.camada_view,
                 tamanho,
             });
+            if let Some(formas) = misturou.and_then(|p| p.camada()) {
+                colagem.blit(e.gpu, &alvos.camada_view, formas, BandSource::Formas);
+            }
         }
         // ⭐ As formas que a placa não leva (a mistura em grupo, o `Blend` por linha, a geometria
         // recusada): o Vello DENTRO da camada, sem o mundo por baixo (a camada é isolada — o modo do

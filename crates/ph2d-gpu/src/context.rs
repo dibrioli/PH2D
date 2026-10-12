@@ -79,7 +79,11 @@ impl GpuContext {
                 | wgpu::Features::TIMESTAMP_QUERY
                 // A aritmética f16 das cascatas da luz 2D (`ph2d-light2d-gpu`, `real_f16.wgsl`).
                 // A mesma regra: onde falta, o solver usa o caminho f32 (o mesmo algoritmo).
-                | wgpu::Features::SHADER_F16);
+                | wgpu::Features::SHADER_F16
+                // O `Multiply` exacto por cópia no passe de formas (`ph2d-shape-gpu`, `mistura.rs`):
+                // `out = s·(1−αb) + b·(1−αs+s)` pede a 2.ª saída do fragmento como factor. Onde
+                // falta, as cópias com Multiply ficam na cena Vello (a mesma imagem).
+                | wgpu::Features::DUAL_SOURCE_BLENDING);
 
         // Limits::default() (desktop tier) is required by Vello's
         // compute pipelines (M11 widget paint) — downlevel_defaults

@@ -21,7 +21,7 @@ use super::{VecPathStore, instance_pose};
 /// ⚠️ **O `sink` entra na chave**: dois sinks VIZINHOS com a mesma mistura são dois grupos, e
 /// fundi-los faria o `Copies` de um misturar-se com as cópias do outro — o artista pôs dois nós,
 /// e *um grupo é um NÓ, não um modo*.
-pub(super) fn chave_de_mistura(
+pub(crate) fn chave_de_mistura(
     m: &ph2d_eval_motion::MisturaDoSink,
 ) -> Option<(u8, BlendWith, u32)> {
     // ⚠️ A pergunta é a do `MisturaDoSink` — a MESMA que manda o sink inteiro ao Vello.

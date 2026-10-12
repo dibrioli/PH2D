@@ -20,7 +20,7 @@ use ph2d_vec_scene::{Rgba8, StrokeSpec};
 
 pub(crate) const LADO: u32 = 512;
 
-fn gpu() -> Option<GpuContext> {
+pub(crate) fn gpu() -> Option<GpuContext> {
     GpuContext::new(GpuContext::default_instance(), None).ok()
 }
 
@@ -47,7 +47,7 @@ impl Semente {
 
 /// As formas de fábrica do `source.shape`, com e sem traço — as mesmas construtoras que o
 /// `motion_shape_gen` chama.
-fn store() -> (VecPathStore, Vec<u32>) {
+pub(crate) fn store() -> (VecPathStore, Vec<u32>) {
     let mut tracada = ph2d_vec_scene::regular_polygon_rounded([0.0, 0.0], 0.5, 0.5, 7, 0.05);
     tracada.stroke = Some(StrokeSpec::new(Rgba8::new(20, 30, 200, 230), 0.06));
     let mut circ = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
@@ -67,7 +67,7 @@ fn store() -> (VecPathStore, Vec<u32>) {
 }
 
 /// `n` cópias espalhadas pelo campo, rodadas, de tamanhos diferentes, algumas translúcidas.
-fn copias(hs: &[u32], n: usize) -> Vec<VectorInstance> {
+pub(crate) fn copias(hs: &[u32], n: usize) -> Vec<VectorInstance> {
     let mut r = Semente(0x5eed_f00d);
     (0..n)
         .map(|i| {
@@ -93,7 +93,11 @@ fn copias(hs: &[u32], n: usize) -> Vec<VectorInstance> {
 }
 
 /// A cena de hoje: o `encode` do produto e o `VelloPass` do produto.
-fn pelo_vello(gpu: &GpuContext, insts: &[VectorInstance], store: &VecPathStore) -> Vec<u8> {
+pub(crate) fn pelo_vello(
+    gpu: &GpuContext,
+    insts: &[VectorInstance],
+    store: &VecPathStore,
+) -> Vec<u8> {
     let mut cena = ph2d_vector::VectorScene::new();
     let janela = ph2d_vector::Rect::new(0.0, 0.0, f64::from(LADO), f64::from(LADO));
     crate::motion_shape_gen::encode(

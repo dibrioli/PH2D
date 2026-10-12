@@ -15,8 +15,9 @@
 //! byte a byte o de sempre. O que devolve o quadro ao Vello (doc 121 §2.1):
 //!
 //! - um quad de IMAGEM (`geometry_id == 0`) — é uma textura, não uma forma;
-//! - uma linha com MISTURA própria ou de grupo ([`crate::motion_shape_gen::mistura`]) — pede uma
-//!   camada fora do alvo;
+//! - uma linha com MISTURA que a placa não compõe como o Vello ([`Misturas`], B5): a que mistura
+//!   com o MUNDO por baixo (`Everything`, `Scene` e a linha sem grupo, fora da camada isolada), e o
+//!   Multiplica sem `DUAL_SOURCE_BLENDING`;
 //! - uma geometria que a placa não desenha como o Vello
 //!   ([`ph2d_vec_render::forma_para_a_placa`] devolve `None`: tinta própria, traço de padrão ou
 //!   de pincel);
@@ -36,7 +37,8 @@ use std::sync::OnceLock;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_gpu::GpuContext;
 use ph2d_shape_gpu::{
-    Copias, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView, StrokeInput,
+    Copias, Corrida, FillRule, Mistura, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass,
+    ShapeView, StrokeInput,
 };
 use ph2d_vec_scene::VecPath;
 use ph2d_vector::{Affine, Fill};
@@ -202,6 +204,11 @@ pub fn contorno_por_ordem() -> bool {
     *LIGADO.get_or_init(|| std::env::var("PH2D_CONTORNO_CALCULADO").map_or(true, |v| v != "0"))
 }
 
+// ⭐⭐ B5 — o que a placa compõe como o Vello neste quadro (a mistura por cópia).
+#[path = "motion_shape_placa_mistura.rs"]
+mod mistura;
+pub use mistura::Misturas;
+
 /// O lado da placa: o passe e a camada, criados na primeira vez que um quadro vai lá.
 struct Gpu {
     passe: ShapePass,
@@ -240,6 +247,10 @@ impl Gpu {
 #[derive(Default)]
 pub struct PlacaDeFormas {
     copias: Vec<ShapeInstance>,
+    /// As corridas de mistura das [`Self::copias`] (B5) — uma só `Normal` sem grupo é o de sempre.
+    corridas: Vec<Corrida>,
+    /// Por que o último quadro ficou no Vello por causa de uma mistura ([`Misturas::da_copia`]).
+    motivo: Option<&'static str>,
     ativa: bool,
     /// ⭐ **As cópias vêm do DISPOSITIVO** (doc 121 W3): quantas o cozimento escreveu no buffer
     /// dele — `None` na rota da CPU, onde elas são as [`Self::copias`].
@@ -275,11 +286,25 @@ impl PlacaDeFormas {
         geometrias: &mut GeometriasDaPlaca,
         cam: Affine,
     ) -> bool {
+        self.decide_com_misturas(ligada, insts, store, geometrias, cam, Misturas::default())
+    }
+
+    /// O [`Self::decide`] com as misturas que a placa compõe neste quadro (B5, [`Misturas`]).
+    pub fn decide_com_misturas(
+        &mut self,
+        ligada: bool,
+        insts: &[VectorInstance],
+        store: &VecPathStore,
+        geometrias: &mut GeometriasDaPlaca,
+        cam: Affine,
+        misturas: Misturas,
+    ) -> bool {
         self.cam = cam;
         self.do_dispositivo = None;
-        self.ativa = ligada && !insts.is_empty() && self.monta(insts, store, geometrias);
+        self.ativa = ligada && !insts.is_empty() && self.monta(insts, store, geometrias, misturas);
         if !self.ativa {
             self.copias.clear();
+            self.corridas.clear();
         }
         self.diz(insts.len(), geometrias.len());
         self.ativa
@@ -304,6 +329,7 @@ impl PlacaDeFormas {
     ) -> bool {
         self.cam = cam;
         self.copias.clear();
+        self.corridas.clear();
         for &h in vivas {
             let _ = geometrias.veredito(h, store);
         }
@@ -327,9 +353,16 @@ impl PlacaDeFormas {
                 (true, false) => {
                     eprintln!("[formas] {n} copias de {geometrias} geometrias pela PLACA");
                 }
-                (false, _) => {
-                    eprintln!("[formas] {n} copias de {geometrias} geometrias pela cena Vello");
-                }
+                (false, _) => match self.motivo {
+                    Some(m) => {
+                        eprintln!(
+                            "[formas] {n} copias de {geometrias} geometrias pela cena Vello: {m}"
+                        );
+                    }
+                    None => {
+                        eprintln!("[formas] {n} copias de {geometrias} geometrias pela cena Vello");
+                    }
+                },
             }
             self.anterior = Some(rota);
         }
@@ -341,19 +374,38 @@ impl PlacaDeFormas {
         insts: &[VectorInstance],
         store: &VecPathStore,
         geometrias: &mut GeometriasDaPlaca,
+        misturas: Misturas,
     ) -> bool {
         self.copias.clear();
+        self.corridas.clear();
+        self.motivo = None;
         // ⚠️ Um handle que o store largou nunca volta (não é reciclado) — a entrada dele é lixo.
         geometrias.varre(store);
         for inst in insts {
-            if inst.geometry_id == 0 || crate::motion_shape_gen::mistura::precisa_do_vello(inst) {
+            if inst.geometry_id == 0 {
                 return false;
             }
+            let (mistura, grupo) = match misturas.da_copia(inst) {
+                Ok(m) => m,
+                Err(motivo) => {
+                    self.motivo = Some(motivo);
+                    return false;
+                }
+            };
             match geometrias.veredito(inst.geometry_id, store) {
                 // ⚠️ Na rota da CPU um handle ausente devolve o quadro ao Vello, como sempre fez.
                 Veredito::Recusada | Veredito::Ausente => return false,
                 Veredito::Vazia => {}
                 Veredito::Pronta => {
+                    let i = u32::try_from(self.copias.len()).unwrap_or(u32::MAX);
+                    match self.corridas.last_mut() {
+                        Some(c) if c.mistura == mistura && c.grupo == grupo => c.copias.end = i + 1,
+                        _ => self.corridas.push(Corrida {
+                            copias: i..i + 1,
+                            mistura,
+                            grupo,
+                        }),
+                    }
                     self.copias.push(ShapeInstance {
                         pos: inst.world_pos,
                         size: inst.size,
@@ -427,6 +479,11 @@ impl PlacaDeFormas {
         // passa o buffer com o cozimento vivo, e colar cópias velhas seria pior que não desenhar.
         // ⚠️ Um clone do handle (o `wgpu::Buffer` é contado por referência): o `draw` muta o passe
         // (o contorno, doc 121 §9.5) e não pode receber um empréstimo dele próprio.
+        let corridas = if self.do_dispositivo.is_some() {
+            &[][..]
+        } else {
+            &self.corridas[..]
+        };
         let (buffer, count) = match self.do_dispositivo {
             Some(n) => (dispositivo?.clone(), n),
             None => {
@@ -448,7 +505,7 @@ impl PlacaDeFormas {
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        g.passe.draw(
+        g.passe.draw_em_corridas(
             gpu,
             &mut enc,
             &g.vista,
@@ -458,11 +515,30 @@ impl PlacaDeFormas {
                 buffer: &buffer,
                 count,
             },
+            corridas,
         );
         gpu.queue.submit([enc.finish()]);
         self.desenhou = true;
         self.ultimas = Some((buffer, count, vista));
         self.gpu.as_ref().map(|g| &g.vista)
+    }
+
+    /// Por que o último [`Self::decide_com_misturas`] deixou o quadro no Vello por causa de uma
+    /// mistura — `None` quando não foi por isso.
+    #[must_use]
+    pub fn motivo_do_vello(&self) -> Option<&'static str> {
+        self.motivo
+    }
+
+    /// **O quadro da placa tem cópias com mistura** (B5): o `Each Shape` não as leva às células — elas
+    /// vão à camada como uma peça só, como as do Vello ([`crate::motion_filter::formas_no_vello`]).
+    #[must_use]
+    pub fn misturou(&self) -> bool {
+        self.do_dispositivo.is_none()
+            && self
+                .corridas
+                .iter()
+                .any(|c| c.mistura != Mistura::Normal || c.grupo != 0)
     }
 
     /// As cópias que o [`Self::desenha`] deste quadro desenhou (o buffer, quantas, a vista).

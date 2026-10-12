@@ -6,6 +6,10 @@ use ph2d_gpu::GpuContext;
 use crate::caixas::{entrada, pipeline_das_caixas};
 use crate::geometry::{GeometryRecord, ShapeGeometry};
 
+// B5 — a mistura por cópia (Soma, Tela, Multiplica) e as corridas.
+#[path = "mistura.rs"]
+pub(crate) mod mistura;
+
 /// A projecção mundo → pixel do alvo: `pixel = lin · mundo + t`, com `lin = [[a, c], [b, d]]`
 /// guardado como `(a, b, c, d)` — os mesmos coeficientes de um `Affine` do kurbo.
 #[repr(C)]
@@ -68,6 +72,8 @@ pub struct ShapePass {
     ultimo: Option<(wgpu::BindGroup, u32)>,
     /// O passe das CAIXAS das cópias ([`Self::caixas`]) e o layout do grupo `3` dele.
     caixas: (wgpu::ComputePipeline, wgpu::BindGroupLayout),
+    /// B5 — os pipelines das corridas com mistura ([`mistura`]).
+    misturas: mistura::Misturas,
 }
 
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
@@ -224,33 +230,18 @@ impl ShapePass {
             bind_group_layouts: &[Some(&layout), Some(&contorno.leitura)],
             immediate_size: 0,
         });
-        let pipeline = crate::contorno::Variantes::cria(&[], |compilation_options| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("ph2d-shape-gpu"),
-                layout: Some(&pl),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs_main"),
-                    compilation_options: compilation_options.clone(),
-                    buffers: &[],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some("fs_main"),
-                    compilation_options,
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview_mask: None,
-                cache: None,
-            })
+        let pipeline = crate::contorno::Variantes::cria(&[], |opcoes| {
+            mistura::pipeline_de(
+                device,
+                &pl,
+                &module,
+                "fs_main",
+                mistura::Mistura::Normal,
+                format,
+                opcoes,
+            )
         });
+        let misturas = mistura::Misturas::new(device, &pl, &module, format);
         let view_buf = buffer_com(
             gpu,
             "ph2d-shape-gpu view",
@@ -274,6 +265,7 @@ impl ShapePass {
             contorno,
             ultimo: None,
             caixas,
+            misturas,
         }
     }
 
@@ -552,40 +544,7 @@ impl ShapePass {
         } = copias;
         gpu.queue
             .write_buffer(&self.view_buf, 0, bytemuck::bytes_of(&view));
-        let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-shape-gpu"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.view_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: instances.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.records.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: self.segs.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: self.handles.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: self.eixo.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: self.blocos.as_entire_binding(),
-                },
-            ],
-        });
+        let bg = self.liga(gpu, instances);
         let desenha = count > 0 && !self.carregadas.is_empty();
         if desenha {
             self.contorno
@@ -593,6 +552,23 @@ impl ShapePass {
         }
         self.ultimo = desenha.then(|| (bg.clone(), count));
         self.passe_de_desenho(gpu, encoder, target, load, desenha.then_some((&bg, count)));
+    }
+
+    /// O grupo `0` do desenho sobre as cópias `instances` (a vista é a do último `write_buffer`).
+    fn liga(&self, gpu: &GpuContext, instances: &wgpu::Buffer) -> wgpu::BindGroup {
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-shape-gpu"),
+            layout: &self.layout,
+            entries: &[
+                entrada(0, &self.view_buf),
+                entrada(1, instances),
+                entrada(2, &self.records),
+                entrada(3, &self.segs),
+                entrada(4, &self.handles),
+                entrada(5, &self.eixo),
+                entrada(6, &self.blocos),
+            ],
+        })
     }
 
     /// ⭐ doc 121 §9.14 (c) — **o último desenho outra vez, noutro alvo**, por cima do que lá está: as

@@ -16,6 +16,7 @@ use crate::motion_shape_gen::mistura::gpu_tests::{
     A1, A2, B, BARRA, COLUNAS, H, W, byte, copia, esperado, mede, try_headless_gpu,
 };
 use crate::motion_shape_gen::{VecPathStore, encode};
+use crate::motion_shape_placa::{Misturas, PlacaDeFormas};
 use crate::motion_state::MotionState;
 
 fn srgb_para_linear(c: f64) -> f64 {
@@ -92,6 +93,14 @@ fn motion_com_filtro(tag: u8, com: BlendWith, raio: f32) -> MotionState {
 }
 
 /// Pinta as duas cópias pela camada filtrada sobre o mundo `B` e lê as quatro colunas.
+/// Por onde as formas vão à camada: a cena Vello dela, ou a PLACA (B5: a mistura por cópia).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Rota {
+    Vello,
+    Placa,
+}
+
+#[allow(clippy::too_many_arguments)]
 fn pela_camada(
     gpu: &ph2d_gpu::GpuContext,
     renderer: &mut ph2d_render::SpriteRenderer,
@@ -100,6 +109,7 @@ fn pela_camada(
     com: BlendWith,
     raio: f32,
     inteira: bool,
+    rota: Rota,
 ) -> ([i32; 4], MotionState) {
     let mut m = motion_com_filtro(tag, com, raio);
     if inteira {
@@ -125,20 +135,36 @@ fn pela_camada(
         copia(16.0, 24.0, A1, mistura, None),
         copia(32.0, 24.0, A2, mistura, None),
     ];
-    let mut art = |_: u32, _: [f32; 4]| None;
-    let cena = m
-        .filtro
-        .cena_da_camada(true)
-        .expect("com filtro, a cena vai à camada");
-    encode(
-        &insts,
-        &store,
-        &mut art,
-        Affine::IDENTITY,
-        None,
-        ph2d_render::ImageFilterMode::Smooth,
-        cena,
-    );
+    let mut placa = PlacaDeFormas::default();
+    if rota == Rota::Vello {
+        let mut art = |_: u32, _: [f32; 4]| None;
+        let cena = m
+            .filtro
+            .cena_da_camada(true)
+            .expect("com filtro, a cena vai à camada");
+        encode(
+            &insts,
+            &store,
+            &mut art,
+            Affine::IDENTITY,
+            None,
+            ph2d_render::ImageFilterMode::Smooth,
+            cena,
+        );
+    } else {
+        // A ordem do PRODUTO: decide (`fase_vector_bands`), desenha (`present`), cola (`present_chrome`).
+        // ⚠️ As geometrias do MotionState: as células do `Each Shape` lêem as mesmas.
+        let geos = &mut m.placa_geometrias;
+        let misturas = Misturas::do_quadro(gpu, m.pump.camada_isolada());
+        assert!(
+            placa.decide_com_misturas(true, &insts, &store, geos, Affine::IDENTITY, misturas),
+            "tag {tag} {com:?}: a placa recusou ({:?})",
+            placa.motivo_do_vello()
+        );
+        let _ = placa
+            .desenha(gpu, (W, H), geos, None)
+            .expect("a placa desenha");
+    }
     m.pump.vector_instances = insts;
     let mundo = WorldRt::new(gpu, (W, H));
     let b = srgb_para_linear(f64::from(B));
@@ -161,7 +187,7 @@ fn pela_camada(
             height: H,
         },
         scene_viewport: None,
-        formas: None,
+        formas: (rota == Rota::Placa).then_some(&placa),
         mundo: &mundo,
         band_blit: blit,
     }));
@@ -199,6 +225,7 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
             BlendWith::Everything,
             0.0,
             inteira,
+            Rota::Vello,
         );
         let alvo = esperado(0, None).map(byte);
         assert!(
@@ -207,19 +234,23 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
         );
         for tag in [1u8, 3, 4] {
             for com in BlendWith::ALL {
-                let (lido, _) = pela_camada(&gpu, &mut renderer, &blit, tag, com, 0.0, inteira);
+                let mut pela =
+                    |rota| pela_camada(&gpu, &mut renderer, &blit, tag, com, 0.0, inteira, rota).0;
+                let (lido, placa) = (pela(Rota::Vello), pela(Rota::Placa));
                 let hoje = mede(&mut vello, &gpu, tag, com, false, (1, 1));
                 let tabela = esperado(tag, Some(com)).map(byte);
                 println!(
-                    "  tag {tag} {com:?}: camada {lido:?} · sem filtro {hoje:?} · tabela {tabela:?}"
+                    "  tag {tag} {com:?}: camada {lido:?} · placa {placa:?} · sem filtro {hoje:?} · \
+                     tabela {tabela:?}"
                 );
                 if lido.iter().zip(tabela).any(|(m, e)| (m - e).abs() > BARRA)
                     || lido.iter().zip(hoje).any(|(m, e)| (m - e).abs() > 1)
+                    || placa.iter().zip(lido).any(|(m, e)| (m - e).abs() > 1)
                 {
                     falhas.push(format!(
-                    "inteira {inteira} tag {tag} {com:?}: camada {lido:?} · sem filtro {hoje:?} · \
-                     tabela {tabela:?}"
-                ));
+                        "inteira {inteira} tag {tag} {com:?}: camada {lido:?} · placa {placa:?} · \
+                     sem filtro {hoje:?} · tabela {tabela:?}"
+                    ));
                 }
             }
         }
@@ -229,6 +260,86 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
         "a camada filtrada não pinta a mistura de sempre (barra {BARRA} contra a tabela, 1 contra o \
          quadro sem filtro):\n{}",
         falhas.join("\n")
+    );
+}
+
+/// ⭐ **A placa que DESENHOU cala a cena Vello da camada** (B5). O presente desenha a placa antes de
+/// colar a camada, e a shell não codifica a cena com a placa ativa: decidir pelo `ativa` (que o
+/// `desenha` consome) corria o Vello da camada com a cena VELHA do último quadro que a codificou —
+/// formas paradas por cima da placa a cada troca de rota. Fixtura: um quadro Vello deixa `A1` em
+/// `x = 10`; o seguinte vai à placa só com `A2` em `x = 38` — a coluna `10` tem de ser o fundo.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn a_placa_que_desenhou_cala_a_cena_velha_da_camada() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let mut renderer = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::dummy(&gpu),
+        8,
+    );
+    let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    let mut m = motion_com_filtro(0, BlendWith::Everything, 0.0);
+    let mut store = VecPathStore::default();
+    let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
+    let velha = [copia(10.0, 12.0, A1, MisturaDoSink::default(), None)];
+    let cena = m.filtro.cena_da_camada(true).expect("a cena da camada");
+    let mut art = |_: u32, _: [f32; 4]| None;
+    let suave = ph2d_render::ImageFilterMode::Smooth;
+    encode(
+        &velha,
+        &store,
+        &mut art,
+        Affine::IDENTITY,
+        None,
+        suave,
+        cena,
+    );
+    let nova = vec![copia(38.0, 12.0, A2, MisturaDoSink::default(), None)];
+    let mut placa = PlacaDeFormas::default();
+    let geos = &mut m.placa_geometrias;
+    assert!(placa.decide(true, &nova, &store, geos, Affine::IDENTITY));
+    let _ = placa
+        .desenha(&gpu, (W, H), geos, None)
+        .expect("a placa desenha");
+    m.pump.vector_instances = nova;
+    let mundo = WorldRt::new(&gpu, (W, H));
+    let b = srgb_para_linear(f64::from(B));
+    mundo.clear_linear(
+        &gpu,
+        wgpu::Color {
+            r: b,
+            g: b,
+            b,
+            a: 1.0,
+        },
+    );
+    assert!(m.filtro.liga(true));
+    assert!(m.filtra_a_camada(Engrenagem {
+        gpu: &gpu,
+        renderer: &mut renderer,
+        camera: &Camera2d::default(),
+        window: ph2d_host::WindowSize {
+            width: W,
+            height: H
+        },
+        scene_viewport: None,
+        formas: Some(&placa),
+        mundo: &mundo,
+        band_blit: &blit,
+    }));
+    let lido = le_linha(&gpu, &mundo);
+    println!("  colunas {lido:?}");
+    assert!(
+        (lido[2] - byte(A2)).abs() <= BARRA,
+        "controlo: a placa não pintou a cópia nova ({lido:?})"
+    );
+    assert!(
+        (lido[0] - byte(B)).abs() <= BARRA,
+        "a cena VELHA do Vello pintou-se por cima da placa ({lido:?}): a colagem decidiu pelo `ativa`"
     );
 }
 
@@ -251,7 +362,16 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
     );
     let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
     // `Screen` em `Copies` (vai ao Vello, e não satura como o `Add`), um borrão largo face às cópias.
-    let (neutro, _) = pela_camada(&gpu, &mut renderer, &blit, 4, BlendWith::Copies, 0.0, false);
+    let (neutro, _) = pela_camada(
+        &gpu,
+        &mut renderer,
+        &blit,
+        4,
+        BlendWith::Copies,
+        0.0,
+        false,
+        Rota::Vello,
+    );
     let (borrado, m) = pela_camada(
         &gpu,
         &mut renderer,
@@ -260,6 +380,7 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
         BlendWith::Copies,
         20.0,
         false,
+        Rota::Vello,
     );
     println!("  neutro {neutro:?} · borrado {borrado:?}");
     assert!(

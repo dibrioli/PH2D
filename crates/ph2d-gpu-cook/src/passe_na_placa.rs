@@ -25,13 +25,6 @@ const WG: u32 = crate::codegen::WORKGROUP_SIZE;
 /// variantes no mesmo processo): a `1 000` peças empatam (`14,4` × `14,4 ms` a 64 varreduras); a
 /// `2 048` os despachos ganham (`15,7` × `29,1 ms`). O recurso é o de UM multiprocessador.
 const PECAS_PARA_UM_GRUPO: u32 = 1024;
-/// O `scan` do caminho de um grupo por SUBGRUPO onde o dispositivo o tem (doc 131 C.7).
-const SCAN_POR_SUBGRUPOS: bool = false;
-/// As ligações e os uniformes do passe guardados entre cozimentos (doc 131 C.7).
-const LIGACOES_EM_CACHE: bool = false;
-/// Quantas ligações (e uniformes) o cache guarda antes de se esvaziar — orçamento de memória do
-/// processador, não da placa: cada entrada segura os buffers que liga.
-const CACHE_MAX: usize = 256;
 const LEI: &str = include_str!("passe_na_placa_lei.wgsl");
 
 /// As colunas que o passe lê, com a dimensão que a CPU exige e o bit no `U.tem`.
@@ -70,20 +63,10 @@ pub(crate) struct Passe {
     /// O tecto do caminho de UM grupo — `None` = [`PECAS_PARA_UM_GRUPO`]; só a sonda o muda (as
     /// duas variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
     pub(crate) um_grupo_ate: Option<u32>,
-    /// O `scan` por subgrupo — `None` = [`SCAN_POR_SUBGRUPOS`]; só a sonda e o gate o mudam.
-    scan_por_subgrupos: Option<bool>,
-    /// O último passe de um grupo correu o `scan` por subgrupo (o controlo do gate).
-    correu_por_subgrupos: bool,
-    /// As ligações em cache — `None` = [`LIGACOES_EM_CACHE`]; só a sonda o muda.
-    ligacoes_em_cache: Option<bool>,
-    cache: Cache,
     /// Quanto o processador levou a ENCOMENDAR o último passe (a sonda lê).
     pub(crate) encode: std::time::Duration,
     /// O `ctrl` do último passe (`[alcance_max, andou, parado, varreduras, candidatos]`).
     pub(crate) ctrl: Option<Arc<wgpu::Buffer>>,
-    /// A grelha da última varredura do último passe (`starts`, `sorted` e os bytes de cada) —
-    /// o gate lê-a: é a saída do `scan`.
-    grelha: Option<[(Arc<wgpu::Buffer>, u64); 2]>,
     /// A cópia do `ctrl` encomendada no cozimento, por mapear (o `submit` ainda não correu).
     copia: Option<(wgpu::Buffer, u32)>,
     /// A leitura em voo: o buffer, o aviso do mapeamento e as peças.
@@ -97,7 +80,6 @@ impl Passe {
         self.hold.clear();
         self.hold_uni.clear();
         self.hold_scan.clear();
-        self.grelha = None;
         self.correu = 0;
     }
 
@@ -106,15 +88,6 @@ impl Passe {
             p.scan.vira();
         }
     }
-}
-
-/// As ligações e os uniformes de passes anteriores (doc 131 C.7): o `BufferPool` devolve os
-/// MESMOS buffers a uma cena parada, logo a mesma chave volta a cada cozimento. Cada entrada
-/// segura (clona) os buffers da chave, para que a identidade não possa ser reaproveitada.
-#[derive(Default)]
-struct Cache {
-    grupos: std::collections::BTreeMap<(wgpu::ComputePipeline, Vec<wgpu::Buffer>), wgpu::BindGroup>,
-    unis: std::collections::BTreeMap<[u32; 8], wgpu::Buffer>,
 }
 
 struct Pipes {
@@ -127,9 +100,6 @@ struct Pipes {
     corrige: wgpu::ComputePipeline,
     decide: wgpu::ComputePipeline,
     uno: wgpu::ComputePipeline,
-    /// O de um grupo com o `scan` por subgrupo — só onde o dispositivo tem `Features::SUBGROUP`
-    /// (um módulo com operações de subgrupo não valida sem ela).
-    uno_sg: Option<wgpu::ComputePipeline>,
     escreve: wgpu::ComputePipeline,
     scan: crate::scan::Scan,
 }
@@ -172,7 +142,7 @@ const VARREDURA: [(&str, &str); 7] = [
 ];
 const FNS: &str = include_str!("passe_na_placa_varredura.wgsl");
 
-fn fontes() -> [(&'static str, String); 11] {
+fn fontes() -> [(&'static str, String); 10] {
     let forma = modulo(
         &[
             ("c_p: array<vec2<f32>>", R),
@@ -249,15 +219,11 @@ fn fontes() -> [(&'static str, String); 11] {
          \x20   if (m == 0.0 || m < u.repouso * alc) { atomicStore(&ctrl[2], 1u); }",
         "",
     );
-    let uno_com = |scan: &str| {
-        format!(
-            "{}{FNS}\n{scan}\n{}",
-            cabeca(&VARREDURA),
-            include_str!("passe_na_placa_uno.wgsl")
-        )
-    };
-    let uno = uno_com(include_str!("passe_na_placa_scan_grupo.wgsl"));
-    let uno_sg = uno_com(include_str!("passe_na_placa_scan_subgrupo.wgsl"));
+    let uno = format!(
+        "{}{FNS}\n{}",
+        cabeca(&VARREDURA),
+        include_str!("passe_na_placa_uno.wgsl")
+    );
     let escreve = modulo(
         &[
             ("c_p: array<vec2<f32>>", R),
@@ -294,12 +260,10 @@ fn fontes() -> [(&'static str, String); 11] {
         ("decide", decide),
         ("uno", uno),
         ("escreve", escreve),
-        // ÚLTIMO: o único que pede `Features::SUBGROUP` (o gate valida-o com essa capacidade).
-        ("uno_sg", uno_sg),
     ]
 }
 
-/// As fontes WGSL, para o gate que as valida sem placa. A última (`uno_sg`) pede subgrupos.
+/// As fontes WGSL, para o gate que as valida sem placa.
 #[doc(hidden)]
 #[must_use]
 pub fn fontes_wgsl() -> Vec<(&'static str, String)> {
@@ -308,14 +272,9 @@ pub fn fontes_wgsl() -> Vec<(&'static str, String)> {
 
 impl Pipes {
     fn new(gpu: &GpuContext) -> Self {
-        let [f, m, i, g, e, o, c, d, un, w, sg] = fontes();
+        let [f, m, i, g, e, o, c, d, un, w] = fontes();
         let p = |(nome, src): (&str, String)| create_pipeline(gpu, &src, nome);
         Self {
-            uno_sg: gpu
-                .device
-                .features()
-                .contains(wgpu::Features::SUBGROUP)
-                .then(|| p(sg)),
             forma: p(f),
             massa: p(m),
             inicia: p(i),
@@ -333,57 +292,22 @@ impl Pipes {
 
 fn grupo(
     gpu: &GpuContext,
-    cache: Option<&mut Cache>,
     pipe: &wgpu::ComputePipeline,
     buffers: &[&wgpu::Buffer],
 ) -> wgpu::BindGroup {
-    let cria = || {
-        let entries: Vec<wgpu::BindGroupEntry> = buffers
-            .iter()
-            .enumerate()
-            .map(|(k, b)| wgpu::BindGroupEntry {
-                binding: k as u32,
-                resource: b.as_entire_binding(),
-            })
-            .collect();
-        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-passe"),
-            layout: &pipe.get_bind_group_layout(0),
-            entries: &entries,
+    let entries: Vec<wgpu::BindGroupEntry> = buffers
+        .iter()
+        .enumerate()
+        .map(|(k, b)| wgpu::BindGroupEntry {
+            binding: k as u32,
+            resource: b.as_entire_binding(),
         })
-    };
-    let Some(c) = cache else {
-        return cria();
-    };
-    let chave = (pipe.clone(), buffers.iter().map(|b| (*b).clone()).collect());
-    if let Some(g) = c.grupos.get(&chave) {
-        return g.clone();
-    }
-    if c.grupos.len() >= CACHE_MAX {
-        c.grupos.clear();
-    }
-    c.grupos.entry(chave).or_insert_with(cria).clone()
-}
-
-/// O uniforme `U` do passe com estes `campos`, escrito na criação.
-fn uniforme(gpu: &GpuContext, cache: Option<&mut Cache>, campos: [u32; 8]) -> wgpu::Buffer {
-    let cria = || {
-        let b = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-passe u"),
-            size: 32,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        gpu.queue.write_buffer(&b, 0, bytemuck::cast_slice(&campos));
-        b
-    };
-    let Some(c) = cache else {
-        return cria();
-    };
-    if c.unis.len() >= CACHE_MAX && !c.unis.contains_key(&campos) {
-        c.unis.clear();
-    }
-    c.unis.entry(campos).or_insert_with(cria).clone()
+        .collect();
+    gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("ph2d-passe"),
+        layout: &pipe.get_bind_group_layout(0),
+        entries: &entries,
+    })
 }
 
 fn despacha(
@@ -412,28 +336,6 @@ impl GpuCook {
     #[doc(hidden)]
     pub fn passe_um_grupo_ate(&mut self, n: Option<u32>) {
         self.passe.um_grupo_ate = n;
-    }
-
-    /// Força o `scan` do caminho de um grupo por subgrupo (`Some(true)`), pela memória de grupo
-    /// (`Some(false)`) ou o do produto (`None`) — só a sonda e o gate. Sem `Features::SUBGROUP`
-    /// corre sempre o da memória de grupo.
-    #[doc(hidden)]
-    pub fn passe_scan_por_subgrupos(&mut self, ligado: Option<bool>) {
-        self.passe.scan_por_subgrupos = ligado;
-    }
-
-    /// O último passe de um grupo correu o `scan` por subgrupo — o controlo do gate.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn passe_correu_por_subgrupos(&self) -> bool {
-        self.passe.correu_por_subgrupos
-    }
-
-    /// Força as ligações do passe em cache (`Some(true)`), recriadas a cada cozimento
-    /// (`Some(false)`) ou as do produto (`None`) — só a sonda.
-    #[doc(hidden)]
-    pub fn passe_ligacoes_em_cache(&mut self, ligado: Option<bool>) {
-        self.passe.ligacoes_em_cache = ligado;
     }
 
     /// ⭐ **O `Relatorio` do passe na placa** (doc 130 §5) — o que o perfilador do quadro mostra
@@ -560,58 +462,46 @@ impl GpuCook {
         } else {
             n
         };
-        let t0 = std::time::Instant::now();
-        let mut cache = std::mem::take(&mut self.passe.cache);
-        let mut c = self
-            .passe
-            .ligacoes_em_cache
-            .unwrap_or(LIGACOES_EM_CACHE)
-            .then_some(&mut cache);
-        let mut uni = |bi: u32, bo: u32| {
+        let uni = |bi: u32, bo: u32| {
+            let b = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-passe u"),
+                size: 32,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
             let campos = [n, nb, repouso.to_bits(), tem, bi, bo, varreduras, 0];
-            uniforme(gpu, c.as_deref_mut(), campos)
+            gpu.queue.write_buffer(&b, 0, bytemuck::cast_slice(&campos));
+            b
         };
         let (u0, u1, uf) = (uni(0, n), uni(n, 0), uni(fim, 0));
 
-        let sg = self.passe.scan_por_subgrupos.unwrap_or(SCAN_POR_SUBGRUPOS);
+        let t0 = std::time::Instant::now();
         let pipes = self.passe.pipes.get_or_insert_with(|| Pipes::new(gpu));
         enc.clear_buffer(&ctrl, 0, None);
         let pb = &p.buffer;
-        let gf = grupo(
-            gpu,
-            c.as_deref_mut(),
+        let g = |pipe, bufs: &[&wgpu::Buffer]| grupo(gpu, pipe, bufs);
+        let gf = g(
             &pipes.forma,
             &[&u0, pb, &raio, &caixa, &desvio, &size, &rot, &dec, &ctrl],
         );
         despacha(enc, &pipes.forma, &gf, n);
-        let gm = grupo(
-            gpu,
-            c.as_deref_mut(),
+        let gm = g(
             &pipes.massa,
             &[&u0, pb, &w, &ii, &fall, &rest, &body, &dec, &est],
         );
         despacha(enc, &pipes.massa, &gm, n);
-        let gi = grupo(gpu, c.as_deref_mut(), &pipes.inicia, &[&u0, &ctrl]);
+        let gi = g(&pipes.inicia, &[&u0, &ctrl]);
         despacha(enc, &pipes.inicia, &gi, 1);
         let mut scratch = crate::scan::ScanScratch::default();
-        let mut varre = |pipe, u: &wgpu::Buffer| {
+        let varre = |pipe, u: &wgpu::Buffer| {
             grupo(
                 gpu,
-                c.as_deref_mut(),
                 pipe,
                 &[u, &dec, &ago, &est, &starts, &cursor, &sorted, &ctrl],
             )
         };
-        let mut por_subgrupos = false;
         if um_grupo {
-            let uno = match &pipes.uno_sg {
-                Some(p) if sg => {
-                    por_subgrupos = true;
-                    p
-                }
-                _ => &pipes.uno,
-            };
-            despacha(enc, uno, &varre(uno, &u0), 1);
+            despacha(enc, &pipes.uno, &varre(&pipes.uno, &u0), 1);
         } else {
             // As duas fases do ping-pong, ligadas UMA vez por passe.
             let fases = [&u0, &u1].map(|u| {
@@ -622,7 +512,7 @@ impl GpuCook {
                     varre(&pipes.corrige, u),
                 )
             });
-            let gd = grupo(gpu, c.as_deref_mut(), &pipes.decide, &[&u0, &ctrl]);
+            let gd = g(&pipes.decide, &[&u0, &ctrl]);
             for v in 0..varreduras as usize {
                 let (gg, ge, go, gc) = &fases[v % 2];
                 enc.clear_buffer(&starts, 0, None);
@@ -637,15 +527,11 @@ impl GpuCook {
                 despacha(enc, &pipes.decide, &gd, 1);
             }
         }
-        let gw = grupo(
-            gpu,
-            c,
+        let gw = g(
             &pipes.escreve,
             &[&uf, pb, &rot, &dec, &est, &p_out, &rot_out],
         );
         despacha(enc, &pipes.escreve, &gw, n);
-        self.passe.cache = cache;
-        self.passe.correu_por_subgrupos = por_subgrupos;
         self.passe.hold_uni.extend([u0, u1, uf]);
         self.passe.hold_scan.push(scratch);
         // O `Relatorio` sai da placa SEM espera: uma cópia por vez, mapeada no quadro seguinte.
@@ -659,10 +545,6 @@ impl GpuCook {
             enc.copy_buffer_to_buffer(&ctrl, 0, &staging, 0, 32);
             self.passe.copia = Some((staging, n));
         }
-        self.passe.grelha = Some([
-            (Arc::clone(&starts), (u64::from(nb) + 1) * 4),
-            (Arc::clone(&sorted), n64 * 4),
-        ]);
         self.passe.ctrl = Some(ctrl);
         self.passe.encode = t0.elapsed();
 
@@ -738,20 +620,5 @@ impl GpuCook {
             bytemuck::pod_collect_to_vec(&r),
             c[3],
         ))
-    }
-
-    /// A grelha da última varredura do último passe lido por [`Self::separa_e_le`]: `starts`
-    /// (a saída do `scan`) seguido de `sorted` — o gate das variantes do `scan` (doc 131 C.7).
-    #[doc(hidden)]
-    #[must_use]
-    pub fn passe_le_grelha(&self, gpu: &GpuContext) -> Option<Vec<u32>> {
-        let grelha = self.passe.grelha.as_ref()?;
-        let mut out = Vec::new();
-        for (buf, bytes) in grelha {
-            out.extend(bytemuck::pod_collect_to_vec::<u8, u32>(&le_bytes(
-                gpu, buf, *bytes,
-            )));
-        }
-        Some(out)
     }
 }

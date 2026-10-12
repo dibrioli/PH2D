@@ -115,4 +115,47 @@ corte é verificado por `git diff --stat` (linhas totais iguais entre vivo + arq
 
 ## §7 — Medições (preenchidas ao correr)
 
-_(vazio até à rodada)_
+### C.7 — `scan` por subgrupos e ligações em cache no passe de um grupo: ⛔ RECUSADOS (12/10)
+
+Construídos (`4b2cec5f5b`: `passe_na_placa_scan_subgrupo.wgsl`, `subgroupExclusiveAdd` + UMA barreira contra as
+17 do Hillis-Steele, só com `Features::SUBGROUP`; cache de ligações e uniformes por identidade de buffer; os dois
+por interruptor em execução). Sonda `measure_a_cadeia_cpu_contra_placa`, release, RTX 5060 Ti (subgrupo 32), as
+variantes no MESMO processo, blocos com a ordem rodada; o MÍNIMO de 3 rodadas (7 · 7 · 15 blocos, `loadavg`
+3,4 → 22 — outra linha a compilar). ms, total da ida e volta:
+
+| linha | CPU | um grupo (atual) | atual+cache | subgrupos | subgrupos+cache |
+|---|---|---|---|---|---|
+| cadeia 16 · tecto 1024 (**a que decide**) | `1,81` | **`11,53`** | `11,93` | `12,36` | `11,81` |
+| cadeia 16 · tecto 4096 (1725 correm) | `3,26` | **`20,16`** | `22,39` | `23,33` | `20,97` |
+| cadeia 32 · tecto 4096 | `15,59` | `50,29` | `49,28` | `53,14` | `52,30` |
+| cadeia 256 · tecto 1024 | `14,32` | **`25,18`** | `25,53` | `26,98` | `27,07` |
+| nuvem 512 · 64 | `2,02` | `15,94` | `13,26` | `12,15` | `11,99` |
+| nuvem 1024 · 64 | `4,18` | `17,08` | `16,82` | `14,12` | `13,78` |
+| nuvem 2048 · 64 (produto: despachos `18,72`) | `6,92` | `34,21` | `34,22` | `20,82` | `21,99` |
+
+Encomenda (CPU) do passe: `0,04–0,06 ms` sem cache × `0,01 ms` com cache.
+
+**A lei.**
+1. **Subgrupos perdem na linha que decide** (3 de 3 rodadas: `12,4–13,2` × `11,5–11,9 ms`) e nas quatro cadeias
+   (3–15 %). Não entram.
+2. **O `scan` dá a MESMA grelha ao bit** (`starts` + `sorted` da última varredura, 9 fixturas × `1, 2, 4, 8`, com
+   o controlo de determinismo). O `P`/`rot` NÃO: `|ΔP| ≤ 3,81e-6 · alcance_max` entre as variantes — o módulo é
+   outro e o compilador do dispositivo contrai o `corrige` de outra maneira (as duas ficam na tolerância contra a
+   CPU).
+3. **A hipótese do doc 130 §3.1 («metade das barreiras está no `scan`») está REFUTADA**: tirar 16 das ~29
+   barreiras por varredura custa `+0,9 µs` por varredura na cadeia 16. O piso de `~11 µs` por varredura não são
+   barreiras.
+4. **O ganho nas nuvens (1,2–1,6×) não vem do `scan`.** Os dois algoritmos diferem em `≤ 1 µs` por varredura (a
+   linha 3), e o ganho a 2 048 é de `~210 µs` por varredura. É o compilador a tratar o kernel inteiro de outra
+   maneira, a mesma causa dos ULPs da linha 2. Fica uma PISTA: o `corrige` do kernel de um grupo (os quatro
+   arrays de 9 entradas). Enviar sorte de codegen não é cura. Mesmo assim, a 2 048 os subgrupos (`20,8`) não
+   batem os despachos (`18,7`) ⇒ `PECAS_PARA_UM_GRUPO = 1024` fica.
+5. **Cache: `−0,03 ms` de encomenda por cozimento** (0,2 % de um quadro a 60 Hz), e o total fica dentro do ruído
+   (`±0,5 ms` nas cadeias, `±3 ms` nas nuvens). Não entra.
+
+⛔ **Recusas MEDIDAS** — não reconstruir sem medir de novo o que as recusou (o código está em `4b2cec5f5b`):
+
+| recusa | o número |
+|---|---|
+| `scan` do passe de um grupo por subgrupos | cadeia 16·1024: `12,36` × `11,53 ms` (perde nas 4 cadeias) |
+| ligações + uniformes do passe em cache | `−0,03 ms` de encomenda; o total fica dentro do ruído |

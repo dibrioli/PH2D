@@ -68,6 +68,8 @@ paridade corre os dois.
 
 ⚠️ A cadeia pequena com muitas varreduras ainda custa `1,7`–`6×` a CPU na placa: o piso é a
 latência de UM multiprocessador por varredura (~10 µs, ~20 barreiras, metade delas no `scan`).
+⛔ As barreiras do `scan` NÃO são o piso: o `scan` por subgrupos (uma barreira) perde na cadeia —
+[doc 131 §7 C.7](131_zerar_o_ultimo_bloco.md).
 
 ⛔ **Recusa MEDIDA — «todos os pares» no grupo, sem grelha (até 256 peças).** Construído e
 medido no mesmo processo, intercalado: perde SEMPRE para a grelha (16 peças a 1024: `15,7` ×

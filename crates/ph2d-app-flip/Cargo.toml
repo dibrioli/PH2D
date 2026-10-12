@@ -120,6 +120,8 @@ panel-flip-frames = []
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# O f16 do `game_rt` lido de volta (W5j, a luz recebida por objeto).
+half = "2"
 
 [lints]
 workspace = true

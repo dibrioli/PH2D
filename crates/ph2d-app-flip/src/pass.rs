@@ -103,6 +103,8 @@ impl LayerPixelProvider for DummyProvider<'_> {
 /// ao bake). Só a camada-alvo do preview recebe `preview: Some`.
 struct LayerRef<'a> {
     key: u64,
+    /// O objeto Flip (`FlipObjectId.0`) — a luz recebida é dele (W5j, `NaoRecebeLuz`).
+    obj: u64,
     blend: u8,
     opacity: f32,
     cache_key: (u64, u32),
@@ -334,12 +336,45 @@ fn composite_layers(
             compositor, dummy, ..
         } = comp;
         let provider = DummyProvider { pixels: dummy };
-        if let Err(e) = compositor.composite(gpu, &ops, &provider, w, h, Region::full(w, h)) {
-            eprintln!("[ph2d-flip] composite falhou: {e}");
-            return;
-        }
-        if let Some(out) = compositor.output_texture() {
-            flip_compose.blit(&gpu.device, &gpu.queue, out, game_rt.view());
+        // ⭐ W5j: com objetos que NÃO recebem a luz acesa, cada trecho seguido de camadas com a
+        // mesma resposta compõe-se à parte (as outras a opacidade 0) e blita-se com a luz dele.
+        // Sem ninguém de fora: um trecho só, o de sempre.
+        for (recebe, trecho) in trechos(layers, flip_compose) {
+            let so: Vec<LayerOp>;
+            let ops_do_trecho = if trecho == (0..layers.len()) {
+                &ops
+            } else {
+                so = ops
+                    .iter()
+                    .enumerate()
+                    .map(|(k, op)| match op {
+                        LayerOp::Layer {
+                            mask,
+                            clipping,
+                            key,
+                            blend_mode,
+                            ..
+                        } if !trecho.contains(&k) => LayerOp::Layer {
+                            mask: mask.clone(),
+                            clipping: *clipping,
+                            key: *key,
+                            blend_mode: *blend_mode,
+                            opacity: 0.0,
+                        },
+                        o => o.clone(),
+                    })
+                    .collect();
+                &so
+            };
+            if let Err(e) =
+                compositor.composite(gpu, ops_do_trecho, &provider, w, h, Region::full(w, h))
+            {
+                eprintln!("[ph2d-flip] composite falhou: {e}");
+                return;
+            }
+            if let Some(out) = compositor.output_texture() {
+                flip_compose.blit_com(&gpu.device, &gpu.queue, out, game_rt.view(), recebe);
+            }
         }
     }
     comp.tess.log();
@@ -347,6 +382,23 @@ fn composite_layers(
         let (staged, skipped) = comp.stage.stats();
         eprintln!("[ph2d-flip] pass A: {staged} rasterizada(s), {skipped} pulada(s) neste frame");
     }
+}
+
+/// ⭐ W5j — os trechos seguidos de camadas cujo objeto dá a MESMA resposta a «recebe a luz?», com
+/// essa resposta. Ninguém de fora (ou luz apagada) ⇒ um trecho só, todas as camadas.
+fn trechos(layers: &[LayerRef<'_>], compose: &FlipCompose) -> Vec<(bool, std::ops::Range<usize>)> {
+    if !compose.ha_quem_nao_recebe() {
+        return vec![(true, 0..layers.len())];
+    }
+    let mut out: Vec<(bool, std::ops::Range<usize>)> = Vec::new();
+    for (k, l) in layers.iter().enumerate() {
+        let recebe = compose.recebe(l.obj);
+        match out.last_mut() {
+            Some((r, t)) if *r == recebe => t.end = k + 1,
+            _ => out.push((recebe, k..k + 1)),
+        }
+    }
+    out
 }
 
 /// Rasteriza `data` DIRETO no `game_rt` (premult-over, `LoadOp::Load`) com o depth
@@ -491,6 +543,7 @@ fn collect_layers<'a>(
                 for g in crate::pass_ghosts::collect(obj, layer, src, playhead, sources) {
                     out.push(LayerRef {
                         key: ghost_key(obj.id.0, layer.id.0, g.delta),
+                        obj: obj.id.0,
                         blend: ph2d_flip::BlendMode::default().to_u8(),
                         opacity: 1.0,
                         cache_key: (obj.id.0, g.drawing_id),
@@ -519,6 +572,7 @@ fn collect_layers<'a>(
             }
             out.push(LayerRef {
                 key: layer_key(obj.id.0, layer.id.0),
+                obj: obj.id.0,
                 blend: layer.blend.to_u8(),
                 opacity: layer.opacity,
                 cache_key: (obj.id.0, did.map_or(u32::MAX, |d| d.0)),

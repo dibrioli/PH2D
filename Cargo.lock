@@ -4847,6 +4847,7 @@ name = "ph2d-app-flip"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "half",
  "libm",
  "ph2d-app-host",
  "ph2d-component-desc",

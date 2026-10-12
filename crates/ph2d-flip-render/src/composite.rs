@@ -74,6 +74,8 @@ pub struct FlipCompose {
     /// colagem do vetor); neutro sem luz: o blit de sempre, byte a byte.
     luz_bgl: wgpu::BindGroupLayout,
     luz: ph2d_render::GrupoDeLuz,
+    /// ⭐ W5j — os objetos Flip (`FlipObjectId.0`) com `NaoRecebeLuz`: o passe compõe-nos à parte.
+    sem_luz: Vec<u64>,
 }
 
 impl FlipCompose {
@@ -154,6 +156,7 @@ impl FlipCompose {
             walk: None,
             luz: ph2d_render::GrupoDeLuz::novo(device, &luz_bgl, &[]),
             luz_bgl,
+            sem_luz: Vec::new(),
         }
     }
 
@@ -408,6 +411,23 @@ impl FlipCompose {
         self.luz.definir(gpu, &self.luz_bgl, acesa, &[]);
     }
 
+    /// ⭐ W5j — os objetos Flip (`FlipObjectId.0`) que NÃO recebem a luz (`NaoRecebeLuz`).
+    pub fn nao_recebem(&mut self, objetos: Vec<u64>) {
+        self.sem_luz = objetos;
+    }
+
+    /// O objeto Flip `obj` recebe a luz acesa? (`false` com a luz apagada: nada a separar.)
+    #[must_use]
+    pub fn recebe(&self, obj: u64) -> bool {
+        self.luz.aceso() && !self.sem_luz.contains(&obj)
+    }
+
+    /// Algum objeto Flip fica de fora da luz acesa?
+    #[must_use]
+    pub fn ha_quem_nao_recebe(&self) -> bool {
+        self.luz.aceso() && !self.sem_luz.is_empty()
+    }
+
     /// Compõe a saída do compositor (`src`, straight sRGB8) no `game_rt` (`target`,
     /// 16F) com premult-over, preservando o que já está lá (`LoadOp::Load`).
     pub fn blit(
@@ -416,6 +436,18 @@ impl FlipCompose {
         queue: &wgpu::Queue,
         src: &wgpu::Texture,
         target: &wgpu::TextureView,
+    ) {
+        self.blit_com(device, queue, src, target, true);
+    }
+
+    /// [`Self::blit`], com a luz acesa só se `recebe` (os objetos com `NaoRecebeLuz`, W5j).
+    pub fn blit_com(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        src: &wgpu::Texture,
+        target: &wgpu::TextureView,
+        recebe: bool,
     ) {
         let src_view = src.create_view(&wgpu::TextureViewDescriptor::default());
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -448,7 +480,7 @@ impl FlipCompose {
             });
             pass.set_pipeline(&self.blit_pipeline);
             pass.set_bind_group(0, &bg, &[]);
-            pass.set_bind_group(3, self.luz.ligar(true), &[]);
+            pass.set_bind_group(3, self.luz.ligar(recebe), &[]);
             pass.draw(0..3, 0..1);
         }
         queue.submit([enc.finish()]);

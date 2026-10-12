@@ -46,5 +46,9 @@ impl crate::App {
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         let na_tela = luz2d.na_tela();
         flip_compose.receber_luz(surface.gpu(), na_tela.as_ref().map(|(l, m)| (l, *m)));
+        flip_compose.nao_recebem(ph2d_app_flip::pass::luz::nao_recebem(
+            &self.flip_state.entities,
+            &luz2d.cena().nao_recebem,
+        ));
     }
 }

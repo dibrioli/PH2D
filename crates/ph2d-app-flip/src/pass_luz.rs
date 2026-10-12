@@ -24,6 +24,16 @@ pub struct OclusaoDoFlip<'a> {
     pub entidades: &'a FlipEntityMap,
 }
 
+/// ⭐ W5j — os objetos Flip (`FlipObjectId.0`) cujas entidades estão em `sem_luz` (`NaoRecebeLuz`).
+#[must_use]
+pub fn nao_recebem(entidades: &FlipEntityMap, sem_luz: &[ph2d_ecs::Entity]) -> Vec<u64> {
+    entidades
+        .iter()
+        .filter(|(_, bits)| sem_luz.iter().any(|e| e.to_bits() == **bits))
+        .map(|(id, _)| id.0)
+        .collect()
+}
+
 /// A câmera que põe a janela do mundo `[x0, y0, x1, y1]` no alvo inteiro (a linha 0 é `y1`).
 #[must_use]
 pub fn camera_do_mundo(mundo: [f64; 4], (w, h): (u32, u32)) -> CameraRaw {

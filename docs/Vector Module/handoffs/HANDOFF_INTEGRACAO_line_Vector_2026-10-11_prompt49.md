@@ -27,6 +27,8 @@
 | `2cb93b7b4` | W2: controlo do contador de pânicos |
 | `b198270b8` | W3: a sonda mede a linha do Motion por quadro |
 | `49c21ed5a` | memória: duas palavras que o `typos` do CI reprovava |
+| `9b85f02ca` | **BUGS #41** (smoke do dono): os chips de Corner/Side pré-visualizam sem esperar o slider |
+| `3b9247948` | **o kerning passa a ser o PADRÃO** (aceite do dono: «kerning é melhor») |
 | `784aa51c5`, `76f9cbf41` | o handoff de continuação (um ficheiro, duas janelas) — e este |
 
 ## 2. Foundational / compartilhado tocado (tudo aditivo)
@@ -102,16 +104,16 @@ ph2d-vector-doc` dá vazio. O `ph2d-vector-font` não é contrato congelado.
 
 Oráculo W0: 582/592 passos concordam; as 10 discordâncias estão em `DISAGREE` com o lado certo.
 
-### W3 — kerning (atrás da chave; **desligado por omissão**)
+### W3 — kerning (**LIGADO por omissão** desde o aceite do dono, `3b9247948`)
 
 - **Lei:** `VariableFont::kerning` molda a linha duas vezes com o `harfrust` (com e sem `kern`;
   `liga`/`clig`/`calt` desligadas) e devolve a DIFERENÇA. Um glifo por `char`; `None` se a moldagem
   trocar glifos (a linha fica nominal). `line_glyphs` é a régua única do quebrador (`wrapped_lines`),
   do caret, do Fixed (`unwrapped_block_width`) e do desenhador (`walk_glyphs`).
-- **Chave:** `PH2D_TEXT_KERNING=1`, lida uma vez por processo em `kerning_by_default()`. Os 5
-  construtores de produção (sessão de texto, objecto de texto, Motion `source.text`, cena 22 e a sua
-  sonda) leem-na. **Virar padrão é aceitação do dono** (ordem do coordenador): basta trocar o
-  retorno por omissão, e muda a aparência de todo texto já autorado.
+- **Chave:** `kerning_by_default()`, lida uma vez por processo — `true` salvo `PH2D_TEXT_KERNING=0`.
+  Os 5 construtores de produção (sessão de texto, objecto de texto, Motion `source.text`, cena 22 e
+  a sua sonda) leem-na. ⚠️ **Muda a aparência de todo texto já autorado** — aceite do dono no smoke
+  de 11/10, depois do antes/depois (ordem do coordenador cumprida).
 - **Oráculo:** `oraculo_vc_kerning.py`. O `vectorcraft-cli convert --outline-text` desenha cada
   prefixo de 12 palavras (`AV To Wa fi Ty LT Yo AVATAR WAVE Kerning minimum Typography`) com a
   MESMA `InterVariable.ttf` (o «A» dele cai ao ponto sobre o nosso) →
@@ -157,6 +159,21 @@ Oráculo W0: 582/592 passos concordam; as 10 discordâncias estão em `DISAGREE`
   gateado na shell. O motor dele é o `face_at`, que este gate cobre.
 - Prompt 49: «abrir só se o nosso perder». O nosso não perde ⇒ fica registado, sem onda.
 
+### BUGS #41 — smoke do dono (cena 17), corrigido depois do 1.º fecho
+
+- *«os botões de Side e Corner só tiveram efeito após mover offset»*: o chip chamava `retune`, que
+  só ajusta offsets já armados, com o painel a MOSTRAR 25 % sobre uma forma sem offset. Cura:
+  `offset_live::choose_knobs` (retuna os vivos, arma as nuas com o `d` do slider; zero ⇒ nada).
+  O gate antigo `retuning_a_shape_without_a_live_offset_arms_nothing` EXIGIA o defeito e foi
+  substituído (3 gates, red-first, mutação sangra). O roteiro auto-dirigido dos níveis 18/19 nunca
+  clicava um chip (parava de rolar no slider; `chip ROUND fora do hit-index` sem falhar) — rola
+  agora até o Apply; no caminho real `off=0 → 1, d=0,300, live=152` logo após o clique.
+- *«negativo fica sempre pontuda»*: **não é defeito** — a ponta convexa encolhe em ponta; o Corner
+  muda os vales (d = −0,3: Miter 0,232 · Round 0,260 · Bevel 0,307). Imagem:
+  `target/fotos-w3/offset_negativo.png`.
+- Shell tocada a mais: `render_loop/fase_live_offset_and_width.rs` (+4 linhas) e
+  `build_smoke_expand.rs` (o roteiro).
+
 ## 6. Provas de mutação (fecho)
 
 | cláusula | resultado |
@@ -191,6 +208,12 @@ Oráculo W0: 582/592 passos concordam; as 10 discordâncias estão em `DISAGREE`
 | `cargo fmt --all --check` | limpo |
 | `typos` sobre o diff | ✗ 8 em `reference_topic_measurement_discipline.md` (escritos por `665d959c2`) ⇒ reescritos em `49c21ed5a`; re-corrido: limpo |
 
+- **Re-gate depois do #41 e do kerning por omissão** (`9b85f02ca`, `3b9247948`): `nextest-impacted`
+  **16 953/16 954** (load 33–58); o vermelho é `ph2d-tool-painter …mask_tests::the_mask_stroke_cost_
+  does_not_follow_the_canvas` (relógio: `0,41 ms @1024² vs 1,53 ms @2048²`), crate sem diff nesta
+  linha, verde sozinho — família de [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md). Nenhum teste
+  de texto mudou com o kerning ligado. clippy `-D warnings`, `CARGO_BUILD_WARNINGS=deny cargo check
+  --workspace --all-targets`, `fmt` e `typos`: limpos.
 - O `nextest-impacted` avisa que `docs/Vector Module/ferramentas/vectorcraft_2026-10-11/sonda_offset/`
   (uma sonda Rust da W0) não é membro do workspace. É de propósito (regra J4: sonda em
   `ferramentas/`, saída em `target/`).
@@ -221,24 +244,25 @@ LOC LIDAS: ~200.
 ## 9. Smoke para o Enio
 
 Binário já compilado na worktree (2.ª corrida: `Finished smoke profile [optimized] target(s) in
-0.23s`, zero `Compiling`).
+0.29s` depois do #41 e do kerning por omissão, zero `Compiling`).
 
-**A. A estrela não some mais no Expand (Offset).** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && PH2D_BUILD_SMOKE=17 ./target/smoke/ph2d-host-desktop`
-(1) clique na estrela azul de borda amarela; (2) no painel da direita, desça até **Expand**, em
-**Corner** escolha **Bevel** e arraste **Offset** devagar de ponta a ponta; repita com **Round**;
-(3) a estrela cresce e encolhe sem piscar nem sumir, e só desaparece perto do fim negativo, quando já
-ficou mínima; (4) errado = sumir ou piscar no meio do caminho, sobretudo com Bevel. Foto da cena:
-`target/fotos-w3/cena17.png`.
+**A. Os chips de Corner/Side pré-visualizam já no clique, e a estrela não some** (re-smoke do #41).
+`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && PH2D_BUILD_SMOKE=17 ./target/smoke/ph2d-host-desktop`
+(1) clique na estrela azul de borda amarela; (2) no painel da direita, desça até **Expand** e, SEM
+tocar no slider, clique **Round** em **Corner**; (3) a estrela cresce na hora, com as pontas
+arredondadas (o slider mostra 25); clique **Bevel** e **Miter**, e cada um muda o desenho na hora;
+depois arraste **Offset** de ponta a ponta — ela não pisca nem some no meio; (4) errado = o clique
+não muda nada até mexer no slider, ou a forma some no meio do arrasto. No lado NEGATIVO as pontas
+ficam afiadas em todos os cantos (é a geometria); o que muda são os vales entre elas
+(`target/fotos-w3/offset_negativo.png`).
 
-**B. Kerning (decisão do dono).** Sem a chave e com ela:
-`… && ./target/smoke/ph2d-host-desktop` e `… && PH2D_TEXT_KERNING=1 ./target/smoke/ph2d-host-desktop`
-— ferramenta de texto (ícone **T** na barra da esquerda), clique na tela e escreva `AVATAR WAVE To`;
-com a chave, as letras AV, AT, Wa, To ficam mais juntas. Comparação pronta em
-`target/fotos-w3/kerning_antes_depois.png`. Se o dono aprovar, a próxima linha vira o padrão.
+**B. Kerning — já é o padrão** (aceite do dono). Comparar: `… && PH2D_TEXT_KERNING=0
+./target/smoke/ph2d-host-desktop` volta ao espaçamento antigo. Imagem:
+`target/fotos-w3/kerning_antes_depois.png`.
 
 ## 10. Aberto (nada in-scope)
 
-- **Virar o kerning padrão** — aceitação do dono (§9 B). Depois disso, a sonda do custo vira tecto
-  se o dono pedir textos longos com caixa.
+- Textos longos com caixa e kerning: o quebrador molda cada linha candidata (O(palavras × linha));
+  medido até 216 chars (0,7 ms). A sonda vira tecto se o dono pedir textos longos.
 - Linha aberta a cortar faces no Shape Builder (como o Illustrator faz): nem o VC nem o PH2D o
   fazem. É feature nova, decisão de produto, e não defeito.

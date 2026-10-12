@@ -6,6 +6,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.images.skipped" => "Skipped {count}: not an image",
         // W17 — o cabeçalho leu-se, os dados não: a imagem fica partida no quadro.
         "board.images.unreadable" => "A picture on this board is damaged and cannot be shown",
+        "board.video.covered" => "Something covers the video: YouTube only plays it uncovered \u{2014} move it out",
+        "board.video.rotated" => "A rotated video cannot play (YouTube's rule): set its angle back to 0",
         "board.video.copy_first" => "Copy a YouTube link first, then click Video (or paste it on the board)",
         "board.video.offline" => "No internet: the video shows its place until the network comes back",
         "board.video.no_browser" => {
@@ -74,6 +76,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w16.l6" => {
             "6. Export this board as SVG: it is quick even with big photos, and the pictures go in as they arrived."
         }
+        "board.smoke.w18.board" => "Video and picture fixes",
+        "board.smoke.w18.title" => "A YouTube video on the board, and the last picture fixes",
+        "board.smoke.w18.youtube" => "YouTube",
+        "board.smoke.w18.gif" => "GIF",
+        "board.smoke.w18.svg" => "SVG text",
+        "board.smoke.w18.cut" => "Cut picture",
+        "board.smoke.w18.l1" => {
+            "1. Click the red play: the YouTube video plays right here, with sound. Click outside it to stop."
+        }
+        "board.smoke.w18.l2" => {
+            "2. Put a note over the video, or rotate it: it pauses and shows the play again (YouTube's rule)."
+        }
+        "board.smoke.w18.l3" => {
+            "3. Copy any YouTube link and press Ctrl+V on the board, or click Video at the end of the left bar."
+        }
+        "board.smoke.w18.l4" => {
+            "4. Present (bottom right): the GIF moves in the slide too. The SVG words now draw; the bar names the missing font."
+        }
+        "board.smoke.w18.l5" => "5. The cut picture shows the part that could be read, with a red mark in the corner.",
         "board.smoke.w17.board" => "Known picture fixes",
         "board.smoke.w17.title" => "A damaged picture, Shift on a cropped one, and a quicker PDF",
         "board.smoke.w17.damaged" => "Damaged",

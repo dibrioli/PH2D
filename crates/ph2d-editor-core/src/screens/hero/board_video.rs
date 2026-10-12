@@ -79,14 +79,30 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
         if b == PointerButton::Primary && (vids.on_play(id, el, p) || again) {
             vids.active = Some(id);
             vids.frame = None;
+            let s = vids.on_screen[&id].screen;
+            let aabb = el.aabb();
             if let Some(ed) = live.editor.as_mut() {
                 ed.select(&board.doc, [id]);
+            }
+            // As regras do YouTube: tapado ou rodado não toca — diz-se porquê; pequeno ou meio fora da
+            // vista, a vista vai até ele (o quadro enquadra-o inteiro).
+            if s.covered {
+                live.notice = Some(("board.video.covered", std::time::Instant::now()));
+            } else if s.angle != 0.0 {
+                live.notice = Some(("board.video.rotated", std::time::Instant::now()));
+            } else if !s.whole || s.size[0].min(s.size[1]) < ph2d_board_embed::MIN_LIVE_SIDE {
+                let [x0, y0, x1, y1] = aabb;
+                let pad = (x1 - x0).max(y1 - y0) * FRAME_PAD;
+                super::board_nav::show_box(hero, false, false, [x0 - pad, y0 - pad, x1 + pad, y1 + pad]);
             }
             return true;
         }
     }
     false
 }
+
+/// A folga à volta de um vídeo que a vista vai buscar (fracção do lado maior dele).
+const FRAME_PAD: f64 = 0.1; // LITERAL-PX-OK: proporção da folga, não um píxel
 
 /// O mover: com o botão em baixo dentro do tocador, ou só a passar por cima dele. `true` = era do vídeo.
 pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {

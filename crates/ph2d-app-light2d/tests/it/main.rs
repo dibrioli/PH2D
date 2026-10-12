@@ -7,6 +7,7 @@ mod a_grade_fina;
 mod a_luz_nao_muda_com_a_vista;
 mod a_luz_nasce_na_estufa;
 mod a_nitidez_da_luz;
+mod a_opacidade_do_oclusor;
 mod as_formas_do_motion;
 mod as_formas_redondas;
 mod captura_do_vetor;

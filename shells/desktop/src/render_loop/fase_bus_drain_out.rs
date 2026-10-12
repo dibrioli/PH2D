@@ -85,6 +85,9 @@ pub(in crate::render_loop) struct DrainOut {
     // diferença está no nome: aquele escreve a FOLHA, este escreve uma sprite no formato
     // que a extensão escolhida nomear.
     pub(in crate::render_loop) export_image_row: Option<NodeId>,
+    // «Send to board…» (MiroClone W15): o pedido da linha e a escolha do modal.
+    pub(in crate::render_loop) send_to_board_ask: Option<NodeId>,
+    pub(in crate::render_loop) send_to_board: Option<(NodeId, Option<u64>)>,
     // **FUNDIR EM CAMADAS** (plano `docs/Sprite_projeto/18` W10) — a mesma geometria do
     // Merge, e cada fonte fica também numa camada do documento do Painter.
     pub(in crate::render_loop) merge_to_layers_row: Option<NodeId>,

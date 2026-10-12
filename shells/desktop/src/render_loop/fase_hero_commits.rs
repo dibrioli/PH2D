@@ -128,6 +128,7 @@ impl crate::App {
             export_sheet_row: take(&mut pd.export_sheet_row),
             export_image_row: take(&mut pd.export_image_row),
         });
+        self.fase_send_to_board(take(&mut pd.send_to_board_ask), take(&mut pd.send_to_board));
         self.fase_physics_edits(fase_physics_edits::PhysicsEditIntents {
             joint_edits: take(&mut pd.joint_edits),
             wheel_edits: take(&mut pd.wheel_edits),

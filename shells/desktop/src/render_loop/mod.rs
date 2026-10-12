@@ -331,6 +331,8 @@ mod fase_selection_mirror_path_links;
 /// Fase do quadro: a pele e a ferramenta do osso no painel.
 #[cfg(feature = "panel-vector")]
 mod fase_selection_mirror_skin;
+/// Fase do quadro: «Send to board…» da Hierarquia (MiroClone W15).
+mod fase_send_to_board;
 mod fase_sequences;
 /// Fase do quadro: a manutenção de sessão (Shape Builder, tween, Colorize, Gap Closure).
 mod fase_session_upkeep;

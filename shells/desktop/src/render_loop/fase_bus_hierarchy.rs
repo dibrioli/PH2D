@@ -219,6 +219,16 @@ impl crate::App {
             }) => {
                 pd.export_image_row.get_or_insert(row);
             }
+            EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::SendToBoard {
+                row,
+            }) => {
+                pd.send_to_board_ask.get_or_insert(row);
+            }
+            EditorAction::Hierarchy(
+                ph2d_editor_core::action_bus::HierRequest::SendToBoardChosen { row, board },
+            ) => {
+                pd.send_to_board.get_or_insert((row, board));
+            }
             EditorAction::Hierarchy(
                 ph2d_editor_core::action_bus::HierRequest::RemoveFromSheet { row },
             ) => {

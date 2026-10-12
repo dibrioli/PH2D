@@ -78,17 +78,35 @@ fn a_svgz_comes_in_as_its_text() {
     assert_eq!(&*f.bytes.0, SVG_DISC);
 }
 
-/// ⭐ Os textos de um SVG não se desenham — e o aviso di-lo (não só o terminal).
+/// ⭐ W18 — os textos de um SVG desenham-se; o aviso diz SÓ o que não se exprime (e qual) e as letras que
+/// faltam a este computador (não só o terminal).
 #[test]
-fn the_texts_of_an_svg_are_named_in_the_warning() {
+fn the_undrawn_svg_text_and_the_missing_fonts_are_named_in_the_warning() {
     let p = Placed {
         placed: 1,
-        refused: 0,
         texts: 1,
+        unsupported: vec!["textPath".into()],
+        missing_fonts: vec!["Nao Existe Font".into()],
+        ..Placed::default()
     };
     let w = p.warning().expect("um aviso");
-    assert!(w.contains("1 text(s) inside the SVG"), "{w}");
+    assert!(w.contains("1 part(s) of the text inside the SVG will not show (textPath)"), "{w}");
+    assert!(w.contains("Nao Existe Font"), "{w}");
     assert!(Placed::default().warning().is_none());
+}
+
+/// ⭐ W18 — um SVG largado de verdade: o texto com uma família que não há e um `textPath` (pela porta
+/// de entrada, como a shell o faz).
+#[test]
+fn a_dropped_svg_reports_what_its_text_lacks() {
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><path id="c" d="M0 50 H200"/>
+<text x="5" y="30" font-family="Nao Existe Font" font-size="20">Ola</text>
+<text><textPath href="#c">curva</textPath></text></svg>"##;
+    let f = ingest(svg).expect("um SVG");
+    assert_eq!(f.size, [200, 60]);
+    let g = raster::text_gaps(&f.bytes.0);
+    assert_eq!(g.missing_families, vec!["Nao Existe Font".to_owned()]);
+    assert!(g.unsupported.iter().any(|u| u == "textPath"), "{g:?}");
 }
 
 /// ⭐ Auditoria W14 — o tamanho de uma PNG vem do CABEÇALHO: uns bytes com um cabeçalho válido e os

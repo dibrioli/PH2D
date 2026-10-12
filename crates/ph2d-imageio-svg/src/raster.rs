@@ -3,15 +3,29 @@
 //! série do `usvg` desta casa). Um SVG é vector: quem o mostra pede-o ao tamanho do ECRÃ, e ele fica
 //! nítido a qualquer zoom.
 //!
-//! ⛔ Sem a feature `text` do `usvg` (recusa medida, `ph2d-vec-svg/Cargo.toml`): os `<text>` não se
-//! desenham — [`dropped_texts`] conta-os para quem mostra o aviso.
+//! ⛔ Sem a feature `text` do `usvg` (recusa medida, `ph2d-vec-svg/Cargo.toml`): os `<text>` viram
+//! contornos ANTES dele (W18, `crate::text`, pela stack da casa); o que não se desenha como escrito
+//! (e as famílias que faltam) diz-se em [`text_gaps`], para quem mostra o aviso.
 
 use ph2d_imageio::{Error, MAX_ARCHIVE_TEXT_BYTES};
+
+pub use crate::text::{TextGaps, text_gaps};
 
 /// A árvore de um SVG (`.svgz` incluído), com o tecto de bytes e sem ler o disco por um `href`. Todo
 /// gzip — o do ficheiro e o de um SVG ANINHADO num `data:` (o usvg descomprime-o sem tecto, e a
 /// recursão passa pelo mesmo resolvedor) — passa pelo [`plain`] com tecto.
 pub fn parse(src: &[u8]) -> Result<usvg::Tree, Error> {
+    parse_with(src, true)
+}
+
+/// W18 — a árvore SÓ para o tamanho (a porta de entrada, no fio da janela): sem a passagem dos `<text>`
+/// (que abre as fontes do sistema — 15–27 ms à 1.ª vez, `09_texto_dos_svg.md`); o `<svg>` dá o mesmo
+/// tamanho com ou sem ela.
+pub fn parse_size(src: &[u8]) -> Result<usvg::Tree, Error> {
+    parse_with(src, false)
+}
+
+fn parse_with(src: &[u8], texts: bool) -> Result<usvg::Tree, Error> {
     if src.is_empty() {
         return Err(Error::Truncated);
     }
@@ -34,19 +48,32 @@ pub fn parse(src: &[u8]) -> Result<usvg::Tree, Error> {
         },
         ..Default::default()
     };
-    usvg::Tree::from_data(src, &opts)
+    // W18 — os `<text>` viram contornos antes do usvg (que os apagaria).
+    let outlined = texts.then(|| crate::text::outline_texts(src)).flatten();
+    let svg = outlined
+        .as_ref()
+        .and_then(|o| o.svg.as_deref())
+        .unwrap_or(src);
+    usvg::Tree::from_data(svg, &opts)
         .map_err(|e| Error::from_decoder_message(format!("SVG parse: {e}")))
 }
 
-/// O resolvedor de `data:` do usvg, com o gzip (um SVG aninhado comprimido) pelo [`plain`].
+/// O resolvedor de `data:` do usvg, com o gzip (um SVG aninhado comprimido) pelo [`plain`] e os
+/// `<text>` do SVG aninhado em contornos (como os do de topo).
 fn capped_data_resolver() -> usvg::ImageHrefDataResolverFn<'static> {
     let default = usvg::ImageHrefResolver::default_data_resolver();
     Box::new(move |mime, data, opts| {
-        if data.starts_with(&[0x1f, 0x8b]) {
-            let p = plain(&data)?.into_owned();
-            return default(mime, std::sync::Arc::new(p), opts);
+        let changed = {
+            let p = plain(&data)?;
+            match crate::text::outline_texts(&p).and_then(|o| o.svg.clone()) {
+                Some(svg) => Some(svg),
+                None => matches!(p, std::borrow::Cow::Owned(_)).then(|| p.into_owned()),
+            }
+        };
+        match changed {
+            Some(v) => default(mime, std::sync::Arc::new(v), opts),
+            None => default(mime, data, opts),
         }
-        default(mime, data, opts)
     })
 }
 
@@ -95,19 +122,6 @@ pub fn plain(src: &[u8]) -> Option<std::borrow::Cow<'_, [u8]>> {
         .read_to_end(&mut out)
         .ok()?;
     ((out.len() as u64) <= MAX_ARCHIVE_TEXT_BYTES).then_some(std::borrow::Cow::Owned(out))
-}
-
-/// Quantos `<text>` um SVG tem (o desenho não os mostra). Um `.svgz` (não é texto) conta zero.
-#[must_use]
-pub fn dropped_texts(src: &[u8]) -> usize {
-    let Ok(txt) = std::str::from_utf8(src) else {
-        return 0;
-    };
-    usvg::roxmltree::Document::parse(txt).map_or(0, |doc| {
-        doc.descendants()
-            .filter(|d| d.is_element() && d.tag_name().name() == "text")
-            .count()
-    })
 }
 
 #[cfg(test)]

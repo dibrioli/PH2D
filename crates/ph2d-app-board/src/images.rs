@@ -4,8 +4,9 @@
 //! tectos e as recusas do registo `imageio`): o que a cena aceita, o quadro aceita.
 //!
 //! W15 — e um SVG: entra como IMAGEM (os bytes de texto, um `.svgz` já descomprimido), com o tamanho
-//! do `<svg>`, e desenha-se pelo `ph2d_imageio_svg::raster` ao tamanho de cada nível. Os `<text>` não
-//! se desenham (sem fontes de SVG): quem o larga é avisado ([`Placed::texts`]).
+//! do `<svg>`, e desenha-se pelo `ph2d_imageio_svg::raster` ao tamanho de cada nível. W18: os `<text>`
+//! desenham-se (o nosso motor de texto, `09_texto_dos_svg.md`); quem o larga é avisado do que não se
+//! exprime e das letras que faltam ([`Placed`]).
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -72,7 +73,7 @@ pub fn decode(bytes: &[u8], at: Option<[u32; 2]>) -> Option<Pixels> {
 #[must_use]
 pub fn ingest(bytes: &[u8]) -> Option<ImageFile> {
     if let Some(svg) = raster::plain(bytes).filter(|b| mime_of(b) == Some(SVG)) {
-        let tree = raster::parse(&svg).ok()?;
+        let tree = raster::parse_size(&svg).ok()?;
         return Some(ImageFile::new(
             svg.into_owned(),
             raster::natural_size(&tree),
@@ -108,13 +109,17 @@ pub(crate) fn encode_png(px: &Pixels) -> Option<Vec<u8>> {
 }
 
 /// O que entrou de uma leva de ficheiros no quadro.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Placed {
     pub placed: usize,
     /// Os que não são uma imagem que o app lê (ou que o disco não deu).
     pub refused: usize,
-    /// W15 — os textos dos SVG que entraram e que o desenho não mostra.
+    /// W15 — os pedaços de texto dos SVG que entraram e que o desenho não mostra (W18: só o que o motor
+    /// de texto não exprime — `textPath`, `rotate`, …), e quais.
     pub texts: usize,
+    pub unsupported: Vec<String>,
+    /// W18 — as famílias de letra que os SVG pedem e que este computador não tem (desenha-se outra).
+    pub missing_fonts: Vec<String>,
 }
 
 /// Os ficheiros `paths` no quadro activo, à volta do píxel de ecrã `at` (ou do meio da vista).
@@ -124,11 +129,21 @@ pub fn insert_paths(hero: &mut HeroScreen, paths: &[PathBuf], at: Option<[f64; 2
         .filter_map(|p| ingest(&std::fs::read(p).ok()?))
         .collect();
     let refused = paths.len() - files.len();
-    let texts = files
-        .iter()
-        .filter(|f| f.mime() == Some(SVG))
-        .map(|f| raster::dropped_texts(&f.bytes.0))
-        .sum();
+    let mut gaps = raster::TextGaps::default();
+    for f in files.iter().filter(|f| f.mime() == Some(SVG)) {
+        let g = raster::text_gaps(&f.bytes.0);
+        gaps.undrawn += g.undrawn;
+        for (all, new) in [
+            (&mut gaps.unsupported, g.unsupported),
+            (&mut gaps.missing_families, g.missing_families),
+        ] {
+            for x in new {
+                if !all.contains(&x) {
+                    all.push(x);
+                }
+            }
+        }
+    }
     let placed = if files.is_empty() {
         0
     } else {
@@ -137,7 +152,9 @@ pub fn insert_paths(hero: &mut HeroScreen, paths: &[PathBuf], at: Option<[f64; 2
     Placed {
         placed,
         refused,
-        texts,
+        texts: gaps.undrawn,
+        unsupported: gaps.unsupported,
+        missing_fonts: gaps.missing_families,
     }
 }
 
@@ -159,7 +176,15 @@ impl Placed {
         }
         if self.texts > 0 {
             let n = self.texts.to_string();
-            parts.push(tr_with("board.images.svg_texts", &[("count", &n)]));
+            let what = self.unsupported.join(", ");
+            parts.push(tr_with(
+                "board.images.svg_texts",
+                &[("count", &n), ("what", &what)],
+            ));
+        }
+        if !self.missing_fonts.is_empty() {
+            let names = self.missing_fonts.join(", ");
+            parts.push(tr_with("board.images.svg_fonts", &[("names", &names)]));
         }
         (!parts.is_empty()).then(|| parts.join(". "))
     }

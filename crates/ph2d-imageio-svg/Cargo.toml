@@ -44,10 +44,21 @@ usvg = { version = "0.48", default-features = false, features = ["svgz"] }
 resvg = { version = "0.48", default-features = false, features = ["raster-images"] }
 # W15 — o `.svgz` descomprime-se com tecto (`raster::plain`): o `decompress_svgz` do usvg não tem.
 flate2 = "1"
+# W18 — os `<text>` viram contornos ANTES do usvg (`text/`), pela stack de texto da casa: o `parley`
+# molda (fontes do sistema pelo `fontique`/fontconfig) e o `skrifa` dá o contorno de cada glifo. Já
+# estavam no `Cargo.lock` (a recusa da feature `text` do usvg continua: nada de 2.ª stack).
+parley = "0.11.1"
+skrifa = "0.44.0"
+# W18 — o CSS (`<style>`) e os valores de fonte com os MESMOS parsers que o usvg usa (estão no lock
+# por ele): a cascata do texto é a que o usvg aplicaria ao resto.
+simplecss = "0.2"
+svgtypes = "0.16"
 
 [dev-dependencies]
 # W15 — o `data:` em base64 do SVG aninhado do teste da bomba.
 base64 = "0.22"
+# W18 — o gate do texto lê a fixture do oráculo (o Chromium) em JSON.
+serde_json = "1"
 # ⭐ **SÓ para o gate que prende os DOIS tectos de bytes ao mesmo número.** O importador de SVG a
 # sério (estudo 42, item 3) vive na `ph2d-vec-svg` e tem o próprio `MAX_SVG_BYTES`; esta crate é a
 # única do repo que vê os dois, então é aqui que a igualdade se afirma.

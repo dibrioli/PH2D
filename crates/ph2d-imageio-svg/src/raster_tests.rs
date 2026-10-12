@@ -47,12 +47,15 @@ fn a_filesystem_href_is_not_read() {
     assert!(px.chunks(4).all(|p| p[3] == 0));
 }
 
+/// W18 — um `<text>` desenha-se e não conta; um `textPath` não se desenha e conta.
 #[test]
-fn the_texts_are_counted() {
+fn only_the_undrawn_texts_are_counted() {
     let svg =
         br#"<svg xmlns="http://www.w3.org/2000/svg"><text>a</text><g><text>b</text></g></svg>"#;
-    assert_eq!(dropped_texts(svg), 2);
-    assert_eq!(dropped_texts(DISC), 0);
+    assert_eq!(text_gaps(svg).undrawn, 0);
+    let path = br##"<svg xmlns="http://www.w3.org/2000/svg"><path id="p" d="M0 0L9 9"/><text><textPath href="#p">a</textPath></text></svg>"##;
+    assert_eq!(text_gaps(path).undrawn, 1);
+    assert_eq!(text_gaps(DISC).undrawn, 0);
 }
 
 /// Um `.svgz` vira o texto dele; o que não é gzip passa igual; uma bomba acima do tecto não entra.

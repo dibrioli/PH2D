@@ -28,6 +28,7 @@ use ph2d_imageio::{
 };
 
 pub mod raster;
+mod text;
 
 /// Register the SVG importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {

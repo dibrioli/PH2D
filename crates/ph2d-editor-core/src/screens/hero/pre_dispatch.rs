@@ -50,6 +50,10 @@ pub(super) fn run(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if super::layout_tabs::apply_event(hero, event) {
         return true;
     }
+    // O modal «Send to board» (W15): as linhas dele e a busca. Fechado, devolve `false`.
+    if super::send_to_board::apply_event(hero, event) {
+        return true;
+    }
     // Uma aba de DOCUMENTO troca a área central entre a cena e um quadro (MiroClone).
     if super::document_tabs::apply_event(hero, event) {
         return true;

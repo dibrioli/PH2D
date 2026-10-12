@@ -149,6 +149,36 @@ impl WidgetStore {
         self.hierarchy_row_ids.contains(&id)
     }
 
+    /// ⭐ Publica as linhas cujo objecto pode ir para um quadro (Image · Vector · Flip — a lei é
+    /// [`crate::screens::hero::send_to_board::goes_to_board`]). Por quadro, inteiro, vazio incluído.
+    pub fn set_hierarchy_board_rows(&mut self, rows: std::collections::BTreeSet<NodeId>) {
+        self.hierarchy_board_rows = rows;
+    }
+
+    /// A linha `row` pode ir para um quadro?
+    #[must_use]
+    pub fn hierarchy_row_goes_to_board(&self, row: NodeId) -> bool {
+        self.hierarchy_board_rows.contains(&row)
+    }
+
+    /// ⭐ **Esta linha do menu `kind` não vale para o alvo dele?** O pintor salta-a — e por isso o
+    /// `hit_index` também: a lista que se vê é a que o clique acerta. Hoje só o «Send to board…»,
+    /// que só existe para os objectos que um quadro recebe.
+    #[must_use]
+    pub fn menu_row_is_hidden(
+        &self,
+        kind: crate::interaction::ContextMenuKind,
+        id: NodeId,
+    ) -> bool {
+        match kind {
+            crate::interaction::ContextMenuKind::HierarchyRow { row } => {
+                id == crate::ids::CTX_MENU_HIER_SEND_TO_BOARD
+                    && !self.hierarchy_row_goes_to_board(row)
+            }
+            _ => false,
+        }
+    }
+
     /// Quantas linhas o painel registou neste quadro — o diagnóstico do arrasto de linha.
     ///
     /// ⚠️ Um `0` aqui e um id que não é linha são defeitos DIFERENTES: o primeiro é o painter que

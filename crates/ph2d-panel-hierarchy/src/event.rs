@@ -65,6 +65,7 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_BAKE_SHEET
         || id == ids::CTX_MENU_HIER_EXPORT_SHEET
         || id == ids::CTX_MENU_HIER_EXPORT_IMAGE
+        || id == ids::CTX_MENU_HIER_SEND_TO_BOARD
         || id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
@@ -168,6 +169,9 @@ fn try_context_menu_row(
         } else if id == ids::CTX_MENU_HIER_EXPORT_IMAGE {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::ExportImage { row }));
+        } else if id == ids::CTX_MENU_HIER_SEND_TO_BOARD {
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::SendToBoard { row }));
         } else if id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::RemoveFromSheet {

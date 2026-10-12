@@ -474,6 +474,16 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
     );
+    // O modal «Send to board» (W15): também precisa dos quadros.
+    super::send_to_board::paint(
+        &hero.documents,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        viewport,
+    );
     // Fill (Bucket) "Fill adjust" modal — a floating, draggable card at the ColorDrop release point
     // (no-op when closed). Painted after the context menu so its hit rects sit above the canvas.
     chrome::paint_fill_adjust_modal(

@@ -24,21 +24,25 @@ pub fn takes_image_paste(hero: &HeroScreen, text: Option<&str>) -> bool {
 }
 
 /// Põe `files` no quadro activo, à volta do píxel de ecrã `at` (ou do meio da vista). Devolve
-/// quantas entraram — `0` sem quadro activo ou antes do primeiro desenho (sem área).
+/// quantas entraram — `0` sem quadro activo.
+///
+/// ⚠️ ANTES do primeiro desenho (sem área — um quadro criado e escrito no mesmo passo, o «Send to
+/// board…» para um quadro novo) a imagem nasce no centro da CÂMARA do quadro, que é o meio da vista
+/// quando ele se desenhar, no tamanho natural (não há vista a que caber); o `at` de ecrã não tem
+/// tradução e é ignorado.
 pub fn insert_images(hero: &mut HeroScreen, files: Vec<ImageFile>, at: Option<[f64; 2]>) -> usize {
-    let Some(layout) = hero.last_layout else {
-        return 0;
-    };
-    let view = area_of(area(&layout));
+    let view = hero.last_layout.map(|l| area_of(area(&l)));
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {
         return 0;
     };
-    let center = at.map_or([board.camera.center_x, board.camera.center_y], |p| {
-        board.camera.to_world(view, p)
-    });
+    let middle = [board.camera.center_x, board.camera.center_y];
+    let center = match (at, view) {
+        (Some(p), Some(v)) => board.camera.to_world(v, p),
+        _ => middle,
+    };
     let z = board.camera.zoom;
-    let fit = [view[2] / z / 2.0, view[3] / z / 2.0];
+    let fit = view.map_or([f64::INFINITY; 2], |v| [v[2] / z / 2.0, v[3] / z / 2.0]);
     let items: Vec<_> = files
         .into_iter()
         .map(|f| {

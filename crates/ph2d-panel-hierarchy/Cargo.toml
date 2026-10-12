@@ -22,6 +22,9 @@ ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 
 [dev-dependencies]
+# O «Send to board…» pelo clique real (W15): os eventos do ponteiro do hero.
+ph2d-host = { path = "../ph2d-host" }
+bumpalo = "3"
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O gate `every_word_this_panel_shows_comes_from_the_string_table` — a régua lexical partilhada.
 ph2d-label-census = { path = "../ph2d-label-census" }

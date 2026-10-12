@@ -261,4 +261,17 @@ pub enum HierRequest {
         panel: &'static str,
         key: u64,
     },
+
+    /// ⭐ **«Send to board…»** (MiroClone W15): a linha pede o modal que escolhe o quadro. A shell
+    /// confere o TIPO do objecto (só Image · Vector · Flip) e abre-o
+    /// ([`crate::screens::hero::send_to_board::open`]) — ou diz porque não.
+    SendToBoard { row: ph2d_a11y::NodeId },
+
+    /// A escolha do modal: `board` = o `BoardId.0` de um quadro aberto, `None` = um quadro NOVO. A
+    /// shell lê o conteúdo do objecto (os píxeis, o SVG, o quadro do Flip) e entrega-o à família do
+    /// quadro (`ph2d_app_board::send_to_board::deliver`).
+    SendToBoardChosen {
+        row: ph2d_a11y::NodeId,
+        board: Option<u64>,
+    },
 }

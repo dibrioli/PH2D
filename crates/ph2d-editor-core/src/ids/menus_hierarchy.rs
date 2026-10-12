@@ -116,6 +116,30 @@ pub const CTX_MENU_HIER_PACK_SHEET: NodeId = hash_node_id("ctx_menu_hier_pack_sh
 /// FOLHA (png + json, o par que o Aseprite lê); este escreve **uma sprite**, no formato que a
 /// extensão escolhida nomear. Ler os dois seguidos é o que torna a diferença óbvia.
 pub const CTX_MENU_HIER_EXPORT_IMAGE: NodeId = hash_node_id("ctx_menu_hier_export_image");
+/// ⭐ **«Send to board…»** (MiroClone W15, ordem do dono 11/10) — a imagem, o vector ou o Flip da
+/// linha vão para um QUADRO escolhido no modal ([`CTX_SEND_BOARD_SEARCH`] e vizinhos). A linha só se
+/// pinta para esses três tipos ([`crate::screens::hero::send_to_board::goes_to_board`]).
+pub const CTX_MENU_HIER_SEND_TO_BOARD: NodeId = hash_node_id("ctx_menu_hier_send_to_board");
+/// O campo de busca do modal «Send to board».
+pub const CTX_SEND_BOARD_SEARCH: NodeId = hash_node_id("ctx_send_board_search");
+/// A linha «New board» do modal: um quadro novo com o nome por omissão das abas.
+pub const CTX_SEND_BOARD_NEW: NodeId = hash_node_id("ctx_send_board_new");
+/// As linhas dos quadros, pela ordem das abas depois da busca. Doze cabem num ecrã de 720 px com o
+/// título, a busca e o «New board» (`ROW_H` × 15 + margens); o resto encontra-se escrevendo.
+pub const CTX_SEND_BOARD_ROWS: [NodeId; 12] = [
+    hash_node_id("ctx_send_board_row_0"),
+    hash_node_id("ctx_send_board_row_1"),
+    hash_node_id("ctx_send_board_row_2"),
+    hash_node_id("ctx_send_board_row_3"),
+    hash_node_id("ctx_send_board_row_4"),
+    hash_node_id("ctx_send_board_row_5"),
+    hash_node_id("ctx_send_board_row_6"),
+    hash_node_id("ctx_send_board_row_7"),
+    hash_node_id("ctx_send_board_row_8"),
+    hash_node_id("ctx_send_board_row_9"),
+    hash_node_id("ctx_send_board_row_10"),
+    hash_node_id("ctx_send_board_row_11"),
+];
 /// Enio 2026-08-19: "Remove from Sheet" — a saída. A peça deixa de ser filha da folha e volta a
 /// ser um objeto de raiz, **onde está** (a preservação de mundo do reparent trata disso).
 ///

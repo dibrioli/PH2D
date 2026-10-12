@@ -102,6 +102,7 @@ pub fn populate(store: &mut WidgetStore) {
         register(store, id);
     }
     super::document_tabs_menu::populate(store);
+    super::send_to_board::populate(store);
     super::board_bar::populate(store);
     super::board_nav::populate(store);
 }

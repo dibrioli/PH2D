@@ -106,8 +106,11 @@ pub fn paint_context_menu_overlay(
     // CHAVE crua; sem o enum, o risco desaparece. ⚠️ E os dois tipos **chamam-se `MenuRow`** — o
     // daqui é o do `menu_row_mark` (importado no topo); o da tabela chega qualificado, pelo
     // `menu_rows::menu_rows`.
+    // ⭐ Uma linha que não vale para ESTE alvo não se pinta, e o que não se pinta não entra no
+    // `hit_index` — a lista que se vê e a que o clique acerta são a mesma (`menu_row_is_hidden`).
     let rows: Vec<MenuRow<'_>> = statics
         .iter()
+        .filter(|&&(id, ..)| !store.menu_row_is_hidden(req.kind, id))
         .map(|&(id, key, swatch)| MenuRow::Item(id, key.tr(), swatch))
         .chain(contrib.iter().map(|e| {
             match (e.node_id(), e.label()) {
@@ -139,7 +142,11 @@ pub fn paint_context_menu_overlay(
     }
     // A pergunta de apagar um quadro precisa do NOME, que o `store` não tem: pinta-a o
     // `document_tabs_menu::paint_confirm_delete`, logo a seguir a este overlay.
-    if matches!(req.kind, ContextMenuKind::ConfirmDeleteBoard { .. }) {
+    // O mesmo para o modal «Send to board»: pinta-o o `send_to_board::paint`, que tem os quadros.
+    if matches!(
+        req.kind,
+        ContextMenuKind::ConfirmDeleteBoard { .. } | ContextMenuKind::SendToBoard { .. }
+    ) {
         return;
     }
     // Centered single-panel dialogs all share one painter signature — dispatch by kind.

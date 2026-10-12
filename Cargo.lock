@@ -8088,9 +8088,11 @@ dependencies = [
 name = "ph2d-panel-hierarchy"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-component-desc",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-text",

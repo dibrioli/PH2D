@@ -339,6 +339,11 @@ pub enum ContextMenuKind {
     ConfirmDeleteBoard {
         board: u64,
     },
+    /// ⭐ O modal *«Send to board»* (W15): escolhe o quadro que recebe o conteúdo da linha `row` da
+    /// Hierarquia — desenha o próprio corpo (`send_to_board::paint`, que conhece os quadros).
+    SendToBoard {
+        row: NodeId,
+    },
 }
 
 impl ContextMenuKind {
@@ -441,5 +446,6 @@ impl ContextMenuKind {
         Self::TimelineMarker { index: 0 },
         Self::BoardTab { board: 0 },
         Self::ConfirmDeleteBoard { board: 0 },
+        Self::SendToBoard { row: NodeId(1) },
     ];
 }

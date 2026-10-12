@@ -110,6 +110,7 @@ mod panel_walk;
 mod pre_dispatch;
 /// ⭐⭐⭐ **A BARRA DO MODO de edição de receita** — o nome, quantas cópias seguem, e a SAÍDA.
 pub mod prefab_bar;
+pub mod send_to_board;
 pub mod slot_tabs;
 /// ⭐ **O gesto que move uma aba** — irmão do [`slot_tabs`], cortado dele pelo tecto de LOC em
 /// 2026-09-08. ⚠️ Os itens dele são **re-exportados pelo `slot_tabs`**, que continua a ser o

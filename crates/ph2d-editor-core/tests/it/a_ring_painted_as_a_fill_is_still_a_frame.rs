@@ -35,6 +35,12 @@ use Kind::{Divider, Ring, Track};
 /// ⚠️ **A linha é o texto, não o número** — um número envelhece a cada edição do ficheiro.
 const DECLARED: &[(&str, &str, Kind, &str)] = &[
     (
+        "screens/hero/send_to_board.rs",
+        "fill_rounded_rect(scene, line, 0.0, ink(ColorToken::Border));",
+        Divider,
+        "o risco de 1 px entre os quadros e o «New board» do modal «Send to board» (W15)",
+    ),
+    (
         "widget/color_swatch.rs",
         "fill_rounded_rect(scene, rect, radius, colour);",
         Ring,

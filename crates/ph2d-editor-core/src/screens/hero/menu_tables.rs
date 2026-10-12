@@ -488,6 +488,11 @@ pub(super) const HIERARCHY_ROW_ROWS: &[MenuRow] = &[
     // A exportação de UMA sprite, ao lado da da folha: os dois escrevem ficheiros, e o
     // nome diz qual. Plano `docs/Sprite_projeto/18` W9 (Enio, 2026-08-21).
     menu_row(ids::CTX_MENU_HIER_EXPORT_IMAGE, "chrome.menu.export_image"),
+    // Só para Image · Vector · Flip: o pintor esconde-a nas outras (`menu_row_is_hidden`).
+    menu_row(
+        ids::CTX_MENU_HIER_SEND_TO_BOARD,
+        "chrome.menu.send_to_board",
+    ),
     menu_row(
         ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
         "chrome.menu.remove_from_sheet",

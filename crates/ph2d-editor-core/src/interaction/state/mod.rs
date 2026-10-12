@@ -569,6 +569,8 @@ pub struct WidgetStore {
     /// `100_000+` and would silently fall through to "click,
     /// no drag" without this set.
     pub(super) hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
+    /// ⭐ As linhas cujo objecto pode ir para um quadro (W15) — a shell publica-as por quadro.
+    pub(super) hierarchy_board_rows: std::collections::BTreeSet<NodeId>,
     /// TextInput ids that should treat Enter as "insert newline"
     /// instead of the default "Submit + Blur" (single-line form
     /// behavior). Populated by widgets that wrap multi-line content

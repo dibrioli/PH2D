@@ -470,3 +470,31 @@ fn hier_menu_use_as_flow_raises_use_as_flow_with_the_clicked_row() {
         vec![EditorAction::Hierarchy(HierRequest::UseAsFlow { row })]
     );
 }
+
+/// ⭐ «Send to board…» (MiroClone W15): o clique levanta o PEDIDO com a linha clicada — a shell confere
+/// o tipo do objecto e abre o modal que escolhe o quadro — e a linha está no menu com esse nome.
+#[test]
+fn send_to_board_raises_the_ask_with_the_clicked_row() {
+    use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+
+    let mut hero = setup_hero();
+    let mut state = HierarchyState::default();
+    let row = NodeId(100_779);
+    stage_hierarchy_row_snapshot(&mut hero, row);
+    let consumed = dispatch(
+        &mut hero,
+        &mut state,
+        WidgetEvent::Click(ids::CTX_MENU_HIER_SEND_TO_BOARD),
+    );
+    assert!(consumed, "o clique em `Send to board…` não foi consumido");
+    assert_eq!(
+        hero.bus.drain().collect::<Vec<_>>(),
+        vec![EditorAction::Hierarchy(HierRequest::SendToBoard { row })]
+    );
+    let rows = menu_rows(ContextMenuKind::HierarchyRow { row: NodeId(1) });
+    let (_, label, _) = rows
+        .iter()
+        .find(|(rid, _, _)| *rid == ids::CTX_MENU_HIER_SEND_TO_BOARD)
+        .expect("o menu da Hierarquia não oferece `Send to board…`");
+    assert_eq!(label.tr(), "Send to board\u{2026}");
+}

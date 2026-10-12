@@ -3,8 +3,7 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#48** (o relevo some ao trocar de pincel), o
-> **#49** (azul sobre azul fica verde no soltar), o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#47** (o Shape Noise no Wet Paint), o Bug **#11** (o **#15** fechou, medido em
 > 2026-10-03, e o texto dele fica como registo), a **tinta
 > EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
 > (o texto do #15 mudou-se em 2026-10-11 para o pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)),
@@ -112,26 +111,6 @@ a esse degrau. A cura é interpolar gradientes por amostra (o análogo das norma
 o custo por medir.
 
 ---
-
-## Bug #48 — Wet Paint: o relevo de TODA a tinta some ao trocar para um pincel sem relevo (ABERTO, dono 11/10)
-
-**Sintoma (smoke do dono, 11/10, repetido no mesmo dia):** *«quando pinta com relevo e depois muda o pincel para
-um que não tem relevo, o relevo de todos desaparece»*. **Causa lida no código (não medida):** o Emboss é um knob do
-RENDER aplicado a toda a tinta da sessão com o valor do pincel de AGORA (`render.rs`, `p.k(Knob::Emboss)`), não uma
-propriedade guardada com a tinta. **Cura proposta:** o relevo viaja com a massa — uma altura por célula escrita no
-depósito (como o `impasto` do Impasto), e o render lê a altura, não o knob. Prova: portão «pinta com relevo, troca
-para Wet Round, pinta ao lado: o 1.º traço guarda o relevo ao byte».
-
-## Bug #49 — Wet Paint: azul escuro sobre azul claro fica VERDE no soltar do rato, com Pigment Mixing desligado (ABERTO, dono 11/10)
-
-**Sintoma (dono, 11/10, sem foto do verde):** azul escuro sobre azul claro; durante o traço o azul está certo
-(as duas capturas mostram o traço escuro limpo); **só no mouse up** a cor vira verde. *Pigment mixing* DESLIGADO.
-*«Depois do Undo o problema sumiu»* (por esclarecer: se os traços seguintes deixaram de ficar verdes). **Pistas, por
-medir:** azul + azul → verde é a assinatura da mistura SUBTRACTIVA (K–M) entre um azul-ciano e um azul-escuro ⇒
-suspeita de que o caminho do soltar (o commit da tinta à camada, ou o Glaze/Staining do secar) misture por K–M
-sem ler a caixa *Pigment mixing* — preview ≠ documento. O «sumiu depois do Undo» aponta para estado da sessão
-(um modo ou cache armado pelo traço anterior) que o Undo repõe. Reproduzir antes de ler: o traço escuro sobre
-claro pela porta do produto, foto antes e depois do `pointer_up`, com a caixa ligada e desligada.
 
 ## Bug #24 — Composite Brush: os RETÂNGULOS do re-carimbo (2026-09-21 — as DUAS causas FECHADAS, um resíduo ABERTO)
 

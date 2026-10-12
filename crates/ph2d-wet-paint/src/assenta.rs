@@ -150,10 +150,14 @@ pub fn cor(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> [f64; 3] 
 /// (a velatura do filme não compõe em passos: o palpite deixa um resto). A derivada é numérica — com o
 /// filme grosso a velatura pesa mais que a cobertura (medido: assumir `1 − a` dava passos 4× grandes e o
 /// miolo ia a preto); o passo tem tecto.
+///
+/// ⛔ Os canais NÃO são independentes: o tapar extra pesa a diferença de pigmento das TRÊS cores, e mexer
+/// num canal muda o ecrã dos outros. Cada canal lê o ecrã DEPOIS do anterior (Bug #49: com o ecrã do
+/// início da volta, a derivada do verde media a mudança do vermelho e o assentado ia a verde-água).
 fn resolve(mut x: [f64; 3], alvo: [f64; 3], ecra: impl Fn([f64; 3]) -> [f64; 3]) -> [f64; 3] {
     const H: f64 = 0.5;
+    let mut y = ecra(x);
     for _ in 0..4 {
-        let y = ecra(x);
         if (0..3).all(|c| (y[c] - alvo[c]).abs() < 0.01) {
             break;
         }
@@ -173,6 +177,7 @@ fn resolve(mut x: [f64; 3], alvo: [f64; 3], ecra: impl Fn([f64; 3]) -> [f64; 3])
             }
             let passo = ((y[c] - alvo[c]) / d).clamp(-48.0, 48.0);
             x[c] = (x[c] - passo).clamp(0.0, 255.0);
+            y = ecra(x);
         }
     }
     x
@@ -435,6 +440,53 @@ mod tests {
         // A massa conserva-se: (1 − 0,95)(1 − 0,2) = (1 − 0,9)(1 − 0,6).
         let u2 = levanta(e, AM, AM, 0.95, 0.2, 0.9, 0.6);
         assert!(perto(u2, AM, 0.5), "a mesma tinta: {u2:?}");
+    }
+
+    /// **Bug #49 — azul escuro a assentar sobre azul claro seco não vai a verde.** O assentar corre em MUITOS
+    /// passes (2–5 % da massa cada) e o ecrã tem de ficar o mesmo em todos: 4 azuis claros × 4 escuros, `a_s`
+    /// 0,2–0,99, `a_f` 0,5–0,95, 60 passes. Antes (cada canal com a derivada do ecrã do início da volta) o
+    /// pior subia o verde +15 a `d = 0,05` e o assentado ficava verde-água (83,178,211).
+    #[test]
+    fn assentar_azul_sobre_azul_nao_muda_o_tom() {
+        let e = Ecra::Cobre {
+            filme: 0.0,
+            esconde: 5.0,
+            molhada: 1.0,
+        };
+        let claros = [
+            [120.0, 180.0, 235.0],
+            [90.0, 190.0, 240.0],
+            [150.0, 200.0, 255.0],
+            [170.0, 210.0, 240.0],
+        ];
+        let escuros = [
+            [20.0, 40.0, 140.0],
+            [10.0, 30.0, 110.0],
+            [0.0, 0.0, 128.0],
+            [40.0, 60.0, 160.0],
+        ];
+        let mut pior = 0.0f64;
+        for sc0 in claros {
+            for uc in escuros {
+                for a_s0 in [0.2, 0.5, 0.8, 0.95, 0.99] {
+                    for a_f0 in [0.5, 0.8, 0.95] {
+                        for d in [0.02, 0.05] {
+                            let (mut sc, mut a_s, mut a_f) = (sc0, a_s0, a_f0);
+                            let v0 = sobre_branco(e, sc, uc, a_s, a_f);
+                            for _ in 0..60 {
+                                let a_s2 = 1.0 - (1.0 - a_s) * (1.0 - d * a_f);
+                                let a_f2 = (1.0 - (1.0 - a_f) / (1.0 - d * a_f)).max(0.0);
+                                sc = assenta(e, sc, uc, a_s, a_f, a_s2, a_f2);
+                                (a_s, a_f) = (a_s2, a_f2);
+                                let v = sobre_branco(e, sc, uc, a_s, a_f);
+                                pior = pior.max((v[1] - v[2]) - (v0[1] - v0[2]));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(pior <= 3.0, "o assentar subiu o verde {pior:+.1} níveis");
     }
 
     /// Quanto `x` sai, por canal, da caixa de `a` e `b` (níveis; `0` dentro).

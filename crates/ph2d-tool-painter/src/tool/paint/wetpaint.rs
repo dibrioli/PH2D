@@ -459,6 +459,9 @@ mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
 #[cfg(test)]
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame
+#[cfg(test)]
+#[path = "wetpaint/verde_no_soltar_tests.rs"]
+mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49)
 
 // o veu do Show Wet e VIVO (report do Enio, 2026-08-07)
 #[cfg(test)]

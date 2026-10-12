@@ -40,6 +40,7 @@ pub struct GridPatch {
     susp_rgb: Vec<[f32; 3]>,
     sett: Vec<f32>,
     sett_rgb: Vec<[f32; 3]>,
+    relevo: Vec<f32>,
     wet: Vec<u8>,
     active: Vec<u8>,
     bloom: Vec<u8>,
@@ -125,6 +126,7 @@ pub fn snapshot_grid_region(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Opt
         susp_rgb: take_rows(&g.susp_rgb, s, x0, y0, x1, y1),
         sett: take_rows(&g.sett, s, x0, y0, x1, y1),
         sett_rgb: take_rows(&g.sett_rgb, s, x0, y0, x1, y1),
+        relevo: take_rows(&g.relevo, s, x0, y0, x1, y1),
         wet: take_rows(&g.wet, s, x0, y0, x1, y1),
         active: take_rows(&g.active, s, x0, y0, x1, y1),
         bloom: take_rows(&g.bloom, s, x0, y0, x1, y1),
@@ -148,6 +150,7 @@ pub fn restore_grid_region(g: &mut Grid, p: &GridPatch) {
     put_rows(&mut g.susp_rgb, s, x0, y0, x1, y1, &p.susp_rgb);
     put_rows(&mut g.sett, s, x0, y0, x1, y1, &p.sett);
     put_rows(&mut g.sett_rgb, s, x0, y0, x1, y1, &p.sett_rgb);
+    put_rows(&mut g.relevo, s, x0, y0, x1, y1, &p.relevo);
     put_rows(&mut g.wet, s, x0, y0, x1, y1, &p.wet);
     put_rows(&mut g.active, s, x0, y0, x1, y1, &p.active);
     put_rows(&mut g.bloom, s, x0, y0, x1, y1, &p.bloom);

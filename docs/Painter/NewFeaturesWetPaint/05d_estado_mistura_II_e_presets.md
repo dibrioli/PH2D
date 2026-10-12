@@ -281,3 +281,12 @@
   esses valores e seguir»); a régua das mídias perdeu as três métricas que os reprovavam. O Spacing do Tuning saiu do
   painel (o do pincel é o do Stroke). Achados no smoke, ABERTOS: o relevo que some ao trocar de pincel (#48) e o azul
   que fica verde no soltar (#49) — 1.º e 2.º da [janela 22](22_PROMPT_janela_relevo_e_verde.md).
+
+- ✅ **Bugs #48 e #49 fechados (11/10, janela 22).** O relevo é da TINTA: cada célula guarda o Emboss do pincel que
+  a pousou (`Grid::relevo`, média pela massa) e o render lê-o — trocar para um pincel sem relevo já não apaga o
+  dos traços de antes. O verde no soltar não era K–M: ao assentar o filme escuro sobre o claro seco, a conta que
+  reacerta a cor (`assenta::resolve`) usava, para cada canal, o ecrã do início da volta, mas o tapar acopla os três
+  canais — o assentado ia a verde-água. Cada canal lê agora o ecrã depois do anterior. Referências regravadas
+  (miniaturas: Oil Bristle 139 px na orla, Express Oil 30, Wet Dry Brush 108 e Wet Liner 86 a ±1; as seis cenas
+  das opções até 9 níveis). Pranchas em `comparar_oleo/janela22/`. A família C (o óleo contra o Rebelle) fica
+  para a janela seguinte. [handoff](../handoffs/HANDOFF_CONTINUACAO_line_PainterWatercolor_2026-10-11_RELEVO_E_VERDE.md).

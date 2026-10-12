@@ -383,11 +383,9 @@ pub fn render_pigment_row_visual(
         _ => (0.0, 0.0),
     };
     // O RELEVO da tinta (o gradiente da massa) é da tinta, não do papel (dono 11/10): com `relevo`,
-    // desenha-se com ou sem papel escolhido; `0` = desligado.
-    let emboss_k = match p {
-        Some(p) if paper_on || visual.relevo => p.k(Knob::Emboss),
-        _ => 0.0,
-    };
+    // desenha-se com ou sem papel escolhido, com o `Emboss` que a CÉLULA guardou ao receber a tinta
+    // ([`Grid::relevo`], Bug #48), nunca o do pincel de agora; `0` = nenhum.
+    let com_relevo = p.is_some() && (paper_on || visual.relevo);
     {
         let mut i = x0 + cy * s;
         let mut o = (x0 - 1) * 4;
@@ -406,6 +404,7 @@ pub fn render_pigment_row_visual(
                 let uc = lg.susp_rgb[i];
                 let ([mut cr, mut cg, mut cb], la) =
                     crate::assenta::cor_e_alfa(lei, sc.map(f64::from), uc.map(f64::from), a_s, a_f);
+                let emboss_k = if com_relevo { lg.relevo[i] as f64 } else { 0.0 };
                 if paper_on || emboss_k != 0.0 {
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,

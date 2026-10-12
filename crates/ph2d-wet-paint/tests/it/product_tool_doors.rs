@@ -236,14 +236,37 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     }
     assert!(rgb_moved, "default knobs must print visible grain");
     drop(layers);
-    // Zero the two amplitude knobs: the term must vanish to the bit.
+    // Zero the two amplitudes: the term must vanish to the bit. The relief is the PAINT's (Bug #48: the
+    // render reads `Grid::relevo`, written at the deposit), so zeroing the Emboss knob NOW leaves it.
     e.set_knob(Knob::VisualGrain, 0.0);
     e.set_knob(Knob::Emboss, 0.0);
     let params = e.sim.gather_params(&e.tuning);
     let layers = layers_of(&e);
+    let mut knob_zeroed = vec![0u8; W * H * 4];
+    render_pigment_region_visual(
+        Some(&params),
+        &layers,
+        paper_on,
+        1,
+        1,
+        W,
+        H,
+        &mut knob_zeroed,
+    );
+    assert_ne!(
+        off, knob_zeroed,
+        "the paint keeps the relief it was laid with"
+    );
+    drop(layers);
+    // Paint laid with Emboss 0 carries no relief.
+    e.active_grid_mut().relevo.fill(0.0);
+    let layers = layers_of(&e);
     let mut on_zeroed = vec![0u8; W * H * 4];
     render_pigment_region_visual(Some(&params), &layers, paper_on, 1, 1, W, H, &mut on_zeroed);
-    assert_eq!(off, on_zeroed, "grain 0 + emboss 0 must be an exact no-op");
+    assert_eq!(
+        off, on_zeroed,
+        "grain 0 + paint laid at emboss 0 must be an exact no-op"
+    );
 }
 
 /// The «Glaze layering» (`Sim::camadas_transparentes`, a law of the session the

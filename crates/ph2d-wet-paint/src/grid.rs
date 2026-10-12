@@ -49,6 +49,9 @@ pub struct Grid {
     pub sett: Vec<f32>,
     /// Settled color, interleaved like `susp_rgb`.
     pub sett_rgb: Vec<[f32; 3]>,
+    /// O RELEVO da tinta da célula: o `Emboss` do pincel que a pousou, pesado pela massa (Bug #48 — o
+    /// relevo viaja com a tinta; trocar de pincel não o muda). Escrito só em [`crate::trail::Trail::transfer_paint`].
+    pub relevo: Vec<f32>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -203,6 +206,7 @@ impl Grid {
             susp_rgb: vec![[0.0; 3]; n],
             sett: vec![0.0; n],
             sett_rgb: vec![[0.0; 3]; n],
+            relevo: vec![0.0; n],
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],
@@ -526,6 +530,7 @@ pub struct GridSnapshot {
     pub susp_rgb: Vec<[f32; 3]>,
     pub sett: Vec<f32>,
     pub sett_rgb: Vec<[f32; 3]>,
+    pub relevo: Vec<f32>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     pub wet: Vec<u8>,
@@ -557,6 +562,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         susp_rgb: g.susp_rgb.clone(),
         sett: g.sett.clone(),
         sett_rgb: g.sett_rgb.clone(),
+        relevo: g.relevo.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
         wet: g.wet.clone(),
@@ -582,6 +588,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.susp_rgb.copy_from_slice(&s.susp_rgb);
     g.sett.copy_from_slice(&s.sett);
     g.sett_rgb.copy_from_slice(&s.sett_rgb);
+    g.relevo.copy_from_slice(&s.relevo);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);
     g.flow_x.fill(0.0);

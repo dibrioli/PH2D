@@ -162,6 +162,7 @@ impl Trail {
         let drag_w1 = (drag * 255.0).trunc() as i32; // integer byte weights: they
         let drag_w2 = ((1.0 - drag) * 255.0).trunc() as i32; // sum < 256 on purpose, so
         let water_cap = p.k(Knob::WaterCap); // each drag leaks ~0.8% wetness
+        let relevo = p.k(Knob::Emboss) as f32;
         let mut rx0 = w;
         let mut ry0 = h;
         let mut rx1 = 0;
@@ -182,6 +183,12 @@ impl Trail {
                     continue;
                 }
                 let i = cx as usize + cy as usize * s;
+                // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.
+                let r_old = g.relevo[i];
+                if r_old != relevo {
+                    let m_old = g.susp[i] as f64 + g.sett[i] as f64;
+                    g.relevo[i] = ((r_old as f64 * m_old + relevo as f64 * v) / (m_old + v)) as f32;
+                }
                 let in_a = alpha_of_mass(v);
                 let old = g.susp[i] as f64;
                 if old > 0.0 {

@@ -1,10 +1,9 @@
-//! A cena 16 faz o que diz (a ponta arredonda, o vale torce, a aresta enverga, e o *Corner* do
-//! cartão é clicado) — com a estrela nascida pelo MESMO commit da ferramenta e tornada viva pela
+//! A cena 16 faz o que diz (a ponta arredonda, os vales arredondam, o ⇕ sobe a 7 pontas) — com a estrela nascida pelo MESMO commit da ferramenta e tornada viva pela
 //! MESMA porta da shell.
 
 use super::tests::cena;
 use crate::shape_params::panel_shape_target;
-use crate::vector_mode_card::{ESTRELA, step};
+use crate::vector_mode_estrela::{ESTRELA, step};
 use ph2d_vec_entities::entities::sync;
 use ph2d_vec_scene::ShapeKind;
 

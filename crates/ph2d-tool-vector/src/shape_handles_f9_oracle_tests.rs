@@ -4,8 +4,9 @@
 use super::tests::{HALF, PX, attr, cooker, fixture, pointer, spin};
 use super::*;
 
-/// ⭐ AS VOLTAS da espiral: o Inkscape soma `Δθ/360` contínuo; as nossas voltas são INTEIRAS — a
-/// mesma lei arredondada (e a distância da mão não conta, nas duas).
+/// ⭐ AS VOLTAS da espiral: o Inkscape soma `Δθ/360` contínuo, e nós também (F12 — as nossas eram
+/// inteiras e a ponta só saltava a meia volta: «o gizmo da espiral não funciona», o dono); a
+/// distância da mão não conta, nas duas.
 #[test]
 fn the_spiral_turns_follow_the_winding_like_inkscape() {
     let f = fixture("spiral");
@@ -25,11 +26,15 @@ fn the_spiral_turns_follow_the_winding_like_inkscape() {
         let turn = -wrap180(ang(b0) - ang(a0));
         let mut v = ShapeKind::Spiral.defaults();
         v[0] = 3.0;
-        let got = spin(ShapeKind::Spiral, 0, v, turn, Mods::default())[0];
-        let want = 3.0 + (rev - 3.0).round();
-        assert_eq!(
-            got, want,
-            "{nome}: {got} contra o oráculo {rev} arredondado"
+        // O Ctrl dele prende o ângulo a 15° (+50° → 3,125): é o nosso Shift.
+        let mods = Mods {
+            snap: e["mod"] == "ctrl",
+            ..Mods::default()
+        };
+        let got = spin(ShapeKind::Spiral, 0, v, turn, mods)[0];
+        assert!(
+            (got - rev).abs() < 1e-3,
+            "{nome}: {got} contra o oráculo {rev}"
         );
         n += 1;
     }

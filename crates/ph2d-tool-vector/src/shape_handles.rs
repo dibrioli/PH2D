@@ -85,9 +85,10 @@ pub enum Law {
     /// posição absoluta da mão: com o bico colado, o vértice que se desenha não é o ponto do
     /// parâmetro, e agarrá-lo saltaria.
     BoxPoint,
-    /// Contagem por VOLTAS: cada volta inteira do ponteiro à volta do centro soma (ou tira) uma;
-    /// a distância não conta — as `revolution` do Inkscape só mudam com o ângulo (150 e 70 px a
-    /// 0° deixam 3,000; +90° dá 3,250).
+    /// VOLTAS pelo ângulo: o ângulo enrolado do ponteiro à volta do centro soma `Δθ/360` — a ponta
+    /// de fora segue a mão; a distância não conta — as `revolution` do Inkscape só mudam com o
+    /// ângulo (150 e 70 px a 0° deixam 3,000; +90° dá 3,250). Shift: a ponta em passos de
+    /// [`ANGLE_SNAP_DEG`].
     Winding,
     /// O ⇕ «Points» do Illustrator (o Affinity só tem a barra): o arrasto VERTICAL desde o press,
     /// para CIMA soma. Um inteiro (contagem, escolha) anda um degrau por 1/24 da altura da caixa;
@@ -488,7 +489,8 @@ pub fn drag(
             if let Some(&i) = fields.first()
                 && let Some((lo, hi, _)) = range_world(kind, i, px_to_world)
             {
-                v[i] = (d.at_press[i] + (d.wound / 360.0).round()).clamp(lo, hi);
+                let deg = snap(360.0 * d.at_press[i] + d.wound);
+                v[i] = (deg / 360.0).clamp(lo, hi);
             }
         }
         Law::Sweep { start } => {

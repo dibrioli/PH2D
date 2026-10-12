@@ -2,7 +2,8 @@
 //! *Vetor*, um rectângulo arredondado de traço GROSSO; o botão *Forma*; e, pelo MESMO press e arrasto
 //! da shell, o ⊙ do canto de cima à esquerda levado na DIAGONAL para dentro — os quatro cantos
 //! arredondam e cada ⊙ fica no centro do arco dele (o *corner widget* do Illustrator). A foto final
-//! mostra a caixa de transformação POR FORA do traço, os quatro ⊙, e a ④ e o cartão à folga nova.
+//! mostra a caixa de transformação POR FORA do traço, os quatro ⊙, o ⇕ do *Corner* na borda e a ④ à
+//! folga nova.
 
 use crate::state::VecState;
 use ph2d_ecs::SimWorld;
@@ -74,7 +75,7 @@ pub fn step(
                     })
                     .collect()
             };
-            crate::vector_mode_card::pull(vec, scene, sim, 0, walk).then_some(9)
+            crate::vector_mode_estrela::pull(vec, scene, sim, 0, walk).then_some(9)
         }
         _ => None,
     }

@@ -331,30 +331,32 @@ pub fn round_rect_styled(
 
 /// A espiral com **divergência** e **raio interno** (o `expansion` e o `t0` do Inkscape, corridos):
 /// `r = t^(1 + expansion)` com `t` de `inner` a 1, o ângulo `θ = 12h + voltas·2π·t` — o miolo
-/// cortado leva as voltas de dentro, como no Inkscape. Os dois a zero = [`crate::spiral`], byte a
-/// byte. Cúbicas de Hermite com a tangente ANALÍTICA, como a de sempre.
+/// cortado leva as voltas de dentro, como no Inkscape. As voltas são FRACCIONÁRIAS (a `revolution`
+/// do Inkscape: a ponta de fora segue o ângulo da mão); voltas inteiras com os dois a zero =
+/// [`crate::spiral`], byte a byte. Cúbicas de Hermite com a tangente ANALÍTICA, como a de sempre.
 #[must_use]
 pub fn spiral_ex(
     center: [f64; 2],
     rx: f64,
     ry: f64,
-    turns: u32,
+    turns: f64,
     expansion: f64,
     inner: f64,
 ) -> VecPath {
-    if expansion == 0.0 && inner <= 0.0 {
-        return crate::spiral(center, rx, ry, turns);
+    let t = turns.clamp(1.0, f64::from(crate::MAX_SPIRAL_TURNS));
+    if expansion == 0.0 && inner <= 0.0 && t.fract() == 0.0 {
+        return crate::spiral(center, rx, ry, t as u32);
     }
-    let t = turns.clamp(1, crate::MAX_SPIRAL_TURNS);
     let e = (1.0 + expansion).max(0.05);
-    let total = std::f64::consts::TAU * f64::from(t);
+    let total = std::f64::consts::TAU * t;
     let start = std::f64::consts::FRAC_PI_2;
     // O parâmetro da curva: `t = u^q`. Com `e < 1` a lei `r = t^e` tem derivada infinita no centro
     // e uma cúbica não a segue (medido: 0,0135 da lei a `e = 0,5`); andar pelo RAIO (`q = 1/e`,
     // `r = u`) deixa tudo liso, e o ângulo é que acelera — daí `q×` mais passos.
     let q = if e < 1.0 { 1.0 / e } else { 1.0 };
     let u0 = inner.clamp(0.0, 0.95).powf(1.0 / q);
-    let steps = t as usize * SPIRAL_STEPS_PER_TURN * q.ceil() as usize;
+    // Voltas inteiras dão o mesmo número de passos de antes (um save antigo coze igual).
+    let steps = ((t * SPIRAL_STEPS_PER_TURN as f64 * q.ceil()).ceil() as usize).max(1);
     let du = (1.0 - u0) / steps as f64;
     let verts = (0..=steps)
         .map(|i| {

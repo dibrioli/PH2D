@@ -51,7 +51,7 @@ fn the_new_fields_at_zero_are_the_old_shapes_byte_for_byte() {
         );
     }
     assert_eq!(
-        spiral_ex(c, 2.0, 1.0, 3, 0.0, 0.0),
+        spiral_ex(c, 2.0, 1.0, 3.0, 0.0, 0.0),
         crate::spiral(c, 2.0, 1.0, 3)
     );
 }
@@ -197,11 +197,47 @@ fn twist_turns_the_valleys_and_keeps_the_tips() {
 /// A espiral divergente cresce como `t^e` e o raio interno corta o miolo.
 #[test]
 fn the_spiral_grows_as_t_to_the_e_and_starts_at_the_inner_radius() {
-    let s = spiral_ex([0.0; 2], 1.0, 1.0, 3, 1.0, 0.25);
+    let s = spiral_ex([0.0; 2], 1.0, 1.0, 3.0, 1.0, 0.25);
     let first = s.verts[0].anchor;
     assert!((first[0].hypot(first[1]) - 0.25_f64.powi(2)).abs() < 1e-12);
     let last = s.verts.last().unwrap().anchor;
     assert!((last[0].hypot(last[1]) - 1.0).abs() < 1e-12);
+}
+
+/// (F12) As voltas FRACCIONÁRIAS: a ponta de fora fica no ângulo `12h + voltas·360°` (3,25 → às
+/// 9h, no aro) e a curva não salta ao passar por um inteiro (3,0001 ≈ 3, ponto a ponto da lei).
+#[test]
+fn a_fractional_spiral_ends_at_its_angle_and_meets_the_whole_one() {
+    let tip = |t: f64| {
+        spiral_ex([0.0; 2], 1.0, 1.0, t, 0.0, 0.0)
+            .verts
+            .last()
+            .unwrap()
+            .anchor
+    };
+    let p = tip(3.25);
+    assert!((p[0] + 1.0).abs() < 1e-12 && p[1].abs() < 1e-12, "{p:?}");
+    let whole = spiral_ex([0.0; 2], 1.0, 1.0, 3.0, 0.0, 0.0);
+    let near = spiral_ex([0.0; 2], 1.0, 1.0, 3.0001, 0.0, 0.0);
+    // A régua: cada amostra de uma à amostra MAIS PERTO da outra, esta 16× mais densa (o passo
+    // entre amostras fica abaixo da tolerância).
+    let flat = |s: &VecPath, n: u32| -> Vec<[f64; 2]> {
+        s.verts
+            .windows(2)
+            .flat_map(|w| (0..n).map(move |k| cubic_at(&w[0], &w[1], f64::from(k) / f64::from(n))))
+            .collect()
+    };
+    let dense = flat(&near, 128);
+    let far = flat(&whole, 8)
+        .iter()
+        .map(|q| {
+            dense
+                .iter()
+                .map(|r| (q[0] - r[0]).hypot(q[1] - r[1]))
+                .fold(f64::MAX, f64::min)
+        })
+        .fold(0.0, f64::max);
+    assert!(far < 2e-3, "a 3 voltas e a 3,0001 afastam-se {far}");
 }
 
 /// O CÔNCAVO morde para dentro da RECTA dos cortes (não só do arco): o meio da ligação côncava fica

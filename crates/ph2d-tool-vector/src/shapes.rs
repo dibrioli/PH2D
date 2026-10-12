@@ -22,9 +22,9 @@ use ph2d_vec_scene::ShapeKind;
 /// A unidade em que um parâmetro é AUTORADO (o que o usuário vê e digita).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FieldUnit {
-    /// Contagem inteira (lados, pontas, voltas). O campo arredonda.
+    /// Contagem inteira (lados, pontas). O campo arredonda.
     Count,
-    /// Fração `0..1` (razão interna da estrela, …).
+    /// Número contínuo sem unidade (a razão interna da estrela, as voltas da espiral, …).
     Ratio,
     /// Ângulo em graus.
     Degrees,

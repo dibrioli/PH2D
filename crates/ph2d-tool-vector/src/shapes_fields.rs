@@ -25,12 +25,14 @@ pub(crate) const INNER_RATIO: FieldDesc = FieldDesc {
     step: 0.01,
     unit: FieldUnit::Ratio,
 };
+/// As voltas da espiral — FRACCIONÁRIAS, como a `revolution` do Inkscape: a ponta de fora segue o
+/// ângulo da mão (F12; inteiras, ela só saltava a meia volta). O passo da caixa é ¼ de volta.
 pub(crate) const TURNS: FieldDesc = FieldDesc {
     label: "Turns",
     min: 1.0,
     max: 8.0,
-    step: 1.0,
-    unit: FieldUnit::Count,
+    step: 0.25,
+    unit: FieldUnit::Ratio,
 };
 /// Quanto o corte ABRE (graus). É o parâmetro que leva a elipse a pizza / anel parcial.
 pub(crate) const SWEEP: FieldDesc = FieldDesc {

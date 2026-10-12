@@ -325,16 +325,27 @@ pub(super) fn spin(
     out
 }
 
-/// A espiral conta VOLTAS: duas voltas inteiras da mão no sentido do enrolar somam duas; meia
-/// volta não soma nada; e a faixa do descritor manda (1..8).
+/// A espiral conta VOLTAS pelo ângulo da mão (F12): duas voltas somam duas, um quarto soma ¼ — a
+/// ponta segue a mão, não salta a meia volta —; Shift prende-a a 15°; a faixa do descritor manda.
 #[test]
-fn the_spiral_counts_whole_turns_of_the_hand() {
+fn the_spiral_turns_follow_the_angle_of_the_hand() {
     let k = ShapeKind::Spiral;
     let v = k.defaults();
-    assert_eq!(spin(k, 0, v, 720.0, Mods::default())[0], v[0] + 2.0);
-    assert_eq!(spin(k, 0, v, -360.0, Mods::default())[0], v[0] - 1.0);
-    assert_eq!(spin(k, 0, v, 170.0, Mods::default())[0], v[0]);
+    let near = |a: f64, b: f64| (a - b).abs() < 1e-9;
+    assert!(near(spin(k, 0, v, 720.0, Mods::default())[0], v[0] + 2.0));
+    assert!(near(spin(k, 0, v, -360.0, Mods::default())[0], v[0] - 1.0));
+    assert!(near(spin(k, 0, v, 90.0, Mods::default())[0], v[0] + 0.25));
+    assert!(near(
+        spin(k, 0, v, 30.0, Mods::default())[0],
+        v[0] + 30.0 / 360.0
+    ));
+    let snap = Mods {
+        snap: true,
+        ..Mods::default()
+    };
+    assert!(near(spin(k, 0, v, 97.0, snap)[0], v[0] + 0.25));
     assert_eq!(spin(k, 0, v, 360.0 * 20.0, Mods::default())[0], 8.0);
+    assert_eq!(spin(k, 0, v, -360.0 * 20.0, Mods::default())[0], 1.0);
 }
 
 /// O fim do arco segue o ângulo da mão sem saltar: de uma elipse INTEIRA, recuar 90° abre uma

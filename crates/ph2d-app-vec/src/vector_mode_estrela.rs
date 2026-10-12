@@ -1,9 +1,10 @@
-//! ⭐ **A cena 16** (`PH2D_OBJECT_MODE_SMOKE=16`, F10 — 11/10): A ESTRELA DO AFFINITY E O CARTÃO
-//! LATERAL. No layout *Vetor*, uma estrela desenhada com a ferramenta de forma na mão (nasce
+//! ⭐ **A cena 16** (`PH2D_OBJECT_MODE_SMOKE=16`, F10 — 11/10; F12 — 12/10): A ESTRELA DO AFFINITY E
+//! A FILA DE ⇕. No layout *Vetor*, uma estrela desenhada com a ferramenta de forma na mão (nasce
 //! REGULAR); o botão *Forma*; e, pelo MESMO press e arrasto da shell (`shape_handles_live::on`), os
 //! pontos junto da ponta de cima: a ponta arredonda (o ponto desce pelo eixo dela), o vale da
 //! esquerda arredonda os vales, e o ⇕ da borda da caixa sobe dois degraus — 7 pontas. A foto final
-//! mostra a estrela macia com os pontos verdes e, ao lado, o cartão (Corner · Smooth · Twist).
+//! mostra a estrela macia com os pontos verdes e, na borda direita da caixa, a fila de ⇕ lado a lado
+//! (Points · Corner · Curve · Smooth · Twist) — o cartão lateral SAIU (F12, o dono).
 
 use crate::shape_handles_live::{Gate, on, view};
 use crate::state::VecState;

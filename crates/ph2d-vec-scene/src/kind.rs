@@ -418,10 +418,8 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
                 style: crate::CornerStyle::of(f(v, 4)),
             },
         ),
-        // F10: a divergência e o raio interno do Inkscape.
-        ShapeKind::Spiral => {
-            crate::spiral_ex(c, rx, ry, f(v, 0).round().max(1.0) as u32, f(v, 1), f(v, 2))
-        }
+        // F10: a divergência e o raio interno do Inkscape; F12: as voltas fraccionárias dele.
+        ShapeKind::Spiral => crate::spiral_ex(c, rx, ry, f(v, 0), f(v, 1), f(v, 2)),
         // A reta guarda a DIREÇÃO (a caixa com sinal), não a bbox.
         ShapeKind::Line => crate::line(a, b),
         ShapeKind::Arc => crate::arc_open(c, rx, ry, f(v, 1), f(v, 0)),

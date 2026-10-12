@@ -107,6 +107,8 @@ ANTERIORES ou de carga:
   família de [FLAKES_DE_CARGA.md](../../DevOps/FLAKES_DE_CARGA.md) não serve: é LENTO — a cura é a faixa `slow` dele
   no nextest ou um gabarito mais barato, não um censo de carga.
 
+Binário (depois de `2fe9ce26a`), 2.ª corrida: `Finished \`smoke\` profile [optimized] target(s) in 0.20s`.
+
 ## Smoke do dono
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Luz2D && PH2D_LIGHT2D_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke`

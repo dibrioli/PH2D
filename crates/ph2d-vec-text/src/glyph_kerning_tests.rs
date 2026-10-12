@@ -264,6 +264,8 @@ fn the_kerning_follows_the_weight_axis() {
 /// processo, intercaladas, o MÍNIMO de cada uma (`docs/DevOps/MEDIR_VELOCIDADE.md`). Medido 11/10,
 /// 216 chars, caixa de 12 em: 0,333 ms → 0,702 ms (2,1×) com as tabelas do moldador guardadas na
 /// fonte; refazê-las por linha dava 0,964 ms (2,85×).
+/// E o Motion, que publica o `source.text` a CADA quadro: 17 chars numa linha, 3,4 → 10,9 µs
+/// (load 12) — sem cache por quadro, porque não há o que poupar contra 16 ms.
 #[test]
 #[ignore = "sonda de custo; corre em release"]
 fn measure_the_kerning_against_advance_only() {
@@ -293,6 +295,32 @@ fn measure_the_kerning_against_advance_only() {
             assert!(n > 100, "controlo: o parágrafo desenhou {n} glifos");
         }
     }
+    // O caso do Motion: o `source.text` publica a cada QUADRO, uma linha curta sem caixa.
+    let short = "Motion Text AV To";
+    let mut frame = [f64::INFINITY; 2];
+    for round in 0..200 {
+        for kerning in [round % 2 == 1, round % 2 == 0] {
+            let t0 = std::time::Instant::now();
+            let mut n = 0;
+            walk_glyphs(
+                &font,
+                short,
+                &lay(1.0, kerning),
+                &[],
+                &TextPlacement::At([0.0, 0.0]),
+                |_, _, _, _| n += 1,
+            );
+            let slot = &mut frame[usize::from(kerning)];
+            *slot = slot.min(t0.elapsed().as_secs_f64() * 1e6);
+            assert_eq!(n, short.chars().count());
+        }
+    }
+    println!(
+        "linha do Motion ({} chars, por quadro): {:.1} µs → {:.1} µs",
+        short.len(),
+        frame[0],
+        frame[1]
+    );
     println!(
         "re-cook de {} chars com caixa: advance-only {:.3} ms · com kerning {:.3} ms ({:.2}×)",
         text.len(),

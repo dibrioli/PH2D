@@ -102,7 +102,8 @@ impl GpuCook {
     }
 
     /// Escreve as `stream.count` cópias desta corrente a partir da cópia `primeiro`. O buffer já
-    /// foi reservado para o total ([`Self::reservar_formas`]).
+    /// foi reservado para o total ([`Self::reservar_formas`]). `conta` = esta saída é VIGIADA: as
+    /// linhas que não são forma somam-se no contador da [`crate::vigia`].
     pub(crate) fn encode_formas(
         &mut self,
         gpu: &GpuContext,
@@ -110,6 +111,7 @@ impl GpuCook {
         uniform_slot: usize,
         stream: &GpuStream,
         pivot: [f32; 2],
+        conta: bool,
     ) {
         let count = stream.count;
         let Some(formas) = self.formas.as_mut() else {
@@ -138,14 +140,17 @@ impl GpuCook {
                 pipeline: create_pipeline(gpu, &src, "ph2d-gpu-cook formas"),
             }
         });
-        // Uniform: count, primeiro (o resto do slot fica por usar).
-        let mut uni = [0u8; 8];
+        // Uniform: count, primeiro, conta (o resto do slot fica por usar).
+        let mut uni = [0u8; 16];
         uni[0..4].copy_from_slice(&count.to_le_bytes());
         uni[4..8].copy_from_slice(&primeiro.to_le_bytes());
+        uni[8..12].copy_from_slice(&u32::from(conta).to_le_bytes());
         let uniform = self.uniform_slot(gpu, uniform_slot);
         gpu.queue.write_buffer(uniform, 0, &uni);
+        self.vigia.garante_o_contador(gpu);
         let uniform = &self.uniforms[uniform_slot];
         let formas = self.formas.as_ref().expect("reservado acima");
+        let contador = self.vigia.contador().expect("garantido acima");
         let mut entries = vec![
             wgpu::BindGroupEntry {
                 binding: 0,
@@ -155,8 +160,12 @@ impl GpuCook {
                 binding: 1,
                 resource: formas.buffer.as_entire_binding(),
             },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: contador.as_entire_binding(),
+            },
         ];
-        let mut slot = 2u32;
+        let mut slot = 3u32;
         for (i, name) in lower_forma::FORMA_COLUMNS.iter().enumerate() {
             if present[i] {
                 let col = stream.cols.get(*name).expect("presença verificada");

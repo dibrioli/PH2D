@@ -46,6 +46,8 @@ fn a_rota_do_dispositivo_chega_ao_quadro() {
     let bandas = include_str!("fase_vector_bands.rs");
     assert!(bandas.contains(".formas().filter(|_| motion.gpu_live)"));
     assert!(bandas.contains("self.motion_shell.placa.decide_do_dispositivo("));
+    // ⭐ B6 — o dispositivo recebe as misturas por faixa de sink (senão um grupo desenha em Normal).
+    assert!(bandas.contains("motion_shape_placa::corridas_do_dispositivo(motion, misturas)"));
     let present = include_str!("present.rs");
     assert!(present.contains(".formas().filter(|_| motion.gpu_live)"));
     assert!(present.contains("let buffer = do_dispositivo.map(|f| f.buffer());"));

@@ -144,6 +144,7 @@ fn as_formas_pela_rota_do_dispositivo_desenham_o_que_a_cpu_desenha() {
         &m.shape_store,
         &mut m.placa_geometrias,
         camara(),
+        Vec::new(),
     ));
     let buffer = m.gpu_cook.formas().map(|f| f.buffer());
     placa_dev

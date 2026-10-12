@@ -56,7 +56,7 @@ fn as_palavras_da_forma_sao_as_do_shape_instance() {
     assert_eq!([f(12), f(13), f(14), f(15)], c.tint, "tint: palavras 12-15");
 }
 
-fn registry() -> NodeRegistry {
+pub(super) fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
     ph2d_node_source_object::register(&mut reg).unwrap();
     ph2d_node_motion_bend::register(&mut reg).unwrap();
@@ -65,7 +65,7 @@ fn registry() -> NodeRegistry {
 }
 
 /// `fronteira → bend → saída`, com a fronteira por preencher.
-fn grafo() -> (Graph, NodeId, NodeId, NodeId) {
+pub(super) fn grafo() -> (Graph, NodeId, NodeId, NodeId) {
     let mut g = Graph::new();
     let obj = g.add_node("source.object");
     let bend = g.add_node("motion.bend");
@@ -83,7 +83,7 @@ fn grafo() -> (Graph, NodeId, NodeId, NodeId) {
 }
 
 /// Cinco linhas: quatro formas (duas com o mesmo handle) e uma IMAGEM (`geometry_id = 0`) no meio.
-fn fronteira() -> Stream {
+pub(super) fn fronteira() -> Stream {
     let n = 5;
     let mut s = Stream::new(n);
     s.set(

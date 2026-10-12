@@ -98,6 +98,38 @@ fn motion_com_filtro(tag: u8, com: BlendWith, raio: f32) -> MotionState {
 enum Rota {
     Vello,
     Placa,
+    /// ⭐ B6 — as MESMAS cópias entregues como o buffer do cozimento, com as corridas POR FAIXA de
+    /// sink ([`crate::motion_shape_placa::corridas_por_faixa`]): o caminho da placa na rota do
+    /// dispositivo.
+    Dispositivo,
+}
+
+/// As cópias como o cozimento as escreve: `[ShapeInstance]` num buffer `STORAGE`.
+fn buffer_do_cozimento(
+    gpu: &ph2d_gpu::GpuContext,
+    insts: &[ph2d_eval_motion::VectorInstance],
+) -> wgpu::Buffer {
+    let copias: Vec<ph2d_shape_gpu::ShapeInstance> = insts
+        .iter()
+        .map(|i| ph2d_shape_gpu::ShapeInstance {
+            pos: i.world_pos,
+            size: i.size,
+            basis: i.basis,
+            anchor: i.anchor,
+            geometry: i.geometry_id,
+            _pad: 0,
+            tint: i.tint,
+        })
+        .collect();
+    let bytes: &[u8] = bytemuck::cast_slice(&copias);
+    let b = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("test cópias do cozimento"),
+        size: bytes.len() as u64,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    gpu.queue.write_buffer(&b, 0, bytes);
+    b
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -151,7 +183,31 @@ fn pela_camada(
         copia(32.0, 24.0, A2, mistura, None),
     ];
     let mut placa = PlacaDeFormas::default();
-    if rota == Rota::Vello {
+    if rota == Rota::Dispositivo {
+        let buffer = buffer_do_cozimento(gpu, &insts);
+        let misturas = Misturas::do_quadro(gpu, m.pump.camada_isolada());
+        let n = u32::try_from(insts.len()).expect("poucas");
+        let corridas = crate::motion_shape_placa::corridas_por_faixa(
+            &[(m.sinks[0], 0..n)],
+            |_| mistura,
+            misturas,
+        )
+        .expect("a placa compõe esta mistura");
+        let vivas: Vec<u32> = insts.iter().map(|i| i.geometry_id).collect();
+        let geos = &mut m.placa_geometrias;
+        assert!(placa.decide_do_dispositivo(
+            true,
+            n,
+            &vivas,
+            &store,
+            geos,
+            Affine::IDENTITY,
+            corridas,
+        ));
+        let _ = placa
+            .desenha(gpu, (W, H), geos, Some(&buffer))
+            .expect("a placa desenha");
+    } else if rota == Rota::Vello {
         let mut art = |_: u32, _: [f32; 4]| None;
         let cena = m
             .filtro
@@ -202,7 +258,7 @@ fn pela_camada(
             height: H,
         },
         scene_viewport: None,
-        formas: (rota == Rota::Placa).then_some(&placa),
+        formas: (rota != Rota::Vello).then_some(&placa),
         mundo: &mundo,
         band_blit: blit,
     }));
@@ -265,6 +321,8 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
                     .0
                 };
                 let (lido, placa) = (pela(Rota::Vello), pela(Rota::Placa));
+                // ⭐ B6 — a rota do dispositivo é a MESMA placa com as corridas por faixa: igual.
+                let dispositivo = pela(Rota::Dispositivo);
                 let hoje = mede(&mut vello, &gpu, tag, com, false, (1, 1));
                 let tabela = esperado(tag, Some(com)).map(byte);
                 println!(
@@ -279,10 +337,11 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
                         .iter()
                         .zip(lido)
                         .any(|(m, e)| (m - e).abs() > if inteira { 1 } else { BARRA })
+                    || dispositivo != placa
                 {
                     falhas.push(format!(
                         "inteira {inteira} tag {tag} {com:?}: camada {lido:?} · placa {placa:?} · \
-                     sem filtro {hoje:?} · tabela {tabela:?}"
+                     dispositivo {dispositivo:?} · sem filtro {hoje:?} · tabela {tabela:?}"
                     ));
                 }
             }
@@ -397,7 +456,7 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
     // `Screen` em `Copies` (não satura como o `Add`), um borrão largo face às cópias. O Vello não tem
     // células: o borrão corre sobre o CONJUNTO e o cartão di-lo; a placa (B5) leva cada cópia à sua
     // célula e mistura-a na volta — sem queixa.
-    for rota in [Rota::Vello, Rota::Placa] {
+    for rota in [Rota::Vello, Rota::Placa, Rota::Dispositivo] {
         let mut pela = |raio| {
             pela_camada(
                 &gpu,
@@ -454,7 +513,13 @@ fn each_shapes_effect_enters_the_blend() {
     );
     let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
     let x = 0.6f32;
-    for com in [BlendWith::Copies, BlendWith::Everything] {
+    // ⭐ B6 — pelas duas rotas da placa: a da CPU e a do dispositivo (corridas por faixa).
+    for (com, rota) in [
+        (BlendWith::Copies, Rota::Placa),
+        (BlendWith::Everything, Rota::Placa),
+        (BlendWith::Copies, Rota::Dispositivo),
+        (BlendWith::Everything, Rota::Dispositivo),
+    ] {
         let (lido, _) = pela_camada(
             &gpu,
             &mut renderer,
@@ -463,7 +528,7 @@ fn each_shapes_effect_enters_the_blend() {
             com,
             0.0,
             false,
-            Rota::Placa,
+            rota,
             Some(x),
         );
         #[allow(clippy::cast_precision_loss)]

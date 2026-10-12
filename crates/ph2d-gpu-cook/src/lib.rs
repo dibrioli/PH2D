@@ -87,6 +87,7 @@ mod stream_op;
 pub mod tap;
 mod tap_voo;
 mod tex_runs;
+mod vigia;
 pub mod voronoi;
 
 pub use debug_read::{read_formas, read_instances};
@@ -666,8 +667,10 @@ impl GpuCook {
         )?;
         // ⭐ A leitura dos cartões vai no MESMO submit (doc 122 §5) — ver `crate::tap_voo`.
         let tap = self.tap_no_cozimento(gpu, &mut encoder);
+        let vigia = self.vigia_no_cozimento(gpu, &mut encoder);
         gpu.queue.submit(Some(encoder.finish()));
         self.tap_depois_do_submit(tap);
+        self.vigia_depois_do_submit(vigia);
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,
         // by the SAME rule the CPU pump uses (`Cook::advance_tick_scoped`

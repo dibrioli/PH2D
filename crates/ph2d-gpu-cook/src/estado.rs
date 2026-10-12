@@ -120,6 +120,8 @@ pub struct GpuCook {
     pub(crate) tap_pipeline: Option<tap::TapPipeline>,
     /// A leitura dos cartões sem esperar pela placa — ver [`crate::tap_voo`].
     pub(crate) tap_voo: crate::tap_voo::TapVoo,
+    /// As linhas de imagem nas saídas que misturam em grupo (B6) — ver [`crate::vigia`].
+    pub(crate) vigia: crate::vigia::Vigia,
     /// The fixed tick [`Self::prev`] belongs to — the GPU sim's own clock,
     /// mirroring `MotionCookPump::last_cooked_tick`. A sequential cook owes one
     /// step per tick, so the caller needs to know which one it last took; a

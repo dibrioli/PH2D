@@ -207,7 +207,9 @@ pub fn contorno_por_ordem() -> bool {
 // ⭐⭐ B5 — o que a placa compõe como o Vello neste quadro (a mistura por cópia).
 #[path = "motion_shape_placa_mistura.rs"]
 mod mistura;
-pub use mistura::{Misturas, MotivoDoVello};
+pub use mistura::{
+    Misturas, MotivoDoVello, corridas_do_dispositivo, corridas_por_faixa, mistura_no_quadro,
+};
 
 /// O lado da placa: o passe e a camada, criados na primeira vez que um quadro vai lá.
 struct Gpu {
@@ -318,6 +320,10 @@ impl PlacaDeFormas {
     /// ⚠️ **`ligada` NÃO pergunta pelo vidro**, e é de propósito: o dispositivo já CALOU as formas
     /// no buffer das sprites, logo com a placa desligada elas não se desenhariam em sítio nenhum.
     /// Com o vidro subido, as formas desenham-se por baixo dele, como o resto do mundo.
+    ///
+    /// ⭐ `corridas` = as misturas por FAIXA de sink ([`corridas_por_faixa`], B6) — vazias, o
+    /// `draw` de sempre em `Normal`.
+    #[allow(clippy::too_many_arguments)] // a decisão do quadro: o buffer, as formas, a vista e as misturas
     pub fn decide_do_dispositivo(
         &mut self,
         ligada: bool,
@@ -326,14 +332,18 @@ impl PlacaDeFormas {
         store: &VecPathStore,
         geometrias: &mut GeometriasDaPlaca,
         cam: Affine,
+        corridas: Vec<Corrida>,
     ) -> bool {
         self.cam = cam;
         self.copias.clear();
-        self.corridas.clear();
+        self.corridas = corridas;
         for &h in vivas {
             let _ = geometrias.veredito(h, store);
         }
         self.ativa = ligada && n > 0;
+        if !self.ativa {
+            self.corridas.clear();
+        }
         self.do_dispositivo = self.ativa.then_some(n);
         self.diz(n as usize, geometrias.len());
         self.ativa
@@ -483,11 +493,7 @@ impl PlacaDeFormas {
         // passa o buffer com o cozimento vivo, e colar cópias velhas seria pior que não desenhar.
         // ⚠️ Um clone do handle (o `wgpu::Buffer` é contado por referência): o `draw` muta o passe
         // (o contorno, doc 121 §9.5) e não pode receber um empréstimo dele próprio.
-        let corridas = if self.do_dispositivo.is_some() {
-            &[][..]
-        } else {
-            &self.corridas[..]
-        };
+        let corridas = &self.corridas[..];
         let (buffer, count) = match self.do_dispositivo {
             Some(n) => (dispositivo?.clone(), n),
             None => {
@@ -534,15 +540,11 @@ impl PlacaDeFormas {
         self.motivo
     }
 
-    /// As corridas de mistura das cópias do quadro (B5) — vazias na rota do dispositivo. As células
+    /// As corridas de mistura das cópias do quadro (B5; por faixa de sink no dispositivo, B6). As células
     /// do `Each Shape` misturam cada cópia filtrada na volta (`ph2d_fx_cells`).
     #[must_use]
     pub fn corridas_do_quadro(&self) -> &[Corrida] {
-        if self.do_dispositivo.is_some() {
-            &[]
-        } else {
-            &self.corridas
-        }
+        &self.corridas
     }
 
     /// As cópias que o [`Self::desenha`] deste quadro desenhou (o buffer, quantas, a vista).

@@ -37,6 +37,17 @@ impl Misturas {
     /// A mistura e o grupo de uma cópia, ou o MOTIVO de o quadro ficar no Vello. O grupo é
     /// `sink + 1` no `Copies` (dois sinks são dois grupos) e `0` sem grupo.
     pub fn da_copia(self, inst: &VectorInstance) -> Result<(Mistura, u32), MotivoDoVello> {
+        self.da_mistura(inst.blend_linha, &inst.mistura)
+    }
+
+    /// A [`Self::da_copia`] pelas duas coisas que ela lê — o modo da LINHA (`0` = sem) e a mistura
+    /// do sink. ⭐ A rota do dispositivo (B6) pergunta-a por SINK: lá a linha nunca tem modo (a
+    /// coluna `blend` com formas recusa o cozimento).
+    pub fn da_mistura(
+        self,
+        blend_linha: u8,
+        mistura: &ph2d_eval_motion::MisturaDoSink,
+    ) -> Result<(Mistura, u32), MotivoDoVello> {
         let de = |tag: u8| match tag {
             1 => Some(Mistura::Soma),
             3 => Some(Mistura::Multiplica),
@@ -44,8 +55,8 @@ impl Misturas {
             _ => None,
         };
         // A linha SUBSTITUI a mistura do grupo (`camada_da_linha`); sem camada, a do grupo.
-        let linha = inst.blend_linha.checked_sub(1).and_then(de);
-        let grupo = crate::motion_shape_gen::mistura::chave_de_mistura(&inst.mistura);
+        let linha = blend_linha.checked_sub(1).and_then(de);
+        let grupo = crate::motion_shape_gen::mistura::chave_de_mistura(mistura);
         if !self.ligadas && (linha.is_some() || grupo.is_some()) {
             return Err(MotivoDoVello::Desligadas);
         }
@@ -66,6 +77,88 @@ impl Misturas {
         }
         Ok((m, g))
     }
+}
+
+/// ⭐⭐ **As corridas das cópias do DISPOSITIVO** (B6) — uma por FAIXA de sink no buffer do
+/// cozimento (`GpuFormas::faixas`, contíguas e na ordem do buffer), com a mistura do sink pela
+/// MESMA [`Misturas::da_mistura`] da rota da CPU; vizinhas iguais juntam-se. Nenhuma mistura ⇒
+/// vazia, o `draw` de sempre.
+pub fn corridas_por_faixa(
+    faixas: &[(ph2d_nodegraph::graph::NodeId, std::ops::Range<u32>)],
+    mistura_de: impl Fn(ph2d_nodegraph::graph::NodeId) -> ph2d_eval_motion::MisturaDoSink,
+    misturas: Misturas,
+) -> Result<Vec<ph2d_shape_gpu::Corrida>, MotivoDoVello> {
+    let mut corridas: Vec<ph2d_shape_gpu::Corrida> = Vec::with_capacity(faixas.len());
+    for (sink, copias) in faixas {
+        // Um sink sem formas tem a faixa vazia: não desenha nada, e não pede mistura nenhuma.
+        if copias.is_empty() {
+            continue;
+        }
+        let (mistura, grupo) = misturas.da_mistura(0, &mistura_de(*sink))?;
+        match corridas.last_mut() {
+            Some(c) if c.mistura == mistura && c.grupo == grupo && c.copias.end == copias.start => {
+                c.copias.end = copias.end;
+            }
+            _ => corridas.push(ph2d_shape_gpu::Corrida {
+                copias: copias.clone(),
+                mistura,
+                grupo,
+            }),
+        }
+    }
+    if corridas
+        .iter()
+        .all(|c| c.mistura == Mistura::Normal && c.grupo == 0)
+    {
+        corridas.clear();
+    }
+    Ok(corridas)
+}
+
+/// **A mistura de um sink neste quadro** — a regra da bomba (`MotionCookPump::pump`) para quem não
+/// tem as cópias: o modo e o alcance do `Output`, o índice dele entre as saídas, e o `Scene` que
+/// pousa na camada isolada sem agrupar.
+#[must_use]
+pub fn mistura_no_quadro(
+    graph: &ph2d_nodegraph::graph::Graph,
+    sinks: &[ph2d_nodegraph::graph::NodeId],
+    sink: ph2d_nodegraph::graph::NodeId,
+    isolada: bool,
+) -> ph2d_eval_motion::MisturaDoSink {
+    let mut m = ph2d_eval_motion::MisturaDoSink {
+        blend: ph2d_eval_motion::sink_style(graph, sink).blend,
+        com: ph2d_eval_motion::sink_blend_with(graph, sink),
+        sink: sinks
+            .iter()
+            .position(|&s| s == sink)
+            .and_then(|i| u32::try_from(i).ok())
+            .unwrap_or(0),
+    };
+    if m.pousa_na_camada(isolada) {
+        m.blend = 0;
+    }
+    m
+}
+
+/// ⭐ **As corridas do quadro do DISPOSITIVO** (B6) — [`corridas_por_faixa`] sobre as faixas do
+/// último cozimento. A ponte já recusou (`motion_bridge_gpu_mistura`) o sink cuja mistura a placa não
+/// compõe, logo um motivo aqui é a cerca a falhar: vazio (`Normal`) e o `debug_assert!` grita.
+#[must_use]
+pub fn corridas_do_dispositivo(
+    motion: &crate::motion_state::MotionState,
+    misturas: Misturas,
+) -> Vec<ph2d_shape_gpu::Corrida> {
+    let isolada = motion.pump.camada_isolada();
+    let (_, faixas) = motion.gpu_cook.faixas_dos_sinks();
+    corridas_por_faixa(
+        faixas,
+        |s| mistura_no_quadro(&motion.doc.graph, &motion.sinks, s, isolada),
+        misturas,
+    )
+    .unwrap_or_else(|m| {
+        debug_assert!(false, "a ponte devia ter recusado esta mistura ({m:?})");
+        Vec::new()
+    })
 }
 
 /// Por que uma cópia com mistura deixa o quadro no Vello — dito no terminal na mudança de rota.

@@ -250,3 +250,8 @@ pub fn diag(motion: &MotionState, halo: &Halo<'_>, glow: Option<f32>) {
 #[cfg(test)]
 #[path = "motion_glow_layer_tests.rs"]
 mod tests;
+
+/// O halo das formas que misturam em grupo, MEDIDO nas duas fontes (B6).
+#[cfg(test)]
+#[path = "motion_glow_halo_mistura_gpu_tests.rs"]
+mod halo_mistura_gpu_tests;

@@ -156,9 +156,22 @@ fn is_svg(b: &[u8]) -> bool {
                     .map(|i| i + close.len())
             })?
         };
+        // Um DOCTYPE com subconjunto interno (`[ <!ENTITY …> ]`, o cabeçalho do Illustrator) acaba
+        // no `]` seguido de `>`, não no primeiro `>`.
+        let doctype = |r: &[u8]| -> Option<usize> {
+            let head = skip(r, b"<!DOCTYPE", b">")?;
+            let open = r[..head].iter().position(|&c| c == b'[');
+            let Some(open) = open else {
+                return Some(head);
+            };
+            let close = open + r[open..].iter().position(|&c| c == b']')?;
+            let rest = r[close + 1..].trim_ascii_start();
+            rest.starts_with(b">")
+                .then(|| r.len() - rest.len() + 1)
+        };
         if let Some(n) = skip(r, b"<?", b"?>")
             .or_else(|| skip(r, b"<!--", b"-->"))
-            .or_else(|| skip(r, b"<!DOCTYPE", b">"))
+            .or_else(|| doctype(r))
         {
             r = &r[n..];
             continue;

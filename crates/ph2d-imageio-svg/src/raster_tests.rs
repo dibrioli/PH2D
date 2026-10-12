@@ -68,3 +68,26 @@ fn a_svgz_becomes_its_text_up_to_the_ceiling() {
     let bomb = gz(&vec![b' '; MAX_ARCHIVE_TEXT_BYTES as usize + 1]);
     assert!(plain(&bomb).is_none());
 }
+
+/// ⭐ Auditoria W15 — um SVG ANINHADO num `data:` em gzip passa pelo mesmo tecto (o usvg descomprimia-o
+/// sem limite): a bomba não entra e o resto do SVG desenha-se; um `.svgz` de topo acima do tecto é
+/// recusado com a frase da defesa.
+#[test]
+fn a_nested_gzip_data_uri_is_bounded() {
+    use base64::Engine as _;
+    use std::io::Write as _;
+    let mut inner = br#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/>"#.to_vec();
+    inner.resize(MAX_ARCHIVE_TEXT_BYTES as usize + 16, b' ');
+    inner.extend_from_slice(b"</svg>");
+    let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    e.write_all(&inner).unwrap();
+    let gz = e.finish().unwrap();
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&gz);
+    let svg = format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="4" height="4"><rect width="2" height="4" fill="#ff0000"/><image width="4" height="4" xlink:href="data:image/svg+xml;base64,{b64}"/></svg>"##
+    );
+    let px = rasterize(&parse(svg.as_bytes()).unwrap(), [4, 4]).unwrap();
+    assert_eq!(&px[..4], [255, 0, 0, 255], "o resto desenha-se");
+    assert_eq!(px[3 * 4 + 3], 0, "a bomba não entrou");
+    assert!(matches!(parse(&gz), Err(Error::Decode(m)) if m.contains("MAX_ARCHIVE_TEXT_BYTES")));
+}

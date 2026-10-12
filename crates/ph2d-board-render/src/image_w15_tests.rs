@@ -225,3 +225,23 @@ fn a_faded_framed_image_composes_with_its_frame() {
     // O recorte da página, a camada do grupo (0,5) e a do recorte redondo (1).
     assert_eq!(&alphas[alphas.len() - 2..], [0.5, 1.0], "{alphas:?}");
 }
+
+/// Auditoria W15 — no export, uma imagem cujos píxeis não chegam (bytes ilegíveis) não sai, mas a
+/// MOLDURA dela sai (no ecrã viam-se as duas).
+#[test]
+fn an_unreadable_framed_image_exports_its_frame() {
+    let mut cache = RenderCache::default();
+    cache.images.set_decoder(decode());
+    cache.export = Some(crate::ExportLook {
+        paper: None,
+        vector: true,
+    });
+    let b = board(ImageFile::new(vec![1, 2], [8, 8]), [0.0, 0.0, 80.0, 60.0], 1.0, |i| {
+        i.style.stroke = Some(Rgba([0, 0, 0, 255]));
+        i.style.stroke_width = 3.0;
+    });
+    let o = ops(&b, &mut cache);
+    assert!(image_ops(&o).is_empty());
+    assert!(o.iter().any(|o| matches!(o, DrawOp::Stroke { style, .. } if style.width == 3.0)));
+    assert!(!o.iter().any(|o| matches!(o, DrawOp::Fill { .. })), "o cinzento do «a chegar»");
+}

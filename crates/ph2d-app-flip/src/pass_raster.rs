@@ -118,12 +118,13 @@ pub fn current_frame(
         return Err(RasterError::Gpu);
     }
     let tex = comp.compositor.output_texture().ok_or(RasterError::Gpu)?;
-    let rgba = read_rgba8(gpu, tex, w, h);
+    let rgba = read_rgba8(gpu, tex, w, h).ok_or(RasterError::Gpu)?;
     Ok(FrameImage { size: [w, h], rgba })
 }
 
 /// Cópia bloqueante de uma textura `rgba8unorm` para `w·h·4` bytes (sem o preenchimento de linha).
-fn read_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
+/// `None` = o mapeamento falhou (a placa perdida): nunca um pânico.
+fn read_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Option<Vec<u8>> {
     let row = w * 4;
     let padded =
         row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
@@ -158,14 +159,18 @@ fn read_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> 
         },
     );
     gpu.queue.submit([enc.finish()]);
-    buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let (tx, rx) = std::sync::mpsc::channel();
+    buf.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+    rx.recv().ok()?.ok()?;
     let mapped = buf.slice(..).get_mapped_range();
     let mut out = Vec::with_capacity((row * h) as usize);
     for r in mapped.chunks(padded as usize).take(h as usize) {
         out.extend_from_slice(&r[..row as usize]);
     }
-    out
+    Some(out)
 }
 
 #[cfg(test)]

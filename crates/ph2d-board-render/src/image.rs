@@ -541,10 +541,11 @@ pub(crate) fn paint(
             .level(img.file, img.filter, f, need, export.is_some())
             .map(|l| (f, l))
     });
-    if level.is_none() && export.is_some() {
+    let framed = st.stroke.is_some() && st.stroke_width > 0.0;
+    // No export uma imagem sem píxeis não sai (nem o cinzento do «a chegar»); a moldura sai.
+    if level.is_none() && export.is_some() && !framed {
         return;
     }
-    let framed = st.stroke.is_some() && st.stroke_width > 0.0;
     let clip = img.crop.is_some() || st.round;
     let alpha = f32::from(st.opacity.min(100)) / 100.0;
     // Com moldura e transparente: a imagem e a moldura compõem-se JUNTAS (a de uma forma: o traço não
@@ -558,6 +559,7 @@ pub(crate) fn paint(
         scene.push_object_layer(&Rect::from_points(p0, p1), VelloBlend::default(), alpha);
     }
     match level {
+        None if export.is_some() => {}
         None => placeholder(scene, el, t, theme),
         Some((f, (pixels, size))) => {
             let a = if group { 1.0 } else { alpha };

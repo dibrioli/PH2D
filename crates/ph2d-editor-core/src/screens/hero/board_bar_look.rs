@@ -352,11 +352,11 @@ pub(super) fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: 
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-/// Um controlo das barras: o botão e a cara dele.
 /// A constante das cúbicas que aproximam um quarto de círculo: `4(√2 − 1)/3`.
 const QUARTER_CIRCLE_KAPPA: f64 = 0.552_284_75; // LITERAL-PX-OK: constante geométrica, não um tamanho
 
+#[allow(clippy::too_many_arguments)]
+/// Um controlo das barras: o botão e a cara dele.
 pub(super) fn paint_item(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,

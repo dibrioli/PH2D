@@ -52,7 +52,7 @@ fn a_blob_is_the_bytes_of_a_vec_in_postcard() {
 #[test]
 fn the_mime_comes_from_the_magic_bytes() {
     let svg = Some("image/svg+xml");
-    let cases: [(&[u8], Option<&str>); 13] = [
+    let cases: [(&[u8], Option<&str>); 14] = [
         (b"\x89PNG\r\n\x1a\nxxxx", Some("image/png")),
         (&[0xff, 0xd8, 0xff, 0xe0], Some("image/jpeg")),
         (b"GIF89a....", Some("image/gif")),
@@ -63,6 +63,8 @@ fn the_mime_comes_from_the_magic_bytes() {
         (b"<svg xmlns=", svg),
         (b"\xef\xbb\xbf  <?xml version=\"1.0\"?>\n<!-- a -> b -->\n<!DOCTYPE svg>\n<svg>", svg),
         (b"<svg/>", svg),
+        // O cabeçalho do Illustrator: um DOCTYPE com entidades (o 1.º `>` é o de um `<!ENTITY>`).
+        (b"<?xml version=\"1.0\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"x.dtd\" [\n\t<!ENTITY ns_extend \"http://ns.adobe.com/Extensibility/1.0/\">\n]>\n<svg version=\"1.1\">", svg),
         (b"<svgx>", None),
         (b"<html><svg>", None),
         (b"<!-- sem fim <svg>", None),

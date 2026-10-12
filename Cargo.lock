@@ -6283,6 +6283,7 @@ dependencies = [
 name = "ph2d-imageio-svg"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "flate2",
  "ph2d-imageio",
  "ph2d-vec-svg",

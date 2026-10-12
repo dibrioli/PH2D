@@ -46,6 +46,8 @@ resvg = { version = "0.48", default-features = false, features = ["raster-images
 flate2 = "1"
 
 [dev-dependencies]
+# W15 — o `data:` em base64 do SVG aninhado do teste da bomba.
+base64 = "0.22"
 # ⭐ **SÓ para o gate que prende os DOIS tectos de bytes ao mesmo número.** O importador de SVG a
 # sério (estudo 42, item 3) vive na `ph2d-vec-svg` e tem o próprio `MAX_SVG_BYTES`; esta crate é a
 # única do repo que vê os dois, então é aqui que a igualdade se afirma.

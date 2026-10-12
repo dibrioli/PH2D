@@ -8,11 +8,19 @@
 
 use ph2d_imageio::{Error, MAX_ARCHIVE_TEXT_BYTES};
 
-/// A árvore de um SVG (`.svgz` incluído), com o tecto de bytes e sem ler o disco por um `href`.
+/// A árvore de um SVG (`.svgz` incluído), com o tecto de bytes e sem ler o disco por um `href`. Todo
+/// gzip — o do ficheiro e o de um SVG ANINHADO num `data:` (o usvg descomprime-o sem tecto, e a
+/// recursão passa pelo mesmo resolvedor) — passa pelo [`plain`] com tecto.
 pub fn parse(src: &[u8]) -> Result<usvg::Tree, Error> {
     if src.is_empty() {
         return Err(Error::Truncated);
     }
+    let src = plain(src).ok_or_else(|| {
+        Error::Decode(format!(
+            "SVGZ over MAX_ARCHIVE_TEXT_BYTES={MAX_ARCHIVE_TEXT_BYTES} or broken (DoS defence)"
+        ))
+    })?;
+    let src = &*src;
     if (src.len() as u64) > MAX_ARCHIVE_TEXT_BYTES {
         return Err(Error::Decode(format!(
             "SVG source {} bytes > MAX_ARCHIVE_TEXT_BYTES={MAX_ARCHIVE_TEXT_BYTES} (DoS defence)",
@@ -21,13 +29,25 @@ pub fn parse(src: &[u8]) -> Result<usvg::Tree, Error> {
     }
     let opts = usvg::Options {
         image_href_resolver: usvg::ImageHrefResolver {
-            resolve_data: usvg::ImageHrefResolver::default_data_resolver(),
+            resolve_data: capped_data_resolver(),
             resolve_string: Box::new(|_href, _opts| None),
         },
         ..Default::default()
     };
     usvg::Tree::from_data(src, &opts)
         .map_err(|e| Error::from_decoder_message(format!("SVG parse: {e}")))
+}
+
+/// O resolvedor de `data:` do usvg, com o gzip (um SVG aninhado comprimido) pelo [`plain`].
+fn capped_data_resolver() -> usvg::ImageHrefDataResolverFn<'static> {
+    let default = usvg::ImageHrefResolver::default_data_resolver();
+    Box::new(move |mime, data, opts| {
+        if data.starts_with(&[0x1f, 0x8b]) {
+            let p = plain(&data)?.into_owned();
+            return default(mime, std::sync::Arc::new(p), opts);
+        }
+        default(mime, data, opts)
+    })
 }
 
 /// O tamanho natural em píxeis: o do `<svg>` (`width`/`height`, senão o `viewBox`), para cima.

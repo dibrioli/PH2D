@@ -199,7 +199,7 @@ struct Doc {
     /// O XObject de cada contorno de glifo já escrito (índice da cache → nome).
     glyph_forms: BTreeMap<usize, String>,
     /// W14 — o XObject de cada imagem já escrita (os píxeis dela, pelo endereço → nome).
-    images: BTreeMap<(usize, usize, bool), String>,
+    images: BTreeMap<(usize, usize, bool, [u32; 2]), String>,
 }
 
 impl Doc {
@@ -256,12 +256,14 @@ impl Doc {
     fn image(&mut self, op: &ph2d_vector::ImageOp) -> String {
         let img = &op.image;
         let px = img.rgba();
-        // W15: a mesma fotografia a cores e a cinzento são dois XObjects.
+        // W15: a mesma fotografia a cores e a cinzento são dois XObjects, e um SVG desenhado a dois
+        // tamanhos também (cada um rasterizado ao seu).
+        let size = [img.width(), img.height()];
         let key = op
             .source
             .as_ref()
-            .map_or((px.as_ptr() as usize, px.len(), false), |s| {
-                (s.bytes.as_ptr() as usize, s.bytes.len(), s.gray)
+            .map_or((px.as_ptr() as usize, px.len(), false, size), |s| {
+                (s.bytes.as_ptr() as usize, s.bytes.len(), s.gray, size)
             });
         if let Some(n) = self.images.get(&key) {
             return n.clone();

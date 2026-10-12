@@ -23,7 +23,14 @@ fn png_3x2() -> Vec<u8> {
 
 /// O descodificador do app, para estes testes: só PNG.
 pub(crate) fn install() {
-    ph2d_board_render::install_decoder(Arc::new(|b: &[u8], _at: Option<[u32; 2]>| {
+    ph2d_board_render::install_decoder(Arc::new(|b: &[u8], at: Option<[u32; 2]>| {
+        // W15: um SVG pelo rasterizador do app (o mesmo da porta de entrada).
+        if b.starts_with(b"<svg") {
+            let tree = ph2d_imageio_svg::raster::parse(b).ok()?;
+            let size = at.unwrap_or_else(|| ph2d_imageio_svg::raster::natural_size(&tree));
+            let rgba = ph2d_imageio_svg::raster::rasterize(&tree, size)?;
+            return Some(Pixels { size, rgba });
+        }
         let img = image::load_from_memory(b).ok()?.to_rgba8();
         Some(Pixels {
             size: [img.width(), img.height()],

@@ -153,3 +153,33 @@ fn grava_svg_e_pdf_cinzentos() {
     std::fs::write(format!("{dir}/w15.pdf"), pdf).unwrap();
     println!("PAD={PAD} cinza={}", ph2d_board_render::gray_of(COLOR));
 }
+
+/// ⭐ Auditoria W15 — o MESMO SVG desenhado pequeno e grande vai ao PDF rasterizado a cada tamanho
+/// (dois XObjects de larguras diferentes), não o pequeno esticado ao grande.
+#[test]
+fn an_svg_drawn_twice_goes_to_the_pdf_at_each_size() {
+    super::image_tests::install();
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="5" fill="#00ff00"/></svg>"##;
+    let mut set = BoardSet::default();
+    let id = set.create("SVG".into());
+    let b = set.get_mut(id).unwrap();
+    let file = b.put_file(ImageFile::new(svg.to_vec(), [10, 10]));
+    let st = Style::new(None, None, Rgba([0, 0, 0, 255]));
+    for bx in [[0.0, 0.0, 60.0, 60.0], [100.0, 0.0, 600.0, 600.0]] {
+        let el = Element::new_image(b.doc.mint_id(), b.doc.z_on_top(), Image::new(file, st.clone()), bx);
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let board = set.boards()[0].clone();
+    let (o, size) = ops(&board);
+    let text = String::from_utf8_lossy(&pdf::write(&[pdf::PdfPage {
+        ops: &o,
+        size,
+        links: Vec::new(),
+    }]))
+    .into_owned();
+    let widths: std::collections::BTreeSet<&str> = text
+        .match_indices("/Width ")
+        .map(|(i, _)| text[i + 7..].split_whitespace().next().unwrap())
+        .collect();
+    assert!(widths.len() >= 2, "um tamanho só: {widths:?}");
+}

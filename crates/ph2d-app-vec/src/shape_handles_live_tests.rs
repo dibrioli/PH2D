@@ -379,15 +379,52 @@ fn the_readout_follows_the_grabbed_handle() {
     vec.pen.select_many(&[id]);
     vec.draw_config.mode = DrawMode::Shape;
     let display = ph2d_editor_core::LengthDisplay::of(&Default::default());
-    assert_eq!(
-        readout(&vec, &sim, PX, display),
-        None,
-        "sem arrasto, sem etiqueta"
-    );
     let p = view(&sim, &map, &[id], Gate::of(&vec), PX, None, None)
         .unwrap()
         .points[0];
-    vec.shape_handles.grab = press(&sim, &map, &[id], Gate::of(&vec), p, PX);
+    assert_eq!(
+        readout(&vec, &sim, PX, display, None),
+        None,
+        "sem arrasto nem cursor, sem etiqueta"
+    );
+    assert_eq!(
+        readout(&vec, &sim, PX, display, Some([p[0] + 100.0, p[1] + 100.0])),
+        None,
+        "cursor longe da alça, sem etiqueta"
+    );
     let want = format!("{}: 5", ph2d_panel_vector::nomes_do_motor::campo("Points"));
-    assert_eq!(readout(&vec, &sim, PX, display), Some(want));
+    // F12: sob o cursor a etiqueta já diz qual ⇕ é.
+    assert_eq!(
+        readout(&vec, &sim, PX, display, Some(p)),
+        Some(want.clone())
+    );
+    vec.shape_handles.grab = press(&sim, &map, &[id], Gate::of(&vec), p, PX);
+    assert_eq!(readout(&vec, &sim, PX, display, None), Some(want));
+}
+
+/// (F12) O halo QUENTE conta nos pontos desenhados: na elipse inteira a quina da fatia não tem
+/// ponto, e o cursor sobre o furo acende o furo (não o vizinho).
+#[test]
+fn the_hot_halo_counts_the_drawn_points() {
+    let k = ShapeKind::Ellipse;
+    let mut v = k.defaults();
+    v[2] = 0.5;
+    let (sim, _, map, id) = live(k, v, [0.0, 0.0], 0.0);
+    let all = view(&sim, &map, &[id], G, PX, None, None).unwrap();
+    assert_eq!(all.points.len(), 3, "a quina some na volta inteira");
+    let hole = all
+        .faces
+        .iter()
+        .position(|f| *f == ph2d_vec_render::HandleFace::Radius);
+    let hot = view(
+        &sim,
+        &map,
+        &[id],
+        G,
+        PX,
+        None,
+        Some(all.points[hole.unwrap()]),
+    )
+    .unwrap();
+    assert_eq!(hot.hot, hole);
 }

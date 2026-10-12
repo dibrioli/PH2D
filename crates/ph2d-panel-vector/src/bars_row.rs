@@ -57,9 +57,9 @@ pub(super) fn shape_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> Ve
         .collect()
 }
 
-/// O chip do campo `i` de `kind` — o MESMO para a fila ② e o cartão (um comando, um id): um
-/// número no slot `vector_shape_field_id(i)`, ou uma escolha que cicla no gémeo `_choice_id(i)`.
-pub(super) fn shape_field_chip(
+/// O chip do campo `i` de `kind` na fila ②: um número no slot `vector_shape_field_id(i)`, ou uma
+/// escolha que cicla no gémeo `_choice_id(i)`.
+fn shape_field_chip(
     kind: ph2d_vec_scene::ShapeKind,
     i: usize,
     store: &WidgetStore,
@@ -81,26 +81,6 @@ pub(super) fn shape_field_chip(
         }
         _ => ToolRailEntry::number(ids::vector_shape_field_id(i), name, name, None),
     })
-}
-
-/// ⭐ **As alças das formas estão à vista** (F10): no modo Forma, com uma forma VIVA como alvo dos
-/// campos (`live` = o que a app publica pela porta `shape_field_target` — `None` com o latch
-/// ARMADO no catálogo). O predicado ÚNICO: o cartão lateral e o plano das alças leem-no.
-#[must_use]
-pub fn shape_handles_shown(mode: DrawMode, live: Option<ph2d_vec_scene::ShapeKind>) -> bool {
-    mode == DrawMode::Shape && live.is_some()
-}
-
-/// O CARTÃO lateral (F10): os campos da forma viva que NENHUMA alça move, enquanto as alças estão
-/// à vista; vazio senão. Genérico sobre o descritor — a conta é `fields_without_handle`.
-pub(super) fn card_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> Vec<ToolRailEntry> {
-    let live = crate::state::current_shape_focus();
-    let Some(kind) = live.filter(|_| shape_handles_shown(snap.mode, live)) else {
-        return Vec::new();
-    };
-    ph2d_tool_vector::shape_handles::fields_without_handle(kind)
-        .filter_map(|i| shape_field_chip(kind, i, store))
-        .collect()
 }
 
 /// ② as opções do GESTO que está na mão — à frente dos chips do gizmo (prioridade).

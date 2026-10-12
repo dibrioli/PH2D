@@ -187,8 +187,8 @@ pub fn view(
     let t = Target::of(sim, map, selection, gate)?;
     let grips = t.grips(px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
-    let hot = grabbed.or_else(|| hover.and_then(|w| hit(&world, w, HIT_PX * px_to_world)));
-    let track = hot
+    let hot_handle = grabbed.or_else(|| hover.and_then(|w| hit(&world, w, HIT_PX * px_to_world)));
+    let track = hot_handle
         .and_then(|k| law::handles_of(t.kind).get(k))
         .map(|h| {
             law::track(t.kind, h, &t.values, t.half(), px_to_world, &t.cook())
@@ -200,8 +200,14 @@ pub fn view(
     let (hs, ck) = (law::handles_of(t.kind), t.cook());
     let truth = |h: &law::HandleDesc| law::handle_point(h, &t.values, t.half(), &ck);
     let (mut points, mut faces, mut stems) = (Vec::new(), Vec::new(), Vec::new());
-    for (h, g) in hs.iter().zip(&world) {
+    // `hot` conta nos pontos DESENHADOS: uma alça sem ponto (a quina de uma elipse inteira) não
+    // entra, e o índice da tabela desalinhava o halo.
+    let mut hot = None;
+    for (k, (h, g)) in hs.iter().zip(&world).enumerate() {
         let Some(p) = *g else { continue };
+        if hot_handle == Some(k) {
+            hot = Some(points.len());
+        }
         points.push(p);
         faces.push(face_of(face::glyph_of(h)));
         stems.push(
@@ -229,21 +235,31 @@ pub fn view(
     })
 }
 
-/// ⭐ (F11) **A ETIQUETA do arrasto vivo** — `«Points: 7»`, `«Inner: 0.38»`: o campo traduzido e o
-/// número na unidade dele (os comprimentos pela `LengthDisplay` do projecto, a da ficha da caixa).
-/// `None` sem arrasto de alça.
+/// ⭐ (F11) **A ETIQUETA** — `«Points: 7»`, `«Inner: 0.38»`: o campo traduzido e o número na
+/// unidade dele (os comprimentos pela `LengthDisplay` do projecto, a da ficha da caixa). Da alça
+/// AGARRADA; sem arrasto, da que está sob `hover` (mundo) — F12: com a fila de ⇕ iguais, o nome
+/// diz qual é qual antes do arrasto. `None` fora de uma alça.
 #[must_use]
 pub fn readout(
     vec: &crate::state::VecState,
     sim: &SimWorld,
     px_to_world: f64,
     display: ph2d_editor_core::LengthDisplay,
+    hover: Option<[f64; 2]>,
 ) -> Option<String> {
-    let g = vec.shape_handles.grab?;
     let t = Target::of(sim, &vec.entities, vec.pen.selected_paths(), Gate::of(vec))?;
-    let h = law::handles_of(t.kind)
-        .get(g.handle())
-        .filter(|_| t.id == g.id)?;
+    let k = match vec.shape_handles.grab {
+        Some(g) => (t.id == g.id).then_some(g.handle())?,
+        None => {
+            let world: Vec<Option<[f64; 2]>> = t
+                .grips(px_to_world)
+                .iter()
+                .map(|g| g.map(|p| t.xf.apply(p)))
+                .collect();
+            hit(&world, hover?, HIT_PX * px_to_world)?
+        }
+    };
+    let h = law::handles_of(t.kind).get(k)?;
     let name = |l: &'static str| ph2d_panel_vector::nomes_do_motor::campo(l).to_owned();
     let length = |w: f64| {
         let z = if px_to_world > 0.0 {
@@ -475,7 +491,7 @@ impl ShapeHandleInput {
 ///
 /// ⭐ (F11) Publica também no `hero` o que o Illustrator faz DURANTE o arrasto de um widget: a caixa
 /// só com o CONTORNO (`outline_only` — as alças dela somem) e a ETIQUETA do número junto do cursor
-/// (`handle_readout`). Fora de um arrasto, os dois apagam-se.
+/// (`handle_readout`; F12: também sob o cursor, sem arrasto). Fora de uma alça, apagam-se.
 #[allow(clippy::too_many_arguments)] // o mesmo quadro que a shell parte para cada overlay
 pub fn draw(
     vec: &crate::state::VecState,
@@ -489,13 +505,14 @@ pub fn draw(
 ) {
     let grabbed = vec.shape_handles.grab.map(|g| g.handle()).filter(|_| shown);
     hero.gizmo.outline_only = grabbed.is_some();
-    hero.gizmo.handle_readout = grabbed
-        .and(hover)
+    hero.gizmo.handle_readout = hover
+        .filter(|_| shown)
         .zip(readout(
             vec,
             sim,
             px_to_world,
             ph2d_editor_core::LengthDisplay::of(&hero.project),
+            hover,
         ))
         .map(|(w, text)| {
             let p = camera * ph2d_vector::Point::new(w[0], w[1]);

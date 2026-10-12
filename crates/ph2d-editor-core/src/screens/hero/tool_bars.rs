@@ -17,7 +17,6 @@ use crate::paint::paint_icon;
 use crate::screens::hero::HeroScreen;
 use crate::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_text::TextSystem;
 use ph2d_tokens::{StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
@@ -87,9 +86,7 @@ pub fn placed(
         // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
         let s = super::button_px();
         let rects = match bars.selection {
-            Some(sel) if !pinned => {
-                strip_rects_at(area, sel, &sizes, s, super::tool_bars_card::selection_gap())
-            }
+            Some(sel) if !pinned => strip_rects_at(area, sel, &sizes, s, super::selection_gap()),
             _ => pinned_strip_rects(area, &sizes, s),
         };
         out.extend(groups.into_iter().flatten().zip(rects));
@@ -98,7 +95,8 @@ pub fn placed(
 }
 
 /// Os blocos de [`placed`] (a coluna, o flyout, a ④), como intervalos na lista: cada um é um
-/// painel — o pintor e os obstáculos do cartão leem-nos daqui.
+/// painel que o pintor lê daqui. (O cartão lateral dos campos sem alça saiu na F12: toda forma
+/// tem gesto no canvas.)
 #[must_use]
 pub fn blocks(bars: &ToolBars, n_placed: usize) -> [std::ops::Range<usize>; 3] {
     let n_col: usize = bars.column.iter().map(Vec::len).sum();
@@ -106,23 +104,8 @@ pub fn blocks(bars: &ToolBars, n_placed: usize) -> [std::ops::Range<usize>; 3] {
     [0..n_col, n_col..n_col + n_fly, n_col + n_fly..n_placed]
 }
 
-/// ⭐ **O cartão lateral deste quadro** (F10), fora dos painéis das outras barras — a mesma conta
-/// para o pintor e os gates.
-#[must_use]
-pub fn placed_card(
-    bars: &ToolBars,
-    area: Rect,
-    all: &[(BarButton, Rect)],
-    size: crate::widget::RailButtonSize,
-    text: &mut TextSystem,
-) -> Option<super::tool_bars_card::PlacedCard> {
-    let rects: Vec<Rect> = all.iter().map(|(_, r)| *r).collect();
-    let avoid = super::tool_bars_card::obstacles(&blocks(bars, all.len()), &rects);
-    super::tool_bars_card::placed_card(bars, area, size, &avoid, text)
-}
-
 /// Pinta as barras do módulo dentro de `area` (a área de desenho sem as réguas).
-pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, text: &mut TextSystem) {
+pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene) {
     let Some(bars) = hero.store.tool_bars().cloned() else {
         return;
     };
@@ -136,22 +119,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, text: &
             paint_panel(scene, all[b].iter().map(|(_, r)| *r), theme);
         }
     }
-    let card = placed_card(&bars, area, &all, hero.store.rail_button_size(), text);
     for (b, r) in all {
         face(hero, scene, theme, &b, r);
         hero.store.set_tooltip(b.id, b.label);
-    }
-    if let Some(card) = card {
-        super::tool_bars_card::paint_card(
-            &card,
-            area,
-            scene,
-            text,
-            theme,
-            &mut hero.hit_index,
-            &hero.store,
-            &hero.motion,
-        );
     }
 }
 

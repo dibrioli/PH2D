@@ -176,8 +176,16 @@ pub fn strip_rects(area: Rect, sel: Rect, groups: &[usize], s: f32) -> Vec<Rect>
     strip_rects_at(area, sel, groups, s, Spacing::Lg.px())
 }
 
-/// A [`strip_rects`] a `gap` px da seleção — a ④ do vetor afasta-se uma alça inteira mais
-/// (`tool_bars_card::selection_gap`, F11); o Quadro fica na de sempre.
+/// ⭐ **A folga entre a seleção e a ④ do vetor**: uma ALÇA inteira (os widgets da borda da caixa
+/// ficam à vista) mais `Spacing::Lg`. O dono (11/10): *«abrem muito próximos das formas»* — eram
+/// `Lg` (12 px); doc 17 §3.
+#[must_use]
+pub fn selection_gap() -> f32 {
+    crate::HANDLE_SIZE_PX + Spacing::Lg.px()
+}
+
+/// A [`strip_rects`] a `gap` px da seleção — a ④ do vetor afasta-se a [`selection_gap`] (F11); o
+/// Quadro fica na de sempre.
 #[must_use]
 pub fn strip_rects_at(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32) -> Vec<Rect> {
     let (width, bar_h) = strip_extent(groups, s);
@@ -349,9 +357,6 @@ pub mod flash;
 /// O cliente do Vetor (e de qualquer módulo que publique [`crate::interaction::ToolBars`]).
 #[path = "tool_bars.rs"]
 pub mod tool_bars;
-/// O cartão lateral dos campos sem alça (F10).
-#[path = "tool_bars_card.rs"]
-pub mod tool_bars_card;
 #[path = "touch_mods.rs"]
 pub mod touch_mods;
 

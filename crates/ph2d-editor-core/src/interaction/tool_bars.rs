@@ -86,10 +86,6 @@ pub struct ToolBars {
     pub actions: Vec<Vec<BarButton>>,
     /// ④ o rectângulo da seleção no ECRÃ — a âncora da barra quando não está fixada.
     pub selection: Option<Rect>,
-    /// O CARTÃO lateral (F10): os campos que nenhuma alça do canvas move, junto da seleção. Os
-    /// ids são os MESMOS da fila ② (um comando, um id — o cartão é uma segunda CARA, não outro
-    /// comando). Vazio ⇒ sem cartão.
-    pub card: Vec<ToolRailEntry>,
     /// ⑤ a dica da ferramenta na mão (o que o clique, o arrasto e os modificadores fazem).
     pub hint: String,
     /// ⑤ as leituras do rodapé (coordenadas, encaixe), já formatadas.
@@ -111,7 +107,6 @@ impl ToolBars {
             .row_lead
             .iter()
             .chain(&self.row_tail)
-            .chain(&self.card)
             .filter_map(ToolRailEntry::node_id);
         buttons.chain(row).collect()
     }

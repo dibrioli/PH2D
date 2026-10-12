@@ -137,3 +137,38 @@ fn the_frame_margin_clears_both_floating_bars() {
     );
     assert!((24.0..=64.0).contains(&m), "{m} fora da faixa dos oráculos");
 }
+
+/// ⭐ (F11) **A ④ flutua a uma alça inteira mais `Lg` da seleção** (o dono: *«abrem muito próximos
+/// das formas»*; eram 12 px) — pela MESMA conta que o pintor ([`tool_bars::placed`]).
+#[test]
+fn the_action_bar_floats_one_handle_plus_lg_off_the_selection() {
+    use crate::interaction::{BarButton, BarFace, BarFamily, ToolBars};
+    let gap = crate::HANDLE_SIZE_PX + Spacing::Lg.px();
+    assert!((selection_gap() - gap).abs() < 1e-3);
+    let b = |id| BarButton {
+        id: NodeId(id),
+        face: BarFace::Icon(crate::icons::IconId::Select),
+        label: String::new(),
+        on: false,
+        family: BarFamily::Neutral,
+    };
+    let a = Rect::new(300.0, 80.0, 1200.0, 800.0);
+    let mid = Rect::new(a.x + 400.0, a.y + 300.0, 120.0, 90.0);
+    let bars = ToolBars {
+        column: vec![vec![b(1), b(2), b(3)], vec![b(4)]],
+        actions: vec![(100..104).map(b).collect()],
+        selection: Some(mid),
+        ..ToolBars::default()
+    };
+    let all = tool_bars::placed(&bars, a, false, false, false);
+    let bar_bottom = all
+        .iter()
+        .filter(|(btn, _)| (100..104).contains(&btn.id.0))
+        .map(|(_, r)| r.y + r.h)
+        .fold(f32::MIN, f32::max);
+    assert!(
+        (mid.y - bar_bottom - gap).abs() < 1e-3,
+        "a ④ a {} px da seleção, não {gap}",
+        mid.y - bar_bottom
+    );
+}

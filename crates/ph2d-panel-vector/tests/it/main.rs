@@ -53,7 +53,6 @@ mod section_headers_are_collapsible;
 mod shape_params_visibility;
 mod the_bars_carry_the_gesture;
 mod the_panel_shows_what_the_tool_is_for;
-mod the_side_card_holds_what_no_handle_moves;
 
 /// ⭐ **O host dos testes de costura, com TODAS as secções ABERTAS.**
 ///

@@ -16,6 +16,9 @@ pub mod live;
 /// As imagens a entrar no quadro (W14): a porta de entrada e o descodificador do desenho.
 pub mod images;
 
+/// «Send to board…» da Hierarquia (W15): o modal e a entrega do conteúdo de um objecto da cena.
+pub mod send_to_board;
+
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "board",

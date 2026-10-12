@@ -216,12 +216,12 @@ mod tampa_redonda_tests;
 mod vector_mode_estrela;
 /// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
 mod vector_mode_handles;
+/// A cena 19 (F12): as setas lado a lado em quatro formas e a ponta da espiral que segue a mão.
+mod vector_mode_setas;
 /// A cena 17 (F11): a caixa por fora do traço grosso e os ⊙ dentro dos cantos.
 mod vector_mode_stroke;
 /// A cena 18 (F12 A): o traço das formas das fotos do dono, para o antes × depois do bico.
 mod vector_mode_tracos;
-/// A cena 19 (F12): as setas lado a lado em quatro formas e a ponta da espiral que segue a mão.
-mod vector_mode_setas;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

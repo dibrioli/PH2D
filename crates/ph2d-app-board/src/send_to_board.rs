@@ -5,11 +5,12 @@
 //! ⚠️ Tudo entra pela porta de entrada do quadro ([`crate::images::ingest`]): o que o soltar aceita,
 //! isto aceita, com o mesmo tamanho natural.
 
+pub use ph2d_board_edit::Pose;
 use ph2d_board_model::BoardId;
 use ph2d_board_render::Pixels;
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_editor_core::screens::hero::board_images::insert_images;
+use ph2d_editor_core::screens::hero::board_images::insert_posed;
 use ph2d_editor_core::screens::hero::document_tabs::register_board;
 use ph2d_editor_core::screens::hero::send_to_board::open;
 use ph2d_i18n::{tr, tr_with};
@@ -49,25 +50,77 @@ pub fn ask(hero: &mut HeroScreen, row: ph2d_editor_core::NodeId, goes: bool) -> 
     None
 }
 
+/// W16 — um objecto a enviar: o nome dele (para os avisos), o conteúdo lido pela família dele — ou a
+/// chave do aviso de porque não há (`board.send.empty`, `.unreadable`, `.wrong_kind`) — e a pose com
+/// que nasce no quadro.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Sent {
+    pub name: String,
+    pub content: Result<Content, &'static str>,
+    pub pose: Pose,
+}
+
+impl Sent {
+    /// Um objecto sem pose (o vector e o Flip já chegam posados).
+    #[must_use]
+    pub fn new(name: impl Into<String>, content: Option<Content>) -> Self {
+        Self {
+            name: name.into(),
+            content: content.ok_or("board.send.empty"),
+            pose: Pose::default(),
+        }
+    }
+
+    /// Um objecto que não vai, e a chave do aviso que diz porquê.
+    #[must_use]
+    pub fn missing(name: impl Into<String>, why: &'static str) -> Self {
+        Self {
+            name: name.into(),
+            content: Err(why),
+            pose: Pose::default(),
+        }
+    }
+}
+
 /// ⭐ A escolha do modal (`HierRequest::SendToBoardChosen`): `board` = um quadro aberto, `None` = um
 /// quadro NOVO (o nome por omissão das abas, como o «+»). O quadro fica ACTIVO (a aba dele abre-se) e
-/// o conteúdo nasce no meio da vista dele, seleccionado, num passo de desfazer. `name` é o do objecto,
-/// para o aviso de quando o conteúdo não chega (`None`) ou o quadro o recusa.
+/// os conteúdos nascem no meio da vista dele (W16: vários numa grelha, cada um com a pose dele),
+/// seleccionados, num passo de desfazer. Os que não têm conteúdo ou que o quadro recusa ficam de fora
+/// e o aviso devolvido diz porquê (um só) ou nomeia-os (vários).
 ///
-/// ⚠️ Nada muda antes de o conteúdo ser aceite: um conteúdo recusado não cria um quadro vazio nem troca
-/// a aba.
+/// ⚠️ Nada muda se NENHUM é aceite: não se cria um quadro vazio nem se troca a aba.
 pub fn deliver(
     hero: &mut HeroScreen,
     board: Option<u64>,
-    name: &str,
-    content: Option<Content>,
-) -> Result<BoardId, Toast> {
-    let say = |key: &str| Toast::warning(tr_with(key, &[("name", &name)]));
-    let content = content.ok_or_else(|| say("board.send.empty"))?;
-    let file = content
-        .bytes()
-        .and_then(|b| crate::images::ingest(&b))
-        .ok_or_else(|| say("board.send.refused"))?;
+    items: Vec<Sent>,
+) -> Result<(BoardId, Option<Toast>), Toast> {
+    let many = items.len() > 1;
+    let (mut left, mut files) = (Vec::new(), Vec::new());
+    for s in items {
+        let file = s.content.and_then(|c| {
+            c.bytes()
+                .and_then(|b| crate::images::ingest(&b))
+                .ok_or("board.send.refused")
+        });
+        match file {
+            Ok(f) => files.push((f, s.pose)),
+            Err(why) => left.push((s.name, why)),
+        }
+    }
+    let left_out = match left.as_slice() {
+        [] => None,
+        [(name, why)] if !many => Some(Toast::warning(tr_with(why, &[("name", name)]))),
+        _ => {
+            let names: Vec<&str> = left.iter().map(|(n, _)| n.as_str()).collect();
+            Some(Toast::warning(tr_with(
+                "board.send.left_out",
+                &[("names", &names.join(", "))],
+            )))
+        }
+    };
+    if files.is_empty() {
+        return Err(left_out.unwrap_or_else(|| Toast::warning(tr("board.send.wrong_kind"))));
+    }
     let target = match board.map(BoardId) {
         Some(b) if hero.documents.boards().get(b).is_some() => b,
         Some(_) => return Err(Toast::warning(tr("board.send.no_board"))),
@@ -80,10 +133,145 @@ pub fn deliver(
         }
     };
     hero.documents.activate(Some(target));
-    if insert_images(hero, vec![file], None) == 0 {
-        return Err(say("board.send.refused"));
+    if insert_posed(hero, files, None) == 0 {
+        return Err(Toast::warning(tr("board.send.no_board")));
     }
-    Ok(target)
+    Ok((target, left_out))
+}
+
+/// W16 — quem vai: a linha clicada; se ela está na selecção `selected` (os bits das entidades, pela
+/// ordem dela), a selecção inteira — o menu de contexto de um item seleccionado age sobre todos.
+#[must_use]
+pub fn targets(clicked: u64, selected: &[u64]) -> Vec<u64> {
+    if selected.contains(&clicked) {
+        selected.to_vec()
+    } else {
+        vec![clicked]
+    }
+}
+
+/// ⭐ W16 — a sprite com a POSE da cena: `m` = a parte linear do afim de MUNDO dela (`[a, b, c, d]`,
+/// colunas `x = (a, b)`, `y = (c, d)`; o mundo tem y para CIMA), `size` = o tamanho dela no mundo e
+/// `ppm` = os píxeis da régua do editor (a escala do vector e do Flip). O quadro tem y para BAIXO.
+///
+/// Sem inclinação a pose vai no ELEMENTO (escala, ângulo, espelho — os píxeis inteiros, editável no
+/// quadro); um afim que INCLINA (o skew da Inspector) o quadro não exprime: os píxeis redesenham-se
+/// já inclinados ([`bake`]). `None` = a sprite não tem área (escala 0).
+#[must_use]
+pub fn posed_sprite(
+    content: Content,
+    m: [f64; 4],
+    size: [f64; 2],
+    ppm: f64,
+) -> Option<(Content, Pose)> {
+    let Content::Pixels(px) = content else {
+        return Some((content, Pose::default()));
+    };
+    let [a, b, c, d] = m;
+    let [nw, nh] = px.size.map(|v| f64::from(v.max(1)));
+    let (kx, ky) = (ppm * size[0] / nw, ppm * size[1] / nh);
+    // Do píxel da imagem (linha 0 em cima) ao quadro: F·A·F·diag(kx, ky), F = diag(1, -1).
+    let k = [a * kx, -b * kx, -c * ky, d * ky];
+    let r = k[0].hypot(k[1]);
+    let (cs, sn) = (k[0] / r, k[1] / r);
+    let shear = cs * k[2] + sn * k[3];
+    let e = -sn * k[2] + cs * k[3];
+    if !(r > 1e-9 && e.abs() > 1e-9) {
+        return None;
+    }
+    if shear.abs() > 1e-6 * r.max(e.abs()) {
+        let (out, scale) = bake(&px, k);
+        let pose = Pose {
+            scale: [scale; 2],
+            ..Pose::default()
+        };
+        return Some((Content::Pixels(out), pose));
+    }
+    let mut angle = sn.atan2(cs);
+    let mut flip = [false, e < 0.0];
+    // R(φ)·diag(1, −1) = R(φ − π)·diag(−1, 1): o espelho horizontal com o ângulo mais pequeno.
+    if e < 0.0 && cs < 0.0 {
+        angle -= std::f64::consts::PI.copysign(angle);
+        flip = [true, false];
+    }
+    let pose = Pose {
+        scale: [r, e.abs()],
+        angle,
+        flip,
+    };
+    Some((Content::Pixels(px), pose))
+}
+
+/// O maior lado de uma sprite redesenhada: o atlas do desenho (`ATLAS_SIDE` do `ph2d-board-render`);
+/// acima disto o quadro desenharia um nível mais pequeno de qualquer forma.
+const BAKE_SIDE: f64 = 8192.0;
+
+/// Os píxeis `px` pelo linear `k` (do píxel da imagem ao quadro, colunas `(k0, k1)` e `(k2, k3)`) na
+/// caixa alinhada aos eixos que ocupam — bilinear, PESADO pelo alfa (a orla transparente não
+/// escurece) — e a escala do natural da imagem ao quadro (`1`, ou mais se a caixa passava do atlas).
+fn bake(px: &Pixels, k: [f64; 4]) -> (Pixels, f64) {
+    let [nw, nh] = px.size.map(f64::from);
+    let corners = [[0.0, 0.0], [nw, 0.0], [0.0, nh], [nw, nh]]
+        .map(|[u, v]| [k[0] * u + k[2] * v, k[1] * u + k[3] * v]);
+    let lo = |i: usize| corners.iter().map(|p| p[i]).fold(f64::INFINITY, f64::min);
+    let hi = |i: usize| {
+        corners
+            .iter()
+            .map(|p| p[i])
+            .fold(f64::NEG_INFINITY, f64::max)
+    };
+    let (x0, y0) = (lo(0), lo(1));
+    let (bw, bh) = (hi(0) - x0, hi(1) - y0);
+    let fit = (BAKE_SIDE / bw.max(bh)).min(1.0);
+    let size = [bw, bh].map(|v| (v * fit).ceil().max(1.0) as u32);
+    let det = k[0] * k[3] - k[2] * k[1];
+    let mut out = vec![0u8; size[0] as usize * size[1] as usize * 4];
+    let (w, h) = (px.size[0] as usize, px.size[1] as usize);
+    let at = |x: isize, y: isize| -> [f64; 4] {
+        if x < 0 || y < 0 || x as usize >= w || y as usize >= h {
+            return [0.0; 4];
+        }
+        let p = &px.rgba[(y as usize * w + x as usize) * 4..][..4];
+        let a = f64::from(p[3]) / 255.0;
+        [
+            f64::from(p[0]) * a,
+            f64::from(p[1]) * a,
+            f64::from(p[2]) * a,
+            a,
+        ]
+    };
+    for oy in 0..size[1] as usize {
+        for ox in 0..size[0] as usize {
+            let qx = (ox as f64 + 0.5) / fit + x0;
+            let qy = (oy as f64 + 0.5) / fit + y0;
+            // O inverso de `k`: o ponto da imagem que cai aqui (centros dos píxeis em +0,5).
+            let u = (k[3] * qx - k[2] * qy) / det - 0.5;
+            let v = (-k[1] * qx + k[0] * qy) / det - 0.5;
+            let (fx, fy) = (u.floor(), v.floor());
+            let (tx, ty) = (u - fx, v - fy);
+            let (ix, iy) = (fx as isize, fy as isize);
+            let mut acc = [0.0; 4];
+            for (dx, dy, wgt) in [
+                (0, 0, (1.0 - tx) * (1.0 - ty)),
+                (1, 0, tx * (1.0 - ty)),
+                (0, 1, (1.0 - tx) * ty),
+                (1, 1, tx * ty),
+            ] {
+                let p = at(ix + dx, iy + dy);
+                for (a, q) in acc.iter_mut().zip(p) {
+                    *a += q * wgt;
+                }
+            }
+            let o = &mut out[(oy * size[0] as usize + ox) * 4..][..4];
+            if acc[3] > 0.0 {
+                for i in 0..3 {
+                    o[i] = (acc[i] / acc[3]).round().clamp(0.0, 255.0) as u8;
+                }
+                o[3] = (acc[3] * 255.0).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+    (Pixels { size, rgba: out }, 1.0 / fit)
 }
 
 #[cfg(test)]

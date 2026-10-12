@@ -123,6 +123,11 @@ impl T {
     }
 }
 
+/// Um objecto só, sem pose.
+fn one(name: &str, content: Option<Content>) -> Vec<Sent> {
+    vec![Sent::new(name, content)]
+}
+
 fn red(w: u32, h: u32) -> Content {
     Content::Pixels(Pixels {
         size: [w, h],
@@ -142,8 +147,10 @@ fn the_modal_pick_puts_the_picture_in_the_middle_of_that_boards_view() {
     t.click(ids::CTX_SEND_BOARD_ROWS[1]);
     let (row, board) = t.chosen().expect("o modal levantou a escolha");
     assert_eq!((row, board), (ASKING_ROW, Some(b[1].0)));
-    let got = deliver(&mut t.hero, board, "Hero", Some(red(120, 80))).expect("entregue");
+    let (got, left) =
+        deliver(&mut t.hero, board, one("Hero", Some(red(120, 80)))).expect("entregue");
     assert_eq!(got, b[1]);
+    assert!(left.is_none());
     assert_eq!(
         t.hero.documents.active(),
         Some(b[1]),
@@ -179,7 +186,7 @@ fn new_board_is_made_opened_and_receives_the_content() {
     t.click(ids::CTX_SEND_BOARD_NEW);
     let (_, board) = t.chosen().expect("a escolha");
     assert_eq!(board, None);
-    let got = deliver(&mut t.hero, board, "Hero", Some(red(10, 10))).expect("entregue");
+    let (got, _) = deliver(&mut t.hero, board, one("Hero", Some(red(10, 10)))).expect("entregue");
     let b = t.hero.documents.boards().get(got).expect("o quadro novo");
     assert_eq!(b.name, "Board 2");
     assert_eq!(t.hero.documents.active(), Some(got));
@@ -200,8 +207,7 @@ fn a_vector_goes_in_as_svg_at_its_natural_size() {
     deliver(
         &mut t.hero,
         Some(b.0),
-        "Shape",
-        Some(Content::Svg(SVG.to_owned())),
+        one("Shape", Some(Content::Svg(SVG.to_owned()))),
     )
     .expect("o SVG");
     let img = t.images(b).remove(0);
@@ -235,15 +241,108 @@ fn a_refusal_changes_nothing_and_says_why() {
         "abriu o modal para um esqueleto"
     );
     let bad = Content::Svg("<svg xmlns=\"http://www.w3.org/2000/svg\"><g".to_owned());
-    assert!(deliver(&mut t.hero, None, "Shape", Some(bad)).is_err());
+    assert!(deliver(&mut t.hero, None, one("Shape", Some(bad))).is_err());
     assert!(
-        deliver(&mut t.hero, None, "Flip", None).is_err(),
+        deliver(&mut t.hero, None, one("Flip", None)).is_err(),
         "nada a mostrar"
     );
     assert!(
-        deliver(&mut t.hero, Some(999), "Hero", Some(red(2, 2))).is_err(),
+        deliver(&mut t.hero, Some(999), one("Hero", Some(red(2, 2)))).is_err(),
         "quadro fechado"
     );
     assert_eq!(t.hero.documents.boards().boards().len(), 1);
     assert_eq!(t.hero.documents.active(), None);
+}
+
+/// ⭐ W16 — a SELECÇÃO inteira (a linha clicada dentro dela) vai numa leva: cada um com a pose dele,
+/// os que não têm conteúdo nomeados no aviso; o resto entra.
+#[test]
+fn the_selection_goes_whole_each_with_its_pose_and_the_left_out_are_named() {
+    let mut t = T::new(&["Moodboard"]);
+    let b = t.board_ids()[0];
+    assert_eq!(
+        targets(7, &[3, 7, 9]),
+        [3, 7, 9],
+        "dentro: a selecção, pela ordem dela"
+    );
+    assert_eq!(targets(5, &[3, 7, 9]), [5], "fora: só a linha clicada");
+    let turned = Pose {
+        scale: [2.0, 0.5],
+        angle: 0.3,
+        flip: [true, false],
+    };
+    let items = vec![
+        Sent {
+            name: "Hero".into(),
+            content: Ok(red(40, 20)),
+            pose: turned,
+        },
+        Sent::new("Flip", None),
+        Sent::new("Shape", Some(Content::Svg(SVG.to_owned()))),
+        Sent::missing("Bones", "board.send.wrong_kind"),
+    ];
+    let (got, left) = deliver(&mut t.hero, Some(b.0), items).expect("entregue");
+    assert_eq!(got, b);
+    let left = left.expect("o aviso dos que ficaram de fora");
+    assert!(
+        left.message.contains("Flip") && left.message.contains("Bones"),
+        "{}",
+        left.message
+    );
+    assert!(!left.message.contains("Hero"));
+    let imgs = t.images(b);
+    assert_eq!(imgs.len(), 2);
+    let hero = imgs
+        .iter()
+        .find(|e| e.image().is_some_and(|i| i.flip == [true, false]))
+        .expect("a sprite com o espelho dela");
+    assert!((hero.angle - 0.3).abs() < 1e-12);
+    assert!(
+        (hero.w / hero.h - (40.0 * 2.0) / (20.0 * 0.5)).abs() < 1e-9,
+        "a escala de cada eixo"
+    );
+}
+
+/// ⭐ W16 — a pose de uma sprite: o mundo (y para cima, ângulo anti-horário) para o quadro (y para
+/// baixo, ângulo horário), à régua `ppm`; o espelho horizontal sem rodar 180°; a inclinação (que o
+/// quadro não exprime) redesenha os píxeis; sem área não vai.
+#[test]
+fn a_sprite_goes_with_its_scene_pose() {
+    let px = || red(4, 2);
+    let pose = |m: [f64; 4]| posed_sprite(px(), m, [8.0, 4.0], 10.0).map(|(_, p)| p);
+    // 4×2 píxeis num tamanho de 8×4 m a 10 px/m: cada píxel vale 20 px de quadro.
+    let id = pose([1.0, 0.0, 0.0, 1.0]).unwrap();
+    assert_eq!(
+        (id.scale, id.angle, id.flip),
+        ([20.0, 20.0], 0.0, [false; 2])
+    );
+    let (s, c) = 30f64.to_radians().sin_cos();
+    let turned = pose([c, s, -s, c]).unwrap();
+    assert!(
+        (turned.angle + 30f64.to_radians()).abs() < 1e-12,
+        "anti-horário no mundo = −θ"
+    );
+    assert!(turned.scale.iter().all(|k| (k - 20.0).abs() < 1e-9));
+    let mirrored = pose([-1.0, 0.0, 0.0, 1.0]).unwrap();
+    assert_eq!((mirrored.angle, mirrored.flip), (0.0, [true, false]));
+    let upside = pose([1.0, 0.0, 0.0, -1.0]).unwrap();
+    assert_eq!((upside.angle, upside.flip), (0.0, [false, true]));
+    assert!(pose([0.0, 0.0, 0.0, 1.0]).is_none(), "escala 0");
+    // Inclinada: os píxeis vêm redesenhados na caixa que ocupam, sem ângulo.
+    let (content, p) = posed_sprite(px(), [1.0, 0.0, 0.5, 1.0], [8.0, 4.0], 10.0).unwrap();
+    let Content::Pixels(baked) = content else {
+        unreachable!()
+    };
+    assert_eq!((p.angle, p.flip), (0.0, [false; 2]));
+    // A caixa: 80 de largo + o desvio de 0,5 × 40 de alto = 100 × 40.
+    let world = baked.size.map(|v| f64::from(v) * p.scale[0]);
+    assert!(
+        (world[0] - 100.0).abs() <= 1.0 && (world[1] - 40.0).abs() <= 1.0,
+        "{world:?}"
+    );
+    let opaque = baked.rgba.chunks(4).filter(|q| q[3] == 255).count();
+    assert!(
+        opaque > 0 && opaque < baked.rgba.len() / 4,
+        "um paralelogramo dentro da caixa"
+    );
 }

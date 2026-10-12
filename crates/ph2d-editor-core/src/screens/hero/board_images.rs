@@ -5,6 +5,7 @@
 
 use super::HeroScreen;
 use super::board_view::{area, area_of, editor};
+use ph2d_board_edit::Pose;
 use ph2d_board_model::ImageFile;
 
 /// Um `Ctrl+V` com uma imagem na área de transferência é para pôr a IMAGEM? Só com um quadro activo,
@@ -31,6 +32,16 @@ pub fn takes_image_paste(hero: &HeroScreen, text: Option<&str>) -> bool {
 /// quando ele se desenhar, no tamanho natural (não há vista a que caber); o `at` de ecrã não tem
 /// tradução e é ignorado.
 pub fn insert_images(hero: &mut HeroScreen, files: Vec<ImageFile>, at: Option<[f64; 2]>) -> usize {
+    let posed = files.into_iter().map(|f| (f, Pose::default())).collect();
+    insert_posed(hero, posed, at)
+}
+
+/// W16 — [`insert_images`] com a POSE de cada imagem (a de uma sprite da cena no «Send to board…»).
+pub fn insert_posed(
+    hero: &mut HeroScreen,
+    files: Vec<(ImageFile, Pose)>,
+    at: Option<[f64; 2]>,
+) -> usize {
     let view = hero.last_layout.map(|l| area_of(area(&l)));
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {
@@ -45,13 +56,13 @@ pub fn insert_images(hero: &mut HeroScreen, files: Vec<ImageFile>, at: Option<[f
     let fit = view.map_or([f64::INFINITY; 2], |v| [v[2] / z / 2.0, v[3] / z / 2.0]);
     let items: Vec<_> = files
         .into_iter()
-        .map(|f| {
+        .map(|(f, pose)| {
             let size = f.size;
-            (board.put_file(f), size)
+            (board.put_file(f), size, pose)
         })
         .collect();
     let history = live.histories.entry(board.id).or_default();
     let ed = editor(&mut live.editor, theme);
-    ed.insert_images(&mut board.doc, history, &items, center, fit)
+    ed.insert_posed_images(&mut board.doc, history, &items, center, fit)
         .len()
 }

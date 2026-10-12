@@ -77,6 +77,7 @@ mod o_pincel_de_peso_esta_fiado;
 mod o_ramo_do_hud_pergunta_aos_dois_meios;
 mod o_rebobinar_repoe_o_estado_vivo;
 mod o_rotulo_do_botao_do_hud_e_filho_dele;
+mod o_send_to_board_leva_a_seleccao_com_a_pose;
 mod o_tween_corre_depois_de_quem_o_arranca;
 mod one_door_authors_an_expression;
 mod one_word_for_the_reusable_thing;

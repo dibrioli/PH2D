@@ -23,6 +23,35 @@ pub fn birth_size(natural: [u32; 2], fit: [f64; 2]) -> [f64; 2] {
     [w * k, h * k]
 }
 
+/// W16 — a POSE com que uma imagem nasce (a de uma sprite da cena no «Send to board…»): a escala do
+/// natural em cada eixo, o ângulo (radianos, horário no ecrã, o de [`Element::angle`]) e o espelho.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pose {
+    pub scale: [f64; 2],
+    pub angle: f64,
+    pub flip: [bool; 2],
+}
+
+impl Default for Pose {
+    fn default() -> Self {
+        Self {
+            scale: [1.0, 1.0],
+            angle: 0.0,
+            flip: [false; 2],
+        }
+    }
+}
+
+/// A caixa `[w, h]` com que uma imagem `natural` nasce em `pose`, e a caixa alinhada aos eixos que
+/// ela ocupa rodada — reduzidas juntas (nunca ampliadas) até a rodada caber em `fit`.
+fn posed_birth(natural: [u32; 2], pose: Pose, fit: [f64; 2]) -> ([f64; 2], [f64; 2]) {
+    let [w, h] = [0, 1].map(|i| f64::from(natural[i].max(1)) * pose.scale[i].abs());
+    let (c, s) = (pose.angle.cos().abs(), pose.angle.sin().abs());
+    let aabb = [w * c + h * s, w * s + h * c];
+    let k = (fit[0] / aabb[0]).min(fit[1] / aabb[1]).min(1.0);
+    ([w * k, h * k], aabb.map(|v| v * k))
+}
+
 impl Editor {
     /// ⭐ As imagens de `items` (a chave e o tamanho natural de cada ficheiro, já no quadro) numa
     /// grelha centrada em `at`, cada uma a caber em `fit` — UM passo, seleccionadas.
@@ -34,11 +63,32 @@ impl Editor {
         at: [f64; 2],
         fit: [f64; 2],
     ) -> Vec<ElementId> {
+        let posed: Vec<_> = items
+            .iter()
+            .map(|&(f, n)| (f, n, Pose::default()))
+            .collect();
+        self.insert_posed_images(doc, history, &posed, at, fit)
+    }
+
+    /// ⭐ W16 — [`Self::insert_images`] com a POSE de cada uma: a caixa é o natural na escala dela, o
+    /// ângulo e o espelho são os dela; a grelha arruma as caixas RODADAS.
+    pub fn insert_posed_images(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        items: &[(FileId, [u32; 2], Pose)],
+        at: [f64; 2],
+        fit: [f64; 2],
+    ) -> Vec<ElementId> {
         if items.is_empty() {
             return Vec::new();
         }
         self.commit_text(doc, history);
-        let sizes: Vec<[f64; 2]> = items.iter().map(|(_, n)| birth_size(*n, fit)).collect();
+        let births: Vec<([f64; 2], [f64; 2])> = items
+            .iter()
+            .map(|(_, n, p)| posed_birth(*n, *p, fit))
+            .collect();
+        let sizes: Vec<[f64; 2]> = births.iter().map(|b| b.1).collect();
         let cols = (items.len() as f64).sqrt().ceil() as usize;
         let rows = items.len().div_ceil(cols);
         let big = sizes.iter().map(|s| s[0].max(s[1])).fold(0.0, f64::max);
@@ -56,17 +106,15 @@ impl Editor {
         // A moldura (W15) nasce no modo do quadro, como o contorno de uma forma.
         style.sketch = self.style.sketch;
         let mut made = Vec::with_capacity(items.len());
-        for (i, ((file, _), s)) in items.iter().zip(&sizes).enumerate() {
+        for (i, ((file, _, pose), (s, _))) in items.iter().zip(&births).enumerate() {
             let (c, r) = (i % cols, i / cols);
             let cx = x0 + col_w[..c].iter().sum::<f64>() + gap * c as f64 + col_w[c] / 2.0;
             let cy = y0 + row_h[..r].iter().sum::<f64>() + gap * r as f64 + row_h[r] / 2.0;
             let bx = [cx - s[0] / 2.0, cy - s[1] / 2.0, s[0], s[1]];
-            let el = Element::new_image(
-                doc.mint_id(),
-                doc.z_on_top(),
-                Image::new(*file, style.clone()),
-                bx,
-            );
+            let mut img = Image::new(*file, style.clone());
+            img.flip = pose.flip;
+            let mut el = Element::new_image(doc.mint_id(), doc.z_on_top(), img, bx);
+            el.angle = pose.angle;
             made.push(el.id);
             let _ = BoardOp::Put(el).apply(doc);
         }

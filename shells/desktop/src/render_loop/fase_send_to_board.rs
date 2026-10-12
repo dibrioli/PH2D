@@ -7,7 +7,7 @@
 //! com o tamanho que a régua lhes dá; a sprite com os píxeis dela.
 
 use super::*;
-use ph2d_app_board::send_to_board::{Content, ask, deliver};
+use ph2d_app_board::send_to_board::{Content, Sent, ask, deliver, posed_sprite, targets};
 use ph2d_component_desc::ObjectKind;
 use ph2d_editor_core::screens::hero::send_to_board::goes_to_board;
 use ph2d_i18n::{tr, tr_with};
@@ -44,74 +44,95 @@ impl crate::App {
         let Some((row, board)) = chosen else {
             return;
         };
-        let Some(e) = entity(row) else {
+        let Some(clicked) = entity(row) else {
             gfx.toasts.push(Toast::warning(tr("board.send.gone")));
             return;
         };
-        let name = world
-            .get::<ph2d_ecs::Name>(e)
-            .map_or_else(String::new, |n| n.0.clone());
+        // W16 — a linha clicada DENTRO da selecção leva a selecção inteira (a ordem dela).
+        let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
         let ppm = hero.project.pixels_per_meter;
-        let unreadable = || Toast::warning(tr_with("board.send.unreadable", &[("name", &name)]));
-        let content = match kind(e) {
-            ObjectKind::Image => {
-                // PRECISION-READONLY: LÊ os pixels e manda uma CÓPIA ao quadro (8 bits, o formato das
-                // imagens do quadro); a sprite da cena nunca é escrita de volta.
-                let src = crate::hero_intents::texture_edit::read_sprite_source(
-                    e,
-                    &gfx.sim,
-                    &mut gfx.renderer,
-                    &gfx.asset_db,
-                    &gfx.atlas_asset_map,
-                );
-                let Some(src) = src else {
-                    gfx.toasts.push(unreadable());
-                    return;
-                };
-                let img = src.image.into_straight();
-                Some(Content::rgba([img.width, img.height], img.pixels))
+        let mut items = Vec::with_capacity(selected.len().max(1));
+        for bits in targets(clicked.to_bits(), &selected) {
+            let e = ph2d_ecs::Entity::from_bits(bits);
+            if world.get_entity(e).is_err() {
+                continue;
             }
-            ObjectKind::Vector => world.get::<ph2d_ecs::VecPathRef>(e).and_then(|r| {
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
-                let vista = ph2d_vec_entities::entities::view_state(&gfx.sim, &self.vec.entities);
-                ph2d_app_vec::svg_export::svg_of_path(
-                    &gfx.vec_scene,
-                    &xf,
-                    r.0,
-                    &|id| vista.is_derived(id),
-                    f64::from(ppm),
-                )
-                .map(Content::Svg)
-            }),
-            ObjectKind::Flip => {
-                let Some(r) = world.get::<ph2d_ecs::FlipObjectRef>(e) else {
-                    gfx.toasts.push(unreadable());
-                    return;
-                };
-                match ph2d_app_flip::pass::raster::current_frame(
-                    &gfx.flip,
-                    ph2d_flip::FlipObjectId(r.0),
-                    ph2d_flip_entities::transform::object_xform(&gfx.sim, e),
-                    &self.playhead,
-                    &mut gfx.flip_render,
-                    &mut gfx.flip_compose,
-                    ppm,
-                    gfx.surface.gpu(),
-                ) {
-                    Ok(f) => Some(Content::rgba(f.size, f.rgba)),
-                    Err(ph2d_app_flip::pass::raster::RasterError::Empty) => None,
-                    Err(ph2d_app_flip::pass::raster::RasterError::Gpu) => {
-                        gfx.toasts.push(unreadable());
-                        return;
+            let name = world
+                .get::<ph2d_ecs::Name>(e)
+                .map_or_else(String::new, |n| n.0.clone());
+            let sent = match kind(e) {
+                ObjectKind::Image => {
+                    // PRECISION-READONLY: LÊ os pixels e manda uma CÓPIA ao quadro (8 bits, o formato
+                    // das imagens do quadro); a sprite da cena nunca é escrita de volta.
+                    let src = crate::hero_intents::texture_edit::read_sprite_source(
+                        e,
+                        &gfx.sim,
+                        &mut gfx.renderer,
+                        &gfx.asset_db,
+                        &gfx.atlas_asset_map,
+                    );
+                    let size = world.get::<ph2d_render::Sprite>(e).map(|s| s.size);
+                    let m = ph2d_ecs::world_transform(world, e)
+                        .map(|t| ph2d_ecs::GlobalTransform::from_transform(t).affine());
+                    match (src, size, m) {
+                        (Some(src), Some(size), Some(m)) => {
+                            let img = src.image.into_straight();
+                            let lin = [m[0], m[1], m[2], m[3]].map(f64::from);
+                            let size = size.map(f64::from);
+                            let px = Content::rgba([img.width, img.height], img.pixels);
+                            match posed_sprite(px, lin, size, f64::from(ppm)) {
+                                Some((content, pose)) => Sent {
+                                    name,
+                                    content: Ok(content),
+                                    pose,
+                                },
+                                None => Sent::missing(name, "board.send.empty"),
+                            }
+                        }
+                        _ => Sent::missing(name, "board.send.unreadable"),
                     }
                 }
-            }
-            _ => {
-                gfx.toasts.push(Toast::warning(tr("board.send.wrong_kind")));
-                return;
-            }
-        };
-        if let Err(t) = deliver(hero, board, &name, content) {
+                ObjectKind::Vector => {
+                    let svg = world.get::<ph2d_ecs::VecPathRef>(e).and_then(|r| {
+                        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
+                        let vista =
+                            ph2d_vec_entities::entities::view_state(&gfx.sim, &self.vec.entities);
+                        ph2d_app_vec::svg_export::svg_of_path(
+                            &gfx.vec_scene,
+                            &xf,
+                            r.0,
+                            &|id| vista.is_derived(id),
+                            f64::from(ppm),
+                        )
+                    });
+                    Sent::new(name, svg.map(Content::Svg))
+                }
+                ObjectKind::Flip => match world.get::<ph2d_ecs::FlipObjectRef>(e) {
+                    None => Sent::missing(name, "board.send.unreadable"),
+                    Some(r) => match ph2d_app_flip::pass::raster::current_frame(
+                        &gfx.flip,
+                        ph2d_flip::FlipObjectId(r.0),
+                        ph2d_flip_entities::transform::object_xform(&gfx.sim, e),
+                        &self.playhead,
+                        &mut gfx.flip_render,
+                        &mut gfx.flip_compose,
+                        ppm,
+                        gfx.surface.gpu(),
+                    ) {
+                        Ok(f) => Sent::new(name, Some(Content::rgba(f.size, f.rgba))),
+                        Err(ph2d_app_flip::pass::raster::RasterError::Empty) => {
+                            Sent::new(name, None)
+                        }
+                        Err(ph2d_app_flip::pass::raster::RasterError::Gpu) => {
+                            Sent::missing(name, "board.send.unreadable")
+                        }
+                    },
+                },
+                _ => Sent::missing(name, "board.send.wrong_kind"),
+            };
+            items.push(sent);
+        }
+        if let Ok((_, Some(t))) | Err(t) = deliver(hero, board, items) {
             gfx.toasts.push(t);
         }
     }

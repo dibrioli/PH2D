@@ -16,6 +16,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.send.unreadable" => "Could not read the pixels of {name}",
         "board.send.refused" => "The board could not take {name}",
         "board.send.no_board" => "That board was closed before the picture arrived",
+        // W16 — vários objectos de uma vez: os que não foram.
+        "board.send.left_out" => "Left out: {names}",
         _ => return None,
     })
 }

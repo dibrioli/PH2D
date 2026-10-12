@@ -226,8 +226,56 @@ fn each_drag_is_one_undo_step_and_leaving_keeps_the_crop() {
         Some(w.id),
         "o duplo-clique numa imagem recorta"
     );
-    assert!(w.ed.double_click(&mut w.doc, &mut w.h, &mut ts, p));
-    assert_eq!(w.ed.cropping(), Some(w.id), "e dentro do recorte não sai");
-    w.ed.end_crop();
+    assert!(
+        !w.ed.double_click(&mut w.doc, &mut w.h, &mut ts, p),
+        "dentro do recorte o duplo-clique segue como um clique"
+    );
+    assert_eq!(w.ed.cropping(), Some(w.id), "e não sai");
+    w.ed.end_crop(&w.doc, &mut w.h);
     assert_eq!(w.ed.cropping(), None);
+}
+
+/// ⭐ Auditoria W16 — `Escape` com o botão em baixo: o que o arrasto já mudou fica como UM passo (o
+/// desfazer apanha-o); uma imagem menor que o mínimo não aborta (o mínimo é o lado de agora); um
+/// recorte vindo de fora a sair da imagem desliza sem abortar; os tamanhos contam-se pelas CHAVES.
+#[test]
+fn escape_mid_drag_is_undoable_and_tiny_or_foreign_crops_never_abort() {
+    let mut w = world(400.0, 300.0, |_| {});
+    let mut ts = TextSystem::without_system_fonts();
+    let p = |world| Pointer {
+        world,
+        px: 1.0,
+        mods: NONE,
+    };
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut ts, p(SE), VIEW);
+    w.ed.pointer_move(&mut w.doc, &mut ts, p([740.0, 420.0]));
+    w.ed.end_crop(&w.doc, &mut w.h);
+    w.ed.pointer_up(&mut w.doc, &mut w.h, p([740.0, 420.0]));
+    assert_eq!(w.crop(), Some([0.0, 0.0, 320.0, 240.0]));
+    assert!(w.h.undo(&mut w.doc));
+    assert_eq!(w.crop(), None, "o desfazer apanha o arrasto do Escape");
+
+    let mut w = world(8.0, 6.0, |_| {});
+    w.drag([428.0, 186.0], [-1.0, -1.0], NONE);
+    w.drag([424.0, 183.0], [1.0, 1.0], NONE);
+    assert!(w.boxed()[2] > 0.0 && w.boxed()[3] > 0.0);
+
+    let mut w = world(400.0, 300.0, |e| {
+        e.image_mut().unwrap().crop = Some(Crop {
+            x: -10.0,
+            y: 0.0,
+            w: 500.0,
+            h: 100.0,
+        });
+    });
+    w.drag([500.0, 250.0], [30.0, 0.0], NONE);
+    let c = w.crop().expect("um recorte");
+    assert!(c[0] >= 0.0 && c[0] + c[2] <= 400.0, "{c:?}");
+
+    // Outro quadro com o MESMO número de ficheiros: as chaves mudam, os tamanhos também.
+    let other = ImageFile::new(vec![9; 8], [40, 30]);
+    let mut files = Files::new();
+    files.insert(other.id(), other.clone());
+    w.ed.know_files(&files);
+    assert_eq!(w.ed.natural_of(other.id()), Some([40, 30]));
 }

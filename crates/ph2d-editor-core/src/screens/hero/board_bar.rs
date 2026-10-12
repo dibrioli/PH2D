@@ -447,6 +447,8 @@ pub fn paint(
                 .filter(|it| mind::shows(*it, ed, &board.doc) != Some(false))
                 .filter(|it| fac::shows(*it, ed, &board.doc) != Some(false))
                 .filter(|it| shapes::shows(*it, ed, &board.doc) != Some(false))
+                // W16 — o recorte só aparece quando o clique recorta: UMA imagem editável.
+                .filter(|it| *it != Item::Crop || ed.can_crop(&board.doc))
                 .collect()
         })
         .filter(|g: &Vec<Item>| !g.is_empty())

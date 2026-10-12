@@ -90,7 +90,7 @@ fn the_sketch_button_reaches_the_frame() {
 /// Os ids dos controlos que já existiam não se movem com o preto e branco (vai depois do «Forma»;
 /// o que veio a seguir, W16, vai depois dele).
 #[test]
-fn the_gray_item_is_last_and_moves_no_id() {
+fn the_gray_item_follows_the_reshape_and_moves_no_id() {
     let v = items();
     let r = v
         .iter()

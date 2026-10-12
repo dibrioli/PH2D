@@ -58,6 +58,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // As duas sondas do inspector da grelha.
         "chrome.grid_snap.probe_a" => "Probe A",
         "chrome.grid_snap.probe_b" => "Probe B",
+        // W16 (MiroClone) — a leitura da área de transferência passou o prazo.
+        "clipboard.no_answer" => "The clipboard did not answer: the app that copied seems busy",
         _ => return None,
     })
 }

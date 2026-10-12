@@ -97,7 +97,10 @@ fn measure_svg_export_images() {
     routes.sync(&b.doc);
     let page = board_page(&b, &routes).unwrap();
     let mut ts = TextSystem::without_system_fonts();
-    let variants = [("antes (a gravação do PDF)", ExportTarget::Pdf), ("depois", ExportTarget::Svg)];
+    let variants = [
+        ("antes (a gravação do PDF)", ExportTarget::Pdf),
+        ("depois", ExportTarget::Svg),
+    ];
     let mut t = [Vec::new(), Vec::new()];
     let mut len = [0usize; 2];
     for round in 0..ROUNDS {

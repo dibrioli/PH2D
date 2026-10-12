@@ -56,7 +56,11 @@ impl Editor {
     /// W16 — os tamanhos naturais dos ficheiros do quadro (a vista dá-os a cada imagem): o recorte
     /// conta-se em píxeis deles.
     pub fn know_files(&mut self, files: &ph2d_board_model::Files) {
-        if self.natural.len() != files.len() {
+        // Pelas CHAVES: o editor é um só para todos os quadros, e dois quadros podem ter o mesmo
+        // número de ficheiros.
+        let same =
+            self.natural.len() == files.len() && files.keys().all(|k| self.natural.contains_key(k));
+        if !same {
             self.natural = files.iter().map(|(k, f)| (*k, f.size)).collect();
         }
     }
@@ -91,13 +95,39 @@ impl Editor {
         self.cropping.as_ref().is_some_and(|c| c.drag.is_some())
     }
 
-    /// Fecha o recorte (o que se recortou fica).
-    pub fn end_crop(&mut self) {
+    /// Fecha o recorte (o que se recortou fica): um arrasto a meio (`Escape` com o botão em baixo)
+    /// fica como ao largar — UM passo de desfazer.
+    pub fn end_crop(&mut self, doc: &BoardDoc, history: &mut History) {
+        self.crop_up(doc, history);
         self.cropping = None;
+    }
+
+    /// Larga o recorte se ele já não serve: a imagem saiu (apagada, desfeita, um par ao vivo), ou a
+    /// ferramenta deixou de ser a de seleccionar (a próxima ferramenta tem o clique dela).
+    pub(crate) fn settle_crop(&mut self, doc: &BoardDoc) {
+        let gone = self
+            .cropping()
+            .is_some_and(|id| doc.get(id).is_none_or(|e| e.image().is_none()));
+        if gone || (self.tool != crate::Tool::Select && !self.crop_dragging()) {
+            self.cropping = None;
+        }
+    }
+
+    /// Recortar é possível agora: UMA imagem editável seleccionada, de um ficheiro conhecido (o
+    /// botão da barra só aparece então).
+    #[must_use]
+    pub fn can_crop(&self, doc: &BoardDoc) -> bool {
+        match self.editable(doc).as_slice() {
+            [el] => el
+                .image()
+                .is_some_and(|i| self.natural_of(i.file).is_some()),
+            _ => false,
+        }
     }
 
     /// O botão do rato no modo de recorte. `false` = o modo não está aberto (o clique segue).
     pub(crate) fn crop_down(&mut self, doc: &BoardDoc, p: Pointer) -> bool {
+        self.settle_crop(doc);
         let Some(id) = self.cropping() else {
             return false;
         };
@@ -174,7 +204,7 @@ impl Editor {
 
     /// Os cantos do recorte no MUNDO (as pegas), se o modo está aberto.
     pub(crate) fn crop_corners(&self, doc: &BoardDoc) -> Option<(ElementId, [[f64; 2]; 4])> {
-        let el = doc.get(self.cropping()?)?;
+        let el = doc.get(self.cropping()?).filter(|e| e.image().is_some())?;
         let t = to_world(el);
         let at = |x: f64, y: f64| {
             let q = t * Point::new(x, y);
@@ -187,6 +217,11 @@ impl Editor {
     }
 }
 
+/// `v` entre `lo` e `hi`; com `lo > hi` (a janela já mais pequena que o mínimo) vale `lo`.
+fn within(v: f64, lo: f64, hi: f64) -> f64 {
+    v.min(hi).max(lo)
+}
+
 /// O elemento depois do arrasto `d` com o ponteiro em `p` — a imagem PARADA no ecrã (o mapa natural →
 /// mundo do início do arrasto), o recorte a mudar.
 fn cropped(d: &Drag, natural: [u32; 2], p: Pointer) -> Option<Element> {
@@ -196,10 +231,18 @@ fn cropped(d: &Drag, natural: [u32; 2], p: Pointer) -> Option<Element> {
     let n = inv * Point::new(p.world[0], p.world[1]);
     let [sx, sy, sw, sh] = img.source(natural);
     let (nw, nh) = (f64::from(natural[0]), f64::from(natural[1]));
-    // Unidades do mundo por píxel natural, e o mínimo em píxeis naturais.
+    // Unidades do mundo por píxel natural, e o mínimo em píxeis naturais — nunca maior que a janela
+    // de agora (uma imagem de 8 unidades não se obriga a 10).
     let (kx, ky) = (d.original.w / sw.max(1e-9), d.original.h / sh.max(1e-9));
-    let (mx, my) = (MIN_SIDE / kx, MIN_SIDE / ky);
-    let [mut x0, mut y0, mut x1, mut y1] = [sx, sy, sx + sw, sy + sh];
+    let (mx, my) = (
+        MIN_SIDE.min(d.original.w) / kx,
+        MIN_SIDE.min(d.original.h) / ky,
+    );
+    // A janela dentro da imagem natural (um `.excalidraw` de fora pode trazê-la a sair).
+    let x0 = sx.clamp(0.0, nw);
+    let y0 = sy.clamp(0.0, nh);
+    let [mut x0, mut y0, mut x1, mut y1] =
+        [x0, y0, (sx + sw).clamp(x0, nw), (sy + sh).clamp(y0, nh)];
     let mut el = d.original.clone();
     match d.grip {
         Grip::Pan => {
@@ -215,13 +258,13 @@ fn cropped(d: &Drag, natural: [u32; 2], p: Pointer) -> Option<Element> {
             let ax = if img.flip[0] { -gx } else { gx };
             let ay = if img.flip[1] { -gy } else { gy };
             match ax {
-                1 => x1 = n.x.clamp(x0 + mx, nw),
-                -1 => x0 = n.x.clamp(0.0, x1 - mx),
+                1 => x1 = within(n.x, x0 + mx, nw),
+                -1 => x0 = within(n.x, 0.0, x1 - mx),
                 _ => {}
             }
             match ay {
-                1 => y1 = n.y.clamp(y0 + my, nh),
-                -1 => y0 = n.y.clamp(0.0, y1 - my),
+                1 => y1 = within(n.y, y0 + my, nh),
+                -1 => y0 = within(n.y, 0.0, y1 - my),
                 _ => {}
             }
             if p.mods.shift && ax != 0 && ay != 0 {
@@ -233,12 +276,15 @@ fn cropped(d: &Drag, natural: [u32; 2], p: Pointer) -> Option<Element> {
                 let room_y = if ay > 0 { nh - y0 } else { y1 };
                 let fit = (room_x / w2).min(room_y / h2).min(1.0);
                 (w2, h2) = (w2 * fit, h2 * fit);
-                if ax > 0 {
-                    x1 = x0 + w2
-                } else {
-                    x0 = x1 - w2
+                // Sem caber a proporção acima do mínimo, fica a caixa livre.
+                if w2 >= mx && h2 >= my {
+                    if ax > 0 {
+                        x1 = x0 + w2
+                    } else {
+                        x0 = x1 - w2
+                    }
+                    if ay > 0 { y1 = y0 + h2 } else { y0 = y1 - h2 }
                 }
-                if ay > 0 { y1 = y0 + h2 } else { y0 = y1 - h2 }
             }
             // A caixa nova é a janela no MESMO sítio do ecrã: o centro dela pelo mapa do início.
             let c = m * Point::new((x0 + x1) / 2.0, (y0 + y1) / 2.0);

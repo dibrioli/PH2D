@@ -4786,7 +4786,6 @@ dependencies = [
 name = "ph2d-app-board"
 version = "0.0.0"
 dependencies = [
- "arboard",
  "bumpalo",
  "flate2",
  "image",
@@ -4909,6 +4908,7 @@ dependencies = [
 name = "ph2d-app-host"
 version = "0.0.0"
 dependencies = [
+ "arboard",
  "ph2d-editor-core",
  "rfd",
 ]

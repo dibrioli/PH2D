@@ -224,11 +224,17 @@ pub fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
         eprintln!("[ph2d] clipboard set_text failed: {err}");
     }
     if let Some(target) = hero.store.take_clipboard_paste_request() {
-        let text = gfx
-            .clipboard
-            .as_mut()
-            .and_then(|cb| cb.get_text().ok())
-            .unwrap_or_default();
+        // W16 — com prazo: um app dono da área de transferência que trave não congela o PH2D.
+        let text = match ph2d_app_host::clipboard::read(|cb| cb.get_text().ok()) {
+            Ok(t) => t.unwrap_or_default(),
+            Err(_) => {
+                gfx.toasts
+                    .push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
+                        "clipboard.no_answer",
+                    )));
+                String::new()
+            }
+        };
         if !text.is_empty()
             && ph2d_editor_core::interaction::apply_clipboard_paste(&mut hero.store, target, &text)
         {

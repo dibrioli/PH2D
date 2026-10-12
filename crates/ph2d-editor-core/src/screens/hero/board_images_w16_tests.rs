@@ -100,3 +100,58 @@ fn the_crop_button_and_enter_open_the_crop_and_enter_or_escape_close_it() {
     t.paint();
     assert_eq!(t.hero.documents.live.render_cache.cropping, None);
 }
+
+/// ⭐ Auditoria W16 — o botão de recortar só aparece quando o clique recorta (UMA imagem): com duas
+/// seleccionadas não se pinta (era um clique morto); e trocar de ferramenta larga o recorte.
+#[test]
+fn the_crop_button_shows_only_when_it_crops_and_a_tool_leaves_the_crop() {
+    let mut t = T::new();
+    let f = |n: u8| ImageFile::new(vec![n; 4], [120, 80]);
+    assert_eq!(insert_images(&mut t.hero, vec![f(1), f(2)], None), 2);
+    t.paint();
+    assert!(t.find(node(Item::Flip(0))).is_some(), "a barra das imagens");
+    assert!(
+        t.find(node(Item::Crop)).is_none(),
+        "duas imagens: sem recortar"
+    );
+    let cropping = |t: &T| {
+        t.hero
+            .documents
+            .live
+            .editor
+            .as_ref()
+            .and_then(ph2d_board_edit::Editor::cropping)
+    };
+    let mut t = T::new();
+    put(&mut t);
+    t.click_bar(Item::Crop);
+    assert!(cropping(&t).is_some());
+    t.click_bar(Item::Tool(ph2d_board_edit::Tool::Shape(
+        ph2d_board_model::ShapeType::Rectangle,
+    )));
+    t.paint();
+    assert_eq!(cropping(&t), None, "outra ferramenta larga o recorte");
+}
+
+/// Auditoria W16 — o editor é um só para todos os quadros: trocar de aba fecha o recorte (no outro
+/// quadro o mesmo id é outro elemento).
+#[test]
+fn switching_boards_closes_the_crop() {
+    let mut t = T::new();
+    put(&mut t);
+    t.click_bar(Item::Crop);
+    let editor = |t: &T| {
+        t.hero
+            .documents
+            .live
+            .editor
+            .as_ref()
+            .and_then(ph2d_board_edit::Editor::cropping)
+    };
+    assert!(editor(&t).is_some());
+    let other = t.hero.documents.create("B".into());
+    t.hero.documents.activate(Some(other));
+    t.paint();
+    assert_eq!(editor(&t), None);
+    assert_eq!(t.hero.documents.live.render_cache.cropping, None);
+}

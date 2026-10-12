@@ -179,7 +179,7 @@ fn mede_png_do_quadro_do_flip() {
         .unwrap_or(2048);
     let n = (lado as usize) * (lado as usize);
     let mut faixas = vec![0u8; n * 4];
-    for (i, p) in faixas.chunks_exact_mut(4).enumerate() {
+    for (i, p) in faixas.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let (x, y) = ((i % lado as usize) as f32, (i / lado as usize) as f32);
         let r = lado as f32 / 20.0;
         let canto = (x < r && y < r && (x - r).hypot(y - r) > r)

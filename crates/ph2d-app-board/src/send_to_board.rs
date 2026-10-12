@@ -152,7 +152,8 @@ pub fn targets(clicked: u64, selected: &[u64]) -> Vec<u64> {
 
 /// ⭐ W16 — a sprite com a POSE da cena: `m` = a parte linear do afim de MUNDO dela (`[a, b, c, d]`,
 /// colunas `x = (a, b)`, `y = (c, d)`; o mundo tem y para CIMA), `size` = o tamanho dela no mundo e
-/// `ppm` = os píxeis da régua do editor (a escala do vector e do Flip). O quadro tem y para BAIXO.
+/// `ppm` = os píxeis da régua do editor (a escala do vector e do Flip), `flip` = o espelho da PRÓPRIA
+/// sprite (o `flip_x`/`flip_y` da Inspector: vira os UV, não está no afim). O quadro tem y para BAIXO.
 ///
 /// Sem inclinação a pose vai no ELEMENTO (escala, ângulo, espelho — os píxeis inteiros, editável no
 /// quadro); um afim que INCLINA (o skew da Inspector) o quadro não exprime: os píxeis redesenham-se
@@ -163,13 +164,18 @@ pub fn posed_sprite(
     m: [f64; 4],
     size: [f64; 2],
     ppm: f64,
+    flip: [bool; 2],
 ) -> Option<(Content, Pose)> {
     let Content::Pixels(px) = content else {
         return Some((content, Pose::default()));
     };
     let [a, b, c, d] = m;
     let [nw, nh] = px.size.map(|v| f64::from(v.max(1)));
-    let (kx, ky) = (ppm * size[0] / nw, ppm * size[1] / nh);
+    let sign = |f: bool| if f { -1.0 } else { 1.0 };
+    let (kx, ky) = (
+        sign(flip[0]) * ppm * size[0] / nw,
+        sign(flip[1]) * ppm * size[1] / nh,
+    );
     // Do píxel da imagem (linha 0 em cima) ao quadro: F·A·F·diag(kx, ky), F = diag(1, -1).
     let k = [a * kx, -b * kx, -c * ky, d * ky];
     let r = k[0].hypot(k[1]);
@@ -180,7 +186,11 @@ pub fn posed_sprite(
         return None;
     }
     if shear.abs() > 1e-6 * r.max(e.abs()) {
-        let (out, scale) = bake(&px, k);
+        // Redesenha-se à densidade NATURAL (o linear sem a escala média, |det| = 1): nenhum píxel
+        // da sprite se perde; a escala vai na pose.
+        let sigma = (r * e).abs().sqrt();
+        let (out, scale) = bake(&px, k.map(|v| v / sigma));
+        let scale = scale * sigma;
         let pose = Pose {
             scale: [scale; 2],
             ..Pose::default()

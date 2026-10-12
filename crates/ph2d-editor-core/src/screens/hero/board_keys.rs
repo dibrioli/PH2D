@@ -99,7 +99,7 @@ pub fn key(
     // seleccionada entra (o idioma do Excalidraw).
     if !ctrl && !editing && matches!(k, BoardKey::Enter | BoardKey::Escape) {
         if ed.cropping().is_some() {
-            ed.end_crop();
+            ed.end_crop(doc, history);
             return taken();
         }
         if k == BoardKey::Enter && ed.begin_crop(doc, history) {

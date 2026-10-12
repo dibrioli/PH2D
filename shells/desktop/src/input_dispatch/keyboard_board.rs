@@ -93,8 +93,8 @@ impl crate::App {
         let ctrl_v = pressed && (mods.ctrl || mods.meta) && k == BoardKey::Char('v');
         // W14/W16 — ficheiros copiados e uma IMAGEM entram no quadro; o resto é texto para o teclado.
         let mut paste = None;
-        if ctrl_v && let Some(c) = g.clipboard.as_mut() {
-            match ph2d_app_board::images::paste_clipboard(hero, c) {
+        if ctrl_v {
+            match ph2d_app_board::images::paste_clipboard(hero) {
                 ph2d_app_board::images::Paste::Done(toast) => {
                     if let Some(t) = toast {
                         g.toasts.push(t);

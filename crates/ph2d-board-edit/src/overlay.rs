@@ -82,6 +82,7 @@ pub struct TextOverlay {
 impl Editor {
     /// O que desenhar por cima do quadro agora.
     pub fn overlay(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) -> Overlay {
+        self.settle_crop(doc);
         if std::mem::take(&mut self.resync) {
             self.sync(doc, ts);
         }

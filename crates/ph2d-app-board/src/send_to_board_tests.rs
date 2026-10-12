@@ -309,7 +309,7 @@ fn the_selection_goes_whole_each_with_its_pose_and_the_left_out_are_named() {
 #[test]
 fn a_sprite_goes_with_its_scene_pose() {
     let px = || red(4, 2);
-    let pose = |m: [f64; 4]| posed_sprite(px(), m, [8.0, 4.0], 10.0).map(|(_, p)| p);
+    let pose = |m: [f64; 4]| posed_sprite(px(), m, [8.0, 4.0], 10.0, [false; 2]).map(|(_, p)| p);
     // 4×2 píxeis num tamanho de 8×4 m a 10 px/m: cada píxel vale 20 px de quadro.
     let id = pose([1.0, 0.0, 0.0, 1.0]).unwrap();
     assert_eq!(
@@ -329,7 +329,17 @@ fn a_sprite_goes_with_its_scene_pose() {
     assert_eq!((upside.angle, upside.flip), (0.0, [false, true]));
     assert!(pose([0.0, 0.0, 0.0, 1.0]).is_none(), "escala 0");
     // Inclinada: os píxeis vêm redesenhados na caixa que ocupam, sem ângulo.
-    let (content, p) = posed_sprite(px(), [1.0, 0.0, 0.5, 1.0], [8.0, 4.0], 10.0).unwrap();
+    // O espelho da PRÓPRIA sprite (Inspector) soma-se ao da cena.
+    let own = posed_sprite(px(), [1.0, 0.0, 0.0, 1.0], [8.0, 4.0], 10.0, [true, false]);
+    assert_eq!(own.map(|(_, p)| p.flip), Some([true, false]));
+    let both = posed_sprite(px(), [-1.0, 0.0, 0.0, 1.0], [8.0, 4.0], 10.0, [true, false]);
+    assert_eq!(
+        both.map(|(_, p)| p.flip),
+        Some([false, false]),
+        "dois espelhos desfazem-se"
+    );
+    let (content, p) =
+        posed_sprite(px(), [1.0, 0.0, 0.5, 1.0], [8.0, 4.0], 10.0, [false; 2]).unwrap();
     let Content::Pixels(baked) = content else {
         unreachable!()
     };
@@ -339,6 +349,10 @@ fn a_sprite_goes_with_its_scene_pose() {
     assert!(
         (world[0] - 100.0).abs() <= 1.0 && (world[1] - 40.0).abs() <= 1.0,
         "{world:?}"
+    );
+    assert_eq!(
+        baked.size[1], 2,
+        "à densidade natural (2 linhas), não à do quadro (40)"
     );
     let opaque = baked.rgba.chunks(4).filter(|q| q[3] == 255).count();
     assert!(

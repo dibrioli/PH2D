@@ -330,9 +330,10 @@ impl Editor {
         ts: &mut TextSystem,
         p: Pointer,
     ) -> bool {
-        // W16 — no recorte o duplo-clique não sai (o do Excalidraw).
+        // W16 — no recorte o duplo-clique não sai (o do Excalidraw): segue como um clique (agarra uma
+        // pega ou desliza a imagem).
         if self.cropping().is_some() {
-            return true;
+            return false;
         }
         // Num ponto de ajuste de uma seta seleccionada, o duplo-clique apaga-o.
         if self.editing.is_none() && self.remove_point_at(doc, history, p) {

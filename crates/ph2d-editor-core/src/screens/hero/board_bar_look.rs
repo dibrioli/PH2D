@@ -511,12 +511,15 @@ pub(super) fn paint_item(
             mid.move_to(at(0.5, 0.0));
             mid.line_to(at(0.5, 1.0));
             stroke(scene, &mid, fg, line, Dash::Dashed);
-            let gap = 0.12; // LITERAL-PX-OK: fracção do ícone entre o eixo e cada triângulo
+            // Fracções do quadrado do ícone: o vão ao eixo, o topo e a base, a ponta do triângulo.
+            let gap = 0.12; // LITERAL-PX-OK: fracção do ícone (o vão ao eixo)
+            let (top, base) = (0.15, 0.85); // LITERAL-PX-OK: fracções do ícone (topo, base)
+            let tip = 0.48; // LITERAL-PX-OK: fracção do ícone (a ponta do triângulo)
             for (side, full) in [(-1.0, true), (1.0, false)] {
                 let mut t = ph2d_vector::BezPath::new();
-                t.move_to(at(0.5 + side * gap, 0.15));
-                t.line_to(at(0.5 + side * gap, 0.85));
-                t.line_to(at(0.5 + side * 0.48, 0.85));
+                t.move_to(at(0.5 + side * gap, top));
+                t.line_to(at(0.5 + side * gap, base));
+                t.line_to(at(0.5 + side * tip, base));
                 t.close_path();
                 if full {
                     scene.fill_path(
@@ -534,8 +537,7 @@ pub(super) fn paint_item(
             let (x0, y0) = (f64::from(inner.x), f64::from(inner.y));
             let (w, h) = (f64::from(inner.w), f64::from(inner.h));
             let at = |u: f64, v: f64| (x0 + u * w, y0 + v * h);
-            // LITERAL-PX-OK: fracções do quadrado do ícone.
-            let (a, b) = (0.25, 0.75);
+            let (a, b) = (0.25, 0.75); // LITERAL-PX-OK: fracções do quadrado do ícone
             let mut l = ph2d_vector::BezPath::new();
             l.move_to(at(a, 0.0));
             l.line_to(at(a, b));

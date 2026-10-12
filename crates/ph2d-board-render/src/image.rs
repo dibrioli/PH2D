@@ -60,7 +60,7 @@ pub fn install_decoder(decode: Decode) {
 }
 
 /// O maior lado de um nível que o Vello aceita: o atlas dele é um quadrado deste lado.
-const ATLAS_SIDE: u32 = 8192;
+pub(crate) const ATLAS_SIDE: u32 = 8192;
 /// O maior lado do nível que FICA sempre (o que se desenha enquanto o fino volta a descodificar):
 /// ⚠️ política de memória, não limite — `128² × 4 B` = 64 KB por imagem.
 const THUMB_SIDE: u32 = 128;
@@ -622,13 +622,8 @@ pub(crate) fn paint(
     } else {
         let a = if group { 1.0 } else { alpha };
         let layered = clip || a < 1.0;
-        if layered {
-            scene.push_layer_shape(VelloBlend::default(), a, t, &box_path(el, st.round));
-        }
-        if let Some((f, source)) = &embed {
-            scene.record_embedded_image(t * level_to_box(el, img, f.size, f.size), source);
-        } else if let Some((f, (pixels, size))) = level {
-            // W16 — um GIF no ecrã toca: o quadro de agora ao tamanho do nível escolhido.
+        // W16 — um GIF no ecrã toca: o quadro de agora ao tamanho do nível escolhido.
+        let drawn = level.map(|(f, (pixels, size))| {
             let (pixels, size) = match export {
                 None => cache
                     .images
@@ -636,13 +631,24 @@ pub(crate) fn paint(
                     .unwrap_or((pixels, size)),
                 Some(_) => (pixels, size),
             };
-            let m = t * level_to_box(el, img, f.size, size);
-            if export.is_none() && cache.cropping == Some(el.id) {
-                let whole = Rect::new(0.0, 0.0, f64::from(size[0]), f64::from(size[1]));
-                scene.push_layer_shape(VelloBlend::default(), CROP_FADE, m, &whole.to_path(0.1));
-                scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, None);
-                scene.pop_layer();
-            }
+            (f, pixels, t * level_to_box(el, img, f.size, size), size)
+        });
+        // W16 — no recorte, a imagem INTEIRA esbatida por baixo, FORA do corte da caixa.
+        if let Some((_, pixels, m, size)) = &drawn
+            && export.is_none()
+            && cache.cropping == Some(el.id)
+        {
+            let whole = Rect::new(0.0, 0.0, f64::from(size[0]), f64::from(size[1]));
+            scene.push_layer_shape(VelloBlend::default(), CROP_FADE, *m, &whole.to_path(0.1));
+            scene.draw_recorded_image(pixels, *m, ImageQuality::Medium, None);
+            scene.pop_layer();
+        }
+        if layered {
+            scene.push_layer_shape(VelloBlend::default(), a, t, &box_path(el, st.round));
+        }
+        if let Some((f, source)) = &embed {
+            scene.record_embedded_image(t * level_to_box(el, img, f.size, f.size), source);
+        } else if let Some((f, pixels, m, _)) = drawn {
             scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source_of(f).as_ref());
         }
         if layered {

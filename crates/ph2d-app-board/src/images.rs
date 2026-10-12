@@ -15,7 +15,7 @@ use ph2d_board_render::Pixels;
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::board_images::{insert_images, takes_image_paste};
-use ph2d_i18n::tr_with;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_imageio_svg::raster;
 
 /// O MIME de um ficheiro vectorial.
@@ -195,24 +195,46 @@ pub enum Paste {
 /// ⭐ W16 — a porta da shell para o `Ctrl+V` num quadro: primeiro os FICHEIROS copiados (o Dolphin
 /// oferece SÓ `text/uri-list` — `docs/MiroClone/ferramentas/colar_dolphin/saida_2026-10-11.txt`), como
 /// os largados, no meio da vista; depois uma IMAGEM; senão o texto. Os ficheiros vêm antes do texto
-/// porque a leitura de texto do Wayland devolve a própria lista de URIs.
-pub fn paste_clipboard(hero: &mut HeroScreen, clip: &mut arboard::Clipboard) -> Paste {
-    if takes_image_paste(hero, None)
-        && let Ok(paths) = clip.get().file_list()
-        && let Some(toast) = paste_files(hero, paths)
-    {
-        return Paste::Done(toast);
+/// porque a leitura de texto do Wayland devolve a própria lista de URIs. As leituras correm com PRAZO
+/// ([`ph2d_app_host::clipboard::read`]); sem resposta, o aviso diz porquê.
+pub fn paste_clipboard(hero: &mut HeroScreen) -> Paste {
+    /// O que a área de transferência deu.
+    enum Got {
+        Files(Vec<PathBuf>),
+        Rest(Option<String>, Option<([u32; 2], Vec<u8>)>),
     }
-    let text = clip.get_text().ok();
-    if takes_image_paste(hero, text.as_deref())
-        && let Ok(img) = clip.get_image()
-    {
-        let size = [img.width as u32, img.height as u32];
-        if paste(hero, text.as_deref(), size, img.bytes.into_owned()) {
-            return Paste::Done(None);
+    let pictures = takes_image_paste(hero, None);
+    let got = ph2d_app_host::clipboard::read(move |c| {
+        if pictures
+            && let Ok(paths) = c.get().file_list()
+            && !paths.is_empty()
+        {
+            return Some(Got::Files(paths));
+        }
+        let text = c.get_text().ok();
+        // Uma imagem só quando o texto não manda (a mesma lei de `takes_image_paste`).
+        let image = (pictures && text.as_deref().is_none_or(|t| t.trim().is_empty()))
+            .then(|| c.get_image().ok())
+            .flatten()
+            .map(|i| ([i.width as u32, i.height as u32], i.bytes.into_owned()));
+        Some(Got::Rest(text, image))
+    });
+    match got {
+        Err(_) => Paste::Done(Some(Toast::warning(tr("clipboard.no_answer")))),
+        Ok(None) => Paste::Text(None),
+        Ok(Some(Got::Files(paths))) => match paste_files(hero, paths) {
+            Some(toast) => Paste::Done(toast),
+            None => Paste::Text(None),
+        },
+        Ok(Some(Got::Rest(text, image))) => {
+            if let Some((size, rgba)) = image
+                && paste(hero, text.as_deref(), size, rgba)
+            {
+                return Paste::Done(None);
+            }
+            Paste::Text(text)
         }
     }
-    Paste::Text(text)
 }
 
 /// Os ficheiros copiados `paths` no quadro activo, no meio da vista. `None` = nenhum (não é para

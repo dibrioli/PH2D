@@ -379,8 +379,18 @@ fn a_cropping_picture_shows_its_whole_self_faded_under_the_window() {
     cache.cropping = Some(id);
     let ops = until_drawn(&mut cache);
     assert_eq!(images(&ops).len(), 2, "a inteira esbatida e a janela");
-    let faded = ops
+    // O esbatido FORA do corte da caixa: a camada dele abre e fecha antes da do corte (dentro dele
+    // não se via nada — a auditoria W16).
+    let kinds: Vec<&str> = ops
         .iter()
-        .any(|o| matches!(o, DrawOp::Layer { alpha, .. } if (*alpha - 27.0 / 255.0).abs() < 1e-6));
-    assert!(faded, "{ops:?}");
+        .filter_map(|o| match o {
+            DrawOp::Layer { alpha, .. } if (*alpha - 27.0 / 255.0).abs() < 1e-6 => Some("fade"),
+            DrawOp::Layer { .. } => Some("clip"),
+            DrawOp::Pop => Some("pop"),
+            DrawOp::Image(_) => Some("image"),
+            _ => None,
+        })
+        .collect();
+    let want = ["fade", "image", "pop", "clip", "image", "pop"];
+    assert!(kinds.windows(want.len()).any(|w| w == want), "{kinds:?}");
 }

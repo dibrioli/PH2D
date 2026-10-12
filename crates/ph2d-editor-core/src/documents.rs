@@ -141,6 +141,7 @@ impl Documents {
         if let (Some(ed), Some(board)) = (live.editor.as_mut(), self.boards.get_mut(prev)) {
             let h = live.histories.entry(prev).or_default();
             ed.commit_text(&mut board.doc, h);
+            ed.end_crop(&board.doc, h);
             ed.cancel_gesture(&mut board.doc);
             ed.select(&board.doc, []);
         }

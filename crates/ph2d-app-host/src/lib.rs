@@ -44,6 +44,7 @@
 #![forbid(unsafe_code)]
 
 pub mod canvas_area;
+pub mod clipboard;
 pub mod family;
 pub mod modal;
 

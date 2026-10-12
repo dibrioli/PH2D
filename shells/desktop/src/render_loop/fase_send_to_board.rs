@@ -10,7 +10,7 @@ use super::*;
 use ph2d_app_board::send_to_board::{Content, Sent, ask, deliver, posed_sprite, targets};
 use ph2d_component_desc::ObjectKind;
 use ph2d_editor_core::screens::hero::send_to_board::goes_to_board;
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -71,16 +71,18 @@ impl crate::App {
                         &gfx.asset_db,
                         &gfx.atlas_asset_map,
                     );
-                    let size = world.get::<ph2d_render::Sprite>(e).map(|s| s.size);
+                    let size = world
+                        .get::<ph2d_render::Sprite>(e)
+                        .map(|s| (s.size, [s.flip_x, s.flip_y]));
                     let m = ph2d_ecs::world_transform(world, e)
                         .map(|t| ph2d_ecs::GlobalTransform::from_transform(t).affine());
                     match (src, size, m) {
-                        (Some(src), Some(size), Some(m)) => {
+                        (Some(src), Some((size, flip)), Some(m)) => {
                             let img = src.image.into_straight();
                             let lin = [m[0], m[1], m[2], m[3]].map(f64::from);
                             let size = size.map(f64::from);
                             let px = Content::rgba([img.width, img.height], img.pixels);
-                            match posed_sprite(px, lin, size, f64::from(ppm)) {
+                            match posed_sprite(px, lin, size, f64::from(ppm), flip) {
                                 Some((content, pose)) => Sent {
                                     name,
                                     content: Ok(content),

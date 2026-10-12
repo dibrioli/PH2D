@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use ph2d_board_model::{FileId, ImageFilter};
 use ph2d_vector::StableImage;
 
-use crate::image::{Pixels, halve_to};
+use crate::image::{ATLAS_SIDE, Pixels, halve_to};
 
 /// Os quadros de uma imagem animada pela ordem, cada um com a duração em milissegundos (a do
 /// ficheiro). `None` = os bytes não são uma animação que o app lê. Corre no fio do tocador.
@@ -147,10 +147,12 @@ fn spawn(animate: Animate, bytes: Arc<[u8]>, filter: ImageFilter, want: u64) -> 
             for (mut px, ms) in frames {
                 let w = target.load(Ordering::Relaxed);
                 let to = [(w >> 32) as u32, w as u32];
-                // Por metades enquanto a metade ainda cobre o pedido (a lei da pirâmide).
+                // Por metades enquanto a metade ainda cobre o pedido (a lei da pirâmide) — e sempre
+                // até caber no atlas do Vello (o que não cabe não se desenha, em silêncio).
                 loop {
                     let next = px.size.map(|v| v.div_ceil(2));
-                    if next == px.size || next[0] < to[0] || next[1] < to[1] {
+                    let over = px.size[0].max(px.size[1]) > ATLAS_SIDE;
+                    if next == px.size || (!over && (next[0] < to[0] || next[1] < to[1])) {
                         break;
                     }
                     px = halve_to(&px, next);

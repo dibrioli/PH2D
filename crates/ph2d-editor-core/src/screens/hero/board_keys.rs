@@ -237,6 +237,18 @@ pub fn key(
         let _ = ed.type_into_note(doc, ts, t);
         return taken();
     }
+    // W16 — Shift+H / Shift+V espelham as imagens seleccionadas (o atalho do Excalidraw); sem
+    // imagens a tecla segue para as ferramentas.
+    if command.is_none()
+        && mods.shift
+        && !ctrl
+        && !mods.alt
+        && let BoardKey::Char(c) = k
+        && matches!(c.to_ascii_lowercase(), 'h' | 'v')
+        && ed.flip_images(doc, history, usize::from(c.eq_ignore_ascii_case(&'v')))
+    {
+        return taken();
+    }
     let command = command.or(match k {
         BoardKey::Char(c) if !ctrl && !mods.alt => tool_key(c).map(|t| match t {
             Tool::Pen(_) => Command::Tool(Tool::Pen(ed.pen.last)),

@@ -207,3 +207,44 @@ fn the_next_shape_does_not_land_on_an_image() {
     let overlap = a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
     assert!(!overlap, "nasceu por cima da imagem: {a:?} × {b:?}");
 }
+
+/// ⭐ W16 — espelhar como o Excalidraw: à volta do centro da caixa de TODAS as seleccionadas — cada
+/// uma vai para o lado espelhado, o ângulo troca de sinal, a imagem vira; duas vezes = como estava.
+#[test]
+fn flipping_mirrors_around_the_selection_and_twice_is_identity() {
+    let (mut doc, mut h) = (BoardDoc::default(), History::default());
+    let mut ed = editor();
+    let ids = ed.insert_images(
+        &mut doc,
+        &mut h,
+        &[(FileId([1; 32]), [100, 50]), (FileId([2; 32]), [40, 40])],
+        [0.0, 0.0],
+        [1e9, 1e9],
+    );
+    let mut a = doc.get(ids[0]).unwrap().clone();
+    a.angle = 0.4;
+    BoardOp::Put(a).apply(&mut doc);
+    let before: Vec<Element> = ids.iter().map(|i| doc.get(*i).unwrap().clone()).collect();
+    let mid = {
+        let b0 = before[0].aabb();
+        let b1 = before[1].aabb();
+        (b0[0].min(b1[0]) + b0[2].max(b1[2])) / 2.0
+    };
+    assert!(ed.flip_images(&mut doc, &mut h, 0));
+    for (id, was) in ids.iter().zip(&before) {
+        let el = doc.get(*id).unwrap();
+        let (cx, wc) = (el.x + el.w / 2.0, was.x + was.w / 2.0);
+        assert!((cx - (2.0 * mid - wc)).abs() < 1e-9, "o centro espelhado");
+        assert_eq!((el.y, el.w, el.h), (was.y, was.w, was.h));
+        assert_eq!(el.angle, -was.angle);
+        assert_eq!(el.image().unwrap().flip, [true, false]);
+    }
+    assert!(ed.flip_images(&mut doc, &mut h, 0));
+    for (id, was) in ids.iter().zip(&before) {
+        let el = doc.get(*id).unwrap();
+        assert!((el.x - was.x).abs() < 1e-9 && el.angle == was.angle);
+        assert_eq!(el.image().unwrap().flip, [false, false]);
+    }
+    ed.selection.clear();
+    assert!(!ed.flip_images(&mut doc, &mut h, 1), "sem imagens, nada");
+}

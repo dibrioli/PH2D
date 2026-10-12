@@ -175,6 +175,53 @@ impl Editor {
         true
     }
 
+    /// ⭐ W16 — ESPELHA as imagens seleccionadas no eixo `axis` (`0` = na horizontal, Shift+H; `1` =
+    /// na vertical, Shift+V), como o Excalidraw: à volta do centro da caixa de todas — cada uma vai
+    /// para o lado espelhado, o ângulo troca de sinal (`M·R(θ) = R(−θ)·M`) e a imagem vira (o recorte,
+    /// em píxeis naturais, fica: mostra a mesma parte, espelhada). Duas vezes = como estava. UM passo;
+    /// `false` = nenhuma imagem.
+    pub fn flip_images(&mut self, doc: &mut BoardDoc, history: &mut History, axis: usize) -> bool {
+        let imgs: Vec<Element> = self
+            .editable(doc)
+            .into_iter()
+            .filter(|el| el.image().is_some())
+            .cloned()
+            .collect();
+        if imgs.is_empty() || axis > 1 {
+            return false;
+        }
+        let (lo, hi) = imgs
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), el| {
+                let b = el.aabb();
+                (lo.min(b[axis]), hi.max(b[axis + 2]))
+            });
+        let mid = (lo + hi) / 2.0;
+        let ops = imgs
+            .into_iter()
+            .map(|mut el| {
+                let c = if axis == 0 {
+                    el.x + el.w / 2.0
+                } else {
+                    el.y + el.h / 2.0
+                };
+                let moved = 2.0 * mid - c - c;
+                if axis == 0 {
+                    el.x += moved;
+                } else {
+                    el.y += moved;
+                }
+                el.angle = -el.angle;
+                if let Some(i) = el.image_mut() {
+                    i.flip[axis] = !i.flip[axis];
+                }
+                BoardOp::Put(el)
+            })
+            .collect();
+        history.apply(doc, ops);
+        true
+    }
+
     /// Antes de colar: os bytes das imagens da cópia entram no quadro de destino (`files`).
     pub fn give_clip_files(&self, files: &mut Files) {
         for (k, f) in &self.clip_files {

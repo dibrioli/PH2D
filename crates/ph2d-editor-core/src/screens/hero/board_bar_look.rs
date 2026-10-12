@@ -45,6 +45,8 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::MoreShapes => "board.tool.more",
         Item::Reshape => "board.style.shape",
         Item::Gray => "board.style.gray",
+        Item::Flip(0) => "board.style.flip_h",
+        Item::Flip(_) => "board.style.flip_v",
         Item::Fill(None) => "board.style.no_fill",
         Item::Fill(Some(_)) => "board.style.fill",
         Item::Stroke(None) => "board.style.no_stroke",
@@ -491,6 +493,40 @@ pub(super) fn paint_item(
                 ph2d_vector::Affine::IDENTITY,
             );
             stroke(scene, &ring, fg, line, Dash::Solid);
+        }
+        // W16 — espelhar: o eixo tracejado e os dois triângulos, o de trás cheio, o da frente vazio.
+        Item::Flip(axis) => {
+            let (x0, y0) = (f64::from(inner.x), f64::from(inner.y));
+            let (w, h) = (f64::from(inner.w), f64::from(inner.h));
+            // Em coordenadas do eixo `0` (horizontal); o vertical troca x e y.
+            let at = |u: f64, v: f64| {
+                if axis == 0 {
+                    (x0 + u * w, y0 + v * h)
+                } else {
+                    (x0 + v * w, y0 + u * h)
+                }
+            };
+            let mut mid = ph2d_vector::BezPath::new();
+            mid.move_to(at(0.5, 0.0));
+            mid.line_to(at(0.5, 1.0));
+            stroke(scene, &mid, fg, line, Dash::Dashed);
+            let gap = 0.12; // LITERAL-PX-OK: fracção do ícone entre o eixo e cada triângulo
+            for (side, full) in [(-1.0, true), (1.0, false)] {
+                let mut t = ph2d_vector::BezPath::new();
+                t.move_to(at(0.5 + side * gap, 0.15));
+                t.line_to(at(0.5 + side * gap, 0.85));
+                t.line_to(at(0.5 + side * 0.48, 0.85));
+                t.close_path();
+                if full {
+                    scene.fill_path(
+                        &t,
+                        &ph2d_vector::Brush::Solid(fg),
+                        ph2d_vector::Affine::IDENTITY,
+                    );
+                } else {
+                    stroke(scene, &t, fg, line, Dash::Solid);
+                }
+            }
         }
         Item::Opacity(i) => {
             let a = f32::from(OPACITIES[i]) / 100.0; // LITERAL-PX-OK: percentagem → fracção

@@ -87,10 +87,14 @@ fn the_sketch_button_reaches_the_frame() {
     assert!(image(&t).style.sketch);
 }
 
-/// Os ids dos controlos que já existiam não se movem com o preto e branco (vai no FIM, depois do
-/// «Forma»).
+/// Os ids dos controlos que já existiam não se movem com o preto e branco (vai depois do «Forma»;
+/// o que veio a seguir, W16, vai depois dele).
 #[test]
 fn the_gray_item_is_last_and_moves_no_id() {
     let v = items();
-    assert_eq!(v[v.len() - 2..], [Item::Reshape, Item::Gray]);
+    let r = v
+        .iter()
+        .position(|i| *i == Item::Reshape)
+        .expect("o «Forma»");
+    assert_eq!(v[r..r + 2], [Item::Reshape, Item::Gray]);
 }

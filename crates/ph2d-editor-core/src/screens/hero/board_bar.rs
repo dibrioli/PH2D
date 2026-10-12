@@ -128,6 +128,8 @@ pub enum Item {
     Reshape,
     /// W15 — o preto e branco das imagens seleccionadas (aceso se estão todas).
     Gray,
+    /// W16 — espelhar as imagens seleccionadas: `0` na horizontal (Shift+H), `1` na vertical (Shift+V).
+    Flip(usize),
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -209,12 +211,12 @@ pub fn items() -> Vec<Item> {
     .flat_map(style_groups)
     .flatten()
     {
-        if !v.contains(&it) && !matches!(it, Item::Reshape | Item::Gray) {
+        if !v.contains(&it) && !matches!(it, Item::Reshape | Item::Gray | Item::Flip(_)) {
             v.push(it);
         }
     }
     // No FIM, pela ordem em que chegaram: os ids dos outros não se movem.
-    v.extend([shapes::RESHAPE, Item::Gray]);
+    v.extend([shapes::RESHAPE, Item::Gray, Item::Flip(0), Item::Flip(1)]);
     v
 }
 
@@ -294,6 +296,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             dash,
             opacity,
             vec![Item::Gray],
+            vec![Item::Flip(0), Item::Flip(1)],
         ],
     };
     groups.extend(org);
@@ -546,6 +549,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Item::Route(r) => ed.set_route(doc, history, r),
         Item::Gray => {
             ed.toggle_gray(doc, history);
+        }
+        Item::Flip(axis) => {
+            ed.flip_images(doc, history, axis);
         }
         Item::Head(i, h) => ed.set_head(doc, history, i, h),
         Item::MoreShapes

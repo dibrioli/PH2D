@@ -122,7 +122,14 @@ seleccionada). Fotos: `/var/tmp/ph2d_F12_cenas/`.
 
 ## §7 — O que fica ABERTO
 
-1. **Perguntas ao dono (produto), sem resposta:** (a) o bico cortado (doc 19 §5, a/b/c; fotos
+> ✅ **Smoke do dono OK (12/10)**, e ele respondeu às cinco perguntas abaixo com «faça como
+> sugere»: (a) o bico cortado FICA; (b) a *Resize Box* MANTÉM a espessura do traço; (c) o ⇕ do
+> *Viewed* inverte (subir = «De cima»); (d) o *Smoothing* antigo fica como está; (e) a fila de ⇕ sai
+> de cima da alça de canto em caixas baixas. Mais um pedido NOVO: o modo Forma SELECCIONA e, depois
+> de seleccionar, mostra as alças (nunca os nós). Tudo isto é a F13, nesta linha, ANTES da
+> integração: [`22_prompt…`](../vetor_nova_ui/22_prompt_F13_selecionar_no_modo_forma_e_as_respostas.md).
+
+1. **Perguntas ao dono (produto) — RESPONDIDAS em 12/10 (acima):** (a) o bico cortado (doc 19 §5, a/b/c; fotos
    `/var/tmp/ph2d_F12_cena18/`); (b) a *Resize Box* mantém a espessura do traço?; (c) o ⇕ do *Viewed*
    dos isométricos: subir dá «De baixo» — recomendado inverter só ele; (d) o rectângulo gravado antes
    com *Smoothing* continua suave sem controlo — recomendado aceitar.

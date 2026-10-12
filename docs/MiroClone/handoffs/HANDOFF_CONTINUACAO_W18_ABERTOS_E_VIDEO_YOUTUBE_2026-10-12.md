@@ -1,5 +1,7 @@
 # CONTINUAÇÃO — `line/MiroClone` W18: os abertos das imagens + o VÍDEO do YouTube no quadro (2026-10-12)
 
+✅ FECHADO em 12/10 — ver [handoff de integração W18](HANDOFF_INTEGRACAO_line_MiroClone_W18_2026-10-12.md)
+
 > Rota `/pd-linha-assumir`: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && pwd && git branch --show-current`
 > ANTES de ler. Estado: a W17 FECHOU com **smoke OK do dono (12/10)** —
 > [handoff de integração W17](HANDOFF_INTEGRACAO_line_MiroClone_W17_2026-10-12.md) (integra-se JUNTO com W16, W15, W14 e

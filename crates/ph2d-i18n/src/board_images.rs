@@ -115,7 +115,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w17.crop" => "Crop with Shift",
         "board.smoke.w17.same" => "Same photo",
         "board.smoke.w17.l1" => {
-            "1. The right picture's file is cut in half. It shows the rows that could be read, with a red mark in the corner, and the bar above the board says so once \u{2014} before, it stayed grey forever."
+            "1. The right picture's file is cut. It shows the part that could be read, with a red mark, and the bar above says so once."
         }
         "board.smoke.w17.l2" => {
             "2. Double-click the tall picture, hold Shift and drag a corner: it keeps its own tall shape, not the shape of the whole photo."

@@ -29,6 +29,7 @@ use ph2d_vector::{
 use crate::{RenderCache, token};
 
 /// Os píxeis de uma imagem descodificada: RGBA de 8 bits, alfa reto, sRGB.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pixels {
     pub size: [u32; 2],
     pub rgba: Vec<u8>,

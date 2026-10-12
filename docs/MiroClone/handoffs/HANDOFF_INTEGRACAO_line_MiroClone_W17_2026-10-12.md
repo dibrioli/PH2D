@@ -156,18 +156,20 @@ Os abertos (b) e (c) da W16 (nome vazio/apagados; Shift do recorte) FECHARAM aqu
 `rm -rf target/*/incremental` e depois, a 2.ª de
 `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`:
 ```
-<COLAR AQUI A 2.ª SAÍDA>
+▸ linha line_miroclone · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.32s
 ```
 
 Passos:
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && PH2D_BOARD_SMOKE=18 ./target/smoke/ph2d-host-desktop`
-   — abre o quadro «Damaged» (fotografia boa e a mesma fotografia estragada).
+   — abre o quadro «Known picture fixes»: três frames lado a lado («Damaged», «Crop with Shift», «Same photo») e
+   quatro notas amarelas por baixo (as lições).
 2. **Imagem estragada:** a cópia estragada aparece riscada a vermelho e a faixa de aviso diz que uma imagem está
    estragada. (Antes: cinzenta para sempre, sem aviso.) Exporte o quadro: a estragada não sai.
-3. **Recorte com Shift:** vá ao quadro «Crop with Shift», duplo-clique na foto já recortada, arraste um canto segurando
+3. **Recorte com Shift:** no frame «Crop with Shift», duplo-clique na foto já recortada, arraste um canto segurando
    **Shift** — a janela mantém a proporção que tinha (alta, 2:3), não a da foto inteira.
-4. **PDF:** no quadro «Same photo» (3.ª página) exporte em PDF — sai rápido, sem esperar por cada página.
+4. **PDF:** exporte o quadro em PDF — três páginas (uma por frame) com a mesma foto, lida uma vez só.
 5. **«Send to board…» sem nome:** a lição 4 explica; na aba da cena, um objecto sem nome ou apagado a meio aparece como
    «Unnamed …» / «Deleted object» no aviso, nunca como «Left out: , ».
 

@@ -252,7 +252,7 @@ fn cada_mistura_por_copia_compoe_como_o_vello() {
             eprintln!("  {m:?}: o dispositivo nao a desenha — fica no Vello");
             continue;
         }
-        let casos: [(&str, Vec<Corrida>); 6] = [
+        let casos: [(&str, Vec<Corrida>); 8] = [
             ("everything", vec![corrida(0..4, m, 0)]),
             (
                 "depois de normal",
@@ -274,6 +274,15 @@ fn cada_mistura_por_copia_compoe_como_o_vello() {
                     corrida(2..3, Mistura::Tela, 7),
                     corrida(3..4, m, 7),
                 ],
+            ),
+            // Duas misturas seguidas com a 1.ª a passar de `1`: o fundo da 2.ª sai cortado.
+            (
+                "soma e depois",
+                vec![corrida(0..2, Mistura::Soma, 0), corrida(2..4, m, 0)],
+            ),
+            (
+                "soma e depois grupo",
+                vec![corrida(0..2, Mistura::Soma, 0), corrida(2..4, m, 7)],
             ),
             (
                 "e normal por cima",

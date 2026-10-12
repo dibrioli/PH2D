@@ -127,7 +127,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The Outputs blend with the scene in different modes - the filtered layer lands with the first Output's"
         }
         "app.motion.motion_filter.each_shape_sees_the_vector_path_as_one" => {
-            "Some shapes draw by the vector path (a Blend with Everything or Copies, a Blend per row, a shape the GPU refuses) - Each Shape treats them as one piece"
+            "Some shapes blend with each other (a Blend with Everything or Copies, a Blend per row) or draw by the vector path (a shape the GPU refuses) - Each Shape treats them as one piece"
         }
         "app.motion.motion_bridge_params_text_rows.rule_problem" => {
             "\u{ab}{rule}\u{bb}: {say} (+{queixas} more)"

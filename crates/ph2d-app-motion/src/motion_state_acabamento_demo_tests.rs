@@ -424,3 +424,63 @@ fn the_scene_does_not_jump_when_the_route_leaves_the_device() {
     }
     assert!(passo > 1e-3, "controlo: a cena anda");
 }
+
+/// ⭐ **Os passos (12) e (13) vão à PLACA** (B5): a saída em `Multiply`/`Screen` com `Copies`, cozida
+/// pela bomba do produto com a camada filtrada ligada — cada disco é uma cópia que a placa compõe
+/// como o Vello, no grupo do sink. Controlo: sem a 2.ª saída o Multiply fica no Vello, e diz porquê.
+#[test]
+fn the_copies_steps_go_to_the_plate() {
+    use crate::motion_shape_placa::Misturas;
+    for (n, esperada) in [
+        ("12", ph2d_shape_gpu::Mistura::Multiplica),
+        ("13", ph2d_shape_gpu::Mistura::Tela),
+    ] {
+        let mut m = MotionState::new();
+        let cena = monta(&mut m.doc, &m.registry).expect("a cena monta");
+        assert!(passo(&mut m.doc.graph, &cena, n));
+        m.sinks = vec![cena.saida];
+        m.pump.isola_na_camada(true);
+        let scopes = ph2d_nodegraph::cook::TimeScopes::new();
+        for t in 0..2 {
+            #[expect(clippy::cast_precision_loss, reason = "um tique")]
+            crate::motion_externals::publish_all(&mut m, t as f64 / 60.0);
+            let sinks = m.sinks.clone();
+            let _ = m.pump.advance_or_scrub_scoped(
+                &m.doc.graph,
+                &m.registry,
+                &sinks,
+                t,
+                |t| t as f64 / 60.0,
+                m.default_uv_rect,
+                m.default_size,
+                &scopes,
+            );
+        }
+        let insts = &m.pump.vector_instances;
+        assert!(
+            insts.len() > 10,
+            "passo {n}: a galáxia tem discos ({})",
+            insts.len()
+        );
+        let placa = Misturas {
+            ligadas: true,
+            isolada: true,
+            multiplica: true,
+        };
+        for v in insts {
+            let (mistura, grupo) = placa.da_copia(v).expect("a placa compõe-na");
+            assert_eq!(mistura, esperada, "passo {n}");
+            assert!(grupo > 0, "passo {n}: Copies é um grupo");
+        }
+        let sem = Misturas {
+            multiplica: false,
+            ..placa
+        };
+        let motivo = sem.da_copia(&insts[0]).err();
+        assert_eq!(
+            motivo.is_some(),
+            n == "12",
+            "passo {n}: só o Multiply precisa da 2.ª saída ({motivo:?})"
+        );
+    }
+}

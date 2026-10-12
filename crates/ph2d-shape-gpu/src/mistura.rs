@@ -17,8 +17,8 @@
 //! camada nova (cada cópia com mistura é uma) sai preso a `[0, 1]`, e o alfa do `Plus` é cortado na
 //! composição — mas a COR do `Plus` passa solta a quem pinta em `Normal` a seguir, até ao próximo
 //! empilhar ou à saída. A placa, em meio-float, não corta nada sozinha; os cortes são passes de ecrã
-//! inteiro com mistura `Min` contra o branco: o ALFA depois de cada corrida de Soma, a cor e o alfa
-//! antes de uma corrida com mistura (e antes de colar um grupo) e no fim, se alguma Soma correu.
+//! inteiro com mistura `Min` contra o branco: a cor e o alfa antes de uma corrida com mistura, antes de
+//! colar um grupo e no fim, se alguma Soma correu; e o ALFA do rascunho de um grupo antes de o colar.
 //!
 //! ⭐ **O GRUPO isolado** (`Copies`): as cópias misturam-se só entre si e o grupo pousa em `Normal`.
 //! Como primeiro conteúdo de um alvo limpo isso é desenhar directo; depois de algo, as corridas do
@@ -390,7 +390,7 @@ impl ShapePass {
                     desenhado: false,
                     solto: false,
                 };
-                self.corridas_em(encoder, &mut r, &corridas[i..j], &ligacoes);
+                self.corridas_em(encoder, &mut r, &corridas[i..j], &ligacoes, false);
                 let mut pass = abre(encoder, &mut alvo);
                 if std::mem::take(&mut alvo.solto) {
                     self.corta(&mut pass, false);
@@ -400,7 +400,7 @@ impl ShapePass {
                 pass.draw(0..3, 0..1);
                 alvo.solto = r.solto;
             } else {
-                self.corridas_em(encoder, &mut alvo, &corridas[i..j], &ligacoes);
+                self.corridas_em(encoder, &mut alvo, &corridas[i..j], &ligacoes, true);
             }
             i = j;
         }
@@ -410,13 +410,20 @@ impl ShapePass {
         }
     }
 
-    /// As `corridas` num passe sobre `alvo`, com os cortes do cabeçalho.
+    /// As `corridas` num passe sobre `alvo`, com os cortes do cabeçalho. `cortado_depois` = o alvo leva
+    /// o corte da cor e do alfa a seguir (o alvo do desenho: antes de colar um grupo e no fim); senão
+    /// é o RASCUNHO de um grupo, que vai ser FONTE da colagem e sai com o alfa cortado.
+    ///
+    /// ⚠️ Num alvo, o alfa acima de `1` depois de uma Soma não precisa de corte próprio: o `Normal` que
+    /// vier compõe a cor só com o alfa da FONTE, e `min(αs + x·(1−αs), 1) = αs + min(x, 1)·(1−αs)`;
+    /// toda mistura seguinte, a colagem e o fim cortam tudo antes.
     fn corridas_em(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         alvo: &mut Alvo<'_>,
         corridas: &[Corrida],
         l: &Ligacoes<'_>,
+        cortado_depois: bool,
     ) {
         let mut pass = abre(encoder, alvo);
         for c in corridas {
@@ -439,10 +446,10 @@ impl ShapePass {
             pass.set_bind_group(0, l.bg, &[]);
             pass.set_bind_group(1, l.leitura, &[]);
             pass.draw(0..6, c.copias.clone());
-            if c.mistura == Mistura::Soma {
-                self.corta(&mut pass, true);
-                alvo.solto = true;
-            }
+            alvo.solto |= c.mistura == Mistura::Soma;
+        }
+        if !cortado_depois && alvo.solto {
+            self.corta(&mut pass, true);
         }
     }
 

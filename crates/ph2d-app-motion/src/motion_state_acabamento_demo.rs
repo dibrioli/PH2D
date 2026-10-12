@@ -122,8 +122,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 pub(crate) const LUT_QUENTE: &str = "docs/Motion Nodes/tutoriais/luts/quente.cube";
 
 /// Os passos que [`passo`] reconhece, pela ordem do roteiro (`0` = a cena como abre).
-pub(crate) const PASSOS: [&str; 16] = [
-    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8", "9", "10", "11",
+pub(crate) const PASSOS: [&str; 18] = [
+    "0", "1", "2", "3", "4", "5", "5b", "6", "7a", "7b", "7c", "7d", "8", "9", "10", "11", "12",
+    "13",
 ];
 
 /// **Um passo do roteiro já feito** — `PH2D_ACABAMENTO_PASSO=<passo>`, a porta das FOTOS: os
@@ -160,6 +161,12 @@ pub(crate) fn passo(g: &mut Graph, c: &Cena, n: &str) -> bool {
             if n == "11" {
                 g.set_param(c.forma, ph2d_node_fx_filter::param::BLEND, 1.0);
             }
+        }
+        // B5: a saída mistura os discos SÓ ENTRE SI (`Copies`) — a placa desenha-os (Multiply · Screen).
+        "12" | "13" => {
+            let tag = if n == "12" { 3.0 } else { 4.0 };
+            g.set_param(c.saida, ph2d_eval_motion::SINK_BLEND_PARAM, tag);
+            g.set_param(c.saida, ph2d_eval_motion::SINK_BLEND_WITH_PARAM, 1.0);
         }
         _ => return false,
     }
@@ -211,12 +218,18 @@ pub(super) fn announce() {
          bolinha da barra: as cores dos discos andam junto.\n\
          (11) Ainda no 1.o, a linha `Blend` (logo abaixo de `Opacity`): troque para `Multiply`. O\n    \
          arco-iris passa a ESCURECER a cor de cada disco em vez de a trocar.\n\
+         (12) Volte o 1.o `Filter` para `Bevel`. No cartao `Output`: `Blend` = `Multiply` e `Blend\n    \
+         With` = `Copies`. Onde dois discos se TOCAM a cor fica mais ESCURA (um tinge o outro); o\n    \
+         resto da galaxia fica igual. O terminal diz `pela PLACA`. O relevo passa a tratar a\n    \
+         galaxia como UMA peca (o cartao do 1.o `Filter` avisa).\n\
+         (13) Troque `Blend` para `Screen`: onde os discos se tocam a cor CLAREIA.\n\
          \n\
          DEU ERRADO se: o relevo tremer com a galaxia a girar; se em `Each Shape` os discos do meio\n\
          tiverem sombra interna diferente dos da beira; se em `Whole Layer` a borda continuar entre\n\
          discos que se tocam; se o efeito sair por cima dos paineis ou do grafo; se a franja\n\
          aparecer no centro; se o grao continuar a mexer com o tempo parado; se o degrade nao\n\
-         mudar a cor dos discos; ou se a linha `Blend` aparecer com o `Effect` em `Blur`.\n"
+         mudar a cor dos discos; se a linha `Blend` aparecer com o `Effect` em `Blur`; ou se em\n\
+         (12)/(13) a galaxia inteira escurecer ou clarear, ou o terminal disser `pela cena Vello`.\n"
     );
 }
 

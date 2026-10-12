@@ -262,7 +262,24 @@ por exemplo, ela não existe.</p>
 <p><b>Como saber que errou:</b> a linha <code>Blend</code> aparece com <code>Effect</code> em
 <code>Blur</code>.</p>
 
-<h2>13 · O que isto custa</h2>
+<h2>13 · Os discos que se tocam</h2>
+<p>Volte o 1.º <code>Filter</code> para <code>Bevel</code>. No cartão <code>Output</code>, ponha
+<code>Blend</code> em <code>Multiply</code> e <code>Blend With</code> em <code>Copies</code>: os discos
+passam a misturar-se <b>só entre si</b>. Onde dois se tocam, um tinge o outro e a cor fica mais
+<b>escura</b>; o resto da galáxia fica como estava. Troque <code>Blend</code> para
+<code>Screen</code>: onde se tocam, a cor <b>clareia</b>.</p>
+<p>Essas misturas são desenhadas pela placa de vídeo, como o resto das formas — o terminal diz
+«pela PLACA». Com a mistura ligada, o relevo do 1.º <code>Filter</code> passa a tratar a galáxia como
+<b>uma peça só</b> (o cartão do <code>Filter</code> avisa): os discos misturados já não estão
+separados.</p>
+<figure class="wide meia"><img src="../fig/acabamento_copias_multiply.png" alt="os discos escurecem onde se tocam">
+<figcaption><code>Multiply</code> com <code>Copies</code>: mais escuro só onde os discos se tocam.</figcaption></figure>
+<figure class="wide meia"><img src="../fig/acabamento_copias_screen.png" alt="os discos clareiam onde se tocam">
+<figcaption><code>Screen</code> com <code>Copies</code>: mais claro só onde os discos se tocam.</figcaption></figure>
+<p><b>Como saber que errou:</b> a galáxia inteira escurece ou clareia (não só onde os discos se
+tocam), ou o terminal diz «pela cena Vello».</p>
+
+<h2>14 · O que isto custa</h2>
 <p>Medido nesta máquina, na placa de vídeo, com o computador ocupado por outros trabalhos — vale
 como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
 <table>
@@ -273,8 +290,9 @@ como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
       <td class="n">0,8 ms</td></tr>
   <tr><td>o mesmo em <code>Each Shape</code>, 4 096 discos</td><td class="n">4,6 ms</td>
       <td class="n">4,9 ms</td></tr>
-  <tr><td>a mistura com <code>Everything</code>, 4 096 discos (eles passam pelo desenho de vetor)</td>
-      <td class="n">1,9 ms</td><td class="n">2,3 ms</td></tr>
+  <tr><td>a mistura com <code>Everything</code> ou <code>Copies</code>, 4 096 discos (na placa de
+      vídeo; antes, pelo desenho de vetor: 1,9 e 2,3 ms)</td>
+      <td class="n">0,4 ms</td><td class="n">0,7 ms</td></tr>
   <tr><td>o <code>Lens</code> com as quatro secções ligadas, na janela inteira</td>
       <td class="n">0,4 ms</td><td class="n">1,8 ms</td></tr>
 </table>
@@ -282,7 +300,7 @@ como ordem de grandeza. Um quadro a 60 por segundo tem 16,7 ms.</p>
 conta. <code>Each Shape</code> custa mais com muitas formas, porque cada uma corre sozinha; com
 poucas formas os dois custam quase o mesmo.</p>
 
-<h2>14 · Se algo não bater</h2>
+<h2>15 · Se algo não bater</h2>
 <table>
   <tr><th>o que você vê</th><th>o que reportar</th></tr>
   <tr><td>o relevo treme com a galáxia a girar</td><td>uma foto e o <code>Effect</code></td></tr>
@@ -293,6 +311,10 @@ poucas formas os dois custam quase o mesmo.</p>
   <tr><td>a franja aparece no centro</td><td>o valor de <code>Aberration</code></td></tr>
   <tr><td>o degradê não muda a cor dos discos</td><td>uma foto e o <code>Effect</code></td></tr>
   <tr><td>a linha <code>Blend</code> aparece com <code>Effect</code> em <code>Blur</code></td><td>uma foto</td></tr>
+  <tr><td>com <code>Copies</code>, a galáxia inteira escurece ou clareia</td><td>uma foto e o
+      <code>Blend</code></td></tr>
+  <tr><td>o terminal diz «pela cena Vello» nos passos da secção 13</td><td>a linha
+      inteira do terminal</td></tr>
   <tr><td>o grão mexe com o tempo parado</td><td>se o relógio estava parado mesmo</td></tr>
 </table>
 

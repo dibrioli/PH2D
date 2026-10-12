@@ -361,49 +361,62 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
         8,
     );
     let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
-    // `Screen` em `Copies` (vai ao Vello, e não satura como o `Add`), um borrão largo face às cópias.
-    let (neutro, _) = pela_camada(
-        &gpu,
-        &mut renderer,
-        &blit,
-        4,
-        BlendWith::Copies,
-        0.0,
-        false,
-        Rota::Vello,
-    );
-    let (borrado, m) = pela_camada(
-        &gpu,
-        &mut renderer,
-        &blit,
-        4,
-        BlendWith::Copies,
-        20.0,
-        false,
-        Rota::Vello,
-    );
-    println!("  neutro {neutro:?} · borrado {borrado:?}");
+    // `Screen` em `Copies` (não satura como o `Add`), um borrão largo face às cópias — pelas duas
+    // rotas: o Vello e a placa (B5) levam as formas com mistura à camada como UMA peça.
+    let mut lidos = Vec::new();
+    for rota in [Rota::Vello, Rota::Placa] {
+        let mut pela = |raio| {
+            pela_camada(
+                &gpu,
+                &mut renderer,
+                &blit,
+                4,
+                BlendWith::Copies,
+                raio,
+                false,
+                rota,
+            )
+        };
+        let ((neutro, _), (borrado, m)) = (pela(0.0), pela(20.0));
+        println!("  neutro {neutro:?} · borrado {borrado:?}");
+        assert!(
+            neutro
+                .iter()
+                .zip(borrado)
+                .any(|(a, b)| (a - b).abs() > 4 * BARRA),
+            "o borrão `Each Shape` não mudou as formas: {neutro:?} · {borrado:?}"
+        );
+        let no = m.filtro.pilha()[0].no;
+        let q = m.filtro.queixa(no).expect("o cartão do `Each Shape` diz");
+        assert!(q.contains("one piece"), "{q}");
+        lidos.push(borrado);
+    }
     assert!(
-        neutro
+        lidos[0]
             .iter()
-            .zip(borrado)
-            .any(|(a, b)| (a - b).abs() > 4 * BARRA),
-        "o borrão `Each Shape` não mudou as formas do Vello: {neutro:?} · {borrado:?}"
+            .zip(lidos[1])
+            .all(|(a, b)| (a - b).abs() <= BARRA),
+        "o borrão sobre o conjunto difere entre o Vello e a placa: {lidos:?}"
     );
-    let no = m.filtro.pilha()[0].no;
-    let q = m.filtro.queixa(no).expect("o cartão do `Each Shape` diz");
-    assert!(q.contains("one piece"), "{q}");
 }
 
-/// ⭐ **O PREÇO do Vello dentro da camada** (doc 129 §5.8) — sonda manual, `--release --nocapture`:
-/// o quadro da camada filtrada (pilha neutra) a `1600×972` e a 4K com `n` discos pelo Vello (`Add` com
-/// tudo), contra o MESMO quadro sem formas. Blocos intercalados, o MÍNIMO (MEDIR_VELOCIDADE.md).
+/// ⭐ **O PREÇO do Vello dentro da camada, e o da PLACA** (doc 129 §5.8; B5) — sonda manual,
+/// `--release --nocapture`: o quadro da camada filtrada (pilha neutra) a `1600×972` e a 4K com `n`
+/// discos que se misturam com tudo (`Everything`), por três rotas no MESMO processo — sem formas, o
+/// Vello na camada (o `encode` incluído) e a placa (o `decide` incluído) —, em cada mistura. Blocos
+/// intercalados com a ordem rodada, o MÍNIMO (MEDIR_VELOCIDADE.md).
 #[test]
 #[ignore = "sonda: manual — --release --nocapture, com placa"]
 fn o_preco_do_vello_na_camada() {
     let Some(gpu) = try_headless_gpu() else {
         return;
     };
+    println!(
+        "\ncarga: {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
     for (w, h) in [(1600u32, 972u32), (3840, 2160)] {
         let mut renderer = ph2d_render::SpriteRenderer::new(
             gpu.clone(),
@@ -415,77 +428,90 @@ fn o_preco_do_vello_na_camada() {
         let mundo = WorldRt::new(&gpu, (w, h));
         let mut store = VecPathStore::default();
         let _ = store.push(ph2d_vec_scene::rectangle([-0.5, -0.5], [0.5, 0.5]));
-        println!(
-            "\ncarga: {}",
-            std::fs::read_to_string("/proc/loadavg")
-                .unwrap_or_default()
-                .trim()
-        );
         for n in [256usize, 4096] {
-            let lado = (n as f32).sqrt().ceil() as usize;
-            let mistura = MisturaDoSink {
-                blend: 1,
-                com: BlendWith::Everything,
-                sink: 1,
-            };
-            #[allow(clippy::cast_precision_loss)]
-            let insts: Vec<_> = (0..n)
-                .map(|i| {
-                    let mut c = copia(0.0, 12.0, A1, mistura, None);
-                    c.world_pos = [
-                        200.0 + (i % lado) as f32 * 1200.0 / lado as f32,
-                        100.0 + (i / lado) as f32 * 770.0 / lado as f32,
-                    ];
-                    c.size = [14.0, 14.0];
-                    c
-                })
-                .collect();
-            let mut minimo = [f64::MAX; 2];
-            // Um Motion por variante, criado UMA vez (os passes e o Vello da camada nascem no 1.º
-            // quadro, que é o aquecimento e não conta).
-            let mut ms = [0, 1].map(|_| motion_com_filtro(1, BlendWith::Everything, 0.0));
-            for bloco in 0..13 {
-                for variante in [bloco % 2, 1 - bloco % 2] {
-                    let m = &mut ms[variante];
-                    if variante == 1 {
-                        let mut art = |_: u32, _: [f32; 4]| None;
-                        let cena = m.filtro.cena_da_camada(true).expect("a cena");
-                        encode(
-                            &insts,
-                            &store,
-                            &mut art,
-                            Affine::IDENTITY,
-                            None,
-                            ph2d_render::ImageFilterMode::Smooth,
-                            cena,
-                        );
-                        m.pump.vector_instances.clone_from(&insts);
-                    }
-                    assert!(m.filtro.liga(true));
-                    let t = std::time::Instant::now();
-                    m.filtra_a_camada(Engrenagem {
-                        gpu: &gpu,
-                        renderer: &mut renderer,
-                        camera: &Camera2d::default(),
-                        window: ph2d_host::WindowSize {
-                            width: w,
-                            height: h,
-                        },
-                        scene_viewport: None,
-                        formas: None,
-                        mundo: &mundo,
-                        band_blit: &blit,
-                    });
-                    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-                    if bloco > 0 {
-                        minimo[variante] = minimo[variante].min(t.elapsed().as_secs_f64() * 1e3);
+            for tag in [1u8, 4, 3] {
+                let lado = (n as f32).sqrt().ceil() as usize;
+                let mistura = MisturaDoSink {
+                    blend: tag,
+                    com: BlendWith::Everything,
+                    sink: 1,
+                };
+                #[allow(clippy::cast_precision_loss)]
+                let insts: Vec<_> = (0..n)
+                    .map(|i| {
+                        let mut c = copia(0.0, 12.0, A1, mistura, None);
+                        c.world_pos = [
+                            200.0 + (i % lado) as f32 * 1200.0 / lado as f32,
+                            100.0 + (i / lado) as f32 * 770.0 / lado as f32,
+                        ];
+                        c.size = [14.0, 14.0];
+                        c
+                    })
+                    .collect();
+                let mut minimo = [f64::MAX; 3];
+                // Um Motion por rota, criado UMA vez (os passes nascem no 1.º quadro, que é o
+                // aquecimento e não conta).
+                let mut ms = [0, 1, 2].map(|_| motion_com_filtro(tag, BlendWith::Everything, 0.0));
+                let mut placa = PlacaDeFormas::default();
+                for bloco in 0..13 {
+                    for k in 0..3 {
+                        let rota = (bloco + k) % 3;
+                        let m = &mut ms[rota];
+                        let t = std::time::Instant::now();
+                        if rota == 1 {
+                            let mut art = |_: u32, _: [f32; 4]| None;
+                            let cena = m.filtro.cena_da_camada(true).expect("a cena");
+                            encode(
+                                &insts,
+                                &store,
+                                &mut art,
+                                Affine::IDENTITY,
+                                None,
+                                ph2d_render::ImageFilterMode::Smooth,
+                                cena,
+                            );
+                        }
+                        if rota == 2 {
+                            let misturas = Misturas::do_quadro(&gpu, true);
+                            let geos = &mut m.placa_geometrias;
+                            assert!(placa.decide_com_misturas(
+                                true,
+                                &insts,
+                                &store,
+                                geos,
+                                Affine::IDENTITY,
+                                misturas
+                            ));
+                            let _ = placa.desenha(&gpu, (w, h), geos, None);
+                        }
+                        if rota > 0 {
+                            m.pump.vector_instances.clone_from(&insts);
+                        }
+                        assert!(m.filtro.liga(true));
+                        m.filtra_a_camada(Engrenagem {
+                            gpu: &gpu,
+                            renderer: &mut renderer,
+                            camera: &Camera2d::default(),
+                            window: ph2d_host::WindowSize {
+                                width: w,
+                                height: h,
+                            },
+                            scene_viewport: None,
+                            formas: (rota == 2).then_some(&placa),
+                            mundo: &mundo,
+                            band_blit: &blit,
+                        });
+                        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                        if bloco > 0 {
+                            minimo[rota] = minimo[rota].min(t.elapsed().as_secs_f64() * 1e3);
+                        }
                     }
                 }
+                println!(
+                    "  {w}×{h} {n:>5} discos tag {tag}: sem formas {:.2} ms · Vello na camada {:.2} ms · placa {:.2} ms",
+                    minimo[0], minimo[1], minimo[2]
+                );
             }
-            println!(
-                "  {w}×{h} {n:>5} discos: sem formas {:.2} ms · com o Vello na camada {:.2} ms",
-                minimo[0], minimo[1]
-            );
         }
     }
 }

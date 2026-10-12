@@ -175,3 +175,86 @@ fn o_colisor_pelo_nome_separa_na_placa_como_na_cpu() {
         );
     }
 }
+
+/// ⏱ **O preço que justifica** (§0.0, doc 131 D.14): a cena a `64²` e `128²` discos, CPU × placa no
+/// MESMO processo, 6 blocos com a ordem rodada, o MÍNIMO por quadro, o `loadavg` ao lado. Cada
+/// quadro mexe o vão da grelha (o memo não responde por ninguém) e a placa espera a fila.
+#[test]
+#[ignore = "sonda: preço — corra em --profile smoke com a placa"]
+fn sonda_o_preco_do_colisor_pelo_nome() {
+    use std::time::{Duration, Instant};
+    let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
+        panic!("sem adapter");
+    };
+    const QUADROS: usize = 8;
+    for lado in [64usize, 128] {
+        let (mut placa, drive) = cena(lado, CUSTOM, "collider");
+        let (mut cpu, _) = cena(lado, CUSTOM, "collider");
+        cpu.gpu_enabled = false;
+        let grade = placa
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == "motion.grid")
+            .map(|n| n.id)
+            .expect("grelha");
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&placa.doc.graph, &placa.registry);
+        let quadro = |rota: usize, m: &mut MotionState, tique: u64| -> Duration {
+            m.doc
+                .graph
+                .set_param(grade, "gap_x", VAO + 1e-4 * (tique % 7) as f32);
+            crate::motion_externals::publish_all(m, tique as f64 * DT);
+            let t0 = Instant::now();
+            if rota == 0 {
+                m.pump.advance_or_scrub_scoped(
+                    &m.doc.graph,
+                    &m.registry,
+                    &m.sinks,
+                    tique,
+                    |t| t as f64 * DT,
+                    m.default_uv_rect,
+                    m.default_size,
+                    &scopes,
+                );
+            } else {
+                let saida = cook_gpu(m, &gpu, tique, DT, &scopes);
+                assert!(matches!(saida, GpuOutcome::Handled), "{:?}", m.route_said);
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            }
+            t0.elapsed()
+        };
+        let mut tique = 0u64;
+        for _ in 0..3 {
+            tique += 1;
+            let _ = (quadro(0, &mut cpu, tique), quadro(1, &mut placa, tique));
+        }
+        let mut minimo = [Duration::MAX; 2];
+        for bloco in 0..6 {
+            for rota in if bloco % 2 == 0 { [0, 1] } else { [1, 0] } {
+                for _ in 0..QUADROS {
+                    tique += 1;
+                    let m = if rota == 0 { &mut cpu } else { &mut placa };
+                    minimo[rota] = minimo[rota].min(quadro(rota, m, tique));
+                }
+            }
+        }
+        let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+        let ms = |d: Duration| d.as_secs_f64() * 1e3;
+        let cols = placa.gpu_cook.node_columns(drive).unwrap_or(&[]);
+        assert!(cols.iter().any(|c| c == "collider"), "o drive foi a' placa");
+        eprintln!(
+            "| {} | {:.3} ms | {:.3} ms | {:.2}× | {:?} | load {} |",
+            lado * lado,
+            ms(minimo[0]),
+            ms(minimo[1]),
+            ms(minimo[0]) / ms(minimo[1]),
+            placa.route_said,
+            carga
+                .split_whitespace()
+                .take(3)
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+    }
+}

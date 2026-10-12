@@ -40,3 +40,31 @@ fn grays_stay_and_primaries_weigh_by_rec709() {
     assert_eq!(gray_of([0, 0, 255]), linear_to_srgb_byte(0.0722));
     assert_eq!(gray_of([255, 0, 0]), 127);
 }
+
+/// RÉGUA (à mão, `--release`): o preto e branco de uma fotografia de 4000 × 3000 de ruído (o pior caso:
+/// nenhuma cor repetida seguida) — corre no fio da descodificação, fora do desenho. Imprime o MÍNIMO
+/// de 5 corridas. Medido 11/10 (`load 69`, outra linha a compilar): **78 ms** ⇒ nenhuma tabela nem
+/// GPU (um JPEG dessa fotografia descodifica-se em mais).
+#[test]
+#[ignore = "régua de tempo (à mão, --release)"]
+fn regua_cinza_4000x3000() {
+    let mut seed = 0x1234_5678u32;
+    let src: Vec<u8> = (0..4000 * 3000 * 4)
+        .map(|_| {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            seed as u8
+        })
+        .collect();
+    let best = (0..5)
+        .map(|_| {
+            let mut px = src.clone();
+            let t = std::time::Instant::now();
+            to_gray(&mut px);
+            t.elapsed()
+        })
+        .min()
+        .unwrap();
+    println!("to_gray 4000×3000 (ruído): mínimo {best:?}");
+}

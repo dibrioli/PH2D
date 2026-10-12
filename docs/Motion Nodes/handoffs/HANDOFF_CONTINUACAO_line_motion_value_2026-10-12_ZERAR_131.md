@@ -47,6 +47,11 @@ deles: D.14 5/5, C.10 2/2, C.11 2/2.
 
 `=70` (as estrelas giram) · `=136` (vida e dano; o gesto da cor) · `=137` (o colisor pelo nome). Fotos e passos no
 relatório da janela; números de velocidade = as tabelas acima.
+⚠️ **1.º report do dono (12/10)** — «smoke 2: tint não tem R» · «smoke 3: em drive não há colisor». Curado em
+`8ee7620197`: o menu do fio solto lê os canais de um seletor de cor «Color R/G/B/A» (o `r` lia «Color», `g b a` a
+chave crua) e um canal segue o seletor (no `Solid`, `g2 b2 a2` apareciam sem leitor); o nome da coluna do Drive
+está no cartão (linha `Column`), legível só com o grafo APROXIMADO — os roteiros `=136`/`=137` dizem-no. O gate do
+gesto tira o param da entrada «Color R» do MENU. ⏳ Re-smoke `=136` (passo 3) e `=137` (passo 3).
 
 ## Fecho desta janela
 
@@ -61,4 +66,4 @@ Fotos (`fotografa_cena.sh`, 1600×972): `=70`, `=136`, `=137` (+ `PH2D_MOTION_RO
 HIBRIDO`). Worktrees dos agentes removidas; `target/*/incremental` reclamado.
 
 binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
-`Finished smoke profile [optimized] target(s) in 0.27s` — zero `Compiling`.
+`Finished smoke profile [optimized] target(s) in 0.38s` (depois de `8ee7620197`) — zero `Compiling`.

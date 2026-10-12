@@ -17,13 +17,17 @@ use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
 use crate::grade::{
-    DEGRAU_PADRAO, Degrau, MARGEM_DO_ENTORNO, captura_do_quadro, fina_do_quadro, grade_do_quadro,
-    tela_para_mundo,
+    DEGRAU_PADRAO, Degrau, captura_do_quadro, fina_do_quadro, grade_do_quadro, tela_para_mundo,
 };
 
 /// Os avisos ao artista — ficheiro irmão pelo tecto de 700 LOC (W5e).
 #[path = "quadro_avisos.rs"]
 mod avisos;
+/// O entorno e as leituras do quadro — ficheiros irmãos pelo tecto de 700 LOC (W5j).
+#[path = "quadro_entorno.rs"]
+mod entorno;
+#[path = "quadro_leituras.rs"]
+mod leituras;
 
 /// A chave de que a fina dos tetos depende: a janela, o degrau base e os tetos.
 type ChaveDosTetos = ((u32, u32), Degrau, crate::teto::Tetos);
@@ -352,55 +356,6 @@ impl LuzDoQuadro {
         self.degrau = base.com_fina_engrossada(k);
     }
 
-    /// ⭐ W5e: quantas vezes a fina está engrossada neste quadro (0 = a do nível) e se foi pelo
-    /// dispositivo (o aviso do Inspector).
-    #[must_use]
-    pub fn fina_engrossada(&self) -> (u32, bool) {
-        let pelos_tetos = self
-            .fina_dos_tetos
-            .and_then(|(_, f)| f)
-            .is_some_and(|f| f > 0);
-        let k = (self.degrau.captura_px / self.base.captura_px)
-            .log2()
-            .round() as u32;
-        (k, pelos_tetos)
-    }
-
-    /// ⭐ W5e: quantas vezes o solver da vista foi montado (alocado) — uma grade nova, um nível novo ou
-    /// uma recusa que se tenta de novo; nada cabendo abaixo da recusa, o quadro não monta.
-    #[must_use]
-    pub fn montagens(&self) -> u32 {
-        self.montagens
-    }
-
-    /// O último custo de placa da grade atual (ms), com ou sem o «Automático»; `None` antes da 1.ª
-    /// leitura dela ou sem `TIMESTAMP_QUERY` (aí o automático fica no teto).
-    #[must_use]
-    pub fn custo_ms(&self) -> Option<f64> {
-        self.custo_ms
-    }
-
-    /// Quantas leituras de custo o «Automático» já colheu — o governador lê CONTINUAMENTE, não uma
-    /// vez.
-    #[must_use]
-    pub fn leituras_de_custo(&self) -> u32 {
-        self.leituras
-    }
-
-    /// O nível em uso e se é automático (`None` = degrau fixo).
-    #[must_use]
-    pub fn qualidade(&self) -> Option<(NivelDaLuz, bool)> {
-        let p = self.preferencia?;
-        Some((
-            if p.automatica {
-                self.governador.nivel
-            } else {
-                p.nivel
-            },
-            p.automatica,
-        ))
-    }
-
     /// ⭐ **Porta 2a** — re-coleta a cena logo antes do solver. As edições do quadro (o Inspector, o
     /// arrasto do gizmo) aplicam-se DEPOIS da codificação; sem isto a luz respondia um quadro
     /// atrasado. A guarda e a grade ficam as da codificação (o documento já foi às faixas por elas):
@@ -611,67 +566,6 @@ impl LuzDoQuadro {
                 self.governador.ler(custo, p.nivel);
             }
         }
-    }
-
-    /// ⭐ W5d — o ENTORNO deste quadro: criado na grade dele ([`Degrau::entorno`] × o texel,
-    /// [`MARGEM_DO_ENTORNO`] de cada lado), reposicionado se ela só andou, apagado sem ele (o degrau, a
-    /// holográfica, `PH2D_LIGHT2D_ENTORNO=0` para comparar).
-    /// ⭐ W5i — a configuração do ENTORNO nesta vista (`None` = sem ele).
-    fn config_do_entorno(&self, gpu: &GpuContext) -> Option<Config> {
-        let holografica = self
-            .degrau
-            .holografica
-            .then_some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO);
-        let ligado = self.degrau.entorno > 0.0
-            && holografica.is_some()
-            && std::env::var("PH2D_LIGHT2D_ENTORNO").map_or(true, |v| v.trim() != "0");
-        let de = Degrau {
-            c0_px: self.degrau.c0_px * self.degrau.entorno,
-            margem: MARGEM_DO_ENTORNO,
-            ..self.degrau
-        };
-        let ge = ligado
-            .then(|| grade_do_quadro(self.mundo_para_tela, self.alvo_px, de))
-            .flatten()?;
-        Some(Config {
-            holografica,
-            rebote: rebote_ligado(),
-            ..Config::padrao_para(&gpu.device, ge)
-        })
-    }
-
-    fn preparar_entorno(&mut self, gpu: &GpuContext) {
-        let Some(cfg) = self.config_do_entorno(gpu) else {
-            self.entorno = None;
-            return;
-        };
-        let ge = cfg.grade;
-        let mesma = self.entorno.as_ref().is_some_and(|e| {
-            let c = e.config();
-            (c.grade.largura, c.grade.altura) == (ge.largura, ge.altura)
-        });
-        if mesma {
-            let e = self.entorno.as_mut().expect("verificado acima");
-            if e.reposicionar(ge.origem_m, ge.texel_m).is_err() {
-                self.entorno = None;
-            }
-            return;
-        }
-        // ⭐ W5i: a frio, à estufa — a vista acende sem a luz de fora até ele ficar pronto.
-        if !self.forno.pronta(&cfg) {
-            self.forno.pedir(cfg);
-            self.forno.andar(gpu, &self.fabrica);
-            self.entorno = None;
-            return;
-        }
-        self.entorno = Solver::novo_com(gpu, cfg, &self.fabrica)
-            .map(|mut s| {
-                // Só as cascatas e a fonte do rebote: a grade fina dele não se lê.
-                s.regiao_fina([0; 2], [0; 2]);
-                s
-            })
-            .map_err(|e| eprintln!("[luz2d] o entorno recusou a grade {ge:?}: {e:?}"))
-            .ok();
     }
 
     /// O que os receptores leem; `None` = apagada.

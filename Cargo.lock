@@ -9357,6 +9357,7 @@ name = "ph2d-vector-font"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
+ "harfrust",
  "ph2d-vector-doc",
  "ph2d-vector-traits",
  "skrifa",

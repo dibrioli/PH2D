@@ -87,6 +87,7 @@ pub(crate) fn layout_of_params(p: &VecTextParams) -> TextLayout {
             _ => TextAlign::Left,
         },
         wrap_width: p.wrap_width,
+        kerning: crate::vec_glyph::kerning_by_default(),
     }
 }
 

@@ -17,6 +17,7 @@
 //! | [`axis_animation`]    | axes as [`AttributeEvaluator`](ph2d_vector_traits::AttributeEvaluator) inputs |
 //! | [`fallback_chain`]    | HR-15 locale-aware font fallback                              |
 //! | [`skrifa_bridge`]     | skrifa font → axis-aware [`GlyphOutline`] (the only skrifa-touching module) |
+//! | [`kerning`]           | the kerning of a line (the only harfrust-touching module)     |
 //!
 //! ## Isolation
 //!
@@ -29,6 +30,7 @@ pub mod axis;
 pub mod axis_animation;
 pub mod fallback_chain;
 pub mod glyph_to_network;
+pub mod kerning;
 pub mod skrifa_bridge;
 
 use std::collections::BTreeMap;
@@ -41,6 +43,7 @@ pub use axis::{AxisOutOfRangeError, AxisTag, FontAxis, VariableFontAxis};
 pub use axis_animation::VariableFontAxisCurve;
 pub use fallback_chain::{FontFamily, Locale, PlatformHost, resolve_glyph_font};
 pub use glyph_to_network::{GlyphOutline, PathCommand, outline_to_network, outline_to_network_em};
+pub use kerning::KernAdjust;
 pub use skrifa_bridge::{FontFaceError, VariableFont};
 
 /// Max axes carried inline before spilling to the heap (ADR-0066 §2.7 cap).

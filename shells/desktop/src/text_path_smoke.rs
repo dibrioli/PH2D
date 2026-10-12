@@ -154,6 +154,7 @@ fn layout() -> TextLayout {
         // pergunta: o caminho já diz por onde os glifos correm. Refluir ali quebraria o texto
         // em linhas que a curva depois mapearia todas por cima uma da outra.
         wrap_width: None,
+        kerning: crate::vec_glyph::kerning_by_default(),
     }
 }
 
@@ -293,6 +294,7 @@ mod perf {
             tracking: 0.0,
             align: TextAlign::Left,
             wrap_width: None,
+            kerning: crate::vec_glyph::kerning_by_default(),
         };
         let verts = wiggle(50);
         let text: String = "ABCDEFGHIJ".repeat(20);

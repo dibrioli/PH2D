@@ -1,0 +1,16 @@
+# origem: vectorcraft-cli 0.9.0 (storytold, MIT OU Apache-2.0) — /home/enio/Apps/vectorcraft/squashfs-root/usr/bin/vectorcraft-cli
+# comando: python3 -I "docs/Vector Module/ferramentas/vectorcraft_2026-10-11/oraculo_vc_kerning.py"
+# fonte: crates/ph2d-text/fonts/InterVariable.ttf (Version 4.000;git-a52131595), font-size = unitsPerEm = 2048; gravado 2026-10-11
+# palavra	wght	pens (unidades de design, relativos ao 1.º glifo)
+AV	400	0,1273
+To	400	0,1162
+Wa	400	0,1914
+fi	400	0,758
+Ty	400	0,1194
+LT	400	0,961
+Yo	400	0,1233
+AVATAR	400	0,1273,2546,3785,4933,6346
+WAVE	400	0,1902,3175,4588
+Kerning	400	0,1295,2489,3292,4502,4998,6208
+minimum	400	0,1794,2290,3500,3996,5790,7001
+Typography	400	0,1194,2345,3599,4827,6083,6854,8004,9258,10439

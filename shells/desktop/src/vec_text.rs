@@ -168,6 +168,7 @@ pub(crate) fn layout_of(edit: &VecTextEdit) -> TextLayout {
         tracking: edit.tracking,
         align: edit.align,
         wrap_width: edit.wrap_width,
+        kerning: crate::vec_glyph::kerning_by_default(),
     }
 }
 

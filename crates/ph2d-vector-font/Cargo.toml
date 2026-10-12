@@ -22,6 +22,10 @@ ph2d-vector-traits = { path = "../ph2d-vector-traits" }
 # "forcam uma escolha" — elas COEXISTEM, e um `OutlineGlyph` de uma copia nao
 # serve a` outra. Reconferir com `bash scripts/stack-audit.sh --tetos`.
 skrifa = "0.44.0"
+# harfrust — o moldador (HarfBuzz em Rust) que o `parley 0.11.1` já traz; só o `kerning.rs` o lê.
+# Mesma exigência do parley (`0.12.0`, sem features por omissão): uma 2.ª cópia não partilharia o
+# `read-fonts` do skrifa, e o `FontRef` de um não serviria ao outro.
+harfrust = { version = "0.12.0", default-features = false, features = ["std"] }
 # glam::Vec2 — the network's coordinate type.
 glam = "0.30"
 # SmallVec — axes inline ≤ 8 per glyph (ADR-0066 §2.7 cap).

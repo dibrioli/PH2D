@@ -100,6 +100,21 @@ pub struct TextLayout {
     /// que decide onde os glifos pousam sem mudar quais são. Quem o consome é a porta única
     /// [`wrapped_lines`].
     pub wrap_width: Option<f64>,
+    /// Aplicar o kerning da fonte (os pares `AV`, `To`… da tabela GPOS). Desligado, o bloco é o
+    /// advance-only de sempre, byte a byte.
+    ///
+    /// ⚠️ Ligar muda a aparência de todo texto já autorado, e por isso é aceitação do dono (prompt 49,
+    /// W3): os construtores de produção leem [`kerning_by_default`], e não um `true` escrito à mão.
+    pub kerning: bool,
+}
+
+/// **A chave de aceitação do kerning** — `PH2D_TEXT_KERNING=1` liga-o em todo texto do editor e do
+/// Motion, para o antes/depois que o dono aprova. Lida uma vez por processo: um texto não pode mudar
+/// de espaçamento a meio de uma sessão.
+#[must_use]
+pub fn kerning_by_default() -> bool {
+    static KEY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *KEY.get_or_init(|| std::env::var("PH2D_TEXT_KERNING").is_ok_and(|v| v == "1"))
 }
 
 /// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
@@ -116,7 +131,8 @@ pub fn resolve_style(style: &PenStyle, px_to_world: f64) -> (Option<Paint>, Opti
 /// Layout de uma string em `VecPath`s — um por glyph com contorno. Cada linha (`\n`
 /// separa) é medida e deslocada pelo alinhamento; `tracking` abre/fecha o espaço entre
 /// glyphs; `line_height` (× tamanho) é a entrelinha. `axes` (ex. `wght`) valem no
-/// contorno E no avanço (a métrica muda com o peso). Advance-only, sem shaping complexo.
+/// contorno E no avanço (a métrica muda com o peso). Advance-only + o kerning do `layout`: um
+/// glifo por `char`, sem ligaduras nem bidi.
 ///
 /// Sobre um caminho ([`TextPlacement::OnPath`]) **nada disto muda**: alinhamento, tracking e
 /// entrelinha continuam a produzir o mesmo `pen`, e só a tradução `pen → mundo` é outra. É
@@ -183,20 +199,79 @@ pub fn walk_glyphs(
     let track_px = layout.size * layout.tracking;
     let mut pen_y = 0.0;
     for line in wrapped_lines(font, text, layout, axes, placement) {
-        let width = line_advance(font, line, scale, track_px, axes);
+        let glyphs = line_glyphs(font, line, scale, layout.kerning, axes);
+        let width = glyphs_advance(&glyphs, track_px);
         let mut pen_x = align_offset(layout.align, width);
-        for ch in line.chars() {
-            let Some(gid) = font.glyph_for_char(ch) else {
-                continue;
-            };
-            let advance = f64::from(font.advance(gid, axes).unwrap_or(0.0)) * scale;
-            f(ch, gid, [pen_x, pen_y], advance);
+        for g in glyphs {
+            // O `advance` entregue é o do PRÓPRIO glifo (a âncora do caminho é o meio dele); o
+            // kerning move o pen, não alarga a letra.
+            f(g.ch, g.gid, [pen_x + g.offset, pen_y], g.advance);
             // O pen avança MESMO quando o glyph não é desenhado — um glyph fora do caminho
             // (ou sem contorno) não pode encolher o texto e puxar os seguintes para trás.
-            pen_x += advance + track_px;
+            pen_x += g.advance + g.kern + track_px;
         }
         pen_y -= line_h; // linhas descem = y menor (world y-up)
     }
+}
+
+/// Um glifo de uma linha, em unidades de mundo.
+struct LineGlyph {
+    ch: char,
+    gid: GlyphId,
+    /// O avanço nominal do glifo.
+    advance: f64,
+    /// O que o kerning soma ao avanço (0 sem par, ou com o kerning desligado).
+    kern: f64,
+    /// O deslocamento do glifo sem mover o pen (o `XPlacement` do par).
+    offset: f64,
+}
+
+/// **A régua única de uma linha** — os glifos que ela desenha, com avanço e kerning. O
+/// [`line_advance`] (o quebrador, o alinhamento, o caret, o Fixed) e o [`walk_glyphs`] (o
+/// desenhador) leem DAQUI, e é isso que mantém a lei do [`wrapped_lines`] com o kerning ligado.
+///
+/// O kerning molda a linha INTEIRA, só com os `char` que a fonte tem: é o vizinho desenhado que
+/// faz o par. Se a moldagem trocasse glifos ([`VariableFont::kerning`] = `None`), a linha fica
+/// nominal — este cozedor desenha o glifo de cada `char`.
+fn line_glyphs(
+    font: &VariableFont,
+    line: &str,
+    scale: f64,
+    kerning: bool,
+    axes: &[(AxisTag, f32)],
+) -> Vec<LineGlyph> {
+    let mut out: Vec<LineGlyph> = line
+        .chars()
+        .filter_map(|ch| {
+            let gid = font.glyph_for_char(ch)?;
+            Some(LineGlyph {
+                ch,
+                gid,
+                advance: f64::from(font.advance(gid, axes).unwrap_or(0.0)) * scale,
+                kern: 0.0,
+                offset: 0.0,
+            })
+        })
+        .collect();
+    if kerning && out.len() > 1 {
+        let drawn: String = out.iter().map(|g| g.ch).collect();
+        if let Some(adj) = font.kerning(&drawn, axes) {
+            for (g, k) in out.iter_mut().zip(adj) {
+                g.kern = f64::from(k.advance) * scale;
+                g.offset = f64::from(k.offset) * scale;
+            }
+        }
+    }
+    out
+}
+
+/// A largura de uma linha já disposta: soma dos avanços (com kerning) + `tracking` nos `n−1` vãos.
+fn glyphs_advance(glyphs: &[LineGlyph], track_px: f64) -> f64 {
+    let mut width = 0.0;
+    for g in glyphs {
+        width += g.advance + g.kern;
+    }
+    width + track_px * glyphs.len().saturating_sub(1) as f64
 }
 
 /// O referencial do CARET na ponta da última linha — o mesmo do glyph que ali seria
@@ -284,11 +359,10 @@ pub fn offset_path(path: &mut VecPath, d: [f64; 2]) {
 /// que ele não ocupa — e o alinhamento centraria linhas medidas por uma régua dentro de uma caixa
 /// medida por outra.
 ///
-/// ⚠️ **É por isso que o `parley` NÃO decide isto**, apesar de estar na árvore. Ele **molda**
-/// (kerning, ligaduras, bidi) e este cozedor é *advance-only* por desenho — declarado no
-/// [`text_to_vec_paths`]. Um quebrador que moldasse e um desenhador que não moldasse discordariam
-/// sobre a largura de toda linha. Trazer o `parley` para cá é uma decisão de **shaping**, que muda
-/// a aparência de todo texto já autorado: outra wave, com aceitação própria.
+/// ⚠️ **É por isso que o `parley` NÃO decide isto**, apesar de estar na árvore. Um quebrador que
+/// moldasse e um desenhador que não moldasse discordariam sobre a largura de toda linha. O kerning
+/// (prompt 49, W3) entrou pela régua, não ao lado dela: o [`line_advance`] e o [`walk_glyphs`] leem
+/// os mesmos `line_glyphs`, e esta porta mede cada linha candidata moldada como será desenhada.
 ///
 /// ⚠️ **Uma palavra sozinha mais larga que a caixa TRANSBORDA em vez de partir ao meio** — é o que
 /// o browser e o Figma fazem sem `word-break`, e partir uma palavra sem o artista pedir é pior:
@@ -316,8 +390,6 @@ pub fn wrapped_lines<'a>(
             return out;
         }
     };
-    let scale = layout.size / f64::from(font.units_per_em().max(1));
-    let track_px = layout.size * layout.tracking;
     for para in text.split('\n') {
         let before = out.len();
         let mut line_start = 0usize;
@@ -329,7 +401,7 @@ pub fn wrapped_lines<'a>(
                 // demais, e o `else` abaixo nunca a poria numa linha vazia.
                 None => line_end = Some(end),
                 Some(fits_to) => {
-                    if line_advance(font, &para[line_start..end], scale, track_px, axes) <= w {
+                    if line_advance(font, &para[line_start..end], layout, axes) <= w {
                         line_end = Some(end);
                     } else {
                         out.push(&para[line_start..fits_to]);
@@ -366,24 +438,17 @@ fn word_indices(para: &str) -> impl Iterator<Item = (usize, &str)> {
     })
 }
 
-/// Largura visual de UMA linha em world: soma dos avanços + `tracking` entre glyphs
-/// (`n−1` gaps). `axes` no mesmo `location` do layout (o avanço muda com o peso).
+/// Largura visual de UMA linha em world: soma dos avanços (com o kerning do `layout`) + `tracking`
+/// entre glyphs (`n−1` gaps). `axes` no mesmo `location` do layout (o avanço muda com o peso).
 fn line_advance(
     font: &VariableFont,
     line: &str,
-    scale: f64,
-    track_px: f64,
+    layout: &TextLayout,
     axes: &[(AxisTag, f32)],
 ) -> f64 {
-    let mut width = 0.0;
-    let mut glyphs = 0usize;
-    for ch in line.chars() {
-        if let Some(g) = font.glyph_for_char(ch) {
-            width += f64::from(font.advance(g, axes).unwrap_or(0.0)) * scale;
-            glyphs += 1;
-        }
-    }
-    width + track_px * glyphs.saturating_sub(1) as f64
+    let scale = layout.size / f64::from(font.units_per_em().max(1));
+    let glyphs = line_glyphs(font, line, scale, layout.kerning, axes);
+    glyphs_advance(&glyphs, layout.size * layout.tracking)
 }
 
 /// Deslocamento em x da 1ª coluna de uma linha de largura `width`, dado o alinhamento:
@@ -405,9 +470,7 @@ pub fn caret_x_offset(
     layout: &TextLayout,
     axes: &[(AxisTag, f32)],
 ) -> f64 {
-    let scale = layout.size / f64::from(font.units_per_em().max(1));
-    let track_px = layout.size * layout.tracking;
-    let width = line_advance(font, last_line, scale, track_px, axes);
+    let width = line_advance(font, last_line, layout, axes);
     align_offset(layout.align, width) + width
 }
 
@@ -434,13 +497,15 @@ pub fn unwrapped_block_width(
     layout: &TextLayout,
     axes: &[(AxisTag, f32)],
 ) -> f64 {
-    let scale = layout.size / f64::from(font.units_per_em().max(1));
-    let track_px = layout.size * layout.tracking;
     text.split('\n')
-        .map(|l| line_advance(font, l, scale, track_px, axes))
+        .map(|l| line_advance(font, l, layout, axes))
         .fold(0.0, f64::max)
 }
 
 #[cfg(test)]
 #[path = "glyph_wrap_tests.rs"]
 mod wrap_tests;
+
+#[cfg(test)]
+#[path = "glyph_kerning_tests.rs"]
+mod kerning_tests;

@@ -35,6 +35,7 @@ fn tracked(size: f64, w: Option<f64>, tracking: f64) -> TextLayout {
         tracking,
         align: TextAlign::Left,
         wrap_width: w,
+        kerning: false,
     }
 }
 

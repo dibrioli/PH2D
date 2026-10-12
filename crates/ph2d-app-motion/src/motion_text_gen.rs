@@ -105,6 +105,8 @@ pub fn build_stream(
         // Sem caixa: o refluxo é a wave seguinte (folha 14 §3), e uma caixa que
         // ninguém autora seria um número inventado a decidir onde a linha parte.
         wrap_width: None,
+        // A MESMA chave do editor: o texto do grafo e o do editor desenham com a mesma régua.
+        kerning: ph2d_vec_text::glyph::kerning_by_default(),
     };
     let scale = layout.size / f64::from(font.units_per_em().max(1));
     let placement = TextPlacement::At([0.0, 0.0]);

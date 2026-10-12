@@ -45,6 +45,9 @@ impl std::error::Error for FontFaceError {}
 pub struct VariableFont {
     data: Vec<u8>,
     units_per_em: u16,
+    /// As tabelas do moldador, montadas no 1.º kerning e guardadas: refazê-las por linha era o
+    /// grosso do custo de uma tecla (medido em [`crate::kerning`]).
+    pub(crate) shaping: std::sync::OnceLock<harfrust::ShaperData>,
 }
 
 impl VariableFont {
@@ -57,10 +60,14 @@ impl VariableFont {
                 .map(|h| h.units_per_em())
                 .map_err(|e| FontFaceError::Parse(e.to_string()))?
         };
-        Ok(Self { data, units_per_em })
+        Ok(Self {
+            data,
+            units_per_em,
+            shaping: std::sync::OnceLock::new(),
+        })
     }
 
-    fn font(&self) -> FontRef<'_> {
+    pub(crate) fn font(&self) -> FontRef<'_> {
         FontRef::new(&self.data).expect("validated in VariableFont::new")
     }
 

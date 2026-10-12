@@ -39,6 +39,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.frames.l6" => {
             "6. Export the board (PNG, SVG or PDF): the frames and the black and white come out the same as here."
         }
+        "board.smoke.w16.board" => "Crop, flip & GIF",
+        "board.smoke.w16.title" => "Crop a picture, flip it, and a GIF that plays",
+        "board.smoke.w16.crop" => "Crop",
+        "board.smoke.w16.flip" => "Flip",
+        "board.smoke.w16.gif" => "GIF",
+        "board.smoke.w16.l1" => {
+            "1. Double-click the left photo (or select it and press Enter). Drag a corner or the middle of a side to crop; drag inside to slide the photo. Enter or Esc to finish."
+        }
+        "board.smoke.w16.l2" => {
+            "2. Click a photo: the two flip buttons in its bar mirror it (or Shift+H and Shift+V). The two on the right are flipped copies."
+        }
+        "board.smoke.w16.l3" => {
+            "3. The GIF plays on the board. In an SVG export it keeps playing in a browser; PNG and PDF take its first frame."
+        }
+        "board.smoke.w16.l4" => {
+            "4. In Dolphin, copy one or more pictures (Ctrl+C), come back to this board and press Ctrl+V: they come in side by side."
+        }
+        "board.smoke.w16.l5" => {
+            "5. Scene tab: select several objects in the Hierarchy, right-click one of them, Send to board…: they all go, each turned, sized and mirrored as in the scene."
+        }
+        "board.smoke.w16.l6" => {
+            "6. Export this board as SVG: it is quick even with big photos, and the pictures go in as they arrived."
+        }
         "board.smoke.images.title" => "Pictures on the board: drop, paste, resize, export",
         "board.smoke.images.frame" => "Moodboard",
         "board.smoke.images.cover" => "Cover idea",

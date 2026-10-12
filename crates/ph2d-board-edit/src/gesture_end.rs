@@ -13,7 +13,8 @@ impl Editor {
     /// ao início dele. Quem chama é a vista, antes de um carregar que o gesto não pode engolir (um
     /// botão da barra). `false` = não havia gesto.
     pub fn finish_gesture(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
-        self.ink_finish(doc, history) || self.cancel_gesture(doc)
+        // W16 — um arrasto de recorte pendurado fica (é um passo de desfazer, como ao largar).
+        self.crop_up(doc, history) || self.ink_finish(doc, history) || self.cancel_gesture(doc)
     }
 
     pub fn cancel_gesture(&mut self, doc: &mut BoardDoc) -> bool {

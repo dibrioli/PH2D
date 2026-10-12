@@ -86,6 +86,11 @@ impl Editor {
         self.cropping.as_ref().map(|c| c.id)
     }
 
+    /// Há um arrasto de recorte a meio (a vista manda-lhe os movimentos).
+    pub(crate) fn crop_dragging(&self) -> bool {
+        self.cropping.as_ref().is_some_and(|c| c.drag.is_some())
+    }
+
     /// Fecha o recorte (o que se recortou fica).
     pub fn end_crop(&mut self) {
         self.cropping = None;

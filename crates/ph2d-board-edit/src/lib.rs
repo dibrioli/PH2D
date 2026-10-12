@@ -409,7 +409,7 @@ impl Editor {
     /// Um gesto do ponteiro está em curso (o editor quer os Move e o Up).
     #[must_use]
     pub fn is_busy(&self) -> bool {
-        self.gesture.is_some() || self.ink.is_some()
+        self.gesture.is_some() || self.ink.is_some() || self.crop_dragging()
     }
 
     /// A escrever dentro de uma forma (as teclas são do texto).

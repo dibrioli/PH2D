@@ -266,6 +266,24 @@ pub fn to_world(el: &Element) -> Affine {
         * Affine::translate((-el.w / 2.0, -el.h / 2.0))
 }
 
+/// ⭐ W14/W16 — o PÍXEL NATURAL de uma imagem → a caixa local de `el` (`0..w × 0..h`): a parte
+/// `source = [x, y, w, h]` da imagem natural (o recorte, ou ela inteira) estica-se à caixa e o
+/// espelho vira à volta do centro dela. A lei do desenho e a do recorte pelo gesto.
+#[must_use]
+pub fn image_to_box(el: &Element, source: [f64; 4], flip: [bool; 2]) -> Affine {
+    let [sx, sy, sw, sh] = source;
+    let m = Affine::new([
+        if flip[0] { -1.0 } else { 1.0 },
+        0.0,
+        0.0,
+        if flip[1] { -1.0 } else { 1.0 },
+        if flip[0] { el.w } else { 0.0 },
+        if flip[1] { el.h } else { 0.0 },
+    ]);
+    m * Affine::scale_non_uniform(el.w / sw.max(1e-9), el.h / sh.max(1e-9))
+        * Affine::translate((-sx, -sy))
+}
+
 /// O contorno de `el` já no mundo.
 #[must_use]
 pub fn world_outline(el: &Element) -> Option<Outline> {

@@ -20,6 +20,8 @@ ph2d-board-route = { path = "../ph2d-board-route" }
 ph2d-text = { path = "../ph2d-text" }
 # W7 — as palavras de uma nota (agrupar por palavra).
 ph2d-board-words = { path = "../ph2d-board-words" }
+# W16 — o recorte pelo gesto conta com o afim (píxel natural → mundo) da geometria do quadro.
+ph2d-vector = { path = "../ph2d-vector" }
 
 [lints]
 workspace = true

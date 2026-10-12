@@ -5410,6 +5410,7 @@ dependencies = [
  "ph2d-board-route",
  "ph2d-board-words",
  "ph2d-text",
+ "ph2d-vector",
 ]
 
 [[package]]

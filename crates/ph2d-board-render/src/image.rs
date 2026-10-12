@@ -523,17 +523,7 @@ impl Images {
 /// do elemento: o recorte estica-se à caixa, e o espelho vira à volta do centro.
 #[must_use]
 pub fn level_to_box(el: &Element, img: &Image, natural: [u32; 2], level: [u32; 2]) -> Affine {
-    let [sx, sy, sw, sh] = img.source(natural);
-    let flip = Affine::new([
-        if img.flip[0] { -1.0 } else { 1.0 },
-        0.0,
-        0.0,
-        if img.flip[1] { -1.0 } else { 1.0 },
-        if img.flip[0] { el.w } else { 0.0 },
-        if img.flip[1] { el.h } else { 0.0 },
-    ]);
-    flip * Affine::scale_non_uniform(el.w / sw.max(1e-9), el.h / sh.max(1e-9))
-        * Affine::translate((-sx, -sy))
+    ph2d_board_geom::image_to_box(el, img.source(natural), img.flip)
         * Affine::scale_non_uniform(
             f64::from(natural[0]) / f64::from(level[0].max(1)),
             f64::from(natural[1]) / f64::from(level[1].max(1)),
@@ -549,6 +539,10 @@ fn box_path(el: &Element, round: bool) -> ph2d_vector::BezPath {
     };
     RoundedRect::new(0.0, 0.0, el.w, el.h, r).to_path(0.1)
 }
+
+/// W16 — a opacidade da imagem inteira por baixo da janela de um recorte: a medida no Excalidraw
+/// (`saidas/w16`, A2: fora da janela o vermelho sai `(255, 228, 228)` sobre branco — α = 27/255).
+const CROP_FADE: f32 = 27.0 / 255.0;
 
 /// Os píxeis por ponto de um SVG num export vectorial (o PDF mede em pontos, 1/72 pol): os 300 ppp da
 /// impressão. Um raster vai inteiro (o leitor amplia o que quiser).
@@ -643,6 +637,12 @@ pub(crate) fn paint(
                 Some(_) => (pixels, size),
             };
             let m = t * level_to_box(el, img, f.size, size);
+            if export.is_none() && cache.cropping == Some(el.id) {
+                let whole = Rect::new(0.0, 0.0, f64::from(size[0]), f64::from(size[1]));
+                scene.push_layer_shape(VelloBlend::default(), CROP_FADE, m, &whole.to_path(0.1));
+                scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, None);
+                scene.pop_layer();
+            }
             scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source_of(f).as_ref());
         }
         if layered {

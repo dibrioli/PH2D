@@ -47,6 +47,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Gray => "board.style.gray",
         Item::Flip(0) => "board.style.flip_h",
         Item::Flip(_) => "board.style.flip_v",
+        Item::Crop => "board.style.crop",
         Item::Fill(None) => "board.style.no_fill",
         Item::Fill(Some(_)) => "board.style.fill",
         Item::Stroke(None) => "board.style.no_stroke",
@@ -527,6 +528,22 @@ pub(super) fn paint_item(
                     stroke(scene, &t, fg, line, Dash::Solid);
                 }
             }
+        }
+        // W16 — recortar: os dois esquadros cruzados do ícone de recorte.
+        Item::Crop => {
+            let (x0, y0) = (f64::from(inner.x), f64::from(inner.y));
+            let (w, h) = (f64::from(inner.w), f64::from(inner.h));
+            let at = |u: f64, v: f64| (x0 + u * w, y0 + v * h);
+            // LITERAL-PX-OK: fracções do quadrado do ícone.
+            let (a, b) = (0.25, 0.75);
+            let mut l = ph2d_vector::BezPath::new();
+            l.move_to(at(a, 0.0));
+            l.line_to(at(a, b));
+            l.line_to(at(1.0, b));
+            l.move_to(at(0.0, a));
+            l.line_to(at(b, a));
+            l.line_to(at(b, 1.0));
+            stroke(scene, &l, fg, line, Dash::Solid);
         }
         Item::Opacity(i) => {
             let a = f32::from(OPACITIES[i]) / 100.0; // LITERAL-PX-OK: percentagem → fracção

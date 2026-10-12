@@ -240,9 +240,12 @@ pub fn paint_hero_screen(
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
             let ed = super::board_view::editor(&mut live.editor, theme);
+            // W16 — o recorte conta-se em píxeis naturais: o editor sabe o tamanho dos ficheiros.
+            ed.know_files(&board.files);
             // O que se desenha por cima vem ANTES: ele ajusta as notas que nasceram por ajustar,
             // e o quadro desenha-as já com a altura certa.
             let overlay = ed.overlay(&mut board.doc, text_system);
+            live.render_cache.cropping = overlay.crop.map(|(id, _)| id);
             // W7 — com uma votação aberta o resultado anterior esconde-se; os `+` vão por cima.
             let marks = ed.vote_marks(&board.doc);
             live.render_cache.hide_votes = ed.vote().is_some();

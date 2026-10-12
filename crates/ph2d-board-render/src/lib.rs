@@ -96,6 +96,8 @@ pub struct RenderCache {
     pub mine_private: BTreeSet<ElementId>,
     /// W14 — os píxeis das imagens (descodificados fora do fio do desenho).
     pub images: Images,
+    /// W16 — a imagem em recorte: desenha-se também INTEIRA, esbatida, por baixo da janela.
+    pub cropping: Option<ElementId>,
 }
 
 /// ⭐ W8 — o desenho para EXPORTAR (`docs/MiroClone/06_equipa_e_saida.md` E6/E7): o papel (ou nada:

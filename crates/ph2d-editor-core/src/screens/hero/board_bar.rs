@@ -130,6 +130,8 @@ pub enum Item {
     Gray,
     /// W16 — espelhar as imagens seleccionadas: `0` na horizontal (Shift+H), `1` na vertical (Shift+V).
     Flip(usize),
+    /// W16 — recortar a imagem seleccionada (o mesmo que o duplo-clique ou `Enter`).
+    Crop,
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -211,12 +213,20 @@ pub fn items() -> Vec<Item> {
     .flat_map(style_groups)
     .flatten()
     {
-        if !v.contains(&it) && !matches!(it, Item::Reshape | Item::Gray | Item::Flip(_)) {
+        if !v.contains(&it)
+            && !matches!(it, Item::Reshape | Item::Gray | Item::Flip(_) | Item::Crop)
+        {
             v.push(it);
         }
     }
     // No FIM, pela ordem em que chegaram: os ids dos outros não se movem.
-    v.extend([shapes::RESHAPE, Item::Gray, Item::Flip(0), Item::Flip(1)]);
+    v.extend([
+        shapes::RESHAPE,
+        Item::Gray,
+        Item::Flip(0),
+        Item::Flip(1),
+        Item::Crop,
+    ]);
     v
 }
 
@@ -296,7 +306,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             dash,
             opacity,
             vec![Item::Gray],
-            vec![Item::Flip(0), Item::Flip(1)],
+            vec![Item::Flip(0), Item::Flip(1), Item::Crop],
         ],
     };
     groups.extend(org);
@@ -552,6 +562,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         Item::Flip(axis) => {
             ed.flip_images(doc, history, axis);
+        }
+        Item::Crop => {
+            ed.begin_crop(doc, history);
         }
         Item::Head(i, h) => ed.set_head(doc, history, i, h),
         Item::MoreShapes

@@ -95,6 +95,17 @@ pub fn key(
     let history = live.histories.entry(board.id).or_default();
     let ed = super::board_view::editor(&mut live.editor, theme);
     let doc = &mut board.doc;
+    // W16 — o recorte de uma imagem: `Enter` e `Escape` saem (o recorte fica); `Enter` numa imagem
+    // seleccionada entra (o idioma do Excalidraw).
+    if !ctrl && !editing && matches!(k, BoardKey::Enter | BoardKey::Escape) {
+        if ed.cropping().is_some() {
+            ed.end_crop();
+            return taken();
+        }
+        if k == BoardKey::Enter && ed.begin_crop(doc, history) {
+            return taken();
+        }
+    }
     if ctrl && let Some(m) = mark_key(k, mods) {
         ed.command(doc, history, ts, Command::Mark(m));
         return taken();

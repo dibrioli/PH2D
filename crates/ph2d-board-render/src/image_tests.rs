@@ -349,3 +349,38 @@ fn without_the_wanted_level_the_nearest_finer_one_draws() {
         .unwrap();
     assert_eq!(size, [512, 512], "foi à miniatura em vez do fino");
 }
+
+/// ⭐ W16 — no recorte a imagem desenha-se também INTEIRA, esbatida (α = 27/255, a do Excalidraw),
+/// por baixo da janela; fora do recorte, não; e o export nunca.
+#[test]
+fn a_cropping_picture_shows_its_whole_self_faded_under_the_window() {
+    let b = board_with(file(40, 20), [0.0, 0.0, 20.0, 20.0], |i| {
+        i.crop = Some(Crop {
+            x: 10.0,
+            y: 0.0,
+            w: 20.0,
+            h: 20.0,
+        });
+    });
+    let id = b.doc.live().next().unwrap().id;
+    let mut cache = RenderCache::default();
+    cache.images.set_decoder(test_decode());
+    let until_drawn = |cache: &mut RenderCache| {
+        for _ in 0..500 {
+            let ops = paint_ops(&b, cache);
+            if !images(&ops).is_empty() {
+                return ops;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        panic!("a imagem não chegou");
+    };
+    assert_eq!(images(&until_drawn(&mut cache)).len(), 1);
+    cache.cropping = Some(id);
+    let ops = until_drawn(&mut cache);
+    assert_eq!(images(&ops).len(), 2, "a inteira esbatida e a janela");
+    let faded = ops
+        .iter()
+        .any(|o| matches!(o, DrawOp::Layer { alpha, .. } if (*alpha - 27.0 / 255.0).abs() < 1e-6));
+    assert!(faded, "{ops:?}");
+}

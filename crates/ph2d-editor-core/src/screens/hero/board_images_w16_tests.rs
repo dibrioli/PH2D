@@ -56,5 +56,47 @@ fn the_w16_items_come_last_and_move_no_id() {
         .iter()
         .position(|i| *i == Item::Gray)
         .expect("o preto e branco");
-    assert_eq!(v[g + 1..], [Item::Flip(0), Item::Flip(1)]);
+    assert_eq!(v[g + 1..], [Item::Flip(0), Item::Flip(1), Item::Crop]);
+}
+
+/// ⭐ O recorte entra pelo botão da barra e por `Enter` (com a imagem seleccionada), e sai por `Enter`
+/// e `Escape` — sem `Enter` abrir um texto na imagem; o desenho recebe a imagem em recorte.
+#[test]
+fn the_crop_button_and_enter_open_the_crop_and_enter_or_escape_close_it() {
+    let mut t = T::new();
+    put(&mut t);
+    let cropping = |t: &T| {
+        t.hero
+            .documents
+            .live
+            .editor
+            .as_ref()
+            .and_then(ph2d_board_edit::Editor::cropping)
+    };
+    assert!(
+        t.find(node(Item::Crop)).is_some(),
+        "o botão na barra da imagem"
+    );
+    t.click_bar(Item::Crop);
+    let id = image(&t).id;
+    assert_eq!(cropping(&t), Some(id));
+    t.paint();
+    assert_eq!(t.hero.documents.live.render_cache.cropping, Some(id));
+    assert!(t.key(BoardKey::Escape, Modifiers::default(), None));
+    assert_eq!(cropping(&t), None);
+    assert!(t.key(BoardKey::Enter, Modifiers::default(), None));
+    assert_eq!(cropping(&t), Some(id), "Enter numa imagem recorta");
+    let editing = |t: &T| {
+        t.hero
+            .documents
+            .live
+            .editor
+            .as_ref()
+            .is_some_and(ph2d_board_edit::Editor::is_editing_text)
+    };
+    assert!(!editing(&t), "e não abre um texto nela");
+    assert!(t.key(BoardKey::Enter, Modifiers::default(), None));
+    assert_eq!(cropping(&t), None);
+    t.paint();
+    assert_eq!(t.hero.documents.live.render_cache.cropping, None);
 }

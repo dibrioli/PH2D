@@ -41,6 +41,8 @@ pub struct Overlay {
     pub mind_plus: Vec<([f64; 2], [f64; 2])>,
     /// A caixa `[x, y, w, h]` do nó onde o arrasto largaria o nó de mapa como filho (o realce).
     pub mind_drop: Option<[f64; 4]>,
+    /// W16 — o recorte aberto: a imagem e os quatro cantos da janela no mundo (as pegas em «L»).
+    pub crop: Option<(ElementId, [[f64; 2]; 4])>,
 }
 
 /// Quanto a pega de arrumar em grelha se afasta (px de ecrã, nos dois eixos) do canto superior
@@ -90,7 +92,7 @@ impl Editor {
         let editing = text.is_some();
         let sel = self.selected(doc);
         let shapes: Vec<&&Element> = sel.iter().filter(|el| el.connector().is_none()).collect();
-        Overlay {
+        let mut o = Overlay {
             boxes: if sel.len() > 1 {
                 shapes.iter().map(|el| Frame::of(el)).collect()
             } else {
@@ -145,7 +147,18 @@ impl Editor {
                 .and(self.mind_drop)
                 .and_then(|id| doc.get(id))
                 .map(|e| [e.x, e.y, e.w, e.h]),
+            crop: None,
+        };
+        // W16 — no recorte só se vêem as pegas dele (a moldura, os pontos e os «+» saem).
+        if let Some(c) = self.crop_corners(doc) {
+            o.frame = None;
+            o.boxes.clear();
+            o.dots.clear();
+            o.grid = None;
+            o.mind_plus.clear();
+            o.crop = Some(c);
         }
+        o
     }
 
     /// Onde vive o rótulo da seta em edição (o meio da rota), se se edita uma.

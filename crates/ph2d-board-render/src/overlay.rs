@@ -127,6 +127,34 @@ pub fn paint_overlay(
             line(scene, &sq, accent, thin);
         }
     }
+    // W16 — o recorte: o contorno da janela e as pegas em «L» nos quatro cantos (as dos meios dos
+    // lados agarram-se mas não se desenham — o idioma do Excalidraw, medido).
+    if let Some((_, c)) = &overlay.crop {
+        let pts = c.map(|q| v * point(q));
+        let mut edge = BezPath::new();
+        edge.move_to(pts[0]);
+        for q in &pts[1..] {
+            edge.line_to(*q);
+        }
+        edge.close_path();
+        line(scene, &edge, accent, thin);
+        let heavy = f64::from(StrokeToken::Heavy.px());
+        // Cada braço do «L» mede duas pegas (o alcance do canto é uma).
+        let arm = 2.0 * metrics.handle;
+        for i in 0..4 {
+            let (p, a, b) = (pts[i], pts[(i + 3) % 4], pts[(i + 1) % 4]);
+            let toward = |q: Point| {
+                let d = q - p;
+                let len = d.hypot().max(1e-9);
+                p + d * (arm.min(len / 2.0) / len)
+            };
+            let mut l = BezPath::new();
+            l.move_to(toward(a));
+            l.line_to(p);
+            l.line_to(toward(b));
+            line(scene, &l, accent, heavy);
+        }
+    }
     if let Some(g) = overlay.grid {
         // A pega de ARRUMAR EM GRELHA: um botão redondo com os quatro pontos, fora do canto superior
         // direito — onde `Editor::grid_handle` a agarra (do tamanho do alcance do clique).

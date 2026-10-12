@@ -10,6 +10,7 @@
 
 mod cluster;
 mod command;
+mod crop;
 mod facilitate;
 mod frame_box;
 mod gesture;
@@ -327,6 +328,10 @@ pub struct Editor {
     /// W12 (ADR-0182) — as notas de outros com o texto escondido de mim: não se escreve nem se vota
     /// no que não se lê. A vista pô-las aqui a cada imagem.
     unread: BTreeSet<ElementId>,
+    /// W16 — o recorte aberto numa imagem ([`Editor::begin_crop`]).
+    cropping: Option<crop::Cropping>,
+    /// W16 — o tamanho natural de cada ficheiro do quadro ([`Editor::know_files`]).
+    natural: std::collections::BTreeMap<ph2d_board_model::FileId, [u32; 2]>,
 }
 
 impl Editor {
@@ -362,6 +367,8 @@ impl Editor {
             mind_drop: None,
             vote: None,
             unread: BTreeSet::new(),
+            cropping: None,
+            natural: std::collections::BTreeMap::new(),
         }
     }
 

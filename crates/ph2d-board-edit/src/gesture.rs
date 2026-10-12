@@ -189,6 +189,9 @@ impl Editor {
         p: Pointer,
         view: [f64; 4],
     ) -> Down {
+        if self.crop_down(doc, p) {
+            return Down::Taken;
+        }
         if self.text_pointer_down(doc, history, ts, p) {
             self.gesture = Some(Gesture::Text);
             return Down::Taken;
@@ -359,6 +362,9 @@ impl Editor {
 
     /// O ponteiro andou (com o botão em baixo).
     pub fn pointer_move(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, p: Pointer) {
+        if self.crop_move(doc, p) {
+            return;
+        }
         if self.ink_move(doc, p) {
             return;
         }
@@ -574,6 +580,9 @@ impl Editor {
 
     /// Largar o botão: o gesto acaba e vira UM passo de desfazer.
     pub fn pointer_up(&mut self, doc: &mut BoardDoc, history: &mut History, p: Pointer) {
+        if self.crop_up(doc, history) {
+            return;
+        }
         if self.ink_up(doc, history, p) {
             return;
         }

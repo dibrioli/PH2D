@@ -7,6 +7,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.style.gray" => "Black and white",
         "board.style.flip_h" => "Flip horizontal (Shift+H)",
         "board.style.flip_v" => "Flip vertical (Shift+V)",
+        "board.style.crop" => "Crop (double-click or Enter)",
         "board.images.svg_texts" => {
             "{count} text(s) inside the SVG will not show: SVG pictures draw without fonts"
         }

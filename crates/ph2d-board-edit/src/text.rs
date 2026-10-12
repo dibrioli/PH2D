@@ -330,6 +330,10 @@ impl Editor {
         ts: &mut TextSystem,
         p: Pointer,
     ) -> bool {
+        // W16 — no recorte o duplo-clique não sai (o do Excalidraw).
+        if self.cropping().is_some() {
+            return true;
+        }
         // Num ponto de ajuste de uma seta seleccionada, o duplo-clique apaga-o.
         if self.editing.is_none() && self.remove_point_at(doc, history, p) {
             return true;
@@ -353,6 +357,11 @@ impl Editor {
         // elemento sozinho é que escreve.
         if self.enter_group(doc, id) {
             return true;
+        }
+        // W16 — numa IMAGEM o duplo-clique recorta (antes abria um texto vazio por cima dela).
+        if doc.get(id).is_some_and(|e| e.image().is_some()) {
+            self.selection = std::collections::BTreeSet::from([id]);
+            return self.begin_crop(doc, history);
         }
         self.begin_text(doc, ts, id, Some(p.world))
     }

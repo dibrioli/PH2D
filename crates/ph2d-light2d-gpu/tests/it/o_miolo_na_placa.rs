@@ -399,3 +399,205 @@ fn sonda_anel_do_miolo() {
         );
     }
 }
+
+/// Os dois discos da lente (§4.3 da W5l): a ½ e a 0,6 — na sobreposição `τ = 0,5 · 0,4 = 0,2`.
+const LENTE: [([f32; 2], f32); 2] = [([2.35, 2.0], 0.5), ([2.85, 2.1], 0.6)];
+const R_LENTE: f32 = 0.5;
+
+fn lente(so_o_primeiro: bool) -> CenaDeLuz {
+    let n = if so_o_primeiro { 1 } else { 2 };
+    CenaDeLuz {
+        emissores: vec![disco([1.0, 2.3], 0.15, [1.0; 3], f32::INFINITY)],
+        oclusores: LENTE[..n]
+            .iter()
+            .map(|&(c, a)| oclusor(regular(c, R_LENTE, 96, 0.1), a))
+            .collect(),
+        ceu: [0.05, 0.08, 0.12],
+        luzes: 1,
+        ..Default::default()
+    }
+}
+
+/// Sonda (W5m): o perfil ao longo da reta dos centros da lente (placa/gabarito, com o miolo), com os
+/// discos a (½, 0,6) · (1, 1) · (0,001, 0,001) · e o 2.º sozinho a 0,6.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_o_perfil_da_lente() {
+    let Some(gpu) = gpu() else { return };
+    let op = OpcoesDoMiolo {
+        suavidade: 1.0,
+        penetracao_m: f64::INFINITY,
+    };
+    let casos: [(&str, f32, Option<f32>, bool); 5] = [
+        ("1·1 com céu", 1.0, Some(1.0), true),
+        ("1·1 sem céu", 1.0, Some(1.0), false),
+        ("só o 2.º a 1, com céu", 1.0, None, true),
+        ("só o 2.º a 1, sem céu", 1.0, None, false),
+        ("só o 2.º a 0,6, sem céu", 0.6, None, false),
+    ];
+    for (nome, a, b, ceu) in casos {
+        let mut c = lente(false);
+        if !ceu {
+            c.ceu = [0.0; 3];
+        }
+        c.oclusores[0].opacidade = a;
+        match b {
+            Some(b) => c.oclusores[1].opacidade = b,
+            None => {
+                c.oclusores.remove(0);
+            }
+        }
+        let (flu, g, _) = rodar(&gpu, config(Some(MIOLO_PADRAO)), &c);
+        let gab = Gabarito::com_miolo(&c, op);
+        let mut linha = Vec::new();
+        for k in 0..12 {
+            let x = 1.80 + 0.15 * f64::from(k);
+            let y = 2.0 + 0.2 * (x - 2.35);
+            let (i, j) = (
+                ((x - g.origem_m[0]) / g.texel_m) as u32,
+                ((y - g.origem_m[1]) / g.texel_m) as u32,
+            );
+            let q = g.centro(i, j);
+            let (pl, gb) = (
+                f64::from(flu[(j * g.largura + i) as usize][1]),
+                gab.fluencia(q)[1],
+            );
+            linha.push(format!("{:.2}:{:+.3}", q[0], pl / gb - 1.0));
+        }
+        eprintln!("{nome}: placa/gabarito − 1: {}", linha.join(" "));
+    }
+}
+
+/// A reta de `p` ao centro da lâmpada atravessa o disco `(c, r)`?
+fn atravessa(p: [f64; 2], c: [f32; 2], r: f32) -> bool {
+    let (a, c) = (p, [f64::from(c[0]), f64::from(c[1])]);
+    let b = [1.0, 2.3];
+    let ab = [b[0] - a[0], b[1] - a[1]];
+    let t = (((c[0] - a[0]) * ab[0] + (c[1] - a[1]) * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1]))
+        .clamp(0.0, 1.0);
+    (a[0] + t * ab[0] - c[0]).hypot(a[1] + t * ab[1] - c[1]) < f64::from(r)
+}
+
+/// As duas regiões do produto: a SOMBRA da lente (fora dos dois, a reta à lâmpada atravessa os dois)
+/// e a LENTE (dentro dos dois, a mais de 2 texels de cada borda). `(pior, rms)` sobre a média do
+/// gabarito na região.
+fn erro_no_produto(flu: &[[f32; 3]], g: &Grade, gab: &Gabarito) -> [(f64, f64); 2] {
+    let dentro = |p: [f64; 2], c: [f32; 2], folga: f64| {
+        (p[0] - f64::from(c[0])).hypot(p[1] - f64::from(c[1])) < f64::from(R_LENTE) + folga
+    };
+    let h = g.texel_m;
+    let mut regioes = [(Vec::new(), 0.0_f64), (Vec::new(), 0.0_f64)];
+    for j in 0..g.altura {
+        for i in 0..g.largura {
+            let p = g.centro(i, j);
+            let k = if LENTE
+                .iter()
+                .all(|&(c, _)| !dentro(p, c, 2.0 * h) && atravessa(p, c, R_LENTE))
+            {
+                0
+            } else if LENTE.iter().all(|&(c, _)| dentro(p, c, -2.0 * h)) {
+                1
+            } else {
+                continue;
+            };
+            let r = gab.fluencia(p)[1];
+            regioes[k]
+                .0
+                .push(f64::from(flu[(j * g.largura + i) as usize][1]) - r);
+            regioes[k].1 += r;
+        }
+    }
+    regioes.map(|(e, soma)| {
+        assert!(e.len() > 20, "região com {} texels", e.len());
+        let media = soma / e.len() as f64;
+        let pior = e.iter().fold(0.0_f64, |m, x| m.max(x.abs())) / media;
+        let rms = (e.iter().map(|x| x * x).sum::<f64>() / e.len() as f64).sqrt() / media;
+        (pior, rms)
+    })
+}
+
+/// ⭐ W5m (§4.3 da W5l) — **dois corpos translúcidos SOBREPOSTOS: `τ = ∏`, gabarito × placa**, com o
+/// céu (as cascatas carregam luz), nas duas cascatas. A SOMBRA da lente (a luz atravessa os dois: × 0,2,
+/// sem miolo no caminho) e a LENTE por dentro com o miolo (`α = 0,8`). Controlo: contra o gabarito de
+/// UM disco a sombra erra mais que 3× o teto — o portão vê o produto. ⚠️ O miolo fundo do lado escuro
+/// erra +5 % já num disco só (a pirâmide da W5h por convergir, handoff W5m §4): o teto da lente é o dele.
+#[test]
+fn dois_translucidos_sobrepostos_multiplicam_o_tau() {
+    let Some(gpu) = gpu() else { return };
+    let mut falhas = Vec::new();
+    let gab = Gabarito::novo(&lente(false));
+    let um = Gabarito::novo(&lente(true));
+    for holografica in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
+        let cfg = Config {
+            holografica,
+            ..config(Some(MIOLO_PADRAO))
+        };
+        let (flu, g, _) = rodar(&gpu, cfg, &lente(false));
+        let [sombra, dentro] = erro_no_produto(&flu, &g, &gab);
+        let [controlo, _] = erro_no_produto(&flu, &g, &um);
+        eprintln!(
+            "lente · holográfica {}: sombra pior {:.4} rms {:.4} · lente pior {:.4} rms {:.4} · controlo (um disco) sombra rms {:.4}",
+            holografica.is_some(),
+            sombra.0,
+            sombra.1,
+            dentro.0,
+            dentro.1,
+            controlo.1
+        );
+        for (nome, (pior, rms), teto) in [
+            ("sombra", sombra, TETO_SOMBRA),
+            ("lente", dentro, TETO_LENTE),
+        ] {
+            if pior > teto[0] || rms > teto[1] {
+                falhas.push(format!(
+                    "holográfica {} · {nome}: pior {pior:.4} · rms {rms:.4} > {teto:?}",
+                    holografica.is_some()
+                ));
+            }
+        }
+        if controlo.1 <= 3.0 * TETO_SOMBRA[1] {
+            falhas.push(format!(
+                "o controlo não separa: sombra contra um disco rms {:.4}",
+                controlo.1
+            ));
+        }
+    }
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// `[pior, rms]` — MEDIDOS (W5m, RTX 5060 Ti; clássica · holográfica) + 10 %: a sombra 0,091 · 0,0098 e
+/// 0,098 · 0,0099 (o controlo de um disco: rms 0,116); a lente 0,054 · 0,041 e 0,060 · 0,045.
+const TETO_SOMBRA: [f64; 2] = [0.108, 0.0109];
+const TETO_LENTE: [f64; 2] = [0.066, 0.049];
+
+/// Sonda (W5m): o SALTO em `α → 0` — o disco a 0,001 contra a cena sem ele, o pior texel sobre o máximo
+/// da luz, nas duas cascatas (a W5m tira o «+1» e o borrão através da face de todo corpo).
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_o_salto_em_alfa_zero() {
+    let Some(gpu) = gpu() else { return };
+    for holografica in [None, Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO)] {
+        let cfg = Config {
+            holografica,
+            ..config(Some(MIOLO_PADRAO))
+        };
+        let mut quase = cena();
+        quase.oclusores[0].opacidade = 0.001;
+        let vazia = CenaDeLuz {
+            oclusores: vec![],
+            ..cena()
+        };
+        let (a, ..) = rodar(&gpu, cfg, &quase);
+        let (b, ..) = rodar(&gpu, cfg, &vazia);
+        let topo = b.iter().map(|t| t[1]).fold(0.0, f32::max);
+        let pior = a
+            .iter()
+            .zip(&b)
+            .map(|(x, y)| (x[1] - y[1]).abs() / topo)
+            .fold(0.0, f32::max);
+        eprintln!(
+            "salto em α → 0 · holográfica {}: pior {pior:.5} do máximo",
+            holografica.is_some()
+        );
+    }
+}

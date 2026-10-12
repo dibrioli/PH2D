@@ -658,9 +658,9 @@ fn na_sala(
 
 /// ⭐ W5k — **o translúcido reflete a sua parte na placa** (`α·a`, contínuo em `α`; até a W5k o 0,99
 /// não refletia nada e a sala perdia a cor de uma vez): no caminho do produto (a holográfica), com as
-/// paredes a 0,99 os pontos ficam a 2 % da sala opaca — o gabarito muda 0,1 % —, e o chão junto à
-/// vermelha continua tingido (sem o rebote, branco). ⛔ VERMELHO DE PROPÓSITO (W5k): a placa muda 4,6 %
-/// (a clássica 7 %) — um resíduo do rebote de corpos translúcidos que refletem, ver o handoff W5k §4.
+/// paredes a 0,99 os pontos ficam a [`TOL_SALA_A_099`] da sala opaca — o gabarito muda 0,14 % —, e o
+/// chão junto à vermelha continua tingido (sem o rebote, branco). ⭐ W5m: a placa muda 0,08 % (era 4,6 %
+/// na W5k: a sonda de dentro da parede lida como campo de fora, na C3, no «+1» e no borrão).
 #[test]
 fn o_translucido_reflete_a_sua_parte_na_placa() {
     let Some(gpu) = gpu() else { return };
@@ -684,7 +684,7 @@ fn o_translucido_reflete_a_sua_parte_na_placa() {
     for k in 0..4 {
         let e = erro(com[k], opaca[k]);
         assert!(
-            e <= 0.02,
+            e <= TOL_SALA_A_099,
             "ponto {k}: {:?} a 0,99 × {:?} opaca ({e:.4})",
             com[k],
             opaca[k]
@@ -692,9 +692,14 @@ fn o_translucido_reflete_a_sua_parte_na_placa() {
     }
 }
 
+/// O teto do [`o_translucido_reflete_a_sua_parte_na_placa`]: ~2× a mudança do gabarito (0,14 %). MEDIDO
+/// (W5m): cada cura sozinha reprova — só a C3 1,25 %, a C3 e o «+1» 0,50 %, a C3 e o borrão 0,79 % —,
+/// as três 0,08 %.
+const TOL_SALA_A_099: f64 = 0.003;
+
 /// Sonda (`--ignored --nocapture`): de 1 a 0,99, quanto muda cada ponto na clássica, na holográfica e
 /// no gabarito com a série convergida (W5k: 7,0 · 5,0 · 6,4 · 3,6 % · 4,6 · 3,9 · 4,4 · 3,5 % · 0,14 ·
-/// 0,07 · 0,14 · 0,08 %).
+/// 0,07 · 0,14 · 0,08 %; W5m, a holográfica: 0,08 · 0,04 · 0,08 · 0,08 %).
 #[test]
 #[ignore = "sonda: imprime"]
 fn sonda_o_translucido_na_sala() {
@@ -726,4 +731,158 @@ fn sonda_o_translucido_na_sala() {
         .map(|&p| format!("{:.4}", erro(r99.luz_em(p), r1.luz_em(p))))
         .collect();
     eprintln!("gabarito: 0,99 × opaca por ponto {}", e.join(" "));
+}
+
+/// Sonda (W5m, §4.1): a FORMA do resíduo — por opacidade das paredes (0,999 · 0,99 · 0,9 · 0,5), a
+/// mudança com SINAL de cada ponto contra a sala opaca (canal G), na holográfica e na clássica, com e
+/// sem o rebote, ao lado da do gabarito (com a série e sem ela). Um salto (igual a 0,999 e a 0,99) é
+/// uma regra que só conhece o opaco; um declive é a lei do translúcido.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_a_forma_do_residuo_na_sala() {
+    let Some(gpu) = gpu() else { return };
+    let op = OpcoesDoRebote {
+        passo_m: 0.01,
+        rebotes: 300,
+    };
+    let opacidades = [0.999_f32, 0.99, 0.9, 0.5];
+    let muda = |a: [f64; 3], b: [f64; 3]| (a[1] - b[1]) / b[1].max(1e-12);
+    let linha = |v: [f64; 4]| v.map(|x| format!("{:+.4}", x)).join(" ");
+    for rebote in [true, false] {
+        let r1: [[f64; 3]; 4] = if rebote {
+            let r = Rebote::resolver(&sala(), op);
+            pontos().map(|p| r.luz_em(p))
+        } else {
+            pontos().map(|p| ph2d_light2d_ref::luz_em(&sala(), p))
+        };
+        for &a in &opacidades {
+            let ra: [[f64; 3]; 4] = if rebote {
+                let r = Rebote::resolver(&sala_a(a), op);
+                pontos().map(|p| r.luz_em(p))
+            } else {
+                pontos().map(|p| ph2d_light2d_ref::luz_em(&sala_a(a), p))
+            };
+            eprintln!(
+                "rebote {rebote} · {a}: gabarito {}",
+                linha(std::array::from_fn(|k| muda(ra[k], r1[k])))
+            );
+        }
+        for holografica in [Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO), None] {
+            let p1 = na_sala(&gpu, holografica, rebote, 1.0);
+            for &a in &opacidades {
+                let pa = na_sala(&gpu, holografica, rebote, a);
+                eprintln!(
+                    "rebote {rebote} · {a}: holográfica {} {}",
+                    holografica.is_some(),
+                    linha(std::array::from_fn(|k| muda(pa[k], p1[k])))
+                );
+            }
+        }
+    }
+}
+
+/// Sonda (W5m, §4.1): a FONTE do rebote (a luz que cada parede recebe) com as paredes a 0,99 e 0,9
+/// contra a sala opaca — soma do G dentro das paredes e na banda de fora, na holográfica.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_a_fonte_do_rebote_na_sala() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[1];
+    let ler = |a: f32| {
+        let cfg = Config {
+            holografica: Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+            ..com_rebote(grade(lado, texel), true)
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        let cena = sala_a(a);
+        for _ in 0..QUADROS {
+            s.quadro(&gpu, &cena);
+        }
+        let tex = s.fonte_do_rebote().expect("fonte");
+        let w = tex.width() as usize;
+        let g = s.grade_da_fluencia();
+        let escala = f64::from(g.largura) / w as f64;
+        let bytes = crate::comum::ler_bytes(&gpu, tex);
+        let caixas: Vec<[f32; 4]> = cena
+            .oclusores
+            .iter()
+            .map(|o| {
+                [
+                    o.vertices[0][0],
+                    o.vertices[0][1],
+                    o.vertices[2][0],
+                    o.vertices[2][1],
+                ]
+            })
+            .collect();
+        let (mut dentro, mut fora) = (0.0_f64, 0.0_f64);
+        for (i, t) in bytes.as_chunks::<8>().0.iter().enumerate() {
+            let c =
+                |k: usize| f64::from(half::f16::from_le_bytes([t[2 * k], t[2 * k + 1]]).to_f32());
+            if c(3) <= 0.0 {
+                continue;
+            }
+            let x = g.origem_m[0] + ((i % w) as f64 + 0.5) * escala * g.texel_m;
+            let y = g.origem_m[1] + ((i / w) as f64 + 0.5) * escala * g.texel_m;
+            let em = caixas.iter().any(|b| {
+                x >= f64::from(b[0])
+                    && x <= f64::from(b[2])
+                    && y >= f64::from(b[1])
+                    && y <= f64::from(b[3])
+            });
+            // A face da SALA: dentro da caixa da sala alargada 0,06 m (3 texels).
+            let (ox, oy) = (f64::from(O[0]), f64::from(O[1]));
+            let sala = x >= ox - 0.06 && x <= ox + 4.06 && y >= oy - 0.06 && y <= oy + 2.56;
+            match (em, sala) {
+                (true, true) => dentro += c(1),
+                (false, true) => fora += c(1),
+                _ => {}
+            }
+        }
+        (dentro, fora)
+    };
+    let (d1, f1) = ler(1.0);
+    for a in [0.999_f32, 0.99, 0.9] {
+        let (d, f) = ler(a);
+        eprintln!(
+            "fonte a {a} × opaca, face da sala: dentro das paredes {:+.4} · banda de fora {:+.4}",
+            d / d1 - 1.0,
+            f / f1 - 1.0
+        );
+    }
+}
+
+/// Sonda (W5m, §4.1): o TRANSPORTE sozinho — a sala converge opaca e só o ÚLTIMO quadro corre com as
+/// paredes a `a` (a fonte é a do quadro anterior, a opaca: a emissão é a mesma bit a bit, `min(α·a,
+/// 0,9) = 0,9`). O que muda nos pontos é o que a luz devolvida perde a caminho deles.
+#[test]
+#[ignore = "sonda: imprime"]
+fn sonda_o_transporte_do_rebote_na_sala() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[1];
+    for holografica in [Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO), None] {
+        let cfg = Config {
+            holografica,
+            ..com_rebote(grade(lado, texel), true)
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        let opaca = depois_de(&gpu, &mut s, &sala(), QUADROS);
+        for a in [0.999_f32, 0.99, 0.9] {
+            let um = depois_de(&gpu, &mut s, &sala_a(a), 1);
+            let volta = depois_de(&gpu, &mut s, &sala(), 1);
+            let m = |p: [[f64; 3]; 4]| {
+                (0..4)
+                    .map(|k| format!("{:+.4}", p[k][1] / opaca[k][1] - 1.0))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            eprintln!(
+                "holográfica {} · 1 quadro a {a}: {} · de volta opaca: {}",
+                holografica.is_some(),
+                m(um),
+                m(volta)
+            );
+            let _ = depois_de(&gpu, &mut s, &sala(), QUADROS);
+        }
+    }
 }

@@ -81,3 +81,8 @@
   τ (contínuos; em τ ∈ {0, 1} o bit de antes). Gates: `a_luz_e_continua_na_opacidade_do_oclusor` (a
   cena do dono), `o_interior_e_continuo_na_opacidade` e `um_vidro_mistura_a_transmitida_e_o_exterior_pela_
   opacidade` (gabarito), `o_translucido_reflete_a_sua_parte*` (gabarito e placa). Handoff W5k.
+- **O peso τ era meia-cura (W5m):** a sonda de DENTRO de um corpo é o campo de dentro, também num
+  translúcido — pesá-la por τ junto à face puxava a borda de um vidro a ½ −15 % (o g3 regrediu 0,0074 →
+  0,0100) e, no rebote, perdia τ·(o brilho da parede) por iteração (a sala a 0,99 −1,25 %; o gabarito
+  +0,14 %). Peso 0 nos três sítios (`peso_de_fora` da C3, o «+1» e o borrão da holográfica): g3 0,0065,
+  a sala 0,08 %, bit a bit em α = 1, salto em α → 0 de 0,012 % do máximo. Handoff W5m.

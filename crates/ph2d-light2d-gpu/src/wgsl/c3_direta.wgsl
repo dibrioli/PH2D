@@ -429,16 +429,15 @@ fn alcanca(P: vec2<f32>, L: Lampada, folga: f32) -> bool {
 // do translúcido na transmitida de dentro dele (só à volta dela).
 var<private> c0_tau: f32 = 1.0;
 
-// ⭐ W5k — o peso de uma sonda vista de FORA: o τ dela se cai num translúcido (a 0,999 ≈ o opaco que o
-// alfa da c0 já tira; a 0,001 ≈ nenhum corpo), 1 no resto (o opaco é do alfa: o bit de antes). Só PESO,
-// nunca `v / τ`: a sonda dentro de um corpo que reflete apanha a própria emissão sem o τ, e dividi-la
-// fazia o rebote divergir (a sala a 0,99: 10⁴, medido).
+// ⭐ W5m — o peso de uma sonda vista de FORA: 0 se cai num translúcido (a sonda de dentro de um corpo é
+// o campo de DENTRO — com o peso τ da W5k a borda de um vidro a ½ saía −15 % e o g3 regrediu, handoff
+// W5m §2), 1 no resto (o opaco é do alfa: o bit de antes). Nunca `v / τ` (o rebote divergia, 10⁴).
 fn peso_de_fora(t: vec2<i32>) -> f32 {
     if c0_tau < 1.0 {
         return 1.0;
     }
     let tau = meio(vec2<f32>(t) + 0.5).tau;
-    return select(1.0, tau, tau > 0.0 && tau < 1.0);
+    return select(1.0, 0.0, tau > 0.0 && tau < 1.0);
 }
 
 // A c0 (as cascatas) bilinear no ponto P das cascatas — a conta do `receber.wgsl`, bordas presas.

@@ -294,20 +294,13 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     let u = e % hrc.eixo.x;
     let v = e / hrc.eixo.x;
-    // ⭐ W5k: a sonda adiante pesa a TRANSMISSÃO da face entre as duas, `τ_adiante / τ_aqui` — 1 no
-    // mesmo meio ou para um mais claro (o «+1»), 0 num opaco (o próprio u), e de fora para um
-    // translúcido o τ dele (contínuo em α: a 0,999 é quase o opaco, a 0,001 quase nenhum corpo).
+    // ⭐ W5m: o «+1» só no mesmo meio ou para um mais claro; para DENTRO de um corpo (translúcido
+    // também) lê-se o próprio u — a sonda de dentro não conta a entrada, logo não vê o brilho da face
+    // que u vê (misturá-la por τ perdia τ·brilho: a sala a 0,99, −1 %; handoff W5m §2).
     let tau = meio(na_grade(f32(u), f32(v))).tau;
-    var adiante = 0.0;
-    if MAIS_UM_HRC {
-        let t1 = meio(na_grade(f32(u + 1u), f32(v))).tau;
-        adiante = select(select(t1 / tau, 1.0, t1 >= tau), 0.0, t1 <= 0.0);
-    }
     var f = r0_na_sonda(u, v);
-    if adiante >= 1.0 {
+    if MAIS_UM_HRC && meio(na_grade(f32(u + 1u), f32(v))).tau >= max(tau, 1e-30) {
         f = r0_na_sonda(u + 1u, v);
-    } else if adiante > 0.0 {
-        f = mix(f, r0_na_sonda(u + 1u, v), adiante);
     }
     // Partir de DENTRO de um translúcido conta como entrada (a lei do gabarito): os traços da sonda
     // começam «já dentro» e não a contam — o τ do TEXEL (W5k: não o da sonda lida). A sonda dentro de
@@ -346,23 +339,13 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
             if any(q < vec2<i32>(0)) || any(q >= vec2<i32>(hrc.grade)) {
                 continue;
             }
-            // O vizinho do OUTRO lado de uma borda não entra (a opacidade difere) — ⭐ W5k: no
-            // translúcido pesa a transmissão da face, `min τ / max τ` (contínuo; só peso, nunca
-            // reescalado: a emissão própria de quem reflete não leva o τ); entre τ iguais 1 e através
-            // de um opaco 0 (o bit de antes).
-            let tau_q = meio(vec2<f32>(q) + 0.5).tau;
-            let a = acumulado[u32(q.y) * hrc.grade.x + u32(q.x)].rgb;
-            if tau_q == tau_p {
-                soma += a;
-                peso += 1.0;
+            // O vizinho do OUTRO lado de uma borda não entra (a opacidade difere): é outro campo, também
+            // num translúcido (⭐ W5m — pesá-lo por `min τ / max τ` puxava a borda para o interior).
+            if meio(vec2<f32>(q) + 0.5).tau != tau_p {
                 continue;
             }
-            let w = min(tau_q, tau_p) / max(tau_q, tau_p);
-            if w <= 0.0 {
-                continue;
-            }
-            soma += w * a;
-            peso += w;
+            soma += acumulado[u32(q.y) * hrc.grade.x + u32(q.x)].rgb;
+            peso += 1.0;
         }
         f = soma / peso;
     }

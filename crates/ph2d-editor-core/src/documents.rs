@@ -160,6 +160,9 @@ impl Documents {
         let id = id.filter(|id| self.boards.get(*id).is_some());
         if id != self.active {
             self.leave_board();
+            // W18 — os ids são por quadro: o vídeo activo de um não é o de outro.
+            self.live.render_cache.videos.active = None;
+            self.live.render_cache.videos.frame = None;
         }
         self.active = id;
         self.pan_from = None;

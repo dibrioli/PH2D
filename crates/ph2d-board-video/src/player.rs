@@ -24,8 +24,8 @@ const STEP: Duration = Duration::from_secs(10);
 /// Os ids dos pedidos que o fio de leitura manda (o `ack` de cada quadro, a página) — longe dos do controlo
 /// e DENTRO de um inteiro de 32 bits: o CDP recusa outro id («Message must have integer 'id' property»,
 /// medido com `1 << 40`: a página nunca se servia e o navegador parava ao 2.º quadro).
-const READER_IDS: u64 = 1 << 30;
-const READER_IDS_END: u64 = i32::MAX as u64;
+pub(crate) const READER_IDS: u64 = 1 << 30;
+pub(crate) const READER_IDS_END: u64 = i32::MAX as u64;
 
 /// Um quadro do tocador: RGBA de 8 bits, alfa reto.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -362,12 +362,11 @@ fn mouse_params(m: Mouse) -> (&'static str, Value) {
 /// O fio de leitura: respostas para o controlo; cada quadro descodifica-se AQUI (nunca no fio da janela)
 /// e responde-se-lhe com o `ack` (sem ele o navegador pára de mandar); a página do tocador serve-se ao
 /// pedido.
-fn next_reader_id(ids: &AtomicU64) -> u64 {
-    let id = ids.fetch_add(1, Ordering::Relaxed);
-    if id >= READER_IDS_END {
-        ids.store(READER_IDS, Ordering::Relaxed);
-    }
-    id.min(READER_IDS_END)
+/// O id seguinte do leitor: dá a volta DENTRO de `READER_IDS..READER_IDS_END` (o contador começa em
+/// `READER_IDS`), distinto do anterior e sempre um inteiro de 32 bits.
+pub(crate) fn next_reader_id(ids: &AtomicU64) -> u64 {
+    let n = ids.fetch_add(1, Ordering::Relaxed).saturating_sub(READER_IDS);
+    READER_IDS + n % (READER_IDS_END - READER_IDS)
 }
 
 fn on_message(

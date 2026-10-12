@@ -229,6 +229,8 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
             p.player.resize(size);
             (p.id, p.video, p.size, p.paused) = (id, video.clone(), size, false);
         }
+        // Só arranca quando pode estar vivo (senão tocaria com som até a pausa chegar).
+        None if !live => return,
         None => {
             st.playing = Some(Playing {
                 id,

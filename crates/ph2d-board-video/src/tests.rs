@@ -35,6 +35,22 @@ fn a_screencast_jpeg_decodes_to_rgba() {
     assert_eq!(f.rgba.len(), 560 * 315 * 4);
 }
 
+/// ⭐ Os ids que o leitor manda ao CDP são inteiros de 32 bits e distintos, também ao dar a volta (a
+/// mutação `1 << 40` sobrevivia: o `min` antigo escondia-a repetindo `i32::MAX`).
+#[test]
+fn reader_ids_stay_32_bit_and_distinct_across_the_wrap() {
+    use std::sync::atomic::AtomicU64;
+    let start = player::READER_IDS;
+    let end = player::READER_IDS_END;
+    assert!(start < end && end <= i32::MAX as u64);
+    let ids = AtomicU64::new(start);
+    let a: Vec<u64> = (0..5).map(|_| player::next_reader_id(&ids)).collect();
+    assert_eq!(a, (start..start + 5).collect::<Vec<_>>());
+    let ids = AtomicU64::new(end - 2);
+    let b: Vec<u64> = (0..4).map(|_| player::next_reader_id(&ids)).collect();
+    assert_eq!(b, vec![end - 2, end - 1, start, start + 1], "dá a volta dentro da faixa");
+}
+
 /// A miniatura de verdade, pela rede (e a 2.ª vez pelo disco).
 #[test]
 #[ignore = "rede: corre à mão"]

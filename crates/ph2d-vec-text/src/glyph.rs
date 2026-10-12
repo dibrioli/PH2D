@@ -103,18 +103,19 @@ pub struct TextLayout {
     /// Aplicar o kerning da fonte (os pares `AV`, `To`… da tabela GPOS). Desligado, o bloco é o
     /// advance-only de sempre, byte a byte.
     ///
-    /// ⚠️ Ligar muda a aparência de todo texto já autorado, e por isso é aceitação do dono (prompt 49,
-    /// W3): os construtores de produção leem [`kerning_by_default`], e não um `true` escrito à mão.
+    /// ⚠️ Muda a aparência de todo texto já autorado — o dono aceitou-o no smoke de 11/10 (*«kerning
+    /// é melhor»*). Os construtores de produção leem [`kerning_by_default`], e não um `true` escrito
+    /// à mão, para que o `PH2D_TEXT_KERNING=0` desligue TODOS.
     pub kerning: bool,
 }
 
-/// **A chave de aceitação do kerning** — `PH2D_TEXT_KERNING=1` liga-o em todo texto do editor e do
-/// Motion, para o antes/depois que o dono aprova. Lida uma vez por processo: um texto não pode mudar
-/// de espaçamento a meio de uma sessão.
+/// **O kerning por omissão** — LIGADO em todo texto do editor e do Motion desde o aceite do dono
+/// (11/10); `PH2D_TEXT_KERNING=0` volta ao advance-only, para comparar. Lida uma vez por processo:
+/// um texto não pode mudar de espaçamento a meio de uma sessão.
 #[must_use]
 pub fn kerning_by_default() -> bool {
     static KEY: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *KEY.get_or_init(|| std::env::var("PH2D_TEXT_KERNING").is_ok_and(|v| v == "1"))
+    *KEY.get_or_init(|| std::env::var("PH2D_TEXT_KERNING").map_or(true, |v| v != "0"))
 }
 
 /// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada

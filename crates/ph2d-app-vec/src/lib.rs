@@ -216,6 +216,8 @@ mod tampa_redonda_tests;
 mod vector_mode_estrela;
 /// A cena 15 (F9): as alças das formas arrastadas pelo press e o arrasto da shell.
 mod vector_mode_handles;
+/// A cena 20 (F13): o modo Forma selecciona — o clique desarma e traz as alças.
+mod vector_mode_seleciona;
 /// A cena 19 (F12): as setas lado a lado em quatro formas e a ponta da espiral que segue a mão.
 mod vector_mode_setas;
 /// A cena 17 (F11): a caixa por fora do traço grosso e os ⊙ dentro dos cantos.

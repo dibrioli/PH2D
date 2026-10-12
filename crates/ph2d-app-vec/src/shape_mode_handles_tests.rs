@@ -357,3 +357,30 @@ fn a_click_on_a_shape_disarms_and_brings_its_handles_back() {
     m.frame();
     assert!(m.vec.shape_armed, "um clique no vazio desarmou");
 }
+
+/// ⭐ **H4: uma forma SEM `VecShape` (convertida em curvas) no modo Forma** — o clique selecciona-a e
+/// desarma, mas ela não tem alças (não há parâmetros a mexer) e os nós continuam escondidos (no modo
+/// Forma nada os arrasta: é a ferramenta de nós que os mostra). A caixa é a da selecção. Controlo: a
+/// mesma forma, antes de convertida, tinha alças.
+#[test]
+fn a_shape_without_params_in_shape_mode_is_selected_without_handles_or_nodes() {
+    let mut m = mesa();
+    let star = m.draw(ShapeKind::Star, [0.0, 0.0], 1.0);
+    let disc = m.draw(ShapeKind::Ellipse, [4.0, 0.0], 1.0);
+    m.vec.pen.select_many(&[star]);
+    assert!(m.view().is_some(), "controlo: a estrela viva tem alças");
+    assert_eq!(
+        crate::shape_live::drop_shape_params(&mut m.sim, &m.vec.entities, &[star]),
+        1
+    );
+    m.vec.pen.select_many(&[disc]);
+    m.catalog(ShapeKind::Polygon);
+    m.frame();
+    m.click([0.0, 0.0]);
+    m.frame();
+    assert_eq!(m.vec.pen.selected(), Some(star), "o clique não a seleccionou");
+    assert!(!m.vec.shape_armed, "o clique não desarmou");
+    assert!(m.view().is_none(), "uma forma sem parâmetros com alças");
+    assert!(hides_the_nodes(&m.vec, &m.sim), "nós no modo Forma");
+    assert!(!m.press([0.0, 0.0]), "o press agarrou uma alça que não existe");
+}

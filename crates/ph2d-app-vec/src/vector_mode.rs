@@ -360,6 +360,7 @@ impl ModeFamily for Family<'_> {
 /// `=17` (F11): a caixa por fora do traço grosso e os ⊙ dentro dos cantos (`vector_mode_stroke`).
 /// `=18` (F12 A): o traço das formas das fotos do dono (`vector_mode_tracos`).
 /// `=19` (F12): as setas ⇕ lado a lado em quatro formas e a ponta da espiral (`vector_mode_setas`).
+/// `=20` (F13): o modo Forma selecciona — o clique desarma e traz as alças (`vector_mode_seleciona`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -384,7 +385,8 @@ pub fn smoke_step(
     // A cena 15 (F9): as alças das formas — estágios 70–76 em `vector_mode_handles`; 2 = a 16 (F10,
     // a estrela — 80–84 em `vector_mode_estrela`); 3 = a 17 (F11, o traço — 90–93 em
     // `vector_mode_stroke`); 4 = a 18 (F12 A, o traço das formas — 100–103 em `vector_mode_tracos`);
-    // 5 = a 19 (F12, as setas lado a lado — 110–120 em `vector_mode_setas`).
+    // 5 = a 19 (F12, as setas lado a lado — 110–120 em `vector_mode_setas`); 6 = a 20 (F13, o
+    // modo Forma selecciona — 130–136 em `vector_mode_seleciona`).
     static HANDLES: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
@@ -392,7 +394,7 @@ pub fn smoke_step(
             let want = match scene.as_deref() {
                 Ok(
                     "6" | "7" | "9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18"
-                    | "19",
+                    | "19" | "20",
                 ) => 1,
                 _ => 9,
             };
@@ -400,7 +402,8 @@ pub fn smoke_step(
             BARS.store(
                 u8::from(matches!(
                     scene.as_deref(),
-                    Ok("9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18" | "19")
+                    Ok("9" | "10" | "11" | "12" | "13" | "14" | "15" | "16" | "17" | "18" | "19"
+                        | "20")
                 )),
                 Ordering::Relaxed,
             );
@@ -414,6 +417,7 @@ pub fn smoke_step(
                     Ok("17") => 3,
                     Ok("18") => 4,
                     Ok("19") => 5,
+                    Ok("20") => 6,
                     _ => 0,
                 },
                 Ordering::Relaxed,
@@ -456,6 +460,8 @@ pub fn smoke_step(
             13
         } else if QUICK.load(Ordering::Relaxed) != 0 {
             50
+        } else if HANDLES.load(Ordering::Relaxed) == 6 {
+            130
         } else if HANDLES.load(Ordering::Relaxed) == 5 {
             110
         } else if HANDLES.load(Ordering::Relaxed) == 4 {
@@ -575,6 +581,12 @@ pub fn smoke_step(
                 go(next);
             }
         }
+        // A cena 20 (F13): o modo Forma selecciona — `vector_mode_seleciona`.
+        s @ 130..=136 => {
+            if let Some(next) = crate::vector_mode_seleciona::step(s, vec, scene, hero) {
+                go(next);
+            }
+        }
         // A cena 12 (F7): o QuickShape e o lápis com quinas — `vector_mode_quick`.
         s @ 50..=56 => {
             let edit = QUICK.load(Ordering::Relaxed) == 2;
@@ -658,3 +670,8 @@ mod estrela_tests;
 #[cfg(test)]
 #[path = "vector_mode_setas_tests.rs"]
 mod setas_tests;
+
+/// A cena 20 (F13) faz o que diz — irmão pelo tecto de LOC.
+#[cfg(test)]
+#[path = "vector_mode_seleciona_tests.rs"]
+mod seleciona_tests;

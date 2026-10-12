@@ -211,3 +211,61 @@ fn a_corner_whose_edges_are_eaten_whole_keeps_its_style() {
         );
     }
 }
+
+/// ⭐ (F13, o dono: «quando arredonda as quinas, fica ruim») **O estilo do canto com envergadura
+/// e com liso**: com a envergadura, as paredes do *Cutout* e o chanfro do *Straight* ficam RECTOS
+/// (envergados viravam ganchos); com o liso, nenhum vértice fica com raio (o estilo num vértice
+/// liso deixava lascas — riscos do contorno ao centro).
+#[test]
+fn corner_styles_stay_clean_under_curve_and_smooth() {
+    for style in [CornerStyle::Cutout, CornerStyle::Straight] {
+        for c in [-0.6, -0.3, 0.3, 0.6] {
+            let p = polystar(
+                [0.0; 2],
+                1.0,
+                1.0,
+                &PolyStar {
+                    curve: c,
+                    ..poly(5, 0.0, 0.2, style)
+                },
+            );
+            let r = |q: [f64; 2]| q[0].hypot(q[1]);
+            let n = p.verts.len();
+            // As paredes e o chanfro: os troços que NÃO assentam num lado (as duas pontas para dentro
+            // do círculo do polígono) têm as alças sobre a corda.
+            let mut walls = 0;
+            for k in 0..n {
+                let (v, w) = (&p.verts[k], &p.verts[(k + 1) % n]);
+                let d = [w.anchor[0] - v.anchor[0], w.anchor[1] - v.anchor[1]];
+                let ld = d[0].hypot(d[1]);
+                if ld < 1e-9 || (r(v.anchor) > 0.999 && r(w.anchor) > 0.999) {
+                    continue;
+                }
+                let off = |h: [f64; 2]| {
+                    ((h[0] - v.anchor[0]) * d[1] - (h[1] - v.anchor[1]) * d[0]).abs() / ld
+                };
+                if off(v.out_handle) < 1e-9 && off(w.in_handle) < 1e-9 {
+                    walls += 1;
+                }
+            }
+            assert!(
+                walls >= 5,
+                "{style:?} envergadura {c}: só {walls} troços rectos (paredes envergadas)"
+            );
+        }
+        for s in [0.05, 0.5, 1.0] {
+            // Liso, todo ponto do contorno é um vértice do polígono (no círculo de raio 1): a lasca
+            // era um ponto puxado para dentro (o risco até ao centro).
+            let p = polystar([0.0; 2], 1.0, 1.0, &poly(5, s, 0.2, style));
+            let dentro = p
+                .verts
+                .iter()
+                .map(|v| v.anchor[0].hypot(v.anchor[1]))
+                .fold(1.0, f64::min);
+            assert!(
+                dentro > 0.999,
+                "{style:?} liso {s}: um ponto a {dentro} do centro (lasca)"
+            );
+        }
+    }
+}

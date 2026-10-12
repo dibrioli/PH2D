@@ -68,7 +68,11 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
     // arredondamento engordava a forma): medido em `the_rounding_never_grows_past_the_sharp_corner`.
     if s.curve != 0.0 && s.smooth <= 0.0 && s.radii.iter().any(|r| *r > 0.0) {
         let straight = shaped(center, rx, ry, &PolyStar { curve: 0.0, ..*s });
-        return bend_between_corners(straight, center, s.curve);
+        let sharp: Vec<[f64; 2]> = unit_vertices(s)
+            .iter()
+            .map(|p| [center[0] + rx * p[0], center[1] + ry * p[1]])
+            .collect();
+        return bend_between_corners(straight, center, s.curve, &sharp);
     }
     let unit = unit_vertices(s);
     let m = unit.len();
@@ -178,7 +182,9 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
                 } else {
                     VertexKind::Corner
                 },
-                corner_radius: radius_of(i),
+                // Liso, o raio já entrou no arredondado (`raw`): o estilo do canto num vértice G1
+                // deixava lascas (riscos do contorno ao centro — o dono: «quando arredonda fica ruim»).
+                corner_radius: if liso_em(i) { 0.0 } else { radius_of(i) },
             }
         })
         .collect();
@@ -200,11 +206,48 @@ fn shaped(center: [f64; 2], rx: f64, ry: f64, s: &PolyStar) -> VecPath {
 /// Enverga os troços RECTOS (alças nulas ou a ⅓) de um contorno fechado já arredondado: o meio de
 /// cada um anda `curve × meia corda` pela normal de FORA (para dentro, nunca além de 90 % da
 /// distância ao centro), e as alças vizinhas rodam para a nova tangente — a junção fica lisa.
-fn bend_between_corners(mut p: VecPath, center: [f64; 2], curve: f64) -> VecPath {
+fn bend_between_corners(
+    mut p: VecPath,
+    center: [f64; 2],
+    curve: f64,
+    sharp: &[[f64; 2]],
+) -> VecPath {
     let n = p.verts.len();
+    // Só enverga o que é LADO do polígono: as paredes do Cutout e o chanfro do Straight ficam rectos
+    // (envergados viravam ganchos — o dono, F13).
+    let on_a_side = |a: [f64; 2], b: [f64; 2]| {
+        let m = sharp.len();
+        (0..m).any(|i| {
+            let (u, v) = (sharp[i], sharp[(i + 1) % m]);
+            let e = [v[0] - u[0], v[1] - u[1]];
+            let le = e[0].hypot(e[1]).max(1e-12);
+            let off = |q: [f64; 2]| ((q[0] - u[0]) * e[1] - (q[1] - u[1]) * e[0]).abs() / le;
+            off(a) < 1e-9 * le.max(1.0) && off(b) < 1e-9 * le.max(1.0)
+        })
+    };
+    // O troço `k → k+1` é um ARCO do canto (nem lado, nem recta): só nele a junção fica G1 com o lado
+    // envergado; ao lado de uma parede ou de outro lado fica a quina. Lido ANTES de envergar.
+    let arc: Vec<bool> = (0..n)
+        .map(|k| {
+            let (v, w) = (&p.verts[k], &p.verts[(k + 1) % n]);
+            let third = |o: [f64; 2], to: [f64; 2], h: [f64; 2]| {
+                let q = [o[0] + (to[0] - o[0]) / 3.0, o[1] + (to[1] - o[1]) / 3.0];
+                (h[0] - o[0]).hypot(h[1] - o[1]) < 1e-12 || (h[0] - q[0]).hypot(h[1] - q[1]) < 1e-9
+            };
+            let line =
+                third(v.anchor, w.anchor, v.out_handle) && third(w.anchor, v.anchor, w.in_handle);
+            !line && !on_a_side(v.anchor, w.anchor)
+        })
+        .collect();
+    let side: Vec<bool> = (0..n)
+        .map(|k| on_a_side(p.verts[k].anchor, p.verts[(k + 1) % n].anchor))
+        .collect();
     for k in 0..n {
         let j = (k + 1) % n;
         let (a, b) = (p.verts[k].anchor, p.verts[j].anchor);
+        if !side[k] {
+            continue;
+        }
         let d = [b[0] - a[0], b[1] - a[1]];
         let len = d[0].hypot(d[1]);
         let straight = |h: [f64; 2], o: [f64; 2], t: f64| {
@@ -226,8 +269,12 @@ fn bend_between_corners(mut p: VecPath, center: [f64; 2], curve: f64) -> VecPath
         p.verts[k].out_handle = out;
         p.verts[j].in_handle = inn;
         // A alça do ARCO vizinho roda para a tangente nova (mesmo comprimento): G1 na junção.
-        align_opposite(&mut p.verts[k].in_handle, a, out);
-        align_opposite(&mut p.verts[j].out_handle, b, inn);
+        if arc[(k + n - 1) % n] {
+            align_opposite(&mut p.verts[k].in_handle, a, out);
+        }
+        if arc[j] {
+            align_opposite(&mut p.verts[j].out_handle, b, inn);
+        }
     }
     p
 }

@@ -252,6 +252,7 @@ fn every_field_of_the_model_is_named_here() {
                     style,
                     crop: _,
                     flip: _,
+                    filter: _,
                 } = &**i;
                 style
             }

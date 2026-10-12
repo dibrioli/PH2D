@@ -224,6 +224,65 @@ fn a_format_11_file_still_opens_and_rewrites_in_the_current_format() {
 /// Gravados pelo build do formato 11 (`72b26c071`).
 const V11_BYTES: &[u8] = include_bytes!("../fixtures/format_v11.bin");
 
+/// ⭐ Um ficheiro do formato 12 (W14) continua a abrir, com as imagens sem filtro — gravado pelo build
+/// de `3e45504e5b` (o último do formato 12; teste temporário que escreveu `to_bytes`, apagado):
+/// «Fotos12» com duas imagens (a 1.ª do ficheiro 7, recortada `1,0 4×2`, espelhada na horizontal,
+/// cantos redondos, opacidade 60; a 2.ª do ficheiro 9) e a versão «v1»; «Vazio».
+#[test]
+fn a_format_12_file_still_opens_with_its_images_unfiltered() {
+    let set = BoardSet::from_bytes(V12_BYTES).expect("o formato 12 lê-se");
+    let b = &set.boards()[0];
+    assert_eq!(b.name, "Fotos12");
+    let imgs: Vec<&Image> = b
+        .doc
+        .live_in_z_order()
+        .iter()
+        .map(|e| match &e.kind {
+            ElementKind::Image(i) => &**i,
+            _ => panic!("só imagens"),
+        })
+        .collect();
+    assert_eq!(imgs.len(), 2);
+    let a = imgs[0];
+    assert_eq!(a.file, file(7).id());
+    assert_eq!(a.crop, Some(Crop { x: 1.0, y: 0.0, w: 4.0, h: 2.0 }));
+    assert_eq!(a.flip, [true, false]);
+    assert!(a.style.round);
+    assert_eq!(a.style.opacity, 60);
+    assert_eq!(imgs[1].file, file(9).id());
+    assert!(imgs.iter().all(|i| i.filter == ImageFilter::Original));
+    assert_eq!(b.files.len(), 2);
+    assert_eq!(b.team.versions.len(), 1);
+    assert_eq!(b.team.versions[0].read().unwrap().doc.live_in_z_order().len(), 2);
+    assert_eq!(set.boards()[1].name, "Vazio");
+    let bytes = set.to_bytes().unwrap();
+    assert_eq!(
+        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
+        FORMAT_VERSION
+    );
+    assert_eq!(BoardSet::from_bytes(&bytes).unwrap(), set);
+}
+
+/// Gravados pelo build do formato 12 (`3e45504e5b`).
+const V12_BYTES: &[u8] = include_bytes!("../fixtures/format_v12.bin");
+
+/// O filtro viaja no registo da imagem (o par ao vivo): ler e escrever `Field::Image` leva-o.
+#[test]
+fn the_image_field_carries_the_filter() {
+    let mut b = BoardSet::default();
+    let id = b.create("A".into());
+    let board = b.get_mut(id).unwrap();
+    let eid = put(board, file(3), [0.0, 0.0, 4.0, 4.0]);
+    let mut gray = board.doc.get(eid).unwrap().clone();
+    if let ElementKind::Image(i) = &mut gray.kind {
+        i.filter = ImageFilter::Gray;
+    }
+    let bytes = gray.read(Field::Image).unwrap();
+    let mut plain = board.doc.get(eid).unwrap().clone();
+    assert!(plain.write(Field::Image, &bytes));
+    assert_eq!(plain.kind, gray.kind);
+}
+
 /// ⭐ Gate de desenho: o retrato magro é o quadro com os ficheiros vazios (os campos de [`Board`] pela
 /// mesma ordem), e lê-se pelo leitor de sempre.
 #[test]

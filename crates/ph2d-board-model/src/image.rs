@@ -155,17 +155,32 @@ pub struct Crop {
     pub h: f64,
 }
 
+/// O filtro de cor de uma imagem (W15). ⚠️ Append-only: o discriminante vai para o ficheiro, e uma
+/// variante nova no FIM não muda o formato.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum ImageFilter {
+    /// As cores do ficheiro.
+    #[default]
+    Original,
+    /// Preto e branco: cada píxel vira a luminância relativa dele (Rec. 709 sobre a luz linear, a
+    /// `LinearRgba::luminance` do `ph2d-color`), com o alfa intacto.
+    Gray,
+}
+
 /// Uma imagem no quadro: estica-se à caixa `x, y, w, h` do elemento (sem manter a proporção — é o
 /// `preserveAspectRatio="none"` do oráculo; quem redimensiona é que a mantém).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Image {
     pub file: FileId,
-    /// Só a opacidade e os cantos redondos (`round`, a mesma regra de raio das formas) contam.
+    /// A opacidade, os cantos redondos (`round`, a mesma regra de raio das formas) e a moldura (W15:
+    /// `stroke`, `stroke_width`, `dash`, `sketch`, como no contorno de uma forma). O preenchimento não conta.
     pub style: Style,
     /// `None` = a imagem inteira.
     pub crop: Option<Crop>,
     /// Espelhada na horizontal e na vertical, à volta do centro da caixa (o `scale` `-1`).
     pub flip: [bool; 2],
+    /// W15 (formato 13).
+    pub filter: ImageFilter,
 }
 
 impl Image {
@@ -177,6 +192,7 @@ impl Image {
             style,
             crop: None,
             flip: [false; 2],
+            filter: ImageFilter::Original,
         }
     }
 

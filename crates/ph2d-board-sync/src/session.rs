@@ -14,8 +14,8 @@ use crate::{PeerId, Replica, Snapshot, Write};
 /// A versão do protocolo: quem fala outra é recusado com uma frase (nunca uma fusão às cegas).
 /// 2 = a facilitação ao vivo (ADR-0182); 3 = o histórico das votações (`TeamWrite::Poll…`, o `Field`
 /// sem `Votes`, ADR-0183); 4 = a identidade presa à chave do `Hello` (ADR-0182 §10); 5 = as imagens
-/// (`Write::File`, o retrato sem os bytes delas, W14).
-pub const PROTOCOL: u32 = 5;
+/// (`Write::File`, o retrato sem os bytes delas, W14); 6 = o filtro da imagem no `Field::Image` (W15).
+pub const PROTOCOL: u32 = 6;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;

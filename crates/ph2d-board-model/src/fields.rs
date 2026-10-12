@@ -52,7 +52,8 @@ pub enum Field {
     Mind,
     Stamps,
     Seed,
-    /// W14 — o ficheiro, o recorte e o espelho de uma imagem (mudam juntos: recortar move a imagem).
+    /// W14 — o ficheiro, o recorte, o espelho e (W15) o filtro de uma imagem (mudam juntos: recortar
+    /// move a imagem).
     Image,
 }
 
@@ -166,7 +167,7 @@ impl Element {
             Field::Seed => enc(&org.seed),
             Field::Image => {
                 let i = self.image()?;
-                enc(&(i.file, i.crop, i.flip))
+                enc(&(i.file, i.crop, i.flip, i.filter))
             }
         })
     }
@@ -237,7 +238,7 @@ impl Element {
             Field::Seed => put(&mut self.org_mut().seed, b),
             Field::Image => {
                 let i = self.image_mut()?;
-                (i.file, i.crop, i.flip) = dec(b)?;
+                (i.file, i.crop, i.flip, i.filter) = dec(b)?;
                 Some(())
             }
         }

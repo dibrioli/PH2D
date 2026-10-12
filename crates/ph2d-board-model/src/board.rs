@@ -15,8 +15,9 @@ use crate::{BoardDoc, Files, Team};
 /// alinhamento e letra do texto; `Org::seed`: a semente do tremor, W9); 10 = a identidade das
 /// mensagens e das versões da equipa (`Message::id`, `Version::id`, W11 — ADR-0181); 11 = o histórico
 /// das votações (`Team::polls`, `Team::shown`) e o elemento sem `Org::votes` (W13 — ADR-0183); 12 = as
-/// imagens (`Board::files`, `Version::files`, `ElementKind::Image`, W14).
-pub const FORMAT_VERSION: u32 = 12;
+/// imagens (`Board::files`, `Version::files`, `ElementKind::Image`, W14); 13 = o filtro da imagem
+/// (`Image::filter`, W15).
+pub const FORMAT_VERSION: u32 = 13;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -312,6 +313,7 @@ impl BoardSet {
             9 => crate::legacy::read_v9(bytes),
             10 => crate::legacy::read_v10(bytes),
             11 => crate::legacy::read_v11(bytes),
+            12 => crate::legacy::read_v12(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

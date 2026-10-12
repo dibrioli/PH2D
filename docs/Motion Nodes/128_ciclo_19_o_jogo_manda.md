@@ -91,7 +91,9 @@ mudanças, por revisão.
   anterior — idempotente no mesmo tique (as sub-passadas da placa), e depois de um scrub as
   contagens voltam às da época.
 - **Orçamento** `FITA_BYTES = 32 MiB` (§5.4: 34 B/tique com três entradas a mexer ⇒ ~1 M tiques,
-  ~4,6 h a 60 Hz); acima dele a marca mais velha DOBRA-SE na base (aberto nomeado, §7).
+  ~4,6 h a 60 Hz); acima dele a marca mais velha DOBRA-SE na base (aberto nomeado, §7). ⚠️ A régua
+  declarava ~1/18 do retido (eram ~600 MB): desde o doc 131 §7 C.11 são `128 MiB` de RAM real e o
+  mesmo jogo cabe os mesmos ~982 k tiques (137 B/tique).
 
 ### §3.4 — `TimeMode::Driven` (apendado à escada)
 

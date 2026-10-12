@@ -192,3 +192,41 @@ casos, pior `|Δ|` `1,1e-5` relativo a `29,5`, as recusas ao bit); a cena de tes
 sobre `3e-8`); a recusa continua para a chave sem `StreamOp`. **Mutações (todas sangraram):** o degrau
 «sem valor» apagado · a coluna guardada no alias perdida · o `when` invertido · a cerca a recusar
 sempre · a declaração pelo nome que nunca dispara.
+
+### C.11 — a fita das entradas: a régua honesta, a memória e o custo (12/10)
+
+**A régua mentia.** O `bytes()` contava `nome + approx_bytes + 16` por mudança; cada mudança guardava um
+`(String, External)` clonado (o nó da `BTreeMap` do `Stream`, ~370 B, a chave, a coluna presa). O gate novo
+`tests/fita_memoria.rs` (o heap vivo pelo `dhat`, `bytes + 16·blocos`) viu-o VERMELHO: o retido era
+`15,7–17,8×` o declarado ⇒ os «32 MiB» eram `~600 MB` de RAM. Cura: por dentro, o nome internado, uma coluna de
+um elemento guardada pelos BITS, as maiores como a MESMA alocação (`Stream::shared_columns`/`with_shared`,
+apendados à `ph2d-nodegraph`); o `External` reconstrói-se só na leitura. A API da `Fita` não mudou.
+
+| medida (release) | antes | depois |
+|---|---:|---:|
+| gravar um tique novo, 300 entradas a 1 400 tiques (`026d8979b6`) | `35,07 ms` | `0,092` → `0,027 ms` |
+| tocar sobre o gravado (`Igual`) / ler um tique qualquer, 300 × 1 500 | O(história): a soma de `35,07 ms` | `0,012` / `0,046–0,115 ms` |
+| retido por mudança, 1 coluna (3 · 30 · 300 entradas) | `640 · 597 · 642 B` | `73 · 52 · 50 B` |
+| retido por mudança, 2 colunas · uma curva de 8 pontos | `702 B` · — | `148 · 196 B` |
+| RSS do processo por mudança (a sonda, 300 × 1 500) | `631,5 B` (20,6×) | `50,9 B` (1,0×) |
+| declarado ÷ retido, os 8 cenários do gate (com a dobra) | `15,7–17,8×` | `1,00–1,03×` |
+
+O `Igual` e a leitura também refaziam a história desde a base (`estado_ate` a cada tique ao tocar depois de um
+scrub, e o `pulsos_depois_do_scrub` a cada tique repetido): agora partem do CURSOR (o tique anterior) ou de uma
+ÂNCORA a cada 32 marcas (`~1 %` da memória).
+
+**O orçamento pelo RECURSO:** `FITA_BYTES = 128 MiB` de RAM real (a classe do `CPU_RING_BYTES`, a quem a fita
+serve). B/tique medido NA APP (`fila_c_a_fita_por_entrada`, `measure_the_game_group`):
+
+| entradas a mudar | B/tique | história a 60 Hz |
+|---|---:|---:|
+| o jogo do doc 128 §5.4 | `137` | `4,5 h` (os mesmos `~982 k` tiques que os «32 MiB» prometiam) |
+| 3, em todo tique | `215` | `173 min` |
+| 30, em todo tique | `1 553` | `24 min` |
+| 300, em todo tique | `14 933` | `2,5 min` |
+
+**Gates (verdes):** os 8 da fita (com a sonda) + `um_passeio_de_edicao_le_se_como_o_modelo` (o passeio contra um modelo:
+tocar, voltar, `Igual`, `Ramo` no mesmo tique, divergir, a dobra; `estado_em` e `avanca` em todo tique) +
+`a_fita_declara_a_memoria_que_retem` (±25 %, 8 cenários); `ph2d-eval-motion --lib` 103/103; `ph2d-app-motion`
+(scrub · replay · jogo · entradas · recuo · fita) 23/23. **Mutações (sangraram):** a curva sem o peso da coluna
+(3,80×) · a marca sem o seu vetor (2,25–32×).

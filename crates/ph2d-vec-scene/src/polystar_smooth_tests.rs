@@ -20,14 +20,6 @@ fn samples(p: &VecPath) -> Vec<[f64; 2]> {
     out
 }
 
-fn area(p: &VecPath) -> f64 {
-    let s = samples(p);
-    let n = s.len();
-    0.5 * (0..n)
-        .map(|i| s[i][0] * s[(i + 1) % n][1] - s[(i + 1) % n][0] * s[i][1])
-        .sum::<f64>()
-}
-
 /// A distância de Hausdorff de ponto a SEGMENTO (as poligonais amostradas): ponto a ponto, uma
 /// aresta recta de alças coladas lê o espaçamento das amostras (0,023 sobre o MESMO contorno).
 fn hausdorff(a: &VecPath, b: &VecPath) -> f64 {
@@ -182,5 +174,24 @@ fn a_corner_whose_edges_are_eaten_whole_keeps_its_style() {
             hausdorff(&at(style), &straight) > 0.1,
             "{style:?} virou a recta"
         );
+    }
+}
+
+/// ⭐ **Com raio, o vértice fica QUINA sob o liso e a envergadura** (`liso_em`: só o vértice sem raio
+/// é liso). Se o raio também alinhasse as alças (G1), as tangentes do canto ficariam colineares e o
+/// arredondado não teria o que arredondar — o raio sumia (medido: o efeito do raio `0,25` cai ~5×).
+#[test]
+fn with_a_radius_the_smooth_vertex_stays_a_corner_and_the_radius_shows() {
+    for (s, c, min) in [(0.3, 0.4, 0.01), (0.3, -0.4, 0.1), (0.1, 0.4, 0.01), (0.5, 0.2, 0.01)] {
+        let mk = |r: f64| PolyStar {
+            curve: c,
+            ..poly(5, s, r, CornerStyle::Round)
+        };
+        let (a, b) = (
+            polystar([0.0; 2], 1.0, 1.0, &mk(0.0)),
+            polystar([0.0; 2], 1.0, 1.0, &mk(0.25)),
+        );
+        let h = hausdorff(&a, &b);
+        assert!(h >= min, "liso {s}, envergadura {c}: o raio só mexe {h}");
     }
 }

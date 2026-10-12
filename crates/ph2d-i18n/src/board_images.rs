@@ -45,7 +45,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w16.flip" => "Flip",
         "board.smoke.w16.gif" => "GIF",
         "board.smoke.w16.l1" => {
-            "1. Double-click the left photo (or select it and press Enter). Drag a corner or the middle of a side to crop; drag inside to slide the photo. Enter or Esc to finish."
+            "1. Double-click the left photo (or select it, Enter). Drag a corner or a side to crop; drag inside to slide it. Enter or Esc ends."
         }
         "board.smoke.w16.l2" => {
             "2. Click a photo: the two flip buttons in its bar mirror it (or Shift+H and Shift+V). The two on the right are flipped copies."
@@ -57,7 +57,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. In Dolphin, copy one or more pictures (Ctrl+C), come back to this board and press Ctrl+V: they come in side by side."
         }
         "board.smoke.w16.l5" => {
-            "5. Scene tab: select several objects in the Hierarchy, right-click one of them, Send to board…: they all go, each turned, sized and mirrored as in the scene."
+            "5. Scene tab: select several objects in the Hierarchy, right-click one, Send to board…: all go, turned and mirrored as in the scene."
         }
         "board.smoke.w16.l6" => {
             "6. Export this board as SVG: it is quick even with big photos, and the pictures go in as they arrived."

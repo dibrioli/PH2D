@@ -13,7 +13,7 @@ impl Stroke {
     /// of its own seeded by the stroke `seed` — so the per-dab stream every other jitter reads is
     /// untouched, and a fill method that rebuilds its stroke every Move with the same seed keeps its
     /// colour for the whole gesture.
-    pub(super) fn stroke_colour_draw(spec: &BrushSpec, seed: u64) -> Option<([f32; 3], [f32; 3])> {
+    pub(crate) fn stroke_colour_draw(spec: &BrushSpec, seed: u64) -> Option<([f32; 3], [f32; 3])> {
         (spec.color_jitter_scope == crate::jitter::ColorJitterScope::PerStroke
             && spec.has_colour_jitter_amount())
         .then(|| crate::jitter::colour_draw(&mut (seed ^ 0x636F_6C6F_7572_5354), spec))

@@ -428,6 +428,36 @@ impl ShapeLayers {
         })
     }
 
+    /// **A cor da PONTA numa cor só** — para o que não é carimbo (os fios do Sketchy/Wire/Ribbon): a média
+    /// de cada camada pesada pela silhueta, `textura × tinta` onde há RGB capturado, e as camadas pesadas
+    /// pela área. `None` fora do modo de cor ou sem silhueta nenhuma (os fios ficam no Color).
+    pub(super) fn tip_mean_colour(&self, brush_color: [f32; 3]) -> Option<[f32; 3]> {
+        if !self.is_color_mode() {
+            return None;
+        }
+        let tints = self.resolved_colors(brush_color);
+        let (mut acc, mut peso) = ([0.0f64; 3], 0.0f64);
+        for (i, layer) in self.layers.iter().enumerate() {
+            let (sil, _, _) = layer.parts();
+            let rgb = self.rgb_image(i);
+            for (k, &a) in sil.iter().enumerate() {
+                let a = f64::from(a) / 255.0;
+                if a <= 0.0 {
+                    continue;
+                }
+                let texel = rgb.as_ref().map_or([1.0; 3], |img| {
+                    [0, 1, 2].map(|c| f64::from(img.rgb[k * 3 + c]) / 255.0)
+                });
+                for c in 0..3 {
+                    acc[c] += a * texel[c] * f64::from(tints[i][c]);
+                }
+                peso += a;
+            }
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        (peso > 0.0).then(|| acc.map(|v| (v / peso) as f32))
+    }
+
     /// Set layer `i`'s custom colour (straight RGB, clamped); turns its checkbox on. Bumps version.
     pub(super) fn set_layer_color(&mut self, i: usize, rgb: [f32; 3]) {
         if let (Some(c), Some(on)) = (self.color.get_mut(i), self.color_on.get_mut(i)) {

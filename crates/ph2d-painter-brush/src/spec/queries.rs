@@ -102,6 +102,15 @@ impl BrushSpec {
         crate::tip::stamp_domain(&self.shape, Some(&basis))
     }
 
+    /// ⭐ **O Solid enche-se de CARIMBOS** ([`crate::solid_carimbos`]) em vez da mancha lisa: a ponta é
+    /// uma IMAGEM com pixels (a forma do pincel É o desenho — folhas, pétalas). Uma ponta redonda ou
+    /// procedural continua com a mancha na cor do Color.
+    #[must_use]
+    pub fn solid_fills_with_stamps(&self, has_shape_image: bool) -> bool {
+        self.shape_silhouette_active(has_shape_image)
+            && self.shape.kind == crate::texture::TextureKind::Image
+    }
+
     /// Whether the **Shape** slot supplies the silhouette (else the [`Self::falloff`] does). True when
     /// a shape kind is assigned AND — for the `Image` kind — the pixels are present: an Image shape with
     /// no image falls back to the falloff, so the brush never paints a blank silhouette. `has_shape_image`

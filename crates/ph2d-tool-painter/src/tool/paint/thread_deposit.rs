@@ -170,7 +170,16 @@ impl PainterTool {
         let origin = [rect.x as f32, rect.y as f32];
         let ink = self.thread_ink();
         let alpha = threads_alpha(threads, ink, rect.w as usize, rect.h as usize, origin);
-        let col = self.paint.brush.color;
+        // O fio pinta a cor da PONTA: com «Use Texture Colors» o Color vai a branco, e o fio na cor
+        // do Color sumia no papel (smoke 12/10). Um fio não tem ponta para carimbar; tem a cor dela.
+        let col = if self.texture_colour_paints() {
+            self.paint
+                .shape_layers
+                .tip_mean_colour(self.paint.brush.color)
+                .unwrap_or(self.paint.brush.color)
+        } else {
+            self.paint.brush.color
+        };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let rgb = [
             (col[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u32,

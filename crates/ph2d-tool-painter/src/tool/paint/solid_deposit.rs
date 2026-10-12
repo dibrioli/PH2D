@@ -132,6 +132,16 @@ impl PainterTool {
     /// simetria inclusive) fundem sem costura. Preenchê-las uma a uma comporia a borda anti-aliased
     /// **duas vezes** e deixaria uma linha escura exatamente onde elas se tocam.
     pub(super) fn solid_fill_loops(&self) -> Vec<Vec<[f32; 2]>> {
+        let mirrored = self.solid_mirrored_loops();
+        if mirrored.is_empty() || !(self.paint.tiling[0] || self.paint.tiling[1]) {
+            return mirrored;
+        }
+        super::tiling::tiled_loops(&mirrored, self.source_size, self.paint.tiling)
+    }
+
+    /// Os laços já espelhados pela Symmetry, ANTES do Tiling — os carimbos da mancha de imagem
+    /// ([`super::solid_carimbos`]) saem daqui, porque o despacho do carimbo envolve-os ele próprio.
+    pub(super) fn solid_mirrored_loops(&self) -> Vec<Vec<[f32; 2]>> {
         if !self.solid_owns_the_gesture() {
             return Vec::new();
         }
@@ -146,13 +156,7 @@ impl PainterTool {
         // espelha na emissão (`push_symmetric`) e o `stamp_dabs_routed` envolve as cópias na costura
         // depois. Invertida, uma cópia espelhada que caísse fora da tela não seria envolvida, e a
         // mancha e o traço passariam a discordar sobre onde a tile continua.
-        let mirrored =
-            ph2d_painter_brush::symmetry::symmetric_loops(&loops, &self.paint.brush.symmetry);
-        if self.paint.tiling[0] || self.paint.tiling[1] {
-            super::tiling::tiled_loops(&mirrored, self.source_size, self.paint.tiling)
-        } else {
-            mirrored
-        }
+        ph2d_painter_brush::symmetry::symmetric_loops(&loops, &self.paint.brush.symmetry)
     }
 
     /// O retângulo do canvas que este preenchimento escreve, ou `None` se ele não toca a tela.
@@ -286,6 +290,12 @@ impl PainterTool {
         if let Some(chord_rect) = chord_rect {
             rect = super::union_region(rect, chord_rect);
         }
+        // Ponta de IMAGEM: a mancha é um lote de carimbos dela, e a região cresce pela pegada deles.
+        let carimbos = self.solid_fill_stamps();
+        let carimbos_rect = self.tiled_chord_region(&carimbos);
+        if let Some(r) = carimbos_rect {
+            rect = super::union_region(rect, r);
+        }
         if rect.w == 0 || rect.h == 0 {
             return;
         }
@@ -295,7 +305,11 @@ impl PainterTool {
         let largura = self.source_size.0 as usize;
         let texels = largura * self.source_size.1 as usize;
         let tecto = Recorte::de(&self.paint.stroke_mask, Some(rect), largura, texels);
-        self.stamp_solid(loops, rect);
+        if carimbos.is_empty() {
+            self.stamp_solid(loops, rect);
+        } else {
+            self.stamp_corda_em_rascunho(&carimbos, carimbos_rect);
+        }
         if !chord.is_empty() {
             self.stamp_corda_em_rascunho(chord, chord_rect);
         }

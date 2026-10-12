@@ -74,6 +74,16 @@ impl PainterTool {
         // 2026-08-03 (*"não houve melhora real"*) provou que a atribuição por raciocínio erra — o
         // log dizia `31,12 ms por entrega` sem dizer quanto disso é o carimbo, e as curas de cada
         // fase são diferentes. Quatro `Instant::now()` custam ~80 ns contra dezenas de ms.
+        // Solid com ponta de IMAGEM: a mancha é um lote de carimbos POR BAIXO do traço, re-carimbado
+        // com ele nesta transação ([`super::solid_carimbos`]); a mancha lisa sai de cena.
+        let carimbos = self.solid_fill_stamps();
+        let combinado;
+        let dabs = if carimbos.is_empty() {
+            dabs
+        } else {
+            combinado = [carimbos.as_slice(), dabs].concat();
+            combinado.as_slice()
+        };
         let t_restore = std::time::Instant::now();
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
@@ -122,7 +132,11 @@ impl PainterTool {
         // é a UNIÃO das duas, e a mancha é escrita logo depois do carimbo (a ordem não é observável:
         // a tinta é uma só, e o `over` de duas fontes da mesma cor é comutativo — ver
         // `super::solid_deposit`).
-        let solid_loops = self.solid_fill_loops();
+        let solid_loops = if carimbos.is_empty() {
+            self.solid_fill_loops()
+        } else {
+            Vec::new()
+        };
         let solid_rect = self.solid_fill_rect(&solid_loops);
         if let Some(r) = solid_rect {
             bbox = Some(bbox.map_or(r, |a| union_region(a, r)));

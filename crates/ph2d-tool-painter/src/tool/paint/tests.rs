@@ -221,6 +221,7 @@ mod reset_de_fabrica; // o Reset de uma secção devolve o pincel com que ESTE m
 mod selection_editing;
 mod shape_per_layer_color;
 mod shape_silhouette;
+mod solid_carimbos; // o Solid com imagem no Shape enche-se de carimbos (smoke 12/10)
 mod stroke_and_session;
 mod textura_tinge; // Bug #51: textura × tinta, o Randomize na textura, e o Randomize «a cada traço» (12/10)
 mod texture_and_tiling;

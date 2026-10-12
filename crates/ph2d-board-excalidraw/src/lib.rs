@@ -135,5 +135,8 @@ mod fidelity_tests;
 #[path = "image_tests.rs"]
 mod image_tests;
 #[cfg(test)]
+#[path = "image_w15_tests.rs"]
+mod image_w15_tests;
+#[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

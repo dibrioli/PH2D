@@ -9,7 +9,6 @@ use ph2d_board_model::{
 };
 use serde_json::Value;
 
-const ORACLE: &str = "../../docs/MiroClone/ferramentas/excalidraw_oracle";
 const THEIRS: &str = include_str!(
     "../../../docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w14_imagens.excalidraw"
 );
@@ -24,7 +23,7 @@ const W8_TYPES: &str = include_str!(
 );
 
 /// A porta de entrada dos testes: só PNG (o tamanho pelo cabeçalho).
-fn png_ingest(bytes: &[u8]) -> Option<ImageFile> {
+pub(super) fn png_ingest(bytes: &[u8]) -> Option<ImageFile> {
     let r = png::Decoder::new(std::io::Cursor::new(bytes))
         .read_info()
         .ok()?;
@@ -113,7 +112,7 @@ fn a_crop_from_another_natural_size_scales_to_ours() {
 
 /// O nosso quadro de amostra com imagens: inteira, espelhada e recortada, redonda e meio opaca e
 /// rodada, uma dentro de um frame, e duas que mostram o MESMO ficheiro.
-fn sample() -> Board {
+pub(super) fn sample() -> Board {
     let mut set = BoardSet::default();
     let a = set.create("Fotos".into());
     let b = set.get_mut(a).unwrap();
@@ -156,27 +155,9 @@ fn sample() -> Board {
     set.boards()[0].clone()
 }
 
-/// Grava a ENTRADA do oráculo (`entradas/w14_nosso.excalidraw`). À mão quando o escritor muda — e a
-/// seguir o oráculo: `corre.sh saidas/w14 entradas/w14_nosso.excalidraw`.
-#[test]
-#[ignore = "grava a entrada do oráculo (à mão, quando o escritor muda)"]
-fn grava_a_entrada_do_oraculo_w14() {
-    let path = format!(
-        "{}/{ORACLE}/entradas/w14_nosso.excalidraw",
-        env!("CARGO_MANIFEST_DIR")
-    );
-    std::fs::write(path, write(&sample())).unwrap();
-}
-
-/// O escritor continua a escrever a entrada que o oráculo correu, e o `files` leva o ficheiro UMA vez.
-#[test]
-fn our_writer_still_writes_the_w14_oracle_input() {
-    let ours = write(&sample());
-    assert_eq!(ours, OURS, "o escritor mudou: corra o oráculo outra vez");
-    let v: Value = serde_json::from_str(&ours).unwrap();
-    assert_eq!(v["files"].as_object().unwrap().len(), 1);
-}
-
+/// W14 → W15: o escritor mudou (o nosso elemento no `customData` leva o `filter`), e a entrada que o
+/// oráculo corre passou a ser a `w15_nosso` (`image_w15_tests.rs`). A `w14_nosso` e a volta dela pelo
+/// oráculo FICAM: são um `.excalidraw` da W14, e o teste abaixo prova que ele continua a abrir igual.
 /// ⭐⭐ O nosso quadro → `.excalidraw` → o `restore` do Excalidraw → o nosso leitor = as MESMAS imagens
 /// (o mesmo ficheiro, recorte, espelho, cantos, opacidade, rotação, frame).
 #[test]

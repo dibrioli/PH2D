@@ -537,3 +537,35 @@ Medido 2026-10-12 (Excalidraw 0.18.1, Chromium 153):
 | botões | painel da imagem: «Crop image» (sem botão de espelho). Menu de contexto da imagem: Cut · Copy · Paste · Wrap selection in frame · **Crop image** · Copy to clipboard as PNG/SVG · Copy/Paste styles · Add to library · as 4 de ordem · **Flip horizontal [Shift+H]** · **Flip vertical [Shift+V]** · Add link · Copy link to object · Duplicate · Lock · Delete (`B01`) |
 | GIF no canvas | **só o 1.º quadro**: 12 amostras em 2,2 s, sem e com re-render provado (com `scrollX` 1 a borda `x=560` fica branca), sempre `(255,0,0)`. CONTROLO: o mesmo GIF num `<img>` do DOM anima (vermelho → verde → azul a ~200 ms) e o `drawImage` desse `<img>` num canvas novo dá sempre vermelho ⇒ é a regra do `drawImage` do Chromium, não uma escolha só do Excalidraw (`C01`) |
 | GIF no export | `getFiles()` guarda `mimeType "image/gif"`; o SVG leva `<image href="data:image/gif;base64,…">` com os bytes **iguais** aos da entrada (anima em quem o abrir); o PNG (`exportToBlob`) sai com o **1.º quadro**, igual nas 3 exportações espaçadas de 250 ms (o mesmo sha256) |
+
+### W17 — a imagem ESTRAGADA e o `Shift` numa imagem esticada ou já recortada: `sonda_imagem_w17.mjs`
+
+```bash
+python3 -I docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_w17_imagens.py     # só se mudar as entradas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/sonda_imagem_w17.mjs \
+  [--so <prefixo>[,<prefixo>…]] [<pasta_entradas> <pasta_saida>]       # por omissão entradas/ e saidas/w17/
+```
+
+Entradas NOSSAS (`gera_w17_imagens.py`, a partir da `w16_quadrantes.png`, lixo de `random.Random(17)`), todas com o
+CABEÇALHO bom: `w17_png_truncado.png` (60 % dos bytes) · `w17_png_idat_lixo.png` (o IDAT trocado por lixo, CRC certo)
+· `w17_jpeg_lixo.jpg` (a entropia depois do SOS trocada por lixo sem `0xFF`) · `w17_jpeg_truncado.jpg` (50 %). O
+Pillow recusa três (`truncated`, `broken data stream`) e lê o `jpeg_lixo` como ruído. 18 sondas, a mesma infra-estrutura
+da W16 (cena = ecrã), mais um `MutationObserver` que guarda TODO o texto que aparece no DOM (toasts que somem) e um
+`drop` com `DataTransfer` (o caminho do gestor de ficheiros). Saída: `saidas/w17/w17_sondas.json` (cabeçalho com
+versão, Chromium, data, `loadavg`, sha256 das entradas e do script) + capturas.
+
+Medido 2026-10-12 (Excalidraw 0.18.1, Chromium 153, `load` 15 → 5):
+
+| pergunta | o que o oráculo faz |
+|---|---|
+| a estragada chega COM a cena (`D01`) | `status` fica **`saved`** (igual à boa); **nenhum aviso** — zero toasts, diálogos, `errorMessage` ou erros na consola. O canvas desenha O QUE O NAVEGADOR DESCODIFICAR: `png_truncado` = as linhas de cima (vermelho/verde até `y≈352`), o resto em branco; `png_idat_lixo` = **NADA** (a imagem fica invisível — só a caixa de selecção a mostra); `jpeg_lixo` = ruído (cinzento 128 com franjas); `jpeg_truncado` = a metade de cima |
+| a estragada é LARGADA (`D02`) | entra um elemento 400×300 (`status` `pending` também na BOA — é o «por gravar», não o «por ler»); o mesmo desenho; **nenhum aviso** a quem a largou |
+| o export (`D01`) | SVG leva o `<image>` com os bytes estragados; o PNG sai em branco onde nada se leu (`png_idat_lixo`) ou com a parte lida |
+| `Shift` com a imagem ESTICADA (`E01..E05`, `E08`) | a proporção é a do NATURAL **em píxeis naturais** (a caixa no ecrã guarda a do que se vê): 600×300 (kx 1,5), SE −80,−30 ⇒ `crop` 360×270, caixa **540×270**; NW +80,+30 ⇒ `crop` 40,30,360×270; 400×450 (ky 1,5) ⇒ `crop` 373,33×280, caixa 373,33×420; SE −20,−100 ⇒ `crop` 386,67×290 (manda o eixo com a caixa MAIOR). O caminho do artista (esticar com `Shift` pela pega normal e depois recortar) dá o mesmo (`E08`) |
+| `Shift` numa imagem JÁ recortada (`E06`, `E07`) | ⭐ a proporção é a do **recorte de agora**, não a da imagem inteira: `crop` 200×300 (2:3) na caixa 200×300, SE −40,−30 ⇒ `crop` **180×270** (2:3; nós dávamos 360×270, 4:3); e esticada (caixa 300×300) ⇒ `crop` 180×270, caixa 270×270 |
+
+⇒ **Gates:** `ph2d-board-edit` `crop::tests::shift_keeps_the_proportion_of_the_window_stretched_or_already_cropped` (os
+números de `E02..E07`). ⚠️ **Divergência deliberada (D):** o Excalidraw não distingue «a chegar» de «ilegível» e não avisa
+ninguém; a ordem do dono (12/10) é o contrário — uma recusa que só o terminal vê é botão mudo. Nós: a imagem que o
+descodificador não lê desenha-se **riscada na tinta do perigo** e o quadro diz-o na faixa de avisos UMA vez por ficheiro;
+não desenhamos a parte lida de um ficheiro cortado (o `image` recusa-o inteiro).

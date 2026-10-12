@@ -91,3 +91,10 @@ carga `the_mask_stroke_cost_does_not_follow_the_canvas` (1,11 × 2,59 ms a `load
 Perfil do laço (10 sessões, antes → depois): paralelismo 1,22 → 1,20 · test:check 3,6 → 4,0 × · Edit 48 → 47 % ·
 contexto/passo 347 → 357 mil. ⚠️ O `test:check` subiu: as 10 rodadas da sonda são `cargo test` (a varredura vive
 num teste ignorado) — uma varredura por JSON não precisa de `check`, e a régua conta-a como teste.
+
+## §7 — Depois do fecho (12/10): o Bug #51 ABERTO e medido
+
+Achado do dono: imagem no Shape com «Use Texture Colors» ⇒ o Color não tinge e o Randomize Color morre.
+Mecanismo, os três portões vermelhos (`tests/textura_tinge.rs`, `--ignored`, controlo verde) e a cura desenhada
+em [BUGS #51](../BUGS_painter.md). A cura é a próxima janela:
+[prompt 24](../NewFeaturesWetPaint/24_PROMPT_janela_textura_tinge.md).

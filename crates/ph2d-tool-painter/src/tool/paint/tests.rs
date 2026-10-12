@@ -221,6 +221,7 @@ mod selection_editing;
 mod shape_per_layer_color;
 mod shape_silhouette;
 mod stroke_and_session;
+mod textura_tinge; // Bug #51 aberto: a imagem no Shape cala o Color e o Randomize Color (12/10)
 mod texture_and_tiling;
 mod watercolor_arrasto_molhado; // o Smudge arrasta a tinta MOLHADA da sessão (2026-09-29)
 mod watercolor_flow; // o Ragged Edge com FLUXO e PAPEL (BUGS #31, 2026-10-02)

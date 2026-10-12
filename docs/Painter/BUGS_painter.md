@@ -32,6 +32,41 @@
 
 ---
 
+## Bug #51 — Imagem no Shape com «Use Texture Colors»: o Color não tinge e o Randomize Color morre (ABERTO, 2026-10-12)
+
+**Achado do dono:** com uma imagem no Shape, o Color do pincel não age como Tint e o Randomize Color não faz
+nada. Pedido: ao associar a imagem com «Use Texture Colors» ligado, o Color vai a BRANCO (sem efeito); com
+«Per-Layer Color» (várias camadas) o Color fica desativado e inativo.
+
+**Mecanismo (lido e medido):** (1) a camada com RGB capturado SUBSTITUI a cor do carimbo em vez de a multiplicar
+— `ph2d-painter-brush/src/stamp_color/accumulate.rs:222` (`Some(img) => sample_shape_rgb_unit(..)`, `None =>
+color`), a mesma escolha em `accumulate_batch.rs:396` (o caminho dinâmico, onde o Randomize corre) e em
+`stamp_color.rs:123` (o carimbo pré-assado da rota `stamp_dabs_cached_color_rgba`). (2) O desvio do Randomize
+é RECONSTRUÍDO de «Color → cor do carimbo» (`jitter::shift_colors_like`, chamado em
+`stamp_color_dynamic.rs:112`): num Color branco/cinza o matiz não existe e a saturação é 0, por isso o desvio
+reconstruído é nulo — tingir não chega, o Randomize morreria com o Color branco que o dono pediu. (3)
+`set_brush_shape_image_rgba` (`shape_settings.rs:87`) não toca no Color. O que mais passa pela cor do carimbo:
+só o Color e os três do Randomize (`spec.rs`: não há cor secundária nem cor por pressão); a rampa do Shape já se
+esconde no modo de cor (`paint_brush_sections.rs:170`); a rampa do Grain multiplica e continua viva.
+
+**Portões vermelhos** ([`tests/textura_tinge.rs`](../../crates/ph2d-tool-painter/src/tool/paint/tests/textura_tinge.rs),
+`--ignored`): textura branca × Color vermelho pinta (255,255,255); Randomize Hue 1 com Color branco deixa as 11
+amostras em (255,0,0); associar a imagem deixa o Color azul. Controlo verde: o mesmo traço sem a cor da textura
+varia de matiz (`o_randomize_color_varia_a_silhueta_sem_a_cor_da_textura`).
+
+**A cura desenhada (padrão-ouro):** (a) a lei: a camada com cor da textura pinta `textura × tinta` nos três
+núcleos; com o Color branco é a textura ao byte (os portões antigos de «Texture Color» continuam). (b) o
+`Dab` leva o desvio SORTEADO (`color_shift: [dh, ds, dv]`, os mesmos sorteios de `jitter::per_dab`, o fluxo
+do RNG intacto) e o caminho dinâmico aplica-o à cor FINAL de cada camada — some o `shift_colors_like`
+(⚠️ muda os bytes do Randomize com cores por camada quando o Color batia num clamp: era o defeito). O `Dab` tem
+103 literais (quase todos testes): campo novo guiado pelos erros do compilador, com contagem. (c) a tinta:
+com UMA camada é o Color; em «Per-Layer Color» é branco nas camadas de textura e a cor escolhida nas outras, e o
+Color fica INATIVO no painel (o padrão de `paint_shape.rs:40-44`). (d) Color → branco ao associar a imagem com o
+modo ligado E ao ligar o modo (o mesmo instante: a textura passa a contar). Custo a medir: o HSV por píxel só
+corre com o Randomize ligado, no caminho que já é por píxel.
+
+---
+
 ## Bug #47 — Wet Paint: com o Shape **Noise** o traço quase não aparece (ABERTO, achado 2026-10-10)
 
 **Medido** (sonda de tela branca, o pincel de fábrica, um traço de 220 px, soma de `255 − min(rgb)`):

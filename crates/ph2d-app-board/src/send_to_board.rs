@@ -117,7 +117,7 @@ fn listed(names: &[&str]) -> String {
     seen.iter()
         .map(|(n, k)| match k {
             1 => (*n).to_owned(),
-            _ => format!("{n} \u{d7}{k}"),
+            _ => tr_with("board.send.repeated", &[("name", n), ("count", k)]),
         })
         .collect::<Vec<_>>()
         .join(", ")

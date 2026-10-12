@@ -25,6 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.send.unnamed.flip" => "Unnamed drawing",
         "board.send.unnamed.other" => "Unnamed object",
         "board.send.deleted" => "Deleted object",
+        "board.send.repeated" => "{name} \u{d7}{count}",
         "board.send.all_gone" => "Those objects are no longer in the scene",
         _ => return None,
     })

@@ -11,6 +11,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.io.image_added" => "Added {name}",
         "board.live.too_big" => "A picture is too big to share live (over {max} MB)",
         "board.smoke.images.board" => "Pictures",
+        "board.smoke.frames.board" => "Frames & B/W",
+        "board.smoke.frames.title" => "Picture frames, black and white, and SVG pictures",
+        "board.smoke.frames.frames" => "Frames",
+        "board.smoke.frames.bw" => "Black and white",
+        "board.smoke.frames.svg" => "SVG",
+        "board.smoke.frames.l1" => {
+            "1. Click a picture: the bar above it has the frame. Pick a colour (the crossed square = no frame), then the thickness and solid, dashed or dotted."
+        }
+        "board.smoke.frames.l2" => {
+            "2. The half-black circle in the same bar turns the picture black and white. Click it again for the colours. Ctrl+Z takes it back."
+        }
+        "board.smoke.frames.l3" => {
+            "3. With a framed picture selected, click Sketch on the toolbar: the frame is drawn by hand, like a shape."
+        }
+        "board.smoke.frames.l4" => {
+            "4. Drop an SVG file (a logo, an icon) on this board, then zoom in with the wheel: it stays sharp, like the big star logo."
+        }
+        "board.smoke.frames.l5" => {
+            "5. Open the Scene tab, right-click a picture, a vector drawing or a Flip in the Hierarchy, choose Send to board… and pick this board (or New board). A Flip goes as the frame you are on, not the animation."
+        }
+        "board.smoke.frames.l6" => {
+            "6. Export the board (PNG, SVG or PDF): the frames and the black and white come out the same as here."
+        }
         "board.smoke.images.title" => "Pictures on the board: drop, paste, resize, export",
         "board.smoke.images.frame" => "Moodboard",
         "board.smoke.images.cover" => "Cover idea",

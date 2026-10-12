@@ -137,3 +137,17 @@ fn mede_a_entrada_e_a_descodificacao_de_uma_fotografia() {
         jpg.len() / 1024
     );
 }
+
+/// ⭐ W15 — um `.excalidraw` com uma imagem `image/svg+xml` (a entrada `w15_svg` do oráculo, que o
+/// Excalidraw 0.18.1 aceita e devolve igual) abre com a imagem SVG, pela porta de entrada do app.
+#[test]
+fn an_excalidraw_with_an_svg_picture_opens_with_it() {
+    let scene = include_str!(
+        "../../../docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w15_svg.excalidraw"
+    );
+    let imp = ph2d_board_excalidraw::read_with(scene, &ingest).unwrap();
+    assert!(!imp.skipped.contains_key("image"), "{:?}", imp.skipped);
+    let f = imp.files.values().next().expect("o ficheiro SVG");
+    assert_eq!(f.mime(), Some("image/svg+xml"));
+    assert_eq!(f.size, [100, 100]);
+}

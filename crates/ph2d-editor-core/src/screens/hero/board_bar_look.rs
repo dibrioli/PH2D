@@ -354,6 +354,9 @@ pub(super) fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: 
 
 #[allow(clippy::too_many_arguments)]
 /// Um controlo das barras: o botão e a cara dele.
+/// A constante das cúbicas que aproximam um quarto de círculo: `4(√2 − 1)/3`.
+const QUARTER_CIRCLE_KAPPA: f64 = 0.552_284_75; // LITERAL-PX-OK: constante geométrica, não um tamanho
+
 pub(super) fn paint_item(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -472,13 +475,15 @@ pub(super) fn paint_item(
                 f64::from(inner.y + inner.h / 2.0),
             );
             let rad = f64::from(inner.w.min(inner.h) / 2.0) - line / 2.0;
-            let ring = ph2d_vector::Shape::to_path(&ph2d_vector::Circle::new((cx, cy), rad), 0.1);
-            // A metade esquerda: dois quartos de círculo em cúbicas (a constante do quarto de círculo).
-            let k = rad * 0.552_284_75;
+            // Quartos de círculo em cúbicas: a metade esquerda cheia e, com a direita, o anel.
+            let k = rad * QUARTER_CIRCLE_KAPPA;
             let mut half = ph2d_vector::BezPath::new();
             half.move_to((cx, cy - rad));
             half.curve_to((cx - k, cy - rad), (cx - rad, cy - k), (cx - rad, cy));
             half.curve_to((cx - rad, cy + k), (cx - k, cy + rad), (cx, cy + rad));
+            let mut ring = half.clone();
+            ring.curve_to((cx + k, cy + rad), (cx + rad, cy + k), (cx + rad, cy));
+            ring.curve_to((cx + rad, cy - k), (cx + k, cy - rad), (cx, cy - rad));
             half.close_path();
             scene.fill_path(&half, &ph2d_vector::Brush::Solid(fg), ph2d_vector::Affine::IDENTITY);
             stroke(scene, &ring, fg, line, Dash::Solid);

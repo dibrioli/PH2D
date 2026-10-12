@@ -83,12 +83,12 @@ fn icon() -> Pixels {
     Pixels { size: [s, s], rgba }
 }
 
-fn file(b: &mut Board, px: &Pixels) -> FileId {
+pub(super) fn file(b: &mut Board, px: &Pixels) -> FileId {
     let png = crate::images::encode_png(px).expect("a PNG escreve-se");
     b.put_file(crate::images::ingest(&png).expect("a nossa PNG lê-se"))
 }
 
-fn image(
+pub(super) fn image(
     b: &mut Board,
     file: FileId,
     bx: [f64; 4],

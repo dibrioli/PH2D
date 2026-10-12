@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**74 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**76 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -88,6 +88,8 @@
 | 2026-09-12 |  | [HANDOFF_INTEGRACAO_line_app_vec_FASE_C_2026-09-12.md](HANDOFF_INTEGRACAO_line_app_vec_FASE_C_2026-09-12.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/app-vec` · **FASE C**, o corte: **23 807 linhas** saem (shell 373 937 → 350 130), nascem a família **`ph2d-app-skeleton`** e a folha `ph2d-timeline-preview`, e as **doze leis vivas** — que sozinhas não moviam nenhuma — saem como GRUPO. ⭐⭐⭐ O achado: **cinco das seis «âncoras» do fecho eram FACHADAS** (módulos da shell que só re-exportam crates) ⇒ *a régua erra no sentido CONSERVADOR, que é o oposto do habitual*. ⛔⛔ A catraca dos roteadores ganhou a excepção **verificada** `FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA`: escrever «skeleton» na lista de sempre seria mentira permanente, e *uma entrada que nada pode apagar é a catraca que vira LICENÇA*. Prova `ONLY-A = 0`, `ONLY-B = 0`, 360 MOVED (2026-09-12) |
 | 2026-09-12 |  | [HANDOFF_INTEGRACAO_line_app_vec_FASE_D_2026-09-12.md](HANDOFF_INTEGRACAO_line_app_vec_FASE_D_2026-09-12.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/app-vec` · **FASE D**: mais **11 830** linhas saem (shell 225 394 → 213 564) e o `render_loop/vector*` fica a **zero**. ⭐⭐ **UM ficheiro de 272 L prendia 6 674** — o contrafactual escolheu o alvo antes de mover nada, e a diferença entre a melhor e a pior cura era de **7×**. ⭐⭐⭐ **A FACHADA nas outras duas formas**: de SÍMBOLO e de ALIAS-que-a-própria-linha-escreveu. ⛔⛔⛔ **TRÊS gates evaporaram-se num `git mv` e NADA acusou** — um ficheiro que nenhum `mod` declara não é compilado, e só o `ONLY-A` o viu; a crate ganhou o censo de órfãos. ⚠️ E a sonda da prova mentiu **quatro** vezes antes de dizer a verdade (2026-09-12) |
 | 2026-08-31 | ◆ | [HANDOFF_INTEGRACAO_line_Vector_2026-08-31.md](HANDOFF_INTEGRACAO_line_Vector_2026-08-31.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **25 commits de 30 e 31/08**: a **W5 (as QUINAS)** fecha (*o avanço encaixa na PEÇA*), com a metade A **foundational** na `ph2d-arclen`; **GRUPOS** na Hierarquia como arte de estampa e de pincel; e **o painel passa a mostrar o que serve à ferramenta na mão** (1 de 39 seções consultava o modo). ⚠️ **`PROJECT_SCHEMA` 103 → 106, CONTADO** — duas outras linhas escreveram 105 as duas (2026-08-31) |
+| 2026-10-11 |  | [HANDOFF_CONTINUACAO_line_Vector_2026-10-11_prompt49_W0_W2.md](HANDOFF_CONTINUACAO_line_Vector_2026-10-11_prompt49_W0_W2.md) | continuação | HANDOFF de CONTINUAÇÃO — `line/Vector`, prompt 49 (lições do VectorCraft) — 2026-10-11 |
+| 2026-10-11 | ◆ | [HANDOFF_INTEGRACAO_line_Vector_2026-10-11_prompt49.md](HANDOFF_INTEGRACAO_line_Vector_2026-10-11_prompt49.md) | integração | HANDOFF de INTEGRAÇÃO — `line/Vector`, prompt 49 (lições do VectorCraft) — 2026-10-11 |
 ---
 *Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na raiz de
 `docs/`.*

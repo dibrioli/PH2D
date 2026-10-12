@@ -151,6 +151,8 @@ Os abertos (b) e (c) da W16 (nome vazio/apagados; Shift do recorte) FECHARAM aqu
 
 ## 7. Smoke do dono
 
+✅ **Smoke OK do dono (12/10) na cena 18.** A linha (W12+W13 … W17) está pronta para integrar quando ele mandar.
+
 ### Binário do smoke compilado
 
 `rm -rf target/*/incremental` e depois, a 2.ª de

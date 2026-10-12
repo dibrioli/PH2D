@@ -469,3 +469,23 @@ Medido (SVG + PNG + `restored.json`):
 
 Gates: `ph2d-board-excalidraw::image_tests` (o ficheiro dele abre com as imagens; sem descodificador
 saltam e contam-se; a ida e volta), `ph2d-board-render::image_tests` (a lei do afim, a camada).
+
+### W15 — moldura, SVG e filtro na imagem: `corre.sh saidas/w15 …` + `corre_esquema.mjs`
+
+```bash
+python3 entradas/gera_w15_casos.py      # w15_moldura · w15_svg · w15_sondas.json
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh bash $O/corre.sh $O/saidas/w15 $O/entradas/w15_moldura.excalidraw $O/entradas/w15_svg.excalidraw
+for n in w15_moldura w15_svg; do PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node $O/corre_esquema.mjs \
+  $O/entradas/$n.excalidraw $O/entradas/w15_sondas.json $O/saidas/w15/esquema_$n; done   # O=docs/MiroClone/ferramentas/excalidraw_oracle
+```
+
+Medido 2026-10-11 (PNG 1×, vermelho = `r>150, g<120, b<120`; a PNG da imagem é AZUL lisa):
+
+| pergunta | o que o oráculo faz |
+|---|---|
+| contorno da imagem | `strokeColor #e03131` + `strokeWidth 4` (tracejado, tracejado+`roundness {type:3}`, sólido): **NÃO desenha**. PNG: **0** píxeis vermelhos em toda a imagem (440×280), 0 não-brancos no anel ±10 px de cada caixa, igual ao controlo; SVG: só o `<use>` (+ `clipPath rx 20` na redonda), nenhum `<rect>`/`<path>` de contorno. Idem nas variantes `escuro`/`sem_fundo`/`embed` |
+| os campos do contorno | o `restore`, o `serializeAsJSON` e a volta `loadFromBlob` (json, png e svg embutidos) **guardam** `strokeColor`/`strokeWidth`/`strokeStyle`/`roundness` tal qual (`igual_ao_restore: true`) — dados mudos |
+| imagem SVG | `files[..].mimeType "image/svg+xml"` com `data:image/svg+xml;base64,…`: aceita, `status "saved"`, devolve o MESMO `mimeType` e `dataURL` (restore, serialize, volta). SVG export: `<image href="data:image/svg+xml;base64,…" preserveAspectRatio="none" width="100%">`. PNG: com `width/height` no `<svg>` enche a caixa 100×100 (**7 846** píxeis vermelhos, círculo r=50 = 7 854); **só com `viewBox`** o canvas pinta-o a **80×80** no canto (4 995 ≈ r=40) — o PNG e o SVG do oráculo divergem aí |
+| filtro P&B | nenhum: o `restore` de uma imagem tem 30 chaves e nenhuma é filtro. Chaves desconhecidas (`filter`, `grayscale`, `imageFilter`) **passam intactas** (o `restore` não as valida nem as usa). O único filtro é do export escuro do appState: `filter="invert(93%) hue-rotate(180deg)"` no `<svg>` inteiro |
+
+Uma imagem mínima (`{type:"image", fileId}`) restaura com `strokeColor "#1e1e1e"` e `status "pending"`.

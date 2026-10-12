@@ -1,0 +1,101 @@
+{
+ "sondas_elementos": [
+  {
+   "nome": "imagem_contorno_tracejado_redondo",
+   "elementos": [
+    {
+     "id": "img9",
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 160,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#e03131",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 4,
+     "strokeStyle": "dashed",
+     "roughness": 1,
+     "opacity": 100,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": {
+      "type": 3
+     },
+     "seed": 1509,
+     "version": 1,
+     "versionNonce": 9,
+     "isDeleted": false,
+     "boundElements": null,
+     "updated": 1,
+     "link": null,
+     "locked": false,
+     "status": "saved",
+     "fileId": "azul4x2",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null
+    }
+   ]
+  },
+  {
+   "nome": "imagem_minima",
+   "elementos": [
+    {
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "fileId": "azul4x2"
+    }
+   ]
+  },
+  {
+   "nome": "imagem_chaves_candidatas_a_filtro",
+   "elementos": [
+    {
+     "id": "img10",
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 160,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "transparent",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "strokeStyle": "solid",
+     "roughness": 1,
+     "opacity": 100,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": null,
+     "seed": 1510,
+     "version": 1,
+     "versionNonce": 10,
+     "isDeleted": false,
+     "boundElements": null,
+     "updated": 1,
+     "link": null,
+     "locked": false,
+     "status": "saved",
+     "fileId": "azul4x2",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null,
+     "filter": "grayscale",
+     "grayscale": true,
+     "imageFilter": "grayscale"
+    }
+   ]
+  }
+ ],
+ "sondas_appstate": []
+}

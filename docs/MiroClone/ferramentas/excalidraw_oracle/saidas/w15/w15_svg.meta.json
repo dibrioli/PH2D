@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-12T00:01:35.108Z",
+  "input": "w15_svg.excalidraw",
+  "input_sha256": "892b347fac9de86e2542a0dc2a658548fc6c22581f33b165a61faa6f3dea695b",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 4808,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "w15_svg.svg": "27cd8e52876c8347dc425cc0600041e2f628476ef9780b85d2615d882006966d",
+    "w15_svg.png": "534c82417505e61e269ca2068b70884ee3f1a828c30ec46ea4f1ab1ad8815ece",
+    "w15_svg.restored.json": "d1817039e650078fefba7b1d7f9c0867dd737dd6197d7f138a0a0604cbf432b1"
+  }
+}

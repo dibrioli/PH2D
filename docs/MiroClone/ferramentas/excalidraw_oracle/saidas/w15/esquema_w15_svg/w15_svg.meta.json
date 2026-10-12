@@ -1,0 +1,40 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-12T00:01:36.704Z",
+  "input": "w15_svg.excalidraw",
+  "input_sha256": "892b347fac9de86e2542a0dc2a658548fc6c22581f33b165a61faa6f3dea695b",
+  "sondas": "w15_sondas.json",
+  "sondas_sha256": "c003b8bd0e85f79ac71f2775964ff7fa2e8943b341dfa0666626a2be94746d38",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "sha256(entrada+sondas)[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "restore(cfg {refreshDimensions:false, repairBindings:true})",
+    "serializeAsJSON(local|database)",
+    "loadFromBlob(json|png embed|svg embed)",
+    "exportToSvg/exportToBlob/exportToCanvas (variantes no .export.json)",
+    "restoreElements/restoreAppState nas sondas"
+  ],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "w15_svg.restored.json": "d03f1a04d694ca1439703581c14f6951c0dec2f7cdda06145638dc6a4d66683d",
+    "w15_svg.serialized.excalidraw": "c4c87de0287cb85a7e2dfb0ef8e8db1542f038f32b9971c0b393f1ac47cb1320",
+    "w15_svg.serialized_database.json": "6df87bc70c4ceee10409215b47c22023263da1585b4bc880243bb61d60ddb4c3",
+    "w15_svg.svg": "f0fdce6ed75b7ab106eb2dc1401d19245f4d19d112963f9f8801134dd03b840b",
+    "w15_svg.embed.svg": "54ab572b1dba1cc087855c5b05ed9e1e7e0c1cb6b698300f7d51c0db4f28fa4d",
+    "w15_svg.png": "534c82417505e61e269ca2068b70884ee3f1a828c30ec46ea4f1ab1ad8815ece",
+    "w15_svg.sem_fundo.png": "bb0a9b8a2f340c6e611537780d353fbab2882bb79f14549dd9caaf4266440fcd",
+    "w15_svg.escuro.png": "07728b06928ace17a2598fcdcea4d04b5238d5bf96e13c7e24720f0c75254fdc",
+    "w15_svg.embed.png": "ad089897904649603597313456366d029a0c5cb3f346f4069f46621046b4435a",
+    "w15_svg.export.json": "a38f77c56d4cb225a15795d8167e66992ce1833371c033d0ee0d6d1d8371339e",
+    "w8_sondas.json": "52f30392d15c4283f5b5f774521fe873b1f38bef35e7c1b14a2b2d0a013f8535",
+    "w8_appstate_restaurado.json": "47abb04d5c031807f53588acd1c68f0beb95f1ec74c6ae87e2d88fd79d23a308"
+  }
+}

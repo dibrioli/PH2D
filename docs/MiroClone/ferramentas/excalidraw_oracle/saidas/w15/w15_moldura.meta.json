@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-12T00:01:34.932Z",
+  "input": "w15_moldura.excalidraw",
+  "input_sha256": "865b110ca5b28f26b2b5ac3a2e97ad2534585194196314e85a68cff2cebfc88c",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 4818,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "w15_moldura.svg": "e921ea3ab0726ebe0883576f3d4df6f262d5e7d1471f6ea7344738a49e554d2a",
+    "w15_moldura.png": "bf2446a128fb4569e1f7c22c5dc2b6ac613c62faeaa6b5e9204f23c9d520815b",
+    "w15_moldura.restored.json": "d581d121a262ae65d70d0483f72e161b7febd44277b87ccc77e073f98ea74566"
+  }
+}

@@ -1,0 +1,531 @@
+{
+  "svg": {
+    "base": {
+      "sha256": "7bba8aa3c2506c889af0d72cdfe9399c8cb2a5ec74e558937d0aef7b9668f8b4",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 1132,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "padding0": {
+      "sha256": "4d48e5c23ddc7374ed4f492d333886d456bf214170ec95c3289c7fe09c18390d",
+      "width": "420",
+      "height": "260",
+      "viewBox": "0 0 420 260",
+      "bytes": 1128,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"420\" height=\"260\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "padding50": {
+      "sha256": "9a4d49eff24beda225e870113027bd8ae02c6b5a1a1a2b596f3fbf718a40f7e1",
+      "width": "520",
+      "height": "360",
+      "viewBox": "0 0 520 360",
+      "bytes": 1132,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"520\" height=\"360\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "sem_fundo": {
+      "sha256": "f1f4944de926359074c1ecd655a423fdb23f6f2165ba00f44eada20352efb309",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 1073,
+      "font_faces": 0,
+      "rect_fundo": null,
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "escuro": {
+      "sha256": "f0884c920c5ad1ee9629c622ec3360fd03213082071d244a50dbf9df4ab3f03c",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "filter": "invert(93%) hue-rotate(180deg)",
+      "bytes": 1396,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "fundo_cor": {
+      "sha256": "278d07efcea7ab34175a06148a37890afc1ef8f377158e1a73da303daf18574f",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 1132,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffec99\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "embed": {
+      "sha256": "04e71de6a224b152a3dbfae2cbd570b40382ed12a3b756fa6e04adb830ab8ab7",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 2835,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffffff\"/>",
+      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1WUU/bMFx1MDAxMH7nV1ThXHUwMDE1rbFcdTAwMTOStHsqXTfQNlApMG3TXHUwMDFlTHMkXlx1MDAxZCeLXHUwMDFkWor632e7aZJcdTAwMTZ",
+      "metadata_bytes": 1693,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "sem_fontes_inline": {
+      "sha256": "7bba8aa3c2506c889af0d72cdfe9399c8cb2a5ec74e558937d0aef7b9668f8b4",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 1132,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "so_moldura": {
+      "sha256": "7bba8aa3c2506c889af0d72cdfe9399c8cb2a5ec74e558937d0aef7b9668f8b4",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 1132,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    },
+    "render_embeddables": {
+      "sha256": "7bba8aa3c2506c889af0d72cdfe9399c8cb2a5ec74e558937d0aef7b9668f8b4",
+      "width": "440",
+      "height": "280",
+      "viewBox": "0 0 440 280",
+      "bytes": 1132,
+      "font_faces": 0,
+      "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"440\" height=\"280\" fill=\"#ffffff\"/>",
+      "metadata_inicio": null,
+      "metadata_bytes": 0,
+      "clipPaths": 1,
+      "images": 1,
+      "foreignObjects": 0
+    }
+  },
+  "png": {
+    "base": {
+      "type": "image/png",
+      "bytes": 4818,
+      "sha256": "bf2446a128fb4569e1f7c22c5dc2b6ac613c62faeaa6b5e9204f23c9d520815b",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 635
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "escala1": {
+      "type": "image/png",
+      "bytes": 4818,
+      "sha256": "bf2446a128fb4569e1f7c22c5dc2b6ac613c62faeaa6b5e9204f23c9d520815b",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 635
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "escala3": {
+      "type": "image/png",
+      "bytes": 4818,
+      "sha256": "bf2446a128fb4569e1f7c22c5dc2b6ac613c62faeaa6b5e9204f23c9d520815b",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 635
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "sem_fundo": {
+      "type": "image/png",
+      "bytes": 4842,
+      "sha256": "d72da0f7a67f94ceb53f39076efecddc3ab81fbd414f8b2124f58fae99dd74de",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 659
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "escuro": {
+      "type": "image/png",
+      "bytes": 4788,
+      "sha256": "903db1806bf908cd6f13902adea586499ecd3b8f2955a5d380f8f76c07b3387a",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 605
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "embed": {
+      "type": "image/png",
+      "bytes": 5951,
+      "sha256": "2f9ba8f320001c522a03fd76c8ed08676a0a977ef8f4dc9f52a744b2fb2b263b",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 635
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "tEXt",
+          "len": 1121,
+          "keyword": "application/vnd.excalidraw+json",
+          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xíV]oÚ0\\u0014}ï¯@é+\\u001a¶&=QÆÖjS+Jé´M{pxq,v¶â¿Ï6\\u0010\\u0003ýZ;Uª&ØÇ÷úÞ{®Åí^£áÈë8"
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "maxWidthOrHeight300": {
+      "type": "image/png",
+      "bytes": 2835,
+      "sha256": "cbc250c4686580933b257e192fa8be445b4167fe5142010c5544819c2118ac3e",
+      "width": 300,
+      "height": 190,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 2760
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "getDimensions_fixo": {
+      "type": "image/png",
+      "bytes": 4282,
+      "sha256": "a1af8455be4c96183e0e8815f54a4a98f117e1d9514c53f4411d380c971d73e4",
+      "width": 400,
+      "height": 300,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 99
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "getDimensions_escala2": {
+      "type": "image/png",
+      "bytes": 14308,
+      "sha256": "8369f91d152e5496018e59ed1aca064b192b4790b033a8f62d6a8bef2ee830d2",
+      "width": 880,
+      "height": 560,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 1909
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "so_moldura": {
+      "type": "image/png",
+      "bytes": 4818,
+      "sha256": "bf2446a128fb4569e1f7c22c5dc2b6ac613c62faeaa6b5e9204f23c9d520815b",
+      "width": 440,
+      "height": 280,
+      "chunks": [
+        {
+          "type": "IHDR",
+          "len": 13,
+          "bitDepth": 8,
+          "colorType": 6
+        },
+        {
+          "type": "IDAT",
+          "len": 4096
+        },
+        {
+          "type": "IDAT",
+          "len": 635
+        },
+        {
+          "type": "IDAT",
+          "len": 6
+        },
+        {
+          "type": "IEND",
+          "len": 0
+        }
+      ]
+    },
+    "jpeg": {
+      "type": "image/jpeg",
+      "bytes": 7168,
+      "sha256": "f8a2a6a7a98149fbc13164eb896c756eab4f5754d38053bada2b727c75b22503",
+      "formato": "ffd8ffe0"
+    }
+  },
+  "canvas": {
+    "padding10": [
+      440,
+      280
+    ],
+    "padding0": [
+      420,
+      260
+    ]
+  },
+  "volta": {
+    "json": {
+      "n": 4,
+      "ids": [
+        "img1",
+        "img2",
+        "img3",
+        "img4"
+      ],
+      "igual_ao_restore": true,
+      "files": [
+        "azul4x2"
+      ],
+      "appState_view": "#ffffff",
+      "reserialize_igual": true
+    },
+    "png_embed": {
+      "n": 4,
+      "ids": [
+        "img1",
+        "img2",
+        "img3",
+        "img4"
+      ],
+      "igual_ao_restore": true,
+      "files": [
+        "azul4x2"
+      ],
+      "appState_view": "#ffffff"
+    },
+    "svg_embed": {
+      "n": 4,
+      "ids": [
+        "img1",
+        "img2",
+        "img3",
+        "img4"
+      ],
+      "igual_ao_restore": true,
+      "files": [
+        "azul4x2"
+      ],
+      "appState_view": "#ffffff"
+    },
+    "svg_sem_embed": {
+      "erro": "EncodingError: Image doesn't contain scene"
+    }
+  }
+}

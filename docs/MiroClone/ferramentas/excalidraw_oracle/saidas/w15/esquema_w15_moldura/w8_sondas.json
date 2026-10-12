@@ -1,0 +1,307 @@
+{
+ "consts": {
+  "FONT_FAMILY": {
+   "Virgil": 1,
+   "Helvetica": 2,
+   "Cascadia": 3,
+   "Excalifont": 5,
+   "Nunito": 6,
+   "Lilita One": 7,
+   "Comic Shanns": 8,
+   "Liberation Sans": 9
+  },
+  "ROUNDNESS": {
+   "LEGACY": 1,
+   "PROPORTIONAL_RADIUS": 2,
+   "ADAPTIVE_RADIUS": 3
+  },
+  "MIME_TYPES": {
+   "text": "text/plain",
+   "html": "text/html",
+   "json": "application/json",
+   "excalidraw": "application/vnd.excalidraw+json",
+   "excalidrawlib": "application/vnd.excalidrawlib+json",
+   "excalidraw.svg": "image/svg+xml",
+   "excalidraw.png": "image/png",
+   "binary": "application/octet-stream",
+   "svg": "image/svg+xml",
+   "png": "image/png",
+   "jpg": "image/jpeg",
+   "gif": "image/gif",
+   "webp": "image/webp",
+   "bmp": "image/bmp",
+   "ico": "image/x-icon",
+   "avif": "image/avif",
+   "jfif": "image/jfif"
+  }
+ },
+ "minimo_serializado": {
+  "type": "excalidraw",
+  "version": 2,
+  "source": "http://127.0.0.1:47118",
+  "elements": [
+   {
+    "type": "rectangle",
+    "x": 0,
+    "y": 0,
+    "width": 10,
+    "height": 10,
+    "version": 2,
+    "versionNonce": 411740160,
+    "index": "a0",
+    "isDeleted": false,
+    "id": "GYTSCyi0KAiuitLXesraQ",
+    "fillStyle": "solid",
+    "strokeWidth": 2,
+    "strokeStyle": "solid",
+    "roughness": 1,
+    "opacity": 100,
+    "angle": 0,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "seed": 1,
+    "groupIds": [],
+    "frameId": null,
+    "roundness": null,
+    "boundElements": [],
+    "updated": 1767225600000,
+    "link": null,
+    "locked": false
+   }
+  ],
+  "appState": {
+   "gridSize": 20,
+   "gridStep": 5,
+   "gridModeEnabled": false,
+   "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+ },
+ "sondas_appstate": [],
+ "sondas_elementos": [
+  {
+   "nome": "imagem_contorno_tracejado_redondo",
+   "opts": {
+    "refreshDimensions": false,
+    "repairBindings": true
+   },
+   "entrada": [
+    {
+     "id": "img9",
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 160,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#e03131",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 4,
+     "strokeStyle": "dashed",
+     "roughness": 1,
+     "opacity": 100,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": {
+      "type": 3
+     },
+     "seed": 1509,
+     "version": 1,
+     "versionNonce": 9,
+     "isDeleted": false,
+     "boundElements": null,
+     "updated": 1,
+     "link": null,
+     "locked": false,
+     "status": "saved",
+     "fileId": "azul4x2",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null
+    }
+   ],
+   "saida": [
+    {
+     "id": "img9",
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 160,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#e03131",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 4,
+     "strokeStyle": "dashed",
+     "roughness": 1,
+     "opacity": 100,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": {
+      "type": 3
+     },
+     "seed": 1509,
+     "version": 2,
+     "versionNonce": 661248000,
+     "isDeleted": false,
+     "boundElements": [],
+     "updated": 1767225600000,
+     "link": null,
+     "locked": false,
+     "status": "saved",
+     "fileId": "azul4x2",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null,
+     "index": "a0"
+    }
+   ]
+  },
+  {
+   "nome": "imagem_minima",
+   "opts": {
+    "refreshDimensions": false,
+    "repairBindings": true
+   },
+   "entrada": [
+    {
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "fileId": "azul4x2"
+    }
+   ],
+   "saida": [
+    {
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 10,
+     "height": 10,
+     "fileId": "azul4x2",
+     "version": 2,
+     "versionNonce": 1052747776,
+     "index": "a0",
+     "isDeleted": false,
+     "id": "ed582LWnS2Vj00JgCBQzY",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "strokeStyle": "solid",
+     "roughness": 1,
+     "opacity": 100,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "transparent",
+     "seed": 1,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": null,
+     "boundElements": [],
+     "updated": 1767225600000,
+     "link": null,
+     "locked": false,
+     "status": "pending",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null
+    }
+   ]
+  },
+  {
+   "nome": "imagem_chaves_candidatas_a_filtro",
+   "opts": {
+    "refreshDimensions": false,
+    "repairBindings": true
+   },
+   "entrada": [
+    {
+     "id": "img10",
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 160,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "transparent",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "strokeStyle": "solid",
+     "roughness": 1,
+     "opacity": 100,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": null,
+     "seed": 1510,
+     "version": 1,
+     "versionNonce": 10,
+     "isDeleted": false,
+     "boundElements": null,
+     "updated": 1,
+     "link": null,
+     "locked": false,
+     "status": "saved",
+     "fileId": "azul4x2",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null,
+     "filter": "grayscale",
+     "grayscale": true,
+     "imageFilter": "grayscale"
+    }
+   ],
+   "saida": [
+    {
+     "id": "img10",
+     "type": "image",
+     "x": 0,
+     "y": 0,
+     "width": 160,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "transparent",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "strokeStyle": "solid",
+     "roughness": 1,
+     "opacity": 100,
+     "groupIds": [],
+     "frameId": null,
+     "roundness": null,
+     "seed": 1510,
+     "version": 2,
+     "versionNonce": 1282332672,
+     "isDeleted": false,
+     "boundElements": [],
+     "updated": 1767225600000,
+     "link": null,
+     "locked": false,
+     "status": "saved",
+     "fileId": "azul4x2",
+     "scale": [
+      1,
+      1
+     ],
+     "crop": null,
+     "filter": "grayscale",
+     "grayscale": true,
+     "imageFilter": "grayscale",
+     "index": "a0"
+    }
+   ]
+  }
+ ]
+}

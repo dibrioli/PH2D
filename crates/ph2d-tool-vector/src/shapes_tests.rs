@@ -78,3 +78,12 @@ fn clamp_bounds_the_fields_and_rounds_the_counts() {
     assert!((v[0] - 5.0).abs() < 1e-9, "lados arredondam");
     assert!((v[1] - 500.0).abs() < 1e-9, "raio clampa no teto");
 }
+
+/// (F12) As voltas da espiral são FRACCIONÁRIAS: o clamp guarda `3,25` (a ponta segue a mão).
+#[test]
+fn clamp_keeps_the_fractional_spiral_turns() {
+    let mut v: ShapeValues = [0.0; MAX_SHAPE_FIELDS];
+    v[0] = 3.25;
+    clamp(ShapeKind::Spiral, &mut v);
+    assert!((v[0] - 3.25).abs() < 1e-12, "{}", v[0]);
+}

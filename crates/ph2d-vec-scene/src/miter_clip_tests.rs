@@ -71,3 +71,20 @@ fn a_polyline_reports_only_its_sharp_joins() {
         "60° cabe no limite"
     );
 }
+
+/// Traço de largura nula (ou negativa) não tem bico a cortar, por mais aguda que seja a quina.
+#[test]
+fn a_join_without_width_adds_nothing() {
+    let (t1, t2) = corner(10.0);
+    assert!(
+        clip_patch([0.0, 0.0], t1, t2, 1.0, 4.0).is_some(),
+        "CONTROLO"
+    );
+    for half_w in [0.0, -0.5] {
+        assert_eq!(
+            clip_patch([0.0, 0.0], t1, t2, half_w, 4.0),
+            None,
+            "{half_w}"
+        );
+    }
+}

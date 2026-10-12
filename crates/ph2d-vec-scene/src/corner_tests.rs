@@ -480,3 +480,37 @@ fn smoothing_a_sharp_corner_is_a_no_op() {
         mixed.verts.len()
     );
 }
+
+/// (F12) O raio NEGATIVO numa fatia é o caminho intacto, como o zero — o sinal nunca chega ao
+/// motor da quina, onde viraria chanfro.
+#[test]
+fn a_negative_slice_radius_leaves_the_slice_intact() {
+    for (start, sweep, hole) in [(0.0, 70.0, 0.0), (30.0, 220.0, 0.5)] {
+        let p = crate::ellipse_sweep([0.0; 2], 1.0, 1.0, start, sweep, hole);
+        assert_eq!(crate::round_slice_corners(p.clone(), -0.1), p, "{sweep}°");
+    }
+}
+
+/// (F12) Só as QUINAS da fatia arredondam: cada vértice liso do arco sai com a sua âncora (na
+/// elipse esticada as alças dele não são colineares ao último bit, e o motor arredondá-lo-ia).
+#[test]
+fn only_the_slice_corners_round_the_smooth_arc_vertices_stay() {
+    let smooth = |q: &crate::VecPath| -> Vec<[f64; 2]> {
+        q.verts
+            .iter()
+            .filter(|v| v.kind == crate::VertexKind::Smooth)
+            .map(|v| v.anchor)
+            .collect()
+    };
+    for (start, sweep, hole) in [(0.0, 100.0, 0.0), (0.0, 100.0, 0.5), (17.0, 271.0, 0.5)] {
+        let p = crate::ellipse_sweep([0.3, -7.0], 2.5, 13.0, start, sweep, hole);
+        let r = crate::round_slice_corners(p.clone(), 0.125);
+        let kept = smooth(&r);
+        for a in smooth(&p) {
+            assert!(
+                kept.contains(&a),
+                "{sweep}° furo {hole}: o liso {a:?} sumiu"
+            );
+        }
+    }
+}

@@ -340,3 +340,24 @@ fn a_collapsed_pose_falls_back_to_the_pre_cure_composition() {
         "a caixa da pose colapsada saiu do espaco local"
     );
 }
+
+/// O sinal AGUDO vem também das QUINAS: o triângulo fino (bico de ~5,7°, além do limite) sob um
+/// traço fino — sem curva nenhuma que aperte — vai pelo contorno exacto (o bico cortado).
+#[test]
+fn a_sharp_polygon_under_a_thin_pen_is_flagged_by_its_corners() {
+    use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecVertex};
+    let p = VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [0.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 0.01)),
+        ..VecPath::default()
+    };
+    let bp = crate::build_bezpath(&p.cooked());
+    assert!(
+        !crate::miter_clip::tighter_than(&bp, 0.005),
+        "CONTROLO: nenhuma curva aperta"
+    );
+    assert!(crate::agudo_de(&p, Some(&bp)));
+}

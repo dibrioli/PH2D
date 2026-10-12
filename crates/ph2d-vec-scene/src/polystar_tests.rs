@@ -341,3 +341,135 @@ fn the_rounding_never_grows_past_the_sharp_corner() {
         }
     }
 }
+
+/// A espiral divergente leva pelo menos 16 cúbicas POR VOLTA também com voltas fraccionárias
+/// (o passo arredonda para CIMA; `× q` quando `e < 1`).
+#[test]
+fn a_fractional_spiral_keeps_sixteen_cubics_per_turn() {
+    for (turns, expansion, q) in [(3.01, 0.5, 1.0), (1.3, 0.5, 1.0), (3.01, -0.5, 2.0)] {
+        let s = spiral_ex([0.0; 2], 1.0, 1.0, turns, expansion, 0.0);
+        let want = (turns * 16.0 * q).ceil() as usize;
+        let cubics = s.verts.len() - 1;
+        assert!(
+            cubics >= want,
+            "{turns} voltas (e {expansion}): {cubics} cúbicas < {want}"
+        );
+    }
+}
+
+/// O ângulo (rad) entre as alças de `v`: zero = cúspide (as duas na mesma direcção).
+fn handle_gap(v: &VecVertex) -> f64 {
+    let (i, o) = (
+        [v.in_handle[0] - v.anchor[0], v.in_handle[1] - v.anchor[1]],
+        [v.out_handle[0] - v.anchor[0], v.out_handle[1] - v.anchor[1]],
+    );
+    (i[0] * o[1] - i[1] * o[0])
+        .atan2(i[0] * o[0] + i[1] * o[1])
+        .abs()
+}
+
+/// ⭐ A envergadura roda a tangente no máximo METADE da quina que ela fecha — no limite uma
+/// cúspide, nunca um laço: para dentro fecha as PONTAS (convexas), para fora fecha os VALES.
+#[test]
+fn the_curve_stops_at_the_cusp_of_the_corner_it_closes() {
+    for (curve, closes) in [(-1.0, 0), (1.0, 1)] {
+        let p = polystar(
+            [0.0; 2],
+            1.0,
+            1.0,
+            &star(0.0, curve, 0.0, [0.0; 2], CornerStyle::Round),
+        );
+        for (k, v) in p.verts.iter().enumerate() {
+            let gap = handle_gap(v);
+            if k % 2 == closes {
+                assert!(
+                    gap < 1e-9,
+                    "curve {curve}, vértice {k}: cúspide ({gap} rad)"
+                );
+            } else {
+                assert!(gap > 0.1, "curve {curve}, vértice {k}: a outra quina abre");
+            }
+        }
+    }
+}
+
+/// A envergadura SEM liso põe as alças a ⅓ da corda: a tangente na quina roda `atan(4h/corda)`
+/// (o quadrado a `curve` 0,5: `h = ¼ corda` → 45°).
+#[test]
+fn the_bent_edge_handles_sit_a_third_along_the_chord() {
+    let sq = PolyStar {
+        n: 4,
+        curve: 0.5,
+        ..PolyStar::default()
+    };
+    let p = polystar([0.0; 2], 1.0, 1.0, &sq);
+    let (a, b) = (&p.verts[0], &p.verts[1]);
+    let d = [b.anchor[0] - a.anchor[0], b.anchor[1] - a.anchor[1]];
+    let len = d[0].hypot(d[1]);
+    let h = [a.out_handle[0] - a.anchor[0], a.out_handle[1] - a.anchor[1]];
+    let along = (h[0] * d[0] + h[1] * d[1]) / len;
+    assert!((along - len / 3.0).abs() < 1e-12, "{along} ≠ ⅓ de {len}");
+    let turn = (d[0] * h[1] - d[1] * h[0])
+        .atan2(d[0] * h[0] + d[1] * h[1])
+        .abs();
+    assert!((turn - std::f64::consts::FRAC_PI_4).abs() < 1e-12, "{turn}");
+}
+
+fn line_path(pts: &[[f64; 2]], closed: bool) -> VecPath {
+    VecPath {
+        verts: pts.iter().map(|&p| VecVertex::corner(p)).collect(),
+        closed,
+        ..VecPath::default()
+    }
+}
+
+/// ⭐ (`untangle`) A forma devolvida fica a uma FOLGA do limiar do cruzamento, não pousa nele:
+/// o segmento CD cruza AB a partir de `t = 0,4` e o recuo fica abaixo de `0,392` (2 %).
+#[test]
+fn the_untangled_shape_keeps_a_margin_below_the_crossing() {
+    let build = |t: f64| {
+        line_path(
+            &[[0.0, 0.0], [2.0, 0.0], [2.0, 1.0], [1.0, 1.0 - 2.5 * t]],
+            false,
+        )
+    };
+    assert!(crate::untangle::crosses(&build(1.0), 1), "CONTROLO: cruza");
+    let out = crate::untangle::untangled(1, build);
+    let t = (1.0 - out.verts[3].anchor[1]) / 2.5;
+    assert!(!crate::untangle::crosses(&out, 1));
+    assert!(t > 0.36 && t < 0.392, "parou em t = {t}");
+}
+
+/// (`untangle`) A quase-cúspide DENTRO de um troço conta como cruzamento — é onde o laço nasce —
+/// mesmo sem nenhum par de troços a atravessar-se; o arco liso não conta.
+#[test]
+fn a_cusp_inside_one_segment_counts_as_a_crossing() {
+    let seg = |o: [f64; 2], i: [f64; 2]| VecPath {
+        verts: vec![
+            VecVertex::smooth([0.0, 0.0], [0.0, 0.0], o),
+            VecVertex::smooth([1.0, 0.0], i, [1.0, 0.0]),
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    assert!(crate::untangle::crosses(&seg([1.0, 1.0], [0.0, 1.0]), 1));
+    assert!(!crate::untangle::crosses(&seg([0.0, 0.5], [1.0, 0.5]), 1));
+}
+
+/// (`untangle`) Um período que não divide os troços não é simetria: procura-se o contorno inteiro
+/// (aqui só o troço 2 cruza o 4).
+#[test]
+fn a_period_that_does_not_divide_the_contour_searches_all_of_it() {
+    let p = line_path(
+        &[
+            [0.0, 0.0],
+            [10.0, 0.0],
+            [10.0, 10.0],
+            [0.0, 6.0],
+            [6.0, 12.0],
+        ],
+        true,
+    );
+    assert!(crate::untangle::crosses(&p, 1), "CONTROLO: cruza");
+    assert!(crate::untangle::crosses(&p, 2));
+}

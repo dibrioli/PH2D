@@ -349,3 +349,30 @@ fn the_brace_beak_is_a_real_cusp_not_an_ess() {
         "os dois arcos chegam ao bico TANGENTES a horizontal"
     );
 }
+
+/// O bico do rabo é AGULHA só enquanto a corda do flanco segue o eixo (medida ≥ `0,7`); abaixo
+/// disso a chegada cede para a corda e o bico abre em V — a `0,6` já abre, a `0,1` chega pela
+/// corda inteira.
+#[test]
+fn the_tail_tip_is_a_needle_only_above_the_needle_measure() {
+    // Raízes em `(0, ±1)`, bico em `(h, 0)`: a medida eixo↔corda é `h² / (h² + 1)`.
+    let tip = |c: f64| {
+        let h = (c / (1.0 - c)).sqrt();
+        let (pa, pb, t) = ((0.0, -1.0), (0.0, 1.0), (h, 0.0));
+        let (_, v, _) = crate::bubbles_ring::tail_flanks(pa, pb, t, (-1.0, 0.0), (-1.0, 0.0));
+        (v, pa, t)
+    };
+    let (needle, _, _) = tip(0.75);
+    assert!(
+        (needle.i.1 - needle.o.1).abs() < 1e-12,
+        "0,75: agulha {needle:?}"
+    );
+    let (open, _, _) = tip(0.6);
+    assert!(open.o.1 - open.i.1 > 1e-3, "0,6: o bico abre {open:?}");
+    let (v, pa, t) = tip(0.1);
+    let (arrive, chord) = ((t.0 - v.i.0, t.1 - v.i.1), (t.0 - pa.0, t.1 - pa.1));
+    assert!(
+        (arrive.0 * chord.1 - arrive.1 * chord.0).abs() < 1e-12,
+        "0,1: chega pela corda"
+    );
+}

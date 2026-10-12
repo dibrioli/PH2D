@@ -222,3 +222,21 @@ fn the_parameter_extremes_never_degenerate() {
         }
     }
 }
+
+/// Com as cabeças a encostar (sem haste) a seta dupla é o LOSANGO: quatro vértices e nenhum par
+/// seguido no mesmo ponto (a fenda de ida-e-volta que o traço desenhava por dentro).
+#[test]
+fn a_double_arrow_without_a_shaft_is_a_rhombus() {
+    for head_len in [0.5, 0.8] {
+        let p = arrow_double(A, B, 0.3, head_len, 0.8);
+        assert_eq!(p.verts.len(), 4, "head_len {head_len}");
+        let n = p.verts.len();
+        for k in 0..n {
+            let (a, b) = (p.verts[k].anchor, p.verts[(k + 1) % n].anchor);
+            assert!(
+                (a[0] - b[0]).hypot(a[1] - b[1]) > 1e-6,
+                "{k}: {a:?} = {b:?}"
+            );
+        }
+    }
+}

@@ -121,37 +121,40 @@ fn the_corner_radius_carries_into_the_smooth() {
     }
 }
 
-/// ⭐ **O liso não deixa calombos** (F13, o dono: «Smooth … ficou horrível»): com raio de canto e
-/// com ou sem envergadura, todo vértice do contorno cozido é G1 — as alças de entrada e de saída
-/// na mesma recta. O F13 anterior deixava a quina do raio em cada canto.
+/// ⭐ **O liso aproveita o resto** (F13, o dono: «Smooth que não aproveita o trabalho dos outros
+/// ajustes»): em `0` nada muda e o 1.º passo não salta — em todo estilo de canto, com e sem
+/// envergadura; os PONTOS do contorno nunca se mexem (o entalhe fica); e em `1` todo vértice é G1.
 #[test]
-fn smooth_leaves_no_corner_bump() {
-    for c in [0.0, 0.4, -0.4] {
-        for s in [0.05, 0.3, 0.5, 0.75, 1.0] {
-            let p = polystar(
-                [0.0; 2],
-                1.0,
-                1.0,
-                &PolyStar {
-                    curve: c,
-                    ..poly(5, s, 0.2, CornerStyle::Round)
-                },
-            );
-            for v in &p.verts {
-                let (a, b) = (
-                    [v.anchor[0] - v.in_handle[0], v.anchor[1] - v.in_handle[1]],
-                    [v.out_handle[0] - v.anchor[0], v.out_handle[1] - v.anchor[1]],
+fn smooth_builds_on_the_other_adjustments() {
+    use CornerStyle::{Concave, Cutout, Round, Straight};
+    for style in [Round, Concave, Straight, Cutout] {
+        for c in [0.0, 0.3, -0.3] {
+            let at = |sm: f64| {
+                polystar(
+                    [0.0; 2],
+                    1.0,
+                    1.0,
+                    &PolyStar {
+                        curve: c,
+                        ..poly(5, sm, 0.2, style)
+                    },
+                )
+            };
+            let (zero, step, one) = (at(0.0), at(0.001), at(1.0));
+            let h = hausdorff(&zero, &step);
+            assert!(h < 2e-3, "{style:?} envergadura {c}: o 1.º passo salta {h}");
+            assert_eq!(zero.verts.len(), one.verts.len(), "{style:?} {c}");
+            for (a, b) in zero.verts.iter().zip(&one.verts) {
+                assert!((a.anchor[0] - b.anchor[0]).hypot(a.anchor[1] - b.anchor[1]) < 1e-12);
+                let (u, w) = (
+                    [b.anchor[0] - b.in_handle[0], b.anchor[1] - b.in_handle[1]],
+                    [b.out_handle[0] - b.anchor[0], b.out_handle[1] - b.anchor[1]],
                 );
-                let (la, lb) = (a[0].hypot(a[1]), b[0].hypot(b[1]));
-                if la < 1e-9 || lb < 1e-9 {
-                    continue;
+                let (lu, lw) = (u[0].hypot(u[1]), w[0].hypot(w[1]));
+                if lu > 1e-9 && lw > 1e-9 {
+                    let cross = (u[0] * w[1] - u[1] * w[0]) / (lu * lw);
+                    assert!(cross.abs() < 1e-6, "{style:?} {c}: quina {cross} a liso 1");
                 }
-                let cross = (a[0] * b[1] - a[1] * b[0]) / (la * lb);
-                assert!(
-                    cross.abs() < 1e-6,
-                    "liso {s}, envergadura {c}: quina {cross} em {:?}",
-                    v.anchor
-                );
             }
         }
     }
@@ -214,8 +217,8 @@ fn a_corner_whose_edges_are_eaten_whole_keeps_its_style() {
 
 /// ⭐ (F13, o dono: «quando arredonda as quinas, fica ruim») **O estilo do canto com envergadura
 /// e com liso**: com a envergadura, as paredes do *Cutout* e o chanfro do *Straight* ficam RECTOS
-/// (envergados viravam ganchos); com o liso, nenhum vértice fica com raio (o estilo num vértice
-/// liso deixava lascas — riscos do contorno ao centro).
+/// (envergados viravam ganchos); com o liso, os pontos do contorno ficam (o liso de antes num
+/// vértice com estilo deixava lascas — riscos do contorno ao centro).
 #[test]
 fn corner_styles_stay_clean_under_curve_and_smooth() {
     for style in [CornerStyle::Cutout, CornerStyle::Straight] {
@@ -254,18 +257,17 @@ fn corner_styles_stay_clean_under_curve_and_smooth() {
             );
         }
         for s in [0.05, 0.5, 1.0] {
-            // Liso, todo ponto do contorno é um vértice do polígono (no círculo de raio 1): a lasca
-            // era um ponto puxado para dentro (o risco até ao centro).
-            let p = polystar([0.0; 2], 1.0, 1.0, &poly(5, s, 0.2, style));
-            let dentro = p
-                .verts
-                .iter()
-                .map(|v| v.anchor[0].hypot(v.anchor[1]))
-                .fold(1.0, f64::min);
-            assert!(
-                dentro > 0.999,
-                "{style:?} liso {s}: um ponto a {dentro} do centro (lasca)"
+            // Liso, nenhum risco para dentro: os pontos são os do contorno sem liso (o entalhe fica).
+            let (p, zero) = (
+                polystar([0.0; 2], 1.0, 1.0, &poly(5, s, 0.2, style)),
+                polystar([0.0; 2], 1.0, 1.0, &poly(5, 0.0, 0.2, style)),
             );
+            let same = p.verts.len() == zero.verts.len()
+                && p.verts
+                    .iter()
+                    .zip(&zero.verts)
+                    .all(|(a, b)| a.anchor == b.anchor);
+            assert!(same, "{style:?} liso {s}: o contorno mudou de pontos");
         }
     }
 }

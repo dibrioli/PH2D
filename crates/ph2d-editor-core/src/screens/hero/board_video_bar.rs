@@ -346,8 +346,9 @@ pub fn paint_show(
         for (id, pl) in &live.render_cache.videos.on_screen {
             if let Some(el) = board.doc.get(*id) {
                 let node = show_node(*id);
-                // Um botão por vídeo, registado UMA vez (registar de novo a cada quadro apagava o
-                // carregar entre o Down e o Up).
+                // Um botão por vídeo, registado uma vez, como os botões do quadro (que o `populate`
+                // regista). Medido: registá-lo a cada quadro também não perde o clique (a mutação
+                // sobrevive ao teste que repinta entre o Down e o Up) — é só não refazer estado.
                 if hero.store.button_state(node).is_none() {
                     hero.store.register(
                         node,

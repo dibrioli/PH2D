@@ -520,7 +520,26 @@ fn a_video_on_a_slide_plays_in_the_presentation_with_our_controls() {
         t.find(video).is_some(),
         "o vídeo do diapositivo é clicável por cima da sala"
     );
-    t.shell_click_id(video, "o vídeo do diapositivo");
+    // O ecrã repinta-se ENTRE o carregar e o largar (cada quadro da janela): o botão do vídeo não se
+    // pode registar de novo nesse intervalo, ou o largar perde o clique.
+    let (x, y) = t.find(video).unwrap();
+    let arena = Bump::new();
+    let mut ev = t
+        .hero
+        .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+        .to_vec();
+    t.paint();
+    ev.extend_from_slice(t.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
+    assert!(
+        ev.iter().any(
+            |e| matches!(e, WidgetEvent::Click(i) | WidgetEvent::DoubleClick(i) if *i == video)
+        ),
+        "o clique perdeu-se com a repintura: {ev:?}"
+    );
+    for e in ev {
+        t.hero.apply_event(e);
+    }
+    t.paint();
     assert_eq!(t.hero.documents.videos_mut().active, Some(vid));
     t.hero.documents.videos_mut().status = Some(PlayerStatus {
         time: 3.0,

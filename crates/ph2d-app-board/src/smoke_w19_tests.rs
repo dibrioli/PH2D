@@ -61,7 +61,15 @@ fn press(h: &mut HeroScreen, k: BoardKey) {
 fn the_w19_scene_does_what_its_lessons_say() {
     let mut h = hero("Ana");
     let l = scene_w19(&mut h);
-    Hand::new().paint(&mut h);
+    // A 1.ª pintura na janela da FOTO (1280×800, os dois painéis abertos): é ela que enquadra a cena.
+    let photo = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    ph2d_editor_core::screens::hero::paint_hero_screen(
+        &mut h,
+        photo,
+        &mut ph2d_vector::VectorScene::new(),
+        &mut ts,
+    );
     let el = h
         .documents
         .active_board()
@@ -70,6 +78,25 @@ fn the_w19_scene_does_what_its_lessons_say() {
         .get(l.video)
         .unwrap()
         .clone();
+    // Cada lição e o vídeo inteiros dentro da área com que a cena abre, nessa janela. ⚠️ A área do teste não
+    // tem os painéis laterais (1268 px); na janela real eles TAPAM os lados do quadro e o enquadramento não os
+    // desconta — o corte da 1.ª foto de 12/10 (aberto no handoff W19; a cena 19 tem o mesmo).
+    {
+        let b = h.documents.active_board().unwrap();
+        let c = h.last_canvas;
+        let area = [c.x, c.y, c.w, c.h].map(f64::from);
+        for id in l.lessons.iter().chain([&l.video]) {
+            let e = b.doc.get(*id).unwrap();
+            let p0 = b.camera.to_screen(area, [e.x, e.y]);
+            let p1 = b.camera.to_screen(area, [e.x + e.w, e.y + e.h]);
+            let inside = p0[0] >= area[0]
+                && p0[1] >= area[1]
+                && p1[0] <= area[0] + area[2]
+                && p1[1] <= area[1] + area[3];
+            assert!(inside, "{id:?} cortado: {p0:?}..{p1:?} fora de {area:?}");
+        }
+    }
+    Hand::new().paint(&mut h);
     // Lição 1: o play activa-o; com o tocador a responder, a barra fica POR BAIXO.
     Mouse::new().click(&mut h, [el.x + el.w / 2.0, el.y + el.h / 2.0]);
     h.documents.videos_mut().status = Some(PlayerStatus {

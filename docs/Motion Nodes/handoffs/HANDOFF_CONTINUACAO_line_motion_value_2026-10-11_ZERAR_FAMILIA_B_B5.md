@@ -7,7 +7,7 @@
 ## Onde a linha está
 
 - Worktree `Worktrees/line-motion-value`, base `8f20c60de` (= `main`). Commits desta janela: `e1d7eb2aa4` (glow),
-  `45399f5551` + `3ee494b5ca` + `3db921b434` (B5). **Nada integrado nem enviado.**
+  `45399f5551` + `3ee494b5ca` + `3db921b434` + o Each Shape na mistura (B5). **Nada integrado nem enviado.**
 - ⏳ Smoke do dono: `=135` passos (12)/(13) (`PH2D_ACABAMENTO_PASSO=12|13`), fotografados; e o re-smoke das estrelas
   (`=70`, cura `f0370a2786`).
 
@@ -33,15 +33,21 @@
 - **`ph2d-app-motion`**: `Misturas::da_copia` (`motion_shape_placa_mistura.rs`) — `Copies` sempre; `Everything` e
   a linha sem grupo só na camada ISOLADA; `Scene` fora dela e Multiply sem a feature ⇒ Vello, com o motivo no
   terminal (`[formas] … pela cena Vello: <motivo>`). A shell passa `Misturas::do_quadro(gpu, camada_isolada)`
-  (`decide_com_misturas`). Com `Each Shape`, as formas com mistura não vão às células: a pilha corre sobre o
-  CONJUNTO (`run_layer_rect` em `formas_juntas`), como sobre as do Vello; o cartão diz «one piece».
+  (`decide_com_misturas`).
+- ⭐ **O `Each Shape` ENTRA na mistura** (report do dono 11/10: *«o brilho do relevo não participa do
+  Multiply»*): o run-walker é o `ph2d_shape_gpu::Compositor` (`compositor.rs`: cortes, grupo no rascunho, uma
+  `Sessao` em várias chamadas); a volta das células (`ph2d-fx-cells/src/volta.rs`) devolve as formas
+  JÁ filtradas a uma camada própria, corrida a corrida com a mistura da cópia (`Formas::corridas` ←
+  `PlacaDeFormas::corridas_do_quadro`), colada sobre as sprites no fim. Gate
+  `each_shapes_effect_enters_the_blend` (Color Overlay `x` + Multiply: sobreposição `x·x` = 161 contra 162;
+  mutação «corridas vazias» lê 203, VERMELHO). Só a rota Vello (placa recusada) fica «one piece».
 - ⛔ **Defeito antigo corrigido:** a camada filtrada decidia o Vello dela por `PlacaDeFormas::ativa`, que o
   `desenha` já consumiu ⇒ o Vello corria por cima da placa com a cena VELHA (a shell não a codifica com a placa
   ativa). Agora `desenhou`. Gate `a_placa_que_desenhou_cala_a_cena_velha_da_camada`.
 - **Gates:** `cada_mistura_por_copia_compoe_como_o_vello` (24 casos × modo, cópias SOBREPOSTAS, desvio ≤ 0,00096
   contra a composição do Vello escrita à mão; controlo Normal); a tabela do doc 118 pela placa NO PRODUTO
   (`the_output_blend_crosses_the_filtered_layer…`: 3 modos × 3 alcances × 2 colagens, ≤ 1 nível do Vello);
-  `an_each_shape_step_runs…` nas duas rotas (borrão igual); `cada_mistura_vai_a_placa_so_onde…` (tabela da rota,
+  `an_each_shape_step_runs…` (Vello «one piece», placa sem queixa); `cada_mistura_vai_a_placa_so_onde…` (tabela da rota,
   CPU); `the_copies_steps_go_to_the_plate` (=135). Mutações: `ativa`↔`desenhou`, Multiply→Tela, os 5 cortes/isolamento
   — todas VERMELHAS.
 - **Custo** (`o_preco_do_vello_na_camada`, release, 12 blocos intercalados, mínimo, load 56–92, `Everything` na

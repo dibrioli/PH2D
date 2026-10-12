@@ -37,8 +37,8 @@ use std::sync::OnceLock;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_gpu::GpuContext;
 use ph2d_shape_gpu::{
-    Copias, Corrida, FillRule, Mistura, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass,
-    ShapeView, StrokeInput,
+    Copias, Corrida, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView,
+    StrokeInput,
 };
 use ph2d_vec_scene::VecPath;
 use ph2d_vector::{Affine, Fill};
@@ -534,15 +534,15 @@ impl PlacaDeFormas {
         self.motivo
     }
 
-    /// **O quadro da placa tem cópias com mistura** (B5): o `Each Shape` não as leva às células — elas
-    /// vão à camada como uma peça só, como as do Vello ([`crate::motion_filter::formas_no_vello`]).
+    /// As corridas de mistura das cópias do quadro (B5) — vazias na rota do dispositivo. As células
+    /// do `Each Shape` misturam cada cópia filtrada na volta (`ph2d_fx_cells`).
     #[must_use]
-    pub fn misturou(&self) -> bool {
-        self.do_dispositivo.is_none()
-            && self
-                .corridas
-                .iter()
-                .any(|c| c.mistura != Mistura::Normal || c.grupo != 0)
+    pub fn corridas_do_quadro(&self) -> &[Corrida] {
+        if self.do_dispositivo.is_some() {
+            &[]
+        } else {
+            &self.corridas
+        }
     }
 
     /// As cópias que o [`Self::desenha`] deste quadro desenhou (o buffer, quantas, a vista).

@@ -220,8 +220,8 @@ pub(super) fn announce() {
          arco-iris passa a ESCURECER a cor de cada disco em vez de a trocar.\n\
          (12) Volte o 1.o `Filter` para `Bevel`. No cartao `Output`: `Blend` = `Multiply` e `Blend\n    \
          With` = `Copies`. Onde dois discos se TOCAM a cor fica mais ESCURA (um tinge o outro); o\n    \
-         resto da galaxia fica igual. O terminal diz `pela PLACA`. O relevo passa a tratar a\n    \
-         galaxia como UMA peca (o cartao do 1.o `Filter` avisa).\n\
+         resto da galaxia fica igual; o BRILHO do relevo tambem escurece ali (cada disco ganha\n    \
+         o relevo antes de se misturar). O terminal diz `pela PLACA`.\n\
          (13) Troque `Blend` para `Screen`: onde os discos se tocam a cor CLAREIA.\n\
          \n\
          DEU ERRADO se: o relevo tremer com a galaxia a girar; se em `Each Shape` os discos do meio\n\

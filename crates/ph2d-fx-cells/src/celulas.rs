@@ -7,7 +7,7 @@ use ph2d_render::{
     BandBlit, BandSource, Camera2d, FxOpGpu, FxStackPass, GpuTexRun, Origem, RenderInstance,
     SpriteRenderer, sort_render_order, stack_reach, stack_read,
 };
-use ph2d_shape_gpu::{Copias, ShapeInstance, ShapePass, ShapeView};
+use ph2d_shape_gpu::{Copias, Corrida, Mistura, ShapeInstance, ShapePass, ShapeView};
 
 use crate::passes::{
     CelGpu, buffer, compute, faixas_da_pagina, liga, limpa, quads, reloca, render, vazio,
@@ -50,6 +50,9 @@ pub struct Formas<'a> {
     pub buffer: &'a wgpu::Buffer,
     pub n: u32,
     pub vista: ShapeView,
+    /// As corridas de mistura das cópias (B5, [`crate::volta`]) — vazias, ou uma só `Normal` sem
+    /// grupo, é a volta de sempre em `Normal`.
+    pub corridas: &'a [Corrida],
 }
 
 /// O que uma corrida pede.
@@ -188,6 +191,8 @@ pub struct Celulas {
     ultimas_caixas: Vec<Caixa>,
     /// As páginas do último [`Self::corre`] — instrumento de gates e do relógio.
     ultimas_paginas: Vec<Pagina>,
+    /// B5: a volta com mistura — nasce no primeiro quadro que a pede.
+    voltas: Option<crate::volta::Voltas>,
 }
 
 const PALAVRAS_SPRITE: u32 = (std::mem::size_of::<RenderInstance>() / 4) as u32;
@@ -230,6 +235,7 @@ impl Celulas {
             atlas: None,
             ultimas_caixas: Vec::new(),
             ultimas_paginas: Vec::new(),
+            voltas: None,
         }
     }
 
@@ -310,6 +316,30 @@ impl Celulas {
             self.atlas = Some(Atlas::new(gpu, (w, h)));
         }
         let usa_mapa = e.ops.iter().any(|o| o.kind == ph2d_fx_op::FxOp::TURBULENCE);
+        let corridas = e.formas.as_ref().map_or(&[][..], |f| f.corridas);
+        let simples = match corridas {
+            [] => true,
+            [c] => c.mistura == Mistura::Normal && c.grupo == 0,
+            _ => false,
+        };
+        // B5: com mistura, as formas voltam à camada PRÓPRIA delas, colada no fim ([`crate::volta`]).
+        let mut voltas = (!simples).then(|| {
+            let mut v = self
+                .voltas
+                .take()
+                .unwrap_or_else(|| crate::volta::Voltas::new(gpu, e.tamanho));
+            v.garante(gpu, e.tamanho);
+            v
+        });
+        let mut mistas = voltas.as_mut().map(|v| {
+            let sessao = v.compositor.sessao(
+                gpu,
+                &v.formas.1,
+                e.tamanho,
+                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            );
+            (&v.pipes, sessao)
+        });
         for pagina in &paginas {
             self.pagina(
                 &mut e,
@@ -318,7 +348,23 @@ impl Celulas {
                 &ordenadas,
                 afim,
                 usa_mapa,
+                mistas.as_mut().map(|(p, s)| (*p, s, corridas)),
             );
+        }
+        if let Some((_, sessao)) = mistas {
+            let mut enc = gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            sessao.fecha(&mut enc);
+            gpu.queue.submit([enc.finish()]);
+        }
+        if let Some(v) = voltas.take() {
+            let mut enc = gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            v.compositor.cola(gpu, &mut enc, &v.formas.1, e.camada);
+            gpu.queue.submit([enc.finish()]);
+            self.voltas = Some(v);
         }
         self.ultimas_paginas = paginas;
     }
@@ -417,6 +463,11 @@ impl Celulas {
         ordenadas: &[RenderInstance],
         afim: [f64; 6],
         usa_mapa: bool,
+        mistas: Option<(
+            &crate::volta::Pipes,
+            &mut ph2d_shape_gpu::Sessao<'_>,
+            &[Corrida],
+        )>,
     ) {
         let gpu = e.gpu;
         let lin_s = [afim[0], afim[1], afim[2], afim[3]];
@@ -561,15 +612,47 @@ impl Celulas {
             e.ops,
             origem,
         );
+        let Some((pipes, sessao, corridas)) = mistas else {
+            quads(
+                gpu,
+                &self.volta,
+                e.camada,
+                &cels,
+                n_cel,
+                &atlas.saida_view,
+                e.tamanho,
+                false,
+            );
+            return;
+        };
+        // As células vêm EM ORDEM (sprites primeiro): as das sprites voltam à camada, as das formas
+        // à sessão.
+        #[expect(clippy::cast_possible_truncation, reason = "uma página cabe num u32")]
+        let k = pagina
+            .celulas
+            .iter()
+            .take_while(|c| c.instancia < n_s)
+            .count() as u32;
         quads(
             gpu,
             &self.volta,
             e.camada,
             &cels,
-            n_cel,
+            k,
             &atlas.saida_view,
             e.tamanho,
             false,
+        );
+        pipes.volta(
+            gpu,
+            sessao,
+            &pagina.celulas,
+            k..n_cel,
+            n_s,
+            corridas,
+            &cels,
+            &atlas.saida_view,
+            e.tamanho,
         );
     }
 }

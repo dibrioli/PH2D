@@ -253,33 +253,7 @@ pub(crate) fn quads(
     tamanho: (u32, u32),
     limpa_antes: bool,
 ) {
-    #[expect(clippy::cast_precision_loss, reason = "um alvo cabe num f32")]
-    let u = buffer(
-        gpu,
-        "fx_cells alvo",
-        bytemuck::cast_slice(&[tamanho.0 as f32, tamanho.1 as f32, 0.0, 0.0]),
-        wgpu::BufferUsages::UNIFORM,
-    );
-    // O layout é o AUTOMÁTICO do par de estágios: o mapa não lê o átlas (ligações 0 e 2).
-    let mut entries = vec![wgpu::BindGroupEntry {
-        binding: 0,
-        resource: cels.as_entire_binding(),
-    }];
-    if !limpa_antes {
-        entries.push(wgpu::BindGroupEntry {
-            binding: 1,
-            resource: wgpu::BindingResource::TextureView(atlas),
-        });
-    }
-    entries.push(wgpu::BindGroupEntry {
-        binding: 2,
-        resource: u.as_entire_binding(),
-    });
-    let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("fx_cells quads"),
-        layout: &pipeline.get_bind_group_layout(0),
-        entries: &entries,
-    });
+    let bg = grupo_dos_quads(gpu, pipeline, cels, atlas, tamanho, limpa_antes);
     let mut enc = gpu
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -309,4 +283,42 @@ pub(crate) fn quads(
         pass.draw(0..6, 0..n);
     }
     gpu.queue.submit([enc.finish()]);
+}
+
+/// O grupo `0` dos quads de `pipeline` (layout AUTOMÁTICO: o mapa não lê o átlas).
+pub(crate) fn grupo_dos_quads(
+    gpu: &GpuContext,
+    pipeline: &wgpu::RenderPipeline,
+    cels: &wgpu::Buffer,
+    atlas: &wgpu::TextureView,
+    tamanho: (u32, u32),
+    limpa_antes: bool,
+) -> wgpu::BindGroup {
+    #[expect(clippy::cast_precision_loss, reason = "um alvo cabe num f32")]
+    let u = buffer(
+        gpu,
+        "fx_cells alvo",
+        bytemuck::cast_slice(&[tamanho.0 as f32, tamanho.1 as f32, 0.0, 0.0]),
+        wgpu::BufferUsages::UNIFORM,
+    );
+    // O layout é o AUTOMÁTICO do par de estágios: o mapa não lê o átlas (ligações 0 e 2).
+    let mut entries = vec![wgpu::BindGroupEntry {
+        binding: 0,
+        resource: cels.as_entire_binding(),
+    }];
+    if !limpa_antes {
+        entries.push(wgpu::BindGroupEntry {
+            binding: 1,
+            resource: wgpu::BindingResource::TextureView(atlas),
+        });
+    }
+    entries.push(wgpu::BindGroupEntry {
+        binding: 2,
+        resource: u.as_entire_binding(),
+    });
+    gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("fx_cells quads"),
+        layout: &pipeline.get_bind_group_layout(0),
+        entries: &entries,
+    })
 }

@@ -29,6 +29,7 @@ use std::ops::Range;
 use ph2d_gpu::GpuContext;
 
 use super::{Copias, SHADER, ShapePass, ShapeView};
+use crate::compositor::Compositor;
 use crate::contorno::Variantes;
 
 /// A lei de mistura de uma corrida de cópias.
@@ -43,7 +44,8 @@ pub enum Mistura {
 
 impl Mistura {
     /// O estado fixo da placa — a tabela do cabeçalho.
-    fn estado(self) -> wgpu::BlendState {
+    #[must_use]
+    pub fn estado(self) -> wgpu::BlendState {
         use wgpu::{BlendComponent as C, BlendFactor as F, BlendOperation::Add};
         let c = |src_factor, dst_factor| C {
             src_factor,
@@ -124,56 +126,13 @@ pub(super) fn pipeline_de(
     })
 }
 
-/// Um passe de ecrã inteiro do `corte.wgsl`.
-fn de_tela(
-    device: &wgpu::Device,
-    pl: &wgpu::PipelineLayout,
-    module: &wgpu::ShaderModule,
-    fs: &str,
-    format: wgpu::TextureFormat,
-    blend: wgpu::BlendState,
-    write_mask: wgpu::ColorWrites,
-) -> wgpu::RenderPipeline {
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("ph2d-shape-gpu tela"),
-        layout: Some(pl),
-        vertex: wgpu::VertexState {
-            module,
-            entry_point: Some("vs_tela"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(fs),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: Some(blend),
-                write_mask,
-            })],
-        }),
-        primitive: wgpu::PrimitiveState::default(),
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        multiview_mask: None,
-        cache: None,
-    })
-}
-
-/// Os pipelines das corridas com mistura e o rascunho dos grupos.
+/// Os pipelines das corridas com mistura e o compositor delas.
 pub(super) struct Misturas {
     soma: Variantes<wgpu::RenderPipeline>,
     tela: Variantes<wgpu::RenderPipeline>,
     /// `None` ⇒ o dispositivo não tem `DUAL_SOURCE_BLENDING`.
     multiplica: Option<Variantes<wgpu::RenderPipeline>>,
-    corte_rgba: wgpu::RenderPipeline,
-    corte_alfa: wgpu::RenderPipeline,
-    colagem: wgpu::RenderPipeline,
-    colagem_bgl: wgpu::BindGroupLayout,
-    formato: wgpu::TextureFormat,
-    /// O rascunho dos grupos isolados, do tamanho do último alvo: a vista e o grupo da colagem.
-    rascunho: Option<((u32, u32), wgpu::TextureView, wgpu::BindGroup)>,
+    compositor: Compositor,
 }
 
 impl Misturas {
@@ -201,121 +160,13 @@ impl Misturas {
             });
             de(&m, "fs_multiplica", Mistura::Multiplica)
         });
-        let tela = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ph2d-shape-gpu (corte)"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("corte.wgsl").into()),
-        });
-        let vazio = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ph2d-shape-gpu corte"),
-            bind_group_layouts: &[],
-            immediate_size: 0,
-        });
-        let minimo = wgpu::BlendState {
-            color: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::One,
-                dst_factor: wgpu::BlendFactor::One,
-                operation: wgpu::BlendOperation::Min,
-            },
-            alpha: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::One,
-                dst_factor: wgpu::BlendFactor::One,
-                operation: wgpu::BlendOperation::Min,
-            },
-        };
-        let corte = |mask| de_tela(device, &vazio, &tela, "fs_um", format, minimo, mask);
-        let colagem_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ph2d-shape-gpu colagem"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            }],
-        });
-        let colagem_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ph2d-shape-gpu colagem"),
-            bind_group_layouts: &[Some(&colagem_bgl)],
-            immediate_size: 0,
-        });
         Self {
             soma: de(module, "fs_mistura", Mistura::Soma),
             tela: de(module, "fs_mistura", Mistura::Tela),
             multiplica,
-            corte_rgba: corte(wgpu::ColorWrites::ALL),
-            corte_alfa: corte(wgpu::ColorWrites::ALPHA),
-            colagem: de_tela(
-                device,
-                &colagem_pl,
-                &tela,
-                "fs_grupo",
-                format,
-                wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-                wgpu::ColorWrites::ALL,
-            ),
-            colagem_bgl,
-            formato: format,
-            rascunho: None,
+            compositor: Compositor::new(device, format),
         }
     }
-
-    /// O rascunho de `tamanho` (recriado quando o alvo muda de tamanho).
-    fn rascunho(
-        &mut self,
-        gpu: &GpuContext,
-        tamanho: (u32, u32),
-    ) -> (wgpu::TextureView, wgpu::BindGroup) {
-        if self.rascunho.as_ref().is_none_or(|(t, ..)| *t != tamanho) {
-            let textura = gpu.device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("ph2d-shape-gpu rascunho do grupo"),
-                size: wgpu::Extent3d {
-                    width: tamanho.0.max(1),
-                    height: tamanho.1.max(1),
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: self.formato,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            });
-            let vista = textura.create_view(&wgpu::TextureViewDescriptor::default());
-            let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("ph2d-shape-gpu colagem"),
-                layout: &self.colagem_bgl,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&vista),
-                }],
-            });
-            self.rascunho = Some((tamanho, vista, bg));
-        }
-        let (_, v, b) = self.rascunho.as_ref().expect("acabou de ser garantido");
-        (v.clone(), b.clone())
-    }
-}
-
-/// Um alvo a ser pintado por corridas: o `load` do próximo passe, se já tem conteúdo, e se a COR
-/// pode estar acima de `1` (uma Soma correu e ninguém cortou).
-struct Alvo<'a> {
-    vista: &'a wgpu::TextureView,
-    load: wgpu::LoadOp<wgpu::Color>,
-    desenhado: bool,
-    solto: bool,
-}
-
-/// O que todas as corridas de um desenho partilham.
-struct Ligacoes<'a> {
-    bg: &'a wgpu::BindGroup,
-    leitura: &'a wgpu::BindGroup,
-    /// Há tracejado carregado: as corridas desenham com a variante COMPLETA (a mesma imagem que a
-    /// enxuta; a escolha por quadro da placa é de UM desenho indirecto, não de intervalos).
-    completa: bool,
 }
 
 impl ShapePass {
@@ -326,8 +177,10 @@ impl ShapePass {
         m != Mistura::Multiplica || self.misturas.multiplica.is_some()
     }
 
-    /// ⭐⭐ **As cópias por CORRIDAS de mistura** (B5). Sem corridas, ou com uma só `Normal` sem
-    /// grupo, é o [`Self::draw`] de sempre, byte a byte. ⚠️ O `encoder` tem de ser submetido antes do
+    /// ⭐⭐ **As cópias por CORRIDAS de mistura** (B5), pelo [`Compositor`]. Sem corridas, ou com uma
+    /// só `Normal` sem grupo, é o [`Self::draw`] de sempre, byte a byte. Com tracejado carregado as
+    /// corridas usam a variante COMPLETA (a mesma imagem que a enxuta; a escolha por quadro da placa
+    /// é de UM desenho indirecto, não de intervalos). ⚠️ O `encoder` tem de ser submetido antes do
     /// próximo desenho (a mesma regra do `draw`).
     #[expect(
         clippy::too_many_arguments,
@@ -364,126 +217,29 @@ impl ShapePass {
             reason = "o tamanho do alvo, inteiro"
         )]
         let tamanho = (view.alvo[0] as u32, view.alvo[1] as u32);
-        let ligacoes = Ligacoes {
-            bg: &bg,
-            leitura: &leitura,
-            completa: self.tracejado,
-        };
-        let mut alvo = Alvo {
-            vista: target,
-            load,
-            desenhado: matches!(load, wgpu::LoadOp::Load),
-            solto: false,
-        };
-        let mut i = 0;
-        while i < corridas.len() {
-            let g = corridas[i].grupo;
-            let mut j = i + 1;
-            while g != 0 && j < corridas.len() && corridas[j].grupo == g {
-                j += 1;
-            }
-            if g != 0 && alvo.desenhado {
-                let (vista, colar) = self.misturas.rascunho(gpu, tamanho);
-                let mut r = Alvo {
-                    vista: &vista,
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    desenhado: false,
-                    solto: false,
-                };
-                self.corridas_em(encoder, &mut r, &corridas[i..j], &ligacoes, false);
-                let mut pass = abre(encoder, &mut alvo);
-                if std::mem::take(&mut alvo.solto) {
-                    self.corta(&mut pass, false);
-                }
-                pass.set_pipeline(&self.misturas.colagem);
-                pass.set_bind_group(0, &colar, &[]);
-                pass.draw(0..3, 0..1);
-                alvo.solto = r.solto;
-            } else {
-                self.corridas_em(encoder, &mut alvo, &corridas[i..j], &ligacoes, true);
-            }
-            i = j;
-        }
-        if alvo.solto {
-            let mut pass = abre(encoder, &mut alvo);
-            self.corta(&mut pass, false);
-        }
-    }
-
-    /// As `corridas` num passe sobre `alvo`, com os cortes do cabeçalho. `cortado_depois` = o alvo leva
-    /// o corte da cor e do alfa a seguir (o alvo do desenho: antes de colar um grupo e no fim); senão
-    /// é o RASCUNHO de um grupo, que vai ser FONTE da colagem e sai com o alfa cortado.
-    ///
-    /// ⚠️ Num alvo, o alfa acima de `1` depois de uma Soma não precisa de corte próprio: o `Normal` que
-    /// vier compõe a cor só com o alfa da FONTE, e `min(αs + x·(1−αs), 1) = αs + min(x, 1)·(1−αs)`;
-    /// toda mistura seguinte, a colagem e o fim cortam tudo antes.
-    fn corridas_em(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        alvo: &mut Alvo<'_>,
-        corridas: &[Corrida],
-        l: &Ligacoes<'_>,
-        cortado_depois: bool,
-    ) {
-        let mut pass = abre(encoder, alvo);
-        for c in corridas {
-            if c.mistura != Mistura::Normal && std::mem::take(&mut alvo.solto) {
-                self.corta(&mut pass, false);
-            }
+        let completa = self.tracejado;
+        let (normal, m) = (&self.pipeline, &mut self.misturas);
+        let (soma, tela, multiplica) = (&m.soma, &m.tela, m.multiplica.as_ref());
+        let mut desenha = |pass: &mut wgpu::RenderPass<'static>, c: &Corrida| {
             let variantes = match c.mistura {
-                Mistura::Normal => Some(&self.pipeline),
-                Mistura::Soma => Some(&self.misturas.soma),
-                Mistura::Tela => Some(&self.misturas.tela),
-                Mistura::Multiplica => self.misturas.multiplica.as_ref(),
+                Mistura::Normal => Some(normal),
+                Mistura::Soma => Some(soma),
+                Mistura::Tela => Some(tela),
+                Mistura::Multiplica => multiplica,
             };
             let Some(variantes) = variantes else {
                 eprintln!(
                     "[formas] Multiplica pedido num dispositivo sem DUAL_SOURCE_BLENDING: a corrida nao desenha"
                 );
-                continue;
+                return;
             };
-            pass.set_pipeline(variantes.de(l.completa));
-            pass.set_bind_group(0, l.bg, &[]);
-            pass.set_bind_group(1, l.leitura, &[]);
+            pass.set_pipeline(variantes.de(completa));
+            pass.set_bind_group(0, &bg, &[]);
+            pass.set_bind_group(1, &leitura, &[]);
             pass.draw(0..6, c.copias.clone());
-            alvo.solto |= c.mistura == Mistura::Soma;
-        }
-        if !cortado_depois && alvo.solto {
-            self.corta(&mut pass, true);
-        }
+        };
+        let mut sessao = m.compositor.sessao(gpu, target, tamanho, load);
+        sessao.corridas(encoder, corridas, &mut desenha);
+        sessao.fecha(encoder);
     }
-
-    /// O corte a `1`: só o alfa, ou a cor e o alfa.
-    fn corta(&self, pass: &mut wgpu::RenderPass<'_>, so_alfa: bool) {
-        pass.set_pipeline(if so_alfa {
-            &self.misturas.corte_alfa
-        } else {
-            &self.misturas.corte_rgba
-        });
-        pass.draw(0..3, 0..1);
-    }
-}
-
-/// Abre um passe sobre `alvo` com o `load` dele; o seguinte carrega o que este deixou.
-fn abre(encoder: &mut wgpu::CommandEncoder, alvo: &mut Alvo<'_>) -> wgpu::RenderPass<'static> {
-    let load = std::mem::replace(&mut alvo.load, wgpu::LoadOp::Load);
-    alvo.desenhado = true;
-    encoder
-        .begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("ph2d-shape-gpu corridas"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: alvo.vista,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        })
-        .forget_lifetime()
 }

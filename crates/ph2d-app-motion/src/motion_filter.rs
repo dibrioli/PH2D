@@ -58,9 +58,6 @@ struct Alvos {
     saida_view: wgpu::TextureView,
     /// Os `Each Shape` sobre as formas do Vello (sRGB reto) — nasce no primeiro quadro que o pede.
     vello_cada: Option<(wgpu::Texture, wgpu::TextureView)>,
-    /// B5: as formas da placa COM MISTURA no espaço da camada, para os `Each Shape` correrem sobre o
-    /// conjunto delas (como sobre as do Vello) — nasce no primeiro quadro que o pede.
-    formas_juntas: Option<(wgpu::Texture, wgpu::TextureView)>,
 }
 
 struct Placa {
@@ -89,8 +86,6 @@ pub struct MotionFiltro {
     ligada: bool,
     /// No último quadro filtrado, formas do Motion foram à camada pelo Vello (sem células).
     formas_no_vello: bool,
-    /// B5: no último quadro filtrado, a placa desenhou formas COM MISTURA (também fora das células).
-    formas_juntas: bool,
     /// A cena vectorial do Motion DENTRO da camada (a shell codifica nela em vez de na do quadro).
     cena: VectorScene,
     placa: Option<Placa>,
@@ -185,7 +180,6 @@ impl MotionFiltro {
         self.desenha = desenha;
         self.ligada = desenha && !self.pilha.is_empty();
         self.formas_no_vello &= self.ligada;
-        self.formas_juntas &= self.ligada;
         self.ligada
     }
 
@@ -207,7 +201,7 @@ impl MotionFiltro {
             "app.motion.motion_filter.after_whole_layer"
         } else if self.pousas.len() > 1 && self.pilha.iter().any(|d| d.no == no) {
             "app.motion.motion_filter.outputs_land_differently"
-        } else if (self.formas_no_vello || self.formas_juntas)
+        } else if self.formas_no_vello
             && ph2d_node_fx_filter::partition(&self.pilha)
                 .0
                 .iter()
@@ -262,7 +256,6 @@ impl Alvos {
             saida_view: vista(&saida),
             saida,
             vello_cada: None,
-            formas_juntas: None,
         }
     }
 }
@@ -384,9 +377,6 @@ impl MotionState {
             e.formas
                 .is_some_and(crate::motion_shape_placa::PlacaDeFormas::desenhou),
         );
-        self.filtro.formas_juntas = e
-            .formas
-            .is_some_and(crate::motion_shape_placa::PlacaDeFormas::misturou);
         let arte = crate::lei_da_aparencia::a_arte_desenha(self, self.pump.a_lei());
         let linear = mundo_para_pixel(e.camera, e.window, e.scene_viewport);
         let (por_forma, da_camada) = ph2d_node_fx_filter::partition(&self.filtro.pilha);
@@ -441,14 +431,17 @@ impl MotionState {
             if let Some(p) = e.formas {
                 p.afina(celulas.formas_mut());
             }
-            // B5: as cópias com mistura não vão às células — a camada da placa entra inteira, como as
-            // do Vello.
-            let misturou = e.formas.filter(|p| p.misturou());
-            let formas = e
-                .formas
-                .filter(|p| !p.misturou())
-                .and_then(|p| p.copias_do_quadro())
-                .map(|(buffer, n, vista)| ph2d_fx_cells::Formas { buffer, n, vista });
+            // B5: cada cópia filtrada SOZINHA e misturada na volta — o efeito entra na mistura, na
+            // ordem do fio (`ph2d_fx_cells`, a volta com mistura).
+            let formas = e.formas.and_then(|p| {
+                p.copias_do_quadro()
+                    .map(|(buffer, n, vista)| ph2d_fx_cells::Formas {
+                        buffer,
+                        n,
+                        vista,
+                        corridas: p.corridas_do_quadro(),
+                    })
+            });
             let sprites = match gpu_sprites {
                 Some((buffer, n, runs)) => ph2d_fx_cells::Sprites::Placa { buffer, n, runs },
                 None => ph2d_fx_cells::Sprites::Cpu(cpu),
@@ -466,25 +459,6 @@ impl MotionState {
                 camada: &alvos.camada_view,
                 tamanho,
             });
-            // B5: as formas com mistura, como as do Vello — os `Each Shape` sobre o CONJUNTO.
-            if let Some(formas) = misturou.and_then(|p| p.camada()) {
-                let (juntas, juntas_view) = alvos.formas_juntas.get_or_insert_with(|| {
-                    let t = camada_de(e.gpu, tamanho, "motion_filtro_formas_juntas");
-                    let v = t.create_view(&wgpu::TextureViewDescriptor::default());
-                    (t, v)
-                });
-                limpa(e.gpu, juntas_view);
-                colagem.blit(e.gpu, juntas_view, formas, BandSource::Formas);
-                let (cada, cada_view) = alvos.vello_cada.get_or_insert_with(|| {
-                    let t = ph2d_render::make_output_texture(e.gpu, tamanho.0, tamanho.1);
-                    let v = t.create_view(&wgpu::TextureViewDescriptor::default());
-                    (t, v)
-                });
-                let origem = Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));
-                let todo = [0, 0, tamanho.0, tamanho.1];
-                pilha.run_layer_rect(e.gpu, juntas, todo, cada, &ops_forma, origem);
-                colagem.blit(e.gpu, &alvos.camada_view, cada_view, BandSource::Vector);
-            }
         }
         // ⭐ As formas que a placa não leva (a mistura em grupo, o `Blend` por linha, a geometria
         // recusada): o Vello DENTRO da camada, sem o mundo por baixo (a camada é isolada — o modo do

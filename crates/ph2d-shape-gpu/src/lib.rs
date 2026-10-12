@@ -25,6 +25,7 @@
 
 mod blocos;
 mod caixas;
+mod compositor;
 mod contorno;
 mod contorno_cpu;
 mod eixo;
@@ -32,6 +33,7 @@ mod geometry;
 mod pass;
 
 pub use blocos::{BlocoDeSegmentos, SEGS_POR_BLOCO};
+pub use compositor::{Compositor, Sessao};
 pub use contorno::AREA_MINIMA_CONFORME;
 pub use contorno_cpu::{AfimDaCopia, NivelDaCopia, caneta_de, contorno_do_eixo, nivel_da_copia};
 pub use eixo::{EixoItem, tracejado_do_eixo};

@@ -110,8 +110,23 @@ fn pela_camada(
     raio: f32,
     inteira: bool,
     rota: Rota,
+    sobrepoe: Option<f32>,
 ) -> ([i32; 4], MotionState) {
     let mut m = motion_com_filtro(tag, com, raio);
+    // Um `Color Overlay` cinzento em CADA forma no lugar do borrão (o efeito que MUDA a cor).
+    if let Some(cinza) = sobrepoe {
+        let no = m.filtro.pilha()[0].no;
+        let g = &mut m.doc.graph;
+        ph2d_node_fx_filter::switch_kind(g, no, ph2d_ecs::FxOp::COLOR_OVERLAY);
+        for (k, v) in ph2d_node_fx_filter::param::COLOR
+            .into_iter()
+            .zip([cinza, cinza, cinza, 1.0])
+        {
+            g.set_param(no, k, v);
+        }
+        g.set_param(no, ph2d_node_fx_filter::param::OPACITY, 1.0);
+        m.filtro.prepara(&m.doc.graph, &m.sinks);
+    }
     if inteira {
         // O degrau em `Whole Layer`: o Vello cola-se na camada sem passar pelos `Each Shape`.
         let no = m.filtro.pilha()[0].no;
@@ -226,6 +241,7 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
             0.0,
             inteira,
             Rota::Vello,
+            None,
         );
         let alvo = esperado(0, None).map(byte);
         assert!(
@@ -234,8 +250,20 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
         );
         for tag in [1u8, 3, 4] {
             for com in BlendWith::ALL {
-                let mut pela =
-                    |rota| pela_camada(&gpu, &mut renderer, &blit, tag, com, 0.0, inteira, rota).0;
+                let mut pela = |rota| {
+                    pela_camada(
+                        &gpu,
+                        &mut renderer,
+                        &blit,
+                        tag,
+                        com,
+                        0.0,
+                        inteira,
+                        rota,
+                        None,
+                    )
+                    .0
+                };
                 let (lido, placa) = (pela(Rota::Vello), pela(Rota::Placa));
                 let hoje = mede(&mut vello, &gpu, tag, com, false, (1, 1));
                 let tabela = esperado(tag, Some(com)).map(byte);
@@ -245,7 +273,12 @@ fn the_output_blend_crosses_the_filtered_layer_as_it_paints_without_it() {
                 );
                 if lido.iter().zip(tabela).any(|(m, e)| (m - e).abs() > BARRA)
                     || lido.iter().zip(hoje).any(|(m, e)| (m - e).abs() > 1)
-                    || placa.iter().zip(lido).any(|(m, e)| (m - e).abs() > 1)
+                    // Com `Each Shape` cada cópia passa pela saída de 8 bits da pilha antes da mistura:
+                    // um arredondamento a mais por cópia (a barra da tabela, `BARRA`).
+                    || placa
+                        .iter()
+                        .zip(lido)
+                        .any(|(m, e)| (m - e).abs() > if inteira { 1 } else { BARRA })
                 {
                     falhas.push(format!(
                         "inteira {inteira} tag {tag} {com:?}: camada {lido:?} · placa {placa:?} · \
@@ -361,9 +394,9 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
         8,
     );
     let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
-    // `Screen` em `Copies` (não satura como o `Add`), um borrão largo face às cópias — pelas duas
-    // rotas: o Vello e a placa (B5) levam as formas com mistura à camada como UMA peça.
-    let mut lidos = Vec::new();
+    // `Screen` em `Copies` (não satura como o `Add`), um borrão largo face às cópias. O Vello não tem
+    // células: o borrão corre sobre o CONJUNTO e o cartão di-lo; a placa (B5) leva cada cópia à sua
+    // célula e mistura-a na volta — sem queixa.
     for rota in [Rota::Vello, Rota::Placa] {
         let mut pela = |raio| {
             pela_camada(
@@ -375,6 +408,7 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
                 raio,
                 false,
                 rota,
+                None,
             )
         };
         let ((neutro, _), (borrado, m)) = (pela(0.0), pela(20.0));
@@ -387,17 +421,68 @@ fn an_each_shape_step_runs_on_the_shapes_the_vector_path_draws() {
             "o borrão `Each Shape` não mudou as formas: {neutro:?} · {borrado:?}"
         );
         let no = m.filtro.pilha()[0].no;
-        let q = m.filtro.queixa(no).expect("o cartão do `Each Shape` diz");
-        assert!(q.contains("one piece"), "{q}");
-        lidos.push(borrado);
+        let q = m.filtro.queixa(no);
+        if rota == Rota::Vello {
+            assert!(
+                q.as_deref().is_some_and(|q| q.contains("one piece")),
+                "{q:?}"
+            );
+        } else {
+            assert!(q.is_none(), "a placa leva cada forma à sua célula: {q:?}");
+        }
     }
-    assert!(
-        lidos[0]
-            .iter()
-            .zip(lidos[1])
-            .all(|(a, b)| (a - b).abs() <= BARRA),
-        "o borrão sobre o conjunto difere entre o Vello e a placa: {lidos:?}"
+}
+
+/// ⭐⭐ **O EFEITO de cada forma entra na MISTURA** (report do dono 11/10: *«o brilho do relevo não
+/// participa do Multiply»*). Pela ordem do fio, o `Each Shape` corre ANTES da saída: cada cópia
+/// ganha o efeito e só depois se mistura com as outras. Fixtura: um `Color Overlay` cinzento `X`
+/// (linear) em cada forma, `Multiply` com `Copies`, pela placa — a sobreposição tem de ser `x·x`
+/// (`x` = `X` gravado em sRGB, o espaço em que a camada mistura), e não `x` (o efeito pintado DEPOIS
+/// da mistura, a peça única de antes). Controlo: a coluna só de A é `x`.
+#[test]
+#[ignore = "placa: precisa de GPU"]
+fn each_shapes_effect_enters_the_blend() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("sem adaptador — saltado");
+        return;
+    };
+    let mut renderer = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::dummy(&gpu),
+        8,
     );
+    let blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    let x = 0.6f32;
+    for com in [BlendWith::Copies, BlendWith::Everything] {
+        let (lido, _) = pela_camada(
+            &gpu,
+            &mut renderer,
+            &blit,
+            3,
+            com,
+            0.0,
+            false,
+            Rota::Placa,
+            Some(x),
+        );
+        #[allow(clippy::cast_precision_loss)]
+        let so_a = lido[0] as f32 / 255.0;
+        let quer = byte(so_a * so_a);
+        println!("  {com:?}: colunas {lido:?} · só A {so_a:.3} · sobreposição esperada {quer}");
+        assert!(
+            (so_a - ph2d_color::srgb::linear_to_srgb_unit(x)).abs() * 255.0 <= 4.0
+                || com == BlendWith::Everything,
+            "controlo: a coluna só de A não é o Color Overlay ({lido:?})"
+        );
+        if com == BlendWith::Copies {
+            assert!(
+                (lido[1] - quer).abs() <= BARRA,
+                "a sobreposição leu {} e o efeito multiplicado é {quer}: o efeito não entrou na mistura",
+                lido[1]
+            );
+        }
+    }
 }
 
 /// ⭐ **O PREÇO do Vello dentro da camada, e o da PLACA** (doc 129 §5.8; B5) — sonda manual,

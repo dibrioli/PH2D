@@ -17,6 +17,7 @@ mod celulas;
 mod passes;
 pub mod plano;
 mod shaders;
+mod volta;
 
 pub use celulas::{Celulas, Entrada, FORMATO, Formas, LADO_MAX, Sprites, afim_das_sprites};
 pub use plano::{Caixa, Celula, Pagina, planeia};

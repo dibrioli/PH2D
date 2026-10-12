@@ -131,15 +131,34 @@ fn vs_mapa(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> 
     return o;
 }
 
-@fragment
-fn fs_volta(i: VsOut) -> @location(0) vec4<f32> {
+fn volta_cor(i: VsOut) -> vec4<f32> {
     let p = vec2<i32>(floor(i.pos.xy)) + i.t;
     let s = textureLoad(atlas, p, 0);
     return vec4<f32>(s.rgb * s.a, s.a);
 }
 
 @fragment
+fn fs_volta(i: VsOut) -> @location(0) vec4<f32> {
+    return volta_cor(i);
+}
+
+@fragment
 fn fs_mapa(i: VsOut) -> @location(0) vec4<f32> {
     return vec4<f32>(i.org, 0.0, 1.0);
+}
+";
+
+/// B5 — a volta com o MULTIPLY exacto (`ph2d_shape_gpu::Mistura`): a 2.ª saída é o factor do que está
+/// por baixo. Só num módulo com `enable dual_source_blending;` à frente do [`COMPOE_WGSL`].
+pub(crate) const VOLTA_MULTIPLICA_WGSL: &str = r"
+struct DuasSaidas {
+    @location(0) @blend_src(0) cor: vec4<f32>,
+    @location(0) @blend_src(1) factor: vec4<f32>,
+};
+
+@fragment
+fn fs_volta_multiplica(i: VsOut) -> DuasSaidas {
+    let c = volta_cor(i);
+    return DuasSaidas(c, vec4<f32>(vec3<f32>(1.0 - c.a) + c.rgb, 1.0));
 }
 ";

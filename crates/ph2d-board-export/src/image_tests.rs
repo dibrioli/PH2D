@@ -97,7 +97,15 @@ fn a_jpeg_goes_into_the_pdf_once_and_as_it_arrived() {
     let recs: Vec<_> = pages
         .iter()
         .map(|p| {
-            let (mut s, size) = paint_page(&b, p, 1.0, None, true, &BTreeSet::new(), &mut ts);
+            let (mut s, size) = paint_page(
+                &b,
+                p,
+                1.0,
+                None,
+                ExportTarget::Pdf,
+                &BTreeSet::new(),
+                &mut ts,
+            );
             (s.take_record(), size)
         })
         .collect();
@@ -149,7 +157,7 @@ fn board() -> Board {
     set.boards()[0].clone()
 }
 
-fn ops(b: &Board, vector: bool) -> (Vec<DrawOp>, [f64; 2]) {
+fn ops(b: &Board, target: ExportTarget) -> (Vec<DrawOp>, [f64; 2]) {
     let mut routes = RouteCache::default();
     routes.sync(&b.doc);
     let mut ts = TextSystem::without_system_fonts();
@@ -158,7 +166,7 @@ fn ops(b: &Board, vector: bool) -> (Vec<DrawOp>, [f64; 2]) {
         &board_page(b, &routes).unwrap(),
         1.0,
         None,
-        vector,
+        target,
         &BTreeSet::new(),
         &mut ts,
     );
@@ -166,27 +174,27 @@ fn ops(b: &Board, vector: bool) -> (Vec<DrawOp>, [f64; 2]) {
 }
 
 /// ⭐ O SVG define o ficheiro UMA vez com os bytes PNG como chegaram e põe cada imagem com um `<use>`
-/// cujo afim leva o píxel natural ao canto da caixa na página (a página começa em `-PAD`).
+/// cujo afim leva o píxel natural ao canto da caixa na página (a página começa em `-PAD`) — e W16:
+/// sem descodificar nenhuma (a gravação do SVG não tem píxeis; a do PDF tem).
 #[test]
 fn the_svg_defines_each_file_once_and_places_each_image() {
     let b = board();
-    let (ops, size) = ops(&b, true);
+    let (ops, size) = ops(&b, ExportTarget::Svg);
+    let pixels = |ops: &[DrawOp]| ops.iter().filter(|o| matches!(o, DrawOp::Image(_))).count();
+    assert_eq!(pixels(&ops), 0, "o SVG descodificou uma imagem que não usa");
+    assert_eq!(pixels(&self::ops(&b, ExportTarget::Pdf).0), 2);
     let imgs: Vec<_> = ops
         .iter()
         .filter_map(|o| match o {
-            DrawOp::Image(i) => Some(i),
+            DrawOp::Embed(i) => Some(i),
             _ => None,
         })
         .collect();
     assert_eq!(imgs.len(), 2);
-    let src = imgs[1].source.as_ref().expect("os bytes de origem");
+    let src = &imgs[1].source;
     assert_eq!((src.mime, src.size), ("image/png", [3, 2]));
     // A 2.ª imagem: o píxel natural (3, 2) cai no canto de baixo à direita da caixa.
-    let k = [
-        3.0 / f64::from(imgs[1].image.width()),
-        2.0 / f64::from(imgs[1].image.height()),
-    ];
-    let corner = imgs[1].transform * Point::new(3.0 / k[0], 2.0 / k[1]);
+    let corner = imgs[1].transform * Point::new(3.0, 2.0);
     assert!(
         (corner - Point::new(160.0 + PAD, 40.0 + PAD)).hypot() < 1e-9,
         "{corner:?}"
@@ -203,7 +211,7 @@ fn the_svg_defines_each_file_once_and_places_each_image() {
 #[test]
 fn the_pdf_writes_the_pixels_once_with_their_alpha() {
     let b = board();
-    let (ops, size) = ops(&b, true);
+    let (ops, size) = ops(&b, ExportTarget::Pdf);
     let bytes = pdf::write(&[pdf::PdfPage {
         ops: &ops,
         size,
@@ -229,7 +237,7 @@ fn the_pdf_writes_the_pixels_once_with_their_alpha() {
 #[test]
 fn the_png_scene_draws_the_image_too() {
     let b = board();
-    let (ops, _) = ops(&b, false);
+    let (ops, _) = ops(&b, ExportTarget::Png);
     assert_eq!(
         ops.iter().filter(|o| matches!(o, DrawOp::Image(_))).count(),
         2
@@ -260,8 +268,9 @@ fn grava_svg_e_pdf_com_imagens() {
     i.style.round = true;
     i.style.opacity = 50;
     BoardOp::Put(c).apply(&mut b.doc);
-    let (ops, size) = ops(&b, true);
-    std::fs::write(format!("{dir}/w14.svg"), svg::write(&ops, size)).unwrap();
+    let (svg_ops, size) = ops(&b, ExportTarget::Svg);
+    std::fs::write(format!("{dir}/w14.svg"), svg::write(&svg_ops, size)).unwrap();
+    let (ops, size) = ops(&b, ExportTarget::Pdf);
     let pdf = pdf::write(&[pdf::PdfPage {
         ops: &ops,
         size,

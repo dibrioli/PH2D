@@ -16,7 +16,7 @@ use ph2d_text::TextSystem;
 use ph2d_vector::Color;
 
 #[cfg(feature = "gpu")]
-use crate::{Page, paint_page};
+use crate::{ExportTarget, Page, paint_page};
 
 /// Uma imagem RGBA8 (alfa directo, sRGB), linha a linha.
 pub struct Image {
@@ -73,7 +73,7 @@ pub fn render(
                 ],
                 frame: page.frame,
             };
-            let (scene, _) = paint_page(board, &piece, scale, paper, false, unread, ts);
+            let (scene, _) = paint_page(board, &piece, scale, paper, ExportTarget::Png, unread, ts);
             let px = pass.render_and_readback(gpu, scene.inner(), (tw, th))?;
             for row in 0..th as usize {
                 let src = &px[row * tw as usize * 4..(row + 1) * tw as usize * 4];

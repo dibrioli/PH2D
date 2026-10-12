@@ -12,6 +12,7 @@ fn kinds(ops: &[DrawOp]) -> Vec<&'static str> {
             DrawOp::Glyphs(_) => "glyphs",
             DrawOp::BlurredRect { .. } => "blur",
             DrawOp::Image(_) => "image",
+            DrawOp::Embed(_) => "embed",
         })
         .collect()
 }
@@ -37,19 +38,30 @@ fn every_recording_door_records_in_order() {
     let img = crate::StableImage::from_rgba(std::sync::Arc::new(vec![9; 8]), 2, 1).unwrap();
     let at = Affine::scale(3.0);
     s.draw_recorded_image(&img, at, crate::ImageQuality::Medium, None);
+    let src = crate::ImageSource {
+        bytes: std::sync::Arc::from(&b"png"[..]),
+        mime: "image/png",
+        size: [2, 1],
+        gray: false,
+    };
+    s.record_embedded_image(at, &src);
     s.pop_layer();
     s.pop_layer();
     let ops = s.take_record();
     assert_eq!(
         kinds(&ops),
         [
-            "fill", "layer", "fill", "stroke", "layer", "blur", "image", "pop", "pop"
+            "fill", "layer", "fill", "stroke", "layer", "blur", "image", "embed", "pop", "pop"
         ]
     );
     let DrawOp::Image(i) = &ops[6] else {
         unreachable!()
     };
     assert_eq!((i.transform, i.image.rgba()), (at, &[9u8; 8][..]));
+    let DrawOp::Embed(e) = &ops[7] else {
+        unreachable!()
+    };
+    assert_eq!((e.transform, &*e.source.bytes), (at, &b"png"[..]));
     let DrawOp::Layer { alpha, .. } = &ops[1] else {
         unreachable!()
     };

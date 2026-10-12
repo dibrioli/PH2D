@@ -15,7 +15,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use ph2d_board_export::{PNG_MEGAPIXELS, board_page, frame_page, paint_page, pdf, png, svg};
+use ph2d_board_export::{
+    ExportTarget, PNG_MEGAPIXELS, board_page, frame_page, paint_page, pdf, png, svg,
+};
 use ph2d_board_render::EXPORT_PAPER;
 use ph2d_board_route::RouteCache;
 use ph2d_gpu::{GpuContext, TextureFormat};
@@ -133,7 +135,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
         &page,
         1.0,
         paper,
-        true,
+        ExportTarget::Svg,
         &std::collections::BTreeSet::new(),
         &mut ts,
     );
@@ -176,7 +178,7 @@ fn oracle_svg_pdf_and_tiles_against_the_gpu() {
                 p,
                 1.0,
                 paper,
-                true,
+                ExportTarget::Pdf,
                 &std::collections::BTreeSet::new(),
                 &mut ts,
             );

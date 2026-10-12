@@ -114,17 +114,29 @@ fn the_images_scene_does_what_its_lessons_say() {
             && end[1] <= p.y + p.h + 20.0
     );
 
-    // 6 — exportar leva as quatro imagens (o vector: o nível inteiro de cada).
+    // 6 — exportar leva as quatro imagens (o SVG: os bytes, nenhum píxel — W16).
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let page = ph2d_board_export::board_page(b, &routes).unwrap();
     let set: std::collections::BTreeSet<ElementId> = Default::default();
-    let (mut s, size) = ph2d_board_export::paint_page(b, &page, 1.0, None, true, &set, &mut ts);
+    let (mut s, size) = ph2d_board_export::paint_page(
+        b,
+        &page,
+        1.0,
+        None,
+        ph2d_board_export::ExportTarget::Svg,
+        &set,
+        &mut ts,
+    );
     let ops = s.take_record();
     let n = ops
         .iter()
-        .filter(|o| matches!(o, ph2d_vector::DrawOp::Image(_)))
+        .filter(|o| matches!(o, ph2d_vector::DrawOp::Embed(_)))
         .count();
     assert_eq!(n, 4);
+    assert!(
+        !ops.iter()
+            .any(|o| matches!(o, ph2d_vector::DrawOp::Image(_)))
+    );
     let svg = ph2d_board_export::svg::write(&ops, size);
     assert_eq!(
         svg.matches("<image id=").count(),

@@ -15,7 +15,9 @@
 
 use std::time::Instant;
 
-use ph2d_board_export::{PNG_MEGAPIXELS, board_page, paint_page, pdf, png, png_scale, svg};
+use ph2d_board_export::{
+    ExportTarget, PNG_MEGAPIXELS, board_page, paint_page, pdf, png, png_scale, svg,
+};
 use ph2d_board_model::{Board, BoardSet, Rgba, STICKY_COLORS, ShapeType};
 use ph2d_board_render::EXPORT_PAPER;
 use ph2d_board_route::RouteCache;
@@ -91,7 +93,7 @@ fn measure_export_cost() {
                     &page,
                     1.0,
                     Some(EXPORT_PAPER),
-                    true,
+                    ExportTarget::Pdf,
                     &std::collections::BTreeSet::new(),
                     &mut ts,
                 )

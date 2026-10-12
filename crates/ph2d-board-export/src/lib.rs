@@ -12,6 +12,7 @@ pub mod svg;
 use std::collections::BTreeSet;
 
 use ph2d_board_model::{Board, BoardOp, Camera, ElementId, End};
+pub use ph2d_board_render::ExportTarget;
 use ph2d_board_render::{Detail, ExportLook, RenderCache};
 use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
@@ -192,7 +193,7 @@ fn only_frame(board: &Board, routes: &RouteCache, frame: ElementId) -> Board {
 
 /// ⭐ Desenha `page` de `board` a `scale` píxeis por unidade, no modo de export (E6/E7: `paper` =
 /// `None` transparente), numa cena que GRAVA (para o SVG e o PDF) — e que a placa desenha para o PNG.
-/// `vector` = o detalhe inteiro (SVG/PDF); `false` = o nível de detalhe do ecrã a esta escala (PNG).
+/// `target` = o destino ([`ExportTarget`]: o detalhe e o que uma imagem leva).
 /// `unread` = as notas de outros com o texto escondido de quem exporta (ADR-0182): saem como no ecrã,
 /// com o marcador, nunca com um texto que ele já não lê. Devolve a cena e o tamanho dela em píxeis.
 pub fn paint_page(
@@ -200,7 +201,7 @@ pub fn paint_page(
     page: &Page,
     scale: f64,
     paper: Option<Color>,
-    vector: bool,
+    target: ExportTarget,
     unread: &std::collections::BTreeSet<ElementId>,
     ts: &mut TextSystem,
 ) -> (VectorScene, [f64; 2]) {
@@ -223,7 +224,7 @@ pub fn paint_page(
         zoom: scale,
     };
     let mut cache = RenderCache::default();
-    if vector {
+    if target.vector() {
         cache.detail = Detail {
             frame_title_only_px: 0.0,
             note_blocks: false,
@@ -231,7 +232,7 @@ pub fn paint_page(
     }
     cache.hide_votes = true;
     cache.unread.clone_from(unread);
-    cache.export = Some(ExportLook { paper, vector });
+    cache.export = Some(ExportLook { paper, target });
     let mut scene = VectorScene::new();
     scene.record();
     let area = [0.0, 0.0, size[0], size[1]];

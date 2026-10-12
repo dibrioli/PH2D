@@ -201,6 +201,7 @@ pub fn write_linked(ops: &[DrawOp], size: [f64; 2], links: &[([f64; 4], [f64; 4]
             }
             DrawOp::Pop => out.push_str("</g>\n"),
             DrawOp::Image(op) => images.place(&mut out, op),
+            DrawOp::Embed(op) => images.embed(&mut out, op.transform, &op.source),
             DrawOp::Glyphs(run) => {
                 let before = glyphs.len();
                 let placed = glyphs.place(run);
@@ -298,32 +299,45 @@ const GRAY_FILTER: &str = "<defs><filter id=\"gray\" color-interpolation-filters
 
 impl Images {
     fn place(&mut self, out: &mut String, op: &ph2d_vector::ImageOp) {
-        use base64::Engine as _;
-        let b64 = |b: &[u8]| base64::engine::general_purpose::STANDARD.encode(b);
         let level = [op.image.width(), op.image.height()];
-        let (key, size, t) = match &op.source {
+        match &op.source {
             Some(s) => {
                 let k = Affine::scale_non_uniform(
                     f64::from(level[0]) / f64::from(s.size[0].max(1)),
                     f64::from(level[1]) / f64::from(s.size[1].max(1)),
                 );
-                (
-                    (s.bytes.as_ptr() as usize, s.bytes.len()),
-                    s.size,
-                    op.transform * k,
-                )
+                self.embed(out, op.transform * k, s);
             }
             None => {
                 let px = op.image.rgba();
-                ((px.as_ptr() as usize, px.len()), level, op.transform)
+                let key = (px.as_ptr() as usize, px.len());
+                self.put(out, key, level, op.transform, false, || {
+                    format!("data:image/png;base64,{}", b64(&png_of(&op.image)))
+                });
             }
-        };
+        }
+    }
+
+    /// Os bytes de `s` com `t` do píxel natural ao ecrã (W16: o export SVG não descodifica nada).
+    fn embed(&mut self, out: &mut String, t: Affine, s: &ph2d_vector::ImageSource) {
+        let key = (s.bytes.as_ptr() as usize, s.bytes.len());
+        self.put(out, key, s.size, t, s.gray, || {
+            format!("data:{};base64,{}", s.mime, b64(&s.bytes))
+        });
+    }
+
+    fn put(
+        &mut self,
+        out: &mut String,
+        key: (usize, usize),
+        size: [u32; 2],
+        t: Affine,
+        gray: bool,
+        href: impl FnOnce() -> String,
+    ) {
         let n = self.defined.len();
         let id = *self.defined.entry(key).or_insert_with(|| {
-            let href = match &op.source {
-                Some(s) => format!("data:{};base64,{}", s.mime, b64(&s.bytes)),
-                None => format!("data:image/png;base64,{}", b64(&png_of(&op.image))),
-            };
+            let href = href();
             let _ = writeln!(
                 out,
                 "<defs><image id=\"i{n}\" width=\"{}\" height=\"{}\" preserveAspectRatio=\"none\" xlink:href=\"{href}\"/></defs>",
@@ -331,7 +345,6 @@ impl Images {
             );
             n
         });
-        let gray = op.source.as_ref().is_some_and(|s| s.gray);
         if gray && !self.gray {
             self.gray = true;
             let _ = writeln!(out, "{GRAY_FILTER}");
@@ -339,6 +352,11 @@ impl Images {
         let filter = if gray { " filter=\"url(#gray)\"" } else { "" };
         let _ = writeln!(out, "<use xlink:href=\"#i{id}\"{}{filter}/>", transform(t));
     }
+}
+
+fn b64(b: &[u8]) -> String {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.encode(b)
 }
 
 /// Os píxeis de um nível em PNG (a imagem cujos bytes não são de um MIME que o SVG mostra).

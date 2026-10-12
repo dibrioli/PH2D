@@ -26,7 +26,7 @@ use ph2d_vector::{
     StableImage, Stroke, VectorScene, VelloBlend,
 };
 
-use crate::{RenderCache, token};
+use crate::{ExportTarget, RenderCache, token};
 
 /// Os píxeis de uma imagem descodificada: RGBA de 8 bits, alfa reto, sRGB.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -517,14 +517,27 @@ pub(crate) fn paint(
     theme: Theme,
     board: u64,
 ) {
-    let export = cache.export.map(|e| e.vector);
+    let target = cache.export.map(|e| e.target);
+    let export = target.map(ExportTarget::vector);
     let t = v * to_world(el);
     let st = &img.style;
     // Os píxeis de ecrã por píxel natural (o maior dos dois eixos da caixa rodada).
     let px = |p: [f64; 2]| t * Point::new(p[0], p[1]);
     let (o, ex, ey) = (px([0.0, 0.0]), px([el.w, 0.0]), px([0.0, el.h]));
     let (sw, sh) = ((ex - o).hypot(), (ey - o).hypot());
-    let level = file.and_then(|f| {
+    let source_of = |f: &ImageFile| {
+        f.mime().map(|mime| ImageSource {
+            bytes: f.bytes.0.clone(),
+            mime,
+            size: f.size,
+            gray: img.filter == ImageFilter::Gray,
+        })
+    };
+    // O SVG embebe os bytes: nenhum píxel se descodifica (W16).
+    let embed = file
+        .filter(|_| target == Some(ExportTarget::Svg))
+        .and_then(|f| Some((f, source_of(f)?)));
+    let level = file.filter(|_| embed.is_none()).and_then(|f| {
         let [_, _, cw, ch] = img.source(f.size);
         let vector = f.mime() == Some(VECTOR_MIME);
         let screen = [
@@ -543,7 +556,7 @@ pub(crate) fn paint(
     });
     let framed = st.stroke.is_some() && st.stroke_width > 0.0;
     // No export uma imagem sem píxeis não sai (nem o cinzento do «a chegar»); a moldura sai.
-    if level.is_none() && export.is_some() && !framed {
+    if level.is_none() && embed.is_none() && export.is_some() && !framed {
         return;
     }
     let clip = img.crop.is_some() || st.round;
@@ -558,26 +571,24 @@ pub(crate) fn paint(
         let p1 = v * Point::new(x1 + pad, y1 + pad);
         scene.push_object_layer(&Rect::from_points(p0, p1), VelloBlend::default(), alpha);
     }
-    match level {
-        None if export.is_some() => {}
-        None => placeholder(scene, el, t, theme),
-        Some((f, (pixels, size))) => {
-            let a = if group { 1.0 } else { alpha };
-            let layered = clip || a < 1.0;
-            if layered {
-                scene.push_layer_shape(VelloBlend::default(), a, t, &box_path(el, st.round));
-            }
-            let source = f.mime().map(|mime| ImageSource {
-                bytes: f.bytes.0.clone(),
-                mime,
-                size: f.size,
-                gray: img.filter == ImageFilter::Gray,
-            });
+    if level.is_none() && embed.is_none() {
+        if export.is_none() {
+            placeholder(scene, el, t, theme);
+        }
+    } else {
+        let a = if group { 1.0 } else { alpha };
+        let layered = clip || a < 1.0;
+        if layered {
+            scene.push_layer_shape(VelloBlend::default(), a, t, &box_path(el, st.round));
+        }
+        if let Some((f, source)) = &embed {
+            scene.record_embedded_image(t * level_to_box(el, img, f.size, f.size), source);
+        } else if let Some((f, (pixels, size))) = level {
             let m = t * level_to_box(el, img, f.size, size);
-            scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source.as_ref());
-            if layered {
-                scene.pop_layer();
-            }
+            scene.draw_recorded_image(&pixels, m, ImageQuality::Medium, source_of(f).as_ref());
+        }
+        if layered {
+            scene.pop_layer();
         }
     }
     if framed {

@@ -50,6 +50,16 @@ pub enum DrawOp {
     },
     /// W14 do Quadro — uma imagem ([`VectorScene::draw_recorded_image`]).
     Image(Box<ImageOp>),
+    /// W16 do Quadro — uma imagem SÓ em bytes ([`VectorScene::record_embedded_image`]): a placa não a
+    /// desenha; é o destino que embebe os bytes (o SVG) que a lê.
+    Embed(Box<EmbedOp>),
+}
+
+/// Uma imagem em bytes: `transform` leva o píxel NATURAL dela ao ecrã.
+#[derive(Clone, Debug)]
+pub struct EmbedOp {
+    pub transform: Affine,
+    pub source: ImageSource,
 }
 
 /// Uma imagem gravada: os píxeis desenhados (`transform` leva o píxel deles ao ecrã) e, se há, os
@@ -161,6 +171,22 @@ impl VectorScene {
                 image: image.clone(),
                 quality,
                 source: source.cloned(),
+            }))
+        });
+    }
+
+    /// ⭐ W16 — grava uma imagem só em bytes (`transform` do píxel natural ao ecrã) SEM a desenhar:
+    /// para quem só lê a gravação e embebe os bytes (o export SVG), que assim não descodifica nada.
+    /// ⚠️ A cena da placa fica sem ela: nunca a use num desenho que vai para o ecrã.
+    pub fn record_embedded_image(&mut self, transform: Affine, source: &ImageSource) {
+        debug_assert!(
+            self.rec.is_some(),
+            "uma imagem só em bytes sem gravação não chega a lado nenhum"
+        );
+        self.rec(|| {
+            DrawOp::Embed(Box::new(EmbedOp {
+                transform,
+                source: source.clone(),
             }))
         });
     }

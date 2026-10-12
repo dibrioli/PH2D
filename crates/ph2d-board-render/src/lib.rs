@@ -103,10 +103,28 @@ pub struct RenderCache {
 pub struct ExportLook {
     /// `None` = fundo transparente.
     pub paper: Option<Color>,
-    /// `true` = vector (SVG/PDF): o detalhe inteiro. `false` = imagem (PNG): o nível de detalhe do ecrã
-    /// à escala do export — uma letra de 2 px não se lê em lado nenhum, e 100 mil notas inteiras
-    /// passavam do tecto do Vello (a imagem em branco da régua do W0).
-    pub vector: bool,
+    pub target: ExportTarget,
+}
+
+/// O destino de um export: o detalhe e o que uma imagem leva.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExportTarget {
+    /// Imagem: o nível de detalhe do ecrã à escala do export — uma letra de 2 px não se lê em lado
+    /// nenhum, e 100 mil notas inteiras passavam do tecto do Vello (a imagem em branco da régua do W0).
+    Png,
+    /// Vector com as imagens em PÍXEIS (um SVG rasterizado aos 300 ppp da impressão).
+    Pdf,
+    /// W16 — vector com as imagens em BYTES, como chegaram: nenhuma é descodificada (as que não têm um
+    /// MIME que o SVG mostre, sim — vão em PNG).
+    Svg,
+}
+
+impl ExportTarget {
+    /// SVG/PDF: o detalhe inteiro.
+    #[must_use]
+    pub fn vector(self) -> bool {
+        self != Self::Png
+    }
 }
 
 /// O papel branco do export (E7: o Miro não exporta a cor de fundo).
@@ -137,7 +155,7 @@ fn cached_outline<'a>(
 impl RenderCache {
     /// Um limiar do nível de detalhe, ou zero no export (o detalhe inteiro).
     fn lod(&self, px: f64) -> f64 {
-        if self.export.is_some_and(|e| e.vector) {
+        if self.export.is_some_and(|e| e.target.vector()) {
             0.0
         } else {
             px

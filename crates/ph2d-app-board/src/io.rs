@@ -11,7 +11,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use ph2d_board_export::{
-    Page, board_page, frame_page, paint_page, pdf, pdf_pages, png, selection_page, svg,
+    ExportTarget, Page, board_page, frame_page, paint_page, pdf, pdf_pages, png, selection_page,
+    svg,
 };
 use ph2d_board_model::{Board, ElementId};
 use ph2d_board_render::EXPORT_PAPER;
@@ -345,7 +346,7 @@ pub fn write_export(
             let recs: Vec<_> = pages
                 .iter()
                 .map(|p| {
-                    let (mut s, size) = paint_page(b, p, 1.0, paper, true, unread, ts);
+                    let (mut s, size) = paint_page(b, p, 1.0, paper, ExportTarget::Pdf, unread, ts);
                     (s.take_record(), size)
                 })
                 .collect();
@@ -363,7 +364,7 @@ pub fn write_export(
         }
         Format::Svg => {
             for (i, (p, to)) in pages.iter().zip(page_paths(path, b, &pages)).enumerate() {
-                let (mut s, size) = paint_page(b, p, 1.0, paper, true, unread, ts);
+                let (mut s, size) = paint_page(b, p, 1.0, paper, ExportTarget::Svg, unread, ts);
                 // As ligações de um SVG são as da própria página (um ficheiro, uma página).
                 let here: Vec<([f64; 4], [f64; 4])> = link_pairs(b, &pages, i)
                     .into_iter()

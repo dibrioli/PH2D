@@ -546,6 +546,8 @@ fn page_content(doc: &mut Doc, ops: &[DrawOp], size: [f64; 2]) -> (Vec<u8>, BTre
                 c.x_object(Name(name.as_bytes()));
                 c.restore_state();
             }
+            // O PDF desenha-se com `ExportTarget::Pdf`, que dá sempre píxeis.
+            DrawOp::Embed(_) => debug_assert!(false, "uma imagem só em bytes chegou ao PDF"),
             DrawOp::BlurredRect {
                 transform,
                 rect,

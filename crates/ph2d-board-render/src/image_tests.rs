@@ -203,6 +203,57 @@ fn opacity_and_round_corners_are_one_layer() {
     assert_eq!(layers(true, 100), Some(1.0));
 }
 
+/// ⭐ W16 — o export SVG não descodifica NADA: grava os bytes com o afim do píxel natural ao ecrã (o
+/// espelho incluído). O PDF descodifica (precisa dos píxeis).
+#[test]
+fn the_svg_export_decodes_nothing_and_places_the_natural_pixels() {
+    use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+    let calls = Arc::new(AtomicUsize::new(0));
+    let seen = calls.clone();
+    let decode: Decode = Arc::new(move |_: &[u8], _: Option<[u32; 2]>| {
+        seen.fetch_add(1, Relaxed);
+        Some(Pixels {
+            size: [4, 2],
+            rgba: vec![255; 4 * 2 * 4],
+        })
+    });
+    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+    png.extend([0; 8]);
+    let b = board_with(ImageFile::new(png, [4, 2]), [10.0, 0.0, 40.0, 20.0], |i| {
+        i.flip = [true, false]
+    });
+    for (target, decoded) in [(crate::ExportTarget::Svg, 0), (crate::ExportTarget::Pdf, 1)] {
+        calls.store(0, Relaxed);
+        let mut cache = RenderCache::default();
+        cache.images.set_decoder(decode.clone());
+        cache.export = Some(ExportLook {
+            paper: None,
+            target,
+        });
+        let ops = paint_ops(&b, &mut cache);
+        assert_eq!(calls.load(Relaxed), decoded, "{target:?}");
+        let embeds: Vec<_> = ops
+            .iter()
+            .filter_map(|o| match o {
+                DrawOp::Embed(e) => Some(e),
+                _ => None,
+            })
+            .collect();
+        if decoded > 0 {
+            assert!(embeds.is_empty());
+            assert_eq!(images(&ops).len(), 1);
+            continue;
+        }
+        assert!(images(&ops).is_empty());
+        assert_eq!(embeds.len(), 1);
+        assert_eq!(embeds[0].source.size, [4, 2]);
+        // Espelhada: o píxel natural (0, 0) cai no canto de cima à DIREITA da caixa.
+        let v = crate::view(&b.camera, [0.0, 0.0, 640.0, 480.0]);
+        let want = v * Point::new(50.0, 0.0);
+        assert!((embeds[0].transform * Point::ORIGIN - want).hypot() < 1e-9);
+    }
+}
+
 /// O export descodifica JÁ (não há próximo quadro) e desenha o nível inteiro no vector; sem ficheiro,
 /// não pinta nada (nem o cinzento — o SVG do oráculo omite-a).
 #[test]
@@ -212,7 +263,7 @@ fn the_export_decodes_at_once_and_skips_a_missing_file() {
     cache.images.set_decoder(test_decode());
     cache.export = Some(ExportLook {
         paper: None,
-        vector: true,
+        target: crate::ExportTarget::Pdf,
     });
     let ops = paint_ops(&b, &mut cache);
     let img = images(&ops)[0];

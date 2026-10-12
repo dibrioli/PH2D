@@ -203,7 +203,7 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
         &page,
         1.0,
         Some(ph2d_board_render::EXPORT_PAPER),
-        true,
+        ExportTarget::Svg,
         &std::collections::BTreeSet::new(),
         &mut ts,
     );
@@ -220,7 +220,7 @@ fn a_frame_page_draws_only_its_frame_and_never_titles() {
         &board_page(b, &r).unwrap(),
         1.0,
         None,
-        true,
+        ExportTarget::Svg,
         &std::collections::BTreeSet::new(),
         &mut ts,
     );
@@ -255,7 +255,7 @@ fn the_paper_is_white_or_nothing() {
             &page,
             1.0,
             paper,
-            true,
+            ExportTarget::Svg,
             &std::collections::BTreeSet::new(),
             &mut ts,
         );
@@ -292,7 +292,7 @@ fn svg_and_pdf_carry_the_text() {
         &board_page(b, &r).unwrap(),
         2.0,
         None,
-        true,
+        ExportTarget::Svg,
         &std::collections::BTreeSet::new(),
         &mut ts,
     );
@@ -311,7 +311,7 @@ fn svg_and_pdf_carry_the_text() {
                 p,
                 1.0,
                 Some(ph2d_board_render::EXPORT_PAPER),
-                true,
+                ExportTarget::Pdf,
                 &std::collections::BTreeSet::new(),
                 &mut ts,
             );
@@ -381,7 +381,7 @@ fn the_pdf_grows_linearly_with_faded_objects() {
             &board_page(&b, &r).unwrap(),
             1.0,
             None,
-            true,
+            ExportTarget::Pdf,
             &std::collections::BTreeSet::new(),
             &mut ts,
         );
@@ -419,7 +419,7 @@ fn an_unread_note_is_exported_without_its_text() {
     let mut ts = TextSystem::without_system_fonts();
     let mut out = |unread: std::collections::BTreeSet<ElementId>| {
         let page = board_page(b, &r).unwrap();
-        let (mut s, _) = paint_page(b, &page, 1.0, None, true, &unread, &mut ts);
+        let (mut s, _) = paint_page(b, &page, 1.0, None, ExportTarget::Svg, &unread, &mut ts);
         texts(&s.take_record())
     };
     assert!(

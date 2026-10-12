@@ -235,7 +235,7 @@ fn an_unreadable_framed_image_exports_its_frame() {
     cache.images.set_decoder(decode());
     cache.export = Some(crate::ExportLook {
         paper: None,
-        vector: true,
+        target: crate::ExportTarget::Pdf,
     });
     let b = board(
         ImageFile::new(vec![1, 2], [8, 8]),

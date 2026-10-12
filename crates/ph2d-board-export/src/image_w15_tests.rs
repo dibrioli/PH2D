@@ -39,7 +39,7 @@ fn board(bytes: Vec<u8>, size: [u32; 2]) -> Board {
     set.boards()[0].clone()
 }
 
-fn ops(b: &Board) -> (Vec<DrawOp>, [f64; 2]) {
+fn ops(b: &Board, target: ExportTarget) -> (Vec<DrawOp>, [f64; 2]) {
     let mut routes = RouteCache::default();
     routes.sync(&b.doc);
     let mut ts = TextSystem::without_system_fonts();
@@ -48,7 +48,7 @@ fn ops(b: &Board) -> (Vec<DrawOp>, [f64; 2]) {
         &board_page(b, &routes).unwrap(),
         1.0,
         None,
-        true,
+        target,
         &BTreeSet::new(),
         &mut ts,
     );
@@ -65,7 +65,7 @@ fn ops(b: &Board) -> (Vec<DrawOp>, [f64; 2]) {
 #[test]
 fn the_svg_grays_with_a_filter_that_a_rasterizer_draws_like_the_screen() {
     let b = board(png(4, 4, COLOR), [4, 4]);
-    let (o, size) = ops(&b);
+    let (o, size) = ops(&b, ExportTarget::Svg);
     let svg = svg::write(&o, size);
     assert_eq!(svg.matches("<image id=").count(), 1, "{svg}");
     assert_eq!(svg.matches("<filter id=\"gray\"").count(), 1);
@@ -91,7 +91,7 @@ fn the_svg_grays_with_a_filter_that_a_rasterizer_draws_like_the_screen() {
 #[test]
 fn the_pdf_writes_the_gray_pixels_as_their_own_image() {
     let b = board(png(4, 4, COLOR), [4, 4]);
-    let (o, size) = ops(&b);
+    let (o, size) = ops(&b, ExportTarget::Pdf);
     let imgs: Vec<_> = o
         .iter()
         .filter_map(|o| match o {
@@ -124,7 +124,7 @@ fn a_gray_jpeg_does_not_go_into_the_pdf_as_it_arrived() {
         .encode_image(&img)
         .unwrap();
     let b = board(j, [8, 8]);
-    let (o, size) = ops(&b);
+    let (o, size) = ops(&b, ExportTarget::Pdf);
     let text = String::from_utf8_lossy(&pdf::write(&[pdf::PdfPage {
         ops: &o,
         size,
@@ -147,8 +147,9 @@ fn grava_svg_e_pdf_cinzentos() {
     st.stroke = Some(Rgba([30, 30, 30, 255]));
     st.stroke_width = 4.0;
     BoardOp::Put(a).apply(&mut b.doc);
-    let (o, size) = ops(&b);
+    let (o, size) = ops(&b, ExportTarget::Svg);
     std::fs::write(format!("{dir}/w15.svg"), svg::write(&o, size)).unwrap();
+    let (o, size) = ops(&b, ExportTarget::Pdf);
     let pdf = pdf::write(&[pdf::PdfPage {
         ops: &o,
         size,
@@ -179,7 +180,7 @@ fn an_svg_drawn_twice_goes_to_the_pdf_at_each_size() {
         BoardOp::Put(el).apply(&mut b.doc);
     }
     let board = set.boards()[0].clone();
-    let (o, size) = ops(&board);
+    let (o, size) = ops(&board, ExportTarget::Pdf);
     let text = String::from_utf8_lossy(&pdf::write(&[pdf::PdfPage {
         ops: &o,
         size,

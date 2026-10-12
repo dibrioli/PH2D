@@ -1,0 +1,277 @@
+//! SONDA TEMPORÁRIA (F13, auditoria dos campos): folha de contacto + distância ao mínimo.
+//! `PH2D_AUDIT_SVG=<ficheiro>` grava a folha. Sai antes do commit.
+
+use crate::shapes::{FieldUnit, SHAPES, shown_fields, to_world};
+use ph2d_vec_scene::{ShapeKind, VecPath, cook};
+use std::fmt::Write as _;
+
+const PX: f64 = 0.01;
+const N: usize = 9;
+
+fn contours(p: &VecPath) -> Vec<(Vec<ph2d_vec_scene::VecVertex>, bool)> {
+    let mut v = vec![(p.verts.clone(), p.closed)];
+    for s in &p.subpaths {
+        v.push((s.verts.clone(), s.closed));
+    }
+    v
+}
+
+fn samples(p: &VecPath) -> Vec<[f64; 2]> {
+    let mut out = Vec::new();
+    for (vs, closed) in contours(p) {
+        let n = vs.len();
+        let segs = if closed { n } else { n.saturating_sub(1) };
+        for i in 0..segs {
+            let (a, b) = (&vs[i], &vs[(i + 1) % n]);
+            for k in 0..24 {
+                let t = k as f64 / 24.0;
+                let u = 1.0 - t;
+                let f = |j: usize| {
+                    u * u * u * a.anchor[j]
+                        + 3.0 * u * u * t * a.out_handle[j]
+                        + 3.0 * u * t * t * b.in_handle[j]
+                        + t * t * t * b.anchor[j]
+                };
+                out.push([f(0), f(1)]);
+            }
+        }
+    }
+    out
+}
+
+fn hausdorff(a: &[[f64; 2]], b: &[[f64; 2]]) -> f64 {
+    let d = |p: &[f64; 2], s: &[[f64; 2]]| {
+        s.iter()
+            .map(|q| (p[0] - q[0]).hypot(p[1] - q[1]))
+            .fold(f64::INFINITY, f64::min)
+    };
+    let x = a.iter().map(|p| d(p, b)).fold(0.0, f64::max);
+    let y = b.iter().map(|p| d(p, a)).fold(0.0, f64::max);
+    x.max(y)
+}
+
+fn svg_path(p: &VecPath, ox: f64, oy: f64, s: f64) -> String {
+    let mut d = String::new();
+    let m = |q: [f64; 2]| (ox + q[0] * s, oy - q[1] * s);
+    for (vs, closed) in contours(p) {
+        if vs.is_empty() {
+            continue;
+        }
+        let (x, y) = m(vs[0].anchor);
+        let _ = write!(d, "M{x:.2} {y:.2} ");
+        let n = vs.len();
+        let segs = if closed { n } else { n - 1 };
+        for i in 0..segs {
+            let (a, b) = (&vs[i], &vs[(i + 1) % n]);
+            let (x1, y1) = m(a.out_handle);
+            let (x2, y2) = m(b.in_handle);
+            let (x3, y3) = m(b.anchor);
+            let _ = write!(
+                d,
+                "C{x1:.2} {y1:.2} {x2:.2} {y2:.2} {x3:.2} {y3:.2} "
+            );
+        }
+        if closed {
+            d.push('Z');
+        }
+    }
+    d
+}
+
+/// A base de cada forma, em UI: os raios de canto a 25 px para que o tipo do canto se veja.
+fn base(kind: ShapeKind) -> ph2d_vec_scene::ShapeValues {
+    let mut ui = crate::shapes::to_ui(kind, &kind.defaults(), PX);
+    let d = crate::shapes::desc(kind);
+    for (i, f) in d.fields.iter().enumerate() {
+        if f.unit == FieldUnit::Px && ui[i] == 0.0 && matches!(kind, ShapeKind::Polygon | ShapeKind::Star) {
+            ui[i] = 25.0;
+        }
+    }
+    ui
+}
+
+#[test]
+#[ignore = "sonda"]
+fn audit_contact_sheet() {
+    let cell = 90.0;
+    let mut rows = Vec::new();
+    let mut report = String::new();
+    for d in SHAPES {
+        for i in shown_fields(d.kind) {
+            let f = &d.fields[i];
+            let ui0 = base(d.kind);
+            let vals: Vec<f64> = (0..N)
+                .map(|k| {
+                    let v = f.min + (f.max - f.min) * k as f64 / (N - 1) as f64;
+                    match f.unit {
+                        FieldUnit::Count | FieldUnit::Choice(_) => v.round(),
+                        _ => v,
+                    }
+                })
+                .collect();
+            let paths: Vec<VecPath> = vals
+                .iter()
+                .map(|v| {
+                    let mut ui = ui0;
+                    ui[i] = *v;
+                    let w = to_world(d.kind, &ui, PX);
+                    cook(d.kind, [-1.0, -1.0], [1.0, 1.0], &w)
+                })
+                .collect();
+            let s0 = samples(&paths[0]);
+            let dist: Vec<f64> = paths.iter().map(|p| hausdorff(&s0, &samples(p))).collect();
+            let mono = dist.windows(2).all(|w| w[1] >= w[0] - 0.02);
+            let _ = writeln!(
+                report,
+                "{}{:?}.{} [{}..{}]: {}",
+                if mono { "  " } else { "!!" },
+                d.kind,
+                f.label,
+                f.min,
+                f.max,
+                dist.iter()
+                    .map(|x| format!("{x:.3}"))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
+            rows.push((format!("{:?}.{}", d.kind, f.label), vals, paths));
+        }
+    }
+    eprintln!("{report}");
+    if let Some(out) = std::env::var_os("PH2D_AUDIT_SVG") {
+        let (w, h) = (160.0 + cell * N as f64, cell * rows.len() as f64);
+        let mut svg = format!(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}'><rect width='100%' height='100%' fill='white'/>"
+        );
+        for (r, (label, vals, paths)) in rows.iter().enumerate() {
+            let y = r as f64 * cell;
+            let _ = write!(
+                svg,
+                "<text x='4' y='{}' font-size='11' font-family='sans-serif'>{label}</text>",
+                y + cell * 0.5
+            );
+            for (k, p) in paths.iter().enumerate() {
+                let ox = 160.0 + k as f64 * cell + cell * 0.5;
+                let oy = y + cell * 0.45;
+                let fill = if p.closed { "#cde" } else { "none" };
+                let _ = write!(
+                    svg,
+                    "<path d='{}' fill='{fill}' stroke='black' stroke-width='1' fill-rule='evenodd'/><text x='{}' y='{}' font-size='9' font-family='sans-serif'>{:.2}</text>",
+                    svg_path(p, ox, oy, cell * 0.36),
+                    ox - 12.0,
+                    y + cell - 4.0,
+                    vals[k]
+                );
+            }
+        }
+        svg.push_str("</svg>");
+        std::fs::write(out, svg).unwrap();
+    }
+}
+
+#[test]
+#[ignore = "sonda"]
+fn audit_zoom() {
+    let cell = 150.0;
+    let mut rows: Vec<(String, Vec<String>, Vec<VecPath>)> = Vec::new();
+    for (kind, n) in [(ShapeKind::Polygon, 3.0), (ShapeKind::Polygon, 5.0), (ShapeKind::Polygon, 6.0), (ShapeKind::Star, 5.0)] {
+        for style in 1..=3 {
+            let mut labels = Vec::new();
+            let mut paths = Vec::new();
+            for r in [10.0, 25.0, 40.0, 60.0, 80.0, 120.0] {
+                let mut ui = crate::shapes::to_ui(kind, &kind.defaults(), PX);
+                ui[0] = n;
+                if kind == ShapeKind::Polygon {
+                    ui[1] = r;
+                    ui[2] = style as f64;
+                } else {
+                    ui[2] = r;
+                    ui[3] = r;
+                    ui[4] = style as f64;
+                }
+                labels.push(format!("r{r}"));
+                paths.push(cook(kind, [-1.0, -1.0], [1.0, 1.0], &to_world(kind, &ui, PX)));
+            }
+            rows.push((format!("{kind:?}{n} style{style}"), labels, paths));
+        }
+    }
+    for (kind, n, r) in [(ShapeKind::Polygon, 5.0, 0.0), (ShapeKind::Polygon, 5.0, 25.0), (ShapeKind::Star, 5.0, 0.0), (ShapeKind::Star, 5.0, 25.0)] {
+        let mut labels = Vec::new();
+        let mut paths = Vec::new();
+        for s in [0.0, 0.001, 0.05, 0.15, 0.3, 0.6] {
+            let mut ui = crate::shapes::to_ui(kind, &kind.defaults(), PX);
+            ui[0] = n;
+            if kind == ShapeKind::Polygon {
+                ui[1] = r;
+                ui[4] = s;
+            } else {
+                ui[2] = r;
+                ui[3] = r;
+                ui[6] = s;
+            }
+            labels.push(format!("s{s}"));
+            paths.push(cook(kind, [-1.0, -1.0], [1.0, 1.0], &to_world(kind, &ui, PX)));
+        }
+        rows.push((format!("{kind:?}{n} r{r} smooth"), labels, paths));
+    }
+    let (w, h) = (160.0 + cell * 6.0, cell * rows.len() as f64);
+    let mut svg = format!("<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}'><rect width='100%' height='100%' fill='white'/>");
+    for (r, (label, labels, paths)) in rows.iter().enumerate() {
+        let y = r as f64 * cell;
+        let _ = write!(svg, "<text x='4' y='{}' font-size='12' font-family='sans-serif'>{label}</text>", y + cell * 0.5);
+        for (k, p) in paths.iter().enumerate() {
+            let ox = 160.0 + k as f64 * cell + cell * 0.5;
+            let oy = y + cell * 0.47;
+            let _ = write!(svg, "<path d='{}' fill='#cde' stroke='black' stroke-width='1'/><text x='{}' y='{}' font-size='10' font-family='sans-serif'>{}</text>", svg_path(p, ox, oy, cell * 0.4), ox - 12.0, y + cell - 4.0, labels[k]);
+        }
+    }
+    svg.push_str("</svg>");
+    std::fs::write(std::env::var_os("PH2D_AUDIT_SVG").unwrap(), svg).unwrap();
+}
+
+#[test]
+#[ignore = "sonda"]
+fn audit_zoom2() {
+    let cell = 150.0;
+    let mut rows: Vec<(String, Vec<String>, Vec<VecPath>)> = Vec::new();
+    let one = |kind: ShapeKind, set: &dyn Fn(&mut ph2d_vec_scene::ShapeValues), a: [f64; 2], b: [f64; 2]| {
+        let mut ui = crate::shapes::to_ui(kind, &kind.defaults(), PX);
+        set(&mut ui);
+        cook(kind, a, b, &to_world(kind, &ui, PX))
+    };
+    for style in 1..=3 {
+        let mut l = Vec::new();
+        let mut p = Vec::new();
+        for r in [25.0, 40.0, 60.0, 100.0, 200.0, 500.0] {
+            l.push(format!("r{r}"));
+            p.push(one(ShapeKind::RoundRect, &|u| { u[0] = r; u[5] = style as f64; }, [-1.0, -0.5], [1.0, 0.5]));
+        }
+        rows.push((format!("RoundRect style{style}"), l, p));
+    }
+    for (kind, idx, vals) in [
+        (ShapeKind::Check, 0usize, [0.4, 0.45, 0.5, 0.55, 0.6, 0.6]),
+        (ShapeKind::ArrowBent, 0, [0.5, 0.6, 0.7, 0.8, 0.9, 0.9]),
+        (ShapeKind::Tag, 0, [0.05, 0.08, 0.12, 0.2, 0.3, 0.6]),
+    ] {
+        let mut l = Vec::new();
+        let mut p = Vec::new();
+        for v in vals {
+            l.push(format!("{v}"));
+            p.push(one(kind, &|u| u[idx] = v, [-1.0, -1.0], [1.0, 1.0]));
+        }
+        rows.push((format!("{kind:?}[{idx}]"), l, p));
+    }
+    let (w, h) = (160.0 + cell * 6.0, cell * rows.len() as f64);
+    let mut svg = format!("<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}'><rect width='100%' height='100%' fill='white'/>");
+    for (r, (label, labels, paths)) in rows.iter().enumerate() {
+        let y = r as f64 * cell;
+        let _ = write!(svg, "<text x='4' y='{}' font-size='12' font-family='sans-serif'>{label}</text>", y + cell * 0.5);
+        for (k, p) in paths.iter().enumerate() {
+            let ox = 160.0 + k as f64 * cell + cell * 0.5;
+            let oy = y + cell * 0.47;
+            let _ = write!(svg, "<path d='{}' fill='#cde' fill-opacity='0.6' stroke='black' stroke-width='1' fill-rule='nonzero'/><text x='{}' y='{}' font-size='10' font-family='sans-serif'>{}</text>", svg_path(p, ox, oy, cell * 0.4), ox - 12.0, y + cell - 4.0, labels[k]);
+        }
+    }
+    svg.push_str("</svg>");
+    std::fs::write(std::env::var_os("PH2D_AUDIT_SVG").unwrap(), svg).unwrap();
+}

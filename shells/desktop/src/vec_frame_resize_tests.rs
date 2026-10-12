@@ -541,42 +541,49 @@ fn the_frames_anchor_is_a_fact_of_the_frame_not_of_the_gesture() {
     );
 }
 
-/// ⭐ (F11) **Com o traço NA caixa, o redimensionar proporcional fica exacto**: o pivô é o canto
-/// oposto da caixa VISUAL e a largura escala com a forma (`√|det|`), então a borda oposta fica e a
-/// agarrada cai no cursor. Numa só direcção as duas desviam `m·(sx − √(sx·sy))` (doc 17 §2).
+/// ⭐ (F11; F13 B) **Com o traço NA caixa e a caneta FIXA, o redimensionar fica exacto** — o pivô é
+/// o canto oposto da caixa VISUAL, a borda oposta fica e a agarrada cai no cursor, no proporcional E
+/// numa só direcção (antes da F13 a largura seguia `√|det|` e o eixo único desviava
+/// `m·(sx − √(sx·sy))`, doc 17 §2); e a largura do traço não muda.
 #[test]
-fn a_proportional_resize_with_the_stroke_in_the_box_keeps_both_visual_edges() {
-    let (mut sim, mut scene, map, id) = live_frame();
-    let black = ph2d_vec_scene::Rgba8::new(0, 0, 0, 255);
-    scene.path_mut(id).expect("moldura").stroke = Some(ph2d_vec_scene::StrokeSpec::new(black, 0.2));
-    let kind = ph2d_editor_core::GizmoDragKind::ScaleCorner {
-        dx_sign: 1.0,
-        dy_sign: 1.0,
-    };
-    let xf = ph2d_vec_entities::transform::build(&sim, &map);
-    let v0 = ph2d_vec_render::path_world_visual_bbox(&scene, &xf, id).expect("visual");
-    let e = entity_of(&sim, &map, id);
-    let (anchor, half) = ph2d_app_vec::vec_gizmo_view::anchor_half(&sim, &scene, e).expect("caixa");
-    let pivot = ph2d_editor_core::anchor_pivot_world(
-        kind,
-        anchor,
-        half,
-        snapshot_of(&sim, &map, id),
-        false,
-    );
-    let st = begin(&scene, &xf, 1, id, None).expect("armou");
-    apply(&mut sim, &mut scene, &st, pivot, 2.0, 2.0);
-    let xf = ph2d_vec_entities::transform::build(&sim, &map);
-    let v1 = ph2d_vec_render::path_world_visual_bbox(&scene, &xf, id).expect("visual");
-    for (a, p) in pivot.iter().map(|&p| f64::from(p)).enumerate() {
-        let cursor = p + 2.0 * (v0.1[a] - p);
-        assert!(
-            (v1.0[a] - v0.0[a]).abs() < 1e-4,
-            "a borda oposta andou: {v0:?} para {v1:?}"
+fn a_resize_with_the_stroke_in_the_box_keeps_the_pen_and_both_visual_edges() {
+    for (sx, sy) in [(2.0, 2.0), (2.0, 1.0)] {
+        let (mut sim, mut scene, map, id) = live_frame();
+        let black = ph2d_vec_scene::Rgba8::new(0, 0, 0, 255);
+        scene.path_mut(id).expect("moldura").stroke =
+            Some(ph2d_vec_scene::StrokeSpec::new(black, 0.2));
+        let kind = ph2d_editor_core::GizmoDragKind::ScaleCorner {
+            dx_sign: 1.0,
+            dy_sign: 1.0,
+        };
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
+        let v0 = ph2d_vec_render::path_world_visual_bbox(&scene, &xf, id).expect("visual");
+        let e = entity_of(&sim, &map, id);
+        let (anchor, half) =
+            ph2d_app_vec::vec_gizmo_view::anchor_half(&sim, &scene, e).expect("caixa");
+        let pivot = ph2d_editor_core::anchor_pivot_world(
+            kind,
+            anchor,
+            half,
+            snapshot_of(&sim, &map, id),
+            false,
         );
-        assert!(
-            (v1.1[a] - cursor).abs() < 1e-4,
-            "a borda agarrada não está no cursor: {v1:?}"
-        );
+        let st = begin(&scene, &xf, 1, id, None).expect("armou");
+        apply(&mut sim, &mut scene, &st, pivot, sx, sy);
+        let xf = ph2d_vec_entities::transform::build(&sim, &map);
+        let v1 = ph2d_vec_render::path_world_visual_bbox(&scene, &xf, id).expect("visual");
+        for (a, p) in pivot.iter().map(|&p| f64::from(p)).enumerate() {
+            let cursor = p + [sx, sy][a] * (v0.1[a] - p);
+            assert!(
+                (v1.0[a] - v0.0[a]).abs() < 1e-4,
+                "({sx}, {sy}): a borda oposta andou: {v0:?} para {v1:?}"
+            );
+            assert!(
+                (v1.1[a] - cursor).abs() < 1e-4,
+                "({sx}, {sy}): a borda agarrada não está no cursor: {v1:?}"
+            );
+        }
+        let w = scene.path(id).and_then(|p| p.stroke.as_ref()).map(|s| s.width);
+        assert_eq!(w, Some(0.2), "({sx}, {sy}): a largura do traço mudou");
     }
 }

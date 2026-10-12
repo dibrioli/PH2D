@@ -80,6 +80,8 @@ pub(crate) struct FrameResizeStart {
     /// contra o pen-down, então multiplicar a receita a cada movimento a levaria para o
     /// infinito. O que se escreve é `w0 · sx`, nunca `w · sx`.
     recipe: Option<[f64; 2]>,
+    /// A escala de mundo no pen-down (o inverso do [`Self::to_local`]): a caneta é medida sob ela.
+    world_scale: [f64; 2],
 }
 
 impl FrameResizeStart {
@@ -164,6 +166,7 @@ pub(crate) fn begin(
         local_lo: llo,
         to_local,
         recipe,
+        world_scale: to_local.map(|t| 1.0 / t),
     })
 }
 
@@ -185,8 +188,18 @@ pub(crate) fn apply(
     };
     *p = start.path.clone();
     let (sx, sy) = (clamp_ratio(sx), clamp_ratio(sy));
+    // F13 B: a caneta FICA (o *Scale Strokes & Effects* desligado) e a caixa VISUAL cai no cursor;
+    // a geometria escala `g`, e é `g` que a receita segue.
+    let mut g = [1.0; 2];
     if (sx - 1.0).abs() > 1e-9 || (sy - 1.0).abs() > 1e-9 {
-        scene.scale_path(start.id, sx, sy, start.anchor_for(pivot_world));
+        g = ph2d_app_vec::vec_frame_pen::resize_keeping_the_pen(
+            scene,
+            start.id,
+            &start.path,
+            start.world_scale,
+            start.anchor_for(pivot_world),
+            [sx, sy],
+        );
     }
     // ⚠️ **A RECEITA anda junto, e é por isso que `sim` está aqui.** A geometria de uma forma
     // viva é DERIVADA do `w`/`h` guardado; escrever só os `verts` deixa a receita a descrever a
@@ -197,8 +210,8 @@ pub(crate) fn apply(
         crate::vec_shape_live::resize_recipe(
             sim,
             Entity::from_bits(start.entity_bits),
-            w0 * sx,
-            h0 * sy,
+            w0 * g[0],
+            h0 * g[1],
         );
     }
     true

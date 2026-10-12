@@ -153,6 +153,8 @@ pub mod ui_state_bridge;
 pub mod ui_state_edit;
 pub mod vec_clip_edit;
 pub mod vec_frame_edit;
+/// A *Resize Box* mantém a espessura do traço (F13 B).
+pub mod vec_frame_pen;
 pub mod vec_gizmo_view;
 pub mod vec_selection;
 pub mod vector_bridge;

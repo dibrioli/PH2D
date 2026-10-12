@@ -10,7 +10,7 @@
 - Worktree `Worktrees/line-motion-value`, base `8f20c60de`. Commits: `0ad116c805` (B6), `481e8bad08` (motivo do
   1.º quadro, gates `=135` e M8), `1cc2c0ff13`/`298eb0f2c9` (poll só com leitura em voo; portão), o deste handoff.
   **Nada integrado nem enviado.**
-- ⏳ Smoke do dono: `=135` passos (12)/(13) agora no dispositivo (foto feita, ver abaixo). ⏳ Re-smoke `=70` (estrelas).
+- ✅ **Smoke do dono OK (12/10)**: `=135` passos (12)/(13) no dispositivo. ⏳ Re-smoke `=70` (estrelas).
 
 ## B6 — a mistura em grupo vai à placa pelo DISPOSITIVO
 

@@ -192,7 +192,7 @@ pub fn paint(hero: &mut HeroScreen, viewport: Rect, scene: &mut VectorScene, ts:
         let cache = &mut live.render_cache;
         cache.export = Some(ExportLook {
             paper: None,
-            target: ph2d_board_render::ExportTarget::Png,
+            target: ph2d_board_render::ExportTarget::Screen,
         });
         cache.hide_votes = true;
         let corners = board.doc.get(slide).map(|f| {

@@ -138,6 +138,34 @@ fn a_gif_plays_on_screen_by_the_clock_and_exports_its_first_frame() {
     assert!(!export.images.players.any(), "o export não toca");
 }
 
+/// ⭐ W18 — a APRESENTAÇÃO é um ecrã com o desenho do export: o GIF toca lá também (o dono pediu GIF
+/// animado, W16); o PNG exportado continua com o 1.º quadro.
+#[test]
+fn a_gif_plays_in_the_presentation_and_not_in_a_png_export() {
+    let b = board();
+    let t0 = Instant::now();
+    let mut show = cache();
+    show.export = Some(ExportLook {
+        paper: None,
+        target: ExportTarget::Screen,
+    });
+    assert!(until(&b, &mut show, t0, PLAYED[0]), "a apresentação não toca");
+    assert!(until(
+        &b,
+        &mut show,
+        t0 + Duration::from_millis(100),
+        PLAYED[1]
+    ));
+    let mut png = cache();
+    png.export = Some(ExportLook {
+        paper: None,
+        target: ExportTarget::Png,
+    });
+    assert_eq!(drawn(&b, &mut png), PYRAMID);
+    assert!(!png.images.players.any(), "o PNG não toca");
+    assert!(!ExportTarget::Screen.vector(), "o detalhe da apresentação é o do PNG");
+}
+
 /// Um GIF de um quadro só não fica a tocar: o tocador sai e a pirâmide desenha-o.
 #[test]
 fn a_still_gif_stops_its_player() {

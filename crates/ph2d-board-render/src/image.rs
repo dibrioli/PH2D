@@ -573,14 +573,16 @@ pub(crate) fn paint(
     } else {
         let a = if group { 1.0 } else { alpha };
         let layered = clip || a < 1.0;
-        // W16 — um GIF no ecrã toca: o quadro de agora ao tamanho do nível escolhido.
+        // W16 — um GIF no ecrã toca: o quadro de agora ao tamanho do nível escolhido (W18: também na
+        // apresentação).
         let drawn = level.map(|(f, (pixels, size))| {
-            let (pixels, size) = match export {
-                None => cache
+            let (pixels, size) = if ExportTarget::live(target) {
+                cache
                     .images
                     .animated(img.file, img.filter, f, size)
-                    .unwrap_or((pixels, size)),
-                Some(_) => (pixels, size),
+                    .unwrap_or((pixels, size))
+            } else {
+                (pixels, size)
             };
             (f, pixels, t * level_to_box(el, img, f.size, size), size)
         });

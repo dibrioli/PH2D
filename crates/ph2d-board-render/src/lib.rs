@@ -121,13 +121,22 @@ pub enum ExportTarget {
     /// W16 — vector com as imagens em BYTES, como chegaram: nenhuma é descodificada (as que não têm um
     /// MIME que o SVG mostre, sim — vão em PNG).
     Svg,
+    /// W18 — o desenho de exportar num ECRÃ ao vivo (a apresentação): o detalhe do [`Self::Png`], e uma
+    /// imagem animada TOCA (é um ecrã, não um ficheiro).
+    Screen,
 }
 
 impl ExportTarget {
     /// SVG/PDF: o detalhe inteiro.
     #[must_use]
     pub fn vector(self) -> bool {
-        self != Self::Png
+        matches!(self, Self::Pdf | Self::Svg)
+    }
+
+    /// W18 — o destino é um ecrã que anda (o GIF toca): o ecrã ou a apresentação.
+    #[must_use]
+    pub fn live(target: Option<Self>) -> bool {
+        matches!(target, None | Some(Self::Screen))
     }
 }
 

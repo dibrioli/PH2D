@@ -58,6 +58,7 @@ pub mod pigment_space;
 /// ser importado de volta por três consumidores que já o tinham (plano `docs/Sprite_projeto/18`).
 pub mod precision;
 pub mod premultiplied;
+pub mod ramp_lut;
 pub mod srgb;
 pub mod value_ramp;
 

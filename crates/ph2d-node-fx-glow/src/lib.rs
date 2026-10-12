@@ -46,6 +46,7 @@ use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -199,14 +200,20 @@ pub const RAMP_KEY: &str = "ramp";
 /// semântica (interpolação, espaço, caminho do matiz) e o shader faz apenas um `mix` entre
 /// vizinhas. Uma grelha uniforme também dispensa a busca — o índice é `t · (n−1)`.
 ///
-/// ⚠️ **O recurso tem nome: o PASSO DO ECRÃ.** A saída do halo é tonemapeada para 8 bits, então
-/// um erro de reconstrução abaixo de `1/255` não tem como aparecer. A sonda
-/// `measure_ramp_lut_resolution` varre os quatro presets da casa com
-/// 2 049 pontos por rampa (o erro de uma reconstrução linear é máximo **no meio** de um
-/// intervalo, então amostrar nos nós daria zero em toda parte) e imprime a tabela; o gate irmão
-/// exige as **duas** metades — que esta contagem seja invisível **e** que METADE dela seja
-/// visível, senão estaríamos a pagar memória de uniforme por nada.
-pub const HALO_LUT_TEXELS: usize = 512;
+/// ⚠️ **O recurso tem nome: o PASSO DO ECRÃ**, medido no espaço GRAVADO (sRGB de 8 bits) e com a
+/// reconstrução do SAMPLER (`Rgba16Float`, peso de 8 bits). Sonda `measure_ramp_lut_resolution`,
+/// pior erro do corpus do editor (11/10):
+///
+/// | texels | sampler | endereço antigo (½ célula) |
+/// |---|---|---|
+/// | 512 | `0,0514` | `0,0689` |
+/// | 2 048 | `0,0117` | `0,0189` |
+/// | 4 096 | `0,0038` | `0,0095` |
+///
+/// ⇒ `4 096` é o primeiro abaixo de `1/255 = 0,0039`, e metade dele não é (gate
+/// `the_shipped_lut_resolution_is_the_measured_one`). Os `512` de antes tinham sido medidos em luz
+/// LINEAR, onde o erro perto do preto encolhe.
+pub const HALO_LUT_TEXELS: usize = 4096;
 
 /// The bloom settings the shell reads to drive the Motion glow pass. Mirrors
 /// `ph2d_render::BloomParams` (this crate has no render dep — the shell converts
@@ -252,16 +259,32 @@ pub struct Glow {
 ///
 /// ⚠️ **Um texto que não parse conta como SEM RAMPA**, e não como uma rampa vazia: um documento
 /// de uma versão futura, ou uma edição por MCP, não pode espalhar `NaN` por seis níveis de mip.
+///
+/// ⚠️ **Assa-se UMA vez por texto** (são [`HALO_LUT_TEXELS`] avaliações e o texto só muda num
+/// gesto): a última tabela fica guardada POR THREAD — a do quadro é uma só, e os testes paralelos
+/// não partilham a memória.
 #[must_use]
-pub fn bake_halo_lut(graph: &Graph) -> Option<Vec<[f32; 4]>> {
+pub fn bake_halo_lut(graph: &Graph) -> Option<Arc<[[f32; 4]]>> {
     let node = graph.nodes().iter().find(|n| n.type_name == TYPE_NAME)?.id;
-    let ramp = graph
+    let texto = graph
         .node_text_param_overrides(node)
-        .and_then(|m| m.get(RAMP_KEY))
-        .and_then(|s| parse_gradient(s))?;
-    #[expect(clippy::cast_precision_loss, reason = "HALO_LUT_TEXELS <= 4096")]
-    let at = |k: usize| ramp.eval(k as f32 / (HALO_LUT_TEXELS - 1) as f32);
-    Some((0..HALO_LUT_TEXELS).map(at).collect())
+        .and_then(|m| m.get(RAMP_KEY))?;
+    ULTIMA_LUT.with_borrow_mut(|ultima| {
+        if let Some((t, lut)) = ultima.as_ref()
+            && t == texto
+        {
+            return Some(Arc::clone(lut));
+        }
+        let ramp = parse_gradient(texto)?;
+        let lut: Arc<[[f32; 4]]> = ph2d_color::ramp_lut::bake(&ramp, HALO_LUT_TEXELS).into();
+        *ultima = Some((texto.clone(), Arc::clone(&lut)));
+        Some(lut)
+    })
+}
+
+thread_local! {
+    static ULTIMA_LUT: std::cell::RefCell<Option<(String, Arc<[[f32; 4]]>)>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 /// The manifest default for a param name (the single source of a knob's neutral

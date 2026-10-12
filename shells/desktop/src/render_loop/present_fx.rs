@@ -89,10 +89,8 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     //   else). Additive = emitted light, so it bleeds over whatever is
     //   in front — the sparks look lit, not pasted.
     let glow = ph2d_node_fx_glow::from_graph(&g.motion.doc.graph);
-    // ⚠️ **Assada FORA do `if` de propósito**: dentro dele o `glow` já foi movido, e
-    // pô-la lá obrigaria a reordenar o bloco. O custo de a assar sem a usar é uma
-    // varredura de 512 avaliações num quadro em que existe um `fx.glow` com rampa —
-    // e o passe só corre nesse quadro de qualquer forma.
+    // ⚠️ **Lida FORA do `if` de propósito**: dentro dele o `glow` já foi movido. Ela assa-se uma
+    // vez por texto (`bake_halo_lut` guarda a última).
     let halo_lut = ph2d_node_fx_glow::bake_halo_lut(&g.motion.doc.graph);
     // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites** (bug do Enio, 2026-08-20:
     // *"tudo deve brilhar"*) — pela rota do quadro: ver [`ph2d_app_motion::motion_glow_layer::Halo`]

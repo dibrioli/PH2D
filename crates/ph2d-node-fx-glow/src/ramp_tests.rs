@@ -1,178 +1,112 @@
 //! **A RAMPA DO HALO** — a medição que escolheu a resolução da LUT, e os gates dela
-//! (doc 89, folha 11).
+//! (doc 89, folha 11). A régua é a do degradê assado ([`ph2d_color::ramp_lut::regua`]): o erro no
+//! espaço GRAVADO (sRGB de 8 bits), e a reconstrução é a do SAMPLER que lê a textura.
 
 use super::*;
-use ph2d_color::{ColorRamp, GradientPreset, RampInterp};
+use ph2d_color::GradientPreset;
+use ph2d_color::ramp_lut::regua::{DISPLAY_STEP, corpus, degrau, erro_no_ecra, pior};
 
-/// O passo de um ecrã de 8 bits — o que o olho tem como ver depois do tonemap.
-const DISPLAY_STEP: f32 = 1.0 / 255.0;
+/// Bits de fracção do peso da filtragem linear — o que as duas placas da estação dão
+/// (`subTexelPrecisionBits = 8`, RTX 5060 Ti e RADV); o D3D11 exige 8, o Vulkan só 4.
+const BITS_DO_PESO: i32 = 8;
 
-/// Quantos pontos a varredura visita. O erro de uma reconstrução linear é máximo **no meio** de
-/// uma célula, então amostrar nos nós daria zero em toda parte.
-const SWEEP: usize = 8192;
-
-/// A reconstrução que o SAMPLER faz: interpolação linear entre texels vizinhos de uma LUT
-/// uniforme. Escrita aqui para a medição comparar o mesmo que o device vai desenhar.
+/// O que o SAMPLER devolve no `fs_composite` (`bloom.wgsl`): a tabela guardada em `Rgba16Float`,
+/// o endereço no centro do texel (`lut_u`: o índice contínuo é `t·(n−1)`, a lei de
+/// [`ph2d_color::ramp_lut::bake`]) e o peso quantizado a [`BITS_DO_PESO`].
 #[expect(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "indices e contagens pequenas de uma LUT"
+    reason = "índices de uma tabela pequena"
 )]
-fn reconstruct(lut: &[[f32; 4]], t: f32) -> [f32; 3] {
-    let n = lut.len();
-    let f = t.clamp(0.0, 1.0) * (n - 1) as f32;
-    let k = (f.floor() as usize).min(n - 2);
-    let a = f - k as f32;
-    let (lo, hi) = (lut[k], lut[k + 1]);
-    [
-        lo[0] + (hi[0] - lo[0]) * a,
-        lo[1] + (hi[1] - lo[1]) * a,
-        lo[2] + (hi[2] - lo[2]) * a,
-    ]
+fn sampler(lut: &[[f32; 4]], t: f32) -> [f32; 4] {
+    le_no_indice(lut, t.clamp(0.0, 1.0) * (lut.len() - 1) as f32)
 }
 
-/// Assa `n` texels uniformes — a mesma lei do [`super::bake_halo_lut`], com `n` livre.
+/// ⛔ O endereço de ANTES (corrigido em 11/10): `textureSample` em `u = t` cai no índice contínuo
+/// `t·n − ½` — meia célula ao lado da lei do `bake`, que põe a amostra `k` em `k/(n−1)`.
 #[expect(clippy::cast_precision_loss, reason = "n <= 4096")]
-fn bake(ramp: &ColorRamp, n: usize) -> Vec<[f32; 4]> {
-    (0..n)
-        .map(|k| ramp.eval(k as f32 / (n - 1) as f32))
-        .collect()
+fn sampler_antes(lut: &[[f32; 4]], t: f32) -> [f32; 4] {
+    let n = lut.len() as f32;
+    le_no_indice(lut, (t.clamp(0.0, 1.0) * n - 0.5).clamp(0.0, n - 1.0))
 }
 
-/// **O CORPUS, com o pior caso do editor dentro.**
-///
-/// ⚠️ **Os quatro presets nascem todos em `Linear`, e uma régua que só os visse mentiria.** O
-/// editor oferece cinco interpolações, e o `Constant` — um DEGRAU — é a função que uma
-/// reconstrução linear reproduz pior de todas. *Uma fixtura que não contém o fenómeno mede o
-/// instrumento, não o produto.*
-fn corpus() -> Vec<(&'static str, ColorRamp)> {
-    let mut out: Vec<(&'static str, ColorRamp)> = GradientPreset::ALL
-        .iter()
-        .map(|p| (p.label_key(), p.ramp()))
-        .collect();
-    let mut eased = GradientPreset::Heat.ramp();
-    eased.interp = RampInterp::Ease;
-    out.push(("Heat/Ease", eased));
-    out
+#[expect(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "índices de uma tabela pequena"
+)]
+fn le_no_indice(lut: &[[f32; 4]], x: f32) -> [f32; 4] {
+    let meio = |v: f32| ph2d_color::half_to_f32(ph2d_color::f32_to_half(v));
+    let k = (x.floor() as usize).min(lut.len() - 2);
+    let passos = 2f32.powi(BITS_DO_PESO);
+    let a = ((x - k as f32) * passos).round() / passos;
+    std::array::from_fn(|c| {
+        let (lo, hi) = (meio(lut[k][c]), meio(lut[k + 1][c]));
+        lo + (hi - lo) * a
+    })
 }
 
-/// A rampa em DEGRAU — medida à parte, e a razão está na sonda.
-fn hard_step() -> ColorRamp {
-    let mut r = GradientPreset::Rainbow.ramp();
-    r.interp = RampInterp::Constant;
-    r
-}
-
-/// O pior erro, e a FRACÇÃO do percurso em que ele passa do passo do ecrã.
-#[expect(clippy::cast_precision_loss, reason = "SWEEP <= 8192")]
-fn error_of(ramp: &ColorRamp, n: usize) -> (f32, f32) {
-    let lut = bake(ramp, n);
-    let (mut worst, mut bad) = (0.0f32, 0usize);
-    for i in 0..=SWEEP {
-        let t = i as f32 / SWEEP as f32;
-        let got = reconstruct(&lut, t);
-        let want = ramp.eval(t);
-        let e = (0..3).fold(0.0f32, |m, c| m.max((got[c] - want[c]).abs()));
-        worst = worst.max(e);
-        if e > DISPLAY_STEP {
-            bad += 1;
-        }
-    }
-    (worst, bad as f32 / (SWEEP + 1) as f32)
-}
-
-/// **A MEDIÇÃO QUE ESCOLHEU A RESOLUÇÃO.**
+/// **A MEDIÇÃO QUE ESCOLHEU A RESOLUÇÃO** —
+/// `bash scripts/cargo-test-narrow.sh ph2d-node-fx-glow measure_ramp_lut -- --nocapture`.
 ///
-/// ```text
-/// cargo test -p ph2d-node-fx-glow measure_ramp_lut -- --nocapture
-/// ```
-///
-/// **Duas colunas, e a segunda foi a correcção.** A primeira versão desta sonda mediu só o erro
-/// MÁXIMO e leu-o como veredito — e num degrau o erro máximo é metade do salto **e não cai com a
-/// densidade**: `16` texels davam `0,998` e `1024` davam `0,834`, ou seja a régua dizia que
-/// nenhuma resolução servia. O que a densidade encolhe num degrau não é a ALTURA do erro, é a
-/// **LARGURA** da banda errada — e é ela que decide se aquilo se vê.
-///
-/// ⚠️ *Um extremo global e uma fracção do percurso respondem a perguntas diferentes, e sobre uma
-/// descontinuidade só a segunda é sobre o que aparece no ecrã.*
+/// Três colunas por resolução: o sampler de hoje, o de ANTES (o endereço meia célula ao lado) e a
+/// fracção do percurso que o degrau suja. ⚠️ Num degrau o erro MÁXIMO é metade do salto a
+/// qualquer densidade; o que a densidade encolhe é a LARGURA da banda errada.
 #[test]
 fn measure_ramp_lut_resolution() {
-    eprintln!("o passo do ecra' e' {DISPLAY_STEP:.5}");
+    eprintln!("passo do ecra' {DISPLAY_STEP:.5} (sRGB)");
     eprintln!(
-        "{:>7}  {:>10}  {:>9}   {:>11}  {:>9}",
-        "texels", "erro suave", "fracao", "erro degrau", "fracao"
+        "{:>7}  {:>10}  {:>12}  {:>13}",
+        "texels", "sampler", "antes (½ cel)", "degrau fracao"
     );
-    for n in [16usize, 64, 128, 256, 512, 1024] {
-        let smooth = corpus()
-            .iter()
-            .map(|(_, r)| error_of(r, n))
-            .fold((0.0f32, 0.0f32), |a, b| (a.0.max(b.0), a.1.max(b.1)));
-        let step = error_of(&hard_step(), n);
+    for n in [256usize, 512, 1024, 2048, 4096] {
+        let (_, f) = erro_no_ecra(&degrau(), n, sampler);
         eprintln!(
-            "{n:>7}  {:>10.5}  {:>8.3}%   {:>11.5}  {:>8.3}%",
-            smooth.0,
-            smooth.1 * 100.0,
-            step.0,
-            step.1 * 100.0
+            "{n:>7}  {:>10.5}  {:>12.5}  {:>12.3}%",
+            pior(n, sampler),
+            pior(n, sampler_antes),
+            f * 100.0
         );
     }
-    // O controle: uma resolução grosseira TEM de ser visível nas rampas suaves, senão a régua
-    // é cega e a tabela acima não diz nada.
-    let coarse = corpus()
-        .iter()
-        .map(|(_, r)| error_of(r, 16).0)
-        .fold(0.0f32, f32::max);
-    assert!(
-        coarse > DISPLAY_STEP,
-        "controle: a 16 texels o erro TEM de ser visivel ({coarse})"
-    );
+    for (nome, r) in corpus() {
+        let (w, _) = erro_no_ecra(&r, HALO_LUT_TEXELS, sampler);
+        eprintln!("  @{HALO_LUT_TEXELS} {nome:<24} {w:.5}");
+    }
+    assert!(pior(16, sampler) > DISPLAY_STEP, "controlo: a régua vê 16 texels");
 }
 
-/// **A RESOLUÇÃO QUE SHIPA É A MEDIDA** — as duas metades, e a segunda impede o número de ser
-/// maior do que precisa.
+/// **A RESOLUÇÃO QUE SHIPA É A MEDIDA** — invisível no corpus inteiro, lida pelo sampler, e
+/// metade dela visível (senão pagávamos memória por nada).
 #[test]
 fn the_shipped_lut_resolution_is_the_measured_one() {
-    for (name, ramp) in corpus() {
-        let (worst, _) = error_of(&ramp, HALO_LUT_TEXELS);
+    for (nome, r) in corpus() {
+        let (w, _) = erro_no_ecra(&r, HALO_LUT_TEXELS, sampler);
         assert!(
-            worst <= DISPLAY_STEP,
-            "{name}: a LUT de {HALO_LUT_TEXELS} erra {worst}, acima do passo do ecra'"
+            w <= DISPLAY_STEP,
+            "{nome}: a LUT de {HALO_LUT_TEXELS} erra {w}, acima do passo do ecra'"
         );
     }
-    let half = corpus()
-        .iter()
-        .map(|(_, r)| error_of(r, HALO_LUT_TEXELS / 2).0)
-        .fold(0.0f32, f32::max);
+    let meia = pior(HALO_LUT_TEXELS / 2, sampler);
     assert!(
-        half > DISPLAY_STEP,
-        "com metade dos texels o erro ({half}) tem de ser VISIVEL, senao pagamos memoria por nada"
+        meia > DISPLAY_STEP,
+        "com metade dos texels o erro ({meia}) tem de ser VISIVEL"
     );
 }
 
-/// **NUM DEGRAU, A BANDA ERRADA É UM TEXEL — E UM TEXEL É MAIS ESTREITO QUE O PASSO DO ECRÃ.**
-///
-/// ⚠️ Isto não é um teste de qualidade: é o **registo executável de uma limitação**. Nenhuma
-/// tabela amostrada representa uma descontinuidade, e quem vier acrescentar texels a pensar que
-/// «ainda está errado» tem de ler isto primeiro. O que se pode afirmar são duas coisas, e as
-/// duas são estruturais:
-///
-/// 1. **cada salto suja UMA célula** — a fracção medida é `paradas / texels` e não mais (a
-///    implementação não espalha o erro para lá da célula em que ele nasce);
-/// 2. **uma célula é mais fina que um passo do ecrã** (`1/512 < 1/255`), então a banda cabe
-///    dentro de um degrau de saída — e num halo, que é um borrão, ela é ainda menos visível.
-///
-/// ⚠️ **A barra NÃO é um número redondo escolhido depois de ver a medição.** A `1,147 %` medida
-/// é exactamente `6 paradas / 512`; escrever «`< 1 %`» teria sido a barra a seguir o resultado,
-/// que é o oposto do que ela serve.
+/// **NUM DEGRAU, A BANDA ERRADA É UMA CÉLULA POR SALTO — e uma célula é mais fina que o passo do
+/// ecrã.** Registo executável de uma limitação: nenhuma tabela amostrada representa uma
+/// descontinuidade; o que se afirma é que cada salto suja UMA célula e que ela encolhe com a
+/// densidade.
 #[test]
 fn a_hard_step_dirties_one_cell_and_a_cell_is_finer_than_the_display() {
-    let ramp = hard_step();
+    let ramp = degrau();
     let stops = ramp.len();
-    let (worst, frac) = error_of(&ramp, HALO_LUT_TEXELS);
+    let (worst, frac) = erro_no_ecra(&ramp, HALO_LUT_TEXELS, sampler);
     assert!(
         worst > DISPLAY_STEP,
-        "fixture: um degrau TEM de errar no salto, senao nao e' um degrau ({worst})"
+        "fixture: um degrau TEM de errar no salto ({worst})"
     );
     #[expect(clippy::cast_precision_loss, reason = "contagens pequenas")]
     let one_cell_each = stops as f32 / HALO_LUT_TEXELS as f32;
@@ -184,13 +118,8 @@ fn a_hard_step_dirties_one_cell_and_a_cell_is_finer_than_the_display() {
     );
     #[expect(clippy::cast_precision_loss, reason = "HALO_LUT_TEXELS <= 4096")]
     let cell = 1.0 / HALO_LUT_TEXELS as f32;
-    assert!(
-        cell < DISPLAY_STEP,
-        "uma celula ({cell}) tem de ser mais fina que o passo do ecra' ({DISPLAY_STEP})"
-    );
-    // E a banda ENCOLHE com a densidade — a metade que prova que a limitação é de LARGURA e
-    // não de altura.
-    let (_, coarse) = error_of(&ramp, HALO_LUT_TEXELS / 8);
+    assert!(cell < DISPLAY_STEP, "uma celula ({cell}) mais fina que o passo");
+    let (_, coarse) = erro_no_ecra(&ramp, HALO_LUT_TEXELS / 8, sampler);
     assert!(
         coarse > frac * 4.0,
         "com um oitavo dos texels a banda tem de ser MUITO mais larga ({coarse} vs {frac})"
@@ -237,4 +166,22 @@ fn junk_in_the_ramp_field_reads_as_no_ramp() {
             );
         }
     }
+}
+
+/// **A LUT assa-se UMA vez por texto**: o mesmo texto devolve a mesma tabela, o texto mexido assa
+/// outra, e o lixo não apaga a última boa.
+#[test]
+fn the_halo_lut_bakes_once_per_text() {
+    let mut g = Graph::new();
+    let n = g.add_node(TYPE_NAME);
+    let texto = |p: GradientPreset| ph2d_color::serialize_gradient(&p.ramp());
+    g.set_text_param(n, RAMP_KEY.to_string(), texto(GradientPreset::Heat));
+    let a = bake_halo_lut(&g).expect("assa");
+    let b = bake_halo_lut(&g).expect("assa");
+    assert!(Arc::ptr_eq(&a, &b), "o mesmo texto nao reassa");
+    g.set_text_param(n, RAMP_KEY.to_string(), texto(GradientPreset::Ice));
+    let c = bake_halo_lut(&g).expect("assa");
+    assert!(!Arc::ptr_eq(&a, &c) && a != c, "o texto mexido assa outra");
+    g.set_text_param(n, RAMP_KEY.to_string(), "lixo".to_string());
+    assert!(bake_halo_lut(&g).is_none(), "lixo e' sem rampa");
 }

@@ -2,15 +2,10 @@
 //! [`FxOp::RAMP_LUT_TEXELS`].
 
 use super::*;
+use ph2d_color::ramp_lut::regua::{DISPLAY_STEP, SWEEP, corpus, erro_no_ecra, pior};
+use ph2d_color::ramp_lut::bake;
 use ph2d_color::srgb::linear_to_srgb_unit;
-use ph2d_color::{ColorRamp, GradientPreset, RampColorMode, RampHue, RampInterp};
-
-/// O passo da saída de 8 bits — medido no espaço em que ela é GRAVADA (sRGB), não em luz linear:
-/// perto do preto um erro linear de `1/255` são vários degraus do ecrã.
-const DISPLAY_STEP: f32 = 1.0 / 255.0;
-
-/// O erro de uma reconstrução linear é máximo no MEIO de uma célula: amostrar nos nós daria zero.
-const SWEEP: usize = 8192;
+use ph2d_color::{ColorRamp, GradientPreset, RampColorMode, RampInterp};
 
 /// A reconstrução do `ramp_sample` do passe (`fx_stack_shader.rs`), a mesma aritmética.
 #[expect(
@@ -26,58 +21,6 @@ fn reconstruct(lut: &[[f32; 4]], t: f32) -> [f32; 4] {
     std::array::from_fn(|c| c0[c] + (c1[c] - c0[c]) * (x - i as f32))
 }
 
-#[expect(clippy::cast_precision_loss, reason = "n <= 4096")]
-fn bake(ramp: &ColorRamp, n: usize) -> Vec<[f32; 4]> {
-    (0..n)
-        .map(|i| ramp.eval(i as f32 / (n - 1) as f32))
-        .collect()
-}
-
-/// O corpus SUAVE com o pior do editor dentro: os presets (todos `Linear`), o `Ease`, o `Cardinal`
-/// (que ultrapassa as paradas) e uma matiz que dá a volta LONGA em OKLCH.
-fn corpus() -> Vec<(String, ColorRamp)> {
-    let mut out: Vec<(String, ColorRamp)> = GradientPreset::ALL
-        .iter()
-        .map(|p| (p.label_key().to_string(), p.ramp()))
-        .collect();
-    let mut eased = GradientPreset::Heat.ramp();
-    eased.interp = RampInterp::Ease;
-    out.push(("Heat/Ease".into(), eased));
-    let mut cardinal = GradientPreset::Rainbow.ramp();
-    cardinal.interp = RampInterp::Cardinal;
-    out.push(("Rainbow/Cardinal".into(), cardinal));
-    let mut longe = GradientPreset::Heat.ramp();
-    longe.color_mode = RampColorMode::Oklch;
-    longe.hue = RampHue::Far;
-    out.push(("Heat/OKLCH far".into(), longe));
-    out
-}
-
-/// O pior erro NO ESPAÇO DA SAÍDA (sRGB, cada canal preso a `[0,1]` como a gravação o prende) e a
-/// fracção do percurso que passa do passo do ecrã.
-#[expect(clippy::cast_precision_loss, reason = "SWEEP <= 8192")]
-fn error_of(ramp: &ColorRamp, n: usize) -> (f32, f32) {
-    let lut = bake(ramp, n);
-    let tela = |v: f32| linear_to_srgb_unit(v.clamp(0.0, 1.0));
-    let (mut worst, mut bad) = (0.0f32, 0usize);
-    for i in 0..=SWEEP {
-        let t = i as f32 / SWEEP as f32;
-        let (got, want) = (reconstruct(&lut, t), ramp.eval(t));
-        let e = (0..3).fold(0.0f32, |m, c| m.max((tela(got[c]) - tela(want[c])).abs()));
-        let e = e.max((got[3] - want[3]).abs());
-        worst = worst.max(e);
-        bad += usize::from(e > DISPLAY_STEP);
-    }
-    (worst, bad as f32 / (SWEEP + 1) as f32)
-}
-
-fn pior(n: usize) -> f32 {
-    corpus()
-        .iter()
-        .map(|(_, r)| error_of(r, n).0)
-        .fold(0.0, f32::max)
-}
-
 /// **A medição que escolheu a resolução** —
 /// `bash scripts/cargo-test-narrow.sh ph2d-node-fx-filter measure_ramp_lut -- --nocapture`.
 #[test]
@@ -86,7 +29,7 @@ fn measure_ramp_lut_in_the_screen_encoding() {
     for n in [128usize, 256, 512, 1024, 2048, 4096] {
         eprintln!("{n:>5} texels:");
         for (nome, r) in corpus() {
-            let (w, f) = error_of(&r, n);
+            let (w, f) = erro_no_ecra(&r, n, reconstruct);
             eprintln!("    {nome:<24} {w:.5}  {:>7.3}%", f * 100.0);
         }
     }
@@ -109,7 +52,7 @@ fn measure_ramp_lut_in_the_screen_encoding() {
             eprintln!("    {n:>5} {nome:<24} {worst:.5}");
         }
     }
-    assert!(pior(16) > DISPLAY_STEP, "controlo: a régua vê 16 texels");
+    assert!(pior(16, reconstruct) > DISPLAY_STEP, "controlo: a régua vê 16 texels");
 }
 
 /// **A resolução que corre é a medida** — invisível no corpus inteiro, e metade dela visível (senão
@@ -117,10 +60,10 @@ fn measure_ramp_lut_in_the_screen_encoding() {
 #[test]
 fn the_baked_ramp_is_invisible_and_half_of_it_is_not() {
     for (nome, r) in corpus() {
-        let (w, _) = error_of(&r, FxOp::RAMP_LUT_TEXELS);
+        let (w, _) = erro_no_ecra(&r, FxOp::RAMP_LUT_TEXELS, reconstruct);
         assert!(w <= DISPLAY_STEP, "{nome}: {w} acima do passo do ecrã");
     }
-    let meia = pior(FxOp::RAMP_LUT_TEXELS / 2);
+    let meia = pior(FxOp::RAMP_LUT_TEXELS / 2, reconstruct);
     assert!(
         meia > DISPLAY_STEP,
         "metade dos texels ({meia}) tem de se ver"

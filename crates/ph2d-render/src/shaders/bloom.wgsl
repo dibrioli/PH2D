@@ -139,6 +139,14 @@ fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
     return vec4<f32>(o, 1.0);
 }
 
+// O endereco da LUT: a amostra `k` foi assada em `t = k/(n-1)`, e o sampler linear le' o
+// centro do texel `k` em `(k+0.5)/n` -- `u = t` cairia meia celula ao lado (gate
+// `the_halo_lut_is_read_at_the_baked_positions`).
+fn lut_u(t: f32) -> f32 {
+    let n = f32(textureDimensions(halo_lut).x);
+    return (clamp(t, 0.0, 1.0) * (n - 1.0) + 0.5) / n;
+}
+
 // The accumulated glow (mip0), coloured then scaled: desaturate toward luminance
 // by `saturation` (0 = a white bloom), multiply by the tint (default white =
 // no-op), then by intensity. The pipeline blends this ADDITIVELY over the scene
@@ -164,7 +172,7 @@ fn fs_composite(in: VsOut) -> @location(0) vec4<f32> {
     glow = mix(vec3<f32>(lum), glow, saturation);
     var colour = tint.rgb;
     if (P.v.z >= 0.5) {
-        colour = textureSample(halo_lut, samp, vec2<f32>(clamp(lum, 0.0, 1.0), 0.5)).rgb;
+        colour = textureSample(halo_lut, samp, vec2<f32>(lut_u(lum), 0.5)).rgb;
     }
     // A SUJIDADE SOMA-SE A' TINTA, que e' a forma da referencia (`bloom * (tint + dirt)`
     // no UberPost do Unity): a mascara nao pinta nada sozinha, ela acende ONDE o halo ja'

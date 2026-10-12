@@ -36,9 +36,7 @@ pub(crate) fn ramp_text(graph: &Graph, no: NodeId) -> Option<&str> {
 
 fn assa(texto: &str) -> Option<Arc<[[f32; 4]]>> {
     let ramp = ph2d_color::parse_gradient(texto)?;
-    #[expect(clippy::cast_precision_loss, reason = "RAMP_LUT_TEXELS = 4096")]
-    let at = |i: usize| ramp.eval(i as f32 / (FxOp::RAMP_LUT_TEXELS - 1) as f32);
-    Some((0..FxOp::RAMP_LUT_TEXELS).map(at).collect())
+    Some(ph2d_color::ramp_lut::bake(&ramp, FxOp::RAMP_LUT_TEXELS).into())
 }
 
 /// **Os degradês ASSADOS entre quadros, por texto** — assar são [`FxOp::RAMP_LUT_TEXELS`]

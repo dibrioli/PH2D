@@ -80,7 +80,7 @@ use tex::MAX_MIPS;
 /// ⚠️ **Dito aqui e não importado**: o renderer não depende de nó nenhum (é a fronteira que
 /// mantém o `ph2d-render` utilizável fora do Motion). O preço do espelho é poder divergir, e é
 /// por isso que ele tem gate na shell — o único sítio que vê os dois lados.
-pub const HALO_LUT_TEXELS: usize = 512;
+pub const HALO_LUT_TEXELS: usize = 4096;
 
 /// O tamanho do bloco de uniformes de UM passe — os três `vec4<f32>` do `Params` do WGSL.
 ///

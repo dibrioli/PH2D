@@ -218,7 +218,13 @@ fn the_player_s_fullscreen_corner_never_changes_the_frame_shape() {
     }
     if let (Some(f), Some(dir)) = (last, std::env::var_os("PH2D_W19_FRAME")) {
         let mut ppm = format!("P6 {} {} 255\n", f.size[0], f.size[1]).into_bytes();
-        ppm.extend(f.rgba.chunks_exact(4).flat_map(|c| [c[0], c[1], c[2]]));
+        ppm.extend(
+            f.rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|c| [c[0], c[1], c[2]]),
+        );
         let _ = std::fs::write(std::path::Path::new(&dir).join("fullscreen.ppm"), ppm);
     }
     println!("tamanhos dos quadros depois do clique: {sizes:?}");
@@ -231,9 +237,10 @@ fn the_player_s_fullscreen_corner_never_changes_the_frame_shape() {
 
 /// A luz média de um quadro (0 = preto).
 fn luma(f: &Frame) -> f64 {
-    let px = f.rgba.chunks_exact(4);
+    let px = f.rgba.as_chunks::<4>().0;
     let n = px.len().max(1) as f64;
-    px.map(|c| 0.299 * f64::from(c[0]) + 0.587 * f64::from(c[1]) + 0.114 * f64::from(c[2]))
+    px.iter()
+        .map(|c| 0.299 * f64::from(c[0]) + 0.587 * f64::from(c[1]) + 0.114 * f64::from(c[2]))
         .sum::<f64>()
         / n
 }

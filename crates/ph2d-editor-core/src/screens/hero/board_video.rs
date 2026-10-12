@@ -179,8 +179,8 @@ pub(crate) fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
 }
 
 /// O salto das setas e de `j`/`l`, e o passo do volume (os atalhos do tocador do YouTube).
-const ARROW_SEEK: f64 = 5.0;
-const JL_SEEK: f64 = 10.0;
+const ARROW_SEEK: f64 = 5.0; // LITERAL-PX-OK: segundos do atalho do YouTube, não px
+const JL_SEEK: f64 = 10.0; // LITERAL-PX-OK: segundos do atalho do YouTube, não px
 const VOLUME_STEP: i16 = 5;
 
 /// ⭐ W19 — com um vídeo ACTIVO e vivo, as teclas são dos NOSSOS controles, nos atalhos do YouTube:
@@ -207,7 +207,8 @@ pub(crate) fn key(hero: &mut HeroScreen, k: BoardKey, mods: Modifiers, pressed: 
     let Some(s) = vids.status.filter(|_| live_now) else {
         return full;
     };
-    let seek = |d: f64| VideoCommand::Seek((s.time + d).clamp(0.0, s.duration.max(0.0)));
+    let seek =
+        |d: f64| VideoCommand::Seek(crate::math::safe_clamp_f64(s.time + d, 0.0, s.duration));
     let volume = |d: i16| VideoCommand::Volume((i16::from(s.volume) + d).clamp(0, 100) as u8);
     let cmd = match k {
         BoardKey::Space | BoardKey::Char('k') => Some(VideoCommand::TogglePlay),

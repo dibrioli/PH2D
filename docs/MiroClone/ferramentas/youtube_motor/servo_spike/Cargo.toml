@@ -12,4 +12,9 @@ dpi = "0.1"
 image = { version = "0.25", default-features = false, features = ["png"] }
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
 
+# O `image` não se nomeia no código: liga a função `png` do MESMO `image` que o Servo devolve no `read_to_image`
+# (o `img.save(… .png)` da sonda). O `cargo machete` só vê nomes, não a unificação de funções.
+[package.metadata.cargo-machete]
+ignored = ["image"]
+
 [workspace]

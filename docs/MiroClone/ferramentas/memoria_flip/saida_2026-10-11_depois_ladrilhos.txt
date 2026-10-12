@@ -1,0 +1,282 @@
+# memória do «Send to board…» de um Flip — 2026-10-11 23:52:55 -0300
+# commit 693772d3d7 (line/MiroClone) · perfil smoke (optimizado, sem LTO)
+# GPU: NVIDIA GeForce RTX 5060 Ti, 615.71.09, 7160 MiB, 16311 MiB
+# CPU: 16 núcleos · loadavg no início: 5.94 15.01 25.08 3/1786 381429
+# cena: N camadas, cada uma a cobrir 10×10 unidades (10 traços de raio 0,5); ecrã simulado 2560×1440
+# ⚠️ tempos sob carga valem pouco (loadavg ao lado de cada variante); a memória é o que importa
+
+## camadas=1 lado=2048 · loadavg 5.94 15.01 25.08
+test pass::raster::tests::mede_memoria_do_quadro_actual_do_flip ... VARIANTE camadas=1 lado=2048 ecra=2560x1440 adapter=NVIDIA GeForce RTX 5060 Ti Vulkan motor_novo=true max_tex=8192
+BASE ecra_em_regime: alocador=120.5 MiB rss=259.4 MiB quadro_pan_min=0.64 ms
+  base       30.0 MiB  x1   ph2d-flip compose hdr scratch
+  base       30.0 MiB  x1   ph2d-flip walk fills floor
+  base       15.0 MiB  x1   ph2d-flip depth
+  base       15.0 MiB  x1   ph2d-render layer_composite array
+  base       15.0 MiB  x1   ph2d-flip compose straight slice
+  base       15.0 MiB  x1   ph2d-render layer_composite out
+CF#0 resultado=Ok([2048, 2048]) t=25.8 ms rss_antes=259.4 pico_rss=422.6 (+163.2) MiB alocador_depois=120.5 MiB (+0.0 sobre a base)
+  depois_cf      30.0 MiB  x1   ph2d-flip compose hdr scratch
+  depois_cf      30.0 MiB  x1   ph2d-flip walk fills floor
+  depois_cf      15.0 MiB  x1   ph2d-flip depth
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite array
+  depois_cf      15.0 MiB  x1   ph2d-flip compose straight slice
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite out
+ECRA#0 memo=0.21 ms (alocador 120.5 MiB) | pan_realoca=0.71 ms (alocador 120.5 MiB) | pan_seguinte=0.66 ms
+CF#1 resultado=Ok([2048, 2048]) t=16.4 ms rss_antes=387.5 pico_rss=428.8 (+41.3) MiB alocador_depois=120.5 MiB (+0.0 sobre a base)
+ECRA#1 memo=0.18 ms (alocador 120.5 MiB) | pan_realoca=0.68 ms (alocador 120.5 MiB) | pan_seguinte=0.64 ms
+CF#2 resultado=Ok([2048, 2048]) t=16.2 ms rss_antes=387.5 pico_rss=428.8 (+41.3) MiB alocador_depois=120.5 MiB (+0.0 sobre a base)
+ECRA#2 memo=0.20 ms (alocador 120.5 MiB) | pan_realoca=0.70 ms (alocador 120.5 MiB) | pan_seguinte=0.65 ms
+PICO_DECOMPOSTO 2048x2048 compose_ok=true alocador_no_pico=158.5 MiB (+38.0 sobre a base) + buffer_de_leitura=16.0 MiB ⇒ 54.0 MiB
+  pico       32.0 MiB  x1   ph2d-flip compose hdr scratch
+  pico       32.0 MiB  x1   ph2d-flip walk fills floor
+  pico       31.0 MiB  x2   ph2d-render layer_composite array
+  pico       31.0 MiB  x2   ph2d-render layer_composite out
+  pico       16.0 MiB  x1   ph2d-flip depth
+  pico       16.0 MiB  x1   ph2d-flip compose straight slice
+  cpu   dummy=16.0 MiB  imagem=16.0 MiB (w·h·4 cada)
+  leitura read_rgba8: t=3.2 ms pico_rss=+16.0 MiB (com a imagem viva +16.0, depois de a largar +16.0)
+NVSMI amostras=40 PID: base=207 pico=463 (+256) MiB · PLACA: base=7393 pico=7649 (+256) MiB
+  janela current_frame#0  26 ms  amostras=2 pico PID=463 placa=7649 MiB
+  janela ecra_memo#0      0 ms  amostras=1 pico PID=463 placa=7649 MiB
+  janela ecra_realoca#0   1 ms  amostras=1 pico PID=463 placa=7649 MiB
+  janela current_frame#1  16 ms  amostras=2 pico PID=463 placa=7649 MiB
+  janela ecra_memo#1      0 ms  amostras=2 pico PID=463 placa=7649 MiB
+  janela ecra_realoca#1   1 ms  amostras=2 pico PID=463 placa=7649 MiB
+  janela current_frame#2  16 ms  amostras=2 pico PID=463 placa=7649 MiB
+  janela ecra_memo#2      0 ms  amostras=2 pico PID=463 placa=7649 MiB
+  janela ecra_realoca#2   1 ms  amostras=2 pico PID=463 placa=7649 MiB
+RESUMO camadas=1 lado=2048 cf_min=16.2 ms ecra_memo_min=0.18 ms ecra_realoca_min=0.68 ms ecra_pan_regime_min=0.64 ms (antes 0.64) nvsmi_placa_fim=7641 MiB
+ok
+exit=0
+
+## camadas=4 lado=2048 · loadavg 5.86 14.84 24.98
+test pass::raster::tests::mede_memoria_do_quadro_actual_do_flip ... VARIANTE camadas=4 lado=2048 ecra=2560x1440 adapter=NVIDIA GeForce RTX 5060 Ti Vulkan motor_novo=true max_tex=8192
+BASE ecra_em_regime: alocador=165.5 MiB rss=261.0 MiB quadro_pan_min=2.02 ms
+  base       60.0 MiB  x1   ph2d-render layer_composite array
+  base       30.0 MiB  x1   ph2d-flip compose hdr scratch
+  base       30.0 MiB  x1   ph2d-flip walk fills floor
+  base       15.0 MiB  x1   ph2d-flip depth
+  base       15.0 MiB  x1   ph2d-render layer_composite out
+  base       15.0 MiB  x1   ph2d-flip compose straight slice
+CF#0 resultado=Ok([2048, 2048]) t=24.9 ms rss_antes=261.0 pico_rss=432.1 (+171.0) MiB alocador_depois=165.5 MiB (+0.0 sobre a base)
+  depois_cf      60.0 MiB  x1   ph2d-render layer_composite array
+  depois_cf      30.0 MiB  x1   ph2d-flip compose hdr scratch
+  depois_cf      30.0 MiB  x1   ph2d-flip walk fills floor
+  depois_cf      15.0 MiB  x1   ph2d-flip depth
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite out
+  depois_cf      15.0 MiB  x1   ph2d-flip compose straight slice
+ECRA#0 memo=0.33 ms (alocador 165.5 MiB) | pan_realoca=2.10 ms (alocador 165.5 MiB) | pan_seguinte=2.03 ms
+CF#1 resultado=Ok([2048, 2048]) t=18.9 ms rss_antes=401.9 pico_rss=438.4 (+36.6) MiB alocador_depois=165.5 MiB (+0.0 sobre a base)
+ECRA#1 memo=0.31 ms (alocador 165.5 MiB) | pan_realoca=2.09 ms (alocador 165.5 MiB) | pan_seguinte=2.03 ms
+CF#2 resultado=Ok([2048, 2048]) t=19.2 ms rss_antes=397.3 pico_rss=438.4 (+41.2) MiB alocador_depois=165.5 MiB (+0.0 sobre a base)
+ECRA#2 memo=0.32 ms (alocador 165.5 MiB) | pan_realoca=2.07 ms (alocador 165.5 MiB) | pan_seguinte=2.02 ms
+PICO_DECOMPOSTO 2048x2048 compose_ok=true alocador_no_pico=251.5 MiB (+86.0 sobre a base) + buffer_de_leitura=16.0 MiB ⇒ 102.0 MiB
+  pico      124.0 MiB  x2   ph2d-render layer_composite array
+  pico       32.0 MiB  x1   ph2d-flip compose hdr scratch
+  pico       32.0 MiB  x1   ph2d-flip walk fills floor
+  pico       31.0 MiB  x2   ph2d-render layer_composite out
+  pico       16.0 MiB  x1   ph2d-flip compose straight slice
+  pico       16.0 MiB  x1   ph2d-flip depth
+  cpu   dummy=16.0 MiB  imagem=16.0 MiB (w·h·4 cada)
+  leitura read_rgba8: t=2.9 ms pico_rss=+16.0 MiB (com a imagem viva +16.0, depois de a largar +16.0)
+NVSMI amostras=39 PID: base=463 pico=463 (+0) MiB · PLACA: base=7642 pico=7642 (+0) MiB
+  janela current_frame#0  25 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela ecra_memo#0      0 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela ecra_realoca#0   2 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela current_frame#1  19 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela ecra_memo#1      0 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela ecra_realoca#1   2 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela current_frame#2  19 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela ecra_memo#2      0 ms  amostras=2 pico PID=463 placa=7642 MiB
+  janela ecra_realoca#2   2 ms  amostras=2 pico PID=463 placa=7642 MiB
+RESUMO camadas=4 lado=2048 cf_min=18.9 ms ecra_memo_min=0.31 ms ecra_realoca_min=2.07 ms ecra_pan_regime_min=2.02 ms (antes 2.02) nvsmi_placa_fim=7642 MiB
+ok
+exit=0
+
+## camadas=8 lado=2048 · loadavg 5.86 14.84 24.98
+test pass::raster::tests::mede_memoria_do_quadro_actual_do_flip ... VARIANTE camadas=8 lado=2048 ecra=2560x1440 adapter=NVIDIA GeForce RTX 5060 Ti Vulkan motor_novo=true max_tex=8192
+BASE ecra_em_regime: alocador=225.5 MiB rss=265.4 MiB quadro_pan_min=3.94 ms
+  base      120.0 MiB  x1   ph2d-render layer_composite array
+  base       30.0 MiB  x1   ph2d-flip compose hdr scratch
+  base       30.0 MiB  x1   ph2d-flip walk fills floor
+  base       15.0 MiB  x1   ph2d-flip depth
+  base       15.0 MiB  x1   ph2d-render layer_composite out
+  base       15.0 MiB  x1   ph2d-flip compose straight slice
+CF#0 resultado=Ok([2048, 2048]) t=25.8 ms rss_antes=265.4 pico_rss=428.6 (+163.3) MiB alocador_depois=225.5 MiB (+0.0 sobre a base)
+  depois_cf     120.0 MiB  x1   ph2d-render layer_composite array
+  depois_cf      30.0 MiB  x1   ph2d-flip compose hdr scratch
+  depois_cf      30.0 MiB  x1   ph2d-flip walk fills floor
+  depois_cf      15.0 MiB  x1   ph2d-flip depth
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite out
+  depois_cf      15.0 MiB  x1   ph2d-flip compose straight slice
+ECRA#0 memo=0.50 ms (alocador 225.5 MiB) | pan_realoca=3.98 ms (alocador 225.5 MiB) | pan_seguinte=3.96 ms
+CF#1 resultado=Ok([2048, 2048]) t=23.2 ms rss_antes=398.2 pico_rss=434.8 (+36.6) MiB alocador_depois=225.5 MiB (+0.0 sobre a base)
+ECRA#1 memo=0.49 ms (alocador 225.5 MiB) | pan_realoca=3.99 ms (alocador 225.5 MiB) | pan_seguinte=3.94 ms
+CF#2 resultado=Ok([2048, 2048]) t=23.3 ms rss_antes=393.6 pico_rss=434.5 (+40.9) MiB alocador_depois=225.5 MiB (+0.0 sobre a base)
+ECRA#2 memo=0.49 ms (alocador 225.5 MiB) | pan_realoca=3.97 ms (alocador 225.5 MiB) | pan_seguinte=3.94 ms
+PICO_DECOMPOSTO 2048x2048 compose_ok=true alocador_no_pico=375.5 MiB (+150.0 sobre a base) + buffer_de_leitura=16.0 MiB ⇒ 166.0 MiB
+  pico      248.0 MiB  x2   ph2d-render layer_composite array
+  pico       32.0 MiB  x1   ph2d-flip compose hdr scratch
+  pico       32.0 MiB  x1   ph2d-flip walk fills floor
+  pico       31.0 MiB  x2   ph2d-render layer_composite out
+  pico       16.0 MiB  x1   ph2d-flip compose straight slice
+  pico       16.0 MiB  x1   ph2d-flip depth
+  cpu   dummy=16.0 MiB  imagem=16.0 MiB (w·h·4 cada)
+  leitura read_rgba8: t=3.0 ms pico_rss=+16.0 MiB (com a imagem viva +16.0, depois de a largar +16.0)
+NVSMI amostras=42 PID: base=463 pico=721 (+258) MiB · PLACA: base=7650 pico=7901 (+251) MiB
+  janela current_frame#0  26 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_memo#0      1 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#0   4 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela current_frame#1  23 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_memo#1      0 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#1   4 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela current_frame#2  23 ms  amostras=2 pico PID=721 placa=7901 MiB
+  janela ecra_memo#2      1 ms  amostras=2 pico PID=721 placa=7901 MiB
+  janela ecra_realoca#2   4 ms  amostras=2 pico PID=721 placa=7901 MiB
+RESUMO camadas=8 lado=2048 cf_min=23.2 ms ecra_memo_min=0.49 ms ecra_realoca_min=3.97 ms ecra_pan_regime_min=3.94 ms (antes 3.94) nvsmi_placa_fim=7901 MiB
+ok
+exit=0
+
+## camadas=1 lado=8192 · loadavg 5.55 14.63 24.85
+test pass::raster::tests::mede_memoria_do_quadro_actual_do_flip ... VARIANTE camadas=1 lado=8192 ecra=2560x1440 adapter=NVIDIA GeForce RTX 5060 Ti Vulkan motor_novo=true max_tex=8192
+BASE ecra_em_regime: alocador=120.5 MiB rss=259.6 MiB quadro_pan_min=0.64 ms
+  base       30.0 MiB  x1   ph2d-flip compose hdr scratch
+  base       30.0 MiB  x1   ph2d-flip walk fills floor
+  base       15.0 MiB  x1   ph2d-flip depth
+  base       15.0 MiB  x1   ph2d-render layer_composite array
+  base       15.0 MiB  x1   ph2d-flip compose straight slice
+  base       15.0 MiB  x1   ph2d-render layer_composite out
+CF#0 resultado=Ok([8192, 8192]) t=99.2 ms rss_antes=259.6 pico_rss=669.6 (+410.1) MiB alocador_depois=120.5 MiB (+0.0 sobre a base)
+  depois_cf      30.0 MiB  x1   ph2d-flip compose hdr scratch
+  depois_cf      30.0 MiB  x1   ph2d-flip walk fills floor
+  depois_cf      15.0 MiB  x1   ph2d-flip depth
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite array
+  depois_cf      15.0 MiB  x1   ph2d-flip compose straight slice
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite out
+ECRA#0 memo=0.21 ms (alocador 120.5 MiB) | pan_realoca=0.71 ms (alocador 120.5 MiB) | pan_seguinte=0.67 ms
+CF#1 resultado=Ok([8192, 8192]) t=84.6 ms rss_antes=401.7 pico_rss=669.8 (+268.1) MiB alocador_depois=120.5 MiB (+0.0 sobre a base)
+ECRA#1 memo=0.19 ms (alocador 120.5 MiB) | pan_realoca=0.68 ms (alocador 120.5 MiB) | pan_seguinte=0.64 ms
+CF#2 resultado=Ok([8192, 8192]) t=85.9 ms rss_antes=387.8 pico_rss=669.9 (+282.1) MiB alocador_depois=120.5 MiB (+0.0 sobre a base)
+ECRA#2 memo=0.19 ms (alocador 120.5 MiB) | pan_realoca=0.69 ms (alocador 120.5 MiB) | pan_seguinte=0.65 ms
+PICO_DECOMPOSTO 8192x8192 compose_ok=true alocador_no_pico=2078.5 MiB (+1958.0 sobre a base) + buffer_de_leitura=256.0 MiB ⇒ 2214.0 MiB
+  pico      512.0 MiB  x1   ph2d-flip compose hdr scratch
+  pico      512.0 MiB  x1   ph2d-flip walk fills floor
+  pico      271.0 MiB  x2   ph2d-render layer_composite array
+  pico      271.0 MiB  x2   ph2d-render layer_composite out
+  pico      256.0 MiB  x1   ph2d-flip compose straight slice
+  pico      256.0 MiB  x1   ph2d-flip depth
+  cpu   dummy=256.0 MiB  imagem=256.0 MiB (w·h·4 cada)
+  leitura read_rgba8: t=72.3 ms pico_rss=+766.0 MiB (com a imagem viva +256.0, depois de a largar +0.0)
+NVSMI amostras=46 PID: base=207 pico=2511 (+2304) MiB · PLACA: base=7394 pico=9691 (+2297) MiB
+  janela current_frame#0  99 ms  amostras=3 pico PID=463 placa=7650 MiB
+  janela ecra_memo#0      0 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#0   1 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela current_frame#1  85 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_memo#1      0 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#1   1 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela current_frame#2  86 ms  amostras=3 pico PID=463 placa=7650 MiB
+  janela ecra_memo#2      0 ms  amostras=1 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#2   1 ms  amostras=1 pico PID=463 placa=7650 MiB
+RESUMO camadas=1 lado=8192 cf_min=84.6 ms ecra_memo_min=0.19 ms ecra_realoca_min=0.68 ms ecra_pan_regime_min=0.64 ms (antes 0.64) nvsmi_placa_fim=9178 MiB
+ok
+exit=0
+
+## camadas=4 lado=8192 · loadavg 5.19 14.40 24.72
+test pass::raster::tests::mede_memoria_do_quadro_actual_do_flip ... VARIANTE camadas=4 lado=8192 ecra=2560x1440 adapter=NVIDIA GeForce RTX 5060 Ti Vulkan motor_novo=true max_tex=8192
+BASE ecra_em_regime: alocador=165.5 MiB rss=261.2 MiB quadro_pan_min=2.04 ms
+  base       60.0 MiB  x1   ph2d-render layer_composite array
+  base       30.0 MiB  x1   ph2d-flip compose hdr scratch
+  base       30.0 MiB  x1   ph2d-flip walk fills floor
+  base       15.0 MiB  x1   ph2d-flip depth
+  base       15.0 MiB  x1   ph2d-render layer_composite out
+  base       15.0 MiB  x1   ph2d-flip compose straight slice
+CF#0 resultado=Ok([8192, 8192]) t=135.3 ms rss_antes=261.2 pico_rss=679.3 (+418.2) MiB alocador_depois=165.5 MiB (+0.0 sobre a base)
+  depois_cf      60.0 MiB  x1   ph2d-render layer_composite array
+  depois_cf      30.0 MiB  x1   ph2d-flip compose hdr scratch
+  depois_cf      30.0 MiB  x1   ph2d-flip walk fills floor
+  depois_cf      15.0 MiB  x1   ph2d-flip depth
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite out
+  depois_cf      15.0 MiB  x1   ph2d-flip compose straight slice
+ECRA#0 memo=0.33 ms (alocador 165.5 MiB) | pan_realoca=2.12 ms (alocador 165.5 MiB) | pan_seguinte=2.05 ms
+CF#1 resultado=Ok([8192, 8192]) t=128.6 ms rss_antes=411.1 pico_rss=679.5 (+268.3) MiB alocador_depois=165.5 MiB (+0.0 sobre a base)
+ECRA#1 memo=0.32 ms (alocador 165.5 MiB) | pan_realoca=2.10 ms (alocador 165.5 MiB) | pan_seguinte=2.04 ms
+CF#2 resultado=Ok([8192, 8192]) t=130.0 ms rss_antes=397.2 pico_rss=679.5 (+282.3) MiB alocador_depois=165.5 MiB (+0.0 sobre a base)
+ECRA#2 memo=0.30 ms (alocador 165.5 MiB) | pan_realoca=2.07 ms (alocador 165.5 MiB) | pan_seguinte=2.04 ms
+PICO_DECOMPOSTO 8192x8192 compose_ok=true alocador_no_pico=2891.5 MiB (+2726.0 sobre a base) + buffer_de_leitura=256.0 MiB ⇒ 2982.0 MiB
+  pico     1084.0 MiB  x2   ph2d-render layer_composite array
+  pico      512.0 MiB  x1   ph2d-flip compose hdr scratch
+  pico      512.0 MiB  x1   ph2d-flip walk fills floor
+  pico      271.0 MiB  x2   ph2d-render layer_composite out
+  pico      256.0 MiB  x1   ph2d-flip compose straight slice
+  pico      256.0 MiB  x1   ph2d-flip depth
+  cpu   dummy=256.0 MiB  imagem=256.0 MiB (w·h·4 cada)
+  leitura read_rgba8: t=71.8 ms pico_rss=+766.0 MiB (com a imagem viva +256.0, depois de a largar +0.0)
+NVSMI amostras=49 PID: base=463 pico=3279 (+2816) MiB · PLACA: base=7650 pico=10460 (+2810) MiB
+  janela current_frame#0  135 ms  amostras=4 pico PID=463 placa=7650 MiB
+  janela ecra_memo#0      0 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#0   2 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela current_frame#1  129 ms  amostras=4 pico PID=463 placa=7650 MiB
+  janela ecra_memo#1      0 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela ecra_realoca#1   2 ms  amostras=2 pico PID=463 placa=7650 MiB
+  janela current_frame#2  130 ms  amostras=3 pico PID=463 placa=7650 MiB
+  janela ecra_memo#2      0 ms  amostras=2 pico PID=3279 placa=10460 MiB
+  janela ecra_realoca#2   2 ms  amostras=2 pico PID=3279 placa=10460 MiB
+RESUMO camadas=4 lado=8192 cf_min=128.6 ms ecra_memo_min=0.30 ms ecra_realoca_min=2.07 ms ecra_pan_regime_min=2.04 ms (antes 2.04) nvsmi_placa_fim=9178 MiB
+ok
+exit=0
+
+## camadas=8 lado=8192 · loadavg 5.19 14.40 24.72
+test pass::raster::tests::mede_memoria_do_quadro_actual_do_flip ... VARIANTE camadas=8 lado=8192 ecra=2560x1440 adapter=NVIDIA GeForce RTX 5060 Ti Vulkan motor_novo=true max_tex=8192
+BASE ecra_em_regime: alocador=225.5 MiB rss=265.7 MiB quadro_pan_min=3.94 ms
+  base      120.0 MiB  x1   ph2d-render layer_composite array
+  base       30.0 MiB  x1   ph2d-flip compose hdr scratch
+  base       30.0 MiB  x1   ph2d-flip walk fills floor
+  base       15.0 MiB  x1   ph2d-flip depth
+  base       15.0 MiB  x1   ph2d-render layer_composite out
+  base       15.0 MiB  x1   ph2d-flip compose straight slice
+CF#0 resultado=Ok([8192, 8192]) t=200.4 ms rss_antes=265.7 pico_rss=676.1 (+410.5) MiB alocador_depois=225.5 MiB (+0.0 sobre a base)
+  depois_cf     120.0 MiB  x1   ph2d-render layer_composite array
+  depois_cf      30.0 MiB  x1   ph2d-flip compose hdr scratch
+  depois_cf      30.0 MiB  x1   ph2d-flip walk fills floor
+  depois_cf      15.0 MiB  x1   ph2d-flip depth
+  depois_cf      15.0 MiB  x1   ph2d-render layer_composite out
+  depois_cf      15.0 MiB  x1   ph2d-flip compose straight slice
+ECRA#0 memo=0.50 ms (alocador 225.5 MiB) | pan_realoca=4.01 ms (alocador 225.5 MiB) | pan_seguinte=3.97 ms
+CF#1 resultado=Ok([8192, 8192]) t=190.1 ms rss_antes=407.4 pico_rss=676.2 (+268.8) MiB alocador_depois=225.5 MiB (+0.0 sobre a base)
+ECRA#1 memo=0.48 ms (alocador 225.5 MiB) | pan_realoca=4.01 ms (alocador 225.5 MiB) | pan_seguinte=3.98 ms
+CF#2 resultado=Ok([8192, 8192]) t=192.3 ms rss_antes=393.5 pico_rss=676.1 (+282.6) MiB alocador_depois=225.5 MiB (+0.0 sobre a base)
+ECRA#2 memo=0.49 ms (alocador 225.5 MiB) | pan_realoca=4.02 ms (alocador 225.5 MiB) | pan_seguinte=3.96 ms
+[ph2d-flip] inject falhou: layer compositor: 8 live layers exceed cache cap 4
+PICO_DECOMPOSTO 8192x8192 compose_ok=false alocador_no_pico=1671.5 MiB (+1446.0 sobre a base) + buffer_de_leitura=256.0 MiB ⇒ 1702.0 MiB
+  pico      512.0 MiB  x1   ph2d-flip compose hdr scratch
+  pico      512.0 MiB  x1   ph2d-flip walk fills floor
+  pico      256.0 MiB  x1   ph2d-flip compose straight slice
+  pico      256.0 MiB  x1   ph2d-flip depth
+  pico      120.0 MiB  x1   ph2d-render layer_composite array
+  pico       15.0 MiB  x1   ph2d-render layer_composite out
+  cpu   dummy=256.0 MiB  imagem=256.0 MiB (w·h·4 cada)
+NVSMI amostras=46 PID: base=463 pico=2001 (+1538) MiB · PLACA: base=7602 pico=9182 (+1580) MiB
+  janela current_frame#0  200 ms  amostras=3 pico PID=463 placa=7643 MiB
+  janela ecra_memo#0      1 ms  amostras=2 pico PID=463 placa=7643 MiB
+  janela ecra_realoca#0   4 ms  amostras=2 pico PID=463 placa=7643 MiB
+  janela current_frame#1  190 ms  amostras=4 pico PID=463 placa=7643 MiB
+  janela ecra_memo#1      0 ms  amostras=2 pico PID=463 placa=7643 MiB
+  janela ecra_realoca#1   4 ms  amostras=2 pico PID=463 placa=7643 MiB
+  janela current_frame#2  192 ms  amostras=5 pico PID=463 placa=7643 MiB
+  janela ecra_memo#2      0 ms  amostras=2 pico PID=463 placa=7643 MiB
+  janela ecra_realoca#2   4 ms  amostras=2 pico PID=463 placa=7643 MiB
+RESUMO camadas=8 lado=8192 cf_min=190.1 ms ecra_memo_min=0.48 ms ecra_realoca_min=4.01 ms ecra_pan_regime_min=3.96 ms (antes 3.94) nvsmi_placa_fim=9182 MiB
+ok
+exit=0
+
+## PNG lado=2048 · loadavg 5.09 14.23 24.61
+test images::tests::mede_png_do_quadro_do_flip ... PNG lado=2048 conteudo=faixas rgba=16.0 MiB png=0.1 MiB encode_min=2.0 ms ingest_min=0.0 ms pico_rss_acima_do_antes=1.3 MiB
+PNG lado=2048 conteudo=ruido rgba=16.0 MiB png=16.0 MiB encode_min=83.5 ms ingest_min=1.1 ms pico_rss_acima_do_antes=47.9 MiB
+ok
+
+## PNG lado=8192 · loadavg 5.09 14.23 24.61
+test images::tests::mede_png_do_quadro_do_flip ... PNG lado=8192 conteudo=faixas rgba=256.0 MiB png=1.3 MiB encode_min=37.3 ms ingest_min=0.2 ms pico_rss_acima_do_antes=4.9 MiB
+PNG lado=8192 conteudo=ruido rgba=256.0 MiB png=256.0 MiB encode_min=1402.8 ms ingest_min=79.5 ms pico_rss_acima_do_antes=769.4 MiB
+ok
+
+# loadavg no fim: 4.93 14.04 24.50 3/1769 382968

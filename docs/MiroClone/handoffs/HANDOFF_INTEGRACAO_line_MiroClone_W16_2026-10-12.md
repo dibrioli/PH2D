@@ -21,12 +21,8 @@
 Os 6 abertos herdados da W14/W15 num bloco só (§0.10):
 
 1. **Recorte pelo gesto + espelho pela barra.** Oráculo corrido: `ferramentas/excalidraw_oracle/sonda_imagem_w16.mjs`,
-   32 sondas, 0 erros, duas corridas idênticas byte a byte (`saidas/w16/w16_sondas.json`). Lei medida: entra por
-   duplo-clique / Enter / «Crop image»; 4 pegas de canto (±6 px) + 4 de meio (±2 px, sem desenho); a pega move o LADO da
-   janela e a imagem fica parada; proporção livre, Shift = natural; o recorte guarda-se em px naturais NÃO espelhados;
-   pára nas bordas; mínimo 10×10 do mundo; cobrir tudo = `null`; sai por Enter / Escape / clique fora (fica); um passo de
-   desfazer por arrasto; fora da janela a imagem esbate a α = 27/255. Espelho: `scale` [-1,1]/[1,-1], x/y/w/h ficam,
-   ângulo 2π−θ (no Excalidraw só no menu de contexto). Código: `ph2d-board-edit/src/crop.rs`
+   32 sondas, 0 erros, duas corridas idênticas byte a byte (`saidas/w16/w16_sondas.json`). A lei medida (pegas, proporção, limites, mínimo, saída, desfazer, esbatido α 27/255, espelho)
+   está na tabela do `README.md` do oráculo, §W16. Código: `ph2d-board-edit/src/crop.rs`
    (`Editor::{begin_crop, end_crop, cropping, can_crop, know_files}`; o ponteiro passa por ele antes de tudo),
    `ph2d-board-geom::image_to_box` (a lei píxel natural → caixa num sítio só; `level_to_box` usa-a), `Overlay::crop`
    (pegas em «L», `StrokeToken::Heavy`), `RenderCache::cropping`, `Editor::flip_images` (à volta do centro da selecção,
@@ -57,13 +53,10 @@ Os 6 abertos herdados da W14/W15 num bloco só (§0.10):
    dos navegadores); o ritmo conta-se do fim do anterior (`t + d`); o export não toca (SVG leva os bytes do GIF; PNG/PDF
    o 1.º quadro). `app-board images::frames` (`image` `GifDecoder::into_frames`; `image` com a feature `gif`) e o 1.º
    quadro do decode sem juntar os outros.
-   **Colar do Dolphin, MEDIDO** (`ferramentas/colar_dolphin/corre.sh`, KWin virtual, `saida_2026-10-11.txt`): o Dolphin
-   oferece SÓ `text/uri-list` (+ `x-kde4-urilist`, portal, source-id), CRLF; o `arboard` sem `wayland-data-control` lia
-   pelo X11, que o KWin só serve a uma janela X11 activa — o colar não via o que outro app copiava (nem texto); com a
-   feature, `file_list()` devolve os caminhos com o `\r` do CRLF (o `arboard 3.6.1` parte só no `\n`). A sessão real do
-   dono expõe `ext_data_control_manager_v1` (`wayland-info`). ⇒ `arboard` com `wayland-data-control` (shell +
-   `ph2d-app-host`); o Ctrl+V num quadro lê ficheiros → imagem → texto (ficheiros antes do texto: a leitura de texto do
-   Wayland devolve a própria lista); `paste_files` tira o `\r`. A leitura passou a ter PRAZO: `ph2d-app-host/src/clipboard.rs`
+   **Colar do Dolphin, MEDIDO** (`ferramentas/colar_dolphin/corre.sh`, KWin virtual, `saida_2026-10-11.txt`): o Dolphin oferece SÓ
+   `text/uri-list` (CRLF); sem `wayland-data-control` o `arboard` lia pelo X11 e não via o que outro app copiava; com
+   ela o `file_list()` traz o `\r` no fim de cada caminho. A sessão real expõe `ext_data_control_manager_v1`. ⇒ `arboard` com `wayland-data-control` (shell +
+   `ph2d-app-host`); o Ctrl+V num quadro lê ficheiros → imagem → texto; `paste_files` tira o `\r`. A leitura passou a ter PRAZO: `ph2d-app-host/src/clipboard.rs`
    (novo) corre-a num fio com 4 s (o `LONG_TIMEOUT` do caminho X11 do `arboard`) e diz `clipboard.no_answer` na tela — o
    colar do quadro e o de texto do resto do app (`forwarding.rs`) passam por ela (o `read_to_end` do data-control não
    tem prazo: um app dono travado congelava o PH2D).
@@ -74,7 +67,7 @@ Os 6 abertos herdados da W14/W15 num bloco só (§0.10):
    `FlipCompose::scratch_size`, novo — quando as fatias cabem no orçamento; senão o maior quadrado cuja leitura inteira
    4·N + 32 B/px cabe). DEPOIS (`saida_2026-10-11_depois_ladrilhos.txt`): 8 × 8192² sai (190 ms; antes falhava),
    1 × 8192² 85 ms (antes 180), 4 × 8192² 129 ms (antes 241); o alocador fica +0 MiB sobre a base depois da leitura; o
-   ecrã não realoca. (A secção `PICO_DECOMPOSTO` da sonda é a composição de uma vez — o «antes» —, não o caminho novo.)
+   ecrã não realoca.
 6. **Cena de smoke 17 «Crop, flip & GIF»** (`ph2d-app-board/src/smoke_w16.rs`; roteador `max_level` 17): frame Crop
    (fotografia inteira + cópia recortada), frame Flip (original + H + V), frame GIF (bola de 8 quadros a 120 ms), 6
    lições. Gate `the_w16_scene_does_what_its_lessons_say` pelo RATO real (duplo-clique + arrastar o canto).
@@ -159,7 +152,11 @@ PERFIL DO LOOP DO AGENTE — 20 sessao(oes) mais recentes
 
 ### Binário do smoke compilado
 
-(a 2.ª compilação: colar aqui)
+`rm -rf target/*/incremental` (61 GB) e depois, a 2.ª de
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`:
+```
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```
 
 Passos:
 

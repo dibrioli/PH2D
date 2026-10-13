@@ -55,6 +55,17 @@
    confirmada; sangra para 1 com as fotos desligadas). Os 13 testes do tocador passam no navegador real: régua da
    W18 30,00 q/s, clique → quadro 9,5 ms.
 
+7. **Depois do smoke (13/10): «Mais vídeos» abria o vídeo no navegador e os dois tocavam sobrepostos.** O dono pediu
+   primeiro TIRAR o link, o «Mais vídeos» e o logotipo — recusado com o texto das regras do YouTube (ADR-0185 §W20.8).
+   Escolheu (pergunta com as duas opções) **«troca na mesma janela»**, e depois pediu **setas ‹ › e «voltar ao
+   original»**. Medido (`sonda_w20_mais_videos.mjs`): a sugestão abre `youtube.com/watch?v=<outro>&feature=endscreen`
+   numa aba nova e o de origem continua a tocar. Cura: `app::video::outside` (outro vídeo → a mesma janela; o mesmo →
+   navegador + pausa; o resto → navegador), `app::video::tune` (recarrega quando a mesma janela muda de vídeo),
+   `board_video::{navigate, step, reset, trail}` + `documents::VideoTrail` (a verdade é o documento; o `Ctrl+Z` anda
+   no mesmo trilho; sugerir depois de recuar corta o que estava à frente), `Ctl::{Back, Forward, Reset}` na barra (no
+   FIM dos ids; só com navegação; a seta sem destino pinta-se apagada). Cena 21: lição 7. Mutações: 6, 5 sangram, e
+   a 6.ª era equivalente (a guarda «≥ 2 no trilho» era código morto e saiu).
+
 ## 2. Foundational / partilhado tocado
 
 | onde | o quê | merge |
@@ -67,6 +78,8 @@
 | `ph2d-board-embed` | `live_allowed`: a LEI mudou (tamanho do tocador + algum pedaço à vista) | 2 leitores (render, a barra no ecrã inteiro), os dois do quadro |
 | `ph2d-board-excalidraw` `video.rs` | `foreign` deixa de zerar fundo/borda | só MiroClone |
 | `ph2d-board-video` `player.rs` | as fotos directas (`Shared::{shots, changed}`, `SHOTS_AFTER`) | só MiroClone |
+| `ph2d-editor-core` `documents.rs` (W20.7) | `VideoTrail`, `BoardLive::video_trails` | aditivo |
+| `ph2d-i18n` `board_images.rs` (W20.7) | `board.video.{back,forward,reset}`, `board.smoke.w20.l7` | aditivo |
 | `ph2d-i18n` `board_images.rs` | 8 chaves `board.smoke.w20.*`; 2 textos de lições corrigidos | aditivo |
 
 **Roteador de smoke**: `PH2D_BOARD_SMOKE` `max_level` 20 → **21** (a cena 21 conta-se no `match`; se outra linha também
@@ -102,6 +115,10 @@ tocador. TRAÇO: `player_in_box` (recuo = alcance da moldura) → a camada recor
 testes reais `#[ignore]` da W18/W19 já mandam os dois seguidos e o tocador responde; não re-corridos nesta onda,
 porque o `ph2d-board-video` não mudou).
 
+**Portão re-corrido (13/10, depois de W20.6 e W20.7, BASE=`757afebd58`, `loadavg` 19 → 76 → 58):** `nextest-impacted`
+17 311/17 311 ✓ · `CARGO_BUILD_WARNINGS=deny` check ✓ · clippy do `ship.sh` ✓ · fmt · typos ✓ · censos 117/117 ✓ ·
+machete · deny · audit ✓. Os 13 testes reais do tocador (`--include-ignored`) ✓ depois de W20.6.
+
 ## 4. Abertos (nomeados)
 
 - (a) **As pegas da selecção pintam-se nos cantos do vídeo seleccionado** (herdado da W18, ainda vivo): com o tocador
@@ -110,6 +127,9 @@ porque o `ph2d-board-video` não mudou).
   só o limiar de distância da casa, por desenho.
 - (c) Com outra ferramenta (caneta, forma), o vídeo não toma o carregar: a ferramenta desenha por cima dele, e o
   traço tapa-o, logo pausa pelas regras. Medir com o dono se ele espera outra coisa.
+- (e) O trilho das setas é da SESSÃO (o documento guarda o vídeo de agora): fechar e abrir o projecto perde o
+  «voltar ao original».
+- (f) O canal aberto fora não pausa o vídeo daqui (a W19 decidiu assim; a página de um canal pode tocar o trailer).
 - (d) Fundo com preenchimento à mão (tracejado) num vídeo: pinta-se sempre sólido (num anel fino o tracejado não diz
   nada). O `fill_style` viaja no ficheiro, mas não se desenha no vídeo.
 - Da W19, sem mudança: (a) Premium · (b) Windows/macOS · (c) clicar num vídeo TAPADO na apresentação · (d) o aviso no

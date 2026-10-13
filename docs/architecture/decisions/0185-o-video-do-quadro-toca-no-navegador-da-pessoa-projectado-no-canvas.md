@@ -195,3 +195,16 @@ com o YouTube real, saídas em `excalidraw_oracle/saidas/w20/`); mecanismo:
    Cura: depois de algo que muda a imagem (uma ordem, um clique, outro vídeo, o `onStateChange`), o tocador tira
    fotos DIRECTAS (`Page.captureScreenshot`) a +150/+500/+1200 ms e elas entram como quadros (0 → 12–15 quadros nos
    2 s depois da pausa confirmada; o portão real sangra com as fotos desligadas: 1 quadro).
+8. **«Mais vídeos» toca na MESMA janela** (o dono, 13/10: «"Mais vídeos" abre um vídeo no navegador e ambos ficam
+   tocando sobrepostos»; pediu tirar o link, o «Mais vídeos» e o logotipo — **recusado com o texto das regras**:
+   *«must not remove, obscure, alter, or disable any links that appear in YouTube players»*, *«modify, build upon, or
+   block any portion or functionality of a YouTube player»*, *«interfere with or obscure any attribution provided by
+   YouTube»*; nenhum parâmetro oficial os tira). Medido ([`sonda_w20_mais_videos.mjs`](../../MiroClone/ferramentas/youtube_motor/sonda_w20_mais_videos.mjs)):
+   o botão abre um painel dentro do tocador; a sugestão abre `youtube.com/watch?v=<outro>&feature=endscreen` numa ABA
+   NOVA e o de origem continua a tocar — num navegador comum também. Decisão do dono: **troca na mesma janela**. O
+   link NÃO se desliga: o destino toca no tocador oficial, com a marca dele, como se o link fosse colado no quadro; o
+   «Abrir no YouTube» da nossa barra fica. O mesmo vídeo aberto fora (o título, «YouTube») pausa o daqui; o canal
+   abre fora e não pausa. Pedido seguinte do dono: **setas ‹ › pelo trilho dos vídeos tocados e «voltar ao
+   original»** na nossa barra, só quando a janela navegou; o trilho é da sessão (o documento guarda o vídeo de agora,
+   e cada passo é um passo de desfazer que o `Ctrl+Z` partilha). ⚠️ A W19 tinha medido que os nossos parâmetros
+   tiravam o «Mais vídeos»: em 13/10 ele aparece (a foto do dono e `saidas/w20_pausa/`).

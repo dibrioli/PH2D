@@ -49,7 +49,7 @@ Sonda: [`ferramentas/youtube_motor/sonda_w19_tocador.mjs`](ferramentas/youtube_m
 | pergunta | medido | onde |
 |---|---|---|
 | o tocador NOVO do YouTube (2026) | classes `ytm*`/`ytSpec*`; os seletores `ytp-*` antigos não existem — a sonda acha os alvos pelo nome acessível | `w19/`, `w19b/` |
-| o que `controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3` tira | some: a barra, o tempo, volume, legendas, definições, ecrã inteiro, «Mais vídeos»; FICAM: título, canal, «Copiar link», logotipo «YouTube», play ao meio | `w19/P_*_rato.png` |
+| o que `controls=0&fs=0&disablekb=1&rel=0&iv_load_policy=3` tira | some: a barra, o tempo, volume, legendas, definições, ecrã inteiro, «Mais vídeos» (⚠️ 13/10: o «Mais vídeos» APARECE, §W20); FICAM: título, canal, «Copiar link», logotipo «YouTube», play ao meio | `w19/P_*_rato.png` |
 | duplo-clique / `f` com os nossos parâmetros | não entram em ecrã inteiro | `w19c/` |
 | ecrã inteiro do tocador, Playwright | não deforma (o Playwright emula o ecrã) | `w19d_ecra0/` |
 | ecrã inteiro do tocador, O NOSSO `Player` | quadros **420×315** numa caixa 560×315 (o ecrã imaginado 800×600 → 4:3) | teste `the_player_s_fullscreen_corner_…` |
@@ -117,6 +117,14 @@ do tocador, por isso o ponto do clique, o play e a barra seguem-no sem mudar; a 
 | o nosso `Player` | 0–1 quadros (a aba visível, com foco, `rAF` a 60/s) | — |
 | o nosso `Player` + foco emulado / + flags anti-«background» | 0–1 (recusadas) | — |
 | o nosso `Player` + as fotos +150/+500/+1200 ms (a cura) | 12–15 quadros em 2 s, ▶ à vista | ✓ |
+
+**«Mais vídeos» na mesma janela** (`sonda_w20_mais_videos.mjs`, `saidas/w20_mais_videos/`): o botão abre um painel no
+tocador; a sugestão é um `<a target=_blank href=youtube.com/watch?v=…&feature=endscreen>` — aba nova, e o de origem a
+tocar. O app (`video::outside`): outro vídeo → `board_video::navigate` (a mesma janela, um passo de desfazer, o
+trilho `documents::VideoTrail`); o mesmo vídeo → o navegador + pausa; o resto → o navegador. `video::tune` recarrega
+o tocador quando a MESMA janela muda de vídeo (a sugestão, ‹ ›, «voltar ao original», o desfazer). As setas e o
+«voltar ao original» são `Ctl::{Back, Forward, Reset}` (no fim dos ids), só com navegação. ⚠️ A linha da tabela §W19
+que diz que os parâmetros tiram o «Mais vídeos» envelheceu: em 13/10 ele aparece.
 
 **Cena de smoke:** 21 (`PH2D_BOARD_SMOKE=21`, `smoke_w20.rs`, gate `the_w20_scene_does_what_its_lessons_say`). As
 lições da cena 19 (l1: «clique fora para parar») e da 20 (l2: «enquanto 200×200 à vista») ensinavam o contrário e

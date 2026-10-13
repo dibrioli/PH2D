@@ -116,7 +116,7 @@ fn the_w20_scene_does_what_its_lessons_say() {
     let moved = el(&h, &l);
     assert!(
         (moved.x - v.x - 120.0).abs() < 1e-6,
-        "não moveu: {} → {}",
+        "não moveu: {} -> {}",
         v.x,
         moved.x
     );

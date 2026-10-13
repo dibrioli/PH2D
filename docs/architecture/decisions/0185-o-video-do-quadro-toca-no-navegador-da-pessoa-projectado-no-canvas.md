@@ -169,7 +169,7 @@ com o YouTube real, saídas em `excalidraw_oracle/saidas/w20/`); mecanismo:
    só num TOQUE (carregar e largar sem nenhum carregar do rato pelo meio); com um arrasto pelo meio é o pan. O
    oráculo tem aqui um defeito que não copiamos: espaço+arrastar SOBRE o vídeo activo não faz pan e pausa-o.
 4. **Segurar e arrastar move; clicar dá play/pause.** O carregar num vídeo (com a ferramenta de seleccionar) fica
-   à espera do largar (`board_video::Pending`) e segue para o editor — o arrasto move-o, parado OU activo; o largar
+   à espera do largar (`documents::VideoClick`) e segue para o editor — o arrasto move-o, parado OU activo; o largar
    sem passar o limiar de arrasto da casa é o clique: activa (o oráculo activa no LARGAR, A2), ou, activo e vivo,
    vai ao tocador como carregar+largar no ponto do clique; o clique num vídeo que o tocador já tem é tocar/pausar.
    O oráculo não move um vídeo ACTIVO (o iframe come o gesto): aqui move, porque o tocador sem os controlos do

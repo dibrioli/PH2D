@@ -99,7 +99,7 @@ Espaço era o atalho tocar/pausar e o quadro nunca recebia o pan; (c) a regra «
 levado até à beira.
 
 **O mecanismo.** `Videos::player` (o tocador) ≠ `Videos::active` (o rato e as teclas); `live_allowed` lê o
-tamanho do tocador e se há algum pedaço à vista. `board_video::Pending` guarda o carregar; `pointer_move` mede o
+tamanho do tocador e se há algum pedaço à vista. `documents::VideoClick` guarda o carregar; `pointer_move` mede o
 limiar (`board_view::metrics().drag`) e devolve o mover ao editor; `pointer_up` decide. `space_tap` arma no
 carregar do Espaço e qualquer carregar do rato desarma-o. No desenho, `player_in_box` dá o recuo (o alcance da
 moldura, `image_frame::reach`) e o afim do tocador normalizado à caixa — a colocação (`Placement::to_screen`) é a

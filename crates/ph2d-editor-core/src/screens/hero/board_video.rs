@@ -55,24 +55,11 @@ pub fn fullscreen(hero: &HeroScreen) -> bool {
     hero.documents.live.render_cache.videos.fullscreen && hero.documents.active().is_some()
 }
 
-/// ⭐ W20 — um carregar num vídeo à espera do largar (o dono: «segurar e arrastar move, apenas clicar dá
-/// play/pause»). O carregar segue para o editor (seleccionar, e o arrasto move o vídeo); o largar sem
-/// arrasto é o clique. O oráculo também decide no largar (`sonda_w20.mjs` A2).
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Pending {
-    id: ElementId,
-    /// Onde carregou (ecrã).
-    at: [f64; 2],
-    /// Dentro do tocador vivo do vídeo activo: o ponto em píxeis do tocador (o clique vai para ele). `None`
-    /// = o clique activa o vídeo.
-    player: Option<[f64; 2]>,
-    /// Passou do limiar de arrasto da casa: o gesto foi do editor.
-    dragged: bool,
-}
+use crate::documents::VideoClick;
 
 /// O carregar no quadro. `true` = era do vídeo (só no nosso ecrã inteiro, onde o tocador toma tudo). Os
 /// pans (o botão do meio — também o dos dois dedos —, o Espaço, a mão) nunca são do vídeo; com a ferramenta
-/// de seleccionar, o carregar num vídeo fica à espera do largar ([`Pending`]); com outra, a ferramenta faz
+/// de seleccionar, o carregar num vídeo fica à espera do largar ([`VideoClick`]); com outra, a ferramenta faz
 /// o seu por cima dele. Carregar fora do vídeo activo desactiva-o — tira-lhe o rato, não a imagem (W20).
 pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButton) -> bool {
     let p = [f64::from(x), f64::from(y)];
@@ -111,7 +98,7 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
     if let Some(id) = vids.active {
         match player_at(vids, id) {
             Some(pt) if select && b == PointerButton::Primary => {
-                live.video_click = Some(Pending {
+                live.video_click = Some(VideoClick {
                     id,
                     at: p,
                     player: Some(pt),
@@ -157,7 +144,7 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
             vids.on_play(id, el, p) || again
         })
     });
-    live.video_click = hit.map(|id| Pending {
+    live.video_click = hit.map(|id| VideoClick {
         id,
         at: p,
         player: None,
@@ -168,7 +155,7 @@ pub(crate) fn pointer_down(hero: &mut HeroScreen, x: f32, y: f32, b: PointerButt
 
 /// O clique (sem arrasto) num vídeo: activo e vivo, vai ao tocador; senão activa-o — e o clique num vídeo
 /// que o tocador já tem é tocar/pausar (o clique é sempre play/pause, W20).
-fn click(hero: &mut HeroScreen, c: Pending) {
+fn click(hero: &mut HeroScreen, c: VideoClick) {
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -222,7 +209,7 @@ fn click(hero: &mut HeroScreen, c: Pending) {
 const FRAME_PAD: f64 = 0.1; // LITERAL-PX-OK: proporção da folga, não um píxel
 
 /// O mover: com o botão em baixo dentro do tocador, ou só a passar por cima dele. `true` = era do vídeo.
-/// Um carregar à espera ([`Pending`]) só mede o arrasto: o mover segue para o editor.
+/// Um carregar à espera ([`VideoClick`]) só mede o arrasto: o mover segue para o editor.
 pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     let p = [f64::from(x), f64::from(y)];
     let Some((board, live)) = hero.documents.active_parts() else {
@@ -246,7 +233,7 @@ pub(crate) fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     }
 }
 
-/// O largar de um carregar que foi do tocador (`true` = era dele), ou de um à espera ([`Pending`]): sem
+/// O largar de um carregar que foi do tocador (`true` = era dele), ou de um à espera ([`VideoClick`]): sem
 /// arrasto é o clique; o largar segue para o editor (que fecha o gesto dele).
 pub(crate) fn pointer_up(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
     let p = [f64::from(x), f64::from(y)];

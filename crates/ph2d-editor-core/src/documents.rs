@@ -80,12 +80,27 @@ pub(crate) struct BoardLive {
     pub(crate) video_press: bool,
     /// W20 — um carregar num vídeo à espera do largar: sem arrasto é um clique (activar / o tocador), com
     /// arrasto foi do editor (moveu o vídeo).
-    pub(crate) video_click: Option<crate::screens::hero::board_video::Pending>,
+    pub(crate) video_click: Option<VideoClick>,
     /// W20 — o Espaço foi carregado com um vídeo activo e nenhum carregar do rato veio depois: no largar
     /// é tocar/pausar (o atalho do YouTube); com um arrasto pelo meio foi o pan do quadro.
     pub(crate) space_tap: bool,
     /// W18 — o botão «Video» da barra pediu o link da área de transferência (o app lê-a).
     pub(crate) video_ask: bool,
+}
+
+/// ⭐ W20 — um carregar num vídeo à espera do largar (o dono: «segurar e arrastar move, apenas clicar dá
+/// play/pause»). O carregar segue para o editor (seleccionar, e o arrasto move o vídeo); o largar sem
+/// arrasto é o clique (`board_video::pointer_up`). O oráculo também decide no largar (`sonda_w20.mjs` A2).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct VideoClick {
+    pub(crate) id: ph2d_board_model::ElementId,
+    /// Onde carregou (ecrã).
+    pub(crate) at: [f64; 2],
+    /// Dentro do tocador vivo do vídeo activo: o ponto em píxeis do tocador (o clique vai para ele). `None`
+    /// = o clique activa o vídeo.
+    pub(crate) player: Option<[f64; 2]>,
+    /// Passou do limiar de arrasto da casa: o gesto foi do editor.
+    pub(crate) dragged: bool,
 }
 
 impl std::fmt::Debug for BoardLive {

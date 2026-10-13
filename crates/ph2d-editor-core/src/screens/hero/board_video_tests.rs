@@ -453,7 +453,11 @@ fn holding_and_dragging_a_video_moves_it_and_a_click_plays_it() {
         let a = pos(&t);
         let p = on_video(&mut t, id, 0.5, 0.5);
         t.drag(p, (p.0 + 100.0, p.1 + 60.0));
-        assert!(moved(a, pos(&t)), "{case}: não moveu {a:?} → {:?}", pos(&t));
+        assert!(
+            moved(a, pos(&t)),
+            "{case}: não moveu {a:?} -> {:?}",
+            pos(&t)
+        );
         assert_eq!(
             t.hero.documents.videos_mut().active,
             None,
@@ -547,7 +551,7 @@ fn the_style_bar_decorates_a_selected_video_like_a_rectangle() {
     let inset = 2.0 * WIDTHS[thick] * z;
     assert!(
         (bare[0] - framed[0] - inset).abs() < 1e-6 && (bare[1] - framed[1] - inset).abs() < 1e-6,
-        "o tocador recua pela borda: {bare:?} → {framed:?}"
+        "o tocador recua pela borda: {bare:?} -> {framed:?}"
     );
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert!(

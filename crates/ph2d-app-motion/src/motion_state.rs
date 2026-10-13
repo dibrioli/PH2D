@@ -165,6 +165,9 @@ mod fita_demo;
 /// 132 §1 e §6). Ver o cabeçalho. ⚠️ A `=139`, a `=140` e a `=141` são de OUTRAS linhas (doc 132 §0).
 #[path = "motion_state_cada_forma_demo.rs"]
 pub(crate) mod cada_forma_demo;
+/// A cena `=140` — imagens e formas num grupo que mistura, na placa (doc 132 §4, P4).
+#[path = "motion_state_imagens_grupo_demo.rs"]
+mod imagens_grupo_demo;
 
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]

@@ -6,7 +6,6 @@
 
 use ph2d_contact::passe::separa_com_relatorio;
 use ph2d_gpu_cook::GpuCook;
-use ph2d_gpu_cook::passe_na_placa::Corrige;
 use ph2d_nodegraph::attr::{
     COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
     Stream,
@@ -207,67 +206,10 @@ fn o_passe_na_placa_segue_a_cpu_por_passo() {
         return;
     };
     let mut cook = GpuCook::default();
-    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo; e cada forma do `corrige`
-    // (doc 132 §3).
-    for c in Corrige::TODAS {
-        cook.passe_corrige(c);
-        for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
-            cook.passe_um_grupo_ate(Some(tecto));
-            eprintln!("— {c:?}");
-            compara_por_passo(&gpu, &mut cook, caminho);
-        }
-    }
-}
-
-/// Sonda (não afirma nada): as formas do `corrige` contra a `Matriz`, AO BIT — `P`, `rot` e as
-/// varreduras, por fixtura, passo e caminho (doc 132 §3: o compilador contrai igual?).
-#[test]
-#[ignore = "sonda: mede, não julga"]
-fn measure_o_corrige_ao_bit() {
-    let Some(gpu) = try_headless_gpu() else {
-        return;
-    };
-    let mut cook = GpuCook::default();
-    let mut lista = fixturas();
-    lista.extend([("nuvem 1024", nuvem(1024)), ("nuvem 2048", nuvem(2048))]);
+    // Os DOIS caminhos (doc 130 §3.1): vários despachos e um só grupo.
     for (caminho, tecto) in [("despachos", 0), ("um grupo", u32::MAX)] {
         cook.passe_um_grupo_ate(Some(tecto));
-        for (nome, s) in &lista {
-            for v in [1u32, 8, 64] {
-                let mut lido = Vec::new();
-                for c in Corrige::TODAS {
-                    cook.passe_corrige(c);
-                    lido.push(
-                        cook.separa_e_le(&gpu, s, v, ph2d_contact::REPOUSO_VISIVEL)
-                            .expect("corre"),
-                    );
-                }
-                let (p0, r0, v0) = &lido[0];
-                let alc = alcance_max(s);
-                let mut linha = format!("{caminho:<9} {nome:<28} v={v:<2}");
-                for (c, (p, r, vv)) in Corrige::TODAS.iter().zip(&lido).skip(1) {
-                    let bits = |a: f32, b: f32| a.to_bits() != b.to_bits();
-                    let dif_p = p0
-                        .iter()
-                        .zip(p)
-                        .filter(|(a, b)| bits(a[0], b[0]) || bits(a[1], b[1]))
-                        .count();
-                    let dif_r = r0.iter().zip(r).filter(|(a, b)| bits(**a, **b)).count();
-                    let pior = p0
-                        .iter()
-                        .zip(p)
-                        .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
-                        .filter(|d| d.is_finite())
-                        .fold(0.0f32, f32::max);
-                    linha += &format!(
-                        " · {c:?}: P {dif_p}/{} rot {dif_r} (|ΔP|/alc {:.1e}) varr {v0}→{vv}",
-                        p0.len(),
-                        pior / alc
-                    );
-                }
-                eprintln!("{linha}");
-            }
-        }
+        compara_por_passo(&gpu, &mut cook, caminho);
     }
 }
 
@@ -442,7 +384,8 @@ fn measure_o_encode_por_varreduras() {
 /// a nuvem até 2 048 (a fronteira dos caminhos), CPU × os dois caminhos da placa no MESMO
 /// processo, em blocos intercalados com a ordem rodada, o MÍNIMO de 15, a paragem do produto.
 /// Cada célula: total · encomenda (ms). As variantes do doc 131 C.7 (`scan` por subgrupos,
-/// ligações em cache) correram aqui e saíram — a tabela está no doc 131 §7.
+/// ligações em cache) e as formas do `corrige` do doc 132 §3 correram aqui e saíram — as tabelas
+/// estão no doc 131 §7 e no doc 132 §7.
 /// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-gpu-cook --test it
 /// measure_a_cadeia -- --ignored --nocapture`
 #[test]
@@ -462,14 +405,8 @@ fn measure_a_cadeia_cpu_contra_placa() {
         par(&mut s, COLLIDER_BOX_COLUMN, vec![[0.5, 0.5]; n]);
         s
     };
-    // (nome, tecto do caminho de um grupo, forma do `corrige`) — doc 132 §3.
-    let variantes: Vec<(String, u32, Corrige)> = Corrige::TODAS
-        .iter()
-        .flat_map(|&c| {
-            [("despachos", 0), ("um grupo", u32::MAX)]
-                .map(|(nome, tecto)| (format!("{nome}·{c:?}"), tecto, c))
-        })
-        .collect();
+    // (nome, tecto do caminho de um grupo)
+    let variantes = [("despachos", 0), ("um grupo", u32::MAX)];
     let linhas = [
         ("cadeia", 16usize, 1024u32),
         ("cadeia", 16, 4096),
@@ -503,7 +440,6 @@ fn measure_a_cadeia_cpu_contra_placa() {
                     continue;
                 }
                 cook.passe_um_grupo_ate(Some(variantes[qual - 1].1));
-                cook.passe_corrige(variantes[qual - 1].2);
                 let t = std::time::Instant::now();
                 let g = cook
                     .separa_e_le(&gpu, &s, v, ph2d_contact::REPOUSO_VISIVEL)
@@ -517,7 +453,7 @@ fn measure_a_cadeia_cpu_contra_placa() {
             "{forma} {n:>4} · tecto {v:>4} ({vc} varr. CPU, {vg} placa): CPU {:.2}",
             total[0] * 1e3
         );
-        for (i, (nome, _, _)) in variantes.iter().enumerate() {
+        for (i, (nome, _)) in variantes.iter().enumerate() {
             linha += &format!(
                 " · {nome} {:.2} ({:.3})",
                 total[i + 1] * 1e3,
@@ -527,6 +463,56 @@ fn measure_a_cadeia_cpu_contra_placa() {
         eprintln!("{linha}");
     }
     eprintln!("loadavg no fim: {}", carga());
+}
+
+/// Sonda (não afirma nada): o PONTO do caminho de um grupo (`PECAS_PARA_UM_GRUPO`) — nuvens de
+/// 1 024 a 2 048 peças a 64 varreduras e a cadeia 16 · 4 096, os dois caminhos, 30 blocos com a
+/// ordem rodada, o MÍNIMO e a mediana (doc 132 §3 e §7).
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --release -p ph2d-gpu-cook --test it
+/// measure_o_ponto -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: mede, não julga"]
+fn measure_o_ponto_do_um_grupo() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("loadavg no início: {}", carga().trim());
+    let variantes = [("despachos", 0), ("um grupo", u32::MAX)];
+    let mut cook = GpuCook::default();
+    let mut linhas: Vec<(String, Stream, u32)> = [1024usize, 1280, 1536, 1792, 2048]
+        .into_iter()
+        .map(|n| (format!("nuvem {n:>4}"), nuvem(n), 64))
+        .collect();
+    let mut cadeia = corrente((0..16).map(|i| [i as f32 * 0.5, 0.0]).collect());
+    par(&mut cadeia, COLLIDER_BOX_COLUMN, vec![[0.5, 0.5]; 16]);
+    linhas.push(("cadeia   16".into(), cadeia, 4096));
+    for (nome, s, v) in &linhas {
+        let k = variantes.len();
+        let mut t: Vec<Vec<f64>> = vec![Vec::new(); k];
+        for bloco in 0..30 {
+            for passo in 0..k {
+                let q = (passo + bloco) % k;
+                cook.passe_um_grupo_ate(Some(variantes[q].1));
+                let t0 = std::time::Instant::now();
+                let _ = cook
+                    .separa_e_le(&gpu, s, *v, ph2d_contact::REPOUSO_VISIVEL)
+                    .expect("corre");
+                t[q].push(t0.elapsed().as_secs_f64() * 1e3);
+            }
+        }
+        let mut linha = format!("{nome} · {v} varr.:");
+        for (i, (rotulo, _)) in variantes.iter().enumerate() {
+            t[i].sort_by(f64::total_cmp);
+            linha += &format!(
+                " · {rotulo} {:.2} (med {:.2})",
+                t[i][0],
+                t[i][t[i].len() / 2]
+            );
+        }
+        eprintln!("{linha}");
+    }
+    eprintln!("loadavg no fim: {}", carga().trim());
 }
 
 /// ⭐ **O `Relatorio` sai da placa SEM espera e diz o que a CPU diz** (doc 130 §5): as varreduras

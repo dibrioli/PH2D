@@ -294,7 +294,29 @@ de 8 GiB, cuja memória é unificada com a placa; `1/32` dobra a história de an
 e dá 30× na estação. Sem leitura da RAM (Windows: o `GlobalMemoryStatusEx` pede o `windows-sys`, que a crate não
 tem) vale a reserva de antes, 128 MiB. `PH2D_MOTION_FITA_BYTES` (lida uma vez) põe um tecto à mão — a cena `=139`.
 
-**Aberto (o anel, não a fita):** o `CookCheckpoint::approx_bytes` conta colunas e memos e declara `0 B` para um
-checkpoint leve; o processo ganha `~1,9 KB` por checkpoint (`K = 0`: 3,9 MB até o anel encher, 184 B/tique
-depois). Limitado pelo `MAX_ENTRIES = 2048` (`~4 MB`), logo inofensivo; a régua do anel contra o heap (o irmão do
-`tests/fita_memoria.rs`) não existe.
+**O anel (fechado 13/10):** o `CookCheckpoint::approx_bytes` contava só os DADOS das colunas e os memos — `8 B`
+por ponto leve, `0 B` sem estado — e o processo ganhava `~1,9 KB` por checkpoint (`K = 0`). A régua
+`ph2d-eval-motion/tests/anel_memoria.rs` (dhat, `bytes + 16 · blocos`, `±25 %`, o irmão do `fita_memoria.rs`) leu-o
+VERMELHO e mede-o hoje verde:
+
+| cenário (o anel no razão próprio) | declarava B/ponto | retém B/ponto | declara hoje |
+|---|---:|---:|---:|
+| 1 nó, 1 número (1 000 tiques) | 8 | 970 | 970 (1,00×) |
+| 30 nós, 1 número | 240 | 17 911 | 1,00× |
+| sem estado (só o lugar no vetor) | 0 | 90 | 1,00× |
+| 4 096 × 3 colunas | 97 812 | 98 988 | 1,00× |
+| memória de 1 024 números (1 ponto a cada 8 tiques) | 4 063 | 5 491 | 1,00× |
+
+A cura: o ponto de recuo declara o heap que o clone copia (os mapas pelas folhas de 11 lugares do `std`, os vetores
+de saídas, os nomes, o `Arc` e os dados de cada coluna, o `Arc` de cada memo) e o anel soma o seu vetor de entradas
+pela CAPACIDADE (`CheckpointRing::retido`). O fixture do regime de despejo (`scrub_tests`, `set_ring_budget(200)`,
+calibrado contra os `8 B`) passa a `28 ×` o peso medido de um ponto.
+
+**O cartão antes do primeiro tique gravado (fechado 13/10):** numa fita dobrada, um scrub para antes do PRIMEIRO
+tique gravado dizia «showing <base>» e o replay usava o publicado agora (`entradas_do_replay`, ramo `!cobre`). A
+porta `Fita::historia_em` responde agora pela MESMA pergunta do replay: fora da fita, `Historia::NaoGravada` (chave
+`app.motion.motion_historia.history_not_recorded`). O gate do cartão (`motion_bridge_historia_tests`) corre a rota
+da CPU SEMPRE (`quadro::coze_o_quadro_sem_placa`, só dos testes) e a da placa onde há adapter — e apanhou na placa
+um defeito vizinho: um grafo sem estado não guarda o último tique cozido, então arrastar para antes do primeiro
+gravado GRAVAVA, era um ramo e esquecia a fita inteira. A rota usa agora o último tique cujas entradas se mostraram
+(`MotionCookPump::tique_das_entradas`), a regra da CPU.

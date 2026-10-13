@@ -158,13 +158,13 @@ mod colisor_nome_demo;
 /// A cena `=141` — o aviso que se lê inteiro (doc 132 §5, P5). Ver o cabeçalho dela.
 #[path = "motion_state_aviso_demo.rs"]
 pub(crate) mod aviso_demo;
-/// A cena `=139` — a fita das entradas que dobra (doc 132 §2, P2). Ver o cabeçalho dela.
-#[path = "motion_state_fita_demo.rs"]
-mod fita_demo;
 /// A cena `=138` (e a `PH2D_MOTION_OBJ_SMOKE=18`) — o filtro em cada forma, a cair num campo (doc
 /// 132 §1 e §6). Ver o cabeçalho. ⚠️ A `=139`, a `=140` e a `=141` são de OUTRAS linhas (doc 132 §0).
 #[path = "motion_state_cada_forma_demo.rs"]
 pub(crate) mod cada_forma_demo;
+/// A cena `=139` — a fita das entradas que dobra (doc 132 §2, P2). Ver o cabeçalho dela.
+#[path = "motion_state_fita_demo.rs"]
+mod fita_demo;
 /// A cena `=140` — imagens e formas num grupo que mistura, na placa (doc 132 §4, P4).
 #[path = "motion_state_imagens_grupo_demo.rs"]
 mod imagens_grupo_demo;

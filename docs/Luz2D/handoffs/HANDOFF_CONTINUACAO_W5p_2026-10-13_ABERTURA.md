@@ -102,6 +102,13 @@ Pelo caminho do PRODUTO (`a_nitidez_da_luz`, `LuzDoQuadro`, 3× alternado, um pr
 
 ## 6b. ABERTO, na ordem
 
+0. ⛔⛔ **O cache do driver é APARADO pelas outras linhas** (o «não vi melhoria» do dono, 13/10): o
+   `~/.cache/nvidia/GLCache` é UM para todos e vive em 1 026 MB — o tecto de fábrica. Todo processo sem o
+   `__GL_SHADER_DISK_CACHE_SIZE` (um binário corrido direto, ou os testes de uma linha cuja base ainda não tem o
+   `[env]` do `.cargo/config.toml` — a motion-value às 14:57) apara-o e despeja a luz: o app real, aquecido,
+   abriu de novo a FRIO minutos depois (2,18 → 0,05 → 1,56 → 0,05 → 2,33 s). O `fotografa_cena.sh` passou a
+   correr com os 16 GiB. A cura que pega todas as linhas é a variável na SESSÃO do dono
+   (`~/.config/environment.d/`) — decisão dele (perguntada).
 1. **O resto da `c2` do High** (19,0 contra 18,4 do melhor caso): o mecanismo do regime lento. A arena da W5o §3 foi
    feita e **recusada** (tabela abaixo: a alocação única e grande cai SEMPRE no lento, 26,6 ms, como os blocos de
    4 MB dedicados da W5o).

@@ -113,7 +113,10 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayl
 fi
 cd "$RAIZ"
 mkdir -p "$TMP/home"
-env -u WAYLAND_DISPLAY HOME="$TMP/home" $ENV_KV PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
+# O binário corre SEM o cargo: o tecto do cache de shaders do driver é o do `[env]` do `.cargo/config.toml`
+# (16 GiB) — com o de fábrica (1 GiB) o driver APARA o cache partilhado e despeja a luz dos outros (W5p).
+env -u WAYLAND_DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_SIZE=17179869184 $ENV_KV \
+  PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &
 APP=\$!
 sleep $ESPERA
 WIN=\$(xprop -display "\$DISPLAY" -root _NET_CLIENT_LIST | grep -o '0x[0-9a-f]*' | tail -1)

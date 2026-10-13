@@ -390,6 +390,24 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
             )
         };
         let ((media, n), (media_sem, _)) = (media_fundo(&fc), media_fundo(&fm));
+        // ⭐ W5o — o controlo da face PELO PONTO: com a marcha a partir do ponto afastado (a W5g), a
+        // penumbra passa do teto.
+        if k == 0 {
+            let (fa, _) = rodar(
+                &gpu,
+                Config {
+                    face_pelo_ponto: false,
+                    ..com
+                },
+                &cena,
+            );
+            let antiga = media_fundo(&fa).0;
+            assert!(
+                antiga > TETO_FUNDO[k],
+                "controlo: a face afastada dá {antiga:.6} na penumbra — o teto {} não a separa",
+                TETO_FUNDO[k]
+            );
+        }
         eprintln!(
             "F3 interior fundo · {nome}: erro médio {media:.6} do máximo ({n} texels; sem a média no eixo {media_sem:.6}; teto {})",
             TETO_FUNDO[k]
@@ -512,8 +530,10 @@ const FAIXA_INTERIOR: f64 = 2.0;
 /// penumbra a visibilidade varia com a posição) — ablação na mesma corrida: só o pé 0,000337, só a
 /// face 0,001498, sem os dois 0,000292, a W5c 0,001281 (a faixa: 0,058 · 0,207 · 0,077 · 0,321). O
 /// teto da penumbra é o medido + 10 %; a troca da face (os pontos tangentes × a penumbra) está no
-/// handoff W5n.
-const TETO_FUNDO: [f64; 3] = [0.00158, 0.000048, 0.00037];
+/// handoff W5n. ⭐ W5o — a face PELO PONTO (`Config::face_pelo_ponto`, `sonda_a_face_pelo_ponto`):
+/// penumbra 0,001436 → 0,000182 (faixa 0,2009 → 0,0563), faísca e parede iguais; o teto da penumbra é
+/// o medido + 10 %, e a face afastada (o controlo) reprova.
+const TETO_FUNDO: [f64; 3] = [0.00020, 0.000048, 0.00037];
 /// O MEDIDO + 10 % (W5c, a régua da média, a captura 2 × fina, a faixa de 2 texels): penumbra 0,3207
 /// · faísca 0,1136 · parede grossa 0,0063; sem a média no eixo 0,3664 · 0,2370 · 0,0522; sem o
 /// preenchimento 1,65 · 1,96 · 1,58. Na faísca o resto é o canto do quadrado girado, onde o eixo
@@ -522,4 +542,77 @@ const TETO_FUNDO: [f64; 3] = [0.00158, 0.000048, 0.00037];
 /// captura GROSSA a penumbra dava 0,80 (o canto arredondado troca a face mais próxima); escolhendo o
 /// texel exterior mais perto em vez do ponto de FRONTEIRA mais perto, 0,83; só com as sementes do
 /// JFA de células de 4, 1,15.
-const TETO_INTERIOR: [f64; 3] = [0.353, 0.125, 0.0070];
+/// ⭐ W5o — a penumbra com a face pelo ponto: 0,0563 (a W5n 0,2009), o teto o medido + 10 %.
+const TETO_INTERIOR: [f64; 3] = [0.062, 0.125, 0.0070];
+
+/// ⭐ W5o — a rodada da FACE PELO PONTO (`Config::face_pelo_ponto`): o interior fundo e a faixa de dentro
+/// do [`o_interior_de_um_opaco_e_o_exterior_mais_proximo`] por variante, no mesmo processo
+/// (`miolo: None`, a lei do exterior mais próximo — a régua que mede a luz da borda).
+#[test]
+#[ignore = "a rodada da face pelo ponto: corre-se à mão"]
+fn sonda_a_face_pelo_ponto() {
+    let Some(gpu) = gpu() else { return };
+    let (_, lado, texel) = DEGRAUS[2];
+    let parede = CenaDeLuz {
+        emissores: vec![crate::comum::disco(
+            [1.2, 2.56],
+            0.3,
+            [1.0; 3],
+            f32::INFINITY,
+        )],
+        oclusores: vec![crate::comum::oclusor(
+            vec![[1.8, 1.5], [2.2, 1.5], [2.2, 3.5], [1.8, 3.5]],
+            1.0,
+        )],
+        ceu: [0.0; 3],
+        ..Default::default()
+    };
+    // (nome, pé, face, pelo ponto)
+    const V: [(&str, bool, bool, bool); 4] = [
+        ("pé+face afastada (W5g)", true, true, false),
+        ("pé+face pelo ponto (W5o)", true, true, true),
+        ("só o pé", true, false, false),
+        ("nenhum", false, false, false),
+    ];
+    for (nome, cena) in [
+        ("penumbra", penumbra()),
+        ("faísca", faisca()),
+        ("parede grossa", parede),
+    ] {
+        let base = Config {
+            fina: FINA,
+            captura: 2 * FINA,
+            miolo: None,
+            ..Config::padrao(grade(lado, texel))
+        };
+        let lei = ph2d_light2d_ref::Gabarito::com_miolo(&cena, EXTERIOR);
+        let g = Solver::novo(&gpu, base)
+            .expect("solver")
+            .grade_da_fluencia();
+        let mut r = gabarito_por(&g, |p| lei.fluencia(p));
+        let fundo = crate::comum::dentro_de_opaco(&cena, &g);
+        let max = r.iter().map(|v| v[1]).fold(0.0_f64, f64::max);
+        for k in (0..r.len()).filter(|&k| fundo(k)) {
+            r[k] = media_no_texel(&cena, &lei, &g, k, r[k]);
+        }
+        let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
+        let mut linha = format!("{nome}:");
+        for (v, pe, face, ponto) in V {
+            let cfg = Config {
+                pe_na_borda: pe,
+                vis_na_face: face,
+                face_pelo_ponto: ponto,
+                ..base
+            };
+            let (f, _) = rodar(&gpu, cfg, &cena);
+            let erros: Vec<f64> = (0..r.len())
+                .filter(|&k| fundo(k) && !dentro(k))
+                .map(|k| (f64::from(f[k][1]) - r[k][1]).abs() / max)
+                .collect();
+            let media = erros.iter().sum::<f64>() / erros.len().max(1) as f64;
+            let faixa = rmse_rel(&f, &r, &dentro);
+            linha += &format!(" {v}: fundo {media:.6} · faixa {faixa:.4} ·");
+        }
+        eprintln!("{linha}");
+    }
+}

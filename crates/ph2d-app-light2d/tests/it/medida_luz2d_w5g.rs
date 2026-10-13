@@ -31,18 +31,20 @@ const MAIS_ANEIS: [(&str, f64, f64); 3] = [
 ];
 const N_ANEIS: usize = 7;
 
-/// `(nome, Config::pe_na_borda, Config::vis_na_face)`.
-const VARIANTES: [(&str, bool, bool); 4] = [
-    ("W5f", false, false),
-    ("pé", true, false),
-    ("face", false, true),
-    ("pé+face", true, true),
+/// `(nome, Config::pe_na_borda, Config::vis_na_face, Config::face_pelo_ponto)` — a última é a W5o.
+const VARIANTES: [(&str, bool, bool, bool); 5] = [
+    ("W5f", false, false, false),
+    ("pé", true, false, false),
+    ("face", false, true, false),
+    ("pé+face", true, true, false),
+    ("pé+face pelo ponto", true, true, true),
 ];
 
 fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> Config {
     Config {
         pe_na_borda: VARIANTES[v].1,
         vis_na_face: VARIANTES[v].2,
+        face_pelo_ponto: VARIANTES[v].3,
         ..crate::medida_luz2d_w5d::config(gpu, a, crate::medida_luz2d_w5d::VARIANTES[2])
     }
 }
@@ -149,8 +151,18 @@ fn medida_luz2d_w5g() {
     eprintln!("# loadavg depois {}", loadavg());
 }
 
+/// Só a secção C (o custo).
+#[test]
+#[ignore = "a rodada da W5g, só o custo: corre-se à mão"]
+fn medida_luz2d_w5g_custo() {
+    let Some(gpu) = gpu() else { return };
+    eprintln!("# loadavg antes {}", loadavg());
+    custo(&gpu);
+    eprintln!("# loadavg depois {}", loadavg());
+}
+
 /// C. o custo da C3 (preenche + visibilidade + fina, ms, o MÍNIMO de [`RODADAS`] intercaladas) nas
-/// cenas 1–6, vista de fábrica, sem e com o pé + a face.
+/// cenas 1–6, vista de fábrica: a W5f, o pé + a face afastada (W5g) e pelo ponto (W5o).
 fn custo(gpu: &ph2d_gpu::GpuContext) {
     use crate::medida_luz2d_w5d::{RODADAS, vista};
     let a = vista(1.0);
@@ -161,7 +173,7 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
             ph2d_light2d_ecs::coleta::cena_de_luz(&w)
         })
         .collect();
-    let vs = [0, VARIANTES.len() - 1];
+    let vs = [0, VARIANTES.len() - 2, VARIANTES.len() - 1];
     let mut solvers = Vec::new();
     for ci in 0..cenas.len() {
         for &v in &vs {
@@ -181,13 +193,10 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
         }
     }
     for ci in 0..cenas.len() {
-        eprintln!(
-            "C · cena {} · {} {:.3} ms · {} {:.3} ms",
-            ci + 1,
-            VARIANTES[vs[0]].0,
-            minimo[2 * ci],
-            VARIANTES[vs[1]].0,
-            minimo[2 * ci + 1]
-        );
+        let mut linha = format!("C · cena {}", ci + 1);
+        for (j, &v) in vs.iter().enumerate() {
+            linha += &format!(" · {} {:.3} ms", VARIANTES[v].0, minimo[vs.len() * ci + j]);
+        }
+        eprintln!("{linha}");
     }
 }

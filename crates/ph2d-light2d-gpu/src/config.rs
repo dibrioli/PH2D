@@ -170,6 +170,10 @@ pub struct Config {
     /// `VIS_NA_FACE` do `c3_pe.wgsl`); `false` = a marcha a partir do ponto rente, cujos raios
     /// rasantes saem ora livres ora tapados com a fase da grade.
     pub vis_na_face: bool,
+    /// ⭐ W5o — com [`Self::vis_na_face`], a abertura e os raios saem do próprio ponto da face e cada
+    /// raio só se testa a partir de onde está a `AFASTA_NA_FACE` do plano dela (o `FACE_PELO_PONTO` do
+    /// `c3_pe.wgsl`); `false` = a marcha a partir do ponto afastado (a penumbra deslocada).
+    pub face_pelo_ponto: bool,
     /// ⭐ W5h — o MIOLO dos opacos pela DIFUSÃO (`c3_miolo.wgsl`, a lei do
     /// `ph2d_light2d_ref::OpcoesDoMiolo`); só com o preenchimento (que marca o interior). `None` = o
     /// exterior mais próximo em todo o miolo (a lei até a W5g).
@@ -382,6 +386,7 @@ impl Config {
             borda_exata: true,
             pe_na_borda: true,
             vis_na_face: true,
+            face_pelo_ponto: true,
             miolo: Some(MIOLO_PADRAO),
             anel_fora_da_regiao: true,
             so_a_c0: false,

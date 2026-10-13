@@ -184,6 +184,8 @@ impl LuzDoQuadro {
             aritmetica: Config::padrao_para(&gpu.device, g).aritmetica,
             pe_na_borda: env("PH2D_LIGHT2D_PE"),
             vis_na_face: env("PH2D_LIGHT2D_FACE"),
+            // ⭐ W5o: `=0` volta à marcha a partir do ponto afastado (a penumbra deslocada, comparar).
+            face_pelo_ponto: env("PH2D_LIGHT2D_FACE_PONTO"),
             miolo: miolo_do_ambiente(),
             ..crate::teto::config_do_quadro(g, self.mundo_para_tela, dg, rebote_ligado())
         }

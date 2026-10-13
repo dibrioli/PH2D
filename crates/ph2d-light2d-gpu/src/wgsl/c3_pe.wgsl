@@ -16,6 +16,10 @@ override PE_NA_BORDA: bool = false;
 // grade, e o ruído ao longo da face projetava-se no interior em degraus (a foto do dono, cena 7).
 override VIS_NA_FACE: bool = false;
 override AFASTA_NA_FACE: f32 = 1.5;
+// ⭐ W5o — a abertura e os raios saem do PRÓPRIO ponto da face `P`; cada raio só se testa a partir de
+// onde está a `AFASTA_NA_FACE` texels do plano da face (o roçar na própria borda fica de fora como
+// antes). Partir de `P + afasta` deslocava a penumbra: lá a visibilidade varia com a posição.
+override FACE_PELO_PONTO: bool = false;
 
 // Passos da busca do pé: perto da borda assenta num passo; a `r` do centro de um disco de raio `R`, o
 // erro de ângulo cai para (1 − r/R) por passo.
@@ -110,6 +114,9 @@ fn normal_de_fora(P: vec2<f32>, P0: vec2<f32>) -> vec2<f32> {
 fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32, translucido: bool) -> f32 {
     let L = lampadas.itens[k];
     let afasta = nf * AFASTA_NA_FACE * max(1.0 / ESCALA_DA_CAPTURA, 1.0 / f32(fina.fina));
+    if FACE_PELO_PONTO && !translucido {
+        return visibilidade_pelo_ponto(P, nf, length(afasta), k);
+    }
     let Q = P + afasta;
     let v = L.centro - Q;
     let d = length(v);
@@ -149,6 +156,81 @@ fn visibilidade_na_face(P: vec2<f32>, nf: vec2<f32>, k: u32, translucido: bool) 
         }
     }
     return visto;
+}
+
+// ⭐ W5o — a transmissão do raio de `P` pela direção `dj` até `B`, testada a partir de onde o raio está
+// a `h` do plano da face (normal de fora `nf`); 1 se lá já passou de `B`.
+fn pelo_ponto_ate(P: vec2<f32>, nf: vec2<f32>, h: f32, dj: vec2<f32>, B: vec2<f32>, k: u32) -> f32 {
+    let s = h / max(dot(dj, nf), 1e-4);
+    if s >= distance(P, B) {
+        return 1.0;
+    }
+    let t = f32(marchar(P, P + dj * s, B).t);
+    if t <= 0.0 || !DISTANTES {
+        return t;
+    }
+    return t * fora_da_grade(P, B, k);
+}
+
+// ⭐ W5o — o [`visibilidade_na_face`] com a abertura vista do próprio `P` (opaco): a metade atrás da
+// tangente tapada, os raios da frente pelo [`pelo_ponto_ate`] — a fração à vista integrada como no
+// `visivel_do_disco` (fatias fixas, a bissecção onde a transmissão muda).
+fn visibilidade_pelo_ponto(P: vec2<f32>, nf: vec2<f32>, h: f32, k: u32) -> f32 {
+    let L = lampadas.itens[k];
+    let v = L.centro - P;
+    let d = length(v);
+    if L.raio <= 0.0 || d <= L.raio {
+        if dot(v, nf) <= 0.0 || d <= 0.0 {
+            return select(0.0, 1.0, d <= L.raio && L.raio > 0.0);
+        }
+        return pelo_ponto_ate(P, nf, h, v / d, L.centro, k);
+    }
+    let alfa = asin(min(L.raio / d, 1.0));
+    let base = atan2(v.y, v.x);
+    var delta = atan2(nf.y, nf.x) - base;
+    delta -= TAU * round(delta / TAU);
+    let lo = max(-alfa, delta - 0.25 * TAU);
+    let hi = min(alfa, delta + 0.25 * TAU);
+    if hi <= lo {
+        return 0.0;
+    }
+    let n = RAIOS_DIRETOS;
+    let largura = (hi - lo) / f32(n);
+    var a0 = base + lo;
+    var t0 = pelo_ponto_ao_disco(P, nf, h, v, d, L.raio, a0, k);
+    var soma = 0.0;
+    for (var i = 0u; i < n; i++) {
+        let a1 = a0 + largura;
+        let t1 = pelo_ponto_ao_disco(P, nf, h, v, d, L.raio, a1, k);
+        if abs(t1 - t0) < 1e-4 {
+            soma += 0.5 * (t0 + t1) * largura;
+        } else {
+            var lo_b = a0;
+            var hi_b = a1;
+            for (var b = 0u; b < BISSECOES; b++) {
+                let m = 0.5 * (lo_b + hi_b);
+                let tm = pelo_ponto_ao_disco(P, nf, h, v, d, L.raio, m, k);
+                if abs(tm - t0) <= abs(tm - t1) {
+                    lo_b = m;
+                } else {
+                    hi_b = m;
+                }
+            }
+            let borda = 0.5 * (lo_b + hi_b);
+            soma += t0 * (borda - a0) + t1 * (a1 - borda);
+        }
+        a0 = a1;
+        t0 = t1;
+    }
+    return soma / (2.0 * alfa);
+}
+
+// O [`ate_o_disco`] pelo [`pelo_ponto_ate`].
+fn pelo_ponto_ao_disco(P: vec2<f32>, nf: vec2<f32>, h: f32, v: vec2<f32>, d: f32, raio: f32, a: f32, k: u32) -> f32 {
+    let dj = vec2<f32>(cos(a), sin(a));
+    let b = dot(dj, v);
+    let t = b - sqrt(max(b * b - (d * d - raio * raio), 0.0));
+    return pelo_ponto_ate(P, nf, h, dj, P + dj * max(t - ANTES_DO_DISCO, 0.0), k);
 }
 
 // A visibilidade da lâmpada `k` no ponto de fronteira `P` que o texel `P0` (dentro) lê.

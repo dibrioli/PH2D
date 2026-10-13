@@ -88,7 +88,6 @@ pub(super) struct C3 {
     grupo_fina: wgpu::BindGroup,
     /// ⭐ W5n: o anel fora da região (o miolo no corpo inteiro, `c3_anel.wgsl`).
     anel: Option<(Par, wgpu::BindGroup)>,
-    /// ⭐ W5o: o [`Config::so_a_c0`] — a visibilidade e a grade fina não correm.
     so_a_c0: bool,
     /// ⭐ W5c: a FONTE do rebote (a luz que cada superfície recebe, para o quadro seguinte) — os
     /// grupos 2 (a c0) e 3 (a saída).
@@ -199,6 +198,7 @@ impl C3 {
             ("BORDA_EXATA", f64::from(u8::from(cfg.borda_exata))),
             ("PE_NA_BORDA", f64::from(u8::from(cfg.pe_na_borda))),
             ("VIS_NA_FACE", f64::from(u8::from(cfg.vis_na_face))),
+            ("FACE_PELO_PONTO", f64::from(u8::from(cfg.face_pelo_ponto))),
             (
                 "MIOLO",
                 f64::from(u8::from(cfg.niveis_do_miolo().is_some())),

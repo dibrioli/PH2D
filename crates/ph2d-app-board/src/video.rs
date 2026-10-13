@@ -53,6 +53,8 @@ struct State {
     rx: Receiver<Fetched>,
     playing: Option<Playing>,
     idle_since: Option<Instant>,
+    /// W21 — a última procura do navegador: se achou e quando.
+    browser: Option<(bool, Instant)>,
 }
 
 fn state() -> std::sync::MutexGuard<'static, State> {
@@ -65,6 +67,7 @@ fn state() -> std::sync::MutexGuard<'static, State> {
             rx,
             playing: None,
             idle_since: None,
+            browser: None,
         })
     })
     .lock()
@@ -82,7 +85,30 @@ pub fn service(hero: &mut HeroScreen) {
     }
     let mut st = state();
     thumbnails(hero, &mut st);
+    browser(hero, &mut st, Instant::now());
     player(hero, &mut st);
+}
+
+/// W21 — sem navegador achado, de quanto em quanto se procura de novo enquanto há vídeos à vista (quem o
+/// instala com o PH2D aberto vê a frase de instalar sumir; a procura são umas dezenas de `stat`).
+const BROWSER_RECHECK: Duration = Duration::from_secs(5);
+
+/// W21 — há um navegador da família Chrome? Procura-se quando há vídeos à vista: a 1.ª vez e, enquanto não
+/// houver, a cada [`BROWSER_RECHECK`]. O resultado vai para `Videos::no_browser` (a frase por baixo dos vídeos).
+fn browser(hero: &mut HeroScreen, st: &mut State, now: Instant) {
+    let vids = hero.documents.videos_mut();
+    if vids.on_screen.is_empty() {
+        return;
+    }
+    let due = match st.browser {
+        None => true,
+        Some((found, at)) => !found && now.duration_since(at) >= BROWSER_RECHECK,
+    };
+    if due {
+        let found = ph2d_board_video::find_browser().is_some();
+        st.browser = Some((found, now));
+        vids.no_browser = !found;
+    }
 }
 
 /// W18 — os links LARGADOS (do navegador) que são vídeos do YouTube entram no quadro em `at` (px de
@@ -321,6 +347,10 @@ fn player(hero: &mut HeroScreen, st: &mut State) {
             vids.frame = None;
             vids.status = None;
             vids.fullscreen = false;
+            if no {
+                vids.no_browser = true;
+                st.browser = Some((false, now));
+            }
             let link = ph2d_board_embed::canonical_link(&video);
             let opened = ph2d_board_video::open_in_browser(&link);
             hero.documents.warn(match (no, opened) {

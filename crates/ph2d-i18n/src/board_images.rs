@@ -21,6 +21,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.video.no_browser" => {
             "To play videos inside the board, install Chrome, Edge, Brave or Chromium \u{2014} opened in your browser"
         }
+        "board.video.install" => {
+            "To play videos inside the board, install Chrome, Edge, Brave or Chromium"
+        }
         "board.video.failed" => {
             "The browser did not start the video \u{2014} opened in your browser instead"
         }

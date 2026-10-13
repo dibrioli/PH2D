@@ -638,3 +638,44 @@ fn the_bar_goes_under_or_over_the_video_never_on_it() {
 
 #[path = "board_video_click_tests.rs"]
 mod click;
+
+/// ⭐ W21 (o dono, 13/10: «uma mensagem no quadro sugerindo a instalação de um navegador compatível»; escolheu
+/// «frase fixa sob o vídeo») — sem navegador da família Chrome, cada vídeo à vista tem por baixo a frase de
+/// instalar, FORA da caixa dele (nada à frente do tocador); com navegador, nenhuma.
+#[test]
+fn without_a_browser_each_video_says_to_install_one_below_it() {
+    let mut t = T::new();
+    assert!(paste(&mut t, LINK));
+    let id = video(&t).unwrap().id;
+    let area = t.hero.last_canvas;
+    let install = |t: &mut T| {
+        board_video_bar::paint_install(
+            &mut t.hero,
+            area,
+            &mut ph2d_vector::VectorScene::new(),
+            &mut t.ts,
+        )
+    };
+    assert!(install(&mut t).is_empty(), "com navegador, nenhuma frase");
+    t.hero.documents.videos_mut().no_browser = true;
+    t.paint();
+    let r = install(&mut t);
+    assert_eq!(r.len(), 1, "uma frase por vídeo à vista");
+    let [vx, vy, vw, vh] = video_rect(&mut t, id);
+    let below = r[0].y >= vy + vh;
+    let above = r[0].y + r[0].h <= vy;
+    assert!(
+        below || above,
+        "a frase {:?} cai em cima do vídeo {vx},{vy} {vw}×{vh}",
+        r[0]
+    );
+    assert!(below, "havia espaço por baixo e a frase foi para cima");
+    // Inteira, nunca «…» (a foto da 1.ª versão cortava em «Chro…»).
+    use ph2d_tokens::{Spacing, TypeToken};
+    let text = ph2d_i18n::tr("board.video.install");
+    let s = crate::screens::hero::float_bar::button_px();
+    let label_w = r[0].w - s - crate::screens::hero::float_bar::gap() - 2.0 * Spacing::Xs.px();
+    let budget = crate::paint::label_budget(label_w);
+    let shown = crate::text_elide::fit(&mut t.ts, text, TypeToken::Sm.px(), budget);
+    assert_eq!(shown, text, "a frase sai cortada");
+}

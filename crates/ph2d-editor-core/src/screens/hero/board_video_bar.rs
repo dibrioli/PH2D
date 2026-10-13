@@ -216,6 +216,103 @@ pub fn fullscreen_rect(area: Rect, aspect: f32) -> Rect {
     Rect::new(area.x + (aw - w) / 2.0, area.y + (ah - h) / 2.0, w, h)
 }
 
+/// ⭐ W21 — a frase «instale um navegador» para o vídeo no rectângulo de ecrã `video` (com a borda), dentro de
+/// `area`: uma faixa da largura do texto (`text_w`) e do ícone, por baixo do vídeo ou por cima se em baixo
+/// não couber — nunca à frente dele, como a barra; `None` se não couber.
+#[must_use]
+pub fn install_rect(area: Rect, video: Rect, text_w: f32) -> Option<Rect> {
+    let s = float_bar::button_px();
+    let (pad, gap) = (Spacing::Xs.px(), float_bar::gap());
+    let w = s + gap + text_w + 2.0 * pad; // LITERAL-PX-OK: as duas margens
+    let h = s + 2.0 * pad; // LITERAL-PX-OK: as duas margens
+    if w > area.w {
+        return None;
+    }
+    let below = video.y + video.h + pad;
+    let above = video.y - pad - h;
+    let y = if below + h <= area.y + area.h {
+        below
+    } else if above >= area.y {
+        above
+    } else {
+        return None;
+    };
+    let x = (video.x + video.w / 2.0 - w / 2.0)
+        .max(area.x)
+        .min(area.x + area.w - w);
+    Some(Rect::new(x, y, w, h))
+}
+
+/// O rectângulo de ecrã da CAIXA de um vídeo com a borda (o tocador recua por ela, W20).
+fn box_rect(pl: &Placement, el: &ph2d_board_model::Element, e: &ph2d_board_model::Embed) -> Rect {
+    let (reach, inner) = ph2d_board_render::player_in_box(el, e);
+    let tb = pl.to_screen * inner.inverse();
+    let a = tb * Point::new(-reach, -reach);
+    let b = tb * Point::new(el.w + reach, el.h + reach);
+    Rect::new(
+        a.x.min(b.x) as f32,
+        a.y.min(b.y) as f32,
+        (b.x - a.x).abs() as f32,
+        (b.y - a.y).abs() as f32,
+    )
+}
+
+/// W21 — sem navegador da família Chrome, por baixo de cada vídeo à vista a frase que sugere instalar um
+/// (decisão do dono: «frase fixa sob o vídeo»). Devolve onde ficou cada uma (os testes).
+pub(crate) fn paint_install(
+    hero: &mut HeroScreen,
+    area: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+) -> Vec<Rect> {
+    let theme = hero.theme;
+    let Some((board, live)) = hero.documents.active_parts() else {
+        return Vec::new();
+    };
+    let vids = &live.render_cache.videos;
+    if !vids.no_browser || vids.fullscreen {
+        return Vec::new();
+    }
+    let text = ph2d_i18n::tr("board.video.install");
+    let font = TypeToken::Sm.px();
+    // A caixa onde o texto INTEIRO cabe (a lei do rótulo, com o respiro: medido com a largura do texto,
+    // a frase saía cortada em «Chro…» na foto).
+    let text_w = crate::paint::rect_for_label(ts.prefix_width(text, font));
+    let mut out = Vec::new();
+    for (id, pl) in &vids.on_screen {
+        let Some(el) = board.doc.get(*id) else {
+            continue;
+        };
+        let Some(e) = el.embed() else { continue };
+        let Some(r) = install_rect(area, box_rect(pl, el, e), text_w) else {
+            continue;
+        };
+        float_bar::paint_panel(scene, [r], theme);
+        let pad = Spacing::Xs.px();
+        let s = float_bar::button_px();
+        let icon = Rect::new(r.x + pad, r.y + pad, s, s);
+        paint_icon(
+            scene,
+            IconId::Info,
+            float_bar::inner(icon),
+            resolve(ColorToken::Text2, theme),
+            StrokeToken::Default.px(),
+        );
+        let gap = float_bar::gap();
+        let label = Rect::new(icon.x + s + gap, r.y, text_w, r.h);
+        paint_text_centered(
+            ts,
+            scene,
+            text,
+            label,
+            font,
+            resolve(ColorToken::Text1, theme),
+        );
+        out.push(r);
+    }
+    out
+}
+
 /// O rectângulo de ecrã de um vídeo pela colocação dele (sem rodar).
 fn screen_rect(pl: &Placement, el_w: f64, el_h: f64) -> Rect {
     let a = pl.to_screen * Point::new(0.0, 0.0);
@@ -230,6 +327,7 @@ fn screen_rect(pl: &Placement, el_w: f64, el_h: f64) -> Rect {
 
 /// ⭐ Pinta a barra do vídeo activo (e, no ecrã inteiro, o vídeo a encher a área). `area` = a do quadro.
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
+    let _ = paint_install(hero, area, scene, ts);
     let theme = hero.theme;
     let nav = hero
         .documents
@@ -277,18 +375,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         match (vids.on_screen.get(&id), el.embed()) {
             // W20: a barra fica fora da CAIXA e da borda dela (o recuo do tocador é o alcance da moldura,
             // que sai da caixa no máximo isso).
-            (Some(pl), Some(e)) if pl.live => {
-                let (reach, inner) = ph2d_board_render::player_in_box(el, e);
-                let tb = pl.to_screen * inner.inverse();
-                let a = tb * Point::new(-reach, -reach);
-                let b = tb * Point::new(el_w + reach, el_h + reach);
-                Rect::new(
-                    a.x.min(b.x) as f32,
-                    a.y.min(b.y) as f32,
-                    (b.x - a.x).abs() as f32,
-                    (b.y - a.y).abs() as f32,
-                )
-            }
+            (Some(pl), Some(e)) if pl.live => box_rect(pl, el, e),
             _ => return,
         }
     };

@@ -139,6 +139,9 @@ pub struct Videos {
     pub fullscreen: bool,
     /// A apresentação está a desenhar (o modo limpo do export): os vídeos dela registam-se e tocam.
     pub presenting: bool,
+    /// W21 — esta máquina não tem um navegador da família Chrome (o app procura-o): os vídeos não tocam no
+    /// quadro, e por baixo de cada um vai a frase que sugere instalar um.
+    pub no_browser: bool,
 }
 
 impl Videos {

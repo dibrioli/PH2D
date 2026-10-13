@@ -148,3 +148,39 @@ o ecrã inteiro 16:9 (`our_fullscreen_fills_the_board_keeping_the_shape_and_esc_
 (`a_video_on_a_slide_plays_in_the_presentation_with_our_controls`); e no navegador real (`#[ignore]`, à mão):
 `the_player_s_fullscreen_corner_never_changes_the_frame_shape`, `clicking_the_channel_keeps_the_player_playing_and_lit`,
 `a_continuous_zoom_never_pauses_the_player`, `our_controls_reach_the_player_and_come_back_in_its_state`.
+
+## §W20 — emenda: o pan não pausa, o clique decide-se no largar, o vídeo decora-se (13/10)
+
+Pedidos do dono depois do smoke da W19, cada um reproduzido VERMELHO pelo despacho real antes da cura. O oráculo
+correu primeiro ([`sonda_w20.mjs`](../../MiroClone/ferramentas/excalidraw_oracle/sonda_w20.mjs), Excalidraw 0.18.1
+com o YouTube real, saídas em `excalidraw_oracle/saidas/w20/`); mecanismo:
+[`10_video_do_youtube.md`](../../MiroClone/10_video_do_youtube.md) §W20.
+
+1. **Desactivar tira o rato e as teclas, NÃO a imagem.** O oráculo: clicar fora desactiva e o vídeo continua a
+   tocar (tempo 4,26 → 6,27 s); os pans (meio, roda, mão, espaço no vazio) também. `Videos::player` (o vídeo que o
+   tocador tem) separa-se de `Videos::active` (quem recebe o rato e as teclas); o app toca o `player`.
+2. **A regra de estar vivo**: o mínimo de 200×200 do YouTube (*Required Minimum Functionality*) é do TOCADOR, não
+   do pedaço à vista — um embed numa página que rola fica meio fora e toca; o oráculo toca com 150 px à vista e
+   todo fora. A W19 tinha lido «200×200 VISÍVEIS» e por isso o pan até à beira pausava. Agora: destapado, sem
+   rodar, tocador ≥ 200×200 e **algum** pedaço à vista — só todo fora pausa (o pedido do dono); de volta, retoma
+   se tocava; o navegador fecha 60 s depois e o vídeo volta a ser só o play (não arranca sozinho do início).
+3. **Os pans nunca chegam ao vídeo**: o botão do meio (também o dos dois dedos, que chega como um meio
+   sintético), o Espaço e a mão saltam o `board_video::pointer_down`. O Espaço com um vídeo activo é tocar/pausar
+   só num TOQUE (carregar e largar sem nenhum carregar do rato pelo meio); com um arrasto pelo meio é o pan. O
+   oráculo tem aqui um defeito que não copiamos: espaço+arrastar SOBRE o vídeo activo não faz pan e pausa-o.
+4. **Segurar e arrastar move; clicar dá play/pause.** O carregar num vídeo (com a ferramenta de seleccionar) fica
+   à espera do largar (`board_video::Pending`) e segue para o editor — o arrasto move-o, parado OU activo; o largar
+   sem passar o limiar de arrasto da casa é o clique: activa (o oráculo activa no LARGAR, A2), ou, activo e vivo,
+   vai ao tocador como carregar+largar no ponto do clique; o clique num vídeo que o tocador já tem é tocar/pausar.
+   O oráculo não move um vídeo ACTIVO (o iframe come o gesto): aqui move, porque o tocador sem os controlos do
+   YouTube (`controls=0`) não tem gesto de arrastar que se perca. Com outra ferramenta, o vídeo não toma o
+   carregar (a ferramenta faz o seu por cima dele).
+5. **A decoração é a do rectângulo**: na barra de estilo, um vídeo seleccionado tem o fundo, a cor, a espessura e
+   o traço da borda, os cantos e a opacidade (o oráculo dá ao `embeddable` os grupos do rectângulo, E1). A borda é a
+   moldura das formas no contorno da caixa; o TOCADOR RECUA para dentro dela pelo alcance da moldura (o oráculo
+   recua o iframe pela largura do traço) — o traço, centrado no contorno, nunca fica por cima do vídeo; o fundo
+   pinta-se POR TRÁS do tocador (sólido: um tracejado de preenchimento num anel fino não diz nada). A nossa barra
+   fica fora da caixa e da borda. O `.excalidraw` lê e escreve a decoração como a de um rectângulo (a entrada do
+   gate é o ficheiro que o oráculo gravou, `w20_E2_gravado.excalidraw`).
+6. **O enquadrar de um vídeo pequeno é no evento** (`board_nav::fit_now`): o clique já o vê vivo no mesmo desenho;
+   o `show_box` antigo esperava pelo fim do desenho seguinte e fechava o minimapa e o painel de Frames.

@@ -72,3 +72,40 @@ rato e o tamanho seguem-na), os atalhos em `board_video::key`, e a apresentaçã
 por cima da sala).
 
 **Cena de smoke:** 20 (`PH2D_BOARD_SMOKE=20`, `smoke_w19.rs`, gate `the_w19_scene_does_what_its_lessons_say`).
+
+## §W20 — o pan não pausa, arrastar move, a decoração (13/10)
+
+Decisão: [ADR-0185 §W20](../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md).
+Oráculo: [`ferramentas/excalidraw_oracle/sonda_w20.mjs`](ferramentas/excalidraw_oracle/sonda_w20.mjs) (16 sondas, a
+página servida como `https://ph2d.local/` — de `http://127.0.0.1` o YouTube recusa: «This video is unavailable»),
+saídas em `excalidraw_oracle/saidas/w20/` (`w20_sondas.json`, fotos, `w20_E2_gravado.excalidraw`).
+
+| pergunta | o oráculo | aqui (W20) |
+|---|---|---|
+| arrastar um vídeo parado, pelo play | move, não activa (A1) | igual |
+| clique rápido num seleccionado | activa no LARGAR (logo após o Down: `hover`); 600 ms quieto + largar não activa (A2) | activa no largar sem arrasto (sem prazo) |
+| arrastar um seleccionado pelo meio | move (A3) | igual |
+| arrastar um ACTIVO, de dentro ou da borda | não move, o clique chega ao YouTube e pausa (A4) | move; o tocador não recebe nada |
+| clicar fora | desactiva, **toca** (P_clique_fora) | igual (antes: pausava) |
+| pan: meio / roda / mão / espaço no vazio | toca (a mão desactiva) | toca, fica activo |
+| espaço+arrastar SOBRE o activo | não faz pan, **pausa** (defeito) | faz pan, toca |
+| meio fora · 150 px · todo fora · de volta | toca sempre | toca · toca · **pausa** (o dono) · retoma |
+| decoração de um `embeddable` | os grupos do rectângulo; a borda no contorno, o iframe recuado pela largura do traço, o fundo só por trás (E1, E2) | igual, com a moldura das formas (à mão se o rascunho) |
+
+**Os três caminhos do «pan pausa»** (os três vermelhos em `a_pan_never_reaches_the_video`,
+`clicking_outside_takes_the_mouse_not_the_picture`, `a_video_plays_until_it_is_wholly_out_of_view`): (a) o carregar do
+pan passava pelo `board_video::pointer_down`, que desactivava — e desactivar pausava; (b) com o vídeo activo o
+Espaço era o atalho tocar/pausar e o quadro nunca recebia o pan; (c) a regra «≥ 200 px VISÍVEIS» pausava o vídeo
+levado até à beira.
+
+**O mecanismo.** `Videos::player` (o tocador) ≠ `Videos::active` (o rato e as teclas); `live_allowed` lê o
+tamanho do tocador e se há algum pedaço à vista. `board_video::Pending` guarda o carregar; `pointer_move` mede o
+limiar (`board_view::metrics().drag`) e devolve o mover ao editor; `pointer_up` decide. `space_tap` arma no
+carregar do Espaço e qualquer carregar do rato desarma-o. No desenho, `player_in_box` dá o recuo (o alcance da
+moldura, `image_frame::reach`) e o afim do tocador normalizado à caixa — a colocação (`Placement::to_screen`) é a
+do tocador, por isso o ponto do clique, o play e a barra seguem-no sem mudar; a moldura no rascunho nunca preenche
+(lê o estilo do elemento).
+
+**Cena de smoke:** 21 (`PH2D_BOARD_SMOKE=21`, `smoke_w20.rs`, gate `the_w20_scene_does_what_its_lessons_say`). As
+lições da cena 19 (l1: «clique fora para parar») e da 20 (l2: «enquanto 200×200 à vista») ensinavam o contrário e
+foram corrigidas.

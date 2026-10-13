@@ -148,10 +148,16 @@ pub fn pede_a_aba_arrange() {
     ARRANGE.with(|a| a.set(true));
 }
 
-/// Por quadro: com a Timeline visível, o pedido da cena chega ao painel — uma vez.
+/// Por quadro: com a Timeline visível, o pedido da cena chega ao painel — e repete-se enquanto a
+/// cena ENCENA o relógio ([`pede_paragem`] por cumprir), porque a seleção do objecto no arranque
+/// pede a `Keys` depois (medido na foto: a aba ficava na `Keys`). Cumprida a paragem, a aba é do
+/// artista.
 pub(crate) fn encena_a_aba(timeline_visivel: bool) {
-    if timeline_visivel && ARRANGE.with(|a| a.replace(false)) {
+    if timeline_visivel && ARRANGE.with(std::cell::Cell::get) {
         ph2d_panel_timeline::state::request_arrange_tab();
+        if PARAGEM.with(|p| p.get().is_none()) {
+            ARRANGE.with(|a| a.set(false));
+        }
     }
 }
 

@@ -6,7 +6,7 @@
 > e NÃO se repetem aqui (os itens W20.1–W20.7 de lá continuam valendo).
 > Briefing W21: [HANDOFF_CONTINUACAO_W21](HANDOFF_CONTINUACAO_W21_VIDEO_CLIQUE_FERRAMENTAS_WINDOWS_2026-10-13.md).
 > Decisão: [ADR-0185 §W21](../../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md)
-> (itens 1–4). Mecanismo: [`10_video_do_youtube.md`](../10_video_do_youtube.md) §W21 e §W21.3 (Windows). Oráculo:
+> (itens 1–5). Mecanismo: [`10_video_do_youtube.md`](../10_video_do_youtube.md) §W21, §W21.3 (Windows) e §W21.4 (2.ª volta). Oráculo:
 > [`sonda_w21.mjs`](../ferramentas/excalidraw_oracle/sonda_w21.mjs) (saídas em `excalidraw_oracle/saidas/w21/`).
 
 ## 1. Identidade
@@ -17,7 +17,7 @@
 | HEAD | ver `git log -1` (este handoff é o último commit) |
 | base (merge-base) | `757afebd58` = `main` de 13/10 |
 | commits W20 | ver o handoff da W20 (`86678fcb0b` … `17b0b42c83`) |
-| commits W21 (do mais velho) | `38d0a1c7a2` briefing · `70a27dba39` oráculo `sonda_w21.mjs` · `b4c03a4e8a` feat clique longo + outra ferramenta · `d14f8c5276` cena 21, lições 8 e 9 · `b2d690bd37` docs §W21 · `eeeecd817e` feat Windows · `58172406e8` docs §W21.3 · `ea6810f233` fecho · `433d21bc11` foto da cena · + este handoff |
+| commits W21 (do mais velho) | `38d0a1c7a2` briefing · `70a27dba39` oráculo `sonda_w21.mjs` · `b4c03a4e8a` feat clique longo + outra ferramenta · `d14f8c5276` cena 21, lições 8 e 9 · `b2d690bd37` docs §W21 · `eeeecd817e` feat Windows · `58172406e8` docs §W21.3 · `ea6810f233` fecho · `433d21bc11` foto da cena · `a62dddb8a8` handoff · **`0cb5eede4f` fix, 2.ª volta depois do smoke do dono (§1b)** |
 | diff | `git diff --stat 757afebd58 HEAD` (W20+W21): 114 ficheiros, +20763/−256 (a maior parte é JSON e fotos dos oráculos). Só W21 (`git diff --stat 38d0a1c7a2 HEAD`): 43 ficheiros, +12147/−198. **`shells/` intocada** (`git diff --stat 757afebd58 HEAD -- shells/` vazio) |
 | smoke | cena **21** (`PH2D_BOARD_SMOKE=21`, `smoke_w20.rs`, agora 9 lições; `max_level` continua 21, nenhuma cena nova). Foto: `ferramentas/soltar_wayland/quadro21_w21_depois.png` |
 
@@ -41,6 +41,23 @@
 4. As lições 8 e 9 da cena 21 (`board.smoke.w20.l8`, `l9`) ensinam (8) segurar parado não faz nada e (9) com a caneta
    (P) ou uma forma, o clique toca/pausa e arrastar desenha. Conduzidas pelo gate da cena (`Mouse::hold`).
 
+## 1b. Depois do smoke do dono (13/10) — commit `0cb5eede4f`
+
+Mecanismo, medidas e gates: [`10_video_do_youtube.md` §W21.4](../10_video_do_youtube.md); decisão: ADR-0185 §W21 itens
+3 (reescrito) e 5 (novo). O dono reportou três coisas:
+
+1. **«Nem sempre o primeiro clique toca o vídeo.»** Medido no Chrome 155 real: um clique no instante em que o tocador
+   passa a `Buffering` devolve-o a `Unstarted` e ele nunca toca (8,5 s). Cura: `Playback::started` +
+   `Player::mouse` só depois dele; `PlayerStatus::starting` e «a carregar» (`loading_mark`) no lugar do play. RED
+   `[(Buffering, true, Unstarted)]` → verde (3 variantes em Playing). Gate `a_starting_player_shows_it_is_loading`.
+2. **«O clique com a caneta toca o vídeo.»** Perguntado, «está certo assim»: a opção (a) da W21 fica.
+3. **«Nota/traço/shape sobre parte do vídeo, ele não toca.»** O oráculo esconde o desenho atrás do vídeo (a tocar ou
+   parado): decide sem perguntar. **Revoga** «nós pausamos, acima»: o vídeo desenha-se à frente
+   (`BoardDoc::live_in_paint_order`), o clique na parte sobreposta apanha o vídeo, só outro vídeo o tapa. As lições 2
+   da cena 18 e 9 da cena 21 dizem a lei nova. Mutação: os dois gates sangram.
+
+Testes e mutação: [§W21.4](../10_video_do_youtube.md) (model 124 · render 54 · edit 218 · video 16/16 real · app-board 74 · hero 445).
+
 ## 2. Foundational / partilhado tocado (W21; os da W20 estão no handoff dela)
 
 | onde | o quê | merge |
@@ -55,6 +72,17 @@
 | `ph2d-board-video` | `browser.rs`, `player.rs`, `tests.rs`, `Cargo.toml` | só MiroClone |
 | **crate NOVA** `crates/ph2d-win-pipe-spawn` | membro novo do workspace; `windows-sys` 0.61.2 (já no lock) só em `cfg(windows)`; `Cargo.lock` +1 entrada | aditivo; **regenere o lock, nunca à mão** |
 | `ph2d-editor-core/tests/it/architecture_every_member_inherits_the_workspace_lints.rs` | +1 entrada em `EXCECOES`: a crate FFI precisa de `unsafe`, que o workspace proíbe (isenção que viaja com o código, como a `ph2d-wayland-dnd`) | aditivo (lista); se outra linha também acrescentar, junte as duas |
+
+**2.ª volta (`0cb5eede4f`) — o que um merge pode partir:**
+
+| onde | o quê | merge |
+|---|---|---|
+| `ph2d-board-model` `element.rs` | `BoardDoc::live_in_paint_order` — fn `pub` NOVA | aditivo |
+| `ph2d-board-render` `video.rs` | ⚠️ `PlayerStatus::starting` — CAMPO NOVO numa struct `pub`: quem a constrói por literal tem de o pôr (4 testes actualizados: `board_video_tests.rs`, `board_team_flow_tests.rs`, `smoke_w19_tests.rs`, `smoke_w20_tests.rs`); `covered` só conta vídeos; `loading_mark` (novo); o laço do desenho lê a ordem nova | quem constrói `PlayerStatus` noutra linha parte |
+| `ph2d-board-edit` `gesture.rs` | `Editor::hit` lê a ordem de desenho | só MiroClone |
+| `ph2d-board-video` `playback.rs`, `player.rs` | `Playback::started` (campo `pub` novo; o `load` repõe); `Player::mouse` com guarda | aditivo |
+| `ph2d-app-board` `video.rs` | passa `starting` | só MiroClone |
+| `ph2d-i18n` `board_images.rs` | textos MUDADOS: `board.video.covered`, `board.smoke.w18.l2`, `board.smoke.w20.l9` | se outra linha os tocar, junte |
 
 **Roteador de smoke**: `max_level` 21 (inalterado pela W21; reconte se outra linha criar a 21). **Contratos
 congelados (§6)**: nenhum. `PROTOCOL`/`FORMAT_VERSION` do quadro: inalterados. **Catracas baixadas / itens partilhados
@@ -90,6 +118,8 @@ desenha*. TRAÇO: `board_video::pointer_down` (`other`, devolve `true` ⇒ o Dow
 `canvas_down(at)`; segurar: `board_view::pointer` (Up) → `deferred_hold` → `canvas_down(at)` → `ed.pointer_up`.
 ASSERÇÃO-VERMELHA: `with_another_tool_…`. **NÃO-CHECADO-PELA-COMPILAÇÃO**: (3) o tocador num Windows real.
 
+**Re-corrido depois de `0cb5eede4f`: (a preencher)** — o portão acima é o de ANTES da 2.ª volta.
+
 ### Windows: o que foi medido (e a receita, que NÃO está no repo)
 
 Compila para `x86_64-pc-windows-gnu` SEM mingw: o C do `ring` com `CC_x86_64_pc_windows_gnu=clang
@@ -116,6 +146,10 @@ Chrome real, `--include-ignored`).
 - (d) Da W20, sem mudança: o canal aberto fora não pausa o vídeo daqui; o fundo tracejado pinta-se sólido num vídeo;
   e os da W19 que o handoff da W20 lista (Premium · clicar num vídeo TAPADO na apresentação · o aviso no ecrã inteiro ·
   o enquadramento das cenas não desconta os painéis laterais · o `held` do app).
+- (e) **Da 2.ª volta**: o limiar de arrasto de um clique é o da casa (`TAB_DRAG_THRESHOLD_PX`); se o dono ainda vir
+  cliques que não tocam com o vídeo já carregado, a próxima suspeita é um tremor da mão acima dele (não medido).
+  O anel «a carregar» gira com os desenhos do quadro (`RenderCache::frame`): se o quadro não redesenhar durante o
+  arranque fica parado (não medido no app).
 - **FECHADOS pelo dono (13/10)**: as pegas nos cantos do vídeo («deixar») e o trilho das setas da sessão («Não
   precisa»); o clique longo e a outra ferramenta («corrija») e o Windows («implemente») foram feitos aqui.
 - O ficheiro solto `docs/MiroClone/ferramentas/cena2_forma/cena2_botao_forma.log` (de 11/10) é instrumento antigo, não
@@ -152,7 +186,9 @@ nada») e a 9 (com a caneta, tecla P, ou uma forma, o clique toca/pausa e arrast
 laser fica de fora (aponta; não toca nem pausa). Foto: `ferramentas/soltar_wayland/quadro21_w21_depois.png` (a imagem
 no meio é do fotógrafo, não da cena). Como saber que deu errado: segurar parado num vídeo e largar o activa ou pausa;
 com a caneta, um clique rápido no vídeo deixa um ponto/traço em vez de tocar.
+**Novo na 2.ª volta** (diga ao dono): (a) ao arrancar, o vídeo mostra um anel «a carregar» no lugar do play — um clique
+nessa fase não faz nada (o vídeo toca sozinho); (b) uma nota, forma ou traço desenhado sobre parte do vídeo fica
+ATRÁS dele e o vídeo continua a tocar; só outro vídeo por cima o pausa (aviso «Another video covers this one…»).
+Errado: o vídeo pausa por ter uma nota/traço por cima, ou fica parado depois de vários cliques.
 
-**Prova do binário** (depois de reclamar ~16 GB de `target/*/incremental`; 2.ª e 3.ª compilações, a mesma linha
-de comando `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`): `Finished smoke profile
-[optimized] target(s) in 0.23s`, zero `Compiling`. O binário é o de `ea6810f233` (os commits seguintes são só docs).
+**Prova do binário:** (a preencher) — o binário de `ea6810f233` já não é o do HEAD (`0cb5eede4f` mexeu em código).

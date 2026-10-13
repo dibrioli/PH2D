@@ -13,7 +13,8 @@ com `gst-plugins-good`) · Servo 0.7 embebido toca a 29,9 fps mas a 360p (sem MS
 **Chrome por CDP: 29,97 fps, som, clique 7–28 ms**. O dono decidiu (12/10) a «janela virtual»: o navegador da família Chrome
 da pessoa, sem cabeça, CDP, projectado no canvas ([ADR-0185](../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md),
 **número PROVISÓRIO**: máximo no main 0181, linhas 0184 — recontar). Lei do YouTube (Required Minimum Functionality):
-nada à frente do leitor, ≥ 200×200, Referer ⇒ **vivo só destapado, sem rotação, inteiro à vista, ≥ 200 px**.
+nada à frente do leitor, ≥ 200×200, Referer ⇒ **vivo só destapado, sem rotação, inteiro à vista, ≥ 200 px**
+(revogado na W21: o vídeo desenha-se à frente, só outro vídeo o tapa; e na W20, «algum pedaço à vista»).
 
 6. **Modelo.** `ElementKind::Embed(Box<Embed{link, video: Video::YouTube{id,start,vertical}, style}>)` no **FIM** do enum
    (`FORMAT_VERSION` fica 13: lei do repo, variante no fim não muda o formato); `Field::Embed` (`Field::ALL` 38→39);
@@ -146,7 +147,7 @@ PÁGINA (`event.timeStamp` de pointerdown→pointerup), não no `waitForTimeout`
 | vídeo NÃO seleccionado, clique de 68 ms no meio / 607,6 ms | activa / não activa (T0) |
 | vídeo seleccionado, segurar parado no meio, 13 tempos a subir e a descer | activa a 82 · 153 · 203 · 253 · 283,5 ms; NÃO activa a 303,3 · 324 · 354 · 403 · 455 · 502 · 605 · 807 ms; idêntico nos dois sentidos ⇒ a fronteira está em (283,5; 303,3] ms, «perto de 300 ms» (T1) |
 | 11 ferramentas (rectangle, ellipse, diamond, arrow, line, freedraw, text, eraser, laser, hand, frame) sobre o vídeo parado e sobre o activo a tocar | a ferramenta faz SEMPRE o seu por cima e nunca activa o vídeo. Clique sem mexer: arrow/line/freedraw criam um elemento, text abre o editor, rectangle/ellipse/diamond/frame nada (tamanho zero); arrasto: cria o elemento por cima (F) |
-| escolher outra ferramenta com o vídeo activo | desactiva-o (`activeEmbeddable` → `null`) mas ELE CONTINUA A TOCAR, mesmo com um rectângulo desenhado por cima (ignora a regra do YouTube de nada à frente do tocador; nós pausamos, ADR-0185) |
+| escolher outra ferramenta com o vídeo activo | desactiva-o (`activeEmbeddable` → `null`) mas ELE CONTINUA A TOCAR, mesmo com um rectângulo desenhado por cima (ignora a regra do YouTube de nada à frente do tocador; nós pausávamos, ADR-0185 — *revogado na W21 §W21.4: o vídeo desenha-se à frente*) |
 | borracha · mão · laser | APAGA o vídeo (o iframe desaparece e ele pára; a nossa só apaga traços da caneta) · faz pan · não desenha |
 
 **A medida não decidia o item 2.** O oráculo não faz nem (a) «clique = play/pause com qualquer ferramenta, o arrasto é
@@ -209,3 +210,50 @@ lançado pela crate de FFI `ph2d-win-pipe-spawn` (`PROC_THREAD_ATTRIBUTE_HANDLE_
 (30,6 q/s, clique → quadro 28,7 ms). **Por medir num Windows real**: o Edge, o sandbox ligado (no Wine só corre com
 `--no-sandbox`, que existe SÓ nos testes) e os órfãos do fecho (2 em 11 no Wine). O recuo «abrir no navegador» fica
 para quando não há navegador.
+
+## §W21.4 — depois do smoke do dono (13/10)
+
+Commit `0cb5eede4f`. Decisão: [ADR-0185 §W21 itens 3 e 5](../architecture/decisions/0185-o-video-do-quadro-toca-no-navegador-da-pessoa-projectado-no-canvas.md).
+O dono reportou três coisas: (a) «nem sempre o primeiro clique toca o vídeo; às vezes preciso clicar muitas vezes»;
+(b) «o clique com a caneta toca o vídeo» — perguntado, «está certo assim» (é a opção (a) do item 2: fica);
+(c) «se notas, traços ou shapes sobrepõem parcialmente o vídeo, ele não toca. Corrija».
+
+**(c) O vídeo desenha-se à frente.** Oráculo (`saidas/w21/w21_F_rectangle_activo_03_arrasto_largou.png`,
+`w21_F_freedraw_activo_03…`, `w21_F_rectangle_parado_04…`): no Excalidraw o rectângulo e o traço desenhados por cima
+de um vídeo — a tocar ou parado — ficam ESCONDIDOS atrás dele (o iframe vive numa camada acima do canvas). Isso
+decide sem perguntar ao dono e cumpre a regra do YouTube (nada à frente do tocador). Antes, qualquer elemento acima no
+z cuja CAIXA ENVOLVENTE tocasse a do vídeo pausava-o (até um traço cuja caixa o tocava sem o tocar). Cura:
+`BoardDoc::live_in_paint_order` (ordem de z com os vídeos por cima do resto; entre vídeos, o z). Quem a lê: o desenho
+(`ph2d-board-render::paint`, o laço dos elementos; os recortes dos frames reentram por elemento, por isso vale com
+diapositivos), o «o de cima» do clique (`Editor::hit`: o clique na parte sobreposta apanha o vídeo) e a exportação
+(o que se exporta é o que se vê). `covered` conta SÓ outro vídeo mais acima. Aviso `board.video.covered`: «Another
+video covers this one: YouTube only plays it uncovered — move one of them».
+
+**(a) O clique durante o arranque.** Medido no navegador real (Chrome 155, teste `#[ignore]`
+`a_click_while_the_player_starts_never_stops_its_autoplay`, variantes no mesmo processo): sem clique o tocador vai
+Unstarted → Buffering ~1,2–1,5 s → Playing ~1,5–1,9 s (máquina calma). Um clique a 0,3 s e a 1 s (Unstarted) não faz
+nada; a 2 s/3 s (já Playing) pausa — correcto; e **um clique no instante em que passa a `Buffering` devolve-o a
+`Unstarted` e ele NUNCA chega a tocar** (8,5 s observados): o «preciso clicar muitas vezes». E durante o arranque o
+quadro tirava o play e mostrava a miniatura parada, o que convidava a clicar de novo. Cura: `Playback::started`
+(true em Playing/Paused/Ended/Cued; o `load` repõe) e `Player::mouse` só manda o rato à página depois dele (antes, o
+vídeo toca sozinho, `autoplay=1`); `PlayerStatus::starting = !started` e o desenho põe «a carregar» (disco `BgScrim`
+com um arco de ¾ que gira com os desenhos do quadro, `loading_mark`) no lugar do play. RED antes da cura:
+`[(Buffering, true, Unstarted)]`; verde depois: as três variantes acabam em Playing.
+
+| gate | o que prova |
+|---|---|
+| `a_video_draws_over_what_overlaps_it_and_only_another_video_covers_it` (render) | uma nota acima no z pinta-se antes do quadro do tocador e ele fica vivo sem play; outro vídeo por cima tapa-o |
+| `shapes_over_part_of_a_video_never_stop_it_and_the_video_takes_the_click` (editor, despacho real) | rectângulo + traço da caneta sobre parte do vídeo: o clique no play toca-o; o clique na parte sobreposta selecciona o vídeo |
+| `a_starting_player_shows_it_is_loading` (render) | o «a carregar» no lugar do play |
+| `a_click_while_the_player_starts_never_stops_its_autoplay` (tocador real, `#[ignore]`) | as 3 variantes acabam em Playing |
+| gate da cena 18 · gate da cena 21 | lição 2 da cena 18: «Put a note over part of the video: the video stays in front and keeps playing. Rotate it: it pauses (YouTube's rule).» (prova as duas metades; antes ensinava o contrário, `tapado não está vivo`); lição 9 da cena 21: «… Drag across it: the video stays in front and keeps playing» (o gate verifica que o vídeo continua vivo com o traço) |
+
+Mutação (desligar a ordenação + `covered` antigo): os dois gates do (c) sangram («nota por cima = true: o tocador
+parou», «tapado em parte e não toca»). Testes depois da volta: `ph2d-board-model` 124 · `ph2d-board-render` 54 (+2
+ignorados) · `ph2d-board-edit` 218 · `ph2d-board-video` 7 + 9 ignorados (16/16 com `--include-ignored`, release) ·
+`ph2d-app-board` 74 + 7 ignorados · `ph2d-editor-core --lib screens::hero` 445 · os 18 testes do vídeo ✓.
+
+**Aberto.** (i) O limiar de arrasto de um clique é o da casa (`TAB_DRAG_THRESHOLD_PX`); se o dono ainda vir cliques que
+não tocam com o vídeo já carregado, a próxima suspeita é um tremor da mão acima dele (não medido). (ii) O anel «a
+carregar» gira com os desenhos do quadro (`RenderCache::frame`): se o quadro não redesenhar durante o arranque, fica
+parado (não medido no app).

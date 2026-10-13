@@ -43,7 +43,7 @@ quadros chegam por screencast e desenham-se no canvas como uma imagem; o rato e 
 3. **UM tocador vivo de cada vez** — o vídeo ACTIVADO (o idioma do oráculo: um clique activa, clicar fora
    desactiva). Os outros mostram a miniatura com o símbolo de play.
 4. **Vivo só quando as regras se cumprem**, uma função com gate (`live_allowed`): descoberto (nenhum elemento por
-   cima do retângulo dele), sem rotação e ≥ 200×200 px VISÍVEIS (W19: era «inteiro à vista», a regra era nossa e
+   cima do retângulo dele) *(revogado na W21: o vídeo desenha-se à frente; só outro vídeo o tapa)*, sem rotação e ≥ 200×200 px VISÍVEIS (W19: era «inteiro à vista», a regra era nossa e
    pausava o vídeo a cada zoom — §W19). Ao falhar qualquer uma, o
    desenho volta à miniatura (com o quadro em que parou) no mesmo quadro em que deixou de cumprir.
 5. **A miniatura SEMPRE no canvas**: export, pan, zoom, rotação, sem rede. Busca-se fora do fio da janela, com
@@ -61,7 +61,7 @@ quadros chegam por screencast e desenham-se no canvas como uma imagem; o rato e 
 | **Servo 0.7 embutido** | toca: **29,9 q/s**, 0,09 núcleo, 646 MB, build release frio 172 s. MAS sem MSE ⇒ o YouTube cai no MP4 de **360p**; a API de embutir **quebra todo mês** (*«not a 1.0»*); pede GStreamer também no Windows/macOS; o Verso (o webview do Tauri sobre o Servo) foi **arquivado** em 10/2025. ⇒ plano B quando houver MSE (NLnet «Servo Multimedia», 06/2026) |
 | **CEF embutido** (o motor do Chrome dentro do PH2D) | toca (o mesmo motor da decisão), mas **+364 MB** instalados / 116 MB baixados por build; o `accelerated_osr` do crate `cef` 154 pede `wgpu` **30** (o nosso é 29, preso pelo `vello`); o dono preferiu zero a instalar |
 | **(iii) tirar o fluxo do vídeo** (`yt-dlp` + descodificar) | ⛔ viola os termos do YouTube |
-| **o tocador vivo por baixo das notas / rodado** | ⛔ as regras do YouTube proíbem cobrir qualquer parte do tocador e modificar a aparência dele ⇒ miniatura |
+| **o tocador vivo por baixo das notas / rodado** | ⛔ as regras do YouTube proíbem cobrir qualquer parte do tocador e modificar a aparência dele ⇒ miniatura *(revogado na W21: o vídeo desenha-se à frente; só outro vídeo o tapa)* |
 
 ## O PREÇO
 
@@ -85,7 +85,7 @@ falha e a decisão volta ao dono (o Servo é o plano B).
 ## O que fica gateado (para ninguém re-litigar por prosa)
 
 - `ph2d-board-embed` (crate da lei): `youtube::parse` contra a tabela das 24 formas do oráculo (+ as correcções);
-  `live_allowed` (descoberto · sem rotação · ≥ 200×200 VISÍVEIS — §W19).
+  `live_allowed` (descoberto · sem rotação · ≥ 200×200 VISÍVEIS — §W19) *(revogado na W21: o vídeo desenha-se à frente; só outro vídeo o tapa)*.
 - O `.excalidraw`: ler e escrever o `embeddable` com `link` (o contador do aviso X3 desce).
 - `deny.toml` `[bans]` (o `cargo deny` do `ship.sh`): as crates de extrair fluxos do YouTube (`rustube`,
   `rusty_ytdl`, `ytextract`, `youtube_dl`, `yt-dlp`, `ytdlp`) e os motores web recusados (`wry`, `cef`,
@@ -161,7 +161,7 @@ com o YouTube real, saídas em `excalidraw_oracle/saidas/w20/`); mecanismo:
    tocador tem) separa-se de `Videos::active` (quem recebe o rato e as teclas); o app toca o `player`.
 2. **A regra de estar vivo**: o mínimo de 200×200 do YouTube (*Required Minimum Functionality*) é do TOCADOR, não
    do pedaço à vista — um embed numa página que rola fica meio fora e toca; o oráculo toca com 150 px à vista e
-   todo fora. A W19 tinha lido «200×200 VISÍVEIS» e por isso o pan até à beira pausava. Agora: destapado, sem
+   todo fora. A W19 tinha lido «200×200 VISÍVEIS» e por isso o pan até à beira pausava. Agora: destapado *(revogado na W21: o vídeo desenha-se à frente; só outro vídeo o tapa)*, sem
    rodar, tocador ≥ 200×200 e **algum** pedaço à vista — só todo fora pausa (o pedido do dono); de volta, retoma
    se tocava; o navegador fecha 60 s depois e o vídeo volta a ser só o play (não arranca sozinho do início).
 3. **Os pans nunca chegam ao vídeo**: o botão do meio (também o dos dois dedos, que chega como um meio
@@ -225,8 +225,14 @@ sondas); mecanismo, tabelas e gates: [`10_video_do_youtube.md`](../../MiroClone/
    ferramenta, o arrasto é da ferramenta» ou (b) «sobre o vídeo a ferramenta não começa» —, escolheu **(a)**: o
    carregar fica à espera (consumido); vira arrasto ⇒ o editor recebe-o no ponto onde se carregou; parado além de
    `HOLD_NS` ⇒ a ferramenta faz o seu clique. O laser e a mão ficam de fora.
-3. **Não copiamos** do oráculo: o vídeo que continua a tocar com um rectângulo à frente (nós pausamos, acima) nem a
-   borracha que apaga o vídeo (a nossa só apaga traços da caneta).
+3. **Copiamos do oráculo o vídeo à frente** (2.ª volta, depois do smoke do dono de 13/10; **revoga** o «nós pausamos,
+   acima»: um rectângulo ou traço desenhado por cima de um vídeo, a tocar ou parado, fica ESCONDIDO atrás dele — o
+   iframe do oráculo vive numa camada acima do canvas, `sonda_w21.mjs` F_*). Isso cumpre a regra do YouTube (nada à
+   frente do tocador) sem pausar nada: `BoardDoc::live_in_paint_order` (a ordem de z com os vídeos por cima de tudo
+   o resto; entre vídeos, o z) é lida pelo desenho, pelo «o de cima» do clique (`Editor::hit`) e pela exportação; o
+   clique na parte sobreposta apanha o vídeo. **Só outro vídeo mais acima o tapa** (e então pausa); rodado continua a
+   pausar. O dono tinha reportado «se uma nota, traço ou forma sobrepõe parcialmente o vídeo, ele não toca». **Não
+   copiamos** a borracha que apaga o vídeo (a nossa só apaga traços da caneta).
 4. **O tocador no Windows** (decisão do dono, «implemente»): o mesmo CDP+NUL do Linux, por dois tubos anónimos cujos
    handles o navegador herda e recebe em `--remote-debugging-io-pipes=<o que ele lê>,<o que ele escreve>` (decimal; o
    formato é o do lançador do .NET Aspire, MIT). A porta TCP continua RECUSADA, nem como recuo. O `std::process` não
@@ -242,3 +248,9 @@ sondas); mecanismo, tabelas e gates: [`10_video_do_youtube.md`](../../MiroClone/
    antivírus). No Wine, com o job, 2 de 11 fechos deixaram um processo `--type=renderer` órfão (0 de 2 quando antes
    se manda `Browser.close`); por medir se é do Wine/`--no-sandbox` ou também do Windows — se for, o fecho passa a
    mandar `Browser.close` antes de matar.
+5. **O arranque do tocador não aceita rato** (2.ª volta; o dono: «nem sempre o primeiro clique toca o vídeo»). Medido no
+   Chrome 155 real: Unstarted → Buffering (~1,2–1,5 s) → Playing (~1,5–1,9 s); um clique no instante em que passa a
+   `Buffering` devolve-o a `Unstarted` e ele NUNCA toca (8,5 s observados). Lei: `Player::mouse` só manda o rato à
+   página depois de `Playback::started` (Playing/Paused/Ended/Cued; o `load` repõe-no) — antes, o vídeo toca sozinho
+   (`autoplay=1`). Enquanto arranca o quadro mostra «a carregar» no lugar do play (`PlayerStatus::starting`), para
+   ninguém clicar de novo. A caneta que toca o vídeo (opção (a) do item 2) o dono confirmou: «está certo assim».

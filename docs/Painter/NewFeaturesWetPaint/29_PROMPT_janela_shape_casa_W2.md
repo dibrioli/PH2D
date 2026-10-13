@@ -26,8 +26,8 @@ evolui; Digital/Impasto/Watercolor AO BIT.
 
 ## Portões
 - impressão da sessão do motor AO BIT para todo preset de fábrica migrado (o mesmo traço antes/depois) · miniaturas
-  ao bit · um preset antigo do utilizador carregado = o mesmo traço · Tuning sem os 4 (censo dos controlos) · o
-  número do Shape: o slider mostra 0–1; avalie mostrar as unidades do motor (Count 2000) — HR-15.
+  ao bit · um preset antigo do utilizador carregado = o mesmo traço · Tuning sem os 4 (censo dos controlos) · os
+  números do Shape são os do Tuning (`param_escala`, feito) — confira-os contra o Tuning antes de o esconder.
 - R1 ~150 chamadas. Fecho: `verificador` (fmt, clippy `-D warnings --all-targets`, `nextest-impacted`), handoff
   ≤ 8 KB, atualizar 26 e 27, commit por caminho, nunca push; smoke ao dono em passos numerados (Wet Paint: Shape ▸
   Bristles, mexer Count/Size — as cerdas mudam; o Tuning já não as tem; um preset antigo pinta igual).

@@ -212,3 +212,68 @@ pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
         ],
     }
 }
+
+/// The scale a pattern parameter is SHOWN and TYPED in by the panel. Stored values stay normalized
+/// `[0, 1]`; [`Escala::UNIT`] (the default) shows them as they are. The Bristles show the Wet Paint
+/// Tuning's own units (Count 2000, Felt 0,030), range and step read from the engine's knob table — the
+/// same numbers the Tuning showed, so moving a knob into the Shape loses nothing.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Escala {
+    /// The value shown at `0`.
+    pub min: f32,
+    /// The value shown at `1`.
+    pub max: f32,
+    /// The stepper / scrub step, in shown units.
+    pub step: f64,
+}
+
+impl Escala {
+    /// The normalized track itself (`0..1`, step `0.01`).
+    pub const UNIT: Self = Self {
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+    };
+
+    /// Decimals the shown value needs at this step (`10` → 0, `0.05` → 2, `0.001` → 3).
+    #[must_use]
+    pub fn decimals(self) -> usize {
+        let mut d = 0;
+        let mut s = self.step;
+        while s < 0.999_999 && d < 6 {
+            s *= 10.0;
+            d += 1;
+        }
+        d
+    }
+
+    /// The shown value of the stored `u`.
+    #[must_use]
+    pub fn mostra(self, u: f32) -> f32 {
+        self.min + u.clamp(0.0, 1.0) * (self.max - self.min)
+    }
+
+    /// The stored `[0, 1]` value of a typed/scrubbed `v` (clamped to the range).
+    #[must_use]
+    pub fn guarda(self, v: f32) -> f32 {
+        ((v - self.min) / (self.max - self.min)).clamp(0.0, 1.0)
+    }
+}
+
+/// The [`Escala`] of `kind`'s parameter `slot`.
+#[must_use]
+pub fn param_escala(kind: TextureKind, slot: usize) -> Escala {
+    use ph2d_wet_paint::brush::BRISTLE_UNIT_KNOBS;
+    use ph2d_wet_paint::tuning::KNOB_DEFS;
+    match (kind, BRISTLE_UNIT_KNOBS.get(slot)) {
+        (TextureKind::Bristles, Some(&k)) => {
+            let d = &KNOB_DEFS[k as usize];
+            Escala {
+                min: d.min as f32,
+                max: d.max as f32,
+                step: d.step,
+            }
+        }
+        _ => Escala::UNIT,
+    }
+}

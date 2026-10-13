@@ -2,7 +2,9 @@
 //! generator from the slot's four sliders and sampled exactly as the engine samples it — nearest texel,
 //! wrapped, in canvas pixels from the dab centre (`ph2d_wet_paint::brush::sample_bristle`).
 
-use super::MAX_TEX_PARAMS;
+use super::{
+    MAX_TEX_PARAMS, TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureMapping, TextureSettings,
+};
 use ph2d_wet_paint::brush::{BRISTLE_SIZE, BristleKnobs, build_bristle_texture, sample_bristle};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -45,8 +47,52 @@ pub fn bristle_tile(params: &[f32; MAX_TEX_PARAMS]) -> Rc<[f32]> {
 
 /// The bristle coverage at an offset of `(dx, dy)` canvas px from the dab centre.
 #[must_use]
-pub(super) fn sample_px(params: &[f32; MAX_TEX_PARAMS], dx: f64, dy: f64) -> f32 {
+fn sample_px(params: &[f32; MAX_TEX_PARAMS], dx: f64, dy: f64) -> f32 {
     sample_bristle(&bristle_tile(params), dx, dy).clamp(0.0, 1.0) as f32
+}
+
+/// The bristles of a live dab under the slot's WHOLE transform, measured in PIXELS (never in the tip's
+/// scale): the dab frame (Flatten & Rotate, Jitter Rotate, the Rake/Flow tangent), the slot Angle, Size
+/// along the pattern's own axes, then Offset (and the Random mapping's jitter) in [`UNIT_TEXELS`] per unit.
+/// Flow lays the tile along the stroke's arc length, Tiled anchors it to the canvas. At the neutral
+/// transform every step is exact (`× 1`, `+ 0`), so the dab reads the engine's tile at its raw offset.
+#[must_use]
+pub(super) fn sample_dab(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+) -> f32 {
+    let d = [
+        px as f64 + 0.5 - f64::from(center[0]),
+        py as f64 + 0.5 - f64::from(center[1]),
+    ];
+    let rel = if s.mapping == TextureMapping::Tiled {
+        [px as f64 + 0.5, py as f64 + 0.5]
+    } else if b.footprint.is_identity() && !s.flow {
+        d
+    } else {
+        // The footprint speaks radius units (its bend is a function of them): in, deform, back to px.
+        let r = f64::from(radius.max(1e-3));
+        let f = b.footprint.apply([(d[0] / r) as f32, (d[1] / r) as f32]);
+        let f = [f64::from(f[0]) * r, f64::from(f[1]) * r];
+        if s.flow {
+            [f64::from(b.frame.parts().0) + f[0], f[1]]
+        } else {
+            f
+        }
+    };
+    let (u, v) = (b.u.map(f64::from), b.v.map(f64::from));
+    let sx = f64::from(s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
+    let sy = f64::from(s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX));
+    let shift = |o: f32, j: f32| (f64::from(o) + f64::from(j)) * UNIT_TEXELS;
+    sample_px(
+        &s.params,
+        (rel[0] * u[0] + rel[1] * u[1]) * sx + shift(s.offset[0], b.jitter[0]),
+        (rel[0] * v[0] + rel[1] * v[1]) * sy + shift(s.offset[1], b.jitter[1]),
+    )
 }
 
 /// The same tile read at a footprint coordinate (`u, v` in footprint units — previews only).

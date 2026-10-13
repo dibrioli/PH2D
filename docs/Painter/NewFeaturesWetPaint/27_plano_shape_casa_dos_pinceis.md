@@ -163,3 +163,24 @@ o `None` de `brush.rs:236` (`stamp_row_shaped`).
 
 **Estado da W1 no Wet Paint:** o Shape Bristles já aparece e pinta (0,144 do redondo), mas como SILHUETA
 (falloff × cerdas) sobre as cerdas do motor — a W2 passa-o para o papel de textura (`texv`).
+
+### 6.6 — Smoke do dono (13/10): o 1.º Size, o Rake e as unidades
+
+*«temos 2 tipos de size no pincel … o primeiro do painel ainda não tem efeito (… os nomes precisam ser
+diferenciados). Rake parece que também não faz efeito. Veja com cuidado cada parâmetro da seção. Não deixe nada
+do wet paint se perder»*. Medido pelo censo dos controlos com o Shape em Bristles
+(`censo_dos_controlos::sonda_cada_controlo_com_as_cerdas_no_shape`): **Size X/Y, Angle, Offset X/Y e o Jitter
+Rotate MORTOS nos três meios** — a W1 lia a cerda só pelo desvio cru ao centro do dab. O Rake/Flow nem é gesto
+do censo; o portão novo mostrou-os mortos também. O Rake de um procedural (Noise) sempre agiu: num traço recto
+a tangente não gira, então ele lê-se «morto» a olho.
+
+- **Cura:** `texture::bristles::sample_dab` aplica a transformação INTEIRA do Shape à cerda, em PÍXEIS — a pegada
+  do dab (achatar/rodar, Jitter Rotate, a tangente do Rake/Flow; em unidades de raio e de volta a píxeis), o
+  Angle, o Size nos eixos do padrão, o Offset (e o jitter do Random) a 64 px por unidade; Flow pelo comprimento de
+  arco, Tiled preso à tela. No neutro cada passo é exacto (`× 1`, `+ 0`): o ladrilho do motor no desvio cru.
+- **Nomes:** Bristle Count · Bristle Strength · Bristle Size · Felt (o Size da transformação fica «Size»).
+- **Nada se perde:** `param_escala` — o Shape e o Grain MOSTRAM e ACEITAM as cerdas nas unidades do Tuning
+  (Count 0–4000 de 10 em 10, Strength e Size de 0,05, Felt de 0,001; faixa e passo da `KNOB_DEFS` do motor).
+- **Portões:** `cada_transformacao_do_shape_muda_a_ponta_de_cerdas` (num arco; Bristles e o CONTROLO Noise ×
+  Digital · Impasto · Wet Paint × 8 gestos; mutação «lei antiga» → 21 mortos, todos nas cerdas) ·
+  `nenhum_nome_da_secao_shape_se_repete` · `as_cerdas_digitam_se_nas_unidades_do_tuning`.

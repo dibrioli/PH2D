@@ -210,7 +210,8 @@ impl PainterTool {
                             .iter()
                             .position(|&p| p == x)
                             .unwrap_or(0);
-                        self.set_brush_paper_param(slot, v);
+                        let e = ph2d_painter_brush::param_escala(self.paint.brush.paper.kind, slot);
+                        self.set_brush_paper_param(slot, e.guarda(v));
                         true
                     }
                     _ => false,

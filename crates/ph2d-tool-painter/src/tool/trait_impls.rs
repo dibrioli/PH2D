@@ -255,7 +255,7 @@ impl PainterTool {
                     .iter()
                     .position(|&p| p == id)
                 {
-                    self.set_brush_texture_param_norm(slot, v as f32);
+                    self.set_brush_texture_param_shown(slot, v as f32);
                 }
             }
             // ── Preset pick (top of panel): value = preset idx (0 = Digital, 1 = Watercolor). ──

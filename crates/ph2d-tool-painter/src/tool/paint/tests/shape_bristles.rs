@@ -13,7 +13,26 @@ fn pincel(media: PaintMedia, kind: TextureKind) -> PainterTool {
     t.set_paint_media(media);
     t.set_brush_color_srgb8([20, 30, 120]);
     t.set_brush_shape_kind(kind.to_u8());
+    t.set_wet_relogio_fixo(true);
     t
+}
+
+/// Um arco (meia volta): a tangente gira 180°, então Rake e Flow têm o que seguir.
+fn arco(t: &mut PainterTool) -> Vec<u8> {
+    let ponto = |k: usize| {
+        let a = std::f32::consts::PI * k as f32 / 32.0;
+        [80.0 - 50.0 * a.cos(), 110.0 - 50.0 * a.sin()]
+    };
+    t.on_canvas_pointer(cp(ponto(0), PointerPhase::Down));
+    for k in 1..=32 {
+        t.on_canvas_pointer(cp(ponto(k), PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(cp(ponto(32), PointerPhase::Up));
+    for _ in 0..3 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.canvas_rgba.to_vec()
 }
 
 fn risca(t: &mut PainterTool) -> Vec<u8> {
@@ -80,4 +99,109 @@ fn cada_tipo_e_cada_parametro_tem_texto() {
             assert_ne!(ph2d_i18n::tr(chave), chave, "{k:?}: «{chave}» sem texto");
         }
     }
+}
+
+/// ⭐ **Cada transformação do Shape age sobre a ponta** (dono 13/10: *«o primeiro Size ainda não tem efeito
+/// … Rake parece que também não faz efeito. Veja com cuidado cada parâmetro da seção»*). Num arco, com o
+/// Shape em Bristles e em Noise (o controlo: um procedural de sempre), nos três meios que evoluem ou herdam
+/// a ponta: Size X · Size Y · Angle · Offset X · Offset Y · Follow Rake · Follow Flow · Jitter Rotate, cada
+/// um sozinho, muda a tinta. Medido antes da cura: com Bristles os cinco primeiros e o Jitter Rotate
+/// liam-se MORTOS nos três meios (`censo_dos_controlos::sonda_cada_controlo_com_as_cerdas_no_shape`).
+#[test]
+fn cada_transformacao_do_shape_muda_a_ponta_de_cerdas() {
+    type Gesto = (&'static str, fn(&mut PainterTool));
+    let gestos: [Gesto; 8] = [
+        ("Size X", |t| t.set_brush_shape_size(0, 2.0)),
+        ("Size Y", |t| t.set_brush_shape_size(1, 0.5)),
+        ("Angle", |t| t.set_brush_shape_angle(37.0)),
+        ("Offset X", |t| t.set_brush_shape_offset(0, 0.3)),
+        ("Offset Y", |t| t.set_brush_shape_offset(1, -0.2)),
+        ("Rake", |t| t.set_brush_shape_follow(1)),
+        ("Flow", |t| t.set_brush_shape_follow(2)),
+        ("Jitter Rotate", |t| t.set_brush_jitter_rotate(1.0)),
+    ];
+    let mut mortos = Vec::new();
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        for kind in [TextureKind::Bristles, TextureKind::Noise] {
+            let base = arco(&mut pincel(media, kind));
+            assert!(tinta(&base) > 0, "{media:?} {kind:?}: o arco não pintou");
+            assert_eq!(
+                base,
+                arco(&mut pincel(media, kind)),
+                "{media:?} {kind:?}: ruído"
+            );
+            for (nome, g) in gestos {
+                let mut t = pincel(media, kind);
+                g(&mut t);
+                if arco(&mut t) == base {
+                    mortos.push(format!("{media:?} {kind:?}: {nome}"));
+                }
+            }
+        }
+    }
+    assert!(mortos.is_empty(), "sem efeito:\n{}", mortos.join("\n"));
+}
+
+/// Os nomes da seção Shape não se repetem: nenhum parâmetro de um tipo lê-se como Angle, Offset ou Size da
+/// transformação, nem como outro parâmetro do mesmo tipo (o «Size» das cerdas era o segundo Size).
+#[test]
+fn nenhum_nome_da_secao_shape_se_repete() {
+    let fixos = ["angle", "offset", "size"]
+        .map(|k| ph2d_i18n::tr(&format!("panel.painter_layers.shape.{k}")));
+    for k in (0..TextureKind::COUNT).map(TextureKind::from_u8) {
+        let mut vistos: Vec<&str> = fixos.to_vec();
+        for p in ph2d_painter_brush::param_specs(k) {
+            let n = ph2d_i18n::tr(p.label);
+            assert!(
+                !vistos.contains(&n),
+                "{k:?}: «{n}» repete-se na seção Shape"
+            );
+            vistos.push(n);
+        }
+    }
+}
+
+/// **Nada das cerdas se perde ao sair do Tuning** (dono 13/10): o Shape e o Grain mostram e aceitam os
+/// quatro knobs nas MESMAS unidades do Tuning — digitar `1500` no Count, `3` na Bristle Strength, `0,5` na
+/// Bristle Size e `0,05` no Felt dá EXACTAMENTE esses knobs, nos dois slots; um tipo comum continua na
+/// pista `0..1` (CONTROLO: o Noise guarda o `0,3` que se digitou).
+#[test]
+fn as_cerdas_digitam_se_nas_unidades_do_tuning() {
+    use ph2d_editor_core::tool::PanelEvent;
+    let digitados = [1500.0, 3.0, 0.5, 0.05];
+    for grao in [false, true] {
+        let mut t = pincel(PaintMedia::Digital, TextureKind::Bristles);
+        let ids = if grao {
+            t.set_brush_texture_kind(TextureKind::Bristles.to_u8());
+            crate::ids::PAINTER_BRUSH_TEXTURE_PARAMS
+        } else {
+            crate::ids::PAINTER_SHAPE_PARAMS
+        };
+        for (i, v) in digitados.into_iter().enumerate() {
+            t.handle_panel_event(PanelEvent::SetValue(ids[i], v));
+        }
+        let slot = if grao {
+            t.paint.brush.texture
+        } else {
+            t.paint.brush.shape
+        };
+        let k = ph2d_painter_brush::texture::bristle_knobs(&slot.params);
+        assert_eq!(
+            [k.bristle_count, k.bristle_strength, k.bristle_size, k.felt],
+            digitados,
+            "grão={grao}"
+        );
+        let e = ph2d_painter_brush::param_escala(TextureKind::Bristles, 0);
+        assert_eq!((e.mostra(slot.params[0]), e.decimals()), (1500.0, 0));
+    }
+    let mut t = pincel(PaintMedia::Digital, TextureKind::Noise);
+    t.handle_panel_event(PanelEvent::SetValue(
+        crate::ids::PAINTER_SHAPE_PARAMS[2],
+        0.3,
+    ));
+    assert_eq!(t.paint.brush.shape.params[2], 0.3);
 }

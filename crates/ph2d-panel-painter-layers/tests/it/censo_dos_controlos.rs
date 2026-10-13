@@ -1298,3 +1298,78 @@ fn a_linha_esmaecida_e_a_que_nao_age() {
         falhas.join("\n")
     );
 }
+
+/// **Cada controlo com o Shape em Bristles** (dono 13/10: *«veja com cuidado cada parâmetro da seção»*): para
+/// cada meio, cada gesto que o painel oferece é medido com o Shape **None** e com o Shape **Bristles**; sai a
+/// linha de quem age num e não no outro (no Digital todos os gestos; nos meios caros só a seção Shape, a pegada
+/// e o Jitter). `CENSO_MEIO=<Meio>` restringe.
+#[test]
+#[ignore = "sonda: os controlos com o Shape em Bristles (plano 27)"]
+fn sonda_cada_controlo_com_as_cerdas_no_shape() {
+    use ph2d_tool_painter::ids::*;
+    let nomes = nomes();
+    let so: Option<String> = std::env::var("CENSO_MEIO").ok();
+    let cerdas = opcao(
+        PAINTER_SHAPE_KIND,
+        painter_shape_kind_option_id(ph2d_tool_painter::TextureKind::Bristles.to_u8()),
+    );
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        if so.as_ref().is_some_and(|m| *m != format!("{media:?}")) {
+            continue;
+        }
+        let armar = vec![cerdas.clone()];
+        let todos = media == PaintMedia::Digital;
+        let deste: Vec<Gesto> = gestos(media, &armar)
+            .into_iter()
+            .filter(|g| {
+                let id = g.id().unwrap_or(NodeId(0));
+                let n = nome(&nomes, id);
+                todos
+                    || n.contains("SHAPE")
+                    || n.contains("DAB")
+                    || n.contains("JITTER")
+                    || PAINTER_SHAPE_PARAMS.contains(&id)
+            })
+            .collect();
+        let (base_c, _) = mede(media, &armar, &Gesto::Nenhum);
+        let (base_n, _) = mede(media, &[], &Gesto::Nenhum);
+        let medidas = em_paralelo(&deste, |g| {
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (pc, ec) = mede(media, &armar, g);
+                let (pn, _) = mede(media, &[], g);
+                (
+                    diferenca(&base_c, &pc).0,
+                    ec.ajuste_mudou,
+                    diferenca(&base_n, &pn).0,
+                )
+            }))
+            .ok()
+        });
+        for (g, m) in deste.iter().zip(medidas) {
+            let Some((nc, mudou, nn)) = m else {
+                eprintln!("CERDAS\t{media:?}\tPÂNICO\t{g:?}");
+                continue;
+            };
+            let n = nome(&nomes, g.id().unwrap_or(NodeId(0)));
+            let eixo = match g {
+                Gesto::Opcao(_, _, k, t) => format!("[{k}/{t}]"),
+                _ => String::new(),
+            };
+            let veredito = if nc == 0 && mudou {
+                "MORTO-COM-CERDAS"
+            } else {
+                ""
+            };
+            if todos && nc > 0 && veredito.is_empty() {
+                continue;
+            }
+            eprintln!(
+                "CERDAS\t{media:?}\t{n}{eixo}\tcerdas={nc}\tnone={nn}\tajuste={mudou}\t{veredito}"
+            );
+        }
+    }
+}

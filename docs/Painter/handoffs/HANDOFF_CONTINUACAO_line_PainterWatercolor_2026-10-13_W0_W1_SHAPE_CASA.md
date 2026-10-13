@@ -13,7 +13,7 @@
 
 ## §1 — Coordenadas
 
-Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Um commit desta janela. Sem push.
+Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Dois commits desta janela (W0+W1; o smoke do dono). Sem push.
 
 ## §2 — W0 (medir, sem mudar o produto) — tudo no [27 §6](../NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md)
 
@@ -55,11 +55,20 @@ Sobre `0d8487ce0f` (o `main` não andou: merge-base `757afebd58`). Um commit des
   determinístico, Count e Size mudam o traço · cada tipo (30) e cada parâmetro tem texto.
 - Bateria de fecho (`verificador`): `fmt --check` ✓ · clippy `-D warnings --all-targets` nas 5 crates ✓ (um `type_complexity` curado) · `nextest-impacted` (base = merge-base, árvore suja) **18 291/18 291** ✓ em 653 s (`load` 17) · gates de arquitetura (camadas, ciclos, LOC, contratos) 155/155 ✓ — a dependência nova `painter-brush → wet-paint` passou no gate de camadas.
 
+## §4b — Smoke do dono (13/10, 2.º commit): cada parâmetro do Shape age sobre as cerdas
+
+O 1.º Size, Angle, Offset, Rake/Flow e o Jitter Rotate estavam MORTOS com Bristles nos três meios (censo
+`sonda_cada_controlo_com_as_cerdas_no_shape`). Cura: `bristles::sample_dab` aplica a transformação inteira do
+Shape em píxeis (neutro = exacto). Nomes: Bristle Count/Strength/Size · Felt. As cerdas mostram-se e digitam-se
+nas unidades do Tuning (`param_escala`, as 4 portas: Shape, Grain, camada de textura, papel). Detalhe e portões:
+[27 §6.6](../NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md).
+Bateria do 2.º commit: fmt ✓ · clippy `-D warnings --all-targets` ✓ · `nextest-impacted` **18 294/18 294** ✓ (489 s) ·
+suítes do painel 239 ✓ · censo das cerdas: zero controlo do Shape morto nos três meios.
+
 ## §5 — Estado e o que fica ABERTO
 
 - **Wet Paint com Shape = Bristles** já pinta (0,144 do redondo), mas como SILHUETA (falloff × cerdas) sobre as
   cerdas do motor — a **W2** passa-o para o papel de textura. Prompt: [29](../NewFeaturesWetPaint/29_PROMPT_janela_shape_casa_W2.md).
-- O slider do Shape mostra 0–1, não as unidades do motor (Count 2000) — avaliar na W2 (HR-15).
 - O Paper do Watercolor também lista o Bristles (o dropdown deriva de `TextureKind::COUNT`); mídia congelada, sem
   dano — a ponta não muda o papel de quem não o escolhe.
 - W3 = a lei B no motor (um 3.º canal `sv` em `stamp_row_shaped`); W4 o painel por mídia (C1); W5 Flat/Fan + doc.

@@ -166,7 +166,9 @@ impl PainterTool {
                             .iter()
                             .position(|&p| p == x)
                         {
-                            self.set_brush_shape_param_norm(slot, v);
+                            let e =
+                                ph2d_painter_brush::param_escala(self.paint.brush.shape.kind, slot);
+                            self.set_brush_shape_param_norm(slot, e.guarda(v));
                         }
                         true
                     }

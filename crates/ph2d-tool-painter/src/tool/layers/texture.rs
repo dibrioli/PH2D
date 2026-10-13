@@ -335,7 +335,12 @@ impl PainterTool {
                             .iter()
                             .position(|&p| p == x)
                         {
-                            self.set_texture_layer_param_norm(slot, v);
+                            let kind = self
+                                .active_texture_id()
+                                .and_then(|id| self.layers.texture_mut(id).map(|t| t.kind))
+                                .map_or(TextureKind::None, TextureKind::from_u8);
+                            let e = ph2d_painter_brush::param_escala(kind, slot);
+                            self.set_texture_layer_param_norm(slot, e.guarda(v));
                             true
                         } else {
                             false

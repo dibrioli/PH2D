@@ -195,8 +195,8 @@ impl Default for TextureSettings {
 }
 
 pub use patterns::{
-    ParamSpec, analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable, param_inerte,
-    param_specs,
+    Escala, ParamSpec, analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable,
+    param_escala, param_inerte, param_specs,
 };
 
 impl TextureSettings {
@@ -433,12 +433,7 @@ pub fn sample(
         return 1.0;
     }
     if s.kind.samples_in_pixels() {
-        // The engine's pixel law: no mapping, Size, Angle or Offset — the tile rides the dab centre.
-        return bristles::sample_px(
-            &s.params,
-            px as f64 + 0.5 - f64::from(center[0]),
-            py as f64 + 0.5 - f64::from(center[1]),
-        );
+        return bristles::sample_dab(s, b, px, py, center, radius);
     }
     // Pixel centre, in canvas pixels.
     let p = [px as f32 + 0.5, py as f32 + 0.5];

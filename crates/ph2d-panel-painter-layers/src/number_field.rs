@@ -265,13 +265,20 @@ pub(crate) fn params_de_padrao(
     kind: ph2d_tool_painter::TextureKind,
     ids: &[NodeId],
     valores: &[f32],
-) -> Vec<(&'static str, NodeId, f32)> {
+) -> Vec<Padrao> {
     ph2d_tool_painter::param_specs(kind)
         .iter()
         .enumerate()
-        .map(|(i, s)| (ph2d_i18n::tr(s.label), ids[i], valores[i]))
+        .map(|(i, s)| {
+            let e = ph2d_tool_painter::param_escala(kind, i);
+            (ph2d_i18n::tr(s.label), ids[i], e.mostra(valores[i]), e)
+        })
         .collect()
 }
+
+/// Uma fileira de padrão: o nome, o id, o valor MOSTRADO e a escala em que ele se mostra e se digita
+/// (as cerdas nas unidades do Tuning; o resto na pista `0..1`).
+pub(crate) type Padrao = (&'static str, NodeId, f32, ph2d_tool_painter::Escala);
 
 pub(crate) fn paint_num_params(
     ctx: &mut PaintCtx,
@@ -279,7 +286,7 @@ pub(crate) fn paint_num_params(
     x: f32,
     content_w: f32,
     mut y: f32,
-    params: &[(&str, NodeId, f32)],
+    params: &[Padrao],
     // ⛔⛔ **A coluna é a da SECÇÃO que chama** (2026-09-23). Ela saía desta tabela, e as fileiras
     //    do padrão arrancavam `25 px` à direita das linhas do mesmo cartão (varredura
     //    `onde_comeca_o_valor`); a secção passou a medir estes nomes — ver `seccoes::COM_PADROES`.
@@ -290,7 +297,7 @@ pub(crate) fn paint_num_params(
     let half = ((content_w - gap) * 0.5).max(0.0);
     let mut i = 0;
     while i < params.len() {
-        let (l0, id0, v0) = params[i];
+        let (l0, id0, v0, e0) = params[i];
         // ⭐⭐⭐ **Emparelhar é uma escolha de PRODUTO; cabe é uma MEDIÇÃO** — report do dono,
         // 2026-09-15, com duas fotos: *«Em Grain: Voronoi : Metric e Edges os nomes somem ao
         // estreitar o painel. Melhor seria quebrar a linha»*.
@@ -312,14 +319,26 @@ pub(crate) fn paint_num_params(
                 && ph2d_editor_core::property_row::property_row_fits(half, w1)
         };
         if cabe {
-            let (l1, id1, v1) = params[i + 1];
-            half_param(ctx, theme, x, half, y, l0, id0, v0, sec);
-            half_param(ctx, theme, x + half + gap, half, y, l1, id1, v1, sec);
+            let (l1, id1, v1, e1) = params[i + 1];
+            half_param(ctx, theme, x, half, y, (l0, id0, v0, e0), sec);
+            half_param(ctx, theme, x + half + gap, half, y, (l1, id1, v1, e1), sec);
             y += ph2d_tokens::row_pitch_px();
             i += 2;
         } else {
             y = paint_num_row(
-                ctx, theme, x, content_w, y, l0, id0, v0, 0.0, 1.0, FINE_STEP, 2, sec,
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                l0,
+                id0,
+                v0,
+                e0.min,
+                e0.max,
+                e0.step,
+                e0.decimals(),
+                sec,
             );
             i += 1;
         }
@@ -335,9 +354,7 @@ fn half_param(
     x: f32,
     w: f32,
     y: f32,
-    label_txt: &str,
-    id: NodeId,
-    v: f32,
+    (label_txt, id, v, e): Padrao,
     sec: ph2d_editor_core::property_row::Seccao,
 ) {
     // ⭐⭐ **Uma METADE é uma linha de propriedade dentro da largura dela** — a porta trabalha sobre
@@ -346,7 +363,15 @@ fn half_param(
     // ⚠️ **DOIS pontos de animação nesta fileira, e está certo:** *«um ponto por LINHA, nunca por
     // campo»* fala de uma propriedade com várias componentes; aqui são **duas propriedades
     // diferentes** lado a lado, e um ponto só diria que são uma.
-    arm_field(ctx.host.store_mut(), id, v, 0.0, 1.0, FINE_STEP, 2);
+    arm_field(
+        ctx.host.store_mut(),
+        id,
+        v,
+        e.min,
+        e.max,
+        e.step,
+        e.decimals(),
+    );
     let area = Rect::new(x, y, w, ph2d_tokens::row_pitch_px());
     crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -361,7 +386,7 @@ fn half_param(
             y,
             label_txt,
             &[id],
-            FINE_STEP,
+            e.step,
             None,
             sec,
         );

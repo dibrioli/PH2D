@@ -104,6 +104,13 @@ impl PainterTool {
         self.arm_stencil_preview();
     }
 
+    /// The Grain param `slot` from the value the panel SHOWS ([`ph2d_painter_brush::param_escala`]: the
+    /// Bristles in the Tuning's units, every other kind the `0..1` track).
+    pub fn set_brush_texture_param_shown(&mut self, slot: usize, v: f32) {
+        let e = ph2d_painter_brush::param_escala(self.paint.brush.texture.kind, slot);
+        self.set_brush_texture_param_norm(slot, e.guarda(v));
+    }
+
     /// Enable / disable the texture **Color Ramp** (on → the texture's scalar drives the per-texel colour).
     pub fn set_texture_ramp_enabled(&mut self, on: bool) {
         self.paint.texture_ramp_enabled = on;

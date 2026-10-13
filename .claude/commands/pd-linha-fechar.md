@@ -20,7 +20,9 @@ Feche a linha `$1`.
      cobre só crates/ — essa lacuna já deixou vermelho latente 2×)
    - `arch_safe_clamp_only` e os arch-gates de shell (só correm na varredura impactada)
    - auditoria com ≥2 lentes
-2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha.
+2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha. ⛔ Mudou a LEI de propósito? Os
+   testes da lei antiga mudam NESTA linha — um vermelho «aberto no handoff» não entra no `main`
+   (DIRETRIZ §1.5.3) e volta para cá.
 2-bis. ⭐⭐⭐ **O que só a ÁRVORE COMBINADA pega — e é VOCÊ quem o cura** (DIRETRIZ §1.5.9 item 5-bis):
    ```bash
    git cherry main HEAD && git rebase main       # o rebase que o §1.5.2 item 3 já manda antes de integrar

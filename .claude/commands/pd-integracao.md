@@ -57,6 +57,9 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    [ANATOMIA](../../docs/archive/integracao-jornadas/ANATOMIA_DE_UMA_RODADA_2026-09-17.md).
 5. Gate da árvore combinada COMPLETO — inclusive os arch-gates de shell, que só correm
    na varredura impactada e já chegaram vermelhos ao tip de uma linha.
+   ⛔⛔ **O `main` só recebe VERDE** — nunca um vermelho «conhecido» ou «herdado» (DIRETRIZ §1.5.3):
+   em 12/10 os vermelhos sabidos da Luz 2D foram re-provados por duas integrações e curados num
+   agente de 2 h 50. Vermelho da linha → volta à linha; da carga → 3d; lei mudada → testes na mesma linha.
 6. §5.1 do CLAUDE.md: **troque o link do último handoff** do módulo (e, se o handoff a propõe, a
    frase do que o módulo é) — **nada de texto novo** (§1.5.9 item 8; gate
    `architecture_claude_md_cabe_no_orcamento`: entrada ≤ 700 bytes, arquivo ≤ 40 KB). Se o handoff

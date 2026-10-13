@@ -227,6 +227,15 @@ de [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md) §«Encerrar uma linha
 `git worktree remove` a seco:** ele apaga ficheiros ignorados em silêncio (instrumentos `.cauda-*`,
 projectos gravados, repositórios de referência), e o `git branch -d` recusa a linha integrada por rebase.
 
+⛔⛔ **O `main` só recebe VERDE — nem um vermelho «conhecido», «herdado» ou «documentado no
+handoff».** O script já aborta num vermelho; fundir à mão por cima dele é a exceção que esta regra
+fecha. Um vermelho no `main` é pago por CADA integração seguinte: medido em 12/10, a Luz 2D fundiu
+com vermelhos sabidos, a MiroClone e a UIUX re-provaram-nos «herdados ao bit» nos seus portões, e a
+cura custou um agente de **2 h 50** — três vezes a mesma conta. Vermelho no portão da árvore combinada:
+(a) da linha → a linha cura antes de fundir; (b) da carga → §3d do `/pd-integracao`
+([`FLAKES_DE_CARGA.md`](../DevOps/FLAKES_DE_CARGA.md)); (c) lei mudada de propósito → os testes
+mudam NA MESMA linha que mudou a lei. Nenhum dos três funde vermelho.
+
 **Rodada de várias linhas (13/09):** o integrador rebaseia-as em cadeia num ramo `integ/<rodada>`, corre
 o gate da árvore combinada no tip e só então avança o `main` por `--ff-only`. Três regras que só a rodada
 pagou: (a) um `dead_code` que só existe na fusão cura-se **no commit rebaseado em que o último uso
@@ -1021,6 +1030,7 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 - IO real → `#[ignore]` + `cargo test -- --ignored` no CI separado.
 - **Gate que compara dois RELÓGIOS ou conta ALOCAÇÕES** → entra na faixa isolada do `.config/nextest.toml` **pelo nome** (corre sozinho e no fim) **e** numa linha da tabela de [`FLAKES_DE_CARGA.md`](../DevOps/FLAKES_DE_CARGA.md) — as duas escritas, com gate (`architecture_toda_flake_de_carga_corre_na_faixa_isolada`); **a barra não se afrouxa** — sob 32 processos ela flaka por FOME, não por defeito. ⚠️ A frase que aqui esteve oferecia um ficheiro `measure_*.rs` como atalho: a faixa nunca teve esse padrão, e oito membros promovidos só no `CLAUDE.md` ficaram fora dela até 2026-10-02.
 - **Tecto global desde 10/09:** 60 s avisa (`SLOW`), **180 s mata** e conta como falha. Um teste que precise de mais recebe `[[profile.default.overrides]]` com o número medido ao lado — nunca se sobe o global (hoje o mais lento da suíte leva 42 s).
+- ⭐⭐ **Teste lento: CRONOMETRE AS FASES antes de lhe dar prazo** (uma sonda `#[ignore]` com um `Instant` por fase — placa · gabarito · comparação — e uma impressão digital dos valores do gabarito). Medido em 13/10: o gate das formas redondas da Luz 2D era **95 % gabarito** (os gradientes conjugados do miolo, 767 mil nós, num só núcleo) e **4 % placa**; a integração de 12/10 tinha-lhe dado mais prazo. Acelerar o gabarito **ao mesmo bit** (canais em paralelo, vizinhança compacta, passagens fundidas) levou-o de 61 s a 20 s com a impressão igual. Um gabarito mais rápido que muda o bit é outra conversa: só com a prova de que nenhum veredito muda. Detalhe: [`VELOCIDADE_DOS_PORTOES.md`](../DevOps/VELOCIDADE_DOS_PORTOES.md).
 
 ---
 

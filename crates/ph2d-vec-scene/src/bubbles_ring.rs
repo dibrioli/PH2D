@@ -276,9 +276,10 @@ pub(crate) const TIP_PULL: f64 = 0.45;
 /// externas do corpo nesses pontos; `t` é o bico. Devolve `(out de pa, o vértice do bico,
 /// in de pb)`.
 ///
-/// Os dois handles do bico COINCIDEM (`spread = 0`): a ponta é uma agulha — a cúspide de
-/// 180° do rabo de quadrinho. Os dois ramos se separam só na segunda ordem, e para lados
-/// OPOSTOS do eixo (porque `pa` e `pb` estão em lados opostos), então eles nunca se cruzam.
+/// ⭐ (F14b) O bico chega com ÂNGULO: cada flanco chega pela direcção [`TIP_OPEN`] do caminho entre
+/// o eixo e a corda dele — dentro do triângulo, então o flanco continua côncavo junto ao bico. A
+/// agulha de antes (os dois handles no eixo, ângulo 0) nenhuma junta desenhava pontuda: o *Miter*
+/// passa o limite e o bico é cortado (o dono, 13/10: «nenhuma opção produz uma ponta pontuda»).
 ///
 /// **Os handles são limitados pela CORDA até o bico** (metade dela — a regra clássica da
 /// Bézier). Sem esse teto, um rabo curto e muito inclinado (bico no canto + faixa fina: a
@@ -300,18 +301,16 @@ pub(crate) fn tail_flanks(pa: Uv, pb: Uv, t: Uv, na: Uv, nb: Uv) -> (Uv, Uvv, Uv
         v_mul(v_norm(v_sub(t, pb)), 1.0 - ROOT_BIAS),
         v_mul(nb, ROOT_BIAS),
     ));
-    // O bico é agulha (os dois flancos chegam pelo eixo) enquanto a corda do flanco não se afasta
-    // do eixo; num rabo curto e largo a agulha dobraria o flanco num gancho junto ao bico, então
-    // a chegada cede para a corda e o bico abre em V (F12 A2, doc 19 §5).
-    // A medida é o cosseno eixo↔corda vezes a esbelteza `l / corda`: a agulha dobra o flanco pelo
-    // ângulo, num troço do tamanho do eixo.
+    // A chegada ao bico mistura o eixo e a corda do flanco: pelo menos `TIP_OPEN` (F14b, o bico com
+    // ângulo); num rabo curto e largo, até à corda inteira (F12 A2, doc 19 §5: a chegada pelo eixo
+    // dobraria o flanco num gancho). A medida é o cosseno eixo↔corda vezes a esbelteza `l / corda`.
     let open = |chord: f64, from: Uv| {
         let c = if l > 1e-12 && chord > 1e-12 {
             (axis.0 * (t.0 - from.0) + axis.1 * (t.1 - from.1)) / (chord * chord)
         } else {
             1.0
         };
-        let beta = ((NEEDLE_COS - c) / (NEEDLE_COS - V_COS)).clamp(0.0, 1.0);
+        let beta = ((NEEDLE_COS - c) / (NEEDLE_COS - V_COS)).clamp(TIP_OPEN, 1.0);
         let d = v_norm(v_add(
             v_mul(dir, 1.0 - beta),
             v_mul(v_norm(v_sub(t, from)), beta),
@@ -351,3 +350,6 @@ pub(crate) fn tail_flanks(pa: Uv, pb: Uv, t: Uv, na: Uv, nb: Uv) -> (Uv, Uvv, Uv
 /// (o balão por omissão mede `0,82`).
 const NEEDLE_COS: f64 = 0.7;
 const V_COS: f64 = 0.1;
+/// O piso da mistura eixo → corda na chegada ao bico (F14b, doc 25): o bico por omissão abre a 42°
+/// no balão rectangular e 35° no oval — acima dos 29° em que o *Miter* (limite 4) passa a cortar.
+pub(crate) const TIP_OPEN: f64 = 0.8;

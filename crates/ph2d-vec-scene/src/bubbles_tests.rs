@@ -350,11 +350,11 @@ fn the_brace_beak_is_a_real_cusp_not_an_ess() {
     );
 }
 
-/// O bico do rabo é AGULHA só enquanto a corda do flanco segue o eixo (medida ≥ `0,7`); abaixo
-/// disso a chegada cede para a corda e o bico abre em V — a `0,6` já abre, a `0,1` chega pela
-/// corda inteira.
+/// O bico do rabo nunca é agulha (F14b): acima da medida `0,7` cada flanco chega pela mistura
+/// [`TIP_OPEN`](crate::bubbles_ring::TIP_OPEN) do eixo e da corda (até `0,22`, onde a mistura da
+/// F12 A2 passa o piso), abaixo dela abre mais — a `0,15` além do piso, a `0,1` pela corda inteira.
 #[test]
-fn the_tail_tip_is_a_needle_only_above_the_needle_measure() {
+fn the_tail_tip_opens_by_the_floor_above_the_needle_measure() {
     // Raízes em `(0, ±1)`, bico em `(h, 0)`: a medida eixo↔corda é `h² / (h² + 1)`.
     let tip = |c: f64| {
         let h = (c / (1.0 - c)).sqrt();
@@ -362,13 +362,29 @@ fn the_tail_tip_is_a_needle_only_above_the_needle_measure() {
         let (_, v, _) = crate::bubbles_ring::tail_flanks(pa, pb, t, (-1.0, 0.0), (-1.0, 0.0));
         (v, pa, t)
     };
-    let (needle, _, _) = tip(0.75);
+    // A meia-abertura da chegada: o ângulo entre o eixo (−x, do bico para a base) e a alça.
+    let half = |v: &crate::bubbles_ring::Uvv| {
+        let (x, y) = (v.o.0 - v.a.0, v.o.1 - v.a.1);
+        y.atan2(-x).abs()
+    };
+    let floor = |c: f64| {
+        // O flanco de baixo: corda a `atan(1/h)` do eixo, misturada a `TIP_OPEN`.
+        let th = (1.0 / (c / (1.0 - c)).sqrt()).atan();
+        let k = crate::bubbles_ring::TIP_OPEN;
+        (k * th.sin()).atan2(1.0 - k + k * th.cos())
+    };
+    for c in [0.75, 0.6] {
+        let (at_floor, _, _) = tip(c);
+        assert!(
+            (half(&at_floor) - floor(c)).abs() < 1e-9,
+            "{c}: o bico abre pelo piso {at_floor:?}"
+        );
+    }
+    let (open, _, _) = tip(0.15);
     assert!(
-        (needle.i.1 - needle.o.1).abs() < 1e-12,
-        "0,75: agulha {needle:?}"
+        half(&open) > floor(0.15) + 1e-3,
+        "0,15: o bico abre além do piso {open:?}"
     );
-    let (open, _, _) = tip(0.6);
-    assert!(open.o.1 - open.i.1 > 1e-3, "0,6: o bico abre {open:?}");
     let (v, pa, t) = tip(0.1);
     let (arrive, chord) = ((t.0 - v.i.0, t.1 - v.i.1), (t.0 - pa.0, t.1 - pa.1));
     assert!(

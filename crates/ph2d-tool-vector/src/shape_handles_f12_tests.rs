@@ -15,8 +15,9 @@ fn rail_of(kind: ShapeKind, field: usize) -> usize {
         .unwrap_or_else(|| panic!("{kind:?}: sem ⇕ para o campo {field}"))
 }
 
-/// ⭐ Os ⇕ ficam UM AO LADO DO OUTRO: o 1.º na borda direita da caixa visível, os seguintes para
-/// FORA, à mesma altura, a `RAIL_PITCH · park_at` — em todas as formas.
+/// ⭐ Os ⇕ ficam UM AO LADO DO OUTRO: o 1.º na borda direita da caixa visível (ou passos inteiros
+/// por fora dela, F14b), os seguintes para FORA, à mesma altura, a `RAIL_PITCH · park_at` — em
+/// todas as formas.
 #[test]
 fn the_arrows_stand_side_by_side_outwards() {
     for &k in ALL_SHAPES {
@@ -29,7 +30,11 @@ fn the_arrows_stand_side_by_side_outwards() {
             .collect();
         let Some(first) = rails.first() else { continue };
         let (_, hi) = spots::curve_bbox(&ck(&v)).expect("caixa");
-        assert!((first[0] - hi[0]).abs() < 1e-9, "{k:?}: o 1.º na borda");
+        let steps = (first[0] - hi[0]) / (RAIL_PITCH * PARK);
+        assert!(
+            steps > -1e-9 && (steps - steps.round()).abs() < 1e-9 && steps.round() <= 3.0,
+            "{k:?}: o 1.º na borda ou passos inteiros por fora ({steps})"
+        );
         for (n, p) in rails.iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "n pequeno")]
             let want = first[0] + n as f64 * RAIL_PITCH * PARK;
@@ -179,6 +184,62 @@ fn no_arrow_touches_a_box_handle_or_the_action_bar_from_20_to_400_px() {
     assert!(
         na_borda > 0 && por_fora > 0,
         "{na_borda} na borda, {por_fora} por fora"
+    );
+}
+
+/// ⭐ (F14b, o dono: «A seta e o ponto não devem ficar na mesma posição») **Nenhum ⇕ cai sobre o
+/// grip de outra alça**: em toda forma com fila, cada campo varrido na faixa inteira, em três caixas
+/// (a do smoke, 100 × 95 px; larga; alta), cada ⇕ fica a pelo menos um passo da fila de cada grip
+/// das outras alças. Antes: 300 casos (o *Speech* a 5,8 px do ⊙ do *Radius*; o cubo isométrico a 0).
+/// Controlo: a fila andou para fora em algum caso.
+#[test]
+fn no_arrow_lands_on_another_handle() {
+    let (mut hits, mut checked, mut moved) = (Vec::new(), 0, 0);
+    for &k in ALL_SHAPES {
+        let hs = handles_of(k);
+        if !hs.iter().any(|h| h.spot == Spot::Rail) {
+            continue;
+        }
+        for half in [[50.0, 47.7], [100.0, 50.0], [100.0, 200.0]] {
+            let ck = cooker(k, half);
+            for i in shapes::shown_fields(k) {
+                let f = &shapes::desc(k).fields[i];
+                for s in 0..=8 {
+                    let mut v = k.defaults();
+                    v[i] = f.min + (f.max - f.min) * f64::from(s) / 8.0;
+                    let g = |h: &HandleDesc| handle_grip(k, h, &v, half, 1.0, 18.0, &ck);
+                    let rails: Vec<_> = hs
+                        .iter()
+                        .filter(|h| h.spot == Spot::Rail)
+                        .filter_map(g)
+                        .collect();
+                    let (Some(first), Some((lo, hi))) = (rails.first(), spots::curve_bbox(&ck(&v)))
+                    else {
+                        continue;
+                    };
+                    moved += usize::from((hi[1] - lo[1]) * 0.25 >= 18.0 && first[0] > hi[0] + 1e-9);
+                    for o in hs.iter().filter(|h| h.spot != Spot::Rail).filter_map(g) {
+                        for r in &rails {
+                            checked += 1;
+                            let d = (r[0] - o[0]).hypot(r[1] - o[1]);
+                            if d < RAIL_PITCH * 18.0 - 1e-9 {
+                                hits.push(format!("{k:?} {half:?} f{i}={:.3}: {d:.1} px", v[i]));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        hits.is_empty(),
+        "{} ⇕ sobre um grip: {:?}",
+        hits.len(),
+        &hits[..hits.len().min(8)]
+    );
+    assert!(
+        checked > 2000 && moved > 0,
+        "controlo: {checked} pares, {moved} filas andaram"
     );
 }
 

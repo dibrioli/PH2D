@@ -429,16 +429,18 @@ fn flat_top_wavy_bottom(p: &VecPath) -> bool {
 /// (a cúspide de 180° que o rabo de quadrinho é). Ele tem de ser o ponto mais baixo do
 /// balão — o rabo aponta para quem fala, não para o céu.
 fn tail_points_down(p: &VecPath) -> bool {
-    let mut needle = None;
-    for v in p.verts_all() {
-        if v.in_handle == v.out_handle && v.in_handle != v.anchor {
-            if needle.is_some() {
-                return false; // a agulha deixou de ser única: o landmark morreu
-            }
-            needle = Some(v.anchor);
-        }
-    }
-    needle.is_some_and(|t| (t[1] - bot_y(&curve(p))).abs() < TOL)
+    // O bico (F14b: com ângulo, já não agulha): o único vértice no fundo da forma com as duas
+    // alças por CIMA dele.
+    let bot = bot_y(&curve(p));
+    let tips: Vec<_> = p
+        .verts_all()
+        .filter(|v| {
+            (v.anchor[1] - bot).abs() < TOL
+                && v.in_handle[1] > v.anchor[1] + TOL
+                && v.out_handle[1] > v.anchor[1] + TOL
+        })
+        .collect();
+    tips.len() == 1
 }
 
 /// A corrente de bolhas do pensamento DESCE: cada bolha (um sub-contorno) mora abaixo do

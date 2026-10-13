@@ -334,13 +334,14 @@ fn the_star_valley_never_twists() {
     let a = q[1].atan2(q[0]) + 40f64.to_radians();
     let r = q[0].hypot(q[1]) * 1.3;
     let mut d = HandleDrag::start(i, v, q, q, [1.0, 1.0]);
+    // A estrela de 2 m numa vista de 100 px/m (o encaixe da F14b mede meio pixel no ECRÃ).
     let out = drag(
         k,
         &mut d,
         [r * a.cos(), r * a.sin()],
         Mods::default(),
         [1.0, 1.0],
-        1.0,
+        0.01,
         &ck,
     );
     assert_eq!(out[7], 0.0, "a torção ficou");
@@ -368,7 +369,7 @@ fn the_tip_handle_slides_down_the_tip_axis_and_rounds_the_tips() {
     );
     let p = [0.0, 0.85];
     let mut d = HandleDrag::start(i, v, q, q, half);
-    let out = drag(k, &mut d, p, Mods::default(), half, 1.0, &ck);
+    let out = drag(k, &mut d, p, Mods::default(), half, 0.01, &ck);
     assert!(out[2] > 0.0, "a ponta arredondou");
     let r = handle_point(h, &out, half, &ck).unwrap();
     assert!(

@@ -21,6 +21,88 @@ pub(super) fn curve_bbox(p: &VecPath) -> Option<([f64; 2], [f64; 2])> {
     (lo[0] <= hi[0]).then_some((lo, hi))
 }
 
+/// ⭐ (F14b) **O fim da faixa a menos de meio pixel É o fim**: `v[i]` vai à ponta (`lo`/`hi`) quando
+/// a alça andaria menos de `tol` (meio pixel, local) entre as duas — medido pela taxa do ponto junto
+/// da ponta, então um trilho SATURADO (o ponto parado) nunca encaixa. O ⊙ do *Radius* arrastado até
+/// ao canto guardava `1e-8`–`2e-5` px (a busca no trilho desempata a favor do valor do press; a fila
+/// mostrava «0») e o canto era um arco minúsculo.
+pub(super) fn snap_to_ends(
+    v: &mut ShapeValues,
+    i: usize,
+    lo: f64,
+    hi: f64,
+    tol: f64,
+    point: &dyn Fn(&ShapeValues) -> Option<[f64; 2]>,
+) -> f64 {
+    let cur = v[i];
+    let step = (hi - lo) * 1e-3;
+    let mut at = |x: f64| {
+        v[i] = x;
+        point(v)
+    };
+    let mut out = cur;
+    for (end, toward) in [(lo, lo + step), (hi, hi - step)] {
+        if let (Some(a), Some(b)) = (at(end), at(toward)) {
+            let rate = (a[0] - b[0]).hypot(a[1] - b[1]) / step.abs().max(f64::MIN_POSITIVE);
+            if rate > 0.0 && (cur - end).abs() * rate < tol {
+                out = end;
+            }
+        }
+    }
+    v[i] = cur;
+    out
+}
+
+/// Quantos passos a fila de ⇕ pode andar para fora à procura de um sítio livre.
+const RAIL_SHIFTS: u8 = 3;
+
+/// O ⇕ `h` na fila (F12): o 1.º na borda direita da caixa a `h/4` do topo, os seguintes para FORA a
+/// [`super::RAIL_PITCH`]` · park_at`; na caixa BAIXA (F13 D) à meia altura, um passo por fora (a
+/// alça do meio fica na borda). ⭐ F14b: a fila INTEIRA anda um passo para fora enquanto um ⇕
+/// ficar a menos de um passo do grip de outra alça — o ⊙ do *Radius* do balão desce pela borda
+/// direita, e o vértice da profundidade do cubo isométrico É o sítio do 1.º ⇕.
+#[expect(clippy::too_many_arguments, reason = "os argumentos do `handle_grip`")]
+pub(super) fn rail_grip(
+    kind: ph2d_vec_scene::ShapeKind,
+    h: &super::HandleDesc,
+    at: [f64; 2],
+    values: &ShapeValues,
+    half: [f64; 2],
+    px_to_world: f64,
+    park_at: f64,
+    cook: &dyn Fn(&ShapeValues) -> VecPath,
+) -> [f64; 2] {
+    let hs = super::handles_of(kind);
+    let pitch = super::RAIL_PITCH * park_at;
+    let (base, k0) = match curve_bbox(&cook(values)) {
+        Some((lo, hi)) if (hi[1] - lo[1]) * 0.25 < park_at => ([hi[0], (lo[1] + hi[1]) * 0.5], 1),
+        _ => (at, 0),
+    };
+    let others: Vec<[f64; 2]> = hs
+        .iter()
+        .filter(|x| x.spot != super::Spot::Rail)
+        .filter_map(|x| super::handle_grip(kind, x, values, half, px_to_world, park_at, cook))
+        .collect();
+    let row = hs.iter().filter(|x| x.spot == super::Spot::Rail).count();
+    let x_of = |slot: usize, shift: u8| {
+        base[0] + f64::from(shift) * pitch + {
+            #[expect(clippy::cast_precision_loss, reason = "uma fila de poucos ⇕")]
+            let s = (slot + k0) as f64;
+            s * pitch
+        }
+    };
+    let free = |shift: u8| {
+        (0..row).all(|j| {
+            let x = x_of(j, shift);
+            others
+                .iter()
+                .all(|o| (o[0] - x).hypot(o[1] - base[1]) >= pitch)
+        })
+    };
+    let shift = (0..=RAIL_SHIFTS).find(|&s| free(s)).unwrap_or(RAIL_SHIFTS);
+    [x_of(super::rail_slot(kind, h), shift), base[1]]
+}
+
 /// Onde o contorno `p` cruza o raio do centro (a origem) a `q`, do lado de `q` — o cruzamento mais
 /// perto de `q` em distância ao centro (a estrela é estrelada em relação ao centro: um só).
 pub(super) fn spoke_hit(p: &VecPath, q: [f64; 2]) -> Option<[f64; 2]> {

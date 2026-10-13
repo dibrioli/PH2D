@@ -298,19 +298,16 @@ pub fn handle_grip(
 ) -> Option<[f64; 2]> {
     let at = handle_point(h, values, half, cook)?;
     if h.spot == Spot::Rail {
-        #[expect(clippy::cast_precision_loss, reason = "uma fila de poucos ⇕")]
-        let k = rail_slot(kind, h) as f64;
-        // F13 D: na caixa BAIXA (`h/4 < park_at`) o 1.º ⇕ tocaria as alças do canto e do meio — a
-        // fila passa à meia altura, um passo POR FORA da borda (a alça do meio fica na borda).
-        if let Some((lo, hi)) = curve_bbox(&cook(values))
-            && (hi[1] - lo[1]) * 0.25 < park_at
-        {
-            return Some([
-                hi[0] + (k + 1.0) * RAIL_PITCH * park_at,
-                (lo[1] + hi[1]) * 0.5,
-            ]);
-        }
-        return Some([at[0] + k * RAIL_PITCH * park_at, at[1]]);
+        return Some(rail_grip(
+            kind,
+            h,
+            at,
+            values,
+            half,
+            px_to_world,
+            park_at,
+            cook,
+        ));
     }
     // ⭐ As alças de ÂNGULO vivem `park_at` para DENTRO do aro, sobre o raio delas: no aro da
     // elipse os pontos cardeais SÃO as alças do meio das arestas da caixa (medido na foto da cena
@@ -584,6 +581,12 @@ pub fn drag(
                 for &i in fields {
                     if let Some((lo, hi, int)) = range_world(kind, i, px_to_world) {
                         v[i] = best_on_track(&mut v, i, lo, hi, int, &metric);
+                        if !int {
+                            v[i] =
+                                spots::snap_to_ends(&mut v, i, lo, hi, 0.5 * px_to_world, &|x| {
+                                    handle_point(h, x, half, cook)
+                                });
+                        }
                     }
                 }
             }
@@ -655,7 +658,7 @@ const STEPS_PER_BOX: f64 = 24.0;
 
 #[path = "shape_handles_spots.rs"]
 mod spots;
-use spots::{best_on_track, cubic_at, curve_bbox, spoke_hit};
+use spots::{best_on_track, cubic_at, curve_bbox, rail_grip, spoke_hit};
 
 #[cfg(test)]
 #[path = "shape_handles_tests.rs"]
@@ -675,3 +678,8 @@ mod f10_tests;
 #[cfg(test)]
 #[path = "shape_handles_f12_tests.rs"]
 mod f12_tests;
+
+/// O raio arrastado até ao canto da F14b — irmão pelo tecto de LOC.
+#[cfg(test)]
+#[path = "shape_handles_f14b_tests.rs"]
+mod f14b_tests;

@@ -65,4 +65,5 @@ check warnings=deny ✓ · clippy forma do `ship.sh` ✓ · fmt/typos/machete �
 `smoke_fixture_renderable::w2..w5` `unimplemented!` pré-existentes + 3 timeouts que passam sozinhos em 146–152 s) ·
 gpu-cook 250/250 · censos 117/117 + 12/12 · doc-index e adr-index ✓. Doc 132 cortado por `doc-split.py` (sha256) abaixo de 40 KB.
 
-binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida): <PREENCHER>
+binário do smoke (`cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida):
+`Finished smoke profile [optimized] target(s) in 0.24s` (depois de `4dc67e4599`) — zero `Compiling`.

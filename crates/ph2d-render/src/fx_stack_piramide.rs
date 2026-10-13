@@ -234,13 +234,15 @@ impl FxStackPass {
         let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
         let (va, vb) = (&work[a].view, &work[b].view);
         let bg_h = self.bind(gpu, &self.bgl_mid, va, va, vb);
+        // O H é o borrão por GRUPO: uma linha de 64 pixels por grupo.
+        let n = crate::fx_stack_borrao_grupo::GRUPO;
         dispatch(
             encoder,
             (&self.pipeline_h, "fx.piramide_h"),
             &bg_h,
             slot,
-            x,
-            y,
+            d[0].div_ceil(n),
+            d[1],
         );
         let bg_v = self.bind(gpu, &self.bgl_mid, vb, vb, va);
         dispatch(

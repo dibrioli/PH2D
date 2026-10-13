@@ -94,33 +94,23 @@ fn textura(gpu: &GpuContext) -> wgpu::Texture {
     })
 }
 
-/// As variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa) × saltar o alvo vazio; e a do
-/// P1 (doc 132 §1): o produto com o borrão por GRUPO.
-const VARIANTES: [Variante; 5] = [
+/// As quatro variantes da rodada C.10 (doc 131 §7): a vala (dupla · justa) × saltar o alvo vazio.
+const VARIANTES: [Variante; 4] = [
     Variante {
         vala_justa: false,
         salta_vazias: false,
-        borrao_grupo: false,
     },
     Variante {
         vala_justa: true,
         salta_vazias: false,
-        borrao_grupo: false,
     },
     Variante {
         vala_justa: false,
         salta_vazias: true,
-        borrao_grupo: false,
     },
     Variante {
         vala_justa: true,
         salta_vazias: true,
-        borrao_grupo: false,
-    },
-    Variante {
-        vala_justa: true,
-        salta_vazias: true,
-        borrao_grupo: true,
     },
 ];
 
@@ -1037,19 +1027,8 @@ fn relogio_c10_decomposicao() {
             14 + antes + leitura.max(antes) + 1,
             14 + al + ar
         );
-        for grupo in [false, true] {
-            b.pilha.borrao_em_grupo(grupo);
-            camada_inteira_decomposta(&mut b, &mesa, ops, grupo);
-        }
-        b.celulas.escolhe(Variante::default());
+        camada_inteira_decomposta(&mut b, &mesa, ops);
         decompoe(&mut b, &mesa, ops, &POPULACOES);
-        b.celulas.escolhe(Variante {
-            borrao_grupo: true,
-            ..Variante::default()
-        });
-        eprintln!("[c10] ── com o borrão por GRUPO");
-        decompoe(&mut b, &mesa, ops, &[(64, 64)]);
-        b.celulas.escolhe(Variante::default());
     }
     ph2d_gpu::pass_profiler::shutdown();
 }
@@ -1076,7 +1055,7 @@ fn pilhas_de_fora() -> Vec<(&'static str, Vec<FxOpGpu>)> {
 }
 
 /// A pilha da CAMADA INTEIRA na mesma janela (1600×972), por passe — o termo de comparação.
-fn camada_inteira_decomposta(b: &mut Banca, mesa: &Mesa, ops: &[FxOpGpu], grupo: bool) {
+fn camada_inteira_decomposta(b: &mut Banca, mesa: &Mesa, ops: &[FxOpGpu]) {
     let out = make_output_texture(&b.gpu, mesa.lw, mesa.lh);
     for _ in 0..3 {
         b.pilha.run_layer(
@@ -1106,7 +1085,7 @@ fn camada_inteira_decomposta(b: &mut Banca, mesa: &Mesa, ops: &[FxOpGpu], grupo:
     let t = ph2d_gpu::pass_profiler::drain(&b.gpu.device).unwrap_or_default();
     let f = f64::from(t.frames.max(1));
     let mut linha = format!(
-        "[c10] camada inteira (borrão por grupo: {grupo}) {:.2} Mpx · placa {:.3} ms\n[c10]   ",
+        "[c10] camada inteira {:.2} Mpx · placa {:.3} ms\n[c10]   ",
         f64::from(mesa.lw * mesa.lh) / 1e6,
         t.span_ns as f64 / f / 1e6
     );
@@ -1445,11 +1424,10 @@ fn regua(b: &mut Banca, mesa: &Mesa, pilha: &str, ops: &[FxOpGpu], ds: Vec<Shape
         let (wm, wmed) = resumo(&mut parede[i]);
         let v = VARIANTES[i];
         linha.push_str(&format!(
-            "\n[c10 régua]   justa {} salta {} grupo {} · {} pág · placa {pm:.2} (med {pmed:.2}) ms · \
-             parede {wm:.2} (med {wmed:.2}) ms",
+            "\n[c10 régua]   justa {} salta {} · {} pág · placa {pm:.2} (med {pmed:.2}) ms · parede \
+             {wm:.2} (med {wmed:.2}) ms",
             u8::from(v.vala_justa),
             u8::from(v.salta_vazias),
-            u8::from(v.borrao_grupo),
             paginas[i]
         ));
     }

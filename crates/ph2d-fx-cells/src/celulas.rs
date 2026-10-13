@@ -207,8 +207,6 @@ pub struct Variante {
     pub vala_justa: bool,
     /// Uma página sem sprites (ou sem formas) não desenha nem cola o alvo vazio.
     pub salta_vazias: bool,
-    /// O borrão da pilha por GRUPO ([`FxStackPass::borrao_em_grupo`], doc 132 §1 — o P1).
-    pub borrao_grupo: bool,
 }
 
 /// ⭐ As duas ligadas: o mesmo pixel (`the_c10_variants_give_the_same_pixels`) e, a 4 096 formas,
@@ -218,7 +216,6 @@ impl Default for Variante {
         Self {
             vala_justa: true,
             salta_vazias: true,
-            borrao_grupo: false,
         }
     }
 }
@@ -571,7 +568,6 @@ impl Celulas {
         #[expect(clippy::cast_possible_truncation, reason = "uma página cabe num u32")]
         let n_cel = pagina.celulas.len() as u32;
         let relogio = abre(gpu, "fx_cells.pilha");
-        e.pilha.borrao_em_grupo(self.variante.borrao_grupo);
         if usa_mapa {
             quads(
                 gpu,

@@ -299,26 +299,6 @@ fn tap_fonte(t: texture_2d<f32>, x: i32, y: i32) -> vec4<f32> {
     return source_of(tap_img(t, x, y));
 }
 
-fn blur_h_at(id: vec3<u32>) -> vec4<f32> {
-    var acc = vec4<f32>(0.0);
-    var wsum = 0.0;
-    let h = i32(g.half);
-    let s = shift_split(g.off_x);
-    let base = i32(id.x) - i32(s.x);
-    let k0 = select(-h, -h - 1, s.y > 0.0);
-    for (var k = k0; k <= h; k = k + 1) {
-        let wt = gauss(f32(k) + s.y);
-        acc = acc + tap_fonte(t0, base + k, i32(id.y)) * wt;
-        wsum = wsum + wt;
-    }
-    if (wsum < 1.0e-6) {
-        let a = tap_fonte(t0, base, i32(id.y));
-        let b = tap_fonte(t0, base - 1, i32(id.y));
-        return mix(a, b, s.y);
-    }
-    return acc / wsum;
-}
-
 fn blur_v_at(id: vec3<u32>) -> vec4<f32> {
     var acc = vec4<f32>(0.0);
     var wsum = 0.0;
@@ -390,22 +370,8 @@ fn cs_ingest(@builtin(global_invocation_id) id: vec3<u32>) {
     );
 }
 
-// Horizontal: entrada premultiplicada -> temp premultiplicada (com o deslocamento em X).
-@compute @workgroup_size(8, 8, 1)
-fn cs_blur_h(@builtin(global_invocation_id) id: vec3<u32>) {
-    if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), blur_h_at(id));
-}
-
-// Vertical + finalize + composite: temp -> saída do OP, premultiplicada.
-//   Blur                : o borrado, com a opacidade do degrau.
-//   Glow / Drop Shadow  : a cor do efeito com o alfa da silhueta borrada, POR BAIXO da entrada.
-//   Inner Shadow / Glow : o alfa invertido borrado, mascarado pela forma, POR CIMA da entrada.
-@compute @workgroup_size(8, 8, 1)
-fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
-    if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), compose_blur(id, blur_v_at(id)));
-}
+// Os dois passes do borrão (`cs_blur_h` e `cs_op_v`, o V com o fecho) moram no
+// `fx_stack_borrao_grupo`: os taps e os pesos na memória do GRUPO (doc 132 §1).
 
 // O FECHO do borrão — porta única do passe vertical e da volta da pirâmide (`cs_op_up`).
 fn compose_blur(id: vec3<u32>, b: vec4<f32>) -> vec4<f32> {

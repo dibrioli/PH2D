@@ -126,12 +126,6 @@ pub struct FxStackPass {
     pipeline_ingest: wgpu::ComputePipeline,
     pub(crate) pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
-    /// O borrão por GRUPO ([`crate::fx_stack_borrao_grupo`]): os mesmos dois passes, os taps e os
-    /// pesos na memória do grupo.
-    pipeline_h_grupo: wgpu::ComputePipeline,
-    pipeline_v_grupo: wgpu::ComputePipeline,
-    /// Qual dos dois borrões corre — só a régua e os gates o mudam (`MEDIR_VELOCIDADE.md`).
-    borrao_grupo: bool,
     /// A pirâmide do borrão: a média 2×2, o vertical sem fecho, a volta com o fecho.
     pub(crate) pipeline_halve: wgpu::ComputePipeline,
     pub(crate) pipeline_v_only: wgpu::ComputePipeline,
@@ -236,8 +230,6 @@ impl FxStackPass {
         let pipeline_ingest = make_pipe(&layout_mid, &shader_mid, "cs_ingest");
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
-        let pipeline_h_grupo = make_pipe(&layout_mid, &shader_mid, "cs_blur_h_grupo");
-        let pipeline_v_grupo = make_pipe(&layout_mid, &shader_mid, "cs_op_v_grupo");
         let pipeline_halve = make_pipe(&layout_mid, &shader_mid, "cs_halve");
         let pipeline_v_only = make_pipe(&layout_mid, &shader_mid, "cs_blur_v_only");
         let pipeline_up = make_pipe(&layout_mid, &shader_mid, "cs_op_up");
@@ -270,9 +262,6 @@ impl FxStackPass {
             pipeline_ingest,
             pipeline_h,
             pipeline_v,
-            pipeline_h_grupo,
-            pipeline_v_grupo,
-            borrao_grupo: false,
             pipeline_halve,
             pipeline_v_only,
             pipeline_up,
@@ -292,13 +281,6 @@ impl FxStackPass {
             ramps_cap: segs_cap,
             work: None,
         }
-    }
-
-    /// O borrão das próximas corridas: `true` = por GRUPO ([`crate::fx_stack_borrao_grupo`]). Só a
-    /// régua e os gates o mudam (as variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
-    #[doc(hidden)]
-    pub fn borrao_em_grupo(&mut self, sim: bool) {
-        self.borrao_grupo = sim;
     }
 
     fn layout(gpu: &GpuContext, storage: wgpu::TextureFormat) -> wgpu::BindGroupLayout {
@@ -634,17 +616,12 @@ impl FxStackPass {
                     let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
                     let bg_v =
                         self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
-                    if self.borrao_grupo {
-                        let n = crate::fx_stack_borrao_grupo::GRUPO;
-                        let ph = (&self.pipeline_h_grupo, "fx.borrao_h");
-                        let pv = (&self.pipeline_v_grupo, "fx.borrao_v");
-                        dispatch(&mut encoder, ph, &bg_h, slot, w.div_ceil(n), h);
-                        dispatch(&mut encoder, pv, &bg_v, slot + 1, w, h.div_ceil(n));
-                    } else {
-                        let (h, v) = (&self.pipeline_h, &self.pipeline_v);
-                        dispatch(&mut encoder, (h, "fx.borrao_h"), &bg_h, slot, gx, gy);
-                        dispatch(&mut encoder, (v, "fx.borrao_v"), &bg_v, slot + 1, gx, gy);
-                    }
+                    // Os passes do borrão por GRUPO: uma linha (o H) ou uma coluna (o V) por grupo.
+                    let n = crate::fx_stack_borrao_grupo::GRUPO;
+                    let ph = (&self.pipeline_h, "fx.borrao_h");
+                    let pv = (&self.pipeline_v, "fx.borrao_v");
+                    dispatch(&mut encoder, ph, &bg_h, slot, w.div_ceil(n), h);
+                    dispatch(&mut encoder, pv, &bg_v, slot + 1, w, h.div_ceil(n));
                     slot += 2;
                 }
                 Plan::Field { jumps, raster_seed } => {

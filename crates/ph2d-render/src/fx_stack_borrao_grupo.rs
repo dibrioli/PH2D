@@ -1,9 +1,13 @@
 //! **O borrão por GRUPO** (doc 132 §1, o P1 do Motion): os dois passes do borrão gaussiano
-//! separável com a fila de taps e os pesos em memória do GRUPO. O de sempre (`cs_blur_h`/`cs_op_v`)
-//! faz, por pixel, `2h + 1` leituras de textura E `2h + 1` exponenciais — a Glow de σ 5,3 são 33 de
-//! cada, por passe. Aqui um grupo de 64 pixels de uma linha (ou coluna) carrega UMA vez os
-//! `64 + 2h` taps e os `2h + 1` pesos, e cada pixel soma da memória do grupo — os MESMOS taps, os
-//! MESMOS pesos (a mesma `gauss`), a MESMA ordem de soma: o mesmo número.
+//! separável — `cs_blur_h` e `cs_op_v` (o V com o fecho, `compose_blur`) — com a fila de taps e os
+//! pesos na memória do GRUPO. Um grupo de 64 pixels de uma linha (ou coluna) carrega UMA vez os
+//! `64 + 2h` taps e os `2h + 1` pesos, e cada pixel soma da memória do grupo.
+//!
+//! O passe por PIXEL que estava aqui fazia `2h + 1` leituras de textura E `2h + 1` exponenciais por
+//! pixel e passe (33 + 33 na Glow de σ 5,3). Os mesmos taps, os mesmos pesos, a mesma ordem de soma:
+//! o MESMO byte em 8 pilhas (gate `o_borrao_por_grupo_da_o_mesmo_byte`, commit `2cfacfe11f`), e a
+//! pilha de «cada forma» a 4 096 discos `3,57 → 2,96 ms` (Outer Glow), `4,92 → 3,93` (Drop Shadow),
+//! `2,18 → 1,83` (Inner Shadow); a camada inteira de 1600×972 `0,37 → 0,28 ms` (doc 132 §7).
 //!
 //! Concatenado DEPOIS do `FX_STACK_MID_WGSL` (consome o `dst`, o `tap_fonte`, o `tap_mid`, a `gauss`,
 //! o `shift_split` e o `compose_blur`).
@@ -30,7 +34,7 @@ fn bg_pesos(lid: u32, k0: i32, n: u32, fr: f32) {{
 }}
 
 @compute @workgroup_size({GRUPO}, 1, 1)
-fn cs_blur_h_grupo(
+fn cs_blur_h(
     @builtin(workgroup_id) wg: vec3<u32>,
     @builtin(local_invocation_index) lid: u32,
 ) {{
@@ -62,7 +66,7 @@ fn cs_blur_h_grupo(
 }}
 
 @compute @workgroup_size(1, {GRUPO}, 1)
-fn cs_op_v_grupo(
+fn cs_op_v(
     @builtin(workgroup_id) wg: vec3<u32>,
     @builtin(local_invocation_index) lid: u32,
 ) {{

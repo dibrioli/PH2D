@@ -12,6 +12,13 @@
 //! pela configuração do produto; cada texel do interior contra o gabarito na MÉDIA sobre o texel
 //! (supersamplado junto ao eixo). Sem rebote nas duas pontas (o gabarito é o
 //! direto + as cascatas; a lei do interior é a mesma com ele).
+//!
+//! ⭐ W5n — com a DIFUSÃO (W5h) o miolo do produto é outra lei, e o corte no eixo medial é o da lei
+//! antiga, que continua no produto com `miolo: None` (a suavidade 0). O portão mede as DUAS: a da
+//! média no eixo (a lei antiga contra o gabarito dela, controlo sem a média) e a da difusão (o produto
+//! contra o gabarito dela) — esta reprovava no zoom 2,5 até a W5n (837 · 774 · 2 058 texels: a
+//! cascata da W5h não convergia — o erro de média frequência ficava; cura: os V-ciclos de correção,
+//! `Miolo::ciclos`, controlo na mesma corrida).
 
 use bevy_ecs::world::World;
 use ph2d_app_light2d::{
@@ -37,10 +44,20 @@ const SUB: u32 = 12;
 const FAIXA: f64 = 4.0;
 /// Um texel do interior está ERRADO a mais disto do gabarito, relativo ao máximo dele ali.
 const ERRADO: f64 = 0.10;
+/// A lei do interior até a W5g (`suavidade = 0`): o exterior mais próximo — a do `miolo: None`.
+const EXTERIOR: ph2d_light2d_ref::OpcoesDoMiolo = ph2d_light2d_ref::OpcoesDoMiolo {
+    suavidade: 0.0,
+    penetracao_m: f64::INFINITY,
+};
 /// Texels errados por caso no produto — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`): 0 em todo caso desde a
 /// borda exata (W5d; antes 0 ou 1 — um canto da caixa, onde o eixo chega à borda); sem a média no
 /// eixo, 35 a 537 (a escada).
 const TETO_ERRADOS: usize = 1;
+/// ⭐ W5n — o mesmo na DIFUSÃO (o produto com 3 V-ciclos): MEDIDO 0 em todo caso salvo o zoom 2,5 ·
+/// 3/8, com 2 — os dois no canto de cima-direita da caixa, a < 1 texel das duas faces (placa 1,19 ·
+/// 1,04 × gabarito 0,89 · 0,73), iguais com 3, 6, 12 e 24 ciclos: a discretização do canto no nível
+/// 1, não a convergência. Sem os ciclos (a W5h) 837 · 774 · 2 058.
+const TETO_ERRADOS_DIFUSAO: usize = 2;
 
 /// A cena 3 com a parede verde feita uma caixa livre no meio da sala, deslocada `d` metros.
 pub(crate) fn cena(d: [f32; 2]) -> CenaDeLuz {
@@ -93,6 +110,15 @@ pub(crate) fn gabarito(
     c: &CenaDeLuz,
     d: [f32; 2],
 ) -> (Vec<([f64; 2], f64)>, usize) {
+    gabarito_por(g, d, |p| ph2d_light2d_ref::fluencia(c, p)[1])
+}
+
+/// ⭐ W5n — o [`gabarito`] com a lei `lei` (o verde num ponto).
+fn gabarito_por(
+    g: ph2d_light2d_gpu::Grade,
+    d: [f32; 2],
+    lei: impl Fn([f64; 2]) -> f64,
+) -> (Vec<([f64; 2], f64)>, usize) {
     let tx = g.texel_m;
     let mut pts = Vec::new();
     let mut no_eixo = 0;
@@ -115,12 +141,12 @@ pub(crate) fn gabarito(
                 let mut s = 0.0;
                 for b in 0..sub {
                     for a in 0..sub {
-                        s += ph2d_light2d_ref::fluencia(c, [p[0] + o(a) * tx, p[1] + o(b) * tx])[1];
+                        s += lei([p[0] + o(a) * tx, p[1] + o(b) * tx]);
                     }
                 }
                 s / f64::from(sub * sub)
             } else {
-                ph2d_light2d_ref::fluencia(c, p)[1]
+                lei(p)
             };
             pts.push((p, v));
         }
@@ -137,9 +163,10 @@ pub(crate) fn erros(fl: &Fluencia, gab: &[([f64; 2], f64)]) -> (f64, usize) {
     })
 }
 
-/// ⭐⭐ **GATE — o texel que o eixo medial corta é a média das faces**, em qualquer posição: o produto
-/// deixa no máximo `TETO_ERRADOS` texels errados por caso (os de um canto ou do encontro de três
-/// faces); o controlo (o valor do ponto mais perto do centro) tem a escada.
+/// ⭐⭐ **GATE — o interior não depende da posição na grade**, nas duas leis: o produto (a difusão)
+/// contra o gabarito dela, e a lei antiga (`miolo: None`: o texel que o eixo medial corta é a média
+/// das faces) contra o gabarito dela — no máximo `TETO_ERRADOS` texels errados por caso (os de um
+/// canto ou do encontro de três faces); o controlo (a lei antiga sem a média no eixo) tem a escada.
 #[test]
 fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
     let Some(gpu) = gpu() else {
@@ -150,7 +177,7 @@ fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
         Camera2d::default().world_to_screen_affine(ph2d_host::WindowSize::new(FHD.0, FHD.1));
     let centro = Point::new(f64::from(FHD.0) * 0.5, f64::from(FHD.1) * 0.5);
     let dg = DEGRAU_PADRAO;
-    let (mut falhas, mut controlo) = (Vec::new(), 0);
+    let (mut falhas, mut controlo, mut controlo_ciclos) = (Vec::new(), 0, 0);
     for zoom in [1.0, 2.5] {
         let a = fabrica.then_scale_about(zoom, centro);
         let grade = grade_do_quadro(a, FHD, dg).expect("grade");
@@ -168,34 +195,48 @@ fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
                 (f64::from(k) * tx * 3.0 / 8.0) as f32,
             ];
             let c = cena(d);
-            let ler = |media: bool| {
-                let mut s = Solver::novo(
-                    &gpu,
-                    Config {
-                        media_no_eixo: media,
-                        ..cfg
-                    },
-                )
-                .expect("solver");
+            let ler = |cfg: Config| {
+                let mut s = Solver::novo(&gpu, cfg).expect("solver");
                 let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
                 s.regiao_fina(i, f);
                 s.quadro(&gpu, &c);
                 fluencia_lida(&gpu, &s)
             };
-            let (produto, sem) = (ler(true), ler(false));
+            let antiga = Config { miolo: None, ..cfg };
+            let sem_ciclos = ler(Config {
+                miolo: cfg
+                    .miolo
+                    .map(|m| ph2d_light2d_gpu::Miolo { ciclos: 0, ..m }),
+                ..cfg
+            });
+            let (produto, media, sem) = (
+                ler(cfg),
+                ler(antiga),
+                ler(Config {
+                    media_no_eixo: false,
+                    ..antiga
+                }),
+            );
             let (gab, no_eixo) = gabarito(produto.grade, &c, d);
+            let lei = ph2d_light2d_ref::Gabarito::com_miolo(&c, EXTERIOR);
+            let (gab_antiga, _) = gabarito_por(produto.grade, d, |p| lei.fluencia(p)[1]);
             assert!(
                 no_eixo > 50,
                 "a régua não achou o eixo medial ({no_eixo} texels)"
             );
             let (e, n) = erros(&produto, &gab);
-            let (e0, n0) = erros(&sem, &gab);
+            let (em, nm) = erros(&media, &gab_antiga);
+            let (e0, n0) = erros(&sem, &gab_antiga);
+            let (ea, na) = erros(&sem_ciclos, &gab);
             eprintln!(
-                "interior · zoom {zoom} · deslocamento {k}/8 · {no_eixo} texels no eixo: pior {e:.3}, {n} errados (sem a média: {e0:.3}, {n0})"
+                "interior · zoom {zoom} · deslocamento {k}/8 · {no_eixo} texels no eixo: difusão pior {e:.3}, {n} errados (sem os V-ciclos: {ea:.3}, {na}) · lei antiga {em:.3}, {nm} (sem a média: {e0:.3}, {n0})"
             );
             controlo = controlo.max(n0);
-            if n > TETO_ERRADOS {
-                falhas.push(format!("zoom {zoom} · {k}/8: {n} (pior {e:.3})"));
+            controlo_ciclos = controlo_ciclos.max(na);
+            if n > TETO_ERRADOS_DIFUSAO || nm > TETO_ERRADOS {
+                falhas.push(format!(
+                    "zoom {zoom} · {k}/8: difusão {n} (pior {e:.3}) · lei antiga {nm} (pior {em:.3})"
+                ));
             }
         }
     }
@@ -204,8 +245,12 @@ fn o_interior_do_opaco_nao_depende_da_posicao_na_grade() {
         "o controlo sem a média não mostra a escada ({controlo} texels errados) — a régua não a vê"
     );
     assert!(
+        controlo_ciclos > 10 * TETO_ERRADOS,
+        "o controlo sem os V-ciclos (a W5h) não mostra o miolo por convergir ({controlo_ciclos} texels errados) — a régua não o vê"
+    );
+    assert!(
         falhas.is_empty(),
-        "o interior do opaco muda com a posição na grade (mais de {TETO_ERRADOS} texels errados > {ERRADO}): {}",
+        "o interior do opaco muda com a posição na grade (mais de {TETO_ERRADOS_DIFUSAO} texels errados > {ERRADO} na difusão, {TETO_ERRADOS} na lei antiga): {}",
         falhas.join(" · ")
     );
 }
@@ -361,7 +406,11 @@ fn sonda_custo_da_media_no_eixo() {
 /// interior): a fonte do rebote ali 0,335 em vez de 0,06, a face 1,65 em vez de 0,27. A régua: a caixa
 /// logo à direita e abaixo da lâmpada da cena 3, a vista nela nos dois lados de duas passagens de
 /// oitava (zoom 1,6 · 2,2 · 2,5 · 4), pela configuração do produto com o rebote (120 quadros), contra a série do
-/// gabarito, na face direita (o interior: o exterior mais próximo), na sombra e no fundo.
+/// gabarito, 10 cm dentro da face direita, na sombra e no fundo. ⚠️ W5n: dentro da caixa a lei é a
+/// DIFUSÃO (W5h) — a série resolve o miolo dela no mesmo ponto (até a W5g: o exterior mais próximo, o
+/// gabarito lido logo fora da face). O ponto de dentro reprovava até a W5n (+17 % na oitava grossa,
+/// +49 % na fina): a cascata da W5h não convergia; cura: os V-ciclos (`Miolo::ciclos`), controlo sem
+/// eles na mesma corrida.
 #[test]
 fn o_rebote_nao_depende_da_oitava() {
     let Some(gpu) = gpu() else {
@@ -374,9 +423,9 @@ fn o_rebote_nao_depende_da_oitava() {
     let (lado, centro) = ([1.2_f32, 2.0], [0.69_f32 + 0.6, 1.13 - 1.0]);
     let c = cena_em(centro, lado);
     let (x1, cy) = (f64::from(centro[0] + 0.5 * lado[0]), f64::from(centro[1]));
-    // (o ponto lido, o ponto do gabarito: na face, o exterior mais próximo)
+    // (o ponto lido, o ponto do gabarito)
     let pontos = [
-        ("face direita", [x1 - 0.1, cy], [x1 + 0.005, cy]),
+        ("face direita", [x1 - 0.1, cy], [x1 - 0.1, cy]),
         ("sombra", [x1 + 0.15, cy], [x1 + 0.15, cy]),
         ("fundo", [x1 + 1.0, cy + 0.6], [x1 + 1.0, cy + 0.6]),
     ];
@@ -394,6 +443,8 @@ fn o_rebote_nao_depende_da_oitava() {
     let dg = DEGRAU_PADRAO;
     let foco = fabrica * Point::new(f64::from(centro[0]) - 0.3, f64::from(centro[1]) + 0.3);
     let mut falhas = Vec::new();
+    // O controlo: a face sem os V-ciclos (a W5h), o pior erro relativo.
+    let mut controlo: f64 = 0.0;
     for zoom in [1.6, 2.2, 2.5, 4.0] {
         let a = vello::kurbo::Affine::translate(alvo.to_vec2())
             * vello::kurbo::Affine::scale(zoom)
@@ -407,13 +458,24 @@ fn o_rebote_nao_depende_da_oitava() {
             rebote: true,
             ..Config::padrao_para(&gpu.device, grade)
         };
-        let mut s = Solver::novo(&gpu, cfg).expect("solver");
-        let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
-        s.regiao_fina(i, f);
-        for _ in 0..120 {
-            s.quadro(&gpu, &c);
-        }
-        let fl = fluencia_lida(&gpu, &s);
+        let ler = |cfg: Config| {
+            let mut s = Solver::novo(&gpu, cfg).expect("solver");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+            s.regiao_fina(i, f);
+            for _ in 0..120 {
+                s.quadro(&gpu, &c);
+            }
+            fluencia_lida(&gpu, &s)
+        };
+        let fl = ler(cfg);
+        let face = ler(Config {
+            miolo: cfg
+                .miolo
+                .map(|m| ph2d_light2d_gpu::Miolo { ciclos: 0, ..m }),
+            ..cfg
+        })
+        .amostra(pontos[0].1);
+        controlo = controlo.max((face - gab[0]).abs() / gab[0]);
         for ((nome, p, _), g) in pontos.iter().zip(&gab) {
             let v = fl.amostra(*p);
             let e = (v - g).abs() / g;
@@ -422,11 +484,24 @@ fn o_rebote_nao_depende_da_oitava() {
                 grade.texel_m,
                 100.0 * (v - g) / g
             );
-            if e > TETO_OITAVA {
+            let teto = if *nome == "face direita" {
+                TETO_MIOLO
+            } else {
+                TETO_OITAVA
+            };
+            if e > teto {
                 falhas.push(format!("zoom {zoom} · {nome}: {v:.3} × {g:.3}"));
             }
         }
     }
+    eprintln!(
+        "rebote · controlo sem os V-ciclos: a face erra {:+.1} %",
+        100.0 * controlo
+    );
+    assert!(
+        controlo > TETO_MIOLO,
+        "controlo: sem os V-ciclos a face não muda com a oitava ({controlo:.3}) — a régua não o vê"
+    );
     assert!(
         falhas.is_empty(),
         "o rebote muda com a oitava (teto {TETO_OITAVA}): {}",
@@ -437,3 +512,162 @@ fn o_rebote_nao_depende_da_oitava() {
 /// O erro relativo máximo de cada ponto do [`o_rebote_nao_depende_da_oitava`] — MEDIDO (RTX 5060 Ti):
 /// o pior 2,9 % (o fundo na oitava grossa); antes da cura +514 % (a face) · +204 % (a sombra).
 const TETO_OITAVA: f64 = 0.035;
+/// ⭐ W5n — o mesmo para o ponto de DENTRO da face (a difusão): MEDIDO (RTX 5060 Ti, a série do
+/// gabarito 0,611) com 3 V-ciclos −3,6 % (oitava grossa) · −0,4 % (fina); convergido (6 ciclos) −3,4 %
+/// · −0,7 % — o resto é a discretização do nível 1 (o dobro do texel fino), não a convergência. Sem
+/// os ciclos (a W5h) +17,2 % · +49,3 %. O teto é o medido + 10 %.
+const TETO_MIOLO: f64 = 0.04;
+
+/// ⭐ W5n — a rodada dos V-ciclos do miolo: (A) a caixa no zoom 2,5 contra o gabarito da difusão, (B)
+/// o ponto de dentro da face do rebote em duas oitavas, (C) o custo (`c3_fina` + `c3_miolo`, o MÍNIMO
+/// de 7 intercaladas) nas cenas 1–6 e na caixa — por variante (a 1.ª é a W5h). Saída: o handoff W5n.
+#[test]
+#[ignore = "a rodada dos V-ciclos do miolo: corre-se à mão"]
+fn sonda_ciclos_do_miolo() {
+    use ph2d_light2d_gpu::{MIOLO_PADRAO, Miolo};
+    let Some(gpu) = gpu() else { return };
+    eprintln!("# loadavg antes {}", crate::medida_luz2d_w4b::loadavg());
+    let fabrica =
+        Camera2d::default().world_to_screen_affine(ph2d_host::WindowSize::new(FHD.0, FHD.1));
+    let centro = Point::new(f64::from(FHD.0) * 0.5, f64::from(FHD.1) * 0.5);
+    let dg = DEGRAU_PADRAO;
+    // (relaxa, relaxa_max, ciclos, suaviza, anel): a 1.ª é a W5h.
+    const V: [(u32, u32, u32, u32, bool); 6] = [
+        (4, 32, 0, 2, false),
+        (4, 32, 1, 2, true),
+        (4, 32, 2, 2, true),
+        (4, 32, 3, 2, true),
+        (2, 16, 2, 2, true),
+        (4, 32, 6, 2, true),
+    ];
+    let cfg_de = |a: vello::kurbo::Affine, rebote: bool| Config {
+        fina: fina_do_quadro(a, dg),
+        captura: captura_do_quadro(a, dg),
+        holografica: dg.holografica.then_some(HOLOGRAFICA_PADRAO),
+        rebote,
+        ..Config::padrao_para(&gpu.device, grade_do_quadro(a, FHD, dg).expect("grade"))
+    };
+    let com =
+        |cfg: Config, (relaxa, relaxa_max, ciclos, suaviza, anel): (u32, u32, u32, u32, bool)| {
+            Config {
+                miolo: Some(Miolo {
+                    relaxa,
+                    relaxa_max,
+                    ciclos,
+                    suaviza,
+                    ..MIOLO_PADRAO
+                }),
+                anel_fora_da_regiao: anel,
+                ..cfg
+            }
+        };
+    // A. A caixa no zoom 2,5, quatro fases.
+    let a = fabrica.then_scale_about(2.5, centro);
+    let cfg = cfg_de(a, false);
+    let tx = cfg.grade.texel_m / f64::from(cfg.fina);
+    for k in [0u32, 4] {
+        let d = [
+            (f64::from(k) * tx / 8.0) as f32,
+            (f64::from(k) * tx * 3.0 / 8.0) as f32,
+        ];
+        let c = cena(d);
+        let mut linha = format!("A caixa 2,5 · {k}/8:");
+        let mut gab = None;
+        for v in V {
+            let mut s = Solver::novo(&gpu, com(cfg, v)).expect("solver");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+            s.regiao_fina(i, f);
+            s.quadro(&gpu, &c);
+            let fl = fluencia_lida(&gpu, &s);
+            let g = gab.get_or_insert_with(|| gabarito(fl.grade, &c, d).0);
+            let (e, n) = erros(&fl, g);
+            linha += &format!(" {}→{}·{}·{}·{} {n} ({e:.3}) ·", v.0, v.1, v.2, v.3, v.4);
+        }
+        eprintln!("{linha}");
+    }
+    // B. O ponto da face do rebote.
+    let (lado, cc) = ([1.2_f32, 2.0], [0.69_f32 + 0.6, 1.13 - 1.0]);
+    let c = cena_em(cc, lado);
+    let p = [f64::from(cc[0] + 0.5 * lado[0]) - 0.1, f64::from(cc[1])];
+    let serie = ph2d_light2d_ref::Rebote::resolver(
+        &c,
+        ph2d_light2d_ref::OpcoesDoRebote {
+            passo_m: 0.02,
+            rebotes: 200,
+        },
+    );
+    let g = 2.0 * std::f64::consts::PI * serie.luz_em(p)[1];
+    let alvo = Point::new(f64::from(FHD.0) * 0.5, f64::from(FHD.1) * 0.5);
+    let foco = fabrica * Point::new(f64::from(cc[0]) - 0.3, f64::from(cc[1]) + 0.3);
+    for zoom in [1.6, 2.5] {
+        let a = vello::kurbo::Affine::translate(alvo.to_vec2())
+            * vello::kurbo::Affine::scale(zoom)
+            * vello::kurbo::Affine::translate(-foco.to_vec2())
+            * fabrica;
+        let cfg = cfg_de(a, true);
+        let mut linha = format!("B rebote face · zoom {zoom} (gabarito {g:.3}):");
+        for v in V {
+            let mut s = Solver::novo(&gpu, com(cfg, v)).expect("solver");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+            s.regiao_fina(i, f);
+            for _ in 0..120 {
+                s.quadro(&gpu, &c);
+            }
+            let x = fluencia_lida(&gpu, &s).amostra(p);
+            linha += &format!(
+                " {}→{}·{}·{}·{} {x:.3} ({:+.1} %) ·",
+                v.0,
+                v.1,
+                v.2,
+                v.3,
+                v.4,
+                100.0 * (x - g) / g
+            );
+        }
+        eprintln!("{linha}");
+    }
+    // C. O custo do c3_miolo (o mínimo de 7 intercaladas).
+    let mut casos: Vec<(String, f64, CenaDeLuz)> = (1..=6)
+        .map(|n| {
+            let mut w = World::new();
+            assert!(smoke::encenar(&mut w, n));
+            (format!("cena {n}"), 1.0, cena_de_luz(&w))
+        })
+        .collect();
+    casos.push(("caixa · zoom 2,5".into(), 2.5, cena([0.0; 2])));
+    for (nome, zoom, cena_c) in &casos {
+        let a = fabrica.then_scale_about(*zoom, centro);
+        let cfg = cfg_de(a, false);
+        let mut solvers: Vec<Solver> = V
+            .iter()
+            .map(|&v| {
+                let mut s = Solver::novo(&gpu, com(cfg, v)).expect("solver");
+                let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+                s.regiao_fina(i, f);
+                s
+            })
+            .collect();
+        let mut minimo = [[f64::INFINITY; 2]; V.len()];
+        for rodada in 0..7 {
+            for j in 0..V.len() {
+                let i = (j + rodada) % V.len();
+                for _ in 0..3 {
+                    solvers[i].quadro(&gpu, cena_c);
+                }
+                if let Some(t) = solvers[i].tempos(&gpu) {
+                    minimo[i][0] = minimo[i][0].min(t.c3_fina);
+                    minimo[i][1] = minimo[i][1].min(t.c3_miolo);
+                }
+            }
+        }
+        let mut linha = format!("C {nome} · c3_fina + c3_miolo ms:");
+        for (j, v) in V.iter().enumerate() {
+            linha += &format!(
+                " {}→{}·{}·{}·{} {:.3}+{:.3} ·",
+                v.0, v.1, v.2, v.3, v.4, minimo[j][0], minimo[j][1]
+            );
+        }
+        eprintln!("{linha}");
+    }
+    eprintln!("# loadavg depois {}", crate::medida_luz2d_w4b::loadavg());
+}

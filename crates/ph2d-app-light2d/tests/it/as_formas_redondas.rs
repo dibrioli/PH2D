@@ -15,6 +15,12 @@
 //! do meio-tom em cada passagem luz/sombra (o serrilhado) e o EXCESSO de variação ao longo do anel (a
 //! faceta: um salto que o gabarito não tem). Sem rebote (o gabarito ponto a ponto é o direto + as
 //! cascatas).
+//!
+//! ⭐ W5n — a lei do interior é a DIFUSÃO (W5h, aprovada no smoke do dono: «a pizza vira
+//! gradiente»): o produto contra o gabarito da difusão (`ph2d_light2d_ref::fluencia`). Os controlos
+//! são a lei ANTIGA (`miolo: None`, o exterior mais próximo — o cone e a aresta do eixo maior SÃO as
+//! facetas que a difusão tira) com as flags da W5c: com a difusão as flags sozinhas já não mostram
+//! nada (o miolo filtra a borda), e um controlo igual ao produto é uma régua cega.
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
@@ -129,6 +135,16 @@ pub(crate) const ANEIS: [(&str, f64, f64); 4] = [
 
 /// O gabarito de um anel: `(pontos, valores)`.
 pub(crate) fn anel(c: &CenaDeLuz, r: &Redondo, f: f64, fora_m: f64) -> (Vec<[f64; 2]>, Vec<f64>) {
+    anel_por(r, f, fora_m, |p| ph2d_light2d_ref::fluencia(c, p)[1])
+}
+
+/// O anel com a lei `lei` (o verde do gabarito num ponto).
+pub(crate) fn anel_por(
+    r: &Redondo,
+    f: f64,
+    fora_m: f64,
+    lei: impl Fn([f64; 2]) -> f64,
+) -> (Vec<[f64; 2]>, Vec<f64>) {
     let pts: Vec<[f64; 2]> = (0..AMOSTRAS)
         .map(|k| {
             r.no_anel(
@@ -138,10 +154,7 @@ pub(crate) fn anel(c: &CenaDeLuz, r: &Redondo, f: f64, fora_m: f64) -> (Vec<[f64
             )
         })
         .collect();
-    let v = pts
-        .iter()
-        .map(|p| ph2d_light2d_ref::fluencia(c, *p)[1])
-        .collect();
+    let v = pts.iter().map(|p| lei(*p)).collect();
     (pts, v)
 }
 
@@ -256,7 +269,8 @@ pub(crate) fn vista_em(zoom: f64, centro_m: [f64; 2]) -> Affine {
     Affine::translate(alvo.to_vec2()) * Affine::scale(zoom) * Affine::translate(-foco.to_vec2()) * f
 }
 
-/// A configuração do produto sem rebote na vista `a`; `controlo` = a W5c (o iso-½, sem a tenda).
+/// A configuração do produto sem rebote na vista `a`; `controlo` = a W5c (o iso-½, sem a tenda) na
+/// lei antiga (`miolo: None`).
 fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
     let dg = DEGRAU_PADRAO;
     let cfg = Config {
@@ -272,6 +286,7 @@ fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
             c0_ao_longo_da_face: 0.0,
             pe_na_borda: false,
             vis_na_face: false,
+            miolo: None,
             ..cfg
         }
     } else {
@@ -279,9 +294,10 @@ fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
     }
 }
 
-/// O teto do excesso de variação num anel do produto — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`): o
-/// pior +0,31 (o disco no zoom 1, deslocado 3/8, a 0,9 do raio); o controlo (a W5c) +1,89, com 4
-/// cruzamentos a mais numa passagem e o terminador a 5,3 texels do gabarito.
+/// O teto do excesso de variação num anel do produto — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`), na lei
+/// do exterior mais próximo (W5d): o pior +0,31; o controlo (a W5c) +1,89. ⭐ W5n, na DIFUSÃO contra
+/// o gabarito dela: o produto +0,15 (o anel de fora; dentro, TV negativa: a placa é mais lisa), 0
+/// errados, ×0; o controlo (a lei antiga com as flags da W5c) até +3,73 e ×4.
 const TETO_TV: f64 = 0.40;
 
 /// ⭐⭐ **GATE — o disco e a elipse saem lisos**: em dois zooms, duas posições na grade e quatro
@@ -420,6 +436,7 @@ pub(crate) fn disco_de_imagem(
 
 /// O teto do excesso de variação num anel do disco de IMAGEM no zoom 1 — MEDIDO (RTX 5060 Ti,
 /// `DEGRAU_PADRAO`): o pior +0,66 (a 0,9 do raio); o controlo (a W5c) +1,30 com 2 cruzamentos a mais.
+/// ⭐ W5n, na difusão: o produto +0,06, 0 errados, ×0; o controlo (a lei antiga, W5c) ×2, TV +3,08.
 /// ⚠️ No zoom 2,5 (a textura ampliada) o produto ainda tem 2 cruzamentos a mais (W5c: 4) — ABERTO.
 const TETO_TV_IMAGEM: f64 = 0.80;
 
@@ -485,7 +502,8 @@ fn variacao(fl: &Fluencia, pts: &[[f64; 2]]) -> f64 {
 /// O teto da variação do anel de DENTRO (0,65 e 0,9 do raio) sobre a do anel logo FORA (+2,5 texels),
 /// com o rebote — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`, zoom 2,5): pela mediana o disco 0,987 · a elipse
 /// 1,033 (pela média 0,979 · 0,981, mas ela espalha a luz junto a um canto); sem nada 1,014 · 1,109 (a
-/// conta é determinística: não há relógio nela).
+/// conta é determinística: não há relógio nela). ⭐ W5n, na difusão: o produto 0,832 · 0,748 (o miolo
+/// filtra a borda); o controlo (a lei antiga sem a média) 1,117 · 1,229.
 const TETO_RISCOS: f64 = 1.05;
 
 /// ⭐⭐ **GATE — o interior com o rebote não sai em riscos**: as sondas da cascata coladas a uma
@@ -493,7 +511,7 @@ const TETO_RISCOS: f64 = 1.05;
 /// ao centro (as fatias do disco com o rebote, cena 5); a c0 do ponto de fronteira pela média AO LONGO
 /// da face (`Config::c0_ao_longo_da_face`, pela mediana) tira-o. A régua: o disco e a elipse (polígonos) com o rebote
 /// (60 quadros) no zoom 2,5 — a variação do anel de dentro não passa a do de fora (o interior só
-/// projeta a borda); o controlo sem a média, na mesma corrida.
+/// projeta a borda); o controlo (a lei antiga, `miolo: None`, sem a média), na mesma corrida.
 #[test]
 fn o_interior_com_o_rebote_nao_sai_em_riscos() {
     let Some(gpu) = gpu() else {
@@ -511,12 +529,13 @@ fn o_interior_com_o_rebote_nao_sai_em_riscos() {
             ..config(&gpu, a, false)
         };
         let tx = cfg.grade.texel_m / f64::from(cfg.fina);
-        let ler = |face: f32, mediana: bool| {
+        let ler = |face: f32, mediana: bool, miolo| {
             let mut s = Solver::novo(
                 &gpu,
                 Config {
                     c0_ao_longo_da_face: face,
                     c0_ao_longo_mediana: mediana,
+                    miolo,
                     ..cfg
                 },
             )
@@ -537,9 +556,9 @@ fn o_interior_com_o_rebote_nao_sai_em_riscos() {
         for (nome, fl) in [
             (
                 "produto",
-                ler(cfg.c0_ao_longo_da_face, cfg.c0_ao_longo_mediana),
+                ler(cfg.c0_ao_longo_da_face, cfg.c0_ao_longo_mediana, cfg.miolo),
             ),
-            ("sem a média", ler(0.0, false)),
+            ("lei antiga sem a média", ler(0.0, false, None)),
         ] {
             let base = variacao(&fl, &fora);
             let pior = [0.65, 0.9]
@@ -558,7 +577,7 @@ fn o_interior_com_o_rebote_nao_sai_em_riscos() {
     }
     assert!(
         controlo > TETO_RISCOS,
-        "o controlo sem a média não mostra os riscos ({controlo:.3}) — a régua não os vê"
+        "o controlo (a lei antiga sem a média) não mostra os riscos ({controlo:.3}) — a régua não os vê"
     );
     assert!(
         falhas.is_empty(),

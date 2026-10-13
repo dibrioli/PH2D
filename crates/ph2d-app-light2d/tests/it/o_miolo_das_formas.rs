@@ -12,6 +12,12 @@
 //! A régua: a de `as_formas_redondas` (os polígonos da cena 5 contra o gabarito) na oitava de zoom
 //! onde o controlo mais falha (1,5), três fases da grade, os anéis do portão e mais três (0,5 · 0,8 ·
 //! 0,97 — a passagem que sai dos pontos tangentes).
+//!
+//! ⭐ W5n — a lei do interior é a DIFUSÃO (W5h): o produto contra o gabarito dela; o controlo é a lei
+//! ANTIGA (`miolo: None`) com a busca e a marcha rente (a W5f) — os degraus da passagem que o dono viu.
+//! Dentro do corpo a passagem da difusão é um GRADIENTE: o desvio do meio-tom ao longo do anel mede ali
+//! o erro de VALOR (que o `errados` já limita), não o lugar de uma aresta — o desvio só se exige no anel
+//! de FORA, onde a passagem é a aresta da sombra.
 
 use ph2d_light2d_gpu::Config;
 use vello::kurbo::Affine;
@@ -35,10 +41,12 @@ const TETO_DESVIO: f64 = 2.0;
 const TETO_TV: f64 = 0.30;
 
 fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> Config {
+    let cfg = crate::medida_luz2d_w5d::config(gpu, a, crate::medida_luz2d_w5d::VARIANTES[2]);
     Config {
         pe_na_borda: !controlo,
         vis_na_face: !controlo,
-        ..crate::medida_luz2d_w5d::config(gpu, a, crate::medida_luz2d_w5d::VARIANTES[2])
+        miolo: if controlo { None } else { cfg.miolo },
+        ..cfg
     }
 }
 
@@ -87,10 +95,23 @@ fn o_miolo_das_formas_nao_sai_em_degraus() {
                 tv0 = tv0.max(l0.tv);
                 cruzes0 = cruzes0.max(l0.cruzes);
                 eprintln!(
-                    "miolo · {k}/8 · {} · {nome}: ×{} ↔{:.1} tx TV {:+.2} (W5f: ×{} ↔{:.1} TV {:+.2})",
-                    r.nome, l.cruzes, l.desvio, l.tv, l0.cruzes, l0.desvio, l0.tv
+                    "miolo · {k}/8 · {} · {nome}: {} errados ({:.3}) ×{} ↔{:.1} tx TV {:+.2} (W5f: ×{} ↔{:.1} TV {:+.2})",
+                    r.nome,
+                    l.errados,
+                    l.pior,
+                    l.cruzes,
+                    l.desvio,
+                    l.tv,
+                    l0.cruzes,
+                    l0.desvio,
+                    l0.tv
                 );
-                if l.errados > 0 || l.cruzes > 0 || l.desvio > TETO_DESVIO || l.tv > TETO_TV {
+                let fora = nome.starts_with("fora");
+                if l.errados > 0
+                    || l.cruzes > 0
+                    || (fora && l.desvio > TETO_DESVIO)
+                    || l.tv > TETO_TV
+                {
                     falhas.push(format!(
                         "{k}/8 · {} · {nome}: {} errados · ×{} · ↔{:.1} · TV {:+.2}",
                         r.nome, l.errados, l.cruzes, l.desvio, l.tv

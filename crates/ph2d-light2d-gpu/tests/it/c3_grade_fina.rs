@@ -6,7 +6,7 @@ use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_gpu::{Config, Grade, REFINO_PADRAO, Refino, Solver};
 
 use crate::cenas::{DEGRAUS, ceu_e_vidro, faisca, penumbra};
-use crate::comum::{gabarito, gpu, grade, ler_bytes, ler_fluencia, rmse_rel};
+use crate::comum::{gabarito, gabarito_por, gpu, grade, ler_bytes, ler_fluencia, rmse_rel};
 
 const FINA: u32 = 4;
 
@@ -117,7 +117,9 @@ fn o_refino_pelas_bordas_e_o_exato_em_todo_texel() {
 const TETO_BORDAS: f64 = 0.0014;
 
 /// ⭐⭐ **Só a REGIÃO se calcula, e por dentro dela é o MESMO bit** que a grade inteira (cada
-/// texel fino é independente); fora dela o solver novo deixa a textura como nasceu (zeros).
+/// texel fino é independente); fora dela o solver novo deixa a textura como nasceu (zeros). ⭐ W5n: o
+/// miolo do opaco que atravessa a borda também (o anel de fora da região, `c3_anel.wgsl`); controlo
+/// na mesma corrida: sem ele (`anel_fora_da_regiao: false`, a W5h) o miolo por dentro muda.
 #[test]
 fn so_a_regiao_se_calcula_e_por_dentro_e_o_mesmo_bit() {
     let Some(gpu) = gpu() else { return };
@@ -152,6 +154,30 @@ fn so_a_regiao_se_calcula_e_por_dentro_e_o_mesmo_bit() {
     parte.quadro(&gpu, &cena);
     let b = ler_bytes(&gpu, parte.fluencia());
     let px = (b.len() / (g.largura * g.altura) as usize) as u32;
+    let mut sem_anel = Solver::novo(
+        &gpu,
+        Config {
+            anel_fora_da_regiao: false,
+            ..cfg
+        },
+    )
+    .expect("solver");
+    sem_anel.regiao_fina(ini, fim);
+    sem_anel.quadro(&gpu, &cena);
+    let c = ler_bytes(&gpu, sem_anel.fluencia());
+    let mudam = (0..g.altura)
+        .flat_map(|j| (0..g.largura).map(move |i| (i, j)))
+        .filter(|&(i, j)| (ini[0]..fim[0]).contains(&i) && (ini[1]..fim[1]).contains(&j))
+        .filter(|&(i, j)| {
+            let o = ((j * g.largura + i) * px) as usize;
+            a[o..o + px as usize] != c[o..o + px as usize]
+        })
+        .count();
+    eprintln!("região: sem o anel, {mudam} texels de dentro mudam");
+    assert!(
+        mudam > 0,
+        "controlo: sem o anel o miolo da região não muda — a régua não vê o enquadramento"
+    );
     let (mut dentro, mut fora) = (0, 0);
     for j in 0..g.altura {
         for i in 0..g.largura {
@@ -270,9 +296,18 @@ fn o_fio_de_sombra_entre_as_sondas_e_o_do_exato() {
     );
 }
 
+/// A lei do interior até a W5g — o exterior mais próximo em todo o miolo (`suavidade = 0`): a do
+/// `Config::miolo = None` e a que o anel do miolo (o pé na borda) dá à difusão.
+const EXTERIOR: ph2d_light2d_ref::OpcoesDoMiolo = ph2d_light2d_ref::OpcoesDoMiolo {
+    suavidade: 0.0,
+    penetracao_m: f64::INFINITY,
+};
+
 /// ⭐⭐⭐ **F3 — o INTERIOR de um opaco é o exterior mais próximo** (W5a; a regra do gabarito,
 /// `ph2d-light2d-ref`): nos texels finos dentro dos opacos a até [`FAIXA_INTERIOR`] texels da borda,
-/// a placa contra o gabarito. Sem o preenchimento o interior é 0. ⚠️ Mais fundo, no EIXO MEDIAL do
+/// a placa contra o gabarito. Sem o preenchimento o interior é 0. ⚠️ W5n: a lei é a da `suavidade = 0`
+/// (o produto com `miolo: None` contra o gabarito [`EXTERIOR`]) — com a difusão (W5h) o interior FUNDO
+/// é outro (portão próprio: `o_miolo_da_placa_e_o_do_gabarito`) e a média no eixo não decide nada nele. ⚠️ Mais fundo, no EIXO MEDIAL do
 /// opaco, «a face mais próxima» troca de lado num salto (acesa ↔ sombra) e qualquer discretização
 /// erra por inteiro num fio de texels (medido: os 6 piores da penumbra todos na diagonal, placa ~0,27
 /// × gabarito 0) — fica fora da régua. ⚠️ Só luz DIRETA: com céu (a «céu e vidro») o EXTERIOR junto à
@@ -311,6 +346,7 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
         let com = Config {
             fina: FINA,
             captura: 2 * FINA,
+            miolo: None,
             ..Config::padrao(grade(lado, texel))
         };
         let sem = Config {
@@ -329,11 +365,12 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
         );
         // Dentro dos opacos, o gabarito é a média da lei sobre o texel (o texel que o eixo medial corta
         // guarda a média das faces, W5c).
-        let mut r = gabarito(&cena, &g);
+        let lei = ph2d_light2d_ref::Gabarito::com_miolo(&cena, EXTERIOR);
+        let mut r = gabarito_por(&g, |p| lei.fluencia(p));
         let fundo = crate::comum::dentro_de_opaco(&cena, &g);
         let max = r.iter().map(|v| v[1]).fold(0.0_f64, f64::max);
         for k in (0..r.len()).filter(|&k| fundo(k)) {
-            r[k] = media_no_texel(&cena, &g, k, r[k]);
+            r[k] = media_no_texel(&cena, &lei, &g, k, r[k]);
         }
         let dentro = crate::comum::dentro_de_opaco_a_menos_de(&cena, &g, FAIXA_INTERIOR);
         let (ec, es, em) = (
@@ -395,7 +432,13 @@ fn o_interior_de_um_opaco_e_o_exterior_mais_proximo() {
 /// parte de fora é a borda do receptor, que o interior não guarda): onde a média dos cantos de dentro
 /// se afasta do centro mais de 1 % do maior deles no verde (um corte — o eixo medial — passa dentro do
 /// texel; um gradiente liso não muda a média), a média das subamostras de dentro de 8×8; senão o centro.
-fn media_no_texel(cena: &CenaDeLuz, g: &Grade, k: usize, centro: [f64; 3]) -> [f64; 3] {
+fn media_no_texel(
+    cena: &CenaDeLuz,
+    lei: &ph2d_light2d_ref::Gabarito,
+    g: &Grade,
+    k: usize,
+    centro: [f64; 3],
+) -> [f64; 3] {
     let c = g.centro(k as u32 % g.largura, k as u32 / g.largura);
     let t = g.texel_m;
     let ponto = |dx: f64, dy: f64| [c[0] + dx * t, c[1] + dy * t];
@@ -403,7 +446,7 @@ fn media_no_texel(cena: &CenaDeLuz, g: &Grade, k: usize, centro: [f64; 3]) -> [f
         .into_iter()
         .map(|(dx, dy)| ponto(dx, dy))
         .filter(|&p| dentro_de_algum(cena, p))
-        .map(|p| ph2d_light2d_ref::fluencia(cena, p)[1])
+        .map(|p| lei.fluencia(p)[1])
         .collect();
     let local = cantos.iter().fold(centro[1].abs(), |m, v| m.max(v.abs()));
     if cantos.is_empty()
@@ -416,7 +459,7 @@ fn media_no_texel(cena: &CenaDeLuz, g: &Grade, k: usize, centro: [f64; 3]) -> [f
     for i in 0..64 {
         let p = ponto(o(i % 8), o(i / 8));
         if dentro_de_algum(cena, p) {
-            let v = ph2d_light2d_ref::fluencia(cena, p);
+            let v = lei.fluencia(p);
             for (mc, vc) in m.iter_mut().zip(v) {
                 *mc += vc;
             }
@@ -463,8 +506,14 @@ const FAIXA_INTERIOR: f64 = 2.0;
 /// faísca 0,000043 · parede grossa 0,000337; sem a média no eixo (o controlo, o desenho da W5a)
 /// 0,002545 · 0,000311 · 0,000536. A régua de PONTO da W5a (o centro do texel) media 0,0016 · 0,0001 ·
 /// 0,0005; com a semente MAIS PERTO em vez do ponto de fronteira mais perto, 0,0043 · 0,0007 ·
-/// 0,0011 (e o desempate decidia a face: 0,0035).
-const TETO_FUNDO: [f64; 3] = [0.00141, 0.000048, 0.00037];
+/// 0,0011 (e o desempate decidia a face: 0,0035). ⚠️ W5n (com `miolo: None`, RTX 5060 Ti): penumbra
+/// 0,001436 · faísca 0,000012 · parede 0,000050 (sem a média 0,002717 · 0,000306 · 0,000251). A
+/// penumbra sobe por causa do `vis_na_face` da W5g (a marcha parte 1,5 texel PARA FORA da face: na
+/// penumbra a visibilidade varia com a posição) — ablação na mesma corrida: só o pé 0,000337, só a
+/// face 0,001498, sem os dois 0,000292, a W5c 0,001281 (a faixa: 0,058 · 0,207 · 0,077 · 0,321). O
+/// teto da penumbra é o medido + 10 %; a troca da face (os pontos tangentes × a penumbra) está no
+/// handoff W5n.
+const TETO_FUNDO: [f64; 3] = [0.00158, 0.000048, 0.00037];
 /// O MEDIDO + 10 % (W5c, a régua da média, a captura 2 × fina, a faixa de 2 texels): penumbra 0,3207
 /// · faísca 0,1136 · parede grossa 0,0063; sem a média no eixo 0,3664 · 0,2370 · 0,0522; sem o
 /// preenchimento 1,65 · 1,96 · 1,58. Na faísca o resto é o canto do quadrado girado, onde o eixo

@@ -129,6 +129,14 @@ path = "junit.xml"
 [test-groups.luz2d-placa]
 max-threads = 2
 
+# ⭐ W5n (12/10) — os três portões LENTOS da luz (o gabarito na CPU de uma thread por ponto). Sozinhos,
+# `dev`, load ~1: o interior na grade 513 s (três leis por caso desde a W5n) · o oclusor fino 380 s (W5m §5)
+# · a holográfica junto à face passou na corrida em série (os 4 do GPU em 364 s); na suíte paralela os três
+# estouraram os 180 s. Tecto: 12 × 60 s (~1,4× o mais lento medido sozinho).
+[[profile.default.overrides]]
+filter = 'test(=o_interior_do_opaco::o_interior_do_opaco_nao_depende_da_posicao_na_grade) + test(=o_oclusor_fino::o_oclusor_fino_faz_a_sombra_do_gabarito) + test(=holografica::a_holografica_junto_a_uma_face_e_o_gabarito)'
+slow-timeout = { period = "60s", terminate-after = 12 }
+
 [[profile.default.overrides]]
 filter = 'package(ph2d-app-light2d) | package(ph2d-light2d-gpu)'
 test-group = 'luz2d-placa'

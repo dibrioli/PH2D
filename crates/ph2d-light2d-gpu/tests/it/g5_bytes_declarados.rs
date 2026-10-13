@@ -4,11 +4,15 @@
 //! `Solver::novo` tem de ser um recurso declarado, uma vez; uma textura criada fora da lista (com
 //! ou sem rótulo) reprova.
 //!
-//! O alocador dá a alguns recursos uns bytes a mais que o pedido — o ENCHIMENTO do driver, que
-//! não depende do tamanho (medido, RTX 5060 Ti/Vulkan, nas três grades: o uniforme de 16 B ocupa
-//! 64, a `emissao` (alvo de render `Rgba16Float`) +736 B, o resto 0). Por isso a lei é: o
-//! enchimento de cada recurso é o MESMO nas três grades e menor que 1 KiB. Um tamanho declarado
-//! errado escala com a grade e quebra a igualdade.
+//! O alocador dá a alguns recursos uns bytes a mais que o pedido — o ENCHIMENTO, que não escala com
+//! o tamanho: a cauda dos mips do driver (as pirâmides do miolo `Rgba32Float` +1 280 e +1 792 B, a
+//! `emissao` +736 B) e o alinhamento do sítio onde o `gpu-allocator` (lista livre) põe o recurso — o
+//! relatório soma ao tamanho o salto até o deslocamento alinhado, que depende do que foi alocado
+//! antes (MEDIDO, W5n: o mesmo `luz2d/buf/miolo` de 4 096 B pedidos ocupou 4 112 num degrau e 4 128
+//! noutro). Por isso a lei é: o enchimento de cada recurso fica abaixo de [`TETO_ENCHIMENTO`] em toda
+//! grade e varia entre elas menos que [`VARIA_ENCHIMENTO`] (os tamanhos variam ×4 a ×16). Um tamanho
+//! declarado errado escala com a grade; o controlo (as pirâmides declaradas sem a cauda dos mips)
+//! tem de reprovar.
 
 use std::collections::BTreeMap;
 
@@ -46,6 +50,23 @@ fn novas(antes: &Alocacoes, depois: &Alocacoes) -> Alocacoes {
         .collect()
 }
 
+/// O teto do enchimento: o maior MEDIDO (RTX 5060 Ti/Vulkan, os cinco degraus do portão: 1 792 B, a
+/// `miolo_b` — a `miolo_a`, do mesmo formato e tamanho, 1 280: o resto é o sítio) mais o salto de
+/// alinhamento do sítio (< 1 KiB). Até a W5g o teto era 1 KiB (sem pirâmides).
+const TETO_ENCHIMENTO: i64 = 3072;
+/// A variação do enchimento de um recurso entre as grades — MEDIDO: 16 B (o `luz2d/buf/miolo`, o
+/// alinhamento do sítio); o salto de alinhamento é menor que 1 KiB.
+const VARIA_ENCHIMENTO: i64 = 1024;
+
+/// O enchimento de cada recurso nas grades viola a lei? (`Some(a frase)`)
+fn fora_da_lei(enchimento: &BTreeMap<String, Vec<i64>>) -> Option<String> {
+    enchimento.iter().find_map(|(nome, e)| {
+        let (lo, hi) = (e.iter().min()?, e.iter().max()?);
+        (*hi >= TETO_ENCHIMENTO || hi - lo >= VARIA_ENCHIMENTO)
+            .then(|| format!("«{nome}»: {e:?} (teto {TETO_ENCHIMENTO}, varia {VARIA_ENCHIMENTO})"))
+    })
+}
+
 fn declarado(lista: &PassList) -> BTreeMap<String, u64> {
     lista
         .texturas
@@ -63,6 +84,8 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         return;
     }
     let mut enchimento: BTreeMap<String, Vec<i64>> = BTreeMap::new();
+    // O controlo: as texturas com mips declaradas só com o nível 0.
+    let mut sem_a_cauda: BTreeMap<String, Vec<i64>> = BTreeMap::new();
     // Cada degrau, e o Baixo com a grade FINA da luz direta (W4b: a fluência fina e a visibilidade).
     let configs = DEGRAUS
         .into_iter()
@@ -89,6 +112,19 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         let antes = alocacoes(&gpu).expect("relatório");
         let mut s = Solver::novo(&gpu, cfg).expect("solver");
         let decl = declarado(s.pass_list());
+        let nivel0: BTreeMap<String, u64> = s
+            .pass_list()
+            .texturas
+            .iter()
+            .filter(|t| t.mips > 1)
+            .map(|t| {
+                let um = ph2d_light2d_gpu::Textura {
+                    mips: 1,
+                    ..t.clone()
+                };
+                (t.nome.to_owned(), um.bytes())
+            })
+            .collect();
         let criado = novas(&antes, &alocacoes(&gpu).expect("relatório"));
         eprintln!("G5 {degrau}: recurso | declarado | alocado | enchimento do driver");
         for (nome, &(n, bytes)) in &criado {
@@ -105,6 +141,12 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
                 .entry(nome.clone())
                 .or_default()
                 .push(bytes as i64 - d as i64);
+            if let Some(&d0) = nivel0.get(nome) {
+                sem_a_cauda
+                    .entry(nome.clone())
+                    .or_default()
+                    .push(bytes as i64 - d0 as i64);
+            }
         }
         for nome in decl.keys() {
             assert!(
@@ -140,16 +182,14 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
             "G5 geometria: {geo:?}"
         );
     }
-    for (nome, e) in &enchimento {
-        assert!(
-            e.iter().all(|&x| x == e[0]),
-            "G5: o enchimento de «{nome}» muda com a grade: {e:?}"
-        );
-        assert!(
-            e[0] < 1024,
-            "G5: «{nome}» com {} B a mais que o declarado",
-            e[0]
-        );
+    let controlo = fora_da_lei(&sem_a_cauda);
+    eprintln!("G5 controlo (as pirâmides sem a cauda dos mips): {controlo:?}");
+    assert!(
+        controlo.is_some(),
+        "controlo: a declaração sem a cauda dos mips passa na lei ({sem_a_cauda:?}) — a régua não a vê"
+    );
+    if let Some(f) = fora_da_lei(&enchimento) {
+        panic!("G5: o enchimento escala com a grade ou passa do teto: {f}");
     }
 }
 

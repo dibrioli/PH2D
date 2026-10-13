@@ -324,12 +324,17 @@ fn a_cena_5_ensina_o_volume() {
     }
     let afim = ph2d_render::Camera2d::default()
         .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
-    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
-    for _ in 0..30 {
-        assert!(l.preparar(&w, afim, (1920, 1080)));
-        l.gravar(&gpu, &mut present, &r);
-    }
-    let f = crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"));
+    let medir = |w: &World, present: &mut PresentWorld| {
+        let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+        for _ in 0..30 {
+            assert!(l.preparar(w, afim, (1920, 1080)));
+            l.gravar(&gpu, present, &r);
+        }
+        crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"))
+    };
+    let f = medir(&w, &mut present);
+    tirar_os_bloqueios(&mut w);
+    let f0 = medir(&w, &mut present);
     let lampada = smoke::LAMPADA_DO_VOLUME.map(f64::from);
     let mut falhas = Vec::new();
     for corpo in smoke::CORPOS_DO_VOLUME {
@@ -339,14 +344,24 @@ fn a_cena_5_ensina_o_volume() {
         let n = d[0].hypot(d[1]);
         let u = [d[0] / n, d[1] / n];
         let k = PROFUNDIDADE * f64::from(lado[0].min(lado[1]));
-        let (frente, tras) = (
-            f.amostra([c[0] + u[0] * k, c[1] + u[1] * k]),
-            f.amostra([c[0] - u[0] * k, c[1] - u[1] * k]),
+        let (pf, pt) = (
+            [c[0] + u[0] * k, c[1] + u[1] * k],
+            [c[0] - u[0] * k, c[1] - u[1] * k],
         );
-        eprintln!("cena 5 · {nome}: a face da lâmpada {frente:.3} · a de trás {tras:.3}");
+        let (frente, tras) = (f.amostra(pf), f.amostra(pt));
+        let (frente0, tras0) = (f0.amostra(pf), f0.amostra(pt));
+        eprintln!(
+            "cena 5 · {nome}: a face da lâmpada {frente:.3} · a de trás {tras:.3} (× {:.2}; sem bloquear × {:.2})",
+            frente / tras,
+            frente0 / tras0
+        );
         if frente < CONTRASTE_DAS_FACES * tras {
             falhas.push(format!("{nome}: {frente:.3} × {tras:.3}"));
         }
+        assert!(
+            frente0 < CONTRASTE_DAS_FACES * tras0,
+            "controlo: sem bloquear o {nome} tem faces ({frente0:.3} × {tras0:.3}) — a régua não vê a falta delas"
+        );
     }
     assert!(
         falhas.is_empty(),
@@ -355,11 +370,32 @@ fn a_cena_5_ensina_o_volume() {
     );
 }
 
+/// O CONTROLO das faces: a cena sem «bloqueia a luz» (nenhum corpo tapa a lâmpada: a frente e o fundo
+/// diferem só pela distância a ela).
+fn tirar_os_bloqueios(w: &mut World) {
+    let todos: Vec<bevy_ecs::entity::Entity> = w
+        .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<ph2d_light2d_ecs::BloqueiaLuz>>()
+        .iter(w)
+        .collect();
+    for e in todos {
+        w.entity_mut(e).remove::<ph2d_light2d_ecs::BloqueiaLuz>();
+    }
+    let c = cena_de_luz(w);
+    assert!(
+        c.oclusores.is_empty() && c.vetores.is_empty() && c.outros.is_empty(),
+        "controlo: ainda há quem bloqueie"
+    );
+}
+
 /// Os pontos lidos ficam a esta fração do menor lado do corpo, de cada lado do centro.
 const PROFUNDIDADE: f64 = 0.35;
-/// A face virada para a lâmpada é pelo menos isto × a de trás — MEDIDO (RTX 5060 Ti, `DEGRAU_PADRAO`):
-/// o menor 18,5 × (a cruz), o maior 63 × (a elipse).
-const CONTRASTE_DAS_FACES: f64 = 10.0;
+/// A face virada para a lâmpada é pelo menos isto × a de trás. ⭐ W5n — a lei do interior é a DIFUSÃO
+/// (W5h, o smoke do dono: «clara do lado da lâmpada, escurecendo suave até o lado de trás»): a face de
+/// trás deixou de ser a sombra do exterior mais próximo (até a W5g o menor era 18,5 ×, a cruz). MEDIDO
+/// (RTX 5060 Ti, `DEGRAU_PADRAO`): com a difusão, o menor 1,82 × (a cruz; cena 6: 2,99; cena 7: 5,90);
+/// o CONTROLO sem bloquear (só a distância à lâmpada) o maior 1,33 × (cena 6: 1,49; cena 7, sem o
+/// Flip: 1,50). O teto fica no meio: 10 % abaixo do menor e acima do controlo.
+const CONTRASTE_DAS_FACES: f64 = 1.65;
 
 /// ⭐⭐ **GATE — a cena 6 ensina as formas DESENHADAS** (W5d; o dono, 11/10: «não temos desenhos
 /// esféricos para testar»). O círculo e a elipse vetoriais entram no documento pela porta do smoke; a
@@ -453,13 +489,18 @@ fn a_cena_6_ensina_as_formas_desenhadas() {
     }
     let afim = ph2d_render::Camera2d::default()
         .world_to_screen_affine(ph2d_host::WindowSize::new(1920, 1080));
-    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
-    for _ in 0..30 {
-        assert!(l.preparar(&w, afim, (1920, 1080)));
-        l.desenhar_vetores(&gpu, &doc, &xforms);
-        l.gravar(&gpu, &mut present, &r);
-    }
-    let f = crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"));
+    let medir = |w: &World, present: &mut PresentWorld| {
+        let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+        for _ in 0..30 {
+            assert!(l.preparar(w, afim, (1920, 1080)));
+            l.desenhar_vetores(&gpu, &doc, &xforms);
+            l.gravar(&gpu, present, &r);
+        }
+        crate::comum::fluencia_lida(&gpu, l.solver().expect("solver"))
+    };
+    let f = medir(&w, &mut present);
+    tirar_os_bloqueios(&mut w);
+    let f0 = medir(&w, &mut present);
     let mut falhas = Vec::new();
     for forma in &smoke::REDONDAS {
         // A régua do ESPELHO (partilhada com a cena 7): as faces do desenho e da imagem gêmea (no
@@ -467,10 +508,20 @@ fn a_cena_6_ensina_as_formas_desenhadas() {
         // Ponto a ponto não: as cunhas da penumbra da lâmpada diferem entre a curva de Bézier e a
         // textura do disco.
         let m = crate::o_traco_do_flip::espelho(&f, forma.centro, forma.semi);
+        let m0 = crate::o_traco_do_flip::espelho(&f0, forma.centro, forma.semi);
         for (i, qual) in ["desenho", "imagem"].into_iter().enumerate() {
             eprintln!(
-                "cena 6 · {} ({qual}): a face da lâmpada {:.3} · a de trás {:.3}",
-                forma.nome, m.frente[i], m.tras[i]
+                "cena 6 · {} ({qual}): a face da lâmpada {:.3} · a de trás {:.3} (× {:.2}; sem bloquear × {:.2})",
+                forma.nome,
+                m.frente[i],
+                m.tras[i],
+                m.frente[i] / m.tras[i],
+                m0.frente[i] / m0.tras[i]
+            );
+            assert!(
+                m0.frente[i] < CONTRASTE_DAS_FACES * m0.tras[i],
+                "controlo: sem bloquear o {} ({qual}) tem faces — a régua não vê a falta delas",
+                forma.nome
             );
             if m.frente[i] < CONTRASTE_DAS_FACES * m.tras[i] {
                 falhas.push(format!(

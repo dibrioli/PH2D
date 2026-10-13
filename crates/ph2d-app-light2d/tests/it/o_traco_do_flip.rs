@@ -18,8 +18,9 @@ use crate::comum::Fluencia;
 
 /// Os pontos das faces ficam a esta fração do DIÂMETRO menor, de cada lado do centro (a da cena 6).
 const PROFUNDIDADE: f64 = 0.35;
-/// A face virada para a lâmpada é pelo menos isto × a de trás (o da cena 6).
-pub(crate) const CONTRASTE_DAS_FACES: f64 = 10.0;
+/// A face virada para a lâmpada é pelo menos isto × a de trás (o da cena 6, W5n: a difusão — a tabela
+/// em `smoke_cenas_w4`).
+pub(crate) const CONTRASTE_DAS_FACES: f64 = 1.65;
 
 /// O que a régua do ESPELHO lê de uma forma desenhada e da imagem gêmea dela (`y → −y`, a lâmpada na
 /// origem): as faces (a da lâmpada e a de trás, `[desenho, imagem]`) e a variação ao longo de anéis
@@ -254,10 +255,12 @@ fn a_cena_7_ensina_o_traco_do_flip() {
         let m = espelho(&f, d.centro, semi);
         let paridade = (m.frente[0] - m.frente[1]) / m.frente[1];
         eprintln!(
-            "cena 7 · {}: faces traço {:.3} × {:.3} · imagem {:.3} × {:.3} · traço × imagem {:+.2} % · anéis {:+.1} %",
+            "cena 7 · {}: faces traço {:.3} × {:.3} (× {:.2}; sem o Flip × {:.2}) · imagem {:.3} × {:.3} · traço × imagem {:+.2} % · anéis {:+.1} %",
             d.nome,
             m.frente[0],
             m.tras[0],
+            m.frente[0] / m.tras[0],
+            controlo.frente[0] / controlo.tras[0],
             m.frente[1],
             m.tras[1],
             100.0 * paridade,
@@ -320,15 +323,47 @@ fn a_onda_da_cena_7_nao_tapa_os_discos() {
     );
 }
 
-/// O erro relativo do blit do Flip contra a conta na CPU — MEDIDO + 10 % (RTX 5060 Ti, a cena 7 a
-/// 480×270): `1,34e-3` em 1 680 canais; o do sprite é `1,21e-3` (`paridade_luz_recebida`): o alvo é
-/// `f16` e o filtro bilinear da placa tem 8 bits de fração.
-const TOL_TRACO_RECEBE: f64 = 1.48e-3;
+/// A parte relativa da folga: três arredondamentos `f16` de meio ulp (`2⁻¹¹`) — a cor apagada lida, o
+/// filtro da placa sobre a textura `f16` e o alvo. MEDIDO (cena 7, 1 680 canais, onde o filtro não pesa:
+/// gradiente < 1e-4 relativo): o resto chega a 1,33e-3 — acima de dois meios ulps (9,8e-4), abaixo de
+/// três (1,46e-3); o sprite mede o mesmo (`paridade_luz_recebida`, 1,21e-3).
+const TOL_F16_REL: f64 = 3.0 / 2048.0;
+/// Um passo da fração do filtro bilinear da placa: o Vulkan divide o texel em `2^subTexelPrecisionBits`
+/// (8 na RTX 5060 Ti) e deixa o arredondamento à implementação — a fração pode errar um passo inteiro:
+/// `(Δx + Δy) · 2⁻⁸` (as maiores diferenças entre texels vizinhos da célula).
+const FRACAO_DO_FILTRO: f64 = 1.0 / 256.0;
+
+/// A folga do filtro bilinear da placa em `p`, canal `c` (na unidade da fluência): o quanto a bilinear
+/// muda quando a fração anda um passo de 8 bits em cada eixo.
+fn folga_do_filtro(f: &Fluencia, p: [f64; 2], c: usize) -> f64 {
+    let g = f.grade;
+    let tx = (p[0] - g.origem_m[0]) / g.texel_m - 0.5;
+    let ty = (p[1] - g.origem_m[1]) / g.texel_m - 0.5;
+    let (i0, j0) = (tx.floor(), ty.floor());
+    let em = |i: f64, j: f64| {
+        let i = (i.max(0.0) as u32).min(g.largura - 1);
+        let j = (j.max(0.0) as u32).min(g.altura - 1);
+        f64::from(f.v[(j * g.largura + i) as usize][c])
+    };
+    let (a, b, d, e) = (
+        em(i0, j0),
+        em(i0 + 1.0, j0),
+        em(i0, j0 + 1.0),
+        em(i0 + 1.0, j0 + 1.0),
+    );
+    let dx = (b - a).abs().max((e - d).abs());
+    let dy = (d - a).abs().max((e - b).abs());
+    (dx + dy) * FRACAO_DO_FILTRO
+}
 
 /// ⭐ **O traço do Flip RECEBE a luz como o sprite** (W5e): o `fs_blit` do Flip concatena o
-/// `receber.wgsl` — cada pixel é a cor linear × `F(mundo)/2π`, a mesma conta do sprite e da colagem,
-/// medida contra a fluência lida de volta. Controlo na mesma corrida: sem luz, o blit de sempre (a cor
-/// linear, byte a byte entre duas corridas apagadas).
+/// `receber.wgsl` — cada pixel é a cor × `F(mundo)/2π`, a mesma conta do sprite e da colagem, medida
+/// contra a fluência lida de volta. A lei por pixel (W5n): `|placa − cor·luz| ≤ cor·luz·2·2⁻¹¹ (f16) +
+/// cor·folga do filtro` — o filtro da placa tem 8 bits de fração, e o erro dele é o gradiente da
+/// fluência × meio passo; um teto relativo FIXO era um máximo amostrado que a difusão do miolo (W5h,
+/// gradientes dentro dos corpos) passou (3,12e-3 num ponto de gradiente 0,95 por texel). Controlos na
+/// mesma corrida: sem luz, o blit de sempre (determinístico, a cor linear); e a luz lida MEIO texel ao
+/// lado tem de sair da folga (a régua vê um desvio de posição).
 #[test]
 fn o_traco_do_flip_recebe_a_luz_como_o_sprite() {
     use ph2d_flip_render::{FlipCompose, SLICE_FORMAT};
@@ -418,8 +453,10 @@ fn o_traco_do_flip_recebe_a_luz_como_o_sprite() {
         }
     });
     let mapa = ph2d_app_light2d::tela_para_mundo(afim);
-    let mut pior = 0.0_f64;
+    // O maior uso da folga (≤ 1 = dentro da lei), o pior erro relativo (para ler) e o do controlo.
+    let (mut uso, mut pior, mut uso_ao_lado) = (0.0_f64, 0.0_f64, 0.0_f64);
     let mut pontos = 0;
+    let meio_texel = 0.5 * f.grade.texel_m;
     for py in (8..alvo.1 - 8).step_by(13) {
         for px in (8..alvo.0 - 8).step_by(17) {
             let i = ((py * alvo.0 + px) * 8) as usize;
@@ -435,19 +472,36 @@ fn o_traco_do_flip_recebe_a_luz_como_o_sprite() {
                     "controlo: sem luz o blit é a cor linear ({} × {esperado_apagado})",
                     canal(a, c)
                 );
-                let luz = f.amostra_canal(mundo, c) / std::f64::consts::TAU;
-                let esperado = esperado_apagado * luz;
-                if esperado > 1e-3 {
-                    pior = pior.max((canal(b, c) - esperado).abs() / esperado);
-                    pontos += 1;
+                let tau = std::f64::consts::TAU;
+                let cor = canal(a, c);
+                let esperado = cor * f.amostra_canal(mundo, c) / tau;
+                if esperado <= 1e-3 {
+                    continue;
                 }
+                let folga = esperado * TOL_F16_REL + cor * folga_do_filtro(&f, mundo, c) / tau;
+                let erro = (canal(b, c) - esperado).abs();
+                uso = uso.max(erro / folga);
+                pior = pior.max(erro / esperado);
+                pontos += 1;
+                let ao_lado = [mundo[0] + meio_texel, mundo[1]];
+                let esperado_ao_lado = cor * f.amostra_canal(ao_lado, c) / tau;
+                let folga_ao_lado =
+                    esperado_ao_lado * TOL_F16_REL + cor * folga_do_filtro(&f, ao_lado, c) / tau;
+                uso_ao_lado =
+                    uso_ao_lado.max((canal(b, c) - esperado_ao_lado).abs() / folga_ao_lado);
             }
         }
     }
-    eprintln!("o traço recebe: {pontos} canais, o pior erro relativo {pior:.2e}");
+    eprintln!(
+        "o traço recebe: {pontos} canais, o maior uso da folga {uso:.3} (o pior erro relativo {pior:.2e}); a luz lida meio texel ao lado {uso_ao_lado:.1}"
+    );
     assert!(pontos > 100, "poucos pontos acesos ({pontos})");
     assert!(
-        pior <= TOL_TRACO_RECEBE,
-        "o blit do Flip não recebe a luz como o sprite: {pior:.2e}"
+        uso_ao_lado > 1.0,
+        "controlo: a luz lida meio texel ao lado cabe na folga ({uso_ao_lado:.3}) — a régua não vê um desvio"
+    );
+    assert!(
+        uso <= 1.0,
+        "o blit do Flip não recebe a luz como o sprite: {uso:.3} da folga (pior relativo {pior:.2e})"
     );
 }

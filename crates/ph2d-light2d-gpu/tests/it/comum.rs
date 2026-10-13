@@ -93,6 +93,12 @@ pub fn ler_fluencia(gpu: &GpuContext, solver: &Solver) -> Vec<[f32; 3]> {
 
 /// O gabarito no centro de cada texel de `g`, em paralelo (a `fluencia` é pura).
 pub fn gabarito(cena: &CenaDeLuz, g: &Grade) -> Vec<[f64; 3]> {
+    gabarito_por(g, |p| fluencia(cena, p))
+}
+
+/// ⭐ W5n — o gabarito com a lei `lei` no centro de cada texel de `g`, em paralelo.
+pub fn gabarito_por(g: &Grade, lei: impl Fn([f64; 2]) -> [f64; 3] + Sync) -> Vec<[f64; 3]> {
+    let lei = &lei;
     let w = g.largura as usize;
     let n = w * g.altura as usize;
     let fios = std::thread::available_parallelism()
@@ -105,7 +111,7 @@ pub fn gabarito(cena: &CenaDeLuz, g: &Grade) -> Vec<[f64; 3]> {
             s.spawn(move || {
                 for (o, v) in fatia.iter_mut().enumerate() {
                     let idx = k * pedaco + o;
-                    *v = fluencia(cena, g.centro((idx % w) as u32, (idx / w) as u32));
+                    *v = lei(g.centro((idx % w) as u32, (idx / w) as u32));
                 }
             });
         }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# nextest-impacted.sh — run nextest ONLY for crates changed vs BASE plus their
-# reverse-dependents, ALWAYS including the HR-5 determinism golden. For the fast
+# nextest-impacted.sh — run nextest ONLY for the packages whose test binaries a diff
+# vs BASE can change (`impacto-preciso.py`), ALWAYS including the HR-5 determinism golden. For the fast
 # module-close loop. NOT a replacement for the final gate:
 #   ./scripts/ship.sh (cargo nextest run --workspace --cargo-profile ci-test)
 # stays the unconditional pre-push gate, and the CI cross-OS determinism job
@@ -120,12 +120,24 @@ if [ -z "$CHANGED" ]; then
     exec cargo nextest run "${FAIL_MODE[@]}" -E 'test(/^transform_determinism::/)' --cargo-profile ci-test "$@"
 fi
 
-# rdeps(set) = the crate AND everything that depends on it (the real "impacted"
-# set). `-p X` does NOT include dependents — filterset rdeps() does.
-EXPR=""
-for c in $CHANGED; do
-    EXPR="${EXPR:+$EXPR + }rdeps(${c})"
-done
+# ⭐ O conjunto é o PRECISO (`scripts/impacto-preciso.py`, 2026-10-13): os pacotes em cujo binário
+# de teste um mudado entra, mais os leitores de fonte alheia. O `rdeps()` do nextest segue as
+# dev-arestas em CADEIA e punha a Luz 2D na placa — o caminho crítico do portão — em toda mudança
+# de UI (docs/DevOps/VELOCIDADE_DOS_PORTOES.md). `PH2D_IMPACTO=rdeps` volta ao antigo, para comparar.
+# ⛔ A auto-verificação corre ANTES, a cada fecho: um seletor que mudou de sentido falha alto aqui,
+# nunca como um portão verde que não correu o que devia.
+if [ "${PH2D_IMPACTO:-preciso}" = "rdeps" ]; then
+    EXPR=""
+    for c in $CHANGED; do
+        EXPR="${EXPR:+$EXPR + }rdeps(${c})"
+    done
+else
+    _seletor="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/impacto-preciso.py"
+    python3 "$_seletor" --auto-teste >&2 || { echo "[nextest-impacted] ✗ o seletor preciso reprovou a auto-verificação" >&2; exit 2; }
+    # shellcheck disable=SC2086
+    EXPR="$(python3 "$_seletor" $CHANGED)" || { echo "[nextest-impacted] ✗ o seletor preciso falhou" >&2; exit 2; }
+    [ -n "$EXPR" ] || { echo "[nextest-impacted] ✗ o seletor preciso devolveu VAZIO para: $CHANGED" >&2; exit 2; }
+fi
 
 # MANDATORY determinism net: force the HR-5 golden so a transitive math/dep edit
 # can never silently skip it locally. `binary(...)` (NOT `test(...)`) — the golden
@@ -162,4 +174,27 @@ echo "[nextest-impacted] -E '$EXPR'"
 # Medido em 2026-08-23: o script era invocado com `--no-fail-fast` dezenas de vezes por
 # jornada sem nunca o repassar; a corrida que o expôs parou em 1 689 de 3 853. O
 # `NO_FAIL_FAST=1` acima e o repasse de argumentos são COMPLEMENTARES, não redundantes.
-exec cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@"
+#
+# ⭐ **O SELO DO VERDE (2026-10-13):** a mesma árvore com o mesmo filtro já passou ⇒ não corre de novo.
+# A chave é a árvore INTEIRA (commitada + por commitar + por rastrear, por um índice temporário), o
+# filtro, os argumentos e as `PH2D_*` do ambiente — qualquer byte diferente é outra chave. Medido em 14
+# dias de transcrições: 123 sessões correram este portão mais de uma vez, 8,3 h nas repetições; o fecho
+# da linha e o `foundational-integrate.sh` sobre um `main` parado são a MESMA árvore.
+# `PH2D_PORTAO_FORCAR=1` corre na mesma (uma flake a confirmar, um driver novo).
+_raiz="$(git rev-parse --show-toplevel)"
+_indice="$(mktemp)"
+_arvore="$(cp "$(git rev-parse --git-dir)/index" "$_indice" 2>/dev/null; GIT_INDEX_FILE="$_indice" git add -A -- "$_raiz" 2>/dev/null && GIT_INDEX_FILE="$_indice" git write-tree 2>/dev/null)"
+rm -f "$_indice"
+_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "${FAIL_MODE[*]} $*" "$(env | grep '^PH2D_' | grep -v '^PH2D_PORTAO_FORCAR=\|^PH2D_NA_PORTA=\|^PH2D_PRAZO=' | sort)" | sha256sum | cut -c1-32)"
+_selos="${CARGO_TARGET_DIR:-$_raiz/target}/portao-verde"
+if [ -n "$_arvore" ] && [ -f "$_selos/$_chave" ] && [ "${PH2D_PORTAO_FORCAR:-0}" != "1" ]; then
+    echo "[nextest-impacted] ✓ esta árvore ($_arvore) com este filtro JÁ PASSOU em $(cat "$_selos/$_chave") — não corre de novo."
+    echo "[nextest-impacted]   (PH2D_PORTAO_FORCAR=1 corre na mesma)"
+    exit 0
+fi
+cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@"
+_saida=$?
+if [ "$_saida" = 0 ] && [ -n "$_arvore" ]; then
+    mkdir -p "$_selos" && date '+%Y-%m-%d %H:%M' > "$_selos/$_chave"
+fi
+exit "$_saida"

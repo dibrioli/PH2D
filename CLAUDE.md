@@ -74,6 +74,7 @@
 | **Física** | [ADR-0131](docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) · [tracker](docs/Physics/handoffs/HANDOFF_line_physics.md) · [BUGS](docs/Physics/BUGS_physics.md) |
 | **Máquina lenta · comando pesado** | [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md) |
 | **Medir velocidade (A × B)** | [MEDIR_VELOCIDADE.md](docs/DevOps/MEDIR_VELOCIDADE.md) — variantes no MESMO processo, intercaladas, o MÍNIMO; nunca esperar calma |
+| **Portão / teste lento** | [VELOCIDADE_DOS_PORTOES.md](docs/DevOps/VELOCIDADE_DOS_PORTOES.md) — gate de placa lento: primeiro o cache de shaders do driver; cronometre as fases ANTES de dar prazo |
 | **Teste que reprova sob carga** | [FLAKES_DE_CARGA.md](docs/DevOps/FLAKES_DE_CARGA.md) |
 | **Fim de dia · disco cheio** | [DIRETIVA_FIM_DE_DIA.md](docs/IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) — primeiro `bash scripts/btrfs-health.sh` |
 | **Que agente usar** | §2 (agentes) · [`.claude/agents/`](.claude/agents/) |

@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**7 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**8 arquivos** · **5** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
@@ -22,6 +22,7 @@
 | ◆ | [MEDIR_VELOCIDADE.md](MEDIR_VELOCIDADE.md) | — | Medir velocidade sem esperar horas — a régua INTERCALADA |
 | ◆ | [MULTI_MACHINE_SETUP.md](MULTI_MACHINE_SETUP.md) | — | Multi-máquina — projeto idêntico em Mac · Linux · Windows |
 | ◆ | [TETOS_DE_RECURSO_POR_LINHA.md](TETOS_DE_RECURSO_POR_LINHA.md) | — | Tectos de recurso por linha — o que uma linha pode tomar da máquina |
+| ◆ | [VELOCIDADE_DOS_PORTOES.md](VELOCIDADE_DOS_PORTOES.md) | — | Velocidade dos portões — onde o relógio do fecho e da integração vai (medido 12–13/10/2026) |
 
 ---
 

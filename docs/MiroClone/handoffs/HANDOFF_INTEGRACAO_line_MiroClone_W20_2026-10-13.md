@@ -121,6 +121,11 @@ machete · deny · audit ✓. Os 13 testes reais do tocador (`--include-ignored`
 
 ## 4. Abertos (nomeados)
 
+> **Decisões do dono (13/10, depois do smoke OK):** (a) as pegas nos cantos do vídeo — «não prejudica a exibição em
+> nada. Vamos deixar» (FECHADO); (e) o trilho da sessão — «Não precisa» (FECHADO); (b) o clique longo e (c) a outra
+> ferramenta — «corrija»; o Windows — «implemente». Os três seguem na
+> [W21](HANDOFF_CONTINUACAO_W21_VIDEO_CLIQUE_FERRAMENTAS_WINDOWS_2026-10-13.md), na mesma linha, antes de integrar.
+
 - (a) **As pegas da selecção pintam-se nos cantos do vídeo seleccionado** (herdado da W18, ainda vivo): com o tocador
   vivo, são «algo à frente dele». A borda nova não as tapa.
 - (b) Um clique LONGO (sem mexer) num vídeo conta como clique. O oráculo não activa com 600 ms parado (A2). Seguimos

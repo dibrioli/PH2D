@@ -983,6 +983,18 @@ impl Mesa {
         sprites: &[RenderInstance],
         ops: &[FxOpGpu],
     ) {
+        self.corre_com(b, buf, n, Sprites::Cpu(sprites), ops);
+    }
+
+    /// [`Self::corre`] com as sprites de qualquer rota (a da placa: um buffer do dispositivo).
+    fn corre_com(
+        &self,
+        b: &mut Banca,
+        buf: &wgpu::Buffer,
+        n: u32,
+        sprites: Sprites<'_>,
+        ops: &[FxOpGpu],
+    ) {
         b.celulas.corre(Entrada {
             gpu: &b.gpu,
             renderer: &mut b.renderer,
@@ -992,7 +1004,7 @@ impl Mesa {
                 height: self.lh,
             },
             scene_viewport: None,
-            sprites: Sprites::Cpu(sprites),
+            sprites,
             formas: Some(Formas {
                 buffer: buf,
                 n,
@@ -1006,6 +1018,98 @@ impl Mesa {
             imagens: None,
         });
     }
+}
+
+/// ⭐⭐ **A `=138` paga as páginas dos DISCOS** (doc 132 §7) — à escala da cena: a rota da placa
+/// entrega uma sprite CALADA (tamanho zero) por cada linha de uma corrente de formas, e no app 4 096
+/// discos com o `Outer Glow` da cena (σ `9,05` px) pagavam 8 192 células e 10–11 páginas (a cura é
+/// a do `001077631a`, `uma_linha_calada_nao_e_celula`). Aqui: 4 096 discos de 18 px a 1600×972 e as
+/// 4 096 caladas no buffer do dispositivo — as páginas e as células têm de ser as da corrida SÓ com
+/// os discos (o que a sonda prevê: 7).
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_138_paga_as_paginas_dos_discos() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let mut b = Banca::new(gpu);
+    let mesa = Mesa::new(&b.gpu);
+    let ds: Vec<ShapeInstance> = grelha_de(64, 64)
+        .into_iter()
+        .map(|d| ShapeInstance {
+            size: [1.5, 1.5],
+            pos: [d.pos[0] * 0.38, d.pos[1] * 0.22],
+            ..d
+        })
+        .collect();
+    let buf = b.copias(&ds);
+    let n = ds.len() as u32;
+    let ss: Vec<RenderInstance> = ds
+        .iter()
+        .map(|d| RenderInstance {
+            size: [0.0, 0.0],
+            ..sprite(&b, d.pos[0], d.pos[1])
+        })
+        .collect();
+    let placa = b.sprites_na_placa(&ss);
+    let glow = FxOpGpu {
+        kind: FxOp::GLOW,
+        sigma_px: 9.054,
+        offset_px: [0.0; 2],
+        mode: FxOp::MODE_PROXIMITY,
+        ..sombra_interna(false)
+    };
+    let ops = [glow];
+    let conta = |b: &Banca| {
+        let p = b.celulas.ultimas_paginas();
+        (p.len(), p.iter().map(|x| x.celulas.len()).sum::<usize>())
+    };
+    mesa.corre(&mut b, &buf, n, &[], &ops);
+    let previsto = conta(&b);
+    #[expect(clippy::cast_possible_truncation, reason = "4 096 sprites")]
+    let sprites = Sprites::Placa {
+        buffer: &placa,
+        n: ss.len() as u32,
+        runs: &[],
+    };
+    // O CONTROLO: sem a regra da linha calada a mesma corrida paga as células das caladas.
+    b.celulas.escolhe(Variante {
+        calada_vazia: false,
+        ..Variante::default()
+    });
+    mesa.corre_com(&mut b, &buf, n, sprites, &ops);
+    let sem_regra = conta(&b);
+    b.celulas.escolhe(Variante::default());
+    mesa.corre_com(&mut b, &buf, n, sprites, &ops);
+    let produto = conta(&b);
+    let pontos = b
+        .celulas
+        .ultimas_caixas()
+        .iter()
+        .filter(|c| c.lo[0] > c.hi[0])
+        .count();
+    eprintln!(
+        "[=138] só os discos: {} páginas, {} células · com as sprites de tamanho zero da placa: {} \
+         páginas, {} células ({pontos} caixas vazias)",
+        previsto.0, previsto.1, produto.0, produto.1
+    );
+    eprintln!(
+        "[=138] sem a regra da linha calada: {} páginas, {} células",
+        sem_regra.0, sem_regra.1
+    );
+    assert_eq!(previsto.1, ds.len(), "controlo: cada disco paga uma célula");
+    assert!(
+        sem_regra.0 > previsto.0,
+        "controlo: sem a regra as caladas pagam páginas"
+    );
+    assert!(
+        pontos >= ss.len(),
+        "controlo: as sprites caladas chegaram e deram caixas vazias"
+    );
+    assert_eq!(
+        produto, previsto,
+        "as sprites de tamanho zero pagaram células"
+    );
 }
 
 /// **C.10 — onde vão os milissegundos de «cada forma»** (doc 131 §4 / §7): por população, o

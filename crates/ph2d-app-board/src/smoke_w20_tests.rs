@@ -1,6 +1,7 @@
 //! ⭐ A cena 21 ARMA o que as lições dizem: o clique toca e o 2.º pausa; segurar e arrastar move o vídeo
 //! (também a tocar); o pan com o Espaço não o pausa nem o desactiva; clicar fora deixa-o a tocar e só todo
-//! fora da vista o pausa; a borda da cena fica À VOLTA do tocador (ele recua para dentro dela).
+//! fora da vista o pausa; a borda da cena fica À VOLTA do tocador (ele recua para dentro dela); segurar parado
+//! não é clique; com a caneta o clique toca/pausa e o arrasto desenha (W21).
 
 use super::*;
 use crate::smoke::fac_live::tests::{Hand, hero};
@@ -153,5 +154,42 @@ fn the_w20_scene_does_what_its_lessons_say() {
     h.documents.active_board_mut().unwrap().camera = back;
     Hand::new().paint(&mut h);
     assert!(live(&mut h, &l), "de volta e não voltou");
+    // Lição 8: segurar parado e largar não faz nada; o clique rápido toca/pausa.
+    let _ = std::mem::take(&mut h.documents.videos_mut().commands);
+    let hold = ph2d_editor_core::interaction::LONG_PRESS_THRESHOLD_NS;
+    m.hold(&mut h, mid(&moved), hold);
+    assert_eq!(h.documents.videos_mut().active, None, "segurar activou");
+    assert_eq!(
+        std::mem::take(&mut h.documents.videos_mut().commands),
+        Vec::<VideoCommand>::new(),
+        "segurar tocou/pausou"
+    );
+    // Lição 9: com a caneta (P), o clique no vídeo continua a ser play/pause e nada se desenha; arrastar
+    // desenha por cima e o vídeo fica onde estava.
+    m.click(&mut h, away);
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = key(
+        &mut h,
+        &mut ts,
+        BoardKey::Char('p'),
+        ph2d_host::Modifiers::default(),
+        true,
+        Some("p"),
+        None,
+    );
+    let count = |h: &HeroScreen| h.documents.active_board().unwrap().doc.live().count();
+    let n = count(&h);
+    m.click(&mut h, mid(&moved));
+    assert_eq!(h.documents.videos_mut().active, Some(l.video), "a caneta não activou");
+    assert_eq!(
+        std::mem::take(&mut h.documents.videos_mut().commands),
+        vec![VideoCommand::TogglePlay],
+        "a caneta: o clique não tocou/pausou"
+    );
+    assert_eq!(count(&h), n, "o clique com a caneta desenhou");
+    let from = [moved.x + 20.0, moved.y + 20.0];
+    m.drag(&mut h, from, [from[0] + 200.0, from[1] + 100.0]);
+    assert_eq!(count(&h), n + 1, "arrastar com a caneta não desenhou");
+    assert_eq!([el(&h, &l).x, el(&h, &l).y], [moved.x, moved.y], "a caneta moveu o vídeo");
     let _ = l.board;
 }

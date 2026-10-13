@@ -143,6 +143,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w20.l7" => {
             "7. Pause, click More videos inside it and pick one: it plays in this window. The < > arrows walk back and forth; the circle arrow goes back to the original"
         }
+        "board.smoke.w20.l8" => {
+            "8. Hold the mouse still on the video for a moment, then let go: nothing happens. Only a quick click plays or pauses"
+        }
+        "board.smoke.w20.l9" => {
+            "9. Pick the pen (P) or a shape: a quick click on the video still plays or pauses. Drag to draw over it"
+        }
         "board.smoke.w18.board" => "Video and picture fixes",
         "board.smoke.w18.title" => "A YouTube video on the board, and the last picture fixes",
         "board.smoke.w18.youtube" => "YouTube",

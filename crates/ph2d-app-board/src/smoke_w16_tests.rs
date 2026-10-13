@@ -105,6 +105,14 @@ impl Mouse {
         self.at(h, Up, world);
     }
 
+    /// Carregar em `world`, ficar parado `ns` e largar.
+    pub(crate) fn hold(&mut self, h: &mut HeroScreen, world: [f64; 2], ns: u128) {
+        use ph2d_host::PointerKind::{Down, Up};
+        self.at(h, Down, world);
+        self.clock += ns;
+        self.at(h, Up, world);
+    }
+
     pub(crate) fn drag(&mut self, h: &mut HeroScreen, from: [f64; 2], to: [f64; 2]) {
         use ph2d_host::PointerKind::{Down, Move, Up};
         self.at(h, Down, from);

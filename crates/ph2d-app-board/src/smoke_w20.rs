@@ -1,4 +1,5 @@
-//! Cena 21 — o VÍDEO que se arrasta, que o pan não pausa e que se decora (W20), módulo filho do roteador
+//! Cena 21 — o VÍDEO que se arrasta, que o pan não pausa e que se decora (W20); segurar não é clique e com
+//! outra ferramenta o clique continua a ser play/pause (W21, lições 8 e 9), módulo filho do roteador
 //! [`super`]: o vídeo das medições com uma borda grossa e um fundo (a decoração do rectângulo), espaço à volta
 //! para o arrastar e, por baixo, uma nota por lição. O gate `the_w20_scene_does_what_its_lessons_say` conduz
 //! o que a cena arma.
@@ -29,8 +30,8 @@ const DRAG_ROOM: f64 = 240.0;
 /// A margem da vista: à esquerda passa a coluna de ferramentas (a lição 1 da cena 20 cortava).
 const MARGIN_X: f64 = 200.0;
 const MARGIN_Y: f64 = 90.0;
-pub(crate) const LESSONS: usize = 7;
-/// As lições em três linhas (3 + 3 + 1): a cena cabe na área do quadro com os dois painéis abertos.
+pub(crate) const LESSONS: usize = 9;
+/// As lições em três linhas de três: a cena cabe na área do quadro com os dois painéis abertos.
 const PER_ROW: usize = 3;
 /// A borda vermelha das notas e o fundo amarelo do marcador (as cores do quadro, não hex soltos).
 const RED: usize = 11;

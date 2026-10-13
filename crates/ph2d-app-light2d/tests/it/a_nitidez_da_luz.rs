@@ -239,9 +239,11 @@ fn com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido() {
     };
     let alta = custo(N::Alta);
     eprintln!("custo sem o Automático: Low {baixa:.2} ms · High {alta:.2} ms");
-    // A lei 1/célula² dá ×16 entre os dois (medido na W5a a 1080p: 1,57 × 19,5 ms).
+    // O defeito guardado é o custo CONGELADO (razão 1). A parte que segue 1/célula² já não domina:
+    // desde a W5c todo nível paga a cascata holográfica, o rebote e o miolo. Medido a 1080p, RTX
+    // 5060 Ti: W5a 1,57 × 19,5 ms (×12); W5n 8,87 × 22,32 (×2,5), sem o miolo 9,27 × 25,40 (×2,7).
     assert!(
-        alta > 4.0 * baixa,
+        alta > 1.5 * baixa,
         "o custo não seguiu o nível: Low {baixa:.2} · High {alta:.2} ms"
     );
 }

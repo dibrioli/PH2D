@@ -73,3 +73,14 @@ App: os 10 alvos verdes (`interior … ok` sozinho em 513 s); nextest das 3 crat
 3. Tem de acontecer: cada corpo claro do lado da lâmpada e escurecendo suave para trás; com o zoom, a luz dentro
    do corpo NÃO muda.
 4. Errado: ao dar zoom, o miolo de um corpo grande clareia ou muda de forma.
+
+## Adenda do integrador (12/10) — o 14.º vermelho e o custo
+
+- `a_nitidez_da_luz::com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido` (vermelho também no `main`):
+  a régua `High > 4 × Low` vinha da W5a (1,57 × 19,5 ms). Desde a W5c todo nível paga a holográfica, o
+  rebote e o miolo, que não seguem 1/célula². O defeito guardado é o custo CONGELADO (razão 1) → a régua
+  passa a `High > 1,5 × Low`, com a tabela no teste. Sozinho na placa, load 0,4–0,7, 2×: verde.
+- ⚠️ **ABERTO — custo:** com os V-ciclos da W5n, a 1080p sem o Automático: Low **8,87 → 13,3 ms**, High
+  **22,3 → 30,1 ms** (a mesma corrida, a mesma placa). Os V-ciclos pagam mais do que a medição «0,47 →
+  1,12 ms do miolo» da vista de fábrica sugeria — medir por passe e cortar (bloco na memória do grupo, os
+  ladrilhos só com interior: W5h §3 item 2).

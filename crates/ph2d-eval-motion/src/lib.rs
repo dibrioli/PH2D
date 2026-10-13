@@ -299,22 +299,6 @@ impl MotionCookPump {
         self.ring.clear();
     }
 
-    /// Quantos [`Self::mark_dirty`] esta bomba já recebeu. O anel guarda a história desde o último,
-    /// e um scrub restaura-a: o tocador de uma macro (ADR-0186) repete cada limpeza que o produto fez,
-    /// e é por esta contagem que a gravação a vê.
-    #[must_use]
-    pub fn edicoes(&self) -> u64 {
-        self.edicoes
-    }
-
-    /// **O próximo cozimento re-simula da semente**, mesmo no tique em que a bomba já está — o modo
-    /// explicativo de uma macro (ADR-0186): o efeito do grafo de agora como se ele sempre lá estivesse.
-    /// É uma edição (limpa o anel) e o cozimento seguinte toma a porta do scrub.
-    pub fn re_simula_da_semente(&mut self) {
-        self.mark_dirty();
-        self.re_sim_pendente = true;
-    }
-
     /// ⭐⭐⭐ **Marca sujo SEM deitar fora o anel de scrub** — para quem precisa de re-cozinhar por
     /// uma razão que NÃO é uma edição do documento.
     ///

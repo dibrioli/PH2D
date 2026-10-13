@@ -12,6 +12,7 @@ pub mod inicial;
 #[cfg(feature = "panel-motion-graph")]
 pub mod intencao;
 pub mod passo;
+mod passo_grafo;
 pub mod tocar;
 
 #[cfg(all(test, feature = "panel-motion-graph"))]
@@ -86,7 +87,7 @@ impl MotionState {
     ///
     /// # Errors
     /// [`Recusa`].
-    pub fn macro_grava(&mut self) -> Result<Vec<u8>, Recusa> {
+    pub fn gravacao_arma(&mut self) -> Result<Vec<u8>, Recusa> {
         if self.macro_gravacao.is_some() {
             return Err(Recusa::JaGrava);
         }
@@ -104,13 +105,13 @@ impl MotionState {
     }
 
     #[must_use]
-    pub fn macro_gravando(&self) -> bool {
+    pub fn gravacao_ativa(&self) -> bool {
         self.macro_gravacao.is_some()
     }
 
     /// **Os passos desde a última chamada**, codificados. Quem chama dá-lhes o tempo do quadro
     /// (`MacroRecorder::push`).
-    pub fn macro_passos(&mut self) -> Vec<passo::Carga> {
+    pub fn gravacao_passos(&mut self) -> Vec<passo::Carga> {
         self.macro_gravacao
             .as_mut()
             .map(|g| g.passos.drain(..).map(|p| p.codifica()).collect())
@@ -118,9 +119,9 @@ impl MotionState {
     }
 
     /// **Pára a gravação** e devolve os últimos passos (o que mudou por fora desde o último quadro).
-    pub fn macro_para(&mut self) -> Vec<passo::Carga> {
+    pub fn gravacao_para(&mut self) -> Vec<passo::Carga> {
         self.macro_testemunha();
-        let resto = self.macro_passos();
+        let resto = self.gravacao_passos();
         self.macro_gravacao = None;
         resto
     }

@@ -545,7 +545,7 @@ mod rotas {
     #[test]
     fn o_titulo_de_um_fundo_escolhido_chega_ao_palco_sem_seleccao() {
         let mut m = super::super::estado_de_teste();
-        let ini = m.macro_grava().expect("arma");
+        let ini = m.gravacao_arma().expect("arma");
         let mut cargas = Vec::new();
         push_intent(GraphIntent::AddBackdrop {
             x: 0.0,
@@ -554,7 +554,7 @@ mod rotas {
             h: 80.0,
         });
         quadro(&mut m);
-        cargas.extend(m.macro_passos());
+        cargas.extend(m.gravacao_passos());
         let id = m.doc.backdrops[0].id;
         set_graph_backdrop_selection(Some(id));
         crate::push_param_intent(crate::MotionParamIntent::SetTextParam {
@@ -564,7 +564,7 @@ mod rotas {
         });
         quadro(&mut m);
         set_graph_backdrop_selection(None);
-        cargas.extend(m.macro_passos());
+        cargas.extend(m.gravacao_passos());
         assert!(
             cargas.iter().any(|c| matches!(
                 Passo::descodifica(c),
@@ -597,14 +597,14 @@ mod rotas {
             Some(sid),
             "o artista está dentro do grupo ao armar"
         );
-        let ini = m.macro_grava().expect("arma");
+        let ini = m.gravacao_arma().expect("arma");
         push_intent(GraphIntent::AddNode {
             type_name: "force.wind",
             x: 0.0,
             y: 0.0,
         });
         quadro(&mut m);
-        let cargas = m.macro_passos();
+        let cargas = m.gravacao_passos();
         let novo = m.doc.graph.nodes().last().expect("o nó novo").id;
         assert!(
             ph2d_motion_doc::subgraph::member_nodes_deep(&m.doc.subgraphs, &m.doc.members, sid)
@@ -619,12 +619,12 @@ mod rotas {
     fn copiar_e_colar_dentro_da_gravacao_toca() {
         let mut m = super::super::estado_de_teste();
         let a = m.doc.graph.add_node("source.shape");
-        let ini = m.macro_grava().expect("arma");
+        let ini = m.gravacao_arma().expect("arma");
         push_intent(GraphIntent::CopySelection { nodes: vec![a.0] });
         quadro(&mut m);
         push_intent(GraphIntent::Paste);
         quadro(&mut m);
-        let cargas = m.macro_passos();
+        let cargas = m.gravacao_passos();
         assert_eq!(
             m.doc.graph.nodes().len(),
             2,
@@ -657,7 +657,7 @@ mod rotas {
             })
             .expect("liga");
         assert!(m.node_help_enabled, "a ajuda nasce ligada");
-        let ini = m.macro_grava().expect("arma");
+        let ini = m.gravacao_arma().expect("arma");
         push_intent(GraphIntent::Connect {
             from_node: wind.0,
             from_port: 0,
@@ -665,7 +665,7 @@ mod rotas {
             to_port: 0,
         });
         quadro(&mut m);
-        let cargas = m.macro_passos();
+        let cargas = m.gravacao_passos();
         assert!(
             m.doc
                 .graph
@@ -682,14 +682,14 @@ mod rotas {
     fn a_forma_que_o_botao_viu_chega_ao_palco() {
         let mut m = super::super::estado_de_teste();
         let n = m.doc.graph.add_node("source.shape");
-        let ini = m.macro_grava().expect("arma");
+        let ini = m.gravacao_arma().expect("arma");
         m.selected_shape = FormaEscolhida::Nome("Path 7".into());
         push_intent(GraphIntent::PickSelection {
             node: n.0,
             param: "size",
         });
         quadro(&mut m);
-        let cargas = m.macro_passos();
+        let cargas = m.gravacao_passos();
         m.selected_shape = FormaEscolhida::Nada;
         let t = toca(&ini, &cargas);
         assert_eq!(
@@ -711,10 +711,10 @@ mod rotas {
     #[test]
     fn colar_sem_copia_gravada_fica_na_gravacao_como_recusa() {
         let mut m = super::super::estado_de_teste();
-        let _ = m.macro_grava().expect("arma");
+        let _ = m.gravacao_arma().expect("arma");
         push_intent(GraphIntent::Paste);
         quadro(&mut m);
-        let cargas = m.macro_passos();
+        let cargas = m.gravacao_passos();
         assert!(cargas.iter().any(|c| Passo::descodifica(c)
             == Ok(Passo::Recusada(super::super::COLAR_DE_ANTES.to_owned()))));
     }
@@ -722,10 +722,10 @@ mod rotas {
     #[test]
     fn o_fiel_para_quando_a_bomba_chega_ao_quadro_de_outra_forma() {
         let mut m = super::super::estado_de_teste();
-        let ini = m.macro_grava().expect("arma");
+        let ini = m.gravacao_arma().expect("arma");
         quadro(&mut m);
         let cargas: Vec<Vec<u8>> = m
-            .macro_passos()
+            .gravacao_passos()
             .into_iter()
             .map(|c| match Passo::descodifica(&c) {
                 Ok(Passo::Quadro {

@@ -203,7 +203,7 @@ fn sessao() -> Gravada {
     let mut ph = ph2d_core::Playhead::new(DT);
     ph.play();
     let mut tick: u64 = 0;
-    let inicial = m.macro_grava().expect("arma");
+    let inicial = m.gravacao_arma().expect("arma");
     let roteiro = roteiro();
     let mut slots: Vec<NodeId> = Vec::new();
     let (mut quadros, mut retratos) = (Vec::new(), Vec::new());
@@ -248,7 +248,7 @@ fn sessao() -> Gravada {
         crate::motion_bridge::params::apply_param_edits_for_tests(&mut m, &store, &mut toasts);
         o_quadro(&mut m, None, &ph, DT);
         retratos.push(retrato(&m));
-        quadros.push(m.macro_passos());
+        quadros.push(m.gravacao_passos());
         let mut novos: Vec<NodeId> = m
             .doc
             .graph
@@ -263,7 +263,7 @@ fn sessao() -> Gravada {
             tick += 1;
         }
     }
-    let resto = m.macro_para();
+    let resto = m.gravacao_para();
     assert!(resto.is_empty(), "nada mudou depois do último quadro");
     assert_eq!(slots.len(), 8, "a macro cria oito nós");
     assert!(
@@ -497,7 +497,7 @@ fn as_24_intencoes_de_uma_vez_sao_o_explicativo_da_sessao_so_com_elas() {
     let mut split = ph2d_editor_core::screens::layout::CenterSplit::None;
     let mut ph = ph2d_core::Playhead::new(DT);
     ph.play();
-    let inicial = m.macro_grava().expect("arma");
+    let inicial = m.gravacao_arma().expect("arma");
     let mut slots: Vec<NodeId> = Vec::new();
     let mut cargas = Vec::new();
     for (i, gst) in MACRO.iter().enumerate() {
@@ -508,7 +508,7 @@ fn as_24_intencoes_de_uma_vez_sao_o_explicativo_da_sessao_so_com_elas() {
         crate::motion_bridge::apply_graph_intents(&mut m, &mut ph, &mut toasts, &mut split);
         crate::motion_bridge::params::apply_param_edits_for_tests(&mut m, &store, &mut toasts);
         o_quadro(&mut m, None, &ph, DT);
-        cargas.extend(m.macro_passos());
+        cargas.extend(m.gravacao_passos());
         slots.extend(
             m.doc
                 .graph

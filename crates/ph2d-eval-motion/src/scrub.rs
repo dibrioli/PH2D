@@ -12,6 +12,22 @@
 use super::*;
 
 impl MotionCookPump {
+    /// Quantos [`Self::mark_dirty`] esta bomba já recebeu. O anel guarda a história desde o último,
+    /// e um scrub restaura-a: o tocador de uma macro (ADR-0186) repete cada limpeza que o produto fez,
+    /// e é por esta contagem que a gravação a vê.
+    #[must_use]
+    pub fn edicoes(&self) -> u64 {
+        self.edicoes
+    }
+
+    /// **O próximo cozimento re-simula da semente**, mesmo no tique em que a bomba já está — o modo
+    /// explicativo de uma macro (ADR-0186): o efeito do grafo de agora como se ele sempre lá estivesse.
+    /// É uma edição (limpa o anel) e o cozimento seguinte toma a porta do scrub.
+    pub fn re_simula_da_semente(&mut self) {
+        self.mark_dirty();
+        self.re_sim_pendente = true;
+    }
+
     /// Scrub to `target_tick`: render the exact simulation state of that frame
     /// even when it is BEHIND the current playhead (plan §1.4, M2.N2). A plain
     /// forward cook would read the marching-future `pre` state; this restores the

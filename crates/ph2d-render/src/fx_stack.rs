@@ -86,7 +86,8 @@ pub use crate::fx_stack_camada::retangulo_da_camada;
 pub use crate::fx_stack_op::{FxOpGpu, Origem};
 use crate::fx_stack_plan::plan_of;
 pub use crate::fx_stack_plan::{
-    jump_count, kernel_half, op_reach, op_read, stack_reach, stack_read,
+    jump_count, kernel_half, op_reach, op_read, op_read_por_lado, stack_reach, stack_read,
+    stack_read_por_lado,
 };
 
 /// **Como este degrau é executado.** Porta única: quem ESCREVE os globals e quem os DESPACHA

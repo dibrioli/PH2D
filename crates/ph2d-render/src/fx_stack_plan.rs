@@ -196,3 +196,43 @@ pub fn op_read(op: &FxOpGpu) -> u32 {
 pub fn stack_read(ops: &[FxOpGpu]) -> u32 {
     ops.iter().map(op_read).sum()
 }
+
+/// **Quanto ESTE degrau lê em volta de um pixel, POR LADO** — `[esquerda, cima, direita, baixo]`, a
+/// irmã do [`op_read`] para quem separa formas por lado (as células, doc 132 §1). O pixel `p` lê em
+/// volta de `p − off`: o lado para onde o deslocamento aponta paga-o, o oposto desconta-o. Com
+/// deslocamento zero é o [`op_read`] nos quatro lados.
+#[must_use]
+pub fn op_read_por_lado(op: &FxOpGpu) -> [u32; 4] {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let px = |v: f32| v.abs().ceil() as u32;
+    let base = match plan_of(op, true) {
+        Plan::Point => return [0; 4],
+        Plan::Warp => return [op_reach(op); 4],
+        Plan::Blur { .. } => crate::fx_stack_piramide::alcance(op.sigma_px) + 1,
+        Plan::Field { .. } => px(op.sigma_px) + px(op.grow_px) + 2,
+    };
+    // `(antes, depois)` de um eixo: lê de `−base − ⌈o⌉` a `base − ⌊o⌋`.
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss
+    )]
+    let eixo = |o: f32| {
+        let b = base as i32;
+        (
+            (b + o.ceil() as i32).max(0) as u32,
+            (b - o.floor() as i32).max(0) as u32,
+        )
+    };
+    let (l, r) = eixo(op.offset_px[0]);
+    let (t, b) = eixo(op.offset_px[1]);
+    [l, t, r, b]
+}
+
+/// **Quanto a pilha inteira LÊ, por lado** — as leituras somam ao longo dela, lado a lado.
+#[must_use]
+pub fn stack_read_por_lado(ops: &[FxOpGpu]) -> [u32; 4] {
+    ops.iter().map(op_read_por_lado).fold([0; 4], |a, o| {
+        [a[0] + o[0], a[1] + o[1], a[2] + o[2], a[3] + o[3]]
+    })
+}

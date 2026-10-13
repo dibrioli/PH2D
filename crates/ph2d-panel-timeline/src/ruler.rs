@@ -99,8 +99,9 @@ pub(crate) fn paint(
     if clock.loop_band {
         paint_loop_band(ctx, theme, region, &time_to_x, snap);
     }
-    // The recorded-history band (Blender's cache bar) is in TIMELINE seconds, like the markers.
-    if clock.markers {
+    // The recorded-history band (Blender's cache bar): only on the ruler whose drag moves the
+    // clock the history was recorded on (`RulerClock::history`).
+    if clock.history {
         crate::history_band::paint(ctx, theme, region, RULER_H, &time_to_x);
     }
 

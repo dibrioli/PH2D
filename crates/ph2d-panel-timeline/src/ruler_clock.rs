@@ -26,6 +26,12 @@ pub struct RulerClock {
     /// Gates the BAND and the BRACES together: an invisible band with live grips
     /// would be a control you can grab and cannot see.
     pub loop_band: bool,
+    /// This ruler measures — and its drag moves — the EDITOR's clock, the one a scene
+    /// simulation (the Motion) reads: so it, and only it, carries the recorded-history band
+    /// (Motion Nodes doc 132 §2). Arrange outside a container. ⚠️ NOT the Keys ruler, even
+    /// without a stack: there the shell drives the CLIP playhead (`fase_timeline_drain`), a
+    /// second clock on the same axis, and a drag on it never replays the Motion's tape.
+    pub history: bool,
 }
 
 /// **Which clock this tab's ruler measures.** Pure, and tested as such.
@@ -49,6 +55,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
             scrub: false,
             markers: true,
             loop_band: false,
+            history: false,
         };
     }
     if tab.shows_lanes() {
@@ -64,6 +71,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
                 scrub: true,
                 markers: false,
                 loop_band: true,
+                history: false,
             };
         }
         // Arrange IS the timeline: the transport's playhead, and it owns the markers
@@ -73,6 +81,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
             scrub: true,
             markers: true,
             loop_band: true,
+            history: true,
         };
     }
     // Keys scrubs the active clip's own clock (published as `clip_time`). It carries
@@ -86,6 +95,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
         scrub: true,
         markers: !snap.stacked(),
         loop_band: true,
+        history: false,
     }
 }
 
@@ -114,8 +124,11 @@ mod tests {
     use crate::tab::Tab;
     #[test]
     fn without_a_stack_both_tabs_rule_the_one_clock_there_is() {
+        // ⚠️ «One clock» is the AXIS and the snapshot's clock: both tabs read and scrub the
+        // clock the shell hands the snapshot. The shell hands Keys the CLIP playhead and
+        // Arrange the EDITOR's — two `Playhead`s — so only Arrange carries the history band.
         let s = snap(false, 1.25, Some(1.25));
-        for tab in [Tab::Keys, Tab::Arrange] {
+        for (tab, history) in [(Tab::Keys, false), (Tab::Arrange, true)] {
             assert_eq!(
                 clock_for(tab, &s),
                 RulerClock {
@@ -123,10 +136,28 @@ mod tests {
                     scrub: true,
                     markers: true,
                     loop_band: true,
+                    history,
                 },
                 "{tab:?} lost the ruler it always had"
             );
         }
+    }
+    /// ⭐ **The recorded-history band rides ONLY the ruler of the editor's clock** (Motion
+    /// Nodes doc 132 §2): Arrange at the scene root. Not Keys — stacked or not, its drag moves
+    /// the clip playhead, which the Motion never reads; not inside a container.
+    #[test]
+    fn the_history_band_rides_only_the_ruler_of_the_editor_clock() {
+        for stacked in [false, true] {
+            let s = snap(stacked, 4.0, Some(2.0));
+            assert!(clock_for(Tab::Arrange, &s).history, "stacked={stacked}");
+            assert!(!clock_for(Tab::Keys, &s).history, "stacked={stacked}");
+        }
+        let mut dentro = snap(false, 4.0, Some(2.0));
+        dentro.container_open = Some(0);
+        assert!(
+            !clock_for(Tab::Arrange, &dentro).history,
+            "a container's own clock"
+        );
     }
     #[test]
     fn each_tab_reads_its_own_clock() {

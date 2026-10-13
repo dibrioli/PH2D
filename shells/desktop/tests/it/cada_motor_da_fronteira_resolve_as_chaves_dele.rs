@@ -179,9 +179,11 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
     //    escultura, 4 nas ferramentas, 2 no `ph2d-asset-index`). ⚠️ Em 2026-10-05 o motor da
     //    escultura saiu com o 3D (ADR-0179, `24 → 8`, medido): o piso é o número de hoje. As
     //    isenções das linhas do `Verb`/`Falloff` (tipos daquele motor) saíram com ele — a metade
-    //    justa abaixo acusava-as de mortas.
+    //    justa abaixo acusava-as de mortas. ⚠️ Em 2026-10-13 os dois da `ph2d-ecs` (`AudioBus` e
+    //    `SignalVerb`) foram APAGADOS — a fundação deixou a `ph2d-i18n` (`8 → 6`, medido;
+    //    docs/DevOps/VELOCIDADE_DOS_PORTOES.md §2.2).
     assert!(
-        ingles.len() >= 8,
+        ingles.len() >= 6,
         "a varredura achou {} acessórios ingleses — a régua partiu-se, e um gate com a lista vazia \
          aprova todo pintor",
         ingles.len()

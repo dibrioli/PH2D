@@ -185,7 +185,9 @@ _raiz="$(git rev-parse --show-toplevel)"
 _indice="$(mktemp)"
 _arvore="$(cp "$(git rev-parse --git-dir)/index" "$_indice" 2>/dev/null; GIT_INDEX_FILE="$_indice" git add -A -- "$_raiz" 2>/dev/null && GIT_INDEX_FILE="$_indice" git write-tree 2>/dev/null)"
 rm -f "$_indice"
-_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "${FAIL_MODE[*]} $*" "$(env | grep '^PH2D_' | grep -v '^PH2D_PORTAO_FORCAR=\|^PH2D_NA_PORTA=\|^PH2D_PRAZO=' | sort)" | sha256sum | cut -c1-32)"
+# ⚠️ Fora da chave só o que não muda o veredito de uma corrida VERDE: o `NO_FAIL_FAST` (o
+# `fail-fast = false` já é o default) e os botões de RECURSO da porta (placa, prazo, CPU, memória).
+_chave="$(printf '%s\n%s\n%s\n%s\n' "$_arvore" "$EXPR" "$*" "$(env | grep '^PH2D_' | grep -vE '^PH2D_(PORTAO_FORCAR|NA_PORTA|PRAZO|GPU|GPU_ESPERA|CPU_PCT|MEM_MAX)=' | sort)" | sha256sum | cut -c1-32)"
 _selos="${CARGO_TARGET_DIR:-$_raiz/target}/portao-verde"
 if [ -n "$_arvore" ] && [ -f "$_selos/$_chave" ] && [ "${PH2D_PORTAO_FORCAR:-0}" != "1" ]; then
     echo "[nextest-impacted] ✓ esta árvore ($_arvore) com este filtro JÁ PASSOU em $(cat "$_selos/$_chave") — não corre de novo."

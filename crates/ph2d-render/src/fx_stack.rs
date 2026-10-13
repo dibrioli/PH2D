@@ -126,6 +126,12 @@ pub struct FxStackPass {
     pipeline_ingest: wgpu::ComputePipeline,
     pub(crate) pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
+    /// O borrão por GRUPO ([`crate::fx_stack_borrao_grupo`]): os mesmos dois passes, os taps e os
+    /// pesos na memória do grupo.
+    pipeline_h_grupo: wgpu::ComputePipeline,
+    pipeline_v_grupo: wgpu::ComputePipeline,
+    /// Qual dos dois borrões corre — só a régua e os gates o mudam (`MEDIR_VELOCIDADE.md`).
+    borrao_grupo: bool,
     /// A pirâmide do borrão: a média 2×2, o vertical sem fecho, a volta com o fecho.
     pub(crate) pipeline_halve: wgpu::ComputePipeline,
     pub(crate) pipeline_v_only: wgpu::ComputePipeline,
@@ -169,13 +175,14 @@ fn module_sources() -> [(&'static str, String); 2] {
     // Painter, e uma cópia local seria a segunda resposta que este prefixo existe para não
     // ter (há gate).
     let adjust = crate::layer_compositor::COLOUR_ADJUST_WGSL;
+    let grupo = crate::fx_stack_borrao_grupo::borrao_grupo_wgsl();
     [
         (
             "mid",
             // ⚠️ O RUÍDO entra ANTES do fold (o `cs_op_warp` do `WARP_WGSL` chama o `fbm`) e o
             // WARP depois dele (ele chama o `tap_img`). A ordem é a das dependências, não gosto.
             format!(
-                "{blend}\n{adjust}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}{PIRAMIDE_WGSL}"
+                "{blend}\n{adjust}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}{PIRAMIDE_WGSL}{grupo}"
             ),
         ),
         (
@@ -229,6 +236,8 @@ impl FxStackPass {
         let pipeline_ingest = make_pipe(&layout_mid, &shader_mid, "cs_ingest");
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
+        let pipeline_h_grupo = make_pipe(&layout_mid, &shader_mid, "cs_blur_h_grupo");
+        let pipeline_v_grupo = make_pipe(&layout_mid, &shader_mid, "cs_op_v_grupo");
         let pipeline_halve = make_pipe(&layout_mid, &shader_mid, "cs_halve");
         let pipeline_v_only = make_pipe(&layout_mid, &shader_mid, "cs_blur_v_only");
         let pipeline_up = make_pipe(&layout_mid, &shader_mid, "cs_op_up");
@@ -261,6 +270,9 @@ impl FxStackPass {
             pipeline_ingest,
             pipeline_h,
             pipeline_v,
+            pipeline_h_grupo,
+            pipeline_v_grupo,
+            borrao_grupo: false,
             pipeline_halve,
             pipeline_v_only,
             pipeline_up,
@@ -280,6 +292,13 @@ impl FxStackPass {
             ramps_cap: segs_cap,
             work: None,
         }
+    }
+
+    /// O borrão das próximas corridas: `true` = por GRUPO ([`crate::fx_stack_borrao_grupo`]). Só a
+    /// régua e os gates o mudam (as variantes no MESMO processo, `MEDIR_VELOCIDADE.md`).
+    #[doc(hidden)]
+    pub fn borrao_em_grupo(&mut self, sim: bool) {
+        self.borrao_grupo = sim;
     }
 
     fn layout(gpu: &GpuContext, storage: wgpu::TextureFormat) -> wgpu::BindGroupLayout {
@@ -561,7 +580,14 @@ impl FxStackPass {
         // volta a ler `src`**: `cur` nasce em `Some(0)` e nunca mais é `None`. É isso que garante
         // que a convenção linear não tem furo — não sobra um caminho que leia sRGB por engano.
         let bg_in = self.bind(gpu, &self.bgl_mid, &src_view, &src_view, &work[0].view);
-        dispatch(&mut encoder, &self.pipeline_ingest, &bg_in, 0, gx, gy);
+        dispatch(
+            &mut encoder,
+            (&self.pipeline_ingest, "fx.ingest"),
+            &bg_in,
+            0,
+            gx,
+            gy,
+        );
         let mut cur: usize = 0;
         let mut slot = 1u32;
         for op in ops {
@@ -571,7 +597,14 @@ impl FxStackPass {
                 Plan::Point => {
                     // Pontual: lê a entrada e escreve o resultado — sem intermediário.
                     let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
-                    dispatch(&mut encoder, &self.pipeline_point, &bg, slot, gx, gy);
+                    dispatch(
+                        &mut encoder,
+                        (&self.pipeline_point, "fx.ponto"),
+                        &bg,
+                        slot,
+                        gx,
+                        gy,
+                    );
                     slot += 1;
                 }
                 Plan::Warp => {
@@ -583,7 +616,14 @@ impl FxStackPass {
                         _ => input,
                     };
                     let bg = self.bind(gpu, &self.bgl_mid, input, t1, &work[next].view);
-                    dispatch(&mut encoder, &self.pipeline_warp, &bg, slot, gx, gy);
+                    dispatch(
+                        &mut encoder,
+                        (&self.pipeline_warp, "fx.warp"),
+                        &bg,
+                        slot,
+                        gx,
+                        gy,
+                    );
                     slot += 1;
                 }
                 Plan::Blur { niveis } if niveis > 0 => {
@@ -594,15 +634,31 @@ impl FxStackPass {
                     let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
                     let bg_v =
                         self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
-                    dispatch(&mut encoder, &self.pipeline_h, &bg_h, slot, gx, gy);
-                    dispatch(&mut encoder, &self.pipeline_v, &bg_v, slot + 1, gx, gy);
+                    if self.borrao_grupo {
+                        let n = crate::fx_stack_borrao_grupo::GRUPO;
+                        let ph = (&self.pipeline_h_grupo, "fx.borrao_h");
+                        let pv = (&self.pipeline_v_grupo, "fx.borrao_v");
+                        dispatch(&mut encoder, ph, &bg_h, slot, w.div_ceil(n), h);
+                        dispatch(&mut encoder, pv, &bg_v, slot + 1, w, h.div_ceil(n));
+                    } else {
+                        let (h, v) = (&self.pipeline_h, &self.pipeline_v);
+                        dispatch(&mut encoder, (h, "fx.borrao_h"), &bg_h, slot, gx, gy);
+                        dispatch(&mut encoder, (v, "fx.borrao_v"), &bg_v, slot + 1, gx, gy);
+                    }
                     slot += 2;
                 }
                 Plan::Field { jumps, raster_seed } => {
                     let mut field = 2usize;
                     if raster_seed {
                         let bg_seed = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
-                        dispatch(&mut encoder, &self.pipeline_seed, &bg_seed, slot, gx, gy);
+                        dispatch(
+                            &mut encoder,
+                            (&self.pipeline_seed, "fx.semente"),
+                            &bg_seed,
+                            slot,
+                            gx,
+                            gy,
+                        );
                         slot += 1;
                     }
                     // Ping/pong 2 <-> 3: o salto `i` lê de onde o anterior escreveu.
@@ -610,7 +666,14 @@ impl FxStackPass {
                         let to = 5 - field; // 2 <-> 3
                         let bg =
                             self.bind(gpu, &self.bgl_mid, input, &work[field].view, &work[to].view);
-                        dispatch(&mut encoder, &self.pipeline_jump, &bg, slot, gx, gy);
+                        dispatch(
+                            &mut encoder,
+                            (&self.pipeline_jump, "fx.salto"),
+                            &bg,
+                            slot,
+                            gx,
+                            gy,
+                        );
                         slot += 1;
                         field = to;
                     }
@@ -621,7 +684,14 @@ impl FxStackPass {
                         &work[field].view,
                         &work[next].view,
                     );
-                    dispatch(&mut encoder, &self.pipeline_field, &bg, slot, gx, gy);
+                    dispatch(
+                        &mut encoder,
+                        (&self.pipeline_field, "fx.campo"),
+                        &bg,
+                        slot,
+                        gx,
+                        gy,
+                    );
                     slot += 1;
                 }
             }
@@ -629,7 +699,14 @@ impl FxStackPass {
         }
         let last = &work[cur].view;
         let bg_out = self.bind(gpu, &self.bgl_out, last, last, &dst_view);
-        dispatch(&mut encoder, &self.pipeline_out, &bg_out, slot, gx, gy);
+        dispatch(
+            &mut encoder,
+            (&self.pipeline_out, "fx.resolve"),
+            &bg_out,
+            slot,
+            gx,
+            gy,
+        );
         gpu.queue.submit([encoder.finish()]);
     }
 

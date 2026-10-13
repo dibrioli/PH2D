@@ -219,7 +219,14 @@ impl FxStackPass {
             };
             let bg = self.bind(gpu, &self.bgl_mid, de, de, &work[para].view);
             let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
-            dispatch(encoder, &self.pipeline_halve, &bg, slot, x, y);
+            dispatch(
+                encoder,
+                (&self.pipeline_halve, "fx.piramide_meia"),
+                &bg,
+                slot,
+                x,
+                y,
+            );
             slot += 1;
             a = para;
         }
@@ -227,11 +234,32 @@ impl FxStackPass {
         let (x, y) = (d[0].div_ceil(8), d[1].div_ceil(8));
         let (va, vb) = (&work[a].view, &work[b].view);
         let bg_h = self.bind(gpu, &self.bgl_mid, va, va, vb);
-        dispatch(encoder, &self.pipeline_h, &bg_h, slot, x, y);
+        dispatch(
+            encoder,
+            (&self.pipeline_h, "fx.piramide_h"),
+            &bg_h,
+            slot,
+            x,
+            y,
+        );
         let bg_v = self.bind(gpu, &self.bgl_mid, vb, vb, va);
-        dispatch(encoder, &self.pipeline_v_only, &bg_v, slot + 1, x, y);
+        dispatch(
+            encoder,
+            (&self.pipeline_v_only, "fx.piramide_v"),
+            &bg_v,
+            slot + 1,
+            x,
+            y,
+        );
         let bg_up = self.bind(gpu, &self.bgl_mid, input, va, saida);
-        dispatch(encoder, &self.pipeline_up, &bg_up, slot + 2, gx, gy);
+        dispatch(
+            encoder,
+            (&self.pipeline_up, "fx.piramide_volta"),
+            &bg_up,
+            slot + 2,
+            gx,
+            gy,
+        );
         slot + 3
     }
 }

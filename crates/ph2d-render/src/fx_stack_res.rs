@@ -347,17 +347,22 @@ pub(crate) fn write_at(blob: &mut [u8], slot: usize, g: &Globals) {
     blob[off..off + bytes.len()].copy_from_slice(bytes);
 }
 
+/// Um despacho da pilha. `rotulo` é o do relógio da placa por passe (`pass_profiler`, inerte sem
+/// ele) — a decomposição do custo da pilha (doc 132 §1).
 pub(crate) fn dispatch(
     encoder: &mut wgpu::CommandEncoder,
-    pipeline: &wgpu::ComputePipeline,
+    (pipeline, rotulo): (&wgpu::ComputePipeline, &'static str),
     bg: &wgpu::BindGroup,
     slot: u32,
     gx: u32,
     gy: u32,
 ) {
+    let relogio = ph2d_gpu::pass_profiler::compute_writes(rotulo);
     let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
         label: Some("ph2d-render fx_stack pass"),
-        timestamp_writes: None,
+        timestamp_writes: relogio
+            .as_ref()
+            .map(ph2d_gpu::pass_profiler::PassTimestamps::compute),
     });
     pass.set_pipeline(pipeline);
     pass.set_bind_group(0, bg, &[slot * UNIFORM_STRIDE as u32]);

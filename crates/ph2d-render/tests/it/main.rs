@@ -23,6 +23,7 @@ mod fx_stack_adjust_gpu;
 mod fx_stack_atlas_gpu;
 mod fx_stack_bevel_gpu;
 mod fx_stack_blend_gpu;
+mod fx_stack_borrao_grupo_gpu;
 mod fx_stack_camada_rect_gpu;
 mod fx_stack_camada_sonda;
 mod fx_stack_campo_gpu;

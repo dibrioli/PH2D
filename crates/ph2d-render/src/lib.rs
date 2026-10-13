@@ -36,6 +36,7 @@ pub mod frost;
 pub mod fx_atlas;
 pub mod fx_stack;
 /// A pilha sobre um RETÂNGULO da camada (o da cena) — irmão pelo LOC cap.
+mod fx_stack_borrao_grupo;
 mod fx_stack_camada;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
 mod fx_stack_field;
